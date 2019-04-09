@@ -21,9 +21,9 @@ namespace eosio {
  *   +---------+----------------+-----------+------------------+-----+---------+----------------+
  *
  *   *.index:
- *   +-----------+-------------+-----+-----------+
- *   | Summary i | Summary i+1 | ... | Summary z |
- *   +-----------+-------------+-----+-----------+
+ *   +----------------+------------------+-----+----------------+
+ *   | Pos of Entry i | Pos of Entry i+1 | ... | Pos of Entry z |
+ *   +----------------+------------------+-----+----------------+
  *
  * each entry:
  *    uint32_t       block_num
@@ -31,13 +31,6 @@ namespace eosio {
  *    uint64_t       size of payload
  *    uint8_t        version
  *                   payload
- *
- * each summary:
- *    uint64_t       position of entry in *.log
- *
- * state payload:
- *    uint32_t    size of deltas
- *    char[]      deltas
  */
 
 // todo: look into switching this to serialization instead of memcpy
@@ -49,10 +42,6 @@ struct state_history_log_header {
    chain::block_id_type block_id;
    uint64_t             payload_size = 0;
    uint8_t              version      = 0;
-};
-
-struct state_history_summary {
-   uint64_t pos = 0;
 };
 
 class state_history_log {
@@ -107,8 +96,7 @@ class state_history_log {
       log.write((char*)&pos, sizeof(pos));
 
       index.seekg(0, std::ios_base::end);
-      state_history_summary summary{.pos = pos};
-      index.write((char*)&summary, sizeof(summary));
+      index.write((char*)&pos, sizeof(pos));
       if (_begin_block == _end_block)
          _begin_block = header.block_num;
       _end_block    = header.block_num + 1;
@@ -208,7 +196,7 @@ class state_history_log {
    void open_index() {
       index.open(index_filename, std::ios_base::binary | std::ios_base::in | std::ios_base::out | std::ios_base::app);
       index.seekg(0, std::ios_base::end);
-      if (index.tellg() == (static_cast<int>(_end_block) - _begin_block) * sizeof(state_history_summary))
+      if (index.tellg() == (static_cast<int>(_end_block) - _begin_block) * sizeof(uint64_t))
          return;
       ilog("Regenerate ${name}.index", ("name", name));
       index.close();
@@ -233,8 +221,7 @@ class state_history_log {
          //      ("b", header.block_num)("pos", pos)("end", suffix_pos + sizeof(suffix))("suffix", suffix)("fs", size));
          EOS_ASSERT(suffix == pos, chain::plugin_exception, "corrupt ${name}.log (8)", ("name", name));
 
-         state_history_summary summary{.pos = pos};
-         index.write((char*)&summary, sizeof(summary));
+         index.write((char*)&pos, sizeof(pos));
          pos = suffix_pos + sizeof(suffix);
          if (!(++num_found % 10000)) {
             printf("%10u blocks found, log pos=%12llu\r", (unsigned)num_found, (unsigned long long)pos);
@@ -244,10 +231,10 @@ class state_history_log {
    }
 
    uint64_t get_pos(uint32_t block_num) {
-      state_history_summary summary;
-      index.seekg((block_num - _begin_block) * sizeof(summary));
-      index.read((char*)&summary, sizeof(summary));
-      return summary.pos;
+      uint64_t pos;
+      index.seekg((block_num - _begin_block) * sizeof(pos));
+      index.read((char*)&pos, sizeof(pos));
+      return pos;
    }
 
    void truncate(uint32_t block_num) {
@@ -267,7 +254,7 @@ class state_history_log {
          log.seekg(0);
          index.seekg(0);
          boost::filesystem::resize_file(log_filename, pos);
-         boost::filesystem::resize_file(index_filename, (block_num - _begin_block) * sizeof(state_history_summary));
+         boost::filesystem::resize_file(index_filename, (block_num - _begin_block) * sizeof(uint64_t));
          _end_block = block_num;
       }
       log.sync();

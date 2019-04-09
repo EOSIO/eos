@@ -103,7 +103,7 @@ extern const char* const state_history_plugin_abi = R"({
                 { "name": "elapsed", "type": "int64" },
                 { "name": "console", "type": "string" },
                 { "name": "account_ram_deltas", "type": "account_delta[]" },
-                { "name": "except", "type": "string?" },
+                { "name": "except", "type": "string?" }
             ]
         },
         {
