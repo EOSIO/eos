@@ -7,12 +7,13 @@
 #include <eosio/chain/authority_checker.hpp>
 #include <eosio/chain/chain_config.hpp>
 #include <eosio/chain/types.hpp>
+#include <eosio/chain/thread_utils.hpp>
 #include <eosio/testing/tester.hpp>
 
 #include <fc/io/json.hpp>
+#include <fc/log/logger_config.hpp>
 #include <appbase/execution_priority_queue.hpp>
 
-#include <boost/asio/thread_pool.hpp>
 #include <boost/test/unit_test.hpp>
 
 #ifdef NON_VALIDATING_TEST
@@ -829,34 +830,47 @@ BOOST_AUTO_TEST_CASE(transaction_metadata_test) { try {
       BOOST_CHECK_EQUAL(trx.id(), mtrx->id);
       BOOST_CHECK_EQUAL(trx.id(), mtrx2->id);
 
-      boost::asio::thread_pool thread_pool(5);
+      named_thread_pool thread_pool( "misc", 5 );
 
       BOOST_CHECK( !mtrx->signing_keys_future.valid() );
       BOOST_CHECK( !mtrx2->signing_keys_future.valid() );
 
-      transaction_metadata::create_signing_keys_future( mtrx, thread_pool, test.control->get_chain_id(), fc::microseconds::maximum() );
-      transaction_metadata::create_signing_keys_future( mtrx2, thread_pool, test.control->get_chain_id(), fc::microseconds::maximum() );
+      transaction_metadata::start_recover_keys( mtrx, thread_pool.get_executor(), test.control->get_chain_id(), fc::microseconds::maximum() );
+      transaction_metadata::start_recover_keys( mtrx2, thread_pool.get_executor(), test.control->get_chain_id(), fc::microseconds::maximum() );
 
       BOOST_CHECK( mtrx->signing_keys_future.valid() );
       BOOST_CHECK( mtrx2->signing_keys_future.valid() );
 
       // no-op
-      transaction_metadata::create_signing_keys_future( mtrx, thread_pool, test.control->get_chain_id(), fc::microseconds::maximum() );
-      transaction_metadata::create_signing_keys_future( mtrx2, thread_pool, test.control->get_chain_id(), fc::microseconds::maximum() );
+      transaction_metadata::start_recover_keys( mtrx, thread_pool.get_executor(), test.control->get_chain_id(), fc::microseconds::maximum() );
+      transaction_metadata::start_recover_keys( mtrx2, thread_pool.get_executor(), test.control->get_chain_id(), fc::microseconds::maximum() );
 
       auto keys = mtrx->recover_keys( test.control->get_chain_id() );
-      BOOST_CHECK_EQUAL(1u, keys.size());
-      BOOST_CHECK_EQUAL(public_key, *keys.begin());
+      BOOST_CHECK_EQUAL(1u, keys.second.size());
+      BOOST_CHECK_EQUAL(public_key, *keys.second.begin());
 
       // again
-      keys = mtrx->recover_keys( test.control->get_chain_id() );
-      BOOST_CHECK_EQUAL(1u, keys.size());
-      BOOST_CHECK_EQUAL(public_key, *keys.begin());
+      auto keys2 = mtrx->recover_keys( test.control->get_chain_id() );
+      BOOST_CHECK_EQUAL(1u, keys2.second.size());
+      BOOST_CHECK_EQUAL(public_key, *keys2.second.begin());
 
-      auto keys2 = mtrx2->recover_keys( test.control->get_chain_id() );
-      BOOST_CHECK_EQUAL(1u, keys.size());
-      BOOST_CHECK_EQUAL(public_key, *keys.begin());
+      auto keys3 = mtrx2->recover_keys( test.control->get_chain_id() );
+      BOOST_CHECK_EQUAL(1u, keys3.second.size());
+      BOOST_CHECK_EQUAL(public_key, *keys3.second.begin());
 
+      // recover keys without first calling start_recover_keys
+      transaction_metadata_ptr mtrx4 = std::make_shared<transaction_metadata>( std::make_shared<packed_transaction>( trx, packed_transaction::none) );
+      transaction_metadata_ptr mtrx5 = std::make_shared<transaction_metadata>( std::make_shared<packed_transaction>( trx, packed_transaction::zlib) );
+
+      auto keys4 = mtrx4->recover_keys( test.control->get_chain_id() );
+      BOOST_CHECK_EQUAL(1u, keys4.second.size());
+      BOOST_CHECK_EQUAL(public_key, *keys4.second.begin());
+
+      auto keys5 = mtrx5->recover_keys( test.control->get_chain_id() );
+      BOOST_CHECK_EQUAL(1u, keys5.second.size());
+      BOOST_CHECK_EQUAL(public_key, *keys5.second.begin());
+
+      thread_pool.stop();
 
 } FC_LOG_AND_RETHROW() }
 

@@ -44,13 +44,13 @@ add_library( eosio_chain
 #
 #             contracts/chain_initializer.cpp
 
-
              transaction_metadata.cpp
              protocol_state_object.cpp
              protocol_feature_activation.cpp
              protocol_feature_manager.cpp
              genesis_intrinsics.cpp
              whitelisted_intrinsics.cpp
+             thread_utils.cpp
              ${HEADERS}
              )
 

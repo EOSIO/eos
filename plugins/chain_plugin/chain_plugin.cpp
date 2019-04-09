@@ -987,8 +987,6 @@ void chain_plugin::plugin_shutdown() {
    my->irreversible_block_connection.reset();
    my->accepted_transaction_connection.reset();
    my->applied_transaction_connection.reset();
-   my->chain->get_thread_pool().stop();
-   my->chain->get_thread_pool().join();
    my->chain.reset();
 }
 

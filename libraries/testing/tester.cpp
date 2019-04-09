@@ -236,7 +236,7 @@ namespace eosio { namespace testing {
       return b;
    }
 
-   signed_block_ptr base_tester::_produce_block( fc::microseconds skip_time, bool skip_pending_trxs, uint32_t skip_flag) {
+   signed_block_ptr base_tester::_produce_block( fc::microseconds skip_time, bool skip_pending_trxs) {
       auto head = control->head_block_state();
       auto head_time = control->head_block_time();
       auto next_time = head_time + skip_time;
@@ -446,7 +446,13 @@ namespace eosio { namespace testing {
    { try {
       if( !control->is_building_block() )
          _start_block(control->head_block_time() + fc::microseconds(config::block_interval_us));
-      auto r = control->push_transaction( std::make_shared<transaction_metadata>(std::make_shared<packed_transaction>(trx)), deadline, billed_cpu_time_us );
+
+      auto mtrx = std::make_shared<transaction_metadata>( std::make_shared<packed_transaction>(trx) );
+      auto time_limit = deadline == fc::time_point::maximum() ?
+            fc::microseconds::maximum() :
+            fc::microseconds( deadline - fc::time_point::now() );
+      transaction_metadata::start_recover_keys( mtrx, control->get_thread_pool(), control->get_chain_id(), time_limit );
+      auto r = control->push_transaction( mtrx, deadline, billed_cpu_time_us );
       if( r->except_ptr ) std::rethrow_exception( r->except_ptr );
       if( r->except ) throw *r->except;
       return r;
@@ -465,7 +471,12 @@ namespace eosio { namespace testing {
          c = packed_transaction::zlib;
       }
 
-      auto r = control->push_transaction( std::make_shared<transaction_metadata>(trx,c), deadline, billed_cpu_time_us );
+      auto time_limit = deadline == fc::time_point::maximum() ?
+            fc::microseconds::maximum() :
+            fc::microseconds( deadline - fc::time_point::now() );
+      auto mtrx = std::make_shared<transaction_metadata>(trx, c);
+      transaction_metadata::start_recover_keys( mtrx, control->get_thread_pool(), control->get_chain_id(), time_limit );
+      auto r = control->push_transaction( mtrx, deadline, billed_cpu_time_us );
       if( r->except_ptr ) std::rethrow_exception( r->except_ptr );
       if( r->except)  throw *r->except;
       return r;

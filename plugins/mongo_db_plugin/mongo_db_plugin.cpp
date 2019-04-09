@@ -10,17 +10,17 @@
 #include <eosio/chain/types.hpp>
 
 #include <fc/io/json.hpp>
+#include <fc/log/logger_config.hpp>
 #include <fc/utf8.hpp>
 #include <fc/variant.hpp>
 
 #include <boost/algorithm/string.hpp>
 #include <boost/chrono.hpp>
 #include <boost/signals2/connection.hpp>
-#include <boost/thread/thread.hpp>
-#include <boost/thread/mutex.hpp>
-#include <boost/thread/condition_variable.hpp>
 
 #include <queue>
+#include <thread>
+#include <mutex>
 
 #include <bsoncxx/builder/basic/kvp.hpp>
 #include <bsoncxx/builder/basic/document.hpp>
@@ -164,9 +164,9 @@ public:
    std::deque<chain::block_state_ptr> block_state_process_queue;
    std::deque<chain::block_state_ptr> irreversible_block_state_queue;
    std::deque<chain::block_state_ptr> irreversible_block_state_process_queue;
-   boost::mutex mtx;
-   boost::condition_variable condition;
-   boost::thread consume_thread;
+   std::mutex mtx;
+   std::condition_variable condition;
+   std::thread consume_thread;
    std::atomic_bool done{false};
    std::atomic_bool startup{true};
    fc::optional<chain::chain_id_type> chain_id;
@@ -292,7 +292,7 @@ bool mongo_db_plugin_impl::filter_include( const transaction& trx ) const
 
 template<typename Queue, typename Entry>
 void mongo_db_plugin_impl::queue( Queue& queue, const Entry& e ) {
-   boost::mutex::scoped_lock lock( mtx );
+   std::unique_lock<std::mutex> lock( mtx );
    auto queue_size = queue.size();
    if( queue_size > max_queue_size ) {
       lock.unlock();
@@ -300,7 +300,7 @@ void mongo_db_plugin_impl::queue( Queue& queue, const Entry& e ) {
       queue_sleep_time += 10;
       if( queue_sleep_time > 1000 )
          wlog("queue size: ${q}", ("q", queue_size));
-      boost::this_thread::sleep_for( boost::chrono::milliseconds( queue_sleep_time ));
+      std::this_thread::sleep_for( std::chrono::milliseconds( queue_sleep_time ));
       lock.lock();
    } else {
       queue_sleep_time -= 10;
@@ -408,7 +408,7 @@ void mongo_db_plugin_impl::consume_blocks() {
       _account_controls = mongo_conn[db_name][account_controls_col];
 
       while (true) {
-         boost::mutex::scoped_lock lock(mtx);
+         std::unique_lock<std::mutex> lock(mtx);
          while ( transaction_metadata_queue.empty() &&
                  transaction_trace_queue.empty() &&
                  block_state_queue.empty() &&
@@ -781,8 +781,8 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
    }
 
    string signing_keys_json;
-   if( t->signing_keys.valid() ) {
-      signing_keys_json = fc::json::to_string( t->signing_keys->second );
+   if( t->signing_keys_future.valid() ) {
+      signing_keys_json = fc::json::to_string( std::get<2>( t->signing_keys_future.get() ) );
    } else {
       flat_set<public_key_type> keys;
       trx.get_signature_keys( *chain_id, fc::time_point::maximum(), keys, false );
@@ -1462,39 +1462,44 @@ void mongo_db_plugin_impl::init() {
          }
 
          try {
+            // MongoDB administrators (to enable sharding) :
+            //   1. enableSharding database (default to EOS)
+            //   2. shardCollection: blocks, action_traces, transaction_traces, especially action_traces
+            //   3. Compound index with shard key (default to _id below), to improve query performance.
+
             // blocks indexes
             auto blocks = mongo_conn[db_name][blocks_col];
-            blocks.create_index( bsoncxx::from_json( R"xxx({ "block_num" : 1 })xxx" ));
-            blocks.create_index( bsoncxx::from_json( R"xxx({ "block_id" : 1 })xxx" ));
+            blocks.create_index( bsoncxx::from_json( R"xxx({ "block_num" : 1, "_id" : 1 })xxx" ));
+            blocks.create_index( bsoncxx::from_json( R"xxx({ "block_id" : 1, "_id" : 1 })xxx" ));
 
             auto block_states = mongo_conn[db_name][block_states_col];
-            block_states.create_index( bsoncxx::from_json( R"xxx({ "block_num" : 1 })xxx" ));
-            block_states.create_index( bsoncxx::from_json( R"xxx({ "block_id" : 1 })xxx" ));
+            block_states.create_index( bsoncxx::from_json( R"xxx({ "block_num" : 1, "_id" : 1 })xxx" ));
+            block_states.create_index( bsoncxx::from_json( R"xxx({ "block_id" : 1, "_id" : 1 })xxx" ));
 
             // accounts indexes
-            accounts.create_index( bsoncxx::from_json( R"xxx({ "name" : 1 })xxx" ));
+            accounts.create_index( bsoncxx::from_json( R"xxx({ "name" : 1, "_id" : 1 })xxx" ));
 
             // transactions indexes
             auto trans = mongo_conn[db_name][trans_col];
-            trans.create_index( bsoncxx::from_json( R"xxx({ "trx_id" : 1 })xxx" ));
+            trans.create_index( bsoncxx::from_json( R"xxx({ "trx_id" : 1, "_id" : 1 })xxx" ));
 
             auto trans_trace = mongo_conn[db_name][trans_traces_col];
-            trans_trace.create_index( bsoncxx::from_json( R"xxx({ "id" : 1 })xxx" ));
+            trans_trace.create_index( bsoncxx::from_json( R"xxx({ "id" : 1, "_id" : 1 })xxx" ));
 
             // action traces indexes
             auto action_traces = mongo_conn[db_name][action_traces_col];
-            action_traces.create_index( bsoncxx::from_json( R"xxx({ "block_num" : 1 })xxx" ));
+            action_traces.create_index( bsoncxx::from_json( R"xxx({ "block_num" : 1, "_id" : 1 })xxx" ));
 
             // pub_keys indexes
             auto pub_keys = mongo_conn[db_name][pub_keys_col];
-            pub_keys.create_index( bsoncxx::from_json( R"xxx({ "account" : 1, "permission" : 1 })xxx" ));
-            pub_keys.create_index( bsoncxx::from_json( R"xxx({ "public_key" : 1 })xxx" ));
+            pub_keys.create_index( bsoncxx::from_json( R"xxx({ "account" : 1, "permission" : 1, "_id" : 1 })xxx" ));
+            pub_keys.create_index( bsoncxx::from_json( R"xxx({ "public_key" : 1, "_id" : 1 })xxx" ));
 
             // account_controls indexes
             auto account_controls = mongo_conn[db_name][account_controls_col];
             account_controls.create_index(
-                  bsoncxx::from_json( R"xxx({ "controlled_account" : 1, "controlled_permission" : 1 })xxx" ));
-            account_controls.create_index( bsoncxx::from_json( R"xxx({ "controlling_account" : 1 })xxx" ));
+                  bsoncxx::from_json( R"xxx({ "controlled_account" : 1, "controlled_permission" : 1, "_id" : 1 })xxx" ));
+            account_controls.create_index( bsoncxx::from_json( R"xxx({ "controlling_account" : 1, "_id" : 1 })xxx" ));
 
          } catch (...) {
             handle_mongo_exception( "create indexes", __LINE__ );
@@ -1523,7 +1528,10 @@ void mongo_db_plugin_impl::init() {
 
    ilog("starting db plugin thread");
 
-   consume_thread = boost::thread([this] { consume_blocks(); });
+   consume_thread = std::thread( [this] {
+      fc::set_os_thread_name( "mongodb" );
+      consume_blocks();
+   } );
 
    startup = false;
 }

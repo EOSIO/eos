@@ -1,6 +1,5 @@
 steps:
-
-  - command: |
+  - command: | # Ubuntu 16.04 Build
         echo "+++ :hammer: Building"
         ./scripts/eosio_build.sh -y
         echo "--- :compression: Compressing build directory"
@@ -17,11 +16,11 @@ steps:
         region: "us-west-2"
       docker#v2.1.0:
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu16_2-1"
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu16_2-2"
         workdir: /data/job
     timeout: 60
 
-  - command: |
+  - command: | # Ubuntu 18.04 Build
         echo "+++ :hammer: Building"
         ./scripts/eosio_build.sh -y
         echo "--- :compression: Compressing build directory"
@@ -38,11 +37,11 @@ steps:
         region: "us-west-2"
       docker#v2.1.0:
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu18_2-1"
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu18_2-2"
         workdir: /data/job
     timeout: 60
 
-  - command: |
+  - command: | # CentOS 7 Build
         echo "+++ :hammer: Building"
         ./scripts/eosio_build.sh -y
         echo "--- :compression: Compressing build directory"
@@ -59,32 +58,11 @@ steps:
         region: "us-west-2"
       docker#v2.1.0:
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:centos7_2-1"
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:centos7_2-2"
         workdir: /data/job
     timeout: 60
 
-  - command: |
-        echo "+++ :hammer: Building"
-        ./scripts/eosio_build.sh -y
-        echo "--- :compression: Compressing build directory"
-        tar -pczf build.tar.gz build/
-    label: ":aws: 1 Build"
-    agents:
-      queue: "automation-large-builder-fleet"
-    artifact_paths: "build.tar.gz"
-    plugins:
-      ecr#v1.1.4:
-        login: true
-        account_ids: "436617320021"
-        no-include-email: true
-        region: "us-west-2"
-      docker#v2.1.0:
-        debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux1_2-1"
-        workdir: /data/job
-    timeout: 60
-
-  - command: |
+  - command: | # Amazon Linux 2 Build
         echo "+++ :hammer: Building"
         ./scripts/eosio_build.sh -y
         echo "--- :compression: Compressing build directory"
@@ -101,32 +79,11 @@ steps:
         region: "us-west-2"
       docker#v2.1.0:
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux2_2-1"
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux2_2-2"
         workdir: /data/job
     timeout: 60
 
-  - command: |
-        echo "+++ :hammer: Building"
-        ./scripts/eosio_build.sh -y
-        echo "--- :compression: Compressing build directory"
-        tar -pczf build.tar.gz build/
-    label: ":fedora: 27 Build"
-    agents:
-      queue: "automation-large-builder-fleet"
-    artifact_paths: "build.tar.gz"
-    plugins:
-      ecr#v1.1.4:
-        login: true
-        account_ids: "436617320021"
-        no-include-email: true
-        region: "us-west-2"
-      docker#v2.1.0:
-        debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:fedora27_2-1"
-        workdir: /data/job
-    timeout: 60
-
-  - command: |
+  - command: | # macOS Mojave Build
       echo "--- Creating symbolic link to job directory :file_folder:"
       sleep 5 && ln -s "$(pwd)" /data/job && cd /data/job
       echo "+++ Building :hammer:"
@@ -137,20 +94,6 @@ steps:
     agents:
       - "role=builder-v2-1"
       - "os=mojave"
-    artifact_paths: "build.tar.gz"
-    timeout: 60
-
-  - command: |
-      echo "--- Creating symbolic link to job directory :file_folder:"
-      sleep 5 && ln -s "$(pwd)" /data/job && cd /data/job
-      echo "+++ Building :hammer:"
-      ./scripts/eosio_build.sh -y
-      echo "--- Compressing build directory :compression:"
-      tar -pczf build.tar.gz build/
-    label: ":darwin: High Sierra Build"
-    agents:
-      - "role=builder-v2-1"
-      - "os=high-sierra"
     artifact_paths: "build.tar.gz"
     timeout: 60
 
@@ -172,7 +115,7 @@ steps:
         region: "us-west-2"
       docker#v2.1.0:
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu16_2-1"
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu16_2-2"
         workdir: /data/job
     timeout: 90
   
@@ -192,7 +135,7 @@ steps:
         region: "us-west-2"
       docker#v2.1.0:
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu18_2-1"
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu18_2-2"
         workdir: /data/job
     timeout: 90
 
@@ -212,27 +155,7 @@ steps:
         region: "us-west-2"
       docker#v2.1.0:
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:centos7_2-1"
-        workdir: /data/job
-    timeout: 90
-
-  - command: | # Amazon AWS-1 Linux Tests
-        echo "--- :arrow_down: Downloading Build Directory"
-        buildkite-agent artifact download "build.tar.gz" . --step ":aws: 1 Build"
-        echo "+++ :microscope: Running LR Tests"
-        ./scripts/long-running-test.sh
-    label: ":aws: 1 LR Tests"
-    agents:
-      queue: "automation-large-builder-fleet"
-    plugins:
-      ecr#v1.1.4:
-        login: true
-        account_ids: "436617320021"
-        no-include-email: true
-        region: "us-west-2"
-      docker#v2.1.0:
-        debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux1_2-1"
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:centos7_2-2"
         workdir: /data/job
     timeout: 90
 
@@ -252,39 +175,8 @@ steps:
         region: "us-west-2"
       docker#v2.1.0:
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux2_2-1"
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux2_2-2"
         workdir: /data/job
-    timeout: 90
-
-  - command: | # Fedora Tests
-        echo "--- :arrow_down: Downloading Build Directory"
-        buildkite-agent artifact download "build.tar.gz" . --step ":fedora: 27 Build"
-        echo "+++ :microscope: Running LR Tests"
-        ./scripts/long-running-test.sh
-    label: ":fedora: 27 LR Tests"
-    agents:
-      queue: "automation-large-builder-fleet"
-    plugins:
-      ecr#v1.1.4:
-        login: true
-        account_ids: "436617320021"
-        no-include-email: true
-        region: "us-west-2"
-      docker#v2.1.0:
-        debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:fedora27_2-1"
-        workdir: /data/job
-    timeout: 90
-
-  - command: | # High Sierra Tests
-        echo "--- :arrow_down: Downloading Build Directory"
-        buildkite-agent artifact download "build.tar.gz" . --step ":darwin: High Sierra Build"
-        echo "+++ :microscope: Running LR Tests"
-        ln -s "$(pwd)" /data/job && ./scripts/long-running-test.sh
-    label: ":darwin: High Sierra LR Tests"
-    agents:
-      - "role=tester-v2-1"
-      - "os=high-sierra"
     timeout: 90
 
   - command: | # Mojave Tests

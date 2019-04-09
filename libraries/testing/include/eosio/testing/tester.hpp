@@ -104,8 +104,8 @@ namespace eosio { namespace testing {
          void              open( const snapshot_reader_ptr& snapshot);
          bool              is_same_chain( base_tester& other );
 
-         virtual signed_block_ptr produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = 0/*skip_missed_block_penalty*/ ) = 0;
-         virtual signed_block_ptr produce_empty_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = 0/*skip_missed_block_penalty*/ ) = 0;
+         virtual signed_block_ptr produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms) ) = 0;
+         virtual signed_block_ptr produce_empty_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms) ) = 0;
          virtual signed_block_ptr finish_block() = 0;
          void                 produce_blocks( uint32_t n = 1, bool empty = false );
          void                 produce_blocks_until_end_of_round();
@@ -301,7 +301,7 @@ namespace eosio { namespace testing {
          void preactivate_all_builtin_protocol_features();
 
       protected:
-         signed_block_ptr _produce_block( fc::microseconds skip_time, bool skip_pending_trxs = false, uint32_t skip_flag = 0 );
+         signed_block_ptr _produce_block( fc::microseconds skip_time, bool skip_pending_trxs = false );
          void             _start_block(fc::time_point block_time);
          signed_block_ptr _finish_block();
 
@@ -334,13 +334,13 @@ namespace eosio { namespace testing {
          init(config, std::move(pfs));
       }
 
-      signed_block_ptr produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = 0/*skip_missed_block_penalty*/ )override {
-         return _produce_block(skip_time, false, skip_flag);
+      signed_block_ptr produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms) )override {
+         return _produce_block(skip_time, false);
       }
 
-      signed_block_ptr produce_empty_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = 0/*skip_missed_block_penalty*/ )override {
+      signed_block_ptr produce_empty_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms) )override {
          control->abort_block();
-         return _produce_block(skip_time, true, skip_flag);
+         return _produce_block(skip_time, true);
       }
 
       signed_block_ptr finish_block()override {
@@ -418,16 +418,16 @@ namespace eosio { namespace testing {
          init(config);
       }
 
-      signed_block_ptr produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = 0 /*skip_missed_block_penalty*/ )override {
-         auto sb = _produce_block(skip_time, false, skip_flag | 2);
+      signed_block_ptr produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms) )override {
+         auto sb = _produce_block(skip_time, false);
          auto bs = validating_node->create_block_state_future( sb );
          validating_node->push_block( bs );
 
          return sb;
       }
 
-      signed_block_ptr produce_block_no_validation( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = 0 /*skip_missed_block_penalty*/ ) {
-         return _produce_block(skip_time, false, skip_flag | 2);
+      signed_block_ptr produce_block_no_validation( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms) ) {
+         return _produce_block(skip_time, false);
       }
 
       void validate_push_block(const signed_block_ptr& sb) {
@@ -435,9 +435,9 @@ namespace eosio { namespace testing {
          validating_node->push_block( bs );
       }
 
-      signed_block_ptr produce_empty_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = 0 /*skip_missed_block_penalty*/ )override {
+      signed_block_ptr produce_empty_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms) )override {
          control->abort_block();
-         auto sb = _produce_block(skip_time, true, skip_flag | 2);
+         auto sb = _produce_block(skip_time, true);
          auto bs = validating_node->create_block_state_future( sb );
          validating_node->push_block( bs );
 
