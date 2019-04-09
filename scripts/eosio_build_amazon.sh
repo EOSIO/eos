@@ -246,6 +246,36 @@ if [ $? -ne 0 ]; then exit -1; fi
 cd ..
 printf "\\n"
 
+printf "Checking Clang 8 support...\\n"
+if [ ! -d $CLANG8_ROOT ]; then
+	printf "Installing Clang 8...\\n"
+	cd ../opt \
+	&& git clone --depth 1 --single-branch --branch $PINNED_COMPILER_VERSION https://git.llvm.org/git/llvm.git llvm && cd llvm \
+   && cd tools \
+   && git clone --depth 1 --single-branch --branch $PINNED_COMPILER_VERSION https://git.llvm.org/git/lld.git \
+   && git clone --depth 1 --single-branch --branch $PINNED_COMPILER_VERSION https://git.llvm.org/git/polly.git \
+   && git clone --depth 1 --single-branch --branch $PINNED_COMPILER_VERSION https://git.llvm.org/git/clang.git clang cd clang/tools/extra \
+   && git clone --depth 1 --single-branch --branch $PINNED_COMPILER_VERSION https://git.llvm.org/git/clang-tools-extra.git \
+   && cd ../../../../projects \
+   && git clone --depth 1 --single-branch --branch $PINNED_COMPILER_VERSION https://git.llvm.org/git/libcxx.git \
+   && git clone --depth 1 --single-branch --branch $PINNED_COMPILER_VERSION https://git.llvm.org/git/libunwind.git \
+   && git clone --depth 1 --single-branch --branch $PINNED_COMPILER_VERSION https://git.llvm.org/git/compiler-rt.git \
+   && cd .. \
+	&& mkdir build \
+	&& cd build \
+	&& $CMAKE -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX="${CLANG8_ROOT}" -DLINK_POLLY_INTO_TOOLS=ON -DLLVM_BUILD_EXTERNAL_COMPILER_RT=ON -DLLVM_BUILD_LLVM_DYLIB=ON -DLLVM_ENABLE_LIBCXX=ON -DLLVM_ENABLE_RTTI=ON -DLLVM_INCLUDE_DOCS=OFF -DLLVM_OPTIMIZED_TABLEGEN=ON -DLLVM_TARGETS_TO_BUILD=all -DWITH_POLLY=ON -DLLVM_CREATE_XCODE_TOOLCHAIN=OFF .. \
+	&& make -j"${JOBS}" \
+	&& make install \
+	&& cd ../.. \
+	|| exit 1
+	printf " - Clang 8 successfully installed @ ${CLANG8_ROOT}\\n"
+else
+	printf " - Clang 8 found @ ${CLANG8_ROOT}.\\n"
+fi
+if [ $? -ne 0 ]; then exit -1; fi
+
+printf "\\n"
+
 function print_instructions() {
 	return 0
 }

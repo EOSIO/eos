@@ -225,24 +225,25 @@ if [ ! -d $MONGO_C_DRIVER_ROOT ]; then
 else
 	printf " - MongoDB C driver found with correct version @ ${MONGO_C_DRIVER_ROOT}.\\n"
 fi
-if [ $? -ne 0 ]; then exit -1; fi
-printf "Checking MongoDB C++ driver installation...\\n"
-if [ "$(grep "Version:" $HOME/lib/pkgconfig/libmongocxx-static.pc 2>/dev/null | tr -s ' ' | awk '{print $2}')" != $MONGO_CXX_DRIVER_VERSION ]; then
-	printf "Installing MongoDB C++ driver...\\n"
-	curl -L https://github.com/mongodb/mongo-cxx-driver/archive/r$MONGO_CXX_DRIVER_VERSION.tar.gz -o mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION.tar.gz \
-	&& tar -xzf mongo-cxx-driver-r${MONGO_CXX_DRIVER_VERSION}.tar.gz \
-	&& cd mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION/build \
-	&& $CMAKE -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$HOME .. \
-	&& make -j"${JOBS}" VERBOSE=1 \
-	&& make install \
-	&& cd ../.. \
-	&& rm -f mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION.tar.gz \
-	|| exit 1
-	printf " - MongoDB C++ driver successfully installed @ ${MONGO_CXX_DRIVER_ROOT}.\\n"
-else
-	printf " - MongoDB C++ driver found with correct version @ ${MONGO_CXX_DRIVER_ROOT}.\\n"
-fi
-if [ $? -ne 0 ]; then exit -1; fi
+
+#if [ $? -ne 0 ]; then exit -1; fi
+#printf "Checking MongoDB C++ driver installation...\\n"
+#if [ "$(grep "Version:" $HOME/lib/pkgconfig/libmongocxx-static.pc 2>/dev/null | tr -s ' ' | awk '{print $2}')" != $MONGO_CXX_DRIVER_VERSION ]; then
+#	printf "Installing MongoDB C++ driver...\\n"
+#	curl -L https://github.com/mongodb/mongo-cxx-driver/archive/r$MONGO_CXX_DRIVER_VERSION.tar.gz -o mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION.tar.gz \
+#	&& tar -xzf mongo-cxx-driver-r${MONGO_CXX_DRIVER_VERSION}.tar.gz \
+#	&& cd mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION/build \
+#	&& $CMAKE -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$HOME .. \
+#	&& make -j"${JOBS}" VERBOSE=1 \
+#	&& make install \
+#	&& cd ../.. \
+#	&& rm -f mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION.tar.gz \
+#	|| exit 1
+#	printf " - MongoDB C++ driver successfully installed @ ${MONGO_CXX_DRIVER_ROOT}.\\n"
+#else
+#	printf " - MongoDB C++ driver found with correct version @ ${MONGO_CXX_DRIVER_ROOT}.\\n"
+#fi
+#if [ $? -ne 0 ]; then exit -1; fi
 
 printf "\\n"
 
@@ -259,6 +260,37 @@ fi
 
 
 cd ..
+printf "\\n"
+
+printf "Checking Clang 8 support...\\n"
+if [ ! -d $CLANG8_ROOT ]; then
+	printf "Installing Clang 8...\\n"
+	cd $OPT_LOCATION \
+	&& git clone --depth 1 --single-branch --branch $PINNED_COMPILER_VERSION https://git.llvm.org/git/llvm.git clang8 && cd clang8 \
+   && cd tools \
+   && git clone --depth 1 --single-branch --branch $PINNED_COMPILER_VERSION https://git.llvm.org/git/lld.git \
+   && git clone --depth 1 --single-branch --branch $PINNED_COMPILER_VERSION https://git.llvm.org/git/polly.git \
+   && git clone --depth 1 --single-branch --branch $PINNED_COMPILER_VERSION https://git.llvm.org/git/clang.git clang && cd clang/tools \
+   && mkdir extra && cd extra \
+   && git clone --depth 1 --single-branch --branch $PINNED_COMPILER_VERSION https://git.llvm.org/git/clang-tools-extra.git \
+   && cd ../../../../projects \
+   && git clone --depth 1 --single-branch --branch $PINNED_COMPILER_VERSION https://git.llvm.org/git/libcxx.git \
+   && git clone --depth 1 --single-branch --branch $PINNED_COMPILER_VERSION https://git.llvm.org/git/libunwind.git \
+   && git clone --depth 1 --single-branch --branch $PINNED_COMPILER_VERSION https://git.llvm.org/git/compiler-rt.git \
+   && cd .. \
+	&& mkdir build \
+	&& cd build \
+	&& $CMAKE -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX="${CLANG8_ROOT}" -DLINK_POLLY_INTO_TOOLS=ON -DLLVM_BUILD_EXTERNAL_COMPILER_RT=ON -DLLVM_BUILD_LLVM_DYLIB=ON -DLLVM_ENABLE_LIBCXX=ON -DLLVM_ENABLE_RTTI=ON -DLLVM_INCLUDE_DOCS=OFF -DLLVM_OPTIMIZED_TABLEGEN=ON -DLLVM_TARGETS_TO_BUILD=all -DWITH_POLLY=ON -DLLVM_CREATE_XCODE_TOOLCHAIN=ON .. \
+	&& make -j"${JOBS}" \
+	&& make install \
+	&& cd ../.. \
+	|| exit 1
+	printf " - Clang 8 successfully installed @ ${CLANG8_ROOT}\\n"
+else
+	printf " - Clang 8 found @ ${CLANG8_ROOT}.\\n"
+fi
+if [ $? -ne 0 ]; then exit -1; fi
+
 printf "\\n"
 
 function print_instructions() {
