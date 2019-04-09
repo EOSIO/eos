@@ -111,6 +111,10 @@ struct asset_info final {
     operator asset() const {
        return asset(amount, symbol(sym.value << 8 | decs));
     }
+
+    static asset_info from_string(const string& from) {
+        return asset_info(asset::from_string(from));
+    }
 };
 
 bool  operator <  (const asset& a, const asset& b);

@@ -178,6 +178,10 @@ namespace eosio {
           operator symbol() const {
               return symbol(sym.value << 8 | decs);
           }
+
+          static symbol_info from_string(const string& from) {
+              return symbol::from_string(from);
+          }
       };
 
    } // namespace chain
