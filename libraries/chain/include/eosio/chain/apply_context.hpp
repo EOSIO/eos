@@ -466,8 +466,8 @@ class apply_context {
       bool cancel_deferred_transaction( const uint128_t& sender_id ) { return cancel_deferred_transaction(sender_id, receiver); }
 
    protected:
-      uint32_t schedule_action( uint32_t ordinal_of_action_to_schedule, account_name receiver, bool context_free = false );
-      uint32_t schedule_action( action&& act_to_schedule, account_name receiver, bool context_free = false );
+      uint32_t schedule_action( uint32_t ordinal_of_action_to_schedule, account_name receiver, bool context_free );
+      uint32_t schedule_action( action&& act_to_schedule, account_name receiver, bool context_free );
 
 
    /// Authorization methods:

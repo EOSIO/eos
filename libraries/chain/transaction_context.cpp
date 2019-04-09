@@ -333,13 +333,13 @@ namespace bacc = boost::accumulators;
 
       if( apply_context_free ) {
          for( const auto& act : trx.context_free_actions ) {
-            schedule_action( act, act.account, true );
+            schedule_action( act, act.account, true, 0, 0 );
          }
       }
 
       if( delay == fc::microseconds() ) {
          for( const auto& act : trx.actions ) {
-            schedule_action( act, act.account );
+            schedule_action( act, act.account, false, 0, 0 );
          }
       }
 
@@ -574,13 +574,19 @@ namespace bacc = boost::accumulators;
 
    action_trace& transaction_context::get_action_trace( uint32_t action_ordinal ) {
       EOS_ASSERT( 0 < action_ordinal && action_ordinal <= trace->action_traces.size() ,
-                  transaction_exception, "invalid action_ordinal" );
+                  transaction_exception,
+                  "action_ordinal ${ordinal} is outside allowed range [1,${max}]",
+                  ("ordinal", action_ordinal)("max", trace->action_traces.size())
+      );
       return trace->action_traces[action_ordinal-1];
    }
 
    const action_trace& transaction_context::get_action_trace( uint32_t action_ordinal )const {
       EOS_ASSERT( 0 < action_ordinal && action_ordinal <= trace->action_traces.size() ,
-                  transaction_exception, "invalid action_ordinal" );
+                  transaction_exception,
+                  "action_ordinal ${ordinal} is outside allowed range [1,${max}]",
+                  ("ordinal", action_ordinal)("max", trace->action_traces.size())
+      );
       return trace->action_traces[action_ordinal-1];
    }
 

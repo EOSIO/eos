@@ -966,7 +966,7 @@ struct controller_impl {
       try {
          trx_context.init_for_implicit_trx();
          trx_context.published = gtrx.published;
-         trx_context.execute_action( trx_context.schedule_action( etrx.actions.back(), gtrx.sender ) );
+         trx_context.execute_action( trx_context.schedule_action( etrx.actions.back(), gtrx.sender, false, 0, 0 ), 0 );
          trx_context.finalize(); // Automatically rounds up network and CPU usage in trace and bills payers if successful
 
          auto restore = make_block_restore_point();

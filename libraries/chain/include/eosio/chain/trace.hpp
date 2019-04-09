@@ -28,7 +28,6 @@ namespace eosio { namespace chain {
                      uint32_t action_ordinal, uint32_t creator_action_ordinal, uint32_t parent_action_ordinal );
       action_trace(  const transaction_trace& trace, action&& act, account_name receiver, bool context_free,
                      uint32_t action_ordinal, uint32_t creator_action_ordinal, uint32_t parent_action_ordinal );
-      //action_trace( const action_receipt& r ):receipt(r){}
       action_trace(){}
 
       fc::unsigned_int                action_ordinal;
