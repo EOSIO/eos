@@ -353,8 +353,10 @@ namespace cyberway { namespace chaindb {
 
         object_ = std::move(obj);
 
-        table_cache_map_->remove_cache_indicies(std::move(indicies_));
-        table_cache_map_->build_cache_indicies(*this, indicies_);
+        if (!is_system_code(object_.service.code) || indicies_.empty()) {
+            table_cache_map_->remove_cache_indicies(std::move(indicies_));
+            table_cache_map_->build_cache_indicies(*this, indicies_);
+        }
     }
 
     void cache_object::mark_deleted() {
