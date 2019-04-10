@@ -2046,6 +2046,17 @@ BOOST_FIXTURE_TEST_CASE(eosio_assert_code_tests, TESTER) { try {
    BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( *this, "test_action", "test_assert_code", fc::raw::pack((uint64_t)42) ),
                           eosio_assert_code_exception, eosio_assert_code_is(42)                                        );
 
+
+   auto trace = CALL_TEST_FUNCTION_NO_THROW( *this, "test_action", "test_assert_code", fc::raw::pack((uint64_t)42) );
+   BOOST_REQUIRE( trace );
+   BOOST_REQUIRE( trace->except );
+   BOOST_REQUIRE( trace->error_code );
+   BOOST_REQUIRE_EQUAL( *trace->error_code, 42 );
+   BOOST_REQUIRE_EQUAL( trace->action_traces.size(), 1 );
+   BOOST_REQUIRE( trace->action_traces[0].except );
+   BOOST_REQUIRE( trace->action_traces[0].error_code );
+   BOOST_REQUIRE_EQUAL( *trace->action_traces[0].error_code, 42 );
+
    produce_block();
 
    auto omsg1 = abis.get_error_message(1);

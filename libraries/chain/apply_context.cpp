@@ -82,7 +82,13 @@ void apply_context::exec_one()
             } catch( const wasm_exit& ) {}
          }
       } FC_RETHROW_EXCEPTIONS( warn, "pending console output: ${console}", ("console", _pending_console_output) )
-   } catch( fc::exception& e ) {
+   } catch( const eosio_assert_code_exception& e ) {
+      action_trace& trace = trx_context.get_action_trace( action_ordinal );
+      trace.error_code = controller::convert_exception_to_error_code( e );
+      trace.except = e;
+      finalize_trace( trace, start );
+      throw;
+   } catch( const fc::exception& e ) {
       action_trace& trace = trx_context.get_action_trace( action_ordinal );
       trace.except = e;
       finalize_trace( trace, start );
