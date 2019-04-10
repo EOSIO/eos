@@ -30,6 +30,7 @@ namespace eosio { namespace chain {
    class dynamic_global_property_object;
    class global_property_object;
    class global_property2_object;     // *bos*
+   class upgrade_property_object;
    class permission_object;
    class account_object;
    using resource_limits::resource_limits_manager;
@@ -65,6 +66,8 @@ namespace eosio { namespace chain {
 
    // *bos end*
 
+   using signature_provider_type = std::function<chain::signature_type(chain::digest_type)>;
+
    class controller {
       public:
 
@@ -82,6 +85,8 @@ namespace eosio { namespace chain {
             uint64_t                 state_guard_size       =  chain::config::default_state_guard_size;
             uint64_t                 reversible_cache_size  =  chain::config::default_reversible_cache_size;
             uint64_t                 reversible_guard_size  =  chain::config::default_reversible_guard_size;
+            path                     checkpoints_dir        =  blocks_dir;
+
             uint32_t                 sig_cpu_bill_pct       =  chain::config::default_sig_cpu_bill_pct;
             uint16_t                 thread_pool_size       =  chain::config::default_controller_thread_pool_size;
             bool                     read_only              =  false;
@@ -98,6 +103,10 @@ namespace eosio { namespace chain {
 
             flat_set<account_name>   resource_greylist;
             flat_set<account_name>   trusted_producers;
+
+
+             std::map<chain::public_key_type, signature_provider_type> my_signature_providers;
+             std::set<chain::account_name>                             my_producers;
          };
 
          enum class block_status {
@@ -155,7 +164,23 @@ namespace eosio { namespace chain {
 
          const chainbase::database& db()const;
 
+         void pbft_commit_local( const block_id_type& id );
+
+         bool pending_pbft_lib();
+
+         uint32_t last_proposed_schedule_block_num()const;
+         uint32_t last_promoted_proposed_schedule_block_num()const;
+
+         void set_pbft_latest_checkpoint( const block_id_type& id );
+         uint32_t last_stable_checkpoint_block_num()const;
+         block_id_type last_stable_checkpoint_block_id()const;
+
+
          const fork_database& fork_db()const;
+
+         std::map<chain::public_key_type, signature_provider_type> my_signature_providers()const;
+         void set_my_signature_providers(std::map<chain::public_key_type, signature_provider_type> msp);
+
 
          const account_object&                 get_account( account_name n )const;
          const global_property_object&         get_global_properties()const;
@@ -229,7 +254,7 @@ namespace eosio { namespace chain {
          // *bos begin*
          const global_property2_object&        get_global_properties2()const;  // *bos*
          void set_name_list(int64_t list, int64_t action, std::vector<account_name> name_list);
-         
+
          // void list_add_name(const int list, const account_name &name);
          // void list_remove_name(const int list, const account_name &name);
          // *bos end*
@@ -261,6 +286,16 @@ namespace eosio { namespace chain {
 
          void set_subjective_cpu_leeway(fc::microseconds leeway);
 
+         path state_dir()const;
+         path blocks_dir()const;
+         producer_schedule_type initial_schedule()const;
+         bool is_replaying()const;
+
+         void set_pbft_prepared(const block_id_type& id)const;
+         void set_pbft_my_prepare(const block_id_type& id)const;
+         block_id_type get_pbft_my_prepare()const;
+         void reset_pbft_my_prepare()const;
+
          signal<void(const signed_block_ptr&)>         pre_accepted_block;
          signal<void(const block_state_ptr&)>          accepted_block_header;
          signal<void(const block_state_ptr&)>          accepted_block;
@@ -269,6 +304,11 @@ namespace eosio { namespace chain {
          signal<void(const transaction_trace_ptr&)>    applied_transaction;
          signal<void(const header_confirmation&)>      accepted_confirmation;
          signal<void(const int&)>                      bad_alloc;
+
+         void set_lib()const;
+
+         const upgrade_property_object&        get_upgrade_properties()const;
+         bool is_upgraded()const;
 
          /*
          signal<void()>                                  pre_apply_block;
@@ -326,6 +366,7 @@ FC_REFLECT( eosio::chain::controller::config,
             (state_dir)
             (state_size)
             (reversible_cache_size)
+            (checkpoints_dir)
             (read_only)
             (force_all_checks)
             (disable_replay_opts)

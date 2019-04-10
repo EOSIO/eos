@@ -55,6 +55,13 @@ namespace eosio {
       ds >> params;
    }
 
+   void set_upgrade_parameters(const eosio::upgrade_parameters& params) {
+      char buf[sizeof(eosio::upgrade_parameters)];
+      eosio::datastream<char *> ds( buf, sizeof(buf) );
+      ds << params;
+      set_upgrade_parameters_packed( buf, ds.tellp() );
+   }
+
    using ::memset;
    using ::memcpy;
 

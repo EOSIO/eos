@@ -52,7 +52,8 @@ namespace eosio { namespace chain {
    };
 
     enum class block_extension_type : uint16_t {
-        bpsig_action_time_seed
+        bpsig_action_time_seed,
+        pbft_stable_checkpoint
     };
 
    /**
