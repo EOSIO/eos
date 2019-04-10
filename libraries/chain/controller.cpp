@@ -1945,6 +1945,7 @@ void controller::abort_block() {
 
 boost::asio::thread_pool& controller::get_thread_pool() {
    return my->thread_pool;
+
 }
 
 std::future<block_state_ptr> controller::create_block_state_future( const signed_block_ptr& b ) {

@@ -199,3 +199,4 @@ The `blocks` data are stored under `--data-dir` by default, and the wallet files
 ### About MongoDB Plugin
 
 Currently, the mongodb plugin is disabled in `config.ini` by default, you have to change it manually in `config.ini` or you can mount a `config.ini` file to `/opt/eosio/bin/data-dir/config.ini` in the docker-compose file.
+
