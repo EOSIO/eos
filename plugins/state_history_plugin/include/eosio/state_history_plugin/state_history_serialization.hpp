@@ -482,7 +482,6 @@ datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosi
    fc::raw::pack(ds, fc::unsigned_int(0));
    fc::raw::pack(ds, as_type<fc::unsigned_int>(obj.obj.action_ordinal));
    fc::raw::pack(ds, as_type<fc::unsigned_int>(obj.obj.creator_action_ordinal));
-   fc::raw::pack(ds, as_type<fc::unsigned_int>(obj.obj.closest_unnotified_ancestor_action_ordinal));
    fc::raw::pack(ds, bool(obj.obj.receipt));
    if (obj.obj.receipt) {
       fc::raw::pack(ds, make_history_serial_wrapper(obj.db, as_type<eosio::chain::action_receipt>(*obj.obj.receipt)));
