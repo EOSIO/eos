@@ -137,7 +137,7 @@ namespace eosio {
 
         if (new_version && !upgraded) {
             wlog( "\n"
-                  "*********** PBFT ENABLED ***********\n"
+                  "******** BATCH-PBFT ENABLED ********\n"
                   "*                                  *\n"
                   "* --       The blockchain       -- *\n"
                   "* -  has successfully switched   - *\n"

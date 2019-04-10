@@ -1293,12 +1293,21 @@ struct controller_impl {
               }
          }
 
-         bool should_promote_pending_schedule = gpo.proposed_schedule_block_num.valid()  // if there is a proposed schedule that was proposed in a block ...
-                 && pending->_pending_block_state->pending_schedule.producers.size() == 0 // ... and there is room for a new pending schedule ...
-                 && !was_pending_promoted; // ... and not just because it was promoted to active at the start of this block, then:
+          bool should_promote_pending_schedule = false;
+
+         if(new_version && (gpo.proposed_schedule_block_num.valid() && pending->_pending_block_state->bft_irreversible_blocknum > *gpo.proposed_schedule_block_num)){
+             db.modify( gpo, [&]( auto& gp ) {
+               gp.proposed_schedule_block_num = optional<block_num_type>();
+               gp.proposed_schedule.clear();
+             });
+         } else{
+             should_promote_pending_schedule = gpo.proposed_schedule_block_num.valid()  // if there is a proposed schedule that was proposed in a block ...
+                     && pending->_pending_block_state->pending_schedule.producers.size() == 0 // ... and there is room for a new pending schedule ...
+                     && !was_pending_promoted; // ... and not just because it was promoted to active at the start of this block, then:
+         }
 
          if (new_version) {
-             should_promote_pending_schedule = should_promote_pending_schedule && pending->_pending_block_state->block_num  > *gpo.proposed_schedule_block_num;
+             should_promote_pending_schedule = should_promote_pending_schedule && (pending->_pending_block_state->block_num  > *gpo.proposed_schedule_block_num);
          } else {
              should_promote_pending_schedule = should_promote_pending_schedule && ( *gpo.proposed_schedule_block_num <= pending->_pending_block_state->dpos_irreversible_blocknum );
          }
@@ -1308,6 +1317,8 @@ struct controller_impl {
                if (!upgrading) {
                    // Promote proposed schedule to pending schedule.
                    if (!replaying) {
+                       ilog("bft_irreversible_blocknum ${a}", ("a", pending->_pending_block_state->bft_irreversible_blocknum) );
+                       ilog("dpos_irreversible_blocknum ${a}", ("a", pending->_pending_block_state->dpos_irreversible_blocknum) );
                        ilog("promoting proposed schedule (set in block ${proposed_num}) to pending; current block: ${n} lib: ${lib} schedule: ${schedule} ",
                             ("proposed_num", *gpo.proposed_schedule_block_num)("n",
                                                                                pending->_pending_block_state->block_num)
