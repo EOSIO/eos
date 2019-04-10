@@ -337,17 +337,23 @@ namespace bacc = boost::accumulators;
 
       if( apply_context_free ) {
          for( const auto& act : trx.context_free_actions ) {
-            trace->action_traces.emplace_back();
-            dispatch_action( trace->action_traces.back(), act, true );
+            schedule_action( act, act.account, true, 0, 0 );
          }
       }
 
       if( delay == fc::microseconds() ) {
          for( const auto& act : trx.actions ) {
-            trace->action_traces.emplace_back();
-            dispatch_action( trace->action_traces.back(), act );
+            schedule_action( act, act.account, false, 0, 0 );
          }
-      } else {
+      }
+
+      auto& action_traces = trace->action_traces;
+      uint32_t num_original_actions_to_execute = action_traces.size();
+      for( uint32_t i = 1; i <= num_original_actions_to_execute; ++i ) {
+         execute_action( i, 0 );
+      }
+
+      if( delay != fc::microseconds() ) {
          schedule_transaction();
       }
    }
@@ -570,13 +576,68 @@ namespace bacc = boost::accumulators;
       return std::make_tuple(account_net_limit, account_cpu_limit, greylisted_net, greylisted_cpu);
    }
 
-   void transaction_context::dispatch_action( action_trace& trace, const action& a, account_name receiver, bool context_free, uint32_t recurse_depth ) {
-      apply_context  acontext( control, *this, a, recurse_depth );
-      acontext.context_free = context_free;
-      acontext.receiver     = receiver;
-
-      acontext.exec( trace );
+   action_trace& transaction_context::get_action_trace( uint32_t action_ordinal ) {
+      EOS_ASSERT( 0 < action_ordinal && action_ordinal <= trace->action_traces.size() ,
+                  transaction_exception,
+                  "action_ordinal ${ordinal} is outside allowed range [1,${max}]",
+                  ("ordinal", action_ordinal)("max", trace->action_traces.size())
+      );
+      return trace->action_traces[action_ordinal-1];
    }
+
+   const action_trace& transaction_context::get_action_trace( uint32_t action_ordinal )const {
+      EOS_ASSERT( 0 < action_ordinal && action_ordinal <= trace->action_traces.size() ,
+                  transaction_exception,
+                  "action_ordinal ${ordinal} is outside allowed range [1,${max}]",
+                  ("ordinal", action_ordinal)("max", trace->action_traces.size())
+      );
+      return trace->action_traces[action_ordinal-1];
+   }
+
+   uint32_t transaction_context::schedule_action( const action& act, account_name receiver, bool context_free,
+                                                  uint32_t creator_action_ordinal, uint32_t parent_action_ordinal )
+   {
+      uint32_t new_action_ordinal = trace->action_traces.size() + 1;
+
+      trace->action_traces.emplace_back( *trace, act, receiver, context_free,
+                                         new_action_ordinal, creator_action_ordinal, parent_action_ordinal );
+
+      return new_action_ordinal;
+   }
+
+   uint32_t transaction_context::schedule_action( action&& act, account_name receiver, bool context_free,
+                                                  uint32_t creator_action_ordinal, uint32_t parent_action_ordinal )
+   {
+      uint32_t new_action_ordinal = trace->action_traces.size() + 1;
+
+      trace->action_traces.emplace_back( *trace, std::move(act), receiver, context_free,
+                                         new_action_ordinal, creator_action_ordinal, parent_action_ordinal );
+
+      return new_action_ordinal;
+   }
+
+   uint32_t transaction_context::schedule_action( uint32_t action_ordinal, account_name receiver, bool context_free,
+                                                  uint32_t creator_action_ordinal, uint32_t parent_action_ordinal )
+   {
+      uint32_t new_action_ordinal = trace->action_traces.size() + 1;
+
+      trace->action_traces.reserve( new_action_ordinal );
+
+      const action& provided_action = get_action_trace( action_ordinal ).act;
+
+      // The reserve above is required so that the emplace_back below does not invalidate the provided_action reference.
+
+      trace->action_traces.emplace_back( *trace, provided_action, receiver, context_free,
+                                         new_action_ordinal, creator_action_ordinal, parent_action_ordinal );
+
+      return new_action_ordinal;
+   }
+
+   void transaction_context::execute_action( uint32_t action_ordinal, uint32_t recurse_depth ) {
+      apply_context acontext( control, *this, action_ordinal, recurse_depth );
+      acontext.exec();
+   }
+
 
    void transaction_context::schedule_transaction() {
       // Charge ahead of time for the additional net usage needed to retire the delayed transaction
@@ -601,7 +662,9 @@ namespace bacc = boost::accumulators;
         trx_size = gto.set( trx );
       });
 
-      add_ram_usage( cgto.payer, (config::billable_size_v<generated_transaction_object> + trx_size) );
+      int64_t ram_delta = (config::billable_size_v<generated_transaction_object> + trx_size);
+      add_ram_usage( cgto.payer, ram_delta );
+      trace->account_ram_delta = account_delta( cgto.payer, ram_delta );
    }
 
    void transaction_context::record_transaction( const transaction_id_type& id, fc::time_point_sec expire ) {

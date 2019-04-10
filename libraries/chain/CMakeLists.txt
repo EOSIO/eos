@@ -44,7 +44,7 @@ add_library( eosio_chain
 #
 #             contracts/chain_initializer.cpp
 
-
+             trace.cpp
              transaction_metadata.cpp
              protocol_state_object.cpp
              protocol_feature_activation.cpp

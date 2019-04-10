@@ -966,8 +966,7 @@ struct controller_impl {
       try {
          trx_context.init_for_implicit_trx();
          trx_context.published = gtrx.published;
-         trx_context.trace->action_traces.emplace_back();
-         trx_context.dispatch_action( trx_context.trace->action_traces.back(), etrx.actions.back(), gtrx.sender );
+         trx_context.execute_action( trx_context.schedule_action( etrx.actions.back(), gtrx.sender, false, 0, 0 ), 0 );
          trx_context.finalize(); // Automatically rounds up network and CPU usage in trace and bills payers if successful
 
          auto restore = make_block_restore_point();
@@ -988,14 +987,13 @@ struct controller_impl {
       return trace;
    }
 
-   void remove_scheduled_transaction( const generated_transaction_object& gto ) {
-      resource_limits.add_pending_ram_usage(
-         gto.payer,
-         -(config::billable_size_v<generated_transaction_object> + gto.packed_trx.size())
-      );
+   int64_t remove_scheduled_transaction( const generated_transaction_object& gto ) {
+      int64_t ram_delta = -(config::billable_size_v<generated_transaction_object> + gto.packed_trx.size());
+      resource_limits.add_pending_ram_usage( gto.payer, ram_delta );
       // No need to verify_account_ram_usage since we are only reducing memory
 
       db.remove( gto );
+      return ram_delta;
    }
 
    bool failure_is_subjective( const fc::exception& e ) const {
@@ -1042,7 +1040,7 @@ struct controller_impl {
       //
       // IF the transaction FAILs in a subjective way, `undo_session` should expire without being squashed
       // resulting in the GTO being restored and available for a future block to retire.
-      remove_scheduled_transaction(gto);
+      int64_t trx_removal_ram_delta = remove_scheduled_transaction(gto);
 
       fc::datastream<const char*> ds( gtrx.packed_trx.data(), gtrx.packed_trx.size() );
 
@@ -1064,6 +1062,7 @@ struct controller_impl {
          trace->producer_block_id = self.pending_producer_block_id();
          trace->scheduled = true;
          trace->receipt = push_receipt( gtrx.trx_id, transaction_receipt::expired, billed_cpu_time_us, 0 ); // expire the transaction
+         trace->account_ram_delta = account_delta( gtrx.payer, trx_removal_ram_delta );
          emit( self.accepted_transaction, trx );
          emit( self.applied_transaction, trace );
          undo_session.squash();
@@ -1109,6 +1108,8 @@ struct controller_impl {
 
          fc::move_append( pending->_block_stage.get<building_block>()._actions, move(trx_context.executed) );
 
+         trace->account_ram_delta = account_delta( gtrx.payer, trx_removal_ram_delta );
+
          emit( self.accepted_transaction, trx );
          emit( self.applied_transaction, trace );
 
@@ -1139,6 +1140,7 @@ struct controller_impl {
          error_trace->failed_dtrx_trace = trace;
          trace = error_trace;
          if( !trace->except_ptr ) {
+            trace->account_ram_delta = account_delta( gtrx.payer, trx_removal_ram_delta );
             emit( self.accepted_transaction, trx );
             emit( self.applied_transaction, trace );
             undo_session.squash();
@@ -1175,6 +1177,7 @@ struct controller_impl {
                                                 block_timestamp_type(self.pending_block_time()).slot ); // Should never fail
 
          trace->receipt = push_receipt(gtrx.trx_id, transaction_receipt::hard_fail, cpu_time_to_bill_us, 0);
+         trace->account_ram_delta = account_delta( gtrx.payer, trx_removal_ram_delta );
 
          emit( self.accepted_transaction, trx );
          emit( self.applied_transaction, trace );
