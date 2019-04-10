@@ -1,0 +1,83 @@
+### version, optional build system type
+[dependencies]
+   make       : [any,   exe, none]
+   autoconf   : [any,   exe, none]
+   libtool    : [any,   exe, none]
+   libudev    : [any,   lib, none]
+   gettext    : [any,   lib, autoconf]
+   GMP        : [any,   lib, autoconf]
+   cmake      : [>=3.8,  exe, autoconf]
+   python2.7  : [2.7,    exe, autoconf]
+   openssl    : [>=1.0,  lib, autoconf]
+   llvm4      : [4.0,    lib, cmake]
+   libusb     : [1.0,    lib, autoconf]
+   libcurl    : [4.0,    lib, autoconf]
+   pkgconfig  : [any,    exe, autoconf]
+   boost      : [>=1.67,   lib, bjam]
+#   doxygen  : [1.8,   exe, cmake]
+   clang8     : [8.0,   exe, cmake]
+
+### urls for dependency sources
+# 2 pre defined identifiers `source` and `bin` these are used for either source locations or pre-built
+# binary locations
+[urls]
+   gettext   : [source:all: https://ftp.gnu.org/pub/gnu/gettext/gettext-0.19.tar.gz]
+   libtool   : [source:all: http://ftpmirror.gnu.org/libtool/libtool-2.4.6.tar.gz]
+   cmake     : [source:all: https://github.com/Kitware/CMake/releases/download/v3.13.4/cmake-3.13.4.tar.gz]
+   GMP       : [source:all: https://ftp.gnu.org/gnu/gmp/gmp-6.1.2.tar.xz]
+   python2.7 : [source:all: https://www.python.org/ftp/python/2.7.16/Python-2.7.16.tgz]
+   openssl   : [source:all: https://github.com/openssl/openssl/archive/OpenSSL_1_1_0.tar.gz]
+   llvm4     : [source:all: http://releases.llvm.org/4.0.1/llvm-4.0.1.src.tar.xz]
+#                bin:Ubuntu: https://releases.llvm.org/4.0.1/clang+llvm-4.0.1-x86_64-linux-gnu-debian8.tar.xz]
+   libusb    : [source:all: https://github.com/libusb/libusb/releases/download/v1.0.22/libusb-1.0.22.tar.bz2]
+   libcurl   : [source:all: https://curl.haxx.se/download/curl-7.64.1.tar.gz]
+   boost     : [source:all: https://dl.bintray.com/boostorg/release/1.67.0/source/boost_1_67_0.tar.bz2]
+   pkgconfig : [source:all: https://pkg-config.freedesktop.org/releases/pkg-config-0.29.2.tar.gz]
+   clang8    : [bin:Ubuntu<16.04>: http://releases.llvm.org/8.0.0/clang+llvm-8.0.0-x86_64-linux-gnu-ubuntu-16.04.tar.xz,
+                bin:Ubuntu<18.04>: http://releases.llvm.org/8.0.0/clang+llvm-8.0.0-x86_64-linux-gnu-ubuntu-18.04.tar.xz]
+
+### listing for package names
+[packages]
+   make      : [all:make]
+   autoconf  : [all:autoconf]
+   gettext   : [all:gettext]
+   libtool   : [all:libtool]
+   libudev   : [Ubuntu:libudev-dev]
+   cmake     : [all:cmake]
+   boost     : [Ubuntu:boost]
+   python2.7 : [OSX:python@2, all:python2.7]
+   GMP       : [OSX:GMP, Ubuntu:libgmp3-dev]
+   openssl   : [Ubuntu:libssl-dev, OSX:OpenSSL]
+   llvm4     : [Ubuntu:llvm-4.0, OSX:llvm@4]
+   libusb    : [Ubuntu:libusb-1.0-0-dev, OSX:libusb]
+   libcurl   : [Ubuntu:libcurl4-gnutls-dev]
+   pkgconfig : [OSX:pkgconfig, Ubuntu:pkg-config]
+
+### build commands, install commands
+[commands]
+   boost : [build:OSX : "--with-iostreams --with-date_time --with-filesystem --with-system --with-program_options --with-chrono --with-test"]
+
+[repo]
+  OSX : [ "eosio/eosio" ]
+
+[groups]
+   [base]
+     make:all
+     autoconf:all
+     libudev:Ubuntu<16.04>
+     
+   [system]
+      gettext:all
+      libtool:all
+      GMP:all
+      openssl:all
+      cmake:all
+      python2.7:all
+      llvm4:all
+      libusb:all
+      libcurl:all
+      pkgconfig:all
+      boost:all
+   
+   [optional::tools]
+      clang8:all
