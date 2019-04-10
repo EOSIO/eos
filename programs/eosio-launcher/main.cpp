@@ -1196,12 +1196,12 @@ launcher_def::write_logging_config_file(tn_node_def &node) {
 
   auto log_config = fc::logging_config::default_config();
   if(gelf_enabled) {
-    log_config.appenders.push_back(
-          fc::appender_config( "net", "gelf",
-              fc::mutable_variant_object()
-                  ( "endpoint", node.gelf_endpoint )
-                  ( "host", instance.name )
-             ) );
+//    log_config.appenders.push_back(
+//          fc::appender_config( "net", "gelf",
+//              fc::mutable_variant_object()
+//                  ( "endpoint", node.gelf_endpoint )
+//                  ( "host", instance.name )
+//             ) );
     log_config.loggers.front().appenders.push_back("net");
     fc::logger_config p2p ("net_plugin_impl");
     p2p.level=fc::log_level::debug;
