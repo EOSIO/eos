@@ -69,15 +69,15 @@ namespace eosio { namespace chain {
 
          /** invalidates any action_trace references returned by get_action_trace */
          uint32_t schedule_action( const action& act, account_name receiver, bool context_free,
-                                   uint32_t creator_action_ordinal, uint32_t parent_action_ordinal );
+                                   uint32_t creator_action_ordinal, uint32_t closest_unnotified_ancestor_action_ordinal );
 
          /** invalidates any action_trace references returned by get_action_trace */
          uint32_t schedule_action( action&& act, account_name receiver, bool context_free,
-                                   uint32_t creator_action_ordinal, uint32_t parent_action_ordinal );
+                                   uint32_t creator_action_ordinal, uint32_t closest_unnotified_ancestor_action_ordinal );
 
          /** invalidates any action_trace references returned by get_action_trace */
          uint32_t schedule_action( uint32_t action_ordinal, account_name receiver, bool context_free,
-                                   uint32_t creator_action_ordinal, uint32_t parent_action_ordinal );
+                                   uint32_t creator_action_ordinal, uint32_t closest_unnotified_ancestor_action_ordinal );
 
          void execute_action( uint32_t action_ordinal, uint32_t recurse_depth );
 
