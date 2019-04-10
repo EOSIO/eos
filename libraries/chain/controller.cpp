@@ -1088,7 +1088,13 @@ struct controller_impl {
          trx_context.init_for_deferred_trx( gtrx.published );
 
          if( trx_context.enforce_whiteblacklist && pending->_block_status == controller::block_status::incomplete ) {
-            check_actor_list( trx_context.bill_to_accounts ); // Assumes bill_to_accounts is the set of actors authorizing the transaction
+            flat_set<account_name> actors;
+            for( const auto& act : trx_context.trx.actions ) {
+               for( const auto& auth : act.authorization ) {
+                  actors.insert( auth.actor );
+               }
+            }
+            check_actor_list( actors );
          }
 
          trx_context.exec();

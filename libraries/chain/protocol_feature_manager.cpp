@@ -89,6 +89,17 @@ This protocol feature removes that bypass.
 */
             {}
          } )
+         (  builtin_protocol_feature_t::only_bill_first_authorizer, builtin_protocol_feature_spec{
+            "ONLY_BILL_FIRST_AUTHORIZER",
+            fc::variant("2f1f13e291c79da5a2bbad259ed7c1f2d34f697ea460b14b565ac33b063b73e2").as<digest_type>(),
+            // SHA256 hash of the raw message below within the comment delimiters (do not modify message below).
+/*
+Builtin protocol feature: ONLY_BILL_FIRST_AUTHORIZER
+
+Adds CPU and network bandwidth usage to only the first authorizer of a transaction.
+*/
+            {}
+         } )
    ;
 
 
