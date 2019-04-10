@@ -607,4 +607,64 @@ BOOST_AUTO_TEST_CASE( disallow_empty_producer_schedule_test ) { try {
 
 } FC_LOG_AND_RETHROW() }
 
+BOOST_AUTO_TEST_CASE( restrict_action_to_self_test ) { try {
+   tester c( setup_policy::preactivate_feature_and_new_bios );
+
+   const auto& pfm = c.control->get_protocol_feature_manager();
+   const auto& d = pfm.get_builtin_digest( builtin_protocol_feature_t::restrict_action_to_self );
+   BOOST_REQUIRE( d );
+
+   c.create_accounts( {N(testacc), N(acctonotify), N(alice)} );
+   c.set_code( N(testacc), contracts::restrict_action_test_wasm() );
+   c.set_abi( N(testacc), contracts::restrict_action_test_abi().data() );
+
+   c.set_code( N(acctonotify), contracts::restrict_action_test_wasm() );
+   c.set_abi( N(acctonotify), contracts::restrict_action_test_abi().data() );
+
+   // Before the protocol feature is preactivated
+   // - Sending inline action to self = no problem
+   // - Sending deferred trx to self = throw subjective exception
+   // - Sending inline action to self from notification = throw subjective exception
+   // - Sending deferred trx to self from notification = throw subjective exception
+   BOOST_CHECK_NO_THROW( c.push_action( N(testacc), N(sendinline), N(alice), mutable_variant_object()("authorizer", "alice")) );
+   BOOST_REQUIRE_EXCEPTION( c.push_action( N(testacc), N(senddefer), N(alice),
+                                           mutable_variant_object()("authorizer", "alice")("senderid", 0)),
+                            subjective_block_production_exception,
+                            fc_exception_message_starts_with( "Authorization failure with sent deferred transaction" ) );
+
+   BOOST_REQUIRE_EXCEPTION( c.push_action( N(testacc), N(notifyinline), N(alice),
+                                        mutable_variant_object()("acctonotify", "acctonotify")("authorizer", "alice")),
+                            subjective_block_production_exception,
+                            fc_exception_message_starts_with( "Authorization failure with inline action sent to self" ) );
+
+   BOOST_REQUIRE_EXCEPTION( c.push_action( N(testacc), N(notifydefer), N(alice),
+                                           mutable_variant_object()("acctonotify", "acctonotify")("authorizer", "alice")("senderid", 1)),
+                            subjective_block_production_exception,
+                            fc_exception_message_starts_with( "Authorization failure with sent deferred transaction" ) );
+
+   c.preactivate_protocol_features( {*d} );
+   c.produce_block();
+
+   // After the protocol feature is preactivated, all the 4 cases will throw an objective unsatisfied_authorization exception
+   BOOST_REQUIRE_EXCEPTION( c.push_action( N(testacc), N(sendinline), N(alice), mutable_variant_object()("authorizer", "alice") ),
+                            unsatisfied_authorization,
+                            fc_exception_message_starts_with( "transaction declares authority" ) );
+
+   BOOST_REQUIRE_EXCEPTION( c.push_action( N(testacc), N(senddefer), N(alice),
+                                           mutable_variant_object()("authorizer", "alice")("senderid", 3)),
+                            unsatisfied_authorization,
+                            fc_exception_message_starts_with( "transaction declares authority" ) );
+
+   BOOST_REQUIRE_EXCEPTION( c.push_action( N(testacc), N(notifyinline), N(alice),
+                                           mutable_variant_object()("acctonotify", "acctonotify")("authorizer", "alice") ),
+                            unsatisfied_authorization,
+                            fc_exception_message_starts_with( "transaction declares authority" ) );
+
+   BOOST_REQUIRE_EXCEPTION( c.push_action( N(testacc), N(notifydefer), N(alice),
+                                           mutable_variant_object()("acctonotify", "acctonotify")("authorizer", "alice")("senderid", 4)),
+                            unsatisfied_authorization,
+                            fc_exception_message_starts_with( "transaction declares authority" ) );
+
+} FC_LOG_AND_RETHROW() }
+
 BOOST_AUTO_TEST_SUITE_END()
