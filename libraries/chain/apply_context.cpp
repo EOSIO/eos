@@ -208,7 +208,7 @@ void apply_context::execute_inline( action&& a ) {
    bool enforce_actor_whitelist_blacklist = trx_context.enforce_whiteblacklist && control.is_producing_block();
    flat_set<account_name> actors;
 
-   bool disallow_send_to_self_bypass = false; // eventually set to whether the appropriate protocol feature has been activated
+   bool disallow_send_to_self_bypass = control.is_builtin_activated( builtin_protocol_feature_t::restrict_action_to_self );
    bool send_to_self = (a.account == receiver);
    bool inherit_parent_authorizations = (!disallow_send_to_self_bypass && send_to_self && (receiver == act.account) && control.is_producing_block());
 
@@ -318,7 +318,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
       // So, the deferred transaction must always go through the authorization checking if it is not sent by a privileged contract.
       // However, the old logic must still be considered because it cannot objectively change until a consensus protocol upgrade.
 
-      bool disallow_send_to_self_bypass = false; // eventually set to whether the appropriate protocol feature has been activated
+      bool disallow_send_to_self_bypass = control.is_builtin_activated( builtin_protocol_feature_t::restrict_action_to_self );
 
       auto is_sending_only_to_self = [&trx]( const account_name& self ) {
          bool send_to_self = true;
