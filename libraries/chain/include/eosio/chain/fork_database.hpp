@@ -44,8 +44,6 @@ namespace eosio { namespace chain {
          block_state_ptr add( const block_state_ptr& next_block, bool skip_validate_previous );
          void            remove( const block_id_type& id );
 
-         void            add( const header_confirmation& c );
-
          const block_state_ptr& head()const;
 
          /**
@@ -71,7 +69,6 @@ namespace eosio { namespace chain {
          signal<void(block_state_ptr)> irreversible;
 
       private:
-         void set_bft_irreversible( block_id_type id );
          unique_ptr<fork_database_impl> my;
    };
 
