@@ -7,10 +7,6 @@ import re
 import datetime
 import json
 import signal
-import urllib.request
-import urllib.parse
-from urllib.error import HTTPError
-import tempfile
 
 from core_symbol import CORE_SYMBOL
 from testUtils import Utils
@@ -1455,26 +1451,10 @@ class Node(object):
         Utils.Print(" hbn   : %s (%s)" % (self.lastRetrievedHeadBlockNum, status))
         Utils.Print(" lib   : %s (%s)" % (self.lastRetrievedLIB, status))
 
-    def sendRpcApi(self, relativeUrl, data={}):
-        url = urllib.parse.urljoin(self.endpointHttp, relativeUrl)
-        req = urllib.request.Request(url)
-        req.add_header('Content-Type', 'application/json; charset=utf-8')
-        reqData = json.dumps(data).encode("utf-8")
-        rpcApiResult = None
-        try:
-           response = urllib.request.urlopen(req, reqData)
-           rpcApiResult = json.loads(response.read().decode("utf-8"))
-        except HTTPError as e:
-           Utils.Print("Fail to send RPC API to {} with data {} ({})".format(url, data, e.read()))
-           raise e
-        except Exception as e:
-           Utils.Print("Fail to send RPC API to {} with data {} ({})".format(url, data, e))
-           raise e
-        return rpcApiResult
-
     # Require producer_api_plugin
     def scheduleProtocolFeatureActivations(self, featureDigests=[]):
-        self.sendRpcApi("v1/producer/schedule_protocol_feature_activations", {"protocol_features_to_activate": featureDigests})
+        param = { "protocol_features_to_activate": featureDigests }
+        self.processCurlCmd("producer", "schedule_protocol_feature_activations", json.dumps(param))
 
     # Require producer_api_plugin
     def getSupportedProtocolFeatures(self, excludeDisabled=False, excludeUnactivatable=False):
@@ -1482,7 +1462,7 @@ class Node(object):
            "exclude_disabled": excludeDisabled,
            "exclude_unactivatable": excludeUnactivatable
         }
-        res = self.sendRpcApi("v1/producer/get_supported_protocol_features", param)
+        res = self.processCurlCmd("producer", "get_supported_protocol_features", json.dumps(param))
         return res
 
     # This will return supported protocol features in a dict (feature codename as the key), i.e.
@@ -1564,7 +1544,6 @@ class Node(object):
         return latestBlockHeaderState["activated_protocol_features"]["protocol_features"]
 
     def modifyBuiltinPFSubjRestrictions(self, nodeId, featureCodename, subjectiveRestriction={}):
-        from Cluster import Cluster
         jsonPath = os.path.join(Utils.getNodeConfigDir(nodeId),
                                 "protocol_features",
                                 "BUILTIN-{}.json".format(featureCodename))

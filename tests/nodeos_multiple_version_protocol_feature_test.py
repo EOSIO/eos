@@ -82,6 +82,7 @@ try:
     associatedNodeLabels = {
         "3": "170"
     }
+    Utils.Print("Alternate Version Labels File is {}".format(alternateVersionLabelsFile))
     assert exists(alternateVersionLabelsFile), "Alternate version labels file does not exist"
     assert cluster.launch(pnodes=4, totalNodes=4, prodCount=1, totalProducers=4,
                           extraNodeosArgs=" --plugin eosio::producer_api_plugin ",
@@ -91,30 +92,30 @@ try:
                           alternateVersionLabelsFile=alternateVersionLabelsFile,
                           associatedNodeLabels=associatedNodeLabels), "Unable to launch cluster"
 
-    def pauseBlockProduction(nodes:[Node]):
-        for node in nodes:
-            node.sendRpcApi("v1/producer/pause")
-
-    def resumeBlockProduction(nodes:[Node]):
-        for node in nodes:
-            node.sendRpcApi("v1/producer/resume")
-
-    def shouldNodesBeInSync(nodes:[Node]):
-        # Pause all block production to ensure the head is not moving
-        pauseBlockProduction(nodes)
-        time.sleep(1) # Wait for some time to ensure all blocks are propagated
-        headBlockIds = []
-        for node in nodes:
-            headBlockId = node.getInfo()["head_block_id"]
-            headBlockIds.append(headBlockId)
-        resumeBlockProduction(nodes)
-        return len(set(headBlockIds)) == 1
-
     newNodeIds = [0, 1, 2]
     oldNodeId = 3
     newNodes = list(map(lambda id: cluster.getNode(id), newNodeIds))
     oldNode = cluster.getNode(oldNodeId)
     allNodes = [*newNodes, oldNode]
+
+    def pauseBlockProductions():
+        for node in allNodes:
+            if not node.killed: node.processCurlCmd("producer", "pause", "")
+
+    def resumeBlockProductions():
+        for node in allNodes:
+            if not node.killed: node.processCurlCmd("producer", "resume", "")
+
+    def shouldNodesBeInSync(nodes:[Node]):
+        # Pause all block production to ensure the head is not moving
+        pauseBlockProductions()
+        time.sleep(1) # Wait for some time to ensure all blocks are propagated
+        headBlockIds = []
+        for node in nodes:
+            headBlockId = node.getInfo()["head_block_id"]
+            headBlockIds.append(headBlockId)
+        resumeBlockProductions()
+        return len(set(headBlockIds)) == 1
 
     # Before everything starts, all nodes (new version and old version) should be in sync
     assert shouldNodesBeInSync(allNodes), "Nodes are not in sync before preactivation"
