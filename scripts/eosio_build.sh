@@ -179,6 +179,30 @@ if [ $STALE_SUBMODS -gt 0 ]; then
    exit 1
 fi
 
+BUILD_CLANG8=false
+if [ $NONINTERACTIVE -eq 0 ]; then
+   printf "#include <iostream>\nint main(){ std::cout << \"Hello, World!\" << std::endl; }" &> $TEMP_DIR/test.cpp
+   `c++ -c -std=c++17 $TEMP_DIR/test.cpp -o $TEMP_DIR/test.o &> /dev/null`
+   if [ $? -ne 0 ]; then
+      `CXX -c -std=c++17 $TEMP_DIR/test.cpp -o $TEMP_DIR/test.o &> /dev/null`
+      if [ $? -ne 0 ]; then
+         printf "Error no C++17 support.\\nEnter Y/y or N/n to continue with downloading and building a viable compiler or exit now.\\nIf you already have a C++17 compiler installed or would like to install your own, export CXX to point to the compiler of your choosing."
+         read -p "Enter Y/y or N/n to continue with downloading and building a viable compiler or exit now." yn
+         case $yn in
+            [Yy]* ) BUILD_CLANG8=true; break;;
+            [Nn]* ) exit 1;;
+            * ) echo "Improper input"; exit 1;;
+         esac
+      fi
+   else
+      CXX=c++
+   fi
+else
+   BUILD_CLANG8=true
+fi
+
+export BUILD_CLANG8=$BUILD_CLANG8
+
 printf "\\nBeginning build version: %s\\n" "${VERSION}"
 printf "%s\\n" "$( date -u )"
 printf "User: %s\\n" "$( whoami )"
@@ -210,39 +234,25 @@ if [ "$ARCH" == "Linux" ]; then
    case "$OS_NAME" in
       "Amazon Linux AMI"|"Amazon Linux")
          FILE="${REPO_ROOT}/scripts/eosio_build_amazon.sh"
-         CXX_COMPILER=g++
-         C_COMPILER=gcc
       ;;
       "CentOS Linux")
          FILE="${REPO_ROOT}/scripts/eosio_build_centos.sh"
-         CXX_COMPILER=g++
-         C_COMPILER=gcc
       ;;
       "elementary OS")
          FILE="${REPO_ROOT}/scripts/eosio_build_ubuntu.sh"
-         CXX_COMPILER=clang++-4.0
-         C_COMPILER=clang-4.0
       ;;
       "Fedora")
          export CPATH=/usr/include/llvm4.0:$CPATH # llvm4.0 for fedora package path inclusion
          FILE="${REPO_ROOT}/scripts/eosio_build_fedora.sh"
-         CXX_COMPILER=g++
-         C_COMPILER=gcc
       ;;
       "Linux Mint")
          FILE="${REPO_ROOT}/scripts/eosio_build_ubuntu.sh"
-         CXX_COMPILER=clang++-4.0
-         C_COMPILER=clang-4.0
       ;;
       "Ubuntu")
          FILE="${REPO_ROOT}/scripts/eosio_build_ubuntu.sh"
-         CXX_COMPILER=clang++-4.0
-         C_COMPILER=clang-4.0
       ;;
       "Debian GNU/Linux")
          FILE="${REPO_ROOT}/scripts/eosio_build_ubuntu.sh"
-         CXX_COMPILER=clang++-4.0
-         C_COMPILER=clang-4.0
       ;;
       *)
          printf "\\nUnsupported Linux Distribution. Exiting now.\\n\\n"
@@ -258,8 +268,6 @@ if [ "$ARCH" == "Darwin" ]; then
    # HOME/lib/cmake: mongo_db_plugin.cpp:25:10: fatal error: 'bsoncxx/builder/basic/kvp.hpp' file not found
    LOCAL_CMAKE_FLAGS="-DCMAKE_PREFIX_PATH=/usr/local/opt/gettext;$HOME/lib/cmake ${LOCAL_CMAKE_FLAGS}" 
    FILE="${REPO_ROOT}/scripts/eosio_build_darwin.sh"
-   CXX_COMPILER=clang++
-   C_COMPILER=clang
    OPENSSL_ROOT_DIR=/usr/local/opt/openssl
 fi
 
@@ -279,8 +287,8 @@ printf "## ENABLE_COVERAGE_TESTING=%s\\n" "${ENABLE_COVERAGE_TESTING}"
 mkdir -p $BUILD_DIR
 cd $BUILD_DIR
 
-$CMAKE -DCMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE}" -DCMAKE_CXX_COMPILER="${CXX_COMPILER}" \
-   -DCMAKE_C_COMPILER="${C_COMPILER}" -DCORE_SYMBOL_NAME="${CORE_SYMBOL_NAME}" \
+$CMAKE -DCMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE}" -DCMAKE_CXX_COMPILER="${CXX}" \ 
+   -DCORE_SYMBOL_NAME="${CORE_SYMBOL_NAME}" \
    -DOPENSSL_ROOT_DIR="${OPENSSL_ROOT_DIR}" -DBUILD_MONGO_DB_PLUGIN=true \
    -DENABLE_COVERAGE_TESTING="${ENABLE_COVERAGE_TESTING}" -DBUILD_DOXYGEN="${DOXYGEN}" \
    -DCMAKE_INSTALL_PREFIX=$OPT_LOCATION/eosio $LOCAL_CMAKE_FLAGS "${REPO_ROOT}"
@@ -314,4 +322,3 @@ printf "EOSIO Telegram channel @ https://t.me/EOSProject\\n"
 printf "EOSIO resources: https://eos.io/resources/\\n"
 printf "EOSIO Stack Exchange: https://eosio.stackexchange.com\\n"
 printf "EOSIO wiki: https://github.com/EOSIO/eos/wiki\\n\\n\\n"
-
