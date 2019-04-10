@@ -617,10 +617,19 @@ BOOST_AUTO_TEST_CASE( only_bill_to_first_authorizer ) { try {
    chain.create_account(tester_account);
    chain.create_account(tester_account2);
 
-   resource_limits_manager& mgr = chain.control->get_mutable_resource_limits_manager();
-   mgr.set_account_limits( tester_account, 10000, 1000, 1000 );
-   mgr.set_account_limits( tester_account2, 10000, 1000, 1000 );
-   mgr.process_account_limit_updates();
+   chain.push_action(config::system_account_name, N(setalimits), config::system_account_name, fc::mutable_variant_object()
+      ("account", name(tester_account).to_string())
+      ("ram_bytes", 10000)
+      ("net_weight", 1000)
+      ("cpu_weight", 1000));
+
+   chain.push_action(config::system_account_name, N(setalimits), config::system_account_name, fc::mutable_variant_object()
+      ("account", name(tester_account2).to_string())
+      ("ram_bytes", 10000)
+      ("net_weight", 1000)
+      ("cpu_weight", 1000));
+
+   const resource_limits_manager& mgr = chain.control->get_resource_limits_manager();
 
    chain.produce_blocks();
 
