@@ -1564,7 +1564,6 @@ class Node(object):
         return latestBlockHeaderState["activated_protocol_features"]["protocol_features"]
 
     def modifyBuiltinPFSubjRestrictions(self, nodeId, featureCodename, subjectiveRestriction={}):
-        from Cluster import Cluster
         jsonPath = os.path.join(Utils.getNodeConfigDir(nodeId),
                                 "protocol_features",
                                 "BUILTIN-{}.json".format(featureCodename))
