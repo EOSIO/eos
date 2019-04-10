@@ -247,6 +247,7 @@ public:
   vector<string>  producers;
   eosd_def*       instance;
   string          gelf_endpoint;
+  bool            dont_start = false;
 };
 
 void
@@ -390,6 +391,7 @@ string producer_names::producer_name(unsigned int producer_number) {
 struct launcher_def {
    bool force_overwrite;
    size_t total_nodes;
+   size_t unstarted_nodes;
    size_t prod_nodes;
    size_t producers;
    size_t next_node;
@@ -481,6 +483,7 @@ launcher_def::set_options (bpo::options_description &cfg) {
   cfg.add_options()
     ("force,f", bpo::bool_switch(&force_overwrite)->default_value(false), "Force overwrite of existing configuration files and erase blockchain")
     ("nodes,n",bpo::value<size_t>(&total_nodes)->default_value(1),"total number of nodes to configure and launch")
+    ("unstarted-nodes",bpo::value<size_t>(&unstarted_nodes)->default_value(0),"total number of nodes to configure, but not launch")
     ("pnodes,p",bpo::value<size_t>(&prod_nodes)->default_value(1),"number of nodes that contain one or more producers")
     ("producers",bpo::value<size_t>(&producers)->default_value(21),"total number of non-bios producer instances in this network")
     ("mode,m",bpo::value<vector<string>>()->multitoken()->default_value({"any"}, "any"),"connection mode, combination of \"any\", \"producers\", \"specified\", \"none\"")
@@ -634,7 +637,31 @@ launcher_def::initialize (const variables_map &vmap) {
   if (prod_nodes > (producers + 1))
     prod_nodes = producers;
   if (prod_nodes > total_nodes)
-    total_nodes = prod_nodes;
+    total_nodes = prod_nodes + unstarted_nodes;
+  else if (total_nodes < prod_nodes + unstarted_nodes) {
+    cerr << "ERROR: if provided, \"--nodes\" must be equal or greater than the number of nodes indicated by \"--pnodes\" and \"--unstarted-nodes\"." << endl;
+    exit (-1);
+  }
+
+  if (vmap.count("specific-num")) {
+    const auto specific_nums = vmap["specific-num"].as<vector<uint>>();
+    const auto specific_args = vmap["specific-nodeos"].as<vector<string>>();
+    if (specific_nums.size() != specific_args.size()) {
+      cerr << "ERROR: every specific-num argument must be paired with a specific-nodeos argument" << endl;
+      exit (-1);
+    }
+    // don't include bios
+    const auto allowed_nums = total_nodes - 1;
+    for(uint i = 0; i < specific_nums.size(); ++i)
+    {
+      const auto& num = specific_nums[i];
+      if (num >= allowed_nums) {
+        cerr << "\"--specific-num\" provided value= " << num << " is higher than \"--nodes\" provided value=" << total_nodes << endl;
+        exit (-1);
+      }
+      specific_nodeos_args[num] = specific_args[i];
+    }
+  }
 
   char* erd_env_var = getenv ("EOSIO_HOME");
   if (erd_env_var == nullptr || std::string(erd_env_var).empty()) {
@@ -733,7 +760,7 @@ launcher_def::generate () {
   write_dot_file ();
 
   if (!output.empty()) {
-   bfs::path savefile = output;
+    bfs::path savefile = output;
     {
       bfs::ofstream sf (savefile);
       sf << fc::json::to_pretty_string (network) << endl;
@@ -754,6 +781,7 @@ launcher_def::generate () {
     }
      return false;
   }
+
   return true;
 }
 
@@ -864,6 +892,7 @@ launcher_def::bind_nodes () {
    int extra = producers % non_bios;
    unsigned int i = 0;
    unsigned int producer_number = 0;
+   const auto to_not_start_node = total_nodes - unstarted_nodes - 1;
    for (auto &h : bindings) {
       for (auto &inst : h.instances) {
          bool is_bios = inst.name == "bios";
@@ -894,6 +923,7 @@ launcher_def::bind_nodes () {
                  ++producer_number;
               }
            }
+           node.dont_start = i >= to_not_start_node;
         }
         node.gelf_endpoint = gelf_endpoint;
         network.nodes[node.name] = move(node);
@@ -1564,6 +1594,10 @@ launcher_def::launch (eosd_def &instance, string &gts) {
   }
 
   if (!host->is_local()) {
+    if (instance.node->dont_start) {
+      cerr << "Unable to use \"unstarted-nodes\" with a remote hose" << endl;
+      exit (-1);
+    }
     string cmdl ("cd ");
     cmdl += host->eosio_home + "; nohup " + eosdcmd + " > "
       + reout.string() + " 2> " + reerr.string() + "& echo $! > " + pidf.string()
@@ -1578,7 +1612,7 @@ launcher_def::launch (eosd_def &instance, string &gts) {
     string cmd = "cd " + host->eosio_home + "; kill -15 $(cat " + pidf.string() + ")";
     format_ssh (cmd, host->host_name, info.kill_cmd);
   }
-  else {
+  else if (!instance.node->dont_start) {
     cerr << "spawning child, " << eosdcmd << endl;
 
     bp::child c(eosdcmd, bp::std_out > reout, bp::std_err > reerr );
@@ -1599,6 +1633,16 @@ launcher_def::launch (eosd_def &instance, string &gts) {
       }
     }
     c.detach();
+  }
+  else {
+    cerr << "not spawning child, " << eosdcmd << endl;
+
+    const bfs::path dd = instance.data_dir_name;
+    const bfs::path start_file  = dd / "start.cmd";
+    bfs::ofstream sf (start_file);
+
+    sf << eosdcmd << endl;
+    sf.close();
   }
   last_run.running_nodes.emplace_back (move(info));
 }
@@ -1629,20 +1673,35 @@ launcher_def::kill (launch_modes mode, string sig_opt) {
   case LM_LOCAL:
   case LM_REMOTE : {
     bfs::path source = "last_run.json";
-    fc::json::from_file(source).as<last_run_def>(last_run);
-    for (auto &info : last_run.running_nodes) {
-      if (mode == LM_ALL || (info.remote && mode == LM_REMOTE) ||
-          (!info.remote && mode == LM_LOCAL)) {
-        if (info.pid_file.length()) {
-          string pid;
-          fc::json::from_file(info.pid_file).as<string>(pid);
-          string kill_cmd = "kill " + sig_opt + " " + pid;
-          boost::process::system (kill_cmd);
-        }
-        else {
-          boost::process::system (info.kill_cmd);
-        }
-      }
+    try {
+       fc::json::from_file( source ).as<last_run_def>( last_run );
+       for( auto& info : last_run.running_nodes ) {
+          if( mode == LM_ALL || (info.remote && mode == LM_REMOTE) ||
+              (!info.remote && mode == LM_LOCAL) ) {
+             try {
+                if( info.pid_file.length() ) {
+                   string pid;
+                   fc::json::from_file( info.pid_file ).as<string>( pid );
+                   string kill_cmd = "kill " + sig_opt + " " + pid;
+                   boost::process::system( kill_cmd );
+                } else {
+                   boost::process::system( info.kill_cmd );
+                }
+             } catch( fc::exception& fce ) {
+                cerr << "unable to kill fc::exception=" << fce.to_detail_string() << endl;
+             } catch( std::exception& stde ) {
+                cerr << "unable to kill std::exception=" << stde.what() << endl;
+             } catch( ... ) {
+                cerr << "Unable to kill" << endl;
+             }
+          }
+       }
+    } catch( fc::exception& fce ) {
+       cerr << "unable to open " << source << " fc::exception=" << fce.to_detail_string() << endl;
+    } catch( std::exception& stde ) {
+       cerr << "unable to open " << source << " std::exception=" << stde.what() << endl;
+    } catch( ... ) {
+       cerr << "Unable to open " << source << endl;
     }
   }
   }
@@ -2046,7 +2105,7 @@ FC_REFLECT( eosd_def,
             (p2p_endpoint) )
 
 // @ignore instance, gelf_endpoint
-FC_REFLECT( tn_node_def, (name)(keys)(peers)(producers) )
+FC_REFLECT( tn_node_def, (name)(keys)(peers)(producers)(dont_start) )
 
 FC_REFLECT( testnet_def, (name)(ssh_helper)(nodes) )
 
