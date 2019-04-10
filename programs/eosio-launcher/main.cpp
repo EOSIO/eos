@@ -1195,7 +1195,6 @@ launcher_def::write_logging_config_file(tn_node_def &node) {
   }
 
   auto log_config = fc::logging_config::default_config();
-  gelf_enabled = false; // todo remove this
   if(gelf_enabled) {
     log_config.appenders.push_back(
           fc::appender_config( "net", "gelf",
