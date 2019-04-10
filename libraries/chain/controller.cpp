@@ -1312,6 +1312,10 @@ struct controller_impl {
                unapplied_transactions.erase( trx->signed_id );
             }
             return trace;
+         } catch( const disallowed_transaction_extensions_bad_block_exception& ) {
+            throw;
+         } catch( const protocol_feature_bad_block_exception& ) {
+            throw;
          } catch (const fc::exception& e) {
             trace->except = e;
             trace->except_ptr = std::current_exception();
