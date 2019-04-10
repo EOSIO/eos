@@ -59,10 +59,7 @@ namespace cyberway { namespace chaindb {
         cache_data_ptr   data_;
         cache_indicies   indicies_;
     public:
-        cache_object(table_cache_map& map, object_value obj)
-        : table_cache_map_(&map), object_(std::move(obj)) {
-        }
-
+        cache_object(table_cache_map&, object_value);
         cache_object(cache_object&&) = default;
 
         ~cache_object() = default;

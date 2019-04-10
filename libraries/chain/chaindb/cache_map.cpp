@@ -342,6 +342,11 @@ namespace cyberway { namespace chaindb {
 
     //--------------
 
+    cache_object::cache_object(table_cache_map& map, object_value obj)
+    : table_cache_map_(&map), object_(std::move(obj)) {
+        table_cache_map_->build_cache_indicies(*this, indicies_);
+    }
+
     void cache_object::set_object(object_value obj) {
         assert(is_valid_table(obj.service));
         assert(table_cache_map_);
