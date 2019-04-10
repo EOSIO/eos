@@ -76,6 +76,30 @@ Disallows proposing an empty producer schedule.
 */
             {}
          } )
+         (  builtin_protocol_feature_t::restrict_action_to_self, builtin_protocol_feature_spec{
+            "RESTRICT_ACTION_TO_SELF",
+            fc::variant("e71b6712188391994c78d8c722c1d42c477cf091e5601b5cf1befd05721a57f3").as<digest_type>(),
+            // SHA256 hash of the raw message below within the comment delimiters (do not modify message below).
+/*
+Builtin protocol feature: RESTRICT_ACTION_TO_SELF
+
+Disallows bypass of authorization checks by unprivileged contracts when sending inline actions or deferred transactions.
+The original protocol rules allow a bypass of authorization checks for actions sent by a contract to itself.
+This protocol feature removes that bypass.
+*/
+            {}
+         } )
+         (  builtin_protocol_feature_t::only_bill_first_authorizer, builtin_protocol_feature_spec{
+            "ONLY_BILL_FIRST_AUTHORIZER",
+            fc::variant("2f1f13e291c79da5a2bbad259ed7c1f2d34f697ea460b14b565ac33b063b73e2").as<digest_type>(),
+            // SHA256 hash of the raw message below within the comment delimiters (do not modify message below).
+/*
+Builtin protocol feature: ONLY_BILL_FIRST_AUTHORIZER
+
+Adds CPU and network bandwidth usage to only the first authorizer of a transaction.
+*/
+            {}
+         } )
    ;
 
 

@@ -18,7 +18,9 @@ enum class builtin_protocol_feature_t : uint32_t {
    only_link_to_existing_permission,
    replace_deferred,
    fix_linkauth_restriction,
-   disallow_empty_producer_schedule
+   disallow_empty_producer_schedule,
+   restrict_action_to_self,
+   only_bill_first_authorizer
 };
 
 struct protocol_feature_subjective_restrictions {

@@ -77,9 +77,8 @@ class context_aware_api {
       context_aware_api(apply_context& ctx, bool context_free = false )
       :context(ctx)
       {
-         if( context.context_free )
+         if( context.is_context_free() )
             EOS_ASSERT( context_free, unaccessible_api, "only context free api's can be used in this context" );
-         context.used_context_free_api |= !context_free;
       }
 
       void checktime() {
@@ -96,7 +95,7 @@ class context_free_api : public context_aware_api {
       context_free_api( apply_context& ctx )
       :context_aware_api(ctx, true) {
          /* the context_free_data is not available during normal application because it is prunable */
-         EOS_ASSERT( context.context_free, unaccessible_api, "this API may only be called from context_free apply" );
+         EOS_ASSERT( context.is_context_free(), unaccessible_api, "this API may only be called from context_free apply" );
       }
 
       int get_context_free_data( uint32_t index, array_ptr<char> buffer, size_t buffer_size )const {
@@ -109,7 +108,7 @@ class privileged_api : public context_aware_api {
       privileged_api( apply_context& ctx )
       :context_aware_api(ctx)
       {
-         EOS_ASSERT( context.privileged, unaccessible_api, "${code} does not have permission to call this API", ("code",context.receiver) );
+         EOS_ASSERT( context.is_privileged(), unaccessible_api, "${code} does not have permission to call this API", ("code",context.get_receiver()) );
       }
 
       /**
@@ -978,21 +977,21 @@ class action_api : public context_aware_api {
       :context_aware_api(ctx,true){}
 
       int read_action_data(array_ptr<char> memory, size_t buffer_size) {
-         auto s = context.act.data.size();
+         auto s = context.get_action().data.size();
          if( buffer_size == 0 ) return s;
 
          auto copy_size = std::min( buffer_size, s );
-         memcpy( memory, context.act.data.data(), copy_size );
+         memcpy( memory, context.get_action().data.data(), copy_size );
 
          return copy_size;
       }
 
       int action_data_size() {
-         return context.act.data.size();
+         return context.get_action().data.size();
       }
 
       name current_receiver() {
-         return context.receiver;
+         return context.get_receiver();
       }
 };
 

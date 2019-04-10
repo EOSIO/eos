@@ -607,4 +607,171 @@ BOOST_AUTO_TEST_CASE( disallow_empty_producer_schedule_test ) { try {
 
 } FC_LOG_AND_RETHROW() }
 
+BOOST_AUTO_TEST_CASE( restrict_action_to_self_test ) { try {
+   tester c( setup_policy::preactivate_feature_and_new_bios );
+
+   const auto& pfm = c.control->get_protocol_feature_manager();
+   const auto& d = pfm.get_builtin_digest( builtin_protocol_feature_t::restrict_action_to_self );
+   BOOST_REQUIRE( d );
+
+   c.create_accounts( {N(testacc), N(acctonotify), N(alice)} );
+   c.set_code( N(testacc), contracts::restrict_action_test_wasm() );
+   c.set_abi( N(testacc), contracts::restrict_action_test_abi().data() );
+
+   c.set_code( N(acctonotify), contracts::restrict_action_test_wasm() );
+   c.set_abi( N(acctonotify), contracts::restrict_action_test_abi().data() );
+
+   // Before the protocol feature is preactivated
+   // - Sending inline action to self = no problem
+   // - Sending deferred trx to self = throw subjective exception
+   // - Sending inline action to self from notification = throw subjective exception
+   // - Sending deferred trx to self from notification = throw subjective exception
+   BOOST_CHECK_NO_THROW( c.push_action( N(testacc), N(sendinline), N(alice), mutable_variant_object()("authorizer", "alice")) );
+   BOOST_REQUIRE_EXCEPTION( c.push_action( N(testacc), N(senddefer), N(alice),
+                                           mutable_variant_object()("authorizer", "alice")("senderid", 0)),
+                            subjective_block_production_exception,
+                            fc_exception_message_starts_with( "Authorization failure with sent deferred transaction" ) );
+
+   BOOST_REQUIRE_EXCEPTION( c.push_action( N(testacc), N(notifyinline), N(alice),
+                                        mutable_variant_object()("acctonotify", "acctonotify")("authorizer", "alice")),
+                            subjective_block_production_exception,
+                            fc_exception_message_starts_with( "Authorization failure with inline action sent to self" ) );
+
+   BOOST_REQUIRE_EXCEPTION( c.push_action( N(testacc), N(notifydefer), N(alice),
+                                           mutable_variant_object()("acctonotify", "acctonotify")("authorizer", "alice")("senderid", 1)),
+                            subjective_block_production_exception,
+                            fc_exception_message_starts_with( "Authorization failure with sent deferred transaction" ) );
+
+   c.preactivate_protocol_features( {*d} );
+   c.produce_block();
+
+   // After the protocol feature is preactivated, all the 4 cases will throw an objective unsatisfied_authorization exception
+   BOOST_REQUIRE_EXCEPTION( c.push_action( N(testacc), N(sendinline), N(alice), mutable_variant_object()("authorizer", "alice") ),
+                            unsatisfied_authorization,
+                            fc_exception_message_starts_with( "transaction declares authority" ) );
+
+   BOOST_REQUIRE_EXCEPTION( c.push_action( N(testacc), N(senddefer), N(alice),
+                                           mutable_variant_object()("authorizer", "alice")("senderid", 3)),
+                            unsatisfied_authorization,
+                            fc_exception_message_starts_with( "transaction declares authority" ) );
+
+   BOOST_REQUIRE_EXCEPTION( c.push_action( N(testacc), N(notifyinline), N(alice),
+                                           mutable_variant_object()("acctonotify", "acctonotify")("authorizer", "alice") ),
+                            unsatisfied_authorization,
+                            fc_exception_message_starts_with( "transaction declares authority" ) );
+
+   BOOST_REQUIRE_EXCEPTION( c.push_action( N(testacc), N(notifydefer), N(alice),
+                                           mutable_variant_object()("acctonotify", "acctonotify")("authorizer", "alice")("senderid", 4)),
+                            unsatisfied_authorization,
+                            fc_exception_message_starts_with( "transaction declares authority" ) );
+
+} FC_LOG_AND_RETHROW() }
+
+BOOST_AUTO_TEST_CASE( only_bill_to_first_authorizer ) { try {
+   tester chain( setup_policy::preactivate_feature_and_new_bios );
+
+   const auto& tester_account = N(tester);
+   const auto& tester_account2 = N(tester2);
+
+   chain.produce_blocks();
+   chain.create_account(tester_account);
+   chain.create_account(tester_account2);
+
+   chain.push_action(config::system_account_name, N(setalimits), config::system_account_name, fc::mutable_variant_object()
+      ("account", name(tester_account).to_string())
+      ("ram_bytes", 10000)
+      ("net_weight", 1000)
+      ("cpu_weight", 1000));
+
+   chain.push_action(config::system_account_name, N(setalimits), config::system_account_name, fc::mutable_variant_object()
+      ("account", name(tester_account2).to_string())
+      ("ram_bytes", 10000)
+      ("net_weight", 1000)
+      ("cpu_weight", 1000));
+
+   const resource_limits_manager& mgr = chain.control->get_resource_limits_manager();
+
+   chain.produce_blocks();
+
+   {
+      action act;
+      act.account = tester_account;
+      act.name = N(null);
+      act.authorization = vector<permission_level>{
+         {tester_account, config::active_name},
+         {tester_account2, config::active_name}
+      };
+
+      signed_transaction trx;
+      trx.actions.emplace_back(std::move(act));
+      chain.set_transaction_headers(trx);
+
+      trx.sign(get_private_key(tester_account, "active"), chain.control->get_chain_id());
+      trx.sign(get_private_key(tester_account2, "active"), chain.control->get_chain_id());
+
+
+      auto tester_cpu_limit0  = mgr.get_account_cpu_limit_ex(tester_account);
+      auto tester2_cpu_limit0 = mgr.get_account_cpu_limit_ex(tester_account2);
+      auto tester_net_limit0  = mgr.get_account_net_limit_ex(tester_account);
+      auto tester2_net_limit0 = mgr.get_account_net_limit_ex(tester_account2);
+
+      chain.push_transaction(trx);
+
+      auto tester_cpu_limit1  = mgr.get_account_cpu_limit_ex(tester_account);
+      auto tester2_cpu_limit1 = mgr.get_account_cpu_limit_ex(tester_account2);
+      auto tester_net_limit1  = mgr.get_account_net_limit_ex(tester_account);
+      auto tester2_net_limit1 = mgr.get_account_net_limit_ex(tester_account2);
+
+      BOOST_CHECK(tester_cpu_limit1.used > tester_cpu_limit0.used);
+      BOOST_CHECK(tester2_cpu_limit1.used > tester2_cpu_limit0.used);
+      BOOST_CHECK(tester_net_limit1.used > tester_net_limit0.used);
+      BOOST_CHECK(tester2_net_limit1.used > tester2_net_limit0.used);
+
+      BOOST_CHECK_EQUAL(tester_cpu_limit1.used - tester_cpu_limit0.used, tester2_cpu_limit1.used - tester2_cpu_limit0.used);
+      BOOST_CHECK_EQUAL(tester_net_limit1.used - tester_net_limit0.used, tester2_net_limit1.used - tester2_net_limit0.used);
+   }
+
+   const auto& pfm = chain.control->get_protocol_feature_manager();
+   const auto& d = pfm.get_builtin_digest( builtin_protocol_feature_t::only_bill_first_authorizer );
+   BOOST_REQUIRE( d );
+
+   chain.preactivate_protocol_features( {*d} );
+   chain.produce_blocks();
+
+   {
+      action act;
+      act.account = tester_account;
+      act.name = N(null2);
+      act.authorization = vector<permission_level>{
+         {tester_account, config::active_name},
+         {tester_account2, config::active_name}
+      };
+
+      signed_transaction trx;
+      trx.actions.emplace_back(std::move(act));
+      chain.set_transaction_headers(trx);
+
+      trx.sign(get_private_key(tester_account, "active"), chain.control->get_chain_id());
+      trx.sign(get_private_key(tester_account2, "active"), chain.control->get_chain_id());
+
+      auto tester_cpu_limit0  = mgr.get_account_cpu_limit_ex(tester_account);
+      auto tester2_cpu_limit0 = mgr.get_account_cpu_limit_ex(tester_account2);
+      auto tester_net_limit0  = mgr.get_account_net_limit_ex(tester_account);
+      auto tester2_net_limit0 = mgr.get_account_net_limit_ex(tester_account2);
+
+      chain.push_transaction(trx);
+
+      auto tester_cpu_limit1  = mgr.get_account_cpu_limit_ex(tester_account);
+      auto tester2_cpu_limit1 = mgr.get_account_cpu_limit_ex(tester_account2);
+      auto tester_net_limit1  = mgr.get_account_net_limit_ex(tester_account);
+      auto tester2_net_limit1 = mgr.get_account_net_limit_ex(tester_account2);
+
+      BOOST_CHECK(tester_cpu_limit1.used > tester_cpu_limit0.used);
+      BOOST_CHECK(tester2_cpu_limit1.used == tester2_cpu_limit0.used);
+      BOOST_CHECK(tester_net_limit1.used > tester_net_limit0.used);
+      BOOST_CHECK(tester2_net_limit1.used == tester2_net_limit0.used);
+   }
+
+} FC_LOG_AND_RETHROW() }
+
 BOOST_AUTO_TEST_SUITE_END()

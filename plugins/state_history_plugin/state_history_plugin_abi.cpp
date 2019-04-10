@@ -93,14 +93,17 @@ extern const char* const state_history_plugin_abi = R"({
         },
         {
             "name": "action_trace_v0", "fields": [
-                { "name": "receipt", "type": "action_receipt" },
+                { "name": "action_ordinal", "type": "varuint32" },
+                { "name": "creator_action_ordinal", "type": "varuint32" },
+                { "name": "parent_action_ordinal", "type": "varuint32" },
+                { "name": "receipt", "type": "action_receipt?" },
+                { "name": "receiver", "type": "name" },
                 { "name": "act", "type": "action" },
                 { "name": "context_free", "type": "bool" },
                 { "name": "elapsed", "type": "int64" },
                 { "name": "console", "type": "string" },
                 { "name": "account_ram_deltas", "type": "account_delta[]" },
-                { "name": "except", "type": "string?" },
-                { "name": "inline_traces", "type": "action_trace[]" }
+                { "name": "except", "type": "string?" }
             ]
         },
         {
@@ -113,6 +116,7 @@ extern const char* const state_history_plugin_abi = R"({
                 { "name": "net_usage", "type": "uint64" },
                 { "name": "scheduled", "type": "bool" },
                 { "name": "action_traces", "type": "action_trace[]" },
+                { "name": "account_ram_delta", "type": "account_delta?" },
                 { "name": "except", "type": "string?" },
                 { "name": "failed_dtrx_trace", "type": "transaction_trace?" }
             ]

@@ -29,41 +29,53 @@ static inline void print_debug(account_name receiver, const action_trace& ar) {
    }
 }
 
-void apply_context::exec_one( action_trace& trace )
+apply_context::apply_context(controller& con, transaction_context& trx_ctx, uint32_t action_ordinal, uint32_t depth)
+:control(con)
+,db(con.mutable_db())
+,trx_context(trx_ctx)
+,recurse_depth(depth)
+,first_receiver_action_ordinal(action_ordinal)
+,action_ordinal(action_ordinal)
+,idx64(*this)
+,idx128(*this)
+,idx256(*this)
+,idx_double(*this)
+,idx_long_double(*this)
+{
+   action_trace& trace = trx_ctx.get_action_trace(action_ordinal);
+   act = &trace.act;
+   receiver = trace.receiver;
+   context_free = trace.context_free;
+}
+
+void apply_context::exec_one()
 {
    auto start = fc::time_point::now();
 
    action_receipt r;
    r.receiver         = receiver;
-   r.act_digest       = digest_type::hash(act);
-
-   trace.trx_id = trx_context.id;
-   trace.block_num = control.head_block_num() + 1;
-   trace.block_time = control.pending_block_time();
-   trace.producer_block_id = control.pending_producer_block_id();
-   trace.act = act;
-   trace.context_free = context_free;
+   r.act_digest       = digest_type::hash(*act);
 
    const auto& cfg = control.get_global_properties().configuration;
    try {
       try {
          const auto& a = control.get_account( receiver );
          privileged = a.privileged;
-         auto native = control.find_apply_handler( receiver, act.account, act.name );
+         auto native = control.find_apply_handler( receiver, act->account, act->name );
          if( native ) {
             if( trx_context.enforce_whiteblacklist && control.is_producing_block() ) {
                control.check_contract_list( receiver );
-               control.check_action_list( act.account, act.name );
+               control.check_action_list( act->account, act->name );
             }
             (*native)( *this );
          }
 
          if( a.code.size() > 0
-             && !(act.account == config::system_account_name && act.name == N( setcode ) &&
+             && !(act->account == config::system_account_name && act->name == N( setcode ) &&
                   receiver == config::system_account_name) ) {
             if( trx_context.enforce_whiteblacklist && control.is_producing_block() ) {
                control.check_contract_list( receiver );
-               control.check_action_list( act.account, act.name );
+               control.check_action_list( act->account, act->name );
             }
             try {
                control.get_wasm_interface().apply( a.code_version, a.code, *this );
@@ -71,7 +83,7 @@ void apply_context::exec_one( action_trace& trace )
          }
       } FC_RETHROW_EXCEPTIONS( warn, "pending console output: ${console}", ("console", _pending_console_output) )
    } catch( fc::exception& e ) {
-      trace.receipt = r; // fill with known data
+      action_trace& trace = trx_context.get_action_trace( action_ordinal );
       trace.except = e;
       finalize_trace( trace, start );
       throw;
@@ -80,17 +92,18 @@ void apply_context::exec_one( action_trace& trace )
    r.global_sequence  = next_global_sequence();
    r.recv_sequence    = next_recv_sequence( receiver );
 
-   const auto& account_sequence = db.get<account_sequence_object, by_name>(act.account);
+   const auto& account_sequence = db.get<account_sequence_object, by_name>(act->account);
    r.code_sequence    = account_sequence.code_sequence; // could be modified by action execution above
    r.abi_sequence     = account_sequence.abi_sequence;  // could be modified by action execution above
 
-   for( const auto& auth : act.authorization ) {
+   for( const auto& auth : act->authorization ) {
       r.auth_sequence[auth.actor] = next_auth_sequence( auth.actor );
    }
 
+   action_trace& trace = trx_context.get_action_trace( action_ordinal );
    trace.receipt = r;
 
-   trx_context.executed.emplace_back( move(r) );
+   trx_context.executed.emplace_back( std::move(r) );
 
    finalize_trace( trace, start );
 
@@ -110,14 +123,13 @@ void apply_context::finalize_trace( action_trace& trace, const fc::time_point& s
    trace.elapsed = fc::time_point::now() - start;
 }
 
-void apply_context::exec( action_trace& trace )
+void apply_context::exec()
 {
-   _notified.push_back(receiver);
-   exec_one( trace );
+   _notified.emplace_back( receiver, action_ordinal );
+   exec_one();
    for( uint32_t i = 1; i < _notified.size(); ++i ) {
-      receiver = _notified[i];
-      trace.inline_traces.emplace_back( );
-      exec_one( trace.inline_traces.back() );
+      std::tie( receiver, action_ordinal ) = _notified[i];
+      exec_one();
    }
 
    if( _cfa_inline_actions.size() > 0 || _inline_actions.size() > 0 ) {
@@ -125,14 +137,12 @@ void apply_context::exec( action_trace& trace )
                   transaction_exception, "max inline action depth per transaction reached" );
    }
 
-   for( const auto& inline_action : _cfa_inline_actions ) {
-      trace.inline_traces.emplace_back();
-      trx_context.dispatch_action( trace.inline_traces.back(), inline_action, inline_action.account, true, recurse_depth + 1 );
+   for( uint32_t ordinal : _cfa_inline_actions ) {
+      trx_context.execute_action( ordinal, recurse_depth + 1 );
    }
 
-   for( const auto& inline_action : _inline_actions ) {
-      trace.inline_traces.emplace_back();
-      trx_context.dispatch_action( trace.inline_traces.back(), inline_action, inline_action.account, false, recurse_depth + 1 );
+   for( uint32_t ordinal : _inline_actions ) {
+      trx_context.execute_action( ordinal, recurse_depth + 1 );
    }
 
 } /// exec()
@@ -142,9 +152,8 @@ bool apply_context::is_account( const account_name& account )const {
 }
 
 void apply_context::require_authorization( const account_name& account ) {
-   for( uint32_t i=0; i < act.authorization.size(); i++ ) {
-     if( act.authorization[i].actor == account ) {
-        used_authorizations[i] = true;
+   for( uint32_t i=0; i < act->authorization.size(); i++ ) {
+     if( act->authorization[i].actor == account ) {
         return;
      }
    }
@@ -152,7 +161,7 @@ void apply_context::require_authorization( const account_name& account ) {
 }
 
 bool apply_context::has_authorization( const account_name& account )const {
-   for( const auto& auth : act.authorization )
+   for( const auto& auth : act->authorization )
      if( auth.actor == account )
         return true;
   return false;
@@ -160,10 +169,9 @@ bool apply_context::has_authorization( const account_name& account )const {
 
 void apply_context::require_authorization(const account_name& account,
                                           const permission_name& permission) {
-  for( uint32_t i=0; i < act.authorization.size(); i++ )
-     if( act.authorization[i].actor == account ) {
-        if( act.authorization[i].permission == permission ) {
-           used_authorizations[i] = true;
+  for( uint32_t i=0; i < act->authorization.size(); i++ )
+     if( act->authorization[i].actor == account ) {
+        if( act->authorization[i].permission == permission ) {
            return;
         }
      }
@@ -172,15 +180,18 @@ void apply_context::require_authorization(const account_name& account,
 }
 
 bool apply_context::has_recipient( account_name code )const {
-   for( auto a : _notified )
-      if( a == code )
+   for( const auto& p : _notified )
+      if( p.first == code )
          return true;
    return false;
 }
 
 void apply_context::require_recipient( account_name recipient ) {
    if( !has_recipient(recipient) ) {
-      _notified.push_back(recipient);
+      _notified.emplace_back(
+         recipient,
+         schedule_action( action_ordinal, recipient, false )
+      );
    }
 }
 
@@ -208,9 +219,9 @@ void apply_context::execute_inline( action&& a ) {
    bool enforce_actor_whitelist_blacklist = trx_context.enforce_whiteblacklist && control.is_producing_block();
    flat_set<account_name> actors;
 
-   bool disallow_send_to_self_bypass = false; // eventually set to whether the appropriate protocol feature has been activated
+   bool disallow_send_to_self_bypass = control.is_builtin_activated( builtin_protocol_feature_t::restrict_action_to_self );
    bool send_to_self = (a.account == receiver);
-   bool inherit_parent_authorizations = (!disallow_send_to_self_bypass && send_to_self && (receiver == act.account) && control.is_producing_block());
+   bool inherit_parent_authorizations = (!disallow_send_to_self_bypass && send_to_self && (receiver == act->account) && control.is_producing_block());
 
    flat_set<permission_level> inherited_authorizations;
    if( inherit_parent_authorizations ) {
@@ -227,7 +238,7 @@ void apply_context::execute_inline( action&& a ) {
       if( enforce_actor_whitelist_blacklist )
          actors.insert( auth.actor );
 
-      if( inherit_parent_authorizations && std::find(act.authorization.begin(), act.authorization.end(), auth) != act.authorization.end() ) {
+      if( inherit_parent_authorizations && std::find(act->authorization.begin(), act->authorization.end(), auth) != act->authorization.end() ) {
          inherited_authorizations.insert( auth );
       }
    }
@@ -271,7 +282,10 @@ void apply_context::execute_inline( action&& a ) {
       }
    }
 
-   _inline_actions.emplace_back( move(a) );
+   auto inline_receiver = a.account;
+   _inline_actions.emplace_back(
+      schedule_action( std::move(a), inline_receiver, false )
+   );
 }
 
 void apply_context::execute_context_free_inline( action&& a ) {
@@ -282,7 +296,11 @@ void apply_context::execute_context_free_inline( action&& a ) {
    EOS_ASSERT( a.authorization.size() == 0, action_validate_exception,
                "context-free actions cannot have authorizations" );
 
-   _cfa_inline_actions.emplace_back( move(a) );
+
+   auto inline_receiver = a.account;
+   _cfa_inline_actions.emplace_back(
+      schedule_action( std::move(a), inline_receiver, true )
+   );
 }
 
 
@@ -318,7 +336,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
       // So, the deferred transaction must always go through the authorization checking if it is not sent by a privileged contract.
       // However, the old logic must still be considered because it cannot objectively change until a consensus protocol upgrade.
 
-      bool disallow_send_to_self_bypass = false; // eventually set to whether the appropriate protocol feature has been activated
+      bool disallow_send_to_self_bypass = control.is_builtin_activated( builtin_protocol_feature_t::restrict_action_to_self );
 
       auto is_sending_only_to_self = [&trx]( const account_name& self ) {
          bool send_to_self = true;
@@ -404,7 +422,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
       } );
    }
 
-   EOS_ASSERT( control.is_ram_billing_in_notify_allowed() || (receiver == act.account) || (receiver == payer) || privileged,
+   EOS_ASSERT( control.is_ram_billing_in_notify_allowed() || (receiver == act->account) || (receiver == payer) || privileged,
                subjective_block_production_exception, "Cannot charge RAM to other accounts during notify." );
    add_ram_usage( payer, (config::billable_size_v<generated_transaction_object> + trx_size) );
 }
@@ -417,6 +435,26 @@ bool apply_context::cancel_deferred_transaction( const uint128_t& sender_id, acc
       generated_transaction_idx.remove(*gto);
    }
    return gto;
+}
+
+uint32_t apply_context::schedule_action( uint32_t ordinal_of_action_to_schedule, account_name receiver, bool context_free )
+{
+   uint32_t scheduled_action_ordinal = trx_context.schedule_action( ordinal_of_action_to_schedule,
+                                                                    receiver, context_free,
+                                                                    action_ordinal, first_receiver_action_ordinal );
+
+   act = &trx_context.get_action_trace( action_ordinal ).act;
+   return scheduled_action_ordinal;
+}
+
+uint32_t apply_context::schedule_action( action&& act_to_schedule, account_name receiver, bool context_free )
+{
+   uint32_t scheduled_action_ordinal = trx_context.schedule_action( std::move(act_to_schedule),
+                                                                    receiver, context_free,
+                                                                    action_ordinal, first_receiver_action_ordinal );
+
+   act = &trx_context.get_action_trace( action_ordinal ).act;
+   return scheduled_action_ordinal;
 }
 
 const table_id_object* apply_context::find_table( name code, name scope, name table ) {
@@ -462,7 +500,7 @@ bytes apply_context::get_packed_transaction() {
 void apply_context::update_db_usage( const account_name& payer, int64_t delta ) {
    if( delta > 0 ) {
       if( !(privileged || payer == account_name(receiver)) ) {
-         EOS_ASSERT( control.is_ram_billing_in_notify_allowed() || (receiver == act.account),
+         EOS_ASSERT( control.is_ram_billing_in_notify_allowed() || (receiver == act->account),
                      subjective_block_production_exception, "Cannot charge RAM to other accounts during notify." );
          require_authorization( payer );
       }
