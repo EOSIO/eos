@@ -162,9 +162,10 @@ namespace cyberway { namespace chaindb {
 
         void build_cache_indicies(cache_object& cache, cache_indicies& indicies) {
             auto& object  = cache.object();
-            auto& service = cache.service();
+            if (object.is_null()) return;
 
-            auto ctr = abi_map_.find(service.code);
+            auto& service = cache.service();
+            auto  ctr = abi_map_.find(service.code);
             if (abi_map_.end() == ctr) return;
 
             auto& abi = ctr->second;
@@ -178,8 +179,10 @@ namespace cyberway { namespace chaindb {
             for (auto& i: ttr->indexes) if (i.unique && i.name != names::primary_index) {
                 info.index = &i;
 
+                auto bytes = abi.to_bytes(info, object.value); // size of this object is 1 Mb
+                if (bytes.empty()) continue;
+
                 using data_t = cache_index_value::data_t;
-                auto  bytes =  abi.to_bytes(info, object.value);   // 1 Mb
                 auto  data  =  data_t(bytes.begin(), bytes.end()); // minize memory usage
                 indicies.emplace_back(i.name, std::move(data), cache);
                 CYBERWAY_ASSERT(cache_index_tree_.end() == cache_index_tree_.find(indicies.back()),

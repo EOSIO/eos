@@ -182,15 +182,17 @@ namespace cyberway { namespace chaindb {
         const cursor_info& lower_bound(const index_request& request, const char* key, const size_t size) const {
             auto  index  = get_index(request);
             auto  value  = index.abi->to_object(index, key, size);
-            auto  cache  = cache_.find(index, key, size);
             auto& cursor = driver_.lower_bound(std::move(index), std::move(value));
 
-            if (cache) {
-                cursor.pk = cache->pk();
-            } else {
-                driver_.current(cursor);
+            if (index.index->unique) {
+                auto cache = cache_.find(index, key, size);
+                if (cache) {
+                    cursor.pk = cache->pk();
+                    return cursor;
+                }
             }
-            return cursor;
+
+            return driver_.current(cursor);
         }
 
         const cursor_info& lower_bound(const index_request& request, const primary_key_t pk) const {
