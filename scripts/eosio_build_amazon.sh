@@ -262,6 +262,7 @@ if [ $BUILD_CLANG8 ]; then
       && git clone --depth 1 --single-branch --branch $PINNED_COMPILER_VERSION https://git.llvm.org/git/clang-tools-extra.git \
       && cd ../../../../projects \
       && git clone --depth 1 --single-branch --branch $PINNED_COMPILER_VERSION https://git.llvm.org/git/libcxx.git \
+      && git clone --depth 1 --single-branch --branch $PINNED_COMPILER_VERSION https://git.llvm.org/git/libcxxabi.git \
       && git clone --depth 1 --single-branch --branch $PINNED_COMPILER_VERSION https://git.llvm.org/git/libunwind.git \
       && git clone --depth 1 --single-branch --branch $PINNED_COMPILER_VERSION https://git.llvm.org/git/compiler-rt.git \
       && cd ${OPT_LOCATION}/clang8 \
