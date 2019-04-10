@@ -188,64 +188,64 @@ if [ $? -ne 0 ]; then exit -1; fi
 printf "\\n"
 
 
-printf "Checking MongoDB installation...\\n"
-if [ ! -d $MONGODB_ROOT ]; then
-	printf "Installing MongoDB into ${MONGODB_ROOT}...\\n"
-	curl -OL https://fastdl.mongodb.org/osx/mongodb-osx-ssl-x86_64-$MONGODB_VERSION.tgz \
-	&& tar -xzf mongodb-osx-ssl-x86_64-$MONGODB_VERSION.tgz \
-	&& mv $SRC_LOCATION/mongodb-osx-x86_64-$MONGODB_VERSION $MONGODB_ROOT \
-	&& touch $MONGODB_LOG_LOCATION/mongod.log \
-	&& rm -f mongodb-osx-ssl-x86_64-$MONGODB_VERSION.tgz \
-	&& cp -f $REPO_ROOT/scripts/mongod.conf $MONGODB_CONF \
-	&& mkdir -p $MONGODB_DATA_LOCATION \
-	&& rm -rf $MONGODB_LINK_LOCATION \
-	&& rm -rf $BIN_LOCATION/mongod \
-	&& ln -s $MONGODB_ROOT $MONGODB_LINK_LOCATION \
-	&& ln -s $MONGODB_LINK_LOCATION/bin/mongod $BIN_LOCATION/mongod \
-	|| exit 1
-	printf " - MongoDB successfully installed @ ${MONGODB_ROOT}\\n"
-else
-	printf " - MongoDB found with correct version @ ${MONGODB_ROOT}.\\n"
-fi
-if [ $? -ne 0 ]; then exit -1; fi
-printf "Checking MongoDB C driver installation...\\n"
-if [ ! -d $MONGO_C_DRIVER_ROOT ]; then
-	printf "Installing MongoDB C driver...\\n"
-	curl -LO https://github.com/mongodb/mongo-c-driver/releases/download/$MONGO_C_DRIVER_VERSION/mongo-c-driver-$MONGO_C_DRIVER_VERSION.tar.gz \
-	&& tar -xzf mongo-c-driver-$MONGO_C_DRIVER_VERSION.tar.gz \
-	&& cd mongo-c-driver-$MONGO_C_DRIVER_VERSION \
-	&& mkdir -p cmake-build \
-	&& cd cmake-build \
-	&& $CMAKE -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$HOME -DENABLE_BSON=ON -DENABLE_SSL=DARWIN -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF -DENABLE_STATIC=ON .. \
-	&& make -j"${JOBS}" \
-	&& make install \
-	&& cd ../.. \
-	&& rm mongo-c-driver-$MONGO_C_DRIVER_VERSION.tar.gz \
-	|| exit 1
-	printf " - MongoDB C driver successfully installed @ ${MONGO_C_DRIVER_ROOT}.\\n"
-else
-	printf " - MongoDB C driver found with correct version @ ${MONGO_C_DRIVER_ROOT}.\\n"
-fi
-if [ $? -ne 0 ]; then exit -1; fi
-printf "Checking MongoDB C++ driver installation...\\n"
-if [ "$(grep "Version:" $HOME/lib/pkgconfig/libmongocxx-static.pc 2>/dev/null | tr -s ' ' | awk '{print $2}')" != $MONGO_CXX_DRIVER_VERSION ]; then
-	printf "Installing MongoDB C++ driver...\\n"
-	curl -L https://github.com/mongodb/mongo-cxx-driver/archive/r$MONGO_CXX_DRIVER_VERSION.tar.gz -o mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION.tar.gz \
-	&& tar -xzf mongo-cxx-driver-r${MONGO_CXX_DRIVER_VERSION}.tar.gz \
-	&& cd mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION/build \
-	&& $CMAKE -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$HOME .. \
-	&& make -j"${JOBS}" VERBOSE=1 \
-	&& make install \
-	&& cd ../.. \
-	&& rm -f mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION.tar.gz \
-	|| exit 1
-	printf " - MongoDB C++ driver successfully installed @ ${MONGO_CXX_DRIVER_ROOT}.\\n"
-else
-	printf " - MongoDB C++ driver found with correct version @ ${MONGO_CXX_DRIVER_ROOT}.\\n"
-fi
-if [ $? -ne 0 ]; then exit -1; fi
-
-printf "\\n"
+#printf "Checking MongoDB installation...\\n"
+#if [ ! -d $MONGODB_ROOT ]; then
+#	printf "Installing MongoDB into ${MONGODB_ROOT}...\\n"
+#	curl -OL https://fastdl.mongodb.org/osx/mongodb-osx-ssl-x86_64-$MONGODB_VERSION.tgz \
+#	&& tar -xzf mongodb-osx-ssl-x86_64-$MONGODB_VERSION.tgz \
+#	&& mv $SRC_LOCATION/mongodb-osx-x86_64-$MONGODB_VERSION $MONGODB_ROOT \
+#	&& touch $MONGODB_LOG_LOCATION/mongod.log \
+#	&& rm -f mongodb-osx-ssl-x86_64-$MONGODB_VERSION.tgz \
+#	&& cp -f $REPO_ROOT/scripts/mongod.conf $MONGODB_CONF \
+#	&& mkdir -p $MONGODB_DATA_LOCATION \
+#	&& rm -rf $MONGODB_LINK_LOCATION \
+#	&& rm -rf $BIN_LOCATION/mongod \
+#	&& ln -s $MONGODB_ROOT $MONGODB_LINK_LOCATION \
+#	&& ln -s $MONGODB_LINK_LOCATION/bin/mongod $BIN_LOCATION/mongod \
+#	|| exit 1
+#	printf " - MongoDB successfully installed @ ${MONGODB_ROOT}\\n"
+#else
+#	printf " - MongoDB found with correct version @ ${MONGODB_ROOT}.\\n"
+#fi
+#if [ $? -ne 0 ]; then exit -1; fi
+#printf "Checking MongoDB C driver installation...\\n"
+#if [ ! -d $MONGO_C_DRIVER_ROOT ]; then
+#	printf "Installing MongoDB C driver...\\n"
+#	curl -LO https://github.com/mongodb/mongo-c-driver/releases/download/$MONGO_C_DRIVER_VERSION/mongo-c-driver-$MONGO_C_DRIVER_VERSION.tar.gz \
+#	&& tar -xzf mongo-c-driver-$MONGO_C_DRIVER_VERSION.tar.gz \
+#	&& cd mongo-c-driver-$MONGO_C_DRIVER_VERSION \
+#	&& mkdir -p cmake-build \
+#	&& cd cmake-build \
+#	&& $CMAKE -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$HOME -DENABLE_BSON=ON -DENABLE_SSL=DARWIN -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF -DENABLE_STATIC=ON .. \
+#	&& make -j"${JOBS}" \
+#	&& make install \
+#	&& cd ../.. \
+#	&& rm mongo-c-driver-$MONGO_C_DRIVER_VERSION.tar.gz \
+#	|| exit 1
+#	printf " - MongoDB C driver successfully installed @ ${MONGO_C_DRIVER_ROOT}.\\n"
+#else
+#	printf " - MongoDB C driver found with correct version @ ${MONGO_C_DRIVER_ROOT}.\\n"
+#fi
+#if [ $? -ne 0 ]; then exit -1; fi
+#printf "Checking MongoDB C++ driver installation...\\n"
+#if [ "$(grep "Version:" $HOME/lib/pkgconfig/libmongocxx-static.pc 2>/dev/null | tr -s ' ' | awk '{print $2}')" != $MONGO_CXX_DRIVER_VERSION ]; then
+#	printf "Installing MongoDB C++ driver...\\n"
+#	curl -L https://github.com/mongodb/mongo-cxx-driver/archive/r$MONGO_CXX_DRIVER_VERSION.tar.gz -o mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION.tar.gz \
+#	&& tar -xzf mongo-cxx-driver-r${MONGO_CXX_DRIVER_VERSION}.tar.gz \
+#	&& cd mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION/build \
+#	&& $CMAKE -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$HOME .. \
+#	&& make -j"${JOBS}" VERBOSE=1 \
+#	&& make install \
+#	&& cd ../.. \
+#	&& rm -f mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION.tar.gz \
+#	|| exit 1
+#	printf " - MongoDB C++ driver successfully installed @ ${MONGO_CXX_DRIVER_ROOT}.\\n"
+#else
+#	printf " - MongoDB C++ driver found with correct version @ ${MONGO_CXX_DRIVER_ROOT}.\\n"
+#fi
+#if [ $? -ne 0 ]; then exit -1; fi
+#
+#printf "\\n"
 
 
 # We install llvm into /usr/local/opt using brew install llvm@4
@@ -280,7 +280,7 @@ if [ $BUILD_CLANG8 ]; then
       && git clone --depth 1 --single-branch --branch $PINNED_COMPILER_VERSION https://git.llvm.org/git/compiler-rt.git \
       && cd ${OPT_LOCATION}/clang8 \
       && mkdir build && cd build \
-      && $CMAKE -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX="${CLANG8_ROOT}" -DLLVM_BUILD_EXTERNAL_COMPILER_RT=ON -DLLVM_BUILD_LLVM_DYLIB=ON -DLLVM_ENABLE_LIBCXX=ON -DLLVM_ENABLE_RTTI=ON -DLLVM_INCLUDE_DOCS=OFF -DLLVM_OPTIMIZED_TABLEGEN=ON -DLLVM_TARGETS_TO_BUILD=all -DLLVM_CREATE_XCODE_TOOLCHAIN=ON .. \
+      && $CMAKE -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX="${CLANG8_ROOT}" -DLLVM_BUILD_EXTERNAL_COMPILER_RT=ON -DLLVM_BUILD_LLVM_DYLIB=ON -DLLVM_ENABLE_LIBCXX=ON -DLLVM_ENABLE_RTTI=ON -DLLVM_INCLUDE_DOCS=OFF -DLLVM_OPTIMIZED_TABLEGEN=ON -DLLVM_TARGETS_TO_BUILD=all -DLLVM_CREATE_XCODE_TOOLCHAIN=ON -DCMAKE_BUILD_TYPE=Release .. \
       && make -j"${JOBS}" \
       && make install \
       && cd ../.. \
