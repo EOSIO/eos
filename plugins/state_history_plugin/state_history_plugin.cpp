@@ -392,8 +392,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       auto  traces_bin = zlib_compress_bytes(fc::raw::pack(make_history_serial_wrapper(db, traces)));
       EOS_ASSERT(traces_bin.size() == (uint32_t)traces_bin.size(), plugin_exception, "traces is too big");
 
-      state_history_log_header header{.block_num    = block_state->block->block_num(),
-                                      .block_id     = block_state->block->id(),
+      state_history_log_header header{.block_id     = block_state->block->id(),
                                       .payload_size = sizeof(uint32_t) + traces_bin.size()};
       trace_log->write_entry(header, block_state->block->previous, [&](auto& stream) {
          uint32_t s = (uint32_t)traces_bin.size();
@@ -487,8 +486,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
 
       auto deltas_bin = zlib_compress_bytes(fc::raw::pack(deltas));
       EOS_ASSERT(deltas_bin.size() == (uint32_t)deltas_bin.size(), plugin_exception, "deltas is too big");
-      state_history_log_header header{.block_num    = block_state->block->block_num(),
-                                      .block_id     = block_state->block->id(),
+      state_history_log_header header{.block_id     = block_state->block->id(),
                                       .payload_size = sizeof(uint32_t) + deltas_bin.size()};
       chain_state_log->write_entry(header, block_state->block->previous, [&](auto& stream) {
          uint32_t s = (uint32_t)deltas_bin.size();
