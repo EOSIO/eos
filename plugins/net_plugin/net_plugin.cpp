@@ -1320,43 +1320,46 @@ namespace eosio {
          source = conn;
       }
       else {
-         if (my_impl->connections.size() == 1) {
+         if( my_impl->connections.size() == 0 ) {
+            source.reset();
+         } else if( my_impl->connections.size() == 1 ) {
             if (!source) {
                source = *my_impl->connections.begin();
             }
-         }
-         else {
+         } else {
             // init to a linear array search
             auto cptr = my_impl->connections.begin();
             auto cend = my_impl->connections.end();
             // do we remember the previous source?
-            if (source) {
+            if( source ) {
                //try to find it in the list
-               cptr = my_impl->connections.find(source);
+               cptr = my_impl->connections.find( source );
                cend = cptr;
-               if (cptr == my_impl->connections.end()) {
+               if( cptr == my_impl->connections.end() ) {
                   //not there - must have been closed! cend is now connections.end, so just flatten the ring.
                   source.reset();
                   cptr = my_impl->connections.begin();
                } else {
                   //was found - advance the start to the next. cend is the old source.
-                  if (++cptr == my_impl->connections.end() && cend != my_impl->connections.end() ) {
+                  if( ++cptr == my_impl->connections.end() && cend != my_impl->connections.end() ) {
                      cptr = my_impl->connections.begin();
                   }
                }
             }
 
             //scan the list of peers looking for another able to provide sync blocks.
-            auto cstart_it = cptr;
-            do {
-               //select the first one which is current and break out.
-               if((*cptr)->current()) {
-                  source = *cptr;
-                  break;
-               }
-               if(++cptr == my_impl->connections.end())
+            if( cptr != my_impl->connections.end() ) {
+               auto cstart_it = cptr;
+               do {
+                  //select the first one which is current and break out.
+                  if( (*cptr)->current() ) {
+                     source = *cptr;
+                     break;
+                  }
+                  if( ++cptr == my_impl->connections.end() )
                      cptr = my_impl->connections.begin();
-            } while(cptr != cstart_it);
+               } while( cptr != cstart_it );
+            }
             // no need to check the result, either source advanced or the whole list was checked and the old source is reused.
          }
       }
