@@ -482,7 +482,6 @@ datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosi
    fc::raw::pack(ds, fc::unsigned_int(0));
    fc::raw::pack(ds, as_type<fc::unsigned_int>(obj.obj.action_ordinal));
    fc::raw::pack(ds, as_type<fc::unsigned_int>(obj.obj.creator_action_ordinal));
-   fc::raw::pack(ds, as_type<fc::unsigned_int>(obj.obj.parent_action_ordinal));
    fc::raw::pack(ds, bool(obj.obj.receipt));
    if (obj.obj.receipt) {
       fc::raw::pack(ds, make_history_serial_wrapper(obj.db, as_type<eosio::chain::action_receipt>(*obj.obj.receipt)));
@@ -498,6 +497,7 @@ datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosi
    if (obj.obj.except)
       e = obj.obj.except->to_string();
    fc::raw::pack(ds, as_type<fc::optional<std::string>>(e));
+   fc::raw::pack(ds, as_type<fc::optional<uint64_t>>(obj.obj.error_code));
 
    return ds;
 }
@@ -534,6 +534,7 @@ datastream<ST>& operator<<(datastream<ST>&                                      
    if (obj.obj.except)
       e = obj.obj.except->to_string();
    fc::raw::pack(ds, as_type<fc::optional<std::string>>(e));
+   fc::raw::pack(ds, as_type<fc::optional<uint64_t>>(obj.obj.error_code));
 
    fc::raw::pack(ds, bool(obj.obj.failed_dtrx_trace));
    if (obj.obj.failed_dtrx_trace) {
