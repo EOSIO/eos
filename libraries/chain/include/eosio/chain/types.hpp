@@ -269,6 +269,43 @@ namespace eosio { namespace chain {
    };
    // enum_hash needed to support old gcc compiler of Ubuntu 16.04
 
+   namespace detail {
+      struct extract_match {
+         bool enforce_unique = false;
+      };
+
+      template<typename... Ts>
+      struct decompose;
+
+      template<>
+      struct decompose<> {
+         template<typename ResultVariant>
+         static auto extract( uint16_t id, const vector<char>& data, ResultVariant& result )
+         -> fc::optional<extract_match>
+         {
+            return {};
+         }
+      };
+
+      template<typename T, typename... Rest>
+      struct decompose<T, Rest...> {
+         using head_t = T;
+         using tail_t = decompose< Rest... >;
+
+         template<typename ResultVariant>
+         static auto extract( uint16_t id, const vector<char>& data, ResultVariant& result )
+         -> fc::optional<extract_match>
+         {
+            if( id == head_t::extension_id() ) {
+               result = fc::raw::unpack<head_t>( data );
+               return { extract_match{ head_t::enforce_unique() } };
+            }
+
+            return tail_t::template extract<ResultVariant>( id, data, result );
+         }
+      };
+   }
+
 } }  // eosio::chain
 
 FC_REFLECT( eosio::chain::void_t, )

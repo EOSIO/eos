@@ -17,8 +17,6 @@ if [ -z "$bioscontractpath" ]; then
     bioscontractpath="unittests/contracts/eosio.bios"
 fi
 
-featuredigests=($FEATURE_DIGESTS)
-
 wddir=eosio-ignition-wd
 wdaddr=localhost:8899
 wdurl=http://$wdaddr
@@ -41,6 +39,8 @@ mkdir $wddir
 
 step=1
 echo Initializing ignition sequence  at $(date) | tee $logfile
+
+echo "FEATURE_DIGESTS: $FEATURE_DIGESTS" >> $logfile
 
 echo "http-server-address = $wdaddr" > $wddir/config.ini
 
@@ -85,7 +85,7 @@ wcmd create --to-console -n ignition
 ecmd set contract eosio $bioscontractpath eosio.bios.wasm eosio.bios.abi
 
 # Preactivate all digests
-for digest in "${featuredigests[@]}";
+for digest in $FEATURE_DIGESTS;
 do
 ecmd push action eosio preactivate "{\"feature_digest\":\"$digest\"}" -p eosio
 done

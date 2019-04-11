@@ -4,6 +4,7 @@
  */
 #include <eosio/chain/abi_serializer.hpp>
 #include <eosio/chain/resource_limits.hpp>
+#include <eosio/chain/generated_transaction_object.hpp>
 #include <eosio/testing/tester.hpp>
 
 #include <Runtime/Runtime.h>
@@ -507,6 +508,137 @@ BOOST_AUTO_TEST_CASE( replace_deferred_test ) try {
    dtrxs = c.get_scheduled_transactions();
    BOOST_CHECK_EQUAL( dtrxs.size(), 1 );
    BOOST_CHECK_EQUAL( first_dtrx_id2, dtrxs[0] );
+
+} FC_LOG_AND_RETHROW()
+
+BOOST_AUTO_TEST_CASE( no_duplicate_deferred_id_test ) try {
+   tester c( setup_policy::preactivate_feature_and_new_bios );
+   tester c2( setup_policy::none );
+
+   c.create_accounts( {N(alice), N(test)} );
+   c.set_code( N(test), contracts::deferred_test_wasm() );
+   c.set_abi( N(test), contracts::deferred_test_abi().data() );
+   c.produce_block();
+
+   push_blocks( c, c2 );
+
+   c2.push_action( N(test), N(defercall), N(alice), fc::mutable_variant_object()
+      ("payer", "alice")
+      ("sender_id", 1)
+      ("contract", "test")
+      ("payload", 50)
+   );
+
+   c2.finish_block();
+
+   BOOST_CHECK_EXCEPTION(
+      c2.produce_block(),
+      fc::exception,
+      fc_exception_message_is( "no transaction extensions supported yet for deferred transactions" )
+   );
+
+   c2.produce_empty_block( fc::minutes(10) );
+
+   transaction_trace_ptr trace0;
+   auto h = c2.control->applied_transaction.connect( [&]( const transaction_trace_ptr& t) {
+      if( t && t->receipt && t->receipt->status == transaction_receipt::expired) {
+         trace0 = t;
+      }
+   } );
+
+   c2.produce_block();
+
+   h.disconnect();
+
+   BOOST_REQUIRE( trace0 );
+
+   c.produce_block();
+
+   const auto& pfm = c.control->get_protocol_feature_manager();
+
+   auto d1 = pfm.get_builtin_digest( builtin_protocol_feature_t::replace_deferred );
+   BOOST_REQUIRE( d1 );
+   auto d2 = pfm.get_builtin_digest( builtin_protocol_feature_t::no_duplicate_deferred_id );
+   BOOST_REQUIRE( d2 );
+
+   c.preactivate_protocol_features( {*d1, *d2} );
+   c.produce_block();
+
+   auto& index = c.control->db().get_index<generated_transaction_multi_index,by_trx_id>();
+
+   auto check_generation_context = []( auto&& data,
+                                       const transaction_id_type& sender_trx_id,
+                                       unsigned __int128 sender_id,
+                                       account_name sender )
+   {
+      transaction trx;
+      fc::datastream<const char*> ds1( data.data(), data.size() );
+      fc::raw::unpack( ds1, trx );
+      BOOST_REQUIRE_EQUAL( trx.transaction_extensions.size(), 1 );
+      BOOST_REQUIRE_EQUAL( trx.transaction_extensions.back().first, 0 );
+
+      fc::datastream<const char*> ds2( trx.transaction_extensions.back().second.data(),
+                                       trx.transaction_extensions.back().second.size() );
+
+      transaction_id_type actual_sender_trx_id;
+      fc::raw::unpack( ds2, actual_sender_trx_id );
+      BOOST_CHECK_EQUAL( actual_sender_trx_id, sender_trx_id );
+
+      unsigned __int128 actual_sender_id;
+      fc::raw::unpack( ds2, actual_sender_id );
+      BOOST_CHECK( actual_sender_id == sender_id );
+
+      uint64_t actual_sender;
+      fc::raw::unpack( ds2, actual_sender );
+      BOOST_CHECK_EQUAL( account_name(actual_sender), sender );
+   };
+
+   BOOST_CHECK_EXCEPTION(
+      c.push_action( N(test), N(defercall), N(alice), fc::mutable_variant_object()
+                        ("payer", "alice")
+                        ("sender_id", 1)
+                        ("contract", "test")
+                        ("payload", 77 )
+                   ),
+      ill_formed_deferred_transaction_generation_context,
+      fc_exception_message_is( "deferred transaction generaction context contains mismatching sender" )
+   );
+
+   BOOST_REQUIRE_EQUAL(0, index.size());
+
+   auto trace1 = c.push_action( N(test), N(defercall), N(alice), fc::mutable_variant_object()
+      ("payer", "alice")
+      ("sender_id", 1)
+      ("contract", "test")
+      ("payload", 40)
+   );
+
+   BOOST_REQUIRE_EQUAL(1, index.size());
+
+   check_generation_context( index.begin()->packed_trx,
+                             trace1->id,
+                             ((static_cast<unsigned __int128>(N(alice)) << 64) | 1),
+                             N(test) );
+
+   c.produce_block();
+
+   BOOST_REQUIRE_EQUAL(0, index.size());
+
+   auto trace2 = c.push_action( N(test), N(defercall), N(alice), fc::mutable_variant_object()
+      ("payer", "alice")
+      ("sender_id", 1)
+      ("contract", "test")
+      ("payload", 50)
+   );
+
+   BOOST_REQUIRE_EQUAL(1, index.size());
+
+   check_generation_context( index.begin()->packed_trx,
+                             trace2->id,
+                             ((static_cast<unsigned __int128>(N(alice)) << 64) | 1),
+                             N(test) );
+
+   c.produce_block();
 
 } FC_LOG_AND_RETHROW()
 

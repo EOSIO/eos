@@ -956,8 +956,14 @@ struct controller_impl {
       // Deliver onerror action containing the failed deferred transaction directly back to the sender.
       etrx.actions.emplace_back( vector<permission_level>{{gtrx.sender, config::active_name}},
                                  onerror( gtrx.sender_id, gtrx.packed_trx.data(), gtrx.packed_trx.size() ) );
-      etrx.expiration = self.pending_block_time() + fc::microseconds(999'999); // Round up to avoid appearing expired
-      etrx.set_reference_block( self.head_block_id() );
+      if( self.is_builtin_activated( builtin_protocol_feature_t::no_duplicate_deferred_id ) ) {
+         etrx.expiration = time_point_sec();
+         etrx.ref_block_num = 0;
+         etrx.ref_block_prefix = 0;
+      } else {
+         etrx.expiration = self.pending_block_time() + fc::microseconds(999'999); // Round up to nearest second to avoid appearing expired
+         etrx.set_reference_block( self.head_block_id() );
+      }
 
       transaction_context trx_context( self, etrx, etrx.id(), start );
       trx_context.deadline = deadline;
@@ -979,6 +985,8 @@ struct controller_impl {
          trx_context.squash();
          restore.cancel();
          return trace;
+      } catch( const disallowed_transaction_extensions_bad_block_exception& ) {
+         throw;
       } catch( const protocol_feature_bad_block_exception& ) {
          throw;
       } catch( const fc::exception& e ) {
@@ -1121,6 +1129,8 @@ struct controller_impl {
          restore.cancel();
 
          return trace;
+      } catch( const disallowed_transaction_extensions_bad_block_exception& ) {
+         throw;
       } catch( const protocol_feature_bad_block_exception& ) {
          throw;
       } catch( const fc::exception& e ) {
@@ -1314,6 +1324,10 @@ struct controller_impl {
                unapplied_transactions.erase( trx->signed_id );
             }
             return trace;
+         } catch( const disallowed_transaction_extensions_bad_block_exception& ) {
+            throw;
+         } catch( const protocol_feature_bad_block_exception& ) {
+            throw;
          } catch (const fc::exception& e) {
             trace->except = e;
             trace->except_ptr = std::current_exception();
@@ -2150,8 +2164,14 @@ struct controller_impl {
 
       signed_transaction trx;
       trx.actions.emplace_back(std::move(on_block_act));
-      trx.set_reference_block(self.head_block_id());
-      trx.expiration = self.pending_block_time() + fc::microseconds(999'999); // Round up to nearest second to avoid appearing expired
+      if( self.is_builtin_activated( builtin_protocol_feature_t::no_duplicate_deferred_id ) ) {
+         trx.expiration = time_point_sec();
+         trx.ref_block_num = 0;
+         trx.ref_block_prefix = 0;
+      } else {
+         trx.expiration = self.pending_block_time() + fc::microseconds(999'999); // Round up to nearest second to avoid appearing expired
+         trx.set_reference_block( self.head_block_id() );
+      }
       return trx;
    }
 
