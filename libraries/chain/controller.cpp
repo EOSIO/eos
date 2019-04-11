@@ -981,13 +981,9 @@ struct controller_impl {
          return trace;
       } catch( const protocol_feature_bad_block_exception& ) {
          throw;
-      } catch( const eosio_assert_code_exception& e ) {
-         cpu_time_to_bill_us = trx_context.update_billed_cpu_time( fc::time_point::now() );
-         trace->error_code = controller::convert_exception_to_error_code( e );
-         trace->except = e;
-         trace->except_ptr = std::current_exception();
       } catch( const fc::exception& e ) {
          cpu_time_to_bill_us = trx_context.update_billed_cpu_time( fc::time_point::now() );
+         trace->error_code = controller::convert_exception_to_error_code( e );
          trace->except = e;
          trace->except_ptr = std::current_exception();
       }
@@ -1128,13 +1124,9 @@ struct controller_impl {
          return trace;
       } catch( const protocol_feature_bad_block_exception& ) {
          throw;
-      } catch( const eosio_assert_code_exception& e ) {
-         trace->error_code = controller::convert_exception_to_error_code( e );
-         trace->except = e;
-         trace->except_ptr = std::current_exception();
-         trace->elapsed = fc::time_point::now() - trx_context.start;
       } catch( const fc::exception& e ) {
          cpu_time_to_bill_us = trx_context.update_billed_cpu_time( fc::time_point::now() );
+         trace->error_code = controller::convert_exception_to_error_code( e );
          trace->except = e;
          trace->except_ptr = std::current_exception();
          trace->elapsed = fc::time_point::now() - trx_context.start;
@@ -1324,11 +1316,8 @@ struct controller_impl {
                unapplied_transactions.erase( trx->signed_id );
             }
             return trace;
-         } catch( const eosio_assert_code_exception& e ) {
-            trace->error_code = controller::convert_exception_to_error_code( e );
-            trace->except = e;
-            trace->except_ptr = std::current_exception();
          } catch( const fc::exception& e ) {
+            trace->error_code = controller::convert_exception_to_error_code( e );
             trace->except = e;
             trace->except_ptr = std::current_exception();
          }
@@ -2997,28 +2986,12 @@ bool controller::all_subjective_mitigations_disabled()const {
    return my->conf.disable_all_subjective_mitigations;
 }
 
-fc::optional<uint64_t> controller::convert_exception_to_error_code( const eosio_assert_code_exception& e ) {
-   const auto& logs = e.get_log();
+fc::optional<uint64_t> controller::convert_exception_to_error_code( const fc::exception& e ) {
+   const eosio_assert_code_exception* e_ptr = dynamic_cast<const eosio_assert_code_exception*>( &e );
+   
+   if( e_ptr == nullptr ) return {};
 
-   if( logs.size() == 0 ) return {};
-
-   const auto msg = logs[0].get_message();
-
-   auto pos = msg.find( ": " );
-
-   if( pos == std::string::npos || (pos + 2) >= msg.size() ) return {};
-
-   pos += 2;
-
-   uint64_t error_code = 0;
-
-   try {
-      error_code = std::strtoull( msg.c_str() + pos, nullptr, 10 );
-   } catch( ... ) {
-      return {};
-   }
-
-   return error_code;
+   return e_ptr->error_code;
 }
 
 /// Protocol feature activation handlers:
