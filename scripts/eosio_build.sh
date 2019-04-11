@@ -72,7 +72,16 @@ export LLVM_VERSION=release_40
 export LLVM_ROOT=${OPT_LOCATION}/llvm
 export LLVM_DIR=${LLVM_ROOT}/lib/cmake/llvm
 export CLANG8_ROOT=${OPT_LOCATION}/clang8
-export PINNED_COMPILER_VERSION=release_80
+export PINNED_COMPILER_BRANCH=release_80
+export PINNED_COMPILER_LLVM_COMMIT=18e41dc
+export PINNED_COMPILER_CLANG_COMMIT=a03da8b
+export PINNED_COMPILER_LLD_COMMIT=d60a035
+export PINNED_COMPILER_POLLY_COMMIT=1bc06e5
+export PINNED_COMPILER_CLANG_TOOLS_EXTRA_COMMIT=6b34834
+export PINNED_COMPILER_LIBCXX_COMMIT=1853712
+export PINNED_COMPILER_LIBCXXABI_COMMIT=d7338a4
+export PINNED_COMPILER_LIBUNWIND_COMMIT=57f6739
+export PINNED_COMPILER_COMPILER_RT_COMMIT=5bc7979
 export DOXYGEN_VERSION=1_8_14
 export DOXYGEN_ROOT=${SRC_LOCATION}/doxygen-${DOXYGEN_VERSION}
 export TINI_VERSION=0.18.0
@@ -183,22 +192,45 @@ fi
 
 BUILD_CLANG8=false
 if [ $NONINTERACTIVE -eq 0 ]; then
-   printf "#include <iostream>\nint main(){ std::cout << \"Hello, World!\" << std::endl; }" &> $TEMP_DIR/test.cpp
-   `c++ -c -std=c++17 $TEMP_DIR/test.cpp -o $TEMP_DIR/test.o &> /dev/null`
-   if [ $? -ne 0 ]; then
-      `CXX -c -std=c++17 $TEMP_DIR/test.cpp -o $TEMP_DIR/test.o &> /dev/null`
-      if [ $? -ne 0 ]; then
-         printf "Error no C++17 support.\\nEnter Y/y or N/n to continue with downloading and building a viable compiler or exit now.\\nIf you already have a C++17 compiler installed or would like to install your own, export CXX to point to the compiler of your choosing."
-         read -p "Enter Y/y or N/n to continue with downloading and building a viable compiler or exit now." yn
-         case $yn in
-            [Yy]* ) BUILD_CLANG8=true; break;;
-            [Nn]* ) exit 1;;
-            * ) echo "Improper input"; exit 1;;
-         esac
+   if [ ! -z $CXX ]; then
+      CPP_COMP=$CXX
+   else
+      CPP_COMP=c++
+   fi
+
+   NO_CPP17=false
+
+   WHICH_CPP=`which $CPP_COMP`
+   COMPILER_TYPE=`readlink $WHICH_CPP`
+   if [[ $COMPILER_TYPE == "clang++" ]]; then
+      if [[ `c++ --version | cut -d ' ' -f 1 | head -n 1` == "Apple" ]]; then
+         ### Apple clang version 10
+         if [[ `c++ --version | cut -d ' ' -f 4 | cut -d '.' -f 1 | head -n 1` -lt 10 ]]; then
+            NO_CPP17=true
+         fi
+      else
+         ### clang version 5
+         if [[ `c++ --version | cut -d ' ' -f 4 | cut -d '.' -f 1 | head -n 1` -lt 5 ]]; then
+            NO_CPP17=true
+         fi
       fi
    else
-      CXX=c++
+      ### gcc version 7
+      if [[ `c++ -dumpversion | cut -d '.' -f 1` -lt 7 ]]; then
+         NO_CPP17=true
+      fi
    fi
+
+   if $NO_CPP17; then
+      printf "Error no C++17 support.\\nEnter Y/y or N/n to continue with downloading and building a viable compiler or exit now.\\nIf you already have a C++17 compiler installed or would like to install your own, export CXX to point to the compiler of your choosing."
+      read -p "Enter Y/y or N/n to continue with downloading and building a viable compiler or exit now. " yn
+      case $yn in
+         [Yy]* ) BUILD_CLANG8=true; break;;
+         [Nn]* ) exit 1;;
+         * ) echo "Improper input"; exit 1;;
+      esac
+   fi
+   CXX=$CPP_COMP
 else
    BUILD_CLANG8=true
    CXX=${OPT_LOCATION}/clang8/bin/clang++
@@ -292,7 +324,7 @@ cd $BUILD_DIR
 
 $CMAKE -DCMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE}" -DCMAKE_CXX_COMPILER="${CXX}" -DOPENSSL_ROOT_DIR="${OPENSSL_ROOT_DIR}" -DBUILD_MONGO_DB_PLUGIN=true \
    -DCORE_SYMBOL_NAME="${CORE_SYMBOL_NAME}" -DENABLE_COVERAGE_TESTING="${ENABLE_COVERAGE_TESTING}" -DBUILD_DOXYGEN="${DOXYGEN}" \
-   -DCMAKE_INSTALL_PREFIX=$OPT_LOCATION/eosio $LOCAL_CMAKE_FLAGS "${REPO_ROOT}"
+   -DCMAKE_INSTALL_PREFIX=$OPT_LOCATION/eosio -DCMAKE_EXE_LINKER_FLAGS="-stdlib=libc++ -lc++abi" $LOCAL_CMAKE_FLAGS "${REPO_ROOT}"
 
 if [ $? -ne 0 ]; then exit -1; fi
 make -j"${JOBS}"
