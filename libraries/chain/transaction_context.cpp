@@ -166,7 +166,14 @@ namespace bacc = boost::accumulators;
       trace->block_time = c.pending_block_time();
       trace->producer_block_id = c.pending_producer_block_id();
       executed.reserve( trx.total_actions() );
-      EOS_ASSERT( trx.transaction_extensions.size() == 0, unsupported_feature, "we don't support any extensions yet" );
+   }
+
+   void transaction_context::disallow_transaction_extensions( const char* error_msg )const {
+      if( control.is_producing_block() ) {
+         EOS_THROW( subjective_block_production_exception, error_msg );
+      } else {
+         EOS_THROW( disallowed_transaction_extensions_bad_block_exception, error_msg );
+      }
    }
 
    void transaction_context::init(uint64_t initial_net_usage)
@@ -282,6 +289,10 @@ namespace bacc = boost::accumulators;
 
    void transaction_context::init_for_implicit_trx( uint64_t initial_net_usage  )
    {
+      if( trx.transaction_extensions.size() > 0 ) {
+         disallow_transaction_extensions( "no transaction extensions supported yet for implicit transactions" );
+      }
+
       published = control.pending_block_time();
       init( initial_net_usage);
    }
@@ -290,6 +301,10 @@ namespace bacc = boost::accumulators;
                                                  uint64_t packed_trx_prunable_size,
                                                  bool skip_recording )
    {
+      if( trx.transaction_extensions.size() > 0 ) {
+         disallow_transaction_extensions( "no transaction extensions supported yet for input transactions" );
+      }
+
       const auto& cfg = control.get_global_properties().configuration;
 
       uint64_t discounted_size_for_pruned_data = packed_trx_prunable_size;
@@ -326,6 +341,14 @@ namespace bacc = boost::accumulators;
 
    void transaction_context::init_for_deferred_trx( fc::time_point p )
    {
+      if( (trx.expiration.sec_since_epoch() != 0) && (trx.transaction_extensions.size() > 0) ) {
+         disallow_transaction_extensions( "no transaction extensions supported yet for deferred transactions" );
+      }
+      // If (trx.expiration.sec_since_epoch() == 0) then it was created after NO_DUPLICATE_DEFERRED_ID activation,
+      // and so validation of its extensions was done either in:
+      //   * apply_context::schedule_deferred_transaction for contract-generated transactions;
+      //   * or transaction_context::init_for_input_trx for delayed input transactions.
+
       published = p;
       trace->scheduled = true;
       apply_context_free = false;

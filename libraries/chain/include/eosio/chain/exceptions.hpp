@@ -232,6 +232,12 @@ namespace eosio { namespace chain {
                                     3040013, "Transaction is too big" )
       FC_DECLARE_DERIVED_EXCEPTION( unknown_transaction_compression, transaction_exception,
                                     3040014, "Unknown transaction compression" )
+      FC_DECLARE_DERIVED_EXCEPTION( invalid_transaction_extension, transaction_exception,
+                                    3040015, "Invalid transaction extension" )
+      FC_DECLARE_DERIVED_EXCEPTION( ill_formed_deferred_transaction_generation_context, transaction_exception,
+                                    3040016, "Transaction includes an ill-formed deferred transaction generation context extension" )
+      FC_DECLARE_DERIVED_EXCEPTION( disallowed_transaction_extensions_bad_block_exception, transaction_exception,
+                                    3250002, "Transaction includes disallowed extensions (invalid block)" )
 
 
    FC_DECLARE_DERIVED_EXCEPTION( action_validate_exception, chain_exception,

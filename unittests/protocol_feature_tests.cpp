@@ -4,6 +4,7 @@
  */
 #include <eosio/chain/abi_serializer.hpp>
 #include <eosio/chain/resource_limits.hpp>
+#include <eosio/chain/generated_transaction_object.hpp>
 #include <eosio/testing/tester.hpp>
 
 #include <Runtime/Runtime.h>
@@ -510,6 +511,137 @@ BOOST_AUTO_TEST_CASE( replace_deferred_test ) try {
 
 } FC_LOG_AND_RETHROW()
 
+BOOST_AUTO_TEST_CASE( no_duplicate_deferred_id_test ) try {
+   tester c( setup_policy::preactivate_feature_and_new_bios );
+   tester c2( setup_policy::none );
+
+   c.create_accounts( {N(alice), N(test)} );
+   c.set_code( N(test), contracts::deferred_test_wasm() );
+   c.set_abi( N(test), contracts::deferred_test_abi().data() );
+   c.produce_block();
+
+   push_blocks( c, c2 );
+
+   c2.push_action( N(test), N(defercall), N(alice), fc::mutable_variant_object()
+      ("payer", "alice")
+      ("sender_id", 1)
+      ("contract", "test")
+      ("payload", 50)
+   );
+
+   c2.finish_block();
+
+   BOOST_CHECK_EXCEPTION(
+      c2.produce_block(),
+      fc::exception,
+      fc_exception_message_is( "no transaction extensions supported yet for deferred transactions" )
+   );
+
+   c2.produce_empty_block( fc::minutes(10) );
+
+   transaction_trace_ptr trace0;
+   auto h = c2.control->applied_transaction.connect( [&]( const transaction_trace_ptr& t) {
+      if( t && t->receipt && t->receipt->status == transaction_receipt::expired) {
+         trace0 = t;
+      }
+   } );
+
+   c2.produce_block();
+
+   h.disconnect();
+
+   BOOST_REQUIRE( trace0 );
+
+   c.produce_block();
+
+   const auto& pfm = c.control->get_protocol_feature_manager();
+
+   auto d1 = pfm.get_builtin_digest( builtin_protocol_feature_t::replace_deferred );
+   BOOST_REQUIRE( d1 );
+   auto d2 = pfm.get_builtin_digest( builtin_protocol_feature_t::no_duplicate_deferred_id );
+   BOOST_REQUIRE( d2 );
+
+   c.preactivate_protocol_features( {*d1, *d2} );
+   c.produce_block();
+
+   auto& index = c.control->db().get_index<generated_transaction_multi_index,by_trx_id>();
+
+   auto check_generation_context = []( auto&& data,
+                                       const transaction_id_type& sender_trx_id,
+                                       unsigned __int128 sender_id,
+                                       account_name sender )
+   {
+      transaction trx;
+      fc::datastream<const char*> ds1( data.data(), data.size() );
+      fc::raw::unpack( ds1, trx );
+      BOOST_REQUIRE_EQUAL( trx.transaction_extensions.size(), 1 );
+      BOOST_REQUIRE_EQUAL( trx.transaction_extensions.back().first, 0 );
+
+      fc::datastream<const char*> ds2( trx.transaction_extensions.back().second.data(),
+                                       trx.transaction_extensions.back().second.size() );
+
+      transaction_id_type actual_sender_trx_id;
+      fc::raw::unpack( ds2, actual_sender_trx_id );
+      BOOST_CHECK_EQUAL( actual_sender_trx_id, sender_trx_id );
+
+      unsigned __int128 actual_sender_id;
+      fc::raw::unpack( ds2, actual_sender_id );
+      BOOST_CHECK( actual_sender_id == sender_id );
+
+      uint64_t actual_sender;
+      fc::raw::unpack( ds2, actual_sender );
+      BOOST_CHECK_EQUAL( account_name(actual_sender), sender );
+   };
+
+   BOOST_CHECK_EXCEPTION(
+      c.push_action( N(test), N(defercall), N(alice), fc::mutable_variant_object()
+                        ("payer", "alice")
+                        ("sender_id", 1)
+                        ("contract", "test")
+                        ("payload", 77 )
+                   ),
+      ill_formed_deferred_transaction_generation_context,
+      fc_exception_message_is( "deferred transaction generaction context contains mismatching sender" )
+   );
+
+   BOOST_REQUIRE_EQUAL(0, index.size());
+
+   auto trace1 = c.push_action( N(test), N(defercall), N(alice), fc::mutable_variant_object()
+      ("payer", "alice")
+      ("sender_id", 1)
+      ("contract", "test")
+      ("payload", 40)
+   );
+
+   BOOST_REQUIRE_EQUAL(1, index.size());
+
+   check_generation_context( index.begin()->packed_trx,
+                             trace1->id,
+                             ((static_cast<unsigned __int128>(N(alice)) << 64) | 1),
+                             N(test) );
+
+   c.produce_block();
+
+   BOOST_REQUIRE_EQUAL(0, index.size());
+
+   auto trace2 = c.push_action( N(test), N(defercall), N(alice), fc::mutable_variant_object()
+      ("payer", "alice")
+      ("sender_id", 1)
+      ("contract", "test")
+      ("payload", 50)
+   );
+
+   BOOST_REQUIRE_EQUAL(1, index.size());
+
+   check_generation_context( index.begin()->packed_trx,
+                             trace2->id,
+                             ((static_cast<unsigned __int128>(N(alice)) << 64) | 1),
+                             N(test) );
+
+   c.produce_block();
+
+} FC_LOG_AND_RETHROW()
+
 BOOST_AUTO_TEST_CASE( fix_linkauth_restriction ) { try {
    tester chain( setup_policy::preactivate_feature_and_new_bios );
 
@@ -772,6 +904,66 @@ BOOST_AUTO_TEST_CASE( only_bill_to_first_authorizer ) { try {
       BOOST_CHECK(tester2_net_limit1.used == tester2_net_limit0.used);
    }
 
+} FC_LOG_AND_RETHROW() }
+
+BOOST_AUTO_TEST_CASE( forward_setcode_test ) { try {
+   tester c( setup_policy::preactivate_feature_only );
+
+   const auto& tester1_account = N(tester1);
+   const auto& tester2_account = N(tester2);
+   c.create_accounts( {tester1_account, tester2_account} );
+
+   // Deploy contract that rejects all actions dispatched to it with the following exceptions:
+   //   * eosio::setcode to set code on the eosio is allowed (unless the rejectall account exists)
+   //   * eosio::newaccount is allowed only if it creates the rejectall account.
+   c.set_code( config::system_account_name, contracts::reject_all_wasm() );
+   c.produce_block();
+
+   // Before activation, deploying a contract should work since setcode won't be forwarded to the WASM on eosio.
+   c.set_code( tester1_account, contracts::noop_wasm() );
+
+   // Activate FORWARD_SETCODE protocol feature and then return contract on eosio back to what it was.
+   const auto& pfm = c.control->get_protocol_feature_manager();
+   const auto& d = pfm.get_builtin_digest( builtin_protocol_feature_t::forward_setcode );
+   BOOST_REQUIRE( d );
+   c.set_bios_contract();
+   c.preactivate_protocol_features( {*d} );
+   c.produce_block();
+   c.set_code( config::system_account_name, contracts::reject_all_wasm() );
+   c.produce_block();
+
+   // After activation, deploying a contract causes setcode to be dispatched to the WASM on eosio,
+   // and in this case the contract is configured to reject the setcode action.
+   BOOST_REQUIRE_EXCEPTION( c.set_code( tester2_account, contracts::noop_wasm() ),
+                            eosio_assert_message_exception,
+                            eosio_assert_message_is( "rejecting all actions" ) );
+
+
+   tester c2(setup_policy::none);
+   push_blocks( c, c2 ); // make a backup of the chain to enable testing further conditions.
+
+   c.set_bios_contract(); // To allow pushing further actions for setting up the other part of the test.
+   c.create_account( N(rejectall) );
+   c.produce_block();
+   // The existence of the rejectall account will make the reject_all contract reject all actions with no exception.
+
+   // It will now not be possible to deploy the reject_all contract to the eosio account,
+   // because after it is set by the native function, it is called immediately after which will reject the transaction.
+   BOOST_REQUIRE_EXCEPTION( c.set_code( config::system_account_name, contracts::reject_all_wasm() ),
+                            eosio_assert_message_exception,
+                            eosio_assert_message_is( "rejecting all actions" ) );
+
+
+   // Going back to the backup chain, we can create the rejectall account while the reject_all contract is
+   // already deployed on eosio.
+   c2.create_account( N(rejectall) );
+   c2.produce_block();
+   // Now all actions dispatched to the eosio account should be rejected.
+
+   // However, it should still be possible to set the bios contract because the WASM on eosio is called after the
+   // native setcode function completes.
+   c2.set_bios_contract();
+   c2.produce_block();
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_SUITE_END()
