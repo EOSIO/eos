@@ -119,7 +119,7 @@ function usage()
 NONINTERACTIVE=0
 
 if [ $# -ne 0 ]; then
-   while getopts ":cdo:s:ahy" opt; do
+   while getopts ":cdo:s:ahpy" opt; do
       case "${opt}" in
          o )
             options=( "Debug" "Release" "RelWithDebInfo" "MinSizeRel" )
@@ -152,6 +152,9 @@ if [ $# -ne 0 ]; then
          h)
             usage
             exit 1
+         ;;
+         p)
+            PIN_COMPILER=true
          ;;
          y)
             NONINTERACTIVE=1
@@ -191,50 +194,55 @@ if [ $STALE_SUBMODS -gt 0 ]; then
 fi
 
 BUILD_CLANG8=false
-if [ $NONINTERACTIVE -eq 0 ]; then
-   if [ ! -z $CXX ]; then
-      CPP_COMP=$CXX
-   else
-      CPP_COMP=c++
-   fi
+if [ ! -z $CXX ]; then
+   CPP_COMP=$CXX
+else
+   CPP_COMP=c++
+fi
 
-   NO_CPP17=false
+NO_CPP17=false
 
-   WHICH_CPP=`which $CPP_COMP`
-   COMPILER_TYPE=`readlink $WHICH_CPP`
-   if [[ $COMPILER_TYPE == "clang++" ]]; then
-      if [[ `c++ --version | cut -d ' ' -f 1 | head -n 1` == "Apple" ]]; then
-         ### Apple clang version 10
-         if [[ `c++ --version | cut -d ' ' -f 4 | cut -d '.' -f 1 | head -n 1` -lt 10 ]]; then
-            NO_CPP17=true
-         fi
-      else
-         ### clang version 5
-         if [[ `c++ --version | cut -d ' ' -f 4 | cut -d '.' -f 1 | head -n 1` -lt 5 ]]; then
-            NO_CPP17=true
-         fi
+WHICH_CPP=`which $CPP_COMP`
+COMPILER_TYPE=`readlink $WHICH_CPP`
+if [[ $COMPILER_TYPE == "clang++" ]]; then
+   if [[ `c++ --version | cut -d ' ' -f 1 | head -n 1` == "Apple" ]]; then
+      ### Apple clang version 10
+      if [[ `c++ --version | cut -d ' ' -f 4 | cut -d '.' -f 1 | head -n 1` -lt 10 ]]; then
+         NO_CPP17=true
       fi
    else
-      ### gcc version 7
-      if [[ `c++ -dumpversion | cut -d '.' -f 1` -lt 7 ]]; then
+      ### clang version 5
+      if [[ `c++ --version | cut -d ' ' -f 4 | cut -d '.' -f 1 | head -n 1` -lt 5 ]]; then
          NO_CPP17=true
       fi
    fi
+else
+   ### gcc version 7
+   if [[ `c++ -dumpversion | cut -d '.' -f 1` -lt 7 ]]; then
+      NO_CPP17=true
+   fi
+fi
 
-   if $NO_CPP17; then
+if $PIN_COMPILER; then
+   BUILD_CLANG8=true
+   CPP_COMP=${OPT_LOCATION}/clang8/bin/clang++
+elif $NO_CPP17; then
+   if [ $NONINTERACTIVE -eq 0 ]; then
+      BUILD_CLANG8=true
+      CPP_COMP=${OPT_LOCATION}/clang8/bin/clang++
+   else
+      echo "PIN ${PIN_COMPILER}"
       printf "Error no C++17 support.\\nEnter Y/y or N/n to continue with downloading and building a viable compiler or exit now.\\nIf you already have a C++17 compiler installed or would like to install your own, export CXX to point to the compiler of your choosing."
       read -p "Enter Y/y or N/n to continue with downloading and building a viable compiler or exit now. " yn
       case $yn in
-         [Yy]* ) BUILD_CLANG8=true; break;;
+         [Yy]* ) BUILD_CLANG8=true; CPP_COMP=${OPT_LOCATION}/clang8/bin/clang++; break;;
          [Nn]* ) exit 1;;
          * ) echo "Improper input"; exit 1;;
       esac
    fi
-   CXX=$CPP_COMP
-else
-   BUILD_CLANG8=true
-   CXX=${OPT_LOCATION}/clang8/bin/clang++
 fi
+
+CXX=$CPP_COMP
 
 export BUILD_CLANG8=$BUILD_CLANG8
 
@@ -322,9 +330,11 @@ printf "## ENABLE_COVERAGE_TESTING=%s\\n" "${ENABLE_COVERAGE_TESTING}"
 mkdir -p $BUILD_DIR
 cd $BUILD_DIR
 
+export PIN_COMPILER=$PIN_COMPILER
+
 $CMAKE -DCMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE}" -DCMAKE_CXX_COMPILER="${CXX}" -DOPENSSL_ROOT_DIR="${OPENSSL_ROOT_DIR}" -DBUILD_MONGO_DB_PLUGIN=true \
-   -DCORE_SYMBOL_NAME="${CORE_SYMBOL_NAME}" -DENABLE_COVERAGE_TESTING="${ENABLE_COVERAGE_TESTING}" -DBUILD_DOXYGEN="${DOXYGEN}" \
-   -DCMAKE_INSTALL_PREFIX=$OPT_LOCATION/eosio -DCMAKE_EXE_LINKER_FLAGS="-stdlib=libc++ -lc++abi" $LOCAL_CMAKE_FLAGS "${REPO_ROOT}"
+       -DCORE_SYMBOL_NAME="${CORE_SYMBOL_NAME}" -DENABLE_COVERAGE_TESTING="${ENABLE_COVERAGE_TESTING}" -DBUILD_DOXYGEN="${DOXYGEN}" \
+       -DCMAKE_INSTALL_PREFIX=$OPT_LOCATION/eosio $LOCAL_CMAKE_FLAGS "${REPO_ROOT}"
 
 if [ $? -ne 0 ]; then exit -1; fi
 make -j"${JOBS}"
