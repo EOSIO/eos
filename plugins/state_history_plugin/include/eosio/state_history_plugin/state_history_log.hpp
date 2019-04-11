@@ -35,6 +35,7 @@ inline uint64_t ship_magic(uint32_t version) { return N(ship) | version; }
 inline bool     is_ship(uint64_t magic) { return (magic & 0xffff'ffff'0000'0000) == N(ship); }
 inline uint32_t get_ship_version(uint64_t magic) { return magic; }
 inline bool     is_ship_supported_version(uint64_t magic) { return is_ship(magic) && get_ship_version(magic) == 0; }
+inline bool     is_ship_unsupported_version(uint64_t magic) { return is_ship(magic) && get_ship_version(magic) != 0; }
 
 struct state_history_log_header {
    uint64_t             magic        = ship_magic(0);
@@ -176,8 +177,11 @@ class state_history_log {
          read_header(header, false);
          uint64_t suffix;
          if (!is_ship_supported_version(header.magic) || header.payload_size > size ||
-             pos + state_history_log_header_serial_size + header.payload_size + sizeof(suffix) > size)
+             pos + state_history_log_header_serial_size + header.payload_size + sizeof(suffix) > size) {
+            EOS_ASSERT(!is_ship_unsupported_version(header.magic), chain::plugin_exception,
+                       "${name}.log has an unsupported version", ("name", name));
             break;
+         }
          log.seekg(pos + state_history_log_header_serial_size + header.payload_size);
          log.read((char*)&suffix, sizeof(suffix));
          if (suffix != pos)
