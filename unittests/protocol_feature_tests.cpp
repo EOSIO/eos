@@ -906,4 +906,64 @@ BOOST_AUTO_TEST_CASE( only_bill_to_first_authorizer ) { try {
 
 } FC_LOG_AND_RETHROW() }
 
+BOOST_AUTO_TEST_CASE( forward_setcode_test ) { try {
+   tester c( setup_policy::preactivate_feature_only );
+
+   const auto& tester1_account = N(tester1);
+   const auto& tester2_account = N(tester2);
+   c.create_accounts( {tester1_account, tester2_account} );
+
+   // Deploy contract that rejects all actions dispatched to it with the following exceptions:
+   //   * eosio::setcode to set code on the eosio is allowed (unless the rejectall account exists)
+   //   * eosio::newaccount is allowed only if it creates the rejectall account.
+   c.set_code( config::system_account_name, contracts::reject_all_wasm() );
+   c.produce_block();
+
+   // Before activation, deploying a contract should work since setcode won't be forwarded to the WASM on eosio.
+   c.set_code( tester1_account, contracts::noop_wasm() );
+
+   // Activate FORWARD_SETCODE protocol feature and then return contract on eosio back to what it was.
+   const auto& pfm = c.control->get_protocol_feature_manager();
+   const auto& d = pfm.get_builtin_digest( builtin_protocol_feature_t::forward_setcode );
+   BOOST_REQUIRE( d );
+   c.set_bios_contract();
+   c.preactivate_protocol_features( {*d} );
+   c.produce_block();
+   c.set_code( config::system_account_name, contracts::reject_all_wasm() );
+   c.produce_block();
+
+   // After activation, deploying a contract causes setcode to be dispatched to the WASM on eosio,
+   // and in this case the contract is configured to reject the setcode action.
+   BOOST_REQUIRE_EXCEPTION( c.set_code( tester2_account, contracts::noop_wasm() ),
+                            eosio_assert_message_exception,
+                            eosio_assert_message_is( "rejecting all actions" ) );
+
+
+   tester c2(setup_policy::none);
+   push_blocks( c, c2 ); // make a backup of the chain to enable testing further conditions.
+
+   c.set_bios_contract(); // To allow pushing further actions for setting up the other part of the test.
+   c.create_account( N(rejectall) );
+   c.produce_block();
+   // The existence of the rejectall account will make the reject_all contract reject all actions with no exception.
+
+   // It will now not be possible to deploy the reject_all contract to the eosio account,
+   // because after it is set by the native function, it is called immediately after which will reject the transaction.
+   BOOST_REQUIRE_EXCEPTION( c.set_code( config::system_account_name, contracts::reject_all_wasm() ),
+                            eosio_assert_message_exception,
+                            eosio_assert_message_is( "rejecting all actions" ) );
+
+
+   // Going back to the backup chain, we can create the rejectall account while the reject_all contract is
+   // already deployed on eosio.
+   c2.create_account( N(rejectall) );
+   c2.produce_block();
+   // Now all actions dispatched to the eosio account should be rejected.
+
+   // However, it should still be possible to set the bios contract because the WASM on eosio is called after the
+   // native setcode function completes.
+   c2.set_bios_contract();
+   c2.produce_block();
+} FC_LOG_AND_RETHROW() }
+
 BOOST_AUTO_TEST_SUITE_END()
