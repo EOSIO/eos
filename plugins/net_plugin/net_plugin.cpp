@@ -1380,7 +1380,9 @@ namespace eosio {
          sync_source = conn;
       } else {
          std::shared_lock<std::shared_timed_mutex> g( my_impl->connections_mtx );
-         if (my_impl->connections.size() == 1) {
+         if( my_impl->connections.size() == 0 ) {
+            sync_source.reset();
+         } else if( my_impl->connections.size() == 1 ) {
             if (!sync_source) {
                sync_source = *my_impl->connections.begin();
             }
@@ -1406,16 +1408,18 @@ namespace eosio {
             }
 
             //scan the list of peers looking for another able to provide sync blocks.
-            auto cstart_it = cptr;
-            do {
-               //select the first one which is current and break out.
-               if( (*cptr)->current() ) {
-                  sync_source = *cptr;
-                  break;
-               }
-               if(++cptr == my_impl->connections.end())
+            if( cptr != my_impl->connections.end() ) {
+               auto cstart_it = cptr;
+               do {
+                  //select the first one which is current and break out.
+                  if( (*cptr)->current() ) {
+                     sync_source = *cptr;
+                     break;
+                  }
+                  if( ++cptr == my_impl->connections.end() )
                      cptr = my_impl->connections.begin();
-            } while(cptr != cstart_it);
+               } while( cptr != cstart_it );
+            }
             // no need to check the result, either source advanced or the whole list was checked and the old source is reused.
          }
       }
