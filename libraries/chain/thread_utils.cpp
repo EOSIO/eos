@@ -26,12 +26,14 @@ named_thread_pool::named_thread_pool( std::string name_prefix, size_t num_thread
 }
 
 named_thread_pool::~named_thread_pool() {
+   stop();
 }
 
 void named_thread_pool::stop() {
+   _ioc_work.reset();
    _ioc.stop();
-   _thread_pool.join();
    _thread_pool.stop();
+   _thread_pool.join();
 }
 
 
