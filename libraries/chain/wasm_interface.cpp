@@ -960,8 +960,12 @@ public:
 
    void eosio_assert_code( bool condition, uint64_t error_code ) {
       if( BOOST_UNLIKELY( !condition ) ) {
-         EOS_THROW( eosio_assert_code_exception,
-                    "assertion failure with error code: ${error_code}", ("error_code", error_code) );
+         eosio_assert_code_exception e( FC_LOG_MESSAGE( error,
+                                                        "assertion failure with error code: ${error_code}",
+                                                        ("error_code", error_code)
+                                                      ) );
+         e.error_code = error_code;
+         throw e;
       }
    }
 

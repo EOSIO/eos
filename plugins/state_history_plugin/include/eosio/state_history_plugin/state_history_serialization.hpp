@@ -497,6 +497,7 @@ datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosi
    if (obj.obj.except)
       e = obj.obj.except->to_string();
    fc::raw::pack(ds, as_type<fc::optional<std::string>>(e));
+   fc::raw::pack(ds, as_type<fc::optional<uint64_t>>(obj.obj.error_code));
 
    return ds;
 }
@@ -533,6 +534,7 @@ datastream<ST>& operator<<(datastream<ST>&                                      
    if (obj.obj.except)
       e = obj.obj.except->to_string();
    fc::raw::pack(ds, as_type<fc::optional<std::string>>(e));
+   fc::raw::pack(ds, as_type<fc::optional<uint64_t>>(obj.obj.error_code));
 
    fc::raw::pack(ds, bool(obj.obj.failed_dtrx_trace));
    if (obj.obj.failed_dtrx_trace) {

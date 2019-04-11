@@ -618,29 +618,34 @@ namespace bacc = boost::accumulators;
    }
 
    uint32_t transaction_context::schedule_action( const action& act, account_name receiver, bool context_free,
-                                                  uint32_t creator_action_ordinal, uint32_t parent_action_ordinal )
+                                                  uint32_t creator_action_ordinal,
+                                                  uint32_t closest_unnotified_ancestor_action_ordinal )
    {
       uint32_t new_action_ordinal = trace->action_traces.size() + 1;
 
       trace->action_traces.emplace_back( *trace, act, receiver, context_free,
-                                         new_action_ordinal, creator_action_ordinal, parent_action_ordinal );
+                                         new_action_ordinal, creator_action_ordinal,
+                                         closest_unnotified_ancestor_action_ordinal );
 
       return new_action_ordinal;
    }
 
    uint32_t transaction_context::schedule_action( action&& act, account_name receiver, bool context_free,
-                                                  uint32_t creator_action_ordinal, uint32_t parent_action_ordinal )
+                                                  uint32_t creator_action_ordinal,
+                                                  uint32_t closest_unnotified_ancestor_action_ordinal )
    {
       uint32_t new_action_ordinal = trace->action_traces.size() + 1;
 
       trace->action_traces.emplace_back( *trace, std::move(act), receiver, context_free,
-                                         new_action_ordinal, creator_action_ordinal, parent_action_ordinal );
+                                         new_action_ordinal, creator_action_ordinal,
+                                         closest_unnotified_ancestor_action_ordinal );
 
       return new_action_ordinal;
    }
 
    uint32_t transaction_context::schedule_action( uint32_t action_ordinal, account_name receiver, bool context_free,
-                                                  uint32_t creator_action_ordinal, uint32_t parent_action_ordinal )
+                                                  uint32_t creator_action_ordinal,
+                                                  uint32_t closest_unnotified_ancestor_action_ordinal )
    {
       uint32_t new_action_ordinal = trace->action_traces.size() + 1;
 
@@ -651,7 +656,8 @@ namespace bacc = boost::accumulators;
       // The reserve above is required so that the emplace_back below does not invalidate the provided_action reference.
 
       trace->action_traces.emplace_back( *trace, provided_action, receiver, context_free,
-                                         new_action_ordinal, creator_action_ordinal, parent_action_ordinal );
+                                         new_action_ordinal, creator_action_ordinal,
+                                         closest_unnotified_ancestor_action_ordinal );
 
       return new_action_ordinal;
    }

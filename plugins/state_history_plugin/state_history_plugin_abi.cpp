@@ -102,7 +102,8 @@ extern const char* const state_history_plugin_abi = R"({
                 { "name": "elapsed", "type": "int64" },
                 { "name": "console", "type": "string" },
                 { "name": "account_ram_deltas", "type": "account_delta[]" },
-                { "name": "except", "type": "string?" }
+                { "name": "except", "type": "string?" },
+                { "name": "error_code", "type": "uint64?" }
             ]
         },
         {
@@ -117,6 +118,7 @@ extern const char* const state_history_plugin_abi = R"({
                 { "name": "action_traces", "type": "action_trace[]" },
                 { "name": "account_ram_delta", "type": "account_delta?" },
                 { "name": "except", "type": "string?" },
+                { "name": "error_code", "type": "uint64?" },
                 { "name": "failed_dtrx_trace", "type": "transaction_trace?" }
             ]
         },
