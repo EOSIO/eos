@@ -113,6 +113,17 @@ Adds CPU and network bandwidth usage to only the first authorizer of a transacti
 */
             {}
          } )
+         (  builtin_protocol_feature_t::forward_setcode, builtin_protocol_feature_spec{
+            "FORWARD_SETCODE",
+            fc::variant("898082c59f921d0042e581f00a59d5ceb8be6f1d9c7a45b6f07c0e26eaee0222").as<digest_type>(),
+            // SHA256 hash of the raw message below within the comment delimiters (do not modify message below).
+/*
+Builtin protocol feature: FORWARD_SETCODE
+
+Forward eosio::setcode actions to the WebAssembly code deployed on the eosio account.
+*/
+            {}
+         } )
    ;
 
 
