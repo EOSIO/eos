@@ -3284,6 +3284,11 @@ namespace eosio {
                my->keepalive_timer->cancel();
          }
 
+         if( my->acceptor ) {
+            boost::system::error_code ec;
+            my->acceptor->close( ec );
+         }
+
          {
             fc_ilog( logger, "close ${s} connections", ("s", my->connections.size()) );
             std::unique_lock<std::shared_timed_mutex> g( my->connections_mtx );
@@ -3296,6 +3301,7 @@ namespace eosio {
 
          if( my->thread_pool ) {
             my->thread_pool->stop();
+            my->thread_pool.reset();
          }
          app().post( 0, [me = my](){} ); // keep my pointer alive until queue is drained
          fc_ilog( logger, "exit shutdown" );
