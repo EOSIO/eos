@@ -206,56 +206,70 @@ namespace eosio {
    class net_plugin_impl : public std::enable_shared_from_this<net_plugin_impl> {
    public:
       unique_ptr<tcp::acceptor>        acceptor;
-      tcp::endpoint                    listen_endpoint;
-      string                           p2p_address;
-      string                           p2p_server_address;
-      uint32_t                         max_client_count = 0;
-      uint32_t                         max_nodes_per_host = 1;
       std::atomic<uint32_t>            current_connection_id{0};
 
-      vector<string>                   supplied_peers;
-      vector<chain::public_key_type>   allowed_peers; ///< peer keys allowed to connect
-      std::map<chain::public_key_type,
-               chain::private_key_type> private_keys; ///< overlapping with producer keys, also authenticating non-producing nodes
-                                                      // thread safe, only updated in plugin initialize
+      unique_ptr< sync_manager >       sync_master;
+      unique_ptr< dispatch_manager >   dispatcher;
 
+      /**
+       * Thread safe, only updated in plugin initialize
+       *  @{
+       */
+      string                                p2p_address;
+      string                                p2p_server_address;
+
+      vector<string>                        supplied_peers;
+      vector<chain::public_key_type>        allowed_peers; ///< peer keys allowed to connect
+      std::map<chain::public_key_type,
+               chain::private_key_type>     private_keys; ///< overlapping with producer keys, also authenticating non-producing nodes
       enum possible_connections : char {
          None = 0,
             Producers = 1 << 0,
             Specified = 1 << 1,
             Any = 1 << 2
             };
-      possible_connections             allowed_connections{None};
+      possible_connections                  allowed_connections{None};
 
-      connection_ptr find_connection(const string& host)const;
-
-      mutable std::shared_timed_mutex  connections_mtx; // switch to std::shared_mutex in C++17
-      std::set< connection_ptr >       connections;     // todo: switch to a thread safe container to avoid big mutex over complete collection
-      unique_ptr< sync_manager >       sync_master;
-      unique_ptr< dispatch_manager >   dispatcher;
-
-      std::mutex                            connector_check_timer_mtx; 
-      unique_ptr<boost::asio::steady_timer> connector_check_timer;
-      int                                   connector_checks_in_flight{0};
-      std::mutex                            expire_timer_mtx;
-      unique_ptr<boost::asio::steady_timer> expire_timer;
-      std::mutex                            keepalive_timer_mtx;
-      unique_ptr<boost::asio::steady_timer> keepalive_timer;
       boost::asio::steady_timer::duration   connector_period;
       boost::asio::steady_timer::duration   txn_exp_period;
       boost::asio::steady_timer::duration   resp_expected_period;
       boost::asio::steady_timer::duration   keepalive_interval{std::chrono::seconds{32}};
+
       int                                   max_cleanup_time_ms = 0;
+      uint32_t                              max_client_count = 0;
+      uint32_t                              max_nodes_per_host = 1;
+
+      /// Peer clock may be no more than 1 second skewed from our clock, including network latency.
+      const std::chrono::system_clock::duration peer_authentication_interval{std::chrono::seconds{1}};
+
+      bool                                  network_version_match = false;
+      chain_id_type                         chain_id;
+      fc::sha256                            node_id;
+      string                                user_agent_name;
+
+      eosio::db_read_mode                   db_read_mode = eosio::db_read_mode::SPECULATIVE;
+      chain_plugin*                         chain_plug = nullptr;
+      producer_plugin*                      producer_plug = nullptr;
+      bool                                  use_socket_read_watermark = false;
+      /** @} */
+
+      mutable std::shared_timed_mutex       connections_mtx; // switch to std::shared_mutex in C++17
+      std::set< connection_ptr >            connections;     // todo: switch to a thread safe container to avoid big mutex over complete collection
+
+      std::mutex                            connector_check_timer_mtx;
+      unique_ptr<boost::asio::steady_timer> connector_check_timer;
+      int                                   connector_checks_in_flight{0};
+
+      std::mutex                            expire_timer_mtx;
+      unique_ptr<boost::asio::steady_timer> expire_timer;
+
+      std::mutex                            keepalive_timer_mtx;
+      unique_ptr<boost::asio::steady_timer> keepalive_timer;
+
       std::atomic<bool>                     in_shutdown{false};
 
-      const std::chrono::system_clock::duration peer_authentication_interval{std::chrono::seconds{1}}; ///< Peer clock may be no more than 1 second skewed from our clock, including network latency.
-
-      bool                          network_version_match = false;
-      chain_id_type                 chain_id; // thread safe, only updated in plugin_initialize
-      fc::sha256                    node_id;  // thread safe, only updated in plugin initialize
-      string                        user_agent_name; // thread safe, only updated in plugin initialize
-
-      mutable std::mutex            chain_info_mtx;
+   private:
+      mutable std::mutex            chain_info_mtx; // protects chain_*
       uint32_t                      chain_lib_num{0};
       uint32_t                      chain_head_blk_num{0};
       uint32_t                      chain_fork_head_blk_num{0};
@@ -263,13 +277,7 @@ namespace eosio {
       block_id_type                 chain_head_blk_id;
       block_id_type                 chain_fork_head_blk_id;
 
-      eosio::db_read_mode           db_read_mode = eosio::db_read_mode::SPECULATIVE;
-
-      chain_plugin*                 chain_plug = nullptr;
-      producer_plugin*              producer_plug = nullptr;
-
-      bool                          use_socket_read_watermark = false; // thread safe, not modified outside plugin_initialize
-
+   public:
       compat::channels::transaction_ack::channel_type::handle  incoming_transaction_ack_subscription;
       channels::irreversible_block::channel_type::handle       incoming_irreversible_block_subscription;
 
@@ -285,34 +293,6 @@ namespace eosio {
       void on_accepted_block( const block_state_ptr& bs );
       void transaction_ack(const std::pair<fc::exception_ptr, transaction_metadata_ptr>&);
       void on_irreversible_block( const block_state_ptr& blk );
-
-      static bool is_valid( const handshake_message& msg );
-
-      void handle_message(const connection_ptr& c, const handshake_message& msg);
-      void handle_message(const connection_ptr& c, const chain_size_message& msg);
-      void handle_message(const connection_ptr& c, const go_away_message& msg );
-      /** \name Peer Timestamps
-       *  Time message handling
-       *  @{
-       */
-      /** \brief Process time_message
-       *
-       * Calculate offset, delay and dispersion.  Note carefully the
-       * implied processing.  The first-order difference is done
-       * directly in 64-bit arithmetic, then the result is converted
-       * to floating double.  All further processing is in
-       * floating-double arithmetic with rounding done by the hardware.
-       * This is necessary in order to avoid overflow and preserve precision.
-       */
-      void handle_message(const connection_ptr& c, const time_message& msg);
-      /** @} */
-      void handle_message(const connection_ptr& c, const notice_message& msg);
-      void handle_message(const connection_ptr& c, const request_message& msg);
-      void handle_message(const connection_ptr& c, const sync_request_message& msg);
-      void handle_message(const connection_ptr& c, const signed_block& msg) = delete; // signed_block_ptr overload used instead
-      void handle_message(const connection_ptr& c, const signed_block_ptr& msg);
-      void handle_message(const connection_ptr& c, const packed_transaction& msg) = delete; // packed_transaction_ptr overload used instead
-      void handle_message(const connection_ptr& c, const packed_transaction_ptr& msg);
 
       void start_conn_timer(boost::asio::steady_timer::duration du, std::weak_ptr<connection> from_connection);
       void start_expire_timer();
@@ -352,7 +332,9 @@ namespace eosio {
        */
       chain::signature_type sign_compact(const chain::public_key_type& signer, const fc::sha256& digest) const;
 
-      uint16_t to_protocol_version(uint16_t v);
+      constexpr uint16_t to_protocol_version(uint16_t v);
+
+      connection_ptr find_connection(const string& host)const; // must call with held mutex
    };
 
    const fc::string logger_name("net_plugin_impl");
@@ -672,7 +654,7 @@ namespace eosio {
        * packet is placed on the send queue.  Calls the kernel time of
        * day routine and converts to a (at least) 64 bit integer.
        */
-      tstamp get_time()
+      static tstamp get_time()
       {
          return std::chrono::system_clock::now().time_since_epoch().count();
       }
@@ -707,6 +689,34 @@ namespace eosio {
                        bool to_sync_queue = false);
       void do_queue_write(int priority);
 
+      static bool is_valid( const handshake_message& msg );
+
+      void handle_message( const handshake_message& msg );
+      void handle_message( const chain_size_message& msg );
+      void handle_message( const go_away_message& msg );
+      /** \name Peer Timestamps
+       *  Time message handling
+       *  @{
+       */
+      /** \brief Process time_message
+       *
+       * Calculate offset, delay and dispersion.  Note carefully the
+       * implied processing.  The first-order difference is done
+       * directly in 64-bit arithmetic, then the result is converted
+       * to floating double.  All further processing is in
+       * floating-double arithmetic with rounding done by the hardware.
+       * This is necessary in order to avoid overflow and preserve precision.
+       */
+      void handle_message( const time_message& msg );
+      /** @} */
+      void handle_message( const notice_message& msg );
+      void handle_message( const request_message& msg );
+      void handle_message( const sync_request_message& msg );
+      void handle_message( const signed_block& msg ) = delete; // signed_block_ptr overload used instead
+      void handle_message( const signed_block_ptr& msg );
+      void handle_message( const packed_transaction& msg ) = delete; // packed_transaction_ptr overload used instead
+      void handle_message( const packed_transaction_ptr& msg );
+
       fc::optional<fc::variant_object> _logger_variant;
       const fc::variant_object& get_logger_variant()  {
          if (!_logger_variant) {
@@ -728,9 +738,8 @@ namespace eosio {
 
    // called from connection strand
    struct msg_handler : public fc::visitor<void> {
-      net_plugin_impl& impl;
       connection_ptr c;
-      msg_handler( net_plugin_impl& imp, const connection_ptr& conn) : impl(imp), c(conn) {}
+      explicit msg_handler( const connection_ptr& conn) : c(conn) {}
 
       void operator()( const signed_block& msg ) const {
          EOS_ASSERT( false, plugin_config_exception, "operator()(signed_block&&) should be called" );
@@ -748,9 +757,9 @@ namespace eosio {
       void operator()( signed_block&& msg ) const {
          shared_ptr<signed_block> ptr = std::make_shared<signed_block>( std::move( msg ) );
          connection_wptr weak = c;
-         app().post(priority::high, [impl = &impl, ptr{std::move(ptr)}, weak{std::move(weak)}] {
+         app().post(priority::high, [ptr{std::move(ptr)}, weak{std::move(weak)}] {
             connection_ptr c = weak.lock();
-            if( c ) impl->handle_message( c, ptr );
+            if( c ) c->handle_message( ptr );
          });
       }
 
@@ -758,49 +767,49 @@ namespace eosio {
          // continue call to handle_message on connection strand
          fc_dlog( logger, "handle packed_transaction" );
          shared_ptr<packed_transaction> ptr = std::make_shared<packed_transaction>( std::move( msg ) );
-         impl.handle_message( c, ptr );
+         c->handle_message( ptr );
       }
 
       void operator()( const handshake_message& msg ) const {
          // continue call to handle_message on connection strand
          fc_dlog( logger, "handle handshake_message" );
-         impl.handle_message( c, msg );
+         c->handle_message( msg );
       }
 
       void operator()( const chain_size_message& msg ) const {
          // continue call to handle_message on connection strand
          fc_dlog( logger, "handle chain_size_message" );
-         impl.handle_message( c, msg );
+         c->handle_message( msg );
       }
 
       void operator()( const go_away_message& msg ) const {
          // continue call to handle_message on connection strand
          fc_dlog( logger, "handle go_away_message" );
-         impl.handle_message( c, msg );
+         c->handle_message( msg );
       }
 
       void operator()( const time_message& msg ) const {
          // continue call to handle_message on connection strand
          fc_dlog( logger, "handle time_message" );
-         impl.handle_message( c, msg );
+         c->handle_message( msg );
       }
 
       void operator()( const notice_message& msg ) const {
          // continue call to handle_message on connection strand
          fc_dlog( logger, "handle notice_message" );
-         impl.handle_message( c, msg );
+         c->handle_message( msg );
       }
 
       void operator()( const request_message& msg ) const {
          // continue call to handle_message on connection strand
          fc_dlog( logger, "handle request_message" );
-         impl.handle_message( c, msg );
+         c->handle_message( msg );
       }
 
       void operator()( const sync_request_message& msg ) const {
          // continue call to handle_message on connection strand
          fc_dlog( logger, "handle sync_request_message" );
-         impl.handle_message( c, msg );
+         c->handle_message( msg );
       }
    };
 
@@ -2325,7 +2334,7 @@ namespace eosio {
          auto ds = pending_message_buffer.create_datastream();
          net_message msg;
          fc::raw::unpack( ds, msg );
-         msg_handler m( *my_impl, shared_from_this() );
+         msg_handler m( shared_from_this() );
          if( msg.contains<signed_block>() ) {
             m( std::move( msg.get<signed_block>() ) );
          } else if( msg.contains<packed_transaction>() ) {
@@ -2365,7 +2374,7 @@ namespace eosio {
             chain_lib_id, chain_head_blk_id, chain_fork_head_blk_id );
    }
 
-   bool net_plugin_impl::is_valid( const handshake_message& msg ) {
+   bool connection::is_valid( const handshake_message& msg ) {
       // Do some basic validation of an incoming handshake_message, so things
       // that really aren't handshake messages can be quickly discarded without
       // affecting state.
@@ -2390,39 +2399,38 @@ namespace eosio {
       return valid;
    }
 
-   void net_plugin_impl::handle_message(const connection_ptr& c, const chain_size_message& msg) {
-      peer_ilog(c, "received chain_size_message");
+   void connection::handle_message( const chain_size_message& msg ) {
+      peer_ilog(this, "received chain_size_message");
    }
 
-   // called from connection strand
-   void net_plugin_impl::handle_message( const connection_ptr& c, const handshake_message& msg ) {
-      peer_ilog(c, "received handshake_message");
+   void connection::handle_message( const handshake_message& msg ) {
+      peer_ilog( this, "received handshake_message" );
       if( !is_valid( msg ) ) {
-         peer_elog( c, "bad handshake message");
-         c->enqueue( go_away_message( fatal_other ) );
+         peer_elog( this, "bad handshake message");
+         enqueue( go_away_message( fatal_other ) );
          return;
       }
       fc_dlog( logger, "received handshake gen ${g} from ${ep}, lib ${lib}, head ${head}",
-               ("g", msg.generation)( "ep", c->peer_name() )
+               ("g", msg.generation)( "ep", peer_name() )
                ( "lib", msg.last_irreversible_block_num )( "head", msg.head_num ) );
 
-      if( c->connecting ) {
-         c->connecting = false;
+      if( connecting ) {
+         connecting = false;
       }
       if (msg.generation == 1) {
          if( msg.node_id == node_id) {
             fc_elog( logger, "Self connection detected. Closing connection" );
-            c->enqueue( go_away_message( self ) );
+            enqueue( go_away_message( self ) );
             return;
          }
 
-         std::unique_lock<std::mutex> g_conn( c->conn_mtx );
-         if( c->peer_address().empty() || c->last_handshake_recv.node_id == fc::sha256()) {
+         std::unique_lock<std::mutex> g_conn( conn_mtx );
+         if( peer_address().empty() || last_handshake_recv.node_id == fc::sha256()) {
             g_conn.unlock();
             fc_dlog(logger, "checking for duplicate" );
             std::shared_lock<std::shared_timed_mutex> g_cnts( my_impl->connections_mtx );
-            for(const auto& check : connections) {
-               if(check == c)
+            for(const auto& check : my_impl->connections) {
+               if(check.get() == this)
                   continue;
                if(check->connected() && check->peer_name() == msg.p2p_address) {
                   // It's possible that both peers could arrive here at relatively the same time, so
@@ -2433,7 +2441,7 @@ namespace eosio {
                   auto check_time = check->last_handshake_sent.time + check->last_handshake_recv.time;
                   g_check_conn.unlock();
                   g_conn.lock();
-                  auto c_time = c->last_handshake_sent.time;
+                  auto c_time = last_handshake_sent.time;
                   g_conn.unlock();
                   if (msg.time + c_time <= check_time)
                      continue;
@@ -2442,48 +2450,49 @@ namespace eosio {
                   fc_dlog( logger, "sending go_away duplicate to ${ep}", ("ep",msg.p2p_address) );
                   go_away_message gam(duplicate);
                   gam.node_id = node_id;
-                  c->enqueue(gam);
-                  c->no_retry = duplicate;
-                  sync_master->send_handshakes();
+                  enqueue(gam);
+                  no_retry = duplicate;
+                  my_impl->sync_master->send_handshakes();
                   return;
                }
             }
          } else {
             fc_dlog( logger, "skipping duplicate check, addr == ${pa}, id = ${ni}",
-                     ("pa", c->peer_address())( "ni", c->last_handshake_recv.node_id ) );
+                     ("pa", peer_address())( "ni", last_handshake_recv.node_id ) );
             g_conn.unlock();
          }
 
-         if( msg.chain_id != chain_id) {
+         if( msg.chain_id != my_impl->chain_id ) {
             fc_elog( logger, "Peer on a different chain. Closing connection" );
-            c->enqueue( go_away_message(go_away_reason::wrong_chain) );
+            enqueue( go_away_message(go_away_reason::wrong_chain) );
             return;
          }
-         c->protocol_version = to_protocol_version(msg.network_version);
-         if(c->protocol_version != net_version) {
-            if (network_version_match) {
+         protocol_version = my_impl->to_protocol_version(msg.network_version);
+         if( protocol_version != net_version ) {
+            if( my_impl->network_version_match ) {
                fc_elog( logger, "Peer network version does not match expected ${nv} but got ${mnv}",
-                        ("nv", net_version)("mnv", c->protocol_version) );
-               c->enqueue(go_away_message(wrong_version));
+                        ("nv", net_version)("mnv", protocol_version) );
+               enqueue( go_away_message( wrong_version ) );
                return;
             } else {
                fc_ilog( logger, "Local network version: ${nv} Remote version: ${mnv}",
-                        ("nv", net_version)("mnv", c->protocol_version));
+                        ("nv", net_version)("mnv", protocol_version));
             }
          }
 
-         if(  c->node_id != msg.node_id) {
-            c->node_id = msg.node_id;
+         if( node_id != msg.node_id ) {
+            node_id = msg.node_id;
          }
 
-         if(!authenticate_peer(msg)) {
+         if( !my_impl->authenticate_peer( msg ) ) {
             fc_elog( logger, "Peer not authenticated.  Closing connection." );
-            c->enqueue(go_away_message(authentication));
+            enqueue( go_away_message( authentication ) );
             return;
          }
 
          uint32_t peer_lib = msg.last_irreversible_block_num;
-         app().post( priority::low, [peer_lib, chain_plug = this->chain_plug, c, msg_lib_id = msg.last_irreversible_block_id]() {
+         app().post( priority::low, [peer_lib, chain_plug = my_impl->chain_plug, c = shared_from_this(),
+                                     msg_lib_id = msg.last_irreversible_block_id]() {
             controller& cc = chain_plug->chain();
             uint32_t lib_num = cc.last_irreversible_block_num();
 
@@ -2510,67 +2519,67 @@ namespace eosio {
             }
          });
 
-         if (c->sent_handshake_count == 0) {
-            c->send_handshake();
+         if( sent_handshake_count == 0 ) {
+            send_handshake();
          }
       }
 
-      std::unique_lock<std::mutex> g_conn( c->conn_mtx );
-      c->last_handshake_recv = msg;
+      std::unique_lock<std::mutex> g_conn( conn_mtx );
+      last_handshake_recv = msg;
       g_conn.unlock();
-      c->_logger_variant.reset();
-      sync_master->recv_handshake( c, msg );
+      _logger_variant.reset();
+      my_impl->sync_master->recv_handshake( shared_from_this(), msg );
    }
 
-   void net_plugin_impl::handle_message(const connection_ptr& c, const go_away_message& msg) {
-      peer_wlog( c, "received go_away_message, reason = ${r}", ("r", reason_str( msg.reason )) );
-      c->no_retry = msg.reason;
+   void connection::handle_message( const go_away_message& msg ) {
+      peer_wlog( this, "received go_away_message, reason = ${r}", ("r", reason_str( msg.reason )) );
+      no_retry = msg.reason;
       if( msg.reason == duplicate ) {
-         c->node_id = msg.node_id;
+         node_id = msg.node_id;
       }
-      c->flush_queues();
-      c->close();
+      flush_queues();
+      close();
    }
 
-   void net_plugin_impl::handle_message(const connection_ptr& c, const time_message& msg) {
-      peer_ilog( c, "received time_message" );
+   void connection::handle_message( const time_message& msg ) {
+      peer_ilog( this, "received time_message" );
       /* We've already lost however many microseconds it took to dispatch
        * the message, but it can't be helped.
        */
-      msg.dst = c->get_time();
+      msg.dst = get_time();
 
       // If the transmit timestamp is zero, the peer is horribly broken.
       if(msg.xmt == 0)
          return;                 /* invalid timestamp */
 
-      if(msg.xmt == c->xmt)
+      if(msg.xmt == xmt)
          return;                 /* duplicate packet */
 
-      c->xmt = msg.xmt;
-      c->rec = msg.rec;
-      c->dst = msg.dst;
+      xmt = msg.xmt;
+      rec = msg.rec;
+      dst = msg.dst;
 
-      if(msg.org == 0)
-         {
-            c->send_time(msg);
-            return;  // We don't have enough data to perform the calculation yet.
-         }
+      if( msg.org == 0 ) {
+         send_time( msg );
+         return;  // We don't have enough data to perform the calculation yet.
+      }
 
-      c->offset = (double(c->rec - c->org) + double(msg.xmt - c->dst)) / 2;
+      offset = (double(rec - org) + double(msg.xmt - dst)) / 2;
       double NsecPerUsec{1000};
 
-      if(logger.is_enabled(fc::log_level::all))
-         logger.log(FC_LOG_MESSAGE(all, "Clock offset is ${o}ns (${us}us)", ("o", c->offset)("us", c->offset/NsecPerUsec)));
-      c->org = 0;
-      c->rec = 0;
+      if( logger.is_enabled( fc::log_level::all ) )
+         logger.log( FC_LOG_MESSAGE( all, "Clock offset is ${o}ns (${us}us)",
+                                     ("o", offset)( "us", offset / NsecPerUsec ) ) );
+      org = 0;
+      rec = 0;
    }
 
-   void net_plugin_impl::handle_message(const connection_ptr& c, const notice_message& msg) {
+   void connection::handle_message( const notice_message& msg ) {
       // peer tells us about one or more blocks or txns. When done syncing, forward on
       // notices of previously unknown blocks or txns,
       //
-      peer_ilog( c, "received notice_message" );
-      c->connecting = false;
+      peer_ilog( this, "received notice_message" );
+      connecting = false;
       if( msg.known_trx.mode != none ) {
          fc_dlog( logger, "this is a ${m} notice with ${n} transactions",
                   ("m", modes_str( msg.known_trx.mode ))( "n", msg.known_trx.pending ) );
@@ -2579,8 +2588,8 @@ namespace eosio {
       case none:
          break;
       case last_irr_catch_up: {
-         std::unique_lock<std::mutex> g_conn( c->conn_mtx );
-         c->last_handshake_recv.head_num = msg.known_trx.pending;
+         std::unique_lock<std::mutex> g_conn( conn_mtx );
+         last_handshake_recv.head_num = msg.known_trx.pending;
          g_conn.unlock();
          break;
       }
@@ -2588,12 +2597,13 @@ namespace eosio {
          break;
       }
       case normal: {
-         dispatcher->recv_notice(c, msg, false);
+         my_impl->dispatcher->recv_notice( shared_from_this(), msg, false );
       }
       }
 
-      if (msg.known_blocks.mode != none) {
-         fc_dlog(logger,"this is a ${m} notice with ${n} blocks", ("m",modes_str(msg.known_blocks.mode))("n",msg.known_blocks.pending));
+      if( msg.known_blocks.mode != none ) {
+         fc_dlog( logger, "this is a ${m} notice with ${n} blocks",
+                  ("m", modes_str( msg.known_blocks.mode ))( "n", msg.known_blocks.pending ) );
       }
       switch (msg.known_blocks.mode) {
       case none : {
@@ -2601,36 +2611,37 @@ namespace eosio {
       }
       case last_irr_catch_up:
       case catch_up: {
-         sync_master->sync_recv_notice(c,msg);
+         my_impl->sync_master->sync_recv_notice( shared_from_this(), msg );
          break;
       }
       case normal : {
-         dispatcher->recv_notice(c, msg, false);
+         my_impl->dispatcher->recv_notice( shared_from_this(), msg, false );
          break;
       }
       default: {
-         peer_elog(c, "bad notice_message : invalid known_blocks.mode ${m}",("m",static_cast<uint32_t>(msg.known_blocks.mode)));
+         peer_elog( this, "bad notice_message : invalid known_blocks.mode ${m}",
+                    ("m", static_cast<uint32_t>(msg.known_blocks.mode)) );
       }
       }
    }
 
-   void net_plugin_impl::handle_message(const connection_ptr& c, const request_message& msg) {
+   void connection::handle_message( const request_message& msg ) {
       if( msg.req_blocks.ids.size() > 1 ) {
          fc_elog( logger, "Invalid request_message, req_blocks.ids.size ${s}, closing ${p}",
-                  ("s", msg.req_blocks.ids.size())("p",c->peer_name()) );
-         c->close();
+                  ("s", msg.req_blocks.ids.size())( "p", peer_name() ) );
+         close();
          return;
       }
 
       switch (msg.req_blocks.mode) {
       case catch_up :
-         peer_ilog(c,  "received request_message:catch_up");
-         c->blk_send_branch();
+         peer_ilog( this, "received request_message:catch_up" );
+         blk_send_branch();
          break;
       case normal :
-         peer_ilog(c, "received request_message:normal");
+         peer_ilog( this, "received request_message:normal" );
          if( !msg.req_blocks.ids.empty() ) {
-            c->blk_send(msg.req_blocks.ids.back());
+            blk_send( msg.req_blocks.ids.back() );
          }
          break;
       default:;
@@ -2641,29 +2652,29 @@ namespace eosio {
       case catch_up :
          break;
       case none :
-         if(msg.req_blocks.mode == none)
-            c->stop_send();
+         if( msg.req_blocks.mode == none ) {
+            stop_send();
+         }
          // no break
       case normal :
          if( !msg.req_trx.ids.empty() ) {
             fc_elog( logger, "Invalid request_message, req_trx.ids.size ${s}", ("s", msg.req_trx.ids.size()) );
-            c->close();
+            close();
             return;
          }
          break;
       default:;
       }
-
    }
 
-   void net_plugin_impl::handle_message( const connection_ptr& c, const sync_request_message& msg ) {
+   void connection::handle_message( const sync_request_message& msg ) {
       fc_dlog( logger, "peer requested ${start} to ${end}", ("start", msg.start_block)("end", msg.end_block) );
       if( msg.end_block == 0 ) {
-         c->peer_requested.reset();
-         c->flush_queues();
+         peer_requested.reset();
+         flush_queues();
       } else {
-         c->peer_requested = sync_state( msg.start_block, msg.end_block, msg.start_block-1);
-         c->enqueue_sync_block();
+         peer_requested = sync_state( msg.start_block, msg.end_block, msg.start_block-1);
+         enqueue_sync_block();
       }
    }
 
@@ -2674,27 +2685,27 @@ namespace eosio {
              trx->get_signatures().size() * sizeof(signature_type);
    }
 
-   // called from connection strand
-   void net_plugin_impl::handle_message(const connection_ptr& c, const packed_transaction_ptr& trx) {
-      fc_dlog(logger, "got a packed transaction, cancel wait");
-      if( db_read_mode == eosio::db_read_mode::READ_ONLY ) {
-         fc_dlog(logger, "got a txn in read-only mode - dropping");
+   void connection::handle_message( const packed_transaction_ptr& trx ) {
+      fc_dlog( logger, "got a packed transaction, cancel wait" );
+      if( my_impl->db_read_mode == eosio::db_read_mode::READ_ONLY ) {
+         fc_dlog( logger, "got a txn in read-only mode - dropping" );
          return;
       }
 
       auto ptrx = std::make_shared<transaction_metadata>( trx );
       const auto& tid = ptrx->id;
-      peer_ilog(c, "received packed_transaction ${id}", ("id", tid));
+      peer_ilog( this, "received packed_transaction ${id}", ("id", tid) );
 
-      bool have_trx = dispatcher->have_txn( tid );
-      dispatcher->recv_transaction(c, ptrx);
+      bool have_trx = my_impl->dispatcher->have_txn( tid );
+      my_impl->dispatcher->recv_transaction( shared_from_this(), ptrx );
       if( have_trx ) {
          fc_dlog( logger, "got a duplicate transaction - dropping ${id}", ("id", tid) );
          return;
       }
 
-      c->trx_in_progress_size += calc_trx_size( ptrx->packed_trx );
-      chain_plug->accept_transaction(ptrx, [c, this, ptrx](const static_variant<fc::exception_ptr, transaction_trace_ptr>& result) {
+      trx_in_progress_size += calc_trx_size( ptrx->packed_trx );
+      my_impl->chain_plug->accept_transaction( ptrx,
+            [c = shared_from_this(), ptrx](const static_variant<fc::exception_ptr, transaction_trace_ptr>& result) {
          // next (this lambda) called from application thread
          c->trx_in_progress_size -= calc_trx_size( ptrx->packed_trx );
          bool accepted = false;
@@ -2712,7 +2723,7 @@ namespace eosio {
             }
          }
 
-         controller& cc = chain_plug->chain();
+         controller& cc = my_impl->chain_plug->chain();
          uint32_t head_blk_num = cc.head_block_num();
 
          boost::asio::post( my_impl->thread_pool->get_executor(), [accepted, ptrx{std::move(ptrx)}, head_blk_num]() {
@@ -2726,11 +2737,13 @@ namespace eosio {
    }
 
    // called from application thread
-   void net_plugin_impl::handle_message(const connection_ptr& c, const signed_block_ptr& msg) {
-      controller& cc = chain_plug->chain();
+   void connection::handle_message( const signed_block_ptr& msg ) {
+      controller& cc = my_impl->chain_plug->chain();
       block_id_type blk_id = msg->id();
       uint32_t blk_num = msg->block_num();
-      fc_dlog(logger, "canceling wait on ${p}", ("p",c->peer_name()));
+      fc_dlog( logger, "canceling wait on ${p}", ("p", peer_name()) );
+      // use c in this method instead of this to highlight that all methods called on c-> must be thread safe
+      connection_ptr c = shared_from_this();
       c->cancel_wait();
 
       // if we have closed connection then stop processing
@@ -2739,7 +2752,7 @@ namespace eosio {
 
       try {
          if( cc.fetch_block_by_id(blk_id) ) {
-            c->strand.post( [sync_master = sync_master.get(), c, blk_id, blk_num]() {
+            c->strand.post( [sync_master = my_impl->sync_master.get(), c, blk_id, blk_num]() {
                sync_master->sync_recv_block( c, blk_id, blk_num );
             });
             return;
@@ -2749,16 +2762,13 @@ namespace eosio {
          fc_elog( logger,"Caught an unknown exception trying to recall blockID" );
       }
 
-//      c->strand.post( [dispatcher = dispatcher.get(), c, blk_id, blk_num]() {
-//         dispatcher->recv_block( c, blk_id, blk_num );
-//      });
       fc::microseconds age( fc::time_point::now() - msg->timestamp);
-      peer_ilog(c, "received signed_block : #${n} block age in secs = ${age}",
-              ("n",blk_num)("age",age.to_seconds()));
+      peer_ilog( c, "received signed_block : #${n} block age in secs = ${age}",
+                 ("n", blk_num)( "age", age.to_seconds() ) );
 
       go_away_reason reason = fatal_other;
       try {
-         chain_plug->accept_block(msg);
+         my_impl->chain_plug->accept_block(msg);
          reason = no_reason;
       } catch( const unlinkable_block_exception &ex) {
          peer_elog(c, "bad signed_block : ${m}", ("m",ex.what()));
@@ -2780,15 +2790,15 @@ namespace eosio {
       }
 
       if( reason == no_reason ) {
-         boost::asio::post( my_impl->thread_pool->get_executor(), [self = this, msg]() {
-            self->dispatcher->update_txns_block_num( msg );
+         boost::asio::post( my_impl->thread_pool->get_executor(), [dispatcher = my_impl->dispatcher.get(), msg]() {
+            dispatcher->update_txns_block_num( msg );
          });
-         c->strand.post( [sync_master = sync_master.get(), dispatcher = dispatcher.get(), c, blk_id, blk_num]() {
+         c->strand.post( [sync_master = my_impl->sync_master.get(), dispatcher = my_impl->dispatcher.get(), c, blk_id, blk_num]() {
             dispatcher->recv_block( c, blk_id, blk_num );
             sync_master->sync_recv_block( c, blk_id, blk_num );
          });
       } else {
-         c->strand.post( [sync_master = sync_master.get(), dispatcher = dispatcher.get(), c, blk_id, blk_num]() {
+         c->strand.post( [sync_master = my_impl->sync_master.get(), dispatcher = my_impl->dispatcher.get(), c, blk_id, blk_num]() {
             sync_master->rejected_block( c, blk_num );
             dispatcher->rejected_block( blk_id );
          });
@@ -3185,6 +3195,7 @@ namespace eosio {
       // currently thread_pool only used for server_ioc
       my->thread_pool.emplace( "net", my->thread_pool_size );
 
+      tcp::endpoint listen_endpoint;
       if( my->p2p_address.size() > 0 ) {
          auto host = my->p2p_address.substr( 0, my->p2p_address.find( ':' ));
          auto port = my->p2p_address.substr( host.size() + 1, my->p2p_address.size());
@@ -3192,14 +3203,14 @@ namespace eosio {
          // Note: need to add support for IPv6 too?
 
          tcp::resolver resolver( my->thread_pool->get_executor() );
-         my->listen_endpoint = *resolver.resolve( query );
+         listen_endpoint = *resolver.resolve( query );
 
          my->acceptor.reset( new tcp::acceptor( my_impl->thread_pool->get_executor() ) );
 
          if( !my->p2p_server_address.empty() ) {
             my->p2p_address = my->p2p_server_address;
          } else {
-            if( my->listen_endpoint.address().to_v4() == address_v4::any()) {
+            if( listen_endpoint.address().to_v4() == address_v4::any()) {
                boost::system::error_code ec;
                auto host = host_name( ec );
                if( ec.value() != boost::system::errc::success ) {
@@ -3221,13 +3232,13 @@ namespace eosio {
       my->ticker();
 
       if( my->acceptor ) {
-         my->acceptor->open(my->listen_endpoint.protocol());
+         my->acceptor->open(listen_endpoint.protocol());
          my->acceptor->set_option(tcp::acceptor::reuse_address(true));
          try {
-           my->acceptor->bind(my->listen_endpoint);
+           my->acceptor->bind(listen_endpoint);
          } catch (const std::exception& e) {
            fc_elog( logger, "net_plugin::plugin_startup failed to bind to port ${port}",
-                    ("port", my->listen_endpoint.port()));
+                    ("port", listen_endpoint.port()));
            throw e;
          }
          my->acceptor->listen();
@@ -3364,7 +3375,7 @@ namespace eosio {
       return connection_ptr();
    }
 
-   uint16_t net_plugin_impl::to_protocol_version(uint16_t v) {
+   constexpr uint16_t net_plugin_impl::to_protocol_version(uint16_t v) {
       if (v >= net_version_base) {
          v -= net_version_base;
          return (v > net_version_range) ? 0 : v;
