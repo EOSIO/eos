@@ -8,9 +8,11 @@
 #include <eosio/chain/global_property_object.hpp>
 #include <eosio/chain/generated_transaction_object.hpp>
 #include <eosio/chain/transaction_object.hpp>
+#include <eosio/chain/thread_utils.hpp>
 #include <eosio/chain/snapshot.hpp>
 
 #include <fc/io/json.hpp>
+#include <fc/log/logger_config.hpp>
 #include <fc/smart_ref_impl.hpp>
 #include <fc/scoped_exit.hpp>
 
@@ -132,7 +134,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       std::map<chain::account_name, uint32_t>                   _producer_watermarks;
       pending_block_mode                                        _pending_block_mode;
       transaction_id_with_expiry_index                          _persistent_transactions;
-      fc::optional<boost::asio::thread_pool>                    _thread_pool;
+      fc::optional<named_thread_pool>                           _thread_pool;
 
       int32_t                                                   _max_transaction_time_ms;
       fc::microseconds                                          _max_irreversible_block_age_us;
@@ -351,10 +353,11 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       void on_incoming_transaction_async(const transaction_metadata_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next) {
          chain::controller& chain = chain_plug->chain();
          const auto& cfg = chain.get_global_properties().configuration;
-         transaction_metadata::create_signing_keys_future( trx, *_thread_pool, chain.get_chain_id(), fc::microseconds( cfg.max_transaction_cpu_usage ) );
-         boost::asio::post( *_thread_pool, [self = this, trx, persist_until_expired, next]() {
-            if( trx->signing_keys_future.valid() )
-               trx->signing_keys_future.wait();
+         signing_keys_future_type future = transaction_metadata::start_recover_keys( trx, _thread_pool->get_executor(),
+               chain.get_chain_id(), fc::microseconds( cfg.max_transaction_cpu_usage ) );
+         boost::asio::post( _thread_pool->get_executor(), [self = this, future, trx, persist_until_expired, next]() {
+            if( future.valid() )
+               future.wait();
             app().post(priority::low, [self, trx, persist_until_expired, next]() {
                self->process_incoming_transaction_async( trx, persist_until_expired, next );
             });
@@ -688,7 +691,7 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
    auto thread_pool_size = options.at( "producer-threads" ).as<uint16_t>();
    EOS_ASSERT( thread_pool_size > 0, plugin_config_exception,
                "producer-threads ${num} must be greater than 0", ("num", thread_pool_size));
-   my->_thread_pool.emplace( thread_pool_size );
+   my->_thread_pool.emplace( "prod", thread_pool_size );
 
    if( options.count( "snapshots-dir" )) {
       auto sd = options.at( "snapshots-dir" ).as<bfs::path>();
@@ -785,7 +788,6 @@ void producer_plugin::plugin_shutdown() {
    }
 
    if( my->_thread_pool ) {
-      my->_thread_pool->join();
       my->_thread_pool->stop();
    }
    my->_accepted_block_connection.reset();

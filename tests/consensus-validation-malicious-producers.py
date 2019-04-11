@@ -246,7 +246,7 @@ def myTest(transWillEnterBlock):
         topo="mesh"
         delay=0
         Print("Stand up cluster")
-        if cluster.launch(pnodes, total_nodes, topo, delay) is False:
+        if cluster.launch(pnodes=pnodes, totalNodes=total_nodes, topo=topo, delay=delay) is False:
             error("Failed to stand up eos cluster.")
             return False
 

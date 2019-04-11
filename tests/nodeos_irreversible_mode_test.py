@@ -51,13 +51,13 @@ def makeSnapshot(nodeId):
   urllib.request.urlopen(req)
 
 def backupBlksDir(nodeId):
-   dataDir = Cluster.getDataDir(nodeId)
+   dataDir = Utils.getNodeDataDir(nodeId)
    sourceDir = os.path.join(dataDir, "blocks")
    destinationDir = os.path.join(os.path.dirname(dataDir), os.path.basename(dataDir) + "-backup", "blocks")
    shutil.copytree(sourceDir, destinationDir)
 
 def recoverBackedupBlksDir(nodeId):
-   dataDir = Cluster.getDataDir(nodeId)
+   dataDir = Utils.getNodeDataDir(nodeId)
    # Delete existing one and copy backed up one
    existingBlocksDir = os.path.join(dataDir, "blocks")
    backedupBlocksDir = os.path.join(os.path.dirname(dataDir), os.path.basename(dataDir) + "-backup", "blocks")
@@ -65,7 +65,7 @@ def recoverBackedupBlksDir(nodeId):
    shutil.copytree(backedupBlocksDir, existingBlocksDir)
 
 def getLatestSnapshot(nodeId):
-   snapshotDir = os.path.join(Cluster.getDataDir(nodeId), "snapshots")
+   snapshotDir = os.path.join(Utils.getNodeDataDir(nodeId), "snapshots")
    snapshotDirContents = os.listdir(snapshotDir)
    assert len(snapshotDirContents) > 0
    snapshotDirContents.sort()
@@ -73,12 +73,12 @@ def getLatestSnapshot(nodeId):
 
 
 def removeReversibleBlks(nodeId):
-   dataDir = Cluster.getDataDir(nodeId)
+   dataDir = Utils.getNodeDataDir(nodeId)
    reversibleBlks = os.path.join(dataDir, "blocks", "reversible")
    shutil.rmtree(reversibleBlks, ignore_errors=True)
 
 def removeState(nodeId):
-   dataDir = Cluster.getDataDir(nodeId)
+   dataDir = Utils.getNodeDataDir(nodeId)
    state = os.path.join(dataDir, "state")
    shutil.rmtree(state, ignore_errors=True)
 

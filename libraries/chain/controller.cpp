@@ -25,6 +25,7 @@
 
 #include <chainbase/chainbase.hpp>
 #include <fc/io/json.hpp>
+#include <fc/log/logger_config.hpp>
 #include <fc/scoped_exit.hpp>
 #include <fc/variant_object.hpp>
 
@@ -223,7 +224,7 @@ struct controller_impl {
    optional<fc::microseconds>     subjective_cpu_leeway;
    bool                           trusted_producer_light_validation = false;
    uint32_t                       snapshot_head_block = 0;
-   boost::asio::thread_pool       thread_pool;
+   named_thread_pool              thread_pool;
 
    typedef pair<scope_name,action_name>                   handler_key;
    map< account_name, map<handler_key, apply_handler> >   apply_handlers;
@@ -297,7 +298,7 @@ struct controller_impl {
     conf( cfg ),
     chain_id( cfg.genesis.compute_chain_id() ),
     read_mode( cfg.read_mode ),
-    thread_pool( cfg.thread_pool_size )
+    thread_pool( "chain", cfg.thread_pool_size )
    {
 
       fork_db.open( [this]( block_timestamp_type timestamp,
@@ -668,6 +669,7 @@ struct controller_impl {
    }
 
    ~controller_impl() {
+      thread_pool.stop();
       pending.reset();
    }
 
@@ -954,8 +956,14 @@ struct controller_impl {
       // Deliver onerror action containing the failed deferred transaction directly back to the sender.
       etrx.actions.emplace_back( vector<permission_level>{{gtrx.sender, config::active_name}},
                                  onerror( gtrx.sender_id, gtrx.packed_trx.data(), gtrx.packed_trx.size() ) );
-      etrx.expiration = self.pending_block_time() + fc::microseconds(999'999); // Round up to avoid appearing expired
-      etrx.set_reference_block( self.head_block_id() );
+      if( self.is_builtin_activated( builtin_protocol_feature_t::no_duplicate_deferred_id ) ) {
+         etrx.expiration = time_point_sec();
+         etrx.ref_block_num = 0;
+         etrx.ref_block_prefix = 0;
+      } else {
+         etrx.expiration = self.pending_block_time() + fc::microseconds(999'999); // Round up to nearest second to avoid appearing expired
+         etrx.set_reference_block( self.head_block_id() );
+      }
 
       transaction_context trx_context( self, etrx, etrx.id(), start );
       trx_context.deadline = deadline;
@@ -966,7 +974,7 @@ struct controller_impl {
       try {
          trx_context.init_for_implicit_trx();
          trx_context.published = gtrx.published;
-         trx_context.execute_action( trx_context.schedule_action( etrx.actions.back(), gtrx.sender ) );
+         trx_context.execute_action( trx_context.schedule_action( etrx.actions.back(), gtrx.sender, false, 0, 0 ), 0 );
          trx_context.finalize(); // Automatically rounds up network and CPU usage in trace and bills payers if successful
 
          auto restore = make_block_restore_point();
@@ -977,6 +985,8 @@ struct controller_impl {
          trx_context.squash();
          restore.cancel();
          return trace;
+      } catch( const disallowed_transaction_extensions_bad_block_exception& ) {
+         throw;
       } catch( const protocol_feature_bad_block_exception& ) {
          throw;
       } catch( const fc::exception& e ) {
@@ -1087,7 +1097,13 @@ struct controller_impl {
          trx_context.init_for_deferred_trx( gtrx.published );
 
          if( trx_context.enforce_whiteblacklist && pending->_block_status == controller::block_status::incomplete ) {
-            check_actor_list( trx_context.bill_to_accounts ); // Assumes bill_to_accounts is the set of actors authorizing the transaction
+            flat_set<account_name> actors;
+            for( const auto& act : trx_context.trx.actions ) {
+               for( const auto& auth : act.authorization ) {
+                  actors.insert( auth.actor );
+               }
+            }
+            check_actor_list( actors );
          }
 
          trx_context.exec();
@@ -1113,6 +1129,8 @@ struct controller_impl {
          restore.cancel();
 
          return trace;
+      } catch( const disallowed_transaction_extensions_bad_block_exception& ) {
+         throw;
       } catch( const protocol_feature_bad_block_exception& ) {
          throw;
       } catch( const fc::exception& e ) {
@@ -1220,9 +1238,10 @@ struct controller_impl {
          auto start = fc::time_point::now();
          const bool check_auth = !self.skip_auth_check() && !trx->implicit;
          // call recover keys so that trx->sig_cpu_usage is set correctly
-         const flat_set<public_key_type>& recovered_keys = check_auth ? trx->recover_keys( chain_id ) : flat_set<public_key_type>();
+         const fc::microseconds sig_cpu_usage = check_auth ? std::get<0>( trx->recover_keys( chain_id ) ) : fc::microseconds();
+         const flat_set<public_key_type>& recovered_keys = check_auth ? std::get<1>( trx->recover_keys( chain_id ) ) : flat_set<public_key_type>();
          if( !explicit_billed_cpu_time ) {
-            fc::microseconds already_consumed_time( EOS_PERCENT(trx->sig_cpu_usage.count(), conf.sig_cpu_bill_pct) );
+            fc::microseconds already_consumed_time( EOS_PERCENT(sig_cpu_usage.count(), conf.sig_cpu_bill_pct) );
 
             if( start.time_since_epoch() <  already_consumed_time ) {
                start = fc::time_point();
@@ -1305,6 +1324,10 @@ struct controller_impl {
                unapplied_transactions.erase( trx->signed_id );
             }
             return trace;
+         } catch( const disallowed_transaction_extensions_bad_block_exception& ) {
+            throw;
+         } catch( const protocol_feature_bad_block_exception& ) {
+            throw;
          } catch (const fc::exception& e) {
             trace->except = e;
             trace->except_ptr = std::current_exception();
@@ -1649,7 +1672,7 @@ struct controller_impl {
                auto& pt = receipt.trx.get<packed_transaction>();
                auto mtrx = std::make_shared<transaction_metadata>( std::make_shared<packed_transaction>( pt ) );
                if( !self.skip_auth_check() ) {
-                  transaction_metadata::create_signing_keys_future( mtrx, thread_pool, chain_id, microseconds::maximum() );
+                  transaction_metadata::start_recover_keys( mtrx, thread_pool.get_executor(), chain_id, microseconds::maximum() );
                }
                packed_transactions.emplace_back( std::move( mtrx ) );
             }
@@ -1733,7 +1756,7 @@ struct controller_impl {
       EOS_ASSERT( prev, unlinkable_block_exception,
                   "unlinkable block ${id}", ("id", id)("previous", b->previous) );
 
-      return async_thread_pool( thread_pool, [b, prev, control=this]() {
+      return async_thread_pool( thread_pool.get_executor(), [b, prev, control=this]() {
          const bool skip_validate_signee = false;
          return std::make_shared<block_state>(
                         *prev,
@@ -2141,8 +2164,14 @@ struct controller_impl {
 
       signed_transaction trx;
       trx.actions.emplace_back(std::move(on_block_act));
-      trx.set_reference_block(self.head_block_id());
-      trx.expiration = self.pending_block_time() + fc::microseconds(999'999); // Round up to nearest second to avoid appearing expired
+      if( self.is_builtin_activated( builtin_protocol_feature_t::no_duplicate_deferred_id ) ) {
+         trx.expiration = time_point_sec();
+         trx.ref_block_num = 0;
+         trx.ref_block_prefix = 0;
+      } else {
+         trx.expiration = self.pending_block_time() + fc::microseconds(999'999); // Round up to nearest second to avoid appearing expired
+         trx.set_reference_block( self.head_block_id() );
+      }
       return trx;
    }
 
@@ -2409,8 +2438,8 @@ void controller::abort_block() {
    my->abort_block();
 }
 
-boost::asio::thread_pool& controller::get_thread_pool() {
-   return my->thread_pool;
+boost::asio::io_context& controller::get_thread_pool() {
+   return my->thread_pool.get_executor();
 }
 
 std::future<block_state_ptr> controller::create_block_state_future( const signed_block_ptr& b ) {

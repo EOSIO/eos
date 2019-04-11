@@ -987,8 +987,6 @@ void chain_plugin::plugin_shutdown() {
    my->irreversible_block_connection.reset();
    my->accepted_transaction_connection.reset();
    my->applied_transaction_connection.reset();
-   my->chain->get_thread_pool().stop();
-   my->chain->get_thread_pool().join();
    my->chain.reset();
 }
 
@@ -1903,20 +1901,20 @@ void read_write::push_transaction(const read_write::push_transaction_params& par
 
                   // Create map of (parent_action_ordinal, global_sequence) with action trace
                   std::map< std::pair<uint32_t, uint64_t>, fc::mutable_variant_object > act_traces_map;
-                  for (auto& act_trace: output["action_traces"].get_array()) {
+                  for( const auto& act_trace : output["action_traces"].get_array() ) {
                      if (act_trace["receipt"].is_null() && act_trace["except"].is_null()) continue;
                      auto parent_action_ordinal = act_trace["parent_action_ordinal"].as<fc::unsigned_int>().value;
                      auto global_sequence = act_trace["receipt"].is_null() ?
                                                 std::numeric_limits<uint64_t>::max() :
                                                 act_trace["receipt"]["global_sequence"].as<uint64_t>();
-                     act_traces_map.emplace( std::make_pair( parent_action_ordinal, global_sequence ), act_trace );
+                     act_traces_map.emplace( std::make_pair( parent_action_ordinal, global_sequence ), 
+                                             act_trace.get_object() );
                   }
 
                   std::function<vector<fc::variant>(uint32_t)> convert_act_trace_to_tree_struct = [&](uint32_t parent_action_ordinal) {
                      vector<fc::variant> restructured_act_traces;
                      auto it = act_traces_map.lower_bound( std::make_pair(parent_action_ordinal, 0) );
-                     for (; it != act_traces_map.end(); it++) {
-                        if (it->first.first != parent_action_ordinal) break;
+                     for( ; it != act_traces_map.end() && it->first.first == parent_action_ordinal; ++it ) {
                         auto& act_trace_mvo = it->second;
 
                         auto action_ordinal = act_trace_mvo["action_ordinal"].as<fc::unsigned_int>().value;

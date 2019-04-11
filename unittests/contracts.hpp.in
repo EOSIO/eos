@@ -44,6 +44,8 @@ namespace eosio {
          MAKE_READ_WASM_ABI(noop,                 noop,                 test-contracts)
          MAKE_READ_WASM_ABI(payloadless,          payloadless,          test-contracts)
          MAKE_READ_WASM_ABI(proxy,                proxy,                test-contracts)
+         MAKE_READ_WASM_ABI(reject_all,           reject_all,           test-contracts)
+         MAKE_READ_WASM_ABI(restrict_action_test, restrict_action_test, test-contracts)
          MAKE_READ_WASM_ABI(snapshot_test,        snapshot_test,        test-contracts)
          MAKE_READ_WASM_ABI(test_api,             test_api,             test-contracts)
          MAKE_READ_WASM_ABI(test_api_db,          test_api_db,          test-contracts)

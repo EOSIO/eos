@@ -166,7 +166,14 @@ namespace bacc = boost::accumulators;
       trace->block_time = c.pending_block_time();
       trace->producer_block_id = c.pending_producer_block_id();
       executed.reserve( trx.total_actions() );
-      EOS_ASSERT( trx.transaction_extensions.size() == 0, unsupported_feature, "we don't support any extensions yet" );
+   }
+
+   void transaction_context::disallow_transaction_extensions( const char* error_msg )const {
+      if( control.is_producing_block() ) {
+         EOS_THROW( subjective_block_production_exception, error_msg );
+      } else {
+         EOS_THROW( disallowed_transaction_extensions_bad_block_exception, error_msg );
+      }
    }
 
    void transaction_context::init(uint64_t initial_net_usage)
@@ -218,9 +225,13 @@ namespace bacc = boost::accumulators;
          validate_cpu_usage_to_bill( billed_cpu_time_us, false ); // Fail early if the amount to be billed is too high
 
       // Record accounts to be billed for network and CPU usage
-      for( const auto& act : trx.actions ) {
-         for( const auto& auth : act.authorization ) {
-            bill_to_accounts.insert( auth.actor );
+      if( control.is_builtin_activated(builtin_protocol_feature_t::only_bill_first_authorizer) ) {
+         bill_to_accounts.insert( trx.first_authorizer() );
+      } else {
+         for( const auto& act : trx.actions ) {
+            for( const auto& auth : act.authorization ) {
+               bill_to_accounts.insert( auth.actor );
+            }
          }
       }
       validate_ram_usage.reserve( bill_to_accounts.size() );
@@ -278,6 +289,10 @@ namespace bacc = boost::accumulators;
 
    void transaction_context::init_for_implicit_trx( uint64_t initial_net_usage  )
    {
+      if( trx.transaction_extensions.size() > 0 ) {
+         disallow_transaction_extensions( "no transaction extensions supported yet for implicit transactions" );
+      }
+
       published = control.pending_block_time();
       init( initial_net_usage);
    }
@@ -286,6 +301,10 @@ namespace bacc = boost::accumulators;
                                                  uint64_t packed_trx_prunable_size,
                                                  bool skip_recording )
    {
+      if( trx.transaction_extensions.size() > 0 ) {
+         disallow_transaction_extensions( "no transaction extensions supported yet for input transactions" );
+      }
+
       const auto& cfg = control.get_global_properties().configuration;
 
       uint64_t discounted_size_for_pruned_data = packed_trx_prunable_size;
@@ -322,6 +341,14 @@ namespace bacc = boost::accumulators;
 
    void transaction_context::init_for_deferred_trx( fc::time_point p )
    {
+      if( (trx.expiration.sec_since_epoch() != 0) && (trx.transaction_extensions.size() > 0) ) {
+         disallow_transaction_extensions( "no transaction extensions supported yet for deferred transactions" );
+      }
+      // If (trx.expiration.sec_since_epoch() == 0) then it was created after NO_DUPLICATE_DEFERRED_ID activation,
+      // and so validation of its extensions was done either in:
+      //   * apply_context::schedule_deferred_transaction for contract-generated transactions;
+      //   * or transaction_context::init_for_input_trx for delayed input transactions.
+
       published = p;
       trace->scheduled = true;
       apply_context_free = false;
@@ -333,13 +360,13 @@ namespace bacc = boost::accumulators;
 
       if( apply_context_free ) {
          for( const auto& act : trx.context_free_actions ) {
-            schedule_action( act, act.account, true );
+            schedule_action( act, act.account, true, 0, 0 );
          }
       }
 
       if( delay == fc::microseconds() ) {
          for( const auto& act : trx.actions ) {
-            schedule_action( act, act.account );
+            schedule_action( act, act.account, false, 0, 0 );
          }
       }
 
@@ -574,13 +601,19 @@ namespace bacc = boost::accumulators;
 
    action_trace& transaction_context::get_action_trace( uint32_t action_ordinal ) {
       EOS_ASSERT( 0 < action_ordinal && action_ordinal <= trace->action_traces.size() ,
-                  transaction_exception, "invalid action_ordinal" );
+                  transaction_exception,
+                  "action_ordinal ${ordinal} is outside allowed range [1,${max}]",
+                  ("ordinal", action_ordinal)("max", trace->action_traces.size())
+      );
       return trace->action_traces[action_ordinal-1];
    }
 
    const action_trace& transaction_context::get_action_trace( uint32_t action_ordinal )const {
       EOS_ASSERT( 0 < action_ordinal && action_ordinal <= trace->action_traces.size() ,
-                  transaction_exception, "invalid action_ordinal" );
+                  transaction_exception,
+                  "action_ordinal ${ordinal} is outside allowed range [1,${max}]",
+                  ("ordinal", action_ordinal)("max", trace->action_traces.size())
+      );
       return trace->action_traces[action_ordinal-1];
    }
 
@@ -638,7 +671,7 @@ namespace bacc = boost::accumulators;
                          + static_cast<uint64_t>(config::transaction_id_net_usage) ); // Will exit early if net usage cannot be payed.
       }
 
-      auto first_auth = trx.first_authorizor();
+      auto first_auth = trx.first_authorizer();
 
       uint32_t trx_size = 0;
       const auto& cgto = control.mutable_db().create<generated_transaction_object>( [&]( auto& gto ) {

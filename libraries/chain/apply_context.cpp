@@ -70,9 +70,13 @@ void apply_context::exec_one()
             (*native)( *this );
          }
 
-         if( a.code.size() > 0
-             && !(act->account == config::system_account_name && act->name == N( setcode ) &&
-                  receiver == config::system_account_name) ) {
+         if( (a.code.size() > 0) &&
+               ( control.is_builtin_activated( builtin_protocol_feature_t::forward_setcode )
+                  || !( act->account == config::system_account_name
+                        && act->name == N( setcode )
+                        && receiver == config::system_account_name )
+               )
+         ) {
             if( trx_context.enforce_whiteblacklist && control.is_producing_block() ) {
                control.check_contract_list( receiver );
                control.check_action_list( act->account, act->name );
@@ -219,7 +223,7 @@ void apply_context::execute_inline( action&& a ) {
    bool enforce_actor_whitelist_blacklist = trx_context.enforce_whiteblacklist && control.is_producing_block();
    flat_set<account_name> actors;
 
-   bool disallow_send_to_self_bypass = false; // eventually set to whether the appropriate protocol feature has been activated
+   bool disallow_send_to_self_bypass = control.is_builtin_activated( builtin_protocol_feature_t::restrict_action_to_self );
    bool send_to_self = (a.account == receiver);
    bool inherit_parent_authorizations = (!disallow_send_to_self_bypass && send_to_self && (receiver == act->account) && control.is_producing_block());
 
@@ -306,12 +310,44 @@ void apply_context::execute_context_free_inline( action&& a ) {
 
 void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, account_name payer, transaction&& trx, bool replace_existing ) {
    EOS_ASSERT( trx.context_free_actions.size() == 0, cfa_inside_generated_tx, "context free actions are not currently allowed in generated transactions" );
-   trx.expiration = control.pending_block_time() + fc::microseconds(999'999); // Rounds up to nearest second (makes expiration check unnecessary)
-   trx.set_reference_block(control.head_block_id()); // No TaPoS check necessary
 
    bool enforce_actor_whitelist_blacklist = trx_context.enforce_whiteblacklist && control.is_producing_block()
                                              && !control.sender_avoids_whitelist_blacklist_enforcement( receiver );
    trx_context.validate_referenced_accounts( trx, enforce_actor_whitelist_blacklist );
+
+   if( control.is_builtin_activated( builtin_protocol_feature_t::no_duplicate_deferred_id ) ) {
+      auto exts = trx.validate_and_extract_extensions();
+      if( exts.size() > 0 ) {
+         EOS_ASSERT( exts.size() == 1, invalid_transaction_extension,
+                     "only one extension is currently supported for deferred transactions"
+         );
+         const auto& context = exts.front().get<deferred_transaction_generation_context>();
+         EOS_ASSERT( context.sender == receiver, ill_formed_deferred_transaction_generation_context,
+                     "deferred transaction generaction context contains mismatching sender",
+                     ("expected", receiver)("actual", context.sender)
+         );
+         EOS_ASSERT( context.sender_id == sender_id, ill_formed_deferred_transaction_generation_context,
+                     "deferred transaction generaction context contains mismatching sender_id",
+                     ("expected", sender_id)("actual", context.sender_id)
+         );
+         EOS_ASSERT( context.sender_trx_id == trx_context.id, ill_formed_deferred_transaction_generation_context,
+                     "deferred transaction generaction context contains mismatching sender_trx_id",
+                     ("expected", trx_context.id)("actual", context.sender_trx_id)
+         );
+      } else {
+         FC_ASSERT( trx.transaction_extensions.size() == 0, "invariant failure" );
+         trx.transaction_extensions.emplace_back(
+            deferred_transaction_generation_context::extension_id(),
+            fc::raw::pack( deferred_transaction_generation_context( trx_context.id, sender_id, receiver ) )
+         );
+      }
+      trx.expiration = time_point_sec();
+      trx.ref_block_num = 0;
+      trx.ref_block_prefix = 0;
+   } else {
+      trx.expiration = control.pending_block_time() + fc::microseconds(999'999); // Rounds up to nearest second (makes expiration check unnecessary)
+      trx.set_reference_block(control.head_block_id()); // No TaPoS check necessary
+   }
 
    // Charge ahead of time for the additional net usage needed to retire the deferred transaction
    // whether that be by successfully executing, soft failure, hard failure, or expiration.
@@ -336,7 +372,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
       // So, the deferred transaction must always go through the authorization checking if it is not sent by a privileged contract.
       // However, the old logic must still be considered because it cannot objectively change until a consensus protocol upgrade.
 
-      bool disallow_send_to_self_bypass = false; // eventually set to whether the appropriate protocol feature has been activated
+      bool disallow_send_to_self_bypass = control.is_builtin_activated( builtin_protocol_feature_t::restrict_action_to_self );
 
       auto is_sending_only_to_self = [&trx]( const account_name& self ) {
          bool send_to_self = true;
