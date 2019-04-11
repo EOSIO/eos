@@ -1321,7 +1321,7 @@ namespace eosio {
       }
       else {
          if( my_impl->connections.size() == 0 ) {
-            sync_source.reset();
+            source.reset();
          } else if( my_impl->connections.size() == 1 ) {
             if (!source) {
                source = *my_impl->connections.begin();
@@ -1360,7 +1360,6 @@ namespace eosio {
                      cptr = my_impl->connections.begin();
                } while( cptr != cstart_it );
             }
-         }
             // no need to check the result, either source advanced or the whole list was checked and the old source is reused.
          }
       }
