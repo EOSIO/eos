@@ -34,8 +34,7 @@ namespace eosio {
 inline uint64_t ship_magic(uint32_t version) { return N(ship) | version; }
 inline bool     is_ship(uint64_t magic) { return (magic & 0xffff'ffff'0000'0000) == N(ship); }
 inline uint32_t get_ship_version(uint64_t magic) { return magic; }
-inline bool     is_ship_supported_version(uint64_t magic) { return is_ship(magic) && get_ship_version(magic) == 0; }
-inline bool     is_ship_unsupported_version(uint64_t magic) { return is_ship(magic) && get_ship_version(magic) != 0; }
+inline bool     is_ship_supported_version(uint64_t magic) { return get_ship_version(magic) == 0; }
 
 struct state_history_log_header {
    uint64_t             magic        = ship_magic(0);
@@ -75,8 +74,9 @@ class state_history_log {
       fc::datastream<const char*> ds(bytes, sizeof(bytes));
       fc::raw::unpack(ds, header);
       EOS_ASSERT(!ds.remaining(), chain::plugin_exception, "state_history_log_header_serial_size mismatch");
-      EOS_ASSERT(!assert_version || is_ship_supported_version(header.magic), chain::plugin_exception,
-                 "corrupt ${name}.log (0)", ("name", name));
+      if (assert_version)
+         EOS_ASSERT(is_ship(header.magic) && is_ship_supported_version(header.magic), chain::plugin_exception,
+                    "corrupt ${name}.log (0)", ("name", name));
    }
 
    void write_header(const state_history_log_header& header) {
@@ -151,7 +151,7 @@ class state_history_log {
       }
       log.seekg(suffix);
       read_header(header, false);
-      if (!is_ship_supported_version(header.magic) ||
+      if (!is_ship(header.magic) || !is_ship_supported_version(header.magic) ||
           suffix + state_history_log_header_serial_size + header.payload_size + sizeof(suffix) != size) {
          elog("corrupt ${name}.log (3)", ("name", name));
          return false;
@@ -176,9 +176,9 @@ class state_history_log {
          log.seekg(pos);
          read_header(header, false);
          uint64_t suffix;
-         if (!is_ship_supported_version(header.magic) || header.payload_size > size ||
+         if (!is_ship(header.magic) || !is_ship_supported_version(header.magic) || header.payload_size > size ||
              pos + state_history_log_header_serial_size + header.payload_size + sizeof(suffix) > size) {
-            EOS_ASSERT(!is_ship_unsupported_version(header.magic), chain::plugin_exception,
+            EOS_ASSERT(!is_ship(header.magic) || is_ship_supported_version(header.magic), chain::plugin_exception,
                        "${name}.log has an unsupported version", ("name", name));
             break;
          }
@@ -206,7 +206,7 @@ class state_history_log {
          state_history_log_header header;
          log.seekg(0);
          read_header(header, false);
-         EOS_ASSERT(is_ship_supported_version(header.magic) &&
+         EOS_ASSERT(is_ship(header.magic) && is_ship_supported_version(header.magic) &&
                         state_history_log_header_serial_size + header.payload_size + sizeof(uint64_t) <= size,
                     chain::plugin_exception, "corrupt ${name}.log (1)", ("name", name));
          _begin_block  = chain::block_header::num_from_id(header.block_id);
@@ -241,7 +241,8 @@ class state_history_log {
          read_header(header, false);
          uint64_t suffix_pos = pos + state_history_log_header_serial_size + header.payload_size;
          uint64_t suffix;
-         EOS_ASSERT(is_ship_supported_version(header.magic) && suffix_pos + sizeof(suffix) <= size,
+         EOS_ASSERT(is_ship(header.magic) && is_ship_supported_version(header.magic) &&
+                        suffix_pos + sizeof(suffix) <= size,
                     chain::plugin_exception, "corrupt ${name}.log (7)", ("name", name));
          log.seekg(suffix_pos);
          log.read((char*)&suffix, sizeof(suffix));
