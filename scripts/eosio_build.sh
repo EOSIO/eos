@@ -226,12 +226,12 @@ fi
 if $PIN_COMPILER; then
    BUILD_CLANG8=true
    CPP_COMP=${OPT_LOCATION}/clang8/bin/clang++
+   PIN_COMPILER_CMAKE="-DEOSIO_PIN_COMPILER=1"
 elif $NO_CPP17; then
    if [ $NONINTERACTIVE -eq 0 ]; then
       BUILD_CLANG8=true
       CPP_COMP=${OPT_LOCATION}/clang8/bin/clang++
    else
-      echo "PIN ${PIN_COMPILER}"
       printf "Error no C++17 support.\\nEnter Y/y or N/n to continue with downloading and building a viable compiler or exit now.\\nIf you already have a C++17 compiler installed or would like to install your own, export CXX to point to the compiler of your choosing."
       read -p "Enter Y/y or N/n to continue with downloading and building a viable compiler or exit now. " yn
       case $yn in
@@ -330,9 +330,7 @@ printf "## ENABLE_COVERAGE_TESTING=%s\\n" "${ENABLE_COVERAGE_TESTING}"
 mkdir -p $BUILD_DIR
 cd $BUILD_DIR
 
-export PIN_COMPILER=$PIN_COMPILER
-
-$CMAKE -DCMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE}" -DCMAKE_CXX_COMPILER="${CXX}" -DOPENSSL_ROOT_DIR="${OPENSSL_ROOT_DIR}" -DBUILD_MONGO_DB_PLUGIN=true \
+$CMAKE -DCMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE}" -DCMAKE_CXX_COMPILER="${CXX}" -DOPENSSL_ROOT_DIR="${OPENSSL_ROOT_DIR}" -DBUILD_MONGO_DB_PLUGIN=true $PIN_COMPILER_CMAKE \
        -DCORE_SYMBOL_NAME="${CORE_SYMBOL_NAME}" -DENABLE_COVERAGE_TESTING="${ENABLE_COVERAGE_TESTING}" -DBUILD_DOXYGEN="${DOXYGEN}" \
        -DCMAKE_INSTALL_PREFIX=$OPT_LOCATION/eosio $LOCAL_CMAKE_FLAGS "${REPO_ROOT}"
 
