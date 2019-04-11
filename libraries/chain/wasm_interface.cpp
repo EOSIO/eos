@@ -928,6 +928,9 @@ class system_api : public context_aware_api {
          return context.control.is_protocol_feature_activated( feature_digest );
       }
 
+      name get_sender() {
+         return context.get_sender();
+      }
 };
 
 constexpr size_t max_assert_message = 1024;
@@ -1807,6 +1810,7 @@ REGISTER_INTRINSICS(system_api,
    (current_time,          int64_t() )
    (publication_time,      int64_t() )
    (is_feature_activated,  int(int)  )
+   (get_sender,            int64_t() )
 );
 
 REGISTER_INTRINSICS(context_free_system_api,

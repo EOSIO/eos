@@ -22,7 +22,8 @@ enum class builtin_protocol_feature_t : uint32_t {
    disallow_empty_producer_schedule,
    restrict_action_to_self,
    only_bill_first_authorizer,
-   forward_setcode
+   forward_setcode,
+   get_sender
 };
 
 struct protocol_feature_subjective_restrictions {

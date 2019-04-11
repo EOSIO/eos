@@ -124,6 +124,17 @@ Forward eosio::setcode actions to the WebAssembly code deployed on the eosio acc
 */
             {}
          } )
+         (  builtin_protocol_feature_t::get_sender, builtin_protocol_feature_spec{
+            "GET_SENDER",
+            fc::variant("1eab748b95a2e6f4d7cb42065bdee5566af8efddf01a55a0a8d831b823f8828a").as<digest_type>(),
+            // SHA256 hash of the raw message below within the comment delimiters (do not modify message below).
+/*
+Builtin protocol feature: GET_SENDER
+
+Allows contracts to determine which account is the sender of an inline action.
+*/
+            {}
+         } )
    ;
 
 

@@ -554,6 +554,8 @@ class apply_context {
       action_name get_receiver()const { return receiver; }
       const action& get_action()const { return *act; }
 
+      action_name get_sender() const;
+
    /// Fields:
    public:
 
@@ -570,6 +572,7 @@ class apply_context {
       uint32_t                      action_ordinal = 0;
       bool                          privileged   = false;
       bool                          context_free = false;
+      bool                          _in_notification = false; // executing notification
 
    public:
       generic_index<index64_object>                                  idx64;

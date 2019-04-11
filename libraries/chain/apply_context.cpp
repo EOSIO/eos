@@ -131,6 +131,8 @@ void apply_context::exec()
 {
    _notified.emplace_back( receiver, action_ordinal );
    exec_one();
+
+   _in_notification = true;
    for( uint32_t i = 1; i < _notified.size(); ++i ) {
       std::tie( receiver, action_ordinal ) = _notified[i];
       exec_one();
@@ -813,5 +815,21 @@ void apply_context::add_ram_usage( account_name account, int64_t ram_delta ) {
    }
 }
 
+action_name apply_context::get_sender() const {
+   action_trace& trace = trx_context.get_action_trace( action_ordinal );
+   if (_in_notification) {
+      action_trace& parent_trace = trx_context.get_action_trace( trace.parent_action_ordinal );
+      if (parent_trace.creator_action_ordinal > 0) {
+         action_trace& creator_trace = trx_context.get_action_trace( parent_trace.creator_action_ordinal );
+         return creator_trace.receiver;
+      }
+   } else {
+      if (trace.creator_action_ordinal > 0) {
+         action_trace& creator_trace = trx_context.get_action_trace( trace.creator_action_ordinal );
+         return creator_trace.receiver;
+      }
+   }
+   return 0;
+}
 
 } } /// eosio::chain
