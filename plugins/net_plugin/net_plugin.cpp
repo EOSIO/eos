@@ -3297,6 +3297,7 @@ namespace eosio {
 
          if( my->acceptor ) {
             boost::system::error_code ec;
+            my->acceptor->cancel( ec );
             my->acceptor->close( ec );
          }
 
