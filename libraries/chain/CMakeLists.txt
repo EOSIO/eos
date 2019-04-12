@@ -58,6 +58,7 @@ target_include_directories( eosio_chain
                                    "${CMAKE_CURRENT_SOURCE_DIR}/../wasm-jit/Include"
                                    "${CMAKE_SOURCE_DIR}/libraries/wabt"
                                    "${CMAKE_BINARY_DIR}/libraries/wabt"
+                                   "${CMAKE_SOURCE_DIR}/libraries/eos.vm/include"
                             )
 
 install( TARGETS eosio_chain

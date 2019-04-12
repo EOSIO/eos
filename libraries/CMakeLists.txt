@@ -7,6 +7,10 @@ add_subdirectory( appbase )
 add_subdirectory( chain )
 add_subdirectory( testing )
 
+# tell the vm to use pre-existing softfloat lib
+set(USE_EXISTING_SOFTFLOAT ON CACHE BOOL "Use eosio's softfloat lib")
+add_subdirectory( eos.vm )
+
 #turn tools&tests off; not needed for library build
 set(BUILD_TESTS OFF CACHE BOOL "Build GTest-based tests")
 set(BUILD_TOOLS OFF CACHE BOOL "Build wabt tools")
