@@ -1259,9 +1259,17 @@ struct controller_impl {
       auto upgrading = false;
 
       try {
-          const auto& upo = db.get<upgrade_property_object>().upgrade_target_block_num;
-          upgrading = (head->block_num + 1 >= upo)
-                  && std::max(head->dpos_irreversible_blocknum, head->bft_irreversible_blocknum) <= upo + 12;
+          const auto& upo = db.get<upgrade_property_object>();
+          const auto upo_upgrade_target_block_num = upo.upgrade_target_block_num;
+          upgrading = (head->block_num + 1 >= upo_upgrade_target_block_num)
+                  && std::max(head->dpos_irreversible_blocknum, head->bft_irreversible_blocknum) <= upo_upgrade_target_block_num + 12;
+          if(upgrading){
+              if(head->dpos_irreversible_blocknum >= upo_upgrade_target_block_num){
+                  db.modify( upo, [&]( auto& up ) {
+                    up.upgrade_complete_block_num.emplace(head->block_num);
+                  });
+              }
+          }
       } catch( const boost::exception& e) {
           db.create<upgrade_property_object>([](auto&){});
       }
