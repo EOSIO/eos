@@ -117,6 +117,8 @@ function usage()
 }
 
 NONINTERACTIVE=0
+PIN_COMPILER=false
+PIN_COMPILER_CMAKE=""
 
 if [ $# -ne 0 ]; then
    while getopts ":cdo:s:ahpy" opt; do

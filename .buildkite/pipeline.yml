@@ -1,7 +1,7 @@
 steps:
   - command: | # Ubuntu 16.04 Build
         echo "+++ :hammer: Building"
-        ./scripts/eosio_build.sh -y
+        ./scripts/eosio_build.sh -y -p
         echo "--- :compression: Compressing build directory"
         tar -pczf build.tar.gz build/
     label: ":ubuntu: 16.04 Build"
@@ -22,7 +22,7 @@ steps:
 
   - command: | # Ubuntu 18.04 Build
         echo "+++ :hammer: Building"
-        ./scripts/eosio_build.sh -y
+        ./scripts/eosio_build.sh -y -p
         echo "--- :compression: Compressing build directory"
         tar -pczf build.tar.gz build/
     label: ":ubuntu: 18.04 Build"
@@ -43,7 +43,7 @@ steps:
 
   - command: | # CentOS 7 Build
         echo "+++ :hammer: Building"
-        ./scripts/eosio_build.sh -y
+        ./scripts/eosio_build.sh -y -p
         echo "--- :compression: Compressing build directory"
         tar -pczf build.tar.gz build/
     label: ":centos: 7 Build"
@@ -64,7 +64,7 @@ steps:
 
   - command: | # Amazon Linux 2 Build
         echo "+++ :hammer: Building"
-        ./scripts/eosio_build.sh -y
+        ./scripts/eosio_build.sh -y -p
         echo "--- :compression: Compressing build directory"
         tar -pczf build.tar.gz build/
     label: ":aws: 2 Build"
@@ -87,7 +87,7 @@ steps:
       echo "--- Creating symbolic link to job directory :file_folder:"
       sleep 5 && ln -s "$(pwd)" /data/job && cd /data/job
       echo "+++ Building :hammer:"
-      ./scripts/eosio_build.sh -y
+      ./scripts/eosio_build.sh -y -p
       echo "--- Compressing build directory :compression:"
       tar -pczf build.tar.gz build/
     label: ":darwin: Mojave Build"
