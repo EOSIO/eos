@@ -968,7 +968,8 @@ namespace eosio {
    }
 
    void connection::blk_send( const block_id_type& blkid ) {
-      app().post( priority::low, [blkid, weak = weak_from_this()]() {
+      connection_wptr weak = shared_from_this();
+      app().post( priority::low, [blkid, weak{std::move(weak)}]() {
          connection_ptr c = weak.lock();
          if( !c ) return;
          try {
@@ -1116,7 +1117,8 @@ namespace eosio {
       if(num == peer_requested->end_block) {
          peer_requested.reset();
       }
-      app().post( priority::medium, [num, trigger_send, weak = weak_from_this()]() {
+      connection_wptr weak = shared_from_this();
+      app().post( priority::medium, [num, trigger_send, weak{std::move(weak)}]() {
          connection_ptr c = weak.lock();
          if( !c ) return;
          controller& cc = my_impl->chain_plug->chain();
@@ -2469,7 +2471,8 @@ namespace eosio {
          }
 
          uint32_t peer_lib = msg.last_irreversible_block_num;
-         app().post( priority::low, [peer_lib, chain_plug = my_impl->chain_plug, weak = weak_from_this(),
+         connection_wptr weak = shared_from_this();
+         app().post( priority::low, [peer_lib, chain_plug = my_impl->chain_plug, weak{std::move(weak)},
                                      msg_lib_id = msg.last_irreversible_block_id]() {
             connection_ptr c = weak.lock();
             if( !c ) return;
@@ -2684,8 +2687,9 @@ namespace eosio {
       }
 
       trx_in_progress_size += calc_trx_size( ptrx->packed_trx );
+      connection_wptr weak = shared_from_this();
       my_impl->chain_plug->accept_transaction( ptrx,
-            [weak = weak_from_this(), ptrx](const static_variant<fc::exception_ptr, transaction_trace_ptr>& result) {
+            [weak{std::move(weak)}, ptrx](const static_variant<fc::exception_ptr, transaction_trace_ptr>& result) {
          // next (this lambda) called from application thread
          connection_ptr conn = weak.lock();
          if( conn ) {
