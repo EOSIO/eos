@@ -385,6 +385,7 @@ namespace eosio {
    constexpr auto     def_max_reads_in_flight = 1000;
    constexpr auto     def_max_trx_in_progress_size = 100*1024*1024; // 100 MB
    constexpr auto     def_max_consecutive_rejected_blocks = 3; // num of rejected blocks before disconnect
+   constexpr auto     def_max_consecutive_immediate_connection_close = 3; // back off if client keeps closing
    constexpr auto     def_max_clients = 25; // 0 for unlimited clients
    constexpr auto     def_max_nodes_per_host = 1;
    constexpr auto     def_conn_retry_wait = 30;
@@ -579,6 +580,8 @@ namespace eosio {
       std::atomic<bool>       syncing{false};
       uint16_t                protocol_version = 0;
       uint16_t                consecutive_rejected_blocks = 0;
+      uint16_t                consecutive_immediate_connection_close = 0;
+      fc::time_point          last_close;
 
       std::mutex                            response_expected_timer_mtx;
       boost::asio::steady_timer             response_expected_timer;
@@ -903,6 +906,8 @@ namespace eosio {
       self->connecting = false;
       self->syncing = false;
       self->consecutive_rejected_blocks = 0;
+      ++self->consecutive_immediate_connection_close;
+      self->last_close = fc::time_point::now();
       std::unique_lock<std::mutex> g_conn( self->conn_mtx );
       bool has_last_req = !!self->last_req;
       g_conn.unlock();
@@ -1648,11 +1653,13 @@ namespace eosio {
       fc_dlog( logger, "state ${s}", ("s", stage_str( state )) );
       if( state == lib_catchup ) {
          if (blk_num != sync_next_expected_num) {
-            auto sync_next_expected = sync_next_expected_num;
-            g_sync.unlock();
-            fc_wlog( logger, "expected block ${ne} but got ${bn}, closing connection: ${p}",
-                     ("ne", sync_next_expected)( "bn", blk_num )( "p", c->peer_name() ) );
-            c->close();
+            if( ++c->consecutive_rejected_blocks > def_max_consecutive_rejected_blocks ) {
+               auto sync_next_expected = sync_next_expected_num;
+               g_sync.unlock();
+               fc_wlog( logger, "expected block ${ne} but got ${bn}, closing connection: ${p}",
+                        ("ne", sync_next_expected)( "bn", blk_num )( "p", c->peer_name() ) );
+               c->close();
+            }
             return;
          }
          sync_next_expected_num = blk_num + 1;
@@ -2033,6 +2040,13 @@ namespace eosio {
          return false;
       }
 
+      if( consecutive_immediate_connection_close > def_max_consecutive_immediate_connection_close ) {
+         auto connector_period_us = std::chrono::duration_cast<std::chrono::microseconds>( my_impl->connector_period );
+         if( last_close > fc::time_point::now() - fc::microseconds( connector_period_us.count() ) ) {
+            return true; // true so doesn't remove from valid connections
+         }
+      }
+
       string host = peer_address().substr( 0, colon );
       string port = peer_address().substr( colon + 1);
       idump((host)(port));
@@ -2049,6 +2063,7 @@ namespace eosio {
                   c->connect( resolver, endpoint_itr );
                } else {
                   fc_elog( logger, "Unable to resolve ${add}: ${error}", ("add", c->peer_name())( "error", err.message() ) );
+                  ++c->consecutive_immediate_connection_close;
                }
             } ) );
       return true;
@@ -2215,7 +2230,6 @@ namespace eosio {
                if( !conn->socket_is_open() ) return;
 
                bool close_connection = false;
-               bool reconnect = true;
                try {
                   if( !ec ) {
                      if (bytes_transferred > conn->pending_message_buffer.bytes_to_write()) {
@@ -2244,6 +2258,7 @@ namespace eosio {
 
                            if (bytes_in_buffer >= total_message_bytes) {
                               conn->pending_message_buffer.advance_read_ptr(message_header_size);
+                              conn->consecutive_immediate_connection_close = 0;
                               if (!conn->process_next_message(message_length)) {
                                  return;
                               }
@@ -2266,7 +2281,6 @@ namespace eosio {
                      } else {
                         fc_ilog( logger, "Peer closed connection" );
                      }
-                     reconnect = false;
                      close_connection = true;
                   }
                }
@@ -2281,12 +2295,11 @@ namespace eosio {
                catch (...) {
                   fc_elog( logger, "Undefined exception handling read data" );
                   close_connection = true;
-                  reconnect = false;
                }
 
                if( close_connection ) {
                   fc_elog( logger, "Closing connection to: ${p}", ("p", conn->peer_name()) );
-                  conn->close( reconnect );
+                  conn->close();
                }
          }));
       } catch (...) {
