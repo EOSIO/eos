@@ -2684,7 +2684,7 @@ namespace eosio {
 
       auto ptrx = std::make_shared<transaction_metadata>( trx );
       const auto& tid = ptrx->id;
-      peer_ilog( this, "received packed_transaction ${id}", ("id", tid) );
+      peer_dlog( this, "received packed_transaction ${id}", ("id", tid) );
 
       bool have_trx = my_impl->dispatcher->have_txn( tid );
       my_impl->dispatcher->recv_transaction( shared_from_this(), ptrx );
@@ -2941,13 +2941,13 @@ namespace eosio {
    void net_plugin_impl::transaction_ack(const std::pair<fc::exception_ptr, transaction_metadata_ptr>& results) {
       const auto& id = results.second->id;
       if (results.first) {
-         fc_ilog(logger,"signaled NACK, trx-id = ${id} : ${why}",("id", id)("why", results.first->to_detail_string()));
+         fc_dlog( logger, "signaled NACK, trx-id = ${id} : ${why}", ("id", id)( "why", results.first->to_detail_string() ) );
 
          controller& cc = chain_plug->chain();
          uint32_t head_blk_num = cc.head_block_num();
          dispatcher->rejected_transaction(id, head_blk_num);
       } else {
-         fc_ilog(logger,"signaled ACK, trx-id = ${id}",("id", id));
+         fc_dlog( logger, "signaled ACK, trx-id = ${id}", ("id", id) );
          dispatcher->bcast_transaction(results.second);
       }
    }
