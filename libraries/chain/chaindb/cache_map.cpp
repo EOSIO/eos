@@ -355,6 +355,7 @@ namespace cyberway { namespace chaindb {
         assert(table_cache_map_);
 
         object_ = std::move(obj);
+        blob_.clear();
 
         if (!is_system_code(object_.service.code) || indicies_.empty()) {
             table_cache_map_->remove_cache_indicies(std::move(indicies_));

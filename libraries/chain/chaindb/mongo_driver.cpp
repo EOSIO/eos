@@ -167,8 +167,7 @@ namespace cyberway { namespace chaindb {
                 dst.direction_ = direction_;
             }
 
-            dst.pk   = pk;
-            dst.blob = blob;
+            dst.pk = pk;
 
             return dst;
         }
@@ -187,16 +186,17 @@ namespace cyberway { namespace chaindb {
             return *this;
         }
 
-        void next() {
+        mongodb_cursor_info& next() {
             if (direction::Backward == direction_) {
                 // we at the last record of a range - we should get its key for correct locating
                 lazy_open();
                 change_direction(direction::Forward);
             }
             lazy_next();
+            return *this;
         }
 
-        void prev() {
+        mongodb_cursor_info& prev() {
             if (direction::Forward == direction_) {
                 change_direction(direction::Backward);
                 lazy_open();
@@ -205,10 +205,14 @@ namespace cyberway { namespace chaindb {
             } else {
                 lazy_next();
             }
+            return *this;
         }
 
-        void current() {
-            lazy_open();
+        mongodb_cursor_info& current() {
+            if (unset_primary_key == pk) {
+                lazy_open();
+            }
+            return *this;
         }
 
         const object_value& get_object_value() {
@@ -255,8 +259,6 @@ namespace cyberway { namespace chaindb {
 
         void reset_object() {
             pk = unset_primary_key;
-
-            if (!blob.empty())      blob.clear();
             if (!object_.is_null()) object_.clear();
         }
 
@@ -433,12 +435,8 @@ namespace cyberway { namespace chaindb {
 
         ~mongodb_impl_() = default;
 
-        mongodb_cursor_info& get_applied_cursor(cursor_info& info) {
-            auto& cursor = static_cast<mongodb_cursor_info&>(info);
-            if (!cursor.is_openned()) {
-                apply_table_changes(cursor.index);
-            }
-            return cursor;
+        mongodb_cursor_info& get_unapplied_cursor(const cursor_request& request) {
+            return get_cursor(request).cursor();
         }
 
         mongodb_cursor_info& get_applied_cursor(const cursor_info& info) {
@@ -674,12 +672,11 @@ namespace cyberway { namespace chaindb {
                 return build_object(table, *itr);
             } else {
                 obj.value = variant();
+                obj.service.code  = table.code;
+                obj.service.scope = table.scope;
+                obj.service.table = table.table->name;
                 return obj;
             }
-
-            CYBERWAY_ASSERT(false, driver_absent_object_exception,
-                "External database doesn't contain object with the primary key ${pk} in the table ${table}",
-                ("pk", pk)("table", get_full_table_name(table)));
         }
 
     private:
@@ -716,13 +713,21 @@ namespace cyberway { namespace chaindb {
             journal_.apply_table_changes(write_ctx_t_(*this), table);
         }
 
+        mongodb_cursor_info& get_applied_cursor(cursor_info& info) {
+            auto& cursor = static_cast<mongodb_cursor_info&>(info);
+            if (!cursor.is_openned()) {
+                apply_table_changes(cursor.index);
+            }
+            return cursor;
+        }
+
         cursor_location get_cursor(const cursor_request& request) {
             auto code_itr = code_cursor_map_.find(request.code);
             CYBERWAY_ASSERT(code_cursor_map_.end() != code_itr, driver_invalid_cursor_exception,
                 "The map for the cursor ${code}.${id} doesn't exist", ("code", get_code_name(request))("id", request.id));
 
             auto& map = code_itr->second;
-            auto cursor_itr = map.find(request.id);
+            auto  cursor_itr = map.find(request.id);
             CYBERWAY_ASSERT(map.end() != cursor_itr, driver_invalid_cursor_exception,
                 "The cursor ${code}.${id} doesn't exist", ("code", get_code_name(request))("id", request.id));
 
@@ -914,69 +919,48 @@ namespace cyberway { namespace chaindb {
     }
 
     cursor_info& mongodb_driver::lower_bound(index_info index, variant key) {
-        auto& cursor = impl_->create_cursor(std::move(index));
-        cursor.open(direction::Forward, std::move(key), unset_primary_key);
-        return cursor;
+        return impl_->create_cursor(std::move(index))
+            .open(direction::Forward, std::move(key), unset_primary_key);
     }
 
     cursor_info& mongodb_driver::upper_bound(index_info index, variant key) {
-        auto& cursor = impl_->create_cursor(std::move(index));
-        cursor.open(direction::Backward, std::move(key), unset_primary_key).next();
-        return cursor;
+        return impl_->create_cursor(std::move(index))
+            .open(direction::Backward, std::move(key), unset_primary_key)
+            .next();
     }
 
     cursor_info& mongodb_driver::locate_to(index_info index, variant key, primary_key_t pk) {
-        auto& cursor = impl_->create_cursor(std::move(index));
-        cursor.open(direction::Forward, std::move(key), pk);
-        return cursor;
+        return impl_->create_cursor(std::move(index))
+            .open(direction::Forward, std::move(key), pk);
     }
 
     cursor_info& mongodb_driver::begin(index_info index) {
-        auto& cursor = impl_->create_cursor(std::move(index));
-        cursor.open(direction::Forward, {}, unset_primary_key);
-        return cursor;
+        return impl_->create_cursor(std::move(index))
+            .open(direction::Forward, {}, unset_primary_key);
     }
 
     cursor_info& mongodb_driver::end(index_info index) {
-        auto& cursor = impl_->create_cursor(std::move(index));
-        cursor.open(direction::Backward, {}, end_primary_key);
-        return cursor;
+        return impl_->create_cursor(std::move(index))
+            .open(direction::Backward, {}, end_primary_key);
+    }
+
+    cursor_info& mongodb_driver::cursor(const cursor_request& request) {
+        return impl_->get_unapplied_cursor(request);
     }
 
     cursor_info& mongodb_driver::current(const cursor_info& info) {
-        auto& cursor = impl_->get_applied_cursor(info);
-        cursor.current();
-        return cursor;
-    }
-
-    cursor_info& mongodb_driver::current(const cursor_request& request) {
-        auto& cursor = impl_->get_applied_cursor(request);
-        cursor.current();
-        return cursor;
-    }
-
-    cursor_info& mongodb_driver::next(const cursor_request& request) {
-        auto& cursor = impl_->get_applied_cursor(request);
-        cursor.next();
-        return cursor;
+        return impl_->get_applied_cursor(info)
+            .current();
     }
 
     cursor_info& mongodb_driver::next(const cursor_info& info) {
-        auto& cursor = impl_->get_applied_cursor(info);
-        cursor.next();
-        return cursor;
-    }
-
-    cursor_info& mongodb_driver::prev(const cursor_request& request) {
-        auto& cursor = impl_->get_applied_cursor(request);
-        cursor.prev();
-        return cursor;
+        return impl_->get_applied_cursor(info)
+            .next();
     }
 
     cursor_info& mongodb_driver::prev(const cursor_info& info) {
-        auto& cursor = impl_->get_applied_cursor(info);
-        cursor.prev();
-        return cursor;
+        return impl_->get_applied_cursor(info)
+            .prev();
     }
 
     primary_key_t mongodb_driver::available_pk(const table_info& table) {
@@ -988,13 +972,8 @@ namespace cyberway { namespace chaindb {
     }
 
     const object_value& mongodb_driver::object_at_cursor(const cursor_info& info) {
-        auto& cursor = impl_->get_applied_cursor(info);
-        return cursor.get_object_value();
-    }
-
-    void mongodb_driver::set_blob(const cursor_info& info, bytes blob) {
-        auto& cursor = impl_->get_applied_cursor(info);
-        cursor.blob = std::move(blob);
+        return impl_->get_applied_cursor(info)
+            .get_object_value();
     }
 
 } } // namespace cyberway::chaindb

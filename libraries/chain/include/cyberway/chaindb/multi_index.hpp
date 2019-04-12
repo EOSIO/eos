@@ -260,7 +260,7 @@ private:
         }
 
         static const T& get_T(const cache_object& cache) {
-            return static_cast<const T&>(cache.get_data<const item_data>().item);
+            return static_cast<const T&>(cache.data<const item_data>().item);
         }
 
         static const T& get_T(const cache_object_ptr& cache) {
@@ -450,7 +450,7 @@ private:
             CYBERWAY_ASSERT(primary_key_ != end_primary_key, chaindb_midx_pk_exception,
                 "Cannot load object from the end iterator for the index ${index}", ("index", get_index_name()));
 
-            auto ptr = controller().get_cache_object({code_name(), cursor_}, get_table_request(), primary_key_);
+            auto ptr = controller().get_cache_object({code_name(), cursor_}, false);
 
             auto& obj = item_data::get_T(ptr);
             auto ptr_pk = primary_key_extractor_type()(obj);

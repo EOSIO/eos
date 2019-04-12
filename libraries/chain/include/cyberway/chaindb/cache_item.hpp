@@ -2,6 +2,8 @@
 
 #include <memory>
 
+#include <eosio/chain/types.hpp>
+
 #include <cyberway/chaindb/common.hpp>
 #include <cyberway/chaindb/object_value.hpp>
 
@@ -12,6 +14,8 @@
 #include <boost/intrusive/list.hpp>
 
 namespace cyberway { namespace chaindb {
+
+    using  eosio::chain::bytes;
 
     class  cache_object;
     struct cache_data;
@@ -58,6 +62,8 @@ namespace cyberway { namespace chaindb {
         object_value     object_;
         cache_data_ptr   data_;
         cache_indicies   indicies_;
+        bytes            blob_;
+
     public:
         cache_object(table_cache_map&, object_value);
         cache_object(cache_object&&) = default;
@@ -88,6 +94,10 @@ namespace cyberway { namespace chaindb {
             data_ = std::make_unique<T>(*this, std::forward<Args>(args)...);
         }
 
+        void set_blob(bytes blob) {
+            blob_ = std::move(blob);
+        }
+
         primary_key_t pk() const {
             return object_.pk();
         }
@@ -104,10 +114,20 @@ namespace cyberway { namespace chaindb {
             return !!data_;
         }
 
-        template <typename T> T& get_data() const {
+        template <typename T> T& data() const {
             assert(has_data());
             return *static_cast<T*>(data_.get());
         }
+
+        bool has_blob() const {
+            return !blob_.empty();
+        }
+
+        const bytes& blob() const {
+            assert(has_blob());
+            return blob_;
+        }
+
     }; // class cache_object
 
 } } // namespace cyberway::chaindb

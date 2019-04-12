@@ -35,16 +35,13 @@ namespace cyberway { namespace chaindb {
         cursor_info& begin(index_info) override;
         cursor_info& end(index_info) override;
 
+        cursor_info& cursor(const cursor_request&) override;
         cursor_info& current(const cursor_info&) override;
-        cursor_info& current(const cursor_request&) override;
-        cursor_info& next(const cursor_request&) override;
         cursor_info& next(const cursor_info&) override;
-        cursor_info& prev(const cursor_request&) override;
         cursor_info& prev(const cursor_info&) override;
 
               object_value  object_by_pk(const table_info&, primary_key_t) override;
         const object_value& object_at_cursor(const cursor_info&) override;
-              void          set_blob(const cursor_info&, bytes blob) override;
 
         primary_key_t available_pk(const table_info&) override;
 
