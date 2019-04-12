@@ -94,10 +94,10 @@ class pending_snapshot {
 public:
    using next_t = producer_plugin::next_function<producer_plugin::snapshot_information>;
 
-   pending_snapshot(const block_id_type& block_id, next_t& next, std::string temp_path, std::string final_path)
+   pending_snapshot(const block_id_type& block_id, next_t& next, std::string pending_path, std::string final_path)
    : block_id(block_id)
    , next(next)
-   , temp_path(temp_path)
+   , pending_path(pending_path)
    , final_path(final_path)
    {}
 
@@ -109,8 +109,12 @@ public:
       return snapshots_dir / fc::format_string("snapshot-${id}.bin", fc::mutable_variant_object()("id", block_id));
    }
 
-   static bfs::path get_temp_path(const block_id_type& block_id, const bfs::path& snapshots_dir) {
+   static bfs::path get_pending_path(const block_id_type& block_id, const bfs::path& snapshots_dir) {
       return snapshots_dir / fc::format_string(".pending-snapshot-${id}.bin", fc::mutable_variant_object()("id", block_id));
+   }
+
+   static bfs::path get_temp_path(const block_id_type& block_id, const bfs::path& snapshots_dir) {
+      return snapshots_dir / fc::format_string(".incomplete-snapshot-${id}.bin", fc::mutable_variant_object()("id", block_id));
    }
 
    producer_plugin::snapshot_information finalize( const chain::controller& chain ) const {
@@ -118,13 +122,13 @@ public:
       boost::system::error_code ec;
 
       if (!in_chain) {
-         bfs::remove(bfs::path(temp_path), ec);
+         bfs::remove(bfs::path(pending_path), ec);
          EOS_THROW(snapshot_finalization_exception,
                    "Snapshotted block was forked out of the chain.  ID: ${block_id}",
                    ("block_id", block_id));
       }
 
-      bfs::rename(bfs::path(temp_path), bfs::path(final_path), ec);
+      bfs::rename(bfs::path(pending_path), bfs::path(final_path), ec);
       EOS_ASSERT(!ec, snapshot_finalization_exception,
                  "Unable to finalize valid snapshot of block number ${bn}: [code: ${ec}] ${message}",
                  ("bn", get_height())
@@ -136,7 +140,7 @@ public:
 
    block_id_type     block_id;
    next_t            next;
-   std::string       temp_path;
+   std::string       pending_path;
    std::string       final_path;
 };
 
@@ -1044,6 +1048,7 @@ void producer_plugin::create_snapshot(producer_plugin::next_function<producer_pl
    } else {
       // write a new temp snapshot
       std::string temp_path = (pending_snapshot::get_temp_path(head_id, my->_snapshots_dir)).generic_string();
+      std::string pending_path = (pending_snapshot::get_pending_path(head_id, my->_snapshots_dir)).generic_string();
       std::string final_path = (pending_snapshot::get_final_path(head_id, my->_snapshots_dir)).generic_string();
       bool written = false;
 
@@ -1066,7 +1071,16 @@ void producer_plugin::create_snapshot(producer_plugin::next_function<producer_pl
          writer->finalize();
          snap_out.flush();
          snap_out.close();
-         my->_pending_snapshot_index.emplace(head_id, next, temp_path, final_path);
+
+         boost::system::error_code ec;
+         bfs::rename(temp_path, pending_path, ec);
+         EOS_ASSERT(!ec, snapshot_finalization_exception,
+               "Unable to promote temp snapshot to pending for block number ${bn}: [code: ${ec}] ${message}",
+               ("bn", chain.head_block_num())
+               ("ec", ec.value())
+               ("message", ec.message()));
+
+         my->_pending_snapshot_index.emplace(head_id, next, pending_path, final_path);
       } CATCH_AND_CALL (next);
    }
 }
