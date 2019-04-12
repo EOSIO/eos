@@ -1065,6 +1065,7 @@ launcher_def::write_config_file (tn_node_def &node) {
       exit (-1);
    }
 
+   cfg << "chaindb_sys_name = " << node.name << "_\n";
    cfg << "blocks-dir = " << block_dir << "\n";
    cfg << "http-server-address = " << host->host_name << ":" << instance.http_port << "\n";
    cfg << "http-validate-host = false\n";
@@ -1133,7 +1134,7 @@ launcher_def::write_config_file (tn_node_def &node) {
     cfg << "plugin = eosio::bnet_plugin\n";
   }
   cfg << "plugin = eosio::chain_api_plugin\n"
-      << "plugin = eosio::history_api_plugin\n";
+      << "#plugin = eosio::history_api_plugin\n";
   cfg.close();
 }
 
@@ -1515,19 +1516,22 @@ launcher_def::launch (eosd_def &instance, string &gts) {
   if (skip_transaction_signatures) {
     eosdcmd += "--skip-transaction-signatures ";
   }
+  cerr << "eosd_extra_args: " << eosd_extra_args << endl;
   if (!eosd_extra_args.empty()) {
-    if (instance.name == "bios") {
+    //if (instance.name == "bios") {
        // Strip the mongo-related options out of the bios node so
        // the plugins don't conflict between 00 and bios.
-       regex r("--plugin +eosio::mongo_db_plugin");
-       string args = std::regex_replace (eosd_extra_args,r,"");
-       regex r2("--mongodb-uri +[^ ]+");
-       args = std::regex_replace (args,r2,"");
-       eosdcmd += args + " ";
-    }
-    else {
-       eosdcmd += eosd_extra_args + " ";
-    }
+       //regex r("--plugin +eosio::mongo_db_plugin");
+       //string args = std::regex_replace (eosd_extra_args,r,"");
+       //regex r2("--mongodb-uri +[^ ]+");
+       //args = std::regex_replace (args,r2,"");
+       //eosdcmd += args + " ";
+       regex r("(--mongodb-uri +[^ ]+) ");
+       eosdcmd += std::regex_replace (eosd_extra_args, r, std::string("$1")+instance.name+" ");
+    //}
+    //else {
+    //   eosdcmd += eosd_extra_args + " ";
+    //}
   }
   if (instance.name != "bios" && !specific_nodeos_args.empty()) {
      const auto node_num = boost::lexical_cast<uint16_t,string>(instance.get_node_num());

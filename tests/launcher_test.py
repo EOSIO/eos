@@ -21,7 +21,7 @@ cmdError=Utils.cmdError
 from core_symbol import CORE_SYMBOL
 
 args = TestHelper.parse_args({"--defproducera_prvt_key","--dump-error-details","--dont-launch","--keep-logs",
-                              "-v","--leave-running","--clean-run","--p2p-plugin"})
+                              "-v","--leave-running","--clean-run","--p2p-plugin","--mongodb"})
 debug=args.v
 defproduceraPrvtKey=args.defproducera_prvt_key
 dumpErrorDetails=args.dump_error_details
@@ -30,9 +30,12 @@ dontLaunch=args.dont_launch
 dontKill=args.leave_running
 killAll=args.clean_run
 p2pPlugin=args.p2p_plugin
+enableMongo=args.mongodb
 
-Utils.Debug=debug
-cluster=Cluster(walletd=True, defproduceraPrvtKey=defproduceraPrvtKey)
+Utils.Print("args: ", args)
+
+Utils.Debug=True
+cluster=Cluster(walletd=True, enableMongo=enableMongo, defproduceraPrvtKey=defproduceraPrvtKey)
 walletMgr=WalletMgr(True)
 testSuccessful=False
 killEosInstances=not dontKill
@@ -182,9 +185,9 @@ try:
         errorExit("Transfer verification failed. Excepted %s, actual: %s" % (expectedAmount, actualAmount))
 
     Print("Validate last action for account %s" % (testeraAccount.name))
-    actions=node.getActions(testeraAccount, -1, -1, exitOnError=True)
+    action=node.getActions(testeraAccount, -1, -1, exitOnError=True)
     try:
-        assert(actions["actions"][0]["action_trace"]["act"]["name"] == "transfer")
+        assert(action["act"]["name"] == "transfer")
     except (AssertionError, TypeError, KeyError) as _:
         Print("Action validation failed. Actions: %s" % (actions))
         raise
@@ -198,10 +201,9 @@ try:
     key=""
     try:
         key="[traces][0][act][name]"
-        typeVal=  transaction["traces"][0]["act"]["name"]
+        typeVal=  transaction["actions"][0]["name"]
         key="[traces][0][act][data][quantity]"
-        amountVal=transaction["traces"][0]["act"]["data"]["quantity"]
-        amountVal=int(decimal.Decimal(amountVal.split()[0])*10000)
+        amountVal=transaction["actions"][0]["data"]["quantity"]["amount"]
     except (TypeError, KeyError) as e:
         Print("transaction%s not found. Transaction: %s" % (key, transaction))
         raise

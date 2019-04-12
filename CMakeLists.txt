@@ -70,7 +70,7 @@ endif()
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS "ON")
 set(BUILD_DOXYGEN FALSE CACHE BOOL "Build doxygen documentation on every make")
-set(BUILD_MONGO_DB_PLUGIN FALSE CACHE BOOL "Build mongo database plugin")
+set(BUILD_MONGO_DB_PLUGIN TRUE CACHE BOOL "Build mongo database plugin")
 set(BUILD_CYBERWAY_CHAINDB_MONGO TRUE CACHE BOOL "Build chaindb based on mongodb")
 
 #set (USE_PCH 1)
@@ -235,7 +235,7 @@ add_subdirectory( plugins )
 add_subdirectory( programs )
 add_subdirectory( scripts )
 add_subdirectory( unittests )
-# add_subdirectory( tests ) TODO: CyberWay
+add_subdirectory( tests )
 add_subdirectory( tools )
 add_subdirectory( debian )
 
