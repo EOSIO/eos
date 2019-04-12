@@ -268,6 +268,12 @@ namespace eosio {
 
       std::atomic<bool>                     in_shutdown{false};
 
+      compat::channels::transaction_ack::channel_type::handle  incoming_transaction_ack_subscription;
+      channels::irreversible_block::channel_type::handle       incoming_irreversible_block_subscription;
+
+      uint16_t                                  thread_pool_size = 4;
+      optional<eosio::chain::named_thread_pool> thread_pool;
+
    private:
       mutable std::mutex            chain_info_mtx; // protects chain_*
       uint32_t                      chain_lib_num{0};
@@ -278,12 +284,6 @@ namespace eosio {
       block_id_type                 chain_fork_head_blk_id;
 
    public:
-      compat::channels::transaction_ack::channel_type::handle  incoming_transaction_ack_subscription;
-      channels::irreversible_block::channel_type::handle       incoming_irreversible_block_subscription;
-
-      uint16_t                                  thread_pool_size = 4;
-      optional<eosio::chain::named_thread_pool> thread_pool;
-
       void update_chain_info();
       //         lib_num, head_block_num, fork_head_blk_num, lib_id, head_blk_id, fork_head_blk_id
       std::tuple<uint32_t, uint32_t, uint32_t, block_id_type, block_id_type, block_id_type> get_chain_info() const;
@@ -535,34 +535,36 @@ namespace eosio {
    class connection : public std::enable_shared_from_this<connection> {
    public:
       explicit connection( string endpoint );
-
       connection();
-      ~connection();
 
       bool start_session();
 
       bool socket_is_open() const { return socket_open.load(); } // thread safe, atomic
       const string& peer_address() const { return peer_addr; } // thread safe, const
-      const string& remote_address() const { return socket_open.load() ? remote_endpoint_ip : unknown; } // thread safe, not updated after start_session()
+      // thread safe, not updated after start_session()
+      const string& remote_address() const { return socket_open.load() ? remote_endpoint_ip : unknown; }
 
    private:
       static const string unknown;
 
       void update_endpoints();
 
-   public:
-
       optional<sync_state>    peer_requested;  // this peer is requesting info from us
-      boost::asio::io_context&                  server_ioc;
+
+      std::atomic<bool>                         socket_open{false};
+
+      const string            peer_addr;
+      string                  remote_endpoint_ip;     // not updated after start
+      string                  remote_endpoint_port;   // not updated after start
+      string                  local_endpoint_ip;      // not updated after start
+      string                  local_endpoint_port;    // not updated after start
+
+   public:
       boost::asio::io_context::strand           strand;
       tcp::socket                               socket; // only accessed through strand after construction
-   private:
-      std::atomic<bool>                         socket_open{false};
-   public:
 
       fc::message_buffer<1024*1024>    pending_message_buffer;
-      std::atomic<std::size_t>         outstanding_read_bytes{0}; // accessed only from server_ioc threads
-
+      std::atomic<std::size_t>         outstanding_read_bytes{0}; // accessed only from strand threads
 
       queued_buffer           buffer_queue;
 
@@ -573,20 +575,15 @@ namespace eosio {
       int16_t                 sent_handshake_count = 0;
       std::atomic<bool>       connecting{false};
       std::atomic<bool>       syncing{false};
-      uint16_t                protocol_version  = 0;
+      uint16_t                protocol_version = 0;
       uint16_t                consecutive_rejected_blocks = 0;
-   private:
-      const string            peer_addr;
-      string                  remote_endpoint_ip;     // not updated after start
-      string                  remote_endpoint_port;   // not updated after start
-      string                  local_endpoint_ip;      // not updated after start
-      string                  local_endpoint_port;    // not updated after start
-   public:
 
       std::mutex                            response_expected_timer_mtx;
       boost::asio::steady_timer             response_expected_timer;
+
       std::mutex                            read_delay_timer_mtx;
       boost::asio::steady_timer             read_delay_timer;
+
       std::atomic<go_away_reason>           no_retry{no_reason};
 
       mutable std::mutex          conn_mtx; // mtx for last_req, last_handshake_recv, last_handshake_sent, fork_head, fork_head_num
@@ -607,12 +604,6 @@ namespace eosio {
       tstamp                         rec{0};          //!< receive timestamp
       tstamp                         dst{0};          //!< destination timestamp
       tstamp                         xmt{0};          //!< transmit timestamp
-
-      // Computed data
-      double                         offset{0};       //!< peer offset
-
-      static const size_t            ts_buffer_size{32};
-      char                           ts[ts_buffer_size];          //!< working buffer for making human readable timestamps
       /** @} */
 
       bool connected();
@@ -654,8 +645,7 @@ namespace eosio {
        * packet is placed on the send queue.  Calls the kernel time of
        * day routine and converts to a (at least) 64 bit integer.
        */
-      static tstamp get_time()
-      {
+      static tstamp get_time() {
          return std::chrono::system_clock::now().time_since_epoch().count();
       }
       /** @} */
@@ -816,21 +806,12 @@ namespace eosio {
    //---------------------------------------------------------------------------
 
    connection::connection( string endpoint )
-      : peer_requested(),
-        server_ioc( my_impl->thread_pool->get_executor() ),
-        strand( my_impl->thread_pool->get_executor() ),
+      : strand( my_impl->thread_pool->get_executor() ),
         socket( my_impl->thread_pool->get_executor() ),
-        node_id(),
         connection_id( ++my_impl->current_connection_id ),
-        sent_handshake_count(0),
-        connecting(false),
-        syncing(false),
-        protocol_version(0),
-        peer_addr(endpoint),
+        peer_addr( endpoint ),
         response_expected_timer( my_impl->thread_pool->get_executor() ),
         read_delay_timer( my_impl->thread_pool->get_executor() ),
-        no_retry(no_reason),
-        last_req(),
         last_handshake_recv(),
         last_handshake_sent()
    {
@@ -839,29 +820,17 @@ namespace eosio {
    }
 
    connection::connection()
-      : peer_requested(),
-        server_ioc( my_impl->thread_pool->get_executor() ),
-        strand( my_impl->thread_pool->get_executor() ),
+      : strand( my_impl->thread_pool->get_executor() ),
         socket( my_impl->thread_pool->get_executor() ),
-        node_id(),
         connection_id( ++my_impl->current_connection_id ),
-        sent_handshake_count(0),
-        connecting(true),
-        syncing(false),
-        protocol_version(0),
         peer_addr(),
         response_expected_timer( my_impl->thread_pool->get_executor() ),
         read_delay_timer( my_impl->thread_pool->get_executor() ),
-        no_retry(no_reason),
-        last_req(),
         last_handshake_recv(),
         last_handshake_sent()
    {
       fc_ilog( logger, "accepted network connection" );
       node_id.data()[0] = 0;
-   }
-
-   connection::~connection() {
    }
 
    void connection::update_endpoints() {
@@ -1142,7 +1111,7 @@ namespace eosio {
          fc_dlog( logger, "enqueue sync block ${num}", ("num", peer_requested->last + 1) );
       }
       uint32_t num = ++peer_requested->last;
-      bool trigger_send = true; // todo: = num == peer_requested->start_block;
+      bool trigger_send = true;
       if(num == peer_requested->end_block) {
          peer_requested.reset();
       }
@@ -1654,7 +1623,6 @@ namespace eosio {
             fc_wlog( logger, "block ${bn} not accepted from ${p}, closing connection", ("bn", blk_num)( "p", c->peer_name() ) );
             sync_last_requested_num = 0;
             sync_source.reset();
-            //todo: set_state( in_sync );
             g.unlock();
             c->close();
             send_handshakes();
@@ -2568,7 +2536,7 @@ namespace eosio {
          return;  // We don't have enough data to perform the calculation yet.
       }
 
-      offset = (double(rec - org) + double(msg.xmt - dst)) / 2;
+      double offset = (double(rec - org) + double(msg.xmt - dst)) / 2;
       double NsecPerUsec{1000};
 
       if( logger.is_enabled( fc::log_level::all ) )
@@ -3196,7 +3164,6 @@ namespace eosio {
 
       my->producer_plug = app().find_plugin<producer_plugin>();
 
-      // currently thread_pool only used for server_ioc
       my->thread_pool.emplace( "net", my->thread_pool_size );
 
       tcp::endpoint listen_endpoint;
