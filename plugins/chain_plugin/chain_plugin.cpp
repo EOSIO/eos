@@ -8,6 +8,7 @@
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/authorization_manager.hpp>
 #include <eosio/chain/producer_object.hpp>
+#include <eosio/chain/code_object.hpp>
 #include <eosio/chain/config.hpp>
 #include <eosio/chain/wasm_interface.hpp>
 #include <eosio/chain/resource_limits.hpp>
@@ -2050,8 +2051,9 @@ read_only::get_code_results read_only::get_code( const get_code_params& params )
 
    EOS_ASSERT( params.code_as_wasm, unsupported_feature, "Returning WAST from get_code is no longer supported" );
 
-   if( accnt.code.size() ) {
-      result.wasm = string(accnt.code.begin(), accnt.code.end());
+   if( accnt.code_version != digest_type() ) {
+      const auto& code = d.get<code_object, by_code_id>(accnt.code_version).code;
+      result.wasm = string(code.begin(), code.end());
       result.code_hash = accnt.code_version;
    }
 
@@ -2069,7 +2071,7 @@ read_only::get_code_hash_results read_only::get_code_hash( const get_code_hash_p
    const auto& d = db.db();
    const auto& accnt  = d.get<account_object,by_name>( params.account_name );
 
-   if( accnt.code.size() ) {
+   if( accnt.code_version != digest_type() ) {
       result.code_hash = accnt.code_version;
    }
 
@@ -2082,7 +2084,10 @@ read_only::get_raw_code_and_abi_results read_only::get_raw_code_and_abi( const g
 
    const auto& d = db.db();
    const auto& accnt = d.get<account_object,by_name>(params.account_name);
-   result.wasm = blob{{accnt.code.begin(), accnt.code.end()}};
+   if( accnt.code_version != digest_type() ) {
+      const auto& code = d.get<code_object, by_code_id>(accnt.code_version).code;
+      result.wasm = blob{{code.begin(), code.end()}};
+   }
    result.abi = blob{{accnt.abi.begin(), accnt.abi.end()}};
 
    return result;

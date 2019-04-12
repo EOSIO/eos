@@ -6,6 +6,7 @@
 #include <eosio/chain/webassembly/runtime_interface.hpp>
 #include <eosio/chain/wasm_eosio_injection.hpp>
 #include <eosio/chain/transaction_context.hpp>
+#include <eosio/chain/code_object.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <fc/scoped_exit.hpp>
 
@@ -19,10 +20,21 @@ using namespace fc;
 using namespace eosio::chain::webassembly;
 using namespace IR;
 using namespace Runtime;
+using boost::multi_index_container;
 
 namespace eosio { namespace chain {
 
    struct wasm_interface_impl {
+      struct wasm_cache_entry {
+         digest_type                                          code_hash;
+         uint32_t first_block_num_used;
+         uint32_t last_block_num_used;
+         std::unique_ptr<wasm_instantiated_module_interface>  module;
+      };
+      struct by_hash;
+      struct by_first_block_num;
+      struct by_last_block_num;
+
       wasm_interface_impl(wasm_interface::vm_type vm) {
          if(vm == wasm_interface::vm_type::wavm)
             runtime_interface = std::make_unique<webassembly::wavm::wavm_runtime>();
@@ -50,19 +62,21 @@ namespace eosio { namespace chain {
          return mem_image;
       }
 
-      std::unique_ptr<wasm_instantiated_module_interface>& get_instantiated_module( const digest_type& code_id,
-                                                                                    const shared_string& code,
+      const std::unique_ptr<wasm_instantiated_module_interface>& get_instantiated_module( const code_object& code,
                                                                                     transaction_context& trx_context )
       {
-         auto it = instantiation_cache.find(code_id);
-         if(it == instantiation_cache.end()) {
+         wasm_cache_index::iterator it = wasm_instantiation_cache.find(code.code_id);
+         if(it == wasm_instantiation_cache.end())
+            it = wasm_instantiation_cache.emplace(wasm_interface_impl::wasm_cache_entry{code.code_id, code.first_block_used, UINT32_MAX, nullptr}).first;
+
+         if(!it->module) {
             auto timer_pause = fc::make_scoped_exit([&](){
                trx_context.resume_billing_timer();
             });
             trx_context.pause_billing_timer();
             IR::Module module;
             try {
-               Serialization::MemoryInputStream stream((const U8*)code.data(), code.size());
+               Serialization::MemoryInputStream stream((const U8*)code.code.data(), code.code.size());
                WASM::serialize(stream, module);
                module.userSections.clear();
             } catch(const Serialization::FatalSerializationException& e) {
@@ -84,13 +98,25 @@ namespace eosio { namespace chain {
             } catch(const IR::ValidationException& e) {
                EOS_ASSERT(false, wasm_serialization_error, e.message.c_str());
             }
-            it = instantiation_cache.emplace(code_id, runtime_interface->instantiate_module((const char*)bytes.data(), bytes.size(), parse_initial_memory(module))).first;
+
+            wasm_instantiation_cache.modify(it, [&](auto& c) {
+               c.module = runtime_interface->instantiate_module((const char*)bytes.data(), bytes.size(), parse_initial_memory(module));
+            });
          }
-         return it->second;
+         return it->module;
       }
 
       std::unique_ptr<wasm_runtime_interface> runtime_interface;
-      map<digest_type, std::unique_ptr<wasm_instantiated_module_interface>> instantiation_cache;
+
+      typedef boost::multi_index_container<
+         wasm_cache_entry,
+         indexed_by<
+            ordered_unique<tag<by_hash>, member<wasm_cache_entry, digest_type, &wasm_cache_entry::code_hash>>,
+            ordered_non_unique<tag<by_first_block_num>, member<wasm_cache_entry, uint32_t, &wasm_cache_entry::first_block_num_used>>,
+            ordered_non_unique<tag<by_last_block_num>, member<wasm_cache_entry, uint32_t, &wasm_cache_entry::last_block_num_used>>
+         >
+      > wasm_cache_index;
+      wasm_cache_index wasm_instantiation_cache;
    };
 
 #define _REGISTER_INTRINSIC_EXPLICIT(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)\

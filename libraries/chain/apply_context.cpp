@@ -8,6 +8,7 @@
 #include <eosio/chain/authorization_manager.hpp>
 #include <eosio/chain/resource_limits.hpp>
 #include <eosio/chain/account_object.hpp>
+#include <eosio/chain/code_object.hpp>
 #include <eosio/chain/global_property_object.hpp>
 #include <boost/container/flat_set.hpp>
 
@@ -70,7 +71,7 @@ void apply_context::exec_one()
             (*native)( *this );
          }
 
-         if( (a.code.size() > 0) &&
+         if( ( a.code_version != digest_type() ) &&
                ( control.is_builtin_activated( builtin_protocol_feature_t::forward_setcode )
                   || !( act->account == config::system_account_name
                         && act->name == N( setcode )
@@ -82,7 +83,7 @@ void apply_context::exec_one()
                control.check_action_list( act->account, act->name );
             }
             try {
-               control.get_wasm_interface().apply( a.code_version, a.code, *this );
+               control.get_wasm_interface().apply( db.get<code_object, by_code_id>(a.code_version), *this );
             } catch( const wasm_exit& ) {}
          }
       } FC_RETHROW_EXCEPTIONS( warn, "pending console output: ${console}", ("console", _pending_console_output) )

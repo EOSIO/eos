@@ -12,6 +12,7 @@
 #include <eosio/chain/exceptions.hpp>
 
 #include <eosio/chain/account_object.hpp>
+#include <eosio/chain/code_object.hpp>
 #include <eosio/chain/permission_object.hpp>
 #include <eosio/chain/permission_link_object.hpp>
 #include <eosio/chain/global_property_object.hpp>
@@ -145,21 +146,44 @@ void apply_eosio_setcode(apply_context& context) {
    const auto& account = db.get<account_object,by_name>(act.account);
 
    int64_t code_size = (int64_t)act.code.size();
-   int64_t old_size  = (int64_t)account.code.size() * config::setcode_ram_bytes_multiplier;
+   int64_t old_size  = 0;
    int64_t new_size  = code_size * config::setcode_ram_bytes_multiplier;
 
    EOS_ASSERT( account.code_version != code_id, set_exact_code, "contract is already running this version of code" );
+
+   if(account.code_version != digest_type()) {
+      const code_object& old_code_entry = db.get<code_object, by_code_id>(account.code_version);
+      int64_t old_size  = (int64_t)old_code_entry.code.size();
+      if(old_code_entry.code_ref_count == 1) {
+         db.remove(old_code_entry);
+      }
+      else
+        db.modify(old_code_entry, [](code_object& o) {
+           --o.code_ref_count;
+        });
+   }
+
+   if(code_id != digest_type()) {
+      const code_object* new_code_entry = db.find<code_object, by_code_id>(code_id);
+      if(new_code_entry)
+         db.modify(*new_code_entry, [](code_object& o) {
+            ++o.code_ref_count;
+         });
+      else {
+         db.create<code_object>([&](code_object& o) {
+            o.code_id = code_id;
+            o.code.assign(act.code.data(), code_size);
+            o.code_ref_count = 1;
+            o.first_block_used = context.control.head_block_num();
+         });
+      }
+   }
 
    db.modify( account, [&]( auto& a ) {
       /** TODO: consider whether a microsecond level local timestamp is sufficient to detect code version changes*/
       // TODO: update setcode message to include the hash, then validate it in validate
       a.last_code_update = context.control.pending_block_time();
       a.code_version = code_id;
-      if ( code_size > 0 ) {
-         a.code.assign(act.code.data(), code_size);
-      } else {
-         a.code.resize(0);
-      }
    });
 
    const auto& account_sequence = db.get<account_sequence_object, by_name>(act.account);

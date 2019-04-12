@@ -6,6 +6,7 @@
 #include <eosio/chain/exceptions.hpp>
 
 #include <eosio/chain/account_object.hpp>
+#include <eosio/chain/code_object.hpp>
 #include <eosio/chain/block_summary_object.hpp>
 #include <eosio/chain/eosio_contract.hpp>
 #include <eosio/chain/global_property_object.hpp>
@@ -43,7 +44,8 @@ using controller_index_set = index_set<
    block_summary_multi_index,
    transaction_multi_index,
    generated_transaction_multi_index,
-   table_id_multi_index
+   table_id_multi_index,
+   code_index
 >;
 
 using contract_database_index_set = index_set<

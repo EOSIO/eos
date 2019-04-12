@@ -112,7 +112,6 @@ datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosi
    fc::raw::pack(ds, as_type<fc::time_point>(obj.obj.last_code_update));
    fc::raw::pack(ds, as_type<eosio::chain::digest_type>(obj.obj.code_version));
    fc::raw::pack(ds, as_type<eosio::chain::block_timestamp_type>(obj.obj.creation_date));
-   fc::raw::pack(ds, as_type<eosio::chain::shared_string>(obj.obj.code));
    fc::raw::pack(ds, as_type<eosio::chain::shared_string>(obj.obj.abi));
    return ds;
 }
