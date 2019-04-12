@@ -24,6 +24,13 @@ static appbase::abstract_plugin& _producer_api_plugin = app().register_plugin<pr
 
 using namespace eosio;
 
+struct async_result_visitor : public fc::visitor<fc::variant> {
+   template<typename T>
+   fc::variant operator()(const T& v) const {
+      return fc::variant(v);
+   }
+};
+
 #define CALL(api_name, api_handle, call_name, INVOKE, http_response_code) \
 {std::string("/v1/" #api_name "/" #call_name), \
    [&api_handle](string, string body, url_response_callback cb) mutable { \
@@ -36,6 +43,25 @@ using namespace eosio;
           } \
        }}
 
+#define CALL_ASYNC(api_name, api_handle, call_name, call_result, INVOKE, http_response_code) \
+{std::string("/v1/" #api_name "/" #call_name), \
+   [&api_handle](string, string body, url_response_callback cb) mutable { \
+      if (body.empty()) body = "{}"; \
+      auto next = [cb, body](const fc::static_variant<fc::exception_ptr, call_result>& result){\
+         if (result.contains<fc::exception_ptr>()) {\
+            try {\
+               result.get<fc::exception_ptr>()->dynamic_rethrow_exception();\
+            } catch (...) {\
+               http_plugin::handle_exception(#api_name, #call_name, body, cb);\
+            }\
+         } else {\
+            cb(http_response_code, result.visit(async_result_visitor()));\
+         }\
+      };\
+      INVOKE\
+   }\
+}
+
 #define INVOKE_R_R(api_handle, call_name, in_param) \
      auto result = api_handle.call_name(fc::json::from_string(body).as<in_param>());
 
@@ -45,6 +71,9 @@ using namespace eosio;
 
 #define INVOKE_R_V(api_handle, call_name) \
      auto result = api_handle.call_name();
+
+#define INVOKE_R_V_ASYNC(api_handle, call_name)\
+     api_handle.call_name(next);
 
 #define INVOKE_V_R(api_handle, call_name, in_param) \
      api_handle.call_name(fc::json::from_string(body).as<in_param>()); \
@@ -88,8 +117,8 @@ void producer_api_plugin::plugin_startup() {
             INVOKE_V_R(producer, set_whitelist_blacklist, producer_plugin::whitelist_blacklist), 201),   
        CALL(producer, producer, get_integrity_hash,
             INVOKE_R_V(producer, get_integrity_hash), 201),
-       CALL(producer, producer, create_snapshot,
-            INVOKE_R_V(producer, create_snapshot), 201),
+       CALL_ASYNC(producer, producer, create_snapshot, producer_plugin::snapshot_information,
+            INVOKE_R_V_ASYNC(producer, create_snapshot), 201),
    });
 }
 
