@@ -48,6 +48,7 @@ using bpo::options_description;
 using bpo::variables_map;
 using public_key_type = fc::crypto::public_key;
 using private_key_type = fc::crypto::private_key;
+using namespace eosio::launcher::config;
 
 const string block_dir = "blocks";
 const string shared_mem_dir = "state";
@@ -490,18 +491,18 @@ launcher_def::set_options (bpo::options_description &cfg) {
     ("shape,s",bpo::value<string>(&shape)->default_value("star"),"network topology, use \"star\" \"mesh\" or give a filename for custom")
     ("p2p-plugin", bpo::value<string>()->default_value("net"),"select a p2p plugin to use (either net or bnet). Defaults to net.")
     ("genesis,g",bpo::value<string>()->default_value("./genesis.json"),"set the path to genesis.json")
-    ("skip-signature", bpo::bool_switch(&skip_transaction_signatures)->default_value(false), "nodeos does not require transaction signatures.")
-    ("nodeos", bpo::value<string>(&eosd_extra_args), "forward nodeos command line argument(s) to each instance of nodeos, enclose arg(s) in quotes")
-    ("specific-num", bpo::value<vector<uint>>()->composing(), "forward nodeos command line argument(s) (using \"--specific-nodeos\" flag) to this specific instance of nodeos. This parameter can be entered multiple times and requires a paired \"--specific-nodeos\" flag each time it is used")
-    ("specific-nodeos", bpo::value<vector<string>>()->composing(), "forward nodeos command line argument(s) to its paired specific instance of nodeos(using \"--specific-num\"), enclose arg(s) in quotes")
-    ("spcfc-inst-num", bpo::value<vector<uint>>()->composing(), "Specify a specific version installation path (using \"--spcfc-inst-nodeos\" flag) for launching this specific instance of nodeos. This parameter can be entered multiple times and requires a paired \"--spcfc-inst-nodeos\" flag each time it is used")
-    ("spcfc-inst-nodeos", bpo::value<vector<string>>()->composing(), "Provide a specific version installation path to its paired specific instance of nodeos(using \"--spcfc-inst-num\")")
+    ("skip-signature", bpo::bool_switch(&skip_transaction_signatures)->default_value(false), (string(node_executable_name) + " does not require transaction signatures.").c_str())
+    (node_executable_name, bpo::value<string>(&eosd_extra_args), ("forward " + string(node_executable_name) + " command line argument(s) to each instance of " + string(node_executable_name) + ", enclose arg(s) in quotes").c_str())
+    ("specific-num", bpo::value<vector<uint>>()->composing(), ("forward " + string(node_executable_name) + " command line argument(s) (using \"--specific-" + string(node_executable_name) + "\" flag) to this specific instance of " + string(node_executable_name) + ". This parameter can be entered multiple times and requires a paired \"--specific-" + string(node_executable_name) +"\" flag each time it is used").c_str())
+    (("specific-" + string(node_executable_name)).c_str(), bpo::value<vector<string>>()->composing(), ("forward " + string(node_executable_name) + " command line argument(s) to its paired specific instance of " + string(node_executable_name) + "(using \"--specific-num\"), enclose arg(s) in quotes").c_str())
+    ("spcfc-inst-num", bpo::value<vector<uint>>()->composing(), ("Specify a specific version installation path (using \"--spcfc-inst-"+ string(node_executable_name) + "\" flag) for launching this specific instance of " + string(node_executable_name) + ". This parameter can be entered multiple times and requires a paired \"--spcfc-inst-" + string(node_executable_name) + "\" flag each time it is used").c_str())
+    (("spcfc-inst-" + string(node_executable_name)).c_str(), bpo::value<vector<string>>()->composing(), ("Provide a specific version installation path to its paired specific instance of " + string(node_executable_name) + "(using \"--spcfc-inst-num\")").c_str())
     ("delay,d",bpo::value<int>(&start_delay)->default_value(0),"seconds delay before starting each node after the first")
     ("boot",bpo::bool_switch(&boot)->default_value(false),"After deploying the nodes and generating a boot script, invoke it.")
     ("nogen",bpo::bool_switch(&nogen)->default_value(false),"launch nodes without writing new config files")
     ("host-map",bpo::value<string>(),"a file containing mapping specific nodes to hosts. Used to enhance the custom shape argument")
     ("servers",bpo::value<string>(),"a file containing ip addresses and names of individual servers to deploy as producers or non-producers ")
-    ("per-host",bpo::value<int>(&per_host)->default_value(0),"specifies how many nodeos instances will run on a single host. Use 0 to indicate all on one.")
+    ("per-host",bpo::value<int>(&per_host)->default_value(0),("specifies how many " + string(node_executable_name) + " instances will run on a single host. Use 0 to indicate all on one.").c_str())
     ("network-name",bpo::value<string>(&network.name)->default_value("testnet_"),"network name prefix used in GELF logging source")
     ("enable-gelf-logging",bpo::value<bool>(&gelf_enabled)->default_value(true),"enable gelf logging appender in logging configuration file")
     ("gelf-endpoint",bpo::value<string>(&gelf_endpoint)->default_value("10.160.11.21:12201"),"hostname:port or ip:port of GELF endpoint")
@@ -578,8 +579,8 @@ launcher_def::initialize (const variables_map &vmap) {
      server_ident_file = vmap["servers"].as<string>();
   }
 
-  retrieve_paired_array_parameters(vmap, "specific-num", "specific-nodeos", specific_nodeos_args);
-  retrieve_paired_array_parameters(vmap, "spcfc-inst-num", "spcfc-inst-nodeos", specific_nodeos_installation_paths);
+  retrieve_paired_array_parameters(vmap, "specific-num", "specific-" + string(node_executable_name), specific_nodeos_args);
+  retrieve_paired_array_parameters(vmap, "spcfc-inst-num", "spcfc-inst-" + string(node_executable_name), specific_nodeos_installation_paths);
 
   using namespace std::chrono;
   system_clock::time_point now = system_clock::now();
@@ -645,9 +646,9 @@ launcher_def::initialize (const variables_map &vmap) {
 
   if (vmap.count("specific-num")) {
     const auto specific_nums = vmap["specific-num"].as<vector<uint>>();
-    const auto specific_args = vmap["specific-nodeos"].as<vector<string>>();
+    const auto specific_args = vmap["specific-" + string(node_executable_name)].as<vector<string>>();
     if (specific_nums.size() != specific_args.size()) {
-      cerr << "ERROR: every specific-num argument must be paired with a specific-nodeos argument" << endl;
+      cerr << "ERROR: every specific-num argument must be paired with a specific-" << node_executable_name << " argument" << endl;
       exit (-1);
     }
     // don't include bios
@@ -1538,7 +1539,7 @@ launcher_def::launch (eosd_def &instance, string &gts) {
   bfs::path reerr_sl = dd / "stderr.txt";
   bfs::path reerr_base = bfs::path("stderr." + launch_time + ".txt");
   bfs::path reerr = dd / reerr_base;
-  bfs::path pidf  = dd / "nodeos.pid";
+  bfs::path pidf  = dd / bfs::path(string(node_executable_name) + ".pid");
   host_def* host;
   try {
      host = deploy_config_files (*instance.node);
@@ -1557,7 +1558,7 @@ launcher_def::launch (eosd_def &instance, string &gts) {
         install_path = specific_nodeos_installation_paths[node_num] + "/";
      }
   }
-  string eosdcmd = install_path + "programs/nodeos/nodeos ";
+  string eosdcmd = install_path + "programs/nodeos/" + string(node_executable_name);
   if (skip_transaction_signatures) {
     eosdcmd += "--skip-transaction-signatures ";
   }
