@@ -32,8 +32,8 @@ named_thread_pool::~named_thread_pool() {
 void named_thread_pool::stop() {
    _ioc_work.reset();
    _ioc.stop();
-   _thread_pool.stop();
    _thread_pool.join();
+   _thread_pool.stop();
 }
 
 
