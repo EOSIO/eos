@@ -806,10 +806,10 @@ namespace eosio {
    //---------------------------------------------------------------------------
 
    connection::connection( string endpoint )
-      : strand( my_impl->thread_pool->get_executor() ),
+      : peer_addr( endpoint ),
+        strand( my_impl->thread_pool->get_executor() ),
         socket( my_impl->thread_pool->get_executor() ),
         connection_id( ++my_impl->current_connection_id ),
-        peer_addr( endpoint ),
         response_expected_timer( my_impl->thread_pool->get_executor() ),
         read_delay_timer( my_impl->thread_pool->get_executor() ),
         last_handshake_recv(),
@@ -820,10 +820,10 @@ namespace eosio {
    }
 
    connection::connection()
-      : strand( my_impl->thread_pool->get_executor() ),
+      : peer_addr(),
+        strand( my_impl->thread_pool->get_executor() ),
         socket( my_impl->thread_pool->get_executor() ),
         connection_id( ++my_impl->current_connection_id ),
-        peer_addr(),
         response_expected_timer( my_impl->thread_pool->get_executor() ),
         read_delay_timer( my_impl->thread_pool->get_executor() ),
         last_handshake_recv(),
@@ -963,10 +963,6 @@ namespace eosio {
       }
       fc_dlog( logger, "enqueue ${s} - ${e}", ("s", peer_requested->start_block)("e", peer_requested->end_block) );
       enqueue_sync_block();
-
-      // still want to send transactions along during blk branch sync
-      // todo: need diff variable for tranasaction sending
-      // todo: syncing = false;
    }
 
    void connection::blk_send( const block_id_type& blkid ) {
@@ -1106,6 +1102,7 @@ namespace eosio {
 
    bool connection::enqueue_sync_block() {
       if( !peer_requested ) {
+         syncing = false;
          return false;
       } else {
          fc_dlog( logger, "enqueue sync block ${num}", ("num", peer_requested->last + 1) );
