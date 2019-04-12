@@ -924,7 +924,7 @@ namespace eosio {
       g.unlock();
 
       if( reconnect ) {
-         my_impl->start_conn_timer( std::chrono::milliseconds( 5 ), connection_wptr() );
+         my_impl->start_conn_timer( std::chrono::milliseconds( 500 ), connection_wptr() );
       }
    }
 
@@ -1638,6 +1638,10 @@ namespace eosio {
    // called from connection strand
    void sync_manager::sync_recv_block(const connection_ptr& c, const block_id_type& blk_id, uint32_t blk_num) {
       fc_dlog( logger, "got block ${bn} from ${p}", ("bn", blk_num)( "p", c->peer_name() ) );
+      if( app().is_quiting() ) {
+         c->close( false );
+         return;
+      }
       c->consecutive_rejected_blocks = 0;
       std::unique_lock<std::mutex> g_sync( sync_mtx );
       stages state = sync_state;
@@ -2211,6 +2215,7 @@ namespace eosio {
                if( !conn->socket_is_open() ) return;
 
                bool close_connection = false;
+               bool reconnect = true;
                try {
                   if( !ec ) {
                      if (bytes_transferred > conn->pending_message_buffer.bytes_to_write()) {
@@ -2261,6 +2266,7 @@ namespace eosio {
                      } else {
                         fc_ilog( logger, "Peer closed connection" );
                      }
+                     reconnect = false;
                      close_connection = true;
                   }
                }
@@ -2275,11 +2281,12 @@ namespace eosio {
                catch (...) {
                   fc_elog( logger, "Undefined exception handling read data" );
                   close_connection = true;
+                  reconnect = false;
                }
 
                if( close_connection ) {
                   fc_elog( logger, "Closing connection to: ${p}", ("p", conn->peer_name()) );
-                  conn->close();
+                  conn->close( reconnect );
                }
          }));
       } catch (...) {
@@ -2756,6 +2763,7 @@ namespace eosio {
       go_away_reason reason = fatal_other;
       try {
          my_impl->chain_plug->accept_block(msg);
+         my_impl->update_chain_info();
          reason = no_reason;
       } catch( const unlinkable_block_exception &ex) {
          peer_elog(c, "bad signed_block : ${m}", ("m",ex.what()));
