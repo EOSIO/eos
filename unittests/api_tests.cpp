@@ -2532,4 +2532,40 @@ BOOST_FIXTURE_TEST_CASE(action_ordinal_failtest3, TESTER) { try {
 
 } FC_LOG_AND_RETHROW() }
 
+/*************************************************************************************
++ * get_sender_test test cases
++ *************************************************************************************/
+BOOST_FIXTURE_TEST_CASE(get_sender_test, TESTER) { try {
+
+   produce_blocks(1);
+   create_account(N(testapi) );
+   create_account(N(testapi2), N(testapi), true, true );
+
+   set_code( N(testapi), contracts::test_api_wasm() );
+   produce_blocks(1);
+   set_code( N(testapi2), contracts::test_api_wasm() );
+   produce_blocks(1);
+
+   using uint128_t = eosio::chain::uint128_t;
+
+   uint128_t data = (N(testapi2) | ((uint128_t)(N(testapi)) << 64));
+   CALL_TEST_FUNCTION( *this, "test_action", "get_sender_send_inline", fc::raw::pack(data) );
+
+   data = (N(testapi2) | ((uint128_t)(N(testapi2)) << 64));
+   BOOST_CHECK_THROW(CALL_TEST_FUNCTION( *this, "test_action", "get_sender_send_inline", fc::raw::pack(data)), eosio_assert_message_exception);
+
+   data = (N(testapi2) | ((uint128_t)(N(testapi)) << 64));
+   CALL_TEST_FUNCTION( *this, "test_action", "get_sender_notify", fc::raw::pack(data) );
+
+   data = (N(testapi2) | ((uint128_t)(N(testapi2)) << 64));
+   BOOST_CHECK_THROW(CALL_TEST_FUNCTION( *this, "test_action", "get_sender_notify", fc::raw::pack(data)), eosio_assert_message_exception);
+
+   data = ((uint128_t)1 | N(testapi2) | ((uint128_t)(N(testapi2)) << 64));
+   CALL_TEST_FUNCTION( *this, "test_action", "get_sender_notify", fc::raw::pack(data) );
+
+   data = ((uint128_t)1 | N(testapi2) | ((uint128_t)(N(testapi)) << 64));
+   BOOST_CHECK_THROW(CALL_TEST_FUNCTION( *this, "test_action", "get_sender_notify", fc::raw::pack(data)), eosio_assert_message_exception);
+
+} FC_LOG_AND_RETHROW() } 
+
 BOOST_AUTO_TEST_SUITE_END()

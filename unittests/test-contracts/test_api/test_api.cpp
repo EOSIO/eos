@@ -41,7 +41,9 @@ extern "C" {
       }
       WASM_TEST_HANDLER( test_action, assert_true_cf );
 
-      if ( action != WASM_TEST_ACTION("test_transaction", "stateful_api") && action != WASM_TEST_ACTION("test_transaction", "context_free_api") )
+      if ( action != WASM_TEST_ACTION("test_transaction", "stateful_api") &&
+           action != WASM_TEST_ACTION("test_transaction", "context_free_api") &&
+           action != WASM_TEST_ACTION("test_action", "assert_sender"))
          require_auth(code);
 
       //test_types
@@ -70,6 +72,9 @@ extern "C" {
       WASM_TEST_HANDLER_EX( test_action, test_action_ordinal4       );
       WASM_TEST_HANDLER_EX( test_action, test_action_ordinal_foo    );
       WASM_TEST_HANDLER_EX( test_action, test_action_ordinal_bar    );
+      WASM_TEST_HANDLER   ( test_action, get_sender_send_inline     );
+      WASM_TEST_HANDLER   ( test_action, assert_sender              );
+      WASM_TEST_HANDLER_EX( test_action, get_sender_notify          );
 
       // test named actions
       // We enforce action name matches action data type name, so name mangling will not work for these tests.

@@ -14,6 +14,15 @@
 
 #include "test_api.hpp"
 
+namespace eosio {
+   namespace internal_use_do_not_use {
+      extern "C" {
+         __attribute__((eosio_wasm_import))
+         uint64_t get_sender();
+      }
+   }
+}
+
 using namespace eosio;
 
 void test_action::read_action_normal() {
@@ -342,3 +351,49 @@ void test_action::test_action_ordinal_foo(uint64_t receiver, uint64_t code, uint
 void test_action::test_action_ordinal_bar(uint64_t receiver, uint64_t code, uint64_t action) {
    print("exec 11");
 }
+
+void test_action::get_sender_send_inline() {
+
+   eosio_assert(internal_use_do_not_use::get_sender() == 0, "assert_sender failed");
+
+   uint128_t tmp;
+   read_action_data( &tmp, sizeof(tmp) );
+
+   uint64_t to_acc = (uint64_t)tmp;
+   uint64_t sender_acc = (uint64_t)(tmp >> 64);
+
+   eosio::action act1(std::vector<permission_level>(), name(to_acc), 
+                        name(WASM_TEST_ACTION("test_action", "assert_sender")),
+                        std::tuple<uint64_t>(sender_acc));
+   act1.send();
+}
+
+void test_action::assert_sender() {
+   uint64_t sender;
+   read_action_data( &sender, sizeof(sender) );
+   eosio_assert(internal_use_do_not_use::get_sender() == sender, "assert_sender failed");
+}
+
+void test_action::get_sender_notify(uint64_t receiver, uint64_t code, uint64_t action) {
+   uint128_t tmp;
+   read_action_data( &tmp, sizeof(tmp) );
+
+   uint64_t to_acc = ((uint64_t)tmp & 0xfffffffffffffffeull);
+   uint64_t sender_acc = (uint64_t)(tmp >> 64);
+   bool send_inline = (tmp & 1);
+
+   if (receiver == code) { // main
+      eosio_assert(internal_use_do_not_use::get_sender() == 0, "assert_sender failed 1");
+      eosio::require_recipient(name(to_acc));
+   } else { // in notification
+      if (!send_inline) {
+         eosio_assert(internal_use_do_not_use::get_sender() == sender_acc, "assert_sender failed 2");
+      } else {
+         eosio::action act1(std::vector<permission_level>(), name(to_acc), 
+                              name(WASM_TEST_ACTION("test_action", "assert_sender")),
+                                    std::tuple<uint64_t>(sender_acc));
+         act1.send();
+      }
+   }
+}
+
