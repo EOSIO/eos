@@ -537,6 +537,8 @@ namespace eosio {
       explicit connection( string endpoint );
       connection();
 
+      ~connection() {}
+
       bool start_session();
 
       bool socket_is_open() const { return socket_open.load(); } // thread safe, atomic
@@ -966,9 +968,11 @@ namespace eosio {
    }
 
    void connection::blk_send( const block_id_type& blkid ) {
-      app().post( priority::low, [blkid, c = shared_from_this()]() {
-         controller& cc = my_impl->chain_plug->chain();
+      app().post( priority::low, [blkid, weak = weak_from_this()]() {
+         connection_ptr c = weak.lock();
+         if( !c ) return;
          try {
+            controller& cc = my_impl->chain_plug->chain();
             signed_block_ptr b = cc.fetch_block_by_id( blkid );
             if( b ) {
                fc_dlog( logger, "found block for id at num ${n}", ("n", b->block_num()) );
@@ -1112,7 +1116,9 @@ namespace eosio {
       if(num == peer_requested->end_block) {
          peer_requested.reset();
       }
-      app().post( priority::medium, [num, trigger_send, c = shared_from_this()]() {
+      app().post( priority::medium, [num, trigger_send, weak = weak_from_this()]() {
+         connection_ptr c = weak.lock();
+         if( !c ) return;
          controller& cc = my_impl->chain_plug->chain();
          signed_block_ptr sb = cc.fetch_block_by_number( num );
          if( sb ) {
@@ -1918,7 +1924,10 @@ namespace eosio {
          req.req_blocks.mode = normal;
          // known_blocks.ids is never > 1
          if( !msg.known_blocks.ids.empty() ) {
-            app().post( priority::low, [this, msg{std::move(msg)}, req{std::move(req)}, c]() mutable {
+            connection_wptr weak = c;
+            app().post( priority::low, [this, msg{std::move(msg)}, req{std::move(req)}, weak{std::move(weak)}]() mutable {
+               connection_ptr c = weak.lock();
+               if( !c ) return;
                const block_id_type& blkid = msg.known_blocks.ids.back();
                signed_block_ptr b;
                try {
@@ -2460,8 +2469,10 @@ namespace eosio {
          }
 
          uint32_t peer_lib = msg.last_irreversible_block_num;
-         app().post( priority::low, [peer_lib, chain_plug = my_impl->chain_plug, c = shared_from_this(),
+         app().post( priority::low, [peer_lib, chain_plug = my_impl->chain_plug, weak = weak_from_this(),
                                      msg_lib_id = msg.last_irreversible_block_id]() {
+            connection_ptr c = weak.lock();
+            if( !c ) return;
             controller& cc = chain_plug->chain();
             uint32_t lib_num = cc.last_irreversible_block_num();
 
@@ -2674,12 +2685,15 @@ namespace eosio {
 
       trx_in_progress_size += calc_trx_size( ptrx->packed_trx );
       my_impl->chain_plug->accept_transaction( ptrx,
-            [c = shared_from_this(), ptrx](const static_variant<fc::exception_ptr, transaction_trace_ptr>& result) {
+            [weak = weak_from_this(), ptrx](const static_variant<fc::exception_ptr, transaction_trace_ptr>& result) {
          // next (this lambda) called from application thread
-         c->trx_in_progress_size -= calc_trx_size( ptrx->packed_trx );
+         connection_ptr conn = weak.lock();
+         if( conn ) {
+            conn->trx_in_progress_size -= calc_trx_size( ptrx->packed_trx );
+         }
          bool accepted = false;
          if (result.contains<fc::exception_ptr>()) {
-            peer_dlog(c, "bad packed_transaction : ${m}", ("m",result.get<fc::exception_ptr>()->what()));
+            fc_dlog( logger, "bad packed_transaction : ${m}", ("m", result.get<fc::exception_ptr>()->what()) );
          } else {
             auto trace = result.get<transaction_trace_ptr>();
             if (!trace->except) {
@@ -2688,7 +2702,7 @@ namespace eosio {
             }
 
             if( !accepted ) {
-               peer_elog( c, "bad packed_transaction : ${m}", ("m", trace->except->what()));
+               fc_elog( logger, "bad packed_transaction : ${m}", ("m", trace->except->what()));
             }
          }
 
@@ -3281,7 +3295,6 @@ namespace eosio {
 
          if( my->thread_pool ) {
             my->thread_pool->stop();
-            my->thread_pool.reset();
          }
          app().post( 0, [me = my](){} ); // keep my pointer alive until queue is drained
          fc_ilog( logger, "exit shutdown" );
