@@ -935,11 +935,20 @@ namespace eosio {
 
             block_num_type my_latest_checkpoint = 0;
 
+            const auto& upo = ctrl.get_upgrade_properties();
             auto checkpoint = [&](const block_num_type &in) {
-                return in % 100 == 1
-                       || in == ctrl.last_proposed_schedule_block_num()
-                       || in == ctrl.last_promoted_proposed_schedule_block_num();
+              auto is_desired_checkpoint_num = in % 100 == 1
+                      || in == ctrl.last_proposed_schedule_block_num()
+                      || in == ctrl.last_promoted_proposed_schedule_block_num();
+              if (upo.upgrade_complete_block_num) is_desired_checkpoint_num = is_desired_checkpoint_num && in > upo.upgrade_complete_block_num;
+              return is_desired_checkpoint_num;
             };
+
+//            auto checkpoint = [&](const block_num_type &in) {
+//                return in % 100 == 1
+//                       || in == ctrl.last_proposed_schedule_block_num()
+//                       || in == ctrl.last_promoted_proposed_schedule_block_num();
+//            };
 
             for (auto i = psp->block_num;
                  i > std::max(ctrl.last_stable_checkpoint_block_num(), static_cast<uint32_t>(1)); --i) {
