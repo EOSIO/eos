@@ -117,16 +117,19 @@ public:
       auto in_chain = (bool)chain.fetch_block_by_id( block_id );
       boost::system::error_code ec;
 
-      EOS_ASSERT(in_chain, snapshot_finalization_exception,
-                 "Snapshotted block was forked out of the chain.  ID: ${block_id}",
-                 ("block_id", block_id));
+      if (!in_chain) {
+         bfs::remove(bfs::path(temp_path), ec);
+         EOS_THROW(snapshot_finalization_exception,
+                   "Snapshotted block was forked out of the chain.  ID: ${block_id}",
+                   ("block_id", block_id));
+      }
 
       bfs::rename(bfs::path(temp_path), bfs::path(final_path), ec);
       EOS_ASSERT(!ec, snapshot_finalization_exception,
                  "Unable to finalize valid snapshot of block number ${bn}: [code: ${ec}] ${message}",
                  ("bn", get_height())
                  ("ec", ec.value())
-                 ("message",ec.message()));
+                 ("message", ec.message()));
 
       return {block_id, final_path};
    }
