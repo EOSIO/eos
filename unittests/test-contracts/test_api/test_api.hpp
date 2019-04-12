@@ -75,9 +75,6 @@ struct test_action {
    static void test_action_ordinal4(uint64_t receiver, uint64_t code, uint64_t action);
    static void test_action_ordinal_foo(uint64_t receiver, uint64_t code, uint64_t action);
    static void test_action_ordinal_bar(uint64_t receiver, uint64_t code, uint64_t action);
-   static void get_sender_send_inline();
-   static void assert_sender();
-   static void get_sender_notify(uint64_t receiver, uint64_t code, uint64_t action);
 };
 
 struct test_db {

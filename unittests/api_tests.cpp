@@ -2086,7 +2086,7 @@ BOOST_FIXTURE_TEST_CASE(action_ordinal_test, TESTER) { try {
    set_code( N(erin), contracts::test_api_wasm() );
    produce_blocks(1);
 
-   transaction_trace_ptr txn_trace = CALL_TEST_FUNCTION_SCOPE( *this, "test_action", "test_action_ordinal1", 
+   transaction_trace_ptr txn_trace = CALL_TEST_FUNCTION_SCOPE( *this, "test_action", "test_action_ordinal1",
       {}, vector<account_name>{ N(testapi)});
 
    BOOST_REQUIRE_EQUAL( validate(), true );
@@ -2221,7 +2221,7 @@ BOOST_FIXTURE_TEST_CASE(action_ordinal_failtest1, TESTER) { try {
    create_account(N(fail1) ); // <- make first action fails in the middle
    produce_blocks(1);
 
-   transaction_trace_ptr txn_trace = 
+   transaction_trace_ptr txn_trace =
       CALL_TEST_FUNCTION_NO_THROW( *this, "test_action", "test_action_ordinal1", {});
 
    BOOST_REQUIRE_EQUAL( validate(), true );
@@ -2231,7 +2231,7 @@ BOOST_FIXTURE_TEST_CASE(action_ordinal_failtest1, TESTER) { try {
 
    auto &atrace = txn_trace->action_traces;
 
-   // fails here after creating one notify action and one inline action 
+   // fails here after creating one notify action and one inline action
    BOOST_REQUIRE_EQUAL((int)atrace[0].action_ordinal, 1);
    BOOST_REQUIRE_EQUAL((int)atrace[0].creator_action_ordinal, 0);
    BOOST_REQUIRE_EQUAL((int)atrace[0].parent_action_ordinal, 0);
@@ -2289,7 +2289,7 @@ BOOST_FIXTURE_TEST_CASE(action_ordinal_failtest2, TESTER) { try {
    create_account(N(fail3) ); // <- make action 3 fails in the middle
    produce_blocks(1);
 
-   transaction_trace_ptr txn_trace = 
+   transaction_trace_ptr txn_trace =
       CALL_TEST_FUNCTION_NO_THROW( *this, "test_action", "test_action_ordinal1", {});
 
    BOOST_REQUIRE_EQUAL( validate(), true );
@@ -2408,7 +2408,7 @@ BOOST_FIXTURE_TEST_CASE(action_ordinal_failtest3, TESTER) { try {
    create_account(N(failnine) ); // <- make action 9 fails in the middle
    produce_blocks(1);
 
-   transaction_trace_ptr txn_trace = 
+   transaction_trace_ptr txn_trace =
       CALL_TEST_FUNCTION_NO_THROW( *this, "test_action", "test_action_ordinal1", {});
 
    BOOST_REQUIRE_EQUAL( validate(), true );
@@ -2531,41 +2531,5 @@ BOOST_FIXTURE_TEST_CASE(action_ordinal_failtest3, TESTER) { try {
    BOOST_REQUIRE_EQUAL(atrace[10].receipt->global_sequence, start_gseq + 7);
 
 } FC_LOG_AND_RETHROW() }
-
-/*************************************************************************************
-+ * get_sender_test test cases
-+ *************************************************************************************/
-BOOST_FIXTURE_TEST_CASE(get_sender_test, TESTER) { try {
-
-   produce_blocks(1);
-   create_account(N(testapi) );
-   create_account(N(testapi2), N(testapi), true, true );
-
-   set_code( N(testapi), contracts::test_api_wasm() );
-   produce_blocks(1);
-   set_code( N(testapi2), contracts::test_api_wasm() );
-   produce_blocks(1);
-
-   using uint128_t = eosio::chain::uint128_t;
-
-   uint128_t data = (N(testapi2) | ((uint128_t)(N(testapi)) << 64));
-   CALL_TEST_FUNCTION( *this, "test_action", "get_sender_send_inline", fc::raw::pack(data) );
-
-   data = (N(testapi2) | ((uint128_t)(N(testapi2)) << 64));
-   BOOST_CHECK_THROW(CALL_TEST_FUNCTION( *this, "test_action", "get_sender_send_inline", fc::raw::pack(data)), eosio_assert_message_exception);
-
-   data = (N(testapi2) | ((uint128_t)(N(testapi)) << 64));
-   CALL_TEST_FUNCTION( *this, "test_action", "get_sender_notify", fc::raw::pack(data) );
-
-   data = (N(testapi2) | ((uint128_t)(N(testapi2)) << 64));
-   BOOST_CHECK_THROW(CALL_TEST_FUNCTION( *this, "test_action", "get_sender_notify", fc::raw::pack(data)), eosio_assert_message_exception);
-
-   data = ((uint128_t)1 | N(testapi2) | ((uint128_t)(N(testapi2)) << 64));
-   CALL_TEST_FUNCTION( *this, "test_action", "get_sender_notify", fc::raw::pack(data) );
-
-   data = ((uint128_t)1 | N(testapi2) | ((uint128_t)(N(testapi)) << 64));
-   BOOST_CHECK_THROW(CALL_TEST_FUNCTION( *this, "test_action", "get_sender_notify", fc::raw::pack(data)), eosio_assert_message_exception);
-
-} FC_LOG_AND_RETHROW() } 
 
 BOOST_AUTO_TEST_SUITE_END()
