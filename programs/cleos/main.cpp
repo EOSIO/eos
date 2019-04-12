@@ -2451,7 +2451,7 @@ int main( int argc, char** argv ) {
    getTable->add_option( "account", code, localized("The account who owns the table") )->required();
    getTable->add_option( "scope", scope, localized("The scope within the contract in which the table is found") )->required();
    getTable->add_option( "table", table, localized("The name of the table as specified by the contract abi") )->required();
-   getTable->add_option( "index", index, localized("Index name. The same as in abi decription\n"))->required();
+   getTable->add_option( "--index", index, localized("Index name. The same as in abi decription. If not set the index name will be \"primary\"\n"));
    getTable->add_option( "-b,--binary", binary, localized("Return the value as BINARY rather than using abi to interpret as JSON") );
    getTable->add_option( "-l,--limit", limit, localized("The maximum number of rows to return") );
    getTable->add_option( "-k,--key", table_key, localized("Deprecated") );
@@ -2477,7 +2477,7 @@ int main( int argc, char** argv ) {
                          ("lower_bound", lower_bound)
                          ("upper_bound", upper_bound)
                          ("limit",limit)
-                         ("index", index)
+                         ("index", index.empty() ? "primary" : index)
                          ("encode_type", encode_type)
                          ("reverse", reverse)
                          ("show_payer", show_payer)
