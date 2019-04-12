@@ -572,7 +572,6 @@ class apply_context {
       uint32_t                      action_ordinal = 0;
       bool                          privileged   = false;
       bool                          context_free = false;
-      bool                          _in_notification = false; // executing notification
 
    public:
       generic_index<index64_object>                                  idx64;
