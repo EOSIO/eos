@@ -554,6 +554,8 @@ class apply_context {
       action_name get_receiver()const { return receiver; }
       const action& get_action()const { return *act; }
 
+      action_name get_sender() const;
+
    /// Fields:
    public:
 

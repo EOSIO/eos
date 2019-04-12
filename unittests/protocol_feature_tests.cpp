@@ -966,4 +966,57 @@ BOOST_AUTO_TEST_CASE( forward_setcode_test ) { try {
    c2.produce_block();
 } FC_LOG_AND_RETHROW() }
 
+BOOST_AUTO_TEST_CASE( get_sender_test ) { try {
+   tester c( setup_policy::preactivate_feature_and_new_bios );
+
+   const auto& tester1_account = account_name("tester1");
+   const auto& tester2_account = account_name("tester2");
+   c.create_accounts( {tester1_account, tester2_account} );
+   c.produce_block();
+
+   BOOST_CHECK_EXCEPTION(  c.set_code( tester1_account, contracts::get_sender_test_wasm() ),
+                           wasm_exception,
+                           fc_exception_message_is( "env.get_sender unresolveable" ) );
+
+   const auto& pfm = c.control->get_protocol_feature_manager();
+   const auto& d = pfm.get_builtin_digest( builtin_protocol_feature_t::get_sender );
+   BOOST_REQUIRE( d );
+
+   c.preactivate_protocol_features( {*d} );
+   c.produce_block();
+
+   c.set_code( tester1_account, contracts::get_sender_test_wasm() );
+   c.set_abi( tester1_account, contracts::get_sender_test_abi().data() );
+   c.set_code( tester2_account, contracts::get_sender_test_wasm() );
+   c.set_abi( tester2_account, contracts::get_sender_test_abi().data() );
+   c.produce_block();
+
+   BOOST_CHECK_EXCEPTION(  c.push_action( tester1_account, N(sendinline), tester1_account, mutable_variant_object()
+                                             ("to", tester2_account.to_string())
+                                             ("expected_sender", account_name{}) ),
+                           eosio_assert_message_exception,
+                           eosio_assert_message_is( "sender did not match" ) );
+
+   c.push_action( tester1_account, N(sendinline), tester1_account, mutable_variant_object()
+      ("to", tester2_account.to_string())
+      ("expected_sender", tester1_account.to_string())
+   );
+
+   c.push_action( tester1_account, N(notify), tester1_account, mutable_variant_object()
+      ("to", tester2_account.to_string())
+      ("expected_sender", tester1_account.to_string())
+      ("send_inline", false)
+   );
+
+   c.push_action( tester1_account, N(notify), tester1_account, mutable_variant_object()
+      ("to", tester2_account.to_string())
+      ("expected_sender", tester2_account.to_string())
+      ("send_inline", true)
+   );
+
+   c.push_action( tester1_account, N(assertsender), tester1_account, mutable_variant_object()
+      ("expected_sender", account_name{})
+   );
+} FC_LOG_AND_RETHROW() }
+
 BOOST_AUTO_TEST_SUITE_END()

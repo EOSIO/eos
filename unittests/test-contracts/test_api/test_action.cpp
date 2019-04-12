@@ -266,7 +266,7 @@ void test_action::test_action_ordinal1(uint64_t receiver, uint64_t code, uint64_
       print("exec 1");
       eosio::require_recipient( "bob"_n ); //-> exec 2 which would then cause execution of 4, 10
 
-      eosio::action act1({name(_self), "active"_n}, name(_self), 
+      eosio::action act1({name(_self), "active"_n}, name(_self),
                          name(WASM_TEST_ACTION("test_action", "test_action_ordinal2")),
                          std::tuple<>());
       act1.send(); // -> exec 5 which would then cause execution of 6, 7, 8
@@ -275,7 +275,7 @@ void test_action::test_action_ordinal1(uint64_t receiver, uint64_t code, uint64_
          eosio_assert(false, "fail at point 1");
       }
 
-      eosio::action act2({name(_self), "active"_n}, name(_self), 
+      eosio::action act2({name(_self), "active"_n}, name(_self),
                          name(WASM_TEST_ACTION("test_action", "test_action_ordinal3")),
                          std::tuple<>());
       act2.send(); // -> exec 9
@@ -284,7 +284,7 @@ void test_action::test_action_ordinal1(uint64_t receiver, uint64_t code, uint64_
 
    } else if (receiver == "bob"_n.value) {
       print("exec 2");
-      eosio::action act1({name(_self), "active"_n}, name(_self), 
+      eosio::action act1({name(_self), "active"_n}, name(_self),
                          name(WASM_TEST_ACTION("test_action", "test_action_ordinal_foo")),
                          std::tuple<>());
       act1.send(); // -> exec 10
@@ -292,7 +292,7 @@ void test_action::test_action_ordinal1(uint64_t receiver, uint64_t code, uint64_
       eosio::require_recipient( "david"_n );  // -> exec 4
    } else if (receiver == "charlie"_n.value) {
       print("exec 3");
-      eosio::action act1({name(_self), "active"_n}, name(_self), 
+      eosio::action act1({name(_self), "active"_n}, name(_self),
                          name(WASM_TEST_ACTION("test_action", "test_action_ordinal_bar")),
                          std::tuple<>()); // exec 11
       act1.send();
@@ -314,7 +314,7 @@ void test_action::test_action_ordinal2(uint64_t receiver, uint64_t code, uint64_
       eosio::require_recipient( "david"_n ); // -> exec 6
       eosio::require_recipient( "erin"_n ); // -> exec 7
 
-      eosio::action act1({name(_self), "active"_n}, name(_self), 
+      eosio::action act1({name(_self), "active"_n}, name(_self),
                          name(WASM_TEST_ACTION("test_action", "test_action_ordinal4")),
                          std::tuple<>());
       act1.send(); // -> exec 8

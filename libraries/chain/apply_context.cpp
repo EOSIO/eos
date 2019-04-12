@@ -814,5 +814,13 @@ void apply_context::add_ram_usage( account_name account, int64_t ram_delta ) {
    }
 }
 
+action_name apply_context::get_sender() const {
+   const action_trace& trace = trx_context.get_action_trace( action_ordinal );
+   if (trace.creator_action_ordinal > 0) {
+      const action_trace& creator_trace = trx_context.get_action_trace( trace.creator_action_ordinal );
+      return creator_trace.receiver;
+   }
+   return 0;
+}
 
 } } /// eosio::chain

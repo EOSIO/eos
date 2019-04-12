@@ -41,7 +41,8 @@ extern "C" {
       }
       WASM_TEST_HANDLER( test_action, assert_true_cf );
 
-      if ( action != WASM_TEST_ACTION("test_transaction", "stateful_api") && action != WASM_TEST_ACTION("test_transaction", "context_free_api") )
+      if ( action != WASM_TEST_ACTION("test_transaction", "stateful_api") &&
+           action != WASM_TEST_ACTION("test_transaction", "context_free_api") )
          require_auth(code);
 
       //test_types
