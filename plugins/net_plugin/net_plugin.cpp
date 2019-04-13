@@ -385,7 +385,7 @@ namespace eosio {
    constexpr auto     def_max_reads_in_flight = 1000;
    constexpr auto     def_max_trx_in_progress_size = 100*1024*1024; // 100 MB
    constexpr auto     def_max_consecutive_rejected_blocks = 3; // num of rejected blocks before disconnect
-   constexpr auto     def_max_consecutive_immediate_connection_close = 3; // back off if client keeps closing
+   constexpr auto     def_max_consecutive_immediate_connection_close = 9; // back off if client keeps closing
    constexpr auto     def_max_clients = 25; // 0 for unlimited clients
    constexpr auto     def_max_nodes_per_host = 1;
    constexpr auto     def_conn_retry_wait = 30;
@@ -929,7 +929,7 @@ namespace eosio {
       g.unlock();
 
       if( reconnect ) {
-         my_impl->start_conn_timer( std::chrono::milliseconds( 500 ), connection_wptr() );
+         my_impl->start_conn_timer( std::chrono::milliseconds( 100 ), connection_wptr() );
       }
    }
 
@@ -1911,7 +1911,7 @@ namespace eosio {
       add_peer_txn( nts );
 
       fc_dlog(logger, "canceling wait on ${p}", ("p",c->peer_name()));
-      c->cancel_wait();
+      //todo c->cancel_wait();
    }
 
    void dispatch_manager::rejected_transaction(const transaction_id_type& id, uint32_t head_blk_num) {
