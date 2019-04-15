@@ -2986,6 +2986,7 @@ namespace eosio {
     }
 
     void net_plugin_impl::pbft_outgoing_new_view(const pbft_new_view &msg) {
+        ilog( "attempt to send new view: ${n}, from ${v}", ("n", msg)("v", msg.public_key));
         auto added = maybe_add_pbft_cache(msg.uuid);
         if (!added) return;
 
@@ -2993,6 +2994,7 @@ namespace eosio {
         if (!pcc.pbft_db.is_valid_new_view(msg)) return;
 
         bcast_pbft_msg(msg);
+        ilog( "sent new view: ${n}, from ${v}", ("n", msg)("v", msg.public_key));
     }
 
     void net_plugin_impl::pbft_outgoing_checkpoint(const pbft_checkpoint &msg) {
