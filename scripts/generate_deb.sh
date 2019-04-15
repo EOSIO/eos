@@ -23,9 +23,9 @@ else
 fi
 
 if [ ${DISTRIB_RELEASE} = "16.04" ]; then
-  LIBSSL="libssl1.0.0"
+  RELEASE_SPECIFIC_DEPS="libssl1.0.0, libicu55"
 elif [ ${DISTRIB_RELEASE} = "18.04" ]; then
-  LIBSSL="libssl1.1"
+  RELEASE_SPECIFIC_DEPS="libssl1.1, libicu60"
 else
   echo "Unrecognized Ubuntu version.  Update generate_deb.sh.  Not generating .deb file."
   exit 1
@@ -37,7 +37,7 @@ echo "Package: ${PROJECT}
 Version: ${VERSION_NO_SUFFIX}-${RELEASE}
 Section: devel
 Priority: optional
-Depends: libc6, libgcc1, ${LIBSSL}, libstdc++6, libtinfo5, zlib1g, libusb-1.0-0, libcurl3-gnutls
+Depends: libc6, libgcc1, ${RELEASE_SPECIFIC_DEPS}, libstdc++6, libtinfo5, zlib1g, libusb-1.0-0, libcurl3-gnutls
 Architecture: amd64
 Homepage: ${URL}
 Maintainer: ${EMAIL}
