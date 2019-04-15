@@ -53,6 +53,39 @@ static bytes zlib_compress_bytes(bytes in) {
    return out;
 }
 
+template <typename T>
+bool include_delta(const T& old, const T& curr) {
+   return true;
+}
+
+bool include_delta(const eosio::chain::table_id_object& old, const eosio::chain::table_id_object& curr) {
+   return old.payer != curr.payer;
+}
+
+bool include_delta(const eosio::chain::resource_limits::resource_limits_object& old,
+                   const eosio::chain::resource_limits::resource_limits_object& curr) {
+   return                                   //
+       old.net_weight != curr.net_weight || //
+       old.cpu_weight != curr.cpu_weight || //
+       old.ram_bytes != curr.ram_bytes;
+}
+
+bool include_delta(const eosio::chain::resource_limits::resource_limits_state_object& old,
+                   const eosio::chain::resource_limits::resource_limits_state_object& curr) {
+   return                                                                                       //
+       old.average_block_net_usage.last_ordinal != curr.average_block_net_usage.last_ordinal || //
+       old.average_block_net_usage.value_ex != curr.average_block_net_usage.value_ex ||         //
+       old.average_block_net_usage.consumed != curr.average_block_net_usage.consumed ||         //
+       old.average_block_cpu_usage.last_ordinal != curr.average_block_cpu_usage.last_ordinal || //
+       old.average_block_cpu_usage.value_ex != curr.average_block_cpu_usage.value_ex ||         //
+       old.average_block_cpu_usage.consumed != curr.average_block_cpu_usage.consumed ||         //
+       old.total_net_weight != curr.total_net_weight ||                                         //
+       old.total_cpu_weight != curr.total_cpu_weight ||                                         //
+       old.total_ram_bytes != curr.total_ram_bytes ||                                           //
+       old.virtual_net_limit != curr.virtual_net_limit ||                                       //
+       old.virtual_cpu_limit != curr.virtual_cpu_limit;
+}
+
 struct state_history_plugin_impl : std::enable_shared_from_this<state_history_plugin_impl> {
    chain_plugin*                                        chain_plug = nullptr;
    fc::optional<state_history_log>                      trace_log;
@@ -453,7 +486,8 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
             delta.name  = name;
             for (auto& old : undo.old_values) {
                auto& row = index.get(old.first);
-               delta.rows.obj.emplace_back(true, pack_row(row));
+               if (include_delta(old.second, row))
+                  delta.rows.obj.emplace_back(true, pack_row(row));
             }
             for (auto& old : undo.removed_values)
                delta.rows.obj.emplace_back(false, pack_row(old.second));
