@@ -1199,6 +1199,7 @@ class Node(object):
         if not self.enableMongo:
             info=self.getInfo(exitOnError=True)
             if info is not None:
+                Utils.Print("current lib: %d" % (info["last_irreversible_block_num"]))
                 return info["last_irreversible_block_num"]
         else:
             # Either this implementation or the one in getHeadBlockNum are likely wrong.
