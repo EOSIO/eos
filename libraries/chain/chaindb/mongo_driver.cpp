@@ -665,13 +665,13 @@ namespace cyberway { namespace chaindb {
 
             obj.service.pk = pk;
             build_find_pk_document(pk_doc, table, obj);
-            auto cursor = get_db_table(table).find(pk_doc.view(), options::find().limit(1));
+            auto doc = get_db_table(table).find_one(pk_doc.view());
 
-            auto itr = cursor.begin();
-            if (cursor.end() != itr) {
-                return build_object(table, *itr);
+            if (!!doc) {
+                return build_object(table, doc->view());
             } else {
-                obj.value = variant();
+                obj.clear();
+                obj.service.pk    = end_primary_key;
                 obj.service.code  = table.code;
                 obj.service.scope = table.scope;
                 obj.service.table = table.table->name;

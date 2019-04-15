@@ -281,10 +281,12 @@ namespace cyberway { namespace chaindb {
             auto item = cache_.find(cursor.index, cursor.pk);
             if (BOOST_UNLIKELY(!item)) {
                 auto obj = object_at_cursor(cursor);
-                item = cache_.emplace(cursor.index, std::move(obj));
+                if (!obj.is_null()) {
+                    item = cache_.emplace(cursor.index, std::move(obj));
+                }
             }
 
-            if (with_blob && !item->has_blob()) {
+            if (item && with_blob && !item->has_blob()) {
                 auto& table  = static_cast<const table_info&>(cursor.index);
                 auto  buffer = cursor.index.abi->to_bytes(table, item->object().value); // 1 Mb
                 item->set_blob(bytes(buffer.begin(), buffer.end()));                    // Minimize memory usage
@@ -449,8 +451,8 @@ namespace cyberway { namespace chaindb {
             if (itm) return itm->object();
 
             auto obj = driver_.object_by_pk(table, pk);
+            validate_object(table, obj, pk);
             if (!obj.value.is_null()) {
-                validate_object(table, obj, pk);
                 cache_.emplace(table, obj);
             }
             return obj;
@@ -531,7 +533,14 @@ namespace cyberway { namespace chaindb {
         }
 
         void validate_object(const table_info& table, const object_value& obj, const primary_key_t pk) const {
-            CYBERWAY_ASSERT(obj.value.get_type() == variant::type_id::object_type, invalid_abi_store_type_exception,
+            if (end_primary_key == obj.pk()) {
+                CYBERWAY_ASSERT(obj.is_null(), driver_wrong_object_exception,
+                    "Driver returns the row '${obj}' from the table ${table} instead of null for end iterator",
+                    ("obj", obj.value)("table", get_full_table_name(table)));
+                return;
+            }
+
+            CYBERWAY_ASSERT(obj.value.is_object(), invalid_abi_store_type_exception,
                 "Receives ${obj} instead of object from the table ${table}",
                 ("obj", obj.value)("table", get_full_table_name(table)));
             auto& value = obj.value.get_object();

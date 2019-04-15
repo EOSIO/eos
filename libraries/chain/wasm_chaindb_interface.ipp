@@ -31,10 +31,10 @@ namespace eosio { namespace chain {
         }
 
         cursor_t chaindb_lower_bound_pk(
-            account_name_t code, account_name_t scope, table_name_t table, index_name_t index, primary_key_t pk
+            account_name_t code, account_name_t scope, table_name_t table, primary_key_t pk
         ) {
             context.lazy_init_chaindb_abi(code);
-            return context.chaindb.lower_bound({code, scope, table, index}, pk).cursor;
+            return context.chaindb.lower_bound({code, scope, table, 0}, pk).cursor;
         }
 
         cursor_t chaindb_upper_bound(
@@ -46,10 +46,10 @@ namespace eosio { namespace chain {
         }
 
         cursor_t chaindb_upper_bound_pk(
-            account_name_t code, account_name_t scope, table_name_t table, index_name_t index, primary_key_t pk
+            account_name_t code, account_name_t scope, table_name_t table, primary_key_t pk
         ) {
             context.lazy_init_chaindb_abi(code);
-            return context.chaindb.upper_bound({code, scope, table, index}, pk).cursor;
+            return context.chaindb.upper_bound({code, scope, table, 0}, pk).cursor;
         }
 
         cursor_t chaindb_locate_to(
@@ -81,7 +81,8 @@ namespace eosio { namespace chain {
 
         primary_key_t chaindb_next(account_name_t code, cursor_t cursor) {
             // cursor is already opened -> no reason to check ABI for it
-            return context.chaindb.next({code, cursor});
+            auto pk = context.chaindb.next({code, cursor});
+            return pk;
         }
 
         primary_key_t chaindb_prev(account_name_t code, cursor_t cursor) {
@@ -92,24 +93,37 @@ namespace eosio { namespace chain {
         int32_t chaindb_datasize(account_name_t code, cursor_t cursor) {
             // cursor is already opened -> no reason to check ABI for it
 
-            auto  cache = context.chaindb.get_cache_object({code, cursor}, true);
-            auto& blob  = cache->blob();
-            CYBERWAY_ASSERT(blob.size() < 1024 * 1024, cyberway::chaindb::invalid_data_size_exception,
-                "Wrong data size ${data_size}", ("object_size", blob.size()));
-            return static_cast<int32_t>(blob.size());
+            auto cache = context.chaindb.get_cache_object({code, cursor}, true);
+            if (cache) {
+                auto& blob = cache->blob();
+                CYBERWAY_ASSERT(blob.size() < 1024 * 1024, cyberway::chaindb::invalid_data_size_exception,
+                    "Wrong data size ${data_size}", ("object_size", blob.size()));
+                return static_cast<int32_t>(blob.size());
+            }
+            return 0;
         }
 
         primary_key_t chaindb_data(account_name_t code, cursor_t cursor, array_ptr<char> data, size_t size) {
             // cursor is already opened -> no reason to check ABI for it
 
-            auto  cache = context.chaindb.get_cache_object({code, cursor}, false);
-            auto& blob  = cache->blob();
-            CYBERWAY_ASSERT(blob.size() == size, cyberway::chaindb::invalid_data_size_exception,
-                "Wrong data size (${data_size} != ${object_size})",
-                ("data_size", size)("object_size", blob.size()));
+            auto   cache = context.chaindb.get_cache_object({code, cursor}, false);
+            size_t blob_size = 0;
 
-            std::memcpy(data.value, blob.data(), blob.size());
-            return cache->pk();
+            if (cache) {
+                blob_size = cache->blob().size();
+            }
+
+            CYBERWAY_ASSERT(blob_size == size, cyberway::chaindb::invalid_data_size_exception,
+                "Wrong data size (${data_size} != ${object_size})",
+                ("data_size", size)("object_size", blob_size));
+
+            if (cache) {
+                auto& blob = cache->blob();
+                std::memcpy(data.value, blob.data(), blob.size());
+                return cache->pk();
+            }
+
+            return cyberway::chaindb::end_primary_key;
         }
 
         primary_key_t chaindb_available_primary_key(account_name_t code, account_name_t scope, table_name_t table) {
@@ -165,9 +179,9 @@ namespace eosio { namespace chain {
         (chaindb_locate_to,   int(int64_t, int64_t, int64_t, int64_t, int64_t, int, int) )
 
         (chaindb_lower_bound,    int(int64_t, int64_t, int64_t, int64_t, int, int) )
-        (chaindb_lower_bound_pk, int(int64_t, int64_t, int64_t, int64_t, int64_t)  )
+        (chaindb_lower_bound_pk, int(int64_t, int64_t, int64_t, int64_t)           )
         (chaindb_upper_bound,    int(int64_t, int64_t, int64_t, int64_t, int, int) )
-        (chaindb_upper_bound_pk, int(int64_t, int64_t, int64_t, int64_t, int64_t)  )
+        (chaindb_upper_bound_pk, int(int64_t, int64_t, int64_t, int64_t)           )
 
         (chaindb_current,     int64_t(int64_t, int) )
         (chaindb_next,        int64_t(int64_t, int) )

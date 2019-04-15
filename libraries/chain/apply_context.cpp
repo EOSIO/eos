@@ -62,7 +62,7 @@ void apply_context::exec_one( action_trace& trace )
             try {
                cyberway::chaindb::chaindb_guard guard(chaindb, receiver);
                control.get_wasm_interface().apply( a.code_version, a.code, *this );
-               chaindb.apply_all_changes();
+               chaindb.apply_code_changes(a.name);
             } catch( const wasm_exit& ) {}
          }
       } FC_RETHROW_EXCEPTIONS(warn, "pending console output: ${console}", ("console", _pending_console_output.str()))

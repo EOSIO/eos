@@ -390,7 +390,7 @@ namespace cyberway { namespace chaindb {
 
         obj.value = build_variant(&obj.service, src);
         if (obj.pk() == unset_primary_key) {
-            obj.service.pk = get_pk_value(info, src);
+            obj.service.pk    = get_pk_value(info, src);
             obj.service.code  = info.code;
             obj.service.scope = info.scope;
             obj.service.table = info.table->name;
