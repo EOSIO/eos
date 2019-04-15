@@ -9,9 +9,14 @@
 namespace Runtime
 {
 	static void causeIntrensicException(Exception::Cause cause) {
-		Platform::immediately_exit(std::make_exception_ptr(Exception{cause, std::vector<std::string>()}));
+		try {
+		   Platform::immediately_exit(std::make_exception_ptr(Exception{cause, std::vector<std::string>()}));
+		}
+		catch (...) {
+			Platform::immediately_exit(std::current_exception());
+		}
 		__builtin_unreachable();
-   }
+	}
 
 	template<typename Float>
 	Float quietNaN(Float value)
@@ -145,19 +150,24 @@ namespace Runtime
 
 	DEFINE_INTRINSIC_FUNCTION3(wavmIntrinsics,indirectCallSignatureMismatch,indirectCallSignatureMismatch,none,i32,index,i64,expectedSignatureBits,i64,tableBits)
 	{
-		TableInstance* table = reinterpret_cast<TableInstance*>(tableBits);
-		void* elementValue = table->baseAddress[index].value;
-		const FunctionType* actualSignature = table->baseAddress[index].type;
-		const FunctionType* expectedSignature = reinterpret_cast<const FunctionType*>((Uptr)expectedSignatureBits);
-		std::string ipDescription = "<unknown>";
-		LLVMJIT::describeInstructionPointer(reinterpret_cast<Uptr>(elementValue),ipDescription);
-		Log::printf(Log::Category::debug,"call_indirect signature mismatch: expected %s at index %u but got %s (%s)\n",
-			asString(expectedSignature).c_str(),
-			index,
-			actualSignature ? asString(actualSignature).c_str() : "nullptr",
-			ipDescription.c_str()
-			);
-		causeIntrensicException(elementValue == nullptr ? Exception::Cause::undefinedTableElement : Exception::Cause::indirectCallSignatureMismatch);
+		try {
+			TableInstance* table = reinterpret_cast<TableInstance*>(tableBits);
+			void* elementValue = table->baseAddress[index].value;
+			const FunctionType* actualSignature = table->baseAddress[index].type;
+			const FunctionType* expectedSignature = reinterpret_cast<const FunctionType*>((Uptr)expectedSignatureBits);
+			std::string ipDescription = "<unknown>";
+			LLVMJIT::describeInstructionPointer(reinterpret_cast<Uptr>(elementValue),ipDescription);
+			Log::printf(Log::Category::debug,"call_indirect signature mismatch: expected %s at index %u but got %s (%s)\n",
+				asString(expectedSignature).c_str(),
+				index,
+				actualSignature ? asString(actualSignature).c_str() : "nullptr",
+				ipDescription.c_str()
+				);
+			causeIntrensicException(elementValue == nullptr ? Exception::Cause::undefinedTableElement : Exception::Cause::indirectCallSignatureMismatch);
+		}
+		catch (...) {
+			Platform::immediately_exit(std::current_exception());
+		}
 	}
 
 	DEFINE_INTRINSIC_FUNCTION0(wavmIntrinsics,indirectCallIndexOutOfBounds,indirectCallIndexOutOfBounds,none)
