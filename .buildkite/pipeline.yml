@@ -1,8 +1,8 @@
 steps:
   - command: | # Ubuntu 16.04 Build
-        echo "+++ :hammer: Building"
-        ./scripts/eosio_build.sh -y
-        echo "--- :compression: Compressing build directory"
+        # echo "+++ :hammer: Building"
+        # ./scripts/eosio_build.sh -y
+        # echo "--- :compression: Compressing build directory"
         tar -pczf build.tar.gz2 build/; if [[ ! -f build.tar.gz ]]; then exit 1; fi;
     label: ":ubuntu: 16.04 Build"
     agents:
