@@ -789,6 +789,19 @@ struct controller_impl {
        }
    }
 
+   bool is_upgrading() {
+       try {
+           const auto& upo = db.get<upgrade_property_object>();
+           const auto upo_upgrade_target_block_num = upo.upgrade_target_block_num;
+           return upo_upgrade_target_block_num > 0
+                  &&(head->block_num + 1 >= upo_upgrade_target_block_num)
+                  && std::max(head->dpos_irreversible_blocknum, head->bft_irreversible_blocknum) <= upo_upgrade_target_block_num + 12;
+       } catch( const boost::exception& e) {
+           db.create<upgrade_property_object>([](auto&){});
+           return false;
+       }
+   }
+
    /**
     * @post regardless of the success of commit block there is no active pending block
     */
@@ -1256,21 +1269,16 @@ struct controller_impl {
       }
 
       auto new_version = is_new_version();
-      auto upgrading = false;
+      auto upgrading = is_upgrading();
 
       try {
           const auto& upo = db.get<upgrade_property_object>();
           const auto upo_upgrade_target_block_num = upo.upgrade_target_block_num;
-          upgrading =
-                  upo_upgrade_target_block_num > 0
-                  &&(head->block_num + 1 >= upo_upgrade_target_block_num)
-                  && std::max(head->dpos_irreversible_blocknum, head->bft_irreversible_blocknum) <= upo_upgrade_target_block_num + 12;
-          if(upgrading){
+
+          if (upgrading) {
               ilog("SYSTEM IS UPGRADING, no producer schedule changes will happen until fully upgraded.");
-              if(head->dpos_irreversible_blocknum >= upo_upgrade_target_block_num){
-                  db.modify( upo, [&]( auto& up ) {
-                    up.upgrade_complete_block_num.emplace(head->block_num);
-                  });
+              if (head->dpos_irreversible_blocknum >= upo_upgrade_target_block_num) {
+                  db.modify( upo, [&]( auto& up ) { up.upgrade_complete_block_num.emplace(head->block_num); });
               }
           }
       } catch( const boost::exception& e) {
@@ -2664,5 +2672,9 @@ const upgrade_property_object& controller::get_upgrade_properties()const {
 
 bool controller::is_upgraded() const {
     return my->is_new_version();
+}
+
+bool controller::under_upgrade() const {
+    return my->is_upgrading();
 }
 } } /// eosio::chain
