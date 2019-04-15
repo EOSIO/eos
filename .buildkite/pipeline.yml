@@ -4,7 +4,7 @@ steps:
         # ./scripts/eosio_build.sh -y
         # echo "--- :compression: Compressing build directory"
         #tar -pczf build.tar.gz2 build/; 
-        if [[ ! -f build.tar.gz ]]; then echo "No TAR Found!" && exit 1; fi;
+        if [ ! -f build.tar.gz ]; then echo "No TAR Found!" && exit 1; fi;
     label: ":ubuntu: 16.04 Build"
     agents:
       queue: "automation-large-builder-fleet"
