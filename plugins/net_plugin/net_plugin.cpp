@@ -3077,6 +3077,7 @@ namespace eosio {
     }
 
     void net_plugin_impl::handle_message( connection_ptr c, const pbft_new_view &msg) {
+       ilog( "received new view: ${n}, from ${v}", ("n", msg)("v", msg.public_key));
 
        if (!is_pbft_msg_valid(msg)) return;
 
@@ -3087,7 +3088,7 @@ namespace eosio {
        if (!pcc.pbft_db.is_valid_new_view(msg)) return;
 
        forward_pbft_msg(c, msg);
-       fc_ilog( logger, "received new view at ${n}, from ${v}", ("n", msg)("v", msg.public_key));
+       ilog( "forwarded new view: ${n}, from ${v}", ("n", msg)("v", msg.public_key));
 
        pbft_incoming_new_view_channel.publish(msg);
     }
