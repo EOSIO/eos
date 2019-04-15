@@ -1,10 +1,9 @@
 steps:
   - command: | # Ubuntu 16.04 Build
-        # echo "+++ :hammer: Building"
-        # ./scripts/eosio_build.sh -y
-        # echo "--- :compression: Compressing build directory"
-        #tar -pczf build.tar.gz2 build/; 
-        if [ ! -f build.tar.gz ]; then echo "No TAR Found!" && exit 1; fi;
+        echo "+++ :hammer: Building"
+        ./scripts/eosio_build.sh -y
+        echo "--- :compression: Compressing build directory"
+        tar -pczf build.tar.gz build/; if [ ! -f build.tar.gz ]; then echo "No TAR Found!" && exit 1; fi
     label: ":ubuntu: 16.04 Build"
     agents:
       queue: "automation-large-builder-fleet"
@@ -25,7 +24,7 @@ steps:
   #       echo "+++ :hammer: Building"
   #       ./scripts/eosio_build.sh -y
   #       echo "--- :compression: Compressing build directory"
-  #       tar -pczf build.tar.gz build/; if [[ ! -f build.tar.gz ]]; then exit 1; fi;
+  #       tar -pczf build.tar.gz build/; if [ ! -f build.tar.gz ]; then echo "No TAR Found!" && exit 1; fi
   #   label: ":ubuntu: 18.04 Build"
   #   agents:
   #     queue: "automation-large-builder-fleet"
@@ -46,7 +45,7 @@ steps:
   #       echo "+++ :hammer: Building"
   #       ./scripts/eosio_build.sh -y
   #       echo "--- :compression: Compressing build directory"
-  #       tar -pczf build.tar.gz build/; if [[ ! -f build.tar.gz ]]; then exit 1; fi
+  #       tar -pczf build.tar.gz build/; if [ ! -f build.tar.gz ]; then echo "No TAR Found!" && exit 1; fi
   #   label: ":centos: 7 Build"
   #   agents:
   #     queue: "automation-large-builder-fleet"
@@ -67,7 +66,7 @@ steps:
   #       echo "+++ :hammer: Building"
   #       ./scripts/eosio_build.sh -y
   #       echo "--- :compression: Compressing build directory"
-  #       tar -pczf build.tar.gz build/; if [[ ! -f build.tar.gz ]]; then exit 1; fi
+  #       tar -pczf build.tar.gz build/; if [ ! -f build.tar.gz ]; then echo "No TAR Found!" && exit 1; fi
   #   label: ":aws: 2 Build"
   #   agents:
   #     queue: "automation-large-builder-fleet"
@@ -90,7 +89,7 @@ steps:
   #     echo "+++ Building :hammer:"
   #     ./scripts/eosio_build.sh -y
   #     echo "--- Compressing build directory :compression:"
-  #     tar -pczf build.tar.gz build/; if [[ ! -f build.tar.gz ]]; then exit 1; fi
+  #     tar -pczf build.tar.gz build/; if [ ! -f build.tar.gz ]; then echo "No TAR Found!" && exit 1; fi
   #   label: ":darwin: Mojave Build"
   #   agents:
   #     - "role=builder-v2-1"
