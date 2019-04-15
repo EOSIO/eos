@@ -36,7 +36,7 @@ using resource_limits::resource_limits_manager;
 
 using controller_index_set = index_set<
    account_index,
-   account_sequence_index,
+   account_metadata_index,
    account_ram_correction_index,
    global_property_multi_index,
    protocol_state_multi_index,
@@ -849,14 +849,14 @@ struct controller_impl {
       db.create<account_object>([&](auto& a) {
          a.name = name;
          a.creation_date = conf.genesis.initial_timestamp;
-         a.privileged = is_privileged;
 
          if( name == config::system_account_name ) {
             a.set_abi(eosio_contract_abi(abi_def()));
          }
       });
-      db.create<account_sequence_object>([&](auto & a) {
-        a.name = name;
+      db.create<account_metadata_object>([&](auto & a) {
+         a.name = name;
+         a.set_privileged( is_privileged );
       });
 
       const auto& owner_permission  = authorization.create_permission(name, config::owner_name, 0,
@@ -901,6 +901,8 @@ struct controller_impl {
 
       authorization.initialize_database();
       resource_limits.initialize_database();
+
+      db.create<code_object>([](auto&){}); // reserve 0 code_id (used in account_metadata_object to indicate no code)
 
       authority system_auth(conf.genesis.initial_key);
       create_native_account( config::system_account_name, system_auth, system_auth, true );

@@ -153,7 +153,7 @@ namespace eosio { namespace chain {
    {
       null_object_type = 0,
       account_object_type,
-      account_sequence_object_type,
+      account_metadata_object_type,
       permission_object_type,
       permission_usage_object_type,
       permission_link_object_type,
@@ -305,6 +305,25 @@ namespace eosio { namespace chain {
             return tail_t::template extract<ResultVariant>( id, data, result );
          }
       };
+   }
+
+   template<typename E, typename F>
+   static inline auto has_field( F flags, E field )
+   -> std::enable_if_t< std::is_integral<F>::value && std::is_unsigned<F>::value &&
+                        std::is_enum<E>::value && std::is_same< F, std::underlying_type_t<E> >::value, bool>
+   {
+      return ( (flags & static_cast<F>(field)) != 0 );
+   }
+
+   template<typename E, typename F>
+   static inline auto set_field( F flags, E field, bool value = true )
+   -> std::enable_if_t< std::is_integral<F>::value && std::is_unsigned<F>::value &&
+                        std::is_enum<E>::value && std::is_same< F, std::underlying_type_t<E> >::value, F >
+   {
+      if( value )
+         return ( flags | static_cast<F>(field) );
+      else
+         return ( flags & ~static_cast<F>(field) );
    }
 
 } }  // eosio::chain

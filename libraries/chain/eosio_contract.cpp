@@ -86,8 +86,8 @@ void apply_eosio_newaccount(apply_context& context) {
    EOS_ASSERT( name_str.size() <= 12, action_validate_exception, "account names can only be 12 chars long" );
 
    // Check if the creator is privileged
-   const auto &creator = db.get<account_object, by_name>(create.creator);
-   if( !creator.privileged ) {
+   const auto &creator = db.get<account_metadata_object, by_name>(create.creator);
+   if( !creator.is_privileged() ) {
       EOS_ASSERT( name_str.find( "eosio." ) != 0, action_validate_exception,
                   "only privileged accounts can have names that start with 'eosio.'" );
    }
@@ -102,7 +102,7 @@ void apply_eosio_newaccount(apply_context& context) {
       a.creation_date = context.control.pending_block_time();
    });
 
-   db.create<account_sequence_object>([&](auto& a) {
+   db.create<account_metadata_object>([&](auto& a) {
       a.name = create.name;
    });
 
@@ -136,59 +136,64 @@ void apply_eosio_setcode(apply_context& context) {
    EOS_ASSERT( act.vmtype == 0, invalid_contract_vm_type, "code should be 0" );
    EOS_ASSERT( act.vmversion == 0, invalid_contract_vm_version, "version should be 0" );
 
-   fc::sha256 code_id; /// default ID == 0
+   fc::sha256 code_hash; /// default is the all zeros hash
 
-   if( act.code.size() > 0 ) {
-     code_id = fc::sha256::hash( act.code.data(), (uint32_t)act.code.size() );
+   int64_t code_size = (int64_t)act.code.size();
+
+   if( code_size > 0 ) {
+     code_hash = fc::sha256::hash( act.code.data(), (uint32_t)act.code.size() );
      wasm_interface::validate(context.control, act.code);
    }
 
-   const auto& account = db.get<account_object,by_name>(act.account);
+   const auto& account = db.get<account_metadata_object,by_name>(act.account);
+   bool existing_code = (account.code_id._id != 0);
 
-   int64_t code_size = (int64_t)act.code.size();
+   EOS_ASSERT( code_size > 0 || existing_code, set_exact_code, "contract is already cleared" );
+
    int64_t old_size  = 0;
    int64_t new_size  = code_size * config::setcode_ram_bytes_multiplier;
 
-   EOS_ASSERT( account.code_version != code_id, set_exact_code, "contract is already running this version of code" );
-
-   if(account.code_version != digest_type()) {
-      const code_object& old_code_entry = db.get<code_object, by_code_id>(account.code_version);
-      int64_t old_size  = (int64_t)old_code_entry.code.size();
-      if(old_code_entry.code_ref_count == 1) {
+   if( existing_code ) {
+      const code_object& old_code_entry = db.get<code_object, by_id>(account.code_id);
+      EOS_ASSERT( old_code_entry.code_hash != code_hash, set_exact_code,
+                  "contract is already running this version of code" );
+      int64_t old_size  = (int64_t)old_code_entry.code.size() * config::setcode_ram_bytes_multiplier;
+      if( old_code_entry.code_ref_count == 1 ) {
          db.remove(old_code_entry);
+      } else {
+         db.modify(old_code_entry, [](code_object& o) {
+            --o.code_ref_count;
+         });
       }
-      else
-        db.modify(old_code_entry, [](code_object& o) {
-           --o.code_ref_count;
-        });
    }
 
-   if(code_id != digest_type()) {
-      const code_object* new_code_entry = db.find<code_object, by_code_id>(code_id);
-      if(new_code_entry)
-         db.modify(*new_code_entry, [](code_object& o) {
+
+   code_object::id_type code_id; // default is 0 which indicates no code is present
+   if( code_size > 0 ) {
+      const code_object* new_code_entry = db.find<code_object, by_code_hash>(
+                                             boost::make_tuple(code_hash, act.vmtype, act.vmversion) );
+      if( new_code_entry ) {
+         db.modify(*new_code_entry, [&](code_object& o) {
+            code_id = o.id;
             ++o.code_ref_count;
          });
-      else {
+      } else {
          db.create<code_object>([&](code_object& o) {
-            o.code_id = code_id;
+            code_id = o.id;
+            o.code_hash = code_hash;
             o.code.assign(act.code.data(), code_size);
             o.code_ref_count = 1;
             o.first_block_used = context.control.head_block_num();
+            o.vm_type = act.vmtype;
+            o.vm_version = act.vmversion;
          });
       }
    }
 
    db.modify( account, [&]( auto& a ) {
-      /** TODO: consider whether a microsecond level local timestamp is sufficient to detect code version changes*/
-      // TODO: update setcode message to include the hash, then validate it in validate
+      a.code_sequence += 1;
+      a.code_id = code_id;
       a.last_code_update = context.control.pending_block_time();
-      a.code_version = code_id;
-   });
-
-   const auto& account_sequence = db.get<account_sequence_object, by_name>(act.account);
-   db.modify( account_sequence, [&]( auto& aso ) {
-      aso.code_sequence += 1;
    });
 
    if (new_size != old_size) {
@@ -217,9 +222,9 @@ void apply_eosio_setabi(apply_context& context) {
       }
    });
 
-   const auto& account_sequence = db.get<account_sequence_object, by_name>(act.account);
-   db.modify( account_sequence, [&]( auto& aso ) {
-      aso.abi_sequence += 1;
+   const auto& account_metadata = db.get<account_metadata_object, by_name>(act.account);
+   db.modify( account_metadata, [&]( auto& a ) {
+      a.abi_sequence += 1;
    });
 
    if (new_size != old_size) {

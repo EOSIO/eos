@@ -543,7 +543,7 @@ class apply_context {
       bytes  get_packed_transaction();
 
       uint64_t next_global_sequence();
-      uint64_t next_recv_sequence( account_name receiver );
+      uint64_t next_recv_sequence( const account_metadata_object& receiver_account );
       uint64_t next_auth_sequence( account_name actor );
 
       void add_ram_usage( account_name account, int64_t ram_delta );

@@ -27,9 +27,11 @@ namespace eosio { namespace chain {
    struct wasm_interface_impl {
       struct wasm_cache_entry {
          digest_type                                          code_hash;
-         uint32_t first_block_num_used;
-         uint32_t last_block_num_used;
+         uint32_t                                             first_block_num_used;
+         uint32_t                                             last_block_num_used;
          std::unique_ptr<wasm_instantiated_module_interface>  module;
+         uint8_t                                              vm_type = 0;
+         uint8_t                                              vm_version = 0;
       };
       struct by_hash;
       struct by_first_block_num;
@@ -65,9 +67,18 @@ namespace eosio { namespace chain {
       const std::unique_ptr<wasm_instantiated_module_interface>& get_instantiated_module( const code_object& code,
                                                                                     transaction_context& trx_context )
       {
-         wasm_cache_index::iterator it = wasm_instantiation_cache.find(code.code_id);
-         if(it == wasm_instantiation_cache.end())
-            it = wasm_instantiation_cache.emplace(wasm_interface_impl::wasm_cache_entry{code.code_id, code.first_block_used, UINT32_MAX, nullptr}).first;
+         wasm_cache_index::iterator it = wasm_instantiation_cache.find(
+                                             boost::make_tuple(code.code_hash, code.vm_type, code.vm_version) );
+         if(it == wasm_instantiation_cache.end()) {
+            it = wasm_instantiation_cache.emplace( wasm_interface_impl::wasm_cache_entry{
+                                                      .code_hash = code.code_hash,
+                                                      .first_block_num_used = code.first_block_used,
+                                                      .last_block_num_used = UINT32_MAX,
+                                                      .module = nullptr,
+                                                      .vm_type = code.vm_type,
+                                                      .vm_version = code.vm_version
+                                                   } ).first;
+         }
 
          if(!it->module) {
             auto timer_pause = fc::make_scoped_exit([&](){
@@ -111,7 +122,13 @@ namespace eosio { namespace chain {
       typedef boost::multi_index_container<
          wasm_cache_entry,
          indexed_by<
-            ordered_unique<tag<by_hash>, member<wasm_cache_entry, digest_type, &wasm_cache_entry::code_hash>>,
+            ordered_unique<tag<by_hash>,
+               composite_key< wasm_cache_entry,
+                  member<wasm_cache_entry, digest_type, &wasm_cache_entry::code_hash>,
+                  member<wasm_cache_entry, uint8_t,     &wasm_cache_entry::vm_type>,
+                  member<wasm_cache_entry, uint8_t,     &wasm_cache_entry::vm_version>
+               >
+            >,
             ordered_non_unique<tag<by_first_block_num>, member<wasm_cache_entry, uint32_t, &wasm_cache_entry::first_block_num_used>>,
             ordered_non_unique<tag<by_last_block_num>, member<wasm_cache_entry, uint32_t, &wasm_cache_entry::last_block_num_used>>
          >

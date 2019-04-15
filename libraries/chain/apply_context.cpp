@@ -58,10 +58,11 @@ void apply_context::exec_one()
    r.act_digest       = digest_type::hash(*act);
 
    const auto& cfg = control.get_global_properties().configuration;
+   const account_metadata_object* receiver_account = nullptr;
    try {
       try {
-         const auto& a = control.get_account( receiver );
-         privileged = a.privileged;
+         receiver_account = &db.get<account_metadata_object,by_name>( receiver );
+         privileged = receiver_account->is_privileged();
          auto native = control.find_apply_handler( receiver, act->account, act->name );
          if( native ) {
             if( trx_context.enforce_whiteblacklist && control.is_producing_block() ) {
@@ -71,7 +72,7 @@ void apply_context::exec_one()
             (*native)( *this );
          }
 
-         if( ( a.code_version != digest_type() ) &&
+         if( ( receiver_account->code_id._id != 0 ) &&
                ( control.is_builtin_activated( builtin_protocol_feature_t::forward_setcode )
                   || !( act->account == config::system_account_name
                         && act->name == N( setcode )
@@ -83,7 +84,7 @@ void apply_context::exec_one()
                control.check_action_list( act->account, act->name );
             }
             try {
-               control.get_wasm_interface().apply( db.get<code_object, by_code_id>(a.code_version), *this );
+               control.get_wasm_interface().apply( db.get<code_object, by_id>(receiver_account->code_id), *this );
             } catch( const wasm_exit& ) {}
          }
       } FC_RETHROW_EXCEPTIONS( warn, "pending console output: ${console}", ("console", _pending_console_output) )
@@ -95,12 +96,23 @@ void apply_context::exec_one()
       throw;
    }
 
-   r.global_sequence  = next_global_sequence();
-   r.recv_sequence    = next_recv_sequence( receiver );
+   // Note: It should not be possible for receiver_account to be invalidated because:
+   //    * a pointer to an object in a chainbase index is not invalidated if other objects in that index are modified, removed, or added;
+   //    * a pointer to an object in a chainbase index is not invalidated if the fields of that object are modified;
+   //    * and, the *receiver_account object itself cannot be removed because accounts cannot be deleted in EOSIO.
 
-   const auto& account_sequence = db.get<account_sequence_object, by_name>(act->account);
-   r.code_sequence    = account_sequence.code_sequence; // could be modified by action execution above
-   r.abi_sequence     = account_sequence.abi_sequence;  // could be modified by action execution above
+   r.global_sequence  = next_global_sequence();
+   r.recv_sequence    = next_recv_sequence( *receiver_account );
+
+   const account_metadata_object* first_receiver_account = nullptr;
+   if( act->account == receiver ) {
+      first_receiver_account = receiver_account;
+   } else {
+      first_receiver_account = &db.get<account_metadata_object, by_name>(act->account);
+   }
+
+   r.code_sequence    = first_receiver_account->code_sequence; // could be modified by action execution above
+   r.abi_sequence     = first_receiver_account->abi_sequence;  // could be modified by action execution above
 
    for( const auto& auth : act->authorization ) {
       r.auth_sequence[auth.actor] = next_auth_sequence( auth.actor );
@@ -791,19 +803,18 @@ uint64_t apply_context::next_global_sequence() {
    return p.global_action_sequence;
 }
 
-uint64_t apply_context::next_recv_sequence( account_name receiver ) {
-   const auto& rs = db.get<account_sequence_object,by_name>( receiver );
-   db.modify( rs, [&]( auto& mrs ) {
-      ++mrs.recv_sequence;
+uint64_t apply_context::next_recv_sequence( const account_metadata_object& receiver_account ) {
+   db.modify( receiver_account, [&]( auto& ra ) {
+      ++ra.recv_sequence;
    });
-   return rs.recv_sequence;
+   return receiver_account.recv_sequence;
 }
 uint64_t apply_context::next_auth_sequence( account_name actor ) {
-   const auto& rs = db.get<account_sequence_object,by_name>( actor );
-   db.modify( rs, [&](auto& mrs ){
-      ++mrs.auth_sequence;
+   const auto& amo = db.get<account_metadata_object,by_name>( actor );
+   db.modify( amo, [&](auto& am ){
+      ++am.auth_sequence;
    });
-   return rs.auth_sequence;
+   return amo.auth_sequence;
 }
 
 void apply_context::add_ram_usage( account_name account, int64_t ram_delta ) {

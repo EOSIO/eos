@@ -212,13 +212,13 @@ class privileged_api : public context_aware_api {
       }
 
       bool is_privileged( account_name n )const {
-         return context.db.get<account_object, by_name>( n ).privileged;
+         return context.db.get<account_metadata_object, by_name>( n ).is_privileged();
       }
 
       void set_privileged( account_name n, bool is_priv ) {
-         const auto& a = context.db.get<account_object, by_name>( n );
+         const auto& a = context.db.get<account_metadata_object, by_name>( n );
          context.db.modify( a, [&]( auto& ma ){
-            ma.privileged = is_priv;
+            ma.set_privileged( is_priv );
          });
       }
 
