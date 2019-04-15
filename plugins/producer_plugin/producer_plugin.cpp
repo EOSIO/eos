@@ -919,6 +919,10 @@ optional<fc::time_point> producer_plugin_impl::calculate_next_block_time(const a
 
    size_t producer_index = itr - active_schedule.begin();
    uint32_t minimum_offset = 1; // must at least be the "next" block
+   // NOTE CyberWay: If the producer is in the list, then we assume that he will sign 
+   //                the next block. In any case, the check in the start_block function 
+   //                will return the wait, if we do not have a producer to generate the next block.
+   return block_timestamp_type(current_block_time.slot + minimum_offset).to_time_point();
 
    // account for a watermark in the future which is disqualifying this producer for now
    // this is conservative assuming no blocks are dropped.  If blocks are dropped the watermark will
@@ -1038,9 +1042,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
    }
 
    if (_pending_block_mode == pending_block_mode::speculating) {
-      auto head_block_age = now - chain.head_block_time();
-      if (head_block_age > fc::seconds(5))
-         return start_block_result::waiting;
+      return start_block_result::waiting;
    }
 
    try {
@@ -1056,6 +1058,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
          if (currrent_watermark_itr != _producer_watermarks.end()) {
             auto watermark = currrent_watermark_itr->second;
             if (watermark < hbs->block_num) {
+               // TODO CyberWay: some strange comparison (looks like BFT error???)
                blocks_to_confirm = std::min<uint16_t>(std::numeric_limits<uint16_t>::max(), (uint16_t)(hbs->block_num - watermark));
             }
          }
