@@ -28,24 +28,20 @@ namespace cyberway { namespace chaindb {
         void apply_code_changes(const account_name& code) override;
         void apply_all_changes() override;
 
-        const cursor_info& lower_bound(index_info, variant key) override;
-        const cursor_info& upper_bound(index_info, variant key) override;
-        const cursor_info& find(index_info, primary_key_t, variant key) override;
-        const cursor_info& opt_find_by_pk(index_info, primary_key_t, variant key) override;
+        cursor_info& lower_bound(index_info, variant key) override;
+        cursor_info& upper_bound(index_info, variant key) override;
+        cursor_info& locate_to(index_info, variant key, primary_key_t) override;
 
-        const cursor_info& begin(index_info) override;
-        const cursor_info& end(index_info) override;
+        cursor_info& begin(index_info) override;
+        cursor_info& end(index_info) override;
 
-        const cursor_info& current(const cursor_info&) override;
-        const cursor_info& current(const cursor_request&) override;
-        const cursor_info& next(const cursor_request&) override;
-        const cursor_info& next(const cursor_info&) override;
-        const cursor_info& prev(const cursor_request&) override;
-        const cursor_info& prev(const cursor_info&) override;
+        cursor_info& cursor(const cursor_request&) override;
+        cursor_info& current(const cursor_info&) override;
+        cursor_info& next(const cursor_info&) override;
+        cursor_info& prev(const cursor_info&) override;
 
               object_value  object_by_pk(const table_info&, primary_key_t) override;
         const object_value& object_at_cursor(const cursor_info&) override;
-              void          set_blob(const cursor_info&, bytes blob) override;
 
         primary_key_t available_pk(const table_info&) override;
 

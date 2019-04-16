@@ -130,6 +130,7 @@ namespace cyberway { namespace chaindb {
         auto itr = table.info_map.find(pk);
         if (itr == table.info_map.end()) {
             itr = table.info_map.emplace(pk, info_t_()).first;
+            itr->second.undo_map.reserve(10);
         }
         info_ = &itr->second;
 
@@ -154,26 +155,15 @@ namespace cyberway { namespace chaindb {
         _detail::copy_find_revision(undo, impossible_revision);
 
         auto& info = ctx.info(undo.object.pk());
-        const auto rev = undo.object.service.revision;
-        const auto find_rev = (undo.find_revision >= start_revision ) ? undo.find_revision : rev;
-        auto itr = info.undo_map.find(find_rev);
-
-        if (info.undo_map.end() == itr && rev != find_rev) {
-            itr = info.undo_map.find(rev);
-        }
+        auto  upk  = undo.object.service.undo_pk;
+        auto  itr  = info.undo_map.find(upk);
 
         if (info.undo_map.end() == itr) {
             // create the new position
-            info.undo_map.emplace(rev, std::move(undo));
+            info.undo_map.emplace(upk, std::move(undo));
         } else {
             // merge two values
             _detail::write(std::move(undo), itr->second);
-            if (itr->first != rev) {
-                // move to the new position
-                undo = std::move(itr->second);
-                info.undo_map.erase(itr);
-                info.undo_map.emplace(rev, std::move(undo));
-            }
         }
     } FC_CAPTURE_LOG_AND_RETHROW(
         (get_full_table_name(undo.object.service))

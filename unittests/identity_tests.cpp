@@ -124,7 +124,7 @@ public:
 
    fc::variant get_certrow(uint64_t identity, const string& property, uint64_t trusted, const string& certifier) {
       auto& chaindb = control->chaindb();
-      auto find = cyberway::chaindb::lower_bound(
+      auto find = cyberway::chaindb::lower_bound<false>()(
          chaindb,
          {N(identity), identity, N( certs ), N(bytuple)},
          boost::make_tuple(string_to_name(property.c_str()), trusted, string_to_name(certifier.c_str())));

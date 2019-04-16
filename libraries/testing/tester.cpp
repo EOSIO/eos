@@ -744,13 +744,10 @@ namespace eosio { namespace testing {
       share_type result = 0;
 
       auto& db = control->chaindb();
-      auto find = db.opt_find_by_pk({code, account, N(accounts)}, asset_symbol.to_symbol_code());
+      auto find = db.lower_bound({code, account, N(accounts)}, asset_symbol.to_symbol_code());
       if (find.pk == asset_symbol.to_symbol_code()) {
-         vector<char> data;
-         auto size = db.datasize({code, find.cursor});
-         data.resize(size);
-         db.data({code, find.cursor}, data.data(), size);
-         fc::datastream<const char *> ds(data.data(), size);
+         auto cache = db.get_cache_object({code, find.cursor}, true);
+         fc::datastream<const char *> ds(cache->blob().data(), cache->blob().size());
          fc::raw::unpack(ds, result);
       }
       return asset(result, asset_symbol);
@@ -760,12 +757,11 @@ namespace eosio { namespace testing {
       vector<char> data;
 
       auto& db = control->chaindb();
-      auto find = db.opt_find_by_pk({code, scope, table}, act.value);
+      auto find = db.lower_bound({code, scope, table}, act.value);
       if (find.pk != act.value) return data;
 
-      auto size = db.datasize({code, find.cursor});
-      data.resize(size);
-      db.data({code, find.cursor}, data.data(), size);
+      auto cache = db.get_cache_object({code, find.cursor}, true);
+      data = cache->blob();
       return data;
    }
 

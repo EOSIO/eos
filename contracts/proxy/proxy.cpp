@@ -12,9 +12,9 @@ namespace proxy {
    namespace configs {
 
       bool get(config &out, const account_name &self) {
-         auto it = chaindb_opt_find_by_pk(self, self, N(configs), out.key);
+         auto it = chaindb_lower_bound_pk(self, self, N(configs), out.key);
          auto pk = chaindb_current(self, it);
-         if (pk != end_primary_key) {
+         if (pk == out.key) {
             auto size = chaindb_datasize(self, it);
             eosio_assert(size == sizeof(config), "Wrong record size");
             chaindb_data(self, it, (void*)&out, sizeof(config));
@@ -25,9 +25,9 @@ namespace proxy {
       }
 
       void store(const config &in, const account_name &self) {
-         auto it = chaindb_opt_find_by_pk(self, self, N(configs), in.key);
+         auto it = chaindb_lower_bound_pk(self, self, N(configs), in.key);
          auto pk = chaindb_current(self, it);
-         if (pk != end_primary_key) {
+         if (pk == in.key) {
             chaindb_update(self, self, N(configs), self, in.key, (void *)&in, sizeof(config));
          } else {
             chaindb_insert(self, self, N(configs), self, in.key, (void *)&in, sizeof(config));

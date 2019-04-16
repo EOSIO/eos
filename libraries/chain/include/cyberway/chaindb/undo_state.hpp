@@ -28,7 +28,9 @@ namespace cyberway { namespace chaindb {
         chaindb_session start_undo_session(bool enabled);
 
         void set_revision(revision_t rev);
-        revision_t revision() const;
+        revision_t revision() const {
+            return revision_;
+        }
         bool enabled() const;
 
         void apply_changes(revision_t rev);
@@ -76,6 +78,7 @@ namespace cyberway { namespace chaindb {
     private:
         struct undo_stack_impl_;
         std::unique_ptr<undo_stack_impl_> impl_;
+        revision_t revision_;
     }; // class table_undo_stack
 
 } } // namespace cyberway::chaindb

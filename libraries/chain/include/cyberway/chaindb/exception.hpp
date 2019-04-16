@@ -93,7 +93,10 @@ namespace cyberway { namespace chaindb {
                                      3710016, "ChainDB driver has opened cursors")
 
         FC_DECLARE_DERIVED_EXCEPTION(driver_unsupported_operation_exception, chaindb_internal_exception,
-                                    3710017, "ChainDB driver does not support operation")
+                                     3710017, "ChainDB driver does not support operation")
+
+        FC_DECLARE_DERIVED_EXCEPTION(driver_wrong_object_exception, chaindb_internal_exception,
+                                     3710018, "ChainDB driver return wrong object")
 
     FC_DECLARE_DERIVED_EXCEPTION(chaindb_abi_exception, chaindb_exception,
                                  3720000, "ChainDB ABI exception")
