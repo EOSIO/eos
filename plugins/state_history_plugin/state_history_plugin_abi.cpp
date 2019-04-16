@@ -214,7 +214,6 @@ extern const char* const state_history_plugin_abi = R"({
                 { "type": "uint8", "name": "vm_type" },
                 { "type": "uint8", "name": "vm_version" },
                 { "type": "checksum256", "name": "code_hash" },
-                { "type": "uint64", "name": "code_ref_count" },
                 { "type": "bytes", "name": "code" }
             ]
         },
