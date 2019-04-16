@@ -4,6 +4,7 @@
  */
 #pragma once
 #include <eosio/chain/database_utils.hpp>
+#include <boost/tuple/tuple_io.hpp>
 
 #include "multi_index_includes.hpp"
 

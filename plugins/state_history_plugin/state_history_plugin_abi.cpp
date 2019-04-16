@@ -188,6 +188,13 @@ extern const char* const state_history_plugin_abi = R"({
             ]
         },
         {
+            "name": "code_id", "fields": [
+                { "type": "uint8", "name": "vm_type" },
+                { "type": "uint8", "name": "vm_version" },
+                { "type": "checksum256", "name": "code_hash" }
+            ]
+        },
+        {
             "name": "account_v0", "fields": [
                 { "type": "name", "name": "name" },
                 { "type": "block_timestamp_type", "name": "creation_date" },
@@ -199,9 +206,7 @@ extern const char* const state_history_plugin_abi = R"({
                 { "type": "name", "name": "name" },
                 { "type": "bool", "name": "privileged" },
                 { "type": "time_point", "name": "last_code_update" },
-                { "type": "uint8", "name": "vm_type" },
-                { "type": "uint8", "name": "vm_version" },
-                { "type": "checksum256", "name": "code_hash" }
+                { "type": "code_id?", "name": "code" }
             ]
         },
         {
