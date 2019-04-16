@@ -142,7 +142,7 @@ namespace eosio {
          in_sync
       };
 
-      std::mutex     sync_mtx;
+      mutable std::mutex sync_mtx;
       uint32_t       sync_known_lib_num;
       uint32_t       sync_last_requested_num;
       uint32_t       sync_next_expected_num;
@@ -164,6 +164,7 @@ namespace eosio {
       explicit sync_manager( uint32_t span );
       static void send_handshakes();
       bool syncing_with_peer() const { return sync_state == lib_catchup; }
+      bool block_while_syncing_with_other_peer( const connection_ptr& c ) const;
       void sync_reset_lib_num( const connection_ptr& conn );
       void sync_reassign_fetch( const connection_ptr& c, go_away_reason reason );
       void rejected_block( const connection_ptr& c, uint32_t blk_num );
@@ -921,7 +922,7 @@ namespace eosio {
       self->last_handshake_sent = handshake_message();
       g_conn.unlock();
       my_impl->sync_master->sync_reset_lib_num( self->shared_from_this() );
-      fc_dlog( logger, "canceling wait on ${p}", ("p", self->peer_name()) ); // peer_name(), do not hold conn_mtx
+      fc_dlog( logger, "closed, canceling wait on ${p}", ("p", self->peer_name()) ); // peer_name(), do not hold conn_mtx
       self->cancel_wait();
 
       std::unique_lock<std::mutex> g( self->read_delay_timer_mtx );
@@ -1112,7 +1113,6 @@ namespace eosio {
 
    bool connection::enqueue_sync_block() {
       if( !peer_requested ) {
-         syncing = false;
          return false;
       } else {
          fc_dlog( logger, "enqueue sync block ${num}", ("num", peer_requested->last + 1) );
@@ -1319,6 +1319,14 @@ namespace eosio {
       sync_state = newstate;
    }
 
+   bool sync_manager::block_while_syncing_with_other_peer( const connection_ptr& c ) const {
+      if( syncing_with_peer() ) {
+         std::lock_guard<std::mutex> g( sync_mtx );
+         return c != sync_source;
+      }
+      return false;
+   }
+
    void sync_manager::sync_reset_lib_num(const connection_ptr& c) {
       std::unique_lock<std::mutex> g( sync_mtx );
       if( sync_state == in_sync ) {
@@ -1499,7 +1507,6 @@ namespace eosio {
                 std::ignore, std::ignore, head_id ) = my_impl->get_chain_info();
 
       sync_reset_lib_num(c);
-      c->syncing = false;
 
       //--------------------------------
       // sync need checks; (lib == last irreversible block)
@@ -1515,6 +1522,7 @@ namespace eosio {
 
       if (head_id == msg.head_id) {
          fc_dlog(logger, "sync check state 0");
+         c->syncing = false;
          // notify peer of our pending transactions
          notice_message note;
          note.known_blocks.mode = none;
@@ -1525,6 +1533,7 @@ namespace eosio {
       }
       if (head < peer_lib) {
          fc_dlog(logger, "sync check state 1");
+         c->syncing = false;
          // wait for receipt of a notice message before initiating sync
          if (c->protocol_version < proto_explicit_sync) {
             start_sync( c, peer_lib );
@@ -1547,6 +1556,7 @@ namespace eosio {
 
       if (head < msg.head_num ) {
          fc_dlog(logger, "sync check state 3");
+         c->syncing = false;
          verify_catchup(c, msg.head_num, msg.head_id);
          return;
       }
@@ -1563,6 +1573,7 @@ namespace eosio {
          c->syncing = true;
          return;
       }
+      c->syncing = false;
       fc_elog( logger, "sync check failed to resolve status" );
    }
 
@@ -1850,7 +1861,7 @@ namespace eosio {
                   return;
                }
                fc_dlog( logger, "bcast block ${b} to ${p}", ("b", bnum)( "p", cp->peer_name() ) );
-               cp->enqueue_buffer( send_buffer, true, priority::high, no_reason );
+               cp->enqueue_buffer( send_buffer, true, priority::medium, no_reason );
             }
          });
       }
@@ -1909,9 +1920,6 @@ namespace eosio {
    void dispatch_manager::recv_transaction(const connection_ptr& c, const transaction_metadata_ptr& txn) {
       node_transaction_state nts = {txn->id, txn->packed_trx->expiration(), 0, c->connection_id};
       add_peer_txn( nts );
-
-      fc_dlog(logger, "canceling wait on ${p}", ("p",c->peer_name()));
-      //todo c->cancel_wait();
    }
 
    void dispatch_manager::rejected_transaction(const transaction_id_type& id, uint32_t head_blk_num) {
@@ -2419,7 +2427,7 @@ namespace eosio {
       }
       if (msg.generation == 1) {
          if( msg.node_id == node_id) {
-            fc_elog( logger, "Self connection detected. Closing connection" );
+            fc_elog( logger, "Self connection detected node_id ${id}. Closing connection", ("id", node_id) );
             enqueue( go_away_message( self ) );
             return;
          }
@@ -2689,7 +2697,6 @@ namespace eosio {
    }
 
    void connection::handle_message( const packed_transaction_ptr& trx ) {
-      fc_dlog( logger, "got a packed transaction, cancel wait" );
       if( my_impl->db_read_mode == eosio::db_read_mode::READ_ONLY ) {
          fc_dlog( logger, "got a txn in read-only mode - dropping" );
          return;
@@ -2748,13 +2755,14 @@ namespace eosio {
       controller& cc = my_impl->chain_plug->chain();
       block_id_type blk_id = msg->id();
       uint32_t blk_num = msg->block_num();
-      fc_dlog( logger, "canceling wait on ${p}", ("p", peer_name()) );
       // use c in this method instead of this to highlight that all methods called on c-> must be thread safe
       connection_ptr c = shared_from_this();
-      c->cancel_wait();
 
       // if we have closed connection then stop processing
       if( !c->socket_is_open() )
+         return;
+
+      if( my_impl->sync_master->block_while_syncing_with_other_peer(c) )
          return;
 
       try {
@@ -3190,13 +3198,14 @@ namespace eosio {
          EOS_ASSERT( my->chain_plug, chain::missing_chain_plugin_exception, ""  );
          my->chain_id = my->chain_plug->get_chain_id();
          fc::rand_pseudo_bytes( my->node_id.data(), my->node_id.data_size());
-         fc_ilog( logger, "my node_id is ${id}", ("id", my->node_id ));
 
       } FC_LOG_AND_RETHROW()
    }
 
    void net_plugin::plugin_startup() {
       handle_sighup();
+
+      fc_ilog( logger, "my node_id is ${id}", ("id", my->node_id ));
 
       my->producer_plug = app().find_plugin<producer_plugin>();
 
