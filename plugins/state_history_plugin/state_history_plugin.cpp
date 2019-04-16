@@ -465,6 +465,8 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       };
 
       process_table("account", db.get_index<account_index>(), pack_row);
+      process_table("account_metadata", db.get_index<account_metadata_index>(), pack_row);
+      process_table("code", db.get_index<code_index>(), pack_row);
 
       process_table("contract_table", db.get_index<table_id_multi_index>(), pack_row);
       process_table("contract_row", db.get_index<key_value_index>(), pack_contract_row);

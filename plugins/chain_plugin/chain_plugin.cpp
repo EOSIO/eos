@@ -8,6 +8,7 @@
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/authorization_manager.hpp>
 #include <eosio/chain/producer_object.hpp>
+#include <eosio/chain/code_object.hpp>
 #include <eosio/chain/config.hpp>
 #include <eosio/chain/wasm_interface.hpp>
 #include <eosio/chain/resource_limits.hpp>
@@ -2046,17 +2047,19 @@ read_only::get_code_results read_only::get_code( const get_code_params& params )
    get_code_results result;
    result.account_name = params.account_name;
    const auto& d = db.db();
-   const auto& accnt  = d.get<account_object,by_name>( params.account_name );
+   const auto& accnt_obj          = d.get<account_object,by_name>( params.account_name );
+   const auto& accnt_metadata_obj = d.get<account_metadata_object,by_name>( params.account_name );
 
    EOS_ASSERT( params.code_as_wasm, unsupported_feature, "Returning WAST from get_code is no longer supported" );
 
-   if( accnt.code.size() ) {
-      result.wasm = string(accnt.code.begin(), accnt.code.end());
-      result.code_hash = accnt.code_version;
+   if( accnt_metadata_obj.code_hash != digest_type() ) {
+      const auto& code_obj = d.get<code_object, by_code_hash>(accnt_metadata_obj.code_hash);
+      result.wasm = string(code_obj.code.begin(), code_obj.code.end());
+      result.code_hash = code_obj.code_hash;
    }
 
    abi_def abi;
-   if( abi_serializer::to_abi(accnt.abi, abi) ) {
+   if( abi_serializer::to_abi(accnt_obj.abi, abi) ) {
       result.abi = std::move(abi);
    }
 
@@ -2067,11 +2070,10 @@ read_only::get_code_hash_results read_only::get_code_hash( const get_code_hash_p
    get_code_hash_results result;
    result.account_name = params.account_name;
    const auto& d = db.db();
-   const auto& accnt  = d.get<account_object,by_name>( params.account_name );
+   const auto& accnt  = d.get<account_metadata_object,by_name>( params.account_name );
 
-   if( accnt.code.size() ) {
-      result.code_hash = accnt.code_version;
-   }
+   if( accnt.code_hash != digest_type() )
+      result.code_hash = accnt.code_hash;
 
    return result;
 }
@@ -2081,9 +2083,13 @@ read_only::get_raw_code_and_abi_results read_only::get_raw_code_and_abi( const g
    result.account_name = params.account_name;
 
    const auto& d = db.db();
-   const auto& accnt = d.get<account_object,by_name>(params.account_name);
-   result.wasm = blob{{accnt.code.begin(), accnt.code.end()}};
-   result.abi = blob{{accnt.abi.begin(), accnt.abi.end()}};
+   const auto& accnt_obj          = d.get<account_object,by_name>(params.account_name);
+   const auto& accnt_metadata_obj = d.get<account_metadata_object,by_name>(params.account_name);
+   if( accnt_metadata_obj.code_hash != digest_type() ) {
+      const auto& code_obj = d.get<code_object, by_code_hash>(accnt_metadata_obj.code_hash);
+      result.wasm = blob{{code_obj.code.begin(), code_obj.code.end()}};
+   }
+   result.abi = blob{{accnt_obj.abi.begin(), accnt_obj.abi.end()}};
 
    return result;
 }
@@ -2093,11 +2099,13 @@ read_only::get_raw_abi_results read_only::get_raw_abi( const get_raw_abi_params&
    result.account_name = params.account_name;
 
    const auto& d = db.db();
-   const auto& accnt = d.get<account_object,by_name>(params.account_name);
-   result.abi_hash = fc::sha256::hash( accnt.abi.data(), accnt.abi.size() );
-   result.code_hash = accnt.code_version;
+   const auto& accnt_obj          = d.get<account_object,by_name>(params.account_name);
+   const auto& accnt_metadata_obj = d.get<account_metadata_object,by_name>(params.account_name);
+   result.abi_hash = fc::sha256::hash( accnt_obj.abi.data(), accnt_obj.abi.size() );
+   if( accnt_metadata_obj.code_hash != digest_type() )
+      result.code_hash = accnt_metadata_obj.code_hash;
    if( !params.abi_hash || *params.abi_hash != result.abi_hash )
-      result.abi = blob{{accnt.abi.begin(), accnt.abi.end()}};
+      result.abi = blob{{accnt_obj.abi.begin(), accnt_obj.abi.end()}};
 
    return result;
 }
@@ -2114,11 +2122,12 @@ read_only::get_account_results read_only::get_account( const get_account_params&
 
    rm.get_account_limits( result.account_name, result.ram_quota, result.net_weight, result.cpu_weight );
 
-   const auto& a = db.get_account(result.account_name);
+   const auto& accnt_obj = db.get_account( result.account_name );
+   const auto& accnt_metadata_obj = db.db().get<account_metadata_object,by_name>( result.account_name );
 
-   result.privileged       = a.privileged;
-   result.last_code_update = a.last_code_update;
-   result.created          = a.creation_date;
+   result.privileged       = accnt_metadata_obj.is_privileged();
+   result.last_code_update = accnt_metadata_obj.last_code_update;
+   result.created          = accnt_obj.creation_date;
 
    bool grelisted = db.is_resource_greylisted(result.account_name);
    result.net_limit = rm.get_account_net_limit_ex( result.account_name, !grelisted);
