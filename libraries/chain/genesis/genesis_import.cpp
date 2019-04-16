@@ -71,7 +71,7 @@ struct genesis_import::impl final {
                             abi_def abi;
                             if (abi_serializer::to_abi(abi_bytes, abi) ) {
                                 db.add_abi(n, abi);
-                                std::cout << "  add " << n << " abi";
+                                std::cout << "  add " << n << " abi" << std::endl;
                             } else {
                                 elog("Failed to read abi provided in ${a} contract", ("a",n));
                             }
