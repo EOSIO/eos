@@ -1558,7 +1558,7 @@ launcher_def::launch (eosd_def &instance, string &gts) {
         install_path = specific_nodeos_installation_paths[node_num] + "/";
      }
   }
-  string eosdcmd = install_path + "programs/nodeos/" + string(node_executable_name);
+  string eosdcmd = install_path + "programs/nodeos/" + string(node_executable_name) + " ";
   if (skip_transaction_signatures) {
     eosdcmd += "--skip-transaction-signatures ";
   }
