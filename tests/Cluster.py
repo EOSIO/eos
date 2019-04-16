@@ -127,7 +127,7 @@ class Cluster(object):
     # pylint: disable=too-many-return-statements
     # pylint: disable=too-many-branches
     # pylint: disable=too-many-statements
-    def launch(self, pnodes=1, unstartedNodes=0, totalNodes=1, prodCount=1, topo="mesh", p2pPlugin="net", delay=1, onlyBios=False, dontBootstrap=False,
+    def launch(self, pnodes=1, unstartedNodes=0, totalNodes=1, prodCount=1, topo="mesh", delay=1, onlyBios=False, dontBootstrap=False,
                totalProducers=None, extraNodeosArgs=None, useBiosBootFile=True, specificExtraNodeosArgs=None, alternateVersionLabelsFile=None,
                associatedNodeLabels=None, loadSystemContract=True):
         """Launch cluster.
@@ -191,9 +191,9 @@ class Cluster(object):
             tries = tries - 1
             time.sleep(2)
 
-        cmd="%s -p %s -n %s -d %s -i %s -f --p2p-plugin %s %s --unstarted-nodes %s" % (
+        cmd="%s -p %s -n %s -d %s -i %s -f %s --unstarted-nodes %s" % (
             Utils.EosLauncherPath, pnodes, totalNodes, delay, datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3],
-            p2pPlugin, producerFlag, unstartedNodes)
+            producerFlag, unstartedNodes)
         cmdArr=cmd.split()
         if self.staging:
             cmdArr.append("--nogen")

@@ -37,7 +37,7 @@ appArgs=AppArgs()
 extraArgs = appArgs.add(flag="--catchup-count", type=int, help="How many catchup-nodes to launch", default=10)
 extraArgs = appArgs.add(flag="--txn-gen-nodes", type=int, help="How many transaction generator nodes", default=2)
 args = TestHelper.parse_args({"--prod-count","--dump-error-details","--keep-logs","-v","--leave-running","--clean-run",
-                              "-p","--p2p-plugin","--wallet-port"}, applicationSpecificArgs=appArgs)
+                              "-p","--wallet-port"}, applicationSpecificArgs=appArgs)
 Utils.Debug=args.v
 pnodes=args.p if args.p > 0 else 1
 startedNonProdNodes = args.txn_gen_nodes if args.txn_gen_nodes >= 2 else 2
@@ -47,7 +47,6 @@ keepLogs=args.keep_logs
 dontKill=args.leave_running
 prodCount=args.prod_count if args.prod_count > 1 else 2
 killAll=args.clean_run
-p2pPlugin=args.p2p_plugin
 walletPort=args.wallet_port
 catchupCount=args.catchup_count if args.catchup_count > 0 else 1
 totalNodes=startedNonProdNodes+pnodes+catchupCount
@@ -71,7 +70,7 @@ try:
     for nodeNum in range(txnGenNodeNum, txnGenNodeNum+startedNonProdNodes):
         specificExtraNodeosArgs[nodeNum]="--plugin eosio::txn_test_gen_plugin --txn-test-gen-account-prefix txntestacct"
     Print("Stand up cluster")
-    if cluster.launch(prodCount=prodCount, onlyBios=False, pnodes=pnodes, totalNodes=totalNodes, totalProducers=pnodes*prodCount, p2pPlugin=p2pPlugin,
+    if cluster.launch(prodCount=prodCount, onlyBios=False, pnodes=pnodes, totalNodes=totalNodes, totalProducers=pnodes*prodCount,
                       useBiosBootFile=False, specificExtraNodeosArgs=specificExtraNodeosArgs, unstartedNodes=catchupCount, loadSystemContract=False) is False:
         Utils.errorExit("Failed to stand up eos cluster.")
 
