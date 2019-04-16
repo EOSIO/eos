@@ -86,6 +86,21 @@ bool include_delta(const eosio::chain::resource_limits::resource_limits_state_ob
        old.virtual_cpu_limit != curr.virtual_cpu_limit;
 }
 
+bool include_delta(const eosio::chain::account_metadata_object& old,
+                   const eosio::chain::account_metadata_object& curr) {
+   return                                               //
+       old.name.value != curr.name.value ||             //
+       old.is_privileged() != curr.is_privileged() ||   //
+       old.last_code_update != curr.last_code_update || //
+       old.vm_type != curr.vm_type ||                   //
+       old.vm_version != curr.vm_version ||             //
+       old.code_hash != curr.code_hash;
+}
+
+bool include_delta(const eosio::chain::code_object& old, const eosio::chain::code_object& curr) { //
+   return false;
+}
+
 struct state_history_plugin_impl : std::enable_shared_from_this<state_history_plugin_impl> {
    chain_plugin*                                        chain_plug = nullptr;
    fc::optional<state_history_log>                      trace_log;
