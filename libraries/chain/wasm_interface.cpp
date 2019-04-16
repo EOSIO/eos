@@ -29,7 +29,7 @@ namespace eosio { namespace chain {
    using namespace webassembly;
    using namespace webassembly::common;
 
-   wasm_interface::wasm_interface(vm_type vm) : my( new wasm_interface_impl(vm) ) {}
+   wasm_interface::wasm_interface(vm_type vm, const chainbase::database& d) : my( new wasm_interface_impl(vm, d) ) {}
 
    wasm_interface::~wasm_interface() {}
 
@@ -57,8 +57,8 @@ namespace eosio { namespace chain {
       //Hard: Kick off instantiation in a separate thread at this location
 	 }
 
-   void wasm_interface::apply( const digest_type& code_id, const shared_string& code, apply_context& context ) {
-      my->get_instantiated_module(code_id, code, context.trx_context)->apply(context);
+   void wasm_interface::apply( const digest_type& code_hash, const uint8_t& vm_type, const uint8_t& vm_version, apply_context& context ) {
+      my->get_instantiated_module(code_hash, vm_type, vm_version, context.trx_context)->apply(context);
    }
 
    void wasm_interface::exit() {
@@ -212,13 +212,13 @@ class privileged_api : public context_aware_api {
       }
 
       bool is_privileged( account_name n )const {
-         return context.db.get<account_object, by_name>( n ).privileged;
+         return context.db.get<account_metadata_object, by_name>( n ).is_privileged();
       }
 
       void set_privileged( account_name n, bool is_priv ) {
-         const auto& a = context.db.get<account_object, by_name>( n );
+         const auto& a = context.db.get<account_metadata_object, by_name>( n );
          context.db.modify( a, [&]( auto& ma ){
-            ma.privileged = is_priv;
+            ma.set_privileged( is_priv );
          });
       }
 
