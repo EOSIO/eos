@@ -100,7 +100,7 @@ get_code_results chain_api_plugin_impl::get_code( const get_code_params& params 
    EOS_ASSERT( params.code_as_wasm, chain::unsupported_feature, "Returning WAST from get_code is no longer supported" );
 
    if( accnt.code.size() ) {
-      result.wasm = string(accnt.code.begin(), accnt.code.end());
+      result.wasm = accnt.code;
       result.code_hash = fc::sha256::hash( accnt.code.data(), accnt.code.size() );
    }
 

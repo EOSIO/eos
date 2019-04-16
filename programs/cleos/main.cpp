@@ -2365,24 +2365,27 @@ int main( int argc, char** argv ) {
    getCode->add_option("-a,--abi",abiFilename, localized("The name of the file to save the contract .abi to") );
    getCode->add_flag("--wasm", code_as_wasm, localized("Save contract as wasm"));
    getCode->set_callback([&] {
-      string code_hash, wasm, wast, abi;
-      try {
+   string code_hash, wasm, wast, abi;
+   try {
          const auto result = call(get_raw_code_and_abi_func, fc::mutable_variant_object("account_name", accountName));
-         const std::vector<char> wasm_v = result["wasm"].as_blob().data;
-         const std::vector<char> abi_v = result["abi"].as_blob().data;
 
-         fc::sha256 hash;
-         if(wasm_v.size())
-            hash = fc::sha256::hash(wasm_v.data(), wasm_v.size());
-         code_hash = (string)hash;
+         wasm = fc::base64_decode(result["wasm"].as_string());
+         const std::string abi_string = fc::base64_decode(result["abi"].as_string());
+         const std::vector<char> abi_v(abi_string.begin(), abi_string.end());
 
-         wasm = string(wasm_v.begin(), wasm_v.end());
-         if(!code_as_wasm && wasm_v.size())
-            wast = wasm_to_wast((const uint8_t*)wasm_v.data(), wasm_v.size(), false);
+
+         if(!wasm.empty()) {
+            code_hash = fc::sha256::hash(wasm.data(), wasm.size());
+         }
+
+         if(!code_as_wasm && !wasm.empty()) {
+            wast = wasm_to_wast(reinterpret_cast<const uint8_t*>(wasm.data()), wasm.size(), false);
+         }
 
          abi_def abi_d;
-         if(abi_serializer::to_abi(abi_v, abi_d))
+         if(abi_serializer::to_abi(abi_v, abi_d)) {
             abi = fc::json::to_pretty_string(abi_d);
+         }
       }
       catch(chain::missing_chain_api_plugin_exception&) {
          //see if this is an old nodeos that doesn't support get_raw_code_and_abi
