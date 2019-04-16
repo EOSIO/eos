@@ -61,9 +61,11 @@ namespace eosio { namespace chain {
       uint64_t              auth_sequence = 0;
       uint64_t              code_sequence = 0;
       uint64_t              abi_sequence  = 0;
-      code_object::id_type  code_id;
+      digest_type           code_hash;
       time_point            last_code_update;
       uint32_t              flags = 0;
+      uint8_t               vm_type = 0;
+      uint8_t               vm_version = 0;
 
       bool is_privileged()const { return has_field( flags, flags_fields::privileged ); }
 
@@ -108,5 +110,5 @@ CHAINBASE_SET_INDEX_TYPE(eosio::chain::account_ram_correction_object, eosio::cha
 
 FC_REFLECT(eosio::chain::account_object, (name)(creation_date)(abi))
 FC_REFLECT(eosio::chain::account_metadata_object, (name)(recv_sequence)(auth_sequence)(code_sequence)(abi_sequence)
-                                                  (code_id)(last_code_update)(flags))
+                                                  (code_hash)(last_code_update)(flags)(vm_type)(vm_version))
 FC_REFLECT(eosio::chain::account_ram_correction_object, (name)(ram_correction))

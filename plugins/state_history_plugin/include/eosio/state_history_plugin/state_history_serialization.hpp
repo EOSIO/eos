@@ -117,22 +117,9 @@ datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosi
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.name.value));
    fc::raw::pack(ds, as_type<bool>(obj.obj.is_privileged()));
    fc::raw::pack(ds, as_type<fc::time_point>(obj.obj.last_code_update));
-
-   fc::raw::pack(ds, bool(obj.obj.code_id._id));
-   if (obj.obj.code_id._id) {
-      auto&       index  = obj.db.get_index<eosio::chain::code_index>();
-      const auto* code_obj = index.find(obj.obj.code_id);
-      if (!code_obj) {
-         auto& undo = index.stack().back();
-         auto  it   = undo.removed_values.find(obj.obj.code_id);
-         EOS_ASSERT(it != undo.removed_values.end(), eosio::chain::plugin_exception,
-                    "can not find code_object");
-         code_obj = &it->second;
-      }
-      fc::raw::pack(ds, as_type<uint8_t>(code_obj->vm_type));
-      fc::raw::pack(ds, as_type<uint8_t>(code_obj->vm_version));
-      fc::raw::pack(ds, as_type<eosio::chain::digest_type>(code_obj->code_hash));
-   }
+   fc::raw::pack(ds, as_type<uint8_t>(obj.obj.vm_type));
+   fc::raw::pack(ds, as_type<uint8_t>(obj.obj.vm_version));
+   fc::raw::pack(ds, as_type<eosio::chain::digest_type>(obj.obj.code_hash));
 
    return ds;
 }

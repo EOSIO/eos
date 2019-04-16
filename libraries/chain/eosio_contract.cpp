@@ -146,7 +146,7 @@ void apply_eosio_setcode(apply_context& context) {
    }
 
    const auto& account = db.get<account_metadata_object,by_name>(act.account);
-   bool existing_code = (account.code_id._id != 0);
+   bool existing_code = (account.code_hash != digest_type());
 
    EOS_ASSERT( code_size > 0 || existing_code, set_exact_code, "contract is already cleared" );
 
@@ -154,7 +154,7 @@ void apply_eosio_setcode(apply_context& context) {
    int64_t new_size  = code_size * config::setcode_ram_bytes_multiplier;
 
    if( existing_code ) {
-      const code_object& old_code_entry = db.get<code_object, by_id>(account.code_id);
+      const code_object& old_code_entry = db.get<code_object, by_code_hash>(account.code_hash);
       EOS_ASSERT( old_code_entry.code_hash != code_hash, set_exact_code,
                   "contract is already running this version of code" );
       int64_t old_size  = (int64_t)old_code_entry.code.size() * config::setcode_ram_bytes_multiplier;
@@ -167,19 +167,15 @@ void apply_eosio_setcode(apply_context& context) {
       }
    }
 
-
-   code_object::id_type code_id; // default is 0 which indicates no code is present
    if( code_size > 0 ) {
       const code_object* new_code_entry = db.find<code_object, by_code_hash>(
                                              boost::make_tuple(code_hash, act.vmtype, act.vmversion) );
       if( new_code_entry ) {
          db.modify(*new_code_entry, [&](code_object& o) {
-            code_id = o.id;
             ++o.code_ref_count;
          });
       } else {
          db.create<code_object>([&](code_object& o) {
-            code_id = o.id;
             o.code_hash = code_hash;
             o.code.assign(act.code.data(), code_size);
             o.code_ref_count = 1;
@@ -192,7 +188,9 @@ void apply_eosio_setcode(apply_context& context) {
 
    db.modify( account, [&]( auto& a ) {
       a.code_sequence += 1;
-      a.code_id = code_id;
+      a.code_hash = code_hash;
+      a.vm_type = act.vmtype;
+      a.vm_version = act.vmversion;
       a.last_code_update = context.control.pending_block_time();
    });
 
