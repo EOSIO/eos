@@ -1410,6 +1410,11 @@ namespace eosio {
             msg.visit( m );
          }
       } catch(  const fc::exception& e ) {
+         auto ds = pending_message_buffer.create_datastream();
+         vector<char> v{};
+         v.resize(pending_message_buffer.bytes_to_read());
+         ds.read(v.data(), v.size());
+         wlog("error ds ${s}", ("s", v));
          edump((e.to_detail_string() ));
          impl.close( shared_from_this() );
          return false;
@@ -2045,6 +2050,10 @@ namespace eosio {
        fc::datastream<char*> ds( send_buffer->data(), buffer_size);
        ds.write( header, header_size );
        fc::raw::pack( ds, msg );
+
+       if (msg.contains<pbft_new_view>()) {
+           wlog("new view chars ${s}", ("s", send_buffer));
+       }
 
        return send_buffer;
    }
