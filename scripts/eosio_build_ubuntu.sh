@@ -40,9 +40,10 @@ case "${OS_NAME}" in
 		fi
 	;;
 	"Ubuntu")
-		if [ "${OS_MAJ}" -lt 16 ]; then
-			printf "You must be running Ubuntu 16.04.x or higher to install EOSIO.\\n"
-			printf "Exiting now.\\n"
+		. /etc/lsb-release
+		if [ "${DISTRIB_CODENAME}" != "xenial" -a "${DISTRIB_CODENAME}" != "bionic" ]; then
+			echo "The only Ubuntu versions this script supports are Ubuntu 16.04 and 18.04"
+			echo "Exiting now."
 			exit 1
 		fi
 		# UBUNTU 18 doesn't have MONGODB 3.6.3
