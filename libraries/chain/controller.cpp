@@ -902,8 +902,6 @@ struct controller_impl {
       authorization.initialize_database();
       resource_limits.initialize_database();
 
-      db.create<code_object>([](auto&){}); // reserve 0 code_id (used in account_metadata_object to indicate no code)
-
       authority system_auth(conf.genesis.initial_key);
       create_native_account( config::system_account_name, system_auth, system_auth, true );
 
