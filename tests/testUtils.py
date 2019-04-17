@@ -142,7 +142,7 @@ class Utils:
         Utils.Print(msg)
 
     @staticmethod
-    def waitForObj(lam, timeout=None, sleepTime=3):
+    def waitForObj(lam, timeout=None, sleepTime=3, reporter=None):
         if timeout is None:
             timeout=60
 
@@ -160,6 +160,8 @@ class Utils:
                     stdout.write('.')
                     stdout.flush()
                     needsNewLine=True
+                if reporter is not None:
+                    reporter()
                 time.sleep(sleepTime)
         finally:
             if needsNewLine:
@@ -168,9 +170,9 @@ class Utils:
         return None
 
     @staticmethod
-    def waitForBool(lam, timeout=None, sleepTime=3):
+    def waitForBool(lam, timeout=None, sleepTime=3, reporter=None):
         myLam = lambda: True if lam() else None
-        ret=Utils.waitForObj(myLam, timeout, sleepTime)
+        ret=Utils.waitForObj(myLam, timeout, sleepTime, reporter=reporter)
         return False if ret is None else ret
 
     @staticmethod
