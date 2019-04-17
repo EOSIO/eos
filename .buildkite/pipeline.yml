@@ -258,6 +258,7 @@ steps:
         propagate-environment: true
         workdir: /data/job
     timeout: 60
+    skip: true # fundamental test framework issue here, see https://buildkite.com/EOSIO/eosio/builds/10690
 
   # centOS 7 Tests
   - command: |

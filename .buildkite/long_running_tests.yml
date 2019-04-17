@@ -214,6 +214,7 @@ steps:
         propagate-environment: true
         workdir: /data/job
     timeout: 90
+    skip: true # fundamental test framework issue here, see https://buildkite.com/EOSIO/eosio/builds/10690
 
   - command: | # centOS 7 Tests
         echo "--- :arrow_down: Downloading Build Directory"
