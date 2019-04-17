@@ -645,7 +645,7 @@ struct genesis_create::genesis_create_impl final {
                 o.pct = g.pct,
                 o.share = g.granted;
                 o.granted = g.granted;
-                o.break_fee = 0;
+                o.break_fee = config::percent_100;
                 o.break_min_own_staked = 0;
             });
         }
@@ -665,7 +665,7 @@ struct genesis_create::genesis_create_impl final {
                     a.proxied = x.proxied;
                     a.own_share = x.own_share;
                     a.shares_sum = x.shares_sum;
-                    a.fee = 0;
+                    a.fee = config::percent_100;
                     a.min_own_staked = 0;
                     a.signing_key =
                         (x.own_staked() >= _info.params.stake.min_own_staked_for_election && keys.count(acc)) ?
