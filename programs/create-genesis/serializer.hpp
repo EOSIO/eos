@@ -20,7 +20,8 @@ const fc::microseconds abi_serializer_max_time = fc::seconds(10);
 
 using resource_limits::resource_usage_object;
 // There sould be proper way to get type name for abi, but it was faster to implement this
-template<typename T> type_name get_type_name() { return ""; }
+template<typename T> bool get_type_name_fail() { return false; }
+template<typename T> type_name get_type_name() { static_assert(get_type_name_fail<T>(), "specialize type"); return ""; }
 template<> type_name get_type_name<permission_object>()         { return "permission_object"; }
 template<> type_name get_type_name<permission_usage_object>()   { return "permission_usage_object"; }
 template<> type_name get_type_name<account_object>()            { return "account_object"; }
@@ -28,6 +29,10 @@ template<> type_name get_type_name<account_sequence_object>()   { return "accoun
 template<> type_name get_type_name<resource_usage_object>()     { return "resource_usage_object"; }
 template<> type_name get_type_name<domain_object>()             { return "domain_object"; }
 template<> type_name get_type_name<username_object>()           { return "username_object"; }
+template<> type_name get_type_name<stake_agent_object>()        { return "stake_agent_object"; }
+template<> type_name get_type_name<stake_grant_object>()        { return "stake_grant_object"; }
+template<> type_name get_type_name<stake_param_object>()        { return "stake_param_object"; }
+template<> type_name get_type_name<stake_stat_object>()         { return "stake_stat_object"; }
 
 
 enum class stored_contract_tables: int {
@@ -37,6 +42,9 @@ enum class stored_contract_tables: int {
     delegation,     rdelegation,
     withdrawal,
     witness_vote,   witness_info,
+    // the following are system tables, but it's simpler to have them here
+    stake_agents,   stake_grants,
+    stake_stats,    stake_params,
 
     _max                // to simplify setting tables_count of genesis container
 };
