@@ -7,6 +7,7 @@
 #include <eosio/chain/authorization_manager.hpp>
 #include <eosio/chain/resource_limits.hpp>
 #include <eosio/chain/stake_object.hpp>
+#include <eosio/chain/int_arithmetic.hpp>
 #include <fc/io/raw.hpp>
 #include <fc/variant.hpp>
 #include <boost/filesystem/path.hpp>
@@ -523,6 +524,10 @@ struct genesis_create::genesis_create_impl final {
             int64_t proxied;
             int64_t own_share;
             int64_t shares_sum;
+
+            int64_t own_staked() const {
+                return int_arithmetic::safe_prop(balance + proxied, own_share, shares_sum);
+            }
         };
         using agents_map = fc::flat_map<acc_idx,agent>;
         std::vector<agents_map> agents_by_level{5};
@@ -609,6 +614,9 @@ struct genesis_create::genesis_create_impl final {
                                 wlog("Skipping ${a} vote for ${w} (not BP)", ("a",names[a.name])("w",_accs_map[v]));
                             }
                         }
+                        EOS_ASSERT(n <= _info.params.stake.max_proxies[0], genesis_exception,
+                            "configured max_proxies for level 1 = ${m} is less then actual number votes imported ${a}",
+                            ("m",_info.params.stake.max_proxies[0])("a",n));
                     } else {
                         elog("No proxy for level ${l} (${a})", ("l",l)("a",names[a.name]));
                     }
@@ -647,7 +655,7 @@ struct genesis_create::genesis_create_impl final {
                     a.fee = 0;
                     a.min_own_staked = 0;
                     a.signing_key =
-                        (x.balance + x.proxied >= _info.params.stake.min_own_staked_for_election && keys.count(acc)) ?
+                        (x.own_staked() >= _info.params.stake.min_own_staked_for_election && keys.count(acc)) ?
                             keys[acc] : public_key_type();      // TODO: reset key if old HF used #518
                 });
             }
@@ -870,7 +878,6 @@ struct genesis_create::genesis_create_impl final {
                 ("witnesses", witnesses);
             primary_key_t pk = n.value;
             db.insert({gls_ctrl_account_name, gls_ctrl_account_name, N(witnessvote)}, pk, o, ram_payer);
-            // TODO: BPs
         }
 
         db.start_section(gls_ctrl_account_name, N(witness), "witness_info", _visitor.witnesses.size());
@@ -889,7 +896,6 @@ struct genesis_create::genesis_create_impl final {
             }
             EOS_ASSERT(weights[w.owner.id] == w.votes, genesis_exception,
                 "Witness .votes value is not equal to sum individual votes", ("w",w)("calculated",weights[w.owner.id]));
-            // TODO: BPs
         }
 
         _visitor.witnesses.clear();
