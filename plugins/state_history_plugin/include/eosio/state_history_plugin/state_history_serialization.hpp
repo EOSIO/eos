@@ -563,12 +563,14 @@ datastream<ST>& operator<<(datastream<ST>&                                      
       uint8_t stat = eosio::chain::transaction_receipt_header::hard_fail;
       if (trace.receipt && trace.receipt->status.value == eosio::chain::transaction_receipt_header::soft_fail)
          stat = eosio::chain::transaction_receipt_header::soft_fail;
-      fc::raw::pack(
-          ds, make_history_context_wrapper(obj.db, stat, eosio::augmented_transaction_trace{trace.failed_dtrx_trace}));
+      fc::raw::pack( //
+          ds, make_history_context_wrapper(
+                  obj.db, stat, eosio::augmented_transaction_trace{trace.failed_dtrx_trace, obj.obj.partial}));
    }
 
-   fc::raw::pack(ds, bool(obj.obj.partial));
-   if (obj.obj.partial) {
+   bool include_partial = obj.obj.partial && !trace.failed_dtrx_trace;
+   fc::raw::pack(ds, include_partial);
+   if (include_partial) {
       auto& partial = *obj.obj.partial;
       fc::raw::pack(ds, fc::unsigned_int(0));
       fc::raw::pack(ds, as_type<eosio::chain::time_point_sec>(partial.expiration));

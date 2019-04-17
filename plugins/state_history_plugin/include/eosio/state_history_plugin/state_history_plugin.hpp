@@ -56,6 +56,11 @@ struct augmented_transaction_trace {
    augmented_transaction_trace(const chain::transaction_trace_ptr& trace)
        : trace{trace} {}
 
+   augmented_transaction_trace(const chain::transaction_trace_ptr&         trace,
+                               const std::shared_ptr<partial_transaction>& partial)
+       : trace{trace}
+       , partial{partial} {}
+
    augmented_transaction_trace(const chain::transaction_trace_ptr& trace, const chain::signed_transaction& t)
        : trace{trace}
        , partial{std::make_shared<partial_transaction>(t)} {}
