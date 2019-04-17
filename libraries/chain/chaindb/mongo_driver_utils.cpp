@@ -242,14 +242,14 @@ namespace cyberway { namespace chaindb {
                     if (str == names::system_code) {
                         state.code = account_name();
                     } else {
-                        state.code = account_name(str);
+                        state.code = account_name(db_string_to_name(str.c_str()));
                     }
                     break;
                 }
                 case 't': {
                     validate_field_name(names::table_field == key, src, itm);
                     validate_field_type(type::k_utf8 == key_type, src, itm);
-                    state.table = table_name(itm.get_utf8().value.to_string());
+                    state.table = table_name(db_string_to_name(itm.get_utf8().value.data()));
                     break;
                 }
                 case 's': {
