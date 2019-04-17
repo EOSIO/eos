@@ -35,6 +35,7 @@ enum class stored_contract_tables: int {
     token_stats,    vesting_stats,
     token_balance,  vesting_balance,
     delegation,     rdelegation,
+    withdrawal,
     witness_vote,   witness_info,
 
     _max                // to simplify setting tables_count of genesis container
@@ -131,10 +132,6 @@ public:
         to_variant(obj, v);
         bytes data = ser.variant_to_binary(get_type_name<T>(), v, abi_serializer_max_time);
 #else
-        // bytes data(1024*1024);
-        // datastream<char*> ds(bytes.data(), bytes.size());
-        // fc::raw::pack(ds, obj);
-        // data.resize(ds.tellp());
         bytes data = fc::raw::pack(obj);
 #endif
         sys_table_row record{{}, data};

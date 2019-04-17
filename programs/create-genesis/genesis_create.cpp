@@ -45,11 +45,16 @@ static constexpr uint64_t gls_post_account_name  = N(gls.publish);
 constexpr auto GBG = SY(3,GBG);
 constexpr auto GLS = SY(3,GOLOS);
 constexpr auto GESTS = SY(6,GESTS);
+constexpr auto VESTS = SY(6,GOLOS);                 // Cyberway vesting
 constexpr auto posting_auth_name = "posting";
 constexpr auto golos_account_name = "golos";
 constexpr auto issuer_account_name = config::system_account_name;   // ?cyberfounder
 constexpr auto notify_account_name = gls_ctrl_account_name;
 constexpr auto posting_account_name = gls_post_account_name;
+
+constexpr auto withdraw_interval_seconds = 60*60*24*7;
+constexpr auto withdraw_intervals = 13;
+
 constexpr int64_t system_max_supply = 1'000'000'000ll * 10000;  // 4 digits precision
 constexpr int64_t golos_max_supply = 1'000'000'000ll * 1000;    // 3 digits precision
 
@@ -119,6 +124,8 @@ struct state_object_visitor {
     std::vector<golos::vesting_delegation_expiration_object> delegation_expirations;
     fc::flat_map<acc_idx, share_type> delegated_vests;
     fc::flat_map<acc_idx, share_type> received_vests;
+
+    fc::flat_map<acc_idx,acc_idx> withdraw_routes;  // from:to
 
     template<typename T>
     void operator()(const T& x) {}
@@ -196,6 +203,12 @@ struct state_object_visitor {
         delegation_expirations.emplace_back(d);
         delegated_vests[d.delegator.id] += d.vesting_shares.get_amount();
         early_exit = true;
+    }
+
+    void operator()(const golos::withdraw_vesting_route_object& w) {
+        if (w.from_account != w.to_account && w.percent == config::percent_100) {
+            withdraw_routes[acc_id2idx[w.from_account]] = acc_id2idx[w.to_account];
+        }
     }
 
     // witnesses
@@ -541,7 +554,6 @@ struct genesis_create::genesis_create_impl final {
 
         const auto sys_sym = asset().get_symbol();
         const auto golos_sym = symbol(GLS);
-        const auto vests_sym = symbol(6,"GOLOS");   // Cyberway vesting
 #ifdef IMPORT_SYS_BALANCES
         auto sys_pk = insert_stat_record(sys_sym, golos2sys(supply), system_max_supply, config::system_account_name);
 #endif
@@ -550,9 +562,9 @@ struct genesis_create::genesis_create_impl final {
         // vesting info
         db.start_section(gls_vest_account_name, N(stat), "vesting_stats", 1);
         table_request tbl{gls_vest_account_name, gls_vest_account_name, N(stat)};
-        primary_key_t vests_pk = vests_sym.value() >> 8;
+        primary_key_t vests_pk = VESTS >> 8;
         auto vests_info = mvo
-            ("supply", asset(data.total_gests.get_amount(), vests_sym))
+            ("supply", asset(data.total_gests.get_amount(), symbol(VESTS)))
             ("notify_acc", notify_account_name);
         db.insert(tbl, vests_pk, vests_info, ram_payer);
 
@@ -597,10 +609,10 @@ struct genesis_create::genesis_create_impl final {
                 "Calculated received delegations doesn't equal to provided in object",
                 ("account", _accs_map[acc])("calculated", data.received_vests[acc])("provided", vests.received));
             auto vests_obj = mvo
-                ("vesting", asset(vests.vesting, vests_sym))
-                ("delegated", asset(vests.delegated, vests_sym))
-                ("received", asset(vests.received, vests_sym))
-                ("unlocked_limit", asset(0, vests_sym));
+                ("vesting", asset(vests.vesting, symbol(VESTS)))
+                ("delegated", asset(vests.delegated, symbol(VESTS)))
+                ("received", asset(vests.received, symbol(VESTS)))
+                ("unlocked_limit", asset(0, symbol(VESTS)));
             const auto n = generate_name(_accs_map[acc]);
             db.insert({gls_vest_account_name, n, N(accounts)}, vests_pk, vests_obj, ram_payer);
         }
@@ -614,17 +626,16 @@ struct genesis_create::genesis_create_impl final {
     void store_delegation_records() {
         std::cout << "Creating vesting delegation records..." << std::endl;
         ram_payer_info ram_payer{};
-        const auto vests_sym = symbol(6,"GOLOS");   // Cyberway vesting
 
         db.start_section(gls_vest_account_name, N(delegation), "delegation", _visitor.delegations.size());
-        table_request tbl{gls_vest_account_name, vests_sym.value(), N(delegation)};
+        table_request tbl{gls_vest_account_name, VESTS, N(delegation)};
         primary_key_t pk = 0;
         for (const auto& d: _visitor.delegations) {
             auto obj = mvo
                 ("id", pk)
                 ("delegator", _acc_names[d.delegator.id])
                 ("delegatee", _acc_names[d.delegatee.id])
-                ("quantity", asset(d.vesting_shares.get_amount(), vests_sym))
+                ("quantity", asset(d.vesting_shares.get_amount(), symbol(VESTS)))
                 ("interest_rate", d.interest_rate)
                 ("payout_strategy", int(d.payout_strategy))
                 ("min_delegation_time", d.min_delegation_time);
@@ -640,10 +651,53 @@ struct genesis_create::genesis_create_impl final {
             auto obj = mvo
                 ("id", pk)
                 ("delegator", _acc_names[d.delegator.id])
-                ("quantity", asset(d.vesting_shares.get_amount(), vests_sym))
+                ("quantity", asset(d.vesting_shares.get_amount(), symbol(VESTS)))
                 ("date", d.expiration);
             db.insert(rtbl, pk, obj, ram_payer);
             pk++;
+        }
+        std::cout << "Done." << std::endl;
+    }
+
+    void store_withdrawals() {
+        std::cout << "Creating vesting withdraw records..." << std::endl;
+        const auto withdrawing_acc = [](const auto& a) {
+            bool good = a.to_withdraw > 0 && a.vesting_withdraw_rate.get_amount() > 0 &&
+                a.next_vesting_withdrawal != time_point_sec::maximum();
+            if (good) {
+                // some Golos accounts have low remainders due rounding (<0.001 GOLOS) or low withdraw rate,
+                // both resulting wrong payments count. skip them
+                auto payments_done = a.withdrawn / a.vesting_withdraw_rate.get_amount();
+                good = payments_done >= 0 && payments_done < withdraw_intervals;
+            }
+            return good;
+        };
+
+        const auto& accs = _visitor.accounts;
+        auto n = std::count_if(accs.begin(), accs.end(), [&](const auto& a){ return withdrawing_acc(a.second); });
+        db.start_section(gls_vest_account_name, N(withdrawal), "withdrawal", n);
+        table_request tbl{gls_vest_account_name, VESTS, N(withdrawal)};
+
+        const auto& routes = _visitor.withdraw_routes;
+        for (const auto& acc: accs) {
+            auto a = acc.second;
+            if (withdrawing_acc(a)) {
+                auto idx = acc.first;
+                auto owner = _acc_names[idx];
+                auto to = routes.count(idx) ? _acc_names[routes.at(idx)] : owner;
+                auto remaining = a.to_withdraw - a.withdrawn;
+                EOS_ASSERT(remaining <= a.vesting_shares.get_amount() - a.delegated_vesting_shares.get_amount(),
+                    genesis_exception, "${a} trying to withdraw more vesting than allowed", ("a",_accs_map[idx]));
+                auto obj = mvo
+                    ("owner", owner)
+                    ("to", to)
+                    ("interval_seconds", withdraw_interval_seconds)
+                    ("remaining_payments", withdraw_intervals - a.withdrawn / a.vesting_withdraw_rate.get_amount())
+                    ("next_payout", a.next_vesting_withdrawal)
+                    ("withdraw_rate", a.vesting_withdraw_rate)
+                    ("to_withdraw", asset(remaining, symbol(VESTS)));
+                db.insert(tbl, owner, obj, {});
+            }
         }
         std::cout << "Done." << std::endl;
     }
@@ -748,7 +802,8 @@ void genesis_create::write_genesis(
     _impl->store_contracts();
     _impl->store_accounts();
     _impl->store_balances();
-    _impl->store_delegation_records();    // TODO: withdrawals
+    _impl->store_delegation_records();
+    _impl->store_withdrawals();
     _impl->store_witnesses();
 
     for (const auto& i: _impl->db.autoincrement) {
