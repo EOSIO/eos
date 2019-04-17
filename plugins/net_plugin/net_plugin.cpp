@@ -272,7 +272,7 @@ namespace eosio {
       compat::channels::transaction_ack::channel_type::handle  incoming_transaction_ack_subscription;
       channels::irreversible_block::channel_type::handle       incoming_irreversible_block_subscription;
 
-      uint16_t                                  thread_pool_size = 4;
+      uint16_t                                  thread_pool_size = 2;
       optional<eosio::chain::named_thread_pool> thread_pool;
 
    private:
