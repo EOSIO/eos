@@ -112,15 +112,9 @@ namespace LLVMJIT
 		
 		void registerEHFrames(U8* addr, U64 loadAddr,uintptr_t numBytes) override
 		{
-			llvm::RTDyldMemoryManager::registerEHFrames(addr,loadAddr,numBytes);
-			hasRegisteredEHFrames = true;
-			ehFramesAddr = addr;
-			ehFramesLoadAddr = loadAddr;
-			ehFramesNumBytes = numBytes;
 		}
 		void deregisterEHFrames(U8* addr, U64 loadAddr,uintptr_t numBytes) override
 		{
-			llvm::RTDyldMemoryManager::deregisterEHFrames(addr,loadAddr,numBytes);
 		}
 		
 		virtual bool needsToReserveAllocationSpace() override { return true; }

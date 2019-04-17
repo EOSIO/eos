@@ -359,6 +359,10 @@ namespace Platform
 	{
 		errorUnless(SetEvent(reinterpret_cast<HANDLE>(event)));
 	}
+
+	void immediately_exit(std::exception_ptr except) {
+		std::rethrow_exception(except);
+	}
 }
 
 #endif
