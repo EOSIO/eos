@@ -1042,6 +1042,9 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
    }
 
    if (_pending_block_mode == pending_block_mode::speculating) {
+      if (!chain.pending_block_state()) {
+         chain.start_block(block_time);
+      }
       return start_block_result::waiting;
    }
 
