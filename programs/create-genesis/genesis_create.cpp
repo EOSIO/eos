@@ -206,7 +206,7 @@ struct state_object_visitor {
     }
 
     void operator()(const golos::withdraw_vesting_route_object& w) {
-        if (w.from_account != w.to_account && w.percent > 50 * config::percent_1) {
+        if (w.from_account != w.to_account && w.percent == config::percent_100) {
             withdraw_routes[acc_id2idx[w.from_account]] = acc_id2idx[w.to_account];
         }
     }
