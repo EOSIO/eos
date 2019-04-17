@@ -1395,32 +1395,59 @@ namespace eosio {
        sync_wait();
    }
 
+    bool connection::process_next_message(net_plugin_impl& impl, uint32_t message_length) {
+        vector<char> tmp_data;
+        tmp_data.resize(message_length);
 
-   bool connection::process_next_message(net_plugin_impl& impl, uint32_t message_length) {
-      try {
-         auto ds = pending_message_buffer.create_datastream();
-         net_message msg;
-         fc::raw::unpack(ds, msg);
-         msg_handler m(impl, shared_from_this() );
-         if( msg.contains<signed_block>() ) {
-            m( std::move( msg.get<signed_block>() ) );
-         } else if( msg.contains<packed_transaction>() ) {
-            m( std::move( msg.get<packed_transaction>() ) );
-         } else {
-            msg.visit( m );
-         }
-      } catch(  const fc::exception& e ) {
-         auto ds = pending_message_buffer.create_datastream();
-         vector<char> v{};
-         v.resize(pending_message_buffer.bytes_to_read());
-         ds.read(v.data(), v.size());
-         wlog("error ds ${s}", ("s", v));
-         edump((e.to_detail_string() ));
-         impl.close( shared_from_this() );
-         return false;
-      }
-      return true;
-   }
+        try {
+            auto ds = pending_message_buffer.create_datastream();
+            auto read_index = pending_message_buffer.read_index();
+            pending_message_buffer.peek(tmp_data.data(),message_length,read_index);
+
+            net_message msg;
+            fc::raw::unpack(ds, msg);
+            msg_handler m(impl, shared_from_this() );
+            if( msg.contains<signed_block>() ) {
+                m( std::move( msg.get<signed_block>() ) );
+            } else if( msg.contains<packed_transaction>() ) {
+                m( std::move( msg.get<packed_transaction>() ) );
+            } else {
+                msg.visit( m );
+            }
+        } catch(  const fc::exception& e ) {
+            wlog("error ds ${s}", ("s", tmp_data));
+            edump((e.to_detail_string() ));
+            impl.close( shared_from_this() );
+            return false;
+        }
+        return true;
+    }
+
+//   bool connection::process_next_message(net_plugin_impl& impl, uint32_t message_length) {
+//      auto ds =  pending_message_buffer.create_datastream();
+//      auto cp_ds = ds;
+//      try {
+//         net_message msg;
+//         fc::raw::unpack(ds, msg);
+//         msg_handler m(impl, shared_from_this() );
+//         if( msg.contains<signed_block>() ) {
+//            m( std::move( msg.get<signed_block>() ) );
+//         } else if( msg.contains<packed_transaction>() ) {
+//            m( std::move( msg.get<packed_transaction>() ) );
+//         } else {
+//            msg.visit( m );
+//         }
+//      } catch(  const fc::exception& e ) {
+//         vector<char> v{};
+//         v.resize(message_length);
+//         cp_ds.read(v.data(), v.size());
+//         wlog("error ds ${s}", ("s", v));
+//         edump((e.to_detail_string() ));
+//         impl.close( shared_from_this() );
+//         return false;
+//      }
+//      return true;
+//   }
 
    bool connection::add_peer_block(const peer_block_state& entry) {
       auto bptr = blk_state.get<by_id>().find(entry.id);
