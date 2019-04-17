@@ -582,6 +582,7 @@ namespace eosio {
       deque<queued_pbft_message>     pbft_queue;
 
       queued_buffer           buffer_queue;
+      std::vector<boost::asio::const_buffer> bufs;
 
       uint32_t                reads_in_flight = 0;
       uint32_t                trx_in_progress_size = 0;
@@ -1108,7 +1109,7 @@ namespace eosio {
          my_impl->close(c.lock());
          return;
       }
-      std::vector<boost::asio::const_buffer> bufs;
+//      std::vector<boost::asio::const_buffer> bufs;
       buffer_queue.fill_out_buffer( bufs );
 
       do_queue_write_from_pbft_queue( bufs );
@@ -1133,6 +1134,7 @@ namespace eosio {
                   return;
                }
                conn->buffer_queue.clear_out_queue();
+               conn->bufs.clear();
                conn->enqueue_sync_block();
                conn->do_queue_write();
             }
