@@ -43,7 +43,7 @@ printf "Disk space available: ${DISK_AVAIL%.*}G\\n"
 # llvm is symlinked from /usr/lib64/llvm4.0 into user's home
 DEP_ARRAY=( 
 	git sudo procps-ng which gcc gcc-c++ autoconf automake libtool make \
-	bzip2-devel wget bzip2 compat-openssl10 graphviz doxygen \
+	bzip2-devel curl -LO bzip2 compat-openssl10 graphviz doxygen \
 	openssl-devel gmp-devel libstdc++-devel python2 python2-devel python3 python3-devel \
 	libedit ncurses-devel swig llvm4.0 llvm4.0-devel llvm4.0-libs llvm4.0-static libcurl-devel libusb-devel
 )
@@ -235,7 +235,7 @@ if $BUILD_CLANG8; then
    if [ ! -d ${OPT_LOCATION}/gmp ]; then
       printf "Installing gmp...\\n"
       cd ${TMP_LOCATION} \
-      && wget https://ftp.gnu.org/gnu/gmp/gmp-5.0.1.tar.gz && tar -xzf gmp-5.0.1.tar.gz \
+      && curl -LO https://ftp.gnu.org/gnu/gmp/gmp-5.0.1.tar.gz && tar -xzf gmp-5.0.1.tar.gz \
       && cd gmp-5.0.1 && mkdir build && cd build \
       && ../configure --prefix=${OPT_LOCATION}/gmp \
       && make -j"${JOBS}" && make install \
@@ -245,7 +245,7 @@ if $BUILD_CLANG8; then
    if [ ! -d ${OPT_LOCATION}/mpfr ]; then
       printf "Installing mpfr...\\n"
       cd ${TMP_LOCATION} \
-      && wget https://ftp.gnu.org/gnu/mpfr/mpfr-3.0.0.tar.gz && tar -xzf mpfr-3.0.0.tar.gz \
+      && curl -LO https://ftp.gnu.org/gnu/mpfr/mpfr-3.0.0.tar.gz && tar -xzf mpfr-3.0.0.tar.gz \
       && cd mpfr-3.0.0 && mkdir build && cd build \
       && ../configure --prefix=${OPT_LOCATION}/mpfr --with-gmp=${OPT_LOCATION}/gmp \
       && make -j"${JOBS}" && make install \
@@ -255,7 +255,7 @@ if $BUILD_CLANG8; then
    if [ ! -d ${OPT_LOCATION}/mpc ]; then
       printf "Installing mpc...\\n"
       cd ${TMP_LOCATION} \
-      && wget https://ftp.gnu.org/gnu/mpc/mpc-1.0.1.tar.gz && tar -xzf mpc-1.0.1.tar.gz \
+      && curl -LO https://ftp.gnu.org/gnu/mpc/mpc-1.0.1.tar.gz && tar -xzf mpc-1.0.1.tar.gz \
       && cd mpc-1.0.1 && mkdir build && cd build \
       && ../configure --prefix=${OPT_LOCATION}/mpc --with-gmp=${OPT_LOCATION}/gmp --with-mpfr=${OPT_LOCATION}/mpfr \
       && make -j"${JOBS}" && make install \
@@ -265,7 +265,7 @@ if $BUILD_CLANG8; then
    if [ ! -d ${OPT_LOCATION}/gcc ]; then
       printf "Installing libstdc++\\n"
       cd ${TMP_LOCATION} \
-      && wget https://ftp.gnu.org/gnu/gcc/gcc-7.1.0/gcc-7.1.0.tar.gz && tar -xzf gcc-7.1.0.tar.gz \
+      && curl -LO https://ftp.gnu.org/gnu/gcc/gcc-7.1.0/gcc-7.1.0.tar.gz && tar -xzf gcc-7.1.0.tar.gz \
       && cd gcc-7.1.0 && mkdir build && cd build \
       &&../configure --enable-languages=c,c++ --prefix=${OPT_LOCATION}/gcc --disable-shared --enable-linker-build-id --without-included-gettext --enable-threads=posix --enable-nls --enable-clocale=gnu --enable-libstdcxx-debug --enable-libstdcxx-time=yes --with-default-libstdcxx-abi=new --enable-gnu-unique-object --disable-vtable-verify --disable-libmpx --enable-plugin --with-system-zlib --with-target-system-zlib --disable-werror --disable-multilib --with-tune=generic --enable-checking=release --with-gmp=${OPT_LOCATION}/gmp --with-mpfr=${OPT_LOCATION}/mpfr --with-mpc=${OPT_LOCATION}/mpc --disable-libsanitizer --disable-testsuite --disable-libquadmath --disable-libitm --disable-libcc1 \
       && make -j"${JOBS}" && make install \

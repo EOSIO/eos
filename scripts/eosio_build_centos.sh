@@ -303,7 +303,7 @@ if $BUILD_CLANG8; then
    if [ ! -d ${OPT_LOCATION}/gmp ]; then
       printf "Installing gmp...\\n"
       cd ${TMP_LOCATION} \
-      && wget https://ftp.gnu.org/gnu/gmp/gmp-5.0.1.tar.gz && tar -xzf gmp-5.0.1.tar.gz \
+      && curl -LO https://ftp.gnu.org/gnu/gmp/gmp-5.0.1.tar.gz && tar -xzf gmp-5.0.1.tar.gz \
       && cd gmp-5.0.1 && mkdir build && cd build \
       && ../configure --prefix=${OPT_LOCATION}/gmp \
       && make -j"${JOBS}" && make install \
@@ -313,7 +313,7 @@ if $BUILD_CLANG8; then
    if [ ! -d ${OPT_LOCATION}/mpfr ]; then
       printf "Installing mpfr...\\n"
       cd ${TMP_LOCATION} \
-      && wget https://ftp.gnu.org/gnu/mpfr/mpfr-3.0.0.tar.gz && tar -xzf mpfr-3.0.0.tar.gz \
+      && curl -LO https://ftp.gnu.org/gnu/mpfr/mpfr-3.0.0.tar.gz && tar -xzf mpfr-3.0.0.tar.gz \
       && cd mpfr-3.0.0 && mkdir build && cd build \
       && ../configure --prefix=${OPT_LOCATION}/mpfr --with-gmp=${OPT_LOCATION}/gmp \
       && make -j"${JOBS}" && make install \
@@ -323,7 +323,7 @@ if $BUILD_CLANG8; then
    if [ ! -d ${OPT_LOCATION}/mpc ]; then
       printf "Installing mpc...\\n"
       cd ${TMP_LOCATION} \
-      && wget https://ftp.gnu.org/gnu/mpc/mpc-1.0.1.tar.gz && tar -xzf mpc-1.0.1.tar.gz \
+      && curl -LO https://ftp.gnu.org/gnu/mpc/mpc-1.0.1.tar.gz && tar -xzf mpc-1.0.1.tar.gz \
       && cd mpc-1.0.1 && mkdir build && cd build \
       && ../configure --prefix=${OPT_LOCATION}/mpc --with-gmp=${OPT_LOCATION}/gmp --with-mpfr=${OPT_LOCATION}/mpfr \
       && make -j"${JOBS}" && make install \
@@ -333,7 +333,7 @@ if $BUILD_CLANG8; then
    if [ ! -d ${OPT_LOCATION}/gcc ]; then
       printf "Installing libstdc++\\n"
       cd ${TMP_LOCATION} \
-      && wget https://ftp.gnu.org/gnu/gcc/gcc-7.1.0/gcc-7.1.0.tar.gz && tar -xzf gcc-7.1.0.tar.gz \
+      && curl -LO https://ftp.gnu.org/gnu/gcc/gcc-7.1.0/gcc-7.1.0.tar.gz && tar -xzf gcc-7.1.0.tar.gz \
       && cd gcc-7.1.0 && mkdir build && cd build \
       &&../configure --enable-languages=c,c++ --prefix=${OPT_LOCATION}/gcc --disable-shared --enable-linker-build-id --without-included-gettext --enable-threads=posix --enable-nls --enable-clocale=gnu --enable-libstdcxx-debug --enable-libstdcxx-time=yes --with-default-libstdcxx-abi=new --enable-gnu-unique-object --disable-vtable-verify --disable-libmpx --enable-plugin --with-system-zlib --with-target-system-zlib --disable-werror --disable-multilib --with-tune=generic --enable-checking=release --with-gmp=${OPT_LOCATION}/gmp --with-mpfr=${OPT_LOCATION}/mpfr --with-mpc=${OPT_LOCATION}/mpc --disable-libsanitizer --disable-testsuite --disable-libquadmath --disable-libitm --disable-libcc1 \
       && make -j"${JOBS}" && make install \
