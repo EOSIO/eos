@@ -490,7 +490,7 @@ steps:
         echo "+++ :microscope: Starting package build"
         cd /data/job/build/packages
         bash generate_package.sh deb
-    label: ":ubuntu: Ubuntu 16.04 Package builder"
+    label: ":ubuntu: Ubuntu 16.04 Package Builder"
     agents:
       queue: "automation-large-builder-fleet"
     artifact_paths:
@@ -518,7 +518,7 @@ steps:
         echo "+++ :microscope: Starting package build"
         cd /data/job/build/packages
         bash generate_package.sh deb
-    label: ":ubuntu: Ubuntu 18.04 Package builder"
+    label: ":ubuntu: Ubuntu 18.04 Package Builder"
     agents:
       queue: "automation-large-builder-fleet"
     artifact_paths:
@@ -553,7 +553,7 @@ steps:
         mkdir -p /root/rpmbuild/SRPMS
         cd /data/job/build/packages
         bash generate_package.sh rpm
-    label: ":centos: CentOS 7 Package builder"
+    label: ":centos: CentOS 7 Package Builder"
     agents:
       queue: "automation-large-builder-fleet"
     artifact_paths:
@@ -588,7 +588,7 @@ steps:
         mkdir -p /root/rpmbuild/SRPMS
         cd /data/job/build/packages
         bash generate_package.sh rpm
-    label: ":fedora: Fedora 27 Package builder"
+    label: ":fedora: Fedora 27 Package Builder"
     agents:
       queue: "automation-large-builder-fleet"
     artifact_paths:
