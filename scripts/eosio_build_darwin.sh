@@ -187,7 +187,6 @@ if [ $? -ne 0 ]; then exit -1; fi
 
 printf "\\n"
 
-
 printf "Checking MongoDB installation...\\n"
 if [ ! -d $MONGODB_ROOT ]; then
 	printf "Installing MongoDB into ${MONGODB_ROOT}...\\n"

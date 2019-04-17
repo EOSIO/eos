@@ -231,6 +231,15 @@ if [ $? -ne 0 ]; then exit -1; fi
 cd ..
 printf "\\n"
 
+# Use current directory's tmp directory if noexec is enabled for /tmp
+if (mount | grep "/tmp " | grep --quiet noexec); then
+      mkdir -p $REPO_ROOT/tmp
+      TMP_LOCATION="${REPO_ROOT}/tmp"
+      rm -rf $REPO_ROOT/tmp/*
+else # noexec wasn't found
+      TMP_LOCATION="/tmp"
+fi
+
 if $BUILD_CLANG8; then
    export LD_LIBRARY_PATH=${OPT_LOCATION}/mpfr/lib:$LD_LIBRARY_PATH
    export LD_LIBRARY_PATH=${OPT_LOCATION}/gcc/lib64:$LD_LIBRARY_PATH
