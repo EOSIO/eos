@@ -102,17 +102,17 @@ bool include_delta(const eosio::chain::code_object& old, const eosio::chain::cod
 }
 
 struct state_history_plugin_impl : std::enable_shared_from_this<state_history_plugin_impl> {
-   chain_plugin*                                        chain_plug = nullptr;
-   fc::optional<state_history_log>                      trace_log;
-   fc::optional<state_history_log>                      chain_state_log;
-   bool                                                 stopping = false;
-   fc::optional<scoped_connection>                      applied_transaction_connection;
-   fc::optional<scoped_connection>                      accepted_block_connection;
-   string                                               endpoint_address = "0.0.0.0";
-   uint16_t                                             endpoint_port    = 8080;
-   std::unique_ptr<tcp::acceptor>                       acceptor;
-   std::map<transaction_id_type, transaction_trace_ptr> cached_traces;
-   transaction_trace_ptr                                onblock_trace;
+   chain_plugin*                                              chain_plug = nullptr;
+   fc::optional<state_history_log>                            trace_log;
+   fc::optional<state_history_log>                            chain_state_log;
+   bool                                                       stopping = false;
+   fc::optional<scoped_connection>                            applied_transaction_connection;
+   fc::optional<scoped_connection>                            accepted_block_connection;
+   string                                                     endpoint_address = "0.0.0.0";
+   uint16_t                                                   endpoint_port    = 8080;
+   std::unique_ptr<tcp::acceptor>                             acceptor;
+   std::map<transaction_id_type, augmented_transaction_trace> cached_traces;
+   fc::optional<augmented_transaction_trace>                  onblock_trace;
 
    void get_log_entry(state_history_log& log, uint32_t block_num, fc::optional<bytes>& result) {
       if (block_num < log.begin_block() || block_num >= log.end_block())
@@ -392,14 +392,14 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
              auth.permission == eosio::chain::config::active_name;
    }
 
-   void on_applied_transaction(const transaction_trace_ptr& p) {
+   void on_applied_transaction(const transaction_trace_ptr& p, const signed_transaction& t) {
       if (p->receipt && trace_log) {
          if (is_onblock(p))
-            onblock_trace = p;
+            onblock_trace.emplace(p, t);
          else if (p->failed_dtrx_trace)
-            cached_traces[p->failed_dtrx_trace->id] = p;
+            cached_traces[p->failed_dtrx_trace->id] = augmented_transaction_trace{p, t};
          else
-            cached_traces[p->id] = p;
+            cached_traces[p->id] = augmented_transaction_trace{p, t};
       }
    }
 
@@ -419,9 +419,9 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
    void store_traces(const block_state_ptr& block_state) {
       if (!trace_log)
          return;
-      std::vector<transaction_trace_ptr> traces;
+      std::vector<augmented_transaction_trace> traces;
       if (onblock_trace)
-         traces.push_back(onblock_trace);
+         traces.push_back(*onblock_trace);
       for (auto& r : block_state->block->transactions) {
          transaction_id_type id;
          if (r.trx.contains<transaction_id_type>())
@@ -429,7 +429,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          else
             id = r.trx.get<packed_transaction>().id();
          auto it = cached_traces.find(id);
-         EOS_ASSERT(it != cached_traces.end() && it->second->receipt, plugin_exception,
+         EOS_ASSERT(it != cached_traces.end() && it->second.trace->receipt, plugin_exception,
                     "missing trace for transaction ${id}", ("id", id));
          traces.push_back(it->second);
       }
@@ -576,7 +576,9 @@ void state_history_plugin::plugin_initialize(const variables_map& options) {
       EOS_ASSERT(my->chain_plug, chain::missing_chain_plugin_exception, "");
       auto& chain = my->chain_plug->chain();
       my->applied_transaction_connection.emplace(
-          chain.applied_transaction.connect([&](const transaction_trace_ptr& p) { my->on_applied_transaction(p); }));
+          chain.applied_transaction.connect([&](std::tuple<const transaction_trace_ptr&, const signed_transaction&> t) {
+             my->on_applied_transaction(std::get<0>(t), std::get<1>(t));
+          }));
       my->accepted_block_connection.emplace(
           chain.accepted_block.connect([&](const block_state_ptr& p) { my->on_accepted_block(p); }));
 

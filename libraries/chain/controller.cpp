@@ -1078,7 +1078,7 @@ struct controller_impl {
          trace->receipt = push_receipt( gtrx.trx_id, transaction_receipt::expired, billed_cpu_time_us, 0 ); // expire the transaction
          trace->account_ram_delta = account_delta( gtrx.payer, trx_removal_ram_delta );
          emit( self.accepted_transaction, trx );
-         emit( self.applied_transaction, trace );
+         emit( self.applied_transaction, std::tie(trace, dtrx) );
          undo_session.squash();
          return trace;
       }
@@ -1125,7 +1125,7 @@ struct controller_impl {
          trace->account_ram_delta = account_delta( gtrx.payer, trx_removal_ram_delta );
 
          emit( self.accepted_transaction, trx );
-         emit( self.applied_transaction, trace );
+         emit( self.applied_transaction, std::tie(trace, dtrx) );
 
          trx_context.squash();
          undo_session.squash();
@@ -1159,7 +1159,7 @@ struct controller_impl {
          if( !trace->except_ptr ) {
             trace->account_ram_delta = account_delta( gtrx.payer, trx_removal_ram_delta );
             emit( self.accepted_transaction, trx );
-            emit( self.applied_transaction, trace );
+            emit( self.applied_transaction, std::tie(trace, dtrx) );
             undo_session.squash();
             return trace;
          }
@@ -1197,12 +1197,12 @@ struct controller_impl {
          trace->account_ram_delta = account_delta( gtrx.payer, trx_removal_ram_delta );
 
          emit( self.accepted_transaction, trx );
-         emit( self.applied_transaction, trace );
+         emit( self.applied_transaction, std::tie(trace, dtrx) );
 
          undo_session.squash();
       } else {
          emit( self.accepted_transaction, trx );
-         emit( self.applied_transaction, trace );
+         emit( self.applied_transaction, std::tie(trace, dtrx) );
       }
 
       return trace;
@@ -1314,7 +1314,7 @@ struct controller_impl {
                emit( self.accepted_transaction, trx);
             }
 
-            emit(self.applied_transaction, trace);
+            emit(self.applied_transaction, std::tie(trace, trn));
 
 
             if ( read_mode != db_read_mode::SPECULATIVE && pending->_block_status == controller::block_status::incomplete ) {
@@ -1344,7 +1344,7 @@ struct controller_impl {
          }
 
          emit( self.accepted_transaction, trx );
-         emit( self.applied_transaction, trace );
+         emit( self.applied_transaction, std::tie(trace, trn) );
 
          return trace;
       } FC_CAPTURE_AND_RETHROW((trace))
