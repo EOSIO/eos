@@ -299,12 +299,11 @@ if $BUILD_CLANG8; then
       && wget https://ftp.gnu.org/gnu/gcc/gcc-7.1.0/gcc-7.1.0.tar.gz && tar -xzf gcc-7.1.0.tar.gz \
       && cd gcc-7.1.0 && mkdir build && cd build \
       &&../configure --enable-languages=c,c++ --prefix=${OPT_LOCATION}/gcc --disable-shared --enable-linker-build-id --without-included-gettext --enable-threads=posix --enable-nls --enable-clocale=gnu --enable-libstdcxx-debug --enable-libstdcxx-time=yes --with-default-libstdcxx-abi=new --enable-gnu-unique-object --disable-vtable-verify --disable-libmpx --enable-plugin --with-system-zlib --with-target-system-zlib --disable-werror --disable-multilib --with-tune=generic --enable-checking=release --with-gmp=${OPT_LOCATION}/gmp --with-mpfr=${OPT_LOCATION}/mpfr --with-mpc=${OPT_LOCATION}/mpc --disable-libsanitizer --disable-testsuite --disable-libquadmath --disable-libitm --disable-libcc1 \
-      && make -j3 && make install \
+      && make -j"${JOBS}" && make install \
       && cd ../ && rm -r ${TMP_LOCATION}/gcc-7.1.0 ${TMP_LOCATION}/gcc-7.1.0.tar.gz \
       || exit 1
    fi
 
-      #&& make -j"${JOBS}" && make install \
    printf "Checking Clang 8 support...\\n"
    if [ ! -d $CLANG8_ROOT ]; then
       printf "Installing Clang 8...\\n"
@@ -333,13 +332,12 @@ if $BUILD_CLANG8; then
       && cd ${TMP_LOCATION}/clang8 \
       && mkdir build && cd build \
       && $CMAKE -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX="${CLANG8_ROOT}" -DLLVM_BUILD_EXTERNAL_COMPILER_RT=ON -DLLVM_BUILD_LLVM_DYLIB=ON -DLLVM_ENABLE_LIBCXX=ON -DLLVM_ENABLE_RTTI=ON -DLLVM_INCLUDE_DOCS=OFF -DLLVM_OPTIMIZED_TABLEGEN=ON -DLLVM_TARGETS_TO_BUILD=all -DCMAKE_BUILD_TYPE=Release .. \
-      && make -j3 \
+      && make -j"${JOBS}" \
       && make install \
       && rm -r ${TMP_LOCATION}/clang8 \
       && cd ../.. \
       || exit 1
 
-      #&& make -j"${JOBS}" \
       printf " - Clang 8 successfully installed @ ${CLANG8_ROOT}\\n"
    else
       printf " - Clang 8 found @ ${CLANG8_ROOT}.\\n"
