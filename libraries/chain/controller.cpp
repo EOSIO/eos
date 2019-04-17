@@ -773,9 +773,7 @@ struct controller_impl {
 //      );
       // No need to verify_account_ram_usage since we are only reducing memory
 
-      auto payer = gto.payer;
-      auto delta = chaindb.erase( gto );
-      resource_limits.add_pending_ram_usage(payer, delta);
+      chaindb.erase( gto, {resource_limits} );
    }
 
    bool failure_is_subjective( const fc::exception& e ) const {

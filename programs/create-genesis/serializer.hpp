@@ -150,7 +150,7 @@ public:
         EOS_ASSERT(abis.count(req.code) > 0, genesis_exception, "ABI not found");
         auto& ser = abis[req.code];
         bytes data = ser.variant_to_binary(_section.abi_type, v, abi_serializer_max_time);
-        table_row record{{ram.payer, data}, pk, req.scope};
+        table_row record{ram.payer, data, pk, req.scope};
         fc::raw::pack(out, record);
         _row_count--;
     }

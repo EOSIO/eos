@@ -222,8 +222,9 @@ namespace cyberway { namespace chaindb {
     }
 
     void build_service_state(service_state& state, const document_view& src) {
-        bool has_size = false;
+        bool has_size  = false;
         bool has_payer = false;
+        bool has_owner = false;
         bool has_scope = false;
         for (auto& itm: src) try {
             auto key = itm.key().to_string();
@@ -260,6 +261,12 @@ namespace cyberway { namespace chaindb {
                     }
                     break;
                 }
+                case 'o': {
+                    validate_field_type(type::k_utf8 == key_type, src, itm);
+                    state.owner = account_name(itm.get_utf8().value.to_string());
+                    has_owner = true;
+                    break;
+                }
                 case 'p': {
                     if (key == names::pk_field) {
                         validate_field_type(type::k_decimal128 == key_type, src, itm);
@@ -292,6 +299,9 @@ namespace cyberway { namespace chaindb {
                     } else if (key == names::undo_payer_field) {
                         validate_field_type(type::k_utf8 == key_type, src, itm);
                         state.undo_payer = account_name(itm.get_utf8().value.to_string());
+                    } else if (key == names::undo_owner_field) {
+                        validate_field_type(type::k_utf8 == key_type, src, itm);
+                        state.undo_owner = account_name(itm.get_utf8().value.to_string());
                     } else if (key == names::undo_size_field) {
                         validate_field_type(type::k_int32 == key_type, src, itm);
                         state.undo_size = itm.get_int32().value;
@@ -309,9 +319,10 @@ namespace cyberway { namespace chaindb {
         } catch(...) {
             validate_field_type(false, src, itm);
         }
-        validate_exist_field(has_size, names::size_field, src);
+        validate_exist_field(has_size,  names::size_field,  src);
         validate_exist_field(has_scope, names::scope_field, src);
         validate_exist_field(has_payer, names::payer_field, src);
+        validate_exist_field(has_owner, names::owner_field, src);
     }
 
     void build_variant(service_state* state, mutable_variant_object& dst, string key, const element& src) {
@@ -545,6 +556,7 @@ namespace cyberway { namespace chaindb {
             serv_doc.append(kvp(names::scope_field, get_scope_name(table)));
             serv_doc.append(kvp(names::revision_field, obj.service.revision));
             serv_doc.append(kvp(names::payer_field, get_payer_name(obj.service.payer)));
+            serv_doc.append(kvp(names::owner_field, get_owner_name(obj.service.owner)));
             serv_doc.append(kvp(names::size_field, static_cast<int32_t>(obj.service.size)));
         }));
         return doc;
@@ -555,6 +567,7 @@ namespace cyberway { namespace chaindb {
             serv_doc.append(kvp(names::undo_pk_field, to_decimal128(obj.service.undo_pk)));
             serv_doc.append(kvp(names::undo_rec_field, fc::reflector<undo_record>::to_string(obj.service.undo_rec)));
             serv_doc.append(kvp(names::undo_payer_field, get_payer_name(obj.service.undo_payer)));
+            serv_doc.append(kvp(names::undo_owner_field, get_payer_name(obj.service.undo_owner)));
             serv_doc.append(kvp(names::undo_size_field, static_cast<int32_t>(obj.service.undo_size)));
             serv_doc.append(kvp(names::code_field, get_code_name(table)));
             serv_doc.append(kvp(names::table_field, get_table_name(table)));
@@ -562,6 +575,7 @@ namespace cyberway { namespace chaindb {
             serv_doc.append(kvp(names::pk_field, to_decimal128(obj.service.pk)));
             serv_doc.append(kvp(names::revision_field, obj.service.revision));
             serv_doc.append(kvp(names::payer_field, get_payer_name(obj.service.payer)));
+            serv_doc.append(kvp(names::owner_field, get_owner_name(obj.service.owner)));
             serv_doc.append(kvp(names::size_field, static_cast<int32_t>(obj.service.size)));
         }));
         return doc;

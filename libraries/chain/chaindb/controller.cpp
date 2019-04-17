@@ -12,11 +12,11 @@
 
 #include <eosio/chain/name.hpp>
 #include <eosio/chain/symbol.hpp>
-
-#include <boost/algorithm/string.hpp>
-
 #include <eosio/chain/apply_context.hpp>
 #include <eosio/chain/resource_limits.hpp>
+#include <eosio/chain/transaction_context.hpp>
+
+#include <boost/algorithm/string.hpp>
 
 namespace cyberway { namespace chaindb {
 
@@ -110,14 +110,23 @@ namespace cyberway { namespace chaindb {
 
     } } // namespace _detail
 
-    void ram_payer_info::add_usage(const account_name new_payer, const int64_t delta) const {
-        if (delta < 0 && rl) {
-            rl->add_pending_ram_usage( new_payer, delta );
-        }
-        if (!ctx || new_payer.empty() || !delta) return;
+    //------------------------------------
 
-        const_cast<apply_context&>(*ctx).update_db_usage(new_payer, delta);
+    void ram_payer_info::add_usage(const account_name new_payer, const int64_t delta) const {
+        if (BOOST_UNLIKELY(new_payer.empty() || !delta)) {
+            return;
+        }
+
+        if (BOOST_LIKELY(!!apply_ctx)) {
+            apply_ctx->add_ram_usage(new_payer, delta);
+        } else if (!!resource_mng) {
+            resource_mng->add_pending_ram_usage(new_payer, delta);
+        } else if (!!transaction_ctx) {
+            transaction_ctx->add_ram_usage(new_payer, delta);
+        }
     }
+
+    //------------------------------------
 
     struct chaindb_controller::controller_impl_ final {
         journal journal_;
@@ -570,6 +579,7 @@ namespace cyberway { namespace chaindb {
             obj.service.revision = undo_.revision();
             obj.service.size     = calc_ram_usage(ram, table, obj);
             obj.service.payer    = ram.payer;
+            obj.service.owner    = ram.owner;
 
             // charge the payer
             auto delta = static_cast<int64_t>(obj.service.size);
@@ -589,6 +599,12 @@ namespace cyberway { namespace chaindb {
                 obj.service.payer = orig_obj.service.payer;
             } else {
                 obj.service.payer = ram.payer;
+            }
+
+            if (ram.owner.empty()) {
+                obj.service.owner = orig_obj.service.owner;
+            } else {
+                obj.service.owner = ram.owner;
             }
 
             auto delta = static_cast<int64_t>(obj.service.size) - static_cast<int64_t>(orig_obj.service.size);

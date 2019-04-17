@@ -517,7 +517,7 @@ bytes apply_context::get_packed_transaction() {
    return r;
 }
 
-void apply_context::update_db_usage( const account_name& payer, int64_t delta ) {
+void apply_context::add_ram_usage( const account_name& payer, const int64_t delta ) {
    if( delta > 0 ) {
       if( !(privileged || payer == account_name(receiver)) ) {
          EOS_ASSERT( control.is_ram_billing_in_notify_allowed() || (receiver == act.account),
@@ -525,9 +525,14 @@ void apply_context::update_db_usage( const account_name& payer, int64_t delta ) 
          require_authorization( payer );
       }
    }
-   add_ram_usage(payer, delta);
-}
 
+   trx_context.add_ram_usage( payer, delta );
+
+   auto p = _account_ram_deltas.emplace( payer, delta );
+   if( !p.second ) {
+      p.first->delta += delta;
+   }
+}
 
 int apply_context::get_action( uint32_t type, uint32_t index, char* buffer, size_t buffer_size )const
 {
@@ -788,15 +793,5 @@ uint64_t apply_context::next_auth_sequence( account_name actor ) {
    });
    return rs.auth_sequence;
 }
-
-void apply_context::add_ram_usage( account_name account, int64_t ram_delta ) {
-   trx_context.add_ram_usage( account, ram_delta );
-
-   auto p = _account_ram_deltas.emplace( account, ram_delta );
-   if( !p.second ) {
-      p.first->delta += ram_delta;
-   }
-}
-
 
 } } /// eosio::chain

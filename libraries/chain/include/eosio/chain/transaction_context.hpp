@@ -98,6 +98,8 @@ namespace eosio { namespace chain {
 
          int64_t get_min_cpu_limit()const;
 
+         void add_ram_usage( account_name account, int64_t ram_delta );
+
          uint64_t get_provided_net_limit(account_name account) const;
 
          uint64_t get_provided_cpu_limit(account_name account) const;
@@ -120,8 +122,6 @@ namespace eosio { namespace chain {
 
          friend struct controller_impl;
          friend class apply_context;
-
-         void add_ram_usage( account_name account, int64_t ram_delta );
 
          void add_ram_provider(const provideram& provide_ram);
          void add_ram_provider(account_name contract, account_name user, account_name provider);
