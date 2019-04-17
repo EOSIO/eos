@@ -943,8 +943,8 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
             } );
 
       my->applied_transaction_connection = my->chain->applied_transaction.connect(
-            [this]( const transaction_trace_ptr& trace ) {
-               my->applied_transaction_channel.publish( priority::low, trace );
+            [this]( std::tuple<const transaction_trace_ptr&, const signed_transaction&> t ) {
+               my->applied_transaction_channel.publish( priority::low, std::get<0>(t) );
             } );
 
       my->chain->add_indices();

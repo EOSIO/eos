@@ -351,8 +351,8 @@ namespace eosio {
          db.add_index<public_key_history_multi_index>();
 
          my->applied_transaction_connection.emplace(
-               chain.applied_transaction.connect( [&]( const transaction_trace_ptr& p ) {
-                  my->on_applied_transaction( p );
+               chain.applied_transaction.connect( [&]( std::tuple<const transaction_trace_ptr&, const signed_transaction&> t ) {
+                  my->on_applied_transaction( std::get<0>(t) );
                } ));
       } FC_LOG_AND_RETHROW()
    }

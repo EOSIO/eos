@@ -107,6 +107,19 @@ extern const char* const state_history_plugin_abi = R"({
             ]
         },
         {
+            "name": "partial_transaction", "fields": [
+                { "name": "expiration", "type": "time_point_sec" },
+                { "name": "ref_block_num", "type": "uint16" },
+                { "name": "ref_block_prefix", "type": "uint32" },
+                { "name": "max_net_usage_words", "type": "varuint32" },
+                { "name": "max_cpu_usage_ms", "type": "uint8" },
+                { "name": "delay_sec", "type": "varuint32" },
+                { "name": "transaction_extensions", "type": "extension[]" },
+                { "name": "signatures", "type": "signature[]" },
+                { "name": "context_free_data", "type": "bytes[]" }
+            ]
+        },
+        {
             "name": "transaction_trace_v0", "fields": [
                 { "name": "id", "type": "checksum256" },
                 { "name": "status", "type": "uint8" },
@@ -119,7 +132,8 @@ extern const char* const state_history_plugin_abi = R"({
                 { "name": "account_ram_delta", "type": "account_delta?" },
                 { "name": "except", "type": "string?" },
                 { "name": "error_code", "type": "uint64?" },
-                { "name": "failed_dtrx_trace", "type": "transaction_trace?" }
+                { "name": "failed_dtrx_trace", "type": "transaction_trace?" },
+                { "name": "partial", "type": "partial_transaction?" }
             ]
         },
         {
