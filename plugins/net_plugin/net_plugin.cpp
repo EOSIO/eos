@@ -3263,15 +3263,16 @@ namespace eosio {
       }
       chain::controller&cc = my->chain_plug->chain();
       {
-         cc.accepted_block.connect(  boost::bind(&net_plugin_impl::on_accepted_block, my.get(), _1));
+         cc.accepted_block.connect( [my = my]( const block_state_ptr& s ) {
+            my->on_accepted_block( s );
+         } );
+         cc.irreversible_block.connect( [my = my]( const block_state_ptr& s ) {
+            my->on_irreversible_block( s );
+         } );
       }
 
       my->incoming_transaction_ack_subscription = app().get_channel<compat::channels::transaction_ack>().subscribe(
             boost::bind(&net_plugin_impl::transaction_ack, my.get(), _1));
-      my->incoming_irreversible_block_subscription = app().get_channel<channels::irreversible_block>().subscribe(
-            [this]( const block_state_ptr& s ) {
-               my->on_irreversible_block( s );
-            });
 
       my->db_read_mode = cc.get_read_mode();
       if( my->db_read_mode == chain::db_read_mode::READ_ONLY ) {
