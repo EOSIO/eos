@@ -253,6 +253,15 @@ if [ $? -ne 0 ]; then exit -1; fi
 cd ..
 printf "\\n"
 
+# Use current directory's tmp directory if noexec is enabled for /tmp
+if (mount | grep "/tmp " | grep --quiet noexec); then
+      mkdir -p $REPO_ROOT/tmp
+      TMP_LOCATION="${REPO_ROOT}/tmp"
+      rm -rf $REPO_ROOT/tmp/*
+else # noexec wasn't found
+      TMP_LOCATION="/tmp"
+fi
+
 if $BUILD_CLANG8; then
    if [ ! -d ${OPT_LOCATION}/gmp ]; then
       printf "Installing gmp...\\n"
@@ -261,8 +270,9 @@ if $BUILD_CLANG8; then
       && cd gmp-5.0.1 && mkdir build && cd build \
       && ../configure --prefix=${OPT_LOCATION}/gmp \
       && make -j"${JOBS}" && make install \
-      && cd ../ && rm -r gmp-5.0.1 \
+      && cd ../ && rm -r ${TMP_LOCATION}/gmp-5.0.1 ${TMP_LOCATION}/gmp-5.0.1.tar.gz \
       || exit 1
+   fi
    if [ ! -d ${OPT_LOCATION}/mpfr ]; then
       printf "Installing mpfr...\\n"
       cd ${TMP_LOCATION} \
@@ -270,8 +280,9 @@ if $BUILD_CLANG8; then
       && cd mpfr-3.0.0 && mkdir build && cd build \
       && ../configure --prefix=${OPT_LOCATION}/mpfr --with-gmp=${OPT_LOCATION}/gmp \
       && make -j"${JOBS}" && make install \
-      && cd ../ && rm -r mpfr-3.0.0 \
+      && cd ../ && rm -r ${TMP_LOCATION}/mpfr-3.0.0 ${TMP_LOCATION}/mpfr-3.0.0.tar.gz \
       || exit 1
+   fi
    if [ ! -d ${OPT_LOCATION}/mpc ]; then
       printf "Installing mpc...\\n"
       cd ${TMP_LOCATION} \
@@ -279,18 +290,21 @@ if $BUILD_CLANG8; then
       && cd mpc-1.0.1 && mkdir build && cd build \
       && ../configure --prefix=${OPT_LOCATION}/mpc --with-gmp=${OPT_LOCATION}/gmp --with-mpfr=${OPT_LOCATION}/mpfr \
       && make -j"${JOBS}" && make install \
-      && cd ../ && rm -r mpc-1.0.1 \
+      && cd ../ && rm -r ${TMP_LOCATION}/mpc-1.0.1 ${TMP_LOCATION}/mpc-1.0.1 \
       || exit 1
+   fi
    if [ ! -d ${OPT_LOCATION}/gcc ]; then
       printf "Installing libstdc++\\n"
       cd ${TMP_LOCATION} \
       && wget https://ftp.gnu.org/gnu/gcc/gcc-7.1.0/gcc-7.1.0.tar.gz && tar -xzf gcc-7.1.0.tar.gz \
       && cd gcc-7.1.0 && mkdir build && cd build \
-      &&../configure --enable-languages=c,c++ --prefix=${OPT_LOCATION}/gcc --disable-shared --enable-linker-build-id --without-included-gettext --enable-threads=posix --enable-nls --enable-clocale=gnu --enable-libstdcxx-debug --enable-libstdcxx-time=yes --with-default-libstdcxx-abi=new --enable-gnu-unique-object --disable-vtable-verify --disable-libmpx --enable-plugin --with-system-zlib --with-target-system-zlib --disable-werror --disable-multilib --with-tune=generic --enable-checking=release --with-gmp=${OPT_LOCATION}/gmp --with-mpfr=${OPT_LOCATION}/mpfr --with-mpc=${OPT_LOCATION}/mpc --disable-libsanitizer --disable-testsuite --disable-libquadmath --disable-libitm --disable-libcc1
-      && make -j"${JOBS}" && make install \
-      && cd ../ && rm -r gcc-7.1.0 \
+      &&../configure --enable-languages=c,c++ --prefix=${OPT_LOCATION}/gcc --disable-shared --enable-linker-build-id --without-included-gettext --enable-threads=posix --enable-nls --enable-clocale=gnu --enable-libstdcxx-debug --enable-libstdcxx-time=yes --with-default-libstdcxx-abi=new --enable-gnu-unique-object --disable-vtable-verify --disable-libmpx --enable-plugin --with-system-zlib --with-target-system-zlib --disable-werror --disable-multilib --with-tune=generic --enable-checking=release --with-gmp=${OPT_LOCATION}/gmp --with-mpfr=${OPT_LOCATION}/mpfr --with-mpc=${OPT_LOCATION}/mpc --disable-libsanitizer --disable-testsuite --disable-libquadmath --disable-libitm --disable-libcc1 \
+      && make -j3 && make install \
+      && cd ../ && rm -r ${TMP_LOCATION}/gcc-7.1.0 ${TMP_LOCATION}/gcc-7.1.0.tar.gz \
       || exit 1
+   fi
 
+      #&& make -j"${JOBS}" && make install \
    printf "Checking Clang 8 support...\\n"
    if [ ! -d $CLANG8_ROOT ]; then
       printf "Installing Clang 8...\\n"
@@ -319,10 +333,13 @@ if $BUILD_CLANG8; then
       && cd ${TMP_LOCATION}/clang8 \
       && mkdir build && cd build \
       && $CMAKE -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX="${CLANG8_ROOT}" -DLLVM_BUILD_EXTERNAL_COMPILER_RT=ON -DLLVM_BUILD_LLVM_DYLIB=ON -DLLVM_ENABLE_LIBCXX=ON -DLLVM_ENABLE_RTTI=ON -DLLVM_INCLUDE_DOCS=OFF -DLLVM_OPTIMIZED_TABLEGEN=ON -DLLVM_TARGETS_TO_BUILD=all -DCMAKE_BUILD_TYPE=Release .. \
-      && make -j"${JOBS}" \
+      && make -j3 \
       && make install \
+      && rm -r ${TMP_LOCATION}/clang8 \
       && cd ../.. \
       || exit 1
+
+      #&& make -j"${JOBS}" \
       printf " - Clang 8 successfully installed @ ${CLANG8_ROOT}\\n"
    else
       printf " - Clang 8 found @ ${CLANG8_ROOT}.\\n"
