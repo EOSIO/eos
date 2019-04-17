@@ -259,7 +259,7 @@ if $BUILD_CLANG8; then
       && cd mpc-1.0.1 && mkdir build && cd build \
       && ../configure --prefix=${OPT_LOCATION}/mpc --with-gmp=${OPT_LOCATION}/gmp --with-mpfr=${OPT_LOCATION}/mpfr \
       && make -j"${JOBS}" && make install \
-      && cd ../ && rm -r ${TMP_LOCATION}/mpc-1.0.1 ${TMP_LOCATION}/mpc-1.0.1 \
+      && cd ../ && rm -r ${TMP_LOCATION}/mpc-1.0.1 ${TMP_LOCATION}/mpc-1.0.1.tar.gz \
       || exit 1
    fi
    if [ ! -d ${OPT_LOCATION}/gcc ]; then
