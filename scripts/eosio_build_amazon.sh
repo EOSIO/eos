@@ -258,7 +258,8 @@ else # noexec wasn't found
 fi
 
 if $BUILD_CLANG8; then
-   export LD_LIBRARY_PATH=${OPT_LOCATION}/mpfr:$LD_LIBRARY_PATH
+   export LD_LIBRARY_PATH=${OPT_LOCATION}/mpfr/lib:$LD_LIBRARY_PATH
+   export LD_LIBRARY_PATH=${OPT_LOCATION}/gcc/lib:$LD_LIBRARY_PATH
    if [ ! -d ${OPT_LOCATION}/gmp ]; then
       printf "Installing gmp...\\n"
       cd ${TMP_LOCATION} \
