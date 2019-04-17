@@ -18,6 +18,16 @@
             ]
         },
         {
+            "name": "activate",
+            "base": "",
+            "fields": [
+                {
+                    "name": "feature_digest",
+                    "type": "checksum256"
+                }
+            ]
+        },
+        {
             "name": "authority",
             "base": "",
             "fields": [
@@ -242,16 +252,6 @@
             ]
         },
         {
-            "name": "preactivate",
-            "base": "",
-            "fields": [
-                {
-                    "name": "feature_digest",
-                    "type": "checksum256"
-                }
-            ]
-        },
-        {
             "name": "producer_key",
             "base": "",
             "fields": [
@@ -452,6 +452,11 @@
     ],
     "actions": [
         {
+            "name": "activate",
+            "type": "activate",
+            "ricardian_contract": ""
+        },
+        {
             "name": "canceldelay",
             "type": "canceldelay",
             "ricardian_contract": ""
@@ -474,11 +479,6 @@
         {
             "name": "onerror",
             "type": "onerror",
-            "ricardian_contract": ""
-        },
-        {
-            "name": "preactivate",
-            "type": "preactivate",
             "ricardian_contract": ""
         },
         {
