@@ -107,7 +107,7 @@ extern const char* const state_history_plugin_abi = R"({
             ]
         },
         {
-            "name": "partial_transaction", "fields": [
+            "name": "partial_transaction_v0", "fields": [
                 { "name": "expiration", "type": "time_point_sec" },
                 { "name": "ref_block_num", "type": "uint16" },
                 { "name": "ref_block_prefix", "type": "uint32" },
@@ -465,6 +465,7 @@ extern const char* const state_history_plugin_abi = R"({
 
         { "name": "action_receipt", "types": ["action_receipt_v0"] },
         { "name": "action_trace", "types": ["action_trace_v0"] },
+        { "name": "partial_transaction", "types": ["partial_transaction_v0"] },
         { "name": "transaction_trace", "types": ["transaction_trace_v0"] },
         { "name": "transaction_variant", "types": ["transaction_id", "packed_transaction"] },
 

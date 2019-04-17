@@ -570,6 +570,7 @@ datastream<ST>& operator<<(datastream<ST>&                                      
    fc::raw::pack(ds, bool(obj.obj.partial));
    if (obj.obj.partial) {
       auto& partial = *obj.obj.partial;
+      fc::raw::pack(ds, fc::unsigned_int(0));
       fc::raw::pack(ds, as_type<eosio::chain::time_point_sec>(partial.expiration));
       fc::raw::pack(ds, as_type<uint16_t>(partial.ref_block_num));
       fc::raw::pack(ds, as_type<uint32_t>(partial.ref_block_prefix));
