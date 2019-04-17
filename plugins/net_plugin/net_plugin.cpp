@@ -552,6 +552,11 @@ namespace eosio {
       deque<queued_write> _sync_write_queue; // sync_write_queue will be sent first
       deque<queued_write> _out_queue;
 
+   public:
+       void push_to_out_queue( const queued_write& m) {
+           _out_queue.emplace_back( m );
+       }
+
    }; // queued_buffer
 
 
@@ -1193,7 +1198,7 @@ namespace eosio {
             auto m = pbft.message;
             if (m) {
                 bufs.push_back(boost::asio::buffer(*m));
-                buffer_queue.add_write_queue( m, callback, true );
+                buffer_queue.push_to_out_queue( {m, callback} );
             }
         }
     }
