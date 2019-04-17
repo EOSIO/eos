@@ -296,7 +296,7 @@ if $BUILD_CLANG8; then
       cd ${TMP_LOCATION} \
       && curl -LO https://ftp.gnu.org/gnu/gcc/gcc-7.1.0/gcc-7.1.0.tar.gz && tar -xzf gcc-7.1.0.tar.gz \
       && cd gcc-7.1.0 \
-      && sed '61 s/ucontext/ucontext_t/' libgcc/config/i386/linux-unwind.h \
+      && sed '61 s/ucontext/ucontext_t/' libgcc/config/i386/linux-unwind.h &> libgcc/config/i386/linux-unwind.h \
       && mkdir build && cd build \
       &&../configure --enable-languages=c,c++ --prefix=${OPT_LOCATION}/gcc --disable-shared --enable-linker-build-id --without-included-gettext --enable-threads=posix --enable-nls --enable-clocale=gnu --enable-libstdcxx-debug --enable-libstdcxx-time=yes --with-default-libstdcxx-abi=new --enable-gnu-unique-object --disable-vtable-verify --disable-libmpx --enable-plugin --with-system-zlib --with-target-system-zlib --disable-werror --disable-multilib --with-tune=generic --enable-checking=release --with-gmp=${OPT_LOCATION}/gmp --with-mpfr=${OPT_LOCATION}/mpfr --with-mpc=${OPT_LOCATION}/mpc --disable-libsanitizer --disable-testsuite --disable-libquadmath --disable-libitm --disable-libcc1 \
       && make -j"${JOBS}" && make install \
