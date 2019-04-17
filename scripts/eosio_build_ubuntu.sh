@@ -154,7 +154,6 @@ if [ $? -ne 0 ]; then exit -1; fi
 
 printf "\\n"
 
-
 printf "Checking Boost library (${BOOST_VERSION}) installation...\\n"
 BOOSTVERSION=$( grep "#define BOOST_VERSION" "$HOME/opt/boost/include/boost/version.hpp" 2>/dev/null | tail -1 | tr -s ' ' | cut -d\  -f3 )
 if [ "${BOOSTVERSION}" != "${BOOST_VERSION_MAJOR}0${BOOST_VERSION_MINOR}0${BOOST_VERSION_PATCH}" ]; then
@@ -163,7 +162,7 @@ if [ "${BOOSTVERSION}" != "${BOOST_VERSION_MAJOR}0${BOOST_VERSION_MINOR}0${BOOST
 	&& tar -xjf boost_$BOOST_VERSION.tar.bz2 \
 	&& cd $BOOST_ROOT \
 	&& ./bootstrap.sh --prefix=$BOOST_ROOT \
-	&& ./b2 -q -j"${JOBS}" install \
+	&& ./b2 -q -j2 install \
 	&& cd .. \
 	&& rm -f boost_$BOOST_VERSION.tar.bz2 \
 	&& rm -rf $BOOST_LINK_LOCATION \
