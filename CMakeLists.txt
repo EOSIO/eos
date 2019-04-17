@@ -47,12 +47,6 @@ set( GUI_CLIENT_EXECUTABLE_NAME eosio )
 set( CUSTOM_URL_SCHEME "gcs" )
 set( INSTALLER_APP_ID "68ad7005-8eee-49c9-95ce-9eed97e5b347" )
 
-if(${EOSIO_PIN_COMPILER})
-   message(STATUS "Pinning compiler to Clang 8")
-   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++ -v")
-   set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -stdlib=libc++ -lc++abi")
-endif()
-
 # http://stackoverflow.com/a/18369825
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
     if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 7.0)
@@ -126,6 +120,13 @@ endif()
 set(THREADS_PREFER_PTHREAD_FLAG 1)
 find_package(Threads)
 link_libraries(Threads::Threads)
+
+if(${EOSIO_PIN_COMPILER})
+   if(NOT APPLE AND UNIX)
+      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -nostdinc++ -nostdlib++ -I${LIBSTDCPP_DIR}/include/c++/7.1.0")
+      set(CMAKE_CXX_STANDARD_LIBRARIES "${LIBSTDCPP_DIR}/lib64/libstdc++.a")
+   endif()
+endif()
 
 if( WIN32 )
 

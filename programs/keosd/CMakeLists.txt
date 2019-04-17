@@ -11,6 +11,10 @@ endif()
 
 configure_file(config.hpp.in config.hpp ESCAPE_QUOTES)
 
+if(EOSIO_PIN_COMPILER)
+   target_link_libraries(${KEY_STORE_EXECUTABLE_NAME} PRIVATE -nostdlib++)
+endif()
+
 target_link_libraries( ${KEY_STORE_EXECUTABLE_NAME}
         PRIVATE appbase
         PRIVATE wallet_api_plugin wallet_plugin

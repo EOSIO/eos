@@ -47,6 +47,10 @@ else()
   set(build_id_flag "")
 endif()
 
+if(EOSIO_PIN_COMPILER)
+   target_link_libraries(${NODE_EXECUTABLE_NAME} PRIVATE -nostdlib++)
+endif()
+
 target_link_libraries( ${NODE_EXECUTABLE_NAME}
         PRIVATE appbase
         PRIVATE -Wl,${whole_archive_flag} login_plugin               -Wl,${no_whole_archive_flag}

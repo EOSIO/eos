@@ -34,6 +34,10 @@ configure_file(config.hpp.in config.hpp ESCAPE_QUOTES)
 
 target_include_directories(${CLI_CLIENT_EXECUTABLE_NAME} PUBLIC ${Intl_INCLUDE_DIRS} ${CMAKE_CURRENT_BINARY_DIR})
 
+if(EOSIO_PIN_COMPILER)
+   target_link_libraries(${CLI_CLIENT_EXECUTABLE_NAME} PRIVATE -nostdlib++)
+endif()
+
 target_link_libraries( ${CLI_CLIENT_EXECUTABLE_NAME}
                        PRIVATE appbase chain_api_plugin producer_plugin chain_plugin http_plugin eosio_chain fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} ${Intl_LIBRARIES} )
                     
