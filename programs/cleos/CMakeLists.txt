@@ -35,7 +35,9 @@ configure_file(config.hpp.in config.hpp ESCAPE_QUOTES)
 target_include_directories(${CLI_CLIENT_EXECUTABLE_NAME} PUBLIC ${Intl_INCLUDE_DIRS} ${CMAKE_CURRENT_BINARY_DIR})
 
 if(EOSIO_PIN_COMPILER)
-   target_link_libraries(${CLI_CLIENT_EXECUTABLE_NAME} PRIVATE -nostdlib++)
+   if(NOT APPLE)
+      target_link_libraries(${CLI_CLIENT_EXECUTABLE_NAME} PRIVATE -nostdlib++)
+   endif()
 endif()
 
 target_link_libraries( ${CLI_CLIENT_EXECUTABLE_NAME}

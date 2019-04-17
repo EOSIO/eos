@@ -125,6 +125,8 @@ if(${EOSIO_PIN_COMPILER})
    if(NOT APPLE AND UNIX)
       set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -nostdinc++ -nostdlib++ -I${LIBSTDCPP_DIR}/include/c++/7.1.0")
       set(CMAKE_CXX_STANDARD_LIBRARIES "${LIBSTDCPP_DIR}/lib64/libstdc++.a")
+   else()
+      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
    endif()
 endif()
 

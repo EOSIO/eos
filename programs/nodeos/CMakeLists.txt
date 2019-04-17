@@ -48,7 +48,9 @@ else()
 endif()
 
 if(EOSIO_PIN_COMPILER)
-   target_link_libraries(${NODE_EXECUTABLE_NAME} PRIVATE -nostdlib++)
+   if (NOT APPLE)
+      target_link_libraries(${NODE_EXECUTABLE_NAME} PRIVATE -nostdlib++)
+   endif()
 endif()
 
 target_link_libraries( ${NODE_EXECUTABLE_NAME}
