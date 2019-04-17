@@ -4,7 +4,7 @@ steps:
         ./scripts/eosio_build.sh -y
         echo "--- :compression: Compressing build directory"
         tar -pczf build.tar.gz build
-        if [[ ! -f build.tar.gz ]]; then echo "ERROR: No build.tar.gz artifact found"'!' && exit 1; fi
+        if [[ ! -f build.tar.gz ]]; then echo 'ERROR: No build.tar.gz artifact found!' && exit 1; fi
     label: ":aws: Amazon Linux 1 Build"
     agents:
       queue: "automation-large-builder-fleet"
@@ -27,7 +27,7 @@ steps:
         ./scripts/eosio_build.sh -y
         echo "--- :compression: Compressing build directory"
         tar -pczf build.tar.gz build
-        if [[ ! -f build.tar.gz ]]; then echo "ERROR: No build.tar.gz artifact found"'!' && exit 1; fi
+        if [[ ! -f build.tar.gz ]]; then echo 'ERROR: No build.tar.gz artifact found!' && exit 1; fi
     label: ":aws: Amazon Linux 2 Build"
     agents:
       queue: "automation-large-builder-fleet"
@@ -50,7 +50,7 @@ steps:
         ./scripts/eosio_build.sh -y
         echo "--- :compression: Compressing build directory"
         tar -pczf build.tar.gz build
-        if [[ ! -f build.tar.gz ]]; then echo "ERROR: No build.tar.gz artifact found"'!' && exit 1; fi
+        if [[ ! -f build.tar.gz ]]; then echo 'ERROR: No build.tar.gz artifact found!' && exit 1; fi
     label: ":centos: CentOS 7 Build"
     agents:
       queue: "automation-large-builder-fleet"
@@ -73,7 +73,7 @@ steps:
         ./scripts/eosio_build.sh -y
         echo "--- :compression: Compressing build directory"
         tar -pczf build.tar.gz build
-        if [[ ! -f build.tar.gz ]]; then echo "ERROR: No build.tar.gz artifact found"'!' && exit 1; fi
+        if [[ ! -f build.tar.gz ]]; then echo 'ERROR: No build.tar.gz artifact found!' && exit 1; fi
     label: ":fedora: Fedora 27 Build"
     agents:
       queue: "automation-large-builder-fleet"
@@ -96,7 +96,7 @@ steps:
         ./scripts/eosio_build.sh -y
         echo "--- :compression: Compressing build directory"
         tar -pczf build.tar.gz build
-        if [[ ! -f build.tar.gz ]]; then echo "ERROR: No build.tar.gz artifact found"'!' && exit 1; fi
+        if [[ ! -f build.tar.gz ]]; then echo 'ERROR: No build.tar.gz artifact found!' && exit 1; fi
     label: ":ubuntu: Ubuntu 16.04 Build"
     agents:
       queue: "automation-large-builder-fleet"
@@ -119,7 +119,7 @@ steps:
         ./scripts/eosio_build.sh -y
         echo "--- :compression: Compressing build directory"
         tar -pczf build.tar.gz build
-        if [[ ! -f build.tar.gz ]]; then echo "ERROR: No build.tar.gz artifact found"'!' && exit 1; fi
+        if [[ ! -f build.tar.gz ]]; then echo 'ERROR: No build.tar.gz artifact found!' && exit 1; fi
     label: ":ubuntu: Ubuntu 18.04 Build"
     agents:
       queue: "automation-large-builder-fleet"
@@ -146,7 +146,7 @@ steps:
       ./scripts/eosio_build.sh -y
       echo "--- Compressing build directory :compression:"
       tar -pczf build.tar.gz build
-      if [[ ! -f build.tar.gz ]]; then echo "ERROR: No build.tar.gz artifact found"'!' && exit 1; fi
+      if [[ ! -f build.tar.gz ]]; then echo 'ERROR: No build.tar.gz artifact found!' && exit 1; fi
     label: ":darwin: High Sierra Build"
     agents:
       - "role=builder-v2-1"
@@ -163,7 +163,7 @@ steps:
       ./scripts/eosio_build.sh -y
       echo "--- Compressing build directory :compression:"
       tar -pczf build.tar.gz build
-      if [[ ! -f build.tar.gz ]]; then echo "ERROR: No build.tar.gz artifact found"'!' && exit 1; fi
+      if [[ ! -f build.tar.gz ]]; then echo 'ERROR: No build.tar.gz artifact found!' && exit 1; fi
     label: ":darwin: Mojave Build"
     agents:
       - "role=builder-v2-1"
