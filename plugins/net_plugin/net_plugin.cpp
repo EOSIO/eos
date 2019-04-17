@@ -1415,7 +1415,8 @@ namespace eosio {
                 msg.visit( m );
             }
         } catch(  const fc::exception& e ) {
-            wlog("error ds ${s}", ("s", tmp_data));
+            wlog("error message length: ${l}", ("l", message_length));
+            wlog("error raw bytes ${s}", ("s", tmp_data));
             edump((e.to_detail_string() ));
             impl.close( shared_from_this() );
             return false;
