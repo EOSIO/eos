@@ -262,11 +262,20 @@ fi
 cd ..
 printf "\\n"
 
+# Use current directory's tmp directory if noexec is enabled for /tmp
+if (mount | grep "/tmp " | grep --quiet noexec); then
+      mkdir -p $REPO_ROOT/tmp
+      TMP_LOCATION="${REPO_ROOT}/tmp"
+      rm -rf $REPO_ROOT/tmp/*
+else # noexec wasn't found
+      TMP_LOCATION="/tmp"
+fi
+
 if $BUILD_CLANG8; then
    printf "Checking Clang 8 support...\\n"
    if [ ! -d $CLANG8_ROOT ]; then
       printf "Installing Clang 8...\\n"
-      cd ${OPT_LOCATION} \
+      cd ${TMP_LOCATION} \
       && git clone --depth 1 --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/llvm.git clang8 \
       && cd clang8 && git checkout $PINNED_COMPILER_LLVM_COMMIT \
       && cd tools \
@@ -288,7 +297,7 @@ if $BUILD_CLANG8; then
       && cd libunwind && git checkout $PINNED_COMPILER_LIBUNWIND_COMMIT && cd ../ \
       && git clone --depth 1 --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/compiler-rt.git \
       && cd compiler-rt && git checkout $PINNED_COMPILER_COMPILER_RT_COMMIT && cd ../ \
-      && cd ${OPT_LOCATION}/clang8 \
+      && cd ${TMP_LOCATION}/clang8 \
       && mkdir build && cd build \
       && $CMAKE -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX="${CLANG8_ROOT}" -DLLVM_BUILD_EXTERNAL_COMPILER_RT=ON -DLLVM_BUILD_LLVM_DYLIB=ON -DLLVM_ENABLE_LIBCXX=ON -DLLVM_ENABLE_RTTI=ON -DLLVM_INCLUDE_DOCS=OFF -DLLVM_OPTIMIZED_TABLEGEN=ON -DLLVM_TARGETS_TO_BUILD=all -DCMAKE_BUILD_TYPE=Release .. \
       && make -j"${JOBS}" \
