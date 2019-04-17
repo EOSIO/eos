@@ -1019,4 +1019,22 @@ BOOST_AUTO_TEST_CASE( get_sender_test ) { try {
    );
 } FC_LOG_AND_RETHROW() }
 
+BOOST_AUTO_TEST_CASE( ram_restriction_test ) { try {
+   tester c( setup_policy::preactivate_feature_and_new_bios );
+
+   const auto& tester1_account = account_name("tester1");
+   const auto& tester2_account = account_name("tester2");
+   const auto& alice_account = account_name("alice");
+   c.create_accounts( {tester1_account, tester2_account, alice_account} );
+   c.produce_block();
+   c.set_code( tester1_account, contracts::ram_restriction_test_wasm() );
+   c.set_abi( tester1_account, contracts::ram_restriction_test_abi().data() );
+   c.produce_block();
+   c.set_code( tester2_account, contracts::ram_restriction_test_wasm() );
+   c.set_abi( tester2_account, contracts::ram_restriction_test_abi().data() );
+   c.produce_block();
+
+
+} FC_LOG_AND_RETHROW() }
+
 BOOST_AUTO_TEST_SUITE_END()
