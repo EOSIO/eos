@@ -1,10 +1,57 @@
 steps:
+  - command: | # Amazon Linux 2 Build
+        echo "+++ :hammer: Building"
+        ./scripts/eosio_build.sh -y
+        echo "--- :compression: Compressing build directory"
+        tar -pczf build.tar.gz build
+        if [[ ! -f build.tar.gz ]]; then echo 'ERROR: No build.tar.gz artifact found!' && exit 1; fi
+    label: ":aws: Amazon Linux 2 Build"
+    agents:
+      queue: "automation-large-builder-fleet"
+    artifact_paths: "build.tar.gz"
+    plugins:
+      ecr#v1.1.4:
+        login: true
+        account_ids: "436617320021"
+        no-include-email: true
+        region: "us-west-2"
+      docker#v2.1.0:
+        debug: true
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux2_2-2"
+        propagate-environment: true
+        workdir: /data/job
+    timeout: 60
+
+  - command: | # CentOS 7 Build
+        echo "+++ :hammer: Building"
+        ./scripts/eosio_build.sh -y
+        echo "--- :compression: Compressing build directory"
+        tar -pczf build.tar.gz build
+        if [[ ! -f build.tar.gz ]]; then echo 'ERROR: No build.tar.gz artifact found!' && exit 1; fi
+    label: ":centos: CentOS 7 Build"
+    agents:
+      queue: "automation-large-builder-fleet"
+    artifact_paths: "build.tar.gz"
+    plugins:
+      ecr#v1.1.4:
+        login: true
+        account_ids: "436617320021"
+        no-include-email: true
+        region: "us-west-2"
+      docker#v2.1.0:
+        debug: true
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:centos7_2-2"
+        propagate-environment: true
+        workdir: /data/job
+    timeout: 60
+
   - command: | # Ubuntu 16.04 Build
         echo "+++ :hammer: Building"
         ./scripts/eosio_build.sh -y
         echo "--- :compression: Compressing build directory"
-        tar -pczf build.tar.gz build/; if [ ! -f build.tar.gz ]; then echo "No TAR Found!" && exit 1; fi
-    label: ":ubuntu: 16.04 Build"
+        tar -pczf build.tar.gz build
+        if [[ ! -f build.tar.gz ]]; then echo 'ERROR: No build.tar.gz artifact found!' && exit 1; fi
+    label: ":ubuntu: Ubuntu 16.04 Build"
     agents:
       queue: "automation-large-builder-fleet"
     artifact_paths: "build.tar.gz"
@@ -25,8 +72,9 @@ steps:
         echo "+++ :hammer: Building"
         ./scripts/eosio_build.sh -y
         echo "--- :compression: Compressing build directory"
-        tar -pczf build.tar.gz build/; if [ ! -f build.tar.gz ]; then echo "No TAR Found!" && exit 1; fi
-    label: ":ubuntu: 18.04 Build"
+        tar -pczf build.tar.gz build
+        if [[ ! -f build.tar.gz ]]; then echo 'ERROR: No build.tar.gz artifact found!' && exit 1; fi
+    label: ":ubuntu: Ubuntu 18.04 Build"
     agents:
       queue: "automation-large-builder-fleet"
     artifact_paths: "build.tar.gz"
@@ -43,37 +91,33 @@ steps:
         workdir: /data/job
     timeout: 60
 
-  - command: | # CentOS 7 Build
-        echo "+++ :hammer: Building"
-        ./scripts/eosio_build.sh -y
-        echo "--- :compression: Compressing build directory"
-        tar -pczf build.tar.gz build/; if [ ! -f build.tar.gz ]; then echo "No TAR Found!" && exit 1; fi
-    label: ":centos: 7 Build"
+  - command: | # macOS Mojave Build
+      echo "--- Creating symbolic link to job directory :file_folder:"
+      sleep 5
+      ln -s "$(pwd)" /data/job
+      cd /data/job
+      echo "+++ Building :hammer:"
+      ./scripts/eosio_build.sh -y
+      echo "--- Compressing build directory :compression:"
+      tar -pczf build.tar.gz build
+      if [[ ! -f build.tar.gz ]]; then echo 'ERROR: No build.tar.gz artifact found!' && exit 1; fi
+    label: ":darwin: Mojave Build"
     agents:
-      queue: "automation-large-builder-fleet"
+      - "role=builder-v2-1"
+      - "os=mojave"
     artifact_paths: "build.tar.gz"
-    plugins:
-      ecr#v1.1.4:
-        login: true
-        account_ids: "436617320021"
-        no-include-email: true
-        region: "us-west-2"
-      docker#v2.1.0:
-        debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:centos7_2-2"
-        propagate-environment: true
-        workdir: /data/job
     timeout: 60
 
-  - command: | # Amazon Linux 2 Build
-        echo "+++ :hammer: Building"
-        ./scripts/eosio_build.sh -y
-        echo "--- :compression: Compressing build directory"
-        tar -pczf build.tar.gz build/; if [ ! -f build.tar.gz ]; then echo "No TAR Found!" && exit 1; fi
-    label: ":aws: 2 Build"
+  - wait
+
+  - command: | # Amazon Linux 2 Tests
+        echo "--- :arrow_down: Downloading Build Directory"
+        buildkite-agent artifact download "build.tar.gz" . --step ":aws: Amazon Linux 2 Build"
+        echo "+++ :microscope: Running LR Tests"
+        ./scripts/long-running-test.sh
+    label: ":aws: Amazon Linux 2 LR Tests"
     agents:
       queue: "automation-large-builder-fleet"
-    artifact_paths: "build.tar.gz"
     plugins:
       ecr#v1.1.4:
         login: true
@@ -85,30 +129,35 @@ steps:
         image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux2_2-2"
         propagate-environment: true
         workdir: /data/job
-    timeout: 60
+    timeout: 90
 
-  - command: | # macOS Mojave Build
-      echo "--- Creating symbolic link to job directory :file_folder:"
-      sleep 5 && ln -s "$(pwd)" /data/job && cd /data/job
-      echo "+++ Building :hammer:"
-      ./scripts/eosio_build.sh -y
-      echo "--- Compressing build directory :compression:"
-      tar -pczf build.tar.gz build/; if [ ! -f build.tar.gz ]; then echo "No TAR Found!" && exit 1; fi
-    label: ":darwin: Mojave Build"
+  - command: | # centOS 7 Tests
+        echo "--- :arrow_down: Downloading Build Directory"
+        buildkite-agent artifact download "build.tar.gz" . --step ":centos: CentOS 7 Build"
+        echo "+++ :microscope: Running LR Tests"
+        ./scripts/long-running-test.sh
+    label: ":centos: CentOS 7 LR Tests"
     agents:
-      - "role=builder-v2-1"
-      - "os=mojave"
-    artifact_paths: "build.tar.gz"
-    timeout: 60
-
-  - wait
+      queue: "automation-large-builder-fleet"
+    plugins:
+      ecr#v1.1.4:
+        login: true
+        account_ids: "436617320021"
+        no-include-email: true
+        region: "us-west-2"
+      docker#v2.1.0:
+        debug: true
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:centos7_2-2"
+        propagate-environment: true
+        workdir: /data/job
+    timeout: 90
 
   - command: | # Ubuntu 16.04 Tests
         echo "--- :arrow_down: Downloading Build Directory"
-        buildkite-agent artifact download "build.tar.gz" . --step ":ubuntu: 16.04 Build"
+        buildkite-agent artifact download "build.tar.gz" . --step ":ubuntu: Ubuntu 16.04 Build"
         echo "+++ :microscope: Running LR Tests"
         ./scripts/long-running-test.sh
-    label: ":ubuntu: 16.04 LR Tests"
+    label: ":ubuntu: Ubuntu 16.04 LR Tests"
     agents:
       queue: "automation-large-builder-fleet"
     plugins:
@@ -126,10 +175,10 @@ steps:
   
   - command: | # Ubuntu 18.04 Tests
         echo "--- :arrow_down: Downloading Build Directory"
-        buildkite-agent artifact download "build.tar.gz" . --step ":ubuntu: 18.04 Build"
+        buildkite-agent artifact download "build.tar.gz" . --step ":ubuntu: Ubuntu 18.04 Build"
         echo "+++ :microscope: Running LR Tests"
         ./scripts/long-running-test.sh
-    label: ":ubuntu: 18.04 LR Tests"
+    label: ":ubuntu: Ubuntu 18.04 LR Tests"
     agents:
       queue: "automation-large-builder-fleet"
     plugins:
@@ -141,48 +190,6 @@ steps:
       docker#v2.1.0:
         debug: true
         image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu18_2-2"
-        propagate-environment: true
-        workdir: /data/job
-    timeout: 90
-
-  - command: | # centOS Tests
-        echo "--- :arrow_down: Downloading Build Directory"
-        buildkite-agent artifact download "build.tar.gz" . --step ":centos: 7 Build"
-        echo "+++ :microscope: Running LR Tests"
-        ./scripts/long-running-test.sh
-    label: ":centos: 7 LR Tests"
-    agents:
-      queue: "automation-large-builder-fleet"
-    plugins:
-      ecr#v1.1.4:
-        login: true
-        account_ids: "436617320021"
-        no-include-email: true
-        region: "us-west-2"
-      docker#v2.1.0:
-        debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:centos7_2-2"
-        propagate-environment: true
-        workdir: /data/job
-    timeout: 90
-
-  - command: | # Amazon AWS-2 Linux Tests
-        echo "--- :arrow_down: Downloading Build Directory"
-        buildkite-agent artifact download "build.tar.gz" . --step ":aws: 2 Build"
-        echo "+++ :microscope: Running LR Tests"
-        ./scripts/long-running-test.sh
-    label: ":aws: 2 LR Tests"
-    agents:
-      queue: "automation-large-builder-fleet"
-    plugins:
-      ecr#v1.1.4:
-        login: true
-        account_ids: "436617320021"
-        no-include-email: true
-        region: "us-west-2"
-      docker#v2.1.0:
-        debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux2_2-2"
         propagate-environment: true
         workdir: /data/job
     timeout: 90
