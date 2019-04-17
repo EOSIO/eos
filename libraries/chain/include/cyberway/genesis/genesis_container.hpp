@@ -8,6 +8,8 @@ namespace cyberway { namespace genesis {
 using namespace eosio::chain;
 using namespace chaindb;
 
+using resource_manager = eosio::chain::resource_limits::resource_limits_manager;
+
 
 struct genesis_header {
     char magic[12] = "CyberwayGen";
@@ -29,32 +31,50 @@ struct table_header {
 };
 
 struct sys_table_row {
+    resource_manager* resource_mng = nullptr;
     account_name ram_payer;
     bytes data;
 
-    table_request request(table_name t) {
+    sys_table_row(resource_manager& mng)
+    :   resource_mng(&mng) {
+    }
+
+    sys_table_row(account_name payer, bytes data)
+    :   ram_payer(payer)
+    ,   data(std::move(data)) {
+    }
+
+    table_request request(table_name t) const {
         return table_request{
             .code = name(), //config::system_account_name,
             .scope = name(),
             .table = t
         };
     }
-    ram_payer_info payer() {
-        ram_payer_info r;
-        r.payer = ram_payer;
-        return r;
+    ram_payer_info payer() const {
+        if (resource_mng) {
+            return {*resource_mng, ram_payer};
+        } else {
+            return {};
+        }
     }
 };
 
-struct table_row: sys_table_row {
-    table_row() = default;
-    table_row(sys_table_row base, primary_key_t pk, uint64_t scope): sys_table_row(base), pk(pk), scope(scope) {
+struct table_row final: sys_table_row {
+    table_row(resource_manager& mng)
+    :   sys_table_row(mng) {
+    }
+
+    table_row(account_name payer, bytes data, primary_key_t pk, uint64_t scope)
+    :   sys_table_row(payer, std::move(data))
+    ,   pk(pk)
+    ,   scope(scope) {
     }
 
     primary_key_t pk;
     uint64_t scope;
 
-    table_request request(account_name a, table_name t) {
+    table_request request(account_name a, table_name t) const {
         return table_request{
             .code = a,
             .scope = scope,

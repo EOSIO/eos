@@ -76,11 +76,13 @@ namespace cyberway { namespace chaindb {
     const string names::next_pk_field    = "npk";
     const string names::undo_pk_field    = "upk";
     const string names::undo_payer_field = "upr";
+    const string names::undo_owner_field = "uow";
     const string names::undo_size_field  = "usz";
     const string names::undo_rec_field   = "rec";
     const string names::revision_field   = "rev";
 
     const string names::payer_field      = "payer";
+    const string names::owner_field      = "owner";
     const string names::size_field       = "size";
 
     const string names::scope_path       = string(names::service_field).append(".").append(names::scope_field);

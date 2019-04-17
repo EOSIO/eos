@@ -574,8 +574,8 @@ class apply_context {
 
    /// Database methods:
    public:
-
-      void update_db_usage( const account_name& payer, int64_t delta );
+// TODO: Removed by CyberWay
+//      void update_db_usage( const account_name& payer, int64_t delta );
 
 // TODO: Removed by CyberWay
 //      int  db_store_i64( uint64_t scope, uint64_t table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size );
@@ -611,7 +611,7 @@ class apply_context {
       uint64_t next_recv_sequence( account_name receiver );
       uint64_t next_auth_sequence( account_name actor );
 
-      void add_ram_usage( account_name account, int64_t ram_delta );
+      void add_ram_usage( const account_name& account, int64_t ram_delta );
       void finalize_trace( action_trace& trace, const fc::time_point& start );
 
    /// Fields:
