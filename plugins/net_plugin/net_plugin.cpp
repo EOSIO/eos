@@ -1382,13 +1382,13 @@ namespace eosio {
                //try to find it in the list
                cptr = my_impl->connections.find( sync_source );
                cend = cptr;
-               if (cptr == my_impl->connections.end()) {
+               if( cptr == my_impl->connections.end() ) {
                   //not there - must have been closed! cend is now connections.end, so just flatten the ring.
                   sync_source.reset();
                   cptr = my_impl->connections.begin();
                } else {
                   //was found - advance the start to the next. cend is the old source.
-                  if (++cptr == my_impl->connections.end() && cend != my_impl->connections.end() ) {
+                  if( ++cptr == my_impl->connections.end() && cend != my_impl->connections.end() ) {
                      cptr = my_impl->connections.begin();
                   }
                }

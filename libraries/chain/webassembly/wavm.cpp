@@ -131,7 +131,7 @@ void wavm_runtime::immediately_exit_currently_running_module() {
 #ifdef _WIN32
    throw wasm_exit();
 #else
-   Platform::immediately_exit();
+   Platform::immediately_exit(nullptr);
 #endif
 }
 

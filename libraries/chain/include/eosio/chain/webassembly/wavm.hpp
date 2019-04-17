@@ -312,7 +312,12 @@ struct intrinsic_invoker_impl<Ret, std::tuple<>, std::tuple<Translated...>> {
 
    template<next_method_type Method>
    static native_to_wasm_t<Ret> invoke(Translated... translated) {
-      return convert_native_to_wasm(the_running_instance_context, Method(the_running_instance_context, translated...));
+      try {
+         return convert_native_to_wasm(the_running_instance_context, Method(the_running_instance_context, translated...));
+      }
+      catch(...) {
+         Platform::immediately_exit(std::current_exception());
+      }
    }
 
    template<next_method_type Method>
@@ -331,7 +336,12 @@ struct intrinsic_invoker_impl<void_type, std::tuple<>, std::tuple<Translated...>
 
    template<next_method_type Method>
    static void invoke(Translated... translated) {
-      Method(the_running_instance_context, translated...);
+      try {
+         Method(the_running_instance_context, translated...);
+      }
+      catch(...) {
+         Platform::immediately_exit(std::current_exception());
+      }
    }
 
    template<next_method_type Method>
