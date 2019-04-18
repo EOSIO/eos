@@ -86,25 +86,26 @@ namespace bacc = boost::accumulators;
    volatile sig_atomic_t deadline_timer_verify::hit;
    static deadline_timer_verify deadline_timer_verification;
 
-   void provided_bandwith::confirm(account_name provider) {
-       verify_limits_not_confirmed();
-       confirmed_ = true;
-       provider_ = provider;
-   }
-
-   void provided_bandwith::set_net_limit(int64_t net_limit) {
-       verify_limits_not_confirmed();
-       this->net_limit_ = net_limit;
-   }
-
-   void provided_bandwith::set_cpu_limit(int64_t cpu_limit) {
-       verify_limits_not_confirmed();
-       this->cpu_limit_ = cpu_limit;
-   }
-
-   void provided_bandwith::verify_limits_not_confirmed() {
-        EOS_ASSERT(!confirmed_,  bandwith_already_confirmed, "Bandwith has been already confirmed. No changes could be done");
-   }
+// TODO: request bw, why provided?
+//   void provided_bandwith::confirm(account_name provider) {
+//       verify_limits_not_confirmed();
+//       confirmed_ = true;
+//       provider_ = provider;
+//   }
+//
+//   void provided_bandwith::set_net_limit(int64_t net_limit) {
+//       verify_limits_not_confirmed();
+//       this->net_limit_ = net_limit;
+//   }
+//
+//   void provided_bandwith::set_cpu_limit(int64_t cpu_limit) {
+//       verify_limits_not_confirmed();
+//       this->cpu_limit_ = cpu_limit;
+//   }
+//
+//   void provided_bandwith::verify_limits_not_confirmed() {
+//        EOS_ASSERT(!confirmed_,  bandwith_already_confirmed, "Bandwith has been already confirmed. No changes could be done");
+//   }
 
    deadline_timer::deadline_timer() {
       if(initialized)
@@ -255,12 +256,13 @@ namespace bacc = boost::accumulators;
             add_ram_provider(act.data_as<provideram>());
          }
          for( const auto& auth : act.authorization ) {
-             const auto provided_bw_it = provided_bandwith_.find(auth.actor);
-             if(provided_bw_it != provided_bandwith_.end()) {
-                 bill_to_accounts.insert( provided_bw_it->second.get_provider() );
-             } else {
+// TODO: requestbw
+//             const auto provided_bw_it = provided_bandwith_.find(auth.actor);
+//             if(provided_bw_it != provided_bandwith_.end()) {
+//                 bill_to_accounts.insert( provided_bw_it->second.get_provider() );
+//             } else {
                  bill_to_accounts.insert( auth.actor );
-             }
+//             }
          }
       }
 
@@ -549,48 +551,49 @@ namespace bacc = boost::accumulators;
       return static_cast<uint32_t>(billed_cpu_time_us);
    }
 
-   uint64_t transaction_context::get_provided_net_limit(account_name account) const {
-       const auto provided_bw_it = provided_bandwith_.find(account);
-
-       if (provided_bw_it == provided_bandwith_.end()) {
-           return 0;
-       }
-
-       return provided_bw_it->second.get_net_limit();
-   }
-
-   uint64_t transaction_context::get_provided_cpu_limit(account_name account) const {
-       const auto provided_bw_it = provided_bandwith_.find(account);
-
-       if (provided_bw_it == provided_bandwith_.end()) {
-           return 0;
-       }
-
-       return provided_bw_it->second.get_cpu_limit();
-   }
-
-   bool transaction_context::is_provided_bandwith_confirmed(account_name account) const {
-       const auto provided_bw_it = provided_bandwith_.find(account);
-
-       if (provided_bw_it == provided_bandwith_.end()) {
-           return 0;
-       }
-
-       return provided_bw_it->second.is_confirmed();
-   }
-
-   void transaction_context::set_provided_bandwith(std::map<account_name, provided_bandwith>&& bandwith) {
-       provided_bandwith_ = std::move(bandwith);
-   }
-
-   void transaction_context::set_provided_bandwith_limits(account_name account, uint64_t net_limit, uint64_t cpu_limit) {
-        provided_bandwith_[account].set_net_limit(net_limit);
-        provided_bandwith_[account].set_cpu_limit(cpu_limit);
-   }
-
-   void transaction_context::confirm_provided_bandwith_limits(account_name account, account_name provider) {
-        provided_bandwith_[account].confirm(provider);
-   }
+// TODO: requested bw, why provided ?
+//   uint64_t transaction_context::get_provided_net_limit(account_name account) const {
+//       const auto provided_bw_it = provided_bandwith_.find(account);
+//
+//       if (provided_bw_it == provided_bandwith_.end()) {
+//           return 0;
+//       }
+//
+//       return provided_bw_it->second.get_net_limit();
+//   }
+//
+//   uint64_t transaction_context::get_provided_cpu_limit(account_name account) const {
+//       const auto provided_bw_it = provided_bandwith_.find(account);
+//
+//       if (provided_bw_it == provided_bandwith_.end()) {
+//           return 0;
+//       }
+//
+//       return provided_bw_it->second.get_cpu_limit();
+//   }
+//
+//   bool transaction_context::is_provided_bandwith_confirmed(account_name account) const {
+//       const auto provided_bw_it = provided_bandwith_.find(account);
+//
+//       if (provided_bw_it == provided_bandwith_.end()) {
+//           return 0;
+//       }
+//
+//       return provided_bw_it->second.is_confirmed();
+//   }
+//
+//   void transaction_context::set_provided_bandwith(std::map<account_name, provided_bandwith>&& bandwith) {
+//       provided_bandwith_ = std::move(bandwith);
+//   }
+//
+//   void transaction_context::set_provided_bandwith_limits(account_name account, uint64_t net_limit, uint64_t cpu_limit) {
+//        provided_bandwith_[account].set_net_limit(net_limit);
+//        provided_bandwith_[account].set_cpu_limit(cpu_limit);
+//   }
+//
+//   void transaction_context::confirm_provided_bandwith_limits(account_name account, account_name provider) {
+//        provided_bandwith_[account].confirm(provider);
+//   }
 
    void transaction_context::dispatch_action( action_trace& trace, const action& a, account_name receiver, bool context_free, uint32_t recurse_depth ) {
       apply_context  acontext( control, *this, a, recurse_depth );

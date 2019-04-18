@@ -49,8 +49,9 @@ const static uint64_t owner_name  = N(owner);
 const static uint64_t eosio_any_name = N(cyber.any);
 const static uint64_t eosio_code_name = N(cyber.code);
 
-const static uint64_t request_bw_action = N(requestbw);
-const static uint64_t approve_bw_action = N(approvebw);
+// TODO: requestbw
+//const static uint64_t request_bw_action = N(requestbw);
+//const static uint64_t approve_bw_action = N(approvebw);
 const static uint64_t provide_bw_action = N(providebw);
 
 const static int      block_interval_ms = 3000;

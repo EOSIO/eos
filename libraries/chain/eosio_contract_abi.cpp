@@ -618,13 +618,13 @@ abi_def eosio_contract_abi(abi_def eos_abi)
          {"account", "account_name"},
       }
    });
-
-   eos_abi.structs.emplace_back( struct_def {
-      "requestbw", "", {
-         {"provider", "account_name"},
-         {"account", "account_name"},
-      }
-   });
+// TODO: requestbw
+//   eos_abi.structs.emplace_back( struct_def {
+//      "requestbw", "", {
+//         {"provider", "account_name"},
+//         {"account", "account_name"},
+//      }
+//   });
 
    eos_abi.structs.emplace_back( struct_def {
       "provideram", "", {
@@ -662,7 +662,8 @@ abi_def eosio_contract_abi(abi_def eos_abi)
    eos_abi.actions.push_back( action_def{name("linkauth"), "linkauth"} );
    eos_abi.actions.push_back( action_def{name("unlinkauth"), "unlinkauth"} );
    eos_abi.actions.push_back( action_def{name("providebw"), "providebw"} );
-   eos_abi.actions.push_back( action_def{name("requestbw"), "requestbw"} );
+// TODO: requestbw
+//   eos_abi.actions.push_back( action_def{name("requestbw"), "requestbw"} );
    eos_abi.actions.push_back( action_def{name("provideram"), "provideram"} );
    eos_abi.actions.push_back( action_def{name("canceldelay"), "canceldelay"} );
    eos_abi.actions.push_back( action_def{name("onerror"), "onerror"} );

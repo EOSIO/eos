@@ -440,10 +440,11 @@ void apply_cyber_providebw(apply_context& context) {
    context.require_authorization(args.provider);
 }
 
-void apply_cyber_requestbw(apply_context& context) {
-   auto args = context.act.data_as<requestbw>();
-   context.require_authorization(args.account);
-}
+// TODO: requestbw
+//void apply_cyber_requestbw(apply_context& context) {
+//   auto args = context.act.data_as<requestbw>();
+//   context.require_authorization(args.account);
+//}
 
 void apply_cyber_provideram(apply_context& context) {
    auto args = context.act.data_as<provideram>();
