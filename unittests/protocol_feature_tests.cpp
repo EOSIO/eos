@@ -111,7 +111,7 @@ BOOST_AUTO_TEST_CASE( double_preactivation ) try {
    auto d = pfm.get_builtin_digest( builtin_protocol_feature_t::only_link_to_existing_permission );
    BOOST_REQUIRE( d );
 
-   c.push_action( config::system_account_name, N(preactivate), config::system_account_name,
+   c.push_action( config::system_account_name, N(activate), config::system_account_name,
                   fc::mutable_variant_object()("feature_digest", *d), 10 );
 
    std::string expected_error_msg("protocol feature with digest '");
@@ -122,7 +122,7 @@ BOOST_AUTO_TEST_CASE( double_preactivation ) try {
       expected_error_msg += "' is already pre-activated";
    }
 
-   BOOST_CHECK_EXCEPTION(  c.push_action( config::system_account_name, N(preactivate), config::system_account_name,
+   BOOST_CHECK_EXCEPTION(  c.push_action( config::system_account_name, N(activate), config::system_account_name,
                                           fc::mutable_variant_object()("feature_digest", *d), 20 ),
                            protocol_feature_exception,
                            fc_exception_message_is( expected_error_msg )
@@ -540,7 +540,8 @@ BOOST_AUTO_TEST_CASE( no_duplicate_deferred_id_test ) try {
    c2.produce_empty_block( fc::minutes(10) );
 
    transaction_trace_ptr trace0;
-   auto h = c2.control->applied_transaction.connect( [&]( const transaction_trace_ptr& t) {
+   auto h = c2.control->applied_transaction.connect( [&](std::tuple<const transaction_trace_ptr&, const signed_transaction&> x) {
+      auto& t = std::get<0>(x);
       if( t && t->receipt && t->receipt->status == transaction_receipt::expired) {
          trace0 = t;
       }

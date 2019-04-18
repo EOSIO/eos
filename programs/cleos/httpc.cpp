@@ -89,17 +89,21 @@ namespace eosio { namespace client { namespace http {
          if(std::regex_search(header, match, clregex))
             response_content_length = std::stoi(match[1]);
       }
-      EOS_ASSERT(response_content_length >= 0, invalid_http_response, "Invalid content-length response");
+
+      // Attempt to read the response body using the length indicated by the
+      // Content-length header. If the header was not present just read all available bytes.
+      if( response_content_length != -1 ) {
+         response_content_length -= response.size();
+         if( response_content_length > 0 )
+            boost::asio::read(socket, response, boost::asio::transfer_exactly(response_content_length));
+      } else {
+         boost::system::error_code ec;
+         boost::asio::read(socket, response, boost::asio::transfer_all(), ec);
+         EOS_ASSERT(!ec || ec == boost::asio::ssl::error::stream_truncated, http_exception, "Unable to read http response: ${err}", ("err",ec.message()));
+      }
 
       std::stringstream re;
-      // Write whatever content we already have to output.
-      response_content_length -= response.size();
-      if (response.size() > 0)
-         re << &response;
-
-      boost::asio::read(socket, response, boost::asio::transfer_exactly(response_content_length));
       re << &response;
-
       return re.str();
    }
 

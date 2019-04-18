@@ -24,7 +24,7 @@ from core_symbol import CORE_SYMBOL
 
 args = TestHelper.parse_args({"--host","--port","--defproducera_prvt_key","--defproducerb_prvt_key","--mongodb"
                               ,"--dump-error-details","--dont-launch","--keep-logs","-v","--leave-running","--only-bios","--clean-run"
-                              ,"--sanity-test","--p2p-plugin","--wallet-port"})
+                              ,"--sanity-test","--wallet-port"})
 server=args.host
 port=args.port
 debug=args.v
@@ -39,7 +39,6 @@ prodCount=2
 onlyBios=args.only_bios
 killAll=args.clean_run
 sanityTest=args.sanity_test
-p2pPlugin=args.p2p_plugin
 walletPort=args.wallet_port
 
 Utils.Debug=debug
@@ -68,7 +67,7 @@ try:
         cluster.cleanup()
         Print("Stand up cluster")
         if cluster.launch(pnodes=prodCount, totalNodes=prodCount, prodCount=1, onlyBios=onlyBios,
-                         dontBootstrap=dontBootstrap, p2pPlugin=p2pPlugin, useBiosBootFile=False,
+                         dontBootstrap=dontBootstrap, useBiosBootFile=False,
                          pfSetupPolicy=PFSetupPolicy.NONE, extraNodeosArgs=" --plugin eosio::producer_api_plugin") is False:
             cmdError("launcher")
             errorExit("Failed to stand up eos cluster.")

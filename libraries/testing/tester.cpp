@@ -983,7 +983,7 @@ namespace eosio { namespace testing {
 
    void base_tester::preactivate_protocol_features(const vector<digest_type> feature_digests) {
       for( const auto& feature_digest: feature_digests ) {
-         push_action( config::system_account_name, N(preactivate), config::system_account_name,
+         push_action( config::system_account_name, N(activate), config::system_account_name,
                       fc::mutable_variant_object()("feature_digest", feature_digest) );
       }
    }

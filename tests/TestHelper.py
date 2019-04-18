@@ -65,8 +65,6 @@ class TestHelper(object):
                     default=Utils.SigKillTag)
         if "--kill-count" in includeArgs:
             parser.add_argument("--kill-count", type=int, help="nodeos instances to kill", default=-1)
-        if "--p2p-plugin" in includeArgs:
-            parser.add_argument("--p2p-plugin", choices=["net", "bnet"], help="select a p2p plugin to use. Defaults to net.", default="net")
         if "--seed" in includeArgs:
             parser.add_argument("--seed", type=int, help="random seed", default=1)
 

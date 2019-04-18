@@ -6,6 +6,7 @@
 #include <eosio/chain/exceptions.hpp>
 
 #include <eosio/chain/account_object.hpp>
+#include <eosio/chain/code_object.hpp>
 #include <eosio/chain/block_summary_object.hpp>
 #include <eosio/chain/eosio_contract.hpp>
 #include <eosio/chain/global_property_object.hpp>
@@ -35,7 +36,7 @@ using resource_limits::resource_limits_manager;
 
 using controller_index_set = index_set<
    account_index,
-   account_sequence_index,
+   account_metadata_index,
    account_ram_correction_index,
    global_property_multi_index,
    protocol_state_multi_index,
@@ -43,7 +44,8 @@ using controller_index_set = index_set<
    block_summary_multi_index,
    transaction_multi_index,
    generated_transaction_multi_index,
-   table_id_multi_index
+   table_id_multi_index,
+   code_index
 >;
 
 using contract_database_index_set = index_set<
@@ -291,7 +293,7 @@ struct controller_impl {
         cfg.reversible_cache_size, false, cfg.db_map_mode, cfg.db_hugepage_paths ),
     blog( cfg.blocks_dir ),
     fork_db( cfg.state_dir ),
-    wasmif( cfg.wasm_runtime ),
+    wasmif( cfg.wasm_runtime, db ),
     resource_limits( db ),
     authorization( s, db ),
     protocol_features( std::move(pfs) ),
@@ -848,14 +850,14 @@ struct controller_impl {
       db.create<account_object>([&](auto& a) {
          a.name = name;
          a.creation_date = conf.genesis.initial_timestamp;
-         a.privileged = is_privileged;
 
          if( name == config::system_account_name ) {
             a.set_abi(eosio_contract_abi(abi_def()));
          }
       });
-      db.create<account_sequence_object>([&](auto & a) {
-        a.name = name;
+      db.create<account_metadata_object>([&](auto & a) {
+         a.name = name;
+         a.set_privileged( is_privileged );
       });
 
       const auto& owner_permission  = authorization.create_permission(name, config::owner_name, 0,
@@ -1076,7 +1078,7 @@ struct controller_impl {
          trace->receipt = push_receipt( gtrx.trx_id, transaction_receipt::expired, billed_cpu_time_us, 0 ); // expire the transaction
          trace->account_ram_delta = account_delta( gtrx.payer, trx_removal_ram_delta );
          emit( self.accepted_transaction, trx );
-         emit( self.applied_transaction, trace );
+         emit( self.applied_transaction, std::tie(trace, dtrx) );
          undo_session.squash();
          return trace;
       }
@@ -1123,7 +1125,7 @@ struct controller_impl {
          trace->account_ram_delta = account_delta( gtrx.payer, trx_removal_ram_delta );
 
          emit( self.accepted_transaction, trx );
-         emit( self.applied_transaction, trace );
+         emit( self.applied_transaction, std::tie(trace, dtrx) );
 
          trx_context.squash();
          undo_session.squash();
@@ -1157,7 +1159,7 @@ struct controller_impl {
          if( !trace->except_ptr ) {
             trace->account_ram_delta = account_delta( gtrx.payer, trx_removal_ram_delta );
             emit( self.accepted_transaction, trx );
-            emit( self.applied_transaction, trace );
+            emit( self.applied_transaction, std::tie(trace, dtrx) );
             undo_session.squash();
             return trace;
          }
@@ -1195,12 +1197,12 @@ struct controller_impl {
          trace->account_ram_delta = account_delta( gtrx.payer, trx_removal_ram_delta );
 
          emit( self.accepted_transaction, trx );
-         emit( self.applied_transaction, trace );
+         emit( self.applied_transaction, std::tie(trace, dtrx) );
 
          undo_session.squash();
       } else {
          emit( self.accepted_transaction, trx );
-         emit( self.applied_transaction, trace );
+         emit( self.applied_transaction, std::tie(trace, dtrx) );
       }
 
       return trace;
@@ -1312,7 +1314,7 @@ struct controller_impl {
                emit( self.accepted_transaction, trx);
             }
 
-            emit(self.applied_transaction, trace);
+            emit(self.applied_transaction, std::tie(trace, trn));
 
 
             if ( read_mode != db_read_mode::SPECULATIVE && pending->_block_status == controller::block_status::incomplete ) {
@@ -1342,7 +1344,7 @@ struct controller_impl {
          }
 
          emit( self.accepted_transaction, trx );
-         emit( self.applied_transaction, trace );
+         emit( self.applied_transaction, std::tie(trace, trn) );
 
          return trace;
       } FC_CAPTURE_AND_RETHROW((trace))

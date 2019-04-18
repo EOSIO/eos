@@ -107,6 +107,19 @@ extern const char* const state_history_plugin_abi = R"({
             ]
         },
         {
+            "name": "partial_transaction_v0", "fields": [
+                { "name": "expiration", "type": "time_point_sec" },
+                { "name": "ref_block_num", "type": "uint16" },
+                { "name": "ref_block_prefix", "type": "uint32" },
+                { "name": "max_net_usage_words", "type": "varuint32" },
+                { "name": "max_cpu_usage_ms", "type": "uint8" },
+                { "name": "delay_sec", "type": "varuint32" },
+                { "name": "transaction_extensions", "type": "extension[]" },
+                { "name": "signatures", "type": "signature[]" },
+                { "name": "context_free_data", "type": "bytes[]" }
+            ]
+        },
+        {
             "name": "transaction_trace_v0", "fields": [
                 { "name": "id", "type": "checksum256" },
                 { "name": "status", "type": "uint8" },
@@ -119,7 +132,8 @@ extern const char* const state_history_plugin_abi = R"({
                 { "name": "account_ram_delta", "type": "account_delta?" },
                 { "name": "except", "type": "string?" },
                 { "name": "error_code", "type": "uint64?" },
-                { "name": "failed_dtrx_trace", "type": "transaction_trace?" }
+                { "name": "failed_dtrx_trace", "type": "transaction_trace?" },
+                { "name": "partial", "type": "partial_transaction?" }
             ]
         },
         {
@@ -188,16 +202,33 @@ extern const char* const state_history_plugin_abi = R"({
             ]
         },
         {
-            "name": "account_v0", "fields": [
-                { "type": "name", "name": "name" },
+            "name": "code_id", "fields": [
                 { "type": "uint8", "name": "vm_type" },
                 { "type": "uint8", "name": "vm_version" },
+                { "type": "checksum256", "name": "code_hash" }
+            ]
+        },
+        {
+            "name": "account_v0", "fields": [
+                { "type": "name", "name": "name" },
+                { "type": "block_timestamp_type", "name": "creation_date" },
+                { "type": "bytes", "name": "abi" }
+            ]
+        },
+        {
+            "name": "account_metadata_v0", "fields": [
+                { "type": "name", "name": "name" },
                 { "type": "bool", "name": "privileged" },
                 { "type": "time_point", "name": "last_code_update" },
-                { "type": "checksum256", "name": "code_version" },
-                { "type": "block_timestamp_type", "name": "creation_date" },
-                { "type": "bytes", "name": "code" },
-                { "type": "bytes", "name": "abi" }
+                { "type": "code_id?", "name": "code" }
+            ]
+        },
+        {
+            "name": "code_v0", "fields": [
+                { "type": "uint8", "name": "vm_type" },
+                { "type": "uint8", "name": "vm_version" },
+                { "type": "checksum256", "name": "code_hash" },
+                { "type": "bytes", "name": "code" }
             ]
         },
         {
@@ -434,11 +465,14 @@ extern const char* const state_history_plugin_abi = R"({
 
         { "name": "action_receipt", "types": ["action_receipt_v0"] },
         { "name": "action_trace", "types": ["action_trace_v0"] },
+        { "name": "partial_transaction", "types": ["partial_transaction_v0"] },
         { "name": "transaction_trace", "types": ["transaction_trace_v0"] },
         { "name": "transaction_variant", "types": ["transaction_id", "packed_transaction"] },
 
         { "name": "table_delta", "types": ["table_delta_v0"] },
         { "name": "account", "types": ["account_v0"] },
+        { "name": "account_metadata", "types": ["account_metadata_v0"] },
+        { "name": "code", "types": ["code_v0"] },
         { "name": "contract_table", "types": ["contract_table_v0"] },
         { "name": "contract_row", "types": ["contract_row_v0"] },
         { "name": "contract_index64", "types": ["contract_index64_v0"] },
@@ -461,6 +495,8 @@ extern const char* const state_history_plugin_abi = R"({
     ],
     "tables": [
         { "name": "account", "type": "account", "key_names": ["name"] },
+        { "name": "account_metadata", "type": "account_metadata", "key_names": ["name"] },
+        { "name": "code", "type": "code", "key_names": ["vm_type", "vm_version", "code_hash"] },
         { "name": "contract_table", "type": "contract_table", "key_names": ["code", "scope", "table"] },
         { "name": "contract_row", "type": "contract_row", "key_names": ["code", "scope", "table", "primary_key"] },
         { "name": "contract_index64", "type": "contract_index64", "key_names": ["code", "scope", "table", "primary_key"] },

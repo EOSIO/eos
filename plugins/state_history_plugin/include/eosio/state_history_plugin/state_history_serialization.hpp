@@ -106,14 +106,35 @@ template <typename ST>
 datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosio::chain::account_object>& obj) {
    fc::raw::pack(ds, fc::unsigned_int(0));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.name.value));
+   fc::raw::pack(ds, as_type<eosio::chain::block_timestamp_type>(obj.obj.creation_date));
+   fc::raw::pack(ds, as_type<eosio::chain::shared_string>(obj.obj.abi));
+   return ds;
+}
+
+template <typename ST>
+datastream<ST>& operator<<(datastream<ST>&                                                      ds,
+                           const history_serial_wrapper<eosio::chain::account_metadata_object>& obj) {
+   fc::raw::pack(ds, fc::unsigned_int(0));
+   fc::raw::pack(ds, as_type<uint64_t>(obj.obj.name.value));
+   fc::raw::pack(ds, as_type<bool>(obj.obj.is_privileged()));
+   fc::raw::pack(ds, as_type<fc::time_point>(obj.obj.last_code_update));
+   bool has_code = obj.obj.code_hash != eosio::chain::digest_type();
+   fc::raw::pack(ds, has_code);
+   if (has_code) {
+      fc::raw::pack(ds, as_type<uint8_t>(obj.obj.vm_type));
+      fc::raw::pack(ds, as_type<uint8_t>(obj.obj.vm_version));
+      fc::raw::pack(ds, as_type<eosio::chain::digest_type>(obj.obj.code_hash));
+   }
+   return ds;
+}
+
+template <typename ST>
+datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosio::chain::code_object>& obj) {
+   fc::raw::pack(ds, fc::unsigned_int(0));
    fc::raw::pack(ds, as_type<uint8_t>(obj.obj.vm_type));
    fc::raw::pack(ds, as_type<uint8_t>(obj.obj.vm_version));
-   fc::raw::pack(ds, as_type<bool>(obj.obj.privileged));
-   fc::raw::pack(ds, as_type<fc::time_point>(obj.obj.last_code_update));
-   fc::raw::pack(ds, as_type<eosio::chain::digest_type>(obj.obj.code_version));
-   fc::raw::pack(ds, as_type<eosio::chain::block_timestamp_type>(obj.obj.creation_date));
+   fc::raw::pack(ds, as_type<eosio::chain::digest_type>(obj.obj.code_hash));
    fc::raw::pack(ds, as_type<eosio::chain::shared_string>(obj.obj.code));
-   fc::raw::pack(ds, as_type<eosio::chain::shared_string>(obj.obj.abi));
    return ds;
 }
 
@@ -503,52 +524,71 @@ datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosi
 }
 
 template <typename ST>
-datastream<ST>& operator<<(datastream<ST>&                                                          ds,
-                           const history_context_wrapper<uint8_t, eosio::chain::transaction_trace>& obj) {
+datastream<ST>& operator<<(datastream<ST>&                                                             ds,
+                           const history_context_wrapper<uint8_t, eosio::augmented_transaction_trace>& obj) {
+   auto& trace = *obj.obj.trace;
    fc::raw::pack(ds, fc::unsigned_int(0));
-   fc::raw::pack(ds, as_type<eosio::chain::transaction_id_type>(obj.obj.id));
-   if (obj.obj.receipt) {
-      if (obj.obj.failed_dtrx_trace &&
-          obj.obj.receipt->status.value == eosio::chain::transaction_receipt_header::soft_fail)
+   fc::raw::pack(ds, as_type<eosio::chain::transaction_id_type>(trace.id));
+   if (trace.receipt) {
+      if (trace.failed_dtrx_trace && trace.receipt->status.value == eosio::chain::transaction_receipt_header::soft_fail)
          fc::raw::pack(ds, uint8_t(eosio::chain::transaction_receipt_header::executed));
       else
-         fc::raw::pack(ds, as_type<uint8_t>(obj.obj.receipt->status.value));
-      fc::raw::pack(ds, as_type<uint32_t>(obj.obj.receipt->cpu_usage_us));
-      fc::raw::pack(ds, as_type<fc::unsigned_int>(obj.obj.receipt->net_usage_words));
+         fc::raw::pack(ds, as_type<uint8_t>(trace.receipt->status.value));
+      fc::raw::pack(ds, as_type<uint32_t>(trace.receipt->cpu_usage_us));
+      fc::raw::pack(ds, as_type<fc::unsigned_int>(trace.receipt->net_usage_words));
    } else {
       fc::raw::pack(ds, uint8_t(obj.context));
       fc::raw::pack(ds, uint32_t(0));
       fc::raw::pack(ds, fc::unsigned_int(0));
    }
-   fc::raw::pack(ds, as_type<int64_t>(obj.obj.elapsed.count()));
-   fc::raw::pack(ds, as_type<uint64_t>(obj.obj.net_usage));
-   fc::raw::pack(ds, as_type<bool>(obj.obj.scheduled));
-   history_serialize_container(ds, obj.db, as_type<std::vector<eosio::chain::action_trace>>(obj.obj.action_traces));
+   fc::raw::pack(ds, as_type<int64_t>(trace.elapsed.count()));
+   fc::raw::pack(ds, as_type<uint64_t>(trace.net_usage));
+   fc::raw::pack(ds, as_type<bool>(trace.scheduled));
+   history_serialize_container(ds, obj.db, as_type<std::vector<eosio::chain::action_trace>>(trace.action_traces));
 
-   fc::raw::pack(ds, bool(obj.obj.account_ram_delta));
-   if (obj.obj.account_ram_delta) {
-      fc::raw::pack(ds, make_history_serial_wrapper(obj.db, as_type<eosio::chain::account_delta>(*obj.obj.account_ram_delta)));
+   fc::raw::pack(ds, bool(trace.account_ram_delta));
+   if (trace.account_ram_delta) {
+      fc::raw::pack(
+          ds, make_history_serial_wrapper(obj.db, as_type<eosio::chain::account_delta>(*trace.account_ram_delta)));
    }
 
    fc::optional<std::string> e;
-   if (obj.obj.except)
-      e = obj.obj.except->to_string();
+   if (trace.except)
+      e = trace.except->to_string();
    fc::raw::pack(ds, as_type<fc::optional<std::string>>(e));
-   fc::raw::pack(ds, as_type<fc::optional<uint64_t>>(obj.obj.error_code));
+   fc::raw::pack(ds, as_type<fc::optional<uint64_t>>(trace.error_code));
 
-   fc::raw::pack(ds, bool(obj.obj.failed_dtrx_trace));
-   if (obj.obj.failed_dtrx_trace) {
+   fc::raw::pack(ds, bool(trace.failed_dtrx_trace));
+   if (trace.failed_dtrx_trace) {
       uint8_t stat = eosio::chain::transaction_receipt_header::hard_fail;
-      if (obj.obj.receipt && obj.obj.receipt->status.value == eosio::chain::transaction_receipt_header::soft_fail)
+      if (trace.receipt && trace.receipt->status.value == eosio::chain::transaction_receipt_header::soft_fail)
          stat = eosio::chain::transaction_receipt_header::soft_fail;
-      fc::raw::pack(ds, make_history_context_wrapper(obj.db, stat, *obj.obj.failed_dtrx_trace));
+      fc::raw::pack( //
+          ds, make_history_context_wrapper(
+                  obj.db, stat, eosio::augmented_transaction_trace{trace.failed_dtrx_trace, obj.obj.partial}));
+   }
+
+   bool include_partial = obj.obj.partial && !trace.failed_dtrx_trace;
+   fc::raw::pack(ds, include_partial);
+   if (include_partial) {
+      auto& partial = *obj.obj.partial;
+      fc::raw::pack(ds, fc::unsigned_int(0));
+      fc::raw::pack(ds, as_type<eosio::chain::time_point_sec>(partial.expiration));
+      fc::raw::pack(ds, as_type<uint16_t>(partial.ref_block_num));
+      fc::raw::pack(ds, as_type<uint32_t>(partial.ref_block_prefix));
+      fc::raw::pack(ds, as_type<fc::unsigned_int>(partial.max_net_usage_words));
+      fc::raw::pack(ds, as_type<uint8_t>(partial.max_cpu_usage_ms));
+      fc::raw::pack(ds, as_type<fc::unsigned_int>(partial.delay_sec));
+      fc::raw::pack(ds, as_type<eosio::chain::extensions_type>(partial.transaction_extensions));
+      fc::raw::pack(ds, as_type<std::vector<eosio::chain::signature_type>>(partial.signatures));
+      fc::raw::pack(ds, as_type<std::vector<eosio::bytes>>(partial.context_free_data));
    }
 
    return ds;
 }
 
 template <typename ST>
-datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosio::chain::transaction_trace>& obj) {
+datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosio::augmented_transaction_trace>& obj) {
    uint8_t stat = eosio::chain::transaction_receipt_header::hard_fail;
    ds << make_history_context_wrapper(obj.db, stat, obj.obj);
    return ds;
