@@ -746,7 +746,7 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
    using bsoncxx::builder::basic::make_array;
    namespace bbb = bsoncxx::builder::basic;
 
-   const signed_transaction& trx = t->packed_trx->get_signed_transaction();
+   const signed_transaction& trx = t->packed_trx()->get_signed_transaction();
 
    if( !filter_include( trx ) ) return;
 
@@ -755,7 +755,7 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
    auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
          std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()} );
 
-   const auto& trx_id = t->id;
+   const auto& trx_id = t->id();
    const auto trx_id_str = trx_id.str();
 
    trans_doc.append( kvp( "trx_id", trx_id_str ) );
@@ -770,15 +770,11 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
       elog( "  JSON: ${j}", ("j", fc::json::to_string( v )) );
    }
 
-   fc::variant signing_keys;
-   if( t->signing_keys_future.valid() ) {
-      signing_keys = std::get<2>( t->signing_keys_future.get() );
-   } else {
-      flat_set<public_key_type> keys;
-      trx.get_signature_keys( *chain_id, fc::time_point::maximum(), keys, false );
-      if( !keys.empty() ) {
-         signing_keys = keys;
-      }
+   string signing_keys_json;
+   flat_set<public_key_type> keys;
+   std::tie( std::ignore, keys ) = t->recover_keys( *chain_id );
+   if( !keys.empty() ) {
+      signing_keys_json = fc::json::to_string( keys );
    }
 
    if( signing_keys.get_type() == fc::variant::array_type && signing_keys.get_array().size() > 0) {
