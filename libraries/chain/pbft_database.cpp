@@ -983,11 +983,6 @@ namespace eosio {
               return is_desired_checkpoint_num;
             };
 
-//            auto checkpoint = [&](const block_num_type &in) {
-//                return in % 100 == 1
-//                       || in == ctrl.last_proposed_schedule_block_num()
-//                       || in == ctrl.last_promoted_proposed_schedule_block_num();
-//            };
 
             for (auto i = psp->block_num;
                  i > std::max(ctrl.last_stable_checkpoint_block_num(), static_cast<uint32_t>(1)); --i) {
@@ -1153,7 +1148,10 @@ namespace eosio {
         }
 
         bool pbft_database::is_valid_stable_checkpoint(const pbft_stable_checkpoint &scp) {
-            if (scp.block_num <= ctrl.last_stable_checkpoint_block_num()) return true;
+            if (scp.block_num <= ctrl.last_stable_checkpoint_block_num())
+                // the stable checkpoint is way behind lib, no way getting the block state,
+                // it will not be applied nor saved, thus considered safe.
+                return true;
 
             auto valid = true;
             for (const auto &c: scp.checkpoints) {

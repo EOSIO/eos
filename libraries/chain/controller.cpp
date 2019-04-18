@@ -1275,7 +1275,7 @@ struct controller_impl {
           const auto& upo = db.get<upgrade_property_object>();
           const auto upo_upgrade_target_block_num = upo.upgrade_target_block_num;
 
-          if (upgrading) {
+          if (upgrading && !replaying) {
               ilog("SYSTEM IS UPGRADING, no producer schedule changes will happen until fully upgraded.");
               if (head->dpos_irreversible_blocknum >= upo_upgrade_target_block_num) {
                   db.modify( upo, [&]( auto& up ) { up.upgrade_complete_block_num.emplace(head->block_num); });
@@ -1332,8 +1332,6 @@ struct controller_impl {
                if (!upgrading) {
                    // Promote proposed schedule to pending schedule.
                    if (!replaying) {
-                       ilog("bft_irreversible_blocknum ${a}", ("a", pending->_pending_block_state->bft_irreversible_blocknum) );
-                       ilog("dpos_irreversible_blocknum ${a}", ("a", pending->_pending_block_state->dpos_irreversible_blocknum) );
                        ilog("promoting proposed schedule (set in block ${proposed_num}) to pending; current block: ${n} lib: ${lib} schedule: ${schedule} ",
                             ("proposed_num", *gpo.proposed_schedule_block_num)("n",
                                                                                pending->_pending_block_state->block_num)
@@ -1549,8 +1547,8 @@ struct controller_impl {
             maybe_switch_forks( s );
          }
 
-//         // apply stable checkpoint when there is one
-//         // TODO:// verify required one more time?
+         // apply stable checkpoint when there is one
+         // TODO: verify required one more time?
          for (const auto &extn: b->block_extensions) {
             if (extn.first == static_cast<uint16_t>(block_extension_type::pbft_stable_checkpoint)) {
                pbft_commit_local(b->id());
@@ -1615,14 +1613,10 @@ struct controller_impl {
       if (new_version) {
           if (pbft_prepared) {
               fork_db.mark_pbft_prepared_fork(pbft_prepared);
-          } else if (head) {
-              fork_db.mark_pbft_prepared_fork(head);
           }
 
           if (my_prepare) {
               fork_db.mark_pbft_my_prepare_fork(my_prepare);
-          } else if (head) {
-              fork_db.mark_pbft_my_prepare_fork(head);
           }
       }
 
