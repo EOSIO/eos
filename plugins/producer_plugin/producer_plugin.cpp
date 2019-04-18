@@ -362,11 +362,8 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                   });
                };
 
-         app().post(priority::low, [trx, &chain, max_trx_cpu_usage, after_sig_recovery{std::move(after_sig_recovery)}]() mutable {
-            // use chain thread pool for sig recovery
-            transaction_metadata::start_recover_keys( trx, chain.get_thread_pool(), chain.get_chain_id(),
+         transaction_metadata::start_recover_keys( trx, chain.get_thread_pool(), chain.get_chain_id(),
                   max_trx_cpu_usage, std::move( after_sig_recovery ) );
-         });
       }
 
       void process_incoming_transaction_async(const transaction_metadata_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next) {
