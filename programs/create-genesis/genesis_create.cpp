@@ -2,6 +2,7 @@
 #include "golos_objects.hpp"
 #include "genesis_create.hpp"
 #include "golos_state_container.hpp"
+#include "supply_distributor.hpp"
 #include "serializer.hpp"
 #include <eosio/chain/config.hpp>
 #include <eosio/chain/authorization_manager.hpp>
@@ -50,7 +51,7 @@ static constexpr uint64_t gls_post_account_name  = N(gls.publish);
 constexpr auto GBG = SY(3,GBG);
 constexpr auto GLS = SY(3,GOLOS);
 constexpr auto GESTS = SY(6,GESTS);
-constexpr auto VESTS = SY(6,GOLOS);                 // Cyberway vesting
+constexpr auto VESTS = SY(6,GOLOS);                 // Golos dApp vesting
 constexpr auto posting_auth_name = "posting";
 constexpr auto golos_account_name = "golos";
 constexpr auto issuer_account_name = config::system_account_name;   // ?cyberfounder
@@ -69,7 +70,6 @@ constexpr uint64_t permissions_tbl_start_id = 17;       // Note: usage_id is id-
 
 account_name generate_name(string n);
 string pubkey_string(const golos::public_key_type& k, bool prefix = true);
-asset convert_asset(const asset& src, const golos::price& price);
 asset golos2sys(const asset& golos);
 
 
@@ -498,8 +498,6 @@ struct genesis_create::genesis_create_impl final {
         std::cout << "Creating staking agents and grants..." << std::endl;
         _total_staked = golos2sys(_visitor.gpo.total_vesting_fund_steem);
         const auto sys_sym = asset().get_symbol();
-        const auto vests_sym = symbol(6,"GOLOS");   // Cyberway vesting
-        golos::price vprice{_visitor.gpo.total_vesting_shares, _total_staked};
 
         db.start_section(config::system_account_name, N(stake.stat), "stat_struct", 1);
         db.emplace<stake_stat_object>([&](auto& s) {
@@ -580,10 +578,11 @@ struct genesis_create::genesis_create_impl final {
         };
 
         std::cout << "  SYS staked = " << _total_staked << std::endl;
+        supply_distributor to_sys(_total_staked, _visitor.gpo.total_vesting_shares);
         asset staked(0);
         for (const auto& v: _visitor.vests) {
             auto acc = v.first;
-            auto amount = convert_asset(asset(v.second.vesting, vests_sym), vprice);
+            auto amount = to_sys.convert(asset(v.second.vesting, symbol(VESTS)));
             staked += amount;
             auto s = amount.get_amount();
             agent x{generate_name(_accs_map[acc]), find_proxy_level(acc), s, 0, s, s};
@@ -591,7 +590,8 @@ struct genesis_create::genesis_create_impl final {
             names[x.name] = _accs_map[acc];
         }
         std::cout << "  actual staked = " << staked << std::endl;
-        std::cout << "    diff staked = " << (_total_staked - staked) << std::endl;     // TODO: diff should be 0 #519
+        std::cout << "    diff staked = " << (_total_staked - staked) << std::endl;
+        EOS_ASSERT(_total_staked == staked, genesis_exception, "Staking supply differs from sum of balances");
 
         auto find_agent_level = [&](acc_idx acc, int upper_level) {
             do {
@@ -743,14 +743,16 @@ struct genesis_create::genesis_create_impl final {
         } else {
             EOS_ASSERT(false, genesis_exception, "Not implemented");
         }
-        auto gbg2gls = convert_asset(gp.current_sbd_supply, price);
-        std::cout << "GBG 2 GOLOS = " << gbg2gls << std::endl;
+        supply_distributor to_gls(price.quote, price.base);     // flip price to convert GBG to GOLOS
+        auto golos_from_gbg = to_gls.convert(gp.current_sbd_supply);
+        std::cout << "GBG 2 GOLOS = " << golos_from_gbg << std::endl;
+        to_gls.reset();
 
         // token stats
         const auto n_stats = 2;
         db.start_section(config::token_account_name, N(stat), "currency_stats", n_stats);
 
-        auto supply = gp.current_supply + gbg2gls;
+        auto supply = gp.current_supply + golos_from_gbg;
         ram_payer_info ram_payer{};
         auto insert_stat_record = [&](const symbol& sym, const asset& supply, int64_t max_supply, name issuer) {
             table_request tbl{config::token_account_name, sym.to_symbol_code(), N(stat)};
@@ -790,12 +792,12 @@ struct genesis_create::genesis_create_impl final {
             mvo("balance", gp.total_reward_fund_steem)("payments", asset(0, golos_sym)), ram_payer);
         // TODO: internal pool of posting contract
 
-        // accounts GOLOS/GESTS
+        // accounts GOLOS
         asset total_gls = asset(0, golos_sym);
         for (const auto& balance: data.gbg) {
             auto acc = balance.first;
             auto gbg = balance.second;
-            auto gls = data.gls[acc] + convert_asset(gbg, price);
+            auto gls = data.gls[acc] + to_gls.convert(gbg);
             total_gls += gls;
             auto n = generate_name(_accs_map[acc]);
             db.insert({config::token_account_name, n, N(accounts)}, gls_pk,
@@ -803,7 +805,12 @@ struct genesis_create::genesis_create_impl final {
             db.insert({config::token_account_name, n, N(accounts)}, sys_pk,
                 mvo("balance", golos2sys(gls))("payments", asset(0, sys_sym)), ram_payer);
         }
+        const auto liquid_supply = supply - (gp.total_vesting_fund_steem + gp.total_reward_fund_steem); // no funds
+        std::cout << " Total sum of GOLOS + converted GBG = " << total_gls
+            << "; diff = " << (liquid_supply - total_gls) << std::endl;
+        EOS_ASSERT(liquid_supply == total_gls, genesis_exception, "GOLOS supply differs from sum of balances");
 
+        // accounts GESTS
         db.start_section(gls_vest_account_name, N(accounts), "account", data.vests.size());
         for (const auto& v: data.vests) {
             auto acc = v.first;
@@ -822,9 +829,6 @@ struct genesis_create::genesis_create_impl final {
             const auto n = generate_name(_accs_map[acc]);
             db.insert({gls_vest_account_name, n, N(accounts)}, vests_pk, vests_obj, ram_payer);
         }
-        // TODO: update convert_asset to uniformly distribute rounded amount #519
-        std::cout << " Total accounts' GOLOS + converted GBG = " << total_gls << "; diff = " <<
-            (supply - (gp.total_vesting_fund_steem + gp.total_reward_fund_steem) - total_gls) << std::endl;
 
         std::cout << "Done." << std::endl;
     }
@@ -1020,8 +1024,8 @@ void genesis_create::write_genesis(
 
 
 account_name generate_name(string n) {
-    // TODO: replace with better function
-    // TODO: remove dots from result (+append trailing to length of 12 characters)
+    // TODO: replace with better function #527
+    // TODO: remove dots from result (+append trailing to length of 12 characters) #527
     uint64_t h = std::hash<std::string>()(n);
     return account_name(h & 0xFFFFFFFFFFFFFFF0);
 }
@@ -1036,16 +1040,10 @@ string pubkey_string(const golos::public_key_type& k, bool prefix/* = true*/) {
     return prefix ? string(fc::crypto::config::public_key_legacy_prefix) + tail : tail;
 }
 
-asset convert_asset(const asset& src, const golos::price& price) {
-    return asset(
-        static_cast<int64_t>(static_cast<eosio::chain::int128_t>(src.get_amount()) * price.quote.get_amount() / price.base.get_amount()),
-        price.quote.get_symbol()
-    );
-}
-
-// TODO: remove hardcode #519
 asset golos2sys(const asset& golos) {
-    return asset(golos.get_amount() * (10000/1000));
+    static const int64_t sys_precision = asset().get_symbol().precision();
+    return asset(eosio::chain::int_arithmetic::safe_prop(
+        golos.get_amount(), sys_precision, static_cast<int64_t>(golos.get_symbol().precision())));
 }
 
 }} // cyberway
