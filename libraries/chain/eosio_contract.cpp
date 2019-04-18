@@ -157,7 +157,7 @@ void apply_eosio_setcode(apply_context& context) {
       const code_object& old_code_entry = db.get<code_object, by_code_hash>(boost::make_tuple(account.code_hash, account.vm_type, account.vm_version));
       EOS_ASSERT( old_code_entry.code_hash != code_hash, set_exact_code,
                   "contract is already running this version of code" );
-      int64_t old_size  = (int64_t)old_code_entry.code.size() * config::setcode_ram_bytes_multiplier;
+      old_size  = (int64_t)old_code_entry.code.size() * config::setcode_ram_bytes_multiplier;
       if( old_code_entry.code_ref_count == 1 ) {
          db.remove(old_code_entry);
       } else {
