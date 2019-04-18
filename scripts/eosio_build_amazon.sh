@@ -12,7 +12,7 @@ if [[ "${OS_NAME}" == "Amazon Linux AMI" ]]; then # Amazonlinux1
 	DEP_ARRAY=( 
 		sudo procps util-linux which gcc72 gcc72-c++ autoconf automake libtool make doxygen graphviz \
 		bzip2 bzip2-devel openssl-devel gmp gmp-devel libstdc++72 python27 python27-devel python36 python36-devel \
-		libedit-devel ncurses-devel swig curl -LO file libcurl-devel libusb1-devel
+		libedit-devel ncurses-devel swig curl file libcurl-devel libusb1-devel
 	)
 else # Amazonlinux2
 	DEP_ARRAY=( 
