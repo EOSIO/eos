@@ -186,10 +186,21 @@ namespace eosio { namespace chain {
       auto inserted = my->index.insert(n);
       EOS_ASSERT( inserted.second, fork_database_exception, "duplicate block added?" );
 
+      auto prior = my->index.find( n->block->previous );
+
+      //TODO: to be optimised.
+      if ((*prior)->pbft_prepared) {
+          mark_pbft_prepared_fork(*prior);
+      }
+      if (((*prior)->pbft_my_prepare)) {
+          mark_pbft_my_prepare_fork(*prior);
+      }
+
       my->head = *my->index.get<by_lib_block_num>().begin();
 
       auto lib = std::max(my->head->bft_irreversible_blocknum, my->head->dpos_irreversible_blocknum);
       auto checkpoint = my->head->pbft_stable_checkpoint_blocknum;
+
       auto oldest = *my->index.get<by_block_num>().begin();
 
       if( oldest->block_num < lib && oldest->block_num < checkpoint ) {
