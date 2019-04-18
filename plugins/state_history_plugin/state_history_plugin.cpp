@@ -101,6 +101,10 @@ bool include_delta(const eosio::chain::code_object& old, const eosio::chain::cod
    return false;
 }
 
+bool include_delta(const eosio::chain::protocol_state_object& old, const eosio::chain::protocol_state_object& curr) {
+   return old.activated_protocol_features != curr.activated_protocol_features;
+}
+
 struct state_history_plugin_impl : std::enable_shared_from_this<state_history_plugin_impl> {
    chain_plugin*                                              chain_plug = nullptr;
    fc::optional<state_history_log>                            trace_log;
@@ -527,6 +531,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
 
       process_table("global_property", db.get_index<global_property_multi_index>(), pack_row);
       process_table("generated_transaction", db.get_index<generated_transaction_multi_index>(), pack_row);
+      process_table("protocol_state", db.get_index<protocol_state_multi_index>(), pack_row);
 
       process_table("permission", db.get_index<permission_index>(), pack_row);
       process_table("permission_link", db.get_index<permission_link_index>(), pack_row);

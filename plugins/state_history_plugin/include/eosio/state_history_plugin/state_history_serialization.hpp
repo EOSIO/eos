@@ -11,6 +11,7 @@
 #include <eosio/chain/global_property_object.hpp>
 #include <eosio/chain/permission_link_object.hpp>
 #include <eosio/chain/permission_object.hpp>
+#include <eosio/chain/protocol_state_object.hpp>
 #include <eosio/chain/resource_limits.hpp>
 #include <eosio/chain/resource_limits_private.hpp>
 #include <eosio/chain/trace.hpp>
@@ -300,6 +301,23 @@ datastream<ST>& operator<<(datastream<ST>&                                      
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.payer.value));
    fc::raw::pack(ds, as_type<eosio::chain::transaction_id_type>(obj.obj.trx_id));
    fc::raw::pack(ds, as_type<eosio::chain::shared_string>(obj.obj.packed_trx));
+   return ds;
+}
+
+template <typename ST>
+datastream<ST>&
+operator<<(datastream<ST>&                                                                                ds,
+           const history_serial_wrapper<eosio::chain::protocol_state_object::activated_protocol_feature>& obj) {
+   fc::raw::pack(ds, fc::unsigned_int(0));
+   fc::raw::pack(ds, as_type<eosio::chain::digest_type>(obj.obj.feature_digest));
+   fc::raw::pack(ds, as_type<uint32_t>(obj.obj.activation_block_num));
+   return ds;
+}
+
+template <typename ST>
+datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosio::chain::protocol_state_object>& obj) {
+   fc::raw::pack(ds, fc::unsigned_int(0));
+   history_serialize_container(ds, obj.db, obj.obj.activated_protocol_features);
    return ds;
 }
 

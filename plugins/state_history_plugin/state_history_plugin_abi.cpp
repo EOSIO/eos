@@ -349,6 +349,17 @@ extern const char* const state_history_plugin_abi = R"({
             ]
         },
         {
+            "name": "activated_protocol_feature_v0", "fields": [
+                { "type": "checksum256", "name": "feature_digest" },
+                { "type": "uint32", "name": "activation_block_num" }
+            ]
+        },
+        {
+            "name": "protocol_state_v0", "fields": [
+                { "type": "activated_protocol_feature[]", "name": "activated_protocol_features" }
+            ]
+        },
+        {
             "name": "key_weight", "fields": [
                 { "type": "public_key", "name": "key" },
                 { "type": "uint16", "name": "weight" }
@@ -483,6 +494,8 @@ extern const char* const state_history_plugin_abi = R"({
         { "name": "chain_config", "types": ["chain_config_v0"] },
         { "name": "global_property", "types": ["global_property_v0"] },
         { "name": "generated_transaction", "types": ["generated_transaction_v0"] },
+        { "name": "activated_protocol_feature", "types": ["activated_protocol_feature_v0"] },
+        { "name": "protocol_state", "types": ["protocol_state_v0"] },
         { "name": "permission", "types": ["permission_v0"] },
         { "name": "permission_link", "types": ["permission_link_v0"] },
         { "name": "resource_limits", "types": ["resource_limits_v0"] },
@@ -506,6 +519,7 @@ extern const char* const state_history_plugin_abi = R"({
         { "name": "contract_index_long_double", "type": "contract_index_long_double", "key_names": ["code", "scope", "table", "primary_key"] },
         { "name": "global_property", "type": "global_property", "key_names": [] },
         { "name": "generated_transaction", "type": "generated_transaction", "key_names": ["sender", "sender_id"] },
+        { "name": "protocol_state", "type": "protocol_state", "key_names": [] },
         { "name": "permission", "type": "permission", "key_names": ["owner", "name"] },
         { "name": "permission_link", "type": "permission_link", "key_names": ["account", "code", "message_type"] },
         { "name": "resource_limits", "type": "resource_limits", "key_names": ["owner"] },
