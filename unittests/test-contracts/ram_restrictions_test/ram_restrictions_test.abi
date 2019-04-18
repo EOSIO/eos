@@ -18,6 +18,11 @@
             ]
         },
         {
+            "name": "noop",
+            "base": "",
+            "fields": []
+        },
+        {
             "name": "notifydefer",
             "base": "",
             "fields": [
@@ -27,7 +32,7 @@
                 },
                 {
                     "name": "senderid",
-                    "type": "uint32"
+                    "type": "uint64"
                 },
                 {
                     "name": "payer",
@@ -45,11 +50,25 @@
                 },
                 {
                     "name": "len1",
-                    "type": "int32"
+                    "type": "uint32"
                 },
                 {
                     "name": "len2",
-                    "type": "int32"
+                    "type": "uint32"
+                },
+                {
+                    "name": "payer",
+                    "type": "name"
+                }
+            ]
+        },
+        {
+            "name": "senddefer",
+            "base": "",
+            "fields": [
+                {
+                    "name": "senderid",
+                    "type": "uint64"
                 },
                 {
                     "name": "payer",
@@ -77,11 +96,11 @@
             "fields": [
                 {
                     "name": "len1",
-                    "type": "int32"
+                    "type": "uint32"
                 },
                 {
                     "name": "len2",
-                    "type": "int32"
+                    "type": "uint32"
                 },
                 {
                     "name": "payer",
@@ -91,6 +110,11 @@
         }
     ],
     "actions": [
+        {
+            "name": "noop",
+            "type": "noop",
+            "ricardian_contract": ""
+        },
         {
             "name": "notifydefer",
             "type": "notifydefer",
