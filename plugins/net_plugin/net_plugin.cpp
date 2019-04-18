@@ -1891,8 +1891,8 @@ namespace eosio {
    }
 
    void dispatch_manager::bcast_transaction(const transaction_metadata_ptr& ptrx) {
-      const auto& id = ptrx->id;
-      const packed_transaction& trx = *ptrx->packed_trx;
+      const auto& id = ptrx->id();
+      const packed_transaction& trx = *ptrx->packed_trx();
       time_point_sec trx_expiration = trx.expiration();
       node_transaction_state nts = {id, trx_expiration, 0, 0};
 
@@ -1918,7 +1918,7 @@ namespace eosio {
    }
 
    void dispatch_manager::recv_transaction(const connection_ptr& c, const transaction_metadata_ptr& txn) {
-      node_transaction_state nts = {txn->id, txn->packed_trx->expiration(), 0, c->connection_id};
+      node_transaction_state nts = {txn->id(), txn->packed_trx()->expiration(), 0, c->connection_id};
       add_peer_txn( nts );
    }
 
@@ -2703,7 +2703,7 @@ namespace eosio {
       }
 
       auto ptrx = std::make_shared<transaction_metadata>( trx );
-      const auto& tid = ptrx->id;
+      const auto& tid = ptrx->id();
       peer_dlog( this, "received packed_transaction ${id}", ("id", tid) );
 
       bool have_trx = my_impl->dispatcher->have_txn( tid );
@@ -2713,14 +2713,14 @@ namespace eosio {
          return;
       }
 
-      trx_in_progress_size += calc_trx_size( ptrx->packed_trx );
+      trx_in_progress_size += calc_trx_size( ptrx->packed_trx() );
       connection_wptr weak = shared_from_this();
       my_impl->chain_plug->accept_transaction( ptrx,
             [weak{std::move(weak)}, ptrx](const static_variant<fc::exception_ptr, transaction_trace_ptr>& result) {
          // next (this lambda) called from application thread
          connection_ptr conn = weak.lock();
          if( conn ) {
-            conn->trx_in_progress_size -= calc_trx_size( ptrx->packed_trx );
+            conn->trx_in_progress_size -= calc_trx_size( ptrx->packed_trx() );
          }
          bool accepted = false;
          if (result.contains<fc::exception_ptr>()) {
@@ -2744,7 +2744,7 @@ namespace eosio {
             if( accepted ) {
                my_impl->dispatcher->bcast_transaction( ptrx );
             } else {
-               my_impl->dispatcher->rejected_transaction( ptrx->id, head_blk_num );
+               my_impl->dispatcher->rejected_transaction( ptrx->id(), head_blk_num );
             }
          });
       });
@@ -2960,7 +2960,7 @@ namespace eosio {
 
    // called from application thread
    void net_plugin_impl::transaction_ack(const std::pair<fc::exception_ptr, transaction_metadata_ptr>& results) {
-      const auto& id = results.second->id;
+      const auto& id = results.second->id();
       if (results.first) {
          fc_dlog( logger, "signaled NACK, trx-id = ${id} : ${why}", ("id", id)( "why", results.first->to_detail_string() ) );
 

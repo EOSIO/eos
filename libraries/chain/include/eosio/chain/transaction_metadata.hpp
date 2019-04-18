@@ -24,14 +24,17 @@ using recovery_keys_type = std::pair<fc::microseconds, const flat_set<public_key
  *  packed/unpacked/compressed and recovered keys
  */
 class transaction_metadata {
+   private:
+      const packed_transaction_ptr                               _packed_trx;
+      const transaction_id_type                                  _id;
+      const transaction_id_type                                  _signed_id;
+      mutable std::mutex                                         _signing_keys_future_mtx;
+      mutable signing_keys_future_type                           _signing_keys_future;
+
    public:
-      transaction_id_type                                        id;
-      transaction_id_type                                        signed_id;
-      packed_transaction_ptr                                     packed_trx;
-      signing_keys_future_type                                   signing_keys_future;
-      bool                                                       accepted = false;
-      bool                                                       implicit = false;
-      bool                                                       scheduled = false;
+      bool                                                       accepted = false;  // not thread safe
+      bool                                                       implicit = false;  // not thread safe
+      bool                                                       scheduled = false; // not thread safe
 
       transaction_metadata() = delete;
       transaction_metadata(const transaction_metadata&) = delete;
@@ -40,28 +43,29 @@ class transaction_metadata {
       transaction_metadata operator=(transaction_metadata&&) = delete;
 
       explicit transaction_metadata( const signed_transaction& t, packed_transaction::compression_type c = packed_transaction::none )
-      :id(t.id()), packed_trx(std::make_shared<packed_transaction>(t, c)) {
-         //raw_packed = fc::raw::pack( static_cast<const transaction&>(trx) );
-         signed_id = digest_type::hash(*packed_trx);
+            : _packed_trx( std::make_shared<packed_transaction>( t, c ) )
+            , _id( t.id() )
+            , _signed_id( digest_type::hash( *_packed_trx ) ) {
       }
 
       explicit transaction_metadata( const packed_transaction_ptr& ptrx )
-      :id(ptrx->id()), packed_trx(ptrx) {
-         //raw_packed = fc::raw::pack( static_cast<const transaction&>(trx) );
-         signed_id = digest_type::hash(*packed_trx);
+            : _packed_trx( ptrx )
+            , _id( ptrx->id() )
+            , _signed_id( digest_type::hash( *_packed_trx ) ) {
       }
 
-      // must be called from main application thread. signing_keys_future must be accessed only from main application thread.
-      // next() should only be called on main application thread after future is valid, to avoid dependency on appbase,
-      // it is up to the caller to have next() post to the application thread which makes sure future is only accessed from
-      // application thread and that assignment to future in this method has completed.
-      static signing_keys_future_type
-      start_recover_keys( const transaction_metadata_ptr& mtrx, boost::asio::io_context& thread_pool,
+      const packed_transaction_ptr& packed_trx()const { return _packed_trx; }
+      const transaction_id_type& id()const { return _id; }
+      const transaction_id_type& signed_id()const { return _signed_id; }
+
+      // can be called from any thread. It is recommended that next() immediately post to application thread for
+      // future processing since next() will be called from the thread_pool.
+      static void start_recover_keys( const transaction_metadata_ptr& mtrx, boost::asio::io_context& thread_pool,
                           const chain_id_type& chain_id, fc::microseconds time_limit,
                           std::function<void()> next = std::function<void()>() );
 
-      // start_recover_keys must be called first
-      recovery_keys_type recover_keys( const chain_id_type& chain_id );
+      // start_recover_keys can be called first to begin key recovery
+      recovery_keys_type recover_keys( const chain_id_type& chain_id ) const;
 };
 
 } } // eosio::chain

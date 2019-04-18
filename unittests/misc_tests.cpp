@@ -827,19 +827,13 @@ BOOST_AUTO_TEST_CASE(transaction_metadata_test) { try {
 
       BOOST_CHECK_EQUAL(trx.id(), pkt.id());
       BOOST_CHECK_EQUAL(trx.id(), pkt2.id());
-      BOOST_CHECK_EQUAL(trx.id(), mtrx->id);
-      BOOST_CHECK_EQUAL(trx.id(), mtrx2->id);
+      BOOST_CHECK_EQUAL(trx.id(), mtrx->id());
+      BOOST_CHECK_EQUAL(trx.id(), mtrx2->id());
 
       named_thread_pool thread_pool( "misc", 5 );
 
-      BOOST_CHECK( !mtrx->signing_keys_future.valid() );
-      BOOST_CHECK( !mtrx2->signing_keys_future.valid() );
-
       transaction_metadata::start_recover_keys( mtrx, thread_pool.get_executor(), test.control->get_chain_id(), fc::microseconds::maximum() );
       transaction_metadata::start_recover_keys( mtrx2, thread_pool.get_executor(), test.control->get_chain_id(), fc::microseconds::maximum() );
-
-      BOOST_CHECK( mtrx->signing_keys_future.valid() );
-      BOOST_CHECK( mtrx2->signing_keys_future.valid() );
 
       // no-op
       transaction_metadata::start_recover_keys( mtrx, thread_pool.get_executor(), test.control->get_chain_id(), fc::microseconds::maximum() );
