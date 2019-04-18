@@ -33,6 +33,10 @@ namespace eosio { namespace chain {
          :feature_digest( feature_digest )
          ,activation_block_num( activation_block_num )
          {}
+
+         bool operator==(const activated_protocol_feature& rhs) const {
+            return feature_digest == rhs.feature_digest && activation_block_num == rhs.activation_block_num;
+         }
       };
 
    public:
