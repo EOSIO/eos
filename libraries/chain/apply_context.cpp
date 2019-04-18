@@ -87,6 +87,29 @@ void apply_context::exec_one()
                control.get_wasm_interface().apply( receiver_account->code_hash, receiver_account->vm_type, receiver_account->vm_version, *this );
             } catch( const wasm_exit& ) {}
          }
+
+         if( !privileged && control.is_builtin_activated( builtin_protocol_feature_t::ram_restrictions ) ) {
+            const size_t checktime_interval = 10;
+            size_t counter = 0;
+            bool   not_in_notify_context = (receiver == act->account);
+            const auto end = _account_ram_deltas.end();
+            for( auto itr = _account_ram_deltas.begin(); itr != end; ++itr, ++counter ) {
+               if( counter == checktime_interval ) {
+                  trx_context.checktime();
+                  counter = 0;
+               }
+               if( itr->delta > 0 && itr->account != receiver ) {
+                  EOS_ASSERT( not_in_notify_context, unauthorized_ram_usage_increase,
+                              "unprivileged contract cannot increase RAM usage of another account within a notify context: ${account}",
+                              ("account", itr->account)
+                  );
+                  EOS_ASSERT( has_authorization( itr->account ), unauthorized_ram_usage_increase,
+                              "unprivileged contract cannot increase RAM usage of another account that has not authorized the action: ${account}",
+                              ("account", itr->account)
+                  );
+               }
+            }
+         }
       } FC_RETHROW_EXCEPTIONS( warn, "pending console output: ${console}", ("console", _pending_console_output) )
    } catch( const fc::exception& e ) {
       action_trace& trace = trx_context.get_action_trace( action_ordinal );
@@ -373,7 +396,17 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
 
    if( !control.skip_auth_check() && !privileged ) { // Do not need to check authorization if replayng irreversible block or if contract is privileged
       if( payer != receiver ) {
-         require_authorization(payer); /// uses payer's storage
+         if( control.is_builtin_activated( builtin_protocol_feature_t::ram_restrictions ) ) {
+            EOS_ASSERT( receiver == act->account, action_validate_exception,
+                        "cannot bill RAM usage of deferred transactions to another account within notify context"
+            );
+            EOS_ASSERT( has_authorization( payer ), action_validate_exception,
+                        "cannot bill RAM usage of deferred transaction to another account that has not authorized the action: ${payer}",
+                        ("payer", payer)
+            );
+         } else {
+            require_authorization(payer); /// uses payer's storage
+         }
       }
 
       // Originally this code bypassed authorization checks if a contract was deferring only actions to itself.
@@ -472,8 +505,12 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
       } );
    }
 
-   EOS_ASSERT( control.is_ram_billing_in_notify_allowed() || (receiver == act->account) || (receiver == payer) || privileged,
-               subjective_block_production_exception, "Cannot charge RAM to other accounts during notify." );
+   EOS_ASSERT( control.is_builtin_activated( builtin_protocol_feature_t::ram_restrictions )
+               || control.is_ram_billing_in_notify_allowed()
+               || (receiver == act->account) || (receiver == payer) || privileged,
+               subjective_block_production_exception,
+               "Cannot charge RAM to other accounts during notify."
+   );
    add_ram_usage( payer, (config::billable_size_v<generated_transaction_object> + trx_size) );
 }
 
@@ -549,7 +586,9 @@ bytes apply_context::get_packed_transaction() {
 
 void apply_context::update_db_usage( const account_name& payer, int64_t delta ) {
    if( delta > 0 ) {
-      if( !(privileged || payer == account_name(receiver)) ) {
+      if( !(privileged || payer == account_name(receiver)
+               || control.is_builtin_activated( builtin_protocol_feature_t::ram_restrictions ) ) )
+      {
          EOS_ASSERT( control.is_ram_billing_in_notify_allowed() || (receiver == act->account),
                      subjective_block_production_exception, "Cannot charge RAM to other accounts during notify." );
          require_authorization( payer );

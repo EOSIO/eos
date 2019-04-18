@@ -2909,7 +2909,7 @@ bool controller::is_producing_block()const {
 }
 
 bool controller::is_ram_billing_in_notify_allowed()const {
-   return !is_producing_block() || my->conf.allow_ram_billing_in_notify;
+   return my->conf.disable_all_subjective_mitigations || !is_producing_block() || my->conf.allow_ram_billing_in_notify;
 }
 
 void controller::validate_expiration( const transaction& trx )const { try {

@@ -23,7 +23,8 @@ enum class builtin_protocol_feature_t : uint32_t {
    restrict_action_to_self,
    only_bill_first_authorizer,
    forward_setcode,
-   get_sender
+   get_sender,
+   ram_restrictions
 };
 
 struct protocol_feature_subjective_restrictions {

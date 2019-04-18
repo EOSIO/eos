@@ -589,25 +589,31 @@ BOOST_FIXTURE_TEST_CASE(require_notice_tests, TESTER) { try {
 
    } FC_LOG_AND_RETHROW() }
 
-BOOST_FIXTURE_TEST_CASE(ram_billing_in_notify_tests, TESTER) { try {
-   produce_blocks(2);
-   create_account( N(testapi) );
-   create_account( N(testapi2) );
-   produce_blocks(10);
-   set_code( N(testapi), contracts::test_api_wasm() );
-   produce_blocks(1);
-   set_code( N(testapi2), contracts::test_api_wasm() );
-   produce_blocks(1);
+BOOST_AUTO_TEST_CASE(ram_billing_in_notify_tests) { try {
+   validating_tester chain( validating_tester::default_config() );
+   chain.execute_setup_policy( setup_policy::preactivate_feature_and_new_bios );
 
-   BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( *this, "test_action", "test_ram_billing_in_notify", fc::raw::pack( ((unsigned __int128)N(testapi2) << 64) | N(testapi) ) ),
-                          subjective_block_production_exception, fc_exception_message_is("Cannot charge RAM to other accounts during notify.") );
+   chain.produce_blocks(2);
+   chain.create_account( N(testapi) );
+   chain.create_account( N(testapi2) );
+   chain.produce_blocks(10);
+   chain.set_code( N(testapi), contracts::test_api_wasm() );
+   chain.produce_blocks(1);
+   chain.set_code( N(testapi2), contracts::test_api_wasm() );
+   chain.produce_blocks(1);
+
+   BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( chain, "test_action", "test_ram_billing_in_notify",
+                                              fc::raw::pack( ((unsigned __int128)N(testapi2) << 64) | N(testapi) ) ),
+                          subjective_block_production_exception,
+                          fc_exception_message_is("Cannot charge RAM to other accounts during notify.")
+   );
 
 
-   CALL_TEST_FUNCTION( *this, "test_action", "test_ram_billing_in_notify", fc::raw::pack( ((unsigned __int128)N(testapi2) << 64) | 0 ) );
+   CALL_TEST_FUNCTION( chain, "test_action", "test_ram_billing_in_notify", fc::raw::pack( ((unsigned __int128)N(testapi2) << 64) | 0 ) );
 
-   CALL_TEST_FUNCTION( *this, "test_action", "test_ram_billing_in_notify", fc::raw::pack( ((unsigned __int128)N(testapi2) << 64) | N(testapi2) ) );
+   CALL_TEST_FUNCTION( chain, "test_action", "test_ram_billing_in_notify", fc::raw::pack( ((unsigned __int128)N(testapi2) << 64) | N(testapi2) ) );
 
-   BOOST_REQUIRE_EQUAL( validate(), true );
+   BOOST_REQUIRE_EQUAL( chain.validate(), true );
 } FC_LOG_AND_RETHROW() }
 
 /*************************************************************************************
@@ -1251,7 +1257,7 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
       // Payer is alice in this case, this tx should fail since we don't have the authorization of alice
       dtt_action dtt_act1;
       dtt_act1.payer = N(alice);
-      BOOST_CHECK_THROW(CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_tx_with_dtt_action", fc::raw::pack(dtt_act1)), missing_auth_exception);
+      BOOST_CHECK_THROW(CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_tx_with_dtt_action", fc::raw::pack(dtt_act1)), action_validate_exception);
 
       // Send a tx which in turn sends a deferred tx with the deferred tx's receiver != this tx receiver
       // This will include the authorization of the receiver, and impose any related delay associated with the authority

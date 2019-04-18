@@ -1,0 +1,143 @@
+{
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT ",
+    "version": "eosio::abi/1.1",
+    "types": [],
+    "structs": [
+        {
+            "name": "data",
+            "base": "",
+            "fields": [
+                {
+                    "name": "key",
+                    "type": "uint64"
+                },
+                {
+                    "name": "value",
+                    "type": "bytes"
+                }
+            ]
+        },
+        {
+            "name": "noop",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "notifydefer",
+            "base": "",
+            "fields": [
+                {
+                    "name": "acctonotify",
+                    "type": "name"
+                },
+                {
+                    "name": "senderid",
+                    "type": "uint64"
+                },
+                {
+                    "name": "payer",
+                    "type": "name"
+                }
+            ]
+        },
+        {
+            "name": "notifysetdat",
+            "base": "",
+            "fields": [
+                {
+                    "name": "acctonotify",
+                    "type": "name"
+                },
+                {
+                    "name": "len1",
+                    "type": "uint32"
+                },
+                {
+                    "name": "len2",
+                    "type": "uint32"
+                },
+                {
+                    "name": "payer",
+                    "type": "name"
+                }
+            ]
+        },
+        {
+            "name": "senddefer",
+            "base": "",
+            "fields": [
+                {
+                    "name": "senderid",
+                    "type": "uint64"
+                },
+                {
+                    "name": "payer",
+                    "type": "name"
+                }
+            ]
+        },
+        {
+            "name": "setdata",
+            "base": "",
+            "fields": [
+                {
+                    "name": "len1",
+                    "type": "uint32"
+                },
+                {
+                    "name": "len2",
+                    "type": "uint32"
+                },
+                {
+                    "name": "payer",
+                    "type": "name"
+                }
+            ]
+        }
+    ],
+    "actions": [
+        {
+            "name": "noop",
+            "type": "noop",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "notifydefer",
+            "type": "notifydefer",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "notifysetdat",
+            "type": "notifysetdat",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "senddefer",
+            "type": "senddefer",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "setdata",
+            "type": "setdata",
+            "ricardian_contract": ""
+        }
+    ],
+    "tables": [
+        {
+            "name": "tablea",
+            "type": "data",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        },
+        {
+            "name": "tableb",
+            "type": "data",
+            "index_type": "i64",
+            "key_names": [],
+            "key_types": []
+        }
+    ],
+    "ricardian_clauses": [],
+    "variants": []
+}
