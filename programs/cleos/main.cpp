@@ -252,9 +252,9 @@ fc::variant call( const std::string& url,
    }
    catch(boost::system::system_error& e) {
       if(url == ::url)
-         std::cerr << localized("Failed to connect to nodeos at ${u}; is nodeos running?", ("u", url)) << std::endl;
+         std::cerr << localized("Failed to connect to ${n} at ${u}; is ${n} running?", ("n", node_executable_name)("u", url)) << std::endl;
       else if(url == ::wallet_url)
-         std::cerr << localized("Failed to connect to keosd at ${u}; is keosd running?", ("u", url)) << std::endl;
+         std::cerr << localized("Failed to connect to ${k} at ${u}; is ${k} running?", ("k", key_store_executable_name)("u", url)) << std::endl;
       throw connection_exception(fc::log_messages{FC_LOG_MESSAGE(error, e.what())});
    }
 }
@@ -876,8 +876,8 @@ void try_local_port(uint32_t duration) {
    auto start_time = duration_cast<std::chrono::milliseconds>( system_clock::now().time_since_epoch() ).count();
    while ( !local_port_used()) {
       if (duration_cast<std::chrono::milliseconds>( system_clock::now().time_since_epoch()).count() - start_time > duration ) {
-         std::cerr << "Unable to connect to keosd, if keosd is running please kill the process and try again.\n";
-         throw connection_exception(fc::log_messages{FC_LOG_MESSAGE(error, "Unable to connect to keosd")});
+         std::cerr << "Unable to connect to " << key_store_executable_name << ", if " << key_store_executable_name << " is running please kill the process and try again.\n";
+         throw connection_exception(fc::log_messages{FC_LOG_MESSAGE(error, "Unable to connect to ${k}", ("k", key_store_executable_name))});
       }
    }
 }
@@ -935,7 +935,7 @@ void ensure_keosd_running(CLI::App* app) {
         }
     } else {
         std::cerr << "No wallet service listening on "
-                  << ". Cannot automatically start keosd because keosd was not found." << std::endl;
+                  << ". Cannot automatically start " << key_store_executable_name << " because " << key_store_executable_name << " was not found." << std::endl;
     }
 }
 
@@ -2331,17 +2331,17 @@ int main( int argc, char** argv ) {
 
    CLI::App app{"Command Line Interface to EOSIO Client"};
    app.require_subcommand();
-   app.add_option( "-H,--host", obsoleted_option_host_port, localized("the host where nodeos is running") )->group("hidden");
-   app.add_option( "-p,--port", obsoleted_option_host_port, localized("the port where nodeos is running") )->group("hidden");
-   app.add_option( "--wallet-host", obsoleted_option_host_port, localized("the host where keosd is running") )->group("hidden");
-   app.add_option( "--wallet-port", obsoleted_option_host_port, localized("the port where keosd is running") )->group("hidden");
+   app.add_option( "-H,--host", obsoleted_option_host_port, localized("the host where ${n} is running", ("n", node_executable_name)) )->group("hidden");
+   app.add_option( "-p,--port", obsoleted_option_host_port, localized("the port where ${n} is running", ("n", node_executable_name)) )->group("hidden");
+   app.add_option( "--wallet-host", obsoleted_option_host_port, localized("the host where ${k} is running", ("k", key_store_executable_name)) )->group("hidden");
+   app.add_option( "--wallet-port", obsoleted_option_host_port, localized("the port where ${k} is running", ("k", key_store_executable_name)) )->group("hidden");
 
-   app.add_option( "-u,--url", url, localized("the http/https URL where nodeos is running"), true );
-   app.add_option( "--wallet-url", wallet_url, localized("the http/https URL where keosd is running"), true );
+   app.add_option( "-u,--url", url, localized("the http/https URL where ${n} is running", ("n", node_executable_name)), true );
+   app.add_option( "--wallet-url", wallet_url, localized("the http/https URL where ${k} is running", ("k", key_store_executable_name)), true );
 
    app.add_option( "-r,--header", header_opt_callback, localized("pass specific HTTP header; repeat this option to pass multiple headers"));
    app.add_flag( "-n,--no-verify", no_verify, localized("don't verify peer certificate when using HTTPS"));
-   app.add_flag( "--no-auto-keosd", no_auto_keosd, localized("don't automatically launch a keosd if one is not currently running"));
+   app.add_flag( "--no-auto-" + string(key_store_executable_name), no_auto_keosd, localized("don't automatically launch a ${k} if one is not currently running", ("k", key_store_executable_name)));
    app.set_callback([&app]{ ensure_keosd_running(&app);});
 
    app.add_flag( "-v,--verbose", verbose, localized("output verbose errors and action console output"));
@@ -2398,7 +2398,7 @@ int main( int argc, char** argv ) {
    bool pack_action_data_flag = false;
    auto pack_transaction = convert->add_subcommand("pack_transaction", localized("From plain signed json to packed form"));
    pack_transaction->add_option("transaction", plain_signed_transaction_json, localized("The plain signed json (string)"))->required();
-   pack_transaction->add_flag("--pack-action-data", pack_action_data_flag, localized("Pack all action data within transaction, needs interaction with nodeos"));
+   pack_transaction->add_flag("--pack-action-data", pack_action_data_flag, localized("Pack all action data within transaction, needs interaction with ${n}", ("n", node_executable_name)));
    pack_transaction->set_callback([&] {
       fc::variant trx_var;
       try {
@@ -2421,7 +2421,7 @@ int main( int argc, char** argv ) {
    bool unpack_action_data_flag = false;
    auto unpack_transaction = convert->add_subcommand("unpack_transaction", localized("From packed to plain signed json form"));
    unpack_transaction->add_option("transaction", packed_transaction_json, localized("The packed transaction json (string containing packed_trx and optionally compression fields)"))->required();
-   unpack_transaction->add_flag("--unpack-action-data", unpack_action_data_flag, localized("Unpack all action data within transaction, needs interaction with nodeos"));
+   unpack_transaction->add_flag("--unpack-action-data", unpack_action_data_flag, localized("Unpack all action data within transaction, needs interaction with ${n}", ("n", node_executable_name)));
    unpack_transaction->set_callback([&] {
       fc::variant packed_trx_var;
       packed_transaction packed_trx;
@@ -2541,7 +2541,7 @@ int main( int argc, char** argv ) {
          code_hash = old_result["code_hash"].as_string();
          if(code_as_wasm) {
             wasm = old_result["wasm"].as_string();
-            std::cout << localized("Warning: communicating to older nodeos which returns malformed binary wasm") << std::endl;
+            std::cout << localized("Warning: communicating to older ${n} which returns malformed binary wasm", ("n", node_executable_name)) << std::endl;
          }
          else
             wast = old_result["wast"].as_string();
@@ -3270,7 +3270,7 @@ int main( int argc, char** argv ) {
       std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
 
-   auto stopKeosd = wallet->add_subcommand("stop", localized("Stop keosd."), false);
+   auto stopKeosd = wallet->add_subcommand("stop", localized("Stop ${k}.", ("k", key_store_executable_name)), false);
    stopKeosd->set_callback([] {
       const auto& v = call(wallet_url, keosd_stop);
       if ( !v.is_object() || v.get_object().size() != 0 ) { //on success keosd responds with empty object
@@ -3299,7 +3299,7 @@ int main( int argc, char** argv ) {
       fc::optional<chain_id_type> chain_id;
 
       if( str_chain_id.size() == 0 ) {
-         ilog( "grabbing chain_id from nodeos" );
+         ilog( "grabbing chain_id from ${n}", ("n", node_executable_name) );
          auto info = get_info();
          chain_id = info.chain_id;
       } else {
