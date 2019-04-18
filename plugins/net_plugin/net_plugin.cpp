@@ -2081,10 +2081,6 @@ namespace eosio {
        ds.write( header, header_size );
        fc::raw::pack( ds, msg );
 
-       if (msg.contains<pbft_new_view>()) {
-           wlog("new view chars ${s}", ("s", send_buffer));
-       }
-
        return send_buffer;
    }
 
@@ -3003,7 +2999,6 @@ namespace eosio {
     }
 
     void net_plugin_impl::pbft_outgoing_new_view(const pbft_new_view &msg) {
-        ilog( "attempt to send new view: ${n}, from ${v}", ("n", msg)("v", msg.public_key));
         auto added = maybe_add_pbft_cache(msg.uuid);
         if (!added) return;
 
@@ -3011,7 +3006,6 @@ namespace eosio {
         if (!pcc.pbft_db.is_valid_new_view(msg)) return;
 
         bcast_pbft_msg(msg);
-        ilog( "sent new view: ${n}, from ${v}", ("n", msg)("v", msg.public_key));
     }
 
     void net_plugin_impl::pbft_outgoing_checkpoint(const pbft_checkpoint &msg) {
@@ -3096,7 +3090,6 @@ namespace eosio {
     }
 
     void net_plugin_impl::handle_message( connection_ptr c, const pbft_new_view &msg) {
-       ilog( "received new view: ${n}, from ${v}", ("n", msg)("v", msg.public_key));
 
        if (!is_pbft_msg_valid(msg)) return;
 
@@ -3107,7 +3100,7 @@ namespace eosio {
        if (!pcc.pbft_db.is_valid_new_view(msg)) return;
 
        forward_pbft_msg(c, msg);
-       ilog( "forwarded new view: ${n}, from ${v}", ("n", msg)("v", msg.public_key));
+       fc_ilog( logger, "received new view: ${n}, from ${v}", ("n", msg)("v", msg.public_key));
 
        pbft_incoming_new_view_channel.publish(msg);
     }
