@@ -30,61 +30,20 @@
 # https://github.com/EOSIO/eos/blob/master/LICENSE
 ##########################################################################
 
-VERSION=2.2 # Build script version
+VERSION=2.3 # Build script version
+
+# defaults for command-line arguments
 CMAKE_BUILD_TYPE=Release
 DOXYGEN=false
 ENABLE_COVERAGE_TESTING=false
 CORE_SYMBOL_NAME="SYS"
-START_MAKE=true
+NONINTERACTIVE=0
+PREFIX=$HOME
 
 TIME_BEGIN=$( date -u +%s )
 txtbld=$(tput bold)
 bldred=${txtbld}$(tput setaf 1)
 txtrst=$(tput sgr0)
-
-export SRC_LOCATION=${HOME}/src
-export OPT_LOCATION=${HOME}/opt
-export VAR_LOCATION=${HOME}/var
-export ETC_LOCATION=${HOME}/etc
-export BIN_LOCATION=${HOME}/bin
-export DATA_LOCATION=${HOME}/data
-export CMAKE_VERSION_MAJOR=3
-export CMAKE_VERSION_MINOR=13
-export CMAKE_VERSION_PATCH=2
-export CMAKE_VERSION=${CMAKE_VERSION_MAJOR}.${CMAKE_VERSION_MINOR}.${CMAKE_VERSION_PATCH}
-export MONGODB_VERSION=3.6.3
-export MONGODB_ROOT=${OPT_LOCATION}/mongodb-${MONGODB_VERSION}
-export MONGODB_CONF=${ETC_LOCATION}/mongod.conf
-export MONGODB_LOG_LOCATION=${VAR_LOCATION}/log/mongodb
-export MONGODB_LINK_LOCATION=${OPT_LOCATION}/mongodb
-export MONGODB_DATA_LOCATION=${DATA_LOCATION}/mongodb
-export MONGO_C_DRIVER_VERSION=1.13.0
-export MONGO_C_DRIVER_ROOT=${SRC_LOCATION}/mongo-c-driver-${MONGO_C_DRIVER_VERSION}
-export MONGO_CXX_DRIVER_VERSION=3.4.0
-export MONGO_CXX_DRIVER_ROOT=${SRC_LOCATION}/mongo-cxx-driver-r${MONGO_CXX_DRIVER_VERSION}
-export BOOST_VERSION_MAJOR=1
-export BOOST_VERSION_MINOR=67
-export BOOST_VERSION_PATCH=0
-export BOOST_VERSION=${BOOST_VERSION_MAJOR}_${BOOST_VERSION_MINOR}_${BOOST_VERSION_PATCH}
-export BOOST_ROOT=${SRC_LOCATION}/boost_${BOOST_VERSION}
-export BOOST_LINK_LOCATION=${OPT_LOCATION}/boost
-export LLVM_VERSION=release_40
-export LLVM_ROOT=${OPT_LOCATION}/llvm
-export LLVM_DIR=${LLVM_ROOT}/lib/cmake/llvm
-export DOXYGEN_VERSION=1_8_14
-export DOXYGEN_ROOT=${SRC_LOCATION}/doxygen-${DOXYGEN_VERSION}
-export TINI_VERSION=0.18.0
-export DISK_MIN=5
-
-# Setup directories
-mkdir -p $SRC_LOCATION
-mkdir -p $OPT_LOCATION
-mkdir -p $VAR_LOCATION
-mkdir -p $BIN_LOCATION
-mkdir -p $VAR_LOCATION/log
-mkdir -p $ETC_LOCATION
-mkdir -p $MONGODB_LOG_LOCATION
-mkdir -p $MONGODB_DATA_LOCATION
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 REPO_ROOT="${SCRIPT_DIR}/.."
@@ -101,14 +60,21 @@ fi
 
 function usage()
 {
-   printf "Usage: %s \\n[Build Option -o <Debug|Release|RelWithDebInfo|MinSizeRel>] \\n[CodeCoverage -c] \\n[Doxygen -d] \\n[CoreSymbolName -s <1-7 characters>] \\n[Avoid Compiling -a]\\n[Noninteractive -y]\\n\\n" "$0" 1>&2
+    cat >&2 <<EOT
+Usage: $0 OPTION...
+  -o TYPE     Build <Debug|Release|RelWithDebInfo|MinSizeRel> (default: Release)
+  -p DIR      Prefix directory for dependencies & EOS install (default: $HOME)
+  -b DIR      Use pre-built boost in DIR
+  -c          Enable Code Coverage
+  -d          Generate Doxygen
+  -s NAME     Core Symbol Name <1-7 characters> (default: SYS)
+  -y          Noninteractive mode (this script)
+EOT
    exit 1
 }
 
-NONINTERACTIVE=0
-
 if [ $# -ne 0 ]; then
-   while getopts ":cdo:s:ahy" opt; do
+   while getopts ":cdo:s:p:b:hy" opt; do
       case "${opt}" in
          o )
             options=( "Debug" "Release" "RelWithDebInfo" "MinSizeRel" )
@@ -134,10 +100,13 @@ if [ $# -ne 0 ]; then
             else
                CORE_SYMBOL_NAME="${OPTARG}"
             fi
-         ;;
-         a)
-            START_MAKE=false
-         ;;
+            ;;
+         b)
+             BOOST_ARG=$OPTARG
+             ;;
+         p)
+             PREFIX=$OPTARG
+             ;;
          h)
             usage
             exit 1
@@ -170,6 +139,42 @@ if [ ! -d "${REPO_ROOT}/.git" ]; then
    exit 1
 fi
 
+export CMAKE_VERSION_MAJOR=3
+export CMAKE_VERSION_MINOR=13
+export CMAKE_VERSION_PATCH=2
+export CMAKE_VERSION=${CMAKE_VERSION_MAJOR}.${CMAKE_VERSION_MINOR}.${CMAKE_VERSION_PATCH}
+
+export SRC_LOCATION=$PREFIX/src
+export OPT_LOCATION=$PREFIX/opt
+export VAR_LOCATION=$PREFIX/var
+export ETC_LOCATION=$PREFIX/etc
+export BIN_LOCATION=$PREFIX/bin
+export DATA_LOCATION=$PREFIX/data
+
+export MONGODB_VERSION=3.6.3
+export MONGODB_ROOT=${OPT_LOCATION}/mongodb-${MONGODB_VERSION}
+export MONGODB_CONF=${ETC_LOCATION}/mongod.conf
+export MONGODB_LOG_LOCATION=${VAR_LOCATION}/log/mongodb
+export MONGODB_LINK_LOCATION=${OPT_LOCATION}/mongodb
+export MONGODB_DATA_LOCATION=${DATA_LOCATION}/mongodb
+export MONGO_C_DRIVER_VERSION=1.13.0
+export MONGO_C_DRIVER_ROOT=${SRC_LOCATION}/mongo-c-driver-${MONGO_C_DRIVER_VERSION}
+export MONGO_CXX_DRIVER_VERSION=3.4.0
+export MONGO_CXX_DRIVER_ROOT=${SRC_LOCATION}/mongo-cxx-driver-r${MONGO_CXX_DRIVER_VERSION}
+export BOOST_VERSION_MAJOR=1
+export BOOST_VERSION_MINOR=67
+export BOOST_VERSION_PATCH=0
+export BOOST_VERSION=${BOOST_VERSION_MAJOR}_${BOOST_VERSION_MINOR}_${BOOST_VERSION_PATCH}
+export BOOST_ROOT=${BOOST_ARG:-${SRC_LOCATION}/boost_${BOOST_VERSION}}
+export BOOST_LINK_LOCATION=${OPT_LOCATION}/boost
+export LLVM_VERSION=release_40
+export LLVM_ROOT=${OPT_LOCATION}/llvm
+export LLVM_DIR=${LLVM_ROOT}/lib/cmake/llvm
+export DOXYGEN_VERSION=1_8_14
+export DOXYGEN_ROOT=${SRC_LOCATION}/doxygen-${DOXYGEN_VERSION}
+export TINI_VERSION=0.18.0
+export DISK_MIN=5
+
 cd $REPO_ROOT
 
 STALE_SUBMODS=$(( $(git submodule status --recursive | grep -c "^[+\-]") ))
@@ -178,6 +183,16 @@ if [ $STALE_SUBMODS -gt 0 ]; then
    printf "Please run the command 'git submodule update --init --recursive'.\\n"
    exit 1
 fi
+
+# Setup directories
+mkdir -p $SRC_LOCATION
+mkdir -p $OPT_LOCATION
+mkdir -p $VAR_LOCATION
+mkdir -p $BIN_LOCATION
+mkdir -p $VAR_LOCATION/log
+mkdir -p $ETC_LOCATION
+mkdir -p $MONGODB_LOG_LOCATION
+mkdir -p $MONGODB_DATA_LOCATION
 
 printf "\\nBeginning build version: %s\\n" "${VERSION}"
 printf "%s\\n" "$( date -u )"
@@ -193,7 +208,7 @@ export CMAKE=$(command -v cmake 2>/dev/null)
 
 if [ "$ARCH" == "Linux" ]; then
    # Check if cmake is already installed or not and use source install location
-   if [ -z $CMAKE ]; then export CMAKE=$HOME/bin/cmake; fi
+   if [ -z $CMAKE ]; then export CMAKE=$PREFIX/bin/cmake; fi
    export OS_NAME=$( cat /etc/os-release | grep ^NAME | cut -d'=' -f2 | sed 's/\"//gI' )
    OPENSSL_ROOT_DIR=/usr/include/openssl
    if [ ! -e /etc/os-release ]; then
@@ -256,7 +271,7 @@ if [ "$ARCH" == "Darwin" ]; then
    export OS_NAME=MacOSX
    # opt/gettext: cleos requires Intl, which requires gettext; it's keg only though and we don't want to force linking: https://github.com/EOSIO/eos/issues/2240#issuecomment-396309884
    # HOME/lib/cmake: mongo_db_plugin.cpp:25:10: fatal error: 'bsoncxx/builder/basic/kvp.hpp' file not found
-   LOCAL_CMAKE_FLAGS="-DCMAKE_PREFIX_PATH=/usr/local/opt/gettext;$HOME/lib/cmake ${LOCAL_CMAKE_FLAGS}" 
+   LOCAL_CMAKE_FLAGS="-DCMAKE_PREFIX_PATH=/usr/local/opt/gettext;$HOME/lib/cmake ${LOCAL_CMAKE_FLAGS}"
    FILE="${REPO_ROOT}/scripts/eosio_build_darwin.sh"
    CXX_COMPILER=clang++
    C_COMPILER=clang
@@ -283,6 +298,7 @@ $CMAKE -DCMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE}" -DCMAKE_CXX_COMPILER="${CXX_COMP
    -DCMAKE_C_COMPILER="${C_COMPILER}" -DCORE_SYMBOL_NAME="${CORE_SYMBOL_NAME}" \
    -DOPENSSL_ROOT_DIR="${OPENSSL_ROOT_DIR}" -DBUILD_MONGO_DB_PLUGIN=true \
    -DENABLE_COVERAGE_TESTING="${ENABLE_COVERAGE_TESTING}" -DBUILD_DOXYGEN="${DOXYGEN}" \
+   -DCMAKE_PREFIX_PATH=$PREFIX \
    -DCMAKE_INSTALL_PREFIX=$OPT_LOCATION/eosio $LOCAL_CMAKE_FLAGS "${REPO_ROOT}"
 if [ $? -ne 0 ]; then exit -1; fi
 make -j"${JOBS}"
@@ -306,7 +322,7 @@ printf "========================================================================
 printf "(Optional) Testing Instructions:\\n"
 print_instructions
 printf "${BIN_LOCATION}/mongod --dbpath ${MONGODB_DATA_LOCATION} -f ${MONGODB_CONF} --logpath ${MONGODB_LOG_LOCATION}/mongod.log &\\n"
-printf "cd ./build && PATH=\$PATH:$HOME/opt/mongodb/bin make test\\n" # PATH is set as currently 'mongo' binary is required for the mongodb test
+printf "cd ./build && PATH=\$PATH:$MONGODB_LINK_LOCATION/bin make test\\n" # PATH is set as currently 'mongo' binary is required for the mongodb test
 printf "${txtrst}==============================================================================================\\n"
 printf "For more information:\\n"
 printf "EOSIO website: https://eos.io\\n"
@@ -314,4 +330,3 @@ printf "EOSIO Telegram channel @ https://t.me/EOSProject\\n"
 printf "EOSIO resources: https://eos.io/resources/\\n"
 printf "EOSIO Stack Exchange: https://eosio.stackexchange.com\\n"
 printf "EOSIO wiki: https://github.com/EOSIO/eos/wiki\\n\\n\\n"
-

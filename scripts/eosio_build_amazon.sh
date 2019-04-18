@@ -9,16 +9,16 @@ DISK_TOTAL=$(( DISK_TOTAL_KB / 1048576 ))
 DISK_AVAIL=$(( DISK_AVAIL_KB / 1048576 ))
 
 if [[ "${OS_NAME}" == "Amazon Linux AMI" ]]; then # Amazonlinux1
-	DEP_ARRAY=( 
+	DEP_ARRAY=(
 		sudo procps util-linux which gcc72 gcc72-c++ autoconf automake libtool make doxygen graphviz \
 		bzip2 bzip2-devel openssl-devel gmp gmp-devel libstdc++72 python27 python27-devel python36 python36-devel \
 		libedit-devel ncurses-devel swig wget file libcurl-devel libusb1-devel
 	)
 else # Amazonlinux2
-	DEP_ARRAY=( 
+	DEP_ARRAY=(
 		git procps-ng util-linux gcc gcc-c++ autoconf automake libtool make bzip2 \
 		bzip2-devel openssl-devel gmp-devel libstdc++ libcurl-devel libusbx-devel \
-		python3 python3-devel python-devel libedit-devel doxygen graphviz 
+		python3 python3-devel python-devel libedit-devel doxygen graphviz
 	)
 fi
 
@@ -125,7 +125,7 @@ if [ ! -e $CMAKE ]; then
 	curl -LO https://cmake.org/files/v$CMAKE_VERSION_MAJOR.$CMAKE_VERSION_MINOR/cmake-$CMAKE_VERSION.tar.gz \
 	&& tar -xzf cmake-$CMAKE_VERSION.tar.gz \
 	&& cd cmake-$CMAKE_VERSION \
-	&& ./bootstrap --prefix=$HOME \
+	&& ./bootstrap --prefix=$PREFIX \
 	&& make -j"${JOBS}" \
 	&& make install \
 	&& cd .. \
@@ -142,7 +142,7 @@ printf "\\n"
 
 
 printf "Checking Boost library (${BOOST_VERSION}) installation...\\n"
-BOOSTVERSION=$( grep "#define BOOST_VERSION" "$HOME/opt/boost/include/boost/version.hpp" 2>/dev/null | tail -1 | tr -s ' ' | cut -d\  -f3 )
+BOOSTVERSION=$( grep "#define BOOST_VERSION" "$BOOST_ROOT/include/boost/version.hpp" 2>/dev/null | tail -1 | tr -s ' ' | cut -d\  -f3 )
 if [ "${BOOSTVERSION}" != "${BOOST_VERSION_MAJOR}0${BOOST_VERSION_MINOR}0${BOOST_VERSION_PATCH}" ]; then
 	printf "Installing Boost library...\\n"
 	curl -LO https://dl.bintray.com/boostorg/release/${BOOST_VERSION_MAJOR}.${BOOST_VERSION_MINOR}.${BOOST_VERSION_PATCH}/source/boost_$BOOST_VERSION.tar.bz2 \
@@ -193,7 +193,7 @@ if [ ! -d $MONGO_C_DRIVER_ROOT ]; then
 	&& cd mongo-c-driver-$MONGO_C_DRIVER_VERSION \
 	&& mkdir -p cmake-build \
 	&& cd cmake-build \
-	&& $CMAKE -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$HOME -DENABLE_BSON=ON -DENABLE_SSL=OPENSSL -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF -DENABLE_STATIC=ON .. \
+	&& $CMAKE -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$PREFIX -DENABLE_BSON=ON -DENABLE_SSL=OPENSSL -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF -DENABLE_STATIC=ON .. \
 	&& make -j"${JOBS}" \
 	&& make install \
 	&& cd ../.. \
@@ -210,7 +210,7 @@ if [ ! -d $MONGO_CXX_DRIVER_ROOT ]; then
 	curl -L https://github.com/mongodb/mongo-cxx-driver/archive/r$MONGO_CXX_DRIVER_VERSION.tar.gz -o mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION.tar.gz \
 	&& tar -xzf mongo-cxx-driver-r${MONGO_CXX_DRIVER_VERSION}.tar.gz \
 	&& cd mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION/build \
-	&& $CMAKE -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$HOME .. \
+	&& $CMAKE -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$PREFIX .. \
 	&& make -j"${JOBS}" VERBOSE=1 \
 	&& make install \
 	&& cd ../.. \
