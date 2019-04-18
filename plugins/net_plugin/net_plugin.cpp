@@ -553,6 +553,7 @@ namespace eosio {
       deque<queued_write> _out_queue;
 
    public:
+       //used for pbft msgs sending only
        void push_to_out_queue( const queued_write& m) {
            _out_queue.emplace_back( m );
        }
@@ -678,6 +679,8 @@ namespace eosio {
                            bool trigger_send, go_away_reason close_after_send,
                            bool to_sync_queue = false);
       void enqueue_pbft( const std::shared_ptr<std::vector<char>>& m, const time_point_sec deadline);
+      bool pbft_read_to_send();
+
       void cancel_sync(go_away_reason);
       void flush_queues();
       bool enqueue_sync_block();
@@ -695,7 +698,7 @@ namespace eosio {
                        std::function<void(boost::system::error_code, std::size_t)> callback,
                        bool to_sync_queue = false);
       void do_queue_write();
-      void do_queue_write_from_pbft_queue(std::vector<boost::asio::const_buffer> &bufs);
+      void fill_out_buffer_with_pbft_queue(std::vector<boost::asio::const_buffer> &bufs);
 
       void send_p2p_request(bool discoverable);
       void send_p2p_response(bool discoverable,string p2p_peer_list);
@@ -1103,8 +1106,12 @@ namespace eosio {
       }
    }
 
+   bool connection::pbft_read_to_send() {
+       return !pbft_queue.empty() && buffer_queue.is_out_queue_empty();
+   }
+
    void connection::do_queue_write() {
-      if( !(buffer_queue.ready_to_send() || (!pbft_queue.empty() && buffer_queue.is_out_queue_empty())))
+      if( !(buffer_queue.ready_to_send() || pbft_read_to_send()) )
           return;
 
       connection_wptr c(shared_from_this());
@@ -1114,9 +1121,9 @@ namespace eosio {
          return;
       }
       std::vector<boost::asio::const_buffer> bufs;
-      buffer_queue.fill_out_buffer( bufs );
 
-      do_queue_write_from_pbft_queue( bufs );
+      buffer_queue.fill_out_buffer( bufs );
+      fill_out_buffer_with_pbft_queue( bufs );
 
       boost::asio::async_write(*socket, bufs, [c](boost::system::error_code ec, std::size_t w) {
             try {
@@ -1159,7 +1166,7 @@ namespace eosio {
          });
    }
 
-    void connection::do_queue_write_from_pbft_queue(std::vector<boost::asio::const_buffer> &bufs){
+    void connection::fill_out_buffer_with_pbft_queue(std::vector<boost::asio::const_buffer> &bufs){
         //delete timeout pbft message
         auto now = time_point::now();
         int drop_pbft_count = 0;
@@ -1173,7 +1180,7 @@ namespace eosio {
         }
 
         //drop timeout messages in mem, init send buffer only when actual send happens
-        //copied from function connection::enqueue
+        //copied from a previous version of  connection::enqueue
         connection_wptr weak_this = shared_from_this();
         go_away_reason close_after_send = no_reason;
         std::function<void(boost::system::error_code, std::size_t)> callback = [weak_this, close_after_send](boost::system::error_code ec, std::size_t ) {
@@ -1190,7 +1197,7 @@ namespace eosio {
         };
 
         //push to out queue
-        while (buffer_queue.out_queue_size() < OUT_QUEUE_SIZE_LIMIT){
+        while (buffer_queue.out_queue_size() < OUT_QUEUE_SIZE_LIMIT) {
             if (pbft_queue.empty()) break;
 
             queued_pbft_message pbft = pbft_queue.front();
@@ -1231,14 +1238,9 @@ namespace eosio {
       }
       try {
          controller& cc = my_impl->chain_plug->chain();
-         pbft_controller& pcc = my_impl->chain_plug->pbft_ctrl();
          signed_block_ptr sb = cc.fetch_block_by_number(num);
          if(sb) {
             enqueue_block( sb, trigger_send, true);
-            auto scp = pcc.pbft_db.get_stable_checkpoint_by_id((*sb).id());
-            if (!(scp == pbft_stable_checkpoint{})) {
-                enqueue(scp);
-            }
             return true;
          }
       } catch ( ... ) {
@@ -1400,60 +1402,55 @@ namespace eosio {
        sync_wait();
    }
 
-    bool connection::process_next_message(net_plugin_impl& impl, uint32_t message_length) {
-        vector<char> tmp_data;
-        tmp_data.resize(message_length);
+//    bool connection::process_next_message(net_plugin_impl& impl, uint32_t message_length) {
+//        vector<char> tmp_data;
+//        tmp_data.resize(message_length);
+//
+//        try {
+//            auto ds = pending_message_buffer.create_datastream();
+//            auto read_index = pending_message_buffer.read_index();
+//            pending_message_buffer.peek(tmp_data.data(),message_length,read_index);
+//
+//            net_message msg;
+//            fc::raw::unpack(ds, msg);
+//            msg_handler m(impl, shared_from_this() );
+//            if( msg.contains<signed_block>() ) {
+//                m( std::move( msg.get<signed_block>() ) );
+//            } else if( msg.contains<packed_transaction>() ) {
+//                m( std::move( msg.get<packed_transaction>() ) );
+//            } else {
+//                msg.visit( m );
+//            }
+//        } catch(  const fc::exception& e ) {
+//            wlog("error message length: ${l}", ("l", message_length));
+//            wlog("error raw bytes ${s}", ("s", tmp_data));
+//            edump((e.to_detail_string() ));
+//            impl.close( shared_from_this() );
+//            return false;
+//        }
+//        return true;
+//    }
 
-        try {
-            auto ds = pending_message_buffer.create_datastream();
-            auto read_index = pending_message_buffer.read_index();
-            pending_message_buffer.peek(tmp_data.data(),message_length,read_index);
-
-            net_message msg;
-            fc::raw::unpack(ds, msg);
-            msg_handler m(impl, shared_from_this() );
-            if( msg.contains<signed_block>() ) {
-                m( std::move( msg.get<signed_block>() ) );
-            } else if( msg.contains<packed_transaction>() ) {
-                m( std::move( msg.get<packed_transaction>() ) );
-            } else {
-                msg.visit( m );
-            }
-        } catch(  const fc::exception& e ) {
-            wlog("error message length: ${l}", ("l", message_length));
-            wlog("error raw bytes ${s}", ("s", tmp_data));
-            edump((e.to_detail_string() ));
-            impl.close( shared_from_this() );
-            return false;
-        }
-        return true;
+   bool connection::process_next_message(net_plugin_impl& impl, uint32_t message_length) {
+      try {
+         auto ds = pending_message_buffer.create_datastream();
+         net_message msg;
+         fc::raw::unpack(ds, msg);
+         msg_handler m(impl, shared_from_this() );
+         if( msg.contains<signed_block>() ) {
+            m( std::move( msg.get<signed_block>() ) );
+         } else if( msg.contains<packed_transaction>() ) {
+            m( std::move( msg.get<packed_transaction>() ) );
+         } else {
+            msg.visit( m );
+         }
+      } catch(  const fc::exception& e ) {
+         edump((e.to_detail_string() ));
+         impl.close( shared_from_this() );
+         return false;
+      }
+      return true;
     }
-
-//   bool connection::process_next_message(net_plugin_impl& impl, uint32_t message_length) {
-//      auto ds =  pending_message_buffer.create_datastream();
-//      auto cp_ds = ds;
-//      try {
-//         net_message msg;
-//         fc::raw::unpack(ds, msg);
-//         msg_handler m(impl, shared_from_this() );
-//         if( msg.contains<signed_block>() ) {
-//            m( std::move( msg.get<signed_block>() ) );
-//         } else if( msg.contains<packed_transaction>() ) {
-//            m( std::move( msg.get<packed_transaction>() ) );
-//         } else {
-//            msg.visit( m );
-//         }
-//      } catch(  const fc::exception& e ) {
-//         vector<char> v{};
-//         v.resize(message_length);
-//         cp_ds.read(v.data(), v.size());
-//         wlog("error ds ${s}", ("s", v));
-//         edump((e.to_detail_string() ));
-//         impl.close( shared_from_this() );
-//         return false;
-//      }
-//      return true;
-//   }
 
    bool connection::add_peer_block(const peer_block_state& entry) {
       auto bptr = blk_state.get<by_id>().find(entry.id);
@@ -2083,10 +2080,6 @@ namespace eosio {
        fc::datastream<char*> ds( send_buffer->data(), buffer_size);
        ds.write( header, header_size );
        fc::raw::pack( ds, msg );
-
-       if (msg.contains<pbft_new_view>()) {
-           wlog("new view chars ${s}", ("s", send_buffer));
-       }
 
        return send_buffer;
    }
@@ -2958,17 +2951,6 @@ namespace eosio {
 
         auto deadline = time_point_sec(time_point::now()) + pbft_message_TTL;
 
-//        uint32_t payload_size = fc::raw::pack_size( msg );
-//
-//        char* header = reinterpret_cast<char*>(&payload_size);
-//        size_t header_size = sizeof(payload_size);
-//        size_t buffer_size = header_size + payload_size;
-//
-//        auto send_buffer = std::make_shared<vector<char>>(buffer_size);
-//        fc::datastream<char*> ds( send_buffer->data(), buffer_size);
-//        ds.write( header, header_size );
-//        fc::raw::pack( ds, msg );
-
         for (auto &conn: connections) {
             if (conn->pbft_ready()) {
                 conn->enqueue_pbft(encode_pbft_message(msg), deadline);
@@ -2978,17 +2960,6 @@ namespace eosio {
 
     void net_plugin_impl::forward_pbft_msg(connection_ptr c, const net_message &msg) {
         auto deadline = time_point_sec(time_point::now()) + pbft_message_TTL;
-
-//        uint32_t payload_size = fc::raw::pack_size( msg );
-//
-//        char* header = reinterpret_cast<char*>(&payload_size);
-//        size_t header_size = sizeof(payload_size);
-//        size_t buffer_size = header_size + payload_size;
-//
-//        auto send_buffer = std::make_shared<vector<char>>(buffer_size);
-//        fc::datastream<char*> ds( send_buffer->data(), buffer_size);
-//        ds.write( header, header_size );
-//        fc::raw::pack( ds, msg );
 
         for (auto &conn: connections) {
             if (conn != c && conn->pbft_ready()) {
@@ -3028,7 +2999,6 @@ namespace eosio {
     }
 
     void net_plugin_impl::pbft_outgoing_new_view(const pbft_new_view &msg) {
-        ilog( "attempt to send new view: ${n}, from ${v}", ("n", msg)("v", msg.public_key));
         auto added = maybe_add_pbft_cache(msg.uuid);
         if (!added) return;
 
@@ -3036,7 +3006,6 @@ namespace eosio {
         if (!pcc.pbft_db.is_valid_new_view(msg)) return;
 
         bcast_pbft_msg(msg);
-        ilog( "sent new view: ${n}, from ${v}", ("n", msg)("v", msg.public_key));
     }
 
     void net_plugin_impl::pbft_outgoing_checkpoint(const pbft_checkpoint &msg) {
@@ -3121,7 +3090,6 @@ namespace eosio {
     }
 
     void net_plugin_impl::handle_message( connection_ptr c, const pbft_new_view &msg) {
-       ilog( "received new view: ${n}, from ${v}", ("n", msg)("v", msg.public_key));
 
        if (!is_pbft_msg_valid(msg)) return;
 
@@ -3132,7 +3100,7 @@ namespace eosio {
        if (!pcc.pbft_db.is_valid_new_view(msg)) return;
 
        forward_pbft_msg(c, msg);
-       ilog( "forwarded new view: ${n}, from ${v}", ("n", msg)("v", msg.public_key));
+       fc_ilog( logger, "received new view: ${n}, from ${v}", ("n", msg)("v", msg.public_key));
 
        pbft_incoming_new_view_channel.publish(msg);
     }
