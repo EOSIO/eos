@@ -753,8 +753,8 @@ struct genesis_create::genesis_create_impl final {
         auto supply = gp.current_supply + gbg2gls;
         ram_payer_info ram_payer{};
         auto insert_stat_record = [&](const symbol& sym, const asset& supply, int64_t max_supply, name issuer) {
-            table_request tbl{config::token_account_name, sym.value(), N(stat)};
-            primary_key_t pk = sym.value() >> 8;
+            table_request tbl{config::token_account_name, sym.to_symbol_code(), N(stat)};
+            primary_key_t pk = sym.to_symbol_code();
             auto stat = mvo
                 ("supply", supply)
                 ("max_supply", asset(max_supply, sym))
@@ -834,7 +834,7 @@ struct genesis_create::genesis_create_impl final {
         ram_payer_info ram_payer{};
 
         db.start_section(gls_vest_account_name, N(delegation), "delegation", _visitor.delegations.size());
-        table_request tbl{gls_vest_account_name, VESTS, N(delegation)};
+        table_request tbl{gls_vest_account_name, VESTS >> 8, N(delegation)};
         primary_key_t pk = 0;
         for (const auto& d: _visitor.delegations) {
             auto obj = mvo
@@ -882,7 +882,7 @@ struct genesis_create::genesis_create_impl final {
         const auto& accs = _visitor.accounts;
         auto n = std::count_if(accs.begin(), accs.end(), [&](const auto& a){ return withdrawing_acc(a.second); });
         db.start_section(gls_vest_account_name, N(withdrawal), "withdrawal", n);
-        table_request tbl{gls_vest_account_name, VESTS, N(withdrawal)};
+        table_request tbl{gls_vest_account_name, VESTS >> 8, N(withdrawal)};
 
         const auto& routes = _visitor.withdraw_routes;
         for (const auto& acc: accs) {
