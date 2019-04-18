@@ -77,20 +77,6 @@
             ]
         },
         {
-            "name": "senddefer",
-            "base": "",
-            "fields": [
-                {
-                    "name": "senderid",
-                    "type": "uint32"
-                },
-                {
-                    "name": "payer",
-                    "type": "name"
-                }
-            ]
-        },
-        {
             "name": "setdata",
             "base": "",
             "fields": [
