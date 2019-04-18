@@ -900,7 +900,7 @@ struct genesis_create::genesis_create_impl final {
                     ("interval_seconds", withdraw_interval_seconds)
                     ("remaining_payments", withdraw_intervals - a.withdrawn / a.vesting_withdraw_rate.get_amount())
                     ("next_payout", a.next_vesting_withdrawal)
-                    ("withdraw_rate", a.vesting_withdraw_rate)
+                    ("withdraw_rate", asset(a.vesting_withdraw_rate.get_amount(), symbol(VESTS)))
                     ("to_withdraw", asset(remaining, symbol(VESTS)));
                 db.insert(tbl, owner, obj, {});
             }
