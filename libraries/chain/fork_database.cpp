@@ -32,8 +32,8 @@ namespace eosio { namespace chain {
          >,
          ordered_non_unique< tag<by_lib_block_num>,
             composite_key< block_state,
-//                member<block_header_state,uint32_t,&block_header_state::dpos_irreversible_blocknum>,
                 member<block_header_state,uint32_t,&block_header_state::bft_irreversible_blocknum>,
+//                member<block_header_state,uint32_t,&block_header_state::dpos_irreversible_blocknum>,
                 member<block_state,bool,&block_state::pbft_prepared>,
                 member<block_state,bool,&block_state::pbft_my_prepare>,
                 member<block_header_state,uint32_t,&block_header_state::block_num>
@@ -61,18 +61,59 @@ namespace eosio { namespace chain {
       if( fc::exists( fork_db_dat ) ) {
          string content;
          fc::read_file_contents( fork_db_dat, content );
-
          fc::datastream<const char*> ds( content.data(), content.size() );
-         unsigned_int size; fc::raw::unpack( ds, size );
-         for( uint32_t i = 0, n = size.value; i < n; ++i ) {
-            block_state s;
-            fc::raw::unpack( ds, s );
-            set( std::make_shared<block_state>( move( s ) ) );
-         }
-         block_id_type head_id;
-         fc::raw::unpack( ds, head_id );
 
-         my->head = get_block( head_id );
+         string version_label = content.substr(1,7);//start from position 1 because fc pack type in pos 0
+         bool is_version_1 = version_label != "version";
+         if(is_version_1){
+             /*start upgrade migration and this is a hack and ineffecient, but lucky we only need to do it once */
+
+             auto start = ds.pos();
+             unsigned_int size; fc::raw::unpack( ds, size );
+             auto skipped_size_pos = ds.pos();
+
+             vector<char> data(content.begin()+(skipped_size_pos - start), content.end());
+
+             for( uint32_t i = 0, n = size.value; i < n; ++i ) {
+                 vector<char> tmp = data;
+                 tmp.insert(tmp.begin(), {0,0,0,0});
+                 fc::datastream<const char*> tmp_ds(tmp.data(), tmp.size());
+                 block_state s;
+                 fc::raw::unpack( tmp_ds, s );
+                 //prepend 4bytes for pbft_stable_checkpoint_blocknum and append 2 bytes for pbft_prepared and pbft_my_prepare
+                 auto tmp_data_length = tmp_ds.tellp() - 6;
+                 data.erase(data.begin(),data.begin()+tmp_data_length);
+                 s.pbft_prepared = false;
+                 s.pbft_my_prepare = false;
+                 set( std::make_shared<block_state>( move( s ) ) );
+             }
+             fc::datastream<const char*> head_id_stream(data.data(), data.size());
+             block_id_type head_id;
+             fc::raw::unpack( head_id_stream, head_id );
+
+             my->head = get_block( head_id );
+             /*end upgrade migration*/
+         }else{
+             //get version number
+             fc::raw::unpack( ds, version_label );
+             EOS_ASSERT(version_label=="version", fork_database_exception, "invalid version label in forkdb.dat");
+             uint8_t version_num;
+             fc::raw::unpack( ds, version_num );
+
+             EOS_ASSERT(version_num==2, fork_database_exception, "invalid version num in forkdb.dat");
+
+             unsigned_int size; fc::raw::unpack( ds, size );
+             for( uint32_t i = 0, n = size.value; i < n; ++i ) {
+                 block_state s;
+                 fc::raw::unpack( ds, s );
+                 set( std::make_shared<block_state>( move( s ) ) );
+             }
+             block_id_type head_id;
+             fc::raw::unpack( ds, head_id );
+
+             my->head = get_block( head_id );
+         }
+
 
          fc::remove( fork_db_dat );
       }
@@ -83,6 +124,12 @@ namespace eosio { namespace chain {
 
       auto fork_db_dat = my->datadir / config::forkdb_filename;
       std::ofstream out( fork_db_dat.generic_string().c_str(), std::ios::out | std::ios::binary | std::ofstream::trunc );
+
+      string version_label = "version";
+      fc::raw::pack( out, version_label );
+      uint8_t version_num = 2;
+      fc::raw::pack( out, version_num );
+
       uint32_t num_blocks_in_fork_db = my->index.size();
       fc::raw::pack( out, unsigned_int{num_blocks_in_fork_db} );
       for( const auto& s : my->index ) {
@@ -97,7 +144,7 @@ namespace eosio { namespace chain {
       /// we cannot normally prune the lib if it is the head block because
       /// the next block needs to build off of the head block. We are exiting
       /// now so we can prune this block as irreversible before exiting.
-      auto lib    = my->head->bft_irreversible_blocknum;
+      auto lib = std::max(my->head->bft_irreversible_blocknum, my->head->dpos_irreversible_blocknum);
       auto checkpoint = my->head->pbft_stable_checkpoint_blocknum;
       auto oldest = *my->index.get<by_block_num>().begin();
       if( oldest->block_num < lib && oldest->block_num < checkpoint ) {
@@ -141,7 +188,7 @@ namespace eosio { namespace chain {
 
       my->head = *my->index.get<by_lib_block_num>().begin();
 
-      auto lib    = my->head->bft_irreversible_blocknum;
+      auto lib = std::max(my->head->bft_irreversible_blocknum, my->head->dpos_irreversible_blocknum);
       auto checkpoint = my->head->pbft_stable_checkpoint_blocknum;
       auto oldest = *my->index.get<by_block_num>().begin();
 
@@ -152,7 +199,7 @@ namespace eosio { namespace chain {
       return n;
    }
 
-   block_state_ptr fork_database::add( signed_block_ptr b, bool skip_validate_signee ) {
+   block_state_ptr fork_database::add( signed_block_ptr b, bool skip_validate_signee, bool new_version ) {
       EOS_ASSERT( b, fork_database_exception, "attempt to add null block" );
       EOS_ASSERT( my->head, fork_db_block_not_found, "no head block set" );
       const auto& by_id_idx = my->index.get<by_block_id>();
@@ -162,7 +209,7 @@ namespace eosio { namespace chain {
       auto prior = by_id_idx.find( b->previous );
       EOS_ASSERT( prior != by_id_idx.end(), unlinkable_block_exception, "unlinkable block", ("id", string(b->id()))("previous", string(b->previous)) );
 
-      auto result = std::make_shared<block_state>( **prior, move(b), skip_validate_signee );
+      auto result = std::make_shared<block_state>( **prior, move(b), skip_validate_signee, new_version);
       EOS_ASSERT( result, fork_database_exception , "fail to add new block state" );
       return add(result, true);
    }

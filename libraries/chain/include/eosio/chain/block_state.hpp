@@ -13,8 +13,8 @@ namespace eosio { namespace chain {
 
    struct block_state : public block_header_state {
       explicit block_state( const block_header_state& cur ):block_header_state(cur){}
-      block_state( const block_header_state& prev, signed_block_ptr b, bool skip_validate_signee );
-      block_state( const block_header_state& prev, block_timestamp_type when );
+      block_state( const block_header_state& prev, signed_block_ptr b, bool skip_validate_signee, bool new_version );
+      block_state( const block_header_state& prev, block_timestamp_type when, bool new_version );
       block_state() = default;
 
       /// weak_ptr prev_block_state....

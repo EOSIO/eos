@@ -35,6 +35,7 @@ using controller_index_set = index_set<
    global_property_multi_index,
    global_property2_multi_index,
    dynamic_global_property_multi_index,
+   upgrade_property_multi_index,
    block_summary_multi_index,
    transaction_multi_index,
    generated_transaction_multi_index,
@@ -673,6 +674,9 @@ struct controller_impl {
 
       // *bos end*
 
+
+      db.create<upgrade_property_object>([](auto&){});
+
       authorization.initialize_database();
       resource_limits.initialize_database();
 
@@ -773,6 +777,31 @@ struct controller_impl {
 
    // "bos end"
 
+   bool is_new_version() {
+       try {
+           const auto& upo = db.get<upgrade_property_object>().upgrade_target_block_num;
+//           dlog("upgrade target block num: ${n}", ("n", upo));
+           return  head->dpos_irreversible_blocknum >= upo && upo > 0;
+       } catch( const boost::exception& e) {
+           wlog("no upo found, regenerating...");
+           db.create<upgrade_property_object>([](auto&){});
+           return false;
+       }
+   }
+
+   bool is_upgrading() {
+       try {
+           const auto& upo = db.get<upgrade_property_object>();
+           const auto upo_upgrade_target_block_num = upo.upgrade_target_block_num;
+           return upo_upgrade_target_block_num > 0
+                  &&(head->block_num + 1 >= upo_upgrade_target_block_num)
+                  && std::max(head->dpos_irreversible_blocknum, head->bft_irreversible_blocknum) <= upo_upgrade_target_block_num + 12;
+       } catch( const boost::exception& e) {
+           db.create<upgrade_property_object>([](auto&){});
+           return false;
+       }
+   }
+
    /**
     * @post regardless of the success of commit block there is no active pending block
     */
@@ -788,19 +817,24 @@ struct controller_impl {
          set_pbft_lscb();
          if (add_to_fork_db) {
             pending->_pending_block_state->validated = true;
+
+            auto new_version = is_new_version();
+
             auto new_bsp = fork_db.add(pending->_pending_block_state, true);
             emit(self.accepted_block_header, pending->_pending_block_state);
 
-            if (pbft_prepared) {
-               fork_db.mark_pbft_prepared_fork(pbft_prepared);
-            } else if (head) {
-               fork_db.mark_pbft_prepared_fork(head);
-            }
+            if (new_version) {
+                if (pbft_prepared) {
+                    fork_db.mark_pbft_prepared_fork(pbft_prepared);
+                } else if (head) {
+                    fork_db.mark_pbft_prepared_fork(head);
+                }
 
-            if (my_prepare) {
-               fork_db.mark_pbft_my_prepare_fork(my_prepare);
-            } else if (head) {
-               fork_db.mark_pbft_my_prepare_fork(head);
+                if (my_prepare) {
+                    fork_db.mark_pbft_my_prepare_fork(my_prepare);
+                } else if (head) {
+                    fork_db.mark_pbft_my_prepare_fork(head);
+                }
             }
 
             head = fork_db.head();
@@ -1234,45 +1268,89 @@ struct controller_impl {
          pending.emplace(maybe_session());
       }
 
+      auto new_version = is_new_version();
+      auto upgrading = is_upgrading();
+
+      try {
+          const auto& upo = db.get<upgrade_property_object>();
+          const auto upo_upgrade_target_block_num = upo.upgrade_target_block_num;
+
+          if (upgrading) {
+              ilog("SYSTEM IS UPGRADING, no producer schedule changes will happen until fully upgraded.");
+              if (head->dpos_irreversible_blocknum >= upo_upgrade_target_block_num) {
+                  db.modify( upo, [&]( auto& up ) { up.upgrade_complete_block_num.emplace(head->block_num); });
+              }
+          }
+      } catch( const boost::exception& e) {
+          db.create<upgrade_property_object>([](auto&){});
+      }
+
+
       pending->_block_status = s;
       pending->_producer_block_id = producer_block_id;
       pending->_signer = signer;
-      pending->_pending_block_state = std::make_shared<block_state>( *head, when ); // promotes pending schedule (if any) to active
+      pending->_pending_block_state = std::make_shared<block_state>( *head, when, new_version); // promotes pending schedule (if any) to active
       pending->_pending_block_state->in_current_chain = true;
 
-//      pending->_pending_block_state->set_confirmed(confirm_block_count);
+      pending->_pending_block_state->set_confirmed(confirm_block_count, new_version);
 
-      auto was_pending_promoted = pending->_pending_block_state->maybe_promote_pending();
+
+      auto was_pending_promoted = pending->_pending_block_state->maybe_promote_pending(new_version);
 
       //modify state in speculative block only if we are speculative reads mode (other wise we need clean state for head or irreversible reads)
       if ( read_mode == db_read_mode::SPECULATIVE || pending->_block_status != controller::block_status::incomplete ) {
 
          const auto& gpo = db.get<global_property_object>();
-         if (gpo.proposed_schedule_block_num) {
-            last_proposed_schedule_block_num.reset();
-            last_proposed_schedule_block_num.emplace(*gpo.proposed_schedule_block_num);
+         if (new_version) {
+              if (gpo.proposed_schedule_block_num) {
+                  last_proposed_schedule_block_num.reset();
+                  last_proposed_schedule_block_num.emplace(*gpo.proposed_schedule_block_num);
+              }
          }
-         if( gpo.proposed_schedule_block_num.valid() && // if there is a proposed schedule that was proposed in a block ...
-//             ( *gpo.proposed_schedule_block_num <= pending->_pending_block_state->pbft_stable_checkpoint_blocknum ) && // ... that has now become irreversible ...
-             pending->_pending_block_state->pending_schedule.producers.size() == 0 && // ... and there is room for a new pending schedule ...
-             !was_pending_promoted && // ... and not just because it was promoted to active at the start of this block, then:
-             pending->_pending_block_state->block_num  > *gpo.proposed_schedule_block_num //TODO: to be optimised.
-         )
+
+          bool should_promote_pending_schedule = false;
+
+         if(new_version && (gpo.proposed_schedule_block_num.valid() && pending->_pending_block_state->bft_irreversible_blocknum > *gpo.proposed_schedule_block_num)){
+             db.modify( gpo, [&]( auto& gp ) {
+               gp.proposed_schedule_block_num = optional<block_num_type>();
+               gp.proposed_schedule.clear();
+             });
+         } else{
+             should_promote_pending_schedule = gpo.proposed_schedule_block_num.valid()  // if there is a proposed schedule that was proposed in a block ...
+                     && pending->_pending_block_state->pending_schedule.producers.size() == 0 // ... and there is room for a new pending schedule ...
+                     && !was_pending_promoted; // ... and not just because it was promoted to active at the start of this block, then:
+         }
+
+         if (new_version) {
+             should_promote_pending_schedule = should_promote_pending_schedule && (pending->_pending_block_state->block_num  > *gpo.proposed_schedule_block_num);
+         } else {
+             should_promote_pending_schedule = should_promote_pending_schedule && ( *gpo.proposed_schedule_block_num <= pending->_pending_block_state->dpos_irreversible_blocknum );
+         }
+
+         if ( should_promote_pending_schedule )
             {
-               // Promote proposed schedule to pending schedule.
-               if( !replaying ) {
-                  ilog( "promoting proposed schedule (set in block ${proposed_num}) to pending; current block: ${n} lib: ${lib} schedule: ${schedule} ",
-                        ("proposed_num", *gpo.proposed_schedule_block_num)("n", pending->_pending_block_state->block_num)
-                        ("lib", pending->_pending_block_state->bft_irreversible_blocknum)
-                        ("schedule", static_cast<producer_schedule_type>(gpo.proposed_schedule) ) );
-                   last_promoted_proposed_schedule_block_num.reset();
-                   last_promoted_proposed_schedule_block_num.emplace(pending->_pending_block_state->block_num);
+               if (!upgrading) {
+                   // Promote proposed schedule to pending schedule.
+                   if (!replaying) {
+                       ilog("bft_irreversible_blocknum ${a}", ("a", pending->_pending_block_state->bft_irreversible_blocknum) );
+                       ilog("dpos_irreversible_blocknum ${a}", ("a", pending->_pending_block_state->dpos_irreversible_blocknum) );
+                       ilog("promoting proposed schedule (set in block ${proposed_num}) to pending; current block: ${n} lib: ${lib} schedule: ${schedule} ",
+                            ("proposed_num", *gpo.proposed_schedule_block_num)("n",
+                                                                               pending->_pending_block_state->block_num)
+                                    ("lib", std::max(pending->_pending_block_state->bft_irreversible_blocknum,
+                                                     pending->_pending_block_state->dpos_irreversible_blocknum))
+                                    ("schedule", static_cast<producer_schedule_type>(gpo.proposed_schedule)));
+
+                   }
+                   pending->_pending_block_state->set_new_producers(gpo.proposed_schedule);
                }
-               pending->_pending_block_state->set_new_producers( gpo.proposed_schedule );
                db.modify( gpo, [&]( auto& gp ) {
                      gp.proposed_schedule_block_num = optional<block_num_type>();
                      gp.proposed_schedule.clear();
                   });
+
+               last_promoted_proposed_schedule_block_num.reset();
+               last_promoted_proposed_schedule_block_num.emplace(pending->_pending_block_state->block_num);
             }
 
          try {
@@ -1411,9 +1489,11 @@ struct controller_impl {
       auto prev = fork_db.get_block( b->previous );
       EOS_ASSERT( prev, unlinkable_block_exception, "unlinkable block ${id}", ("id", id)("previous", b->previous) );
 
-      return async_thread_pool( thread_pool, [b, prev]() {
+      auto new_version = is_new_version();
+
+      return async_thread_pool( thread_pool, [b, prev, new_version]() {
          const bool skip_validate_signee = false;
-         return std::make_shared<block_state>( *prev, move( b ), skip_validate_signee );
+         return std::make_shared<block_state>( *prev, move( b ), skip_validate_signee, new_version);
       } );
    }
 
@@ -1428,14 +1508,11 @@ struct controller_impl {
          auto& b = new_header_state->block;
          emit( self.pre_accepted_block, b );
 
-         auto current_head = head->id;
-         auto new_head = new_header_state->id;
-
-         fork_db.add( new_header_state, false );
+         fork_db.add( new_header_state, false);
 
          if (conf.trusted_producers.count(b->producer)) {
             trusted_producer_light_validation = true;
-         };
+         }
          emit( self.accepted_block_header, new_header_state );
 
          set_pbft_lib();
@@ -1461,7 +1538,10 @@ struct controller_impl {
                      block_validate_exception, "invalid block status for replay" );
          emit( self.pre_accepted_block, b );
          const bool skip_validate_signee = !conf.force_all_checks;
-         auto new_header_state = fork_db.add( b, skip_validate_signee );
+
+         auto new_version = is_new_version();
+
+         auto new_header_state = fork_db.add( b, skip_validate_signee, new_version);
 
          emit( self.accepted_block_header, new_header_state );
 
@@ -1511,23 +1591,39 @@ struct controller_impl {
 
    void set_pbft_lscb() {
        if ((!pending || pending->_block_status != controller::block_status::incomplete) && pending_pbft_checkpoint ) {
-           fork_db.set_latest_checkpoint(*pending_pbft_checkpoint);
+
+           auto checkpoint_block_state = fork_db.get_block(*pending_pbft_checkpoint);
+           if (checkpoint_block_state) {
+              fork_db.set_latest_checkpoint(*pending_pbft_checkpoint);
+              auto checkpoint_num = checkpoint_block_state->block_num;
+              if (pbft_prepared && pbft_prepared->block_num < checkpoint_num) {
+                 pbft_prepared.reset();
+              }
+              if (my_prepare && my_prepare->block_num < checkpoint_num) {
+                 my_prepare.reset();
+              }
+           }
            pending_pbft_checkpoint.reset();
+
        }
    }
 
    void maybe_switch_forks( controller::block_status s ) {
 
-      if (pbft_prepared) {
-          fork_db.mark_pbft_prepared_fork(pbft_prepared);
-      } else if (head) {
-          fork_db.mark_pbft_prepared_fork(head);
-      }
+      auto new_version = is_new_version();
 
-      if (my_prepare) {
-          fork_db.mark_pbft_my_prepare_fork(my_prepare);
-      } else if (head) {
-          fork_db.mark_pbft_my_prepare_fork(head);
+      if (new_version) {
+          if (pbft_prepared) {
+              fork_db.mark_pbft_prepared_fork(pbft_prepared);
+          } else if (head) {
+              fork_db.mark_pbft_prepared_fork(head);
+          }
+
+          if (my_prepare) {
+              fork_db.mark_pbft_my_prepare_fork(my_prepare);
+          } else if (head) {
+              fork_db.mark_pbft_my_prepare_fork(head);
+          }
       }
 
       auto new_head = fork_db.head();
@@ -2376,8 +2472,8 @@ void controller::set_pbft_prepared(const block_id_type& id) const {
       my->pbft_prepared = bs;
       my->fork_db.mark_pbft_prepared_fork(bs);
    }
-   dlog( "fork_db head ${h}", ("h", fork_db().head()->id));
-   dlog( "prepared block id ${b}", ("b", id));
+//   dlog( "fork_db head ${h}", ("h", fork_db().head()->id));
+//   dlog( "prepared block id ${b}", ("b", id));
 }
 
 void controller::set_pbft_my_prepare(const block_id_type& id) const {
@@ -2387,8 +2483,8 @@ void controller::set_pbft_my_prepare(const block_id_type& id) const {
       my->my_prepare = bs;
       my->fork_db.mark_pbft_my_prepare_fork(bs);
    }
-   dlog( "fork_db head ${h}", ("h", fork_db().head()->id));
-   dlog( "my prepare block id ${b}", ("b", id));
+//   dlog( "fork_db head ${h}", ("h", fork_db().head()->id));
+//   dlog( "my prepare block id ${b}", ("b", id));
 }
 
 block_id_type controller::get_pbft_my_prepare() const {
@@ -2570,4 +2666,15 @@ void controller::set_lib() const {
    my->set_pbft_lscb();
 }
 
+const upgrade_property_object& controller::get_upgrade_properties()const {
+    return my->db.get<upgrade_property_object>();
+}
+
+bool controller::is_upgraded() const {
+    return my->is_new_version();
+}
+
+bool controller::under_upgrade() const {
+    return my->is_upgrading();
+}
 } } /// eosio::chain

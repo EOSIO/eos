@@ -552,6 +552,11 @@ namespace eosio {
       deque<queued_write> _sync_write_queue; // sync_write_queue will be sent first
       deque<queued_write> _out_queue;
 
+   public:
+       void push_to_out_queue( const queued_write& m) {
+           _out_queue.emplace_back( m );
+       }
+
    }; // queued_buffer
 
 
@@ -1193,7 +1198,7 @@ namespace eosio {
             auto m = pbft.message;
             if (m) {
                 bufs.push_back(boost::asio::buffer(*m));
-                buffer_queue.add_write_queue( m, callback, true );
+                buffer_queue.push_to_out_queue( {m, callback} );
             }
         }
     }
@@ -1395,27 +1400,60 @@ namespace eosio {
        sync_wait();
    }
 
+    bool connection::process_next_message(net_plugin_impl& impl, uint32_t message_length) {
+        vector<char> tmp_data;
+        tmp_data.resize(message_length);
 
-   bool connection::process_next_message(net_plugin_impl& impl, uint32_t message_length) {
-      try {
-         auto ds = pending_message_buffer.create_datastream();
-         net_message msg;
-         fc::raw::unpack(ds, msg);
-         msg_handler m(impl, shared_from_this() );
-         if( msg.contains<signed_block>() ) {
-            m( std::move( msg.get<signed_block>() ) );
-         } else if( msg.contains<packed_transaction>() ) {
-            m( std::move( msg.get<packed_transaction>() ) );
-         } else {
-            msg.visit( m );
-         }
-      } catch(  const fc::exception& e ) {
-         edump((e.to_detail_string() ));
-         impl.close( shared_from_this() );
-         return false;
-      }
-      return true;
-   }
+        try {
+            auto ds = pending_message_buffer.create_datastream();
+            auto read_index = pending_message_buffer.read_index();
+            pending_message_buffer.peek(tmp_data.data(),message_length,read_index);
+
+            net_message msg;
+            fc::raw::unpack(ds, msg);
+            msg_handler m(impl, shared_from_this() );
+            if( msg.contains<signed_block>() ) {
+                m( std::move( msg.get<signed_block>() ) );
+            } else if( msg.contains<packed_transaction>() ) {
+                m( std::move( msg.get<packed_transaction>() ) );
+            } else {
+                msg.visit( m );
+            }
+        } catch(  const fc::exception& e ) {
+            wlog("error message length: ${l}", ("l", message_length));
+            wlog("error raw bytes ${s}", ("s", tmp_data));
+            edump((e.to_detail_string() ));
+            impl.close( shared_from_this() );
+            return false;
+        }
+        return true;
+    }
+
+//   bool connection::process_next_message(net_plugin_impl& impl, uint32_t message_length) {
+//      auto ds =  pending_message_buffer.create_datastream();
+//      auto cp_ds = ds;
+//      try {
+//         net_message msg;
+//         fc::raw::unpack(ds, msg);
+//         msg_handler m(impl, shared_from_this() );
+//         if( msg.contains<signed_block>() ) {
+//            m( std::move( msg.get<signed_block>() ) );
+//         } else if( msg.contains<packed_transaction>() ) {
+//            m( std::move( msg.get<packed_transaction>() ) );
+//         } else {
+//            msg.visit( m );
+//         }
+//      } catch(  const fc::exception& e ) {
+//         vector<char> v{};
+//         v.resize(message_length);
+//         cp_ds.read(v.data(), v.size());
+//         wlog("error ds ${s}", ("s", v));
+//         edump((e.to_detail_string() ));
+//         impl.close( shared_from_this() );
+//         return false;
+//      }
+//      return true;
+//   }
 
    bool connection::add_peer_block(const peer_block_state& entry) {
       auto bptr = blk_state.get<by_id>().find(entry.id);
@@ -2045,6 +2083,10 @@ namespace eosio {
        fc::datastream<char*> ds( send_buffer->data(), buffer_size);
        ds.write( header, header_size );
        fc::raw::pack( ds, msg );
+
+       if (msg.contains<pbft_new_view>()) {
+           wlog("new view chars ${s}", ("s", send_buffer));
+       }
 
        return send_buffer;
    }
@@ -2986,6 +3028,7 @@ namespace eosio {
     }
 
     void net_plugin_impl::pbft_outgoing_new_view(const pbft_new_view &msg) {
+        ilog( "attempt to send new view: ${n}, from ${v}", ("n", msg)("v", msg.public_key));
         auto added = maybe_add_pbft_cache(msg.uuid);
         if (!added) return;
 
@@ -2993,6 +3036,7 @@ namespace eosio {
         if (!pcc.pbft_db.is_valid_new_view(msg)) return;
 
         bcast_pbft_msg(msg);
+        ilog( "sent new view: ${n}, from ${v}", ("n", msg)("v", msg.public_key));
     }
 
     void net_plugin_impl::pbft_outgoing_checkpoint(const pbft_checkpoint &msg) {
@@ -3077,6 +3121,7 @@ namespace eosio {
     }
 
     void net_plugin_impl::handle_message( connection_ptr c, const pbft_new_view &msg) {
+       ilog( "received new view: ${n}, from ${v}", ("n", msg)("v", msg.public_key));
 
        if (!is_pbft_msg_valid(msg)) return;
 
@@ -3087,7 +3132,7 @@ namespace eosio {
        if (!pcc.pbft_db.is_valid_new_view(msg)) return;
 
        forward_pbft_msg(c, msg);
-       fc_ilog( logger, "received new view at ${n}, from ${v}", ("n", msg)("v", msg.public_key));
+       ilog( "forwarded new view: ${n}, from ${v}", ("n", msg)("v", msg.public_key));
 
        pbft_incoming_new_view_channel.publish(msg);
     }

@@ -92,6 +92,7 @@ extern "C" {
     */
    uint32_t get_blockchain_parameters_packed(char* data, uint32_t datalen);
 
+   void set_upgrade_parameters_packed(char* data, uint32_t datalen);
    /**
     * @brief Activate new feature
     * Activate new feature

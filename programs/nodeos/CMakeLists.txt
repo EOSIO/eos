@@ -57,7 +57,7 @@ target_link_libraries( ${NODE_EXECUTABLE_NAME}
         PRIVATE -Wl,${whole_archive_flag} chain_api_plugin           -Wl,${no_whole_archive_flag}
         PRIVATE -Wl,${whole_archive_flag} net_plugin                 -Wl,${no_whole_archive_flag}
         PRIVATE -Wl,${whole_archive_flag} net_api_plugin             -Wl,${no_whole_archive_flag}
-        PRIVATE -Wl,${whole_archive_flag} pbft_plugin                -Wl,${no_whole_archive_flag}
+#        PRIVATE -Wl,${whole_archive_flag} pbft_plugin                -Wl,${no_whole_archive_flag}
 #        PRIVATE -Wl,${whole_archive_flag} faucet_testnet_plugin      -Wl,${no_whole_archive_flag}
         PRIVATE -Wl,${whole_archive_flag} txn_test_gen_plugin        -Wl,${no_whole_archive_flag}
         PRIVATE -Wl,${whole_archive_flag} db_size_api_plugin         -Wl,${no_whole_archive_flag}
@@ -65,7 +65,7 @@ target_link_libraries( ${NODE_EXECUTABLE_NAME}
         PRIVATE -Wl,${whole_archive_flag} test_control_plugin        -Wl,${no_whole_archive_flag}
         PRIVATE -Wl,${whole_archive_flag} test_control_api_plugin    -Wl,${no_whole_archive_flag}
         PRIVATE -Wl,${build_id_flag}
-        PRIVATE chain_plugin http_plugin producer_plugin http_client_plugin
+        PRIVATE chain_plugin http_plugin producer_plugin http_client_plugin pbft_plugin
         PRIVATE eosio_chain fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
 
 if(BUILD_MONGO_DB_PLUGIN)

@@ -5,6 +5,7 @@
 #include <eosio/chain/pbft.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
 #include <eosio/net_plugin/net_plugin.hpp>
+#include <eosio/chain/global_property_object.hpp>
 
 namespace eosio {
     static appbase::abstract_plugin &_pbft_plugin = app().register_plugin<pbft_plugin>();
@@ -32,6 +33,7 @@ namespace eosio {
         void checkpoint_timer_tick();
 
     private:
+        bool upgraded = false;
         bool is_replaying();
         bool is_syncing();
         bool pbft_ready();
@@ -129,6 +131,24 @@ namespace eosio {
 
     bool pbft_plugin_impl::pbft_ready() {
         // only trigger pbft related logic if I am in sync and replayed.
-        return (!is_syncing() && !is_replaying());
+
+        auto& chain = app().get_plugin<chain_plugin>().chain();
+        auto new_version = chain.is_upgraded();
+
+        if (new_version && !upgraded) {
+            wlog( "\n"
+                  "******** BATCH-PBFT ENABLED ********\n"
+                  "*                                  *\n"
+                  "* --       The blockchain       -- *\n"
+                  "* -  has successfully switched   - *\n"
+                  "* -     into the new version     - *\n"
+                  "* -        Please enjoy a        - *\n"
+                  "* -      better performance!     - *\n"
+                  "*                                  *\n"
+                  "************************************\n" );
+            upgraded = true;
+        }
+
+        return (new_version && (!is_syncing() && !is_replaying()));
     }
 }
