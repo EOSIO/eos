@@ -1025,7 +1025,9 @@ BOOST_AUTO_TEST_CASE( ram_restriction_test ) { try {
    const auto& tester1_account = account_name("tester1");
    const auto& tester2_account = account_name("tester2");
    const auto& alice_account = account_name("alice");
-   c.create_accounts( {tester1_account, tester2_account, alice_account} );
+   const auto& bob_account = account_name("bob");
+   const auto& carol_account = account_name("carol");
+   c.create_accounts( {tester1_account, tester2_account, alice_account, bob_account, carol_account} );
    c.produce_block();
    c.set_code( tester1_account, contracts::ram_restriction_test_wasm() );
    c.set_abi( tester1_account, contracts::ram_restriction_test_abi().data() );
@@ -1034,6 +1036,106 @@ BOOST_AUTO_TEST_CASE( ram_restriction_test ) { try {
    c.set_abi( tester2_account, contracts::ram_restriction_test_abi().data() );
    c.produce_block();
 
+   // basic
+   c.push_action(tester1_account, N(setdata), alice_account, mutable_variant_object()
+      ("len1", 10)
+      ("len2", 0)
+      ("payer", "alice"));
+
+   // basic, negative
+   BOOST_REQUIRE_EXCEPTION(
+   c.push_action(tester1_account, N(setdata), alice_account, mutable_variant_object()
+      ("len1", 20)
+      ("len2", 0)
+      ("payer", "bob")),                            
+      missing_auth_exception,
+      fc_exception_message_starts_with( "missing authority of bob" ) );
+
+   // migrate from table1 to table2, negative
+   BOOST_REQUIRE_EXCEPTION(c.push_action(tester1_account, N(setdata), carol_account, mutable_variant_object()
+      ("len1", 0)
+      ("len2", 10)
+      ("payer", "alice")),
+      missing_auth_exception,
+      fc_exception_message_starts_with( "missing authority of alice" ) );
+      
+   // notify, increase RAM usage, negative
+   BOOST_REQUIRE_EXCEPTION(c.push_action(tester2_account, N(notifysetdat), alice_account, mutable_variant_object()
+      ("acctonotify", "tester1")
+      ("len1", 20)
+      ("len2", 0)
+      ("payer", "alice")),
+      subjective_block_production_exception,
+      fc_exception_message_starts_with( "Cannot charge RAM to other accounts during notify" ) );
+
+   // notify migrate, negative
+   BOOST_REQUIRE_EXCEPTION(c.push_action(tester2_account, N(notifysetdat), alice_account, mutable_variant_object()
+      ("acctonotify", "tester1")
+      ("len1", 0)
+      ("len2", 10)
+      ("payer", "alice")),
+      subjective_block_production_exception,
+      fc_exception_message_starts_with( "Cannot charge RAM to other accounts during notify" ) );
+
+   // notify defer result in subjective_block_production_exception
+   BOOST_REQUIRE_EXCEPTION(c.push_action(tester2_account, N(notifydefer), alice_account, mutable_variant_object()
+      ("acctonotify", "tester1")
+      ("senderid", 123)
+      ("payer", "alice")),
+      subjective_block_production_exception,
+      fc_exception_message_starts_with( "Cannot charge RAM to other accounts during notify" ) );
+
+   const auto& pfm = c.control->get_protocol_feature_manager();
+   const auto& d = pfm.get_builtin_digest( builtin_protocol_feature_t::ram_restrictions );
+   BOOST_REQUIRE( d );
+
+   c.preactivate_protocol_features( {*d} );
+   c.produce_block();
+
+   // migration is ok
+   c.push_action(tester1_account, N(setdata), carol_account, mutable_variant_object()
+      ("len1", 0)
+      ("len2", 10)
+      ("payer", "alice"));
+
+   // migration failed if overall is increasing RAM
+   BOOST_REQUIRE_EXCEPTION(c.push_action(tester1_account, N(setdata), carol_account, mutable_variant_object()
+      ("len1", 12)
+      ("len2", 0)
+      ("payer", "alice")),
+      unauthorized_ram_usage_increase,
+      fc_exception_message_starts_with( "unprivileged contract cannot increase RAM usage of another account that has not authorized the action" ) );
+
+   // notify migrate, ok
+   c.push_action(tester2_account, N(notifysetdat), alice_account, mutable_variant_object()
+      ("acctonotify", "tester1")
+      ("len1", 10)
+      ("len2", 0)
+      ("payer", "alice"));
+
+   // notify migrate with overall usage increased, negative
+   BOOST_REQUIRE_EXCEPTION(c.push_action(tester2_account, N(notifysetdat), alice_account, mutable_variant_object()
+      ("acctonotify", "tester1")
+      ("len1", 0)
+      ("len2", 11)
+      ("payer", "alice")),
+      unauthorized_ram_usage_increase,
+      fc_exception_message_starts_with( "unprivileged contract cannot increase RAM usage of another account within a notify context" ) );
+
+   // notify migrate with overall increased, paid by receiver
+   c.push_action(tester2_account, N(notifysetdat), alice_account, mutable_variant_object()
+      ("acctonotify", "tester1")
+      ("len1", 0)
+      ("len2", 12)
+      ("payer", "tester1"));
+
+   // notify defer now result in objective exception
+   BOOST_REQUIRE_EXCEPTION(c.push_action(tester2_account, N(notifydefer), alice_account, mutable_variant_object()
+      ("acctonotify", "tester1")
+      ("senderid", 124)
+      ("payer", "alice")),
+      action_validate_exception,
+      fc_exception_message_starts_with("cannot bill RAM usage of deferred transactions to another account within notify context"));
 
 } FC_LOG_AND_RETHROW() }
 

@@ -29,21 +29,15 @@ public:
       data.resize(len, 0);
       auto it = ta.find(0);
       if (it == ta.end()) {
-         if (len) {
-            ta.emplace(payer, [&](auto &v) {
-               v.key = 0;
-               v.value = data;
-            });
-         }
+        ta.emplace(payer, [&](auto &v) {
+            v.key = 0;
+            v.value = data;
+        });
       } else {
-         if (len) {
-            ta.modify(it, payer, [&](auto &v) {
-               v.key = 0;
-               v.value = data;
-            });
-         } else {
-            ta.erase(it);
-         }
+        ta.modify(it, payer, [&](auto &v) {
+            v.key = 0;
+            v.value = data;
+        });
       }
    }
 
@@ -58,8 +52,31 @@ public:
       require_recipient(acctonotify);
    }
 
-   [[eosio::on_notify("testacc::notifysetdat")]]
+   [[eosio::on_notify("tester2::notifysetdat")]]
    void on_notify_setdata(eosio::name acctonotify, int len1, int len2, eosio::name payer) {
       setdata(len1, len2, payer);
    }
+
+   [[eosio::action]]
+   void senddefer( uint32_t senderid, eosio::name payer ) {
+       eosio::transaction trx;
+       trx.actions.emplace_back(
+           std::vector<eosio::permission_level>{{_self, "active"_n}},
+           get_self(),
+           "noop"_n,
+           std::make_tuple()
+       );
+       trx.send(senderid, payer);
+   }
+
+   [[eosio::action]]
+   void notifydefer(eosio::name acctonotify, uint32_t senderid, eosio::name payer) {
+      require_recipient(acctonotify);
+   }
+
+   [[eosio::on_notify("tester2::notifydefer")]]
+   void on_notifydefer(eosio::name acctonotify, uint32_t senderid, eosio::name payer) {
+      senddefer(senderid, payer);
+   }
+
 };
