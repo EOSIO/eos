@@ -221,7 +221,7 @@ class Utils:
     def pgrepCmd(serverName):
         pgrepOpts="-fl"
         # pylint: disable=deprecated-method
-        if platform.linux_distribution()[0] in ["Ubuntu", "LinuxMint", "Fedora","CentOS Linux","arch"]:
+        if platform.linux_distribution()[0] in ["Ubuntu", "LinuxMint", "Fedora","CentOS Linux","arch","Mageia"]:
             pgrepOpts="-a"
 
         return "pgrep %s %s" % (pgrepOpts, serverName)

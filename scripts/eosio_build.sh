@@ -229,6 +229,12 @@ if [ "$ARCH" == "Linux" ]; then
          CXX_COMPILER=g++
          C_COMPILER=gcc
       ;;
+      "Mageia")
+         export CPATH=/usr/include/llvm4.0:$CPATH # llvm4.0 for fedora package path inclusion
+         FILE="${REPO_ROOT}/scripts/eosio_build_mageia.sh"
+         CXX_COMPILER=g++
+         C_COMPILER=gcc
+      ;;
       "Linux Mint")
          FILE="${REPO_ROOT}/scripts/eosio_build_ubuntu.sh"
          CXX_COMPILER=clang++-4.0
