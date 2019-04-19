@@ -498,13 +498,19 @@ protocol_feature_set initialize_protocol_features( const fc::path& p, bool popul
                   ("path", file_path.generic_string())
       );
 
-      fc::json::save_to_file( f, file_path );
-
-      ilog( "Saved default specification for builtin protocol feature '${codename}' (with digest of '${digest}') to: ${path}",
-            ("codename", builtin_protocol_feature_codename(f.get_codename()))
-            ("digest", feature_digest)
-            ("path", file_path.generic_string())
-      );
+      if( fc::json::save_to_file( f, file_path ) ) {
+         ilog( "Saved default specification for builtin protocol feature '${codename}' (with digest of '${digest}') to: ${path}",
+               ("codename", builtin_protocol_feature_codename(f.get_codename()))
+               ("digest", feature_digest)
+               ("path", file_path.generic_string())
+         );
+      } else {
+         elog( "Error occurred while writing default specification for builtin protocol feature '${codename}' (with digest of '${digest}') to: ${path}",
+               ("codename", builtin_protocol_feature_codename(f.get_codename()))
+               ("digest", feature_digest)
+               ("path", file_path.generic_string())
+         );
+      }
    };
 
    std::function<digest_type(builtin_protocol_feature_t)> add_missing_builtins =
@@ -690,8 +696,13 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
                p = bfs::current_path() / p;
             }
 
-            fc::json::save_to_file( gs, p, true );
-            ilog( "Saved genesis JSON to '${path}'", ("path", p.generic_string()));
+            EOS_ASSERT( fc::json::save_to_file( gs, p, true ),
+                        misc_exception,
+                        "Error occurred while writing genesis JSON to '${path}'",
+                        ("path", p.generic_string())
+            );
+
+            ilog( "Saved genesis JSON to '${path}'", ("path", p.generic_string()) );
          }
 
          EOS_THROW( extract_genesis_state_exception, "extracted genesis state from blocks.log" );
