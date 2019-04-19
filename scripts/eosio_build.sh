@@ -74,7 +74,7 @@ EOT
 }
 
 if [ $# -ne 0 ]; then
-   while getopts ":cdo:s:p:b:pc:hy" opt; do
+   while getopts ":cdo:s:p:b:Phy" opt; do
       case "${opt}" in
          o )
             options=( "Debug" "Release" "RelWithDebInfo" "MinSizeRel" )
@@ -107,8 +107,9 @@ if [ $# -ne 0 ]; then
          p)
              PREFIX=$OPTARG
              ;;
-         pc)
+         P)
             PIN_COMPILER=true
+            ;;
          h)
             usage
             exit 1
@@ -200,8 +201,10 @@ fi
 BUILD_CLANG8=false
 if [ ! -z $CXX ]; then
    CPP_COMP=$CXX
+   CC_COMP=$CC
 else
    CPP_COMP=c++
+   CC_COMP=cc
 fi
 
 NO_CPP17=false
@@ -230,16 +233,18 @@ fi
 if $PIN_COMPILER; then
    BUILD_CLANG8=true
    CPP_COMP=${OPT_LOCATION}/clang8/bin/clang++
+   CC_COMP=${OPT_LOCATION}/clang8/bin/clang
    PIN_COMPILER_CMAKE="-DEOSIO_PIN_COMPILER=1 -DLIBSTDCPP_DIR=${OPT_LOCATION}/gcc -DLIBCPP_DIR=${OPT_LOCATION}/clang8/"
 elif $NO_CPP17; then
    if [ $NONINTERACTIVE -eq 0 ]; then
       BUILD_CLANG8=true
       CPP_COMP=${OPT_LOCATION}/clang8/bin/clang++
+      CC_COMP=${OPT_LOCATION}/clang8/bin/clang
    else
       printf "Error no C++17 support.\\nEnter Y/y or N/n to continue with downloading and building a viable compiler or exit now.\\nIf you already have a C++17 compiler installed or would like to install your own, export CXX to point to the compiler of your choosing."
       read -p "Enter Y/y or N/n to continue with downloading and building a viable compiler or exit now. " yn
       case $yn in
-         [Yy]* ) BUILD_CLANG8=true; CPP_COMP=${OPT_LOCATION}/clang8/bin/clang++; break;;
+         [Yy]* ) BUILD_CLANG8=true; CPP_COMP=${OPT_LOCATION}/clang8/bin/clang++; CC_COMP=${OPT_LOCATION}/clang8/bin/clang; break;;
          [Nn]* ) exit 1;;
          * ) echo "Improper input"; exit 1;;
       esac
@@ -247,6 +252,7 @@ elif $NO_CPP17; then
 fi
 
 CXX=$CPP_COMP
+CC=$CC_COMP
 
 export BUILD_CLANG8=$BUILD_CLANG8
 
@@ -345,7 +351,7 @@ mkdir -p $BUILD_DIR
 cd $BUILD_DIR
 
 $CMAKE -DCMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE}" -DCMAKE_CXX_COMPILER="${CXX}" \
-   -DCMAKE_C_COMPILER="${C_COMPILER}" -DCORE_SYMBOL_NAME="${CORE_SYMBOL_NAME}" \
+   -DCMAKE_C_COMPILER="${CC}" -DCORE_SYMBOL_NAME="${CORE_SYMBOL_NAME}" \
    -DOPENSSL_ROOT_DIR="${OPENSSL_ROOT_DIR}" -DBUILD_MONGO_DB_PLUGIN=true \
    -DENABLE_COVERAGE_TESTING="${ENABLE_COVERAGE_TESTING}" -DBUILD_DOXYGEN="${DOXYGEN}" \
    -DCMAKE_PREFIX_PATH=$PREFIX \
