@@ -37,6 +37,22 @@ namespace eosio {
        {}
    };
 
+    struct TrxReceipt final {
+       using status_enum = chain::transaction_receipt_header::status_enum;
+
+       chain::transaction_id_type         id;
+       fc::enum_type<uint8_t,status_enum> status;
+       uint32_t                           cpu_usage_us;
+       fc::unsigned_int                   net_usage_words;
+
+       TrxReceipt(const chain::transaction_id_type &id, const chain::transaction_receipt &receipt)
+       : id(id)
+       , status(receipt.status)
+       , cpu_usage_us(receipt.cpu_usage_us)
+       , net_usage_words(receipt.net_usage_words)
+       { }
+    };
+
    struct BaseMessage {
        enum MsgType {
            Unknown,
@@ -95,15 +111,27 @@ namespace eosio {
    };
 
    struct AcceptedBlockMessage : public BlockMessage {
-       std::vector<TrxMetadata> trxs;
+       std::vector<TrxReceipt> trxs;
        std::vector<EventData> events;
 
        AcceptedBlockMessage(MsgType msg_type, const chain::block_state_ptr& bstate)
        : BlockMessage(msg_type, bstate)
        {
-           for(auto const &trx: bstate->trxs) {
-               TrxMetadata trx_meta(trx);
-               trxs.push_back(trx_meta);
+           if (!bstate->block) {
+               return;
+           }
+
+           trxs.reserve(bstate->block->transactions.size());
+           for (auto const &receipt: bstate->block->transactions) {
+               chain::transaction_id_type tid;
+               if (receipt.trx.contains<chain::transaction_id_type>()) {
+                   tid = receipt.trx.get<chain::transaction_id_type>();
+               } else {
+                   tid = receipt.trx.get<chain::packed_transaction>().id();
+               }
+
+               TrxReceipt trx_receipt(tid, receipt);
+               trxs.push_back(std::move(trx_receipt));
            }
        }
    };
@@ -113,6 +141,7 @@ namespace eosio {
 FC_REFLECT(eosio::EventData, (code)(event)(data)(args))
 FC_REFLECT(eosio::ActionData, (receiver)(code)(action)(data)(args)(events))
 FC_REFLECT(eosio::TrxMetadata, (id)(accepted)(implicit)(scheduled))
+FC_REFLECT(eosio::TrxReceipt, (id)(status)(cpu_usage_us)(net_usage_words))
 
 FC_REFLECT_ENUM(eosio::BaseMessage::MsgType, (Unknown)(AcceptBlock)(CommitBlock)(AcceptTrx)(ApplyTrx))
 FC_REFLECT(eosio::BaseMessage, (msg_type))
