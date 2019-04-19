@@ -354,8 +354,8 @@ struct txn_test_gen_plugin_impl {
       batch = batch_size/2;
 
       ilog("Started transaction test plugin; performing ${p} transactions every ${m}ms", ("p", batch_size)("m", period));
-
-      arm_timer(boost::asio::high_resolution_timer::clock_type::now());
+      ilog("wait 3 seconds to spin up");
+      arm_timer(boost::asio::high_resolution_timer::clock_type::now() + std::chrono::milliseconds(3000) );
    }
 
    void arm_timer(boost::asio::high_resolution_timer::time_point s) {
