@@ -338,7 +338,7 @@ namespace eosio {
       connection_ptr find_connection(const string& host)const; // must call with held mutex
    };
 
-   const fc::string logger_name("net_plugin_impl");
+   const fc::string logger_name("net_plugin_impl_todo_test");
    fc::logger logger;
    std::string peer_log_format;
 
