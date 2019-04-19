@@ -486,27 +486,24 @@ protocol_feature_set initialize_protocol_features( const fc::path& p, bool popul
    auto output_protocol_feature = [&p]( const builtin_protocol_feature& f, const digest_type& feature_digest ) {
       static constexpr int max_tries = 10;
 
-      string filename_base( "BUILTIN-" );
-      filename_base += builtin_protocol_feature_codename( f.get_codename() );
+      string filename( "BUILTIN-" );
+      filename += builtin_protocol_feature_codename( f.get_codename() );
+      filename += ".json";
 
-      string filename = filename_base+ ".json";
-      int i = 0;
-      for( ;
-           i < max_tries && fc::exists( p / filename );
-           ++i, filename = filename_base + "-" + std::to_string(i) + ".json" )
-         ;
+      auto file_path = p / filename;
 
-      EOS_ASSERT( i < max_tries, plugin_exception,
-                  "Could not save builtin protocol feature with codename '${codename}' due to file name conflicts",
+      EOS_ASSERT( !fc::exists( file_path ), plugin_exception,
+                  "Could not save builtin protocol feature with codename '${codename}' because a file at the following path already exists: ${path}",
                   ("codename", builtin_protocol_feature_codename( f.get_codename() ))
+                  ("path", file_path.generic_string())
       );
 
-      fc::json::save_to_file( f, p / filename );
+      fc::json::save_to_file( f, file_path );
 
       ilog( "Saved default specification for builtin protocol feature '${codename}' (with digest of '${digest}') to: ${path}",
             ("codename", builtin_protocol_feature_codename(f.get_codename()))
             ("digest", feature_digest)
-            ("path", (p / filename).generic_string())
+            ("path", file_path.generic_string())
       );
    };
 
