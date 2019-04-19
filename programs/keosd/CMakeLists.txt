@@ -11,12 +11,6 @@ endif()
 
 configure_file(config.hpp.in config.hpp ESCAPE_QUOTES)
 
-if(EOSIO_PIN_COMPILER)
-   if(NOT APPLE)
-      target_link_libraries(${KEY_STORE_EXECUTABLE_NAME} PRIVATE -nostdlib++)
-   endif()
-endif()
-
 target_link_libraries( ${KEY_STORE_EXECUTABLE_NAME}
         PRIVATE appbase
         PRIVATE wallet_api_plugin wallet_plugin
