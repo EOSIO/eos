@@ -733,23 +733,53 @@ namespace eosio {
 
         bool pbft_database::is_valid_new_view(const pbft_new_view &nv) {
             //all signatures should be valid
-            if (nv.chain_id != chain_id()) return false;
+            if (nv.chain_id != chain_id()) {
+                wlog("wrong chain id in new view msg");
+                return false;
+            }
 
-            auto valid = is_valid_prepared_certificate(nv.prepared)
-                         && is_valid_stable_checkpoint(nv.stable_checkpoint)
-                         && nv.view_changed.is_signature_valid()
-                         && nv.is_signature_valid();
-            if (!valid) return false;
-            if (nv.view_changed.view != nv.view) return false;
+            if (!is_valid_prepared_certificate(nv.prepared)) {
+                wlog("prepared certificate invalid in new view msg");
+                return false;
+            }
+
+            if (!is_valid_stable_checkpoint(nv.stable_checkpoint)) {
+                wlog("stable checkpoint invalid in new view msg");
+                return false;
+            }
+
+            if (!nv.view_changed.is_signature_valid()) {
+                wlog("view changed sig invalid in new view msg");
+                return false;
+            }
+
+            if (!nv.is_signature_valid()) {
+                wlog("new view sig invalid in new view msg");
+                return false;
+            }
+
+            if (nv.view_changed.view != nv.view) {
+                wlog("target view not match");
+                return false;
+            }
             auto schedule_threshold = lib_active_producers().producers.size() * 2 / 3 + 1;
 
-            if (nv.view_changed.view_changes.size() < schedule_threshold) return false;
+            if (nv.view_changed.view_changes.size() < schedule_threshold) {
+                wlog("view change count not enough");
+                return false;
+            }
             for (auto vc: nv.view_changed.view_changes) {
-                if (!is_valid_view_change(vc)) return false;
+                if (!is_valid_view_change(vc)) {
+                    wlog("invalid view change msg ${m}", ("m", vc));
+                    return false;
+                }
                 add_pbft_view_change(vc);
             }
 
-            if (!should_new_view(nv.view)) return false;
+            if (!should_new_view(nv.view)) {
+                wlog("should not new view");
+                return false;
+            }
 
             auto highest_ppc = pbft_prepared_certificate{};
             auto highest_scp = pbft_stable_checkpoint{};
@@ -766,8 +796,17 @@ namespace eosio {
                 }
             }
 
-            return highest_ppc == nv.prepared
-                   && highest_scp == nv.stable_checkpoint;
+            if (highest_ppc != nv.prepared) {
+                wlog("prepared num not match");
+                return false;
+            }
+
+            if (highest_scp != nv.stable_checkpoint) {
+                wlog("stable checkpoint not match");
+                return false;
+            }
+
+            return true;
         }
 
         bool pbft_database::should_stop_view_change(const pbft_view_change &vc) {
@@ -935,11 +974,15 @@ namespace eosio {
 
             block_num_type my_latest_checkpoint = 0;
 
+            const auto& upo = ctrl.get_upgrade_properties();
             auto checkpoint = [&](const block_num_type &in) {
-                return in % 100 == 1
-                       || in == ctrl.last_proposed_schedule_block_num()
-                       || in == ctrl.last_promoted_proposed_schedule_block_num();
+              auto is_desired_checkpoint_num = in % 100 == 1
+                      || in == ctrl.last_proposed_schedule_block_num()
+                      || in == ctrl.last_promoted_proposed_schedule_block_num();
+              if (upo.upgrade_complete_block_num) is_desired_checkpoint_num = is_desired_checkpoint_num && in > upo.upgrade_complete_block_num;
+              return is_desired_checkpoint_num;
             };
+
 
             for (auto i = psp->block_num;
                  i > std::max(ctrl.last_stable_checkpoint_block_num(), static_cast<uint32_t>(1)); --i) {
@@ -1105,7 +1148,10 @@ namespace eosio {
         }
 
         bool pbft_database::is_valid_stable_checkpoint(const pbft_stable_checkpoint &scp) {
-            if (scp.block_num <= ctrl.last_stable_checkpoint_block_num()) return true;
+            if (scp.block_num <= ctrl.last_stable_checkpoint_block_num())
+                // the stable checkpoint is way behind lib, no way getting the block state,
+                // it will not be applied nor saved, thus considered safe.
+                return true;
 
             auto valid = true;
             for (const auto &c: scp.checkpoints) {

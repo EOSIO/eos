@@ -51,6 +51,7 @@ namespace eosio { namespace chain {
 
       id_type                       id;
       block_num_type                upgrade_target_block_num = 0;
+      optional<block_num_type>      upgrade_complete_block_num;
    };
 
 
@@ -128,5 +129,5 @@ FC_REFLECT(eosio::chain::global_property2_object,
            (cfg)(gmr)
           )
 FC_REFLECT(eosio::chain::upgrade_property_object,
-           (upgrade_target_block_num)
+           (upgrade_target_block_num)(upgrade_complete_block_num)
           )

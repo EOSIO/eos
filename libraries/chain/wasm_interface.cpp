@@ -200,6 +200,10 @@ class privileged_api : public context_aware_api {
 
          EOS_ASSERT( context.control.head_block_num() < target_num - 100, wasm_execution_error, "upgrade target block is too close");
 
+         EOS_ASSERT( !context.control.is_upgraded(), wasm_execution_error, "the system has already upgraded to the new version");
+
+         EOS_ASSERT( !context.control.under_upgrade(), wasm_execution_error, "the system is currently under upgrade");
+
          context.db.modify( context.control.get_upgrade_properties(),
                  [&]( auto& uprops ) {
              uprops.upgrade_target_block_num = target_num;

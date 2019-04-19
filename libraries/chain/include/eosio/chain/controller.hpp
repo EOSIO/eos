@@ -309,6 +309,7 @@ namespace eosio { namespace chain {
 
          const upgrade_property_object&        get_upgrade_properties()const;
          bool is_upgraded()const;
+         bool under_upgrade()const;
 
          /*
          signal<void()>                                  pre_apply_block;
