@@ -460,6 +460,8 @@ namespace eosio { namespace chain {
                                     3170007, "The configured snapshot directory does not exist" )
       FC_DECLARE_DERIVED_EXCEPTION( snapshot_exists_exception,  producer_exception,
                                     3170008, "The requested snapshot already exists" )
+      FC_DECLARE_DERIVED_EXCEPTION( snapshot_finalization_exception,   producer_exception,
+                                    3170009, "Snapshot Finalization Exception" )
 
    FC_DECLARE_DERIVED_EXCEPTION( reversible_blocks_exception,           chain_exception,
                                  3180000, "Reversible Blocks exception" )

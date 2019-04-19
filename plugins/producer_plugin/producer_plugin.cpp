@@ -88,6 +88,70 @@ using transaction_id_with_expiry_index = multi_index_container<
    >
 >;
 
+struct by_height;
+
+class pending_snapshot {
+public:
+   using next_t = producer_plugin::next_function<producer_plugin::snapshot_information>;
+
+   pending_snapshot(const block_id_type& block_id, next_t& next, std::string pending_path, std::string final_path)
+   : block_id(block_id)
+   , next(next)
+   , pending_path(pending_path)
+   , final_path(final_path)
+   {}
+
+   uint32_t get_height() const {
+      return block_header::num_from_id(block_id);
+   }
+
+   static bfs::path get_final_path(const block_id_type& block_id, const bfs::path& snapshots_dir) {
+      return snapshots_dir / fc::format_string("snapshot-${id}.bin", fc::mutable_variant_object()("id", block_id));
+   }
+
+   static bfs::path get_pending_path(const block_id_type& block_id, const bfs::path& snapshots_dir) {
+      return snapshots_dir / fc::format_string(".pending-snapshot-${id}.bin", fc::mutable_variant_object()("id", block_id));
+   }
+
+   static bfs::path get_temp_path(const block_id_type& block_id, const bfs::path& snapshots_dir) {
+      return snapshots_dir / fc::format_string(".incomplete-snapshot-${id}.bin", fc::mutable_variant_object()("id", block_id));
+   }
+
+   producer_plugin::snapshot_information finalize( const chain::controller& chain ) const {
+      auto in_chain = (bool)chain.fetch_block_by_id( block_id );
+      boost::system::error_code ec;
+
+      if (!in_chain) {
+         bfs::remove(bfs::path(pending_path), ec);
+         EOS_THROW(snapshot_finalization_exception,
+                   "Snapshotted block was forked out of the chain.  ID: ${block_id}",
+                   ("block_id", block_id));
+      }
+
+      bfs::rename(bfs::path(pending_path), bfs::path(final_path), ec);
+      EOS_ASSERT(!ec, snapshot_finalization_exception,
+                 "Unable to finalize valid snapshot of block number ${bn}: [code: ${ec}] ${message}",
+                 ("bn", get_height())
+                 ("ec", ec.value())
+                 ("message", ec.message()));
+
+      return {block_id, final_path};
+   }
+
+   block_id_type     block_id;
+   next_t            next;
+   std::string       pending_path;
+   std::string       final_path;
+};
+
+using pending_snapshot_index = multi_index_container<
+   pending_snapshot,
+   indexed_by<
+      hashed_unique<tag<by_id>, BOOST_MULTI_INDEX_MEMBER(pending_snapshot, block_id_type, block_id)>,
+      ordered_non_unique<tag<by_height>, BOOST_MULTI_INDEX_CONST_MEM_FUN( pending_snapshot, uint32_t, get_height)>
+   >
+>;
+
 enum class pending_block_mode {
    producing,
    speculating
@@ -160,6 +224,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       incoming::methods::transaction_async::method_type::handle _incoming_transaction_async_provider;
 
       transaction_id_with_expiry_index                         _blacklisted_transactions;
+      pending_snapshot_index                                   _pending_snapshot_index;
 
       fc::optional<scoped_connection>                          _accepted_block_connection;
       fc::optional<scoped_connection>                          _irreversible_block_connection;
@@ -249,6 +314,22 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 
       void on_irreversible_block( const signed_block_ptr& lib ) {
          _irreversible_block_time = lib->timestamp.to_time_point();
+         const chain::controller& chain = chain_plug->chain();
+
+         // promote any pending snapshots
+         auto& snapshots_by_height = _pending_snapshot_index.get<by_height>();
+         uint32_t lib_height = lib->block_num();
+
+         while (!snapshots_by_height.empty() && snapshots_by_height.begin()->get_height() <= lib_height) {
+            const auto& pending = snapshots_by_height.begin();
+            auto next = pending->next;
+
+            try {
+               next(pending->finalize(chain));
+            } CATCH_AND_CALL(next);
+
+            snapshots_by_height.erase(snapshots_by_height.begin());
+         }
       }
 
       template<typename Type, typename Channel, typename F>
@@ -938,35 +1019,70 @@ producer_plugin::integrity_hash_information producer_plugin::get_integrity_hash(
    return {chain.head_block_id(), chain.calculate_integrity_hash()};
 }
 
-producer_plugin::snapshot_information producer_plugin::create_snapshot() const {
+
+
+void producer_plugin::create_snapshot(producer_plugin::next_function<producer_plugin::snapshot_information> next) {
    chain::controller& chain = my->chain_plug->chain();
 
-   auto reschedule = fc::make_scoped_exit([this](){
-      my->schedule_production_loop();
-   });
+   auto head_id = chain.head_block_id();
+   std::string snapshot_path = (pending_snapshot::get_final_path(head_id, my->_snapshots_dir)).generic_string();
 
-   if (chain.pending_block_state()) {
-      // abort the pending block
-      chain.abort_block();
-   } else {
-      reschedule.cancel();
+   // maintain legacy exception if the snapshot exists
+   if( fc::is_regular_file(snapshot_path) ) {
+      auto ex = snapshot_exists_exception( FC_LOG_MESSAGE( error, "snapshot named ${name} already exists", ("name", snapshot_path) ) );
+      next(ex.dynamic_copy_exception());
+      return;
    }
 
-   auto head_id = chain.head_block_id();
-   std::string snapshot_path = (my->_snapshots_dir / fc::format_string("snapshot-${id}.bin", fc::mutable_variant_object()("id", head_id))).generic_string();
+   // determine if this snapshot is already in-flight
+   auto& pending_by_id = my->_pending_snapshot_index.get<by_id>();
+   auto existing = pending_by_id.find(head_id);
+   if( existing != pending_by_id.end() ) {
+      // if a snapshot at this block is already pending, attach this requests handler to it
+      pending_by_id.modify(existing, [&next]( auto& entry ){
+         entry.next = [prev = entry.next, next](const fc::static_variant<fc::exception_ptr, producer_plugin::snapshot_information>& res){
+            prev(res);
+            next(res);
+         };
+      });
+   } else {
+      // write a new temp snapshot
+      std::string temp_path = (pending_snapshot::get_temp_path(head_id, my->_snapshots_dir)).generic_string();
+      std::string pending_path = (pending_snapshot::get_pending_path(head_id, my->_snapshots_dir)).generic_string();
+      std::string final_path = (pending_snapshot::get_final_path(head_id, my->_snapshots_dir)).generic_string();
+      bool written = false;
 
-   EOS_ASSERT( !fc::is_regular_file(snapshot_path), snapshot_exists_exception,
-               "snapshot named ${name} already exists", ("name", snapshot_path));
+      try {
+         auto reschedule = fc::make_scoped_exit([this](){
+            my->schedule_production_loop();
+         });
 
+         if (chain.pending_block_state()) {
+            // abort the pending block
+            chain.abort_block();
+         } else {
+            reschedule.cancel();
+         }
 
-   auto snap_out = std::ofstream(snapshot_path, (std::ios::out | std::ios::binary));
-   auto writer = std::make_shared<ostream_snapshot_writer>(snap_out);
-   chain.write_snapshot(writer);
-   writer->finalize();
-   snap_out.flush();
-   snap_out.close();
+         // create a new pending snapshot
+         auto snap_out = std::ofstream(temp_path, (std::ios::out | std::ios::binary));
+         auto writer = std::make_shared<ostream_snapshot_writer>(snap_out);
+         chain.write_snapshot(writer);
+         writer->finalize();
+         snap_out.flush();
+         snap_out.close();
 
-   return {head_id, snapshot_path};
+         boost::system::error_code ec;
+         bfs::rename(temp_path, pending_path, ec);
+         EOS_ASSERT(!ec, snapshot_finalization_exception,
+               "Unable to promote temp snapshot to pending for block number ${bn}: [code: ${ec}] ${message}",
+               ("bn", chain.head_block_num())
+               ("ec", ec.value())
+               ("message", ec.message()));
+
+         my->_pending_snapshot_index.emplace(head_id, next, pending_path, final_path);
+      } CATCH_AND_CALL (next);
+   }
 }
 
 optional<fc::time_point> producer_plugin_impl::calculate_next_block_time(const account_name& producer_name, const block_timestamp_type& current_block_time) const {
