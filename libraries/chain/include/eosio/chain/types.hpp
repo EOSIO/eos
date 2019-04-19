@@ -8,7 +8,7 @@
 
 #include <chainbase/chainbase.hpp>
 
-#include <fc/container/flat_fwd.hpp>
+#include <fc/interprocess/container.hpp>
 #include <fc/io/varint.hpp>
 #include <fc/io/enum_type.hpp>
 #include <fc/crypto/sha224.hpp>
@@ -95,6 +95,8 @@ namespace eosio { namespace chain {
    using shared_vector = boost::interprocess::vector<T, allocator<T>>;
    template<typename T>
    using shared_set = boost::interprocess::set<T, std::less<T>, allocator<T>>;
+   template<typename K, typename V>
+   using shared_flat_multimap = boost::interprocess::flat_multimap< K, V, std::less<K>, allocator< std::pair<K,V> > >;
 
    /**
     * For bugs in boost interprocess we moved our blob data to shared_string
@@ -151,7 +153,7 @@ namespace eosio { namespace chain {
    {
       null_object_type = 0,
       account_object_type,
-      account_sequence_object_type,
+      account_metadata_object_type,
       permission_object_type,
       permission_usage_object_type,
       permission_link_object_type,
@@ -187,6 +189,9 @@ namespace eosio { namespace chain {
       account_history_object_type,              ///< Defined by history_plugin
       action_history_object_type,               ///< Defined by history_plugin
       reversible_block_object_type,
+      protocol_state_object_type,
+      account_ram_correction_object_type,
+      code_object_type,
       OBJECT_TYPE_COUNT ///< Sentry value which contains the number of different object types
    };
 
@@ -207,6 +212,14 @@ namespace eosio { namespace chain {
    using uint128_t           = unsigned __int128;
    using bytes               = vector<char>;
 
+   struct sha256_less {
+      bool operator()( const fc::sha256& lhs, const fc::sha256& rhs ) const {
+       return
+             std::tie(lhs._hash[0], lhs._hash[1], lhs._hash[2], lhs._hash[3]) <
+             std::tie(rhs._hash[0], rhs._hash[1], rhs._hash[2], rhs._hash[3]);
+      }
+   };
+
 
    /**
     *  Extentions are prefixed with type and are a buffer that can be
@@ -214,6 +227,104 @@ namespace eosio { namespace chain {
     */
    typedef vector<std::pair<uint16_t,vector<char>>> extensions_type;
 
+
+   template<typename Container>
+   class end_insert_iterator : public std::iterator< std::output_iterator_tag, void, void, void, void >
+   {
+   protected:
+      Container* container;
+
+   public:
+      using container_type = Container;
+
+      explicit end_insert_iterator( Container& c )
+      :container(&c)
+      {}
+
+      end_insert_iterator& operator=( typename Container::const_reference value ) {
+         container->insert( container->cend(), value );
+         return *this;
+      }
+
+      end_insert_iterator& operator*() { return *this; }
+      end_insert_iterator& operator++() { return *this; }
+      end_insert_iterator  operator++(int) { return *this; }
+   };
+
+   template<typename Container>
+   inline end_insert_iterator<Container> end_inserter( Container& c ) {
+      return end_insert_iterator<Container>( c );
+   }
+
+   template<typename T>
+   struct enum_hash
+   {
+      static_assert( std::is_enum<T>::value, "enum_hash can only be used on enumeration types" );
+
+      using underlying_type = typename std::underlying_type<T>::type;
+
+      std::size_t operator()(T t) const
+      {
+           return std::hash<underlying_type>{}( static_cast<underlying_type>(t) );
+      }
+   };
+   // enum_hash needed to support old gcc compiler of Ubuntu 16.04
+
+   namespace detail {
+      struct extract_match {
+         bool enforce_unique = false;
+      };
+
+      template<typename... Ts>
+      struct decompose;
+
+      template<>
+      struct decompose<> {
+         template<typename ResultVariant>
+         static auto extract( uint16_t id, const vector<char>& data, ResultVariant& result )
+         -> fc::optional<extract_match>
+         {
+            return {};
+         }
+      };
+
+      template<typename T, typename... Rest>
+      struct decompose<T, Rest...> {
+         using head_t = T;
+         using tail_t = decompose< Rest... >;
+
+         template<typename ResultVariant>
+         static auto extract( uint16_t id, const vector<char>& data, ResultVariant& result )
+         -> fc::optional<extract_match>
+         {
+            if( id == head_t::extension_id() ) {
+               result = fc::raw::unpack<head_t>( data );
+               return { extract_match{ head_t::enforce_unique() } };
+            }
+
+            return tail_t::template extract<ResultVariant>( id, data, result );
+         }
+      };
+   }
+
+   template<typename E, typename F>
+   static inline auto has_field( F flags, E field )
+   -> std::enable_if_t< std::is_integral<F>::value && std::is_unsigned<F>::value &&
+                        std::is_enum<E>::value && std::is_same< F, std::underlying_type_t<E> >::value, bool>
+   {
+      return ( (flags & static_cast<F>(field)) != 0 );
+   }
+
+   template<typename E, typename F>
+   static inline auto set_field( F flags, E field, bool value = true )
+   -> std::enable_if_t< std::is_integral<F>::value && std::is_unsigned<F>::value &&
+                        std::is_enum<E>::value && std::is_same< F, std::underlying_type_t<E> >::value, F >
+   {
+      if( value )
+         return ( flags | static_cast<F>(field) );
+      else
+         return ( flags & ~static_cast<F>(field) );
+   }
 
 } }  // eosio::chain
 

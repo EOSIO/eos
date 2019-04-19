@@ -40,9 +40,10 @@ case "${OS_NAME}" in
 		fi
 	;;
 	"Ubuntu")
-		if [ "${OS_MAJ}" -lt 16 ]; then
-			printf "You must be running Ubuntu 16.04.x or higher to install EOSIO.\\n"
-			printf "Exiting now.\\n"
+		. /etc/lsb-release
+		if [ "${DISTRIB_CODENAME}" != "xenial" -a "${DISTRIB_CODENAME}" != "bionic" ]; then
+			echo "The only Ubuntu versions this script supports are Ubuntu 16.04 and 18.04"
+			echo "Exiting now."
 			exit 1
 		fi
 		# UBUNTU 18 doesn't have MONGODB 3.6.3
@@ -111,7 +112,7 @@ for (( i=0; i<${#DEP_ARRAY[@]}; i++ )); do
 done
 if [ "${COUNT}" -gt 1 ]; then
 	printf "\\nThe following dependencies are required to install EOSIO:\\n"
-	printf "${DISPLAY}\\n\\n" 
+	printf "${DISPLAY}\\n\\n"
 	if [ $ANSWER != 1 ]; then read -p "Do you wish to install these packages? (y/n) " ANSWER; fi
 	case $ANSWER in
 		1 | [Yy]* )
@@ -125,7 +126,7 @@ if [ "${COUNT}" -gt 1 ]; then
 		[Nn]* ) echo "User aborting installation of required dependencies, Exiting now."; exit;;
 		* ) echo "Please type 'y' for yes or 'n' for no."; exit;;
 	esac
-else 
+else
 	printf " - No required APT dependencies to install.\\n"
 fi
 
@@ -139,7 +140,7 @@ if [ ! -e $CMAKE ]; then
 	curl -LO https://cmake.org/files/v$CMAKE_VERSION_MAJOR.$CMAKE_VERSION_MINOR/cmake-$CMAKE_VERSION.tar.gz \
 	&& tar -xzf cmake-$CMAKE_VERSION.tar.gz \
 	&& cd cmake-$CMAKE_VERSION \
-	&& ./bootstrap --prefix=$HOME \
+	&& ./bootstrap --prefix=$PREFIX \
 	&& make -j"${JOBS}" \
 	&& make install \
 	&& cd .. \
@@ -155,7 +156,7 @@ if [ $? -ne 0 ]; then exit -1; fi
 printf "\\n"
 
 printf "Checking Boost library (${BOOST_VERSION}) installation...\\n"
-BOOSTVERSION=$( grep "#define BOOST_VERSION" "$HOME/opt/boost/include/boost/version.hpp" 2>/dev/null | tail -1 | tr -s ' ' | cut -d\  -f3 )
+BOOSTVERSION=$( grep "#define BOOST_VERSION" "$BOOST_ROOT/include/boost/version.hpp" 2>/dev/null | tail -1 | tr -s ' ' | cut -d\  -f3 )
 if [ "${BOOSTVERSION}" != "${BOOST_VERSION_MAJOR}0${BOOST_VERSION_MINOR}0${BOOST_VERSION_PATCH}" ]; then
 	printf "Installing Boost library...\\n"
 	curl -LO https://dl.bintray.com/boostorg/release/${BOOST_VERSION_MAJOR}.${BOOST_VERSION_MINOR}.${BOOST_VERSION_PATCH}/source/boost_$BOOST_VERSION.tar.bz2 \
@@ -206,7 +207,7 @@ if [ ! -d $MONGO_C_DRIVER_ROOT ]; then
 	&& cd mongo-c-driver-$MONGO_C_DRIVER_VERSION \
 	&& mkdir -p cmake-build \
 	&& cd cmake-build \
-	&& $CMAKE -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$HOME -DENABLE_BSON=ON -DENABLE_SSL=OPENSSL -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF -DENABLE_STATIC=ON .. \
+	&& $CMAKE -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$PREFIX -DENABLE_BSON=ON -DENABLE_SSL=OPENSSL -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF -DENABLE_STATIC=ON .. \
 	&& make -j"${JOBS}" \
 	&& make install \
 	&& cd ../.. \
@@ -223,7 +224,7 @@ if [ ! -d $MONGO_CXX_DRIVER_ROOT ]; then
 	curl -L https://github.com/mongodb/mongo-cxx-driver/archive/r$MONGO_CXX_DRIVER_VERSION.tar.gz -o mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION.tar.gz \
 	&& tar -xzf mongo-cxx-driver-r${MONGO_CXX_DRIVER_VERSION}.tar.gz \
 	&& cd mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION/build \
-	&& $CMAKE -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$HOME .. \
+	&& $CMAKE -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$PREFIX .. \
 	&& make -j"${JOBS}" VERBOSE=1 \
 	&& make install \
 	&& cd ../.. \

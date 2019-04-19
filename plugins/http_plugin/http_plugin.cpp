@@ -45,6 +45,11 @@ namespace eosio {
    using std::shared_ptr;
    using websocketpp::connection_hdl;
 
+   enum https_ecdh_curve_t {
+      SECP384R1,
+      PRIME256V1
+   };
+
    static http_plugin_defaults current_http_plugin_defaults;
 
    void http_plugin::set_defaults(const http_plugin_defaults config) {
@@ -147,6 +152,7 @@ namespace eosio {
          optional<tcp::endpoint>  https_listen_endpoint;
          string                   https_cert_chain;
          string                   https_key;
+         https_ecdh_curve_t       https_ecdh_curve = SECP384R1;
 
          websocket_server_tls_type https_server;
 
@@ -191,7 +197,7 @@ namespace eosio {
 
                //going for the A+! Do a few more things on the native context to get ECDH in use
 
-               fc::ec_key ecdh = EC_KEY_new_by_curve_name(NID_secp384r1);
+               fc::ec_key ecdh = EC_KEY_new_by_curve_name(https_ecdh_curve == SECP384R1 ? NID_secp384r1 : NID_X9_62_prime256v1);
                if (!ecdh)
                   EOS_THROW(chain::http_exception, "Failed to set NID_secp384r1");
                if(SSL_CTX_set_tmp_ecdh(ctx->native_handle(), (EC_KEY*)ecdh) != 1)
@@ -366,7 +372,9 @@ namespace eosio {
       return true;
    }
 
-   http_plugin::http_plugin():my(new http_plugin_impl()){}
+   http_plugin::http_plugin():my(new http_plugin_impl()){
+      app().register_config_type<https_ecdh_curve_t>();
+   }
    http_plugin::~http_plugin(){}
 
    void http_plugin::set_program_options(options_description&, options_description& cfg) {
@@ -393,6 +401,11 @@ namespace eosio {
 
             ("https-private-key-file", bpo::value<string>(),
              "Filename with https private key in PEM format. Required for https")
+
+            ("https-ecdh-curve", bpo::value<https_ecdh_curve_t>()->notifier([this](https_ecdh_curve_t c) {
+               my->https_ecdh_curve = c;
+            })->default_value(SECP384R1),
+            "Configure https ECDH curve to use: secp384r1 or prime256v1")
 
             ("access-control-allow-origin", bpo::value<string>()->notifier([this](const string& v) {
                 my->access_control_allow_origin = v;
@@ -678,5 +691,27 @@ namespace eosio {
       }
 
       return result;
+   }
+
+   std::istream& operator>>(std::istream& in, https_ecdh_curve_t& curve) {
+      std::string s;
+      in >> s;
+      if (s == "secp384r1")
+         curve = SECP384R1;
+      else if (s == "prime256v1")
+         curve = PRIME256V1;
+      else
+         in.setstate(std::ios_base::failbit);
+      return in;
+   }
+
+   std::ostream& operator<<(std::ostream& osm, https_ecdh_curve_t curve) {
+      if (curve == SECP384R1) {
+         osm << "secp384r1";
+      } else if (curve == PRIME256V1) {
+         osm << "prime256v1";
+      }
+
+      return osm;
    }
 }

@@ -2,6 +2,7 @@ if(EOSIO_ROOT STREQUAL "" OR NOT EOSIO_ROOT)
    set(EOSIO_ROOT "@EOS_ROOT_DIR@")
 endif()
 list(APPEND CMAKE_MODULE_PATH ${EOSIO_ROOT}/lib/cmake/eosio)
+list(APPEND CMAKE_MODULE_PATH ${EOSIO_ROOT}/lib64/cmake/eosio)
 include(EosioTester)
 
 function(EXTRACT_MAJOR_MINOR_FROM_VERSION version success major minor)

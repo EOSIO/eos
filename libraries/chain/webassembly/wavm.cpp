@@ -30,9 +30,9 @@ class wavm_instantiated_module : public wasm_instantiated_module_interface {
       {}
 
       void apply(apply_context& context) override {
-         vector<Value> args = {Value(uint64_t(context.receiver)),
-	                       Value(uint64_t(context.act.account)),
-                               Value(uint64_t(context.act.name))};
+         vector<Value> args = {Value(uint64_t(context.get_receiver())),
+	                            Value(uint64_t(context.get_action().account)),
+                               Value(uint64_t(context.get_action().name))};
 
          call("apply", args, context);
       }
@@ -131,7 +131,7 @@ void wavm_runtime::immediately_exit_currently_running_module() {
 #ifdef _WIN32
    throw wasm_exit();
 #else
-   Platform::immediately_exit();
+   Platform::immediately_exit(nullptr);
 #endif
 }
 
