@@ -12,6 +12,9 @@
 #include <fc/variant.hpp>
 #include <boost/filesystem/path.hpp>
 
+// can be useful for testnet to avoid reset of witnesses, who updated node after HF (have old vote_hardfork values)
+// #define ONLY_CHECK_WITNESS_RUNNING_HF_VERSION
+
 
 namespace fc { namespace raw {
 
@@ -517,9 +520,28 @@ struct genesis_create::genesis_create_impl final {
 
         // first prepare staking balances and sort agents by levels. keys and proxy info requierd to do this
         fc::flat_map<acc_idx,public_key_type> keys;         // agent:key
+        auto hf = _info.params.require_hardfork;
         for (const auto& w: _visitor.witnesses) {
-            auto key = pubkey_string(w.signing_key);
-            keys[w.owner.id.value] = public_key_type(key);
+            auto key = public_key_type(pubkey_string(w.signing_key));
+            if (hf && key != public_key_type()) {
+                // the following cases exist:
+                //  1. running version == required
+                //      a) vote version == required if witness updated node and signed block before HF
+                //          i) vote time == required = ok
+                //          ii) vote time != required = wrong hf, reset
+                //      b) vote version == prev, if witness updated node and signed block after HF, reset
+                //          (almost impossible in final genesis, can affect reserve witness/miner from last schedule)
+                //  2. running version != required = wrong hf or didn't sign a block after node update, reset
+                if (
+                    w.running_version != hf->version
+#ifndef ONLY_CHECK_WITNESS_RUNNING_HF_VERSION
+                    || w.hardfork_version_vote != hf->version || w.hardfork_time_vote != hf->time
+#endif
+                ) {
+                    key = public_key_type();
+                }
+            }
+            keys[w.owner.id.value] = key;
         }
         fc::flat_map<acc_idx,acc_idx> proxies;              // grantor:agent
         const auto& empty_acc = std::distance(_accs_map.begin(), std::find(_accs_map.begin(), _accs_map.end(), string("")));
@@ -669,7 +691,7 @@ struct genesis_create::genesis_create_impl final {
                     a.min_own_staked = 0;
                     a.signing_key =
                         (x.own_staked() >= _info.params.stake.min_own_staked_for_election && keys.count(acc)) ?
-                            keys[acc] : public_key_type();      // TODO: reset key if old HF used #518
+                            keys[acc] : public_key_type();
                 });
             }
         }

@@ -35,9 +35,14 @@ struct genesis_info {
         uint16_t payout_steps_num;
         int64_t min_own_staked_for_election = 0;
     };
+    struct hardfork_info {
+        uint32_t version;       // High byte is major version, next one is hardfork version, low 16bits are revision
+        time_point_sec time;
+    };
 
     struct parameters {
         stake_params stake;
+        fc::optional<hardfork_info> require_hardfork;
     } params;
     // parameters params;
 };
@@ -48,5 +53,6 @@ FC_REFLECT(cyberway::genesis::genesis_info::file_hash, (path)(hash))
 FC_REFLECT(cyberway::genesis::genesis_info::account, (name)(owner_key)(active_key)(abi)(code))
 FC_REFLECT(cyberway::genesis::genesis_info::stake_params,
     (max_proxies)(frame_length)(payout_step_length)(payout_steps_num)(min_own_staked_for_election))
-FC_REFLECT(cyberway::genesis::genesis_info::parameters, (stake))
+FC_REFLECT(cyberway::genesis::genesis_info::hardfork_info, (version)(time))
+FC_REFLECT(cyberway::genesis::genesis_info::parameters, (stake)(require_hardfork))
 FC_REFLECT(cyberway::genesis::genesis_info, (state_file)(genesis_json)(accounts)(params))
