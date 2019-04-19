@@ -60,6 +60,9 @@ public:
       bool exclude_unactivatable = false;
    };
 
+   template<typename T>
+   using next_function = std::function<void(const fc::static_variant<fc::exception_ptr, T>&)>;
+
    producer_plugin();
    virtual ~producer_plugin();
 
@@ -90,7 +93,7 @@ public:
    void set_whitelist_blacklist(const whitelist_blacklist& params);
 
    integrity_hash_information get_integrity_hash() const;
-   snapshot_information create_snapshot() const;
+   void create_snapshot(next_function<snapshot_information> next);
 
    scheduled_protocol_feature_activations get_scheduled_protocol_feature_activations() const;
    void schedule_protocol_feature_activations(const scheduled_protocol_feature_activations& schedule);
