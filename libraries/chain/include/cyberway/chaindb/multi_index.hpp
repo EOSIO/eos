@@ -344,6 +344,14 @@ private:
             lazy_load_object();
             return &item_data::get_T(item_);
         }
+        const primary_key_t pk() const {
+            lazy_load_object();
+            return primary_key_;
+        }
+        const service_state& service() const {
+            lazy_load_object();
+            return item_->service();
+        }
 
         const_iterator_impl operator++(int) {
             const_iterator_impl result(*this);
