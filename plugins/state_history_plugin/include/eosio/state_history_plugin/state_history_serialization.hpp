@@ -14,7 +14,7 @@
 #include <eosio/chain/resource_limits.hpp>
 #include <eosio/chain/resource_limits_private.hpp>
 #include <eosio/chain/trace.hpp>
-#include <eosio/chain_plugin/chain_plugin.hpp>
+#include <eosio/chain/name.hpp>
 #include <eosio/state_history_plugin/state_history_plugin.hpp>
 
 template <typename T>
@@ -464,7 +464,7 @@ datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosi
    fc::raw::pack(ds, as_type<eosio::chain::digest_type>(obj.obj.act_digest));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.global_sequence));
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.recv_sequence));
-   history_serialize_container(ds, obj.db, as_type<flat_map<eosio::name, uint64_t>>(obj.obj.auth_sequence));
+   history_serialize_container(ds, obj.db, as_type<flat_map<eosio::chain::name, uint64_t>>(obj.obj.auth_sequence));
    fc::raw::pack(ds, as_type<fc::unsigned_int>(obj.obj.code_sequence));
    fc::raw::pack(ds, as_type<fc::unsigned_int>(obj.obj.abi_sequence));
    return ds;

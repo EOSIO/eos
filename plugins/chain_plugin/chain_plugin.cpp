@@ -184,6 +184,8 @@ public:
    methods::get_block_by_id::method_type::handle                     get_block_by_id_provider;
    methods::get_head_block_id::method_type::handle                   get_head_block_id_provider;
    methods::get_last_irreversible_block_number::method_type::handle  get_last_irreversible_block_number_provider;
+   methods::get_controller::method_type::handle                      get_controller_provider;
+   methods::get_abi_serializer_max_time::method_type::handle         get_abi_serializer_max_time_provider;
 
    // scoped connections for chain controller
    fc::optional<scoped_connection>                                   pre_accepted_block_connection;
@@ -692,6 +694,16 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
                return my->chain->last_irreversible_block_num();
             } );
 
+      my->get_controller_provider = app().get_method<methods::get_controller>().register_provider(
+            [this]() -> controller& {
+               return chain();
+            } );
+
+      my->get_abi_serializer_max_time_provider = app().get_method<methods::get_abi_serializer_max_time>().register_provider(
+            [this]() -> fc::microseconds {
+               return get_abi_serializer_max_time();
+            } );
+
       // relay signals to channels
       my->pre_accepted_block_connection = my->chain->pre_accepted_block.connect([this](const signed_block_ptr& blk) {
          auto itr = my->loaded_checkpoints.find( blk->block_num() );
@@ -1012,7 +1024,7 @@ fc::microseconds chain_plugin::get_abi_serializer_max_time() const {
    return my->abi_serializer_max_time_ms;
 }
 
-void chain_plugin::log_guard_exception(const chain::guard_exception&e ) const {
+void chain_plugin::log_guard_exception(const chain::guard_exception&e ) {
    if (e.code() == chain::database_guard_exception::code_value) {
       elog("Database has reached an unsafe level of usage, shutting down to avoid corrupting the database.  "
            "Please increase the value set for \"chain-state-db-size-mb\" and restart the process!");
@@ -1024,7 +1036,7 @@ void chain_plugin::log_guard_exception(const chain::guard_exception&e ) const {
    dlog("Details: ${details}", ("details", e.to_detail_string()));
 }
 
-void chain_plugin::handle_guard_exception(const chain::guard_exception& e) const {
+void chain_plugin::handle_guard_exception(const chain::guard_exception& e) {
    log_guard_exception(e);
 
    // quit the app

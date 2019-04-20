@@ -38,6 +38,8 @@ namespace eosio { namespace chain { namespace plugin_interface {
       using get_lib_block_id       = method_decl<chain_plugin_interface, block_id_type ()>;
 
       using get_last_irreversible_block_number = method_decl<chain_plugin_interface, uint32_t ()>;
+      using get_controller                     = method_decl<chain_plugin_interface, controller& ()>;
+      using get_abi_serializer_max_time        = method_decl<chain_plugin_interface, fc::microseconds ()>;
    }
 
    namespace incoming {

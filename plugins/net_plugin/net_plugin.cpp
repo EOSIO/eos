@@ -29,6 +29,7 @@
 #include <boost/asio/steady_timer.hpp>
 
 using namespace eosio::chain::plugin_interface::compat;
+using namespace eosio::chain::plugin_interface::methods;
 
 namespace fc {
    extern std::unordered_map<std::string,logger>& get_logger_map();
@@ -848,7 +849,7 @@ namespace eosio {
    }
 
    void connection::blk_send_branch() {
-      controller& cc = my_impl->chain_plug->chain();
+      controller& cc = app().get_method<get_controller>()();
       uint32_t head_num = cc.fork_db_head_block_num();
       notice_message note;
       note.known_blocks.mode = normal;
@@ -898,7 +899,7 @@ namespace eosio {
    }
 
    void connection::blk_send(const block_id_type& blkid) {
-      controller &cc = my_impl->chain_plug->chain();
+      controller &cc = app().get_method<get_controller>()();
       try {
          signed_block_ptr b = cc.fetch_block_by_id(blkid);
          if(b) {
@@ -1048,7 +1049,7 @@ namespace eosio {
          peer_requested.reset();
       }
       try {
-         controller& cc = my_impl->chain_plug->chain();
+         controller& cc = app().get_method<get_controller>()();
          signed_block_ptr sb = cc.fetch_block_by_number(num);
          if(sb) {
             enqueue_block( sb, trigger_send, true);
@@ -1274,7 +1275,7 @@ namespace eosio {
          bool fhset = c->fork_head != block_id_type();
          fc_dlog(logger, "fork_head_num = ${fn} fork_head set = ${s}",
                  ("fn", c->fork_head_num)("s", fhset));
-            return c->fork_head != block_id_type() && c->fork_head_num < chain_plug->chain().fork_db_head_block_num();
+            return c->fork_head != block_id_type() && c->fork_head_num < app().get_method<get_controller>()().fork_db_head_block_num();
       }
       return state != in_sync;
    }
@@ -1295,14 +1296,14 @@ namespace eosio {
 
    bool sync_manager::sync_required() {
       fc_dlog(logger, "last req = ${req}, last recv = ${recv} known = ${known} our head = ${head}",
-              ("req",sync_last_requested_num)("recv",sync_next_expected_num)("known",sync_known_lib_num)("head",chain_plug->chain().fork_db_head_block_num()));
+              ("req",sync_last_requested_num)("recv",sync_next_expected_num)("known",sync_known_lib_num)("head",app().get_method<get_controller>()().fork_db_head_block_num()));
 
       return( sync_last_requested_num < sync_known_lib_num ||
-              chain_plug->chain().fork_db_head_block_num() < sync_last_requested_num );
+              app().get_method<get_controller>()().fork_db_head_block_num() < sync_last_requested_num );
    }
 
    void sync_manager::request_next_chunk( const connection_ptr& conn ) {
-      uint32_t head_block = chain_plug->chain().fork_db_head_block_num();
+      uint32_t head_block = app().get_method<get_controller>()().fork_db_head_block_num();
 
       if (head_block < sync_last_requested_num && source && source->current()) {
          fc_ilog(logger, "ignoring request, head is ${h} last req = ${r} source is ${p}",
@@ -1367,7 +1368,7 @@ namespace eosio {
       // verify there is an available source
       if (!source || !source->current() ) {
          fc_elog( logger, "Unable to continue syncing at this time");
-         sync_known_lib_num = chain_plug->chain().last_irreversible_block_num();
+         sync_known_lib_num = app().get_method<get_controller>()().last_irreversible_block_num();
          sync_last_requested_num = 0;
          set_state(in_sync); // probably not, but we can't do anything else
          return;
@@ -1402,8 +1403,8 @@ namespace eosio {
       }
 
       if (!sync_required()) {
-         uint32_t bnum = chain_plug->chain().last_irreversible_block_num();
-         uint32_t hnum = chain_plug->chain().fork_db_head_block_num();
+         uint32_t bnum = app().get_method<get_controller>()().last_irreversible_block_num();
+         uint32_t hnum = app().get_method<get_controller>()().fork_db_head_block_num();
          fc_dlog( logger, "We are already caught up, my irr = ${b}, head = ${h}, target = ${t}",
                   ("b",bnum)("h",hnum)("t",target));
          return;
@@ -1411,7 +1412,7 @@ namespace eosio {
 
       if (state == in_sync) {
          set_state(lib_catchup);
-         sync_next_expected_num = chain_plug->chain().last_irreversible_block_num() + 1;
+         sync_next_expected_num = app().get_method<get_controller>()().last_irreversible_block_num() + 1;
       }
 
       fc_ilog(logger, "Catching up with chain, our last req is ${cc}, theirs is ${t} peer ${p}",
@@ -1432,7 +1433,7 @@ namespace eosio {
    }
 
    void sync_manager::recv_handshake(const connection_ptr& c, const handshake_message& msg) {
-      controller& cc = chain_plug->chain();
+      controller& cc = app().get_method<get_controller>()();
       uint32_t lib_num = cc.last_irreversible_block_num();
       uint32_t peer_lib = msg.last_irreversible_block_num;
       reset_lib_num(c);
@@ -1753,7 +1754,7 @@ namespace eosio {
       }
       if (msg.known_blocks.mode == normal) {
          req.req_blocks.mode = normal;
-         controller& cc = my_impl->chain_plug->chain();
+         controller& cc = app().get_method<get_controller>()();
          // known_blocks.ids is never > 1
          if( !msg.known_blocks.ids.empty() ) {
             const block_id_type& blkid = msg.known_blocks.ids.back();
@@ -2160,7 +2161,7 @@ namespace eosio {
             block_header bh;
             fc::raw::unpack( peek_ds, bh );
 
-            controller& cc = chain_plug->chain();
+            controller& cc = app().get_method<get_controller>()();
             block_id_type blk_id = bh.id();
             uint32_t blk_num = bh.block_num();
             if( cc.fetch_block_by_id( blk_id ) ) {
@@ -2246,7 +2247,7 @@ namespace eosio {
          c->enqueue( go_away_message( fatal_other ));
          return;
       }
-      controller& cc = chain_plug->chain();
+      controller& cc = app().get_method<get_controller>()();
       uint32_t lib_num = cc.last_irreversible_block_num();
       uint32_t peer_lib = msg.last_irreversible_block_num;
       if( c->connecting ) {
@@ -2512,7 +2513,7 @@ namespace eosio {
    void net_plugin_impl::handle_message(const connection_ptr& c, const packed_transaction_ptr& trx) {
       fc_dlog(logger, "got a packed transaction, cancel wait");
       peer_ilog(c, "received packed_transaction");
-      controller& cc = my_impl->chain_plug->chain();
+      controller& cc = app().get_method<get_controller>()();
       if( cc.get_read_mode() == eosio::db_read_mode::READ_ONLY ) {
          fc_dlog(logger, "got a txn in read-only mode - dropping");
          return;
@@ -2551,7 +2552,7 @@ namespace eosio {
    }
 
    void net_plugin_impl::handle_message(const connection_ptr& c, const signed_block_ptr& msg) {
-      controller &cc = chain_plug->chain();
+      controller &cc = app().get_method<get_controller>()();
       block_id_type blk_id = msg->id();
       uint32_t blk_num = msg->block_num();
       fc_dlog(logger, "canceling wait on ${p}", ("p",c->peer_name()));
@@ -2678,7 +2679,7 @@ namespace eosio {
 
       expire_local_txns();
 
-      controller& cc = chain_plug->chain();
+      controller& cc = app().get_method<get_controller>()();
       uint32_t lib = cc.last_irreversible_block_num();
       dispatcher->expire_blocks( lib );
       for ( auto &c : connections ) {
@@ -2700,7 +2701,7 @@ namespace eosio {
       old.erase( ex_lo, ex_up );
 
       auto& stale = local_txns.get<by_block_num>();
-      controller& cc = chain_plug->chain();
+      controller& cc = app().get_method<get_controller>()();
       uint32_t lib = cc.last_irreversible_block_num();
       stale.erase( stale.lower_bound(1), stale.upper_bound(lib) );
    }
@@ -2857,7 +2858,7 @@ namespace eosio {
       hello.agent = my_impl->user_agent_name;
 
 
-      controller& cc = my_impl->chain_plug->chain();
+      controller& cc = app().get_method<get_controller>()();
       hello.head_id = fc::sha256();
       hello.last_irreversible_block_id = fc::sha256();
       hello.head_num = cc.fork_db_head_block_num();
@@ -3063,7 +3064,7 @@ namespace eosio {
          fc_ilog( logger, "starting listener, max clients is ${mc}",("mc",my->max_client_count) );
          my->start_listen_loop();
       }
-      chain::controller&cc = my->chain_plug->chain();
+      chain::controller&cc = app().get_method<get_controller>()();
       {
          cc.accepted_block.connect(  boost::bind(&net_plugin_impl::accepted_block, my.get(), _1));
       }

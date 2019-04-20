@@ -56,6 +56,7 @@ if(BUILD_MONGO_DB_PLUGIN)
   target_include_directories(mongo_db_plugin
           PRIVATE ${LIBMONGOCXX_STATIC_INCLUDE_DIRS} ${LIBBSONCXX_STATIC_INCLUDE_DIRS}
           PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include"
+                 "${CMAKE_CURRENT_SOURCE_DIR}/../chain_interface/include"
           )
 
   target_compile_definitions(mongo_db_plugin

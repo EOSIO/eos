@@ -5,4 +5,5 @@ add_library( state_history_plugin
              ${HEADERS} )
 
 target_link_libraries( state_history_plugin chain_plugin eosio_chain appbase )
-target_include_directories( state_history_plugin PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )
+target_include_directories( state_history_plugin PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include"
+                            "${CMAKE_CURRENT_SOURCE_DIR}/../chain_interface/include" )

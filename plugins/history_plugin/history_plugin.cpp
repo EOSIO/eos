@@ -3,7 +3,8 @@
 #include <eosio/history_plugin/public_key_history_object.hpp>
 #include <eosio/chain/controller.hpp>
 #include <eosio/chain/trace.hpp>
-#include <eosio/chain_plugin/chain_plugin.hpp>
+#include <eosio/chain/contract_types.hpp>
+#include <eosio/chain/plugin_interface.hpp>
 
 #include <fc/io/json.hpp>
 
@@ -12,10 +13,10 @@
 
 namespace eosio {
    using namespace chain;
+   using namespace chain::plugin_interface;
    using boost::signals2::scoped_connection;
 
    static appbase::abstract_plugin& _history_plugin = app().register_plugin<history_plugin>();
-
 
    struct account_history_object : public chainbase::object<account_history_object_type, account_history_object>  {
       OBJECT_CTOR( account_history_object );
@@ -140,7 +141,6 @@ namespace eosio {
          bool bypass_filter = false;
          std::set<filter_entry> filter_on;
          std::set<filter_entry> filter_out;
-         chain_plugin*          chain_plug = nullptr;
          fc::optional<scoped_connection> applied_transaction_connection;
 
           bool filter(const action_trace& act) {
@@ -205,7 +205,7 @@ namespace eosio {
          }
 
          void record_account_action( account_name n, const base_action_trace& act ) {
-            auto& chain = chain_plug->chain();
+            auto& chain = app().get_method<methods::get_controller>()();
             chainbase::database& db = const_cast<chainbase::database&>( chain.db() ); // Override read-only access to state DB (highly unrecommended practice!)
 
             const auto& idx = db.get_index<account_history_index, by_account_action_seq>();
@@ -226,7 +226,7 @@ namespace eosio {
          }
 
          void on_system_action( const action_trace& at ) {
-            auto& chain = chain_plug->chain();
+            auto& chain = app().get_method<methods::get_controller>()();
             chainbase::database& db = const_cast<chainbase::database&>( chain.db() ); // Override read-only access to state DB (highly unrecommended practice!)
             if( at.act.name == N(newaccount) )
             {
@@ -255,7 +255,7 @@ namespace eosio {
          void on_action_trace( const action_trace& at ) {
             if( filter( at ) ) {
                //idump((fc::json::to_pretty_string(at)));
-               auto& chain = chain_plug->chain();
+               auto& chain = app().get_method<methods::get_controller>()();
                chainbase::database& db = const_cast<chainbase::database&>( chain.db() ); // Override read-only access to state DB (highly unrecommended practice!)
 
                db.create<action_history_object>( [&]( auto& aho ) {
@@ -343,9 +343,8 @@ namespace eosio {
             }
          }
 
-         my->chain_plug = app().find_plugin<chain_plugin>();
-         EOS_ASSERT( my->chain_plug, chain::missing_chain_plugin_exception, ""  );
-         auto& chain = my->chain_plug->chain();
+#warning TODO check whether controller is provided
+         auto& chain = app().get_method<methods::get_controller>()();
 
          chainbase::database& db = const_cast<chainbase::database&>( chain.db() ); // Override read-only access to state DB (highly unrecommended practice!)
          // TODO: Use separate chainbase database for managing the state of the history_plugin (or remove deprecated history_plugin entirely) 
@@ -374,9 +373,9 @@ namespace eosio {
    namespace history_apis {
       read_only::get_actions_result read_only::get_actions( const read_only::get_actions_params& params )const {
          edump((params));
-        auto& chain = history->chain_plug->chain();
+        auto& chain = app().get_method<methods::get_controller>()();
         const auto& db = chain.db();
-        const auto abi_serializer_max_time = history->chain_plug->get_abi_serializer_max_time();
+        const auto abi_serializer_max_time = app().get_method<methods::get_abi_serializer_max_time>()();
 
         const auto& idx = db.get_index<account_history_index, by_account_action_seq>();
 
@@ -443,8 +442,8 @@ namespace eosio {
 
 
       read_only::get_transaction_result read_only::get_transaction( const read_only::get_transaction_params& p )const {
-         auto& chain = history->chain_plug->chain();
-         const auto abi_serializer_max_time = history->chain_plug->get_abi_serializer_max_time();
+         auto& chain = app().get_method<methods::get_controller>()();
+         const auto abi_serializer_max_time = app().get_method<methods::get_abi_serializer_max_time>()();
 
          transaction_id_type input_id;
          auto input_id_length = p.id.size();
@@ -565,7 +564,7 @@ namespace eosio {
 
       read_only::get_key_accounts_results read_only::get_key_accounts(const get_key_accounts_params& params) const {
          std::set<account_name> accounts;
-         const auto& db = history->chain_plug->chain().db();
+         const auto& db = app().get_method<methods::get_controller>()().db();
          const auto& pub_key_idx = db.get_index<public_key_history_multi_index, by_pub_key>();
          auto range = pub_key_idx.equal_range( params.public_key );
          for (auto obj = range.first; obj != range.second; ++obj)
@@ -575,7 +574,7 @@ namespace eosio {
 
       read_only::get_controlled_accounts_results read_only::get_controlled_accounts(const get_controlled_accounts_params& params) const {
          std::set<account_name> accounts;
-         const auto& db = history->chain_plug->chain().db();
+         const auto& db = app().get_method<methods::get_controller>()().db();
          const auto& account_control_idx = db.get_index<account_control_history_multi_index, by_controlling>();
          auto range = account_control_idx.equal_range( params.controlling_account );
          for (auto obj = range.first; obj != range.second; ++obj)

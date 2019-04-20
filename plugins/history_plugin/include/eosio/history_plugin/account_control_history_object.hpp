@@ -6,6 +6,9 @@
 
 #include <chainbase/chainbase.hpp>
 #include <eosio/chain/types.hpp>
+#include <boost/multi_index/member.hpp>
+#include <boost/multi_index/ordered_index.hpp>
+#include <boost/multi_index/composite_key.hpp>
 
 namespace eosio {
 using chain::account_name;

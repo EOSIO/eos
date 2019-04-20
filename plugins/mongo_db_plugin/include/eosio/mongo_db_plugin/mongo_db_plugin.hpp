@@ -8,6 +8,8 @@
 #include <appbase/application.hpp>
 #include <memory>
 
+using namespace appbase;
+
 namespace eosio {
 
 using mongo_db_plugin_impl_ptr = std::shared_ptr<class mongo_db_plugin_impl>;

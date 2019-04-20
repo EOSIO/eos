@@ -8,6 +8,11 @@
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/transaction.hpp>
 #include <eosio/chain/types.hpp>
+#include <eosio/chain/controller.hpp>
+#include <eosio/chain/block_state.hpp>
+#include <eosio/chain/trace.hpp>
+#include <eosio/chain/abi_serializer.hpp>
+#include <eosio/chain/plugin_interface.hpp>
 
 #include <fc/io/json.hpp>
 #include <fc/log/logger_config.hpp>
@@ -33,19 +38,18 @@
 #include <mongocxx/exception/operation_exception.hpp>
 #include <mongocxx/exception/logic_error.hpp>
 
+#include <boost/multi_index_container.hpp>
+#include <boost/multi_index/member.hpp>
+#include <boost/multi_index/ordered_index.hpp>
+
 namespace fc { class variant; }
 
 namespace eosio {
 
-using chain::account_name;
-using chain::action_name;
-using chain::block_id_type;
-using chain::permission_name;
-using chain::transaction;
-using chain::signed_transaction;
-using chain::signed_block;
-using chain::transaction_id_type;
-using chain::packed_transaction;
+using namespace chain;
+using namespace chain::plugin_interface;
+using namespace boost::multi_index;
+using fc::optional;
 
 static appbase::abstract_plugin& _mongo_db_plugin = app().register_plugin<mongo_db_plugin>();
 
@@ -1606,7 +1610,7 @@ void mongo_db_plugin::plugin_initialize(const variables_map& options)
          if( options.count( "abi-serializer-max-time-ms") == 0 ) {
             EOS_ASSERT(false, chain::plugin_config_exception, "--abi-serializer-max-time-ms required as default value not appropriate for parsing full blocks");
          }
-         my->abi_serializer_max_time = app().get_plugin<chain_plugin>().get_abi_serializer_max_time();
+         my->abi_serializer_max_time = app().get_method<methods::get_abi_serializer_max_time>()();
 
          if( options.count( "mongodb-queue-size" )) {
             my->max_queue_size = options.at( "mongodb-queue-size" ).as<uint32_t>();
@@ -1684,9 +1688,8 @@ void mongo_db_plugin::plugin_initialize(const variables_map& options)
          my->mongo_pool.emplace(uri);
 
          // hook up to signals on controller
-         chain_plugin* chain_plug = app().find_plugin<chain_plugin>();
-         EOS_ASSERT( chain_plug, chain::missing_chain_plugin_exception, ""  );
-         auto& chain = chain_plug->chain();
+#warning TODO check whether controller is provided
+         auto& chain = app().get_method<methods::get_controller>()();
          my->chain_id.emplace( chain.get_chain_id());
 
          my->accepted_block_connection.emplace( chain.accepted_block.connect( [&]( const chain::block_state_ptr& bs ) {

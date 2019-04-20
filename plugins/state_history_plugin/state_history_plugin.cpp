@@ -4,8 +4,10 @@
  */
 
 #include <eosio/chain/config.hpp>
+#include <eosio/chain/contract_table_objects.hpp>
 #include <eosio/state_history_plugin/state_history_log.hpp>
 #include <eosio/state_history_plugin/state_history_serialization.hpp>
+#include <eosio/chain/plugin_interface.hpp>
 
 #include <boost/asio/bind_executor.hpp>
 #include <boost/asio/ip/host_name.hpp>
@@ -18,13 +20,14 @@
 #include <boost/iostreams/filtering_stream.hpp>
 #include <boost/signals2/connection.hpp>
 
-using tcp    = boost::asio::ip::tcp;
-namespace ws = boost::beast::websocket;
+using tcp    = ::boost::asio::ip::tcp;
+namespace ws = ::boost::beast::websocket;
 
 extern const char* const state_history_plugin_abi;
 
 namespace eosio {
 using namespace chain;
+using namespace chain::plugin_interface;
 using boost::signals2::scoped_connection;
 
 static appbase::abstract_plugin& _state_history_plugin = app().register_plugin<state_history_plugin>();
@@ -54,7 +57,6 @@ static bytes zlib_compress_bytes(bytes in) {
 }
 
 struct state_history_plugin_impl : std::enable_shared_from_this<state_history_plugin_impl> {
-   chain_plugin*                                        chain_plug = nullptr;
    fc::optional<state_history_log>                      trace_log;
    fc::optional<state_history_log>                      chain_state_log;
    bool                                                 stopping = false;
@@ -82,7 +84,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
    void get_block(uint32_t block_num, fc::optional<bytes>& result) {
       chain::signed_block_ptr p;
       try {
-         p = chain_plug->chain().fetch_block_by_number(block_num);
+         p = app().get_method<methods::get_controller>()().fetch_block_by_number(block_num);
       } catch (...) {
          return;
       }
@@ -95,7 +97,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       if (chain_state_log && block_num >= chain_state_log->begin_block() && block_num < chain_state_log->end_block())
          return chain_state_log->get_block_id(block_num);
       try {
-         auto block = chain_plug->chain().fetch_block_by_number(block_num);
+         auto block = app().get_method<methods::get_controller>()().fetch_block_by_number(block_num);
          if (block)
             return block->id();
       } catch (...) {
@@ -178,7 +180,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
 
       using result_type = void;
       void operator()(get_status_request_v0&) {
-         auto&                chain = plugin->chain_plug->chain();
+         auto&                chain = app().get_method<methods::get_controller>()();
          get_status_result_v0 result;
          result.head              = {chain.head_block_num(), chain.head_block_id()};
          result.last_irreversible = {chain.last_irreversible_block_num(), chain.last_irreversible_block_id()};
@@ -219,7 +221,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          if (!send_queue.empty() || !need_to_send_update || !current_request ||
              !current_request->max_messages_in_flight)
             return;
-         auto&                chain = plugin->chain_plug->chain();
+         auto&                chain = app().get_method<methods::get_controller>()();
          get_blocks_result_v0 result;
          result.head              = {chain.head_block_num(), chain.head_block_id()};
          result.last_irreversible = {chain.last_irreversible_block_num(), chain.last_irreversible_block_id()};
@@ -388,7 +390,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       cached_traces.clear();
       onblock_trace.reset();
 
-      auto& db         = chain_plug->chain().db();
+      auto& db         = app().get_method<methods::get_controller>()().db();
       auto  traces_bin = zlib_compress_bytes(fc::raw::pack(make_history_serial_wrapper(db, traces)));
       EOS_ASSERT(traces_bin.size() == (uint32_t)traces_bin.size(), plugin_exception, "traces is too big");
 
@@ -411,7 +413,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          ilog("Placing initial state in block ${n}", ("n", block_state->block->block_num()));
 
       std::vector<table_delta> deltas;
-      auto&                    db = chain_plug->chain().db();
+      auto&                    db = app().get_method<methods::get_controller>()().db();
 
       const auto&                                table_id_index = db.get_index<table_id_multi_index>();
       std::map<uint64_t, const table_id_object*> removed_table_id;
@@ -521,9 +523,8 @@ void state_history_plugin::plugin_initialize(const variables_map& options) {
       EOS_ASSERT(options.at("disable-replay-opts").as<bool>(), plugin_exception,
                  "state_history_plugin requires --disable-replay-opts");
 
-      my->chain_plug = app().find_plugin<chain_plugin>();
-      EOS_ASSERT(my->chain_plug, chain::missing_chain_plugin_exception, "");
-      auto& chain = my->chain_plug->chain();
+#warning TODO check whether controller is provided
+      auto& chain = app().get_method<methods::get_controller>()();
       my->applied_transaction_connection.emplace(
           chain.applied_transaction.connect([&](const transaction_trace_ptr& p) { my->on_applied_transaction(p); }));
       my->accepted_block_connection.emplace(

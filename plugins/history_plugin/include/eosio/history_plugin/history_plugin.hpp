@@ -6,6 +6,8 @@
 #include <appbase/application.hpp>
 
 #include <eosio/chain_plugin/chain_plugin.hpp>
+#include <eosio/chain/types.hpp>
+#include <eosio/chain/block_timestamp.hpp>
 
 namespace fc { class variant; }
 
@@ -16,6 +18,7 @@ namespace eosio {
    using chain::name;
    using fc::optional;
    using chain::uint128_t;
+   using fc::optional;
 
    typedef shared_ptr<class history_plugin_impl> history_ptr;
    typedef shared_ptr<const class history_plugin_impl> history_const_ptr;

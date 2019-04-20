@@ -7,6 +7,8 @@
 
 #include <eosio/chain_plugin/chain_plugin.hpp>
 
+using namespace appbase;
+
 template <typename T>
 struct history_serial_big_vector_wrapper {
    T obj;
