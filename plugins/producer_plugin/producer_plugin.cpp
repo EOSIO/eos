@@ -1045,6 +1045,8 @@ void producer_plugin::create_snapshot(producer_plugin::next_function<producer_pl
          reschedule.cancel();
       }
 
+      bfs::create_directory( p.parent_path() );
+
       // create the snapshot
       auto snap_out = std::ofstream(p.generic_string(), (std::ios::out | std::ios::binary));
       auto writer = std::make_shared<ostream_snapshot_writer>(snap_out);
