@@ -122,7 +122,8 @@ namespace eosio { namespace chain {
 
          void validate_referenced_accounts(const transaction& trx) const;
 
-         account_name get_ram_provider(account_name running_contract, account_name user) const;
+         const account_name& get_ram_provider(const account_name& ram_owner) const;
+         cyberway::chaindb::ram_payer_info get_ram_payer(const account_name& ram_owner);
 
       private:
 

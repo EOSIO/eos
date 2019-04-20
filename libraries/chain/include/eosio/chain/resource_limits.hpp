@@ -8,18 +8,16 @@
 
 #include <set>
 
-#include <cyberway/chaindb/common.hpp>
 #include <eosio/chain/int_arithmetic.hpp>
 
 namespace cyberway { namespace chaindb {
+    class chaindb_controller;
     struct ram_payer_info;
 }} // namespace cyberway::chaindb
 
 namespace eosio { namespace chain {
 
 namespace resource_limits {
-   using cyberway::chaindb::ram_payer_info;
-
    namespace impl {
       template<typename T>
       struct ratio {
@@ -74,7 +72,7 @@ namespace resource_limits {
          void add_to_snapshot( const snapshot_writer_ptr& snapshot ) const;
          void read_from_snapshot( const snapshot_reader_ptr& snapshot );
 
-         void initialize_account( const account_name& account );
+         void initialize_account( const account_name& account, const cyberway::chaindb::ram_payer_info& );
          void set_block_parameters( const elastic_limit_parameters& cpu_limit_parameters, const elastic_limit_parameters& net_limit_parameters );
 
          void update_account_usage( const flat_set<account_name>& accounts, uint32_t ordinal );

@@ -278,7 +278,6 @@ abi_def eosio_contract_abi(abi_def eos_abi)
          {"trx_id", "checksum256"},
          {"sender", "name"},
          {"sender_id", "uint128"},
-         {"payer", "name"},
          {"delay_until", "time_point"},
          {"expiration", "time_point"},
          {"published", "time_point"},

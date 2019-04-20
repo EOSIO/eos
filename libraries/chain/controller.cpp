@@ -599,7 +599,7 @@ struct controller_impl {
       const auto& active_permission = authorization.create_permission({}, name, config::active_name, owner_permission.id,
                                                                       active, conf.genesis.initial_timestamp );
 
-      resource_limits.initialize_account(name);
+      resource_limits.initialize_account(name, {});
 
       // Does exist any reason to calculate ram usage for system accounts?
 

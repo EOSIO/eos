@@ -624,9 +624,8 @@ namespace bacc = boost::accumulators;
       uint32_t trx_size = 0;
       auto& chaindb = control.chaindb();
       auto trx_table = chaindb.get_table<generated_transaction_object>();
-      auto res = trx_table.emplace( {*this, first_auth}, [&]( auto& gto ) {
+      auto res = trx_table.emplace( get_ram_payer(first_auth), [&]( auto& gto ) {
         gto.trx_id      = id;
-        gto.payer       = first_auth;
         gto.sender      = account_name(); /// delayed transactions have no sender
         gto.sender_id   = transaction_id_to_sender_id( gto.trx_id );
         gto.published   = control.pending_block_time();
@@ -680,12 +679,22 @@ namespace bacc = boost::accumulators;
       EOS_ASSERT( one_auth, tx_no_auths, "transaction must have at least one authorization" );
    }
 
-   account_name transaction_context::get_ram_provider(account_name running_contract, account_name user) const {
-       const auto contract_provider = ram_providers_.find({running_contract, user});
+   const account_name& transaction_context::get_ram_provider(const account_name& ram_owner) const {
+      if (ram_owner.empty()) {
+          return ram_owner;
+      }
 
-       return contract_provider == ram_providers_.end() ? user : contract_provider->second;
+      auto itr = ram_providers.find(ram_owner);
+      if (ram_providers.end() == itr) {
+          return ram_owner;
+      }
+      return itr->second;
    }
-   
+
+   cyberway::chaindb::ram_payer_info transaction_context::get_ram_payer(const account_name& ram_owner) {
+      return {*this, get_ram_provider(ram_owner), ram_owner};
+   }
+
     void transaction_context::available_resources_t::init(resource_limits_manager& rl, const flat_set<account_name>& accounts, fc::time_point now) {
         auto pricelist = rl.get_pricelist();
         cpu_price = pricelist.at(resource_limits::cpu_code);
