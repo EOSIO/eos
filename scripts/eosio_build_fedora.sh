@@ -43,7 +43,7 @@ printf "Disk space available: ${DISK_AVAIL%.*}G\\n"
 # llvm is symlinked from /usr/lib64/llvm4.0 into user's home
 DEP_ARRAY=(
 	git sudo procps-ng which gcc gcc-c++ autoconf automake libtool make \
-	bzip2-devel curl -LO bzip2 compat-openssl10 graphviz doxygen \
+	bzip2-devel curl bzip2 compat-openssl10 graphviz doxygen \
 	openssl-devel gmp-devel libstdc++-devel python2 python2-devel python3 python3-devel \
 	libedit ncurses-devel swig llvm4.0 llvm4.0-devel llvm4.0-libs llvm4.0-static libcurl-devel libusb-devel
 )
