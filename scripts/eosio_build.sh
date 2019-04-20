@@ -352,7 +352,7 @@ cd $BUILD_DIR
 
 
 if $PIN_COMPILER; then
-   sed -e "s~@~$OPT_LOCATION~g" ../scripts/pinned_toolchain.cmake &> $BUILD_DIR/pinned_toolchain.cmake
+   sed -e "s~@~$OPT_LOCATION~g" $SCRIPT_DIR/pinned_toolchain.cmake &> $BUILD_DIR/pinned_toolchain.cmake
    $CMAKE -DCMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE}" -DCMAKE_TOOLCHAIN_FILE=$BUILD_DIR/pinned_toolchain.cmake \
       -DCORE_SYMBOL_NAME="${CORE_SYMBOL_NAME}" \
       -DOPENSSL_ROOT_DIR="${OPENSSL_ROOT_DIR}" -DBUILD_MONGO_DB_PLUGIN=true \
