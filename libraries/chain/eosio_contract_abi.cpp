@@ -630,7 +630,6 @@ abi_def eosio_contract_abi(abi_def eos_abi)
       "provideram", "", {
          {"provider", "account_name"},
          {"account", "account_name"},
-         {"contracts", "account_name[]"},
       }
    });
 

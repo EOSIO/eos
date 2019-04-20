@@ -138,7 +138,7 @@ struct canceldelay {
    }
 };
 
-struct providebw {
+struct providebw final {
     account_name    provider;
     account_name    account;
 
@@ -175,15 +175,14 @@ struct providebw {
 //    }
 //};
 
-struct provideram {
-    account_name        provider;
-    account_name        account;
-    std::vector<account_name>   contracts;
+struct provideram final {
+    account_name provider;
+    account_name account;
 
     provideram() = default;
-    provideram(const account_name& provider, const account_name& account, std::vector<name> contracts)
-        : provider(provider), account(account), contracts(std::move(contracts))
-    {}
+    provideram(const account_name& provider, const account_name& account)
+    : provider(provider), account(account) {
+    }
 
     static account_name get_account() {
         return config::system_account_name;
@@ -281,7 +280,7 @@ FC_REFLECT( eosio::chain::providebw                        , (provider)(account)
 //TODO: requestbw
 //FC_REFLECT( eosio::chain::requestbw                        , (provider)(account) )
 //FC_REFLECT( eosio::chain::approvebw                        , (account) )
-FC_REFLECT( eosio::chain::provideram                       , (provider)(account)(contracts) )
+FC_REFLECT( eosio::chain::provideram                       , (provider)(account) )
 FC_REFLECT( eosio::chain::canceldelay                      , (canceling_auth)(trx_id) )
 FC_REFLECT( eosio::chain::onerror                          , (sender_id)(sent_trx) )
 

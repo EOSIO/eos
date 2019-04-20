@@ -201,7 +201,7 @@ namespace bacc = boost::accumulators;
    {
       EOS_ASSERT( !is_initialized, transaction_exception, "cannot initialize twice" );
       const static int64_t large_number_no_overflow = std::numeric_limits<int64_t>::max()/2;
-      
+
       const auto& cfg = control.get_global_properties().configuration;
       auto& rl = control.get_mutable_resource_limits_manager();
 
@@ -247,12 +247,13 @@ namespace bacc = boost::accumulators;
 
       // Record accounts to be billed for network and CPU usage
       flat_set<account_name> provided_accounts;
-      
+
+      provided_accounts.reserve(trx.actions.size());
+      ram_providers.reserve(trx.actions.size());
       for( const auto& act : trx.actions ) {
-         if (act.account == config::system_account_name && act.name == config::provide_bw_action) {
-            auto args = act.data_as<providebw>();
-            provided_accounts.insert(args.account);
-         } else if (act.account == config::system_account_name && act.name == N(provideram)) {
+         if (act.account == providebw::get_account() && act.name == providebw::get_name()) {
+            provided_accounts.insert(act.data_as<providebw>().account);
+         } else if (act.account == provideram::get_account() && act.name == provideram::get_name()) {
             add_ram_provider(act.data_as<provideram>());
          }
          for( const auto& auth : act.authorization ) {
@@ -269,13 +270,13 @@ namespace bacc = boost::accumulators;
       for( const auto& acc : provided_accounts ) {
          bill_to_accounts.erase(acc);
       }
-      
+
       available_resources.init(rl, bill_to_accounts, control.pending_block_time());
 
       eager_net_limit = net_limit;
-      
+
       //TODO:? net/cpu leeway
-      
+
       billing_timer_duration_limit = _deadline - start;
 
       // Check if deadline is limited by caller-set deadline (only change deadline if billed_cpu_time_us is not set)
@@ -301,18 +302,24 @@ namespace bacc = boost::accumulators;
       is_initialized = true;
    }
 
-   void transaction_context::add_ram_provider(const provideram& provide_ram) {
-       for (const auto& contract : provide_ram.contracts) {
-           add_ram_provider(contract, provide_ram.account, provide_ram.provider);
-       }
-   }
+   void transaction_context::add_ram_provider(const provideram& ram) {
+       EOS_ASSERT(ram.provider != ram.account, ram_provider_error,
+           "Fail to set the provider ${provider} for the account ${account}, because it is the same account",
+           ("account", ram.account)("provider", ram.provider));
+       EOS_ASSERT(!ram.provider.empty(), ram_provider_error,
+           "Fail to set a empty provider for the account ${account}",
+           ("account", ram.account));
+       EOS_ASSERT(!ram.account.empty(), ram_provider_error,
+           "Fail to set the provider ${provider} for an empty account",
+           ("provider", ram.provider));
 
-   void transaction_context::add_ram_provider(account_name contract, account_name user, account_name provider)    {
-       const auto provider_it = ram_providers_.find({contract, user});
+       const auto itr = ram_providers.find(ram.account);
+       EOS_ASSERT(itr == ram_providers.end(), ram_provider_error,
+           "Fail to set the provider ${new_provider} for the account ${account}, "
+           "because it already has the provider ${provider}",
+           ("account", ram.account)("provider", itr->second)("new_provider", ram.provider));
 
-       EOS_ASSERT(provider_it == ram_providers_.end(), ram_provider_error, "Provider has been already setted up");
-
-       ram_providers_[{contract, user}] = provider;
+       ram_providers.emplace(ram.account, ram.provider);
    }
 
    void transaction_context::init_for_implicit_trx( uint64_t initial_net_usage  )
@@ -411,7 +418,7 @@ namespace bacc = boost::accumulators;
        net_usage = ((net_usage + 7)/8)*8; // Round up to nearest multiple of word size (8 bytes)
 
        eager_net_limit = net_limit;
-       
+
        check_net_usage();
 
        auto now = fc::time_point::now();
@@ -451,7 +458,7 @@ namespace bacc = boost::accumulators;
    }
 
    void transaction_context::checktime()const {
-       
+
       if(BOOST_LIKELY(_deadline_timer.expired == false))
          return;
       auto now = fc::time_point::now();
@@ -483,7 +490,7 @@ namespace bacc = boost::accumulators;
 
       auto now = fc::time_point::now();
       billed_time = now - pseudo_start;
-      
+
       deadline_exception_code = deadline_exception::code_value; // Other timeout exceptions cannot be thrown while billable timer is paused.
       pseudo_start = fc::time_point();
       _deadline_timer.stop();
@@ -537,7 +544,7 @@ namespace bacc = boost::accumulators;
       auto& rl = control.get_mutable_resource_limits_manager();
       rl.add_pending_ram_usage( account, ram_delta );
    }
-   
+
    int64_t transaction_context::get_billed_cpu_time(fc::time_point now)const {
       if (explicit_billed_cpu_time){
          return billed_cpu_time_us;
@@ -703,21 +710,21 @@ namespace bacc = boost::accumulators;
         }
         auto lim_itr = limits.find(account);
         if (lim_itr == limits.end()) {
-            return false; 
+            return false;
         }
         auto& lim = lim_itr->second;
         uint64_t delta_abs = std::abs(delta);
-                
+
         auto cost = safe_prop(delta_abs, ram_price.numerator, ram_price.denominator);
         auto cpu = cost ? (cpu_price.numerator ? safe_prop(cost, cpu_price.denominator, cpu_price.numerator) : UINT64_MAX) : 0;
 
         bool need_to_update_min = (lim.cpu == min_cpu) && (delta < 0);
         if (delta > 0) {
-            EOS_ASSERT(lim.ram >= delta_abs, ram_usage_exceeded, 
-                "account ${a} has insufficient staked tokens: balance.ram = ${b}, delta = ${d}", 
+            EOS_ASSERT(lim.ram >= delta_abs, ram_usage_exceeded,
+                "account ${a} has insufficient staked tokens: balance.ram = ${b}, delta = ${d}",
                 ("a", account)("b", lim.ram)("d", delta));
-            EOS_ASSERT(lim.cpu >= cpu, resource_exhausted_exception, 
-                "account ${a} has insufficient staked tokens: unspent cpu = ${b}, cost = ${c}, cpu equivalent = ${e}", 
+            EOS_ASSERT(lim.cpu >= cpu, resource_exhausted_exception,
+                "account ${a} has insufficient staked tokens: unspent cpu = ${b}, cost = ${c}, cpu equivalent = ${e}",
                 ("a", account)("b", lim.cpu)("c", cost)("e", cpu));
             lim.ram -= delta_abs;
             lim.cpu -= cpu;
@@ -738,17 +745,17 @@ namespace bacc = boost::accumulators;
         }
         return min_cpu < prev_min_cpu;
     }
-    
+
     void transaction_context::available_resources_t::add_net_usage(int64_t delta) {
         EOS_ASSERT(delta >= 0, transaction_exception, "SYSTEM: available_resources_t::add_net_usage, usage_delta < 0");
         if (!delta || !cpu_price.numerator) {
             return;
         }
-        
+
         auto cost = safe_prop(static_cast<uint64_t>(delta), net_price.numerator, net_price.denominator);
         auto cpu = safe_prop(cost, cpu_price.denominator, cpu_price.numerator);
 
-        EOS_ASSERT(min_cpu >= cpu, resource_exhausted_exception, 
+        EOS_ASSERT(min_cpu >= cpu, resource_exhausted_exception,
             "transaction costs too much; unspent cpu = ${b}, cost cpu equivalent = ${e}", ("b", min_cpu)("e", cpu));
         min_cpu = UINT64_MAX;
         for (auto& b : limits) {
@@ -757,9 +764,9 @@ namespace bacc = boost::accumulators;
             min_cpu = std::min(min_cpu, b.second.cpu);
         }
     }
-    
+
     void transaction_context::available_resources_t::check_cpu_usage(int64_t usage)const {
-        EOS_ASSERT(min_cpu >= usage, resource_exhausted_exception, 
+        EOS_ASSERT(min_cpu >= usage, resource_exhausted_exception,
             "transaction costs too much; unspent cpu = ${b}, usage = ${u}", ("b", min_cpu)("u", usage));
     }
 
