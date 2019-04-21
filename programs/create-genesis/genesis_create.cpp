@@ -511,7 +511,7 @@ struct genesis_create::genesis_create_impl final {
             p.token_symbol = sys_sym;
             p.max_proxies = inf.max_proxies;
             p.frame_length = inf.frame_length;
-            p.payout_step_lenght = inf.payout_step_length;
+            p.payout_step_length = inf.payout_step_length;
             p.payout_steps_num = inf.payout_steps_num;
             p.min_own_staked_for_election = inf.min_own_staked_for_election;
         });
@@ -666,7 +666,6 @@ struct genesis_create::genesis_create_impl final {
                 o.agent_name = g.to,
                 o.pct = g.pct,
                 o.share = g.granted;
-                o.granted = g.granted;
                 o.break_fee = config::percent_100;
                 o.break_min_own_staked = 0;
             });
