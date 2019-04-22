@@ -70,10 +70,6 @@ if [ "${DISK_AVAIL%.*}" -lt "${DISK_MIN}" ]; then
 	exit 1
 fi
 
-# llvm-4.0 is installed into /usr/lib/llvm-4.0
-if [ ! PIN_COMPILER ]; then
-   llvm4_deps=(llvm-4.0 libclang-4.0-dev)
-fi
 
 DEP_ARRAY=(
    git make automake libbz2-dev libssl-dev doxygen graphviz \
@@ -81,7 +77,10 @@ DEP_ARRAY=(
    autoconf libtool curl zlib1g-dev sudo ruby libusb-1.0-0-dev libcurl4-gnutls-dev pkg-config
 )
 
-DEP_ARRAY+=$llvm4_deps
+# llvm-4.0 is installed into /usr/lib/llvm-4.0
+if [ ! PIN_COMPILER ]; then
+   DEP_ARRAY+=(llvm-4.0 libclang-4.0-dev)
+fi
 
 COUNT=1
 DISPLAY=""
@@ -209,7 +208,8 @@ if $PIN_COMPILER; then
    printf "Checking LLVM 4 installation...\\n"
    if [ ! -d $OPT_LOCATION/llvm4 ]; then
       printf "Installing LLVM 4...\\n"
-      curl -LO http://releases.llvm.org/4.0.0/llvm-4.0.0.src.tar.xz && tar -xf llvm-4.0.0.src.tar.xz \
+      cd $TMP_LOCATION \
+      && curl -LO http://releases.llvm.org/4.0.0/llvm-4.0.0.src.tar.xz && tar -xf llvm-4.0.0.src.tar.xz \
       && cd llvm-4.0.0.src && mkdir -p build && cd build \
       && $CMAKE -DCMAKE_INSTALL_PREFIX=$OPT_LOCATION/llvm4 -DLLVM_TARGETS_TO_BUILD=host -DLLVM_BUILD_TOOLS=false -DLLVM_ENABLE_RTTI=1 -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=$BUILD_DIR/pinned_toolchain.cmake .. \
       && make -j"${JOBS}" install \
