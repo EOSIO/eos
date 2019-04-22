@@ -311,6 +311,8 @@ namespace eosio { namespace chain {
          bool is_upgraded()const;
          bool under_upgrade()const;
 
+         void maybe_switch_forks();
+
          /*
          signal<void()>                                  pre_apply_block;
          signal<void()>                                  post_apply_block;

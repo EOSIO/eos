@@ -1223,6 +1223,10 @@ namespace eosio {
             return ctrl.get_chain_id();
         }
 
+        void pbft_database::maybe_switch_forks() {
+            ctrl.maybe_switch_forks();
+        }
+
         void pbft_database::set(pbft_state_ptr s) {
             auto result = pbft_state_index.insert(s);
 

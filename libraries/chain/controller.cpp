@@ -2649,4 +2649,10 @@ bool controller::is_upgraded() const {
 bool controller::under_upgrade() const {
     return my->is_upgrading();
 }
+
+void controller::maybe_switch_forks() {
+    if ( my->read_mode != db_read_mode::IRREVERSIBLE ) {
+        my->maybe_switch_forks( controller::block_status::complete );
+    }
+}
 } } /// eosio::chain

@@ -597,6 +597,8 @@ namespace eosio {
 
             bool should_stop_view_change(const pbft_view_change &vc);
 
+            void maybe_switch_forks();
+
         private:
             controller &ctrl;
             pbft_state_multi_index_type pbft_state_index;
