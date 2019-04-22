@@ -7,6 +7,7 @@
 #include <fc/io/json.hpp>
 #include <boost/test/unit_test.hpp>
 #include <boost/tuple/tuple_io.hpp>
+#include <eosio/chain/pbft.hpp>
 
 #include <iosfwd>
 
@@ -291,6 +292,7 @@ namespace eosio { namespace testing {
          fc::temp_directory                            tempdir;
       public:
          unique_ptr<controller> control;
+         unique_ptr<pbft_controller> pbft_ctrl;
          std::map<chain::public_key_type, chain::private_key_type> block_signing_private_keys;
       protected:
          controller::config                            cfg;
