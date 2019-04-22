@@ -189,7 +189,8 @@ if $PIN_COMPILER; then
    if [ ! -d $OPT_LOCATION/llvm4 ]; then
       printf "Installing LLVM 4...\\n"
       cd $SRC_LOCATION \
-      && curl -LO http://releases.llvm.org/4.0.0/llvm-4.0.0.src.tar.xz && tar -xf llvm-4.0.0.src.tar.xz \
+      && curl -LO http://releases.llvm.org/4.0.0/llvm-4.0.0.src.tar.xz \
+      && tar -xjf llvm-4.0.0.src.tar.xz \
       && cd llvm-4.0.0.src && mkdir -p build && cd build \
       && $CMAKE -DCMAKE_INSTALL_PREFIX=$OPT_LOCATION/llvm4 -DLLVM_TARGETS_TO_BUILD=host -DLLVM_BUILD_TOOLS=false -DLLVM_ENABLE_RTTI=1 -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=$BUILD_DIR/pinned_toolchain.cmake .. \
       && make -j"${JOBS}" install \
