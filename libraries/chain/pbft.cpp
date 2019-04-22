@@ -472,7 +472,6 @@ namespace eosio {
                 for (auto cp :new_view.stable_checkpoint.checkpoints) {
                     try {
                         pbft_db.add_pbft_checkpoint(cp);
-                        pbft_db.maybe_switch_forks();
                     } catch (...) {
                         wlog("insert checkpoint failed");
                     }
@@ -483,7 +482,6 @@ namespace eosio {
                 for (auto p: new_view.prepared.prepares) {
                     try {
                         pbft_db.add_pbft_prepare(p);
-                        pbft_db.maybe_switch_forks();
                     } catch (...) {
                         wlog("insert prepare failed");
                     }
