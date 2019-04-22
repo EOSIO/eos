@@ -64,7 +64,7 @@ case "${OS_NAME}" in
 	;;
 esac
 
-if [ "${DISK_AVAIL%.*}" -lt "${DISK_MIN}" ]; then
+if [ "${DISK_AVAIL}" -lt "${DISK_MIN}" ]; then
 	printf "You must have at least %sGB of available storage to install EOSIO.\\n" "${DISK_MIN}"
 	printf "Exiting now.\\n"
 	exit 1
