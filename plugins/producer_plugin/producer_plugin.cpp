@@ -1190,6 +1190,12 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
 
       chain.abort_block();
 
+      if( chain.head_block_num() == 1 && _pending_block_mode == pending_block_mode::producing ) {
+         auto preactivate_feature = chain.get_protocol_feature_manager().get_builtin_digest(builtin_protocol_feature_t::preactivate_feature);
+         if( preactivate_feature )
+            _self->schedule_protocol_feature_activations({{*preactivate_feature}});
+      }
+
       auto features_to_activate = chain.get_preactivated_protocol_features();
       if( _pending_block_mode == pending_block_mode::producing && _protocol_features_to_activate.size() > 0 ) {
          bool drop_features_to_activate = false;
