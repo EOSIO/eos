@@ -78,7 +78,7 @@ DEP_ARRAY=(
 )
 
 # llvm-4.0 is installed into /usr/lib/llvm-4.0
-if [ ! PIN_COMPILER ]; then
+if [ ! $PIN_COMPILER ]; then
    DEP_ARRAY+=(llvm-4.0 libclang-4.0-dev)
 fi
 
