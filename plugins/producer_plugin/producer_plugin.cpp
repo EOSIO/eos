@@ -1091,7 +1091,9 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
       _pending_block_mode = pending_block_mode::speculating;
    }
 
-   if (_pending_block_mode == pending_block_mode::producing) {
+   auto new_version = chain.is_upgraded();
+
+   if (_pending_block_mode == pending_block_mode::producing && !new_version) {
       // determine if our watermark excludes us from producing at this point
       if (currrent_watermark_itr != _producer_watermarks.end()) {
          if (currrent_watermark_itr->second >= hbs->block_num + 1) {
@@ -1113,7 +1115,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
    try {
       uint16_t blocks_to_confirm = 0;
 
-      if (_pending_block_mode == pending_block_mode::producing) {
+      if (_pending_block_mode == pending_block_mode::producing && !new_version) {
          // determine how many blocks this producer can confirm
          // 1) if it is not a producer from this node, assume no confirmations (we will discard this block anyway)
          // 2) if it is a producer on this node that has never produced, the conservative approach is to assume no
