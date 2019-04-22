@@ -8,9 +8,12 @@
 #include <eosio/chain/block_timestamp.hpp>
 #include <eosio/chain/multi_index_includes.hpp>
 
-namespace eosio { namespace chain {
+namespace cyberway { namespace chain {
 
-class domain_object : public cyberway::chaindb::object<domain_object_type, domain_object> {
+using eosio::chain::account_name;
+using eosio::chain::block_timestamp_type;
+
+class domain_object : public cyberway::chaindb::object<eosio::chain::domain_object_type, domain_object> {
    OBJECT_CTOR(domain_object)
 
    id_type              id;
@@ -21,8 +24,8 @@ class domain_object : public cyberway::chaindb::object<domain_object_type, domai
 };
 using domain_id_type = domain_object::id_type;
 
-struct by_name;
-struct by_owner;
+using eosio::chain::by_name;
+using eosio::chain::by_owner;
 using domain_table = cyberway::chaindb::table_container<
    domain_object,
    cyberway::chaindb::indexed_by<
@@ -38,7 +41,7 @@ using domain_table = cyberway::chaindb::table_container<
    >
 >;
 
-class username_object : public cyberway::chaindb::object<username_object_type, username_object> {
+class username_object : public cyberway::chaindb::object<eosio::chain::username_object_type, username_object> {
    OBJECT_CTOR(username_object)
 
    id_type              id;
@@ -48,8 +51,8 @@ class username_object : public cyberway::chaindb::object<username_object_type, u
 };
 using username_id_type = username_object::id_type;
 
-struct by_scope_name;
-struct by_owner;
+using eosio::chain::by_scope_name;
+using eosio::chain::by_owner;
 using username_table = cyberway::chaindb::table_container<
    username_object,
    cyberway::chaindb::indexed_by<
@@ -69,12 +72,12 @@ using username_table = cyberway::chaindb::table_container<
    >
 >;
 
-} } // eosio::chain
+} } // cyberway::chain
 
-CHAINDB_SET_TABLE_TYPE(eosio::chain::domain_object, eosio::chain::domain_table)
-CHAINDB_TAG(eosio::chain::domain_object, domain)
-CHAINDB_SET_TABLE_TYPE(eosio::chain::username_object, eosio::chain::username_table)
-CHAINDB_TAG(eosio::chain::username_object, username)
+CHAINDB_SET_TABLE_TYPE(cyberway::chain::domain_object, cyberway::chain::domain_table)
+CHAINDB_TAG(cyberway::chain::domain_object, domain)
+CHAINDB_SET_TABLE_TYPE(cyberway::chain::username_object, cyberway::chain::username_table)
+CHAINDB_TAG(cyberway::chain::username_object, username)
 
-FC_REFLECT(eosio::chain::domain_object, (id)(owner)(linked_to)(creation_date)(name))
-FC_REFLECT(eosio::chain::username_object, (id)(owner)(scope)(name))
+FC_REFLECT(cyberway::chain::domain_object, (id)(owner)(linked_to)(creation_date)(name))
+FC_REFLECT(cyberway::chain::username_object, (id)(owner)(scope)(name))

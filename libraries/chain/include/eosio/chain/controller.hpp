@@ -6,10 +6,11 @@
 
 #include <eosio/chain/abi_serializer.hpp>
 #include <eosio/chain/account_object.hpp>
-#include <eosio/chain/domain_object.hpp>
 #include <eosio/chain/snapshot.hpp>
 
 #include <cyberway/chaindb/common.hpp>
+#include <cyberway/chain/domain_name.hpp>
+#include <cyberway/chain/domain_object.hpp>
 
 namespace chainbase {
    class database;
@@ -23,6 +24,11 @@ namespace eosio { namespace chain {
    using cyberway::chaindb::chaindb_controller;
    using cyberway::chaindb::chaindb_type;
    using cyberway::chaindb::chaindb_session;
+
+   using cyberway::chain::domain_name;
+   using cyberway::chain::domain_object;
+   using cyberway::chain::username;
+   using cyberway::chain::username_object;
 
    class authorization_manager;
 

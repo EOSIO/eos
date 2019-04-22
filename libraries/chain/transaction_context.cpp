@@ -8,6 +8,7 @@
 #include <eosio/chain/global_property_object.hpp>
 
 #include <cyberway/chaindb/controller.hpp>
+#include <cyberway/chain/cyberway_contract_types.hpp>
 
 #pragma push_macro("N")
 #undef N
@@ -248,6 +249,9 @@ namespace bacc = boost::accumulators;
       // Record accounts to be billed for network and CPU usage
       flat_set<account_name> provided_accounts;
 
+      using cyberway::chain::providebw;
+      using cyberway::chain::provideram;
+
       provided_accounts.reserve(trx.actions.size());
       ram_providers.reserve(trx.actions.size());
       for( const auto& act : trx.actions ) {
@@ -302,7 +306,7 @@ namespace bacc = boost::accumulators;
       is_initialized = true;
    }
 
-   void transaction_context::add_ram_provider(const provideram& ram) {
+   void transaction_context::add_ram_provider(const cyberway::chain::provideram& ram) {
        EOS_ASSERT(ram.provider != ram.account, ram_provider_error,
            "Fail to set the provider ${provider} for the account ${account}, because it is the same account",
            ("account", ram.account)("provider", ram.provider));

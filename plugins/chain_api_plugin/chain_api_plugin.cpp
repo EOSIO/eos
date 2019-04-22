@@ -274,7 +274,7 @@ resolve_names_results chain_api_plugin_impl::resolve_names(const resolve_names_p
     resolve_names_results r;
 
     auto set_domain = [&](const auto& n, resolve_names_item& item) {
-        chain::validate_domain_name(n);
+        cyberway::chain::validate_domain_name(n);
         item.resolved_domain = chain_controller_.get_domain(n).linked_to;
     };
 
@@ -298,7 +298,7 @@ resolve_names_results chain_api_plugin_impl::resolve_names(const resolve_names_p
             auto username = n.substr(0, at);
             bool have_username = username.size() > 0;
             if (have_username) {
-                chain::validate_username(username);
+                cyberway::chain::validate_username(username);
             }
 
             auto tail = n.substr(tail_pos, n.length() - tail_pos);

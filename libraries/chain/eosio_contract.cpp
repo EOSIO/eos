@@ -4,7 +4,6 @@
  */
 #include <eosio/chain/eosio_contract.hpp>
 #include <eosio/chain/system_contracts.hpp>
-#include <eosio/chain/contract_table_objects.hpp>
 
 #include <eosio/chain/controller.hpp>
 #include <eosio/chain/transaction_context.hpp>
@@ -444,22 +443,6 @@ void apply_cyber_unlinkauth(apply_context& context) {
    chaindb.erase(*link, context.get_ram_payer());
 }
 
-void apply_cyber_providebw(apply_context& context) {
-   auto args = context.act.data_as<providebw>();
-   context.require_authorization(args.provider);
-}
-
-// TODO: requestbw
-//void apply_cyber_requestbw(apply_context& context) {
-//   auto args = context.act.data_as<requestbw>();
-//   context.require_authorization(args.account);
-//}
-
-void apply_cyber_provideram(apply_context& context) {
-   auto args = context.act.data_as<provideram>();
-   context.require_authorization(args.provider);
-}
-
 void apply_cyber_canceldelay(apply_context& context) {
    auto cancel = context.act.data_as<canceldelay>();
    context.require_authorization(cancel.canceling_auth.actor); // only here to mark the single authority on this action as used
@@ -468,79 +451,5 @@ void apply_cyber_canceldelay(apply_context& context) {
 
    context.cancel_deferred_transaction(transaction_id_to_sender_id(trx_id), account_name());
 }
-
-
-void apply_cyber_domain_newdomain(apply_context& context) {
-   auto op = context.act.data_as<newdomain>();
-   try {
-      context.require_authorization(op.creator);
-      validate_domain_name(op.name);             // TODO: can move validation to domain_name deserializer
-      auto& chaindb = context.chaindb;
-      auto exists = chaindb.find<domain_object, by_name>(op.name);
-      EOS_ASSERT(exists == nullptr, domain_exists_exception,
-         "Cannot create domain named ${n}, as that name is already taken", ("n", op.name));
-      chaindb.emplace<domain_object>(context.get_ram_payer(op.creator), [&](auto& d) {
-         d.owner = op.creator;
-         d.creation_date = context.control.pending_block_time();
-         d.name = op.name;
-      });
-} FC_CAPTURE_AND_RETHROW((op)) }
-
-void apply_cyber_domain_passdomain(apply_context& context) {
-   auto op = context.act.data_as<passdomain>();
-   try {
-      context.require_authorization(op.from);   // TODO: special case if nobody owns domain
-      validate_domain_name(op.name);
-      const auto& domain = context.control.get_domain(op.name);
-      EOS_ASSERT(op.from == domain.owner, action_validate_exception, "Only owner can pass domain name");
-      context.chaindb.modify(domain, context.get_ram_payer(op.to), [&](auto& d) {
-         d.owner = op.to;
-      });
-} FC_CAPTURE_AND_RETHROW((op)) }
-
-void apply_cyber_domain_linkdomain(apply_context& context) {
-   auto op = context.act.data_as<linkdomain>();
-   try {
-      context.require_authorization(op.owner);
-      validate_domain_name(op.name);
-      const auto& domain = context.control.get_domain(op.name);
-      EOS_ASSERT(op.owner == domain.owner, action_validate_exception, "Only owner can change domain link");
-      EOS_ASSERT(op.to != domain.linked_to, action_validate_exception, "Domain name already linked to the same account");
-      context.chaindb.modify(domain, context.get_ram_payer(domain.owner), [&](auto& d) {
-         d.linked_to = op.to;
-      });
-} FC_CAPTURE_AND_RETHROW((op)) }
-
-void apply_cyber_domain_unlinkdomain(apply_context& context) {
-   auto op = context.act.data_as<unlinkdomain>();
-   try {
-      context.require_authorization(op.owner);
-      validate_domain_name(op.name);
-      const auto& domain = context.control.get_domain(op.name);
-      EOS_ASSERT(op.owner == domain.owner, action_validate_exception, "Only owner can unlink domain");
-      EOS_ASSERT(domain.linked_to != account_name(), action_validate_exception, "Domain name already unlinked");
-      context.chaindb.modify(domain, context.get_ram_payer(domain.owner), [&](auto& d) {
-         d.linked_to = account_name();
-      });
-} FC_CAPTURE_AND_RETHROW((op)) }
-
-void apply_cyber_domain_newusername(apply_context& context) {
-   auto op = context.act.data_as<newusername>();
-   try {
-      context.require_authorization(op.creator);
-      validate_username(op.name);               // TODO: can move validation to username deserializer
-      auto& chaindb = context.chaindb;
-      auto exists = chaindb.find<username_object, by_scope_name>(boost::make_tuple(op.creator, op.name));
-      EOS_ASSERT(exists == nullptr, username_exists_exception,
-         "Cannot create username ${n} in scope ${s}, as it's already taken", ("n", op.name)("s", op.creator));
-      auto owner = chaindb.find<account_object, by_name>(op.owner);
-      EOS_ASSERT(owner, account_name_exists_exception, "Username owner (${o}) must exist", ("o", op.owner));
-      chaindb.emplace<username_object>(context.get_ram_payer(op.creator), [&](auto& d) {
-         d.owner = op.owner;
-         d.scope = op.creator;
-         d.name = op.name;
-      });
-} FC_CAPTURE_AND_RETHROW((op)) }
-
 
 } } // namespace eosio::chain

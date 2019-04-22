@@ -8,6 +8,10 @@ namespace cyberway { namespace chaindb {
     struct ram_payer_info;
 } } // namespace cyberway::chaindb
 
+namespace cyberway { namespace chain {
+    struct provideram;
+} } // namespace cyberway::chaindb
+
 namespace eosio { namespace chain {
 
 // TODO: request bw, why provided?
@@ -55,7 +59,6 @@ namespace eosio { namespace chain {
          static bool initialized;
    };
 
-   struct provideram;
    class transaction_context {
       private:
          void init( uint64_t initial_net_usage);
@@ -130,7 +133,7 @@ namespace eosio { namespace chain {
          friend struct controller_impl;
          friend class apply_context;
 
-         void add_ram_provider(const provideram& provide_ram);
+         void add_ram_provider(const cyberway::chain::provideram& provide_ram);
 
          void dispatch_action( action_trace& trace, const action& a, account_name receiver, bool context_free = false, uint32_t recurse_depth = 0 );
          inline void dispatch_action( action_trace& trace, const action& a, bool context_free = false ) {

@@ -28,6 +28,8 @@
 
 #include <cyberway/chaindb/controller.hpp>
 #include <cyberway/genesis/genesis_import.hpp>
+#include <cyberway/chain/cyberway_contract_types.hpp>
+#include <cyberway/chain/cyberway_contract.hpp>
 
 namespace eosio { namespace chain {
 
@@ -41,8 +43,8 @@ using controller_index_set = index_set<
    block_summary_table,
    transaction_table,
    generated_transaction_table,
-   domain_table,
-   username_table
+   cyberway::chain::domain_table,
+   cyberway::chain::username_table
 >;
 
 class maybe_session {
@@ -231,6 +233,9 @@ struct controller_impl {
 #define SET_APP_HANDLER( receiver, contract, action) \
    set_apply_handler( #receiver, #contract, #action, &BOOST_PP_CAT(apply_, BOOST_PP_CAT(contract, BOOST_PP_CAT(_,action) ) ) )
 
+#define SET_CYBER_HANDLER( receiver, contract, action) \
+   set_apply_handler( #receiver, #contract, #action, &BOOST_PP_CAT(cyberway::chain::apply_, BOOST_PP_CAT(contract, BOOST_PP_CAT(_,action) ) ) )
+
    SET_APP_HANDLER(cyber, cyber, newaccount);
    SET_APP_HANDLER(cyber, cyber, setcode);
    SET_APP_HANDLER(cyber, cyber, setabi);
@@ -238,22 +243,22 @@ struct controller_impl {
    SET_APP_HANDLER(cyber, cyber, deleteauth);
    SET_APP_HANDLER(cyber, cyber, linkauth);
    SET_APP_HANDLER(cyber, cyber, unlinkauth);
+   SET_APP_HANDLER(cyber, cyber, canceldelay);
 
-   SET_APP_HANDLER(cyber, cyber, providebw);
+   SET_CYBER_HANDLER(cyber, cyber, providebw);
 //TODO: requestbw
-//   SET_APP_HANDLER(cyber, cyber, requestbw);
-   SET_APP_HANDLER(cyber, cyber, provideram);
+//   SET_CYBER_HANDLER(cyber, cyber, requestbw);
+   SET_CYBER_HANDLER(cyber, cyber, provideram);
 /*
-   SET_APP_HANDLER(cyber, cyber, postrecovery);
-   SET_APP_HANDLER(cyber, cyber, passrecovery);
-   SET_APP_HANDLER(cyber, cyber, vetorecovery);
+   SET_CYBER_HANDLER(cyber, cyber, postrecovery);
+   SET_CYBER_HANDLER(cyber, cyber, passrecovery);
+   SET_CYBER_HANDLER(cyber, cyber, vetorecovery);
 */
 
-   SET_APP_HANDLER(cyber, cyber, canceldelay);
 
 #define SET_CONTRACT_HANDLER(contract, action, function) set_apply_handler(contract, contract, #action, function);
 #define SET_DOTCONTRACT_HANDLER(base, sub, action) SET_CONTRACT_HANDLER(#base "." #sub, action, \
-    &BOOST_PP_CAT(apply_, BOOST_PP_CAT(base, BOOST_PP_CAT(_, BOOST_PP_CAT(sub, BOOST_PP_CAT(_,action))))))
+    &BOOST_PP_CAT(cyberway::chain::apply_, BOOST_PP_CAT(base, BOOST_PP_CAT(_, BOOST_PP_CAT(sub, BOOST_PP_CAT(_,action))))))
 #define SET_CYBER_DOMAIN_HANDLER(action) SET_DOTCONTRACT_HANDLER(cyber, domain, action)
 
     SET_CYBER_DOMAIN_HANDLER(newusername);

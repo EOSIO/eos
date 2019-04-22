@@ -1,9 +1,12 @@
-#include <eosio/chain/domain_name.hpp>
+#include <cyberway/chain/domain_name.hpp>
 #include <boost/algorithm/string.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <boost/algorithm/string.hpp>
 
-namespace eosio { namespace chain {
+namespace cyberway { namespace chain {
+
+using eosio::chain::domain_name_type_exception;
+using eosio::chain::username_type_exception;
 
 using std::string;
 
@@ -99,4 +102,4 @@ void validate_username(const username& n) {
 }
 
 
-} } /// eosio::chain
+} } /// cyberway::chain

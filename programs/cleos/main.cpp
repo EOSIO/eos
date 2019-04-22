@@ -96,6 +96,8 @@ Options:
 
 #include <eosio/chain/contract_types.hpp>
 
+#include <cyberway/chain/cyberway_contract_types.hpp>
+
 #pragma push_macro("N")
 #undef N
 
@@ -449,14 +451,18 @@ fc::variant push_transaction( signed_transaction& trx, int32_t extra_kcpu = 1000
       if (!bandwidth_provider.empty()) {
          auto providers = get_bandwidth_providers({bandwidth_provider});
          for (const auto& prov: providers) {
-            trx.actions.emplace_back(vector<chain::permission_level>{prov.second}, providebw{prov.second.actor, prov.first} );
+            trx.actions.emplace_back(
+                vector<chain::permission_level>{prov.second},
+                cyberway::chain::providebw{prov.second.actor, prov.first} );
          }
       }
 
       if (!ram_providers.empty()) {
           for (const auto& ram_provider : ram_providers) {
               const provide_ram_params provide_params(ram_provider);
-              trx.actions.emplace_back(vector<chain::permission_level>{provide_params.permission}, provideram{provide_params.provider, provide_params.actor});
+              trx.actions.emplace_back(
+                  vector<chain::permission_level>{provide_params.permission},
+                  cyberway::chain::provideram{provide_params.provider, provide_params.actor});
           }
 
       }

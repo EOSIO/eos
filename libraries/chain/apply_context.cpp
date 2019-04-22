@@ -12,6 +12,7 @@
 #include <boost/container/flat_set.hpp>
 
 #include <cyberway/chaindb/controller.hpp>
+#include <cyberway/chain/domain_object.hpp>
 
 using boost::container::flat_set;
 
@@ -148,10 +149,10 @@ void apply_context::exec( action_trace& trace )
 
 
 bool apply_context::is_domain(const domain_name& domain) const {
-   return nullptr != chaindb.find<domain_object,by_name>(domain);
+   return nullptr != chaindb.find<cyberway::chain::domain_object,by_name>(domain);
 }
 bool apply_context::is_username(const account_name& scope, const username& name) const {
-   return nullptr != chaindb.find<username_object,by_scope_name>(boost::make_tuple(scope,name));
+   return nullptr != chaindb.find<cyberway::chain::username_object,by_scope_name>(boost::make_tuple(scope,name));
 }
 account_name apply_context::get_domain_owner(const domain_name& domain) const {
    return control.get_domain(domain).owner;
