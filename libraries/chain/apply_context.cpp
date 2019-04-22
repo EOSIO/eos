@@ -394,9 +394,11 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
 
    auto delay = fc::seconds(trx.delay_sec);
 
+   bool ram_restrictions_activated = control.is_builtin_activated( builtin_protocol_feature_t::ram_restrictions );
+
    if( !control.skip_auth_check() && !privileged ) { // Do not need to check authorization if replayng irreversible block or if contract is privileged
       if( payer != receiver ) {
-         if( control.is_builtin_activated( builtin_protocol_feature_t::ram_restrictions ) ) {
+         if( ram_restrictions_activated ) {
             EOS_ASSERT( receiver == act->account, action_validate_exception,
                         "cannot bill RAM usage of deferred transactions to another account within notify context"
             );
@@ -505,7 +507,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
       } );
    }
 
-   EOS_ASSERT( control.is_builtin_activated( builtin_protocol_feature_t::ram_restrictions )
+   EOS_ASSERT( ram_restrictions_activated
                || control.is_ram_billing_in_notify_allowed()
                || (receiver == act->account) || (receiver == payer) || privileged,
                subjective_block_production_exception,

@@ -540,7 +540,7 @@ BOOST_AUTO_TEST_CASE( no_duplicate_deferred_id_test ) try {
    c2.produce_empty_block( fc::minutes(10) );
 
    transaction_trace_ptr trace0;
-   auto h = c2.control->applied_transaction.connect( [&](std::tuple<const transaction_trace_ptr&, const signed_transaction&> x) {
+   auto h2 = c2.control->applied_transaction.connect( [&](std::tuple<const transaction_trace_ptr&, const signed_transaction&> x) {
       auto& t = std::get<0>(x);
       if( t && t->receipt && t->receipt->status == transaction_receipt::expired) {
          trace0 = t;
@@ -549,11 +549,34 @@ BOOST_AUTO_TEST_CASE( no_duplicate_deferred_id_test ) try {
 
    c2.produce_block();
 
-   h.disconnect();
+   h2.disconnect();
 
    BOOST_REQUIRE( trace0 );
 
    c.produce_block();
+
+   const auto& index = c.control->db().get_index<generated_transaction_multi_index,by_trx_id>();
+
+   transaction_trace_ptr trace1;
+   auto h = c.control->applied_transaction.connect( [&](std::tuple<const transaction_trace_ptr&, const signed_transaction&> x) {
+      auto& t = std::get<0>(x);
+      if( t && t->receipt && t->receipt->status == transaction_receipt::executed) {
+         trace1 = t;
+      }
+   } );
+
+   BOOST_REQUIRE_EQUAL(0, index.size());
+
+   c.push_action( config::system_account_name, N(reqauth), N(alice), fc::mutable_variant_object()
+      ("from", "alice"),
+      5, 2
+   );
+
+   BOOST_REQUIRE_EQUAL(1, index.size());
+
+   c.produce_block();
+
+   BOOST_REQUIRE_EQUAL(1, index.size());
 
    const auto& pfm = c.control->get_protocol_feature_manager();
 
@@ -562,10 +585,29 @@ BOOST_AUTO_TEST_CASE( no_duplicate_deferred_id_test ) try {
    auto d2 = pfm.get_builtin_digest( builtin_protocol_feature_t::no_duplicate_deferred_id );
    BOOST_REQUIRE( d2 );
 
+   c.push_action( N(test), N(defercall), N(alice), fc::mutable_variant_object()
+      ("payer", "alice")
+      ("sender_id", 1)
+      ("contract", "test")
+      ("payload", 42)
+   );
+   BOOST_REQUIRE_EQUAL(2, index.size());
+
    c.preactivate_protocol_features( {*d1, *d2} );
    c.produce_block();
+   // The deferred transaction with payload 42 that was scheduled prior to the activation of the protocol features should now be retired.
 
-   auto& index = c.control->db().get_index<generated_transaction_multi_index,by_trx_id>();
+   BOOST_REQUIRE( trace1 );
+   BOOST_REQUIRE_EQUAL(1, index.size());
+
+   trace1 = nullptr;
+
+   // Retire the delayed eosio::reqauth transaction.
+   c.produce_blocks(5);
+   BOOST_REQUIRE( trace1 );
+   BOOST_REQUIRE_EQUAL(0, index.size());
+
+   h.disconnect();
 
    auto check_generation_context = []( auto&& data,
                                        const transaction_id_type& sender_trx_id,
@@ -607,7 +649,7 @@ BOOST_AUTO_TEST_CASE( no_duplicate_deferred_id_test ) try {
 
    BOOST_REQUIRE_EQUAL(0, index.size());
 
-   auto trace1 = c.push_action( N(test), N(defercall), N(alice), fc::mutable_variant_object()
+   auto trace2 = c.push_action( N(test), N(defercall), N(alice), fc::mutable_variant_object()
       ("payer", "alice")
       ("sender_id", 1)
       ("contract", "test")
@@ -617,7 +659,7 @@ BOOST_AUTO_TEST_CASE( no_duplicate_deferred_id_test ) try {
    BOOST_REQUIRE_EQUAL(1, index.size());
 
    check_generation_context( index.begin()->packed_trx,
-                             trace1->id,
+                             trace2->id,
                              ((static_cast<unsigned __int128>(N(alice)) << 64) | 1),
                              N(test) );
 
@@ -625,7 +667,7 @@ BOOST_AUTO_TEST_CASE( no_duplicate_deferred_id_test ) try {
 
    BOOST_REQUIRE_EQUAL(0, index.size());
 
-   auto trace2 = c.push_action( N(test), N(defercall), N(alice), fc::mutable_variant_object()
+   auto trace3 = c.push_action( N(test), N(defercall), N(alice), fc::mutable_variant_object()
       ("payer", "alice")
       ("sender_id", 1)
       ("contract", "test")
@@ -635,7 +677,7 @@ BOOST_AUTO_TEST_CASE( no_duplicate_deferred_id_test ) try {
    BOOST_REQUIRE_EQUAL(1, index.size());
 
    check_generation_context( index.begin()->packed_trx,
-                             trace2->id,
+                             trace3->id,
                              ((static_cast<unsigned __int128>(N(alice)) << 64) | 1),
                              N(test) );
 
