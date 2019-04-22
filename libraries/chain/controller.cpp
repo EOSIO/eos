@@ -817,7 +817,9 @@ struct controller_impl {
          if (add_to_fork_db) {
             pending->_pending_block_state->validated = true;
 
-            auto new_bsp = fork_db.add(pending->_pending_block_state, true);
+            auto new_version = is_new_version();
+
+            auto new_bsp = fork_db.add(pending->_pending_block_state, true, new_version);
             emit(self.accepted_block_header, pending->_pending_block_state);
 
             head = fork_db.head();
@@ -1494,7 +1496,8 @@ struct controller_impl {
          auto& b = new_header_state->block;
          emit( self.pre_accepted_block, b );
 
-         fork_db.add( new_header_state, false);
+         auto new_version = is_new_version();
+         fork_db.add( new_header_state, false, new_version);
 
          if (conf.trusted_producers.count(b->producer)) {
             trusted_producer_light_validation = true;
