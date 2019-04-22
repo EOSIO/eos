@@ -266,26 +266,26 @@ if $PIN_COMPILER; then
    if [ ! -d $CLANG8_ROOT ]; then
       printf "Installing Clang 8...\\n"
       cd ${TMP_LOCATION} \
-      && git clone --depth 1 --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/llvm.git clang8 \
+      && git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/llvm.git clang8 \
       && cd clang8 && git checkout $PINNED_COMPILER_LLVM_COMMIT \
       && cd tools \
-      && git clone --depth 1 --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/lld.git \
+      && git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/lld.git \
       && cd lld && git checkout $PINNED_COMPILER_LLD_COMMIT && cd ../ \
-      && git clone --depth 1 --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/polly.git \
+      && git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/polly.git \
       && cd polly && git checkout $PINNED_COMPILER_POLLY_COMMIT && cd ../ \
-      && git clone --depth 1 --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/clang.git clang && cd clang/tools \
+      && git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/clang.git clang && cd clang/tools \
       && git checkout $PINNED_COMPILER_CLANG_VERSION \
       && mkdir extra && cd extra \
-      && git clone --depth 1 --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/clang-tools-extra.git \
+      && git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/clang-tools-extra.git \
       && cd clang-tools-extra && git checkout $PINNED_COMPILER_CLANG_TOOLS_EXTRA_COMMIT && cd .. \
       && cd ../../../../projects \
-      && git clone --depth 1 --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/libcxx.git \
+      && git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/libcxx.git \
       && cd libcxx && git checkout $PINNED_COMPILER_LIBCXX_COMMIT && cd ../ \
-      && git clone --depth 1 --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/libcxxabi.git \
+      && git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/libcxxabi.git \
       && cd libcxxabi && git checkout $PINNED_COMPILER_LIBCXXABI_COMMIT && cd ../ \
-      && git clone --depth 1 --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/libunwind.git \
+      && git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/libunwind.git \
       && cd libunwind && git checkout $PINNED_COMPILER_LIBUNWIND_COMMIT && cd ../ \
-      && git clone --depth 1 --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/compiler-rt.git \
+      && git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/compiler-rt.git \
       && cd compiler-rt && git checkout $PINNED_COMPILER_COMPILER_RT_COMMIT && cd ../ \
       && cd ${TMP_LOCATION}/clang8 \
       && mkdir build && cd build \
