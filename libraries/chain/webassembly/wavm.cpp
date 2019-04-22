@@ -31,7 +31,7 @@ class wavm_instantiated_module : public wasm_instantiated_module_interface {
          // that didn't declare "memory", getDefaultMemory() won't see it. It would also be possible
          // to say something like if(module->memories.size()) here I believe
          if(getDefaultMemory(_instance))
-            _initial_memory_config = module->memories.defs[0].type;
+            _initial_memory_config = module->memories.defs.at(0).type;
       }
 
       void apply(apply_context& context) override {
