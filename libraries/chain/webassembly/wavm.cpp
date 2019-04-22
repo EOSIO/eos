@@ -38,6 +38,11 @@ struct wavm_live_modules {
 
    void remove_live_module(live_module_ref it) {
       live_modules.erase(it);
+      run_wavm_garbage_collection();
+   }
+
+   void run_wavm_garbage_collection() {
+      //need to pass in a mutable list of root objects we want the garbage collector to retain
       std::vector<ObjectInstance*> root;
       std::copy(live_modules.begin(), live_modules.end(), std::back_inserter(root));
       Runtime::freeUnreferencedObjects(std::move(root));
