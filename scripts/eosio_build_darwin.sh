@@ -261,16 +261,7 @@ fi
 cd ..
 printf "\\n"
 
-# Use current directory's tmp directory if noexec is enabled for /tmp
-if (mount | grep "/tmp " | grep --quiet noexec); then
-      mkdir -p $REPO_ROOT/tmp
-      TMP_LOCATION="${REPO_ROOT}/tmp"
-      rm -rf $REPO_ROOT/tmp/*
-else # noexec wasn't found
-      TMP_LOCATION="/tmp"
-fi
-
-if $BUILD_CLANG8; then
+if $PIN_COMPILER; then
    printf "Checking Clang 8 support...\\n"
    if [ ! -d $CLANG8_ROOT ]; then
       printf "Installing Clang 8...\\n"

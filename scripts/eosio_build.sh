@@ -49,6 +49,8 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 REPO_ROOT="${SCRIPT_DIR}/.."
 BUILD_DIR="${REPO_ROOT}/build"
 
+export BUILD_DIR=$BUILD_DIR
+
 # Use current directory's tmp directory if noexec is enabled for /tmp
 if (mount | grep "/tmp " | grep --quiet noexec); then
       mkdir -p $REPO_ROOT/tmp
@@ -57,6 +59,8 @@ if (mount | grep "/tmp " | grep --quiet noexec); then
 else # noexec wasn't found
       TEMP_DIR="/tmp"
 fi
+
+export TMP_LOCATION=$TEMP_DIR
 
 function usage()
 {
@@ -189,6 +193,8 @@ export DOXYGEN_ROOT=${SRC_LOCATION}/doxygen-${DOXYGEN_VERSION}
 export TINI_VERSION=0.18.0
 export DISK_MIN=5
 
+mkdir -p $BUILD_DIR
+sed -e "s~@~$OPT_LOCATION~g" $SCRIPT_DIR/pinned_toolchain.cmake &> $BUILD_DIR/pinned_toolchain.cmake
 cd $REPO_ROOT
 
 STALE_SUBMODS=$(( $(git submodule status --recursive | grep -c "^[+\-]") ))
@@ -254,7 +260,7 @@ fi
 CXX=$CPP_COMP
 CC=$CC_COMP
 
-export BUILD_CLANG8=$BUILD_CLANG8
+export PIN_COMPILER=$PIN_COMPILER 
 
 # Setup directories
 mkdir -p $SRC_LOCATION
@@ -347,17 +353,15 @@ printf "======================= Starting EOSIO Build =======================\\n"
 printf "## CMAKE_BUILD_TYPE=%s\\n" "${CMAKE_BUILD_TYPE}"
 printf "## ENABLE_COVERAGE_TESTING=%s\\n" "${ENABLE_COVERAGE_TESTING}"
 
-mkdir -p $BUILD_DIR
 cd $BUILD_DIR
 
 
 if $PIN_COMPILER; then
-   sed -e "s~@~$OPT_LOCATION~g" $SCRIPT_DIR/pinned_toolchain.cmake &> $BUILD_DIR/pinned_toolchain.cmake
    $CMAKE -DCMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE}" -DCMAKE_TOOLCHAIN_FILE=$BUILD_DIR/pinned_toolchain.cmake \
       -DCORE_SYMBOL_NAME="${CORE_SYMBOL_NAME}" \
-      -DOPENSSL_ROOT_DIR="${OPENSSL_ROOT_DIR}" -DBUILD_MONGO_DB_PLUGIN=true \
+      -DOPENSSL_ROOT_DIR="${OPENSSL_ROOT_DIR}" -DBUILD_MONGO_DB_PLUGIN=false \
       -DENABLE_COVERAGE_TESTING="${ENABLE_COVERAGE_TESTING}" -DBUILD_DOXYGEN="${DOXYGEN}" \
-      -DCMAKE_PREFIX_PATH=$PREFIX \
+      -DCMAKE_PREFIX_PATH=$PREFIX -DCMAKE_PREFIX_PATH=$OPT_LOCATION/llvm4\
       -DCMAKE_INSTALL_PREFIX=$OPT_LOCATION/eosio $LOCAL_CMAKE_FLAGS -DEOSIO_PIN_COMPILER=1 "${REPO_ROOT}"
 else
    $CMAKE -DCMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE}" -DCMAKE_CXX_COMPILER="${CXX}" \

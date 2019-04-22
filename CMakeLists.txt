@@ -113,11 +113,13 @@ FIND_PACKAGE(Boost 1.67 REQUIRED COMPONENTS
     iostreams)
 
 # Some new stdlibc++s will #error on <experimental/string_view>; a problem for boost pre-1.69
+add_definitions(-DBOOST_ASIO_DISABLE_STD_EXPERIMENTAL_STRING_VIEW)
 if( APPLE AND UNIX )
    add_definitions(-DBOOST_ASIO_DISABLE_STD_EXPERIMENTAL_STRING_VIEW)
 endif()
 
-set(THREADS_PREFER_PTHREAD_FLAG 1)
+set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
+set(THREADS_PREFER_PTHREAD_FLAG TRUE)
 find_package(Threads)
 link_libraries(Threads::Threads)
 
