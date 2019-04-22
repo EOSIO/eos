@@ -6,9 +6,8 @@ Welcome to the CyberWay source code repository! CyberWay is a EOS fork with some
 There is public testnet running currently.
 
 
-## More information about CyberWay in Russian:
-  - [Основные особенности блокчейна](https://golos.io/ru--blokcheijn/@goloscore/cyberway-predposylki-sozdaniya-platformy-osnovnye-otlichiya-ot-eos)
-  - [Дорожная карта проекта](https://golos.io/ru--blokcheijn/@goloscore/cyberway-predposylki-sozdaniya-platformy-osnovnye-otlichiya-ot-eos)
-  - [Базовые положения](https://golos.io/ru--blokcheijn/@goloscore/cyberway-predposylki-sozdaniya-platformy-osnovnye-otlichiya-ot-eos)
-  - [Информация о тестнете](https://golos.io/ru--blokcheijn/@goloscore/novosti-golos-core-testnet-eksperimentalnaya-versiya)
-  - [Тестнет. Руководство по установке для блок-продюсеров](https://golos.io/cyberway/@goloscore/cyberway-testnet-rukovodstvo-po-ustanovke-dlya-blok-prodyuserov)
+## More information about CyberWay:
+  - [Main features of CyberWay](https://steemit.com/cyberway/@golos/cyberway-need-for-new-platform)
+  - [RoadMap](https://steemit.com/cyberway/@golos/cyberway-project-roadmap)
+  - [Bandwidth implementation](https://docs.google.com/document/d/1Kmlgu8pf8YytpVZajj2Si86ZNegkbZg0QHopdACmv6Q/edit?ts=5cb7079a)
+  - [Testnet. Installation Guide for Block Producers](https://github.com/GolosChain/cyberway/blob/master/docs/TestnetBlockProducerHowTo.md)
