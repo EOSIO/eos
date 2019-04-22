@@ -770,6 +770,8 @@ void chain_plugin::plugin_shutdown() {
    my->irreversible_block_connection.reset();
    my->accepted_transaction_connection.reset();
    my->applied_transaction_connection.reset();
+   if(app().is_quiting())
+      my->chain->get_wasm_interface().indicate_shutting_down();
    my->chain.reset();
 }
 
