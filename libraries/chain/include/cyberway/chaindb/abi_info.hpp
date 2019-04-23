@@ -53,6 +53,12 @@ namespace cyberway { namespace chaindb {
             return to_bytes_("table", [&]{return get_full_table_name(info);}, info.table->type, value);
         }
 
+        bytes to_bytes(const index_info& info, const variant& value) const {
+            CYBERWAY_ASSERT(info.index, unknown_index_exception, "NULL index");
+            auto type = get_full_index_name(info);
+            return to_bytes_("index", [&]{return type;}, type, value);
+        }
+
         void mark_removed() {
             is_removed_ = true;
         }
@@ -72,13 +78,22 @@ namespace cyberway { namespace chaindb {
             return code_;
         }
 
-        static const size_t max_table_cnt;
-        static const size_t max_index_cnt;
+        static constexpr size_t max_table_cnt() {
+            return 64;
+        }
+
+        static constexpr size_t max_index_cnt() {
+            return 16;
+        }
+
+        static constexpr size_t max_path_depth() {
+            return 4;
+        }
 
     private:
         const account_name code_;
         eosio::chain::abi_serializer serializer_;
-        std::map<table_name_t, table_def> table_map_;
+        fc::flat_map<table_name_t, table_def> table_map_;
         bool is_removed_ = false;
         static const fc::microseconds max_abi_time_;
 

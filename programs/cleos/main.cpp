@@ -2365,24 +2365,27 @@ int main( int argc, char** argv ) {
    getCode->add_option("-a,--abi",abiFilename, localized("The name of the file to save the contract .abi to") );
    getCode->add_flag("--wasm", code_as_wasm, localized("Save contract as wasm"));
    getCode->set_callback([&] {
-      string code_hash, wasm, wast, abi;
-      try {
+   string code_hash, wasm, wast, abi;
+   try {
          const auto result = call(get_raw_code_and_abi_func, fc::mutable_variant_object("account_name", accountName));
-         const std::vector<char> wasm_v = result["wasm"].as_blob().data;
-         const std::vector<char> abi_v = result["abi"].as_blob().data;
 
-         fc::sha256 hash;
-         if(wasm_v.size())
-            hash = fc::sha256::hash(wasm_v.data(), wasm_v.size());
-         code_hash = (string)hash;
+         wasm = fc::base64_decode(result["wasm"].as_string());
+         const std::string abi_string = fc::base64_decode(result["abi"].as_string());
+         const std::vector<char> abi_v(abi_string.begin(), abi_string.end());
 
-         wasm = string(wasm_v.begin(), wasm_v.end());
-         if(!code_as_wasm && wasm_v.size())
-            wast = wasm_to_wast((const uint8_t*)wasm_v.data(), wasm_v.size(), false);
+
+         if(!wasm.empty()) {
+            code_hash = fc::sha256::hash(wasm.data(), wasm.size());
+         }
+
+         if(!code_as_wasm && !wasm.empty()) {
+            wast = wasm_to_wast(reinterpret_cast<const uint8_t*>(wasm.data()), wasm.size(), false);
+         }
 
          abi_def abi_d;
-         if(abi_serializer::to_abi(abi_v, abi_d))
+         if(abi_serializer::to_abi(abi_v, abi_d)) {
             abi = fc::json::to_pretty_string(abi_d);
+         }
       }
       catch(chain::missing_chain_api_plugin_exception&) {
          //see if this is an old nodeos that doesn't support get_raw_code_and_abi
@@ -2444,24 +2447,20 @@ int main( int argc, char** argv ) {
    string encode_type{"dec"};
    bool binary = false;
    uint32_t limit = 10;
-   string index_position;
+   string index;
    bool reverse = false;
    bool show_payer = false;
    auto getTable = get->add_subcommand( "table", localized("Retrieve the contents of a database table"), false);
    getTable->add_option( "account", code, localized("The account who owns the table") )->required();
    getTable->add_option( "scope", scope, localized("The scope within the contract in which the table is found") )->required();
    getTable->add_option( "table", table, localized("The name of the table as specified by the contract abi") )->required();
+   getTable->add_option( "--index", index, localized("Index name. The same as in abi decription. If not set the index name will be \"primary\"\n"));
    getTable->add_option( "-b,--binary", binary, localized("Return the value as BINARY rather than using abi to interpret as JSON") );
    getTable->add_option( "-l,--limit", limit, localized("The maximum number of rows to return") );
    getTable->add_option( "-k,--key", table_key, localized("Deprecated") );
    getTable->add_option( "-L,--lower", lower, localized("JSON representation of lower bound value of key, defaults to first") );
    getTable->add_option( "-U,--upper", upper, localized("JSON representation of upper bound value of key, defaults to last") );
-   getTable->add_option( "--index", index_position,
-                         localized("Index number, 1 - primary (first), 2 - secondary index (in order defined by multi_index), 3 - third index, etc.\n"
-                                   "\t\t\t\tNumber or name of index can be specified, e.g. 'secondary' or '2'."));
-   getTable->add_option( "--key-type", key_type,
-                         localized("The key type of --index, primary only supports (i64), all others support (i64, i128, i256, float64, float128, ripemd160, sha256).\n"
-                                   "\t\t\t\tSpecial type 'name' indicates an account name."));
+   getTable->add_option( "--key-type", key_type, localized("Deprecated"));
    getTable->add_option( "--encode-type", encode_type,
                          localized("The encoding type of key_type (i64 , i128 , float64, float128) only support decimal encoding e.g. 'dec'"
                                     "i256 - supports both 'dec' and 'hex', ripemd160 and sha256 is 'hex' only"));
@@ -2470,16 +2469,18 @@ int main( int argc, char** argv ) {
 
 
    getTable->set_callback([&] {
+
+      const auto lower_bound = lower.empty() ? fc::variant() : fc::json::from_string(lower);
+      const auto upper_bound = upper.empty() ? fc::variant() : fc::json::from_string(upper);
+
       auto result = call(get_table_func, fc::mutable_variant_object("json", !binary)
                          ("code",code)
                          ("scope",scope)
                          ("table",table)
-                         ("table_key",table_key) // not used
-                         ("lower_bound",lower)
-                         ("upper_bound",upper)
+                         ("lower_bound", lower_bound)
+                         ("upper_bound", upper_bound)
                          ("limit",limit)
-                         ("key_type",key_type)
-                         ("index_position", index_position)
+                         ("index", index.empty() ? "primary" : index)
                          ("encode_type", encode_type)
                          ("reverse", reverse)
                          ("show_payer", show_payer)

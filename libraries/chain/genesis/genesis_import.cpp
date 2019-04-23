@@ -18,12 +18,14 @@ const fc::microseconds abi_serializer_max_time = fc::seconds(10);
 struct genesis_import::impl final {
     bfs::path _state_file;
 
+    resource_manager& resource_mng;
     chaindb_controller& db;
     int db_updates;
 
     impl(const bfs::path& genesis_file, controller& ctrl)
     :   _state_file(genesis_file)
-    ,   db(const_cast<chaindb_controller&>(ctrl.chaindb())) {
+    ,   resource_mng(ctrl.get_mutable_resource_limits_manager())
+    ,   db(ctrl.chaindb()) {
     }
 
     void apply_db_changes(bool force = false) {
@@ -54,7 +56,7 @@ struct genesis_import::impl final {
             int i = 0;
             if (t.code == config::system_account_name) {
                 while (i++ < t.count) {
-                    sys_table_row r;
+                    sys_table_row r(resource_mng);
                     fc::raw::unpack(in, r);
                     EOS_ASSERT(r.data.size() >= 8, extract_genesis_exception, "System table row is too small");
                     primary_key_t pk = ((primary_key_t*)r.data.data())[0]; // all system tables have pk in the 1st field
@@ -71,7 +73,7 @@ struct genesis_import::impl final {
                             abi_def abi;
                             if (abi_serializer::to_abi(abi_bytes, abi) ) {
                                 db.add_abi(n, abi);
-                                std::cout << "  add " << n << " abi";
+                                std::cout << "  add " << n << " abi" << std::endl;
                             } else {
                                 elog("Failed to read abi provided in ${a} contract", ("a",n));
                             }
@@ -80,7 +82,7 @@ struct genesis_import::impl final {
                 }
             } else {
                 while (i++ < t.count) {
-                    table_row r;
+                    table_row r(resource_mng);
                     fc::raw::unpack(in, r);
                     db.insert(r.request(t.code, t.name), r.payer(), r.pk, r.data.data(), r.data.size());
                     apply_db_changes();

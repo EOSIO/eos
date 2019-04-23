@@ -36,6 +36,7 @@ class Node(object):
         self.port=port
         self.pid=pid
         self.cmd=cmd
+        Utils.Print("Node: ", locals())
         if Utils.Debug: Utils.Print("new Node host=%s, port=%s, pid=%s, cmd=%s" % (self.host, self.port, self.pid, self.cmd))
         self.killed=False # marks node as killed
         self.enableMongo=enableMongo
@@ -61,6 +62,10 @@ class Node(object):
     def __str__(self):
         #return "Host: %s, Port:%d, Pid:%s, Cmd:\"%s\"" % (self.host, self.port, self.pid, self.cmd)
         return "Host: %s, Port:%d" % (self.host, self.port)
+
+    @staticmethod
+    def assetToValue(asset):
+        return "%.*f %s" % (asset["decs"], asset["amount"]/(10**asset["decs"]), asset["sym"])
 
     @staticmethod
     def validateTransaction(trans):
@@ -512,11 +517,15 @@ class Node(object):
 
     # Create & initialize account and return creation transactions. Return transaction json object
     def createInitializeAccount(self, account, creatorAccount, stakedDeposit=1000, waitForTransBlock=False, stakeNet=100, stakeCPU=100, buyRAM=10000, exitOnError=False):
-        cmdDesc="system newaccount"
-        cmd='%s -j %s %s %s %s --stake-net "%s %s" --stake-cpu "%s %s" --buy-ram "%s %s"' % (
-            cmdDesc, creatorAccount.name, account.name, account.ownerPublicKey,
-            account.activePublicKey, stakeNet, CORE_SYMBOL, stakeCPU, CORE_SYMBOL, buyRAM, CORE_SYMBOL)
+        # TODO CyberWay: add staked token for created account #509
+        #cmdDesc="system newaccount"
+        #cmd='%s -j %s %s %s %s --stake-net "%s %s" --stake-cpu "%s %s" --buy-ram "%s %s"' % (
+        #    cmdDesc, creatorAccount.name, account.name, account.ownerPublicKey,
+        #    account.activePublicKey, stakeNet, CORE_SYMBOL, stakeCPU, CORE_SYMBOL, buyRAM, CORE_SYMBOL)
+        cmdDesc="create account"
+        cmd="create account -j %s %s %s %s" % (creatorAccount.name, account.name, account.ownerPublicKey, account.activePublicKey)
         msg="(creator account=%s, account=%s)" % (creatorAccount.name, account.name);
+        
         trans=self.processCleosCmd(cmd, cmdDesc, silentErrors=False, exitOnError=exitOnError, exitMsg=msg)
         self.trackCmdTransaction(trans)
         transId=Node.getTransId(trans)
@@ -595,7 +604,7 @@ class Node(object):
         table="accounts"
         trans = self.getTable(contract, scope, table, exitOnError=True)
         try:
-            return trans["rows"][0]["balance"]
+            return Node.assetToValue(trans["rows"][0]["balance"])
         except (TypeError, KeyError) as _:
             print("transaction[rows][0][balance] not found. Transaction: %s" % (trans))
             raise
@@ -891,7 +900,7 @@ class Node(object):
         cmd="%s %s -v set contract -j %s %s" % (Utils.EosClientPath, self.eosClientArgs(), account, contractDir)
         cmd += "" if wasmFile is None else (" "+ wasmFile)
         cmd += "" if abiFile is None else (" " + abiFile)
-        if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
+        Utils.Print("cmd: %s" % (cmd))
         trans=None
         start=time.perf_counter()
         try:

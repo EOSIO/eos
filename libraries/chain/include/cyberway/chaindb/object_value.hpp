@@ -15,6 +15,7 @@ namespace cyberway { namespace chaindb {
     struct service_state final {
         primary_key_t pk       = unset_primary_key;
         account_name  payer;
+        account_name  owner;
         size_t        size     = 0;
 
         account_name  code;
@@ -28,6 +29,7 @@ namespace cyberway { namespace chaindb {
 
         revision_t    undo_revision = impossible_revision;
         account_name  undo_payer;
+        account_name  undo_owner;
         size_t        undo_size     = 0;
 
         service_state(const table_info& table, primary_key_t pk)

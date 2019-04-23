@@ -31,8 +31,7 @@ BOOST_AUTO_TEST_SUITE(special_account_tests)
 BOOST_FIXTURE_TEST_CASE(accounts_exists, tester)
 { try {
 
-      tester test;
-      chain::controller *control = test.control.get();
+      chain::controller *control = this->control.get();
       auto& chain1_db = control->chaindb();
 
       auto nobody = chain1_db.find<account_object, by_name>(config::null_account_name);

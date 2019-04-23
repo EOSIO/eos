@@ -56,9 +56,11 @@ wcmd () {
 }
 
 cacmd () {
-    programs/cleos/cleos  --wallet-url $wdurl --url http://$bioshost:$biosport system newaccount --transfer --stake-net "10000000.0000 SYS" --stake-cpu "10000000.0000 SYS"  --buy-ram "10000000.0000 SYS" cyber $* >> $logfile 2>&1
-    ecmd system regproducer $1 $2
-    ecmd system voteproducer prods $1 $1
+    #programs/cleos/cleos  --wallet-url $wdurl --url http://$bioshost:$biosport system newaccount --transfer --stake-net "10000000.0000 SYS" --stake-cpu "10000000.0000 SYS"  --buy-ram "10000000.0000 SYS" cyber $* >> $logfile 2>&1
+    #ecmd system regproducer $1 $2
+    #ecmd system voteproducer prods $1 $1
+    # TODO CyberWay: Register producer and vote for him #508
+    ecmd create account cyber $1 $2
 }
 
 sleep 2
@@ -75,7 +77,8 @@ wcmd create --to-console -n ignition
 # ------ DO NOT ALTER THE NEXT LINE -------
 ###INSERT prodkeys
 
-ecmd set contract cyber contracts/eosio.bios eosio.bios.wasm eosio.bios.abi
+#ecmd set contract cyber contracts/eosio.bios eosio.bios.wasm eosio.bios.abi
+ecmd set contract cyber contracts/cyber.bios
 
 # Create required system accounts
 ecmd create key --to-console
@@ -88,12 +91,12 @@ ecmd create account cyber cyber.names $pubsyskey $pubsyskey
 ecmd create account cyber cyber.ram $pubsyskey $pubsyskey
 ecmd create account cyber cyber.ramfee $pubsyskey $pubsyskey
 ecmd create account cyber cyber.saving $pubsyskey $pubsyskey
-ecmd create account cyber cyber.stake $pubsyskey $pubsyskey
+#ecmd create account cyber cyber.stake $pubsyskey $pubsyskey
 ecmd create account cyber cyber.token $pubsyskey $pubsyskey
 ecmd create account cyber cyber.vpay $pubsyskey $pubsyskey
 
-ecmd set contract cyber.token contracts/eosio.token eosio.token.wasm eosio.token.abi
-ecmd set contract cyber.msig contracts/eosio.msig eosio.msig.wasm eosio.msig.abi
+ecmd set contract cyber.token contracts/cyber.token
+ecmd set contract cyber.msig contracts/cyber.msig
 
 echo ===== Start: $step ============ >> $logfile
 echo executing: cleos --wallet-url $wdurl --url http://$bioshost:$biosport push action cyber.token create '["cyber", "10000000000.0000 SYS"]' -p cyber.token | tee -a $logfile
@@ -104,7 +107,7 @@ programs/cleos/cleos --wallet-url $wdurl --url http://$bioshost:$biosport push a
 echo ==== End: $step ============== >> $logfile
 step=$(($step + 1))
 
-ecmd set contract cyber contracts/eosio.system eosio.system.wasm eosio.system.abi
+#ecmd set contract cyber contracts/eosio.system eosio.system.wasm eosio.system.abi
 
 # Manual deployers, add a series of lines below this block that looks like:
 #    cacmd $PRODNAME[0] $OWNERKEY[0] $ACTIVEKEY[0]

@@ -40,7 +40,7 @@ sanityTest=args.sanity_test
 p2pPlugin=args.p2p_plugin
 walletPort=args.wallet_port
 
-Utils.Debug=debug
+Utils.Debug=True
 localTest=True if server == TestHelper.LOCAL_HOST else False
 cluster=Cluster(host=server, port=port, walletd=True, enableMongo=enableMongo, defproduceraPrvtKey=defproduceraPrvtKey, defproducerbPrvtKey=defproducerbPrvtKey)
 walletMgr=WalletMgr(True, port=walletPort)
@@ -300,8 +300,7 @@ try:
             key="[actions][0][name]"
             typeVal=  transaction["actions"][0]["name"]
             key="[actions][0][data][quantity]"
-            amountVal=transaction["actions"][0]["data"]["quantity"]
-            amountVal=int(decimal.Decimal(amountVal.split()[0])*10000)
+            amountVal=transaction["actions"][0]["data"]["quantity"]["amount"]
     except (TypeError, KeyError) as e:
         Print("transaction%s not found. Transaction: %s" % (key, transaction))
         raise
@@ -378,7 +377,7 @@ try:
     row0=node.getTableRow(contract, currencyAccount.name, table, 0)
     try:
         assert(row0)
-        assert(row0["balance"] == "100000.0000 CUR")
+        assert(Node.assetToValue(row0["balance"]) == "100000.0000 CUR")
     except (AssertionError, KeyError) as _:
         Print("ERROR: Failed get table row assertion. %s" % (row0))
         raise
@@ -505,7 +504,7 @@ try:
         assert(myTrans["actions"][0]["authorization"][0]["permission"] == "active")
         assert(myTrans["actions"][0]["data"]["from"] == "currency1111")
         assert(myTrans["actions"][0]["data"]["to"] == "defproducera")
-        assert(myTrans["actions"][0]["data"]["quantity"] == "0.00%s CUR" % (dupTransAmount))
+        assert(Node.assetToValue(myTrans["actions"][0]["data"]["quantity"]) == "0.00%s CUR" % (dupTransAmount))
         assert(myTrans["actions"][0]["data"]["memo"] == "test")
     except (AssertionError, TypeError, KeyError) as _:
         Print("FAILURE - Failed to parse block transaction. %s" % (myTrans))

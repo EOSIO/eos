@@ -423,6 +423,8 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "Type of chaindb connection")
          ("chaindb_address", bpo::value<string>()->default_value("mongodb://127.0.0.1:27017"),
           "Connection address to chaindb")
+         ("chaindb_sys_name", bpo::value<string>()->default_value("_CYBERWAY_"),
+          "Prefix for database names")
          ("genesis-data", bpo::value<bfs::path>(),
              "The location of the Genesis state file (absolute path or relative to the current directory)")
          ("trusted-producer", bpo::value<vector<string>>()->composing(), "Indicate a producer whose blocks headers signed by it will be fully validated, but transactions in those validated blocks will be trusted.")
@@ -552,6 +554,9 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
       if (options.count("chaindb_address"))
          my->chain_config->chaindb_address = options.at("chaindb_address").as<string>();
+
+      if (options.count("chaindb_sys_name"))
+         my->chain_config->chaindb_sys_name = options.at("chaindb_sys_name").as<string>();
 
       my->chain_config->read_genesis = options.count("genesis-data");
       if (my->chain_config->read_genesis) {
