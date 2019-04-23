@@ -137,7 +137,7 @@ void apply_cyber_setrampayer(apply_context& context) {
         auto owner = cache->service().owner;
         context.require_authorization(owner);
 
-        EOS_ASSERT(op.new_payer != cache->service().payer, eosio::chain::object_payer_exception,
+        EOS_ASSERT(op.new_payer != cache->service().payer, eosio::chain::object_ram_payer_exception,
             "Object with the primary key ${scope}:${pk} in the table ${table} already has the ram payer ${payer}",
             ("pk", op.pk)("scope", chaindb::get_scope_name(op.scope))("table", chaindb::get_full_table_name(op))
             ("payer", op.new_payer));

@@ -658,8 +658,9 @@ abi_def eosio_contract_abi(abi_def eos_abi)
          {"scope",       "account_name"},
          {"table",       "name"},
          {"primary_key", "uint64"},
+         {"new_payer",   "account_name"},
       }
-    });
+   });
 
    eos_abi.actions.push_back( action_def{name("newaccount"), "newaccount"} );
    eos_abi.actions.push_back( action_def{name("setcode"), "setcode"} );
