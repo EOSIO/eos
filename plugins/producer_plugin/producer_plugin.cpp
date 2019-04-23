@@ -1167,6 +1167,50 @@ fc::variants producer_plugin::get_supported_protocol_features( const get_support
    return results;
 }
 
+producer_plugin::get_account_ram_corrections_result
+producer_plugin::get_account_ram_corrections( const get_account_ram_corrections_params& params ) const {
+   get_account_ram_corrections_result result;
+   const auto& db = my->chain_plug->chain().db();
+
+   const auto& idx = db.get_index<chain::account_ram_correction_index, chain::by_name>();
+   account_name lower_bound_value = std::numeric_limits<uint64_t>::lowest();
+   account_name upper_bound_value = std::numeric_limits<uint64_t>::max();
+
+   if( params.lower_bound ) {
+      lower_bound_value = *params.lower_bound;
+   }
+
+   if( params.upper_bound ) {
+      upper_bound_value = *params.upper_bound;
+   }
+
+   if( upper_bound_value < lower_bound_value )
+      return result;
+
+   auto walk_range = [&]( auto itr, auto end_itr ) {
+      for( unsigned int count = 0;
+           count < params.limit && itr != end_itr;
+           ++itr )
+      {
+         result.rows.push_back( fc::variant( *itr ) );
+         ++count;
+      }
+      if( itr != end_itr ) {
+         result.more = itr->name;
+      }
+   };
+
+   auto lower = idx.lower_bound( lower_bound_value );
+   auto upper = idx.upper_bound( upper_bound_value );
+   if( params.reverse ) {
+      walk_range( boost::make_reverse_iterator(upper), boost::make_reverse_iterator(lower) );
+   } else {
+      walk_range( lower, upper );
+   }
+
+   return result;
+}
+
 optional<fc::time_point> producer_plugin_impl::calculate_next_block_time(const account_name& producer_name, const block_timestamp_type& current_block_time) const {
    chain::controller& chain = chain_plug->chain();
    const auto& hbs = chain.head_block_state();
