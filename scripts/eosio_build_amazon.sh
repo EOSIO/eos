@@ -122,7 +122,7 @@ printf "\\n"
 
 
 printf "Checking CMAKE installation...\\n"
-if [ ! -e $CMAKE ]; then
+if [ ! -e $CMAKE ] || [ $FORCE_BUILD ]; then
 	printf "Installing CMAKE...\\n"
 	curl -LO https://cmake.org/files/v$CMAKE_VERSION_MAJOR.$CMAKE_VERSION_MINOR/cmake-$CMAKE_VERSION.tar.gz \
 	&& tar -xzf cmake-$CMAKE_VERSION.tar.gz \
@@ -144,7 +144,7 @@ printf "\\n"
 
 if $PIN_COMPILER; then
    printf "Checking Clang 8 support...\\n"
-   if [ ! -d $CLANG8_ROOT ]; then
+   if [ ! -d $CLANG8_ROOT ] || [ $FORCE_BUILD ]; then
       printf "Installing Clang 8...\\n"
       cd ${TMP_LOCATION} \
       && git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/llvm.git clang8 && cd clang8 \
@@ -186,7 +186,7 @@ if $PIN_COMPILER; then
    printf "\\n"
 
    printf "Checking LLVM 4 installation...\\n"
-   if [ ! -d $OPT_LOCATION/llvm4 ]; then
+   if [ ! -d $OPT_LOCATION/llvm4 ] || [ $FORCE_BUILD ]; then
       printf "Installing LLVM 4...\\n"
       cd $SRC_LOCATION \
       && git clone https://github.com/llvm-mirror/llvm --single-branch --branch $LLVM_VERSION && cd llvm \
@@ -199,7 +199,7 @@ if $PIN_COMPILER; then
 
    cd $SRC_LOCATION
    printf "Checking zlib library (${BOOST_VERSION}) installation...\\n"
-   if [ ! -d $OPT_LOCATION/zlib ]; then
+   if [ ! -d $OPT_LOCATION/zlib ] || [ $FORCE_BUILD ]; then
       printf "Installing zlib...\\n"
       curl -LO https://www.zlib.net/zlib-1.2.11.tar.gz && tar -xf zlib-1.2.11.tar.gz \
       && cd zlib-1.2.11 && mkdir build && cd build \
@@ -210,7 +210,7 @@ if $PIN_COMPILER; then
    cd $SRC_LOCATION
    printf "Checking Boost library (${BOOST_VERSION}) installation...\\n"
    BOOSTVERSION=$( grep "#define BOOST_VERSION" "$BOOST_ROOT/include/boost/version.hpp" 2>/dev/null | tail -1 | tr -s ' ' | cut -d\  -f3 )
-   if [ "${BOOSTVERSION}" != "${BOOST_VERSION_MAJOR}0${BOOST_VERSION_MINOR}0${BOOST_VERSION_PATCH}" ]; then
+   if [ "${BOOSTVERSION}" != "${BOOST_VERSION_MAJOR}0${BOOST_VERSION_MINOR}0${BOOST_VERSION_PATCH}" ] || [ $FORCE_BUILD ]; then
       printf "Installing Boost library...\\n"
       curl -LO https://dl.bintray.com/boostorg/release/${BOOST_VERSION_MAJOR}.${BOOST_VERSION_MINOR}.${BOOST_VERSION_PATCH}/source/boost_$BOOST_VERSION.tar.bz2 \
       && tar -xjf boost_$BOOST_VERSION.tar.bz2 \
@@ -232,7 +232,7 @@ if $PIN_COMPILER; then
 else
    printf "Checking Boost library (${BOOST_VERSION}) installation...\\n"
    BOOSTVERSION=$( grep "#define BOOST_VERSION" "$BOOST_ROOT/include/boost/version.hpp" 2>/dev/null | tail -1 | tr -s ' ' | cut -d\  -f3 )
-   if [ "${BOOSTVERSION}" != "${BOOST_VERSION_MAJOR}0${BOOST_VERSION_MINOR}0${BOOST_VERSION_PATCH}" ]; then
+   if [ "${BOOSTVERSION}" != "${BOOST_VERSION_MAJOR}0${BOOST_VERSION_MINOR}0${BOOST_VERSION_PATCH}" ] || [ $FORCE_BUILD ]; then
       printf "Installing Boost library...\\n"
       curl -LO https://dl.bintray.com/boostorg/release/${BOOST_VERSION_MAJOR}.${BOOST_VERSION_MINOR}.${BOOST_VERSION_PATCH}/source/boost_$BOOST_VERSION.tar.bz2 \
       && tar -xjf boost_$BOOST_VERSION.tar.bz2 \
@@ -253,70 +253,69 @@ else
 
    printf "\\n"
 
+   if [ $BUILD_MONGO ]; then 
+      printf "Checking MongoDB installation...\\n"
+      if [ ! -d $MONGODB_ROOT ] || [ $FORCE_BUILD ]; then
+         printf "Installing MongoDB into ${MONGODB_ROOT}...\\n"
+         curl -OL https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-amazon-$MONGODB_VERSION.tgz \
+         && tar -xzf mongodb-linux-x86_64-amazon-$MONGODB_VERSION.tgz \
+         && mv $SRC_LOCATION/mongodb-linux-x86_64-amazon-$MONGODB_VERSION $MONGODB_ROOT \
+         && touch $MONGODB_LOG_LOCATION/mongod.log \
+         && rm -f mongodb-linux-x86_64-amazon-$MONGODB_VERSION.tgz \
+         && cp -f $REPO_ROOT/scripts/mongod.conf $MONGODB_CONF \
+         && mkdir -p $MONGODB_DATA_LOCATION \
+         && rm -rf $MONGODB_LINK_LOCATION \
+         && rm -rf $BIN_LOCATION/mongod \
+         && ln -s $MONGODB_ROOT $MONGODB_LINK_LOCATION \
+         && ln -s $MONGODB_LINK_LOCATION/bin/mongod $BIN_LOCATION/mongod \
+         || exit 1
+         printf " - MongoDB successfully installed @ ${MONGODB_ROOT} (Symlinked to ${MONGODB_LINK_LOCATION}).\\n"
+      else
+         printf " - MongoDB found with correct version @ ${MONGODB_ROOT} (Symlinked to ${MONGODB_LINK_LOCATION}).\\n"
+      fi
+      if [ $? -ne 0 ]; then exit -1; fi
+      printf "Checking MongoDB C driver installation...\\n"
+      if [ ! -d $MONGO_C_DRIVER_ROOT ] || [ $FORCE_BUILD ]; then
+         printf "Installing MongoDB C driver...\\n"
+         curl -LO https://github.com/mongodb/mongo-c-driver/releases/download/$MONGO_C_DRIVER_VERSION/mongo-c-driver-$MONGO_C_DRIVER_VERSION.tar.gz \
+         && tar -xzf mongo-c-driver-$MONGO_C_DRIVER_VERSION.tar.gz \
+         && cd mongo-c-driver-$MONGO_C_DRIVER_VERSION \
+         && mkdir -p cmake-build \
+         && cd cmake-build \
+         && $CMAKE -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$PREFIX -DENABLE_BSON=ON -DENABLE_SSL=OPENSSL -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF -DENABLE_STATIC=ON .. \
+         && make -j"${JOBS}" \
+         && make install \
+         && cd ../.. \
+         && rm mongo-c-driver-$MONGO_C_DRIVER_VERSION.tar.gz \
+         || exit 1
+         printf " - MongoDB C driver successfully installed @ ${MONGO_C_DRIVER_ROOT}.\\n"
+      else
+         printf " - MongoDB C driver found with correct version @ ${MONGO_C_DRIVER_ROOT}.\\n"
+      fi
+      if [ $? -ne 0 ]; then exit -1; fi
+      printf "Checking MongoDB C++ driver installation...\\n"
+      if [ ! -d $MONGO_CXX_DRIVER_ROOT ] || [ $FORCE_BUILD ]; then
+         printf "Installing MongoDB C++ driver...\\n"
+         curl -L https://github.com/mongodb/mongo-cxx-driver/archive/r$MONGO_CXX_DRIVER_VERSION.tar.gz -o mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION.tar.gz \
+         && tar -xzf mongo-cxx-driver-r${MONGO_CXX_DRIVER_VERSION}.tar.gz \
+         && cd mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION/build \
+         && $CMAKE -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$PREFIX .. \
+         && make -j"${JOBS}" VERBOSE=1 \
+         && make install \
+         && cd ../.. \
+         && rm -f mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION.tar.gz \
+         || exit 1
+         printf " - MongoDB C++ driver successfully installed @ ${MONGO_CXX_DRIVER_ROOT}.\\n"
+      else
+         printf " - MongoDB C++ driver found with correct version @ ${MONGO_CXX_DRIVER_ROOT}.\\n"
+      fi
+      if [ $? -ne 0 ]; then exit -1; fi
 
-   printf "Checking MongoDB installation...\\n"
-   if [ ! -d $MONGODB_ROOT ]; then
-      printf "Installing MongoDB into ${MONGODB_ROOT}...\\n"
-      curl -OL https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-amazon-$MONGODB_VERSION.tgz \
-      && tar -xzf mongodb-linux-x86_64-amazon-$MONGODB_VERSION.tgz \
-      && mv $SRC_LOCATION/mongodb-linux-x86_64-amazon-$MONGODB_VERSION $MONGODB_ROOT \
-      && touch $MONGODB_LOG_LOCATION/mongod.log \
-      && rm -f mongodb-linux-x86_64-amazon-$MONGODB_VERSION.tgz \
-      && cp -f $REPO_ROOT/scripts/mongod.conf $MONGODB_CONF \
-      && mkdir -p $MONGODB_DATA_LOCATION \
-      && rm -rf $MONGODB_LINK_LOCATION \
-      && rm -rf $BIN_LOCATION/mongod \
-      && ln -s $MONGODB_ROOT $MONGODB_LINK_LOCATION \
-      && ln -s $MONGODB_LINK_LOCATION/bin/mongod $BIN_LOCATION/mongod \
-      || exit 1
-      printf " - MongoDB successfully installed @ ${MONGODB_ROOT} (Symlinked to ${MONGODB_LINK_LOCATION}).\\n"
-   else
-      printf " - MongoDB found with correct version @ ${MONGODB_ROOT} (Symlinked to ${MONGODB_LINK_LOCATION}).\\n"
+      printf "\\n"
    fi
-   if [ $? -ne 0 ]; then exit -1; fi
-   printf "Checking MongoDB C driver installation...\\n"
-   if [ ! -d $MONGO_C_DRIVER_ROOT ]; then
-      printf "Installing MongoDB C driver...\\n"
-      curl -LO https://github.com/mongodb/mongo-c-driver/releases/download/$MONGO_C_DRIVER_VERSION/mongo-c-driver-$MONGO_C_DRIVER_VERSION.tar.gz \
-      && tar -xzf mongo-c-driver-$MONGO_C_DRIVER_VERSION.tar.gz \
-      && cd mongo-c-driver-$MONGO_C_DRIVER_VERSION \
-      && mkdir -p cmake-build \
-      && cd cmake-build \
-      && $CMAKE -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$PREFIX -DENABLE_BSON=ON -DENABLE_SSL=OPENSSL -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF -DENABLE_STATIC=ON .. \
-      && make -j"${JOBS}" \
-      && make install \
-      && cd ../.. \
-      && rm mongo-c-driver-$MONGO_C_DRIVER_VERSION.tar.gz \
-      || exit 1
-      printf " - MongoDB C driver successfully installed @ ${MONGO_C_DRIVER_ROOT}.\\n"
-   else
-      printf " - MongoDB C driver found with correct version @ ${MONGO_C_DRIVER_ROOT}.\\n"
-   fi
-   if [ $? -ne 0 ]; then exit -1; fi
-   printf "Checking MongoDB C++ driver installation...\\n"
-   if [ ! -d $MONGO_CXX_DRIVER_ROOT ]; then
-      printf "Installing MongoDB C++ driver...\\n"
-      curl -L https://github.com/mongodb/mongo-cxx-driver/archive/r$MONGO_CXX_DRIVER_VERSION.tar.gz -o mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION.tar.gz \
-      && tar -xzf mongo-cxx-driver-r${MONGO_CXX_DRIVER_VERSION}.tar.gz \
-      && cd mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION/build \
-      && $CMAKE -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$PREFIX .. \
-      && make -j"${JOBS}" VERBOSE=1 \
-      && make install \
-      && cd ../.. \
-      && rm -f mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION.tar.gz \
-      || exit 1
-      printf " - MongoDB C++ driver successfully installed @ ${MONGO_CXX_DRIVER_ROOT}.\\n"
-   else
-      printf " - MongoDB C++ driver found with correct version @ ${MONGO_CXX_DRIVER_ROOT}.\\n"
-   fi
-   if [ $? -ne 0 ]; then exit -1; fi
-
-
-   printf "\\n"
-
 
    printf "Checking LLVM 4 support...\\n"
-   if [ ! -d $LLVM_ROOT ]; then
+   if [ ! -d $LLVM_ROOT ] || [ $FORCE_BUILD ]; then
       printf "Installing LLVM 4...\\n"
       cd ../opt \
       && git clone --depth 1 --single-branch --branch $LLVM_VERSION https://github.com/llvm-mirror/llvm.git llvm && cd llvm \

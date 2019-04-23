@@ -73,12 +73,15 @@ Usage: $0 OPTION...
   -d          Generate Doxygen
   -s NAME     Core Symbol Name <1-7 characters> (default: SYS)
   -y          Noninteractive mode (this script)
+  -P          Build with pinned clang 8 and libcxx
+  -f          Force rebuilding of dependencies
+  -m          Build MongoDB dependencies
 EOT
    exit 1
 }
 
 if [ $# -ne 0 ]; then
-   while getopts ":cdo:s:p:b:Phy" opt; do
+   while getopts ":cdo:s:p:b:mfPhy" opt; do
       case "${opt}" in
          o )
             options=( "Debug" "Release" "RelWithDebInfo" "MinSizeRel" )
@@ -120,6 +123,12 @@ if [ $# -ne 0 ]; then
          ;;
          y)
             NONINTERACTIVE=1
+         ;;
+         f)
+            FORCE_BUILD=1
+         ;;
+         m)
+            BUILD_MONGO=1
          ;;
          \? )
             printf "\\nInvalid Option: %s\\n" "-${OPTARG}" 1>&2
@@ -192,6 +201,8 @@ export DOXYGEN_VERSION=1_8_14
 export DOXYGEN_ROOT=${SRC_LOCATION}/doxygen-${DOXYGEN_VERSION}
 export TINI_VERSION=0.18.0
 export DISK_MIN=5
+export FORCE_BUILD=$FORCE_BUILD
+export BUILD_MONGO=$BUILD_MONGO
 
 mkdir -p $BUILD_DIR
 sed -e "s~@~$OPT_LOCATION~g" $SCRIPT_DIR/pinned_toolchain.cmake &> $BUILD_DIR/pinned_toolchain.cmake
