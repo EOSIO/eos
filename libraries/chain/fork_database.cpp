@@ -415,17 +415,35 @@ namespace eosio { namespace chain {
    }
 
    void fork_database::remove_pbft_my_prepare_fork()  {
-       auto& by_num_idx = my->index.get<by_lib_block_num>();
-       auto itr = by_num_idx.begin();
+       auto oldest = *my->index.get<by_block_num>().begin();
 
-       while (itr != by_num_idx.end()) {
-           if ((*itr)->pbft_my_prepare == true) {
-               by_num_idx.modify( itr, [&]( auto& bsp ) { bsp->pbft_my_prepare = false; });
+       auto& by_id_idx = my->index.get<by_block_id>();
+       auto itr = by_id_idx.find( oldest->id );
+       by_id_idx.modify( itr, [&]( auto& bsp ) { bsp->pbft_my_prepare = false; });
+
+       auto update = [&]( const vector<block_id_type>& in ) {
+           vector<block_id_type> updated;
+
+           for( const auto& i : in ) {
+               auto& pidx = my->index.get<by_prev>();
+               auto pitr  = pidx.lower_bound( i );
+               auto epitr = pidx.upper_bound( i );
+               while( pitr != epitr ) {
+                   pidx.modify( pitr, [&]( auto& bsp ) {
+                       bsp->pbft_my_prepare = false;
+                       updated.push_back( bsp->id );
+                   });
+                   ++pitr;
+               }
            }
-           ++itr;
+           return updated;
+       };
+
+       vector<block_id_type> queue{ oldest->id };
+       while(!queue.empty()) {
+           queue = update( queue );
        }
        my->head = *my->index.get<by_lib_block_num>().begin();
-//       wlog("head block num: ${h}", ("h", my->head->block_num));
    }
 
    block_state_ptr   fork_database::get_block_in_current_chain_by_num( uint32_t n )const {
