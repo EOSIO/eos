@@ -32,4 +32,6 @@ namespace cyberway { namespace chain {
     void apply_cyber_vetorecovery(apply_context&);
     */
 
+    void apply_cyber_setrampayer(apply_context&);
+
 } } // namespace cyberway::chain

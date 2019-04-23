@@ -267,6 +267,8 @@ struct controller_impl {
     SET_CYBER_DOMAIN_HANDLER(linkdomain);
     SET_CYBER_DOMAIN_HANDLER(unlinkdomain);
 
+   SET_CYBER_HANDLER(cyber, cyber, setrampayer);
+
    fork_db.irreversible.connect( [&]( auto b ) {
                                  on_irreversible(b);
                                  });

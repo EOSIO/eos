@@ -640,17 +640,26 @@ abi_def eosio_contract_abi(abi_def eos_abi)
    });
 
    eos_abi.structs.emplace_back( struct_def {
-         "onerror", "", {
-            {"sender_id", "uint128"},
-            {"sent_trx",  "bytes"}
+      "onerror", "", {
+         {"sender_id", "uint128"},
+         {"sent_trx",  "bytes"}
       }
    });
 
    eos_abi.structs.emplace_back( struct_def {
-         "onblock", "", {
-            {"header", "block_header"}
+      "onblock", "", {
+         {"header", "block_header"}
       }
    });
+
+   eos_abi.structs.emplace_back( struct_def {
+      "set_ram_payer", "", {
+         {"code",        "account_name"},
+         {"scope",       "account_name"},
+         {"table",       "name"},
+         {"primary_key", "uint64"},
+      }
+    });
 
    eos_abi.actions.push_back( action_def{name("newaccount"), "newaccount"} );
    eos_abi.actions.push_back( action_def{name("setcode"), "setcode"} );
@@ -666,6 +675,8 @@ abi_def eosio_contract_abi(abi_def eos_abi)
    eos_abi.actions.push_back( action_def{name("canceldelay"), "canceldelay"} );
    eos_abi.actions.push_back( action_def{name("onerror"), "onerror"} );
    eos_abi.actions.push_back( action_def{name("onblock"), "onblock"} );
+
+   eos_abi.actions.push_back( action_def{name("setrampayer"), "set_ram_payer"} );
 
    return eos_abi;
 }

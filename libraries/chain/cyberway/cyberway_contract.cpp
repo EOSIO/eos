@@ -10,6 +10,8 @@
 #include <eosio/chain/resource_limits.hpp>
 
 #include <cyberway/chaindb/controller.hpp>
+#include <cyberway/chaindb/names.hpp>
+
 #include <cyberway/chain/cyberway_contract.hpp>
 #include <cyberway/chain/cyberway_contract_types.hpp>
 
@@ -105,6 +107,42 @@ void apply_cyber_domain_newusername(apply_context& context) {
             d.scope = op.creator;
             d.name = op.name;
         });
+    } FC_CAPTURE_AND_RETHROW((op))
+}
+
+#define _CYBERWAY_OBJECT_QUERY_CHECK(_CHECK, _OP)  \
+    EOS_ASSERT((_CHECK), eosio::chain::object_query_exception, \
+        "Object with the primary key ${scope}:${pk} doesn't exist in the table ${table}", \
+        ("pk", (_OP).pk)("scope", chaindb::get_scope_name((_OP).scope))("table", chaindb::get_full_table_name(_OP)))
+
+template <typename Operation>
+chaindb::cache_object_ptr get_cache_object(apply_context& context, const Operation& op) {
+    auto find = context.chaindb.lower_bound({op.code, op.scope, op.table}, op.pk);
+    _CYBERWAY_OBJECT_QUERY_CHECK(find.pk == op.pk, op);
+
+    auto cache = context.chaindb.get_cache_object({op.code, find.cursor}, false);
+    _CYBERWAY_OBJECT_QUERY_CHECK(!!cache, op);
+    return cache;
+}
+
+#undef _CYBERWAY_OBJECT_QUERY_CHECK
+
+
+void apply_cyber_setrampayer(apply_context& context) {
+    auto op = context.act.data_as<set_ram_payer>();
+    try {
+        context.require_authorization(op.new_payer);
+
+        auto cache = get_cache_object(context, op);
+        auto owner = cache->service().owner;
+        context.require_authorization(owner);
+
+        EOS_ASSERT(op.new_payer != cache->service().payer, eosio::chain::object_payer_exception,
+            "Object with the primary key ${scope}:${pk} in the table ${table} already has the ram payer ${payer}",
+            ("pk", op.pk)("scope", chaindb::get_scope_name(op.scope))("table", chaindb::get_full_table_name(op))
+            ("payer", op.new_payer));
+
+        context.chaindb.update(*cache.get(), cache->object().value, {context, op.new_payer, owner});
     } FC_CAPTURE_AND_RETHROW((op))
 }
 

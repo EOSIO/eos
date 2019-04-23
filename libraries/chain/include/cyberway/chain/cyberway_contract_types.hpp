@@ -5,10 +5,13 @@
 #include <eosio/chain/config.hpp>
 #include <eosio/chain/types.hpp>
 
+#include <cyberway/chaindb/common.hpp>
+
 namespace cyberway { namespace chain {
 
     using eosio::chain::account_name;
     using eosio::chain::action_name;
+    using eosio::chain::table_name;
 
     struct providebw final {
         account_name    provider;
@@ -121,16 +124,39 @@ namespace cyberway { namespace chain {
 #undef SYS_ACTION_STRUCT
 #undef SYS_ACTION_STRUCT_END
 
+    using chaindb::primary_key_t;
+
+    struct set_ram_payer final {
+        account_name  code;
+        account_name  scope;
+        table_name    table;
+        primary_key_t pk;
+
+        account_name  new_payer;
+
+        static account_name get_account() {
+            return eosio::chain::config::system_account_name;
+        }
+
+        static action_name get_name() {
+            return N(setrampayer);
+        }
+    };
+
+
 } } // namespace cyberway::chain
 
-FC_REFLECT(cyberway::chain::providebw                        , (provider)(account))
+FC_REFLECT(cyberway::chain::providebw,     (provider)(account))
 //TODO: requestbw
-//FC_REFLECT(cyberway::chain::requestbw                        , (provider)(account))
-//FC_REFLECT(cyberway::chain::approvebw                        , (account) )
-FC_REFLECT(cyberway::chain::provideram                       , (provider)(account))
+//FC_REFLECT(cyberway::chain::requestbw,   (provider)(account))
+//FC_REFLECT(cyberway::chain::approvebw,   (account))
+FC_REFLECT(cyberway::chain::provideram,    (provider)(account))
 
-FC_REFLECT(cyberway::chain::newdomain,    (creator)(name))
-FC_REFLECT(cyberway::chain::passdomain,   (from)(to)(name))
-FC_REFLECT(cyberway::chain::linkdomain,   (owner)(to)(name))
-FC_REFLECT(cyberway::chain::unlinkdomain, (owner)(name))
-FC_REFLECT(cyberway::chain::newusername,  (creator)(owner)(name))
+FC_REFLECT(cyberway::chain::newdomain,     (creator)(name))
+FC_REFLECT(cyberway::chain::passdomain,    (from)(to)(name))
+FC_REFLECT(cyberway::chain::linkdomain,    (owner)(to)(name))
+FC_REFLECT(cyberway::chain::unlinkdomain,  (owner)(name))
+FC_REFLECT(cyberway::chain::newusername,   (creator)(owner)(name))
+
+FC_REFLECT(cyberway::chain::set_ram_payer, (code)(scope)(table)(pk)(new_payer))
+

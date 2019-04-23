@@ -240,6 +240,9 @@ namespace eosio { namespace chain {
         FC_DECLARE_DERIVED_EXCEPTION(username_query_exception, database_exception, 3060007, "Username Query Exception")
         FC_DECLARE_DERIVED_EXCEPTION(username_exists_exception,database_exception, 3060008, "Username already exists")
 
+        FC_DECLARE_DERIVED_EXCEPTION(object_query_exception,   database_exception, 3060009, "Object doesn't exist")
+        FC_DECLARE_DERIVED_EXCEPTION(object_payer_exception,   database_exception, 3060010, "Wrong RAM payer")
+
 
    FC_DECLARE_DERIVED_EXCEPTION( guard_exception, database_exception,
                                  3060100, "Guard Exception" )
