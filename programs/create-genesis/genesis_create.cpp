@@ -44,6 +44,7 @@ using std::vector;
 using acc_idx = uint32_t;       // lookup index in _acc_map
 
 
+static constexpr uint64_t gls_issuer_account_name = N(gls.issuer);
 static constexpr uint64_t gls_ctrl_account_name  = N(gls.ctrl);
 static constexpr uint64_t gls_vest_account_name  = N(gls.vesting);
 static constexpr uint64_t gls_post_account_name  = N(gls.publish);
@@ -54,7 +55,7 @@ constexpr auto GESTS = SY(6,GESTS);
 constexpr auto VESTS = SY(6,GOLOS);                 // Golos dApp vesting
 constexpr auto posting_auth_name = "posting";
 constexpr auto golos_account_name = "golos";
-constexpr auto issuer_account_name = config::system_account_name;   // ?cyberfounder
+constexpr auto issuer_account_name = gls_issuer_account_name;
 constexpr auto notify_account_name = gls_ctrl_account_name;
 constexpr auto posting_account_name = gls_post_account_name;
 
