@@ -511,7 +511,6 @@ abi_def eosio_contract_abi(abi_def eos_abi)
         {"agent_name", "name"},
         {"pct", "int16"},
         {"share", "int64"},
-        {"granted", "int64"},
         {"break_fee", "int16"},
         {"break_min_own_staked", "int64" }}});
         
@@ -529,7 +528,7 @@ abi_def eosio_contract_abi(abi_def eos_abi)
         {"token_symbol", "symbol"},
         {"max_proxies", "uint8[]"},
         {"frame_length", "int64"},
-        {"payout_step_lenght", "int64"},
+        {"payout_step_length", "int64"},
         {"payout_steps_num", "uint16"},
         {"min_own_staked_for_election", "int64"}}});
         
