@@ -358,7 +358,12 @@ namespace eosio { namespace chain {
       }
 
       while( pos < end_pos ) {
-         fc::raw::unpack(my->block_stream, tmp);
+          try {
+              fc::raw::unpack(my->block_stream, tmp);
+          } catch( const fc::assert_exception& ex) {
+              elog("Failed to unpack block log.  Block log is corrupt: ${ex}", ("ex", ex.what()));
+              throw ex;
+          }
          my->block_stream.read((char*)&pos, sizeof(pos));
          if(tmp.block_num() % 1000 == 0)
             ilog( "Block log index reconstructed for block ${n}", ("n", tmp.block_num()));

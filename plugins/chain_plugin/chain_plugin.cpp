@@ -815,7 +815,9 @@ bool chain_plugin::recover_reversible_blocks( const fc::path& db_dir, uint32_t c
       auto itr = ubi.rbegin();
       if( itr != ubi.rend() && itr->blocknum <= truncate_at_block )
          return false; // Because we are not going to be truncating the reversible database at all.
-   } catch( const std::runtime_error& ) {
+   } catch( const std::runtime_error& e) {
+       elog("${ex}", ("ex", e.what()));
+       app().quit();
    } catch( ... ) {
       throw;
    }
