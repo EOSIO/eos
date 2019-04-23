@@ -75,8 +75,8 @@ void resource_limits_manager::read_from_snapshot( const snapshot_reader_ptr& sna
    // TODO: Removed by CyberWay
 }
 
-void resource_limits_manager::initialize_account(const account_name& account) {
-   _chaindb.emplace<resource_usage_object>([&]( resource_usage_object& bu ) {
+void resource_limits_manager::initialize_account(const account_name& account, const cyberway::chaindb::ram_payer_info& ram_payer) {
+   _chaindb.emplace<resource_usage_object>(ram_payer, [&]( resource_usage_object& bu ) {
       bu.owner = account;
    });
 }

@@ -11,7 +11,10 @@
 #include <algorithm>
 #include <set>
 
-namespace cyberway { namespace chaindb { class chaindb_controller; }}
+namespace cyberway { namespace chaindb {
+    class chaindb_controller;
+    struct ram_payer_info;
+}}
 
 namespace chainbase { class database; }
 
@@ -611,6 +614,7 @@ class apply_context {
       uint64_t next_recv_sequence( account_name receiver );
       uint64_t next_auth_sequence( account_name actor );
 
+      cyberway::chaindb::ram_payer_info get_ram_payer( const account_name& ram_owner = account_name(), const account_name& ram_payer = account_name() );
       void add_ram_usage( const account_name& account, int64_t ram_delta );
       void finalize_trace( action_trace& trace, const fc::time_point& start );
 

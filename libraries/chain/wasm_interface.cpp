@@ -1095,44 +1095,32 @@ class console_api : public context_aware_api {
       bool ignore;
 };
 
-
-class bandwith_api : public context_aware_api {
-    public:
-        bandwith_api( apply_context& ctx )
-        : context_aware_api(ctx,true) {}
-
-        int64_t get_bw_cpu_limit(account_name account) const {
-            return context.trx_context.get_provided_cpu_limit(account);
-        }
-
-        int64_t get_bw_net_limit(account_name account) const {
-            return context.trx_context.get_provided_net_limit(account);
-        }
-
-        bool is_provided_bw_confirmed(account_name account) const {
-            return context.trx_context.is_provided_bandwith_confirmed(account);
-        }
-
-        void set_bw_limits(account_name account, int64_t net_limit, int64_t cpu_limit) {
-            context.trx_context.set_provided_bandwith_limits(account, net_limit, cpu_limit);
-        }
-
-        void confirm_bw_limits(account_name account) {
-            context.trx_context.confirm_provided_bandwith_limits(account, context.receiver);
-        }
-};
-
-class ram_provide_api : public context_aware_api {
-    public:
-        ram_provide_api( apply_context& ctx )
-        : context_aware_api(ctx,true) {}
-
-        account_name get_ram_provider(account_name user) const {
-            const account_name running_contract = context.receiver;
-            return context.trx_context.get_ram_provider(running_contract, user);
-        }
-};
-
+//TODO: requestbw
+//class bandwith_api : public context_aware_api {
+//    public:
+//        bandwith_api( apply_context& ctx )
+//        : context_aware_api(ctx,true) {}
+//
+//        int64_t get_bw_cpu_limit(account_name account) const {
+//            return context.trx_context.get_provided_cpu_limit(account);
+//        }
+//
+//        int64_t get_bw_net_limit(account_name account) const {
+//            return context.trx_context.get_provided_net_limit(account);
+//        }
+//
+//        bool is_provided_bw_confirmed(account_name account) const {
+//            return context.trx_context.is_provided_bandwith_confirmed(account);
+//        }
+//
+//        void set_bw_limits(account_name account, int64_t net_limit, int64_t cpu_limit) {
+//            context.trx_context.set_provided_bandwith_limits(account, net_limit, cpu_limit);
+//        }
+//
+//        void confirm_bw_limits(account_name account) {
+//            context.trx_context.confirm_provided_bandwith_limits(account, context.receiver);
+//        }
+//};
 
 #define DB_API_METHOD_WRAPPERS_SIMPLE_SECONDARY(IDX, TYPE)\
       int db_##IDX##_store( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, const TYPE& secondary ) {\
@@ -1884,18 +1872,15 @@ REGISTER_INTRINSICS(console_api,
    (printhex,              void(int, int) )
 );
 
-
-REGISTER_INTRINSICS(bandwith_api,
-    (get_bw_cpu_limit, int64_t(int64_t))
-    (get_bw_net_limit, int64_t(int64_t ))
-    (is_provided_bw_confirmed, int(int64_t))
-    (set_bw_limits, void(int64_t, int64_t, int64_t))
-    (confirm_bw_limits, void(int64_t))
-);
-
-REGISTER_INTRINSICS(ram_provide_api,
-    (get_ram_provider, int64_t(int64_t))
-);
+// TODO: Rename
+//
+//REGISTER_INTRINSICS(bandwith_api,
+//    (get_bw_cpu_limit, int64_t(int64_t))
+//    (get_bw_net_limit, int64_t(int64_t ))
+//    (is_provided_bw_confirmed, int(int64_t))
+//    (set_bw_limits, void(int64_t, int64_t, int64_t))
+//    (confirm_bw_limits, void(int64_t))
+//);
 
 REGISTER_INTRINSICS(context_free_transaction_api,
    (read_transaction,       int(int, int)            )

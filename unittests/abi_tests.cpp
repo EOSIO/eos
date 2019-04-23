@@ -27,6 +27,8 @@
 #include <deep_nested.abi.hpp>
 #include <large_nested.abi.hpp>
 
+#include <cyberway/chain/cyberway_contract_types.hpp>
+
 using namespace eosio;
 using namespace chain;
 
@@ -955,16 +957,16 @@ BOOST_AUTO_TEST_CASE(providebw_test)
 
    auto var = fc::json::from_string(test_data);
 
-   auto pbw = var.as<providebw>();
+   auto pbw = var.as<cyberway::chain::providebw>();
    BOOST_TEST("provbw.prov" == pbw.provider);
    BOOST_TEST("provbw.acct" == pbw.account);
 
    auto var2 = verify_byte_round_trip_conversion( abis, "providebw", var );
-   auto providebw2 = var2.as<providebw>();
+   auto providebw2 = var2.as<cyberway::chain::providebw>();
    BOOST_TEST(pbw.provider == providebw2.provider);
    BOOST_TEST(pbw.account == providebw2.account);
 
-   verify_type_round_trip_conversion<providebw>( abis, "providebw", var);
+   verify_type_round_trip_conversion<cyberway::chain::providebw>( abis, "providebw", var);
 
 } FC_LOG_AND_RETHROW() }
 

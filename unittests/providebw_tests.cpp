@@ -17,6 +17,8 @@
 
 #include <fc/variant_object.hpp>
 
+#include <cyberway/chain/cyberway_contract_types.hpp>
+
 #ifdef NON_VALIDATING_TEST
 #define TESTER tester
 #else
@@ -181,7 +183,7 @@ BOOST_FIXTURE_TEST_CASE( providebw_test, system_contract_tester ) {
         BOOST_REQUIRE_EXCEPTION( push_transaction(trx), tx_net_usage_exceeded, [](auto&){return true;});
 
         trx.actions.emplace_back( vector<permission_level>{{"provider", config::active_name}},
-                                  providebw(N(provider), N(user)));
+                                  cyberway::chain::providebw(N(provider), N(user)));
         set_transaction_headers(trx);
 
         // Check that user can publish transaction using provider bandwidth
@@ -215,7 +217,7 @@ BOOST_FIXTURE_TEST_CASE( providebw_test, system_contract_tester ) {
 
         // Check operation success with 2 providebw
         trx.actions.emplace_back( vector<permission_level>{{"provider", config::active_name}},
-                                  providebw(N(provider), N(user2)));
+                                  cyberway::chain::providebw(N(provider), N(user2)));
         set_transaction_headers(trx);
         trx.signatures.clear();
         trx.sign( get_private_key("user", "active"), control->get_chain_id() );

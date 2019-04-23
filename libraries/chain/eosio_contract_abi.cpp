@@ -6,12 +6,13 @@
 #include <eosio/chain/block_summary_object.hpp>
 #include <eosio/chain/transaction_object.hpp>
 #include <eosio/chain/generated_transaction_object.hpp>
-#include <eosio/chain/domain_object.hpp>
 #include <eosio/chain/stake_object.hpp>
 #include <eosio/chain/permission_object.hpp>
 #include <eosio/chain/permission_link_object.hpp>
 #include <eosio/chain/resource_limits.hpp>
 #include <eosio/chain/resource_limits_private.hpp>
+
+#include <cyberway/chain/domain_object.hpp>
 
 namespace eosio { namespace chain {
 
@@ -278,7 +279,6 @@ abi_def eosio_contract_abi(abi_def eos_abi)
          {"trx_id", "checksum256"},
          {"sender", "name"},
          {"sender_id", "uint128"},
-         {"payer", "name"},
          {"delay_until", "time_point"},
          {"expiration", "time_point"},
          {"published", "time_point"},
@@ -307,7 +307,7 @@ abi_def eosio_contract_abi(abi_def eos_abi)
    });
 
    eos_abi.tables.emplace_back(eosio::chain::table_def{
-      cyberway::chaindb::tag<domain_object>::get_code(), "domain_object", {
+      cyberway::chaindb::tag<cyberway::chain::domain_object>::get_code(), "domain_object", {
          {cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}},
          {cyberway::chaindb::tag<by_name>::get_code(), true, {{"name", "asc"}}},
          {cyberway::chaindb::tag<by_owner>::get_code(), true, {{"owner", "asc"},{"name", "asc"}}}
@@ -324,7 +324,7 @@ abi_def eosio_contract_abi(abi_def eos_abi)
    });
 
    eos_abi.tables.emplace_back(eosio::chain::table_def{
-      cyberway::chaindb::tag<username_object>::get_code(), "username_object", {
+      cyberway::chaindb::tag<cyberway::chain::username_object>::get_code(), "username_object", {
          {cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}},
          {cyberway::chaindb::tag<by_scope_name>::get_code(), true, {{"scope", "asc"},{"name", "asc"}}},
          {cyberway::chaindb::tag<by_owner>::get_code(), true, {{"owner","asc"},{"scope","asc"},{"name","asc"}}}
@@ -618,19 +618,18 @@ abi_def eosio_contract_abi(abi_def eos_abi)
          {"account", "account_name"},
       }
    });
-
-   eos_abi.structs.emplace_back( struct_def {
-      "requestbw", "", {
-         {"provider", "account_name"},
-         {"account", "account_name"},
-      }
-   });
+// TODO: requestbw
+//   eos_abi.structs.emplace_back( struct_def {
+//      "requestbw", "", {
+//         {"provider", "account_name"},
+//         {"account", "account_name"},
+//      }
+//   });
 
    eos_abi.structs.emplace_back( struct_def {
       "provideram", "", {
          {"provider", "account_name"},
          {"account", "account_name"},
-         {"contracts", "account_name[]"},
       }
    });
 
@@ -662,7 +661,8 @@ abi_def eosio_contract_abi(abi_def eos_abi)
    eos_abi.actions.push_back( action_def{name("linkauth"), "linkauth"} );
    eos_abi.actions.push_back( action_def{name("unlinkauth"), "unlinkauth"} );
    eos_abi.actions.push_back( action_def{name("providebw"), "providebw"} );
-   eos_abi.actions.push_back( action_def{name("requestbw"), "requestbw"} );
+// TODO: requestbw
+//   eos_abi.actions.push_back( action_def{name("requestbw"), "requestbw"} );
    eos_abi.actions.push_back( action_def{name("provideram"), "provideram"} );
    eos_abi.actions.push_back( action_def{name("canceldelay"), "canceldelay"} );
    eos_abi.actions.push_back( action_def{name("onerror"), "onerror"} );

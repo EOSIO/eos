@@ -4,12 +4,13 @@
  */
 #pragma once
 #include <eosio/chain/name.hpp>
-#include <eosio/chain/domain_name.hpp>
 #include <eosio/chain/chain_id_type.hpp>
 
 #include <chainbase/chainbase.hpp>
 
 #include <eosio/chain/fc_pack.hpp>
+
+#include <cyberway/chain/domain_name.hpp>
 
 #include <fc/container/flat_fwd.hpp>
 #include <fc/io/varint.hpp>
@@ -203,7 +204,6 @@ namespace eosio { namespace chain {
 
    class account_object;
    class producer_object;
-   class domain_object;
    class stake_agent_object;
    class stake_grant_object;
    class stake_param_object;

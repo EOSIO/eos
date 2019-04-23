@@ -28,6 +28,8 @@
 
 #include <cyberway/chaindb/controller.hpp>
 #include <cyberway/genesis/genesis_import.hpp>
+#include <cyberway/chain/cyberway_contract_types.hpp>
+#include <cyberway/chain/cyberway_contract.hpp>
 
 namespace eosio { namespace chain {
 
@@ -41,8 +43,8 @@ using controller_index_set = index_set<
    block_summary_table,
    transaction_table,
    generated_transaction_table,
-   domain_table,
-   username_table
+   cyberway::chain::domain_table,
+   cyberway::chain::username_table
 >;
 
 class maybe_session {
@@ -231,6 +233,9 @@ struct controller_impl {
 #define SET_APP_HANDLER( receiver, contract, action) \
    set_apply_handler( #receiver, #contract, #action, &BOOST_PP_CAT(apply_, BOOST_PP_CAT(contract, BOOST_PP_CAT(_,action) ) ) )
 
+#define SET_CYBER_HANDLER( receiver, contract, action) \
+   set_apply_handler( #receiver, #contract, #action, &BOOST_PP_CAT(cyberway::chain::apply_, BOOST_PP_CAT(contract, BOOST_PP_CAT(_,action) ) ) )
+
    SET_APP_HANDLER(cyber, cyber, newaccount);
    SET_APP_HANDLER(cyber, cyber, setcode);
    SET_APP_HANDLER(cyber, cyber, setabi);
@@ -238,21 +243,22 @@ struct controller_impl {
    SET_APP_HANDLER(cyber, cyber, deleteauth);
    SET_APP_HANDLER(cyber, cyber, linkauth);
    SET_APP_HANDLER(cyber, cyber, unlinkauth);
+   SET_APP_HANDLER(cyber, cyber, canceldelay);
 
-   SET_APP_HANDLER(cyber, cyber, providebw);
-   SET_APP_HANDLER(cyber, cyber, requestbw);
-   SET_APP_HANDLER(cyber, cyber, provideram);
+   SET_CYBER_HANDLER(cyber, cyber, providebw);
+//TODO: requestbw
+//   SET_CYBER_HANDLER(cyber, cyber, requestbw);
+   SET_CYBER_HANDLER(cyber, cyber, provideram);
 /*
-   SET_APP_HANDLER(cyber, cyber, postrecovery);
-   SET_APP_HANDLER(cyber, cyber, passrecovery);
-   SET_APP_HANDLER(cyber, cyber, vetorecovery);
+   SET_CYBER_HANDLER(cyber, cyber, postrecovery);
+   SET_CYBER_HANDLER(cyber, cyber, passrecovery);
+   SET_CYBER_HANDLER(cyber, cyber, vetorecovery);
 */
 
-   SET_APP_HANDLER(cyber, cyber, canceldelay);
 
 #define SET_CONTRACT_HANDLER(contract, action, function) set_apply_handler(contract, contract, #action, function);
 #define SET_DOTCONTRACT_HANDLER(base, sub, action) SET_CONTRACT_HANDLER(#base "." #sub, action, \
-    &BOOST_PP_CAT(apply_, BOOST_PP_CAT(base, BOOST_PP_CAT(_, BOOST_PP_CAT(sub, BOOST_PP_CAT(_,action))))))
+    &BOOST_PP_CAT(cyberway::chain::apply_, BOOST_PP_CAT(base, BOOST_PP_CAT(_, BOOST_PP_CAT(sub, BOOST_PP_CAT(_,action))))))
 #define SET_CYBER_DOMAIN_HANDLER(action) SET_DOTCONTRACT_HANDLER(cyber, domain, action)
 
     SET_CYBER_DOMAIN_HANDLER(newusername);
@@ -598,7 +604,7 @@ struct controller_impl {
       const auto& active_permission = authorization.create_permission({}, name, config::active_name, owner_permission.id,
                                                                       active, conf.genesis.initial_timestamp );
 
-      resource_limits.initialize_account(name);
+      resource_limits.initialize_account(name, {});
 
       // Does exist any reason to calculate ram usage for system accounts?
 
@@ -798,41 +804,42 @@ struct controller_impl {
       return push_scheduled_transaction( *itr, deadline, billed_cpu_time_us, explicit_billed_cpu_time );
    }
 
-    void call_approvebw_actions(signed_transaction& call_provide_trx, transaction_context& trx_context) {
-        call_provide_trx.expiration = self.pending_block_time() + fc::microseconds(999'999); // Round up to avoid appearing expired
-        call_provide_trx.set_reference_block( self.head_block_id() );
-
-        trx_context.init_for_implicit_trx();
-        trx_context.exec();
-        trx_context.validate_bw_usage();
-
-        auto restore = make_block_restore_point();
-        fc::move_append( pending->_actions, move(trx_context.executed) );
-        trx_context.squash();
-        restore.cancel();
-    }
-
-    bandwith_request_result get_provided_bandwith(const vector<action>& actions, fc::time_point deadline)  {
-        signed_transaction call_provide_trx;
-        transaction_context trx_context( self, call_provide_trx, call_provide_trx.id());
-        for (const auto& action : actions) {
-            if (action.account == config::system_account_name && action.name == config::request_bw_action) {
-                const auto request_bw = action.data_as<requestbw>();
-                call_provide_trx.actions.emplace_back(
-                    vector<permission_level>{{request_bw.provider, config::active_name}},
-                    request_bw.provider,
-                    config::approve_bw_action,
-                    fc::raw::pack(approvebw(request_bw.account)));
-            }
-        }
-
-        if (!call_provide_trx.actions.empty()) {
-            trx_context.deadline = deadline;
-            call_approvebw_actions(call_provide_trx, trx_context);
-        }
-
-        return {trx_context.get_provided_bandwith(), trx_context.get_net_usage(), trx_context.get_cpu_usage()};
-    }
+// TODO: request bw, why provided?
+//    void call_approvebw_actions(signed_transaction& call_provide_trx, transaction_context& trx_context) {
+//        call_provide_trx.expiration = self.pending_block_time() + fc::microseconds(999'999); // Round up to avoid appearing expired
+//        call_provide_trx.set_reference_block( self.head_block_id() );
+//
+//        trx_context.init_for_implicit_trx();
+//        trx_context.exec();
+//        trx_context.validate_bw_usage();
+//
+//        auto restore = make_block_restore_point();
+//        fc::move_append( pending->_actions, move(trx_context.executed) );
+//        trx_context.squash();
+//        restore.cancel();
+//    }
+//
+//    bandwith_request_result get_provided_bandwith(const vector<action>& actions, fc::time_point deadline)  {
+//        signed_transaction call_provide_trx;
+//        transaction_context trx_context( self, call_provide_trx, call_provide_trx.id());
+//        for (const auto& action : actions) {
+//            if (action.account == config::system_account_name && action.name == config::request_bw_action) {
+//                const auto request_bw = action.data_as<requestbw>();
+//                call_provide_trx.actions.emplace_back(
+//                    vector<permission_level>{{request_bw.provider, config::active_name}},
+//                    request_bw.provider,
+//                    config::approve_bw_action,
+//                    fc::raw::pack(approvebw(request_bw.account)));
+//            }
+//        }
+//
+//        if (!call_provide_trx.actions.empty()) {
+//            trx_context.deadline = deadline;
+//            call_approvebw_actions(call_provide_trx, trx_context);
+//        }
+//
+//        return {trx_context.get_provided_bandwith(), trx_context.get_net_usage(), trx_context.get_cpu_usage()};
+//    }
 
    transaction_trace_ptr push_scheduled_transaction( const generated_transaction_object& gto, fc::time_point deadline, uint32_t billed_cpu_time_us, bool explicit_billed_cpu_time = false )
    try {
@@ -890,6 +897,7 @@ struct controller_impl {
       trx_context.billed_cpu_time_us = billed_cpu_time_us;
       trace = trx_context.trace;
       try {
+         //TODO: request bw, why provided?
          //auto bandwith_request_result = get_provided_bandwith(dtrx.actions, deadline);
          //trx_context.set_provided_bandwith(std::move(bandwith_request_result.bandwith));
          //trx_context.add_cpu_usage(bandwith_request_result.used_cpu);
@@ -1034,6 +1042,7 @@ struct controller_impl {
          trx_context.billed_cpu_time_us = billed_cpu_time_us;
          trace = trx_context.trace;
          try {
+            //TODO: request bw, why provided?
             //auto bandwith_request_result = get_provided_bandwith(trn.actions, deadline);
 
             //trx_context.set_provided_bandwith(std::move(bandwith_request_result.bandwith));

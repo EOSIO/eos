@@ -274,7 +274,7 @@ resolve_names_results chain_api_plugin_impl::resolve_names(const resolve_names_p
     resolve_names_results r;
 
     auto set_domain = [&](const auto& n, resolve_names_item& item) {
-        chain::validate_domain_name(n);
+        cyberway::chain::validate_domain_name(n);
         item.resolved_domain = chain_controller_.get_domain(n).linked_to;
     };
 
@@ -298,7 +298,7 @@ resolve_names_results chain_api_plugin_impl::resolve_names(const resolve_names_p
             auto username = n.substr(0, at);
             bool have_username = username.size() > 0;
             if (have_username) {
-                chain::validate_username(username);
+                cyberway::chain::validate_username(username);
             }
 
             auto tail = n.substr(tail_pos, n.length() - tail_pos);
@@ -438,10 +438,15 @@ get_table_rows_result chain_api_plugin_impl::walk_table_row_range(const get_tabl
 
     for(unsigned int count = 0;
         cur_time <= end_time && count < p.limit && itr.pk != end_pk;
-        itr.pk = chaindb.next(cursor), ++count, cur_time = fc::time_point::now()) {
+        itr.pk = chaindb.next(cursor), ++count, cur_time = fc::time_point::now()
+    ) {
         if (p.show_payer && *p.show_payer) {
             const auto object = chaindb.object_at_cursor(cursor);
-            auto value = fc::mutable_variant_object()("data", object.value)("payer", object.service.payer);
+            auto value = fc::mutable_variant_object()
+                ("data",  object.value)
+                ("payer", object.service.payer)
+                ("owner", object.service.owner)
+                ("size",  object.service.size);
             result.rows.push_back(std::move(value));
         } else {
             result.rows.push_back(chaindb.value_at_cursor(cursor));
@@ -680,7 +685,8 @@ get_scheduled_transactions_result chain_api_plugin_impl::get_scheduled_transacti
               ("trx_id", itr->trx_id)
               ("sender", itr->sender)
               ("sender_id", itr->sender_id)
-              ("payer", itr->payer)
+              ("owner", itr.service().owner)
+              ("payer", itr.service().payer)
               ("delay_until", itr->delay_until)
               ("expiration", itr->expiration)
               ("published", itr->published)

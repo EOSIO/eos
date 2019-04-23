@@ -12,6 +12,7 @@
 #include <boost/container/flat_set.hpp>
 
 #include <cyberway/chaindb/controller.hpp>
+#include <cyberway/chain/domain_object.hpp>
 
 using boost::container::flat_set;
 
@@ -148,10 +149,10 @@ void apply_context::exec( action_trace& trace )
 
 
 bool apply_context::is_domain(const domain_name& domain) const {
-   return nullptr != chaindb.find<domain_object,by_name>(domain);
+   return nullptr != chaindb.find<cyberway::chain::domain_object,by_name>(domain);
 }
 bool apply_context::is_username(const account_name& scope, const username& name) const {
-   return nullptr != chaindb.find<username_object,by_scope_name>(boost::make_tuple(scope,name));
+   return nullptr != chaindb.find<cyberway::chain::username_object,by_scope_name>(boost::make_tuple(scope,name));
 }
 account_name apply_context::get_domain_owner(const domain_name& domain) const {
    return control.get_domain(domain).owner;
@@ -306,7 +307,7 @@ void apply_context::execute_context_free_inline( action&& a ) {
 }
 
 
-void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, account_name payer, transaction&& trx, bool replace_existing ) {
+void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, account_name ram_owner, transaction&& trx, bool replace_existing ) {
    EOS_ASSERT( trx.context_free_actions.size() == 0, cfa_inside_generated_tx, "context free actions are not currently allowed in generated transactions" );
    trx.expiration = control.pending_block_time() + fc::microseconds(999'999); // Rounds up to nearest second (makes expiration check unnecessary)
    trx.set_reference_block(control.head_block_id()); // No TaPoS check necessary
@@ -322,8 +323,8 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
    auto delay = fc::seconds(trx.delay_sec);
 
    if( !control.skip_auth_check() && !privileged ) { // Do not need to check authorization if replayng irreversible block or if contract is privileged
-      if( payer != receiver ) {
-         require_authorization(payer); /// uses payer's storage
+      if( ram_owner != receiver ) {
+         require_authorization(ram_owner); /// uses payer's storage
       }
 
       // Originally this code bypassed authorization checks if a contract was deferring only actions to itself.
@@ -389,10 +390,9 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
 //      // TODO: The logic of the next line needs to be incorporated into the next hard fork.
 //      // add_ram_usage( ptr->payer, -(config::billable_size_v<generated_transaction_object> + ptr->packed_trx.size()) );
 
-      chaindb.modify( *ptr, {*this, payer}, [&]( auto& gtx ) {
+      chaindb.modify( *ptr, get_ram_payer(ram_owner), [&]( auto& gtx ) {
             gtx.sender      = receiver;
             gtx.sender_id   = sender_id;
-            gtx.payer       = payer;
             gtx.published   = control.pending_block_time();
             gtx.delay_until = gtx.published + delay;
             gtx.expiration  = gtx.delay_until + fc::seconds(control.get_global_properties().configuration.deferred_trx_expiration_window);
@@ -400,11 +400,10 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
             trx_size = gtx.set( trx );
          });
    } else {
-      chaindb.emplace<generated_transaction_object>( {*this, payer}, [&]( auto& gtx ) {
+      chaindb.emplace<generated_transaction_object>( get_ram_payer(ram_owner), [&]( auto& gtx ) {
             gtx.trx_id      = trx.id();
             gtx.sender      = receiver;
             gtx.sender_id   = sender_id;
-            gtx.payer       = payer;
             gtx.published   = control.pending_block_time();
             gtx.delay_until = gtx.published + delay;
             gtx.expiration  = gtx.delay_until + fc::seconds(control.get_global_properties().configuration.deferred_trx_expiration_window);
@@ -515,6 +514,10 @@ void apply_context::reset_console() {
 bytes apply_context::get_packed_transaction() {
    auto r = fc::raw::pack( static_cast<const transaction&>(trx_context.trx) );
    return r;
+}
+
+cyberway::chaindb::ram_payer_info apply_context::get_ram_payer( const account_name& ram_owner, const account_name& ram_payer ) {
+   return {*this, trx_context.get_ram_provider(ram_payer), ram_owner};
 }
 
 void apply_context::add_ram_usage( const account_name& payer, const int64_t delta ) {

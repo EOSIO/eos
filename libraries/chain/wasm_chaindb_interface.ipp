@@ -144,7 +144,7 @@ namespace eosio { namespace chain {
                 "must specify a valid account to pay for new record");
             validate_db_access_violation(code);
             context.lazy_init_chaindb_abi(code);
-            context.chaindb.insert({code, scope, table}, {context, payer}, pk, data, size);
+            context.chaindb.insert({code, scope, table}, context.get_ram_payer(payer), pk, data, size);
             return pk;
         }
 
@@ -154,7 +154,7 @@ namespace eosio { namespace chain {
         ) {
             validate_db_access_violation(code);
             context.lazy_init_chaindb_abi(code);
-            context.chaindb.update({code, scope, table}, {context, payer}, pk, data, size);
+            context.chaindb.update({code, scope, table}, context.get_ram_payer(payer), pk, data, size);
             return pk;
         }
 
@@ -163,7 +163,7 @@ namespace eosio { namespace chain {
         ) {
             validate_db_access_violation(code);
             context.lazy_init_chaindb_abi(code);
-            context.chaindb.remove({code, scope, table}, {context}, pk);
+            context.chaindb.remove({code, scope, table}, context.get_ram_payer(), pk);
             return pk;
         }
 

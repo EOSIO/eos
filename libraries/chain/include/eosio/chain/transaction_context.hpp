@@ -4,38 +4,47 @@
 #include "resource_limits.hpp"
 #include <signal.h>
 
+namespace cyberway { namespace chaindb {
+    struct ram_payer_info;
+} } // namespace cyberway::chaindb
+
+namespace cyberway { namespace chain {
+    struct provideram;
+} } // namespace cyberway::chaindb
+
 namespace eosio { namespace chain {
 
-   struct provided_bandwith {
-       provided_bandwith() = default;
-
-       void confirm(account_name provider);
-
-       bool is_confirmed() const {return confirmed_;}
-
-       int64_t get_net_limit() const {return net_limit_;}
-       int64_t get_cpu_limit() const {return cpu_limit_;}
-
-       void set_net_limit(int64_t net_limit);
-       void set_cpu_limit(int64_t cpu_limit);
-
-       account_name get_provider() const {return provider_;}
-
-   private:
-
-       void verify_limits_not_confirmed();
-
-       int64_t net_limit_ = 0;
-       int64_t cpu_limit_ = 0;
-       bool confirmed_ = false;
-       account_name provider_;
-   };
-   
-   struct bandwith_request_result {
-       std::map<account_name, provided_bandwith> bandwith;
-       uint64_t used_net;
-       uint64_t used_cpu;
-   };
+// TODO: request bw, why provided?
+//   struct provided_bandwith {
+//       provided_bandwith() = default;
+//
+//       void confirm(account_name provider);
+//
+//       bool is_confirmed() const {return confirmed_;}
+//
+//       int64_t get_net_limit() const {return net_limit_;}
+//       int64_t get_cpu_limit() const {return cpu_limit_;}
+//
+//       void set_net_limit(int64_t net_limit);
+//       void set_cpu_limit(int64_t cpu_limit);
+//
+//       account_name get_provider() const {return provider_;}
+//
+//   private:
+//
+//       void verify_limits_not_confirmed();
+//
+//       int64_t net_limit_ = 0;
+//       int64_t cpu_limit_ = 0;
+//       bool confirmed_ = false;
+//       account_name provider_;
+//   };
+//
+//   struct bandwith_request_result {
+//       std::map<account_name, provided_bandwith> bandwith;
+//       uint64_t used_net;
+//       uint64_t used_cpu;
+//   };
 
    struct deadline_timer {
          deadline_timer();
@@ -50,7 +59,6 @@ namespace eosio { namespace chain {
          static bool initialized;
    };
 
-   struct provideram;
    class transaction_context {
       private:
          void init( uint64_t initial_net_usage);
@@ -100,31 +108,32 @@ namespace eosio { namespace chain {
 
          void add_ram_usage( account_name account, int64_t ram_delta );
 
-         uint64_t get_provided_net_limit(account_name account) const;
-
-         uint64_t get_provided_cpu_limit(account_name account) const;
-
-         std::map<account_name, provided_bandwith> get_provided_bandwith() const {return provided_bandwith_;}
-
-         bool is_provided_bandwith_confirmed(account_name account) const;
-
-         void set_provided_bandwith(std::map<account_name, provided_bandwith>&& bandwith);
-
-         void set_provided_bandwith_limits(account_name account, uint64_t net_limit, uint64_t cpu_limit);
-
-         void confirm_provided_bandwith_limits(account_name account, account_name provider);
+// TODO: request bw, why provided?
+//         uint64_t get_provided_net_limit(account_name account) const;
+//
+//         uint64_t get_provided_cpu_limit(account_name account) const;
+//
+//         std::map<account_name, provided_bandwith> get_provided_bandwith() const {return provided_bandwith_;}
+//
+//         bool is_provided_bandwith_confirmed(account_name account) const;
+//
+//         void set_provided_bandwith(std::map<account_name, provided_bandwith>&& bandwith);
+//
+//         void set_provided_bandwith_limits(account_name account, uint64_t net_limit, uint64_t cpu_limit);
+//
+//         void confirm_provided_bandwith_limits(account_name account, account_name provider);
 
          void validate_referenced_accounts(const transaction& trx) const;
 
-         account_name get_ram_provider(account_name running_contract, account_name user) const;
+         const account_name& get_ram_provider(const account_name& ram_owner) const;
+         cyberway::chaindb::ram_payer_info get_ram_payer(const account_name& ram_owner);
 
       private:
 
          friend struct controller_impl;
          friend class apply_context;
 
-         void add_ram_provider(const provideram& provide_ram);
-         void add_ram_provider(account_name contract, account_name user, account_name provider);
+         void add_ram_provider(const cyberway::chain::provideram& provide_ram);
 
          void dispatch_action( action_trace& trace, const action& a, account_name receiver, bool context_free = false, uint32_t recurse_depth = 0 );
          inline void dispatch_action( action_trace& trace, const action& a, bool context_free = false ) {
@@ -184,11 +193,10 @@ namespace eosio { namespace chain {
 
          deadline_timer                _deadline_timer;
 
-         std::map<account_name, provided_bandwith> provided_bandwith_;
+// TODO: request bw, why provided?
+//         std::map<account_name, provided_bandwith> provided_bandwith_;
 
-         using contract_for_user = std::pair<account_name, account_name>;
-
-         std::map<contract_for_user, account_name> ram_providers_;
+        fc::flat_map<account_name, account_name> ram_providers;
          
         class available_resources_t {
             struct limit {
