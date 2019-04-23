@@ -241,8 +241,7 @@ if $PIN_COMPILER; then
    if [ ! -d $OPT_LOCATION/llvm4 ]; then
       printf "Installing LLVM 4...\\n"
       cd $SRC_LOCATION \
-      && git clone https://github.com/llvm-mirror/llvm && cd llvm \
-      && git checkout --single-branch --branch $LLVM_VERSION \
+      && git clone https://github.com/llvm-mirror/llvm --single-branch --branch $LLVM_VERSION && cd llvm \
       && mkdir -p build && cd build \
       && $CMAKE -DCMAKE_INSTALL_PREFIX=$OPT_LOCATION/llvm4 -DLLVM_TARGETS_TO_BUILD=host -DLLVM_BUILD_TOOLS=false -DLLVM_ENABLE_RTTI=1 -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=$BUILD_DIR/pinned_toolchain.cmake .. \
       && make -j"${JOBS}" install \
