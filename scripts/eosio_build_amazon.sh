@@ -198,7 +198,7 @@ if $PIN_COMPILER; then
    fi
 
    cd $SRC_LOCATION
-   printf "Checking zlib library (${BOOST_VERSION}) installation...\\n"
+   printf "Checking zlib library installation...\\n"
    if [ ! -d $OPT_LOCATION/zlib ] || [ $FORCE_BUILD ]; then
       printf "Installing zlib...\\n"
       curl -LO https://www.zlib.net/zlib-1.2.11.tar.gz && tar -xf zlib-1.2.11.tar.gz \
@@ -208,6 +208,7 @@ if $PIN_COMPILER; then
       || exit -1
    fi
    cd $SRC_LOCATION
+   export PATH=$OPT_LOCATION/clang8/bin:$PATH
    printf "Checking Boost library (${BOOST_VERSION}) installation...\\n"
    BOOSTVERSION=$( grep "#define BOOST_VERSION" "$BOOST_ROOT/include/boost/version.hpp" 2>/dev/null | tail -1 | tr -s ' ' | cut -d\  -f3 )
    if [ "${BOOSTVERSION}" != "${BOOST_VERSION_MAJOR}0${BOOST_VERSION_MINOR}0${BOOST_VERSION_PATCH}" ] || [ $FORCE_BUILD ]; then
