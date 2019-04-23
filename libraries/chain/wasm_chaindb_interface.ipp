@@ -34,7 +34,7 @@ namespace eosio { namespace chain {
             account_name_t code, account_name_t scope, table_name_t table, primary_key_t pk
         ) {
             context.lazy_init_chaindb_abi(code);
-            return context.chaindb.lower_bound({code, scope, table, 0}, pk).cursor;
+            return context.chaindb.lower_bound({code, scope, table}, pk).cursor;
         }
 
         cursor_t chaindb_upper_bound(
@@ -49,7 +49,7 @@ namespace eosio { namespace chain {
             account_name_t code, account_name_t scope, table_name_t table, primary_key_t pk
         ) {
             context.lazy_init_chaindb_abi(code);
-            return context.chaindb.upper_bound({code, scope, table, 0}, pk).cursor;
+            return context.chaindb.upper_bound({code, scope, table}, pk).cursor;
         }
 
         cursor_t chaindb_locate_to(

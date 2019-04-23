@@ -111,7 +111,7 @@ template<bool IsPrimaryIndex> struct lower_bound final {
 }; // struct lower_bound
 
 template<> struct lower_bound<true /*IsPrimaryIndex*/> final {
-    find_info operator()(chaindb_controller& chaindb, const index_request& request, const primary_key_t pk) const {
+    find_info operator()(chaindb_controller& chaindb, const table_request& request, const primary_key_t pk) const {
         return chaindb.lower_bound(request, pk);
     }
 }; // struct lower_bound
@@ -129,7 +129,7 @@ template<bool IsPrimaryIndex> struct upper_bound final {
 }; // struct upper_bound
 
 template<> struct upper_bound<true /*IsPrimaryIndex*/> final {
-    find_info operator()(chaindb_controller& chaindb, const index_request& request, const primary_key_t pk) const {
+    find_info operator()(chaindb_controller& chaindb, const table_request& request, const primary_key_t pk) const {
         return chaindb.upper_bound(request, pk);
     }
 }; // struct upper_bound

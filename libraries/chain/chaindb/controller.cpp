@@ -211,7 +211,7 @@ namespace cyberway { namespace chaindb {
             return current(cursor);
         }
 
-        const cursor_info& lower_bound(const index_request& request, const primary_key_t pk) const {
+        const cursor_info& lower_bound(const table_request& request, const primary_key_t pk) const {
             auto  index  = get_pk_index(request);
             auto  value  = _detail::get_pk_value(index, pk);
             auto  cache  = cache_.find(index, pk);
@@ -236,7 +236,7 @@ namespace cyberway { namespace chaindb {
             return current(driver_.upper_bound(std::move(index), std::move(value)));
         }
 
-        const cursor_info& upper_bound(const index_request& request, const primary_key_t pk) const {
+        const cursor_info& upper_bound(const table_request& request, const primary_key_t pk) const {
             auto index = get_pk_index(request);
             auto value = _detail::get_pk_value(index, pk);
             return current(driver_.upper_bound(std::move(index), std::move(value)));
@@ -717,7 +717,7 @@ namespace cyberway { namespace chaindb {
         return {info.id, info.pk};
     }
 
-    find_info chaindb_controller::lower_bound(const index_request& request, const primary_key_t pk) const {
+    find_info chaindb_controller::lower_bound(const table_request& request, const primary_key_t pk) const {
         const auto& info = impl_->lower_bound(request, pk);
         return {info.id, info.pk};
     }
@@ -732,7 +732,7 @@ namespace cyberway { namespace chaindb {
         return {info.id, info.pk};
     }
 
-    find_info chaindb_controller::upper_bound(const index_request& request, const primary_key_t pk) const {
+    find_info chaindb_controller::upper_bound(const table_request& request, const primary_key_t pk) const {
         const auto& info = impl_->upper_bound(request, pk);
         return {info.id, info.pk};
     }

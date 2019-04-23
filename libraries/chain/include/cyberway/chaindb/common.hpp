@@ -33,18 +33,22 @@ namespace cyberway { namespace chaindb {
     using index_name_t = index_name::value_type;
     using account_name_t = account_name::value_type;
 
-    struct index_request final {
-        const account_name code;
-        const account_name scope;
-        const table_name_t table;
-        const index_name_t index;
-    }; // struct index_request
-
     struct table_request final {
         const account_name code;
         const account_name scope;
         const table_name_t table;
     }; // struct table_request
+
+    struct index_request final {
+        const account_name code;
+        const account_name scope;
+        const table_name_t table;
+        const index_name_t index;
+
+        operator table_request() const {
+            return {code, scope, table};
+        }
+    }; // struct index_request
 
     struct cursor_request final {
         const account_name code;
