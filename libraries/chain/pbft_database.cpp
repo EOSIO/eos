@@ -647,9 +647,9 @@ namespace eosio {
             if (certificate.block_num <= ctrl.last_stable_checkpoint_block_num()) return true;
 
             auto valid = true;
-            valid &= certificate.is_signature_valid();
+            valid = valid && certificate.is_signature_valid();
             for (auto const &p : certificate.prepares) {
-                valid &= is_valid_prepare(p);
+                valid = valid && is_valid_prepare(p);
                 if (!valid) return false;
             }
 
@@ -1155,12 +1155,25 @@ namespace eosio {
 
             auto valid = true;
             for (const auto &c: scp.checkpoints) {
-                valid &= is_valid_checkpoint(c)
+                valid = valid && is_valid_checkpoint(c)
                          && c.block_id == scp.block_id
                          && c.block_num == scp.block_num;
                 if (!valid) return false;
             }
             //TODO: check if (2/3 + 1) met
+            auto bs = ctrl.fetch_block_state_by_number(scp.block_num);
+            if (bs) {
+                auto as = bs->active_schedule;
+                auto cp_count = 0;
+                for (auto const &sp: as.producers) {
+                    for (auto const &v: scp.checkpoints) {
+                        if (sp.block_signing_key == v.public_key) cp_count += 1;
+                    }
+                }
+                valid = valid && cp_count >= as.producers.size() * 2 / 3 + 1;
+            } else {
+                return false;
+            }
             return valid;
         }
 

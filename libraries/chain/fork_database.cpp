@@ -199,7 +199,7 @@ namespace eosio { namespace chain {
       }
 
       my->head = *my->index.get<by_lib_block_num>().begin();
-
+//      wlog("head block num: ${h}", ("h", my->head->block_num));
       auto lib = std::max(my->head->bft_irreversible_blocknum, my->head->dpos_irreversible_blocknum);
       auto checkpoint = my->head->pbft_stable_checkpoint_blocknum;
 
@@ -352,7 +352,7 @@ namespace eosio { namespace chain {
       return block_state_ptr();
    }
 
-   void fork_database::mark_pbft_prepared_fork(const block_state_ptr& h) const {
+   void fork_database::mark_pbft_prepared_fork(const block_state_ptr& h) {
        auto& by_id_idx = my->index.get<by_block_id>();
        auto itr = by_id_idx.find( h->id );
        EOS_ASSERT( itr != by_id_idx.end(), fork_db_block_not_found, "could not find block in fork database" );
@@ -383,7 +383,7 @@ namespace eosio { namespace chain {
        my->head = *my->index.get<by_lib_block_num>().begin();
    }
 
-   void fork_database::mark_pbft_my_prepare_fork(const block_state_ptr& h) const {
+   void fork_database::mark_pbft_my_prepare_fork(const block_state_ptr& h)  {
        auto& by_id_idx = my->index.get<by_block_id>();
        auto itr = by_id_idx.find( h->id );
        EOS_ASSERT( itr != by_id_idx.end(), fork_db_block_not_found, "could not find block in fork database" );
@@ -414,35 +414,18 @@ namespace eosio { namespace chain {
        my->head = *my->index.get<by_lib_block_num>().begin();
    }
 
-   void fork_database::remove_pbft_my_prepare_fork(const block_id_type &id) const {
-       auto& by_id_idx = my->index.get<by_block_id>();
-       auto itr = by_id_idx.find( id );
-       EOS_ASSERT( itr != by_id_idx.end(), fork_db_block_not_found, "could not find block in fork database" );
-       by_id_idx.modify( itr, [&]( auto& bsp ) { bsp->pbft_my_prepare = false; });
+   void fork_database::remove_pbft_my_prepare_fork()  {
+       auto& by_num_idx = my->index.get<by_lib_block_num>();
+       auto itr = by_num_idx.begin();
 
-       auto update = [&]( const vector<block_id_type>& in ) {
-           vector<block_id_type> updated;
-
-           for( const auto& i : in ) {
-               auto& pidx = my->index.get<by_prev>();
-               auto pitr  = pidx.lower_bound( i );
-               auto epitr = pidx.upper_bound( i );
-               while( pitr != epitr ) {
-                   pidx.modify( pitr, [&]( auto& bsp ) {
-                       bsp->pbft_my_prepare = false;
-                       updated.push_back( bsp->id );
-                   });
-                   ++pitr;
-               }
+       while (itr != by_num_idx.end()) {
+           if ((*itr)->pbft_my_prepare == true) {
+               by_num_idx.modify( itr, [&]( auto& bsp ) { bsp->pbft_my_prepare = false; });
            }
-           return updated;
-       };
-
-       vector<block_id_type> queue{id};
-       while(!queue.empty()) {
-           queue = update( queue );
+           ++itr;
        }
        my->head = *my->index.get<by_lib_block_num>().begin();
+//       wlog("head block num: ${h}", ("h", my->head->block_num));
    }
 
    block_state_ptr   fork_database::get_block_in_current_chain_by_num( uint32_t n )const {
