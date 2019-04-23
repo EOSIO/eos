@@ -60,6 +60,18 @@ public:
       bool exclude_unactivatable = false;
    };
 
+   struct get_account_ram_corrections_params {
+      optional<account_name>  lower_bound;
+      optional<account_name>  upper_bound;
+      uint32_t                limit = 10;
+      bool                    reverse = false;
+   };
+
+   struct get_account_ram_corrections_result {
+      std::vector<fc::variant> rows;
+      optional<account_name>   more;
+   };
+
    template<typename T>
    using next_function = std::function<void(const fc::static_variant<fc::exception_ptr, T>&)>;
 
@@ -100,6 +112,8 @@ public:
 
    fc::variants get_supported_protocol_features( const get_supported_protocol_features_params& params ) const;
 
+   get_account_ram_corrections_result  get_account_ram_corrections( const get_account_ram_corrections_params& params ) const;
+
    signal<void(const chain::producer_confirmation&)> confirmed_block;
 private:
    std::shared_ptr<class producer_plugin_impl> my;
@@ -114,3 +128,5 @@ FC_REFLECT(eosio::producer_plugin::integrity_hash_information, (head_block_id)(i
 FC_REFLECT(eosio::producer_plugin::snapshot_information, (head_block_id)(snapshot_name))
 FC_REFLECT(eosio::producer_plugin::scheduled_protocol_feature_activations, (protocol_features_to_activate))
 FC_REFLECT(eosio::producer_plugin::get_supported_protocol_features_params, (exclude_disabled)(exclude_unactivatable))
+FC_REFLECT(eosio::producer_plugin::get_account_ram_corrections_params, (lower_bound)(upper_bound)(limit)(reverse))
+FC_REFLECT(eosio::producer_plugin::get_account_ram_corrections_result, (rows)(more))
