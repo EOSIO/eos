@@ -171,6 +171,7 @@ if [ $FORCE_BUILD ];then
    ${SRC_LOCATION}/mongodb-linux-x86_64-amazon-$MONGODB_VERSION \
    ${SRC_LOCATION}/mongo-c-driver-$MONGO_C_DRIVER_VERSION \
    ${SRC_LOCATION}/mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION
+fi
 
 export CPATH="$(python-config --includes | awk '{print $1}' | cut -dI -f2):$CPATH" # Boost has trouble finding pyconfig.h
 printf "Checking Boost library (${BOOST_VERSION}) installation...\\n"
