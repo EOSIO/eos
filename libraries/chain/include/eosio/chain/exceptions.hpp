@@ -242,6 +242,7 @@ namespace eosio { namespace chain {
 
         FC_DECLARE_DERIVED_EXCEPTION(object_query_exception,     database_exception, 3060009, "Object doesn't exist")
         FC_DECLARE_DERIVED_EXCEPTION(object_ram_payer_exception, database_exception, 3060010, "Wrong RAM payer")
+        FC_DECLARE_DERIVED_EXCEPTION(object_ram_state_exception, database_exception, 3060011, "Wrong RAM state")
 
 
    FC_DECLARE_DERIVED_EXCEPTION( guard_exception, database_exception,

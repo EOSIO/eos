@@ -138,11 +138,33 @@ void apply_cyber_setrampayer(apply_context& context) {
         context.require_authorization(owner);
 
         EOS_ASSERT(op.new_payer != cache->service().payer, eosio::chain::object_ram_payer_exception,
-            "Object with the primary key ${scope}:${pk} in the table ${table} already has the ram payer ${payer}",
+            "Object with the primary key ${scope}:${pk} in the table ${table} already has the RAM payer ${payer}",
             ("pk", op.pk)("scope", chaindb::get_scope_name(op.scope))("table", chaindb::get_full_table_name(op))
             ("payer", op.new_payer));
 
-        context.chaindb.update(*cache.get(), cache->object().value, {context, op.new_payer, owner});
+        context.chaindb.recalc_ram_usage(*cache.get(), context.get_ram_payer(owner, op.new_payer));
+    } FC_CAPTURE_AND_RETHROW((op))
+}
+
+void apply_cyber_setramstate(apply_context& context) {
+    auto op = context.act.data_as<set_ram_state>();
+    try {
+        auto cache = get_cache_object(context, op);
+        auto owner = cache->service().owner;
+        auto payer = cache->service().payer;
+
+        if (owner == payer || !context.weak_require_authorization(payer)) {
+            context.require_authorization(owner);
+        }
+
+        EOS_ASSERT(op.in_ram != cache->service().ram, eosio::chain::object_ram_state_exception,
+            "Object with the primary key ${scope}:${pk} in the table ${table} already has RAM state = ${state}",
+            ("pk", op.pk)("scope", chaindb::get_scope_name(op.scope))("table", chaindb::get_full_table_name(op))
+            ("state", op.in_ram));
+
+        auto info = context.get_ram_payer();
+        info.in_ram  = op.in_ram;
+        context.chaindb.recalc_ram_usage(*cache.get(), info);
     } FC_CAPTURE_AND_RETHROW((op))
 }
 

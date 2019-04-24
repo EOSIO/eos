@@ -83,8 +83,8 @@ namespace cyberway { namespace chaindb {
         }
 
         void mark_deleted();
-
         void set_object(object_value);
+        void set_service(service_state service);
 
         void set_revision(const revision_t rev) {
             object_.service.revision = rev;

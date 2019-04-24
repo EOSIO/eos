@@ -186,6 +186,8 @@ namespace cyberway { namespace chaindb {
         int64_t update(cache_object&, variant, const ram_payer_info&);
         int64_t remove(cache_object&, const ram_payer_info&);
 
+        void recalc_ram_usage(cache_object&, const ram_payer_info&);
+
         variant value_by_pk(const table_request& request, primary_key_t pk);
         variant value_at_cursor(const cursor_request& request);
         object_value object_at_cursor(const cursor_request& request) const;

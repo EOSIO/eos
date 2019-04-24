@@ -360,6 +360,15 @@ namespace cyberway { namespace chaindb {
             return delta;
         }
 
+        void recalc_ram_usage(cache_object& itm, const ram_payer_info& ram_payer) {
+            auto table = get_table(itm);
+            auto obj = itm.object();
+
+            obj.service.ram = ram_payer.in_ram;
+            update(table, ram_payer, obj);
+            itm.set_service(std::move(obj.service));
+        }
+
         // From contracts
         int64_t remove(const table_request& request, const ram_payer_info& ram, const primary_key_t pk) {
             auto table = get_table(request);
@@ -832,6 +841,10 @@ namespace cyberway { namespace chaindb {
 
     int64_t chaindb_controller::remove(cache_object& itm, const ram_payer_info& ram) {
         return impl_->remove(itm, ram);
+    }
+
+    void chaindb_controller::recalc_ram_usage(cache_object& itm, const ram_payer_info& ram) {
+        impl_->recalc_ram_usage(itm, ram);
     }
 
     variant chaindb_controller::value_by_pk(const table_request& request, primary_key_t pk) {

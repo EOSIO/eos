@@ -662,6 +662,16 @@ abi_def eosio_contract_abi(abi_def eos_abi)
       }
    });
 
+   eos_abi.structs.emplace_back( struct_def {
+      "set_ram_state", "", {
+         {"code",        "account_name"},
+         {"scope",       "account_name"},
+         {"table",       "name"},
+         {"primary_key", "uint64"},
+         {"in_ram",      "bool"}
+      }
+   });
+
    eos_abi.actions.push_back( action_def{name("newaccount"), "newaccount"} );
    eos_abi.actions.push_back( action_def{name("setcode"), "setcode"} );
    eos_abi.actions.push_back( action_def{name("setabi"), "setabi"} );
@@ -678,6 +688,7 @@ abi_def eosio_contract_abi(abi_def eos_abi)
    eos_abi.actions.push_back( action_def{name("onblock"), "onblock"} );
 
    eos_abi.actions.push_back( action_def{name("setrampayer"), "set_ram_payer"} );
+   eos_abi.actions.push_back( action_def{name("setramstate"), "set_ram_state"} );
 
    return eos_abi;
 }

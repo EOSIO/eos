@@ -143,6 +143,23 @@ namespace cyberway { namespace chain {
         }
     };
 
+    struct set_ram_state final {
+        account_name  code;
+        account_name  scope;
+        table_name    table;
+        primary_key_t pk;
+
+        bool          in_ram;
+
+        static account_name get_account() {
+            return eosio::chain::config::system_account_name;
+        }
+
+        static action_name get_name() {
+            return N(setramstate);
+        }
+    };
+
 
 } } // namespace cyberway::chain
 
@@ -159,4 +176,4 @@ FC_REFLECT(cyberway::chain::unlinkdomain,  (owner)(name))
 FC_REFLECT(cyberway::chain::newusername,   (creator)(owner)(name))
 
 FC_REFLECT(cyberway::chain::set_ram_payer, (code)(scope)(table)(pk)(new_payer))
-
+FC_REFLECT(cyberway::chain::set_ram_state, (code)(scope)(table)(pk)(in_ram))

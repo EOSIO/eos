@@ -186,6 +186,7 @@ bool apply_context::weak_require_authorization( const account_name& account ) {
             return true;
         }
     }
+    return false;
 }
 
 bool apply_context::has_authorization( const account_name& account )const {

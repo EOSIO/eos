@@ -24,6 +24,7 @@ namespace cyberway { namespace chaindb {
         const account_name   owner;
         const account_name   payer;
         size_t               precalc_size = 0;
+        bool                 in_ram = true;
 
         ram_payer_info() = default;
 

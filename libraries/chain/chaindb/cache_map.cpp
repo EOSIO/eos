@@ -363,6 +363,16 @@ namespace cyberway { namespace chaindb {
         }
     }
 
+    void cache_object::set_service(service_state service) {
+        assert(is_valid_table(service));
+
+        object_.service = std::move(service);
+        if (!object_.service.ram && table_cache_map_) {
+            table_cache_map_->remove_cache_indicies(std::move(indicies_));
+            table_cache_map_->remove_cache_object(*this);
+        }
+    }
+
     void cache_object::mark_deleted() {
         assert(table_cache_map_);
 

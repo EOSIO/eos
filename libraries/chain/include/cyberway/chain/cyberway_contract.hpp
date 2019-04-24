@@ -33,5 +33,6 @@ namespace cyberway { namespace chain {
     */
 
     void apply_cyber_setrampayer(apply_context&);
+    void apply_cyber_setramstate(apply_context&);
 
 } } // namespace cyberway::chain
