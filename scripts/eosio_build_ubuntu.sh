@@ -46,13 +46,6 @@ case "${OS_NAME}" in
 		# We have to re-set this with the new version
 		export MONGODB_ROOT=${OPT_LOCATION}/mongodb-${MONGODB_VERSION}
 	;;
-	"Debian")
-		if [ $OS_MAJ -lt 10 ]; then
-			printf "You must be running Debian 10 to install EOSIO, and resolve missing dependencies from unstable (sid).\n"
-			printf "Exiting now.\n"
-			exit 1
-	fi
-	;;
 esac
 
 if [ "${DISK_AVAIL%.*}" -lt "${DISK_MIN}" ]; then
