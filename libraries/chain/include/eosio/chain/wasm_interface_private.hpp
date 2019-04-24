@@ -48,7 +48,10 @@ namespace eosio { namespace chain {
 
       ~wasm_interface_impl() {
          if(is_shutting_down)
-            std::for_each(instantiation_cache.begin(), instantiation_cache.end(), [](auto& i) {i.second.release();});
+            for(wasm_cache_index::iterator it = wasm_instantiation_cache.begin(); it != wasm_instantiation_cache.end(); ++it)
+               wasm_instantiation_cache.modify(it, [](wasm_cache_entry& e) {
+                  e.module.release();
+               });
       }
 
       std::vector<uint8_t> parse_initial_memory(const Module& module) {
