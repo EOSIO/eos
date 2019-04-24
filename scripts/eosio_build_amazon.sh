@@ -8,26 +8,18 @@ DISK_AVAIL_KB=$( df . | tail -1 | awk '{print $4}' )
 DISK_TOTAL=$(( DISK_TOTAL_KB / 1048576 ))
 DISK_AVAIL=$(( DISK_AVAIL_KB / 1048576 ))
 
-if [[ "${OS_NAME}" == "Amazon Linux AMI" ]]; then # Amazonlinux1
-	DEP_ARRAY=(
-		sudo procps util-linux which gcc72 gcc72-c++ autoconf automake libtool make doxygen graphviz \
-		bzip2 bzip2-devel openssl-devel gmp gmp-devel libstdc++72 python27 python27-devel python36 python36-devel \
-		libedit-devel ncurses-devel swig wget file libcurl-devel libusb1-devel
-	)
-else # Amazonlinux2
-	DEP_ARRAY=(
-		git procps-ng util-linux gcc gcc-c++ autoconf automake libtool make bzip2 \
-		bzip2-devel openssl-devel gmp-devel libstdc++ libcurl-devel libusbx-devel \
-		python3 python3-devel python-devel libedit-devel doxygen graphviz
-	)
-fi
+DEP_ARRAY=(
+	git procps-ng util-linux gcc gcc-c++ autoconf automake libtool make bzip2 \
+	bzip2-devel openssl-devel gmp-devel libstdc++ libcurl-devel libusbx-devel \
+	python3 python3-devel python-devel libedit-devel doxygen graphviz
+)
 
 COUNT=1
 DISPLAY=""
 DEP=""
 
-if [[ "${OS_NAME}" == "Amazon Linux AMI" && "${OS_VER}" -lt 2017 ]]; then
-	printf "You must be running Amazon Linux 2017.09 or higher to install EOSIO.\\n"
+if ! (. /etc/os-release; [ "$VERSION_ID" = "2" ]); then
+	printf "Amazon Linux 2 is the only version of Amazon Linux supported by EOSIO build scripts.\\n"
 	printf "exiting now.\\n"
 	exit 1
 fi
