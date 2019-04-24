@@ -66,11 +66,11 @@ endif()
 
 add_subdirectory(Include/Inline)
 
-add_subdirectory(Source/Emscripten)
+#add_subdirectory(Source/Emscripten)
 add_subdirectory(Source/IR)
 add_subdirectory(Source/Logging)
 add_subdirectory(Source/Platform)
-add_subdirectory(Source/Programs)
+#add_subdirectory(Source/Programs)
 add_subdirectory(Source/Runtime)
 add_subdirectory(Source/WASM)
 add_subdirectory(Source/WAST)

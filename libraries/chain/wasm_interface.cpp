@@ -212,6 +212,8 @@ class softfloat_api : public context_aware_api {
       softfloat_api( apply_context& ctx )
       :context_aware_api(ctx, true) {}
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstrict-aliasing"
       // float binops
       float _eosio_f32_add( float a, float b ) {
          float32_t ret = f32_add( to_softfloat32(a), to_softfloat32(b) );
@@ -229,6 +231,7 @@ class softfloat_api : public context_aware_api {
          float32_t ret = f32_mul( to_softfloat32(a), to_softfloat32(b) );
          return *reinterpret_cast<float*>(&ret);
       }
+#pragma GCC diagnostic pop
       float _eosio_f32_min( float af, float bf ) {
          float32_t a = to_softfloat32(af);
          float32_t b = to_softfloat32(bf);
@@ -1072,7 +1075,10 @@ class console_api : public context_aware_api {
             console.precision( std::numeric_limits<long double>::digits10 );
             extFloat80_t val_approx;
             f128M_to_extF80M(&val, &val_approx);
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstrict-aliasing"
             context.console_append( *(long double*)(&val_approx) );
+#pragma GCC diagnostic pop
 #else
             console.precision( std::numeric_limits<double>::digits10 );
             double val_approx = from_softfloat64( f128M_to_f64(&val) );
@@ -1271,7 +1277,7 @@ class memory_api : public context_aware_api {
       :context_aware_api(ctx,true){}
 
       char* memcpy( array_ptr<char> dest, array_ptr<const char> src, size_t length) {
-         EOS_ASSERT((std::abs((ptrdiff_t)dest.value - (ptrdiff_t)src.value)) >= length,
+         EOS_ASSERT((size_t)(std::abs((ptrdiff_t)dest.value - (ptrdiff_t)src.value)) >= length,
                overlapping_memory_error, "memcpy can only accept non-aliasing pointers");
          return (char *)::memcpy(dest, src, length);
       }

@@ -1,0 +1,13 @@
+cmake,-f,/usr/local/bin/cmake,cmake,https://github.com/Kitware/CMake/releases/download/v3.13.4/cmake-3.13.4.tar.gz
+automake,-x,/usr/local/bin/automake,automake,http://ftp.gnu.org/gnu/automake/automake-1.15.tar.gz
+Libtool,-x,/usr/local/bin/glibtool,libtool,http://gnu.askapache.com/libtool/libtool-2.4.6.tar.gz
+OpenSSL,-f,/usr/local/opt/openssl/lib/libssl.a,openssl,https://www.openssl.org/source/openssl-1.0.2n.tar.gz
+wget,-x,/usr/local/bin/wget,wget,https://ftp.gnu.org/gnu/wget/wget-1.19.2.tar.gz
+GMP,-f,/usr/local/opt/gmp/include/gmpxx.h,gmp,https://ftp.gnu.org/gnu/gmp/gmp-6.1.2.tar.bz2
+llvm,-x,/usr/local/opt/llvm@4/bin/clang-4.0,llvm@4,http://releases.llvm.org/4.0.1/llvm-4.0.1.src.tar.xz
+python,-d,/usr/local/Cellar/python/3.7.2_1,python,https://www.python.org/ftp/python/3.7.2/Python-3.7.2.tgz
+python@2,-d,/usr/local/Cellar/python@2/2.7.15_2,python@2,https://www.python.org/ftp/python/2.7.13/Python-2.7.13.tgz
+doxygen,-f,/usr/local/bin/doxygen,doxygen,http://ftp.stack.nl/pub/users/dimitri/doxygen-1.8.14.src.tar.gz
+graphviz,-d,/usr/local/opt/graphviz,graphviz,https://fossies.org/linux/misc/graphviz-2.40.1.tar.gz
+libusb,-f,/usr/local/lib/libusb-1.0.0.dylib,libusb,https://github.com/libusb/libusb/releases/download/v1.0.22/libusb-1.0.22.tar.bz2
+pkgconfig,-x,/usr/local/bin/pkg-config,pkgconfig,https://pkg-config.freedesktop.org/releases/pkg-config-0.29.2.tar.gz

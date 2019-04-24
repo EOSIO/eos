@@ -6,6 +6,7 @@ import os
 import re
 import datetime
 import json
+import signal
 
 from core_symbol import CORE_SYMBOL
 from testUtils import Utils
@@ -51,6 +52,7 @@ class Node(object):
         self.transCache={}
         self.walletMgr=walletMgr
         self.missingTransaction=False
+        self.popenProc=None           # initial process is started by launcher, this will only be set on relaunch
         if self.enableMongo:
             self.mongoEndpointArgs += "--host %s --port %d %s" % (mongoHost, mongoPort, mongoDb)
 
@@ -547,14 +549,16 @@ class Node(object):
 
         return self.waitForTransBlockIfNeeded(trans, waitForTransBlock, exitOnError=exitOnError)
 
-    def getEosAccount(self, name, exitOnError=False):
+    def getEosAccount(self, name, exitOnError=False, returnType=ReturnType.json, avoidMongo=False):
         assert(isinstance(name, str))
-        if not self.enableMongo:
+        if not self.enableMongo or avoidMongo:
             cmdDesc="get account"
-            cmd="%s -j %s" % (cmdDesc, name)
+            jsonFlag="-j" if returnType==ReturnType.json else ""
+            cmd="%s %s %s" % (cmdDesc, jsonFlag, name)
             msg="( getEosAccount(name=%s) )" % (name);
-            return self.processCleosCmd(cmd, cmdDesc, silentErrors=False, exitOnError=exitOnError, exitMsg=msg)
+            return self.processCleosCmd(cmd, cmdDesc, silentErrors=False, exitOnError=exitOnError, exitMsg=msg, returnType=returnType)
         else:
+            assert returnType == ReturnType.json, "MongoDB only supports a returnType of ReturnType.json" 
             return self.getEosAccountFromDb(name, exitOnError=exitOnError)
 
     def getEosAccountFromDb(self, name, exitOnError=False):
@@ -993,6 +997,19 @@ class Node(object):
 
         return self.waitForTransBlockIfNeeded(trans, waitForTransBlock, exitOnError=exitOnError)
 
+    def undelegatebw(self, fromAccount, netQuantity, cpuQuantity, toAccount=None, waitForTransBlock=False, exitOnError=False):
+        if toAccount is None:
+            toAccount=fromAccount
+
+        cmdDesc="system undelegatebw"
+        cmd="%s -j %s %s \"%s %s\" \"%s %s\"" % (
+            cmdDesc, fromAccount.name, toAccount.name, netQuantity, CORE_SYMBOL, cpuQuantity, CORE_SYMBOL)
+        msg="fromAccount=%s, toAccount=%s" % (fromAccount.name, toAccount.name);
+        trans=self.processCleosCmd(cmd, cmdDesc, exitOnError=exitOnError, exitMsg=msg)
+        self.trackCmdTransaction(trans)
+
+        return self.waitForTransBlockIfNeeded(trans, waitForTransBlock, exitOnError=exitOnError)
+
     def regproducer(self, producer, url, location, waitForTransBlock=False, exitOnError=False):
         cmdDesc="system regproducer"
         cmd="%s -j %s %s %s %s" % (
@@ -1048,7 +1065,7 @@ class Node(object):
 
         if exitOnError and trans is None:
             Utils.cmdError("could not \"%s\". %s" % (cmdDesc,exitMsg))
-            errorExit("Failed to \"%s\"" % (cmdDesc))
+            Utils.errorExit("Failed to \"%s\"" % (cmdDesc))
 
         return trans
 
@@ -1203,9 +1220,21 @@ class Node(object):
         self.killed=True
         return True
 
+    def interruptAndVerifyExitStatus(self):
+        if Utils.Debug: Utils.Print("terminating node: %s" % (self.cmd))
+        assert self.popenProc is not None, "node: \"%s\" does not have a popenProc, this may be because it is only set after a relaunch." % (self.cmd)
+        self.popenProc.send_signal(signal.SIGINT)
+        try:
+            outs, _ = self.popenProc.communicate(timeout=15)
+            assert self.popenProc.returncode == 0, "Expected terminating \"%s\" to have an exit status of 0, but got %d" % (self.cmd, self.popenProc.returncode)
+        except subprocess.TimeoutExpired:
+            Utils.errorExit("Terminate call failed on node: %s" % (self.cmd))
+
     def verifyAlive(self, silent=False):
         if not silent and Utils.Debug: Utils.Print("Checking if node(pid=%s) is alive(killed=%s): %s" % (self.pid, self.killed, self.cmd))
         if self.killed or self.pid is None:
+            self.killed=True
+            self.pid=None
             return False
 
         try:
@@ -1217,8 +1246,8 @@ class Node(object):
             return False
         except PermissionError as ex:
             return True
-        else:
-            return True
+
+        return True
 
     def getBlockProducerByNum(self, blockNum, timeout=None, waitForBlock=True, exitOnError=True):
         if waitForBlock:
@@ -1227,7 +1256,7 @@ class Node(object):
         blockProducer=block["producer"]
         if blockProducer is None and exitOnError:
             Utils.cmdError("could not get producer for block number %s" % (blockNum))
-            errorExit("Failed to get block's producer")
+            Utils.errorExit("Failed to get block's producer")
         return blockProducer
 
     def getBlockProducer(self, timeout=None, waitForBlock=True, exitOnError=True, blockType=BlockType.head):
@@ -1236,7 +1265,7 @@ class Node(object):
         blockProducer=block["producer"]
         if blockProducer is None and exitOnError:
             Utils.cmdError("could not get producer for block number %s" % (blockNum))
-            errorExit("Failed to get block's producer")
+            Utils.errorExit("Failed to get block's producer")
         return blockProducer
 
     def getNextCleanProductionCycle(self, trans):
@@ -1266,7 +1295,7 @@ class Node(object):
 
     # TBD: make nodeId an internal property
     # pylint: disable=too-many-locals
-    def relaunch(self, nodeId, chainArg, newChain=False, timeout=Utils.systemWaitTimeout, addOrSwapFlags=None):
+    def relaunch(self, nodeId, chainArg, newChain=False, timeout=Utils.systemWaitTimeout, addOrSwapFlags=None, cachePopen=False):
 
         assert(self.pid is None)
         assert(self.killed)
@@ -1313,6 +1342,8 @@ class Node(object):
             cmd=myCmd + ("" if chainArg is None else (" " + chainArg))
             Utils.Print("cmd: %s" % (cmd))
             popen=subprocess.Popen(cmd.split(), stdout=sout, stderr=serr)
+            if cachePopen:
+                self.popenProc=popen
             self.pid=popen.pid
             if Utils.Debug: Utils.Print("restart Node host=%s, port=%s, pid=%s, cmd=%s" % (self.host, self.port, self.pid, self.cmd))
 

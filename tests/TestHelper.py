@@ -145,6 +145,9 @@ class TestHelper(object):
             Utils.Print("Test failed.")
         if not testSuccessful and dumpErrorDetails:
             cluster.reportStatus()
+            Utils.Print(Utils.FileDivider)
+            psOut=Cluster.pgrepEosServers(timeout=60)
+            Utils.Print("pgrep output:\n%s" % (psOut))
             cluster.dumpErrorDetails()
             if walletMgr:
                 walletMgr.dumpErrorDetails()

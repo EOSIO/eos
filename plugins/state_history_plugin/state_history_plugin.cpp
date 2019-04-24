@@ -345,7 +345,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
    }
 
    void on_applied_transaction(const transaction_trace_ptr& p) {
-      if (p->receipt) {
+      if (p->receipt && trace_log) {
          if (is_onblock(p))
             onblock_trace = p;
          else if (p->failed_dtrx_trace)
@@ -511,8 +511,9 @@ void state_history_plugin::set_program_options(options_description& cli, options
    cli.add_options()("delete-state-history", bpo::bool_switch()->default_value(false), "clear state history files");
    options("trace-history", bpo::bool_switch()->default_value(false), "enable trace history");
    options("chain-state-history", bpo::bool_switch()->default_value(false), "enable chain state history");
-   options("state-history-endpoint", bpo::value<string>()->default_value("0.0.0.0:8080"),
-           "the endpoint upon which to listen for incoming connections");
+   options("state-history-endpoint", bpo::value<string>()->default_value("127.0.0.1:8080"),
+           "the endpoint upon which to listen for incoming connections. Caution: only expose this port to "
+           "your internal network.");
 }
 
 void state_history_plugin::plugin_initialize(const variables_map& options) {

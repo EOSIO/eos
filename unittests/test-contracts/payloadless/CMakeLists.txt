@@ -1,0 +1,6 @@
+if( EOSIO_COMPILE_TEST_CONTRACTS )
+   add_contract( payloadless payloadless payloadless.cpp )
+else()
+   configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/payloadless.wasm ${CMAKE_CURRENT_BINARY_DIR}/payloadless.wasm COPYONLY )
+   configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/payloadless.abi  ${CMAKE_CURRENT_BINARY_DIR}/payloadless.abi  COPYONLY )
+endif()

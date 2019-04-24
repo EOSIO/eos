@@ -1,0 +1,144 @@
+{
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT ",
+    "version": "eosio::abi/1.1",
+    "types": [],
+    "structs": [
+        {
+            "name": "idx64_general",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "idx64_lowerbound",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "idx64_upperbound",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "idx_double_nan_create_fail",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "idx_double_nan_lookup_fail",
+            "base": "",
+            "fields": [
+                {
+                    "name": "lookup_type",
+                    "type": "uint32"
+                }
+            ]
+        },
+        {
+            "name": "idx_double_nan_modify_fail",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "misaligned_secondary_key256_tests",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "primary_i64_general",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "primary_i64_lowerbound",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "primary_i64_upperbound",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "test_invalid_access",
+            "base": "",
+            "fields": [
+                {
+                    "name": "code",
+                    "type": "name"
+                },
+                {
+                    "name": "val",
+                    "type": "uint64"
+                },
+                {
+                    "name": "index",
+                    "type": "uint32"
+                },
+                {
+                    "name": "store",
+                    "type": "bool"
+                }
+            ]
+        }
+    ],
+    "actions": [
+        {
+            "name": "pg",
+            "type": "primary_i64_general",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "pl",
+            "type": "primary_i64_lowerbound",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "pu",
+            "type": "primary_i64_upperbound",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "s1g",
+            "type": "idx64_general",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "s1l",
+            "type": "idx64_lowerbound",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "s1u",
+            "type": "idx64_upperbound",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "sdnancreate",
+            "type": "idx_double_nan_create_fail",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "sdnanlookup",
+            "type": "idx_double_nan_lookup_fail",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "sdnanmodify",
+            "type": "idx_double_nan_modify_fail",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "sk32align",
+            "type": "misaligned_secondary_key256_tests",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "tia",
+            "type": "test_invalid_access",
+            "ricardian_contract": ""
+        }
+    ],
+    "tables": [],
+    "ricardian_clauses": [],
+    "variants": []
+}
