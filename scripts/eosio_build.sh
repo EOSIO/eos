@@ -212,12 +212,10 @@ if [ "$ARCH" == "Linux" ]; then
    export OS_NAME=$( cat /etc/os-release | grep ^NAME | cut -d'=' -f2 | sed 's/\"//gI' )
    OPENSSL_ROOT_DIR=/usr/include/openssl
    if [ ! -e /etc/os-release ]; then
-      printf "\\nEOSIO currently supports Amazon, Centos, Fedora, Mint & Ubuntu Linux only.\\n"
+      printf "\\nEOSIO currently supports Amazon, Centos, and Ubuntu Linux only.\\n"
       printf "Please install on the latest version of one of these Linux distributions.\\n"
       printf "https://aws.amazon.com/amazon-linux-ami/\\n"
       printf "https://www.centos.org/\\n"
-      printf "https://start.fedoraproject.org/\\n"
-      printf "https://linuxmint.com/\\n"
       printf "https://www.ubuntu.com/\\n"
       printf "Exiting now.\\n"
       exit 1
@@ -232,22 +230,6 @@ if [ "$ARCH" == "Linux" ]; then
          FILE="${REPO_ROOT}/scripts/eosio_build_centos.sh"
          CXX_COMPILER=g++
          C_COMPILER=gcc
-      ;;
-      "elementary OS")
-         FILE="${REPO_ROOT}/scripts/eosio_build_ubuntu.sh"
-         CXX_COMPILER=clang++-4.0
-         C_COMPILER=clang-4.0
-      ;;
-      "Fedora")
-         export CPATH=/usr/include/llvm4.0:$CPATH # llvm4.0 for fedora package path inclusion
-         FILE="${REPO_ROOT}/scripts/eosio_build_fedora.sh"
-         CXX_COMPILER=g++
-         C_COMPILER=gcc
-      ;;
-      "Linux Mint")
-         FILE="${REPO_ROOT}/scripts/eosio_build_ubuntu.sh"
-         CXX_COMPILER=clang++-4.0
-         C_COMPILER=clang-4.0
       ;;
       "Ubuntu")
          FILE="${REPO_ROOT}/scripts/eosio_build_ubuntu.sh"

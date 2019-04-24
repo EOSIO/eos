@@ -32,13 +32,6 @@ if [ "${MEM_MEG}" -lt 7000 ]; then
 fi
 
 case "${OS_NAME}" in
-	"Linux Mint")
-		if [ "${OS_MAJ}" -lt 18 ]; then
-			printf "You must be running Linux Mint 18.x or higher to install EOSIO.\\n"
-			printf "Exiting now.\\n"
-			exit 1
-		fi
-	;;
 	"Ubuntu")
 		. /etc/lsb-release
 		if [ "${DISTRIB_CODENAME}" != "xenial" -a "${DISTRIB_CODENAME}" != "bionic" ]; then
