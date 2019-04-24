@@ -452,33 +452,22 @@ class apply_context {
 
    /// Constructor
    public:
-      apply_context(controller& con, transaction_context& trx_ctx, const action& a, uint32_t depth=0)
-      :control(con)
-      ,db(con.mutable_db())
-      ,trx_context(trx_ctx)
-      ,act(a)
-      ,receiver(act.account)
-      ,used_authorizations(act.authorization.size(), false)
-      ,recurse_depth(depth)
-      ,idx64(*this)
-      ,idx128(*this)
-      ,idx256(*this)
-      ,idx_double(*this)
-      ,idx_long_double(*this)
-      {
-      }
-
+      apply_context(controller& con, transaction_context& trx_ctx, uint32_t action_ordinal, uint32_t depth=0);
 
    /// Execution methods:
    public:
 
-      void exec_one( action_trace& trace );
-      void exec( action_trace& trace );
+      void exec_one();
+      void exec();
       void execute_inline( action&& a );
       void execute_context_free_inline( action&& a );
       void schedule_deferred_transaction( const uint128_t& sender_id, account_name payer, transaction&& trx, bool replace_existing );
       bool cancel_deferred_transaction( const uint128_t& sender_id, account_name sender );
       bool cancel_deferred_transaction( const uint128_t& sender_id ) { return cancel_deferred_transaction(sender_id, receiver); }
+
+   protected:
+      uint32_t schedule_action( uint32_t ordinal_of_action_to_schedule, account_name receiver, bool context_free );
+      uint32_t schedule_action( action&& act_to_schedule, account_name receiver, bool context_free );
 
 
    /// Authorization methods:
@@ -554,11 +543,18 @@ class apply_context {
       bytes  get_packed_transaction();
 
       uint64_t next_global_sequence();
-      uint64_t next_recv_sequence( account_name receiver );
+      uint64_t next_recv_sequence( const account_metadata_object& receiver_account );
       uint64_t next_auth_sequence( account_name actor );
 
       void add_ram_usage( account_name account, int64_t ram_delta );
       void finalize_trace( action_trace& trace, const fc::time_point& start );
+
+      bool is_context_free()const { return context_free; }
+      bool is_privileged()const { return privileged; }
+      action_name get_receiver()const { return receiver; }
+      const action& get_action()const { return *act; }
+
+      action_name get_sender() const;
 
    /// Fields:
    public:
@@ -566,14 +562,18 @@ class apply_context {
       controller&                   control;
       chainbase::database&          db;  ///< database where state is stored
       transaction_context&          trx_context; ///< transaction context in which the action is running
-      const action&                 act; ///< message being applied
+
+   private:
+      const action*                 act = nullptr; ///< action being applied
+      // act pointer may be invalidated on call to trx_context.schedule_action
       account_name                  receiver; ///< the code that is currently running
-      vector<bool> used_authorizations; ///< Parallel to act.authorization; tracks which permissions have been used while processing the message
       uint32_t                      recurse_depth; ///< how deep inline actions can recurse
+      uint32_t                      first_receiver_action_ordinal = 0;
+      uint32_t                      action_ordinal = 0;
       bool                          privileged   = false;
       bool                          context_free = false;
-      bool                          used_context_free_api = false;
 
+   public:
       generic_index<index64_object>                                  idx64;
       generic_index<index128_object>                                 idx128;
       generic_index<index256_object, uint128_t*, const uint128_t*>   idx256;
@@ -583,9 +583,9 @@ class apply_context {
    private:
 
       iterator_cache<key_value_object>    keyval_cache;
-      vector<account_name>                _notified; ///< keeps track of new accounts to be notifed of current message
-      vector<action>                      _inline_actions; ///< queued inline messages
-      vector<action>                      _cfa_inline_actions; ///< queued inline messages
+      vector< std::pair<account_name, uint32_t> > _notified; ///< keeps track of new accounts to be notifed of current message
+      vector<uint32_t>                    _inline_actions; ///< action_ordinals of queued inline actions
+      vector<uint32_t>                    _cfa_inline_actions; ///< action_ordinals of queued inline context-free actions
       std::string                         _pending_console_output;
       flat_set<account_delta>             _account_ram_deltas; ///< flat_set of account_delta so json is an array of objects
 

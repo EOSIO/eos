@@ -84,6 +84,7 @@ void chain_api_plugin::plugin_startup() {
 
    _http_plugin.add_api({
       CHAIN_RO_CALL(get_info, 200l),
+      CHAIN_RO_CALL(get_activated_protocol_features, 200),
       CHAIN_RO_CALL(get_block, 200),
       CHAIN_RO_CALL(get_block_header_state, 200),
       CHAIN_RO_CALL(get_account, 200),
@@ -105,7 +106,8 @@ void chain_api_plugin::plugin_startup() {
       CHAIN_RO_CALL(get_transaction_id, 200),
       CHAIN_RW_CALL_ASYNC(push_block, chain_apis::read_write::push_block_results, 202),
       CHAIN_RW_CALL_ASYNC(push_transaction, chain_apis::read_write::push_transaction_results, 202),
-      CHAIN_RW_CALL_ASYNC(push_transactions, chain_apis::read_write::push_transactions_results, 202)
+      CHAIN_RW_CALL_ASYNC(push_transactions, chain_apis::read_write::push_transactions_results, 202),
+      CHAIN_RW_CALL_ASYNC(send_transaction, chain_apis::read_write::send_transaction_results, 202)
    });
 }
 
