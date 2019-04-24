@@ -1,5 +1,7 @@
 #pragma once
 
+#include <boost/algorithm/string.hpp>
+
 #include <cyberway/chain/cyberway_contract_types.hpp>
 
 struct base_ram_subcommand {
@@ -45,13 +47,47 @@ struct set_ram_payer_subcommand final: protected base_ram_subcommand {
     }
 };
 
+struct set_ram_state_subcommand final: protected base_ram_subcommand {
+    string in_ram = "true";
+
+    set_ram_state_subcommand(CLI::App* root)
+        : base_ram_subcommand(root, "state", localized("Set the RAM state of the object")) {
+        command->add_option("in_ram", in_ram, localized("If true the table object should be cached"), true );
+        add_standard_transaction_options(command);
+
+        command->set_callback([this] {
+            cyberway::chain::set_ram_state action;
+            action.code   = code;
+            action.scope  = scope;
+            action.table  = table;
+            action.pk     = pk;
+
+            boost::trim(in_ram);
+            boost::to_lower(in_ram);
+
+            if (in_ram == "true" || in_ram == "on" || in_ram == "1") {
+                action.in_ram = true;
+            } else if (in_ram == "false" || in_ram == "off" || in_ram == "0") {
+                action.in_ram = false;
+            } else {
+                EOSC_ASSERT(false, "ERROR: Wrong value for in_ram parameter");
+            }
+
+            auto payer_perms = get_account_permissions(tx_permission, {});
+            send_actions({ eosio::chain::action(payer_perms, action) });
+        });
+    }
+};
+
 struct set_ram_subcommand final {
     CLI::App* command;
     set_ram_payer_subcommand payer;
+    set_ram_state_subcommand state;
 
     set_ram_subcommand(CLI::App* root)
     : command(root->add_subcommand("ram", localized("Change RAM state of the object"))),
-      payer(command) {
+      payer(command),
+      state(command) {
         command->require_subcommand();
     }
 };
