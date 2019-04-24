@@ -171,6 +171,18 @@ fi
 
 printf "\\n"
 
+### clean up force build before starting
+if [ $FORCE_BUILD ];then
+   rm -rf  \
+   ${SRC_LOCATION}/cmake-$CMAKE_VERSION \
+   ${SRC_LOCATION}/llvm ${OPT_LOCATION}/llvm4 \
+   ${TMP_LOCATION}/clang8 ${OPT_LOCATION}/clang8 \
+   ${SRC_LOCATION}/zlib ${OPT_LOCATION}/zlib \
+   ${SRC_LOCATION}/boost ${BOOST_ROOT} \
+   ${SRC_LOCATION}/mongodb-linux-x86_64-amazon-$MONGODB_VERSION \
+   ${SRC_LOCATION}/mongo-c-driver-$MONGO_C_DRIVER_VERSION \
+   ${SRC_LOCATION}/mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION
+
 printf "Checking CMAKE installation...\\n"
 if [ ! -e $CMAKE ] || [ $FORCE_BUILD ]; then
 	printf "Installing CMAKE...\\n"
@@ -194,7 +206,7 @@ printf "\\n"
 
 
 export CPATH="${CPATH}:${PYTHON3PATH}/root/usr/include/python3.6m" # m on the end causes problems with boost finding python3
-if $PIN_COMPILER; then
+if [ $PIN_COMPILER ]; then
    printf "Checking Clang 8 support...\\n"
    if [ ! -d $CLANG8_ROOT ] || [ $FORCE_BUILD ]; then
       printf "Installing Clang 8...\\n"

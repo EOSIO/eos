@@ -48,6 +48,7 @@ txtrst=$(tput sgr0)
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 REPO_ROOT="${SCRIPT_DIR}/.."
 BUILD_DIR="${REPO_ROOT}/build"
+ENABLE_MONGO=false
 
 export BUILD_DIR=$BUILD_DIR
 
@@ -129,6 +130,7 @@ if [ $# -ne 0 ]; then
          ;;
          m)
             BUILD_MONGO=1
+            ENABLE_MONGO=1
          ;;
          \? )
             printf "\\nInvalid Option: %s\\n" "-${OPTARG}" 1>&2

@@ -161,6 +161,16 @@ fi
 
 printf "\\n"
 
+### clean up force build before starting
+if [ $FORCE_BUILD ];then
+   rm -rf  \
+   ${SRC_LOCATION}/llvm ${OPT_LOCATION}/llvm4 \
+   ${TMP_LOCATION}/clang8 ${OPT_LOCATION}/clang8 \
+   ${SRC_LOCATION}/zlib ${OPT_LOCATION}/zlib \
+   ${SRC_LOCATION}/boost \
+   ${SRC_LOCATION}/mongodb-linux-x86_64-amazon-$MONGODB_VERSION \
+   ${SRC_LOCATION}/mongo-c-driver-$MONGO_C_DRIVER_VERSION \
+   ${SRC_LOCATION}/mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION
 
 export CPATH="$(python-config --includes | awk '{print $1}' | cut -dI -f2):$CPATH" # Boost has trouble finding pyconfig.h
 printf "Checking Boost library (${BOOST_VERSION}) installation...\\n"
