@@ -46,6 +46,14 @@ namespace eosio { namespace chain {
             EOS_THROW(wasm_exception, "wasm_interface_impl fall through");
       }
 
+      ~wasm_interface_impl() {
+         if(is_shutting_down)
+            for(wasm_cache_index::iterator it = wasm_instantiation_cache.begin(); it != wasm_instantiation_cache.end(); ++it)
+               wasm_instantiation_cache.modify(it, [](wasm_cache_entry& e) {
+                  e.module.release();
+               });
+      }
+
       std::vector<uint8_t> parse_initial_memory(const Module& module) {
          std::vector<uint8_t> mem_image;
 
@@ -136,6 +144,7 @@ namespace eosio { namespace chain {
          return it->module;
       }
 
+      bool is_shutting_down = false;
       std::unique_ptr<wasm_runtime_interface> runtime_interface;
 
       typedef boost::multi_index_container<

@@ -79,6 +79,9 @@ namespace eosio { namespace chain {
          wasm_interface(vm_type vm, const chainbase::database& db);
          ~wasm_interface();
 
+         //call before dtor to skip what can be minutes of dtor overhead with some runtimes; can cause leaks
+         void indicate_shutting_down();
+
          //validates code -- does a WASM validation pass and checks the wasm against EOSIO specific constraints
          static void validate(const controller& control, const bytes& code);
 
