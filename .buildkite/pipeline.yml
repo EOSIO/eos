@@ -291,7 +291,7 @@ steps:
         ./scripts/parallel-test.sh
     label: ":darwin: Mojave Tests"
     agents:
-      - "role=tester-v2-1"
+      - "role=tester-v2-2"
       - "os=mojave"
     timeout: 60
 
@@ -303,7 +303,7 @@ steps:
         ./scripts/serial-test.sh
     label: ":darwin: Mojave NP Tests"
     agents:
-      - "role=tester-v2-1"
+      - "role=tester-v2-2"
       - "os=mojave"
     timeout: 60
 
@@ -410,7 +410,7 @@ steps:
         bash generate_package.sh brew
     label: ":darwin: Mojave Package Builder"
     agents:
-      - "role=builder-v2-1"
+      - "role=builder-v2-2"
       - "os=mojave"
     artifact_paths:
       - "build/packages/*.tar.gz"
