@@ -142,7 +142,7 @@ class Utils:
         Utils.Print(msg)
 
     @staticmethod
-    def waitForObj(lam, timeout=None, reporter=None):
+    def waitForObj(lam, timeout=None, sleepTime=3, reporter=None):
         if timeout is None:
             timeout=60
 
@@ -153,7 +153,6 @@ class Utils:
                 ret=lam()
                 if ret is not None:
                     return ret
-                sleepTime=3
                 if Utils.Debug:
                     Utils.Print("cmd: sleep %d seconds, remaining time: %d seconds" %
                                 (sleepTime, endTime - time.time()))
@@ -171,9 +170,9 @@ class Utils:
         return None
 
     @staticmethod
-    def waitForBool(lam, timeout=None, reporter=None):
+    def waitForBool(lam, timeout=None, sleepTime=3, reporter=None):
         myLam = lambda: True if lam() else None
-        ret=Utils.waitForObj(myLam, timeout, reporter=reporter)
+        ret=Utils.waitForObj(myLam, timeout, sleepTime, reporter=reporter)
         return False if ret is None else ret
 
     @staticmethod

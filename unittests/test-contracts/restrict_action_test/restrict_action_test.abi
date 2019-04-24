@@ -1,0 +1,98 @@
+{
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT ",
+    "version": "eosio::abi/1.1",
+    "types": [],
+    "structs": [
+        {
+            "name": "noop",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "notifydefer",
+            "base": "",
+            "fields": [
+                {
+                    "name": "acctonotify",
+                    "type": "name"
+                },
+                {
+                    "name": "authorizer",
+                    "type": "name"
+                },
+                {
+                    "name": "senderid",
+                    "type": "uint32"
+                }
+            ]
+        },
+        {
+            "name": "notifyinline",
+            "base": "",
+            "fields": [
+                {
+                    "name": "acctonotify",
+                    "type": "name"
+                },
+                {
+                    "name": "authorizer",
+                    "type": "name"
+                }
+            ]
+        },
+        {
+            "name": "senddefer",
+            "base": "",
+            "fields": [
+                {
+                    "name": "authorizer",
+                    "type": "name"
+                },
+                {
+                    "name": "senderid",
+                    "type": "uint32"
+                }
+            ]
+        },
+        {
+            "name": "sendinline",
+            "base": "",
+            "fields": [
+                {
+                    "name": "authorizer",
+                    "type": "name"
+                }
+            ]
+        }
+    ],
+    "actions": [
+        {
+            "name": "noop",
+            "type": "noop",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "notifydefer",
+            "type": "notifydefer",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "notifyinline",
+            "type": "notifyinline",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "senddefer",
+            "type": "senddefer",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "sendinline",
+            "type": "sendinline",
+            "ricardian_contract": ""
+        }
+    ],
+    "tables": [],
+    "ricardian_clauses": [],
+    "variants": []
+}
