@@ -184,7 +184,7 @@ namespace eosio {
 
             if (pending_commit_local && !pbft_db.pending_pbft_lib()) {
                 pbft_db.send_pbft_checkpoint();
-                m->transit_to_committed_state(this);
+                m->transit_to_committed_state(this, false);
             }
         }
 
@@ -203,7 +203,7 @@ namespace eosio {
 
             if (pending_commit_local && !pbft_db.pending_pbft_lib()) {
                 pbft_db.send_pbft_checkpoint();
-                m->transit_to_committed_state(this);
+                m->transit_to_committed_state(this, false);
             }
         }
 
@@ -338,7 +338,7 @@ namespace eosio {
             //skip from view change state if my lib is higher than my view change state height.
             auto vc = m->get_view_changes_cache();
             if (!vc.empty() && pbft_db.should_stop_view_change(vc.front())) {
-                m->transit_to_committed_state(this);
+                m->transit_to_committed_state(this, false);
                 return;
             }
 
@@ -371,7 +371,7 @@ namespace eosio {
             //skip from view change state if my lib is higher than my view change state height.
             auto vc = m->get_view_changes_cache();
             if (!vc.empty() && pbft_db.should_stop_view_change(vc.front())) {
-                m->transit_to_committed_state(this);
+                m->transit_to_committed_state(this, false);
                 return;
             }
 
@@ -412,11 +412,13 @@ namespace eosio {
         }
 
         template<typename T>
-        void psm_machine::transit_to_committed_state(T const & s) {
+        void psm_machine::transit_to_committed_state(T const & s, bool to_new_view) {
 
-            auto nv = pbft_db.get_committed_view();
-            if (nv > this->get_current_view()) this->set_current_view(nv);
-            this->set_target_view(this->get_current_view() + 1);
+            if (!to_new_view) {
+                auto nv = pbft_db.get_committed_view();
+                if (nv > this->get_current_view()) this->set_current_view(nv);
+                this->set_target_view(this->get_current_view() + 1);
+            }
 
             auto prepares = this->pbft_db.send_and_add_pbft_prepare(vector<pbft_prepare>{}, this->get_current_view());
             set_prepares_cache(prepares);
@@ -472,7 +474,6 @@ namespace eosio {
                 for (auto cp :new_view.stable_checkpoint.checkpoints) {
                     try {
                         pbft_db.add_pbft_checkpoint(cp);
-                        pbft_db.maybe_switch_forks();
                     } catch (...) {
                         wlog("insert checkpoint failed");
                     }
@@ -483,7 +484,6 @@ namespace eosio {
                 for (auto p: new_view.prepared.prepares) {
                     try {
                         pbft_db.add_pbft_prepare(p);
-                        pbft_db.maybe_switch_forks();
                     } catch (...) {
                         wlog("insert prepare failed");
                     }
@@ -494,8 +494,7 @@ namespace eosio {
                 }
             }
 
-            this->set_current(new psm_committed_state);
-            delete s;
+            transit_to_committed_state(s, true);
         }
 
         void psm_machine::send_pbft_view_change() {

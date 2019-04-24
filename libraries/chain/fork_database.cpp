@@ -199,7 +199,7 @@ namespace eosio { namespace chain {
       }
 
       my->head = *my->index.get<by_lib_block_num>().begin();
-
+//      wlog("head block num: ${h}", ("h", my->head->block_num));
       auto lib = std::max(my->head->bft_irreversible_blocknum, my->head->dpos_irreversible_blocknum);
       auto checkpoint = my->head->pbft_stable_checkpoint_blocknum;
 
@@ -352,7 +352,7 @@ namespace eosio { namespace chain {
       return block_state_ptr();
    }
 
-   void fork_database::mark_pbft_prepared_fork(const block_state_ptr& h) const {
+   void fork_database::mark_pbft_prepared_fork(const block_state_ptr& h) {
        auto& by_id_idx = my->index.get<by_block_id>();
        auto itr = by_id_idx.find( h->id );
        EOS_ASSERT( itr != by_id_idx.end(), fork_db_block_not_found, "could not find block in fork database" );
@@ -383,7 +383,7 @@ namespace eosio { namespace chain {
        my->head = *my->index.get<by_lib_block_num>().begin();
    }
 
-   void fork_database::mark_pbft_my_prepare_fork(const block_state_ptr& h) const {
+   void fork_database::mark_pbft_my_prepare_fork(const block_state_ptr& h)  {
        auto& by_id_idx = my->index.get<by_block_id>();
        auto itr = by_id_idx.find( h->id );
        EOS_ASSERT( itr != by_id_idx.end(), fork_db_block_not_found, "could not find block in fork database" );
@@ -414,10 +414,11 @@ namespace eosio { namespace chain {
        my->head = *my->index.get<by_lib_block_num>().begin();
    }
 
-   void fork_database::remove_pbft_my_prepare_fork(const block_id_type &id) const {
+   void fork_database::remove_pbft_my_prepare_fork()  {
+       auto oldest = *my->index.get<by_block_num>().begin();
+
        auto& by_id_idx = my->index.get<by_block_id>();
-       auto itr = by_id_idx.find( id );
-       EOS_ASSERT( itr != by_id_idx.end(), fork_db_block_not_found, "could not find block in fork database" );
+       auto itr = by_id_idx.find( oldest->id );
        by_id_idx.modify( itr, [&]( auto& bsp ) { bsp->pbft_my_prepare = false; });
 
        auto update = [&]( const vector<block_id_type>& in ) {
@@ -438,7 +439,7 @@ namespace eosio { namespace chain {
            return updated;
        };
 
-       vector<block_id_type> queue{id};
+       vector<block_id_type> queue{ oldest->id };
        while(!queue.empty()) {
            queue = update( queue );
        }

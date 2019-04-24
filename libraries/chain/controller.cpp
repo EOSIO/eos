@@ -2512,8 +2512,8 @@ block_id_type controller::get_pbft_my_prepare() const {
 }
 
 void controller::reset_pbft_my_prepare() const {
-   if (my->my_prepare) my->fork_db.remove_pbft_my_prepare_fork(my->my_prepare->id);
-   my->my_prepare.reset();
+   my->fork_db.remove_pbft_my_prepare_fork();
+   if (my->my_prepare) my->my_prepare.reset();
 }
 
 db_read_mode controller::get_read_mode()const {
