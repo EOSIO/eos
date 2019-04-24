@@ -1,7 +1,7 @@
 steps:
   - command: | # Amazon Linux 2 Build
         echo "+++ :hammer: Building"
-        ./scripts/eosio_build.sh -y -P -f
+        ./scripts/eosio_build.sh -y -P
         echo "--- :compression: Compressing build directory"
         tar -pczf build.tar.gz build
         if [[ ! -f build.tar.gz ]]; then echo 'ERROR: No build.tar.gz artifact found!' && exit 1; fi
@@ -24,7 +24,7 @@ steps:
 
   - command: | # CentOS 7 Build
         echo "+++ :hammer: Building"
-        ./scripts/eosio_build.sh -y -P -f
+        ./scripts/eosio_build.sh -y -P
         echo "--- :compression: Compressing build directory"
         tar -pczf build.tar.gz build
         if [[ ! -f build.tar.gz ]]; then echo 'ERROR: No build.tar.gz artifact found!' && exit 1; fi
@@ -47,7 +47,7 @@ steps:
 
   - command: | # Ubuntu 16.04 Build
         echo "+++ :hammer: Building"
-        ./scripts/eosio_build.sh -y -P -f
+        ./scripts/eosio_build.sh -y -P
         echo "--- :compression: Compressing build directory"
         tar -pczf build.tar.gz build
         if [[ ! -f build.tar.gz ]]; then echo 'ERROR: No build.tar.gz artifact found!' && exit 1; fi
@@ -70,7 +70,7 @@ steps:
 
   - command: | # Ubuntu 18.04 Build
         echo "+++ :hammer: Building"
-        ./scripts/eosio_build.sh -y -P -f
+        ./scripts/eosio_build.sh -y -P
         echo "--- :compression: Compressing build directory"
         tar -pczf build.tar.gz build
         if [[ ! -f build.tar.gz ]]; then echo 'ERROR: No build.tar.gz artifact found!' && exit 1; fi
@@ -97,13 +97,13 @@ steps:
       ln -s "$(pwd)" /data/job
       cd /data/job
       echo "+++ Building :hammer:"
-      ./scripts/eosio_build.sh -y -P -f
+      ./scripts/eosio_build.sh -y -P
       echo "--- Compressing build directory :compression:"
       tar -pczf build.tar.gz build
       if [[ ! -f build.tar.gz ]]; then echo 'ERROR: No build.tar.gz artifact found!' && exit 1; fi
     label: ":darwin: Mojave Build"
     agents:
-      - "role=builder-v2-1"
+      - "role=builder-v2-2"
       - "os=mojave"
     artifact_paths: "build.tar.gz"
     timeout: 120
