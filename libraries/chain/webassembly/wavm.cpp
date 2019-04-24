@@ -25,9 +25,14 @@ class wavm_instantiated_module : public wasm_instantiated_module_interface {
    public:
       wavm_instantiated_module(ModuleInstance* instance, std::unique_ptr<Module> module, std::vector<uint8_t> initial_mem) :
          _initial_memory(initial_mem),
-         _instance(instance),
-         _module(std::move(module))
-      {}
+         _instance(instance)
+      {
+         //The memory instance is reused across all wavm_instantiated_modules, but for wasm instances
+         // that didn't declare "memory", getDefaultMemory() won't see it. It would also be possible
+         // to say something like if(module->memories.size()) here I believe
+         if(getDefaultMemory(_instance))
+            _initial_memory_config = module->memories.defs.at(0).type;
+      }
 
       void apply(apply_context& context) override {
          vector<Value> args = {Value(uint64_t(context.get_receiver())),
@@ -52,7 +57,7 @@ class wavm_instantiated_module : public wasm_instantiated_module_interface {
             if(default_mem) {
                //reset memory resizes the sandbox'ed memory to the module's init memory size and then
                // (effectively) memzeros it all
-               resetMemory(default_mem, _module->memories.defs[0].type);
+               resetMemory(default_mem, _initial_memory_config);
 
                char* memstart = &memoryRef<char>(getDefaultMemory(_instance), 0);
                memcpy(memstart, _initial_memory.data(), _initial_memory.size());
@@ -78,7 +83,7 @@ class wavm_instantiated_module : public wasm_instantiated_module_interface {
       //naked pointer because ModuleInstance is opaque
       //_instance is deleted via WAVM's object garbage collection when wavm_rutime is deleted
       ModuleInstance*          _instance;
-      std::unique_ptr<Module>  _module;
+      MemoryType               _initial_memory_config;
 };
 
 
