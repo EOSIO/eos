@@ -424,7 +424,7 @@ bool apply_context::cancel_deferred_transaction( const uint128_t& sender_id, acc
    if ( gto ) {
 // TODO: Removed by CyberWay
 //      add_ram_usage( gto->payer, -(config::billable_size_v<generated_transaction_object> + gto->packed_trx.size()) );
-      trx_table.erase(*gto, {*this});
+      trx_table.erase(*gto, get_ram_payer());
    }
    return gto;
 }
@@ -516,8 +516,12 @@ bytes apply_context::get_packed_transaction() {
    return r;
 }
 
-cyberway::chaindb::ram_payer_info apply_context::get_ram_payer( const account_name& ram_owner, const account_name& ram_payer ) {
-   return {*this, trx_context.get_ram_provider(ram_payer), ram_owner};
+cyberway::chaindb::ram_payer_info apply_context::get_ram_payer( account_name ram_owner, account_name ram_payer ) {
+   if (ram_payer.empty()) {
+       ram_payer = ram_owner;
+   }
+
+   return {*this, ram_owner, trx_context.get_ram_provider(ram_payer)};
 }
 
 void apply_context::add_ram_usage( const account_name& payer, const int64_t delta ) {

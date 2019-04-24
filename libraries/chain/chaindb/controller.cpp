@@ -579,7 +579,12 @@ namespace cyberway { namespace chaindb {
             obj.service.revision = undo_.revision();
             obj.service.size     = calc_ram_usage(ram, table, obj);
             obj.service.payer    = ram.payer;
-            obj.service.owner    = ram.owner;
+
+            if (ram.owner.empty()) {
+                obj.service.owner = ram.payer;
+            } else {
+                obj.service.owner = ram.owner;
+            }
 
             // charge the payer
             auto delta = static_cast<int64_t>(obj.service.size);

@@ -781,7 +781,7 @@ struct controller_impl {
 //      );
       // No need to verify_account_ram_usage since we are only reducing memory
 
-      chaindb.erase( gto, {resource_limits} );
+      chaindb.erase( gto, resource_limits.get_ram_payer() );
    }
 
    bool failure_is_subjective( const fc::exception& e ) const {

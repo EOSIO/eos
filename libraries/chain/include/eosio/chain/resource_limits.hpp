@@ -72,6 +72,8 @@ namespace resource_limits {
          void add_to_snapshot( const snapshot_writer_ptr& snapshot ) const;
          void read_from_snapshot( const snapshot_reader_ptr& snapshot );
 
+         cyberway::chaindb::ram_payer_info get_ram_payer(const account_name& owner = account_name());
+
          void initialize_account( const account_name& account, const cyberway::chaindb::ram_payer_info& );
          void set_block_parameters( const elastic_limit_parameters& cpu_limit_parameters, const elastic_limit_parameters& net_limit_parameters );
 
