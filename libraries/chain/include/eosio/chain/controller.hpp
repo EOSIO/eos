@@ -308,6 +308,7 @@ namespace eosio { namespace chain {
          const upgrade_property_object&        get_upgrade_properties()const;
          bool is_upgraded()const;
          bool under_upgrade()const;
+         void set_upo(uint32_t target_block_num);
 
          void maybe_switch_forks();
 

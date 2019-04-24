@@ -2684,6 +2684,17 @@ bool controller::under_upgrade() const {
     return my->is_upgrading();
 }
 
+void controller::set_upo(uint32_t target_block_num) {
+    try {
+        const auto& upo = my->db.get<upgrade_property_object>();
+        my->db.modify( upo, [&]( auto& up ) { up.upgrade_target_block_num = (block_num_type)target_block_num;});
+    } catch( const boost::exception& e) {
+        my->db.create<upgrade_property_object>([&](auto& up){
+          up.upgrade_target_block_num = (block_num_type)target_block_num;
+        });
+    }
+}
+
 void controller::maybe_switch_forks() {
     if ( my->read_mode != db_read_mode::IRREVERSIBLE ) {
         my->maybe_switch_forks( controller::block_status::complete );

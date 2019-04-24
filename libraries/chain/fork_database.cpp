@@ -32,13 +32,13 @@ namespace eosio { namespace chain {
          >,
          ordered_non_unique< tag<by_lib_block_num>,
             composite_key< block_state,
+                member<block_header_state,uint32_t,&block_header_state::dpos_irreversible_blocknum>,
                 member<block_header_state,uint32_t,&block_header_state::bft_irreversible_blocknum>,
-//                member<block_header_state,uint32_t,&block_header_state::dpos_irreversible_blocknum>,
                 member<block_state,bool,&block_state::pbft_prepared>,
                 member<block_state,bool,&block_state::pbft_my_prepare>,
                 member<block_header_state,uint32_t,&block_header_state::block_num>
             >,
-            composite_key_compare< std::greater<uint32_t>, std::greater<bool>, std::greater<bool>, std::greater<uint32_t> >
+            composite_key_compare< std::greater<uint32_t>, std::greater<uint32_t>, std::greater<bool>, std::greater<bool>, std::greater<uint32_t> >
          >
       >
    > fork_multi_index_type;
