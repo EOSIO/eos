@@ -12,6 +12,11 @@ if [ -z "$biosport" ]; then
     biosport=9776
 fi
 
+bioscontractpath=$BIOS_CONTRACT_PATH
+if [ -z "$bioscontractpath" ]; then
+    bioscontractpath="unittests/contracts/eosio.bios"
+fi
+
 wddir=eosio-ignition-wd
 wdaddr=localhost:8899
 wdurl=http://$wdaddr
@@ -34,6 +39,8 @@ mkdir $wddir
 
 step=1
 echo Initializing ignition sequence  at $(date) | tee $logfile
+
+echo "FEATURE_DIGESTS: $FEATURE_DIGESTS" >> $logfile
 
 echo "http-server-address = $wdaddr" > $wddir/config.ini
 
@@ -75,7 +82,13 @@ wcmd create --to-console -n ignition
 # ------ DO NOT ALTER THE NEXT LINE -------
 ###INSERT prodkeys
 
-ecmd set contract eosio unittests/contracts/eosio.bios eosio.bios.wasm eosio.bios.abi
+ecmd set contract eosio $bioscontractpath eosio.bios.wasm eosio.bios.abi
+
+# Preactivate all digests
+for digest in $FEATURE_DIGESTS;
+do
+ecmd push action eosio activate "{\"feature_digest\":\"$digest\"}" -p eosio
+done
 
 # Create required system accounts
 ecmd create key --to-console
