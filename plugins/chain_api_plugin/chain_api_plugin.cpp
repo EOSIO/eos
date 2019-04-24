@@ -638,13 +638,12 @@ get_producers_result chain_api_plugin_impl::get_producers( const get_producers_p
 
 get_producer_schedule_result chain_api_plugin_impl::get_producer_schedule( const get_producer_schedule_params& p ) const {
    get_producer_schedule_result result;
-// TODO: Removed by CyberWay
-//   to_variant(db.active_producers(), result.active);
-//   if(!db.pending_producers().producers.empty())
-//      to_variant(db.pending_producers(), result.pending);
-//   auto proposed = db_controller_.proposed_producers();
-//   if(proposed && !proposed->producers.empty())
-//      to_variant(*proposed, result.proposed);
+   to_variant(chain_controller_.active_producers(), result.active);
+   if(!chain_controller_.pending_producers().producers.empty())
+      to_variant(chain_controller_.pending_producers(), result.pending);
+   auto proposed = chain_controller_.proposed_producers();
+   if(proposed && !proposed->producers.empty())
+      to_variant(*proposed, result.proposed);
    return result;
 }
 
