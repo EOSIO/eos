@@ -817,7 +817,9 @@ struct controller_impl {
          if (add_to_fork_db) {
             pending->_pending_block_state->validated = true;
 
-            auto new_bsp = fork_db.add(pending->_pending_block_state, true);
+            auto new_version = is_new_version();
+
+            auto new_bsp = fork_db.add(pending->_pending_block_state, true, new_version);
             emit(self.accepted_block_header, pending->_pending_block_state);
 
             head = fork_db.head();
@@ -1494,7 +1496,8 @@ struct controller_impl {
          auto& b = new_header_state->block;
          emit( self.pre_accepted_block, b );
 
-         fork_db.add( new_header_state, false);
+         auto new_version = is_new_version();
+         fork_db.add( new_header_state, false, new_version);
 
          if (conf.trusted_producers.count(b->producer)) {
             trusted_producer_light_validation = true;
@@ -2462,8 +2465,8 @@ block_id_type controller::get_pbft_my_prepare() const {
 }
 
 void controller::reset_pbft_my_prepare() const {
-   if (my->my_prepare) my->fork_db.remove_pbft_my_prepare_fork(my->my_prepare->id);
-   my->my_prepare.reset();
+   my->fork_db.remove_pbft_my_prepare_fork();
+   if (my->my_prepare) my->my_prepare.reset();
 }
 
 db_read_mode controller::get_read_mode()const {
@@ -2645,5 +2648,11 @@ bool controller::is_upgraded() const {
 
 bool controller::under_upgrade() const {
     return my->is_upgrading();
+}
+
+void controller::maybe_switch_forks() {
+    if ( my->read_mode != db_read_mode::IRREVERSIBLE ) {
+        my->maybe_switch_forks( controller::block_status::complete );
+    }
 }
 } } /// eosio::chain

@@ -173,7 +173,7 @@ namespace eosio { namespace chain {
       }
    }
 
-   block_state_ptr fork_database::add( const block_state_ptr& n, bool skip_validate_previous ) {
+   block_state_ptr fork_database::add( const block_state_ptr& n, bool skip_validate_previous, bool new_version ) {
       EOS_ASSERT( n, fork_database_exception, "attempt to add null block state" );
       EOS_ASSERT( my->head, fork_db_block_not_found, "no head block set" );
 
@@ -189,21 +189,29 @@ namespace eosio { namespace chain {
       auto prior = my->index.find( n->block->previous );
 
       //TODO: to be optimised.
-      if ((*prior)->pbft_prepared) {
-          mark_pbft_prepared_fork(*prior);
-      }
-      if (((*prior)->pbft_my_prepare)) {
-          mark_pbft_my_prepare_fork(*prior);
+      if (new_version) {
+          if ((*prior)->pbft_prepared) {
+              mark_pbft_prepared_fork(*prior);
+          }
+          if (((*prior)->pbft_my_prepare)) {
+              mark_pbft_my_prepare_fork(*prior);
+          }
       }
 
       my->head = *my->index.get<by_lib_block_num>().begin();
-
+//      wlog("head block num: ${h}", ("h", my->head->block_num));
       auto lib = std::max(my->head->bft_irreversible_blocknum, my->head->dpos_irreversible_blocknum);
       auto checkpoint = my->head->pbft_stable_checkpoint_blocknum;
 
       auto oldest = *my->index.get<by_block_num>().begin();
 
-      if( oldest->block_num < lib && oldest->block_num < checkpoint ) {
+      auto should_prune_oldest = oldest->block_num < lib;
+
+      if (new_version) {
+          should_prune_oldest = should_prune_oldest && oldest->block_num < checkpoint;
+      }
+
+      if (  should_prune_oldest  ) {
           prune( oldest );
       }
 
@@ -222,7 +230,7 @@ namespace eosio { namespace chain {
 
       auto result = std::make_shared<block_state>( **prior, move(b), skip_validate_signee, new_version);
       EOS_ASSERT( result, fork_database_exception , "fail to add new block state" );
-      return add(result, true);
+      return add(result, true, new_version);
    }
 
    const block_state_ptr& fork_database::head()const { return my->head; }
@@ -344,7 +352,7 @@ namespace eosio { namespace chain {
       return block_state_ptr();
    }
 
-   void fork_database::mark_pbft_prepared_fork(const block_state_ptr& h) const {
+   void fork_database::mark_pbft_prepared_fork(const block_state_ptr& h) {
        auto& by_id_idx = my->index.get<by_block_id>();
        auto itr = by_id_idx.find( h->id );
        EOS_ASSERT( itr != by_id_idx.end(), fork_db_block_not_found, "could not find block in fork database" );
@@ -375,7 +383,7 @@ namespace eosio { namespace chain {
        my->head = *my->index.get<by_lib_block_num>().begin();
    }
 
-   void fork_database::mark_pbft_my_prepare_fork(const block_state_ptr& h) const {
+   void fork_database::mark_pbft_my_prepare_fork(const block_state_ptr& h)  {
        auto& by_id_idx = my->index.get<by_block_id>();
        auto itr = by_id_idx.find( h->id );
        EOS_ASSERT( itr != by_id_idx.end(), fork_db_block_not_found, "could not find block in fork database" );
@@ -406,10 +414,11 @@ namespace eosio { namespace chain {
        my->head = *my->index.get<by_lib_block_num>().begin();
    }
 
-   void fork_database::remove_pbft_my_prepare_fork(const block_id_type &id) const {
+   void fork_database::remove_pbft_my_prepare_fork()  {
+       auto oldest = *my->index.get<by_block_num>().begin();
+
        auto& by_id_idx = my->index.get<by_block_id>();
-       auto itr = by_id_idx.find( id );
-       EOS_ASSERT( itr != by_id_idx.end(), fork_db_block_not_found, "could not find block in fork database" );
+       auto itr = by_id_idx.find( oldest->id );
        by_id_idx.modify( itr, [&]( auto& bsp ) { bsp->pbft_my_prepare = false; });
 
        auto update = [&]( const vector<block_id_type>& in ) {
@@ -430,7 +439,7 @@ namespace eosio { namespace chain {
            return updated;
        };
 
-       vector<block_id_type> queue{id};
+       vector<block_id_type> queue{ oldest->id };
        while(!queue.empty()) {
            queue = update( queue );
        }

@@ -40,7 +40,7 @@ namespace eosio {
             void on_new_view(pbft_new_view &e);
 
             template<typename T>
-            void transit_to_committed_state(T const & s);
+            void transit_to_committed_state(T const & s, bool to_new_view);
 
             template<typename T>
             void transit_to_prepared_state(T const & s);
