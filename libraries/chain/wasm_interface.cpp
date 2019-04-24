@@ -850,13 +850,22 @@ class authorization_api : public context_aware_api {
       context.require_authorization( account );
    }
 
+   bool weak_require_authorization( const account_name& account ) {
+      return context.weak_require_authorization( account );
+   }
+
    bool has_authorization( const account_name& account )const {
       return context.has_authorization( account );
    }
 
    void require_authorization(const account_name& account,
-                                                 const permission_name& permission) {
+                              const permission_name& permission) {
       context.require_authorization( account, permission );
+   }
+
+   bool weak_require_authorization(const account_name& account,
+                                   const permission_name& permission) {
+      return context.weak_require_authorization( account, permission );
    }
 
    void require_recipient( account_name recipient ) {
@@ -1846,6 +1855,8 @@ REGISTER_INTRINSICS(authorization_api,
    (require_recipient,     void(int64_t)          )
    (require_authorization, void(int64_t), "require_auth", void(authorization_api::*)(const account_name&) )
    (require_authorization, void(int64_t, int64_t), "require_auth2", void(authorization_api::*)(const account_name&, const permission_name& permission) )
+   (weak_require_authorization, int(int64_t), "weak_require_auth", bool(authorization_api::*)(const account_name&) )
+   (weak_require_authorization, int(int64_t, int64_t), "weak_require_auth2", bool(authorization_api::*)(const account_name&, const permission_name& permission) )
    (has_authorization,     int(int64_t), "has_auth", bool(authorization_api::*)(const account_name&)const )
    (is_account,            int(int64_t)           )
 );

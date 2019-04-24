@@ -510,8 +510,10 @@ class apply_context {
        * @throws missing_auth_exception If no sufficient permission was found
        */
       void require_authorization(const account_name& account);
+      bool weak_require_authorization(const account_name& account);
       bool has_authorization(const account_name& account) const;
       void require_authorization(const account_name& account, const permission_name& permission);
+      bool weak_require_authorization(const account_name& account, const permission_name& permission);
 
       /**
        * @return true if account exists, false if it does not

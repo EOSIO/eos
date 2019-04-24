@@ -179,6 +179,15 @@ void apply_context::require_authorization( const account_name& account ) {
    EOS_ASSERT( false, missing_auth_exception, "missing authority of ${account}", ("account",account));
 }
 
+bool apply_context::weak_require_authorization( const account_name& account ) {
+    for( uint32_t i=0; i < act.authorization.size(); i++ ) {
+        if( act.authorization[i].actor == account ) {
+            used_authorizations[i] = true;
+            return true;
+        }
+    }
+}
+
 bool apply_context::has_authorization( const account_name& account )const {
    for( const auto& auth : act.authorization )
      if( auth.actor == account )
@@ -197,6 +206,18 @@ void apply_context::require_authorization(const account_name& account,
      }
   EOS_ASSERT( false, missing_auth_exception, "missing authority of ${account}/${permission}",
               ("account",account)("permission",permission) );
+}
+
+bool apply_context::weak_require_authorization(const account_name& account,
+                                               const permission_name& permission) {
+    for( uint32_t i=0; i < act.authorization.size(); i++ )
+        if( act.authorization[i].actor == account ) {
+            if( act.authorization[i].permission == permission ) {
+                used_authorizations[i] = true;
+                return true;
+            }
+        }
+    return false;
 }
 
 bool apply_context::has_recipient( account_name code )const {
