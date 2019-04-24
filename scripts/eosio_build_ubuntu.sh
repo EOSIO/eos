@@ -150,7 +150,7 @@ if [ $FORCE_BUILD ];then
    ${SRC_LOCATION}/boost \
    ${SRC_LOCATION}/mongodb-linux-x86_64-amazon-$MONGODB_VERSION \
    ${SRC_LOCATION}/mongo-c-driver-$MONGO_C_DRIVER_VERSION \
-   ${SRC_LOCATION}/mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION \
+   ${SRC_LOCATION}/mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION
 fi
 
 printf "Checking CMAKE installation...\\n"
