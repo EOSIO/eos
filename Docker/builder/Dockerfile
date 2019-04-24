@@ -12,7 +12,7 @@ RUN echo "deb http://apt.llvm.org/bionic/ llvm-toolchain-bionic main" >> /etc/ap
   && wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key|sudo apt-key add - \
   && apt-get update \
   && DEBIAN_FRONTEND=noninteractive apt-get install -y git-core automake autoconf libtool build-essential pkg-config libtool \
-     mpi-default-dev libicu-dev python-dev python3-dev libbz2-dev zlib1g-dev libssl-dev libgmp-dev \
+     mpi-default-dev libicu-dev python-dev python3-dev libbz2-dev zlib1g-dev libssl-dev libgmp-dev libcurl4-openssl-dev libusb-1.0-0-dev \
      clang-4.0 lldb-4.0 lld-4.0 llvm-4.0-dev libclang-4.0-dev ninja-build libusb-1.0-0-dev libcurl4-gnutls-dev pkg-config \
   && rm -rf /var/lib/apt/lists/*
 
