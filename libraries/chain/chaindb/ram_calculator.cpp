@@ -110,8 +110,8 @@ namespace cyberway { namespace chaindb {
     }
 
     uint calc_ram_usage(const eosio::chain::table_def& table, const variant& var) {
-        constexpr static uint base_size = 64; /* "_SERVICE_":{"scope":,"rev":,"payer":,"size":} */
-        constexpr static uint index_size = 12 /* scope */ + 12; /* primary key */
+        constexpr static uint base_size = 128; /* "_SERVICE_":{"scope":,"rev":,"payer":,"owner":,"size":,"ram":} */
+        constexpr static uint index_size = 12 + 8 /* scope:pk */ + 8; /* pk */
 
         uint size = base_size + index_size * table.indexes.size();
         if (table.indexes.size() > 1) {

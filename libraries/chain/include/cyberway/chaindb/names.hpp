@@ -24,11 +24,13 @@ namespace cyberway { namespace chaindb {
         static const string undo_payer_field;
         static const string undo_owner_field;
         static const string undo_size_field;
+        static const string undo_ram_field;
         static const string revision_field;
 
         static const string payer_field;
         static const string owner_field;
         static const string size_field;
+        static const string ram_field;
 
         static const string scope_path;
         static const string undo_pk_path;
