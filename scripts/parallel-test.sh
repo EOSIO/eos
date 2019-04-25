@@ -3,7 +3,7 @@ set -e # exit on failure of any "simple" command (excludes &&, ||, or | chains)
 # prepare environment
 PATH=$PATH:~/opt/mongodb/bin
 echo "Extracting build directory..."
-tar -zxf build.tar.gz
+[[ -z "${1}" ]] && tar -zxf build.tar.gz || tar -xzf $1
 cd /data/job/build
 # run tests
 echo "Running tests..."

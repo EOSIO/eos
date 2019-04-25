@@ -326,8 +326,7 @@ steps:
 
   - label: ":darwin: [Darwin] Mojave Tests"
     command:
-      - "tar -pxzf /Network/NAS/MAC_FLEET/BUILDKITE/artifacts/${ANKA_MOJAVE_TEMPLATE}-${BUILDKITE_PIPELINE_SLUG}-${BUILDKITE_BUILD_ID}.tar.gz"
-      - "./scripts/parallel-test.sh"
+      - "./scripts/parallel-test.sh /Network/NAS/MAC_FLEET/BUILDKITE/artifacts/${ANKA_MOJAVE_TEMPLATE}-${BUILDKITE_PIPELINE_SLUG}-${BUILDKITE_BUILD_ID}.tar.gz"
     artifact_paths:
       - "build/mongod.log"
       - "build/genesis.json"
@@ -339,8 +338,6 @@ steps:
         vm-name: $ANKA_MOJAVE_TEMPLATE
         vm-registry-tag: "${ANKA_TEMPLATE_TAG}::${MAC_TAG}"
         workdir: $ANKA_WORKDIR
-        # Tests can't have the host "working directory" mounted
-        no-volume: true
         always-pull: true
         debug: true
         wait-network: true
@@ -348,8 +345,7 @@ steps:
 
   - label: ":darwin: [Darwin] Mojave Tests"
     command:
-      - "tar -pxzf /Network/NAS/MAC_FLEET/BUILDKITE/artifacts/${ANKA_MOJAVE_TEMPLATE}-${BUILDKITE_PIPELINE_SLUG}-${BUILDKITE_BUILD_ID}.tar.gz"
-      - "./scripts/serial-test.sh"
+      - "./scripts/serial-test.sh /Network/NAS/MAC_FLEET/BUILDKITE/artifacts/${ANKA_MOJAVE_TEMPLATE}-${BUILDKITE_PIPELINE_SLUG}-${BUILDKITE_BUILD_ID}.tar.gz"
     artifact_paths:
       - "build/mongod.log"
       - "build/genesis.json"
@@ -361,8 +357,6 @@ steps:
         vm-name: $ANKA_MOJAVE_TEMPLATE
         vm-registry-tag: "${ANKA_TEMPLATE_TAG}::${MAC_TAG}"
         workdir: $ANKA_WORKDIR
-        # Tests can't have the host "working directory" mounted
-        no-volume: true
         always-pull: true
         debug: true
         wait-network: true
