@@ -830,12 +830,11 @@ mongo_db_plugin_impl::add_action_trace( mongocxx::bulk_write& bulk_action_traces
    write_ttrace |= in_filter;
    if( start_block_reached && store_action_traces && in_filter ) {
       auto action_traces_doc = bsoncxx::builder::basic::document{};
-      const chain::base_action_trace& base = atrace; // without inline action traces
 
       // improve data distributivity when using mongodb sharding
       action_traces_doc.append( kvp( "_id", make_custom_oid() ) );
 
-      auto v = to_variant_with_abi( base );
+      auto v = to_variant_with_abi( atrace );
       try {
          action_traces_doc.append( bsoncxx::builder::concatenate_doc{to_bson( v )} );
       } catch( bsoncxx::exception& e ) {
@@ -850,10 +849,6 @@ mongo_db_plugin_impl::add_action_trace( mongocxx::bulk_write& bulk_action_traces
       mongocxx::model::insert_one insert_op{action_traces_doc.view()};
       bulk_action_traces.append( insert_op );
       added = true;
-   }
-
-   for( const auto& iline_atrace : atrace.inline_traces ) {
-      added |= add_action_trace( bulk_action_traces, iline_atrace, t, executed, now, write_ttrace );
    }
 
    return added;
@@ -1655,8 +1650,8 @@ void mongo_db_plugin::plugin_initialize(const variables_map& options)
                   my->accepted_transaction( t );
                } ));
          my->applied_transaction_connection.emplace(
-               chain.applied_transaction.connect( [&]( const chain::transaction_trace_ptr& t ) {
-                  my->applied_transaction( t );
+               chain.applied_transaction.connect( [&]( std::tuple<const chain::transaction_trace_ptr&, const chain::signed_transaction&> t ) {
+                  my->applied_transaction( std::get<0>(t) );
                } ));
 
          if( my->wipe_database_on_startup ) {
