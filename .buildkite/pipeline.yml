@@ -12,14 +12,14 @@ steps:
     branches: "mac-anka-fleet"
     async: false
     build:
-      branch: "master"
+      branch: "${BUILDKITE_BRANCH}"
       env:
         REPO: "${BUILDKITE_REPO}"
         REPO_BRANCH: "${BUILDKITE_BRANCH}"
         CHECKSUMABLE: "${CHECKSUMABLE}"
         TEMPLATE: "${ANKA_MOJAVE_TEMPLATE}"
         TEMPLATE_TAG: "${ANKA_TEMPLATE_TAG}"
-        TAG_COMMANDS: "CLONED_REPO_DIR/scripts/eosio_build.sh -y" # CLONED_REPO_DIR is where the repo is always cloned into
+        TAG_COMMANDS: "CLONED_REPO_DIR/scripts/eosio_build.sh -y -P -f" # CLONED_REPO_DIR is where the repo is always cloned into
         PROJECT_TAG: "${MAC_TAG}"
 
   - wait
