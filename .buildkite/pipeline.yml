@@ -327,7 +327,7 @@ steps:
   - label: ":darwin: [Darwin] Mojave Tests"
     command:
       - "tar -pxzf /Network/NAS/MAC_FLEET/BUILDKITE/artifacts/${ANKA_MOJAVE_TEMPLATE}-${BUILDKITE_PIPELINE_SLUG}-${BUILDKITE_BUILD_ID}.tar.gz"
-      - "cd ./build && ./scripts/parallel-test.sh"
+      - "./scripts/parallel-test.sh"
     artifact_paths:
       - "build/mongod.log"
       - "build/genesis.json"
@@ -349,7 +349,7 @@ steps:
   - label: ":darwin: [Darwin] Mojave Tests"
     command:
       - "tar -pxzf /Network/NAS/MAC_FLEET/BUILDKITE/artifacts/${ANKA_MOJAVE_TEMPLATE}-${BUILDKITE_PIPELINE_SLUG}-${BUILDKITE_BUILD_ID}.tar.gz"
-      - "cd ./build && ./scripts/serial-test.sh"
+      - "./scripts/serial-test.sh"
     artifact_paths:
       - "build/mongod.log"
       - "build/genesis.json"
