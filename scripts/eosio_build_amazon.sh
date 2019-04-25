@@ -8,28 +8,18 @@ DISK_AVAIL_KB=$( df . | tail -1 | awk '{print $4}' )
 DISK_TOTAL=$(( DISK_TOTAL_KB / 1048576 ))
 DISK_AVAIL=$(( DISK_AVAIL_KB / 1048576 ))
 
-PINNED_TOOLCHAIN=-DCMAKE_TOOLCHAIN_FILE=$BUILD_DIR/pinned_toolchain.cmake
-
-if [[ "${OS_NAME}" == "Amazon Linux AMI" ]]; then # Amazonlinux1
-	DEP_ARRAY=(
-		sudo procps util-linux which gcc72 gcc72-c++ autoconf automake libtool make doxygen graphviz \
-		bzip2 bzip2-devel openssl-devel gmp gmp-devel libstdc++72 python27 python27-devel python36 python36-devel \
-		libedit-devel ncurses-devel swig curl file libcurl-devel libusb1-devel
-	)
-else # Amazonlinux2
-	DEP_ARRAY=(
-		git procps-ng util-linux gcc gcc-c++ autoconf automake libtool make bzip2 \
-		bzip2-devel openssl-devel gmp-devel libstdc++ libcurl-devel libusbx-devel \
-		python3 python3-devel python-devel libedit-devel doxygen graphviz
-	)
-fi
+DEP_ARRAY=(
+	git procps-ng util-linux gcc gcc-c++ autoconf automake libtool make bzip2 \
+	bzip2-devel openssl-devel gmp-devel libstdc++ libcurl-devel libusbx-devel \
+	python3 python3-devel python-devel libedit-devel doxygen graphviz
+)
 
 COUNT=1
 DISPLAY=""
 DEP=""
 
-if [[ "${OS_NAME}" == "Amazon Linux AMI" && "${OS_VER}" -lt 2017 ]]; then
-	printf "You must be running Amazon Linux 2017.09 or higher to install EOSIO.\\n"
+if ! (. /etc/os-release; [ "$VERSION_ID" = "2" ]); then
+	printf "Amazon Linux 2 is the only version of Amazon Linux supported by EOSIO build scripts.\\n"
 	printf "exiting now.\\n"
 	exit 1
 fi
@@ -241,7 +231,7 @@ if [ $PIN_COMPILER ]; then
       printf " - Boost library found with correct version @ ${BOOST_ROOT} (Symlinked to ${BOOST_LINK_LOCATION}).\\n"
    fi
    if [ $? -ne 0 ]; then exit -1; fi
-   
+
    printf "\\n"
 else
    printf "Checking Boost library (${BOOST_VERSION}) installation...\\n"
@@ -267,7 +257,7 @@ else
 
    printf "\\n"
 
-   if [ $BUILD_MONGO ]; then 
+   if [ $BUILD_MONGO ]; then
       printf "Checking MongoDB installation...\\n"
       if [ ! -d $MONGODB_ROOT ] || [ $FORCE_BUILD ]; then
          printf "Installing MongoDB into ${MONGODB_ROOT}...\\n"
