@@ -1,4 +1,13 @@
 #include <cyberway/chaindb/controller.hpp>
+#include <cyberway/chaindb/cursor_cache.hpp>
+
+#include <cyberway/chain/cyberway_contract_types.hpp>
+#include <cyberway/chain/cyberway_contract.hpp>
+
+#include <assert.h>
+
+#include <fc/io/json.hpp>
+#include <cyberway/chaindb/names.hpp>
 
 namespace eosio { namespace chain {
 
@@ -93,12 +102,21 @@ namespace eosio { namespace chain {
         int32_t chaindb_datasize(account_name_t code, cursor_t cursor) {
             // cursor is already opened -> no reason to check ABI for it
 
-            auto cache = context.chaindb.get_cache_object({code, cursor}, true);
-            if (cache) {
-                auto& blob = cache->blob();
+            assert(context.chaindb_cache);
+            auto& chaindb_cache = *context.chaindb_cache;
+
+            chaindb_cache.cache_code   = code;
+            chaindb_cache.cache_cursor = cursor;
+
+            chaindb_cache.cache = context.chaindb.get_cache_object({code, cursor}, true);
+
+            if (chaindb_cache.cache) {
+                auto& blob = chaindb_cache.cache->blob();
                 CYBERWAY_ASSERT(blob.size() < 1024 * 1024, cyberway::chaindb::invalid_data_size_exception,
                     "Wrong data size ${data_size}", ("object_size", blob.size()));
                 return static_cast<int32_t>(blob.size());
+            } else {
+                chaindb_cache.reset();
             }
             return 0;
         }
@@ -106,24 +124,56 @@ namespace eosio { namespace chain {
         primary_key_t chaindb_data(account_name_t code, cursor_t cursor, array_ptr<char> data, size_t size) {
             // cursor is already opened -> no reason to check ABI for it
 
-            auto   cache = context.chaindb.get_cache_object({code, cursor}, false);
-            size_t blob_size = 0;
+            assert(context.chaindb_cache);
+            auto& chaindb_cache = *context.chaindb_cache;
 
-            if (cache) {
-                blob_size = cache->blob().size();
-            }
+            CYBERWAY_ASSERT(chaindb_cache.cache_code == code && chaindb_cache.cache_cursor == cursor,
+                cyberway::chaindb::invalid_data_exception,
+                "Data is requested for the wrong cursor ${code}.${cursor}",
+                ("code", account_name(code))("cursor", cursor));
+
+            auto blob_size = chaindb_cache.cache->blob().size();
 
             CYBERWAY_ASSERT(blob_size == size, cyberway::chaindb::invalid_data_size_exception,
-                "Wrong data size (${data_size} != ${object_size})",
-                ("data_size", size)("object_size", blob_size));
+                "Wrong data size (${data_size} != ${object_size}) for the cursor ${code}.${cursor}",
+                ("data_size", size)("object_size", blob_size)("code", account_name(code))("cursor", cursor));
 
-            if (cache) {
-                auto& blob = cache->blob();
-                std::memcpy(data.value, blob.data(), blob.size());
-                return cache->pk();
+            auto& blob = chaindb_cache.cache->blob();
+            std::memcpy(data.value, blob.data(), blob.size());
+            return chaindb_cache.cache->pk();
+        }
+
+        int32_t chaindb_service(account_name_t code, cursor_t cursor, array_ptr<char> data, size_t size) {
+            // cursor is already opened -> no reason to check ABI for it
+
+            assert(context.chaindb_cache);
+            auto& chaindb_cache = *context.chaindb_cache;
+
+            CYBERWAY_ASSERT(chaindb_cache.cache_code == code && chaindb_cache.cache_cursor == cursor,
+                cyberway::chaindb::invalid_data_exception,
+                "Service is requested for the wrong cursor ${code}.${cursor}",
+                 ("code", account_name(code))("cursor", cursor));
+
+            auto service = context.chaindb_cache->cache->service();
+            auto s = fc::raw::pack_size(service);
+            if (size == 0) {
+                return s;
             }
 
-            return cyberway::chaindb::end_primary_key;
+            chaindb_cache.reset();
+
+            // allow to extend structure in the future
+
+            vector<char> pack_buffer;
+            pack_buffer.resize(size);
+            datastream<char*> ds(pack_buffer.data(), s);
+            fc::raw::pack(ds, service);
+
+            s = std::min(s, size);
+            std::memset(data, size, 0);
+            std::memcpy(data, pack_buffer.data(), s);
+
+            return s;
         }
 
         primary_key_t chaindb_available_primary_key(account_name_t code, account_name_t scope, table_name_t table) {
@@ -136,7 +186,7 @@ namespace eosio { namespace chain {
                 table_access_violation, "db access violation");
         }
 
-        primary_key_t chaindb_insert(
+        int32_t chaindb_insert(
             account_name_t code, account_name_t scope, table_name_t table,
             account_name_t payer, primary_key_t pk, array_ptr<const char> data, size_t size
         ) {
@@ -144,27 +194,47 @@ namespace eosio { namespace chain {
                 "must specify a valid account to pay for new record");
             validate_db_access_violation(code);
             context.lazy_init_chaindb_abi(code);
-            context.chaindb.insert({code, scope, table}, context.get_ram_payer(payer), pk, data, size);
-            return pk;
+            auto delta = context.chaindb.insert({code, scope, table}, context.get_ram_payer(payer), pk, data, size);
+            return static_cast<int32_t>(delta);
         }
 
-        primary_key_t chaindb_update(
+        int32_t chaindb_update(
             account_name_t code, account_name_t scope, table_name_t table,
             account_name_t payer, primary_key_t pk, array_ptr<const char> data, size_t size
         ) {
             validate_db_access_violation(code);
             context.lazy_init_chaindb_abi(code);
-            context.chaindb.update({code, scope, table}, context.get_ram_payer(payer), pk, data, size);
-            return pk;
+            auto delta = context.chaindb.update({code, scope, table}, context.get_ram_payer(payer), pk, data, size);
+            return static_cast<int32_t>(delta);
         }
 
-        primary_key_t chaindb_delete(
+        int32_t chaindb_delete(
             account_name_t code, account_name_t scope, table_name_t table, primary_key_t pk
         ) {
             validate_db_access_violation(code);
             context.lazy_init_chaindb_abi(code);
-            context.chaindb.remove({code, scope, table}, context.get_ram_payer(), pk);
-            return pk;
+            auto delta = context.chaindb.remove({code, scope, table}, context.get_ram_payer(), pk);
+            return static_cast<int32_t>(delta);
+        }
+
+        void chaindb_ram_state(
+            account_name_t code, account_name_t scope, table_name_t table, primary_key_t pk, bool in_ram
+        ) {
+            // This realization doesn't allow to call handler in system contract,
+            //   but as result it works faster - is it good or not?
+            // As an alternative, the account contract can send inline action by itself ...
+
+            validate_db_access_violation(code);
+            context.lazy_init_chaindb_abi(code);
+
+            cyberway::chain::set_ram_state op;
+            op.code   = code;
+            op.scope  = scope;
+            op.table  = table;
+            op.pk     = pk;
+            op.in_ram = in_ram;
+
+            cyberway::chain::change_ram_state(context, op);
         }
 
     }; // class chaindb_api
@@ -189,12 +259,15 @@ namespace eosio { namespace chain {
 
         (chaindb_datasize,    int(int64_t, int)               )
         (chaindb_data,        int64_t(int64_t, int, int, int) )
+        (chaindb_service,     int(int64_t, int, int, int)     )
 
         (chaindb_available_primary_key, int64_t(int64_t, int64_t, int64_t) )
 
-        (chaindb_insert,      int64_t(int64_t, int64_t, int64_t, int64_t, int64_t, int, int) )
-        (chaindb_update,      int64_t(int64_t, int64_t, int64_t, int64_t, int64_t, int, int) )
-        (chaindb_delete,      int64_t(int64_t, int64_t, int64_t, int64_t)                    )
+        (chaindb_insert,      int(int64_t, int64_t, int64_t, int64_t, int64_t, int, int) )
+        (chaindb_update,      int(int64_t, int64_t, int64_t, int64_t, int64_t, int, int) )
+        (chaindb_delete,      int(int64_t, int64_t, int64_t, int64_t)                    )
+
+        (chaindb_ram_state,   void(int64_t, int64_t, int64_t, int64_t, int) )
     );
 
 } } /// eosio::chain

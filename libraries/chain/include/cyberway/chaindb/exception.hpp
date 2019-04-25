@@ -143,6 +143,9 @@ namespace cyberway { namespace chaindb {
         FC_DECLARE_DERIVED_EXCEPTION(invalid_data_size_exception, chaindb_contract_exception,
                                      3730001, "Requested data with wrong size")
 
+        FC_DECLARE_DERIVED_EXCEPTION(invalid_data_exception, chaindb_contract_exception,
+                                     3730002, "Requested data is invalid")
+
     FC_DECLARE_DERIVED_EXCEPTION(chaindb_object_exception, chaindb_exception,
                                  3740000, "ChainDB object exception")
 
@@ -154,5 +157,8 @@ namespace cyberway { namespace chaindb {
 
         FC_DECLARE_DERIVED_EXCEPTION(object_exception, chaindb_object_exception,
                                      3740003, "Object has reserved field name")
+
+        FC_DECLARE_DERIVED_EXCEPTION(update_archive_object_exception, chaindb_object_exception,
+                                     3740004, "Can't edit object in archive")
 
 } } // namespace cyberway::chaindb

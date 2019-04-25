@@ -5,7 +5,6 @@
 #pragma once
 #include <eosio/chain/controller.hpp>
 #include <eosio/chain/transaction.hpp>
-#include <eosio/chain/contract_table_objects.hpp>
 #include <fc/utility.hpp>
 #include <sstream>
 #include <algorithm>
@@ -14,13 +13,15 @@
 namespace cyberway { namespace chaindb {
     class chaindb_controller;
     struct ram_payer_info;
-}}
+    struct chaindb_cursor_cache;
+} }
 
 namespace chainbase { class database; }
 
 namespace eosio { namespace chain {
 
 using cyberway::chaindb::chaindb_controller;
+using cyberway::chaindb::chaindb_cursor_cache;
 
 class controller;
 class transaction_context;
@@ -616,7 +617,7 @@ class apply_context {
       uint64_t next_recv_sequence( account_name receiver );
       uint64_t next_auth_sequence( account_name actor );
 
-      cyberway::chaindb::ram_payer_info get_ram_payer( const account_name& ram_owner = account_name(), const account_name& ram_payer = account_name() );
+      cyberway::chaindb::ram_payer_info get_ram_payer( account_name ram_owner = account_name(), account_name ram_payer = account_name() );
       void add_ram_usage( const account_name& account, int64_t ram_delta );
       void finalize_trace( action_trace& trace, const fc::time_point& start );
 
@@ -627,6 +628,7 @@ class apply_context {
 // TODO: Removed by CyberWay
 //      chainbase::database&          db;
       chaindb_controller&           chaindb; ///< database where state is stored
+      chaindb_cursor_cache*         chaindb_cache = nullptr;
       transaction_context&          trx_context; ///< transaction context in which the action is running
       const action&                 act; ///< message being applied
       account_name                  receiver; ///< the code that is currently running

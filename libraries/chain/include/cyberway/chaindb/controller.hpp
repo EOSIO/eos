@@ -176,15 +176,15 @@ namespace cyberway { namespace chaindb {
 
         primary_key_t available_pk(const table_request&);
 
-        int64_t insert(const table_request&, const ram_payer_info&, primary_key_t, const char*, size_t);
-        int64_t update(const table_request&, const ram_payer_info&, primary_key_t, const char*, size_t);
-        int64_t remove(const table_request&, const ram_payer_info&, primary_key_t);
+        int insert(const table_request&, const ram_payer_info&, primary_key_t, const char*, size_t);
+        int update(const table_request&, const ram_payer_info&, primary_key_t, const char*, size_t);
+        int remove(const table_request&, const ram_payer_info&, primary_key_t);
 
-        int64_t insert(const table_request&, primary_key_t, variant, const ram_payer_info&);
+        int insert(const table_request&, primary_key_t, variant, const ram_payer_info&);
 
-        int64_t insert(cache_object&, variant, const ram_payer_info&);
-        int64_t update(cache_object&, variant, const ram_payer_info&);
-        int64_t remove(cache_object&, const ram_payer_info&);
+        int insert(cache_object&, variant, const ram_payer_info&);
+        int update(cache_object&, variant, const ram_payer_info&);
+        int remove(cache_object&, const ram_payer_info&);
 
         void recalc_ram_usage(cache_object&, const ram_payer_info&);
 

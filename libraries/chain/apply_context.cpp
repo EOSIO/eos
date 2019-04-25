@@ -12,6 +12,7 @@
 #include <boost/container/flat_set.hpp>
 
 #include <cyberway/chaindb/controller.hpp>
+#include <cyberway/chaindb/cursor_cache.hpp>
 #include <cyberway/chain/domain_object.hpp>
 
 using boost::container::flat_set;
@@ -61,7 +62,14 @@ void apply_context::exec_one( action_trace& trace )
              && !(act.account == config::system_account_name && act.name == N( setcode ) &&
                   receiver == config::system_account_name) ) {
             try {
+               auto reset_cache_on_exit = fc::make_scoped_exit([this]{
+                  this->chaindb_cache = nullptr;
+               });
+
                cyberway::chaindb::chaindb_guard guard(chaindb, receiver);
+               chaindb_cursor_cache cache;
+
+               this->chaindb_cache = &cache;
                control.get_wasm_interface().apply( a.code_version, a.code, *this );
                chaindb.apply_code_changes(a.name);
             } catch( const wasm_exit& ) {}

@@ -16,7 +16,7 @@ namespace cyberway { namespace chaindb {
         primary_key_t pk       = unset_primary_key;
         account_name  payer;
         account_name  owner;
-        size_t        size     = 0;
+        int           size     = 0;
         bool          in_ram   = true;
 
         account_name  code;
@@ -82,3 +82,4 @@ namespace cyberway { namespace chaindb {
 } } // namespace cyberway::chaindb
 
 FC_REFLECT_ENUM(cyberway::chaindb::undo_record, (Unknown)(OldValue)(RemovedValue)(NewValue)(NextPk))
+FC_REFLECT(cyberway::chaindb::service_state, (owner)(size)(in_ram))

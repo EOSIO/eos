@@ -352,6 +352,9 @@ private:
             lazy_load_object();
             return item_->service();
         }
+        bool in_ram() const {
+            return service().in_ram;
+        }
 
         const_iterator_impl operator++(int) {
             const_iterator_impl result(*this);
@@ -657,7 +660,7 @@ public:
         }
 
         template<typename Lambda>
-        int64_t modify(const T& obj, const ram_payer_info& ram, Lambda&& updater) const {
+        int modify(const T& obj, const ram_payer_info& ram, Lambda&& updater) const {
             auto& itm = item_data::get_cache(obj);
             CYBERWAY_ASSERT(itm.is_valid_table(get_table_request()), chaindb_midx_logic_exception,
                 "Object ${obj} passed to modify is not from the index ${index}",
@@ -679,11 +682,11 @@ public:
         }
 
         template<typename Lambda>
-        int64_t modify(const T& obj, Lambda&& updater) const {
+        int modify(const T& obj, Lambda&& updater) const {
             return modify(obj, {}, std::forward<Lambda>(updater));
         }
 
-        int64_t erase(const T& obj, const ram_payer_info& ram = {}) const {
+        int erase(const T& obj, const ram_payer_info& ram = {}) const {
             auto& itm = item_data::get_cache(obj);
             CYBERWAY_ASSERT(itm.is_valid_table(get_table_request()), chaindb_midx_logic_exception,
                 "Object ${obj} passed to erase is not from the index ${index}",

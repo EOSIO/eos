@@ -65,7 +65,7 @@ namespace cyberway { namespace chaindb {
         bytes            blob_;
 
     public:
-        cache_object(table_cache_map&, object_value);
+        cache_object(table_cache_map*, object_value);
         cache_object(cache_object&&) = default;
 
         ~cache_object() = default;
