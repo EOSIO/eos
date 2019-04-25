@@ -1846,6 +1846,11 @@ struct controller_impl {
             // On replay, log_irreversible is not called and so no irreversible_block signal is emittted.
             // So emit it explicitly here.
             emit( self.irreversible_block, bsp );
+
+            if (!self.skip_db_sessions(s)) {
+               db.commit(bsp->block_num);
+            }
+
          } else {
             EOS_ASSERT( read_mode != db_read_mode::IRREVERSIBLE, block_validate_exception,
                         "invariant failure: cannot replay reversible blocks while in irreversible mode" );
