@@ -1,9 +1,9 @@
-# env:
-#   ANKA_WORKDIR: "/data/job"
-#   ANKA_MOJAVE_TEMPLATE: "10.14.4_6C_14G_40G"
-#   ANKA_TEMPLATE_TAG: "clean::cicd::git-ssh::nas::brew"
-#   CHECKSUMABLE: "scripts/eosio_build*"
-#   MAC_TAG: "eosio_2-3"
+env:
+  ANKA_WORKDIR: "/data/job"
+  ANKA_MOJAVE_TEMPLATE: "10.14.4_6C_14G_40G"
+  ANKA_TEMPLATE_TAG: "clean::cicd::git-ssh::nas::brew"
+  CHECKSUMABLE: "scripts/eosio_build*"
+  MAC_TAG: "eosio_2-3"
 
 steps:
 
