@@ -1,5 +1,3 @@
-steps:
-
 env:
   ANKA_WORKDIR: "/data/job"
   ANKA_MOJAVE_TEMPLATE: "10.14.4_6C_14G_23G"
@@ -43,7 +41,7 @@ steps:
     artifact_paths: "build.tar.gz"
     timeout: 120
 
-    
+
   - command: | # Amazon Linux 2 Build
         echo "+++ :hammer: Building"
         ./scripts/eosio_build.sh -y -P
