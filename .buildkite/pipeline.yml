@@ -26,7 +26,7 @@ steps:
 
   - label: ":darwin: [Darwin] Mojave Build"
     command:
-      - "cd $ANKA_WORKDIR ./scripts/eosio_build.sh -y -P"
+      - "cd $ANKA_WORKDIR && ./scripts/eosio_build.sh -y -P"
       - "tar -pczf /Network/NAS/MAC_FLEET/BUILDKITE/artifacts/${ANKA_MOJAVE_TEMPLATE}-${BUILDKITE_PIPELINE_SLUG}-${BUILDKITE_BUILD_ID}.tar.gz build"
     plugins:
       chef/anka#v0.4.3:
