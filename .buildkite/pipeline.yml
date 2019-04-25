@@ -12,7 +12,7 @@ steps:
     branches: "*"
     async: false
     build:
-      branch: "${BUILDKITE_BRANCH}"
+      branch: "master"
       env:
         REPO: "${BUILDKITE_REPO}"
         REPO_BRANCH: "${BUILDKITE_BRANCH}"
