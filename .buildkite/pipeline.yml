@@ -1,4 +1,49 @@
 steps:
+
+env:
+  ANKA_WORKDIR: "/data/job"
+  ANKA_MOJAVE_TEMPLATE: "10.14.4_6C_14G_23G"
+  ANKA_TEMPLATE_TAG: "clean::cicd::git-ssh::nas::brew"
+  CHECKSUMABLE: "scripts/eosio_build*"
+  MAC_TAG: "eosio_2-3"
+
+steps:
+
+  - trigger: "mac-anka-fleet"
+    label: ":anka: Ensure Mojave Anka Template Tag Exists"
+    branches: "mac-anka-fleet"
+    async: false
+    build:
+      branch: "master"
+      env:
+        REPO: "${BUILDKITE_REPO}"
+        REPO_BRANCH: "${BUILDKITE_BRANCH}"
+        CHECKSUMABLE: "${CHECKSUMABLE}"
+        TEMPLATE: "${ANKA_MOJAVE_TEMPLATE}"
+        TEMPLATE_TAG: "${ANKA_TEMPLATE_TAG}"
+        TAG_COMMANDS: "CLONED_REPO_DIR/scripts/eosio_build.sh -y" # CLONED_REPO_DIR is where the repo is always cloned into
+        PROJECT_TAG: "${MAC_TAG}"
+
+  - wait
+
+  - command: | # macOS Mojave Build
+      echo "--- Creating symbolic link to job directory :file_folder:"
+      sleep 5
+      ln -s "$(pwd)" /data/job
+      cd /data/job
+      echo "+++ Building :hammer:"
+      ./scripts/eosio_build.sh -y -P
+      echo "--- Compressing build directory :compression:"
+      tar -pczf build.tar.gz build
+      if [[ ! -f build.tar.gz ]]; then echo 'ERROR: No build.tar.gz artifact found!' && exit 1; fi
+    label: ":darwin: Mojave Build"
+    agents:
+      - "role=builder-v2-2"
+      - "os=mojave"
+    artifact_paths: "build.tar.gz"
+    timeout: 120
+
+    
   - command: | # Amazon Linux 2 Build
         echo "+++ :hammer: Building"
         ./scripts/eosio_build.sh -y -P
@@ -89,23 +134,6 @@ steps:
         image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu18_2-3"
         propagate-environment: true
         workdir: /data/job
-    timeout: 120
-
-  - command: | # macOS Mojave Build
-      echo "--- Creating symbolic link to job directory :file_folder:"
-      sleep 5
-      ln -s "$(pwd)" /data/job
-      cd /data/job
-      echo "+++ Building :hammer:"
-      ./scripts/eosio_build.sh -y -P
-      echo "--- Compressing build directory :compression:"
-      tar -pczf build.tar.gz build
-      if [[ ! -f build.tar.gz ]]; then echo 'ERROR: No build.tar.gz artifact found!' && exit 1; fi
-    label: ":darwin: Mojave Build"
-    agents:
-      - "role=builder-v2-2"
-      - "os=mojave"
-    artifact_paths: "build.tar.gz"
     timeout: 120
 
   - wait
