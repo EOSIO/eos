@@ -351,7 +351,7 @@ steps:
   - label: ":darwin: [Darwin] Mojave Tests"
     command:
       - "tar -xzf /Network/NAS/MAC_FLEET/BUILDKITE/artifacts/10.14.4_6C_14G_40G-eosio-9ae4305b-7694-4698-a5b0-81e0b9f9d17a.tar.gz"
-      - "cd /data/job/build && ctest -L nonparallelizable_tests --output-on-failure -T Test"
+      - "cd /data/job/build && ctest -L nonparallelizable_tests --output-on-failure -T Test < /dev/null"
       - "cd /data/job/build && mv $(pwd)/Testing/$(ls $(pwd)/Testing/ | grep '20' | tail -n 1)/Test.xml test-results.xml"
     artifact_paths:
       - "build/mongod.log"
