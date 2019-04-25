@@ -8,7 +8,9 @@ DISK_AVAIL_KB=$( df . | tail -1 | awk '{print $4}' )
 DISK_TOTAL=$(( DISK_TOTAL_KB / 1048576 ))
 DISK_AVAIL=$(( DISK_AVAIL_KB / 1048576 ))
 
-PINNED_TOOLCHAIN=-DCMAKE_TOOLCHAIN_FILE=$BUILD_DIR/pinned_toolchain.cmake
+if [ $BUILD_CLANG8 ]; then
+   PINNED_TOOLCHAIN=-DCMAKE_TOOLCHAIN_FILE=$BUILD_DIR/pinned_toolchain.cmake
+fi
 
 if [[ "${OS_NAME}" == "Amazon Linux AMI" ]]; then # Amazonlinux1
 	DEP_ARRAY=(
@@ -120,18 +122,6 @@ fi
 
 printf "\\n"
 
-### clean up force build before starting
-if [ $FORCE_BUILD ];then
-   rm -rf  \
-   ${SRC_LOCATION}/cmake-$CMAKE_VERSION \
-   ${SRC_LOCATION}/llvm ${OPT_LOCATION}/llvm4 \
-   ${TMP_LOCATION}/clang8 ${OPT_LOCATION}/clang8 \
-   ${SRC_LOCATION}/zlib ${OPT_LOCATION}/zlib \
-   ${SRC_LOCATION}/boost \
-   ${SRC_LOCATION}/mongodb-linux-x86_64-amazon-$MONGODB_VERSION \
-   ${SRC_LOCATION}/mongo-c-driver-$MONGO_C_DRIVER_VERSION \
-   ${SRC_LOCATION}/mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION
-fi
 
 printf "Checking CMAKE installation...\\n"
 if [ ! -e $CMAKE ] || [ $FORCE_BUILD ]; then
@@ -154,8 +144,7 @@ if [ $? -ne 0 ]; then exit -1; fi
 
 printf "\\n"
 
-
-if [ $PIN_COMPILER ]; then
+if $PIN_COMPILER; then
    printf "Checking Clang 8 support...\\n"
    if [ ! -d $CLANG8_ROOT ] || [ $FORCE_BUILD ]; then
       printf "Installing Clang 8...\\n"
@@ -267,67 +256,6 @@ else
 
    printf "\\n"
 
-   if [ $BUILD_MONGO ]; then 
-      printf "Checking MongoDB installation...\\n"
-      if [ ! -d $MONGODB_ROOT ] || [ $FORCE_BUILD ]; then
-         printf "Installing MongoDB into ${MONGODB_ROOT}...\\n"
-         curl -OL https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-amazon-$MONGODB_VERSION.tgz \
-         && tar -xzf mongodb-linux-x86_64-amazon-$MONGODB_VERSION.tgz \
-         && mv $SRC_LOCATION/mongodb-linux-x86_64-amazon-$MONGODB_VERSION $MONGODB_ROOT \
-         && touch $MONGODB_LOG_LOCATION/mongod.log \
-         && rm -f mongodb-linux-x86_64-amazon-$MONGODB_VERSION.tgz \
-         && cp -f $REPO_ROOT/scripts/mongod.conf $MONGODB_CONF \
-         && mkdir -p $MONGODB_DATA_LOCATION \
-         && rm -rf $MONGODB_LINK_LOCATION \
-         && rm -rf $BIN_LOCATION/mongod \
-         && ln -s $MONGODB_ROOT $MONGODB_LINK_LOCATION \
-         && ln -s $MONGODB_LINK_LOCATION/bin/mongod $BIN_LOCATION/mongod \
-         || exit 1
-         printf " - MongoDB successfully installed @ ${MONGODB_ROOT} (Symlinked to ${MONGODB_LINK_LOCATION}).\\n"
-      else
-         printf " - MongoDB found with correct version @ ${MONGODB_ROOT} (Symlinked to ${MONGODB_LINK_LOCATION}).\\n"
-      fi
-      if [ $? -ne 0 ]; then exit -1; fi
-      printf "Checking MongoDB C driver installation...\\n"
-      if [ ! -d $MONGO_C_DRIVER_ROOT ] || [ $FORCE_BUILD ]; then
-         printf "Installing MongoDB C driver...\\n"
-         curl -LO https://github.com/mongodb/mongo-c-driver/releases/download/$MONGO_C_DRIVER_VERSION/mongo-c-driver-$MONGO_C_DRIVER_VERSION.tar.gz \
-         && tar -xzf mongo-c-driver-$MONGO_C_DRIVER_VERSION.tar.gz \
-         && cd mongo-c-driver-$MONGO_C_DRIVER_VERSION \
-         && mkdir -p cmake-build \
-         && cd cmake-build \
-         && $CMAKE -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$PREFIX -DENABLE_BSON=ON -DENABLE_SSL=OPENSSL -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF -DENABLE_STATIC=ON .. \
-         && make -j"${JOBS}" \
-         && make install \
-         && cd ../.. \
-         && rm mongo-c-driver-$MONGO_C_DRIVER_VERSION.tar.gz \
-         || exit 1
-         printf " - MongoDB C driver successfully installed @ ${MONGO_C_DRIVER_ROOT}.\\n"
-      else
-         printf " - MongoDB C driver found with correct version @ ${MONGO_C_DRIVER_ROOT}.\\n"
-      fi
-      if [ $? -ne 0 ]; then exit -1; fi
-      printf "Checking MongoDB C++ driver installation...\\n"
-      if [ ! -d $MONGO_CXX_DRIVER_ROOT ] || [ $FORCE_BUILD ]; then
-         printf "Installing MongoDB C++ driver...\\n"
-         curl -L https://github.com/mongodb/mongo-cxx-driver/archive/r$MONGO_CXX_DRIVER_VERSION.tar.gz -o mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION.tar.gz \
-         && tar -xzf mongo-cxx-driver-r${MONGO_CXX_DRIVER_VERSION}.tar.gz \
-         && cd mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION/build \
-         && $CMAKE -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$PREFIX .. \
-         && make -j"${JOBS}" VERBOSE=1 \
-         && make install \
-         && cd ../.. \
-         && rm -f mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION.tar.gz \
-         || exit 1
-         printf " - MongoDB C++ driver successfully installed @ ${MONGO_CXX_DRIVER_ROOT}.\\n"
-      else
-         printf " - MongoDB C++ driver found with correct version @ ${MONGO_CXX_DRIVER_ROOT}.\\n"
-      fi
-      if [ $? -ne 0 ]; then exit -1; fi
-
-      printf "\\n"
-   fi
-
    printf "Checking LLVM 4 support...\\n"
    if [ ! -d $LLVM_ROOT ] || [ $FORCE_BUILD ]; then
       printf "Installing LLVM 4...\\n"
@@ -348,6 +276,70 @@ else
 
 
    cd ..
+   printf "\\n"
+fi
+
+if [ $BUILD_MONGO ]; then 
+   printf "Checking MongoDB installation...\\n"
+   if [ ! -d $MONGODB_ROOT ] || [ $FORCE_BUILD ]; then
+      printf "Installing MongoDB into ${MONGODB_ROOT}...\\n"
+      curl -OL https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-amazon-$MONGODB_VERSION.tgz \
+      && tar -xzf mongodb-linux-x86_64-amazon-$MONGODB_VERSION.tgz \
+      && mv $SRC_LOCATION/mongodb-linux-x86_64-amazon-$MONGODB_VERSION $MONGODB_ROOT \
+      && touch $MONGODB_LOG_LOCATION/mongod.log \
+      && rm -f mongodb-linux-x86_64-amazon-$MONGODB_VERSION.tgz \
+      && cp -f $REPO_ROOT/scripts/mongod.conf $MONGODB_CONF \
+      && mkdir -p $MONGODB_DATA_LOCATION \
+      && rm -rf $MONGODB_LINK_LOCATION \
+      && rm -rf $BIN_LOCATION/mongod \
+      && ln -s $MONGODB_ROOT $MONGODB_LINK_LOCATION \
+      && ln -s $MONGODB_LINK_LOCATION/bin/mongod $BIN_LOCATION/mongod \
+      || exit 1
+      printf " - MongoDB successfully installed @ ${MONGODB_ROOT} (Symlinked to ${MONGODB_LINK_LOCATION}).\\n"
+   else
+      printf " - MongoDB found with correct version @ ${MONGODB_ROOT} (Symlinked to ${MONGODB_LINK_LOCATION}).\\n"
+   fi
+   if [ $? -ne 0 ]; then exit -1; fi
+   printf "Checking MongoDB C driver installation...\\n"
+   if [ ! -d $MONGO_C_DRIVER_ROOT ] || [ $FORCE_BUILD ]; then
+      printf "Installing MongoDB C driver...\\n"
+      curl -LO https://github.com/mongodb/mongo-c-driver/releases/download/$MONGO_C_DRIVER_VERSION/mongo-c-driver-$MONGO_C_DRIVER_VERSION.tar.gz \
+      && tar -xzf mongo-c-driver-$MONGO_C_DRIVER_VERSION.tar.gz \
+      && cd mongo-c-driver-$MONGO_C_DRIVER_VERSION \
+      && mkdir -p cmake-build \
+      && cd cmake-build \
+      && $CMAKE -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$PREFIX -DENABLE_BSON=ON -DENABLE_SSL=OPENSSL -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF -DENABLE_STATIC=ON -DENABLE_ICU=OFF $PINNED_TOOLCHAIN .. \
+      && make -j"${JOBS}" \
+      && make install \
+      && cd ../.. \
+      && rm mongo-c-driver-$MONGO_C_DRIVER_VERSION.tar.gz \
+      || exit 1
+      printf " - MongoDB C driver successfully installed @ ${MONGO_C_DRIVER_ROOT}.\\n"
+   else
+      printf " - MongoDB C driver found with correct version @ ${MONGO_C_DRIVER_ROOT}.\\n"
+   fi
+   if [ $? -ne 0 ]; then exit -1; fi
+   printf "Checking MongoDB C++ driver installation...\\n"
+   if [ ! -d $MONGO_CXX_DRIVER_ROOT ] || [ $FORCE_BUILD ]; then
+      printf "Installing MongoDB C++ driver...\\n"
+      curl -L https://github.com/mongodb/mongo-cxx-driver/archive/r$MONGO_CXX_DRIVER_VERSION.tar.gz -o mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION.tar.gz \
+      && tar -xzf mongo-cxx-driver-r${MONGO_CXX_DRIVER_VERSION}.tar.gz \
+      && cd mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION \
+      && sed -i 's/"maxAwaitTimeMS", count/"maxAwaitTimeMS", static_cast<int64_t>(count)/' src/mongocxx/options/change_stream.cpp \
+      && sed -i 's/add_subdirectory(test)//' src/mongocxx/CMakeLists.txt src/bsoncxx/CMakeLists.txt \
+      && cd build \
+      && $CMAKE -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$PREFIX $PINNED_TOOLCHAIN .. \
+      && make -j"${JOBS}" VERBOSE=1 \
+      && make install \
+      && cd ../.. \
+      && rm -f mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION.tar.gz \
+      || exit 1
+      printf " - MongoDB C++ driver successfully installed @ ${MONGO_CXX_DRIVER_ROOT}.\\n"
+   else
+      printf " - MongoDB C++ driver found with correct version @ ${MONGO_CXX_DRIVER_ROOT}.\\n"
+   fi
+   if [ $? -ne 0 ]; then exit -1; fi
+
    printf "\\n"
 fi
 

@@ -47,7 +47,7 @@ steps:
       ln -s "$(pwd)" /data/job
       cd /data/job
       echo "+++ Building :hammer:"
-      ./scripts/eosio_build.sh -y -P
+      ./scripts/eosio_build.sh -y -P -m
       echo "--- Compressing build directory :compression:"
       tar -pczf build.tar.gz build
       if [[ ! -f build.tar.gz ]]; then echo 'ERROR: No build.tar.gz artifact found!' && exit 1; fi
@@ -60,7 +60,7 @@ steps:
 
   - command: | # Amazon Linux 2 Build
         echo "+++ :hammer: Building"
-        ./scripts/eosio_build.sh -y -P
+        ./scripts/eosio_build.sh -y -P -m
         echo "--- :compression: Compressing build directory"
         tar -pczf build.tar.gz build
         if [[ ! -f build.tar.gz ]]; then echo 'ERROR: No build.tar.gz artifact found!' && exit 1; fi
@@ -83,7 +83,7 @@ steps:
 
   - command: | # CentOS 7 Build
         echo "+++ :hammer: Building"
-        ./scripts/eosio_build.sh -y -P
+        ./scripts/eosio_build.sh -y -P -m
         echo "--- :compression: Compressing build directory"
         tar -pczf build.tar.gz build
         if [[ ! -f build.tar.gz ]]; then echo 'ERROR: No build.tar.gz artifact found!' && exit 1; fi
@@ -106,7 +106,7 @@ steps:
 
   - command: | # Ubuntu 16.04 Build
         echo "+++ :hammer: Building"
-        ./scripts/eosio_build.sh -y -P
+        ./scripts/eosio_build.sh -y -P -m
         echo "--- :compression: Compressing build directory"
         tar -pczf build.tar.gz build
         if [[ ! -f build.tar.gz ]]; then echo 'ERROR: No build.tar.gz artifact found!' && exit 1; fi
@@ -129,7 +129,7 @@ steps:
 
   - command: | # Ubuntu 18.04 Build
         echo "+++ :hammer: Building"
-        ./scripts/eosio_build.sh -y -P
+        ./scripts/eosio_build.sh -y -P -m
         echo "--- :compression: Compressing build directory"
         tar -pczf build.tar.gz build
         if [[ ! -f build.tar.gz ]]; then echo 'ERROR: No build.tar.gz artifact found!' && exit 1; fi
