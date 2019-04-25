@@ -229,8 +229,8 @@ namespace cyberway { namespace chaindb {
 
         // The number of RAM objects is less then the number of archive objects.
         //   so, the RAM field is false by default
-        state.ram      = false;
-        state.undo_ram = false;
+        state.in_ram      = false;
+        state.undo_in_ram = false;
 
         for (auto& itm: src) try {
             auto key = itm.key().to_string();
@@ -292,9 +292,9 @@ namespace cyberway { namespace chaindb {
                     } else {
                         validate_field_name(names::ram_field == key, src, itm);
                         validate_field_type(type::k_bool == key_type, src, itm);
-                        state.ram = itm.get_bool().value;
+                        state.in_ram = itm.get_bool().value;
                         // for archive records it should absent
-                        validate_field_type(state.ram, src, itm);
+                        validate_field_type(state.in_ram, src, itm);
                     }
                     break;
                 }
@@ -333,9 +333,9 @@ namespace cyberway { namespace chaindb {
                         default: {
                             validate_field_name(names::undo_ram_field == key, src, itm);
                             validate_field_type(type::k_bool == key_type, src, itm);
-                            state.undo_ram = itm.get_bool().value;
+                            state.undo_in_ram = itm.get_bool().value;
                             // for archive records it should absent
-                            validate_field_type(state.undo_ram, src, itm);
+                            validate_field_type(state.undo_in_ram, src, itm);
                             break;
                         }
                     }
@@ -595,7 +595,7 @@ namespace cyberway { namespace chaindb {
             serv_doc.append(kvp(names::payer_field, get_payer_name(obj.service.payer)));
             serv_doc.append(kvp(names::owner_field, get_owner_name(obj.service.owner)));
             serv_doc.append(kvp(names::size_field, static_cast<int32_t>(obj.service.size)));
-            append_ram_field(serv_doc, names::ram_field, obj.service.ram);
+            append_ram_field(serv_doc, names::ram_field, obj.service.in_ram);
         }));
         return doc;
     }
@@ -615,8 +615,8 @@ namespace cyberway { namespace chaindb {
             serv_doc.append(kvp(names::payer_field, get_payer_name(obj.service.payer)));
             serv_doc.append(kvp(names::owner_field, get_owner_name(obj.service.owner)));
             serv_doc.append(kvp(names::size_field, static_cast<int32_t>(obj.service.size)));
-            append_ram_field(serv_doc, names::ram_field, obj.service.ram);
-            append_ram_field(serv_doc, names::undo_ram_field, obj.service.undo_ram);
+            append_ram_field(serv_doc, names::ram_field, obj.service.in_ram);
+            append_ram_field(serv_doc, names::undo_ram_field, obj.service.undo_in_ram);
         }));
         return doc;
     }

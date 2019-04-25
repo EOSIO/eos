@@ -17,7 +17,7 @@ namespace cyberway { namespace chaindb {
         account_name  payer;
         account_name  owner;
         size_t        size     = 0;
-        bool          ram      = true;
+        bool          in_ram   = true;
 
         account_name  code;
         account_name  scope;
@@ -32,7 +32,7 @@ namespace cyberway { namespace chaindb {
         account_name  undo_payer;
         account_name  undo_owner;
         size_t        undo_size     = 0;
-        bool          undo_ram      = true;
+        bool          undo_in_ram   = true;
 
         service_state(const table_info& table, primary_key_t pk)
         : pk(pk), code(table.code), scope(table.scope), table(table.table->name) {

@@ -367,7 +367,7 @@ namespace cyberway { namespace chaindb {
         assert(is_valid_table(service));
 
         object_.service = std::move(service);
-        if (!object_.service.ram && table_cache_map_) {
+        if (!object_.service.in_ram && table_cache_map_) {
             table_cache_map_->remove_cache_indicies(std::move(indicies_));
             table_cache_map_->remove_cache_object(*this);
         }

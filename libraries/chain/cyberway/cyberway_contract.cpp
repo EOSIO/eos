@@ -157,7 +157,7 @@ void apply_cyber_setramstate(apply_context& context) {
             context.require_authorization(owner);
         }
 
-        EOS_ASSERT(op.in_ram != cache->service().ram, eosio::chain::object_ram_state_exception,
+        EOS_ASSERT(op.in_ram != cache->service().in_ram, eosio::chain::object_ram_state_exception,
             "Object with the primary key ${scope}:${pk} in the table ${table} already has RAM state = ${state}",
             ("pk", op.pk)("scope", chaindb::get_scope_name(op.scope))("table", chaindb::get_full_table_name(op))
             ("state", op.in_ram));

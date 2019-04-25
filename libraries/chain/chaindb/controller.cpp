@@ -364,7 +364,7 @@ namespace cyberway { namespace chaindb {
             auto table = get_table(itm);
             auto obj = itm.object();
 
-            obj.service.ram = ram_payer.in_ram;
+            obj.service.in_ram = ram_payer.in_ram;
             update(table, ram_payer, obj);
             itm.set_service(std::move(obj.service));
         }
