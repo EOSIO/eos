@@ -38,7 +38,7 @@ steps:
         wait-network: true
     agents:
       - "queue=mac-anka-node-fleet"
-    timeout: 60
+    timeout: 120
 
 
   # - command: | # macOS Mojave Build
@@ -344,7 +344,7 @@ steps:
         always-pull: true
         debug: true
         wait-network: true
-    timeout: 60
+    timeout: 120
 
   - label: ":darwin: [Darwin] Mojave Tests"
     command:
@@ -366,7 +366,7 @@ steps:
         always-pull: true
         debug: true
         wait-network: true
-    timeout: 60
+    timeout: 120
 
   # # Mojave Tests
   # - command: |
