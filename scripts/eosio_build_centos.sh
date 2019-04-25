@@ -35,8 +35,8 @@ if [ "${MEM_MEG}" -lt 7000 ]; then
 	exit 1;
 fi
 
-if [ "${OS_VER}" -lt 7 ]; then
-	printf "\\nYou must be running Centos 7 or higher to install EOSIO.\\n"
+if ! (. /etc/os-release; [ "$VERSION_ID" = "7" ]); then
+	printf "\\nCentos 7 is the only version of Centos supported by EOSIO build scripts.\\n"
 	printf "Exiting now.\\n\\n"
 	exit 1;
 fi

@@ -272,7 +272,7 @@ fi
 CXX=$CPP_COMP
 CC=$CC_COMP
 
-export PIN_COMPILER=$PIN_COMPILER 
+export PIN_COMPILER=$PIN_COMPILER
 
 # Setup directories
 mkdir -p $SRC_LOCATION
@@ -296,21 +296,23 @@ printf "\\nARCHITECTURE: %s\\n" "${ARCH}"
 # Find and use existing CMAKE
 export CMAKE=$(command -v cmake 2>/dev/null)
 
+print_supported_linux_distros_and_exit() {
+   printf "\\nOn Linux the EOSIO build script only supports Amazon, Centos, and Ubuntu.\\n"
+   printf "Please install on a supported version of one of these Linux distributions.\\n"
+   printf "https://aws.amazon.com/amazon-linux-ami/\\n"
+   printf "https://www.centos.org/\\n"
+   printf "https://www.ubuntu.com/\\n"
+   printf "Exiting now.\\n"
+   exit 1
+}
+
 if [ "$ARCH" == "Linux" ]; then
    # Check if cmake is already installed or not and use source install location
    if [ -z $CMAKE ]; then export CMAKE=$PREFIX/bin/cmake; fi
    export OS_NAME=$( cat /etc/os-release | grep ^NAME | cut -d'=' -f2 | sed 's/\"//gI' )
    OPENSSL_ROOT_DIR=/usr/include/openssl
    if [ ! -e /etc/os-release ]; then
-      printf "\\nEOSIO currently supports Amazon, Centos, Fedora, Mint & Ubuntu Linux only.\\n"
-      printf "Please install on the latest version of one of these Linux distributions.\\n"
-      printf "https://aws.amazon.com/amazon-linux-ami/\\n"
-      printf "https://www.centos.org/\\n"
-      printf "https://start.fedoraproject.org/\\n"
-      printf "https://linuxmint.com/\\n"
-      printf "https://www.ubuntu.com/\\n"
-      printf "Exiting now.\\n"
-      exit 1
+      print_supported_linux_distros_and_exit
    fi
    case "$OS_NAME" in
       "Amazon Linux AMI"|"Amazon Linux")
@@ -319,25 +321,11 @@ if [ "$ARCH" == "Linux" ]; then
       "CentOS Linux")
          FILE="${REPO_ROOT}/scripts/eosio_build_centos.sh"
       ;;
-      "elementary OS")
-         FILE="${REPO_ROOT}/scripts/eosio_build_ubuntu.sh"
-      ;;
-      "Fedora")
-         export CPATH=/usr/include/llvm4.0:$CPATH # llvm4.0 for fedora package path inclusion
-         FILE="${REPO_ROOT}/scripts/eosio_build_fedora.sh"
-      ;;
-      "Linux Mint")
-         FILE="${REPO_ROOT}/scripts/eosio_build_ubuntu.sh"
-      ;;
       "Ubuntu")
          FILE="${REPO_ROOT}/scripts/eosio_build_ubuntu.sh"
       ;;
-      "Debian GNU/Linux")
-         FILE="${REPO_ROOT}/scripts/eosio_build_ubuntu.sh"
-      ;;
       *)
-         printf "\\nUnsupported Linux Distribution. Exiting now.\\n\\n"
-         exit 1
+         print_supported_linux_distros_and_exit
    esac
 fi
 
