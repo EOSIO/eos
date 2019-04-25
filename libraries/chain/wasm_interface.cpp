@@ -57,6 +57,10 @@ namespace eosio { namespace chain {
       //Hard: Kick off instantiation in a separate thread at this location
 	 }
 
+   void wasm_interface::indicate_shutting_down() {
+      my->is_shutting_down = true;
+   }
+
    void wasm_interface::code_block_num_last_used(const digest_type& code_hash, const uint8_t& vm_type, const uint8_t& vm_version, const uint32_t& block_num) {
       my->code_block_num_last_used(code_hash, vm_type, vm_version, block_num);
    }
