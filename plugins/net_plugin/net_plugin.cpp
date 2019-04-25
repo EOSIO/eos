@@ -213,6 +213,7 @@ namespace eosio {
       void handle_message(const connection_ptr& c, const handshake_message& msg);
       void handle_message(const connection_ptr& c, const chain_size_message& msg);
       void handle_message(const connection_ptr& c, const go_away_message& msg );
+
       /** \name Peer Timestamps
        *  Time message handling
        *  @{
@@ -2192,6 +2193,7 @@ namespace eosio {
    }
 
    bool net_plugin_impl::start_session(const connection_ptr& con) {
+
       boost::asio::ip::tcp::no_delay nodelay( true );
       boost::system::error_code ec;
       con->socket->set_option( nodelay, ec );
@@ -2525,6 +2527,7 @@ namespace eosio {
 
 
    void net_plugin_impl::handle_message(const connection_ptr& c, const handshake_message& msg) {
+
       peer_ilog(c, "received handshake_message");
       if (!is_valid(msg)) {
          peer_elog( c, "bad handshake message");
