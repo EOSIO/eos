@@ -3,9 +3,9 @@ set -e # exit on failure of any "simple" command (excludes &&, ||, or | chains)
 # prepare environment
 PATH=$PATH:~/opt/mongodb/bin
 echo "Extracting build directory..."
-tar -zxf build.tar.gz
-echo "Starting MongoDB..."
-~/bin/mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log
+[[ -z "${1}" ]] && tar -zxf build.tar.gz || tar -xzf $1
+#echo "Starting MongoDB..."
+#~/bin/mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath "$(pwd)"/mongod.log
 cd /data/job/build
 # run tests
 echo "Running tests..."
@@ -24,7 +24,7 @@ mv $(pwd)/Testing/$(ls $(pwd)/Testing/ | grep '20' | tail -n 1)/Test.xml $XML_FI
 buildkite-agent artifact upload config.ini
 buildkite-agent artifact upload genesis.json
 cd ..
-buildkite-agent artifact upload mongod.log
+#buildkite-agent artifact upload mongod.log
 cd build
 buildkite-agent artifact upload $XML_FILENAME
 echo "Done uploading artifacts."

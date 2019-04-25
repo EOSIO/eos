@@ -1,7 +1,66 @@
+# env:
+#   ANKA_WORKDIR: "/data/job"
+#   ANKA_MOJAVE_TEMPLATE: "10.14.4_6C_14G_40G"
+#   ANKA_TEMPLATE_TAG: "clean::cicd::git-ssh::nas::brew"
+#   CHECKSUMABLE: "scripts/eosio_build*"
+#   MAC_TAG: "eosio_2-3"
+
 steps:
+
+  # - trigger: "mac-anka-fleet"
+  #   label: ":anka: Ensure Mojave Anka Template Tag Exists"
+  #   branches: "*"
+  #   async: false
+  #   build:
+  #     branch: "master"
+  #     env:
+  #       REPO: "${BUILDKITE_REPO}"
+  #       REPO_BRANCH: "${BUILDKITE_BRANCH}"
+  #       CHECKSUMABLE: "${CHECKSUMABLE}"
+  #       TEMPLATE: "${ANKA_MOJAVE_TEMPLATE}"
+  #       TEMPLATE_TAG: "${ANKA_TEMPLATE_TAG}"
+  #       TAG_COMMANDS: "CLONED_REPO_DIR/scripts/eosio_build.sh -y -P -f" # CLONED_REPO_DIR IS REQUIRED and is where the repo is always cloned into
+  #       PROJECT_TAG: "${MAC_TAG}"
+
+  # - wait
+
+  # - label: ":darwin: [Darwin] Mojave Build"
+  #   command:
+  #     - "./scripts/eosio_build.sh -y -P"
+  #     - "tar -pczf /Network/NAS/MAC_FLEET/BUILDKITE/artifacts/${ANKA_MOJAVE_TEMPLATE}-${BUILDKITE_PIPELINE_SLUG}-${BUILDKITE_BUILD_ID}.tar.gz build"
+  #   plugins:
+  #     chef/anka#v0.4.3:
+  #       vm-name: $ANKA_MOJAVE_TEMPLATE
+  #       vm-registry-tag: "${ANKA_TEMPLATE_TAG}::${MAC_TAG}"
+  #       workdir: $ANKA_WORKDIR
+  #       always-pull: true
+  #       debug: true
+  #       wait-network: true
+  #   agents:
+  #     - "queue=mac-anka-node-fleet"
+  #   timeout: 120
+
+
+  - command: | # macOS Mojave Build
+      echo "--- Creating symbolic link to job directory :file_folder:"
+      sleep 5
+      ln -s "$(pwd)" /data/job
+      cd /data/job
+      echo "+++ Building :hammer:"
+      ./scripts/eosio_build.sh -y -P
+      echo "--- Compressing build directory :compression:"
+      tar -pczf build.tar.gz build
+      if [[ ! -f build.tar.gz ]]; then echo 'ERROR: No build.tar.gz artifact found!' && exit 1; fi
+    label: ":darwin: Mojave Build"
+    agents:
+      - "role=builder-v2-2"
+      - "os=mojave"
+    artifact_paths: "build.tar.gz"
+    timeout: 120
+
   - command: | # Amazon Linux 2 Build
         echo "+++ :hammer: Building"
-        ./scripts/eosio_build.sh -y
+        ./scripts/eosio_build.sh -y -P
         echo "--- :compression: Compressing build directory"
         tar -pczf build.tar.gz build
         if [[ ! -f build.tar.gz ]]; then echo 'ERROR: No build.tar.gz artifact found!' && exit 1; fi
@@ -17,14 +76,14 @@ steps:
         region: "us-west-2"
       docker#v2.1.0:
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux2_2-2"
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux2_2-3"
         propagate-environment: true
         workdir: /data/job
-    timeout: 60
+    timeout: 120
 
   - command: | # CentOS 7 Build
         echo "+++ :hammer: Building"
-        ./scripts/eosio_build.sh -y
+        ./scripts/eosio_build.sh -y -P
         echo "--- :compression: Compressing build directory"
         tar -pczf build.tar.gz build
         if [[ ! -f build.tar.gz ]]; then echo 'ERROR: No build.tar.gz artifact found!' && exit 1; fi
@@ -40,14 +99,14 @@ steps:
         region: "us-west-2"
       docker#v2.1.0:
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:centos7_2-2"
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:centos7_2-3"
         propagate-environment: true
         workdir: /data/job
-    timeout: 60
+    timeout: 120
 
   - command: | # Ubuntu 16.04 Build
         echo "+++ :hammer: Building"
-        ./scripts/eosio_build.sh -y
+        ./scripts/eosio_build.sh -y -P
         echo "--- :compression: Compressing build directory"
         tar -pczf build.tar.gz build
         if [[ ! -f build.tar.gz ]]; then echo 'ERROR: No build.tar.gz artifact found!' && exit 1; fi
@@ -63,14 +122,14 @@ steps:
         region: "us-west-2"
       docker#v2.1.0:
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu16_2-2"
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu16_2-3"
         propagate-environment: true
         workdir: /data/job
-    timeout: 60
+    timeout: 120
 
   - command: | # Ubuntu 18.04 Build
         echo "+++ :hammer: Building"
-        ./scripts/eosio_build.sh -y
+        ./scripts/eosio_build.sh -y -P
         echo "--- :compression: Compressing build directory"
         tar -pczf build.tar.gz build
         if [[ ! -f build.tar.gz ]]; then echo 'ERROR: No build.tar.gz artifact found!' && exit 1; fi
@@ -86,27 +145,10 @@ steps:
         region: "us-west-2"
       docker#v2.1.0:
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu18_2-2"
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu18_2-3"
         propagate-environment: true
         workdir: /data/job
-    timeout: 60
-
-  - command: | # macOS Mojave Build
-      echo "--- Creating symbolic link to job directory :file_folder:"
-      sleep 5
-      ln -s "$(pwd)" /data/job
-      cd /data/job
-      echo "+++ Building :hammer:"
-      ./scripts/eosio_build.sh -y
-      echo "--- Compressing build directory :compression:"
-      tar -pczf build.tar.gz build
-      if [[ ! -f build.tar.gz ]]; then echo 'ERROR: No build.tar.gz artifact found!' && exit 1; fi
-    label: ":darwin: Mojave Build"
-    agents:
-      - "role=builder-v2-1"
-      - "os=mojave"
-    artifact_paths: "build.tar.gz"
-    timeout: 60
+    timeout: 120
 
   - wait
 
@@ -127,7 +169,7 @@ steps:
         region: "us-west-2"
       docker#v2.1.0:
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux2_2-2"
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux2_2-3"
         propagate-environment: true
         workdir: /data/job
     timeout: 60
@@ -148,7 +190,7 @@ steps:
         region: "us-west-2"
       docker#v2.1.0:
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux2_2-2"
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux2_2-3"
         propagate-environment: true
         workdir: /data/job
     timeout: 60
@@ -170,7 +212,7 @@ steps:
         region: "us-west-2"
       docker#v2.1.0:
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:centos7_2-2"
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:centos7_2-3"
         propagate-environment: true
         workdir: /data/job
     timeout: 60
@@ -191,7 +233,7 @@ steps:
         region: "us-west-2"
       docker#v2.1.0:
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:centos7_2-2"
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:centos7_2-3"
         propagate-environment: true
         workdir: /data/job
     timeout: 60
@@ -213,7 +255,7 @@ steps:
         region: "us-west-2"
       docker#v2.1.0:
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu16_2-2"
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu16_2-3"
         propagate-environment: true
         workdir: /data/job
     timeout: 60
@@ -234,7 +276,7 @@ steps:
         region: "us-west-2"
       docker#v2.1.0:
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu16_2-2"
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu16_2-3"
         propagate-environment: true
         workdir: /data/job
     timeout: 60
@@ -256,7 +298,7 @@ steps:
         region: "us-west-2"
       docker#v2.1.0:
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu18_2-2"
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu18_2-3"
         propagate-environment: true
         workdir: /data/job
     timeout: 60
@@ -277,10 +319,48 @@ steps:
         region: "us-west-2"
       docker#v2.1.0:
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu18_2-2"
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu18_2-3"
         propagate-environment: true
         workdir: /data/job
     timeout: 60
+
+  # - label: ":darwin: [Darwin] Mojave Tests"
+  #   command:
+  #     - "./scripts/parallel-test.sh /Network/NAS/MAC_FLEET/BUILDKITE/artifacts/${ANKA_MOJAVE_TEMPLATE}-${BUILDKITE_PIPELINE_SLUG}-${BUILDKITE_BUILD_ID}.tar.gz"
+  #   artifact_paths:
+  #     - "build/mongod.log"
+  #     - "build/genesis.json"
+  #     - "build/config.ini"
+  #   agents:
+  #     - "queue=mac-anka-node-fleet"
+  #   plugins:
+  #     chef/anka#v0.4.3:
+  #       vm-name: $ANKA_MOJAVE_TEMPLATE
+  #       vm-registry-tag: "${ANKA_TEMPLATE_TAG}::${MAC_TAG}"
+  #       workdir: $ANKA_WORKDIR
+  #       always-pull: true
+  #       debug: true
+  #       wait-network: true
+  #   timeout: 120
+
+  # - label: ":darwin: [Darwin] Mojave Tests"
+  #   command:
+  #     - "./scripts/serial-test.sh /Network/NAS/MAC_FLEET/BUILDKITE/artifacts/${ANKA_MOJAVE_TEMPLATE}-${BUILDKITE_PIPELINE_SLUG}-${BUILDKITE_BUILD_ID}.tar.gz"
+  #   artifact_paths:
+  #     - "build/mongod.log"
+  #     - "build/genesis.json"
+  #     - "build/config.ini"
+  #   agents:
+  #     - "queue=mac-anka-node-fleet"
+  #   plugins:
+  #     chef/anka#v0.4.3:
+  #       vm-name: $ANKA_MOJAVE_TEMPLATE
+  #       vm-registry-tag: "${ANKA_TEMPLATE_TAG}::${MAC_TAG}"
+  #       workdir: $ANKA_WORKDIR
+  #       always-pull: true
+  #       debug: true
+  #       wait-network: true
+  #   timeout: 120
 
   # Mojave Tests
   - command: |
@@ -291,10 +371,9 @@ steps:
         ./scripts/parallel-test.sh
     label: ":darwin: Mojave Tests"
     agents:
-      - "role=tester-v2-1"
+      - "role=tester-v2-2"
       - "os=mojave"
     timeout: 60
-
   - command: |
         echo "--- :arrow_down: Downloading Build Directory"
         buildkite-agent artifact download "build.tar.gz" . --step ":darwin: Mojave Build"
@@ -303,9 +382,10 @@ steps:
         ./scripts/serial-test.sh
     label: ":darwin: Mojave NP Tests"
     agents:
-      - "role=tester-v2-1"
+      - "role=tester-v2-2"
       - "os=mojave"
     timeout: 60
+
 
   - wait
 
@@ -336,7 +416,7 @@ steps:
         region: "us-west-2"
       docker#v2.1.0:
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:centos7_2-2"
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:centos7_2-3"
         propagate-environment: true
         workdir: /data/job
     env:
@@ -364,7 +444,7 @@ steps:
         region: "us-west-2"
       docker#v2.1.0:
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu16_2-2"
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu16_2-3"
         propagate-environment: true
         workdir: /data/job
     env:
@@ -392,7 +472,7 @@ steps:
         region: "us-west-2"
       docker#v2.1.0:
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu18_2-2"
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu18_2-3"
         propagate-environment: true
         workdir: /data/job
     env:
@@ -410,7 +490,7 @@ steps:
         bash generate_package.sh brew
     label: ":darwin: Mojave Package Builder"
     agents:
-      - "role=builder-v2-1"
+      - "role=builder-v2-2"
       - "os=mojave"
     artifact_paths:
       - "build/packages/*.tar.gz"
