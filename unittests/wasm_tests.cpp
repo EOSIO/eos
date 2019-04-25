@@ -574,7 +574,7 @@ BOOST_FIXTURE_TEST_CASE(weighted_cpu_limit_tests, tester ) try {
         mgr.set_account_limits(N(acc2), -1, -1, 100000000);
       }
    }
-   BOOST_REQUIRE_EQUAL(count, 3);
+   BOOST_REQUIRE_EQUAL(count, 4);
 } FC_LOG_AND_RETHROW()
 
 /**

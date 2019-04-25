@@ -35,7 +35,7 @@ set( CXX_STANDARD_REQUIRED ON)
 
 set(VERSION_MAJOR 2)
 set(VERSION_MINOR 0)
-set(VERSION_PATCH 2)
+set(VERSION_PATCH 3)
 
 if(VERSION_SUFFIX)
     set(VERSION_FULL "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}-${VERSION_SUFFIX}")
@@ -125,6 +125,11 @@ FIND_PACKAGE(Boost 1.67 REQUIRED COMPONENTS
     context
     locale
     iostreams)
+
+# Some new stdlibc++s will #error on <experimental/string_view>; a problem for boost pre-1.69
+if( APPLE AND UNIX )
+   add_definitions(-DBOOST_ASIO_DISABLE_STD_EXPERIMENTAL_STRING_VIEW)
+endif()
 
 if( WIN32 )
 

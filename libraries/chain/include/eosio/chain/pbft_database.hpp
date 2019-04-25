@@ -597,16 +597,17 @@ namespace eosio {
 
             bool should_stop_view_change(const pbft_view_change &vc);
 
-            void maybe_switch_forks();
+            block_num_type get_current_pbft_watermark();
 
         private:
-            controller &ctrl;
-            pbft_state_multi_index_type pbft_state_index;
-            pbft_view_state_multi_index_type view_state_index;
-            pbft_checkpoint_state_multi_index_type checkpoint_index;
-            fc::path pbft_db_dir;
-            fc::path checkpoints_dir;
-            boost::uuids::random_generator uuid_generator;
+            controller                                  &ctrl;
+            pbft_state_multi_index_type                 pbft_state_index;
+            pbft_view_state_multi_index_type            view_state_index;
+            pbft_checkpoint_state_multi_index_type      checkpoint_index;
+            fc::path                                    pbft_db_dir;
+            fc::path                                    checkpoints_dir;
+            boost::uuids::random_generator              uuid_generator;
+            vector<block_num_type>                      prepare_watermarks;
 
             bool is_valid_prepared_certificate(const pbft_prepared_certificate &certificate);
 

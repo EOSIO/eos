@@ -168,8 +168,8 @@ namespace eosio { namespace chain {
 
          bool pending_pbft_lib();
 
-         uint32_t last_proposed_schedule_block_num()const;
-         uint32_t last_promoted_proposed_schedule_block_num()const;
+         vector<uint32_t> proposed_schedule_block_nums()const;
+         vector<uint32_t> promoted_schedule_block_nums()const;
 
          void set_pbft_latest_checkpoint( const block_id_type& id );
          uint32_t last_stable_checkpoint_block_num()const;
@@ -255,8 +255,6 @@ namespace eosio { namespace chain {
          const global_property2_object&        get_global_properties2()const;  // *bos*
          void set_name_list(int64_t list, int64_t action, std::vector<account_name> name_list);
 
-         // void list_add_name(const int list, const account_name &name);
-         // void list_remove_name(const int list, const account_name &name);
          // *bos end*
 
          bool is_resource_greylisted(const account_name &name) const;
@@ -310,8 +308,7 @@ namespace eosio { namespace chain {
          const upgrade_property_object&        get_upgrade_properties()const;
          bool is_upgraded()const;
          bool under_upgrade()const;
-
-         void maybe_switch_forks();
+         void set_upo(uint32_t target_block_num);
 
          /*
          signal<void()>                                  pre_apply_block;

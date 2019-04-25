@@ -667,9 +667,6 @@ namespace eosio {
 
       const string peer_name();
 
-      void txn_send_pending(const vector<transaction_id_type>& ids);
-      void txn_send(const vector<transaction_id_type>& txn_lis);
-
       void blk_send_branch();
       void blk_send(const block_id_type& blkid);
       void stop_send();
@@ -823,6 +820,7 @@ namespace eosio {
       void rejected_block(const block_id_type& id);
 
       void recv_block(const connection_ptr& conn, const block_id_type& msg, uint32_t bnum);
+      void expire_blocks( uint32_t bnum );
       void recv_transaction(const connection_ptr& conn, const transaction_id_type& id);
       void recv_notice(const connection_ptr& conn, const notice_message& msg, bool generated);
 
@@ -936,27 +934,6 @@ namespace eosio {
       fc_dlog(logger, "canceling wait on ${p}", ("p",peer_name()));
       cancel_wait();
       if( read_delay_timer ) read_delay_timer->cancel();
-      pending_message_buffer.reset();
-   }
-
-   void connection::txn_send_pending(const vector<transaction_id_type>& ids) {
-      const std::set<transaction_id_type, sha256_less> known_ids(ids.cbegin(), ids.cend());
-      my_impl->expire_local_txns();
-      for(auto tx = my_impl->local_txns.begin(); tx != my_impl->local_txns.end(); ++tx ){
-         const bool found = known_ids.find( tx->id ) != known_ids.cend();
-         if( !found ) {
-            queue_write( tx->serialized_txn, true, []( boost::system::error_code ec, std::size_t ) {} );
-         }
-      }
-   }
-
-   void connection::txn_send(const vector<transaction_id_type>& ids) {
-      for(const auto& t : ids) {
-         auto tx = my_impl->local_txns.get<by_id>().find(t);
-         if( tx != my_impl->local_txns.end() ) {
-            queue_write( tx->serialized_txn, true, []( boost::system::error_code ec, std::size_t ) {} );
-         }
-      }
    }
 
    void connection::blk_send_branch() {
@@ -1672,6 +1649,7 @@ namespace eosio {
    void sync_manager::recv_handshake(const connection_ptr& c, const handshake_message& msg) {
       controller& cc = chain_plug->chain();
       uint32_t lib_num = cc.last_irreversible_block_num();
+      uint32_t lscb_num = cc.last_stable_checkpoint_block_num();
       uint32_t peer_lib = msg.last_irreversible_block_num;
       reset_lib_num(c);
       c->syncing = false;
@@ -1690,6 +1668,13 @@ namespace eosio {
 
       uint32_t head = cc.fork_db_head_block_num();
       block_id_type head_id = cc.fork_db_head_block_id();
+
+      if (peer_lib > lscb_num) {
+         //there might be a better way to sync checkpoints, yet we do not want to modify the existing handshake msg.
+         fc_dlog(logger, "request sync checkpoints");
+         c->request_sync_checkpoints(lscb_num, peer_lib);
+      }
+
       if (head_id == msg.head_id) {
          fc_dlog(logger, "sync check state 0");
          // notify peer of our pending transactions
@@ -1891,9 +1876,21 @@ namespace eosio {
    }
 
    void dispatch_manager::rejected_block(const block_id_type& id) {
-      fc_dlog(logger,"not sending rejected transaction ${tid}",("tid",id));
+      fc_dlog( logger, "rejected block ${id}", ("id", id) );
       auto range = received_blocks.equal_range(id);
       received_blocks.erase(range.first, range.second);
+   }
+
+   void dispatch_manager::expire_blocks( uint32_t lib_num ) {
+      for( auto i = received_blocks.begin(); i != received_blocks.end(); ) {
+         const block_id_type& blk_id = i->first;
+         uint32_t blk_num = block_header::num_from_id( blk_id );
+         if( blk_num <= lib_num ) {
+            i = received_blocks.erase( i );
+         } else {
+            ++i;
+         }
+      }
    }
 
    void dispatch_manager::bcast_transaction(const transaction_metadata_ptr& ptrx) {
@@ -2135,6 +2132,7 @@ namespace eosio {
       auto current_endpoint = *endpoint_itr;
       ++endpoint_itr;
       c->connecting = true;
+      c->pending_message_buffer.reset();
       c->connecting_deadline = fc::time_point::now()+fc::seconds(c->connecting_timeout_in_seconds);
       connection_wptr weak_conn = c;
       c->socket->async_connect( current_endpoint, [weak_conn, endpoint_itr, this] ( const boost::system::error_code& err ) {
@@ -2339,7 +2337,7 @@ namespace eosio {
             conn->pending_message_buffer.get_buffer_sequence_for_boost_async_read(), completion_handler,
             [this,weak_conn]( boost::system::error_code ec, std::size_t bytes_transferred ) {
                auto conn = weak_conn.lock();
-               if (!conn) {
+               if (!conn || !conn->socket || !conn->socket->is_open()) {
                   return;
                }
 
@@ -2700,17 +2698,6 @@ namespace eosio {
          break;
       }
       case catch_up : {
-         if( msg.known_trx.pending > 0) {
-            // plan to get all except what we already know about.
-            req.req_trx.mode = catch_up;
-            send_req = true;
-            size_t known_sum = local_txns.size();
-            if( known_sum ) {
-               for( const auto& t : local_txns.get<by_id>() ) {
-                  req.req_trx.ids.push_back( t.id );
-               }
-            }
-         }
          break;
       }
       case normal: {
@@ -2768,14 +2755,17 @@ namespace eosio {
 
       switch (msg.req_trx.mode) {
       case catch_up :
-         c->txn_send_pending(msg.req_trx.ids);
-         break;
-      case normal :
-         c->txn_send(msg.req_trx.ids);
          break;
       case none :
          if(msg.req_blocks.mode == none)
             c->stop_send();
+         // no break
+      case normal :
+         if( !msg.req_trx.ids.empty() ) {
+            elog( "Invalid request_message, req_trx.ids.size ${s}", ("s", msg.req_trx.ids.size()) );
+            close(c);
+            return;
+         }
          break;
       default:;
       }
@@ -2811,11 +2801,11 @@ namespace eosio {
        for (auto i = msg.end_block; i >= msg.start_block && i>0; --i) {
            auto bid = cc.get_block_id_for_num(i);
            auto scp = pcc.pbft_db.get_stable_checkpoint_by_id(bid);
-           if (!(scp == pbft_stable_checkpoint{})) {
+           if (scp != pbft_stable_checkpoint{}) {
                scp_stack.push_back(scp);
            }
        }
-       fc_dlog(logger, "Sent ${n} stable checkpoints on my node",("n",scp_stack.size()));
+       fc_dlog(logger, "sent ${n} stable checkpoints on my node",("n",scp_stack.size()));
 
        while (scp_stack.size()) {
            c->enqueue(scp_stack.back());
@@ -2934,6 +2924,7 @@ namespace eosio {
       }
       else {
          sync_master->rejected_block(c, blk_num);
+         dispatcher->rejected_block( blk_id );
       }
    }
 
@@ -2979,6 +2970,7 @@ namespace eosio {
         if (!pcc.pbft_db.is_valid_prepare(msg)) return;
 
         bcast_pbft_msg(msg);
+        fc_ilog( logger, "sent prepare at height: ${n}, view: ${v}, from ${k}, ", ("n", msg.block_num)("v", msg.view)("k", msg.public_key));
     }
 
     void net_plugin_impl::pbft_outgoing_commit(const pbft_commit &msg) {
@@ -2989,6 +2981,7 @@ namespace eosio {
         if (!pcc.pbft_db.is_valid_commit(msg)) return;
 
         bcast_pbft_msg(msg);
+        fc_ilog( logger, "sent commit at height: ${n}, view: ${v}, from ${k}, ", ("n", msg.block_num)("v", msg.view)("k", msg.public_key));
     }
 
     void net_plugin_impl::pbft_outgoing_view_change(const pbft_view_change &msg) {
@@ -2999,6 +2992,7 @@ namespace eosio {
         if (!pcc.pbft_db.is_valid_view_change(msg)) return;
 
         bcast_pbft_msg(msg);
+        fc_ilog( logger, "sent view change {cv: ${cv}, tv: ${tv}} from ${v}", ("cv", msg.current_view)("tv", msg.target_view)("v", msg.public_key));
     }
 
     void net_plugin_impl::pbft_outgoing_new_view(const pbft_new_view &msg) {
@@ -3009,6 +3003,7 @@ namespace eosio {
         if (!pcc.pbft_db.is_valid_new_view(msg)) return;
 
         bcast_pbft_msg(msg);
+        fc_ilog( logger, "sent new view at view: ${v}, from ${k}, ", ("v", msg.view)("k", msg.public_key));
     }
 
     void net_plugin_impl::pbft_outgoing_checkpoint(const pbft_checkpoint &msg) {
@@ -3275,6 +3270,7 @@ namespace eosio {
 
       controller& cc = chain_plug->chain();
       uint32_t lib = cc.last_irreversible_block_num();
+      dispatcher->expire_blocks( lib );
       for ( auto &c : connections ) {
          auto &stale_txn = c->trx_state.get<by_block_num>();
          stale_txn.erase( stale_txn.lower_bound(1), stale_txn.upper_bound(lib) );

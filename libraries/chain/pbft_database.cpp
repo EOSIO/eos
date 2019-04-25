@@ -7,9 +7,10 @@ namespace eosio {
     namespace chain {
 
         pbft_database::pbft_database(controller &ctrl) :
-                ctrl(ctrl),
-                view_state_index(pbft_view_state_multi_index_type{}) {
+                ctrl(ctrl) {
             checkpoint_index = pbft_checkpoint_state_multi_index_type{};
+            view_state_index = pbft_view_state_multi_index_type{};
+            prepare_watermarks = vector<block_num_type>{};
             pbft_db_dir = ctrl.state_dir();
             checkpoints_dir = ctrl.blocks_dir();
 
@@ -33,7 +34,18 @@ namespace eosio {
                     fc::raw::unpack(ds, s);
                     set(std::make_shared<pbft_state>(move(s)));
                 }
+
+                unsigned_int watermarks_size;
+                fc::raw::unpack(ds, watermarks_size);
+                for (uint32_t i = 0, n = watermarks_size.value; i < n; ++i) {
+                    block_num_type h;
+                    fc::raw::unpack(ds, h);
+                    prepare_watermarks.push_back(h);
+                }
+                sort(prepare_watermarks.begin(), prepare_watermarks.end());
+
                 ilog("pbft index size: ${s}", ("s", pbft_state_index.size()));
+                ilog("pbft prepare watermarks size: ${p}", ("p", prepare_watermarks.size()));
             } else {
                 pbft_state_index = pbft_state_multi_index_type{};
             }
@@ -70,10 +82,8 @@ namespace eosio {
             uint32_t num_records_in_checkpoint_db = checkpoint_index.size();
             fc::raw::pack(c_out, unsigned_int{num_records_in_checkpoint_db});
 
-            if (!checkpoint_index.empty()) {
-                for (const auto &s: checkpoint_index) {
-                    fc::raw::pack(c_out, *s);
-                }
+            for (const auto &s: checkpoint_index) {
+                fc::raw::pack(c_out, *s);
             }
 
             fc::path pbft_db_dat = pbft_db_dir / config::pbftdb_filename;
@@ -82,13 +92,21 @@ namespace eosio {
             uint32_t num_records_in_db = pbft_state_index.size();
             fc::raw::pack(out, unsigned_int{num_records_in_db});
 
-            if (!pbft_state_index.empty()) {
-                for (const auto &s : pbft_state_index) {
-                    fc::raw::pack(out, *s);
-                }
+            for (const auto &s : pbft_state_index) {
+                fc::raw::pack(out, *s);
             }
+
+
+            uint32_t watermarks_size = prepare_watermarks.size();
+            fc::raw::pack(out, unsigned_int{watermarks_size});
+
+            for (const auto &n: prepare_watermarks) {
+                fc::raw::pack(out, n);
+            }
+
             pbft_state_index.clear();
             checkpoint_index.clear();
+            prepare_watermarks.clear();
         }
 
         pbft_database::~pbft_database() {
@@ -192,21 +210,18 @@ namespace eosio {
                 }
                 return new_pv;
             } else {
-                uint32_t high_water_mark_block_num = head_block_num;
-                auto next_proposed_schedule_block_num = ctrl.get_global_properties().proposed_schedule_block_num;
-                auto promoted_proposed_schedule_block_num = ctrl.last_promoted_proposed_schedule_block_num();
+
+                auto current_watermark = get_current_pbft_watermark();
                 auto lib = ctrl.last_irreversible_block_num();
 
-                if (next_proposed_schedule_block_num && *next_proposed_schedule_block_num > lib) {
-                    high_water_mark_block_num = std::min(head_block_num, *next_proposed_schedule_block_num);
-                }
+                uint32_t high_water_mark_block_num = head_block_num;
 
-                if (promoted_proposed_schedule_block_num && promoted_proposed_schedule_block_num > lib) {
-                    high_water_mark_block_num = std::min(high_water_mark_block_num,
-                                                         promoted_proposed_schedule_block_num);
+                if ( current_watermark > 0 ) {
+                    high_water_mark_block_num = std::min(head_block_num, current_watermark);
                 }
 
                 if (high_water_mark_block_num <= lib) return vector<pbft_prepare>{};
+
                 block_id_type high_water_mark_block_id = ctrl.get_block_id_for_num(high_water_mark_block_num);
                 for (auto const &sp : ctrl.my_signature_providers()) {
                     auto uuid = boost::uuids::to_string(uuid_generator());
@@ -229,6 +244,9 @@ namespace eosio {
             if (itr == by_prepare_and_num_index.end()) return false;
 
             pbft_state_ptr psp = *itr;
+            auto current_watermark = get_current_pbft_watermark();
+
+            if (psp->block_num > current_watermark && current_watermark > 0) return false;
 
             if (psp->should_prepared && (psp->block_num > ctrl.last_irreversible_block_num())) {
                 ctrl.set_pbft_prepared((*itr)->block_id);
@@ -349,6 +367,10 @@ namespace eosio {
             auto itr = by_commit_and_num_index.begin();
             if (itr == by_commit_and_num_index.end()) return false;
             pbft_state_ptr psp = *itr;
+
+            auto current_watermark = get_current_pbft_watermark();
+
+            if (psp->block_num > current_watermark && current_watermark > 0) return false;
 
             return (psp->should_committed && (psp->block_num > ctrl.last_irreversible_block_num()));
         }
@@ -974,12 +996,14 @@ namespace eosio {
 
             block_num_type my_latest_checkpoint = 0;
 
-            const auto& upo = ctrl.get_upgrade_properties();
+
             auto checkpoint = [&](const block_num_type &in) {
-              auto is_desired_checkpoint_num = in % 100 == 1
-                      || in == ctrl.last_proposed_schedule_block_num()
-                      || in == ctrl.last_promoted_proposed_schedule_block_num();
-              if (upo.upgrade_complete_block_num) is_desired_checkpoint_num = is_desired_checkpoint_num && in > upo.upgrade_complete_block_num;
+                const auto& upo = ctrl.get_upgrade_properties();
+                auto is_desired_checkpoint_num = in % 100 == 1
+                      || std::find(prepare_watermarks.begin(), prepare_watermarks.end(), in) != prepare_watermarks.end();
+              if (upo.upgrade_complete_block_num) {
+                  is_desired_checkpoint_num = is_desired_checkpoint_num && in > upo.upgrade_complete_block_num;
+              }
               return is_desired_checkpoint_num;
             };
 
@@ -997,9 +1021,7 @@ namespace eosio {
                         bool contains_mine = false;
                         for (auto const &my_sp : ctrl.my_signature_providers()) {
                             auto p_itr = find_if(checkpoints.begin(), checkpoints.end(),
-                                                 [&](const pbft_checkpoint &ext) {
-                                                     return ext.public_key == my_sp.first;
-                                                 });
+                                    [&](const pbft_checkpoint &ext) { return ext.public_key == my_sp.first; });
                             if (p_itr != checkpoints.end()) contains_mine = true;
                         }
                         if (!contains_mine) {
@@ -1236,8 +1258,43 @@ namespace eosio {
             return ctrl.get_chain_id();
         }
 
-        void pbft_database::maybe_switch_forks() {
-            ctrl.maybe_switch_forks();
+        block_num_type pbft_database::get_current_pbft_watermark() {
+            auto unique_merge = [&](vector<block_num_type> &v1, vector<block_num_type> &v2)
+            {
+                std::sort(v1.begin(), v1.end());
+                v1.reserve(v1.size() + v2.size());
+                v1.insert(v1.end(), v2.begin(), v2.end());
+
+                sort( v1.begin(), v1.end() );
+                v1.erase( unique( v1.begin(), v1.end() ), v1.end() );
+            };
+
+            auto lib = ctrl.last_irreversible_block_num();
+            auto lscb = ctrl.last_stable_checkpoint_block_num();
+
+            auto proposed_schedule_blocks = ctrl.proposed_schedule_block_nums();
+            auto promoted_schedule_blocks = ctrl.promoted_schedule_block_nums();
+            unique_merge(prepare_watermarks, proposed_schedule_blocks);
+            unique_merge(prepare_watermarks, promoted_schedule_blocks);
+
+
+            for ( auto itr = prepare_watermarks.begin(); itr != prepare_watermarks.end();) {
+                if ((*itr) <= lscb) {
+                    itr = prepare_watermarks.erase(itr);
+                } else {
+                    ++itr;
+                }
+            }
+            std::sort(prepare_watermarks.begin(), prepare_watermarks.end());
+
+
+            if (prepare_watermarks.empty()) return 0;
+
+            auto cw = *std::upper_bound(prepare_watermarks.begin(), prepare_watermarks.end(), lib);
+
+//            wlog("watermarks: ${w}", ("w",prepare_watermarks));
+
+            if (cw > lib) return cw; else return 0;
         }
 
         void pbft_database::set(pbft_state_ptr s) {

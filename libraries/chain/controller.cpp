@@ -125,8 +125,8 @@ struct controller_impl {
    optional<pending_state>        pending;
    optional<block_id_type>        pending_pbft_lib;
    optional<block_id_type>        pending_pbft_checkpoint;
-   optional<block_num_type>       last_proposed_schedule_block_num;
-   optional<block_num_type>       last_promoted_proposed_schedule_block_num;
+   vector<block_num_type>         proposed_schedule_blocks;
+   vector<block_num_type>         promoted_schedule_blocks;
    block_state_ptr                pbft_prepared;
    block_state_ptr                my_prepare;
    block_state_ptr                head;
@@ -135,6 +135,7 @@ struct controller_impl {
    resource_limits_manager        resource_limits;
    authorization_manager          authorization;
    controller::config             conf;
+   controller::config             multisig_blacklists;///<  multisig blacklists in memory
    chain_id_type                  chain_id;
    bool                           replaying= false;
    optional<fc::time_point>       replay_head_time;
@@ -413,9 +414,7 @@ struct controller_impl {
       }
 
       //*bos begin*
-      sync_name_list(list_type::actor_blacklist_type,true);
-      sync_name_list(list_type::contract_blacklist_type,true);
-      sync_name_list(list_type::resource_greylist_type,true);
+      merge_msig_blacklist_into_conf();
       //*bos end*
    }
 
@@ -438,14 +437,7 @@ struct controller_impl {
 
    void clear_all_undo() {
       // Rewind the database to the last irreversible block
-      db.with_write_lock([&] {
-         db.undo_all();
-         /*
-         FC_ASSERT(db.revision() == self.head_block_num(),
-                   "Chainbase revision does not match head block num",
-                   ("rev", db.revision())("head_block", self.head_block_num()));
-                   */
-      });
+      db.undo_all();
    }
 
    void add_contract_tables_to_snapshot( const snapshot_writer_ptr& snapshot ) const {
@@ -703,78 +695,137 @@ struct controller_impl {
    }
 
    // "bos begin"
+   //  contract   wasm interface api  set_name_list  function
+   //  insert action      db_list U msig_list -> msig_list    db_list U conf_list -> conf_list
+   //                     name_list U msig_list -> msig_list   name_list U conf_list -> conf_list    msig_list->db_list
+   //  remove action      db_list U msig_list -> msig_list    db_list U conf_list -> conf_list
+   //                     msig_list-name_list  -> msig_list    conf_list - name_list  -> conf_list   msig_list->db_list
+   //  producer  api  set_whitelist_blacklist
+   //                     blacklst ->  conf.xxx_blacklist     conf_list U msig_list  -> conf_list
+   //                 remove_grey_list
+   //                     check   if remove acount in msig_list  then  assert fail  could not remove account in msig blacklist
    void set_name_list(list_type list, list_action_type action, std::vector<account_name> name_list)
    {
-       int64_t lst = static_cast<int64_t>(list);
-
-      EOS_ASSERT(list >= list_type::actor_blacklist_type && list < list_type::list_type_count, transaction_exception, "unknown list type : ${l}, action: ${n}", ("l", static_cast<int64_t>(list))("n", static_cast<int64_t>(action)));
-      vector<flat_set<account_name> *> lists = {&conf.actor_blacklist, &conf.contract_blacklist, &conf.resource_greylist};
-      EOS_ASSERT(lists.size() == static_cast<int64_t>(list_type::list_type_count) - 1, transaction_exception, " list size wrong : ${l}, action: ${n}", ("l", static_cast<int64_t>(list))("n", static_cast<int64_t>(action)));
-
-      flat_set<account_name> &lo = *lists[lst - 1];
-
-      if (action == list_action_type::insert_type)
-      {
-         lo.insert(name_list.begin(), name_list.end());
-      }
-      else if (action == list_action_type::remove_type)
-      {
-         flat_set<account_name> name_set(name_list.begin(), name_list.end());
-
-         flat_set<account_name> results;
-         results.reserve(lo.size());
-         set_difference(lo.begin(), lo.end(),
-                        name_set.begin(), name_set.end(),
-                        std::inserter(results,results.begin()));
-
-         lo = results;
-      }
-
-      sync_name_list(list);
-   }
-
-   void sync_list_and_db(list_type list, global_property2_object &gprops2,bool isMerge=false)
-   {
-      int64_t lst = static_cast<int64_t>(list);
-      EOS_ASSERT( list >= list_type::actor_blacklist_type && list < list_type::list_type_count, transaction_exception, "unknown list type : ${l}, ismerge: ${n}", ("l", static_cast<int64_t>(list))("n", isMerge));
-      vector<shared_vector<account_name> *> lists = {&gprops2.cfg.actor_blacklist, &gprops2.cfg.contract_blacklist, &gprops2.cfg.resource_greylist};
-      vector<flat_set<account_name> *> conflists = {&conf.actor_blacklist, &conf.contract_blacklist, &conf.resource_greylist};
-      EOS_ASSERT(lists.size() == static_cast<int64_t>(list_type::list_type_count) - 1, transaction_exception, " list size wrong : ${l}, ismerge: ${n}", ("l", static_cast<int64_t>(list))("n", isMerge));
-      shared_vector<account_name> &lo = *lists[lst - 1];
-      flat_set<account_name> &clo = *conflists[lst - 1];
-
-      if (isMerge)
-      {
-         //initialize,  merge elements and deduplication between list and db.result save to  list
-         for (auto &a : lo)
-         {
-            clo.insert(a);
+      //set list from set_name_list action in system contract
+      EOS_ASSERT(action >= list_action_type::insert_type && action < list_action_type::list_action_type_count, transaction_exception, "unknown action: ${action}", ("action", static_cast<int64_t>(action)));
+      int64_t blacklist_type = static_cast<int64_t>(list);
+      const auto &gp2o = db.get<global_property2_object>();
+      auto update_blacklists = [&](const shared_vector<account_name> &db_blacklist, flat_set<account_name> &conf_blacklist, flat_set<account_name> &msig_blacklist){
+         for (auto &a : db_blacklist){
+            conf_blacklist.insert(a);
+            msig_blacklist.insert(a);
          }
-      }
 
-      //clear list from db and save merge result to db  object
-      lo.clear();
-      for (auto &a : clo)
-      {
-         lo.push_back(a);
+         auto update_blacklist = [&](auto &blacklist) {
+            if (action == list_action_type::insert_type){
+               blacklist.insert(name_list.begin(), name_list.end());
+            }
+            else if (action == list_action_type::remove_type){
+               flat_set<account_name> name_set(name_list.begin(), name_list.end());
+               flat_set<account_name> results;
+               results.reserve(blacklist.size());
+               set_difference(blacklist.begin(), blacklist.end(),
+                              name_set.begin(), name_set.end(),
+                              std::inserter(results, results.begin()));
+
+               blacklist = results;
+            }
+         };
+
+         update_blacklist(conf_blacklist);
+         update_blacklist(msig_blacklist);
+
+         auto insert_blacklists = [&](auto &gp2) {
+            auto insert_blacklist = [&](shared_vector<account_name> &blacklist) {
+               blacklist.clear();
+
+               for (auto &a : msig_blacklist){
+                  blacklist.push_back(a);
+               }
+            };
+
+            switch (list){
+            case list_type::actor_blacklist_type:
+               insert_blacklist(gp2.cfg.actor_blacklist);
+               break;
+            case list_type::contract_blacklist_type:
+               insert_blacklist(gp2.cfg.contract_blacklist);
+               break;
+            case list_type::resource_greylist_type:
+               insert_blacklist(gp2.cfg.resource_greylist);
+               break;
+            default:
+               EOS_ASSERT(false, transaction_exception,
+                          "unknown list type : ${blklsttype}", ("blklsttype", blacklist_type));
+            }
+         };
+
+         db.modify(gp2o, [&](auto &gp2) {
+            insert_blacklists(gp2);
+         });
+      };
+
+      switch (list){
+      case list_type::actor_blacklist_type:
+         update_blacklists(gp2o.cfg.actor_blacklist, conf.actor_blacklist, multisig_blacklists.actor_blacklist);
+         break;
+      case list_type::contract_blacklist_type:
+         update_blacklists(gp2o.cfg.contract_blacklist, conf.contract_blacklist, multisig_blacklists.contract_blacklist);
+         break;
+      case list_type::resource_greylist_type:
+         update_blacklists(gp2o.cfg.resource_greylist, conf.resource_greylist, multisig_blacklists.resource_greylist);
+         break;
+      default:
+         EOS_ASSERT(false, transaction_exception,
+                    "unknown list type : ${blklsttype}", ("blklsttype", blacklist_type));
       }
    }
 
-   void sync_name_list(list_type list,bool isMerge=false)
+   void check_msig_blacklist(list_type blacklist_type,account_name account)
+    {
+       auto check_blacklist = [&](const flat_set<account_name>& msig_blacklist){
+            EOS_ASSERT(msig_blacklist.find(account) == msig_blacklist.end(), transaction_exception,
+            " do not remove account in multisig blacklist , account: ${account}", ("account", account));
+         };
+
+       switch (blacklist_type)
+       {
+       case list_type::actor_blacklist_type:
+          check_blacklist(multisig_blacklists.actor_blacklist);
+          break;
+       case list_type::contract_blacklist_type:
+          check_blacklist(multisig_blacklists.contract_blacklist);
+          break;
+       case list_type::resource_greylist_type:
+          check_blacklist(multisig_blacklists.resource_greylist);
+          break;
+       default:
+          EOS_ASSERT(false, transaction_exception,
+                     "unknown list type : ${blklsttype}, account: ${account}", ("blklsttype",static_cast<uint64_t>(blacklist_type))("account", account));
+       }
+   }
+
+   void merge_msig_blacklist_into_conf()
    {
-      try
-      {
-         const auto &gpo2 = db.get<global_property2_object>();
-         db.modify(gpo2, [&](auto &gprops2) {
-            sync_list_and_db(list, gprops2, isMerge);
-         });
+      try{
+         auto merge_blacklist = [&](const shared_vector<account_name>& msig_blacklist_in_db,flat_set<account_name>& conf_blacklist){
+
+         for (auto& a : msig_blacklist_in_db)
+         {
+            conf_blacklist.insert(a);
+         }
+         };
+
+         const auto &gp2o = db.get<global_property2_object>();
+         merge_blacklist(gp2o.cfg.actor_blacklist,conf.actor_blacklist);
+         merge_blacklist(gp2o.cfg.contract_blacklist,conf.contract_blacklist);
+         merge_blacklist(gp2o.cfg.resource_greylist,conf.resource_greylist);
       }
       catch (...)
       {
-         wlog("plugin initialize  sync list ignore before initialize database");
+         wlog("when plugin initialize,execute merge multsig blacklist to ignore exception before create global property2 object");
       }
    }
-
    // "bos end"
 
    bool is_new_version() {
@@ -1133,6 +1184,9 @@ struct controller_impl {
       transaction_trace_ptr trace;
       try {
          auto start = fc::time_point::now();
+         const bool check_auth = !self.skip_auth_check() && !trx->implicit;
+         // call recover keys so that trx->sig_cpu_usage is set correctly
+         const flat_set<public_key_type>& recovered_keys = check_auth ? trx->recover_keys( chain_id ) : flat_set<public_key_type>();
          if( !explicit_billed_cpu_time ) {
             fc::microseconds already_consumed_time( EOS_PERCENT(trx->sig_cpu_usage.count(), conf.sig_cpu_bill_pct) );
 
@@ -1164,15 +1218,13 @@ struct controller_impl {
             }
             trx_context.delay = fc::seconds(trn.delay_sec);
 
-            if( !self.skip_auth_check() && !trx->implicit ) {
+            if( check_auth ) {
                authorization.check_authorization(
                        trn.actions,
-                       trx->recover_keys( chain_id ),
+                       recovered_keys,
                        {},
                        trx_context.delay,
-                       [](){}
-                       /*std::bind(&transaction_context::add_cpu_usage_and_check_time, &trx_context,
-                                 std::placeholders::_1)*/,
+                       [&trx_context](){ trx_context.checktime(); },
                        false
                );
             }
@@ -1286,55 +1338,71 @@ struct controller_impl {
       if ( read_mode == db_read_mode::SPECULATIVE || pending->_block_status != controller::block_status::incomplete ) {
 
          const auto& gpo = db.get<global_property_object>();
-         if (new_version) {
-              if (gpo.proposed_schedule_block_num) {
-                  last_proposed_schedule_block_num.reset();
-                  last_proposed_schedule_block_num.emplace(*gpo.proposed_schedule_block_num);
-              }
+
+         auto lib_num = std::max(pending->_pending_block_state->dpos_irreversible_blocknum, pending->_pending_block_state->bft_irreversible_blocknum);
+         auto lscb_num = pending->_pending_block_state->pbft_stable_checkpoint_blocknum;
+
+         if (new_version && gpo.proposed_schedule_block_num) {
+             proposed_schedule_blocks.push_back(*gpo.proposed_schedule_block_num);
+             for ( auto itr = proposed_schedule_blocks.begin(); itr != proposed_schedule_blocks.end();) {
+                 if ((*itr) < lscb_num) {
+                     itr = proposed_schedule_blocks.erase(itr);
+                 } else {
+                     ++itr;
+                 }
+             }
          }
 
-          bool should_promote_pending_schedule = false;
+         bool should_promote_pending_schedule = false;
 
-         if(new_version && (gpo.proposed_schedule_block_num.valid() && pending->_pending_block_state->bft_irreversible_blocknum > *gpo.proposed_schedule_block_num)){
-             db.modify( gpo, [&]( auto& gp ) {
-               gp.proposed_schedule_block_num = optional<block_num_type>();
-               gp.proposed_schedule.clear();
-             });
-         } else{
-             should_promote_pending_schedule = gpo.proposed_schedule_block_num.valid()  // if there is a proposed schedule that was proposed in a block ...
-                     && pending->_pending_block_state->pending_schedule.producers.size() == 0 // ... and there is room for a new pending schedule ...
-                     && !was_pending_promoted; // ... and not just because it was promoted to active at the start of this block, then:
-         }
+//         if (new_version && (gpo.proposed_schedule_block_num.valid() && pending->_pending_block_state->bft_irreversible_blocknum > *gpo.proposed_schedule_block_num)) {
+//             db.modify( gpo, [&]( auto& gp ) {
+//               gp.proposed_schedule_block_num = optional<block_num_type>();
+//               gp.proposed_schedule.clear();
+//             });
+//         }
+
+         should_promote_pending_schedule = gpo.proposed_schedule_block_num.valid()  // if there is a proposed schedule that was proposed in a block ...
+                 && pending->_pending_block_state->pending_schedule.producers.size() == 0 // ... and there is room for a new pending schedule ...
+                 && !was_pending_promoted; // ... and not just because it was promoted to active at the start of this block, then:
 
          if (new_version) {
-             should_promote_pending_schedule = should_promote_pending_schedule && (pending->_pending_block_state->block_num  > *gpo.proposed_schedule_block_num);
+             should_promote_pending_schedule = should_promote_pending_schedule
+                     && pending->_pending_block_state->block_num  > *gpo.proposed_schedule_block_num;
          } else {
-             should_promote_pending_schedule = should_promote_pending_schedule && ( *gpo.proposed_schedule_block_num <= pending->_pending_block_state->dpos_irreversible_blocknum );
+             should_promote_pending_schedule = should_promote_pending_schedule
+                     && ( *gpo.proposed_schedule_block_num <= pending->_pending_block_state->dpos_irreversible_blocknum );
          }
 
          if ( should_promote_pending_schedule )
-            {
-               if (!upgrading) {
-                   // Promote proposed schedule to pending schedule.
-                   if (!replaying) {
-                       ilog("promoting proposed schedule (set in block ${proposed_num}) to pending; current block: ${n} lib: ${lib} schedule: ${schedule} ",
-                            ("proposed_num", *gpo.proposed_schedule_block_num)("n",
-                                                                               pending->_pending_block_state->block_num)
-                                    ("lib", std::max(pending->_pending_block_state->bft_irreversible_blocknum,
-                                                     pending->_pending_block_state->dpos_irreversible_blocknum))
-                                    ("schedule", static_cast<producer_schedule_type>(gpo.proposed_schedule)));
+         {
+             if (!upgrading) {
+                 // Promote proposed schedule to pending schedule.
+                 if (!replaying) {
+                     ilog("promoting proposed schedule (set in block ${proposed_num}) to pending; current block: ${n} lib: ${lib} schedule: ${schedule} ",
+                             ("proposed_num", *gpo.proposed_schedule_block_num)("n", pending->_pending_block_state->block_num)
+                             ("lib", lib_num)
+                             ("schedule", static_cast<producer_schedule_type>(gpo.proposed_schedule)));
 
-                   }
-                   pending->_pending_block_state->set_new_producers(gpo.proposed_schedule);
-               }
-               db.modify( gpo, [&]( auto& gp ) {
-                     gp.proposed_schedule_block_num = optional<block_num_type>();
-                     gp.proposed_schedule.clear();
-                  });
+                 }
+                 pending->_pending_block_state->set_new_producers(gpo.proposed_schedule);
 
-               last_promoted_proposed_schedule_block_num.reset();
-               last_promoted_proposed_schedule_block_num.emplace(pending->_pending_block_state->block_num);
-            }
+                 if (new_version) {
+                     promoted_schedule_blocks.push_back(pending->_pending_block_state->block_num);
+                     for ( auto itr = promoted_schedule_blocks.begin(); itr != promoted_schedule_blocks.end();) {
+                         if ((*itr) < lscb_num) {
+                             itr = promoted_schedule_blocks.erase(itr);
+                         } else {
+                             ++itr;
+                         }
+                     }
+                 }
+             }
+             db.modify( gpo, [&]( auto& gp ) {
+                 gp.proposed_schedule_block_num = optional<block_num_type>();
+                 gp.proposed_schedule.clear();
+             });
+         }
 
          try {
             auto onbtrx = std::make_shared<transaction_metadata>( get_on_block_transaction() );
@@ -2067,6 +2135,7 @@ void controller::abort_block() {
 
 boost::asio::thread_pool& controller::get_thread_pool() {
    return my->thread_pool;
+
 }
 
 std::future<block_state_ptr> controller::create_block_state_future( const signed_block_ptr& b ) {
@@ -2134,21 +2203,15 @@ void controller::set_actor_whitelist( const flat_set<account_name>& new_actor_wh
 }
 void controller::set_actor_blacklist( const flat_set<account_name>& new_actor_blacklist ) {
    my->conf.actor_blacklist = new_actor_blacklist;
-
-   // *bos begin*
-   my->sync_name_list(list_type::actor_blacklist_type);
-   // *bos end*
+   my->merge_msig_blacklist_into_conf(); ///bos  merge multisig blacklist into conf after api reset blacklist
 }
 void controller::set_contract_whitelist( const flat_set<account_name>& new_contract_whitelist ) {
    my->conf.contract_whitelist = new_contract_whitelist;
 }
 void controller::set_contract_blacklist( const flat_set<account_name>& new_contract_blacklist ) {
+
    my->conf.contract_blacklist = new_contract_blacklist;
-
-   // *bos begin*
-  my->sync_name_list(list_type::contract_blacklist_type);
-   // *bos end*
-
+   my->merge_msig_blacklist_into_conf(); ///bos   merge multisig blacklist into conf after api reset blacklist
 }
 void controller::set_action_blacklist( const flat_set< pair<account_name, action_name> >& new_action_blacklist ) {
    for (auto& act: new_action_blacklist) {
@@ -2245,18 +2308,12 @@ block_id_type controller::last_stable_checkpoint_block_id() const {
 }
 
 
-uint32_t controller::last_proposed_schedule_block_num() const {
-   if (my->last_proposed_schedule_block_num) {
-      return *my->last_proposed_schedule_block_num;
-   }
-   return block_num_type{};
+vector<uint32_t> controller::proposed_schedule_block_nums() const {
+    return my->proposed_schedule_blocks;
 }
 
-uint32_t controller::last_promoted_proposed_schedule_block_num() const {
-    if (my->last_promoted_proposed_schedule_block_num) {
-        return *my->last_promoted_proposed_schedule_block_num;
-    }
-    return block_num_type{};
+vector<uint32_t> controller::promoted_schedule_block_nums() const {
+    return my->promoted_schedule_blocks;
 }
 
 bool controller::is_replaying() const {
@@ -2594,19 +2651,11 @@ void controller::set_subjective_cpu_leeway(fc::microseconds leeway) {
 
 void controller::add_resource_greylist(const account_name &name) {
    my->conf.resource_greylist.insert(name);
-
-   // *bos begin*
-   my->sync_name_list(list_type::resource_greylist_type);
-   // *bos end*
 }
 
 void controller::remove_resource_greylist(const account_name &name) {
-
+   my->check_msig_blacklist(list_type::resource_greylist_type, name);///bos
    my->conf.resource_greylist.erase(name);
-
-   // *bos begin*
-   my->sync_name_list(list_type::resource_greylist_type);
-   // *bos end*
 }
 
 bool controller::is_resource_greylisted(const account_name &name) const {
@@ -2624,11 +2673,6 @@ const global_property2_object& controller::get_global_properties2()const {
 
 void controller::set_name_list(int64_t list, int64_t action, std::vector<account_name> name_list)
 {
-   //redundant sync
-   my->sync_name_list(list_type::actor_blacklist_type, true);
-   my->sync_name_list(list_type::contract_blacklist_type, true);
-   my->sync_name_list(list_type::resource_greylist_type, true);
-
    my->set_name_list(static_cast<list_type>(list), static_cast<list_action_type>(action), name_list);
 }
 // *bos end*
@@ -2650,9 +2694,15 @@ bool controller::under_upgrade() const {
     return my->is_upgrading();
 }
 
-void controller::maybe_switch_forks() {
-    if ( my->read_mode != db_read_mode::IRREVERSIBLE ) {
-        my->maybe_switch_forks( controller::block_status::complete );
+void controller::set_upo(uint32_t target_block_num) {
+    try {
+        const auto& upo = my->db.get<upgrade_property_object>();
+        my->db.modify( upo, [&]( auto& up ) { up.upgrade_target_block_num = (block_num_type)target_block_num;});
+    } catch( const boost::exception& e) {
+        my->db.create<upgrade_property_object>([&](auto& up){
+          up.upgrade_target_block_num = (block_num_type)target_block_num;
+        });
     }
 }
+
 } } /// eosio::chain
