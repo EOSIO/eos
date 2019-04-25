@@ -55,11 +55,6 @@ namespace eosio { namespace chain { namespace wasm_injections {
 
       // get the next available index that is greater than the last exported function
       static void get_next_indices( Module& module, int& next_function_index, int& next_actual_index ) {
-         int exports = 0;
-         for ( auto exp : module.exports )
-            if ( exp.kind == IR::ObjectKind::function )
-               exports++;
-
          next_function_index = module.functions.imports.size() + module.functions.defs.size() + registered_injected.size();
          next_actual_index = next_injected_index++;
       }
