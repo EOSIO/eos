@@ -766,7 +766,7 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
       const auto& trx_value = to_bson( v );
       trans_doc.append( bsoncxx::builder::concatenate_doc{trx_value.view()} );
    } catch( bsoncxx::exception& e) {
-      elog( "Unable to convert transaction to MongoDB JSON: ${e}", ("e", e.what()) );
+      elog( "Unable to convert transaction to BSON: ${e}", ("e", e.what()) );
       elog( "  JSON: ${j}", ("j", fc::json::to_string( v )) );
    }
 
@@ -781,14 +781,13 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
       }
    }
 
-   if( signing_keys.get_type() != fc::variant::null_type ) {
+   if( signing_keys.get_type() == fc::variant::array_type && signing_keys.get_array().size() > 0) {
       try {
-         // should be array
          bsoncxx::builder::core keys_value(true);
          to_bson( signing_keys.get_array(), keys_value );
          trans_doc.append( kvp( "signing_keys", keys_value.extract_array() ) );
       } catch( bsoncxx::exception& e ) {
-         elog( "Unable to convert signing keys to MongoDB JSON: ${e}", ("e", e.what()) );
+         elog( "Unable to convert signing keys to BSON: ${e}", ("e", e.what()) );
          elog( "  JSON: ${j}", ("j", fc::json::to_string(signing_keys)) );
       }
    }
@@ -840,7 +839,7 @@ mongo_db_plugin_impl::add_action_trace( mongocxx::bulk_write& bulk_action_traces
       try {
          action_traces_doc.append( bsoncxx::builder::concatenate_doc{to_bson( v )} );
       } catch( bsoncxx::exception& e ) {
-         elog( "Unable to convert action trace JSON to MongoDB JSON: ${e}", ("e", e.what()) );
+         elog( "Unable to convert action trace to BSON: ${e}", ("e", e.what()) );
          elog( "  JSON: ${j}", ("j", fc::json::to_string( v )) );
       }
       if( t->receipt.valid() ) {
@@ -893,10 +892,9 @@ void mongo_db_plugin_impl::_process_applied_transaction( const chain::transactio
       try {
          auto v = to_variant_with_abi( *t );
          try {
-            const auto& value = to_bson( v );
-            trans_traces_doc.append( bsoncxx::builder::concatenate_doc{value.view()} );
+            trans_traces_doc.append( bsoncxx::builder::concatenate_doc{to_bson( v )} );
          } catch( bsoncxx::exception& e ) {
-            elog( "Unable to convert transaction JSON to MongoDB JSON: ${e}", ("e", e.what()) );
+            elog( "Unable to convert transaction to BSON: ${e}", ("e", e.what()) );
             elog( "  JSON: ${j}", ("j", fc::json::to_string( v )) );
          }
          trans_traces_doc.append( kvp( "createdAt", b_date{now} ) );
@@ -954,10 +952,9 @@ void mongo_db_plugin_impl::_process_accepted_block( const chain::block_state_ptr
       const chain::block_header_state& bhs = *bs;
 
       try {
-         const auto& value = to_bson( fc::variant(bhs) );
-         block_state_doc.append( kvp( "block_header_state", value ) );
+         block_state_doc.append( kvp( "block_header_state", to_bson( fc::variant(bhs) ) ) );
       } catch( bsoncxx::exception& e ) {
-         elog( "Unable to convert block_header_state JSON to MongoDB JSON: ${e}", ("e", e.what()) );
+         elog( "Unable to convert block_header_state to BSON: ${e}", ("e", e.what()) );
          elog( "  JSON: ${j}", ("j", fc::json::to_string( bhs )) );
       }
       block_state_doc.append( kvp( "createdAt", b_date{now} ) );
@@ -986,10 +983,9 @@ void mongo_db_plugin_impl::_process_accepted_block( const chain::block_state_ptr
 
       auto v = to_variant_with_abi( *bs->block );
       try {
-         const auto& value = to_bson( v );
-         block_doc.append( kvp( "block", value ) );
+         block_doc.append( kvp( "block", to_bson( v ) ) );
       } catch( bsoncxx::exception& e ) {
-         elog( "Unable to convert block JSON to MongoDB JSON: ${e}", ("e", e.what()) );
+         elog( "Unable to convert block to BSON: ${e}", ("e", e.what()) );
          elog( "  JSON: ${j}", ("j", fc::json::to_string( v )) );
       }
       block_doc.append( kvp( "createdAt", b_date{now} ) );
@@ -1301,7 +1297,7 @@ void mongo_db_plugin_impl::update_account(const chain::action& act)
                   handle_mongo_exception( "account update", __LINE__ );
                }
             } catch( bsoncxx::exception& e ) {
-               elog( "Unable to convert abi JSON to MongoDB JSON: ${e}", ("e", e.what()));
+               elog( "Unable to convert abi JSON to BSON: ${e}", ("e", e.what()));
                elog( "  JSON: ${j}", ("j", fc::json::to_string( v )));
             }
          }
