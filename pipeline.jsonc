@@ -6,7 +6,7 @@
         {
             "DEBUG": "false",
             "PIPELINE_BRANCH" : "legacy-os",
-            "BUILDKITE_LABEL" : "Ubuntu 18.04 Unit Tests",
+            "BUILDKITE_LABEL" : "Ubuntu 18.04 Unit Tests"
         }
     },
     "eosio-dot-cdt":
@@ -36,7 +36,7 @@
         "configuration":
         [
             "17=release/1.7.x",
-            "16=release/1.6.x",
+            "16=release/1.6.x"
         ]
     },
     "eosio-sync-tests":
@@ -44,7 +44,7 @@
         "pipeline-branch": "protocol-features-sync-nodes",
         "environment":
         {
-            "DEBUG": "false",
+            "DEBUG": "false"
         }
-    },
+    }
 }
