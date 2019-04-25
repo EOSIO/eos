@@ -18,6 +18,8 @@
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/path.hpp>
 
+#include <chrono>
+
 using namespace eosio::chain;
 namespace bfs = boost::filesystem;
 namespace bpo = boost::program_options;
@@ -44,7 +46,21 @@ struct blocklog {
    bool                             help;
 };
 
+struct report_time {
+    report_time()
+    : _start(std::chrono::high_resolution_clock::now()) {
+    }
+
+    void report() {
+        const auto duration = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - _start).count() / 1000;
+        ilog("blocklog action took ${t} msec", ("t",duration));
+    }
+
+    const std::chrono::high_resolution_clock::time_point _start;
+};
+
 void blocklog::read_log() {
+   report_time rt;
    block_log block_logger(blocks_dir);
    const auto end = block_logger.read_head();
    EOS_ASSERT( end, block_log_exception, "No blocks found in block log" );
@@ -135,6 +151,7 @@ void blocklog::read_log() {
    }
    if (as_json_array)
       *out << "]";
+   rt.report();
 }
 
 void blocklog::set_program_options(options_description& cli)
@@ -208,6 +225,7 @@ struct trim_data {            //used by trim_blocklog_front(), trim_blocklog_end
 
 
 trim_data::trim_data(bfs::path block_dir) {
+   report_time rt;
    using namespace std;
    block_file_name= (block_dir/"blocks.log").generic_string();
    index_file_name= (block_dir/"blocks.index").generic_string();
@@ -226,11 +244,13 @@ trim_data::trim_data(bfs::path block_dir) {
    uint64_t file_end= lseek(ind_in,0,SEEK_END);                //get length of blocks.index (gives number of blocks)
    last_block= first_block + file_end/sizeof(uint64_t) - 1;
    cout << "last block=  " << last_block << '\n';
+   rt.report();
 }
 
 void trim_data::find_block_pos(uint32_t n) {
    //get file position of block n from blocks.index then confirm block n is found in blocks.log at that position
    //sets fpos0 and fpos1, throws exception if block at fpos0 is not block n
+   report_time rt;
    using namespace std;
    index_pos= sizeof(uint64_t)*(n-first_block);
    uint64_t pos= lseek(ind_in,index_pos,SEEK_SET);
@@ -251,9 +271,11 @@ void trim_data::find_block_pos(uint32_t n) {
    uint32_t bnum= endian_reverse_u32(prior_blknum)+1;          //convert to little endian, add 1 since prior block
    cout << "At position " << fpos0 << " in blocks.log find block " << bnum << (bnum==n? " as expected\n": " - not good!\n");
    EOS_ASSERT( bnum==n, block_log_exception, "blocks.index does not agree with blocks.log" );
+   rt.report();
 }
 
 int trim_blocklog_end(bfs::path block_dir, uint32_t n) {       //n is last block to keep (remove later blocks)
+   report_time rt;
    using namespace std;
    cout << "\nIn directory " << block_dir << " will trim all blocks after block " << n << " from blocks.log and blocks.index.\n";
    trim_data td(block_dir);
@@ -271,10 +293,12 @@ int trim_blocklog_end(bfs::path block_dir, uint32_t n) {       //n is last block
    EOS_ASSERT( truncate(td.index_file_name.c_str(),index_end)==0, block_log_exception, "truncate blocks.index fails");
    cout << "blocks.log has been trimmed to " << td.fpos1 << " bytes\n";
    cout << "blocks.index has been trimmed to " << index_end << " bytes\n";
+   rt.report();
    return 0;
 }
 
 int trim_blocklog_front(bfs::path block_dir, uint32_t n) {        //n is first block to keep (remove prior blocks)
+   report_time rt;
    using namespace std;
    cout << "\nIn directory " << block_dir << " will trim all blocks before block " << n << " from blocks.log and blocks.index.\n";
    trim_data td(block_dir);
@@ -430,11 +454,13 @@ int trim_blocklog_front(bfs::path block_dir, uint32_t n) {        //n is first b
    rename(index_out_filename,td.index_file_name);
    cout << "The new blocks.log and blocks.index files contain blocks " << n << " through " << td.last_block << '\n';
    cout << "The original (before trim front) files have been renamed to old.log and old.index.\n";
+   rt.report();
    return 0;
 }
 
 
 int make_index(bfs::path block_dir, string out_file) {
+   report_time rt;
    //this code makes blocks.index much faster than nodeos (in recent test 80 seconds vs. 90 minutes)
    using namespace std;
    string block_file_name= (block_dir / "blocks.log").generic_string();
@@ -552,6 +578,7 @@ int make_index(bfs::path block_dir, string out_file) {
    close(fout);
    close(fin);
    cout << "\nwrote " << (end_block+1-first_block) << " file positions to " << out_file_name << '\n';
+   rt.report();
    return 0;
 }
 
