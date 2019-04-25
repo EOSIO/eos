@@ -47,7 +47,7 @@ fi
 if [ "${DISK_AVAIL}" -lt "$DISK_MIN" ]; then
 	echo "You must have at least ${DISK_MIN}GB of available storage to install EOSIO."
 	echo "Exiting now."
-#	exit 1
+	exit 1
 fi
 
 printf "\\n"
@@ -94,20 +94,20 @@ printf "\\nChecking dependencies...\\n"
 var_ifs="${IFS}"
 IFS=","
 while read -r name tester testee brewname uri; do
-	if [ "${tester}" "${testee}" ]; then
-		printf " - %s found\\n" "${name}"
+	if [ $tester $testee ]; then
+		printf " - ${name} found!\\n"
 		continue
 	fi
 	# resolve conflict with homebrew glibtool and apple/gnu installs of libtool
 	if [ "${testee}" == "/usr/local/bin/glibtool" ]; then
 		if [ "${tester}" "/usr/local/bin/libtool" ]; then
-			printf " - %s found\\n" "${name}"
+			printf " - ${name} found!\\n"
 			continue
 		fi
 	fi
 	DEPS=$DEPS"${brewname},"
 	DISPLAY="${DISPLAY}${COUNT}. ${name}\\n"
-	printf " - %s ${bldred}NOT${txtrst} found.\\n" "${name}"
+	printf " - ${name} ${bldred}NOT${txtrst} found.\\n"
 	(( COUNT++ ))
 done < "${REPO_ROOT}/scripts/eosio_build_darwin_deps"
 IFS="${var_ifs}"
@@ -138,11 +138,8 @@ if [ $COUNT -gt 1 ]; then
 				[Nn]* ) echo "Proceeding without update!";;
 				* ) echo "Please type 'y' for yes or 'n' for no."; exit;;
 			esac
-			brew tap eosio/eosio # Required to install mongo-cxx-driver with static library
+			brew tap eosio/eosio
 			printf "\\nInstalling Dependencies...\\n"
-			# Ignore cmake so we don't install a newer version.
-			# Build from source to use local cmake; see homebrew-eosio repo for examples
-			# DON'T INSTALL llvm@4 WITH --force!
 			OIFS="$IFS"
 			IFS=$','
 			for DEP in $DEPS; do
@@ -158,7 +155,7 @@ if [ $COUNT -gt 1 ]; then
 		* ) echo "Please type 'y' for yes or 'n' for no."; exit;;
 	esac
 else
-	printf "\\n - No required Home Brew dependencies to install.\\n"
+	printf " - No required Home Brew dependencies to install.\\n"
 fi
 
 
@@ -167,7 +164,7 @@ printf "\\n"
 
 export CPATH="$(python-config --includes | awk '{print $1}' | cut -dI -f2):$CPATH" # Boost has trouble finding pyconfig.h
 printf "Checking Boost library (${BOOST_VERSION}) installation...\\n"
-BOOSTVERSION=$( grep "#define BOOST_VERSION" "$HOME/opt/boost/include/boost/version.hpp" 2>/dev/null | tail -1 | tr -s ' ' | cut -d\  -f3 )
+BOOSTVERSION=$( grep "#define BOOST_VERSION" "$BOOST_ROOT/include/boost/version.hpp" 2>/dev/null | tail -1 | tr -s ' ' | cut -d\  -f3 )
 if [ "${BOOSTVERSION}" != "${BOOST_VERSION_MAJOR}0${BOOST_VERSION_MINOR}0${BOOST_VERSION_PATCH}" ]; then
 	printf "Installing Boost library...\\n"
 	curl -LO https://dl.bintray.com/boostorg/release/$BOOST_VERSION_MAJOR.$BOOST_VERSION_MINOR.$BOOST_VERSION_PATCH/source/boost_$BOOST_VERSION.tar.bz2 \
@@ -192,25 +189,25 @@ printf "\\n"
 
 
 printf "Checking MongoDB installation...\\n"
-# if [ ! -d $MONGODB_ROOT ]; then
-# 	printf "Installing MongoDB into ${MONGODB_ROOT}...\\n"
-# 	curl -OL https://fastdl.mongodb.org/osx/mongodb-osx-ssl-x86_64-$MONGODB_VERSION.tgz \
-# 	&& tar -xzf mongodb-osx-ssl-x86_64-$MONGODB_VERSION.tgz \
-# 	&& mv $SRC_LOCATION/mongodb-osx-x86_64-$MONGODB_VERSION $MONGODB_ROOT \
-# 	&& touch $MONGODB_LOG_LOCATION/mongod.log \
-# 	&& rm -f mongodb-osx-ssl-x86_64-$MONGODB_VERSION.tgz \
-# 	&& cp -f $REPO_ROOT/scripts/mongod.conf $MONGODB_CONF \
-# 	&& mkdir -p $MONGODB_DATA_LOCATION \
-# 	&& rm -rf $MONGODB_LINK_LOCATION \
-# 	&& rm -rf $BIN_LOCATION/mongod \
-# 	&& ln -s $MONGODB_ROOT $MONGODB_LINK_LOCATION \
-# 	&& ln -s $MONGODB_LINK_LOCATION/bin/mongod $BIN_LOCATION/mongod \
-# 	|| exit 1
-# 	printf " - MongoDB successfully installed @ ${MONGODB_ROOT}\\n"
-# else
-# 	printf " - MongoDB found with correct version @ ${MONGODB_ROOT}.\\n"
-# fi
-# if [ $? -ne 0 ]; then exit -1; fi
+if [ ! -d $MONGODB_ROOT ]; then
+	printf "Installing MongoDB into ${MONGODB_ROOT}...\\n"
+	curl -OL https://fastdl.mongodb.org/osx/mongodb-osx-ssl-x86_64-$MONGODB_VERSION.tgz \
+	&& tar -xzf mongodb-osx-ssl-x86_64-$MONGODB_VERSION.tgz \
+	&& mv $SRC_LOCATION/mongodb-osx-x86_64-$MONGODB_VERSION $MONGODB_ROOT \
+	&& touch $MONGODB_LOG_LOCATION/mongod.log \
+	&& rm -f mongodb-osx-ssl-x86_64-$MONGODB_VERSION.tgz \
+	&& cp -f $REPO_ROOT/scripts/mongod.conf $MONGODB_CONF \
+	&& mkdir -p $MONGODB_DATA_LOCATION \
+	&& rm -rf $MONGODB_LINK_LOCATION \
+	&& rm -rf $BIN_LOCATION/mongod \
+	&& ln -s $MONGODB_ROOT $MONGODB_LINK_LOCATION \
+	&& ln -s $MONGODB_LINK_LOCATION/bin/mongod $BIN_LOCATION/mongod \
+	|| exit 1
+	printf " - MongoDB successfully installed @ ${MONGODB_ROOT}\\n"
+else
+	printf " - MongoDB found with correct version @ ${MONGODB_ROOT}.\\n"
+fi
+if [ $? -ne 0 ]; then exit -1; fi
 printf "Checking MongoDB C driver installation...\\n"
 if [ ! -d $MONGO_C_DRIVER_ROOT ]; then
 	printf "Installing MongoDB C driver...\\n"
@@ -219,7 +216,7 @@ if [ ! -d $MONGO_C_DRIVER_ROOT ]; then
 	&& cd mongo-c-driver-$MONGO_C_DRIVER_VERSION \
 	&& mkdir -p cmake-build \
 	&& cd cmake-build \
-	&& $CMAKE -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$HOME -DENABLE_BSON=ON -DENABLE_SSL=DARWIN -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF -DENABLE_STATIC=ON .. \
+	&& $CMAKE -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$PREFIX -DENABLE_BSON=ON -DENABLE_SSL=DARWIN -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF -DENABLE_STATIC=ON .. \
 	&& make -j"${JOBS}" \
 	&& make install \
 	&& cd ../.. \
@@ -231,12 +228,12 @@ else
 fi
 if [ $? -ne 0 ]; then exit -1; fi
 printf "Checking MongoDB C++ driver installation...\\n"
-if [ "$(grep "Version:" $HOME/lib/pkgconfig/libmongocxx-static.pc 2>/dev/null | tr -s ' ' | awk '{print $2}')" != $MONGO_CXX_DRIVER_VERSION ]; then
+if [ "$(grep "Version:" $PREFIX/lib/pkgconfig/libmongocxx-static.pc 2>/dev/null | tr -s ' ' | awk '{print $2}')" != $MONGO_CXX_DRIVER_VERSION ]; then
 	printf "Installing MongoDB C++ driver...\\n"
 	curl -L https://github.com/mongodb/mongo-cxx-driver/archive/r$MONGO_CXX_DRIVER_VERSION.tar.gz -o mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION.tar.gz \
 	&& tar -xzf mongo-cxx-driver-r${MONGO_CXX_DRIVER_VERSION}.tar.gz \
 	&& cd mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION/build \
-	&& $CMAKE -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$HOME .. \
+	&& $CMAKE -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$PREFIX .. \
 	&& make -j"${JOBS}" VERBOSE=1 \
 	&& make install \
 	&& cd ../.. \
