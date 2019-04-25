@@ -161,11 +161,22 @@ fi
 
 printf "\\n"
 
+### clean up force build before starting
+if [ $FORCE_BUILD ];then
+   rm -rf  \
+   ${SRC_LOCATION}/llvm ${OPT_LOCATION}/llvm4 \
+   ${TMP_LOCATION}/clang8 ${OPT_LOCATION}/clang8 \
+   ${SRC_LOCATION}/zlib ${OPT_LOCATION}/zlib \
+   ${SRC_LOCATION}/boost \
+   ${SRC_LOCATION}/mongodb-linux-x86_64-amazon-$MONGODB_VERSION \
+   ${SRC_LOCATION}/mongo-c-driver-$MONGO_C_DRIVER_VERSION \
+   ${SRC_LOCATION}/mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION
+fi
 
 export CPATH="$(python-config --includes | awk '{print $1}' | cut -dI -f2):$CPATH" # Boost has trouble finding pyconfig.h
 printf "Checking Boost library (${BOOST_VERSION}) installation...\\n"
 BOOSTVERSION=$( grep "#define BOOST_VERSION" "$BOOST_ROOT/include/boost/version.hpp" 2>/dev/null | tail -1 | tr -s ' ' | cut -d\  -f3 )
-if [ "${BOOSTVERSION}" != "${BOOST_VERSION_MAJOR}0${BOOST_VERSION_MINOR}0${BOOST_VERSION_PATCH}" ]; then
+if [ "${BOOSTVERSION}" != "${BOOST_VERSION_MAJOR}0${BOOST_VERSION_MINOR}0${BOOST_VERSION_PATCH}" ] || [ $FORCE_BUILD ]; then
 	printf "Installing Boost library...\\n"
 	curl -LO https://dl.bintray.com/boostorg/release/$BOOST_VERSION_MAJOR.$BOOST_VERSION_MINOR.$BOOST_VERSION_PATCH/source/boost_$BOOST_VERSION.tar.bz2 \
 	&& tar -xjf boost_$BOOST_VERSION.tar.bz2 \
@@ -187,65 +198,66 @@ if [ $? -ne 0 ]; then exit -1; fi
 
 printf "\\n"
 
+if [ $BUILD_MONGO ]; then
+   printf "Checking MongoDB installation...\\n"
+   if [ ! -d $MONGODB_ROOT ] || [ $FORCE_BUILD ]; then
+      printf "Installing MongoDB into ${MONGODB_ROOT}...\\n"
+      curl -OL https://fastdl.mongodb.org/osx/mongodb-osx-ssl-x86_64-$MONGODB_VERSION.tgz \
+      && tar -xzf mongodb-osx-ssl-x86_64-$MONGODB_VERSION.tgz \
+      && mv $SRC_LOCATION/mongodb-osx-x86_64-$MONGODB_VERSION $MONGODB_ROOT \
+      && touch $MONGODB_LOG_LOCATION/mongod.log \
+      && rm -f mongodb-osx-ssl-x86_64-$MONGODB_VERSION.tgz \
+      && cp -f $REPO_ROOT/scripts/mongod.conf $MONGODB_CONF \
+      && mkdir -p $MONGODB_DATA_LOCATION \
+      && rm -rf $MONGODB_LINK_LOCATION \
+      && rm -rf $BIN_LOCATION/mongod \
+      && ln -s $MONGODB_ROOT $MONGODB_LINK_LOCATION \
+      && ln -s $MONGODB_LINK_LOCATION/bin/mongod $BIN_LOCATION/mongod \
+      || exit 1
+      printf " - MongoDB successfully installed @ ${MONGODB_ROOT}\\n"
+   else
+      printf " - MongoDB found with correct version @ ${MONGODB_ROOT}.\\n"
+   fi
+   if [ $? -ne 0 ]; then exit -1; fi
+   printf "Checking MongoDB C driver installation...\\n"
+   if [ ! -d $MONGO_C_DRIVER_ROOT ] || [ $FORCE_BUILD ]; then
+      printf "Installing MongoDB C driver...\\n"
+      curl -LO https://github.com/mongodb/mongo-c-driver/releases/download/$MONGO_C_DRIVER_VERSION/mongo-c-driver-$MONGO_C_DRIVER_VERSION.tar.gz \
+      && tar -xzf mongo-c-driver-$MONGO_C_DRIVER_VERSION.tar.gz \
+      && cd mongo-c-driver-$MONGO_C_DRIVER_VERSION \
+      && mkdir -p cmake-build \
+      && cd cmake-build \
+      && $CMAKE -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$PREFIX -DENABLE_BSON=ON -DENABLE_SSL=DARWIN -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF -DENABLE_STATIC=ON .. \
+      && make -j"${JOBS}" \
+      && make install \
+      && cd ../.. \
+      && rm mongo-c-driver-$MONGO_C_DRIVER_VERSION.tar.gz \
+      || exit 1
+      printf " - MongoDB C driver successfully installed @ ${MONGO_C_DRIVER_ROOT}.\\n"
+   else
+      printf " - MongoDB C driver found with correct version @ ${MONGO_C_DRIVER_ROOT}.\\n"
+   fi
+   if [ $? -ne 0 ]; then exit -1; fi
+   printf "Checking MongoDB C++ driver installation...\\n"
+   if [ "$(grep "Version:" $PREFIX/lib/pkgconfig/libmongocxx-static.pc 2>/dev/null | tr -s ' ' | awk '{print $2}')" != $MONGO_CXX_DRIVER_VERSION ] || [ $FORCE_BUILD ]; then
+      printf "Installing MongoDB C++ driver...\\n"
+      curl -L https://github.com/mongodb/mongo-cxx-driver/archive/r$MONGO_CXX_DRIVER_VERSION.tar.gz -o mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION.tar.gz \
+      && tar -xzf mongo-cxx-driver-r${MONGO_CXX_DRIVER_VERSION}.tar.gz \
+      && cd mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION/build \
+      && $CMAKE -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$PREFIX .. \
+      && make -j"${JOBS}" VERBOSE=1 \
+      && make install \
+      && cd ../.. \
+      && rm -f mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION.tar.gz \
+      || exit 1
+      printf " - MongoDB C++ driver successfully installed @ ${MONGO_CXX_DRIVER_ROOT}.\\n"
+   else
+      printf " - MongoDB C++ driver found with correct version @ ${MONGO_CXX_DRIVER_ROOT}.\\n"
+   fi
+   if [ $? -ne 0 ]; then exit -1; fi
 
-printf "Checking MongoDB installation...\\n"
-if [ ! -d $MONGODB_ROOT ]; then
-	printf "Installing MongoDB into ${MONGODB_ROOT}...\\n"
-	curl -OL https://fastdl.mongodb.org/osx/mongodb-osx-ssl-x86_64-$MONGODB_VERSION.tgz \
-	&& tar -xzf mongodb-osx-ssl-x86_64-$MONGODB_VERSION.tgz \
-	&& mv $SRC_LOCATION/mongodb-osx-x86_64-$MONGODB_VERSION $MONGODB_ROOT \
-	&& touch $MONGODB_LOG_LOCATION/mongod.log \
-	&& rm -f mongodb-osx-ssl-x86_64-$MONGODB_VERSION.tgz \
-	&& cp -f $REPO_ROOT/scripts/mongod.conf $MONGODB_CONF \
-	&& mkdir -p $MONGODB_DATA_LOCATION \
-	&& rm -rf $MONGODB_LINK_LOCATION \
-	&& rm -rf $BIN_LOCATION/mongod \
-	&& ln -s $MONGODB_ROOT $MONGODB_LINK_LOCATION \
-	&& ln -s $MONGODB_LINK_LOCATION/bin/mongod $BIN_LOCATION/mongod \
-	|| exit 1
-	printf " - MongoDB successfully installed @ ${MONGODB_ROOT}\\n"
-else
-	printf " - MongoDB found with correct version @ ${MONGODB_ROOT}.\\n"
+   printf "\\n"
 fi
-if [ $? -ne 0 ]; then exit -1; fi
-printf "Checking MongoDB C driver installation...\\n"
-if [ ! -d $MONGO_C_DRIVER_ROOT ]; then
-	printf "Installing MongoDB C driver...\\n"
-	curl -LO https://github.com/mongodb/mongo-c-driver/releases/download/$MONGO_C_DRIVER_VERSION/mongo-c-driver-$MONGO_C_DRIVER_VERSION.tar.gz \
-	&& tar -xzf mongo-c-driver-$MONGO_C_DRIVER_VERSION.tar.gz \
-	&& cd mongo-c-driver-$MONGO_C_DRIVER_VERSION \
-	&& mkdir -p cmake-build \
-	&& cd cmake-build \
-	&& $CMAKE -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$PREFIX -DENABLE_BSON=ON -DENABLE_SSL=DARWIN -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF -DENABLE_STATIC=ON .. \
-	&& make -j"${JOBS}" \
-	&& make install \
-	&& cd ../.. \
-	&& rm mongo-c-driver-$MONGO_C_DRIVER_VERSION.tar.gz \
-	|| exit 1
-	printf " - MongoDB C driver successfully installed @ ${MONGO_C_DRIVER_ROOT}.\\n"
-else
-	printf " - MongoDB C driver found with correct version @ ${MONGO_C_DRIVER_ROOT}.\\n"
-fi
-if [ $? -ne 0 ]; then exit -1; fi
-printf "Checking MongoDB C++ driver installation...\\n"
-if [ "$(grep "Version:" $PREFIX/lib/pkgconfig/libmongocxx-static.pc 2>/dev/null | tr -s ' ' | awk '{print $2}')" != $MONGO_CXX_DRIVER_VERSION ]; then
-	printf "Installing MongoDB C++ driver...\\n"
-	curl -L https://github.com/mongodb/mongo-cxx-driver/archive/r$MONGO_CXX_DRIVER_VERSION.tar.gz -o mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION.tar.gz \
-	&& tar -xzf mongo-cxx-driver-r${MONGO_CXX_DRIVER_VERSION}.tar.gz \
-	&& cd mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION/build \
-	&& $CMAKE -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$PREFIX .. \
-	&& make -j"${JOBS}" VERBOSE=1 \
-	&& make install \
-	&& cd ../.. \
-	&& rm -f mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION.tar.gz \
-	|| exit 1
-	printf " - MongoDB C++ driver successfully installed @ ${MONGO_CXX_DRIVER_ROOT}.\\n"
-else
-	printf " - MongoDB C++ driver found with correct version @ ${MONGO_CXX_DRIVER_ROOT}.\\n"
-fi
-if [ $? -ne 0 ]; then exit -1; fi
-
-printf "\\n"
 
 
 # We install llvm into /usr/local/opt using brew install llvm@4
@@ -261,6 +273,48 @@ fi
 
 cd ..
 printf "\\n"
+
+if $PIN_COMPILER; then
+   printf "Checking Clang 8 support...\\n"
+   if [ ! -d $CLANG8_ROOT ] || [ $FORCE_BUILD ]; then
+      printf "Installing Clang 8...\\n"
+      cd ${TMP_LOCATION} \
+      && git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/llvm.git clang8 \
+      && cd clang8 && git checkout $PINNED_COMPILER_LLVM_COMMIT \
+      && cd tools \
+      && git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/lld.git \
+      && cd lld && git checkout $PINNED_COMPILER_LLD_COMMIT && cd ../ \
+      && git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/polly.git \
+      && cd polly && git checkout $PINNED_COMPILER_POLLY_COMMIT && cd ../ \
+      && git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/clang.git clang && cd clang/tools \
+      && git checkout $PINNED_COMPILER_CLANG_VERSION \
+      && mkdir extra && cd extra \
+      && git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/clang-tools-extra.git \
+      && cd clang-tools-extra && git checkout $PINNED_COMPILER_CLANG_TOOLS_EXTRA_COMMIT && cd .. \
+      && cd ../../../../projects \
+      && git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/libcxx.git \
+      && cd libcxx && git checkout $PINNED_COMPILER_LIBCXX_COMMIT && cd ../ \
+      && git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/libcxxabi.git \
+      && cd libcxxabi && git checkout $PINNED_COMPILER_LIBCXXABI_COMMIT && cd ../ \
+      && git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/libunwind.git \
+      && cd libunwind && git checkout $PINNED_COMPILER_LIBUNWIND_COMMIT && cd ../ \
+      && git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/compiler-rt.git \
+      && cd compiler-rt && git checkout $PINNED_COMPILER_COMPILER_RT_COMMIT && cd ../ \
+      && cd ${TMP_LOCATION}/clang8 \
+      && mkdir build && cd build \
+      && $CMAKE -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX="${CLANG8_ROOT}" -DLLVM_BUILD_EXTERNAL_COMPILER_RT=ON -DLLVM_BUILD_LLVM_DYLIB=ON -DLLVM_ENABLE_LIBCXX=ON -DLLVM_ENABLE_RTTI=ON -DLLVM_INCLUDE_DOCS=OFF -DLLVM_OPTIMIZED_TABLEGEN=ON -DLLVM_TARGETS_TO_BUILD=all -DCMAKE_BUILD_TYPE=Release .. \
+      && make -j"${JOBS}" \
+      && make install \
+      && cd ../.. \
+      || exit 1
+      printf " - Clang 8 successfully installed @ ${CLANG8_ROOT}\\n"
+   else
+      printf " - Clang 8 found @ ${CLANG8_ROOT}.\\n"
+   fi
+   if [ $? -ne 0 ]; then exit -1; fi
+
+   printf "\\n"
+fi
 
 function print_instructions() {
 	return 0
