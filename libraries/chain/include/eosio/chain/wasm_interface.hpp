@@ -79,8 +79,17 @@ namespace eosio { namespace chain {
          wasm_interface(vm_type vm, const chainbase::database& db);
          ~wasm_interface();
 
+         //call before dtor to skip what can be minutes of dtor overhead with some runtimes; can cause leaks
+         void indicate_shutting_down();
+
          //validates code -- does a WASM validation pass and checks the wasm against EOSIO specific constraints
          static void validate(const controller& control, const bytes& code);
+
+         //indicate that a particular code probably won't be used after given block_num
+         void code_block_num_last_used(const digest_type& code_hash, const uint8_t& vm_type, const uint8_t& vm_version, const uint32_t& block_num);
+
+         //indicate the current LIB. evicts old cache entries
+         void current_lib(const uint32_t lib);
 
          //Calls apply or error on a given code
          void apply(const digest_type& code_hash, const uint8_t& vm_type, const uint8_t& vm_version, apply_context& context);

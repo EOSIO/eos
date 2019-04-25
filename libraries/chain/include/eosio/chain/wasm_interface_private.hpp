@@ -46,6 +46,14 @@ namespace eosio { namespace chain {
             EOS_THROW(wasm_exception, "wasm_interface_impl fall through");
       }
 
+      ~wasm_interface_impl() {
+         if(is_shutting_down)
+            for(wasm_cache_index::iterator it = wasm_instantiation_cache.begin(); it != wasm_instantiation_cache.end(); ++it)
+               wasm_instantiation_cache.modify(it, [](wasm_cache_entry& e) {
+                  e.module.release();
+               });
+      }
+
       std::vector<uint8_t> parse_initial_memory(const Module& module) {
          std::vector<uint8_t> mem_image;
 
@@ -62,6 +70,19 @@ namespace eosio { namespace chain {
          }
 
          return mem_image;
+      }
+
+      void code_block_num_last_used(const digest_type& code_hash, const uint8_t& vm_type, const uint8_t& vm_version, const uint32_t& block_num) {
+         wasm_cache_index::iterator it = wasm_instantiation_cache.find(boost::make_tuple(code_hash, vm_type, vm_version));
+         if(it != wasm_instantiation_cache.end())
+            wasm_instantiation_cache.modify(it, [block_num](wasm_cache_entry& e) {
+               e.last_block_num_used = block_num;
+            });
+      }
+
+      void current_lib(uint32_t lib) {
+         //anything last used before or on the LIB can be evicted
+         wasm_instantiation_cache.get<by_last_block_num>().erase(wasm_instantiation_cache.get<by_last_block_num>().begin(), wasm_instantiation_cache.get<by_last_block_num>().upper_bound(lib));
       }
 
       const std::unique_ptr<wasm_instantiated_module_interface>& get_instantiated_module( const digest_type& code_hash, const uint8_t& vm_type,
@@ -123,6 +144,7 @@ namespace eosio { namespace chain {
          return it->module;
       }
 
+      bool is_shutting_down = false;
       std::unique_ptr<wasm_runtime_interface> runtime_interface;
 
       typedef boost::multi_index_container<

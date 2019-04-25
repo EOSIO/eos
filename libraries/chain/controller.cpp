@@ -313,6 +313,10 @@ struct controller_impl {
       set_activation_handler<builtin_protocol_feature_t::replace_deferred>();
       set_activation_handler<builtin_protocol_feature_t::get_sender>();
 
+      self.irreversible_block.connect([this](const block_state_ptr& bsp) {
+         wasmif.current_lib(bsp->block_num);
+      });
+
 
 #define SET_APP_HANDLER( receiver, contract, action) \
    set_apply_handler( #receiver, #contract, #action, &BOOST_PP_CAT(apply_, BOOST_PP_CAT(contract, BOOST_PP_CAT(_,action) ) ) )
