@@ -15,8 +15,8 @@ struct gls_mapped_str {
     };
 };
 
-using fc::uint128_t;
 using fc::time_point_sec;
+using eosio::chain::uint128_t;
 using eosio::chain::asset;
 using eosio::chain::share_type;
 

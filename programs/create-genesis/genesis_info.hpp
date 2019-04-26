@@ -1,4 +1,5 @@
 #pragma once
+#include "posting_rules.hpp"
 #include <eosio/chain/types.hpp>
 #include <fc/reflect/reflect.hpp>
 #include <boost/filesystem.hpp>
@@ -41,9 +42,9 @@ struct genesis_info {
 
     struct parameters {
         stake_params stake;
+        posting_rules posting_rules;
         fc::optional<hardfork_info> require_hardfork;
     } params;
-    // parameters params;
 };
 
 }} // cyberway::genesis
@@ -53,5 +54,5 @@ FC_REFLECT(cyberway::genesis::genesis_info::account, (name)(owner_key)(active_ke
 FC_REFLECT(cyberway::genesis::genesis_info::stake_params,
     (max_proxies)(payout_step_length)(payout_steps_num)(min_own_staked_for_election))
 FC_REFLECT(cyberway::genesis::genesis_info::hardfork_info, (version)(time))
-FC_REFLECT(cyberway::genesis::genesis_info::parameters, (stake)(require_hardfork))
+FC_REFLECT(cyberway::genesis::genesis_info::parameters, (stake)(posting_rules)(require_hardfork))
 FC_REFLECT(cyberway::genesis::genesis_info, (state_file)(genesis_json)(accounts)(params))
