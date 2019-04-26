@@ -1,20 +1,29 @@
 #pragma once
 
 #include <eosio/chain/types.hpp>
+#include <eosio/chain/abi_def.hpp>
 #include <fc/reflect/reflect.hpp>
 
 namespace cyberway { namespace genesis {
 
 using namespace eosio::chain;
 
-struct genesis_ee_header {
-    char magic[14] = "CyberwayEEGen";
+struct ee_genesis_header {
+    char magic[12] = "CyberwayEEG";
     uint32_t version = 1;
+    fc::sha256 hash;
 
     bool is_valid() {
-        genesis_ee_header oth;
+        ee_genesis_header oth;
         return string(magic) == oth.magic && version == oth.version;
     }
+};
+
+struct ee_table_header {
+    account_name code;
+    table_name   name;
+    type_name    abi_type;
+    uint32_t     count;
 };
 
 enum class section_ee_type {
@@ -45,6 +54,7 @@ struct message_ee_object {
 
 }} // cyberway::genesis
 
+FC_REFLECT(cyberway::genesis::ee_table_header, (code)(name)(abi_type)(count))
 FC_REFLECT_ENUM(cyberway::genesis::section_ee_type, (messages))
 FC_REFLECT(cyberway::genesis::section_ee_header, (type))
 

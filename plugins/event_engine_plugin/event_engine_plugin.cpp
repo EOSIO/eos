@@ -2,18 +2,23 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
+#include <boost/filesystem/path.hpp>
+#include <boost/filesystem/fstream.hpp>
 #include <eosio/event_engine_plugin/event_engine_plugin.hpp>
 #include <eosio/event_engine_plugin/messages.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
 #include <fc/exception/exception.hpp>
 #include <fc/variant_object.hpp>
 #include <fc/io/json.hpp>
+#include <cyberway/genesis/ee_genesis_container.hpp>
 
 #include <fstream>
 
 using namespace eosio::chain;
 
 namespace eosio {
+   FC_DECLARE_EXCEPTION(ee_extract_genesis_exception, 10000000, "event engine genesis extract exception");
+
    static appbase::abstract_plugin& _event_engine_plugin = app().register_plugin<event_engine_plugin>();
 
 class abi_info final {
@@ -65,12 +70,15 @@ public:
     controller &db;
     fc::microseconds abi_serializer_max_time;
     std::set<account_name> receiver_filter;
+    std::vector<bfs::path> genesis_files;
 
     void set_abi(name account, const abi_def& abi);
     void accepted_block( const chain::block_state_ptr& );
     void irreversible_block(const chain::block_state_ptr&);
     void accepted_transaction(const chain::transaction_metadata_ptr&);
     void applied_transaction(const chain::transaction_trace_ptr&);
+
+    void send_genesis_file(const bfs::path& genesis_file);
 
     bool is_handled_contract(const account_name n) const;
 
@@ -201,6 +209,49 @@ bool event_engine_plugin_impl::is_handled_contract(const account_name n) const {
     return receiver_filter.empty() || receiver_filter.find(n) != receiver_filter.end();
 }
 
+void event_engine_plugin_impl::send_genesis_file(const bfs::path& genesis_file) {
+    using cyberway::genesis::ee_genesis_header;
+    using cyberway::genesis::ee_table_header;
+
+    std::cout << "Reading event engine genesis data from " << genesis_file << "..." << std::endl;
+    bfs::ifstream in(genesis_file);
+    ee_genesis_header h{"", 0};
+
+    in.read((char*)&h, sizeof(h));
+    std::cout << "Header magic: " << h.magic << "; ver: " << h.version << std::endl;
+    EOS_ASSERT(h.is_valid(), ee_extract_genesis_exception, "Unknown format of the Genesis state file.");
+
+    // Read ABI
+    abi_def abi;
+    abi_serializer serializer;
+
+    fc::raw::unpack(in, abi);
+    serializer.set_abi(abi, abi_serializer_max_time);
+
+    while (in) {
+        ee_table_header t;
+        fc::raw::unpack(in, t);
+        if (!in)
+            break;
+
+        std::cout << "Reading " << t.count << " record(s) with type: " << t.abi_type << std::endl;
+        for (unsigned i = 0; i < t.count; ++i) {
+            bytes data;
+            fc::raw::unpack(in, data);
+
+            fc::variant args;
+            if (data.size() != 0) {
+                fc::datastream<const char*> ds(static_cast<const char*>(data.data()), data.size());
+                args = serializer.binary_to_variant(t.abi_type, ds, abi_serializer_max_time);
+            }
+
+            GenesisDataMessage msg(BaseMessage::GenesisData, t.code, t.name, args);
+            send_message(msg);
+        }
+    }
+    std::cout << "Done reading Event Engine Genesis data from " << genesis_file << std::endl;
+}
+
 void event_engine_plugin_impl::applied_transaction(const chain::transaction_trace_ptr& trx_trace) {
     ilog("Applied trx: ${block_num}, ${id}", ("block_num", trx_trace->block_num)("id", trx_trace->id));
 
@@ -254,6 +305,7 @@ void event_engine_plugin::set_program_options(options_description&, options_desc
         ("event-engine-dumpfile", bpo::value<string>()->default_value(""))
         ("event-engine-contract", bpo::value<vector<string>>()->composing()->multitoken(),
          "Smart-contracts for which event_engine will handle events (may specify multiple times)")
+        ("event-engine-genesis",  bpo::value<vector<string>>()->composing()->multitoken())
         ;
 }
 
@@ -272,6 +324,7 @@ void event_engine_plugin::plugin_initialize(const variables_map& options) {
         my.reset(new event_engine_plugin_impl(chain, chain_plug->get_abi_serializer_max_time()));
 
         LOAD_VALUE_SET(options, "event-engine-contract", my->receiver_filter);
+        LOAD_VALUE_SET(options, "event-engine-genesis", my->genesis_files);
 
         std::string dump_filename = options.at("event-engine-dumpfile").as<string>();
         if(dump_filename != "") {
@@ -308,7 +361,13 @@ void event_engine_plugin::plugin_initialize(const variables_map& options) {
 }
 
 void event_engine_plugin::plugin_startup() {
+   auto& chain = app().find_plugin<chain_plugin>()->chain();
    // Make the magic happen
+   if (chain.head_block_num() == 1) {
+       for(const auto& file: my->genesis_files) {
+           my->send_genesis_file(file);
+       }
+   }
 }
 
 void event_engine_plugin::plugin_shutdown() {

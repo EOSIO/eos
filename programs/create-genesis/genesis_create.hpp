@@ -27,7 +27,7 @@ public:
     ~genesis_create();
 
     void read_state(const bfs::path& state_file);
-    void write_genesis(const bfs::path& out_file, const genesis_info&, const genesis_state&, const contracts_map&);
+    void write_genesis(const bfs::path& out_file, const bfs::path& ee_file, const genesis_info&, const genesis_state&, const contracts_map&);
 
 private:
     struct genesis_create_impl;

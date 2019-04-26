@@ -1,6 +1,6 @@
 #include "genesis_ee_builder.hpp"
 #include "golos_operations.hpp"
-#include <cyberway/genesis/genesis_ee_container.hpp>
+#include <cyberway/genesis/ee_genesis_container.hpp>
 
 #define MEGABYTE 1024*1024
 
@@ -167,8 +167,8 @@ void genesis_ee_builder::build(const bfs::path& out_file) {
     out_.exceptions(std::ofstream::failbit | std::ofstream::badbit);
     out_.open(out_file, std::ios_base::binary);
 
-    genesis_ee_header hdr;
-    out_.write((const char*)&hdr, sizeof(genesis_ee_header));
+    ee_genesis_header hdr;
+    out_.write((const char*)&hdr, sizeof(ee_genesis_header));
 
     build_messages();
 }

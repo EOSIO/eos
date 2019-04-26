@@ -4,6 +4,7 @@
 #include "golos_state_container.hpp"
 #include "supply_distributor.hpp"
 #include "serializer.hpp"
+#include <cyberway/genesis/ee_genesis_serializer.hpp>
 #include <eosio/chain/config.hpp>
 #include <eosio/chain/authorization_manager.hpp>
 #include <eosio/chain/resource_limits.hpp>
@@ -79,6 +80,28 @@ struct vesting_balance {
     share_type delegated;
     share_type received;
 };
+
+abi_def create_ee_abi() {
+    abi_def abi;
+    abi.version = "cyberway::abi/1.0";
+
+    abi.structs.emplace_back( struct_def {
+        "currency_stats", "", {
+            {"supply", "asset"},
+            {"max_supply", "asset"},
+            {"issuer", "name"}
+        }
+    });
+
+    abi.structs.emplace_back( struct_def {
+        "balance", "", {
+            {"account", "name"},
+            {"balance", "asset"}
+        }
+    });
+
+    return abi;
+}
 
 struct state_object_visitor {
     using result_type = void;
@@ -239,6 +262,7 @@ struct genesis_create::genesis_create_impl final {
     contracts_map _contracts;
 
     genesis_serializer db;
+    ee_genesis_serializer ee_genesis;
 
     vector<string> _accs_map;
     vector<string> _plnk_map;
@@ -751,6 +775,7 @@ struct genesis_create::genesis_create_impl final {
         // token stats
         const auto n_stats = 2;
         db.start_section(config::token_account_name, N(stat), "currency_stats", n_stats);
+        ee_genesis.start_section(config::token_account_name, N(stat), "currency_stats", n_stats);
 
         auto supply = gp.current_supply + golos_from_gbg;
         ram_payer_info ram_payer{};
@@ -762,6 +787,7 @@ struct genesis_create::genesis_create_impl final {
                 ("max_supply", asset(max_supply, sym))
                 ("issuer", issuer);
             db.insert(tbl, pk, stat, ram_payer);
+            ee_genesis.insert(stat);
             return pk;
         };
 
@@ -983,10 +1009,12 @@ struct genesis_create::genesis_create_impl final {
         std::cout << "Done." << std::endl;
     }
 
-    void prepare_writer(const bfs::path& out_file) {
+    void prepare_writer(const bfs::path& out_file, const bfs::path& ee_file) {
         const int n_sections = 5*2 + static_cast<int>(stored_contract_tables::_max);  // there are 5 duplicating account tables (system+golos)
         db.start(out_file, n_sections);
         db.prepare_serializers(_contracts);
+
+        ee_genesis.start(ee_file, fc::sha256(), create_ee_abi());
     };
 };
 
@@ -1000,13 +1028,13 @@ void genesis_create::read_state(const bfs::path& state_file) {
 }
 
 void genesis_create::write_genesis(
-    const bfs::path& out_file, const genesis_info& info, const genesis_state& conf, const contracts_map& accs
+    const bfs::path& out_file, const bfs::path& ee_file, const genesis_info& info, const genesis_state& conf, const contracts_map& accs
 ) {
     _impl->_info = info;
     _impl->_conf = conf;
     _impl->_contracts = accs;
 
-    _impl->prepare_writer(out_file);
+    _impl->prepare_writer(out_file, ee_file);
     _impl->store_contracts();
     _impl->store_accounts();
     _impl->store_stakes();
@@ -1020,6 +1048,7 @@ void genesis_create::write_genesis(
     }
 
     _impl->db.finalize();
+    _impl->ee_genesis.finalize();
 }
 
 
