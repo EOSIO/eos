@@ -45,7 +45,7 @@ struct config_reader {
 
     bfs::path info_file;
     bfs::path out_file;
-    bfs::path ee_file;
+    bfs::path ee_directory;
 
     genesis_info info;
     genesis_state genesis;
@@ -59,8 +59,8 @@ void config_reader::set_program_options(options_description& cli) {
             "the location of the genesis info file (absolute path or relative to the current directory).")
         ("output-file,o", bpo::value<bfs::path>(&out_file)->default_value("cyberway-genesis.dat"),
             "the file to write generic genesis data to (absolute or relative path).")
-        ("ee-output-file,e", bpo::value<bfs::path>(&ee_file)->default_value("events-genesis.dat"),
-            "the file to write Event-Engine genesis data to (absolute or relative path).")
+        ("ee-output-directory,e", bpo::value<bfs::path>(&ee_directory)->default_value("events-genesis"),
+            "the directory to write Event-Engine genesis data files to (absolute or relative path).")
         ("help,h", "Print this help message and exit.")
         ;
 }
@@ -70,6 +70,21 @@ void make_absolute(bfs::path& path, const string& title, bool file_exists = true
     if (file_exists) {
         EOS_ASSERT(fc::is_regular_file(path), genesis_exception,
             "${t} file '${f}' does not exist.", ("t",title)("f", path.generic_string()));
+    }
+}
+
+void make_dir_absolute(bfs::path& path, const string& title, bool dir_exists = true) {
+    path = bfs::absolute(path);
+    if (dir_exists) {
+        EOS_ASSERT(fc::is_directory(path), genesis_exception,
+            "${t} directory '${f}' does not exist.", ("t",title)("f", path.generic_string()));
+    } else {
+        if (fc::exists(path)) {
+            EOS_ASSERT(fc::is_directory(path), genesis_exception,
+                "${t} directory expected but '${f}' is a file.", ("t",title)("f", path.generic_string()));
+        } else {
+            fc::create_directories(path);
+        }
     }
 }
 
@@ -112,7 +127,7 @@ void config_reader::read_config(const variables_map& options) {
     ilog("Genesis: read config");
     make_absolute(info_file, "Info");
     make_absolute(out_file, "Output", false);
-    make_absolute(ee_file, "Events", false);
+    make_dir_absolute(ee_directory, "Events", false);
 
     info = fc::json::from_file(info_file).as<genesis_info>();
     make_absolute(info.state_file, "Golos state");
@@ -151,7 +166,7 @@ int main(int argc, char** argv) {
 
         genesis_create builder{};
         builder.read_state(cr.info.state_file);
-        builder.write_genesis(cr.out_file, cr.ee_file, cr.info, cr.genesis, cr.contracts);
+        builder.write_genesis(cr.out_file, cr.ee_directory, cr.info, cr.genesis, cr.contracts);
 
     } catch (const fc::exception& e) {
         elog("${e}", ("e", e.to_detail_string()));

@@ -1,4 +1,4 @@
-add_executable(create-genesis main.cpp genesis_create.cpp)
+add_executable(create-genesis main.cpp genesis_create.cpp event_engine_genesis.cpp)
 
 if(UNIX AND NOT APPLE)
   set(rt_library rt)

@@ -4,7 +4,7 @@
 #include "golos_state_container.hpp"
 #include "supply_distributor.hpp"
 #include "serializer.hpp"
-#include <cyberway/genesis/ee_genesis_serializer.hpp>
+#include "event_engine_genesis.hpp"
 #include <eosio/chain/config.hpp>
 #include <eosio/chain/authorization_manager.hpp>
 #include <eosio/chain/resource_limits.hpp>
@@ -80,28 +80,6 @@ struct vesting_balance {
     share_type delegated;
     share_type received;
 };
-
-abi_def create_ee_abi() {
-    abi_def abi;
-    abi.version = "cyberway::abi/1.0";
-
-    abi.structs.emplace_back( struct_def {
-        "currency_stats", "", {
-            {"supply", "asset"},
-            {"max_supply", "asset"},
-            {"issuer", "name"}
-        }
-    });
-
-    abi.structs.emplace_back( struct_def {
-        "balance", "", {
-            {"account", "name"},
-            {"balance", "asset"}
-        }
-    });
-
-    return abi;
-}
 
 struct state_object_visitor {
     using result_type = void;
@@ -262,7 +240,8 @@ struct genesis_create::genesis_create_impl final {
     contracts_map _contracts;
 
     genesis_serializer db;
-    ee_genesis_serializer ee_genesis;
+
+    event_engine_genesis ee_genesis;
 
     vector<string> _accs_map;
     vector<string> _plnk_map;
@@ -775,7 +754,7 @@ struct genesis_create::genesis_create_impl final {
         // token stats
         const auto n_stats = 2;
         db.start_section(config::token_account_name, N(stat), "currency_stats", n_stats);
-        ee_genesis.start_section(config::token_account_name, N(stat), "currency_stats", n_stats);
+        ee_genesis.balances.start_section(config::token_account_name, N(currency), "currency_stats", n_stats);
 
         auto supply = gp.current_supply + golos_from_gbg;
         ram_payer_info ram_payer{};
@@ -787,7 +766,7 @@ struct genesis_create::genesis_create_impl final {
                 ("max_supply", asset(max_supply, sym))
                 ("issuer", issuer);
             db.insert(tbl, pk, stat, ram_payer);
-            ee_genesis.insert(stat);
+            ee_genesis.balances.insert(stat);
             return pk;
         };
 
@@ -810,12 +789,17 @@ struct genesis_create::genesis_create_impl final {
         // funds
         const auto n_balances = 3 + 2*data.gbg.size();
         db.start_section(config::token_account_name, N(accounts), "account", n_balances);
-        db.insert({config::token_account_name, config::stake_account_name, N(accounts)}, sys_pk,
-            mvo("balance", _total_staked)("payments", asset(0, golos_sym)), ram_payer);
-        db.insert({config::token_account_name, gls_vest_account_name, N(accounts)}, gls_pk,
-            mvo("balance", gp.total_vesting_fund_steem)("payments", asset(0, golos_sym)), ram_payer);
-        db.insert({config::token_account_name, gls_post_account_name, N(accounts)}, gls_pk,
-            mvo("balance", gp.total_reward_fund_steem)("payments", asset(0, golos_sym)), ram_payer);
+        ee_genesis.balances.start_section(config::token_account_name, N(balance), "balance_event", n_balances);
+        auto insert_balance_record = [&](name account, const asset& balance, primary_key_t stat_pk, const ram_payer_info& ram_payer) {
+            db.insert({config::token_account_name, account, N(accounts)}, stat_pk,
+                mvo("balance", balance)("payments", asset(0, balance.get_symbol())), ram_payer);
+            ee_genesis.balances.insert(
+                mvo("account", account)("balance", balance)("payments", asset(0, balance.get_symbol())));
+        };
+        
+        insert_balance_record(config::stake_account_name, _total_staked, sys_pk, ram_payer);
+        insert_balance_record(gls_vest_account_name, gp.total_vesting_fund_steem, gls_pk, ram_payer);
+        insert_balance_record(gls_post_account_name, gp.total_reward_fund_steem, gls_pk, ram_payer);
         // TODO: internal pool of posting contract
 
         // accounts GOLOS
@@ -826,10 +810,8 @@ struct genesis_create::genesis_create_impl final {
             auto gls = data.gls[acc] + to_gls.convert(gbg);
             total_gls += gls;
             auto n = generate_name(_accs_map[acc]);
-            db.insert({config::token_account_name, n, N(accounts)}, gls_pk,
-                mvo("balance", gls)("payments", asset(0, golos_sym)), ram_payer);
-            db.insert({config::token_account_name, n, N(accounts)}, sys_pk,
-                mvo("balance", golos2sys(gls))("payments", asset(0, sys_sym)), ram_payer);
+            insert_balance_record(n, gls, gls_pk, ram_payer);
+            insert_balance_record(n, golos2sys(gls), sys_pk, ram_payer);
         }
         const auto liquid_supply = supply - (gp.total_vesting_fund_steem + gp.total_reward_fund_steem); // no funds
         std::cout << " Total sum of GOLOS + converted GBG = " << total_gls
@@ -1009,12 +991,12 @@ struct genesis_create::genesis_create_impl final {
         std::cout << "Done." << std::endl;
     }
 
-    void prepare_writer(const bfs::path& out_file, const bfs::path& ee_file) {
+    void prepare_writer(const bfs::path& out_file, const bfs::path& ee_directory) {
         const int n_sections = 5*2 + static_cast<int>(stored_contract_tables::_max);  // there are 5 duplicating account tables (system+golos)
         db.start(out_file, n_sections);
         db.prepare_serializers(_contracts);
 
-        ee_genesis.start(ee_file, fc::sha256(), create_ee_abi());
+        ee_genesis.start(ee_directory, fc::sha256());
     };
 };
 
@@ -1028,13 +1010,13 @@ void genesis_create::read_state(const bfs::path& state_file) {
 }
 
 void genesis_create::write_genesis(
-    const bfs::path& out_file, const bfs::path& ee_file, const genesis_info& info, const genesis_state& conf, const contracts_map& accs
+    const bfs::path& out_file, const bfs::path& ee_directory, const genesis_info& info, const genesis_state& conf, const contracts_map& accs
 ) {
     _impl->_info = info;
     _impl->_conf = conf;
     _impl->_contracts = accs;
 
-    _impl->prepare_writer(out_file, ee_file);
+    _impl->prepare_writer(out_file, ee_directory);
     _impl->store_contracts();
     _impl->store_accounts();
     _impl->store_stakes();
