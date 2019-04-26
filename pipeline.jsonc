@@ -35,8 +35,7 @@
         "pipeline-branch": "master",
         "configuration":
         [
-            "17=release/1.7.x",
-            "16=release/1.6.x"
+            "170=v1.7.0"
         ]
     },
     "eosio-sync-tests":
