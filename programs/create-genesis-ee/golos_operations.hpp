@@ -5,6 +5,7 @@
 namespace cyberway { namespace golos {
 
 struct comment_operation {
+    uint64_t hash = 0;
     account_name_type parent_author;
     string parent_permlink;
 
@@ -23,11 +24,9 @@ struct custom_json_operation {
     string json; ///< must be proper utf8 / JSON string.
 };
 
-// Currently not used, dump stores hash only
-// struct delete_comment_operation {
-//     account_name_type author;
-//     string permlink;
-// };
+struct delete_comment_operation {
+    uint64_t hash = 0;
+};
 
 struct transfer_operation {
     account_name_type from;
@@ -42,10 +41,13 @@ struct transfer_operation {
 };
 
 struct vote_operation {
+    uint64_t hash = 0;
+    uint64_t voter_hash = 0;
     account_name_type voter;
     account_name_type author;
     string permlink;
     int16_t weight = 0;
+    fc::time_point_sec timestamp;
 };
 
 struct author_reward_operation {
@@ -77,6 +79,7 @@ struct auction_window_reward_operation {
 };
 
 struct total_comment_reward_operation {
+    uint64_t hash = 0;
     account_name_type author;
     string permlink;
     asset author_reward;
@@ -87,10 +90,10 @@ struct total_comment_reward_operation {
 
 } } // cyberway::golos
 
-FC_REFLECT(cyberway::golos::comment_operation, (parent_author)(parent_permlink)(author)(permlink)(title)(body)(tags))
+FC_REFLECT(cyberway::golos::comment_operation, (hash)(parent_author)(parent_permlink)(author)(permlink)(title)(body)(tags))
 FC_REFLECT(cyberway::golos::custom_json_operation, (required_auths)(required_posting_auths)(id)(json))
-// FC_REFLECT(cyberway::golos::delete_comment_operation, (author)(permlink))
-FC_REFLECT(cyberway::golos::vote_operation, (voter)(author)(permlink)(weight))
+FC_REFLECT(cyberway::golos::delete_comment_operation, (hash))
+FC_REFLECT(cyberway::golos::vote_operation, (hash)(voter_hash)(voter)(author)(permlink)(weight)(timestamp))
 FC_REFLECT(cyberway::golos::transfer_operation, (from)(to)(amount)(memo))
 
 FC_REFLECT(cyberway::golos::author_reward_operation, (author)(permlink)(sbd_payout)(steem_payout)(vesting_payout))
