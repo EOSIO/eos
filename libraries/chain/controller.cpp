@@ -863,7 +863,7 @@ struct controller_impl {
       auto utb = upgrade_target_block();
       auto ucb = upgrade_complete_block();
       auto is_upgrading = false;
-      if (utb) is_upgrading = head->block_num > *utb;
+      if (utb) is_upgrading = head->block_num >= *utb;
       if (ucb) is_upgrading = is_upgrading && head->block_num < *ucb;
       return is_upgrading;
    }
@@ -1356,7 +1356,7 @@ struct controller_impl {
          auto lscb_num = pending->_pending_block_state->pbft_stable_checkpoint_blocknum;
 
          if (new_version && gpo.proposed_schedule_block_num) {
-             proposed_schedule_blocks.push_back(*gpo.proposed_schedule_block_num);
+             proposed_schedule_blocks.emplace_back(*gpo.proposed_schedule_block_num);
              for ( auto itr = proposed_schedule_blocks.begin(); itr != proposed_schedule_blocks.end();) {
                  if ((*itr) < lscb_num) {
                      itr = proposed_schedule_blocks.erase(itr);
@@ -1396,7 +1396,7 @@ struct controller_impl {
                  pending->_pending_block_state->set_new_producers(gpo.proposed_schedule);
 
                  if (new_version) {
-                     promoted_schedule_blocks.push_back(pending->_pending_block_state->block_num);
+                     promoted_schedule_blocks.emplace_back(pending->_pending_block_state->block_num);
                      for ( auto itr = promoted_schedule_blocks.begin(); itr != promoted_schedule_blocks.end();) {
                          if ((*itr) < lscb_num) {
                              itr = promoted_schedule_blocks.erase(itr);

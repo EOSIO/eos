@@ -40,7 +40,7 @@ namespace eosio {
                 for (uint32_t i = 0, n = watermarks_size.value; i < n; ++i) {
                     block_num_type h;
                     fc::raw::unpack(ds, h);
-                    prepare_watermarks.push_back(h);
+                    prepare_watermarks.emplace_back(h);
                 }
                 sort(prepare_watermarks.begin(), prepare_watermarks.end());
 
@@ -618,7 +618,7 @@ namespace eosio {
 
                     for (const auto &pre: prepares) {
                         if (prepare_count.find(pre.view) == prepare_count.end()) prepare_count[pre.view] = 0;
-                        prepare_msg[pre.view].push_back(pre);
+                        prepare_msg[pre.view].emplace_back(pre);
                     }
 
                     for (auto const &sp: as) {
@@ -716,7 +716,7 @@ namespace eosio {
                     if (p.block_num <= lscb) {
                         ++non_fork_bp_count;
                     } else {
-                        prepare_infos.push_back(block_info{p.block_id, p.block_num});
+                        prepare_infos.emplace_back(block_info{p.block_id, p.block_num});
                     }
                 }
 
@@ -949,6 +949,7 @@ namespace eosio {
 
         block_info pbft_database::cal_pending_stable_checkpoint() const {
 
+            //TODO: maybe use watermarks instead?
             auto lscb_num = ctrl.last_stable_checkpoint_block_num();
             auto lscb_id = ctrl.last_stable_checkpoint_block_id();
             auto lscb_info = block_info{lscb_id, lscb_num};
@@ -959,17 +960,26 @@ namespace eosio {
 
             while (itr != by_blk_num.end()) {
                 if ((*itr)->is_stable && ctrl.fetch_block_state_by_id((*itr)->block_id)) {
-                    auto lib = ctrl.fetch_block_state_by_number(ctrl.last_irreversible_block_num());
+                    auto lscb = ctrl.fetch_block_state_by_number(ctrl.last_stable_checkpoint_block_num());
 
                     auto head_checkpoint_schedule = ctrl.fetch_block_state_by_id(
                             (*itr)->block_id)->active_schedule;
 
-                    auto current_schedule = lib_active_producers();
-                    auto new_schedule = lib_active_producers();
+                    producer_schedule_type current_schedule;
+                    producer_schedule_type new_schedule;
 
-                    if (lib) {
-                        current_schedule = lib->active_schedule;
-                        new_schedule = lib->pending_schedule;
+                    if (lscb_num == 0) {
+                        const auto& ucb = ctrl.get_upgrade_properties().upgrade_complete_block_num;
+                        if (!ucb) return lscb_info;
+                        auto bs = ctrl.fetch_block_state_by_number(*ucb);
+                        if (!bs) return lscb_info;
+                        current_schedule = bs->active_schedule;
+                        new_schedule = bs->pending_schedule;
+                    } else if (lscb) {
+                        current_schedule = lscb->active_schedule;
+                        new_schedule = lscb->pending_schedule;
+                    } else {
+                        return lscb_info;
                     }
 
                     if ((*itr)->is_stable
@@ -996,14 +1006,12 @@ namespace eosio {
 
             block_num_type my_latest_checkpoint = 0;
 
-
             auto checkpoint = [&](const block_num_type &in) {
                 const auto& ucb = ctrl.get_upgrade_properties().upgrade_complete_block_num;
                 if (!ucb) return false;
-                return in > *ucb
+                return in >= *ucb
                 && (in % 100 == 1 || std::find(prepare_watermarks.begin(), prepare_watermarks.end(), in) != prepare_watermarks.end());
             };
-
 
             for (auto i = psp->block_num;
                  i > std::max(ctrl.last_stable_checkpoint_block_num(), static_cast<uint32_t>(1)); --i) {
@@ -1029,6 +1037,7 @@ namespace eosio {
             }
 
             if (!pending_checkpoint_block_num.empty()) {
+                std::sort(pending_checkpoint_block_num.begin(), pending_checkpoint_block_num.begin());
                 for (auto h: pending_checkpoint_block_num) {
                     for (auto const &my_sp : ctrl.my_signature_providers()) {
                         auto uuid = boost::uuids::to_string(uuid_generator());
@@ -1288,8 +1297,6 @@ namespace eosio {
             if (prepare_watermarks.empty()) return 0;
 
             auto cw = *std::upper_bound(prepare_watermarks.begin(), prepare_watermarks.end(), lib);
-
-//            wlog("watermarks: ${w}", ("w",prepare_watermarks));
 
             if (cw > lib) return cw; else return 0;
         }
