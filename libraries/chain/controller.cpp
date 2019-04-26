@@ -267,6 +267,9 @@ struct controller_impl {
     SET_CYBER_DOMAIN_HANDLER(linkdomain);
     SET_CYBER_DOMAIN_HANDLER(unlinkdomain);
 
+   SET_CYBER_HANDLER(cyber, cyber, setrampayer);
+   SET_CYBER_HANDLER(cyber, cyber, setramstate);
+
    fork_db.irreversible.connect( [&]( auto b ) {
                                  on_irreversible(b);
                                  });
@@ -779,7 +782,7 @@ struct controller_impl {
 //      );
       // No need to verify_account_ram_usage since we are only reducing memory
 
-      chaindb.erase( gto, {resource_limits} );
+      chaindb.erase( gto, resource_limits.get_ram_payer() );
    }
 
    bool failure_is_subjective( const fc::exception& e ) const {

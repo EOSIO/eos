@@ -111,7 +111,7 @@ template<bool IsPrimaryIndex> struct lower_bound final {
 }; // struct lower_bound
 
 template<> struct lower_bound<true /*IsPrimaryIndex*/> final {
-    find_info operator()(chaindb_controller& chaindb, const index_request& request, const primary_key_t pk) const {
+    find_info operator()(chaindb_controller& chaindb, const table_request& request, const primary_key_t pk) const {
         return chaindb.lower_bound(request, pk);
     }
 }; // struct lower_bound
@@ -129,7 +129,7 @@ template<bool IsPrimaryIndex> struct upper_bound final {
 }; // struct upper_bound
 
 template<> struct upper_bound<true /*IsPrimaryIndex*/> final {
-    find_info operator()(chaindb_controller& chaindb, const index_request& request, const primary_key_t pk) const {
+    find_info operator()(chaindb_controller& chaindb, const table_request& request, const primary_key_t pk) const {
         return chaindb.upper_bound(request, pk);
     }
 }; // struct upper_bound
@@ -345,12 +345,15 @@ private:
             return &item_data::get_T(item_);
         }
         const primary_key_t pk() const {
-            lazy_load_object();
+            lazy_open();
             return primary_key_;
         }
         const service_state& service() const {
             lazy_load_object();
             return item_->service();
+        }
+        bool in_ram() const {
+            return service().in_ram;
         }
 
         const_iterator_impl operator++(int) {
@@ -657,7 +660,7 @@ public:
         }
 
         template<typename Lambda>
-        int64_t modify(const T& obj, const ram_payer_info& ram, Lambda&& updater) const {
+        int modify(const T& obj, const ram_payer_info& ram, Lambda&& updater) const {
             auto& itm = item_data::get_cache(obj);
             CYBERWAY_ASSERT(itm.is_valid_table(get_table_request()), chaindb_midx_logic_exception,
                 "Object ${obj} passed to modify is not from the index ${index}",
@@ -679,11 +682,11 @@ public:
         }
 
         template<typename Lambda>
-        int64_t modify(const T& obj, Lambda&& updater) const {
+        int modify(const T& obj, Lambda&& updater) const {
             return modify(obj, {}, std::forward<Lambda>(updater));
         }
 
-        int64_t erase(const T& obj, const ram_payer_info& ram = {}) const {
+        int erase(const T& obj, const ram_payer_info& ram = {}) const {
             auto& itm = item_data::get_cache(obj);
             CYBERWAY_ASSERT(itm.is_valid_table(get_table_request()), chaindb_midx_logic_exception,
                 "Object ${obj} passed to erase is not from the index ${index}",

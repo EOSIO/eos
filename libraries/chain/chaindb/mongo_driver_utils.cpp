@@ -203,13 +203,13 @@ namespace cyberway { namespace chaindb {
             ("pk", table.pk_order->field)("row", to_json(row))("table", get_full_table_name(table)));
     }
 
-    void validate_field_name(const bool test, const document_view& doc, const element& itm) {
+    static inline void validate_field_name(const bool test, const document_view& doc, const element& itm) {
         CYBERWAY_ASSERT(test, driver_wrong_field_name_exception,
             "Wrong field name ${name} in the row '${row}",
             ("name", itm.key().to_string())("row", to_json(doc)));
     }
 
-    void validate_field_type(const bool test, const document_view& doc, const element& itm) {
+    static inline void validate_field_type(const bool test, const document_view& doc, const element& itm) {
         CYBERWAY_ASSERT(test, driver_wrong_field_type_exception,
             "Wrong type for the field ${name} in the document '${row}",
             ("name", itm.key().to_string())("row", to_json(doc)));
@@ -226,6 +226,12 @@ namespace cyberway { namespace chaindb {
         bool has_payer = false;
         bool has_owner = false;
         bool has_scope = false;
+
+        // The number of RAM objects is less then the number of archive objects.
+        //   so, the RAM field is false by default
+        state.in_ram      = false;
+        state.undo_in_ram = false;
+
         for (auto& itm: src) try {
             auto key = itm.key().to_string();
             auto key_type = itm.type();
@@ -248,20 +254,20 @@ namespace cyberway { namespace chaindb {
                     break;
                 }
                 case 's': {
-                    if (key == names::scope_field) {
-                        validate_field_type(type::k_utf8 == key_type, src, itm);
-                        state.scope = account_name(itm.get_utf8().value.to_string());
-                        has_scope = true;
-                    } else if (key == names::size_field) {
-                        validate_field_type(type::k_int32 == key_type, src, itm);
-                        state.size = itm.get_int32().value;
-                        has_size = true;
+                    if (names::scope_field == key) {
+                       validate_field_type(type::k_utf8 == key_type, src, itm);
+                       state.scope = account_name(itm.get_utf8().value.to_string());
+                       has_scope = true;
                     } else {
-                        validate_field_name(false, src, itm);
+                       validate_field_name(names::size_field == key, src, itm);
+                       validate_field_type(type::k_int32 == key_type, src, itm);
+                       state.size = itm.get_int32().value;
+                       has_size = true;
                     }
                     break;
                 }
                 case 'o': {
+                    validate_field_name(names::owner_field == key, src, itm);
                     validate_field_type(type::k_utf8 == key_type, src, itm);
                     state.owner = account_name(itm.get_utf8().value.to_string());
                     has_owner = true;
@@ -271,12 +277,11 @@ namespace cyberway { namespace chaindb {
                     if (key == names::pk_field) {
                         validate_field_type(type::k_decimal128 == key_type, src, itm);
                         state.pk = from_decimal128(itm.get_decimal128());
-                    } else if (key == names::payer_field) {
+                    } else {
+                        validate_field_name(names::payer_field == key, src, itm);
                         validate_field_type(type::k_utf8 == key_type, src, itm);
                         state.payer = account_name(itm.get_utf8().value.to_string());
                         has_payer = true;
-                    } else {
-                        validate_field_name(false, src, itm);
                     }
                     break;
                 }
@@ -284,33 +289,58 @@ namespace cyberway { namespace chaindb {
                     if (key == names::revision_field) {
                         validate_field_type(type::k_int64 == key_type, src, itm);
                         state.revision = itm.get_int64().value;
-                    } else if (key == names::undo_rec_field) {
-                        validate_field_type(type::k_utf8 == key_type, src, itm);
-                        state.undo_rec = fc::reflector<undo_record>::from_string(itm.get_utf8().value.data());
                     } else {
-                        validate_field_name(false, src, itm);
+                        validate_field_name(names::ram_field == key, src, itm);
+                        validate_field_type(type::k_bool == key_type, src, itm);
+                        state.in_ram = itm.get_bool().value;
+                        // for archive records it should absent
+                        validate_field_type(state.in_ram, src, itm);
                     }
                     break;
                 }
                 case 'u': {
-                    if (key == names::undo_pk_field) {
-                        validate_field_type(type::k_decimal128 == key_type, src, itm);
-                        state.undo_pk = from_decimal128(itm.get_decimal128());
-                    } else if (key == names::undo_payer_field) {
-                        validate_field_type(type::k_utf8 == key_type, src, itm);
-                        state.undo_payer = account_name(itm.get_utf8().value.to_string());
-                    } else if (key == names::undo_owner_field) {
-                        validate_field_type(type::k_utf8 == key_type, src, itm);
-                        state.undo_owner = account_name(itm.get_utf8().value.to_string());
-                    } else if (key == names::undo_size_field) {
-                        validate_field_type(type::k_int32 == key_type, src, itm);
-                        state.undo_size = itm.get_int32().value;
+                    switch (key[1]) {
+                        case 'p': {
+                            validate_field_name(names::undo_pk_field == key, src, itm);
+                            validate_field_type(type::k_decimal128 == key_type, src, itm);
+                            state.undo_pk = from_decimal128(itm.get_decimal128());
+                            break;
+                        }
+                        case 'y': {
+                            validate_field_name(names::undo_payer_field == key, src, itm);
+                            validate_field_type(type::k_utf8 == key_type, src, itm);
+                            state.undo_payer = account_name(itm.get_utf8().value.to_string());
+                            break;
+                        }
+                        case 'o': {
+                            validate_field_name(names::undo_owner_field == key, src, itm);
+                            validate_field_type(type::k_utf8 == key_type, src, itm);
+                            state.undo_owner = account_name(itm.get_utf8().value.to_string());
+                            break;
+                        }
+                        case 's': {
+                            validate_field_name(names::undo_size_field == key, src, itm);
+                            validate_field_type(type::k_int32 == key_type, src, itm);
+                            state.undo_size = itm.get_int32().value;
+                            break;
+                        }
+                        case 'c': {
+                            validate_field_name(names::undo_rec_field == key, src, itm);
+                            validate_field_type(type::k_utf8 == key_type, src, itm);
+                            state.undo_rec = fc::reflector<undo_record>::from_string(itm.get_utf8().value.data());
+                            break;
+                        }
+                        default: {
+                            validate_field_name(names::undo_ram_field == key, src, itm);
+                            validate_field_type(type::k_bool == key_type, src, itm);
+                            state.undo_in_ram = itm.get_bool().value;
+                            // for archive records it should absent
+                            validate_field_type(state.undo_in_ram, src, itm);
+                            break;
+                        }
                     }
                     break;
                 }
-                default:
-                    validate_field_name(false, src, itm);
-                    break;
             }
         } catch(const driver_wrong_field_name_exception&) {
             throw;
@@ -551,6 +581,13 @@ namespace cyberway { namespace chaindb {
         return build_document(dst, obj.value.get_object());
     }
 
+    static inline void append_ram_field(sub_document& doc, const string& name, const bool value) {
+        if (value) {
+            // for archive records it should absent
+            doc.append(kvp(name, true));
+        }
+    }
+
     sub_document& build_service_document(sub_document& doc, const table_info& table, const object_value& obj) {
         doc.append(kvp(names::service_field, [&](sub_document serv_doc) {
             serv_doc.append(kvp(names::scope_field, get_scope_name(table)));
@@ -558,6 +595,7 @@ namespace cyberway { namespace chaindb {
             serv_doc.append(kvp(names::payer_field, get_payer_name(obj.service.payer)));
             serv_doc.append(kvp(names::owner_field, get_owner_name(obj.service.owner)));
             serv_doc.append(kvp(names::size_field, static_cast<int32_t>(obj.service.size)));
+            append_ram_field(serv_doc, names::ram_field, obj.service.in_ram);
         }));
         return doc;
     }
@@ -577,6 +615,8 @@ namespace cyberway { namespace chaindb {
             serv_doc.append(kvp(names::payer_field, get_payer_name(obj.service.payer)));
             serv_doc.append(kvp(names::owner_field, get_owner_name(obj.service.owner)));
             serv_doc.append(kvp(names::size_field, static_cast<int32_t>(obj.service.size)));
+            append_ram_field(serv_doc, names::ram_field, obj.service.in_ram);
+            append_ram_field(serv_doc, names::undo_ram_field, obj.service.undo_in_ram);
         }));
         return doc;
     }

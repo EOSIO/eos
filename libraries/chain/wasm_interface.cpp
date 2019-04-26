@@ -129,15 +129,15 @@ class privileged_api : public context_aware_api {
       void activate_feature( int64_t feature_name ) {
          EOS_ASSERT( false, unsupported_feature, "Unsupported Hardfork Detected" );
       }
-      
+
       void update_stake_proxied(uint64_t token_code_raw, account_name account, int64_t frame_length, int force) {
           int64_t now = context.control.pending_block_time().sec_since_epoch();
-          stake::update_proxied(context.chaindb, {context}, now, symbol_code{token_code_raw}, account, frame_length, static_cast<bool>(force));
+          stake::update_proxied(context.chaindb, context.get_ram_payer(), now, symbol_code{token_code_raw}, account, frame_length, static_cast<bool>(force));
       }
 
       void recall_stake_proxied(uint64_t token_code_raw, account_name grantor_name, account_name agent_name, int32_t pct) {
           int64_t now = context.control.pending_block_time().sec_since_epoch();
-          stake::recall_proxied(context.chaindb, {context}, now, symbol_code{token_code_raw}, grantor_name, agent_name, pct);
+          stake::recall_proxied(context.chaindb, context.get_ram_payer(), now, symbol_code{token_code_raw}, grantor_name, agent_name, pct);
       }
 
       int64_t set_proposed_producers( array_ptr<char> packed_producer_schedule, size_t datalen) {
@@ -850,13 +850,22 @@ class authorization_api : public context_aware_api {
       context.require_authorization( account );
    }
 
+   bool weak_require_authorization( const account_name& account ) {
+      return context.weak_require_authorization( account );
+   }
+
    bool has_authorization( const account_name& account )const {
       return context.has_authorization( account );
    }
 
    void require_authorization(const account_name& account,
-                                                 const permission_name& permission) {
+                              const permission_name& permission) {
       context.require_authorization( account, permission );
+   }
+
+   bool weak_require_authorization(const account_name& account,
+                                   const permission_name& permission) {
+      return context.weak_require_authorization( account, permission );
    }
 
    void require_recipient( account_name recipient ) {
@@ -1846,6 +1855,8 @@ REGISTER_INTRINSICS(authorization_api,
    (require_recipient,     void(int64_t)          )
    (require_authorization, void(int64_t), "require_auth", void(authorization_api::*)(const account_name&) )
    (require_authorization, void(int64_t, int64_t), "require_auth2", void(authorization_api::*)(const account_name&, const permission_name& permission) )
+   (weak_require_authorization, int(int64_t), "weak_require_auth", bool(authorization_api::*)(const account_name&) )
+   (weak_require_authorization, int(int64_t, int64_t), "weak_require_auth2", bool(authorization_api::*)(const account_name&, const permission_name& permission) )
    (has_authorization,     int(int64_t), "has_auth", bool(authorization_api::*)(const account_name&)const )
    (is_account,            int(int64_t)           )
 );

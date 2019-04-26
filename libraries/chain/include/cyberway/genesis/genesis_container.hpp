@@ -1,5 +1,6 @@
 #pragma once
 #include <eosio/chain/types.hpp>
+#include <eosio/chain/resource_limits.hpp>
 #include <cyberway/chaindb/controller.hpp>
 #include <fc/reflect/reflect.hpp>
 
@@ -53,7 +54,7 @@ struct sys_table_row {
     }
     ram_payer_info payer() const {
         if (resource_mng) {
-            return {*resource_mng, ram_payer};
+            return resource_mng->get_ram_payer(ram_payer);
         } else {
             return {};
         }

@@ -696,7 +696,7 @@ namespace bacc = boost::accumulators;
    }
 
    cyberway::chaindb::ram_payer_info transaction_context::get_ram_payer(const account_name& ram_owner) {
-      return {*this, get_ram_provider(ram_owner), ram_owner};
+      return {*this, ram_owner, get_ram_provider(ram_owner)};
    }
 
     void transaction_context::available_resources_t::init(resource_limits_manager& rl, const flat_set<account_name>& accounts, fc::time_point now) {

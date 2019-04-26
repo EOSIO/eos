@@ -196,41 +196,28 @@ namespace cyberway { namespace chaindb {
         }
 
         cache_object_ptr emplace(object_value obj) {
-            auto& cache_service = get_cache_service(obj);
-            auto  cache_ptr     = cache_object_ptr(find(obj.service));
+            bool in_ram    = obj.service.in_ram;
+            auto cache_ptr = cache_object_ptr(find(obj.service));
+            cache_service_info* cache_service = nullptr;
 
-            if (!cache_ptr) {
-                cache_ptr = cache_object_ptr(new cache_object(*this, std::move(obj)));
-
-                // self incrementing of ref counter allows to use object w/o an additional storage
-                //   self decrementing happens in remove()
-                intrusive_ptr_add_ref(cache_ptr.get());
-
-
-                cache_object_tree_.insert(*cache_ptr.get());
-                cache_service.cache_object_cnt++;
+            if (in_ram) {
+                cache_service = emplace_in_ram(cache_ptr, std::move(obj));
             } else {
-                // updating of an exist cache item
-                cache_ptr->set_object(std::move(obj));
-
-                auto lru_itr = lru_list_.iterator_to(*cache_ptr.get());
-                lru_list_.erase(lru_itr);
-            }
-
-            lru_list_.push_back(*cache_ptr.get());
-
-            // emplace happens in three cases:
-            //   1. create object for interchain tables ->  object().is_null()
-            //   2. loading object from chaindb         -> !object().is_null()
-            //   3. restore from undo state             -> !object().is_null()
-            if (cache_service.converter && !cache_ptr->object().is_null()) {
-                cache_service.converter->convert_variant(*cache_ptr.get());
+                cache_service = emplace_in_archive(cache_ptr, std::move(obj));
             }
 
             // TODO: cache size should be configurable
             if (lru_list_.size() > 100'000) {
                 auto& cache = lru_list_.front();
                 cache.mark_deleted();
+            }
+
+            // emplace happens in three cases:
+            //   1. create object for interchain tables ->  object().is_null()
+            //   2. loading object from chaindb         -> !object().is_null()
+            //   3. restore from undo state             -> !object().is_null()
+            if (cache_service && cache_service->converter && !cache_ptr->object().is_null()) {
+                cache_service->converter->convert_variant(*cache_ptr.get());
             }
 
             return cache_ptr;
@@ -341,13 +328,54 @@ namespace cyberway { namespace chaindb {
             }
             return nullptr;
         }
+
+        cache_service_info* emplace_in_ram(cache_object_ptr& cache_ptr, object_value obj) {
+            auto& cache_service = get_cache_service(obj);
+
+            if (!cache_ptr) {
+                cache_ptr = cache_object_ptr(new cache_object(this, std::move(obj)));
+
+                // self incrementing of ref counter allows to use object w/o an additional storage
+                //   self decrementing happens in remove()
+                intrusive_ptr_add_ref(cache_ptr.get());
+
+                cache_object_tree_.insert(*cache_ptr.get());
+                cache_service.cache_object_cnt++;
+            } else {
+                // updating of an exist cache item
+                cache_ptr->set_object(std::move(obj));
+
+                auto lru_itr = lru_list_.iterator_to(*cache_ptr.get());
+                lru_list_.erase(lru_itr);
+            }
+
+            lru_list_.push_back(*cache_ptr.get());
+
+            return &cache_service;
+        }
+
+        cache_service_info* emplace_in_archive(cache_object_ptr& cache_ptr, object_value obj) {
+            auto cache_service = find_cache_service(obj);
+
+            if (!cache_ptr) {
+                cache_ptr = cache_object_ptr(new cache_object(nullptr, std::move(obj)));
+            } else {
+                // updating of an exist cache item
+                cache_ptr->set_object(std::move(obj));
+                cache_ptr->mark_deleted();
+            }
+
+            return cache_service;
+        }
     }; // struct table_cache_map
 
     //--------------
 
-    cache_object::cache_object(table_cache_map& map, object_value obj)
-    : table_cache_map_(&map), object_(std::move(obj)) {
-        table_cache_map_->build_cache_indicies(*this, indicies_);
+    cache_object::cache_object(table_cache_map* map, object_value obj)
+    : table_cache_map_(map), object_(std::move(obj)) {
+        if (table_cache_map_) {
+            table_cache_map_->build_cache_indicies(*this, indicies_);
+        }
     }
 
     void cache_object::set_object(object_value obj) {
@@ -360,6 +388,16 @@ namespace cyberway { namespace chaindb {
         if (!is_system_code(object_.service.code) || indicies_.empty()) {
             table_cache_map_->remove_cache_indicies(std::move(indicies_));
             table_cache_map_->build_cache_indicies(*this, indicies_);
+        }
+    }
+
+    void cache_object::set_service(service_state service) {
+        assert(is_valid_table(service));
+
+        object_.service = std::move(service);
+        if (!object_.service.in_ram && table_cache_map_) {
+            table_cache_map_->remove_cache_indicies(std::move(indicies_));
+            table_cache_map_->remove_cache_object(*this);
         }
     }
 

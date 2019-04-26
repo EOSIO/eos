@@ -12,6 +12,7 @@
 #include <boost/container/flat_set.hpp>
 
 #include <cyberway/chaindb/controller.hpp>
+#include <cyberway/chaindb/cursor_cache.hpp>
 #include <cyberway/chain/domain_object.hpp>
 
 using boost::container::flat_set;
@@ -61,7 +62,14 @@ void apply_context::exec_one( action_trace& trace )
              && !(act.account == config::system_account_name && act.name == N( setcode ) &&
                   receiver == config::system_account_name) ) {
             try {
+               auto reset_cache_on_exit = fc::make_scoped_exit([this]{
+                  this->chaindb_cache = nullptr;
+               });
+
                cyberway::chaindb::chaindb_guard guard(chaindb, receiver);
+               chaindb_cursor_cache cache;
+
+               this->chaindb_cache = &cache;
                control.get_wasm_interface().apply( a.code_version, a.code, *this );
                chaindb.apply_code_changes(a.name);
             } catch( const wasm_exit& ) {}
@@ -179,6 +187,16 @@ void apply_context::require_authorization( const account_name& account ) {
    EOS_ASSERT( false, missing_auth_exception, "missing authority of ${account}", ("account",account));
 }
 
+bool apply_context::weak_require_authorization( const account_name& account ) {
+    for( uint32_t i=0; i < act.authorization.size(); i++ ) {
+        if( act.authorization[i].actor == account ) {
+            used_authorizations[i] = true;
+            return true;
+        }
+    }
+    return false;
+}
+
 bool apply_context::has_authorization( const account_name& account )const {
    for( const auto& auth : act.authorization )
      if( auth.actor == account )
@@ -197,6 +215,18 @@ void apply_context::require_authorization(const account_name& account,
      }
   EOS_ASSERT( false, missing_auth_exception, "missing authority of ${account}/${permission}",
               ("account",account)("permission",permission) );
+}
+
+bool apply_context::weak_require_authorization(const account_name& account,
+                                               const permission_name& permission) {
+    for( uint32_t i=0; i < act.authorization.size(); i++ )
+        if( act.authorization[i].actor == account ) {
+            if( act.authorization[i].permission == permission ) {
+                used_authorizations[i] = true;
+                return true;
+            }
+        }
+    return false;
 }
 
 bool apply_context::has_recipient( account_name code )const {
@@ -424,7 +454,7 @@ bool apply_context::cancel_deferred_transaction( const uint128_t& sender_id, acc
    if ( gto ) {
 // TODO: Removed by CyberWay
 //      add_ram_usage( gto->payer, -(config::billable_size_v<generated_transaction_object> + gto->packed_trx.size()) );
-      trx_table.erase(*gto, {*this});
+      trx_table.erase(*gto, get_ram_payer());
    }
    return gto;
 }
@@ -516,15 +546,19 @@ bytes apply_context::get_packed_transaction() {
    return r;
 }
 
-cyberway::chaindb::ram_payer_info apply_context::get_ram_payer( const account_name& ram_owner, const account_name& ram_payer ) {
-   return {*this, trx_context.get_ram_provider(ram_payer), ram_owner};
+cyberway::chaindb::ram_payer_info apply_context::get_ram_payer( account_name ram_owner, account_name ram_payer ) {
+   if (ram_payer.empty()) {
+       ram_payer = ram_owner;
+   }
+
+   return {*this, ram_owner, trx_context.get_ram_provider(ram_payer)};
 }
 
 void apply_context::add_ram_usage( const account_name& payer, const int64_t delta ) {
    if( delta > 0 ) {
-      if( !(privileged || payer == account_name(receiver)) ) {
-         EOS_ASSERT( control.is_ram_billing_in_notify_allowed() || (receiver == act.account),
-                     subjective_block_production_exception, "Cannot charge RAM to other accounts during notify." );
+      if( !(privileged || payer == receiver) ) {
+         EOS_ASSERT( (receiver == act.account), subjective_block_production_exception,
+             "Cannot charge RAM to other accounts during notify." );
          require_authorization( payer );
       }
    }

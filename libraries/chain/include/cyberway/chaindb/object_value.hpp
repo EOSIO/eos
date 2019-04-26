@@ -16,7 +16,8 @@ namespace cyberway { namespace chaindb {
         primary_key_t pk       = unset_primary_key;
         account_name  payer;
         account_name  owner;
-        size_t        size     = 0;
+        int           size     = 0;
+        bool          in_ram   = true;
 
         account_name  code;
         account_name  scope;
@@ -31,6 +32,7 @@ namespace cyberway { namespace chaindb {
         account_name  undo_payer;
         account_name  undo_owner;
         size_t        undo_size     = 0;
+        bool          undo_in_ram   = true;
 
         service_state(const table_info& table, primary_key_t pk)
         : pk(pk), code(table.code), scope(table.scope), table(table.table->name) {
@@ -80,3 +82,4 @@ namespace cyberway { namespace chaindb {
 } } // namespace cyberway::chaindb
 
 FC_REFLECT_ENUM(cyberway::chaindb::undo_record, (Unknown)(OldValue)(RemovedValue)(NewValue)(NextPk))
+FC_REFLECT(cyberway::chaindb::service_state, (owner)(size)(in_ram))

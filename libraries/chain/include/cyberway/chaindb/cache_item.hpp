@@ -65,7 +65,7 @@ namespace cyberway { namespace chaindb {
         bytes            blob_;
 
     public:
-        cache_object(table_cache_map&, object_value);
+        cache_object(table_cache_map*, object_value);
         cache_object(cache_object&&) = default;
 
         ~cache_object() = default;
@@ -83,8 +83,8 @@ namespace cyberway { namespace chaindb {
         }
 
         void mark_deleted();
-
         void set_object(object_value);
+        void set_service(service_state service);
 
         void set_revision(const revision_t rev) {
             object_.service.revision = rev;
