@@ -25,7 +25,7 @@ printf "Disk space total: ${DISK_TOTAL%.*}G\\n"
 printf "Disk space available: ${DISK_AVAIL%.*}G\\n"
 printf "Concurrent Jobs (make -j): ${JOBS}\\n"
 
-if [ $BUILD_CLANG8 ]; then
+if [ "$BUILD_CLANG8" = "true" ]; then
    PINNED_TOOLCHAIN=-DCMAKE_TOOLCHAIN_FILE=$BUILD_DIR/pinned_toolchain.cmake
 fi
 
