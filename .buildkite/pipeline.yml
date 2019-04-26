@@ -138,14 +138,9 @@ steps:
       queue: "automation-eosiobuilds-builder-fleet"
     artifact_paths: "build.tar.gz"
     plugins:
-      ecr#v1.1.4:
-        login: true
-        account_ids: "436617320021"
-        no-include-email: true
-        region: "us-west-2"
       docker#v2.1.0:
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu18_2-3"
+        image: "gcr.io/b1-automation-dev/eosio/builder:latest"
         propagate-environment: true
         workdir: /data/job
     timeout: 120
