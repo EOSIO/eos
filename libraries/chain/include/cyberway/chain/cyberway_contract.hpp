@@ -7,8 +7,13 @@ namespace eosio { namespace chain {
     class apply_context;
 } } // namespace eosio::chain
 
+namespace cyberway { namespace chaindb {
+    struct service_state;
+} } // namespace cyberway::chaindb
+
 namespace cyberway { namespace chain {
     using eosio::chain::apply_context;
+    using cyberway::chaindb::service_state;
 
     struct set_ram_state;
 
@@ -37,6 +42,6 @@ namespace cyberway { namespace chain {
     void apply_cyber_setrampayer(apply_context&);
     void apply_cyber_setramstate(apply_context&);
 
-    void change_ram_state(apply_context&, const set_ram_state&);
+    void apply_set_ram_state(apply_context&, const set_ram_state&, const std::function<void(const service_state&)>&);
 
 } } // namespace cyberway::chain

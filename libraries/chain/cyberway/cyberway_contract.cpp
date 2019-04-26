@@ -146,21 +146,21 @@ void apply_cyber_setrampayer(apply_context& context) {
     } FC_CAPTURE_AND_RETHROW((op))
 }
 
-void change_ram_state(apply_context& context, const set_ram_state& op) {
-    auto cache = get_cache_object(context, op);
-    auto owner = cache->service().owner;
-    auto payer = cache->service().payer;
+void apply_set_ram_state(
+    apply_context& context, const set_ram_state& op,
+    const std::function<void(const service_state&)>& validate
+) {
+    auto  cache   = get_cache_object(context, op);
+    auto& service = cache->service();
 
-    if (owner == payer || !context.weak_require_authorization(payer)) {
-        context.require_authorization(owner);
-    }
+    validate(service);
 
     EOS_ASSERT(op.in_ram != cache->service().in_ram, eosio::chain::object_ram_state_exception,
         "Object with the primary key ${scope}:${pk} in the table ${table} already has RAM state = ${state}",
         ("pk", op.pk)("scope", chaindb::get_scope_name(op.scope))("table", chaindb::get_full_table_name(op))
         ("state", op.in_ram));
 
-    auto info = context.get_ram_payer();
+    auto info = context.get_ram_payer(service.owner, service.payer);
     info.in_ram  = op.in_ram;
     context.chaindb.recalc_ram_usage(*cache.get(), info);
 }
@@ -168,7 +168,11 @@ void change_ram_state(apply_context& context, const set_ram_state& op) {
 void apply_cyber_setramstate(apply_context& context) {
     auto op = context.act.data_as<set_ram_state>();
     try {
-        change_ram_state(context, op);
+        apply_set_ram_state(context, op, [&](const service_state& service) {
+            if (service.owner == service.payer || !context.weak_require_authorization(service.payer)) {
+                context.require_authorization(service.owner);
+            }
+        });
     } FC_CAPTURE_AND_RETHROW((op))
 }
 

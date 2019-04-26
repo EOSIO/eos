@@ -556,9 +556,9 @@ cyberway::chaindb::ram_payer_info apply_context::get_ram_payer( account_name ram
 
 void apply_context::add_ram_usage( const account_name& payer, const int64_t delta ) {
    if( delta > 0 ) {
-      if( !(privileged || payer == account_name(receiver)) ) {
-         EOS_ASSERT( control.is_ram_billing_in_notify_allowed() || (receiver == act.account),
-                     subjective_block_production_exception, "Cannot charge RAM to other accounts during notify." );
+      if( !(privileged || payer == receiver) ) {
+         EOS_ASSERT( (receiver == act.account), subjective_block_production_exception,
+             "Cannot charge RAM to other accounts during notify." );
          require_authorization( payer );
       }
    }

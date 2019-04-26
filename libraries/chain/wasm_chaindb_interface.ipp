@@ -234,7 +234,13 @@ namespace eosio { namespace chain {
             op.pk     = pk;
             op.in_ram = in_ram;
 
-            cyberway::chain::change_ram_state(context, op);
+            cyberway::chain::apply_set_ram_state(context, op, [&](const cyberway::chaindb::service_state& service) {
+                if (context.privileged || (service.owner == context.receiver && service.payer == context.receiver)) {
+                    return;
+                } else if (service.owner == service.payer || !context.weak_require_authorization(service.payer)) {
+                    context.require_authorization(service.owner);
+                }
+            });
         }
 
     }; // class chaindb_api
