@@ -345,7 +345,7 @@ private:
             return &item_data::get_T(item_);
         }
         const primary_key_t pk() const {
-            lazy_load_object();
+            lazy_open();
             return primary_key_;
         }
         const service_state& service() const {

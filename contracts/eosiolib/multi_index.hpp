@@ -513,14 +513,14 @@ private:
             return static_cast<const T*>(item_.get());
         }
         primary_key_t pk() const {
-            lazy_load_object();
+            lazy_open();
             return primary_key_;
         }
         int size() const {
             lazy_load_object();
             return item_->service_.size;
         }
-        eosio::name payer() const {
+        const eosio::name& payer() const {
             lazy_load_object();
             return item_->service_.payer;
         }
