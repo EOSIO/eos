@@ -828,23 +828,28 @@ struct controller_impl {
    }
    // "bos end"
 
-    optional<uint32_t> upgrade_target_block() {
+   optional<block_num_type> upgrade_target_block() {
       try {
-         return optional<uint32_t>{db.get<upgrade_property_object>().upgrade_target_block_num};
+          const auto&  upo = db.get<upgrade_property_object>();
+          if (upo.upgrade_target_block_num > 0) {
+              return upo.upgrade_target_block_num;
+          } else {
+              return optional<block_num_type>{};
+          }
       } catch( const boost::exception& e) {
          wlog("no upo found, regenerating...");
          db.create<upgrade_property_object>([](auto&){});
-         return optional<uint32_t>{};
+         return optional<block_num_type>{};
       }
    }
 
-   optional<uint32_t> upgrade_complete_block() {
+   optional<block_num_type> upgrade_complete_block() {
       try {
-         const auto& upo = db.get<upgrade_property_object>();
-         return db.get<upgrade_property_object>().upgrade_target_block_num;
+         const auto&  upo = db.get<upgrade_property_object>();
+         return upo.upgrade_complete_block_num;
       } catch( const boost::exception& e) {
          db.create<upgrade_property_object>([](auto&){});
-         return optional<uint32_t>{};
+         return optional<block_num_type>{};
       }
    }
 
@@ -858,12 +863,8 @@ struct controller_impl {
       auto utb = upgrade_target_block();
       auto ucb = upgrade_complete_block();
       auto is_upgrading = false;
-      if (utb) {
-         is_upgrading = head->block_num > *utb;
-      }
-      if (ucb) {
-         is_upgrading = head->block_num < *ucb;
-      }
+      if (utb) is_upgrading = head->block_num > *utb;
+      if (ucb) is_upgrading = is_upgrading && head->block_num < *ucb;
       return is_upgrading;
    }
 
@@ -1379,6 +1380,8 @@ struct controller_impl {
                      && ( *gpo.proposed_schedule_block_num <= pending->_pending_block_state->dpos_irreversible_blocknum );
          }
 
+         if ( upgrading && !replaying) wlog("system is upgrading, no producer schedule promotion will happen until fully upgraded.");
+
          if ( should_promote_pending_schedule )
          {
              if (!upgrading) {
@@ -1402,8 +1405,6 @@ struct controller_impl {
                          }
                      }
                  }
-             } else {
-                ilog("system is upgrading, no producer schedule changes will happen until fully upgraded.");
              }
              db.modify( gpo, [&]( auto& gp ) {
                  gp.proposed_schedule_block_num = optional<block_num_type>();
@@ -2169,10 +2170,6 @@ void controller::set_pbft_latest_checkpoint( const block_id_type& id ) {
    my->set_pbft_latest_checkpoint(id);
 }
 
-//void controller::set_pbft_prepared_block_id(optional<block_id_type> bid){
-//    my->pbft_prepared_block_id = bid;
-//}
-
 transaction_trace_ptr controller::push_transaction( const transaction_metadata_ptr& trx, fc::time_point deadline, uint32_t billed_cpu_time_us ) {
    validate_db_available_size();
    EOS_ASSERT( get_read_mode() != chain::db_read_mode::READ_ONLY, transaction_type_exception, "push transaction not allowed in read-only mode" );
@@ -2508,8 +2505,6 @@ void controller::set_pbft_prepared(const block_id_type& id) const {
       my->pbft_prepared = bs;
       my->fork_db.mark_pbft_prepared_fork(bs);
    }
-//   dlog( "fork_db head ${h}", ("h", fork_db().head()->id));
-//   dlog( "prepared block id ${b}", ("b", id));
 }
 
 void controller::set_pbft_my_prepare(const block_id_type& id) const {
@@ -2519,8 +2514,6 @@ void controller::set_pbft_my_prepare(const block_id_type& id) const {
       my->my_prepare = bs;
       my->fork_db.mark_pbft_my_prepare_fork(bs);
    }
-//   dlog( "fork_db head ${h}", ("h", fork_db().head()->id));
-//   dlog( "my prepare block id ${b}", ("b", id));
 }
 
 block_id_type controller::get_pbft_my_prepare() const {
