@@ -227,7 +227,7 @@ if [ $BUILD_MONGO ]; then
       && cd mongo-c-driver-$MONGO_C_DRIVER_VERSION \
       && mkdir -p cmake-build \
       && cd cmake-build \
-      && $CMAKE -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$PREFIX -DENABLE_BSON=ON -DENABLE_SSL=DARWIN -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF -DENABLE_STATIC=ON .. \
+      && $CMAKE -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$PREFIX -DENABLE_BSON=ON -DENABLE_SSL=DARWIN -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF -DENABLE_STATIC=ON -DENABLE_ICU=OFF -DENABLE_SASL=OFF .. \
       && make -j"${JOBS}" \
       && make install \
       && cd ../.. \
@@ -243,8 +243,11 @@ if [ $BUILD_MONGO ]; then
       printf "Installing MongoDB C++ driver...\\n"
       curl -L https://github.com/mongodb/mongo-cxx-driver/archive/r$MONGO_CXX_DRIVER_VERSION.tar.gz -o mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION.tar.gz \
       && tar -xzf mongo-cxx-driver-r${MONGO_CXX_DRIVER_VERSION}.tar.gz \
-      && cd mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION/build \
-      && $CMAKE -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$PREFIX .. \
+      && cd mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION \
+      && sed -i '' 's/"maxAwaitTimeMS", count/"maxAwaitTimeMS", static_cast<int64_t>(count)/' src/mongocxx/options/change_stream.cpp \
+      && sed -i '' 's/add_subdirectory(test)//' src/mongocxx/CMakeLists.txt src/bsoncxx/CMakeLists.txt \
+      && cd build \
+      && $CMAKE -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$PREFIX -DCMAKE_PREFIX_PATH=$PREFIX .. \
       && make -j"${JOBS}" VERBOSE=1 \
       && make install \
       && cd ../.. \
