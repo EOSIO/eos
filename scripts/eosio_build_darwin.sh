@@ -277,7 +277,7 @@ fi
 cd ..
 printf "\\n"
 
-if $PIN_COMPILER; then
+if [ "$BUILD_CLANG8" = "true" ]; then
    printf "Checking Clang 8 support...\\n"
    if [ ! -d $CLANG8_ROOT ] || [ $FORCE_BUILD ]; then
       printf "Installing Clang 8...\\n"
