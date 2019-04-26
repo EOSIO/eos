@@ -1,0 +1,11 @@
+version: "3"
+
+services:
+  boscdt:
+    image: boscore/cdt:latest
+    command: /bin/bash
+    hostname: boscdt
+    stdin_open: true
+    tty: true
+    volumes:
+      - .:/data
