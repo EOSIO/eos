@@ -170,6 +170,7 @@ class Node(object):
         tmpStr=re.sub(r'ObjectId\("(\w+)"\)', r'"ObjectId-\1"', tmpStr)
         tmpStr=re.sub(r'ISODate\("([\w|\-|\:|\.]+)"\)', r'"ISODate-\1"', tmpStr)
         tmpStr=re.sub(r'NumberLong\("(\w+)"\)', r'"NumberLong-\1"', tmpStr)
+        tmpStr=re.sub(r'NumberLong\((\w+)\)', r'\1', tmpStr)
         return tmpStr
 
     @staticmethod
