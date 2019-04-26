@@ -27,7 +27,7 @@ import shutil
 Print = Utils.Print
 errorExit = Utils.errorExit
 cmdError = Utils.cmdError
-relaunchTimeout = 5
+relaunchTimeout = 10
 numOfProducers = 4
 totalNodes = 10
 
