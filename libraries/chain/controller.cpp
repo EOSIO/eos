@@ -828,28 +828,43 @@ struct controller_impl {
    }
    // "bos end"
 
+    optional<uint32_t> upgrade_target_block() {
+      try {
+         return optional<uint32_t>{db.get<upgrade_property_object>().upgrade_target_block_num};
+      } catch( const boost::exception& e) {
+         wlog("no upo found, regenerating...");
+         db.create<upgrade_property_object>([](auto&){});
+         return optional<uint32_t>{};
+      }
+   }
+
+   optional<uint32_t> upgrade_complete_block() {
+      try {
+         const auto& upo = db.get<upgrade_property_object>();
+         return db.get<upgrade_property_object>().upgrade_target_block_num;
+      } catch( const boost::exception& e) {
+         db.create<upgrade_property_object>([](auto&){});
+         return optional<uint32_t>{};
+      }
+   }
+
    bool is_new_version() {
-       try {
-           const auto& upo = db.get<upgrade_property_object>().upgrade_target_block_num;
-           return  head->dpos_irreversible_blocknum >= upo && upo > 0;
-       } catch( const boost::exception& e) {
-           wlog("no upo found, regenerating...");
-           db.create<upgrade_property_object>([](auto&){});
-           return false;
-       }
+      auto ucb = upgrade_complete_block();
+      if (ucb) return head->block_num > *ucb;
+      return false;
    }
 
    bool is_upgrading() {
-       try {
-           const auto& upo = db.get<upgrade_property_object>();
-           const auto upo_upgrade_target_block_num = upo.upgrade_target_block_num;
-           return upo_upgrade_target_block_num > 0
-                  &&(head->block_num + 1 >= upo_upgrade_target_block_num)
-                  && std::max(head->dpos_irreversible_blocknum, head->bft_irreversible_blocknum) <= upo_upgrade_target_block_num + 12;
-       } catch( const boost::exception& e) {
-           db.create<upgrade_property_object>([](auto&){});
-           return false;
-       }
+      auto utb = upgrade_target_block();
+      auto ucb = upgrade_complete_block();
+      auto is_upgrading = false;
+      if (utb) {
+         is_upgrading = head->block_num > *utb;
+      }
+      if (ucb) {
+         is_upgrading = head->block_num < *ucb;
+      }
+      return is_upgrading;
    }
 
    /**
@@ -1305,23 +1320,20 @@ struct controller_impl {
          pending.emplace(maybe_session());
       }
 
-      auto new_version = is_new_version();
-      auto upgrading = is_upgrading();
-
-      try {
-          const auto& upo = db.get<upgrade_property_object>();
-          const auto upo_upgrade_target_block_num = upo.upgrade_target_block_num;
-
-          if (upgrading && !replaying) {
-              ilog("SYSTEM IS UPGRADING, no producer schedule changes will happen until fully upgraded.");
-              if (head->dpos_irreversible_blocknum >= upo_upgrade_target_block_num) {
-                  db.modify( upo, [&]( auto& up ) { up.upgrade_complete_block_num.emplace(head->block_num); });
-              }
-          }
-      } catch( const boost::exception& e) {
-          db.create<upgrade_property_object>([](auto&){});
+      auto utb = upgrade_target_block();
+      auto ucb = upgrade_complete_block();
+      if (utb) {
+         if (head->dpos_irreversible_blocknum >= *utb && !ucb) {
+            const auto& upo = db.get<upgrade_property_object>();
+            db.modify( upo, [&]( auto& up ) {
+               up.upgrade_complete_block_num.reset();
+               up.upgrade_complete_block_num.emplace( head->block_num);
+            });
+         }
       }
 
+      auto new_version = is_new_version();
+      auto upgrading = is_upgrading();
 
       pending->_block_status = s;
       pending->_producer_block_id = producer_block_id;
@@ -1354,13 +1366,6 @@ struct controller_impl {
          }
 
          bool should_promote_pending_schedule = false;
-
-//         if (new_version && (gpo.proposed_schedule_block_num.valid() && pending->_pending_block_state->bft_irreversible_blocknum > *gpo.proposed_schedule_block_num)) {
-//             db.modify( gpo, [&]( auto& gp ) {
-//               gp.proposed_schedule_block_num = optional<block_num_type>();
-//               gp.proposed_schedule.clear();
-//             });
-//         }
 
          should_promote_pending_schedule = gpo.proposed_schedule_block_num.valid()  // if there is a proposed schedule that was proposed in a block ...
                  && pending->_pending_block_state->pending_schedule.producers.size() == 0 // ... and there is room for a new pending schedule ...
@@ -1397,6 +1402,8 @@ struct controller_impl {
                          }
                      }
                  }
+             } else {
+                ilog("system is upgrading, no producer schedule changes will happen until fully upgraded.");
              }
              db.modify( gpo, [&]( auto& gp ) {
                  gp.proposed_schedule_block_num = optional<block_num_type>();

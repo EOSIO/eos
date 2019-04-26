@@ -998,13 +998,10 @@ namespace eosio {
 
 
             auto checkpoint = [&](const block_num_type &in) {
-                const auto& upo = ctrl.get_upgrade_properties();
-                auto is_desired_checkpoint_num = in % 100 == 1
-                      || std::find(prepare_watermarks.begin(), prepare_watermarks.end(), in) != prepare_watermarks.end();
-              if (upo.upgrade_complete_block_num) {
-                  is_desired_checkpoint_num = is_desired_checkpoint_num && in > upo.upgrade_complete_block_num;
-              }
-              return is_desired_checkpoint_num;
+                const auto& ucb = ctrl.get_upgrade_properties().upgrade_complete_block_num;
+                if (!ucb) return false;
+                return in > *ucb
+                && (in % 100 == 1 || std::find(prepare_watermarks.begin(), prepare_watermarks.end(), in) != prepare_watermarks.end());
             };
 
 
