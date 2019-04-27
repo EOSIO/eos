@@ -14,7 +14,7 @@ usage() {
  INSTALL_PATHS=(
    $HOME/bin/eosio-launcher
    $HOME/lib/cmake/eosios
-   $HOME/opt/llvm
+   $HOME/opt/llvm*
    $HOME/opt/boost
    $HOME/src/boost_*
    $HOME/src/cmake-*

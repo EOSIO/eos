@@ -18,6 +18,8 @@ fi
 
 function setup() {
     if $VERBOSE; then
+        echo "DRYRUN: ${DRYRUN}"
+        echo "TEMP_DIR: ${TEMP_DIR}"
         echo "CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}"
         echo "CORE_SYMBOL_NAME: ${CORE_SYMBOL_NAME}"
         echo "BOOST_LOCATION: ${BOOST_LOCATION}"
@@ -26,10 +28,19 @@ function setup() {
         echo "NONINTERACTIVE: ${NONINTERACTIVE}"
         echo "PROCEED: ${PROCEED}"
         echo "ENABLE_COVERAGE_TESTING: ${ENABLE_COVERAGE_TESTING}"
-        echo "DOXYGEN: ${DOXYGEN}"
+        echo "ENABLE_DOXYGEN: ${ENABLE_DOXYGEN}"
+        echo "ENABLE_MONGO: ${ENABLE_MONGO}"
+        echo "INSTALL_MONGO: ${INSTALL_MONGO}"
         echo "PIN_COMPILER: ${PIN_COMPILER}"
+        echo "BUILD_CLANG: ${BUILD_CLANG}"
     fi
     [[ -d ./build ]] && execute rm -rf ./build # cleanup old build directory
+    # Be absolutely sure TEMP_DIR is set (we could do damage here)
+    ## IF user set, they can be responsible for creating and then removing stale data
+    if [[ $TEMP_DIR =~ "/tmp" ]]; then 
+        execute mkdir -p $TEMP_DIR
+        execute rm -rf $TEMP_DIR/*
+    fi
     execute mkdir -p $SRC_LOCATION
     execute mkdir -p $OPT_LOCATION
     execute mkdir -p $VAR_LOCATION
@@ -58,8 +69,21 @@ function print_supported_linux_distros_and_exit() {
    exit 1
 }
 
+function prompt-mongo-install() {
+    if $ENABLE_MONGO; then
+        while true; do
+            [[ $NONINTERACTIVE == false ]] && read -p "${COLOR_YELLOW}You have chosen to include MongoDB support. Do you want for us to install MongoDB as well? (y/n)?${COLOR_NC} " PROCEED
+            case $PROCEED in
+                "" ) echo "What would you like to do?";;
+                0 | true | [Yy]* ) export INSTALL_MONGO=true; break;;
+                1 | false | [Nn]* ) echo "${COLOR_RED} - Existing MongoDB will be used.${COLOR_NC}"; exit 1;;
+                * ) echo "Please type 'y' for yes or 'n' for no.";;
+            esac
+        done
+    fi
+}
+
 function ensure-compiler() {
-    NO_CPP17=${NO_CCP17:-false}
     CPP_COMP=${CXX:-c++}
     CC_COMP=${CC:-cc}
     WHICH_CPP=$(which $CPP_COMP)
@@ -69,19 +93,19 @@ function ensure-compiler() {
     if [[ $COMPILER_TYPE == "clang++" ]]; then
         if [[ $(c++ --version | cut -d ' ' -f 1 | head -n 1) == "Apple" ]]; then
             ### Apple clang version 10
-            [[ $(c++ --version | cut -d ' ' -f 4 | cut -d '.' -f 1 | head -n 1) -lt 10 ]] && NO_CPP17=true
+            [[ $(c++ --version | cut -d ' ' -f 4 | cut -d '.' -f 1 | head -n 1) -lt 10 ]] && export NO_CPP17=true
         else
             ### clang version 5
-            [[ $(c++ --version | cut -d ' ' -f 4 | cut -d '.' -f 1 | head -n 1) -lt 5 ]] && NO_CPP17=true
+            [[ $(c++ --version | cut -d ' ' -f 4 | cut -d '.' -f 1 | head -n 1) -lt 5 ]] && export NO_CPP17=true
         fi
     else
         ### gcc version 7
-        [[ $(c++ -dumpversion | cut -d '.' -f 1) -lt 7 ]] && NO_CPP17=true
+        [[ $(c++ -dumpversion | cut -d '.' -f 1) -lt 7 ]] && export NO_CPP17=true
     fi
     if $PIN_COMPILER; then
-        BUILD_CLANG=true
-        CPP_COMP=$OPT_LOCATION/clang8/bin/clang++
-        CC_COMP=$OPT_LOCATION/clang8/bin/clang
+        export BUILD_CLANG=true
+        export CPP_COMP=$OPT_LOCATION/clang8/bin/clang++
+        export CC_COMP=$OPT_LOCATION/clang8/bin/clang
     elif $NO_CPP17; then
         while true; do
             echo "${COLOR_YELLOW}Unable to find C++17 support!${COLOR_NC}"
@@ -90,17 +114,19 @@ function ensure-compiler() {
             case $PROCEED in
                 "" ) echo "What would you like to do?";;
                 0 | true | [Yy]* )
-                    BUILD_CLANG=true
-                    CPP_COMP=${OPT_LOCATION}/clang8/bin/clang++
-                    CC_COMP=${OPT_LOCATION}/clang8/bin/clang
+                    export BUILD_CLANG=true
+                    export CPP_COMP=${OPT_LOCATION}/clang8/bin/clang++
+                    export CC_COMP=${OPT_LOCATION}/clang8/bin/clang
                 break;;
-                1 | false | [Nn]* ) echo "${COLOR_RED} - User aborted C++17 installation${COLOR_NC}"; exit 1;;
+                1 | false | [Nn]* ) echo "${COLOR_RED} - User aborted C++17 installation!${COLOR_NC}"; exit 1;;
                 * ) echo "Please type 'y' for yes or 'n' for no.";;
             esac
         done
     else
-        echo "Unable to find -P option or NO_CCP17 set to false... Please report a github issue as this is likely a bug in the script."
+        echo "${COLOR_RED} - Unable to find CPP17 and user did not pin compiler (-P)!${COLOR_NC}"
         exit 1
     fi
+    export CXX=$CXX_COMP
+    export CC=$CC_COMP
 }
 

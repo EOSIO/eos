@@ -43,3 +43,9 @@ TEST_LABEL="[helpers]"
   [[ ! -z $(echo "${output}" | grep "EOSIO has already been installed into ${EOSIO_HOME}") ]] || exit
   rm -rf $EOSIO_HOME
 }
+
+@test "${TEST_LABEL} > TEMP_DIR" {
+  run setup
+  [[ -z $(echo "${output}" | grep "Executing: rm -rf ${REPO_ROOT}/../tmp/*") ]] || exit
+  [[ -z $(echo "${output}" | grep "Executing: mkdir -p ${REPO_ROOT}/../tmp") ]] || exit
+}

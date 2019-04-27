@@ -34,10 +34,11 @@ VERSION=3.0 # Build script version (change this to re-build the CICD image)
 
 function usage() {
    printf "Usage: $0 OPTION...
+  -P          Build with pinned clang and libcxx
   -o TYPE     Build <Debug|Release|RelWithDebInfo|MinSizeRel> (default: Release)
   -s NAME     Core Symbol Name <1-7 characters> (default: SYS)
   -b DIR      Use pre-built boost in DIR
-  -i DIR      Directory to use for dependencies & EOS install (default: $HOME)
+  -i DIR      Directory to use for installing dependencies & EOSIO (default: $HOME)
   -y          Noninteractive mode (answers yes to every prompt)
   -c          Enable Code Coverage
   -d          Generate Doxygen
@@ -109,26 +110,29 @@ fi
 # Load eosio specific helper functions
 . ./scripts/helpers/eosio.bash
 
-# If the same version has already been installed...
-previous-install-prompt
-# Setup directories and envs we need
-setup
-# Setup tmp directory; handle if noexec exists
-setup-tmp
-# Prevent a non-git clone from running
-ensure-git-clone
-
-execute cd $REPO_ROOT
-
-# Submodules need to be up to date
-ensure-submodules-up-to-date
-
 echo "Beginning build version: ${VERSION}"
 echo "$( date -u )"
 CURRENT_USER=${CURRENT_USER:-$(whoami)}
 echo "User: ${CURRENT_USER}"
 # echo "git head id: %s" "$( cat .git/refs/heads/master )"
 echo "Current branch: $( execute git rev-parse --abbrev-ref HEAD 2>/dev/null )"
+
+# Prevent a non-git clone from running
+ensure-git-clone
+# If the same version has already been installed...
+previous-install-prompt
+# Handle clang/compiler
+ensure-compiler
+# Prompt user and asks if we should install mongo or not
+prompt-mongo-install
+# Setup directories and envs we need (must come last)
+setup
+
+
+execute cd $REPO_ROOT
+
+# Submodules need to be up to date
+ensure-submodules-up-to-date
 
 # Use existing cmake on system (either global or specific to eosio)
 # Setup based on architecture
@@ -157,8 +161,6 @@ if [ "$ARCH" == "Darwin" ]; then
    # EOSIO_HOME/lib/cmake: mongo_db_plugin.cpp:25:10: fatal error: 'bsoncxx/builder/basic/kvp.hpp' file not found
    LOCAL_CMAKE_FLAGS="-DCMAKE_PREFIX_PATH='/usr/local/opt/gettext;$EOSIO_HOME/lib/cmake' ${LOCAL_CMAKE_FLAGS}" 
    FILE="${SCRIPT_DIR}/eosio_build_darwin.bash"
-   CXX_COMPILER=clang++
-   C_COMPILER=clang
    OPENSSL_ROOT_DIR=/usr/local/opt/openssl
    export CMAKE=${CMAKE}
 fi
@@ -176,25 +178,23 @@ echo "======================= ${COLOR_WHITE}Starting EOSIO Build${COLOR_CYAN} ==
 execute mkdir -p $BUILD_DIR
 execute cd $BUILD_DIR
 
-ensure-compiler
-
 # Find and replace OPT_LOCATION in pinned_toolchain.cmake, then move it into build dir
-sed -e "s~@~$OPT_LOCATION~g" $SCRIPT_DIR/pinned_toolchain.cmake &> $BUILD_DIR/pinned_toolchain.cmake
+execute bash -c "sed -e 's~@~$OPT_LOCATION~g' $SCRIPT_DIR/pinned_toolchain.cmake &> $BUILD_DIR/pinned_toolchain.cmake"
 
+# LOCAL_CMAKE_FLAGS
 $ENABLE_MONGO && LOCAL_CMAKE_FLAGS="-DBUILD_MONGO_DB_PLUGIN=true ${LOCAL_CMAKE_FLAGS}" # Enable Mongo DB Plugin if user has enabled -m
-
 if $PIN_COMPILER; then
    LOCAL_CMAKE_FLAGS="-DCMAKE_TOOLCHAIN_FILE='${BUILD_DIR}/pinned_toolchain.cmake' -DCMAKE_PREFIX_PATH='${OPT_LOCATION}/llvm4' ${LOCAL_CMAKE_FLAGS}"
 else
    LOCAL_CMAKE_FLAGS="-DCMAKE_CXX_COMPILER='${CXX}' -DCMAKE_C_COMPILER='${CC}' ${LOCAL_CMAKE_FLAGS}"
 fi
+$ENABLE_DOXYGEN && LOCAL_CMAKE_FLAGS="-DBUILD_DOXYGEN='${DOXYGEN}' ${LOCAL_CMAKE_FLAGS}"
+$ENABLE_COVERAGE_TESTING && LOCAL_CMAKE_FLAGS="-DENABLE_COVERAGE_TESTING='${ENABLE_COVERAGE_TESTING}' ${LOCAL_CMAKE_FLAGS}"
 
 execute bash -c "$CMAKE \
 -DCMAKE_BUILD_TYPE='${CMAKE_BUILD_TYPE}' \
 -DCORE_SYMBOL_NAME='${CORE_SYMBOL_NAME}' \ 
 -DOPENSSL_ROOT_DIR='${OPENSSL_ROOT_DIR}' \
--DENABLE_COVERAGE_TESTING='${ENABLE_COVERAGE_TESTING}' \
--DBUILD_DOXYGEN='${DOXYGEN}' \
 -DCMAKE_INSTALL_PREFIX='${EOSIO_HOME}' \
 ${LOCAL_CMAKE_FLAGS} '${REPO_ROOT}'"
 execute make -j$JOBS

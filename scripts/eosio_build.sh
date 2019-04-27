@@ -108,16 +108,16 @@ if [ $# -ne 0 ]; then
             else
                CORE_SYMBOL_NAME="${OPTARG}"
             fi
-            ;;
+         ;;
          b)
              BOOST_ARG=$OPTARG
-             ;;
+         ;;
          p)
              PREFIX=$OPTARG
-             ;;
+         ;;
          P)
             PIN_COMPILER=true
-            ;;
+         ;;
          h)
             usage
             exit 1
