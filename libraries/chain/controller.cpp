@@ -504,6 +504,10 @@ struct controller_impl {
          section.add_row(conf.genesis, db);
       });
 
+      snapshot->write_section<batch_pbft_snapshot_migration>([this]( auto &section ){
+         section.add_row(batch_pbft_snapshot_migration{}, db);
+      });
+
       snapshot->write_section<block_state>([this]( auto &section ){
          section.template add_row<block_header_state>(*fork_db.head(), db);
       });
@@ -536,18 +540,33 @@ struct controller_impl {
          header.validate();
       });
 
+      bool migrated = snapshot->has_section<batch_pbft_snapshot_migration>();
+      if(migrated) {
+          snapshot->read_section<block_state>([this](auto &section) {
+            block_header_state head_header_state;
+            section.read_row(head_header_state, db);
 
-      snapshot->read_section<block_state>([this]( auto &section ){
-         block_header_state head_header_state;
-         section.read_row(head_header_state, db);
+            auto head_state = std::make_shared<block_state>(head_header_state);
+            fork_db.set(head_state);
+            fork_db.set_validity(head_state, true);
+            fork_db.mark_in_current_chain(head_state, true);
+            head = head_state;
+            snapshot_head_block = head->block_num;
+          });
+      }else{
+          snapshot->read_section<block_state>([this](snapshot_reader::section_reader &section) {
+            block_header_state head_header_state;
+            section.read_pbft_migrate_row(head_header_state, db);
 
-         auto head_state = std::make_shared<block_state>(head_header_state);
-         fork_db.set(head_state);
-         fork_db.set_validity(head_state, true);
-         fork_db.mark_in_current_chain(head_state, true);
-         head = head_state;
-         snapshot_head_block = head->block_num;
-      });
+            auto head_state = std::make_shared<block_state>(head_header_state);
+            fork_db.set(head_state);
+            fork_db.set_validity(head_state, true);
+            fork_db.mark_in_current_chain(head_state, true);
+            head = head_state;
+            snapshot_head_block = head->block_num;
+          });
+
+      }
 
       controller_index_set::walk_indices([this, &snapshot]( auto utils ){
          using value_t = typename decltype(utils)::index_t::value_type;
@@ -557,14 +576,16 @@ struct controller_impl {
             return;
          }
 
-         snapshot->read_section<value_t>([this]( auto& section ) {
-            bool more = !section.empty();
-            while(more) {
-               decltype(utils)::create(db, [this, &section, &more]( auto &row ) {
-                  more = section.read_row(row, db);
-               });
-            }
-         });
+         if(snapshot->has_section<value_t>()){
+             snapshot->read_section<value_t>([this]( auto& section ) {
+               bool more = !section.empty();
+               while(more) {
+                   decltype(utils)::create(db, [this, &section, &more]( auto &row ) {
+                     more = section.read_row(row, db);
+                   });
+               }
+             });
+         }
       });
 
       read_contract_tables_from_snapshot(snapshot);

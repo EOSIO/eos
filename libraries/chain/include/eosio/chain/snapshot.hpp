@@ -6,6 +6,7 @@
 
 #include <eosio/chain/database_utils.hpp>
 #include <eosio/chain/exceptions.hpp>
+#include <eosio/chain/block_header_state.hpp>
 #include <fc/variant_object.hpp>
 #include <boost/core/demangle.hpp>
 #include <ostream>
@@ -219,10 +220,53 @@ namespace eosio { namespace chain {
          T& data;
       };
 
+       template<typename T>
+       struct snapshot_pbft_migrate_row_reader : abstract_snapshot_row_reader {
+         explicit snapshot_pbft_migrate_row_reader( T& data )
+                 :data(data) {}
+
+
+         void provide(std::istream& in) const override {
+             row_validation_helper::apply(data, [&in,this](){
+                 if(typeid(T)== typeid(eosio::chain::block_header_state)){
+                     std::ostringstream sstream;
+                     sstream << in.rdbuf();
+                     std::string str(sstream.str());
+                     //prepend uint32_t 0
+                     str = "\0\0\0\0" + str;
+                     const char* ptr = str.c_str();
+                     fc::datastream<const char*> tmp(ptr, str.size());
+                     fc::raw::unpack(tmp, data);
+                     auto original_data_length = tmp.tellp() - 4;
+                     in.seekg(original_data_length);
+                 }else{
+                     fc::raw::unpack(in, data);
+                 }
+             });
+         }
+
+         void provide(const fc::variant& var) const override {
+             row_validation_helper::apply(data, [&var,this]() {
+               fc::from_variant(var, data);
+             });
+         }
+
+         std::string row_type_name() const override {
+             return boost::core::demangle( typeid( T ).name() );
+         }
+
+         T& data;
+       };
+
       template<typename T>
       snapshot_row_reader<T> make_row_reader( T& data ) {
          return snapshot_row_reader<T>(data);
       }
+
+       template<typename T>
+       snapshot_pbft_migrate_row_reader<T> make_pbft_migrate_row_reader( T& data ) {
+           return snapshot_pbft_migrate_row_reader<T>(data);
+       }
    }
 
    class snapshot_reader {
@@ -247,6 +291,12 @@ namespace eosio { namespace chain {
                   bool result = _reader.read_row(reader);
                   detail::snapshot_row_traits<T>::from_snapshot_row(std::move(temp), out, db);
                   return result;
+               }
+
+               template<typename T>
+               auto read_pbft_migrate_row( T& out, chainbase::database& db ) -> std::enable_if_t<std::is_same<std::decay_t<T>, typename detail::snapshot_row_traits<T>::snapshot_type>::value,bool> {
+                   auto reader = detail::make_pbft_migrate_row_reader(out);
+                   return _reader.read_row(reader);
                }
 
                bool empty() {

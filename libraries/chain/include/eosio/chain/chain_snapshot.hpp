@@ -29,6 +29,11 @@ struct chain_snapshot_header {
    }
 };
 
+struct batch_pbft_snapshot_migration{
+  bool migrated = true;
+};
+
 } }
 
 FC_REFLECT(eosio::chain::chain_snapshot_header,(version))
+FC_REFLECT(eosio::chain::batch_pbft_snapshot_migration,(migrated))
