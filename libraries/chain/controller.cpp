@@ -1351,11 +1351,21 @@ struct controller_impl {
                up.upgrade_complete_block_num.reset();
                up.upgrade_complete_block_num.emplace( head->block_num);
             });
+            wlog("setting upgrade complete block num to ${b}", ("b", head->block_num));
          }
       }
 
       auto new_version = is_new_version();
       auto upgrading = is_upgrading();
+
+      uint32_t utb_num = 0;
+      if (utb) utb_num = *utb;
+
+      uint32_t ucb_num = 0;
+      if (ucb) ucb_num = *utb;
+
+      ilog("head block num is ${h}, new version is ${nv}, upgrading is ${u}, target block is ${utb}, complete block is ${ucb}",
+           ("h", head->block_num)("nv", new_version)("u", upgrading)("utb", utb_num)("ucb", ucb_num));
 
       pending->_block_status = s;
       pending->_producer_block_id = producer_block_id;
