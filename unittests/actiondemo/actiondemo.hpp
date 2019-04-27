@@ -5,40 +5,50 @@
 namespace spaceaction {
 
     using namespace eosio;
-    class actiondemo : public contract {
+
+    class [[eosio::contract]] actiondemo : public contract
+    {
         typedef std::chrono::milliseconds duration;
     public:
-        actiondemo( account_name self ):contract(self){}
+        using contract::contract;
+        
+        // actiondemo( name self ):contract(self){}
 
-        void apply( account_name contract, account_name act );
+        ACTION apply( name contract, name act );
 
         struct args{
             uint64_t loop;
             uint64_t num;
+
+            
         };
         //@abi action
-        void generate(const args& t);
+        ACTION generate(const args& t);
 
         //@abi action
-        void clear();
+        ACTION clear();
 
-        struct args_name{
-            account_name name;
+        struct args_name
+        {
+            name name;
         };
         //@abi action
-        void hascontract(const args_name& t);
+        ACTION hascontract(const args_name& t);
 
+        struct argsinline
+        {
+            name payer;
+            name in;
 
-        struct args_inline{
-            account_name payer;
-            account_name in;
+             
         };
         //@abi action
-        void inlineact(const args_inline& t);
+        ACTION inlineact(const argsinline& t);
 
     public:
         // @abi table seedobjs i64
-        struct seedobj {
+        TABLE seedobj
+        {
             uint64_t    id;
             time_point  create;
             std::string seedstr;
@@ -48,7 +58,7 @@ namespace spaceaction {
             uint64_t primary_key()const { return id; }
             EOSLIB_SERIALIZE(seedobj,(id)(create)(seedstr)(txid)(action))
         };
-        typedef eosio::multi_index< N(seedobjs), seedobj> seedobjs;
+        typedef eosio::multi_index< "seedobjs"_n, seedobj> seedobjs;
 
 
     };

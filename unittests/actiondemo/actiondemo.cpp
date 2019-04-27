@@ -1,25 +1,24 @@
 #include "actiondemo.hpp"
-#include "../../contracts/eosiolib/print.hpp"
-#include "../../contracts/eosiolib/types.hpp"
-#include "../../contracts/eosiolib/transaction.h"
+#include <eosiolib/print.hpp>
+#include <eosiolib/types.h>
+#include <eosiolib/transaction.h>
 
 namespace spaceaction {
 
-    void actiondemo::apply( account_name code, account_name act ) {
-
+    void actiondemo::apply( name code, name act ) {
         if( code != _self )
             return;
-
+ 
         switch( act ) {
-            case N(generate):
+            case "generate"_n:
                 generate(unpack_action_data<args>());
                 return;
-            case N(inlineact):
-                inlineact(unpack_action_data<args_inline>());
-            case N(clear):
+            case "inlineact"_n:
+                inlineact(unpack_action_data<argsinline>());
+            case "clear"_n:
                 clear();
                 return;
-            case N(hascontract):
+            case "hascontract"_n:
                 hascontract(unpack_action_data<args_name>());
                 return;
         }
@@ -27,7 +26,7 @@ namespace spaceaction {
 
     void actiondemo::clear(){
         //require_auth(_self);
-        seedobjs table(_self, _self);
+        seedobjs table{_self, _self.value};
         auto iter = table.begin();
         while (iter != table.end())
         {
@@ -54,17 +53,18 @@ namespace spaceaction {
             checksum256 code;
             get_contract_code(t.name, &code);
 
-            std::string s = to_hex((char*)&code.hash, 32);
+            std::string s = to_hex((char*)&code, 32);
             print_f("% contract_code:%", name{t.name}.to_string(),s);
 //        }
 
     }
 
     void actiondemo::generate(const args& t){
-        for (int i = 0; i < t.loop; ++i) {
-            transaction_id_type txid;
+        // for (int i = 0; i < 1; ++i)
+        // {
+            checksum256 txid;
             get_transaction_id(&txid);
-            std::string tx = to_hex((char*)&txid.hash, 32);
+            std::string tx = to_hex((char*)&txid, 32);
 
             uint64_t seq = 0;
             get_action_sequence(&seq);
@@ -78,7 +78,7 @@ namespace spaceaction {
             std::string seedstr = to_hex(buf,size);
 
 
-            seedobjs table(_self, _self);
+            seedobjs table(_self, _self.value);
             uint64_t count = 0;
             for (auto itr = table.begin(); itr != table.end(); ++itr) {
                 ++count;
@@ -92,10 +92,10 @@ namespace spaceaction {
                 a.action = seq;
             });
             print_f("self:%, loop:%, count:%, seedstr:%", name{_self}.to_string(), t.loop, count, r->seedstr);
-        }
+        // }
     }
 
-    void actiondemo::inlineact(const args_inline& t){
+    void actiondemo::inlineact(const argsinline& t){
         auto& payer = t.payer;
         args gen;
         gen.loop = 1;
@@ -103,21 +103,38 @@ namespace spaceaction {
 
         generate(gen);
 
-        if(t.in != 0)
+        if(t.in != ""_n)
         {
-            INLINE_ACTION_SENDER(spaceaction::actiondemo, generate)( t.in, {payer,N(active)},
+            INLINE_ACTION_SENDER(spaceaction::actiondemo, generate)( t.in, {payer,"active"_n},
                                                                { gen});
-            INLINE_ACTION_SENDER(spaceaction::actiondemo, generate)( t.in, {payer,N(active)},
+            INLINE_ACTION_SENDER(spaceaction::actiondemo, generate)( t.in, {payer,"active"_n},
                                                                      { gen});
         }
 
     }
 }
 
-extern "C" {
-[[noreturn]] void apply(uint64_t receiver, uint64_t code, uint64_t action) {
-    spaceaction::actiondemo obj(receiver);
-    obj.apply(code, action);
-    eosio_exit(0);
-}
-}
+// extern "C" {
+// [[noreturn]] void apply(uint64_t receiver, uint64_t code, uint64_t action) {
+//     spaceaction::actiondemo obj(receiver);
+//     obj.apply(code, action);
+//     eosio_exit(0);
+// }
+// }
+
+#define EOSIO_DISPATCH_CUSTOM(TYPE, MEMBERS)                                           \
+    extern "C"                                                                         \
+    {                                                                                  \
+        void apply(uint64_t receiver, uint64_t code, uint64_t action)                  \
+        {                                                                              \
+                                                                       \
+                switch (action)                                                        \
+                {                                                                      \
+                    EOSIO_DISPATCH_HELPER(TYPE, MEMBERS)                               \
+                }                                                                      \
+                /* does not allow destructor of thiscontract to run: eosio_exit(0); */ \
+                                                                                  \
+        }                                                                              \
+    }
+
+EOSIO_DISPATCH_CUSTOM(spaceaction::actiondemo, (apply)(generate)(clear)(hascontract)(inlineact))
