@@ -507,6 +507,7 @@ struct genesis_create::genesis_create_impl final {
         db.emplace<stake_stat_object>([&](auto& s) {
             s.token_code = sys_sym.to_symbol_code();
             s.total_staked = _total_staked.get_amount();
+            s.last_reward = time_point_sec();
             s.enabled = false;      // ?
         });
         db.start_section(config::system_account_name, N(stake.param), "param_struct", 1);
@@ -514,7 +515,6 @@ struct genesis_create::genesis_create_impl final {
             const auto inf = _info.params.stake;
             p.token_symbol = sys_sym;
             p.max_proxies = inf.max_proxies;
-            p.frame_length = inf.frame_length;
             p.payout_step_length = inf.payout_step_length;
             p.payout_steps_num = inf.payout_steps_num;
             p.min_own_staked_for_election = inf.min_own_staked_for_election;

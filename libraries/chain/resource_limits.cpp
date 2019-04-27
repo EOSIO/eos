@@ -296,7 +296,7 @@ account_balance resource_limits_manager::get_account_balance(int64_t now, const 
     uint64_t staked = 0;
     auto agent = agents_idx.find(agent_key(token_code, account));
     if (agent != agents_idx.end()) {
-        update_proxied(_chaindb, get_ram_payer(), now, token_code, account, param->frame_length, false);
+        update_proxied(_chaindb, get_ram_payer(), now, token_code, account, false);
 
         auto total_funds = agent->get_total_funds();
         EOS_ASSERT(total_funds >= 0, chain_exception, "SYSTEM: incorrect total_funds value");

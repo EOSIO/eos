@@ -130,9 +130,9 @@ class privileged_api : public context_aware_api {
          EOS_ASSERT( false, unsupported_feature, "Unsupported Hardfork Detected" );
       }
 
-      void update_stake_proxied(uint64_t token_code_raw, account_name account, int64_t frame_length, int force) {
+      void update_stake_proxied(uint64_t token_code_raw, account_name account, int force) {
           int64_t now = context.control.pending_block_time().sec_since_epoch();
-          stake::update_proxied(context.chaindb, context.get_ram_payer(), now, symbol_code{token_code_raw}, account, frame_length, static_cast<bool>(force));
+          stake::update_proxied(context.chaindb, context.get_ram_payer(), now, symbol_code{token_code_raw}, account, static_cast<bool>(force));
       }
 
       void recall_stake_proxied(uint64_t token_code_raw, account_name grantor_name, account_name agent_name, int32_t pct) {
@@ -1747,8 +1747,8 @@ REGISTER_INTRINSICS(compiler_builtins,
 REGISTER_INTRINSICS(privileged_api,
    (is_feature_active,                int(int64_t)                          )
    (activate_feature,                 void(int64_t)                         )
-   (update_stake_proxied,             void(int64_t,int64_t,int64_t,int))
-   (recall_stake_proxied,             void(int64_t,int64_t,int64_t,int32_t))
+   (update_stake_proxied,             void(int64_t,int64_t,int)             )
+   (recall_stake_proxied,             void(int64_t,int64_t,int64_t,int32_t) )
    (set_proposed_producers,           int64_t(int,int)                      )
    (get_blockchain_parameters_packed, int(int, int)                         )
    (set_blockchain_parameters_packed, void(int,int)                         )
