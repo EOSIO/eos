@@ -1358,14 +1358,17 @@ struct controller_impl {
       auto new_version = is_new_version();
       auto upgrading = is_upgrading();
 
+
       uint32_t utb_num = 0;
-      if (utb) utb_num = *utb;
+      if (upgrade_target_block()) utb_num = *upgrade_target_block();
 
       uint32_t ucb_num = 0;
-      if (ucb) ucb_num = *utb;
+      if (upgrade_complete_block()) ucb_num = *upgrade_complete_block();
 
-      ilog("head block num is ${h}, new version is ${nv}, upgrading is ${u}, target block is ${utb}, complete block is ${ucb}",
-           ("h", head->block_num)("nv", new_version)("u", upgrading)("utb", utb_num)("ucb", ucb_num));
+      if (utb && head->bft_irreversible_blocknum < utb + 100) {
+         ilog("head block num is ${h}, new version is ${nv}, upgrading is ${u}, target block is ${utb}, complete block is ${ucb}",
+              ("h", head->block_num)("nv", new_version)("u", upgrading)("utb", utb_num)("ucb", ucb_num));
+      }
 
       pending->_block_status = s;
       pending->_producer_block_id = producer_block_id;
