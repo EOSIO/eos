@@ -27,14 +27,14 @@ function teardown() { # teardown is run once after each test, even if it fails
   # echo -e "-- END CLEANUP --\n" >&3
 }
 
-function install-which() {
+function install-package() {
   if [[ $ARCH == "Linux" ]]; then
-    ( [[ $NAME =~ "Amazon Linux" ]] || [[ $NAME == "CentOS Linux" ]] ) && yum install which -y
+    ( [[ $NAME =~ "Amazon Linux" ]] || [[ $NAME == "CentOS Linux" ]] ) && yum install $1 -y
   fi
 }
 
-function uninstall-which() {
+function uninstall-package() {
   if [[ $ARCH == "Linux" ]]; then
-    ( [[ $NAME =~ "Amazon Linux" ]] || [[ $NAME == "CentOS Linux" ]] ) && yum remove which -y
+    ( [[ $NAME =~ "Amazon Linux" ]] || [[ $NAME == "CentOS Linux" ]] ) && yum remove $1 -y
   fi
 }
