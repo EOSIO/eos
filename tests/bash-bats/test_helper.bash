@@ -16,13 +16,25 @@ if [[ ! -d "tests" ]] && [[ ! -f "README.md" ]]; then
   exit 1
 fi
 
-debug() {
+function debug() {
   printf " ---------\\n STATUS: ${status}\\n${output}\\n ---------\\n\\n" >&3
 }
 
 trap teardown EXIT
-teardown() { # teardown is run once after each test, even if it fails
+function teardown() { # teardown is run once after each test, even if it fails
   # echo -e "\n-- CLEANUP --" >&3
   [[ -d "$HOME" ]] && rm -rf "$HOME"
   # echo -e "-- END CLEANUP --\n" >&3
+}
+
+function install-which() {
+  if [[ $ARCH == "Linux" ]]; then
+    ( [[ $NAME =~ "Amazon Linux" ]] || [[ $NAME == "CentOS Linux" ]] ) && yum install which -y
+  fi
+}
+
+function uninstall-which() {
+  if [[ $ARCH == "Linux" ]]; then
+    ( [[ $NAME =~ "Amazon Linux" ]] || [[ $NAME == "CentOS Linux" ]] ) && yum remove which -y
+  fi
 }

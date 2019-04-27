@@ -22,7 +22,7 @@ TEST_LABEL="[eosio_build_darwin]"
 }
 
 @test "${TEST_LABEL} > Testing Prompts" {
-#   ## All yes pass
+  ## All yes pass
   run bash -c "printf \"y\n%.0s\" {1..100} | ./$SCRIPT_LOCATION"
   [[ ! -z $(echo "${output}" | grep "EOSIO has been successfully built") ]] || exit
   ## Brew no shows abort
@@ -51,16 +51,16 @@ TEST_LABEL="[eosio_build_darwin]"
   export CMAKE=
   run bash -c "printf \"y\n%.0s\" {1..100} | ./$SCRIPT_LOCATION"
   [[ ! -z $(echo "${output}" | grep "Executing: bash -c /usr/local/bin/cmake -DCMAKE_BUILD") ]] || exit
-  # CLANG
+  ## CLANG
   run bash -c "./$SCRIPT_LOCATION -y -P"
   [[ ! -z $(echo "${output}" | grep "Checking Clang support") ]] || exit
   [[ ! -z $(echo "${output}" | grep -E "Clang.*successfully installed @ ${CLANG_ROOT}") ]] || exit
-  # CLANG already exists
+  ## CLANG already exists (c++/default)
   run bash -c "./$SCRIPT_LOCATION -y"
   [[ ! -z $(echo "${output}" | grep "Unable to find C++17 support!") ]] || exit
   [[ ! -z $(echo "${output}" | grep "DCMAKE_CXX_COMPILER='${CLANG_ROOT}/bin/clang++") ]] || exit
   [[ ! -z $(echo "${output}" | grep "DCMAKE_C_COMPILER='${CLANG_ROOT}/bin/clang'") ]] || exit
-  # CXX doesn't exist
+  ## CXX doesn't exist
   export CXX=c2234
   export CC=ewwqd
   run bash -c "./$SCRIPT_LOCATION -y"

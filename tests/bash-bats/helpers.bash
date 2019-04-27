@@ -8,6 +8,17 @@ load test_helper
 
 TEST_LABEL="[helpers]"
 
+@test "${TEST_LABEL} > which command" {
+  if [[ $ARCH == "Linux" ]]; then
+    uninstall-which
+    run ./scripts/helpers/eosio.bash
+    [[ ! -z $(echo "${output}" | grep "Please install the 'which' command") ]] || exit
+    [[ -z $(echo "${output}" | grep "User:") ]] || exit
+    # Install it
+    [[ -z $(echo "${output}" | grep "User:") ]] && install-which
+  fi
+}
+
 @test "${TEST_LABEL} > execute > dryrun" {
   ## DRYRUN WORKS (true, false, and empty)
   run execute exit 1

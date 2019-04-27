@@ -16,6 +16,9 @@ if [[ -z "${NAME}" ]]; then
     fi
 fi
 
+# Test that which is on the system before proceeding
+which ls &>/dev/null || ( echo "${COLOR_RED}Please install the 'which' command before proceeding!${COLOR_NC}"; $DRYRUN || exit 1 )
+
 function setup() {
     if $VERBOSE; then
         echo "DRYRUN: ${DRYRUN}"

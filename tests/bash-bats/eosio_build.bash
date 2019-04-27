@@ -8,6 +8,7 @@ TEST_LABEL="[eosio_build]"
 @test "${TEST_LABEL} > Testing arguments/options" {
     ## -P
     run bash -c "printf \"n\n%.0s\" {1..100} | ./$SCRIPT_LOCATION"
+    debug
     [[ ! -z $(echo "${output}" | grep "User aborted C++17 installation") ]] || exit
     run bash -c "printf \"n\n%.0s\" {1..100} | ./$SCRIPT_LOCATION -P"
     [[ ! -z $(echo "${output}" | grep "User aborted installation of required de") ]] || exit

@@ -25,6 +25,6 @@ For each bash script we have, there should be a separate .bash file within ROOT/
 ---
 
 ### Running Docker Environments for Testing
-  1. `docker run -v $HOME/BLOCKONE/eos:/eos -t ubuntu:16.04 bash -c "cd /eos && ./tests/bash-bats/bats-core/bin/bats tests/bash-bats/*.bash"`
+  1. `docker run -v $HOME/BLOCKONE/eos:/eos --rm -t ubuntu:16.04 bash -c "cd /eos && ./tests/bash-bats/bats-core/bin/bats tests/bash-bats/*.bash"`
       - You'll need to modify the volume path ($HOME/eos) to indicate where you've got eos cloned locally.
       - Use -t option for better output (required when using debug function to see output)
