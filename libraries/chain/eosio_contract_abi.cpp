@@ -416,7 +416,10 @@ abi_def eosio_contract_abi(abi_def eos_abi)
          {"owner", "name"},
          {"net_usage", "usage_accumulator"},
          {"cpu_usage", "usage_accumulator"},
-         {"ram_usage", "uint64"}
+         {"ram_usage", "uint64"},
+         {"ram_owned", "uint64"},
+         {"storage_usage", "uint64"},
+         {"storage_owned", "uint64"},
       }
    });
 
@@ -465,11 +468,13 @@ abi_def eosio_contract_abi(abi_def eos_abi)
          {"id", "uint64"},
          {"avg_block_net_usage", "usage_accumulator"},
          {"avg_block_cpu_usage", "usage_accumulator"},
+         {"ram_usage", "uint64"},
+         {"storage_usage", "uint64"},
          {"pending_net_usage", "uint64"},
          {"pending_cpu_usage", "uint64"},
          {"virtual_net_limit", "uint64"},
          {"virtual_cpu_limit", "uint64"},
-         {"virtual_ram_limit", "uint64"}
+         {"virtual_ram_limit", "uint64"},
       }
    });
 

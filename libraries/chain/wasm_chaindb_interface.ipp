@@ -194,7 +194,7 @@ namespace eosio { namespace chain {
                 "must specify a valid account to pay for new record");
             validate_db_access_violation(code);
             context.lazy_init_chaindb_abi(code);
-            auto delta = context.chaindb.insert({code, scope, table}, context.get_ram_payer(payer), pk, data, size);
+            auto delta = context.chaindb.insert({code, scope, table}, context.get_storage_payer(payer), pk, data, size);
             return static_cast<int32_t>(delta);
         }
 
@@ -204,7 +204,7 @@ namespace eosio { namespace chain {
         ) {
             validate_db_access_violation(code);
             context.lazy_init_chaindb_abi(code);
-            auto delta = context.chaindb.update({code, scope, table}, context.get_ram_payer(payer), pk, data, size);
+            auto delta = context.chaindb.update({code, scope, table}, context.get_storage_payer(payer), pk, data, size);
             return static_cast<int32_t>(delta);
         }
 
@@ -213,7 +213,7 @@ namespace eosio { namespace chain {
         ) {
             validate_db_access_violation(code);
             context.lazy_init_chaindb_abi(code);
-            auto delta = context.chaindb.remove({code, scope, table}, context.get_ram_payer(), pk);
+            auto delta = context.chaindb.remove({code, scope, table}, context.get_storage_payer(), pk);
             return static_cast<int32_t>(delta);
         }
 

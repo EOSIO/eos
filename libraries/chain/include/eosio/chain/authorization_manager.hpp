@@ -14,7 +14,7 @@
 #include <functional>
 
 namespace cyberway { namespace chaindb {
-    struct ram_payer_info;
+    struct storage_payer_info;
 }} // namespace cyberway::chaindb
 
 namespace eosio { namespace chain {
@@ -26,20 +26,21 @@ namespace eosio { namespace chain {
    struct unlinkauth;
    struct canceldelay;
 
-   using cyberway::chaindb::ram_payer_info;
+   using cyberway::chaindb::storage_payer_info;
+   using cyberway::chaindb::chaindb_controller;
 
    class authorization_manager {
       public:
          using permission_id_type = permission_object::id_type;
 
-         explicit authorization_manager(controller& c, cyberway::chaindb::chaindb_controller&);
+         explicit authorization_manager(controller& c, chaindb_controller&);
 
          void add_indices();
          void initialize_database();
          void add_to_snapshot( const snapshot_writer_ptr& snapshot ) const;
          void read_from_snapshot( const snapshot_reader_ptr& snapshot );
 
-         const permission_object& create_permission( const ram_payer_info& ram,
+         const permission_object& create_permission( const storage_payer_info& ram,
                                                      account_name account,
                                                      permission_name name,
                                                      permission_id_type parent,
@@ -47,9 +48,9 @@ namespace eosio { namespace chain {
                                                      time_point initial_creation_time = time_point()
                                                    );
 
-         void modify_permission( const permission_object& permission, const ram_payer_info&, const authority& auth );
+         void modify_permission( const permission_object& permission, const storage_payer_info&, const authority& auth );
 
-         void remove_permission( const permission_object& permission, const ram_payer_info& );
+         void remove_permission( const permission_object& permission, const storage_payer_info& );
 
          void update_permission_usage( const permission_object& permission );
 
@@ -122,7 +123,7 @@ namespace eosio { namespace chain {
 
       private:
          controller&    _control;
-         cyberway::chaindb::chaindb_controller& _chaindb;
+         chaindb_controller& _chaindb;
 
          void             check_updateauth_authorization( const updateauth& update, const vector<permission_level>& auths )const;
          void             check_deleteauth_authorization( const deleteauth& del, const vector<permission_level>& auths )const;

@@ -4,7 +4,7 @@ namespace eosio { namespace chain { namespace stake {
 using namespace int_arithmetic;
 
 template<typename AgentIndex, typename GrantIndex, typename GrantItr>
-int64_t recall_proxied_traversal(const cyberway::chaindb::ram_payer_info& ram, symbol_code token_code,
+int64_t recall_proxied_traversal(const cyberway::chaindb::storage_payer_info& storage, symbol_code token_code,
     const AgentIndex& agents_idx, const GrantIndex& grants_idx,
     GrantItr& arg_grant_itr, int64_t share, bool forced_erase = false
 ) {
@@ -22,7 +22,7 @@ int64_t recall_proxied_traversal(const cyberway::chaindb::ram_payer_info& ram, s
     auto grant_itr = grants_idx.lower_bound(grant_key(token_code, agent->account));
     while ((grant_itr != grants_idx.end()) && (grant_itr->token_code == token_code) && (grant_itr->grantor_name == agent->account)) {
         auto cur_share = safe_prop(grant_itr->share, share, agent->shares_sum);
-        proxied_ret += recall_proxied_traversal(ram, token_code, agents_idx, grants_idx, grant_itr, cur_share);
+        proxied_ret += recall_proxied_traversal(storage, token_code, agents_idx, grants_idx, grant_itr, cur_share);
     }
     EOS_ASSERT(proxied_ret <= agent->proxied, transaction_exception, "SYSTEM: incorrect proxied_ret val");
 
@@ -41,7 +41,7 @@ int64_t recall_proxied_traversal(const cyberway::chaindb::ram_payer_info& ram, s
     else {
         const auto &arg_grant = *arg_grant_itr;
         ++arg_grant_itr;
-        grants_idx.erase(arg_grant, ram);
+        grants_idx.erase(arg_grant, storage);
     }
     
     return ret;
@@ -49,7 +49,7 @@ int64_t recall_proxied_traversal(const cyberway::chaindb::ram_payer_info& ram, s
 
 template<typename AgentIndex, typename GrantIndex>
 void update_proxied_traversal(
-    const cyberway::chaindb::ram_payer_info& ram, int64_t now, symbol_code token_code,
+    const cyberway::chaindb::storage_payer_info& ram, int64_t now, symbol_code token_code,
     const AgentIndex& agents_idx, const GrantIndex& grants_idx,
     const stake_agent_object* agent, time_point_sec last_reward, bool force
 ) {
@@ -83,7 +83,7 @@ void update_proxied_traversal(
     }
 }
 
-void update_proxied(cyberway::chaindb::chaindb_controller& db, const cyberway::chaindb::ram_payer_info& ram, int64_t now, 
+void update_proxied(cyberway::chaindb::chaindb_controller& db, const cyberway::chaindb::storage_payer_info& storage, int64_t now,
                     symbol_code token_code, const account_name& account, bool force) {
     auto stat = db.find<stake_stat_object, by_id>(token_code.value);
     EOS_ASSERT(stat, transaction_exception, "no staking for token");
@@ -91,12 +91,12 @@ void update_proxied(cyberway::chaindb::chaindb_controller& db, const cyberway::c
     auto grants_table = db.get_table<stake_grant_object>();
     auto agents_idx = agents_table.get_index<stake_agent_object::by_key>();
     auto grants_idx = grants_table.get_index<stake_grant_object::by_key>();
-    update_proxied_traversal(ram, now, token_code, agents_idx, grants_idx,
+    update_proxied_traversal(storage, now, token_code, agents_idx, grants_idx,
         get_agent(token_code, agents_idx, account),
         stat->last_reward, force);
 }
 
-void recall_proxied(cyberway::chaindb::chaindb_controller& db, const cyberway::chaindb::ram_payer_info& ram, int64_t now, 
+void recall_proxied(cyberway::chaindb::chaindb_controller& db, const cyberway::chaindb::storage_payer_info& storage, int64_t now,
                     symbol_code token_code, account_name grantor_name, account_name agent_name, int16_t pct) {
                         
     EOS_ASSERT(1 <= pct && pct <= config::percent_100, transaction_exception, "pct must be between 0.01% and 100% (1-10000)");
@@ -109,13 +109,13 @@ void recall_proxied(cyberway::chaindb::chaindb_controller& db, const cyberway::c
 
     auto grantor_as_agent = get_agent(token_code, agents_idx, grantor_name);
     
-    update_proxied_traversal(ram, now, token_code, agents_idx, grants_idx, grantor_as_agent, time_point_sec(), true);
+    update_proxied_traversal(storage, now, token_code, agents_idx, grants_idx, grantor_as_agent, time_point_sec(), true);
     
     int64_t amount = 0;
     auto grant_itr = grants_idx.lower_bound(grant_key(token_code, grantor_name));
     while ((grant_itr != grants_idx.end()) && (grant_itr->token_code == token_code) && (grant_itr->grantor_name == grantor_name)) {
         if (grant_itr->agent_name == agent_name) {
-            amount = recall_proxied_traversal(ram, token_code, agents_idx, grants_idx, grant_itr, safe_pct<int64_t>(pct, grant_itr->share));
+            amount = recall_proxied_traversal(storage, token_code, agents_idx, grants_idx, grant_itr, safe_pct<int64_t>(pct, grant_itr->share));
             break;
         }
         else

@@ -52,9 +52,9 @@ struct sys_table_row {
             .table = t
         };
     }
-    ram_payer_info payer() const {
+    storage_payer_info payer() const {
         if (resource_mng) {
-            return resource_mng->get_ram_payer(ram_payer);
+            return resource_mng->get_storage_payer(ram_payer);
         } else {
             return {};
         }

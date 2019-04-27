@@ -12,7 +12,7 @@
 
 namespace cyberway { namespace chaindb {
     class chaindb_controller;
-    struct ram_payer_info;
+    struct storage_payer_info;
     struct chaindb_cursor_cache;
 } }
 
@@ -22,6 +22,7 @@ namespace eosio { namespace chain {
 
 using cyberway::chaindb::chaindb_controller;
 using cyberway::chaindb::chaindb_cursor_cache;
+using cyberway::chaindb::storage_payer_info;
 
 class controller;
 class transaction_context;
@@ -617,8 +618,8 @@ class apply_context {
       uint64_t next_recv_sequence( account_name receiver );
       uint64_t next_auth_sequence( account_name actor );
 
-      cyberway::chaindb::ram_payer_info get_ram_payer( account_name ram_owner = account_name(), account_name ram_payer = account_name() );
-      void add_ram_usage( const account_name& account, int64_t ram_delta );
+      storage_payer_info get_storage_payer( account_name owner = account_name(), account_name payer = account_name() );
+      void add_storage_usage( const storage_payer_info& );
       void finalize_trace( action_trace& trace, const fc::time_point& start );
 
    /// Fields:

@@ -22,7 +22,7 @@
 
 #include <cyberway/chaindb/controller.hpp>
 #include <cyberway/chaindb/exception.hpp>
-#include <cyberway/chaindb/ram_payer_info.hpp>
+#include <cyberway/chaindb/storage_payer_info.hpp>
 
 namespace boost { namespace tuples {
 
@@ -628,7 +628,7 @@ public:
         }
 
         template<typename Lambda>
-        emplace_result emplace(const ram_payer_info& ram, Lambda&& constructor) const {
+        emplace_result emplace(const storage_payer_info& payer, Lambda&& constructor) const {
             auto cache = controller_.create_cache_object(get_table_request());
             try {
                 auto pk = cache->pk();
@@ -645,7 +645,7 @@ public:
 
                 fc::variant value;
                 fc::to_variant(obj, value);
-                auto delta = controller_.insert(*cache.get(), std::move(value), ram);
+                auto delta = controller_.insert(*cache.get(), std::move(value), payer);
 
                 return {obj, delta};
             } catch (...) {
@@ -660,7 +660,7 @@ public:
         }
 
         template<typename Lambda>
-        int modify(const T& obj, const ram_payer_info& ram, Lambda&& updater) const {
+        int modify(const T& obj, const storage_payer_info& payer, Lambda&& updater) const {
             auto& itm = item_data::get_cache(obj);
             CYBERWAY_ASSERT(itm.is_valid_table(get_table_request()), chaindb_midx_logic_exception,
                 "Object ${obj} passed to modify is not from the index ${index}",
@@ -678,7 +678,7 @@ public:
 
             fc::variant value;
             fc::to_variant(obj, value);
-            return controller_.update(itm, std::move(value), ram);
+            return controller_.update(itm, std::move(value), payer);
         }
 
         template<typename Lambda>
@@ -686,13 +686,13 @@ public:
             return modify(obj, {}, std::forward<Lambda>(updater));
         }
 
-        int erase(const T& obj, const ram_payer_info& ram = {}) const {
+        int erase(const T& obj, const storage_payer_info& payer = {}) const {
             auto& itm = item_data::get_cache(obj);
             CYBERWAY_ASSERT(itm.is_valid_table(get_table_request()), chaindb_midx_logic_exception,
                 "Object ${obj} passed to erase is not from the index ${index}",
                 ("obj", obj)("index", get_index_name()));
 
-            return controller_.remove(itm, ram);
+            return controller_.remove(itm, payer);
         }
 
         static auto extract_key(const T& obj) { return extractor_type()(obj); }
@@ -777,8 +777,8 @@ public:
     }
 
     template<typename Lambda>
-    emplace_result emplace(const ram_payer_info& ram, Lambda&& constructor) const {
-        return primary_idx_.emplace(ram, std::forward<Lambda>(constructor));
+    emplace_result emplace(const storage_payer_info& payer, Lambda&& constructor) const {
+        return primary_idx_.emplace(payer, std::forward<Lambda>(constructor));
     }
 
     template<typename Lambda>
@@ -787,12 +787,12 @@ public:
     }
 
     template<typename Lambda>
-    int64_t modify(const T& obj, const ram_payer_info& ram, Lambda&& updater) const {
-        return primary_idx_.modify(obj, ram, std::forward<Lambda>(updater));
+    int64_t modify(const T& obj, const storage_payer_info& payer, Lambda&& updater) const {
+        return primary_idx_.modify(obj, payer, std::forward<Lambda>(updater));
     }
 
-    int64_t erase(const T& obj, const ram_payer_info& ram = {}) const {
-        return primary_idx_.erase(obj, ram);
+    int64_t erase(const T& obj, const storage_payer_info& payer = {}) const {
+        return primary_idx_.erase(obj, payer);
     }
 }; // struct multi_index
 

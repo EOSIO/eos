@@ -1,4 +1,4 @@
-#include <cyberway/chaindb/ram_calculator.hpp>
+#include <cyberway/chaindb/storage_calculator.hpp>
 
 #include <eosio/chain/abi_def.hpp>
 
@@ -36,7 +36,7 @@ namespace cyberway { namespace chaindb {
             if (info_) info_->path.resize(save_size_);
         }
 
-        uint adjust_elem_size(const uint size) const {
+        int adjust_elem_size(const int size) const {
             if (!info_) return size;
 
             auto itr = info_->table.field_index_map.find(info_->path);
@@ -50,34 +50,34 @@ namespace cyberway { namespace chaindb {
         string::size_type save_size_ = 0;
     }; // struct stack_path
 
-    uint calc_ram_usage(const variant& var, path_info* path);
-    uint calc_ram_usage(const variant_object& var, path_info* path);
+    int calc_storage_usage(const variant& var, path_info* path);
+    int calc_storage_usage(const variant_object& var, path_info* path);
 
-    uint calc_ram_usage(const variants& var) {
-        constexpr static uint base_size = 8; // for length
+    int calc_storage_usage(const variants& var) {
+        constexpr static int base_size = 8; // for length
 
-        uint size = base_size;
+        int size = base_size;
         for (auto& elem: var) {
-            size += calc_ram_usage(elem, nullptr);
+            size += calc_storage_usage(elem, nullptr);
         }
         return size;
     }
 
-    uint calc_ram_usage(const variant_object& var, path_info* path) {
-        constexpr static uint base_size = 8;
-        constexpr static uint size_per_name = 20;  // "name":
+    int calc_storage_usage(const variant_object& var, path_info* path) {
+        constexpr static int base_size = 8;
+        constexpr static int size_per_name = 20;  // "name":
 
-        uint size = base_size + size_per_name * var.size();
+        int size = base_size + size_per_name * var.size();
         for (auto& elem: var) {
             auto stack = stack_path(path, elem.key());
-            auto elem_size = calc_ram_usage(elem.value(), path);
+            auto elem_size = calc_storage_usage(elem.value(), path);
             size += stack.adjust_elem_size(elem_size);
         }
         return size;
     }
 
-    uint calc_ram_usage(const variant& var, path_info* path) {
-        constexpr static uint base_size = 4;
+    int calc_storage_usage(const variant& var, path_info* path) {
+        constexpr static int base_size = 4;
 
         switch (var.get_type()) {
             case variant::type_id::null_type:
@@ -101,24 +101,24 @@ namespace cyberway { namespace chaindb {
                 return base_size + 2 * var.get_blob().data.size();
 
             case variant::type_id::array_type:
-                return base_size + calc_ram_usage(var.get_array());
+                return base_size + calc_storage_usage(var.get_array());
 
             case variant::type_id::object_type:
-                return base_size + calc_ram_usage(var.get_object(), path);
+                return base_size + calc_storage_usage(var.get_object(), path);
         }
         return base_size;
     }
 
-    uint calc_ram_usage(const eosio::chain::table_def& table, const variant& var) {
-        constexpr static uint base_size = 128; /* "_SERVICE_":{"scope":,"rev":,"payer":,"owner":,"size":,"ram":} */
-        constexpr static uint index_size = 12 + 8 /* scope:pk */ + 8; /* pk */
+    int calc_storage_usage(const eosio::chain::table_def& table, const variant& var) {
+        constexpr static int base_size = 128; /* "_SERVICE_":{"scope":,"rev":,"payer":,"owner":,"size":,"ram":} */
+        constexpr static int index_size = 12 + 8 /* scope:pk */ + 8; /* pk */
 
-        uint size = base_size + index_size * table.indexes.size();
+        int size = base_size + index_size * table.indexes.size();
         if (table.indexes.size() > 1) {
             auto path = path_info(table);
-            size += calc_ram_usage(var, &path);
+            size += calc_storage_usage(var, &path);
         } else {
-            size += calc_ram_usage(var, nullptr);
+            size += calc_storage_usage(var, nullptr);
         }
         return size;
     }

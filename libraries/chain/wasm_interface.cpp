@@ -132,12 +132,12 @@ class privileged_api : public context_aware_api {
 
       void update_stake_proxied(uint64_t token_code_raw, account_name account, int force) {
           int64_t now = context.control.pending_block_time().sec_since_epoch();
-          stake::update_proxied(context.chaindb, context.get_ram_payer(), now, symbol_code{token_code_raw}, account, static_cast<bool>(force));
+          stake::update_proxied(context.chaindb, context.get_storage_payer(), now, symbol_code{token_code_raw}, account, static_cast<bool>(force));
       }
 
       void recall_stake_proxied(uint64_t token_code_raw, account_name grantor_name, account_name agent_name, int32_t pct) {
           int64_t now = context.control.pending_block_time().sec_since_epoch();
-          stake::recall_proxied(context.chaindb, context.get_ram_payer(), now, symbol_code{token_code_raw}, grantor_name, agent_name, pct);
+          stake::recall_proxied(context.chaindb, context.get_storage_payer(), now, symbol_code{token_code_raw}, grantor_name, agent_name, pct);
       }
 
       int64_t set_proposed_producers( array_ptr<char> packed_producer_schedule, size_t datalen) {

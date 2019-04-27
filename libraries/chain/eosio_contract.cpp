@@ -104,7 +104,7 @@ void apply_cyber_newaccount(apply_context& context) {
               ("name", create.name));
 
    // CyberWay: set RAM usage to creator, it can rewrite memory usage to account, so no troubles
-   auto ram_payer = context.get_ram_payer(create.name, create.creator);
+   auto ram_payer = context.get_storage_payer(create.name, create.creator);
 
    context.control.get_mutable_resource_limits_manager().initialize_account(create.name, ram_payer);
 
@@ -200,7 +200,7 @@ void apply_cyber_setcode(apply_context& context) {
         EOS_ASSERT(allowed, protected_contract_code, "can't change code of protected account");
     }
 
-   auto ram_payer = context.get_ram_payer(act.account);
+   auto ram_payer = context.get_storage_payer(act.account);
    chaindb.modify( account, ram_payer, [&]( auto& a ) {
       /** TODO: consider whether a microsecond level local timestamp is sufficient to detect code version changes*/
       // TODO: update setcode message to include the hash, then validate it in validate
@@ -249,7 +249,7 @@ void apply_cyber_setabi(apply_context& context) {
         EOS_ASSERT(allowed, protected_contract_code, "can't change abi of protected account");
     }
 
-   auto ram_payer = context.get_ram_payer(act.account);
+   auto ram_payer = context.get_storage_payer(act.account);
 
    chaindb.modify( account, ram_payer, [&]( auto& a ) {
       a.abi.resize( abi_size );
@@ -312,7 +312,7 @@ void apply_cyber_updateauth(apply_context& context) {
       parent_id = parent.id;
    }
 
-   auto ram_payer = context.get_ram_payer(update.account);
+   auto ram_payer = context.get_storage_payer(update.account);
 
    if( permission ) {
       EOS_ASSERT(parent_id == permission->parent, action_validate_exception,
@@ -366,7 +366,7 @@ void apply_cyber_deleteauth(apply_context& context) {
 // TODO: Removed by CyberWay
 //   int64_t old_size = config::billable_size_v<permission_object> + permission.auth.get_billable_size();
 
-   authorization.remove_permission( permission, context.get_ram_payer() );
+   authorization.remove_permission( permission, context.get_storage_payer() );
 
 // TODO: Removed by CyberWay
 //   context.add_ram_usage( remove.account, -old_size );
@@ -397,7 +397,7 @@ void apply_cyber_linkauth(apply_context& context) {
 
       auto link_key = boost::make_tuple(requirement.account, requirement.code, requirement.type);
       auto link = chaindb.find<permission_link_object, by_action_name>(link_key);
-      auto ram_payer = context.get_ram_payer(requirement.account);
+      auto ram_payer = context.get_storage_payer(requirement.account);
 
       if( link ) {
          EOS_ASSERT(link->required_permission != requirement.requirement, action_validate_exception,
@@ -440,7 +440,7 @@ void apply_cyber_unlinkauth(apply_context& context) {
 //      -(int64_t)(config::billable_size_v<permission_link_object>)
 //   );
 
-   chaindb.erase(*link, context.get_ram_payer());
+   chaindb.erase(*link, context.get_storage_payer());
 }
 
 void apply_cyber_canceldelay(apply_context& context) {

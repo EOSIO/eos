@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cyberway/chaindb/common.hpp>
+#include <cyberway/chaindb/storage_payer_info.hpp>
 
 namespace cyberway { namespace chaindb {
 
@@ -25,6 +26,8 @@ namespace cyberway { namespace chaindb {
 
         revision_t    revision = impossible_revision;
 
+        // the following fields are part of undo state,
+        // TODO: refactor to move them into write_operation
         primary_key_t undo_pk  = unset_primary_key;
         undo_record   undo_rec = undo_record::Unknown;
 
@@ -53,6 +56,10 @@ namespace cyberway { namespace chaindb {
         void clear() {
             *this = {};
         }
+
+        bool empty() const {
+            return scope.empty() && code.empty() && table.empty();
+        }
     }; // struct service_state
 
     struct object_value final {
@@ -60,7 +67,7 @@ namespace cyberway { namespace chaindb {
         fc::variant   value;
 
         bool is_null() const {
-            return value.get_type() == fc::variant::type_id::null_type;
+            return value.is_null();
         }
 
         object_value clone_service() const {

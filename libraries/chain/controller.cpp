@@ -782,7 +782,7 @@ struct controller_impl {
 //      );
       // No need to verify_account_ram_usage since we are only reducing memory
 
-      chaindb.erase( gto, resource_limits.get_ram_payer() );
+      chaindb.erase( gto, resource_limits.get_storage_payer() );
    }
 
    bool failure_is_subjective( const fc::exception& e ) const {
@@ -2078,7 +2078,7 @@ bool controller::is_producing_block()const {
 }
 
 bool controller::is_ram_billing_in_notify_allowed()const {
-   return !is_producing_block() || my->conf.allow_ram_billing_in_notify;
+   return !is_producing_block(); // || my->conf.allow_ram_billing_in_notify;
 }
 
 void controller::validate_expiration( const transaction& trx )const { try {
