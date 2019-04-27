@@ -344,10 +344,6 @@ namespace cyberway { namespace chaindb {
             auto obj = object_value{{table, pk}, std::move(value)};
             auto orig_obj = object_by_pk(table, obj.pk());
 
-            CYBERWAY_ASSERT(orig_obj.service.in_ram, update_archive_object_exception,
-                "Can't update the archive object ${obj} from the table ${table}",
-                ("obj", orig_obj.value)("table", get_full_table_name(table)));
-
             auto delta = update(table, ram, obj, std::move(orig_obj));
             cache_.emplace(table, std::move(obj));
 
@@ -358,10 +354,6 @@ namespace cyberway { namespace chaindb {
         int update(cache_object& itm, variant value, const ram_payer_info& ram) {
             auto table = get_table(itm);
             auto obj = object_value{{table, itm.pk()}, std::move(value)};
-
-            CYBERWAY_ASSERT(itm.service().in_ram, update_archive_object_exception,
-                "Can't update the archive object ${obj} from the table ${table}",
-                ("obj", itm.object().value)("table", get_full_table_name(table)));
 
             auto delta = update(table, ram, obj, itm.object());
             itm.set_object(std::move(obj));
