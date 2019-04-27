@@ -904,24 +904,25 @@ namespace eosio {
 
         pbft_stable_checkpoint pbft_database::fetch_stable_checkpoint_from_blk_extn(const signed_block_ptr &b) {
             try {
-                auto &ext = b->block_extensions;
+                if (b) {
+                    auto &ext = b->block_extensions;
 
-                for (auto it = ext.begin(); it != ext.end();) {
-                    if (it->first == static_cast<uint16_t>(block_extension_type::pbft_stable_checkpoint))
-                    {
-                        auto scp_v = it->second;
-                        fc::datastream<char *> ds_decode(scp_v.data(), scp_v.size());
+                    for (auto it = ext.begin(); it != ext.end();) {
+                        if (it->first == static_cast<uint16_t>(block_extension_type::pbft_stable_checkpoint)) {
+                            auto scp_v = it->second;
+                            fc::datastream<char *> ds_decode(scp_v.data(), scp_v.size());
 
-                        pbft_stable_checkpoint scp_decode;
-                        fc::raw::unpack(ds_decode, scp_decode);
+                            pbft_stable_checkpoint scp_decode;
+                            fc::raw::unpack(ds_decode, scp_decode);
 
-                        if (is_valid_stable_checkpoint(scp_decode)) {
-                            return scp_decode;
+                            if (is_valid_stable_checkpoint(scp_decode)) {
+                                return scp_decode;
+                            } else {
+                                it = ext.erase(it);
+                            }
                         } else {
-                            it = ext.erase(it);
+                            it++;
                         }
-                    } else {
-                        it++;
                     }
                 }
             } catch(...) {
