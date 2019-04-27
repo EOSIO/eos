@@ -1,0 +1,106 @@
+# Obtain dependency versions; Must come first in the script
+. ./scripts/.environment
+# Load general helpers
+. ./scripts/helpers/general.bash
+
+# Checks for Arch and OS + Support for tests setting them manually
+## Necessary for linux exclusion while running bats tests/bash-bats/*.bash
+[[ -z "${ARCH}" ]] && export ARCH=$( uname )
+if [[ -z "${NAME}" ]]; then
+    if [[ $ARCH == "Linux" ]]; then 
+        [[ ! -e /etc/os-release ]] && echo "${COLOR_RED} - /etc/os-release not found! It seems you're attempting to use an unsupported Linux distribution.${COLOR_NC}" && exit 1
+        # Obtain OS NAME, and VERSION
+        . /etc/os-release
+    elif [[ $ARCH == "Darwin" ]]; then export NAME=$(sw_vers -productName)
+    else echo " ${COLOR_RED}- EOSIO is not supported for your Architecture!${COLOR_NC}" && exit 1
+    fi
+fi
+
+function setup() {
+    if $VERBOSE; then
+        echo "CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}"
+        echo "CORE_SYMBOL_NAME: ${CORE_SYMBOL_NAME}"
+        echo "BOOST_LOCATION: ${BOOST_LOCATION}"
+        echo "INSTALL_LOCATION: ${INSTALL_LOCATION}"
+        echo "EOSIO_HOME: ${EOSIO_HOME}"
+        echo "NONINTERACTIVE: ${NONINTERACTIVE}"
+        echo "PROCEED: ${PROCEED}"
+        echo "ENABLE_COVERAGE_TESTING: ${ENABLE_COVERAGE_TESTING}"
+        echo "DOXYGEN: ${DOXYGEN}"
+        echo "PIN_COMPILER: ${PIN_COMPILER}"
+    fi
+    [[ -d ./build ]] && execute rm -rf ./build # cleanup old build directory
+    execute mkdir -p $SRC_LOCATION
+    execute mkdir -p $OPT_LOCATION
+    execute mkdir -p $VAR_LOCATION
+    execute mkdir -p $BIN_LOCATION
+    execute mkdir -p $VAR_LOCATION/log
+    execute mkdir -p $ETC_LOCATION
+    execute mkdir -p $LIB_LOCATION
+    execute mkdir -p $MONGODB_LOG_LOCATION
+    execute mkdir -p $MONGODB_DATA_LOCATION
+}
+
+function resources() {
+    echo "${COLOR_CYAN}EOSIO website:${COLOR_NC} https://eos.io"
+    echo "${COLOR_CYAN}EOSIO Telegram channel:${COLOR_NC} https://t.me/EOSProject"
+    echo "${COLOR_CYAN}EOSIO resources:${COLOR_NC} https://eos.io/resources/"
+    echo "${COLOR_CYAN}EOSIO Stack Exchange:${COLOR_NC} https://eosio.stackexchange.com"
+}
+
+function print_supported_linux_distros_and_exit() {
+   echo "On Linux the EOSIO build script only supports Amazon, Centos, and Ubuntu."
+   echo "Please install on a supported version of one of these Linux distributions."
+   echo "https://aws.amazon.com/amazon-linux-ami/"
+   echo "https://www.centos.org/"
+   echo "https://www.ubuntu.com/"
+   echo "Exiting now."
+   exit 1
+}
+
+function ensure-compiler() {
+    NO_CPP17=${NO_CCP17:-false}
+    CPP_COMP=${CXX:-c++}
+    CC_COMP=${CC:-cc}
+    WHICH_CPP=$(which $CPP_COMP)
+    [[ -z "${WHICH_CPP}" ]] && echo "CPP_COMP not set!" && exit 1
+    COMPILER_TYPE=$(readlink $WHICH_CPP)
+    [[ -z "${COMPILER_TYPE}" ]] && echo "COMPILER_TYPE not set!" && exit 1
+    if [[ $COMPILER_TYPE == "clang++" ]]; then
+        if [[ $(c++ --version | cut -d ' ' -f 1 | head -n 1) == "Apple" ]]; then
+            ### Apple clang version 10
+            [[ $(c++ --version | cut -d ' ' -f 4 | cut -d '.' -f 1 | head -n 1) -lt 10 ]] && NO_CPP17=true
+        else
+            ### clang version 5
+            [[ $(c++ --version | cut -d ' ' -f 4 | cut -d '.' -f 1 | head -n 1) -lt 5 ]] && NO_CPP17=true
+        fi
+    else
+        ### gcc version 7
+        [[ $(c++ -dumpversion | cut -d '.' -f 1) -lt 7 ]] && NO_CPP17=true
+    fi
+    if $PIN_COMPILER; then
+        BUILD_CLANG=true
+        CPP_COMP=$OPT_LOCATION/clang8/bin/clang++
+        CC_COMP=$OPT_LOCATION/clang8/bin/clang
+    elif $NO_CPP17; then
+        while true; do
+            echo "${COLOR_YELLOW}Unable to find C++17 support!${COLOR_NC}"
+            echo "If you already have a C++17 compiler installed or would like to install your own, export CXX to point to the compiler of your choosing."
+            [[ $NONINTERACTIVE == false ]] && read -p "${COLOR_YELLOW}Do you wish to download and build it? (y/n)?${COLOR_NC} " PROCEED
+            case $PROCEED in
+                "" ) echo "What would you like to do?";;
+                0 | true | [Yy]* )
+                    BUILD_CLANG=true
+                    CPP_COMP=${OPT_LOCATION}/clang8/bin/clang++
+                    CC_COMP=${OPT_LOCATION}/clang8/bin/clang
+                break;;
+                1 | false | [Nn]* ) echo "${COLOR_RED} - User aborted C++17 installation${COLOR_NC}"; exit 1;;
+                * ) echo "Please type 'y' for yes or 'n' for no.";;
+            esac
+        done
+    else
+        echo "Unable to find -P option or NO_CCP17 set to false... Please report a github issue as this is likely a bug in the script."
+        exit 1
+    fi
+}
+
