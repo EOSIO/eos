@@ -158,7 +158,4 @@ namespace cyberway { namespace chaindb {
         FC_DECLARE_DERIVED_EXCEPTION(object_exception, chaindb_object_exception,
                                      3740003, "Object has reserved field name")
 
-        FC_DECLARE_DERIVED_EXCEPTION(update_archive_object_exception, chaindb_object_exception,
-                                     3740004, "Can't edit object in archive")
-
 } } // namespace cyberway::chaindb

@@ -984,7 +984,6 @@ public:
         auto& mobj = const_cast<T&>(obj);
         auto& itm = static_cast<item&>(mobj);
         chaindb_assert(is_same_multidx(itm), "object passed to modify is not in multi_index");
-        chaindb_assert(itm.service_.in_ram, "object passed to modify is in archive");
 
         auto pk = primary_key_extractor_type()(obj);
 
