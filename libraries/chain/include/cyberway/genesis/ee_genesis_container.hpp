@@ -1,6 +1,7 @@
 #pragma once
 
 #include <eosio/chain/types.hpp>
+#include <eosio/chain/asset.hpp>
 #include <eosio/chain/abi_def.hpp>
 #include <fc/reflect/reflect.hpp>
 

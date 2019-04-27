@@ -9,6 +9,8 @@ namespace cyberway { namespace genesis {
 using namespace chaindb;
 namespace bfs = boost::filesystem;
 
+FC_DECLARE_EXCEPTION(ee_genesis_exception, 10000000, "event engine genesis create exception");
+
 //const fc::microseconds abi_serializer_max_time = fc::seconds(10);
 
 struct ee_genesis_serializer {
@@ -48,7 +50,7 @@ public:
     }
 
     void finish_section() {
-        EOS_ASSERT(_row_count == 0, genesis_exception, "Section contains wrong number of rows",
+        EOS_ASSERT(_row_count == 0, ee_genesis_exception, "Section contains wrong number of rows",
             ("section",_section)("diff",_row_count));
     }
 
