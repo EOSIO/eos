@@ -11,17 +11,22 @@ TEST_LABEL="[eosio_build_darwin]"
 
 @test "${TEST_LABEL} > Testing Options" {
     run bash -c "./$SCRIPT_LOCATION -y -i /tmp -b /boost_tmp"
-    [[ ! -z $(echo "${output}" | grep "CMAKE_INSTALL_PREFIX=/tmp/eosio") ]] || exit
+    [[ ! -z $(echo "${output}" | grep "CMAKE_INSTALL_PREFIX='/tmp/eosio") ]] || exit
     [[ ! -z $(echo "${output}" | grep "@ /boost_tmp") ]] || exit
     [[ ! -z $(echo "${output}" | grep "EOSIO has been successfully built") ]] || exit
+    [[ -z $(echo "${output}" | grep "Checking MongoDB installation") ]] || exit
+    ## -m
+    run bash -c "./$SCRIPT_LOCATION -y -m"
+    [[ ! -z $(echo "${output}" | grep "Checking MongoDB installation") ]] || exit
+    [[ ! -z $(echo "${output}" | grep "Installing MongoDB C++ driver...") ]] || exit
 }
 
 @test "${TEST_LABEL} > Testing Prompts" {
 #   ## All yes pass
   run bash -c "printf \"y\n%.0s\" {1..100} | ./$SCRIPT_LOCATION"
   [[ ! -z $(echo "${output}" | grep "EOSIO has been successfully built") ]] || exit
-  ## First no shows "aborting"
-  run bash -c "printf \"n\n%.0s\" {1..3} | ./$SCRIPT_LOCATION" # This will fail if you've got the brew packages installed on the machine running these tests!
+  ## Brew no shows abort
+  run bash -c "printf \"y\nn\n\" | ./$SCRIPT_LOCATION" # This will fail if you've got the brew packages installed on the machine running these tests!
   [[ "${output##*$'\n'}" =~ "- User aborted installation of required dependencies." ]] || exit
 }
 
@@ -46,4 +51,18 @@ TEST_LABEL="[eosio_build_darwin]"
   export CMAKE=
   run bash -c "printf \"y\n%.0s\" {1..100} | ./$SCRIPT_LOCATION"
   [[ ! -z $(echo "${output}" | grep "Executing: bash -c /usr/local/bin/cmake -DCMAKE_BUILD") ]] || exit
+  # CLANG
+  run bash -c "./$SCRIPT_LOCATION -y -P"
+  [[ ! -z $(echo "${output}" | grep "Checking Clang support") ]] || exit
+  [[ ! -z $(echo "${output}" | grep -E "Clang.*successfully installed @ ${CLANG_ROOT}") ]] || exit
+  # CLANG already exists
+  run bash -c "./$SCRIPT_LOCATION -y"
+  [[ ! -z $(echo "${output}" | grep "Unable to find C++17 support!") ]] || exit
+  [[ ! -z $(echo "${output}" | grep "DCMAKE_CXX_COMPILER='${CLANG_ROOT}/bin/clang++") ]] || exit
+  [[ ! -z $(echo "${output}" | grep "DCMAKE_C_COMPILER='${CLANG_ROOT}/bin/clang'") ]] || exit
+  # CXX doesn't exist
+  export CXX=c2234
+  export CC=ewwqd
+  run bash -c "./$SCRIPT_LOCATION -y"
+  [[ ! -z $(echo "${output}" | grep "Unable to find compiler c2234") ]] || exit
 }

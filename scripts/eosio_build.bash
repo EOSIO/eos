@@ -128,7 +128,6 @@ prompt-mongo-install
 # Setup directories and envs we need (must come last)
 setup
 
-
 execute cd $REPO_ROOT
 
 # Submodules need to be up to date

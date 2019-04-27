@@ -86,9 +86,8 @@ function prompt-mongo-install() {
 function ensure-compiler() {
     CPP_COMP=${CXX:-c++}
     CC_COMP=${CC:-cc}
-    WHICH_CPP=$(which $CPP_COMP)
-    [[ -z "${WHICH_CPP}" ]] && echo "CPP_COMP not set!" && exit 1
-    COMPILER_TYPE=$(readlink $WHICH_CPP)
+    echo $(which $CPP_COMP || echo "${COLOR_RED} - Unable to find compiler ${CPP_COMP}! ${COLOR_NC}") # which won't show "not found", so we force it
+    COMPILER_TYPE=$(readlink $(which $CPP_COMP))
     [[ -z "${COMPILER_TYPE}" ]] && echo "COMPILER_TYPE not set!" && exit 1
     if [[ $COMPILER_TYPE == "clang++" ]]; then
         if [[ $(c++ --version | cut -d ' ' -f 1 | head -n 1) == "Apple" ]]; then
@@ -110,7 +109,7 @@ function ensure-compiler() {
         while true; do
             echo "${COLOR_YELLOW}Unable to find C++17 support!${COLOR_NC}"
             echo "If you already have a C++17 compiler installed or would like to install your own, export CXX to point to the compiler of your choosing."
-            [[ $NONINTERACTIVE == false ]] && read -p "${COLOR_YELLOW}Do you wish to download and build it? (y/n)?${COLOR_NC} " PROCEED
+            [[ $NONINTERACTIVE == false ]] && read -p "${COLOR_YELLOW}Do you wish to download and build C++17? (y/n)?${COLOR_NC} " PROCEED
             case $PROCEED in
                 "" ) echo "What would you like to do?";;
                 0 | true | [Yy]* )
@@ -126,7 +125,7 @@ function ensure-compiler() {
         echo "${COLOR_RED} - Unable to find CPP17 and user did not pin compiler (-P)!${COLOR_NC}"
         exit 1
     fi
-    export CXX=$CXX_COMP
+    export CXX=$CPP_COMP
     export CC=$CC_COMP
 }
 

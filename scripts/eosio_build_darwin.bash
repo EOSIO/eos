@@ -147,7 +147,7 @@ fi
 
 echo ""
 
-if $MONGO_ENABLED; then
+if $INSTALL_MONGO; then
 	echo "${COLOR_CYAN}[Checking MongoDB installation]${COLOR_NC}"
 	if [[ ! -d $MONGODB_ROOT ]]; then
 		echo "Installing MongoDB into ${MONGODB_ROOT}..."
@@ -199,13 +199,51 @@ if $MONGO_ENABLED; then
 		echo " - MongoDB C++ driver found with correct version @ ${MONGO_CXX_DRIVER_ROOT}."
 	fi
 fi
-echo ""
 
 # We install llvm into /usr/local/opt using brew install llvm@4
-echo "${COLOR_CYAN}[Checking LLVM 4 support}${COLOR_NC}"
+echo "${COLOR_CYAN}[Checking LLVM 4 support]${COLOR_NC}"
 if [[ ! -d $LLVM_ROOT ]]; then
 	execute ln -s /usr/local/opt/llvm@4 $LLVM_ROOT
 	echo " - LLVM successfully linked from /usr/local/opt/llvm@4 to ${LLVM_ROOT}"
 else
 	echo " - LLVM found @ ${LLVM_ROOT}."
+fi
+echo ""
+
+if $PIN_COMPILER; then
+	echo "${COLOR_CYAN}[Checking Clang support]${COLOR_NC}"
+	if [[ ! -d $CLANG_ROOT ]]; then
+		echo "Installing Clang 8..."
+		execute bash -c "cd ${TEMP_DIR} \
+		&& git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/llvm.git clang8 \
+		&& cd clang8 && git checkout $PINNED_COMPILER_LLVM_COMMIT \
+		&& cd tools \
+		&& git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/lld.git \
+		&& cd lld && git checkout $PINNED_COMPILER_LLD_COMMIT && cd ../ \
+		&& git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/polly.git \
+		&& cd polly && git checkout $PINNED_COMPILER_POLLY_COMMIT && cd ../ \
+		&& git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/clang.git clang && cd clang/tools \
+		&& git checkout $PINNED_COMPILER_CLANG_VERSION \
+		&& mkdir extra && cd extra \
+		&& git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/clang-tools-extra.git \
+		&& cd clang-tools-extra && git checkout $PINNED_COMPILER_CLANG_TOOLS_EXTRA_COMMIT && cd .. \
+		&& cd ../../../../projects \
+		&& git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/libcxx.git \
+		&& cd libcxx && git checkout $PINNED_COMPILER_LIBCXX_COMMIT && cd ../ \
+		&& git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/libcxxabi.git \
+		&& cd libcxxabi && git checkout $PINNED_COMPILER_LIBCXXABI_COMMIT && cd ../ \
+		&& git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/libunwind.git \
+		&& cd libunwind && git checkout $PINNED_COMPILER_LIBUNWIND_COMMIT && cd ../ \
+		&& git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/compiler-rt.git \
+		&& cd compiler-rt && git checkout $PINNED_COMPILER_COMPILER_RT_COMMIT && cd ../ \
+		&& cd ${TEMP_DIR}/clang8 \
+		&& mkdir build && cd build \
+		&& ${CMAKE} -G \"Unix Makefiles\" -DCMAKE_INSTALL_PREFIX=\"${CLANG_ROOT}\" -DLLVM_BUILD_EXTERNAL_COMPILER_RT=ON -DLLVM_BUILD_LLVM_DYLIB=ON -DLLVM_ENABLE_LIBCXX=ON -DLLVM_ENABLE_RTTI=ON -DLLVM_INCLUDE_DOCS=OFF -DLLVM_OPTIMIZED_TABLEGEN=ON -DLLVM_TARGETS_TO_BUILD=all -DCMAKE_BUILD_TYPE=Release .. \
+		&& make -j${JOBS} \
+		&& make install \
+		&& cd ../.."
+		echo " - Clang 8 successfully installed @ ${CLANG_ROOT}."
+	else
+		echo " - Clang 8 found @ ${CLANG_ROOT}."
+	fi
 fi
