@@ -855,7 +855,7 @@ struct controller_impl {
 
    bool is_new_version() {
       auto ucb = upgrade_complete_block();
-      if (ucb) return head->block_num > *ucb;
+      if (ucb) return head->block_num >= *ucb;
       return false;
    }
 
