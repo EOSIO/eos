@@ -439,7 +439,7 @@ int trim_blocklog_front(bfs::path block_dir, uint32_t n) {        //n is first b
             EOS_ASSERT( size == 1, block_log_exception, "${file} write fails", ("file", block_out_filename.string()) );
             break;
          } else {
-            blk_base -= (buf_len>>3);
+            blk_base -= (buf_len >> 3);
             cout << "******filling index buf blk_base " << blk_base << " fpos_len " << buf_len << '\n';//debug
          }
       }
@@ -567,7 +567,7 @@ int make_index(const bfs::path& block_dir, const bfs::path& out_file) {
    FILE* fout = fopen(out_file_name.c_str(), "w");
    EOS_ASSERT( fout != nullptr, block_index_not_found, "cannot write blocks.index" );
 
-   uint64_t ind_file_len = (bnum + 1 - first_block)<<3;            //index file holds 8 bytes for each block in blocks.log
+   uint64_t ind_file_len = (bnum + 1 - first_block) << 3;            //index file holds 8 bytes for each block in blocks.log
    uint64_t last_ind_buf_len = ind_file_len & (fpos_list_len - 1); //fpos_list_len is a power of 2 so -1 creates low bits all 1
    if (!last_ind_buf_len)                                          //will write integral number of buf_len and last_ind_buf_len one time to index file
       last_ind_buf_len = buf_len;
@@ -589,7 +589,7 @@ int make_index(const bfs::path& block_dir, const bfs::path& out_file) {
             break;
          }
          ind_pos -= fpos_list_len;
-         blk_base -= (fpos_list_len>>3);
+         blk_base -= (fpos_list_len >> 3);
          status = fseek(fout, ind_pos, SEEK_SET);
          EOS_ASSERT( status == 0, block_log_exception, "cannot seek to ${file} ${pos} from beginning of file", ("file", out_file_name.string())("pos", ind_pos) );
          did_read = ftell(fout);
