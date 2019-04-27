@@ -51,9 +51,9 @@ template<typename AgentIndex, typename GrantIndex>
 void update_proxied_traversal(
     const cyberway::chaindb::ram_payer_info& ram, int64_t now, symbol_code token_code,
     const AgentIndex& agents_idx, const GrantIndex& grants_idx,
-    const stake_agent_object* agent, int64_t frame_length, bool force
+    const stake_agent_object* agent, time_point_sec last_reward, bool force
 ) {
-    if ((now - agent->last_proxied_update.sec_since_epoch() >= frame_length) || force) {
+    if ((last_reward >= agent->last_proxied_update) || force) {
         int64_t new_proxied = 0;
         int64_t recalled = 0;
 
@@ -61,7 +61,7 @@ void update_proxied_traversal(
 
         while ((grant_itr != grants_idx.end()) && (grant_itr->token_code   == token_code) && (grant_itr->grantor_name == agent->account)) {
             auto proxy_agent = get_agent(token_code, agents_idx, grant_itr->agent_name);
-            update_proxied_traversal(ram, now, token_code, agents_idx, grants_idx, proxy_agent, frame_length, force);
+            update_proxied_traversal(ram, now, token_code, agents_idx, grants_idx, proxy_agent, last_reward, force);
 
             if (proxy_agent->proxy_level < agent->proxy_level &&
                 grant_itr->break_fee >= proxy_agent->fee &&
@@ -84,15 +84,16 @@ void update_proxied_traversal(
 }
 
 void update_proxied(cyberway::chaindb::chaindb_controller& db, const cyberway::chaindb::ram_payer_info& ram, int64_t now, 
-                    symbol_code token_code, const account_name& account, int64_t frame_length, bool force) {
-
+                    symbol_code token_code, const account_name& account, bool force) {
+    auto stat = db.find<stake_stat_object, by_id>(token_code.value);
+    EOS_ASSERT(stat, transaction_exception, "no staking for token");
     auto agents_table = db.get_table<stake_agent_object>();
     auto grants_table = db.get_table<stake_grant_object>();
     auto agents_idx = agents_table.get_index<stake_agent_object::by_key>();
     auto grants_idx = grants_table.get_index<stake_grant_object::by_key>();
     update_proxied_traversal(ram, now, token_code, agents_idx, grants_idx,
         get_agent(token_code, agents_idx, account),
-        frame_length, force);
+        stat->last_reward, force);
 }
 
 void recall_proxied(cyberway::chaindb::chaindb_controller& db, const cyberway::chaindb::ram_payer_info& ram, int64_t now, 
@@ -108,7 +109,7 @@ void recall_proxied(cyberway::chaindb::chaindb_controller& db, const cyberway::c
 
     auto grantor_as_agent = get_agent(token_code, agents_idx, grantor_name);
     
-    update_proxied_traversal(ram, now, token_code, agents_idx, grants_idx, grantor_as_agent, 0, true);
+    update_proxied_traversal(ram, now, token_code, agents_idx, grants_idx, grantor_as_agent, time_point_sec(), true);
     
     int64_t amount = 0;
     auto grant_itr = grants_idx.lower_bound(grant_key(token_code, grantor_name));

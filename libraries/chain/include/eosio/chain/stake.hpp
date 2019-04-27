@@ -26,7 +26,7 @@ const stake_agent_object* get_agent(symbol_code token_code, const AgentIndex& ag
 }
 
 void update_proxied(cyberway::chaindb::chaindb_controller& db, const cyberway::chaindb::ram_payer_info&, int64_t now, 
-                    symbol_code token_code, const account_name& account, int64_t frame_length, bool force);
+                    symbol_code token_code, const account_name& account, bool force);
 void recall_proxied(cyberway::chaindb::chaindb_controller& db, const cyberway::chaindb::ram_payer_info&, int64_t now, 
                     symbol_code token_code, account_name grantor_name, account_name agent_name, int16_t pct);
 } } }/// eosio::chain::stake

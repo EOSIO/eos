@@ -527,7 +527,6 @@ abi_def eosio_contract_abi(abi_def eos_abi)
         {"id", "uint64"},
         {"token_symbol", "symbol"},
         {"max_proxies", "uint8[]"},
-        {"frame_length", "int64"},
         {"payout_step_length", "int64"},
         {"payout_steps_num", "uint16"},
         {"min_own_staked_for_election", "int64"}}});
@@ -542,6 +541,7 @@ abi_def eosio_contract_abi(abi_def eos_abi)
         {"id", "uint64"},
         {"token_code", "symbol_code"},
         {"total_staked", "int64"},
+        {"last_reward", "time_point_sec"},
         {"enabled", "bool"}}});
         
    eos_abi.tables.emplace_back( eosio::chain::table_def {
