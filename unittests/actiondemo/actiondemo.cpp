@@ -1,7 +1,4 @@
 #include "actiondemo.hpp"
-// #include "../../contracts/eosiolib/print.hpp"
-// #include "../../contracts/eosiolib/types.hpp"
-// #include "../../contracts/eosiolib/transaction.h"
 #include <eosiolib/print.hpp>
 #include <eosiolib/types.h>
 #include <eosiolib/transaction.h>
@@ -11,7 +8,7 @@ namespace spaceaction {
     void actiondemo::apply( name code, name act ) {
         if( code != _self )
             return;
-
+ 
         switch( act ) {
             case "generate"_n:
                 generate(unpack_action_data<args>());
@@ -63,9 +60,10 @@ namespace spaceaction {
     }
 
     void actiondemo::generate(const args& t){
-        for (int i = 0; i < t.loop; ++i) {
-            size_t txid;
-            // size_t(&txid);
+        // for (int i = 0; i < 1; ++i)
+        // {
+            checksum256 txid;
+            get_transaction_id(&txid);
             std::string tx = to_hex((char*)&txid, 32);
 
             uint64_t seq = 0;
@@ -93,8 +91,8 @@ namespace spaceaction {
                 a.txid = tx;
                 a.action = seq;
             });
-            print("self:%, loop:%, count:%, seedstr:%", name{_self}.to_string(), t.loop, count, r->seedstr);
-        }
+            print_f("self:%, loop:%, count:%, seedstr:%", name{_self}.to_string(), t.loop, count, r->seedstr);
+        // }
     }
 
     void actiondemo::inlineact(const argsinline& t){
