@@ -3,6 +3,7 @@
 #include "golos_dump_container.hpp"
 #include "map_objects.hpp"
 
+#include <cyberway/genesis/ee_genesis_container.hpp>
 #include <boost/filesystem.hpp>
 #include <fc/exception/exception.hpp>
 #include <chainbase/chainbase.hpp>
@@ -22,12 +23,15 @@ public:
     void read_operation_dump(const bfs::path& in_dump_dir);
     void build(const bfs::path& out_file);
 private:
-    bfs::fstream& read_header(golos_dump_header& h, bfs::fstream& in, uint32_t expected_version);
+    golos_dump_header read_header(bfs::fstream& in);
+    operation_number read_op_num(bfs::fstream& in);
 
     void process_comments();
     void process_delete_comments();
     void process_rewards();
+    void process_votes();
 
+    void build_votes(bfs::fstream& dump_votes, uint64_t msg_hash, operation_number msg_created, message_ee_object& msg);
     void build_messages();
 
     bfs::path in_dump_dir_;

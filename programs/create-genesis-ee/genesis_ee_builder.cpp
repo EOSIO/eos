@@ -1,28 +1,41 @@
 #include "genesis_ee_builder.hpp"
 #include "golos_operations.hpp"
-#include <cyberway/genesis/ee_genesis_container.hpp>
 
 #define MEGABYTE 1024*1024
 
-#define MAP_FILE_SIZE uint64_t(1.5*1024)*MEGABYTE
+// Comments:
+// 8000000 * 68 = 0.5 GB
+// +
+// 8000000 * 32 * 10 (votes on comment) = 2.5 GB
+#define MAP_FILE_SIZE uint64_t(6*1024)*MEGABYTE
 
 namespace cyberway { namespace genesis {
 
 genesis_ee_builder::genesis_ee_builder(const std::string& shared_file)
         : maps_(shared_file, chainbase::database::read_write, MAP_FILE_SIZE) {
     maps_.add_index<comment_header_index>();
+    maps_.add_index<vote_header_index>();
 }
 
 genesis_ee_builder::~genesis_ee_builder() {
 }
 
-bfs::fstream& genesis_ee_builder::read_header(golos_dump_header& h, bfs::fstream& in, uint32_t expected_version) {
+golos_dump_header genesis_ee_builder::read_header(bfs::fstream& in) {
+    golos_dump_header h;
     in.read((char*)&h, sizeof(h));
     if (in) {
-        EOS_ASSERT(std::string(h.magic) == golos_dump_header::expected_magic && h.version == expected_version, genesis_exception,
+        EOS_ASSERT(std::string(h.magic) == golos_dump_header::expected_magic, genesis_exception,
             "Unknown format of the operation dump file.");
+        EOS_ASSERT(h.version == golos_dump_header::expected_version, genesis_exception,
+            "Wrong version of the operation dump file.");
     }
-    return in;
+    return h;
+}
+
+operation_number genesis_ee_builder::read_op_num(bfs::fstream& in) {
+    operation_number op_num;
+    fc::raw::unpack(in, op_num);
+    return op_num;
 }
 
 void genesis_ee_builder::process_comments() {
@@ -31,30 +44,28 @@ void genesis_ee_builder::process_comments() {
     const auto& comment_index = maps_.get_index<comment_header_index, by_hash>();
 
     bfs::fstream in(in_dump_dir_ / "comments");
-
-    golos_dump_header h;
-    while (read_header(h, in, 1)) {
-        uint64_t hash = 0;
-        fc::raw::unpack(in, hash);
+    read_header(in);
+    while (in) {
+        auto op_num = read_op_num(in);
 
         auto comment_offset = uint64_t(in.tellg());
 
         cyberway::golos::comment_operation cop;
         fc::raw::unpack(in, cop);
 
-        auto comment_itr = comment_index.find(hash);
+        auto comment_itr = comment_index.find(cop.hash);
         if (comment_itr != comment_index.end()) {
             maps_.modify(*comment_itr, [&](auto& comment) {
                 comment.offset = comment_offset;
-                comment.create_op = h.op;
+                comment.create_op = op_num;
             });
             continue;
         }
 
         maps_.create<comment_header>([&](auto& comment) {
-            comment.hash = hash;
+            comment.hash = cop.hash;
             comment.offset = comment_offset;
-            comment.create_op = h.op;
+            comment.create_op = op_num;
         });
     }
 }
@@ -65,18 +76,19 @@ void genesis_ee_builder::process_delete_comments() {
     const auto& comment_index = maps_.get_index<comment_header_index, by_hash>();
 
     bfs::fstream in(in_dump_dir_ / "delete_comments");
+    read_header(in);
+    while (in) {
+        auto op_num = read_op_num(in);
 
-    golos_dump_header h;
-    while (read_header(h, in, 1)) {
-        uint64_t hash = 0;
-        fc::raw::unpack(in, hash);
+        cyberway::golos::delete_comment_operation dcop;
+        fc::raw::unpack(in, dcop);
 
-        auto comment_itr = comment_index.find(hash);
-        if (h.op > comment_itr->create_op) {
+        auto comment_itr = comment_index.find(dcop.hash);
+        if (op_num > comment_itr->create_op) {
             maps_.remove(*comment_itr);
         } else {
             maps_.modify(*comment_itr, [&](auto& comment) {
-                comment.last_delete_op = h.op;
+                comment.last_delete_op = op_num;
             });
         }
     }
@@ -88,17 +100,15 @@ void genesis_ee_builder::process_rewards() {
     const auto& comment_index = maps_.get_index<comment_header_index, by_hash>();
 
     bfs::fstream in(in_dump_dir_ / "total_comment_rewards");
-
-    golos_dump_header h;
-    while (read_header(h, in, 1)) {
-        uint64_t hash = 0;
-        fc::raw::unpack(in, hash);
+    read_header(in);
+    while (in) {
+        auto op_num = read_op_num(in);
 
         cyberway::golos::total_comment_reward_operation tcrop;
         fc::raw::unpack(in, tcrop);
 
-        auto comment_itr = comment_index.find(hash);
-        if (comment_itr != comment_index.end() && h.op > comment_itr->create_op) {
+        auto comment_itr = comment_index.find(tcrop.hash);
+        if (comment_itr != comment_index.end() && op_num > comment_itr->last_delete_op) {
             maps_.modify(*comment_itr, [&](auto& comment) {
                 comment.author_reward = tcrop.author_reward.get_amount();
                 comment.benefactor_reward = tcrop.benefactor_reward.get_amount();
@@ -107,6 +117,48 @@ void genesis_ee_builder::process_rewards() {
             });
         }
     }
+}
+
+void genesis_ee_builder::process_votes() {
+    std::cout << "-> Reading votes..." << std::endl;
+
+    const auto& vote_index = maps_.get_index<vote_header_index, by_hash_voter>();
+
+    bfs::fstream in(in_dump_dir_ / "votes");
+    read_header(in);
+    while (in) {
+        auto vote_offset = uint64_t(in.tellg());
+
+        read_op_num(in);
+
+        cyberway::golos::vote_operation vop;
+        fc::raw::unpack(in, vop);
+
+        auto vote_itr = vote_index.find(std::make_tuple(vop.hash, vop.voter_hash));
+        if (vote_itr != vote_index.end()) {
+            maps_.modify(*vote_itr, [&](auto& vote) {
+                vote.offset = vote_offset;
+            });
+            continue;
+        }
+
+        maps_.create<vote_header>([&](auto& vote) {
+            vote.hash = vop.hash;
+            vote.voter_hash = vop.voter_hash;
+            vote.offset = vote_offset;
+        });
+    }
+}
+
+void genesis_ee_builder::read_operation_dump(const bfs::path& in_dump_dir) {
+    in_dump_dir_ = in_dump_dir;
+
+    std::cout << "Reading operation dump from " << in_dump_dir_ << "..." << std::endl;
+
+    process_comments();
+    process_delete_comments();
+    process_rewards();
+    process_votes();
 }
 
 // TODO: Move to common library
@@ -122,14 +174,42 @@ asset golos2sys(const asset& golos) {
     return asset(golos.get_amount() * (10000/1000));
 }
 
+void genesis_ee_builder::build_votes(bfs::fstream& dump_votes, uint64_t msg_hash, operation_number msg_created, message_ee_object& msg) {
+
+    const auto& vote_index = maps_.get_index<vote_header_index, by_hash_voter>();
+
+    auto vote_itr = vote_index.lower_bound(msg_hash);
+    for (; vote_itr != vote_index.end() && vote_itr->hash == msg_hash; ++vote_itr) {
+        dump_votes.seekg(vote_itr->offset);
+
+        auto op_num = read_op_num(dump_votes);
+
+        cyberway::golos::vote_operation vop;
+        fc::raw::unpack(dump_votes, vop);
+
+        if (op_num < msg_created) {
+            continue;
+        }
+
+        vote_ee_object vote;
+        vote.weight = vop.weight;
+        vote.time = uint64_t(vop.timestamp.sec_since_epoch()) * 1000000;
+
+        auto voter = generate_name(std::string(vop.voter));
+        msg.votes[voter] = vote;
+    }
+}
+
 void genesis_ee_builder::build_messages() {
     std::cout << "-> Writing messages..." << std::endl;
 
     fc::raw::pack(out_, section_ee_header(section_ee_type::messages));
 
     bfs::fstream dump_comments(in_dump_dir_ / "comments");
+    bfs::fstream dump_votes(in_dump_dir_ / "votes");
 
     const auto& comment_index = maps_.get_index<comment_header_index, by_id>();
+
     for (auto comment_itr = comment_index.begin(); comment_itr != comment_index.end(); ++comment_itr) {
         dump_comments.seekg(comment_itr->offset);
         cyberway::golos::comment_operation cop;
@@ -147,18 +227,11 @@ void genesis_ee_builder::build_messages() {
         msg.author_reward = golos2sys(asset(comment_itr->author_reward));
         msg.benefactor_reward = golos2sys(asset(comment_itr->benefactor_reward));
         msg.curator_reward = golos2sys(asset(comment_itr->curator_reward));
+
+        build_votes(dump_votes, comment_itr->hash, comment_itr->last_delete_op, msg);
+
         fc::raw::pack(out_, msg);
     }
-}
-
-void genesis_ee_builder::read_operation_dump(const bfs::path& in_dump_dir) {
-    in_dump_dir_ = in_dump_dir;
-
-    std::cout << "Reading operation dump from " << in_dump_dir_ << "..." << std::endl;
-
-    process_comments();
-    process_delete_comments();
-    process_rewards();
 }
 
 void genesis_ee_builder::build(const bfs::path& out_file) {
@@ -168,7 +241,7 @@ void genesis_ee_builder::build(const bfs::path& out_file) {
     out_.open(out_file, std::ios_base::binary);
 
     ee_genesis_header hdr;
-    out_.write((const char*)&hdr, sizeof(ee_genesis_header));
+    out_.write((const char*)&hdr, sizeof(hdr));
 
     build_messages();
 }
