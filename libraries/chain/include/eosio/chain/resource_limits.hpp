@@ -48,6 +48,13 @@ namespace resource_limits {
       uint64_t stake;
       uint64_t ram;
    };
+
+   struct account_storage_usage {
+      uint64_t ram_usage;
+      uint64_t ram_owned;
+      uint64_t storage_usage;
+      uint64_t storage_owned;
+   };
    
    static auto const cpu_code = symbol(0,"CPU").to_symbol_code();
    static auto const net_code = symbol(0,"NET").to_symbol_code();
@@ -93,6 +100,7 @@ namespace resource_limits {
 
          account_balance get_account_balance(int64_t now, const account_name& account, const pricelist&);
 
+         account_storage_usage get_account_storage_usage(const account_name& account) const;
          std::map<symbol_code, uint64_t> get_account_usage(const account_name& account) const;
 
       private:

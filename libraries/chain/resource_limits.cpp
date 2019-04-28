@@ -201,9 +201,8 @@ void resource_limits_manager::add_storage_usage( const storage_payer_info& stora
 
 std::map<symbol_code, uint64_t> resource_limits_manager::get_account_usage(const account_name& account)const {
     const auto& config = _chaindb.get<resource_limits_config_object>();
-    auto usage_table = _chaindb.get_table<resource_usage_object>();
-    auto usage_owner_idx = usage_table.get_index<by_owner>();
-    const auto& usage = usage_owner_idx.get(account);
+    auto usage_index = _chaindb.get_index<resource_usage_object,by_owner>();
+    const auto& usage = usage_index.get(account);
     
     std::map<symbol_code, uint64_t> ret;
     ret[cpu_code] = downgrade_cast<uint64_t>(integer_divide_ceil(
@@ -213,6 +212,18 @@ std::map<symbol_code, uint64_t> resource_limits_manager::get_account_usage(const
                             static_cast<uint128_t>(usage.net_usage.value_ex) * config.account_net_usage_average_window, 
                             static_cast<uint128_t>(config::rate_limiting_precision)));
     ret[ram_code] = usage.ram_usage;
+    return ret;
+}
+
+account_storage_usage resource_limits_manager::get_account_storage_usage(const account_name& account) const {
+    auto usage_index = _chaindb.get_index<resource_usage_object,by_owner>();
+    const auto& usage = usage_index.get(account);
+
+    account_storage_usage ret;
+    ret.ram_usage = usage.ram_usage;
+    ret.ram_owned = usage.ram_owned;
+    ret.storage_usage = usage.storage_usage;
+    ret.storage_owned = usage.storage_owned;
     return ret;
 }
 
