@@ -18,7 +18,8 @@ enum object_type
 {
     null_object_type = 0,
     comment_header_object_type,
-    vote_header_object_type
+    vote_header_object_type,
+    reblog_header_object_type
 };
 
 struct comment_header : public chainbase::object<comment_header_object_type, comment_header> {
@@ -50,6 +51,19 @@ struct vote_header : public chainbase::object<vote_header_object_type, vote_head
     operation_number op_num;
     int16_t weight = 0;
     fc::time_point_sec timestamp;
+};
+
+struct reblog_header : public chainbase::object<reblog_header_object_type, reblog_header> {
+    template<typename Constructor, typename Allocator>
+    reblog_header(Constructor &&c, chainbase::allocator<Allocator> a) {
+        c(*this);
+    }
+
+    id_type id;
+    uint64_t hash;
+    account_name_type account;
+    operation_number op_num;
+    uint64_t offset;
 };
 
 struct by_id;
@@ -86,8 +100,29 @@ using vote_header_index = chainbase::shared_multi_index_container<
                 std::less<account_name_type>>>>
 >;
 
+struct by_hash_account;
+
+using reblog_header_index = chainbase::shared_multi_index_container<
+    reblog_header,
+    indexed_by<
+        ordered_unique<
+            tag<by_id>,
+            member<reblog_header, reblog_header::id_type, &reblog_header::id>>,
+        ordered_unique<
+            tag<by_hash_account>,
+            composite_key<
+                reblog_header,
+                member<reblog_header, uint64_t, &reblog_header::hash>,
+                member<reblog_header, account_name_type, &reblog_header::account>>,
+            composite_key_compare<
+                std::less<uint64_t>,
+                std::less<account_name_type>>>>
+>;
+
 } } // cyberway::genesis
 
 CHAINBASE_SET_INDEX_TYPE(cyberway::genesis::comment_header, cyberway::genesis::comment_header_index)
 
 CHAINBASE_SET_INDEX_TYPE(cyberway::genesis::vote_header, cyberway::genesis::vote_header_index)
+
+CHAINBASE_SET_INDEX_TYPE(cyberway::genesis::reblog_header, cyberway::genesis::reblog_header_index)

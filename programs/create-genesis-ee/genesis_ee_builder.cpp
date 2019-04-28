@@ -7,7 +7,9 @@
 // 8000000 * 68 = 0.5 GB
 // +
 // 8000000 * 44 * 10 (votes on comment) = 4.0 GB
-#define MAP_FILE_SIZE uint64_t(9*1024)*MEGABYTE
+// +
+// 1000000 * 46 = (reblogs on comment) = 0.1 GB
+#define MAP_FILE_SIZE uint64_t(10*1024)*MEGABYTE
 
 namespace cyberway { namespace genesis {
 
@@ -15,6 +17,7 @@ genesis_ee_builder::genesis_ee_builder(const std::string& shared_file)
         : maps_(shared_file, chainbase::database::read_write, MAP_FILE_SIZE) {
     maps_.add_index<comment_header_index>();
     maps_.add_index<vote_header_index>();
+    maps_.add_index<reblog_header_index>();
 }
 
 genesis_ee_builder::~genesis_ee_builder() {
@@ -152,6 +155,59 @@ void genesis_ee_builder::process_votes() {
     }
 }
 
+void genesis_ee_builder::process_reblogs() {
+    std::cout << "-> Reading reblogs..." << std::endl;
+
+    const auto& reblog_index = maps_.get_index<reblog_header_index, by_hash_account>();
+
+    bfs::fstream in(in_dump_dir_ / "reblogs");
+    read_header(in);
+    while (in) {
+        auto op_num = read_op_num(in);
+
+        auto reblog_offset = uint64_t(in.tellg());
+
+        cyberway::golos::reblog_operation rop;
+        fc::raw::unpack(in, rop);
+
+        auto reblog_itr = reblog_index.find(std::make_tuple(rop.hash, rop.account));
+        if (reblog_itr != reblog_index.end()) {
+            maps_.modify(*reblog_itr, [&](auto& reblog) {
+                reblog.op_num = op_num;
+                reblog.offset = reblog_offset;
+            });
+            continue;
+        }
+
+        maps_.create<reblog_header>([&](auto& reblog) {
+            reblog.hash = rop.hash;
+            reblog.account = rop.account;
+            reblog.op_num = op_num;
+            reblog.offset = reblog_offset;
+        });
+    }
+}
+
+void genesis_ee_builder::process_delete_reblogs() {
+    std::cout << "-> Reading delete reblogs..." << std::endl;
+
+    const auto& reblog_index = maps_.get_index<reblog_header_index, by_hash_account>();
+
+    bfs::fstream in(in_dump_dir_ / "delete_reblogs");
+    read_header(in);
+    while (in) {
+        auto op_num = read_op_num(in);
+
+        cyberway::golos::delete_reblog_operation drop;
+        fc::raw::unpack(in, drop);
+
+        auto reblog_itr = reblog_index.find(std::make_tuple(drop.hash, drop.account));
+        if (op_num > reblog_itr->op_num) {
+            maps_.remove(*reblog_itr);
+        }
+    }
+}
+
 void genesis_ee_builder::read_operation_dump(const bfs::path& in_dump_dir) {
     in_dump_dir_ = in_dump_dir;
 
@@ -161,6 +217,8 @@ void genesis_ee_builder::read_operation_dump(const bfs::path& in_dump_dir) {
     process_delete_comments();
     process_rewards();
     process_votes();
+    process_reblogs();
+    process_delete_reblogs();
 }
 
 // TODO: Move to common library
@@ -177,7 +235,6 @@ asset golos2sys(const asset& golos) {
 }
 
 void genesis_ee_builder::build_votes(uint64_t msg_hash, operation_number msg_created, message_ee_object& msg) {
-
     const auto& vote_index = maps_.get_index<vote_header_index, by_hash_voter>();
 
     auto vote_itr = vote_index.lower_bound(msg_hash);
@@ -195,13 +252,36 @@ void genesis_ee_builder::build_votes(uint64_t msg_hash, operation_number msg_cre
     }
 }
 
+void genesis_ee_builder::build_reblogs(uint64_t msg_hash, operation_number msg_created, message_ee_object& msg, bfs::fstream& dump_reblogs) {
+    const auto& reblog_idx = maps_.get_index<reblog_header_index, by_hash_account>();
+
+    auto reblog_itr = reblog_idx.lower_bound(msg_hash);
+    for (; reblog_itr != reblog_idx.end() && reblog_itr->hash == msg_hash; ++reblog_itr) {
+        if (reblog_itr->op_num < msg_created) {
+            continue;
+        }
+
+        dump_reblogs.seekg(reblog_itr->offset);
+        cyberway::golos::reblog_operation rop;
+        fc::raw::unpack(dump_reblogs, rop);
+
+        reblog_ee_object reblog;
+        reblog.account = generate_name(std::string(reblog_itr->account));
+        reblog.title = rop.title;
+        reblog.body = rop.body;
+        reblog.time = uint64_t(rop.timestamp.sec_since_epoch()) * 1000000;
+
+        msg.reblogs.push_back(reblog);
+    }
+}
+
 void genesis_ee_builder::build_messages() {
     std::cout << "-> Writing messages..." << std::endl;
 
     fc::raw::pack(out_, section_ee_header(section_ee_type::messages));
 
     bfs::fstream dump_comments(in_dump_dir_ / "comments");
-    bfs::fstream dump_votes(in_dump_dir_ / "votes");
+    bfs::fstream dump_reblogs(in_dump_dir_ / "reblogs");
 
     const auto& comment_index = maps_.get_index<comment_header_index, by_id>();
 
@@ -224,6 +304,8 @@ void genesis_ee_builder::build_messages() {
         msg.curator_reward = golos2sys(asset(comment_itr->curator_reward));
 
         build_votes(comment_itr->hash, comment_itr->last_delete_op, msg);
+
+        build_reblogs(comment_itr->hash, comment_itr->last_delete_op, msg, dump_reblogs);
 
         fc::raw::pack(out_, msg);
     }

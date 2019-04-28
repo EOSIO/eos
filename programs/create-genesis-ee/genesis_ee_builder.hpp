@@ -30,8 +30,11 @@ private:
     void process_delete_comments();
     void process_rewards();
     void process_votes();
+    void process_reblogs();
+    void process_delete_reblogs();
 
     void build_votes(uint64_t msg_hash, operation_number msg_created, message_ee_object& msg);
+    void build_reblogs(uint64_t msg_hash, operation_number msg_created, message_ee_object& msg, bfs::fstream& dump_reblogs);
     void build_messages();
 
     bfs::path in_dump_dir_;
