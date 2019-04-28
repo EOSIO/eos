@@ -51,7 +51,7 @@ namespace eosio { namespace chain {
 
       id_type                       id;
       block_num_type                upgrade_target_block_num = 0;
-      optional<block_num_type>      upgrade_complete_block_num;
+      block_num_type                upgrade_complete_block_num = 0;
    };
 
 

@@ -971,8 +971,8 @@ namespace eosio {
 
                     if (lscb_num == 0) {
                         const auto& ucb = ctrl.get_upgrade_properties().upgrade_complete_block_num;
-                        if (!ucb) return lscb_info;
-                        auto bs = ctrl.fetch_block_state_by_number(*ucb);
+                        if (ucb == 0) return lscb_info;
+                        auto bs = ctrl.fetch_block_state_by_number(ucb);
                         if (!bs) return lscb_info;
                         current_schedule = bs->active_schedule;
                         new_schedule = bs->pending_schedule;
@@ -1009,8 +1009,8 @@ namespace eosio {
 
             auto checkpoint = [&](const block_num_type &in) {
                 const auto& ucb = ctrl.get_upgrade_properties().upgrade_complete_block_num;
-                if (!ucb) return false;
-                return in >= *ucb
+                if (ucb == 0) return false;
+                return in >= ucb
                 && (in % 100 == 1 || std::find(prepare_watermarks.begin(), prepare_watermarks.end(), in) != prepare_watermarks.end());
             };
 

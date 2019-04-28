@@ -853,7 +853,7 @@ struct controller_impl {
       try {
           const auto&  upo = db.get<upgrade_property_object>();
           if (upo.upgrade_target_block_num > 0) {
-              return upo.upgrade_target_block_num;
+              return optional<block_num_type>{upo.upgrade_target_block_num};
           } else {
               return optional<block_num_type>{};
           }
@@ -867,7 +867,11 @@ struct controller_impl {
    optional<block_num_type> upgrade_complete_block() {
       try {
          const auto&  upo = db.get<upgrade_property_object>();
-         return upo.upgrade_complete_block_num;
+         if (upo.upgrade_complete_block_num > 0) {
+            return optional<block_num_type>{upo.upgrade_complete_block_num};
+         } else {
+            return optional<block_num_type>{};
+         };
       } catch( const boost::exception& e) {
          db.create<upgrade_property_object>([](auto&){});
          return optional<block_num_type>{};
@@ -1344,12 +1348,11 @@ struct controller_impl {
 
       auto utb = upgrade_target_block();
       auto ucb = upgrade_complete_block();
-      if (utb) {
-         if (head->dpos_irreversible_blocknum >= *utb && !ucb) {
+      if (utb && !ucb) {
+         if (head->dpos_irreversible_blocknum >= *utb) {
             const auto& upo = db.get<upgrade_property_object>();
             db.modify( upo, [&]( auto& up ) {
-               up.upgrade_complete_block_num.reset();
-               up.upgrade_complete_block_num.emplace( head->block_num);
+               up.upgrade_complete_block_num = head->block_num;
             });
             wlog("setting upgrade complete block num to ${b}", ("b", head->block_num));
          }
@@ -1365,7 +1368,7 @@ struct controller_impl {
       uint32_t ucb_num = 0;
       if (upgrade_complete_block()) ucb_num = *upgrade_complete_block();
 
-      if (utb && head->bft_irreversible_blocknum < utb + 100) {
+      if (utb && head->bft_irreversible_blocknum < utb_num + 100) {
          ilog("head block num is ${h}, new version is ${nv}, upgrading is ${u}, target block is ${utb}, complete block is ${ucb}",
               ("h", head->block_num)("nv", new_version)("u", upgrading)("utb", utb_num)("ucb", ucb_num));
       }
