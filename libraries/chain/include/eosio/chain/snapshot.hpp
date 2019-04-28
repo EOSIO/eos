@@ -233,11 +233,11 @@ namespace eosio { namespace chain {
                      sstream << in.rdbuf();
                      std::string str(sstream.str());
                      //prepend uint32_t 0
-                     str = "\0\0\0\0" + str;
-                     const char* ptr = str.c_str();
-                     fc::datastream<const char*> tmp(ptr, str.size());
-                     fc::raw::unpack(tmp, data);
-                     auto original_data_length = tmp.tellp() - 4;
+                     std::vector<char> tmp(str.begin(), str.end());
+                     tmp.insert(tmp.begin(), {0,0,0,0});
+                     fc::datastream<const char*> tmp_ds(tmp.data(), tmp.size());
+                     fc::raw::unpack(tmp_ds, data);
+                     auto original_data_length = tmp_ds.tellp() - 4;
                      in.seekg(original_data_length);
                  }else{
                      fc::raw::unpack(in, data);
