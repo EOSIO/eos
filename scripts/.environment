@@ -2,8 +2,9 @@ export EOSIO_VERSION_MAJOR=$(cat CMakeLists.txt | grep "set(VERSION_MAJOR" | awk
 export EOSIO_VERSION_MINOR=$(cat CMakeLists.txt | grep "set(VERSION_MINOR" | awk '{print $2}' | sed 's/)//g')
 export EOSIO_VERSION_PATCH=$(cat CMakeLists.txt | grep "set(VERSION_PATCH" | awk '{print $2}' | sed 's/)//g')
 export EOSIO_VERSION="${EOSIO_VERSION_MAJOR}.${EOSIO_VERSION_MINOR}.${EOSIO_VERSION_PATCH}"
-export INSTALL_LOCATION=${INSTALL_LOCATION:-${HOME}}
+export INSTALL_LOCATION=${INSTALL_LOCATION:-$HOME}
 export EOSIO_HOME="${INSTALL_LOCATION}/eosio/${EOSIO_VERSION}"
+export TEMP_DIR="${INSTALL_LOCATION}/tmp"
 
 export SRC_LOCATION=${EOSIO_HOME}/src
 export OPT_LOCATION=${EOSIO_HOME}/opt
@@ -84,6 +85,4 @@ export COUNT=1
 export SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 export REPO_ROOT="${SCRIPT_DIR}/.."
 export BUILD_DIR="${REPO_ROOT}/build"
-
-export TEMP_DIR=${TEMP_DIR:-$HOME/tmp}
 

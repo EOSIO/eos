@@ -38,3 +38,5 @@ function uninstall-package() {
     ( [[ $NAME =~ "Amazon Linux" ]] || [[ $NAME == "CentOS Linux" ]] ) && yum remove $1 -y
   fi
 }
+
+install-package which 1>/dev/null

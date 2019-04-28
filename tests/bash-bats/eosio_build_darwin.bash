@@ -26,7 +26,7 @@ TEST_LABEL="[eosio_build_darwin]"
   run bash -c "printf \"y\n%.0s\" {1..100} | ./$SCRIPT_LOCATION"
   [[ ! -z $(echo "${output}" | grep "EOSIO has been successfully built") ]] || exit
   ## Brew no shows abort
-  run bash -c "printf \"y\nn\n\" | ./$SCRIPT_LOCATION" # This will fail if you've got the brew packages installed on the machine running these tests!
+  run bash -c "printf \"n\n\" | ./$SCRIPT_LOCATION" # This will fail if you've got the brew packages installed on the machine running these tests!
   [[ "${output##*$'\n'}" =~ "- User aborted installation of required dependencies." ]] || exit
 }
 
@@ -57,9 +57,8 @@ TEST_LABEL="[eosio_build_darwin]"
   [[ ! -z $(echo "${output}" | grep -E "Clang.*successfully installed @ ${CLANG_ROOT}") ]] || exit
   ## CLANG already exists (c++/default)
   run bash -c "./$SCRIPT_LOCATION -y"
-  [[ ! -z $(echo "${output}" | grep "Unable to find C++17 support!") ]] || exit
-  [[ ! -z $(echo "${output}" | grep "DCMAKE_CXX_COMPILER='${CLANG_ROOT}/bin/clang++") ]] || exit
-  [[ ! -z $(echo "${output}" | grep "DCMAKE_C_COMPILER='${CLANG_ROOT}/bin/clang'") ]] || exit
+  [[ ! -z $(echo "${output}" | grep "DCMAKE_CXX_COMPILER='c++'") ]] || exit
+  [[ ! -z $(echo "${output}" | grep "DCMAKE_C_COMPILER='cc'") ]] || exit
   ## CXX doesn't exist
   export CXX=c2234
   export CC=ewwqd

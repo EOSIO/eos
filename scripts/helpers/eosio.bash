@@ -89,22 +89,24 @@ function prompt-mongo-install() {
 function ensure-compiler() {
     CPP_COMP=${CXX:-c++}
     CC_COMP=${CC:-cc}
-    echo $(which $CPP_COMP || echo "${COLOR_RED} - Unable to find compiler ${CPP_COMP}! ${COLOR_NC}") # which won't show "not found", so we force it
-    COMPILER_TYPE=$(readlink $(which $CPP_COMP))
-    [[ -z "${COMPILER_TYPE}" ]] && echo "COMPILER_TYPE not set!" && exit 1
-    if [[ $COMPILER_TYPE == "clang++" ]]; then
-        if [[ $(c++ --version | cut -d ' ' -f 1 | head -n 1) == "Apple" ]]; then
-            ### Apple clang version 10
-            [[ $(c++ --version | cut -d ' ' -f 4 | cut -d '.' -f 1 | head -n 1) -lt 10 ]] && export NO_CPP17=true
+    if [[ $PIN_COMPILER == false ]]; then
+        which $CPP_COMP &>/dev/null || ( echo "${COLOR_RED} - Unable to find compiler ${CPP_COMP}! Pass in the -P option if you wish for us to install it. ${COLOR_NC}"; exit 1 )
+        #echo $(which $CPP_COMP || (echo "${COLOR_RED} - Unable to find compiler ${CPP_COMP}! ${COLOR_NC}") # which won't show "not found", so we force it
+        COMPILER_TYPE=$(readlink $(which $CPP_COMP))
+        [[ -z "${COMPILER_TYPE}" ]] && echo "COMPILER_TYPE not set!" && exit 1
+        if [[ $COMPILER_TYPE == "clang++" ]]; then
+            if [[ $(c++ --version | cut -d ' ' -f 1 | head -n 1) == "Apple" ]]; then
+                ### Apple clang version 10
+                [[ $(c++ --version | cut -d ' ' -f 4 | cut -d '.' -f 1 | head -n 1) -lt 10 ]] && export NO_CPP17=true
+            else
+                ### clang version 5
+                [[ $(c++ --version | cut -d ' ' -f 4 | cut -d '.' -f 1 | head -n 1) -lt 5 ]] && export NO_CPP17=true
+            fi
         else
-            ### clang version 5
-            [[ $(c++ --version | cut -d ' ' -f 4 | cut -d '.' -f 1 | head -n 1) -lt 5 ]] && export NO_CPP17=true
+            ### gcc version 7
+            [[ $(c++ -dumpversion | cut -d '.' -f 1) -lt 7 ]] && export NO_CPP17=true
         fi
-    else
-        ### gcc version 7
-        [[ $(c++ -dumpversion | cut -d '.' -f 1) -lt 7 ]] && export NO_CPP17=true
-    fi
-    if $PIN_COMPILER; then
+    elif $PIN_COMPILER; then
         export BUILD_CLANG=true
         export CPP_COMP=$OPT_LOCATION/clang8/bin/clang++
         export CC_COMP=$OPT_LOCATION/clang8/bin/clang
