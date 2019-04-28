@@ -42,7 +42,6 @@ struct transfer_operation {
 
 struct vote_operation {
     uint64_t hash = 0;
-    uint64_t voter_hash = 0;
     account_name_type voter;
     account_name_type author;
     string permlink;
@@ -93,7 +92,7 @@ struct total_comment_reward_operation {
 FC_REFLECT(cyberway::golos::comment_operation, (hash)(parent_author)(parent_permlink)(author)(permlink)(title)(body)(tags))
 FC_REFLECT(cyberway::golos::custom_json_operation, (required_auths)(required_posting_auths)(id)(json))
 FC_REFLECT(cyberway::golos::delete_comment_operation, (hash))
-FC_REFLECT(cyberway::golos::vote_operation, (hash)(voter_hash)(voter)(author)(permlink)(weight)(timestamp))
+FC_REFLECT(cyberway::golos::vote_operation, (hash)(voter)(author)(permlink)(weight)(timestamp))
 FC_REFLECT(cyberway::golos::transfer_operation, (from)(to)(amount)(memo))
 
 FC_REFLECT(cyberway::golos::author_reward_operation, (author)(permlink)(sbd_payout)(steem_payout)(vesting_payout))

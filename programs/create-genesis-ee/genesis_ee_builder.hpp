@@ -31,7 +31,7 @@ private:
     void process_rewards();
     void process_votes();
 
-    void build_votes(bfs::fstream& dump_votes, uint64_t msg_hash, operation_number msg_created, message_ee_object& msg);
+    void build_votes(uint64_t msg_hash, operation_number msg_created, message_ee_object& msg);
     void build_messages();
 
     bfs::path in_dump_dir_;

@@ -6,8 +6,8 @@
 // Comments:
 // 8000000 * 68 = 0.5 GB
 // +
-// 8000000 * 32 * 10 (votes on comment) = 2.5 GB
-#define MAP_FILE_SIZE uint64_t(6*1024)*MEGABYTE
+// 8000000 * 44 * 10 (votes on comment) = 4.0 GB
+#define MAP_FILE_SIZE uint64_t(9*1024)*MEGABYTE
 
 namespace cyberway { namespace genesis {
 
@@ -127,25 +127,27 @@ void genesis_ee_builder::process_votes() {
     bfs::fstream in(in_dump_dir_ / "votes");
     read_header(in);
     while (in) {
-        auto vote_offset = uint64_t(in.tellg());
-
-        read_op_num(in);
+        auto op_num = read_op_num(in);
 
         cyberway::golos::vote_operation vop;
         fc::raw::unpack(in, vop);
 
-        auto vote_itr = vote_index.find(std::make_tuple(vop.hash, vop.voter_hash));
+        auto vote_itr = vote_index.find(std::make_tuple(vop.hash, vop.voter));
         if (vote_itr != vote_index.end()) {
             maps_.modify(*vote_itr, [&](auto& vote) {
-                vote.offset = vote_offset;
+                vote.op_num = op_num;
+                vote.weight = vop.weight;
+                vote.timestamp = vop.timestamp;
             });
             continue;
         }
 
         maps_.create<vote_header>([&](auto& vote) {
             vote.hash = vop.hash;
-            vote.voter_hash = vop.voter_hash;
-            vote.offset = vote_offset;
+            vote.voter = vop.voter;
+            vote.op_num = op_num;
+            vote.weight = vop.weight;
+            vote.timestamp = vop.timestamp;
         });
     }
 }
@@ -174,28 +176,21 @@ asset golos2sys(const asset& golos) {
     return asset(golos.get_amount() * (10000/1000));
 }
 
-void genesis_ee_builder::build_votes(bfs::fstream& dump_votes, uint64_t msg_hash, operation_number msg_created, message_ee_object& msg) {
+void genesis_ee_builder::build_votes(uint64_t msg_hash, operation_number msg_created, message_ee_object& msg) {
 
     const auto& vote_index = maps_.get_index<vote_header_index, by_hash_voter>();
 
     auto vote_itr = vote_index.lower_bound(msg_hash);
     for (; vote_itr != vote_index.end() && vote_itr->hash == msg_hash; ++vote_itr) {
-        dump_votes.seekg(vote_itr->offset);
-
-        auto op_num = read_op_num(dump_votes);
-
-        cyberway::golos::vote_operation vop;
-        fc::raw::unpack(dump_votes, vop);
-
-        if (op_num < msg_created) {
+        if (vote_itr->op_num < msg_created) {
             continue;
         }
 
         vote_ee_object vote;
-        vote.weight = vop.weight;
-        vote.time = uint64_t(vop.timestamp.sec_since_epoch()) * 1000000;
+        vote.weight = vote_itr->weight;
+        vote.time = uint64_t(vote_itr->timestamp.sec_since_epoch()) * 1000000;
 
-        auto voter = generate_name(std::string(vop.voter));
+        auto voter = generate_name(std::string(vote_itr->voter));
         msg.votes[voter] = vote;
     }
 }
@@ -228,7 +223,7 @@ void genesis_ee_builder::build_messages() {
         msg.benefactor_reward = golos2sys(asset(comment_itr->benefactor_reward));
         msg.curator_reward = golos2sys(asset(comment_itr->curator_reward));
 
-        build_votes(dump_votes, comment_itr->hash, comment_itr->last_delete_op, msg);
+        build_votes(comment_itr->hash, comment_itr->last_delete_op, msg);
 
         fc::raw::pack(out_, msg);
     }

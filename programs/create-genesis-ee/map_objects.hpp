@@ -46,8 +46,10 @@ struct vote_header : public chainbase::object<vote_header_object_type, vote_head
 
     id_type id;
     uint64_t hash;
-    uint64_t voter_hash;
-    uint64_t offset;
+    account_name_type voter;
+    operation_number op_num;
+    int16_t weight = 0;
+    fc::time_point_sec timestamp;
 };
 
 struct by_id;
@@ -78,10 +80,10 @@ using vote_header_index = chainbase::shared_multi_index_container<
             composite_key<
                 vote_header,
                 member<vote_header, uint64_t, &vote_header::hash>,
-                member<vote_header, uint64_t, &vote_header::voter_hash>>,
+                member<vote_header, account_name_type, &vote_header::voter>>,
             composite_key_compare<
                 std::less<uint64_t>,
-                std::less<uint64_t>>>>
+                std::less<account_name_type>>>>
 >;
 
 } } // cyberway::genesis
