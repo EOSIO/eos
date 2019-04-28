@@ -16,27 +16,33 @@ namespace eosio {
         chain::authority required_auth;
     };
 
-    struct get_account_results {
-       chain::name                                           account_name;
-       uint32_t                                              head_block_num = 0;
-       fc::time_point                                        head_block_time;
-       bool                                                  privileged = false;
-       fc::time_point                                        last_code_update;
-       fc::time_point                                        created;
-       fc::optional<chain::asset>                            core_liquid_balance;
-    //TODO: replace it (? with ram/net/cpu staked)
-       int64_t                                               ram_quota  = 0;
-       int64_t                                                net_weight = 0;
-       int64_t                                               cpu_weight = 0;
+    struct account_resource_limit {
+       int64_t used = 0; ///< quantity used in current window
+       int64_t available = 0; ///< quantity available in current window (based upon fractional reserve)
+       int64_t max = 0; ///< max per window under current congestion
+    };
 
-       eosio::chain::resource_limits::account_resource_limit net_limit;
-       eosio::chain::resource_limits::account_resource_limit cpu_limit;
-       int64_t                                               ram_usage = 0;
-       std::vector<permission>                               permissions;
-       fc::variant                                           total_resources;
-       fc::variant                                           self_delegated_bandwidth;
-       fc::variant                                           refund_request;
-       fc::variant                                           voter_info;
+    struct get_account_results {
+       chain::name                account_name;
+       uint32_t                   head_block_num = 0;
+       fc::time_point             head_block_time;
+       bool                       privileged = false;
+       fc::time_point             last_code_update;
+       fc::time_point             created;
+       fc::optional<chain::asset> core_liquid_balance;
+
+       int64_t                    ram_quota  = 0;
+       int64_t                    net_weight = 0;
+       int64_t                    cpu_weight = 0;
+
+       account_resource_limit     net_limit;
+       account_resource_limit     cpu_limit;
+       int64_t                    ram_usage = 0;
+       std::vector<permission>    permissions;
+       fc::variant                total_resources;
+       fc::variant                self_delegated_bandwidth;
+       fc::variant                refund_request;
+       fc::variant                voter_info;
     };
 
     struct get_code_results {
@@ -140,6 +146,7 @@ FC_REFLECT( eosio::get_producers_result, (rows)(total_producer_vote_weight)(more
 FC_REFLECT( eosio::get_producer_schedule_result, (active)(pending)(proposed) )
 FC_REFLECT( eosio::get_scheduled_transactions_result, (transactions)(more) )
 FC_REFLECT( eosio::permission, (perm_name)(parent)(required_auth) )
+FC_REFLECT( eosio::account_resource_limit, (used)(available)(max) )
 FC_REFLECT( eosio::get_account_results,
             (account_name)(head_block_num)(head_block_time)(privileged)(last_code_update)(created)
             (core_liquid_balance)(ram_quota)(net_weight)(cpu_weight)(net_limit)(cpu_limit)(ram_usage)(permissions)
