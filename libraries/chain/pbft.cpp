@@ -191,6 +191,7 @@ namespace eosio {
 
         void psm_prepared_state::send_commit(psm_machine *m, pbft_database &pbft_db) {
             auto commits = pbft_db.send_and_add_pbft_commit(m->get_commits_cache(), m->get_current_view());
+            ilog("new version is ${nv}, upgrading is ${u}", ("nv", pbft_db.ctrl.is_upgraded())("u", pbft_db.ctrl.under_upgrade()));
 
             if (!commits.empty()) {
                 m->set_commits_cache(commits);
@@ -205,6 +206,7 @@ namespace eosio {
                 pbft_db.send_pbft_checkpoint();
                 m->transit_to_committed_state(this, false);
             }
+            ilog("new version is ${nv}, upgrading is ${u}", ("nv", pbft_db.ctrl.is_upgraded())("u", pbft_db.ctrl.under_upgrade()));
         }
 
         void psm_prepared_state::on_view_change(psm_machine *m, pbft_view_change &e, pbft_database &pbft_db) {
@@ -259,7 +261,10 @@ namespace eosio {
         }
 
         void psm_committed_state::send_prepare(psm_machine *m, pbft_database &pbft_db) {
+            ilog("new version is ${nv}, upgrading is ${u}", ("nv", pbft_db.ctrl.is_upgraded())("u", pbft_db.ctrl.under_upgrade()));
+
             auto prepares = pbft_db.send_and_add_pbft_prepare(m->get_prepares_cache(), m->get_current_view());
+            ilog("new version is ${nv}, upgrading is ${u}", ("nv", pbft_db.ctrl.is_upgraded())("u", pbft_db.ctrl.under_upgrade()));
 
             if (!prepares.empty()) {
                 m->set_prepares_cache(prepares);
@@ -267,6 +272,7 @@ namespace eosio {
 
             //if prepare >= 2f+1, transit to prepared
             if (pbft_db.should_prepared()) m->transit_to_prepared_state(this);
+            ilog("new version is ${nv}, upgrading is ${u}", ("nv", pbft_db.ctrl.is_upgraded())("u", pbft_db.ctrl.under_upgrade()));
         }
 
         void psm_committed_state::on_commit(psm_machine *m, pbft_commit &e, pbft_database &pbft_db) {

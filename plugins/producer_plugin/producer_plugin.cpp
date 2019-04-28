@@ -301,7 +301,8 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 
          chain::controller& chain = chain_plug->chain();
 
-         /* de-dupe here... no point in aborting block if we already know the block */
+
+          /* de-dupe here... no point in aborting block if we already know the block */
          auto existing = chain.fetch_block_by_id( id );
          if( existing ) { return; }
 
@@ -356,6 +357,9 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                         ("n",block_header::num_from_id(block->id()))("t",block->timestamp)
                         ("count",block->transactions.size())("lib",chain.last_irreversible_block_num())
                         ("confs", block->confirmed)("latency", (fc::time_point::now() - block->timestamp).count()/1000 ) );
+                if (chain.under_upgrade()) {
+                   wlog("upgrading...");
+                }
             }
          }
       }

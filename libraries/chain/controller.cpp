@@ -904,6 +904,9 @@ struct controller_impl {
       });
 
       try {
+         if (upgrade_target_block()) {
+             ilog("new version is ${nv}, upgrading is ${u}", ("nv", is_new_version())("u", is_upgrading()));
+         }
          set_pbft_lib();
          set_pbft_lscb();
          if (add_to_fork_db) {
@@ -935,6 +938,9 @@ struct controller_impl {
 
       // push the state for pending.
       pending->push();
+      if (upgrade_target_block()) {
+          ilog("new version is ${nv}, upgrading is ${u}", ("nv", is_new_version())("u", is_upgrading()));
+      }
    }
 
    // The returned scoped_exit should not exceed the lifetime of the pending which existed when make_block_restore_point was called.
@@ -1331,6 +1337,9 @@ struct controller_impl {
    void start_block( block_timestamp_type when, uint16_t confirm_block_count, controller::block_status s,
                      const optional<block_id_type>& producer_block_id , std::function<signature_type(digest_type)> signer = nullptr)
    {
+      if (upgrade_target_block()) {
+          ilog("new version is ${nv}, upgrading is ${u}", ("nv", is_new_version())("u", is_upgrading()));
+      }
       EOS_ASSERT( !pending, block_validate_exception, "pending block already exists" );
 
       auto guard_pending = fc::make_scoped_exit([this](){
@@ -1471,6 +1480,9 @@ struct controller_impl {
       }
 
       guard_pending.cancel();
+      if (upgrade_target_block()) {
+          ilog("new version is ${nv}, upgrading is ${u}", ("nv", is_new_version())("u", is_upgrading()));
+      }
    } // start_block
 
 
@@ -1486,6 +1498,9 @@ struct controller_impl {
    void apply_block( const signed_block_ptr& b, controller::block_status s ) { try {
       try {
 //         EOS_ASSERT( b->block_extensions.size() == 0, block_validate_exception, "no supported extensions" );
+         if (upgrade_target_block()) {
+             ilog("new version is ${nv}, upgrading is ${u}", ("nv", is_new_version())("u", is_upgrading()));
+         }
          auto producer_block_id = b->id();
          start_block( b->timestamp, b->confirmed, s , producer_block_id);
 
@@ -1576,6 +1591,9 @@ struct controller_impl {
          abort_block();
          throw;
       }
+      if (upgrade_target_block()) {
+          ilog("new version is ${nv}, upgrading is ${u}", ("nv", is_new_version())("u", is_upgrading()));
+      }
    } FC_CAPTURE_AND_RETHROW() } /// apply_block
 
    std::future<block_state_ptr> create_block_state_future( const signed_block_ptr& b ) {
@@ -1599,6 +1617,9 @@ struct controller_impl {
    }
 
    void push_block( std::future<block_state_ptr>& block_state_future ) {
+      if (upgrade_target_block()) {
+          ilog("new version is ${nv}, upgrading is ${u}", ("nv", is_new_version())("u", is_upgrading()));
+      }
       controller::block_status s = controller::block_status::complete;
       EOS_ASSERT(!pending, block_validate_exception, "it is not valid to push a block when there is a pending block");
       auto reset_prod_light_validation = fc::make_scoped_exit([old_value=trusted_producer_light_validation, this]() {
@@ -1624,7 +1645,9 @@ struct controller_impl {
          }
 
          set_pbft_lscb();
-
+         if (upgrade_target_block()) {
+             ilog("new version is ${nv}, upgrading is ${u}", ("nv", is_new_version())("u", is_upgrading()));
+         }
       } FC_LOG_AND_RETHROW( )
    }
 
