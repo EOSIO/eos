@@ -14,6 +14,9 @@ set(RUN_RE2C OFF CACHE BOOL "Run re2c")
 set(WITH_EXCEPTIONS ON CACHE BOOL "Build with exceptions enabled" FORCE)
 add_subdirectory( wabt )
 
+set(USE_EXISTING_SOFTFLOAT 1)
+add_subdirectory( eos-vm )
+
 set(ENABLE_STATIC ON)
 set(CMAKE_MACOSX_RPATH OFF)
 set(BUILD_ONLY_LIB ON CACHE BOOL "Library only build")
