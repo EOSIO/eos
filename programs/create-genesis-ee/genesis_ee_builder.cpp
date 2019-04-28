@@ -187,11 +187,11 @@ void genesis_ee_builder::build_votes(uint64_t msg_hash, operation_number msg_cre
         }
 
         vote_ee_object vote;
+        vote.voter = generate_name(std::string(vote_itr->voter));
         vote.weight = vote_itr->weight;
         vote.time = uint64_t(vote_itr->timestamp.sec_since_epoch()) * 1000000;
 
-        auto voter = generate_name(std::string(vote_itr->voter));
-        msg.votes[voter] = vote;
+        msg.votes.push_back(vote);
     }
 }
 
