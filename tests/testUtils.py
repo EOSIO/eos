@@ -1,3 +1,4 @@
+import re
 import errno
 import subprocess
 import time
