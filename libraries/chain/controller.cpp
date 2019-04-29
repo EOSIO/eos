@@ -453,17 +453,22 @@ struct controller_impl {
       auto start_block_num = head->block_num + 1;
       auto start = fc::time_point::now();
 
+      std::exception_ptr except_ptr;
+
       if( start_block_num <= blog_head->block_num() ) {
          ilog( "existing block log, attempting to replay from ${s} to ${n} blocks",
                ("s", start_block_num)("n", blog_head->block_num()) );
-         while( auto next = blog.read_block_by_num( head->block_num + 1 ) ) {
-            replay_push_block( next, controller::block_status::irreversible );
-            if( next->block_num() % 500 == 0 ) {
-               ilog( "${n} of ${head}", ("n", next->block_num())("head", blog_head->block_num()) );
-               if( shutdown() ) break;
+         try {
+            while( auto next = blog.read_block_by_num( head->block_num + 1 ) ) {
+               replay_push_block( next, controller::block_status::irreversible );
+               if( next->block_num() % 500 == 0 ) {
+                  ilog( "${n} of ${head}", ("n", next->block_num())("head", blog_head->block_num()) );
+                  if( shutdown() ) break;
+               }
             }
+         } catch(  const database_guard_exception& e ) {
+            except_ptr = std::current_exception();
          }
-         std::cerr<< "\n";
          ilog( "${n} irreversible blocks replayed", ("n", 1 + head->block_num - start_block_num) );
 
          auto pending_head = fork_db.pending_head();
@@ -488,18 +493,24 @@ struct controller_impl {
          ilog( "no irreversible blocks need to be replayed" );
       }
 
-      int rev = 0;
-      while( auto obj = reversible_blocks.find<reversible_block_object,by_num>(head->block_num+1) ) {
-         ++rev;
-         replay_push_block( obj->get_block(), controller::block_status::validated );
+      if( !except_ptr && !shutdown() ) {
+         int rev = 0;
+         while( auto obj = reversible_blocks.find<reversible_block_object,by_num>(head->block_num+1) ) {
+            ++rev;
+            replay_push_block( obj->get_block(), controller::block_status::validated );
+         }
+         ilog( "${n} reversible blocks replayed", ("n",rev) );
       }
 
-      ilog( "${n} reversible blocks replayed", ("n",rev) );
       auto end = fc::time_point::now();
       ilog( "replayed ${n} blocks in ${duration} seconds, ${mspb} ms/block",
             ("n", head->block_num + 1 - start_block_num)("duration", (end-start).count()/1000000)
             ("mspb", ((end-start).count()/1000.0)/(head->block_num-start_block_num)) );
       replay_head_time.reset();
+
+      if( except_ptr ) {
+         std::rethrow_exception( except_ptr );
+      }
    }
 
    void init(std::function<bool()> shutdown, const snapshot_reader_ptr& snapshot) {
@@ -1846,6 +1857,11 @@ struct controller_impl {
             // On replay, log_irreversible is not called and so no irreversible_block signal is emittted.
             // So emit it explicitly here.
             emit( self.irreversible_block, bsp );
+
+            if (!self.skip_db_sessions(s)) {
+               db.commit(bsp->block_num);
+            }
+
          } else {
             EOS_ASSERT( read_mode != db_read_mode::IRREVERSIBLE, block_validate_exception,
                         "invariant failure: cannot replay reversible blocks while in irreversible mode" );
