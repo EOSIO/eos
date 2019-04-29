@@ -476,6 +476,7 @@ struct genesis_create::genesis_create_impl final {
 
         // add usernames
         db.start_section(config::system_account_name, N(domain), "domain_object", 1);
+        ee_genesis.usernames.start_section(config::system_account_name, N(domain), "domain_info", 1);
         const auto app = names[golos_account_name];
         db.emplace<domain_object>([&](auto& a) {
             a.owner = app;
@@ -483,8 +484,14 @@ struct genesis_create::genesis_create_impl final {
             a.creation_date = ts;
             a.name = golos_account_name;
         });
+        ee_genesis.usernames.insert(mvo
+            ("owner", app)
+            ("linked_to", app)
+            ("name", golos_account_name)
+        );
 
         db.start_section(config::system_account_name, N(username), "username_object", _visitor.auths.size());
+        ee_genesis.usernames.start_section(config::system_account_name, N(username), "username_info", _visitor.auths.size());
         for (const auto& auth : _visitor.auths) {                // loop through auths to preserve names order
             const auto& n = auth.account.value(_accs_map);
             db.emplace<username_object>([&](auto& u) {
@@ -492,6 +499,11 @@ struct genesis_create::genesis_create_impl final {
                 u.scope = app;
                 u.name = n;
             });
+            ee_genesis.usernames.insert(mvo
+                ("creator", app)
+                ("owner", names[n])
+                ("name", n)
+            );
         }
 
         _visitor.auths.clear();

@@ -8,7 +8,24 @@ static abi_def create_usernames_abi() {
     abi_def abi;
     abi.version = ABI_VERSION;
 
+    abi.structs.emplace_back( struct_def {
+        "domain_info", "", {
+            {"owner", "name"},
+            {"linked_to", "name"},
+            {"name", "string"}
+        }
+    });
+
+    abi.structs.emplace_back( struct_def {
+        "username_info", "", {
+            {"creator", "name"},
+            {"owner", "name"},
+            {"name", "string"}
+        }
+    });
+
     return abi;
+
 }
 
 static abi_def create_balances_abi() {
