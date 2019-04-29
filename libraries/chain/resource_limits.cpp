@@ -272,7 +272,7 @@ pricelist resource_limits_manager::get_pricelist() const {
     return ret;
 }
 
-ratio resource_limits_manager::get_reource_usage_ratio(account_name account, symbol_code resource_code) const {
+ratio resource_limits_manager::get_account_usage_ratio(account_name account, symbol_code resource_code) const {
     const auto resources_usage = get_account_usage(account);
     const auto price_list = get_pricelist();
 
