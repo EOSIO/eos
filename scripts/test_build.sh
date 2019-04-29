@@ -8,10 +8,12 @@ export https_proxy=http://proxy.service:3128
 curl -m 3 google.com
 curl -m 3 archive.ubuntu.com
 
-docker build --network=host -t eosio/test ./Docker
+docker build --network=host -t eosio/test-registry ./Docker
 
-docker tag eosio/test gcr.io/b1ops-devel/eosio/test
-docker push gcr.io/b1ops-devel/eosio/test
+docker login registry.devel.b1ops.net --username $DOCKER_REGISTRY_USERNAME --password $DOCKER_REGISTRY_TOKEN
 
-docker rmi eosio/test
-docker rmi gcr.io/b1ops-devel/eosio/test
+docker tag eosio/test-registry gcr.io/b1ops-devel/eosio/test-registry
+docker push gcr.io/b1ops-devel/eosio/test-registry
+
+docker rmi eosio/test-registry
+docker rmi gcr.io/b1ops-devel/eosio/test-registry
