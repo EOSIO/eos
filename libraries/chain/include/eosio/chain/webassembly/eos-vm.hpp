@@ -70,6 +70,7 @@ class eos_vm_runtime : public eosio::chain::wasm_runtime_interface {
 #define __EOS_VM_INTRINSIC_NAME(LBL, SUF) LBL##SUF
 #define _EOS_VM_INTRINSIC_NAME(LBL, SUF) __INTRINSIC_NAME(LBL, SUF)
 
-#define _REGISTER_EOS_VM_INTRINSIC(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)\
-   eosio::wasm_backend::registered_function<CLS, &CLS::METHOD, eosio::wasm_backend::backend<CLS>> _EOS_VM_INTRINSIC_NAME(__eos_vm_intrinsic_fn, __COUNTER__){MOD, NAME};
+#define _REGISTER_EOS_VM_INTRINSIC(CLS, MOD, METHOD, WASM_SIG, NAME, SIG) \
+   eosio::wasm_backend::registered_function<eosio::chain::apply_context, CLS, &CLS::METHOD, eosio::wasm_backend::backend<eosio::chain::apply_context>> _EOS_VM_INTRINSIC_NAME(__eos_vm_intrinsic_fn, __COUNTER__)(std::string(MOD), std::string(NAME));
+
 
