@@ -2,10 +2,11 @@
 
 set -e
 
-env
+export http_proxy=http://proxy.service:3128
+export https_proxy=http://proxy.service:3128
 
-curl google.com
-curl archive.ubuntu.com
+curl -m 3 google.com
+curl -m 3 archive.ubuntu.com
 
 docker build -t eosio/test ./Docker
 
