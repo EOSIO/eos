@@ -85,7 +85,7 @@ namespace resource_limits {
          
          pricelist get_pricelist() const;
 
-         ratio get_reource_usage_ratio(account_name account, symbol_code resource_code) const;
+         ratio get_account_usage_ratio(account_name account, symbol_code resource_code) const;
          ratio get_account_stake_ratio(int64_t now, const account_name& account);
 
          account_balance get_account_balance(int64_t now, const account_name& account, const pricelist&);

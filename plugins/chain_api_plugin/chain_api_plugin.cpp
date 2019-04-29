@@ -23,6 +23,10 @@
 namespace eosio {
 static appbase::abstract_plugin& _chain_api_plugin = app().register_plugin<chain_api_plugin>();
 
+namespace {
+    class resource_calculator;
+}
+
 class chain_api_plugin_impl {
 public:
     chain_api_plugin_impl(chain::controller& chain_controller, const fc::microseconds& abi_serializer_max_time, bool shorten_abi_errors)
@@ -65,6 +69,9 @@ private:
                                               cyberway::chaindb::find_info& itr, cyberway::chaindb::primary_key_t end_pk) const;
 
     fc::optional<eosio::chain::asset> get_account_core_liquid_balance(const get_account_params& params) const;
+
+    fc::variant get_refunds(chain::account_name account, const resource_calculator& resource_calc) const;
+    fc::variant get_payout(chain::account_name account) const;
 
 private:
 
@@ -176,8 +183,6 @@ namespace {
                 init_account_resource_limits();
                 init_resources_available_stake_part();
                 init_ram_qouta();
-                init_total_resources();
-                init_self_delegated_bandwith();
         }
 
         const account_resource_limit& get_net_limit() const {
@@ -204,12 +209,17 @@ namespace {
             return resources_stake_parts_.at(chain::resource_limits::cpu_code);
         }
 
-        const fc::variant& get_total_resources() const {
-            return total_resources_;
+        int64_t get_ram_total_count() const {
+            return get_resource_total_count(chain::resource_limits::ram_code);
         }
 
-        const fc::variant& get_self_delegated_bandwidth() const {
-            return self_delegated_bandwith_;
+        int64_t get_resource_stake_part(uint64_t stake, chain::symbol_code code) const {
+            const auto part = resources_info_.at(code).part;
+            return chain::int_arithmetic::safe_prop(stake, part.numerator, part.denominator);
+        }
+
+        int64_t get_resource_total_stake_part(chain::symbol_code code) const {
+            return get_resource_stake_part(total_stake_, code);
         }
 
     private:
@@ -223,7 +233,7 @@ namespace {
         void init_resource_info(chain::symbol_code code) {
             const auto usage = resources_usage_.at(code);
             const auto price_it = prices_.find(code);
-            const auto weight = rm_.get_reource_usage_ratio(account_, code);
+            const auto weight = rm_.get_account_usage_ratio(account_, code);
 
             resources_info_[code] = {usage, weight, price_it->second};
         }
@@ -260,38 +270,14 @@ namespace {
             return chain::int_arithmetic::safe_prop(account_balance_.stake, resource_part.numerator, resource_part.denominator);
         }
 
-        void init_total_resources() {
-            const auto ram_bytes = get_resource_total_count(chain::resource_limits::ram_code);
-            const auto net_weight = get_resource_total_stack_part(chain::resource_limits::net_code);
-            const auto cpu_weight = get_resource_total_stack_part(chain::resource_limits::cpu_code);
-
-            total_resources_ = fc::mutable_variant_object() ("owner", account_)
-                                                            ("ram_bytes", ram_bytes)
-                                                            ("net_weight", chain::asset(net_weight).to_string())
-                                                            ("cpu_weight", chain::asset(cpu_weight).to_string());
-        }
-
         int64_t get_resource_total_count(chain::symbol_code code) const {
-            const auto stake_part = get_resource_total_stack_part(code);
+            const auto stake_part = get_resource_total_stake_part(code);
             return get_resource_count(code, stake_part);
         }
 
         int64_t get_resource_count(chain::symbol_code code, uint64_t stake_part) const {
             const auto price = prices_.at(code);
             return chain::int_arithmetic::safe_prop(stake_part, price.denominator, price.numerator);
-        }
-
-        int64_t get_resource_total_stack_part(chain::symbol_code code) const {
-            const auto part = resources_info_.at(code).part;
-            return chain::int_arithmetic::safe_prop(total_stake_, part.numerator, part.denominator);
-        }
-
-        void init_self_delegated_bandwith() {
-            // TODO: set correct values when bandwidth delegating will be implemented https://github.com/GolosChain/cyberway/issues/533
-            self_delegated_bandwith_ = fc::mutable_variant_object() ("from", account_)
-                                                                    ("to", account_)
-                                                                    ("net_weight", total_resources_["net_weight"])
-                                                                    ("cpu_weight", total_resources_["cpu_weight"]);
         }
 
     private:
@@ -308,8 +294,6 @@ namespace {
         std::map<chain::symbol_code, int64_t> resources_stake_parts_;
 
         int64_t ram_quota_;
-        fc::variant total_resources_;
-        fc::variant self_delegated_bandwith_;
     };
 }
 
@@ -361,13 +345,52 @@ get_account_results chain_api_plugin_impl::get_account(const get_account_params&
     result.net_weight = resource_calc.get_net_weight();
     result.cpu_weight = resource_calc.get_cpu_weight();
 
-    result.total_resources = resource_calc.get_total_resources();
-    result.self_delegated_bandwidth = resource_calc.get_self_delegated_bandwidth();
+    const std::string total_net_stake_part = chain::asset(resource_calc.get_resource_total_stake_part(chain::resource_limits::net_code)).to_string();
+    const std::string total_cpu_stake_part = chain::asset(resource_calc.get_resource_total_stake_part(chain::resource_limits::cpu_code)).to_string();
 
-//    result.refund_request = {};
+    result.total_resources = fc::mutable_variant_object() ("owner", params.account_name)
+                                                          ("ram_bytes", resource_calc.get_ram_total_count())
+                                                          ("net_weight", total_net_stake_part)
+                                                          ("cpu_weight", total_cpu_stake_part);
+
+    result.self_delegated_bandwidth = fc::mutable_variant_object() ("from", params.account_name)
+                                                                   ("to", params.account_name)
+                                                                   ("net_weight", total_net_stake_part)
+                                                                   ("cpu_weight", total_cpu_stake_part);
+
+    result.refund_request = get_refunds(params.account_name, resource_calc);
+
 //    result.voter_info = get_account_voter_info(params);
     return result;
 }
+
+fc::variant chain_api_plugin_impl::get_refunds(chain::account_name account, const resource_calculator& resource_calc) const {
+    const auto payout = get_payout(account);
+
+    if (!payout.is_null()) {
+        const auto balance = payout["balance"].as_uint64();
+        return fc::mutable_variant_object() ("owner", account)
+                                            ("request_time", payout["last_step"].as_string())
+                                            ("net_amount", chain::asset(resource_calc.get_resource_stake_part(balance, chain::resource_limits::net_code)).to_string())
+                                            ("cpu_amount", chain::asset(resource_calc.get_resource_stake_part(balance, chain::resource_limits::cpu_code)).to_string());
+    }
+    return {};
+}
+
+fc::variant chain_api_plugin_impl::get_payout(chain::account_name account) const {
+    auto& chain_db = chain_controller_.chaindb();
+
+    const cyberway::chaindb::index_request request{N(cyber.stake), N(cyber.stake), N(payout), N(payoutacc)};
+
+    auto payouts_it = chain_db.lower_bound(request, fc::mutable_variant_object() ("token_code", chain::symbol(CORE_SYMBOL).to_symbol_code())
+                                                                                 ("account", account));
+
+    if (payouts_it.pk != cyberway::chaindb::end_primary_key) {
+        return chain_db.value_at_cursor({N(cyber.stake), payouts_it.cursor});
+    }
+    return fc::variant();
+}
+
 
 fc::optional<eosio::chain::asset> chain_api_plugin_impl::get_account_core_liquid_balance(const get_account_params& params) const {
     static const auto token_code = N(cyber.token);
