@@ -42,7 +42,7 @@ struct webauthn_wallet_impl {
       if(it == _keys.end())
          return fc::optional<signature_type>{};
 
-      std::string client_data = "{\"origin\":\"keosd.invalid\",\"type\":\"webauthn.get\",\"challenge\":\"" + fc::base64url_encode(d.data(), d.data_size()) + "\"}";
+      std::string client_data = "{\"origin\":\"https://keosd.invalid\",\"type\":\"webauthn.get\",\"challenge\":\"" + fc::base64url_encode(d.data(), d.data_size()) + "\"}";
       fc::sha256 client_data_hash = fc::sha256::hash(client_data);
 
       fido_assertion_result assertion = fido->do_assertion(client_data_hash, it->second);
