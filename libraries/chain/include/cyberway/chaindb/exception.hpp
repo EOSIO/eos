@@ -158,4 +158,11 @@ namespace cyberway { namespace chaindb {
         FC_DECLARE_DERIVED_EXCEPTION(object_exception, chaindb_object_exception,
                                      3740003, "Object has reserved field name")
 
+    FC_DECLARE_DERIVED_EXCEPTION(chaindb_cache_exception, chaindb_exception,
+                                 3750000, "ChainDB cache exception")
+
+        FC_DECLARE_DERIVED_EXCEPTION(cache_usage_exception, chaindb_cache_exception,
+                                     3750001, "Object size exception")
+
+
 } } // namespace cyberway::chaindb

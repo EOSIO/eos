@@ -235,6 +235,38 @@ template<typename C> struct code_extractor: public code_extractor<tag<C>> {
     }
 }; // struct code_extractor
 
+template <typename T>
+struct multi_index_item_data final: public cache_data {
+    struct item_type: public T {
+        template<typename Constructor>
+        item_type(cache_object& cache, Constructor&& constructor)
+            : T(std::forward<Constructor>(constructor), 0),
+              cache(cache) {
+        }
+
+        cache_object& cache;
+    } item;
+
+    template<typename Constructor>
+    multi_index_item_data(cache_object& cache, Constructor&& constructor)
+    : item(cache, std::forward<Constructor>(constructor)) {
+    }
+
+    static const T& get_T(const cache_object& cache) {
+        return static_cast<const T&>(cache.data<const multi_index_item_data>().item);
+    }
+
+    static const T& get_T(const cache_object_ptr& cache) {
+        return get_T(*cache.get());
+    }
+
+    static cache_object& get_cache(const T& o) {
+        return const_cast<cache_object&>(static_cast<const item_type&>(o).cache);
+    }
+
+    using value_type = T;
+}; // struct multi_index_item_data
+
 template<typename TableName, typename PrimaryIndex, typename T, typename... Indices>
 struct multi_index final {
 public:
@@ -243,50 +275,20 @@ public:
 private:
     static_assert(sizeof...(Indices) <= 16, "multi_index only supports a maximum of 16 secondary indices");
 
-    struct item_data final: public cache_data {
-        struct item_type: public T {
-            template<typename Constructor>
-            item_type(cache_object& cache, Constructor&& constructor)
-            : T(std::forward<Constructor>(constructor), 0),
-              cache(cache) {
-            }
-
-            cache_object& cache;
-        } item;
-
-        template<typename Constructor>
-        item_data(cache_object& cache, Constructor&& constructor)
-        : item(cache, std::forward<Constructor>(constructor)) {
-        }
-
-        static const T& get_T(const cache_object& cache) {
-            return static_cast<const T&>(cache.data<const item_data>().item);
-        }
-
-        static const T& get_T(const cache_object_ptr& cache) {
-            return get_T(*cache.get());
-        }
-
-        static cache_object& get_cache(const T& o) {
-            return const_cast<cache_object&>(static_cast<const item_type&>(o).cache);
-        }
-
-        using value_type = T;
-    }; // struct item_data
+    using item_data = multi_index_item_data<T>;
 
     struct cache_converter_ final: public cache_converter_interface {
         cache_converter_()  = default;
         ~cache_converter_() = default;
 
-        void convert_variant(cache_object& cache) const override {
-            auto& obj = cache.object();
+        void convert_variant(cache_object& cache, const object_value& obj) const override {
             cache.set_data<item_data>([&](auto& o) {
                 T& data = static_cast<T&>(o);
                 fc::from_variant(obj.value, data);
             });
 
             const auto ptr_pk = primary_key_extractor_type()(item_data::get_T(cache));
-            CYBERWAY_ASSERT(ptr_pk == cache.object().pk(), chaindb_midx_pk_exception,
+            CYBERWAY_ASSERT(ptr_pk == obj.pk(), chaindb_midx_pk_exception,
                 "invalid primary key ${pk} for the object ${obj}", ("pk", obj.pk())("obj", obj.value));
         }
     }; // struct cache_converter_

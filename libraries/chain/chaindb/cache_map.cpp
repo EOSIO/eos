@@ -3,6 +3,9 @@
 #include <cyberway/chaindb/abi_info.hpp>
 #include <cyberway/chaindb/exception.hpp>
 
+#include <eosio/chain/resource_limits.hpp>
+#include <eosio/chain/resource_limits_private.hpp>
+
 namespace cyberway { namespace chaindb {
 
     struct cache_object_compare {
@@ -160,82 +163,43 @@ namespace cyberway { namespace chaindb {
             return nullptr;
         }
 
-        void build_cache_indicies(cache_object& cache, cache_indicies& indicies) {
-            auto& object  = cache.object();
-            if (object.is_null()) return;
-
-            auto& service = cache.service();
-            auto  ctr = abi_map_.find(service.code);
-            if (abi_map_.end() == ctr) return;
-
-            auto& abi = ctr->second;
-            auto  ttr = abi.find_table(service.table);
-            if (!ttr) return;
-
-            indicies.reserve(ttr->indexes.size() - 1 /* skip primary */);
-            auto info = index_info(service.code, service.scope);
-            info.table = ttr;
-
-            for (auto& i: ttr->indexes) if (i.unique && i.name != names::primary_index) {
-                info.index = &i;
-
-                auto bytes = abi.to_bytes(info, object.value); // size of this object is 1 Mb
-                if (bytes.empty()) continue;
-
-                using data_t = cache_index_value::data_t;
-                auto  data  =  data_t(bytes.begin(), bytes.end()); // minize memory usage
-                indicies.emplace_back(i.name, std::move(data), cache);
-                CYBERWAY_ASSERT(cache_index_tree_.end() == cache_index_tree_.find(indicies.back()),
-                    driver_duplicate_exception, "ChainDB cache duplicate unique records in the index ${index}",
-                    ("index", get_full_index_name(info)));
-            }
-
-            for (auto& i: indicies) {
-                cache_index_tree_.insert(i);
-            }
-        }
-
         cache_object_ptr emplace(object_value obj) {
-            bool in_ram    = obj.service.in_ram;
-            auto cache_ptr = cache_object_ptr(find(obj.service));
-            cache_service_info* cache_service = nullptr;
+            auto ram_limit = ram_limit_;
 
-            if (in_ram) {
-                cache_service = emplace_in_ram(cache_ptr, std::move(obj));
+            if (obj.service.in_ram) {
+                ram_limit += obj.service.size;
+            }
+
+            static constexpr int max_cleared_objs = 100;
+            for (int i = 0; i < max_cleared_objs && ram_used_ >= ram_limit; ++i) {
+                auto itr = lru_list_.begin();
+                if (itr->service().size) {
+                    // if not system object - remove it from cache
+                    itr->mark_deleted();
+                } else {
+                    // if system object mark it as used.
+                    auto& cache = (*itr);
+                    lru_list_.erase(itr);
+                    lru_list_.push_back(cache);
+                }
+            }
+
+            if (obj.service.in_ram) {
+                return emplace_in_ram(std::move(obj));
             } else {
-                cache_service = emplace_in_archive(cache_ptr, std::move(obj));
-            }
-
-            // TODO: cache size should be configurable
-            if (lru_list_.size() > 100'000) {
-                auto& cache = lru_list_.front();
-                cache.mark_deleted();
-            }
-
-            // emplace happens in three cases:
-            //   1. create object for interchain tables ->  object().is_null()
-            //   2. loading object from chaindb         -> !object().is_null()
-            //   3. restore from undo state             -> !object().is_null()
-            if (cache_service && cache_service->converter && !cache_ptr->object().is_null()) {
-                cache_service->converter->convert_variant(*cache_ptr.get());
-            }
-
-            return cache_ptr;
-        }
-
-        void remove_cache_indicies(cache_indicies indicies) {
-            for (auto& cache: indicies) {
-                auto itr = cache_index_tree_.iterator_to(cache);
-                cache_index_tree_.erase(itr);
+                return get_cache_object(std::move(obj));
             }
         }
 
-        void remove_cache_object(cache_object& cache) {
-            // self decrementing of ref counter, see emplace()
+        void remove_cache_object(cache_object& cache, cache_indicies& indicies) {
+            // self decrementing of ref counter, see emplace_in_ram()
             auto cache_ptr   = cache_object_ptr(&cache, false);
             auto tree_itr    = cache_object_tree_.iterator_to(cache);
             auto list_itr    = lru_list_.iterator_to(cache);
             auto service_itr = service_tree_.find(cache.object());
+
+            remove_cache_indicies(indicies);
+            add_ram_usage(-cache.service().size);
 
             cache_object_tree_.erase(tree_itr);
             lru_list_.erase(list_itr);
@@ -255,6 +219,26 @@ namespace cyberway { namespace chaindb {
             if (ptr) {
                 ptr->mark_deleted();
             }
+        }
+
+        void change_cache_object(cache_object& cache, const int delta, cache_indicies& indicies) {
+            add_ram_usage(delta);
+
+            using state_object = eosio::chain::resource_limits::resource_limits_state_object;
+
+            if (is_system_code(cache.service().code)) {
+                if (cache.has_data() && cache.service().table == chaindb::tag<state_object>::get_code()) {
+                    ram_limit_ = multi_index_item_data<state_object>::get_T(cache).virtual_ram_limit;
+                }
+
+                // don't rebuild indicies for interchain objects
+                if (indicies.capacity()) {
+                    return;
+                }
+            }
+
+            remove_cache_indicies(indicies);
+            build_cache_indicies(cache, indicies);
         }
 
         void set_revision(const service_state& key, const revision_t rev) {
@@ -306,7 +290,7 @@ namespace cyberway { namespace chaindb {
     private:
         using cache_object_tree_type = boost::intrusive::set<cache_object>;
         using cache_index_tree_type  = boost::intrusive::set<cache_index_value>;
-        using lru_list_type     = boost::intrusive::list<cache_object, boost::intrusive::constant_time_size<true>>;
+        using lru_list_type     = boost::intrusive::list<cache_object>;
         using service_tree_type = std::map<cache_service_key, cache_service_info>;
 
         abi_map&               abi_map_;
@@ -314,6 +298,9 @@ namespace cyberway { namespace chaindb {
         cache_index_tree_type  cache_index_tree_;
         lru_list_type          lru_list_;
         service_tree_type      service_tree_;
+
+        uint64_t               ram_limit_ = eosio::chain::config::default_virtual_ram_limit;
+        uint64_t               ram_used_  = 0;
 
         template <typename Table>
         cache_service_info& get_cache_service(const Table& table) {
@@ -329,65 +316,126 @@ namespace cyberway { namespace chaindb {
             return nullptr;
         }
 
-        cache_service_info* emplace_in_ram(cache_object_ptr& cache_ptr, object_value obj) {
+        void build_cache_indicies(cache_object& cache, cache_indicies& indicies) {
+            auto& object  = cache.object();
+            if (object.is_null()) return;
+
+            auto& service = cache.service();
+            auto  ctr = abi_map_.find(service.code);
+            if (abi_map_.end() == ctr) return;
+
+            auto& abi = ctr->second;
+            auto  ttr = abi.find_table(service.table);
+            if (!ttr) return;
+
+            indicies.reserve(ttr->indexes.size() - 1 /* skip primary */);
+            auto info = index_info(service.code, service.scope);
+            info.table = ttr;
+
+            for (auto& i: ttr->indexes) if (i.unique && i.name != names::primary_index) {
+                info.index = &i;
+
+                auto bytes = abi.to_bytes(info, object.value); // size of this object is 1 Mb
+                if (bytes.empty()) continue;
+
+                using data_t = cache_index_value::data_t;
+                auto  data  =  data_t(bytes.begin(), bytes.end()); // minize memory usage
+                indicies.emplace_back(i.name, std::move(data), cache);
+                CYBERWAY_ASSERT(cache_index_tree_.end() == cache_index_tree_.find(indicies.back()),
+                    driver_duplicate_exception, "ChainDB cache duplicate unique records in the index ${index}",
+                    ("index", get_full_index_name(info)));
+            }
+
+            for (auto& i: indicies) {
+                cache_index_tree_.insert(i);
+            }
+        }
+
+        void remove_cache_indicies(cache_indicies& indicies) {
+            for (auto& cache: indicies) {
+                auto itr = cache_index_tree_.iterator_to(cache);
+                cache_index_tree_.erase(itr);
+            }
+            indicies.clear();
+        }
+
+        cache_object_ptr emplace_in_ram(object_value obj) {
+            auto  cache_ptr  = cache_object_ptr(find(obj.service));
+            bool  is_new_ptr = !cache_ptr;
             auto& cache_service = get_cache_service(obj);
 
-            if (!cache_ptr) {
-                cache_ptr = cache_object_ptr(new cache_object(this, std::move(obj)));
+            if (is_new_ptr) {
+                cache_ptr = cache_object_ptr(new cache_object(this));
+            }
+
+            set_cache_value(&cache_service, cache_ptr, std::move(obj));
+
+            if (is_new_ptr) {
+                cache_object_tree_.insert(*cache_ptr.get());
+                cache_service.cache_object_cnt++;
 
                 // self incrementing of ref counter allows to use object w/o an additional storage
                 //   self decrementing happens in remove()
                 intrusive_ptr_add_ref(cache_ptr.get());
-
-                cache_object_tree_.insert(*cache_ptr.get());
-                cache_service.cache_object_cnt++;
             } else {
-                // updating of an exist cache item
-                cache_ptr->set_object(std::move(obj));
-
+                // mark object as used
                 auto lru_itr = lru_list_.iterator_to(*cache_ptr.get());
                 lru_list_.erase(lru_itr);
             }
-
             lru_list_.push_back(*cache_ptr.get());
 
-            return &cache_service;
+            return cache_ptr;
         }
 
-        cache_service_info* emplace_in_archive(cache_object_ptr& cache_ptr, object_value obj) {
-            auto cache_service = find_cache_service(obj);
+        cache_object_ptr get_cache_object(object_value obj) {
+            auto cache_ptr = cache_object_ptr(find(obj.service));
+            bool is_new_ptr = !cache_ptr;
 
-            if (!cache_ptr) {
-                cache_ptr = cache_object_ptr(new cache_object(nullptr, std::move(obj)));
+            if (is_new_ptr) {
+                // create object, and don't add it to RAM
+                cache_ptr = cache_object_ptr(new cache_object(nullptr));
             } else {
-                // updating of an exist cache item
-                cache_ptr->set_object(std::move(obj));
+                // find object in cache, and it remove from RAM
                 cache_ptr->mark_deleted();
             }
 
-            return cache_service;
+            set_cache_value(find_cache_service(obj), cache_ptr,  std::move(obj));
+            return cache_ptr;
+        }
+
+        void set_cache_value(cache_service_info* service, cache_object_ptr& ptr, object_value obj) const {
+            // set_cache_value happens in three cases:
+            //   1. create object for interchain tables ->  object().is_null()
+            //   2. loading object from chaindb         -> !object().is_null()
+            //   3. restore from undo state             -> !object().is_null()
+            if (service && service->converter && !obj.is_null()) {
+                service->converter->convert_variant(*ptr.get(), obj);
+            }
+
+            ptr->set_object(std::move(obj));
+        }
+
+        void add_ram_usage(const int delta) {
+            CYBERWAY_ASSERT(delta <= 0 || UINT64_MAX - ram_used_ >= (uint64_t)delta, cache_usage_exception,
+                "Cache delta would overflow UINT64_MAX", ("delta", delta)("used", ram_used_));
+            CYBERWAY_ASSERT(delta >= 0 || ram_used_ >= (uint64_t)(-delta), cache_usage_exception,
+                "Cache delta would underflow UINT64_MAX", ("delta", delta)("used", ram_used_));
+
+            ram_used_ += (int64_t)delta;
         }
     }; // struct table_cache_map
 
     //--------------
 
-    cache_object::cache_object(table_cache_map* map, object_value obj)
-    : table_cache_map_(map), object_(std::move(obj)) {
-        if (table_cache_map_) {
-            table_cache_map_->build_cache_indicies(*this, indicies_);
-        }
-    }
-
     void cache_object::set_object(object_value obj) {
-        assert(is_valid_table(obj.service));
-        assert(table_cache_map_);
+        assert(object_.service.empty() || is_valid_table(obj.service));
 
+        int delta = obj.service.size - object_.service.size;
         object_ = std::move(obj);
         blob_.clear();
 
-        if (!is_system_code(object_.service.code) || indicies_.empty()) {
-            table_cache_map_->remove_cache_indicies(std::move(indicies_));
-            table_cache_map_->build_cache_indicies(*this, indicies_);
+        if (table_cache_map_) {
+            table_cache_map_->change_cache_object(*this, delta, indicies_);
         }
     }
 
@@ -396,8 +444,7 @@ namespace cyberway { namespace chaindb {
 
         object_.service = std::move(service);
         if (!object_.service.in_ram && table_cache_map_) {
-            table_cache_map_->remove_cache_indicies(std::move(indicies_));
-            table_cache_map_->remove_cache_object(*this);
+            table_cache_map_->remove_cache_object(*this, indicies_);
         }
     }
 
@@ -407,8 +454,7 @@ namespace cyberway { namespace chaindb {
         auto& map = *table_cache_map_;
         table_cache_map_ = nullptr;
 
-        map.remove_cache_indicies(std::move(indicies_));
-        map.remove_cache_object(*this);
+        map.remove_cache_object(*this, indicies_);
     }
 
     //-----------------

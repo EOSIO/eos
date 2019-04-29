@@ -25,7 +25,7 @@ const static auto default_state_dir_name     = "state";
 const static auto forkdb_filename            = "forkdb.dat";
 const static auto default_state_size            = 1*1024*1024*1024ll;
 const static auto default_state_guard_size      =    128*1024*1024ll;
-const static uint64_t default_virtual_ram_limit = 1024ll*1024*1024*64;
+const static uint64_t default_virtual_ram_limit = 1024ll*1024*1024*32;
 const static uint64_t min_resource_usage_pct = percent_1 / 10;
 
 const static uint64_t system_account_name    = N(cyber);
