@@ -687,8 +687,14 @@ struct controller_impl {
 
       // *bos end*
 
+      //if not upo found, generate a new one.
+      try {
+          db.get<upgrade_property_object>();
+      } catch( const boost::exception& e) {
+          wlog("no upo found, generating...");
+          db.create<upgrade_property_object>([](auto&){});
+      }
 
-      db.create<upgrade_property_object>([](auto&){});
 
       authorization.initialize_database();
       resource_limits.initialize_database();
@@ -858,8 +864,8 @@ struct controller_impl {
               return optional<block_num_type>{};
           }
       } catch( const boost::exception& e) {
-         wlog("no upo found, regenerating...");
-//         db.create<upgrade_property_object>([](auto&){});
+         wlog("no upo found, generating...");
+         db.create<upgrade_property_object>([](auto&){});
          return optional<block_num_type>{};
       }
    }
@@ -871,9 +877,10 @@ struct controller_impl {
             return upo.upgrade_complete_block_num;
          } else {
             return optional<block_num_type>{};
-         };
+         }
       } catch( const boost::exception& e) {
-//         db.create<upgrade_property_object>([](auto&){});
+         wlog("no upo found, generating...");
+         db.create<upgrade_property_object>([](auto&){});
          return optional<block_num_type>{};
       }
    }
