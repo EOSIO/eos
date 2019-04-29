@@ -853,13 +853,13 @@ struct controller_impl {
       try {
           const auto&  upo = db.get<upgrade_property_object>();
           if (upo.upgrade_target_block_num > 0) {
-              return optional<block_num_type>{upo.upgrade_target_block_num};
+              return upo.upgrade_target_block_num;
           } else {
               return optional<block_num_type>{};
           }
       } catch( const boost::exception& e) {
          wlog("no upo found, regenerating...");
-         db.create<upgrade_property_object>([](auto&){});
+//         db.create<upgrade_property_object>([](auto&){});
          return optional<block_num_type>{};
       }
    }
@@ -868,19 +868,19 @@ struct controller_impl {
       try {
          const auto&  upo = db.get<upgrade_property_object>();
          if (upo.upgrade_complete_block_num > 0) {
-            return optional<block_num_type>{upo.upgrade_complete_block_num};
+            return upo.upgrade_complete_block_num;
          } else {
             return optional<block_num_type>{};
          };
       } catch( const boost::exception& e) {
-         db.create<upgrade_property_object>([](auto&){});
+//         db.create<upgrade_property_object>([](auto&){});
          return optional<block_num_type>{};
       }
    }
 
    bool is_new_version() {
       auto ucb = upgrade_complete_block();
-      if (ucb) return head->block_num >= *ucb;
+      if (ucb) return head->block_num > *ucb;
       return false;
    }
 
@@ -889,7 +889,7 @@ struct controller_impl {
       auto ucb = upgrade_complete_block();
       auto is_upgrading = false;
       if (utb) is_upgrading = head->block_num >= *utb;
-      if (ucb) is_upgrading = is_upgrading && head->block_num < *ucb;
+      if (ucb) is_upgrading = is_upgrading && head->block_num <= *ucb;
       return is_upgrading;
    }
 
