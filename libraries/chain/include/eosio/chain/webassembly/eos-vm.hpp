@@ -16,8 +16,8 @@ namespace eosio { namespace wasm_backend {
       typedef uint64_t type;
    };
 
-   template <typename S, typename T, typename Backend>
-   constexpr auto get_value(Backend& backend, T&& val) -> std::enable_if_t<std::is_same_v<i64_const_t, T> && 
+   template <typename S, typename Args, size_t I, typename T, typename Backend, typename Cleanups>
+   constexpr auto get_value(eosio::wasm_backend::operand_stack<Backend>& op, Cleanups&, Backend& backend, T&& val) -> std::enable_if_t<std::is_same_v<i64_const_t, T> && 
                                                           std::is_same_v<chain::name, std::decay_t<S>>, S> {
       return {(uint64_t)val.data.ui};
    } 
@@ -27,11 +27,26 @@ namespace eosio { namespace wasm_backend {
       typedef uint32_t type;
    };
    
-   template <typename S, typename T, typename Backend>
-   constexpr auto get_value(Backend& backend, T&& val) -> std::enable_if_t<std::is_same_v<i32_const_t, T> && 
+   template <typename S, typename Args, size_t I, typename T, typename Backend, typename Cleanups>
+   constexpr auto get_value(eosio::wasm_backend::operand_stack<Backend>& op, Cleanups& cleanups, Backend& backend, T&& val) -> std::enable_if_t<std::is_same_v<i32_const_t, T> && 
    						  std::is_same_v< eosio::chain::array_ptr<typename S::type>, S> &&
-						 !std::is_lvalue_reference_v<S> && !std::is_pointer_v<S>, S> {
-      return eosio::chain::array_ptr<typename S::type>((typename S::type*)(backend.get_wasm_allocator()->template get_base_ptr<uint8_t>()+val.data.ui));
+                      !std::is_lvalue_reference_v<S> && !std::is_pointer_v<S>, S> {
+      size_t i = std::tuple_size<Args>::value-1;
+      auto* ptr = (*((std::remove_reference_t<S>*)(backend.get_wasm_allocator()->template get_base_ptr<uint8_t>()+val.data.ui)));
+      if constexpr (std::tuple_size<Args>::value > I) {
+         const auto& len = std::get<to_wasm_t<typename std::tuple_element<I, Args>::type>>(op.get_back(i-I));
+         if ((uintptr_t)ptr % alignof(S) != 0) {
+            align_ptr_triple apt;
+            apt.s = sizeof(S)*len;
+            std::vector<std::remove_const_t<T>> cpy(len > 0 ? len : 1);
+            apt.o = ptr;
+            S* ptr = &cpy[0];
+            apt.n = ptr;
+            memcpy(apt.n, apt.o, apt.s);
+            cleanups.emplace_back(std::move(apt));
+         }
+      }
+      return eosio::chain::array_ptr<typename S::type>(ptr);
    }
 
    template <>
@@ -39,9 +54,9 @@ namespace eosio { namespace wasm_backend {
       typedef uint32_t type;
    };
    
-   template <typename S, typename T, typename Backend>
-   constexpr auto get_value(Backend& backend, T&& val) -> std::enable_if_t<std::is_same_v<i32_const_t, T> && 
-   						  std::is_same_v< eosio::chain::null_terminated_ptr, S> &&
+   template <typename S, typename Args, size_t I, typename T, typename Backend, typename Cleanups>
+   constexpr auto get_value(eosio::wasm_backend::operand_stack<Backend>& op, Cleanups&, Backend& backend, T&& val) -> std::enable_if_t<std::is_same_v<i32_const_t, T> && 
+                    std::is_same_v< eosio::chain::null_terminated_ptr, S> &&
 						 !std::is_lvalue_reference_v<S> && !std::is_pointer_v<S>, S> {
       return eosio::chain::null_terminated_ptr((char*)(backend.get_wasm_allocator()->template get_base_ptr<uint8_t>()+val.data.ui));
    }

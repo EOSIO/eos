@@ -1,7 +1,7 @@
 #include <eosio/chain/webassembly/eos-vm.hpp>
 #include <eosio/chain/apply_context.hpp>
 #include <eosio/chain/wasm_eosio_constraints.hpp>
-
+#include <fstream>
 //eos-vm includes
 #include <eosio/wasm_backend/backend.hpp>
 
@@ -38,7 +38,13 @@ class eos_vm_instantiated_module : public wasm_instantiated_module_interface {
 eos_vm_runtime::eos_vm_runtime() {}
 
 std::unique_ptr<wasm_instantiated_module_interface> eos_vm_runtime::instantiate_module(const char* code_bytes, size_t code_size, std::vector<uint8_t>) {
-   std::vector<uint8_t> cb((uint8_t*)code_bytes, (uint8_t*)code_bytes+code_size);
+   //std::vector<uint8_t> cb((uint8_t*)code_bytes, (uint8_t*)code_bytes+code_size);
+   std::vector<uint8_t> cb;
+   cb.resize(code_size);
+   memcpy(cb.data(), code_bytes, code_size);
+   std::ofstream mf("temp.wasm");
+   mf.write((char*)cb.data(), cb.size());
+   mf.close();
    std::unique_ptr<backend_t> bkend = std::make_unique<backend_t>( cb );
    registered_host_functions<apply_context>::resolve(bkend->get_module());
    _bkend = bkend.get();
