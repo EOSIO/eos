@@ -1107,8 +1107,10 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
    }
 
    auto new_version = chain.is_upgraded();
+   ilog("producer plugin before abort_block: new version is ${nv}, upgrading is ${u}", ("nv", chain.is_upgraded())("u", chain.under_upgrade()));
 
-   if (_pending_block_mode == pending_block_mode::producing && !new_version) {
+
+    if (_pending_block_mode == pending_block_mode::producing && !new_version) {
       // determine if our watermark excludes us from producing at this point
       if (currrent_watermark_itr != _producer_watermarks.end()) {
          if (currrent_watermark_itr->second >= hbs->block_num + 1) {
@@ -1151,6 +1153,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
       }
 
       chain.abort_block();
+      ilog("producer plugin after abort_block: new version is ${nv}, upgrading is ${u}", ("nv", chain.is_upgraded())("u", chain.under_upgrade()));
       chain.start_block(block_time, blocks_to_confirm, signature_provider);
    } FC_LOG_AND_DROP();
 

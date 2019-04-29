@@ -880,6 +880,9 @@ struct controller_impl {
 
    bool is_new_version() {
       auto ucb = upgrade_complete_block();
+      block_num_type tmp = 0;
+      if(ucb) tmp = *ucb;
+      ilog("in is_new_version : ucb is ${ucb}, head is ${head}",("ucb",tmp)("head",head->block_num));
       if (ucb) return head->block_num > *ucb;
       return false;
    }
