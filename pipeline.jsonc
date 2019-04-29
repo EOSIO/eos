@@ -38,6 +38,14 @@
             "170=v1.7.0"
         ]
     },
+    "eos-multiversion-beta-tests":
+    {
+        "pipeline-branch": "protocol-features-sync-nodes",
+        "configuration":
+        [
+            "170=v1.7.0"
+        ]
+    },
     "eosio-sync-tests":
     {
         "pipeline-branch": "protocol-features-sync-nodes",
