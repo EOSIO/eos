@@ -7,6 +7,8 @@ TEST_LABEL="[eosio_build]"
 @test "${TEST_LABEL} > Testing arguments/options" {
     ## -P (and y)
     if [[ $ARCH == "Linux" ]]; then
+        ( [[ $NAME =~ "Amazon Linux" ]] || [[ $NAME == "CentOS Linux" ]] ) && uninstall-package gcc-c++ 1>/dev/null # If c++ exists, it will fail
+        [[ $NAME =~ "Ubuntu" ]] && uninstall-package clang 1>/dev/null
         run bash -c "./$SCRIPT_LOCATION"
         [[ ! -z $(echo "${output}" | grep "Unable to find compiler c++! Pass in the -P option if you wish for us to install it") ]] || exit
     fi

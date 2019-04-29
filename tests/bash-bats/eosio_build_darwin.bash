@@ -44,24 +44,31 @@ TEST_LABEL="[eosio_build_darwin]"
   [[ ! -z $(echo "${output}" | grep "[Updating HomeBrew]") ]] || exit
   [[ ! -z $(echo "${output}" | grep "brew tap eosio/eosio") ]] || exit
   [[ ! -z $(echo "${output}" | grep "brew install.*llvm@4.*") ]] || exit
+  [[ ! -z $(echo "${output}" | grep "LLVM successfully linked from /usr/local/opt/llvm@4") ]] || exit
   [[ ! -z $(echo "${output}" | grep ${HOME}.*/src/boost) ]] || exit
   [[ ! -z $(echo "${output}" | grep "Starting EOSIO Build") ]] || exit
   [[ ! -z $(echo "${output}" | grep "Executing: bash -c ${CMAKE}") ]] || exit
+  [[ ! -z $(echo "${output}" | grep " --with-iostreams --with-date_time") ]] || exit # BOOST
+  [[ -z $(echo "${output}" | grep " Checking MongoDB installation") ]] || exit # Mongo is off
   ## Testing for if cmake doesn't exist to be sure it's set properly
   export CMAKE=
   run bash -c "printf \"y\n%.0s\" {1..100} | ./$SCRIPT_LOCATION"
   [[ ! -z $(echo "${output}" | grep "Executing: bash -c /usr/local/bin/cmake -DCMAKE_BUILD") ]] || exit
-  ## CLANG
-  run bash -c "./$SCRIPT_LOCATION -y -P"
-  [[ ! -z $(echo "${output}" | grep "Checking Clang support") ]] || exit
-  [[ ! -z $(echo "${output}" | grep -E "Clang.*successfully installed @ ${CLANG_ROOT}") ]] || exit
-  ## CLANG already exists (c++/default)
-  run bash -c "./$SCRIPT_LOCATION -y"
-  [[ ! -z $(echo "${output}" | grep "DCMAKE_CXX_COMPILER='c++'") ]] || exit
-  [[ ! -z $(echo "${output}" | grep "DCMAKE_C_COMPILER='cc'") ]] || exit
-  ## CXX doesn't exist
-  export CXX=c2234
-  export CC=ewwqd
-  run bash -c "./$SCRIPT_LOCATION -y"
-  [[ ! -z $(echo "${output}" | grep "Unable to find compiler c2234") ]] || exit
+}
+
+@test "${TEST_LABEL} > Testing CLANG" {
+    run bash -c "printf \"y\n%.0s\" {1..100} | ./$SCRIPT_LOCATION"
+    ## CLANG already exists (c++/default)
+    [[ ! -z $(echo "${output}" | grep "DCMAKE_CXX_COMPILER='c++'") ]] || exit
+    [[ ! -z $(echo "${output}" | grep "DCMAKE_C_COMPILER='cc'") ]] || exit
+    ## CLANG
+    run bash -c "./$SCRIPT_LOCATION -y -P"
+    [[ ! -z $(echo "${output}" | grep "Checking Clang support") ]] || exit
+    [[ ! -z $(echo "${output}" | grep "toolset=clang cxxflags") ]] || exit # Boost flags set properly
+    [[ ! -z $(echo "${output}" | grep -E "Clang.*successfully installed @ ${CLANG_ROOT}") ]] || exit
+    ## CXX doesn't exist
+    export CXX=c2234
+    export CC=ewwqd
+    run bash -c "./$SCRIPT_LOCATION -y"
+    [[ ! -z $(echo "${output}" | grep "Unable to find compiler c2234") ]] || exit
 }

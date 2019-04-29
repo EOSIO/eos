@@ -29,14 +29,17 @@ function teardown() { # teardown is run once after each test, even if it fails
 
 function install-package() {
   if [[ $ARCH == "Linux" ]]; then
-    ( [[ $NAME =~ "Amazon Linux" ]] || [[ $NAME == "CentOS Linux" ]] ) && yum install $1 -y
+    ( [[ $NAME =~ "Amazon Linux" ]] || [[ $NAME == "CentOS Linux" ]] ) && yum install -y $1
+    [[ $NAME =~ "Ubuntu" ]] && apt-get update && apt-get install -y $1
   fi
 }
 
 function uninstall-package() {
   if [[ $ARCH == "Linux" ]]; then
-    ( [[ $NAME =~ "Amazon Linux" ]] || [[ $NAME == "CentOS Linux" ]] ) && yum remove $1 -y
+    ( [[ $NAME =~ "Amazon Linux" ]] || [[ $NAME == "CentOS Linux" ]] ) && yum remove -y $1
+    [[ $NAME =~ "Ubuntu" ]] && apt-get remove -y $1
   fi
 }
 
-install-package which 1>/dev/null
+( [[ $NAME =~ "Amazon Linux" ]] || [[ $NAME == "CentOS Linux" ]] ) && install-package which 1>/dev/null
+install-package clang 1>/dev/null
