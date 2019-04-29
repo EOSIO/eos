@@ -58,6 +58,8 @@ namespace eosio { namespace chain {
     */
    template<typename T>
    struct array_ptr {
+      using type = T;
+      array_ptr() = default;
       explicit array_ptr (T * value) : value(value) {}
 
       typename std::add_lvalue_reference<T>::type operator*() const {
@@ -80,6 +82,7 @@ namespace eosio { namespace chain {
     * class to represent an in-wasm-memory char array that must be null terminated
     */
    struct null_terminated_ptr {
+      null_terminated_ptr() = default;
       explicit null_terminated_ptr(char* value) : value(value) {}
 
       typename std::add_lvalue_reference<char>::type operator*() const {

@@ -25,6 +25,8 @@
 #include <fstream>
 #include <string.h>
 
+#include <eosio/wasm_backend/allocator.hpp>
+
 namespace eosio { namespace chain {
    using namespace webassembly;
    using namespace webassembly::common;
@@ -32,6 +34,8 @@ namespace eosio { namespace chain {
    wasm_interface::wasm_interface(vm_type vm, const chainbase::database& d) : my( new wasm_interface_impl(vm, d) ) {}
 
    wasm_interface::~wasm_interface() {}
+
+   wasm_allocator* wasm_interface::get_wasm_allocator() { return wasm_interface_impl::get_wasm_allocator(); }
 
    void wasm_interface::validate(const controller& control, const bytes& code) {
       Module module;
@@ -246,19 +250,19 @@ class softfloat_api : public context_aware_api {
 #pragma GCC diagnostic ignored "-Wstrict-aliasing"
       // float binops
       float _eosio_f32_add( float a, float b ) {
-         float32_t ret = f32_add( to_softfloat32(a), to_softfloat32(b) );
+         float32_t ret = ::f32_add( to_softfloat32(a), to_softfloat32(b) );
          return *reinterpret_cast<float*>(&ret);
       }
       float _eosio_f32_sub( float a, float b ) {
-         float32_t ret = f32_sub( to_softfloat32(a), to_softfloat32(b) );
+         float32_t ret = ::f32_sub( to_softfloat32(a), to_softfloat32(b) );
          return *reinterpret_cast<float*>(&ret);
       }
       float _eosio_f32_div( float a, float b ) {
-         float32_t ret = f32_div( to_softfloat32(a), to_softfloat32(b) );
+         float32_t ret = ::f32_div( to_softfloat32(a), to_softfloat32(b) );
          return *reinterpret_cast<float*>(&ret);
       }
       float _eosio_f32_mul( float a, float b ) {
-         float32_t ret = f32_mul( to_softfloat32(a), to_softfloat32(b) );
+         float32_t ret = ::f32_mul( to_softfloat32(a), to_softfloat32(b) );
          return *reinterpret_cast<float*>(&ret);
       }
 #pragma GCC diagnostic pop
@@ -274,7 +278,7 @@ class softfloat_api : public context_aware_api {
          if ( f32_sign_bit(a) != f32_sign_bit(b) ) {
             return f32_sign_bit(a) ? af : bf;
          }
-         return f32_lt(a,b) ? af : bf;
+	 return ::f32_lt(a,b) ? af : bf;
       }
       float _eosio_f32_max( float af, float bf ) {
          float32_t a = to_softfloat32(af);
@@ -288,7 +292,7 @@ class softfloat_api : public context_aware_api {
          if ( f32_sign_bit(a) != f32_sign_bit(b) ) {
             return f32_sign_bit(a) ? bf : af;
          }
-         return f32_lt( a, b ) ? bf : af;
+	 return ::f32_lt( a, b ) ? bf : af;
       }
       float _eosio_f32_copysign( float af, float bf ) {
          float32_t a = to_softfloat32(af);
@@ -313,7 +317,7 @@ class softfloat_api : public context_aware_api {
          return from_softfloat32(a);
       }
       float _eosio_f32_sqrt( float a ) {
-         float32_t ret = f32_sqrt( to_softfloat32(a) );
+         float32_t ret = ::f32_sqrt( to_softfloat32(a) );
          return from_softfloat32(ret);
       }
       // ceil, floor, trunc and nearest are lifted from libc
@@ -382,19 +386,19 @@ class softfloat_api : public context_aware_api {
          if (e >= 0x7f+23)
             return af;
          if (s)
-            y = f32_add( f32_sub( a, float32_t{inv_float_eps} ), float32_t{inv_float_eps} );
+            y = ::f32_add( ::f32_sub( a, float32_t{inv_float_eps} ), float32_t{inv_float_eps} );
          else
-            y = f32_sub( f32_add( a, float32_t{inv_float_eps} ), float32_t{inv_float_eps} );
-         if (f32_eq( y, {0} ) )
+            y = ::f32_sub( ::f32_add( a, float32_t{inv_float_eps} ), float32_t{inv_float_eps} );
+         if (::f32_eq( y, {0} ) )
             return s ? -0.0f : 0.0f;
          return from_softfloat32(y);
       }
 
       // float relops
-      bool _eosio_f32_eq( float a, float b ) {  return f32_eq( to_softfloat32(a), to_softfloat32(b) ); }
-      bool _eosio_f32_ne( float a, float b ) { return !f32_eq( to_softfloat32(a), to_softfloat32(b) ); }
-      bool _eosio_f32_lt( float a, float b ) { return f32_lt( to_softfloat32(a), to_softfloat32(b) ); }
-      bool _eosio_f32_le( float a, float b ) { return f32_le( to_softfloat32(a), to_softfloat32(b) ); }
+      bool _eosio_f32_eq( float a, float b ) {  return ::f32_eq( to_softfloat32(a), to_softfloat32(b) ); }
+      bool _eosio_f32_ne( float a, float b ) { return !::f32_eq( to_softfloat32(a), to_softfloat32(b) ); }
+      bool _eosio_f32_lt( float a, float b ) { return ::f32_lt( to_softfloat32(a), to_softfloat32(b) ); }
+      bool _eosio_f32_le( float a, float b ) { return ::f32_le( to_softfloat32(a), to_softfloat32(b) ); }
       bool _eosio_f32_gt( float af, float bf ) {
          float32_t a = to_softfloat32(af);
          float32_t b = to_softfloat32(bf);
@@ -402,7 +406,7 @@ class softfloat_api : public context_aware_api {
             return false;
          if (is_nan(b))
             return false;
-         return !f32_le( a, b );
+         return !::f32_le( a, b );
       }
       bool _eosio_f32_ge( float af, float bf ) {
          float32_t a = to_softfloat32(af);
@@ -411,24 +415,24 @@ class softfloat_api : public context_aware_api {
             return false;
          if (is_nan(b))
             return false;
-         return !f32_lt( a, b );
+         return !::f32_lt( a, b );
       }
 
       // double binops
       double _eosio_f64_add( double a, double b ) {
-         float64_t ret = f64_add( to_softfloat64(a), to_softfloat64(b) );
+         float64_t ret = ::f64_add( to_softfloat64(a), to_softfloat64(b) );
          return from_softfloat64(ret);
       }
       double _eosio_f64_sub( double a, double b ) {
-         float64_t ret = f64_sub( to_softfloat64(a), to_softfloat64(b) );
+         float64_t ret = ::f64_sub( to_softfloat64(a), to_softfloat64(b) );
          return from_softfloat64(ret);
       }
       double _eosio_f64_div( double a, double b ) {
-         float64_t ret = f64_div( to_softfloat64(a), to_softfloat64(b) );
+         float64_t ret = ::f64_div( to_softfloat64(a), to_softfloat64(b) );
          return from_softfloat64(ret);
       }
       double _eosio_f64_mul( double a, double b ) {
-         float64_t ret = f64_mul( to_softfloat64(a), to_softfloat64(b) );
+         float64_t ret = ::f64_mul( to_softfloat64(a), to_softfloat64(b) );
          return from_softfloat64(ret);
       }
       double _eosio_f64_min( double af, double bf ) {
@@ -440,7 +444,7 @@ class softfloat_api : public context_aware_api {
             return bf;
          if (f64_sign_bit(a) != f64_sign_bit(b))
             return f64_sign_bit(a) ? af : bf;
-         return f64_lt( a, b ) ? af : bf;
+	 return ::f64_lt( a, b ) ? af : bf;
       }
       double _eosio_f64_max( double af, double bf ) {
          float64_t a = to_softfloat64(af);
@@ -451,7 +455,7 @@ class softfloat_api : public context_aware_api {
             return bf;
          if (f64_sign_bit(a) != f64_sign_bit(b))
             return f64_sign_bit(a) ? bf : af;
-         return f64_lt( a, b ) ? bf : af;
+	 return ::f64_lt( a, b ) ? bf : af;
       }
       double _eosio_f64_copysign( double af, double bf ) {
          float64_t a = to_softfloat64(af);
@@ -477,7 +481,7 @@ class softfloat_api : public context_aware_api {
          return from_softfloat64(a);
       }
       double _eosio_f64_sqrt( double a ) {
-         float64_t ret = f64_sqrt( to_softfloat64(a) );
+         float64_t ret = ::f64_sqrt( to_softfloat64(a) );
          return from_softfloat64(ret);
       }
       // ceil, floor, trunc and nearest are lifted from libc
@@ -486,22 +490,22 @@ class softfloat_api : public context_aware_api {
          float64_t ret;
          int e = a.v >> 52 & 0x7ff;
          float64_t y;
-         if (e >= 0x3ff+52 || f64_eq( a, { 0 } ))
+         if (e >= 0x3ff+52 || ::f64_eq( a, { 0 } ))
             return af;
          /* y = int(x) - x, where int(x) is an integer neighbor of x */
          if (a.v >> 63)
-            y = f64_sub( f64_add( f64_sub( a, float64_t{inv_double_eps} ), float64_t{inv_double_eps} ), a );
+            y = ::f64_sub( ::f64_add( ::f64_sub( a, float64_t{inv_double_eps} ), float64_t{inv_double_eps} ), a );
          else
-            y = f64_sub( f64_sub( f64_add( a, float64_t{inv_double_eps} ), float64_t{inv_double_eps} ), a );
+            y = ::f64_sub( ::f64_sub( ::f64_add( a, float64_t{inv_double_eps} ), float64_t{inv_double_eps} ), a );
          /* special case because of non-nearest rounding modes */
          if (e <= 0x3ff-1) {
             return a.v >> 63 ? -0.0 : 1.0; //float64_t{0x8000000000000000} : float64_t{0xBE99999A3F800000}; //either -0.0 or 1
          }
-         if (f64_lt( y, to_softfloat64(0) )) {
-            ret = f64_add( f64_add( a, y ), to_softfloat64(1) ); // 0xBE99999A3F800000 } ); // plus 1
+         if (::f64_lt( y, to_softfloat64(0) )) {
+            ret = ::f64_add( ::f64_add( a, y ), to_softfloat64(1) ); // 0xBE99999A3F800000 } ); // plus 1
             return from_softfloat64(ret);
          }
-         ret = f64_add( a, y );
+         ret = ::f64_add( a, y );
          return from_softfloat64(ret);
       }
       double _eosio_f64_floor( double af ) {
@@ -517,17 +521,17 @@ class softfloat_api : public context_aware_api {
             return af;
          }
          if (a.v >> 63)
-            y = f64_sub( f64_add( f64_sub( a, float64_t{inv_double_eps} ), float64_t{inv_double_eps} ), a );
+            y = ::f64_sub( ::f64_add( ::f64_sub( a, float64_t{inv_double_eps} ), float64_t{inv_double_eps} ), a );
          else
-            y = f64_sub( f64_sub( f64_add( a, float64_t{inv_double_eps} ), float64_t{inv_double_eps} ), a );
+            y = ::f64_sub( ::f64_sub( ::f64_add( a, float64_t{inv_double_eps} ), float64_t{inv_double_eps} ), a );
          if (e <= 0x3FF-1) {
             return a.v>>63 ? -1.0 : 0.0; //float64_t{0xBFF0000000000000} : float64_t{0}; // -1 or 0
          }
-         if ( !f64_le( y, float64_t{0} ) ) {
-            ret = f64_sub( f64_add(a,y), to_softfloat64(1.0));
+         if ( !::f64_le( y, float64_t{0} ) ) {
+            ret = ::f64_sub( ::f64_add(a,y), to_softfloat64(1.0));
             return from_softfloat64(ret);
          }
-         ret = f64_add( a, y );
+         ret = ::f64_add( a, y );
          return from_softfloat64(ret);
       }
       double _eosio_f64_trunc( double af ) {
@@ -553,19 +557,19 @@ class softfloat_api : public context_aware_api {
          if ( e >= 0x3FF+52 )
             return af;
          if ( s )
-            y = f64_add( f64_sub( a, float64_t{inv_double_eps} ), float64_t{inv_double_eps} );
+            y = ::f64_add( ::f64_sub( a, float64_t{inv_double_eps} ), float64_t{inv_double_eps} );
          else
-            y = f64_sub( f64_add( a, float64_t{inv_double_eps} ), float64_t{inv_double_eps} );
-         if ( f64_eq( y, float64_t{0} ) )
+            y = ::f64_sub( ::f64_add( a, float64_t{inv_double_eps} ), float64_t{inv_double_eps} );
+         if ( ::f64_eq( y, float64_t{0} ) )
             return s ? -0.0 : 0.0;
          return from_softfloat64(y);
       }
 
       // double relops
-      bool _eosio_f64_eq( double a, double b ) { return f64_eq( to_softfloat64(a), to_softfloat64(b) ); }
-      bool _eosio_f64_ne( double a, double b ) { return !f64_eq( to_softfloat64(a), to_softfloat64(b) ); }
-      bool _eosio_f64_lt( double a, double b ) { return f64_lt( to_softfloat64(a), to_softfloat64(b) ); }
-      bool _eosio_f64_le( double a, double b ) { return f64_le( to_softfloat64(a), to_softfloat64(b) ); }
+      bool _eosio_f64_eq( double a, double b ) { return ::f64_eq( to_softfloat64(a), to_softfloat64(b) ); }
+      bool _eosio_f64_ne( double a, double b ) { return !::f64_eq( to_softfloat64(a), to_softfloat64(b) ); }
+      bool _eosio_f64_lt( double a, double b ) { return ::f64_lt( to_softfloat64(a), to_softfloat64(b) ); }
+      bool _eosio_f64_le( double a, double b ) { return ::f64_le( to_softfloat64(a), to_softfloat64(b) ); }
       bool _eosio_f64_gt( double af, double bf ) {
          float64_t a = to_softfloat64(af);
          float64_t b = to_softfloat64(bf);
@@ -573,7 +577,7 @@ class softfloat_api : public context_aware_api {
             return false;
          if (is_nan(b))
             return false;
-         return !f64_le( a, b );
+         return !::f64_le( a, b );
       }
       bool _eosio_f64_ge( double af, double bf ) {
          float64_t a = to_softfloat64(af);
@@ -582,7 +586,7 @@ class softfloat_api : public context_aware_api {
             return false;
          if (is_nan(b))
             return false;
-         return !f64_lt( a, b );
+         return !::f64_lt( a, b );
       }
 
       // float and double conversions
@@ -906,8 +910,8 @@ class authorization_api : public context_aware_api {
       return context.has_authorization( account );
    }
 
-   void require_authorization(const account_name& account,
-                                                 const permission_name& permission) {
+   void require_authorization2(const account_name& account,
+			       const permission_name& permission) {
       context.require_authorization( account, permission );
    }
 
@@ -1846,7 +1850,7 @@ REGISTER_INTRINSICS(action_api,
 REGISTER_INTRINSICS(authorization_api,
    (require_recipient,     void(int64_t)          )
    (require_authorization, void(int64_t), "require_auth", void(authorization_api::*)(const account_name&) )
-   (require_authorization, void(int64_t, int64_t), "require_auth2", void(authorization_api::*)(const account_name&, const permission_name& permission) )
+   (require_authorization2, void(int64_t, int64_t), "require_auth2", void(authorization_api::*)(const account_name&, const permission_name& permission) )
    (has_authorization,     int(int64_t), "has_auth", bool(authorization_api::*)(const account_name&)const )
    (is_account,            int(int64_t)           )
 );

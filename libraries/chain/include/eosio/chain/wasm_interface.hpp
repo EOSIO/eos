@@ -3,6 +3,7 @@
 #include <eosio/chain/types.hpp>
 #include <eosio/chain/whitelisted_intrinsics.hpp>
 #include <eosio/chain/exceptions.hpp>
+#include <eosio/wasm_backend/allocator.hpp>
 #include "Runtime/Linker.h"
 #include "Runtime/Runtime.h"
 
@@ -73,7 +74,8 @@ namespace eosio { namespace chain {
       public:
          enum class vm_type {
             wavm,
-            wabt
+            wabt,
+	    eos_vm
          };
 
          wasm_interface(vm_type vm, const chainbase::database& db);
@@ -84,6 +86,9 @@ namespace eosio { namespace chain {
 
          //validates code -- does a WASM validation pass and checks the wasm against EOSIO specific constraints
          static void validate(const controller& control, const bytes& code);
+	 
+	 //get the wasm_allocator used for the linear memory for wasm
+	 static wasm_backend::wasm_allocator* get_wasm_allocator();
 
          //indicate that a particular code probably won't be used after given block_num
          void code_block_num_last_used(const digest_type& code_hash, const uint8_t& vm_type, const uint8_t& vm_version, const uint32_t& block_num);
@@ -108,4 +113,4 @@ namespace eosio{ namespace chain {
    std::istream& operator>>(std::istream& in, wasm_interface::vm_type& runtime);
 }}
 
-FC_REFLECT_ENUM( eosio::chain::wasm_interface::vm_type, (wavm)(wabt) )
+FC_REFLECT_ENUM( eosio::chain::wasm_interface::vm_type, (wavm)(wabt)(eos_vm) )

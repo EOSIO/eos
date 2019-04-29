@@ -3,6 +3,7 @@
 #include <eosio/chain/wasm_interface.hpp>
 #include <eosio/chain/webassembly/wavm.hpp>
 #include <eosio/chain/webassembly/wabt.hpp>
+#include <eosio/chain/webassembly/eos-vm.hpp>
 #include <eosio/chain/webassembly/runtime_interface.hpp>
 #include <eosio/chain/wasm_eosio_injection.hpp>
 #include <eosio/chain/transaction_context.hpp>
@@ -16,10 +17,14 @@
 #include "WAST/WAST.h"
 #include "IR/Validate.h"
 
+#include <eosio/wasm_backend/allocator.hpp>
+
 using namespace fc;
 using namespace eosio::chain::webassembly;
+using namespace eosio::wasm_backend;
 using namespace IR;
 using namespace Runtime;
+
 using boost::multi_index_container;
 
 namespace eosio { namespace chain {
@@ -42,6 +47,8 @@ namespace eosio { namespace chain {
             runtime_interface = std::make_unique<webassembly::wavm::wavm_runtime>();
          else if(vm == wasm_interface::vm_type::wabt)
             runtime_interface = std::make_unique<webassembly::wabt_runtime::wabt_runtime>();
+         else if(vm == wasm_interface::vm_type::eos_vm)
+            runtime_interface = std::make_unique<webassembly::eos_vm_runtime::eos_vm_runtime>();
          else
             EOS_THROW(wasm_exception, "wasm_interface_impl fall through");
       }
@@ -52,6 +59,11 @@ namespace eosio { namespace chain {
                wasm_instantiation_cache.modify(it, [](wasm_cache_entry& e) {
                   e.module.release();
                });
+      }
+
+      static wasm_allocator* get_wasm_allocator() {
+         thread_local wasm_allocator walloc;
+	 return &walloc;
       }
 
       std::vector<uint8_t> parse_initial_memory(const Module& module) {
@@ -167,8 +179,9 @@ namespace eosio { namespace chain {
    };
 
 #define _REGISTER_INTRINSIC_EXPLICIT(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)\
-   _REGISTER_WAVM_INTRINSIC(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)\
-   _REGISTER_WABT_INTRINSIC(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)
+   _REGISTER_WAVM_INTRINSIC(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)         \
+   _REGISTER_WABT_INTRINSIC(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)         \
+   _REGISTER_EOS_VM_INTRINSIC(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)
 
 #define _REGISTER_INTRINSIC4(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)\
    _REGISTER_INTRINSIC_EXPLICIT(CLS, MOD, METHOD, WASM_SIG, NAME, SIG )
