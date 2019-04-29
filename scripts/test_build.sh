@@ -12,8 +12,8 @@ docker build --network=host -t eosio/test-registry ./Docker
 
 docker login registry.devel.b1ops.net --username $DOCKER_REGISTRY_USERNAME --password $DOCKER_REGISTRY_TOKEN
 
-docker tag eosio/test-registry gcr.io/b1ops-devel/eosio/test-registry
-docker push gcr.io/b1ops-devel/eosio/test-registry
+docker tag eosio/test-registry registry.devel.b1ops.net/eosio/test-registry
+docker push registry.devel.b1ops.net/eosio/test-registry
 
 docker rmi eosio/test-registry
-docker rmi gcr.io/b1ops-devel/eosio/test-registry
+docker rmi registry.devel.b1ops.net/eosio/test-registry
