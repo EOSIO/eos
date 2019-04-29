@@ -127,22 +127,29 @@ steps:
   # j      workdir: /data/job
   # j  timeout: 120
 
-  - command: | # Ubuntu 18.04 Build
-        echo "+++ :hammer: Building"
-        ./scripts/eosio_build.sh -y -P
-        echo "--- :compression: Compressing build directory"
-        tar -pczf build.tar.gz build
-        if [[ ! -f build.tar.gz ]]; then echo 'ERROR: No build.tar.gz artifact found!' && exit 1; fi
-    label: ":ubuntu: Ubuntu 18.04 Build"
+  # - command: | # Ubuntu 18.04 Build
+  #       echo "+++ :hammer: Building"
+  #       ./scripts/eosio_build.sh -y -P
+  #       echo "--- :compression: Compressing build directory"
+  #       tar -pczf build.tar.gz build
+  #       if [[ ! -f build.tar.gz ]]; then echo 'ERROR: No build.tar.gz artifact found!' && exit 1; fi
+  #   label: ":ubuntu: Ubuntu 18.04 Build"
+  #   agents:
+  #     queue: "automation-eosiobuilds-builder-fleet"
+  #   artifact_paths: "build.tar.gz"
+  #   plugins:
+  #     docker#v2.1.0:
+  #       debug: true
+  #       image: "gcr.io/b1-automation-dev/eosio/builder:latest"
+  #       propagate-environment: true
+  #       workdir: /data/job
+  #   timeout: 120
+
+  - command: |
+      bash ./scripts/test_build.sh
+    label: "test devel"
     agents:
       queue: "automation-eosiobuilds-builder-fleet"
-    artifact_paths: "build.tar.gz"
-    plugins:
-      docker#v2.1.0:
-        debug: true
-        image: "gcr.io/b1-automation-dev/eosio/builder:latest"
-        propagate-environment: true
-        workdir: /data/job
     timeout: 120
 
   # j- wait
