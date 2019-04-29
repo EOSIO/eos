@@ -78,7 +78,7 @@ BOOST_AUTO_TEST_CASE(can_advance_lib_after_upgrade) {
     BOOST_CHECK_EQUAL(ctrl.last_irreversible_block_num(), 0);
     BOOST_CHECK_EQUAL(ctrl.head_block_num(), 2);
     tester.produce_blocks(150);
-    BOOST_CHECK_EQUAL(ctrl.last_irreversible_block_num(), 150);
+    BOOST_CHECK_EQUAL(ctrl.last_irreversible_block_num(), 151);
     BOOST_CHECK_EQUAL(ctrl.head_block_num(), 152);
 
     is_upgraded = ctrl.is_upgraded();
@@ -86,7 +86,7 @@ BOOST_AUTO_TEST_CASE(can_advance_lib_after_upgrade) {
 
     tester.produce_blocks(10);
     BOOST_CHECK_EQUAL(ctrl.pending_pbft_lib(), false);
-    BOOST_CHECK_EQUAL(ctrl.last_irreversible_block_num(), 150);
+    BOOST_CHECK_EQUAL(ctrl.last_irreversible_block_num(), 151);
     BOOST_CHECK_EQUAL(ctrl.head_block_num(), 162);
 
     pbft_ctrl.maybe_pbft_prepare();
