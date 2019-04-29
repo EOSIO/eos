@@ -32,7 +32,7 @@
     },
     "eos-multiversion-tests":
     {
-        "pipeline-branch": "master",
+        "pipeline-branch": "protocol-features-sync-nodes",
         "configuration":
         [
             "170=v1.7.0"
