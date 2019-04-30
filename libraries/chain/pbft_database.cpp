@@ -786,6 +786,9 @@ namespace eosio {
             }
 
             vector<public_key_type> intersection;
+
+            std::sort(lib_producers.begin(),lib_producers.end());
+            std::sort(view_change_producers.begin(),view_change_producers.end());
             std::set_intersection(lib_producers.begin(),lib_producers.end(),
                                   view_change_producers.begin(),view_change_producers.end(),
                                   back_inserter(intersection));
