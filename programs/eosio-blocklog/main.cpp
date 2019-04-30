@@ -47,7 +47,7 @@ struct blocklog {
 };
 
 struct report_time {
-    report_time(std::string& desc)
+    report_time(std::string desc)
     : _start(std::chrono::high_resolution_clock::now())
     , _desc(desc) {
     }
