@@ -13,6 +13,10 @@
 
 namespace cyberway { namespace genesis {
 
+static constexpr uint64_t gls_post_account_name  = N(gls.publish);
+
+constexpr auto GLS = SY(3, GOLOS);
+
 genesis_ee_builder::genesis_ee_builder(const std::string& shared_file)
         : maps_(shared_file, chainbase::database::read_write, MAP_FILE_SIZE) {
     maps_.add_index<comment_header_index>();
@@ -70,6 +74,8 @@ void genesis_ee_builder::process_comments() {
             comment.offset = comment_offset;
             comment.create_op = op_num;
         });
+
+        comment_count_++;
     }
 }
 
@@ -89,6 +95,8 @@ void genesis_ee_builder::process_delete_comments() {
         auto comment_itr = comment_index.find(dcop.hash);
         if (op_num > comment_itr->create_op) {
             maps_.remove(*comment_itr);
+
+            comment_count_--;
         } else {
             maps_.modify(*comment_itr, [&](auto& comment) {
                 comment.last_delete_op = op_num;
@@ -213,6 +221,8 @@ void genesis_ee_builder::read_operation_dump(const bfs::path& in_dump_dir) {
 
     std::cout << "Reading operation dump from " << in_dump_dir_ << "..." << std::endl;
 
+    comment_count_ = 0;
+
     process_comments();
     process_delete_comments();
     process_rewards();
@@ -230,11 +240,9 @@ account_name generate_name(string n) {
     return account_name(h & 0xFFFFFFFFFFFFFFF0);
 }
 
-asset golos2sys(const asset& golos) {
-    return asset(golos.get_amount() * (10000/1000));
-}
+variants genesis_ee_builder::build_votes(uint64_t msg_hash, operation_number msg_created) {
+    variants votes;
 
-void genesis_ee_builder::build_votes(uint64_t msg_hash, operation_number msg_created, message_ee_object& msg) {
     const auto& vote_index = maps_.get_index<vote_header_index, by_hash_voter>();
 
     auto vote_itr = vote_index.lower_bound(msg_hash);
@@ -243,16 +251,20 @@ void genesis_ee_builder::build_votes(uint64_t msg_hash, operation_number msg_cre
             continue;
         }
 
-        vote_ee_object vote;
-        vote.voter = generate_name(std::string(vote_itr->voter));
-        vote.weight = vote_itr->weight;
-        vote.time = uint64_t(vote_itr->timestamp.sec_since_epoch()) * 1000000;
+        auto vote = mvo
+            ("voter", generate_name(std::string(vote_itr->voter)))
+            ("weight", vote_itr->weight)
+            ("time", vote_itr->timestamp);
 
-        msg.votes.push_back(vote);
+        votes.push_back(vote);
     }
+
+    return votes;
 }
 
-void genesis_ee_builder::build_reblogs(uint64_t msg_hash, operation_number msg_created, message_ee_object& msg, bfs::fstream& dump_reblogs) {
+variants genesis_ee_builder::build_reblogs(uint64_t msg_hash, operation_number msg_created, bfs::fstream& dump_reblogs) {
+    variants reblogs;
+
     const auto& reblog_idx = maps_.get_index<reblog_header_index, by_hash_account>();
 
     auto reblog_itr = reblog_idx.lower_bound(msg_hash);
@@ -265,20 +277,22 @@ void genesis_ee_builder::build_reblogs(uint64_t msg_hash, operation_number msg_c
         cyberway::golos::reblog_operation rop;
         fc::raw::unpack(dump_reblogs, rop);
 
-        reblog_ee_object reblog;
-        reblog.account = generate_name(std::string(reblog_itr->account));
-        reblog.title = rop.title;
-        reblog.body = rop.body;
-        reblog.time = uint64_t(rop.timestamp.sec_since_epoch()) * 1000000;
+        auto reblog = mvo
+            ("account", generate_name(std::string(reblog_itr->account)))
+            ("title", rop.title)
+            ("body", rop.body)
+            ("time", rop.timestamp);
 
-        msg.reblogs.push_back(reblog);
+        reblogs.push_back(reblog);
     }
+
+    return reblogs;
 }
 
 void genesis_ee_builder::build_messages() {
     std::cout << "-> Writing messages..." << std::endl;
 
-    fc::raw::pack(out_, section_ee_header(section_ee_type::messages));
+    out_.messages.start_section(gls_post_account_name, N(message), "message_info", comment_count_);
 
     bfs::fstream dump_comments(in_dump_dir_ / "comments");
     bfs::fstream dump_reblogs(in_dump_dir_ / "reblogs");
@@ -290,37 +304,37 @@ void genesis_ee_builder::build_messages() {
         cyberway::golos::comment_operation cop;
         fc::raw::unpack(dump_comments, cop);
 
-        message_ee_object msg;
-        msg.author = generate_name(std::string(cop.author));
-        msg.permlink = cop.permlink;
-        msg.parent_author = generate_name(std::string(cop.parent_author));
-        msg.parent_permlink = cop.parent_permlink;
-        msg.title = cop.title;
-        msg.body = cop.body;
-        msg.tags = cop.tags;
-        msg.net_rshares = comment_itr->net_rshares;
-        msg.author_reward = golos2sys(asset(comment_itr->author_reward));
-        msg.benefactor_reward = golos2sys(asset(comment_itr->benefactor_reward));
-        msg.curator_reward = golos2sys(asset(comment_itr->curator_reward));
+        auto votes = build_votes(comment_itr->hash, comment_itr->last_delete_op);
 
-        build_votes(comment_itr->hash, comment_itr->last_delete_op, msg);
+        auto reblogs = build_reblogs(comment_itr->hash, comment_itr->last_delete_op, dump_reblogs);
 
-        build_reblogs(comment_itr->hash, comment_itr->last_delete_op, msg, dump_reblogs);
+        auto msg = mvo
+            ("parent_author", generate_name(std::string(cop.parent_author)))
+            ("parent_permlink", cop.parent_permlink)
+            ("author", generate_name(std::string(cop.author)))
+            ("permlink", cop.permlink)
+            ("title", cop.title)
+            ("body", cop.body)
+            ("tags", cop.tags)
+            ("net_rshares", comment_itr->net_rshares)
+            ("author_reward", asset(comment_itr->author_reward, symbol(GLS)))
+            ("benefactor_reward", asset(comment_itr->benefactor_reward, symbol(GLS)))
+            ("curator_reward", asset(comment_itr->curator_reward, symbol(GLS)))
+            ("votes", votes)
+            ("reblogs", reblogs);
 
-        fc::raw::pack(out_, msg);
+        out_.messages.insert(msg);
     }
 }
 
-void genesis_ee_builder::build(const bfs::path& out_file) {
-    std::cout << "Writing genesis to " << out_file << "..." << std::endl;
+void genesis_ee_builder::build(const bfs::path& out_dir) {
+    std::cout << "Writing genesis to " << out_dir << "..." << std::endl;
 
-    out_.exceptions(std::ofstream::failbit | std::ofstream::badbit);
-    out_.open(out_file, std::ios_base::binary);
-
-    ee_genesis_header hdr;
-    out_.write((const char*)&hdr, sizeof(hdr));
+    out_.start(out_dir, fc::sha256());
 
     build_messages();
+
+    out_.finalize();
 }
 
 } } // cyberway::genesis

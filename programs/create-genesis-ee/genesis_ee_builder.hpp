@@ -1,6 +1,7 @@
 #pragma once
 
 #include "golos_dump_container.hpp"
+#include "event_engine_genesis.hpp"
 #include "map_objects.hpp"
 
 #include <cyberway/genesis/ee_genesis_container.hpp>
@@ -11,6 +12,7 @@
 namespace cyberway { namespace genesis {
 
 namespace bfs = boost::filesystem;
+using mvo = fc::mutable_variant_object;
 
 FC_DECLARE_EXCEPTION(genesis_exception, 9000000, "genesis create exception");
 
@@ -21,7 +23,7 @@ public:
     ~genesis_ee_builder();
 
     void read_operation_dump(const bfs::path& in_dump_dir);
-    void build(const bfs::path& out_file);
+    void build(const bfs::path& out_dir);
 private:
     golos_dump_header read_header(bfs::fstream& in);
     operation_number read_op_num(bfs::fstream& in);
@@ -33,13 +35,14 @@ private:
     void process_reblogs();
     void process_delete_reblogs();
 
-    void build_votes(uint64_t msg_hash, operation_number msg_created, message_ee_object& msg);
-    void build_reblogs(uint64_t msg_hash, operation_number msg_created, message_ee_object& msg, bfs::fstream& dump_reblogs);
+    variants build_votes(uint64_t msg_hash, operation_number msg_created);
+    variants build_reblogs(uint64_t msg_hash, operation_number msg_created, bfs::fstream& dump_reblogs);
     void build_messages();
 
     bfs::path in_dump_dir_;
-    bfs::ofstream out_;
+    event_engine_genesis out_;
     chainbase::database maps_;
+    uint32_t comment_count_;
 };
 
 } } // cyberway::genesis
