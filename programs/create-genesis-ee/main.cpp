@@ -32,6 +32,7 @@ int main(int argc, char** argv) {
 
     bfs::path input_dir;
     bfs::path output_dir;
+    uint32_t last_block;
 
     options_description cli("create-genesis-ee command line options");
     try {
@@ -41,6 +42,9 @@ int main(int argc, char** argv) {
         ) (
             "output-dir,e", bpo::value<bfs::path>(&output_dir)->default_value("events-genesis"),
             "the directory to write Event-Engine genesis data files to (absolute or relative path)."
+        ) (
+            "last-block,l", bpo::value<uint32_t>(&last_block)->default_value(UINT32_MAX),
+            "last block num to read operations from dump and write them to Event-Engine genesis."
         ) (
             "help,h",
             "Print this help message and exit."
@@ -59,7 +63,7 @@ int main(int argc, char** argv) {
 
         bfs::remove_all("shared_memory");
 
-        genesis_ee_builder builder("shared_memory");
+        genesis_ee_builder builder("shared_memory", last_block);
         builder.read_operation_dump(input_dir);
         builder.build(output_dir);
 

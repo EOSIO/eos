@@ -17,8 +17,8 @@ static constexpr uint64_t gls_post_account_name  = N(gls.publish);
 
 constexpr auto GLS = SY(3, GOLOS);
 
-genesis_ee_builder::genesis_ee_builder(const std::string& shared_file)
-        : maps_(shared_file, chainbase::database::read_write, MAP_FILE_SIZE) {
+genesis_ee_builder::genesis_ee_builder(const std::string& shared_file, uint32_t last_block)
+        : last_block_(last_block), maps_(shared_file, chainbase::database::read_write, MAP_FILE_SIZE) {
     maps_.add_index<comment_header_index>();
     maps_.add_index<vote_header_index>();
     maps_.add_index<reblog_header_index>();
@@ -39,10 +39,17 @@ golos_dump_header genesis_ee_builder::read_header(bfs::fstream& in) {
     return h;
 }
 
-operation_number genesis_ee_builder::read_op_num(bfs::fstream& in) {
-    operation_number op_num;
+bool genesis_ee_builder::read_op_num(bfs::fstream& in, operation_number& op_num) {
+    if (!in) {
+        return false;
+    }
+
     fc::raw::unpack(in, op_num);
-    return op_num;
+
+    if (op_num.first > last_block_) {
+        return false;
+    }
+    return true;
 }
 
 void genesis_ee_builder::process_comments() {
@@ -52,9 +59,9 @@ void genesis_ee_builder::process_comments() {
 
     bfs::fstream in(in_dump_dir_ / "comments");
     read_header(in);
-    while (in) {
-        auto op_num = read_op_num(in);
 
+    operation_number op_num;
+    while (read_op_num(in, op_num)) {
         auto comment_offset = uint64_t(in.tellg());
 
         cyberway::golos::comment_operation cop;
@@ -86,9 +93,9 @@ void genesis_ee_builder::process_delete_comments() {
 
     bfs::fstream in(in_dump_dir_ / "delete_comments");
     read_header(in);
-    while (in) {
-        auto op_num = read_op_num(in);
 
+    operation_number op_num;
+    while (read_op_num(in, op_num)) {
         cyberway::golos::delete_comment_operation dcop;
         fc::raw::unpack(in, dcop);
 
@@ -112,9 +119,9 @@ void genesis_ee_builder::process_rewards() {
 
     bfs::fstream in(in_dump_dir_ / "total_comment_rewards");
     read_header(in);
-    while (in) {
-        auto op_num = read_op_num(in);
 
+    operation_number op_num;
+    while (read_op_num(in, op_num)) {
         cyberway::golos::total_comment_reward_operation tcrop;
         fc::raw::unpack(in, tcrop);
 
@@ -137,9 +144,9 @@ void genesis_ee_builder::process_votes() {
 
     bfs::fstream in(in_dump_dir_ / "votes");
     read_header(in);
-    while (in) {
-        auto op_num = read_op_num(in);
 
+    operation_number op_num;
+    while (read_op_num(in, op_num)) {
         cyberway::golos::vote_operation vop;
         fc::raw::unpack(in, vop);
 
@@ -170,9 +177,9 @@ void genesis_ee_builder::process_reblogs() {
 
     bfs::fstream in(in_dump_dir_ / "reblogs");
     read_header(in);
-    while (in) {
-        auto op_num = read_op_num(in);
 
+    operation_number op_num;
+    while (read_op_num(in, op_num)) {
         auto reblog_offset = uint64_t(in.tellg());
 
         cyberway::golos::reblog_operation rop;
@@ -203,9 +210,9 @@ void genesis_ee_builder::process_delete_reblogs() {
 
     bfs::fstream in(in_dump_dir_ / "delete_reblogs");
     read_header(in);
-    while (in) {
-        auto op_num = read_op_num(in);
 
+    operation_number op_num;
+    while (read_op_num(in, op_num)) {
         cyberway::golos::delete_reblog_operation drop;
         fc::raw::unpack(in, drop);
 
