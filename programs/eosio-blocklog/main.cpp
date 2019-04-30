@@ -36,14 +36,14 @@ struct blocklog {
 
    bfs::path                        blocks_dir;
    bfs::path                        output_file;
-   uint32_t                         first_block;
-   uint32_t                         last_block;
-   bool                             no_pretty_print;
-   bool                             as_json_array;
-   bool                             make_index;
-   bool                             trim_log;
-   bool                             smoke_test;
-   bool                             help;
+   uint32_t                         first_block = 0;
+   uint32_t                         last_block = std::numeric_limits<uint32_t>::max();
+   bool                             no_pretty_print = false;
+   bool                             as_json_array = false;
+   bool                             make_index = false;
+   bool                             trim_log = false;
+   bool                             smoke_test = false;
+   bool                             help = false;
 };
 
 struct report_time {
@@ -215,13 +215,15 @@ struct trim_data {            //used by trim_blocklog_front(), trim_blocklog_end
    }
    void find_block_pos(uint32_t n);
    bfs::path block_file_name, index_file_name;        //full pathname for blocks.log and blocks.index
-   uint32_t version;                                  //blocklog version (1 or 2)
-   uint32_t first_block, last_block;                  //first and last block in blocks.log
-   FILE* blk_in;                                      //C style files for reading blocks.log and blocks.index
-   FILE* ind_in;                                      //C style files for reading blocks.log and blocks.index
+   uint32_t version = 0;                              //blocklog version (1 or 2)
+   uint32_t first_block = 0;                          //first block in blocks.log
+   uint32_t last_block = 0;                          //last block in blocks.log
+   FILE* blk_in = nullptr;                            //C style files for reading blocks.log and blocks.index
+   FILE* ind_in = nullptr;                            //C style files for reading blocks.log and blocks.index
    //we use low level file IO because it is distinctly faster than C++ filebuf or iostream
-   uint64_t index_pos;                                //filepos in blocks.index for block n, +8 for block n+1
-   uint64_t fpos0, fpos1;                             //filepos in blocks.log for block n and block n+1
+   uint64_t index_pos = 0;                            //filepos in blocks.index for block n, +8 for block n+1
+   uint64_t fpos0 = 0;                                //filepos in blocks.log for block n and block n+1
+   uint64_t fpos1 = 0;                                //filepos in blocks.log for block n and block n+1
 };
 
 
