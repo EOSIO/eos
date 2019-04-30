@@ -1,3 +1,4 @@
+import re
 import errno
 import subprocess
 import time
@@ -217,12 +218,17 @@ class Utils:
 
     @staticmethod
     def pgrepCmd(serverName):
-        pgrepOpts="-fl"
         # pylint: disable=deprecated-method
-        if platform.linux_distribution()[0] in ["Ubuntu", "LinuxMint", "Fedora","CentOS Linux","arch"]:
+        # pgrep differs on different platform (amazonlinux1 and 2 for example). We need to check if pgrep -h has -a available and add that if so:
+        try:
+            pgrepHelp = re.search('-a', subprocess.Popen("pgrep --help 2>/dev/null", shell=True, stdout=subprocess.PIPE).stdout.read().decode('utf-8'))
+            pgrepHelp.group(0) # group() errors if -a is not found, so we don't need to do anything else special here.
             pgrepOpts="-a"
+        except AttributeError as error:
+            # If no -a, AttributeError: 'NoneType' object has no attribute 'group'
+            pgrepOpts="-fl"
 
-        return "pgrep %s %s" % (pgrepOpts, serverName)
+        return "pgrep %s %s" % (pgrepOpts, serverName)\
 
     @staticmethod
     def getBlockLog(blockLogLocation, silentErrors=False, exitOnError=False):
