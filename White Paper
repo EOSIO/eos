@@ -39,22 +39,17 @@ a split was not enough for building production-ready applications - who
 would like to find out if the upvote transaction, which was even payed
 for, was at first queued and then rejected?
 
-You have something to propose?
-------------------------------
-
-Yeap. The following blog post series is about the CyberWay
-(<https://cyberway.io>) - improved and refactored EOS fork.
-
 Proposal
 ========
 
-So what is CyberWay particularily about?
+CyberWay is a decentralised application platform that addresses 
+and overcomes the shortages mentioned above.
 
 EOS-compatibility
 -----------------
 
-First of all the backward compatibility is held. The code contains most
-of the tolerable EOS parts, but excludes the awful ones. So-called
+CyberWay is an upgraded fork of EOS. So, the backward compatibility is held. 
+The code contains most of the tolerable EOS parts, but excludes the awful ones. So-called
 “Smart Contracts” API backward compatiblity is held too, but the insides
 have changed. That means every EOS application could easily become the
 CyberWay-based one and vice versa. Enough of that. Next.
@@ -84,7 +79,7 @@ State Storage
 -------------
 
 EOS’s state storage is extremely unreliable and does not ensures that
-data is saved and restored after restart correctly. Futhermore EOS does
+data is saved and restored after restart correctly. Futhermore, EOS does
 not provide any convenient API, but supposes the data structure stored
 inside would be complex.
 
