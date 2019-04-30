@@ -1079,7 +1079,7 @@ struct genesis_create::genesis_create_impl final {
                 ("count", v.num_changes)         // uint8_t
                 ("delegators", delegators)    // std::vector<delegate_voter>
                 ("curatorsw", w)     // base_t
-                ("rshares", to_fbase(v.rshares))       // base_t
+                ("rshares", v.rshares)       // base_t
             );
             pk++;
         }
