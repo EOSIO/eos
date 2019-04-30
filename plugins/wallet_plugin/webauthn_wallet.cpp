@@ -51,10 +51,13 @@ struct webauthn_wallet_impl {
       const uint8_t* der_begin = assertion.der_signature.data();
       d2i_ECDSA_SIG(&sig.obj, &der_begin, assertion.der_signature.size());
 
-      //get back raw public_key_data from the public_key object
+      //need to get the public_key_data for this webauthn key which we know lives at index 1 to 34
       char pub_key_shim_data[sizeof(fc::crypto::r1::public_key_data) + 1];
       fc::datastream<char*> eds(pub_key_shim_data, sizeof(pub_key_shim_data));
-      fc::raw::pack(eds, it->first);
+      try {
+         fc::raw::pack(eds, it->first);
+      } catch(fc::out_of_range_exception& e) {}
+      FC_ASSERT(eds.tellp() == sizeof(pub_key_shim_data), "didn't serialize pubkeydata correctly");
       fc::crypto::r1::public_key_data* kd = (fc::crypto::r1::public_key_data*)(pub_key_shim_data+1);
 
       //the signature is sha256(auth_data || client_data_hash), so we need to compute that now to do key recovery computation
@@ -62,24 +65,20 @@ struct webauthn_wallet_impl {
       e.write((char*)assertion.auth_data.data(), assertion.auth_data.size());
       e.write(client_data_hash.data(), client_data_hash.data_size());
 
-      fc::crypto::r1::compact_signature compact_sig;
-      compact_sig = fc::crypto::r1::signature_from_ecdsa(key, *kd, sig, e.result());
+      fc::crypto::r1::compact_signature compact_sig = fc::crypto::r1::signature_from_ecdsa(key, *kd, sig, e.result());
 
-      char serialized_signature[sizeof(signature_data) + 1];
-      serialized_signature[0] = 0x02; //WA type
-      fc::datastream<char*> ds(serialized_signature+1, sizeof(serialized_signature)-1);
-      ds.write((const char*)compact_sig.data, compact_sig.size());
-      fc::raw::pack(ds, assertion.auth_data);
-      fc::raw::pack(ds, client_data);
-
-      uint8_t* fff = (uint8_t* )serialized_signature;
-      for(unsigned int i = 0; i < 150; ++i)
-         printf("%02X ", fff[i]);
-      printf("\n");
+      signature webauthnsig(compact_sig, assertion.auth_data, client_data);
+      //fc::crypto::signature still doesn't allow creation of itself with an instance of a storage_type
+      fc::datastream<size_t> dsz;
+      fc::raw::pack(dsz, webauthnsig);
+      char packed_sig[dsz.tellp()+1];
+      fc::datastream<char*> ds(packed_sig, sizeof(packed_sig));
+      fc::raw::pack(ds, '\x02'); //webauthn type
+      fc::raw::pack(ds, webauthnsig);
+      ds.seekp(0);
 
       signature_type final_signature;
-      fc::datastream<const char*> fds(serialized_signature, sizeof(serialized_signature));
-      fc::raw::unpack(fds, final_signature);
+      fc::raw::unpack(ds, final_signature);
       return final_signature;
    }
 

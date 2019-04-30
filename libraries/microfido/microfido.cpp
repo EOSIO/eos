@@ -243,18 +243,25 @@ fido_registration_result fido_device::do_registration(std::array<uint8_t, 32> cl
          cbor_value_advance(&it);
    }
 
-   char serialized_pub_key[sizeof(public_key_data) + 1];
-   serialized_pub_key[0] = 0x02; //means webauthn key
-   serialized_pub_key[1] = 0x02 + (pub_y[31]&1); //R1 header; even or odd Y
-   memcpy(serialized_pub_key+2, pub_x.data(), 32); //copy in the 32 bytes of X
+   public_key::public_key_data_type pub_key_data;
+   pub_key_data.data[0] = 0x02 + (pub_y[31]&1); //even or odd Y
+   memcpy(pub_key_data.data+1, pub_x.data(), 32); //copy in the 32 bytes of X
+   public_key pub_key(pub_key_data, 0, "keosd.invalid");
 
-   fc::crypto::public_key pub_key;
-   fc::datastream<const char *> ds(serialized_pub_key, sizeof(serialized_pub_key));
-   fc::raw::unpack(ds, pub_key);
-   std::cout << (std::string)pub_key << std::endl;
+
+   //fc::crypto::public_key still doesn't allow creation of itself with an instance of a storage_type
+   fc::datastream<size_t> dsz;
+   fc::raw::pack(dsz, pub_key);
+   char packed_pub_key[dsz.tellp()+1];
+   fc::datastream<char*> ds(packed_pub_key, sizeof(packed_pub_key));
+   fc::raw::pack(ds, '\x02'); //webauthn type
+   fc::raw::pack(ds, pub_key);
+   ds.seekp(0);
+   fc::crypto::public_key pk;
+   fc::raw::unpack(ds, pk);
 
    return {
-      .pub_key = pub_key,
+      .pub_key = pk,
       .credential_id = credential_id
    };
 }
