@@ -50,6 +50,7 @@ namespace eosio {
    using fc::time_point;
    using fc::time_point_sec;
    using eosio::chain::transaction_id_type;
+   using eosio::chain::sha256_less;
 
    class connection;
 
@@ -75,14 +76,6 @@ namespace eosio {
 
    struct by_expiry;
    struct by_block_num;
-
-   struct sha256_less {
-      bool operator()( const sha256& lhs, const sha256& rhs ) const {
-       return
-             std::tie(lhs._hash[0], lhs._hash[1], lhs._hash[2], lhs._hash[3]) <
-             std::tie(rhs._hash[0], rhs._hash[1], rhs._hash[2], rhs._hash[3]);
-      }
-   };
 
    typedef multi_index_container<
       node_transaction_state,
@@ -1040,7 +1033,7 @@ namespace eosio {
    void connection::queue_write(const std::shared_ptr<vector<char>>& buff,
                                 bool trigger_send,
                                 int priority,
-                                std::function<void(boost::system::error_code, std::size_t)> callback, 
+                                std::function<void(boost::system::error_code, std::size_t)> callback,
                                 bool to_sync_queue) {
       if( !buffer_queue.add_write_queue( buff, callback, to_sync_queue )) {
          fc_wlog( logger, "write_queue full ${s} bytes, giving up on connection ${p}",

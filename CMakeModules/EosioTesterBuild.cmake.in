@@ -72,7 +72,7 @@ find_library(GMP_LIBRARIES NAMES libgmp.a gmp.lib gmp libgmp-10 mpir
     DOC "Path to the GMP library"
 )
 
-macro(add_eosio_test test_name)
+macro(add_eosio_test_executable test_name)
    add_executable( ${test_name} ${ARGN} )
    target_link_libraries( ${test_name}
        ${LLVM}
@@ -138,13 +138,14 @@ macro(add_eosio_test test_name)
                                @CMAKE_SOURCE_DIR@/libraries/chainbase/include
                                @CMAKE_SOURCE_DIR@/libraries/testing/include
                                @CMAKE_SOURCE_DIR@/libraries/wasm-jit/Include )
-                            #
+endmacro()
+
+macro(add_eosio_test test_name)
+   add_eosio_test_executable( ${test_name} ${ARGN} )
+   #This will generate a test with the default runtime
+   add_test(NAME ${test_name} COMMAND ${test_name} --report_level=detailed --color_output)
    #Manually run unit_test for all supported runtimes
    #To run unit_test with all log from blockchain displayed, put --verbose after --, i.e. unit_test -- --verbose
-   add_test(NAME ${test_name}_binaryen COMMAND ${test_name}
-    --report_level=detailed --color_output -- --binaryen)
-   add_test(NAME ${test_name}_wavm COMMAND ${test_name}
-    --report_level=detailed --color_output --catch_system_errors=no -- --wavm)
 endmacro()
 
 if(ENABLE_COVERAGE_TESTING)

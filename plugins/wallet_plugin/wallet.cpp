@@ -120,18 +120,18 @@ public:
 
    string get_wallet_filename() const { return _wallet_filename; }
 
-   optional<private_key_type>  try_get_private_key(const public_key_type& id)const
+   fc::optional<private_key_type>  try_get_private_key(const public_key_type& id)const
    {
       auto it = _keys.find(id);
       if( it != _keys.end() )
          return  it->second;
-      return optional<private_key_type>();
+      return fc::optional<private_key_type>();
    }
 
-   optional<signature_type> try_sign_digest( const digest_type digest, const public_key_type public_key ) {
+   fc::optional<signature_type> try_sign_digest( const digest_type digest, const public_key_type public_key ) {
       auto it = _keys.find(public_key);
       if( it == _keys.end() )
-         return optional<signature_type>{};
+         return fc::optional<signature_type>{};
       return it->second.sign(digest);
    }
 
@@ -401,7 +401,7 @@ private_key_type soft_wallet::get_private_key( public_key_type pubkey )const
    return my->get_private_key( pubkey );
 }
 
-optional<signature_type> soft_wallet::try_sign_digest( const digest_type digest, const public_key_type public_key ) {
+fc::optional<signature_type> soft_wallet::try_sign_digest( const digest_type digest, const public_key_type public_key ) {
    return my->try_sign_digest(digest, public_key);
 }
 

@@ -12,10 +12,13 @@ struct chain_snapshot_header {
    /**
     * Version history
     *   1: initial version
+    *   2: Updated chain snapshot for v1.8.0 initial protocol features release:
+    *         - Incompatible with version 1.
+    *         - Adds new indices for: protocol_state_object and account_ram_correction_object
     */
 
-   static constexpr uint32_t minimum_compatible_version = 1;
-   static constexpr uint32_t current_version = 1;
+   static constexpr uint32_t minimum_compatible_version = 2;
+   static constexpr uint32_t current_version = 2;
 
    uint32_t version = current_version;
 

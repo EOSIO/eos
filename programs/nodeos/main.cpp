@@ -87,8 +87,8 @@ int main(int argc, char** argv)
       app().set_version(eosio::nodeos::config::version);
 
       auto root = fc::app_path();
-      app().set_default_data_dir(root / "eosio/nodeos/data" );
-      app().set_default_config_dir(root / "eosio/nodeos/config" );
+      app().set_default_data_dir(root / "eosio" / nodeos::config::node_executable_name / "data" );
+      app().set_default_config_dir(root / "eosio" / nodeos::config::node_executable_name / "config" );
       http_plugin::set_defaults({
          .default_unix_socket_path = "",
          .default_http_port = 8888
@@ -96,10 +96,9 @@ int main(int argc, char** argv)
       if(!app().initialize<chain_plugin, net_plugin, producer_plugin>(argc, argv))
          return INITIALIZE_FAIL;
       initialize_logging();
-      ilog("nodeos version ${ver}", ("ver", app().version_string()));
-      ilog("eosio root is ${root}", ("root", root.string()));
-      ilog("nodeos using configuration file ${c}", ("c", app().full_config_file_path().string()));
-      ilog("nodeos data directory is ${d}", ("d", app().data_dir().string()));
+      ilog("${name} version ${ver}", ("name", nodeos::config::node_executable_name)("ver", app().version_string()));
+      ilog("${name} using configuration file ${c}", ("name", nodeos::config::node_executable_name)("c", app().full_config_file_path().string()));
+      ilog("${name} data directory is ${d}", ("name", nodeos::config::node_executable_name)("d", app().data_dir().string()));
       app().startup();
       app().exec();
    } catch( const extract_genesis_state_exception& e ) {
@@ -145,6 +144,6 @@ int main(int argc, char** argv)
       return OTHER_FAIL;
    }
 
-   ilog("nodeos successfully exiting");
+   ilog("${name} successfully exiting", ("name", nodeos::config::node_executable_name));
    return SUCCESS;
 }
