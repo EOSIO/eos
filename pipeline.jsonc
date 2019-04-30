@@ -1,33 +1,9 @@
 {
     "eosio":
     {
-        "pipeline-branch": "legacy-os",
+        "pipeline-branch": "master",
         "environment":
         {
-            "DEBUG": "false",
-            "PIPELINE_BRANCH" : "legacy-os",
-            "BUILDKITE_LABEL" : "Ubuntu 18.04 Unit Tests"
-        }
-    },
-    "eosio-dot-cdt":
-    {
-        "pipeline-branch": "master",
-        "dependencies": // dependencies to pull for cdt integration tests, by branch, tag, or commit hash
-        {
-            "eosio": "release/1.7.x"
-        },
-        "environment":
-        {
-        
-        }
-    },
-    "eosio-dot-contracts":
-    {
-        "pipeline-branch": "master",
-        "dependencies": // dependencies to pull for a build of contracts, by branch, tag, or commit hash
-        {
-            "eosio": "9dfd8e2e1b2ab9acc9087b5c6a0bb878b4ad1d0f",
-            "eosio.cdt": "release/1.6.x"
         }
     },
     "eos-multiversion-tests":
@@ -48,10 +24,6 @@
     },
     "eosio-sync-tests":
     {
-        "pipeline-branch": "protocol-features-sync-nodes",
-        "environment":
-        {
-            "DEBUG": "false"
-        }
+        "pipeline-branch": "protocol-features-sync-nodes"
     }
 }
