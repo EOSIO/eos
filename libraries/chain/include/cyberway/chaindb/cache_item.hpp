@@ -33,7 +33,7 @@ namespace cyberway { namespace chaindb {
         cache_converter_interface() = default;
         virtual ~cache_converter_interface() = default;
 
-        virtual void convert_variant(cache_object&) const = 0;
+        virtual void convert_variant(cache_object&, const object_value&) const = 0;
     }; // struct cache_load_interface
 
     struct table_cache_map;
@@ -65,7 +65,7 @@ namespace cyberway { namespace chaindb {
         bytes            blob_;
 
     public:
-        cache_object(table_cache_map*, object_value);
+        cache_object(table_cache_map* map): table_cache_map_(map) {}
         cache_object(cache_object&&) = default;
 
         ~cache_object() = default;

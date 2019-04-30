@@ -1974,8 +1974,14 @@ void get_account( const string& accountName, const string& coresym, bool json_fo
 
 
 
-      std::cout << "memory: " << std::endl
-                << indent << "quota: " << std::setw(15) << to_pretty_net(res.ram_quota) << "  used: " << std::setw(15) << to_pretty_net(res.ram_usage) << std::endl << std::endl;
+      std::cout << "memory: " << std::endl << indent
+          <<   "quota: " << std::setw(15) << to_pretty_net(res.ram_quota)
+          <<  "  used: " << std::setw(15) << to_pretty_net(res.ram_usage)
+          << "  owned: " << std::setw(15) << to_pretty_net(res.ram_usage) << std::endl << std::endl;
+
+      std::cout << "storage: " << std::endl << indent
+          <<   " used: " << std::setw(15) << to_pretty_net(res.storage_usage)
+          << "  owned: " << std::setw(14) << to_pretty_net(res.storage_owned) << std::endl << std::endl;
 
       std::cout << "net bandwidth: " << std::endl;
       if ( res.total_resources.is_object() ) {

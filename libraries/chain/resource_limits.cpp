@@ -9,6 +9,8 @@
 #include <eosio/chain/stake.hpp>
 #include <eosio/chain/account_object.hpp>
 
+#include <cyberway/chaindb/storage_payer_info.hpp>
+
 namespace eosio { namespace chain { namespace resource_limits {
 using namespace stake;
 
@@ -75,12 +77,17 @@ void resource_limits_manager::read_from_snapshot( const snapshot_reader_ptr& sna
    // TODO: Removed by CyberWay
 }
 
-cyberway::chaindb::ram_payer_info resource_limits_manager::get_ram_payer(const account_name& owner) {
-    return {*this, owner};
+storage_payer_info resource_limits_manager::get_storage_payer(account_name owner) {
+    return {*this, owner, owner};
 }
 
-void resource_limits_manager::initialize_account(const account_name& account, const cyberway::chaindb::ram_payer_info& ram_payer) {
-   _chaindb.emplace<resource_usage_object>(ram_payer, [&]( resource_usage_object& bu ) {
+void resource_limits_manager::initialize_account(const account_name& account, const storage_payer_info&) {
+   // no payer, because it will create the dead loop:
+   //     updating any object
+   //     -> storage usage is stored in resource_usage -> updating resource_usage
+   //     -> storage usage is stored in resource_usage -> updating resource_usage
+   //     -> storage usage is ....
+   _chaindb.emplace<resource_usage_object>([&]( resource_usage_object& bu ) {
       bu.owner = account;
    });
 }
@@ -140,33 +147,62 @@ void resource_limits_manager::add_transaction_usage(const flat_set<account_name>
    EOS_ASSERT( state.pending_net_usage <= config.net_limit_parameters.max, block_resource_exhausted, "Block has insufficient net resources" );
 }
 
-void resource_limits_manager::add_pending_ram_usage( const account_name account, int64_t ram_delta ) {
-   if (ram_delta == 0) {
+void resource_limits_manager::add_storage_usage( const storage_payer_info& storage ) {
+   if (storage.delta == 0) {
       return;
    }
-   const auto& usage  = _chaindb.get<resource_usage_object,by_owner>( account );
-   auto state_table = _chaindb.get_table<resource_limits_state_object>();
+
+   auto safe_add_delta = [&](uint64_t& usage) {
+      EOS_ASSERT(storage.delta <= 0 || UINT64_MAX - usage >= (uint64_t) storage.delta, transaction_exception,
+         "Storage delta would overflow UINT64_MAX", ("storage", storage)("usage", usage));
+      EOS_ASSERT(storage.delta >= 0 || usage >= (uint64_t) (-storage.delta), transaction_exception,
+         "Storage delta would underflow UINT64_MAX", ("storage", storage)("usage", usage));
+      usage += (int64_t)storage.delta;
+   };
+
+   auto state_table  = _chaindb.get_table<resource_limits_state_object>();
    const auto& state = state_table.get();
-
-   EOS_ASSERT( ram_delta <= 0 || UINT64_MAX - usage.ram_usage >= (uint64_t)ram_delta, transaction_exception,
-              "Ram usage delta would overflow UINT64_MAX");
-   EOS_ASSERT(ram_delta >= 0 || usage.ram_usage >= (uint64_t)(-ram_delta), transaction_exception,
-              "Ram usage delta would underflow UINT64_MAX");
-
-   _chaindb.modify( usage, [&]( auto& u ) {
-     u.ram_usage += ram_delta;
-   });
-   
    state_table.modify(state, [&](resource_limits_state_object& rls){
-      rls.pending_ram_usage += ram_delta;
+      if (storage.in_ram) {
+         safe_add_delta(rls.ram_usage);
+      }
+      safe_add_delta(rls.storage_usage);
+   });
+
+   auto& usage = _chaindb.get<resource_usage_object,by_owner>( storage.payer );
+   _chaindb.modify( usage, [&]( auto& u ) {
+      if( storage.in_ram ) {
+          safe_add_delta(u.ram_usage);
+      }
+      safe_add_delta(u.storage_usage);
+
+      if( storage.payer != storage.owner ) {
+         return;
+      }
+
+      if( storage.in_ram ) {
+         safe_add_delta(u.ram_owned);
+      }
+      safe_add_delta(u.storage_owned);
+   });
+
+   if( storage.payer == storage.owner ) {
+      return;
+   }
+
+   auto& owned = _chaindb.get<resource_usage_object,by_owner>( storage.owner );
+   _chaindb.modify( owned, [&](auto& u ) {
+      if( storage.in_ram ) {
+         safe_add_delta(u.ram_owned);
+      }
+      safe_add_delta(u.storage_owned);
    });
 }
 
 std::map<symbol_code, uint64_t> resource_limits_manager::get_account_usage(const account_name& account)const {
     const auto& config = _chaindb.get<resource_limits_config_object>();
-    auto usage_table = _chaindb.get_table<resource_usage_object>();
-    auto usage_owner_idx = usage_table.get_index<by_owner>();
-    const auto& usage = usage_owner_idx.get(account);
+    auto usage_index = _chaindb.get_index<resource_usage_object,by_owner>();
+    const auto& usage = usage_index.get(account);
     
     std::map<symbol_code, uint64_t> ret;
     ret[cpu_code] = downgrade_cast<uint64_t>(integer_divide_ceil(
@@ -176,6 +212,18 @@ std::map<symbol_code, uint64_t> resource_limits_manager::get_account_usage(const
                             static_cast<uint128_t>(usage.net_usage.value_ex) * config.account_net_usage_average_window, 
                             static_cast<uint128_t>(config::rate_limiting_precision)));
     ret[ram_code] = usage.ram_usage;
+    return ret;
+}
+
+account_storage_usage resource_limits_manager::get_account_storage_usage(const account_name& account) const {
+    auto usage_index = _chaindb.get_index<resource_usage_object,by_owner>();
+    const auto& usage = usage_index.get(account);
+
+    account_storage_usage ret;
+    ret.ram_usage = usage.ram_usage;
+    ret.ram_owned = usage.ram_owned;
+    ret.storage_usage = usage.storage_usage;
+    ret.storage_owned = usage.storage_owned;
     return ret;
 }
 
@@ -193,9 +241,6 @@ void resource_limits_manager::process_block_usage(uint32_t block_num) {
       state.average_block_net_usage.add(state.pending_net_usage, block_num, config.net_limit_parameters.periods);
       state.update_virtual_net_limit(config);
       state.pending_net_usage = 0;
-      
-      state.ram_usage += state.pending_ram_usage;
-      state.pending_ram_usage = 0;
    });
 }
 
@@ -311,7 +356,7 @@ ratio resource_limits_manager::get_account_stake_ratio(int64_t now, const accoun
     uint64_t staked = 0;
     auto agent = agents_idx.find(agent_key(token_code, account));
     if (agent != agents_idx.end()) {
-        update_proxied(_chaindb, get_ram_payer(), now, token_code, account, false);
+        update_proxied(_chaindb, get_storage_payer(), now, token_code, account, false);
 
         auto total_funds = agent->get_total_funds();
         EOS_ASSERT(total_funds >= 0, chain_exception, "SYSTEM: incorrect total_funds value");

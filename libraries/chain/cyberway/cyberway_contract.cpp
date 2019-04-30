@@ -42,7 +42,7 @@ void apply_cyber_domain_newdomain(apply_context& context) {
         auto exists = chaindb.find<domain_object, by_name>(op.name);
         EOS_ASSERT(exists == nullptr, eosio::chain::domain_exists_exception,
             "Cannot create domain named ${n}, as that name is already taken", ("n", op.name));
-        chaindb.emplace<domain_object>(context.get_ram_payer(op.creator), [&](auto& d) {
+        chaindb.emplace<domain_object>(context.get_storage_payer(op.creator), [&](auto& d) {
             d.owner = op.creator;
             d.creation_date = context.control.pending_block_time();
             d.name = op.name;
@@ -57,7 +57,7 @@ void apply_cyber_domain_passdomain(apply_context& context) {
         validate_domain_name(op.name);
         const auto& domain = context.control.get_domain(op.name);
         EOS_ASSERT(op.from == domain.owner, eosio::chain::action_validate_exception, "Only owner can pass domain name");
-        context.chaindb.modify(domain, context.get_ram_payer(op.to), [&](auto& d) {
+        context.chaindb.modify(domain, context.get_storage_payer(op.to), [&](auto& d) {
             d.owner = op.to;
         });
     } FC_CAPTURE_AND_RETHROW((op))
@@ -71,7 +71,7 @@ void apply_cyber_domain_linkdomain(apply_context& context) {
         const auto& domain = context.control.get_domain(op.name);
         EOS_ASSERT(op.owner == domain.owner, eosio::chain::action_validate_exception, "Only owner can change domain link");
         EOS_ASSERT(op.to != domain.linked_to, eosio::chain::action_validate_exception, "Domain name already linked to the same account");
-        context.chaindb.modify(domain, context.get_ram_payer(domain.owner), [&](auto& d) {
+        context.chaindb.modify(domain, context.get_storage_payer(domain.owner), [&](auto& d) {
             d.linked_to = op.to;
         });
     } FC_CAPTURE_AND_RETHROW((op))
@@ -85,7 +85,7 @@ void apply_cyber_domain_unlinkdomain(apply_context& context) {
         const auto& domain = context.control.get_domain(op.name);
         EOS_ASSERT(op.owner == domain.owner, eosio::chain::action_validate_exception, "Only owner can unlink domain");
         EOS_ASSERT(domain.linked_to != account_name(), eosio::chain::action_validate_exception, "Domain name already unlinked");
-        context.chaindb.modify(domain, context.get_ram_payer(domain.owner), [&](auto& d) {
+        context.chaindb.modify(domain, context.get_storage_payer(domain.owner), [&](auto& d) {
             d.linked_to = account_name();
         });
     } FC_CAPTURE_AND_RETHROW((op))
@@ -102,7 +102,7 @@ void apply_cyber_domain_newusername(apply_context& context) {
             "Cannot create username ${n} in scope ${s}, as it's already taken", ("n", op.name)("s", op.creator));
         auto owner = chaindb.find<eosio::chain::account_object, by_name>(op.owner);
         EOS_ASSERT(owner, eosio::chain::account_name_exists_exception, "Username owner (${o}) must exist", ("o", op.owner));
-        chaindb.emplace<username_object>(context.get_ram_payer(op.creator), [&](auto& d) {
+        chaindb.emplace<username_object>(context.get_storage_payer(op.creator), [&](auto& d) {
             d.owner = op.owner;
             d.scope = op.creator;
             d.name = op.name;
@@ -142,7 +142,7 @@ void apply_cyber_setrampayer(apply_context& context) {
             ("pk", op.pk)("scope", chaindb::get_scope_name(op.scope))("table", chaindb::get_full_table_name(op))
             ("payer", op.new_payer));
 
-        context.chaindb.recalc_ram_usage(*cache.get(), context.get_ram_payer(owner, op.new_payer));
+        context.chaindb.recalc_ram_usage(*cache.get(), context.get_storage_payer(owner, op.new_payer));
     } FC_CAPTURE_AND_RETHROW((op))
 }
 
@@ -160,7 +160,7 @@ void apply_set_ram_state(
         ("pk", op.pk)("scope", chaindb::get_scope_name(op.scope))("table", chaindb::get_full_table_name(op))
         ("state", op.in_ram));
 
-    auto info = context.get_ram_payer(service.owner, service.payer);
+    auto info = context.get_storage_payer(service.owner, service.payer);
     info.in_ram  = op.in_ram;
     context.chaindb.recalc_ram_usage(*cache.get(), info);
 }

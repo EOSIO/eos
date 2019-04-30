@@ -71,7 +71,9 @@ void apply_context::exec_one( action_trace& trace )
 
                this->chaindb_cache = &cache;
                control.get_wasm_interface().apply( a.code_version, a.code, *this );
-               chaindb.apply_code_changes(a.name);
+               if (control.is_producing_block()) {
+                   chaindb.apply_code_changes(a.name);
+               }
             } catch( const wasm_exit& ) {}
          }
       } FC_RETHROW_EXCEPTIONS(warn, "pending console output: ${console}", ("console", _pending_console_output.str()))
@@ -337,7 +339,7 @@ void apply_context::execute_context_free_inline( action&& a ) {
 }
 
 
-void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, account_name ram_owner, transaction&& trx, bool replace_existing ) {
+void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, account_name owner, transaction&& trx, bool replace_existing ) {
    EOS_ASSERT( trx.context_free_actions.size() == 0, cfa_inside_generated_tx, "context free actions are not currently allowed in generated transactions" );
    trx.expiration = control.pending_block_time() + fc::microseconds(999'999); // Rounds up to nearest second (makes expiration check unnecessary)
    trx.set_reference_block(control.head_block_id()); // No TaPoS check necessary
@@ -353,8 +355,8 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
    auto delay = fc::seconds(trx.delay_sec);
 
    if( !control.skip_auth_check() && !privileged ) { // Do not need to check authorization if replayng irreversible block or if contract is privileged
-      if( ram_owner != receiver ) {
-         require_authorization(ram_owner); /// uses payer's storage
+      if( owner != receiver ) {
+         require_authorization(owner); /// uses payer's storage
       }
 
       // Originally this code bypassed authorization checks if a contract was deferring only actions to itself.
@@ -420,7 +422,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
 //      // TODO: The logic of the next line needs to be incorporated into the next hard fork.
 //      // add_ram_usage( ptr->payer, -(config::billable_size_v<generated_transaction_object> + ptr->packed_trx.size()) );
 
-      chaindb.modify( *ptr, get_ram_payer(ram_owner), [&]( auto& gtx ) {
+      chaindb.modify( *ptr, get_storage_payer(owner), [&]( auto& gtx ) {
             gtx.sender      = receiver;
             gtx.sender_id   = sender_id;
             gtx.published   = control.pending_block_time();
@@ -430,7 +432,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
             trx_size = gtx.set( trx );
          });
    } else {
-      chaindb.emplace<generated_transaction_object>( get_ram_payer(ram_owner), [&]( auto& gtx ) {
+      chaindb.emplace<generated_transaction_object>( get_storage_payer(owner), [&]( auto& gtx ) {
             gtx.trx_id      = trx.id();
             gtx.sender      = receiver;
             gtx.sender_id   = sender_id;
@@ -454,7 +456,7 @@ bool apply_context::cancel_deferred_transaction( const uint128_t& sender_id, acc
    if ( gto ) {
 // TODO: Removed by CyberWay
 //      add_ram_usage( gto->payer, -(config::billable_size_v<generated_transaction_object> + gto->packed_trx.size()) );
-      trx_table.erase(*gto, get_ram_payer());
+      trx_table.erase(*gto, get_storage_payer());
    }
    return gto;
 }
@@ -546,28 +548,32 @@ bytes apply_context::get_packed_transaction() {
    return r;
 }
 
-cyberway::chaindb::ram_payer_info apply_context::get_ram_payer( account_name ram_owner, account_name ram_payer ) {
-   if (ram_payer.empty()) {
-       ram_payer = ram_owner;
+storage_payer_info apply_context::get_storage_payer( account_name owner, account_name payer ) {
+   if (payer.empty()) {
+       payer = owner;
    }
 
-   return {*this, ram_owner, trx_context.get_ram_provider(ram_payer)};
+   return {*this, owner, trx_context.get_ram_provider(payer)};
 }
 
-void apply_context::add_ram_usage( const account_name& payer, const int64_t delta ) {
-   if( delta > 0 ) {
-      if( !(privileged || payer == receiver) ) {
-         EOS_ASSERT( (receiver == act.account), subjective_block_production_exception,
+void apply_context::add_storage_usage( const storage_payer_info& storage ) {
+   if( storage.delta > 0 ) {
+      if( !(privileged || storage.payer == receiver) ) {
+         EOS_ASSERT( control.is_ram_billing_in_notify_allowed() || (receiver == act.account), subjective_block_production_exception,
              "Cannot charge RAM to other accounts during notify." );
-         require_authorization( payer );
+         require_authorization( storage.payer );
       }
    }
 
-   trx_context.add_ram_usage( payer, delta );
+   trx_context.add_storage_usage( storage );
 
-   auto p = _account_ram_deltas.emplace( payer, delta );
-   if( !p.second ) {
-      p.first->delta += delta;
+   if( !storage.in_ram ) {
+      return;
+   }
+
+   auto p = _account_ram_deltas.emplace( storage.payer, storage.delta );
+   if( !p.second && storage.delta) {
+      p.first->delta += storage.delta;
    }
 }
 

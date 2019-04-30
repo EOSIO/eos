@@ -5,7 +5,7 @@
 #include <signal.h>
 
 namespace cyberway { namespace chaindb {
-    struct ram_payer_info;
+    struct storage_payer_info;
 } } // namespace cyberway::chaindb
 
 namespace cyberway { namespace chain {
@@ -13,6 +13,8 @@ namespace cyberway { namespace chain {
 } } // namespace cyberway::chaindb
 
 namespace eosio { namespace chain {
+
+   using cyberway::chaindb::storage_payer_info;
 
 // TODO: request bw, why provided?
 //   struct provided_bandwith {
@@ -106,7 +108,7 @@ namespace eosio { namespace chain {
 
          int64_t get_min_cpu_limit()const;
 
-         void add_ram_usage( account_name account, int64_t ram_delta );
+         void add_storage_usage( const storage_payer_info& );
 
 // TODO: request bw, why provided?
 //         uint64_t get_provided_net_limit(account_name account) const;
@@ -125,8 +127,8 @@ namespace eosio { namespace chain {
 
          void validate_referenced_accounts(const transaction& trx) const;
 
-         const account_name& get_ram_provider(const account_name& ram_owner) const;
-         cyberway::chaindb::ram_payer_info get_ram_payer(const account_name& ram_owner);
+         const account_name& get_ram_provider(const account_name& owner) const;
+         storage_payer_info get_storage_payer(const account_name& owner);
 
       private:
 
@@ -211,7 +213,7 @@ namespace eosio { namespace chain {
             uint64_t min_cpu = UINT64_MAX;
         public:
             void init(resource_limits_manager& rl, const flat_set<account_name>& accounts, fc::time_point now);
-            bool update_ram_usage(account_name account, int64_t delta);
+            bool update_ram_usage(const storage_payer_info&);
             void add_net_usage(int64_t delta);
             void check_cpu_usage(int64_t usage) const;
             uint64_t get_min_cpu_limit()const { return min_cpu; };

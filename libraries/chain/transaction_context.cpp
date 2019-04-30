@@ -541,12 +541,13 @@ namespace bacc = boost::accumulators;
       }
    }
 
-   void transaction_context::add_ram_usage( account_name account, int64_t ram_delta ) {
-      if (available_resources.update_ram_usage(account, ram_delta)) {
+   void transaction_context::add_storage_usage( const storage_payer_info& storage ) {
+      if (available_resources.update_ram_usage(storage)) {
          available_resources.check_cpu_usage((fc::time_point::now() - pseudo_start).count());
       }
+      // TODO: issue #480 - ICE BW
       auto& rl = control.get_mutable_resource_limits_manager();
-      rl.add_pending_ram_usage( account, ram_delta );
+      rl.add_storage_usage( storage );
    }
 
    int64_t transaction_context::get_billed_cpu_time(fc::time_point now)const {
@@ -628,7 +629,7 @@ namespace bacc = boost::accumulators;
       uint32_t trx_size = 0;
       auto& chaindb = control.chaindb();
       auto trx_table = chaindb.get_table<generated_transaction_object>();
-      auto res = trx_table.emplace( get_ram_payer(first_auth), [&]( auto& gto ) {
+      auto res = trx_table.emplace( get_storage_payer(first_auth), [&]( auto& gto ) {
         gto.trx_id      = id;
         gto.sender      = account_name(); /// delayed transactions have no sender
         gto.sender_id   = transaction_id_to_sender_id( gto.trx_id );
@@ -683,20 +684,20 @@ namespace bacc = boost::accumulators;
       EOS_ASSERT( one_auth, tx_no_auths, "transaction must have at least one authorization" );
    }
 
-   const account_name& transaction_context::get_ram_provider(const account_name& ram_owner) const {
-      if (ram_owner.empty()) {
-          return ram_owner;
+   const account_name& transaction_context::get_ram_provider(const account_name& owner) const {
+      if (owner.empty()) {
+          return owner;
       }
 
-      auto itr = ram_providers.find(ram_owner);
+      auto itr = ram_providers.find(owner);
       if (ram_providers.end() == itr) {
-          return ram_owner;
+          return owner;
       }
       return itr->second;
    }
 
-   cyberway::chaindb::ram_payer_info transaction_context::get_ram_payer(const account_name& ram_owner) {
-      return {*this, ram_owner, get_ram_provider(ram_owner)};
+   storage_payer_info transaction_context::get_storage_payer(const account_name& owner) {
+      return {*this, owner, get_ram_provider(owner)};
    }
 
     void transaction_context::available_resources_t::init(resource_limits_manager& rl, const flat_set<account_name>& accounts, fc::time_point now) {
@@ -717,28 +718,28 @@ namespace bacc = boost::accumulators;
         }
     }
 
-    bool transaction_context::available_resources_t::update_ram_usage(account_name account, int64_t delta) {
-        if (!delta) {
+    bool transaction_context::available_resources_t::update_ram_usage(const storage_payer_info& storage) {
+        if (!storage.delta || !storage.in_ram) {
             return false;
         }
-        auto lim_itr = limits.find(account);
+        auto lim_itr = limits.find(storage.payer);
         if (lim_itr == limits.end()) {
             return false;
         }
         auto& lim = lim_itr->second;
-        uint64_t delta_abs = std::abs(delta);
+        uint64_t delta_abs = std::abs(storage.delta);
 
         auto cost = safe_prop(delta_abs, ram_price.numerator, ram_price.denominator);
         auto cpu = cost ? (cpu_price.numerator ? safe_prop(cost, cpu_price.denominator, cpu_price.numerator) : UINT64_MAX) : 0;
 
-        bool need_to_update_min = (lim.cpu == min_cpu) && (delta < 0);
-        if (delta > 0) {
+        bool need_to_update_min = (lim.cpu == min_cpu) && (storage.delta < 0);
+        if (storage.delta > 0) {
             EOS_ASSERT(lim.ram >= delta_abs, ram_usage_exceeded,
                 "account ${a} has insufficient staked tokens: balance.ram = ${b}, delta = ${d}",
-                ("a", account)("b", lim.ram)("d", delta));
+                ("a", storage.payer)("b", lim.ram)("d", storage.delta));
             EOS_ASSERT(lim.cpu >= cpu, resource_exhausted_exception,
                 "account ${a} has insufficient staked tokens: unspent cpu = ${b}, cost = ${c}, cpu equivalent = ${e}",
-                ("a", account)("b", lim.cpu)("c", cost)("e", cpu));
+                ("a", storage.payer)("b", lim.cpu)("c", cost)("e", cpu));
             lim.ram -= delta_abs;
             lim.cpu -= cpu;
         }

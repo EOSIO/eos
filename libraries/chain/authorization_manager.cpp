@@ -24,7 +24,7 @@ namespace eosio { namespace chain {
       permission_link_table
    >;
 
-   authorization_manager::authorization_manager(controller& c, cyberway::chaindb::chaindb_controller& chaindb)
+   authorization_manager::authorization_manager(controller& c, chaindb_controller& chaindb)
    :_control(c),_chaindb(chaindb) {}
 
    void authorization_manager::add_indices() {
@@ -43,7 +43,7 @@ namespace eosio { namespace chain {
       // TODO: Removed by CyberWay
    }
 
-   const permission_object& authorization_manager::create_permission( const ram_payer_info& ram,
+   const permission_object& authorization_manager::create_permission( const storage_payer_info& payer,
                                                                       account_name account,
                                                                       permission_name name,
                                                                       permission_id_type parent,
@@ -56,11 +56,11 @@ namespace eosio { namespace chain {
          creation_time = _control.pending_block_time();
       }
 
-      const auto& perm_usage = _chaindb.emplace<permission_usage_object>(ram, [&](auto& p) {
+      const auto& perm_usage = _chaindb.emplace<permission_usage_object>(payer, [&](auto& p) {
          p.last_used = creation_time;
       });
 
-      const auto& perm = _chaindb.emplace<permission_object>(ram, [&](auto& p) {
+      const auto& perm = _chaindb.emplace<permission_object>(payer, [&](auto& p) {
          p.usage_id     = perm_usage.id;
          p.parent       = parent;
          p.owner        = account;
@@ -71,21 +71,21 @@ namespace eosio { namespace chain {
       return perm;
    }
 
-   void authorization_manager::modify_permission( const permission_object& permission, const ram_payer_info& ram, const authority& auth ) {
-      _chaindb.modify( permission, ram, [&](permission_object& po) {
+   void authorization_manager::modify_permission( const permission_object& permission, const storage_payer_info& payer, const authority& auth ) {
+      _chaindb.modify( permission, payer, [&](permission_object& po) {
          po.auth = auth;
          po.last_updated = _control.pending_block_time();
       });
    }
 
-   void authorization_manager::remove_permission( const permission_object& permission, const ram_payer_info& ram ) {
+   void authorization_manager::remove_permission( const permission_object& permission, const storage_payer_info& payer ) {
       auto parent_idx = _chaindb.get_index<permission_object, by_parent>();
       auto range = parent_idx.equal_range(permission.id._id);
       EOS_ASSERT( range.first == range.second, action_validate_exception,
                   "Cannot remove a permission which has children. Remove the children first.");
 
-      _chaindb.erase( permission.usage_id, ram );
-      parent_idx.erase( permission, ram );
+      _chaindb.erase( permission.usage_id, payer );
+      parent_idx.erase( permission, payer );
    }
 
    void authorization_manager::update_permission_usage( const permission_object& permission ) {

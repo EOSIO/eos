@@ -178,6 +178,7 @@ namespace {
             prices_(rm.get_pricelist()),
             total_stake_(rm.get_account_stake_ratio(fc::time_point::now().sec_since_epoch(), account_).numerator),
             account_balance_(rm.get_account_balance(fc::time_point::now().sec_since_epoch(), account_,prices_)),
+            storage_usage_(rm.get_account_storage_usage(name)),
             resources_usage_(rm.get_account_usage(name)) {
                 init_resources_info();
                 init_account_resource_limits();
@@ -194,7 +195,19 @@ namespace {
         }
 
         int64_t get_ram_usage() const {
-            return resources_usage_.at(chain::resource_limits::ram_code);
+            return storage_usage_.ram_usage;
+        }
+
+        int64_t get_ram_owned() const {
+            return storage_usage_.ram_owned;
+        }
+
+        int64_t get_storage_usage() const {
+            return storage_usage_.storage_usage;
+        }
+
+        int64_t get_storage_owned() const {
+            return storage_usage_.storage_owned;
         }
 
         int64_t get_ram_qouta() const {
@@ -287,6 +300,7 @@ namespace {
         chain::resource_limits::pricelist prices_;
         uint64_t total_stake_;
         chain::resource_limits::account_balance account_balance_;
+        chain::resource_limits::account_storage_usage storage_usage_;
         std::map<chain::symbol_code, uint64_t> resources_usage_;
         std::map<chain::symbol_code, resource_info> resources_info_;
 
@@ -340,6 +354,9 @@ get_account_results chain_api_plugin_impl::get_account(const get_account_params&
     result.net_limit = resource_calc.get_net_limit();
     result.cpu_limit = resource_calc.get_cpu_limit();
     result.ram_usage = resource_calc.get_ram_usage();
+    result.ram_owned = resource_calc.get_ram_owned();
+    result.storage_usage = resource_calc.get_storage_usage();
+    result.storage_owned = resource_calc.get_storage_owned();
 
     result.ram_quota = resource_calc.get_ram_qouta();
     result.net_weight = resource_calc.get_net_weight();
@@ -599,7 +616,8 @@ get_table_rows_result chain_api_plugin_impl::walk_table_row_range(const get_tabl
                 ("primary", object.service.pk)
                 ("payer",   object.service.payer)
                 ("owner",   object.service.owner)
-                ("size",    object.service.size);
+                ("size",    object.service.size)
+                ("in_ram",  object.service.in_ram);
             result.rows.push_back(std::move(value));
         } else {
             result.rows.push_back(chaindb.value_at_cursor(cursor));

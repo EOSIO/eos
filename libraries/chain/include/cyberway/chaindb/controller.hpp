@@ -6,7 +6,7 @@
 
 #include <cyberway/chaindb/common.hpp>
 #include <cyberway/chaindb/cache_item.hpp>
-#include <cyberway/chaindb/ram_payer_info.hpp>
+#include <cyberway/chaindb/storage_payer_info.hpp>
 
 namespace cyberway { namespace chaindb {
     using fc::microseconds;
@@ -15,7 +15,7 @@ namespace cyberway { namespace chaindb {
     using eosio::chain::abi_def;
 
     template<class> struct object_to_table;
-    struct ram_payer_info;
+    struct storage_payer_info;
 
     class chaindb_controller final {
     public:
@@ -89,9 +89,9 @@ namespace cyberway { namespace chaindb {
         }
 
         template<typename Object, typename Lambda>
-        const Object& emplace(const ram_payer_info& ram, Lambda&& constructor) {
+        const Object& emplace(const storage_payer_info& payer, Lambda&& constructor) {
             auto midx = get_table<Object>();
-            auto res = midx.emplace(ram, std::forward<Lambda>(constructor));
+            auto res = midx.emplace(payer, std::forward<Lambda>(constructor));
             // should not be critical - object is stored in cache map
             return res.obj;
         }
@@ -103,26 +103,26 @@ namespace cyberway { namespace chaindb {
         }
 
         template<typename Object, typename Lambda>
-        int64_t modify(const Object& obj, const ram_payer_info& ram, Lambda&& updater) {
+        int64_t modify(const Object& obj, const storage_payer_info& payer, Lambda&& updater) {
             auto midx = get_table<Object>();
-            return midx.modify(obj, ram, std::forward<Lambda>(updater));
+            return midx.modify(obj, payer, std::forward<Lambda>(updater));
         }
 
         template<typename Object>
-        int64_t erase(const Object& obj, const ram_payer_info& ram = {}) {
+        int64_t erase(const Object& obj, const storage_payer_info& payer = {}) {
             auto midx = get_table<Object>();
-            return midx.erase(obj, ram);
+            return midx.erase(obj, payer);
         }
 
         template<typename Object>
-        int64_t erase(const primary_key_t pk, const ram_payer_info& ram = {}) {
+        int64_t erase(const primary_key_t pk, const storage_payer_info& payer = {}) {
             auto midx = get_table<Object>();
-            return midx.erase(midx.get(pk), ram);
+            return midx.erase(midx.get(pk), payer);
         }
 
         template<typename Object>
-        int64_t erase(const oid<Object>& id, const ram_payer_info& ram = {}) {
-            return erase<Object>(id._id, ram);
+        int64_t erase(const oid<Object>& id, const storage_payer_info& payer = {}) {
+            return erase<Object>(id._id, payer);
         }
 
         void restore_db();
@@ -176,17 +176,17 @@ namespace cyberway { namespace chaindb {
 
         primary_key_t available_pk(const table_request&);
 
-        int insert(const table_request&, const ram_payer_info&, primary_key_t, const char*, size_t);
-        int update(const table_request&, const ram_payer_info&, primary_key_t, const char*, size_t);
-        int remove(const table_request&, const ram_payer_info&, primary_key_t);
+        int insert(const table_request&, const storage_payer_info&, primary_key_t, const char*, size_t);
+        int update(const table_request&, const storage_payer_info&, primary_key_t, const char*, size_t);
+        int remove(const table_request&, const storage_payer_info&, primary_key_t);
 
-        int insert(const table_request&, primary_key_t, variant, const ram_payer_info&);
+        int insert(const table_request&, primary_key_t, variant, const storage_payer_info&);
 
-        int insert(cache_object&, variant, const ram_payer_info&);
-        int update(cache_object&, variant, const ram_payer_info&);
-        int remove(cache_object&, const ram_payer_info&);
+        int insert(cache_object&, variant, const storage_payer_info&);
+        int update(cache_object&, variant, const storage_payer_info&);
+        int remove(cache_object&, const storage_payer_info&);
 
-        void recalc_ram_usage(cache_object&, const ram_payer_info&);
+        void recalc_ram_usage(cache_object&, const storage_payer_info&);
 
         variant value_by_pk(const table_request& request, primary_key_t pk);
         variant value_at_cursor(const cursor_request& request);

@@ -12,12 +12,15 @@
 
 namespace cyberway { namespace chaindb {
     class chaindb_controller;
-    struct ram_payer_info;
+    struct storage_payer_info;
 }} // namespace cyberway::chaindb
 
 namespace eosio { namespace chain {
 
 namespace resource_limits {
+   using cyberway::chaindb::storage_payer_info;
+   using cyberway::chaindb::chaindb_controller;
+
    namespace impl {
       template<typename T>
       struct ratio {
@@ -45,6 +48,13 @@ namespace resource_limits {
       uint64_t stake;
       uint64_t ram;
    };
+
+   struct account_storage_usage {
+      uint64_t ram_usage;
+      uint64_t ram_owned;
+      uint64_t storage_usage;
+      uint64_t storage_owned;
+   };
    
    static auto const cpu_code = symbol(0,"CPU").to_symbol_code();
    static auto const net_code = symbol(0,"NET").to_symbol_code();
@@ -54,7 +64,7 @@ namespace resource_limits {
    
    class resource_limits_manager {
       public:
-         explicit resource_limits_manager(cyberway::chaindb::chaindb_controller& chaindb)
+         explicit resource_limits_manager(chaindb_controller& chaindb)
          :_chaindb(chaindb)
          {
          }
@@ -64,15 +74,15 @@ namespace resource_limits {
          void add_to_snapshot( const snapshot_writer_ptr& snapshot ) const;
          void read_from_snapshot( const snapshot_reader_ptr& snapshot );
 
-         cyberway::chaindb::ram_payer_info get_ram_payer(const account_name& owner = account_name());
+         storage_payer_info get_storage_payer(account_name owner = account_name());
 
-         void initialize_account( const account_name& account, const cyberway::chaindb::ram_payer_info& );
+         void initialize_account( const account_name& account, const storage_payer_info& );
          void set_block_parameters( const elastic_limit_parameters& cpu_limit_parameters, const elastic_limit_parameters& net_limit_parameters );
 
          void update_account_usage( const flat_set<account_name>& accounts, uint32_t ordinal );
          void add_transaction_usage( const flat_set<account_name>& accounts, uint64_t cpu_usage, uint64_t net_usage, fc::time_point now );
 
-         void add_pending_ram_usage( const account_name account, int64_t ram_delta );
+         void add_storage_usage( const storage_payer_info& );
 
          void process_block_usage( uint32_t block_num );
 
@@ -90,10 +100,11 @@ namespace resource_limits {
 
          account_balance get_account_balance(int64_t now, const account_name& account, const pricelist&);
 
+         account_storage_usage get_account_storage_usage(const account_name& account) const;
          std::map<symbol_code, uint64_t> get_account_usage(const account_name& account) const;
 
       private:
-         cyberway::chaindb::chaindb_controller& _chaindb;
+         chaindb_controller& _chaindb;
    };
 } } } /// eosio::chain
 

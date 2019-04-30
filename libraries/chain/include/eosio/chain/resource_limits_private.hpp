@@ -103,6 +103,9 @@ using namespace int_arithmetic;
       usage_accumulator        cpu_usage;
 
       uint64_t                 ram_usage = 0;
+      uint64_t                 ram_owned = 0;
+      uint64_t                 storage_usage = 0;
+      uint64_t                 storage_owned = 0;
    };
 
    using resource_usage_table = cyberway::chaindb::table_container<
@@ -153,13 +156,13 @@ using namespace int_arithmetic;
       usage_accumulator average_block_cpu_usage;
       
       uint64_t ram_usage = 0ULL;
+      uint64_t storage_usage = 0ULL;
 
       void update_virtual_net_limit( const resource_limits_config_object& cfg );
       void update_virtual_cpu_limit( const resource_limits_config_object& cfg );
 
       uint64_t pending_net_usage = 0ULL;
       uint64_t pending_cpu_usage = 0ULL;
-      uint64_t pending_ram_usage = 0ULL;
 
       /**
        * The virtual number of bytes that would be consumed over blocksize_average_window_ms
@@ -198,7 +201,7 @@ using namespace int_arithmetic;
 
 CHAINDB_SET_TABLE_TYPE(eosio::chain::resource_limits::resource_usage_object,         eosio::chain::resource_limits::resource_usage_table)
 CHAINDB_SET_TABLE_TYPE(eosio::chain::resource_limits::resource_limits_config_object, eosio::chain::resource_limits::resource_limits_config_table)
-CHAINDB_SET_TABLE_TYPE(eosio::chain::resource_limits::resource_limits_state_object, eosio::chain::resource_limits::resource_limits_state_table)
+CHAINDB_SET_TABLE_TYPE(eosio::chain::resource_limits::resource_limits_state_object,  eosio::chain::resource_limits::resource_limits_state_table)
 
 CHAINDB_TAG(eosio::chain::resource_limits::resource_usage_object,         resusage)
 CHAINDB_TAG(eosio::chain::resource_limits::resource_limits_config_object, resconfig)
@@ -206,6 +209,14 @@ CHAINDB_TAG(eosio::chain::resource_limits::resource_limits_state_object,  ressta
 
 FC_REFLECT(eosio::chain::resource_limits::usage_accumulator, (last_ordinal)(value_ex)(consumed))
 
-FC_REFLECT(eosio::chain::resource_limits::resource_usage_object, (id)(owner)(net_usage)(cpu_usage)(ram_usage))
-FC_REFLECT(eosio::chain::resource_limits::resource_limits_config_object, (id)(cpu_limit_parameters)(net_limit_parameters)(account_cpu_usage_average_window)(account_net_usage_average_window))
-FC_REFLECT(eosio::chain::resource_limits::resource_limits_state_object, (id)(average_block_net_usage)(average_block_cpu_usage)(ram_usage)(pending_net_usage)(pending_cpu_usage)(pending_ram_usage)(virtual_net_limit)(virtual_cpu_limit)(virtual_ram_limit))
+FC_REFLECT(eosio::chain::resource_limits::resource_usage_object, (id)(owner)(net_usage)(cpu_usage)
+    (ram_usage)(ram_owned)(storage_usage)(storage_owned))
+
+FC_REFLECT(eosio::chain::resource_limits::resource_limits_config_object, (id)
+    (cpu_limit_parameters)(net_limit_parameters)
+    (account_cpu_usage_average_window)(account_net_usage_average_window))
+
+FC_REFLECT(eosio::chain::resource_limits::resource_limits_state_object, (id)
+    (average_block_net_usage)(average_block_cpu_usage)(ram_usage)(storage_usage)
+    (pending_net_usage)(pending_cpu_usage)
+    (virtual_net_limit)(virtual_cpu_limit)(virtual_ram_limit))

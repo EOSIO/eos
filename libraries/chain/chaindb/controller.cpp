@@ -7,8 +7,8 @@
 #include <cyberway/chaindb/undo_state.hpp>
 #include <cyberway/chaindb/mongo_driver.hpp>
 #include <cyberway/chaindb/abi_info.hpp>
-#include <cyberway/chaindb/ram_calculator.hpp>
-#include <cyberway/chaindb/ram_payer_info.hpp>
+#include <cyberway/chaindb/storage_calculator.hpp>
+#include <cyberway/chaindb/storage_payer_info.hpp>
 
 #include <eosio/chain/name.hpp>
 #include <eosio/chain/symbol.hpp>
@@ -112,18 +112,47 @@ namespace cyberway { namespace chaindb {
 
     //------------------------------------
 
-    void ram_payer_info::add_usage(const account_name new_payer, const int64_t delta) const {
-        if (BOOST_UNLIKELY(new_payer.empty() || !delta)) {
-            return;
+    void storage_payer_info::calc_usage(const table_info& table, const object_value& obj) {
+        // TODO: is it a crutch?
+        if (BOOST_UNLIKELY(payer == eosio::chain::config::system_account_name)) {
+            size  = 0;
+            delta = 0;
+        } else if (BOOST_UNLIKELY(payer.empty())) {
+            size  = 0;
+            delta = 0;
+        } else if (!size) {
+            size  = chaindb::calc_storage_usage(*table.table, obj.value);
+            delta = 0;
         }
+    }
 
-        if (BOOST_LIKELY(!!apply_ctx)) {
-            apply_ctx->add_ram_usage(new_payer, delta);
-        } else if (!!resource_mng) {
-            resource_mng->add_pending_ram_usage(new_payer, delta);
+    void storage_payer_info::add_usage() {
+        // TODO: is it a crutch?
+        if (BOOST_UNLIKELY(payer == eosio::chain::config::system_account_name)) {
+            // do nothing
+        } else if (BOOST_UNLIKELY(payer.empty() || (!delta && !size))) {
+            // do nothing
+        } else if (BOOST_LIKELY(!!apply_ctx)) {
+            apply_ctx->add_storage_usage(*this);
         } else if (!!transaction_ctx) {
-            transaction_ctx->add_ram_usage(new_payer, delta);
+            transaction_ctx->add_storage_usage(*this);
+        } else if (!!resource_mng) {
+            resource_mng->add_storage_usage(*this);
         }
+    }
+
+    void storage_payer_info::get_payer_from(const object_value& obj) {
+        owner  = obj.service.owner;
+        payer  = obj.service.payer;
+        size   = obj.service.size;
+        in_ram = obj.service.in_ram;
+    }
+
+    void storage_payer_info::set_payer_in(object_value& obj) const {
+        obj.service.owner  = owner;
+        obj.service.payer  = payer;
+        obj.service.size   = size;
+        obj.service.in_ram = in_ram;
     }
 
     //------------------------------------
@@ -193,6 +222,10 @@ namespace cyberway { namespace chaindb {
                 driver_.current(cursor);
             }
             return cursor;
+        }
+
+        const cursor_info& current(const cursor_request& request) const {
+            return current(driver_.cursor(request));
         }
 
         const cursor_info& lower_bound(const index_request& request, const char* key, const size_t size) const {
@@ -281,7 +314,7 @@ namespace cyberway { namespace chaindb {
         }
 
         cache_object_ptr get_cache_object(const cursor_request& req, const bool with_blob) {
-            auto& cursor = current(driver_.cursor(req));
+            auto& cursor = current(req);
 
             CYBERWAY_ASSERT(end_primary_key != cursor.pk, driver_absent_object_exception,
                 "Requesting object from the end of the table ${table}",
@@ -306,37 +339,37 @@ namespace cyberway { namespace chaindb {
 
         // From contracts
         int insert(
-            const table_request& request, const ram_payer_info& ram,
+            const table_request& request, const storage_payer_info& storage,
             const primary_key_t pk, const char* data, const size_t size
         ) {
             auto table = get_table(request);
             auto value = table.abi->to_object(table, data, size);
             auto obj = object_value{{table, pk}, std::move(value)};
 
-            return insert(table, ram, obj);
+            return insert(table, storage, obj);
         }
 
         // From internal
-        int insert(cache_object& itm, variant value, const ram_payer_info& ram) {
+        int insert(cache_object& itm, variant value, const storage_payer_info& storage) {
             auto table = get_table(itm);
             auto obj = object_value{{table, itm.pk()}, std::move(value)};
 
-            auto delta = insert(table, ram, obj);
+            auto delta = insert(table, storage, obj);
             itm.set_object(std::move(obj));
 
             return delta;
         }
 
         // From genesis
-        int insert(const table_request& request, primary_key_t pk, variant value, const ram_payer_info& ram) {
+        int insert(const table_request& request, primary_key_t pk, variant value, const storage_payer_info& storage) {
             auto table = get_table(request);
             auto obj = object_value{{table, pk}, std::move(value)};
-            return insert(table, ram, obj);
+            return insert(table, storage, obj);
         }
 
         // From contracts
         int update(
-            const table_request& request, const ram_payer_info& ram,
+            const table_request& request, storage_payer_info storage,
             const primary_key_t pk, const char* data, const size_t size
         ) {
             auto table = get_table(request);
@@ -344,47 +377,51 @@ namespace cyberway { namespace chaindb {
             auto obj = object_value{{table, pk}, std::move(value)};
             auto orig_obj = object_by_pk(table, obj.pk());
 
-            auto delta = update(table, ram, obj, std::move(orig_obj));
+            storage.in_ram = orig_obj.service.in_ram;
+            auto delta = update(table, std::move(storage), obj, std::move(orig_obj));
             cache_.emplace(table, std::move(obj));
 
             return delta;
         }
 
         // From internal
-        int update(cache_object& itm, variant value, const ram_payer_info& ram) {
+        int update(cache_object& itm, variant value, storage_payer_info storage) {
             auto table = get_table(itm);
             auto obj = object_value{{table, itm.pk()}, std::move(value)};
 
-            auto delta = update(table, ram, obj, itm.object());
+            storage.in_ram = itm.service().in_ram;
+            auto delta = update(table, std::move(storage), obj, itm.object());
             itm.set_object(std::move(obj));
 
             return delta;
         }
 
-        void recalc_ram_usage(cache_object& itm, const ram_payer_info& ram_payer) {
+        void recalc_ram_usage(cache_object& itm, storage_payer_info storage) {
             auto table = get_table(itm);
             auto obj = itm.object();
             auto orig_obj = object_by_pk(table, obj.pk());
 
-            obj.service.in_ram = ram_payer.in_ram;
-            update(table, ram_payer, obj, std::move(orig_obj));
+            // obj.service.in_ram = ram_payer.in_ram;
+            storage.size  = orig_obj.service.size;
+            storage.delta = 0;
+            update(table, storage, obj, std::move(orig_obj));
             itm.set_service(std::move(obj.service));
         }
 
         // From contracts
-        int remove(const table_request& request, const ram_payer_info& ram, const primary_key_t pk) {
+        int remove(const table_request& request, const storage_payer_info& storage, const primary_key_t pk) {
             auto table = get_table(request);
             auto obj = object_by_pk(table, pk);
 
-            return remove(table, ram, obj);
+            return remove(table, storage, obj);
         }
 
         // From internal
-        int remove(cache_object& itm, const ram_payer_info& ram) {
+        int remove(cache_object& itm, const storage_payer_info& storage) {
             auto table = get_table(itm);
             auto orig_obj = itm.object();
 
-            return remove(table, ram, std::move(orig_obj));
+            return remove(table, storage, std::move(orig_obj));
         }
 
         object_value object_by_pk(const table_request& request, const primary_key_t pk) {
@@ -393,7 +430,7 @@ namespace cyberway { namespace chaindb {
         }
 
         object_value object_at_cursor(const cursor_request& request) {
-            return object_at_cursor(current(driver_.cursor(request)));
+            return object_at_cursor(current(request));
         }
 
     private:
@@ -580,76 +617,79 @@ namespace cyberway { namespace chaindb {
             abi_map_.emplace(code, std::move(info));
         }
 
-        size_t calc_ram_usage(const ram_payer_info& ram, const table_info& table, const object_value& obj) {
-            if (ram.precalc_size) return ram.precalc_size;
-            return chaindb::calc_ram_usage(*table.table, obj.value);
-        }
-
-        int insert(const table_info& table, const ram_payer_info& ram, object_value& obj) {
+        int insert(const table_info& table, storage_payer_info charge, object_value& obj) {
             validate_object(table, obj, obj.pk());
-            obj.service.revision = undo_.revision();
-            obj.service.size     = calc_ram_usage(ram, table, obj);
-            obj.service.payer    = ram.payer;
 
-            if (ram.owner.empty()) {
-                obj.service.owner = ram.payer;
-            } else {
-                obj.service.owner = ram.owner;
-            }
+            charge.calc_usage(table, obj);
+            charge.in_ram = true;
+            charge.delta  = charge.size;
 
             // charge the payer
-            auto delta = obj.service.size;
-            ram.add_usage(ram.payer, delta);
+            charge.add_usage();
+
+            // insert object to storage
+            charge.set_payer_in(obj);
+            obj.service.revision = undo_.revision();
 
             undo_.insert(table, obj);
-            return delta;
+
+            return charge.delta;
         }
 
-        int update(const table_info& table, const ram_payer_info& ram, object_value& obj, object_value orig_obj) {
+        int update(const table_info& table, storage_payer_info charge, object_value& obj, object_value orig_obj) {
             validate_object(table, obj, obj.pk());
-            obj.service.revision = undo_.revision();
-            obj.service.size     = calc_ram_usage(ram, table, obj);
 
-            if (ram.payer.empty()) {
-                obj.service.payer = orig_obj.service.payer;
-            } else {
-                obj.service.payer = ram.payer;
+            if (charge.owner.empty()) {
+                charge.owner = orig_obj.service.owner;
             }
 
-            if (ram.owner.empty()) {
-                obj.service.owner = orig_obj.service.owner;
-            } else {
-                obj.service.owner = ram.owner;
+            if (charge.payer.empty()) {
+                charge.payer = orig_obj.service.payer;
             }
 
-            auto delta = obj.service.size - orig_obj.service.size;
+            charge.calc_usage(table, obj);
+            auto delta = charge.size - orig_obj.service.size;
 
-            if (obj.service.payer != orig_obj.service.payer) {
+            if (charge.payer  != orig_obj.service.payer ||
+                charge.owner  != orig_obj.service.owner ||
+                charge.in_ram != orig_obj.service.in_ram
+            ) {
+                auto refund = charge;
+                refund.get_payer_from(orig_obj);
+                refund.delta = -orig_obj.service.size;
                 // refund the existing payer
-                ram.add_usage(orig_obj.service.payer, -orig_obj.service.size);
-                // charge the new payer
-                ram.add_usage(obj.service.payer, obj.service.size);
+                refund.add_usage();
+
+                charge.delta = charge.size;
             } else {
-                // charge/refund the existing payer the difference
-                ram.add_usage(obj.service.payer, delta);
+                charge.delta = delta;
             }
+
+            // charge the new payer
+            charge.add_usage();
+
+            // update object in storage
+            charge.set_payer_in(obj);
+            obj.service.revision = undo_.revision();
 
             undo_.update(table, std::move(orig_obj), obj);
 
             return delta;
         }
 
-        int remove(const table_info& table, const ram_payer_info& ram, object_value orig_obj) {
+        int remove(const table_info& table, storage_payer_info refund, object_value orig_obj) {
             auto pk = orig_obj.pk();
-            auto delta = -orig_obj.service.size;
+
+            refund.get_payer_from(orig_obj);
+            refund.delta  = -orig_obj.service.size;
 
             // refund the payer
-            ram.add_usage(orig_obj.service.payer, delta);
+            refund.add_usage();
 
             undo_.remove(table, std::move(orig_obj));
             cache_.remove(table, pk);
 
-            return delta;
+            return refund.delta;
         }
     }; // class chaindb_controller::controller_impl_
 
@@ -778,8 +818,7 @@ namespace cyberway { namespace chaindb {
     }
 
     primary_key_t chaindb_controller::current(const cursor_request& request) {
-        auto& driver = impl_->driver_;
-        return driver.current(driver.cursor(request)).pk;
+        return impl_->current(request).pk;
     }
 
     primary_key_t chaindb_controller::next(const cursor_request& request) {
@@ -809,43 +848,43 @@ namespace cyberway { namespace chaindb {
     }
 
     int chaindb_controller::insert(
-        const table_request& request, const ram_payer_info& ram,
+        const table_request& request, const storage_payer_info& storage,
         primary_key_t pk, const char* data, size_t size
     ) {
-         return impl_->insert(request, ram, pk, data, size);
+         return impl_->insert(request, storage, pk, data, size);
     }
 
     int chaindb_controller::update(
-        const table_request& request, const ram_payer_info& ram,
+        const table_request& request, const storage_payer_info& storage,
         primary_key_t pk, const char* data, size_t size
     ) {
-        return impl_->update(request, ram, pk, data, size);
+        return impl_->update(request, storage, pk, data, size);
     }
 
-    int chaindb_controller::remove(const table_request& request, const ram_payer_info& ram, primary_key_t pk) {
-        return impl_->remove(request, ram, pk);
+    int chaindb_controller::remove(const table_request& request, const storage_payer_info& storage, primary_key_t pk) {
+        return impl_->remove(request, storage, pk);
     }
 
     int chaindb_controller::insert(
-        const table_request& request, primary_key_t pk, variant data, const ram_payer_info& ram
+        const table_request& request, primary_key_t pk, variant data, const storage_payer_info& storage
     ) {
-         return impl_->insert(request, pk, std::move(data), ram);
+         return impl_->insert(request, pk, std::move(data), storage);
     }
 
-    int chaindb_controller::insert(cache_object& itm, variant data, const ram_payer_info& ram) {
-        return impl_->insert(itm, std::move(data), ram);
+    int chaindb_controller::insert(cache_object& itm, variant data, const storage_payer_info& storage) {
+        return impl_->insert(itm, std::move(data), storage);
     }
 
-    int chaindb_controller::update(cache_object& itm, variant data, const ram_payer_info& ram) {
-        return impl_->update(itm, std::move(data), ram);
+    int chaindb_controller::update(cache_object& itm, variant data, const storage_payer_info& storage) {
+        return impl_->update(itm, std::move(data), storage);
     }
 
-    int chaindb_controller::remove(cache_object& itm, const ram_payer_info& ram) {
-        return impl_->remove(itm, ram);
+    int chaindb_controller::remove(cache_object& itm, const storage_payer_info& storage) {
+        return impl_->remove(itm, storage);
     }
 
-    void chaindb_controller::recalc_ram_usage(cache_object& itm, const ram_payer_info& ram) {
-        impl_->recalc_ram_usage(itm, ram);
+    void chaindb_controller::recalc_ram_usage(cache_object& itm, const storage_payer_info& storage) {
+        impl_->recalc_ram_usage(itm, storage);
     }
 
     variant chaindb_controller::value_by_pk(const table_request& request, primary_key_t pk) {

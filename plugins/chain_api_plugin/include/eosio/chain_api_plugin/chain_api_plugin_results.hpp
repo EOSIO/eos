@@ -38,6 +38,9 @@ namespace eosio {
        account_resource_limit     net_limit;
        account_resource_limit     cpu_limit;
        int64_t                    ram_usage = 0;
+       int64_t                    ram_owned = 0;
+       int64_t                    storage_usage = 0;
+       int64_t                    storage_owned = 0;
        std::vector<permission>    permissions;
        fc::variant                total_resources;
        fc::variant                self_delegated_bandwidth;
