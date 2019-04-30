@@ -1,22 +1,11 @@
 {
     "eosio":
     {
-        "pipeline-branch": "master",
-        "environment":
-        {
-        }
+        "pipeline-branch": "master"
     },
     "eos-multiversion-tests":
     {
         "pipeline-branch": "protocol-features-sync-nodes",
-        "configuration":
-        [
-            "170=v1.7.0"
-        ]
-    },
-    "eos-multiversion-beta-tests":
-    {
-        "pipeline-branch": "zach-pipeline-config-pfsn",
         "configuration":
         [
             "170=v1.7.0"
