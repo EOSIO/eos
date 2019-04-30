@@ -224,6 +224,10 @@ namespace cyberway { namespace chaindb {
             return cursor;
         }
 
+        const cursor_info& current(const cursor_request& request) const {
+            return current(driver_.cursor(request));
+        }
+
         const cursor_info& lower_bound(const index_request& request, const char* key, const size_t size) const {
             auto  index  = get_index(request);
             auto  value  = index.abi->to_object(index, key, size);
@@ -310,7 +314,7 @@ namespace cyberway { namespace chaindb {
         }
 
         cache_object_ptr get_cache_object(const cursor_request& req, const bool with_blob) {
-            auto& cursor = current(driver_.cursor(req));
+            auto& cursor = current(req);
 
             CYBERWAY_ASSERT(end_primary_key != cursor.pk, driver_absent_object_exception,
                 "Requesting object from the end of the table ${table}",
@@ -426,7 +430,7 @@ namespace cyberway { namespace chaindb {
         }
 
         object_value object_at_cursor(const cursor_request& request) {
-            return object_at_cursor(current(driver_.cursor(request)));
+            return object_at_cursor(current(request));
         }
 
     private:
@@ -814,8 +818,7 @@ namespace cyberway { namespace chaindb {
     }
 
     primary_key_t chaindb_controller::current(const cursor_request& request) {
-        auto& driver = impl_->driver_;
-        return driver.current(driver.cursor(request)).pk;
+        return impl_->current(request).pk;
     }
 
     primary_key_t chaindb_controller::next(const cursor_request& request) {
