@@ -40,7 +40,15 @@ struct section_ee_header {
 };
 
 struct vote_ee_object {
+    account_name voter;
     int16_t weight;
+    uint64_t time;
+};
+
+struct reblog_ee_object {
+    account_name account;
+    string title;
+    string body;
     uint64_t time;
 };
 
@@ -56,7 +64,8 @@ struct message_ee_object {
     asset author_reward;
     asset benefactor_reward;
     asset curator_reward;
-    flat_map<name, vote_ee_object> votes;
+    vector<vote_ee_object> votes;
+    vector<reblog_ee_object> reblogs;
 };
 
 }} // cyberway::genesis
@@ -65,6 +74,7 @@ FC_REFLECT(cyberway::genesis::ee_table_header, (code)(name)(abi_type)(count))
 FC_REFLECT_ENUM(cyberway::genesis::section_ee_type, (messages))
 FC_REFLECT(cyberway::genesis::section_ee_header, (type))
 
-FC_REFLECT(cyberway::genesis::vote_ee_object, (weight)(time))
+FC_REFLECT(cyberway::genesis::vote_ee_object, (voter)(weight)(time))
+FC_REFLECT(cyberway::genesis::reblog_ee_object, (account)(title)(body)(time))
 FC_REFLECT(cyberway::genesis::message_ee_object, (parent_author)(parent_permlink)(author)(permlink)(title)(body)(tags)
-    (net_rshares)(author_reward)(benefactor_reward)(curator_reward)(votes))
+    (net_rshares)(author_reward)(benefactor_reward)(curator_reward)(votes)(reblogs))
