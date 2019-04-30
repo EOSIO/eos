@@ -246,7 +246,7 @@ fido_registration_result fido_device::do_registration(std::array<uint8_t, 32> cl
    public_key::public_key_data_type pub_key_data;
    pub_key_data.data[0] = 0x02 + (pub_y[31]&1); //even or odd Y
    memcpy(pub_key_data.data+1, pub_x.data(), 32); //copy in the 32 bytes of X
-   public_key pub_key(pub_key_data, public_key::USER_PRESENCE_NONE, "keosd.invalid");
+   public_key pub_key(pub_key_data, public_key::USER_PRESENCE_PRESENT, "keosd.invalid");
 
    //fc::crypto::public_key still doesn't allow creation of itself with an instance of a storage_type
    fc::datastream<size_t> dsz;
