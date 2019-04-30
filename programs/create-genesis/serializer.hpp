@@ -42,6 +42,9 @@ enum class stored_contract_tables: int {
     delegation,     rdelegation,
     withdrawal,
     witness_vote,   witness_info,
+    reward_pool,    // post_limits,
+    messages,       permlinks,
+    votes,
     // the following are system tables, but it's simpler to have them here
     stake_agents,   stake_grants,
     stake_stats,    stake_params,
@@ -126,7 +129,7 @@ public:
     }
 
     template<typename T, typename Lambda>
-    const T emplace(const ram_payer_info& ram, Lambda&& constructor) {
+    const T emplace(const name ram_payer, Lambda&& constructor) {
         T obj(constructor, 0);
         constexpr auto tid = T::type_id;
         auto& id = autoincrement[tid];
@@ -150,15 +153,11 @@ public:
         return obj;
     }
 
-    // TODO: there should be way to get type from table name
-    void insert(//const string& type,
-        const table_request& req, primary_key_t pk, variant v, const ram_payer_info& ram
-    ) {
-        EOS_ASSERT(abis.count(req.code) > 0, genesis_exception, "ABI not found");
-        auto& ser = abis[req.code];
+    void insert(primary_key_t pk, uint64_t scope, const variant& v, name ram_payer = {}) {
+        EOS_ASSERT(abis.count(_section.code) > 0, genesis_exception, "ABI not found");
+        auto& ser = abis[_section.code];
         bytes data = ser.variant_to_binary(_section.abi_type, v, abi_serializer_max_time);
-        table_row record{ram.payer, data, pk, req.scope};
-        fc::raw::pack(out, record);
+        fc::raw::pack(out, table_row{ram_payer, data, pk, scope});
         _row_count--;
     }
 };
