@@ -40,7 +40,7 @@
     },
     "eos-multiversion-beta-tests":
     {
-        "pipeline-branch": "protocol-features-sync-nodes",
+        "pipeline-branch": "zach-pipeline-config-pfsn",
         "configuration":
         [
             "170=v1.7.0"
