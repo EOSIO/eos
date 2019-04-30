@@ -47,20 +47,22 @@ struct blocklog {
 };
 
 struct report_time {
-    report_time()
-    : _start(std::chrono::high_resolution_clock::now()) {
+    report_time(std::string& desc)
+    : _start(std::chrono::high_resolution_clock::now())
+    , _desc(desc) {
     }
 
     void report() {
         const auto duration = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - _start).count() / 1000;
-        ilog("blocklog action took ${t} msec", ("t",duration));
+        ilog("eosio-blocklog - ${desc} took ${t} msec", ("desc", _desc)("t", duration));
     }
 
     const std::chrono::high_resolution_clock::time_point _start;
+    const std::string                                    _desc;
 };
 
 void blocklog::read_log() {
-   report_time rt;
+   report_time rt("reading log");
    block_log block_logger(blocks_dir);
    const auto end = block_logger.read_head();
    EOS_ASSERT( end, block_log_exception, "No blocks found in block log" );
@@ -228,7 +230,7 @@ struct trim_data {            //used by trim_blocklog_front(), trim_blocklog_end
 
 
 trim_data::trim_data(bfs::path block_dir) {
-   report_time rt;
+   report_time rt("trimming log");
    using namespace std;
    block_file_name = block_dir / "blocks.log";
    blk_in = fopen(block_file_name.c_str(), "r");
@@ -239,8 +241,9 @@ trim_data::trim_data(bfs::path block_dir) {
    EOS_ASSERT( size == 1, block_log_unsupported_version, "invalid format for file ${file}", ("file",block_file_name.string()));
    cout << "block log version= " << version << '\n';
    EOS_ASSERT( version == 1 || version == 2, block_log_unsupported_version, "block log version ${v} is not supported", ("v",version));
-   if (version == 1)
+   if (version == 1) {
       first_block = 1;
+   }
    else {
       size = fread((void *) &first_block, sizeof(first_block), 1, blk_in);
       EOS_ASSERT(size == 1, block_log_exception, "invalid format for file ${file}",
@@ -258,7 +261,7 @@ trim_data::trim_data(bfs::path block_dir) {
 void trim_data::find_block_pos(uint32_t n) {
    //get file position of block n from blocks.index then confirm block n is found in blocks.log at that position
    //sets fpos0 and fpos1, throws exception if block at fpos0 is not block n
-   report_time rt;
+   report_time rt("finding block position");
    using namespace std;
    index_pos = sizeof(uint64_t) * (n - first_block);
    auto status = fseek(ind_in, index_pos, SEEK_SET);
@@ -294,7 +297,7 @@ void trim_data::find_block_pos(uint32_t n) {
 }
 
 int trim_blocklog_end(bfs::path block_dir, uint32_t n) {       //n is last block to keep (remove later blocks)
-   report_time rt;
+   report_time rt("trimming blocklog end");
    using namespace std;
    trim_data td(block_dir);
    cout << "\nIn directory " << block_dir << " will trim all blocks after block " << n << " from " << td.block_file_name << " and " << td.index_file_name << ".\n";
@@ -316,7 +319,7 @@ int trim_blocklog_end(bfs::path block_dir, uint32_t n) {       //n is last block
 }
 
 int trim_blocklog_front(bfs::path block_dir, uint32_t n) {        //n is first block to keep (remove prior blocks)
-   report_time rt;
+   report_time rt("trimming blocklog start");
    using namespace std;
    cout << "\nIn directory " << block_dir << " will trim all blocks before block " << n << " from blocks.log and blocks.index.\n";
    trim_data td(block_dir);
@@ -501,7 +504,7 @@ int trim_blocklog_front(bfs::path block_dir, uint32_t n) {        //n is first b
 
 
 int make_index(const bfs::path& block_dir, const bfs::path& out_file) {
-   report_time rt;
+   report_time rt("making index");
    //this code makes blocks.index much faster than nodeos (in recent test 80 seconds vs. 90 minutes)
    using namespace std;
    bfs::path block_file_name = block_dir / "blocks.log";
@@ -662,7 +665,6 @@ void smoke_test(bfs::path block_dir) {
    for (uint32_t n = td.first_block; ; n += delta) {
       if (n > td.last_block)
          n = td.last_block;
-      cout << '\n';
       td.find_block_pos(n);                                 //check block 'n' is where blocks.index says
       if (n == td.last_block)
          break;
