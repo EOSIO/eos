@@ -1,7 +1,7 @@
 {
-    "eosio":
+    "eosio-build-unpinned":
     {
-        "pipeline-branch": "master"
+        "pipeline-branch": "protocol-features-sync-nodes"
     },
     "eos-multiversion-tests":
     {
