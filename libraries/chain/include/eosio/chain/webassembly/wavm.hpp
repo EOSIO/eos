@@ -675,26 +675,51 @@ struct intrinsic_function_invoker<WasmSig, void, MethodSig, Cls, Params...> {
    }
 };
 
+template<typename T>
+struct void_ret_wrapper {
+   using type = T;
+};
+
+template<>
+struct void_ret_wrapper<void> {
+   using type = char;
+};
+
+template<typename T>
+using void_ret_wrapper_t = typename void_ret_wrapper<T>::type;
+
 template<typename, typename>
 struct intrinsic_function_invoker_wrapper;
 
 template<typename WasmSig, typename Cls, typename Ret, typename... Params>
 struct intrinsic_function_invoker_wrapper<WasmSig, Ret (Cls::*)(Params...)> {
+   static_assert( !(std::is_pointer_v<Ret> && alignof(std::remove_pointer_t<void_ret_wrapper_t<Ret>>) != 1) &&
+		  !(std::is_lvalue_reference_v<Ret> && alignof(std::remove_reference_t<void_ret_wrapper_t<Ret>>) != 1), 
+		  "intrinsics should only return a reference or pointer with single byte alignment");
    using type = intrinsic_function_invoker<WasmSig, Ret, Ret (Cls::*)(Params...), Cls, Params...>;
 };
 
 template<typename WasmSig, typename Cls, typename Ret, typename... Params>
 struct intrinsic_function_invoker_wrapper<WasmSig, Ret (Cls::*)(Params...) const> {
+   static_assert( !(std::is_pointer_v<Ret> && alignof(std::remove_pointer_t<void_ret_wrapper_t<Ret>>) != 1) &&
+		  !(std::is_lvalue_reference_v<Ret> && alignof(std::remove_reference_t<void_ret_wrapper_t<Ret>>) != 1), 
+		  "intrinsics should only return a reference or pointer with single byte alignment");
    using type = intrinsic_function_invoker<WasmSig, Ret, Ret (Cls::*)(Params...) const, Cls, Params...>;
 };
 
 template<typename WasmSig, typename Cls, typename Ret, typename... Params>
 struct intrinsic_function_invoker_wrapper<WasmSig, Ret (Cls::*)(Params...) volatile> {
+   static_assert( !(std::is_pointer_v<Ret> && alignof(std::remove_pointer_t<void_ret_wrapper_t<Ret>>) != 1) &&
+		  !(std::is_lvalue_reference_v<Ret> && alignof(std::remove_reference_t<void_ret_wrapper_t<Ret>>) != 1), 
+		  "intrinsics should only return a reference or pointer with single byte alignment");
    using type = intrinsic_function_invoker<WasmSig, Ret, Ret (Cls::*)(Params...) volatile, Cls, Params...>;
 };
 
 template<typename WasmSig, typename Cls, typename Ret, typename... Params>
 struct intrinsic_function_invoker_wrapper<WasmSig, Ret (Cls::*)(Params...) const volatile> {
+   static_assert( !(std::is_pointer_v<Ret> && alignof(std::remove_pointer_t<void_ret_wrapper_t<Ret>>) != 1) &&
+		  !(std::is_lvalue_reference_v<Ret> && alignof(std::remove_reference_t<void_ret_wrapper_t<Ret>>) != 1), 
+		  "intrinsics should only return a reference or pointer with single byte alignment");
    using type = intrinsic_function_invoker<WasmSig, Ret, Ret (Cls::*)(Params...) const volatile, Cls, Params...>;
 };
 

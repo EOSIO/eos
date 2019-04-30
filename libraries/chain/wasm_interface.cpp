@@ -1010,6 +1010,7 @@ class action_api : public context_aware_api {
       }
 
       int action_data_size() {
+	 std::cout << "ADS " << context.get_action().data.size() << "\n";
          return context.get_action().data.size();
       }
 
