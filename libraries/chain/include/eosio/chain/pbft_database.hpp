@@ -485,7 +485,6 @@ namespace eosio {
                                 tag<by_num>,
                                 composite_key<
                                         pbft_checkpoint_state,
-//                                        member<pbft_checkpoint_state, bool, &pbft_checkpoint_state::is_stable>,
                                         member<pbft_checkpoint_state, uint32_t, &pbft_checkpoint_state::block_num>
                                 >,
                                 composite_key_compare<less<>>

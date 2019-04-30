@@ -357,9 +357,6 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                         ("n",block_header::num_from_id(block->id()))("t",block->timestamp)
                         ("count",block->transactions.size())("lib",chain.last_irreversible_block_num())
                         ("confs", block->confirmed)("latency", (fc::time_point::now() - block->timestamp).count()/1000 ) );
-                if (chain.under_upgrade()) {
-                   wlog("upgrading...");
-                }
             }
          }
       }
@@ -983,6 +980,7 @@ producer_plugin::snapshot_information producer_plugin::create_snapshot() const {
 }
 
 void producer_plugin::set_pbft_current_view(const uint32_t view) {
+    //this is used to recover from a disaster, do not set this unless you have to do so.
     pbft_controller& pbft_ctrl = app().get_plugin<chain_plugin>().pbft_ctrl();
     pbft_ctrl.state_machine.manually_set_current_view(view);
 }
@@ -1107,8 +1105,6 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
    }
 
    auto new_version = chain.is_upgraded();
-   ilog("producer plugin before abort_block: new version is ${nv}, upgrading is ${u}", ("nv", chain.is_upgraded())("u", chain.under_upgrade()));
-
 
     if (_pending_block_mode == pending_block_mode::producing && !new_version) {
       // determine if our watermark excludes us from producing at this point
@@ -1153,7 +1149,6 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
       }
 
       chain.abort_block();
-      ilog("producer plugin after abort_block: new version is ${nv}, upgrading is ${u}", ("nv", chain.is_upgraded())("u", chain.under_upgrade()));
       chain.start_block(block_time, blocks_to_confirm, signature_provider);
    } FC_LOG_AND_DROP();
 

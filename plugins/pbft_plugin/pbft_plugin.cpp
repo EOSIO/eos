@@ -147,7 +147,6 @@ namespace eosio {
                   "*                                  *\n"
                   "************************************\n" );
             upgraded = true;
-            ilog("new version is ${nv}, upgrading is ${u}",("nv", chain.is_upgraded())("u", chain.under_upgrade()));
         }
 
         return (new_version && (!is_syncing() && !is_replaying()));

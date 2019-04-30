@@ -189,7 +189,7 @@ namespace eosio { namespace chain {
       auto prior = my->index.find( n->block->previous );
 
       //TODO: to be optimised.
-      if( prior != my->index.end()){
+      if (prior !=  my->index.end()) {
           if ((*prior)->pbft_prepared) mark_pbft_prepared_fork(*prior);
           if ((*prior)->pbft_my_prepare) mark_pbft_my_prepare_fork(*prior);
       }

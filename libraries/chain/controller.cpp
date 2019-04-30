@@ -381,6 +381,9 @@ struct controller_impl {
          }
       }
 
+      //do upgrade migration if necessary;
+      migrate_upgrade();
+
       if( shutdown() ) return;
 
       const auto& ubi = reversible_blocks.get_index<reversible_block_index,by_num>();
@@ -416,6 +419,17 @@ struct controller_impl {
       //*bos begin*
       merge_msig_blacklist_into_conf();
       //*bos end*
+   }
+
+   void migrate_upgrade() {
+       //generate upo.
+       try {
+           db.get<upgrade_property_object>();
+       } catch( const boost::exception& e) {
+           wlog("no upo found, generating...");
+           db.create<upgrade_property_object>([](auto&){});
+       }
+
    }
 
    ~controller_impl() {
@@ -687,14 +701,6 @@ struct controller_impl {
 
       // *bos end*
 
-      //if not upo found, generate a new one.
-      try {
-          db.get<upgrade_property_object>();
-      } catch( const boost::exception& e) {
-          wlog("no upo found, generating...");
-          db.create<upgrade_property_object>([](auto&){});
-      }
-
 
       authorization.initialize_database();
       resource_limits.initialize_database();
@@ -856,40 +862,28 @@ struct controller_impl {
    // "bos end"
 
    optional<block_num_type> upgrade_target_block() {
-      try {
-          const auto&  upo = db.get<upgrade_property_object>();
-          if (upo.upgrade_target_block_num > 0) {
-              return upo.upgrade_target_block_num;
-          } else {
-              return optional<block_num_type>{};
-          }
-      } catch( const boost::exception& e) {
-         wlog("no upo found, generating...");
-         db.create<upgrade_property_object>([](auto&){});
-         return optional<block_num_type>{};
-      }
+
+       const auto&  upo = db.get<upgrade_property_object>();
+       if (upo.upgrade_target_block_num > 0) {
+           return upo.upgrade_target_block_num;
+       } else {
+           return optional<block_num_type>{};
+       }
    }
 
    optional<block_num_type> upgrade_complete_block() {
-      try {
-         const auto&  upo = db.get<upgrade_property_object>();
-         if (upo.upgrade_complete_block_num > 0) {
-            return upo.upgrade_complete_block_num;
-         } else {
-            return optional<block_num_type>{};
-         }
-      } catch( const boost::exception& e) {
-         wlog("no upo found, generating...");
-         db.create<upgrade_property_object>([](auto&){});
-         return optional<block_num_type>{};
-      }
+
+       const auto&  upo = db.get<upgrade_property_object>();
+       if (upo.upgrade_complete_block_num > 0) {
+           return upo.upgrade_complete_block_num;
+       } else {
+           return optional<block_num_type>{};
+       }
    }
 
    bool is_new_version() {
       auto ucb = upgrade_complete_block();
-      block_num_type tmp = 0;
-      if(ucb) tmp = *ucb;
-      ilog("in is_new_version : ucb is ${ucb}, head is ${head}",("ucb",tmp)("head",head->block_num));
+      //new version starts from the next block of ucb, this is to avoid inconsistency after pre calculation inside schedule loop.
       if (ucb) return head->block_num > *ucb;
       return false;
    }
@@ -914,9 +908,6 @@ struct controller_impl {
       });
 
       try {
-         if (upgrade_target_block()) {
-             ilog("new version is ${nv}, upgrading is ${u}", ("nv", is_new_version())("u", is_upgrading()));
-         }
          set_pbft_lib();
          set_pbft_lscb();
          if (add_to_fork_db) {
@@ -948,9 +939,6 @@ struct controller_impl {
 
       // push the state for pending.
       pending->push();
-      if (upgrade_target_block()) {
-          ilog("new version is ${nv}, upgrading is ${u}", ("nv", is_new_version())("u", is_upgrading()));
-      }
    }
 
    // The returned scoped_exit should not exceed the lifetime of the pending which existed when make_block_restore_point was called.
@@ -1347,9 +1335,6 @@ struct controller_impl {
    void start_block( block_timestamp_type when, uint16_t confirm_block_count, controller::block_status s,
                      const optional<block_id_type>& producer_block_id , std::function<signature_type(digest_type)> signer = nullptr)
    {
-      if (upgrade_target_block()) {
-          ilog("new version is ${nv}, upgrading is ${u}", ("nv", is_new_version())("u", is_upgrading()));
-      }
       EOS_ASSERT( !pending, block_validate_exception, "pending block already exists" );
 
       auto guard_pending = fc::make_scoped_exit([this](){
@@ -1373,24 +1358,12 @@ struct controller_impl {
             db.modify( upo, [&]( auto& up ) {
                up.upgrade_complete_block_num = head->block_num;
             });
-            wlog("setting upgrade complete block num to ${b}", ("b", head->block_num));
+            wlog("system is going to be new version after the block ${b}", ("b", head->block_num));
          }
       }
 
       auto new_version = is_new_version();
       auto upgrading = is_upgrading();
-
-
-      uint32_t utb_num = 0;
-      if (upgrade_target_block()) utb_num = *upgrade_target_block();
-
-      uint32_t ucb_num = 0;
-      if (upgrade_complete_block()) ucb_num = *upgrade_complete_block();
-
-      if (utb && head->bft_irreversible_blocknum < utb_num + 100) {
-         ilog("head block num is ${h}, new version is ${nv}, upgrading is ${u}, target block is ${utb}, complete block is ${ucb}",
-              ("h", head->block_num)("nv", new_version)("u", upgrading)("utb", utb_num)("ucb", ucb_num));
-      }
 
       pending->_block_status = s;
       pending->_producer_block_id = producer_block_id;
@@ -1447,7 +1420,6 @@ struct controller_impl {
                              ("proposed_num", *gpo.proposed_schedule_block_num)("n", pending->_pending_block_state->block_num)
                              ("lib", lib_num)
                              ("schedule", static_cast<producer_schedule_type>(gpo.proposed_schedule)));
-
                  }
                  pending->_pending_block_state->set_new_producers(gpo.proposed_schedule);
 
@@ -1490,9 +1462,6 @@ struct controller_impl {
       }
 
       guard_pending.cancel();
-      if (upgrade_target_block()) {
-          ilog("new version is ${nv}, upgrading is ${u}", ("nv", is_new_version())("u", is_upgrading()));
-      }
    } // start_block
 
 
@@ -1508,9 +1477,6 @@ struct controller_impl {
    void apply_block( const signed_block_ptr& b, controller::block_status s ) { try {
       try {
 //         EOS_ASSERT( b->block_extensions.size() == 0, block_validate_exception, "no supported extensions" );
-         if (upgrade_target_block()) {
-             ilog("new version is ${nv}, upgrading is ${u}", ("nv", is_new_version())("u", is_upgrading()));
-         }
          auto producer_block_id = b->id();
          start_block( b->timestamp, b->confirmed, s , producer_block_id);
 
@@ -1574,11 +1540,6 @@ struct controller_impl {
 
          finalize_block();
 
-         if (producer_block_id != pending->_pending_block_state->header.id()) {
-             ilog("producer block: ${b}", ("b", (*b)));
-             ilog("pending block: ${p}", ("p", (*(pending->_pending_block_state))));
-         }
-
          // this implicitly asserts that all header fields (less the signature) are identical
          EOS_ASSERT(producer_block_id == pending->_pending_block_state->header.id(),
                    block_validate_exception, "Block ID does not match",
@@ -1600,9 +1561,6 @@ struct controller_impl {
          edump((e.to_detail_string()));
          abort_block();
          throw;
-      }
-      if (upgrade_target_block()) {
-          ilog("new version is ${nv}, upgrading is ${u}", ("nv", is_new_version())("u", is_upgrading()));
       }
    } FC_CAPTURE_AND_RETHROW() } /// apply_block
 
@@ -1627,9 +1585,6 @@ struct controller_impl {
    }
 
    void push_block( std::future<block_state_ptr>& block_state_future ) {
-      if (upgrade_target_block()) {
-          ilog("new version is ${nv}, upgrading is ${u}", ("nv", is_new_version())("u", is_upgrading()));
-      }
       controller::block_status s = controller::block_status::complete;
       EOS_ASSERT(!pending, block_validate_exception, "it is not valid to push a block when there is a pending block");
       auto reset_prod_light_validation = fc::make_scoped_exit([old_value=trusted_producer_light_validation, this]() {
@@ -1655,9 +1610,6 @@ struct controller_impl {
          }
 
          set_pbft_lscb();
-         if (upgrade_target_block()) {
-             ilog("new version is ${nv}, upgrading is ${u}", ("nv", is_new_version())("u", is_upgrading()));
-         }
       } FC_LOG_AND_RETHROW( )
    }
 
@@ -2747,11 +2699,6 @@ void controller::set_name_list(int64_t list, int64_t action, std::vector<account
 }
 // *bos end*
 
-void controller::set_lib() const {
-   my->set_pbft_lib();
-   my->set_pbft_lscb();
-}
-
 const upgrade_property_object& controller::get_upgrade_properties()const {
     return my->db.get<upgrade_property_object>();
 }
@@ -2764,6 +2711,7 @@ bool controller::under_upgrade() const {
     return my->is_upgrading();
 }
 
+// this will be used in unit_test only, should not be called anywhere else.
 void controller::set_upo(uint32_t target_block_num) {
     try {
         const auto& upo = my->db.get<upgrade_property_object>();

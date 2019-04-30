@@ -191,7 +191,6 @@ namespace eosio {
 
         void psm_prepared_state::send_commit(psm_machine *m, pbft_database &pbft_db) {
             auto commits = pbft_db.send_and_add_pbft_commit(m->get_commits_cache(), m->get_current_view());
-            ilog("new version is ${nv}, upgrading is ${u}", ("nv", pbft_db.ctrl.is_upgraded())("u", pbft_db.ctrl.under_upgrade()));
 
             if (!commits.empty()) {
                 m->set_commits_cache(commits);
@@ -206,7 +205,6 @@ namespace eosio {
                 pbft_db.send_pbft_checkpoint();
                 m->transit_to_committed_state(this, false);
             }
-            ilog("new version is ${nv}, upgrading is ${u}", ("nv", pbft_db.ctrl.is_upgraded())("u", pbft_db.ctrl.under_upgrade()));
         }
 
         void psm_prepared_state::on_view_change(psm_machine *m, pbft_view_change &e, pbft_database &pbft_db) {
@@ -231,7 +229,11 @@ namespace eosio {
 
             if (e.view <= m->get_current_view()) return;
 
-            if (pbft_db.is_valid_new_view(e)) m->transit_to_new_view(e, this);
+            try {
+                m->transit_to_new_view(e, this);
+            } catch(const fc::exception& ex) {
+                wlog("bad new view, ${s} ", ("s",ex.to_string()));
+            }
         }
 
         void psm_prepared_state::manually_set_view(psm_machine *m, const uint32_t &current_view) {
@@ -261,10 +263,8 @@ namespace eosio {
         }
 
         void psm_committed_state::send_prepare(psm_machine *m, pbft_database &pbft_db) {
-            ilog("new version is ${nv}, upgrading is ${u}", ("nv", pbft_db.ctrl.is_upgraded())("u", pbft_db.ctrl.under_upgrade()));
 
             auto prepares = pbft_db.send_and_add_pbft_prepare(m->get_prepares_cache(), m->get_current_view());
-            ilog("new version is ${nv}, upgrading is ${u}", ("nv", pbft_db.ctrl.is_upgraded())("u", pbft_db.ctrl.under_upgrade()));
 
             if (!prepares.empty()) {
                 m->set_prepares_cache(prepares);
@@ -272,7 +272,6 @@ namespace eosio {
 
             //if prepare >= 2f+1, transit to prepared
             if (pbft_db.should_prepared()) m->transit_to_prepared_state(this);
-            ilog("new version is ${nv}, upgrading is ${u}", ("nv", pbft_db.ctrl.is_upgraded())("u", pbft_db.ctrl.under_upgrade()));
         }
 
         void psm_committed_state::on_commit(psm_machine *m, pbft_commit &e, pbft_database &pbft_db) {
@@ -311,7 +310,11 @@ namespace eosio {
 
             if (e.view <= m->get_current_view()) return;
 
-            if (pbft_db.is_valid_new_view(e)) m->transit_to_new_view(e, this);
+            try {
+                m->transit_to_new_view(e, this);
+            } catch(const fc::exception& ex) {
+                wlog("bad new view, ${s} ", ("s",ex.to_string()));
+            }
         }
 
         void psm_committed_state::manually_set_view(psm_machine *m, const uint32_t &current_view) {
@@ -365,9 +368,13 @@ namespace eosio {
                         m->get_view_changed_certificate(),
                         new_view);
 
-                if (nv_msg == pbft_new_view{} || !pbft_db.is_valid_new_view(nv_msg)) return;
+                if (nv_msg == pbft_new_view{}) return;
 
-                m->transit_to_new_view(nv_msg, this);
+                try {
+                    m->transit_to_new_view(nv_msg, this);
+                } catch(const fc::exception& ex) {
+                    wlog("bad new view, ${s} ", ("s",ex.to_string()));
+                }
                 return;
             }
         }
@@ -396,9 +403,13 @@ namespace eosio {
                         m->get_view_changed_certificate(),
                         new_view);
 
-                if (nv_msg == pbft_new_view{} || !pbft_db.is_valid_new_view(nv_msg)) return;
+                if (nv_msg == pbft_new_view{}) return;
 
-                m->transit_to_new_view(nv_msg, this);
+                try {
+                    m->transit_to_new_view(nv_msg, this);
+                } catch(const fc::exception& ex) {
+                    wlog("bad new view, ${s} ", ("s",ex.to_string()));
+                }
                 return;
             }
         }
@@ -408,7 +419,11 @@ namespace eosio {
 
             if (e.view <= m->get_current_view()) return;
 
-            if (pbft_db.is_valid_new_view(e)) m->transit_to_new_view(e, this);
+            try {
+                m->transit_to_new_view(e, this);
+            } catch(const fc::exception& ex) {
+                wlog("bad new view, ${s} ", ("s",ex.to_string()));
+            }
         }
 
         void psm_view_change_state::manually_set_view(psm_machine *m, const uint32_t &current_view) {
@@ -466,6 +481,14 @@ namespace eosio {
         template<typename T>
         void psm_machine::transit_to_new_view(const pbft_new_view &new_view, T const &s) {
 
+            auto valid_nv = false;
+            try {
+                valid_nv = pbft_db.is_valid_new_view(new_view);
+            } catch (const fc::exception& ex) {
+                throw;
+            }
+            EOS_ASSERT(valid_nv, pbft_exception, "new view is not valid, waiting for next round..");
+
             this->set_current_view(new_view.view);
             this->set_target_view(new_view.view + 1);
 
@@ -481,7 +504,7 @@ namespace eosio {
                     try {
                         pbft_db.add_pbft_checkpoint(cp);
                     } catch (...) {
-                        wlog("insert checkpoint failed");
+                        wlog( "checkpoint insertion failure: ${cp}", ("cp", cp));
                     }
                 }
             }
@@ -491,7 +514,7 @@ namespace eosio {
                     try {
                         pbft_db.add_pbft_prepare(p);
                     } catch (...) {
-                        wlog("insert prepare failed");
+                        wlog("prepare insertion failure: ${p}", ("p", p));
                     }
                 }
                 if (pbft_db.should_prepared()) {

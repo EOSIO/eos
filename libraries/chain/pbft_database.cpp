@@ -44,8 +44,6 @@ namespace eosio {
                 }
                 sort(prepare_watermarks.begin(), prepare_watermarks.end());
 
-                ilog("pbft index size: ${s}", ("s", pbft_state_index.size()));
-                ilog("pbft prepare watermarks size: ${p}", ("p", prepare_watermarks.size()));
             } else {
                 pbft_state_index = pbft_state_multi_index_type{};
             }
@@ -131,7 +129,7 @@ namespace eosio {
                         auto curr_psp = make_shared<pbft_state>(curr_ps);
                         pbft_state_index.insert(curr_psp);
                     } catch (...) {
-                        EOS_ASSERT(false, pbft_exception, "prepare insert failure: ${p}", ("p", p));
+                        wlog( "prepare insert failure: ${p}", ("p", p));
                     }
                 } else {
                     auto prepares = (*curr_itr)->prepares;
@@ -280,7 +278,7 @@ namespace eosio {
                         auto curr_psp = make_shared<pbft_state>(curr_ps);
                         pbft_state_index.insert(curr_psp);
                     } catch (...) {
-                        EOS_ASSERT(false, pbft_exception, "commit insert failure: ${c}", ("c", c));
+                        wlog("commit insertion failure: ${c}", ("c", c));
                     }
                 } else {
                     auto commits = (*curr_itr)->commits;
@@ -591,7 +589,9 @@ namespace eosio {
             }
 
             auto uuid = boost::uuids::to_string(uuid_generator());
+
             auto nv = pbft_new_view{uuid, current_view, highest_ppc, highest_sc, *vcc_ptr, sp_itr->first, chain_id()};
+
             nv.producer_signature = sp_itr->second(nv.digest());
             emit(pbft_outgoing_new_view, nv);
             return nv;
@@ -755,53 +755,44 @@ namespace eosio {
 
         bool pbft_database::is_valid_new_view(const pbft_new_view &nv) {
             //all signatures should be valid
-            if (nv.chain_id != chain_id()) {
-                wlog("wrong chain id in new view msg");
-                return false;
-            }
 
-            if (!is_valid_prepared_certificate(nv.prepared)) {
-                wlog("prepared certificate invalid in new view msg");
-                return false;
-            }
+            EOS_ASSERT(nv.chain_id == chain_id(), pbft_exception, "wrong chain.");
 
-            if (!is_valid_stable_checkpoint(nv.stable_checkpoint)) {
-                wlog("stable checkpoint invalid in new view msg");
-                return false;
-            }
+            EOS_ASSERT(is_valid_prepared_certificate(nv.prepared), pbft_exception,
+                    "bad prepared certificate: ${pc}", ("pc", nv.prepared));
 
-            if (!nv.view_changed.is_signature_valid()) {
-                wlog("view changed sig invalid in new view msg");
-                return false;
-            }
+            EOS_ASSERT(is_valid_stable_checkpoint(nv.stable_checkpoint), pbft_exception,
+                       "bad stable checkpoint: ${scp}", ("scp", nv.stable_checkpoint));
 
-            if (!nv.is_signature_valid()) {
-                wlog("new view sig invalid in new view msg");
-                return false;
-            }
+            EOS_ASSERT(nv.view_changed.is_signature_valid(), pbft_exception, "bad view changed signature");
 
-            if (nv.view_changed.view != nv.view) {
-                wlog("target view not match");
-                return false;
-            }
-            auto schedule_threshold = lib_active_producers().producers.size() * 2 / 3 + 1;
+            EOS_ASSERT(nv.is_signature_valid(), pbft_exception, "bad new view signature");
 
-            if (nv.view_changed.view_changes.size() < schedule_threshold) {
-                wlog("view change count not enough");
-                return false;
+            EOS_ASSERT(nv.view_changed.view == nv.view, pbft_exception, "target view not match");
+
+            vector<public_key_type> lib_producers;
+            for (const auto& pk: lib_active_producers().producers) {
+                lib_producers.emplace_back(pk.block_signing_key);
             }
+            auto schedule_threshold = lib_producers.size() * 2 / 3 + 1;
+
+            vector<public_key_type> view_change_producers;
+
             for (auto vc: nv.view_changed.view_changes) {
-                if (!is_valid_view_change(vc)) {
-                    wlog("invalid view change msg ${m}", ("m", vc));
-                    return false;
+                if (is_valid_view_change(vc)) {
+                    add_pbft_view_change(vc);
+                    view_change_producers.emplace_back(vc.public_key);
                 }
-                add_pbft_view_change(vc);
             }
 
-            if (!should_new_view(nv.view)) {
-                wlog("should not new view");
-                return false;
-            }
+            vector<public_key_type> intersection;
+            std::set_intersection(lib_producers.begin(),lib_producers.end(),
+                                  view_change_producers.begin(),view_change_producers.end(),
+                                  back_inserter(intersection));
+
+            EOS_ASSERT(intersection.size() >= schedule_threshold, pbft_exception, "view changes count not enough");
+
+            EOS_ASSERT(should_new_view(nv.view), pbft_exception, "should not enter new view: ${nv}", ("nv", nv.view));
 
             auto highest_ppc = pbft_prepared_certificate{};
             auto highest_scp = pbft_stable_checkpoint{};
@@ -818,15 +809,13 @@ namespace eosio {
                 }
             }
 
-            if (highest_ppc != nv.prepared) {
-                wlog("prepared num not match");
-                return false;
-            }
+            EOS_ASSERT(highest_ppc == nv.prepared, pbft_exception,
+                    "prepared certificate not match, should be ${hpcc} but ${pc} given",
+                    ("hpcc",highest_ppc)("pc", nv.prepared));
 
-            if (highest_scp != nv.stable_checkpoint) {
-                wlog("stable checkpoint not match");
-                return false;
-            }
+            EOS_ASSERT(highest_scp == nv.stable_checkpoint, pbft_exception,
+                       "stable checkpoint not match, should be ${hscp} but ${scp} given",
+                       ("hpcc",highest_scp)("pc", nv.stable_checkpoint));
 
             return true;
         }
@@ -1189,7 +1178,7 @@ namespace eosio {
                          && c.block_num == scp.block_num;
                 if (!valid) return false;
             }
-            //TODO: check if (2/3 + 1) met
+
             auto bs = ctrl.fetch_block_state_by_number(scp.block_num);
             if (bs) {
                 auto as = bs->active_schedule;
@@ -1305,15 +1294,13 @@ namespace eosio {
         void pbft_database::set(pbft_state_ptr s) {
             auto result = pbft_state_index.insert(s);
 
-            EOS_ASSERT(result.second, pbft_exception,
-                       "unable to insert pbft state, duplicate state detected");
+            EOS_ASSERT(result.second, pbft_exception, "unable to insert pbft state, duplicate state detected");
         }
 
         void pbft_database::set(pbft_checkpoint_state_ptr s) {
             auto result = checkpoint_index.insert(s);
 
-            EOS_ASSERT(result.second, pbft_exception,
-                       "unable to insert pbft checkpoint index, duplicate state detected");
+            EOS_ASSERT(result.second, pbft_exception, "unable to insert pbft checkpoint index, duplicate state detected");
         }
 
         void pbft_database::prune(const pbft_state_ptr &h) {
