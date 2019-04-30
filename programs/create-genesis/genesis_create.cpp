@@ -525,6 +525,7 @@ struct genesis_create::genesis_create_impl final {
         db.start_section(config::system_account_name, N(stake.param), "param_struct", 1);
         db.emplace<stake_param_object>([&](auto& p) {
             const auto inf = _info.params.stake;
+            p.id = sys_sym.to_symbol_code().value;
             p.token_symbol = sys_sym;
             p.max_proxies = inf.max_proxies;
             p.payout_step_length = inf.payout_step_length;

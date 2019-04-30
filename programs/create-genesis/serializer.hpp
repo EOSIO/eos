@@ -130,9 +130,11 @@ public:
         T obj(constructor, 0);
         constexpr auto tid = T::type_id;
         auto& id = autoincrement[tid];
-        obj.id = id++;
-        if ((id & 0x7FFF) == 0) {
-            ilog("AINC ${t} = ${n}", ("t",tid)("n",id));
+        if (obj.id == 0) {
+            obj.id = id++;
+            if ((id & 0x7FFF) == 0) {
+                ilog("AINC ${t} = ${n}", ("t",tid)("n",id));
+            }
         }
 #ifndef IGNORE_SYSTEM_ABI
         static abi_serializer& ser = abis[name()];
