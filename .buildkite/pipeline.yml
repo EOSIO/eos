@@ -146,10 +146,10 @@ steps:
   #   timeout: 120
 
   - command: |
-      bash ./scripts/test_build.sh
+      docker --version
     label: "test devel"
     agents:
-      queue: "automation-eosiobuilds-builder-fleet"
+      queue: "automation-eos-builder-fleet"
     timeout: 120
 
   # j- wait
