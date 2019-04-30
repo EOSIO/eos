@@ -270,7 +270,7 @@ struct txn_test_gen_plugin_impl {
       act_a_to_b.name = N(transfer);
       act_a_to_b.authorization = vector<permission_level>{{name("txn.test.a"),config::active_name}};
       act_a_to_b.data = eosio_token_serializer.variant_to_binary("transfer", 
-                                                                  fc::json::from_string(fc::format_string("{\"from\":\"txn.test.a\",\"to\":\"txn.test.b\",\"quantity\":\"1.0000 CUR\",\"memo\":\"${l}\"}", 
+                                                                  fc::json::from_string(fc::format_string("{\"from\":\"txn.test.a\",\"to\":\"txn.test.b\",\"quantity\":\"1.0000 CUR\",\"memo\":\"${l}\"}",
                                                                   fc::mutable_variant_object()("l", salt))),
                                                                   abi_serializer_max_time);
 
@@ -278,7 +278,7 @@ struct txn_test_gen_plugin_impl {
       act_b_to_a.name = N(transfer);
       act_b_to_a.authorization = vector<permission_level>{{name("txn.test.b"),config::active_name}};
       act_b_to_a.data = eosio_token_serializer.variant_to_binary("transfer", 
-                                                                  fc::json::from_string(fc::format_string("{\"from\":\"txn.test.b\",\"to\":\"txn.test.a\",\"quantity\":\"1.0000 CUR\",\"memo\":\"${l}\"}", 
+                                                                  fc::json::from_string(fc::format_string("{\"from\":\"txn.test.b\",\"to\":\"txn.test.a\",\"quantity\":\"1.0000 CUR\",\"memo\":\"${l}\"}",
                                                                   fc::mutable_variant_object()("l", salt))),
                                                                   abi_serializer_max_time);
 

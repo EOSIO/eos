@@ -40,8 +40,8 @@ namespace eosio { namespace chain {
           * block_state and will return a pointer to the new block state or
           * throw on error.
           */
-         block_state_ptr add( signed_block_ptr b, bool skip_validate_signee );
-         block_state_ptr add( const block_state_ptr& next_block, bool skip_validate_previous );
+         block_state_ptr add( signed_block_ptr b, bool skip_validate_signee, bool new_version );
+         block_state_ptr add( const block_state_ptr& next_block, bool skip_validate_previous, bool new_version );
          void            remove( const block_id_type& id );
 
          void            add( const header_confirmation& c );
@@ -69,9 +69,18 @@ namespace eosio { namespace chain {
           * it is removed unless it is the head block.
           */
          signal<void(block_state_ptr)> irreversible;
-
-      private:
+         
          void set_bft_irreversible( block_id_type id );
+
+         void set_latest_checkpoint( block_id_type id);
+
+         void mark_pbft_prepared_fork(const block_state_ptr& h);
+
+         void mark_pbft_my_prepare_fork(const block_state_ptr& h);
+
+         void remove_pbft_my_prepare_fork();
+
+   private:
          unique_ptr<fork_database_impl> my;
    };
 
