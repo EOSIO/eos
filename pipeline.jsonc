@@ -1,8 +1,4 @@
 {
-    "eosio":
-    {
-        "pipeline-branch": "master"
-    },
     "eos-multiversion-tests":
     {
         "pipeline-branch": "protocol-features-sync-nodes",
