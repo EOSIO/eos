@@ -1,5 +1,11 @@
 if [ $1 == 1 ]; then ANSWER=1; else ANSWER=0; fi
 
+echo "IN BUILD UBUNTU <><><><><><><><><><><"
+echo "$HTTP_PROXY"
+echo "$HTTPS_PROXY"
+echo "$http_PROXY"
+echo "$https_PROXY"
+
 OS_VER=$( grep VERSION_ID /etc/os-release | cut -d'=' -f2 | sed 's/[^0-9\.]//gI' )
 OS_MAJ=$(echo "${OS_VER}" | cut -d'.' -f1)
 OS_MIN=$(echo "${OS_VER}" | cut -d'.' -f2)
