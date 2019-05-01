@@ -47,19 +47,19 @@ using plk_idx = uint32_t;       // lookup index in _plnk_map
 
 
 static constexpr uint64_t gls_issuer_account_name = N(gls.issuer);
-static constexpr uint64_t gls_ctrl_account_name  = N(gls.ctrl);
-static constexpr uint64_t gls_vest_account_name  = N(gls.vesting);
-static constexpr uint64_t gls_post_account_name  = N(gls.publish);
+static constexpr uint64_t gls_ctrl_account_name = N(gls.ctrl);
+static constexpr uint64_t gls_vest_account_name = N(gls.vesting);
+static constexpr uint64_t gls_post_account_name = N(gls.publish);
+static constexpr uint64_t gls_social_account_name = N(gls.social);
 
 constexpr auto GBG = SY(3,GBG);
 constexpr auto GLS = SY(3,GOLOS);
 constexpr auto GESTS = SY(6,GESTS);
 constexpr auto VESTS = SY(6,GOLOS);                 // Golos dApp vesting
 constexpr auto posting_auth_name = "posting";
-constexpr auto golos_account_name = "golos";
+constexpr auto golos_domain_name = "golos";
 constexpr auto issuer_account_name = gls_issuer_account_name;
 constexpr auto notify_account_name = gls_ctrl_account_name;
-constexpr auto posting_account_name = gls_post_account_name;
 
 constexpr auto withdraw_interval_seconds = 60*60*24*7;
 constexpr auto withdraw_intervals = 13;
@@ -497,20 +497,36 @@ struct genesis_create::genesis_create_impl final {
             // TODO: recovery ?
         }
 
+        // link posting permission with gls.publish and gls.social
+        db.start_section(config::system_account_name, N(permlink), "permission_link_object", _visitor.auths.size()*2);
+        auto insert_link = [&](name acc, name code) {
+            db.emplace<permission_link_object>([&](auto& link) {
+                link.account = acc;
+                link.code = code;
+                link.message_type = name();
+                link.required_permission = N(posting);
+            });
+        };
+        for (const auto a: _visitor.auths) {
+            const auto n = generate_name(a.account.value(_accs_map));
+            insert_link(n, gls_post_account_name);
+            insert_link(n, gls_social_account_name);
+        }
+
         // add usernames
         db.start_section(config::system_account_name, N(domain), "domain_object", 1);
         ee_genesis.usernames.start_section(config::system_account_name, N(domain), "domain_info", 1);
-        const auto app = names[golos_account_name];
+        const auto app = gls_issuer_account_name;
         db.emplace<domain_object>([&](auto& a) {
             a.owner = app;
             a.linked_to = app;
             a.creation_date = ts;
-            a.name = golos_account_name;
+            a.name = golos_domain_name;
         });
         ee_genesis.usernames.insert(mvo
             ("owner", app)
             ("linked_to", app)
-            ("name", golos_account_name)
+            ("name", golos_domain_name)
         );
 
         db.start_section(config::system_account_name, N(username), "username_object", _visitor.auths.size());
@@ -818,11 +834,6 @@ struct genesis_create::genesis_create_impl final {
         );
 
         // funds
-        auto balance_obj = [](const asset& x) {
-            return mvo
-                ("balance", x)
-                ("payments", asset(0, x.get_symbol()));
-        };
         const auto n_balances = 3 + 2*data.gbg.size();
         db.start_section(config::token_account_name, N(accounts), "account", n_balances);
         ee_genesis.balances.start_section(config::token_account_name, N(balance), "balance_event", n_balances);

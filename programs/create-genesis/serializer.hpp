@@ -5,6 +5,7 @@
 #include <cyberway/genesis/genesis_container.hpp>
 #include <eosio/chain/controller.hpp>
 #include <eosio/chain/authorization_manager.hpp>
+#include <eosio/chain/permission_link_object.hpp>
 #include <eosio/chain/resource_limits.hpp>
 #include <eosio/chain/resource_limits_private.hpp>  // public interface is not enough
 #include <eosio/chain/abi_serializer.hpp>
@@ -26,6 +27,7 @@ template<> type_name get_type_name<permission_object>()         { return "permis
 template<> type_name get_type_name<permission_usage_object>()   { return "permission_usage_object"; }
 template<> type_name get_type_name<account_object>()            { return "account_object"; }
 template<> type_name get_type_name<account_sequence_object>()   { return "account_sequence_object"; }
+template<> type_name get_type_name<permission_link_object>()    { return "permission_link_object"; }
 template<> type_name get_type_name<resource_usage_object>()     { return "resource_usage_object"; }
 template<> type_name get_type_name<domain_object>()             { return "domain_object"; }
 template<> type_name get_type_name<username_object>()           { return "username_object"; }
@@ -37,6 +39,7 @@ template<> type_name get_type_name<stake_stat_object>()         { return "stake_
 
 enum class stored_contract_tables: int {
     domains,        usernames,
+    permissionlink,
     token_stats,    vesting_stats,
     token_balance,  vesting_balance,
     delegation,     rdelegation,
