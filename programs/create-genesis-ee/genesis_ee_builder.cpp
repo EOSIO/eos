@@ -128,9 +128,9 @@ void genesis_ee_builder::process_rewards() {
         auto comment_itr = comment_index.find(tcrop.hash);
         if (comment_itr != comment_index.end() && op_num > comment_itr->last_delete_op) {
             maps_.modify(*comment_itr, [&](auto& comment) {
-                comment.author_reward = tcrop.author_reward.get_amount();
-                comment.benefactor_reward = tcrop.benefactor_reward.get_amount();
-                comment.curator_reward = tcrop.curator_reward.get_amount();
+                comment.author_reward += tcrop.author_reward.get_amount();
+                comment.benefactor_reward += tcrop.benefactor_reward.get_amount();
+                comment.curator_reward += tcrop.curator_reward.get_amount();
                 comment.net_rshares = tcrop.net_rshares;
             });
         }

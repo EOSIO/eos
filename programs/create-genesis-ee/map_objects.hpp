@@ -34,9 +34,9 @@ struct comment_header : public chainbase::object<comment_header_object_type, com
     operation_number create_op;
     operation_number last_delete_op;
     int64_t net_rshares;
-    int64_t author_reward;
-    int64_t benefactor_reward;
-    int64_t curator_reward;
+    int64_t author_reward = 0;
+    int64_t benefactor_reward = 0;
+    int64_t curator_reward = 0;
 };
 
 struct vote_header : public chainbase::object<vote_header_object_type, vote_header> {
