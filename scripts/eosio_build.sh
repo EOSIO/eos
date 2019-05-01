@@ -29,7 +29,7 @@
 #
 # https://github.com/EOSIO/eos/blob/master/LICENSE
 ##########################################################################
-
+echo "IN BEN BRANCH <><><><><><><><><><><><><>"
 VERSION=2.3 # Build script version
 
 # defaults for command-line arguments
