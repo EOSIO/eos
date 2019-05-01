@@ -3071,6 +3071,13 @@ void controller_impl::on_activation<builtin_protocol_feature_t::replace_deferred
    }
 }
 
+template<>
+void controller_impl::on_activation<builtin_protocol_feature_t::webauthn_key>() {
+   db.modify( db.get<protocol_state_object>(), [&]( auto& ps ) {
+      ps.num_supported_key_types = 3;
+   } );
+}
+
 /// End of protocol feature activation handlers
 
 } } /// eosio::chain
