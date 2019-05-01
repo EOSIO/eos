@@ -3,8 +3,8 @@ if [ $1 == 1 ]; then ANSWER=1; else ANSWER=0; fi
 echo "IN BUILD UBUNTU <><><><><><><><><><><"
 echo "$HTTP_PROXY"
 echo "$HTTPS_PROXY"
-echo "$http_PROXY"
-echo "$https_PROXY"
+echo "$http_proxy"
+echo "$https_proxy"
 
 OS_VER=$( grep VERSION_ID /etc/os-release | cut -d'=' -f2 | sed 's/[^0-9\.]//gI' )
 OS_MAJ=$(echo "${OS_VER}" | cut -d'.' -f1)
@@ -85,7 +85,7 @@ fi
 if [ $ANSWER != 1 ]; then read -p "Do you wish to update repositories with apt-get update? (y/n) " ANSWER; fi
 case $ANSWER in
 	1 | [Yy]* )
-		if ! sudo apt-get update; then
+		if ! sudo -E apt-get update; then
 			printf " - APT update failed.\\n"
 			exit 1;
 		else
@@ -115,7 +115,7 @@ if [ "${COUNT}" -gt 1 ]; then
 	if [ $ANSWER != 1 ]; then read -p "Do you wish to install these packages? (y/n) " ANSWER; fi
 	case $ANSWER in
 		1 | [Yy]* )
-			if ! sudo apt-get -y install ${DEP}; then
+			if ! sudo -E apt-get -y install ${DEP}; then
 				printf " - APT dependency failed.\\n"
 				exit 1
 			else
