@@ -698,7 +698,6 @@ make_keosd_signature_provider(const std::shared_ptr<producer_plugin_impl>& impl,
 
 void producer_plugin::plugin_initialize(const boost::program_options::variables_map& options)
 { try {
-#warning TODO check whether controller is provided
    my->_options = &options;
    LOAD_VALUE_SET(options, "producer-name", my->_producers, types::account_name)
 

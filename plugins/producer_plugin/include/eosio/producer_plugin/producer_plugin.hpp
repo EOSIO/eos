@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include <eosio/chain_provider_plugin/chain_provider_plugin.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
 #include <eosio/http_client_plugin/http_client_plugin.hpp>
 
@@ -13,10 +14,11 @@
 namespace eosio {
 
 using boost::signals2::signal;
+using fc::flat_set;
 
 class producer_plugin : public appbase::plugin<producer_plugin> {
 public:
-   APPBASE_PLUGIN_REQUIRES((chain_plugin)(http_client_plugin))
+   APPBASE_PLUGIN_REQUIRES((chain_provider_plugin)(http_client_plugin))
 
    struct runtime_options {
       fc::optional<int32_t> max_transaction_time;

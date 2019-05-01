@@ -343,7 +343,6 @@ namespace eosio {
             }
          }
 
-#warning TODO check whether controller is provided
          auto& chain = app().get_method<methods::get_controller>()();
 
          chainbase::database& db = const_cast<chainbase::database&>( chain.db() ); // Override read-only access to state DB (highly unrecommended practice!)

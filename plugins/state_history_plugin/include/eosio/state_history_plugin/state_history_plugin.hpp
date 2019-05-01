@@ -5,7 +5,7 @@
 #pragma once
 #include <appbase/application.hpp>
 
-#include <eosio/chain_plugin/chain_plugin.hpp>
+#include <eosio/chain_provider_plugin/chain_provider_plugin.hpp>
 
 using namespace appbase;
 
@@ -76,7 +76,7 @@ using state_result  = fc::static_variant<get_status_result_v0, get_blocks_result
 
 class state_history_plugin : public plugin<state_history_plugin> {
  public:
-   APPBASE_PLUGIN_REQUIRES((chain_plugin))
+   APPBASE_PLUGIN_REQUIRES((chain_provider_plugin))
 
    state_history_plugin();
    virtual ~state_history_plugin();

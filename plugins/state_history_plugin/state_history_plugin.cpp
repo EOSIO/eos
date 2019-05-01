@@ -523,7 +523,6 @@ void state_history_plugin::plugin_initialize(const variables_map& options) {
       EOS_ASSERT(options.at("disable-replay-opts").as<bool>(), plugin_exception,
                  "state_history_plugin requires --disable-replay-opts");
 
-#warning TODO check whether controller is provided
       auto& chain = app().get_method<methods::get_controller>()();
       my->applied_transaction_connection.emplace(
           chain.applied_transaction.connect([&](const transaction_trace_ptr& p) { my->on_applied_transaction(p); }));

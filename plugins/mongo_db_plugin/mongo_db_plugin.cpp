@@ -1688,7 +1688,6 @@ void mongo_db_plugin::plugin_initialize(const variables_map& options)
          my->mongo_pool.emplace(uri);
 
          // hook up to signals on controller
-#warning TODO check whether controller is provided
          auto& chain = app().get_method<methods::get_controller>()();
          my->chain_id.emplace( chain.get_chain_id());
 

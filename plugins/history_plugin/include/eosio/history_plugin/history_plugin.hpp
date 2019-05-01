@@ -5,7 +5,7 @@
 #pragma once
 #include <appbase/application.hpp>
 
-#include <eosio/chain_plugin/chain_plugin.hpp>
+#include <eosio/chain_provider_plugin/chain_provider_plugin.hpp>
 #include <eosio/chain/types.hpp>
 #include <eosio/chain/block_timestamp.hpp>
 
@@ -121,7 +121,7 @@ class read_only {
  */
 class history_plugin : public plugin<history_plugin> {
    public:
-      APPBASE_PLUGIN_REQUIRES((chain_plugin))
+      APPBASE_PLUGIN_REQUIRES((chain_provider_plugin))
 
       history_plugin();
       virtual ~history_plugin();

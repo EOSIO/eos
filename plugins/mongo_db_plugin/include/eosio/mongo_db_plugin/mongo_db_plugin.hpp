@@ -4,7 +4,7 @@
  */
 #pragma once
 
-#include <eosio/chain_plugin/chain_plugin.hpp>
+#include <eosio/chain_provider_plugin/chain_provider_plugin.hpp>
 #include <appbase/application.hpp>
 #include <memory>
 
@@ -31,7 +31,7 @@ using mongo_db_plugin_impl_ptr = std::shared_ptr<class mongo_db_plugin_impl>;
  */
 class mongo_db_plugin : public plugin<mongo_db_plugin> {
 public:
-   APPBASE_PLUGIN_REQUIRES((chain_plugin))
+   APPBASE_PLUGIN_REQUIRES((chain_provider_plugin))
 
    mongo_db_plugin();
    virtual ~mongo_db_plugin();
