@@ -46,8 +46,8 @@ class wabt_instantiated_module : public wasm_instantiated_module_interface {
             Memory* memory = this_run_vars.memory = _env->GetMemory(0);
             memory->page_limits = _initial_memory_configuration;
             memory->data.resize(_initial_memory_configuration.initial * WABT_PAGE_SIZE);
-            memset(memory->data.data(), 0, memory->data.size());
             memcpy(memory->data.data(), _initial_memory.data(), _initial_memory.size());
+            memset(memory->data.data() + _initial_memory.size(), 0, memory->data.size() - _initial_memory.size());
          }
 
          _params[0].set_i64(uint64_t(context.get_receiver()));
