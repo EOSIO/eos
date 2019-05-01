@@ -73,17 +73,23 @@ class wabt_instantiated_module : public wasm_instantiated_module_interface {
 
 wabt_runtime::wabt_runtime() {}
 
+interp::Result host_func_adaptor(const HostFunc* hostfunc, const FuncSignature*, const TypedValues& args, TypedValues& results) {
+  const auto fn = reinterpret_cast<intrinsic_registrator::intrinsic_fn>(hostfunc->lw_context);
+  TypedValue ret = fn(*static_wabt_vars, args);
+  if(ret.type != Type::Void)
+    results[0] = ret;
+  return interp::Result::Ok;
+}
+
 std::unique_ptr<wasm_instantiated_module_interface> wabt_runtime::instantiate_module(const char* code_bytes, size_t code_size, std::vector<uint8_t> initial_memory) {
    std::unique_ptr<interp::Environment> env = std::make_unique<interp::Environment>();
    for(auto it = intrinsic_registrator::get_map().begin() ; it != intrinsic_registrator::get_map().end(); ++it) {
       interp::HostModule* host_module = env->AppendHostModule(it->first);
       for(auto itf = it->second.begin(); itf != it->second.end(); ++itf) {
-         host_module->AppendFuncExport(itf->first, itf->second.sig, [fn=itf->second.func](const auto* f, const auto* fs, const auto& args, auto& res) {
-            TypedValue ret = fn(*static_wabt_vars, args);
-            if(ret.type != Type::Void)
-               res[0] = ret;
-            return interp::Result::Ok;
-         });
+         host_module->AppendFuncExport(itf->first, itf->second.sig, host_func_adaptor,
+                                       reinterpret_cast<void*>(itf->second.func));
+         // reintrepret is needed here since C++ doesn't allow the implicit cast of a function
+         // pointer as void*, however it is guaranteed to work by POSIX (for example, dlsym)
       }
    }
 
