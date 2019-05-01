@@ -1099,6 +1099,31 @@ struct genesis_create::genesis_create_impl final {
             pk++;
         }
         // store messages
+        db.start_section(config::system_account_name, N(gtransaction), "generated_transaction_object", n);
+        transaction tx{};
+        tx.actions.emplace_back(action{
+            {{gls_post_account_name, config::active_name}},
+            gls_post_account_name,
+            N(closemssg),
+            {}
+        });
+        const auto expiration_time = fc::hours(48);
+        for (const auto& cp : _visitor.comments) {
+            const auto& c = cp.second;
+            const auto cashout = c.active.cashout_time;
+            db.emplace<generated_transaction_object>([&](auto& t){
+                std::pair<name,string> data{get_name(c.author), c.permlink.value(_plnk_map)};
+                tx.actions[0].data = fc::raw::pack(data);
+                t.set(tx);
+                t.trx_id = tx.id();
+                t.sender = gls_post_account_name;
+                t.sender_id = (uint128_t(c.id) << 64) | get_name(c.author).value;
+                t.delay_until = std::max(time_point(c.active.cashout_time), _conf.initial_timestamp);
+                t.expiration = t.delay_until + expiration_time;
+                t.published = c.active.created;
+            });
+        }
+
         db.start_section(gls_post_account_name, N(permlink), "permlink", n);
         fc::flat_map<std::pair<acc_idx,plk_idx>, uint64_t> post_ids;
         for (const auto& cp : _visitor.comments) {

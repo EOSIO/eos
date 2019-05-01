@@ -4,11 +4,12 @@
 #include <cyberway/chaindb/common.hpp>
 #include <cyberway/genesis/genesis_container.hpp>
 #include <eosio/chain/controller.hpp>
+#include <eosio/chain/abi_serializer.hpp>
 #include <eosio/chain/authorization_manager.hpp>
 #include <eosio/chain/permission_link_object.hpp>
 #include <eosio/chain/resource_limits.hpp>
 #include <eosio/chain/resource_limits_private.hpp>  // public interface is not enough
-#include <eosio/chain/abi_serializer.hpp>
+#include <eosio/chain/generated_transaction_object.hpp>
 
 
 #define IGNORE_SYSTEM_ABI
@@ -35,6 +36,7 @@ template<> type_name get_type_name<stake_agent_object>()        { return "stake_
 template<> type_name get_type_name<stake_grant_object>()        { return "stake_grant_object"; }
 template<> type_name get_type_name<stake_param_object>()        { return "stake_param_object"; }
 template<> type_name get_type_name<stake_stat_object>()         { return "stake_stat_object"; }
+template<> type_name get_type_name<generated_transaction_object>()  { return "generated_transaction_object"; }
 
 
 enum class stored_contract_tables: int {
@@ -46,6 +48,7 @@ enum class stored_contract_tables: int {
     withdrawal,
     witness_vote,   witness_info,
     reward_pool,    // post_limits,
+    gtransaction,
     messages,       permlinks,
     votes,
     // the following are system tables, but it's simpler to have them here
