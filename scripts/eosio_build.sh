@@ -31,6 +31,9 @@
 ##########################################################################
 echo "IN BEN BRANCH <><><><><><><><><><><><><>"
 echo "HTTP_PROXY: $HTTP_PROXY"
+echo "$HTTPS_PROXY"
+echo "$http_PROXY"
+echo "$https_PROXY"
 VERSION=2.3 # Build script version
 
 # defaults for command-line arguments
