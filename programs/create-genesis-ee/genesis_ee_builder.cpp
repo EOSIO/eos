@@ -39,14 +39,16 @@ golos_dump_header genesis_ee_builder::read_header(bfs::fstream& in) {
     return h;
 }
 
-bool genesis_ee_builder::read_op_num(bfs::fstream& in, operation_number& op_num) {
+bool genesis_ee_builder::read_op_header(bfs::fstream& in, operation_header& op) {
     if (!in) {
         return false;
     }
 
-    fc::raw::unpack(in, op_num);
+    op.num = operation_number();
+    op.hash = 0;
+    fc::raw::unpack(in, op);
 
-    if (op_num.first > last_block_) {
+    if (op.num.first > last_block_) {
         return false;
     }
     return true;
@@ -60,26 +62,26 @@ void genesis_ee_builder::process_comments() {
     bfs::fstream in(in_dump_dir_ / "comments");
     read_header(in);
 
-    operation_number op_num;
-    while (read_op_num(in, op_num)) {
+    operation_header op;
+    while (read_op_header(in, op)) {
         auto comment_offset = uint64_t(in.tellg());
 
         cyberway::golos::comment_operation cop;
         fc::raw::unpack(in, cop);
 
-        auto comment_itr = comment_index.find(cop.hash);
+        auto comment_itr = comment_index.find(op.hash);
         if (comment_itr != comment_index.end()) {
             maps_.modify(*comment_itr, [&](auto& comment) {
                 comment.offset = comment_offset;
-                comment.create_op = op_num;
+                comment.create_op = op.num;
             });
             continue;
         }
 
         maps_.create<comment_header>([&](auto& comment) {
-            comment.hash = cop.hash;
+            comment.hash = op.hash;
             comment.offset = comment_offset;
-            comment.create_op = op_num;
+            comment.create_op = op.num;
         });
 
         comment_count_++;
@@ -94,19 +96,16 @@ void genesis_ee_builder::process_delete_comments() {
     bfs::fstream in(in_dump_dir_ / "delete_comments");
     read_header(in);
 
-    operation_number op_num;
-    while (read_op_num(in, op_num)) {
-        cyberway::golos::delete_comment_operation dcop;
-        fc::raw::unpack(in, dcop);
-
-        auto comment_itr = comment_index.find(dcop.hash);
-        if (op_num > comment_itr->create_op) {
+    operation_header op;
+    while (read_op_header(in, op)) {
+        auto comment_itr = comment_index.find(op.hash);
+        if (op.num > comment_itr->create_op) {
             maps_.remove(*comment_itr);
 
             comment_count_--;
         } else {
             maps_.modify(*comment_itr, [&](auto& comment) {
-                comment.last_delete_op = op_num;
+                comment.last_delete_op = op.num;
             });
         }
     }
@@ -120,13 +119,13 @@ void genesis_ee_builder::process_rewards() {
     bfs::fstream in(in_dump_dir_ / "total_comment_rewards");
     read_header(in);
 
-    operation_number op_num;
-    while (read_op_num(in, op_num)) {
+    operation_header op;
+    while (read_op_header(in, op)) {
         cyberway::golos::total_comment_reward_operation tcrop;
         fc::raw::unpack(in, tcrop);
 
-        auto comment_itr = comment_index.find(tcrop.hash);
-        if (comment_itr != comment_index.end() && op_num > comment_itr->last_delete_op) {
+        auto comment_itr = comment_index.find(op.hash);
+        if (comment_itr != comment_index.end() && op.num > comment_itr->last_delete_op) {
             maps_.modify(*comment_itr, [&](auto& comment) {
                 comment.author_reward = tcrop.author_reward.get_amount();
                 comment.benefactor_reward = tcrop.benefactor_reward.get_amount();
@@ -145,15 +144,15 @@ void genesis_ee_builder::process_votes() {
     bfs::fstream in(in_dump_dir_ / "votes");
     read_header(in);
 
-    operation_number op_num;
-    while (read_op_num(in, op_num)) {
+    operation_header op;
+    while (read_op_header(in, op)) {
         cyberway::golos::vote_operation vop;
         fc::raw::unpack(in, vop);
 
-        auto vote_itr = vote_index.find(std::make_tuple(vop.hash, vop.voter));
+        auto vote_itr = vote_index.find(std::make_tuple(op.hash, vop.voter));
         if (vote_itr != vote_index.end()) {
             maps_.modify(*vote_itr, [&](auto& vote) {
-                vote.op_num = op_num;
+                vote.op_num = op.num;
                 vote.weight = vop.weight;
                 vote.timestamp = vop.timestamp;
             });
@@ -161,9 +160,9 @@ void genesis_ee_builder::process_votes() {
         }
 
         maps_.create<vote_header>([&](auto& vote) {
-            vote.hash = vop.hash;
+            vote.hash = op.hash;
             vote.voter = vop.voter;
-            vote.op_num = op_num;
+            vote.op_num = op.num;
             vote.weight = vop.weight;
             vote.timestamp = vop.timestamp;
         });
@@ -178,26 +177,26 @@ void genesis_ee_builder::process_reblogs() {
     bfs::fstream in(in_dump_dir_ / "reblogs");
     read_header(in);
 
-    operation_number op_num;
-    while (read_op_num(in, op_num)) {
+    operation_header op;
+    while (read_op_header(in, op)) {
         auto reblog_offset = uint64_t(in.tellg());
 
         cyberway::golos::reblog_operation rop;
         fc::raw::unpack(in, rop);
 
-        auto reblog_itr = reblog_index.find(std::make_tuple(rop.hash, rop.account));
+        auto reblog_itr = reblog_index.find(std::make_tuple(op.hash, rop.account));
         if (reblog_itr != reblog_index.end()) {
             maps_.modify(*reblog_itr, [&](auto& reblog) {
-                reblog.op_num = op_num;
+                reblog.op_num = op.num;
                 reblog.offset = reblog_offset;
             });
             continue;
         }
 
         maps_.create<reblog_header>([&](auto& reblog) {
-            reblog.hash = rop.hash;
+            reblog.hash = op.hash;
             reblog.account = rop.account;
-            reblog.op_num = op_num;
+            reblog.op_num = op.num;
             reblog.offset = reblog_offset;
         });
     }
@@ -211,13 +210,13 @@ void genesis_ee_builder::process_delete_reblogs() {
     bfs::fstream in(in_dump_dir_ / "delete_reblogs");
     read_header(in);
 
-    operation_number op_num;
-    while (read_op_num(in, op_num)) {
+    operation_header op;
+    while (read_op_header(in, op)) {
         cyberway::golos::delete_reblog_operation drop;
         fc::raw::unpack(in, drop);
 
-        auto reblog_itr = reblog_index.find(std::make_tuple(drop.hash, drop.account));
-        if (op_num > reblog_itr->op_num) {
+        auto reblog_itr = reblog_index.find(std::make_tuple(op.hash, drop.account));
+        if (op.num > reblog_itr->op_num) {
             maps_.remove(*reblog_itr);
         }
     }

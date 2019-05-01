@@ -26,7 +26,7 @@ public:
     void build(const bfs::path& out_dir);
 private:
     golos_dump_header read_header(bfs::fstream& in);
-    bool read_op_num(bfs::fstream& in, operation_number& op_num);
+    bool read_op_header(bfs::fstream& in, operation_header& op);
 
     void process_comments();
     void process_delete_comments();
