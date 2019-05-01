@@ -902,25 +902,25 @@ namespace eosio {
       self->consecutive_rejected_blocks = 0;
       ++self->consecutive_immediate_connection_close;
       self->last_close = fc::time_point::now();
-      std::unique_lock<std::mutex> g_conn( self->conn_mtx );
-      bool has_last_req = !!self->last_req;
-      g_conn.unlock();
+      bool has_last_req = false;
+      {
+         std::lock_guard<std::mutex> g_conn( self->conn_mtx );
+         has_last_req = !!self->last_req;
+         self->last_handshake_recv = handshake_message();
+         self->last_handshake_sent = handshake_message();
+      }
       if( has_last_req ) {
          my_impl->dispatcher->retry_fetch( self->shared_from_this() );
       }
       self->peer_requested.reset();
       self->sent_handshake_count = 0;
-      g_conn.lock();
-      self->last_handshake_recv = handshake_message();
-      self->last_handshake_sent = handshake_message();
-      g_conn.unlock();
       my_impl->sync_master->sync_reset_lib_num( self->shared_from_this() );
       fc_dlog( logger, "closed, canceling wait on ${p}", ("p", self->peer_name()) ); // peer_name(), do not hold conn_mtx
       self->cancel_wait();
-
-      std::unique_lock<std::mutex> g( self->read_delay_timer_mtx );
-      self->read_delay_timer.cancel();
-      g.unlock();
+      {
+         std::lock_guard<std::mutex> g( self->read_delay_timer_mtx );
+         self->read_delay_timer.cancel();
+      }
 
       if( reconnect ) {
          my_impl->start_conn_timer( std::chrono::milliseconds( 100 ), connection_wptr() );
@@ -1583,10 +1583,11 @@ namespace eosio {
       }
       g.unlock();
       if( req.req_blocks.mode == catch_up ) {
-         std::unique_lock<std::mutex> g_conn( c->conn_mtx );
-         c->fork_head = id;
-         c->fork_head_num = num;
-         g_conn.unlock();
+         {
+            std::lock_guard<std::mutex> g_conn( c->conn_mtx );
+            c->fork_head = id;
+            c->fork_head_num = num;
+         }
          std::lock_guard<std::mutex> g( sync_mtx );
          fc_ilog( logger, "got a catch_up notice while in ${s}, fork head num = ${fhn} "
                           "target LIB = ${lib} next_expected = ${ne}",
@@ -1621,9 +1622,10 @@ namespace eosio {
             verify_catchup(c, msg.known_blocks.pending, msg.known_blocks.ids.back());
          }
       } else if (msg.known_blocks.mode == last_irr_catch_up) {
-         std::unique_lock<std::mutex> g_conn( c->conn_mtx );
-         c->last_handshake_recv.last_irreversible_block_num = msg.known_trx.pending;
-         g_conn.unlock();
+         {
+            std::lock_guard<std::mutex> g_conn( c->conn_mtx );
+            c->last_handshake_recv.last_irreversible_block_num = msg.known_trx.pending;
+         }
          sync_reset_lib_num(c);
          start_sync(c, msg.known_trx.pending);
       }
