@@ -1110,7 +1110,6 @@ struct genesis_create::genesis_create_impl final {
         const auto expiration_time = fc::hours(48);
         for (const auto& cp : _visitor.comments) {
             const auto& c = cp.second;
-            const auto cashout = c.active.cashout_time;
             db.emplace<generated_transaction_object>([&](auto& t){
                 std::pair<name,string> data{get_name(c.author), c.permlink.value(_plnk_map)};
                 tx.actions[0].data = fc::raw::pack(data);
