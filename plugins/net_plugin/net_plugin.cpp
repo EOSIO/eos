@@ -250,6 +250,14 @@ namespace eosio {
       mutable std::shared_mutex             connections_mtx;
       std::set< connection_ptr >            connections;     // todo: switch to a thread safe container to avoid big mutex over complete collection
 
+      template<typename Function>
+      void for_each_connection( Function f ) {
+         std::shared_lock<std::shared_mutex> g( connections_mtx );
+         for( auto& c : connections ) {
+            if ( !f( c ) ) return;
+         }
+      }
+
       std::mutex                            connector_check_timer_mtx;
       unique_ptr<boost::asio::steady_timer> connector_check_timer;
       int                                   connector_checks_in_flight{0};
@@ -1432,12 +1440,12 @@ namespace eosio {
 
    // static, thread safe
    void sync_manager::send_handshakes() {
-      std::shared_lock<std::shared_mutex> g( my_impl->connections_mtx );
-      for( auto& ci : my_impl->connections ) {
+      my_impl->for_each_connection( []( auto& ci ) {
          if( ci->current() ) {
             ci->send_handshake();
          }
-      }
+         return true;
+      } );
    }
 
    bool sync_manager::is_sync_required( uint32_t fork_head_block_num ) {
@@ -1573,15 +1581,14 @@ namespace eosio {
    void sync_manager::verify_catchup(const connection_ptr& c, uint32_t num, const block_id_type& id) {
       request_message req;
       req.req_blocks.mode = catch_up;
-      std::shared_lock<std::shared_mutex> g( my_impl->connections_mtx );
-      for (const auto& cc : my_impl->connections) {
+      my_impl->for_each_connection( [num, &id, &req]( const auto& cc ) {
          std::lock_guard<std::mutex> g_conn( cc->conn_mtx );
          if( cc->fork_head_num > num || cc->fork_head == id ) {
             req.req_blocks.mode = none;
-            break;
+            return false;
          }
-      }
-      g.unlock();
+         return true;
+      } );
       if( req.req_blocks.mode == catch_up ) {
          {
             std::lock_guard<std::mutex> g_conn( c->conn_mtx );
@@ -1678,24 +1685,22 @@ namespace eosio {
 
          block_id_type null_id;
          bool set_state_to_head_catchup = false;
-         std::shared_lock<std::shared_mutex> g( my_impl->connections_mtx );
-         for( const auto& cp : my_impl->connections ) {
+         my_impl->for_each_connection( [&null_id, blk_num, &blk_id, &c, &set_state_to_head_catchup]( const auto& cp ) {
             std::unique_lock<std::mutex> g_cp_conn( cp->conn_mtx );
             uint32_t fork_head_num = cp->fork_head_num;
             block_id_type fork_head_id = cp->fork_head;
             g_cp_conn.unlock();
             if( fork_head_id == null_id ) {
-               continue;
-            }
-            if( fork_head_num < blk_num || fork_head_id == blk_id ) {
+               // continue
+            } else if( fork_head_num < blk_num || fork_head_id == blk_id ) {
                std::lock_guard<std::mutex> g_conn( c->conn_mtx );
                c->fork_head = null_id;
                c->fork_head_num = 0;
             } else {
                set_state_to_head_catchup = true;
             }
-         }
-         g.unlock();
+            return true;
+         } );
 
          if( set_state_to_head_catchup ) {
             g_sync.lock();
@@ -1823,27 +1828,23 @@ namespace eosio {
 
       if( my_impl->sync_master->syncing_with_peer() ) return;
       bool have_connection = false;
-      std::shared_lock<std::shared_mutex> g( my_impl->connections_mtx );
-      for( auto& cp : my_impl->connections ) {
-
+      my_impl->for_each_connection( [&have_connection]( auto& cp ) {
          peer_dlog( cp, "socket_is_open ${s}, connecting ${c}, syncing ${ss}",
                     ("s", cp->socket_is_open())("c", cp->connecting.load())("ss", cp->syncing.load()) );
 
          if( !cp->current() ) {
-            continue;
+            return true;
          }
          have_connection = true;
-         break;
-      }
-      g.unlock();
+         return false;
+      } );
 
       if( !have_connection ) return;
       std::shared_ptr<std::vector<char>> send_buffer = create_send_buffer( bs->block );
 
-      g.lock();
-      for( auto& cp : my_impl->connections ) {
+      my_impl->for_each_connection( [this, bs, send_buffer]( auto& cp ) {
          if( !cp->current() ) {
-            continue;
+            return true;
          }
          cp->strand.post( [this, cp, bs, send_buffer]() {
             uint32_t bnum = bs->block_num;
@@ -1859,7 +1860,8 @@ namespace eosio {
                cp->enqueue_buffer( send_buffer, true, priority::medium, no_reason );
             }
          });
-      }
+         return true;
+      } );
    }
 
    // called from connection strand
@@ -1892,14 +1894,13 @@ namespace eosio {
       node_transaction_state nts = {id, trx_expiration, 0, 0};
 
       std::shared_ptr<std::vector<char>> send_buffer;
-      std::shared_lock<std::shared_mutex> g( my_impl->connections_mtx );
-      for( auto& cp : my_impl->connections ) {
+      my_impl->for_each_connection( [this, &trx, &nts, &send_buffer]( auto& cp ) {
          if( !cp->current() ) {
-            continue;
+            return true;
          }
          nts.connection_id = cp->connection_id;
          if( !add_peer_txn(nts) ) {
-            continue;
+            return true;
          }
          if( !send_buffer ) {
             send_buffer = create_send_buffer( trx );
@@ -1909,7 +1910,8 @@ namespace eosio {
             fc_dlog( logger, "sending trx to ${n}", ("n", cp->peer_name()) );
             cp->enqueue_buffer( send_buffer, true, priority::low, no_reason );
          } );
-      }
+         return true;
+      } );
    }
 
    void dispatch_manager::recv_transaction(const connection_ptr& c, const transaction_metadata_ptr& txn) {
@@ -1978,51 +1980,49 @@ namespace eosio {
 
    void dispatch_manager::retry_fetch(const connection_ptr& c) {
       fc_dlog( logger, "retry fetch" );
-      std::unique_lock<std::mutex> g_c_conn( c->conn_mtx );
-      if( !c->last_req ) {
-         return;
-      }
-      fc_wlog( logger, "failed to fetch from ${p}", ("p", c->peer_address()) );
+      request_message last_req;
       block_id_type bid;
-      if( c->last_req->req_blocks.mode == normal && !c->last_req->req_blocks.ids.empty() ) {
-         bid = c->last_req->req_blocks.ids.back();
-      } else {
-         fc_wlog( logger, "no retry, block mpde = ${b} trx mode = ${t}",
-                  ("b", modes_str( c->last_req->req_blocks.mode ))( "t", modes_str( c->last_req->req_trx.mode ) ) );
-         return;
-      }
-      g_c_conn.unlock();
-      std::shared_lock<std::shared_mutex> g( my_impl->connections_mtx );
-      for( auto& conn : my_impl->connections ) {
-         if( conn == c ) continue;
-
-         std::unique_lock<std::mutex> g_conn_conn( conn->conn_mtx );
-         if( conn->last_req ) {
-            continue;
+      {
+         std::lock_guard<std::mutex> g_c_conn( c->conn_mtx );
+         if( !c->last_req ) {
+            return;
          }
-         g_conn_conn.unlock();
+         fc_wlog( logger, "failed to fetch from ${p}", ("p", c->peer_address()) );
+         if( c->last_req->req_blocks.mode == normal && !c->last_req->req_blocks.ids.empty() ) {
+            bid = c->last_req->req_blocks.ids.back();
+         } else {
+            fc_wlog( logger, "no retry, block mpde = ${b} trx mode = ${t}",
+                     ("b", modes_str( c->last_req->req_blocks.mode ))( "t", modes_str( c->last_req->req_trx.mode ) ) );
+            return;
+         }
+         last_req = *c->last_req;
+      }
+      my_impl->for_each_connection( [this, &c, &last_req, &bid]( auto& conn ) {
+         if( conn == c )
+            return true;
+         {
+            std::lock_guard<std::mutex> guard( conn->conn_mtx );
+            if( conn->last_req ) {
+               return true;
+            }
+         }
+
          bool sendit = peer_has_block( bid, conn->connection_id );
          if( sendit ) {
-            g.unlock();
-            g_c_conn.lock();
-            auto last_req = *c->last_req;
-            g_c_conn.unlock();
             conn->strand.post( [conn, last_req{std::move(last_req)}]() {
                conn->enqueue( last_req );
                conn->fetch_wait();
                std::lock_guard<std::mutex> g_conn_conn( conn->conn_mtx );
                conn->last_req = last_req;
             } );
-            return;
+            return false;
          }
-      }
+         return true;
+      } );
 
       // at this point no other peer has it, re-request or do nothing?
       fc_wlog( logger, "no peer has last_req" );
       if( c->connected() ) {
-         g_c_conn.lock();
-         auto last_req = *c->last_req;
-         g_c_conn.unlock();
          c->enqueue( last_req );
          c->fetch_wait();
       }
@@ -2116,8 +2116,7 @@ namespace eosio {
                fc_elog( logger, "Error getting remote endpoint: ${m}", ("m", rec.message()) );
             } else {
                paddr_str = paddr_add.to_string();
-               std::shared_lock<std::shared_mutex> g( my_impl->connections_mtx );
-               for( auto& conn : connections ) {
+               my_impl->for_each_connection( [&visitors, &from_addr, &paddr_str]( auto& conn ) {
                   if( conn->socket_is_open() ) {
                      if( conn->peer_address().empty() ) {
                         ++visitors;
@@ -2126,13 +2125,12 @@ namespace eosio {
                         }
                      }
                   }
-               }
-               g.unlock();
+                  return true;
+               } );
                if( from_addr < max_nodes_per_host && (max_client_count == 0 || visitors < max_client_count) ) {
                   if( new_connection->start_session() ) {
-                     std::unique_lock<std::shared_mutex> g_unique( connections_mtx );
+                     std::lock_guard<std::shared_mutex> g_unique( connections_mtx );
                      connections.insert( new_connection );
-                     g_unique.unlock();
                   }
 
                } else {
@@ -2865,14 +2863,14 @@ namespace eosio {
                if( my->in_shutdown ) return;
                fc_wlog( logger, "Peer keepalive ticked sooner than expected: ${m}", ("m", ec.message()) );
             }
-            std::shared_lock<std::shared_mutex> g( my->connections_mtx );
-            for( auto& c : my->connections ) {
+            my->for_each_connection( []( auto& c ) {
                if( c->socket_is_open() ) {
                   c->strand.post( [c]() {
                      c->send_time();
                   } );
                }
-            }
+               return true;
+            } );
          } );
    }
 
@@ -3315,7 +3313,7 @@ namespace eosio {
 
          {
             fc_ilog( logger, "close ${s} connections", ("s", my->connections.size()) );
-            std::unique_lock<std::shared_mutex> g( my->connections_mtx );
+            std::lock_guard<std::shared_mutex> g( my->connections_mtx );
             for( auto& con : my->connections ) {
                fc_dlog( logger, "close: ${p}", ("p", con->peer_name()) );
                con->close( false );
@@ -3336,7 +3334,7 @@ namespace eosio {
     *  Used to trigger a new connection from RPC API
     */
    string net_plugin::connect( const string& host ) {
-      std::unique_lock<std::shared_mutex> g( my->connections_mtx );
+      std::lock_guard<std::shared_mutex> g( my->connections_mtx );
       if( my->find_connection( host ) )
          return "already connected";
 
@@ -3350,7 +3348,7 @@ namespace eosio {
    }
 
    string net_plugin::disconnect( const string& host ) {
-      std::unique_lock<std::shared_mutex> g( my->connections_mtx );
+      std::lock_guard<std::shared_mutex> g( my->connections_mtx );
       for( auto itr = my->connections.begin(); itr != my->connections.end(); ++itr ) {
          if( (*itr)->peer_address() == host ) {
             fc_ilog( logger, "disconnecting: ${p}", ("p", (*itr)->peer_name()) );
