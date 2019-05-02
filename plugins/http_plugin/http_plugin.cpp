@@ -27,6 +27,13 @@
 #include <memory>
 #include <regex>
 
+namespace fc {
+   extern std::unordered_map<std::string,logger>& get_logger_map();
+}
+
+const fc::string logger_name("http_plugin");
+fc::logger logger;
+
 namespace eosio {
 
    static appbase::abstract_plugin& _http_plugin = app().register_plugin<http_plugin>();
@@ -208,9 +215,9 @@ namespace eosio {
                   "!DHE:!RSA:!AES128:!RC4:!DES:!3DES:!DSS:!SRP:!PSK:!EXP:!MD5:!LOW:!aNULL:!eNULL") != 1)
                   EOS_THROW(chain::http_exception, "Failed to set HTTPS cipher list");
             } catch (const fc::exception& e) {
-               elog("https server initialization error: ${w}", ("w", e.to_detail_string()));
+               fc_elog( logger, "https server initialization error: ${w}", ("w", e.to_detail_string()) );
             } catch(std::exception& e) {
-               elog("https server initialization error: ${w}", ("w", e.what()));
+               fc_elog( logger, "https server initialization error: ${w}", ("w", e.what()) );
             }
 
             return ctx;
@@ -225,13 +232,13 @@ namespace eosio {
                   throw;
                } catch (const fc::exception& e) {
                   err += e.to_detail_string();
-                  elog( "${e}", ("e", err));
+                  fc_elog( logger, "${e}", ("e", err) );
                   error_results results{websocketpp::http::status_code::internal_server_error,
                                         "Internal Service Error", error_results::error_info(e, verbose_http_errors )};
                   con->set_body( fc::json::to_string( results ));
                } catch (const std::exception& e) {
                   err += e.what();
-                  elog( "${e}", ("e", err));
+                  fc_elog( logger, "${e}", ("e", err) );
                   error_results results{websocketpp::http::status_code::internal_server_error,
                                         "Internal Service Error", error_results::error_info(fc::exception( FC_LOG_MESSAGE( error, e.what())), verbose_http_errors )};
                   con->set_body( fc::json::to_string( results ));
@@ -244,7 +251,7 @@ namespace eosio {
                }
             } catch (...) {
                con->set_body( R"xxx({"message": "Internal Server Error"})xxx" );
-               std::cerr << "Exception attempting to handle exception: " << err << std::endl;
+               fc_elog( logger, "Exception attempting to handle exception: ${e}", ("e", err) );
             }
          }
 
@@ -291,7 +298,7 @@ namespace eosio {
                con->append_header( "Content-type", "application/json" );
 
                if( bytes_in_flight > max_bytes_in_flight ) {
-                  dlog( "503 - too many bytes in flight: ${bytes}", ("bytes", bytes_in_flight.load()) );
+                  fc_dlog( logger, "503 - too many bytes in flight: ${bytes}", ("bytes", bytes_in_flight.load()) );
                   error_results results{websocketpp::http::status_code::too_many_requests, "Busy", error_results::error_info()};
                   con->set_body( fc::json::to_string( results ));
                   con->set_status( websocketpp::http::status_code::too_many_requests );
@@ -329,7 +336,7 @@ namespace eosio {
                   } );
 
                } else {
-                  dlog( "404 - not found: ${ep}", ("ep", resource));
+                  fc_dlog( logger, "404 - not found: ${ep}", ("ep", resource) );
                   error_results results{websocketpp::http::status_code::not_found,
                                         "Not Found", error_results::error_info(fc::exception( FC_LOG_MESSAGE( error, "Unknown Endpoint" )), verbose_http_errors )};
                   con->set_body( fc::json::to_string( results ));
@@ -352,11 +359,11 @@ namespace eosio {
                   handle_http_request<detail::asio_with_stub_log<T>>(ws.get_con_from_hdl(hdl));
                });
             } catch ( const fc::exception& e ){
-               elog( "http: ${e}", ("e",e.to_detail_string()));
+               fc_elog( logger, "http: ${e}", ("e", e.to_detail_string()) );
             } catch ( const std::exception& e ){
-               elog( "http: ${e}", ("e",e.what()));
+               fc_elog( logger, "http: ${e}", ("e", e.what()) );
             } catch (...) {
-               elog("error thrown from http io service");
+               fc_elog( logger, "error thrown from http io service" );
             }
          }
 
@@ -409,26 +416,29 @@ namespace eosio {
 
             ("access-control-allow-origin", bpo::value<string>()->notifier([this](const string& v) {
                 my->access_control_allow_origin = v;
-                ilog("configured http with Access-Control-Allow-Origin: ${o}", ("o", my->access_control_allow_origin));
+                fc_ilog( logger, "configured http with Access-Control-Allow-Origin: ${o}",
+                         ("o", my->access_control_allow_origin) );
              }),
              "Specify the Access-Control-Allow-Origin to be returned on each request.")
 
             ("access-control-allow-headers", bpo::value<string>()->notifier([this](const string& v) {
                 my->access_control_allow_headers = v;
-                ilog("configured http with Access-Control-Allow-Headers : ${o}", ("o", my->access_control_allow_headers));
+                fc_ilog( logger, "configured http with Access-Control-Allow-Headers : ${o}",
+                         ("o", my->access_control_allow_headers) );
              }),
              "Specify the Access-Control-Allow-Headers to be returned on each request.")
 
             ("access-control-max-age", bpo::value<string>()->notifier([this](const string& v) {
                 my->access_control_max_age = v;
-                ilog("configured http with Access-Control-Max-Age : ${o}", ("o", my->access_control_max_age));
+                fc_ilog( logger, "configured http with Access-Control-Max-Age : ${o}",
+                         ("o", my->access_control_max_age) );
              }),
              "Specify the Access-Control-Max-Age to be returned on each request.")
 
             ("access-control-allow-credentials",
              bpo::bool_switch()->notifier([this](bool v) {
                 my->access_control_allow_credentials = v;
-                if (v) ilog("configured http with Access-Control-Allow-Credentials: true");
+                if( v ) fc_ilog( logger, "configured http with Access-Control-Allow-Credentials: true" );
              })->default_value(false),
              "Specify if Access-Control-Allow-Credentials: true should be returned on each request.")
             ("max-body-size", bpo::value<uint32_t>()->default_value(1024*1024),
@@ -529,23 +539,25 @@ namespace eosio {
 
    void http_plugin::plugin_startup() {
 
+      handle_sighup(); // setup logging
+
       my->thread_pool.emplace( "http", my->thread_pool_size );
 
       if(my->listen_endpoint) {
          try {
             my->create_server_for_endpoint(*my->listen_endpoint, my->server);
 
-            ilog("start listening for http requests");
+            fc_ilog( logger, "start listening for http requests" );
             my->server.listen(*my->listen_endpoint);
             my->server.start_accept();
          } catch ( const fc::exception& e ){
-            elog( "http service failed to start: ${e}", ("e",e.to_detail_string()));
+            fc_elog( logger, "http service failed to start: ${e}", ("e", e.to_detail_string()) );
             throw;
          } catch ( const std::exception& e ){
-            elog( "http service failed to start: ${e}", ("e",e.what()));
+            fc_elog( logger, "http service failed to start: ${e}", ("e", e.what()) );
             throw;
          } catch (...) {
-            elog("error thrown from http io service");
+            fc_elog( logger, "error thrown from http io service" );
             throw;
          }
       }
@@ -561,13 +573,13 @@ namespace eosio {
             });
             my->unix_server.start_accept();
          } catch ( const fc::exception& e ){
-            elog( "unix socket service failed to start: ${e}", ("e",e.to_detail_string()));
+            fc_elog( logger, "unix socket service failed to start: ${e}", ("e", e.to_detail_string()) );
             throw;
          } catch ( const std::exception& e ){
-            elog( "unix socket service failed to start: ${e}", ("e",e.what()));
+            fc_elog( logger, "unix socket service failed to start: ${e}", ("e", e.what()) );
             throw;
          } catch (...) {
-            elog("error thrown from unix socket io service");
+            fc_elog( logger, "error thrown from unix socket io service" );
             throw;
          }
       }
@@ -579,17 +591,17 @@ namespace eosio {
                return my->on_tls_init(hdl);
             });
 
-            ilog("start listening for https requests");
+            fc_ilog( logger, "start listening for https requests" );
             my->https_server.listen(*my->https_listen_endpoint);
             my->https_server.start_accept();
          } catch ( const fc::exception& e ){
-            elog( "https service failed to start: ${e}", ("e",e.to_detail_string()));
+            fc_elog( logger, "https service failed to start: ${e}", ("e", e.to_detail_string()) );
             throw;
          } catch ( const std::exception& e ){
-            elog( "https service failed to start: ${e}", ("e",e.what()));
+            fc_elog( logger, "https service failed to start: ${e}", ("e", e.what()) );
             throw;
          } catch (...) {
-            elog("error thrown from https io service");
+            fc_elog( logger, "error thrown from https io service" );
             throw;
          }
       }
@@ -608,6 +620,12 @@ namespace eosio {
       }});
    }
 
+   void http_plugin::handle_sighup() {
+      if( fc::get_logger_map().find( logger_name ) != fc::get_logger_map().end() ) {
+         logger = fc::get_logger_map()[logger_name];
+      }
+   }
+
    void http_plugin::plugin_shutdown() {
       if(my->server.is_listening())
          my->server.stop_listening();
@@ -622,7 +640,7 @@ namespace eosio {
    }
 
    void http_plugin::add_handler(const string& url, const url_handler& handler) {
-      ilog( "add api url: ${c}", ("c",url) );
+      fc_ilog( logger, "add api url: ${c}", ("c", url) );
       my->url_handlers.insert(std::make_pair(url,handler));
    }
 
@@ -642,28 +660,28 @@ namespace eosio {
          } catch (fc::eof_exception& e) {
             error_results results{422, "Unprocessable Entity", error_results::error_info(e, verbose_http_errors)};
             cb( 422, fc::variant( results ));
-            elog( "Unable to parse arguments to ${api}.${call}", ("api", api_name)( "call", call_name ));
-            dlog("Bad arguments: ${args}", ("args", body));
+            fc_elog( logger, "Unable to parse arguments to ${api}.${call}", ("api", api_name)( "call", call_name ) );
+            fc_dlog( logger, "Bad arguments: ${args}", ("args", body) );
          } catch (fc::exception& e) {
             error_results results{500, "Internal Service Error", error_results::error_info(e, verbose_http_errors)};
             cb( 500, fc::variant( results ));
             if (e.code() != chain::greylist_net_usage_exceeded::code_value && e.code() != chain::greylist_cpu_usage_exceeded::code_value) {
-               elog( "FC Exception encountered while processing ${api}.${call}",
-                     ("api", api_name)( "call", call_name ));
-               dlog( "Exception Details: ${e}", ("e", e.to_detail_string()));
+               fc_elog( logger, "FC Exception encountered while processing ${api}.${call}",
+                        ("api", api_name)( "call", call_name ) );
+               fc_dlog( logger, "Exception Details: ${e}", ("e", e.to_detail_string()) );
             }
          } catch (std::exception& e) {
             error_results results{500, "Internal Service Error", error_results::error_info(fc::exception( FC_LOG_MESSAGE( error, e.what())), verbose_http_errors)};
             cb( 500, fc::variant( results ));
-            elog( "STD Exception encountered while processing ${api}.${call}",
-                  ("api", api_name)( "call", call_name ));
-            dlog( "Exception Details: ${e}", ("e", e.what()));
+            fc_elog( logger, "STD Exception encountered while processing ${api}.${call}",
+                     ("api", api_name)( "call", call_name ) );
+            fc_dlog( logger, "Exception Details: ${e}", ("e", e.what()) );
          } catch (...) {
             error_results results{500, "Internal Service Error",
                error_results::error_info(fc::exception( FC_LOG_MESSAGE( error, "Unknown Exception" )), verbose_http_errors)};
             cb( 500, fc::variant( results ));
-            elog( "Unknown Exception encountered while processing ${api}.${call}",
-                  ("api", api_name)( "call", call_name ));
+            fc_elog( logger, "Unknown Exception encountered while processing ${api}.${call}",
+                     ("api", api_name)( "call", call_name ) );
          }
       } catch (...) {
          std::cerr << "Exception attempting to handle exception for " << api_name << "." << call_name << std::endl;
