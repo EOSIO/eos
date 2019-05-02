@@ -5,7 +5,6 @@
 namespace cyberway { namespace golos {
 
 struct comment_operation {
-    uint64_t hash = 0;
     account_name_type parent_author;
     string parent_permlink;
 
@@ -17,12 +16,7 @@ struct comment_operation {
     flat_set<string> tags;
 };
 
-struct delete_comment_operation {
-    uint64_t hash = 0;
-};
-
 struct vote_operation {
-    uint64_t hash = 0;
     account_name_type voter;
     account_name_type author;
     string permlink;
@@ -31,7 +25,6 @@ struct vote_operation {
 };
 
 struct reblog_operation {
-    uint64_t hash = 0;
     account_name_type account;
     account_name_type author;
     string permlink;
@@ -41,7 +34,6 @@ struct reblog_operation {
 };
 
 struct delete_reblog_operation {
-    uint64_t hash = 0;
     account_name_type account;
 };
 
@@ -86,7 +78,6 @@ struct auction_window_reward_operation {
 };
 
 struct total_comment_reward_operation {
-    uint64_t hash = 0;
     account_name_type author;
     string permlink;
     asset author_reward;
@@ -97,11 +88,10 @@ struct total_comment_reward_operation {
 
 } } // cyberway::golos
 
-FC_REFLECT(cyberway::golos::comment_operation, (hash)(parent_author)(parent_permlink)(author)(permlink)(title)(body)(tags))
-FC_REFLECT(cyberway::golos::delete_comment_operation, (hash))
-FC_REFLECT(cyberway::golos::vote_operation, (hash)(voter)(author)(permlink)(weight)(timestamp))
-FC_REFLECT(cyberway::golos::reblog_operation, (hash)(account)(author)(permlink)(title)(body)(timestamp))
-FC_REFLECT(cyberway::golos::delete_reblog_operation, (hash)(account))
+FC_REFLECT(cyberway::golos::comment_operation, (parent_author)(parent_permlink)(author)(permlink)(title)(body)(tags))
+FC_REFLECT(cyberway::golos::vote_operation, (voter)(author)(permlink)(weight)(timestamp))
+FC_REFLECT(cyberway::golos::reblog_operation, (account)(author)(permlink)(title)(body)(timestamp))
+FC_REFLECT(cyberway::golos::delete_reblog_operation, (account))
 FC_REFLECT(cyberway::golos::transfer_operation, (from)(to)(amount)(memo))
 
 FC_REFLECT(cyberway::golos::author_reward_operation, (author)(permlink)(sbd_payout)(steem_payout)(vesting_payout))
