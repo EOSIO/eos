@@ -127,7 +127,7 @@ async function getXML(job)
     const testResultsArtifact = JSON.parse(artifacts).filter(artifact => artifact.filename === xmlFilename);
     if (isNullOrEmpty(testResultsArtifact))
     {
-        console.log(`WARNING: No ${xmlFilename} found! Link: ${job.web_url}`);
+        console.log(`WARNING: No ${xmlFilename} found for "${job.name}"! Link: ${job.web_url}`);
         return null;
     }
     const urlBuildkite = testResultsArtifact[0].download_url;
@@ -143,7 +143,7 @@ async function getXML(job)
     await XML.parseString(rawXML, xmlOptions, (err, result) => {xmlTestResults = result; xmlError = err;});
     if (isNullOrEmpty(xmlError))
         return xmlTestResults;
-    console.log(`WARNING: Failed to parse xml for job! Link: ${job.web_url}`);
+    console.log(`WARNING: Failed to parse xml for "${job.name}" job! Link: ${job.web_url}`);
     console.log(JSON.stringify(xmlError));
     return null;
 }
@@ -222,8 +222,8 @@ function testDiagnostics(test, logText)
 {
     if (debug)
     {
-        console.log(`testDiagnostics(test, logText) where logText.length = ${logText.length} bytes and`); // DEBUG
-        console.log(JSON.stringify({test}));
+        console.log(`testDiagnostics(test, logText) where logText.length = ${logText.length} bytes and test is`); // DEBUG
+        console.log(JSON.stringify(test));
     }
     // get basic information
     const testResultLine = new RegExp(`test\\s+#\\d+.*${test.testName}`, 'g'); // regex defining "test #" line
@@ -284,7 +284,7 @@ async function testMetrics(buildkiteObject)
     if (!isNullOrEmpty(buildkiteObject.type)) // input is a Buildkite job object
     {
         const job = buildkiteObject;
-        console.log(`Processing test metrics for "${job.name}" at ${job.web_url}...`);
+        console.log(`Processing test metrics for "${job.name}"${(inBuildkite) ? ` at ${job.web_url}` : ''}...`);
         // get test results
         const logText = await getLog(job);
         let testResults;
@@ -296,7 +296,7 @@ async function testMetrics(buildkiteObject)
         }
         catch (error)
         {
-            console.log(`XML processing failed! Link: ${job.web_url}`);
+            console.log(`XML processing failed for "${job.name}"! Link: ${job.web_url}`);
             console.log(JSON.stringify(error));
             testResults = null;
         }
@@ -333,17 +333,17 @@ async function testMetrics(buildkiteObject)
     else if (!isNullOrEmpty(buildkiteObject.number)) // input is a Buildkite build object
     {
         const build = buildkiteObject;
-        console.log(`Processing test metrics for ${build.pipeline.slug} build ${build.number} at ${build.web_url}...`);
+        console.log(`Processing test metrics for ${build.pipeline.slug} build ${build.number}${(inBuildkite) ? ` at ${build.web_url}` : ''}...`);
         let metrics = [], promises = [];
         // process test metrics
-        build.jobs.filter(job => job.type === 'script' && /test/.test(job.name.toLowerCase()) ).forEach((job) =>
+        build.jobs.filter(job => job.type === 'script' && /test/.test(job.name.toLowerCase()) && ! /test metrics/.test(job.name.toLowerCase())).forEach((job) =>
         {
             promises.push(
                 testMetrics(job)
                     .then((moreMetrics) => {
                         metrics = metrics.concat(moreMetrics);
                     }).catch((error) => {
-                        console.log(`ERROR: Failed to process test metrics for ${job.name}! Link: ${job.web_url}`);
+                        console.log(`ERROR: Failed to process test metrics for "${job.name}"! Link: ${job.web_url}`);
                         console.log(JSON.stringify(error));
                         errorCount++;
                     })
@@ -378,20 +378,20 @@ async function main()
         console.log(`buildNumber = "${buildNumber}"`);
         console.log(`pipeline    = "${pipeline}"`);
     }
-    if (!isNullOrEmpty(buildNumber) && !isNullOrEmpty(pipeline) && !isNullOrEmpty(process.env.BUILDKITE_API_KEY))
-    {
-        console.log(`${(inBuildkite) ? '+++ :bar_chart: ' : ''}Processing test metrics...`);
-        build = await getBuild(pipeline, buildNumber);
-        metrics = await testMetrics(build);
-        console.log('Done processing test metrics.');
-    }
-    else
+    if (isNullOrEmpty(buildNumber) || isNullOrEmpty(pipeline) || isNullOrEmpty(process.env.BUILDKITE_API_KEY))
     {
         console.log(`${(inBuildkite) ? ':no_entry: ' : ''}ERROR: Missing required inputs!`);
         if (isNullOrEmpty(process.env.BUILDKITE_API_KEY)) console.log('- Buildkite API key, as BUILDKITE_API_KEY environment variable');
         if (isNullOrEmpty(buildNumber)) console.log('- Build Number, as BUILDKITE_BUILD_NUMBER or argument 1');
         if (isNullOrEmpty(pipeline)) console.log('- Pipeline Slug, as BUILDKITE_PIPELINE_SLUG or argument 2');
         errorCount = -1;
+    }
+    else
+    {
+        console.log(`${(inBuildkite) ? '+++ :bar_chart: ' : ''}Processing test metrics...`);
+        build = await getBuild(pipeline, buildNumber);
+        metrics = await testMetrics(build);
+        console.log('Done processing test metrics.');
     }
     console.log(`${(inBuildkite) ? '+++ :pencil: ' : ''}Writing to file...`);
     fs.writeFileSync(outputFile, JSON.stringify({ metrics }));
