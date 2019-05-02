@@ -247,7 +247,7 @@ namespace eosio {
       bool                                  use_socket_read_watermark = false;
       /** @} */
 
-      mutable std::shared_timed_mutex       connections_mtx; // switch to std::shared_mutex in C++17
+      mutable std::shared_mutex             connections_mtx;
       std::set< connection_ptr >            connections;     // todo: switch to a thread safe container to avoid big mutex over complete collection
 
       std::mutex                            connector_check_timer_mtx;
@@ -1359,7 +1359,7 @@ namespace eosio {
       if (conn && conn->current() ) {
          sync_source = conn;
       } else {
-         std::shared_lock<std::shared_timed_mutex> g( my_impl->connections_mtx );
+         std::shared_lock<std::shared_mutex> g( my_impl->connections_mtx );
          if( my_impl->connections.size() == 0 ) {
             sync_source.reset();
          } else if( my_impl->connections.size() == 1 ) {
@@ -1432,7 +1432,7 @@ namespace eosio {
 
    // static, thread safe
    void sync_manager::send_handshakes() {
-      std::shared_lock<std::shared_timed_mutex> g( my_impl->connections_mtx );
+      std::shared_lock<std::shared_mutex> g( my_impl->connections_mtx );
       for( auto& ci : my_impl->connections ) {
          if( ci->current() ) {
             ci->send_handshake();
@@ -1573,7 +1573,7 @@ namespace eosio {
    void sync_manager::verify_catchup(const connection_ptr& c, uint32_t num, const block_id_type& id) {
       request_message req;
       req.req_blocks.mode = catch_up;
-      std::shared_lock<std::shared_timed_mutex> g( my_impl->connections_mtx );
+      std::shared_lock<std::shared_mutex> g( my_impl->connections_mtx );
       for (const auto& cc : my_impl->connections) {
          std::lock_guard<std::mutex> g_conn( cc->conn_mtx );
          if( cc->fork_head_num > num || cc->fork_head == id ) {
@@ -1678,7 +1678,7 @@ namespace eosio {
 
          block_id_type null_id;
          bool set_state_to_head_catchup = false;
-         std::shared_lock<std::shared_timed_mutex> g( my_impl->connections_mtx );
+         std::shared_lock<std::shared_mutex> g( my_impl->connections_mtx );
          for( const auto& cp : my_impl->connections ) {
             std::unique_lock<std::mutex> g_cp_conn( cp->conn_mtx );
             uint32_t fork_head_num = cp->fork_head_num;
@@ -1823,7 +1823,7 @@ namespace eosio {
 
       if( my_impl->sync_master->syncing_with_peer() ) return;
       bool have_connection = false;
-      std::shared_lock<std::shared_timed_mutex> g( my_impl->connections_mtx );
+      std::shared_lock<std::shared_mutex> g( my_impl->connections_mtx );
       for( auto& cp : my_impl->connections ) {
 
          peer_dlog( cp, "socket_is_open ${s}, connecting ${c}, syncing ${ss}",
@@ -1892,7 +1892,7 @@ namespace eosio {
       node_transaction_state nts = {id, trx_expiration, 0, 0};
 
       std::shared_ptr<std::vector<char>> send_buffer;
-      std::shared_lock<std::shared_timed_mutex> g( my_impl->connections_mtx );
+      std::shared_lock<std::shared_mutex> g( my_impl->connections_mtx );
       for( auto& cp : my_impl->connections ) {
          if( !cp->current() ) {
             continue;
@@ -1992,7 +1992,7 @@ namespace eosio {
          return;
       }
       g_c_conn.unlock();
-      std::shared_lock<std::shared_timed_mutex> g( my_impl->connections_mtx );
+      std::shared_lock<std::shared_mutex> g( my_impl->connections_mtx );
       for( auto& conn : my_impl->connections ) {
          if( conn == c ) continue;
 
@@ -2116,7 +2116,7 @@ namespace eosio {
                fc_elog( logger, "Error getting remote endpoint: ${m}", ("m", rec.message()) );
             } else {
                paddr_str = paddr_add.to_string();
-               std::shared_lock<std::shared_timed_mutex> g( my_impl->connections_mtx );
+               std::shared_lock<std::shared_mutex> g( my_impl->connections_mtx );
                for( auto& conn : connections ) {
                   if( conn->socket_is_open() ) {
                      if( conn->peer_address().empty() ) {
@@ -2130,7 +2130,7 @@ namespace eosio {
                g.unlock();
                if( from_addr < max_nodes_per_host && (max_client_count == 0 || visitors < max_client_count) ) {
                   if( new_connection->start_session() ) {
-                     std::unique_lock<std::shared_timed_mutex> g_unique( connections_mtx );
+                     std::unique_lock<std::shared_mutex> g_unique( connections_mtx );
                      connections.insert( new_connection );
                      g_unique.unlock();
                   }
@@ -2431,7 +2431,7 @@ namespace eosio {
          if( peer_address().empty() || last_handshake_recv.node_id == fc::sha256()) {
             g_conn.unlock();
             fc_dlog(logger, "checking for duplicate" );
-            std::shared_lock<std::shared_timed_mutex> g_cnts( my_impl->connections_mtx );
+            std::shared_lock<std::shared_mutex> g_cnts( my_impl->connections_mtx );
             for(const auto& check : my_impl->connections) {
                if(check.get() == this)
                   continue;
@@ -2865,7 +2865,7 @@ namespace eosio {
                if( my->in_shutdown ) return;
                fc_wlog( logger, "Peer keepalive ticked sooner than expected: ${m}", ("m", ec.message()) );
             }
-            std::shared_lock<std::shared_timed_mutex> g( my->connections_mtx );
+            std::shared_lock<std::shared_mutex> g( my->connections_mtx );
             for( auto& c : my->connections ) {
                if( c->socket_is_open() ) {
                   c->strand.post( [c]() {
@@ -2905,7 +2905,7 @@ namespace eosio {
       auto max_time = fc::time_point::now();
       max_time += fc::milliseconds(max_cleanup_time_ms);
       auto from = from_connection.lock();
-      std::unique_lock<std::shared_timed_mutex> g( connections_mtx );
+      std::unique_lock<std::shared_mutex> g( connections_mtx );
       auto it = (from ? connections.find(from) : connections.begin());
       if (it == connections.end()) it = connections.begin();
       size_t num_rm = 0;
@@ -3315,7 +3315,7 @@ namespace eosio {
 
          {
             fc_ilog( logger, "close ${s} connections", ("s", my->connections.size()) );
-            std::unique_lock<std::shared_timed_mutex> g( my->connections_mtx );
+            std::unique_lock<std::shared_mutex> g( my->connections_mtx );
             for( auto& con : my->connections ) {
                fc_dlog( logger, "close: ${p}", ("p", con->peer_name()) );
                con->close( false );
@@ -3336,7 +3336,7 @@ namespace eosio {
     *  Used to trigger a new connection from RPC API
     */
    string net_plugin::connect( const string& host ) {
-      std::unique_lock<std::shared_timed_mutex> g( my->connections_mtx );
+      std::unique_lock<std::shared_mutex> g( my->connections_mtx );
       if( my->find_connection( host ) )
          return "already connected";
 
@@ -3350,7 +3350,7 @@ namespace eosio {
    }
 
    string net_plugin::disconnect( const string& host ) {
-      std::unique_lock<std::shared_timed_mutex> g( my->connections_mtx );
+      std::unique_lock<std::shared_mutex> g( my->connections_mtx );
       for( auto itr = my->connections.begin(); itr != my->connections.end(); ++itr ) {
          if( (*itr)->peer_address() == host ) {
             fc_ilog( logger, "disconnecting: ${p}", ("p", (*itr)->peer_name()) );
@@ -3363,7 +3363,7 @@ namespace eosio {
    }
 
    optional<connection_status> net_plugin::status( const string& host )const {
-      std::shared_lock<std::shared_timed_mutex> g( my->connections_mtx );
+      std::shared_lock<std::shared_mutex> g( my->connections_mtx );
       auto con = my->find_connection( host );
       if( con )
          return con->get_status();
@@ -3372,7 +3372,7 @@ namespace eosio {
 
    vector<connection_status> net_plugin::connections()const {
       vector<connection_status> result;
-      std::shared_lock<std::shared_timed_mutex> g( my->connections_mtx );
+      std::shared_lock<std::shared_mutex> g( my->connections_mtx );
       result.reserve( my->connections.size() );
       for( const auto& c : my->connections ) {
          result.push_back( c->get_status() );
