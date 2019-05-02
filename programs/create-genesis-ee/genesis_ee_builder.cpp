@@ -40,13 +40,11 @@ golos_dump_header genesis_ee_builder::read_header(bfs::fstream& in) {
 }
 
 bool genesis_ee_builder::read_op_header(bfs::fstream& in, operation_header& op) {
+    fc::raw::unpack(in, op);
+
     if (!in) {
         return false;
     }
-
-    op.num = operation_number();
-    op.hash = 0;
-    fc::raw::unpack(in, op);
 
     if (op.num.first > last_block_) {
         return false;
