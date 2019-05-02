@@ -120,6 +120,8 @@ BOOST_AUTO_TEST_CASE(signal_basic_replay)
 
    test.produce_block();
 
+   transaction_id_type txn_id_to_verify;
+
    {
       int irr_count = 0;
       uint32_t last_irr_blocknum = 0;
@@ -176,6 +178,8 @@ BOOST_AUTO_TEST_CASE(signal_basic_replay)
       });
 
       auto trace = test.create_account(N(abc), N(eosio));
+      txn_id_to_verify = last_app_txn_id;
+      BOOST_CHECK_EQUAL(last_app_txn_id != transaction_id_type(), true);
       BOOST_CHECK_EQUAL(trace, last_signal_trace);
       BOOST_CHECK_EQUAL(acc_txn_count, 1);
       BOOST_CHECK_EQUAL(app_txn_count, 1);
@@ -199,10 +203,13 @@ BOOST_AUTO_TEST_CASE(signal_basic_replay)
       BOOST_CHECK_EQUAL(last_acc_blk_num, test.control->head_block_num());
    }
 
-   signal_tester replaychain(conf, 2, 1);
+   // test replay with/without optimizations
+   for (int i = 0; i < 2; ++i) {
+      if (i == 1) {
+         conf.disable_replay_opts = !conf.disable_replay_opts;
+      }
+      signal_tester replaychain(conf, 2 + i, 1);
 
-   // test replay
-   {
       int irr_count = 0;
       uint32_t last_irr_blocknum = 0;
 
@@ -262,6 +269,7 @@ BOOST_AUTO_TEST_CASE(signal_basic_replay)
 
       BOOST_CHECK_EQUAL(acc_txn_count, 3);
       BOOST_CHECK_EQUAL(app_txn_count, 3);
+      BOOST_CHECK_EQUAL(last_app_txn_id, txn_id_to_verify);
 
       BOOST_CHECK_EQUAL(irr_count, 2);
       BOOST_CHECK_EQUAL(last_irr_blocknum, replaychain.control->last_irreversible_block_num());
