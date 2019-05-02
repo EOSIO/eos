@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-load test_helper
+load helpers/general
 
 # A helper function is available to show output and status: `debug`
 
@@ -9,7 +9,7 @@ load test_helper
 TEST_LABEL="[helpers]"
 
 @test "${TEST_LABEL} > which command" {
-  if [[ $ARCH == "Linux" ]]; then
+  if [[ $ARCH == "Linux" ]] && ( [[ $NAME =~ "Amazon Linux" ]] || [[ $NAME == "CentOS Linux" ]] ); then
     uninstall-package which
     run ./scripts/helpers/eosio.bash
     [[ ! -z $(echo "${output}" | grep "Please install the 'which' command") ]] || exit

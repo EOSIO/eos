@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-load test_helper
+load helpers/general
 
 SCRIPT_LOCATION="scripts/eosio_uninstall.bash"
 TEST_LABEL="[eosio_uninstall]"

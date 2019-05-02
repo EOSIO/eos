@@ -34,7 +34,7 @@ echo ""
 ensure-cmake
 echo ""
 # CLANG Installation
-ensure-clang
+build-clang
 echo ""
 # LLVM Installation
 ensure-llvm

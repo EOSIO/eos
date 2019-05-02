@@ -40,13 +40,15 @@ while true; do
 done
 
 # Ensure packages exist
-ensure-apt-packages "${REPO_ROOT}/scripts/eosio_build_ubuntu_deps"
+[[ $PIN_COMPILER == false ]] && EXTRA_DEPS=(llvm-4.0,dpkg\ -s libclang-4.0-dev,dpkg\ -s)
+$ENABLE_COVERAGE_TESTING && EXTRA_DEPS+=(lcov,dpkg\ -s)
+ensure-apt-packages "${REPO_ROOT}/scripts/eosio_build_ubuntu_deps" "$(echo ${EXTRA_DEPS[@]})"
 echo ""
 # CMAKE Installation
 ensure-cmake
 echo ""
 # CLANG Installation
-ensure-clang
+build-clang
 echo ""
 # LLVM Installation
 ensure-llvm

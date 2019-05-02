@@ -1,9 +1,4 @@
 git,dpkg -s
-sudo,dpkg -s
-apt,dpkg -s
-llvm-4.0,dpkg -s
-clang-4.0,dpkg -s
-libclang-4.0-dev,dpkg -s
 make,dpkg -s
 automake,dpkg -s
 libbz2-dev,dpkg -s
@@ -22,6 +17,7 @@ autoconf,dpkg -s
 libtool,dpkg -s
 curl,dpkg -s
 zlib1g-dev,dpkg -s
+sudo,dpkg -s
 ruby,dpkg -s
 libusb-1.0-0-dev,dpkg -s
 libcurl4-gnutls-dev,dpkg -s

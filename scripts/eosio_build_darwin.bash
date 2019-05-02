@@ -80,7 +80,7 @@ ensure-brew-packages "${REPO_ROOT}/scripts/eosio_build_darwin_deps"
 [[ -z "${CMAKE}" ]] && export CMAKE="/usr/local/bin/cmake"
 echo ""
 # CLANG Installation
-ensure-clang
+build-clang
 echo ""
 # LLVM Installation
 ensure-llvm

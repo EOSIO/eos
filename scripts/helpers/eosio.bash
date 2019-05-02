@@ -90,7 +90,7 @@ function ensure-compiler() {
     CPP_COMP=${CXX:-c++}
     CC_COMP=${CC:-cc}
     if [[ $PIN_COMPILER == false ]]; then
-        which $CPP_COMP &>/dev/null || ( echo "${COLOR_RED} - Unable to find compiler ${CPP_COMP}! Pass in the -P option if you wish for us to install it. ${COLOR_NC}"; exit 1 )
+        which $CPP_COMP &>/dev/null || ( echo "${COLOR_RED} - Unable to find compiler \"${CPP_COMP}\"! Pass in the -P option if you wish for us to install it OR set \$CXX to the proper binary. ${COLOR_NC}"; exit 1 )
         # readlink on mac differs from linux readlink (mac doesn't have -f)
         [[ $ARCH == "Linux" ]] && READLINK_COMMAND="readlink -f" || READLINK_COMMAND="readlink"
         COMPILER_TYPE=$( eval $READLINK_COMMAND $(which $CPP_COMP) )
@@ -172,7 +172,6 @@ function ensure-boost() {
     echo "${COLOR_CYAN}[Checking Boost $( echo $BOOST_VERSION | sed 's/_/./g' ) library installation]${COLOR_NC}"
     BOOSTVERSION=$( grep "#define BOOST_VERSION" "$EOSIO_HOME/opt/boost/include/boost/version.hpp" 2>/dev/null | tail -1 | tr -s ' ' | cut -d\  -f3 || true )
     if [[ "${BOOSTVERSION}" != "${BOOST_VERSION_MAJOR}0${BOOST_VERSION_MINOR}0${BOOST_VERSION_PATCH}" ]]; then
-        echo $PIN_COMPILER
         if $PIN_COMPILER; then
             B2_FLAGS="toolset=clang cxxflags=\"-stdlib=libc++ -D__STRICT_ANSI__ -nostdinc++ -I${CLANG_ROOT}/include/c++/v1\" linkflags=\"-stdlib=libc++\" link=static threading=multi --with-iostreams --with-date_time --with-filesystem --with-system --with-program_options --with-chrono --with-test -q -j${JOBS} -sZLIB_LIBRARY_PATH=\"${OPT_LOCATION}/zlib/lib\" -sZLIB_INCLUDE=\"${OPT_LOCATION}/zlib/include\" -sZLIB_SOURCE=\"${SRC_LOCATION}/zlib-${ZLIB_VERSION}\" install"
         else
@@ -206,7 +205,7 @@ function ensure-llvm() {
                 CMAKE_FLAGS="-DCMAKE_INSTALL_PREFIX=${OPT_LOCATION}/llvm4 -DLLVM_TARGETS_TO_BUILD=host -DLLVM_BUILD_TOOLS=false -DLLVM_ENABLE_RTTI=1 -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=${BUILD_DIR}/pinned_toolchain.cmake .."
             else
                 if [[ $NAME == "Ubuntu" ]]; then
-                    ln -s /usr/lib/llvm-4.0 $LLVM_ROOT
+                    execute ln -s /usr/lib/llvm-4.0 $LLVM_ROOT
                     echo " - LLVM successfully linked from /usr/lib/llvm-4.0 to ${LLVM_ROOT}"
                     return 0
                 fi
@@ -228,8 +227,8 @@ function ensure-llvm() {
 }
 
 
-function ensure-clang() {
-    if $PIN_COMPILER; then
+function build-clang() {
+    if $BUILD_CLANG; then
         echo "${COLOR_CYAN}[Checking Clang support]${COLOR_NC}"
         if [[ ! -d $CLANG_ROOT ]]; then
             echo "Installing Clang 8..."
@@ -269,8 +268,15 @@ function ensure-clang() {
 }
 
 function ensure-yum-packages() {
-    [[ -z "${1}" ]] && echo "\$1 must be the location of your dependency file!" && exit 1
-    DEPS_FILE=$1
+    ( [[ -z "${1}" ]] || [[ ! -f "${1}" ]] ) && echo "\$1 must be the location of your dependency file!" && exit 1
+    DEPS_FILE="${TEMP_DIR}/$(basename ${1})"
+    # Create temp file so we can add to it
+    cat $1 > $DEPS_FILE
+    if [[ -n "${2}" ]]; then # Handle EXTRA_DEPS passed in and add them to temp DEPS_FILE
+        OLDIFS="$IFS"; IFS=$''
+        _2=("$(echo $2 | sed 's/-qa /-qa\n/g')")
+        for ((i = 0; i < ${#_2[@]}; i++)); do echo "${_2[$i]}\n" >> $DEPS_FILE; done
+    fi
     echo "${COLOR_CYAN}[Checking YUM installation]${COLOR_NC}"
     if ! YUM=$( command -v yum 2>/dev/null ); then echo " - YUM must be installed to compile EOS.IO." && exit 1
     else echo "Yum installation found at ${YUM}."; fi
@@ -321,8 +327,15 @@ function ensure-yum-packages() {
 }
 
 function ensure-brew-packages() {
-    [[ -z "${1}" ]] && echo "\$1 must be the location of your dependency file!" && exit 1
-    DEPS_FILE=$1
+    ( [[ -z "${1}" ]] || [[ ! -f "${1}" ]] ) && echo "\$1 must be the location of your dependency file!" && exit 1
+    DEPS_FILE="${TEMP_DIR}/$(basename ${1})"
+    # Create temp file so we can add to it
+    cat $1 > $DEPS_FILE
+    if [[ -n "${2}" ]]; then # Handle EXTRA_DEPS passed in and add them to temp DEPS_FILE
+        OLDIFS="$IFS"; IFS=$''
+        _2=("$(echo $2 | sed 's/-s /-s\n/g')")
+        for ((i = 0; i < ${#_2[@]}; i++)); do echo "${_2[$i]}\n" >> $DEPS_FILE; done
+    fi
     echo "${COLOR_CYAN}[Checking HomeBrew dependencies]${COLOR_NC}"
     OLDIFS="$IFS"
     IFS=$','
@@ -372,8 +385,16 @@ function ensure-brew-packages() {
 }
 
 function ensure-apt-packages() {
-    [[ -z "${1}" ]] && echo "\$1 must be the location of your dependency file!" && exit 1
-    DEPS_FILE=$1
+    ( [[ -z "${1}" ]] || [[ ! -f "${1}" ]] ) && echo "\$1 must be the location of your dependency file!" && exit 1
+    DEPS_FILE="${TEMP_DIR}/$(basename ${1})"
+    ls -laht $TEMP_DIR
+    # Create temp file so we can add to it
+    cat $1 > $DEPS_FILE
+    if [[ -n "${2}" ]]; then # Handle EXTRA_DEPS passed in and add them to temp DEPS_FILE
+        OLDIFS="$IFS"; IFS=$''
+        _2=("$(echo $2 | sed 's/-s /-s\n/g')")
+        for ((i = 0; i < ${#_2[@]}; i++)); do echo "${_2[$i]}\n" >> $DEPS_FILE; done
+    fi
     echo "${COLOR_CYAN}[Checking for installed package dependencies]${COLOR_NC}"
     OLDIFS="$IFS"; IFS=$','
     while read -r testee tester; do
@@ -386,17 +407,14 @@ function ensure-apt-packages() {
         fi
     done < $DEPS_FILE
     echo ""
-    if [[ "${ENABLE_CODE_COVERAGE}" == true ]]; then
-        DEPS+=(lcov)
-    fi
     IFS=$OLDIFS
-    if [ "${COUNT}" -gt 1 ]; then
+    if [[ $COUNT > 0 ]]; then
         while true; do
             [[ $NONINTERACTIVE == false ]] && read -p "${COLOR_YELLOW}Do you wish to install missing dependencies? (y/n)?${COLOR_NC} " PROCEED
             case $PROCEED in
                 "" ) echo "What would you like to do?";;
                 0 | true | [Yy]* )
-                    execute eval $( [[ $CURRENT_USER == "root" ]] || echo sudo ) $APTGET -y install $DEPS
+                    execute eval $( [[ $CURRENT_USER == "root" ]] || echo sudo -E ) $APTGET -y install $DEPS
                 break;;
                 1 | false | [Nn]* ) echo " ${COLOR_RED}- User aborted installation of required dependencies.${COLOR_NC}"; exit;;
                 * ) echo "Please type 'y' for yes or 'n' for no.";;

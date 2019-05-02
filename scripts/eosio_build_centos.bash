@@ -87,7 +87,7 @@ fi
 if $DRYRUN || [ -d /opt/rh/devtoolset-7 ]; then
 	echo "${COLOR_CYAN}[Enabling Centos devtoolset-7 (so we can use GCC 7)]${COLOR_NC}"
 	execute source /opt/rh/devtoolset-7/enable
-	echo " ${COLOR_GREEN}- Centos devtoolset-7 successfully enabled!${COLOR_NC}"
+	echo " - ${COLOR_GREEN}Centos devtoolset-7 successfully enabled!${COLOR_NC}"
 	echo ""
 fi
 
@@ -110,7 +110,7 @@ if [ "${COUNT}" -gt 1 ]; then
 		case $PROCEED in
 			"" ) echo "What would you like to do?";;
 			0 | true | [Yy]* )
-				execute eval $( [[ $CURRENT_USER == "root" ]] || echo sudo ) $YUM -y install $DEPS
+				execute eval $( [[ $CURRENT_USER == "root" ]] || echo sudo -E ) $YUM -y install $DEPS
 			break;;
 			1 | false | [Nn]* ) echo " ${COLOR_RED}- User aborted installation of required dependencies.${COLOR_NC}"; exit;;
 			* ) echo "Please type 'y' for yes or 'n' for no.";;
@@ -130,47 +130,29 @@ if $DRYRUN || [ -d $PYTHON3PATH ]; then
 	echo ""
 fi
 
-echo "${COLOR_CYAN}[Checking CMAKE installation]${COLOR_NC}"
-if [[ ! -e "${CMAKE}" ]]; then
-	echo "Installing CMAKE..."
-	execute bash -c "curl -LO https://cmake.org/files/v${CMAKE_VERSION_MAJOR}.${CMAKE_VERSION_MINOR}/cmake-${CMAKE_VERSION}.tar.gz \
-	&& tar -xzf cmake-${CMAKE_VERSION}.tar.gz \
-	&& cd cmake-${CMAKE_VERSION} \
-	&& ./bootstrap --prefix=${EOSIO_HOME} \
-	&& make -j${JOBS} \
-	&& make install \
-	&& cd .. \
-	&& rm -f cmake-${CMAKE_VERSION}.tar.gz"
-	[[ -z "${CMAKE}" ]] && export CMAKE="${EOSIO_HOME}/bin/cmake"
-	echo " - CMAKE successfully installed @ ${CMAKE}"
-else
-	echo " - CMAKE found @ ${CMAKE}."
-fi
-
+# Ensure packages exist
+ensure-yum-packages $DEPS_FILE
+echo ""
+# CMAKE Installation
+ensure-cmake
+echo ""
+# CLANG Installation
+build-clang
+echo ""
+# LLVM Installation
+ensure-llvm
+echo ""
+# ZLIB Installation
+ensure-zlib
+echo ""
+# BOOST Installation
+ensure-boost
 echo ""
 
-echo "${COLOR_CYAN}[Checking Boost $( echo $BOOST_VERSION | sed 's/_/./g' ) library installation]${COLOR_NC}"
-BOOSTVERSION=$( grep "#define BOOST_VERSION" "$EOSIO_HOME/opt/boost/include/boost/version.hpp" 2>/dev/null | tail -1 | tr -s ' ' | cut -d\  -f3 || true )
-if [[ "${BOOSTVERSION}" != "${BOOST_VERSION_MAJOR}0${BOOST_VERSION_MINOR}0${BOOST_VERSION_PATCH}" ]]; then
-	echo "Installing Boost library..."
-	execute bash -c "curl -LO https://dl.bintray.com/boostorg/release/$BOOST_VERSION_MAJOR.$BOOST_VERSION_MINOR.$BOOST_VERSION_PATCH/source/boost_$BOOST_VERSION.tar.bz2 \
-	&& tar -xjf boost_$BOOST_VERSION.tar.bz2 \
-	&& cd $BOOST_ROOT \
-	&& ./bootstrap.sh --prefix=$BOOST_ROOT \
-	&& ./b2 -q -j${JOBS} --with-iostreams --with-date_time --with-filesystem \
-	                                                  --with-system --with-program_options --with-chrono --with-test install \
-	&& cd .. \
-	&& rm -f boost_$BOOST_VERSION.tar.bz2 \
-	&& rm -rf $BOOST_LINK_LOCATION \
-	&& ln -s $BOOST_ROOT $BOOST_LINK_LOCATION"
-	echo " - Boost library successfully installed @ ${BOOST_ROOT}."
-else
-	echo " - Boost library found with correct version @ ${BOOST_ROOT}."
-fi
+if $INSTALL_MONGO; then
 
-echo ""
+	$BUILD_CLANG && PINNED_TOOLCHAIN="-DCMAKE_TOOLCHAIN_FILE=$BUILD_DIR/pinned_toolchain.cmake" # if we've pinned the compiler with -P
 
-if $MONGO_ENABLED; then
 	echo "${COLOR_CYAN}[Checking MongoDB installation]${COLOR_NC}"
 	if [[ ! -d $MONGODB_ROOT ]]; then
 		echo "Installing MongoDB into ${MONGODB_ROOT}..."
@@ -197,7 +179,7 @@ if $MONGO_ENABLED; then
 		&& cd mongo-c-driver-$MONGO_C_DRIVER_VERSION \
 		&& mkdir -p cmake-build \
 		&& cd cmake-build \
-		&& $CMAKE -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$EOSIO_HOME -DENABLE_BSON=ON -DENABLE_SSL=OPENSSL -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF -DENABLE_STATIC=ON .. \
+		&& $CMAKE -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$EOSIO_HOME -DENABLE_BSON=ON -DENABLE_SSL=OPENSSL -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF -DENABLE_STATIC=ON -DENABLE_ICU=OFF $PINNED_TOOLCHAIN .. \
 		&& make -j${JOBS} \
 		&& make install \
 		&& cd ../.. \
@@ -212,7 +194,7 @@ if $MONGO_ENABLED; then
 		execute bash -c "curl -L https://github.com/mongodb/mongo-cxx-driver/archive/r$MONGO_CXX_DRIVER_VERSION.tar.gz -o mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION.tar.gz \
 		&& tar -xzf mongo-cxx-driver-r${MONGO_CXX_DRIVER_VERSION}.tar.gz \
 		&& cd mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION/build \
-		&& $CMAKE -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$EOSIO_HOME .. \
+		&& $CMAKE -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$EOSIO_HOME -DCMAKE_PREFIX_PATH=$EOSIO_HOME $PINNED_TOOLCHAIN .. \
 		&& make -j${JOBS} VERBOSE=1 \
 		&& make install \
 		&& cd ../.. \
@@ -221,22 +203,4 @@ if $MONGO_ENABLED; then
 	else
 		echo " - MongoDB C++ driver found with correct version @ ${MONGO_CXX_DRIVER_ROOT}."
 	fi
-fi
-
-echo ""
-
-echo "${COLOR_CYAN}[Checking LLVM 4 support}${COLOR_NC}"
-if [[ ! -d $LLVM_ROOT ]]; then
-	echo "Installing LLVM 4..."
-	execute bash -c "cd ../opt \
-	&& git clone --depth 1 --single-branch --branch $LLVM_VERSION https://github.com/llvm-mirror/llvm.git llvm && cd llvm \
-	&& mkdir build \
-	&& cd build \
-	&& $CMAKE -G \"Unix Makefiles\" -DCMAKE_INSTALL_PREFIX=\"${LLVM_ROOT}\" -DLLVM_TARGETS_TO_BUILD=\"host\" -DLLVM_BUILD_TOOLS=false -DLLVM_ENABLE_RTTI=1 -DCMAKE_BUILD_TYPE=\"Release\" .. \
-	&& make -j${JOBS} \
-	&& make install \
-	&& cd ../.."
-	echo " - LLVM successfully installed @ ${LLVM_ROOT}"
-else
-	echo " - LLVM found @ ${LLVM_ROOT}."
 fi
