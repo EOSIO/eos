@@ -51,6 +51,7 @@ static constexpr uint64_t gls_ctrl_account_name = N(gls.ctrl);
 static constexpr uint64_t gls_vest_account_name = N(gls.vesting);
 static constexpr uint64_t gls_post_account_name = N(gls.publish);
 static constexpr uint64_t gls_social_account_name = N(gls.social);
+static constexpr uint64_t gls_charge_account_name = N(gls.charge);
 
 constexpr auto GBG = SY(3,GBG);
 constexpr auto GLS = SY(3,GOLOS);
@@ -140,6 +141,8 @@ struct state_object_visitor {
 
     fc::flat_map<acc_idx,acc_idx> withdraw_routes;  // from:to
 
+    using post_bw_info = std::pair<int64_t,time_point_sec>;
+    fc::flat_map<acc_idx,post_bw_info> post_bws;
     fc::flat_map<uint64_t,golos::comment_object> comments;  // id:comment
     std::vector<golos::comment_vote_object> votes;
 
@@ -241,6 +244,12 @@ struct state_object_visitor {
     }
 
     // posting data
+    void operator()(const golos::account_bandwidth_object& b) {
+        if (b.type == golos::bandwidth_type::post) {
+            post_bws.emplace(b.account.id, post_bw_info{b.average_bandwidth, b.last_bandwidth_update});
+        }
+    }
+
     void operator()(const golos::comment_object& c) {
         if (c.mode != golos::comment_mode::archived) {
             comments.emplace(c.id, std::move(c));
@@ -1171,6 +1180,59 @@ struct genesis_create::genesis_create_impl final {
         std::cout << "Done." << std::endl;
     }
 
+    void store_bandwidth() {
+        std::cout << "Creating bandwidth (charge) balances and posting limits..." << std::endl;
+
+        enum charge_id_t: uint8_t {vote, post, comm, postbw};   // vote should have id=0
+        enum act_t: uint8_t {POST, COMM, VOTE, POSTBW};         // copied from posting contract
+
+        db.start_section(gls_post_account_name, N(limit), "limitparams", 4);
+        auto insert_limit = [&](uint8_t charge_id, int64_t price, int64_t cutoff) {
+            primary_key_t pk =
+                charge_id == charge_id_t::vote ? act_t::VOTE :
+                charge_id == charge_id_t::comm ? act_t::COMM :
+                charge_id == charge_id_t::post ? act_t::POST : act_t::POSTBW;
+            db.insert(pk, gls_post_account_name, mvo
+                ("act", pk)
+                ("charge_id", charge_id)
+                ("price", price)
+                ("cutoff", cutoff)
+                ("vesting_price", 0)
+                ("min_vesting", 0)
+            );
+        };
+        insert_limit(charge_id_t::vote, 50, config::percent_100);
+        insert_limit(charge_id_t::postbw, config::percent_100, 4*config::percent_100);
+        insert_limit(charge_id_t::post, 300/1, 300);    // 1 post per 300 seconds;      TODO: use actual median values #607
+        insert_limit(charge_id_t::comm, 200/10, 200);   // 10 comments per 200 seconds
+        // insert_limit(charge_id_t::vote_op, 15/5, 15);   // 5 votes per 15 seconds
+
+        // TODO: restorers #608
+
+        // store charge balances
+        const auto& accs = _visitor.accounts;
+        db.start_section(gls_charge_account_name, N(balances), "balance", accs.size()*2);
+        const auto sym = symbol(GLS).to_symbol_code();
+        const auto sname = symbol(GLS).name();
+        for (const auto& ac : accs) {
+            const auto& a = ac.second;
+            auto insert_bw = [&](uint8_t charge_id, time_point_sec last_update, uint32_t value) {
+                primary_key_t pk = symbol(charge_id, sname.c_str()).value();
+                db.insert(pk, get_name(a.name), mvo
+                    ("charge_symbol", pk)
+                    ("token_code", sym)
+                    ("charge_id", charge_id)
+                    ("last_update", time_point(last_update).time_since_epoch().count())
+                    ("value", to_fbase(value))
+                );
+            };
+            insert_bw(charge_id_t::vote, a.last_vote_time, config::percent_100 - a.voting_power);
+            const auto& bw = _visitor.post_bws[a.name.id];
+            insert_bw(charge_id_t::postbw, bw.second, bw.first);    // max_elapsed = 24h; maxbw=400%, maxw = maxbw^2
+        }
+        std::cout << "Done." << std::endl;
+    }
+
     void prepare_writer(const bfs::path& out_file, const bfs::path& ee_directory) {
         const int n_sections = 5*2 + static_cast<int>(stored_contract_tables::_max);  // there are 5 duplicating account tables (system+golos)
         db.start(out_file, n_sections);
@@ -1199,6 +1261,7 @@ void genesis_create::write_genesis(
     _impl->prepare_writer(out_file, ee_directory);
     _impl->store_contracts();
     _impl->store_accounts();
+    _impl->store_bandwidth();
     _impl->store_posts();   // also pool and votes
     _impl->store_stakes();
     _impl->store_balances();

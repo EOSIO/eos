@@ -47,8 +47,8 @@ enum class stored_contract_tables: int {
     delegation,     rdelegation,
     withdrawal,
     witness_vote,   witness_info,
-    reward_pool,    // post_limits,
-    gtransaction,
+    reward_pool,    post_limits,
+    gtransaction,   bandwidths,
     messages,       permlinks,
     votes,
     // the following are system tables, but it's simpler to have them here
