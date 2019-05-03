@@ -9,6 +9,7 @@ const XML = require('xml2js'); // parse xml
 const buildkiteAccessToken = `?access_token=${process.env.BUILDKITE_API_KEY}`; // import buildkite access token from environment
 const debug = (process.env.DEBUG === 'true') ? true : false;
 let errorCount = 0; // count number of jobs which caused an error
+const EXIT_SUCCESS = 0;
 const inBuildkite = (process.env.BUILDKITE === 'true') ? true : false;
 const outputFile = 'test-metrics.json';
 const pipelineWhitelist = // the pipelines for which we run diagnostics
@@ -414,7 +415,7 @@ async function main()
         console.log(`Please send automation a link to this job${(isNullOrEmpty(build)) ? '.' : `: ${build.web_url}`}`);
         console.log('@kj4ezj or @zreyn on Telegram');
     }
-    return process.exit(errorCount);
+    return (inBuildkite) ? process.exit(EXIT_SUCCESS) : process.exit(errorCount);
 };
 
 main();
