@@ -146,7 +146,7 @@ if [ "$ARCH" == "Linux" ]; then
          FILE="${REPO_ROOT}/scripts/eosio_build_amazonlinux.bash"
       ;;
       "CentOS Linux")
-         FILE="${REPO_ROOT}/scripts/eosio_build_centos7.bash"
+         FILE="${REPO_ROOT}/scripts/eosio_build_centos.bash"
       ;;
       "Ubuntu")
          FILE="${REPO_ROOT}/scripts/eosio_build_ubuntu.bash"
@@ -169,6 +169,8 @@ fi
 echo "${COLOR_CYAN}====================================================================================="
 echo "======================= ${COLOR_WHITE}Starting EOSIO Dependency Install${COLOR_CYAN} ===========================${COLOR_NC}"
 execute cd $SRC_LOCATION
+$BUILD_CLANG && export PINNED_TOOLCHAIN="-DCMAKE_TOOLCHAIN_FILE='${BUILD_DIR}/pinned_toolchain.cmake'"
+
 . $FILE # Execute OS specific build file
 execute cd $REPO_ROOT
 echo ""
@@ -183,7 +185,7 @@ execute bash -c "sed -e 's~@~$OPT_LOCATION~g' $SCRIPT_DIR/pinned_toolchain.cmake
 # LOCAL_CMAKE_FLAGS
 $ENABLE_MONGO && LOCAL_CMAKE_FLAGS="-DBUILD_MONGO_DB_PLUGIN=true ${LOCAL_CMAKE_FLAGS}" # Enable Mongo DB Plugin if user has enabled -m
 if $PIN_COMPILER; then
-   LOCAL_CMAKE_FLAGS="-DCMAKE_TOOLCHAIN_FILE='${BUILD_DIR}/pinned_toolchain.cmake' -DCMAKE_PREFIX_PATH='${OPT_LOCATION}/llvm4' ${LOCAL_CMAKE_FLAGS}"
+   LOCAL_CMAKE_FLAGS="${PINNED_TOOLCHAIN} -DCMAKE_PREFIX_PATH='${OPT_LOCATION}/llvm4' ${LOCAL_CMAKE_FLAGS}"
 else
    LOCAL_CMAKE_FLAGS="-DCMAKE_CXX_COMPILER='${CXX}' -DCMAKE_C_COMPILER='${CC}' ${LOCAL_CMAKE_FLAGS}"
 fi

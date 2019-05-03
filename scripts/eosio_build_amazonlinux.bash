@@ -48,8 +48,6 @@ echo ""
 
 if $INSTALL_MONGO; then
 
-	$BUILD_CLANG && PINNED_TOOLCHAIN="-DCMAKE_TOOLCHAIN_FILE=$BUILD_DIR/pinned_toolchain.cmake" # if we've pinned the compiler with -P
-
 	echo "${COLOR_CYAN}[Checking MongoDB installation]${COLOR_NC}"
 	if [[ ! -d $MONGODB_ROOT ]]; then
 		echo "Installing MongoDB into ${MONGODB_ROOT}..."
@@ -76,7 +74,7 @@ if $INSTALL_MONGO; then
 		&& cd mongo-c-driver-$MONGO_C_DRIVER_VERSION \
 		&& mkdir -p cmake-build \
 		&& cd cmake-build \
-		&& $CMAKE -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$EOSIO_HOME -DENABLE_BSON=ON -DENABLE_SSL=OPENSSL -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF -DENABLE_STATIC=ON -DENABLE_ICU=OFF $PINNED_TOOLCHAIN .. \
+		&& $CMAKE -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$EOSIO_HOME -DENABLE_BSON=ON -DENABLE_SSL=OPENSSL -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF -DENABLE_STATIC=ON -DENABLE_ICU=OFF -DENABLE_SNAPPY=OFF $PINNED_TOOLCHAIN .. \
 		&& make -j${JOBS} \
 		&& make install \
 		&& cd ../.. \

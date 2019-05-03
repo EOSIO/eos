@@ -16,12 +16,12 @@ install-package gcc-c++ 1>/dev/null || true
 ./tests/bash-bats/modules/root-user.bash
 # Testing Options
 ./tests/bash-bats/modules/options.bash
-# # Testing CMAKE
-# ./tests/bash-bats/modules/cmake.bash
-# # Testing Clang
-# ./tests/bash-bats/modules/clang.bash
-# # Testing Prompts
-# ./tests/bash-bats/modules/prompts.bash
+# Testing CMAKE
+./tests/bash-bats/modules/cmake.bash
+# Testing Clang
+./tests/bash-bats/modules/clang.bash
+# Testing Prompts
+./tests/bash-bats/modules/prompts.bash
 
 ## Needed to load eosio_build_ files properly; it can be empty
 @test "${TEST_LABEL} > General" { setup-bats-dirs # setup is required for anything outside of 
@@ -29,6 +29,10 @@ install-package gcc-c++ 1>/dev/null || true
     ### Make sure deps are loaded properly
     [[ ! -z $(echo "${output}" | grep "Starting EOSIO Dependency Install") ]] || exit
     [[ ! -z $(echo "${output}" | grep "Executing: /usr/bin/yum -y update") ]] || exit
+    [[ ! -z $(echo "${output}" | grep "Centos Software Collections Repository installed successfully") ]] || exit
+    [[ ! -z $(echo "${output}" | grep "Centos devtoolset installed successfully") ]] || exit
+    [[ ! -z $(echo "${output}" | grep "Centos devtoolset-7 successfully enabled") ]] || exit
+    [[ ! -z $(echo "${output}" | grep "Python36 successfully enabled") ]] || exit
     [[ ! -z $(echo "${output}" | grep "python.*found!") ]] || exit
     [[ ! -z $(echo "${output}" | grep "sudo.*NOT.*found.") ]] || exit
     [[ ! -z $(echo "${output}" | grep "Installing CMAKE") ]] || exit

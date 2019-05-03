@@ -156,7 +156,7 @@ function ensure-cmake() {
 
 function ensure-zlib() {
     if $PIN_COMPILER; then
-        echo "[Checking zlib library installation]"
+        echo "${COLOR_CYAN}[Checking zlib library installation]${COLOR_NC}"
         if [[ ! -d $OPT_LOCATION/zlib ]]; then
             echo "Installing zlib..."
             execute bash -c "curl -LO https://www.zlib.net/zlib-${ZLIB_VERSION}.tar.gz && tar -xf zlib-${ZLIB_VERSION}.tar.gz \
@@ -296,6 +296,30 @@ function ensure-yum-packages() {
             * ) echo "Please type 'y' for yes or 'n' for no.";;
         esac
     done
+    if [[ $NAME == "CentOS Linux" ]]; then
+        echo "${COLOR_CYAN}[Checking installation of Centos Software Collections Repository]${COLOR_NC}" # Needed for rh-python36
+        SCL=$( rpm -qa | grep -E 'centos-release-scl-[0-9].*' || true )
+        if [[ -z "${SCL}" ]]; then
+            while true; do
+                [[ $NONINTERACTIVE == false ]] && read -p "${COLOR_YELLOW}Do you wish to install and enable the Centos Software Collections Repository? (y/n)?${COLOR_NC} " PROCEED
+                case $PROCEED in
+                    "" ) echo "What would you like to do?";;
+                    0 | true | [Yy]* )
+                        echo "Installing Centos Software Collections Repository..."
+                        if ! execute $( [[ $CURRENT_USER == "root" ]] || echo sudo -E ) "${YUM}" -y --enablerepo=extras install centos-release-scl; then
+                            echo " - Centos Software Collections Repository installation failed." && exit 1;
+                        else
+                            echo " - Centos Software Collections Repository installed successfully."
+                        fi
+                    break;;
+                    1 | false | [Nn]* ) echo " - User aborted installation of required Centos Software Collections Repository."; exit;;
+                    * ) echo "Please type 'y' for yes or 'n' for no.";;
+                esac
+            done
+        else
+            echo " - ${SCL} found."
+        fi
+    fi
     echo "${COLOR_CYAN}[Checking for installed package dependencies]${COLOR_NC}"
     OLDIFS="$IFS"; IFS=$','
     while read -r testee tester; do

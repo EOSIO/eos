@@ -23,45 +23,9 @@ echo "${COLOR_CYAN}[Checking YUM installation]${COLOR_NC}"
 if ! YUM=$( command -v yum 2>/dev/null ); then echo " - YUM must be installed to compile EOS.IO." && exit 1
 else echo "Yum installation found at ${YUM}."; fi
 
-while true; do
-	[[ $NONINTERACTIVE == false ]] && read -p "${COLOR_YELLOW}Do you wish to update YUM repositories? (y/n)?${COLOR_NC} " PROCEED
-	case $PROCEED in
-		"" ) echo "What would you like to do?";;
-		0 | true | [Yy]* )
-			if ! execute $( [[ $CURRENT_USER == "root" ]] || echo sudo ) $YUM -y update; then
-				echo " - ${COLOR_RED}YUM update failed.${COLOR_NC}"
-				exit 1;
-			else
-				echo " - ${COLOR_GREEN}YUM update complete.${COLOR_NC}"
-			fi
-		break;;
-		1 | false | [Nn]* ) echo " - Proceeding without update!"; break;;
-		* ) echo "Please type 'y' for yes or 'n' for no.";;
-	esac
-done
-
-echo "${COLOR_CYAN}[Checking installation of Centos Software Collections Repository]${COLOR_NC}"
-SCL=$( rpm -qa | grep -E 'centos-release-scl-[0-9].*' || true )
-if [[ -z "${SCL}" ]]; then
-	while true; do
-		[[ $NONINTERACTIVE == false ]] && read -p "${COLOR_YELLOW}Do you wish to install and enable the Centos Software Collections Repository? (y/n)?${COLOR_NC} " PROCEED
-		case $PROCEED in
-			"" ) echo "What would you like to do?";;
-			0 | true | [Yy]* )
-				echo "Installing Centos Software Collections Repository..."
-				if ! execute $( [[ $CURRENT_USER == "root" ]] || echo sudo ) "${YUM}" -y --enablerepo=extras install centos-release-scl 2>/dev/null; then
-					echo " - Centos Software Collections Repository installation failed." && exit 1;
-				else
-					echo " - Centos Software Collections Repository installed successfully."
-				fi
-			break;;
-			1 | false | [Nn]* ) echo " - User aborted installation of required Centos Software Collections Repository."; exit;;
-			* ) echo "Please type 'y' for yes or 'n' for no.";;
-		esac
-	done
-else
-	echo " - ${SCL} found."
-fi
+# Ensure packages exist
+ensure-yum-packages "${REPO_ROOT}/scripts/eosio_build_centos7_deps"
+echo ""
 echo "${COLOR_CYAN}[Checking installation of devtoolset-7]${COLOR_NC}"
 DEVTOOLSET=$( rpm -qa | grep -E 'devtoolset-7-[0-9].*' || true )
 if [[ -z "${DEVTOOLSET}" ]]; then
@@ -71,7 +35,7 @@ if [[ -z "${DEVTOOLSET}" ]]; then
 			"" ) echo "What would you like to do?";;
 			0 | true | [Yy]* )
 				echo "Installing devtoolset-7..."
-				if ! execute $( [[ $CURRENT_USER == "root" ]] || echo sudo ) "${YUM}" install -y devtoolset-7; then
+				if ! execute $( [[ $CURRENT_USER == "root" ]] || echo sudo -E ) "${YUM}" install -y devtoolset-7; then
 						echo " - Centos devtoolset-7 installation failed." && exit 1;
 				else
 						echo " - Centos devtoolset installed successfully."
@@ -90,38 +54,6 @@ if $DRYRUN || [ -d /opt/rh/devtoolset-7 ]; then
 	echo " - ${COLOR_GREEN}Centos devtoolset-7 successfully enabled!${COLOR_NC}"
 	echo ""
 fi
-
-echo "${COLOR_CYAN}[Checking RPM for installed dependencies]${COLOR_NC}"
-OLDIFS="$IFS"; IFS=$','
-while read -r testee tester; do
-	if [[ ! -z $(eval $tester $testee) ]]; then
-		echo " - ${testee} ${COLOR_GREEN}found!${COLOR_NC}"
-	else
-		DEPS=$DEPS"${testee} "
-		echo " - ${testee} ${COLOR_RED}NOT${COLOR_NC} found."
-		(( COUNT++ ))
-	fi
-done < "${REPO_ROOT}/scripts/eosio_build_centos7_deps"
-IFS=$OLDIFS
-echo ""
-if [ "${COUNT}" -gt 1 ]; then
-	while true; do
-		[[ $NONINTERACTIVE == false ]] && read -p "${COLOR_YELLOW}Do you wish to install missing dependencies? (y/n)?${COLOR_NC} " PROCEED
-		case $PROCEED in
-			"" ) echo "What would you like to do?";;
-			0 | true | [Yy]* )
-				execute eval $( [[ $CURRENT_USER == "root" ]] || echo sudo -E ) $YUM -y install $DEPS
-			break;;
-			1 | false | [Nn]* ) echo " ${COLOR_RED}- User aborted installation of required dependencies.${COLOR_NC}"; exit;;
-			* ) echo "Please type 'y' for yes or 'n' for no.";;
-		esac
-	done
-else
-	echo " - No required package dependencies to install."
-fi
-
-echo ""
-
 export PYTHON3PATH="/opt/rh/rh-python36"
 if $DRYRUN || [ -d $PYTHON3PATH ]; then
 	echo "${COLOR_CYAN}[Enabling python36]${COLOR_NC}"
@@ -129,10 +61,6 @@ if $DRYRUN || [ -d $PYTHON3PATH ]; then
 	echo " ${COLOR_GREEN}- Python36 successfully enabled!${COLOR_NC}"
 	echo ""
 fi
-
-# Ensure packages exist
-ensure-yum-packages $DEPS_FILE
-echo ""
 # CMAKE Installation
 ensure-cmake
 echo ""
@@ -150,8 +78,6 @@ ensure-boost
 echo ""
 
 if $INSTALL_MONGO; then
-
-	$BUILD_CLANG && PINNED_TOOLCHAIN="-DCMAKE_TOOLCHAIN_FILE=$BUILD_DIR/pinned_toolchain.cmake" # if we've pinned the compiler with -P
 
 	echo "${COLOR_CYAN}[Checking MongoDB installation]${COLOR_NC}"
 	if [[ ! -d $MONGODB_ROOT ]]; then
@@ -179,7 +105,7 @@ if $INSTALL_MONGO; then
 		&& cd mongo-c-driver-$MONGO_C_DRIVER_VERSION \
 		&& mkdir -p cmake-build \
 		&& cd cmake-build \
-		&& $CMAKE -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$EOSIO_HOME -DENABLE_BSON=ON -DENABLE_SSL=OPENSSL -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF -DENABLE_STATIC=ON -DENABLE_ICU=OFF $PINNED_TOOLCHAIN .. \
+		&& $CMAKE -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$EOSIO_HOME -DENABLE_BSON=ON -DENABLE_SSL=OPENSSL -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF -DENABLE_STATIC=ON -DENABLE_ICU=OFF -DENABLE_SNAPPY=OFF $PINNED_TOOLCHAIN .. \
 		&& make -j${JOBS} \
 		&& make install \
 		&& cd ../.. \
