@@ -17,8 +17,9 @@ struct ee_genesis_serializer {
 
 private:
     bfs::ofstream out;
-    int _row_count = 0;
+    uint32_t _count = 0;
     ee_table_header _section;
+    uint64_t _section_offset = 0;
     abi_serializer serializer;
 
 public:
@@ -44,20 +45,32 @@ public:
 
         ee_table_header h{code, name, abi_type, count};
         wlog("Starting section: ${s}", ("s", h));
+        _section_offset = out.tellp();
         fc::raw::pack(out, h);
-        _row_count = count;
         _section = h;
+        _count = 0;
     }
 
-    void finish_section() {
-        EOS_ASSERT(_row_count == 0, ee_genesis_exception, "Section contains wrong number of rows",
-            ("section",_section)("diff",_row_count));
+    void finish_section(uint32_t add_count = 0) {
+        if (add_count != 0) {
+            _section.count += add_count;
+
+            auto pos = out.tellp();
+            out.seekp(_section_offset);
+            fc::raw::pack(out, _section);
+            out.seekp(pos);
+
+            wlog("Finished with count: ${count}", ("count", _section.count));
+        }
+
+        EOS_ASSERT(_count == _section.count, ee_genesis_exception, "Section contains wrong number of rows",
+            ("section",_section)("diff", _section.count - _count));
     }
 
     void insert(const variant& v, const fc::microseconds abi_serializer_max_time = fc::seconds(10)) {
         bytes data = serializer.variant_to_binary(_section.abi_type, v, abi_serializer_max_time);
         fc::raw::pack(out, data);
-        _row_count--;
+        _count++;
     }
 };
 

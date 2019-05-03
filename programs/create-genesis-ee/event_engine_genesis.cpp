@@ -46,12 +46,30 @@ static abi_def create_messages_abi() {
     return abi;
 }
 
+static abi_def create_transfers_abi() {
+    abi_def abi;
+    abi.version = ABI_VERSION;
+
+    abi.structs.emplace_back( struct_def {
+        "transfer", "", {
+            {"from", "name"},
+            {"to", "name"},
+            {"quantity", "asset"},
+            {"memo", "string"},
+        }
+    });
+
+    return abi;
+}
+
 void event_engine_genesis::start(const bfs::path& ee_directory, const fc::sha256& hash) {
     messages.start(ee_directory / "messages.dat", hash, create_messages_abi());
+    transfers.start(ee_directory / "transfers.dat", hash, create_transfers_abi());
 }
 
 void event_engine_genesis::finalize() {
     messages.finalize();
+    transfers.finalize();
 }
 
 } } // cyberway::genesis

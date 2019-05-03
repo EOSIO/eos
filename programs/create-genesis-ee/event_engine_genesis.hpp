@@ -18,6 +18,7 @@ public:
     void finalize();
 public:
     ee_genesis_serializer messages;
+    ee_genesis_serializer transfers;
 };
 
 } } // cyberway::genesis
