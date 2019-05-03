@@ -285,6 +285,11 @@ async function testMetrics(buildkiteObject)
     {
         const job = buildkiteObject;
         console.log(`Processing test metrics for "${job.name}"${(inBuildkite) ? '' : ` at ${job.web_url}`}...`);
+        if (isNullOrEmpty(job.exit_status))
+        {
+            console.log(`${(inBuildkite) ? '+++ :warning: ' : ''}WARNING: "${job.name}" was skipped!`);
+            return null;
+        }
         // get test results
         const logText = await getLog(job);
         let testResults;
@@ -333,7 +338,7 @@ async function testMetrics(buildkiteObject)
     else if (!isNullOrEmpty(buildkiteObject.number)) // input is a Buildkite build object
     {
         const build = buildkiteObject;
-        console.log(`Processing test metrics for ${build.pipeline.slug} build ${build.number}${(inBuildkite) ? '' : ` at ${job.web_url}`}...`);
+        console.log(`Processing test metrics for ${build.pipeline.slug} build ${build.number}${(inBuildkite) ? '' : ` at ${build.web_url}`}...`);
         let metrics = [], promises = [];
         // process test metrics
         build.jobs.filter(job => job.type === 'script' && /test/.test(job.name.toLowerCase()) && ! /test metrics/.test(job.name.toLowerCase())).forEach((job) =>
