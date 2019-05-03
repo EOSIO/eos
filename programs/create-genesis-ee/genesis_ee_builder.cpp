@@ -312,7 +312,7 @@ void genesis_ee_builder::build_messages() {
 
         auto reblogs = build_reblogs(comment_itr->hash, comment_itr->last_delete_op, dump_reblogs);
 
-        auto msg = mvo
+        out_.messages.insert(mvo
             ("parent_author", generate_name(std::string(cop.parent_author)))
             ("parent_permlink", cop.parent_permlink)
             ("author", generate_name(std::string(cop.author)))
@@ -325,10 +325,37 @@ void genesis_ee_builder::build_messages() {
             ("benefactor_reward", asset(comment_itr->benefactor_reward, symbol(GLS)))
             ("curator_reward", asset(comment_itr->curator_reward, symbol(GLS)))
             ("votes", votes)
-            ("reblogs", reblogs);
-
-        out_.messages.insert(msg);
+            ("reblogs", reblogs)
+        );
     }
+}
+
+void genesis_ee_builder::build_transfers() {
+    std::cout << "-> Writing transfers..." << std::endl;
+
+    out_.transfers.start_section(config::token_account_name, N(transfer), "transfer", 0);
+
+    uint32_t transfer_count = 0;
+
+    bfs::fstream in(in_dump_dir_ / "transfers");
+    read_header(in);
+
+    operation_header op;
+    while (read_op_header(in, op)) {
+        cyberway::golos::transfer_operation top;
+        fc::raw::unpack(in, top);
+
+        transfer_count++;
+
+        out_.transfers.insert(mvo
+            ("from", generate_name(std::string(top.from)))
+            ("to", generate_name(std::string(top.to)))
+            ("quantity", top.amount)
+            ("memo", top.memo)
+        );
+    }
+
+    out_.transfers.finish_section(transfer_count);
 }
 
 void genesis_ee_builder::build(const bfs::path& out_dir) {
@@ -337,6 +364,7 @@ void genesis_ee_builder::build(const bfs::path& out_dir) {
     out_.start(out_dir, fc::sha256());
 
     build_messages();
+    build_transfers();
 
     out_.finalize();
 }

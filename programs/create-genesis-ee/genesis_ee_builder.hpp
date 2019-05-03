@@ -38,6 +38,7 @@ private:
     variants build_votes(uint64_t msg_hash, operation_number msg_created);
     variants build_reblogs(uint64_t msg_hash, operation_number msg_created, bfs::fstream& dump_reblogs);
     void build_messages();
+    void build_transfers();
 
     bfs::path in_dump_dir_;
     event_engine_genesis out_;

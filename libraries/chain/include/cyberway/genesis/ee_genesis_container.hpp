@@ -24,7 +24,7 @@ struct ee_table_header {
     account_name code;
     table_name   name;
     type_name    abi_type;
-    uint32_t     count;
+    uint32_t     count = 0;
 };
 
 }} // cyberway::genesis
