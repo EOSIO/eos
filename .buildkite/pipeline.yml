@@ -384,6 +384,18 @@ steps:
         workdir: /data/job
     timeout: 60
 
+  - wait:
+    continue_on_failure: true
+
+  - command: |
+        cd scripts/metrics
+        node --max-old-space-size=4096 test-metrics.js
+    label: ":bar_chart: Test Metrics"
+    agents:
+      queue: "automation-apps-builder-fleet"
+    timeout: 10
+    soft_fail: true
+
   - wait
 
   - command: |
