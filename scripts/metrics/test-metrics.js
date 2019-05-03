@@ -414,7 +414,8 @@ async function main()
         console.log(`Please send automation a link to this job${(isNullOrEmpty(build)) ? '.' : `: ${build.web_url}`}`);
         console.log('@kj4ezj or @zreyn on Telegram');
     }
-    return process.exit(errorCount);
+    console.log('+++ :no_entry: Throw some error for testing purposes!');
+    return process.exit(1);
 };
 
 main();
