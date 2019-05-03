@@ -2360,8 +2360,8 @@ namespace eosio {
       chain_lib_id = cc.last_irreversible_block_id();
       chain_head_blk_num = cc.head_block_num();
       chain_head_blk_id = cc.head_block_id();
-      chain_fork_head_blk_num = cc.fork_db_head_block_num();
-      chain_fork_head_blk_id = cc.fork_db_head_block_id();
+      chain_fork_head_blk_num = cc.fork_db_pending_head_block_num();
+      chain_fork_head_blk_id = cc.fork_db_pending_head_block_id();
       fc_dlog( logger, "updating chain info lib ${lib}, head ${head}, fork ${fork}",
                ("lib", chain_lib_num)("head", chain_head_blk_num)("fork", chain_fork_head_blk_num) );
    }
