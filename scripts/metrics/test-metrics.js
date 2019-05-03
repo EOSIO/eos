@@ -285,6 +285,11 @@ async function testMetrics(buildkiteObject)
     {
         const job = buildkiteObject;
         console.log(`Processing test metrics for "${job.name}"${(inBuildkite) ? '' : ` at ${job.web_url}`}...`);
+        if (isNullOrEmpty(job.exit_status))
+        {
+            console.log(`${(inBuildkite) ? '+++ :warning: ' : ''}WARNING: "${job.name}" was skipped!`);
+            return null;
+        }
         // get test results
         const logText = await getLog(job);
         let testResults;
@@ -333,7 +338,7 @@ async function testMetrics(buildkiteObject)
     else if (!isNullOrEmpty(buildkiteObject.number)) // input is a Buildkite build object
     {
         const build = buildkiteObject;
-        console.log(`Processing test metrics for ${build.pipeline.slug} build ${build.number}${(inBuildkite) ? '' : ` at ${job.web_url}`}...`);
+        console.log(`Processing test metrics for ${build.pipeline.slug} build ${build.number}${(inBuildkite) ? '' : ` at ${build.web_url}`}...`);
         let metrics = [], promises = [];
         // process test metrics
         build.jobs.filter(job => job.type === 'script' && /test/.test(job.name.toLowerCase()) && ! /test metrics/.test(job.name.toLowerCase())).forEach((job) =>
@@ -343,7 +348,7 @@ async function testMetrics(buildkiteObject)
                     .then((moreMetrics) => {
                         metrics = metrics.concat(moreMetrics);
                     }).catch((error) => {
-                        console.log(`ERROR: Failed to process test metrics for "${job.name}"! Link: ${job.web_url}`);
+                        console.log(`${(inBuildkite) ? '+++ :no_entry: ' : ''}ERROR: Failed to process test metrics for "${job.name}"! Link: ${job.web_url}`);
                         console.log(JSON.stringify(error));
                         errorCount++;
                     })
@@ -354,7 +359,7 @@ async function testMetrics(buildkiteObject)
     }
     else // something else
     {
-        console.log('ERROR: Buildkite object not recognized or not a test step!');
+        console.log(`${(inBuildkite) ? '+++ :no_entry: ' : ''}ERROR: Buildkite object not recognized or not a test step!`);
         console.log(JSON.stringify({buildkiteObject}));
         return null;
     }
@@ -380,7 +385,7 @@ async function main()
     }
     if (isNullOrEmpty(buildNumber) || isNullOrEmpty(pipeline) || isNullOrEmpty(process.env.BUILDKITE_API_KEY))
     {
-        console.log(`${(inBuildkite) ? ':no_entry: ' : ''}ERROR: Missing required inputs!`);
+        console.log(`${(inBuildkite) ? '+++ :no_entry: ' : ''}ERROR: Missing required inputs!`);
         if (isNullOrEmpty(process.env.BUILDKITE_API_KEY)) console.log('- Buildkite API key, as BUILDKITE_API_KEY environment variable');
         if (isNullOrEmpty(buildNumber)) console.log('- Build Number, as BUILDKITE_BUILD_NUMBER or argument 1');
         if (isNullOrEmpty(pipeline)) console.log('- Pipeline Slug, as BUILDKITE_PIPELINE_SLUG or argument 2');
@@ -402,10 +407,10 @@ async function main()
         execSync(`buildkite-agent artifact upload ${outputFile}`);
     }
     if (errorCount === 0)
-        console.log(`${(inBuildkite) ? ':white_check_mark: ' : ''}Done!`);
+        console.log(`${(inBuildkite) ? '+++ :white_check_mark: ' : ''}Done!`);
     else
     {
-        console.log(`${(inBuildkite) ? ':warning: ' : ''}Finished with errors.`);
+        console.log(`${(inBuildkite) ? '+++ :warning: ' : ''}Finished with errors.`);
         console.log(`Please send automation a link to this job${(isNullOrEmpty(build)) ? '.' : `: ${build.web_url}`}`);
         console.log('@kj4ezj or @zreyn on Telegram');
     }
