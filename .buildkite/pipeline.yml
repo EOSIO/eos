@@ -316,6 +316,7 @@ steps:
     agents:
       queue: "automation-apps-builder-fleet"
     timeout: 10
+    soft_fail: true
 
   - wait
 
