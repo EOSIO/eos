@@ -1,0 +1,6 @@
+{
+    "eosio-lrt":
+    {
+        "pipeline-branch": "legacy-os"
+    }
+}
