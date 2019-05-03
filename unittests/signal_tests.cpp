@@ -319,6 +319,13 @@ BOOST_AUTO_TEST_CASE(signal_fork)
 
    int acc_blk_count = 0;
    uint32_t last_acc_blk_num = 0;
+
+   int acc_txn_count = 0;
+   transaction_id_type last_acc_txn_id;
+
+   int app_txn_count = 0;
+   transaction_id_type last_app_txn_id;
+   transaction_trace_ptr last_signal_trace;
    
    TESTER c;
    c.produce_block();
@@ -376,6 +383,9 @@ BOOST_AUTO_TEST_CASE(signal_fork)
       return c.control->head_block_state()->get_scheduled_producer(next_time).producer_name;
    };
 
+   transaction_trace_ptr create_acc_trace;
+   bool txn_verified = false;
+
    // fork c: 1 producers: dan
    // fork c2: 3 producer: sam, pam, scott
    int skip1 = 1, skip2 = 1;
@@ -387,6 +397,9 @@ BOOST_AUTO_TEST_CASE(signal_fork)
       else ++skip1;
       account_name next2 = nextproducer(c2, skip2);
       if (next2 == N(sam) || next2 == N(pam) || next2 == N(scott)) {
+         if (!create_acc_trace) {
+            create_acc_trace = c2.create_account(N(apple), N(eosio));
+         }
          c2.produce_block(fc::milliseconds(config::block_interval_ms * skip2)); skip2 = 1;
       }
       else ++skip2;
@@ -400,7 +413,21 @@ BOOST_AUTO_TEST_CASE(signal_fork)
    BOOST_CHECK_EQUAL(acc_blk_count, 152);
    BOOST_CHECK_EQUAL(last_acc_blk_num, c.control->head_block_num());
 
-   // push fork from c2 => c
+   c.control->accepted_transaction.connect([&](const transaction_metadata_ptr& ptr) {
+      ++acc_txn_count;
+      last_acc_txn_id = ptr->id;
+   });
+
+   c.control->applied_transaction.connect([&](std::tuple<const transaction_trace_ptr&, const signed_transaction&> t) {
+      ++app_txn_count;
+      last_app_txn_id = std::get<0>(t)->id;
+      last_signal_trace = std::get<0>(t);
+      if (last_app_txn_id == create_acc_trace->id) {
+         txn_verified = true;
+      }
+   });
+
+   // push fork from c2 => c, got verify txn signal
    size_t p = fork_num;
    size_t count = 0;
    while ( p < c2.control->head_block_num()) {
@@ -412,6 +439,8 @@ BOOST_AUTO_TEST_CASE(signal_fork)
 
    BOOST_CHECK_EQUAL(last_irr_blocknum, c.control->last_irreversible_block_num());
    BOOST_REQUIRE_EQUAL(last_irr_blocknum > fork_num, true);
+
+   BOOST_REQUIRE_EQUAL(txn_verified, true);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
