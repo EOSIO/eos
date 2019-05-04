@@ -13,6 +13,6 @@ load ../helpers/functions
     if [[ $ARCH == "Darwin" ]]; then
         [[ ! -z $(echo "${output}" | grep "Executing: bash -c /usr/local/bin/cmake -DCMAKE_BUILD") ]] || exit
     else
-        [[ ! -z $(echo "${output}" | grep "Executing: bash -c /tmp/bats-eosio-user-home/eosio/1.8.0/bin/cmake") ]] || exit
+        [[ ! -z $(echo "${output}" | grep "Executing: bash -c ${BIN_LOCATION}/cmake") ]] || exit
     fi
 }

@@ -81,7 +81,7 @@ function prompt-mongo-install() {
             case $PROCEED in
                 "" ) echo "What would you like to do?";;
                 0 | true | [Yy]* ) export INSTALL_MONGO=true; break;;
-                1 | false | [Nn]* ) echo "${COLOR_RED} - Existing MongoDB will be used.${COLOR_NC}"; exit 1;;
+                1 | false | [Nn]* ) echo "${COLOR_RED} - Existing MongoDB will be used.${COLOR_NC}"; break;;
                 * ) echo "Please type 'y' for yes or 'n' for no.";;
             esac
         done
@@ -276,8 +276,8 @@ function ensure-yum-packages() {
     cat $1 > $DEPS_FILE
     if [[ -n "${2}" ]]; then # Handle EXTRA_DEPS passed in and add them to temp DEPS_FILE
         OLDIFS="$IFS"; IFS=$''
-        _2=("$(echo $2 | sed 's/-qa /-qa\n/g')")
-        for ((i = 0; i < ${#_2[@]}; i++)); do echo "${_2[$i]}\n" >> $DEPS_FILE; done
+        _2=("$(echo $2 | sed 's/-s /-s\n/g')")
+        for ((i = 0; i < ${#_2[@]}; i++)); do echo "${_2[$i]}\n" | sed 's/-s\\n/-s/g' >> $DEPS_FILE; done
     fi
     echo "${COLOR_CYAN}[Checking YUM installation]${COLOR_NC}"
     if ! YUM=$( command -v yum 2>/dev/null ); then echo " - YUM must be installed to compile EOS.IO." && exit 1
@@ -360,7 +360,7 @@ function ensure-brew-packages() {
     if [[ -n "${2}" ]]; then # Handle EXTRA_DEPS passed in and add them to temp DEPS_FILE
         OLDIFS="$IFS"; IFS=$''
         _2=("$(echo $2 | sed 's/-s /-s\n/g')")
-        for ((i = 0; i < ${#_2[@]}; i++)); do echo "${_2[$i]}\n" >> $DEPS_FILE; done
+        for ((i = 0; i < ${#_2[@]}; i++)); do echo "${_2[$i]}\n" | sed 's/-s\\n/-s/g' >> $DEPS_FILE; done
     fi
     echo "${COLOR_CYAN}[Checking HomeBrew dependencies]${COLOR_NC}"
     OLDIFS="$IFS"
@@ -418,12 +418,13 @@ function ensure-apt-packages() {
     if [[ -n "${2}" ]]; then # Handle EXTRA_DEPS passed in and add them to temp DEPS_FILE
         OLDIFS="$IFS"; IFS=$''
         _2=("$(echo $2 | sed 's/-s /-s\n/g')")
-        for ((i = 0; i < ${#_2[@]}; i++)); do echo "${_2[$i]}\n" >> $DEPS_FILE; done
+        for ((i = 0; i < ${#_2[@]}; i++)); do echo "${_2[$i]}\n" | sed 's/-s\\n/-s/g' >> $DEPS_FILE; done
     fi
     echo "${COLOR_CYAN}[Checking for installed package dependencies]${COLOR_NC}"
     OLDIFS="$IFS"; IFS=$','
+
     while read -r testee tester; do
-        if [[ ! -z $(eval $tester $testee 2>/dev/null) ]]; then
+        if [[ ! -z $(eval $tester $testee) ]]; then
             echo " - ${testee} ${COLOR_GREEN}found!${COLOR_NC}"
         else
             DEPS=$DEPS"${testee} "
