@@ -1318,7 +1318,7 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
    BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }
 
-BOOST_FIXTURE_TEST_CASE(more_deferred_transaction_tests, TESTER) { try {
+BOOST_AUTO_TEST_CASE(more_deferred_transaction_tests) { try {
    auto cfg = validating_tester::default_config();
    cfg.contracts_console = true;
    validating_tester chain( cfg );
