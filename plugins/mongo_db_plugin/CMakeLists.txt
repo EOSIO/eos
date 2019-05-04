@@ -29,13 +29,35 @@ if(BUILD_MONGO_DB_PLUGIN)
     PRIVATE ${LIBMONGOCXX_STATIC_DEFINITIONS} ${LIBBSONCXX_STATIC_DEFINITIONS}
     )
 
+  # We can't just use *_STATIC_LIBRARIES variables to link against because the static
+  # variants of these may try to static link against libraries we don't want (like a system
+  # libc/c++). But we need to know if mongo c driver was built with ICU, SASL2, or snappy support
+  # so that we can continue to link to those. This certainly is a bit on the fragile side but
+  # try to parse what is included in MONGOC_STATIC_LIBRARIES to see what we should link to
+  foreach(MONGO_S_LIB ${MONGOC_STATIC_LIBRARIES})
+    string(REGEX MATCH "libsasl2\\${CMAKE_SHARED_LIBRARY_SUFFIX}$" REGOUT ${MONGO_S_LIB})
+    if(REGOUT)
+      set(LINK_SASL "sasl2")
+    endif()
+
+    string(REGEX MATCH "libicuuc\\${CMAKE_SHARED_LIBRARY_SUFFIX}$" REGOUT ${MONGO_S_LIB})
+    if(REGOUT)
+      set(LINK_ICU "icuuc")
+    endif()
+
+    string(REGEX MATCH "libsnappy\\${CMAKE_SHARED_LIBRARY_SUFFIX}$" REGOUT ${MONGO_S_LIB})
+    if(REGOUT)
+      set(LINK_SNAPPY "snappy")
+    endif()
+  endforeach()
+
   target_link_libraries(mongo_db_plugin
           PUBLIC chain_plugin eosio_chain appbase
           ${LIBMONGOCXX_STATIC_LIBRARY_PATH} ${LIBBSONCXX_STATIC_LIBRARY_PATH}
           ${MONGOC_STATIC_LIBRARY} ${BSON_STATIC_LIBRARY}
-          resolv
+          resolv ${LINK_SASL} ${LINK_ICU} ${LINK_SNAPPY}
           )
-               
+
 else()
   message("mongo_db_plugin not selected and will be omitted.")
 endif()
