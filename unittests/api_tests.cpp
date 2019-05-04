@@ -1495,7 +1495,7 @@ BOOST_AUTO_TEST_CASE(more_deferred_transaction_tests) { try {
    BOOST_REQUIRE_EQUAL(3, index.size());
    print_deferred();
 
-   BOOST_REQUIRE_EQUAL( validate(), true );
+   BOOST_REQUIRE_EQUAL( chain.validate(), true );
 } FC_LOG_AND_RETHROW() }
 
 template <uint64_t NAME>
