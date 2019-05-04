@@ -167,6 +167,9 @@ fi
 
 ( [[ -z "${CMAKE}" ]] && [[ ! -z $(command -v cmake 2>/dev/null) ]] ) && export CMAKE=$(command -v cmake 2>/dev/null)
 
+# Find and replace OPT_LOCATION in pinned_toolchain.cmake, then move it into build dir
+execute bash -c "sed -e 's~@~$OPT_LOCATION~g' $SCRIPT_DIR/pinned_toolchain.cmake &> $BUILD_DIR/pinned_toolchain.cmake"
+
 echo "${COLOR_CYAN}====================================================================================="
 echo "======================= ${COLOR_WHITE}Starting EOSIO Dependency Install${COLOR_CYAN} ===========================${COLOR_NC}"
 execute cd $SRC_LOCATION
@@ -178,9 +181,6 @@ echo "${COLOR_CYAN}=============================================================
 echo "======================= ${COLOR_WHITE}Starting EOSIO Build${COLOR_CYAN} ===========================${COLOR_NC}"
 execute mkdir -p $BUILD_DIR
 execute cd $BUILD_DIR
-
-# Find and replace OPT_LOCATION in pinned_toolchain.cmake, then move it into build dir
-execute bash -c "sed -e 's~@~$OPT_LOCATION~g' $SCRIPT_DIR/pinned_toolchain.cmake &> $BUILD_DIR/pinned_toolchain.cmake"
 
 # LOCAL_CMAKE_FLAGS
 $ENABLE_MONGO && LOCAL_CMAKE_FLAGS="-DBUILD_MONGO_DB_PLUGIN=true ${LOCAL_CMAKE_FLAGS}" # Enable Mongo DB Plugin if user has enabled -m
