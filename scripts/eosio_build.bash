@@ -216,9 +216,9 @@ echo ""
 echo "${COLOR_CYAN}If you wish to perform tests to ensure functional code:${COLOR_NC}"
 if $ENABLE_MONGO; then
    echo "${BIN_LOCATION}/mongod --dbpath ${MONGODB_DATA_LOCATION} -f ${MONGODB_CONF} --logpath ${MONGODB_LOG_LOCATION}/mongod.log &"
-   PATH_TO_USE="PATH=\$PATH:$OPT_LOCATION/mongodb/bin"
+   PATH_TO_USE=" PATH=\$PATH:$OPT_LOCATION/mongodb/bin"
 fi
-echo "cd ./build && ${PATH_TO_USE} make test" # PATH is set as currently 'mongo' binary is required for the mongodb test
+echo "cd ./build &&${PATH_TO_USE} make test" # PATH is set as currently 'mongo' binary is required for the mongodb test
 
 echo ""
 resources
