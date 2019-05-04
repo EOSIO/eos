@@ -7,9 +7,6 @@ export TEST_LABEL="[eosio_build_centos]"
 [[ $ARCH == "Linux" ]] || exit 0 # Exit 0 is required for pipeline
 [[ $NAME == "CentOS Linux" ]] || exit 0 # Exit 0 is required for pipeline
 
-install-package which 1>/dev/null || true
-install-package gcc-c++ 1>/dev/null || true
-
 # A helper function is available to show output and status: `debug`
 
 # Testing Root user
@@ -41,4 +38,3 @@ install-package gcc-c++ 1>/dev/null || true
     [[ ! -z $(echo "${output}" | grep "make -j${CPU_CORES}") ]] || exit
     [[ ! -z $(echo "${output}" | grep "EOSIO has been successfully built") ]] || exit
 }
-

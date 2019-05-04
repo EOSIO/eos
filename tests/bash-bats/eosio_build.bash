@@ -3,23 +3,27 @@ load helpers/general
 
 SCRIPT_LOCATION="scripts/eosio_build.bash"
 TEST_LABEL="[eosio_build]"
+
 # A helper function is available to show output and status: `debug`
 @test "${TEST_LABEL} > Testing arguments/options" {
     ## -P (and y)
     if [[ $ARCH == "Linux" ]]; then
-        ( [[ $NAME =~ "Amazon Linux" ]] || [[ $NAME == "CentOS Linux" ]] ) && uninstall-package gcc-c++ 1>/dev/null # If c++ exists, it will fail
-        [[ $NAME =~ "Ubuntu" ]] && uninstall-package clang 1>/dev/null
+
+        ( [[ $NAME == "CentOS Linux" ]] || [[ $NAME =~ "Amazon" ]] ) && uninstall-package gcc-c++ &>/dev/null # If c++ exists, it will fail
+        [[ $NAME =~ "Ubuntu" ]] && uninstall-package clang &>/dev/null
+
         run bash -c "./$SCRIPT_LOCATION"
-        [[ ! -z $(echo "${output}" | grep "Unable to find compiler c++! Pass in the -P option if you wish for us to install it") ]] || exit
+        [[ ! -z $(echo "${output}" | grep "Unable to find compiler \"c++\"! Pass in the -P option if you wish for us to install it") ]] || exit
     fi
     run bash -c "printf \"n\n%.0s\" {1..100} | ./$SCRIPT_LOCATION -P"
     # lack of -m
-        [[ ! -z $(echo "${output}" | grep "ENABLE_MONGO: false") ]] || exit
-        [[ ! -z $(echo "${output}" | grep "INSTALL_MONGO: false") ]] || exit
+    [[ ! -z $(echo "${output}" | grep "ENABLE_MONGO: false") ]] || exit
+    [[ ! -z $(echo "${output}" | grep "INSTALL_MONGO: false") ]] || exit
     # lack of -i
-        [[ ! -z $(echo "${output}" | grep "INSTALL_LOCATION: ${HOME}") ]] || exit
-        [[ ! -z $(echo "${output}" | grep "EOSIO_HOME: ${HOME}/eosio/${EOSIO_VERSION}") ]] || exit
-    [[ ! -z $(echo "${output}" | grep "User aborted installation of required de") ]] || exit
+    [[ ! -z $(echo "${output}" | grep "INSTALL_LOCATION: ${HOME}") ]] || exit
+    [[ ! -z $(echo "${output}" | grep "EOSIO_HOME: ${HOME}/eosio/${EOSIO_VERSION}") ]] || exit
+    #
+    [[ "${output}" =~ .*User.aborted.* ]] || exit
     run bash -c "printf \"n\n%.0s\" {1..100} | ./$SCRIPT_LOCATION -y -P"
     [[ ! -z $(echo "${output}" | grep "PIN_COMPILER: true") ]] || exit
     [[ ! -z $(echo "${output}" | grep "BUILD_CLANG: true") ]] || exit
