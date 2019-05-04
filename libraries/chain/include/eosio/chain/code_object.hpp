@@ -14,12 +14,12 @@ namespace eosio { namespace chain {
       OBJECT_CTOR(code_object, (code))
 
       id_type      id;
-      digest_type  code_hash;
+      digest_type  code_hash; //< code_hash should not be changed within a chainbase modifier lambda
       shared_blob  code;
       uint64_t     code_ref_count;
       uint32_t     first_block_used;
-      uint8_t      vm_type = 0;
-      uint8_t      vm_version = 0;
+      uint8_t      vm_type = 0; //< vm_type should not be changed within a chainbase modifier lambda
+      uint8_t      vm_version = 0; //< vm_version should not be changed within a chainbase modifier lambda
    };
 
    struct by_code_hash;

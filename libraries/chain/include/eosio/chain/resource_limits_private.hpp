@@ -133,8 +133,8 @@ namespace eosio { namespace chain { namespace resource_limits {
       OBJECT_CTOR(resource_limits_object)
 
       id_type id;
-      account_name owner;
-      bool pending = false;
+      account_name owner; //< owner should not be changed within a chainbase modifier lambda
+      bool pending = false; //< pending should not be changed within a chainbase modifier lambda
 
       int64_t net_weight = -1;
       int64_t cpu_weight = -1;
@@ -162,7 +162,7 @@ namespace eosio { namespace chain { namespace resource_limits {
       OBJECT_CTOR(resource_usage_object)
 
       id_type id;
-      account_name owner;
+      account_name owner; //< owner should not be changed within a chainbase modifier lambda
 
       usage_accumulator        net_usage;
       usage_accumulator        cpu_usage;
