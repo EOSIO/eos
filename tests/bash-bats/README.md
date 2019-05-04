@@ -1,13 +1,12 @@
 # BATS Bash Testing
 
-For each bash script we have, there should be a separate .bash file within ROOT/tests/bash-bats/.
+For each bash script we have, there should be a separate .bash file within REPO_ROOT/tests/bash-bats/.
 
-- DRYRUN=true is required for all tests. This can be used to ensure the right commands are being run without executing them.
-- **MacOSX: You must have bats installed: ([Source Install Instructions](https://github.com/bats-core/bats-core#installing-bats-from-source))** || `brew install bats-core`
+- DRYRUN=true is required for all tests and automatically enabled. You can use this when you're manually running eosio_build.bash (`DRYRUN=true VERBOSE=true ./scripts/eosio_build.bash`)
 
  - Running all tests: 
     ```
-    $ bats tests/bash-bats/*.bash
+    $ ./tests/bash-bats/bats-core/bin/bats tests/bash-bats/*.bash
       ✓ [eosio_build_darwin] > Testing -y/NONINTERACTIVE/PROCEED
       ✓ [eosio_build_darwin] > Testing prompts
       ✓ [eosio_build_darwin] > Testing executions
