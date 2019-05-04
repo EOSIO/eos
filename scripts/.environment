@@ -1,7 +1,6 @@
 export EOSIO_VERSION_MAJOR=$(cat CMakeLists.txt | grep "set(VERSION_MAJOR" | awk '{print $2}' | sed 's/)//g')
 export EOSIO_VERSION_MINOR=$(cat CMakeLists.txt | grep "set(VERSION_MINOR" | awk '{print $2}' | sed 's/)//g')
-export EOSIO_VERSION_PATCH=$(cat CMakeLists.txt | grep "set(VERSION_PATCH" | awk '{print $2}' | sed 's/)//g')
-export EOSIO_VERSION="${EOSIO_VERSION_MAJOR}.${EOSIO_VERSION_MINOR}.${EOSIO_VERSION_PATCH}"
+export EOSIO_VERSION="${EOSIO_VERSION_MAJOR}.${EOSIO_VERSION_MINOR}"
 export INSTALL_LOCATION=${INSTALL_LOCATION:-$HOME}
 export EOSIO_HOME="${INSTALL_LOCATION}/eosio/${EOSIO_VERSION}"
 export TEMP_DIR="${INSTALL_LOCATION}/tmp"

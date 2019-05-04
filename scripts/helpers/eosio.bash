@@ -87,31 +87,31 @@ function prompt-mongo-install() {
 }
 
 function ensure-compiler() {
-    CPP_COMP=${CXX:-c++}
-    CC_COMP=${CC:-cc}
+    export CXX=${CXX:-c++}
+    export CC=${CC:-cc}
     if [[ $PIN_COMPILER == false ]]; then
-        which $CPP_COMP &>/dev/null || ( echo "${COLOR_RED} - Unable to find compiler \"${CPP_COMP}\"! Pass in the -P option if you wish for us to install it OR set \$CXX to the proper binary. ${COLOR_NC}"; exit 1 )
+        which $CXX &>/dev/null || ( echo "${COLOR_RED} - Unable to find compiler \"${CXX}\"! Pass in the -P option if you wish for us to install it OR set \$CXX to the proper binary. ${COLOR_NC}"; exit 1 )
         # readlink on mac differs from linux readlink (mac doesn't have -f)
         [[ $ARCH == "Linux" ]] && READLINK_COMMAND="readlink -f" || READLINK_COMMAND="readlink"
-        COMPILER_TYPE=$( eval $READLINK_COMMAND $(which $CPP_COMP) )
+        COMPILER_TYPE=$( eval $READLINK_COMMAND $(which $CXX) )
         [[ -z "${COMPILER_TYPE}" ]] && echo "${COLOR_RED}COMPILER_TYPE not set!${COLOR_NC}" && exit 1
         if [[ $COMPILER_TYPE == "clang++" ]]; then
             if [[ $ARCH == "Darwin" ]]; then
                 ### Check for apple clang version 10 or higher
-                [[ $( $(which $CPP_COMP) --version | cut -d ' ' -f 4 | cut -d '.' -f 1 | head -n 1 ) -lt 10 ]] && export NO_CPP17=true
+                [[ $( $(which $CXX) --version | cut -d ' ' -f 4 | cut -d '.' -f 1 | head -n 1 ) -lt 10 ]] && export NO_CPP17=true
             else
                 ### Check for clang version 5 or higher
-                [[ $( $(which $CPP_COMP) --version | cut -d ' ' -f 4 | cut -d '.' -f 1 | head -n 1 ) -lt 5 ]] && export NO_CPP17=true
+                [[ $( $(which $CXX) --version | cut -d ' ' -f 4 | cut -d '.' -f 1 | head -n 1 ) -lt 5 ]] && export NO_CPP17=true
             fi
         else
             ## Check for c++ version 7 or higher
-            [[ $( $(which $CPP_COMP) -dumpversion | cut -d '.' -f 1 ) -lt 7 ]] && export NO_CPP17=true
+            [[ $( $(which $CXX) -dumpversion | cut -d '.' -f 1 ) -lt 7 ]] && export NO_CPP17=true
         fi
     elif $PIN_COMPILER; then
         export BUILD_CLANG=true
-        export CPP_COMP=$OPT_LOCATION/clang8/bin/clang++
-        export CC_COMP=$OPT_LOCATION/clang8/bin/clang
-        export PATH=$OPT_LOCATION/clang8/bin:$PATH
+        export CPP_COMP=$CLANG_ROOT/bin/clang++
+        export CC_COMP=$CLANG_ROOT/bin/clang
+        export PATH=$CLANG_ROOT/bin:$PATH
     fi
     if $NO_CPP17; then
         while true; do
@@ -122,17 +122,15 @@ function ensure-compiler() {
                 "" ) echo "What would you like to do?";;
                 0 | true | [Yy]* )
                     export BUILD_CLANG=true
-                    export CPP_COMP=${OPT_LOCATION}/clang8/bin/clang++
-                    export CC_COMP=${OPT_LOCATION}/clang8/bin/clang
-                    export PATH=$OPT_LOCATION/clang8/bin:$PATH
+                    export CPP_COMP=$CLANG_ROOT/bin/clang++
+                    export CC_COMP=$CLANG_ROOT/bin/clang
+                    export PATH=$CLANG_ROOT/bin:$PATH
                 break;;
                 1 | false | [Nn]* ) echo "${COLOR_RED} - User aborted C++17 installation!${COLOR_NC}"; exit 1;;
                 * ) echo "Please type 'y' for yes or 'n' for no.";;
             esac
         done
     fi
-    export CXX=$CPP_COMP
-    export CC=$CC_COMP
 }
 
 function ensure-cmake() {
@@ -264,6 +262,8 @@ function build-clang() {
         else
             echo " - Clang 8 found @ ${CLANG_ROOT}."
         fi
+        export CXX=$CPP_COMP
+        export CC=$CC_COMP
     fi
 }
 

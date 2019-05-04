@@ -124,8 +124,6 @@ ensure-git-clone
 previous-install-prompt
 # Handle clang/compiler
 ensure-compiler
-echo $CXX
-echo $CC
 # Prompt user and asks if we should install mongo or not
 prompt-mongo-install
 # Setup directories and envs we need (must come last)
