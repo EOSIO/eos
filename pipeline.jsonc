@@ -3,6 +3,10 @@
     {
         "pipeline-branch": "protocol-features-sync-nodes"
     },
+    "eosio-lrt":
+    {
+        "pipeline-branch": "protocol-features-sync-nodes"
+    },
     "eos-multiversion-tests":
     {
         "pipeline-branch": "protocol-features-sync-nodes",
