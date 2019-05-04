@@ -214,7 +214,7 @@ echo "${COLOR_YELLOW}Uninstall with: ./scripts/eosio_uninstall.bash${COLOR_NC}"
 
 echo ""
 echo "${COLOR_CYAN}If you wish to perform tests to ensure functional code:${COLOR_NC}"
-echo "${BIN_LOCATION}/mongod --dbpath ${MONGODB_DATA_LOCATION} -f ${MONGODB_CONF} --logpath ${MONGODB_LOG_LOCATION}/mongod.log &"
+$ENABLE_MONGO && echo "${BIN_LOCATION}/mongod --dbpath ${MONGODB_DATA_LOCATION} -f ${MONGODB_CONF} --logpath ${MONGODB_LOG_LOCATION}/mongod.log &"
 echo "cd ./build && PATH=\$PATH:$OPT_LOCATION/mongodb/bin make test" # PATH is set as currently 'mongo' binary is required for the mongodb test
 
 echo ""
