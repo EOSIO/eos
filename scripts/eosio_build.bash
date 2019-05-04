@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-set -eio pipefail
+set -eo pipefail
+set -i &>/dev/null
 VERSION=3.0 # Build script version (change this to re-build the CICD image)
 ##########################################################################
 # This is the EOSIO automated install script for Linux and Mac OS.
@@ -170,7 +171,6 @@ echo "${COLOR_CYAN}=============================================================
 echo "======================= ${COLOR_WHITE}Starting EOSIO Dependency Install${COLOR_CYAN} ===========================${COLOR_NC}"
 execute cd $SRC_LOCATION
 $BUILD_CLANG && export PINNED_TOOLCHAIN="-DCMAKE_TOOLCHAIN_FILE='${BUILD_DIR}/pinned_toolchain.cmake'"
-
 . $FILE # Execute OS specific build file
 execute cd $REPO_ROOT
 echo ""
@@ -192,12 +192,7 @@ fi
 $ENABLE_DOXYGEN && LOCAL_CMAKE_FLAGS="-DBUILD_DOXYGEN='${DOXYGEN}' ${LOCAL_CMAKE_FLAGS}"
 $ENABLE_COVERAGE_TESTING && LOCAL_CMAKE_FLAGS="-DENABLE_COVERAGE_TESTING='${ENABLE_COVERAGE_TESTING}' ${LOCAL_CMAKE_FLAGS}"
 
-execute bash -c "$CMAKE \
--DCMAKE_BUILD_TYPE='${CMAKE_BUILD_TYPE}' \
--DCORE_SYMBOL_NAME='${CORE_SYMBOL_NAME}' \ 
--DOPENSSL_ROOT_DIR='${OPENSSL_ROOT_DIR}' \
--DCMAKE_INSTALL_PREFIX='${EOSIO_HOME}' \
-${LOCAL_CMAKE_FLAGS} '${REPO_ROOT}'"
+execute bash -c "$CMAKE -DCMAKE_BUILD_TYPE='${CMAKE_BUILD_TYPE}' -DCORE_SYMBOL_NAME='${CORE_SYMBOL_NAME}' -DOPENSSL_ROOT_DIR='${OPENSSL_ROOT_DIR}' -DCMAKE_INSTALL_PREFIX='${EOSIO_HOME}' ${LOCAL_CMAKE_FLAGS} ${REPO_ROOT}"
 execute make -j$JOBS
 execute cd $REPO_ROOT 1>/dev/null
 

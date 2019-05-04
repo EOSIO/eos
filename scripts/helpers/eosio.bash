@@ -411,7 +411,6 @@ function ensure-brew-packages() {
 function ensure-apt-packages() {
     ( [[ -z "${1}" ]] || [[ ! -f "${1}" ]] ) && echo "\$1 must be the location of your dependency file!" && exit 1
     DEPS_FILE="${TEMP_DIR}/$(basename ${1})"
-    ls -laht $TEMP_DIR
     # Create temp file so we can add to it
     cat $1 > $DEPS_FILE
     if [[ -n "${2}" ]]; then # Handle EXTRA_DEPS passed in and add them to temp DEPS_FILE
