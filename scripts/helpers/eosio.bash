@@ -379,8 +379,8 @@ function ensure-brew-packages() {
         echo " - ${name} ${COLOR_RED}NOT${COLOR_NC} found."
         (( COUNT++ ))
     done < $DEPS_FILE
-    echo ""
     if [ $COUNT -gt 1 ]; then
+        echo ""
         while true; do
             [[ $NONINTERACTIVE == false ]] && read -p "${COLOR_YELLOW}Do you wish to install missing dependencies? (y/n)${COLOR_NC} " PROCEED
             case $PROCEED in
