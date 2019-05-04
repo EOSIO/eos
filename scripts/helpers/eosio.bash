@@ -27,6 +27,7 @@ function setup() {
         echo "CORE_SYMBOL_NAME: ${CORE_SYMBOL_NAME}"
         echo "BOOST_LOCATION: ${BOOST_LOCATION}"
         echo "INSTALL_LOCATION: ${INSTALL_LOCATION}"
+        echo "BUILD_DIR: ${BUILD_DIR}"
         echo "EOSIO_HOME: ${EOSIO_HOME}"
         echo "NONINTERACTIVE: ${NONINTERACTIVE}"
         echo "PROCEED: ${PROCEED}"
@@ -44,6 +45,7 @@ function setup() {
         execute mkdir -p $TEMP_DIR
         execute rm -rf $TEMP_DIR/*
     fi
+    execute mkdir -p $BUILD_DIR
     execute mkdir -p $SRC_LOCATION
     execute mkdir -p $OPT_LOCATION
     execute mkdir -p $VAR_LOCATION

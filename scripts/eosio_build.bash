@@ -176,12 +176,11 @@ execute cd $SRC_LOCATION
 $BUILD_CLANG && export PINNED_TOOLCHAIN="-DCMAKE_TOOLCHAIN_FILE='${BUILD_DIR}/pinned_toolchain.cmake'"
 . $FILE # Execute OS specific build file
 execute cd $REPO_ROOT
+
 echo ""
 echo "${COLOR_CYAN}========================================================================"
 echo "======================= ${COLOR_WHITE}Starting EOSIO Build${COLOR_CYAN} ===========================${COLOR_NC}"
-execute mkdir -p $BUILD_DIR
 execute cd $BUILD_DIR
-
 # LOCAL_CMAKE_FLAGS
 $ENABLE_MONGO && LOCAL_CMAKE_FLAGS="-DBUILD_MONGO_DB_PLUGIN=true ${LOCAL_CMAKE_FLAGS}" # Enable Mongo DB Plugin if user has enabled -m
 if $PIN_COMPILER; then
