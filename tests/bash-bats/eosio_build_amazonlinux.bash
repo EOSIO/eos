@@ -7,9 +7,6 @@ export TEST_LABEL="[eosio_build_amazonlinux]"
 [[ $ARCH == "Linux" ]] || exit 0 # Skip if we're not on linux
 ( [[ $NAME == "Amazon Linux AMI" ]] || [[ $NAME == "Amazon Linux" ]] ) || exit 0 # Exit 0 is required for pipeline
 
-install-package which 1>/dev/null || true
-install-package clang 1>/dev/null || true
-
 # A helper function is available to show output and status: `debug`
 
 # Testing Root user

@@ -8,8 +8,6 @@ export TEST_LABEL="[eosio_build_ubuntu]"
 [[ $NAME == "Ubuntu" ]] || exit 0 # Exit 0 is required for pipeline
 ( [[ $VERSION_ID == "18.04" ]] || [[ $VERSION_ID == "16.04" ]] ) || exit 0 # Exit 0 is required for pipeline
 
-install-package clang 1>/dev/null || true
-
 # A helper function is available to show output and status: `debug`
 
 # Testing Root user
