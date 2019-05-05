@@ -19,6 +19,7 @@
 
 using namespace eosio::chain;
 using namespace eosio::testing;
+using namespace std::literals;
 
 BOOST_AUTO_TEST_SUITE(protocol_feature_tests)
 
@@ -1326,6 +1327,77 @@ BOOST_AUTO_TEST_CASE( ram_restrictions_test ) { try {
 
    c.produce_block();
 
+} FC_LOG_AND_RETHROW() }
+
+BOOST_AUTO_TEST_CASE( webauthn_producer ) { try {
+   tester c( setup_policy::preactivate_feature_and_new_bios );
+
+   const auto& pfm = c.control->get_protocol_feature_manager();
+   const auto& d = pfm.get_builtin_digest( builtin_protocol_feature_t::webauthn_key );
+   BOOST_REQUIRE( d );
+
+   c.create_account(N(waprod));
+   c.produce_block();
+
+   vector<producer_key> waprodsched = {{N(waprod), public_key_type("PUB_WA_6nB6TxEEzXiv5EjLG3xvJ7PU3SXVDtPNMWbh6sZX9vLnSfWEJv8Z7p6CXvkQqRY19aCYwEMXR6p3ryus"s)}};
+
+   BOOST_CHECK_THROW(
+      c.push_action(config::system_account_name, N(setprods), config::system_account_name, fc::mutable_variant_object()("schedule", waprodsched)),
+      eosio::chain::unactivated_key_type
+   );
+
+   c.preactivate_protocol_features( {*d} );
+   c.produce_block();
+
+   c.push_action(config::system_account_name, N(setprods), config::system_account_name, fc::mutable_variant_object()("schedule", waprodsched));
+} FC_LOG_AND_RETHROW() }
+
+BOOST_AUTO_TEST_CASE( webauthn_create_account ) { try {
+   tester c( setup_policy::preactivate_feature_and_new_bios );
+
+   const auto& pfm = c.control->get_protocol_feature_manager();
+   const auto& d = pfm.get_builtin_digest(builtin_protocol_feature_t::webauthn_key);
+   BOOST_REQUIRE(d);
+
+   signed_transaction trx;
+   c.set_transaction_headers(trx);
+   authority auth = authority(public_key_type("PUB_WA_6nB6TxEEzXiv5EjLG3xvJ7PU3SXVDtPNMWbh6sZX9vLnSfWEJv8Z7p6CXvkQqRY19aCYwEMXR6p3ryus"s));
+
+   trx.actions.emplace_back(vector<permission_level>{{config::system_account_name,config::active_name}},
+                              newaccount{
+                                 .creator  = config::system_account_name,
+                                 .name     = N(waaccount),
+                                 .owner    = auth,
+                                 .active   = auth,
+                              });
+
+   c.set_transaction_headers(trx);
+   trx.sign(get_private_key(config::system_account_name, "active"), c.control->get_chain_id());
+   BOOST_CHECK_THROW(c.push_transaction(trx), eosio::chain::unactivated_key_type);
+
+   c.preactivate_protocol_features( {*d} );
+   c.produce_block();
+   c.push_transaction(trx);
+} FC_LOG_AND_RETHROW() }
+
+BOOST_AUTO_TEST_CASE( webauthn_update_account_auth ) { try {
+   tester c( setup_policy::preactivate_feature_and_new_bios );
+
+   const auto& pfm = c.control->get_protocol_feature_manager();
+   const auto& d = pfm.get_builtin_digest(builtin_protocol_feature_t::webauthn_key);
+   BOOST_REQUIRE(d);
+
+   c.create_account(N(billy));
+   c.produce_block();
+
+   BOOST_CHECK_THROW(c.set_authority(N(billy), config::active_name,
+                        authority(public_key_type("PUB_WA_6nB6TxEEzXiv5EjLG3xvJ7PU3SXVDtPNMWbh6sZX9vLnSfWEJv8Z7p6CXvkQqRY19aCYwEMXR6p3ryus"s))),
+                     eosio::chain::unactivated_key_type);
+
+   c.preactivate_protocol_features( {*d} );
+   c.produce_block();
+
+   c.set_authority(N(billy), config::active_name, authority(public_key_type("PUB_WA_6nB6TxEEzXiv5EjLG3xvJ7PU3SXVDtPNMWbh6sZX9vLnSfWEJv8Z7p6CXvkQqRY19aCYwEMXR6p3ryus"s)));
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_SUITE_END()
