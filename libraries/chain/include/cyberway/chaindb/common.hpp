@@ -102,9 +102,7 @@ namespace cyberway { namespace chaindb {
         void apply_changes();
 
         /** leaves the UNDO state on the stack when session goes out of scope */
-        void push() {
-            apply_ = false;
-        }
+        void push();
 
         /** Combines this session with the prior session */
         void squash();

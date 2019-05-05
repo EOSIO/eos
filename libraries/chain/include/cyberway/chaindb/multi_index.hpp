@@ -457,7 +457,11 @@ private:
         mutable cache_object_ptr item_;
 
         void lazy_load_object() const {
-            if (item_ && !item_->is_deleted()) return;
+            if (item_) {
+                CYBERWAY_ASSERT(!item_->is_deleted(), chaindb_midx_logic_exception,
+                    "Object ${obj} is removed", ("obj", item_data::get_T(item_)));
+                return;
+            }
 
             lazy_open();
             CYBERWAY_ASSERT(primary_key_ != end_primary_key, chaindb_midx_pk_exception,
@@ -631,7 +635,7 @@ public:
 
         template<typename Lambda>
         emplace_result emplace(const storage_payer_info& payer, Lambda&& constructor) const {
-            auto cache = controller_.create_cache_object(get_table_request());
+            auto cache = controller_.create_cache_object(get_table_request(), payer);
             try {
                 auto pk = cache->pk();
                 cache->template set_data<item_data>([&](auto& o) {

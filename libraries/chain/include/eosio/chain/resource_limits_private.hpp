@@ -188,6 +188,7 @@ using namespace int_arithmetic;
       
       //TODO: smoothly increase this value when starting the chain
       uint64_t virtual_ram_limit = config::default_virtual_ram_limit;
+      uint64_t reserved_ram_size = config::default_reserved_ram_size;
    };
 
    using resource_limits_state_table = cyberway::chaindb::table_container<
@@ -219,4 +220,4 @@ FC_REFLECT(eosio::chain::resource_limits::resource_limits_config_object, (id)
 FC_REFLECT(eosio::chain::resource_limits::resource_limits_state_object, (id)
     (average_block_net_usage)(average_block_cpu_usage)(ram_usage)(storage_usage)
     (pending_net_usage)(pending_cpu_usage)
-    (virtual_net_limit)(virtual_cpu_limit)(virtual_ram_limit))
+    (virtual_net_limit)(virtual_cpu_limit)(virtual_ram_limit)(reserved_ram_size))

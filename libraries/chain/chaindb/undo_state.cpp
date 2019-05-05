@@ -346,7 +346,7 @@ namespace cyberway { namespace chaindb {
                 stage_ = undo_stage::Stack;
                 return revision_;
             } else {
-                return -1;
+                return impossible_revision;
             }
         }
 

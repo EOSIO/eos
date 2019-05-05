@@ -17,35 +17,29 @@ namespace cyberway { namespace chaindb {
 
     using  eosio::chain::bytes;
 
-    class  cache_object;
-    struct cache_data;
-    struct cache_index_value;
-    struct cache_converter_interface;
-
+    class cache_map_impl;
+    class cache_object;
     using cache_object_ptr = boost::intrusive_ptr<cache_object>;
-    using cache_data_ptr   = std::unique_ptr<cache_data>;
 
     struct cache_data {
         virtual ~cache_data() = default;
-    }; // struct cache_object_data
+    }; // struct cache_data
+
+    using cache_data_ptr = std::unique_ptr<cache_data>;
 
     struct cache_converter_interface {
         cache_converter_interface() = default;
         virtual ~cache_converter_interface() = default;
 
         virtual void convert_variant(cache_object&, const object_value&) const = 0;
-    }; // struct cache_load_interface
-
-    struct table_cache_map;
+    }; // struct cache_converter_interface
 
     struct cache_index_value final: public boost::intrusive::set_base_hook<> {
-        using data_t = std::vector<char>;
+        const index_name index;
+        const bytes      blob;
+        const cache_object* const object = nullptr;
 
-        const index_name    index;
-        const data_t        data;
-        const cache_object* object = nullptr;
-
-        cache_index_value(index_name, data_t, const cache_object&);
+        cache_index_value(index_name, bytes, const cache_object&);
         cache_index_value(cache_index_value&&) = default;
 
         ~cache_index_value() = default;
@@ -53,26 +47,63 @@ namespace cyberway { namespace chaindb {
 
     using cache_indicies = std::vector<cache_index_value>;
 
+    struct cache_cell {
+        enum cache_cell_kind {
+            Unknown,
+            Pending,
+            LRU,
+            System,
+        }; // enum cell_kind
+
+        cache_map_impl* const map  = nullptr;
+        const cache_cell_kind kind = Unknown;
+
+        uint64_t pos  = 0;
+        uint64_t size = 0;
+
+        cache_cell(cache_map_impl& m, cache_cell_kind k)
+        : map(&m), kind(k) {
+        }
+    }; // struct cache_cell
+
+    struct cache_object_state {
+        cache_cell* const cell = nullptr;
+        cache_object_ptr  object_ptr;
+
+        cache_object_state(cache_cell& c, cache_object_ptr ptr)
+        : cell(&c), object_ptr(std::move(ptr)) {
+        }
+
+        void reset();
+    }; // struct cache_object_state
+
     class cache_object final:
         public boost::intrusive_ref_counter<cache_object>,
-        public boost::intrusive::set_base_hook<>,
-        public boost::intrusive::list_base_hook<>
+        public boost::intrusive::set_base_hook<>
     {
-        table_cache_map* table_cache_map_ = nullptr;
-        object_value     object_;
-        cache_data_ptr   data_;
-        cache_indicies   indicies_;
-        bytes            blob_;
+        cache_object_state* state_ = nullptr;
+        object_value        object_;
+        bytes               blob_;  // for contracts tables
+        cache_data_ptr      data_;  // for interchain tables
+        cache_indicies      indicies_;
 
     public:
-        cache_object(table_cache_map* map): table_cache_map_(map) {}
+        cache_object() = default;
         cache_object(cache_object&&) = default;
 
         ~cache_object() = default;
 
-        bool is_deleted() const {
-            return nullptr != table_cache_map_;
-        }
+        bool is_valid_cell() const;
+        bool has_cell() const;
+        bool is_same_cell(const cache_cell& cell) const;
+
+        bool is_deleted() const;
+
+        const cache_cell&   cell() const;
+        cache_cell&         cell();
+        cache_map_impl&     map();
+        cache_object_state& state();
+        cache_object_state* swap_state(cache_object_state& state);
 
         template <typename Request>
         bool is_valid_table(const Request& request) const {
@@ -83,6 +114,8 @@ namespace cyberway { namespace chaindb {
         }
 
         void mark_deleted();
+        void release();
+
         void set_object(object_value);
         void set_service(service_state service);
 

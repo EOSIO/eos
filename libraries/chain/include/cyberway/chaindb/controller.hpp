@@ -167,7 +167,7 @@ namespace cyberway { namespace chaindb {
         primary_key_t prev(const cursor_request&) const;
 
         void set_cache_converter(const table_request&, const cache_converter_interface&) const;
-        cache_object_ptr create_cache_object(const table_request&) const;
+        cache_object_ptr create_cache_object(const table_request&, const storage_payer_info&) const;
         cache_object_ptr get_cache_object(const cursor_request&, bool with_blob) const;
 
         primary_key_t available_pk(const table_request&) const;

@@ -113,17 +113,10 @@ namespace cyberway { namespace chaindb {
     //------------------------------------
 
     void storage_payer_info::calc_usage(const table_info& table, const object_value& obj) {
-        // TODO: is it a crutch?
-        if (BOOST_UNLIKELY(payer == eosio::chain::config::system_account_name)) {
-            size  = 0;
-            delta = 0;
-        } else if (BOOST_UNLIKELY(payer.empty())) {
-            size  = 0;
-            delta = 0;
-        } else if (!size) {
-            size  = chaindb::calc_storage_usage(*table.table, obj.value);
-            delta = 0;
+        if (!size) {
+            size = chaindb::calc_storage_usage(*table.table, obj.value);
         }
+        delta = 0;
     }
 
     void storage_payer_info::add_usage() {
@@ -301,13 +294,13 @@ namespace cyberway { namespace chaindb {
             cache_.set_cache_converter(table, converter);
         }
 
-        cache_object_ptr create_cache_object(const table_request& req) {
+        cache_object_ptr create_cache_object(const table_request& req, const storage_payer_info& storage) {
             auto table = get_table(req);
-            auto item = cache_.create(table);
+            auto item = cache_.create(table, storage);
             if (BOOST_UNLIKELY(!item)) {
                 auto pk = driver_.available_pk(table);
                 cache_.set_next_pk(table, pk);
-                item = cache_.create(table);
+                item = cache_.create(table, storage);
             }
             return item;
         }
@@ -360,10 +353,16 @@ namespace cyberway { namespace chaindb {
         }
 
         // From genesis
-        int insert(const table_request& request, primary_key_t pk, variant value, const storage_payer_info& storage) {
+        int insert(const table_request& request, primary_key_t pk, variant value, storage_payer_info storage) {
             auto table = get_table(request);
+            
+            if (storage.payer.empty()) {
+                storage.payer = eosio::chain::config::system_account_name;
+                storage.owner = eosio::chain::config::system_account_name;
+            }
+            
             auto obj = object_value{{table, pk}, std::move(value)};
-            return insert(table, storage, obj);
+            return insert(table, std::move(storage), obj);
         }
 
         // From contracts
@@ -433,15 +432,25 @@ namespace cyberway { namespace chaindb {
         }
 
         chaindb_session start_undo_session(bool enabled) {
-            return chaindb_session(controller_, undo_.start_undo_session(enabled));
+            auto revision = undo_.start_undo_session(enabled);
+            if (enabled) {
+                cache_.start_session(revision);
+            }
+            return chaindb_session(controller_, revision);
+        }
+
+        void push_revision(const revision_t revision) {
+            cache_.push_session(revision);
         }
 
         void squash_revision(const revision_t revision) {
             undo_.squash(revision);
+            cache_.squash_session(revision);
         }
 
         void undo_revision(const revision_t revision) {
             undo_.undo(revision);
+            cache_.undo_session(revision);
         }
 
         void commit_revision(const revision_t revision) {
@@ -830,8 +839,10 @@ namespace cyberway { namespace chaindb {
         impl_->set_cache_converter(table, conv);
     }
 
-    cache_object_ptr chaindb_controller::create_cache_object(const table_request& table) const {
-        return impl_->create_cache_object(table);
+    cache_object_ptr chaindb_controller::create_cache_object(
+        const table_request& table, const storage_payer_info& storage
+    ) const {
+        return impl_->create_cache_object(table, storage);
     }
 
     cache_object_ptr chaindb_controller::get_cache_object(const cursor_request& cursor, const bool with_blob) const {
@@ -938,14 +949,23 @@ namespace cyberway { namespace chaindb {
         undo();
     }
 
+    void chaindb_session::push() {
+        if (apply_) {
+            CYBERWAY_ASSERT(revision_ == controller_.revision(), session_exception,
+                "Wrong apply revision ${apply_revision} != ${revision}",
+                ("revision", controller_.revision())("apply_revision", revision_));
+            controller_.impl_->push_revision(revision_);
+        }
+        apply_ = false;
+    }
+
     void chaindb_session::apply_changes() {
         if (apply_) {
             CYBERWAY_ASSERT(revision_ == controller_.revision(), session_exception,
-                "Wrong push revision ${apply_revision} != ${revision}",
+                "Wrong apply revision ${apply_revision} != ${revision}",
                 ("revision", controller_.revision())("apply_revision", revision_));
             controller_.apply_all_changes();
         }
-        apply_ = false;
     }
 
     void chaindb_session::squash() {
