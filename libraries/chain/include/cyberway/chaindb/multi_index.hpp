@@ -591,7 +591,7 @@ public:
         const T& get(const key_type& key) const {
             auto itr = find(key);
             CYBERWAY_ASSERT(itr != cend(), chaindb_midx_find_exception,
-                "Unable to find key in the index ${index}", ("index", get_index_name()));
+                "Unable to find key ${key} in the index ${index}", ("key", key)("index", get_index_name()));
             return *itr;
         }
 
