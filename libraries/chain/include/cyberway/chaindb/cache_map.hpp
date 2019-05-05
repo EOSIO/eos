@@ -23,7 +23,7 @@ namespace cyberway { namespace chaindb {
         void remove(const table_info&, primary_key_t) const;
         void set_revision(const object_value&, revision_t) const;
 
-        void clear();
+        void clear() const;
 
     private:
         std::unique_ptr<table_cache_map> impl_;

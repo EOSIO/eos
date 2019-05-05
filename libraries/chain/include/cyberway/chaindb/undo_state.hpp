@@ -21,13 +21,13 @@ namespace cyberway { namespace chaindb {
 
         void add_abi_tables(eosio::chain::abi_def&) const;
 
-        void restore();
+        void restore() const;
 
-        void clear();
+        void clear() const;
 
-        revision_t start_undo_session(bool enabled);
+        revision_t start_undo_session(bool enabled) const;
 
-        void set_revision(revision_t rev);
+        void set_revision(revision_t rev) const;
         revision_t revision() const {
             return revision_;
         }
@@ -37,7 +37,7 @@ namespace cyberway { namespace chaindb {
          *  Restores the state to how it was prior to the current session discarding all changes
          *  made between the last revision and the current revision.
          */
-        void undo(revision_t rev);
+        void undo(revision_t rev) const;
 
         /**
          *  This method works similar to git squash, it merges the change set from the two most
@@ -45,27 +45,27 @@ namespace cyberway { namespace chaindb {
          *
          *  This method does not change the state of the index, only the state of the undo buffer.
          */
-        void squash(revision_t rev);
+        void squash(revision_t rev) const;
 
         /**
          * Discards all undo history prior to revision
          */
-        void commit(revision_t rev);
+        void commit(revision_t rev) const;
 
         /**
          * Event on create objects
          */
-        void insert(const table_info&, object_value obj);
+        void insert(const table_info&, object_value obj) const;
 
         /**
          * Event on modify objects
          */
-        void update(const table_info&, object_value orig_obj, object_value obj);
+        void update(const table_info&, object_value orig_obj, object_value obj) const;
 
         /**
          * Event on remove objects
          */
-        void remove(const table_info&, object_value orig_obj);
+        void remove(const table_info&, object_value orig_obj) const;
 
     private:
         struct undo_stack_impl_;

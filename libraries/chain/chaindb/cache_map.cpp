@@ -508,7 +508,7 @@ namespace cyberway { namespace chaindb {
         impl_->set_revision(obj.service, rev);
     }
 
-    void cache_map::clear() {
+    void cache_map::clear() const {
         impl_->clear();
     }
 

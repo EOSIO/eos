@@ -100,7 +100,7 @@ void safe_allocate(const Value& value, const char* error_msg, Lambda&& callback)
 
 template<bool IsPrimaryIndex> struct lower_bound final {
     template<typename Key>
-    find_info operator()(chaindb_controller& chaindb, const index_request& request, const Key& key) const {
+    find_info operator()(const chaindb_controller& chaindb, const index_request& request, const Key& key) const {
         find_info info;
         safe_allocate(key, "Invalid size of key on lower_bound", [&](auto& data, auto& size) {
             pack_object(key, data, size);
@@ -111,14 +111,14 @@ template<bool IsPrimaryIndex> struct lower_bound final {
 }; // struct lower_bound
 
 template<> struct lower_bound<true /*IsPrimaryIndex*/> final {
-    find_info operator()(chaindb_controller& chaindb, const table_request& request, const primary_key_t pk) const {
+    find_info operator()(const chaindb_controller& chaindb, const table_request& request, const primary_key_t pk) const {
         return chaindb.lower_bound(request, pk);
     }
 }; // struct lower_bound
 
 template<bool IsPrimaryIndex> struct upper_bound final {
     template<typename Key>
-    find_info operator()(chaindb_controller& chaindb, const index_request& request, const Key& key) const {
+    find_info operator()(const chaindb_controller& chaindb, const index_request& request, const Key& key) const {
         find_info info;
         safe_allocate(key, "Invalid size of key on upper_bound", [&](auto& data, auto& size) {
             pack_object(key, data, size);
@@ -129,7 +129,7 @@ template<bool IsPrimaryIndex> struct upper_bound final {
 }; // struct upper_bound
 
 template<> struct upper_bound<true /*IsPrimaryIndex*/> final {
-    find_info operator()(chaindb_controller& chaindb, const table_request& request, const primary_key_t pk) const {
+    find_info operator()(const chaindb_controller& chaindb, const table_request& request, const primary_key_t pk) const {
         return chaindb.upper_bound(request, pk);
     }
 }; // struct upper_bound
@@ -436,22 +436,22 @@ private:
         template<typename, typename> friend class index;
         template<typename, typename> friend struct iterator_extractor_impl;
 
-        const_iterator_impl(chaindb_controller* ctrl, const cursor_t cursor)
+        const_iterator_impl(const chaindb_controller* ctrl, const cursor_t cursor)
         : controller_(ctrl), cursor_(cursor) { }
 
-        const_iterator_impl(chaindb_controller* ctrl, const cursor_t cursor, const primary_key_t pk)
+        const_iterator_impl(const chaindb_controller* ctrl, const cursor_t cursor, const primary_key_t pk)
         : controller_(ctrl), cursor_(cursor), primary_key_(pk) { }
 
-        const_iterator_impl(chaindb_controller* ctrl, const cursor_t cursor, const primary_key_t pk, cache_object_ptr item)
+        const_iterator_impl(const chaindb_controller* ctrl, const cursor_t cursor, const primary_key_t pk, cache_object_ptr item)
         : controller_(ctrl), cursor_(cursor), primary_key_(pk), item_(std::move(item)) { }
 
-        chaindb_controller& controller() const {
+        const chaindb_controller& controller() const {
             CYBERWAY_ASSERT(controller_, chaindb_midx_logic_exception,
                 "Iterator is not initialized for the index ${index}", ("index", get_index_name()));
             return *controller_;
         }
 
-        chaindb_controller* controller_ = nullptr;
+        const chaindb_controller* controller_ = nullptr;
         mutable cursor_t cursor_ = uninitilized_cursor::state;
         mutable primary_key_t primary_key_ = end_primary_key;
         mutable cache_object_ptr item_;
@@ -554,7 +554,7 @@ public:
         constexpr static account_name_t code_name()  { return 0; }
         constexpr static account_name_t scope_name() { return 0; }
 
-        index(chaindb_controller& ctrl)
+        index(const chaindb_controller& ctrl)
         : controller_(ctrl) {
         }
 
@@ -711,11 +711,11 @@ public:
             return multi_index::get_index_name(index_name());
         }
 
-        chaindb_controller& controller_;
+        const chaindb_controller& controller_;
     }; // struct multi_index::index
 
 public:
-    multi_index(chaindb_controller& controller)
+    multi_index(const chaindb_controller& controller)
     : primary_idx_(controller) {
     }
 
@@ -728,7 +728,7 @@ public:
         return request;
     }
 
-    static void set_cache_converter(chaindb_controller& controller) {
+    static void set_cache_converter(const chaindb_controller& controller) {
         static cache_converter_ converter;
         controller.set_cache_converter(get_table_request(), converter);
     }

@@ -714,27 +714,27 @@ namespace cyberway { namespace chaindb {
 
     chaindb_controller::~chaindb_controller() = default;
 
-    void chaindb_controller::restore_db() {
+    void chaindb_controller::restore_db() const {
         impl_->restore_db();
     }
 
-    void chaindb_controller::drop_db() {
+    void chaindb_controller::drop_db() const {
         impl_->drop_db();
     }
 
-    void chaindb_controller::clear_cache() {
+    void chaindb_controller::clear_cache() const {
         impl_->cache_.clear();
     }
 
-    void chaindb_controller::add_abi(const account_name& code, abi_def abi) {
+    void chaindb_controller::add_abi(const account_name& code, abi_def abi) const {
         impl_->set_abi(code, std::move(abi));
     }
 
-    void chaindb_controller::remove_abi(const account_name& code) {
+    void chaindb_controller::remove_abi(const account_name& code) const {
         impl_->remove_abi(code);
     }
 
-    bool chaindb_controller::has_abi(const account_name& code) {
+    bool chaindb_controller::has_abi(const account_name& code) const {
         return impl_->has_abi(code);
     }
 
@@ -742,19 +742,19 @@ namespace cyberway { namespace chaindb {
         return impl_->get_abi_map();
     }
 
-    void chaindb_controller::close(const cursor_request& request) {
+    void chaindb_controller::close(const cursor_request& request) const {
         impl_->driver_.close(request);
     }
 
-    void chaindb_controller::close_code_cursors(const account_name& code) {
+    void chaindb_controller::close_code_cursors(const account_name& code) const {
         impl_->driver_.close_code_cursors(code);
     }
 
-    void chaindb_controller::apply_all_changes() {
+    void chaindb_controller::apply_all_changes() const {
         impl_->driver_.apply_all_changes();
     }
 
-    void chaindb_controller::apply_code_changes(const account_name& code) {
+    void chaindb_controller::apply_code_changes(const account_name& code) const {
         impl_->driver_.apply_code_changes(code);
     }
 
@@ -788,101 +788,107 @@ namespace cyberway { namespace chaindb {
         return {info.id, info.pk};
     }
 
-    find_info chaindb_controller::locate_to(const index_request& request, const char* key, size_t size, primary_key_t pk) {
+    find_info chaindb_controller::locate_to(
+        const index_request& request, const char* key, size_t size, primary_key_t pk
+    ) const {
         const auto& info = impl_->locate_to(request, key, size, pk);
         return {info.id, info.pk};
     }
 
-    find_info chaindb_controller::begin(const index_request& request) {
+    find_info chaindb_controller::begin(const index_request& request) const {
         const auto& info = impl_->begin(request);
         return {info.id, info.pk};
     }
 
-    find_info chaindb_controller::end(const index_request& request) {
+    find_info chaindb_controller::end(const index_request& request) const {
         const auto& info = impl_->end(request);
         return {info.id, info.pk};
     }
 
-    find_info chaindb_controller::clone(const cursor_request& request) {
+    find_info chaindb_controller::clone(const cursor_request& request) const {
         const auto& info = impl_->driver_.clone(request);
         return {info.id, info.pk};
     }
 
-    primary_key_t chaindb_controller::current(const cursor_request& request) {
+    primary_key_t chaindb_controller::current(const cursor_request& request) const {
         return impl_->current(request).pk;
     }
 
-    primary_key_t chaindb_controller::next(const cursor_request& request) {
+    primary_key_t chaindb_controller::next(const cursor_request& request) const {
         auto& driver = impl_->driver_;
         return driver.next(driver.cursor(request)).pk;
     }
 
-    primary_key_t chaindb_controller::prev(const cursor_request& request) {
+    primary_key_t chaindb_controller::prev(const cursor_request& request) const{
         auto& driver = impl_->driver_;
         return driver.prev(driver.cursor(request)).pk;
     }
 
-    void chaindb_controller::set_cache_converter(const table_request& table, const cache_converter_interface& conv) {
+    void chaindb_controller::set_cache_converter(
+        const table_request& table, const cache_converter_interface& conv
+    ) const {
         impl_->set_cache_converter(table, conv);
     }
 
-    cache_object_ptr chaindb_controller::create_cache_object(const table_request& table) {
+    cache_object_ptr chaindb_controller::create_cache_object(const table_request& table) const {
         return impl_->create_cache_object(table);
     }
 
-    cache_object_ptr chaindb_controller::get_cache_object(const cursor_request& cursor, const bool with_blob) {
+    cache_object_ptr chaindb_controller::get_cache_object(const cursor_request& cursor, const bool with_blob) const {
         return impl_->get_cache_object(cursor, with_blob);
     }
 
-    primary_key_t chaindb_controller::available_pk(const table_request& request) {
+    primary_key_t chaindb_controller::available_pk(const table_request& request) const {
         return impl_->available_pk(request);
     }
 
     int chaindb_controller::insert(
         const table_request& request, const storage_payer_info& storage,
         primary_key_t pk, const char* data, size_t size
-    ) {
+    ) const {
          return impl_->insert(request, storage, pk, data, size);
     }
 
     int chaindb_controller::update(
         const table_request& request, const storage_payer_info& storage,
         primary_key_t pk, const char* data, size_t size
-    ) {
+    ) const {
         return impl_->update(request, storage, pk, data, size);
     }
 
-    int chaindb_controller::remove(const table_request& request, const storage_payer_info& storage, primary_key_t pk) {
+    int chaindb_controller::remove(
+        const table_request& request, const storage_payer_info& storage, primary_key_t pk
+    ) const{
         return impl_->remove(request, storage, pk);
     }
 
     int chaindb_controller::insert(
         const table_request& request, primary_key_t pk, variant data, const storage_payer_info& storage
-    ) {
+    ) const {
          return impl_->insert(request, pk, std::move(data), storage);
     }
 
-    int chaindb_controller::insert(cache_object& itm, variant data, const storage_payer_info& storage) {
+    int chaindb_controller::insert(cache_object& itm, variant data, const storage_payer_info& storage) const {
         return impl_->insert(itm, std::move(data), storage);
     }
 
-    int chaindb_controller::update(cache_object& itm, variant data, const storage_payer_info& storage) {
+    int chaindb_controller::update(cache_object& itm, variant data, const storage_payer_info& storage) const {
         return impl_->update(itm, std::move(data), storage);
     }
 
-    int chaindb_controller::remove(cache_object& itm, const storage_payer_info& storage) {
+    int chaindb_controller::remove(cache_object& itm, const storage_payer_info& storage) const {
         return impl_->remove(itm, storage);
     }
 
-    void chaindb_controller::recalc_ram_usage(cache_object& itm, const storage_payer_info& storage) {
+    void chaindb_controller::recalc_ram_usage(cache_object& itm, const storage_payer_info& storage) const {
         impl_->recalc_ram_usage(itm, storage);
     }
 
-    variant chaindb_controller::value_by_pk(const table_request& request, primary_key_t pk) {
+    variant chaindb_controller::value_by_pk(const table_request& request, primary_key_t pk) const {
         return impl_->object_by_pk(request, pk).value;
     }
 
-    variant chaindb_controller::value_at_cursor(const cursor_request& request) {
+    variant chaindb_controller::value_at_cursor(const cursor_request& request) const {
         return impl_->object_at_cursor(request).value;
     }
 
@@ -894,19 +900,19 @@ namespace cyberway { namespace chaindb {
         return impl_->undo_.revision();
     }
 
-    void chaindb_controller::set_revision(revision_t revision) {
+    void chaindb_controller::set_revision(revision_t revision) const {
         return impl_->undo_.set_revision(revision);
     }
 
-    chaindb_session chaindb_controller::start_undo_session(bool enabled) {
+    chaindb_session chaindb_controller::start_undo_session(bool enabled) const {
         return impl_->start_undo_session(enabled);
     }
 
-    void chaindb_controller::undo_last_revision() {
+    void chaindb_controller::undo_last_revision() const {
         return impl_->undo_revision(revision());
     }
 
-    void chaindb_controller::commit_revision(const revision_t revision) {
+    void chaindb_controller::commit_revision(const revision_t revision) const {
         return impl_->commit_revision(revision);
     }
 

@@ -1015,19 +1015,19 @@ namespace cyberway { namespace chaindb {
         impl_->add_abi_tables(abi);
     }
 
-    void undo_stack::restore() {
+    void undo_stack::restore() const {
         impl_->restore();
     }
 
-    void undo_stack::clear() {
+    void undo_stack::clear() const {
         impl_->clear();
     }
 
-    revision_t undo_stack::start_undo_session(bool enabled) {
+    revision_t undo_stack::start_undo_session(bool enabled) const {
         return impl_->start_undo_session(enabled);
     }
 
-    void undo_stack::set_revision(const revision_t rev) {
+    void undo_stack::set_revision(const revision_t rev) const {
         impl_->set_revision(rev);
     }
 
@@ -1035,27 +1035,27 @@ namespace cyberway { namespace chaindb {
         return impl_->enabled();
     }
 
-    void undo_stack::undo(revision_t undo_rev) {
+    void undo_stack::undo(revision_t undo_rev) const {
         impl_->undo(undo_rev);
     }
 
-    void undo_stack::squash(const revision_t squash_rev) {
+    void undo_stack::squash(const revision_t squash_rev) const {
         impl_->squash(squash_rev);
     }
 
-    void undo_stack::commit(const revision_t commit_rev) {
+    void undo_stack::commit(const revision_t commit_rev) const {
         impl_->commit(commit_rev);
     }
 
-    void undo_stack::insert(const table_info& table, object_value obj) {
+    void undo_stack::insert(const table_info& table, object_value obj) const {
         impl_->insert(table, std::move(obj));
     }
 
-    void undo_stack::update(const table_info& table, object_value orig_obj, object_value obj) {
+    void undo_stack::update(const table_info& table, object_value orig_obj, object_value obj) const {
         impl_->update(table,  std::move(orig_obj), std::move(obj));
     }
 
-    void undo_stack::remove(const table_info& table, object_value orig_obj) {
+    void undo_stack::remove(const table_info& table, object_value orig_obj) const {
         impl_->remove(table,  std::move(orig_obj));
     }
 
