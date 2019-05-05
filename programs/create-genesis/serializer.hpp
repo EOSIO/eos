@@ -68,6 +68,7 @@ private:
     int _row_count = 0;
     int _section_count = 0;
     table_header _section;
+    bytes _buffer;
 
 public:
     void start(const bfs::path& out_file, int n_sections) {
@@ -77,6 +78,7 @@ public:
         hdr.tables_count = n_sections;
         out.write((char*)(&hdr), sizeof(hdr));
         _section_count = n_sections;
+        _buffer.resize(1024*1024);
     }
 
     void finalize() {
@@ -151,6 +153,7 @@ public:
         to_variant(obj, v);
         bytes data = ser.variant_to_binary(get_type_name<T>(), v, abi_serializer_max_time);
 #else
+        get_type_name<T>();
         bytes data = fc::raw::pack(obj);
 #endif
         sys_table_row record{{}, data};
@@ -161,9 +164,10 @@ public:
 
     void insert(primary_key_t pk, uint64_t scope, const variant& v, name ram_payer = {}) {
         EOS_ASSERT(abis.count(_section.code) > 0, genesis_exception, "ABI not found");
+        fc::datastream<char*> ds(_buffer.data(), _buffer.size());
         auto& ser = abis[_section.code];
-        bytes data = ser.variant_to_binary(_section.abi_type, v, abi_serializer_max_time);
-        fc::raw::pack(out, table_row{ram_payer, data, pk, scope});
+        ser.variant_to_binary(_section.abi_type, v, ds, abi_serializer_max_time);
+        fc::raw::pack(out, table_row{ram_payer, bytes{_buffer.begin(), _buffer.begin() + ds.tellp()}, pk, scope});
         _row_count--;
     }
 };
