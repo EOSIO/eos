@@ -61,7 +61,6 @@ namespace cyberway { namespace chaindb {
     };
 
     class chaindb_controller;
-    class undo_stack;
     class abi_info;
 
     using abi_map = std::map<account_name /* code */, abi_info>;
@@ -103,7 +102,9 @@ namespace cyberway { namespace chaindb {
         void apply_changes();
 
         /** leaves the UNDO state on the stack when session goes out of scope */
-        void push();
+        void push() {
+            apply_ = false;
+        }
 
         /** Combines this session with the prior session */
         void squash();
@@ -116,11 +117,11 @@ namespace cyberway { namespace chaindb {
         }
 
     private:
-        friend class undo_stack;
+        friend class chaindb_controller;
 
-        chaindb_session(undo_stack& stack, revision_t revision);
+        chaindb_session(chaindb_controller&, revision_t);
 
-        undo_stack& stack_;
+        chaindb_controller& controller_;
         bool apply_ = true;
         const revision_t revision_ = -1;
     }; // struct session

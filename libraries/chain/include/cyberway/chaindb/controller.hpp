@@ -141,13 +141,12 @@ namespace cyberway { namespace chaindb {
         void apply_all_changes();
         void apply_code_changes(const account_name&);
 
-        chaindb_session start_undo_session(bool enabled);
-        void undo();
-        void undo_all();
-        void commit(int64_t revision);
+        revision_t revision() const;
+        void set_revision(revision_t revision);
 
-        int64_t revision() const;
-        void set_revision(uint64_t revision);
+        chaindb_session start_undo_session(bool enabled);
+        void undo_last_revision();
+        void commit_revision(revision_t);
 
         find_info lower_bound(const index_request&, const char* key, size_t) const;
         find_info lower_bound(const table_request&, primary_key_t) const;
@@ -166,9 +165,6 @@ namespace cyberway { namespace chaindb {
         primary_key_t current(const cursor_request&);
         primary_key_t next(const cursor_request&);
         primary_key_t prev(const cursor_request&);
-
-        int32_t       datasize(const cursor_request&);
-        primary_key_t data(const cursor_request&, const char*, size_t);
 
         void set_cache_converter(const table_request&, const cache_converter_interface&);
         cache_object_ptr create_cache_object(const table_request&);
@@ -193,6 +189,8 @@ namespace cyberway { namespace chaindb {
         object_value object_at_cursor(const cursor_request& request) const;
 
     private:
+        friend class chaindb_session;
+
         struct controller_impl_;
         std::unique_ptr<controller_impl_> impl_;
     }; // class chaindb_controller

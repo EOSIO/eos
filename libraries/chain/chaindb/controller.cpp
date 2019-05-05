@@ -155,6 +155,7 @@ namespace cyberway { namespace chaindb {
     //------------------------------------
 
     struct chaindb_controller::controller_impl_ final {
+        chaindb_controller& controller_;
         journal journal_;
         std::unique_ptr<driver_interface> driver_ptr_;
         driver_interface& driver_;
@@ -163,7 +164,8 @@ namespace cyberway { namespace chaindb {
         undo_stack undo_;
 
         controller_impl_(chaindb_controller& controller, const chaindb_type t, string address, string sys_name)
-        : driver_ptr_(_detail::create_driver(t, journal_, std::move(address), std::move(sys_name))),
+        : controller_(controller),
+          driver_ptr_(_detail::create_driver(t, journal_, std::move(address), std::move(sys_name))),
           driver_(*driver_ptr_.get()),
           cache_(abi_map_),
           undo_(controller, driver_, journal_, cache_) {
@@ -428,6 +430,22 @@ namespace cyberway { namespace chaindb {
 
         object_value object_at_cursor(const cursor_request& request) {
             return object_at_cursor(current(request));
+        }
+
+        chaindb_session start_undo_session(bool enabled) {
+            return chaindb_session(controller_, undo_.start_undo_session(enabled));
+        }
+
+        void squash_revision(const revision_t revision) {
+            undo_.squash(revision);
+        }
+
+        void undo_revision(const revision_t revision) {
+            undo_.undo(revision);
+        }
+
+        void commit_revision(const revision_t revision) {
+            undo_.commit(revision);
         }
 
     private:
@@ -724,30 +742,6 @@ namespace cyberway { namespace chaindb {
         return impl_->get_abi_map();
     }
 
-    chaindb_session chaindb_controller::start_undo_session(bool enabled) {
-        return impl_->undo_.start_undo_session(enabled);
-    }
-
-    void chaindb_controller::undo() {
-        return impl_->undo_.undo();
-    }
-
-    void chaindb_controller::undo_all() {
-        return impl_->undo_.undo_all();
-    }
-
-    void chaindb_controller::commit(const int64_t revision) {
-        return impl_->undo_.commit(revision);
-    }
-
-    int64_t chaindb_controller::revision() const {
-        return impl_->undo_.revision();
-    }
-
-    void chaindb_controller::set_revision(uint64_t revision) {
-        return impl_->undo_.set_revision(revision);
-    }
-
     void chaindb_controller::close(const cursor_request& request) {
         impl_->driver_.close(request);
     }
@@ -894,6 +888,72 @@ namespace cyberway { namespace chaindb {
 
     object_value chaindb_controller::object_at_cursor(const cursor_request& request) const {
         return impl_->object_at_cursor(request);
+    }
+
+    revision_t chaindb_controller::revision() const {
+        return impl_->undo_.revision();
+    }
+
+    void chaindb_controller::set_revision(revision_t revision) {
+        return impl_->undo_.set_revision(revision);
+    }
+
+    chaindb_session chaindb_controller::start_undo_session(bool enabled) {
+        return impl_->start_undo_session(enabled);
+    }
+
+    void chaindb_controller::undo_last_revision() {
+        return impl_->undo_revision(revision());
+    }
+
+    void chaindb_controller::commit_revision(const revision_t revision) {
+        return impl_->commit_revision(revision);
+    }
+
+    //-------------------------------------
+
+    chaindb_session::chaindb_session(chaindb_controller& controller, const revision_t rev)
+    : controller_(controller),
+      apply_(true),
+      revision_(rev) {
+        if (impossible_revision == rev) {
+            apply_ = false;
+        }
+    }
+
+    chaindb_session::chaindb_session(chaindb_session&& mv)
+    : controller_(mv.controller_),
+      apply_(mv.apply_),
+      revision_(mv.revision_) {
+        mv.apply_ = false;
+    }
+
+    chaindb_session::~chaindb_session() {
+        undo();
+    }
+
+    void chaindb_session::apply_changes() {
+        if (apply_) {
+            CYBERWAY_ASSERT(revision_ == controller_.revision(), session_exception,
+                "Wrong push revision ${apply_revision} != ${revision}",
+                ("revision", controller_.revision())("apply_revision", revision_));
+            controller_.apply_all_changes();
+        }
+        apply_ = false;
+    }
+
+    void chaindb_session::squash() {
+        if (apply_) {
+            controller_.impl_->squash_revision(revision_);
+        }
+        apply_ = false;
+    }
+
+    void chaindb_session::undo() {
+        if (apply_) {
+            controller_.impl_->undo_revision(revision_);
+        }
+        apply_ = false;
     }
 
 } } // namespace cyberway::chaindb

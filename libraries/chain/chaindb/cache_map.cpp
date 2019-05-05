@@ -53,9 +53,6 @@ namespace cyberway { namespace chaindb {
         : code(tab.code), table(tab.table->name) {
         }
 
-        cache_service_key(cache_service_key&&) = default;
-        cache_service_key(const cache_service_key&) = default;
-
         friend bool operator<(const cache_service_key& l, const cache_service_key& r) {
             if (l.code < r.code) return true;
             if (l.code > r.code) return false;
@@ -128,6 +125,12 @@ namespace cyberway { namespace chaindb {
         int cache_object_cnt = 0;
         primary_key_t next_pk = unset_primary_key;
         const cache_converter_interface* converter = nullptr; // exist only for interchain tables
+
+        cache_service_info() = default;
+
+        cache_service_info(const cache_converter_interface* c)
+        : converter(c) {
+        }
 
         bool empty() const {
             assert(cache_object_cnt >= 0);
@@ -279,22 +282,19 @@ namespace cyberway { namespace chaindb {
                 cache_object_tree_.erase(itr);
             }
 
-            for (auto itr = service_tree_.begin(), etr = service_tree_.end(); etr != itr; ) {
-                itr->second.cache_object_cnt = 0;
-                itr->second.next_pk = unset_primary_key;
-                if (itr->second.empty()) {
-                    itr = service_tree_.erase(itr);
-                } else {
-                    ++itr;
-                }
+            service_tree_type tmp_tree;
+            tmp_tree.reserve(service_tree_.size());
+            for (auto service: service_tree_) if (service.second.converter) {
+                tmp_tree.emplace(service.first, cache_service_info(service.second.converter));
             }
+            service_tree_.swap(tmp_tree);
         }
 
     private:
         using cache_object_tree_type = boost::intrusive::set<cache_object>;
         using cache_index_tree_type  = boost::intrusive::set<cache_index_value>;
         using lru_list_type     = boost::intrusive::list<cache_object>;
-        using service_tree_type = std::map<cache_service_key, cache_service_info>;
+        using service_tree_type = fc::flat_map<cache_service_key, cache_service_info>;
 
         abi_map&               abi_map_;
         cache_object_tree_type cache_object_tree_;

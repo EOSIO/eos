@@ -25,15 +25,13 @@ namespace cyberway { namespace chaindb {
 
         void clear();
 
-        chaindb_session start_undo_session(bool enabled);
+        revision_t start_undo_session(bool enabled);
 
         void set_revision(revision_t rev);
         revision_t revision() const {
             return revision_;
         }
         bool enabled() const;
-
-        void apply_changes(revision_t rev);
 
         /**
          *  Restores the state to how it was prior to the current session discarding all changes
@@ -53,12 +51,6 @@ namespace cyberway { namespace chaindb {
          * Discards all undo history prior to revision
          */
         void commit(revision_t rev);
-
-        /**
-         * Unwinds all undo states
-         */
-        void undo_all();
-        void undo();
 
         /**
          * Event on create objects
