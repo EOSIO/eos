@@ -7,7 +7,7 @@ namespace cyberway { namespace chaindb {
     struct mongodb_driver::mongodb_impl_ {
     }; // struct mongodb_driver::mongodb_impl_
 
-    mongodb_driver::mongodb_driver(string, string) {
+    mongodb_driver::mongodb_driver(journal&, string, string) {
         NOT_SUPPORTED;
     }
 
@@ -29,79 +29,75 @@ namespace cyberway { namespace chaindb {
         NOT_SUPPORTED;
     }
 
-    const cursor_info& mongodb_driver::clone(const cursor_request&) {
+    void mongodb_driver::drop_db() const {
         NOT_SUPPORTED;
     }
 
-    void mongodb_driver::close(const cursor_request&) {
+    const cursor_info& mongodb_driver::clone(const cursor_request&) const {
         NOT_SUPPORTED;
     }
 
-    void mongodb_driver::close_all_cursors(const account_name&) {
+    void mongodb_driver::close(const cursor_request&) const {
         NOT_SUPPORTED;
     }
 
-    void mongodb_driver::apply_changes() {
+    void mongodb_driver::close_code_cursors(const account_name&) const {
         NOT_SUPPORTED;
     }
 
-    const cursor_info& mongodb_driver::lower_bound(index_info, variant) {
+    void mongodb_driver::apply_code_changes(const account_name&) const {
         NOT_SUPPORTED;
     }
 
-    const cursor_info& mongodb_driver::upper_bound(index_info, variant) {
+    void mongodb_driver::apply_all_changes() const {
         NOT_SUPPORTED;
     }
 
-    const cursor_info& mongodb_driver::find(index_info, primary_key_t, variant) {
+    cursor_info& mongodb_driver::lower_bound(index_info, variant) const {
         NOT_SUPPORTED;
     }
 
-    const cursor_info& mongodb_driver::begin(index_info) {
+    cursor_info& mongodb_driver::upper_bound(index_info, variant) const {
         NOT_SUPPORTED;
     }
 
-    const cursor_info& mongodb_driver::end(index_info) {
+    cursor_info& mongodb_driver::locate_to(index_info, variant, primary_key_t) const {
         NOT_SUPPORTED;
     }
 
-    const cursor_info& mongodb_driver::opt_find_by_pk(index_info, primary_key_t) {
+    cursor_info& mongodb_driver::begin(index_info) const {
         NOT_SUPPORTED;
     }
 
-    const cursor_info& mongodb_driver::current(const cursor_info&) {
+    cursor_info& mongodb_driver::end(index_info) const {
         NOT_SUPPORTED;
     }
 
-    const cursor_info& mongodb_driver::current(const cursor_request&) {
+    cursor_info& mongodb_driver::cursor(const cursor_request&) const {
         NOT_SUPPORTED;
     }
 
-    const cursor_info& mongodb_driver::next(const cursor_request&) {
+    cursor_info& mongodb_driver::current(const cursor_info&) const {
         NOT_SUPPORTED;
     }
 
-    const cursor_info& mongodb_driver::prev(const cursor_request&) {
+    cursor_info& mongodb_driver::next(const cursor_info&) const {
         NOT_SUPPORTED;
     }
 
-    variant mongodb_driver::object_by_pk(const table_info&, const primary_key_t) {
+    cursor_info& mongodb_driver::prev(const cursor_info&) const {
         NOT_SUPPORTED;
     }
 
-    const variant& mongodb_driver::object_at_cursor(const cursor_info&) {
+    primary_key_t mongodb_driver::available_pk(const table_info&) const {
         NOT_SUPPORTED;
     }
 
-    void mongodb_driver::set_blob(const cursor_info&, bytes) {
+    object_value mongodb_driver::object_by_pk(const table_info&, const primary_key_t) const {
         NOT_SUPPORTED;
     }
 
-    primary_key_t mongodb_driver::available_primary_key(const table_info&) {
-        NOT_SUPPORTED;
-    }
-
-    void write(const table_info&, primary_key_t, revision_t, write_value, write_value) {
+    const object_value& mongodb_driver::object_at_cursor(const cursor_info&) const {
         NOT_SUPPORTED;
     }
 

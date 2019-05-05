@@ -4,6 +4,7 @@ set(CHAINDB_LIBS "")
 set(CHAINDB_SRCS "")
 
 if (BUILD_CYBERWAY_CHAINDB_MONGO)
+    message("chaindb with MongoDB support is selected and will be builded.")
 
     find_package(libmongoc-1.0 1.8)
 
