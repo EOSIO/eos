@@ -19,6 +19,7 @@ public:
 public:
     ee_genesis_serializer messages;
     ee_genesis_serializer transfers;
+    ee_genesis_serializer pinblocks;
 };
 
 } } // cyberway::genesis

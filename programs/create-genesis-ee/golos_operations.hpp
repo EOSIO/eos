@@ -49,6 +49,18 @@ struct transfer_operation {
     string memo;
 };
 
+enum follow_type {
+    undefined,
+    blog,
+    ignore
+};
+
+struct follow_operation {
+    account_name_type follower;
+    account_name_type following;
+    uint16_t what;
+};
+
 struct author_reward_operation {
     account_name_type author;
     string permlink;
@@ -93,6 +105,7 @@ FC_REFLECT(cyberway::golos::vote_operation, (voter)(author)(permlink)(weight)(ti
 FC_REFLECT(cyberway::golos::reblog_operation, (account)(author)(permlink)(title)(body)(timestamp))
 FC_REFLECT(cyberway::golos::delete_reblog_operation, (account))
 FC_REFLECT(cyberway::golos::transfer_operation, (from)(to)(amount)(memo))
+FC_REFLECT(cyberway::golos::follow_operation, (follower)(following)(what))
 
 FC_REFLECT(cyberway::golos::author_reward_operation, (author)(permlink)(sbd_payout)(steem_payout)(vesting_payout))
 FC_REFLECT(cyberway::golos::curation_reward_operation, (curator)(reward)(comment_author)(comment_permlink))

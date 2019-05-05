@@ -62,14 +62,37 @@ static abi_def create_transfers_abi() {
     return abi;
 }
 
+static abi_def create_pinblocks_abi() {
+    abi_def abi;
+    abi.version = ABI_VERSION;
+
+    abi.structs.emplace_back( struct_def {
+        "pin", "", {
+            {"pinner", "name"},
+            {"pinning", "name"},
+        }
+    });
+
+    abi.structs.emplace_back( struct_def {
+        "block", "", {
+            {"blocker", "name"},
+            {"blocking", "name"},
+        }
+    });
+
+    return abi;
+}
+
 void event_engine_genesis::start(const bfs::path& ee_directory, const fc::sha256& hash) {
     messages.start(ee_directory / "messages.dat", hash, create_messages_abi());
     transfers.start(ee_directory / "transfers.dat", hash, create_transfers_abi());
+    pinblocks.start(ee_directory / "pinblocks.dat", hash, create_pinblocks_abi());
 }
 
 void event_engine_genesis::finalize() {
     messages.finalize();
     transfers.finalize();
+    pinblocks.finalize();
 }
 
 } } // cyberway::genesis

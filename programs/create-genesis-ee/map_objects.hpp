@@ -19,7 +19,8 @@ enum object_type
     null_object_type = 0,
     comment_header_object_type,
     vote_header_object_type,
-    reblog_header_object_type
+    reblog_header_object_type,
+    follow_header_object_type
 };
 
 struct comment_header : public chainbase::object<comment_header_object_type, comment_header> {
@@ -64,6 +65,18 @@ struct reblog_header : public chainbase::object<reblog_header_object_type, reblo
     account_name_type account;
     operation_number op_num;
     uint64_t offset;
+};
+
+struct follow_header : public chainbase::object<follow_header_object_type, follow_header> {
+    template<typename Constructor, typename Allocator>
+    follow_header(Constructor &&c, chainbase::allocator<Allocator> a) {
+        c(*this);
+    }
+
+    id_type id;
+    account_name_type follower;
+    account_name_type following;
+    bool ignores;
 };
 
 struct by_id;
@@ -119,6 +132,25 @@ using reblog_header_index = chainbase::shared_multi_index_container<
                 std::less<account_name_type>>>>
 >;
 
+struct by_pair;
+
+using follow_header_index = chainbase::shared_multi_index_container<
+    follow_header,
+    indexed_by<
+        ordered_unique<
+            tag<by_id>,
+            member<follow_header, follow_header::id_type, &follow_header::id>>,
+        ordered_unique<
+            tag<by_pair>,
+            composite_key<
+                follow_header,
+                member<follow_header, account_name_type, &follow_header::follower>,
+                member<follow_header, account_name_type, &follow_header::following>>,
+            composite_key_compare<
+                std::less<account_name_type>,
+                std::less<account_name_type>>>>
+>;
+
 } } // cyberway::genesis
 
 CHAINBASE_SET_INDEX_TYPE(cyberway::genesis::comment_header, cyberway::genesis::comment_header_index)
@@ -126,3 +158,5 @@ CHAINBASE_SET_INDEX_TYPE(cyberway::genesis::comment_header, cyberway::genesis::c
 CHAINBASE_SET_INDEX_TYPE(cyberway::genesis::vote_header, cyberway::genesis::vote_header_index)
 
 CHAINBASE_SET_INDEX_TYPE(cyberway::genesis::reblog_header, cyberway::genesis::reblog_header_index)
+
+CHAINBASE_SET_INDEX_TYPE(cyberway::genesis::follow_header, cyberway::genesis::follow_header_index)
