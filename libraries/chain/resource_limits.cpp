@@ -81,13 +81,8 @@ storage_payer_info resource_limits_manager::get_storage_payer(account_name owner
     return {*this, owner, owner};
 }
 
-void resource_limits_manager::initialize_account(const account_name& account, const storage_payer_info&) {
-   // no payer, because it will create the dead loop:
-   //     updating any object
-   //     -> storage usage is stored in resource_usage -> updating resource_usage
-   //     -> storage usage is stored in resource_usage -> updating resource_usage
-   //     -> storage usage is ....
-   _chaindb.emplace<resource_usage_object>([&]( resource_usage_object& bu ) {
+void resource_limits_manager::initialize_account(const account_name& account, const storage_payer_info& payer) {
+   _chaindb.emplace<resource_usage_object>(payer, [&]( resource_usage_object& bu ) {
       bu.owner = account;
    });
 }

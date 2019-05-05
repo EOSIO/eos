@@ -171,17 +171,8 @@ namespace cyberway { namespace chaindb {
             }
 
             static constexpr int max_cleared_objs = 100;
-            for (int i = 0; i < max_cleared_objs && ram_used_ >= ram_limit; ++i) {
-                auto itr = lru_list_.begin();
-                if (itr->service().size) {
-                    // if not system object - remove it from cache
-                    itr->mark_deleted();
-                } else {
-                    // if system object mark it as used.
-                    auto& cache = (*itr);
-                    lru_list_.erase(itr);
-                    lru_list_.push_back(cache);
-                }
+            for (int i = 0; i < max_cleared_objs && !lru_list_.empty() && ram_used_ >= ram_limit; ++i) {
+                lru_list_.front().mark_deleted();
             }
 
             if (obj.service.in_ram) {
@@ -193,17 +184,19 @@ namespace cyberway { namespace chaindb {
 
         void remove_cache_object(cache_object& cache, cache_indicies& indicies) {
             // self decrementing of ref counter, see emplace_in_ram()
-            auto cache_ptr   = cache_object_ptr(&cache, false);
-            auto tree_itr    = cache_object_tree_.iterator_to(cache);
-            auto list_itr    = lru_list_.iterator_to(cache);
-            auto service_itr = service_tree_.find(cache.object());
+            auto cache_ptr = cache_object_ptr(&cache, false);
+            auto tree_itr  = cache_object_tree_.iterator_to(cache);
+
+            if (cache.service().size) {
+                auto list_itr = lru_list_.iterator_to(cache);
+                lru_list_.erase(list_itr);
+                add_ram_usage(-cache.service().size);
+            }
 
             remove_cache_indicies(indicies);
-            add_ram_usage(-cache.service().size);
-
             cache_object_tree_.erase(tree_itr);
-            lru_list_.erase(list_itr);
 
+            auto service_itr = service_tree_.find(cache.object());
             if (service_tree_.end() == service_itr) {
                 return;
             }
@@ -221,14 +214,22 @@ namespace cyberway { namespace chaindb {
             }
         }
 
-        void change_cache_object(cache_object& cache, const int delta, cache_indicies& indicies) {
-            add_ram_usage(delta);
+        void change_cache_object(cache_object& cache_obj, const int old_size, const int new_size, cache_indicies& indicies) {
+            add_ram_usage(new_size - old_size);
+
+            if (old_size > 0) {
+                auto list_itr = lru_list_.iterator_to(cache_obj);
+                lru_list_.erase(list_itr);
+            }
+
+            if (new_size > 0) {
+                lru_list_.push_back(cache_obj);
+            }
 
             using state_object = eosio::chain::resource_limits::resource_limits_state_object;
-
-            if (is_system_code(cache.service().code)) {
-                if (cache.has_data() && cache.service().table == chaindb::tag<state_object>::get_code()) {
-                    ram_limit_ = multi_index_item_data<state_object>::get_T(cache).virtual_ram_limit;
+            if (is_system_code(cache_obj.service().code)) {
+                if (cache_obj.has_data() && cache_obj.service().table == chaindb::tag<state_object>::get_code()) {
+                    ram_limit_ = multi_index_item_data<state_object>::get_T(cache_obj).virtual_ram_limit;
                 }
 
                 // don't rebuild indicies for interchain objects
@@ -238,7 +239,7 @@ namespace cyberway { namespace chaindb {
             }
 
             remove_cache_indicies(indicies);
-            build_cache_indicies(cache, indicies);
+            build_cache_indicies(cache_obj, indicies);
         }
 
         void set_revision(const service_state& key, const revision_t rev) {
@@ -268,12 +269,14 @@ namespace cyberway { namespace chaindb {
         }
 
         void clear() {
-            cache_object_tree_.clear();
+            lru_list_.clear();
             cache_index_tree_.clear();
-            while (!lru_list_.empty()) {
+
+            while (!cache_object_tree_.empty()) {
+                auto itr = cache_object_tree_.begin();
                 // self decrementing of ref counter, see emplace()
-                auto cache_ptr = cache_object_ptr(&lru_list_.front(), false);
-                lru_list_.pop_front();
+                auto cache_ptr = cache_object_ptr(&*itr, false);
+                cache_object_tree_.erase(itr);
             }
 
             for (auto itr = service_tree_.begin(), etr = service_tree_.end(); etr != itr; ) {
@@ -360,14 +363,14 @@ namespace cyberway { namespace chaindb {
         }
 
         cache_object_ptr emplace_in_ram(object_value obj) {
-            auto  cache_ptr  = cache_object_ptr(find(obj.service));
-            bool  is_new_ptr = !cache_ptr;
-            auto& cache_service = get_cache_service(obj);
+            auto cache_ptr  = cache_object_ptr(find(obj.service));
+            bool is_new_ptr = !cache_ptr;
 
             if (is_new_ptr) {
                 cache_ptr = cache_object_ptr(new cache_object(this));
             }
 
+            auto& cache_service = get_cache_service(obj);
             set_cache_value(&cache_service, cache_ptr, std::move(obj));
 
             if (is_new_ptr) {
@@ -377,12 +380,7 @@ namespace cyberway { namespace chaindb {
                 // self incrementing of ref counter allows to use object w/o an additional storage
                 //   self decrementing happens in remove()
                 intrusive_ptr_add_ref(cache_ptr.get());
-            } else {
-                // mark object as used
-                auto lru_itr = lru_list_.iterator_to(*cache_ptr.get());
-                lru_list_.erase(lru_itr);
             }
-            lru_list_.push_back(*cache_ptr.get());
 
             return cache_ptr;
         }
@@ -395,7 +393,7 @@ namespace cyberway { namespace chaindb {
                 // create object, and don't add it to RAM
                 cache_ptr = cache_object_ptr(new cache_object(nullptr));
             } else {
-                // find object in cache, and it remove from RAM
+                // find object in cache, and remove it from RAM
                 cache_ptr->mark_deleted();
             }
 
@@ -416,6 +414,10 @@ namespace cyberway { namespace chaindb {
         }
 
         void add_ram_usage(const int delta) {
+            if (!delta) {
+                return;
+            }
+
             CYBERWAY_ASSERT(delta <= 0 || UINT64_MAX - ram_used_ >= (uint64_t)delta, cache_usage_exception,
                 "Cache delta would overflow UINT64_MAX", ("delta", delta)("used", ram_used_));
             CYBERWAY_ASSERT(delta >= 0 || ram_used_ >= (uint64_t)(-delta), cache_usage_exception,
@@ -430,12 +432,14 @@ namespace cyberway { namespace chaindb {
     void cache_object::set_object(object_value obj) {
         assert(object_.service.empty() || is_valid_table(obj.service));
 
-        int delta = obj.service.size - object_.service.size;
+        auto old_size = object_.service.size;
+        auto new_size = obj.service.size;
+
         object_ = std::move(obj);
         blob_.clear();
 
         if (table_cache_map_) {
-            table_cache_map_->change_cache_object(*this, delta, indicies_);
+            table_cache_map_->change_cache_object(*this, old_size, new_size, indicies_);
         }
     }
 

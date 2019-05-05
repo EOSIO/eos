@@ -127,10 +127,7 @@ namespace cyberway { namespace chaindb {
     }
 
     void storage_payer_info::add_usage() {
-        // TODO: is it a crutch?
-        if (BOOST_UNLIKELY(payer == eosio::chain::config::system_account_name)) {
-            // do nothing
-        } else if (BOOST_UNLIKELY(payer.empty() || (!delta && !size))) {
+        if (BOOST_UNLIKELY(payer.empty() || !delta)) {
             // do nothing
         } else if (BOOST_LIKELY(!!apply_ctx)) {
             apply_ctx->add_storage_usage(*this);
@@ -624,14 +621,14 @@ namespace cyberway { namespace chaindb {
             charge.in_ram = true;
             charge.delta  = charge.size;
 
-            // charge the payer
-            charge.add_usage();
-
             // insert object to storage
             charge.set_payer_in(obj);
             obj.service.revision = undo_.revision();
 
             undo_.insert(table, obj);
+
+            // charge the payer
+            charge.add_usage();
 
             return charge.delta;
         }
