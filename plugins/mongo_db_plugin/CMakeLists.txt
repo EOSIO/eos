@@ -15,6 +15,9 @@ if(BUILD_MONGO_DB_PLUGIN)
       # link step for all executables using this archive must include the
       # mongo-cxx-driver libraries libmongocxx and libbsoncxx.
 
+      find_package(libbson-1.0 1.13.0 REQUIRED)
+      message(STATUS "Found bson headers: ${BSON_INCLUDE_DIRS}")
+
       find_package(libbsoncxx-static REQUIRED)
       message(STATUS "Found bsoncxx headers: ${LIBBSONCXX_STATIC_INCLUDE_DIRS}")
 
@@ -54,7 +57,7 @@ if(BUILD_MONGO_DB_PLUGIN)
                ${HEADERS} )
 
   target_include_directories(mongo_db_plugin
-          PRIVATE ${LIBMONGOCXX_STATIC_INCLUDE_DIRS} ${LIBBSONCXX_STATIC_INCLUDE_DIRS}
+          PRIVATE ${LIBMONGOCXX_STATIC_INCLUDE_DIRS} ${LIBBSONCXX_STATIC_INCLUDE_DIRS} ${BSON_INCLUDE_DIRS}
           PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include"
           )
 

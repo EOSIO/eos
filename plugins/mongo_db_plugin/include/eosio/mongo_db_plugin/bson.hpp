@@ -14,6 +14,8 @@
 
 #include <fc/variant.hpp>
 
+#include <bson/bson.h>
+
 namespace eosio {
 void to_bson(const fc::variant_object& o, bsoncxx::builder::core& c);
 void to_bson(const fc::variants& v, bsoncxx::builder::core& c);
@@ -90,7 +92,7 @@ void to_bson(const fc::variant& v, bsoncxx::builder::core& c)
             const auto value = o.begin()->value();
             if (o.begin()->key().compare("$oid") == 0) {
                if (value.get_type() == fc::variant::string_type
-                  && value.as_string().size() == 12 * 2) {
+                  && bson_oid_is_valid(value.as_string().data(), value.as_string().size())) {
                   bsoncxx::oid oid(value.as_string());
                   c.append(oid);
                   break;
