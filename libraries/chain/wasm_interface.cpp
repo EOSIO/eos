@@ -979,7 +979,9 @@ public:
                                                         "assertion failure with error code: ${error_code}",
                                                         ("error_code", error_code)
                                                       ) );
-         e.error_code = error_code;
+         e.error_code = ( error_code >= static_cast<uint64_t>(system_error_code::default_system_error) )
+                           ? static_cast<uint64_t>(system_error_code::contract_restricted_error_code)
+                           : error_code;
          throw e;
       }
    }
