@@ -2598,6 +2598,7 @@ int main( int argc, char** argv ) {
    string encode_type{"dec"};
    bool binary = false;
    uint32_t limit = 10;
+   uint64_t skip = 0;
    string index_position;
    bool reverse = false;
    bool show_payer = false;
@@ -2607,6 +2608,7 @@ int main( int argc, char** argv ) {
    getTable->add_option( "table", table, localized("The name of the table as specified by the contract abi") )->required();
    getTable->add_option( "-b,--binary", binary, localized("Return the value as BINARY rather than using abi to interpret as JSON") );
    getTable->add_option( "-l,--limit", limit, localized("The maximum number of rows to return") );
+   getTable->add_option( "-s,--skip", skip, localized("The number of rows to skip") );
    getTable->add_option( "-k,--key", table_key, localized("Deprecated") );
    getTable->add_option( "-L,--lower", lower, localized("JSON representation of lower bound value of key, defaults to first") );
    getTable->add_option( "-U,--upper", upper, localized("JSON representation of upper bound value of key, defaults to last") );
@@ -2632,6 +2634,7 @@ int main( int argc, char** argv ) {
                          ("lower_bound",lower)
                          ("upper_bound",upper)
                          ("limit",limit)
+                         ("skip",skip)
                          ("key_type",key_type)
                          ("index_position", index_position)
                          ("encode_type", encode_type)
