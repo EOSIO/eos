@@ -480,10 +480,17 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
          control.add_to_ram_correction( ptr->payer, orig_trx_ram_bytes );
       }
 
-      db.modify<generated_transaction_object>( *ptr, [&]( auto& gtx ) {
-         if( replace_deferred_activated ) {
-            gtx.trx_id = trx.id();
-         }
+      transaction_id_type trx_id_for_new_obj;
+      if( replace_deferred_activated ) {
+         trx_id_for_new_obj = trx.id();
+      } else {
+         trx_id_for_new_obj = ptr->trx_id;
+      }
+
+      // Use remove and create rather than modify because mutating the trx_id field in a modifier is unsafe.
+      db.remove( *ptr );
+      db.create<generated_transaction_object>( [&]( auto& gtx ) {
+         gtx.trx_id      = trx_id_for_new_obj;
          gtx.sender      = receiver;
          gtx.sender_id   = sender_id;
          gtx.payer       = payer;
