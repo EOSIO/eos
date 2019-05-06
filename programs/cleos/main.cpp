@@ -1706,8 +1706,8 @@ struct unstaketorex_subcommand {
       auto unstaketorex = actionRoot->add_subcommand("unstaketorex", localized("Buy REX using staked tokens"));
       unstaketorex->add_option("owner",    owner_str,    localized("Account buying REX tokens"))->required();
       unstaketorex->add_option("receiver", receiver_str, localized("Account that tokens have been staked to"))->required();
-      unstaketorex->add_option("from_net", from_net_str, localized("Amount to be unstaked from CPU resources and used in REX purchase"))->required();
-      unstaketorex->add_option("from_cpu", from_cpu_str, localized("Amount to be unstaked from Net resources and used in REX purchase"))->required();
+      unstaketorex->add_option("from_net", from_net_str, localized("Amount to be unstaked from Net resources and used in REX purchase"))->required();
+      unstaketorex->add_option("from_cpu", from_cpu_str, localized("Amount to be unstaked from CPU resources and used in REX purchase"))->required();
       add_standard_transaction_options(unstaketorex, "owner@active");
       unstaketorex->set_callback([this] {
          fc::variant act_payload = fc::mutable_variant_object()
