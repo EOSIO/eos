@@ -34,6 +34,7 @@ static abi_def create_messages_abi() {
             {"title", "string"},
             {"body", "string"},
             {"tags", "string[]"},
+            {"language", "string"},
             {"net_rshares", "int64"},
             {"author_reward", "asset"},
             {"benefactor_reward", "asset"},
