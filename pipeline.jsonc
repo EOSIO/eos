@@ -2,5 +2,9 @@
     "eosio-lrt":
     {
         "pipeline-branch": "legacy-os"
+    },
+    "eosio-nightly-builds":
+    {
+        "pipeline-branch": "legacy-os"
     }
 }
