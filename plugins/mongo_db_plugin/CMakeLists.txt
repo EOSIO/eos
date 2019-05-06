@@ -4,7 +4,7 @@ if(BUILD_MONGO_DB_PLUGIN)
 
   if (libmongoc-1.0_FOUND)
 
-      find_package(libbson-1.0 1.13.0 REQUIRED)
+      find_package(libbson-1.0 REQUIRED)
       message(STATUS "Found bson headers: ${BSON_INCLUDE_DIRS}")
 
       find_package(libbsoncxx-static REQUIRED)
