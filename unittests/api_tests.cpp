@@ -2275,6 +2275,21 @@ BOOST_FIXTURE_TEST_CASE(eosio_assert_code_tests, TESTER) { try {
 
    produce_block();
 
+   auto trace2 = CALL_TEST_FUNCTION_NO_THROW(
+                  *this, "test_action", "test_assert_code",
+                  fc::raw::pack( static_cast<uint64_t>(system_error_code::default_system_error) )
+   );
+   BOOST_REQUIRE( trace2 );
+   BOOST_REQUIRE( trace2->except );
+   BOOST_REQUIRE( trace2->error_code );
+   BOOST_REQUIRE_EQUAL( *trace2->error_code, static_cast<uint64_t>(system_error_code::contract_restricted_error_code) );
+   BOOST_REQUIRE_EQUAL( trace2->action_traces.size(), 1 );
+   BOOST_REQUIRE( trace2->action_traces[0].except );
+   BOOST_REQUIRE( trace2->action_traces[0].error_code );
+   BOOST_REQUIRE_EQUAL( *trace2->action_traces[0].error_code, static_cast<uint64_t>(system_error_code::contract_restricted_error_code) );
+
+   produce_block();
+
    BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }
 
