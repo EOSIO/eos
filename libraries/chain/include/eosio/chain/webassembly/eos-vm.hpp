@@ -16,24 +16,26 @@ namespace eosio { namespace wasm_backend {
       typedef uint64_t type;
    };
 
-   template <typename S, typename Args, size_t I, typename T, typename Backend, typename Cleanups>
-   constexpr auto get_value(eosio::wasm_backend::operand_stack<Backend>& op, Cleanups&, Backend& backend, T&& val) -> std::enable_if_t<std::is_same_v<i64_const_t, T> && 
-                                                          std::is_same_v<chain::name, std::decay_t<S>>, S> {
+   template <typename S, typename Args, size_t I, typename T, typename WAlloc, typename Cleanups>
+   constexpr auto get_value(operand_stack& op, Cleanups&, WAlloc*, T&& val) 
+   	-> std::enable_if_t<std::is_same_v<i64_const_t, T> && std::is_same_v<chain::name, std::decay_t<S>>, S> {
       return {(uint64_t)val.data.ui};
    } 
+
    // we can clean these up if we go with custom vms
    template <typename T>
    struct reduce_type<eosio::chain::array_ptr<T>> {
       typedef uint32_t type;
    };
    
-   template <typename S, typename Args, size_t I, typename T, typename Backend, typename Cleanups>
-   constexpr auto get_value(eosio::wasm_backend::operand_stack<Backend>& op, Cleanups& cleanups, Backend& backend, T&& val) -> std::enable_if_t<std::is_same_v<i32_const_t, T> && 
-   						  std::is_same_v< eosio::chain::array_ptr<typename S::type>, S> &&
-                      !std::is_lvalue_reference_v<S> && !std::is_pointer_v<S>, S> {
+   template <typename S, typename Args, size_t I, typename T, typename WAlloc, typename Cleanups>
+   constexpr auto get_value(operand_stack& op, Cleanups& cleanups, WAlloc* walloc, T&& val) 
+   	-> std::enable_if_t<std::is_same_v<i32_const_t, T> && 
+	   std::is_same_v< eosio::chain::array_ptr<typename S::type>, S> &&
+           !std::is_lvalue_reference_v<S> && !std::is_pointer_v<S>, S> {
       size_t i = std::tuple_size<Args>::value-1;
       using ptr_ty = typename S::type;
-      auto* ptr = (ptr_ty*)(backend.get_wasm_allocator()->template get_base_ptr<uint8_t>()+val.data.ui);
+      auto* ptr = (ptr_ty*)(walloc->template get_base_ptr<uint8_t>()+val.data.ui);
       if constexpr (std::tuple_size<Args>::value > I) {
          const auto& len = std::get<to_wasm_t<typename std::tuple_element<I, Args>::type>>(op.get_back(i-I)).data.ui;
          if ((uintptr_t)ptr % alignof(S) != 0) {
@@ -41,9 +43,9 @@ namespace eosio { namespace wasm_backend {
             apt.s = sizeof(S)*len;
             std::vector<typename std::remove_const_t<S>::type> cpy(len > 0 ? len : 1);
             apt.o = (void*)ptr;
-	    ptr = &cpy[0];
+	    ptr = &cpy;
             apt.n = (void*)ptr;
-            memcpy(apt.n, apt.o, apt.s);
+            bytes_copy(apt.n, apt.o, apt.s);
             cleanups.emplace_back(std::move(apt));
          }
       }
@@ -55,11 +57,12 @@ namespace eosio { namespace wasm_backend {
       typedef uint32_t type;
    };
    
-   template <typename S, typename Args, size_t I, typename T, typename Backend, typename Cleanups>
-   constexpr auto get_value(eosio::wasm_backend::operand_stack<Backend>& op, Cleanups&, Backend& backend, T&& val) -> std::enable_if_t<std::is_same_v<i32_const_t, T> && 
-                    std::is_same_v< eosio::chain::null_terminated_ptr, S> &&
-						 !std::is_lvalue_reference_v<S> && !std::is_pointer_v<S>, S> {
-      return eosio::chain::null_terminated_ptr((char*)(backend.get_wasm_allocator()->template get_base_ptr<uint8_t>()+val.data.ui));
+   template <typename S, typename Args, size_t I, typename T, typename WAlloc, typename Cleanups>
+   constexpr auto get_value(operand_stack& op, Cleanups&, WAlloc* walloc, T&& val) 
+   	-> std::enable_if_t<std::is_same_v<i32_const_t, T> && 
+           std::is_same_v< eosio::chain::null_terminated_ptr, S> &&
+           !std::is_lvalue_reference_v<S> && !std::is_pointer_v<S>, S> {
+      return eosio::chain::null_terminated_ptr((char*)(walloc->template get_base_ptr<uint8_t>()+val.data.ui));
    }
 
 }} // ns eosio::wasm_backend
@@ -87,6 +90,6 @@ class eos_vm_runtime : public eosio::chain::wasm_runtime_interface {
 #define _EOS_VM_INTRINSIC_NAME(LBL, SUF) __INTRINSIC_NAME(LBL, SUF)
 
 #define _REGISTER_EOS_VM_INTRINSIC(CLS, MOD, METHOD, WASM_SIG, NAME, SIG) \
-   eosio::wasm_backend::registered_function<eosio::chain::apply_context, CLS, &CLS::METHOD, eosio::wasm_backend::backend<eosio::chain::apply_context>> _EOS_VM_INTRINSIC_NAME(__eos_vm_intrinsic_fn, __COUNTER__)(std::string(MOD), std::string(NAME));
+   eosio::wasm_backend::registered_function<eosio::chain::apply_context, CLS, &CLS::METHOD> _EOS_VM_INTRINSIC_NAME(__eos_vm_intrinsic_fn, __COUNTER__)(std::string(MOD), std::string(NAME));
 
 
