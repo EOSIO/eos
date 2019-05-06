@@ -24,7 +24,7 @@ class eos_vm_instantiated_module : public wasm_instantiated_module_interface {
          //if (!(const auto& res = _instantiated_module->run_start()))
          //   EOS_ASSERT(false, wasm_execution_error, "eos-vm start function failure (${s})", ("s", res.to_string()));
         
-	 std::cout << "CTX " << &context << "\n"; 
+         std::cout << "CTX " << &context << "\n"; 
          const auto& res = _instantiated_module->call(&context, "env", "apply",
                                           (uint64_t)context.get_receiver(),
                                           (uint64_t)context.get_action().account,
@@ -39,10 +39,10 @@ class eos_vm_instantiated_module : public wasm_instantiated_module_interface {
 eos_vm_runtime::eos_vm_runtime() {}
 
 std::unique_ptr<wasm_instantiated_module_interface> eos_vm_runtime::instantiate_module(const char* code_bytes, size_t code_size, std::vector<uint8_t>) {
-   //std::vector<uint8_t> cb((uint8_t*)code_bytes, (uint8_t*)code_bytes+code_size);
-   std::vector<uint8_t> cb;
-   cb.resize(code_size);
-   memcpy(cb.data(), code_bytes, code_size);
+   std::vector<uint8_t> cb((uint8_t*)code_bytes, (uint8_t*)code_bytes+code_size);
+   //std::vector<uint8_t> cb;
+   //cb.resize(code_size);
+   //memcpy(cb.data(), code_bytes, code_size);
    std::ofstream mf("temp.wasm");
    mf.write((char*)cb.data(), cb.size());
    mf.close();

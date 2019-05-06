@@ -31,7 +31,9 @@ namespace eosio { namespace chain {
    using namespace webassembly;
    using namespace webassembly::common;
 
-   wasm_interface::wasm_interface(vm_type vm, const chainbase::database& d) : my( new wasm_interface_impl(vm, d) ) {}
+   wasm_interface::wasm_interface(vm_type vm, const chainbase::database& d) : my( new wasm_interface_impl(vm, d) ) {
+      (void)get_wasm_allocator();
+   }
 
    wasm_interface::~wasm_interface() {}
 
@@ -1004,13 +1006,15 @@ class action_api : public context_aware_api {
          if( buffer_size == 0 ) return s;
 
          auto copy_size = std::min( buffer_size, s );
-         memcpy( memory, context.get_action().data.data(), copy_size );
+         const char* d = context.get_action().data.data();
+         memcpy( (char*)memory.value, context.get_action().data.data(), copy_size );
 
          return copy_size;
       }
 
       int action_data_size() {
-	 std::cout << "ADS " << context.get_action().data.size() << "\n";
+         std::cout << "THIS " << this << "\n";
+         std::cout << "ADS " << context.get_action().data.size() << "\n";
          return context.get_action().data.size();
       }
 
@@ -1965,6 +1969,8 @@ std::istream& operator>>(std::istream& in, wasm_interface::vm_type& runtime) {
       runtime = eosio::chain::wasm_interface::vm_type::wavm;
    else if (s == "wabt")
       runtime = eosio::chain::wasm_interface::vm_type::wabt;
+   else if (s == "eos-vm")
+      runtime = eosio::chain::wasm_interface::vm_type::eos_vm;
    else
       in.setstate(std::ios_base::failbit);
    return in;

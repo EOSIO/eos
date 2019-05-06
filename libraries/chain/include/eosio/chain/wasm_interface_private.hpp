@@ -62,8 +62,8 @@ namespace eosio { namespace chain {
       }
 
       static wasm_allocator* get_wasm_allocator() {
-         thread_local wasm_allocator walloc;
-	 return &walloc;
+         static wasm_allocator walloc;
+         return &walloc;
       }
 
       std::vector<uint8_t> parse_initial_memory(const Module& module) {

@@ -70,9 +70,8 @@ namespace eosio { namespace chain {
          return value;
       }
 
-      template<typename U>
-      operator U *() const {
-         return static_cast<U *>(value);
+      operator T *() const {
+         return value;
       }
 
       T *value;
@@ -93,9 +92,8 @@ namespace eosio { namespace chain {
          return value;
       }
 
-      template<typename U>
-      operator U *() const {
-         return static_cast<U *>(value);
+      operator char *() const {
+         return value;
       }
 
       char *value;

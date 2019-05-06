@@ -32,30 +32,40 @@ namespace eosio { namespace wasm_backend {
    constexpr auto get_value(operand_stack& op, Cleanups& cleanups, WAlloc* walloc, T&& val) 
    	-> std::enable_if_t<std::is_same_v<i32_const_t, T> && 
 	   std::is_same_v< eosio::chain::array_ptr<typename S::type>, S> &&
-           !std::is_lvalue_reference_v<S> && !std::is_pointer_v<S>, S> {
-      size_t i = std::tuple_size<Args>::value-1;
+      !std::is_lvalue_reference_v<S> && !std::is_pointer_v<S>, S> {
+      //size_t i = std::tuple_size<Args>::value-1;
       using ptr_ty = typename S::type;
-      auto* ptr = (ptr_ty*)(walloc->template get_base_ptr<uint8_t>()+val.data.ui);
+      using under_ty = std::remove_pointer_t<ptr_ty>;
+      std::cout << (int*)walloc->template get_base_ptr<char>() << "val.data " << val.data.ui << "\n"; 
+      auto* ptr = (ptr_ty*)((walloc->template get_base_ptr<char>())+val.data.ui);
+      /*
       if constexpr (std::tuple_size<Args>::value > I) {
          const auto& next_arg = std::get<to_wasm_t<typename std::tuple_element<I, Args>::type>>(op.get_back(i-I)).data.ui;
-	 if constexpr ( (std::tuple_size<Args>::value > I+1) 
-			 && std::is_same_v<decltype(next_arg), eosio::chain::array_ptr<typename S::type>>) {
+         size_t sz = 0;
+         if constexpr ( (std::tuple_size<Args>::value > I+1) 
+			   && std::is_same_v<decltype(next_arg), eosio::chain::array_ptr<under_ty>>) {
             sz = std::get<to_wasm_t<typename std::tuple_element<I+1, Args>::type>>(op.get_back(i-(I+1))).data.ui;
+            std::cout << "sz0 " << sz << "\n";
          } else {
             sz = next_arg;
-	 }
-         if ((uintptr_t)ptr % alignof(S) != 0) {
+            std::cout << "sz1 " << sz << " sizeof " << sizeof(under_ty) << " alignof " << alignof(under_ty) << "\n";
+         }
+         if ((uintptr_t)ptr % 16 != 0) {
+            std::cout << "aligning\n";
             align_ptr_triple apt;
-            apt.s = sizeof(S)*sz;
-            std::vector<typename std::remove_const_t<S>::type> cpy(sz > 0 ? sz : 1);
+            apt.s = sizeof(under_ty)*sz;
+            std::vector<std::remove_const_t<under_ty>> cpy(sz > 0 ? sz : 1);
             apt.o = (void*)ptr;
             ptr = (decltype(ptr))cpy.data();
             apt.n = (void*)ptr;
-            bytes_copy(apt.n, apt.o, apt.s);
-            cleanups.emplace_back(std::move(apt));
+            //memcpy((std::remove_const_t<under_ty>*)apt.n, (const under_ty*)apt.o, apt.s);
+            memmove( static_cast<char*>(apt.n), static_cast<const char*>(apt.o), apt.s);
+            if constexpr (!std::is_const_v<under_ty>)
+               cleanups.emplace_back(std::move(apt));
          }
       }
-      return eosio::chain::array_ptr<typename S::type>(ptr);
+      */
+      return eosio::chain::array_ptr<under_ty>(ptr);
    }
 
    template <>
@@ -97,5 +107,3 @@ class eos_vm_runtime : public eosio::chain::wasm_runtime_interface {
 
 #define _REGISTER_EOS_VM_INTRINSIC(CLS, MOD, METHOD, WASM_SIG, NAME, SIG) \
    eosio::wasm_backend::registered_function<eosio::chain::apply_context, CLS, &CLS::METHOD> _EOS_VM_INTRINSIC_NAME(__eos_vm_intrinsic_fn, __COUNTER__)(std::string(MOD), std::string(NAME));
-
-
