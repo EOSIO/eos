@@ -975,12 +975,23 @@ public:
 
    void eosio_assert_code( bool condition, uint64_t error_code ) {
       if( BOOST_UNLIKELY( !condition ) ) {
-         eosio_assert_code_exception e( FC_LOG_MESSAGE( error,
-                                                        "assertion failure with error code: ${error_code}",
-                                                        ("error_code", error_code)
-                                                      ) );
-         e.error_code = error_code;
-         throw e;
+         if( error_code >= static_cast<uint64_t>(system_error_code::generic_system_error) ) {
+            restricted_error_code_exception e( FC_LOG_MESSAGE(
+                                                   error,
+                                                   "eosio_assert_code called with reserved error code: ${error_code}",
+                                                   ("error_code", error_code)
+            ) );
+            e.error_code = static_cast<uint64_t>(system_error_code::contract_restricted_error_code);
+            throw e;
+         } else {
+            eosio_assert_code_exception e( FC_LOG_MESSAGE(
+                                             error,
+                                             "assertion failure with error code: ${error_code}",
+                                             ("error_code", error_code)
+            ) );
+            e.error_code = error_code;
+            throw e;
+         }
       }
    }
 
