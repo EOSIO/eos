@@ -17,7 +17,7 @@ load ../helpers/functions
         ## CLANG
         uninstall-package clang 1>/dev/null
         run bash -c "./$SCRIPT_LOCATION -y -P"
-        [[ ! -z $(echo "${output}" | grep "Checking Clang support") ]] || exit
+        [[ ! -z $(echo "${output}" | grep "Ensuring Clang support") ]] || exit
         [[ ! -z $(echo "${output}" | grep -E "Clang.*successfully installed @ ${CLANG_ROOT}") ]] || exit
     fi
     ## CXX doesn't exist

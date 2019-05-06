@@ -30,9 +30,10 @@ export TEST_LABEL="[eosio_build_ubuntu]"
     [[ ! -z $(echo "${output}" | grep "make.*NOT.*found.") ]] || exit
     [[ ! -z $(echo "${output}" | grep ${HOME}.*/src/boost) ]] || exit
     [[ ! -z $(echo "${output}" | grep "make -j${CPU_CORES}") ]] || exit
-    [[ ! -z $(echo "${output}" | grep " -G \"Unix Makefiles\"") ]] || exit # CMAKE
+    [[ ! -z $(echo "${output}" | grep " -G 'Unix Makefiles'") ]] || exit # CMAKE
     [[ ! -z $(echo "${output}" | grep " --with-iostreams --with-date_time") ]] || exit # BOOST
-    [[ ! -z $(echo "${output}" | grep llvm-4.0.*found.) ]] || exit
+    [[ -z $(echo "${output}" | grep llvm-4.0.*found.) ]] || exit
     [[ -z $(echo "${output}" | grep lcov.*found.) ]] || exit
     [[ ! -z $(echo "${output}" | grep "EOSIO has been successfully built") ]] || exit
+
 }

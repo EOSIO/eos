@@ -48,10 +48,10 @@ echo ""
 
 if $INSTALL_MONGO; then
 
-	echo "${COLOR_CYAN}[Checking MongoDB installation]${COLOR_NC}"
+	echo "${COLOR_CYAN}[Ensuring MongoDB installation]${COLOR_NC}"
 	if [[ ! -d $MONGODB_ROOT ]]; then
-		echo "Installing MongoDB into ${MONGODB_ROOT}..."
-		execute bash -c "curl -OL https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-amazon-$MONGODB_VERSION.tgz \
+		execute bash -c "cd $SRC_LOCATION && \
+		curl -OL https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-amazon-$MONGODB_VERSION.tgz \
 		&& tar -xzf mongodb-linux-x86_64-amazon-$MONGODB_VERSION.tgz \
 		&& mv $SRC_LOCATION/mongodb-linux-x86_64-amazon-$MONGODB_VERSION $MONGODB_ROOT \
 		&& touch $MONGODB_LOG_LOCATION/mongod.log \
@@ -66,10 +66,10 @@ if $INSTALL_MONGO; then
 	else
 		echo " - MongoDB found with correct version @ ${MONGODB_ROOT} (Symlinked to ${MONGODB_LINK_LOCATION})."
 	fi
-	echo "${COLOR_CYAN}[Checking MongoDB C driver installation]${COLOR_NC}"
+	echo "${COLOR_CYAN}[Ensuring MongoDB C driver installation]${COLOR_NC}"
 	if [[ ! -d $MONGO_C_DRIVER_ROOT ]]; then
-		echo "Installing MongoDB C driver..."
-		execute bash -c "curl -LO https://github.com/mongodb/mongo-c-driver/releases/download/$MONGO_C_DRIVER_VERSION/mongo-c-driver-$MONGO_C_DRIVER_VERSION.tar.gz \
+		execute bash -c "cd $SRC_LOCATION && \
+		curl -LO https://github.com/mongodb/mongo-c-driver/releases/download/$MONGO_C_DRIVER_VERSION/mongo-c-driver-$MONGO_C_DRIVER_VERSION.tar.gz \
 		&& tar -xzf mongo-c-driver-$MONGO_C_DRIVER_VERSION.tar.gz \
 		&& cd mongo-c-driver-$MONGO_C_DRIVER_VERSION \
 		&& mkdir -p cmake-build \
@@ -83,16 +83,16 @@ if $INSTALL_MONGO; then
 	else
 		echo " - MongoDB C driver found with correct version @ ${MONGO_C_DRIVER_ROOT}."
 	fi
-	echo "${COLOR_CYAN}[Checking MongoDB C++ driver installation]${COLOR_NC}"
+	echo "${COLOR_CYAN}[Ensuring MongoDB C++ driver installation]${COLOR_NC}"
 	if [[ ! -d $MONGO_CXX_DRIVER_ROOT ]]; then
-		echo "Installing MongoDB C++ driver..."
-		execute bash -c "curl -L https://github.com/mongodb/mongo-cxx-driver/archive/r$MONGO_CXX_DRIVER_VERSION.tar.gz -o mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION.tar.gz \
+		execute bash -c "cd $SRC_LOCATION && \
+		curl -L https://github.com/mongodb/mongo-cxx-driver/archive/r$MONGO_CXX_DRIVER_VERSION.tar.gz -o mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION.tar.gz \
 		&& tar -xzf mongo-cxx-driver-r${MONGO_CXX_DRIVER_VERSION}.tar.gz \
 		&& cd mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION \
 		&& sed -i 's/\"maxAwaitTimeMS\", count/\"maxAwaitTimeMS\", static_cast<int64_t>(count)/' src/mongocxx/options/change_stream.cpp \
 		&& sed -i 's/add_subdirectory(test)//' src/mongocxx/CMakeLists.txt src/bsoncxx/CMakeLists.txt \
 		&& cd build \
-		&& $CMAKE -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$EOSIO_HOME -DCMAKE_PREFIX_PATH=$EOSIO_HOME $PINNED_TOOLCHAIN .. \
+		&& $CMAKE -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX='$EOSIO_HOME' -DCMAKE_PREFIX_PATH='$EOSIO_HOME' $PINNED_TOOLCHAIN .. \
 		&& make -j${JOBS} VERBOSE=1 \
 		&& make install \
 		&& cd ../.. \

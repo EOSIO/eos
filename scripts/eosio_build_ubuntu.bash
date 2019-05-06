@@ -18,7 +18,7 @@ echo "Disk space available: ${DISK_AVAIL}G"
 
 [[ $MEM_GIG -lt 7 ]] && echo "Your system must have 7 or more Gigabytes of physical memory installed." && exit 1
 
-echo "${COLOR_CYAN}[Checking APT-GET installation]${COLOR_NC}"
+echo "${COLOR_CYAN}[Ensuring APT-GET installation]${COLOR_NC}"
 if ! APTGET=$( command -v apt-get 2>/dev/null ); then echo " - APT-GET must be installed to compile EOS.IO." && exit 1
 else echo " - APT-GET installation found at ${APTGET}."; fi
 
@@ -40,28 +40,22 @@ while true; do
 done
 
 # Ensure packages exist
-[[ $PIN_COMPILER == false ]] && EXTRA_DEPS=(llvm-4.0,dpkg\ -s libclang-4.0-dev,dpkg\ -s)
+([[ $PIN_COMPILER == false ]] && [[ $BUILD_CLANG == false ]]) && EXTRA_DEPS=(llvm-4.0,dpkg\ -s libclang-4.0-dev,dpkg\ -s)
 $ENABLE_COVERAGE_TESTING && EXTRA_DEPS+=(lcov,dpkg\ -s)
 ensure-apt-packages "${REPO_ROOT}/scripts/eosio_build_ubuntu_deps" "$(echo ${EXTRA_DEPS[@]}) "
 echo ""
 # CMAKE Installation
 ensure-cmake
-echo ""
 # CLANG Installation
 build-clang
-echo ""
 # LLVM Installation
 ensure-llvm
-echo ""
 # ZLIB Installation
 ensure-zlib
-echo ""
 # BOOST Installation
 ensure-boost
-echo ""
 VERSION_MAJ=$(echo "${VERSION_ID}" | cut -d'.' -f1)
 VERSION_MIN=$(echo "${VERSION_ID}" | cut -d'.' -f2)
-echo $VERSION_MAJ
 if $INSTALL_MONGO; then
 	if [[ $VERSION_MAJ == 18 ]]; then
 		# UBUNTU 18 doesn't have MONGODB 3.6.3
@@ -69,10 +63,11 @@ if $INSTALL_MONGO; then
 		# We have to re-set this with the new version
 		MONGODB_ROOT=${OPT_LOCATION}/mongodb-${MONGODB_VERSION}
 	fi
-	printf "Checking MongoDB installation...\\n"
+	echo "${COLOR_CYAN}[Ensuring MongoDB installation]${COLOR_NC}"
 	if [[ ! -d $MONGODB_ROOT ]]; then
-		printf "Installing MongoDB into ${MONGODB_ROOT}...\\n"
-		execute bash -c "curl -OL http://downloads.mongodb.org/linux/mongodb-linux-x86_64-ubuntu${VERSION_MAJ}${VERSION_MIN}-$MONGODB_VERSION.tgz \
+		
+		execute bash -c "cd $SRC_LOCATION && \
+		curl -OL http://downloads.mongodb.org/linux/mongodb-linux-x86_64-ubuntu${VERSION_MAJ}${VERSION_MIN}-$MONGODB_VERSION.tgz \
 		&& tar -xzf mongodb-linux-x86_64-ubuntu${VERSION_MAJ}${VERSION_MIN}-${MONGODB_VERSION}.tgz \
 		&& mv $SRC_LOCATION/mongodb-linux-x86_64-ubuntu${VERSION_MAJ}${VERSION_MIN}-${MONGODB_VERSION} $MONGODB_ROOT \
 		&& touch $MONGODB_LOG_LOCATION/mongod.log \
@@ -83,14 +78,14 @@ if $INSTALL_MONGO; then
 		&& rm -rf $BIN_LOCATION/mongod \
 		&& ln -s $MONGODB_ROOT $MONGODB_LINK_LOCATION \
 		&& ln -s $MONGODB_LINK_LOCATION/bin/mongod $BIN_LOCATION/mongod"
-		printf " - MongoDB successfully installed @ ${MONGODB_ROOT} (Symlinked to ${MONGODB_LINK_LOCATION}).\\n"
+		echo " - MongoDB successfully installed @ ${MONGODB_ROOT} (Symlinked to ${MONGODB_LINK_LOCATION})."
 	else
-		printf " - MongoDB found with correct version @ ${MONGODB_ROOT} (Symlinked to ${MONGODB_LINK_LOCATION}).\\n"
+		echo " - MongoDB found with correct version @ ${MONGODB_ROOT} (Symlinked to ${MONGODB_LINK_LOCATION})."
 	fi
-	printf "Checking MongoDB C driver installation...\\n"
+	echo "${COLOR_CYAN}[Ensuring MongoDB C driver installation]${COLOR_NC}"
 	if [[ ! -d $MONGO_C_DRIVER_ROOT ]]; then
-		printf "Installing MongoDB C driver...\\n"
-		execute bash -c "curl -LO https://github.com/mongodb/mongo-c-driver/releases/download/$MONGO_C_DRIVER_VERSION/mongo-c-driver-$MONGO_C_DRIVER_VERSION.tar.gz \
+		execute bash -c "cd $SRC_LOCATION && \
+		curl -LO https://github.com/mongodb/mongo-c-driver/releases/download/$MONGO_C_DRIVER_VERSION/mongo-c-driver-$MONGO_C_DRIVER_VERSION.tar.gz \
 		&& tar -xzf mongo-c-driver-$MONGO_C_DRIVER_VERSION.tar.gz \
 		&& cd mongo-c-driver-$MONGO_C_DRIVER_VERSION \
 		&& mkdir -p cmake-build \
@@ -100,14 +95,14 @@ if $INSTALL_MONGO; then
 		&& make install \
 		&& cd ../.. \
 		&& rm mongo-c-driver-$MONGO_C_DRIVER_VERSION.tar.gz"
-		printf " - MongoDB C driver successfully installed @ ${MONGO_C_DRIVER_ROOT}.\\n"
+		echo " - MongoDB C driver successfully installed @ ${MONGO_C_DRIVER_ROOT}."
 	else
-		printf " - MongoDB C driver found with correct version @ ${MONGO_C_DRIVER_ROOT}.\\n"
+		echo " - MongoDB C driver found with correct version @ ${MONGO_C_DRIVER_ROOT}."
 	fi
-	printf "Checking MongoDB C++ driver installation...\\n"
+	echo "${COLOR_CYAN}[Ensuring MongoDB C++ driver installation]${COLOR_NC}"
 	if [[ ! -d $MONGO_CXX_DRIVER_ROOT ]]; then
-		printf "Installing MongoDB C++ driver...\\n"
-		execute bash -c "curl -L https://github.com/mongodb/mongo-cxx-driver/archive/r$MONGO_CXX_DRIVER_VERSION.tar.gz -o mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION.tar.gz \
+		execute bash -c "cd $SRC_LOCATION && \
+		curl -L https://github.com/mongodb/mongo-cxx-driver/archive/r$MONGO_CXX_DRIVER_VERSION.tar.gz -o mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION.tar.gz \
 		&& tar -xzf mongo-cxx-driver-r${MONGO_CXX_DRIVER_VERSION}.tar.gz \
 		&& cd mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION \
 		&& sed -i 's/\"maxAwaitTimeMS\", count/\"maxAwaitTimeMS\", static_cast<int64_t>(count)/' src/mongocxx/options/change_stream.cpp \
@@ -118,8 +113,8 @@ if $INSTALL_MONGO; then
 		&& make install \
 		&& cd ../.. \
 		&& rm -f mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION.tar.gz"
-		printf " - MongoDB C++ driver successfully installed @ ${MONGO_CXX_DRIVER_ROOT}.\\n"
+		echo " - MongoDB C++ driver successfully installed @ ${MONGO_CXX_DRIVER_ROOT}."
 	else
-		printf " - MongoDB C++ driver found with correct version @ ${MONGO_CXX_DRIVER_ROOT}.\\n"
+		echo " - MongoDB C++ driver found with correct version @ ${MONGO_CXX_DRIVER_ROOT}."
 	fi
 fi
