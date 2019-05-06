@@ -582,8 +582,7 @@ namespace eosio {
       std::atomic<bool>       syncing{false};
       uint16_t                protocol_version = 0;
       uint16_t                consecutive_rejected_blocks = 0;
-      uint16_t                consecutive_immediate_connection_close = 0;
-      fc::time_point          last_close;
+      std::atomic<uint16_t>   consecutive_immediate_connection_close = 0;
 
       std::mutex                            response_expected_timer_mtx;
       boost::asio::steady_timer             response_expected_timer;
@@ -593,12 +592,13 @@ namespace eosio {
 
       std::atomic<go_away_reason>           no_retry{no_reason};
 
-      mutable std::mutex          conn_mtx; // mtx for last_req, last_handshake_recv, last_handshake_sent, fork_head, fork_head_num
+      mutable std::mutex          conn_mtx; //< mtx for last_req, last_handshake_recv, last_handshake_sent, fork_head, fork_head_num, last_close
       optional<request_message>   last_req;
       handshake_message           last_handshake_recv;
       handshake_message           last_handshake_sent;
       block_id_type               fork_head;
       uint32_t                    fork_head_num{0};
+      fc::time_point              last_close;
 
       connection_status get_status()const;
 
@@ -909,13 +909,13 @@ namespace eosio {
       self->syncing = false;
       self->consecutive_rejected_blocks = 0;
       ++self->consecutive_immediate_connection_close;
-      self->last_close = fc::time_point::now();
       bool has_last_req = false;
       {
          std::lock_guard<std::mutex> g_conn( self->conn_mtx );
          has_last_req = !!self->last_req;
          self->last_handshake_recv = handshake_message();
          self->last_handshake_sent = handshake_message();
+         self->last_close = fc::time_point::now();
       }
       if( has_last_req ) {
          my_impl->dispatcher->retry_fetch( self->shared_from_this() );
@@ -2043,9 +2043,12 @@ namespace eosio {
          return false;
       }
 
+      connection_ptr c = shared_from_this();
+
       if( consecutive_immediate_connection_close > def_max_consecutive_immediate_connection_close ) {
          auto connector_period_us = std::chrono::duration_cast<std::chrono::microseconds>( my_impl->connector_period );
-         if( last_close > fc::time_point::now() - fc::microseconds( connector_period_us.count() ) ) {
+         std::lock_guard<std::mutex> g( c->conn_mtx );
+         if( last_close == fc::time_point() || last_close > fc::time_point::now() - fc::microseconds( connector_period_us.count() ) ) {
             return true; // true so doesn't remove from valid connections
          }
       }
@@ -2054,10 +2057,10 @@ namespace eosio {
       string port = peer_address().substr( colon + 1);
       idump((host)(port));
       tcp::resolver::query query( tcp::v4(), host, port );
-      connection_wptr weak_conn = shared_from_this();
       // Note: need to add support for IPv6 too
 
       auto resolver = std::make_shared<tcp::resolver>( my_impl->thread_pool->get_executor() );
+      connection_wptr weak_conn = c;
       resolver->async_resolve( query, boost::asio::bind_executor( strand,
             [resolver, weak_conn]( const boost::system::error_code& err, tcp::resolver::iterator endpoint_itr ) {
                auto c = weak_conn.lock();
