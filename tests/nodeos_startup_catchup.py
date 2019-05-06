@@ -165,7 +165,7 @@ try:
         catchupNode.interruptAndVerifyExitStatus(60)
 
         Print("Restart catchup node")
-        catchupNode.relaunch(catchupNodeNum)
+        catchupNode.relaunch(catchupNodeNum, cachePopen=True)
         waitForNodeStarted(catchupNode)
         lastCatchupLibNum=lib(catchupNode)
 

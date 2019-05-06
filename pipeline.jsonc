@@ -1,0 +1,22 @@
+{
+    "eosio-build-unpinned":
+    {
+        "pipeline-branch": "protocol-features-sync-nodes"
+    },
+    "eosio-lrt":
+    {
+        "pipeline-branch": "protocol-features-sync-nodes"
+    },
+    "eos-multiversion-tests":
+    {
+        "pipeline-branch": "protocol-features-sync-nodes",
+        "configuration":
+        [
+            "170=v1.7.0"
+        ]
+    },
+    "eosio-sync-tests":
+    {
+        "pipeline-branch": "protocol-features-sync-nodes"
+    }
+}

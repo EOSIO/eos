@@ -531,6 +531,8 @@ namespace eosio { namespace chain {
                                     3190003, "block log can not be found" )
       FC_DECLARE_DERIVED_EXCEPTION( block_log_backup_dir_exist, block_log_exception,
                                     3190004, "block log backup dir already exists" )
+      FC_DECLARE_DERIVED_EXCEPTION( block_index_not_found, block_log_exception,
+                                    3190005, "block index can not be found"  )
 
    FC_DECLARE_DERIVED_EXCEPTION( http_exception, chain_exception,
                                  3200000, "http exception" )

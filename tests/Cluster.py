@@ -403,8 +403,8 @@ class Cluster(object):
         if unstartedNodes > 0:
             self.unstartedNodes=self.discoverUnstartedLocalNodes(unstartedNodes, totalNodes)
 
-        biosNode=self.discoverBiosNode()
-        if not biosNode or not biosNode.checkPulse():
+        biosNode=self.discoverBiosNode(timeout=Utils.systemWaitTimeout)
+        if not biosNode or not Utils.waitForBool(biosNode.checkPulse, Utils.systemWaitTimeout):
             Utils.Print("ERROR: Bios node doesn't appear to be running...")
             return False
 
@@ -1332,7 +1332,7 @@ class Cluster(object):
             psOutDisplay=psOut[:6660]+"..."
         if Utils.Debug: Utils.Print("pgrep output: \"%s\"" % psOutDisplay)
         for i in range(0, totalNodes):
-            instance=self.discoverLocalNode(i, psOut)
+            instance=self.discoverLocalNode(i, psOut, timeout)
             if instance is None:
                 break
             nodes.append(instance)
@@ -1341,12 +1341,12 @@ class Cluster(object):
         return nodes
 
     # Populate a node matched to actual running instance
-    def discoverLocalNode(self, nodeNum, psOut=None):
+    def discoverLocalNode(self, nodeNum, psOut=None, timeout=None):
         if psOut is None:
             psOut=Cluster.pgrepEosServers(timeout)
         if psOut is None:
             Utils.Print("ERROR: No nodes discovered.")
-            return nodes
+            return None
         pattern=Cluster.pgrepEosServerPattern(nodeNum)
         m=re.search(pattern, psOut, re.MULTILINE)
         if m is None:
