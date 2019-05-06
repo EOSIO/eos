@@ -2277,7 +2277,7 @@ BOOST_FIXTURE_TEST_CASE(eosio_assert_code_tests, TESTER) { try {
 
    auto trace2 = CALL_TEST_FUNCTION_NO_THROW(
                   *this, "test_action", "test_assert_code",
-                  fc::raw::pack( static_cast<uint64_t>(system_error_code::default_system_error) )
+                  fc::raw::pack( static_cast<uint64_t>(system_error_code::generic_system_error) )
    );
    BOOST_REQUIRE( trace2 );
    BOOST_REQUIRE( trace2->except );
