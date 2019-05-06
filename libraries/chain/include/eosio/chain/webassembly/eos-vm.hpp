@@ -37,13 +37,19 @@ namespace eosio { namespace wasm_backend {
       using ptr_ty = typename S::type;
       auto* ptr = (ptr_ty*)(walloc->template get_base_ptr<uint8_t>()+val.data.ui);
       if constexpr (std::tuple_size<Args>::value > I) {
-         const auto& len = std::get<to_wasm_t<typename std::tuple_element<I, Args>::type>>(op.get_back(i-I)).data.ui;
+         const auto& next_arg = std::get<to_wasm_t<typename std::tuple_element<I, Args>::type>>(op.get_back(i-I)).data.ui;
+	 if constexpr ( (std::tuple_size<Args>::value > I+1) 
+			 && std::is_same_v<decltype(next_arg), eosio::chain::array_ptr<typename S::type>>) {
+            sz = std::get<to_wasm_t<typename std::tuple_element<I+1, Args>::type>>(op.get_back(i-(I+1))).data.ui;
+         } else {
+            sz = next_arg;
+	 }
          if ((uintptr_t)ptr % alignof(S) != 0) {
             align_ptr_triple apt;
-            apt.s = sizeof(S)*len;
-            std::vector<typename std::remove_const_t<S>::type> cpy(len > 0 ? len : 1);
+            apt.s = sizeof(S)*sz;
+            std::vector<typename std::remove_const_t<S>::type> cpy(sz > 0 ? sz : 1);
             apt.o = (void*)ptr;
-	    ptr = &cpy;
+            ptr = (decltype(ptr))cpy.data();
             apt.n = (void*)ptr;
             bytes_copy(apt.n, apt.o, apt.s);
             cleanups.emplace_back(std::move(apt));
