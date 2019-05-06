@@ -565,6 +565,7 @@ struct genesis_create::genesis_create_impl final {
 
         db.start_section(config::system_account_name, N(stake.stat), "stat_struct", 1);
         db.emplace<stake_stat_object>([&](auto& s) {
+            s.id = sys_sym.to_symbol_code().value;
             s.token_code = sys_sym.to_symbol_code();
             s.total_staked = _total_staked.get_amount();
             s.last_reward = time_point_sec();
