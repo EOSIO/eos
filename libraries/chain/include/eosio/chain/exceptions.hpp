@@ -107,13 +107,13 @@
 namespace eosio { namespace chain {
 
    enum class system_error_code : uint64_t {
-      default_system_error = 10000000000000000000ULL,
+      generic_system_error = 10000000000000000000ULL,
       contract_restricted_error_code, //< contract used an error code reserved for system usage
    };
 
 
-   FC_DECLARE_EXCEPTION( chain_exception,
-                         3000000, "blockchain exception" )
+   FC_DECLARE_DERIVED_EXCEPTION_WITH_ERROR_CODE( chain_exception, fc::exception,
+                                                 3000000, "blockchain exception" )
    /**
     *  chain_exception
     *   |- chain_type_exception
@@ -255,7 +255,7 @@ namespace eosio { namespace chain {
                                     3050002, "Invalid Action Arguments" )
       FC_DECLARE_DERIVED_EXCEPTION( eosio_assert_message_exception, action_validate_exception,
                                     3050003, "eosio_assert_message assertion failure" )
-      FC_DECLARE_DERIVED_EXCEPTION_WITH_ERROR_CODE( eosio_assert_code_exception, action_validate_exception,
+      FC_DECLARE_DERIVED_EXCEPTION( eosio_assert_code_exception, action_validate_exception,
                                     3050004, "eosio_assert_code assertion failure" )
       FC_DECLARE_DERIVED_EXCEPTION( action_not_found_exception, action_validate_exception,
                                     3050005, "Action can not be found" )
@@ -269,6 +269,8 @@ namespace eosio { namespace chain {
                                     3050009, "Inline Action exceeds maximum size limit" )
       FC_DECLARE_DERIVED_EXCEPTION( unauthorized_ram_usage_increase, action_validate_exception,
                                     3050010, "Action attempts to increase RAM usage of account without authorization" )
+      FC_DECLARE_DERIVED_EXCEPTION( restricted_error_code_exception, action_validate_exception,
+                                    3050011, "eosio_assert_code assertion failure uses restricted error code value" )
 
    FC_DECLARE_DERIVED_EXCEPTION( database_exception, chain_exception,
                                  3060000, "Database exception" )
