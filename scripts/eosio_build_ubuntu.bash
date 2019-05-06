@@ -65,7 +65,6 @@ if $INSTALL_MONGO; then
 	fi
 	echo "${COLOR_CYAN}[Ensuring MongoDB installation]${COLOR_NC}"
 	if [[ ! -d $MONGODB_ROOT ]]; then
-		
 		execute bash -c "cd $SRC_LOCATION && \
 		curl -OL http://downloads.mongodb.org/linux/mongodb-linux-x86_64-ubuntu${VERSION_MAJ}${VERSION_MIN}-$MONGODB_VERSION.tgz \
 		&& tar -xzf mongodb-linux-x86_64-ubuntu${VERSION_MAJ}${VERSION_MIN}-${MONGODB_VERSION}.tgz \

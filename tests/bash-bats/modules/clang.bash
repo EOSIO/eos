@@ -12,12 +12,12 @@ load ../helpers/functions
     elif [[ $NAME == "Ubuntu" ]]; then
         ## CLANG already exists (c++/default) (Ubuntu doesn't have clang>7, so we need to make sure it installs Clang 8)
         [[ ! -z $(echo "${output}" | grep "Unable to find C++17 support") ]] || exit
-        [[ ! -z $(echo "${output}" | grep "Installing Clang 8") ]] || exit
+        [[ ! -z $(echo "${output}" | grep "Clang 8 successfully installed") ]] || exit
         [[ ! -z $(echo "${output}" | grep "$CLANG_ROOT") ]] || exit
         ## CLANG
         uninstall-package clang 1>/dev/null
         run bash -c "./$SCRIPT_LOCATION -y -P"
-        [[ ! -z $(echo "${output}" | grep "Ensuring Clang support") ]] || exit
+        [[ ! -z $(echo "${output}" | grep "Clang 8 successfully installed") ]] || exit
         [[ ! -z $(echo "${output}" | grep -E "Clang.*successfully installed @ ${CLANG_ROOT}") ]] || exit
     fi
     ## CXX doesn't exist

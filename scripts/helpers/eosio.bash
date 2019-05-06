@@ -7,7 +7,7 @@
 ## Necessary for linux exclusion while running bats tests/bash-bats/*.bash
 [[ -z "${ARCH}" ]] && export ARCH=$( uname )
 if [[ -z "${NAME}" ]]; then
-    if [[ $ARCH == "Linux" ]]; then 
+    if [[ $ARCH == "Linux" ]]; then
         [[ ! -e /etc/os-release ]] && echo "${COLOR_RED} - /etc/os-release not found! It seems you're attempting to use an unsupported Linux distribution.${COLOR_NC}" && exit 1
         # Obtain OS NAME, and VERSION
         . /etc/os-release

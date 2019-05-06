@@ -7,9 +7,7 @@ export VERBOSE=true
 export CURRENT_USER=$(whoami)
 export HOME="$BATS_TMPDIR/bats-eosio-user-home" # Ensure $HOME is available for all scripts
 
-# Obtain dependency versions and paths
-. ./scripts/helpers/eosio.bash
-load helpers/functions # Must come after eosio.bash
+load helpers/functions
 
 # Ensure we're in the root directory to execute
 if [[ ! -d "tests" ]] && [[ ! -f "README.md" ]]; then

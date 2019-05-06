@@ -8,7 +8,11 @@ load ../helpers/functions
     # First no shows "aborting"  
     run bash -c "printf \"n\n%.0s\" {1..2} | ./$SCRIPT_LOCATION -P"
     [[ "${output##*$'\n'}" =~ .*User.aborted.* ]] || exit
-    # Mongo
-    run bash -c "printf \"y\nn\nn\n\"| ./$SCRIPT_LOCATION -m"
+    # # Mongo
+    if [[ $NAME == "Amazon Linux" ]] || [[ $ARCH == "Darwin" ]]; then
+        run bash -c "printf \"n\nn\nn\nn\n\" | ./$SCRIPT_LOCATION -m"
+    else
+        run bash -c "printf \"y\nn\nn\nn\n\" | ./$SCRIPT_LOCATION -m"
+    fi
     [[ ! -z $(echo "${output}" | grep "Existing MongoDB will be used") ]] || exit
 }

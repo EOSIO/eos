@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -eo pipefail
+set -ieo pipefail
 VERSION=3.0 # Build script version (change this to re-build the CICD image)
 ##########################################################################
 # This is the EOSIO automated install script for Linux and Mac OS.

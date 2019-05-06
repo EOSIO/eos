@@ -14,5 +14,6 @@ load ../helpers/functions
         [[ ! -z $(echo "${output}" | grep "Executing: bash -c /usr/local/bin/cmake -DCMAKE_BUILD") ]] || exit
     else
         [[ ! -z $(echo "${output}" | grep "Executing: bash -c ${BIN_LOCATION}/cmake") ]] || exit
+        [[ ! -z $(echo "${output}" | grep "CMAKE successfully installed") ]] || exit
     fi
 }

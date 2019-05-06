@@ -6,15 +6,21 @@ TEST_LABEL="[eosio_build]"
 
 # A helper function is available to show output and status: `debug`
 @test "${TEST_LABEL} > Testing arguments/options" {
-    ## -P (and y)
-    if [[ $ARCH == "Linux" ]]; then
 
+    # Testing if no cpp or clang, since we need it to build cmake
+    if [[ $ARCH == "Linux" ]]; then
         ( [[ $NAME == "CentOS Linux" ]] || [[ $NAME =~ "Amazon" ]] ) && uninstall-package gcc-c++ &>/dev/null # If c++ exists, it will fail
         [[ $NAME =~ "Ubuntu" ]] && uninstall-package clang &>/dev/null
-
         run bash -c "./$SCRIPT_LOCATION"
         [[ ! -z $(echo "${output}" | grep "Unable to find compiler \"c++\"! Pass in the -P option if you wish for us to install it") ]] || exit
     fi
+
+    # -P with -y
+    run bash -c "./$SCRIPT_LOCATION -y -P"
+    [[ ! -z $(echo "${output}" | grep "PIN_COMPILER: true") ]] || exit
+    [[ ! -z $(echo "${output}" | grep "BUILD_CLANG: true") ]] || exit
+    [[ "${output}" =~ -DCMAKE_TOOLCHAIN_FILE=\'.*/scripts/../build/pinned_toolchain.cmake\' ]] || exit
+    # -P with prompts
     run bash -c "printf \"n\n%.0s\" {1..100} | ./$SCRIPT_LOCATION -P"
     # lack of -m
     [[ ! -z $(echo "${output}" | grep "ENABLE_MONGO: false") ]] || exit
@@ -22,12 +28,9 @@ TEST_LABEL="[eosio_build]"
     # lack of -i
     [[ ! -z $(echo "${output}" | grep "INSTALL_LOCATION: ${HOME}") ]] || exit
     [[ ! -z $(echo "${output}" | grep "EOSIO_HOME: ${HOME}/eosio/${EOSIO_VERSION}") ]] || exit
-    #
+    
     [[ "${output}" =~ .*User.aborted.* ]] || exit
-    run bash -c "printf \"n\n%.0s\" {1..100} | ./$SCRIPT_LOCATION -y -P"
-    [[ ! -z $(echo "${output}" | grep "PIN_COMPILER: true") ]] || exit
-    [[ ! -z $(echo "${output}" | grep "BUILD_CLANG: true") ]] || exit
-    [[ "${output}" =~ -DCMAKE_TOOLCHAIN_FILE=\'.*/scripts/../build/pinned_toolchain.cmake\' ]] || exit
+
     ## -o
     run bash -c "printf \"n\n%.0s\" {1..100} | ./$SCRIPT_LOCATION -o Debug -P"
     [[ ! -z $(echo "${output}" | grep "CMAKE_BUILD_TYPE: Debug") ]] || exit

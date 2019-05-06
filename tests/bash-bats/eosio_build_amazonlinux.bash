@@ -1,6 +1,5 @@
 #!/usr/bin/env bats
 load helpers/general
-
 export SCRIPT_LOCATION="scripts/eosio_build.bash"
 export TEST_LABEL="[eosio_build_amazonlinux]"
 
@@ -27,19 +26,18 @@ export TEST_LABEL="[eosio_build_amazonlinux]"
     [[ ! -z $(echo "${output}" | grep "Executing: cd ${SRC_LOCATION}") ]] || exit
     [[ ! -z $(echo "${output}" | grep "Starting EOSIO Dependency Install") ]] || exit
     [[ ! -z $(echo "${output}" | grep "Executing: /usr/bin/yum -y update") ]] || exit
-    if $NAME == "Amazon Linux" ]]; then
+    if [[ $NAME == "Amazon Linux" ]]; then
         [[ ! -z $(echo "${output}" | grep "libstdc++.*found!") ]] || exit
     elif [[ $NAME == "Amazon Linux AMI" ]]; then
         [[ ! -z $(echo "${output}" | grep "make.*found!") ]] || exit
     fi
     [[ ! -z $(echo "${output}" | grep "sudo.*NOT.*found.") ]] || exit
-    [[ ! -z $(echo "${output}" | grep "Installing CMAKE") ]] || exit
     [[ ! -z $(echo "${output}" | grep ${HOME}.*/src/boost) ]] || exit
     [[ ! -z $(echo "${output}" | grep "Starting EOSIO Build") ]] || exit
     [[ ! -z $(echo "${output}" | grep "make -j${CPU_CORES}") ]] || exit
-    [[ -z $(echo "${output}" | grep " Checking MongoDB installation") ]] || exit # Mongo is off
+    [[ -z $(echo "${output}" | grep "MongoDB C++ driver successfully installed") ]] || exit # Mongo is off
     # Ensure PIN_COMPILER=false uses proper flags for the various installs
     run bash -c "./$SCRIPT_LOCATION -y"
-    [[ ! -z $(echo "${output}" | grep " -G \"Unix Makefiles\"") ]] || exit # CMAKE
+    [[ ! -z $(echo "${output}" | grep " -G 'Unix Makefiles'") ]] || exit # CMAKE
     [[ ! -z $(echo "${output}" | grep " --with-iostreams --with-date_time") ]] || exit # BOOST
 }
