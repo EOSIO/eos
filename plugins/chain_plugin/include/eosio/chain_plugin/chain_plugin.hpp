@@ -269,6 +269,7 @@ public:
       string      lower_bound;
       string      upper_bound;
       uint32_t    limit = 10;
+      uint64_t    skip = 0;
       string      key_type;  // type of key specified by index_position
       string      index_position; // 1 - primary (first), 2 - secondary index (in order defined by multi_index), 3 - third index, etc
       string      encode_type{"dec"}; //dec, hex , default=dec
@@ -470,12 +471,13 @@ public:
             }
          };
 
+         auto skip = p.skip > 0 ? p.skip : 0;
          auto lower = secidx.lower_bound( lower_bound_lookup_tuple );
          auto upper = secidx.upper_bound( upper_bound_lookup_tuple );
          if( p.reverse && *p.reverse ) {
-            walk_table_row_range( boost::make_reverse_iterator(upper), boost::make_reverse_iterator(lower) );
+            walk_table_row_range( std::next(boost::make_reverse_iterator(upper), skip), boost::make_reverse_iterator(lower) );
          } else {
-            walk_table_row_range( lower, upper );
+            walk_table_row_range( std::next(lower, skip), upper );
          }
       }
       return result;
@@ -544,12 +546,13 @@ public:
             }
          };
 
+         auto skip = p.skip > 0 ? p.skip : 0;
          auto lower = idx.lower_bound( lower_bound_lookup_tuple );
          auto upper = idx.upper_bound( upper_bound_lookup_tuple );
          if( p.reverse && *p.reverse ) {
-            walk_table_row_range( boost::make_reverse_iterator(upper), boost::make_reverse_iterator(lower) );
+            walk_table_row_range( std::next(boost::make_reverse_iterator(upper), skip), boost::make_reverse_iterator(lower) );
          } else {
-            walk_table_row_range( lower, upper );
+            walk_table_row_range( std::next(lower, skip), upper );
          }
       }
       return result;

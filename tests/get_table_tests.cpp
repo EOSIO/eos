@@ -307,6 +307,56 @@ BOOST_FIXTURE_TEST_CASE( get_table_test, TESTER ) try {
       BOOST_REQUIRE_EQUAL("7777.0000 CCC", result.rows[0]["balance"].as_string());
    }
 
+   // get table: normal case, with limit & skip
+   p.lower_bound = p.upper_bound = "";
+   p.limit = 1;
+   p.skip = 2;
+   p.reverse = false;
+   result = plugin.read_only::get_table_rows(p);
+   BOOST_REQUIRE_EQUAL(1u, result.rows.size());
+   BOOST_REQUIRE_EQUAL(true, result.more);
+   if (result.rows.size() >= 1) {
+      BOOST_REQUIRE_EQUAL("7777.0000 CCC", result.rows[0]["balance"].as_string());
+   }
+
+   // get table: reverse case, with limit & skip
+   p.lower_bound = p.upper_bound = "";
+   p.limit = 1;
+   p.skip = 2;
+   p.reverse = true;
+   result = plugin.read_only::get_table_rows(p);
+   BOOST_REQUIRE_EQUAL(1u, result.rows.size());
+   BOOST_REQUIRE_EQUAL(true, result.more);
+   if (result.rows.size() >= 1) {
+      BOOST_REQUIRE_EQUAL("8888.0000 BBB", result.rows[0]["balance"].as_string());
+   }
+
+   // get table: normal case, with bound, limit & skip
+   p.lower_bound = "AAA";
+   p.upper_bound = "CCC";
+   p.limit = 1;
+   p.skip = 1;
+   p.reverse = false;
+   result = plugin.read_only::get_table_rows(p);
+   BOOST_REQUIRE_EQUAL(1u, result.rows.size());
+   BOOST_REQUIRE_EQUAL(true, result.more);
+   if (result.rows.size() >= 1) {
+      BOOST_REQUIRE_EQUAL("8888.0000 BBB", result.rows[0]["balance"].as_string());
+   }
+
+   // get table: reverse case, with bound, limit & skip
+   p.lower_bound = "AAA";
+   p.upper_bound = "CCC";
+   p.limit = 1;
+   p.skip = 1;
+   p.reverse = true;
+   result = plugin.read_only::get_table_rows(p);
+   BOOST_REQUIRE_EQUAL(1u, result.rows.size());
+   BOOST_REQUIRE_EQUAL(true, result.more);
+   if (result.rows.size() >= 1) {
+      BOOST_REQUIRE_EQUAL("8888.0000 BBB", result.rows[0]["balance"].as_string());
+   }
+
 } FC_LOG_AND_RETHROW()
 
 BOOST_FIXTURE_TEST_CASE( get_table_by_seckey_test, TESTER ) try {
