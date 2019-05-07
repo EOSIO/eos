@@ -81,7 +81,7 @@ fi
 if [ $ANSWER != 1 ]; then read -p "Do you wish to update repositories with apt-get update? (y/n) " ANSWER; fi
 case $ANSWER in
 	1 | [Yy]* )
-		if ! sudo apt-get update; then
+		if ! sudo -E apt-get update; then
 			printf " - APT update failed.\\n"
 			exit 1;
 		else
@@ -111,7 +111,7 @@ if [ "${COUNT}" -gt 1 ]; then
 	if [ $ANSWER != 1 ]; then read -p "Do you wish to install these packages? (y/n) " ANSWER; fi
 	case $ANSWER in
 		1 | [Yy]* )
-			if ! sudo apt-get -y install ${DEP}; then
+			if ! sudo -E apt-get -y install ${DEP}; then
 				printf " - APT dependency failed.\\n"
 				exit 1
 			else
@@ -219,7 +219,7 @@ if [ "$BUILD_CLANG8" = "true" ]; then
 
    cd $SRC_LOCATION
    printf "Checking zlib library installation...\\n"
-   if [ ! -d $OPT_LOCATION/zlib || $FORCE_BUILD ]; then
+   if [ ! -d $OPT_LOCATION/zlib ] || [ $FORCE_BUILD ]; then
       printf "Installing zlib...\\n"
       curl -LO https://www.zlib.net/zlib-1.2.11.tar.gz && tar -xf zlib-1.2.11.tar.gz \
       && cd zlib-1.2.11 && mkdir build && cd build \
