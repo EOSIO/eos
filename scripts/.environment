@@ -69,6 +69,7 @@ export BUILD_CLANG=${BUILD_CLANG:-false}
 
 # ZLIB
 export ZLIB_VERSION=1.2.11
+export ZLIB_ROOT=${OPT_LOCATION}/zlib
 
 export CORE_SYMBOL_NAME=${CORE_SYMBOL_NAME:-SYS}
 
