@@ -98,6 +98,9 @@ namespace cyberway { namespace chaindb {
         FC_DECLARE_DERIVED_EXCEPTION(driver_wrong_object_exception, chaindb_internal_exception,
                                      3710018, "ChainDB driver return wrong object")
 
+        FC_DECLARE_DERIVED_EXCEPTION(cache_exception, chaindb_internal_exception,
+                                     3710019, "ChainDB cache failed")
+
     FC_DECLARE_DERIVED_EXCEPTION(chaindb_abi_exception, chaindb_exception,
                                  3720000, "ChainDB ABI exception")
 
@@ -157,12 +160,5 @@ namespace cyberway { namespace chaindb {
 
         FC_DECLARE_DERIVED_EXCEPTION(object_exception, chaindb_object_exception,
                                      3740003, "Object has reserved field name")
-
-    FC_DECLARE_DERIVED_EXCEPTION(chaindb_cache_exception, chaindb_exception,
-                                 3750000, "ChainDB cache exception")
-
-        FC_DECLARE_DERIVED_EXCEPTION(cache_usage_exception, chaindb_cache_exception,
-                                     3750001, "Object size exception")
-
 
 } } // namespace cyberway::chaindb

@@ -201,7 +201,7 @@ struct controller_impl {
       head = prev;
 // TODO: removed by CyberWay
 //      db.undo();
-      chaindb.undo();
+      chaindb.undo_last_revision();
    }
 
 
@@ -331,7 +331,7 @@ struct controller_impl {
 
 // TODO: removed by CyberWay
 //      db.commit( s->block_num );
-      chaindb.commit( s->block_num );
+      chaindb.commit_revision( s->block_num );
 
       if( append_to_blog ) {
          blog.append(s->block);
@@ -483,7 +483,7 @@ struct controller_impl {
       while (chaindb.revision() > head->block_num) {
 // TODO: removed by CyberWay
 //         db.undo();
-         chaindb.undo();
+         chaindb.undo_last_revision();
       }
 
       if( report_integrity_hash ) {
@@ -518,7 +518,7 @@ struct controller_impl {
 //      // Rewind the database to the last irreversible block
 //       db.with_write_lock([&] {
 //         db.undo_all();
-//         chaindb.undo_all();
+//         chaindb.undo_all_revisions();
 //         /*
 //         FC_ASSERT(db.revision() == self.head_block_num(),
 //                   "Chainbase revision does not match head block num",

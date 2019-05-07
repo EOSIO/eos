@@ -894,84 +894,84 @@ namespace cyberway { namespace chaindb {
         impl_->drop_table(table);
     }
 
-    void mongodb_driver::drop_db() {
+    void mongodb_driver::drop_db() const {
         impl_->drop_db();
     }
 
-    const cursor_info& mongodb_driver::clone(const cursor_request& request) {
+    const cursor_info& mongodb_driver::clone(const cursor_request& request) const {
         return impl_->clone_cursor(request);
     }
 
-    void mongodb_driver::close(const cursor_request& request) {
+    void mongodb_driver::close(const cursor_request& request) const {
         impl_->close_cursor(request);
     }
 
-    void mongodb_driver::close_code_cursors(const account_name& code) {
+    void mongodb_driver::close_code_cursors(const account_name& code) const {
         impl_->close_code_cursors(code);
     }
 
-    void mongodb_driver::apply_code_changes(const account_name& code) {
+    void mongodb_driver::apply_code_changes(const account_name& code) const {
         impl_->apply_code_changes(code);
     }
 
-    void mongodb_driver::apply_all_changes() {
+    void mongodb_driver::apply_all_changes() const {
         impl_->apply_all_changes();
     }
 
-    cursor_info& mongodb_driver::lower_bound(index_info index, variant key) {
+    cursor_info& mongodb_driver::lower_bound(index_info index, variant key) const {
         return impl_->create_cursor(std::move(index))
             .open(direction::Forward, std::move(key), unset_primary_key);
     }
 
-    cursor_info& mongodb_driver::upper_bound(index_info index, variant key) {
+    cursor_info& mongodb_driver::upper_bound(index_info index, variant key) const {
         return impl_->create_cursor(std::move(index))
             .open(direction::Backward, std::move(key), unset_primary_key)
             .next();
     }
 
-    cursor_info& mongodb_driver::locate_to(index_info index, variant key, primary_key_t pk) {
+    cursor_info& mongodb_driver::locate_to(index_info index, variant key, primary_key_t pk) const {
         return impl_->create_cursor(std::move(index))
             .open(direction::Forward, std::move(key), pk);
     }
 
-    cursor_info& mongodb_driver::begin(index_info index) {
+    cursor_info& mongodb_driver::begin(index_info index) const {
         return impl_->create_cursor(std::move(index))
             .open(direction::Forward, {}, unset_primary_key);
     }
 
-    cursor_info& mongodb_driver::end(index_info index) {
+    cursor_info& mongodb_driver::end(index_info index) const {
         return impl_->create_cursor(std::move(index))
             .open(direction::Backward, {}, end_primary_key);
     }
 
-    cursor_info& mongodb_driver::cursor(const cursor_request& request) {
+    cursor_info& mongodb_driver::cursor(const cursor_request& request) const {
         return impl_->get_unapplied_cursor(request);
     }
 
-    cursor_info& mongodb_driver::current(const cursor_info& info) {
+    cursor_info& mongodb_driver::current(const cursor_info& info) const {
         return impl_->get_applied_cursor(info)
             .current();
     }
 
-    cursor_info& mongodb_driver::next(const cursor_info& info) {
+    cursor_info& mongodb_driver::next(const cursor_info& info) const {
         return impl_->get_applied_cursor(info)
             .next();
     }
 
-    cursor_info& mongodb_driver::prev(const cursor_info& info) {
+    cursor_info& mongodb_driver::prev(const cursor_info& info) const {
         return impl_->get_applied_cursor(info)
             .prev();
     }
 
-    primary_key_t mongodb_driver::available_pk(const table_info& table) {
+    primary_key_t mongodb_driver::available_pk(const table_info& table) const {
         return impl_->available_pk(table);
     }
 
-    object_value mongodb_driver::object_by_pk(const table_info& table, const primary_key_t pk) {
+    object_value mongodb_driver::object_by_pk(const table_info& table, const primary_key_t pk) const {
         return impl_->object_by_pk(table, pk);
     }
 
-    const object_value& mongodb_driver::object_at_cursor(const cursor_info& info) {
+    const object_value& mongodb_driver::object_at_cursor(const cursor_info& info) const {
         return impl_->get_applied_cursor(info)
             .get_object_value();
     }

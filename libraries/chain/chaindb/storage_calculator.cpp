@@ -110,7 +110,7 @@ namespace cyberway { namespace chaindb {
     }
 
     int calc_storage_usage(const eosio::chain::table_def& table, const variant& var) {
-        constexpr static int base_size = 128; /* "_SERVICE_":{"scope":,"rev":,"payer":,"owner":,"size":,"ram":} */
+        constexpr static int base_size  = 256; /* memory usage of structures in RAM */
         constexpr static int index_size = 12 + 8 /* scope:pk */ + 8; /* pk */
 
         int size = base_size + index_size * table.indexes.size();

@@ -28,7 +28,7 @@ namespace cyberway { namespace chaindb {
         account_name owner;
         account_name payer;
         int          size   = 0;
-        int          delta  = 0;
+        int64_t      delta  = 0;
         bool         in_ram = true;
 
         storage_payer_info() = default;

@@ -475,6 +475,7 @@ abi_def eosio_contract_abi(abi_def eos_abi)
          {"virtual_net_limit", "uint64"},
          {"virtual_cpu_limit", "uint64"},
          {"virtual_ram_limit", "uint64"},
+         {"reserved_ram_size", "uint64"},
       }
    });
 
