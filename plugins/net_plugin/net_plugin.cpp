@@ -1600,7 +1600,7 @@ namespace eosio {
                           "target LIB = ${lib} next_expected = ${ne}",
                   ("s", stage_str( sync_state ))( "fhn", num )( "lib", sync_known_lib_num )
                   ("ne", sync_next_expected_num ) );
-         if( sync_state == lib_catchup )
+         if( sync_state == lib_catchup || sync_state == head_catchup )
             return;
          set_state( head_catchup );
       } else {
