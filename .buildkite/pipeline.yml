@@ -3,7 +3,6 @@ env:
   ANKA_TEMPLATE_TAG: "clean::cicd::git-ssh::nas::brew::buildkite-agent-3.11.2"
   CHECKSUMABLE: "scripts/eosio_build*"
   MAC_TAG: "eosio_2-4"
-  BASH_COMMAND: ["/bin/bash", "-i", "-e", "-c"]
 
 steps:
 
@@ -61,7 +60,7 @@ steps:
         no-include-email: true
         region: "us-west-2"
       docker#v3.1.0:
-        shell:  $BASH_COMMAND
+        shell: ["/bin/bash", "-i", "-e", "-c"]
         debug: true
         image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux2_2-4"
         propagate-environment: true
@@ -82,7 +81,7 @@ steps:
         no-include-email: true
         region: "us-west-2"
       docker#v3.2.0:
-        shell:  $BASH_COMMAND
+        shell: ["/bin/bash", "-i", "-e", "-c"]
         debug: true
         image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:centos7_2-4"
         propagate-environment: true
@@ -104,7 +103,7 @@ steps:
         no-include-email: true
         region: "us-west-2"
       docker#v3.2.0:
-        shell:  $BASH_COMMAND
+        shell: ["/bin/bash", "-i", "-e", "-c"]
         debug: true
         image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu16_2-4"
         propagate-environment: true
@@ -125,7 +124,7 @@ steps:
         no-include-email: true
         region: "us-west-2"
       docker#v3.2.0:
-        shell:  $BASH_COMMAND
+        shell: ["/bin/bash", "-i", "-e", "-c"]
         debug: true
         image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu18_2-4"
         propagate-environment: true
@@ -189,7 +188,7 @@ steps:
         no-include-email: true
         region: "us-west-2"
       docker#v3.2.0:
-        shell:  $BASH_COMMAND
+        shell: ["/bin/bash", "-i", "-e", "-c"]
         debug: true
         image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux2_2-4"
         propagate-environment: true
@@ -210,7 +209,7 @@ steps:
         no-include-email: true
         region: "us-west-2"
       docker#v3.2.0:
-        shell:  $BASH_COMMAND
+        shell: ["/bin/bash", "-i", "-e", "-c"]
         debug: true
         image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux2_2-4"
         propagate-environment: true
@@ -231,7 +230,7 @@ steps:
         no-include-email: true
         region: "us-west-2"
       docker#v3.2.0:
-        shell:  $BASH_COMMAND
+        shell: ["/bin/bash", "-i", "-e", "-c"]
         debug: true
         image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:centos7_2-4"
         propagate-environment: true
@@ -251,7 +250,7 @@ steps:
         no-include-email: true
         region: "us-west-2"
       docker#v3.2.0:
-        shell:  $BASH_COMMAND
+        shell: ["/bin/bash", "-i", "-e", "-c"]
         debug: true
         image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:centos7_2-4"
         propagate-environment: true
@@ -272,7 +271,7 @@ steps:
         no-include-email: true
         region: "us-west-2"
       docker#v3.2.0:
-        shell:  $BASH_COMMAND
+        shell: ["/bin/bash", "-i", "-e", "-c"]
         debug: true
         image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu16_2-4"
         propagate-environment: true
@@ -292,7 +291,7 @@ steps:
         no-include-email: true
         region: "us-west-2"
       docker#v3.2.0:
-        shell:  $BASH_COMMAND
+        shell: ["/bin/bash", "-i", "-e", "-c"]
         debug: true
         image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu16_2-4"
         propagate-environment: true
@@ -312,7 +311,7 @@ steps:
         no-include-email: true
         region: "us-west-2"
       docker#v3.2.0:
-        shell:  $BASH_COMMAND
+        shell: ["/bin/bash", "-i", "-e", "-c"]
         debug: true
         image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu18_2-4"
         propagate-environment: true
@@ -332,7 +331,7 @@ steps:
         no-include-email: true
         region: "us-west-2"
       docker#v3.2.0:
-        shell:  $BASH_COMMAND
+        shell: ["/bin/bash", "-i", "-e", "-c"]
         debug: true
         image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu18_2-4"
         propagate-environment: true
@@ -379,7 +378,7 @@ steps:
         no-include-email: true
         region: "us-west-2"
       docker#v3.2.0:
-        shell:  $BASH_COMMAND
+        shell: ["/bin/bash", "-i", "-e", "-c"]
         debug: true
         image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:centos7_2-4"
         propagate-environment: true
@@ -408,7 +407,7 @@ steps:
         no-include-email: true
         region: "us-west-2"
       docker#v3.2.0:
-        shell:  $BASH_COMMAND
+        shell: ["/bin/bash", "-i", "-e", "-c"]
         debug: true
         image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu16_2-4"
         propagate-environment: true
@@ -437,7 +436,7 @@ steps:
         no-include-email: true
         region: "us-west-2"
       docker#v3.2.0:
-        shell:  $BASH_COMMAND
+        shell: ["/bin/bash", "-i", "-e", "-c"]
         debug: true
         image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu18_2-4"
         propagate-environment: true
