@@ -14,12 +14,7 @@ from testUtils import Account
 from testUtils import EnumType
 from testUtils import addEnum
 from testUtils import unhandledEnumType
-
-class ReturnType(EnumType):
-    pass
-
-addEnum(ReturnType, "raw")
-addEnum(ReturnType, "json")
+from testUtils import ReturnType
 
 class BlockType(EnumType):
     pass
