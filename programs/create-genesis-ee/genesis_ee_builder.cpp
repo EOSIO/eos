@@ -368,6 +368,7 @@ void genesis_ee_builder::build_messages() {
             ("title", cop.title)
             ("body", cop.body)
             ("tags", cop.tags)
+            ("language", cop.language)
             ("net_rshares", comment.net_rshares)
             ("author_reward", asset(comment.author_reward, symbol(GLS)))
             ("benefactor_reward", asset(comment.benefactor_reward, symbol(GLS)))

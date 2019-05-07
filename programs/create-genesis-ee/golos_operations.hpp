@@ -14,6 +14,7 @@ struct comment_operation {
     string title;
     string body;
     flat_set<string> tags;
+    string language;
 };
 
 struct vote_operation {
@@ -100,7 +101,7 @@ struct total_comment_reward_operation {
 
 } } // cyberway::golos
 
-FC_REFLECT(cyberway::golos::comment_operation, (parent_author)(parent_permlink)(author)(permlink)(title)(body)(tags))
+FC_REFLECT(cyberway::golos::comment_operation, (parent_author)(parent_permlink)(author)(permlink)(title)(body)(tags)(language))
 FC_REFLECT(cyberway::golos::vote_operation, (voter)(author)(permlink)(weight)(timestamp))
 FC_REFLECT(cyberway::golos::reblog_operation, (account)(author)(permlink)(title)(body)(timestamp))
 FC_REFLECT(cyberway::golos::delete_reblog_operation, (account))
