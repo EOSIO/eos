@@ -24,6 +24,10 @@
     },
     "eosio-sync-tests":
     {
-        "pipeline-branch": "protocol-features-sync-nodes"
+        "environment":
+        {
+            "SKIP_PRE_V180": "true",
+            "SKIP_V180": "false"
+        }
     }
 }
