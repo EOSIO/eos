@@ -161,24 +161,6 @@ function ensure-cmake() {
     fi
 }
 
-function ensure-zlib() {
-    if $PIN_COMPILER; then
-        echo "${COLOR_CYAN}[Ensuring zlib library installation]${COLOR_NC}"
-        if [[ ! -d $ZLIB_ROOT ]]; then
-		    execute bash -c "cd $SRC_LOCATION && \
-            curl -LO https://www.zlib.net/zlib-${ZLIB_VERSION}.tar.gz && tar -xf zlib-${ZLIB_VERSION}.tar.gz \
-            && cd zlib-${ZLIB_VERSION} && mkdir build && cd build \
-            && ../configure --prefix=${ZLIB_ROOT} \
-            && make -j$JOBS install"
-            echo " - zlib library successfully installed @ ${ZLIB_ROOT}"
-            echo ""
-        else
-            echo " - zlib library found @ ${ZLIB_ROOT}"
-            echo ""
-        fi
-    fi
-}
-
 function ensure-boost() {
     [[ $ARCH == "Darwin" ]] && export CPATH="$(python-config --includes | awk '{print $1}' | cut -dI -f2):$CPATH" # Boost has trouble finding pyconfig.h
     echo "${COLOR_CYAN}[Ensuring Boost $( echo $BOOST_VERSION | sed 's/_/./g' ) library installation]${COLOR_NC}"
@@ -186,7 +168,7 @@ function ensure-boost() {
     if [[ "${BOOSTVERSION}" != "${BOOST_VERSION_MAJOR}0${BOOST_VERSION_MINOR}0${BOOST_VERSION_PATCH}" ]]; then
         B2_FLAGS="-q -j${JOBS} --with-iostreams --with-date_time --with-filesystem --with-system --with-program_options --with-chrono --with-test install"
         if $PIN_COMPILER; then
-            B2_FLAGS="toolset=clang cxxflags='-stdlib=libc++ -D__STRICT_ANSI__ -nostdinc++ -I${CLANG_ROOT}/include/c++/v1' linkflags='-stdlib=libc++' link=static threading=multi --with-iostreams --with-date_time --with-filesystem --with-system --with-program_options --with-chrono --with-test -q -j${JOBS} -sZLIB_LIBRARY_PATH=\"${ZLIB_ROOT}/lib\" -sZLIB_INCLUDE=\"${ZLIB_ROOT}/include\" -sZLIB_SOURCE=\"${SRC_LOCATION}/zlib-${ZLIB_VERSION}\" install"
+            B2_FLAGS="toolset=clang cxxflags='-stdlib=libc++ -D__STRICT_ANSI__ -nostdinc++ -I${CLANG_ROOT}/include/c++/v1' linkflags='-stdlib=libc++' link=static threading=multi --with-iostreams --with-date_time --with-filesystem --with-system --with-program_options --with-chrono --with-test -q -j${JOBS} install"
         fi
 		execute bash -c "cd $SRC_LOCATION && \
         curl -LO https://dl.bintray.com/boostorg/release/$BOOST_VERSION_MAJOR.$BOOST_VERSION_MINOR.$BOOST_VERSION_PATCH/source/boost_$BOOST_VERSION.tar.bz2 \

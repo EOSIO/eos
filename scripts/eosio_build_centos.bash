@@ -63,19 +63,12 @@ if $DRYRUN || [ -d $PYTHON3PATH ]; then
 fi
 # CMAKE Installation
 ensure-cmake
-echo ""
 # CLANG Installation
 build-clang
-echo ""
 # LLVM Installation
 ensure-llvm
-echo ""
-# ZLIB Installation
-ensure-zlib
-echo ""
 # BOOST Installation
 ensure-boost
-echo ""
 
 if $INSTALL_MONGO; then
 

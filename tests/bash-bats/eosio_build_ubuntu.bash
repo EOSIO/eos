@@ -13,7 +13,7 @@ export TEST_LABEL="[eosio_build_ubuntu]"
 # Testing Root user
 ./tests/bash-bats/modules/root-user.bash
 # Testing Options
-./tests/bash-bats/modules/options.bash
+./tests/bash-bats/modules/dep_script_options.bash
 # Testing CMAKE
 ./tests/bash-bats/modules/cmake.bash
 # Testing Clang
@@ -22,7 +22,7 @@ export TEST_LABEL="[eosio_build_ubuntu]"
 ./tests/bash-bats/modules/dep_script_prompts.bash
 
 ## Needed to load eosio_build_ files properly; it can be empty
-@test "${TEST_LABEL} > General" { setup-bats-dirs
+@test "${TEST_LABEL} > General" {
     run bash -c "printf \"y\n%.0s\" {1..100} | ./$SCRIPT_LOCATION"
     [[ ! -z $(echo "${output}" | grep "Starting EOSIO Dependency Install") ]] || exit
     [[ ! -z $(echo "${output}" | grep "Executing: /usr/bin/apt-get update") ]] || exit

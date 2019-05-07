@@ -29,22 +29,14 @@ echo "Disk space available: ${DISK_AVAIL}G"
 
 # Ensure packages exist
 ensure-yum-packages $DEPS_FILE
-echo ""
 # CMAKE Installation
 ensure-cmake
-echo ""
 # CLANG Installation
 build-clang
-echo ""
 # LLVM Installation
 ensure-llvm
-echo ""
-# ZLIB Installation
-ensure-zlib
-echo ""
 # BOOST Installation
 ensure-boost
-echo ""
 
 if $INSTALL_MONGO; then
 

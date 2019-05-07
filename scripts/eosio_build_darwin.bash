@@ -78,16 +78,12 @@ fi
 # Ensure packages exist
 ensure-brew-packages "${REPO_ROOT}/scripts/eosio_build_darwin_deps"
 [[ -z "${CMAKE}" ]] && export CMAKE="/usr/local/bin/cmake"
-echo ""
 # CLANG Installation
 build-clang
-echo ""
 # LLVM Installation
 ensure-llvm
-echo ""
 # BOOST Installation
 ensure-boost
-echo ""
 # MONGO Installation
 if $INSTALL_MONGO; then
 	echo "${COLOR_CYAN}[Ensuring MongoDB installation]${COLOR_NC}"

@@ -11,7 +11,7 @@ export TEST_LABEL="[eosio_build_amazonlinux]"
 # Testing Root user
 ./tests/bash-bats/modules/root-user.bash
 # Testing Options
-./tests/bash-bats/modules/options.bash
+./tests/bash-bats/modules/dep_script_options.bash
 # Testing CMAKE
 ./tests/bash-bats/modules/cmake.bash
 # Testing Clang
@@ -20,7 +20,7 @@ export TEST_LABEL="[eosio_build_amazonlinux]"
 ./tests/bash-bats/modules/dep_script_prompts.bash
 
 ## Needed to load eosio_build_ files properly; it can be empty
-@test "${TEST_LABEL} > General" { setup-bats-dirs
+@test "${TEST_LABEL} > General" {
     run bash -c "printf \"y\n%.0s\" {1..100} | ./$SCRIPT_LOCATION -P"
     ### Make sure deps are loaded properly
     [[ ! -z $(echo "${output}" | grep "Executing: cd ${SRC_LOCATION}") ]] || exit

@@ -50,8 +50,6 @@ ensure-cmake
 build-clang
 # LLVM Installation
 ensure-llvm
-# ZLIB Installation
-ensure-zlib
 # BOOST Installation
 ensure-boost
 VERSION_MAJ=$(echo "${VERSION_ID}" | cut -d'.' -f1)
