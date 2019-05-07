@@ -35,14 +35,12 @@ namespace eosio { namespace chain {
             account_name_t code, account_name_t scope, table_name_t table, index_name_t index,
             array_ptr<const char> key, size_t size
         ) {
-            context.lazy_init_chaindb_abi(code);
             return context.chaindb.lower_bound({code, scope, table, index}, key, size).cursor;
         }
 
         cursor_t chaindb_lower_bound_pk(
             account_name_t code, account_name_t scope, table_name_t table, primary_key_t pk
         ) {
-            context.lazy_init_chaindb_abi(code);
             return context.chaindb.lower_bound({code, scope, table}, pk).cursor;
         }
 
@@ -50,14 +48,12 @@ namespace eosio { namespace chain {
             account_name_t code, account_name_t scope, table_name_t table, index_name_t index,
             array_ptr<const char> key, size_t size
         ) {
-            context.lazy_init_chaindb_abi(code);
             return context.chaindb.upper_bound({code, scope, table, index}, key, size).cursor;
         }
 
         cursor_t chaindb_upper_bound_pk(
             account_name_t code, account_name_t scope, table_name_t table, primary_key_t pk
         ) {
-            context.lazy_init_chaindb_abi(code);
             return context.chaindb.upper_bound({code, scope, table}, pk).cursor;
         }
 
@@ -65,21 +61,18 @@ namespace eosio { namespace chain {
             account_name_t code, account_name_t scope, table_name_t table, index_name_t index,
             primary_key_t pk, array_ptr<const char> key, size_t size
         ) {
-            context.lazy_init_chaindb_abi(code);
             return context.chaindb.locate_to({code, scope, table, index}, key, size, pk).cursor;
         }
 
         cursor_t chaindb_begin(
             account_name_t code, account_name_t scope, table_name_t table, index_name_t index
         ) {
-            context.lazy_init_chaindb_abi(code);
             return context.chaindb.begin({code, scope, table, index}).cursor;
         }
 
         cursor_t chaindb_end(
             account_name_t code, account_name_t scope, table_name_t table, index_name_t index
         ) {
-            context.lazy_init_chaindb_abi(code);
             return context.chaindb.end({code, scope, table, index}).cursor;
         }
 
@@ -177,7 +170,6 @@ namespace eosio { namespace chain {
         }
 
         primary_key_t chaindb_available_primary_key(account_name_t code, account_name_t scope, table_name_t table) {
-            context.lazy_init_chaindb_abi(code);
             return context.chaindb.available_pk({code, scope, table});
         }
 
@@ -193,7 +185,6 @@ namespace eosio { namespace chain {
             EOS_ASSERT(account_name(payer) != account_name(), invalid_table_payer,
                 "must specify a valid account to pay for new record");
             validate_db_access_violation(code);
-            context.lazy_init_chaindb_abi(code);
             auto delta = context.chaindb.insert({code, scope, table}, context.get_storage_payer(payer), pk, data, size);
             return static_cast<int32_t>(delta);
         }
@@ -203,7 +194,6 @@ namespace eosio { namespace chain {
             account_name_t payer, primary_key_t pk, array_ptr<const char> data, size_t size
         ) {
             validate_db_access_violation(code);
-            context.lazy_init_chaindb_abi(code);
             auto delta = context.chaindb.update({code, scope, table}, context.get_storage_payer(payer), pk, data, size);
             return static_cast<int32_t>(delta);
         }
@@ -212,7 +202,6 @@ namespace eosio { namespace chain {
             account_name_t code, account_name_t scope, table_name_t table, primary_key_t pk
         ) {
             validate_db_access_violation(code);
-            context.lazy_init_chaindb_abi(code);
             auto delta = context.chaindb.remove({code, scope, table}, context.get_storage_payer(), pk);
             return static_cast<int32_t>(delta);
         }
@@ -225,7 +214,6 @@ namespace eosio { namespace chain {
             // As an alternative, the account contract can send inline action by itself ...
 
             validate_db_access_violation(code);
-            context.lazy_init_chaindb_abi(code);
 
             cyberway::chain::set_ram_state op;
             op.code   = code;
