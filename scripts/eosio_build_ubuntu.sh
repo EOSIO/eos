@@ -62,7 +62,7 @@ fi
 DEP_ARRAY=(
    git make automake libbz2-dev libssl-dev doxygen graphviz \
    libgmp3-dev autotools-dev build-essential libicu-dev python2.7 python2.7-dev python3 python3-dev \
-   autoconf libtool curl zlib1g-dev sudo ruby libusb-1.0-0-dev libcurl4-gnutls-dev pkg-config
+   autoconf libtool curl zlib1g-dev ruby libusb-1.0-0-dev libcurl4-gnutls-dev pkg-config
 )
 
 # llvm-4.0 is installed into /usr/lib/llvm-4.0
@@ -81,7 +81,7 @@ fi
 if [ $ANSWER != 1 ]; then read -p "Do you wish to update repositories with apt-get update? (y/n) " ANSWER; fi
 case $ANSWER in
 	1 | [Yy]* )
-		if ! sudo apt-get update; then
+		if ! /usr/bin/sudo -E apt-get update; then
 			printf " - APT update failed.\\n"
 			exit 1;
 		else
@@ -111,7 +111,7 @@ if [ "${COUNT}" -gt 1 ]; then
 	if [ $ANSWER != 1 ]; then read -p "Do you wish to install these packages? (y/n) " ANSWER; fi
 	case $ANSWER in
 		1 | [Yy]* )
-			if ! sudo apt-get -y install ${DEP}; then
+			if ! /usr/bin/sudo -E apt-get -y install ${DEP}; then
 				printf " - APT dependency failed.\\n"
 				exit 1
 			else
