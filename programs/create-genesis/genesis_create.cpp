@@ -746,7 +746,7 @@ struct genesis_create::genesis_create_impl final {
                     a.token_code = sys_sym.to_symbol_code();
                     a.account = x.name;
                     a.proxy_level = x.level;
-                    a.votes = x.level ? 0 : x.balance;
+                    a.votes = x.level ? -1 : x.balance;
                     a.last_proxied_update = _conf.initial_timestamp;
                     a.balance = x.balance;
                     a.proxied = x.proxied;
