@@ -16,5 +16,10 @@ echo "[Uploading artifacts]"
 mv -f ./Testing/$(ls ./Testing/ | grep '20' | tail -n 1)/Test.xml test-results.xml
 buildkite-agent artifact upload test-results.xml
 buildkite-agent artifact upload mongod.log
-# Throw proper exit code
-[[ $EXIT_STATUS != 0 ]] && echo "Failing due to non-zero exit status from ctest: $EXIT_STATUS"; exit $EXIT_STATUS
+# ctest error handling
+if [[ $EXIT_STATUS != 0 ]]; then
+    echo "Failing due to non-zero exit status from ctest: $EXIT_STATUS"
+    buildkite-agent artifact upload config.ini
+    buildkite-agent artifact upload genesis.json
+    exit $EXIT_STATUS
+fi
