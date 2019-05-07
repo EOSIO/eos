@@ -486,10 +486,6 @@ class apply_context {
       bool cancel_deferred_transaction( const uint128_t& sender_id, account_name sender );
       bool cancel_deferred_transaction( const uint128_t& sender_id ) { return cancel_deferred_transaction(sender_id, receiver); }
 
-   /// ChainDB methods:
-   public:
-      void lazy_init_chaindb_abi(account_name code);
-
    /// Event methods:
    public:
       void push_event( event evt );

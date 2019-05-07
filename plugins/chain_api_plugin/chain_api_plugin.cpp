@@ -33,7 +33,6 @@ public:
       : chain_controller_(chain_controller), abi_serializer_max_time_(abi_serializer_max_time), shorten_abi_errors_(shorten_abi_errors) {}
 
     get_account_results get_account( const get_account_params& params )const;
-    chain::symbol extract_core_symbol() const;
     get_code_results get_code( const get_code_params& params )const;
     get_code_hash_results get_code_hash( const get_code_hash_params& params )const;
     get_abi_results get_abi( const get_abi_params& params )const;
@@ -545,38 +544,6 @@ get_required_keys_result chain_api_plugin_impl::get_required_keys( const get_req
 
 get_transaction_id_result chain_api_plugin_impl::get_transaction_id( const get_transaction_id_params& params)const {
    return params.id();
-}
-
-
-chain::symbol chain_api_plugin_impl::extract_core_symbol() const {
-   chain::symbol core_symbol(0);
-
-   // The following code makes assumptions about the contract deployed on cyber account (i.e. the system contract) and how it stores its data.
-// TODO: Removed by CyberWay
-//   const auto& d = db_controller_.db();
-//   const auto* t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(
-//      boost::make_tuple(config::system_account_name, config::system_account_name, N(rammarket)));
-//   if( t_id != nullptr ) {
-//      const auto &idx = d.get_index<key_value_index, by_scope_primary>();
-//      auto it = idx.find(boost::make_tuple( t_id->id, eosio::chain::string_to_symbol_c(4,"RAMCORE") ));
-//      if( it != idx.end() ) {
-//         detail::ram_market_exchange_state_t ram_market_exchange_state;
-//
-//         fc::datastream<const char *> ds( it->value.data(), it->value.size() );
-//
-//         try {
-//            fc::raw::unpack(ds, ram_market_exchange_state);
-//         } catch( ... ) {
-//            return core_symbol;
-//         }
-//
-//         if( ram_market_exchange_state.core_symbol.get_symbol().valid() ) {
-//            core_symbol = ram_market_exchange_state.core_symbol.get_symbol();
-//         }
-//      }
-//   }
-
-   return core_symbol;
 }
 
 get_table_rows_result chain_api_plugin_impl::get_table_rows( const get_table_rows_params& p )const {

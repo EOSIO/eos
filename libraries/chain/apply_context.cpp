@@ -106,16 +106,6 @@ void apply_context::exec_one( action_trace& trace )
    }
 }
 
-void apply_context::lazy_init_chaindb_abi(account_name code) {
-   if (chaindb.has_abi(code)) return;
-
-   const auto& a = control.get_account(code);
-   EOS_ASSERT(a.abi.size() > 0, cyberway::chaindb::no_abi_exception,
-       "Account ${a} doesn't have ABI description", ("a", code));
-
-   chaindb.add_abi(code, a.get_abi());
-}
-
 void apply_context::finalize_trace( action_trace& trace, const fc::time_point& start )
 {
    trace.account_ram_deltas = std::move( _account_ram_deltas );
