@@ -1,18 +1,3 @@
-OS_VER=$(sw_vers -productVersion)
-OS_MAJ=$(echo "${OS_VER}" | cut -d'.' -f1)
-OS_MIN=$(echo "${OS_VER}" | cut -d'.' -f2)
-OS_PATCH=$(echo "${OS_VER}" | cut -d'.' -f3)
-MEM_GIG=$(bc <<< "($(sysctl -in hw.memsize) / 1024000000)")
-export JOBS=$(( MEM_GIG > CPU_CORES ? CPU_CORES : MEM_GIG ))
-
-DISK_INSTALL=$(df -h . | tail -1 | tr -s ' ' | cut -d\  -f1 || cut -d' ' -f1)
-blksize=$(df . | head -1 | awk '{print $2}' | cut -d- -f1)
-gbfactor=$(( 1073741824 / blksize ))
-total_blks=$(df . | tail -1 | awk '{print $2}')
-avail_blks=$(df . | tail -1 | awk '{print $4}')
-DISK_TOTAL=$((total_blks / gbfactor ))
-DISK_AVAIL=$((avail_blks / gbfactor ))
-
 echo "OS name: ${NAME}"
 echo "OS Version: ${OS_VER}"
 echo "CPU cores: ${CPU_CORES}"
@@ -21,23 +6,10 @@ echo "Disk install: ${DISK_INSTALL}"
 echo "Disk space total: ${DISK_TOTAL}G"
 echo "Disk space available: ${DISK_AVAIL}G"
 
-if [ "${MEM_GIG}" -lt 7 ]; then
-	echo "Your system must have 7 or more Gigabytes of physical memory installed."
-	echo "Exiting now."
-	exit 1
-fi
+[[ "${OS_MIN}" -lt 12 ]] && echo "You must be running Mac OS 10.12.x or higher to install EOSIO." && exit 1
 
-if [ "${OS_MIN}" -lt 12 ]; then
-	echo "You must be running Mac OS 10.12.x or higher to install EOSIO."
-	echo "Exiting now."
-	exit 1
-fi
-
-if [ "${DISK_AVAIL}" -lt "$DISK_MIN" ]; then
-	echo "You must have at least ${DISK_MIN}GB of available storage to install EOSIO."
-	echo "Exiting now."
-	exit 1
-fi
+[[ $MEM_GIG -lt 7 ]] && echo "Your system must have 7 or more Gigabytes of physical memory installed." && exit 1
+[[ "${DISK_AVAIL}" -lt "${DISK_MIN}" ]] && echo " - You must have at least ${DISK_MIN}GB of available storage to install EOSIO." && exit 1
 
 echo ""
 

@@ -22,15 +22,13 @@ TEST_LABEL="[eosio_build]"
     [[ "${output}" =~ -DCMAKE_TOOLCHAIN_FILE=\'.*/scripts/../build/pinned_toolchain.cmake\' ]] || exit
     # -P with prompts
     run bash -c "printf \"n\n%.0s\" {1..100} | ./$SCRIPT_LOCATION -P"
+    [[ "${output}" =~ .*User.aborted.* ]] || exit
     # lack of -m
     [[ ! -z $(echo "${output}" | grep "ENABLE_MONGO: false") ]] || exit
     [[ ! -z $(echo "${output}" | grep "INSTALL_MONGO: false") ]] || exit
     # lack of -i
     [[ ! -z $(echo "${output}" | grep "INSTALL_LOCATION: ${HOME}") ]] || exit
     [[ ! -z $(echo "${output}" | grep "EOSIO_HOME: ${HOME}/eosio/${EOSIO_VERSION}") ]] || exit
-    
-    [[ "${output}" =~ .*User.aborted.* ]] || exit
-
     ## -o
     run bash -c "printf \"n\n%.0s\" {1..100} | ./$SCRIPT_LOCATION -o Debug -P"
     [[ ! -z $(echo "${output}" | grep "CMAKE_BUILD_TYPE: Debug") ]] || exit

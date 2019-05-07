@@ -173,6 +173,7 @@ execute bash -c "sed -e 's~@~$OPT_LOCATION~g' $SCRIPT_DIR/pinned_toolchain.cmake
 echo "${COLOR_CYAN}====================================================================================="
 echo "======================= ${COLOR_WHITE}Starting EOSIO Dependency Install${COLOR_CYAN} ===========================${COLOR_NC}"
 execute cd $SRC_LOCATION
+set_system_vars # JOBS, Memory, disk space available, etc
 $BUILD_CLANG && export PINNED_TOOLCHAIN="-DCMAKE_TOOLCHAIN_FILE='${BUILD_DIR}/pinned_toolchain.cmake'"
 . $FILE # Execute OS specific build file
 execute cd $REPO_ROOT

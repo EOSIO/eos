@@ -21,7 +21,10 @@ export TEST_LABEL="[eosio_build_amazonlinux]"
 
 ## Needed to load eosio_build_ files properly; it can be empty
 @test "${TEST_LABEL} > General" {
+    set_system_vars # Obtain current machine's resources and set the necessary variables (like JOBS, etc)
+
     run bash -c "printf \"y\n%.0s\" {1..100} | ./$SCRIPT_LOCATION -P"
+    [[ ! -z $(echo "${output}" | grep "Executing: make -j${JOBS}") ]] || exit
     ### Make sure deps are loaded properly
     [[ ! -z $(echo "${output}" | grep "Executing: cd ${SRC_LOCATION}") ]] || exit
     [[ ! -z $(echo "${output}" | grep "Starting EOSIO Dependency Install") ]] || exit

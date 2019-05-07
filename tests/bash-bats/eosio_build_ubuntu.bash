@@ -23,7 +23,11 @@ export TEST_LABEL="[eosio_build_ubuntu]"
 
 ## Needed to load eosio_build_ files properly; it can be empty
 @test "${TEST_LABEL} > General" {
+    set_system_vars # Obtain current machine's resources and set the necessary variables (like JOBS, etc)
+
     run bash -c "printf \"y\n%.0s\" {1..100} | ./$SCRIPT_LOCATION"
+    [[ ! -z $(echo "${output}" | grep "Executing: make -j${JOBS}") ]] || exit
+
     [[ ! -z $(echo "${output}" | grep "Starting EOSIO Dependency Install") ]] || exit
     [[ ! -z $(echo "${output}" | grep "Executing: /usr/bin/apt-get update") ]] || exit
     [[ ! -z $(echo "${output}" | grep "python.*found!") ]] || exit

@@ -2,6 +2,8 @@
 . ./scripts/.environment
 # Load general helpers
 . ./scripts/helpers/general.bash
+# Load helper for functions that allow us to obtain cores, memory, disk space, etc
+. ./scripts/helpers/system.bash
 
 # Checks for Arch and OS + Support for tests setting them manually
 ## Necessary for linux exclusion while running bats tests/bash-bats/*.bash
