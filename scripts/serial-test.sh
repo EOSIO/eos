@@ -1,7 +1,7 @@
 #!/bin/bash
 set -eo pipefail
 echo "+++ Extracting build directory"
-[[ -f build.tar.gz ]] && tar -xzf build.tar.gz
+[[ -f build.tar.gz ]] && tar -xzf build.tar.gz && ls -l build
 cd build
 echo "+++ Killing old MongoDB"
 $(pgrep mongod | xargs kill -9) || true

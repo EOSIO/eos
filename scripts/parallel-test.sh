@@ -1,7 +1,7 @@
 #!/bin/bash
 set -eo pipefail
 echo "+++ Extracting build directory"
-[[ -f build.tar.gz ]] && tar -xzf build.tar.gz
+[[ -f build.tar.gz ]] && tar -xzf build.tar.gz && ls -l build
 cd build
 echo "+++ Running tests"
 # Counting tests available and if they get disabled for some reason, throw a failure
