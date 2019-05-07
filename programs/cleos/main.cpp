@@ -382,14 +382,14 @@ void print_action( const fc::variant& at ) {
 }
 
 //resolver for ABI serializer to decode actions in proposed transaction in multisig contract
-auto abi_serializer_resolver = [](const name& account) -> optional<abi_serializer> {
-   static unordered_map<account_name, optional<abi_serializer> > abi_cache;
+auto abi_serializer_resolver = [](const name& account) -> fc::optional<abi_serializer> {
+   static unordered_map<account_name, fc::optional<abi_serializer> > abi_cache;
    auto it = abi_cache.find( account );
    if ( it == abi_cache.end() ) {
       auto result = call(get_abi_func, fc::mutable_variant_object("account_name", account));
       auto abi_results = result.as<eosio::chain_apis::read_only::get_abi_results>();
 
-      optional<abi_serializer> abis;
+      fc::optional<abi_serializer> abis;
       if( abi_results.abi.valid() ) {
          abis.emplace( *abi_results.abi, abi_serializer_max_time );
       } else {
@@ -443,9 +443,11 @@ bytes json_or_file_to_bin( const account_name& account, const action_name& actio
 
 void print_action_tree( const fc::variant& action ) {
    print_action( action );
-   const auto& inline_traces = action["inline_traces"].get_array();
-   for( const auto& t : inline_traces ) {
-      print_action_tree( t );
+   if( action.get_object().contains( "inline_traces" ) ) {
+      const auto& inline_traces = action["inline_traces"].get_array();
+      for( const auto& t : inline_traces ) {
+         print_action_tree( t );
+      }
    }
 }
 
@@ -453,12 +455,13 @@ void print_result( const fc::variant& result ) { try {
       if (result.is_object() && result.get_object().contains("processed")) {
          const auto& processed = result["processed"];
          const auto& transaction_id = processed["id"].as_string();
-         string status = processed["receipt"].is_object() ? processed["receipt"]["status"].as_string() : "failed";
+         string status = "failed";
          int64_t net = -1;
          int64_t cpu = -1;
          if( processed.get_object().contains( "receipt" )) {
             const auto& receipt = processed["receipt"];
             if( receipt.is_object()) {
+               status = receipt["status"].as_string();
                net = receipt["net_usage_words"].as_int64() * 8;
                cpu = receipt["cpu_usage_us"].as_int64();
             }
@@ -480,7 +483,7 @@ void print_result( const fc::variant& result ) { try {
          cerr << " us\n";
 
          if( status == "failed" ) {
-            auto soft_except = processed["except"].as<optional<fc::exception>>();
+            auto soft_except = processed["except"].as<fc::optional<fc::exception>>();
             if( soft_except ) {
                edump((soft_except->to_detail_string()));
             }
@@ -1744,8 +1747,8 @@ struct unstaketorex_subcommand {
       auto unstaketorex = actionRoot->add_subcommand("unstaketorex", localized("Buy REX using staked tokens"));
       unstaketorex->add_option("owner",    owner_str,    localized("Account buying REX tokens"))->required();
       unstaketorex->add_option("receiver", receiver_str, localized("Account that tokens have been staked to"))->required();
-      unstaketorex->add_option("from_net", from_net_str, localized("Amount to be unstaked from CPU resources and used in REX purchase"))->required();
-      unstaketorex->add_option("from_cpu", from_cpu_str, localized("Amount to be unstaked from Net resources and used in REX purchase"))->required();
+      unstaketorex->add_option("from_net", from_net_str, localized("Amount to be unstaked from Net resources and used in REX purchase"))->required();
+      unstaketorex->add_option("from_cpu", from_cpu_str, localized("Amount to be unstaked from CPU resources and used in REX purchase"))->required();
       add_standard_transaction_options(unstaketorex, "owner@active");
       unstaketorex->set_callback([this] {
          fc::variant act_payload = fc::mutable_variant_object()

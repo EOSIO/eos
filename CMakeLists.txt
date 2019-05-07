@@ -1,4 +1,4 @@
-cmake_minimum_required( VERSION 3.5 )
+cmake_minimum_required( VERSION 3.8 )
 
 project( EOSIO )
 include(CTest) # suppresses DartConfiguration.tcl error
@@ -25,12 +25,12 @@ include( InstallDirectoryPermissions )
 include( MASSigning )
 
 set( BLOCKCHAIN_NAME "EOSIO" )
-set( CMAKE_CXX_STANDARD 14 )
+set( CMAKE_CXX_STANDARD 17 )
 set( CMAKE_CXX_EXTENSIONS ON )
 set( CXX_STANDARD_REQUIRED ON)
 
 set(VERSION_MAJOR 1)
-set(VERSION_MINOR 8)
+set(VERSION_MINOR 9)
 set(VERSION_PATCH 0)
 set(VERSION_SUFFIX develop)
 
@@ -43,21 +43,18 @@ endif()
 set( CLI_CLIENT_EXECUTABLE_NAME cleos )
 set( NODE_EXECUTABLE_NAME nodeos )
 set( KEY_STORE_EXECUTABLE_NAME keosd )
-set( GUI_CLIENT_EXECUTABLE_NAME eosio )
-set( CUSTOM_URL_SCHEME "gcs" )
-set( INSTALLER_APP_ID "68ad7005-8eee-49c9-95ce-9eed97e5b347" )
 
 # http://stackoverflow.com/a/18369825
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-    if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 6.0)
-        message(FATAL_ERROR "GCC version must be at least 6.0!")
+    if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 7.0)
+        message(FATAL_ERROR "GCC version must be at least 7.0!")
     endif()
     if ("${CMAKE_GENERATOR}" STREQUAL "Ninja")
        add_compile_options(-fdiagnostics-color=always)
     endif()
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "AppleClang")
-    if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 4.0)
-        message(FATAL_ERROR "Clang version must be at least 4.0!")
+    if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 5.0)
+        message(FATAL_ERROR "Clang version must be at least 5.0!")
     endif()
     if ("${CMAKE_GENERATOR}" STREQUAL "Ninja")
        add_compile_options(-fcolor-diagnostics)
@@ -69,19 +66,8 @@ set(BUILD_DOXYGEN FALSE CACHE BOOL "Build doxygen documentation on every make")
 set(BUILD_MONGO_DB_PLUGIN FALSE CACHE BOOL "Build mongo database plugin")
 
 # add defaults for openssl
-if ("${OPENSSL_ROOT_DIR}" STREQUAL "")
-   if (NOT "$ENV{OPENSSL_ROOT_DIR}" STREQUAL "")
-      set(OPENSSL_ROOT_DIR $ENV{OPENSSL_ROOT_DIR})
-      set(OPENSSL_INCLUDE_DIR ${OPENSSL_ROOT_DIR}/include)
-   elseif (APPLE)
-      set(OPENSSL_ROOT_DIR "/usr/local/opt/openssl")
-      set(OPENSSL_INCLUDE_DIR "/usr/local/opt/openssl/include")
-   elseif(UNIX AND NOT APPLE)
-      set(OPENSSL_ROOT_DIR "/usr/include/openssl")
-      set(OPENSSL_INCLUDE_DIR "/usr/include/openssl/include")
-   else()
-      message(FATAL_ERROR "openssl not found and don't know where to look, please specify OPENSSL_ROOT_DIR")
-   endif()
+if(APPLE AND UNIX AND "${OPENSSL_ROOT_DIR}" STREQUAL "")
+   set(OPENSSL_ROOT_DIR "/usr/local/opt/openssl")
 endif()
 
 if(UNIX)
@@ -112,12 +98,8 @@ FIND_PACKAGE(Boost 1.67 REQUIRED COMPONENTS
     unit_test_framework
     iostreams)
 
-# Some new stdlibc++s will #error on <experimental/string_view>; a problem for boost pre-1.69
-if( APPLE AND UNIX )
-   add_definitions(-DBOOST_ASIO_DISABLE_STD_EXPERIMENTAL_STRING_VIEW)
-endif()
-
-set(THREADS_PREFER_PTHREAD_FLAG 1)
+set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
+set(THREADS_PREFER_PTHREAD_FLAG TRUE)
 find_package(Threads)
 link_libraries(Threads::Threads)
 
@@ -159,11 +141,11 @@ else( WIN32 ) # Apple AND Linux
     if( APPLE )
         # Apple Specific Options Here
         message( STATUS "Configuring EOSIO on OS X" )
-        set( CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -Wall -Wno-deprecated-declarations" )
+        set( CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} ${CMAKE_CXX_FLAGS} -Wall -Wno-deprecated-declarations" )
     else( APPLE )
         # Linux Specific Options Here
         message( STATUS "Configuring EOSIO on Linux" )
-        set( CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -Wall" )
+        set( CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} ${CMAKE_CXX_FLAGS} -Wall" )
         if ( FULL_STATIC_BUILD )
           set( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libstdc++ -static-libgcc")
         endif ( FULL_STATIC_BUILD )
@@ -223,7 +205,6 @@ add_subdirectory( scripts )
 add_subdirectory( unittests )
 add_subdirectory( tests )
 add_subdirectory( tools )
-add_subdirectory( debian )
 
 install_directory_permissions(DIRECTORY ${CMAKE_INSTALL_FULL_SYSCONFDIR}/eosio)
 
