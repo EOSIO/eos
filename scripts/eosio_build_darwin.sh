@@ -162,7 +162,7 @@ fi
 printf "\\n"
 
 ### clean up force build before starting
-if $FORCE_BUILD;then
+if [ $FORCE_BUILD ];then
    rm -rf  \
    ${SRC_LOCATION}/llvm ${OPT_LOCATION}/llvm4 \
    ${TMP_LOCATION}/clang8 ${OPT_LOCATION}/clang8 \
@@ -176,7 +176,7 @@ fi
 export CPATH="$(python-config --includes | awk '{print $1}' | cut -dI -f2):$CPATH" # Boost has trouble finding pyconfig.h
 printf "Checking Boost library (${BOOST_VERSION}) installation...\\n"
 BOOSTVERSION=$( grep "#define BOOST_VERSION" "$BOOST_ROOT/include/boost/version.hpp" 2>/dev/null | tail -1 | tr -s ' ' | cut -d\  -f3 )
-if [ "${BOOSTVERSION}" != "${BOOST_VERSION_MAJOR}0${BOOST_VERSION_MINOR}0${BOOST_VERSION_PATCH}" ] || $FORCE_BUILD; then
+if [ "${BOOSTVERSION}" != "${BOOST_VERSION_MAJOR}0${BOOST_VERSION_MINOR}0${BOOST_VERSION_PATCH}" ] || [ $FORCE_BUILD ]; then
 	printf "Installing Boost library...\\n"
 	curl -LO https://dl.bintray.com/boostorg/release/$BOOST_VERSION_MAJOR.$BOOST_VERSION_MINOR.$BOOST_VERSION_PATCH/source/boost_$BOOST_VERSION.tar.bz2 \
 	&& tar -xjf boost_$BOOST_VERSION.tar.bz2 \
@@ -200,7 +200,7 @@ printf "\\n"
 
 if [ $BUILD_MONGO ]; then
    printf "Checking MongoDB installation...\\n"
-   if [ ! -d $MONGODB_ROOT ] || $FORCE_BUILD; then
+   if [ ! -d $MONGODB_ROOT ] || [ $FORCE_BUILD ]; then
       printf "Installing MongoDB into ${MONGODB_ROOT}...\\n"
       curl -OL https://fastdl.mongodb.org/osx/mongodb-osx-ssl-x86_64-$MONGODB_VERSION.tgz \
       && tar -xzf mongodb-osx-ssl-x86_64-$MONGODB_VERSION.tgz \
@@ -220,7 +220,7 @@ if [ $BUILD_MONGO ]; then
    fi
    if [ $? -ne 0 ]; then exit -1; fi
    printf "Checking MongoDB C driver installation...\\n"
-   if [ ! -d $MONGO_C_DRIVER_ROOT ] || $FORCE_BUILD; then
+   if [ ! -d $MONGO_C_DRIVER_ROOT ] || [ $FORCE_BUILD ]; then
       printf "Installing MongoDB C driver...\\n"
       curl -LO https://github.com/mongodb/mongo-c-driver/releases/download/$MONGO_C_DRIVER_VERSION/mongo-c-driver-$MONGO_C_DRIVER_VERSION.tar.gz \
       && tar -xzf mongo-c-driver-$MONGO_C_DRIVER_VERSION.tar.gz \
@@ -239,7 +239,7 @@ if [ $BUILD_MONGO ]; then
    fi
    if [ $? -ne 0 ]; then exit -1; fi
    printf "Checking MongoDB C++ driver installation...\\n"
-   if [ "$(grep "Version:" $PREFIX/lib/pkgconfig/libmongocxx-static.pc 2>/dev/null | tr -s ' ' | awk '{print $2}')" != $MONGO_CXX_DRIVER_VERSION ] || $FORCE_BUILD; then
+   if [ "$(grep "Version:" $PREFIX/lib/pkgconfig/libmongocxx-static.pc 2>/dev/null | tr -s ' ' | awk '{print $2}')" != $MONGO_CXX_DRIVER_VERSION ] || [ $FORCE_BUILD ]; then
       printf "Installing MongoDB C++ driver...\\n"
       curl -L https://github.com/mongodb/mongo-cxx-driver/archive/r$MONGO_CXX_DRIVER_VERSION.tar.gz -o mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION.tar.gz \
       && tar -xzf mongo-cxx-driver-r${MONGO_CXX_DRIVER_VERSION}.tar.gz \
@@ -279,7 +279,7 @@ printf "\\n"
 
 if [ "$BUILD_CLANG8" = "true" ]; then
    printf "Checking Clang 8 support...\\n"
-   if [ ! -d $CLANG8_ROOT ] || $FORCE_BUILD; then
+   if [ ! -d $CLANG8_ROOT ] || [ $FORCE_BUILD ]; then
       printf "Installing Clang 8...\\n"
       cd ${TMP_LOCATION} \
       && git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/llvm.git clang8 \
