@@ -284,7 +284,7 @@ function ensure-yum-packages() {
         case $PROCEED in
             "" ) echo "What would you like to do?";;
             0 | true | [Yy]* )
-                if ! execute $( [[ $CURRENT_USER == "root" ]] || echo sudo ) $YUM -y update; then
+                if ! execute $( [[ $CURRENT_USER == "root" ]] || echo /usr/bin/sudo -E ) $YUM -y update; then
                     echo " - ${COLOR_RED}YUM update failed.${COLOR_NC}"
                     exit 1;
                 else
@@ -305,7 +305,7 @@ function ensure-yum-packages() {
                     "" ) echo "What would you like to do?";;
                     0 | true | [Yy]* )
                         echo "Installing Centos Software Collections Repository..."
-                        if ! execute $( [[ $CURRENT_USER == "root" ]] || echo sudo -E ) "${YUM}" -y --enablerepo=extras install centos-release-scl; then
+                        if ! execute $( [[ $CURRENT_USER == "root" ]] || echo /usr/bin/sudo -E ) "${YUM}" -y --enablerepo=extras install centos-release-scl; then
                             echo " - Centos Software Collections Repository installation failed." && exit 1;
                         else
                             echo " - Centos Software Collections Repository installed successfully."
@@ -338,7 +338,7 @@ function ensure-yum-packages() {
             case $PROCEED in
                 "" ) echo "What would you like to do?";;
                 0 | true | [Yy]* )
-                    execute eval $( [[ $CURRENT_USER == "root" ]] || echo sudo ) $YUM -y install $DEPS
+                    execute eval $( [[ $CURRENT_USER == "root" ]] || echo /usr/bin/sudo -E ) $YUM -y install $DEPS
                 break;;
                 1 | false | [Nn]* ) echo " ${COLOR_RED}- User aborted installation of required dependencies.${COLOR_NC}"; exit;;
                 * ) echo "Please type 'y' for yes or 'n' for no.";;
@@ -436,7 +436,7 @@ function ensure-apt-packages() {
             case $PROCEED in
                 "" ) echo "What would you like to do?";;
                 0 | true | [Yy]* )
-                    execute eval $( [[ $CURRENT_USER == "root" ]] || echo sudo -E ) $APTGET -y install $DEPS
+                    execute eval $( [[ $CURRENT_USER == "root" ]] || echo /usr/bin/sudo -E ) $APTGET -y install $DEPS
                 break;;
                 1 | false | [Nn]* ) echo " ${COLOR_RED}- User aborted installation of required dependencies.${COLOR_NC}"; exit;;
                 * ) echo "Please type 'y' for yes or 'n' for no.";;

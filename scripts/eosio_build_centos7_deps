@@ -16,6 +16,5 @@ python-devel,rpm -qa
 rh-python36,rpm -qa
 gettext-devel,rpm -qa
 file,rpm -qa
-sudo,rpm -qa
 libusbx-devel,rpm -qa
 libcurl-devel,rpm -qa
