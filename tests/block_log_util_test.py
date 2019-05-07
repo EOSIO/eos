@@ -32,7 +32,6 @@ keepLogs=args.keep_logs
 dontKill=args.leave_running
 prodCount=2
 killAll=args.clean_run
-p2pPlugin="net"
 walletPort=TestHelper.DEFAULT_WALLET_PORT
 totalNodes=pnodes
 
@@ -51,8 +50,7 @@ try:
     cluster.killall(allInstances=killAll)
     cluster.cleanup()
     Print("Stand up cluster")
-    if cluster.launch(prodCount=prodCount, onlyBios=False, pnodes=pnodes, totalNodes=totalNodes, totalProducers=pnodes*prodCount, p2pPlugin=p2pPlugin,
-                      useBiosBootFile=False) is False:
+    if cluster.launch(prodCount=prodCount, onlyBios=False, pnodes=pnodes, totalNodes=totalNodes, totalProducers=pnodes*prodCount, useBiosBootFile=False) is False:
         Utils.errorExit("Failed to stand up eos cluster.")
 
     Print("Validating system accounts after bootstrap")
