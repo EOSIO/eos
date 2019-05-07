@@ -219,7 +219,7 @@ if [ "$BUILD_CLANG8" = "true" ]; then
 
    cd $SRC_LOCATION
    printf "Checking zlib library installation...\\n"
-   if [ ! -d $OPT_LOCATION/zlib || $FORCE_BUILD ]; then
+   if [ ! -d $OPT_LOCATION/zlib ] || [ $FORCE_BUILD ]; then
       printf "Installing zlib...\\n"
       curl -LO https://www.zlib.net/zlib-1.2.11.tar.gz && tar -xf zlib-1.2.11.tar.gz \
       && cd zlib-1.2.11 && mkdir build && cd build \
