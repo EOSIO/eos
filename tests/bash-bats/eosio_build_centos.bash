@@ -35,7 +35,6 @@ export TEST_LABEL="[eosio_build_centos]"
     [[ ! -z $(echo "${output}" | grep "Centos devtoolset-7 successfully enabled") ]] || exit
     [[ ! -z $(echo "${output}" | grep "Python36 successfully enabled") ]] || exit
     [[ ! -z $(echo "${output}" | grep "python.*found!") ]] || exit
-    [[ ! -z $(echo "${output}" | grep "sudo.*NOT.*found.") ]] || exit
     [[ ! -z $(echo "${output}" | grep "Ensuring CMAKE") ]] || exit
     [[ ! -z $(echo "${output}" | grep ${HOME}.*/src/boost) ]] || exit
     [[ ! -z $(echo "${output}" | grep "Starting EOSIO Build") ]] || exit

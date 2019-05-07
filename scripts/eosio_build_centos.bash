@@ -27,7 +27,7 @@ if [[ -z "${DEVTOOLSET}" ]]; then
 			"" ) echo "What would you like to do?";;
 			0 | true | [Yy]* )
 				echo "Installing devtoolset-7..."
-				if ! execute $( [[ $CURRENT_USER == "root" ]] || echo sudo -E ) /usr/bin/sudo "${YUM}" install -y devtoolset-7; then
+				if ! execute $( [[ $CURRENT_USER == "root" ]] || echo /usr/bin/sudo -E ) "${YUM}" install -y devtoolset-7; then
 						echo " - Centos devtoolset-7 installation failed." && exit 1;
 				else
 						echo " - Centos devtoolset installed successfully."
