@@ -17,7 +17,7 @@ namespace eosio { namespace chain {
       OBJECT_CTOR(reversible_block_object,(packedblock) )
 
       id_type        id;
-      uint32_t       blocknum = 0;
+      uint32_t       blocknum = 0; //< blocknum should not be changed within a chainbase modifier lambda
       shared_string  packedblock;
 
       void set_block( const signed_block_ptr& b ) {

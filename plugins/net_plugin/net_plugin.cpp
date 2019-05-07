@@ -2842,7 +2842,7 @@ namespace eosio {
       hello.os = "osx";
 #elif defined( __linux__ )
       hello.os = "linux";
-#elif defined( _MSC_VER )
+#elif defined( _WIN32 )
       hello.os = "win32";
 #else
       hello.os = "other";
