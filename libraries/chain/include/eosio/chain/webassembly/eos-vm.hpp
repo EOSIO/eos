@@ -68,6 +68,16 @@ namespace eosio { namespace wasm_backend {
       return eosio::chain::array_ptr<under_ty>(ptr);
    }
 
+   template <typename Ctx>
+   struct construct_derived<eosio::chain::transaction_context, Ctx> {
+      static auto &value(Ctx& ctx) { return ctx.trx_context; }
+   };
+   
+   template <>
+   struct construct_derived<eosio::chain::apply_context, eosio::chain::apply_context> {
+      static auto &value(eosio::chain::apply_context& ctx) { return ctx; }
+   };
+
    template <>
    struct reduce_type<eosio::chain::null_terminated_ptr> {
       typedef uint32_t type;

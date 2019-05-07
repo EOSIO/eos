@@ -1001,13 +1001,15 @@ class action_api : public context_aware_api {
    action_api( apply_context& ctx )
       :context_aware_api(ctx,true){}
 
-      int read_action_data(array_ptr<char> memory, size_t buffer_size) {
+      int read_action_data(array_ptr<char> memory, size_t buffer_size) __attribute__((target("no-sse"))) {
          auto s = context.get_action().data.size();
          if( buffer_size == 0 ) return s;
 
          auto copy_size = std::min( buffer_size, s );
          const char* d = context.get_action().data.data();
-         memcpy( (char*)memory.value, context.get_action().data.data(), copy_size );
+	 for (int i=0; i < copy_size; i++)
+            ((char*)memory.value)[i] = (context.get_action().data.data())[i];
+         //memcpy( (char*)memory.value, context.get_action().data.data(), copy_size );
 
          return copy_size;
       }
