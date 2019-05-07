@@ -6,7 +6,7 @@ cd build
 echo "+++ Running tests"
 # Counting tests available and if they get disabled for some reason, throw a failure
 TEST_COUNT=$(ctest -N -LE _tests | grep -i 'Total Tests: ' | cut -d ':' -f 2 | awk '{print $1}')
-[[ $TEST_COUNT > 0 ]] && echo " - $TEST_COUNT tests found." || (echo "ERROR: No tests registered with ctest! Exiting..." && exit 1)
+[[ $TEST_COUNT > 0 ]] && echo "$TEST_COUNT tests found." || (echo "ERROR: No tests registered with ctest! Exiting..." && exit 1)
 set +e # defer ctest error handling to end
 CORES=$(getconf _NPROCESSORS_ONLN)
 echo "ctest -j $CORES -LE _tests --output-on-failure -T Test"
