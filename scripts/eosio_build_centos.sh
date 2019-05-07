@@ -60,7 +60,7 @@ printf " - Yum installation found at %s.\\n" "${YUM}"
 if [ $ANSWER != 1 ]; then read -p "Do you wish to update YUM repositories? (y/n) " ANSWER; fi
 case $ANSWER in
 	1 | [Yy]* )
-		if ! /usr/bin/sudo -E $YUM -y update; then # Must set full path to sudo as `sudo -E throws a "command not found"`
+		if ! $( [[ $(whoami) == "root" ]] || echo /usr/bin/sudo -E ) $YUM -y update; then # Must set full path to sudo as `sudo -E throws a "command not found"`
 			printf " - YUM update failed.\\n"
 			exit 1;
 		else
@@ -78,7 +78,7 @@ if [ -z "${SCL}" ]; then
 	case $ANSWER in
 		1 | [Yy]* )
 			printf "Installing SCL...\\n"
-			if ! /usr/bin/sudo -E $YUM -y --enablerepo=extras install centos-release-scl 2>/dev/null; then
+			if ! $( [[ $(whoami) == "root" ]] || echo /usr/bin/sudo -E ) $YUM -y --enablerepo=extras install centos-release-scl 2>/dev/null; then
 				printf "!! Centos Software Collections Repository installation failed !!\\n"
 				printf "Exiting now.\\n\\n"
 				exit 1;
@@ -100,7 +100,7 @@ if [ -z "${DEVTOOLSET}" ]; then
 	case $ANSWER in
 		1 | [Yy]* )
 			printf "Installing devtoolset-7...\\n"
-			if ! /usr/bin/sudo -E $YUM install -y devtoolset-7; then
+			if ! $( [[ $(whoami) == "root" ]] || echo /usr/bin/sudo -E ) $YUM install -y devtoolset-7; then
 					printf "!! Centos devtoolset-7 installation failed !!\\n"
 					printf "Exiting now.\\n"
 					exit 1;
@@ -150,7 +150,7 @@ if [ "${COUNT}" -gt 1 ]; then
 	if [ $ANSWER != 1 ]; then read -p "Do you wish to install these dependencies? (y/n) " ANSWER; fi
 	case $ANSWER in
 		1 | [Yy]* )
-			if ! /usr/bin/sudo -E "${YUM}" -y install ${DEP}; then
+			if ! $( [[ $(whoami) == "root" ]] || echo /usr/bin/sudo -E ) "${YUM}" -y install ${DEP}; then
 				printf " - YUM dependency installation failed!\\n"
 				exit 1;
 			else
