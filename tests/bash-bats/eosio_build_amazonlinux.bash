@@ -17,7 +17,7 @@ export TEST_LABEL="[eosio_build_amazonlinux]"
 # Testing Clang
 ./tests/bash-bats/modules/clang.bash
 # Testing Prompts
-./tests/bash-bats/modules/prompts.bash
+./tests/bash-bats/modules/dep_script_prompts.bash
 
 ## Needed to load eosio_build_ files properly; it can be empty
 @test "${TEST_LABEL} > General" { setup-bats-dirs
