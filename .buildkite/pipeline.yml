@@ -177,7 +177,7 @@ steps:
   # AmazonLinux #
   - label: ":aws: Amazon Linux 2 Tests"
     command:
-      - "buildkite-agent artifact download \"build.tar.gz\" . --step \":aws: Amazon Linux 2 Build\""
+      - "echo \"--- :arrow_down: Downloading Build Directory\" && buildkite-agent artifact download \"build.tar.gz\" . --step \":aws: Amazon Linux 2 Build\""
       - "./scripts/parallel-test.sh"
     agents:
       queue: "automation-large-builder-fleet"
@@ -197,7 +197,7 @@ steps:
 
   - label: ":aws: Amazon Linux 2 NP Tests"
     command:
-      - "buildkite-agent artifact download \"build.tar.gz\" . --step \":aws: Amazon Linux 2 Build\""
+      - "echo \"--- :arrow_down: Downloading Build Directory\" && buildkite-agent artifact download \"build.tar.gz\" . --step \":aws: Amazon Linux 2 Build\""
       - "./scripts/serial-test.sh"
     label: ":aws: Amazon Linux 2 NP Tests"
     agents:
@@ -219,7 +219,7 @@ steps:
   # CentOS #
   - label: ":centos: CentOS 7 Tests"
     command:
-      - "buildkite-agent artifact download \"build.tar.gz\" . --step \":centos: CentOS 7 Build\""
+      - "echo \"--- :arrow_down: Downloading Build Directory\" && buildkite-agent artifact download \"build.tar.gz\" . --step \":centos: CentOS 7 Build\""
       - "./scripts/parallel-test.sh"
     agents:
       queue: "automation-large-builder-fleet"
@@ -239,7 +239,7 @@ steps:
 
   - label: ":centos: CentOS 7 NP Tests"
     command:
-      - "buildkite-agent artifact download \"build.tar.gz\" . --step \":centos: CentOS 7 Build\""
+      - "echo \"--- :arrow_down: Downloading Build Directory\" && buildkite-agent artifact download \"build.tar.gz\" . --step \":centos: CentOS 7 Build\""
       - "./scripts/serial-test.sh"
     agents:
       queue: "automation-large-builder-fleet"
@@ -260,7 +260,7 @@ steps:
   # Ubuntu #
   - label: ":ubuntu: Ubuntu 16.04 Tests"
     command:
-      - "buildkite-agent artifact download \"build.tar.gz\" . --step \":ubuntu: Ubuntu 16.04 Build\""
+      - "echo \"--- :arrow_down: Downloading Build Directory\" && buildkite-agent artifact download \"build.tar.gz\" . --step \":ubuntu: Ubuntu 16.04 Build\""
       - "./scripts/parallel-test.sh"
     agents:
       queue: "automation-large-builder-fleet"
@@ -280,7 +280,7 @@ steps:
 
   - label: ":ubuntu: Ubuntu 16.04 NP Tests"
     command:
-      - "buildkite-agent artifact download \"build.tar.gz\" . --step \":ubuntu: Ubuntu 16.04 Build\""
+      - "echo \"--- :arrow_down: Downloading Build Directory\" && buildkite-agent artifact download \"build.tar.gz\" . --step \":ubuntu: Ubuntu 16.04 Build\""
       - "./scripts/serial-test.sh"
     agents:
       queue: "automation-large-builder-fleet"
@@ -300,7 +300,7 @@ steps:
 
   - label: ":ubuntu: Ubuntu 18.04 Tests"
     command:
-      - "buildkite-agent artifact download \"build.tar.gz\" . --step \":ubuntu: Ubuntu 18.04 Build\""
+      - "echo \"--- :arrow_down: Downloading Build Directory\" && buildkite-agent artifact download \"build.tar.gz\" . --step \":ubuntu: Ubuntu 18.04 Build\""
       - "./scripts/parallel-test.sh"
     agents:
       queue: "automation-large-builder-fleet"
@@ -320,7 +320,7 @@ steps:
 
   - label: ":ubuntu: Ubuntu 18.04 NP Tests"
     command:
-      - "buildkite-agent artifact download \"build.tar.gz\" . --step \":ubuntu: Ubuntu 18.04 Build\""
+      - "echo \"--- :arrow_down: Downloading Build Directory\" && buildkite-agent artifact download \"build.tar.gz\" . --step \":ubuntu: Ubuntu 18.04 Build\""
       - "./scripts/serial-test.sh"
     agents:
       queue: "automation-large-builder-fleet"
@@ -355,7 +355,7 @@ steps:
   - label: ":centos: CentOS 7 Package Builder"
     command: |
         echo "--- :arrow_down: Downloading build directory"
-        buildkite-agent artifact download "build.tar.gz" . --step ":centos: CentOS 7 Build"
+        echo \"--- :arrow_down: Downloading Build Directory\" && buildkite-agent artifact download "build.tar.gz" . --step ":centos: CentOS 7 Build"
         tar -zxf build.tar.gz
         echo "+++ :microscope: Starting package build"
         yum install -y rpm-build
@@ -390,7 +390,7 @@ steps:
 
   - command: | # Ubuntu 16.04 Package Builder
         echo "--- :arrow_down: Downloading build directory"
-        buildkite-agent artifact download "build.tar.gz" . --step ":ubuntu: Ubuntu 16.04 Build"
+        echo \"--- :arrow_down: Downloading Build Directory\" && buildkite-agent artifact download "build.tar.gz" . --step ":ubuntu: Ubuntu 16.04 Build"
         tar -zxf build.tar.gz
         echo "+++ :microscope: Starting package build"
         cd /data/job/build/packages
@@ -419,7 +419,7 @@ steps:
 
   - command: | # Ubuntu 18.04 Package Builder
         echo "--- :arrow_down: Downloading build directory"
-        buildkite-agent artifact download "build.tar.gz" . --step ":ubuntu: Ubuntu 18.04 Build"
+        echo \"--- :arrow_down: Downloading Build Directory\" && buildkite-agent artifact download "build.tar.gz" . --step ":ubuntu: Ubuntu 18.04 Build"
         tar -zxf build.tar.gz
         echo "+++ :microscope: Starting package build"
         cd /data/job/build/packages
@@ -470,7 +470,7 @@ steps:
 
   - command: | # Brew Updater
         echo "--- :arrow_down: Downloading brew files"
-        buildkite-agent artifact download "build/packages/eosio.rb" . --step ":darwin: Mojave Package Builder"
+        echo \"--- :arrow_down: Downloading Build Directory\" && buildkite-agent artifact download "build/packages/eosio.rb" . --step ":darwin: Mojave Package Builder"
     label: ":darwin: Brew Updater"
     agents:
       queue: "automation-large-builder-fleet"
