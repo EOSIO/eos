@@ -3030,9 +3030,11 @@ bool controller::all_subjective_mitigations_disabled()const {
 }
 
 fc::optional<uint64_t> controller::convert_exception_to_error_code( const fc::exception& e ) {
-   const eosio_assert_code_exception* e_ptr = dynamic_cast<const eosio_assert_code_exception*>( &e );
+   const chain_exception* e_ptr = dynamic_cast<const chain_exception*>( &e );
 
    if( e_ptr == nullptr ) return {};
+
+   if( !e_ptr->error_code ) return static_cast<uint64_t>(system_error_code::generic_system_error);
 
    return e_ptr->error_code;
 }

@@ -66,19 +66,8 @@ set(BUILD_DOXYGEN FALSE CACHE BOOL "Build doxygen documentation on every make")
 set(BUILD_MONGO_DB_PLUGIN FALSE CACHE BOOL "Build mongo database plugin")
 
 # add defaults for openssl
-if ("${OPENSSL_ROOT_DIR}" STREQUAL "")
-   if (NOT "$ENV{OPENSSL_ROOT_DIR}" STREQUAL "")
-      set(OPENSSL_ROOT_DIR $ENV{OPENSSL_ROOT_DIR})
-      set(OPENSSL_INCLUDE_DIR ${OPENSSL_ROOT_DIR}/include)
-   elseif (APPLE)
-      set(OPENSSL_ROOT_DIR "/usr/local/opt/openssl")
-      set(OPENSSL_INCLUDE_DIR "/usr/local/opt/openssl/include")
-   elseif(UNIX AND NOT APPLE)
-      set(OPENSSL_ROOT_DIR "/usr/include/openssl")
-      set(OPENSSL_INCLUDE_DIR "/usr/include/openssl/include")
-   else()
-      message(FATAL_ERROR "openssl not found and don't know where to look, please specify OPENSSL_ROOT_DIR")
-   endif()
+if(APPLE AND UNIX AND "${OPENSSL_ROOT_DIR}" STREQUAL "")
+   set(OPENSSL_ROOT_DIR "/usr/local/opt/openssl")
 endif()
 
 if(UNIX)
@@ -108,8 +97,6 @@ FIND_PACKAGE(Boost 1.67 REQUIRED COMPONENTS
     chrono
     unit_test_framework
     iostreams)
-
-add_definitions(-DBOOST_ASIO_DISABLE_STD_EXPERIMENTAL_STRING_VIEW)
 
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 set(THREADS_PREFER_PTHREAD_FLAG TRUE)

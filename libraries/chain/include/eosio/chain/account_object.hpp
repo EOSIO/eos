@@ -17,7 +17,7 @@ namespace eosio { namespace chain {
       OBJECT_CTOR(account_object,(abi))
 
       id_type              id;
-      account_name         name;
+      account_name         name; //< name should not be changed within a chainbase modifier lambda
       block_timestamp_type creation_date;
       shared_blob          abi;
 
@@ -56,7 +56,7 @@ namespace eosio { namespace chain {
       };
 
       id_type               id;
-      account_name          name;
+      account_name          name; //< name should not be changed within a chainbase modifier lambda
       uint64_t              recv_sequence = 0;
       uint64_t              auth_sequence = 0;
       uint64_t              code_sequence = 0;
@@ -88,7 +88,7 @@ namespace eosio { namespace chain {
       OBJECT_CTOR(account_ram_correction_object);
 
       id_type      id;
-      account_name name;
+      account_name name; //< name should not be changed within a chainbase modifier lambda
       uint64_t     ram_correction = 0;
    };
 

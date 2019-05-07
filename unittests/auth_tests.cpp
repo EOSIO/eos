@@ -8,7 +8,6 @@
 #include <eosio/chain/resource_limits_private.hpp>
 
 #include <eosio/testing/tester_network.hpp>
-#include <eosio/chain/producer_object.hpp>
 
 #ifdef NON_VALIDATING_TEST
 #define TESTER tester

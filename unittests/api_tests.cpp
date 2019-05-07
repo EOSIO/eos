@@ -24,6 +24,7 @@
 #include <eosio/chain/contract_table_objects.hpp>
 #include <eosio/chain/block_summary_object.hpp>
 #include <eosio/chain/global_property_object.hpp>
+#include <eosio/chain/generated_transaction_object.hpp>
 #include <eosio/chain/wasm_interface.hpp>
 #include <eosio/chain/resource_limits.hpp>
 
@@ -1090,7 +1091,7 @@ BOOST_FIXTURE_TEST_CASE(transaction_tests, TESTER) { try {
       transaction_trace_ptr trace;
       auto c = control->applied_transaction.connect([&](std::tuple<const transaction_trace_ptr&, const signed_transaction&> x) {
          auto& t = std::get<0>(x);
-         if (t && t->receipt && t->receipt->status != transaction_receipt::executed) { trace = t; } 
+         if (t && t->receipt && t->receipt->status != transaction_receipt::executed) { trace = t; }
       } );
 
       // test error handling on deferred transaction failure
@@ -1139,7 +1140,7 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
       transaction_trace_ptr trace;
       auto c = control->applied_transaction.connect([&](std::tuple<const transaction_trace_ptr&, const signed_transaction&> x) {
          auto& t = std::get<0>(x);
-         if (t->scheduled) { trace = t; } 
+         if (t->scheduled) { trace = t; }
       } );
       CALL_TEST_FUNCTION(*this, "test_transaction", "send_deferred_transaction", {} );
       BOOST_CHECK(!trace);
@@ -1315,6 +1316,186 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
    }
 
    BOOST_REQUIRE_EQUAL( validate(), true );
+} FC_LOG_AND_RETHROW() }
+
+BOOST_AUTO_TEST_CASE(more_deferred_transaction_tests) { try {
+   auto cfg = validating_tester::default_config();
+   cfg.contracts_console = true;
+   validating_tester chain( cfg );
+   chain.execute_setup_policy( setup_policy::preactivate_feature_and_new_bios );
+
+   const auto& pfm = chain.control->get_protocol_feature_manager();
+   auto d = pfm.get_builtin_digest( builtin_protocol_feature_t::replace_deferred );
+   BOOST_REQUIRE( d );
+
+   chain.preactivate_protocol_features( {*d} );
+   chain.produce_block();
+
+   const auto& index = chain.control->db().get_index<generated_transaction_multi_index,by_id>();
+
+   auto print_deferred = [&index]() {
+      for( const auto& gto : index ) {
+         wlog("id = ${id}, trx_id = ${trx_id}", ("id", gto.id)("trx_id", gto.trx_id));
+      }
+   };
+
+   const auto& contract_account = account_name("tester");
+   const auto& test_account = account_name("alice");
+
+   chain.create_accounts( {contract_account, test_account} );
+   chain.set_code( contract_account, contracts::deferred_test_wasm() );
+   chain.set_abi( contract_account, contracts::deferred_test_abi().data() );
+   chain.produce_block();
+
+   BOOST_REQUIRE_EQUAL(0, index.size());
+
+   chain.push_action( contract_account, N(delayedcall), test_account, fc::mutable_variant_object()
+      ("payer",     test_account)
+      ("sender_id", 0)
+      ("contract",  contract_account)
+      ("payload",   42)
+      ("delay_sec", 1000)
+      ("replace_existing", false)
+   );
+
+   BOOST_REQUIRE_EQUAL(1, index.size());
+   print_deferred();
+
+   signed_transaction trx;
+   trx.actions.emplace_back(
+      chain.get_action( contract_account, N(delayedcall),
+                  vector<permission_level>{{test_account, config::active_name}},
+                  fc::mutable_variant_object()
+                     ("payer",     test_account)
+                     ("sender_id", 0)
+                     ("contract",  contract_account)
+                     ("payload",   13)
+                     ("delay_sec", 1000)
+                     ("replace_existing", true)
+      )
+   );
+   trx.actions.emplace_back(
+      chain.get_action( contract_account, N(delayedcall),
+                  vector<permission_level>{{test_account, config::active_name}},
+                  fc::mutable_variant_object()
+                     ("payer",     test_account)
+                     ("sender_id", 1)
+                     ("contract",  contract_account)
+                     ("payload",   42)
+                     ("delay_sec", 1000)
+                     ("replace_existing", false)
+      )
+   );
+   trx.actions.emplace_back(
+      chain.get_action( contract_account, N(fail),
+                  vector<permission_level>{},
+                  fc::mutable_variant_object()
+      )
+   );
+   chain.set_transaction_headers(trx);
+   trx.sign( chain.get_private_key( test_account, "active" ), chain.control->get_chain_id() );
+   BOOST_REQUIRE_EXCEPTION(
+      chain.push_transaction( trx ),
+      eosio_assert_message_exception,
+      eosio_assert_message_is("fail")
+   );
+
+   BOOST_REQUIRE_EQUAL(1, index.size());
+   print_deferred();
+
+   chain.produce_blocks(2);
+
+   chain.push_action( contract_account, N(delayedcall), test_account, fc::mutable_variant_object()
+      ("payer",     test_account)
+      ("sender_id", 1)
+      ("contract",  contract_account)
+      ("payload",   101)
+      ("delay_sec", 1000)
+      ("replace_existing", false)
+   );
+
+   chain.push_action( contract_account, N(delayedcall), test_account, fc::mutable_variant_object()
+      ("payer",     test_account)
+      ("sender_id", 2)
+      ("contract",  contract_account)
+      ("payload",   102)
+      ("delay_sec", 1000)
+      ("replace_existing", false)
+   );
+
+   BOOST_REQUIRE_EQUAL(3, index.size());
+   print_deferred();
+
+   BOOST_REQUIRE_THROW(
+      chain.push_action( contract_account, N(delayedcall), test_account, fc::mutable_variant_object()
+         ("payer",     test_account)
+         ("sender_id", 2)
+         ("contract",  contract_account)
+         ("payload",   101)
+         ("delay_sec", 1000)
+         ("replace_existing", true)
+      ),
+      fc::exception
+   );
+
+   BOOST_REQUIRE_EQUAL(3, index.size());
+   print_deferred();
+
+   signed_transaction trx2;
+   trx2.actions.emplace_back(
+      chain.get_action( contract_account, N(delayedcall),
+                  vector<permission_level>{{test_account, config::active_name}},
+                  fc::mutable_variant_object()
+                     ("payer",     test_account)
+                     ("sender_id", 1)
+                     ("contract",  contract_account)
+                     ("payload",   100)
+                     ("delay_sec", 1000)
+                     ("replace_existing", true)
+      )
+   );
+   trx2.actions.emplace_back(
+      chain.get_action( contract_account, N(delayedcall),
+                  vector<permission_level>{{test_account, config::active_name}},
+                  fc::mutable_variant_object()
+                     ("payer",     test_account)
+                     ("sender_id", 2)
+                     ("contract",  contract_account)
+                     ("payload",   101)
+                     ("delay_sec", 1000)
+                     ("replace_existing", true)
+      )
+   );
+   trx2.actions.emplace_back(
+      chain.get_action( contract_account, N(delayedcall),
+                  vector<permission_level>{{test_account, config::active_name}},
+                  fc::mutable_variant_object()
+                     ("payer",     test_account)
+                     ("sender_id", 1)
+                     ("contract",  contract_account)
+                     ("payload",   102)
+                     ("delay_sec", 1000)
+                     ("replace_existing", true)
+      )
+   );
+   trx2.actions.emplace_back(
+      chain.get_action( contract_account, N(fail),
+                  vector<permission_level>{},
+                  fc::mutable_variant_object()
+      )
+   );
+   chain.set_transaction_headers(trx2);
+   trx2.sign( chain.get_private_key( test_account, "active" ), chain.control->get_chain_id() );
+   BOOST_REQUIRE_EXCEPTION(
+      chain.push_transaction( trx2 ),
+      eosio_assert_message_exception,
+      eosio_assert_message_is("fail")
+   );
+
+   BOOST_REQUIRE_EQUAL(3, index.size());
+   print_deferred();
+
+   BOOST_REQUIRE_EQUAL( chain.validate(), true );
 } FC_LOG_AND_RETHROW() }
 
 template <uint64_t NAME>
@@ -2091,6 +2272,21 @@ BOOST_FIXTURE_TEST_CASE(eosio_assert_code_tests, TESTER) { try {
    auto omsg3 = abis.get_error_message(42);
    BOOST_REQUIRE_EQUAL( omsg3.valid(), true );
    BOOST_CHECK_EQUAL( *omsg3, "The answer to life, the universe, and everything." );
+
+   produce_block();
+
+   auto trace2 = CALL_TEST_FUNCTION_NO_THROW(
+                  *this, "test_action", "test_assert_code",
+                  fc::raw::pack( static_cast<uint64_t>(system_error_code::generic_system_error) )
+   );
+   BOOST_REQUIRE( trace2 );
+   BOOST_REQUIRE( trace2->except );
+   BOOST_REQUIRE( trace2->error_code );
+   BOOST_REQUIRE_EQUAL( *trace2->error_code, static_cast<uint64_t>(system_error_code::contract_restricted_error_code) );
+   BOOST_REQUIRE_EQUAL( trace2->action_traces.size(), 1 );
+   BOOST_REQUIRE( trace2->action_traces[0].except );
+   BOOST_REQUIRE( trace2->action_traces[0].error_code );
+   BOOST_REQUIRE_EQUAL( *trace2->action_traces[0].error_code, static_cast<uint64_t>(system_error_code::contract_restricted_error_code) );
 
    produce_block();
 
