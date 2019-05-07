@@ -34,7 +34,7 @@ steps:
         region: "us-west-2"
       docker#v2.1.0:
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux2_2-4"
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux2_2-3"
         propagate-environment: true
         workdir: /data/job
     timeout: 120
@@ -57,7 +57,7 @@ steps:
         region: "us-west-2"
       docker#v2.1.0:
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:centos7_2-4"
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:centos7_2-3"
         propagate-environment: true
         workdir: /data/job
     timeout: 120
@@ -80,7 +80,7 @@ steps:
         region: "us-west-2"
       docker#v2.1.0:
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu16_2-4"
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu16_2-3"
         propagate-environment: true
         workdir: /data/job
     timeout: 120
@@ -103,7 +103,7 @@ steps:
         region: "us-west-2"
       docker#v2.1.0:
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu18_2-4"
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu18_2-3"
         propagate-environment: true
         workdir: /data/job
     timeout: 120
@@ -127,7 +127,7 @@ steps:
         region: "us-west-2"
       docker#v2.1.0:
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux2_2-4"
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux2_2-3"
         propagate-environment: true
         workdir: /data/job
     timeout: 60
@@ -170,7 +170,7 @@ steps:
         region: "us-west-2"
       docker#v2.1.0:
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:centos7_2-4"
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:centos7_2-3"
         propagate-environment: true
         workdir: /data/job
     timeout: 60
@@ -213,7 +213,7 @@ steps:
         region: "us-west-2"
       docker#v2.1.0:
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu16_2-4"
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu16_2-3"
         propagate-environment: true
         workdir: /data/job
     timeout: 60
@@ -256,7 +256,7 @@ steps:
         region: "us-west-2"
       docker#v2.1.0:
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu18_2-4"
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu18_2-3"
         propagate-environment: true
         workdir: /data/job
     timeout: 60
@@ -347,7 +347,7 @@ steps:
         region: "us-west-2"
       docker#v2.1.0:
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:centos7_2-4"
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:centos7_2-3"
         propagate-environment: true
         workdir: /data/job
     env:
@@ -375,7 +375,7 @@ steps:
         region: "us-west-2"
       docker#v2.1.0:
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu16_2-4"
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu16_2-3"
         propagate-environment: true
         workdir: /data/job
     env:
@@ -403,7 +403,7 @@ steps:
         region: "us-west-2"
       docker#v2.1.0:
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu18_2-4"
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu18_2-3"
         propagate-environment: true
         workdir: /data/job
     env:
