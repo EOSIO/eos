@@ -109,6 +109,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
    chain_plugin*                                              chain_plug = nullptr;
    fc::optional<state_history_log>                            trace_log;
    fc::optional<state_history_log>                            chain_state_log;
+   bool                                                       trace_debug_mode = false;
    bool                                                       stopping = false;
    fc::optional<scoped_connection>                            applied_transaction_connection;
    fc::optional<scoped_connection>                            accepted_block_connection;
@@ -441,7 +442,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       onblock_trace.reset();
 
       auto& db         = chain_plug->chain().db();
-      auto  traces_bin = zlib_compress_bytes(fc::raw::pack(make_history_serial_wrapper(db, traces)));
+      auto  traces_bin = zlib_compress_bytes(fc::raw::pack(make_history_context_wrapper(db, trace_debug_mode, traces)));
       EOS_ASSERT(traces_bin.size() == (uint32_t)traces_bin.size(), plugin_exception, "traces is too big");
 
       state_history_log_header header{.magic        = ship_magic(ship_current_version),
@@ -570,6 +571,8 @@ void state_history_plugin::set_program_options(options_description& cli, options
    options("state-history-endpoint", bpo::value<string>()->default_value("127.0.0.1:8080"),
            "the endpoint upon which to listen for incoming connections. Caution: only expose this port to "
            "your internal network.");
+   options("trace-history-debug-mode", bpo::bool_switch()->default_value(false),
+           "enable debug mode for trace history");
 }
 
 void state_history_plugin::plugin_initialize(const variables_map& options) {
@@ -606,6 +609,10 @@ void state_history_plugin::plugin_initialize(const variables_map& options) {
          boost::filesystem::remove_all(state_history_dir);
       }
       boost::filesystem::create_directories(state_history_dir);
+
+      if (options.at("trace-history-debug-mode").as<bool>()) {
+         my->trace_debug_mode = true;
+      }
 
       if (options.at("trace-history").as<bool>())
          my->trace_log.emplace("trace_history", (state_history_dir / "trace_history.log").string(),
