@@ -18,7 +18,7 @@ namespace eosio { namespace chain { namespace resource_limits {
          }
 
          friend inline bool operator !=( const ratio& lhs, const ratio& rhs ) {
-            return (lhs != rhs);
+            return !(lhs == rhs);
          }
       };
    }
@@ -42,7 +42,7 @@ namespace eosio { namespace chain { namespace resource_limits {
       }
 
       friend inline bool operator !=( const elastic_limit_parameters& lhs, const elastic_limit_parameters& rhs ) {
-         return (lhs != rhs);
+         return !(lhs == rhs);
       }
    };
 
