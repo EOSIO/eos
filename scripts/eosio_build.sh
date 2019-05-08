@@ -192,6 +192,7 @@ export LLVM_VERSION=release_40
 export LLVM_ROOT=${OPT_LOCATION}/llvm
 export LLVM_DIR=${LLVM_ROOT}/lib/cmake/llvm
 export CLANG8_ROOT=${OPT_LOCATION}/clang8
+export PIN_COMPILER=$PIN_COMPILER
 export PINNED_COMPILER_BRANCH=release_80
 export PINNED_COMPILER_LLVM_COMMIT=18e41dc
 export PINNED_COMPILER_CLANG_COMMIT=a03da8b
@@ -221,61 +222,52 @@ if [ $STALE_SUBMODS -gt 0 ]; then
 fi
 
 BUILD_CLANG8=false
-if [ ! -z $CXX ]; then
-   CPP_COMP=$CXX
-   CC_COMP=$CC
-else
-   CPP_COMP=c++
-   CC_COMP=cc
-fi
-
 NO_CPP17=false
 
-WHICH_CPP=`which $CPP_COMP`
-COMPILER_TYPE=`readlink $WHICH_CPP`
-if [[ $COMPILER_TYPE == "clang++" ]]; then
-   if [[ `c++ --version | cut -d ' ' -f 1 | head -n 1` == "Apple" ]]; then
-      ### Apple clang version 10
-      if [[ `c++ --version | cut -d ' ' -f 4 | cut -d '.' -f 1 | head -n 1` -lt 10 ]]; then
-         NO_CPP17=true
+export CXX=${CXX:-c++}
+export CC=${CC:-cc}
+if [[ $PIN_COMPILER == false ]]; then
+   which $CXX &>/dev/null || ( echo "${COLOR_RED} - Unable to find compiler \"${CXX}\"! Pass in the -P option if you wish for us to install it OR set \$CXX to the proper binary. ${COLOR_NC}"; exit 1 )
+   # readlink on mac differs from linux readlink (mac doesn't have -f)
+   [[ $ARCH == "Linux" ]] && READLINK_COMMAND="readlink -f" || READLINK_COMMAND="readlink"
+   COMPILER_TYPE=$( eval $READLINK_COMMAND $(which $CXX) )
+   [[ -z "${COMPILER_TYPE}" ]] && echo "${COLOR_RED}COMPILER_TYPE not set!${COLOR_NC}" && exit 1
+   if [[ $COMPILER_TYPE == "clang++" ]]; then
+      if [[ $ARCH == "Darwin" ]]; then
+            ### Check for apple clang version 10 or higher
+            [[ $( $(which $CXX) --version | cut -d ' ' -f 4 | cut -d '.' -f 1 | head -n 1 ) -lt 10 ]] && export NO_CPP17=true
+      else
+            ### Check for clang version 5 or higher
+            [[ $( $(which $CXX) --version | cut -d ' ' -f 4 | cut -d '.' -f 1 | head -n 1 ) -lt 5 ]] && export NO_CPP17=true
       fi
    else
-      ### clang version 5
-      if [[ `c++ --version | cut -d ' ' -f 4 | cut -d '.' -f 1 | head -n 1` -lt 5 ]]; then
-         NO_CPP17=true
-      fi
+      ## Check for c++ version 7 or higher
+      [[ $( $(which $CXX) -dumpversion | cut -d '.' -f 1 ) -lt 7 ]] && export NO_CPP17=true
    fi
-else
-   ### gcc version 7
-   if [[ `c++ -dumpversion | cut -d '.' -f 1` -lt 7 ]]; then
-      NO_CPP17=true
-   fi
+elif $PIN_COMPILER; then
+   export BUILD_CLANG8=true
+   export CPP_COMP=$CLANG8_ROOT/bin/clang++
+   export CC_COMP=$CLANG8_ROOT/bin/clang
+   export PATH=$CLANG8_ROOT/bin:$PATH
 fi
-
-if [ $PIN_COMPILER ]; then
-   BUILD_CLANG8=true
-   CPP_COMP=${OPT_LOCATION}/clang8/bin/clang++
-   CC_COMP=${OPT_LOCATION}/clang8/bin/clang
-elif $NO_CPP17; then
-   if [ $NONINTERACTIVE -eq 0 ]; then
-      BUILD_CLANG8=true
-      CPP_COMP=${OPT_LOCATION}/clang8/bin/clang++
-      CC_COMP=${OPT_LOCATION}/clang8/bin/clang
-   else
-      printf "Error no C++17 support.\\nEnter Y/y or N/n to continue with downloading and building a viable compiler or exit now.\\nIf you already have a C++17 compiler installed or would like to install your own, export CXX to point to the compiler of your choosing."
-      read -p "Enter Y/y or N/n to continue with downloading and building a viable compiler or exit now. " yn
-      case $yn in
-         [Yy]* ) BUILD_CLANG8=true; CPP_COMP=${OPT_LOCATION}/clang8/bin/clang++; CC_COMP=${OPT_LOCATION}/clang8/bin/clang; break;;
-         [Nn]* ) exit 1;;
-         * ) echo "Improper input"; exit 1;;
+if $NO_CPP17; then
+   while true; do
+      echo "${COLOR_YELLOW}Unable to find C++17 support!${COLOR_NC}"
+      echo "If you already have a C++17 compiler installed or would like to install your own, export CXX to point to the compiler of your choosing."
+      [[ $NONINTERACTIVE == false ]] && read -p "${COLOR_YELLOW}Do you wish to download and build C++17? (y/n)?${COLOR_NC} " PROCEED
+      case $PROCEED in
+            "" ) echo "What would you like to do?";;
+            0 | true | [Yy]* )
+               export BUILD_CLANG8=true
+               export CPP_COMP=$CLANG8_ROOT/bin/clang++
+               export CC_COMP=$CLANG8_ROOT/bin/clang
+               export PATH=$CLANG8_ROOT/bin:$PATH
+            break;;
+            1 | false | [Nn]* ) echo "${COLOR_RED} - User aborted C++17 installation!${COLOR_NC}"; exit 1;;
+            * ) echo "Please type 'y' for yes or 'n' for no.";;
       esac
-   fi
+   done
 fi
-
-CXX=$CPP_COMP
-CC=$CC_COMP
-
-export PIN_COMPILER=$PIN_COMPILER
 
 # Setup directories
 mkdir -p $SRC_LOCATION

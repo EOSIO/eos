@@ -183,7 +183,8 @@ if [ "$BUILD_CLANG8" = "true" ]; then
       && rm -rf ${TMP_LOCATION}/clang8 \
       && cd ../.. \
       || exit 1
-
+      export CXX=$CPP_COMP
+      export CC=$CC_COMP
       printf " - Clang 8 successfully installed @ ${CLANG8_ROOT}\\n"
    else
       printf " - Clang 8 found @ ${CLANG8_ROOT}.\\n"
