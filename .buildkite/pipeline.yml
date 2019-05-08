@@ -8,13 +8,13 @@ steps:
 
   - label: ":darwin: Ensure Mojave Anka Template Dependency Tag/Layer Exists"
     command:
-      - "git clone git@github.com:EOSIO/mac-anka-fleet.git -b master"
+      - "git clone git@github.com:EOSIO/mac-anka-fleet.git"
       - "cd mac-anka-fleet && . ./ensure_tag.bash"
     agents:
       - "queue=mac-anka-templater-fleet"
     env:
       REPO: "${BUILDKITE_REPO}"
-      REPO_BRANCH: "${BUILDKITE_BRANCH}"
+      REPO_BRANCH: "${BUILDKITE_PULL_REQUEST_BASE_BRANCH}"
       CHECKSUMABLE: "${CHECKSUMABLE}"
       TEMPLATE: "${ANKA_MOJAVE_TEMPLATE}"
       TEMPLATE_TAG: "${ANKA_TEMPLATE_TAG}"
@@ -30,7 +30,7 @@ steps:
   #     branch: "master"
   #     env:
   #       REPO: "${BUILDKITE_REPO}"
-  #       REPO_BRANCH: "${BUILDKITE_BRANCH}"
+  #       REPO_BRANCH: "${BUILDKITE_PULL_REQUEST_BASE_BRANCH}"
   #       CHECKSUMABLE: "${CHECKSUMABLE}"
   #       TEMPLATE: "${ANKA_MOJAVE_TEMPLATE}"
   #       TEMPLATE_TAG: "${ANKA_TEMPLATE_TAG}"
@@ -45,7 +45,7 @@ steps:
 
   - label: ":darwin: [Darwin] Mojave Build"
     command:
-      - "git clone git@github.com:EOSIO/eos.git -b ${BUILDKITE_BRANCH} eos && cd eos && git submodule update --init --recursive && ./scripts/eosio_build.sh -y -P -m"
+      - "git clone git@github.com:EOSIO/eos.git -b ${BUILDKITE_PULL_REQUEST_BASE_BRANCH} eos && cd eos && git submodule update --init --recursive && ./scripts/eosio_build.sh -y -P -m"
       - "tar -pczf /Network/NAS/MAC_FLEET/BUILDKITE/artifacts/${ANKA_MOJAVE_TEMPLATE}-${BUILDKITE_PIPELINE_SLUG}-${BUILDKITE_BUILD_ID}.tar.gz eos"
     plugins:
       chef/anka#v0.4.4:
