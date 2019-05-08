@@ -14,8 +14,8 @@ echo "Disk space available: ${DISK_AVAIL}G"
 echo ""
 
 echo "${COLOR_CYAN}[Ensuring xcode-select installation]${COLOR_NC}"
-if ! XCODESELECT=$( command -v xcode-select ); then echo " - XCode must be installed in order to proceed!" && exit 1;
-else echo " - XCode installation found @ ${XCODESELECT}"; fi
+if ! XCODESELECT=$( command -v xcode-select ); then echo " - xcode-select must be installed in order to proceed!" && exit 1;
+else echo " - xcode-select installation found @ ${XCODESELECT}"; fi
 
 echo "${COLOR_CYAN}[Ensuring Ruby installation]${COLOR_NC}"
 if ! RUBY=$( command -v ruby ); then echo " - Ruby must be installed in order to proceed!" && exit 1;
