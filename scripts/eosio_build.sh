@@ -158,7 +158,7 @@ if [ ! -d "${REPO_ROOT}/.git" ]; then
 fi
 
 # Test that which is on the system before proceeding
-which ls &>/dev/null || ( echo "${COLOR_RED}Please install the 'which' command before proceeding!${COLOR_NC}"; $DRYRUN || exit 1 )
+which ls &>/dev/null || ( echo "Please install the 'which' command before proceeding!"; exit 1 )
 
 export CMAKE_VERSION_MAJOR=3
 export CMAKE_VERSION_MINOR=13
@@ -226,11 +226,11 @@ fi
 [[ -z "${ARCH}" ]] && export ARCH=$( uname )
 if [[ -z "${NAME}" ]]; then
     if [[ $ARCH == "Linux" ]]; then
-        [[ ! -e /etc/os-release ]] && echo "${COLOR_RED} - /etc/os-release not found! It seems you're attempting to use an unsupported Linux distribution.${COLOR_NC}" && exit 1
+        [[ ! -e /etc/os-release ]] && echo " - /etc/os-release not found! It seems you're attempting to use an unsupported Linux distribution." && exit 1
         # Obtain OS NAME, and VERSION
         . /etc/os-release
     elif [[ $ARCH == "Darwin" ]]; then export NAME=$(sw_vers -productName)
-    else echo " ${COLOR_RED}- EOSIO is not supported for your Architecture!${COLOR_NC}" && exit 1
+    else echo " - EOSIO is not supported for your Architecture!" && exit 1
     fi
 fi
 
@@ -240,11 +240,11 @@ export NO_CPP17=false
 export CXX=${CXX:-c++}
 export CC=${CC:-cc}
 if [[ $PIN_COMPILER == false ]]; then
-   which $CXX &>/dev/null || ( echo "${COLOR_RED} - Unable to find compiler \"${CXX}\"! Pass in the -P option if you wish for us to install it OR set \$CXX to the proper binary. ${COLOR_NC}"; exit 1 )
+   which $CXX &>/dev/null || ( echo " - Unable to find compiler \"${CXX}\"! Pass in the -P option if you wish for us to install it OR set \$CXX to the proper binary."; exit 1 )
    # readlink on mac differs from linux readlink (mac doesn't have -f)
    [[ $ARCH == "Linux" ]] && READLINK_COMMAND="readlink -f" || READLINK_COMMAND="readlink"
    COMPILER_TYPE=$( eval $READLINK_COMMAND $(which $CXX) )
-   [[ -z "${COMPILER_TYPE}" ]] && echo "${COLOR_RED}COMPILER_TYPE not set!${COLOR_NC}" && exit 1
+   [[ -z "${COMPILER_TYPE}" ]] && echo "COMPILER_TYPE not set!" && exit 1
    if [[ $COMPILER_TYPE == "clang++" ]]; then
       if [[ $ARCH == "Darwin" ]]; then
             ### Check for apple clang version 10 or higher
@@ -265,9 +265,9 @@ elif $PIN_COMPILER; then
 fi
 if $NO_CPP17; then
    while true; do
-      echo "${COLOR_YELLOW}Unable to find C++17 support!${COLOR_NC}"
+      echo "Unable to find C++17 support!"
       echo "If you already have a C++17 compiler installed or would like to install your own, export CXX to point to the compiler of your choosing."
-      [[ $NONINTERACTIVE == false ]] && read -p "${COLOR_YELLOW}Do you wish to download and build C++17? (y/n)?${COLOR_NC} " PROCEED
+      [[ $NONINTERACTIVE == false ]] && read -p "Do you wish to download and build C++17? (y/n)? " PROCEED
       case $PROCEED in
             "" ) echo "What would you like to do?";;
             0 | true | [Yy]* )
@@ -276,7 +276,7 @@ if $NO_CPP17; then
                export CC_COMP=$CLANG8_ROOT/bin/clang
                export PATH=$CLANG8_ROOT/bin:$PATH
             break;;
-            1 | false | [Nn]* ) echo "${COLOR_RED} - User aborted C++17 installation!${COLOR_NC}"; exit 1;;
+            1 | false | [Nn]* ) echo "${COLOR_RED} - User aborted C++17 installation!"; exit 1;;
             * ) echo "Please type 'y' for yes or 'n' for no.";;
       esac
    done
