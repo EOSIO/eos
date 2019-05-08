@@ -46,6 +46,8 @@ namespace eosio {
 
       uint32_t min_transaction_cpu_usage;
 
+      uint64_t min_transaction_ram_usage;
+
 
       /**
        * The numerator for the discount on cpu usage for CFA's
@@ -102,6 +104,8 @@ namespace eosio {
 
                         (max_block_cpu_usage)(target_block_cpu_usage_pct)
                         (max_transaction_cpu_usage)(min_transaction_cpu_usage)
+
+                        (min_transaction_ram_usage)
 
                         (max_transaction_lifetime)(deferred_trx_expiration_window)(max_transaction_delay)
                         (max_inline_action_size)(max_inline_action_depth)(max_authority_depth)

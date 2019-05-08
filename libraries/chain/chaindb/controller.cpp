@@ -1012,4 +1012,8 @@ namespace cyberway { namespace chaindb {
         apply_ = false;
     }
 
+    uint64_t chaindb_session::calc_ram_bytes() const {
+        return controller_.impl_->cache_.calc_ram_bytes(revision_);
+    }
+
 } } // namespace cyberway::chaindb

@@ -207,6 +207,7 @@ abi_def eosio_contract_abi(abi_def eos_abi)
          {"target_block_cpu_usage_pct", "uint32"},
          {"max_transaction_cpu_usage", "uint32"},
          {"min_transaction_cpu_usage", "uint32"},
+         {"min_transaction_ram_usage", "uint64"},
          {"max_transaction_lifetime", "uint32"},
          {"deferred_trx_expiration_window", "uint32"},
          {"max_transaction_delay", "uint32"},

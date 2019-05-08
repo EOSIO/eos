@@ -249,6 +249,7 @@ datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosi
    fc::raw::pack(ds, as_type<uint32_t>(obj.obj.target_block_cpu_usage_pct));
    fc::raw::pack(ds, as_type<uint32_t>(obj.obj.max_transaction_cpu_usage));
    fc::raw::pack(ds, as_type<uint32_t>(obj.obj.min_transaction_cpu_usage));
+   fc::raw::pack(ds, as_type<uint64_t>(obj.obj.min_transaction_ram_usage));
    fc::raw::pack(ds, as_type<uint32_t>(obj.obj.max_transaction_lifetime));
    fc::raw::pack(ds, as_type<uint32_t>(obj.obj.deferred_trx_expiration_window));
    fc::raw::pack(ds, as_type<uint32_t>(obj.obj.max_transaction_delay));

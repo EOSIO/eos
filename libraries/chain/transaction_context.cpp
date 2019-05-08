@@ -399,10 +399,13 @@ namespace bacc = boost::accumulators;
    }
 
    void transaction_context::finalize() {
-        validate_bw_usage();
+      validate_bw_usage();
 
-        control.get_mutable_resource_limits_manager().add_transaction_usage( bill_to_accounts, static_cast<uint64_t>(billed_cpu_time_us), net_usage,
-                                control.pending_block_time()); // Should never fail
+      control.get_mutable_resource_limits_manager().add_transaction_usage( bill_to_accounts,
+         static_cast<uint64_t>(billed_cpu_time_us),
+         net_usage,
+         billed_ram_bytes,
+         control.pending_block_time()); // Should never fail
    }
 
    void transaction_context::validate_bw_usage() {
@@ -418,6 +421,8 @@ namespace bacc = boost::accumulators;
        }
        int64_t block_time = control.pending_block_time().sec_since_epoch();
        auto& rl = control.get_mutable_resource_limits_manager();
+
+       update_billed_ram_bytes();
 
        net_usage = ((net_usage + 7)/8)*8; // Round up to nearest multiple of word size (8 bytes)
 
@@ -561,6 +566,17 @@ namespace bacc = boost::accumulators;
    uint32_t transaction_context::update_billed_cpu_time( fc::time_point now ) {
       billed_cpu_time_us = get_billed_cpu_time(now);
       return static_cast<uint32_t>(billed_cpu_time_us);
+   }
+
+   uint64_t transaction_context::update_billed_ram_bytes() {
+      if( !explicit_billed_ram_bytes ) {
+         const auto& cfg = control.get_global_properties().configuration;
+         billed_ram_bytes = chaindb_undo_session->calc_ram_bytes();
+         billed_ram_bytes = ((billed_ram_bytes + 1023) >> 10) << 10; // Round up to nearest kbytes
+         billed_ram_bytes = std::max(billed_ram_bytes, cfg.min_transaction_ram_usage);
+         explicit_billed_ram_bytes = true;
+      }
+      return billed_ram_bytes;
    }
 
 // TODO: requested bw, why provided ?

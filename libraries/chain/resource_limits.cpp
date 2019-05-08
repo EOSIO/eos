@@ -111,7 +111,7 @@ void resource_limits_manager::update_account_usage(const flat_set<account_name>&
 }
 
 
-void resource_limits_manager::add_transaction_usage(const flat_set<account_name>& accounts, uint64_t cpu_usage, uint64_t net_usage, fc::time_point now) {
+void resource_limits_manager::add_transaction_usage(const flat_set<account_name>& accounts, uint64_t cpu_usage, uint64_t net_usage, uint64_t ram_usage, fc::time_point now) {
    auto state_table = _chaindb.get_table<resource_limits_state_object>();
    const auto& state = state_table.get();
    const auto& config = _chaindb.get<resource_limits_config_object>();
@@ -127,6 +127,7 @@ void resource_limits_manager::add_transaction_usage(const flat_set<account_name>
       usage_table.modify( usage, [&]( auto& bu ) {
           bu.net_usage.add( net_usage, time_slot, config.account_net_usage_average_window );
           bu.cpu_usage.add( cpu_usage, time_slot, config.account_cpu_usage_average_window );
+          // TODO: Cyberway #616
       });
       EOS_ASSERT(get_account_balance(now.sec_since_epoch(), a, prices).stake >= 0, resource_exhausted_exception, 
              "authorizing account '${n}' has insufficient resources for this transaction", ("n", name(a))); 
@@ -136,6 +137,7 @@ void resource_limits_manager::add_transaction_usage(const flat_set<account_name>
    state_table.modify(state, [&](resource_limits_state_object& rls){
       rls.pending_cpu_usage += cpu_usage;
       rls.pending_net_usage += net_usage;
+       // TODO: CyberWay #616
    });
 
    EOS_ASSERT( state.pending_cpu_usage <= config.cpu_limit_parameters.max, block_resource_exhausted, "Block has insufficient cpu resources" );

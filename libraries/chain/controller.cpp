@@ -735,8 +735,8 @@ struct controller_impl {
                                         fc::time_point deadline,
                                         fc::time_point start,
                                         uint32_t& cpu_time_to_bill_us, // only set on failure
-                                        uint32_t billed_cpu_time_us,
-                                        bool explicit_billed_cpu_time = false
+                                        uint64_t& ram_to_bill_bytes, // only set on failure
+                                        const billed_bw_usage& billed
                                       )
    {
       signed_transaction etrx;
@@ -748,8 +748,10 @@ struct controller_impl {
 
       transaction_context trx_context( self, etrx, etrx.id(), start );
       trx_context.deadline = deadline;
-      trx_context.explicit_billed_cpu_time = explicit_billed_cpu_time;
-      trx_context.billed_cpu_time_us = billed_cpu_time_us;
+      trx_context.explicit_billed_cpu_time = billed.explicit_usage;
+      trx_context.billed_cpu_time_us = billed.cpu_time_us;
+      trx_context.explicit_billed_ram_bytes = billed.explicit_usage;
+      trx_context.billed_ram_bytes = billed.ram_bytes;
       transaction_trace_ptr trace = trx_context.trace;
       try {
          trx_context.init_for_implicit_trx();
@@ -760,7 +762,7 @@ struct controller_impl {
 
          auto restore = make_block_restore_point();
          trace->receipt = push_receipt( gtrx.trx_id, transaction_receipt::soft_fail,
-                                        trx_context.billed_cpu_time_us, trace->net_usage );
+                                        trx_context.billed_cpu_time_us, trace->net_usage, trx_context.billed_ram_bytes );
          fc::move_append( pending->_actions, move(trx_context.executed) );
 
          trx_context.squash();
@@ -768,6 +770,7 @@ struct controller_impl {
          return trace;
       } catch( const fc::exception& e ) {
          cpu_time_to_bill_us = trx_context.update_billed_cpu_time( fc::time_point::now() );
+         ram_to_bill_bytes = trx_context.update_billed_ram_bytes();
          trace->except = e;
          trace->except_ptr = std::current_exception();
       }
@@ -800,11 +803,11 @@ struct controller_impl {
              || failure_is_subjective(e);
    }
 
-   transaction_trace_ptr push_scheduled_transaction( const transaction_id_type& trxid, fc::time_point deadline, uint32_t billed_cpu_time_us, bool explicit_billed_cpu_time = false ) {
+   transaction_trace_ptr push_scheduled_transaction( const transaction_id_type& trxid, fc::time_point deadline, const billed_bw_usage& billed ) {
       auto idx = chaindb.get_index<generated_transaction_object, by_trx_id>();
       auto itr = idx.find( trxid );
       EOS_ASSERT( itr != idx.end(), unknown_transaction_exception, "unknown transaction" );
-      return push_scheduled_transaction( *itr, deadline, billed_cpu_time_us, explicit_billed_cpu_time );
+      return push_scheduled_transaction( *itr, deadline, billed );
    }
 
 // TODO: request bw, why provided?
@@ -844,7 +847,7 @@ struct controller_impl {
 //        return {trx_context.get_provided_bandwith(), trx_context.get_net_usage(), trx_context.get_cpu_usage()};
 //    }
 
-   transaction_trace_ptr push_scheduled_transaction( const generated_transaction_object& gto, fc::time_point deadline, uint32_t billed_cpu_time_us, bool explicit_billed_cpu_time = false )
+   transaction_trace_ptr push_scheduled_transaction( const generated_transaction_object& gto, fc::time_point deadline, const billed_bw_usage& billed )
    try {
       maybe_session undo_session;
       if ( !self.skip_db_sessions() )
@@ -879,7 +882,7 @@ struct controller_impl {
          trace->block_time = self.pending_block_time();
          trace->producer_block_id = self.pending_producer_block_id();
          trace->scheduled = true;
-         trace->receipt = push_receipt( gtrx.trx_id, transaction_receipt::expired, billed_cpu_time_us, 0 ); // expire the transaction
+         trace->receipt = push_receipt( gtrx.trx_id, transaction_receipt::expired, billed.cpu_time_us, 0, billed.ram_bytes ); // expire the transaction
          emit( self.accepted_transaction, trx );
          emit( self.applied_transaction, trace );
          undo_session.squash();
@@ -891,13 +894,16 @@ struct controller_impl {
       });
       in_trx_requiring_checks = true;
 
-      uint32_t cpu_time_to_bill_us = billed_cpu_time_us;
+      uint32_t cpu_time_to_bill_us = billed.cpu_time_us;
+      uint64_t ram_to_bill_bytes = billed.ram_bytes;
 
       transaction_context trx_context( self, dtrx, gtrx.trx_id );
       trx_context.leeway =  fc::microseconds(0); // avoid stealing cpu resource
       trx_context.deadline = deadline;
-      trx_context.explicit_billed_cpu_time = explicit_billed_cpu_time;
-      trx_context.billed_cpu_time_us = billed_cpu_time_us;
+      trx_context.explicit_billed_cpu_time = billed.explicit_usage;
+      trx_context.billed_cpu_time_us = billed.cpu_time_us;
+      trx_context.explicit_billed_ram_bytes = billed.explicit_usage;
+      trx_context.billed_ram_bytes = billed.ram_bytes;
       trace = trx_context.trace;
       try {
          //TODO: request bw, why provided?
@@ -915,7 +921,8 @@ struct controller_impl {
          trace->receipt = push_receipt( gtrx.trx_id,
                                         transaction_receipt::executed,
                                         trx_context.billed_cpu_time_us,
-                                        trace->net_usage );
+                                        trace->net_usage,
+                                        trx_context.billed_ram_bytes);
 
          fc::move_append( pending->_actions, move(trx_context.executed) );
 
@@ -930,6 +937,7 @@ struct controller_impl {
          return trace;
       } catch( const fc::exception& e ) {
          cpu_time_to_bill_us = trx_context.update_billed_cpu_time( fc::time_point::now() );
+         ram_to_bill_bytes = trx_context.update_billed_ram_bytes();
          trace->except = e;
          trace->except_ptr = std::current_exception();
          trace->elapsed = fc::time_point::now() - trx_context.start;
@@ -942,7 +950,7 @@ struct controller_impl {
          // Attempt error handling for the generated transaction.
 
          auto error_trace = apply_onerror( gtrx, deadline, trx_context.pseudo_start,
-                                           cpu_time_to_bill_us, billed_cpu_time_us, explicit_billed_cpu_time);
+                                           cpu_time_to_bill_us, ram_to_bill_bytes, billed);
          error_trace->failed_dtrx_trace = trace;
          trace = error_trace;
          if( !trace->except_ptr ) {
@@ -958,7 +966,7 @@ struct controller_impl {
 
       // subjectivity changes based on producing vs validating
       bool subjective  = false;
-      if (explicit_billed_cpu_time) {
+      if (billed.explicit_usage) {
          subjective = failure_is_subjective(*trace->except);
       } else {
          subjective = scheduled_failure_is_subjective(*trace->except);
@@ -967,7 +975,7 @@ struct controller_impl {
       if ( !subjective ) {
          // hard failure logic
 
-         if( !explicit_billed_cpu_time ) {
+         if( !billed.explicit_usage ) {
             auto& rl = self.get_mutable_resource_limits_manager();
             rl.update_account_usage( trx_context.bill_to_accounts, block_timestamp_type(self.pending_block_time()).slot );
             int64_t account_cpu_limit = trx_context.get_min_cpu_limit();
@@ -975,11 +983,13 @@ struct controller_impl {
             cpu_time_to_bill_us = static_cast<uint32_t>( std::min( std::min( static_cast<int64_t>(cpu_time_to_bill_us),
                                                                              account_cpu_limit                          ),
                                                                    trx_context.initial_objective_duration_limit.count()    ) );
+
+             // TODO: CyberWay #616 should be here correction of ram_to_bill_bytes?
          }
 
-         resource_limits.add_transaction_usage( trx_context.bill_to_accounts, cpu_time_to_bill_us, 0, self.pending_block_time() ); // Should never fail
+         resource_limits.add_transaction_usage( trx_context.bill_to_accounts, cpu_time_to_bill_us, 0, ram_to_bill_bytes, self.pending_block_time() ); // Should never fail
 
-         trace->receipt = push_receipt(gtrx.trx_id, transaction_receipt::hard_fail, cpu_time_to_bill_us, 0);
+         trace->receipt = push_receipt(gtrx.trx_id, transaction_receipt::hard_fail, cpu_time_to_bill_us, 0, ram_to_bill_bytes);
 
          emit( self.accepted_transaction, trx );
          emit( self.applied_transaction, trace );
@@ -999,13 +1009,14 @@ struct controller_impl {
     */
    template<typename T>
    const transaction_receipt& push_receipt( const T& trx, transaction_receipt_header::status_enum status,
-                                            uint64_t cpu_usage_us, uint64_t net_usage ) {
+                                            uint64_t cpu_usage_us, uint64_t net_usage, uint64_t ram_bytes ) {
       uint64_t net_usage_words = net_usage / 8;
       EOS_ASSERT( net_usage_words*8 == net_usage, transaction_exception, "net_usage is not divisible by 8" );
       pending->_pending_block_state->block->transactions.emplace_back( trx );
       transaction_receipt& r = pending->_pending_block_state->block->transactions.back();
       r.cpu_usage_us         = cpu_usage_us;
       r.net_usage_words      = net_usage_words;
+      r.ram_kbytes           = ram_bytes >> 10;
       r.status               = status;
       return r;
    }
@@ -1017,15 +1028,14 @@ struct controller_impl {
     */
    transaction_trace_ptr push_transaction( const transaction_metadata_ptr& trx,
                                            fc::time_point deadline,
-                                           uint32_t billed_cpu_time_us,
-                                           bool explicit_billed_cpu_time = false )
+                                           const billed_bw_usage& billed )
    {
       EOS_ASSERT(deadline != fc::time_point(), transaction_exception, "deadline cannot be uninitialized");
 
       transaction_trace_ptr trace;
       try {
          auto start = fc::time_point::now();
-         if( !explicit_billed_cpu_time ) {
+         if( !billed.explicit_usage ) {
             fc::microseconds already_consumed_time( EOS_PERCENT(trx->sig_cpu_usage.count(), conf.sig_cpu_bill_pct) );
 
             if( start.time_since_epoch() <  already_consumed_time ) {
@@ -1041,8 +1051,10 @@ struct controller_impl {
             trx_context.leeway = *subjective_cpu_leeway;
          }
          trx_context.deadline = deadline;
-         trx_context.explicit_billed_cpu_time = explicit_billed_cpu_time;
-         trx_context.billed_cpu_time_us = billed_cpu_time_us;
+         trx_context.explicit_billed_cpu_time = billed.explicit_usage;
+         trx_context.billed_cpu_time_us = billed.cpu_time_us;
+         trx_context.explicit_billed_ram_bytes = billed.explicit_usage;
+         trx_context.billed_ram_bytes = billed.ram_bytes;
          trace = trx_context.trace;
          try {
             //TODO: request bw, why provided?
@@ -1085,13 +1097,14 @@ struct controller_impl {
                transaction_receipt::status_enum s = (trx_context.delay == fc::seconds(0))
                                                     ? transaction_receipt::executed
                                                     : transaction_receipt::delayed;
-               trace->receipt = push_receipt(*trx->packed_trx, s, trx_context.billed_cpu_time_us, trace->net_usage);
+               trace->receipt = push_receipt(*trx->packed_trx, s, trx_context.billed_cpu_time_us, trace->net_usage, trx_context.billed_ram_bytes);
                pending->_pending_block_state->trxs.emplace_back(trx);
             } else {
                transaction_receipt_header r;
                r.status = transaction_receipt::executed;
                r.cpu_usage_us = trx_context.billed_cpu_time_us;
                r.net_usage_words = trace->net_usage / 8;
+               r.ram_kbytes = trx_context.billed_ram_bytes >> 10;
                trace->receipt = r;
             }
 
@@ -1237,9 +1250,9 @@ struct controller_impl {
          for( const auto& receipt : b->transactions ) {
             auto num_pending_receipts = pending->_pending_block_state->block->transactions.size();
             if( receipt.trx.contains<packed_transaction>() ) {
-               trace = push_transaction( packed_transactions.at(packed_idx++), fc::time_point::maximum(), receipt.cpu_usage_us, true );
+               trace = push_transaction( packed_transactions.at(packed_idx++), fc::time_point::maximum(), {receipt} );
             } else if( receipt.trx.contains<transaction_id_type>() ) {
-               trace = push_scheduled_transaction( receipt.trx.get<transaction_id_type>(), fc::time_point::maximum(), receipt.cpu_usage_us, true );
+               trace = push_scheduled_transaction( receipt.trx.get<transaction_id_type>(), fc::time_point::maximum(), {receipt} );
             } else {
                EOS_ASSERT( false, block_validate_exception, "encountered unexpected receipt type" );
             }
@@ -1616,7 +1629,7 @@ struct controller_impl {
                   in_trx_requiring_checks = old_value;
                });
             in_trx_requiring_checks = true;
-            auto trace = push_transaction( onbtrx, fc::time_point::maximum(), self.get_global_properties().configuration.min_transaction_cpu_usage, true );
+            auto trace = push_transaction( onbtrx, fc::time_point::maximum(), { self.get_global_properties().configuration } );
 
             if(trace && trace->except) {
                 edump((*trace));
@@ -1721,17 +1734,17 @@ void controller::push_block( std::future<block_state_ptr>& block_state_future ) 
    my->push_block( block_state_future );
 }
 
-transaction_trace_ptr controller::push_transaction(const transaction_metadata_ptr& trx, fc::time_point deadline, uint32_t billed_cpu_time_us ) {
+transaction_trace_ptr controller::push_transaction(const transaction_metadata_ptr& trx, fc::time_point deadline, const billed_bw_usage& billed ) {
    validate_db_available_size();
    EOS_ASSERT( get_read_mode() != chain::db_read_mode::READ_ONLY, transaction_type_exception, "push transaction not allowed in read-only mode" );
    EOS_ASSERT( trx && !trx->implicit && !trx->scheduled, transaction_type_exception, "Implicit/Scheduled transaction not allowed" );
-   return my->push_transaction(trx, deadline, billed_cpu_time_us, billed_cpu_time_us > 0 );
+   return my->push_transaction(trx, deadline, billed );
 }
 
-transaction_trace_ptr controller::push_scheduled_transaction( const transaction_id_type& trxid, fc::time_point deadline, uint32_t billed_cpu_time_us )
+transaction_trace_ptr controller::push_scheduled_transaction( const transaction_id_type& trxid, fc::time_point deadline, const billed_bw_usage& billed )
 {
    validate_db_available_size();
-   return my->push_scheduled_transaction( trxid, deadline, billed_cpu_time_us, billed_cpu_time_us > 0 );
+   return my->push_scheduled_transaction( trxid, deadline, billed );
 }
 
 

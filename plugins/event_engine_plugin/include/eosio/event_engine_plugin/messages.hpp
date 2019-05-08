@@ -44,12 +44,14 @@ namespace eosio {
        fc::enum_type<uint8_t,status_enum> status;
        uint32_t                           cpu_usage_us;
        fc::unsigned_int                   net_usage_words;
+       uint64_t                           ram_kbytes;
 
        TrxReceipt(const chain::transaction_id_type &id, const chain::transaction_receipt &receipt)
        : id(id)
        , status(receipt.status)
        , cpu_usage_us(receipt.cpu_usage_us)
        , net_usage_words(receipt.net_usage_words)
+       , ram_kbytes(receipt.ram_kbytes)
        { }
     };
 

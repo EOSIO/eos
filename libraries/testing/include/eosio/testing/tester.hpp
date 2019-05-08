@@ -93,6 +93,7 @@ namespace eosio { namespace testing {
          static const uint32_t DEFAULT_EXPIRATION_DELTA = 6;
 
          static const uint32_t DEFAULT_BILLED_CPU_TIME_US = 2000;
+         static const uint64_t DEFAULT_BILLED_RAM_BYTES = 1024;
          static const fc::microseconds abi_serializer_max_time;
 
          virtual ~base_tester() {};
@@ -117,8 +118,10 @@ namespace eosio { namespace testing {
          void                 produce_min_num_of_blocks_to_spend_time_wo_inactive_prod(const fc::microseconds target_elapsed_time = fc::microseconds());
          signed_block_ptr     push_block(signed_block_ptr b);
 
-         transaction_trace_ptr    push_transaction( packed_transaction& trx, fc::time_point deadline = fc::time_point::maximum(), uint32_t billed_cpu_time_us = DEFAULT_BILLED_CPU_TIME_US );
-         transaction_trace_ptr    push_transaction( signed_transaction& trx, fc::time_point deadline = fc::time_point::maximum(), uint32_t billed_cpu_time_us = DEFAULT_BILLED_CPU_TIME_US );
+         transaction_trace_ptr    push_transaction( packed_transaction& trx, fc::time_point deadline = fc::time_point::maximum(),
+             uint32_t billed_cpu_time_us = DEFAULT_BILLED_CPU_TIME_US, uint64_t billed_ram_bytes = DEFAULT_BILLED_RAM_BYTES );
+         transaction_trace_ptr    push_transaction( signed_transaction& trx, fc::time_point deadline = fc::time_point::maximum(),
+             uint32_t billed_cpu_time_us = DEFAULT_BILLED_CPU_TIME_US, uint64_t billed_ram_bytes = DEFAULT_BILLED_RAM_BYTES );
          action_result            push_action(action&& cert_act, uint64_t authorizer); // TODO/QUESTION: Is this needed?
 
          transaction_trace_ptr    push_action( const account_name& code,

@@ -106,6 +106,8 @@ namespace eosio { namespace chain {
          int64_t get_billed_cpu_time( fc::time_point now )const;
          uint32_t update_billed_cpu_time( fc::time_point now );
 
+         uint64_t update_billed_ram_bytes();
+
          int64_t get_min_cpu_limit()const;
 
          void add_storage_usage( const storage_payer_info& );
@@ -175,6 +177,9 @@ namespace eosio { namespace chain {
          fc::microseconds              leeway = fc::microseconds(3000);
          int64_t                       billed_cpu_time_us = 0;
          bool                          explicit_billed_cpu_time = false;
+
+         uint64_t                      billed_ram_bytes = 0;
+         bool                          explicit_billed_ram_bytes = false;
 
       private:
          bool                          is_initialized = false;
