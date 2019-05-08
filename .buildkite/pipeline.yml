@@ -6,7 +6,7 @@ env:
 
 steps:
 
-  - label: ":darwin: Testing"
+  - label: ":darwin: Ensure Mojave Anka Template Dependency Tag/Layer Exists"
     command:
       - "git clone git@github.com:EOSIO/mac-anka-fleet.git"
       - "cd mac-anka-fleet && . ./ensure_tag.bash"
