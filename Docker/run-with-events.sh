@@ -16,6 +16,8 @@ elif [[ "$1" == "down" ]]; then
     exit 0
 fi
 
+echo "EXTRA_NODEOS_ARGS: $EXTRA_NODEOS_ARGS"
+
 docker volume create cyberway-mongodb-data || true
 docker volume create cyberway-nodeos-data || true
 docker volume create cyberway-queue || true
