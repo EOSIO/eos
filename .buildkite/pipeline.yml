@@ -6,20 +6,37 @@ env:
 
 steps:
 
-  - trigger: "mac-anka-fleet"
-    label: ":anka: Ensure Mojave Anka Template Tag Exists"
-    branches: "*"
-    async: false
-    build:
-      branch: "master"
-      env:
-        REPO: "${BUILDKITE_REPO}"
-        REPO_BRANCH: "${BUILDKITE_BRANCH}"
-        CHECKSUMABLE: "${CHECKSUMABLE}"
-        TEMPLATE: "${ANKA_MOJAVE_TEMPLATE}"
-        TEMPLATE_TAG: "${ANKA_TEMPLATE_TAG}"
-        TAG_COMMANDS: "CLONED_REPO_DIR/scripts/eosio_build.sh -y -P -m" # CLONED_REPO_DIR IS REQUIRED and is where the repo is always cloned into
-        PROJECT_TAG: "${MAC_TAG}"
+
+  - label: ":darwin: Testing"
+    command:
+      - "git clone git@github.com:EOSIO/mac-anka-fleet.git"
+      - "cd mac-anka-fleet && . ./ensure_tag.bash"
+    agents:
+      - "queue=mac-anka-templater-fleet"
+    env:
+      REPO: "${BUILDKITE_REPO}"
+      REPO_BRANCH: "${BUILDKITE_BRANCH}"
+      CHECKSUMABLE: "${CHECKSUMABLE}"
+      TEMPLATE: "${ANKA_MOJAVE_TEMPLATE}"
+      TEMPLATE_TAG: "${ANKA_TEMPLATE_TAG}"
+      TAG_COMMANDS: "CLONED_REPO_DIR/scripts/eosio_build.sh -y -P -m" # CLONED_REPO_DIR IS REQUIRED and is where the repo is always cloned into
+      PROJECT_TAG: "${MAC_TAG}"
+    timeout: 60
+
+  # - trigger: "mac-anka-fleet"
+  #   label: ":anka: Ensure Mojave Anka Template Tag Exists"
+  #   branches: "*"
+  #   async: false
+  #   build:
+  #     branch: "master"
+  #     env:
+  #       REPO: "${BUILDKITE_REPO}"
+  #       REPO_BRANCH: "${BUILDKITE_BRANCH}"
+  #       CHECKSUMABLE: "${CHECKSUMABLE}"
+  #       TEMPLATE: "${ANKA_MOJAVE_TEMPLATE}"
+  #       TEMPLATE_TAG: "${ANKA_TEMPLATE_TAG}"
+  #       TAG_COMMANDS: "CLONED_REPO_DIR/scripts/eosio_build.sh -y -P -m" # CLONED_REPO_DIR IS REQUIRED and is where the repo is always cloned into
+  #       PROJECT_TAG: "${MAC_TAG}"
 
   - wait
 
