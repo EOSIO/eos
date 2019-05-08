@@ -13,7 +13,7 @@ steps:
     agents:
       - "queue=mac-anka-templater-fleet"
     env:
-      REPO: "${BUILDKITE_REPO}"
+      REPO: "${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO}"
       REPO_COMMIT: "${BUILDKITE_COMMIT}"
       CHECKSUMABLE: "${CHECKSUMABLE}"
       TEMPLATE: "${ANKA_MOJAVE_TEMPLATE}"
