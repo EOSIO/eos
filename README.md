@@ -32,7 +32,7 @@ There is no public testnet running currently.
 
 ---
 
-#### Mac OS X Brew Install
+#### Mac OS X Brew Instal  l
 ```sh
 $ brew tap eosio/eosio
 $ brew install eosio
