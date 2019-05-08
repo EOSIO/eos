@@ -6,7 +6,6 @@ env:
 
 steps:
 
-
   - label: ":darwin: Testing"
     command:
       - "git clone git@github.com:EOSIO/mac-anka-fleet.git"
