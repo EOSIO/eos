@@ -770,11 +770,11 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
       elog( "  JSON: ${j}", ("j", fc::json::to_string( v )) );
    }
 
-   string signing_keys_json;
+   fc::variant signing_keys;
    flat_set<public_key_type> keys;
    std::tie( std::ignore, keys ) = t->recover_keys( *chain_id );
    if( !keys.empty() ) {
-      signing_keys_json = fc::json::to_string( keys );
+      signing_keys = keys;
    }
 
    if( signing_keys.get_type() == fc::variant::array_type && signing_keys.get_array().size() > 0) {
