@@ -13,7 +13,7 @@ if(BUILD_MONGO_DB_PLUGIN)
       find_package(libbson-static-1.0 REQUIRED)
 
   else()
-      message(FATAL_ERROR "Could NOT find MongoDB. mongo_db_plugin with MongoDB support will not be included.")
+      message(FATAL_ERROR "Could NOT find mongo-c-driver. Disable mongo support or ensure mongo-c-driver and mongo-cxx-driver is built and installed")
       return()
   endif()
 
