@@ -18,7 +18,7 @@ steps:
       CHECKSUMABLE: "${CHECKSUMABLE}"
       TEMPLATE: "${ANKA_MOJAVE_TEMPLATE}"
       TEMPLATE_TAG: "${ANKA_TEMPLATE_TAG}"
-      TAG_COMMANDS: "CLONED_REPO_DIR/scripts/eosio_build.sh -y -P -m" # CLONED_REPO_DIR IS REQUIRED and is where the repo is always cloned into
+      TAG_COMMANDS: "CLONED_REPO_DIR/scripts/eosio_build.bash -y -P -m" # CLONED_REPO_DIR IS REQUIRED and is where the repo is always cloned into
       PROJECT_TAG: "${MAC_TAG}"
     timeout: 60
 
@@ -34,7 +34,7 @@ steps:
   #       CHECKSUMABLE: "${CHECKSUMABLE}"
   #       TEMPLATE: "${ANKA_MOJAVE_TEMPLATE}"
   #       TEMPLATE_TAG: "${ANKA_TEMPLATE_TAG}"
-  #       TAG_COMMANDS: "CLONED_REPO_DIR/scripts/eosio_build.sh -y -P -m" # CLONED_REPO_DIR IS REQUIRED and is where the repo is always cloned into
+  #       TAG_COMMANDS: "CLONED_REPO_DIR/scripts/eosio_build.bash -y -P -m" # CLONED_REPO_DIR IS REQUIRED and is where the repo is always cloned into
   #       PROJECT_TAG: "${MAC_TAG}"
 
   - wait
@@ -45,7 +45,7 @@ steps:
 
   - label: ":darwin: [Darwin] Mojave Build"
     command:
-      - "git clone git@github.com:EOSIO/eos.git -b ${BUILDKITE_BRANCH} eos && cd eos && git submodule update --init --recursive && ./scripts/eosio_build.sh -y -P -m"
+      - "git clone git@github.com:EOSIO/eos.git -b ${BUILDKITE_BRANCH} eos && cd eos && git submodule update --init --recursive && ./scripts/eosio_build.bash -y -P -m"
       - "tar -pczf /Network/NAS/MAC_FLEET/BUILDKITE/artifacts/${ANKA_MOJAVE_TEMPLATE}-${BUILDKITE_PIPELINE_SLUG}-${BUILDKITE_BUILD_ID}.tar.gz eos"
     plugins:
       chef/anka#v0.4.4:
@@ -64,7 +64,7 @@ steps:
 
   - label: ":aws: Amazon Linux 2 Build"
     command:
-      - "./scripts/eosio_build.sh -y -P -m"
+      - "./scripts/eosio_build.bash -y -P -m"
       - "tar -pczf build.tar.gz build; if [[ ! -f build.tar.gz ]]; then echo 'ERROR: No build.tar.gz artifact found!' && exit 1; fi"
     agents:
       queue: "automation-large-builder-fleet"
@@ -85,7 +85,7 @@ steps:
 
   - label: ":centos: CentOS 7 Build"
     command:
-        - "./scripts/eosio_build.sh -y -P -m"
+        - "./scripts/eosio_build.bash -y -P -m"
         - "tar -pczf build.tar.gz build; if [[ ! -f build.tar.gz ]]; then echo 'ERROR: No build.tar.gz artifact found!' && exit 1; fi"
     agents:
       queue: "automation-large-builder-fleet"
@@ -106,7 +106,7 @@ steps:
 
   - label: ":ubuntu: Ubuntu 16.04 Build"
     command:
-      - "./scripts/eosio_build.sh -y -P -m"
+      - "./scripts/eosio_build.bash -y -P -m"
       - "tar -pczf build.tar.gz build; if [[ ! -f build.tar.gz ]]; then echo 'ERROR: No build.tar.gz artifact found!' && exit 1; fi"
     label: ":ubuntu: Ubuntu 16.04 Build"
     agents:
@@ -128,7 +128,7 @@ steps:
 
   - label: ":ubuntu: Ubuntu 18.04 Build"
     command:
-      - "./scripts/eosio_build.sh -y -P -m"
+      - "./scripts/eosio_build.bash -y -P -m"
       - "tar -pczf build.tar.gz build; if [[ ! -f build.tar.gz ]]; then echo 'ERROR: No build.tar.gz artifact found!' && exit 1; fi"
     agents:
       queue: "automation-large-builder-fleet"
