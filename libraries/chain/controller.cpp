@@ -219,7 +219,7 @@ struct controller_impl {
    authorization_manager          authorization;
    protocol_feature_manager       protocol_features;
    controller::config             conf;
-   chain_id_type                  chain_id;
+   const chain_id_type            chain_id; // read by thread_pool threads
    optional<fc::time_point>       replay_head_time;
    db_read_mode                   read_mode = db_read_mode::SPECULATIVE;
    bool                           in_trx_requiring_checks = false; ///< if true, checks that are normally skipped on replay (e.g. auth checks) cannot be skipped

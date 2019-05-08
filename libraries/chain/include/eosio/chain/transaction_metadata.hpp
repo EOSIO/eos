@@ -51,10 +51,14 @@ class transaction_metadata {
          signed_id = digest_type::hash(*packed_trx);
       }
 
-      // must be called from main application thread
+      // must be called from main application thread. signing_keys_future must be accessed only from main application thread.
+      // next() should only be called on main application thread after future is valid, to avoid dependency on appbase,
+      // it is up to the caller to have next() post to the application thread which makes sure future is only accessed from
+      // application thread and that assignment to future in this method has completed.
       static signing_keys_future_type
       start_recover_keys( const transaction_metadata_ptr& mtrx, boost::asio::io_context& thread_pool,
-                          const chain_id_type& chain_id, fc::microseconds time_limit );
+                          const chain_id_type& chain_id, fc::microseconds time_limit,
+                          std::function<void()> next = std::function<void()>() );
 
       // start_recover_keys must be called first
       recovery_keys_type recover_keys( const chain_id_type& chain_id );
