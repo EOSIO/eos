@@ -8,7 +8,7 @@ steps:
 
   - label: ":darwin: Ensure Mojave Anka Template Dependency Tag/Layer Exists"
     command:
-      - "git clone git@github.com:EOSIO/mac-anka-fleet.git"
+      - "git clone git@github.com:EOSIO/mac-anka-fleet.git -b master"
       - "cd mac-anka-fleet && . ./ensure_tag.bash"
     agents:
       - "queue=mac-anka-templater-fleet"
