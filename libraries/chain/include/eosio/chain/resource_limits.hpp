@@ -14,7 +14,7 @@ namespace eosio { namespace chain { namespace resource_limits {
          T denominator;
 
          friend inline bool operator ==( const ratio& lhs, const ratio& rhs ) {
-            return std::tie(lhs.numerator, lhs.numerator) == std::tie(rhs.numerator, rhs.denominator);
+            return std::tie(lhs.numerator, lhs.denominator) == std::tie(rhs.numerator, rhs.denominator);
          }
 
          friend inline bool operator !=( const ratio& lhs, const ratio& rhs ) {
