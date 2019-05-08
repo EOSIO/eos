@@ -18,7 +18,7 @@ steps:
       CHECKSUMABLE: "${CHECKSUMABLE}"
       TEMPLATE: "${ANKA_MOJAVE_TEMPLATE}"
       TEMPLATE_TAG: "${ANKA_TEMPLATE_TAG}"
-      TAG_COMMANDS: "git clone ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO} && cd eos && git checkout ${BUILDKITE_COMMIT} && git submodule update --init --recursive && ./scripts/eosio_build.sh -y -P -m" # CLONED_REPO_DIR IS REQUIRED and is where the repo is always cloned into
+      TAG_COMMANDS: "git clone ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO} && cd eos && git checkout ${BUILDKITE_COMMIT} && git submodule update --init --recursive && ./scripts/eosio_build.bash -y -P -m" # CLONED_REPO_DIR IS REQUIRED and is where the repo is always cloned into
       PROJECT_TAG: "${MAC_TAG}"
     timeout: 120
 
@@ -45,7 +45,7 @@ steps:
 
   - label: ":darwin: [Darwin] Mojave Build"
     command:
-      - "git clone ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO} && cd eos && git checkout ${BUILDKITE_COMMIT} && git submodule update --init --recursive && ./scripts/eosio_build.sh -y -P -m"
+      - "git clone ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO} && cd eos && git checkout ${BUILDKITE_COMMIT} && git submodule update --init --recursive && ./scripts/eosio_build.bash -y -P -m"
       - "tar -pczf /Network/NAS/MAC_FLEET/BUILDKITE/artifacts/${ANKA_MOJAVE_TEMPLATE}-${BUILDKITE_PIPELINE_SLUG}-${BUILDKITE_BUILD_ID}.tar.gz eos"
     plugins:
       chef/anka#v0.4.4:
