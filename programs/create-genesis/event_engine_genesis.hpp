@@ -13,7 +13,7 @@ class event_engine_genesis final {
 public:
     event_engine_genesis(const event_engine_genesis&) = delete;
     event_engine_genesis();
-    
+
     void start(const bfp::path& ee_directory, const fc::sha256& hash);
     void finalize();
 

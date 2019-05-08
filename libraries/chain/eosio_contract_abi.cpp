@@ -485,9 +485,9 @@ abi_def eosio_contract_abi(abi_def eos_abi)
           {cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}}
       }
    });
-   
+
    eos_abi.structs.emplace_back( eosio::chain::struct_def {
-     "agent_struct", "",{
+     "stake_agent_object", "",{
         {"id", "uint64"},
         {"token_code", "symbol_code"},
         {"account", "name"},
@@ -503,15 +503,15 @@ abi_def eosio_contract_abi(abi_def eos_abi)
         {"signing_key", "public_key"}}});
 
    eos_abi.tables.emplace_back( eosio::chain::table_def {
-      cyberway::chaindb::tag<stake_agent_object>::get_code(), "agent_struct", {
+      cyberway::chaindb::tag<stake_agent_object>::get_code(), "stake_agent_object", {
          {cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}},
          {cyberway::chaindb::tag<stake_agent_object::by_key>::get_code(), true, {{"token_code", "asc"},{"account", "asc"}}},
          {cyberway::chaindb::tag<stake_agent_object::by_votes>::get_code(), true, {{"token_code", "asc"},{"votes", "desc"},{"account", "asc"}}}
       }
    });
-   
+
    eos_abi.structs.emplace_back( eosio::chain::struct_def {
-      "grant_struct", "",{
+      "stake_grant_object", "",{
         {"id", "uint64"},
         {"token_code", "symbol_code"},
         {"grantor_name", "name"},
@@ -520,9 +520,9 @@ abi_def eosio_contract_abi(abi_def eos_abi)
         {"share", "int64"},
         {"break_fee", "int16"},
         {"break_min_own_staked", "int64" }}});
-        
+
    eos_abi.tables.emplace_back( eosio::chain::table_def {
-      cyberway::chaindb::tag<stake_grant_object>::get_code(), "grant_struct", {
+      cyberway::chaindb::tag<stake_grant_object>::get_code(), "stake_grant_object", {
          {cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}},
          {cyberway::chaindb::tag<stake_agent_object::by_key>::get_code(), true,
              {{"token_code", "asc"},{"grantor_name", "asc"},{"agent_name", "asc"}}}
@@ -530,29 +530,29 @@ abi_def eosio_contract_abi(abi_def eos_abi)
    });
 
    eos_abi.structs.emplace_back( eosio::chain::struct_def {
-      "param_struct", "",{
+      "stake_param_object", "",{
         {"id", "uint64"},
         {"token_symbol", "symbol"},
         {"max_proxies", "uint8[]"},
         {"payout_step_length", "int64"},
         {"payout_steps_num", "uint16"},
         {"min_own_staked_for_election", "int64"}}});
-        
+
    eos_abi.tables.emplace_back( eosio::chain::table_def {
-      cyberway::chaindb::tag<stake_param_object>::get_code(), "param_struct", {
+      cyberway::chaindb::tag<stake_param_object>::get_code(), "stake_param_object", {  // Maybe add "stake_" prefix? it's in cyber.abi namespace
          {cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}}}
    });
 
    eos_abi.structs.emplace_back( eosio::chain::struct_def {
-      "stat_struct", "",{
+      "stake_stat_object", "",{
         {"id", "uint64"},
         {"token_code", "symbol_code"},
         {"total_staked", "int64"},
         {"last_reward", "time_point_sec"},
         {"enabled", "bool"}}});
-        
+
    eos_abi.tables.emplace_back( eosio::chain::table_def {
-      cyberway::chaindb::tag<stake_stat_object>::get_code(), "stat_struct", {
+      cyberway::chaindb::tag<stake_stat_object>::get_code(), "stake_stat_object", {
          {cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}}
          }
    });

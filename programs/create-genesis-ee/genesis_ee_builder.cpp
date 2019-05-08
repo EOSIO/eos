@@ -1,5 +1,6 @@
 #include "genesis_ee_builder.hpp"
 #include "golos_operations.hpp"
+#include <cyberway/genesis/genesis_generate_name.hpp>
 
 #define MEGABYTE 1024*1024
 
@@ -283,14 +284,6 @@ void genesis_ee_builder::read_operation_dump(const bfs::path& in_dump_dir) {
     process_follows();
 }
 
-// TODO: Move to common library
-
-account_name generate_name(string n) {
-    // TODO: replace with better function
-    // TODO: remove dots from result (+append trailing to length of 12 characters)
-    uint64_t h = std::hash<std::string>()(n);
-    return account_name(h & 0xFFFFFFFFFFFFFFF0);
-}
 
 void genesis_ee_builder::build_votes(std::vector<vote_info>& votes, uint64_t msg_hash, operation_number msg_created) {
     const auto& vote_index = maps_.get_index<vote_header_index, by_hash_voter>();
