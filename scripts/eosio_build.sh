@@ -108,16 +108,16 @@ if [ $# -ne 0 ]; then
             else
                CORE_SYMBOL_NAME="${OPTARG}"
             fi
-            ;;
+         ;;
          b)
              BOOST_ARG=$OPTARG
-             ;;
+         ;;
          p)
              PREFIX=$OPTARG
-             ;;
+         ;;
          P)
             PIN_COMPILER=true
-            ;;
+         ;;
          h)
             usage
             exit 1
@@ -221,8 +221,21 @@ if [ $STALE_SUBMODS -gt 0 ]; then
    exit 1
 fi
 
-BUILD_CLANG8=false
-NO_CPP17=false
+# Checks for Arch and OS + Support for tests setting them manually
+## Necessary for linux exclusion while running bats tests/bash-bats/*.bash
+[[ -z "${ARCH}" ]] && export ARCH=$( uname )
+if [[ -z "${NAME}" ]]; then
+    if [[ $ARCH == "Linux" ]]; then
+        [[ ! -e /etc/os-release ]] && echo "${COLOR_RED} - /etc/os-release not found! It seems you're attempting to use an unsupported Linux distribution.${COLOR_NC}" && exit 1
+        # Obtain OS NAME, and VERSION
+        . /etc/os-release
+    elif [[ $ARCH == "Darwin" ]]; then export NAME=$(sw_vers -productName)
+    else echo " ${COLOR_RED}- EOSIO is not supported for your Architecture!${COLOR_NC}" && exit 1
+    fi
+fi
+
+export BUILD_CLANG8=false
+export NO_CPP17=false
 
 export CXX=${CXX:-c++}
 export CC=${CC:-cc}
@@ -285,7 +298,6 @@ printf "User: %s\\n" "$( whoami )"
 # printf "git head id: %s\\n" "$( cat .git/refs/heads/master )"
 printf "Current branch: %s\\n" "$( git rev-parse --abbrev-ref HEAD )"
 
-ARCH=$( uname )
 printf "\\nARCHITECTURE: %s\\n" "${ARCH}"
 
 # Find and use existing CMAKE
