@@ -30,6 +30,8 @@ struct chain_config {
    uint32_t   max_transaction_cpu_usage;           ///< the maximum billable cpu usage (in microseconds) that the chain will allow regardless of account limits
    uint32_t   min_transaction_cpu_usage;           ///< the minimum billable cpu usage (in microseconds) that the chain requires
 
+   uint64_t   min_transaction_ram_usage;           ///< the minimum billable ram usage (in bytes) that the chain requires
+
    uint32_t   max_transaction_lifetime;            ///< the maximum number of seconds that an input transaction's expiration can be ahead of the time of the block in which it is first included
    uint32_t   deferred_trx_expiration_window;      ///< the number of seconds after the time a deferred transaction can first execute until it expires
    uint32_t   max_transaction_delay;               ///< the maximum number of seconds that can be imposed as a delay requirement by authorization checks
@@ -53,6 +55,8 @@ struct chain_config {
                  << "Max Transaction CPU Usage: " << c.max_transaction_cpu_usage << ", "
                  << "Min Transaction CPU Usage: " << c.min_transaction_cpu_usage << ", "
 
+                 << "Min Transaction RAM Usage: " << c.min_transaction_ram_usage << ", "
+
                  << "Max Transaction Lifetime: " << c.max_transaction_lifetime << ", "
                  << "Deferred Transaction Expiration Window: " << c.deferred_trx_expiration_window << ", "
                  << "Max Transaction Delay: " << c.max_transaction_delay << ", "
@@ -72,7 +76,8 @@ struct chain_config {
                            lhs.max_block_cpu_usage,
                            lhs.target_block_cpu_usage_pct,
                            lhs.max_transaction_cpu_usage,
-                           lhs.max_transaction_cpu_usage,
+                           lhs.min_transaction_cpu_usage,
+                           lhs.min_transaction_ram_usage,
                            lhs.max_transaction_lifetime,
                            lhs.deferred_trx_expiration_window,
                            lhs.max_transaction_delay,
@@ -91,7 +96,8 @@ struct chain_config {
                            rhs.max_block_cpu_usage,
                            rhs.target_block_cpu_usage_pct,
                            rhs.max_transaction_cpu_usage,
-                           rhs.max_transaction_cpu_usage,
+                           rhs.min_transaction_cpu_usage,
+                           rhs.min_transaction_ram_usage,
                            rhs.max_transaction_lifetime,
                            rhs.deferred_trx_expiration_window,
                            rhs.max_transaction_delay,
@@ -114,6 +120,8 @@ FC_REFLECT(eosio::chain::chain_config,
 
            (max_block_cpu_usage)(target_block_cpu_usage_pct)
            (max_transaction_cpu_usage)(min_transaction_cpu_usage)
+
+           (min_transaction_ram_usage)
 
            (max_transaction_lifetime)(deferred_trx_expiration_window)(max_transaction_delay)
            (max_inline_action_size)(max_inline_action_depth)(max_authority_depth)

@@ -22,6 +22,7 @@ namespace cyberway { namespace chaindb {
         void remove(const table_info&, primary_key_t) const;
         void set_revision(const object_value&, revision_t) const;
 
+        uint64_t calc_ram_bytes(revision_t) const;
         void start_session(revision_t) const;
         void push_session(revision_t) const;
         void squash_session(revision_t) const;

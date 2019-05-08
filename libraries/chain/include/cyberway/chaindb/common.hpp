@@ -110,6 +110,8 @@ namespace cyberway { namespace chaindb {
         /** Undo changes made in this session */
         void undo();
 
+        uint64_t calc_ram_bytes() const;
+
         revision_t revision() const {
             return revision_;
         }

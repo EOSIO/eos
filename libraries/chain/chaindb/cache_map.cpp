@@ -225,13 +225,55 @@ namespace cyberway { namespace chaindb {
     }; // struct pending_cache_object_state
 
     struct pending_cache_cell final: public cache_cell {
-        pending_cache_cell(cache_map_impl& m, const revision_t r)
+        pending_cache_cell(cache_map_impl& m, const revision_t r, const uint64_t d)
         : cache_cell(m, cache_cell::Pending),
-          revision(r) {
+          revision_(r),
+          max_distance_(d) {
+            assert(revision_ >= start_revision);
+            assert(max_distance_ > 0);
         }
 
         void emplace(cache_object_ptr obj_ptr, const bool is_deleted) {
-            size += obj_ptr->service().size;
+            assert(obj_ptr);
+            assert(!obj_ptr->has_cell() || obj_ptr->cell().kind == cache_cell::LRU);
+
+            auto& state = emplace_impl(std::move(obj_ptr), is_deleted);
+            add_ram_usage(state);
+        }
+
+        void emplace(cache_object_ptr obj_ptr, const bool is_deleted, cache_object_state* prev_state) {
+            assert(obj_ptr);
+            assert(obj_ptr->cell().kind == cache_cell::Pending);
+
+            // squash case - don't add ram usage
+            auto& state = emplace_impl(std::move(obj_ptr), is_deleted);
+            state.prev_state = prev_state;
+        }
+
+        void squash_revision() {
+            revision_--;
+            assert(revision_ >= start_revision);
+        }
+
+        revision_t revision() {
+            return revision_;
+        }
+
+        std::deque<pending_cache_object_state> state_list; // Expansion of a std::deque is cheaper than the expansion of a std::vector
+
+    private:
+        void add_ram_usage(const pending_cache_object_state& state) {
+            auto delta = max_distance_;
+            if (state.prev_state) {
+                delta = pos - state.prev_state->cell->pos;
+            }
+
+            CYBERWAY_CACHE_ASSERT(UINT64_MAX - size >= delta, "Pending delta would overflow UINT64_MAX");
+            size += delta;
+        }
+
+        pending_cache_object_state& emplace_impl(cache_object_ptr obj_ptr, const bool is_deleted) {
+            assert(obj_ptr);
 
             state_list.emplace_back(*this, std::move(obj_ptr));
 
@@ -240,15 +282,12 @@ namespace cyberway { namespace chaindb {
 
             state.prev_state = prev_state;
             state.is_deleted = is_deleted;
+
+            return state;
         }
 
-        void emplace(cache_object_ptr obj_ptr, const bool is_deleted, cache_object_state* prev_state) {
-            emplace(std::move(obj_ptr), is_deleted);
-            state_list.back().prev_state = prev_state;
-        }
-
-        revision_t revision = impossible_revision;
-        std::deque<pending_cache_object_state> state_list; // Expansion of a std::deque is cheaper than the expansion of a std::vector
+        revision_t revision_ = impossible_revision;
+        const uint64_t max_distance_ = 0;
     }; // struct pending_cache_cell
 
     //---------------------------------------
@@ -507,8 +546,12 @@ namespace cyberway { namespace chaindb {
             }
         }
 
+        uint64_t calc_ram_bytes(const revision_t revision) {
+            return get_pending_cell(revision).size;
+        }
+
         void start_session(const revision_t revision) {
-            pending_cell_list_.emplace_back(*this, revision);
+            pending_cell_list_.emplace_back(*this, revision, ram_limit_);
             auto& pending = pending_cell_list_.back();
             if (!lru_cell_list_.empty()) {
                 auto& lru = lru_cell_list_.back();
@@ -546,13 +589,12 @@ namespace cyberway { namespace chaindb {
 
             auto itr = pending_cell_list_.end();
             --itr; auto& src_cell =*itr;
-            CYBERWAY_CACHE_ASSERT(revision == src_cell.revision, "Wrong revision of top pending caches");
+            CYBERWAY_CACHE_ASSERT(revision == src_cell.revision(), "Wrong revision of top pending caches");
             --itr; auto& dst_cell =*itr;
-            CYBERWAY_CACHE_ASSERT(revision - 1 == dst_cell.revision, "Wrong revision of pending caches");
+            CYBERWAY_CACHE_ASSERT(revision - 1 == dst_cell.revision(), "Wrong revision of pending caches");
             
-            if (pending_cell_list_.size() == 2 && dst_cell.state_list.empty()) {
-                assert(pending_cell_list_.front().revision == revision -1);
-                src_cell.revision = dst_cell.revision;
+            if (pending_cell_list_.begin() == itr && dst_cell.state_list.empty()) {
+                src_cell.squash_revision();
                 pending_cell_list_.pop_front();
                 return;
             } 
@@ -570,7 +612,7 @@ namespace cyberway { namespace chaindb {
 
         void undo_session(const revision_t revision) {
             if (!has_pending_cell()) {
-                // pop_block()
+                // case of pop_block
                 return;
             }
 
@@ -746,9 +788,9 @@ namespace cyberway { namespace chaindb {
 
         pending_cache_cell& get_pending_cell(const revision_t revision) {
             auto pending_ptr = find_pending_cell();
-            CYBERWAY_CACHE_ASSERT(pending_ptr && pending_ptr->revision == revision,
+            CYBERWAY_CACHE_ASSERT(pending_ptr && pending_ptr->revision() == revision,
                 "Wrong pending revision ${pending_revision} != ${revision}",
-                ("pending_revision", pending_ptr ? pending_ptr->revision : impossible_revision)("revision", revision));
+                ("pending_revision", pending_ptr ? pending_ptr->revision() : impossible_revision)("revision", revision));
             return *pending_ptr;
         }
 
@@ -1064,6 +1106,10 @@ namespace cyberway { namespace chaindb {
     void cache_map::set_revision(const object_value& obj, const revision_t rev) const {
         assert(obj.pk() != unset_primary_key && impossible_revision != rev);
         impl_->set_revision(obj.service, rev);
+    }
+
+    uint64_t cache_map::calc_ram_bytes(const revision_t revision) const {
+        return impl_->calc_ram_bytes(revision);
     }
 
     void cache_map::start_session(const revision_t revision) const {

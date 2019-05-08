@@ -288,6 +288,7 @@ extern const char* const state_history_plugin_abi = R"({
                 { "type": "uint32", "name": "target_block_cpu_usage_pct" },
                 { "type": "uint32", "name": "max_transaction_cpu_usage" },
                 { "type": "uint32", "name": "min_transaction_cpu_usage" },
+                { "type": "uint64", "name": "min_transaction_ram_usage" },
                 { "type": "uint32", "name": "max_transaction_lifetime" },
                 { "type": "uint32", "name": "deferred_trx_expiration_window" },
                 { "type": "uint32", "name": "max_transaction_delay" },
