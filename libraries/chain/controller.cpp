@@ -1944,16 +1944,11 @@ struct controller_impl {
       if( pending ) {
          if ( read_mode == db_read_mode::SPECULATIVE ) {
             for( const auto& t : pending->get_trx_metas() )
-               unapplied_transactions[t->signed_id] = t;
+               unapplied_transactions[t->signed_id()] = t;
          }
          pending.reset();
          protocol_features.popped_blocks_to( head->block_num );
       }
-   }
-
-
-   bool should_enforce_runtime_limits()const {
-      return false;
    }
 
    checksum256_type calculate_action_merkle() {
