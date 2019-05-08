@@ -157,6 +157,9 @@ if [ ! -d "${REPO_ROOT}/.git" ]; then
    exit 1
 fi
 
+# Test that which is on the system before proceeding
+which ls &>/dev/null || ( echo "${COLOR_RED}Please install the 'which' command before proceeding!${COLOR_NC}"; $DRYRUN || exit 1 )
+
 export CMAKE_VERSION_MAJOR=3
 export CMAKE_VERSION_MINOR=13
 export CMAKE_VERSION_PATCH=2
