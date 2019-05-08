@@ -18,7 +18,7 @@ steps:
       CHECKSUMABLE: "${CHECKSUMABLE}"
       TEMPLATE: "${ANKA_MOJAVE_TEMPLATE}"
       TEMPLATE_TAG: "${ANKA_TEMPLATE_TAG}"
-      TAG_COMMANDS: "CLONED_REPO_DIR/scripts/eosio_build.bash -y -P -m" # CLONED_REPO_DIR IS REQUIRED and is where the repo is always cloned into
+      TAG_COMMANDS: "./scripts/eosio_build.bash -y -P -m" # CLONED_REPO_DIR IS REQUIRED and is where the repo is always cloned into
       PROJECT_TAG: "${MAC_TAG}"
     timeout: 60
 
