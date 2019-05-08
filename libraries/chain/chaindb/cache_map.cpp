@@ -550,6 +550,13 @@ namespace cyberway { namespace chaindb {
             return get_pending_cell(revision).size;
         }
 
+        void set_revision(const revision_t revision) {
+            if (lru_cell_list_.empty() || !lru_cell_list_.back().state_list.empty()) {
+                lru_cell_list_.emplace_back(*this);
+            }
+            lru_revision_ = revision;
+        }
+
         void start_session(const revision_t revision) {
             pending_cell_list_.emplace_back(*this, revision, ram_limit_);
             auto& pending = pending_cell_list_.back();
@@ -560,10 +567,10 @@ namespace cyberway { namespace chaindb {
         }
 
         void push_session(const revision_t revision) {
-            CYBERWAY_CACHE_ASSERT(pending_cell_list_.size() == 1, "Push session for not-empty pending caches");
+            CYBERWAY_CACHE_ASSERT(!pending_cell_list_.empty(), "Push session for empty pending caches");
             auto& pending = get_pending_cell(revision);
 
-            lru_cell_list_.emplace_back(*this);
+            set_revision(revision - 1);
             auto& lru = lru_cell_list_.back();
             lru.pos = pending.pos;
 
@@ -573,23 +580,27 @@ namespace cyberway { namespace chaindb {
                     add_lru_object(std::move(state.object_ptr));
                 }
             }
-
             pending_cell_list_.pop_back();
-            if (!lru.size) {
-                lru_cell_list_.pop_back();
-            }
-
+            CYBERWAY_CACHE_ASSERT(pending_cell_list_.empty(), "After pushing session still exist pending caches");
             CYBERWAY_CACHE_ASSERT(deleted_object_tree_.empty(), "Tree with deleted object still has items");
 
             clear_overused_ram();
         }
 
         void squash_session(const revision_t revision) {
-            CYBERWAY_CACHE_ASSERT(pending_cell_list_.size() >= 2, "Squash session for less then 2 pending caches");
+            CYBERWAY_CACHE_ASSERT(!pending_cell_list_.empty(), "Squash session for empty pending caches");
 
             auto itr = pending_cell_list_.end();
             --itr; auto& src_cell =*itr;
             CYBERWAY_CACHE_ASSERT(revision == src_cell.revision(), "Wrong revision of top pending caches");
+
+            // replay and squashing system transaction to LRU
+            if (pending_cell_list_.begin() == itr) {
+                CYBERWAY_CACHE_ASSERT(revision - 1 == lru_revision_,
+                    "Wrong revision on squashing of sys-transaction to replayed block");
+                return push_session(revision);
+            }
+
             --itr; auto& dst_cell =*itr;
             CYBERWAY_CACHE_ASSERT(revision - 1 == dst_cell.revision(), "Wrong revision of pending caches");
             
@@ -691,6 +702,7 @@ namespace cyberway { namespace chaindb {
 
         pending_cell_list_type pending_cell_list_;
         lru_cell_list_type     lru_cell_list_;
+        revision_t             lru_revision_ = impossible_revision;
         system_cache_cell      system_cell_;
 
         uint64_t               ram_limit_ = get_ram_limit();
@@ -1110,6 +1122,10 @@ namespace cyberway { namespace chaindb {
 
     uint64_t cache_map::calc_ram_bytes(const revision_t revision) const {
         return impl_->calc_ram_bytes(revision);
+    }
+
+    void cache_map::set_revision(const revision_t revision) const {
+        impl_->set_revision(revision);
     }
 
     void cache_map::start_session(const revision_t revision) const {
