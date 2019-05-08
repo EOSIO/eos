@@ -31,7 +31,7 @@ genesis_ee_builder::genesis_ee_builder(const std::string& shared_file, uint32_t 
 genesis_ee_builder::~genesis_ee_builder() {
 }
 
-golos_dump_header genesis_ee_builder::read_header(bfs::fstream& in) {
+golos_dump_header genesis_ee_builder::read_header(bfs::ifstream& in) {
     golos_dump_header h;
     in.read((char*)&h, sizeof(h));
     if (in) {
@@ -43,7 +43,7 @@ golos_dump_header genesis_ee_builder::read_header(bfs::fstream& in) {
     return h;
 }
 
-bool genesis_ee_builder::read_op_header(bfs::fstream& in, operation_header& op) {
+bool genesis_ee_builder::read_op_header(bfs::ifstream& in, operation_header& op) {
     fc::raw::unpack(in, op);
 
     if (!in) {
@@ -61,7 +61,7 @@ void genesis_ee_builder::process_comments() {
 
     const auto& comment_index = maps_.get_index<comment_header_index, by_hash>();
 
-    bfs::fstream in(in_dump_dir_ / "comments");
+    bfs::ifstream in(in_dump_dir_ / "comments");
     read_header(in);
 
     operation_header op;
@@ -95,7 +95,7 @@ void genesis_ee_builder::process_delete_comments() {
 
     const auto& comment_index = maps_.get_index<comment_header_index, by_hash>();
 
-    bfs::fstream in(in_dump_dir_ / "delete_comments");
+    bfs::ifstream in(in_dump_dir_ / "delete_comments");
     read_header(in);
 
     operation_header op;
@@ -118,7 +118,7 @@ void genesis_ee_builder::process_rewards() {
 
     const auto& comment_index = maps_.get_index<comment_header_index, by_hash>();
 
-    bfs::fstream in(in_dump_dir_ / "total_comment_rewards");
+    bfs::ifstream in(in_dump_dir_ / "total_comment_rewards");
     read_header(in);
 
     operation_header op;
@@ -143,7 +143,7 @@ void genesis_ee_builder::process_votes() {
 
     const auto& vote_index = maps_.get_index<vote_header_index, by_hash_voter>();
 
-    bfs::fstream in(in_dump_dir_ / "votes");
+    bfs::ifstream in(in_dump_dir_ / "votes");
     read_header(in);
 
     operation_header op;
@@ -176,7 +176,7 @@ void genesis_ee_builder::process_reblogs() {
 
     const auto& reblog_index = maps_.get_index<reblog_header_index, by_hash_account>();
 
-    bfs::fstream in(in_dump_dir_ / "reblogs");
+    bfs::ifstream in(in_dump_dir_ / "reblogs");
     read_header(in);
 
     operation_header op;
@@ -209,7 +209,7 @@ void genesis_ee_builder::process_delete_reblogs() {
 
     const auto& reblog_index = maps_.get_index<reblog_header_index, by_hash_account>();
 
-    bfs::fstream in(in_dump_dir_ / "delete_reblogs");
+    bfs::ifstream in(in_dump_dir_ / "delete_reblogs");
     read_header(in);
 
     operation_header op;
@@ -229,7 +229,7 @@ void genesis_ee_builder::process_follows() {
 
     const auto& follow_index = maps_.get_index<follow_header_index, by_pair>();
 
-    bfs::fstream in(in_dump_dir_ / "follows");
+    bfs::ifstream in(in_dump_dir_ / "follows");
     read_header(in);
 
     operation_header op;
@@ -292,9 +292,7 @@ account_name generate_name(string n) {
     return account_name(h & 0xFFFFFFFFFFFFFFF0);
 }
 
-variants genesis_ee_builder::build_votes(uint64_t msg_hash, operation_number msg_created) {
-    variants votes;
-
+void genesis_ee_builder::build_votes(std::vector<vote_info>& votes, uint64_t msg_hash, operation_number msg_created) {
     const auto& vote_index = maps_.get_index<vote_header_index, by_hash_voter>();
 
     auto vote_itr = vote_index.lower_bound(msg_hash);
@@ -303,20 +301,15 @@ variants genesis_ee_builder::build_votes(uint64_t msg_hash, operation_number msg
             continue;
         }
 
-        auto vote = mvo
-            ("voter", generate_name(vote_itr->voter))
-            ("weight", vote_itr->weight)
-            ("time", vote_itr->timestamp);
-
-        votes.push_back(vote);
+        votes.emplace_back([&](auto& v) {
+            v.voter = generate_name(vote_itr->voter);
+            v.weight = vote_itr->weight;
+            v.time = vote_itr->timestamp;
+        }, 0);
     }
-
-    return votes;
 }
 
-variants genesis_ee_builder::build_reblogs(uint64_t msg_hash, operation_number msg_created, bfs::fstream& dump_reblogs) {
-    variants reblogs;
-
+void genesis_ee_builder::build_reblogs(std::vector<reblog_info>& reblogs, uint64_t msg_hash, operation_number msg_created, bfs::ifstream& dump_reblogs) {
     const auto& reblog_idx = maps_.get_index<reblog_header_index, by_hash_account>();
 
     auto reblog_itr = reblog_idx.lower_bound(msg_hash);
@@ -329,25 +322,23 @@ variants genesis_ee_builder::build_reblogs(uint64_t msg_hash, operation_number m
         cyberway::golos::reblog_operation rop;
         fc::raw::unpack(dump_reblogs, rop);
 
-        auto reblog = mvo
-            ("account", generate_name(reblog_itr->account))
-            ("title", rop.title)
-            ("body", rop.body)
-            ("time", rop.timestamp);
-
-        reblogs.push_back(reblog);
+        reblogs.emplace_back([&](auto& r) {
+            r.account = generate_name(reblog_itr->account);
+            r.title = rop.title;
+            r.body = rop.body;
+            r.time = rop.timestamp;
+        }, 0);
     }
 
-    return reblogs;
 }
 
 void genesis_ee_builder::build_messages() {
     std::cout << "-> Writing messages..." << std::endl;
 
-    out_.messages.start_section(gls_post_account_name, N(message), "message_info", comment_count_);
+    out_.messages.start_section(gls_post_account_name, N(message), "message_info");
 
-    bfs::fstream dump_comments(in_dump_dir_ / "comments");
-    bfs::fstream dump_reblogs(in_dump_dir_ / "reblogs");
+    bfs::ifstream dump_comments(in_dump_dir_ / "comments");
+    bfs::ifstream dump_reblogs(in_dump_dir_ / "reblogs");
 
     const auto& comment_index = maps_.get_index<comment_header_index, by_id>();
 
@@ -356,37 +347,33 @@ void genesis_ee_builder::build_messages() {
         cyberway::golos::comment_operation cop;
         fc::raw::unpack(dump_comments, cop);
 
-        auto votes = build_votes(comment.hash, comment.last_delete_op);
-
-        auto reblogs = build_reblogs(comment.hash, comment.last_delete_op, dump_reblogs);
-
-        out_.messages.insert(mvo
-            ("parent_author", generate_name(cop.parent_author))
-            ("parent_permlink", cop.parent_permlink)
-            ("author", generate_name(cop.author))
-            ("permlink", cop.permlink)
-            ("title", cop.title)
-            ("body", cop.body)
-            ("tags", cop.tags)
-            ("language", cop.language)
-            ("net_rshares", comment.net_rshares)
-            ("author_reward", asset(comment.author_reward, symbol(GLS)))
-            ("benefactor_reward", asset(comment.benefactor_reward, symbol(GLS)))
-            ("curator_reward", asset(comment.curator_reward, symbol(GLS)))
-            ("votes", votes)
-            ("reblogs", reblogs)
-        );
+        out_.messages.emplace<comment_info>([&](auto& c) {
+            c.parent_author = generate_name(cop.parent_author);
+            c.parent_permlink = cop.parent_permlink;
+            c.author = generate_name(cop.author);
+            c.permlink = cop.permlink;
+            c.title = cop.title;
+            c.body = cop.body;
+            c.tags = cop.tags;
+            c.language = cop.language;
+            c.net_rshares = comment.net_rshares;
+            c.author_reward = asset(comment.author_reward, symbol(GLS));
+            c.benefactor_reward = asset(comment.benefactor_reward, symbol(GLS));
+            c.curator_reward = asset(comment.curator_reward, symbol(GLS));
+            build_votes(c.votes, comment.hash, comment.last_delete_op);
+            build_reblogs(c.reblogs, comment.hash, comment.last_delete_op, dump_reblogs);
+        });
     }
 }
 
 void genesis_ee_builder::build_transfers() {
     std::cout << "-> Writing transfers..." << std::endl;
 
-    out_.transfers.start_section(config::token_account_name, N(transfer), "transfer", 0);
+    out_.transfers.start_section(config::token_account_name, N(transfer), "transfer");
 
     uint32_t transfer_count = 0;
 
-    bfs::fstream in(in_dump_dir_ / "transfers");
+    bfs::ifstream in(in_dump_dir_ / "transfers");
     read_header(in);
 
     operation_header op;
@@ -396,15 +383,13 @@ void genesis_ee_builder::build_transfers() {
 
         transfer_count++;
 
-        out_.transfers.insert(mvo
-            ("from", generate_name(top.from))
-            ("to", generate_name(top.to))
-            ("quantity", top.amount)
-            ("memo", top.memo)
-        );
+        out_.transfers.emplace<transfer_info>([&](auto& t) {
+            t.from = generate_name(top.from);
+            t.to = generate_name(top.to);
+            t.quantity = top.amount;
+            t.memo = top.memo;
+        });
     }
-
-    out_.transfers.finish_section(transfer_count);
 }
 
 void genesis_ee_builder::build_pinblocks() {
@@ -412,37 +397,29 @@ void genesis_ee_builder::build_pinblocks() {
 
     const auto& follow_index = maps_.get_index<follow_header_index, by_id>();
 
-    out_.pinblocks.start_section(gls_social_account_name, N(pin), "pin", 0);
+    out_.pinblocks.start_section(gls_social_account_name, N(pin), "pin");
 
-    uint32_t pin_count = 0;
     for (const auto& follow : follow_index) {
         if (follow.ignores) {
             continue;
         }
-        auto pin = mvo
-            ("pinner", generate_name(follow.follower))
-            ("pinning", generate_name(follow.following));
-        pin_count++;
-        out_.pinblocks.insert(pin);
+        out_.pinblocks.emplace<pin_info>([&](auto& p) {
+            p.pinner = generate_name(follow.follower);
+            p.pinning = generate_name(follow.following);
+        });
     }
 
-    out_.pinblocks.finish_section(pin_count);
+    out_.pinblocks.start_section(gls_social_account_name, N(block), "block");
 
-    out_.pinblocks.start_section(gls_social_account_name, N(block), "block", 0);
-
-    uint32_t block_count = 0;
     for (const auto& follow : follow_index) {
         if (!follow.ignores) {
             continue;
         }
-        auto block = mvo
-            ("blocker", generate_name(follow.follower))
-            ("blocking", generate_name(follow.following));
-        block_count++;
-        out_.pinblocks.insert(block);
+        out_.pinblocks.emplace<block_info>([&](auto& b) {
+            b.blocker = generate_name(follow.follower);
+            b.blocking = generate_name(follow.following);
+        });
     }
-
-    out_.pinblocks.finish_section(block_count);
 }
 
 void genesis_ee_builder::build(const bfs::path& out_dir) {

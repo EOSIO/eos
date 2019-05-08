@@ -4,6 +4,7 @@
  */
 #include <boost/filesystem/path.hpp>
 #include <boost/filesystem/fstream.hpp>
+#include <boost/iostreams/device/mapped_file.hpp>
 #include <eosio/event_engine_plugin/event_engine_plugin.hpp>
 #include <eosio/event_engine_plugin/messages.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
@@ -214,37 +215,31 @@ void event_engine_plugin_impl::send_genesis_file(const bfs::path& genesis_file) 
     using cyberway::genesis::ee_table_header;
 
     std::cout << "Reading event engine genesis data from " << genesis_file << "..." << std::endl;
-    bfs::ifstream in(genesis_file);
-    ee_genesis_header h{"", 0};
+    boost::iostreams::mapped_file mfile;
+    mfile.open(genesis_file, boost::iostreams::mapped_file::readonly);
+    EOS_ASSERT(mfile.is_open(), ee_extract_genesis_exception, "File not opened");
 
-    in.read((char*)&h, sizeof(h));
+    const ee_genesis_header &h = *(const ee_genesis_header*)mfile.const_data();
     std::cout << "Header magic: " << h.magic << "; ver: " << h.version << std::endl;
     EOS_ASSERT(h.is_valid(), ee_extract_genesis_exception, "Unknown format of the Genesis state file.");
 
+    fc::datastream<const char*> ds(mfile.const_data()+sizeof(h), mfile.size()-sizeof(h));
     // Read ABI
     abi_def abi;
     abi_serializer serializer;
 
-    fc::raw::unpack(in, abi);
+    fc::raw::unpack(ds, abi);
     serializer.set_abi(abi, abi_serializer_max_time);
 
-    while (in) {
+    while (ds.remaining()) {
         ee_table_header t;
-        fc::raw::unpack(in, t);
-        if (!in)
+        fc::raw::unpack(ds, t);
+        if (ds.remaining() == 0)
             break;
 
         std::cout << "Reading " << t.count << " record(s) with type: " << t.abi_type << std::endl;
         for (unsigned i = 0; i < t.count; ++i) {
-            bytes data;
-            fc::raw::unpack(in, data);
-
-            fc::variant args;
-            if (data.size() != 0) {
-                fc::datastream<const char*> ds(static_cast<const char*>(data.data()), data.size());
-                args = serializer.binary_to_variant(t.abi_type, ds, abi_serializer_max_time);
-            }
-
+            fc::variant args = serializer.binary_to_variant(t.abi_type, ds, abi_serializer_max_time);
             GenesisDataMessage msg(BaseMessage::GenesisData, t.code, t.name, args);
             send_message(msg);
         }

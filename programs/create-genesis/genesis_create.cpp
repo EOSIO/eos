@@ -524,7 +524,7 @@ struct genesis_create::genesis_create_impl final {
 
         // add usernames
         db.start_section(config::system_account_name, N(domain), "domain_object", 1);
-        ee_genesis.usernames.start_section(config::system_account_name, N(domain), "domain_info", 1);
+        ee_genesis.usernames.start_section(config::system_account_name, N(domain), "domain_info");
         const auto app = gls_issuer_account_name;
         db.emplace<domain_object>([&](auto& a) {
             a.owner = app;
@@ -539,7 +539,7 @@ struct genesis_create::genesis_create_impl final {
         );
 
         db.start_section(config::system_account_name, N(username), "username_object", _visitor.auths.size());
-        ee_genesis.usernames.start_section(config::system_account_name, N(username), "username_info", _visitor.auths.size());
+        ee_genesis.usernames.start_section(config::system_account_name, N(username), "username_info");
         for (const auto& auth : _visitor.auths) {                // loop through auths to preserve names order
             const auto& n = auth.account.value(_accs_map);
             db.emplace<username_object>([&](auto& u) {
@@ -816,7 +816,7 @@ struct genesis_create::genesis_create_impl final {
         // token stats
         const auto n_stats = 2;
         db.start_section(config::token_account_name, N(stat), "currency_stats", n_stats);
-        ee_genesis.balances.start_section(config::token_account_name, N(currency), "currency_stats", n_stats);
+        ee_genesis.balances.start_section(config::token_account_name, N(currency), "currency_stats");
 
         auto supply = gp.current_supply + golos_from_gbg;
         auto insert_stat_record = [&](const asset& supply, int64_t max_supply, name issuer) {
@@ -846,7 +846,7 @@ struct genesis_create::genesis_create_impl final {
         // funds
         const auto n_balances = 3 + 2*data.gbg.size();
         db.start_section(config::token_account_name, N(accounts), "account", n_balances);
-        ee_genesis.balances.start_section(config::token_account_name, N(balance), "balance_event", n_balances);
+        ee_genesis.balances.start_section(config::token_account_name, N(balance), "balance_event");
         auto insert_balance_record = [&](name account, const asset& balance, primary_key_t pk, name ram_payer) {
             auto record = mvo
                 ("balance", balance)

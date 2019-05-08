@@ -17,7 +17,6 @@ struct ee_genesis_serializer {
 
 private:
     bfs::ofstream out;
-    uint32_t _count = 0;
     ee_table_header _section;
     uint64_t _section_offset = 0;
     abi_serializer serializer;
@@ -40,37 +39,49 @@ public:
         finish_section();
     }
 
-    void start_section(account_name code, table_name name, std::string abi_type, uint32_t count) {
+    void start_section(account_name code, table_name name, std::string abi_type) {
         finish_section();
 
-        ee_table_header h{code, name, abi_type, count};
+        ee_table_header h{code, name, abi_type, 0};
         wlog("Starting section: ${s}", ("s", h));
         _section_offset = out.tellp();
         fc::raw::pack(out, h);
         _section = h;
-        _count = 0;
     }
 
-    void finish_section(uint32_t add_count = 0) {
-        if (add_count != 0) {
-            _section.count += add_count;
-
-            auto pos = out.tellp();
-            out.seekp(_section_offset);
-            fc::raw::pack(out, _section);
-            out.seekp(pos);
-
-            wlog("Finished with count: ${count}", ("count", _section.count));
+    void finish_section(fc::optional<uint32_t> count = fc::optional<uint32_t>()) {
+        if (_section_offset == 0) {
+            // No section yet
+            return;
         }
 
-        EOS_ASSERT(_count == _section.count, ee_genesis_exception, "Section contains wrong number of rows",
-            ("section",_section)("diff", _section.count - _count));
+        if (count.valid()) {
+            EOS_ASSERT(*count == _section.count, ee_genesis_exception, "Section contains wrong number of rows",
+                ("section",_section)("expected",*count)("diff", _section.count - *count));
+        }
+
+        auto pos = out.tellp();
+        out.seekp(_section_offset);
+
+        fc::raw::pack(out, _section);
+
+        out.seekp(pos);
+        wlog("Finished section: ${s}", ("s", _section));
+
+        _section_offset = 0;
     }
 
     void insert(const variant& v, const fc::microseconds abi_serializer_max_time = fc::seconds(10)) {
         bytes data = serializer.variant_to_binary(_section.abi_type, v, abi_serializer_max_time);
-        fc::raw::pack(out, data);
-        _count++;
+        out.write(data.data(), data.size());
+        _section.count++;
+    }
+
+    template<typename T, typename Lambda>
+    void emplace(Lambda&& constructor) {
+        T obj(constructor, 0);
+        fc::raw::pack(out, obj);
+        _section.count++;
     }
 };
 

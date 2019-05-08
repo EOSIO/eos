@@ -14,7 +14,7 @@ struct ee_genesis_header {
     uint32_t version = 1;
     fc::sha256 hash;
 
-    bool is_valid() {
+    bool is_valid() const {
         ee_genesis_header oth;
         return string(magic) == oth.magic && version == oth.version;
     }
