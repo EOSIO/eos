@@ -10,23 +10,6 @@ echo "Disk space available: ${DISK_AVAIL}G"
 [[ $MEM_GIG -lt 7 ]] && echo "Your system must have 7 or more Gigabytes of physical memory installed." && exit 1
 [[ "${DISK_AVAIL}" -lt "${DISK_MIN}" ]] && echo " - You must have at least ${DISK_MIN}GB of available storage to install EOSIO." && exit 1
 
-case $NAME in
-	"Ubuntu")
-		. /etc/lsb-release
-		if [ "${DISTRIB_CODENAME}" != "xenial" -a "${DISTRIB_CODENAME}" != "bionic" ]; then
-			echo "The only Ubuntu versions this script supports are Ubuntu 16.04 and 18.04"
-			echo "Exiting now."
-			exit 1
-		fi
-		# UBUNTU 18 doesn't have MONGODB 3.6.3
-		if [ $OS_MAJ -gt 16 ]; then
-			export MONGODB_VERSION=4.1.1
-		fi
-		# We have to re-set this with the new version
-		export MONGODB_ROOT=${OPT_LOCATION}/mongodb-${MONGODB_VERSION}
-	;;
-esac
-
 if [ "${DISK_AVAIL%.*}" -lt "${DISK_MIN}" ]; then
 	printf "You must have at least %sGB of available storage to install EOSIO.\\n" "${DISK_MIN}"
 	printf "Exiting now.\\n"
@@ -262,7 +245,15 @@ else
    if [ $? -ne 0 ]; then exit -1; fi
 fi
 
+VERSION_MAJ=$(echo "${VERSION_ID}" | cut -d'.' -f1)
+VERSION_MIN=$(echo "${VERSION_ID}" | cut -d'.' -f2)
 if [ $BUILD_MONGO ]; then
+	if [[ $VERSION_MAJ == 18 ]]; then
+		# UBUNTU 18 doesn't have MONGODB 3.6.3
+		export MONGODB_VERSION=4.1.1
+		# We have to re-set this with the new version
+		export MONGODB_ROOT=${OPT_DIR}/mongodb-${MONGODB_VERSION}
+	fi
    printf "Checking MongoDB installation...\\n"
    if [ ! -d $MONGODB_ROOT ] || [ $FORCE_BUILD ]; then
       printf "Installing MongoDB into ${MONGODB_ROOT}...\\n"
