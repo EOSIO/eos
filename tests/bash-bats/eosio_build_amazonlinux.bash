@@ -26,7 +26,7 @@ export TEST_LABEL="[eosio_build_amazonlinux]"
     run bash -c "printf \"y\n%.0s\" {1..100} | ./$SCRIPT_LOCATION -P"
     [[ ! -z $(echo "${output}" | grep "Executing: make -j${JOBS}") ]] || exit
     ### Make sure deps are loaded properly
-    [[ ! -z $(echo "${output}" | grep "Executing: cd ${SRC_LOCATION}") ]] || exit
+    [[ ! -z $(echo "${output}" | grep "Executing: cd ${SRC_DIR}") ]] || exit
     [[ ! -z $(echo "${output}" | grep "Starting EOSIO Dependency Install") ]] || exit
     [[ ! -z $(echo "${output}" | grep "Executing: /usr/bin/yum -y update") ]] || exit
     if [[ $NAME == "Amazon Linux" ]]; then

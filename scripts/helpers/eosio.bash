@@ -53,13 +53,13 @@ function setup() {
         fi
     fi
     execute mkdir -p $BUILD_DIR
-    execute mkdir -p $SRC_LOCATION
-    execute mkdir -p $OPT_LOCATION
-    execute mkdir -p $VAR_LOCATION
-    execute mkdir -p $BIN_LOCATION
-    execute mkdir -p $VAR_LOCATION/log
-    execute mkdir -p $ETC_LOCATION
-    execute mkdir -p $LIB_LOCATION
+    execute mkdir -p $SRC_DIR
+    execute mkdir -p $OPT_DIR
+    execute mkdir -p $VAR_DIR
+    execute mkdir -p $BIN_DIR
+    execute mkdir -p $VAR_DIR/log
+    execute mkdir -p $ETC_DIR
+    execute mkdir -p $LIB_DIR
     execute mkdir -p $MONGODB_LOG_DIR
     execute mkdir -p $MONGODB_DATA_DIR
 }
@@ -145,7 +145,7 @@ function ensure-compiler() {
 function ensure-cmake() {
     echo "${COLOR_CYAN}[Ensuring CMAKE installation]${COLOR_NC}"
     if [[ ! -e "${CMAKE}" ]]; then
-		execute bash -c "cd $SRC_LOCATION && \
+		execute bash -c "cd $SRC_DIR && \
         curl -LO https://cmake.org/files/v${CMAKE_VERSION_MAJOR}.${CMAKE_VERSION_MINOR}/cmake-${CMAKE_VERSION}.tar.gz \
         && tar -xzf cmake-${CMAKE_VERSION}.tar.gz \
         && cd cmake-${CMAKE_VERSION} \
@@ -154,7 +154,7 @@ function ensure-cmake() {
         && make install \
         && cd .. \
         && rm -f cmake-${CMAKE_VERSION}.tar.gz"
-        [[ -z "${CMAKE}" ]] && export CMAKE="${BIN_LOCATION}/cmake"
+        [[ -z "${CMAKE}" ]] && export CMAKE="${BIN_DIR}/cmake"
         echo " - CMAKE successfully installed @ ${CMAKE}"
         echo ""
     else
@@ -172,7 +172,7 @@ function ensure-boost() {
         if [[ $ARCH == "Linux" ]] && $PIN_COMPILER; then
             B2_FLAGS="toolset=clang cxxflags='-stdlib=libc++ -D__STRICT_ANSI__ -nostdinc++ -I${CLANG_ROOT}/include/c++/v1' linkflags='-stdlib=libc++' link=static threading=multi --with-iostreams --with-date_time --with-filesystem --with-system --with-program_options --with-chrono --with-test -q -j${JOBS} install"
         fi
-		execute bash -c "cd $SRC_LOCATION && \
+		execute bash -c "cd $SRC_DIR && \
         curl -LO https://dl.bintray.com/boostorg/release/$BOOST_VERSION_MAJOR.$BOOST_VERSION_MINOR.$BOOST_VERSION_PATCH/source/boost_$BOOST_VERSION.tar.bz2 \
         && tar -xjf boost_$BOOST_VERSION.tar.bz2 \
         && cd $BOOST_ROOT \
@@ -206,7 +206,7 @@ function ensure-llvm() {
                 fi
                 CMAKE_FLAGS="-G 'Unix Makefiles' -DCMAKE_INSTALL_PREFIX=${LLVM_ROOT} -DLLVM_TARGETS_TO_BUILD='host' -DLLVM_BUILD_TOOLS=false -DLLVM_ENABLE_RTTI=1 -DCMAKE_BUILD_TYPE=Release .."
             fi
-            execute bash -c "cd ${OPT_LOCATION} \
+            execute bash -c "cd ${OPT_DIR} \
             && git clone --depth 1 --single-branch --branch $LLVM_VERSION https://github.com/llvm-mirror/llvm.git llvm && cd llvm \
             && mkdir build \
             && cd build \

@@ -60,25 +60,25 @@ ensure-boost
 if $INSTALL_MONGO; then
 	echo "${COLOR_CYAN}[Ensuring MongoDB installation]${COLOR_NC}"
 	if [[ ! -d $MONGODB_ROOT ]]; then
-		execute bash -c "cd $SRC_LOCATION && \
+		execute bash -c "cd $SRC_DIR && \
 		curl -OL https://fastdl.mongodb.org/osx/mongodb-osx-ssl-x86_64-$MONGODB_VERSION.tgz \
 		&& tar -xzf mongodb-osx-ssl-x86_64-$MONGODB_VERSION.tgz \
-		&& mv $SRC_LOCATION/mongodb-osx-x86_64-$MONGODB_VERSION $MONGODB_ROOT \
+		&& mv $SRC_DIR/mongodb-osx-x86_64-$MONGODB_VERSION $MONGODB_ROOT \
 		&& touch $MONGODB_LOG_DIR/mongod.log \
 		&& rm -f mongodb-osx-ssl-x86_64-$MONGODB_VERSION.tgz \
 		&& cp -f $REPO_ROOT/scripts/mongod.conf $MONGODB_CONF \
 		&& mkdir -p $MONGODB_DATA_DIR \
 		&& rm -rf $MONGODB_LINK_DIR \
-		&& rm -rf $BIN_LOCATION/mongod \
+		&& rm -rf $BIN_DIR/mongod \
 		&& ln -s $MONGODB_ROOT $MONGODB_LINK_DIR \
-		&& ln -s $MONGODB_LINK_DIR/bin/mongod $BIN_LOCATION/mongod"
+		&& ln -s $MONGODB_LINK_DIR/bin/mongod $BIN_DIR/mongod"
 		echo " - MongoDB successfully installed @ ${MONGODB_ROOT}"
 	else
 		echo " - MongoDB found with correct version @ ${MONGODB_ROOT}."
 	fi
 	echo "${COLOR_CYAN}[Ensuring MongoDB C driver installation]${COLOR_NC}"
 	if [[ ! -d $MONGO_C_DRIVER_ROOT ]]; then
-		execute bash -c "cd $SRC_LOCATION && \
+		execute bash -c "cd $SRC_DIR && \
 		curl -LO https://github.com/mongodb/mongo-c-driver/releases/download/$MONGO_C_DRIVER_VERSION/mongo-c-driver-$MONGO_C_DRIVER_VERSION.tar.gz \
 		&& tar -xzf mongo-c-driver-$MONGO_C_DRIVER_VERSION.tar.gz \
 		&& cd mongo-c-driver-$MONGO_C_DRIVER_VERSION \
@@ -95,7 +95,7 @@ if $INSTALL_MONGO; then
 	fi
 	echo "${COLOR_CYAN}[Ensuring MongoDB C++ driver installation]${COLOR_NC}"
 	if [[ "$(grep "Version:" $EOSIO_HOME/lib/pkgconfig/libmongocxx-static.pc 2>/dev/null | tr -s ' ' | awk '{print $2}' || true)" != $MONGO_CXX_DRIVER_VERSION ]]; then
-		execute bash -c "cd $SRC_LOCATION && \
+		execute bash -c "cd $SRC_DIR && \
 		curl -L https://github.com/mongodb/mongo-cxx-driver/archive/r${MONGO_CXX_DRIVER_VERSION}.tar.gz -o mongo-cxx-driver-r${MONGO_CXX_DRIVER_VERSION}.tar.gz \
 		&& tar -xzf mongo-cxx-driver-r${MONGO_CXX_DRIVER_VERSION}.tar.gz \
 		&& cd mongo-cxx-driver-r${MONGO_CXX_DRIVER_VERSION}/build \

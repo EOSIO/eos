@@ -1,6 +1,6 @@
 #!/bin/bash
-. ./scripts/.environment
 set -eo pipefail
+. ./scripts/.environment
 echo "+++ Extracting build directory"
 [[ -f build.tar.gz ]] && tar -xzf build.tar.gz
 ls -l build && cd build
@@ -14,7 +14,7 @@ TEST_COUNT=$(ctest -N -LE _tests | grep -i 'Total Tests: ' | cut -d ':' -f 2 | a
 [[ $TEST_COUNT > 0 ]] && echo "$TEST_COUNT tests found." || (echo "ERROR: No tests registered with ctest! Exiting..." && exit 1)
 set +e # defer ctest error handling to end
 echo "ctest -L nonparallelizable_tests --output-on-failure -T Test"
-ctest -L nonparallelizable_tests --output-on-failure -T Test
+$BIN_DIR/ctest -L nonparallelizable_tests --output-on-failure -T Test
 EXIT_STATUS=$?
 [[ $EXIT_STATUS == 0 ]] && set -e
 echo "+++ Uploading artifacts"

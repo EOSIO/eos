@@ -167,12 +167,12 @@ fi
 
 ( [[ -z "${CMAKE}" ]] && [[ ! -z $(command -v cmake 2>/dev/null) ]] ) && export CMAKE=$(command -v cmake 2>/dev/null)
 
-# Find and replace OPT_LOCATION in pinned_toolchain.cmake, then move it into build dir
-execute bash -c "sed -e 's~@~$OPT_LOCATION~g' $SCRIPT_DIR/pinned_toolchain.cmake &> $BUILD_DIR/pinned_toolchain.cmake"
+# Find and replace OPT_DIR in pinned_toolchain.cmake, then move it into build dir
+execute bash -c "sed -e 's~@~$OPT_DIR~g' $SCRIPT_DIR/pinned_toolchain.cmake &> $BUILD_DIR/pinned_toolchain.cmake"
 
 echo "${COLOR_CYAN}====================================================================================="
 echo "======================= ${COLOR_WHITE}Starting EOSIO Dependency Install${COLOR_CYAN} ===========================${COLOR_NC}"
-execute cd $SRC_LOCATION
+execute cd $SRC_DIR
 set_system_vars # JOBS, Memory, disk space available, etc
 $BUILD_CLANG && export PINNED_TOOLCHAIN="-DCMAKE_TOOLCHAIN_FILE='${BUILD_DIR}/pinned_toolchain.cmake'"
 . $FILE # Execute OS specific build file
@@ -215,8 +215,8 @@ echo "${COLOR_YELLOW}Uninstall with: ./scripts/eosio_uninstall.bash${COLOR_NC}"
 echo ""
 echo "${COLOR_CYAN}If you wish to perform tests to ensure functional code:${COLOR_NC}"
 if $ENABLE_MONGO; then
-   echo "${BIN_LOCATION}/mongod --dbpath ${MONGODB_DATA_DIR} -f ${MONGODB_CONF} --logpath ${MONGODB_LOG_DIR}/mongod.log &"
-   PATH_TO_USE=" PATH=\$PATH:$OPT_LOCATION/mongodb/bin"
+   echo "${BIN_DIR}/mongod --dbpath ${MONGODB_DATA_DIR} -f ${MONGODB_CONF} --logpath ${MONGODB_LOG_DIR}/mongod.log &"
+   PATH_TO_USE=" PATH=\$PATH:$OPT_DIR/mongodb/bin"
 fi
 echo "cd ./build &&${PATH_TO_USE} make test" # PATH is set as currently 'mongo' binary is required for the mongodb test
 

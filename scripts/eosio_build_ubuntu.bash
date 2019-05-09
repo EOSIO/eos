@@ -51,29 +51,29 @@ if $INSTALL_MONGO; then
 		# UBUNTU 18 doesn't have MONGODB 3.6.3
 		MONGODB_VERSION=4.1.1
 		# We have to re-set this with the new version
-		MONGODB_ROOT=${OPT_LOCATION}/mongodb-${MONGODB_VERSION}
+		MONGODB_ROOT=${OPT_DIR}/mongodb-${MONGODB_VERSION}
 	fi
 	echo "${COLOR_CYAN}[Ensuring MongoDB installation]${COLOR_NC}"
 	if [[ ! -d $MONGODB_ROOT ]]; then
-		execute bash -c "cd $SRC_LOCATION && \
+		execute bash -c "cd $SRC_DIR && \
 		curl -OL http://downloads.mongodb.org/linux/mongodb-linux-x86_64-ubuntu${VERSION_MAJ}${VERSION_MIN}-$MONGODB_VERSION.tgz \
 		&& tar -xzf mongodb-linux-x86_64-ubuntu${VERSION_MAJ}${VERSION_MIN}-${MONGODB_VERSION}.tgz \
-		&& mv $SRC_LOCATION/mongodb-linux-x86_64-ubuntu${VERSION_MAJ}${VERSION_MIN}-${MONGODB_VERSION} $MONGODB_ROOT \
+		&& mv $SRC_DIR/mongodb-linux-x86_64-ubuntu${VERSION_MAJ}${VERSION_MIN}-${MONGODB_VERSION} $MONGODB_ROOT \
 		&& touch $MONGODB_LOG_DIR/mongod.log \
 		&& rm -f mongodb-linux-x86_64-ubuntu${VERSION_MAJ}${VERSION_MIN}-$MONGODB_VERSION.tgz \
 		&& cp -f $REPO_ROOT/scripts/mongod.conf $MONGODB_CONF \
 		&& mkdir -p $MONGODB_DATA_DIR \
 		&& rm -rf $MONGODB_LINK_DIR \
-		&& rm -rf $BIN_LOCATION/mongod \
+		&& rm -rf $BIN_DIR/mongod \
 		&& ln -s $MONGODB_ROOT $MONGODB_LINK_DIR \
-		&& ln -s $MONGODB_LINK_DIR/bin/mongod $BIN_LOCATION/mongod"
+		&& ln -s $MONGODB_LINK_DIR/bin/mongod $BIN_DIR/mongod"
 		echo " - MongoDB successfully installed @ ${MONGODB_ROOT} (Symlinked to ${MONGODB_LINK_DIR})."
 	else
 		echo " - MongoDB found with correct version @ ${MONGODB_ROOT} (Symlinked to ${MONGODB_LINK_DIR})."
 	fi
 	echo "${COLOR_CYAN}[Ensuring MongoDB C driver installation]${COLOR_NC}"
 	if [[ ! -d $MONGO_C_DRIVER_ROOT ]]; then
-		execute bash -c "cd $SRC_LOCATION && \
+		execute bash -c "cd $SRC_DIR && \
 		curl -LO https://github.com/mongodb/mongo-c-driver/releases/download/$MONGO_C_DRIVER_VERSION/mongo-c-driver-$MONGO_C_DRIVER_VERSION.tar.gz \
 		&& tar -xzf mongo-c-driver-$MONGO_C_DRIVER_VERSION.tar.gz \
 		&& cd mongo-c-driver-$MONGO_C_DRIVER_VERSION \
@@ -90,7 +90,7 @@ if $INSTALL_MONGO; then
 	fi
 	echo "${COLOR_CYAN}[Ensuring MongoDB C++ driver installation]${COLOR_NC}"
 	if [[ ! -d $MONGO_CXX_DRIVER_ROOT ]]; then
-		execute bash -c "cd $SRC_LOCATION && \
+		execute bash -c "cd $SRC_DIR && \
 		curl -L https://github.com/mongodb/mongo-cxx-driver/archive/r$MONGO_CXX_DRIVER_VERSION.tar.gz -o mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION.tar.gz \
 		&& tar -xzf mongo-cxx-driver-r${MONGO_CXX_DRIVER_VERSION}.tar.gz \
 		&& cd mongo-cxx-driver-r$MONGO_CXX_DRIVER_VERSION \

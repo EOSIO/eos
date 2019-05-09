@@ -4,13 +4,13 @@ load helpers/general
 SCRIPT_LOCATION="scripts/eosio_uninstall.bash"
 TEST_LABEL="[eosio_uninstall]"
 
-mkdir -p $SRC_LOCATION
-mkdir -p $OPT_LOCATION
-mkdir -p $VAR_LOCATION
-mkdir -p $BIN_LOCATION
-mkdir -p $VAR_LOCATION/log
-mkdir -p $ETC_LOCATION
-mkdir -p $LIB_LOCATION
+mkdir -p $SRC_DIR
+mkdir -p $OPT_DIR
+mkdir -p $VAR_DIR
+mkdir -p $BIN_DIR
+mkdir -p $VAR_DIR/log
+mkdir -p $ETC_DIR
+mkdir -p $LIB_DIR
 mkdir -p $MONGODB_LOG_DIR
 mkdir -p $MONGODB_DATA_DIR
 
@@ -64,12 +64,12 @@ mkdir -p $MONGODB_DATA_DIR
   [[ "${output##*$'\n'}" == "[EOSIO Removal Complete]" ]] || exit
 }
 
-rm -rf $SRC_LOCATION
-rm -rf $OPT_LOCATION
-rm -rf $VAR_LOCATION
-rm -rf $BIN_LOCATION
-rm -rf $VAR_LOCATION/log
-rm -rf $ETC_LOCATION
-rm -rf $LIB_LOCATION
+rm -rf $SRC_DIR
+rm -rf $OPT_DIR
+rm -rf $VAR_DIR
+rm -rf $BIN_DIR
+rm -rf $VAR_DIR/log
+rm -rf $ETC_DIR
+rm -rf $LIB_DIR
 rm -rf $MONGODB_LOG_DIR
 rm -rf $MONGODB_DATA_DIR

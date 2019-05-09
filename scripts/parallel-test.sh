@@ -1,5 +1,6 @@
 #!/bin/bash
 set -eo pipefail
+. ./scripts/.environment
 echo "+++ Extracting build directory"
 [[ -f build.tar.gz ]] && tar -xzf build.tar.gz
 ls -l build && cd build
@@ -10,7 +11,7 @@ TEST_COUNT=$(ctest -N -LE _tests | grep -i 'Total Tests: ' | cut -d ':' -f 2 | a
 set +e # defer ctest error handling to end
 CORES=$(getconf _NPROCESSORS_ONLN)
 echo "ctest -j $CORES -LE _tests --output-on-failure -T Test"
-ctest -j $CORES -LE _tests --output-on-failure -T Test
+$BIN_DIR/ctest -j $CORES -LE _tests --output-on-failure -T Test
 EXIT_STATUS=$?
 [[ "$EXIT_STATUS" == 0 ]] && set -e
 # Prepare tests for artifact upload
