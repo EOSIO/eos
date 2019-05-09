@@ -1,7 +1,7 @@
 echo "OS name: ${NAME}"
 echo "OS Version: ${OS_VER}"
 echo "CPU cores: ${CPU_CORES}"
-echo "Physical Memory: ${MEM_GIG} Gbytes"
+echo "Physical Memory: ${MEM_GIG}G"
 echo "Disk install: ${DISK_INSTALL}"
 echo "Disk space total: ${DISK_TOTAL}G"
 echo "Disk space available: ${DISK_AVAIL}G"

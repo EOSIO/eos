@@ -1,13 +1,16 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -ieo pipefail
 # Load eosio specific helper functions
 . ./scripts/helpers/eosio.bash
 echo "+++ Extracting build directory"
 [[ -f build.tar.gz ]] && tar -xzf build.tar.gz
 ls -l build && cd build
-echo "+++ Killing old MongoDB"
-$(pgrep mongod | xargs kill -9) || true
-echo "+++ Starting MongoDB"
-$MONGODB_BIN --fork --dbpath $MONGODB_DATA_DIR -f $MONGODB_CONF --logpath ./mongod.log
+if [[ -f $MONGODB_BIN ]]; then
+    echo "+++ Killing old MongoDB"
+    $(pgrep mongod | xargs kill -9) || true
+    echo "+++ Starting MongoDB"
+    $MONGODB_BIN --fork --dbpath $MONGODB_DATA_DIR -f $MONGODB_CONF --logpath ./mongod.log
+fi
 echo "+++ Running tests"
 # Counting tests available and if they get disabled for some reason, throw a failure
 TEST_COUNT=$($CTEST_BIN -N -LE _tests | grep -i 'Total Tests: ' | cut -d ':' -f 2 | awk '{print $1}')
@@ -20,7 +23,7 @@ EXIT_STATUS=$?
 echo "+++ Uploading artifacts"
 mv -f ./Testing/$(ls ./Testing/ | grep '20' | tail -n 1)/Test.xml test-results.xml
 buildkite-agent artifact upload test-results.xml
-buildkite-agent artifact upload mongod.log
+[[ -f $MONGODB_BIN ]] && buildkite-agent artifact upload mongod.log
 # ctest error handling
 if [[ $EXIT_STATUS != 0 ]]; then
     echo "Failing due to non-zero exit status from ctest: $EXIT_STATUS"
