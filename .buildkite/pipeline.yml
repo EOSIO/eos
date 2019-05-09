@@ -4,7 +4,7 @@ env:
   ANKA_MOJAVE_TEMPLATE: "10.14.4_6C_14G_40G"
   ANKA_TEMPLATE_TAG: "clean::cicd::git-ssh::nas::brew::buildkite-agent-3.11.2"
   CHECKSUMABLE: "scripts/eosio_build*"
-  MAC_TAG: "eosio_3-0"
+  MAC_TAG: "eosio_1.9.0"
 
 steps:
 
@@ -47,7 +47,7 @@ steps:
 
   - label: ":darwin: [Darwin] Mojave Build"
     command:
-      - "git clone ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO} && cd eos && git checkout ${BUILDKITE_COMMIT} && git submodule update --init --recursive && ./scripts/eosio_build.bash -y -P -m"
+      - "git clone ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO} && cd eos && git checkout ${BUILDKITE_COMMIT} && git submodule update --init --recursive && VERBOSE=true ./scripts/eosio_build.bash -y -P -m"
       - "for tries in {1..4}; do tar -pczf /Network/NAS/MAC_FLEET/BUILDKITE/artifacts/${ANKA_MOJAVE_TEMPLATE}-${BUILDKITE_PIPELINE_SLUG}-${BUILDKITE_BUILD_ID}.tar.gz eos && break || sleep 30; done"
     plugins:
       chef/anka#v0.4.4:
@@ -66,7 +66,7 @@ steps:
 
   - label: ":aws: Amazon Linux 2 Build"
     command:
-      - "./scripts/eosio_build.bash -y -P -m"
+      - "VERBOSE=true ./scripts/eosio_build.bash -y -P -m"
       - "tar -pczf build.tar.gz build; if [[ ! -f build.tar.gz ]]; then echo 'ERROR: No build.tar.gz artifact found!' && exit 1; fi"
     agents:
       queue: "automation-large-builder-fleet"
@@ -80,14 +80,14 @@ steps:
       docker#v3.1.0:
         shell: ["/bin/bash", "-i", "-e", "-c"]
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux2_3-0"
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux2_1-9-0"
         propagate-environment: true
         workdir: /data/job
     timeout: 120
 
   - label: ":centos: CentOS 7 Build"
     command:
-      - "./scripts/eosio_build.bash -y -P -m"
+      - "VERBOSE=true ./scripts/eosio_build.bash -y -P -m"
       - "tar -pczf build.tar.gz build; if [[ ! -f build.tar.gz ]]; then echo 'ERROR: No build.tar.gz artifact found!' && exit 1; fi"
     agents:
       queue: "automation-large-builder-fleet"
@@ -101,14 +101,14 @@ steps:
       docker#v3.2.0:
         shell: ["/bin/bash", "-i", "-e", "-c"]
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:centos7_3-0"
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:centos7_1-9-0"
         propagate-environment: true
         workdir: /data/job
     timeout: 120
 
   - label: ":ubuntu: Ubuntu 16.04 Build"
     command:
-      - "./scripts/eosio_build.bash -y -P -m"
+      - "VERBOSE=true ./scripts/eosio_build.bash -y -P -m"
       - "tar -pczf build.tar.gz build; if [[ ! -f build.tar.gz ]]; then echo 'ERROR: No build.tar.gz artifact found!' && exit 1; fi"
     agents:
       queue: "automation-large-builder-fleet"
@@ -122,14 +122,14 @@ steps:
       docker#v3.2.0:
         shell: ["/bin/bash", "-i", "-e", "-c"]
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu16_3-0"
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu16_1-9-0"
         propagate-environment: true
         workdir: /data/job
     timeout: 120
 
   - label: ":ubuntu: Ubuntu 18.04 Build"
     command:
-      - "./scripts/eosio_build.bash -y -P -m"
+      - "VERBOSE=true ./scripts/eosio_build.bash -y -P -m"
       - "tar -pczf build.tar.gz build; if [[ ! -f build.tar.gz ]]; then echo 'ERROR: No build.tar.gz artifact found!' && exit 1; fi"
     agents:
       queue: "automation-large-builder-fleet"
@@ -143,7 +143,7 @@ steps:
       docker#v3.2.0:
         shell: ["/bin/bash", "-i", "-e", "-c"]
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu18_3-0"
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu18_1-9-0"
         propagate-environment: true
         workdir: /data/job
     timeout: 120
@@ -195,7 +195,7 @@ steps:
   - label: ":aws: Amazon Linux 2 Tests"
     command:
       - "echo \"--- :arrow_down: Downloading Build Directory\" && buildkite-agent artifact download \"build.tar.gz\" . --step \":aws: Amazon Linux 2 Build\""
-      - "./scripts/parallel-test.bash"
+      - "VERBOSE=true ./scripts/parallel-test.bash"
     agents:
       queue: "automation-large-builder-fleet"
     plugins:
@@ -207,7 +207,7 @@ steps:
       docker#v3.2.0:
         shell: ["/bin/bash", "-i", "-e", "-c"]
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux2_3-0"
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux2_1-9-0"
         propagate-environment: true
         workdir: /data/job
     timeout: 60
@@ -215,7 +215,7 @@ steps:
   - label: ":aws: Amazon Linux 2 NP Tests"
     command:
       - "echo \"--- :arrow_down: Downloading Build Directory\" && buildkite-agent artifact download \"build.tar.gz\" . --step \":aws: Amazon Linux 2 Build\""
-      - "./scripts/serial-test.bash"
+      - "VERBOSE=true ./scripts/serial-test.bash"
     agents:
       queue: "automation-large-builder-fleet"
     plugins:
@@ -227,7 +227,7 @@ steps:
       docker#v3.2.0:
         shell: ["/bin/bash", "-i", "-e", "-c"]
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux2_3-0"
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux2_1-9-0"
         propagate-environment: true
         workdir: /data/job
     timeout: 60
@@ -236,7 +236,7 @@ steps:
   - label: ":centos: CentOS 7 Tests"
     command:
       - "echo \"--- :arrow_down: Downloading Build Directory\" && buildkite-agent artifact download \"build.tar.gz\" . --step \":centos: CentOS 7 Build\""
-      - "./scripts/parallel-test.bash"
+      - "VERBOSE=true ./scripts/parallel-test.bash"
     agents:
       queue: "automation-large-builder-fleet"
     plugins:
@@ -248,7 +248,7 @@ steps:
       docker#v3.2.0:
         shell: ["/bin/bash", "-i", "-e", "-c"]
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:centos7_3-0"
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:centos7_1-9-0"
         propagate-environment: true
         workdir: /data/job
     timeout: 60
@@ -256,7 +256,7 @@ steps:
   - label: ":centos: CentOS 7 NP Tests"
     command:
       - "echo \"--- :arrow_down: Downloading Build Directory\" && buildkite-agent artifact download \"build.tar.gz\" . --step \":centos: CentOS 7 Build\""
-      - "./scripts/serial-test.bash"
+      - "VERBOSE=true ./scripts/serial-test.bash"
     agents:
       queue: "automation-large-builder-fleet"
     plugins:
@@ -268,7 +268,7 @@ steps:
       docker#v3.2.0:
         shell: ["/bin/bash", "-i", "-e", "-c"]
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:centos7_3-0"
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:centos7_1-9-0"
         propagate-environment: true
         workdir: /data/job
     timeout: 60
@@ -277,7 +277,7 @@ steps:
   - label: ":ubuntu: Ubuntu 16.04 Tests"
     command:
       - "echo \"--- :arrow_down: Downloading Build Directory\" && buildkite-agent artifact download \"build.tar.gz\" . --step \":ubuntu: Ubuntu 16.04 Build\""
-      - "./scripts/parallel-test.bash"
+      - "VERBOSE=true ./scripts/parallel-test.bash"
     agents:
       queue: "automation-large-builder-fleet"
     plugins:
@@ -289,7 +289,7 @@ steps:
       docker#v3.2.0:
         shell: ["/bin/bash", "-i", "-e", "-c"]
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu16_3-0"
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu16_1-9-0"
         propagate-environment: true
         workdir: /data/job
     timeout: 60
@@ -297,7 +297,7 @@ steps:
   - label: ":ubuntu: Ubuntu 16.04 NP Tests"
     command:
       - "echo \"--- :arrow_down: Downloading Build Directory\" && buildkite-agent artifact download \"build.tar.gz\" . --step \":ubuntu: Ubuntu 16.04 Build\""
-      - "./scripts/serial-test.bash"
+      - "VERBOSE=true ./scripts/serial-test.bash"
     agents:
       queue: "automation-large-builder-fleet"
     plugins:
@@ -309,7 +309,7 @@ steps:
       docker#v3.2.0:
         shell: ["/bin/bash", "-i", "-e", "-c"]
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu16_3-0"
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu16_1-9-0"
         propagate-environment: true
         workdir: /data/job
     timeout: 60
@@ -317,7 +317,7 @@ steps:
   - label: ":ubuntu: Ubuntu 18.04 Tests"
     command:
       - "echo \"--- :arrow_down: Downloading Build Directory\" && buildkite-agent artifact download \"build.tar.gz\" . --step \":ubuntu: Ubuntu 18.04 Build\""
-      - "./scripts/parallel-test.bash"
+      - "VERBOSE=true ./scripts/parallel-test.bash"
     agents:
       queue: "automation-large-builder-fleet"
     plugins:
@@ -329,7 +329,7 @@ steps:
       docker#v3.2.0:
         shell: ["/bin/bash", "-i", "-e", "-c"]
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu18_3-0"
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu18_1-9-0"
         propagate-environment: true
         workdir: /data/job
     timeout: 60
@@ -337,7 +337,7 @@ steps:
   - label: ":ubuntu: Ubuntu 18.04 NP Tests"
     command:
       - "echo \"--- :arrow_down: Downloading Build Directory\" && buildkite-agent artifact download \"build.tar.gz\" . --step \":ubuntu: Ubuntu 18.04 Build\""
-      - "./scripts/serial-test.bash"
+      - "VERBOSE=true ./scripts/serial-test.bash"
     agents:
       queue: "automation-large-builder-fleet"
     plugins:
@@ -349,7 +349,7 @@ steps:
       docker#v3.2.0:
         shell: ["/bin/bash", "-i", "-e", "-c"]
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu18_3-0"
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu18_1-9-0"
         propagate-environment: true
         workdir: /data/job
     timeout: 60
@@ -396,7 +396,7 @@ steps:
       docker#v3.2.0:
         shell: ["/bin/bash", "-i", "-e", "-c"]
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:centos7_3-0"
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:centos7_1-9-0"
         propagate-environment: true
         workdir: /data/job
     env:
@@ -425,7 +425,7 @@ steps:
       docker#v3.2.0:
         shell: ["/bin/bash", "-i", "-e", "-c"]
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu16_3-0"
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu16_1-9-0"
         propagate-environment: true
         workdir: /data/job
     env:
@@ -454,7 +454,7 @@ steps:
       docker#v3.2.0:
         shell: ["/bin/bash", "-i", "-e", "-c"]
         debug: true
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu18_3-0"
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu18_1-9-0"
         propagate-environment: true
         workdir: /data/job
     env:
