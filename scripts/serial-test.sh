@@ -1,4 +1,5 @@
 #!/bin/bash
+. ./scripts/.environment
 set -eo pipefail
 echo "+++ Extracting build directory"
 [[ -f build.tar.gz ]] && tar -xzf build.tar.gz
@@ -6,8 +7,7 @@ ls -l build && cd build
 echo "+++ Killing old MongoDB"
 $(pgrep mongod | xargs kill -9) || true
 echo "+++ Starting MongoDB"
-PATH=$PATH:~/opt/mongodb/bin
-mongod --fork --dbpath ~/data/mongodb -f ~/etc/mongod.conf --logpath ./mongod.log
+$MONGODB_BIN --fork --dbpath $MONGODB_DATA_DIR -f $MONGODB_CONF --logpath ./mongod.log
 echo "+++ Running tests"
 # Counting tests available and if they get disabled for some reason, throw a failure
 TEST_COUNT=$(ctest -N -LE _tests | grep -i 'Total Tests: ' | cut -d ':' -f 2 | awk '{print $1}')

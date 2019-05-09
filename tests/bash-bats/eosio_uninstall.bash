@@ -11,8 +11,8 @@ mkdir -p $BIN_LOCATION
 mkdir -p $VAR_LOCATION/log
 mkdir -p $ETC_LOCATION
 mkdir -p $LIB_LOCATION
-mkdir -p $MONGODB_LOG_LOCATION
-mkdir -p $MONGODB_DATA_LOCATION
+mkdir -p $MONGODB_LOG_DIR
+mkdir -p $MONGODB_DATA_DIR
 
 # A helper function is available to show output and status: `debug`
 
@@ -71,5 +71,5 @@ rm -rf $BIN_LOCATION
 rm -rf $VAR_LOCATION/log
 rm -rf $ETC_LOCATION
 rm -rf $LIB_LOCATION
-rm -rf $MONGODB_LOG_LOCATION
-rm -rf $MONGODB_DATA_LOCATION
+rm -rf $MONGODB_LOG_DIR
+rm -rf $MONGODB_DATA_DIR

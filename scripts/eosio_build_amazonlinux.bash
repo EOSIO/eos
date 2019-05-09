@@ -33,17 +33,17 @@ if $INSTALL_MONGO; then
 		curl -OL https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-amazon-$MONGODB_VERSION.tgz \
 		&& tar -xzf mongodb-linux-x86_64-amazon-$MONGODB_VERSION.tgz \
 		&& mv $SRC_LOCATION/mongodb-linux-x86_64-amazon-$MONGODB_VERSION $MONGODB_ROOT \
-		&& touch $MONGODB_LOG_LOCATION/mongod.log \
+		&& touch $MONGODB_LOG_DIR/mongod.log \
 		&& rm -f mongodb-linux-x86_64-amazon-$MONGODB_VERSION.tgz \
 		&& cp -f $REPO_ROOT/scripts/mongod.conf $MONGODB_CONF \
-		&& mkdir -p $MONGODB_DATA_LOCATION \
-		&& rm -rf $MONGODB_LINK_LOCATION \
+		&& mkdir -p $MONGODB_DATA_DIR \
+		&& rm -rf $MONGODB_LINK_DIR \
 		&& rm -rf $BIN_LOCATION/mongod \
-		&& ln -s $MONGODB_ROOT $MONGODB_LINK_LOCATION \
-		&& ln -s $MONGODB_LINK_LOCATION/bin/mongod $BIN_LOCATION/mongod"
-		echo " - MongoDB successfully installed @ ${MONGODB_ROOT} (Symlinked to ${MONGODB_LINK_LOCATION})."
+		&& ln -s $MONGODB_ROOT $MONGODB_LINK_DIR \
+		&& ln -s $MONGODB_LINK_DIR/bin/mongod $BIN_LOCATION/mongod"
+		echo " - MongoDB successfully installed @ ${MONGODB_ROOT} (Symlinked to ${MONGODB_LINK_DIR})."
 	else
-		echo " - MongoDB found with correct version @ ${MONGODB_ROOT} (Symlinked to ${MONGODB_LINK_LOCATION})."
+		echo " - MongoDB found with correct version @ ${MONGODB_ROOT} (Symlinked to ${MONGODB_LINK_DIR})."
 	fi
 	echo "${COLOR_CYAN}[Ensuring MongoDB C driver installation]${COLOR_NC}"
 	if [[ ! -d $MONGO_C_DRIVER_ROOT ]]; then

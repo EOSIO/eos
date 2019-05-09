@@ -60,8 +60,8 @@ function setup() {
     execute mkdir -p $VAR_LOCATION/log
     execute mkdir -p $ETC_LOCATION
     execute mkdir -p $LIB_LOCATION
-    execute mkdir -p $MONGODB_LOG_LOCATION
-    execute mkdir -p $MONGODB_DATA_LOCATION
+    execute mkdir -p $MONGODB_LOG_DIR
+    execute mkdir -p $MONGODB_DATA_DIR
 }
 
 function resources() {
