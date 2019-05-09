@@ -332,29 +332,20 @@ print_supported_linux_distros_and_exit() {
    exit 1
 }
 
-if [ "$ARCH" == "Linux" ]; then
+if [ $ARCH == "Linux" ]; then
    # Check if cmake is already installed or not and use source install location
    if [ -z $CMAKE ]; then export CMAKE=$PREFIX/bin/cmake; fi
    OPENSSL_ROOT_DIR=/usr/include/openssl
-   if [ ! -e /etc/os-release ]; then
-      print_supported_linux_distros_and_exit
-   fi
-   case "$OS_NAME" in
-      "Amazon Linux AMI"|"Amazon Linux")
-         FILE="${REPO_ROOT}/scripts/eosio_build_amazon.sh"
-      ;;
-      "CentOS Linux")
-         FILE="${REPO_ROOT}/scripts/eosio_build_centos.sh"
-      ;;
-      "Ubuntu")
-         FILE="${REPO_ROOT}/scripts/eosio_build_ubuntu.sh"
-      ;;
-      *)
-         print_supported_linux_distros_and_exit
+   [[ ! -e /etc/os-release ]] && print_supported_linux_distros_and_exit
+   case $NAME in
+      "Amazon Linux AMI"|"Amazon Linux") FILE="${REPO_ROOT}/scripts/eosio_build_amazon.sh";;
+      "CentOS Linux") FILE="${REPO_ROOT}/scripts/eosio_build_centos.sh";;
+      "Ubuntu") FILE="${REPO_ROOT}/scripts/eosio_build_ubuntu.sh";;
+      *) print_supported_linux_distros_and_exit;;
    esac
 fi
 
-if [ "$ARCH" == "Darwin" ]; then
+if [ $ARCH == "Darwin" ]; then
    # Check if cmake is already installed or not and use source install location
    if [ -z $CMAKE ]; then export CMAKE=/usr/local/bin/cmake; fi
    # opt/gettext: cleos requires Intl, which requires gettext; it's keg only though and we don't want to force linking: https://github.com/EOSIO/eos/issues/2240#issuecomment-396309884
