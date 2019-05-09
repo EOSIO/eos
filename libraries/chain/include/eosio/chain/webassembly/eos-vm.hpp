@@ -16,9 +16,9 @@ namespace eosio { namespace wasm_backend {
       typedef uint64_t type;
    };
 
-   template <typename S, typename Args, size_t I, typename T, typename WAlloc, typename Cleanups>
-   constexpr auto get_value(operand_stack& op, Cleanups&, WAlloc*, T&& val) 
-   	-> std::enable_if_t<std::is_same_v<i64_const_t, T> && std::is_same_v<chain::name, std::decay_t<S>>, S> {
+   template <typename S, typename Args, typename T, typename WAlloc>
+   constexpr auto get_value(WAlloc*, T&& val) 
+         -> std::enable_if_t<std::is_same_v<i64_const_t, T> && std::is_same_v<chain::name, std::decay_t<S>>, S> {
       return {(uint64_t)val.data.ui};
    } 
 
@@ -28,43 +28,13 @@ namespace eosio { namespace wasm_backend {
       typedef uint32_t type;
    };
    
-   template <typename S, typename Args, size_t I, typename T, typename WAlloc, typename Cleanups>
-   constexpr auto get_value(operand_stack& op, Cleanups& cleanups, WAlloc* walloc, T&& val) 
-   	-> std::enable_if_t<std::is_same_v<i32_const_t, T> && 
-	   std::is_same_v< eosio::chain::array_ptr<typename S::type>, S> &&
-      !std::is_lvalue_reference_v<S> && !std::is_pointer_v<S>, S> {
-      //size_t i = std::tuple_size<Args>::value-1;
+   template <typename S, typename Args, typename T, typename WAlloc>
+   constexpr auto get_value(WAlloc* walloc, T&& val) 
+         -> std::enable_if_t<std::is_same_v<i32_const_t, T> && 
+         std::is_same_v< eosio::chain::array_ptr<typename S::type>, S> &&
+         !std::is_lvalue_reference_v<S> && !std::is_pointer_v<S>, S> {
       using ptr_ty = typename S::type;
-      using under_ty = std::remove_pointer_t<ptr_ty>;
-      auto* ptr = (ptr_ty*)((walloc->template get_base_ptr<char>())+val.data.ui);
-      /*
-      if constexpr (std::tuple_size<Args>::value > I) {
-         const auto& next_arg = std::get<to_wasm_t<typename std::tuple_element<I, Args>::type>>(op.get_back(i-I)).data.ui;
-         size_t sz = 0;
-         if constexpr ( (std::tuple_size<Args>::value > I+1) 
-			   && std::is_same_v<decltype(next_arg), eosio::chain::array_ptr<under_ty>>) {
-            sz = std::get<to_wasm_t<typename std::tuple_element<I+1, Args>::type>>(op.get_back(i-(I+1))).data.ui;
-            std::cout << "sz0 " << sz << "\n";
-         } else {
-            sz = next_arg;
-            std::cout << "sz1 " << sz << " sizeof " << sizeof(under_ty) << " alignof " << alignof(under_ty) << "\n";
-         }
-         if ((uintptr_t)ptr % 16 != 0) {
-            std::cout << "aligning\n";
-            align_ptr_triple apt;
-            apt.s = sizeof(under_ty)*sz;
-            std::vector<std::remove_const_t<under_ty>> cpy(sz > 0 ? sz : 1);
-            apt.o = (void*)ptr;
-            ptr = (decltype(ptr))cpy.data();
-            apt.n = (void*)ptr;
-            //memcpy((std::remove_const_t<under_ty>*)apt.n, (const under_ty*)apt.o, apt.s);
-            memmove( static_cast<char*>(apt.n), static_cast<const char*>(apt.o), apt.s);
-            if constexpr (!std::is_const_v<under_ty>)
-               cleanups.emplace_back(std::move(apt));
-         }
-      }
-      */
-      return eosio::chain::array_ptr<under_ty>(ptr);
+      return eosio::chain::array_ptr<ptr_ty>((ptr_ty*)((walloc->template get_base_ptr<char>())+val.data.ui));
    }
 
    template <typename Ctx>
@@ -82,11 +52,11 @@ namespace eosio { namespace wasm_backend {
       typedef uint32_t type;
    };
    
-   template <typename S, typename Args, size_t I, typename T, typename WAlloc, typename Cleanups>
-   constexpr auto get_value(operand_stack& op, Cleanups&, WAlloc* walloc, T&& val) 
-   	-> std::enable_if_t<std::is_same_v<i32_const_t, T> && 
-           std::is_same_v< eosio::chain::null_terminated_ptr, S> &&
-           !std::is_lvalue_reference_v<S> && !std::is_pointer_v<S>, S> {
+   template <typename S, typename Args, typename T, typename WAlloc>
+   constexpr auto get_value(WAlloc* walloc, T&& val) 
+         -> std::enable_if_t<std::is_same_v<i32_const_t, T> && 
+         std::is_same_v< eosio::chain::null_terminated_ptr, S> &&
+         !std::is_lvalue_reference_v<S> && !std::is_pointer_v<S>, S> {
       return eosio::chain::null_terminated_ptr((char*)(walloc->template get_base_ptr<uint8_t>()+val.data.ui));
    }
 

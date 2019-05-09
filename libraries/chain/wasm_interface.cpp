@@ -904,16 +904,16 @@ class authorization_api : public context_aware_api {
    public:
       using context_aware_api::context_aware_api;
 
-   void require_authorization( const account_name& account ) {
+   void require_auth( account_name account ) {
       context.require_authorization( account );
    }
 
-   bool has_authorization( const account_name& account )const {
+   bool has_auth( account_name account )const {
       return context.has_authorization( account );
    }
 
-   void require_authorization2(const account_name& account,
-			       const permission_name& permission) {
+   void require_auth2( account_name account,
+			              permission_name permission) {
       context.require_authorization( account, permission );
    }
 
@@ -921,7 +921,7 @@ class authorization_api : public context_aware_api {
       context.require_recipient( recipient );
    }
 
-   bool is_account( const account_name& account )const {
+   bool is_account( account_name account )const {
       return context.is_account( account );
    }
 
@@ -1015,8 +1015,6 @@ class action_api : public context_aware_api {
       }
 
       int action_data_size() {
-         std::cout << "THIS " << this << "\n";
-         std::cout << "ADS " << context.get_action().data.size() << "\n";
          return context.get_action().data.size();
       }
 
@@ -1698,53 +1696,53 @@ class call_depth_api : public context_aware_api {
 };
 
 REGISTER_INJECTED_INTRINSICS(call_depth_api,
-   (call_depth_assert,  void()               )
+   (call_depth_assert,  void() )
 );
 
 REGISTER_INTRINSICS(compiler_builtins,
-   (__ashlti3,     void(int, int64_t, int64_t, int)               )
-   (__ashrti3,     void(int, int64_t, int64_t, int)               )
-   (__lshlti3,     void(int, int64_t, int64_t, int)               )
-   (__lshrti3,     void(int, int64_t, int64_t, int)               )
-   (__divti3,      void(int, int64_t, int64_t, int64_t, int64_t)  )
-   (__udivti3,     void(int, int64_t, int64_t, int64_t, int64_t)  )
-   (__modti3,      void(int, int64_t, int64_t, int64_t, int64_t)  )
-   (__umodti3,     void(int, int64_t, int64_t, int64_t, int64_t)  )
-   (__multi3,      void(int, int64_t, int64_t, int64_t, int64_t)  )
-   (__addtf3,      void(int, int64_t, int64_t, int64_t, int64_t)  )
-   (__subtf3,      void(int, int64_t, int64_t, int64_t, int64_t)  )
-   (__multf3,      void(int, int64_t, int64_t, int64_t, int64_t)  )
-   (__divtf3,      void(int, int64_t, int64_t, int64_t, int64_t)  )
-   (__eqtf2,       int(int64_t, int64_t, int64_t, int64_t)        )
-   (__netf2,       int(int64_t, int64_t, int64_t, int64_t)        )
-   (__getf2,       int(int64_t, int64_t, int64_t, int64_t)        )
-   (__gttf2,       int(int64_t, int64_t, int64_t, int64_t)        )
-   (__lttf2,       int(int64_t, int64_t, int64_t, int64_t)        )
-   (__letf2,       int(int64_t, int64_t, int64_t, int64_t)        )
-   (__cmptf2,      int(int64_t, int64_t, int64_t, int64_t)        )
-   (__unordtf2,    int(int64_t, int64_t, int64_t, int64_t)        )
-   (__negtf2,      void (int, int64_t, int64_t)                   )
-   (__floatsitf,   void (int, int)                                )
-   (__floatunsitf, void (int, int)                                )
-   (__floatditf,   void (int, int64_t)                            )
-   (__floatunditf, void (int, int64_t)                            )
-   (__floattidf,   double (int64_t, int64_t)                      )
-   (__floatuntidf, double (int64_t, int64_t)                      )
-   (__floatsidf,   double(int)                                    )
-   (__extendsftf2, void(int, float)                               )
-   (__extenddftf2, void(int, double)                              )
-   (__fixtfti,     void(int, int64_t, int64_t)                    )
-   (__fixtfdi,     int64_t(int64_t, int64_t)                      )
-   (__fixtfsi,     int(int64_t, int64_t)                          )
-   (__fixunstfti,  void(int, int64_t, int64_t)                    )
-   (__fixunstfdi,  int64_t(int64_t, int64_t)                      )
-   (__fixunstfsi,  int(int64_t, int64_t)                          )
-   (__fixsfti,     void(int, float)                               )
-   (__fixdfti,     void(int, double)                              )
-   (__fixunssfti,  void(int, float)                               )
-   (__fixunsdfti,  void(int, double)                              )
-   (__trunctfdf2,  double(int64_t, int64_t)                       )
-   (__trunctfsf2,  float(int64_t, int64_t)                        )
+   (__ashlti3,     void(int, int64_t, int64_t, int)              )
+   (__ashrti3,     void(int, int64_t, int64_t, int)              )
+   (__lshlti3,     void(int, int64_t, int64_t, int)              )
+   (__lshrti3,     void(int, int64_t, int64_t, int)              )
+   (__divti3,      void(int, int64_t, int64_t, int64_t, int64_t) )
+   (__udivti3,     void(int, int64_t, int64_t, int64_t, int64_t) )
+   (__modti3,      void(int, int64_t, int64_t, int64_t, int64_t) )
+   (__umodti3,     void(int, int64_t, int64_t, int64_t, int64_t) )
+   (__multi3,      void(int, int64_t, int64_t, int64_t, int64_t) )
+   (__addtf3,      void(int, int64_t, int64_t, int64_t, int64_t) )
+   (__subtf3,      void(int, int64_t, int64_t, int64_t, int64_t) )
+   (__multf3,      void(int, int64_t, int64_t, int64_t, int64_t) )
+   (__divtf3,      void(int, int64_t, int64_t, int64_t, int64_t) )
+   (__eqtf2,       int(int64_t, int64_t, int64_t, int64_t)       )
+   (__netf2,       int(int64_t, int64_t, int64_t, int64_t)       )
+   (__getf2,       int(int64_t, int64_t, int64_t, int64_t)       )
+   (__gttf2,       int(int64_t, int64_t, int64_t, int64_t)       )
+   (__lttf2,       int(int64_t, int64_t, int64_t, int64_t)       )
+   (__letf2,       int(int64_t, int64_t, int64_t, int64_t)       )
+   (__cmptf2,      int(int64_t, int64_t, int64_t, int64_t)       )
+   (__unordtf2,    int(int64_t, int64_t, int64_t, int64_t)       )
+   (__negtf2,      void (int, int64_t, int64_t)                  )
+   (__floatsitf,   void (int, int)                               )
+   (__floatunsitf, void (int, int)                               )
+   (__floatditf,   void (int, int64_t)                           )
+   (__floatunditf, void (int, int64_t)                           )
+   (__floattidf,   double (int64_t, int64_t)                     )
+   (__floatuntidf, double (int64_t, int64_t)                     )
+   (__floatsidf,   double(int)                                   )
+   (__extendsftf2, void(int, float)                              )
+   (__extenddftf2, void(int, double)                             )
+   (__fixtfti,     void(int, int64_t, int64_t)                   )
+   (__fixtfdi,     int64_t(int64_t, int64_t)                     )
+   (__fixtfsi,     int(int64_t, int64_t)                         )
+   (__fixunstfti,  void(int, int64_t, int64_t)                   )
+   (__fixunstfdi,  int64_t(int64_t, int64_t)                     )
+   (__fixunstfsi,  int(int64_t, int64_t)                         )
+   (__fixsfti,     void(int, float)                              )
+   (__fixdfti,     void(int, double)                             )
+   (__fixunssfti,  void(int, float)                              )
+   (__fixunsdfti,  void(int, double)                             )
+   (__trunctfdf2,  double(int64_t, int64_t)                      )
+   (__trunctfsf2,  float(int64_t, int64_t)                       )
 );
 
 REGISTER_INTRINSICS(privileged_api,
@@ -1761,7 +1759,7 @@ REGISTER_INTRINSICS(privileged_api,
 );
 
 REGISTER_INJECTED_INTRINSICS(transaction_context,
-   (checktime,      void())
+   (checktime,      void() )
 );
 
 REGISTER_INTRINSICS(producer_api,
@@ -1769,40 +1767,40 @@ REGISTER_INTRINSICS(producer_api,
 );
 
 #define DB_SECONDARY_INDEX_METHODS_SIMPLE(IDX) \
-   (db_##IDX##_store,          int(int64_t,int64_t,int64_t,int64_t,int))\
-   (db_##IDX##_remove,         void(int))\
-   (db_##IDX##_update,         void(int,int64_t,int))\
-   (db_##IDX##_find_primary,   int(int64_t,int64_t,int64_t,int,int64_t))\
-   (db_##IDX##_find_secondary, int(int64_t,int64_t,int64_t,int,int))\
-   (db_##IDX##_lowerbound,     int(int64_t,int64_t,int64_t,int,int))\
-   (db_##IDX##_upperbound,     int(int64_t,int64_t,int64_t,int,int))\
-   (db_##IDX##_end,            int(int64_t,int64_t,int64_t))\
-   (db_##IDX##_next,           int(int, int))\
-   (db_##IDX##_previous,       int(int, int))
+   (db_##IDX##_store,          int(int64_t,int64_t,int64_t,int64_t,int) )\
+   (db_##IDX##_remove,         void(int)                                )\
+   (db_##IDX##_update,         void(int,int64_t,int)                    )\
+   (db_##IDX##_find_primary,   int(int64_t,int64_t,int64_t,int,int64_t) )\
+   (db_##IDX##_find_secondary, int(int64_t,int64_t,int64_t,int,int)     )\
+   (db_##IDX##_lowerbound,     int(int64_t,int64_t,int64_t,int,int)     )\
+   (db_##IDX##_upperbound,     int(int64_t,int64_t,int64_t,int,int)     )\
+   (db_##IDX##_end,            int(int64_t,int64_t,int64_t)             )\
+   (db_##IDX##_next,           int(int, int)                            )\
+   (db_##IDX##_previous,       int(int, int)                            )
 
 #define DB_SECONDARY_INDEX_METHODS_ARRAY(IDX) \
-      (db_##IDX##_store,          int(int64_t,int64_t,int64_t,int64_t,int,int))\
-      (db_##IDX##_remove,         void(int))\
-      (db_##IDX##_update,         void(int,int64_t,int,int))\
-      (db_##IDX##_find_primary,   int(int64_t,int64_t,int64_t,int,int,int64_t))\
-      (db_##IDX##_find_secondary, int(int64_t,int64_t,int64_t,int,int,int))\
-      (db_##IDX##_lowerbound,     int(int64_t,int64_t,int64_t,int,int,int))\
-      (db_##IDX##_upperbound,     int(int64_t,int64_t,int64_t,int,int,int))\
-      (db_##IDX##_end,            int(int64_t,int64_t,int64_t))\
-      (db_##IDX##_next,           int(int, int))\
-      (db_##IDX##_previous,       int(int, int))
+      (db_##IDX##_store,          int(int64_t,int64_t,int64_t,int64_t,int,int) )\
+      (db_##IDX##_remove,         void(int)                                    )\
+      (db_##IDX##_update,         void(int,int64_t,int,int)                    )\
+      (db_##IDX##_find_primary,   int(int64_t,int64_t,int64_t,int,int,int64_t) )\
+      (db_##IDX##_find_secondary, int(int64_t,int64_t,int64_t,int,int,int)     )\
+      (db_##IDX##_lowerbound,     int(int64_t,int64_t,int64_t,int,int,int)     )\
+      (db_##IDX##_upperbound,     int(int64_t,int64_t,int64_t,int,int,int)     )\
+      (db_##IDX##_end,            int(int64_t,int64_t,int64_t)                 )\
+      (db_##IDX##_next,           int(int, int)                                )\
+      (db_##IDX##_previous,       int(int, int)                                )
 
 REGISTER_INTRINSICS( database_api,
-   (db_store_i64,        int(int64_t,int64_t,int64_t,int64_t,int,int))
-   (db_update_i64,       void(int,int64_t,int,int))
-   (db_remove_i64,       void(int))
-   (db_get_i64,          int(int, int, int))
-   (db_next_i64,         int(int, int))
-   (db_previous_i64,     int(int, int))
-   (db_find_i64,         int(int64_t,int64_t,int64_t,int64_t))
-   (db_lowerbound_i64,   int(int64_t,int64_t,int64_t,int64_t))
-   (db_upperbound_i64,   int(int64_t,int64_t,int64_t,int64_t))
-   (db_end_i64,          int(int64_t,int64_t,int64_t))
+   (db_store_i64,        int(int64_t,int64_t,int64_t,int64_t,int,int) )
+   (db_update_i64,       void(int,int64_t,int,int)                    )
+   (db_remove_i64,       void(int)                                    )
+   (db_get_i64,          int(int, int, int)                           )
+   (db_next_i64,         int(int, int)                                )
+   (db_previous_i64,     int(int, int)                                )
+   (db_find_i64,         int(int64_t,int64_t,int64_t,int64_t)         )
+   (db_lowerbound_i64,   int(int64_t,int64_t,int64_t,int64_t)         )
+   (db_upperbound_i64,   int(int64_t,int64_t,int64_t,int64_t)         )
+   (db_end_i64,          int(int64_t,int64_t,int64_t)                 )
 
    DB_SECONDARY_INDEX_METHODS_SIMPLE(idx64)
    DB_SECONDARY_INDEX_METHODS_SIMPLE(idx128)
@@ -1828,8 +1826,8 @@ REGISTER_INTRINSICS(crypto_api,
 REGISTER_INTRINSICS(permission_api,
    (check_transaction_authorization, int(int, int, int, int, int, int)                  )
    (check_permission_authorization,  int(int64_t, int64_t, int, int, int, int, int64_t) )
-   (get_permission_last_used,        int64_t(int64_t, int64_t) )
-   (get_account_creation_time,       int64_t(int64_t) )
+   (get_permission_last_used,        int64_t(int64_t, int64_t)                          )
+   (get_account_creation_time,       int64_t(int64_t)                                   )
 );
 
 
@@ -1851,15 +1849,15 @@ REGISTER_INTRINSICS(context_free_system_api,
 REGISTER_INTRINSICS(action_api,
    (read_action_data,       int(int, int)  )
    (action_data_size,       int()          )
-   (current_receiver,   int64_t()          )
+   (current_receiver,       int64_t()      )
 );
 
 REGISTER_INTRINSICS(authorization_api,
-   (require_recipient,     void(int64_t)          )
-   (require_authorization, void(int64_t), "require_auth", void(authorization_api::*)(const account_name&) )
-   (require_authorization2, void(int64_t, int64_t), "require_auth2", void(authorization_api::*)(const account_name&, const permission_name& permission) )
-   (has_authorization,     int(int64_t), "has_auth", bool(authorization_api::*)(const account_name&)const )
-   (is_account,            int(int64_t)           )
+   (require_recipient, void(int64_t)          )
+   (require_auth,      void(int64_t)          )
+   (require_auth2,     void(int64_t, int64_t) )
+   (has_auth,          int(int64_t)           )
+   (is_account,        int(int64_t)           )
 );
 
 REGISTER_INTRINSICS(console_api,
@@ -1877,19 +1875,19 @@ REGISTER_INTRINSICS(console_api,
 );
 
 REGISTER_INTRINSICS(context_free_transaction_api,
-   (read_transaction,       int(int, int)            )
-   (transaction_size,       int()                    )
-   (expiration,             int()                    )
-   (tapos_block_prefix,     int()                    )
-   (tapos_block_num,        int()                    )
-   (get_action,             int (int, int, int, int) )
+   (read_transaction,       int(int, int)           )
+   (transaction_size,       int()                   )
+   (expiration,             int()                   )
+   (tapos_block_prefix,     int()                   )
+   (tapos_block_num,        int()                   )
+   (get_action,             int(int, int, int, int) )
 );
 
 REGISTER_INTRINSICS(transaction_api,
-   (send_inline,               void(int, int)               )
-   (send_context_free_inline,  void(int, int)               )
+   (send_inline,               void(int, int)                        )
+   (send_context_free_inline,  void(int, int)                        )
    (send_deferred,             void(int, int64_t, int, int, int32_t) )
-   (cancel_deferred,           int(int)                     )
+   (cancel_deferred,           int(int)                              )
 );
 
 REGISTER_INTRINSICS(context_free_api,

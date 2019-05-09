@@ -24,7 +24,6 @@ class eos_vm_instantiated_module : public wasm_instantiated_module_interface {
          //if (!(const auto& res = _instantiated_module->run_start()))
          //   EOS_ASSERT(false, wasm_execution_error, "eos-vm start function failure (${s})", ("s", res.to_string()));
         
-         std::cout << "CTX " << &context << "\n"; 
          const auto& res = _instantiated_module->call(&context, "env", "apply",
                                           (uint64_t)context.get_receiver(),
                                           (uint64_t)context.get_action().account,
