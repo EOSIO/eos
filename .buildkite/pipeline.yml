@@ -158,7 +158,7 @@ steps:
   - label: ":darwin: [Darwin] Mojave Tests"
     command:
       - "for tries in {1..4}; do tar -xzf /Network/NAS/MAC_FLEET/BUILDKITE/artifacts/${ANKA_MOJAVE_TEMPLATE}-${BUILDKITE_PIPELINE_SLUG}-${BUILDKITE_BUILD_ID}.tar.gz && break || sleep 30; done"
-      - "cd eos && ./scripts/parallel-test.sh"
+      - "cd eos && ./scripts/parallel-test.bash"
     agents:
       - "queue=mac-anka-node-fleet"
     plugins:
@@ -176,7 +176,7 @@ steps:
   - label: ":darwin: [Darwin] Mojave NP Tests"
     command:
       - "for tries in {1..4}; do tar -xzf /Network/NAS/MAC_FLEET/BUILDKITE/artifacts/${ANKA_MOJAVE_TEMPLATE}-${BUILDKITE_PIPELINE_SLUG}-${BUILDKITE_BUILD_ID}.tar.gz && break || sleep 30; done"
-      - "cd eos && ./scripts/serial-test.sh"
+      - "cd eos && ./scripts/serial-test.bash"
     agents:
       - "queue=mac-anka-node-fleet"
     plugins:
@@ -195,7 +195,7 @@ steps:
   - label: ":aws: Amazon Linux 2 Tests"
     command:
       - "echo \"--- :arrow_down: Downloading Build Directory\" && buildkite-agent artifact download \"build.tar.gz\" . --step \":aws: Amazon Linux 2 Build\""
-      - "./scripts/parallel-test.sh"
+      - "./scripts/parallel-test.bash"
     agents:
       queue: "automation-large-builder-fleet"
     plugins:
@@ -215,7 +215,7 @@ steps:
   - label: ":aws: Amazon Linux 2 NP Tests"
     command:
       - "echo \"--- :arrow_down: Downloading Build Directory\" && buildkite-agent artifact download \"build.tar.gz\" . --step \":aws: Amazon Linux 2 Build\""
-      - "./scripts/serial-test.sh"
+      - "./scripts/serial-test.bash"
     agents:
       queue: "automation-large-builder-fleet"
     plugins:
@@ -236,7 +236,7 @@ steps:
   - label: ":centos: CentOS 7 Tests"
     command:
       - "echo \"--- :arrow_down: Downloading Build Directory\" && buildkite-agent artifact download \"build.tar.gz\" . --step \":centos: CentOS 7 Build\""
-      - "./scripts/parallel-test.sh"
+      - "./scripts/parallel-test.bash"
     agents:
       queue: "automation-large-builder-fleet"
     plugins:
@@ -256,7 +256,7 @@ steps:
   - label: ":centos: CentOS 7 NP Tests"
     command:
       - "echo \"--- :arrow_down: Downloading Build Directory\" && buildkite-agent artifact download \"build.tar.gz\" . --step \":centos: CentOS 7 Build\""
-      - "./scripts/serial-test.sh"
+      - "./scripts/serial-test.bash"
     agents:
       queue: "automation-large-builder-fleet"
     plugins:
@@ -277,7 +277,7 @@ steps:
   - label: ":ubuntu: Ubuntu 16.04 Tests"
     command:
       - "echo \"--- :arrow_down: Downloading Build Directory\" && buildkite-agent artifact download \"build.tar.gz\" . --step \":ubuntu: Ubuntu 16.04 Build\""
-      - "./scripts/parallel-test.sh"
+      - "./scripts/parallel-test.bash"
     agents:
       queue: "automation-large-builder-fleet"
     plugins:
@@ -297,7 +297,7 @@ steps:
   - label: ":ubuntu: Ubuntu 16.04 NP Tests"
     command:
       - "echo \"--- :arrow_down: Downloading Build Directory\" && buildkite-agent artifact download \"build.tar.gz\" . --step \":ubuntu: Ubuntu 16.04 Build\""
-      - "./scripts/serial-test.sh"
+      - "./scripts/serial-test.bash"
     agents:
       queue: "automation-large-builder-fleet"
     plugins:
@@ -317,7 +317,7 @@ steps:
   - label: ":ubuntu: Ubuntu 18.04 Tests"
     command:
       - "echo \"--- :arrow_down: Downloading Build Directory\" && buildkite-agent artifact download \"build.tar.gz\" . --step \":ubuntu: Ubuntu 18.04 Build\""
-      - "./scripts/parallel-test.sh"
+      - "./scripts/parallel-test.bash"
     agents:
       queue: "automation-large-builder-fleet"
     plugins:
@@ -337,7 +337,7 @@ steps:
   - label: ":ubuntu: Ubuntu 18.04 NP Tests"
     command:
       - "echo \"--- :arrow_down: Downloading Build Directory\" && buildkite-agent artifact download \"build.tar.gz\" . --step \":ubuntu: Ubuntu 18.04 Build\""
-      - "./scripts/serial-test.sh"
+      - "./scripts/serial-test.bash"
     agents:
       queue: "automation-large-builder-fleet"
     plugins:
