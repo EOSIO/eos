@@ -257,11 +257,11 @@ if [ $BUILD_MONGO ]; then
    printf "Checking MongoDB installation...\\n"
    if [ ! -d $MONGODB_ROOT ] || [ $FORCE_BUILD ]; then
       printf "Installing MongoDB into ${MONGODB_ROOT}...\\n"
-      curl -OL http://downloads.mongodb.org/linux/mongodb-linux-x86_64-ubuntu$OS_MAJ$OS_MIN-$MONGODB_VERSION.tgz \
-      && tar -xzf mongodb-linux-x86_64-ubuntu$OS_MAJ$OS_MIN-$MONGODB_VERSION.tgz \
-      && mv $SRC_LOCATION/mongodb-linux-x86_64-ubuntu$OS_MAJ$OS_MIN-$MONGODB_VERSION $MONGODB_ROOT \
+      curl -OL http://downloads.mongodb.org/linux/mongodb-linux-x86_64-ubuntu${VERSION_MAJ}${VERSION_MIN}-$MONGODB_VERSION.tgz \
+      && tar -xzf mongodb-linux-x86_64-ubuntu${VERSION_MAJ}${VERSION_MIN}-$MONGODB_VERSION.tgz \
+      && mv $SRC_LOCATION/mongodb-linux-x86_64-ubuntu${VERSION_MAJ}${VERSION_MIN}-$MONGODB_VERSION $MONGODB_ROOT \
       && touch $MONGODB_LOG_LOCATION/mongod.log \
-      && rm -f mongodb-linux-x86_64-ubuntu$OS_MAJ$OS_MIN-$MONGODB_VERSION.tgz \
+      && rm -f mongodb-linux-x86_64-ubuntu${VERSION_MAJ}${VERSION_MIN}-$MONGODB_VERSION.tgz \
       && cp -f $REPO_ROOT/scripts/mongod.conf $MONGODB_CONF \
       && mkdir -p $MONGODB_DATA_LOCATION \
       && rm -rf $MONGODB_LINK_LOCATION \
