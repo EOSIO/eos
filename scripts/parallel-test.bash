@@ -4,7 +4,8 @@ set -ieo pipefail
 . ./scripts/helpers/eosio.bash
 echo "+++ Extracting build directory"
 [[ -f build.tar.gz ]] && tar -xzf build.tar.gz
-ls -l build && cd build
+ls -l build
+cd build
 echo "+++ Running tests"
 # Counting tests available and if they get disabled for some reason, throw a failure
 TEST_COUNT=$($CTEST_BIN -N -LE _tests | grep -i 'Total Tests: ' | cut -d ':' -f 2 | awk '{print $1}')

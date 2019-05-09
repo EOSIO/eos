@@ -4,7 +4,8 @@ set -ieo pipefail
 . ./scripts/helpers/eosio.bash
 echo "+++ Extracting build directory"
 [[ -f build.tar.gz ]] && tar -xzf build.tar.gz
-ls -l build && cd build
+ls -l build
+cd build
 if [[ -f $MONGODB_BIN ]]; then
     echo "+++ Killing old MongoDB"
     $(pgrep mongod | xargs kill -9) || true
