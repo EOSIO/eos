@@ -1,5 +1,4 @@
-#!/usr/bin/env bash
-set -eo pipefail
+#!/bin/bash
 # Load eosio specific helper functions
 . ./scripts/helpers/eosio.bash
 echo "+++ Extracting build directory"
