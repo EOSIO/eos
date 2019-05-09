@@ -2288,6 +2288,18 @@ void get_account( const string& accountName, const string& coresym, bool json_fo
          std::cout << std::endl;
       }
 
+      if( res.rex_info.is_object() ) {
+         auto& obj = res.rex_info.get_object();
+         asset vote_stake = asset::from_string( obj["vote_stake"].as_string() );
+         asset rex_balance = asset::from_string( obj["rex_balance"].as_string() );
+         std::cout << rex_balance.get_symbol().name() << " balances: " << std::endl;
+         std::cout << indent << std::left << std::setw(11)
+                   << "balance:" << std::right << std::setw(18) << rex_balance << std::endl;
+         std::cout << indent << std::left << std::setw(11)
+                   << "staked:" << std::right << std::setw(18) << vote_stake << std::endl;
+         std::cout << std::endl;
+      }
+
       if ( res.voter_info.is_object() ) {
          auto& obj = res.voter_info.get_object();
          string proxy = obj["proxy"].as_string();
