@@ -461,22 +461,25 @@ steps:
       PKGTYPE: "deb"
     timeout: 60
 
-  - command: | # macOS Mojave Package Builder
-        echo "--- :arrow_down: Downloading build directory"
-        buildkite-agent artifact download "build.tar.gz" . --step ":darwin: Mojave Build"
-        tar -zxf build.tar.gz
-        echo "+++ :microscope: Starting package build"
-        ln -s "$(pwd)" /data/job
-        cd /data/job/build/packages
-        bash generate_package.sh brew
-    label: ":darwin: Mojave Package Builder"
+  - label: ":darwin: Mojave Package Builder"
+    command:
+      - "tar -xzf /Network/NAS/MAC_FLEET/BUILDKITE/artifacts/${ANKA_MOJAVE_TEMPLATE}-${BUILDKITE_PIPELINE_SLUG}-${BUILDKITE_BUILD_ID}.tar.gz"
+      - "cd eos/build/packages && bash generate_package.sh brew"
+      - "cd eos && buildkite-agent artifact upload build/packages/*.tar.gz"
+      - "cd eos && buildkite-agent artifact upload build/packages/*.rb"
     agents:
-      - "role=builder-v2-2"
-      - "os=mojave"
-    artifact_paths:
-      - "build/packages/*.tar.gz"
-      - "build/packages/*.rb"
-    timeout: 60
+      - "queue=mac-anka-node-fleet"
+    plugins:
+      chef/anka#v0.4.4:
+        no-volume: true
+        inherit-environment-vars: true
+        bash-interactive: true
+        vm-name: $ANKA_MOJAVE_TEMPLATE
+        vm-registry-tag: "${ANKA_TEMPLATE_TAG}::${MAC_TAG}"
+        always-pull: true
+        debug: true
+        wait-network: true
+    timeout: 120
 
   - wait
 
