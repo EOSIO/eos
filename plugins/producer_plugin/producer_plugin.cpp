@@ -199,7 +199,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       transaction_id_with_expiry_index                          _persistent_transactions;
       fc::optional<named_thread_pool>                           _thread_pool;
 
-      int32_t                                                   _max_transaction_time_ms;
+      std::atomic<int32_t>                                      _max_transaction_time_ms; // modified by app thread, read by net_plugin thread pool
       fc::microseconds                                          _max_irreversible_block_age_us;
       int32_t                                                   _produce_time_offset_us = 0;
       int32_t                                                   _last_block_time_offset_us = 0;
@@ -432,15 +432,20 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 
       void on_incoming_transaction_async(const transaction_metadata_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next) {
          chain::controller& chain = chain_plug->chain();
-         const auto& cfg = chain.get_global_properties().configuration;
-         signing_keys_future_type future = transaction_metadata::start_recover_keys( trx, _thread_pool->get_executor(),
-               chain.get_chain_id(), fc::microseconds( cfg.max_transaction_cpu_usage ) );
-         boost::asio::post( _thread_pool->get_executor(), [self = this, future, trx, persist_until_expired, next]() {
-            if( future.valid() )
-               future.wait();
-            app().post(priority::low, [self, trx, persist_until_expired, next]() {
-               self->process_incoming_transaction_async( trx, persist_until_expired, next );
-            });
+         const auto max_trx_time_ms = _max_transaction_time_ms.load();
+         fc::microseconds max_trx_cpu_usage = max_trx_time_ms < 0 ? fc::microseconds::maximum() : fc::milliseconds( max_trx_time_ms );
+
+         auto after_sig_recovery =
+               [self = this, trx, persist_until_expired, next{std::move(next)}]() mutable {
+                  app().post(priority::low, [self, trx{std::move(trx)}, persist_until_expired, next{std::move(next)}]() {
+                     self->process_incoming_transaction_async( trx, persist_until_expired, next );
+                  });
+               };
+
+         app().post(priority::low, [trx, &chain, max_trx_cpu_usage, after_sig_recovery{std::move(after_sig_recovery)}]() mutable {
+            // use chain thread pool for sig recovery
+            transaction_metadata::start_recover_keys( trx, chain.get_thread_pool(), chain.get_chain_id(),
+                  max_trx_cpu_usage, std::move( after_sig_recovery ) );
          });
       }
 
@@ -484,7 +489,10 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 
          const auto& id = trx->id;
          if( fc::time_point(trx->packed_trx->expiration()) < block_time ) {
-            send_response(std::static_pointer_cast<fc::exception>(std::make_shared<expired_tx_exception>(FC_LOG_MESSAGE(error, "expired transaction ${id}", ("id", id)) )));
+            send_response(std::static_pointer_cast<fc::exception>(
+                  std::make_shared<expired_tx_exception>(
+                        FC_LOG_MESSAGE(error, "expired transaction ${id}, expiration ${e}, block time ${bt}",
+                                       ("id", id)("e", trx->packed_trx->expiration())("bt", block_time)) )));
             return;
          }
 

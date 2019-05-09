@@ -233,6 +233,7 @@ trim_data::trim_data(bfs::path block_dir) {
    report_time rt("trimming log");
    using namespace std;
    block_file_name = block_dir / "blocks.log";
+   index_file_name = block_dir / "blocks.index";
    blk_in = fopen(block_file_name.c_str(), "r");
    EOS_ASSERT( blk_in != nullptr, block_log_not_found, "cannot read file ${file}", ("file",block_file_name.string()) );
    ind_in = fopen(index_file_name.c_str(), "r");
@@ -270,14 +271,15 @@ void trim_data::find_block_pos(uint32_t n) {
    EOS_ASSERT( pos == index_pos, block_log_exception, "cannot seek to ${file} entry for block ${b}", ("file", index_file_name.string())("b",n) );
    auto size = fread((void*)&fpos0, sizeof(fpos0), 1, ind_in);                   //filepos of block n
    EOS_ASSERT( size == 1, block_log_exception, "cannot read ${file} entry for block ${b}", ("file", index_file_name.string())("b",n) );
-   size = fread((void*)&fpos1,sizeof(fpos1), 1, ind_in);                   //filepos of block n+1
-   EOS_ASSERT( size == 1, block_log_exception, "cannot read ${file} entry for block ${b}", ("file", index_file_name.string())("b",n + 1) );
+   size = fread((void*)&fpos1, sizeof(fpos1), 1, ind_in);                   //filepos of block n+1
+   if (n != last_block)
+      EOS_ASSERT( size == 1, block_log_exception, "cannot read ${file} entry for block ${b}, size=${size}", ("file", index_file_name.string())("b",n + 1)("size",size) );
 
    cout << "According to blocks.index:\n";
    cout << "    block " << n << " starts at position " << fpos0 << '\n';
    cout << "    block " << n + 1;
 
-   if (n!=last_block)
+   if (n != last_block)
       cout << " starts at position " << fpos1 << '\n';
    else
       cout << " is past end\n";
@@ -706,7 +708,7 @@ int main(int argc, char** argv) {
       }
       if (blog.make_index) {
          bfs::path out_file = "blocks.index";
-         if (vmap.count("output-file") == 0)
+         if (vmap.count("output-file") > 0)
              out_file = vmap.at("output-file").as<bfs::path>();
          return make_index(vmap.at("blocks-dir").as<bfs::path>(), out_file);
       }

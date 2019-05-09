@@ -14,12 +14,7 @@ from testUtils import Account
 from testUtils import EnumType
 from testUtils import addEnum
 from testUtils import unhandledEnumType
-
-class ReturnType(EnumType):
-    pass
-
-addEnum(ReturnType, "raw")
-addEnum(ReturnType, "json")
+from testUtils import ReturnType
 
 class BlockType(EnumType):
     pass
@@ -1216,6 +1211,7 @@ class Node(object):
         if not self.enableMongo:
             info=self.getInfo(exitOnError=True)
             if info is not None:
+                Utils.Print("current lib: %d" % (info["last_irreversible_block_num"]))
                 return info["last_irreversible_block_num"]
         else:
             # Either this implementation or the one in getHeadBlockNum are likely wrong.
@@ -1264,7 +1260,7 @@ class Node(object):
         self.killed=True
         return True
 
-    def interruptAndVerifyExitStatus(self, timeout=15):
+    def interruptAndVerifyExitStatus(self, timeout=60):
         if Utils.Debug: Utils.Print("terminating node: %s" % (self.cmd))
         assert self.popenProc is not None, "node: \"%s\" does not have a popenProc, this may be because it is only set after a relaunch." % (self.cmd)
         self.popenProc.send_signal(signal.SIGINT)

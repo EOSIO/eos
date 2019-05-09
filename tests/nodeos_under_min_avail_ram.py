@@ -170,8 +170,8 @@ try:
                        Print("Failed to push create action to eosio contract for %d consecutive times, looks like nodeos already exited." % (timeOutCount))
                        keepProcessing=False
                        break
-                    Print("Failed to push create action to eosio contract. sleep for 60 seconds")
-                    time.sleep(60)
+                    Print("Failed to push create action to eosio contract. sleep for 5 seconds")
+                    time.sleep(5)
                 else:
                     timeOutCount=0
                 time.sleep(1)
@@ -201,9 +201,17 @@ try:
             Utils.cmdError("All Nodes should have died")
             errorExit("Failure - All Nodes should have died")
 
+    numNodes=len(nodes)
+    for i in range(numNodes):
+        f = open(Utils.getNodeDataDir(i) + "/stderr.txt")
+        contents = f.read()
+        if contents.find("3060101 database_guard_exception") == -1:
+            errorExit("Node%d is expected to exit because of database_guard_exception, but was not." % (i))
+
+    Print("all nodes exited with expected reason database_guard_exception")
+
     Print("relaunch nodes with new capacity")
     addOrSwapFlags={}
-    numNodes=len(nodes)
     maxRAMValue+=2
     currentMinimumMaxRAM=maxRAMValue
     enabledStaleProduction=False
