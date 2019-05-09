@@ -58,9 +58,9 @@ struct filter_entry {
 
    //            receiver          action       actor
    bool match( const name& rr, const name& an, const name& ar ) const {
-      return (receiver.value == 0 || receiver == rr) &&
-             (action.value == 0 || action == an) &&
-             (actor.value == 0 || actor == ar);
+      return (receiver.to_uint64_t() == 0 || receiver == rr) &&
+             (action.to_uint64_t() == 0 || action == an) &&
+             (actor.to_uint64_t() == 0 || actor == ar);
    }
 };
 
@@ -229,7 +229,7 @@ bool mongo_db_plugin_impl::filter_include( const account_name& receiver, const a
       include = true;
    } else {
       auto itr = std::find_if( filter_on.cbegin(), filter_on.cend(), [&receiver, &act_name]( const auto& filter ) {
-         return filter.match( receiver, act_name, 0 );
+         return filter.match( receiver, act_name, {} );
       } );
       if( itr != filter_on.cend() ) {
          include = true;
@@ -250,7 +250,7 @@ bool mongo_db_plugin_impl::filter_include( const account_name& receiver, const a
    if( filter_out.empty() ) { return true; }
 
    auto itr = std::find_if( filter_out.cbegin(), filter_out.cend(), [&receiver, &act_name]( const auto& filter ) {
-      return filter.match( receiver, act_name, 0 );
+      return filter.match( receiver, act_name, {} );
    } );
    if( itr != filter_out.cend() ) { return false; }
 
@@ -1598,7 +1598,7 @@ void mongo_db_plugin::plugin_initialize(const variables_map& options)
                std::vector<std::string> v;
                boost::split( v, s, boost::is_any_of( ":" ));
                EOS_ASSERT( v.size() == 3, fc::invalid_arg_exception, "Invalid value ${s} for --mongodb-filter-on", ("s", s));
-               filter_entry fe{v[0], v[1], v[2]};
+               filter_entry fe{eosio::chain::name(v[0]), eosio::chain::name(v[1]), eosio::chain::name(v[2])};
                my->filter_on.insert( fe );
             }
          } else {
@@ -1610,7 +1610,7 @@ void mongo_db_plugin::plugin_initialize(const variables_map& options)
                std::vector<std::string> v;
                boost::split( v, s, boost::is_any_of( ":" ));
                EOS_ASSERT( v.size() == 3, fc::invalid_arg_exception, "Invalid value ${s} for --mongodb-filter-out", ("s", s));
-               filter_entry fe{v[0], v[1], v[2]};
+               filter_entry fe{eosio::chain::name(v[0]), eosio::chain::name(v[1]), eosio::chain::name(v[2])};
                my->filter_out.insert( fe );
             }
          }
