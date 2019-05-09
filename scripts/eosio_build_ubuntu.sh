@@ -1,41 +1,16 @@
-if [ $1 == 1 ]; then ANSWER=1; else ANSWER=0; fi
+echo "OS name: ${NAME}"
+echo "OS Version: ${VERSION_ID}"
+echo "CPU cores: ${CPU_CORES}"
+echo "Physical Memory: ${MEM_GIG}Gb"
+echo "Disk space total: ${DISK_TOTAL}Gb"
+echo "Disk space available: ${DISK_AVAIL}G"
 
-OS_VER=$( grep VERSION_ID /etc/os-release | cut -d'=' -f2 | sed 's/[^0-9\.]//gI' )
-OS_MAJ=$(echo "${OS_VER}" | cut -d'.' -f1)
-OS_MIN=$(echo "${OS_VER}" | cut -d'.' -f2)
+( [[ "${NAME}" == "Ubuntu" ]] && ( [[ "$(echo ${VERSION_ID})" == "16.04" ]] || [[ "$(echo ${VERSION_ID})" == "18.04" ]] )  ) || ( echo " - You must be running 16.04.x or 18.04.x to install EOSIO." && exit 1 )
 
-MEM_MEG=$( free -m | sed -n 2p | tr -s ' ' | cut -d\  -f2 || cut -d' ' -f2 )
-CPU_SPEED=$( lscpu | grep -m1 "MHz" | tr -s ' ' | cut -d\  -f3 || cut -d' ' -f3 | cut -d'.' -f1 )
-CPU_CORE=$( nproc )
-MEM_GIG=$(( ((MEM_MEG / 1000) / 2) ))
-export JOBS=$(( MEM_GIG > CPU_CORE ? CPU_CORE : MEM_GIG ))
+[[ $MEM_GIG -lt 7 ]] && echo "Your system must have 7 or more Gigabytes of physical memory installed." && exit 1
+[[ "${DISK_AVAIL}" -lt "${DISK_MIN}" ]] && echo " - You must have at least ${DISK_MIN}GB of available storage to install EOSIO." && exit 1
 
-DISK_INSTALL=$(df -h . | tail -1 | tr -s ' ' | cut -d\  -f1 || cut -d' ' -f1)
-DISK_TOTAL_KB=$(df . | tail -1 | awk '{print $2}')
-DISK_AVAIL_KB=$(df . | tail -1 | awk '{print $4}')
-DISK_TOTAL=$(( DISK_TOTAL_KB / 1048576 ))
-DISK_AVAIL=$(( DISK_AVAIL_KB / 1048576 ))
-
-printf "\\nOS name: ${OS_NAME}\\n"
-printf "OS Version: ${OS_VER}\\n"
-printf "CPU speed: ${CPU_SPEED}Mhz\\n"
-printf "CPU cores: %s\\n" "${CPU_CORE}"
-printf "Physical Memory: ${MEM_MEG} Mgb\\n"
-printf "Disk install: ${DISK_INSTALL}\\n"
-printf "Disk space total: ${DISK_TOTAL%.*}G\\n"
-printf "Disk space available: ${DISK_AVAIL%.*}G\\n"
-
-if [ "$BUILD_CLANG8" = "true" ]; then
-   PINNED_TOOLCHAIN=-DCMAKE_TOOLCHAIN_FILE=$BUILD_DIR/pinned_toolchain.cmake
-fi
-
-if [ "${MEM_MEG}" -lt 7000 ]; then
-	printf "Your system must have 7 or more Gigabytes of physical memory installed.\\n"
-	printf "Exiting now.\\n"
-	exit 1
-fi
-
-case "${OS_NAME}" in
+case $NAME in
 	"Ubuntu")
 		. /etc/lsb-release
 		if [ "${DISTRIB_CODENAME}" != "xenial" -a "${DISTRIB_CODENAME}" != "bionic" ]; then

@@ -30,14 +30,15 @@
 # https://github.com/EOSIO/eos/blob/master/LICENSE
 ##########################################################################
 
-VERSION=2.3 # Build script version
+SCRIPT_VERSION=2.3 # Build script version
 
 # defaults for command-line arguments
 CMAKE_BUILD_TYPE=Release
 DOXYGEN=false
 ENABLE_COVERAGE_TESTING=false
 CORE_SYMBOL_NAME="SYS"
-NONINTERACTIVE=0
+export NONINTERACTIVE=${NONINTERACTIVE:-0}
+export ANSWER=${ANSWER:-0}
 PREFIX=$HOME
 
 TIME_BEGIN=$( date -u +%s )
@@ -123,7 +124,8 @@ if [ $# -ne 0 ]; then
             exit 1
          ;;
          y)
-            NONINTERACTIVE=1
+            export NONINTERACTIVE=1
+            export ANSWER=1
          ;;
          f)
             FORCE_BUILD=1
@@ -221,6 +223,19 @@ if [ $STALE_SUBMODS -gt 0 ]; then
    exit 1
 fi
 
+if [[ -d $OPT_LOCATION/eosio ]]; then
+   echo "EOSIO has already been installed into $OPT_LOCATION/eosio... It's suggested that you uninstall before re-running this script."
+   while true; do
+   [[ $NONINTERACTIVE == 0 ]] && read -p "${COLOR_YELLOW}Do you wish to proceed anyway? (y/n)${COLOR_NC} " ANSWER
+   case $ANSWER in
+      "" ) echo "What would you like to do?";;
+      0 | true | [Yy]* ) break;;
+      1 | false | [Nn]* ) exit;;
+      * ) echo "Please type 'y' for yes or 'n' for no.";;
+   esac
+   done
+fi
+
 # Checks for Arch and OS + Support for tests setting them manually
 ## Necessary for linux exclusion while running bats tests/bash-bats/*.bash
 [[ -z "${ARCH}" ]] && export ARCH=$( uname )
@@ -292,7 +307,7 @@ mkdir -p $ETC_LOCATION
 mkdir -p $MONGODB_LOG_LOCATION
 mkdir -p $MONGODB_DATA_LOCATION
 
-printf "\\nBeginning build version: %s\\n" "${VERSION}"
+printf "\\nBeginning build version: %s\\n" "${SCRIPT_VERSION}"
 printf "%s\\n" "$( date -u )"
 printf "User: %s\\n" "$( whoami )"
 # printf "git head id: %s\\n" "$( cat .git/refs/heads/master )"
@@ -316,7 +331,6 @@ print_supported_linux_distros_and_exit() {
 if [ "$ARCH" == "Linux" ]; then
    # Check if cmake is already installed or not and use source install location
    if [ -z $CMAKE ]; then export CMAKE=$PREFIX/bin/cmake; fi
-   export OS_NAME=$( cat /etc/os-release | grep ^NAME | cut -d'=' -f2 | sed 's/\"//gI' )
    OPENSSL_ROOT_DIR=/usr/include/openssl
    if [ ! -e /etc/os-release ]; then
       print_supported_linux_distros_and_exit
@@ -339,7 +353,6 @@ fi
 if [ "$ARCH" == "Darwin" ]; then
    # Check if cmake is already installed or not and use source install location
    if [ -z $CMAKE ]; then export CMAKE=/usr/local/bin/cmake; fi
-   export OS_NAME=MacOSX
    # opt/gettext: cleos requires Intl, which requires gettext; it's keg only though and we don't want to force linking: https://github.com/EOSIO/eos/issues/2240#issuecomment-396309884
    # HOME/lib/cmake: mongo_db_plugin.cpp:25:10: fatal error: 'bsoncxx/builder/basic/kvp.hpp' file not found
    LOCAL_CMAKE_FLAGS="-DCMAKE_PREFIX_PATH=/usr/local/opt/gettext;$PREFIX ${LOCAL_CMAKE_FLAGS}"
@@ -347,12 +360,32 @@ if [ "$ARCH" == "Darwin" ]; then
    OPENSSL_ROOT_DIR=/usr/local/opt/openssl
 fi
 
-# Cleanup old installation
-. ./scripts/full_uninstaller.sh $NONINTERACTIVE
-if [ $? -ne 0 ]; then exit -1; fi # Stop if exit from script is not 0
+if [[ $ARCH == "Darwin" ]]; then
+   export OS_VER=$(sw_vers -productVersion)
+   export OS_MAJ=$(echo "${OS_VER}" | cut -d'.' -f1)
+   export OS_MIN=$(echo "${OS_VER}" | cut -d'.' -f2)
+   export OS_PATCH=$(echo "${OS_VER}" | cut -d'.' -f3)
+   export MEM_GIG=$(bc <<< "($(sysctl -in hw.memsize) / 1024000000)")
+   export DISK_INSTALL=$(df -h . | tail -1 | tr -s ' ' | cut -d\  -f1 || cut -d' ' -f1)
+   export blksize=$(df . | head -1 | awk '{print $2}' | cut -d- -f1)
+   export gbfactor=$(( 1073741824 / blksize ))
+   export total_blks=$(df . | tail -1 | awk '{print $2}')
+   export avail_blks=$(df . | tail -1 | awk '{print $4}')
+   export DISK_TOTAL=$((total_blks / gbfactor ))
+   export DISK_AVAIL=$((avail_blks / gbfactor ))
+else
+   export DISK_INSTALL=$( df -h . | tail -1 | tr -s ' ' | cut -d\  -f1 )
+   export DISK_TOTAL_KB=$( df . | tail -1 | awk '{print $2}' )
+   export DISK_AVAIL_KB=$( df . | tail -1 | awk '{print $4}' )
+   export MEM_GIG=$(( ( ( $(cat /proc/meminfo | grep MemTotal | awk '{print $2}') / 1000 ) / 1000 ) ))
+   export DISK_TOTAL=$(( DISK_TOTAL_KB / 1048576 ))
+   export DISK_AVAIL=$(( DISK_AVAIL_KB / 1048576 ))
+fi
+export JOBS=$(( MEM_GIG > CPU_CORES ? CPU_CORES : MEM_GIG ))
 
 pushd $SRC_LOCATION &> /dev/null
-. "$FILE" $NONINTERACTIVE # Execute OS specific build file
+$BUILD_CLANG8 && export PINNED_TOOLCHAIN="-DCMAKE_TOOLCHAIN_FILE='${BUILD_DIR}/pinned_toolchain.cmake'"
+. "$FILE"
 popd &> /dev/null
 
 printf "\\n========================================================================\\n"
@@ -361,7 +394,6 @@ printf "## CMAKE_BUILD_TYPE=%s\\n" "${CMAKE_BUILD_TYPE}"
 printf "## ENABLE_COVERAGE_TESTING=%s\\n" "${ENABLE_COVERAGE_TESTING}"
 
 cd $BUILD_DIR
-
 
 if [ $PIN_COMPILER ]; then
    $CMAKE -DCMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE}" -DCMAKE_TOOLCHAIN_FILE=$BUILD_DIR/pinned_toolchain.cmake \

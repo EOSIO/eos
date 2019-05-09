@@ -1,53 +1,14 @@
-if [ $1 == 1 ]; then ANSWER=1; else ANSWER=0; fi
+echo "OS name: ${NAME}"
+echo "OS Version: ${VERSION_ID}"
+echo "CPU cores: ${CPU_CORES}"
+echo "Physical Memory: ${MEM_GIG}G"
+echo "Disk space total: ${DISK_TOTAL}G"
+echo "Disk space available: ${DISK_AVAIL}G"
 
-OS_VER=$( grep VERSION_ID /etc/os-release | cut -d'=' -f2 | sed 's/[^0-9\.]//gI' \
-| cut -d'.' -f1 )
+( [[ $NAME == "CentOS Linux" ]] && [[ "$(echo ${VERSION} | sed 's/ .*//g')" < 7 ]] ) && echo " - You must be running Centos 7 or higher to install EOSIO." && exit 1
 
-MEM_MEG=$( free -m | sed -n 2p | tr -s ' ' | cut -d\  -f2 )
-CPU_SPEED=$( lscpu | grep "MHz" | tr -s ' ' | cut -d\  -f3 | cut -d'.' -f1 )
-CPU_CORE=$( nproc )
-MEM_GIG=$(( ((MEM_MEG / 1000) / 2) ))
-export JOBS=$(( MEM_GIG > CPU_CORE ? CPU_CORE : MEM_GIG ))
-
-DISK_INSTALL=$( df -h . | tail -1 | tr -s ' ' | cut -d\  -f1 )
-DISK_TOTAL_KB=$( df . | tail -1 | awk '{print $2}' )
-DISK_AVAIL_KB=$( df . | tail -1 | awk '{print $4}' )
-DISK_TOTAL=$(( DISK_TOTAL_KB / 1048576 ))
-DISK_AVAIL=$(( DISK_AVAIL_KB / 1048576 ))
-
-printf "\\nOS name: ${OS_NAME}\\n"
-printf "OS Version: ${OS_VER}\\n"
-printf "CPU speed: ${CPU_SPEED}Mhz\\n"
-printf "CPU cores: ${CPU_CORE}\\n"
-printf "Physical Memory: ${MEM_MEG}Mgb\\n"
-printf "Disk install: ${DISK_INSTALL}\\n"
-printf "Disk space total: ${DISK_TOTAL%.*}G\\n"
-printf "Disk space available: ${DISK_AVAIL%.*}G\\n"
-printf "Concurrent Jobs (make -j): ${JOBS}\\n"
-
-if [ "$BUILD_CLANG8" = "true" ]; then
-   PINNED_TOOLCHAIN=-DCMAKE_TOOLCHAIN_FILE=$BUILD_DIR/pinned_toolchain.cmake
-fi
-
-if [ "${MEM_MEG}" -lt 7000 ]; then
-	printf "\\nYour system must have 7 or more Gigabytes of physical memory installed.\\n"
-	printf "Exiting now.\\n\\n"
-	exit 1;
-fi
-
-if ! (. /etc/os-release; [ "$VERSION_ID" = "7" ]); then
-	printf "\\nCentos 7 is the only version of Centos supported by EOSIO build scripts.\\n"
-	printf "Exiting now.\\n\\n"
-	exit 1;
-fi
-
-if [ "${DISK_AVAIL%.*}" -lt "${DISK_MIN}" ]; then
-	printf "\\nYou must have at least %sGB of available storage to install EOSIO.\\n" "${DISK_MIN}"
-	printf "Exiting now.\\n\\n"
-	exit 1;
-fi
-
-printf "\\n"
+[[ $MEM_GIG -lt 7 ]] && echo "Your system must have 7 or more Gigabytes of physical memory installed." && exit 1
+[[ "${DISK_AVAIL}" -lt "${DISK_MIN}" ]] && echo " - You must have at least ${DISK_MIN}GB of available storage to install EOSIO." && exit 1
 
 printf "Checking Yum installation...\\n"
 if ! YUM=$( command -v yum 2>/dev/null ); then
