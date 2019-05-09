@@ -184,7 +184,7 @@ class apply_context {
 
 //               context.require_write_lock( scope );
 
-               const auto& tab = context.find_or_create_table( context.receiver, scope, table, payer );
+               const auto& tab = context.find_or_create_table( context.receiver, name(scope), name(table), payer );
 
                const auto& obj = context.db.create<ObjectType>( [&]( auto& o ){
                   o.t_id          = tab.id;
@@ -248,7 +248,7 @@ class apply_context {
             }
 
             int find_secondary( uint64_t code, uint64_t scope, uint64_t table, secondary_key_proxy_const_type secondary, uint64_t& primary ) {
-               auto tab = context.find_table( code, scope, table );
+               auto tab = context.find_table( name(code), name(scope), name(table) );
                if( !tab ) return -1;
 
                auto table_end_itr = itr_cache.cache_table( *tab );
@@ -262,7 +262,7 @@ class apply_context {
             }
 
             int lowerbound_secondary( uint64_t code, uint64_t scope, uint64_t table, secondary_key_proxy_type secondary, uint64_t& primary ) {
-               auto tab = context.find_table( code, scope, table );
+               auto tab = context.find_table( name(code), name(scope), name(table) );
                if( !tab ) return -1;
 
                auto table_end_itr = itr_cache.cache_table( *tab );
@@ -279,7 +279,7 @@ class apply_context {
             }
 
             int upperbound_secondary( uint64_t code, uint64_t scope, uint64_t table, secondary_key_proxy_type secondary, uint64_t& primary ) {
-               auto tab = context.find_table( code, scope, table );
+               auto tab = context.find_table( name(code), name(scope), name(table) );
                if( !tab ) return -1;
 
                auto table_end_itr = itr_cache.cache_table( *tab );
@@ -296,7 +296,7 @@ class apply_context {
             }
 
             int end_secondary( uint64_t code, uint64_t scope, uint64_t table ) {
-               auto tab = context.find_table( code, scope, table );
+               auto tab = context.find_table( name(code), name(scope), name(table) );
                if( !tab ) return -1;
 
                return itr_cache.cache_table( *tab );
@@ -350,7 +350,7 @@ class apply_context {
             }
 
             int find_primary( uint64_t code, uint64_t scope, uint64_t table, secondary_key_proxy_type secondary, uint64_t primary ) {
-               auto tab = context.find_table( code, scope, table );
+               auto tab = context.find_table( name(code), name(scope), name(table) );
                if( !tab ) return -1;
 
                auto table_end_itr = itr_cache.cache_table( *tab );
@@ -363,7 +363,7 @@ class apply_context {
             }
 
             int lowerbound_primary( uint64_t code, uint64_t scope, uint64_t table, uint64_t primary ) {
-               auto tab = context.find_table( code, scope, table );
+               auto tab = context.find_table( name(code), name(scope), name(table) );
                if (!tab) return -1;
 
                auto table_end_itr = itr_cache.cache_table( *tab );
@@ -377,7 +377,7 @@ class apply_context {
             }
 
             int upperbound_primary( uint64_t code, uint64_t scope, uint64_t table, uint64_t primary ) {
-               auto tab = context.find_table( code, scope, table );
+               auto tab = context.find_table( name(code), name(scope), name(table) );
                if ( !tab ) return -1;
 
                auto table_end_itr = itr_cache.cache_table( *tab );

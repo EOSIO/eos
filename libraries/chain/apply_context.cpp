@@ -880,7 +880,7 @@ action_name apply_context::get_sender() const {
       const action_trace& creator_trace = trx_context.get_action_trace( trace.creator_action_ordinal );
       return creator_trace.receiver;
    }
-   return 0;
+   return action_name();
 }
 
 } } /// eosio::chain

@@ -238,7 +238,7 @@ namespace eosio { namespace chain {
          auto link = _db.find<permission_link_object, by_action_name>(key);
          // If no specific link found, check for a contract-wide default
          if (link == nullptr) {
-            boost::get<2>(key) = "";
+            boost::get<2>(key) = {};
             link = _db.find<permission_link_object, by_action_name>(key);
          }
 
