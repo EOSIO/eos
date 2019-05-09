@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -eo pipefail
 # Load eosio specific helper functions
 . ./scripts/helpers/eosio.bash

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -ieo pipefail
-VERSION=3.0 # Build script version (change this to re-build the CICD image)
+SCRIPT_VERSION=3.0 # Build script version (change this to re-build the CICD image)
 ##########################################################################
 # This is the EOSIO automated install script for Linux and Mac OS.
 # This file was downloaded from https://github.com/EOSIO/eos
@@ -110,7 +110,7 @@ fi
 # Load eosio specific helper functions
 . ./scripts/helpers/eosio.bash
 
-echo "Beginning build version: ${VERSION}"
+echo "Beginning build version: ${SCRIPT_VERSION}"
 echo "$( date -u )"
 CURRENT_USER=${CURRENT_USER:-$(whoami)}
 echo "User: ${CURRENT_USER}"
