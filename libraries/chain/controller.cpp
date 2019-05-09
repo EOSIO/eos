@@ -1294,7 +1294,8 @@ struct controller_impl {
 
             trx_context.delay = fc::seconds(trn.delay_sec);
 
-            if( check_auth && recovered_keys ) {
+            if( check_auth ) {
+               EOS_ASSERT( recovered_keys, missing_auth_exception, "recovered_keys should never be null" );
                authorization.check_authorization(
                        trn.actions,
                        *recovered_keys,
