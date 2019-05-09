@@ -15,9 +15,9 @@ namespace eosio { namespace chain {
 
 class transaction_metadata;
 using transaction_metadata_ptr = std::shared_ptr<transaction_metadata>;
-using signing_keys_future_value_type = std::tuple<chain_id_type, fc::microseconds, flat_set<public_key_type>>;
+using signing_keys_future_value_type = std::tuple<chain_id_type, fc::microseconds, std::shared_ptr<flat_set<public_key_type>>>;
 using signing_keys_future_type = std::shared_future<signing_keys_future_value_type>;
-using recovery_keys_type = std::pair<fc::microseconds, const flat_set<public_key_type>&>;
+using recovery_keys_type = std::pair<fc::microseconds, std::shared_ptr<flat_set<public_key_type>>>;
 
 /**
  *  This data structure should store context-free cached data about a transaction such as
@@ -65,6 +65,7 @@ class transaction_metadata {
                           std::function<void()> next = std::function<void()>() );
 
       // start_recover_keys can be called first to begin key recovery
+      // if time_limit of start_recover_keys exceeded (or any other exception) then this can throw
       recovery_keys_type recover_keys( const chain_id_type& chain_id ) const;
 };
 
