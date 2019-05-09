@@ -228,6 +228,7 @@ function build-clang() {
         echo "${COLOR_CYAN}[Ensuring Clang support]${COLOR_NC}"
         if [[ ! -d $CLANG_ROOT ]]; then
             execute bash -c "cd ${TEMP_DIR} \
+            && rm -rf clang8 \
             && git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/llvm.git clang8 \
             && cd clang8 && git checkout $PINNED_COMPILER_LLVM_COMMIT \
             && cd tools \
