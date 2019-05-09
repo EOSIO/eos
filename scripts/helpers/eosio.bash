@@ -18,6 +18,8 @@ if [[ -z "${NAME}" ]]; then
     fi
 fi
 
+[[ $ARCH == "Darwin" ]] && export CTEST_BIN=ctest || export CTEST_BIN=$BIN_DIR/ctest
+
 # Test that which is on the system before proceeding
 which ls &>/dev/null || ( echo "${COLOR_RED}Please install the 'which' command before proceeding!${COLOR_NC}"; $DRYRUN || exit 1 )
 

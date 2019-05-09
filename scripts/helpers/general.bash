@@ -15,9 +15,6 @@ if [[ $- == *i* ]]; then # Disable if the shell isn't interactive (avoids: tput:
   export COLOR_WHITE=$(tput setaf 7)
 fi
 
-[[ $ARCH == "Darwin" ]] && CTEST_BIN=ctest || CTEST_BIN=$BIN_DIR/ctest
-
-
 function execute() {
   ( [[ ! -z "${VERBOSE}" ]] && $VERBOSE ) && echo " - Executing: $@"
   ( [[ ! -z "${DRYRUN}" ]] && $DRYRUN ) || "$@"
