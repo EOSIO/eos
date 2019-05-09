@@ -1,23 +1,17 @@
+---
+
 env:
   ANKA_MOJAVE_TEMPLATE: "10.14.4_6C_14G_40G"
   ANKA_TEMPLATE_TAG: "clean::cicd::git-ssh::nas::brew::buildkite-agent-3.11.2"
   CHECKSUMABLE: "scripts/eosio_build*"
-<<<<<<< HEAD
   MAC_TAG: "eosio_3-0"
-=======
-  MAC_TAG: "eosio_2-4"
->>>>>>> develop
 
 steps:
 
   - label: ":darwin: Ensure Mojave Anka Template Dependency Tag/Layer Exists"
     command:
       - "git clone git@github.com:EOSIO/mac-anka-fleet.git"
-<<<<<<< HEAD
       - "cd mac-anka-fleet && . ./ensure_tag.bash -a \"-n\""
-=======
-      - "cd mac-anka-fleet && . ./ensure_tag.bash"
->>>>>>> develop
     agents:
       - "queue=mac-anka-templater-fleet"
     env:
@@ -26,15 +20,9 @@ steps:
       CHECKSUMABLE: "${CHECKSUMABLE}"
       TEMPLATE: "${ANKA_MOJAVE_TEMPLATE}"
       TEMPLATE_TAG: "${ANKA_TEMPLATE_TAG}"
-<<<<<<< HEAD
-      TAG_COMMANDS: "git clone ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO} && cd eos && git checkout ${BUILDKITE_COMMIT} && git submodule update --init --recursive && ./scripts/eosio_build.bash -y -P -m && cd .. && rm -rf eos" # CLONED_REPO_DIR IS REQUIRED and is where the repo is always cloned into
+      TAG_COMMANDS: "git clone ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO} && cd eos && git checkout ${BUILDKITE_COMMIT} && git submodule update --init --recursive && ./scripts/eosio_build.bash -y -P -m && cd .. && rm -rf eos"
       PROJECT_TAG: "${MAC_TAG}"
     timeout: 120
-=======
-      TAG_COMMANDS: "./scripts/eosio_build.sh -y -P -m" # CLONED_REPO_DIR IS REQUIRED and is where the repo is always cloned into
-      PROJECT_TAG: "${MAC_TAG}"
-    timeout: 60
->>>>>>> develop
 
   # - trigger: "mac-anka-fleet"
   #   label: ":anka: Ensure Mojave Anka Template Tag Exists"
@@ -48,11 +36,7 @@ steps:
   #       CHECKSUMABLE: "${CHECKSUMABLE}"
   #       TEMPLATE: "${ANKA_MOJAVE_TEMPLATE}"
   #       TEMPLATE_TAG: "${ANKA_TEMPLATE_TAG}"
-<<<<<<< HEAD
   #       TAG_COMMANDS: "CLONED_REPO_DIR/scripts/eosio_build.bash -y -P -m" # CLONED_REPO_DIR IS REQUIRED and is where the repo is always cloned into
-=======
-  #       TAG_COMMANDS: "CLONED_REPO_DIR/scripts/eosio_build.sh -y -P -m" # CLONED_REPO_DIR IS REQUIRED and is where the repo is always cloned into
->>>>>>> develop
   #       PROJECT_TAG: "${MAC_TAG}"
 
   - wait
@@ -63,11 +47,7 @@ steps:
 
   - label: ":darwin: [Darwin] Mojave Build"
     command:
-<<<<<<< HEAD
       - "git clone ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO} && cd eos && git checkout ${BUILDKITE_COMMIT} && git submodule update --init --recursive && ./scripts/eosio_build.bash -y -P -m"
-=======
-      - "git clone ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO} && cd eos && git checkout ${BUILDKITE_COMMIT} && git submodule update --init --recursive && ./scripts/eosio_build.sh -y -P -m"
->>>>>>> develop
       - "tar -pczf /Network/NAS/MAC_FLEET/BUILDKITE/artifacts/${ANKA_MOJAVE_TEMPLATE}-${BUILDKITE_PIPELINE_SLUG}-${BUILDKITE_BUILD_ID}.tar.gz eos"
     plugins:
       chef/anka#v0.4.4:
@@ -86,11 +66,7 @@ steps:
 
   - label: ":aws: Amazon Linux 2 Build"
     command:
-<<<<<<< HEAD
       - "./scripts/eosio_build.bash -y -P -m"
-=======
-      - "./scripts/eosio_build.sh -y -P -m"
->>>>>>> develop
       - "tar -pczf build.tar.gz build; if [[ ! -f build.tar.gz ]]; then echo 'ERROR: No build.tar.gz artifact found!' && exit 1; fi"
     agents:
       queue: "automation-large-builder-fleet"
@@ -104,23 +80,15 @@ steps:
       docker#v3.1.0:
         shell: ["/bin/bash", "-i", "-e", "-c"]
         debug: true
-<<<<<<< HEAD
         image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux2_3-0"
-=======
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux2_2-4"
->>>>>>> develop
         propagate-environment: true
         workdir: /data/job
     timeout: 120
 
   - label: ":centos: CentOS 7 Build"
     command:
-<<<<<<< HEAD
-        - "./scripts/eosio_build.bash -y -P -m"
-=======
-        - "./scripts/eosio_build.sh -y -P -m"
->>>>>>> develop
-        - "tar -pczf build.tar.gz build; if [[ ! -f build.tar.gz ]]; then echo 'ERROR: No build.tar.gz artifact found!' && exit 1; fi"
+      - "./scripts/eosio_build.bash -y -P -m"
+      - "tar -pczf build.tar.gz build; if [[ ! -f build.tar.gz ]]; then echo 'ERROR: No build.tar.gz artifact found!' && exit 1; fi"
     agents:
       queue: "automation-large-builder-fleet"
     artifact_paths: "build.tar.gz"
@@ -133,24 +101,15 @@ steps:
       docker#v3.2.0:
         shell: ["/bin/bash", "-i", "-e", "-c"]
         debug: true
-<<<<<<< HEAD
         image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:centos7_3-0"
-=======
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:centos7_2-4"
->>>>>>> develop
         propagate-environment: true
         workdir: /data/job
     timeout: 120
 
   - label: ":ubuntu: Ubuntu 16.04 Build"
     command:
-<<<<<<< HEAD
       - "./scripts/eosio_build.bash -y -P -m"
-=======
-      - "./scripts/eosio_build.sh -y -P -m"
->>>>>>> develop
       - "tar -pczf build.tar.gz build; if [[ ! -f build.tar.gz ]]; then echo 'ERROR: No build.tar.gz artifact found!' && exit 1; fi"
-    label: ":ubuntu: Ubuntu 16.04 Build"
     agents:
       queue: "automation-large-builder-fleet"
     artifact_paths: "build.tar.gz"
@@ -163,22 +122,14 @@ steps:
       docker#v3.2.0:
         shell: ["/bin/bash", "-i", "-e", "-c"]
         debug: true
-<<<<<<< HEAD
         image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu16_3-0"
-=======
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu16_2-4"
->>>>>>> develop
         propagate-environment: true
         workdir: /data/job
     timeout: 120
 
   - label: ":ubuntu: Ubuntu 18.04 Build"
     command:
-<<<<<<< HEAD
       - "./scripts/eosio_build.bash -y -P -m"
-=======
-      - "./scripts/eosio_build.sh -y -P -m"
->>>>>>> develop
       - "tar -pczf build.tar.gz build; if [[ ! -f build.tar.gz ]]; then echo 'ERROR: No build.tar.gz artifact found!' && exit 1; fi"
     agents:
       queue: "automation-large-builder-fleet"
@@ -192,11 +143,7 @@ steps:
       docker#v3.2.0:
         shell: ["/bin/bash", "-i", "-e", "-c"]
         debug: true
-<<<<<<< HEAD
         image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu18_3-0"
-=======
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu18_2-4"
->>>>>>> develop
         propagate-environment: true
         workdir: /data/job
     timeout: 120
@@ -260,11 +207,7 @@ steps:
       docker#v3.2.0:
         shell: ["/bin/bash", "-i", "-e", "-c"]
         debug: true
-<<<<<<< HEAD
         image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux2_3-0"
-=======
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux2_2-4"
->>>>>>> develop
         propagate-environment: true
         workdir: /data/job
     timeout: 60
@@ -273,7 +216,6 @@ steps:
     command:
       - "echo \"--- :arrow_down: Downloading Build Directory\" && buildkite-agent artifact download \"build.tar.gz\" . --step \":aws: Amazon Linux 2 Build\""
       - "./scripts/serial-test.sh"
-    label: ":aws: Amazon Linux 2 NP Tests"
     agents:
       queue: "automation-large-builder-fleet"
     plugins:
@@ -285,11 +227,7 @@ steps:
       docker#v3.2.0:
         shell: ["/bin/bash", "-i", "-e", "-c"]
         debug: true
-<<<<<<< HEAD
         image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux2_3-0"
-=======
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux2_2-4"
->>>>>>> develop
         propagate-environment: true
         workdir: /data/job
     timeout: 60
@@ -310,11 +248,7 @@ steps:
       docker#v3.2.0:
         shell: ["/bin/bash", "-i", "-e", "-c"]
         debug: true
-<<<<<<< HEAD
         image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:centos7_3-0"
-=======
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:centos7_2-4"
->>>>>>> develop
         propagate-environment: true
         workdir: /data/job
     timeout: 60
@@ -334,11 +268,7 @@ steps:
       docker#v3.2.0:
         shell: ["/bin/bash", "-i", "-e", "-c"]
         debug: true
-<<<<<<< HEAD
         image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:centos7_3-0"
-=======
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:centos7_2-4"
->>>>>>> develop
         propagate-environment: true
         workdir: /data/job
     timeout: 60
@@ -359,11 +289,7 @@ steps:
       docker#v3.2.0:
         shell: ["/bin/bash", "-i", "-e", "-c"]
         debug: true
-<<<<<<< HEAD
         image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu16_3-0"
-=======
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu16_2-4"
->>>>>>> develop
         propagate-environment: true
         workdir: /data/job
     timeout: 60
@@ -383,11 +309,7 @@ steps:
       docker#v3.2.0:
         shell: ["/bin/bash", "-i", "-e", "-c"]
         debug: true
-<<<<<<< HEAD
         image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu16_3-0"
-=======
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu16_2-4"
->>>>>>> develop
         propagate-environment: true
         workdir: /data/job
     timeout: 60
@@ -407,11 +329,7 @@ steps:
       docker#v3.2.0:
         shell: ["/bin/bash", "-i", "-e", "-c"]
         debug: true
-<<<<<<< HEAD
         image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu18_3-0"
-=======
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu18_2-4"
->>>>>>> develop
         propagate-environment: true
         workdir: /data/job
     timeout: 60
@@ -431,11 +349,7 @@ steps:
       docker#v3.2.0:
         shell: ["/bin/bash", "-i", "-e", "-c"]
         debug: true
-<<<<<<< HEAD
         image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu18_3-0"
-=======
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu18_2-4"
->>>>>>> develop
         propagate-environment: true
         workdir: /data/job
     timeout: 60
@@ -482,11 +396,7 @@ steps:
       docker#v3.2.0:
         shell: ["/bin/bash", "-i", "-e", "-c"]
         debug: true
-<<<<<<< HEAD
         image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:centos7_3-0"
-=======
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:centos7_2-4"
->>>>>>> develop
         propagate-environment: true
         workdir: /data/job
     env:
@@ -515,11 +425,7 @@ steps:
       docker#v3.2.0:
         shell: ["/bin/bash", "-i", "-e", "-c"]
         debug: true
-<<<<<<< HEAD
         image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu16_3-0"
-=======
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu16_2-4"
->>>>>>> develop
         propagate-environment: true
         workdir: /data/job
     env:
@@ -548,11 +454,7 @@ steps:
       docker#v3.2.0:
         shell: ["/bin/bash", "-i", "-e", "-c"]
         debug: true
-<<<<<<< HEAD
         image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu18_3-0"
-=======
-        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu18_2-4"
->>>>>>> develop
         propagate-environment: true
         workdir: /data/job
     env:
