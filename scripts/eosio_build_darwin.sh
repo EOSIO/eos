@@ -1,10 +1,10 @@
 echo "OS name: ${NAME}"
 echo "OS Version: ${OS_VER}"
 echo "CPU cores: ${CPU_CORES}"
-echo "Physical Memory: ${MEM_GIG} G"
-echo "Disk install: ${DISK_INSTALL}"
+echo "Physical Memory: ${MEM_GIG}G"
 echo "Disk space total: ${DISK_TOTAL}G"
 echo "Disk space available: ${DISK_AVAIL}G"
+echo "Disk install: ${DISK_INSTALL}"
 
 [[ "${OS_MIN}" -lt 12 ]] && echo "You must be running Mac OS 10.12.x or higher to install EOSIO." && exit 1
 
@@ -249,6 +249,7 @@ if [ "$BUILD_CLANG8" = "true" ]; then
    if [ ! -d $CLANG8_ROOT ] || [ $FORCE_BUILD ]; then
       printf "Installing Clang 8...\\n"
       cd ${TMP_LOCATION} \
+      && rm -rf clang8 \
       && git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/llvm.git clang8 \
       && cd clang8 && git checkout $PINNED_COMPILER_LLVM_COMMIT \
       && cd tools \

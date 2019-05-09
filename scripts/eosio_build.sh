@@ -30,7 +30,11 @@
 # https://github.com/EOSIO/eos/blob/master/LICENSE
 ##########################################################################
 
-SCRIPT_VERSION=2.3 # Build script version
+export EOSIO_VERSION_MAJOR=$(cat CMakeLists.txt | grep "set(VERSION_MAJOR" | awk '{print $2}' | sed 's/)//g')
+export EOSIO_VERSION_MINOR=$(cat CMakeLists.txt | grep "set(VERSION_MINOR" | awk '{print $2}' | sed 's/)//g')
+export EOSIO_VERSION_PATCH=$(cat CMakeLists.txt | grep "set(VERSION_PATCH" | awk '{print $2}' | sed 's/)//g')
+export EOSIO_VERSION_SUFFIX=$(cat CMakeLists.txt | grep "set(VERSION_SUFFIX" | awk '{print $2}' | sed 's/)//g')
+export EOSIO_VERSION="${EOSIO_VERSION_MAJOR}.${EOSIO_VERSION_MINOR}.${EOSIO_VERSION_PATCH}.${EOSIO_VERSION_SUFFIX}"
 
 # defaults for command-line arguments
 CMAKE_BUILD_TYPE=Release
@@ -307,7 +311,7 @@ mkdir -p $ETC_LOCATION
 mkdir -p $MONGODB_LOG_LOCATION
 mkdir -p $MONGODB_DATA_LOCATION
 
-printf "\\nBeginning build version: %s\\n" "${SCRIPT_VERSION}"
+printf "\\nEOSIO Version: %s\\n" "${EOSIO_VERSION}"
 printf "%s\\n" "$( date -u )"
 printf "User: %s\\n" "$( whoami )"
 # printf "git head id: %s\\n" "$( cat .git/refs/heads/master )"
@@ -360,6 +364,7 @@ if [ "$ARCH" == "Darwin" ]; then
    OPENSSL_ROOT_DIR=/usr/local/opt/openssl
 fi
 
+export CPU_CORES=$(grep -c ^processor /proc/cpuinfo 2>/dev/null || sysctl -n hw.ncpu)
 if [[ $ARCH == "Darwin" ]]; then
    export OS_VER=$(sw_vers -productVersion)
    export OS_MAJ=$(echo "${OS_VER}" | cut -d'.' -f1)

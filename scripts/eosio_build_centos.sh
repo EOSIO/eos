@@ -175,6 +175,7 @@ if [ "$BUILD_CLANG8" = "true" ]; then
    if [ ! -d $CLANG8_ROOT ] || [ $FORCE_BUILD ]; then
       printf "Installing Clang 8...\\n"
       cd ${TMP_LOCATION} \
+      && rm -rf clang8 \
       && git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/llvm.git clang8 && cd clang8 \
       && git checkout $PINNED_COMPILER_LLVM_COMMIT \
       && cd tools \
