@@ -36,7 +36,6 @@ namespace eosio { namespace wasm_backend {
       //size_t i = std::tuple_size<Args>::value-1;
       using ptr_ty = typename S::type;
       using under_ty = std::remove_pointer_t<ptr_ty>;
-      std::cout << (int*)walloc->template get_base_ptr<char>() << "val.data " << val.data.ui << "\n"; 
       auto* ptr = (ptr_ty*)((walloc->template get_base_ptr<char>())+val.data.ui);
       /*
       if constexpr (std::tuple_size<Args>::value > I) {
