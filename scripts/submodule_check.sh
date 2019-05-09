@@ -1,4 +1,5 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -eo pipefail
 
 REPO_DIR=`mktemp -d`
 git clone "$BUILDKITE_REPO" "$REPO_DIR"
