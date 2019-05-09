@@ -14,7 +14,6 @@ echo "+++ Running tests"
 TEST_COUNT=$(ctest -N -LE _tests | grep -i 'Total Tests: ' | cut -d ':' -f 2 | awk '{print $1}')
 [[ $TEST_COUNT > 0 ]] && echo "$TEST_COUNT tests found." || (echo "ERROR: No tests registered with ctest! Exiting..." && exit 1)
 set +e # defer ctest error handling to end
-[[ $ARCH == "Darwin" ]] && CTEST_BIN=$BIN_DIR/ctest || CTEST_BIN=ctest
 echo "$CTEST_BIN -L nonparallelizable_tests --output-on-failure -T Test"
 $CTEST_BIN -L nonparallelizable_tests --output-on-failure -T Test
 EXIT_STATUS=$?

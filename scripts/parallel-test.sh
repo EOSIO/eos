@@ -11,7 +11,6 @@ TEST_COUNT=$(ctest -N -LE _tests | grep -i 'Total Tests: ' | cut -d ':' -f 2 | a
 [[ $TEST_COUNT > 0 ]] && echo "$TEST_COUNT tests found." || (echo "ERROR: No tests registered with ctest! Exiting..." && exit 1)
 set +e # defer ctest error handling to end
 CORES=$(getconf _NPROCESSORS_ONLN)
-[[ $ARCH == "Darwin" ]] && CTEST_BIN=$BIN_DIR/ctest || CTEST_BIN=ctest
 echo "$CTEST_BIN -j $CORES -LE _tests --output-on-failure -T Test"
 $CTEST_BIN -j $CORES -LE _tests --output-on-failure -T Test
 EXIT_STATUS=$?
