@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -eo pipefail
 # Load eosio specific helper functions
 . ./scripts/helpers/eosio.bash
@@ -11,7 +11,7 @@ echo "+++ Starting MongoDB"
 $MONGODB_BIN --fork --dbpath $MONGODB_DATA_DIR -f $MONGODB_CONF --logpath ./mongod.log
 echo "+++ Running tests"
 # Counting tests available and if they get disabled for some reason, throw a failure
-TEST_COUNT=$(ctest -N -LE _tests | grep -i 'Total Tests: ' | cut -d ':' -f 2 | awk '{print $1}')
+TEST_COUNT=$($CTEST_BIN -N -LE _tests | grep -i 'Total Tests: ' | cut -d ':' -f 2 | awk '{print $1}')
 [[ $TEST_COUNT > 0 ]] && echo "$TEST_COUNT tests found." || (echo "ERROR: No tests registered with ctest! Exiting..." && exit 1)
 set +e # defer ctest error handling to end
 echo "$CTEST_BIN -L nonparallelizable_tests --output-on-failure -T Test"
