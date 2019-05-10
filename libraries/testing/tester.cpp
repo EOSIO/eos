@@ -310,7 +310,7 @@ namespace eosio { namespace testing {
       auto producer = control->head_block_state()->get_scheduled_producer( control->pending_block_time() );
       private_key_type priv_key;
       // Check if signing private key exist in the list
-      auto private_key_itr = block_signing_private_keys.find( producer.block_signing_key );
+      auto private_key_itr = block_signing_private_keys.find( *producer.block_signing_keys.begin() );
       if( private_key_itr == block_signing_private_keys.end() ) {
          // If it's not found, default to active k1 key
          priv_key = get_private_key( producer.producer_name, "active" );

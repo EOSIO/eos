@@ -209,14 +209,14 @@ BOOST_FIXTURE_TEST_CASE( producer_schedule_promotion_test, TESTER ) try {
       produce_block();
    }
 
-   auto compare_schedules = [&]( const vector<producer_key>& a, const producer_schedule_type& b ) {
+   auto compare_schedules = [&]( const vector<producer_authority>& a, const producer_authority_schedule& b ) {
       return std::equal( a.begin(), a.end(), b.producers.begin(), b.producers.end() );
    };
 
    auto res = set_producers( {N(alice),N(bob)} );
-   vector<producer_key> sch1 = {
-                                 {N(alice), get_public_key(N(alice), "active")},
-                                 {N(bob),   get_public_key(N(bob),   "active")}
+   vector<producer_authority> sch1 = {
+                                 producer_authority_v0{N(alice), 1, {{get_public_key(N(alice), "active"), 1}}},
+                                 producer_authority_v0{N(bob),   1, {{get_public_key(N(bob),   "active"), 1}}}
                                };
    //wdump((fc::json::to_pretty_string(res)));
    wlog("set producer schedule to [alice,bob]");
@@ -234,10 +234,10 @@ BOOST_FIXTURE_TEST_CASE( producer_schedule_promotion_test, TESTER ) try {
    produce_blocks(6);
 
    res = set_producers( {N(alice),N(bob),N(carol)} );
-   vector<producer_key> sch2 = {
-                                 {N(alice), get_public_key(N(alice), "active")},
-                                 {N(bob),   get_public_key(N(bob),   "active")},
-                                 {N(carol), get_public_key(N(carol), "active")}
+   vector<producer_authority> sch2 = {
+                                 producer_authority_v0{N(alice), 1, {{get_public_key(N(alice), "active"),1}}},
+                                 producer_authority_v0{N(bob),   1, {{get_public_key(N(bob),   "active"),1}}},
+                                 producer_authority_v0{N(carol), 1, {{get_public_key(N(carol), "active"),1}}}
                                };
    wlog("set producer schedule to [alice,bob,carol]");
    BOOST_REQUIRE_EQUAL( true, control->proposed_producers().valid() );
@@ -274,15 +274,15 @@ BOOST_FIXTURE_TEST_CASE( producer_schedule_reduction, tester ) try {
       produce_block();
    }
 
-   auto compare_schedules = [&]( const vector<producer_key>& a, const producer_schedule_type& b ) {
+   auto compare_schedules = [&]( const vector<producer_authority>& a, const producer_authority_schedule& b ) {
       return std::equal( a.begin(), a.end(), b.producers.begin(), b.producers.end() );
    };
 
    auto res = set_producers( {N(alice),N(bob),N(carol)} );
-   vector<producer_key> sch1 = {
-                                 {N(alice), get_public_key(N(alice), "active")},
-                                 {N(bob),   get_public_key(N(bob),   "active")},
-                                 {N(carol),   get_public_key(N(carol),   "active")}
+   vector<producer_authority> sch1 = {
+                                 producer_authority_v0{N(alice), 1, {{get_public_key(N(alice), "active"),1}}},
+                                 producer_authority_v0{N(bob),   1, {{get_public_key(N(bob),   "active"),1}}},
+                                 producer_authority_v0{N(carol), 1, {{get_public_key(N(carol), "active"),1}}}
                                };
    wlog("set producer schedule to [alice,bob,carol]");
    BOOST_REQUIRE_EQUAL( true, control->proposed_producers().valid() );
@@ -299,9 +299,9 @@ BOOST_FIXTURE_TEST_CASE( producer_schedule_reduction, tester ) try {
    produce_blocks(6);
 
    res = set_producers( {N(alice),N(bob)} );
-   vector<producer_key> sch2 = {
-                                 {N(alice), get_public_key(N(alice), "active")},
-                                 {N(bob),   get_public_key(N(bob),   "active")}
+   vector<producer_authority> sch2 = {
+                                 producer_authority_v0{N(alice), 1, {{ get_public_key(N(alice), "active"),1}}},
+                                 producer_authority_v0{N(bob),   1, {{ get_public_key(N(bob),   "active"),1}}}
                                };
    wlog("set producer schedule to [alice,bob]");
    BOOST_REQUIRE_EQUAL( true, control->proposed_producers().valid() );
@@ -336,14 +336,14 @@ BOOST_AUTO_TEST_CASE( empty_producer_schedule_has_no_effect ) try {
       c.produce_block();
    }
 
-   auto compare_schedules = [&]( const vector<producer_key>& a, const producer_schedule_type& b ) {
+   auto compare_schedules = [&]( const vector<producer_authority>& a, const producer_authority_schedule& b ) {
       return std::equal( a.begin(), a.end(), b.producers.begin(), b.producers.end() );
    };
 
    auto res = c.set_producers( {N(alice),N(bob)} );
-   vector<producer_key> sch1 = {
-                                 {N(alice), get_public_key(N(alice), "active")},
-                                 {N(bob),   get_public_key(N(bob),   "active")}
+   vector<producer_authority> sch1 = {
+                                 producer_authority_v0{N(alice), 1, {{ get_public_key(N(alice), "active"),1}}},
+                                 producer_authority_v0{N(bob),   1, {{ get_public_key(N(bob),   "active"),1}}}
                                };
    wlog("set producer schedule to [alice,bob]");
    BOOST_REQUIRE_EQUAL( true, c.control->proposed_producers().valid() );
@@ -383,10 +383,10 @@ BOOST_AUTO_TEST_CASE( empty_producer_schedule_has_no_effect ) try {
 
    // Setting a new producer schedule should still use version 2
    res = c.set_producers( {N(alice),N(bob),N(carol)} );
-   vector<producer_key> sch2 = {
-                                 {N(alice), get_public_key(N(alice), "active")},
-                                 {N(bob),   get_public_key(N(bob),   "active")},
-                                 {N(carol), get_public_key(N(carol), "active")}
+   vector<producer_authority> sch2 = {
+                                 producer_authority_v0{N(alice), 1, {{get_public_key(N(alice), "active"),1}}},
+                                 producer_authority_v0{N(bob),   1, {{get_public_key(N(bob),   "active"),1}}},
+                                 producer_authority_v0{N(carol), 1, {{get_public_key(N(carol), "active"),1}}}
                                };
    wlog("set producer schedule to [alice,bob,carol]");
    BOOST_REQUIRE_EQUAL( true, c.control->proposed_producers().valid() );
@@ -413,15 +413,15 @@ BOOST_AUTO_TEST_CASE( producer_watermark_test ) try {
    c.create_accounts( {N(alice),N(bob),N(carol)} );
    c.produce_block();
 
-   auto compare_schedules = [&]( const vector<producer_key>& a, const producer_schedule_type& b ) {
+   auto compare_schedules = [&]( const vector<producer_authority>& a, const producer_authority_schedule& b ) {
       return std::equal( a.begin(), a.end(), b.producers.begin(), b.producers.end() );
    };
 
    auto res = c.set_producers( {N(alice),N(bob),N(carol)} );
-   vector<producer_key> sch1 = {
-                                 {N(alice), c.get_public_key(N(alice), "active")},
-                                 {N(bob),   c.get_public_key(N(bob),   "active")},
-                                 {N(carol), c.get_public_key(N(carol), "active")}
+   vector<producer_authority> sch1 = {
+                                 producer_authority_v0{N(alice), 1, {{c.get_public_key(N(alice), "active"),1}}},
+                                 producer_authority_v0{N(bob),   1, {{c.get_public_key(N(bob),   "active"),1}}},
+                                 producer_authority_v0{N(carol), 1, {{c.get_public_key(N(carol), "active"),1}}}
                                };
    wlog("set producer schedule to [alice,bob,carol]");
    BOOST_REQUIRE_EQUAL( true, c.control->proposed_producers().valid() );
@@ -441,9 +441,9 @@ BOOST_AUTO_TEST_CASE( producer_watermark_test ) try {
    produce_empty_blocks_until( c, N(carol), N(alice) );
 
    res = c.set_producers( {N(alice),N(bob)} );
-   vector<producer_key> sch2 = {
-                                 {N(alice), c.get_public_key(N(alice), "active")},
-                                 {N(bob),   c.get_public_key(N(bob),   "active")}
+   vector<producer_authority> sch2 = {
+                                 producer_authority_v0{N(alice), 1, {{c.get_public_key(N(alice), "active"),1}}},
+                                 producer_authority_v0{N(bob),   1, {{c.get_public_key(N(bob),   "active"),1}}}
                                };
    wlog("set producer schedule to [alice,bob]");
    BOOST_REQUIRE_EQUAL( true, c.control->proposed_producers().valid() );

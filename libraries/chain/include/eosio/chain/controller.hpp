@@ -212,9 +212,9 @@ namespace eosio { namespace chain {
 
          const vector<transaction_receipt>& get_pending_trx_receipts()const;
 
-         const producer_schedule_type&    active_producers()const;
-         const producer_schedule_type&    pending_producers()const;
-         optional<producer_schedule_type> proposed_producers()const;
+         const producer_authority_schedule&    active_producers()const;
+         const producer_authority_schedule&    pending_producers()const;
+         optional<producer_authority_schedule> proposed_producers()const;
 
          uint32_t last_irreversible_block_num() const;
          block_id_type last_irreversible_block_id() const;
@@ -255,7 +255,7 @@ namespace eosio { namespace chain {
 
          bool is_known_unexpired_transaction( const transaction_id_type& id) const;
 
-         int64_t set_proposed_producers( vector<producer_key> producers );
+         int64_t set_proposed_producers( vector<producer_keys> producers );
 
          bool light_validation_allowed(bool replay_opts_disabled_by_policy) const;
          bool skip_auth_check()const;

@@ -9,7 +9,7 @@ namespace eosio { namespace chain {
       return producer_to_last_produced.find(n) != producer_to_last_produced.end();
    }
 
-   producer_key block_header_state::get_scheduled_producer( block_timestamp_type t )const {
+   producer_keys block_header_state::get_scheduled_producer( block_timestamp_type t )const {
       auto index = t.slot % (active_schedule.producers.size() * config::producer_repetitions);
       index /= config::producer_repetitions;
       return active_schedule.producers[index];
@@ -57,7 +57,7 @@ namespace eosio { namespace chain {
       result.active_schedule_version                         = active_schedule.version;
       result.prev_activated_protocol_features                = activated_protocol_features;
 
-      result.block_signing_key                               = prokey.block_signing_key;
+      result.valid_block_signing_keys                        = prokey.block_signing_keys;
       result.producer                                        = prokey.producer_name;
 
       result.blockroot_merkle = blockroot_merkle;
@@ -167,8 +167,9 @@ namespace eosio { namespace chain {
    signed_block_header pending_block_header_state::make_block_header(
                                                       const checksum256_type& transaction_mroot,
                                                       const checksum256_type& action_mroot,
-                                                      optional<producer_schedule_type>&& new_producers,
-                                                      vector<digest_type>&& new_protocol_feature_activations
+                                                      std::optional<producer_authority_schedule>&& new_producers,
+                                                      vector<digest_type>&& new_protocol_feature_activations,
+                                                      const protocol_feature_set& pfs
    )const
    {
       signed_block_header h;
@@ -180,13 +181,36 @@ namespace eosio { namespace chain {
       h.transaction_mroot = transaction_mroot;
       h.action_mroot      = action_mroot;
       h.schedule_version  = active_schedule_version;
-      h.new_producers     = std::move(new_producers);
 
       if( new_protocol_feature_activations.size() > 0 ) {
          h.header_extensions.emplace_back(
-            protocol_feature_activation::extension_id(),
-            fc::raw::pack( protocol_feature_activation{ std::move(new_protocol_feature_activations) } )
+               protocol_feature_activation::extension_id(),
+               fc::raw::pack( protocol_feature_activation{ std::move(new_protocol_feature_activations) } )
          );
+      }
+
+      if (new_producers) {
+         auto wtmsig_digest = pfs.get_builtin_digest(builtin_protocol_feature_t::wtmsig_block_signatures);
+         const auto& protocol_features = prev_activated_protocol_features->protocol_features;
+         bool wtmsig_enabled = wtmsig_digest && protocol_features.find(*wtmsig_digest) != protocol_features.end();
+
+         if ( wtmsig_enabled ) {
+            // add the header extension to update the block schedule
+            h.header_extensions.emplace_back(
+                  producer_schedule_change_extension::extension_id(),
+                  fc::raw::pack( producer_schedule_change_extension( std::move(*new_producers) ) )
+            );
+         } else {
+            legacy::producer_schedule_type downgraded_producers;
+            downgraded_producers.version = new_producers->version;
+            for (const auto &p : new_producers->producers) {
+               p.visit([&downgraded_producers](const auto& auth){
+                  EOS_ASSERT(auth.keys.size() == 1 && auth.keys.front().weight == auth.threshold, producer_schedule_exception, "multisig block signing present before enabled!");
+                  downgraded_producers.producers.emplace_back(legacy::producer_key{auth.producer_name, auth.keys.front().key});
+               });
+            }
+            h.new_producers = downgraded_producers;
+         }
       }
 
       return h;
@@ -194,9 +218,11 @@ namespace eosio { namespace chain {
 
    block_header_state pending_block_header_state::_finish_next(
                                  const signed_block_header& h,
+                                 const protocol_feature_set& pfs,
                                  const std::function<void( block_timestamp_type,
                                                            const flat_set<digest_type>&,
                                                            const vector<digest_type>& )>& validator
+
    )&&
    {
       EOS_ASSERT( h.timestamp == timestamp, block_validate_exception, "timestamp mismatch" );
@@ -205,19 +231,48 @@ namespace eosio { namespace chain {
       EOS_ASSERT( h.producer == producer, wrong_producer, "wrong producer specified" );
       EOS_ASSERT( h.schedule_version == active_schedule_version, producer_schedule_exception, "schedule_version in signed block is corrupted" );
 
+      auto exts = h.validate_and_extract_header_extensions();
+
+      std::optional<producer_authority_schedule> maybe_new_producer_schedule;
+
       if( h.new_producers ) {
+         auto wtmsig_digest = pfs.get_builtin_digest(builtin_protocol_feature_t::wtmsig_block_signatures);
+         const auto& protocol_features = prev_activated_protocol_features->protocol_features;
+         bool wtmsig_enabled = wtmsig_digest && protocol_features.find(*wtmsig_digest) != protocol_features.end();
+
+         EOS_ASSERT(!wtmsig_enabled, producer_schedule_exception, "Block header contains legacy producer schedule outdated by activation of WTMsig Block Signatures" );
+
          EOS_ASSERT( !was_pending_promoted, producer_schedule_exception, "cannot set pending producer schedule in the same block in which pending was promoted to active" );
-         EOS_ASSERT( h.new_producers->version == active_schedule.version + 1, producer_schedule_exception, "wrong producer schedule version specified" );
-         EOS_ASSERT( prev_pending_schedule.schedule.producers.size() == 0, producer_schedule_exception,
+
+         const auto& new_producers = *h.new_producers;
+         EOS_ASSERT( new_producers.version == active_schedule.version + 1, producer_schedule_exception, "wrong producer schedule version specified" );
+         EOS_ASSERT( prev_pending_schedule.schedule.producers.empty(), producer_schedule_exception,
                     "cannot set new pending producers until last pending is confirmed" );
+
+         maybe_new_producer_schedule.emplace(new_producers);
+      }
+
+      if ( exts.count(producer_schedule_change_extension::extension_id()) > 0 ) {
+         auto wtmsig_digest = pfs.get_builtin_digest(builtin_protocol_feature_t::wtmsig_block_signatures);
+         const auto& protocol_features = prev_activated_protocol_features->protocol_features;
+         bool wtmsig_enabled = wtmsig_digest && protocol_features.find(*wtmsig_digest) != protocol_features.end();
+
+         EOS_ASSERT(wtmsig_enabled, producer_schedule_exception, "Block header producer_schedule_change_extension before activation of WTMsig Block Signatures" );
+         EOS_ASSERT( !was_pending_promoted, producer_schedule_exception, "cannot set pending producer schedule in the same block in which pending was promoted to active" );
+
+         const auto& new_producer_schedule = exts.lower_bound(producer_schedule_change_extension::extension_id())->second.get<producer_schedule_change_extension>();
+
+         EOS_ASSERT( new_producer_schedule.version == active_schedule.version + 1, producer_schedule_exception, "wrong producer schedule version specified" );
+         EOS_ASSERT( prev_pending_schedule.schedule.producers.empty(), producer_schedule_exception,
+                     "cannot set new pending producers until last pending is confirmed" );
+
+         maybe_new_producer_schedule.emplace(new_producer_schedule);
       }
 
       protocol_feature_activation_set_ptr new_activated_protocol_features;
-
-      auto exts = h.validate_and_extract_header_extensions();
-      {
-         if( exts.size() > 0 ) {
-            const auto& new_protocol_features = exts.front().get<protocol_feature_activation>().protocol_features;
+      { // handle protocol_feature_activation
+         if( exts.count(protocol_feature_activation::extension_id() > 0) ) {
+            const auto& new_protocol_features = exts.lower_bound(protocol_feature_activation::extension_id())->second.get<protocol_feature_activation>().protocol_features;
             validator( timestamp, prev_activated_protocol_features->protocol_features, new_protocol_features );
 
             new_activated_protocol_features =   std::make_shared<protocol_feature_activation_set>(
@@ -238,9 +293,9 @@ namespace eosio { namespace chain {
 
       result.header_exts = std::move(exts);
 
-      if( h.new_producers ) {
-         result.pending_schedule.schedule            = *h.new_producers;
-         result.pending_schedule.schedule_hash       = digest_type::hash( *h.new_producers );
+      if( maybe_new_producer_schedule ) {
+         result.pending_schedule.schedule = std::move(*maybe_new_producer_schedule);
+         result.pending_schedule.schedule_hash = digest_type::hash(result.pending_schedule.schedule);
          result.pending_schedule.schedule_lib_num    = block_number;
       } else {
          if( was_pending_promoted ) {
@@ -259,17 +314,18 @@ namespace eosio { namespace chain {
 
    block_header_state pending_block_header_state::finish_next(
                                  const signed_block_header& h,
+                                 const protocol_feature_set& pfs,
                                  const std::function<void( block_timestamp_type,
                                                            const flat_set<digest_type>&,
                                                            const vector<digest_type>& )>& validator,
                                  bool skip_validate_signee
    )&&
    {
-      auto result = std::move(*this)._finish_next( h, validator );
+      auto result = std::move(*this)._finish_next( h, pfs, validator );
 
       // ASSUMPTION FROM controller_impl::apply_block = all untrusted blocks will have their signatures pre-validated here
       if( !skip_validate_signee ) {
-        result.verify_signee( result.signee() );
+        result.verify_signee( );
       }
 
       return result;
@@ -277,13 +333,14 @@ namespace eosio { namespace chain {
 
    block_header_state pending_block_header_state::finish_next(
                                  signed_block_header& h,
+                                 const protocol_feature_set& pfs,
                                  const std::function<void( block_timestamp_type,
                                                            const flat_set<digest_type>&,
                                                            const vector<digest_type>& )>& validator,
                                  const std::function<signature_type(const digest_type&)>& signer
    )&&
    {
-      auto result = std::move(*this)._finish_next( h, validator );
+      auto result = std::move(*this)._finish_next( h, pfs, validator );
       result.sign( signer );
       h.producer_signature = result.header.producer_signature;
       return result;
@@ -299,12 +356,13 @@ namespace eosio { namespace chain {
     */
    block_header_state block_header_state::next(
                         const signed_block_header& h,
+                        const protocol_feature_set& pfs,
                         const std::function<void( block_timestamp_type,
                                                   const flat_set<digest_type>&,
                                                   const vector<digest_type>& )>& validator,
                         bool skip_validate_signee )const
    {
-      return next( h.timestamp, h.confirmed ).finish_next( h, validator, skip_validate_signee );
+      return next( h.timestamp, h.confirmed ).finish_next( h, pfs, validator, skip_validate_signee );
    }
 
    digest_type   block_header_state::sig_digest()const {
@@ -315,7 +373,8 @@ namespace eosio { namespace chain {
    void block_header_state::sign( const std::function<signature_type(const digest_type&)>& signer ) {
       auto d = sig_digest();
       header.producer_signature = signer( d );
-      EOS_ASSERT( block_signing_key == fc::crypto::public_key( header.producer_signature, d ),
+
+      EOS_ASSERT( valid_block_signing_keys.find(signee()) != valid_block_signing_keys.end(),
                   wrong_signing_key, "block is signed with unexpected key" );
    }
 
@@ -323,10 +382,11 @@ namespace eosio { namespace chain {
       return fc::crypto::public_key( header.producer_signature, sig_digest(), true );
    }
 
-   void block_header_state::verify_signee( const public_key_type& signee )const {
-      EOS_ASSERT( block_signing_key == signee, wrong_signing_key,
+   void block_header_state::verify_signee( )const {
+      auto signing_key = signee();
+      EOS_ASSERT( valid_block_signing_keys.find(signing_key) != valid_block_signing_keys.end(), wrong_signing_key,
                   "block not signed by expected key",
-                  ("block_signing_key", block_signing_key)( "signee", signee ) );
+                  ("signing_key", signing_key)( "valid_keys", valid_block_signing_keys ) );
    }
 
    /**
@@ -335,10 +395,10 @@ namespace eosio { namespace chain {
    const vector<digest_type>& block_header_state::get_new_protocol_feature_activations()const {
       static const vector<digest_type> no_activations{};
 
-      if( header_exts.size() == 0 || !header_exts.front().contains<protocol_feature_activation>() )
+      if( header_exts.count(protocol_feature_activation::extension_id()) == 0 )
          return no_activations;
 
-      return header_exts.front().get<protocol_feature_activation>().protocol_features;
+      return header_exts.lower_bound(protocol_feature_activation::extension_id())->second.get<protocol_feature_activation>().protocol_features;
    }
 
 } } /// namespace eosio::chain

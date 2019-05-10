@@ -371,7 +371,7 @@ BOOST_AUTO_TEST_CASE( validator_accepts_valid_blocks ) try {
    BOOST_CHECK_EQUAL( n2.control->head_block_id(), id );
 
    BOOST_REQUIRE( first_block );
-   first_block->verify_signee( first_block->signee() );
+   first_block->verify_signee();
    BOOST_CHECK_EQUAL( first_block->header.id(), first_block->block->id() );
    BOOST_CHECK( first_block->header.producer_signature == first_block->block->producer_signature );
 

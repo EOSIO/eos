@@ -77,6 +77,7 @@ namespace eosio { namespace chain {
    using                               fc::time_point;
    using                               fc::safe;
    using                               fc::flat_map;
+   using                               fc::flat_multimap;
    using                               fc::flat_set;
    using                               fc::static_variant;
    using                               fc::ecc::range_proof_type;
@@ -86,8 +87,6 @@ namespace eosio { namespace chain {
    using public_key_type  = fc::crypto::public_key;
    using private_key_type = fc::crypto::private_key;
    using signature_type   = fc::crypto::signature;
-
-   struct void_t{};
 
    using chainbase::allocator;
    using shared_string = boost::interprocess::basic_string<char, std::char_traits<char>, allocator<char>>;
@@ -374,4 +373,3 @@ namespace eosio { namespace chain {
 
 } }  // eosio::chain
 
-FC_REFLECT( eosio::chain::void_t, )

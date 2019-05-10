@@ -1,6 +1,7 @@
 #pragma once
 #include <eosio/chain/block_header.hpp>
 #include <eosio/chain/incremental_merkle.hpp>
+#include <eosio/chain/protocol_feature_manager.hpp>
 #include <future>
 
 namespace eosio { namespace chain {
@@ -12,18 +13,18 @@ namespace detail {
       uint32_t                          block_num = 0;
       uint32_t                          dpos_proposed_irreversible_blocknum = 0;
       uint32_t                          dpos_irreversible_blocknum = 0;
-      producer_schedule_type            active_schedule;
+      producer_authority_schedule       active_schedule;
       incremental_merkle                blockroot_merkle;
       flat_map<account_name,uint32_t>   producer_to_last_produced;
       flat_map<account_name,uint32_t>   producer_to_last_implied_irb;
-      public_key_type                   block_signing_key;
+      flat_set<public_key_type>         valid_block_signing_keys;
       vector<uint8_t>                   confirm_count;
    };
 
    struct schedule_info {
       uint32_t                          schedule_lib_num = 0; /// last irr block num
       digest_type                       schedule_hash;
-      producer_schedule_type            schedule;
+      producer_authority_schedule       schedule;
    };
 }
 
@@ -39,16 +40,19 @@ struct pending_block_header_state : public detail::block_header_state_common {
 
    signed_block_header make_block_header( const checksum256_type& transaction_mroot,
                                           const checksum256_type& action_mroot,
-                                          optional<producer_schedule_type>&& new_producers,
-                                          vector<digest_type>&& new_protocol_feature_activations )const;
+                                          std::optional<producer_authority_schedule>&& new_producers,
+                                          vector<digest_type>&& new_protocol_feature_activations,
+                                          const protocol_feature_set& pfs)const;
 
    block_header_state  finish_next( const signed_block_header& h,
+                                    const protocol_feature_set& pfs,
                                     const std::function<void( block_timestamp_type,
                                                               const flat_set<digest_type>&,
                                                               const vector<digest_type>& )>& validator,
                                     bool skip_validate_signee = false )&&;
 
    block_header_state  finish_next( signed_block_header& h,
+                                    const protocol_feature_set& pfs,
                                     const std::function<void( block_timestamp_type,
                                                               const flat_set<digest_type>&,
                                                               const vector<digest_type>& )>& validator,
@@ -56,6 +60,7 @@ struct pending_block_header_state : public detail::block_header_state_common {
 
 protected:
    block_header_state  _finish_next( const signed_block_header& h,
+                                     const protocol_feature_set& pfs,
                                      const std::function<void( block_timestamp_type,
                                                                const flat_set<digest_type>&,
                                                                const vector<digest_type>& )>& validator )&&;
@@ -74,7 +79,7 @@ struct block_header_state : public detail::block_header_state_common {
 
    /// this data is redundant with the data stored in header, but it acts as a cache that avoids
    /// duplication of work
-   vector<block_header_extensions>      header_exts;
+   flat_multimap<uint16_t, block_header_extensions> header_exts;
 
    block_header_state() = default;
 
@@ -85,6 +90,7 @@ struct block_header_state : public detail::block_header_state_common {
    pending_block_header_state  next( block_timestamp_type when, uint16_t num_prev_blocks_to_confirm )const;
 
    block_header_state   next( const signed_block_header& h,
+                              const protocol_feature_set& pfs,
                               const std::function<void( block_timestamp_type,
                                                         const flat_set<digest_type>&,
                                                         const vector<digest_type>& )>& validator,
@@ -94,12 +100,12 @@ struct block_header_state : public detail::block_header_state_common {
    uint32_t             calc_dpos_last_irreversible( account_name producer_of_next_block )const;
    bool                 is_active_producer( account_name n )const;
 
-   producer_key         get_scheduled_producer( block_timestamp_type t )const;
+   producer_authority   get_scheduled_producer( block_timestamp_type t )const;
    const block_id_type& prev()const { return header.previous; }
    digest_type          sig_digest()const;
    void                 sign( const std::function<signature_type(const digest_type&)>& signer );
    public_key_type      signee()const;
-   void                 verify_signee(const public_key_type& signee)const;
+   void                 verify_signee()const;
 
    const vector<digest_type>& get_new_protocol_feature_activations()const;
 };
@@ -116,7 +122,7 @@ FC_REFLECT( eosio::chain::detail::block_header_state_common,
             (blockroot_merkle)
             (producer_to_last_produced)
             (producer_to_last_implied_irb)
-            (block_signing_key)
+            (valid_block_signing_keys)
             (confirm_count)
 )
 

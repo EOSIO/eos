@@ -111,13 +111,13 @@ struct building_block {
    ,_new_protocol_feature_activations( new_protocol_feature_activations )
    {}
 
-   pending_block_header_state         _pending_block_header_state;
-   optional<producer_schedule_type>   _new_pending_producer_schedule;
-   vector<digest_type>                _new_protocol_feature_activations;
-   size_t                             _num_new_protocol_features_that_have_activated = 0;
-   vector<transaction_metadata_ptr>   _pending_trx_metas;
-   vector<transaction_receipt>        _pending_trx_receipts;
-   vector<action_receipt>             _actions;
+   pending_block_header_state            _pending_block_header_state;
+   optional<producer_authority_schedule> _new_pending_producer_schedule;
+   vector<digest_type>                   _new_protocol_feature_activations;
+   size_t                                _num_new_protocol_features_that_have_activated = 0;
+   vector<transaction_metadata_ptr>      _pending_trx_metas;
+   vector<transaction_receipt>           _pending_trx_receipts;
+   vector<action_receipt>                _actions;
 };
 
 struct assembled_block {
@@ -427,7 +427,7 @@ struct controller_impl {
     */
    void initialize_blockchain_state() {
       wlog( "Initializing new blockchain with genesis state" );
-      producer_schedule_type initial_schedule{ 0, {{config::system_account_name, conf.genesis.initial_key}} };
+      producer_authority_schedule initial_schedule{ 0, {producer_authority_v0{config::system_account_name, 1, {{conf.genesis.initial_key, 1}} } } };
 
       block_header_state genheader;
       genheader.active_schedule                = initial_schedule;
@@ -1474,7 +1474,7 @@ struct controller_impl {
                ilog( "promoting proposed schedule (set in block ${proposed_num}) to pending; current block: ${n} lib: ${lib} schedule: ${schedule} ",
                      ("proposed_num", *gpo.proposed_schedule_block_num)("n", pbhs.block_num)
                      ("lib", pbhs.dpos_irreversible_blocknum)
-                     ("schedule", static_cast<producer_schedule_type>(gpo.proposed_schedule) ) );
+                     ("schedule", static_cast<producer_authority_schedule>(gpo.proposed_schedule) ) );
             }
 
             EOS_ASSERT( gpo.proposed_schedule.version == pbhs.active_schedule_version + 1,
@@ -2602,13 +2602,13 @@ account_name controller::pending_block_producer()const {
    return my->pending->get_pending_block_header_state().producer;
 }
 
-public_key_type controller::pending_block_signing_key()const {
+flat_set<public_key_type> controller::pending_block_signing_keys()const {
    EOS_ASSERT( my->pending, block_validate_exception, "no pending block" );
 
    if( my->pending->_block_stage.contains<completed_block>() )
-      return my->pending->_block_stage.get<completed_block>()._block_state->block_signing_key;
+      return my->pending->_block_stage.get<completed_block>()._block_state->block_signing_keys;
 
-   return my->pending->get_pending_block_header_state().block_signing_key;
+   return my->pending->get_pending_block_header_state().block_signing_keys;
 }
 
 optional<block_id_type> controller::pending_producer_block_id()const {
@@ -2724,7 +2724,7 @@ void controller::pop_block() {
    my->pop_block();
 }
 
-int64_t controller::set_proposed_producers( vector<producer_key> producers ) {
+int64_t controller::set_proposed_producers( vector<producer_authority> producers ) {
    const auto& gpo = get_global_properties();
    auto cur_block_num = head_block_num() + 1;
 
@@ -2741,7 +2741,7 @@ int64_t controller::set_proposed_producers( vector<producer_key> producers ) {
          return -1; // the proposed producer schedule does not change
    }
 
-   producer_schedule_type sch;
+   producer_authority_schedule sch;
 
    decltype(sch.producers.cend()) end;
    decltype(end)                  begin;
@@ -2775,7 +2775,7 @@ int64_t controller::set_proposed_producers( vector<producer_key> producers ) {
    return version;
 }
 
-const producer_schedule_type&    controller::active_producers()const {
+const producer_authority_schedule&    controller::active_producers()const {
    if( !(my->pending) )
       return  my->head->active_schedule;
 
@@ -2785,7 +2785,7 @@ const producer_schedule_type&    controller::active_producers()const {
    return my->pending->get_pending_block_header_state().active_schedule;
 }
 
-const producer_schedule_type&    controller::pending_producers()const {
+const producer_authority_schedule&    controller::pending_producers()const {
    if( !(my->pending) )
       return  my->head->pending_schedule.schedule;
 
@@ -2793,9 +2793,15 @@ const producer_schedule_type&    controller::pending_producers()const {
       return my->pending->_block_stage.get<completed_block>()._block_state->pending_schedule.schedule;
 
    if( my->pending->_block_stage.contains<assembled_block>() ) {
-      const auto& np = my->pending->_block_stage.get<assembled_block>()._unsigned_block->new_producers;
-      if( np )
-         return *np;
+      if (is_builtin_activated(builtin_protocol_feature_t::wtmsig_block_signatures)) {
+         auto exts = my->pending->_block_stage.get<assembled_block>()._unsigned_block->validate_and_extract_header_extensions();
+         if (exts.count(producer_schedule_change_extension::extension_id()))
+            return exts.lower_bound(producer_schedule_change_extension::extension_id())->second.get<producer_schedule_change_extension>();
+      } else {
+         const auto& np = my->pending->_block_stage.get<assembled_block>()._unsigned_block->new_producers;
+         if( np )
+            return *np;
+      }
    }
 
    const auto& bb = my->pending->_block_stage.get<building_block>();
@@ -2806,12 +2812,12 @@ const producer_schedule_type&    controller::pending_producers()const {
    return bb._pending_block_header_state.prev_pending_schedule.schedule;
 }
 
-optional<producer_schedule_type> controller::proposed_producers()const {
+optional<producer_authority_schedule> controller::proposed_producers()const {
    const auto& gpo = get_global_properties();
    if( !gpo.proposed_schedule_block_num.valid() )
-      return optional<producer_schedule_type>();
+      return optional<producer_authority_schedule>();
 
-   return gpo.proposed_schedule;
+   return (producer_authority_schedule)gpo.proposed_schedule;
 }
 
 bool controller::light_validation_allowed(bool replay_opts_disabled_by_policy) const {
