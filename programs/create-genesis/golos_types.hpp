@@ -10,7 +10,7 @@ namespace cyberway { namespace golos {
 struct gls_mapped_str {
     fc::unsigned_int id;
 
-    std::string value(const std::vector<std::string>& lookup) const {
+    std::string str(const std::vector<std::string>& lookup) const {
         return lookup.at(id.value);
     };
 };

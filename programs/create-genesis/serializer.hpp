@@ -12,31 +12,13 @@
 #include <eosio/chain/generated_transaction_object.hpp>
 
 
-#define IGNORE_SYSTEM_ABI
+// #define IGNORE_SYSTEM_ABI
 
 namespace cyberway { namespace genesis {
 
 using namespace chaindb;
-const fc::microseconds abi_serializer_max_time = fc::seconds(10);
-
-
 using resource_limits::resource_usage_object;
-// There sould be proper way to get type name for abi, but it was faster to implement this
-template<typename T> bool get_type_name_fail() { return false; }
-template<typename T> type_name get_type_name() { static_assert(get_type_name_fail<T>(), "specialize type"); return ""; }
-template<> type_name get_type_name<permission_object>()         { return "permission_object"; }
-template<> type_name get_type_name<permission_usage_object>()   { return "permission_usage_object"; }
-template<> type_name get_type_name<account_object>()            { return "account_object"; }
-template<> type_name get_type_name<account_sequence_object>()   { return "account_sequence_object"; }
-template<> type_name get_type_name<permission_link_object>()    { return "permission_link_object"; }
-template<> type_name get_type_name<resource_usage_object>()     { return "resource_usage_object"; }
-template<> type_name get_type_name<domain_object>()             { return "domain_object"; }
-template<> type_name get_type_name<username_object>()           { return "username_object"; }
-template<> type_name get_type_name<stake_agent_object>()        { return "stake_agent_object"; }
-template<> type_name get_type_name<stake_grant_object>()        { return "stake_grant_object"; }
-template<> type_name get_type_name<stake_param_object>()        { return "stake_param_object"; }
-template<> type_name get_type_name<stake_stat_object>()         { return "stake_stat_object"; }
-template<> type_name get_type_name<generated_transaction_object>()  { return "generated_transaction_object"; }
+const fc::microseconds abi_serializer_max_time = fc::seconds(10);
 
 
 enum class stored_contract_tables: int {
@@ -143,20 +125,17 @@ public:
         auto& id = autoincrement[tid];
         if (obj.id == 0) {
             obj.id = id++;
-            if ((id & 0x7FFF) == 0) {
-                ilog("AINC ${t} = ${n}", ("t",tid)("n",id));
-            }
         }
 #ifndef IGNORE_SYSTEM_ABI
         static abi_serializer& ser = abis[name()];
         variant v;
         to_variant(obj, v);
-        bytes data = ser.variant_to_binary(get_type_name<T>(), v, abi_serializer_max_time);
+        fc::datastream<char*> ds(_buffer.data(), _buffer.size());
+        ser.variant_to_binary(_section.abi_type, v, ds, abi_serializer_max_time);
+        sys_table_row record{{}, {_buffer.begin(), _buffer.begin() + ds.tellp()}};
 #else
-        get_type_name<T>();
-        bytes data = fc::raw::pack(obj);
+        sys_table_row record{{}, fc::raw::pack(obj)};
 #endif
-        sys_table_row record{{}, data};
         fc::raw::pack(out, record);
         _row_count--;
         return obj;

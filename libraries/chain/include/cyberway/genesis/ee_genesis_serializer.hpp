@@ -22,7 +22,7 @@ private:
     abi_serializer serializer;
 
 public:
-    void start(const bfs::path& out_file, const fc::sha256& hash, const abi_def& abi, 
+    void start(const bfs::path& out_file, const fc::sha256& hash, const abi_def& abi,
             const fc::microseconds abi_serializer_max_time = fc::seconds(10)) {
 
         out.exceptions(std::ofstream::failbit | std::ofstream::badbit);

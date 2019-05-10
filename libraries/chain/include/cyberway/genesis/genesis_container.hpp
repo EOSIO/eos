@@ -18,7 +18,7 @@ struct genesis_header {
 
     uint32_t tables_count;
 
-    bool is_valid() {
+    bool is_valid() const {
         genesis_header oth;
         return string(magic) == oth.magic && version == oth.version;
     }
