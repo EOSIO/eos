@@ -12,7 +12,8 @@ static abi_def create_messages_abi() {
         "vote_info", "", {
             {"voter", "name"},
             {"weight", "int16"},
-            {"time", "time_point_sec"}
+            {"time", "time_point_sec"},
+            {"rshares", "int64"}
         }
     });
 

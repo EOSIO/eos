@@ -52,6 +52,7 @@ struct vote_header : public chainbase::object<vote_header_object_type, vote_head
     operation_number op_num;
     int16_t weight = 0;
     fc::time_point_sec timestamp;
+    int64_t rshares;
 };
 
 struct reblog_header : public chainbase::object<reblog_header_object_type, reblog_header> {

@@ -157,6 +157,7 @@ void genesis_ee_builder::process_votes() {
             maps_.modify(*vote_itr, [&](auto& vote) {
                 vote.op_num = op.num;
                 vote.weight = vop.weight;
+                vote.rshares = vop.rshares;
                 vote.timestamp = vop.timestamp;
             });
             continue;
@@ -167,6 +168,7 @@ void genesis_ee_builder::process_votes() {
             vote.voter = vop.voter;
             vote.op_num = op.num;
             vote.weight = vop.weight;
+            vote.rshares = vop.rshares;
             vote.timestamp = vop.timestamp;
         });
     }
@@ -298,7 +300,12 @@ void genesis_ee_builder::build_votes(std::vector<vote_info>& votes, uint64_t msg
             v.voter = generate_name(vote_itr->voter);
             v.weight = vote_itr->weight;
             v.time = vote_itr->timestamp;
+            v.rshares = vote_itr->rshares;
         }, 0);
+
+        std::sort(votes.begin(), votes.end(), [&](const auto& a, const auto& b) {
+            return a.rshares > b.rshares;
+        });
     }
 }
 

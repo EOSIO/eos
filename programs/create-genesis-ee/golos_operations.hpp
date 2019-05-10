@@ -22,6 +22,7 @@ struct vote_operation {
     account_name_type author;
     string permlink;
     int16_t weight = 0;
+    int64_t rshares;
     fc::time_point_sec timestamp;
 };
 
@@ -102,7 +103,7 @@ struct total_comment_reward_operation {
 } } // cyberway::golos
 
 FC_REFLECT(cyberway::golos::comment_operation, (parent_author)(parent_permlink)(author)(permlink)(title)(body)(tags)(language))
-FC_REFLECT(cyberway::golos::vote_operation, (voter)(author)(permlink)(weight)(timestamp))
+FC_REFLECT(cyberway::golos::vote_operation, (voter)(author)(permlink)(weight)(rshares)(timestamp))
 FC_REFLECT(cyberway::golos::reblog_operation, (account)(author)(permlink)(title)(body)(timestamp))
 FC_REFLECT(cyberway::golos::delete_reblog_operation, (account))
 FC_REFLECT(cyberway::golos::transfer_operation, (from)(to)(amount)(memo))

@@ -28,6 +28,7 @@ struct vote_info {
     name voter;
     int16_t weight;
     fc::time_point_sec time;
+    int64_t rshares;
 };
 
 struct reblog_info {
@@ -83,7 +84,7 @@ struct block_info {
 
 } } // cyberway::genesis
 
-FC_REFLECT(cyberway::genesis::vote_info, (voter)(weight)(time))
+FC_REFLECT(cyberway::genesis::vote_info, (voter)(weight)(time)(rshares))
 FC_REFLECT(cyberway::genesis::reblog_info, (account)(title)(body)(time))
 FC_REFLECT(cyberway::genesis::comment_info, (parent_author)(parent_permlink)(author)(permlink)(title)(body)
         (tags)(language)(net_rshares)(author_reward)(benefactor_reward)(curator_reward)(votes)(reblogs))
