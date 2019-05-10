@@ -1254,6 +1254,7 @@ void chain_plugin::log_guard_exception(const chain::guard_exception&e ) const {
 void chain_plugin::handle_guard_exception(const chain::guard_exception& e) const {
    log_guard_exception(e);
 
+   elog("database chain::guard_exception, quiting..."); // log string searched for in: tests/nodeos_under_min_avail_ram.py
    // quit the app
    app().quit();
 }
