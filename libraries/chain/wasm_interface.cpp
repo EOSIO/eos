@@ -177,20 +177,20 @@ class privileged_api : public context_aware_api {
 
       int64_t set_proposed_producers( array_ptr<char> packed_producer_schedule, size_t datalen) {
          datastream<const char*> ds( packed_producer_schedule, datalen );
-         vector<producer_keys> producers;
+         vector<producer_authority> producers;
 
-         if ( context.control.is_builtin_activated( builtin_protocol_feature_t::one_of_n_block_signatures )) {
+         if ( context.control.is_builtin_activated( builtin_protocol_feature_t::wtmsig_block_signatures )) {
             fc::raw::unpack(ds, producers);
 
          } else {
-            vector<producer_key> old_version;
+            vector<legacy::producer_key> old_version;
             fc::raw::unpack(ds, old_version);
 
             /*
              * Up-convert the producers
              */
             for ( const auto& p: old_version ) {
-               producers.emplace_back(producer_keys{ p.producer_name, {p.block_signing_key}});
+               producers.emplace_back(producer_authority{ p.producer_name, block_signing_authority_v0{ 1, {{p.block_signing_key, 1}} } } );
             }
          }
 
@@ -204,13 +204,25 @@ class privileged_api : public context_aware_api {
          // check that producers are unique
          std::set<account_name> unique_producers;
          for (const auto& p: producers) {
-            EOS_ASSERT( context.is_account(p.producer_name), wasm_execution_error, "producer schedule includes a nonexisting account" );
+            EOS_ASSERT( context.is_account(p.name), wasm_execution_error, "producer schedule includes a nonexisting account" );
 
-            for (const auto& k: p.block_signing_keys) {
-               EOS_ASSERT( k.valid(), wasm_execution_error, "producer schedule includes an invalid key" );
-            }
+            p.authority.visit([](const auto& a) {
+               uint32_t sum_weights = 0;
+               for (const auto& kw: a.keys ) {
+                  EOS_ASSERT( kw.key.valid(), wasm_execution_error, "producer schedule includes an invalid key" );
 
-            unique_producers.insert(p.producer_name);
+                  if (std::numeric_limits<uint32_t>::max() - sum_weights <= kw.weight) {
+                     sum_weights = std::numeric_limits<uint32_t>::max();
+                  } else {
+                     sum_weights += kw.weight;
+                  }
+               }
+
+               EOS_ASSERT( sum_weights >= a.threshold, wasm_execution_error, "producer schedule includes an unsatisfiable authority" );
+            });
+
+
+            unique_producers.insert(p.name);
          }
          EOS_ASSERT( producers.size() == unique_producers.size(), wasm_execution_error, "duplicate producer name in producer schedule" );
 

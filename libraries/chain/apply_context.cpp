@@ -583,7 +583,7 @@ vector<account_name> apply_context::get_active_producers() const {
    vector<account_name> accounts; accounts.reserve( ap.producers.size() );
 
    for(const auto& producer : ap.producers )
-      accounts.push_back(producer.producer_name);
+      accounts.push_back(producer.name);
 
    return accounts;
 }
