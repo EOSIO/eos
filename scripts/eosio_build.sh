@@ -49,10 +49,10 @@ REPO_ROOT="${SCRIPT_DIR}/.."
 BUILD_DIR="${REPO_ROOT}/build"
 ENABLE_MONGO=false
 
-export EOSIO_VERSION_MAJOR=$(cat ${REPO_ROOT}/CMakeLists.txt | grep -E "set\([ ]+?VERSION_MAJOR" | sed 's/set(.*VERSION_MAJOR//g' | cut -d\) -f1)
-export EOSIO_VERSION_MINOR=$(cat ${REPO_ROOT}/CMakeLists.txt | grep -E "set\([ ]+?VERSION_MINOR" | sed 's/set(.*VERSION_MINOR//g' | cut -d\) -f1)
-export EOSIO_VERSION_PATCH=$(cat ${REPO_ROOT}/CMakeLists.txt | grep -E "set\([ ]+?VERSION_PATCH" | sed 's/set(.*VERSION_PATCH//g' | cut -d\) -f1)
-export EOSIO_VERSION_SUFFIX=$(cat ${REPO_ROOT}/CMakeLists.txt | grep -E "set\([ ]+?VERSION_SUFFIX" | sed 's/set(.*VERSION_SUFFIX//g' | cut -d\) -f1)
+export EOSIO_VERSION_MAJOR=$(cat ${REPO_ROOT}/CMakeLists.txt | grep -E "set\([ ]+?VERSION_MAJOR" | sed 's/set(.*VERSION_MAJOR //g' | cut -d\) -f1)
+export EOSIO_VERSION_MINOR=$(cat ${REPO_ROOT}/CMakeLists.txt | grep -E "set\([ ]+?VERSION_MINOR" | sed 's/set(.*VERSION_MINOR //g' | cut -d\) -f1)
+export EOSIO_VERSION_PATCH=$(cat ${REPO_ROOT}/CMakeLists.txt | grep -E "set\([ ]+?VERSION_PATCH" | sed 's/set(.*VERSION_PATCH //g' | cut -d\) -f1)
+export EOSIO_VERSION_SUFFIX=$(cat ${REPO_ROOT}/CMakeLists.txt | grep -E "set\([ ]+?VERSION_SUFFIX" | sed 's/set(.*VERSION_SUFFIX //g' | cut -d\) -f1)
 export EOSIO_VERSION="${EOSIO_VERSION_MAJOR}.${EOSIO_VERSION_MINOR}.${EOSIO_VERSION_PATCH}-${EOSIO_VERSION_SUFFIX}"
 
 export BUILD_DIR=$BUILD_DIR
