@@ -70,7 +70,7 @@ printf "     \\__\\/         \\__\\/         \\__\\/                     \\__\\/
 
 printf "==============================================================================================\\n"
 printf "EOSIO has been installed into ${CMAKE_INSTALL_PREFIX}/bin!\\n"
-printf "If you need to, you can uninstall using: ./scripts/full_uninstaller.sh (it will leave your data directory).\\n"
+printf "\\n${COLOR_YELLOW}Uninstall with: ./scripts/eosio_uninstall.sh${COLOR_NC}\\n"
 printf "==============================================================================================\\n\\n"
 
 printf "EOSIO website: https://eos.io\\n"

@@ -30,12 +30,6 @@
 # https://github.com/EOSIO/eos/blob/master/LICENSE
 ##########################################################################
 
-export EOSIO_VERSION_MAJOR=$(cat CMakeLists.txt | grep "set(VERSION_MAJOR" | awk '{print $2}' | sed 's/)//g')
-export EOSIO_VERSION_MINOR=$(cat CMakeLists.txt | grep "set(VERSION_MINOR" | awk '{print $2}' | sed 's/)//g')
-export EOSIO_VERSION_PATCH=$(cat CMakeLists.txt | grep "set(VERSION_PATCH" | awk '{print $2}' | sed 's/)//g')
-export EOSIO_VERSION_SUFFIX=$(cat CMakeLists.txt | grep "set(VERSION_SUFFIX" | awk '{print $2}' | sed 's/)//g')
-export EOSIO_VERSION="${EOSIO_VERSION_MAJOR}.${EOSIO_VERSION_MINOR}.${EOSIO_VERSION_PATCH}.${EOSIO_VERSION_SUFFIX}"
-
 # defaults for command-line arguments
 CMAKE_BUILD_TYPE=Release
 DOXYGEN=false
@@ -54,6 +48,12 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 REPO_ROOT="${SCRIPT_DIR}/.."
 BUILD_DIR="${REPO_ROOT}/build"
 ENABLE_MONGO=false
+
+export EOSIO_VERSION_MAJOR=$(cat ${REPO_ROOT}/CMakeLists.txt | grep -E "set\([ ]+?VERSION_MAJOR" | sed 's/set(.*VERSION_MAJOR//g' | cut -d\) -f1)
+export EOSIO_VERSION_MINOR=$(cat ${REPO_ROOT}/CMakeLists.txt | grep -E "set\([ ]+?VERSION_MINOR" | sed 's/set(.*VERSION_MINOR//g' | cut -d\) -f1)
+export EOSIO_VERSION_PATCH=$(cat ${REPO_ROOT}/CMakeLists.txt | grep -E "set\([ ]+?VERSION_PATCH" | sed 's/set(.*VERSION_PATCH//g' | cut -d\) -f1)
+export EOSIO_VERSION_SUFFIX=$(cat ${REPO_ROOT}/CMakeLists.txt | grep -E "set\([ ]+?VERSION_SUFFIX" | sed 's/set(.*VERSION_SUFFIX//g' | cut -d\) -f1)
+export EOSIO_VERSION="${EOSIO_VERSION_MAJOR}.${EOSIO_VERSION_MINOR}.${EOSIO_VERSION_PATCH}-${EOSIO_VERSION_SUFFIX}"
 
 export BUILD_DIR=$BUILD_DIR
 
@@ -286,8 +286,8 @@ if $NO_CPP17; then
    while true; do
       echo "Unable to find C++17 support!"
       echo "If you already have a C++17 compiler installed or would like to install your own, export CXX to point to the compiler of your choosing."
-      [[ $NONINTERACTIVE == false ]] && read -p "Do you wish to download and build C++17? (y/n)? " PROCEED
-      case $PROCEED in
+      [[ $NONINTERACTIVE == 0 ]] && read -p "Do you wish to download and build C++17? (y/n)? " ANSWER
+      case $ANSWER in
             "" ) echo "What would you like to do?";;
             0 | true | [Yy]* )
                export BUILD_CLANG8=true
