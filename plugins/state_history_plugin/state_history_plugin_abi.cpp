@@ -312,10 +312,15 @@ extern const char* const state_history_plugin_abi = R"({
             ]
         },
         {
-            "name": "producer_authority_v0", "fields": [
-                { "type": "name", "name": "producer_name" },
+            "name": "block_signing_authority_v0", "fields": [
                 { "type": "uint32", "name": "weight" }
                 { "type": "key_weight[]", "name": "keys" }
+            ]
+        },
+        {
+            "name": "producer_authority", "fields": [
+                { "type": "name", "name": "name" },
+                { "type": "block_signing_authority", "name": "authority" }
             ]
         },
         {
@@ -525,7 +530,7 @@ extern const char* const state_history_plugin_abi = R"({
         { "name": "resource_limits_ratio", "types": ["resource_limits_ratio_v0"] },
         { "name": "elastic_limit_parameters", "types": ["elastic_limit_parameters_v0"] },
         { "name": "resource_limits_config", "types": ["resource_limits_config_v0"] },
-        { "name": "producer_authority", "types": ["producer_authority_v0"] },
+        { "name": "block_signing_authority", "types": ["block_signing_authority_v0"] },
     ],
     "tables": [
         { "name": "account", "type": "account", "key_names": ["name"] },

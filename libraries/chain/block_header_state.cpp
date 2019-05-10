@@ -9,7 +9,7 @@ namespace eosio { namespace chain {
       return producer_to_last_produced.find(n) != producer_to_last_produced.end();
    }
 
-   producer_keys block_header_state::get_scheduled_producer( block_timestamp_type t )const {
+   producer_authority block_header_state::get_scheduled_producer( block_timestamp_type t )const {
       auto index = t.slot % (active_schedule.producers.size() * config::producer_repetitions);
       index /= config::producer_repetitions;
       return active_schedule.producers[index];
@@ -40,13 +40,13 @@ namespace eosio { namespace chain {
         (when = header.timestamp).slot++;
       }
 
-      auto prokey = get_scheduled_producer(when);
+      auto proauth = get_scheduled_producer(when);
 
-      auto itr = producer_to_last_produced.find( prokey.producer_name );
+      auto itr = producer_to_last_produced.find( proauth.name );
       if( itr != producer_to_last_produced.end() ) {
         EOS_ASSERT( itr->second < (block_num+1) - num_prev_blocks_to_confirm, producer_double_confirm,
                     "producer ${prod} double-confirming known range",
-                    ("prod", prokey.producer_name)("num", block_num+1)
+                    ("prod", proauth.name)("num", block_num+1)
                     ("confirmed", num_prev_blocks_to_confirm)("last_produced", itr->second) );
       }
 
@@ -57,8 +57,8 @@ namespace eosio { namespace chain {
       result.active_schedule_version                         = active_schedule.version;
       result.prev_activated_protocol_features                = activated_protocol_features;
 
-      result.valid_block_signing_keys                        = prokey.block_signing_keys;
-      result.producer                                        = prokey.producer_name;
+      result.valid_block_signing_authority                   = proauth.authority;
+      result.producer                                        = proauth.name;
 
       result.blockroot_merkle = blockroot_merkle;
       result.blockroot_merkle.append( id );
@@ -108,7 +108,7 @@ namespace eosio { namespace chain {
       }
 
       result.dpos_proposed_irreversible_blocknum   = new_dpos_proposed_irreversible_blocknum;
-      result.dpos_irreversible_blocknum            = calc_dpos_last_irreversible( prokey.producer_name );
+      result.dpos_irreversible_blocknum            = calc_dpos_last_irreversible( proauth.name );
 
       result.prev_pending_schedule                 = pending_schedule;
 
@@ -120,32 +120,32 @@ namespace eosio { namespace chain {
          flat_map<account_name,uint32_t> new_producer_to_last_produced;
 
          for( const auto& pro : result.active_schedule.producers ) {
-            if( pro.producer_name == prokey.producer_name ) {
-               new_producer_to_last_produced[pro.producer_name] = result.block_num;
+            if( pro.name == proauth.name ) {
+               new_producer_to_last_produced[pro.name] = result.block_num;
             } else {
-               auto existing = producer_to_last_produced.find( pro.producer_name );
+               auto existing = producer_to_last_produced.find( pro.name );
                if( existing != producer_to_last_produced.end() ) {
-                  new_producer_to_last_produced[pro.producer_name] = existing->second;
+                  new_producer_to_last_produced[pro.name] = existing->second;
                } else {
-                  new_producer_to_last_produced[pro.producer_name] = result.dpos_irreversible_blocknum;
+                  new_producer_to_last_produced[pro.name] = result.dpos_irreversible_blocknum;
                }
             }
          }
-         new_producer_to_last_produced[prokey.producer_name] = result.block_num;
+         new_producer_to_last_produced[proauth.name] = result.block_num;
 
          result.producer_to_last_produced = std::move( new_producer_to_last_produced );
 
          flat_map<account_name,uint32_t> new_producer_to_last_implied_irb;
 
          for( const auto& pro : result.active_schedule.producers ) {
-            if( pro.producer_name == prokey.producer_name ) {
-               new_producer_to_last_implied_irb[pro.producer_name] = dpos_proposed_irreversible_blocknum;
+            if( pro.name == proauth.name ) {
+               new_producer_to_last_implied_irb[pro.name] = dpos_proposed_irreversible_blocknum;
             } else {
-               auto existing = producer_to_last_implied_irb.find( pro.producer_name );
+               auto existing = producer_to_last_implied_irb.find( pro.name );
                if( existing != producer_to_last_implied_irb.end() ) {
-                  new_producer_to_last_implied_irb[pro.producer_name] = existing->second;
+                  new_producer_to_last_implied_irb[pro.name] = existing->second;
                } else {
-                  new_producer_to_last_implied_irb[pro.producer_name] = result.dpos_irreversible_blocknum;
+                  new_producer_to_last_implied_irb[pro.name] = result.dpos_irreversible_blocknum;
                }
             }
          }
@@ -156,9 +156,9 @@ namespace eosio { namespace chain {
       } else {
          result.active_schedule                  = active_schedule;
          result.producer_to_last_produced        = producer_to_last_produced;
-         result.producer_to_last_produced[prokey.producer_name] = block_num;
+         result.producer_to_last_produced[proauth.name] = block_num;
          result.producer_to_last_implied_irb     = producer_to_last_implied_irb;
-         result.producer_to_last_implied_irb[prokey.producer_name] = dpos_proposed_irreversible_blocknum;
+         result.producer_to_last_implied_irb[proauth.name] = dpos_proposed_irreversible_blocknum;
       }
 
       return result;
@@ -204,9 +204,9 @@ namespace eosio { namespace chain {
             legacy::producer_schedule_type downgraded_producers;
             downgraded_producers.version = new_producers->version;
             for (const auto &p : new_producers->producers) {
-               p.visit([&downgraded_producers](const auto& auth){
+               p.authority.visit([&downgraded_producers, &p](const auto& auth){
                   EOS_ASSERT(auth.keys.size() == 1 && auth.keys.front().weight == auth.threshold, producer_schedule_exception, "multisig block signing present before enabled!");
-                  downgraded_producers.producers.emplace_back(legacy::producer_key{auth.producer_name, auth.keys.front().key});
+                  downgraded_producers.producers.emplace_back(legacy::producer_key{p.name, auth.keys.front().key});
                });
             }
             h.new_producers = downgraded_producers;
@@ -370,12 +370,19 @@ namespace eosio { namespace chain {
       return digest_type::hash( std::make_pair(header_bmroot, pending_schedule.schedule_hash) );
    }
 
+   static bool key_is_relevant( const block_signing_authority& authority, const public_key_type& key ) {
+      return authority.visit([&key](const auto &a) {
+         return std::find_if(a.keys.begin(), a.keys.end(), [&key](const auto& k ){
+            return k.key == key;
+         }) != a.keys.end();
+      });
+   }
+
    void block_header_state::sign( const std::function<signature_type(const digest_type&)>& signer ) {
       auto d = sig_digest();
       header.producer_signature = signer( d );
 
-      EOS_ASSERT( valid_block_signing_keys.find(signee()) != valid_block_signing_keys.end(),
-                  wrong_signing_key, "block is signed with unexpected key" );
+      EOS_ASSERT( key_is_relevant(valid_block_signing_authority, signee()), wrong_signing_key, "block is signed with unexpected key" );
    }
 
    public_key_type block_header_state::signee()const {
@@ -384,9 +391,10 @@ namespace eosio { namespace chain {
 
    void block_header_state::verify_signee( )const {
       auto signing_key = signee();
-      EOS_ASSERT( valid_block_signing_keys.find(signing_key) != valid_block_signing_keys.end(), wrong_signing_key,
+
+      EOS_ASSERT( key_is_relevant(valid_block_signing_authority, signing_key), wrong_signing_key,
                   "block not signed by expected key",
-                  ("signing_key", signing_key)( "valid_keys", valid_block_signing_keys ) );
+                  ("signing_key", signing_key)( "valid_keys", valid_block_signing_authority ) );
    }
 
    /**

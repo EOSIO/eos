@@ -242,11 +242,18 @@ datastream<ST>& operator<<(
 }
 
 template <typename ST>
-datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosio::chain::shared_producer_authority_v0>& obj) {
-   fc::raw::pack(ds, as_type<uint64_t>(obj.obj.producer_name.value));
+datastream<ST>& operator<<(datastream<ST>& ds,
+                           const history_serial_wrapper<eosio::chain::shared_block_signing_authority_v0>& obj) {
    fc::raw::pack(ds, as_type<uint32_t>(obj.obj.threshold));
    history_serialize_container(ds, obj.db,
                                as_type<eosio::chain::shared_vector<eosio::chain::key_weight>>(obj.obj.keys));
+
+}
+
+template <typename ST>
+datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosio::chain::shared_producer_authority>& obj) {
+   fc::raw::pack(ds, as_type<uint64_t>(obj.obj.name.value));
+   fc::raw::pack(ds, as_type<eosio::chain::shared_block_signing_authority>(obj.obj.authority));
    return ds;
 }
 

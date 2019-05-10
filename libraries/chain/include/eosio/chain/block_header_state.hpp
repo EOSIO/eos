@@ -17,7 +17,7 @@ namespace detail {
       incremental_merkle                blockroot_merkle;
       flat_map<account_name,uint32_t>   producer_to_last_produced;
       flat_map<account_name,uint32_t>   producer_to_last_implied_irb;
-      flat_set<public_key_type>         valid_block_signing_keys;
+      block_signing_authority           valid_block_signing_authority;
       vector<uint8_t>                   confirm_count;
    };
 
@@ -122,7 +122,7 @@ FC_REFLECT( eosio::chain::detail::block_header_state_common,
             (blockroot_merkle)
             (producer_to_last_produced)
             (producer_to_last_implied_irb)
-            (valid_block_signing_keys)
+            (valid_block_signing_authority)
             (confirm_count)
 )
 
