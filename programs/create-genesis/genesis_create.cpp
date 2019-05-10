@@ -217,11 +217,11 @@ struct genesis_create::genesis_create_impl final {
         }
 
         db.start_section(config::system_account_name, N(permission), "permission_object", perms_l);
-        auto ts = _conf.initial_timestamp;
         for (const auto a: _visitor.auths) {
             const auto n = a.account.str(_accs_map);
-            auto convert_authority = [&](permission_name perm, const golos::shared_authority& a) {
-                uint32_t threshold = a.weight_threshold;
+            auto convert_authority = [&](permission_name perm, const golos::shared_authority& a, name recovery = {}) {
+                bool recoverable = recovery != name() && a.weight_threshold == 1 && a.account_auths.size() == 0;
+                uint32_t threshold = recoverable ? 2 : a.weight_threshold;
                 vector<key_weight> keys;
                 for (const auto& k: a.key_auths) {
                     // can't construct public key directly, constructor is private. transform to string first:
@@ -238,15 +238,20 @@ struct genesis_create::genesis_create_impl final {
                             << " to it's " << perm << " authority. Skipped." << std::endl;
                     }
                 }
-                return authority{threshold, keys, accounts};
+                std::vector<wait_weight> waits;
+                if (recoverable) {
+                    accounts.emplace_back(permission_level_weight{{recovery, config::owner_name}, 1});
+                    waits.emplace_back(wait_weight{owner_recovery_wait_seconds, 1});
+                }
+                return authority{threshold, keys, accounts, waits};
             };
-            const auto owner = convert_authority(config::owner_name, a.owner);
+            auto recovery_acc = name_by_acc(_visitor.accounts[a.account.id].recovery_account);
+            const auto owner = convert_authority(config::owner_name, a.owner, recovery_acc);
             const auto active = convert_authority(config::active_name, a.active);
             const auto posting = convert_authority(posting_auth_name, a.posting);
             create_account_perms(name_by_acc(a.account), usage_id, owner, active, posting);
 
             // TODO: do we need memo key ?
-            // TODO: recovery #471
         }
 
         // link posting permission with gls.publish and gls.social
@@ -272,7 +277,7 @@ struct genesis_create::genesis_create_impl final {
         db.emplace<domain_object>([&](auto& a) {
             a.owner = app;
             a.linked_to = app;
-            a.creation_date = ts;
+            a.creation_date = _conf.initial_timestamp;
             a.name = golos_domain_name;
         });
         ee_genesis.usernames.insert(mvo

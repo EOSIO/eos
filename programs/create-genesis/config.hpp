@@ -19,6 +19,7 @@ constexpr auto VESTS = SY(6,GOLOS);                 // Golos dApp vesting
 constexpr auto posting_auth_name = "posting";
 constexpr auto golos_domain_name = "golos";
 
+constexpr auto owner_recovery_wait_seconds = 60*60*24*30;
 constexpr auto withdraw_interval_seconds = 60*60*24*7;
 constexpr auto withdraw_intervals = 13;
 
