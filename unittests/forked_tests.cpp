@@ -523,4 +523,58 @@ BOOST_AUTO_TEST_CASE( irreversible_mode ) try {
 
 } FC_LOG_AND_RETHROW()
 
+BOOST_AUTO_TEST_CASE( reopen_forkdb ) try {
+   tester c1;
+
+   c1.create_accounts( {N(alice),N(bob),N(carol)} );
+   c1.produce_block();
+
+   auto res = c1.set_producers( {N(alice),N(bob),N(carol)} );
+
+   c1.produce_blocks(2);
+
+   BOOST_REQUIRE_EQUAL( c1.control->active_producers().version, 1u );
+
+   produce_empty_blocks_until( c1, N(carol), N(alice) );
+   c1.produce_block();
+   produce_empty_blocks_until( c1, N(carol), N(alice) );
+
+   tester c2;
+
+   push_blocks( c1, c2 );
+
+   auto fork1_lib_before = c1.control->last_irreversible_block_num();
+
+   // alice produces a block on fork 1 causing LIB to advance
+   c1.produce_block();
+
+   auto fork1_head_block_id = c1.control->head_block_id();
+
+   auto fork1_lib_after = c1.control->last_irreversible_block_num();
+   BOOST_REQUIRE( fork1_lib_after > fork1_lib_before );
+
+   auto fork2_lib_before = c2.control->last_irreversible_block_num();
+   BOOST_REQUIRE_EQUAL( fork1_lib_before, fork2_lib_before );
+
+   // carol produces a block on fork 2 skipping over the slots of alice and bob
+   c2.produce_block( fc::milliseconds(config::block_interval_ms * 25) );
+   auto fork2_start_block = c2.control->head_block_num();
+   c2.produce_block();
+
+   auto fork2_lib_after = c2.control->last_irreversible_block_num();
+   BOOST_REQUIRE_EQUAL( fork2_lib_before, fork2_lib_after );
+
+   for( uint32_t block_num = fork2_start_block; block_num < c2.control->head_block_num(); ++block_num ) {
+      auto fb = c2.control->fetch_block_by_number( block_num );
+      c1.push_block( fb );
+   }
+
+   BOOST_REQUIRE( fork1_head_block_id == c1.control->head_block_id() ); // new blocks should not cause fork switch
+
+   c1.close();
+
+   c1.open( nullptr );
+
+} FC_LOG_AND_RETHROW()
+
 BOOST_AUTO_TEST_SUITE_END()
