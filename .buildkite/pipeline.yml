@@ -3,6 +3,7 @@ env:
   ANKA_TEMPLATE_TAG: "clean::cicd::git-ssh::nas::brew::buildkite-agent-3.11.2"
   CHECKSUMABLE: "scripts/eosio_build*"
   MAC_TAG: "eosio_1-8-0-rc1"
+  WORKDIR: "/data/job"
 
 steps:
 
@@ -36,6 +37,7 @@ steps:
     plugins:
       chef/anka#v0.4.4:
         no-volume: true
+        workdir: $WORKDIR
         inherit-environment-vars: true
         vm-name: $ANKA_MOJAVE_TEMPLATE
         vm-registry-tag: "${ANKA_TEMPLATE_TAG}::${MAC_TAG}"
@@ -157,6 +159,7 @@ steps:
     plugins:
       chef/anka#v0.4.4:
         no-volume: true
+        workdir: $WORKDIR
         inherit-environment-vars: true
         bash-interactive: true
         vm-name: $ANKA_MOJAVE_TEMPLATE
@@ -175,6 +178,7 @@ steps:
     plugins:
       chef/anka#v0.4.4:
         no-volume: true
+        workdir: $WORKDIR
         inherit-environment-vars: true
         bash-interactive: true
         vm-name: $ANKA_MOJAVE_TEMPLATE

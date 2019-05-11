@@ -4,7 +4,7 @@ set -e # exit on failure of any "simple" command (excludes &&, ||, or | chains)
 PATH=$PATH:~/opt/mongodb/bin
 echo "Extracting build directory..."
 [[ -f build.tar.gz ]] && tar -xzf build.tar.gz
-cd /data/job/build
+[[ $(uname) == "Darwin" ]] && cd /data/job/eos/build || cd /data/job/build
 # run tests
 echo "Running tests..."
 CPU_CORES=$(getconf _NPROCESSORS_ONLN)
