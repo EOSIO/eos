@@ -1,8 +1,8 @@
 echo "OS name: ${NAME}"
 echo "OS Version: ${VERSION_ID}"
 echo "CPU cores: ${CPU_CORES}"
-echo "Physical Memory: ${MEM_GIG}Gb"
-echo "Disk space total: ${DISK_TOTAL}Gb"
+echo "Physical Memory: ${MEM_GIG}G"
+echo "Disk space total: ${DISK_TOTAL}G"
 echo "Disk space available: ${DISK_AVAIL}G"
 
 ( [[ $NAME == "CentOS Linux" ]] && [[ "$(echo ${VERSION} | sed 's/ .*//g')" < 7 ]] ) && echo " - You must be running Centos 7 or higher to install EOSIO." && exit 1

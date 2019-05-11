@@ -5,7 +5,7 @@ set -ieo pipefail
 echo "+++ Extracting build directory"
 [[ -f build.tar.gz ]] && tar -xzf build.tar.gz
 execute ls -l build
-execute cd build
+execute cd ./build
 if [[ -f $MONGODB_BIN ]]; then
     echo "+++ Killing old MongoDB"
     $(pgrep mongod | xargs kill -9) || true

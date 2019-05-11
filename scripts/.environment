@@ -1,8 +1,13 @@
-export EOSIO_VERSION_MAJOR=$(cat CMakeLists.txt | grep "set(VERSION_MAJOR" | awk '{print $2}' | sed 's/)//g')
-export EOSIO_VERSION_MINOR=$(cat CMakeLists.txt | grep "set(VERSION_MINOR" | awk '{print $2}' | sed 's/)//g')
-export EOSIO_VERSION_PATCH=$(cat CMakeLists.txt | grep "set(VERSION_PATCH" | awk '{print $2}' | sed 's/)//g')
-export EOSIO_VERSION_SUFFIX=$(cat CMakeLists.txt | grep "set(VERSION_SUFFIX" | awk '{print $2}' | sed 's/)//g')
-export EOSIO_VERSION="${EOSIO_VERSION_MAJOR}.${EOSIO_VERSION_MINOR}.${EOSIO_VERSION_PATCH}.${EOSIO_VERSION_SUFFIX}"
+export SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+export REPO_ROOT="${SCRIPT_DIR}/.."
+export BUILD_DIR="${REPO_ROOT}/build"
+
+export EOSIO_VERSION_MAJOR=$(cat $REPO_ROOT/CMakeLists.txt | grep -E "set\([ +]?VERSION_MAJOR" | sed 's/set(.*VERSION_MAJOR //g' | sed 's/ //g' | cut -d\) -f1)
+export EOSIO_VERSION_MINOR=$(cat $REPO_ROOT/CMakeLists.txt | grep -E "set\([ +]?VERSION_MINOR" | sed 's/set(.*VERSION_MINOR //g' | sed 's/ //g' | cut -d\) -f1)
+export EOSIO_VERSION_PATCH=$(cat $REPO_ROOT/CMakeLists.txt | grep -E "set\([ +]?VERSION_PATCH" | sed 's/set(.*VERSION_PATCH //g' | sed 's/ //g' | cut -d\) -f1)
+export EOSIO_VERSION_SUFFIX=$(cat $REPO_ROOT/CMakeLists.txt | grep -E "set\([ +]?VERSION_SUFFIX" | sed 's/set(.*VERSION_SUFFIX //g' | sed 's/ //g' | cut -d\) -f1)
+export EOSIO_VERSION="${EOSIO_VERSION_MAJOR}.${EOSIO_VERSION_MINOR}.${EOSIO_VERSION_PATCH}-${EOSIO_VERSION_SUFFIX}"
+
 export INSTALL_LOCATION=${INSTALL_LOCATION:-$HOME}
 export EOSIO_HOME="${INSTALL_LOCATION}/eosio/${EOSIO_VERSION}"
 export TEMP_DIR="${INSTALL_LOCATION}/tmp"
@@ -83,8 +88,4 @@ export HOMEBREW_NO_AUTO_UPDATE=1
 export TINI_VERSION=0.18.0
 export DISK_MIN=5
 export COUNT=1
-
-export SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-export REPO_ROOT="${SCRIPT_DIR}/.."
-export BUILD_DIR="${REPO_ROOT}/build"
 

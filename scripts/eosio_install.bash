@@ -32,9 +32,6 @@ VERSION=2.0
 # https://github.com/EOSIO/eos/blob/master/LICENSE.txt
 ##########################################################################
 
-# Load bash script helper functions
-. ./scripts/helpers/general.bash
-
 # Load eosio specific helper functions
 . ./scripts/helpers/eosio.bash
 
@@ -65,7 +62,7 @@ printf "    \\  \\::/       \\  \\::/        /__/:/        \\__\\/      \\  \\::
 printf "     \\__\\/         \\__\\/         \\__\\/                     \\__\\/ \n\n${COLOR_NC}"
 
 printf "==============================================================================================\\n"
-printf "${COLOR_GREEN}EOSIO has been installed into ${OPT_DIR}/eosio/bin!${COLOR_NC}"
+printf "${COLOR_GREEN}EOSIO has been installed into ${EOSIO_HOME}!${COLOR_NC}"
 printf "\\n${COLOR_YELLOW}Uninstall with: ./scripts/eosio_uninstall.bash${COLOR_NC}\\n"
 printf "==============================================================================================\\n\\n"
 resources
