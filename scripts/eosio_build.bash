@@ -111,7 +111,7 @@ fi
 . ./scripts/helpers/eosio.bash
 
 echo "Beginning build version: ${SCRIPT_VERSION}"
-echo "EOSIO Version to install: ${EOSIO_VERSION}"
+echo "EOSIO version to install: ${EOSIO_VERSION}"
 echo "$( date -u )"
 CURRENT_USER=${CURRENT_USER:-$(whoami)}
 echo "User: ${CURRENT_USER}"
