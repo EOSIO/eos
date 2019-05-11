@@ -83,7 +83,7 @@ steps:
         debug: true
         image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux2_1-9-0"
         propagate-environment: true
-        workdir: /data/job
+        workdir: $WORKDIR
     timeout: 120
 
   - label: ":centos: CentOS 7 Build"
@@ -104,7 +104,7 @@ steps:
         debug: true
         image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:centos7_1-9-0"
         propagate-environment: true
-        workdir: /data/job
+        workdir: $WORKDIR
     timeout: 120
 
   - label: ":ubuntu: Ubuntu 16.04 Build"
@@ -125,7 +125,7 @@ steps:
         debug: true
         image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu16_1-9-0"
         propagate-environment: true
-        workdir: /data/job
+        workdir: $WORKDIR
     timeout: 120
 
   - label: ":ubuntu: Ubuntu 18.04 Build"
@@ -146,7 +146,7 @@ steps:
         debug: true
         image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu18_1-9-0"
         propagate-environment: true
-        workdir: /data/job
+        workdir: $WORKDIR
     timeout: 120
 
   - wait
@@ -212,7 +212,7 @@ steps:
         debug: true
         image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux2_1-9-0"
         propagate-environment: true
-        workdir: /data/job
+        workdir: $WORKDIR
     timeout: 60
 
   - label: ":aws: Amazon Linux 2 NP Tests"
@@ -232,7 +232,7 @@ steps:
         debug: true
         image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux2_1-9-0"
         propagate-environment: true
-        workdir: /data/job
+        workdir: $WORKDIR
     timeout: 60
 
   # CentOS #
@@ -253,7 +253,7 @@ steps:
         debug: true
         image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:centos7_1-9-0"
         propagate-environment: true
-        workdir: /data/job
+        workdir: $WORKDIR
     timeout: 60
 
   - label: ":centos: CentOS 7 NP Tests"
@@ -273,7 +273,7 @@ steps:
         debug: true
         image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:centos7_1-9-0"
         propagate-environment: true
-        workdir: /data/job
+        workdir: $WORKDIR
     timeout: 60
 
   # Ubuntu #
@@ -294,7 +294,7 @@ steps:
         debug: true
         image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu16_1-9-0"
         propagate-environment: true
-        workdir: /data/job
+        workdir: $WORKDIR
     timeout: 60
 
   - label: ":ubuntu: Ubuntu 16.04 NP Tests"
@@ -314,7 +314,7 @@ steps:
         debug: true
         image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu16_1-9-0"
         propagate-environment: true
-        workdir: /data/job
+        workdir: $WORKDIR
     timeout: 60
 
   - label: ":ubuntu: Ubuntu 18.04 Tests"
@@ -334,7 +334,7 @@ steps:
         debug: true
         image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu18_1-9-0"
         propagate-environment: true
-        workdir: /data/job
+        workdir: $WORKDIR
     timeout: 60
 
   - label: ":ubuntu: Ubuntu 18.04 NP Tests"
@@ -354,7 +354,7 @@ steps:
         debug: true
         image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu18_1-9-0"
         propagate-environment: true
-        workdir: /data/job
+        workdir: $WORKDIR
     timeout: 60
 
   - wait:
@@ -401,7 +401,7 @@ steps:
         debug: true
         image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:centos7_1-9-0"
         propagate-environment: true
-        workdir: /data/job
+        workdir: $WORKDIR
     env:
       OS: "el7"
       PKGTYPE: "rpm"
@@ -430,7 +430,7 @@ steps:
         debug: true
         image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu16_1-9-0"
         propagate-environment: true
-        workdir: /data/job
+        workdir: $WORKDIR
     env:
       OS: "ubuntu-16.04"
       PKGTYPE: "deb"
@@ -459,7 +459,7 @@ steps:
         debug: true
         image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu18_1-9-0"
         propagate-environment: true
-        workdir: /data/job
+        workdir: $WORKDIR
     env:
       OS: "ubuntu-18.04"
       PKGTYPE: "deb"
