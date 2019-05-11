@@ -5,7 +5,7 @@ set -ieo pipefail
 echo "+++ Extracting build directory"
 [[ -f build.tar.gz ]] && execute tar -xzf build.tar.gz
 execute ls -l build
-execute cd build
+[[ $ARCH == "Darwin" ]] && execute cd /data/job/eos/build || execute cd /data/job/build
 echo "+++ Running tests"
 # Counting tests available and if they get disabled for some reason, throw a failure
 TEST_COUNT=$($CTEST_BIN -N -LE _tests | grep -i 'Total Tests: ' | cut -d ':' -f 2 | awk '{print $1}')
