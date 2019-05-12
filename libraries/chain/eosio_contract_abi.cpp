@@ -193,19 +193,13 @@ abi_def eosio_contract_abi(abi_def eos_abi)
          {cyberway::chaindb::tag<by_name>::get_code(), true, {{"name", "asc"}}}
       }
    });
-
+   
    eos_abi.structs.emplace_back( eosio::chain::struct_def{
       "chain_config", "", {
-         {"max_block_net_usage", "uint64"},
-         {"target_block_net_usage_pct", "uint32"},
-         {"max_transaction_net_usage", "uint32"},
          {"base_per_transaction_net_usage", "uint32"},
          {"net_usage_leeway", "uint32"},
          {"context_free_discount_net_usage_num", "uint32"},
          {"context_free_discount_net_usage_den", "uint32"},
-         {"max_block_cpu_usage", "uint32"},
-         {"target_block_cpu_usage_pct", "uint32"},
-         {"max_transaction_cpu_usage", "uint32"},
          {"min_transaction_cpu_usage", "uint32"},
          {"min_transaction_ram_usage", "uint64"},
          {"max_transaction_lifetime", "uint32"},
@@ -213,7 +207,14 @@ abi_def eosio_contract_abi(abi_def eos_abi)
          {"max_transaction_delay", "uint32"},
          {"max_inline_action_size", "uint32"},
          {"max_inline_action_depth", "uint16"},
-         {"max_authority_depth", "uint16"}
+         {"max_authority_depth", "uint16"},
+         {"target_virtual_limits", "uint64[]"},
+         {"min_virtual_limits", "uint64[]"},
+         {"max_virtual_limits", "uint64[]"},
+         {"usage_windows", "uint32[]"},
+         {"virtual_limit_decrease_pct", "uint16[]"},
+         {"virtual_limit_increase_pct", "uint16[]"},
+         {"account_usage_windows", "uint32[]"}
       }
    });
 
@@ -415,12 +416,7 @@ abi_def eosio_contract_abi(abi_def eos_abi)
       "resource_usage_object", "", {
          {"id", "uint64"},
          {"owner", "name"},
-         {"net_usage", "usage_accumulator"},
-         {"cpu_usage", "usage_accumulator"},
-         {"ram_usage", "uint64"},
-         {"ram_owned", "uint64"},
-         {"storage_usage", "uint64"},
-         {"storage_owned", "uint64"},
+         {"accumulators", "usage_accumulator[]"}
       }
    });
 
@@ -441,21 +437,19 @@ abi_def eosio_contract_abi(abi_def eos_abi)
    eos_abi.structs.emplace_back( eosio::chain::struct_def{
       "elastic_limit_params", "", {
          {"target", "uint64"},
+         {"min", "uint64"},
          {"max", "uint64"},
          {"periods", "uint32"},
-         {"max_multiplier", "uint32"},
-         {"contract_rate", "ratio64"},
-         {"expand_rate", "ratio64"}
+         {"decrease_rate", "ratio64"},
+         {"increase_rate", "ratio64"}
       }
    });
 
    eos_abi.structs.emplace_back( eosio::chain::struct_def{
       "resource_limits_config_object", "", {
          {"id", "uint64"},
-         {"cpu_limit", "elastic_limit_params"},
-         {"net_limit", "elastic_limit_params"},
-         {"acc_cpu_usage_avg_window", "uint32"},
-         {"acc_net_usage_avg_window", "uint32"}}
+         {"limit_parameters", "elastic_limit_params[]"},
+         {"account_usage_average_windows", "uint32[]"}}
    });
 
    eos_abi.tables.emplace_back( eosio::chain::table_def {
@@ -467,17 +461,10 @@ abi_def eosio_contract_abi(abi_def eos_abi)
    eos_abi.structs.emplace_back( eosio::chain::struct_def{
       "resource_limits_state_object", "", {
          {"id", "uint64"},
-         {"avg_block_net_usage", "usage_accumulator"},
-         {"avg_block_cpu_usage", "usage_accumulator"},
-         {"ram_usage", "uint64"},
-         {"storage_usage", "uint64"},
-         {"pending_net_usage", "uint64"},
-         {"pending_cpu_usage", "uint64"},
-         {"virtual_net_limit", "uint64"},
-         {"virtual_cpu_limit", "uint64"},
-         {"virtual_ram_limit", "uint64"},
-         {"reserved_ram_size", "uint64"},
-      }
+         {"block_usage_accumulators", "usage_accumulator[]"},
+         {"pending_usage", "int64[]"},
+         {"virtual_limits", "uint64[]"},
+         {"reserved_ram_size", "uint64"}}
    });
 
    eos_abi.tables.emplace_back( eosio::chain::table_def {
@@ -678,6 +665,12 @@ abi_def eosio_contract_abi(abi_def eos_abi)
          {"in_ram",      "bool"}
       }
    });
+   
+   eos_abi.structs.emplace_back( struct_def {
+      "setparams", "", {
+         {"params",      "chain_config"}
+      }
+   });
 
    eos_abi.actions.push_back( action_def{name("newaccount"), "newaccount"} );
    eos_abi.actions.push_back( action_def{name("setcode"), "setcode"} );
@@ -696,6 +689,7 @@ abi_def eosio_contract_abi(abi_def eos_abi)
 
    eos_abi.actions.push_back( action_def{name("setrampayer"), "set_ram_payer"} );
    eos_abi.actions.push_back( action_def{name("setramstate"), "set_ram_state"} );
+   eos_abi.actions.push_back( action_def{name("setparams"), "setparams"} );
 
    return eos_abi;
 }

@@ -638,6 +638,21 @@ struct controller_impl {
         bs.block_id = head->id;
       });
 
+      conf.genesis.initial_configuration.target_virtual_limits = 
+        std::vector<uint64_t>(config::default_target_virtual_limits.begin(), config::default_target_virtual_limits.end());
+      conf.genesis.initial_configuration.min_virtual_limits = 
+        std::vector<uint64_t>(config::default_min_virtual_limits.begin(), config::default_min_virtual_limits.end());
+      conf.genesis.initial_configuration.max_virtual_limits = 
+        std::vector<uint64_t>(config::default_max_virtual_limits.begin(), config::default_max_virtual_limits.end());
+      conf.genesis.initial_configuration.usage_windows = 
+        std::vector<uint32_t>(config::default_usage_windows.begin(), config::default_usage_windows.end());
+      conf.genesis.initial_configuration.virtual_limit_decrease_pct = 
+        std::vector<uint16_t>(config::default_virtual_limit_decrease_pct.begin(), config::default_virtual_limit_decrease_pct.end());
+      conf.genesis.initial_configuration.virtual_limit_increase_pct = 
+        std::vector<uint16_t>(config::default_virtual_limit_increase_pct.begin(), config::default_virtual_limit_increase_pct.end());
+      conf.genesis.initial_configuration.account_usage_windows = 
+        std::vector<uint32_t>(config::default_account_usage_windows.begin(), config::default_account_usage_windows.end());
+
       conf.genesis.initial_configuration.validate();
       chaindb.emplace<global_property_object>([&](auto& gpo ){
         gpo.configuration = conf.genesis.initial_configuration;
@@ -790,8 +805,7 @@ struct controller_impl {
 //         -(config::billable_size_v<generated_transaction_object> + gto.packed_trx.size())
 //      );
       // No need to verify_account_ram_usage since we are only reducing memory
-
-      chaindb.erase( gto, resource_limits.get_storage_payer() );
+      chaindb.erase( gto, resource_limits.get_storage_payer(self.pending_block_slot(), account_name()));
    }
 
    bool failure_is_subjective( const fc::exception& e ) const {
@@ -983,7 +997,7 @@ struct controller_impl {
 
          if( !billed.explicit_usage ) {
             auto& rl = self.get_mutable_resource_limits_manager();
-            rl.update_account_usage( trx_context.bill_to_accounts, block_timestamp_type(self.pending_block_time()).slot );
+            rl.update_account_usage( trx_context.bill_to_accounts, self.pending_block_slot() );
             int64_t account_cpu_limit = trx_context.get_min_cpu_limit();
 
             cpu_time_to_bill_us = static_cast<uint32_t>( std::min( std::min( static_cast<int64_t>(cpu_time_to_bill_us),
@@ -992,7 +1006,7 @@ struct controller_impl {
 
              // TODO: CyberWay #616 should be here correction of ram_to_bill_bytes?
          }
-
+         
          resource_limits.add_transaction_usage( trx_context.bill_to_accounts, cpu_time_to_bill_us, 0, ram_to_bill_bytes, self.pending_block_time() ); // Should never fail
 
          trace->receipt = push_receipt(gtrx.trx_id, transaction_receipt::hard_fail, cpu_time_to_bill_us, 0, ram_to_bill_bytes);
@@ -1502,15 +1516,8 @@ struct controller_impl {
             ("np",pending->_pending_block_state->header.new_producers)
             );
       */
-
-      const auto& chain_config = self.get_global_properties().configuration;
-      uint32_t max_virtual_mult = 1000;
-      uint64_t CPU_TARGET = EOS_PERCENT(chain_config.max_block_cpu_usage, chain_config.target_block_cpu_usage_pct);
-      resource_limits.set_block_parameters(
-         { CPU_TARGET, chain_config.max_block_cpu_usage, config::block_cpu_usage_average_window_ms / config::block_interval_ms, max_virtual_mult, {99, 100}, {1000, 999}},
-         {EOS_PERCENT(chain_config.max_block_net_usage, chain_config.target_block_net_usage_pct), chain_config.max_block_net_usage, config::block_size_average_window_ms / config::block_interval_ms, max_virtual_mult, {99, 100}, {1000, 999}}
-      );
-      resource_limits.process_block_usage(pending->_pending_block_state->block_num);
+      resource_limits.set_limit_params(self.get_global_properties().configuration);
+      resource_limits.process_block_usage(self.pending_block_slot());
 
       set_action_merkle();
       set_trx_merkle();
@@ -1796,6 +1803,10 @@ block_state_ptr controller::pending_block_state()const {
 time_point controller::pending_block_time()const {
    EOS_ASSERT( my->pending, block_validate_exception, "no pending block" );
    return my->pending->_pending_block_state->header.timestamp;
+}
+uint32_t controller::pending_block_slot()const {
+   EOS_ASSERT( my->pending, block_validate_exception, "no pending block" );
+   return my->pending->_pending_block_state->header.timestamp.slot;
 }
 
 optional<block_id_type> controller::pending_producer_block_id()const {

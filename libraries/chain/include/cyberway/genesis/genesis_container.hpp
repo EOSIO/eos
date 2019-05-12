@@ -55,7 +55,7 @@ struct sys_table_row {
     }
     storage_payer_info payer() const {
         if (resource_mng) {
-            return resource_mng->get_storage_payer(ram_payer);
+            return resource_mng->get_storage_payer(0, ram_payer);
         } else {
             return {};
         }

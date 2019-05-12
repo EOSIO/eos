@@ -25,30 +25,26 @@ static_assert( config::rate_limiting_precision > 0, "config::rate_limiting_preci
 static uint64_t update_elastic_limit(uint64_t current_limit, uint64_t average_usage, const elastic_limit_parameters& params) {
    uint64_t result = current_limit;
    if (average_usage > params.target ) {
-      result = result * params.contract_rate;
+      result = result * params.decrease_rate;
    } else {
-      result = result * params.expand_rate;
+      result = result * params.increase_rate;
    }
-   return std::min(std::max(result, params.max), params.max * params.max_multiplier);
+   
+   return std::min(std::max(result, params.min), params.max);
+}
+void elastic_limit_parameters::set(uint64_t target_, uint64_t min_, uint64_t max_, uint32_t average_window_ms, uint16_t decrease_pct, uint16_t increase_pct) {
+    EOS_ASSERT(decrease_pct < config::percent_100, resource_limit_exception, "incorrect elastic limit parameter 'decrease_pct'" );
+    target = target_;
+    min = min_;
+    max = max_;
+    periods = average_window_ms / config::block_interval_ms;
+    EOS_ASSERT( periods > 0, resource_limit_exception, "elastic limit parameter 'periods' cannot be zero" );
+    decrease_rate.numerator = config::percent_100 - decrease_pct;
+    increase_rate.numerator = config::percent_100 + increase_pct;
 }
 
-void elastic_limit_parameters::validate()const {
-   // At the very least ensure parameters are not set to values that will cause divide by zero errors later on.
-   // Stricter checks for sensible values can be added later.
-   EOS_ASSERT( periods > 0, resource_limit_exception, "elastic limit parameter 'periods' cannot be zero" );
-   EOS_ASSERT( contract_rate.denominator > 0, resource_limit_exception, "elastic limit parameter 'contract_rate' is not a well-defined ratio" );
-   EOS_ASSERT( expand_rate.denominator > 0, resource_limit_exception, "elastic limit parameter 'expand_rate' is not a well-defined ratio" );
-}
-
-
-void resource_limits_state_object::update_virtual_cpu_limit( const resource_limits_config_object& cfg ) {
-   //idump((average_block_cpu_usage.average()));
-   virtual_cpu_limit = update_elastic_limit(virtual_cpu_limit, average_block_cpu_usage.average(), cfg.cpu_limit_parameters);
-   //idump((virtual_cpu_limit));
-}
-
-void resource_limits_state_object::update_virtual_net_limit( const resource_limits_config_object& cfg ) {
-   virtual_net_limit = update_elastic_limit(virtual_net_limit, average_block_net_usage.average(), cfg.net_limit_parameters);
+void resource_limits_state_object::update_virtual_limit(const resource_limits_config_object& cfg, resource_id res) {
+   virtual_limits[res] = update_elastic_limit(virtual_limits[res], block_usage_accumulators[res].average(), cfg.limit_parameters[res]);
 }
 
 void resource_limits_manager::add_indices() {
@@ -56,15 +52,29 @@ void resource_limits_manager::add_indices() {
 }
 
 void resource_limits_manager::initialize_database() {
-    auto& config = _chaindb.emplace<resource_limits_config_object>([](resource_limits_config_object& config){
-      // see default settings in the declaration
+    auto& cfg = _chaindb.emplace<resource_limits_config_object>([](resource_limits_config_object& cfg){
+        cfg.limit_parameters.resize(resources_num);
+        cfg.account_usage_average_windows.resize(resources_num);
+        for (size_t i = 0; i < resources_num; i++) {
+            cfg.limit_parameters[i].set(
+                config::default_target_virtual_limits[i],
+                config::default_min_virtual_limits[i],
+                config::default_max_virtual_limits[i],
+                config::default_usage_windows[i],
+                config::default_virtual_limit_decrease_pct[i],
+                config::default_virtual_limit_increase_pct[i]
+            );
+            cfg.account_usage_average_windows[i] = config::default_account_usage_windows[i] / config::block_interval_ms;
+        }
    });
-   _chaindb.emplace<resource_limits_state_object>([&config](resource_limits_state_object& state){
-      // see default settings in the declaration
-
-      // start the chain off in a way that it is "congested" aka slow-start
-      state.virtual_cpu_limit = config.cpu_limit_parameters.max;
-      state.virtual_net_limit = config.net_limit_parameters.max;
+   _chaindb.emplace<resource_limits_state_object>([&cfg](resource_limits_state_object& state) {
+      state.block_usage_accumulators.resize(resources_num);
+      state.pending_usage.resize(resources_num, 0);
+      state.virtual_limits.resize(resources_num);
+      
+      for (size_t i = 0; i < resources_num; i++) {
+         state.virtual_limits[i] = cfg.limit_parameters[i].min;
+      }
    });
 
 }
@@ -77,224 +87,162 @@ void resource_limits_manager::read_from_snapshot( const snapshot_reader_ptr& sna
    // TODO: Removed by CyberWay
 }
 
-storage_payer_info resource_limits_manager::get_storage_payer(account_name owner) {
-    return {*this, owner, owner};
+storage_payer_info resource_limits_manager::get_storage_payer(uint32_t time_slot, account_name owner) {
+    return {*this, owner, owner, time_slot};
 }
 
 void resource_limits_manager::initialize_account(const account_name& account, const storage_payer_info& payer) {
    _chaindb.emplace<resource_usage_object>(payer, [&]( resource_usage_object& bu ) {
       bu.owner = account;
+      bu.accumulators.resize(resources_num);
    });
 }
 
-void resource_limits_manager::set_block_parameters(const elastic_limit_parameters& cpu_limit_parameters, const elastic_limit_parameters& net_limit_parameters ) {
-   cpu_limit_parameters.validate();
-   net_limit_parameters.validate();
-   const auto& config = _chaindb.get<resource_limits_config_object>();
-   _chaindb.modify(config, [&](resource_limits_config_object& c){
-      c.cpu_limit_parameters = cpu_limit_parameters;
-      c.net_limit_parameters = net_limit_parameters;
+void resource_limits_manager::set_limit_params(const chain_config& chain_cfg) {
+    const auto& config = _chaindb.get<resource_limits_config_object>();
+    _chaindb.modify(config, [&](resource_limits_config_object& cfg) {
+       
+        for (size_t i = 0; i < resources_num; i++) {
+            cfg.limit_parameters[i].set(
+                chain_cfg.target_virtual_limits[i],
+                chain_cfg.min_virtual_limits[i],
+                chain_cfg.max_virtual_limits[i],
+                chain_cfg.usage_windows[i],
+                chain_cfg.virtual_limit_decrease_pct[i],
+                chain_cfg.virtual_limit_increase_pct[i]
+            );
+            cfg.account_usage_average_windows[i] = chain_cfg.account_usage_windows[i] / config::block_interval_ms;
+        }
    });
 }
 
-void resource_limits_manager::update_account_usage(const flat_set<account_name>& accounts, uint32_t time_slot ) {
+void resource_limits_manager::update_account_usage(const flat_set<account_name>& accounts, uint32_t time_slot) {
    const auto& config = _chaindb.get<resource_limits_config_object>();
    auto usage_table = _chaindb.get_table<resource_usage_object>();
    auto owner_idx = usage_table.get_index<by_owner>();
    for( const auto& a : accounts ) {
       const auto& usage = owner_idx.get( a );
-      usage_table.modify( usage, [&]( auto& bu ){
-          bu.net_usage.add( 0, time_slot, config.account_net_usage_average_window );
-          bu.cpu_usage.add( 0, time_slot, config.account_cpu_usage_average_window );
+      usage_table.modify( usage, [&]( auto& bu ) {
+          for (size_t i = 0; i < resources_num; i++) {
+              bu.accumulators[i].add(0, time_slot, config.account_usage_average_windows[i]);
+          }
       });
    }
 }
 
+void resource_limits_state_object::add_pending_delta(int64_t delta, const resource_limits_config_object& config, resource_id res) {
+    static auto constexpr large_number_no_overflow = std::numeric_limits<int64_t>::max() / 2;
+    delta = std::max(std::min(delta, large_number_no_overflow), -large_number_no_overflow);
+    auto& pending = pending_usage[res];
+    pending = std::max(std::min(pending + delta, large_number_no_overflow), -large_number_no_overflow);
+    decltype(delta) max = config::max_block_usage[res];
+    EOS_ASSERT(pending <= max, block_resource_exhausted, 
+        "Block has insufficient resources(${res}): delta = ${delta}, new_pending = ${new_pending}, max = ${max}",
+        ("res", static_cast<int>(res))("delta", delta)("new_pending", pending)("max", max));
+}
 
-void resource_limits_manager::add_transaction_usage(const flat_set<account_name>& accounts, uint64_t cpu_usage, uint64_t net_usage, uint64_t ram_usage, fc::time_point now) {
+void resource_limits_manager::add_transaction_usage(const flat_set<account_name>& accounts, uint64_t cpu_usage, uint64_t net_usage, uint64_t ram_usage, fc::time_point pending_block_time) {
    auto state_table = _chaindb.get_table<resource_limits_state_object>();
    const auto& state = state_table.get();
    const auto& config = _chaindb.get<resource_limits_config_object>();
    auto usage_table = _chaindb.get_table<resource_usage_object>();
    auto owner_idx = usage_table.get_index<by_owner>();
-   const pricelist& prices = get_pricelist();
-   auto time_slot = block_timestamp_type(now).slot; 
+   const auto& prices = get_pricelist();
+   auto time_slot = block_timestamp_type(pending_block_time).slot;
 
    for( const auto& a : accounts ) {
 
       const auto& usage = owner_idx.get( a );
 
       usage_table.modify( usage, [&]( auto& bu ) {
-          bu.net_usage.add( net_usage, time_slot, config.account_net_usage_average_window );
-          bu.cpu_usage.add( cpu_usage, time_slot, config.account_cpu_usage_average_window );
-          // TODO: Cyberway #616
+          bu.accumulators[CPU].add(cpu_usage, time_slot, config.account_usage_average_windows[CPU]);
+          bu.accumulators[NET].add(net_usage, time_slot, config.account_usage_average_windows[NET]);
+          bu.accumulators[RAM].add(ram_usage, time_slot, config.account_usage_average_windows[RAM]);
       });
-      EOS_ASSERT(get_account_balance(now.sec_since_epoch(), a, prices).stake >= 0, resource_exhausted_exception, 
+      EOS_ASSERT(get_account_balance(pending_block_time, a, prices, true) >= 0, resource_exhausted_exception, 
              "authorizing account '${n}' has insufficient resources for this transaction", ("n", name(a))); 
    }
-
    // account for this transaction in the block and do not exceed those limits either
-   state_table.modify(state, [&](resource_limits_state_object& rls){
-      rls.pending_cpu_usage += cpu_usage;
-      rls.pending_net_usage += net_usage;
-       // TODO: CyberWay #616
-   });
 
-   EOS_ASSERT( state.pending_cpu_usage <= config.cpu_limit_parameters.max, block_resource_exhausted, "Block has insufficient cpu resources" );
-   EOS_ASSERT( state.pending_net_usage <= config.net_limit_parameters.max, block_resource_exhausted, "Block has insufficient net resources" );
+   state_table.modify(state, [&](resource_limits_state_object& rls) {
+      rls.add_pending_delta(cpu_usage, config, CPU);
+      rls.add_pending_delta(net_usage, config, NET);
+      rls.add_pending_delta(ram_usage, config, RAM);
+   });
 }
 
-void resource_limits_manager::add_storage_usage( const storage_payer_info& storage ) {
-   if (storage.delta == 0) {
+void resource_limits_manager::add_storage_usage(const account_name& account, int64_t delta, uint32_t time_slot) {
+   if (delta == 0) {
       return;
    }
-
-   auto safe_add_delta = [&](uint64_t& usage) {
-      EOS_ASSERT(storage.delta <= 0 || UINT64_MAX - usage >= (uint64_t) storage.delta, transaction_exception,
-         "Storage delta would overflow UINT64_MAX", ("storage", storage)("usage", usage));
-      EOS_ASSERT(storage.delta >= 0 || usage >= (uint64_t) (-storage.delta), transaction_exception,
-         "Storage delta would underflow UINT64_MAX", ("storage", storage)("usage", usage));
-      usage += (int64_t)storage.delta;
-   };
-
+   const auto& config = _chaindb.get<resource_limits_config_object>();
    auto state_table  = _chaindb.get_table<resource_limits_state_object>();
    const auto& state = state_table.get();
-   state_table.modify(state, [&](resource_limits_state_object& rls){
-      if (storage.in_ram) {
-         safe_add_delta(rls.ram_usage);
-      }
-      safe_add_delta(rls.storage_usage);
+   state_table.modify(state, [&](resource_limits_state_object& rls) {
+      rls.add_pending_delta(delta, config, STORAGE);
    });
-
-   auto& usage = _chaindb.get<resource_usage_object,by_owner>( storage.payer );
+   
+   auto& usage = _chaindb.get<resource_usage_object, by_owner>(account);
    _chaindb.modify( usage, [&]( auto& u ) {
-      if( storage.in_ram ) {
-          safe_add_delta(u.ram_usage);
-      }
-      safe_add_delta(u.storage_usage);
-
-      if( storage.payer != storage.owner ) {
-         return;
-      }
-
-      if( storage.in_ram ) {
-         safe_add_delta(u.ram_owned);
-      }
-      safe_add_delta(u.storage_owned);
-   });
-
-   if( storage.payer == storage.owner ) {
-      return;
-   }
-
-   auto& owned = _chaindb.get<resource_usage_object,by_owner>( storage.owner );
-   _chaindb.modify( owned, [&](auto& u ) {
-      if( storage.in_ram ) {
-         safe_add_delta(u.ram_owned);
-      }
-      safe_add_delta(u.storage_owned);
+      u.accumulators[STORAGE].add(delta, time_slot, config.account_usage_average_windows[STORAGE]);
    });
 }
 
-std::map<symbol_code, uint64_t> resource_limits_manager::get_account_usage(const account_name& account)const {
+std::vector<uint64_t> resource_limits_manager::get_account_usage(const account_name& account)const {
     const auto& config = _chaindb.get<resource_limits_config_object>();
     auto usage_index = _chaindb.get_index<resource_usage_object,by_owner>();
     const auto& usage = usage_index.get(account);
+    std::vector<uint64_t> ret(resources_num);
     
-    std::map<symbol_code, uint64_t> ret;
-    ret[cpu_code] = downgrade_cast<uint64_t>(integer_divide_ceil(
-                            static_cast<uint128_t>(usage.cpu_usage.value_ex) * config.account_cpu_usage_average_window, 
+    for (size_t i = 0; i < resources_num; i++) {
+        ret[i] = downgrade_cast<uint64_t>(integer_divide_ceil(
+                            static_cast<uint128_t>(usage.accumulators[i].value_ex) * config.account_usage_average_windows[i], 
                             static_cast<uint128_t>(config::rate_limiting_precision)));
-    ret[net_code] = downgrade_cast<uint64_t>(integer_divide_ceil(
-                            static_cast<uint128_t>(usage.net_usage.value_ex) * config.account_net_usage_average_window, 
-                            static_cast<uint128_t>(config::rate_limiting_precision)));
-    ret[ram_code] = usage.ram_usage;
+    }
     return ret;
 }
 
-account_storage_usage resource_limits_manager::get_account_storage_usage(const account_name& account) const {
-    auto usage_index = _chaindb.get_index<resource_usage_object,by_owner>();
-    const auto& usage = usage_index.get(account);
-
-    account_storage_usage ret;
-    ret.ram_usage = usage.ram_usage;
-    ret.ram_owned = usage.ram_owned;
-    ret.storage_usage = usage.storage_usage;
-    ret.storage_owned = usage.storage_owned;
-    return ret;
-}
-
-void resource_limits_manager::process_block_usage(uint32_t block_num) {
+void resource_limits_manager::process_block_usage(uint32_t time_slot) {
    auto state_table = _chaindb.get_table<resource_limits_state_object>();
    const auto& s = state_table.get();
    const auto& config = _chaindb.get<resource_limits_config_object>();
    state_table.modify(s, [&](resource_limits_state_object& state){
       // apply pending usage, update virtual limits and reset the pending
-
-      state.average_block_cpu_usage.add(state.pending_cpu_usage, block_num, config.cpu_limit_parameters.periods);
-      state.update_virtual_cpu_limit(config);
-      state.pending_cpu_usage = 0;
-
-      state.average_block_net_usage.add(state.pending_net_usage, block_num, config.net_limit_parameters.periods);
-      state.update_virtual_net_limit(config);
-      state.pending_net_usage = 0;
+      //block_usage_accumulators
+      for (size_t i = 0; i < resources_num; i++) {
+         state.block_usage_accumulators[i].add(state.pending_usage[i], time_slot, config.limit_parameters[i].periods);
+         state.update_virtual_limit(config, static_cast<resource_id>(i));
+         state.pending_usage[i] = 0;
+      }
    });
 }
 
-uint64_t resource_limits_manager::get_virtual_block_cpu_limit() const {
+uint64_t resource_limits_manager::get_virtual_block_limit(resource_id res) const {
    const auto& state = _chaindb.get<resource_limits_state_object>();
-   return state.virtual_cpu_limit;
+   return state.virtual_limits[res];
 }
 
-uint64_t resource_limits_manager::get_virtual_block_net_limit() const {
-   const auto& state = _chaindb.get<resource_limits_state_object>();
-   return state.virtual_net_limit;
-}
-
-uint64_t resource_limits_manager::get_block_cpu_limit() const {
+uint64_t resource_limits_manager::get_block_limit(resource_id res, const chain_config& chain_cfg) const {
    const auto& state = _chaindb.get<resource_limits_state_object>();
    const auto& config = _chaindb.get<resource_limits_config_object>();
-   return config.cpu_limit_parameters.max - state.pending_cpu_usage;
+   uint64_t usage = std::max(state.pending_usage[res], int64_t(0));
+   uint64_t max = config::max_block_usage[res];
+   EOS_ASSERT(max >= usage, chain_exception, "SYSTEM: incorrect usage");
+   return max - usage;
 }
 
-uint64_t resource_limits_manager::get_block_net_limit() const {
-   const auto& state = _chaindb.get<resource_limits_state_object>();
-   const auto& config = _chaindb.get<resource_limits_config_object>();
-   return config.net_limit_parameters.max - state.pending_net_usage;
-}
+std::vector<ratio> resource_limits_manager::get_pricelist() const {
 
-pricelist resource_limits_manager::get_pricelist() const {
-    
-    struct resource_stat {
-        symbol_code code;
-        uint64_t used_pct;
-        uint64_t capacity;
-    };
     const auto& state  = _chaindb.get<resource_limits_state_object>();
-
-    std::array<resource_stat, 3> res_stats = {{
-        {
-            .code = cpu_code,
-            .used_pct = safe_share_to_pct(state.average_block_cpu_usage.average(), state.virtual_cpu_limit),
-            .capacity = state.virtual_cpu_limit
-        },{
-            .code = net_code,
-            .used_pct = safe_share_to_pct(state.average_block_net_usage.average(), state.virtual_net_limit),
-            .capacity = state.virtual_net_limit
-        },{
-            .code = ram_code,
-            .used_pct = safe_share_to_pct(state.ram_usage, state.virtual_ram_limit),
-            .capacity = state.virtual_ram_limit
-        }
-    }};
+    const auto& config = _chaindb.get<resource_limits_config_object>();
     
-    pricelist ret;
-    uint64_t used_pct_sum = 0;
-    for (auto& r : res_stats) {
-        r.used_pct = std::max(config::min_resource_usage_pct, r.used_pct);
-        used_pct_sum += r.used_pct;
-        ret[r.code] = ratio{0ll, 1ll};
+    std::vector<uint64_t> used_pct(resources_num);
+    for (size_t i = 0; i < resources_num; i++) {
+        used_pct[i] = std::max(safe_share_to_pct(state.block_usage_accumulators[i].average(), config.limit_parameters[i].target), config::min_resource_usage_pct);
     }
+    uint64_t used_pct_sum = std::accumulate(used_pct.begin(), used_pct.end(), 0);
+
+    std::vector<ratio> ret(resources_num, ratio{0ll, 1ll});
     
     symbol_code token_code { symbol(CORE_SYMBOL).to_symbol_code() };
     const stake_param_object* param = nullptr;
@@ -303,10 +251,12 @@ pricelist resource_limits_manager::get_pricelist() const {
     if ((param = _chaindb.find<stake_param_object, by_id>(token_code.value)) && 
         (stat  = _chaindb.find<stake_stat_object, by_id>(token_code.value)) && stat->enabled && stat->total_staked != 0) {
         EOS_ASSERT(stat->total_staked > 0, chain_exception, "SYSTEM: incorrect total_staked");
-        for (auto& r : res_stats) {
-            ret[r.code] = ratio{
-                safe_prop<uint64_t>(stat->total_staked, r.used_pct, used_pct_sum), 
-                r.capacity
+        
+        for (size_t i = 0; i < resources_num; i++) {
+            auto virtual_capacity_in_window = static_cast<uint128_t>(state.virtual_limits[i]) * config.account_usage_average_windows[i];
+            ret[i] = ratio {
+                safe_prop<uint64_t>(stat->total_staked, used_pct[i], used_pct_sum), 
+                static_cast<uint64_t>(std::min(virtual_capacity_in_window, static_cast<uint128_t>(UINT64_MAX))) 
             };
         }
     }
@@ -314,24 +264,22 @@ pricelist resource_limits_manager::get_pricelist() const {
     return ret;
 }
 
-ratio resource_limits_manager::get_account_usage_ratio(account_name account, symbol_code resource_code) const {
+ratio resource_limits_manager::get_account_usage_ratio(account_name account, resource_id res) const {
     const auto resources_usage = get_account_usage(account);
     const auto price_list = get_pricelist();
 
-    const auto requested_resource_price = price_list.at(resource_code);
-    const auto requested_resource_usage = resources_usage.at(resource_code);
+    const auto requested_resource_price = price_list.at(res);
+    const auto requested_resource_usage = resources_usage.at(res);
 
     uint64_t total_usage_cost = 0;
-
-    for (const auto& resource_usage : resources_usage) {
-        const auto price = price_list.at(resource_usage.first);
-        total_usage_cost += safe_prop(resource_usage.second, price.numerator, price.denominator);
+    for (size_t i = 0; i < resources_num; i++) {
+        total_usage_cost += safe_prop(resources_usage[i], price_list[i].numerator, price_list[i].denominator);
     }
 
     return ratio{safe_prop(requested_resource_usage, requested_resource_price.numerator, requested_resource_price.denominator), total_usage_cost};
 }
 
-ratio resource_limits_manager::get_account_stake_ratio(int64_t now, const account_name& account) {
+ratio resource_limits_manager::get_account_stake_ratio(fc::time_point pending_block_time, const account_name& account, bool update_state) {
     symbol_code token_code { symbol(CORE_SYMBOL).to_symbol_code() };
 
     const stake_param_object* param = nullptr;
@@ -353,7 +301,10 @@ ratio resource_limits_manager::get_account_stake_ratio(int64_t now, const accoun
     uint64_t staked = 0;
     auto agent = agents_idx.find(agent_key(token_code, account));
     if (agent != agents_idx.end()) {
-        update_proxied(_chaindb, get_storage_payer(), now, token_code, account, false);
+        if (update_state) {
+            update_proxied(_chaindb, get_storage_payer(block_timestamp_type(pending_block_time).slot, account_name()), 
+                pending_block_time.sec_since_epoch(), token_code, account, false);
+        }
 
         auto total_funds = agent->get_total_funds();
         EOS_ASSERT(total_funds >= 0, chain_exception, "SYSTEM: incorrect total_funds value");
@@ -365,45 +316,33 @@ ratio resource_limits_manager::get_account_stake_ratio(int64_t now, const accoun
     return ratio{staked, static_cast<uint64_t>(stat->total_staked)};
 }
 
-account_balance resource_limits_manager::get_account_balance(int64_t now, const account_name& account, const pricelist& prices) {
+uint64_t resource_limits_manager::get_account_balance(fc::time_point pending_block_time, const account_name& account, const std::vector<ratio>& prices, bool update_state) {
 
-    static constexpr account_balance no_limits{UINT64_MAX, UINT64_MAX};
-
-    const auto account_stake_ratio = get_account_stake_ratio(now, account);
+    const auto account_stake_ratio = get_account_stake_ratio(pending_block_time, account, update_state);
     const auto staked = account_stake_ratio.numerator;
     const auto total_staked = account_stake_ratio.denominator;
 
     if (total_staked == 0) {
-        return no_limits;
+        return UINT64_MAX;
     }
 
     const auto& state  = _chaindb.get<resource_limits_state_object>();
-    auto max_ram_usage = safe_prop<uint64_t>(state.virtual_ram_limit, staked, total_staked);
     auto res_usage = get_account_usage(account);
-    
-    EOS_ASSERT(max_ram_usage >= res_usage[ram_code], ram_usage_exceeded,
-        "account ${a} has insufficient staked tokens (${s}) for use ram.\n ram usage ${ur};\n total staked ${ts};\n total ram ${tr};\n max ram usage ${mr}", 
-        ("a", account)("s",staked)("ur", res_usage[ram_code])("ts", total_staked)("tr", state.virtual_ram_limit)("mr", max_ram_usage));
-    
+        
     uint64_t cost = 0;
-    for (auto& u : res_usage) {
-        auto price_itr = prices.find(u.first);
-        EOS_ASSERT(price_itr != prices.end(), transaction_exception, "SYSTEM: resource does not exist");
-        auto add = safe_prop(u.second, price_itr->second.numerator, price_itr->second.denominator);
+    for (size_t i = 0; i < resources_num; i++) {
+        auto add = safe_prop(res_usage[i], prices[i].numerator, prices[i].denominator);
         cost = (UINT64_MAX - cost) > add ? cost + add : UINT64_MAX;
     }
     
     EOS_ASSERT(staked >= cost, resource_exhausted_exception, 
-        "account ${a} has insufficient staked tokens (${s}).\n usage: cpu ${uc}, net ${un}, ram ${ur}; \n prices: cpu ${pc}, net ${pn}, ram ${pr};\n cost ${c}", 
+        "account ${a} has insufficient staked tokens (${s}).\n usage: cpu ${uc}, net ${un}, ram ${ur}, storage ${us}; \n prices: cpu ${pc}, net ${pn}, ram ${pr}, storage ${ps};\n cost ${c}", 
         ("a", account)("s",staked)
-        ("uc", res_usage[cpu_code])          ("un", res_usage[net_code])          ("ur", res_usage[ram_code])
-        ("pc", prices.find(cpu_code)->second)("pn", prices.find(net_code)->second)("pr", prices.find(ram_code)->second)
+        ("uc", res_usage[CPU])("un", res_usage[NET])("ur", res_usage[RAM])("us", res_usage[STORAGE])
+        ("pc", prices   [CPU])("pn", prices   [NET])("pr", prices   [RAM])("ps", prices   [STORAGE])
         ("c", cost));
 
-    return account_balance {
-        .stake = staked - cost,
-        .ram =   max_ram_usage - res_usage[ram_code]
-    };
+    return staked - cost;
 }
 
 } } } /// eosio::chain::resource_limits

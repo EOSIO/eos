@@ -127,7 +127,7 @@ namespace cyberway { namespace chaindb {
         } else if (!!transaction_ctx) {
             transaction_ctx->add_storage_usage(*this);
         } else if (!!resource_mng) {
-            resource_mng->add_storage_usage(*this);
+            resource_mng->add_storage_usage(payer, delta, time_slot);
         }
     }
 

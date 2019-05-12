@@ -216,6 +216,7 @@ namespace eosio { namespace chain {
          account_name         fork_db_head_block_producer()const;
 
          time_point              pending_block_time()const;
+         uint32_t                pending_block_slot()const;
          block_state_ptr         pending_block_state()const;
          optional<block_id_type> pending_producer_block_id()const;
 
