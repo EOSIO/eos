@@ -216,8 +216,9 @@ namespace eosio { namespace chain {
             
             std::map<account_name, limit> limits;
             uint64_t min_cpu = UINT64_MAX;
+            bool explicit_cpu_time = false;
         public:
-            void init(resource_limits_manager& rl, const flat_set<account_name>& accounts, fc::time_point now);
+            void init(bool, resource_limits_manager& rl, const flat_set<account_name>& accounts, fc::time_point now);
             bool update_ram_usage(const storage_payer_info&);
             void add_net_usage(int64_t delta);
             void check_cpu_usage(int64_t usage) const;
