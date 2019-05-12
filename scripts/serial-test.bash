@@ -1,5 +1,5 @@
-#!/usr/bin/env bash
-set -ieo pipefail
+#!/bin/bash
+set -e # exit on failure of any "simple" command (excludes &&, ||, or | chains)
 # Load eosio specific helper functions
 . ./scripts/helpers/eosio.bash
 echo "+++ Extracting build directory"
