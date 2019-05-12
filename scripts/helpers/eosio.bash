@@ -349,6 +349,7 @@ function ensure-yum-packages() {
         done
     else
         echo " - No required package dependencies to install."
+        echo ""
     fi
 }
 
@@ -407,6 +408,9 @@ function ensure-brew-packages() {
                 * ) echo "Please type 'y' for yes or 'n' for no.";;
             esac
         done
+    else
+        echo " - No required package dependencies to install."
+        echo ""
     fi
 }
 
@@ -446,7 +450,7 @@ function ensure-apt-packages() {
             esac
         done
     else
-        echo " - No required dependencies to install."
+        echo " - No required package dependencies to install."
         echo ""
     fi
 }
