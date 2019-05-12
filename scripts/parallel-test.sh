@@ -3,8 +3,8 @@ set -e # exit on failure of any "simple" command (excludes &&, ||, or | chains)
 # prepare environment
 PATH=$PATH:~/opt/mongodb/bin
 echo "Extracting build directory..."
-[[ -z "${1}" ]] && tar -zxf build.tar.gz || tar -xzf $1
-cd /data/job/build
+[[ -f build.tar.gz ]] && tar -xzf build.tar.gz
+[[ $(uname) == "Darwin" ]] && cd /data/job/eos/build || cd /data/job/build
 # run tests
 echo "Running tests..."
 CPU_CORES=$(getconf _NPROCESSORS_ONLN)
