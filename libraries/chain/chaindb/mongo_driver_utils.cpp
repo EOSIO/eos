@@ -27,6 +27,7 @@ namespace cyberway { namespace chaindb {
 
     using eosio::chain::name;
     using eosio::chain::symbol;
+    using eosio::chain::symbol_info;
 
     using std::string;
 
@@ -170,7 +171,38 @@ namespace cyberway { namespace chaindb {
         return dst;
     }
 
-    primary_key_t get_pk_value(const table_info& table, const bsoncxx::document::view& row) try {
+    template <typename Result, typename Exception>
+    Result get_typed_value(const type_name& type, const element& elem) {
+        switch (type.front()) {
+            case 'i': // int64
+                return static_cast<Result>(elem.get_int64().value);
+            case 'u': // uint64
+                return static_cast<Result>(std::stoull(elem.get_decimal128().value.to_string()));
+            case 'n': // name
+                return static_cast<Result>(name(elem.get_utf8().value.data()).value);
+            case 's':
+                if (is_symbol_type(type)) {
+                    auto doc = elem.get_document().value;
+                    auto itr = doc.begin();
+                    CYBERWAY_ASSERT(itr != doc.end() && !itr->key().compare(names::decs_part_name), Exception, "No 'decs' part of symbol");
+                    auto decs = std::stoull(itr->get_decimal128().value.to_string());
+                    CYBERWAY_ASSERT(decs <= symbol::max_precision, Exception, "Wrong value in 'decs' part of symbol");
+                    ++itr;
+                    CYBERWAY_ASSERT(itr != doc.end() && !itr->key().compare(names::sym_part_name), Exception, "No 'sym' part of symbol");
+                    auto sym = itr->get_utf8().value.to_string();
+                    ++itr;
+                    CYBERWAY_ASSERT(itr == doc.end(), Exception, "Additional parts other than 'decs' and sym' for symbol");
+                    return static_cast<Result>(symbol(static_cast<uint8_t>(decs), sym.c_str()).value());
+                } else { // symbol_code
+                    return static_cast<Result>(symbol(0, elem.get_utf8().value.data()).to_symbol_code().value);
+                }
+
+            default:
+                CYBERWAY_ASSERT(false, Exception, "Unknown type ${type}", ("type", type));
+        }
+    }
+
+    primary_key_t get_pk_value(const table_info& table, const document_view& row) try {
         document_view view = row;
         auto& pk_order = *table.pk_order;
         auto pos = pk_order.path.size();
@@ -182,18 +214,7 @@ namespace cyberway { namespace chaindb {
 
             --pos;
             if (0 == pos) {
-                switch (pk_order.type.front()) {
-                    case 'i': // int64
-                        return static_cast<primary_key_t>(itr->get_int64().value);
-                    case 'u': // uint64
-                        return static_cast<primary_key_t>(std::stoull(itr->get_decimal128().value.to_string()));
-                    case 'n': // name
-                        return name(itr->get_utf8().value.data()).value;
-                    case 's': // symbol_code
-                        return symbol(0, itr->get_utf8().value.data()).to_symbol_code();
-                    default:
-                        break;
-                }
+                return get_typed_value<primary_key_t, driver_primary_key_exception>(pk_order.type, *itr);
             } else {
                 view = itr->get_document().value;
             }
@@ -650,26 +671,39 @@ namespace cyberway { namespace chaindb {
         return doc;
     }
 
-    sub_document& append_pk_value(sub_document& doc, const table_info& table, const primary_key_t pk) {
-        auto& pk_field = table.pk_order->field;
-        switch (table.pk_order->type.front()) {
+    template<typename Exception, typename Value>
+    void append_typed_value(
+        sub_document& doc, const table_info& table, const field_name& field, const type_name& type, const Value& value
+    ) {
+        switch (type.front()) {
             case 'i': // int64
-                doc.append(kvp(pk_field, static_cast<int64_t>(pk)));
+                doc.append(kvp(field, static_cast<int64_t>(value)));
                 break;
             case 'u': // uint64
-                doc.append(kvp(pk_field, to_decimal128(pk)));
+                doc.append(kvp(field, to_decimal128(value)));
                 break;
             case 'n': // name
-                doc.append(kvp(pk_field, name(pk).to_string()));
+                doc.append(kvp(field, name(value).to_string()));
                 break;
-            case 's': // symbol_code
-                doc.append(kvp(pk_field, symbol(pk << 8).name()));
+            case 's':
+                if (is_symbol_type(type)) { // symbol
+                    doc.append(kvp(field, [&](sub_document sub_doc){
+                        build_document(doc, variant(symbol_info(symbol(value))).get_object());
+                    }));
+                } else {                    // symbol_code
+                    doc.append(kvp(field, symbol(value << 8).name()));
+                }
                 break;
             default:
-                CYBERWAY_ASSERT(false, driver_primary_key_exception,
-                    "Invalid type ${type} for the primary key ${pk} in the table ${table}",
-                    ("type", table.pk_order->type)("pk", pk)("table", get_full_table_name(table)));
+                CYBERWAY_ASSERT(false, Exception,
+                    "Invalid type ${type} for the ${key} ${value} in the table ${table}",
+                    ("type", type)("field", field)("value", value)("table", get_full_table_name(table)));
         }
+    }
+
+    sub_document& append_pk_value(sub_document& doc, const table_info& table, const primary_key_t pk) {
+        append_typed_value<driver_primary_key_exception>(
+            doc, table, table.pk_order->field, table.pk_order->type, pk);
         return doc;
     }
 

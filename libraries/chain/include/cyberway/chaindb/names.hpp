@@ -39,9 +39,15 @@ namespace cyberway { namespace chaindb {
         static const string asc_order;
         static const string desc_order;
 
+        static const string decs_part_name;
+        static const string sym_part_name;
+
         static constexpr uint64_t primary_index = N(primary);
     }; // struct names
 
+    ///----
+
+    bool is_symbol_type(const type_name&);
 
     ///----
 

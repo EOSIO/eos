@@ -199,10 +199,13 @@ namespace cyberway { namespace chaindb {
                 ("table", get_table_name(table))("index", get_index_name(p)));
 
             auto& k = p.orders.front();
-            CYBERWAY_ASSERT(k.type == "int64" || k.type == "uint64" || k.type == "name" || k.type == "symbol_code",
+            CYBERWAY_ASSERT(
+                k.type == "int64" || k.type == "uint64" ||
+                k.type == "name"  ||
+                k.type == "symbol_code" || k.type == "symbol",
                 invalid_primary_key_exception,
-                "The field ${field} of the table ${table} is declared as primary "
-                "and it should has type int64, uint64, name or symbol_code",
+                "The field ${field} of the table ${table} is declared as primary and it should has type: "
+                "int64, uint64, name, symbol_code or symbol",
                 ("field", k.field)("table", get_table_name(table)));
         }
     }; // struct index_builder

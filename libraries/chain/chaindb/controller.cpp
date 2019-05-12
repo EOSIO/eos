@@ -22,6 +22,7 @@ namespace cyberway { namespace chaindb {
 
     using eosio::chain::name;
     using eosio::chain::symbol;
+    using eosio::chain::symbol_info;
 
     using fc::variant;
     using fc::variants;
@@ -93,8 +94,12 @@ namespace cyberway { namespace chaindb {
                 case 'n': // name
                     value = variant(name(pk).to_string());
                     break;
-                case 's': // symbol_code
-                    value = variant(symbol(pk << 8).name());
+                case 's':
+                    if (is_symbol_type(pk_order.type)) { // symbol
+                        value = variant(symbol_info(symbol(pk)));
+                    } else {                             // symbol_code
+                        value = variant(symbol(pk << 8).name());
+                    }
                     break;
                 default:
                     CYBERWAY_ASSERT(false, invalid_primary_key_exception,
@@ -589,7 +594,7 @@ namespace cyberway { namespace chaindb {
 
             auto validate_type = [&](const bool test) {
                 CYBERWAY_ASSERT(test, primary_key_exception,
-                    "Wrong value type '${type} for the primary key in the row ${row}"
+                    "Wrong value type '${type}' for the primary key in the row ${row} "
                     "from the table ${table} for the scope '${scope}'",
                     ("type", type)("row", row)("table", get_full_table_name(table))("scope", get_scope_name(table)));
             };
@@ -618,9 +623,24 @@ namespace cyberway { namespace chaindb {
                     validate_value(name(value->as_string()).value == pk);
                     break;
                 }
-                case 's': { // symbol_code
-                    validate_type(variant::type_id::string_type == type);
-                    validate_value(symbol(0, value->as_string().c_str()).to_symbol_code() == pk);
+                case 's': {
+                    if (is_symbol_type(pk_order.type)) { // symbol
+                        validate_type(variant::type_id::object_type == type);
+
+                        auto& decs = (*value)[names::decs_part_name.c_str()];
+                        type = decs.get_type();
+                        validate_type(variant::type_id::uint64_type == type);
+                        validate_value(decs.as_uint64() <= symbol::max_precision);
+
+                        auto& sym  = (*value)[names::sym_part_name.c_str()];
+                        type = sym.get_type();
+                        validate_type(variant::type_id::string_type == type);
+
+                        validate_value(symbol(decs.as_uint64(), sym.get_string().c_str()).value() == pk);
+                    } else {                             // symbol_code
+                        validate_type(variant::type_id::string_type == type);
+                        validate_value(symbol(0, value->as_string().c_str()).to_symbol_code() == pk);
+                    }
                     break;
                 }
                 default:
