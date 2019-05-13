@@ -43,6 +43,7 @@ echo "+++ :compression: Extracting Build Directory"
 tar -zxf build.tar.gz
 echo "+++ :package: Starting Package Build"
 cd build/packages
+chmod 755 ./*.sh
 ./generate_package.sh "$PACKAGE_TYPE"
 echo '+++ :arrow_up: Uploading Artifacts'
 cd ../..
