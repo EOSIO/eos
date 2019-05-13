@@ -5,7 +5,6 @@ env:
   MAC_TAG: "eosio_2-4"
 
 steps:
-
   - label: ":darwin: Ensure Mojave Anka Template Dependency Tag/Layer Exists"
     command:
       - "git clone git@github.com:EOSIO/mac-anka-fleet.git"
@@ -22,26 +21,7 @@ steps:
       PROJECT_TAG: "${MAC_TAG}"
     timeout: 60
 
-  # - trigger: "mac-anka-fleet"
-  #   label: ":anka: Ensure Mojave Anka Template Tag Exists"
-  #   branches: "*"
-  #   async: false
-  #   build:
-  #     branch: "master"
-  #     env:
-  #       REPO: "${BUILDKITE_REPO}"
-  #       REPO_COMMIT: "${BUILDKITE_COMMIT}"
-  #       CHECKSUMABLE: "${CHECKSUMABLE}"
-  #       TEMPLATE: "${ANKA_MOJAVE_TEMPLATE}"
-  #       TEMPLATE_TAG: "${ANKA_TEMPLATE_TAG}"
-  #       TAG_COMMANDS: "CLONED_REPO_DIR/scripts/eosio_build.sh -y -P -m" # CLONED_REPO_DIR IS REQUIRED and is where the repo is always cloned into
-  #       PROJECT_TAG: "${MAC_TAG}"
-
   - wait
-
-  ############################
-  # BUILDING #################
-  ############################
 
   - label: ":darwin: [Darwin] Mojave Build"
     command:
@@ -149,11 +129,7 @@ steps:
 
   - wait
 
-  ################################
-  # TESTS ########################
-  ################################
-
-  # MOJAVE #
+  # MacOS Mojave
   - label: ":darwin: [Darwin] Mojave Tests"
     command:
       - "tar -xzf /Network/NAS/MAC_FLEET/BUILDKITE/artifacts/${ANKA_MOJAVE_TEMPLATE}-${BUILDKITE_PIPELINE_SLUG}-${BUILDKITE_BUILD_ID}.tar.gz"
@@ -190,7 +166,7 @@ steps:
         wait-network: true
     timeout: 120
 
-  # AmazonLinux #
+  # Amazon Linux 2
   - label: ":aws: Amazon Linux 2 Tests"
     command:
       - "echo \"--- :arrow_down: Downloading Build Directory\" && buildkite-agent artifact download \"build.tar.gz\" . --step \":aws: Amazon Linux 2 Build\""
@@ -232,7 +208,7 @@ steps:
         workdir: /data/job
     timeout: 60
 
-  # CentOS #
+  # CentOS
   - label: ":centos: CentOS 7 Tests"
     command:
       - "echo \"--- :arrow_down: Downloading Build Directory\" && buildkite-agent artifact download \"build.tar.gz\" . --step \":centos: CentOS 7 Build\""
@@ -273,7 +249,7 @@ steps:
         workdir: /data/job
     timeout: 60
 
-  # Ubuntu #
+  # Ubuntu 16.04
   - label: ":ubuntu: Ubuntu 16.04 Tests"
     command:
       - "echo \"--- :arrow_down: Downloading Build Directory\" && buildkite-agent artifact download \"build.tar.gz\" . --step \":ubuntu: Ubuntu 16.04 Build\""
@@ -314,6 +290,7 @@ steps:
         workdir: /data/job
     timeout: 60
 
+  # Ubuntu 18.04
   - label: ":ubuntu: Ubuntu 18.04 Tests"
     command:
       - "echo \"--- :arrow_down: Downloading Build Directory\" && buildkite-agent artifact download \"build.tar.gz\" . --step \":ubuntu: Ubuntu 18.04 Build\""
@@ -354,7 +331,7 @@ steps:
         workdir: /data/job
     timeout: 60
 
-  - wait:
+  - wait: # Test Metrics
     continue_on_failure: true
 
   - command: |
@@ -493,6 +470,7 @@ steps:
     artifact_paths:
       - "build/packages/eosio.rb"
     timeout: 5
+
   - command: | # Git Submodule Regression Check
         echo "+++ :microscope: Running git submodule regression check" && \
         ./scripts/submodule_check.sh
@@ -500,4 +478,3 @@ steps:
     agents:
       queue: "automation-large-builder-fleet"
     timeout: 5
-
