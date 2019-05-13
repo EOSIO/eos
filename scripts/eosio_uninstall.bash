@@ -75,7 +75,7 @@ if [[ ! -z $@ ]] && [[ ! $@ =~ [[:space:]]?--force[[:space:]]? ]] && [[ ! $@ =~ 
 # If eosio folder exist, add it to the INSTALL_PATHS for deletion
 [[ -d "${HOME}/opt/eosio" ]] && INSTALL_PATHS+=("$HOME/opt/eosio")
 # As of 1.8.0, we're using a versioned directories under home: https://github.com/EOSIO/eos/issues/6940
-[[ -d "${EOSIO_HOME}" ]] && INSTALL_PATHS+=("${EOSIO_HOME}") # EOSIO_HOME set in .environment
+[[ -d "${EOSIO_INSTALL_DIR}" ]] && INSTALL_PATHS+=("${EOSIO_INSTALL_DIR}") # EOSIO_INSTALL_DIR set in .environment
 
 # Removal
 [[ ! -z "${EOSIO_LOCATION}" ]] && printf "[EOSIO Installation Found: ${EOSIO_LOCATION}]\n"

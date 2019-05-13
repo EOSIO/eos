@@ -41,8 +41,8 @@ function ensure-sudo() {
 }
 
 function previous-install-prompt() {
-  if [[ -d $EOSIO_HOME ]]; then
-    echo "EOSIO has already been installed into ${EOSIO_HOME}... It's suggested that you eosio_uninstall.bash before re-running this script."
+  if [[ -d $EOSIO_INSTALL_DIR ]]; then
+    echo "EOSIO has already been installed into ${EOSIO_INSTALL_DIR}... It's suggested that you eosio_uninstall.bash before re-running this script."
     while true; do
       [[ $NONINTERACTIVE == false ]] && read -p "${COLOR_YELLOW}Do you wish to proceed anyway? (y/n)${COLOR_NC} " PROCEED
       case $PROCEED in

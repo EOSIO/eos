@@ -13,7 +13,7 @@ TEST_COUNT=$($CTEST_BIN -N -LE _tests | grep -i 'Total Tests: ' | cut -d ':' -f 
 set +e # defer ctest error handling to end
 CORES=$(getconf _NPROCESSORS_ONLN)
 # interactive mode is necessary for our NP tests to function
-execute $CTEST_BIN -j $CORES -LE _tests --output-on-failure -T Test --interactive-debug-mode 1
+execute $CTEST_BIN -j $CORES -LE _tests --output-on-failure -T Test
 EXIT_STATUS=$?
 [[ "$EXIT_STATUS" == 0 ]] && set -e
 # Prepare tests for artifact upload

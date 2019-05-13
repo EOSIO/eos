@@ -18,7 +18,7 @@ TEST_COUNT=$($CTEST_BIN -N -LE _tests | grep -i 'Total Tests: ' | cut -d ':' -f 
 [[ $TEST_COUNT > 0 ]] && echo "$TEST_COUNT tests found." || (echo "ERROR: No tests registered with ctest! Exiting..." && exit 1)
 set +e # defer ctest error handling to end
 # We cannot use interactive mode for ctest nonparallelizable tests
-execute $CTEST_BIN -L nonparallelizable_tests --output-on-failure -T Test --interactive-debug-mode 1
+execute $CTEST_BIN -L nonparallelizable_tests --output-on-failure -T Test
 EXIT_STATUS=$?
 [[ $EXIT_STATUS == 0 ]] && set -e
 echo "+++ Uploading artifacts"

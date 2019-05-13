@@ -53,7 +53,7 @@ if $INSTALL_MONGO; then
 		&& cd mongo-c-driver-$MONGO_C_DRIVER_VERSION \
 		&& mkdir -p cmake-build \
 		&& cd cmake-build \
-		&& $CMAKE -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$EOSIO_HOME -DENABLE_BSON=ON -DENABLE_SSL=OPENSSL -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF -DENABLE_STATIC=ON -DENABLE_ICU=OFF -DENABLE_SNAPPY=OFF $PINNED_TOOLCHAIN .. \
+		&& $CMAKE -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$EOSIO_INSTALL_DIR -DENABLE_BSON=ON -DENABLE_SSL=OPENSSL -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF -DENABLE_STATIC=ON -DENABLE_ICU=OFF -DENABLE_SNAPPY=OFF $PINNED_TOOLCHAIN .. \
 		&& make -j${JOBS} \
 		&& make install \
 		&& cd ../.. \
@@ -71,7 +71,7 @@ if $INSTALL_MONGO; then
 		&& sed -i 's/\"maxAwaitTimeMS\", count/\"maxAwaitTimeMS\", static_cast<int64_t>(count)/' src/mongocxx/options/change_stream.cpp \
 		&& sed -i 's/add_subdirectory(test)//' src/mongocxx/CMakeLists.txt src/bsoncxx/CMakeLists.txt \
 		&& cd build \
-		&& $CMAKE -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX='$EOSIO_HOME' -DCMAKE_PREFIX_PATH='$EOSIO_HOME' $PINNED_TOOLCHAIN .. \
+		&& $CMAKE -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX='$EOSIO_INSTALL_DIR' -DCMAKE_PREFIX_PATH='$EOSIO_INSTALL_DIR' $PINNED_TOOLCHAIN .. \
 		&& make -j${JOBS} VERBOSE=1 \
 		&& make install \
 		&& cd ../.. \

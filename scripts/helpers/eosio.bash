@@ -32,7 +32,7 @@ function setup() {
         echo "BOOST_LOCATION: ${BOOST_LOCATION}"
         echo "INSTALL_LOCATION: ${INSTALL_LOCATION}"
         echo "BUILD_DIR: ${BUILD_DIR}"
-        echo "EOSIO_HOME: ${EOSIO_HOME}"
+        echo "EOSIO_INSTALL_DIR: ${EOSIO_INSTALL_DIR}"
         echo "NONINTERACTIVE: ${NONINTERACTIVE}"
         echo "PROCEED: ${PROCEED}"
         echo "ENABLE_COVERAGE_TESTING: ${ENABLE_COVERAGE_TESTING}"
@@ -151,7 +151,7 @@ function ensure-cmake() {
         curl -LO https://cmake.org/files/v${CMAKE_VERSION_MAJOR}.${CMAKE_VERSION_MINOR}/cmake-${CMAKE_VERSION}.tar.gz \
         && tar -xzf cmake-${CMAKE_VERSION}.tar.gz \
         && cd cmake-${CMAKE_VERSION} \
-        && ./bootstrap --prefix=${EOSIO_HOME} \
+        && ./bootstrap --prefix=${EOSIO_INSTALL_DIR} \
         && make -j${JOBS} \
         && make install \
         && cd .. \

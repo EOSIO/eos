@@ -49,10 +49,10 @@ TEST_LABEL="[helpers]"
   run previous-install-prompt
   [[ -z $(echo "${output}") ]] || exit
   # Exists, prompt
-  mkdir -p $EOSIO_HOME
+  mkdir -p $EOSIO_INSTALL_DIR
   run previous-install-prompt
-  [[ ! -z $(echo "${output}" | grep "EOSIO has already been installed into ${EOSIO_HOME}") ]] || exit
-  rm -rf $EOSIO_HOME
+  [[ ! -z $(echo "${output}" | grep "EOSIO has already been installed into ${EOSIO_INSTALL_DIR}") ]] || exit
+  rm -rf $EOSIO_INSTALL_DIR
 }
 
 @test "${TEST_LABEL} > TEMP_DIR" {
