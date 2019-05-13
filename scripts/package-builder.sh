@@ -12,7 +12,7 @@ else
     if [[ "$ID_LIKE" == 'rhel fedora' ]]; then
         echo 'Fedora family detected, building for RPM.'
         ARTIFACT='build/packages/*.rpm'
-        PACKAGE_TYPE='brew'
+        PACKAGE_TYPE='rpm'
         mkdir -p /root/rpmbuild/BUILD
         mkdir -p /root/rpmbuild/BUILDROOT
         mkdir -p /root/rpmbuild/RPMS
@@ -28,8 +28,7 @@ else
         echo '+++ :no_entry: ERROR: Could not determine which operating system this script is running on!'
         echo '$ uname'
         uname
-        echo '$ echo $ID_LIKE'
-        echo $ID_LIKE
+        echo "ID_LIKE=\"$ID_LIKE\""
         echo '$ cat /etc/os-release'
         cat /etc/os-release
         echo 'Exiting...'
