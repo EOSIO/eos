@@ -334,6 +334,7 @@ namespace cyberway { namespace chaindb {
             CYBERWAY_SESSION_ASSERT(tables_.empty(), "Cannot set revision while there is an existing undo stack.");
             revision_ = rev;
             tail_revision_ = rev;
+            stage_ = undo_stage::Unknown;
         }
 
         revision_t start_undo_session(bool enabled) {
@@ -393,9 +394,11 @@ namespace cyberway { namespace chaindb {
         }
 
         void commit(const revision_t commit_revision) {
-            CYBERWAY_SESSION_ASSERT(tail_revision_ <= commit_revision,
-                "Wrong commit revision ${tail_revision} > ${commit_revision}",
-                ("tail_revision", tail_revision_)("commit_revision", commit_revision));
+            if (commit_revision <= tail_revision_) {
+                // happens on replaying ...
+                return;
+            }
+
             for_tables([&](auto& table){
                 commit(table, commit_revision);
             });
@@ -652,7 +655,7 @@ namespace cyberway { namespace chaindb {
 
             // Only one stack item
             if (table.size() == 1) {
-                if (state.revision() > tail_revision_) {
+                if (state.revision() - 1 > tail_revision_) {
                     squash_state(table, state);
                 } else {
                     remove_state(table, state);

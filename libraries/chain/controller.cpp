@@ -383,11 +383,16 @@ struct controller_impl {
             ("s", start_block_num)("n", blog_head->block_num()) );
 
       auto start = fc::time_point::now();
+      auto skip_session = self.skip_db_sessions( controller::block_status::irreversible );
       while( auto next = blog.read_block_by_num( head->block_num + 1 ) ) {
-         auto session = chaindb.start_undo_session(true);
-         session.push();
+         if( skip_session ) {
+            set_revision( next->block_num() );
+         }
          replay_push_block( next, controller::block_status::irreversible );
          if( next->block_num() % 100 == 0 ) {
+            if( next->block_num() % 10000 && skip_session ) {
+               chaindb.apply_all_changes();
+            }
             std::cerr << std::setw(10) << next->block_num() << " of " << blog_head->block_num() <<"\r";
             if( shutdown() ) break;
          }
@@ -395,11 +400,12 @@ struct controller_impl {
       std::cerr<< "\n";
       ilog( "${n} blocks replayed", ("n", head->block_num - start_block_num) );
 
-// TODO: Removed by CyberWay
-//      // if the irreverible log is played without undo sessions enabled, we need to sync the
-//      // revision ordinal to the appropriate expected value here.
-//      if( self.skip_db_sessions( controller::block_status::irreversible ) )
-//         set_revision(head->block_num);
+      // if the irreverible log is played without undo sessions enabled, we need to sync the
+      // revision ordinal to the appropriate expected value here.
+      if( skip_session ) {
+         chaindb.apply_all_changes();
+         set_revision( head->block_num );
+      }
 
       int rev = 0;
       auto total = blog_head->block_num() + reversible_blocks.get_index<reversible_block_index>().indices().size();
