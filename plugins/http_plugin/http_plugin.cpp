@@ -146,7 +146,7 @@ namespace eosio {
 
          uint16_t                                    thread_pool_size = 2;
          optional<eosio::chain::named_thread_pool>   thread_pool;
-         std::atomic<int64_t>                        bytes_in_flight{0};
+         std::atomic<size_t>                         bytes_in_flight{0};
          size_t                                      max_bytes_in_flight = 0;
 
          optional<tcp::endpoint>  https_listen_endpoint;
