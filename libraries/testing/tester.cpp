@@ -951,18 +951,17 @@ namespace eosio { namespace testing {
    }
 
 
-   vector<producer_key> base_tester::get_producer_keys( const vector<account_name>& producer_names )const {
+   vector<producer_authority> base_tester::get_producer_authorities( const vector<account_name>& producer_names )const {
        // Create producer schedule
-       vector<producer_key> schedule;
+       vector<producer_authority> schedule;
        for (auto& producer_name: producer_names) {
-           producer_key pk = { producer_name, get_public_key( producer_name, "active" )};
-           schedule.emplace_back(pk);
+          schedule.emplace_back(producer_authority{ producer_name, block_signing_authority_v0{1, {{ get_public_key( producer_name, "active" ), 1}} } });
        }
        return schedule;
    }
 
    transaction_trace_ptr base_tester::set_producers(const vector<account_name>& producer_names) {
-      auto schedule = get_producer_keys( producer_names );
+      auto schedule = get_producer_authorities( producer_names );
 
       return push_action( config::system_account_name, N(setprods), config::system_account_name,
                           fc::mutable_variant_object()("schedule", schedule));

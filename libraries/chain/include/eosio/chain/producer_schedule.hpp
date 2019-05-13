@@ -3,6 +3,7 @@
 #include <eosio/chain/types.hpp>
 #include <chainbase/chainbase.hpp>
 #include <eosio/chain/authority.hpp>
+#include <eosio/chain/snapshot.hpp>
 
 namespace eosio { namespace chain {
 
@@ -76,6 +77,11 @@ namespace eosio { namespace chain {
    };
 
    struct shared_block_signing_authority_v0 {
+      shared_block_signing_authority_v0( const shared_block_signing_authority_v0& ) = default;
+      shared_block_signing_authority_v0( shared_block_signing_authority_v0&& ) = default;
+      shared_block_signing_authority_v0& operator= ( shared_block_signing_authority_v0 && ) = default;
+      shared_block_signing_authority_v0& operator= ( const shared_block_signing_authority_v0 & ) = default;
+
       shared_block_signing_authority_v0( chainbase::allocator<char> alloc )
       :keys(alloc){}
 
@@ -93,8 +99,19 @@ namespace eosio { namespace chain {
    using shared_block_signing_authority = static_variant<shared_block_signing_authority_v0>;
 
    struct shared_producer_authority {
-      name                           name;
-      shared_block_signing_authority authority;
+      shared_producer_authority() = default;
+      shared_producer_authority( const shared_producer_authority& ) = default;
+      shared_producer_authority( shared_producer_authority&& ) = default;
+      shared_producer_authority& operator= ( shared_producer_authority && ) = default;
+      shared_producer_authority& operator= ( const shared_producer_authority & ) = default;
+
+      shared_producer_authority( const name& name, shared_block_signing_authority&& authority )
+      :name(name)
+      ,authority(std::forward<shared_block_signing_authority>(authority))
+      {}
+
+      name                                     name;
+      shared_block_signing_authority           authority;
 
       friend bool operator == ( const shared_producer_authority& lhs, const shared_producer_authority& rhs ) {
          return tie( lhs.name, lhs.authority ) == tie( rhs.name, rhs.authority );
@@ -150,13 +167,11 @@ namespace eosio { namespace chain {
       template<>
       struct shared_converter<producer_authority> {
          static shared_producer_authority convert (chainbase::allocator<char> alloc, const producer_authority& src) {
-            shared_producer_authority result;
-            result.name = src.name;
-            result.authority = src.authority.visit([&result, &alloc](const auto& a) {
+            auto authority = src.authority.visit([&alloc](const auto& a) {
                 return shared_convert(alloc, a);
             });
 
-            return result;
+            return shared_producer_authority(src.name, std::move(authority));
          }
 
       };
@@ -166,7 +181,7 @@ namespace eosio { namespace chain {
          static producer_authority convert (const shared_producer_authority& src) {
             producer_authority result;
             result.name = src.name;
-            result.authority = src.authority.visit([&result](const auto& a) {
+            result.authority = src.authority.visit([](const auto& a) {
                return shared_convert(a);
             });
 
@@ -188,6 +203,11 @@ namespace eosio { namespace chain {
          for( const auto& p : old.producers )
             producers.emplace_back(producer_authority{ p.producer_name, block_signing_authority_v0{ 1, {{p.block_signing_key, 1}} } });
       }
+
+      producer_authority_schedule( uint32_t version,  std::initializer_list<producer_authority> producers )
+      :version(version)
+      ,producers(producers)
+      {}
 
       uint32_t                                       version = 0; ///< sequentially incrementing version number
       vector<producer_authority>                     producers;
@@ -222,7 +242,7 @@ namespace eosio { namespace chain {
       producer_schedule_change_extension(const producer_schedule_change_extension&) = default;
       producer_schedule_change_extension( producer_schedule_change_extension&& ) = default;
 
-      producer_schedule_change_extension( producer_authority_schedule&& sched )
+      producer_schedule_change_extension( const producer_authority_schedule& sched )
       :producer_authority_schedule(sched) {}
    };
 
@@ -231,6 +251,12 @@ namespace eosio { namespace chain {
    struct shared_producer_authority_schedule {
       shared_producer_authority_schedule( chainbase::allocator<char> alloc )
       :producers(alloc){}
+
+      shared_producer_authority_schedule( const shared_producer_authority_schedule& ) = default;
+      shared_producer_authority_schedule( shared_producer_authority_schedule&& ) = default;
+      shared_producer_authority_schedule& operator= ( shared_producer_authority_schedule && ) = default;
+      shared_producer_authority_schedule& operator= ( const shared_producer_authority_schedule & ) = default;
+
 
       shared_producer_authority_schedule& operator=( const producer_authority_schedule& a ) {
          version = a.version;
@@ -262,6 +288,21 @@ namespace eosio { namespace chain {
       shared_vector<shared_producer_authority>       producers;
    };
 
+   inline bool operator == ( const producer_authority& pa, const shared_producer_authority& pb )
+   {
+      if(pa.name != pb.name) return false;
+      if(pa.authority.which() != pb.authority.which()) return false;
+
+      bool authority_matches = pa.authority.visit([&pb]( const auto& lhs ){
+         return pb.authority.visit( [&lhs](const auto& rhs ) {
+            if (lhs.threshold != rhs.threshold) return false;
+            return std::equal(lhs.keys.cbegin(), lhs.keys.cend(), rhs.keys.cbegin(), rhs.keys.cend());
+         });
+      });
+
+      if (!authority_matches) return false;
+      return true;
+   }
 
 } } /// eosio::chain
 
@@ -271,5 +312,8 @@ FC_REFLECT( eosio::chain::block_signing_authority_v0, (threshold)(keys))
 FC_REFLECT( eosio::chain::producer_authority, (name)(authority) )
 FC_REFLECT( eosio::chain::producer_authority_schedule, (version)(producers) )
 FC_REFLECT_DERIVED( eosio::chain::producer_schedule_change_extension, (eosio::chain::producer_authority_schedule), )
+
+FC_REFLECT( eosio::chain::shared_block_signing_authority_v0, (threshold)(keys))
+FC_REFLECT( eosio::chain::shared_producer_authority, (name)(authority) )
 FC_REFLECT( eosio::chain::shared_producer_authority_schedule, (version)(producers) )
 

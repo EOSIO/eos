@@ -169,8 +169,9 @@ namespace eosio { namespace testing {
 
          void                  set_before_preactivate_bios_contract();
          void                  set_bios_contract();
-         vector<producer_key>  get_producer_keys( const vector<account_name>& producer_names )const;
-         transaction_trace_ptr set_producers(const vector<account_name>& producer_names);
+
+         vector<producer_authority>  get_producer_authorities( const vector<account_name>& producer_names )const;
+         transaction_trace_ptr       set_producers(const vector<account_name>& producer_names);
 
          void link_authority( account_name account, account_name code,  permission_name req, action_name type = "" );
          void unlink_authority( account_name account, account_name code, action_name type = "" );

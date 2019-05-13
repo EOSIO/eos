@@ -205,10 +205,10 @@ namespace eosio { namespace chain {
          time_point           fork_db_pending_head_block_time()const;
          account_name         fork_db_pending_head_block_producer()const;
 
-         time_point              pending_block_time()const;
-         account_name            pending_block_producer()const;
-         public_key_type         pending_block_signing_key()const;
-         optional<block_id_type> pending_producer_block_id()const;
+         time_point                     pending_block_time()const;
+         account_name                   pending_block_producer()const;
+         const block_signing_authority& pending_block_signing_authority()const;
+         optional<block_id_type>        pending_producer_block_id()const;
 
          const vector<transaction_receipt>& get_pending_trx_receipts()const;
 

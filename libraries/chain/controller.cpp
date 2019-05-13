@@ -125,6 +125,9 @@ struct assembled_block {
    pending_block_header_state        _pending_block_header_state;
    vector<transaction_metadata_ptr>  _trx_metas;
    signed_block_ptr                  _unsigned_block;
+
+   // if the _unsigned_block pre-dates block-signing authorities this may be present.
+   optional<producer_authority_schedule> _new_producer_authority_cache;
 };
 
 struct completed_block {
@@ -427,7 +430,7 @@ struct controller_impl {
     */
    void initialize_blockchain_state() {
       wlog( "Initializing new blockchain with genesis state" );
-      producer_authority_schedule initial_schedule{ 0, {producer_authority_v0{config::system_account_name, 1, {{conf.genesis.initial_key, 1}} } } };
+      producer_authority_schedule initial_schedule = { 0, { producer_authority{config::system_account_name, block_signing_authority_v0{ 1, {{conf.genesis.initial_key, 1}} } } } };
 
       block_header_state genheader;
       genheader.active_schedule                = initial_schedule;
@@ -1537,8 +1540,9 @@ struct controller_impl {
       auto block_ptr = std::make_shared<signed_block>( pbhs.make_block_header(
          calculate_trx_merkle(),
          calculate_action_merkle(),
-         std::move( bb._new_pending_producer_schedule ),
-         std::move( bb._new_protocol_feature_activations )
+         bb._new_pending_producer_schedule,
+         std::move( bb._new_protocol_feature_activations ),
+         protocol_features.get_protocol_feature_set()
       ) );
 
       block_ptr->transactions = std::move( bb._pending_trx_receipts );
@@ -1566,7 +1570,8 @@ struct controller_impl {
                                  id,
                                  std::move( bb._pending_block_header_state ),
                                  std::move( bb._pending_trx_metas ),
-                                 std::move( block_ptr )
+                                 std::move( block_ptr ),
+                                 std::move( bb._new_pending_producer_schedule )
                               };
    } FC_CAPTURE_AND_RETHROW() } /// finalize_block
 
@@ -1746,6 +1751,7 @@ struct controller_impl {
                         std::move( ab._pending_block_header_state ),
                         b,
                         std::move( ab._trx_metas ),
+                        protocol_features.get_protocol_feature_set(),
                         []( block_timestamp_type timestamp,
                             const flat_set<digest_type>& cur_features,
                             const vector<digest_type>& new_features )
@@ -1782,6 +1788,7 @@ struct controller_impl {
          return std::make_shared<block_state>(
                         *prev,
                         move( b ),
+                        control->protocol_features.get_protocol_feature_set(),
                         [control]( block_timestamp_type timestamp,
                                    const flat_set<digest_type>& cur_features,
                                    const vector<digest_type>& new_features )
@@ -1837,6 +1844,7 @@ struct controller_impl {
          auto bsp = std::make_shared<block_state>(
                         *head,
                         b,
+                        protocol_features.get_protocol_feature_set(),
                         [this]( block_timestamp_type timestamp,
                                 const flat_set<digest_type>& cur_features,
                                 const vector<digest_type>& new_features )
@@ -1982,7 +1990,7 @@ struct controller_impl {
       auto update_permission = [&]( auto& permission, auto threshold ) {
          auto auth = authority( threshold, {}, {});
          for( auto& p : producers ) {
-            auth.accounts.push_back({{p.producer_name, config::active_name}, 1});
+            auth.accounts.push_back({{p.name, config::active_name}, 1});
          }
 
          if( static_cast<authority>(permission.auth) != auth ) { // TODO: use a more efficient way to check that authority has not changed
@@ -2442,6 +2450,7 @@ block_state_ptr controller::finalize_block( const std::function<signature_type( 
                   std::move( ab._pending_block_header_state ),
                   std::move( ab._unsigned_block ),
                   std::move( ab._trx_metas ),
+                  my->protocol_features.get_protocol_feature_set(),
                   []( block_timestamp_type timestamp,
                       const flat_set<digest_type>& cur_features,
                       const vector<digest_type>& new_features )
@@ -2602,13 +2611,13 @@ account_name controller::pending_block_producer()const {
    return my->pending->get_pending_block_header_state().producer;
 }
 
-flat_set<public_key_type> controller::pending_block_signing_keys()const {
+const block_signing_authority& controller::pending_block_signing_authority()const {
    EOS_ASSERT( my->pending, block_validate_exception, "no pending block" );
 
    if( my->pending->_block_stage.contains<completed_block>() )
-      return my->pending->_block_stage.get<completed_block>()._block_state->block_signing_keys;
+      return my->pending->_block_stage.get<completed_block>()._block_state->valid_block_signing_authority;
 
-   return my->pending->get_pending_block_header_state().block_signing_keys;
+   return my->pending->get_pending_block_header_state().valid_block_signing_authority;
 }
 
 optional<block_id_type> controller::pending_producer_block_id()const {
@@ -2785,7 +2794,7 @@ const producer_authority_schedule&    controller::active_producers()const {
    return my->pending->get_pending_block_header_state().active_schedule;
 }
 
-const producer_authority_schedule&    controller::pending_producers()const {
+const producer_authority_schedule& controller::pending_producers()const {
    if( !(my->pending) )
       return  my->head->pending_schedule.schedule;
 
@@ -2798,9 +2807,10 @@ const producer_authority_schedule&    controller::pending_producers()const {
          if (exts.count(producer_schedule_change_extension::extension_id()))
             return exts.lower_bound(producer_schedule_change_extension::extension_id())->second.get<producer_schedule_change_extension>();
       } else {
-         const auto& np = my->pending->_block_stage.get<assembled_block>()._unsigned_block->new_producers;
-         if( np )
-            return *np;
+         const auto& new_prods_cache = my->pending->_block_stage.get<assembled_block>()._new_producer_authority_cache;
+         if( new_prods_cache ) {
+            return *new_prods_cache;
+         }
       }
    }
 

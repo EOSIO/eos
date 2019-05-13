@@ -11,6 +11,7 @@
 #include <eosio/chain/chain_config.hpp>
 #include <eosio/chain/producer_schedule.hpp>
 #include <eosio/chain/incremental_merkle.hpp>
+#include <eosio/chain/snapshot.hpp>
 #include <chainbase/chainbase.hpp>
 #include "multi_index_includes.hpp"
 
@@ -43,6 +44,30 @@ namespace eosio { namespace chain {
       >
    >;
 
+   struct snapshot_global_property_object {
+      optional<block_num_type>            proposed_schedule_block_num;
+      producer_authority_schedule         proposed_schedule;
+      chain_config                        configuration;
+   };
+
+   namespace detail {
+      template<>
+      struct snapshot_row_traits<global_property_object> {
+         using value_type = global_property_object;
+         using snapshot_type = snapshot_global_property_object;
+
+         static snapshot_global_property_object to_snapshot_row( const global_property_object& value, const chainbase::database& ) {
+            return {value.proposed_schedule_block_num, (producer_authority_schedule)value.proposed_schedule, value.configuration};
+         }
+
+         static void from_snapshot_row( snapshot_global_property_object&& row, global_property_object& value, chainbase::database& ) {
+            value.proposed_schedule_block_num = row.proposed_schedule_block_num;
+            value.proposed_schedule = row.proposed_schedule;
+            value.configuration = row.configuration;
+         }
+      };
+   }
+
    /**
     * @class dynamic_global_property_object
     * @brief Maintains global state information that frequently change
@@ -73,6 +98,10 @@ CHAINBASE_SET_INDEX_TYPE(eosio::chain::dynamic_global_property_object,
                          eosio::chain::dynamic_global_property_multi_index)
 
 FC_REFLECT(eosio::chain::global_property_object,
+            (proposed_schedule_block_num)(proposed_schedule)(configuration)
+          )
+
+FC_REFLECT(eosio::chain::snapshot_global_property_object,
             (proposed_schedule_block_num)(proposed_schedule)(configuration)
           )
 

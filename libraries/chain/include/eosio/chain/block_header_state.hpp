@@ -40,7 +40,7 @@ struct pending_block_header_state : public detail::block_header_state_common {
 
    signed_block_header make_block_header( const checksum256_type& transaction_mroot,
                                           const checksum256_type& action_mroot,
-                                          std::optional<producer_authority_schedule>&& new_producers,
+                                          const optional<producer_authority_schedule>& new_producers,
                                           vector<digest_type>&& new_protocol_feature_activations,
                                           const protocol_feature_set& pfs)const;
 

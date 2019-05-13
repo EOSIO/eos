@@ -167,7 +167,7 @@ namespace eosio { namespace chain {
    signed_block_header pending_block_header_state::make_block_header(
                                                       const checksum256_type& transaction_mroot,
                                                       const checksum256_type& action_mroot,
-                                                      std::optional<producer_authority_schedule>&& new_producers,
+                                                      const optional<producer_authority_schedule>& new_producers,
                                                       vector<digest_type>&& new_protocol_feature_activations,
                                                       const protocol_feature_set& pfs
    )const
@@ -198,7 +198,7 @@ namespace eosio { namespace chain {
             // add the header extension to update the block schedule
             h.header_extensions.emplace_back(
                   producer_schedule_change_extension::extension_id(),
-                  fc::raw::pack( producer_schedule_change_extension( std::move(*new_producers) ) )
+                  fc::raw::pack( producer_schedule_change_extension( *new_producers ) )
             );
          } else {
             legacy::producer_schedule_type downgraded_producers;
