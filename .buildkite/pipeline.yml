@@ -5,6 +5,8 @@ env:
   MAC_TAG: "eosio_2-4"
 
 steps:
+  - wait
+
   - label: ":darwin: Ensure Mojave Anka Template Dependency Tag/Layer Exists"
     command:
       - "git clone git@github.com:EOSIO/mac-anka-fleet.git"
@@ -20,6 +22,7 @@ steps:
       TAG_COMMANDS: "./scripts/eosio_build.sh -y -P -m" # CLONED_REPO_DIR IS REQUIRED and is where the repo is always cloned into
       PROJECT_TAG: "${MAC_TAG}"
     timeout: 60
+    skip: $SKIP_MOJAVE
 
   - wait
 
@@ -46,6 +49,7 @@ steps:
     agents:
       - "queue=mac-anka-large-node-fleet"
     timeout: 120
+    skip: $SKIP_MOJAVE
 
   # - label: ":aws: Amazon Linux 2 Build"
   #   command:
@@ -152,6 +156,7 @@ steps:
   #       debug: true
   #       wait-network: true
   #   timeout: 120
+  #   skip: $SKIP_MOJAVE
 
   # - label: ":darwin: [Darwin] Mojave NP Tests"
   #   command:
@@ -170,6 +175,7 @@ steps:
   #       debug: true
   #       wait-network: true
   #   timeout: 120
+  #   skip: $SKIP_MOJAVE
 
   # # Amazon Linux 2
   # - label: ":aws: Amazon Linux 2 Tests"
@@ -434,6 +440,7 @@ steps:
         debug: true
         wait-network: true
     timeout: 60
+    skip: $SKIP_MOJAVE
 
   - wait
 
@@ -446,6 +453,7 @@ steps:
     artifact_paths:
       - "build/packages/eosio.rb"
     timeout: 5
+    skip: $SKIP_MOJAVE
 
   - command: | # Git Submodule Regression Check
         echo "+++ :microscope: Running git submodule regression check" && \
