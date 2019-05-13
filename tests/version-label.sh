@@ -15,6 +15,7 @@ echo 'Tagged build detected, running test.'
 [[ "$EOSIO_ROOT" == '' ]] && EOSIO_ROOT=$(echo $(pwd)/ | grep -ioe '.*/eos/')
 [[ "$EOSIO_ROOT" == '' ]] && EOSIO_ROOT=$(echo $(pwd)/ | grep -ioe '.*/EOSIO/eosio/')
 [[ "$EOSIO_ROOT" == '' ]] && EOSIO_ROOT=$(echo $(pwd)/ | grep -ioe '.*/build/' | sed 's,/build/,,')
+echo "Using EOSIO_ROOT=\"$EOSIO_ROOT\"."
 # determine expected value
 CMAKE_CACHE="$EOSIO_ROOT/build/CMakeCache.txt"
 CMAKE_LISTS="$EOSIO_ROOT/CMakeLists.txt"
@@ -56,10 +57,10 @@ if [[ "$EXPECTED" == '' ]]; then
     ls "$EOSIO_ROOT/build"
     exit 1
 fi
+echo "Expecting \"$EXPECTED\"..."
 # test nodeos version
 ACTUAL=$($EOSIO_ROOT/build/bin/nodeos --version) || : # nodeos currently returns -1 for --version
 # check
-echo "Expecting \"$EXPECTED\"..."
 if [[ "$EXPECTED" == "$ACTUAL" ]]; then
     echo 'Passed with \"$ACTUAL\".'
     exit 0
