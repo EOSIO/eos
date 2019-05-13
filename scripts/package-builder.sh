@@ -36,14 +36,15 @@ else
         exit 1
     fi
 fi
-cd /data/job/build/packages
 echo "+++ :arrow_down: Downloading Build Directory"
 buildkite-agent artifact download build.tar.gz . --step "$BUILD_STEP"
 echo "+++ :compression: Extracting Build Directory"
+[[ -d build ]] && rm -rf build
 tar -zxf build.tar.gz
 echo "+++ :package: Starting Package Build"
+cd build/packages
 generate_package.sh "$PACKAGE_TYPE"
 echo '+++ :arrow_up: Uploading Artifacts'
-cd /data/job
+cd ../..
 buildkite-agent artifact upload \"$ARTIFACT\"
 echo "+++ :white_check_mark: Done."
