@@ -515,7 +515,7 @@ struct controller_impl {
 
    void init(std::function<bool()> shutdown, const snapshot_reader_ptr& snapshot) {
       // Setup state if necessary (or in the default case stay with already loaded state):
-      auto lib_num = 1;
+      auto lib_num = UINT32_C(1);
       if( snapshot ) {
          snapshot->validate();
          if( blog.head() ) {
