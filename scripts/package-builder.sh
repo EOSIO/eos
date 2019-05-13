@@ -43,7 +43,7 @@ echo "+++ :compression: Extracting Build Directory"
 tar -zxf build.tar.gz
 echo "+++ :package: Starting Package Build"
 cd build/packages
-generate_package.sh "$PACKAGE_TYPE"
+./generate_package.sh "$PACKAGE_TYPE"
 echo '+++ :arrow_up: Uploading Artifacts'
 cd ../..
 buildkite-agent artifact upload \"$ARTIFACT\"
