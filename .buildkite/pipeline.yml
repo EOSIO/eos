@@ -137,7 +137,6 @@ steps:
     timeout: 120
 
   - wait
-    skip: $SKIP_TESTS
 
   # MacOS Mojave
   - label: ":darwin: [Darwin] Mojave Tests"
