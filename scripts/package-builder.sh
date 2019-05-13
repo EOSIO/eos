@@ -50,4 +50,14 @@ echo '+++ :arrow_up: Uploading Artifacts'
 cd ../..
 [[ "$DEBUG" == 'true' ]] && (echo '$ pwd'; pwd; echo '$ ls'; ls)
 buildkite-agent artifact upload \"$ARTIFACT\"
+for A in $(echo $ARTIFACT | tr ';' ' '); do
+    if [[ $(ls $A | grep -c '') ]]; then
+        echo "+++ :no_entry: ERROR: Expected artifact \"$A\" not found!"
+        echo '$ pwd'
+        pwd
+        echo '$ ls'
+        ls
+        exit 1
+    fi
+done
 echo "+++ :white_check_mark: Done."
