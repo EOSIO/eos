@@ -3,6 +3,7 @@ env:
   ANKA_TEMPLATE_TAG: "clean::cicd::git-ssh::nas::brew::buildkite-agent-3.11.2"
   CHECKSUMABLE: "scripts/eosio_build*"
   MAC_TAG: "eosio_2-4"
+  WORKDIR: "/data/job"
 
 steps:
 
@@ -20,7 +21,7 @@ steps:
       TEMPLATE_TAG: "${ANKA_TEMPLATE_TAG}"
       TAG_COMMANDS: "./scripts/eosio_build.sh -y -P -m" # CLONED_REPO_DIR IS REQUIRED and is where the repo is always cloned into
       PROJECT_TAG: "${MAC_TAG}"
-    timeout: 60
+    timeout: 320
 
   # - trigger: "mac-anka-fleet"
   #   label: ":anka: Ensure Mojave Anka Template Tag Exists"
@@ -45,11 +46,12 @@ steps:
 
   - label: ":darwin: [Darwin] Mojave Build"
     command:
-      - "git clone ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO} && cd eos && git checkout ${BUILDKITE_COMMIT} && git submodule update --init --recursive && ./scripts/eosio_build.sh -y -P -m"
-      - "tar -pczf /Network/NAS/MAC_FLEET/BUILDKITE/artifacts/${ANKA_MOJAVE_TEMPLATE}-${BUILDKITE_PIPELINE_SLUG}-${BUILDKITE_BUILD_ID}.tar.gz eos"
+      - "git clone ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO} && cd eos && git checkout ${BUILDKITE_COMMIT} && git submodule update --init --recursive && ./scripts/eosio_build.sh -y -P -m && tar -pczf build.tar.gz build"
+    artifact_paths: "build.tar.gz"
     plugins:
       chef/anka#v0.4.4:
         no-volume: true
+        workdir: $WORKDIR
         inherit-environment-vars: true
         vm-name: $ANKA_MOJAVE_TEMPLATE
         vm-registry-tag: "${ANKA_TEMPLATE_TAG}::${MAC_TAG}"
@@ -156,13 +158,14 @@ steps:
   # MOJAVE #
   - label: ":darwin: [Darwin] Mojave Tests"
     command:
-      - "tar -xzf /Network/NAS/MAC_FLEET/BUILDKITE/artifacts/${ANKA_MOJAVE_TEMPLATE}-${BUILDKITE_PIPELINE_SLUG}-${BUILDKITE_BUILD_ID}.tar.gz"
+      - "git clone ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO} && cd eos && git checkout ${BUILDKITE_COMMIT} && buildkite-agent artifact download \"build.tar.gz\" . --step \":darwin: [Darwin] Mojave Build\""
       - "cd eos && ./scripts/parallel-test.sh"
     agents:
       - "queue=mac-anka-node-fleet"
     plugins:
       chef/anka#v0.4.4:
         no-volume: true
+        workdir: $WORKDIR
         inherit-environment-vars: true
         bash-interactive: true
         vm-name: $ANKA_MOJAVE_TEMPLATE
@@ -174,13 +177,14 @@ steps:
 
   - label: ":darwin: [Darwin] Mojave NP Tests"
     command:
-      - "tar -xzf /Network/NAS/MAC_FLEET/BUILDKITE/artifacts/${ANKA_MOJAVE_TEMPLATE}-${BUILDKITE_PIPELINE_SLUG}-${BUILDKITE_BUILD_ID}.tar.gz"
+      - "git clone ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO} && cd eos && git checkout ${BUILDKITE_COMMIT} && buildkite-agent artifact download \"build.tar.gz\" . --step \":darwin: [Darwin] Mojave Build\""
       - "cd eos && ./scripts/serial-test.sh"
     agents:
       - "queue=mac-anka-node-fleet"
     plugins:
       chef/anka#v0.4.4:
         no-volume: true
+        workdir: $WORKDIR
         inherit-environment-vars: true
         bash-interactive: true
         vm-name: $ANKA_MOJAVE_TEMPLATE
@@ -189,7 +193,6 @@ steps:
         debug: true
         wait-network: true
     timeout: 120
-
   # AmazonLinux #
   - label: ":aws: Amazon Linux 2 Tests"
     command:
@@ -464,7 +467,7 @@ steps:
 
   - label: ":darwin: Mojave Package Builder"
     command:
-      - "tar -xzf /Network/NAS/MAC_FLEET/BUILDKITE/artifacts/${ANKA_MOJAVE_TEMPLATE}-${BUILDKITE_PIPELINE_SLUG}-${BUILDKITE_BUILD_ID}.tar.gz"
+      - "git clone ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO} && cd eos && git checkout ${BUILDKITE_COMMIT} && buildkite-agent artifact download \"build.tar.gz\" . --step \":darwin: [Darwin] Mojave Build\" && tar -xzf build.tar.gz"
       - "cd eos/build/packages && bash generate_package.sh brew"
       - "cd eos && buildkite-agent artifact upload build/packages/*.tar.gz"
       - "cd eos && buildkite-agent artifact upload build/packages/*.rb"
@@ -473,6 +476,7 @@ steps:
     plugins:
       chef/anka#v0.4.4:
         no-volume: true
+        workdir: $WORKDIR
         inherit-environment-vars: true
         bash-interactive: true
         vm-name: $ANKA_MOJAVE_TEMPLATE
