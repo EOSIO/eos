@@ -159,7 +159,7 @@ steps:
   - label: ":darwin: [Darwin] Mojave Tests"
     command:
       - "for tries in {1..4}; do tar -xzf /Network/NAS/MAC_FLEET/BUILDKITE/artifacts/${ANKA_MOJAVE_TEMPLATE}-${BUILDKITE_PIPELINE_SLUG}-${BUILDKITE_BUILD_ID}.tar.gz && break || sleep 30; done"
-      - "cd eos && ./scripts/parallel-test.bash"
+      - "cd eos && VERBOSE=true ./scripts/parallel-test.bash"
     agents:
       - "queue=mac-anka-node-fleet"
     plugins:
@@ -178,7 +178,7 @@ steps:
   - label: ":darwin: [Darwin] Mojave NP Tests"
     command:
       - "for tries in {1..4}; do tar -xzf /Network/NAS/MAC_FLEET/BUILDKITE/artifacts/${ANKA_MOJAVE_TEMPLATE}-${BUILDKITE_PIPELINE_SLUG}-${BUILDKITE_BUILD_ID}.tar.gz && break || sleep 30; done"
-      - "cd eos && ./scripts/serial-test.bash"
+      - "cd eos && VERBOSE=true ./scripts/serial-test.bash"
     agents:
       - "queue=mac-anka-node-fleet"
     plugins:
