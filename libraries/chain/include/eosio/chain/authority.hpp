@@ -11,6 +11,57 @@
 
 namespace eosio { namespace chain {
 
+struct shared_public_key {
+   shared_public_key( chainbase::allocator<char> alloc, const fc::crypto::public_key& pub ) :
+      webauthn_key_data(alloc) {
+
+   }
+
+   ~shared_public_key() {
+
+   }
+
+   shared_public_key(const shared_public_key& p) {
+
+   }
+
+   shared_public_key& operator=(const shared_public_key& o) {
+      return *this;
+   }
+
+   operator public_key_type() const {
+      return public_key_type();
+   }
+
+   operator string() const {
+      return "sup";
+   }
+
+   template<typename Stream>
+   friend Stream& operator<<(Stream& ds, const shared_public_key& k) {
+      return ds;
+   }
+
+   template<typename Stream>
+   friend Stream& operator>>(Stream& ds, shared_public_key& k) {
+      return ds;
+   }
+
+   uint8_t which;
+   union {
+      fc::array<char, 33> key_data;
+      shared_string       webauthn_key_data;
+   };
+
+   friend bool operator == ( const shared_public_key& lhs, const shared_public_key& rhs ) {
+      if(lhs.which != rhs.which)
+         return false;
+      if(lhs.which < 2)
+         return lhs.key_data == rhs.key_data;
+      else
+         return lhs.webauthn_key_data == rhs.webauthn_key_data;
+   }
+};
 
 struct permission_level_weight {
    permission_level  permission;
@@ -26,6 +77,23 @@ struct key_weight {
    weight_type     weight;
 
    friend bool operator == ( const key_weight& lhs, const key_weight& rhs ) {
+      return tie( lhs.key, lhs.weight ) == tie( rhs.key, rhs.weight );
+   }
+};
+
+
+struct shared_key_weight {
+   shared_key_weight(chainbase::allocator<char> alloc, const public_key_type& pk, const weight_type& w) :
+      key(alloc, pk), weight(w) {}
+
+   operator key_weight() const {
+      return key_weight{key, weight};
+   }
+
+   shared_public_key key;
+   weight_type       weight;
+
+   friend bool operator == ( const shared_key_weight& lhs, const shared_key_weight& rhs ) {
       return tie( lhs.key, lhs.weight ) == tie( rhs.key, rhs.weight );
    }
 };
@@ -100,14 +168,16 @@ struct shared_authority {
 
    shared_authority& operator=(const authority& a) {
       threshold = a.threshold;
-      keys = decltype(keys)(a.keys.begin(), a.keys.end(), keys.get_allocator());
+      keys.clear();
+      for(const key_weight& k : a.keys)
+         keys.emplace_back(keys.get_allocator(), k.key, k.weight);
       accounts = decltype(accounts)(a.accounts.begin(), a.accounts.end(), accounts.get_allocator());
       waits = decltype(waits)(a.waits.begin(), a.waits.end(), waits.get_allocator());
       return *this;
    }
 
    uint32_t                                   threshold = 0;
-   shared_vector<key_weight>                  keys;
+   shared_vector<shared_key_weight>           keys;
    shared_vector<permission_level_weight>     accounts;
    shared_vector<wait_weight>                 waits;
 
@@ -202,4 +272,5 @@ FC_REFLECT(eosio::chain::permission_level_weight, (permission)(weight) )
 FC_REFLECT(eosio::chain::key_weight, (key)(weight) )
 FC_REFLECT(eosio::chain::wait_weight, (wait_sec)(weight) )
 FC_REFLECT(eosio::chain::authority, (threshold)(keys)(accounts)(waits) )
+FC_REFLECT(eosio::chain::shared_key_weight, (key)(weight) )
 FC_REFLECT(eosio::chain::shared_authority, (threshold)(keys)(accounts)(waits) )

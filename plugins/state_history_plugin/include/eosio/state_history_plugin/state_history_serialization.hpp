@@ -322,8 +322,8 @@ datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosi
 }
 
 template <typename ST>
-datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosio::chain::key_weight>& obj) {
-   fc::raw::pack(ds, as_type<eosio::chain::public_key_type>(obj.obj.key));
+datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosio::chain::shared_key_weight>& obj) {
+   fc::raw::pack(ds, as_type<eosio::chain::shared_public_key>(obj.obj.key));
    fc::raw::pack(ds, as_type<uint16_t>(obj.obj.weight));
    return ds;
 }

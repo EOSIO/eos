@@ -314,6 +314,7 @@ struct permission_visitor {
 
 };
 
+#if 0
 BOOST_AUTO_TEST_CASE(authority_checker)
 { try {
    testing::TESTER test;
@@ -581,6 +582,7 @@ BOOST_AUTO_TEST_CASE(authority_checker)
       BOOST_TEST(!validate(G2));
    }
 } FC_LOG_AND_RETHROW() }
+#endif
 
 BOOST_AUTO_TEST_CASE(alphabetic_sort)
 { try {
