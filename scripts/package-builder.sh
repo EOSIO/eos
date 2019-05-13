@@ -43,8 +43,11 @@ tar -zxf build.tar.gz
 echo "+++ :package: Starting Package Build"
 cd build/packages
 chmod 755 ./*.sh
+[[ "$DEBUG" == 'true' ]] && (echo '$ pwd'; pwd; echo '$ ls'; ls)
 ./generate_package.sh "$PACKAGE_TYPE"
+[[ "$DEBUG" == 'true' ]] && (echo '$ pwd'; pwd; echo '$ ls'; ls)
 echo '+++ :arrow_up: Uploading Artifacts'
 cd ../..
+[[ "$DEBUG" == 'true' ]] && (echo '$ pwd'; pwd; echo '$ ls'; ls)
 buildkite-agent artifact upload \"$ARTIFACT\"
 echo "+++ :white_check_mark: Done."
