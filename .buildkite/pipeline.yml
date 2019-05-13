@@ -24,9 +24,14 @@ steps:
   - wait
 
   - label: ":darwin: [Darwin] Mojave Build"
-    command:
-      - "git clone ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO} && cd eos && git checkout ${BUILDKITE_COMMIT} && git submodule update --init --recursive && ./scripts/eosio_build.sh -y -P -m"
-      - "tar -pczf /Network/NAS/MAC_FLEET/BUILDKITE/artifacts/${ANKA_MOJAVE_TEMPLATE}-${BUILDKITE_PIPELINE_SLUG}-${BUILDKITE_BUILD_ID}.tar.gz eos"
+    command: |
+      git clone ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO}
+      cd eos
+      git checkout ${BUILDKITE_COMMIT}
+      git submodule update --init --recursive
+      ./scripts/eosio_build.sh -y -P -m
+      tar -pczf build.tar.gz build
+      [[ -f build.tar.gz ]] && buildkite-agent artifact upload build.tar.gz || (echo '+++ :no_entry: ERROR: No build.tar.gz artifact found!' && exit 1)
     plugins:
       chef/anka#v0.4.4:
         no-volume: true
@@ -347,23 +352,9 @@ steps:
 
   - label: ":centos: CentOS 7 Package Builder"
     command: |
-        echo "--- :arrow_down: Downloading build directory"
-        echo \"--- :arrow_down: Downloading Build Directory\" && buildkite-agent artifact download "build.tar.gz" . --step ":centos: CentOS 7 Build"
-        tar -zxf build.tar.gz
-        echo "+++ :microscope: Starting package build"
-        yum install -y rpm-build
-        mkdir -p /root/rpmbuild/BUILD
-        mkdir -p /root/rpmbuild/BUILDROOT
-        mkdir -p /root/rpmbuild/RPMS
-        mkdir -p /root/rpmbuild/SOURCES
-        mkdir -p /root/rpmbuild/SPECS
-        mkdir -p /root/rpmbuild/SRPMS
-        cd /data/job/build/packages
-        bash generate_package.sh rpm
+      ./scripts/package-builder.sh ':centos: CentOS 7 Build'
     agents:
       queue: "automation-large-builder-fleet"
-    artifact_paths:
-      - "build/packages/*.rpm"
     plugins:
       ecr#v1.1.4:
         login: true
@@ -382,17 +373,10 @@ steps:
     timeout: 60
 
   - command: | # Ubuntu 16.04 Package Builder
-        echo "--- :arrow_down: Downloading build directory"
-        echo \"--- :arrow_down: Downloading Build Directory\" && buildkite-agent artifact download "build.tar.gz" . --step ":ubuntu: Ubuntu 16.04 Build"
-        tar -zxf build.tar.gz
-        echo "+++ :microscope: Starting package build"
-        cd /data/job/build/packages
-        bash generate_package.sh deb
+      ./scripts/package-builder.sh ':ubuntu: Ubuntu 16.04 Build'
     label: ":ubuntu: Ubuntu 16.04 Package Builder"
     agents:
       queue: "automation-large-builder-fleet"
-    artifact_paths:
-      - "build/packages/*.deb"
     plugins:
       ecr#v1.1.4:
         login: true
@@ -411,17 +395,10 @@ steps:
     timeout: 60
 
   - command: | # Ubuntu 18.04 Package Builder
-        echo "--- :arrow_down: Downloading build directory"
-        echo \"--- :arrow_down: Downloading Build Directory\" && buildkite-agent artifact download "build.tar.gz" . --step ":ubuntu: Ubuntu 18.04 Build"
-        tar -zxf build.tar.gz
-        echo "+++ :microscope: Starting package build"
-        cd /data/job/build/packages
-        bash generate_package.sh deb
+      ./scripts/package-builder.sh ':ubuntu: Ubuntu 18.04 Build'
     label: ":ubuntu: Ubuntu 18.04 Package Builder"
     agents:
       queue: "automation-large-builder-fleet"
-    artifact_paths:
-      - "build/packages/*.deb"
     plugins:
       ecr#v1.1.4:
         login: true
@@ -440,11 +417,10 @@ steps:
     timeout: 60
 
   - label: ":darwin: Mojave Package Builder"
-    command:
-      - "tar -xzf /Network/NAS/MAC_FLEET/BUILDKITE/artifacts/${ANKA_MOJAVE_TEMPLATE}-${BUILDKITE_PIPELINE_SLUG}-${BUILDKITE_BUILD_ID}.tar.gz"
-      - "cd eos/build/packages && bash generate_package.sh brew"
-      - "cd eos && buildkite-agent artifact upload build/packages/*.tar.gz"
-      - "cd eos && buildkite-agent artifact upload build/packages/*.rb"
+    command: |
+      [[ -d eos ]] && cd eos
+      ln -s "$(pwd)" /data/job
+      ./scripts/package-builder.sh ':darwin: [Darwin] Mojave Build'
     agents:
       - "queue=mac-anka-node-fleet"
     plugins:
@@ -457,13 +433,13 @@ steps:
         always-pull: true
         debug: true
         wait-network: true
-    timeout: 120
+    timeout: 60
 
   - wait
 
   - command: | # Brew Updater
         echo "--- :arrow_down: Downloading brew files"
-        echo \"--- :arrow_down: Downloading Build Directory\" && buildkite-agent artifact download "build/packages/eosio.rb" . --step ":darwin: Mojave Package Builder"
+        buildkite-agent artifact download "build/packages/eosio.rb" . --step ":darwin: Mojave Package Builder"
     label: ":darwin: Brew Updater"
     agents:
       queue: "automation-large-builder-fleet"
