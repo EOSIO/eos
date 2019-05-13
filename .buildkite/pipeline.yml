@@ -152,9 +152,8 @@ steps:
   # MOJAVE #
   - label: ":darwin: [Darwin] Mojave Tests"
     command:
-      - "git clone ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO} && cd eos && git checkout ${BUILDKITE_COMMIT}"
-      - "buildkite-agent artifact download \"build.tar.gz\" . --step \":darwin: [Darwin] Mojave Build\""
-      - "./scripts/parallel-test.sh"
+      - "git clone ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO} && cd eos && git checkout ${BUILDKITE_COMMIT} && buildkite-agent artifact download \"build.tar.gz\" . --step \":darwin: [Darwin] Mojave Build\""
+      - "cd eos && ./scripts/parallel-test.sh"
     agents:
       - "queue=mac-anka-node-fleet"
     plugins:
@@ -172,9 +171,8 @@ steps:
 
   - label: ":darwin: [Darwin] Mojave NP Tests"
     command:
-      - "git clone ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO} && cd eos && git checkout ${BUILDKITE_COMMIT}"
-      - "buildkite-agent artifact download \"build.tar.gz\" . --step \":darwin: [Darwin] Mojave Build\""
-      - "./scripts/serial-test.sh"
+      - "git clone ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO} && cd eos && git checkout ${BUILDKITE_COMMIT} && buildkite-agent artifact download \"build.tar.gz\" . --step \":darwin: [Darwin] Mojave Build\""
+      - "cd eos && ./scripts/serial-test.sh"
     agents:
       - "queue=mac-anka-node-fleet"
     plugins:
