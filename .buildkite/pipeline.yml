@@ -138,25 +138,26 @@ steps:
 
   # - wait
 
-  # # MacOS Mojave
-  # - label: ":darwin: [Darwin] Mojave Tests"
-  #   command:
-  #     - "tar -xzf /Network/NAS/MAC_FLEET/BUILDKITE/artifacts/${ANKA_MOJAVE_TEMPLATE}-${BUILDKITE_PIPELINE_SLUG}-${BUILDKITE_BUILD_ID}.tar.gz"
-  #     - "cd eos && ./scripts/parallel-test.sh"
-  #   agents:
-  #     - "queue=mac-anka-node-fleet"
-  #   plugins:
-  #     chef/anka#v0.4.4:
-  #       no-volume: true
-  #       inherit-environment-vars: true
-  #       bash-interactive: true
-  #       vm-name: $ANKA_MOJAVE_TEMPLATE
-  #       vm-registry-tag: "${ANKA_TEMPLATE_TAG}::${MAC_TAG}"
-  #       always-pull: true
-  #       debug: true
-  #       wait-network: true
-  #   timeout: 120
-  #   skip: $SKIP_MOJAVE
+  # MacOS Mojave
+  - label: ":darwin: [Darwin] Mojave Tests"
+    command: |
+      cd eos
+      buildkite-agent artifact download build.tar.gz . --step ":darwin: [Darwin] Mojave Build"
+      ./scripts/parallel-test.sh
+    agents:
+      - "queue=mac-anka-node-fleet"
+    plugins:
+      chef/anka#v0.4.4:
+        no-volume: true
+        inherit-environment-vars: true
+        bash-interactive: true
+        vm-name: $ANKA_MOJAVE_TEMPLATE
+        vm-registry-tag: "${ANKA_TEMPLATE_TAG}::${MAC_TAG}"
+        always-pull: true
+        debug: true
+        wait-network: true
+    timeout: 120
+    skip: $SKIP_MOJAVE
 
   # - label: ":darwin: [Darwin] Mojave NP Tests"
   #   command:
@@ -177,26 +178,27 @@ steps:
   #   timeout: 120
   #   skip: $SKIP_MOJAVE
 
-  # # Amazon Linux 2
-  # - label: ":aws: Amazon Linux 2 Tests"
-  #   command:
-  #     - "echo \"--- :arrow_down: Downloading Build Directory\" && buildkite-agent artifact download \"build.tar.gz\" . --step \":aws: Amazon Linux 2 Build\""
-  #     - "./scripts/parallel-test.sh"
-  #   agents:
-  #     queue: "automation-large-builder-fleet"
-  #   plugins:
-  #     ecr#v1.1.4:
-  #       login: true
-  #       account_ids: "436617320021"
-  #       no-include-email: true
-  #       region: "us-west-2"
-  #     docker#v3.2.0:
-  #       shell: ["/bin/bash", "-i", "-e", "-c"]
-  #       debug: true
-  #       image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux2_2-4"
-  #       propagate-environment: true
-  #       workdir: /data/job
-  #   timeout: 60
+  # Amazon Linux 2
+  - label: ":aws: Amazon Linux 2 Tests"
+    command: |
+      echo "--- :arrow_down: Downloading Build Directory"
+      buildkite-agent artifact download build.tar.gz . --step ":aws: Amazon Linux 2 Build"
+      ./scripts/parallel-test.sh
+    agents:
+      queue: "automation-large-builder-fleet"
+    plugins:
+      ecr#v1.1.4:
+        login: true
+        account_ids: "436617320021"
+        no-include-email: true
+        region: "us-west-2"
+      docker#v3.2.0:
+        shell: ["/bin/bash", "-i", "-e", "-c"]
+        debug: true
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:amazonlinux2_2-4"
+        propagate-environment: true
+        workdir: /data/job
+    timeout: 60
 
   # - label: ":aws: Amazon Linux 2 NP Tests"
   #   command:
@@ -219,26 +221,27 @@ steps:
   #       workdir: /data/job
   #   timeout: 60
 
-  # # CentOS
-  # - label: ":centos: CentOS 7 Tests"
-  #   command:
-  #     - "echo \"--- :arrow_down: Downloading Build Directory\" && buildkite-agent artifact download \"build.tar.gz\" . --step \":centos: CentOS 7 Build\""
-  #     - "./scripts/parallel-test.sh"
-  #   agents:
-  #     queue: "automation-large-builder-fleet"
-  #   plugins:
-  #     ecr#v1.1.4:
-  #       login: true
-  #       account_ids: "436617320021"
-  #       no-include-email: true
-  #       region: "us-west-2"
-  #     docker#v3.2.0:
-  #       shell: ["/bin/bash", "-i", "-e", "-c"]
-  #       debug: true
-  #       image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:centos7_2-4"
-  #       propagate-environment: true
-  #       workdir: /data/job
-  #   timeout: 60
+  # CentOS
+  - label: ":centos: CentOS 7 Tests"
+    command: |
+      echo "--- :arrow_down: Downloading Build Directory"
+      buildkite-agent artifact download build.tar.gz . --step ":centos: CentOS 7 Build"
+      ./scripts/parallel-test.sh
+    agents:
+      queue: "automation-large-builder-fleet"
+    plugins:
+      ecr#v1.1.4:
+        login: true
+        account_ids: "436617320021"
+        no-include-email: true
+        region: "us-west-2"
+      docker#v3.2.0:
+        shell: ["/bin/bash", "-i", "-e", "-c"]
+        debug: true
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:centos7_2-4"
+        propagate-environment: true
+        workdir: /data/job
+    timeout: 60
 
   # - label: ":centos: CentOS 7 NP Tests"
   #   command:
@@ -260,26 +263,27 @@ steps:
   #       workdir: /data/job
   #   timeout: 60
 
-  # # Ubuntu 16.04
-  # - label: ":ubuntu: Ubuntu 16.04 Tests"
-  #   command:
-  #     - "echo \"--- :arrow_down: Downloading Build Directory\" && buildkite-agent artifact download \"build.tar.gz\" . --step \":ubuntu: Ubuntu 16.04 Build\""
-  #     - "./scripts/parallel-test.sh"
-  #   agents:
-  #     queue: "automation-large-builder-fleet"
-  #   plugins:
-  #     ecr#v1.1.4:
-  #       login: true
-  #       account_ids: "436617320021"
-  #       no-include-email: true
-  #       region: "us-west-2"
-  #     docker#v3.2.0:
-  #       shell: ["/bin/bash", "-i", "-e", "-c"]
-  #       debug: true
-  #       image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu16_2-4"
-  #       propagate-environment: true
-  #       workdir: /data/job
-  #   timeout: 60
+  # Ubuntu 16.04
+  - label: ":ubuntu: Ubuntu 16.04 Tests"
+    command: |
+      echo "--- :arrow_down: Downloading Build Directory"
+      buildkite-agent artifact download build.tar.gz . --step ":ubuntu: Ubuntu 16.04 Build"
+      ./scripts/parallel-test.sh
+    agents:
+      queue: "automation-large-builder-fleet"
+    plugins:
+      ecr#v1.1.4:
+        login: true
+        account_ids: "436617320021"
+        no-include-email: true
+        region: "us-west-2"
+      docker#v3.2.0:
+        shell: ["/bin/bash", "-i", "-e", "-c"]
+        debug: true
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu16_2-4"
+        propagate-environment: true
+        workdir: /data/job
+    timeout: 60
 
   # - label: ":ubuntu: Ubuntu 16.04 NP Tests"
   #   command:
@@ -301,26 +305,27 @@ steps:
   #       workdir: /data/job
   #   timeout: 60
 
-  # # Ubuntu 18.04
-  # - label: ":ubuntu: Ubuntu 18.04 Tests"
-  #   command:
-  #     - "echo \"--- :arrow_down: Downloading Build Directory\" && buildkite-agent artifact download \"build.tar.gz\" . --step \":ubuntu: Ubuntu 18.04 Build\""
-  #     - "./scripts/parallel-test.sh"
-  #   agents:
-  #     queue: "automation-large-builder-fleet"
-  #   plugins:
-  #     ecr#v1.1.4:
-  #       login: true
-  #       account_ids: "436617320021"
-  #       no-include-email: true
-  #       region: "us-west-2"
-  #     docker#v3.2.0:
-  #       shell: ["/bin/bash", "-i", "-e", "-c"]
-  #       debug: true
-  #       image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu18_2-4"
-  #       propagate-environment: true
-  #       workdir: /data/job
-  #   timeout: 60
+  # Ubuntu 18.04
+  - label: ":ubuntu: Ubuntu 18.04 Tests"
+    command: |
+      echo "--- :arrow_down: Downloading Build Directory"
+      buildkite-agent artifact download build.tar.gz . --step ":ubuntu: Ubuntu 18.04 Build"
+      ./scripts/parallel-test.sh
+    agents:
+      queue: "automation-large-builder-fleet"
+    plugins:
+      ecr#v1.1.4:
+        login: true
+        account_ids: "436617320021"
+        no-include-email: true
+        region: "us-west-2"
+      docker#v3.2.0:
+        shell: ["/bin/bash", "-i", "-e", "-c"]
+        debug: true
+        image: "436617320021.dkr.ecr.us-west-2.amazonaws.com/ci:ubuntu18_2-4"
+        propagate-environment: true
+        workdir: /data/job
+    timeout: 60
 
   # - label: ":ubuntu: Ubuntu 18.04 NP Tests"
   #   command:
