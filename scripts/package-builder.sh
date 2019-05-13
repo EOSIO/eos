@@ -47,6 +47,7 @@ chmod 755 ./*.sh
 ./generate_package.sh "$PACKAGE_TYPE"
 [[ "$DEBUG" == 'true' ]] && (echo '$ pwd'; pwd; echo '$ ls'; ls)
 echo '+++ :arrow_up: Uploading Artifacts'
+cd ../..
 [[ "$DEBUG" == 'true' ]] && (echo '$ pwd'; pwd; echo '$ ls'; ls)
 buildkite-agent artifact upload $ARTIFACT
 for A in $(echo $ARTIFACT | tr ';' ' '); do
