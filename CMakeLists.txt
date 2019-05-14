@@ -103,7 +103,9 @@ IF( WIN32 )
   set(Boost_USE_MULTITHREADED ON)
   set(BOOST_ALL_DYN_LINK OFF) # force dynamic linking for all libraries
 ENDIF(WIN32)
-FIND_PACKAGE(Boost 1.67 REQUIRED COMPONENTS
+### Remove after Boost 1.70 CMake fixes are in place
+set( Boost_NO_BOOST_CMAKE ON CACHE STRING "ON or OFF" )
+find_package(Boost 1.67 REQUIRED COMPONENTS
     date_time
     filesystem
     system
