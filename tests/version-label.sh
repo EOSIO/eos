@@ -1,5 +1,4 @@
 #!/bin/bash
-set -e # exit on failure of any "simple" command (excludes &&, ||, or | chains)
 # The purpose of this test is to ensure that the output of the "nodeos --version" command matches the 
 # If the environment variable BUILDKITE_TAG is empty or unset, this test will echo success
 echo '##### Nodeos Version Label Test #####'
@@ -20,15 +19,19 @@ echo "Using EOSIO_ROOT=\"$EOSIO_ROOT\"."
 CMAKE_CACHE="$EOSIO_ROOT/build/CMakeCache.txt"
 CMAKE_LISTS="$EOSIO_ROOT/CMakeLists.txt"
 if [[ -f "$CMAKE_CACHE" && $(cat "$CMAKE_CACHE" | grep -c 'DOXY_EOS_VERSION') > 0 ]]; then
+    echo "Parsing \"$CMAKE_CACHE\"..."
     EXPECTED=$(cat "$CMAKE_CACHE" | grep 'DOXY_EOS_VERSION' | cut -d '=' -f 2)
 elif [[ -f "$CMAKE_LISTS" ]]; then
+    echo "Parsing \"$CMAKE_LISTS\"..."
     export $(cat $CMAKE_LISTS | grep -ie 'set *( *VERSION_MAJOR' | cut -d '(' -f 2 | cut -d ')' -f 1 | awk '{print $1"="$2}')
     export $(cat $CMAKE_LISTS | grep -ie 'set *( *VERSION_MINOR' | cut -d '(' -f 2 | cut -d ')' -f 1 | awk '{print $1"="$2}')
     export $(cat $CMAKE_LISTS | grep -ie 'set *( *VERSION_PATCH' | cut -d '(' -f 2 | cut -d ')' -f 1 | awk '{print $1"="$2}')
     if [[ $(cat $CMAKE_LISTS | grep -ice 'set *( *VERSION_SUFFIX') > 0 ]]; then
+        echo 'Using version suffix...'
         export $(cat $CMAKE_LISTS | grep -ie 'set *( *VERSION_SUFFIX' | cut -d '(' -f 2 | cut -d ')' -f 1 | awk '{print $1"="$2}')
         export $(echo "$(cat $CMAKE_LISTS | grep -ie 'set *( *VERSION_FULL.*VERSION_SUFFIX' | cut -d '(' -f 2 | cut -d ')' -f 1 | awk '{print $1"="$2}')" | envsubst | tr -d '"')
     else
+        echo 'No version suffix found.'
         export $(echo "$(cat $CMAKE_LISTS | grep -ie 'set *( *VERSION_FULL' | grep -ive 'VERSION_SUFFIX' | cut -d '(' -f 2 | cut -d ')' -f 1 | awk '{print $1"="$2}')" | envsubst | tr -d '"')
     fi
     EXPECTED="v$VERSION_FULL"
