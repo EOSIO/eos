@@ -33,7 +33,6 @@ walletMgr=WalletMgr(True)
 cluster=Cluster(walletd=True)
 cluster.setWalletMgr(walletMgr)
 
-# List to contain the test result message
 testSuccessful = False
 try:
     TestHelper.printSystemInfo("BEGIN")
