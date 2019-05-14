@@ -2,7 +2,7 @@
 set -eo pipefail
 echo "+++ Extracting build directory"
 [[ -f build.tar.gz ]] && tar -xzf build.tar.gz
-ls -l build && cd build
+[[ $(uname) == "Darwin" ]] && cd /data/job/eos/build || cd /data/job/build
 echo "+++ Running tests"
 # Counting tests available and if they get disabled for some reason, throw a failure
 TEST_COUNT=$(ctest -N -LE _tests | grep -i 'Total Tests: ' | cut -d ':' -f 2 | awk '{print $1}')
