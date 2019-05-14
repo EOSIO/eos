@@ -5,13 +5,13 @@ echo '+++ :evergreen_tree: Configuring Environment'
 [[ "$BUILD_STEP" == '' ]] && (echo '+++ :no_entry: ERROR: Build step name must be given as BUILD_STEP or argument 1!' && exit 1)
 if [[ "$(uname)" == 'Darwin' ]]; then
     echo 'Darwin family detected, building for brew.'
-    ARTIFACT='"*.rb;*.tar.gz"'
+    ARTIFACT='*.rb;*.tar.gz'
     PACKAGE_TYPE='brew'
 else
     . /etc/os-release
     if [[ "$ID_LIKE" == 'rhel fedora' ]]; then
         echo 'Fedora family detected, building for RPM.'
-        ARTIFACT='"*.rpm"'
+        ARTIFACT='*.rpm'
         PACKAGE_TYPE='rpm'
         mkdir -p /root/rpmbuild/BUILD
         mkdir -p /root/rpmbuild/BUILDROOT
@@ -22,7 +22,7 @@ else
         yum install -y rpm-build
     elif [[ "$ID_LIKE" == 'debian' ]]; then
         echo 'Debian family detected, building for dpkg.'
-        ARTIFACT='"*.deb"'
+        ARTIFACT='*.deb'
         PACKAGE_TYPE='deb'
     else
         echo '+++ :no_entry: ERROR: Could not determine which operating system this script is running on!'
@@ -45,7 +45,7 @@ cd build/packages
 chmod 755 ./*.sh
 ./generate_package.sh "$PACKAGE_TYPE"
 echo '+++ :arrow_up: Uploading Artifacts'
-buildkite-agent artifact upload $ARTIFACT
+buildkite-agent artifact upload \"$ARTIFACT\"
 for A in $(echo $ARTIFACT | tr ';' ' '); do
     if [[ $(ls $A | grep -c '') == 0 ]]; then
         echo "+++ :no_entry: ERROR: Expected artifact \"$A\" not found!"
