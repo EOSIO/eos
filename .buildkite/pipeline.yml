@@ -4,11 +4,7 @@ env:
   ANKA_MOJAVE_TEMPLATE: "10.14.4_6C_14G_40G"
   ANKA_TEMPLATE_TAG: "clean::cicd::git-ssh::nas::brew::buildkite-agent-3.11.2"
   CHECKSUMABLE: "scripts/eosio_build*"
-<<<<<<< HEAD
   MAC_TAG: "eosio_1.9.0-develop"
-=======
-  MAC_TAG: "eosio_2-4"
->>>>>>> develop
   WORKDIR: "/data/job"
 
 steps:
@@ -25,11 +21,7 @@ steps:
       CHECKSUMABLE: "${CHECKSUMABLE}"
       TEMPLATE: "${ANKA_MOJAVE_TEMPLATE}"
       TEMPLATE_TAG: "${ANKA_TEMPLATE_TAG}"
-<<<<<<< HEAD
       TAG_COMMANDS: "git clone ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO} && cd eos && git checkout ${BUILDKITE_COMMIT} && git submodule update --init --recursive && ./scripts/eosio_build.bash -y -P -m && cd .. && rm -rf eos" # CLONED_REPO_DIR IS REQUIRED and is where the repo is always cloned into
-=======
-      TAG_COMMANDS: "git clone ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO} && cd eos && git checkout ${BUILDKITE_COMMIT} && git submodule update --init --recursive && ./scripts/eosio_build.sh -y -P -f -m && cd .. && rm -rf eos" # CLONED_REPO_DIR IS REQUIRED and is where the repo is always cloned into
->>>>>>> develop
       PROJECT_TAG: "${MAC_TAG}"
     timeout: 320
 
@@ -56,11 +48,7 @@ steps:
 
   - label: ":darwin: [Darwin] Mojave Build"
     command:
-<<<<<<< HEAD
       - "git clone ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO} && cd eos && git checkout ${BUILDKITE_COMMIT} && git submodule update --init --recursive && ./scripts/eosio_build.bash -y -P -m && tar -pczf build.tar.gz build && buildkite-agent artifact upload build.tar.gz"
-=======
-      - "git clone ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO} && cd eos && git checkout ${BUILDKITE_COMMIT} && git submodule update --init --recursive && ./scripts/eosio_build.sh -y -P -m && tar -pczf build.tar.gz build && buildkite-agent artifact upload build.tar.gz"
->>>>>>> develop
     plugins:
       chef/anka#v0.4.4:
         no-volume: true
@@ -76,6 +64,10 @@ steps:
     agents:
       - "queue=mac-anka-large-node-fleet"
     timeout: 120
+    retry:
+      automatic:
+        - exit_status: 17 # failed to open image, error 2
+          limit: 2
 
   - label: ":aws: Amazon Linux 2 Build"
     command:
@@ -171,11 +163,7 @@ steps:
   - label: ":darwin: [Darwin] Mojave Tests"
     command:
       - "git clone ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO} && cd eos && git checkout ${BUILDKITE_COMMIT} && buildkite-agent artifact download \"build.tar.gz\" . --step \":darwin: [Darwin] Mojave Build\""
-<<<<<<< HEAD
       - "cd eos && ./scripts/parallel-test.bash"
-=======
-      - "cd eos && ./scripts/parallel-test.sh"
->>>>>>> develop
     agents:
       - "queue=mac-anka-node-fleet"
     plugins:
@@ -190,15 +178,15 @@ steps:
         debug: true
         wait-network: true
     timeout: 120
+    retry:
+      automatic:
+        - exit_status: 17 # failed to open image, error 2
+          limit: 2
 
   - label: ":darwin: [Darwin] Mojave NP Tests"
     command:
       - "git clone ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO} && cd eos && git checkout ${BUILDKITE_COMMIT} && buildkite-agent artifact download \"build.tar.gz\" . --step \":darwin: [Darwin] Mojave Build\""
-<<<<<<< HEAD
       - "cd eos && ./scripts/serial-test.bash"
-=======
-      - "cd eos && ./scripts/serial-test.sh"
->>>>>>> develop
     agents:
       - "queue=mac-anka-node-fleet"
     plugins:
@@ -213,6 +201,11 @@ steps:
         debug: true
         wait-network: true
     timeout: 120
+    retry:
+      automatic:
+        - exit_status: 17 # failed to open image, error 2
+          limit: 2
+          
   # AmazonLinux #
   - label: ":aws: Amazon Linux 2 Tests"
     command:
