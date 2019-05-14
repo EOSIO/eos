@@ -535,14 +535,8 @@ namespace cyberway { namespace chaindb {
 
             lru_cell_list_.clear();
 
-            cache_index_tree_.clear();
-            cache_object_tree_.clear();
-
-            service_tree_type tmp_tree;
-            tmp_tree.swap(service_tree_);
-            service_tree_.reserve(tmp_tree.size());
-            for (auto service: tmp_tree) if (service.second.converter) {
-                set_cache_converter(service.first, *service.second.converter);
+            for (auto& service: service_tree_) {
+                service.second.next_pk = unset_primary_key;
             }
         }
 

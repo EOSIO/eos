@@ -176,8 +176,6 @@ namespace cyberway { namespace chaindb {
         int update(const table_request&, const storage_payer_info&, primary_key_t, const char*, size_t) const;
         int remove(const table_request&, const storage_payer_info&, primary_key_t) const;
 
-        int insert(const table_request&, primary_key_t, variant, const storage_payer_info&) const;
-
         int insert(cache_object&, variant, const storage_payer_info&) const;
         int update(cache_object&, variant, const storage_payer_info&) const;
         int remove(cache_object&, const storage_payer_info&) const;

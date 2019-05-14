@@ -352,19 +352,6 @@ namespace cyberway { namespace chaindb {
             return delta;
         }
 
-        // From genesis
-        int insert(const table_request& request, primary_key_t pk, variant value, storage_payer_info storage) {
-            auto table = get_table(request);
-            
-            if (storage.payer.empty()) {
-                storage.payer = eosio::chain::config::system_account_name;
-                storage.owner = eosio::chain::config::system_account_name;
-            }
-            
-            auto obj = object_value{{table, pk}, std::move(value)};
-            return insert(table, std::move(storage), obj);
-        }
-
         // From contracts
         int update(
             const table_request& request, storage_payer_info storage,
@@ -906,12 +893,6 @@ namespace cyberway { namespace chaindb {
         const table_request& request, const storage_payer_info& storage, primary_key_t pk
     ) const{
         return impl_->remove(request, storage, pk);
-    }
-
-    int chaindb_controller::insert(
-        const table_request& request, primary_key_t pk, variant data, const storage_payer_info& storage
-    ) const {
-         return impl_->insert(request, pk, std::move(data), storage);
     }
 
     int chaindb_controller::insert(cache_object& itm, variant data, const storage_payer_info& storage) const {
