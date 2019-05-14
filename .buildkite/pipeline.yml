@@ -10,7 +10,7 @@ steps:
   - label: ":darwin: Ensure Mojave Anka Template Dependency Tag/Layer Exists"
     command:
       - "git clone git@github.com:EOSIO/mac-anka-fleet.git"
-      - "cd mac-anka-fleet && . ./ensure_tag.bash -a \"-n\""
+      - "cd mac-anka-fleet && . ./ensure_tag.bash -u 12 -r 25G -a '-n'"
     agents:
       - "queue=mac-anka-templater-fleet"
     env:
@@ -32,8 +32,7 @@ steps:
 
   - label: ":darwin: [Darwin] Mojave Build"
     command:
-      - "git clone ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO} && cd eos && git checkout ${BUILDKITE_COMMIT} && git submodule update --init --recursive && ./scripts/eosio_build.sh -y -P -m"
-      - "tar -pczf /Network/NAS/MAC_FLEET/BUILDKITE/artifacts/${ANKA_MOJAVE_TEMPLATE}-${BUILDKITE_PIPELINE_SLUG}-${BUILDKITE_BUILD_ID}.tar.gz eos"
+      - "git clone ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO} && cd eos && git checkout ${BUILDKITE_COMMIT} && git submodule update --init --recursive && ./scripts/eosio_build.sh -y -P -m && tar -pczf build.tar.gz build && buildkite-agent artifact upload build.tar.gz"
     plugins:
       chef/anka#v0.4.4:
         no-volume: true
@@ -152,7 +151,7 @@ steps:
   # MOJAVE #
   - label: ":darwin: [Darwin] Mojave Tests"
     command:
-      - "tar -xzf /Network/NAS/MAC_FLEET/BUILDKITE/artifacts/${ANKA_MOJAVE_TEMPLATE}-${BUILDKITE_PIPELINE_SLUG}-${BUILDKITE_BUILD_ID}.tar.gz"
+      - "git clone ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO} && cd eos && git checkout ${BUILDKITE_COMMIT} && buildkite-agent artifact download \"build.tar.gz\" . --step \":darwin: [Darwin] Mojave Build\""
       - "cd eos && ./scripts/parallel-test.sh"
     agents:
       - "queue=mac-anka-node-fleet"
@@ -171,7 +170,7 @@ steps:
 
   - label: ":darwin: [Darwin] Mojave NP Tests"
     command:
-      - "tar -xzf /Network/NAS/MAC_FLEET/BUILDKITE/artifacts/${ANKA_MOJAVE_TEMPLATE}-${BUILDKITE_PIPELINE_SLUG}-${BUILDKITE_BUILD_ID}.tar.gz"
+      - "git clone ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO} && cd eos && git checkout ${BUILDKITE_COMMIT} && buildkite-agent artifact download \"build.tar.gz\" . --step \":darwin: [Darwin] Mojave Build\""
       - "cd eos && ./scripts/serial-test.sh"
     agents:
       - "queue=mac-anka-node-fleet"
@@ -467,7 +466,7 @@ steps:
 
   - label: ":darwin: Mojave Package Builder"
     command:
-      - "tar -xzf /Network/NAS/MAC_FLEET/BUILDKITE/artifacts/${ANKA_MOJAVE_TEMPLATE}-${BUILDKITE_PIPELINE_SLUG}-${BUILDKITE_BUILD_ID}.tar.gz"
+      - "git clone ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO} && cd eos && git checkout ${BUILDKITE_COMMIT} && buildkite-agent artifact download \"build.tar.gz\" . --step \":darwin: [Darwin] Mojave Build\" && tar -xzf build.tar.gz"
       - "cd eos/build/packages && bash generate_package.sh brew"
       - "cd eos && buildkite-agent artifact upload build/packages/*.tar.gz"
       - "cd eos && buildkite-agent artifact upload build/packages/*.rb"
@@ -476,6 +475,7 @@ steps:
     plugins:
       chef/anka#v0.4.4:
         no-volume: true
+        workdir: $WORKDIR
         inherit-environment-vars: true
         bash-interactive: true
         vm-name: $ANKA_MOJAVE_TEMPLATE
