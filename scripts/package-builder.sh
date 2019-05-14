@@ -45,7 +45,7 @@ cd build/packages
 chmod 755 ./*.sh
 ./generate_package.sh "$PACKAGE_TYPE"
 echo '+++ :arrow_up: Uploading Artifacts'
-buildkite-agent artifact upload \"$ARTIFACT\"
+buildkite-agent artifact upload "./$ARTIFACT"
 for A in $(echo $ARTIFACT | tr ';' ' '); do
     if [[ $(ls $A | grep -c '') == 0 ]]; then
         echo "+++ :no_entry: ERROR: Expected artifact \"$A\" not found!"
