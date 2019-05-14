@@ -1572,6 +1572,6 @@ class Node(object):
             json.dump(protocolFeatureJson, f, indent=2)
 
     # Require producer_api_plugin
-    def createSnapshot(self, featureDigests=[]):
+    def createSnapshot(self):
         param = { }
         return self.processCurlCmd("producer", "create_snapshot", json.dumps(param))
