@@ -362,9 +362,9 @@ struct intrinsic_invoker_impl<Ret, std::tuple<Input, Inputs...>> {
  * @tparam Inputs - the remaining native parameters to transcribe
  */
 template<typename T, typename Ret, typename... Inputs>
-struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, size_t, Inputs...>> {
+struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, uint32_t, Inputs...>> {
    using next_step = intrinsic_invoker_impl<Ret, std::tuple<Inputs...>>;
-   using then_type = Ret(*)(wabt_apply_instance_vars&, array_ptr<T>, size_t, Inputs..., const TypedValues&, int);
+   using then_type = Ret(*)(wabt_apply_instance_vars&, array_ptr<T>, uint32_t, Inputs..., const TypedValues&, int);
 
    template<then_type Then, typename U=T>
    static auto translate_one(wabt_apply_instance_vars& vars, Inputs... rest, const TypedValues& args, int offset) -> std::enable_if_t<std::is_const<U>::value, Ret> {
@@ -442,9 +442,9 @@ struct intrinsic_invoker_impl<Ret, std::tuple<null_terminated_ptr, Inputs...>> {
  * @tparam Inputs - the remaining native parameters to transcribe
  */
 template<typename T, typename U, typename Ret, typename... Inputs>
-struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, array_ptr<U>, size_t, Inputs...>> {
+struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, array_ptr<U>, uint32_t, Inputs...>> {
    using next_step = intrinsic_invoker_impl<Ret, std::tuple<Inputs...>>;
-   using then_type = Ret(*)(wabt_apply_instance_vars&, array_ptr<T>, array_ptr<U>, size_t, Inputs..., const TypedValues&, int);
+   using then_type = Ret(*)(wabt_apply_instance_vars&, array_ptr<T>, array_ptr<U>, uint32_t, Inputs..., const TypedValues&, int);
 
    template<then_type Then>
    static Ret translate_one(wabt_apply_instance_vars& vars, Inputs... rest, const TypedValues& args, int offset) {
@@ -468,9 +468,9 @@ struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, array_ptr<U>, size_t
  * @tparam Inputs - the remaining native parameters to transcribe
  */
 template<typename Ret>
-struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<char>, int, size_t>> {
+struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<char>, int, uint32_t>> {
    using next_step = intrinsic_invoker_impl<Ret, std::tuple<>>;
-   using then_type = Ret(*)(wabt_apply_instance_vars&, array_ptr<char>, int, size_t, const TypedValues&, int);
+   using then_type = Ret(*)(wabt_apply_instance_vars&, array_ptr<char>, int, uint32_t, const TypedValues&, int);
 
    template<then_type Then>
    static Ret translate_one(wabt_apply_instance_vars& vars, const TypedValues& args, int offset) {

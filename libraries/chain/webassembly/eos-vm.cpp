@@ -3,11 +3,11 @@
 #include <eosio/chain/wasm_eosio_constraints.hpp>
 #include <fstream>
 //eos-vm includes
-#include <eosio/wasm_backend/backend.hpp>
+#include <eosio/vm/backend.hpp>
 
 namespace eosio { namespace chain { namespace webassembly { namespace eos_vm_runtime {
 
-using namespace eosio::wasm_backend;
+using namespace eosio::vm;
 
 namespace wasm_constraints = eosio::chain::wasm_constraints;
 

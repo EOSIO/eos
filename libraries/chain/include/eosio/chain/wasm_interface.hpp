@@ -3,7 +3,7 @@
 #include <eosio/chain/types.hpp>
 #include <eosio/chain/whitelisted_intrinsics.hpp>
 #include <eosio/chain/exceptions.hpp>
-#include <eosio/wasm_backend/allocator.hpp>
+#include <eosio/vm/allocator.hpp>
 #include "Runtime/Linker.h"
 #include "Runtime/Runtime.h"
 
@@ -88,7 +88,7 @@ namespace eosio { namespace chain {
          static void validate(const controller& control, const bytes& code);
 	 
 	 //get the wasm_allocator used for the linear memory for wasm
-	 static wasm_backend::wasm_allocator* get_wasm_allocator();
+	 static vm::wasm_allocator* get_wasm_allocator();
 
          //indicate that a particular code probably won't be used after given block_num
          void code_block_num_last_used(const digest_type& code_hash, const uint8_t& vm_type, const uint8_t& vm_version, const uint32_t& block_num);

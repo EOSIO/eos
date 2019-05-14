@@ -5,7 +5,6 @@
 #include <eosio/chain/global_property_object.hpp>
 #include <eosio/testing/tester.hpp>
 
-#include <boost/range/algorithm.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include "fork_test_utilities.hpp"

@@ -17,11 +17,11 @@
 #include "WAST/WAST.h"
 #include "IR/Validate.h"
 
-#include <eosio/wasm_backend/allocator.hpp>
+#include <eosio/vm/allocator.hpp>
 
 using namespace fc;
 using namespace eosio::chain::webassembly;
-using namespace eosio::wasm_backend;
+using namespace eosio::vm;
 using namespace IR;
 using namespace Runtime;
 

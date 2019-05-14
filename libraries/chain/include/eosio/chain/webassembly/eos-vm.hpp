@@ -7,10 +7,10 @@
 #include <softfloat_types.h>
 
 //eos-vm includes
-#include <eosio/wasm_backend/backend.hpp>
+#include <eosio/vm/backend.hpp>
 
 // eosio specific specializations
-namespace eosio { namespace wasm_backend {
+namespace eosio { namespace vm {
    template <>
    struct reduce_type<chain::name> {
       typedef uint64_t type;
@@ -60,12 +60,12 @@ namespace eosio { namespace wasm_backend {
       return eosio::chain::null_terminated_ptr((char*)(walloc->template get_base_ptr<uint8_t>()+val.data.ui));
    }
 
-}} // ns eosio::wasm_backend
+}} // ns eosio::vm
 
 namespace eosio { namespace chain { namespace webassembly { namespace eos_vm_runtime {
 
 using namespace fc;
-using namespace eosio::wasm_backend;
+using namespace eosio::vm;
 using namespace eosio::chain::webassembly::common;
 
 class eos_vm_runtime : public eosio::chain::wasm_runtime_interface {
@@ -85,4 +85,4 @@ class eos_vm_runtime : public eosio::chain::wasm_runtime_interface {
 #define _EOS_VM_INTRINSIC_NAME(LBL, SUF) __INTRINSIC_NAME(LBL, SUF)
 
 #define _REGISTER_EOS_VM_INTRINSIC(CLS, MOD, METHOD, WASM_SIG, NAME, SIG) \
-   eosio::wasm_backend::registered_function<eosio::chain::apply_context, CLS, &CLS::METHOD> _EOS_VM_INTRINSIC_NAME(__eos_vm_intrinsic_fn, __COUNTER__)(std::string(MOD), std::string(NAME));
+   eosio::vm::registered_function<eosio::chain::apply_context, CLS, &CLS::METHOD> _EOS_VM_INTRINSIC_NAME(__eos_vm_intrinsic_fn, __COUNTER__)(std::string(MOD), std::string(NAME));
