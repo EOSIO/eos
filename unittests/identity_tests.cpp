@@ -128,7 +128,7 @@ public:
          chaindb,
          {N(identity), identity, N( certs ), N(bytuple)},
          boost::make_tuple(string_to_name(property.c_str()), trusted, string_to_name(certifier.c_str())));
-      if (find.pk != cyberway::chaindb::end_primary_key) {
+      if (find.pk != cyberway::chaindb::primary_key::End) {
          auto val = chaindb.value_at_cursor({N(identity), find.cursor});
          auto& obj = val.get_object();
          if (obj["property"].as_string() == property && obj["trusted"].as_uint64() == trusted && obj["certifier"].as_string() == certifier) {

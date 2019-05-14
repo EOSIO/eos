@@ -5,10 +5,9 @@
 #include <cyberway/chaindb/driver_interface.hpp>
 #include <cyberway/chaindb/mongo_driver_utils.hpp>
 #include <cyberway/chaindb/mongo_bigint_converter.hpp>
+#include <cyberway/chaindb/mongo_asset_converter.hpp>
 #include <cyberway/chaindb/exception.hpp>
 #include <cyberway/chaindb/names.hpp>
-
-#include <eosio/chain/symbol.hpp>
 
 #include <fc/time.hpp>
 #include <fc/variant_object.hpp>
@@ -17,6 +16,8 @@
 
 #include <bsoncxx/builder/basic/kvp.hpp>
 #include <bsoncxx/builder/basic/document.hpp>
+
+#include <eosio/chain/asset.hpp>
 
 namespace {
     constexpr uint64_t DECIMAL_128_BIAS = 6176;
@@ -66,6 +67,8 @@ namespace cyberway { namespace chaindb {
     using bsoncxx::binary_sub_type;
     using bsoncxx::oid;
 
+
+
     string to_json(const document_view& row) try {
         auto s = bsoncxx::to_json(row);
         if (s.empty()) s = "?";
@@ -79,8 +82,16 @@ namespace cyberway { namespace chaindb {
         return bsoncxx::types::b_decimal128(decimal);
     }
 
+    string from_utf8(const element& elem) {
+        return elem.get_utf8().value.to_string();
+    }
+
     uint64_t from_decimal128(const bsoncxx::types::b_decimal128& val) {
         return val.value.low();
+    }
+
+    uint64_t from_decimal128(const element& elem) {
+        return from_decimal128(elem.get_decimal128());
     }
 
     fc::time_point from_date(const bsoncxx::types::b_date& date) {
@@ -106,7 +117,7 @@ namespace cyberway { namespace chaindb {
         return bsoncxx::types::b_date(as_time_point);
     }
 
-    variant build_variant(service_state* state, const document_view&);
+    variant build_variant(const document_view&);
 
     variants build_variant(const array_view& src) {
         variants dst;
@@ -139,7 +150,7 @@ namespace cyberway { namespace chaindb {
                     dst.emplace_back(from_timestamp(item.get_timestamp()));
                     break;
                 case type::k_document:
-                    dst.emplace_back(build_variant(nullptr, item.get_document().value));
+                    dst.emplace_back(build_variant(item.get_document().value));
                     break;
                 case type::k_array:
                     dst.emplace_back(build_variant(item.get_array().value));
@@ -164,42 +175,31 @@ namespace cyberway { namespace chaindb {
                 case type::k_minkey:
                 case type::k_undefined:
                 default:
-                    CYBERWAY_ASSERT(false, driver_wrong_field_type_exception, "Bad type of the database field");
+                    CYBERWAY_THROW(driver_wrong_field_type_exception, "Bad type of the database field");
                     break;
             }
         }
         return dst;
     }
 
-    template <typename Result, typename Exception>
-    Result get_typed_value(const type_name& type, const element& elem) {
-        switch (type.front()) {
-            case 'i': // int64
-                return static_cast<Result>(elem.get_int64().value);
-            case 'u': // uint64
-                return static_cast<Result>(std::stoull(elem.get_decimal128().value.to_string()));
-            case 'n': // name
-                return static_cast<Result>(name(elem.get_utf8().value.data()).value);
-            case 's':
-                if (is_symbol_type(type)) {
-                    auto doc = elem.get_document().value;
-                    auto itr = doc.begin();
-                    CYBERWAY_ASSERT(itr != doc.end() && !itr->key().compare(names::decs_part_name), Exception, "No 'decs' part of symbol");
-                    auto decs = std::stoull(itr->get_decimal128().value.to_string());
-                    CYBERWAY_ASSERT(decs <= symbol::max_precision, Exception, "Wrong value in 'decs' part of symbol");
-                    ++itr;
-                    CYBERWAY_ASSERT(itr != doc.end() && !itr->key().compare(names::sym_part_name), Exception, "No 'sym' part of symbol");
-                    auto sym = itr->get_utf8().value.to_string();
-                    ++itr;
-                    CYBERWAY_ASSERT(itr == doc.end(), Exception, "Additional parts other than 'decs' and sym' for symbol");
-                    return static_cast<Result>(symbol(static_cast<uint8_t>(decs), sym.c_str()).value());
-                } else { // symbol_code
-                    return static_cast<Result>(symbol(0, elem.get_utf8().value.data()).to_symbol_code().value);
+    template <typename Result> Result get_typed_value(const table_info& info, const element& elem) {
+        switch (elem.type()) {
+            case type::k_int64:
+                return Result::from_value(info, elem.get_int64().value);
+            case type::k_decimal128:
+                return Result::from_value(info, from_decimal128(elem));
+            case type::k_utf8:
+                return Result::from_value(info, from_utf8(elem));
+            case type::k_document: {
+                const mongo_asset_converter converter(elem.get_document().value);
+                if (converter.is_valid_value()) {
+                    return Result::from_value(info, converter.value());
                 }
-
+            }
             default:
-                CYBERWAY_ASSERT(false, Exception, "Unknown type ${type}", ("type", type));
+                break;
         }
+        return Result::from_value(info);
     }
 
     primary_key_t get_pk_value(const table_info& table, const document_view& row) try {
@@ -214,30 +214,30 @@ namespace cyberway { namespace chaindb {
 
             --pos;
             if (0 == pos) {
-                return get_typed_value<primary_key_t, driver_primary_key_exception>(pk_order.type, *itr);
+                return get_typed_value<primary_key>(table, *itr).value();
             } else {
                 view = itr->get_document().value;
             }
         }
-        CYBERWAY_ASSERT(false, driver_primary_key_exception,
+        CYBERWAY_THROW(driver_primary_key_exception,
             "Wrong logic on parsing of the primary key ${pk} in the row '${row}' from the table ${table}",
             ("pk", pk_order.field)("row", to_json(row))("table", get_full_table_name(table)));
     } catch(const driver_primary_key_exception&) {
         throw;
     } catch (...) {
-        CYBERWAY_ASSERT(false, driver_primary_key_exception,
-            "External database can't read the the primary key ${pk} in the row '${row}' from the table ${table}",
+        CYBERWAY_THROW(driver_primary_key_exception,
+            "External database can't read the primary key ${pk} in the row '${row}' from the table ${table}",
             ("pk", table.pk_order->field)("row", to_json(row))("table", get_full_table_name(table)));
     }
 
-    account_name_t get_scope_value(const table_info&, const bsoncxx::document::view& row) {
-        document_view view = row;
-
-        auto itr = view.find(names::service_field);
-        view = itr->get_document().value;
-        itr = view.find(names::scope_field);
-
-        return account_name(itr->get_utf8().value.data()).value;
+    scope_name_t get_scope_value(const table_info& table, const bsoncxx::document::view& row) try {
+        auto service_itr = row.find(names::service_field);
+        auto scope_itr = service_itr->get_document().value.find(names::scope_field);
+        return get_typed_value<scope_name>(table, *scope_itr).value();
+    } catch (...) {
+        CYBERWAY_THROW(driver_scope_exception,
+            "External database can't read the scope in the row '${row}' from the table ${table}",
+            ("row", to_json(row))("table", get_full_table_name(table)));
     }
 
     static inline void validate_field_name(const bool test, const document_view& doc, const element& itm) {
@@ -252,86 +252,59 @@ namespace cyberway { namespace chaindb {
             ("name", itm.key().to_string())("row", to_json(doc)));
     }
 
-    void validate_exist_field(const bool test, const string& field, const document_view& doc) {
+    static inline void validate_exist_field(const bool test, const document_view& doc) {
         CYBERWAY_ASSERT(test, driver_absent_field_exception,
-            "The row ${row} doesn't contain the field ${field}",
-            ("row", to_json(doc))("field", field));
+            "The row ${row} doesn't contain the some _SERVICE_ fields", ("row", to_json(doc)));
     }
 
-    void build_service_state(service_state& state, const document_view& src) {
-        bool has_size  = false;
-        bool has_payer = false;
-        bool has_owner = false;
-        bool has_scope = false;
-
-        // The number of RAM objects is less then the number of archive objects.
-        //   so, the RAM field is false by default
-        state.in_ram      = false;
-        state.undo_in_ram = false;
-
+    void build_undo_state(const table_info& info, service_state& state, const document_view& src) {
+        int field_cnt = 0;
         for (auto& itm: src) try {
+            ++field_cnt;
             auto key = itm.key().to_string();
-            auto key_type = itm.type();
             switch (key.front()) {
                 case 'c': {
                     validate_field_name(names::code_field == key, src, itm);
-                    validate_field_type(type::k_utf8 == key_type, src, itm);
-                    const auto str = itm.get_utf8().value.to_string();
-                    if (str == names::system_code) {
-                        state.code = account_name();
-                    } else {
-                        state.code = account_name(db_string_to_name(str.c_str()));
-                    }
+                    state.code = from_decimal128(itm);
                     break;
                 }
                 case 't': {
                     validate_field_name(names::table_field == key, src, itm);
-                    validate_field_type(type::k_utf8 == key_type, src, itm);
-                    state.table = table_name(db_string_to_name(itm.get_utf8().value.data()));
+                    state.table = from_decimal128(itm);
                     break;
                 }
                 case 's': {
                     if (names::scope_field == key) {
-                       validate_field_type(type::k_utf8 == key_type, src, itm);
-                       state.scope = account_name(itm.get_utf8().value.to_string());
-                       has_scope = true;
+                        state.scope = from_decimal128(itm);
                     } else {
-                       validate_field_name(names::size_field == key, src, itm);
-                       validate_field_type(type::k_int32 == key_type, src, itm);
-                       state.size = itm.get_int32().value;
-                       has_size = true;
+                        validate_field_name(names::size_field == key, src, itm);
+                        state.size = itm.get_int32().value;
                     }
                     break;
                 }
                 case 'o': {
                     validate_field_name(names::owner_field == key, src, itm);
-                    validate_field_type(type::k_utf8 == key_type, src, itm);
-                    state.owner = account_name(itm.get_utf8().value.to_string());
-                    has_owner = true;
+                    state.owner = from_decimal128(itm);
                     break;
                 }
                 case 'p': {
                     if (key == names::pk_field) {
-                        validate_field_type(type::k_decimal128 == key_type, src, itm);
-                        state.pk = from_decimal128(itm.get_decimal128());
+                        state.pk = from_decimal128(itm);
                     } else {
                         validate_field_name(names::payer_field == key, src, itm);
-                        validate_field_type(type::k_utf8 == key_type, src, itm);
-                        state.payer = account_name(itm.get_utf8().value.to_string());
-                        has_payer = true;
+                        state.payer = from_decimal128(itm);
                     }
                     break;
                 }
                 case 'r': {
                     if (key == names::revision_field) {
-                        validate_field_type(type::k_int64 == key_type, src, itm);
                         state.revision = itm.get_int64().value;
                     } else {
                         validate_field_name(names::ram_field == key, src, itm);
-                        validate_field_type(type::k_bool == key_type, src, itm);
+                        --field_cnt; // skip to count it
                         state.in_ram = itm.get_bool().value;
                         // for archive records it should absent
-                        validate_field_type(state.in_ram, src, itm);
+                        validate_field_name(state.in_ram, src, itm);
                     }
                     break;
                 }
@@ -339,44 +312,42 @@ namespace cyberway { namespace chaindb {
                     switch (key[1]) {
                         case 'p': {
                             validate_field_name(names::undo_pk_field == key, src, itm);
-                            validate_field_type(type::k_decimal128 == key_type, src, itm);
-                            state.undo_pk = from_decimal128(itm.get_decimal128());
+                            state.undo_pk = from_decimal128(itm);
                             break;
                         }
                         case 'y': {
                             validate_field_name(names::undo_payer_field == key, src, itm);
-                            validate_field_type(type::k_utf8 == key_type, src, itm);
-                            state.undo_payer = account_name(itm.get_utf8().value.to_string());
+                            state.undo_payer = from_decimal128(itm);
                             break;
                         }
                         case 'o': {
                             validate_field_name(names::undo_owner_field == key, src, itm);
-                            validate_field_type(type::k_utf8 == key_type, src, itm);
-                            state.undo_owner = account_name(itm.get_utf8().value.to_string());
+                            state.undo_owner = from_decimal128(itm);
                             break;
                         }
                         case 's': {
                             validate_field_name(names::undo_size_field == key, src, itm);
-                            validate_field_type(type::k_int32 == key_type, src, itm);
                             state.undo_size = itm.get_int32().value;
                             break;
                         }
                         case 'c': {
                             validate_field_name(names::undo_rec_field == key, src, itm);
-                            validate_field_type(type::k_utf8 == key_type, src, itm);
-                            state.undo_rec = fc::reflector<undo_record>::from_string(itm.get_utf8().value.data());
+                            state.undo_rec = static_cast<undo_record>(itm.get_int32().value);
                             break;
                         }
                         default: {
                             validate_field_name(names::undo_ram_field == key, src, itm);
-                            validate_field_type(type::k_bool == key_type, src, itm);
+                            --field_cnt; // skip to count it
                             state.undo_in_ram = itm.get_bool().value;
                             // for archive records it should absent
-                            validate_field_type(state.undo_in_ram, src, itm);
+                            validate_field_name(state.undo_in_ram, src, itm);
                             break;
                         }
                     }
                     break;
+                }
+                default: {
+                    validate_field_name(false, src, itm);
                 }
             }
         } catch(const driver_wrong_field_name_exception&) {
@@ -386,13 +357,75 @@ namespace cyberway { namespace chaindb {
         } catch(...) {
             validate_field_type(false, src, itm);
         }
-        validate_exist_field(has_size,  names::size_field,  src);
-        validate_exist_field(has_scope, names::scope_field, src);
-        validate_exist_field(has_payer, names::payer_field, src);
-        validate_exist_field(has_owner, names::owner_field, src);
+
+        constexpr int undo_field_cnt = 15 /* list of them above */ - 2 /* ram_field */;
+        validate_exist_field(undo_field_cnt == field_cnt, src);
     }
 
-    void build_variant(service_state* state, mutable_variant_object& dst, string key, const element& src) {
+    void build_service_state(const table_info& info, service_state& state, const document_view& src) {
+        // The number of RAM objects is less then the number of archive objects.
+        //   so, the RAM field is false by default
+        state.in_ram      = false;
+        state.undo_in_ram = false;
+
+        if (src.begin()->key().front() == 'u') {
+            build_undo_state(info, state, src);
+            return;
+        }
+
+        int field_cnt = 0;
+        for (auto& itm: src) try {
+            auto key = itm.key().to_string();
+            ++field_cnt;
+            switch (key.front()) {
+                case 's': {
+                    if (names::scope_field == key) {
+                        state.scope = get_typed_value<scope_name>(info, itm).value();
+                    } else {
+                        validate_field_name(names::size_field == key, src, itm);
+                        state.size = itm.get_int32().value;
+                    }
+                    break;
+                }
+                case 'o': {
+                    validate_field_name(names::owner_field == key, src, itm);
+                    state.owner = account_name(from_utf8(itm));
+                    break;
+                }
+                case 'p': {
+                    validate_field_name(names::payer_field == key, src, itm);
+                    state.payer = account_name(from_utf8(itm));
+                    break;
+                }
+                case 'r': {
+                    if (key == names::revision_field) {
+                        state.revision = itm.get_int64().value;
+                    } else {
+                        validate_field_name(names::ram_field == key, src, itm);
+                        --field_cnt; // skip to count it
+                        state.in_ram = itm.get_bool().value;
+                        // for archive records it should absent
+                        validate_field_type(state.in_ram, src, itm);
+                    }
+                    break;
+                }
+                default: {
+                    validate_field_name(false, src, itm);
+                }
+            }
+        } catch(const driver_wrong_field_name_exception&) {
+            throw;
+        } catch(const driver_wrong_field_type_exception&) {
+            throw;
+        } catch(...) {
+            validate_field_type(false, src, itm);
+        }
+
+        constexpr int service_field_cnt = 6 /* list of them above */ - 1 /* ram_field */;
+        validate_exist_field(service_field_cnt == field_cnt, src);
+    }
+
+    void build_variant(mutable_variant_object& dst, string key, const element& src) {
         switch (src.type()) {
             case type::k_null:
                 dst(std::move(key), variant());
@@ -404,13 +437,13 @@ namespace cyberway { namespace chaindb {
                 dst(std::move(key), src.get_int64().value);
                 break;
             case type::k_decimal128:
-                dst(std::move(key), from_decimal128(src.get_decimal128()));
+                dst(std::move(key), from_decimal128(src));
                 break;
             case type::k_double:
                 dst(std::move(key), src.get_double().value);
                 break;
             case type::k_utf8:
-                dst(std::move(key), src.get_utf8().value.to_string());
+                dst(std::move(key), from_utf8(src));
                 break;
             case type::k_date:
                 dst(std::move(key), from_date(src.get_date()));
@@ -419,12 +452,7 @@ namespace cyberway { namespace chaindb {
                 dst(std::move(key), from_timestamp(src.get_timestamp()));
                 break;
             case type::k_document:
-                if (state != nullptr && key == names::service_field) {
-                    build_service_state(*state, src.get_document().value);
-                    state = nullptr;
-                } else {
-                    dst(std::move(key), build_variant(nullptr, src.get_document().value));
-                }
+                dst(std::move(key), build_variant(src.get_document().value));
                 break;
             case type::k_array:
                 dst(std::move(key), build_variant(src.get_array().value));
@@ -449,29 +477,50 @@ namespace cyberway { namespace chaindb {
             case type::k_minkey:
             case type::k_undefined:
             default:
-                CYBERWAY_ASSERT(false, driver_wrong_field_type_exception, "Bad type of the database field");
+                CYBERWAY_THROW(driver_wrong_field_type_exception, "Bad type of the database field");
                 break;
         }
     }
 
-    variant build_variant(service_state* state, const document_view& src) {
-        const mongo_bigint_converter converter(src);
-        if (converter.is_valid_value()) {
-            return converter.get_raw_value();
+    variant build_variant(const document_view& src) {
+        const mongo_bigint_converter bigint_converter(src);
+        if (bigint_converter.is_valid_value()) {
+            return bigint_converter.get_raw_value();
+        }
+
+        const mongo_asset_converter asset_converter(src);
+        if (asset_converter.is_valid_value()) {
+            return asset_converter.get_variant();
         }
 
         mutable_variant_object dst;
-        for (auto& item: src) {
-            build_variant(state, dst, item.key().to_string(), item);
+        for (auto& itm: src) {
+            build_variant(dst, itm.key().to_string(), itm);
         }
         return variant(std::move(dst));
     }
 
     object_value build_object(const table_info& info, const document_view& src) {
         object_value obj;
+        bool was_service = false;
+        mutable_variant_object dst;
 
-        obj.value = build_variant(&obj.service, src);
-        if (obj.pk() == unset_primary_key) {
+        for (auto& itm: src) {
+            auto key = itm.key().to_string();
+            if ('_' == key.front()) {
+                if (key == "_id") continue;
+
+                validate_field_name(!was_service && names::service_field == key, src, itm);
+                build_service_state(info, obj.service, itm.get_document().value);
+                was_service = true;
+            } else {
+                build_variant(dst, std::move(key), itm);
+            }
+        }
+        validate_exist_field(was_service, src);
+
+        obj.value = variant(std::move(dst));
+        if (obj.pk() == primary_key::Unset) {
             obj.service.pk    = get_pk_value(info, src);
             obj.service.code  = info.code;
             obj.service.scope = info.scope;
@@ -601,10 +650,16 @@ namespace cyberway { namespace chaindb {
     }
 
     sub_document& build_bound_document(basic::sub_document& dst, const std::string& key, const int order) {
-        if (order > 0) {
-            dst.append(kvp(key, b_minkey()));
-        } else {
-            dst.append(kvp(key, b_maxkey()));
+        switch (order) {
+            case 1:
+                dst.append(kvp(key, b_minkey()));
+                break;
+            case -1:
+                dst.append(kvp(key, b_maxkey()));
+                break;
+
+            default:
+                assert(false);
         }
         return dst;
     }
@@ -638,9 +693,30 @@ namespace cyberway { namespace chaindb {
         }
     }
 
+    void append_typed_value(sub_document& doc, const field_name& field, const typed_name& typed) {
+        switch (typed.kind()) {
+            case typed_name::Int64:
+                doc.append(kvp(field, static_cast<int64_t>(typed.value())));
+                break;
+            case typed_name::Uint64:
+                doc.append(kvp(field, to_decimal128(typed.value())));
+                break;
+            case typed_name::Symbol: // should not happen for the primary key ..
+            case typed_name::Name:
+            case typed_name::SymbolCode:
+                doc.append(kvp(field, typed.to_string()));
+                break;
+            case typed_name::Unknown:
+            default:
+                assert(false);
+                break;
+        }
+    }
+
     sub_document& build_service_document(sub_document& doc, const table_info& table, const object_value& obj) {
+        assert(obj.service.scope == table.scope);
         doc.append(kvp(names::service_field, [&](sub_document serv_doc) {
-            serv_doc.append(kvp(names::scope_field, get_scope_name(table)));
+            append_typed_value(serv_doc, names::scope_field, scope_name::from_table(table));
             serv_doc.append(kvp(names::revision_field, obj.service.revision));
             serv_doc.append(kvp(names::payer_field, get_payer_name(obj.service.payer)));
             serv_doc.append(kvp(names::owner_field, get_owner_name(obj.service.owner)));
@@ -650,20 +726,21 @@ namespace cyberway { namespace chaindb {
         return doc;
     }
 
-    sub_document& build_undo_service_document(sub_document& doc, const table_info& table, const object_value& obj) {
+    sub_document& build_undo_document(sub_document& doc, const table_info& table, const object_value& obj) {
+        assert(obj.service.scope == table.scope);
         doc.append(kvp(names::service_field, [&](sub_document serv_doc) {
             serv_doc.append(kvp(names::undo_pk_field, to_decimal128(obj.service.undo_pk)));
-            serv_doc.append(kvp(names::undo_rec_field, fc::reflector<undo_record>::to_string(obj.service.undo_rec)));
-            serv_doc.append(kvp(names::undo_payer_field, get_payer_name(obj.service.undo_payer)));
-            serv_doc.append(kvp(names::undo_owner_field, get_payer_name(obj.service.undo_owner)));
+            serv_doc.append(kvp(names::undo_rec_field, static_cast<int32_t>(obj.service.undo_rec)));
+            serv_doc.append(kvp(names::undo_payer_field, to_decimal128(obj.service.undo_payer)));
+            serv_doc.append(kvp(names::undo_owner_field, to_decimal128(obj.service.undo_owner)));
             serv_doc.append(kvp(names::undo_size_field, static_cast<int32_t>(obj.service.undo_size)));
-            serv_doc.append(kvp(names::code_field, get_code_name(table)));
-            serv_doc.append(kvp(names::table_field, get_table_name(table)));
-            serv_doc.append(kvp(names::scope_field, get_scope_name(table)));
+            serv_doc.append(kvp(names::code_field, to_decimal128(obj.service.code)));
+            serv_doc.append(kvp(names::table_field, to_decimal128(obj.service.table)));
+            serv_doc.append(kvp(names::scope_field, to_decimal128(obj.service.scope)));
             serv_doc.append(kvp(names::pk_field, to_decimal128(obj.service.pk)));
             serv_doc.append(kvp(names::revision_field, obj.service.revision));
-            serv_doc.append(kvp(names::payer_field, get_payer_name(obj.service.payer)));
-            serv_doc.append(kvp(names::owner_field, get_owner_name(obj.service.owner)));
+            serv_doc.append(kvp(names::payer_field, to_decimal128(obj.service.payer)));
+            serv_doc.append(kvp(names::owner_field, to_decimal128(obj.service.owner)));
             serv_doc.append(kvp(names::size_field, static_cast<int32_t>(obj.service.size)));
             append_ram_field(serv_doc, names::ram_field, obj.service.in_ram);
             append_ram_field(serv_doc, names::undo_ram_field, obj.service.undo_in_ram);
@@ -671,44 +748,33 @@ namespace cyberway { namespace chaindb {
         return doc;
     }
 
-    template<typename Exception, typename Value>
-    void append_typed_value(
-        sub_document& doc, const table_info& table, const field_name& field, const type_name& type, const Value& value
-    ) {
-        switch (type.front()) {
-            case 'i': // int64
-                doc.append(kvp(field, static_cast<int64_t>(value)));
-                break;
-            case 'u': // uint64
-                doc.append(kvp(field, to_decimal128(value)));
-                break;
-            case 'n': // name
-                doc.append(kvp(field, name(value).to_string()));
-                break;
-            case 's':
-                if (is_symbol_type(type)) { // symbol
-                    doc.append(kvp(field, [&](sub_document sub_doc){
-                        build_document(doc, variant(symbol_info(symbol(value))).get_object());
-                    }));
-                } else {                    // symbol_code
-                    doc.append(kvp(field, symbol(value << 8).name()));
-                }
-                break;
-            default:
-                CYBERWAY_ASSERT(false, Exception,
-                    "Invalid type ${type} for the ${key} ${value} in the table ${table}",
-                    ("type", type)("field", field)("value", value)("table", get_full_table_name(table)));
+    sub_document& append_pk_value(sub_document& doc, const table_info& table, const primary_key_t pk) {
+        assert(table.pk_order);
+
+        auto field = table.pk_order->field;
+        auto typed = primary_key::from_table(table, pk);
+
+        if (typed_name::Symbol == typed.kind()) {
+            // The driver gets objects as variant in which the (symbol) primary key is already exist as symbol_info
+            //     for such cases the driver should interpret the (symbol) primary key as structure
+            doc.append(kvp(field, [&](sub_document sub_doc) {
+                auto symb = symbol(typed.value());
+                sub_doc.append(kvp(names::decs_field, to_decimal128(symb.decimals())));
+                sub_doc.append(kvp(names::sym_field,  symb.name()));
+            }));
+        } else {
+            append_typed_value(doc, field, typed);
         }
+        return doc;
     }
 
-    sub_document& append_pk_value(sub_document& doc, const table_info& table, const primary_key_t pk) {
-        append_typed_value<driver_primary_key_exception>(
-            doc, table, table.pk_order->field, table.pk_order->type, pk);
+    sub_document& append_scope_value(sub_document& doc, const table_info& table) {
+        append_typed_value(doc, names::scope_path, scope_name::from_table(table));
         return doc;
     }
 
     sub_document& build_find_pk_document(sub_document& doc, const table_info& table, const object_value& obj) {
-        doc.append(kvp(names::scope_path, get_scope_name(table)));
+        append_scope_value(doc, table);
         append_pk_value(doc, table, obj.service.pk);
         return doc;
     }

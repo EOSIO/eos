@@ -53,6 +53,7 @@ add_library( eosio_chain
              chaindb/journal.cpp
              chaindb/abi_info.cpp
              chaindb/storage_calculator.cpp
+             chaindb/typed_name.cpp
 
              cyberway/domain_name.cpp
              cyberway/cyberway_contract.cpp

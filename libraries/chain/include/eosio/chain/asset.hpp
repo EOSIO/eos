@@ -96,20 +96,20 @@ private:
 };
 
 struct asset_info final {
-    share_type  amount;
-    uint8_t     decs;
-    symbol_code sym;
+    share_type  _amount;
+    uint8_t     _decs;
+    symbol_code _sym;
 
     asset_info() = default;
 
     asset_info(const asset& src)
-    : amount(src.get_amount()),
-      decs(src.get_symbol().decimals()),
-      sym(src.get_symbol().to_symbol_code())
+    : _amount(src.get_amount()),
+      _decs(src.get_symbol().decimals()),
+      _sym(src.get_symbol().to_symbol_code())
     { }
 
     operator asset() const {
-       return asset(amount, symbol(sym.value << 8 | decs));
+       return asset(_amount, symbol(_sym.value << 8 | _decs));
     }
 
     static asset_info from_string(const string& from) {
@@ -122,7 +122,7 @@ bool  operator <= (const asset& a, const asset& b);
 
 }} // namespace eosio::chain
 
-FC_REFLECT(eosio::chain::asset_info, (amount)(decs)(sym))
+FC_REFLECT(eosio::chain::asset_info, (_amount)(_decs)(_sym))
 FC_REFLECT(eosio::chain::asset, (amount)(sym))
 
 namespace fc {

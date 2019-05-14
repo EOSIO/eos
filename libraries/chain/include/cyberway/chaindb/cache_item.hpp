@@ -35,8 +35,8 @@ namespace cyberway { namespace chaindb {
     }; // struct cache_converter_interface
 
     struct cache_index_value final: public boost::intrusive::set_base_hook<> {
-        const index_name index;
-        const bytes      blob;
+        const index_name_t index;
+        const bytes        blob;
         const cache_object* const object = nullptr;
 
         cache_index_value(index_name, bytes, const cache_object&);

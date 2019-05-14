@@ -393,7 +393,7 @@ fc::variant chain_api_plugin_impl::get_payout(chain::account_name account) const
     auto payouts_it = chain_db.lower_bound(request, fc::mutable_variant_object() ("token_code", chain::symbol(CORE_SYMBOL).to_symbol_code())
                                                                                  ("account", account));
 
-    if (payouts_it.pk != cyberway::chaindb::end_primary_key) {
+    if (payouts_it.pk != cyberway::chaindb::primary_key::End) {
         return chain_db.value_at_cursor({N(cyber.stake), payouts_it.cursor});
     }
     return fc::variant();
@@ -548,7 +548,7 @@ get_table_rows_result chain_api_plugin_impl::get_table_rows( const get_table_row
        EOS_THROW(cyberway::chaindb::driver_unsupported_operation_exception, "Backward iteration through table not supported yet");
    } else {
        auto begin = p.lower_bound.is_null() ? chaindb.begin(request) : chaindb.lower_bound(request, p.lower_bound);
-       const auto end_pk = p.upper_bound.is_null() ? cyberway::chaindb::end_primary_key : chaindb.upper_bound(request, p.upper_bound).pk;
+       const auto end_pk = p.upper_bound.is_null() ? cyberway::chaindb::primary_key::End : chaindb.upper_bound(request, p.upper_bound).pk;
        return walk_table_row_range(p, begin, end_pk);
    }
 
@@ -647,7 +647,7 @@ std::vector<chain::asset> chain_api_plugin_impl::get_currency_balance( const get
 
     const auto next_request = cyberway::chaindb::cursor_request{p.code, accounts_it.cursor};
 
-    for (; accounts_it.pk != cyberway::chaindb::end_primary_key; accounts_it.pk = chaindb.next(next_request)) {
+    for (; accounts_it.pk != cyberway::chaindb::primary_key::End; accounts_it.pk = chaindb.next(next_request)) {
 
         const auto value = chaindb.value_at_cursor({p.code, accounts_it.cursor});
 
@@ -674,7 +674,7 @@ fc::variant chain_api_plugin_impl::get_currency_stats( const get_currency_stats_
     auto& chaindb = chain_controller_.chaindb();
     auto itr = chaindb.begin({p.code, scope, N(stat), cyberway::chaindb::names::primary_index});
 
-    if (itr.pk == cyberway::chaindb::end_primary_key) {
+    if (itr.pk == cyberway::chaindb::primary_key::End) {
         return {};
     }
 
@@ -706,7 +706,7 @@ get_producers_result chain_api_plugin_impl::get_producers( const get_producers_p
     std::string next_producer;
     uint64_t total_votes = 0;
 
-    for (size_t count = 0; producers_it.pk != cyberway::chaindb::end_primary_key; producers_it.pk = chaindb.next(cursor_req)) {
+    for (size_t count = 0; producers_it.pk != cyberway::chaindb::primary_key::End; producers_it.pk = chaindb.next(cursor_req)) {
 
         const auto value = chaindb.value_at_cursor(cursor_req);
         const auto account = value["account"].as_string();
@@ -755,7 +755,7 @@ std::string chain_api_plugin_impl::get_agent_public_key(chain::account_name acco
 
     const auto it = chaindb.lower_bound(request, fc::mutable_variant_object()("token_code", chain::symbol(CORE_SYMBOL).to_symbol_code())("account", account));
 
-    if (it.pk != cyberway::chaindb::end_primary_key) {
+    if (it.pk != cyberway::chaindb::primary_key::End) {
         return chaindb.value_at_cursor({N(), it.cursor})["signing_key"].as_string();
     }
     return "";

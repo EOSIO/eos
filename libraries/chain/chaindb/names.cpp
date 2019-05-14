@@ -58,12 +58,7 @@ namespace cyberway { namespace chaindb {
         return value;
     }
 
-    bool is_symbol_type(const type_name& type) {
-        static constexpr size_t symbol_len = sizeof("symbol") / sizeof("symbol"[0]) - 1;
-        return type.front() == 's' && type.size() == symbol_len;
-    }
-
-    // name can't contains _ that is why they are used for internal db and key names
+    // name can't start from _ that is why they are used for internal db and key names
 
     const string names::unknown          = "_UNKNOWN_";
 
@@ -77,6 +72,10 @@ namespace cyberway { namespace chaindb {
     const string names::table_field      = "table";
     const string names::scope_field      = "scope";
     const string names::pk_field         = "pk";
+
+    const string names::amount_field     = "_amount";
+    const string names::decs_field       = "_decs";
+    const string names::sym_field        = "_sym";
 
     const string names::next_pk_field    = "npk";
     const string names::undo_pk_field    = "upk";
@@ -99,6 +98,4 @@ namespace cyberway { namespace chaindb {
     const string names::asc_order        = "asc";
     const string names::desc_order       = "desc";
 
-    const string names::decs_part_name   = "decs";
-    const string names::sym_part_name    = "sym";
 } } // namespace cyberway::chaindb

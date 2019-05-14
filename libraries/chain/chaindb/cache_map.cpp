@@ -73,7 +73,7 @@ namespace cyberway { namespace chaindb {
 
     struct cache_service_info final {
         int cache_object_cnt = 0;
-        primary_key_t next_pk = unset_primary_key;
+        primary_key_t next_pk = primary_key::Unset;
         const cache_converter_interface* converter = nullptr; // exist only for interchain tables
 
         cache_service_info() = default;
@@ -103,23 +103,23 @@ namespace cyberway { namespace chaindb {
     }; // struct cache_index_key
 
     struct cache_index_compare {
-        const index_name&   index(const cache_index_value& v) const { return v.index;                   }
-        const index_name&   index(const cache_index_key& v  ) const { return v.info.index->name;        }
+        index_name_t   index(const cache_index_value& v) const { return v.index;                   }
+        index_name_t   index(const cache_index_key& v  ) const { return v.info.index->name;        }
 
-        const table_name&   table(const cache_index_value& v) const { return v.object->service().table; }
-        const table_name&   table(const cache_index_key& v  ) const { return v.info.table->name;        }
+        table_name_t   table(const cache_index_value& v) const { return v.object->service().table; }
+        table_name_t   table(const cache_index_key& v  ) const { return v.info.table->name;        }
 
-        const account_name& code (const cache_index_value& v) const { return v.object->service().code;  }
-        const account_name& code (const cache_index_key& v  ) const { return v.info.code;               }
+        account_name_t code (const cache_index_value& v) const { return v.object->service().code;  }
+        account_name_t code (const cache_index_key& v  ) const { return v.info.code;               }
 
-        const account_name& scope(const cache_index_value& v) const { return v.object->service().scope; }
-        const account_name& scope(const cache_index_key& v  ) const { return v.info.scope;              }
+        scope_name_t   scope(const cache_index_value& v) const { return v.object->service().scope; }
+        scope_name_t   scope(const cache_index_key& v  ) const { return v.info.scope;              }
 
-        const size_t        size (const cache_index_value& v) const { return v.blob.size();             }
-        const size_t        size (const cache_index_key& v  ) const { return v.size;                    }
+        size_t         size (const cache_index_value& v) const { return v.blob.size();             }
+        size_t         size (const cache_index_key& v  ) const { return v.size;                    }
 
-        const char*         data (const cache_index_value& v) const { return v.blob.data();             }
-        const char*         data (const cache_index_key& v  ) const { return v.blob;                    }
+        const char*    data (const cache_index_value& v) const { return v.blob.data();             }
+        const char*    data (const cache_index_key& v  ) const { return v.blob;                    }
 
         template<typename LeftKey, typename RightKey>
         bool operator()(const LeftKey& l, const RightKey& r) const {
@@ -517,10 +517,10 @@ namespace cyberway { namespace chaindb {
 
         primary_key_t get_next_pk(const table_info& table) {
             auto service_ptr = find_cache_service(table);
-            if (service_ptr && unset_primary_key != service_ptr->next_pk) {
+            if (service_ptr && primary_key::Unset != service_ptr->next_pk) {
                 return service_ptr->next_pk++;
             }
-            return unset_primary_key;
+            return primary_key::Unset;
         }
 
         void set_next_pk(const table_info& table, const primary_key_t pk) {
@@ -541,7 +541,7 @@ namespace cyberway { namespace chaindb {
             lru_cell_list_.clear();
 
             for (auto& service: service_tree_) {
-                service.second.next_pk = unset_primary_key;
+                service.second.next_pk = primary_key::Unset;
             }
         }
 
@@ -732,7 +732,7 @@ namespace cyberway { namespace chaindb {
         }
 
         void add_system_object(cache_object_ptr obj_ptr) {
-            assert(obj_ptr && obj_ptr->service().payer.empty());
+            assert(obj_ptr && !obj_ptr->service().payer);
             system_cell_.emplace(std::move(obj_ptr));
         }
 
@@ -909,7 +909,7 @@ namespace cyberway { namespace chaindb {
                 deleted_object_tree_.erase(itr);
                 add_pending_object(obj_ptr, false);
             } else if (is_new_ptr) {
-                if (value.service.payer.empty()) {
+                if (!value.service.payer) {
                     add_system_object(obj_ptr);
                 } else if (has_pending_cell()) {
                     add_pending_object(obj_ptr);
@@ -1100,7 +1100,7 @@ namespace cyberway { namespace chaindb {
 
     cache_object_ptr cache_map::create(const table_info& table, const storage_payer_info& storage) const {
         auto pk = impl_->get_next_pk(table);
-        if (BOOST_UNLIKELY(unset_primary_key == pk)) {
+        if (BOOST_UNLIKELY(primary_key::Unset == pk)) {
             return {};
         }
         auto value   = service_state(table, pk);
@@ -1123,17 +1123,17 @@ namespace cyberway { namespace chaindb {
     }
 
     cache_object_ptr cache_map::emplace(const table_info& table, object_value obj) const {
-        assert(obj.pk() != unset_primary_key && !obj.is_null());
+        assert(obj.pk() != primary_key::Unset && !obj.is_null());
         return impl_->emplace(std::move(obj));
     }
 
     void cache_map::remove(const table_info& table, const primary_key_t pk) const {
-        assert(pk != unset_primary_key);
+        assert(pk != primary_key::Unset);
         impl_->remove_cache_object({table, pk});
     }
 
     void cache_map::set_revision(const object_value& obj, const revision_t rev) const {
-        assert(obj.pk() != unset_primary_key && impossible_revision != rev);
+        assert(obj.pk() != primary_key::Unset && impossible_revision != rev);
         impl_->set_revision(obj.service, rev);
     }
 

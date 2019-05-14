@@ -200,12 +200,16 @@ namespace cyberway { namespace chaindb {
 
             auto& k = p.orders.front();
             CYBERWAY_ASSERT(
-                k.type == "int64" || k.type == "uint64" ||
-                k.type == "name"  ||
-                k.type == "symbol_code" || k.type == "symbol",
+                primary_key::is_valid_kind(k.type),
                 invalid_primary_key_exception,
                 "The field ${field} of the table ${table} is declared as primary and it should has type: "
                 "int64, uint64, name, symbol_code or symbol",
+                ("field", k.field)("table", get_table_name(table)));
+
+            CYBERWAY_ASSERT(
+                scope_name::is_valid_kind(table.scope_type),
+                invalid_scope_name_exception,
+                "Scope type should has type: int64, uint64, name, symbol_code or symbol",
                 ("field", k.field)("table", get_table_name(table)));
         }
     }; // struct index_builder

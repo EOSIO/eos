@@ -29,15 +29,15 @@ namespace cyberway { namespace chaindb { namespace table_object {
             return info_;
         }
 
-        const table_name& table() const {
+        table_name_t table() const {
             return table_def_.name;
         }
 
-        const account_name& code() const {
+        account_name_t code() const {
             return info_.code;
         }
 
-        const account_name& scope() const {
+        scope_name_t scope() const {
             return info_.scope;
         }
 
@@ -56,9 +56,9 @@ namespace cyberway { namespace chaindb { namespace table_object {
             bmi::ordered_unique<
                 bmi::composite_key<
                     Object,
-                    bmi::const_mem_fun<object, const account_name&, &object::code>,
-                    bmi::const_mem_fun<object, const table_name&,   &object::table>,
-                    bmi::const_mem_fun<object, const account_name&, &object::scope>>>>>;
+                    bmi::const_mem_fun<object, account_name_t, &object::code>,
+                    bmi::const_mem_fun<object, table_name_t,   &object::table>,
+                    bmi::const_mem_fun<object, scope_name_t,   &object::scope>>>>>;
 
     template <typename Object>
     typename index<Object>::iterator find(index<Object>& idx, const table_info& table) {
@@ -72,12 +72,12 @@ namespace cyberway { namespace chaindb { namespace table_object {
 
     template <typename Object>
     typename index<Object>::iterator find_without_scope(index<Object>& idx, const table_info& table) {
-        return idx.find(std::make_tuple(table.code, table.table->name, account_name()));
+        return idx.find(std::make_tuple(table.code, table.table->name, 0));
     }
 
     template <typename Object>
     typename index<Object>::iterator find_without_scope(const index<Object>& idx, const table_info& table) {
-        return idx.find(std::make_tuple(table.code, table.table->name, account_name()));
+        return idx.find(std::make_tuple(table.code, table.table->name, 0));
     }
 
     template <typename Object, typename... Args>
