@@ -1,5 +1,5 @@
 #!/bin/bash
-# The purpose of this test is to ensure that the output of the "nodeos --version" command matches the 
+# The purpose of this test is to ensure that the output of the "nodeos --version" command matches the version string defined by our CMake files
 # If the environment variable BUILDKITE_TAG is empty or unset, this test will echo success
 echo '##### Nodeos Version Label Test #####'
 if [[ "$BUILDKITE_TAG" == '' || "$BUILDKITE" != 'true' ]]; then
