@@ -149,6 +149,7 @@ steps:
       git clone ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO} .
       git checkout ${BUILDKITE_COMMIT}
       buildkite-agent artifact download build.tar.gz . --step ":darwin: [Darwin] Mojave Build"
+      export BUILDKITE_TAG='not-empty'
       ./scripts/parallel-test.sh
     agents:
       - "queue=mac-anka-node-fleet"
@@ -193,6 +194,7 @@ steps:
     command: |
       echo "--- :arrow_down: Downloading Build Directory"
       buildkite-agent artifact download build.tar.gz . --step ":aws: Amazon Linux 2 Build"
+      export BUILDKITE_TAG='not-empty'
       ./scripts/parallel-test.sh
     agents:
       queue: "automation-large-builder-fleet"
@@ -238,6 +240,7 @@ steps:
     command: |
       echo "--- :arrow_down: Downloading Build Directory"
       buildkite-agent artifact download build.tar.gz . --step ":centos: CentOS 7 Build"
+      export BUILDKITE_TAG='not-empty'
       ./scripts/parallel-test.sh
     agents:
       queue: "automation-large-builder-fleet"
@@ -282,6 +285,7 @@ steps:
     command: |
       echo "--- :arrow_down: Downloading Build Directory"
       buildkite-agent artifact download build.tar.gz . --step ":ubuntu: Ubuntu 16.04 Build"
+      export BUILDKITE_TAG='not-empty'
       ./scripts/parallel-test.sh
     agents:
       queue: "automation-large-builder-fleet"
@@ -326,6 +330,7 @@ steps:
     command: |
       echo "--- :arrow_down: Downloading Build Directory"
       buildkite-agent artifact download build.tar.gz . --step ":ubuntu: Ubuntu 18.04 Build"
+      export BUILDKITE_TAG='not-empty'
       ./scripts/parallel-test.sh
     agents:
       queue: "automation-large-builder-fleet"
@@ -469,18 +474,18 @@ steps:
   - wait
 
   - command: | # Brew Updater
-        echo "--- :arrow_down: Downloading brew files"
-        buildkite-agent artifact download "build/packages/eosio.rb" . --step ":darwin: Mojave Package Builder"
+        echo "+++ :arrow_down: Downloading brew files"
+        buildkite-agent artifact download "eosio.rb" . --step ":darwin: Mojave Package Builder"
     label: ":darwin: Brew Updater"
     agents:
       queue: "automation-large-builder-fleet"
     artifact_paths:
-      - "build/packages/eosio.rb"
+      - "eosio.rb"
     timeout: 5
     skip: $SKIP_MOJAVE
 
   - command: | # Git Submodule Regression Check
-        echo "+++ :microscope: Running git submodule regression check" && \
+        echo "+++ :git: Running Git Submodule Regression Check"
         ./scripts/submodule_check.sh
     label: "Git Submodule Regression Check"
     agents:
