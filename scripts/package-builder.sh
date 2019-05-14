@@ -51,8 +51,8 @@ for A in $(echo $ARTIFACT | tr ';' ' '); do
         echo "+++ :no_entry: ERROR: Expected artifact \"$A\" not found!"
         echo '$ pwd'
         pwd
-        echo '$ ls'
-        ls
+        echo '$ ls -la'
+        ls -la
         exit 1
     fi
 done

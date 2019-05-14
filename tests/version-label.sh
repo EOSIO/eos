@@ -54,10 +54,10 @@ if [[ "$EXPECTED" == '' ]]; then
     cat "$CMAKE_CACHE" | grep "DOXY_EOS_VERSION"
     echo '$ pwd'
     pwd
-    echo '$ ls "$EOSIO_ROOT"'
-    ls "$EOSIO_ROOT"
-    echo '$ ls "$EOSIO_ROOT/build"'
-    ls "$EOSIO_ROOT/build"
+    echo '$ ls -la "$EOSIO_ROOT"'
+    ls -la "$EOSIO_ROOT"
+    echo '$ ls -la "$EOSIO_ROOT/build"'
+    ls -la "$EOSIO_ROOT/build"
     exit 1
 fi
 echo "Expecting \"$EXPECTED\"..."
