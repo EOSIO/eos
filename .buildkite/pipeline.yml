@@ -149,7 +149,6 @@ steps:
       git clone ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO} .
       git checkout ${BUILDKITE_COMMIT}
       buildkite-agent artifact download build.tar.gz . --step ":darwin: [Darwin] Mojave Build"
-      BUILDKITE_TAG='non-empty'
       ./scripts/parallel-test.sh
     agents:
       - "queue=mac-anka-node-fleet"
@@ -194,7 +193,6 @@ steps:
     command: |
       echo "--- :arrow_down: Downloading Build Directory"
       buildkite-agent artifact download build.tar.gz . --step ":aws: Amazon Linux 2 Build"
-      BUILDKITE_TAG='non-empty'
       ./scripts/parallel-test.sh
     agents:
       queue: "automation-large-builder-fleet"
@@ -240,7 +238,6 @@ steps:
     command: |
       echo "--- :arrow_down: Downloading Build Directory"
       buildkite-agent artifact download build.tar.gz . --step ":centos: CentOS 7 Build"
-      BUILDKITE_TAG='non-empty'
       ./scripts/parallel-test.sh
     agents:
       queue: "automation-large-builder-fleet"
@@ -285,7 +282,6 @@ steps:
     command: |
       echo "--- :arrow_down: Downloading Build Directory"
       buildkite-agent artifact download build.tar.gz . --step ":ubuntu: Ubuntu 16.04 Build"
-      BUILDKITE_TAG='non-empty'
       ./scripts/parallel-test.sh
     agents:
       queue: "automation-large-builder-fleet"
@@ -330,7 +326,6 @@ steps:
     command: |
       echo "--- :arrow_down: Downloading Build Directory"
       buildkite-agent artifact download build.tar.gz . --step ":ubuntu: Ubuntu 18.04 Build"
-      BUILDKITE_TAG='non-empty'
       ./scripts/parallel-test.sh
     agents:
       queue: "automation-large-builder-fleet"
