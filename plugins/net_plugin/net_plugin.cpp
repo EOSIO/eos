@@ -879,6 +879,7 @@ namespace eosio {
       string port = peer_add.substr( colon + 1, colon2 == string::npos ? string::npos : colon2 - (colon + 1));
       string type = colon2 == string::npos ? "" : peer_add.substr( colon2 + 1 );
 
+      fc_ilog( "Setting connection type for: ${peer}", ("peer", peer_add) )
       if( type.empty() ) {
          connection_type = both;
       } else if( type == "trx" ) {
