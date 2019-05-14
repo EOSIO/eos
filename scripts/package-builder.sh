@@ -41,6 +41,9 @@ echo "+++ :compression: Extracting Build Directory"
 [[ -d build ]] && rm -rf build
 tar -zxf build.tar.gz
 echo "+++ :package: Starting Package Build"
+BASE_COMMIT=$(cat build/programs/nodeos/config.hpp | grep 'version' | awk '{print $5}' | tr -d ';')
+BASE_COMMIT="${BASE_COMMIT:2:42}"
+echo "Found build against $BASE_COMMIT."
 cd build/packages
 chmod 755 ./*.sh
 ./generate_package.sh "$PACKAGE_TYPE"
