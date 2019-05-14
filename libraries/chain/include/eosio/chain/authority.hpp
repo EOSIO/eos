@@ -11,22 +11,12 @@
 
 namespace eosio { namespace chain {
 
+using shared_public_key_data = fc::static_variant<fc::array<char, 33>, shared_string>;
+
 struct shared_public_key {
-   shared_public_key( chainbase::allocator<char> alloc, const fc::crypto::public_key& pub ) :
-      webauthn_key_data(alloc) {
+   shared_public_key( shared_public_key_data&& p ) :
+      pubkey(std::move(p)) {
 
-   }
-
-   ~shared_public_key() {
-
-   }
-
-   shared_public_key(const shared_public_key& p) {
-
-   }
-
-   shared_public_key& operator=(const shared_public_key& o) {
-      return *this;
    }
 
    operator public_key_type() const {
@@ -47,19 +37,10 @@ struct shared_public_key {
       return ds;
    }
 
-   uint8_t which;
-   union {
-      fc::array<char, 33> key_data;
-      shared_string       webauthn_key_data;
-   };
+   shared_public_key_data pubkey;
 
    friend bool operator == ( const shared_public_key& lhs, const shared_public_key& rhs ) {
-      if(lhs.which != rhs.which)
-         return false;
-      if(lhs.which < 2)
-         return lhs.key_data == rhs.key_data;
-      else
-         return lhs.webauthn_key_data == rhs.webauthn_key_data;
+      return true;
    }
 };
 
@@ -83,8 +64,8 @@ struct key_weight {
 
 
 struct shared_key_weight {
-   shared_key_weight(chainbase::allocator<char> alloc, const public_key_type& pk, const weight_type& w) :
-      key(alloc, pk), weight(w) {}
+   shared_key_weight(shared_public_key_data&& k, const weight_type& w) :
+      key(std::move(k)), weight(w) {}
 
    operator key_weight() const {
       return key_weight{key, weight};
@@ -169,8 +150,14 @@ struct shared_authority {
    shared_authority& operator=(const authority& a) {
       threshold = a.threshold;
       keys.clear();
-      for(const key_weight& k : a.keys)
-         keys.emplace_back(keys.get_allocator(), k.key, k.weight);
+      keys.reserve(a.keys.size());
+      for(const key_weight& k : a.keys) {
+         //fc::array<char, 33> o;
+         shared_string o("yo dawg", keys.get_allocator());
+         shared_public_key_data x(std::move(o));
+
+         keys.emplace_back(std::move(x), k.weight);
+      }
       accounts = decltype(accounts)(a.accounts.begin(), a.accounts.end(), accounts.get_allocator());
       waits = decltype(waits)(a.waits.begin(), a.waits.end(), waits.get_allocator());
       return *this;
