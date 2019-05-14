@@ -2,7 +2,7 @@ env:
   ANKA_MOJAVE_TEMPLATE: "10.14.4_6C_14G_40G"
   ANKA_TEMPLATE_TAG: "clean::cicd::git-ssh::nas::brew::buildkite-agent-3.11.2"
   CHECKSUMABLE: "scripts/eosio_build*"
-  MAC_TAG: "eosio_1-8-0-rc1"
+  MAC_TAG: "eosio_1-8-0-rc2"
   WORKDIR: "/data/job"
 
 steps:
