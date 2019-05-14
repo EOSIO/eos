@@ -20,7 +20,7 @@ CMAKE_CACHE="$EOSIO_ROOT/build/CMakeCache.txt"
 CMAKE_LISTS="$EOSIO_ROOT/CMakeLists.txt"
 if [[ -f "$CMAKE_CACHE" && $(cat "$CMAKE_CACHE" | grep -c 'DOXY_EOS_VERSION') > 0 ]]; then
     echo "Parsing \"$CMAKE_CACHE\"..."
-    EXPECTED=$(cat "$CMAKE_CACHE" | grep 'DOXY_EOS_VERSION' | cut -d '=' -f 2)
+    EXPECTED="v$(cat "$CMAKE_CACHE" | grep 'DOXY_EOS_VERSION' | cut -d '=' -f 2)"
 elif [[ -f "$CMAKE_LISTS" ]]; then
     echo "Parsing \"$CMAKE_LISTS\"..."
     export $(cat $CMAKE_LISTS | grep -ie 'set *( *VERSION_MAJOR' | cut -d '(' -f 2 | cut -d ')' -f 1 | awk '{print $1"="$2}')
@@ -29,10 +29,10 @@ elif [[ -f "$CMAKE_LISTS" ]]; then
     if [[ $(cat $CMAKE_LISTS | grep -ice 'set *( *VERSION_SUFFIX') > 0 ]]; then
         echo 'Using version suffix...'
         export $(cat $CMAKE_LISTS | grep -ie 'set *( *VERSION_SUFFIX' | cut -d '(' -f 2 | cut -d ')' -f 1 | awk '{print $1"="$2}')
-        export $(echo "$(cat $CMAKE_LISTS | grep -ie 'set *( *VERSION_FULL.*VERSION_SUFFIX' | cut -d '(' -f 2 | cut -d ')' -f 1 | awk '{print $1"="$2}')" | envsubst | tr -d '"')
+        export $(echo "$(cat $CMAKE_LISTS | grep -ie 'set *( *VERSION_FULL.*VERSION_SUFFIX' | cut -d '(' -f 2 | cut -d ')' -f 1 | awk '{print $1"="$2}')" | sed "s/VERSION_MAJOR/$VERSION_MAJOR/" | sed "s/VERSION_MINOR/$VERSION_MINOR/" | sed "s/VERSION_PATCH/$VERSION_PATCH/" | sed "s/VERSION_SUFFIX/$VERSION_SUFFIX/" | tr -d '"{}$')
     else
         echo 'No version suffix found.'
-        export $(echo "$(cat $CMAKE_LISTS | grep -ie 'set *( *VERSION_FULL' | grep -ive 'VERSION_SUFFIX' | cut -d '(' -f 2 | cut -d ')' -f 1 | awk '{print $1"="$2}')" | envsubst | tr -d '"')
+        export $(echo "$(cat $CMAKE_LISTS | grep -ie 'set *( *VERSION_FULL' | grep -ive 'VERSION_SUFFIX' | cut -d '(' -f 2 | cut -d ')' -f 1 | awk '{print $1"="$2}')" | sed "s/VERSION_MAJOR/$VERSION_MAJOR/" | sed "s/VERSION_MINOR/$VERSION_MINOR/" | sed "s/VERSION_PATCH/$VERSION_PATCH/" | tr -d '"{}$')
     fi
     EXPECTED="v$VERSION_FULL"
 fi
@@ -61,9 +61,9 @@ if [[ "$EXPECTED" == '' ]]; then
     exit 1
 fi
 echo "Expecting \"$EXPECTED\"..."
-# test nodeos version
+# get nodeos version
 ACTUAL=$($EOSIO_ROOT/build/bin/nodeos --version) || : # nodeos currently returns -1 for --version
-# check
+# test
 if [[ "$EXPECTED" == "$ACTUAL" ]]; then
     echo 'Passed with \"$ACTUAL\".'
     exit 0
