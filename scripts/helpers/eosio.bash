@@ -132,6 +132,7 @@ function ensure-compiler() {
             case $PROCEED in
                 "" ) echo "What would you like to do?";;
                 0 | true | [Yy]* )
+                    export PIN_COMPILER=true
                     export BUILD_CLANG=true
                     export CPP_COMP=$CLANG_ROOT/bin/clang++
                     export CC_COMP=$CLANG_ROOT/bin/clang
