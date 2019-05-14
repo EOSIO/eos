@@ -235,7 +235,6 @@ namespace cyberway { namespace chaindb {
 
         void emplace(cache_object_ptr obj_ptr, const bool is_deleted) {
             assert(obj_ptr);
-            assert(!obj_ptr->has_cell() || obj_ptr->cell().kind == cache_cell::LRU);
 
             auto& state = emplace_impl(std::move(obj_ptr), is_deleted);
             add_ram_usage(state);
@@ -325,8 +324,9 @@ namespace cyberway { namespace chaindb {
     }; // struct lru_cache_object_state
 
     struct lru_cache_cell final: public cache_cell {
-        lru_cache_cell(cache_map_impl& m)
+        lru_cache_cell(cache_map_impl& m, const uint64_t p)
         : cache_cell(m, cache_cell::LRU) {
+            pos = p;
         }
 
         ~lru_cache_cell() {
@@ -535,14 +535,8 @@ namespace cyberway { namespace chaindb {
 
             lru_cell_list_.clear();
 
-            cache_index_tree_.clear();
-            cache_object_tree_.clear();
-
-            service_tree_type tmp_tree;
-            tmp_tree.swap(service_tree_);
-            service_tree_.reserve(tmp_tree.size());
-            for (auto service: tmp_tree) if (service.second.converter) {
-                set_cache_converter(service.first, *service.second.converter);
+            for (auto& service: service_tree_) {
+                service.second.next_pk = unset_primary_key;
             }
         }
 
@@ -552,7 +546,11 @@ namespace cyberway { namespace chaindb {
 
         void set_revision(const revision_t revision) {
             if (lru_cell_list_.empty() || !lru_cell_list_.back().state_list.empty()) {
-                lru_cell_list_.emplace_back(*this);
+                uint64_t pos = 0;
+                if (!lru_cell_list_.empty()) {
+                    pos = lru_cell_list_.back().pos;
+                }
+                lru_cell_list_.emplace_back(*this, pos);
             }
             lru_revision_ = revision;
         }

@@ -29,7 +29,7 @@ struct genesis_import::impl final {
     }
 
     void apply_db_changes(bool force = false) {
-        if (force || (++db_updates & 0xFF) == 0) {
+        if (force || (++db_updates & 0xFFF) == 0) {
             db.apply_all_changes();
             db.clear_cache();
         }
@@ -56,7 +56,7 @@ struct genesis_import::impl final {
             int i = 0;
             if (t.code == config::system_account_name) {
                 while (i++ < t.count) {
-                    sys_table_row r(resource_mng);
+                    sys_table_row r(resource_mng, config::system_account_name);
                     fc::raw::unpack(in, r);
                     EOS_ASSERT(r.data.size() >= 8, extract_genesis_exception, "System table row is too small");
                     primary_key_t pk = ((primary_key_t*)r.data.data())[0]; // all system tables have pk in the 1st field
@@ -82,7 +82,7 @@ struct genesis_import::impl final {
                 }
             } else {
                 while (i++ < t.count) {
-                    table_row r(resource_mng);
+                    table_row r(resource_mng, config::system_account_name);
                     fc::raw::unpack(in, r);
                     db.insert(r.request(t.code, t.name), r.payer(), r.pk, r.data.data(), r.data.size());
                     apply_db_changes();

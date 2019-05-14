@@ -36,8 +36,9 @@ struct sys_table_row {
     account_name ram_payer;
     bytes data;
 
-    sys_table_row(resource_manager& mng)
-    :   resource_mng(&mng) {
+    sys_table_row(resource_manager& mng, account_name payer)
+    :   resource_mng(&mng)
+    ,   ram_payer(payer) {
     }
 
     sys_table_row(account_name payer, bytes data)
@@ -62,8 +63,8 @@ struct sys_table_row {
 };
 
 struct table_row final: sys_table_row {
-    table_row(resource_manager& mng)
-    :   sys_table_row(mng) {
+    table_row(resource_manager& mng, account_name payer)
+    :   sys_table_row(mng, payer) {
     }
 
     table_row(account_name payer, bytes data, primary_key_t pk, uint64_t scope)
