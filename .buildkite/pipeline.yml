@@ -34,7 +34,7 @@ steps:
       git submodule update --init --recursive
       ./scripts/eosio_build.sh -y -P -m
       tar -pczf build.tar.gz build
-      if [[ -f build.tar.gz ]]; then buildkite-agent artifact upload build.tar.gz; else echo '+++ :no_entry: ERROR: No build.tar.gz artifact found!'; echo '$ ls -la'; ls -la; exit 1; fi
+      [[ -f build.tar.gz ]] && buildkite-agent artifact upload build.tar.gz || (echo 'ERROR: No build.tar.gz artifact found, or artifact upload failed!'; echo '$ ls'; ls; exit 1)
     plugins:
       chef/anka#v0.4.4:
         no-volume: true
@@ -55,7 +55,7 @@ steps:
   - label: ":aws: Amazon Linux 2 Build"
     command: |
       ./scripts/eosio_build.sh -y -P -m
-      if [[ -f build.tar.gz ]]; then buildkite-agent artifact upload build.tar.gz; else echo '+++ :no_entry: ERROR: No build.tar.gz artifact found!'; echo '$ ls -la'; ls -la; exit 1; fi
+      [[ -f build.tar.gz ]] && buildkite-agent artifact upload build.tar.gz || (echo 'ERROR: No build.tar.gz artifact found, or artifact upload failed!'; echo '$ ls'; ls; exit 1)
     agents:
       queue: "automation-large-builder-fleet"
     artifact_paths: "build.tar.gz"
@@ -76,7 +76,7 @@ steps:
   - label: ":centos: CentOS 7 Build"
     command: |
       ./scripts/eosio_build.sh -y -P -m
-      if [[ -f build.tar.gz ]]; then buildkite-agent artifact upload build.tar.gz; else echo '+++ :no_entry: ERROR: No build.tar.gz artifact found!'; echo '$ ls -la'; ls -la; exit 1; fi
+      [[ -f build.tar.gz ]] && buildkite-agent artifact upload build.tar.gz || (echo 'ERROR: No build.tar.gz artifact found, or artifact upload failed!'; echo '$ ls'; ls; exit 1)
     agents:
       queue: "automation-large-builder-fleet"
     artifact_paths: "build.tar.gz"
@@ -97,7 +97,7 @@ steps:
   - label: ":ubuntu: Ubuntu 16.04 Build"
     command: |
       ./scripts/eosio_build.sh -y -P -m
-      if [[ -f build.tar.gz ]]; then buildkite-agent artifact upload build.tar.gz; else echo '+++ :no_entry: ERROR: No build.tar.gz artifact found!'; echo '$ ls -la'; ls -la; exit 1; fi
+      [[ -f build.tar.gz ]] && buildkite-agent artifact upload build.tar.gz || (echo 'ERROR: No build.tar.gz artifact found, or artifact upload failed!'; echo '$ ls'; ls; exit 1)
     label: ":ubuntu: Ubuntu 16.04 Build"
     agents:
       queue: "automation-large-builder-fleet"
@@ -119,7 +119,7 @@ steps:
   - label: ":ubuntu: Ubuntu 18.04 Build"
     command: |
       ./scripts/eosio_build.sh -y -P -m
-      if [[ -f build.tar.gz ]]; then buildkite-agent artifact upload build.tar.gz; else echo '+++ :no_entry: ERROR: No build.tar.gz artifact found!'; echo '$ ls -la'; ls -la; exit 1; fi
+      [[ -f build.tar.gz ]] && buildkite-agent artifact upload build.tar.gz || (echo 'ERROR: No build.tar.gz artifact found, or artifact upload failed!'; echo '$ ls'; ls; exit 1)
     agents:
       queue: "automation-large-builder-fleet"
     artifact_paths: "build.tar.gz"
