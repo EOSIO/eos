@@ -55,7 +55,8 @@ steps:
   - label: ":aws: Amazon Linux 2 Build"
     command: |
       ./scripts/eosio_build.sh -y -P -m
-      [[ -f build.tar.gz ]] && buildkite-agent artifact upload build.tar.gz || (echo 'ERROR: No build.tar.gz artifact found, or artifact upload failed!'; echo '$$ ls -la'; ls -la; exit 1)
+      tar -pczf build.tar.gz build
+      [[ ! -f build.tar.gz ]] && (echo 'ERROR: No build.tar.gz artifact found!'; echo '$$ ls -la'; ls -la; exit 1)
     agents:
       queue: "automation-large-builder-fleet"
     artifact_paths: "build.tar.gz"
@@ -76,7 +77,8 @@ steps:
   - label: ":centos: CentOS 7 Build"
     command: |
       ./scripts/eosio_build.sh -y -P -m
-      [[ -f build.tar.gz ]] && buildkite-agent artifact upload build.tar.gz || (echo 'ERROR: No build.tar.gz artifact found, or artifact upload failed!'; echo '$$ ls -la'; ls -la; exit 1)
+      tar -pczf build.tar.gz build
+      [[ ! -f build.tar.gz ]] && (echo 'ERROR: No build.tar.gz artifact found!'; echo '$$ ls -la'; ls -la; exit 1)
     agents:
       queue: "automation-large-builder-fleet"
     artifact_paths: "build.tar.gz"
@@ -97,7 +99,8 @@ steps:
   - label: ":ubuntu: Ubuntu 16.04 Build"
     command: |
       ./scripts/eosio_build.sh -y -P -m
-      [[ -f build.tar.gz ]] && buildkite-agent artifact upload build.tar.gz || (echo 'ERROR: No build.tar.gz artifact found, or artifact upload failed!'; echo '$$ ls -la'; ls -la; exit 1)
+      tar -pczf build.tar.gz build
+      [[ ! -f build.tar.gz ]] && (echo 'ERROR: No build.tar.gz artifact found!'; echo '$$ ls -la'; ls -la; exit 1)
     label: ":ubuntu: Ubuntu 16.04 Build"
     agents:
       queue: "automation-large-builder-fleet"
@@ -119,7 +122,8 @@ steps:
   - label: ":ubuntu: Ubuntu 18.04 Build"
     command: |
       ./scripts/eosio_build.sh -y -P -m
-      [[ -f build.tar.gz ]] && buildkite-agent artifact upload build.tar.gz || (echo 'ERROR: No build.tar.gz artifact found, or artifact upload failed!'; echo '$$ ls -la'; ls -la; exit 1)
+      tar -pczf build.tar.gz build
+      [[ ! -f build.tar.gz ]] && (echo 'ERROR: No build.tar.gz artifact found!'; echo '$$ ls -la'; ls -la; exit 1)
     agents:
       queue: "automation-large-builder-fleet"
     artifact_paths: "build.tar.gz"
@@ -145,6 +149,7 @@ steps:
       git clone ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO} .
       git checkout ${BUILDKITE_COMMIT}
       buildkite-agent artifact download build.tar.gz . --step ":darwin: [Darwin] Mojave Build"
+      export BUILDKITE_TAG='not-empty'
       ./scripts/parallel-test.sh
     agents:
       - "queue=mac-anka-node-fleet"
@@ -189,6 +194,7 @@ steps:
     command: |
       echo "--- :arrow_down: Downloading Build Directory"
       buildkite-agent artifact download build.tar.gz . --step ":aws: Amazon Linux 2 Build"
+      export BUILDKITE_TAG='not-empty'
       ./scripts/parallel-test.sh
     agents:
       queue: "automation-large-builder-fleet"
@@ -234,6 +240,7 @@ steps:
     command: |
       echo "--- :arrow_down: Downloading Build Directory"
       buildkite-agent artifact download build.tar.gz . --step ":centos: CentOS 7 Build"
+      export BUILDKITE_TAG='not-empty'
       ./scripts/parallel-test.sh
     agents:
       queue: "automation-large-builder-fleet"
@@ -278,6 +285,7 @@ steps:
     command: |
       echo "--- :arrow_down: Downloading Build Directory"
       buildkite-agent artifact download build.tar.gz . --step ":ubuntu: Ubuntu 16.04 Build"
+      export BUILDKITE_TAG='not-empty'
       ./scripts/parallel-test.sh
     agents:
       queue: "automation-large-builder-fleet"
@@ -322,6 +330,7 @@ steps:
     command: |
       echo "--- :arrow_down: Downloading Build Directory"
       buildkite-agent artifact download build.tar.gz . --step ":ubuntu: Ubuntu 18.04 Build"
+      export BUILDKITE_TAG='not-empty'
       ./scripts/parallel-test.sh
     agents:
       queue: "automation-large-builder-fleet"
