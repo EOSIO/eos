@@ -5,7 +5,7 @@ set -ieo pipefail
 echo "+++ Extracting build directory"
 [[ -f build.tar.gz ]] && tar -xzf build.tar.gz
 execute ls -l build
-PATH=$PATH:$BIN_DIR # nodeos_run_test-mongodb: no such file in directory 'mongo'
+PATH=$PATH:$MONGODB_LINK_DIR/bin # nodeos_run_test-mongodb: no such file in directory 'mongo'
 [[ $ARCH == "Darwin" ]] && execute cd /data/job/eos/build || execute cd /data/job/build # I don't know why, but if we use cd ./build here it won't work...
 if [[ -f $MONGODB_BIN ]]; then
     echo "+++ Killing old MongoDB"
