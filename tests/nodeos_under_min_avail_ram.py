@@ -205,8 +205,8 @@ try:
     for i in range(numNodes):
         f = open(Utils.getNodeDataDir(i) + "/stderr.txt")
         contents = f.read()
-        if contents.find("3060101 database_guard_exception") == -1:
-            errorExit("Node%d is expected to exit because of database_guard_exception, but was not." % (i))
+        if contents.find("database chain::guard_exception") == -1:
+            errorExit("Node%d is expected to exit because of database guard_exception, but was not." % (i))
 
     Print("all nodes exited with expected reason database_guard_exception")
 
