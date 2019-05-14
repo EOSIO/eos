@@ -235,7 +235,6 @@ namespace cyberway { namespace chaindb {
 
         void emplace(cache_object_ptr obj_ptr, const bool is_deleted) {
             assert(obj_ptr);
-            assert(!obj_ptr->has_cell() || obj_ptr->cell().kind == cache_cell::LRU);
 
             auto& state = emplace_impl(std::move(obj_ptr), is_deleted);
             add_ram_usage(state);
