@@ -255,7 +255,7 @@ struct controller_impl {
       if ( read_mode == db_read_mode::SPECULATIVE ) {
          EOS_ASSERT( head->block, block_validate_exception, "attempting to pop a block that was sparsely loaded from a snapshot");
          for( const auto& t : head->trxs )
-            unapplied_transactions[t->signed_id] = t;
+            unapplied_transactions[t->signed_id()] = t;
       }
 
       head = prev;
@@ -515,7 +515,7 @@ struct controller_impl {
 
    void init(std::function<bool()> shutdown, const snapshot_reader_ptr& snapshot) {
       // Setup state if necessary (or in the default case stay with already loaded state):
-      auto lib_num = 1;
+      uint32_t lib_num = 1u;
       if( snapshot ) {
          snapshot->validate();
          if( blog.head() ) {
@@ -1258,8 +1258,10 @@ struct controller_impl {
          auto start = fc::time_point::now();
          const bool check_auth = !self.skip_auth_check() && !trx->implicit;
          // call recover keys so that trx->sig_cpu_usage is set correctly
-         const fc::microseconds sig_cpu_usage = check_auth ? std::get<0>( trx->recover_keys( chain_id ) ) : fc::microseconds();
-         const flat_set<public_key_type>& recovered_keys = check_auth ? std::get<1>( trx->recover_keys( chain_id ) ) : flat_set<public_key_type>();
+         const fc::microseconds sig_cpu_usage =
+               check_auth ? std::get<0>( trx->recover_keys( chain_id ) ) : fc::microseconds();
+         const std::shared_ptr<flat_set<public_key_type>> recovered_keys =
+               check_auth ? std::get<1>( trx->recover_keys( chain_id ) ) : nullptr;
          if( !explicit_billed_cpu_time ) {
             fc::microseconds already_consumed_time( EOS_PERCENT(sig_cpu_usage.count(), conf.sig_cpu_bill_pct) );
 
@@ -1270,8 +1272,8 @@ struct controller_impl {
             }
          }
 
-         const signed_transaction& trn = trx->packed_trx->get_signed_transaction();
-         transaction_context trx_context(self, trn, trx->id, start);
+         const signed_transaction& trn = trx->packed_trx()->get_signed_transaction();
+         transaction_context trx_context(self, trn, trx->id(), start);
          if ((bool)subjective_cpu_leeway && pending->_block_status == controller::block_status::incomplete) {
             trx_context.leeway = *subjective_cpu_leeway;
          }
@@ -1285,17 +1287,18 @@ struct controller_impl {
                trx_context.enforce_whiteblacklist = false;
             } else {
                bool skip_recording = replay_head_time && (time_point(trn.expiration) <= *replay_head_time);
-               trx_context.init_for_input_trx( trx->packed_trx->get_unprunable_size(),
-                                               trx->packed_trx->get_prunable_size(),
+               trx_context.init_for_input_trx( trx->packed_trx()->get_unprunable_size(),
+                                               trx->packed_trx()->get_prunable_size(),
                                                skip_recording);
             }
 
             trx_context.delay = fc::seconds(trn.delay_sec);
 
             if( check_auth ) {
+               EOS_ASSERT( recovered_keys, missing_auth_exception, "recovered_keys should never be null" );
                authorization.check_authorization(
                        trn.actions,
-                       recovered_keys,
+                       *recovered_keys,
                        {},
                        trx_context.delay,
                        [&trx_context](){ trx_context.checktime(); },
@@ -1311,7 +1314,7 @@ struct controller_impl {
                transaction_receipt::status_enum s = (trx_context.delay == fc::seconds(0))
                                                     ? transaction_receipt::executed
                                                     : transaction_receipt::delayed;
-               trace->receipt = push_receipt(*trx->packed_trx, s, trx_context.billed_cpu_time_us, trace->net_usage);
+               trace->receipt = push_receipt(*trx->packed_trx(), s, trx_context.billed_cpu_time_us, trace->net_usage);
                pending->_block_stage.get<building_block>()._pending_trx_metas.emplace_back(trx);
             } else {
                transaction_receipt_header r;
@@ -1341,7 +1344,7 @@ struct controller_impl {
             }
 
             if (!trx->implicit) {
-               unapplied_transactions.erase( trx->signed_id );
+               unapplied_transactions.erase( trx->signed_id() );
             }
             return trace;
          } catch( const disallowed_transaction_extensions_bad_block_exception& ) {
@@ -1355,7 +1358,7 @@ struct controller_impl {
          }
 
          if (!failure_is_subjective(*trace->except)) {
-            unapplied_transactions.erase( trx->signed_id );
+            unapplied_transactions.erase( trx->signed_id() );
          }
 
          emit( self.accepted_transaction, trx );
@@ -1944,16 +1947,11 @@ struct controller_impl {
       if( pending ) {
          if ( read_mode == db_read_mode::SPECULATIVE ) {
             for( const auto& t : pending->get_trx_metas() )
-               unapplied_transactions[t->signed_id] = t;
+               unapplied_transactions[t->signed_id()] = t;
          }
          pending.reset();
          protocol_features.popped_blocks_to( head->block_num );
       }
-   }
-
-
-   bool should_enforce_runtime_limits()const {
-      return false;
    }
 
    checksum256_type calculate_action_merkle() {
