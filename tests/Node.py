@@ -1570,3 +1570,8 @@ class Node(object):
         protocolFeatureJson["subjective_restrictions"].update(subjectiveRestriction)
         with open(jsonPath, "w") as f:
             json.dump(protocolFeatureJson, f, indent=2)
+
+    # Require producer_api_plugin
+    def createSnapshot(self):
+        param = { }
+        return self.processCurlCmd("producer", "create_snapshot", json.dumps(param))
