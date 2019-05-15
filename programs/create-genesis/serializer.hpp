@@ -115,11 +115,6 @@ public:
     }
 
     template<typename T, typename Lambda>
-    const T emplace(Lambda&& constructor) {
-        return emplace<T>({}, constructor);
-    }
-
-    template<typename T, typename Lambda>
     const T emplace(const name ram_payer, Lambda&& constructor) {
         T obj(constructor, 0);
         constexpr auto tid = T::type_id;
@@ -142,7 +137,11 @@ public:
         return obj;
     }
 
-    void insert(primary_key_t pk, uint64_t scope, const variant& v, name ram_payer = {}) {
+    void insert(primary_key_t pk, uint64_t scope, const variant& v) {   // common case where scope is owner account
+        insert (pk, scope, scope, v);
+    }
+
+    void insert(primary_key_t pk, uint64_t scope, name ram_payer, const variant& v) {
         EOS_ASSERT(abis.count(_section.code) > 0, genesis_exception, "ABI not found");
         fc::datastream<char*> ds(_buffer.data(), _buffer.size());
         auto& ser = abis[_section.code];

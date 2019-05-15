@@ -2,6 +2,7 @@
 #include <cyberway/genesis/genesis_container.hpp>
 #include <eosio/chain/config.hpp>
 #include <eosio/chain/controller.hpp>
+#include <eosio/chain/resource_limits.hpp>
 #include <boost/filesystem/path.hpp>
 #include <boost/filesystem/fstream.hpp>
 
@@ -12,6 +13,7 @@ FC_DECLARE_EXCEPTION(extract_genesis_exception, 9000000, "genesis extract except
 
 using namespace eosio::chain;
 using namespace cyberway::chaindb;
+using resource_manager = eosio::chain::resource_limits::resource_limits_manager;
 const fc::microseconds abi_serializer_max_time = fc::seconds(10);
 
 
@@ -35,6 +37,10 @@ struct genesis_import::impl final {
         }
     }
 
+    storage_payer_info ram_payer_info(const sys_table_row& row) {
+        return resource_mng.get_storage_payer(row.ram_payer);
+    };
+
     void import_state() {
         // file existance already checked when calculated hash
         std::cout << "Reading state from " << _state_file << "..." << std::endl;
@@ -44,7 +50,7 @@ struct genesis_import::impl final {
         std::cout << "Header magic: " << h.magic << "; ver: " << h.version << std::endl;
         EOS_ASSERT(h.is_valid(), extract_genesis_exception, "Unknown format of the Genesis state file.");
 
-        bool abis_initialized = false;  // we don't want to deserialize twice golos contracts, so mark system
+        bool abis_initialized = false;  // we don't want to deserialize golos contracts twice, so mark system
         abi_serializer sys_abi(eosio_contract_abi(), abi_serializer_max_time);
         while (in) {
             table_header t;
@@ -56,11 +62,11 @@ struct genesis_import::impl final {
             int i = 0;
             if (t.code == config::system_account_name) {
                 while (i++ < t.count) {
-                    sys_table_row r(resource_mng, config::system_account_name);
+                    sys_table_row r;
                     fc::raw::unpack(in, r);
                     EOS_ASSERT(r.data.size() >= 8, extract_genesis_exception, "System table row is too small");
                     primary_key_t pk = ((primary_key_t*)r.data.data())[0]; // all system tables have pk in the 1st field
-                    db.insert(r.request(t.name), r.payer(), pk, r.data.data(), r.data.size());
+                    db.insert(r.request(t.name), ram_payer_info(r), pk, r.data.data(), r.data.size());
                     apply_db_changes();
 
                     // need to directly add abi to chaindb if exists
@@ -80,17 +86,16 @@ struct genesis_import::impl final {
                         }
                     }
                 }
+                if (t.name == N(account)) {
+                    abis_initialized = true;
+                }
             } else {
                 while (i++ < t.count) {
-                    table_row r(resource_mng, config::system_account_name);
+                    table_row r;
                     fc::raw::unpack(in, r);
-                    db.insert(r.request(t.code, t.name), r.payer(), r.pk, r.data.data(), r.data.size());
+                    db.insert(r.request(t.code, t.name), ram_payer_info(r), r.pk, r.data.data(), r.data.size());
                     apply_db_changes();
                 }
-            }
-
-            if (t.code == config::system_account_name && t.name == N(account)) {
-                abis_initialized = true;
             }
         }
         std::cout << "Done reading Genesis state." << std::endl;
@@ -111,4 +116,4 @@ void genesis_import::import() {
 }
 
 
-}} // cyberway
+}} // cyberway::gensis

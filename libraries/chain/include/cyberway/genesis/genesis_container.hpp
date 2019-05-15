@@ -1,6 +1,5 @@
 #pragma once
 #include <eosio/chain/types.hpp>
-#include <eosio/chain/resource_limits.hpp>
 #include <cyberway/chaindb/controller.hpp>
 #include <fc/reflect/reflect.hpp>
 
@@ -8,8 +7,6 @@ namespace cyberway { namespace genesis {
 
 using namespace eosio::chain;
 using namespace chaindb;
-
-using resource_manager = eosio::chain::resource_limits::resource_limits_manager;
 
 
 struct genesis_header {
@@ -32,15 +29,10 @@ struct table_header {
 };
 
 struct sys_table_row {
-    resource_manager* resource_mng = nullptr;
     account_name ram_payer;
     bytes data;
 
-    sys_table_row(resource_manager& mng, account_name payer)
-    :   resource_mng(&mng)
-    ,   ram_payer(payer) {
-    }
-
+    sys_table_row() = default;
     sys_table_row(account_name payer, bytes data)
     :   ram_payer(payer)
     ,   data(std::move(data)) {
@@ -48,25 +40,15 @@ struct sys_table_row {
 
     table_request request(table_name t) const {
         return table_request{
-            .code = name(), //config::system_account_name,
+            .code = name(),
             .scope = name(),
             .table = t
         };
     }
-    storage_payer_info payer() const {
-        if (resource_mng) {
-            return resource_mng->get_storage_payer(ram_payer);
-        } else {
-            return {};
-        }
-    }
 };
 
 struct table_row final: sys_table_row {
-    table_row(resource_manager& mng, account_name payer)
-    :   sys_table_row(mng, payer) {
-    }
-
+    table_row() = default;
     table_row(account_name payer, bytes data, primary_key_t pk, uint64_t scope)
     :   sys_table_row(payer, std::move(data))
     ,   pk(pk)
