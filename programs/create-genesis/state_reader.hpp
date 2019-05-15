@@ -216,14 +216,14 @@ public:
         bfs::ifstream im(map_file);
 
         auto read_map = [&](char type, vector<string>& map) {
-            std::cout << " reading map of type " << type << "... ";
+            std::cout << " reading map of type " << type << "... " << std::flush;
             char t;
             uint32_t len;
             im >> t;
             im.read((char*)&len, sizeof(len));
             EOS_ASSERT(im, genesis_exception, "Unknown format of Genesis state map file.");
             EOS_ASSERT(t == type, genesis_exception, "Unexpected map type in Genesis state map file.");
-            std::cout << "count=" << len << "... ";
+            std::cout << "count=" << len << "... " << std::flush;
             while (im && len) {
                 string a;
                 std::getline(im, a, '\0');
@@ -258,7 +258,7 @@ public:
             if (!in)
                 break;
             auto type = t.type_id;
-            std::cout << "Reading " << t.records_count << " record(s) from table with id=" << type << std::endl;
+            std::cout << "Reading " << t.records_count << " record(s) from table with id=" << type << "." << std::flush;
             objects o;
             o.set_which(type);
             auto unpacker = fc::raw::unpack_static_variant<decltype(in)>(in);
@@ -267,7 +267,7 @@ public:
                 o.visit(unpacker);
                 o.visit(visitor);
             }
-            std::cout << "  done, " << i << " record(s) read." << std::endl;
+            std::cout << "  Done, " << i << " record(s) read." << std::endl;
         }
         std::cout << "Done reading Genesis state." << std::endl;
         in.close();

@@ -23,7 +23,7 @@ const fc::microseconds abi_serializer_max_time = fc::seconds(10);
 
 enum class stored_contract_tables: int {
     domains,        usernames,
-    permissionlink,
+    permissionlink, sys_permissionlink,
     token_stats,    vesting_stats,
     token_balance,  vesting_balance,
     delegation,     rdelegation,
@@ -87,7 +87,8 @@ public:
 
     void prepare_serializers(const contracts_map& contracts) {
         abi_def abi;
-        abis[name()] = abi_serializer(eosio_contract_abi(abi), abi_serializer_max_time);
+        abis[name()] = abis[config::system_account_name] =
+            abi_serializer(eosio_contract_abi(abi), abi_serializer_max_time);
         for (const auto& c: contracts) {
             auto abi_bytes = c.second.abi;
             if (abi_bytes.size() > 0) {
