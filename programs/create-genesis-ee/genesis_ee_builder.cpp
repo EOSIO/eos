@@ -5,14 +5,14 @@
 #define MEGABYTE 1024*1024
 
 // Comments:
-// 8000000 * 144 = 1.2 GB
+// 8000000 * 192 = 1.6 GB
 // +
 // 8000000 * 144 * 5 (votes on comment) = 6.0 GB
 // +
 // 1000000 * 128 (reblogs on comment) = 0.2 GB
 // Follows:
 // 2300000 * 160 = 0.4 GB
-#define MAP_FILE_SIZE uint64_t(20*1024)*MEGABYTE
+#define MAP_FILE_SIZE uint64_t(22*1024)*MEGABYTE
 
 namespace cyberway { namespace genesis {
 
@@ -57,6 +57,31 @@ bool genesis_ee_builder::read_op_header(bfs::ifstream& in, operation_header& op)
     return true;
 }
 
+void genesis_ee_builder::process_delete_comments() {
+    std::cout << "-> Reading comment deletions..." << std::endl;
+
+    const auto& comment_index = maps_.get_index<comment_header_index, by_hash>();
+
+    bfs::ifstream in(in_dump_dir_ / "delete_comments");
+    read_header(in);
+
+    operation_header op;
+    while (read_op_header(in, op)) {
+        auto comment_itr = comment_index.find(op.hash);
+        if (comment_itr != comment_index.end()) {
+            maps_.modify(*comment_itr, [&](auto& comment) {
+                comment.last_delete_op = op.num;
+            });
+            continue;
+        }
+
+        maps_.create<comment_header>([&](auto& comment) {
+            comment.hash = op.hash;
+            comment.last_delete_op = op.num;
+        });
+    }
+}
+
 void genesis_ee_builder::process_comments() {
     std::cout << "-> Reading comments..." << std::endl;
 
@@ -93,31 +118,6 @@ void genesis_ee_builder::process_comments() {
             comment.offset = comment_offset;
             comment.create_op = op.num;
             comment.created = cop.timestamp;
-        });
-    }
-}
-
-void genesis_ee_builder::process_delete_comments() {
-    std::cout << "-> Reading comment deletions..." << std::endl;
-
-    const auto& comment_index = maps_.get_index<comment_header_index, by_hash>();
-
-    bfs::ifstream in(in_dump_dir_ / "delete_comments");
-    read_header(in);
-
-    operation_header op;
-    while (read_op_header(in, op)) {
-        auto comment_itr = comment_index.find(op.hash);
-        if (comment_itr != comment_index.end()) {
-            maps_.modify(*comment_itr, [&](auto& comment) {
-                comment.last_delete_op = op.num;
-            });
-            continue;
-        }
-
-        maps_.create<comment_header>([&](auto& comment) {
-            comment.hash = op.hash;
-            comment.last_delete_op = op.num;
         });
     }
 }

@@ -28,8 +28,8 @@ private:
     golos_dump_header read_header(bfs::ifstream& in);
     bool read_op_header(bfs::ifstream& in, operation_header& op);
 
-    void process_comments();
     void process_delete_comments();
+    void process_comments();
     void process_rewards();
     void process_votes();
     void process_reblogs();
