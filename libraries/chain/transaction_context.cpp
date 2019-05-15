@@ -275,7 +275,7 @@ namespace bacc = boost::accumulators;
          bill_to_accounts.erase(acc);
       }
 
-      available_resources.init(rl, bill_to_accounts, control.pending_block_time());
+      available_resources.init(explicit_billed_cpu_time, rl, bill_to_accounts, control.pending_block_time());
 
       eager_net_limit = net_limit;
 
@@ -716,7 +716,8 @@ namespace bacc = boost::accumulators;
       return {*this, owner, get_ram_provider(owner)};
    }
 
-    void transaction_context::available_resources_t::init(resource_limits_manager& rl, const flat_set<account_name>& accounts, fc::time_point now) {
+    void transaction_context::available_resources_t::init(bool ecpu_time, resource_limits_manager& rl, const flat_set<account_name>& accounts, fc::time_point now) {
+        explicit_cpu_time = ecpu_time;
         auto pricelist = rl.get_pricelist();
         cpu_price = pricelist.at(resource_limits::cpu_code);
         net_price = pricelist.at(resource_limits::net_code);
@@ -735,7 +736,7 @@ namespace bacc = boost::accumulators;
     }
 
     bool transaction_context::available_resources_t::update_ram_usage(const storage_payer_info& storage) {
-        if (!storage.delta || !storage.in_ram) {
+        if (explicit_cpu_time || !storage.delta || !storage.in_ram) {
             return false;
         }
         auto lim_itr = limits.find(storage.payer);
@@ -778,7 +779,7 @@ namespace bacc = boost::accumulators;
 
     void transaction_context::available_resources_t::add_net_usage(int64_t delta) {
         EOS_ASSERT(delta >= 0, transaction_exception, "SYSTEM: available_resources_t::add_net_usage, usage_delta < 0");
-        if (!delta || !cpu_price.numerator) {
+        if (explicit_cpu_time || !delta || !cpu_price.numerator) {
             return;
         }
 
@@ -796,7 +797,7 @@ namespace bacc = boost::accumulators;
     }
 
     void transaction_context::available_resources_t::check_cpu_usage(int64_t usage)const {
-        EOS_ASSERT(min_cpu >= usage, resource_exhausted_exception,
+        EOS_ASSERT(explicit_cpu_time || min_cpu >= usage, resource_exhausted_exception,
             "transaction costs too much; unspent cpu = ${b}, usage = ${u}", ("b", min_cpu)("u", usage));
     }
 
