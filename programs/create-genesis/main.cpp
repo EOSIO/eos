@@ -133,12 +133,23 @@ void config_reader::read_config(const variables_map& options) {
     make_absolute(info.state_file, "Golos state");
     make_absolute(info.genesis_json, "Genesis json");
     genesis = fc::json::from_file(info.genesis_json).as<genesis_state>();
+
+    // base validation and init
+    for (auto& a: info.accounts) {
+        for (auto& p: a.permissions) {
+            EOS_ASSERT(p.key.length() == 0 || p.keys.size() == 0, genesis_exception,
+                "Account ${a} permission can't contain both `key` and `keys` fields at the same time", ("a",a.name));
+            p.init();
+        }
+    }
+    EOS_ASSERT(info.golos.max_supply >= 0, genesis_exception, "max_supply can't be negative");
+    EOS_ASSERT(info.golos.sys_max_supply >= 0, genesis_exception, "sys_max_supply can't be negative");
 }
 
 void config_reader::read_contracts() {
     ilog("Reading pre-configured accounts");
     for (const auto& acc: info.accounts) {
-        ilog("  ${a} (${o} / ${v})...", ("a",acc.name)("o",acc.owner_key)("v",acc.active_key));
+        ilog("  ${a}...", ("a",acc.name));
         auto& data = contracts[acc.name];
         read_contract(acc, data);
         ilog("    done: abi size: ${a}, code size: ${c}.", ("a",data.abi.size())("c",data.code.size()));
