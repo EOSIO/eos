@@ -15,6 +15,7 @@ struct comment_operation {
     string body;
     flat_set<string> tags;
     string language;
+    fc::time_point_sec timestamp;
 };
 
 struct vote_operation {
@@ -49,6 +50,7 @@ struct transfer_operation {
     /// The memo is plain-text, any encryption on the memo is up to
     /// a higher level protocol.
     string memo;
+    fc::time_point_sec timestamp;
 };
 
 enum follow_type {
@@ -102,11 +104,11 @@ struct total_comment_reward_operation {
 
 } } // cyberway::golos
 
-FC_REFLECT(cyberway::golos::comment_operation, (parent_author)(parent_permlink)(author)(permlink)(title)(body)(tags)(language))
+FC_REFLECT(cyberway::golos::comment_operation, (parent_author)(parent_permlink)(author)(permlink)(title)(body)(tags)(language)(timestamp))
 FC_REFLECT(cyberway::golos::vote_operation, (voter)(author)(permlink)(weight)(rshares)(timestamp))
 FC_REFLECT(cyberway::golos::reblog_operation, (account)(author)(permlink)(title)(body)(timestamp))
 FC_REFLECT(cyberway::golos::delete_reblog_operation, (account))
-FC_REFLECT(cyberway::golos::transfer_operation, (from)(to)(amount)(memo))
+FC_REFLECT(cyberway::golos::transfer_operation, (from)(to)(amount)(memo)(timestamp))
 FC_REFLECT(cyberway::golos::follow_operation, (follower)(following)(what))
 
 FC_REFLECT(cyberway::golos::author_reward_operation, (author)(permlink)(sbd_payout)(steem_payout)(vesting_payout))

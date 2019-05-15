@@ -47,6 +47,7 @@ struct comment_info {
     string parent_permlink;
     name author;
     string permlink;
+    fc::time_point_sec created;
     string title;
     string body;
     fc::flat_set<string> tags;
@@ -66,6 +67,7 @@ struct transfer_info {
     name to;
     asset quantity;
     string memo;
+    fc::time_point_sec time;
 };
 
 struct pin_info {
@@ -86,8 +88,8 @@ struct block_info {
 
 FC_REFLECT(cyberway::genesis::vote_info, (voter)(weight)(time)(rshares))
 FC_REFLECT(cyberway::genesis::reblog_info, (account)(title)(body)(time))
-FC_REFLECT(cyberway::genesis::comment_info, (parent_author)(parent_permlink)(author)(permlink)(title)(body)
+FC_REFLECT(cyberway::genesis::comment_info, (parent_author)(parent_permlink)(author)(permlink)(created)(title)(body)
         (tags)(language)(net_rshares)(author_reward)(benefactor_reward)(curator_reward)(votes)(reblogs))
-FC_REFLECT(cyberway::genesis::transfer_info, (from)(to)(quantity)(memo))
+FC_REFLECT(cyberway::genesis::transfer_info, (from)(to)(quantity)(memo)(time))
 FC_REFLECT(cyberway::genesis::pin_info, (pinner)(pinning))
 FC_REFLECT(cyberway::genesis::block_info, (blocker)(blocking))

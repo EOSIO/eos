@@ -46,7 +46,6 @@ private:
     event_engine_genesis out_;
     uint32_t last_block_;
     chainbase::database maps_;
-    uint32_t comment_count_;
 };
 
 } } // cyberway::genesis

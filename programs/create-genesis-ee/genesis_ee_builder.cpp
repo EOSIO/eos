@@ -74,9 +74,16 @@ void genesis_ee_builder::process_comments() {
 
         auto comment_itr = comment_index.find(op.hash);
         if (comment_itr != comment_index.end()) {
+            if (comment_itr->last_delete_op > op.num) {
+                continue;
+            }
+
             maps_.modify(*comment_itr, [&](auto& comment) {
                 comment.offset = comment_offset;
                 comment.create_op = op.num;
+                if (comment.created == fc::time_point_sec::min()) {
+                    comment.created = cop.timestamp;
+                }
             });
             continue;
         }
@@ -85,9 +92,8 @@ void genesis_ee_builder::process_comments() {
             comment.hash = op.hash;
             comment.offset = comment_offset;
             comment.create_op = op.num;
+            comment.created = cop.timestamp;
         });
-
-        comment_count_++;
     }
 }
 
@@ -102,15 +108,17 @@ void genesis_ee_builder::process_delete_comments() {
     operation_header op;
     while (read_op_header(in, op)) {
         auto comment_itr = comment_index.find(op.hash);
-        if (op.num > comment_itr->create_op) {
-            maps_.remove(*comment_itr);
-
-            comment_count_--;
-        } else {
+        if (comment_itr != comment_index.end()) {
             maps_.modify(*comment_itr, [&](auto& comment) {
                 comment.last_delete_op = op.num;
             });
+            continue;
         }
+
+        maps_.create<comment_header>([&](auto& comment) {
+            comment.hash = op.hash;
+            comment.last_delete_op = op.num;
+        });
     }
 }
 
@@ -275,10 +283,8 @@ void genesis_ee_builder::read_operation_dump(const bfs::path& in_dump_dir) {
 
     std::cout << "Reading operation dump from " << in_dump_dir_ << "..." << std::endl;
 
-    comment_count_ = 0;
-
-    process_comments();
     process_delete_comments();
+    process_comments();
     process_rewards();
     process_votes();
     process_reblogs();
@@ -340,10 +346,11 @@ void genesis_ee_builder::build_messages() {
     bfs::ifstream dump_comments(in_dump_dir_ / "comments");
     bfs::ifstream dump_reblogs(in_dump_dir_ / "reblogs");
 
-    const auto& comment_index = maps_.get_index<comment_header_index, by_id>();
+    const auto& comment_index = maps_.get_index<comment_header_index, by_created>();
 
-    for (const auto& comment : comment_index) {
-        dump_comments.seekg(comment.offset);
+    auto comment_itr = comment_index.upper_bound(fc::time_point_sec::min());
+    for (; comment_itr != comment_index.end(); ++comment_itr) {
+        dump_comments.seekg(comment_itr->offset);
         cyberway::golos::comment_operation cop;
         fc::raw::unpack(dump_comments, cop);
 
@@ -352,16 +359,17 @@ void genesis_ee_builder::build_messages() {
             c.parent_permlink = cop.parent_permlink;
             c.author = generate_name(cop.author);
             c.permlink = cop.permlink;
+            c.created = comment_itr->created;
             c.title = cop.title;
             c.body = cop.body;
             c.tags = cop.tags;
             c.language = cop.language;
-            c.net_rshares = comment.net_rshares;
-            c.author_reward = asset(comment.author_reward, symbol(GLS));
-            c.benefactor_reward = asset(comment.benefactor_reward, symbol(GLS));
-            c.curator_reward = asset(comment.curator_reward, symbol(GLS));
-            build_votes(c.votes, comment.hash, comment.last_delete_op);
-            build_reblogs(c.reblogs, comment.hash, comment.last_delete_op, dump_reblogs);
+            c.net_rshares = comment_itr->net_rshares;
+            c.author_reward = asset(comment_itr->author_reward, symbol(GLS));
+            c.benefactor_reward = asset(comment_itr->benefactor_reward, symbol(GLS));
+            c.curator_reward = asset(comment_itr->curator_reward, symbol(GLS));
+            build_votes(c.votes, comment_itr->hash, comment_itr->last_delete_op);
+            build_reblogs(c.reblogs, comment_itr->hash, comment_itr->last_delete_op, dump_reblogs);
         });
     }
 }
@@ -371,8 +379,6 @@ void genesis_ee_builder::build_transfers() {
 
     out_.transfers.start_section(config::token_account_name, N(transfer), "transfer");
 
-    uint32_t transfer_count = 0;
-
     bfs::ifstream in(in_dump_dir_ / "transfers");
     read_header(in);
 
@@ -381,13 +387,12 @@ void genesis_ee_builder::build_transfers() {
         cyberway::golos::transfer_operation top;
         fc::raw::unpack(in, top);
 
-        transfer_count++;
-
         out_.transfers.emplace<transfer_info>([&](auto& t) {
             t.from = generate_name(top.from);
             t.to = generate_name(top.to);
             t.quantity = top.amount;
             t.memo = top.memo;
+            t.time = top.timestamp;
         });
     }
 }
