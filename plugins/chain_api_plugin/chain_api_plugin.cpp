@@ -719,8 +719,11 @@ get_producers_result chain_api_plugin_impl::get_producers( const get_producers_p
 
         const auto value = chaindb.value_at_cursor(cursor_req);
         const auto account = value["account"].as_string();
-        const auto votes = value["votes"].as_uint64();
-        total_votes += votes;
+        const auto votes = value["votes"].as_int64();
+
+        if (votes >= 0) {
+            total_votes += votes;
+        }
 
         if (account < p.lower_bound || count >= p.limit) {
             if (count == p.limit) {
@@ -762,7 +765,7 @@ std::string chain_api_plugin_impl::get_agent_public_key(chain::account_name acco
 
     if (it.pk == cyberway::chaindb::end_primary_key) {
         EOS_THROW(cyberway::chaindb::chaindb_exception,
-                  "Stake agent not found found. agent: ${agent}, token_code ${token_code}",
+                  "The stake agent has not been found. agent: ${agent}, token_code ${token_code}",
                   ("agent", account.to_string())
                   ("token_code", chain::symbol(CORE_SYMBOL).to_symbol_code()));
     }
