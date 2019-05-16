@@ -29,5 +29,13 @@
             "SKIP_PRE_V180": "true",
             "SKIP_V180": "false"
         }
+    },
+    "eosio-replay-tests":
+    {
+        "environment":
+        {
+            "SKIP_PRE_V180": "true",
+            "SKIP_V180": "false"
+        }
     }
 }
