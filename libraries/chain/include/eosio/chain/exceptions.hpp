@@ -243,7 +243,7 @@ namespace eosio { namespace chain {
       FC_DECLARE_DERIVED_EXCEPTION( ill_formed_deferred_transaction_generation_context, transaction_exception,
                                     3040016, "Transaction includes an ill-formed deferred transaction generation context extension" )
       FC_DECLARE_DERIVED_EXCEPTION( disallowed_transaction_extensions_bad_block_exception, transaction_exception,
-                                    3250002, "Transaction includes disallowed extensions (invalid block)" )
+                                    3040017, "Transaction includes disallowed extensions (invalid block)" )
 
 
    FC_DECLARE_DERIVED_EXCEPTION( action_validate_exception, chain_exception,
@@ -325,6 +325,7 @@ namespace eosio { namespace chain {
                                     3080007, "Transaction exceeded the current greylisted account network usage limit" )
       FC_DECLARE_DERIVED_EXCEPTION( greylist_cpu_usage_exceeded, resource_exhausted_exception,
                                     3080008, "Transaction exceeded the current greylisted account CPU usage limit" )
+
       FC_DECLARE_DERIVED_EXCEPTION( leeway_deadline_exception, deadline_exception,
                                     3081001, "Transaction reached the deadline set due to leeway on account CPU limits" )
 

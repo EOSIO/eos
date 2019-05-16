@@ -100,6 +100,7 @@ int main(int argc, char** argv)
       ilog("${name} using configuration file ${c}", ("name", nodeos::config::node_executable_name)("c", app().full_config_file_path().string()));
       ilog("${name} data directory is ${d}", ("name", nodeos::config::node_executable_name)("d", app().data_dir().string()));
       app().startup();
+      app().set_thread_priority_max();
       app().exec();
    } catch( const extract_genesis_state_exception& e ) {
       return EXTRACTED_GENESIS;
