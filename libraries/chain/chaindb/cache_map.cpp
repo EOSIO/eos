@@ -262,13 +262,18 @@ namespace cyberway { namespace chaindb {
 
     private:
         void add_ram_usage(const pending_cache_object_state& state) {
-            auto delta = max_distance_;
-            if (state.prev_state) {
-                delta = pos - state.prev_state->cell->pos;
+            auto object_size = state.object_ptr->object().service.size;
+            if (!object_size) {
+                return;
             }
-
+    
+            auto delta = state.prev_state ?
+                std::max(eosio::chain::int_arithmetic::safe_prop<uint64_t>(object_size, pos - state.prev_state->cell->pos, max_distance_), uint64_t(1)) : 
+                object_size * eosio::chain::config::ram_load_multiplier;
+                
             CYBERWAY_CACHE_ASSERT(UINT64_MAX - size >= delta, "Pending delta would overflow UINT64_MAX");
             size += delta;
+
         }
 
         pending_cache_object_state& emplace_impl(cache_object_ptr obj_ptr, const bool is_deleted) {
@@ -671,7 +676,7 @@ namespace cyberway { namespace chaindb {
                 using state_object = eosio::chain::resource_limits::resource_limits_state_object;
                 if (obj.has_data() && obj.service().table == chaindb::tag<state_object>::get_code()) {
                     auto& state = multi_index_item_data<state_object>::get_T(obj);
-                    ram_limit_ = get_ram_limit(state.virtual_ram_limit, state.reserved_ram_size);
+                    ram_limit_ = get_ram_limit(state.virtual_limits[eosio::chain::resource_limits::RAM], state.reserved_ram_size);
                 }
 
                 // don't rebuild indicies for interchain objects

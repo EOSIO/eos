@@ -425,8 +425,6 @@ struct launcher_def {
    producer_set_def producer_set;
    string start_temp;
    string start_script;
-   fc::optional<uint32_t> max_block_cpu_usage;
-   fc::optional<uint32_t> max_transaction_cpu_usage;
    eosio::chain::genesis_state genesis_from_file;
 
    void assign_name (eosd_def &node, bool is_bios);
@@ -532,14 +530,6 @@ launcher_def::initialize (const variables_map &vmap) {
         exit (-1);
       }
     }
-  }
-
-  if (vmap.count("max-block-cpu-usage")) {
-     max_block_cpu_usage = vmap["max-block-cpu-usage"].as<uint32_t>();
-  }
-
-  if (vmap.count("max-transaction-cpu-usage")) {
-     max_transaction_cpu_usage = vmap["max-transaction-cpu-usage"].as<uint32_t>();
   }
 
   genesis = vmap["genesis"].as<string>();
@@ -1189,10 +1179,6 @@ launcher_def::init_genesis () {
    
    fc::json::from_file(genesis_path).as<eosio::chain::genesis_state>(genesis_from_file);
    genesis_from_file.initial_key = public_key_type(bioskey);
-   if (max_block_cpu_usage)
-      genesis_from_file.initial_configuration.max_block_cpu_usage = *max_block_cpu_usage;
-   if (max_transaction_cpu_usage)
-      genesis_from_file.initial_configuration.max_transaction_cpu_usage = *max_transaction_cpu_usage;
 }
 
 void

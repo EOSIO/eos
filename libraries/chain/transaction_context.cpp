@@ -206,20 +206,20 @@ namespace bacc = boost::accumulators;
       const auto& cfg = control.get_global_properties().configuration;
       auto& rl = control.get_mutable_resource_limits_manager();
 
-      net_limit = rl.get_block_net_limit();
-      objective_duration_limit = fc::microseconds( rl.get_block_cpu_limit() );
+      net_limit = rl.get_block_limit(resource_limits::NET, cfg);
+      objective_duration_limit = fc::microseconds( rl.get_block_limit(resource_limits::CPU, cfg) );
 
       _deadline = start + objective_duration_limit;
 
       // Possibly lower net_limit to the maximum net usage a transaction is allowed to be billed
-      if( cfg.max_transaction_net_usage <= net_limit ) {
-         net_limit = cfg.max_transaction_net_usage;
+      if( config::max_transaction_usage[resource_limits::NET] <= net_limit ) {
+         net_limit = config::max_transaction_usage[resource_limits::NET];
          net_limit_due_to_block = false;
       }
 
       // Possibly lower objective_duration_limit to the maximum cpu usage a transaction is allowed to be billed
-      if( cfg.max_transaction_cpu_usage <= objective_duration_limit.count() ) {
-         objective_duration_limit = fc::microseconds(cfg.max_transaction_cpu_usage);
+      if( config::max_transaction_usage[resource_limits::CPU] <= objective_duration_limit.count() ) {
+         objective_duration_limit = fc::microseconds(config::max_transaction_usage[resource_limits::CPU]);
          billing_timer_exception_code = tx_cpu_usage_exceeded::code_value;
          _deadline = start + objective_duration_limit;
       }
@@ -400,12 +400,11 @@ namespace bacc = boost::accumulators;
 
    void transaction_context::finalize() {
       validate_bw_usage();
-
       control.get_mutable_resource_limits_manager().add_transaction_usage( bill_to_accounts,
          static_cast<uint64_t>(billed_cpu_time_us),
          net_usage,
          billed_ram_bytes,
-         control.pending_block_time()); // Should never fail
+         control.pending_block_time()); // can fail due to billed_ram_bytes
    }
 
    void transaction_context::validate_bw_usage() {
@@ -547,12 +546,13 @@ namespace bacc = boost::accumulators;
    }
 
    void transaction_context::add_storage_usage( const storage_payer_info& storage ) {
-      if (available_resources.update_ram_usage(storage)) {
-         available_resources.check_cpu_usage((fc::time_point::now() - pseudo_start).count());
+      auto now = fc::time_point::now();
+      if (available_resources.update_storage_usage(storage)) {
+         available_resources.check_cpu_usage((now - pseudo_start).count());
       }
       // TODO: issue #480 - ICE BW
       auto& rl = control.get_mutable_resource_limits_manager();
-      rl.add_storage_usage( storage );
+      rl.add_storage_usage(storage.payer, storage.delta, control.pending_block_slot());
    }
 
    int64_t transaction_context::get_billed_cpu_time(fc::time_point now)const {
@@ -716,89 +716,88 @@ namespace bacc = boost::accumulators;
       return {*this, owner, get_ram_provider(owner)};
    }
 
-    void transaction_context::available_resources_t::init(bool ecpu_time, resource_limits_manager& rl, const flat_set<account_name>& accounts, fc::time_point now) {
+    void transaction_context::available_resources_t::init(bool ecpu_time, resource_limits_manager& rl, const flat_set<account_name>& accounts, fc::time_point pending_block_time) {
         explicit_cpu_time = ecpu_time;
-        auto pricelist = rl.get_pricelist();
-        cpu_price = pricelist.at(resource_limits::cpu_code);
-        net_price = pricelist.at(resource_limits::net_code);
-        ram_price = pricelist.at(resource_limits::ram_code);
-        rl.update_account_usage(accounts, block_timestamp_type(now).slot);
-        min_cpu = UINT64_MAX;
+        pricelist = rl.get_pricelist();
+        auto& cpu_price = pricelist[resource_limits::CPU];
+        rl.update_account_usage(accounts, block_timestamp_type(pending_block_time).slot);
+        min_cpu_limit = UINT64_MAX;
         for (const auto& a : accounts) {
-            auto balance = rl.get_account_balance(now.sec_since_epoch(), a, pricelist);
-            auto& lim = limits[a];
-            lim.ram = balance.ram;
-            if (cpu_price.numerator && balance.stake < UINT64_MAX) {
-                lim.cpu = safe_prop(balance.stake, cpu_price.denominator, cpu_price.numerator);
+            auto balance = rl.get_account_balance(pending_block_time, a, pricelist, true);
+            auto& lim = cpu_limits[a];
+            lim = UINT64_MAX;
+            if (cpu_price.numerator && balance < UINT64_MAX) {
+                lim = safe_prop(balance, cpu_price.denominator, cpu_price.numerator);
             }
-            min_cpu = std::min(lim.cpu, min_cpu);
+            min_cpu_limit = std::min(lim, min_cpu_limit);
         }
     }
 
-    bool transaction_context::available_resources_t::update_ram_usage(const storage_payer_info& storage) {
-        if (explicit_cpu_time || !storage.delta || !storage.in_ram) {
+    bool transaction_context::available_resources_t::update_storage_usage(const storage_payer_info& storage) {
+        if (explicit_cpu_time || !storage.delta) {
             return false;
         }
-        auto lim_itr = limits.find(storage.payer);
-        if (lim_itr == limits.end()) {
+        auto lim_itr = cpu_limits.find(storage.payer);
+        if (lim_itr == cpu_limits.end()) {
             return false;
         }
         auto& lim = lim_itr->second;
         uint64_t delta_abs = std::abs(storage.delta);
+        
+        auto& storage_price = pricelist[resource_limits::STORAGE];
+        auto& cpu_price     = pricelist[resource_limits::CPU];
 
-        auto cost = safe_prop(delta_abs, ram_price.numerator, ram_price.denominator);
+        auto cost = safe_prop(delta_abs, storage_price.numerator, storage_price.denominator);
         auto cpu = cost ? (cpu_price.numerator ? safe_prop(cost, cpu_price.denominator, cpu_price.numerator) : UINT64_MAX) : 0;
 
-        bool need_to_update_min = (lim.cpu == min_cpu) && (storage.delta < 0);
+        bool need_to_update_min = (lim == min_cpu_limit) && (storage.delta < 0);
         if (storage.delta > 0) {
-            EOS_ASSERT(lim.ram >= delta_abs, ram_usage_exceeded,
-                "account ${a} has insufficient staked tokens: balance.ram = ${b}, delta = ${d}",
-                ("a", storage.payer)("b", lim.ram)("d", storage.delta));
-            EOS_ASSERT(lim.cpu >= cpu, resource_exhausted_exception,
+            EOS_ASSERT(lim >= cpu, resource_exhausted_exception,
                 "account ${a} has insufficient staked tokens: unspent cpu = ${b}, cost = ${c}, cpu equivalent = ${e}",
-                ("a", storage.payer)("b", lim.cpu)("c", cost)("e", cpu));
-            lim.ram -= delta_abs;
-            lim.cpu -= cpu;
+                ("a", storage.payer)("b", lim)("c", cost)("e", cpu));
+            lim -= cpu;
         }
         else {
-            lim.ram = (UINT64_MAX - lim.ram) > delta_abs ? lim.ram + delta_abs : UINT64_MAX;
-            lim.cpu = (UINT64_MAX - lim.cpu) > cpu       ? lim.cpu + cpu       : UINT64_MAX;
+            lim = (UINT64_MAX - lim) > cpu ? lim + cpu : UINT64_MAX;
         }
-        auto prev_min_cpu = min_cpu;
+        auto prev_min_cpu = min_cpu_limit;
         if (need_to_update_min) {
-            min_cpu = UINT64_MAX;
-            for (const auto& b : limits) {
-                min_cpu = std::min(min_cpu, b.second.cpu);
+            min_cpu_limit = UINT64_MAX;
+            for (const auto& b : cpu_limits) {
+                min_cpu_limit = std::min(min_cpu_limit, b.second);
             }
         }
         else {
-            min_cpu = std::min(lim.cpu, min_cpu);
+            min_cpu_limit = std::min(lim, min_cpu_limit);
         }
-        return min_cpu < prev_min_cpu;
+        return min_cpu_limit < prev_min_cpu;
     }
 
     void transaction_context::available_resources_t::add_net_usage(int64_t delta) {
         EOS_ASSERT(delta >= 0, transaction_exception, "SYSTEM: available_resources_t::add_net_usage, usage_delta < 0");
+        auto& cpu_price = pricelist[resource_limits::CPU];
         if (explicit_cpu_time || !delta || !cpu_price.numerator) {
             return;
         }
-
+        
+        auto& net_price = pricelist[resource_limits::NET];
+        
         auto cost = safe_prop(static_cast<uint64_t>(delta), net_price.numerator, net_price.denominator);
         auto cpu = safe_prop(cost, cpu_price.denominator, cpu_price.numerator);
 
-        EOS_ASSERT(min_cpu >= cpu, resource_exhausted_exception,
-            "transaction costs too much; unspent cpu = ${b}, cost cpu equivalent = ${e}", ("b", min_cpu)("e", cpu));
-        min_cpu = UINT64_MAX;
-        for (auto& b : limits) {
-            EOS_ASSERT(b.second.cpu >= cpu, transaction_exception, "SYSTEM: incorrect cpu limit");
-            b.second.cpu -= cpu;
-            min_cpu = std::min(min_cpu, b.second.cpu);
+        EOS_ASSERT(min_cpu_limit >= cpu, resource_exhausted_exception,
+            "transaction costs too much; unspent cpu = ${b}, cost cpu equivalent = ${e}", ("b", min_cpu_limit)("e", cpu));
+        min_cpu_limit = UINT64_MAX;
+        for (auto& b : cpu_limits) {
+            EOS_ASSERT(b.second >= cpu, transaction_exception, "SYSTEM: incorrect cpu limit");
+            b.second -= cpu;
+            min_cpu_limit = std::min(min_cpu_limit, b.second);
         }
     }
 
     void transaction_context::available_resources_t::check_cpu_usage(int64_t usage)const {
-        EOS_ASSERT(explicit_cpu_time || min_cpu >= usage, resource_exhausted_exception,
-            "transaction costs too much; unspent cpu = ${b}, usage = ${u}", ("b", min_cpu)("u", usage));
+        EOS_ASSERT(explicit_cpu_time || min_cpu_limit >= usage, resource_exhausted_exception,
+            "transaction costs too much; unspent cpu = ${b}, usage = ${u}", ("b", min_cpu_limit)("u", usage));
     }
 
     int64_t transaction_context::get_min_cpu_limit()const {

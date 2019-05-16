@@ -15,6 +15,7 @@
 #include <eosio/chain/controller.hpp>
 #include <eosio/chain/generated_transaction_object.hpp>
 #include <eosio/chain/snapshot.hpp>
+#include <eosio/chain/global_property_object.hpp>
 
 #include <eosio/plugins_common/http_request_handlers.hpp>
 #include <eosio/plugins_common/chain_utils.hpp>
@@ -315,6 +316,7 @@ static std::string itoh(I n, size_t hlen = sizeof(I)<<1) {
 
 get_info_results chain_plugin_impl::get_info(const get_info_params&) const {
    const auto& rm = chain->get_resource_limits_manager();
+   const auto& cfg = chain->get_global_properties().configuration;
    return {
       itoh(static_cast<uint32_t>(app().version())),
       chain->get_chain_id(),
@@ -324,10 +326,10 @@ get_info_results chain_plugin_impl::get_info(const get_info_params&) const {
       chain->fork_db_head_block_id(),
       chain->fork_db_head_block_time(),
       chain->fork_db_head_block_producer(),
-      rm.get_virtual_block_cpu_limit(),
-      rm.get_virtual_block_net_limit(),
-      rm.get_block_cpu_limit(),
-      rm.get_block_net_limit(),
+      rm.get_virtual_block_limit(resource_limits::CPU),
+      rm.get_virtual_block_limit(resource_limits::NET),
+      rm.get_block_limit(resource_limits::CPU, cfg),
+      rm.get_block_limit(resource_limits::NET, cfg),
       //std::bitset<64>(chain->get_dynamic_global_properties().recent_slots_filled).to_string(),
       //__builtin_popcountll(chain->get_dynamic_global_properties().recent_slots_filled) / 64.0,
       app().version_string(),

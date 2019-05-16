@@ -27,6 +27,7 @@ namespace cyberway { namespace chaindb {
 
         account_name owner;
         account_name payer;
+        uint32_t     time_slot = 0;
         int          size   = 0;
         int64_t      delta  = 0;
         bool         in_ram = true;
@@ -37,8 +38,8 @@ namespace cyberway { namespace chaindb {
         : apply_ctx(&c), owner(std::move(o)), payer(std::move(p)) {
         }
 
-        storage_payer_info(resource_manager& r, account_name o, account_name p)
-        : resource_mng(&r), owner(std::move(o)), payer(std::move(p)) {
+        storage_payer_info(resource_manager& r, account_name o, account_name p, uint32_t slot)
+        : resource_mng(&r), owner(std::move(o)), payer(std::move(p)), time_slot(slot) {
         }
 
         storage_payer_info(transaction_context& t, account_name o, account_name p)
@@ -54,4 +55,4 @@ namespace cyberway { namespace chaindb {
 
 } } // namespace cyberway::chaindb
 
-FC_REFLECT(cyberway::chaindb::storage_payer_info, (owner)(payer)(size)(delta)(in_ram))
+FC_REFLECT(cyberway::chaindb::storage_payer_info, (owner)(payer)(time_slot)(size)(delta)(in_ram))

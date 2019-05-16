@@ -206,23 +206,16 @@ namespace eosio { namespace chain {
         fc::flat_map<account_name, account_name> ram_providers;
          
         class available_resources_t {
-            struct limit {
-                uint64_t ram = UINT64_MAX;
-                uint64_t cpu = UINT64_MAX;
-            };
-            resource_limits::ratio cpu_price;
-            resource_limits::ratio net_price;
-            resource_limits::ratio ram_price;
-            
-            std::map<account_name, limit> limits;
-            uint64_t min_cpu = UINT64_MAX;
+            std::vector<resource_limits::ratio> pricelist;
+            std::map<account_name, uint64_t> cpu_limits;
+            uint64_t min_cpu_limit = UINT64_MAX;
             bool explicit_cpu_time = false;
         public:
-            void init(bool, resource_limits_manager& rl, const flat_set<account_name>& accounts, fc::time_point now);
-            bool update_ram_usage(const storage_payer_info&);
+            void init(bool, resource_limits_manager& rl, const flat_set<account_name>& accounts, fc::time_point pending_block_time);
+            bool update_storage_usage(const storage_payer_info&);
             void add_net_usage(int64_t delta);
             void check_cpu_usage(int64_t usage) const;
-            uint64_t get_min_cpu_limit()const { return min_cpu; };
+            uint64_t get_min_cpu_limit()const { return min_cpu_limit; };
         };
          
         available_resources_t available_resources;

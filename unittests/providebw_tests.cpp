@@ -110,7 +110,7 @@ BOOST_FIXTURE_TEST_CASE( providebw_test, system_contract_tester ) {
     try {
         // Create eosio.msig and eosio.token
         create_accounts({token_account_name, ram_account_name, ramfee_account_name,
-         stake_account_name, vpay_account_name, bpay_account_name, saving_account_name});
+            vpay_account_name, bpay_account_name, saving_account_name});
 
         // Set code for the following accounts:
         //  - eosio (code: eosio.bios) (already set by tester constructor)
@@ -160,17 +160,17 @@ BOOST_FIXTURE_TEST_CASE( providebw_test, system_contract_tester ) {
         
         auto block_time = control->head_block_time().time_since_epoch().to_seconds();
         auto& rlm = control->get_mutable_resource_limits_manager();
-        auto provider_stake = rlm.get_account_balance(block_time, N(provider), rlm.get_pricelist()).stake;
+        auto provider_stake = rlm.get_account_balance(control->head_block_time(), N(provider), rlm.get_pricelist(), false);
         auto provider_used = rlm.get_account_usage(N(provider));
 
         BOOST_CHECK_GT(provider_stake, 0);
         
-        auto user_stake = rlm.get_account_balance(block_time, N(user), rlm.get_pricelist()).stake;
+        auto user_stake = rlm.get_account_balance(control->head_block_time(), N(user), rlm.get_pricelist(), false);
         auto user_used = rlm.get_account_usage(N(user));
 
         BOOST_CHECK_EQUAL(user_stake, 0);
 
-        BOOST_CHECK_EQUAL(rlm.get_account_balance(block_time, N(user2), rlm.get_pricelist()).stake, 0);
+        BOOST_CHECK_EQUAL(rlm.get_account_balance(control->head_block_time(), N(user2), rlm.get_pricelist(), false), 0);
 
         // Check that user can't send transaction due missing bandwidth
         signed_transaction trx;
@@ -198,11 +198,11 @@ BOOST_FIXTURE_TEST_CASE( providebw_test, system_contract_tester ) {
 
         auto provider_used2 = rlm.get_account_usage(N(provider));
         auto user_used2 = rlm.get_account_usage(N(user));
-        BOOST_CHECK_EQUAL(user_used2[resource_limits::cpu_code], user_used[resource_limits::cpu_code]);
-        BOOST_CHECK_EQUAL(user_used2[resource_limits::net_code], user_used[resource_limits::net_code]);
+        BOOST_CHECK_EQUAL(user_used2[resource_limits::CPU], user_used[resource_limits::CPU]);
+        BOOST_CHECK_EQUAL(user_used2[resource_limits::NET], user_used[resource_limits::NET]);
         
-        BOOST_CHECK_GT(provider_used2[resource_limits::cpu_code], provider_used[resource_limits::cpu_code]);
-        BOOST_CHECK_GT(provider_used2[resource_limits::net_code], provider_used[resource_limits::net_code]);
+        BOOST_CHECK_GT(provider_used2[resource_limits::CPU], provider_used[resource_limits::CPU]);
+        BOOST_CHECK_GT(provider_used2[resource_limits::NET], provider_used[resource_limits::NET]);
         
         // Check that another actor need bandwidth to publish transaction
         trx.actions.push_back(get_action(name(config::system_account_name), N(reqauth),

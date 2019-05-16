@@ -2089,22 +2089,25 @@ BOOST_FIXTURE_TEST_CASE( proxy_cannot_use_another_proxy, eosio_system_tester ) t
 
 fc::mutable_variant_object config_to_variant( const eosio::chain::chain_config& config ) {
    return mutable_variant_object()
-      ( "max_block_net_usage", config.max_block_net_usage )
-      ( "target_block_net_usage_pct", config.target_block_net_usage_pct )
-      ( "max_transaction_net_usage", config.max_transaction_net_usage )
       ( "base_per_transaction_net_usage", config.base_per_transaction_net_usage )
       ( "context_free_discount_net_usage_num", config.context_free_discount_net_usage_num )
       ( "context_free_discount_net_usage_den", config.context_free_discount_net_usage_den )
-      ( "max_block_cpu_usage", config.max_block_cpu_usage )
-      ( "target_block_cpu_usage_pct", config.target_block_cpu_usage_pct )
-      ( "max_transaction_cpu_usage", config.max_transaction_cpu_usage )
       ( "min_transaction_cpu_usage", config.min_transaction_cpu_usage )
+      ( "min_transaction_ram_usage", config.min_transaction_ram_usage )
       ( "max_transaction_lifetime", config.max_transaction_lifetime )
       ( "deferred_trx_expiration_window", config.deferred_trx_expiration_window )
       ( "max_transaction_delay", config.max_transaction_delay )
       ( "max_inline_action_size", config.max_inline_action_size )
       ( "max_inline_action_depth", config.max_inline_action_depth )
-      ( "max_authority_depth", config.max_authority_depth );
+      ( "max_authority_depth", config.max_authority_depth )
+      
+      ( "target_virtual_limits", config.target_virtual_limits )
+      ( "min_virtual_limits", config.min_virtual_limits )
+      ( "max_virtual_limits", config.max_virtual_limits )
+      ( "usage_windows", config.usage_windows )
+      ( "virtual_limit_decrease_pct", config.virtual_limit_decrease_pct )
+      ( "virtual_limit_increase_pct", config.virtual_limit_increase_pct )
+      ( "account_usage_windows", config.account_usage_windows );
 }
 
 BOOST_FIXTURE_TEST_CASE( elect_producers /*_and_parameters*/, eosio_system_tester ) try {
@@ -2469,7 +2472,7 @@ BOOST_FIXTURE_TEST_CASE( setparams, eosio_system_tester ) try {
    eosio::chain::chain_config params;
    params = control->get_global_properties().configuration;
    //change some values
-   params.max_block_net_usage += 10;
+   params.max_virtual_limits[eosio::chain::resource_limits::NET] += 10;
    params.max_transaction_lifetime += 1;
 
    transaction trx;
@@ -2529,7 +2532,9 @@ BOOST_FIXTURE_TEST_CASE( setparams, eosio_system_tester ) try {
 
    // make sure that changed parameters were applied
    auto active_params = control->get_global_properties().configuration;
-   BOOST_REQUIRE_EQUAL( params.max_block_net_usage, active_params.max_block_net_usage );
+   BOOST_REQUIRE_EQUAL( 
+      params.       max_virtual_limits[eosio::chain::resource_limits::NET], 
+      active_params.max_virtual_limits[eosio::chain::resource_limits::NET] );
    BOOST_REQUIRE_EQUAL( params.max_transaction_lifetime, active_params.max_transaction_lifetime );
 
 } FC_LOG_AND_RETHROW()
