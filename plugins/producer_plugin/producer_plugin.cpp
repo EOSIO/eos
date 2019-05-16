@@ -604,6 +604,8 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       void schedule_delayed_production_loop(const std::weak_ptr<producer_plugin_impl>& weak_this, const block_timestamp_type& current_block_time);
 };
 
+uint64_t producer_plugin_impl::_max_incoming_transaction_queue_size = 0;
+
 void new_chain_banner(const eosio::chain::controller& db)
 {
    std::cerr << "\n"
