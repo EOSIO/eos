@@ -5,6 +5,7 @@
 #pragma once
 #include <eosio/chain/transaction.hpp>
 #include <eosio/chain/types.hpp>
+#include <boost/asio/io_context.hpp>
 #include <future>
 
 namespace boost { namespace asio {
