@@ -175,25 +175,7 @@ class privileged_api : public context_aware_api {
          context.control.get_resource_limits_manager().get_account_limits( account, ram_bytes, net_weight, cpu_weight);
       }
 
-      int64_t set_proposed_producers( array_ptr<char> packed_producer_schedule, size_t datalen) {
-         datastream<const char*> ds( packed_producer_schedule, datalen );
-         vector<producer_authority> producers;
-
-         if ( context.control.is_builtin_activated( builtin_protocol_feature_t::wtmsig_block_signatures )) {
-            fc::raw::unpack(ds, producers);
-
-         } else {
-            vector<legacy::producer_key> old_version;
-            fc::raw::unpack(ds, old_version);
-
-            /*
-             * Up-convert the producers
-             */
-            for ( const auto& p: old_version ) {
-               producers.emplace_back(producer_authority{ p.producer_name, block_signing_authority_v0{ 1, {{p.block_signing_key, 1}} } } );
-            }
-         }
-
+      int64_t set_proposed_producers_common( vector<producer_authority> && producers ) {
          EOS_ASSERT(producers.size() <= config::max_producers, wasm_execution_error, "Producer schedule exceeds the maximum producer count for this chain");
          EOS_ASSERT( producers.size() > 0
                      || !context.control.is_builtin_activated( builtin_protocol_feature_t::disallow_empty_producer_schedule ),
@@ -226,7 +208,39 @@ class privileged_api : public context_aware_api {
          }
          EOS_ASSERT( producers.size() == unique_producers.size(), wasm_execution_error, "duplicate producer name in producer schedule" );
 
-         return context.control.set_proposed_producers( std::move(producers) );
+         return context.control.set_proposed_producers( std::forward<vector<producer_authority>>(producers) );
+      }
+
+      int64_t set_proposed_producers( array_ptr<char> packed_producer_schedule, size_t datalen) {
+         datastream<const char*> ds( packed_producer_schedule, datalen );
+         vector<producer_authority> producers;
+
+//         if ( context.control.is_builtin_activated( builtin_protocol_feature_t::wtmsig_block_signatures )) {
+         vector<legacy::producer_key> old_version;
+         fc::raw::unpack(ds, old_version);
+
+         /*
+          * Up-convert the producers
+          */
+         for ( const auto& p: old_version ) {
+            producers.emplace_back(producer_authority{ p.producer_name, block_signing_authority_v0{ 1, {{p.block_signing_key, 1}} } } );
+         }
+
+         return set_proposed_producers_common(std::move(producers));
+      }
+
+      int64_t set_proposed_producers_ex( uint64_t packed_producer_format, array_ptr<char> packed_producer_schedule, size_t datalen) {
+         if (packed_producer_format == 0) {
+            return set_proposed_producers(packed_producer_schedule, datalen);
+         } else if (packed_producer_format == 1) {
+            datastream<const char*> ds( packed_producer_schedule, datalen );
+            vector<producer_authority> producers;
+
+            fc::raw::unpack(ds, producers);
+            return set_proposed_producers_common(std::move(producers));
+         } else {
+            EOS_THROW(wasm_execution_error, "Producer schedule is in an unknown format!");
+         }
       }
 
       uint32_t get_blockchain_parameters_packed( array_ptr<char> packed_blockchain_parameters, size_t buffer_size) {
@@ -1784,6 +1798,7 @@ REGISTER_INTRINSICS(privileged_api,
    (get_resource_limits,              void(int64_t,int,int,int)             )
    (set_resource_limits,              void(int64_t,int64_t,int64_t,int64_t) )
    (set_proposed_producers,           int64_t(int,int)                      )
+   (set_proposed_producers_ex,        int64_t(int64_t, int, int)            )
    (get_blockchain_parameters_packed, int(int, int)                         )
    (set_blockchain_parameters_packed, void(int,int)                         )
    (is_privileged,                    int(int64_t)                          )
