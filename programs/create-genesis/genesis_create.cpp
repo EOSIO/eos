@@ -109,8 +109,9 @@ struct genesis_create::genesis_create_impl final {
 
         db.start_section(config::system_account_name, N(account), "account_object", l);
         for (const auto& acc: accounts) {
-            db.emplace<account_object>([&](auto& a) {
-                a.name = get_name(acc);
+            auto n = get_name(acc);
+            db.emplace<account_object>(n, [&](auto& a) {
+                a.name = n;
                 a.creation_date = ts;
                 if (_contracts.count(a.name) > 0) {
                     const auto& abicode = _contracts[a.name];
@@ -130,15 +131,17 @@ struct genesis_create::genesis_create_impl final {
 
         db.start_section(config::system_account_name, N(accountseq), "account_sequence_object", l);
         for (const auto& acc: accounts) {
-            db.emplace<account_sequence_object>([&](auto& a) {
-                a.name = get_name(acc);
+            auto n = get_name(acc);
+            db.emplace<account_sequence_object>(n, [&](auto& a) {
+                a.name = n;
             });
         }
 
         db.start_section(config::system_account_name, N(resusage), "resource_usage_object", l);
         for (const auto& acc: accounts) {
-            db.emplace<resource_usage_object>([&](auto& u) {
-                u.owner = get_name(acc);
+            auto n = get_name(acc);
+            db.emplace<resource_usage_object>(n, [&](auto& u) {
+                u.owner = n;
             });
         }
     }
@@ -155,10 +158,12 @@ struct genesis_create::genesis_create_impl final {
         }
 
         db.start_section(config::system_account_name, N(permusage), "permission_usage_object", perms_l);
-        for (int i = 0; i < perms_l; i++) {
-            db.emplace<permission_usage_object>([&](auto& p) {
-                p.last_used = _conf.initial_timestamp;
-            });
+        for (const auto& acc: _info.accounts) {
+            for (int i = 0, l = acc.permissions.size(); i < l; i++) {
+                db.emplace<permission_usage_object>(acc.name, [&](auto& p) {
+                    p.last_used = _conf.initial_timestamp;
+                });
+            }
         }
 
         db.start_section(config::system_account_name, N(permission), "permission_object", perms_l);
@@ -172,28 +177,18 @@ struct genesis_create::genesis_create_impl final {
                 bool root = parent == name();
                 EOS_ASSERT(root || parents.count(parent) > 0, genesis_exception,
                     "Parent ${pa} not found for permission ${p} of account ${a}", ("a",n)("p",p.name)("pa",p.parent));
-                const auto& perm = store_permission({}, n, p.name, root ? 0 : parents[parent], auth, usage_id++);
+                const auto& perm = store_permission(n, p.name, root ? 0 : parents[parent], auth, usage_id++);
                 parents[p.name] = perm.id;
             }
         }
         ilog("Done.");
     }
 
-    void create_account_perms(
-        name name, uint64_t& usage_id, const authority& own, const authority& act, const authority& post = {}
-    ) {
-        const auto& owner  = store_permission({}, name, config::owner_name, 0, own, usage_id++);
-        const auto& active = store_permission({}, name, config::active_name, owner.id, act, usage_id++);
-        if (post != authority()) {
-            store_permission({}, name, posting_auth_name, active.id, post, usage_id++);
-        }
-    }
-
     const permission_object store_permission(
-        const name ram_payer, account_name account, permission_name name,
+        account_name account, permission_name name,
         authorization_manager::permission_id_type parent, authority auth, uint64_t usage_id
     ) {
-        const auto perm = db.emplace<permission_object>(ram_payer, [&](auto& p) {
+        const auto perm = db.emplace<permission_object>(account, [&](auto& p) {
             p.usage_id     = usage_id;  // perm_usage.id;
             p.parent       = parent;
             p.owner        = account;
@@ -216,7 +211,7 @@ struct genesis_create::genesis_create_impl final {
             const auto perm = auth.get_permission();
             const auto links = auth.get_links();
             for (const auto& l: links) {
-                db.emplace<permission_link_object>([&](auto& link) {
+                db.emplace<permission_link_object>(perm.first, [&](auto& link) {
                     link.account = perm.first;
                     link.code = l.first;
                     link.message_type = l.second;
@@ -232,14 +227,14 @@ struct genesis_create::genesis_create_impl final {
         for (const auto& tbl: _info.tables) {
             db.start_section(tbl.code, tbl.table, tbl.abi_type, tbl.rows.size());
             for (const auto& r: tbl.rows) {
-                db.insert(r.pk, r.scope, r.data);   // TODO: ram payer #562
+                db.insert(r.pk, r.scope, r.payer, r.data);
             }
         }
         ilog("Done.");
     }
 
     void store_accounts() {
-        std::cout << "Creating accounts, authorities and usernames in Golos domain..." << std::endl;
+        ilog("Creating accounts, authorities and usernames in Golos domain...");
 
 #ifndef CACHE_GENERATED_NAMES
         // first fill names, we need them to check is authority account exists
@@ -255,12 +250,16 @@ struct genesis_create::genesis_create_impl final {
 
         // fill auths
         uint64_t usage_id = db.get_autoincrement<permission_usage_object>();
-        const auto perms_l = _visitor.auths.size() * 3;   // 3 = owner+active+posting
+        const int permissions_per_account = 3;          // owner+active+posting
+        const auto perms_l = _visitor.auths.size() * permissions_per_account;
         db.start_section(config::system_account_name, N(permusage), "permission_usage_object", perms_l);
-        for (int i = 0; i < perms_l; i++) {
-            db.emplace<permission_usage_object>([&](auto& p) {
-                p.last_used = _conf.initial_timestamp;
-            });
+        for (const auto a: _visitor.auths) {
+            const auto n = name_by_acc(a.account);
+            for (int i = 0; i < permissions_per_account; i++) {
+                db.emplace<permission_usage_object>(n, [&](auto& p) {
+                    p.last_used = _conf.initial_timestamp;
+                });
+            }
         }
 
         db.start_section(config::system_account_name, N(permission), "permission_object", perms_l);
@@ -293,10 +292,14 @@ struct genesis_create::genesis_create_impl final {
                 return authority{threshold, keys, accounts, waits};
             };
             auto recovery_acc = name_by_acc(_visitor.accounts[a.account.id].recovery_account);
-            const auto owner = convert_authority(config::owner_name, a.owner, recovery_acc);
-            const auto active = convert_authority(config::active_name, a.active);
-            const auto posting = convert_authority(posting_auth_name, a.posting);
-            create_account_perms(name_by_acc(a.account), usage_id, owner, active, posting);
+            const auto own = convert_authority(config::owner_name, a.owner, recovery_acc);
+            const auto act = convert_authority(config::active_name, a.active);
+            const auto post = convert_authority(posting_auth_name, a.posting);
+
+            auto name = name_by_acc(a.account);
+            const auto& owner  = store_permission(name, config::owner_name, 0, own, usage_id++);
+            const auto& active = store_permission(name, config::active_name, owner.id, act, usage_id++);
+            const auto& posting= store_permission(name, posting_auth_name, active.id, post, usage_id++);
 
             // TODO: do we need memo key ? #651
         }
@@ -304,7 +307,7 @@ struct genesis_create::genesis_create_impl final {
         // link posting permission with gls.publish and gls.social
         db.start_section(config::system_account_name, N(permlink), "permission_link_object", _visitor.auths.size()*2);
         auto insert_link = [&](name acc, name code) {
-            db.emplace<permission_link_object>([&](auto& link) {
+            db.emplace<permission_link_object>(acc, [&](auto& link) {
                 link.account = acc;
                 link.code = code;
                 link.message_type = name();
@@ -321,7 +324,7 @@ struct genesis_create::genesis_create_impl final {
         db.start_section(config::system_account_name, N(domain), "domain_object", 1);
         ee_genesis.usernames.start_section(config::system_account_name, N(domain), "domain_info");
         const auto app = _info.golos.names.issuer;
-        db.emplace<domain_object>([&](auto& a) {
+        db.emplace<domain_object>(app, [&](auto& a) {
             a.owner = app;
             a.linked_to = app;
             a.creation_date = _conf.initial_timestamp;
@@ -338,7 +341,7 @@ struct genesis_create::genesis_create_impl final {
         for (const auto& auth : _visitor.auths) {                // loop through auths to preserve names order
             const auto& s = auth.account.str(_accs_map);
             const auto& n = name_by_acc(auth.account);
-            db.emplace<username_object>([&](auto& u) {
+            db.emplace<username_object>(app, [&](auto& u) {
                 u.owner = n;
                 u.scope = app;
                 u.name = s;
@@ -360,7 +363,7 @@ struct genesis_create::genesis_create_impl final {
         const auto sys_sym = asset().get_symbol();
 
         db.start_section(config::system_account_name, N(stake.stat), "stake_stat_object", 1);
-        db.emplace<stake_stat_object>([&](auto& s) {
+        db.emplace<stake_stat_object>(config::system_account_name, [&](auto& s) {
             s.id = sys_sym.to_symbol_code().value;
             s.token_code = sys_sym.to_symbol_code();
             s.total_staked = _total_staked.get_amount();
@@ -368,7 +371,7 @@ struct genesis_create::genesis_create_impl final {
             s.enabled = false;      // ?
         });
         db.start_section(config::system_account_name, N(stake.param), "stake_param_object", 1);
-        db.emplace<stake_param_object>([&](auto& p) {
+        db.emplace<stake_param_object>(config::system_account_name, [&](auto& p) {
             const auto inf = _info.params.stake;
             p.id = sys_sym.to_symbol_code().value;
             p.token_symbol = sys_sym;
@@ -522,7 +525,7 @@ struct genesis_create::genesis_create_impl final {
         }
         db.start_section(config::system_account_name, N(stake.grant), "stake_grant_object", grants.size());
         for (const auto& g: grants) {
-            db.emplace<stake_grant_object>([&](auto& o) {
+            db.emplace<stake_grant_object>(g.from, [&](auto& o) {
                 o.token_code = sys_sym.to_symbol_code(),
                 o.grantor_name = g.from,
                 o.agent_name = g.to,
@@ -538,7 +541,7 @@ struct genesis_create::genesis_create_impl final {
             for (auto& ag: abl) {
                 auto acc = ag.first;
                 auto& x = ag.second;
-                db.emplace<stake_agent_object>([&](auto& a) {
+                db.emplace<stake_agent_object>(x.name, [&](auto& a) {
                     a.token_code = sys_sym.to_symbol_code();
                     a.account = x.name;
                     a.proxy_level = x.level;
@@ -622,7 +625,7 @@ struct genesis_create::genesis_create_impl final {
                 ("supply", supply)
                 ("max_supply", asset(max_supply * sym.precision(), sym))
                 ("issuer", issuer);
-            db.insert(pk, pk, stat);
+            db.insert(pk, pk, issuer, stat);
             ee_genesis.balances.insert(stat);
             return pk;
         };
@@ -643,16 +646,16 @@ struct genesis_create::genesis_create_impl final {
         const auto n_balances = 3 + 2*data.gbg.size();
         db.start_section(config::token_account_name, N(accounts), "account", n_balances);
         ee_genesis.balances.start_section(config::token_account_name, N(balance), "balance_event");
-        auto insert_balance_record = [&](name account, const asset& balance, primary_key_t pk, name ram_payer) {
+        auto insert_balance_record = [&](name account, const asset& balance, primary_key_t pk) {
             auto record = mvo
                 ("balance", balance)
                 ("payments", asset(0, balance.get_symbol()));
-            db.insert(pk, account, record, ram_payer);
+            db.insert(pk, account, record);
             ee_genesis.balances.insert(record("account", account));
         };
-        insert_balance_record(config::stake_account_name, _total_staked, sys_pk, name());
-        insert_balance_record(_info.golos.names.vesting, gp.total_vesting_fund_steem, gls_pk, name());
-        insert_balance_record(_info.golos.names.posting, gp.total_reward_fund_steem, gls_pk, name());
+        insert_balance_record(config::stake_account_name, _total_staked, sys_pk);
+        insert_balance_record(_info.golos.names.vesting, gp.total_vesting_fund_steem, gls_pk);
+        insert_balance_record(_info.golos.names.posting, gp.total_reward_fund_steem, gls_pk);
 
         // accounts GOLOS
         asset total_gls = asset(0, symbol(GLS));
@@ -662,8 +665,8 @@ struct genesis_create::genesis_create_impl final {
             auto gls = data.gls[acc] + to_gls.convert(gbg);
             total_gls += gls;
             auto n = name_by_idx(acc);
-            insert_balance_record(n, gls, gls_pk, name());
-            insert_balance_record(n, golos2sys(gls), sys_pk, name());
+            insert_balance_record(n, gls, gls_pk);
+            insert_balance_record(n, golos2sys(gls), sys_pk);
         }
         const auto liquid_supply = supply - (gp.total_vesting_fund_steem + gp.total_reward_fund_steem); // no funds
         std::cout << " Total sum of GOLOS + converted GBG = " << total_gls
@@ -688,8 +691,7 @@ struct genesis_create::genesis_create_impl final {
                 ("unlocked_limit", asset(0, symbol(VESTS)))
             );
         }
-
-        std::cout << "Done." << std::endl;
+        ilog("Done.");
     }
 
     void store_delegation_records() {
@@ -698,9 +700,10 @@ struct genesis_create::genesis_create_impl final {
         db.start_section(_info.golos.names.vesting, N(delegation), "delegation", _visitor.delegations.size());
         primary_key_t pk = 0;
         for (const auto& d: _visitor.delegations) {
-            db.insert(pk, VESTS >> 8, mvo
+            auto delegator = name_by_acc(d.delegator);
+            db.insert(pk, VESTS >> 8, delegator, mvo
                 ("id", pk)
-                ("delegator", name_by_acc(d.delegator))
+                ("delegator", delegator)
                 ("delegatee", name_by_acc(d.delegatee))
                 ("quantity", asset(d.vesting_shares.get_amount(), symbol(VESTS)))
                 ("interest_rate", d.interest_rate)
@@ -714,9 +717,10 @@ struct genesis_create::genesis_create_impl final {
             _visitor.delegation_expirations.size());
         pk = 0;
         for (const auto& d: _visitor.delegation_expirations) {
-            db.insert(pk, _info.golos.names.vesting, mvo
+            auto delegator = name_by_acc(d.delegator);
+            db.insert(pk, _info.golos.names.vesting, delegator, mvo
                 ("id", pk)
-                ("delegator", name_by_acc(d.delegator))
+                ("delegator", delegator)
                 ("quantity", asset(d.vesting_shares.get_amount(), symbol(VESTS)))
                 ("date", d.expiration)
             );
@@ -753,7 +757,7 @@ struct genesis_create::genesis_create_impl final {
                 auto remaining = a.to_withdraw - a.withdrawn;
                 EOS_ASSERT(remaining <= a.vesting_shares.get_amount() - a.delegated_vesting_shares.get_amount(),
                     genesis_exception, "${a} trying to withdraw more vesting than allowed", ("a",_accs_map[idx]));
-                db.insert(owner, VESTS >> 8, mvo
+                db.insert(owner, VESTS >> 8, owner, mvo
                     ("owner", owner)
                     ("to", to)
                     ("interval_seconds", withdraw_interval_seconds)
@@ -809,7 +813,7 @@ struct genesis_create::genesis_create_impl final {
                 vote_counts[w]++;
             }
             const auto n = name_by_idx(acc);
-            db.insert(n.value, _info.golos.names.control, mvo
+            db.insert(n.value, _info.golos.names.control, n, mvo
                 ("voter", n)
                 ("witnesses", witnesses)
             );
@@ -819,7 +823,7 @@ struct genesis_create::genesis_create_impl final {
         for (const auto& w : _visitor.witnesses) {
             const auto n = name_by_acc(w.owner);
             primary_key_t pk = n.value;
-            db.insert(pk, _info.golos.names.control, mvo
+            db.insert(pk, _info.golos.names.control, n, mvo
                 ("name", n)
                 ("url", w.url)
                 ("active", true)
@@ -887,10 +891,11 @@ struct genesis_create::genesis_create_impl final {
                     w = int_arithmetic::safe_prop(w, static_cast<uint64_t>(v.auction_time), auction_window);
                 }
             }
-            db.insert(pk, authors[cid], mvo
+            auto vname = name_by_id(v.voter);
+            db.insert(pk, authors[cid], vname, mvo
                 ("id", pk)            // uint64_t
                 ("message_id", cid)    // uint64_t
-                ("voter", name_by_id(v.voter))
+                ("voter", vname)
                 ("weight", v.vote_percent)        // int16_t
                 ("time", time_point(v.last_update).time_since_epoch().count())          // uint64_t
                 ("count", v.num_changes)         // uint8_t
@@ -913,7 +918,7 @@ struct genesis_create::genesis_create_impl final {
         for (const auto& cp : _visitor.comments) {
             const auto& c = cp.second;
             const auto n = name_by_acc(c.author);
-            db.emplace<generated_transaction_object>([&](auto& t){
+            db.emplace<generated_transaction_object>(n, [&](auto& t){
                 std::pair<name,string> data{n, c.permlink.str(_plnk_map)};
                 tx.actions[0].data = fc::raw::pack(data);
                 t.set(tx);
@@ -932,12 +937,12 @@ struct genesis_create::genesis_create_impl final {
             const auto& c = cp.second;
             pk = c.id;
             db.insert(pk, name_by_acc(c.author), mvo
-                ("id", pk)             // uint64
+                ("id", pk)
                 ("parentacc", name_by_acc(c.parent_author))
-                ("parent_id", post_ids[{c.parent_author.id, c.parent_permlink.id}])       // uint64
+                ("parent_id", post_ids[{c.parent_author.id, c.parent_permlink.id}])
                 ("value", c.permlink.str(_plnk_map))
-                ("level", c.active.depth)           // uint16
-                ("childcount", c.active.children)      // uint64
+                ("level", c.active.depth)
+                ("childcount", c.active.children)
             );
             post_ids[{c.author.id, c.permlink.id}] = pk;
         }
@@ -956,16 +961,16 @@ struct genesis_create::genesis_create_impl final {
             }
             pk = c.id;
             db.insert(pk, name_by_acc(c.author), mvo
-                ("id", pk)             // uint64
-                ("date", time_point(c.active.created).time_since_epoch().count())            // uint64
-                ("tokenprop", c.active.percent_steem_dollars / 2)       // base_t
-                ("beneficiaries", beneficiaries)   // beneficiary[]
-                ("rewardweight", c.active.reward_weight)    // base_t
-                ("state", mvo           // messagestate
+                ("id", pk)
+                ("date", time_point(c.active.created).time_since_epoch().count())
+                ("tokenprop", c.active.percent_steem_dollars / 2)
+                ("beneficiaries", beneficiaries)
+                ("rewardweight", c.active.reward_weight)
+                ("state", mvo
                     ("netshares", c.active.net_rshares)
                     ("voteshares", c.active.vote_rshares)
                     ("sumcuratorsw", vote_weights_sum[c.id]))
-                ("curators_prcnt", c.active.curation_rewards_percent)   // base_t
+                ("curators_prcnt", c.active.curation_rewards_percent)
             );
         }
 

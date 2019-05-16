@@ -32,6 +32,7 @@ static abi_def create_messages_abi() {
             {"parent_permlink", "string"},
             {"author", "name"},
             {"permlink", "string"},
+            {"created", "time_point_sec"},
             {"title", "string"},
             {"body", "string"},
             {"tags", "string[]"},
@@ -58,6 +59,7 @@ static abi_def create_transfers_abi() {
             {"to", "name"},
             {"quantity", "asset"},
             {"memo", "string"},
+            {"time", "time_point_sec"},
         }
     });
 

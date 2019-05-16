@@ -34,6 +34,7 @@ struct comment_header : public chainbase::object<comment_header_object_type, com
     uint64_t offset;
     operation_number create_op;
     operation_number last_delete_op;
+    fc::time_point_sec created;
     int64_t net_rshares;
     int64_t author_reward = 0;
     int64_t benefactor_reward = 0;
@@ -92,7 +93,10 @@ using comment_header_index = chainbase::shared_multi_index_container<
             member<comment_header, comment_header::id_type, &comment_header::id>>,
         ordered_unique<
             tag<by_hash>,
-            member<comment_header, uint64_t, &comment_header::hash>>>
+            member<comment_header, uint64_t, &comment_header::hash>>,
+        ordered_non_unique<
+            tag<by_created>,
+            member<comment_header, fc::time_point_sec, &comment_header::created>>>
 >;
 
 struct by_hash_voter;
