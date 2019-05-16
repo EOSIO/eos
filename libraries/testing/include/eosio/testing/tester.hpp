@@ -56,7 +56,7 @@ namespace boost { namespace test_tools { namespace tt_detail {
 } } }
 
 namespace eosio { namespace testing {
-  enum class setup_policy {
+   enum class setup_policy {
       none,
       old_bios_only,
       preactivate_feature_only,
@@ -168,6 +168,7 @@ namespace eosio { namespace testing {
          }
 
          void                  set_before_preactivate_bios_contract();
+         void                  set_before_producer_authority_bios_contract();
          void                  set_bios_contract();
 
          vector<producer_authority>  get_producer_authorities( const vector<account_name>& producer_names )const;

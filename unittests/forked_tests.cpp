@@ -28,11 +28,7 @@ BOOST_AUTO_TEST_CASE( irrblock ) try {
    c.produce_blocks(10);
    auto r = c.create_accounts( {N(dan),N(sam),N(pam),N(scott)} );
    auto res = c.set_producers( {N(dan),N(sam),N(pam),N(scott)} );
-   vector<producer_key> sch = { {N(dan),get_public_key(N(dan), "active")},
-                                {N(sam),get_public_key(N(sam), "active")},
-                                {N(scott),get_public_key(N(scott), "active")},
-                                {N(pam),get_public_key(N(pam), "active")}
-                              };
+
    wlog("set producer schedule to [dan,sam,pam]");
    c.produce_blocks(50);
 
@@ -143,9 +139,7 @@ BOOST_AUTO_TEST_CASE( forking ) try {
    wdump((fc::json::to_pretty_string(r)));
    c.produce_block();
    auto res = c.set_producers( {N(dan),N(sam),N(pam)} );
-   vector<producer_key> sch = { {N(dan),get_public_key(N(dan), "active")},
-                                {N(sam),get_public_key(N(sam), "active")},
-                                {N(pam),get_public_key(N(pam), "active")}};
+
    wdump((fc::json::to_pretty_string(res)));
    wlog("set producer schedule to [dan,sam,pam]");
    c.produce_blocks(30);

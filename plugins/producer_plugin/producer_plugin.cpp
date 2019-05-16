@@ -264,28 +264,6 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
             active_producers.insert(p.producer_name);
          }
 
-         std::set_intersection( _producers.begin(), _producers.end(),
-                                active_producers.begin(), active_producers.end(),
-                                boost::make_function_output_iterator( [&]( const chain::account_name& producer )
-         {
-            if( producer != bsp->header.producer ) {
-               auto itr = std::find_if( active_producer_to_signing_key.begin(), active_producer_to_signing_key.end(),
-                                        [&](const producer_key& k){ return k.producer_name == producer; } );
-               if( itr != active_producer_to_signing_key.end() ) {
-                  auto private_key_itr = _signature_providers.find( itr->block_signing_key );
-                  if( private_key_itr != _signature_providers.end() ) {
-                     auto d = bsp->sig_digest();
-                     auto sig = private_key_itr->second( d );
-                     _last_signed_block_time = bsp->header.timestamp;
-                     _last_signed_block_num  = bsp->block_num;
-
-   //                  ilog( "${n} confirmed", ("n",name(producer)) );
-                     _self->confirmed_block( { bsp->id, d, producer, sig } );
-                  }
-               }
-            }
-         } ) );
-
          // since the watermark has to be set before a block is created, we are looking into the future to
          // determine the new schedule to identify producers that have become active
          chain::controller& chain = chain_plug->chain();
@@ -1312,7 +1290,11 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
    // Not our turn
    const auto& scheduled_producer = hbs->get_scheduled_producer(block_time);
    auto currrent_watermark_itr = _producer_watermarks.find(scheduled_producer.producer_name);
-   auto signature_provider_itr = _signature_providers.find(scheduled_producer.block_signing_key);
+
+   auto num_relevant_signatures = std::count_if(_signature_providers.begin(), _signature_providers.end(), [&scheduled_producer](const auto& p){
+      return scheduled_producer.key_is_relevant(p.first);
+   });
+
    auto irreversible_block_age = get_irreversible_block_age();
 
    // If the next block production opportunity is in the present or future, we're synced.
@@ -1320,8 +1302,8 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
       _pending_block_mode = pending_block_mode::speculating;
    } else if( _producers.find(scheduled_producer.producer_name) == _producers.end()) {
       _pending_block_mode = pending_block_mode::speculating;
-   } else if (signature_provider_itr == _signature_providers.end()) {
-      elog("Not producing block because I don't have the private key for ${scheduled_key}", ("scheduled_key", scheduled_producer.block_signing_key));
+   } else if (num_relevant_signatures == 0) {
+      elog("Not producing block because I don't have any private keys relevant to authority: ${authority}", ("authority", scheduled_producer.authority));
       _pending_block_mode = pending_block_mode::speculating;
    } else if ( _pause_production ) {
       elog("Not producing block because production is explicitly paused");
@@ -1410,11 +1392,11 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
 
    if( chain.is_building_block() ) {
       auto pending_block_time = chain.pending_block_time();
-      auto pending_block_signing_key = chain.pending_block_signing_key();
+      auto pending_block_signing_authority = chain.pending_block_signing_authority();
       const fc::time_point preprocess_deadline = calculate_block_deadline(block_time);
 
-      if (_pending_block_mode == pending_block_mode::producing && pending_block_signing_key != scheduled_producer.block_signing_key) {
-         elog("Block Signing Key is not expected value, reverting to speculative mode! [expected: \"${expected}\", actual: \"${actual\"", ("expected", scheduled_producer.block_signing_key)("actual", pending_block_signing_key));
+      if (_pending_block_mode == pending_block_mode::producing && pending_block_signing_authority != scheduled_producer.authority) {
+         elog("Block Signing Key is not expected value, reverting to speculative mode! [expected: \"${expected}\", actual: \"${actual\"", ("expected", scheduled_producer.authority)("actual", pending_block_signing_authority));
          _pending_block_mode = pending_block_mode::speculating;
       }
 
@@ -1850,9 +1832,14 @@ void producer_plugin_impl::produce_block() {
    chain::controller& chain = chain_plug->chain();
    const auto& hbs = chain.head_block_state();
    EOS_ASSERT(chain.is_building_block(), missing_pending_block_state, "pending_block_state does not exist but it should, another plugin may have corrupted it");
-   auto signature_provider_itr = _signature_providers.find( chain.pending_block_signing_key() );
 
-   EOS_ASSERT(signature_provider_itr != _signature_providers.end(), producer_priv_key_not_found, "Attempting to produce a block for which we don't have the private key");
+
+   const auto& auth = chain.pending_block_signing_authority();
+   auto num_relevant_signatures = std::count_if(_signature_providers.begin(), _signature_providers.end(), [&auth](const auto& p){
+      return producer_authority::key_is_relevant(p.first, auth);
+   });
+
+   EOS_ASSERT(num_relevant_signatures > 0, producer_priv_key_not_found, "Attempting to produce a block for which we don't have any relevant private keys");
 
    if (_protocol_features_signaled) {
       _protocol_features_to_activate.clear(); // clear _protocol_features_to_activate as it is already set in pending_block
@@ -1862,7 +1849,16 @@ void producer_plugin_impl::produce_block() {
    //idump( (fc::time_point::now() - chain.pending_block_time()) );
    chain.finalize_block( [&]( const digest_type& d ) {
       auto debug_logger = maybe_make_debug_time_logger();
-      return signature_provider_itr->second(d);
+      vector<signature_type> sigs;
+      sigs.reserve(num_relevant_signatures);
+
+      // sign with all relevant public keys
+      for (const auto& p : _signature_providers) {
+         if (producer_authority::key_is_relevant(p.first, auth)) {
+            sigs.emplace_back(p.second(d));
+         }
+      }
+      return sigs;
    } );
 
    chain.commit_block();

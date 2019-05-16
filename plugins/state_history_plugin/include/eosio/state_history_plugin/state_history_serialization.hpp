@@ -252,7 +252,7 @@ datastream<ST>& operator<<(datastream<ST>& ds,
 
 template <typename ST>
 datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosio::chain::shared_producer_authority>& obj) {
-   fc::raw::pack(ds, as_type<uint64_t>(obj.obj.name.value));
+   fc::raw::pack(ds, as_type<uint64_t>(obj.obj.producer_name.value));
    fc::raw::pack(ds, as_type<eosio::chain::shared_block_signing_authority>(obj.obj.authority));
    return ds;
 }

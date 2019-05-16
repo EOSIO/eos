@@ -301,16 +301,16 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         produce_blocks_for_n_rounds(2); // 2 rounds since new producer schedule is set when the first block of next round is irreversible
         active_schedule = control->head_block_state()->active_schedule;
         BOOST_REQUIRE(active_schedule.producers.size() == 21);
-        BOOST_TEST(active_schedule.producers.at(0).producer_name == "proda");
-        BOOST_TEST(active_schedule.producers.at(1).producer_name == "prodb");
-        BOOST_TEST(active_schedule.producers.at(2).producer_name == "prodc");
-        BOOST_TEST(active_schedule.producers.at(3).producer_name == "prodd");
-        BOOST_TEST(active_schedule.producers.at(4).producer_name == "prode");
-        BOOST_TEST(active_schedule.producers.at(5).producer_name == "prodf");
-        BOOST_TEST(active_schedule.producers.at(6).producer_name == "prodg");
-        BOOST_TEST(active_schedule.producers.at(7).producer_name == "prodh");
-        BOOST_TEST(active_schedule.producers.at(8).producer_name == "prodi");
-        BOOST_TEST(active_schedule.producers.at(9).producer_name == "prodj");
+        BOOST_TEST(active_schedule.producers.at( 0).producer_name == "proda");
+        BOOST_TEST(active_schedule.producers.at( 1).producer_name == "prodb");
+        BOOST_TEST(active_schedule.producers.at( 2).producer_name == "prodc");
+        BOOST_TEST(active_schedule.producers.at( 3).producer_name == "prodd");
+        BOOST_TEST(active_schedule.producers.at( 4).producer_name == "prode");
+        BOOST_TEST(active_schedule.producers.at( 5).producer_name == "prodf");
+        BOOST_TEST(active_schedule.producers.at( 6).producer_name == "prodg");
+        BOOST_TEST(active_schedule.producers.at( 7).producer_name == "prodh");
+        BOOST_TEST(active_schedule.producers.at( 8).producer_name == "prodi");
+        BOOST_TEST(active_schedule.producers.at( 9).producer_name == "prodj");
         BOOST_TEST(active_schedule.producers.at(10).producer_name == "prodk");
         BOOST_TEST(active_schedule.producers.at(11).producer_name == "prodl");
         BOOST_TEST(active_schedule.producers.at(12).producer_name == "prodm");

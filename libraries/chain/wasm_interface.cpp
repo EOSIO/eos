@@ -204,7 +204,7 @@ class privileged_api : public context_aware_api {
          // check that producers are unique
          std::set<account_name> unique_producers;
          for (const auto& p: producers) {
-            EOS_ASSERT( context.is_account(p.name), wasm_execution_error, "producer schedule includes a nonexisting account" );
+            EOS_ASSERT( context.is_account(p.producer_name), wasm_execution_error, "producer schedule includes a nonexisting account" );
 
             p.authority.visit([](const auto& a) {
                uint32_t sum_weights = 0;
@@ -222,7 +222,7 @@ class privileged_api : public context_aware_api {
             });
 
 
-            unique_producers.insert(p.name);
+            unique_producers.insert(p.producer_name);
          }
          EOS_ASSERT( producers.size() == unique_producers.size(), wasm_execution_error, "duplicate producer name in producer schedule" );
 

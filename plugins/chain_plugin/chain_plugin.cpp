@@ -1705,7 +1705,7 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
    for (auto p : db.active_producers().producers) {
       fc::variant row = fc::mutable_variant_object()
          ("owner", p.producer_name)
-         ("producer_key", p.block_signing_keys)
+         ("producer_authority", p.authority)
          ("url", "")
          ("total_votes", 0.0f);
 

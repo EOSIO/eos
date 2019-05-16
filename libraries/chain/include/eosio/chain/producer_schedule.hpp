@@ -54,6 +54,12 @@ namespace eosio { namespace chain {
       uint32_t                    threshold;
       vector<key_weight>          keys;
 
+      bool key_is_relevant( const public_key_type& key ) const {
+         return std::find_if(keys.begin(), keys.end(), [&key](const auto& kw){
+            return kw.key == key;
+         }) != keys.end();
+      }
+
       friend bool operator == ( const block_signing_authority_v0& lhs, const block_signing_authority_v0& rhs ) {
          return tie( lhs.threshold, lhs.keys ) == tie( rhs.threshold, rhs.keys );
       }
@@ -65,14 +71,24 @@ namespace eosio { namespace chain {
    using block_signing_authority = static_variant<block_signing_authority_v0>;
 
    struct producer_authority {
-      name                    name;
+      name                    producer_name;
       block_signing_authority authority;
 
+      static bool key_is_relevant( const public_key_type& key, const block_signing_authority& authority ) {
+         return authority.visit([&key](const auto &a){
+            return a.key_is_relevant(key);
+         });
+      }
+
+      bool key_is_relevant( const public_key_type& key ) const {
+         return key_is_relevant(key, authority);
+      }
+
       friend bool operator == ( const producer_authority& lhs, const producer_authority& rhs ) {
-         return tie( lhs.name, lhs.authority ) == tie( rhs.name, rhs.authority );
+         return tie( lhs.producer_name, lhs.authority ) == tie( rhs.producer_name, rhs.authority );
       }
       friend bool operator != ( const producer_authority& lhs, const producer_authority& rhs ) {
-         return tie( lhs.name, lhs.authority ) != tie( rhs.name, rhs.authority );
+         return tie( lhs.producer_name, lhs.authority ) != tie( rhs.producer_name, rhs.authority );
       }
    };
 
@@ -105,19 +121,19 @@ namespace eosio { namespace chain {
       shared_producer_authority& operator= ( shared_producer_authority && ) = default;
       shared_producer_authority& operator= ( const shared_producer_authority & ) = default;
 
-      shared_producer_authority( const name& name, shared_block_signing_authority&& authority )
-      :name(name)
+      shared_producer_authority( const name& producer_name, shared_block_signing_authority&& authority )
+      :producer_name(producer_name)
       ,authority(std::forward<shared_block_signing_authority>(authority))
       {}
 
-      name                                     name;
+      name                                     producer_name;
       shared_block_signing_authority           authority;
 
       friend bool operator == ( const shared_producer_authority& lhs, const shared_producer_authority& rhs ) {
-         return tie( lhs.name, lhs.authority ) == tie( rhs.name, rhs.authority );
+         return tie( lhs.producer_name, lhs.authority ) == tie( rhs.producer_name, rhs.authority );
       }
       friend bool operator != ( const shared_producer_authority& lhs, const shared_producer_authority& rhs ) {
-         return tie( lhs.name, lhs.authority ) != tie( rhs.name, rhs.authority );
+         return tie( lhs.producer_name, lhs.authority ) != tie( rhs.producer_name, rhs.authority );
       }
    };
 
@@ -171,7 +187,7 @@ namespace eosio { namespace chain {
                 return shared_convert(alloc, a);
             });
 
-            return shared_producer_authority(src.name, std::move(authority));
+            return shared_producer_authority(src.producer_name, std::move(authority));
          }
 
       };
@@ -180,7 +196,7 @@ namespace eosio { namespace chain {
       struct shared_converter<shared_producer_authority> {
          static producer_authority convert (const shared_producer_authority& src) {
             producer_authority result;
-            result.name = src.name;
+            result.producer_name = src.producer_name;
             result.authority = src.authority.visit([](const auto& a) {
                return shared_convert(a);
             });
@@ -290,7 +306,7 @@ namespace eosio { namespace chain {
 
    inline bool operator == ( const producer_authority& pa, const shared_producer_authority& pb )
    {
-      if(pa.name != pb.name) return false;
+      if(pa.producer_name != pb.producer_name) return false;
       if(pa.authority.which() != pb.authority.which()) return false;
 
       bool authority_matches = pa.authority.visit([&pb]( const auto& lhs ){
@@ -309,11 +325,11 @@ namespace eosio { namespace chain {
 FC_REFLECT( eosio::chain::legacy::producer_key, (producer_name)(block_signing_key) )
 FC_REFLECT( eosio::chain::legacy::producer_schedule_type, (version)(producers) )
 FC_REFLECT( eosio::chain::block_signing_authority_v0, (threshold)(keys))
-FC_REFLECT( eosio::chain::producer_authority, (name)(authority) )
+FC_REFLECT( eosio::chain::producer_authority, (producer_name)(authority) )
 FC_REFLECT( eosio::chain::producer_authority_schedule, (version)(producers) )
 FC_REFLECT_DERIVED( eosio::chain::producer_schedule_change_extension, (eosio::chain::producer_authority_schedule), )
 
 FC_REFLECT( eosio::chain::shared_block_signing_authority_v0, (threshold)(keys))
-FC_REFLECT( eosio::chain::shared_producer_authority, (name)(authority) )
+FC_REFLECT( eosio::chain::shared_producer_authority, (producer_name)(authority) )
 FC_REFLECT( eosio::chain::shared_producer_authority_schedule, (version)(producers) )
 

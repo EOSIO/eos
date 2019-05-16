@@ -6,6 +6,8 @@
 
 namespace eosio { namespace chain {
 
+using signer_callback_type = std::function<std::vector<signature_type>(const digest_type&)>;
+
 struct block_header_state;
 
 namespace detail {
@@ -56,7 +58,7 @@ struct pending_block_header_state : public detail::block_header_state_common {
                                     const std::function<void( block_timestamp_type,
                                                               const flat_set<digest_type>&,
                                                               const vector<digest_type>& )>& validator,
-                                    const std::function<signature_type(const digest_type&)>& signer )&&;
+                                    const signer_callback_type& signer )&&;
 
 protected:
    block_header_state  _finish_next( const signed_block_header& h,
@@ -103,7 +105,7 @@ struct block_header_state : public detail::block_header_state_common {
    producer_authority   get_scheduled_producer( block_timestamp_type t )const;
    const block_id_type& prev()const { return header.previous; }
    digest_type          sig_digest()const;
-   void                 sign( const std::function<signature_type(const digest_type&)>& signer );
+   void                 sign( const signer_callback_type& signer );
    public_key_type      signee()const;
    void                 verify_signee()const;
 

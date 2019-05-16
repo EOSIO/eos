@@ -178,7 +178,7 @@ namespace eosio { namespace testing {
          case setup_policy::preactivate_feature_and_new_bios: {
             schedule_preactivate_protocol_feature();
             produce_block();
-            set_bios_contract();
+            set_before_producer_authority_bios_contract();
             break;
          }
          case setup_policy::full: {
@@ -308,18 +308,19 @@ namespace eosio { namespace testing {
       FC_ASSERT( control->is_building_block(), "must first start a block before it can be finished" );
 
       auto producer = control->head_block_state()->get_scheduled_producer( control->pending_block_time() );
-      private_key_type priv_key;
-      // Check if signing private key exist in the list
-      auto private_key_itr = block_signing_private_keys.find( *producer.block_signing_keys.begin() );
-      if( private_key_itr == block_signing_private_keys.end() ) {
-         // If it's not found, default to active k1 key
-         priv_key = get_private_key( producer.producer_name, "active" );
-      } else {
-         priv_key = private_key_itr->second;
-      }
+      private_key_type priv_key = producer.authority.visit([this, &producer](const block_signing_authority_v0& a){
+         for (const auto& k: a.keys) {
+            auto private_key_itr = block_signing_private_keys.find( k.key );
+            if (private_key_itr != block_signing_private_keys.end()) {
+               return private_key_itr->second;
+            }
+         }
+
+         return get_private_key( producer.producer_name, "active" );
+      });
 
       control->finalize_block( [&]( digest_type d ) {
-                    return priv_key.sign(d);
+                    return std::vector<signature_type>{priv_key.sign(d)};
       } );
 
       control->commit_block();
@@ -943,6 +944,11 @@ namespace eosio { namespace testing {
    void base_tester::set_before_preactivate_bios_contract() {
       set_code(config::system_account_name, contracts::before_preactivate_eosio_bios_wasm());
       set_abi(config::system_account_name, contracts::before_preactivate_eosio_bios_abi().data());
+   }
+
+   void base_tester::set_before_producer_authority_bios_contract() {
+      set_code(config::system_account_name, contracts::before_producer_authority_eosio_bios_wasm());
+      set_abi(config::system_account_name, contracts::before_producer_authority_eosio_bios_abi().data());
    }
 
    void base_tester::set_bios_contract() {

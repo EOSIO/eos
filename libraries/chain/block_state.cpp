@@ -22,7 +22,7 @@ namespace eosio { namespace chain {
                              const std::function<void( block_timestamp_type,
                                                        const flat_set<digest_type>&,
                                                        const vector<digest_type>& )>& validator,
-                             const std::function<signature_type(const digest_type&)>& signer
+                             const signer_callback_type& signer
                            )
    :block_header_state( std::move(cur).finish_next( *b, pfs, validator, signer ) )
    ,block( std::move(b) )

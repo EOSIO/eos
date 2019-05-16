@@ -777,7 +777,7 @@ BOOST_AUTO_TEST_CASE( disallow_empty_producer_schedule_test ) { try {
    c.create_accounts( producer_names );
    c.set_producers( producer_names );
    c.produce_blocks(2);
-   const auto& schedule = c.get_producer_keys( producer_names );
+   const auto& schedule = c.get_producer_authorities( producer_names );
    BOOST_CHECK( std::equal( schedule.begin(), schedule.end(), c.control->active_producers().producers.begin()) );
 
 } FC_LOG_AND_RETHROW() }

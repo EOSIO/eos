@@ -1990,7 +1990,7 @@ struct controller_impl {
       auto update_permission = [&]( auto& permission, auto threshold ) {
          auto auth = authority( threshold, {}, {});
          for( auto& p : producers ) {
-            auth.accounts.push_back({{p.name, config::active_name}, 1});
+            auth.accounts.push_back({{p.producer_name, config::active_name}, 1});
          }
 
          if( static_cast<authority>(permission.auth) != auth ) { // TODO: use a more efficient way to check that authority has not changed
@@ -2439,7 +2439,7 @@ void controller::start_block( block_timestamp_type when,
                     block_status::incomplete, optional<block_id_type>() );
 }
 
-block_state_ptr controller::finalize_block( const std::function<signature_type( const digest_type& )>& signer_callback ) {
+block_state_ptr controller::finalize_block( const signer_callback_type& signer_callback ) {
    validate_db_available_size();
 
    my->finalize_block();

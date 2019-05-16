@@ -319,7 +319,7 @@ extern const char* const state_history_plugin_abi = R"({
         },
         {
             "name": "producer_authority", "fields": [
-                { "type": "name", "name": "name" },
+                { "type": "name", "name": "producer_name" },
                 { "type": "block_signing_authority", "name": "authority" }
             ]
         },

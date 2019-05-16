@@ -42,11 +42,11 @@ namespace eosio { namespace chain {
 
       auto proauth = get_scheduled_producer(when);
 
-      auto itr = producer_to_last_produced.find( proauth.name );
+      auto itr = producer_to_last_produced.find( proauth.producer_name );
       if( itr != producer_to_last_produced.end() ) {
         EOS_ASSERT( itr->second < (block_num+1) - num_prev_blocks_to_confirm, producer_double_confirm,
                     "producer ${prod} double-confirming known range",
-                    ("prod", proauth.name)("num", block_num+1)
+                    ("prod", proauth.producer_name)("num", block_num+1)
                     ("confirmed", num_prev_blocks_to_confirm)("last_produced", itr->second) );
       }
 
@@ -58,7 +58,7 @@ namespace eosio { namespace chain {
       result.prev_activated_protocol_features                = activated_protocol_features;
 
       result.valid_block_signing_authority                   = proauth.authority;
-      result.producer                                        = proauth.name;
+      result.producer                                        = proauth.producer_name;
 
       result.blockroot_merkle = blockroot_merkle;
       result.blockroot_merkle.append( id );
@@ -108,7 +108,7 @@ namespace eosio { namespace chain {
       }
 
       result.dpos_proposed_irreversible_blocknum   = new_dpos_proposed_irreversible_blocknum;
-      result.dpos_irreversible_blocknum            = calc_dpos_last_irreversible( proauth.name );
+      result.dpos_irreversible_blocknum            = calc_dpos_last_irreversible( proauth.producer_name );
 
       result.prev_pending_schedule                 = pending_schedule;
 
@@ -120,32 +120,32 @@ namespace eosio { namespace chain {
          flat_map<account_name,uint32_t> new_producer_to_last_produced;
 
          for( const auto& pro : result.active_schedule.producers ) {
-            if( pro.name == proauth.name ) {
-               new_producer_to_last_produced[pro.name] = result.block_num;
+            if( pro.producer_name == proauth.producer_name ) {
+               new_producer_to_last_produced[pro.producer_name] = result.block_num;
             } else {
-               auto existing = producer_to_last_produced.find( pro.name );
+               auto existing = producer_to_last_produced.find( pro.producer_name );
                if( existing != producer_to_last_produced.end() ) {
-                  new_producer_to_last_produced[pro.name] = existing->second;
+                  new_producer_to_last_produced[pro.producer_name] = existing->second;
                } else {
-                  new_producer_to_last_produced[pro.name] = result.dpos_irreversible_blocknum;
+                  new_producer_to_last_produced[pro.producer_name] = result.dpos_irreversible_blocknum;
                }
             }
          }
-         new_producer_to_last_produced[proauth.name] = result.block_num;
+         new_producer_to_last_produced[proauth.producer_name] = result.block_num;
 
          result.producer_to_last_produced = std::move( new_producer_to_last_produced );
 
          flat_map<account_name,uint32_t> new_producer_to_last_implied_irb;
 
          for( const auto& pro : result.active_schedule.producers ) {
-            if( pro.name == proauth.name ) {
-               new_producer_to_last_implied_irb[pro.name] = dpos_proposed_irreversible_blocknum;
+            if( pro.producer_name == proauth.producer_name ) {
+               new_producer_to_last_implied_irb[pro.producer_name] = dpos_proposed_irreversible_blocknum;
             } else {
-               auto existing = producer_to_last_implied_irb.find( pro.name );
+               auto existing = producer_to_last_implied_irb.find( pro.producer_name );
                if( existing != producer_to_last_implied_irb.end() ) {
-                  new_producer_to_last_implied_irb[pro.name] = existing->second;
+                  new_producer_to_last_implied_irb[pro.producer_name] = existing->second;
                } else {
-                  new_producer_to_last_implied_irb[pro.name] = result.dpos_irreversible_blocknum;
+                  new_producer_to_last_implied_irb[pro.producer_name] = result.dpos_irreversible_blocknum;
                }
             }
          }
@@ -156,9 +156,9 @@ namespace eosio { namespace chain {
       } else {
          result.active_schedule                  = active_schedule;
          result.producer_to_last_produced        = producer_to_last_produced;
-         result.producer_to_last_produced[proauth.name] = block_num;
+         result.producer_to_last_produced[proauth.producer_name] = block_num;
          result.producer_to_last_implied_irb     = producer_to_last_implied_irb;
-         result.producer_to_last_implied_irb[proauth.name] = dpos_proposed_irreversible_blocknum;
+         result.producer_to_last_implied_irb[proauth.producer_name] = dpos_proposed_irreversible_blocknum;
       }
 
       return result;
@@ -206,7 +206,7 @@ namespace eosio { namespace chain {
             for (const auto &p : new_producers->producers) {
                p.authority.visit([&downgraded_producers, &p](const auto& auth){
                   EOS_ASSERT(auth.keys.size() == 1 && auth.keys.front().weight == auth.threshold, producer_schedule_exception, "multisig block signing present before enabled!");
-                  downgraded_producers.producers.emplace_back(legacy::producer_key{p.name, auth.keys.front().key});
+                  downgraded_producers.producers.emplace_back(legacy::producer_key{p.producer_name, auth.keys.front().key});
                });
             }
             h.new_producers = downgraded_producers;
@@ -337,7 +337,7 @@ namespace eosio { namespace chain {
                                  const std::function<void( block_timestamp_type,
                                                            const flat_set<digest_type>&,
                                                            const vector<digest_type>& )>& validator,
-                                 const std::function<signature_type(const digest_type&)>& signer
+                                 const signer_callback_type& signer
    )&&
    {
       auto result = std::move(*this)._finish_next( h, pfs, validator );
@@ -370,19 +370,13 @@ namespace eosio { namespace chain {
       return digest_type::hash( std::make_pair(header_bmroot, pending_schedule.schedule_hash) );
    }
 
-   static bool key_is_relevant( const block_signing_authority& authority, const public_key_type& key ) {
-      return authority.visit([&key](const auto &a) {
-         return std::find_if(a.keys.begin(), a.keys.end(), [&key](const auto& k ){
-            return k.key == key;
-         }) != a.keys.end();
-      });
-   }
-
-   void block_header_state::sign( const std::function<signature_type(const digest_type&)>& signer ) {
+   void block_header_state::sign( const signer_callback_type& signer ) {
       auto d = sig_digest();
-      header.producer_signature = signer( d );
+      // TODO: modify block to allow multiple sigs
+      auto sigs = signer( d );
+      header.producer_signature = sigs.front();
 
-      EOS_ASSERT( key_is_relevant(valid_block_signing_authority, signee()), wrong_signing_key, "block is signed with unexpected key" );
+      EOS_ASSERT( producer_authority::key_is_relevant(signee(), valid_block_signing_authority), wrong_signing_key, "block is signed with unexpected key" );
    }
 
    public_key_type block_header_state::signee()const {
@@ -392,7 +386,7 @@ namespace eosio { namespace chain {
    void block_header_state::verify_signee( )const {
       auto signing_key = signee();
 
-      EOS_ASSERT( key_is_relevant(valid_block_signing_authority, signing_key), wrong_signing_key,
+      EOS_ASSERT( producer_authority::key_is_relevant(signing_key, valid_block_signing_authority), wrong_signing_key,
                   "block not signed by expected key",
                   ("signing_key", signing_key)( "valid_keys", valid_block_signing_authority ) );
    }
