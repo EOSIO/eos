@@ -428,10 +428,6 @@ namespace eosio {
       time_point   start_time; ///< time request made or received
    };
 
-   struct handshake_initializer {
-      static void populate(handshake_message& hello);
-   };
-
    // thread safe
    class queued_buffer : boost::noncopyable {
    public:
@@ -623,6 +619,8 @@ namespace eosio {
    private:
       static void _close( connection* self, bool reconnect ); // for easy capture
    public:
+
+      void populate_handshake( handshake_message& hello );
 
       bool resolve_and_connect();
       void connect(const std::shared_ptr<tcp::resolver>& resolver, tcp::resolver::iterator endpoint_itr);
@@ -873,13 +871,17 @@ namespace eosio {
    }
 
    void connection::set_connection_type( const string& peer_add ) {
+      // host:port:[<trx>|<blk>]
       string::size_type colon = peer_add.find(':');
       string::size_type colon2 = peer_add.find(':', colon + 1);
+      string::size_type end = colon2 == string::npos
+            ? string::npos : peer_add.find_first_of( " :+=.,<>!$%^&(*)|-#@\t", colon2 + 1 ); // future proof by including most symbols without using regex
       string host = peer_add.substr( 0, colon );
       string port = peer_add.substr( colon + 1, colon2 == string::npos ? string::npos : colon2 - (colon + 1));
-      string type = colon2 == string::npos ? "" : peer_add.substr( colon2 + 1 );
+      string type = colon2 == string::npos ? "" : end == string::npos ?
+            peer_add.substr( colon2 + 1 ) : peer_add.substr( colon2 + 1, end - (colon2 + 1) );
 
-      fc_ilog( "Setting connection type for: ${peer}", ("peer", peer_add) )
+      fc_ilog( logger, "Setting connection type for: ${peer}", ("peer", peer_add) );
       if( type.empty() ) {
          connection_type = both;
       } else if( type == "trx" ) {
@@ -1049,7 +1051,7 @@ namespace eosio {
    void connection::send_handshake() {
       strand.post( [c = shared_from_this()]() {
          std::unique_lock<std::mutex> g_conn( c->conn_mtx );
-         handshake_initializer::populate( c->last_handshake_sent );
+         c->populate_handshake( c->last_handshake_sent );
          c->last_handshake_sent.generation = ++c->sent_handshake_count;
          auto last_handshake_sent = c->last_handshake_sent;
          g_conn.unlock();
@@ -3091,7 +3093,7 @@ namespace eosio {
    }
 
    // call from connection strand
-   void handshake_initializer::populate( handshake_message& hello ) {
+   void connection::populate_handshake( handshake_message& hello ) {
       hello.network_version = net_version_base + net_version;
       hello.chain_id = my_impl->chain_id;
       hello.node_id = my_impl->node_id;
@@ -3102,7 +3104,10 @@ namespace eosio {
       // If we couldn't sign, don't send a token.
       if(hello.sig == chain::signature_type())
          hello.token = sha256();
-      hello.p2p_address = my_impl->p2p_address + " - " + hello.node_id.str().substr(0,7);
+      hello.p2p_address = my_impl->p2p_address;
+      if( is_transactions_only_connection() ) hello.p2p_address += ":trx";
+      if( is_blocks_only_connection() ) hello.p2p_address += ":blk";
+      hello.p2p_address += " - " + hello.node_id.str().substr(0,7);
 #if defined( __APPLE__ )
       hello.os = "osx";
 #elif defined( __linux__ )
