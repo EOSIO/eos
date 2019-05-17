@@ -295,7 +295,6 @@ void add_standard_transaction_options(CLI::App* cmd, string default_permission =
    cmd->add_option("--delay-sec", delaysec, localized("set the delay_sec seconds, defaults to 0s"));
 
    cmd->add_option("--bandwidth-provider", bandwidth_provider, localized("set an account which provide own bandwidth for transaction"));
-   cmd->add_option("--ram-provider", ram_providers, localized("set an account which provide own ram for transaction"));
 
    cmd->add_flag("--dont-declare-names", tx_dont_declare_names, localized("don't add `declarenames` action for resolved account names"));
 }
@@ -798,12 +797,11 @@ chain::action create_buyrambytes(const name& creator, const name& newaccount, ui
                         config::system_account_name, N(buyrambytes), act_payload);
 }
 
-chain::action create_delegate(const name& from, const name& receiver, const asset& net, const asset& cpu, bool transfer) {
+chain::action create_delegate(const name& from, const name& receiver, const asset& stake, bool transfer) {
    fc::variant act_payload = fc::mutable_variant_object()
          ("from", from.to_string())
          ("receiver", receiver.to_string())
-         ("stake_net_quantity", net.to_string())
-         ("stake_cpu_quantity", cpu.to_string())
+         ("stake", stake.to_string())
          ("transfer", transfer);
    return create_action(get_account_permissions(tx_permission, {from,config::active_name}),
                         config::system_account_name, N(delegatebw), act_payload);
@@ -1223,11 +1221,8 @@ struct create_account_subcommand {
    string account_name;
    string owner_key_str;
    string active_key_str;
-   string stake_net;
-   string stake_cpu;
-   uint32_t buy_ram_bytes_in_kbytes = 0;
-   uint32_t buy_ram_bytes = 0;
-   string buy_ram_eos;
+   string not_used;
+   string stake;
    bool transfer;
    bool simple;
 
@@ -1243,16 +1238,18 @@ struct create_account_subcommand {
       createAccount->add_option("ActiveKey", active_key_str, localized("The active public key for the new account"));
 
       if (!simple) {
-         createAccount->add_option("--stake-net", stake_net,
-                                   (localized("The amount of tokens delegated for net bandwidth")))->required();
-         createAccount->add_option("--stake-cpu", stake_cpu,
-                                   (localized("The amount of tokens delegated for CPU bandwidth")))->required();
-         createAccount->add_option("--buy-ram-kbytes", buy_ram_bytes_in_kbytes,
-                                   (localized("The amount of RAM bytes to purchase for the new account in kibibytes (KiB)")));
-         createAccount->add_option("--buy-ram-bytes", buy_ram_bytes,
-                                   (localized("The amount of RAM bytes to purchase for the new account in bytes")));
-         createAccount->add_option("--buy-ram", buy_ram_eos,
-                                   (localized("The amount of RAM bytes to purchase for the new account in tokens")));
+         createAccount->add_option("--stake", stake,
+                                    (localized("The amount of tokens delegated for the account")))->required();
+         createAccount->add_option("--stake-net", not_used,
+                                   (localized("Deprecated. Not used")));
+         createAccount->add_option("--stake-cpu", not_used,
+                                   (localized("Deprecated. Not used")));
+         createAccount->add_option("--buy-ram-kbytes", not_used,
+                                   (localized("Deprecated. Not used")));
+         createAccount->add_option("--buy-ram-bytes", not_used,
+                                   (localized("Deprecated. Not used")));
+         createAccount->add_option("--buy-ram", not_used,
+                                   (localized("Deprecated. Not used")));
          createAccount->add_flag("--transfer", transfer,
                                  (localized("Transfer voting power and right to unstake tokens to receiver")));
       }
@@ -1271,17 +1268,13 @@ struct create_account_subcommand {
             } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid active public key: ${public_key}", ("public_key", active_key_str));
             auto create = create_newaccount(creator, account_name, owner_key, active_key);
             if (!simple) {
-               EOSC_ASSERT( buy_ram_eos.size() || buy_ram_bytes_in_kbytes || buy_ram_bytes, "ERROR: One of --buy-ram, --buy-ram-kbytes or --buy-ram-bytes should have non-zero value" );
-               EOSC_ASSERT( !buy_ram_bytes_in_kbytes || !buy_ram_bytes, "ERROR: --buy-ram-kbytes and --buy-ram-bytes cannot be set at the same time" );
-               action buyram = !buy_ram_eos.empty() ? create_buyram(creator, account_name, to_asset(buy_ram_eos))
-                  : create_buyrambytes(creator, account_name, (buy_ram_bytes_in_kbytes) ? (buy_ram_bytes_in_kbytes * 1024) : buy_ram_bytes);
-               auto net = to_asset(stake_net);
-               auto cpu = to_asset(stake_cpu);
-               if ( net.get_amount() != 0 || cpu.get_amount() != 0 ) {
-                  action delegate = create_delegate( creator, account_name, net, cpu, transfer);
-                  send_actions( { create, buyram, delegate } );
+                const auto stake_asset = to_asset(stake);
+               if ( stake_asset.get_amount() != 0) {
+                   EOS_THROW(action_not_found_exception, "Action delegatebw is not supported yet");
+//                  action delegate = create_delegate( creator, account_name, stake_asset, transfer);
+//                  send_actions( { create, delegate } );
                } else {
-                  send_actions( { create, buyram } );
+                  send_actions( { create } );
                }
             } else {
                send_actions( { create } );
