@@ -742,6 +742,7 @@ get_producers_result chain_api_plugin_impl::get_producers( const get_producers_p
 
         if (is_active) {
             producer_info["is_active"] = 1;
+            producer_info["last_claim_time"] = fc::time_point();
         }
         rows.emplace_back(producer_info);
         ++count;
@@ -763,15 +764,10 @@ std::string chain_api_plugin_impl::get_agent_public_key(chain::account_name acco
 
     const auto it = chaindb.lower_bound(request, fc::mutable_variant_object()("token_code", chain::symbol(CORE_SYMBOL).to_symbol_code())("account", account));
 
-    if (it.pk == cyberway::chaindb::end_primary_key) {
-        EOS_THROW(cyberway::chaindb::chaindb_exception,
-                  "The stake agent has not been found. agent: ${agent}, token_code ${token_code}",
-                  ("agent", account.to_string())
-                  ("token_code", chain::symbol(CORE_SYMBOL).to_symbol_code()));
+    if (it.pk != cyberway::chaindb::end_primary_key) {
+        return chaindb.value_at_cursor({N(), it.cursor})["signing_key"].as_string();
     }
-
-    return chaindb.value_at_cursor({N(), it.cursor})["signing_key"].as_string();
-
+    return "";
 }
 
 get_producer_schedule_result chain_api_plugin_impl::get_producer_schedule( const get_producer_schedule_params& p ) const {
