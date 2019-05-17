@@ -11,36 +11,39 @@
 
 namespace eosio { namespace chain {
 
-using shared_public_key_data = fc::static_variant<fc::array<char, 33>, shared_string>;
+using shared_public_key_data = fc::static_variant<fc::ecc::public_key_shim, fc::crypto::r1::public_key_shim, shared_string>;
+
+template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
+template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
 
 struct shared_public_key {
    shared_public_key( shared_public_key_data&& p ) :
-      pubkey(std::move(p)) {
-
-   }
+      pubkey(std::move(p)) {}
 
    operator public_key_type() const {
-      return public_key_type();
+      fc::crypto::public_key::storage_type public_key_storage;
+      pubkey.visit(overloaded {
+         [&](const auto& k1r1) {
+            public_key_storage = k1r1;
+         },
+         [&](const shared_string& wa) {
+            fc::datastream ds(wa.data(), wa.size());
+            fc::crypto::webauthn::public_key pub;
+            fc::raw::unpack(ds, pub);
+            public_key_storage = pub;
+         }
+      });
+      return std::move(public_key_storage);
    }
 
    operator string() const {
-      return "sup";
-   }
-
-   template<typename Stream>
-   friend Stream& operator<<(Stream& ds, const shared_public_key& k) {
-      return ds;
-   }
-
-   template<typename Stream>
-   friend Stream& operator>>(Stream& ds, shared_public_key& k) {
-      return ds;
+      return (string)this->operator public_key_type();
    }
 
    shared_public_key_data pubkey;
 
    friend bool operator == ( const shared_public_key& lhs, const shared_public_key& rhs ) {
-      return true;
+      return lhs.pubkey == rhs.pubkey;
    }
 };
 
@@ -152,11 +155,20 @@ struct shared_authority {
       keys.clear();
       keys.reserve(a.keys.size());
       for(const key_weight& k : a.keys) {
-         //fc::array<char, 33> o;
-         shared_string o("yo dawg", keys.get_allocator());
-         shared_public_key_data x(std::move(o));
+         k.key._storage.visit(overloaded {
+            [&](const auto& k1r1) {
+               keys.emplace_back(k1r1, k.weight);
+            },
+            [&](const fc::crypto::webauthn::public_key& wa) {
+               fc::datastream<size_t> dsz;
+               fc::raw::pack(dsz, wa);
+               shared_string wa_ss(dsz.tellp(), boost::container::default_init, keys.get_allocator());
+               fc::datastream<char*> ds(wa_ss.data(), wa_ss.size());
+               fc::raw::pack(ds, wa);
 
-         keys.emplace_back(std::move(x), k.weight);
+               keys.emplace_back(std::move(wa_ss), k.weight);
+            }
+         });
       }
       accounts = decltype(accounts)(a.accounts.begin(), a.accounts.end(), accounts.get_allocator());
       waits = decltype(waits)(a.waits.begin(), a.waits.end(), waits.get_allocator());
@@ -261,3 +273,4 @@ FC_REFLECT(eosio::chain::wait_weight, (wait_sec)(weight) )
 FC_REFLECT(eosio::chain::authority, (threshold)(keys)(accounts)(waits) )
 FC_REFLECT(eosio::chain::shared_key_weight, (key)(weight) )
 FC_REFLECT(eosio::chain::shared_authority, (threshold)(keys)(accounts)(waits) )
+FC_REFLECT(eosio::chain::shared_public_key, (pubkey))
