@@ -71,6 +71,7 @@ private:
 
     fc::variant get_refunds(chain::account_name account, const resource_calculator& resource_calc) const;
     fc::variant get_payout(chain::account_name account) const;
+    std::string get_agent_public_key(chain::account_name account) const;
 
 private:
 
@@ -694,75 +695,70 @@ static float64_t to_softfloat64( double d ) {
    return *reinterpret_cast<float64_t*>(&d);
 }
 
-fc::variant get_global_row( const chain::database& db, const chain::abi_def& abi, const chain::abi_serializer& abis, const fc::microseconds& , bool ) {
-//   const auto table_type = get_index_type(abi, N(global));
-//   EOS_ASSERT(table_type == read_only::KEYi64, chain::contract_table_query_exception, "Invalid table type ${type} for table global", ("type",table_type));
+get_producers_result chain_api_plugin_impl::get_producers( const get_producers_params& p ) const {
+    auto& chaindb = chain_controller_.chaindb();
 
-// TODO: Removed by CyberWay
-//   const auto* const table_id = db_controller_.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(config::system_account_name, config::system_account_name, N(global)));
-//   EOS_ASSERT(table_id, chain::contract_table_query_exception, "Missing table global");
-//
-//   const auto& kv_index = db_controller_.get_index<key_value_index, by_scope_primary>();
-//   const auto it = kv_index.find(boost::make_tuple(table_id->id, N(global)));
-//   EOS_ASSERT(it != kv_index.end(), chain::contract_table_query_exception, "Missing row in table global");
-//
-//   vector<char> data;
-//   read_only::copy_inline_row(*it, data);
-//   return abis.binary_to_variant(abis.get_table_type(N(global)), data, abi_serializer_max_time_ms, shorten_abi_errors );
-   return fc::variant();
+    const cyberway::chaindb::index_request request{N(cyber.govern), N(cyber.govern), N(producer), cyberway::chaindb::names::primary_index};
+
+    auto producers_it = chaindb.begin(request);
+    cyberway::chaindb::cursor_request cursor_req{N(cyber.govern), producers_it.cursor};
+    std::vector<fc::variant> rows;
+    std::string next_producer;
+    uint64_t total_votes = 0;
+
+    for (size_t count = 0; producers_it.pk != cyberway::chaindb::end_primary_key; producers_it.pk = chaindb.next(cursor_req)) {
+
+        const auto value = chaindb.value_at_cursor(cursor_req);
+        const auto account = value["account"].as_string();
+        const auto votes = value["votes"].as_int64();
+
+        if (votes >= 0) {
+            total_votes += votes;
+        }
+
+        if (account < p.lower_bound || count >= p.limit) {
+            if (count == p.limit) {
+                next_producer = account;
+            }
+            continue;
+        }
+
+        const auto key = get_agent_public_key(account);
+        const bool is_active = value["commencement_block"].as_uint64() != 0;
+
+        auto producer_info = fc::mutable_variant_object()("owner", account)
+                                                         ("total_votes", votes)
+                                                         ("producer_key", key)
+                                                         ("url", "");
+
+        if (is_active) {
+            producer_info["is_active"] = 1;
+            producer_info["last_claim_time"] = fc::time_point();
+        }
+        rows.emplace_back(producer_info);
+        ++count;
+    }
+
+    return {rows, total_votes, next_producer};
+
+
+    if (p.lower_bound.empty()) {
+    } else {
+        chaindb.lower_bound(request, fc::mutable_variant_object()("name", p.lower_bound));
+    }
 }
 
-get_producers_result chain_api_plugin_impl::get_producers( const get_producers_params& p ) const {
-//   const chain::abi_def abi = eosio::get_abi(chain_controller_, chain::config::system_account_name);
-//   const auto table_type = get_index_type(abi, N(producers));
-//   const chain::abi_serializer abis{ abi, abi_serializer_max_time_ };
- //  EOS_ASSERT(table_type == KEYi64, chain::contract_table_query_exception, "Invalid table type ${type} for table producers", ("type",table_type));
+std::string chain_api_plugin_impl::get_agent_public_key(chain::account_name account) const {
+    auto& chaindb = chain_controller_.chaindb();
 
-// TODO: Removed by CyberWay
-//   const auto& d = db_controller_.db();
-//   const auto lower = name{p.lower_bound};
-//
-//   static const uint8_t secondary_index_num = 0;
-//   const auto* const table_id = d.find<chain::table_id_object, chain::by_code_scope_table>(
-//           boost::make_tuple(config::system_account_name, config::system_account_name, N(producers)));
-//   const auto* const secondary_table_id = d.find<chain::table_id_object, chain::by_code_scope_table>(
-//           boost::make_tuple(config::system_account_name, config::system_account_name, N(producers) | secondary_index_num));
-//   EOS_ASSERT(table_id && secondary_table_id, chain::contract_table_query_exception, "Missing producers table");
-//
-//   const auto& kv_index = d.get_index<key_value_index, by_scope_primary>();
-//   const auto& secondary_index = d.get_index<index_double_index>().indices();
-//   const auto& secondary_index_by_primary = secondary_index.get<by_primary>();
-//   const auto& secondary_index_by_secondary = secondary_index.get<by_secondary>();
+    const cyberway::chaindb::index_request request{N(), N(), N(stake.agent), N(bykey)};
 
-   get_producers_result result;
-   const auto stopTime = fc::time_point::now() + fc::microseconds(1000 * 10); // 10ms
-   std::vector<char> data;
+    const auto it = chaindb.lower_bound(request, fc::mutable_variant_object()("token_code", chain::symbol(CORE_SYMBOL).to_symbol_code())("account", account));
 
-// TODO: Removed by CyberWay
-//   auto it = [&]{
-//      if(lower.value == 0)
-//         return secondary_index_by_secondary.lower_bound(
-//            boost::make_tuple(secondary_table_id->id, to_softfloat64(std::numeric_limits<double>::lowest()), 0));
-//      else
-//         return secondary_index.project<by_secondary>(
-//            secondary_index_by_primary.lower_bound(
-//               boost::make_tuple(secondary_table_id->id, lower.value)));
-//   }();
-//
-//   for( ; it != secondary_index_by_secondary.end() && it->t_id == secondary_table_id->id; ++it ) {
-//      if (result.rows.size() >= p.limit || fc::time_point::now() > stopTime) {
-//         result.more = name{it->primary_key}.to_string();
-//         break;
-//      }
-//      copy_inline_row(*kv_index.find(boost::make_tuple(table_id->id, it->primary_key)), data);
-//      if (p.json)
-//         result.rows.emplace_back( abis.binary_to_variant( abis.get_table_type(N(producers)), data, abi_serializer_max_time, shorten_abi_errors ) );
-//      else
-//         result.rows.emplace_back(fc::variant(data));
-//   }
-//
-//   result.total_producer_vote_weight = get_global_row(d, abi, abis, abi_serializer_max_time, shorten_abi_errors)["total_producer_vote_weight"].as_double();
-   return result;
+    if (it.pk != cyberway::chaindb::end_primary_key) {
+        return chaindb.value_at_cursor({N(), it.cursor})["signing_key"].as_string();
+    }
+    return "";
 }
 
 get_producer_schedule_result chain_api_plugin_impl::get_producer_schedule( const get_producer_schedule_params& p ) const {
