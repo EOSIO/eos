@@ -676,8 +676,10 @@ namespace cyberway { namespace chaindb {
 
             undo_.insert(table, obj);
 
-            // charge the payer
-            charge.add_usage();
+            if (undo_.revision() != start_revision) {
+                // charge the payer
+                charge.add_usage();
+            }
 
             return charge.delta;
         }
@@ -703,16 +705,20 @@ namespace cyberway { namespace chaindb {
                 auto refund = charge;
                 refund.get_payer_from(orig_obj);
                 refund.delta = -orig_obj.service.size;
-                // refund the existing payer
-                refund.add_usage();
+                if (undo_.revision() != start_revision) {
+                    // refund the existing payer
+                    refund.add_usage();
+                }
 
                 charge.delta = charge.size;
             } else {
                 charge.delta = delta;
             }
 
-            // charge the new payer
-            charge.add_usage();
+            if (undo_.revision() != start_revision) {
+                // charge the new payer
+                charge.add_usage();
+            }
 
             // update object in storage
             charge.set_payer_in(obj);
