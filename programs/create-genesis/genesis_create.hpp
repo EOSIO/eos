@@ -13,6 +13,7 @@ using namespace eosio::chain;
 namespace bfs = boost::filesystem;
 
 struct contract_abicode {
+    bool update;
     bytes abi;
     bytes code;
     fc::sha256 code_hash;

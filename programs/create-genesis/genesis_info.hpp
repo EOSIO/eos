@@ -21,7 +21,7 @@ struct genesis_info {
 
     struct permission {
         permission_name name;
-        fc::optional<permission_name> parent;   // defaults: "" for "owner" permission; "owner" for "active"; "active" for others
+        fc::optional<permission_name> parent;   // defaults: "" for "owner" permission; "owner" for "active"; "active" for others; numeric id if adding permission to existing account
         std::string key;                // can use "INITIAL"; only empty "key" can co-exist with non-empty "keys" and vice-versa
         std::vector<string> keys;       // can use "INITIAL"
         std::vector<string> accounts;   // can use "name@permission"
@@ -65,6 +65,7 @@ struct genesis_info {
 
     struct account {
         account_name name;
+        fc::optional<bool> update;
         std::vector<permission> permissions;
         fc::optional<file_hash> abi;
         fc::optional<file_hash> code;
@@ -155,7 +156,7 @@ struct genesis_info {
 
 FC_REFLECT(cyberway::genesis::genesis_info::file_hash, (path)(hash))
 FC_REFLECT(cyberway::genesis::genesis_info::permission, (name)(parent)(key)(keys)(accounts))
-FC_REFLECT(cyberway::genesis::genesis_info::account, (name)(permissions)(abi)(code))
+FC_REFLECT(cyberway::genesis::genesis_info::account, (name)(update)(permissions)(abi)(code))
 FC_REFLECT(cyberway::genesis::genesis_info::auth_link, (permission)(links))
 FC_REFLECT(cyberway::genesis::genesis_info::table::row, (scope)(payer)(pk)(data))
 FC_REFLECT(cyberway::genesis::genesis_info::table, (code)(table)(abi_type)(rows))

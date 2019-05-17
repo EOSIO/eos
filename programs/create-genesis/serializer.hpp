@@ -128,9 +128,9 @@ public:
         to_variant(obj, v);
         fc::datastream<char*> ds(_buffer.data(), _buffer.size());
         ser.variant_to_binary(_section.abi_type, v, ds, abi_serializer_max_time);
-        sys_table_row record{{}, {_buffer.begin(), _buffer.begin() + ds.tellp()}};
+        sys_table_row record{ram_payer, {_buffer.begin(), _buffer.begin() + ds.tellp()}};
 #else
-        sys_table_row record{{}, fc::raw::pack(obj)};
+        sys_table_row record{ram_payer, fc::raw::pack(obj)};
 #endif
         fc::raw::pack(out, record);
         _row_count--;

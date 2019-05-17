@@ -44,6 +44,7 @@ namespace cyberway { namespace genesis {
 using namespace eosio::chain;
 using namespace cyberway::chaindb;
 using mvo = mutable_variant_object;
+using perm_id_t = authorization_manager::permission_id_type;
 
 
 constexpr uint64_t accounts_tbl_start_id = 7;           // some accounts created natively by node, this value is starting autoincrement for tables
@@ -104,8 +105,9 @@ struct genesis_create::genesis_create_impl final {
 
     template<typename T, typename Lambda>
     void store_accounts_wo_perms(const T& accounts, Lambda&& get_name) {
-        const auto l = accounts.size();
+        auto l = accounts.size();
         const auto ts = _conf.initial_timestamp;
+        fc::flat_set<name> updated_accs;
 
         db.start_section(config::system_account_name, N(account), "account_object", l);
         for (const auto& acc: accounts) {
@@ -113,8 +115,12 @@ struct genesis_create::genesis_create_impl final {
             db.emplace<account_object>(n, [&](auto& a) {
                 a.name = n;
                 a.creation_date = ts;
-                if (_contracts.count(a.name) > 0) {
-                    const auto& abicode = _contracts[a.name];
+                if (_contracts.count(n) > 0) {
+                    const auto& abicode = _contracts[n];
+                    if (abicode.update) {
+                        a.id = -1;
+                        updated_accs.insert(n);
+                    }
                     if (abicode.abi.size()) {
                         a.abi = abicode.abi;
                     }
@@ -128,65 +134,31 @@ struct genesis_create::genesis_create_impl final {
                 }
             });
         }
+        l -= updated_accs.size();
 
         db.start_section(config::system_account_name, N(accountseq), "account_sequence_object", l);
         for (const auto& acc: accounts) {
             auto n = get_name(acc);
-            db.emplace<account_sequence_object>(n, [&](auto& a) {
-                a.name = n;
-            });
+            if (updated_accs.count(n) == 0) {
+                db.emplace<account_sequence_object>(n, [&](auto& a) {
+                    a.name = n;
+                });
+            }
         }
 
         db.start_section(config::system_account_name, N(resusage), "resource_usage_object", l);
         for (const auto& acc: accounts) {
             auto n = get_name(acc);
-            db.emplace<resource_usage_object>(n, [&](auto& u) {
-                u.owner = n;
-            });
-        }
-    }
-
-    void store_contracts() {
-        ilog("Creating contracts...");
-        store_accounts_wo_perms(_contracts, [](auto& a){ return a.first; });
-
-        // we can't store records from different tables simultaneously, so save current autoincrement id to use later
-        uint64_t usage_id = db.get_autoincrement<permission_usage_object>();
-        int perms_l = 0;
-        for (const auto& acc: _info.accounts) {
-            perms_l += acc.permissions.size();
-        }
-
-        db.start_section(config::system_account_name, N(permusage), "permission_usage_object", perms_l);
-        for (const auto& acc: _info.accounts) {
-            for (int i = 0, l = acc.permissions.size(); i < l; i++) {
-                db.emplace<permission_usage_object>(acc.name, [&](auto& p) {
-                    p.last_used = _conf.initial_timestamp;
+            if (updated_accs.count(n) == 0) {
+                db.emplace<resource_usage_object>(n, [&](auto& u) {
+                    u.owner = n;
                 });
             }
         }
-
-        db.start_section(config::system_account_name, N(permission), "permission_object", perms_l);
-        public_key_type system_key(_conf.initial_key);
-        for (const auto& acc: _info.accounts) {
-            std::map<permission_name,authorization_manager::permission_id_type> parents;
-            for (const auto& p: acc.permissions) {
-                const auto n = acc.name;
-                const auto& auth = p.make_authority(system_key, n);
-                auto parent = p.get_parent();
-                bool root = parent == name();
-                EOS_ASSERT(root || parents.count(parent) > 0, genesis_exception,
-                    "Parent ${pa} not found for permission ${p} of account ${a}", ("a",n)("p",p.name)("pa",p.parent));
-                const auto& perm = store_permission(n, p.name, root ? 0 : parents[parent], auth, usage_id++);
-                parents[p.name] = perm.id;
-            }
-        }
-        ilog("Done.");
     }
 
     const permission_object store_permission(
-        account_name account, permission_name name,
-        authorization_manager::permission_id_type parent, authority auth, uint64_t usage_id
+        account_name account, permission_name name, perm_id_t parent, authority auth, uint64_t usage_id
     ) {
         const auto perm = db.emplace<permission_object>(account, [&](auto& p) {
             p.usage_id     = usage_id;  // perm_usage.id;
@@ -197,6 +169,47 @@ struct genesis_create::genesis_create_impl final {
             p.auth         = std::move(auth);
         });
         return perm;
+    }
+
+    void store_contracts() {
+        ilog("Creating contracts...");
+        store_accounts_wo_perms(_contracts, [](auto& a){ return a.first; });
+
+        int perms_l = 0;
+        for (const auto& acc: _info.accounts) {
+            perms_l += acc.permissions.size();
+        }
+
+        // we can't store records from different tables simultaneously, so save current autoincrement id to use later
+        uint64_t usage_id = db.get_autoincrement<permission_usage_object>();
+        db.start_section(config::system_account_name, N(permusage), "permission_usage_object", perms_l);
+        for (const auto& acc: _info.accounts) {
+            for (int i = 0, l = acc.permissions.size(); i < l; i++) {
+                db.emplace<permission_usage_object>(acc.name, [&](auto& p) {
+                    p.last_used = _conf.initial_timestamp;
+                });
+            }
+        }
+
+        db.start_section(config::system_account_name, N(permission), "permission_object", perms_l);
+        uint64_t max_custom_parent_id = 100;            // this should be enough to cover build-in permissions
+        public_key_type system_key(_conf.initial_key);
+        for (const auto& acc: _info.accounts) {
+            std::map<permission_name,perm_id_t> parents;
+            for (const auto& p: acc.permissions) {
+                const auto n = acc.name;
+                const auto& auth = p.make_authority(system_key, n);
+                auto parent = p.get_parent();
+                bool root = parent == name();
+                bool custom_parent = !root && parent.value < max_custom_parent_id;
+                EOS_ASSERT(root || custom_parent || parents.count(parent) > 0, genesis_exception,
+                    "Parent ${pa} not found for permission ${p} of account ${a}", ("a",n)("p",p.name)("pa",p.parent));
+                perm_id_t parent_id = root ? 0 : custom_parent ? parent.value : parents[parent];
+                const auto& perm = store_permission(n, p.name, parent_id, auth, usage_id++);
+                parents[p.name] = perm.id;
+            }
+        }
+        ilog("Done.");
     }
 
     void store_auth_links() {
@@ -280,8 +293,8 @@ struct genesis_create::genesis_create_impl final {
                     if (_idx2name.count(acc.id.value)) {
                         accounts.emplace_back(permission_level_weight{{name_by_acc(acc), perm}, p.second});
                     } else {
-                        std::cout << "Note: account " << n << " tried to add unexisting account " << acc.str(_accs_map)
-                            << " to it's " << perm << " authority. Skipped." << std::endl;
+                        ilog("Note: account ${a} tried to add unexisting account ${b} to it's ${p} authority. Skipped.",
+                            ("a",n)("b",acc.str(_accs_map))("p",perm));
                     }
                 }
                 std::vector<wait_weight> waits;
@@ -354,11 +367,11 @@ struct genesis_create::genesis_create_impl final {
         }
 
         _visitor.auths.clear();
-        std::cout << "Done." << std::endl;
+        ilog("Done.");
     }
 
     void store_stakes() {
-        std::cout << "Creating staking agents and grants..." << std::endl;
+        ilog("Creating staking agents and grants...");
         _total_staked = golos2sys(_visitor.gpo.total_vesting_fund_steem);
         const auto sys_sym = asset().get_symbol();
 
@@ -559,7 +572,7 @@ struct genesis_create::genesis_create_impl final {
                 });
             }
         }
-        std::cout << "Done." << std::endl;
+        ilog("Done.");
     }
 
     void check_assets_invariants() {
@@ -595,7 +608,7 @@ struct genesis_create::genesis_create_impl final {
     }
 
     void store_balances() {
-        std::cout << "Creating balances..." << std::endl;
+        ilog("Creating balances...");
         check_assets_invariants();
 
         auto& data = _visitor;
@@ -695,7 +708,7 @@ struct genesis_create::genesis_create_impl final {
     }
 
     void store_delegation_records() {
-        std::cout << "Creating vesting delegation records..." << std::endl;
+        ilog("Creating vesting delegation records...");
 
         db.start_section(_info.golos.names.vesting, N(delegation), "delegation", _visitor.delegations.size());
         primary_key_t pk = 0;
@@ -726,11 +739,11 @@ struct genesis_create::genesis_create_impl final {
             );
             pk++;
         }
-        std::cout << "Done." << std::endl;
+        ilog("Done.");
     }
 
     void store_withdrawals() {
-        std::cout << "Creating vesting withdraw records..." << std::endl;
+        ilog("Creating vesting withdraw records...");
         const auto withdrawing_acc = [](const auto& a) {
             bool good = a.to_withdraw > 0 && a.vesting_withdraw_rate.get_amount() > 0 &&
                 a.next_vesting_withdrawal != time_point_sec::maximum();
@@ -768,11 +781,11 @@ struct genesis_create::genesis_create_impl final {
                 );
             }
         }
-        std::cout << "Done." << std::endl;
+        ilog("Done.");
     }
 
     void store_witnesses() {
-        std::cout << "Creating witnesses..." << std::endl;
+        ilog("Creating witnesses...");
         fc::flat_map<acc_idx,int64_t> weights;  // accumulate weights per witness to compare with witness.total_weight
         fc::flat_map<acc_idx,uint64_t> vote_counts;  // accumulate votes counts per witness
 
@@ -840,11 +853,11 @@ struct genesis_create::genesis_create_impl final {
 
         _visitor.witnesses.clear();
         _visitor.witness_votes.clear();
-        std::cout << "Done." << std::endl;
+        ilog("Done.");
     }
 
     void store_posts() {
-        std::cout << "Creating reward pool, posts & votes..." << std::endl;
+        ilog("Creating reward pool, posts & votes...");
 
         // store pool
         const auto& gp = _visitor.gpo;
@@ -976,11 +989,11 @@ struct genesis_create::genesis_create_impl final {
 
         _visitor.comments.clear();
         _visitor.votes.clear();
-        std::cout << "Done." << std::endl;
+        ilog("Done.");
     }
 
     void store_bandwidth() {
-        std::cout << "Creating bandwidth (charge) balances and posting limits..." << std::endl;
+        ilog("Creating bandwidth (charge) balances and posting limits...");
 
         enum charge_id_t: uint8_t {vote, post, comm, postbw};   // vote should have id=0
         enum act_t: uint8_t {POST, COMM, VOTE, POSTBW};         // copied from posting contract
@@ -1029,7 +1042,7 @@ struct genesis_create::genesis_create_impl final {
             const auto& bw = _visitor.post_bws[a.name.id];
             insert_bw(charge_id_t::postbw, bw.second, bw.first);    // max_elapsed = 24h; maxbw=400%, maxw = maxbw^2
         }
-        std::cout << "Done." << std::endl;
+        ilog("Done.");
     }
 
     void prepare_writer(const bfs::path& out_file, const bfs::path& ee_directory) {
@@ -1072,8 +1085,8 @@ void genesis_create::write_genesis(
     _impl->store_withdrawals();
     _impl->store_witnesses();
 
-    _impl->db.finalize();
     _impl->ee_genesis.finalize();
+    _impl->db.finalize();
 }
 
 
