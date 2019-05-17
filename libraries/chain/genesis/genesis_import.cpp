@@ -38,7 +38,8 @@ struct genesis_import::impl final {
     }
 
     storage_payer_info ram_payer_info(const sys_table_row& row) {
-        return resource_mng.get_storage_payer(row.ram_payer);
+        // TODO: Fix better. I am not yet fully investigated storage paying, it just fixes build
+        return resource_mng.get_storage_payer(0, row.ram_payer);
     };
 
     void import_state() {
