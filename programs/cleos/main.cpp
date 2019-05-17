@@ -1541,40 +1541,26 @@ struct get_transaction_id_subcommand {
 struct delegate_bandwidth_subcommand {
    string from_str;
    string receiver_str;
-   string stake_net_amount;
-   string stake_cpu_amount;
-   string stake_storage_amount;
-   string buy_ram_amount;
-   uint32_t buy_ram_bytes = 0;
+   string stake;
+   string not_used;
    bool transfer = false;
 
    delegate_bandwidth_subcommand(CLI::App* actionRoot) {
       auto delegate_bandwidth = actionRoot->add_subcommand("delegatebw", localized("Delegate bandwidth"));
       delegate_bandwidth->add_option("from", from_str, localized("The account to delegate bandwidth from"))->required();
       delegate_bandwidth->add_option("receiver", receiver_str, localized("The account to receive the delegated bandwidth"))->required();
-      delegate_bandwidth->add_option("stake_net_quantity", stake_net_amount, localized("The amount of tokens to stake for network bandwidth"))->required();
-      delegate_bandwidth->add_option("stake_cpu_quantity", stake_cpu_amount, localized("The amount of tokens to stake for CPU bandwidth"))->required();
-      delegate_bandwidth->add_option("--buyram", buy_ram_amount, localized("The amount of tokens to buyram"));
-      delegate_bandwidth->add_option("--buy-ram-bytes", buy_ram_bytes, localized("The amount of RAM to buy in number of bytes"));
+      delegate_bandwidth->add_option("stake_quantity", stake, localized("The amount of tokens to stake"))->required();
+      delegate_bandwidth->add_option("stake_net_quantity", not_used, localized("Deprecated. Not used"));
+      delegate_bandwidth->add_option("stake_cpu_quantity", not_used, localized("Deprecated. Not used"));
+      delegate_bandwidth->add_option("--buyram", not_used, localized("Deprecated. Not used"));
+      delegate_bandwidth->add_option("--buy-ram-bytes", not_used, localized("Deprecated. Not used"));
       delegate_bandwidth->add_flag("--transfer", transfer, localized("Transfer voting power and right to unstake tokens to receiver"));
       add_standard_transaction_options(delegate_bandwidth, "from@active");
 
       delegate_bandwidth->set_callback([this] {
-         fc::variant act_payload = fc::mutable_variant_object()
-                  ("from", from_str)
-                  ("receiver", receiver_str)
-                  ("stake_net_quantity", to_asset(stake_net_amount))
-                  ("stake_cpu_quantity", to_asset(stake_cpu_amount))
-                  ("transfer", transfer);
-         auto accountPermissions = get_account_permissions(tx_permission, {from_str,config::active_name});
-         std::vector<chain::action> acts{create_action(accountPermissions, config::system_account_name, N(delegatebw), act_payload)};
-         EOSC_ASSERT( !(buy_ram_amount.size()) || !buy_ram_bytes, "ERROR: --buyram and --buy-ram-bytes cannot be set at the same time" );
-         if (buy_ram_amount.size()) {
-            acts.push_back( create_buyram(from_str, receiver_str, to_asset(buy_ram_amount)) );
-         } else if (buy_ram_bytes) {
-            acts.push_back( create_buyrambytes(from_str, receiver_str, buy_ram_bytes) );
-         }
-         send_actions(std::move(acts));
+          EOS_THROW(action_not_found_exception, "Action delegatebw is not supported yet");
+//         std::vector<chain::action> acts{create_delegate(from_str, receiver_str, stake, transfer)};
+//         send_actions(std::move(acts));
       });
    }
 };
