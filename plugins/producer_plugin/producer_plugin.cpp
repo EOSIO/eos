@@ -155,22 +155,6 @@ enum class pending_block_mode {
    producing,
    speculating
 };
-#define CATCH_AND_CALL(NEXT)\
-   catch ( const fc::exception& err ) {\
-      NEXT(err.dynamic_copy_exception());\
-   } catch ( const std::exception& e ) {\
-      fc::exception fce( \
-         FC_LOG_MESSAGE( warn, "rethrow ${what}: ", ("what",e.what())),\
-         fc::std_exception_code,\
-         BOOST_CORE_TYPEID(e).name(),\
-         e.what() ) ;\
-      NEXT(fce.dynamic_copy_exception());\
-   } catch( ... ) {\
-      fc::unhandled_exception e(\
-         FC_LOG_MESSAGE(warn, "rethrow"),\
-         std::current_exception());\
-      NEXT(e.dynamic_copy_exception());\
-   }
 
 class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin_impl> {
    public:

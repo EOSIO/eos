@@ -117,26 +117,6 @@ using fc::flat_map;
 
 using boost::signals2::scoped_connection;
 
-//using txn_msg_rate_limits = controller::txn_msg_rate_limits;
-
-#define CATCH_AND_CALL(NEXT)\
-   catch ( const fc::exception& err ) {\
-      NEXT(err.dynamic_copy_exception());\
-   } catch ( const std::exception& e ) {\
-      fc::exception fce( \
-         FC_LOG_MESSAGE( warn, "rethrow ${what}: ", ("what",e.what())),\
-         fc::std_exception_code,\
-         BOOST_CORE_TYPEID(e).name(),\
-         e.what() ) ;\
-      NEXT(fce.dynamic_copy_exception());\
-   } catch( ... ) {\
-      fc::unhandled_exception e(\
-         FC_LOG_MESSAGE(warn, "rethrow"),\
-         std::current_exception());\
-      NEXT(e.dynamic_copy_exception());\
-   }
-
-
 class chain_plugin_impl {
 public:
    chain_plugin_impl()
