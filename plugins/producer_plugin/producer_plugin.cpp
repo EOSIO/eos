@@ -812,6 +812,8 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
    my->_max_irreversible_block_age_us = fc::seconds(options.at("max-irreversible-block-age").as<int32_t>());
 
    my->_max_incoming_transaction_queue_size = options.at("incoming-transaction-queue-size-mb").as<uint16_t>() * 1024*1024;
+   EOS_ASSERT( my->_max_incoming_transaction_queue_size > 0, plugin_config_exception,
+               "incoming-transaction-queue-size-mb ${mb} must be greater than 0", ("mb", my->_max_incoming_transaction_queue_size) );
 
    my->_incoming_defer_ratio = options.at("incoming-defer-ratio").as<double>();
 
