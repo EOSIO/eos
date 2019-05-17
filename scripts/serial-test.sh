@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e # exit on failure of any "simple" command (excludes &&, ||, or | chains)
+# set -e # exit on failure of any "simple" command (excludes &&, ||, or | chains)
 # prepare environment
 PATH=$PATH:~/opt/mongodb/bin
 echo "Extracting build directory..."
@@ -15,7 +15,7 @@ set +e # defer ctest error handling to end
 echo "$ ctest -L nonparallelizable_tests --output-on-failure -T Test"
 ctest -L nonparallelizable_tests --output-on-failure -T Test
 EXIT_STATUS=$?
-[[ "$EXIT_STATUS" == 0 ]] && set -e
+# [[ "$EXIT_STATUS" == 0 ]] && set -e
 echo "Done running non-parallelizable tests."
 # upload artifacts
 echo "Uploading artifacts..."
@@ -24,6 +24,8 @@ mv $(pwd)/Testing/$(ls $(pwd)/Testing/ | grep '20' | tail -n 1)/Test.xml $XML_FI
 buildkite-agent artifact upload config.ini
 buildkite-agent artifact upload genesis.json
 cd ..
+tar -pczf build.tar.gz build
+buildkite-agent artifact upload build.tar.gz
 buildkite-agent artifact upload mongod.log
 cd build
 buildkite-agent artifact upload $XML_FILENAME
