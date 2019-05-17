@@ -439,6 +439,9 @@ steps:
         echo "+++ :microscope: Running Tests"
         ln -s "$(pwd)" /data/job
         ./scripts/parallel-test.sh
+        cd ..
+        tar -pczf build.tar.gz build
+        buildkite-agent artifact upload build.tar.gz
     label: ":darwin: High Sierra Tests"
     agents:
       - "role=tester-v2-1"
@@ -451,6 +454,9 @@ steps:
         echo "+++ :microscope: Running Tests"
         ln -s "$(pwd)" /data/job
         ./scripts/serial-test.sh
+        cd ..
+        tar -pczf build.tar.gz build
+        buildkite-agent artifact upload build.tar.gz
     label: ":darwin: High Sierra NP Tests"
     agents:
       - "role=tester-v2-1"
@@ -464,6 +470,9 @@ steps:
         echo "+++ :microscope: Running Tests"
         ln -s "$(pwd)" /data/job
         ./scripts/parallel-test.sh
+        cd ..
+        tar -pczf build.tar.gz build
+        buildkite-agent artifact upload build.tar.gz
     label: ":darwin: Mojave Tests"
     agents:
       - "role=tester-v2-1"
@@ -476,6 +485,9 @@ steps:
         echo "+++ :microscope: Running Tests"
         ln -s "$(pwd)" /data/job
         ./scripts/serial-test.sh
+        cd ..
+        tar -pczf build.tar.gz build
+        buildkite-agent artifact upload build.tar.gz
     label: ":darwin: Mojave NP Tests"
     agents:
       - "role=tester-v2-1"
