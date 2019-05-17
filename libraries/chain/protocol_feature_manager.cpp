@@ -157,6 +157,29 @@ either the account authorized the action or the action's net effect on RAM usage
 */
             {}
          } )
+         (  builtin_protocol_feature_t::wtmsig_block_signatures, builtin_protocol_feature_spec{
+            "WTMSIG_BLOCK_SIGNATURES",
+            fc::variant("46d65101388a44ebdbbb152978ac1879e34785a2d57ad050196826734370b995").as<digest_type>(),
+            // SHA256 hash of the raw message below within the comment delimiters (do not modify message below).
+/*
+Builtin protocol feature: WTMSIG_BLOCK_SIGNATURES
+
+Allows producers to specify a subset of our auhority structures as the method for signing blocks.
+
+A valid block header:
+is no longer allowed to have a non-empty `new_producers` field;
+must announce new producer schedules using a block header extension with ID `1`
+
+A valid signed block:
+must continue to have exactly one signature in its `signatures` field;
+and may have additional signatures in a block extension with ID `2`
+
+Privileged Contracts:
+may continue to use `set_proposed_producers` as they have;
+may use a new `set_proposed_producers_ex` intrinsic to access extended features.
+*/
+            {}
+         } )
    ;
 
 

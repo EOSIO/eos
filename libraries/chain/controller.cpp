@@ -315,6 +315,7 @@ struct controller_impl {
       set_activation_handler<builtin_protocol_feature_t::preactivate_feature>();
       set_activation_handler<builtin_protocol_feature_t::replace_deferred>();
       set_activation_handler<builtin_protocol_feature_t::get_sender>();
+      set_activation_handler<builtin_protocol_feature_t::wtmsig_block_signatures>();
 
       self.irreversible_block.connect([this](const block_state_ptr& bsp) {
          wasmif.current_lib(bsp->block_num);

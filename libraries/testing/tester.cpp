@@ -184,9 +184,10 @@ namespace eosio { namespace testing {
          case setup_policy::full: {
             schedule_preactivate_protocol_feature();
             produce_block();
-            set_bios_contract();
+            set_before_producer_authority_bios_contract();
             preactivate_all_builtin_protocol_features();
             produce_block();
+            set_bios_contract();
             break;
          }
          case setup_policy::none:
