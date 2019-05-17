@@ -39,6 +39,8 @@ namespace cyberway { namespace chaindb {
     using fc::time_point;
 
     using bsoncxx::types::b_null;
+    using bsoncxx::types::b_minkey;
+    using bsoncxx::types::b_maxkey;
     using bsoncxx::types::b_oid;
     using bsoncxx::types::b_bool;
     using bsoncxx::types::b_double;
@@ -148,16 +150,20 @@ namespace cyberway { namespace chaindb {
                     dst.emplace_back(item.get_bool().value);
                     break;
 
-                    // SKIP
+                // SKIP
+                case type::k_oid:
+                    break;
+
                 case type::k_code:
                 case type::k_codewscope:
                 case type::k_symbol:
                 case type::k_dbpointer:
                 case type::k_regex:
-                case type::k_oid:
                 case type::k_maxkey:
                 case type::k_minkey:
                 case type::k_undefined:
+                default:
+                    CYBERWAY_ASSERT(false, driver_wrong_field_type_exception, "Bad type of the database field");
                     break;
             }
         }
@@ -201,6 +207,16 @@ namespace cyberway { namespace chaindb {
         CYBERWAY_ASSERT(false, driver_primary_key_exception,
             "External database can't read the the primary key ${pk} in the row '${row}' from the table ${table}",
             ("pk", table.pk_order->field)("row", to_json(row))("table", get_full_table_name(table)));
+    }
+
+    account_name_t get_scope_value(const table_info&, const bsoncxx::document::view& row) {
+        document_view view = row;
+
+        auto itr = view.find(names::service_field);
+        view = itr->get_document().value;
+        itr = view.find(names::scope_field);
+
+        return account_name(itr->get_utf8().value.data()).value;
     }
 
     static inline void validate_field_name(const bool test, const document_view& doc, const element& itm) {
@@ -399,16 +415,20 @@ namespace cyberway { namespace chaindb {
                 dst(std::move(key), src.get_bool().value);
                 break;
 
-                // SKIP
+            // SKIP
+            case type::k_oid:
+                break;
+
             case type::k_code:
             case type::k_codewscope:
             case type::k_symbol:
             case type::k_dbpointer:
             case type::k_regex:
-            case type::k_oid:
             case type::k_maxkey:
             case type::k_minkey:
             case type::k_undefined:
+            default:
+                CYBERWAY_ASSERT(false, driver_wrong_field_type_exception, "Bad type of the database field");
                 break;
         }
     }
@@ -557,6 +577,15 @@ namespace cyberway { namespace chaindb {
 
     sub_document& build_document(sub_document& dst, const string& key, const variant& src) {
         return build_document(dst, key, src, bigint_value());
+    }
+
+    sub_document& build_bound_document(basic::sub_document& dst, const std::string& key, const int order) {
+        if (order > 0) {
+            dst.append(kvp(key, b_minkey()));
+        } else {
+            dst.append(kvp(key, b_maxkey()));
+        }
+        return dst;
     }
 
     struct bigint_subdocument final {
