@@ -65,6 +65,7 @@ namespace eosio {
            ApplyTrx,
 
            GenesisData,
+           GenesisEnd,
        };
 
        MsgType msg_type;
@@ -84,6 +85,13 @@ namespace eosio {
        , code(code)
        , name(name)
        , data(data)
+       {}
+   };
+
+   struct GenesisEndMessage : public BaseMessage {
+
+       GenesisEndMessage(BaseMessage::MsgType msg_type)
+       : BaseMessage(msg_type)
        {}
    };
 
@@ -160,9 +168,10 @@ FC_REFLECT(eosio::ActionData, (receiver)(code)(action)(data)(args)(events))
 FC_REFLECT(eosio::TrxMetadata, (id)(accepted)(implicit)(scheduled))
 FC_REFLECT(eosio::TrxReceipt, (id)(status)(cpu_usage_us)(net_usage_words))
 
-FC_REFLECT_ENUM(eosio::BaseMessage::MsgType, (Unknown)(GenesisData)(AcceptBlock)(CommitBlock)(AcceptTrx)(ApplyTrx))
+FC_REFLECT_ENUM(eosio::BaseMessage::MsgType, (Unknown)(GenesisData)(GenesisEnd)(AcceptBlock)(CommitBlock)(AcceptTrx)(ApplyTrx))
 FC_REFLECT(eosio::BaseMessage, (msg_type))
 FC_REFLECT_DERIVED(eosio::GenesisDataMessage, (eosio::BaseMessage), (code)(name)(data))
+FC_REFLECT_DERIVED(eosio::GenesisEndMessage, (eosio::BaseMessage), )
 FC_REFLECT_DERIVED(eosio::BlockMessage, (eosio::BaseMessage), (id)(block_num)(block_time)(validated)(in_current_chain))
 FC_REFLECT_DERIVED(eosio::AcceptedBlockMessage, (eosio::BlockMessage), (trxs)(events))
 FC_REFLECT_DERIVED(eosio::AcceptTrxMessage, (eosio::BaseMessage)(eosio::TrxMetadata), )
