@@ -429,7 +429,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          }
       }
 
-      class incoming_transactions {
+      class incoming_transaction_queue {
          uint64_t size_in_bytes = 0;
          std::deque<std::tuple<transaction_metadata_ptr, bool, next_function<transaction_trace_ptr>>> _incoming_transactions;
 
@@ -441,8 +441,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       public:
          void add( const transaction_metadata_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next ) {
             auto size = calc_size( trx );
-            EOS_ASSERT( size_in_bytes + size < _max_incoming_transaction_queue_size, tx_resource_exhaustion,
-                        "Transaction exceeded producer resource limit" );
+            EOS_ASSERT( size_in_bytes + size < _max_incoming_transaction_queue_size, tx_resource_exhaustion, "Transaction exceeded producer resource limit" );
             size_in_bytes += size;
             _incoming_transactions.emplace_back( trx, persist_until_expired, std::move( next ) );
          }
@@ -461,7 +460,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 
       };
 
-      incoming_transactions _pending_incoming_transactions;
+      incoming_transaction_queue _pending_incoming_transactions;
 
       void on_incoming_transaction_async(const transaction_metadata_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next) {
          chain::controller& chain = chain_plug->chain();
