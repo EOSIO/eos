@@ -23,6 +23,7 @@
 #include <eosio/chain/resource_limits.hpp>
 #include <eosio/chain/chain_snapshot.hpp>
 #include <eosio/chain/thread_utils.hpp>
+#include <eosio/chain/intrinsic_debug_log.hpp>
 
 #include <chainbase/chainbase.hpp>
 #include <fc/io/json.hpp>
@@ -211,6 +212,7 @@ struct controller_impl {
    chainbase::database            db;
    chainbase::database            reversible_blocks; ///< a special database to persist blocks that have successfully been applied but are still reversible
    block_log                      blog;
+   optional<intrinsic_debug_log>  intrinsic_log;
    optional<pending_state>        pending;
    block_state_ptr                head;
    fork_database                  fork_db;
@@ -292,6 +294,7 @@ struct controller_impl {
         cfg.read_only ? database::read_only : database::read_write,
         cfg.reversible_cache_size, false, cfg.db_map_mode, cfg.db_hugepage_paths ),
     blog( cfg.blocks_dir ),
+    intrinsic_log( cfg.intrinsic_debug_log_path ? *cfg.intrinsic_debug_log_path : optional<intrinsic_debug_log>() ),
     fork_db( cfg.state_dir ),
     wasmif( cfg.wasm_runtime, db ),
     resource_limits( db ),
@@ -308,6 +311,10 @@ struct controller_impl {
                             const vector<digest_type>& new_features )
                            { check_protocol_features( timestamp, cur_features, new_features ); }
       );
+
+      if( intrinsic_log ) {
+         intrinsic_log->open();
+      }
 
       set_activation_handler<builtin_protocol_feature_t::preactivate_feature>();
       set_activation_handler<builtin_protocol_feature_t::replace_deferred>();
@@ -594,6 +601,15 @@ struct controller_impl {
          db.undo();
       }
 
+      if( intrinsic_log && intrinsic_log->last_block_num() > 0 && head->block_num != intrinsic_log->last_block_num() ) {
+         wlog( "head block num (${head}) does not match last block in intrinsic.log (${last}): replacing intrinsic.log",
+               ("head", head->block_num)("last", intrinsic_log->last_block_num())
+         );
+         intrinsic_log->close();
+         fc::remove( intrinsic_log->get_path() );
+         intrinsic_log->open();
+      }
+
       protocol_features.init( db );
 
       const auto& rbi = reversible_blocks.get_index<reversible_block_index,by_num>();
@@ -661,6 +677,22 @@ struct controller_impl {
 
       if( last_block_num > head->block_num ) {
          replay( shutdown ); // replay any irreversible and reversible blocks ahead of current head
+      }
+
+      if( intrinsic_log ) {
+         intrinsic_log->close();
+
+         /*
+         // Print intrinsic_log in JSON form
+         intrinsic_log->open( intrinsic_debug_log::open_mode::read_only );
+         const auto end_itr = intrinsic_log->end_block();
+         for( auto itr = intrinsic_log->begin_block(); itr != end_itr; ++itr ) {
+            dlog( "\n${json}", ("json", fc::json::to_pretty_string(*itr)) );
+         }
+         intrinsic_log->close();
+         */
+
+         intrinsic_log.reset();
       }
 
       if( shutdown() ) return;
@@ -1084,6 +1116,9 @@ struct controller_impl {
 
       transaction_trace_ptr trace;
       if( gtrx.expiration < self.pending_block_time() ) {
+         if( intrinsic_log ) {
+            intrinsic_log->start_transaction( gtrx.trx_id );
+         }
          trace = std::make_shared<transaction_trace>();
          trace->id = gtrx.trx_id;
          trace->block_num = self.head_block_num() + 1;
@@ -1104,6 +1139,9 @@ struct controller_impl {
       in_trx_requiring_checks = true;
 
       uint32_t cpu_time_to_bill_us = billed_cpu_time_us;
+
+      // TODO: Figure out how to handle deferred transactions.
+      // It seems like I need to augment intrinsic_debug_log to support transaction level rollback.
 
       transaction_context trx_context( self, dtrx, gtrx.trx_id );
       trx_context.leeway =  fc::microseconds(0); // avoid stealing cpu resource
@@ -1194,6 +1232,10 @@ struct controller_impl {
       if ( !subjective ) {
          // hard failure logic
 
+         if( intrinsic_log ) {
+            intrinsic_log->start_transaction( gtrx.trx_id );
+         }
+
          if( !explicit_billed_cpu_time ) {
             auto& rl = self.get_mutable_resource_limits_manager();
             rl.update_account_usage( trx_context.bill_to_accounts, block_timestamp_type(self.pending_block_time()).slot );
@@ -1274,6 +1316,9 @@ struct controller_impl {
 
          const signed_transaction& trn = trx->packed_trx()->get_signed_transaction();
          transaction_context trx_context(self, trn, trx->id(), start);
+         if( intrinsic_log ) {
+            intrinsic_log->start_transaction( trx_context.id );
+         }
          if ((bool)subjective_cpu_leeway && pending->_block_status == controller::block_status::incomplete) {
             trx_context.leeway = *subjective_cpu_leeway;
          }
@@ -1388,6 +1433,10 @@ struct controller_impl {
          pending.emplace( maybe_session(db), *head, when, confirm_block_count, new_protocol_feature_activations );
       } else {
          pending.emplace( maybe_session(), *head, when, confirm_block_count, new_protocol_feature_activations );
+      }
+
+      if( intrinsic_log ) {
+         intrinsic_log->start_block( head->block_num + 1 );
       }
 
       pending->_block_status = s;
@@ -1520,6 +1569,10 @@ struct controller_impl {
       EOS_ASSERT( pending->_block_stage.contains<building_block>(), block_validate_exception, "already called finalize_block");
 
       try {
+
+      if( intrinsic_log ) {
+         intrinsic_log->finish_block();
+      }
 
       auto& pbhs = pending->get_pending_block_header_state();
 
@@ -2222,6 +2275,11 @@ authorization_manager&         controller::get_mutable_authorization_manager()
 const protocol_feature_manager& controller::get_protocol_feature_manager()const
 {
    return my->protocol_features;
+}
+
+optional<intrinsic_debug_log>&  controller::get_intrinsic_debug_log()
+{
+   return my->intrinsic_log;
 }
 
 controller::controller( const controller::config& cfg )

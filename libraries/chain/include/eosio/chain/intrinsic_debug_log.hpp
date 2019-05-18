@@ -139,6 +139,9 @@ namespace eosio { namespace chain {
          block_reverse_iterator rbegin_block()const { return std::make_reverse_iterator( begin_block() ); }
          block_reverse_iterator rend_blocks()const   { return std::make_reverse_iterator( end_block() ); }
 
+         const boost::filesystem::path& get_path()const;
+         uint32_t last_block_num()const;
+
          struct intrinsic_differences {
             uint32_t                        block_num = 0;
             transaction_id_type             trx_id;

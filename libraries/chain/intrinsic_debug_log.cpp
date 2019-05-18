@@ -115,9 +115,12 @@ namespace eosio { namespace chain {
             bfs::resize_file( log_path, last_commited_block_pos );
          }
          state = state_t::closed;
+         file_size = -1;
+         last_commited_block_pos = 0;
+         most_recent_block_pos = 0;
+         most_recent_block_num = 0;
          intrinsic_counter = 0;
          written_start_block = false;
-         file_size = -1;
 
          block_data_cache.clear();
       }
@@ -360,6 +363,15 @@ namespace eosio { namespace chain {
       my->log.write( buffer, sizeof(buffer) );
 
       ++(my->intrinsic_counter);
+   }
+
+   const boost::filesystem::path& intrinsic_debug_log::get_path()const {
+      return my->log_path;
+   }
+
+   uint32_t intrinsic_debug_log::last_block_num()const {
+      FC_ASSERT( my->state != detail::intrinsic_debug_log_impl::state_t::closed, "log is closed" );
+      return my->most_recent_block_num;
    }
 
    intrinsic_debug_log::block_iterator intrinsic_debug_log::begin_block()const {
