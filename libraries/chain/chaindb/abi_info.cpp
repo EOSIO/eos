@@ -17,16 +17,16 @@ namespace cyberway { namespace chaindb {
 
                 init_types.emplace("asset", struct_def{
                     "asset", "", {
-                        {"amount", "uint64"},
-                        {"decs",   "uint8"},
-                        {"sym",    "symbol_code"},
+                        {"_amount", "uint64"},
+                        {"_decs",   "uint8"},
+                        {"_sym",    "symbol_code"},
                     }
                 });
 
                 init_types.emplace("symbol", struct_def{
                     "symbol", "", {
-                        {"decs", "uint8"},
-                        {"sym",  "symbol_code"},
+                        {"_decs", "uint8"},
+                        {"_sym",  "symbol_code"},
                     }
                 });
 
@@ -89,6 +89,12 @@ namespace cyberway { namespace chaindb {
         }
 
         void build_indexes() {
+            const bool check_field_name = serializer_.is_check_field_name();
+            serializer_.set_check_field_name(false);
+            auto reset_field_name = fc::make_scoped_exit([this, check_field_name]{
+                serializer_.set_check_field_name(check_field_name);
+            });
+
             for (auto& t: table_map_) try {
                 // if abi was loaded instead of declared
                 auto& table = t.second;
@@ -218,7 +224,9 @@ namespace cyberway { namespace chaindb {
 
     abi_info::abi_info(const account_name& code, abi_def abi)
     : code_(code) {
-        if (is_system_code(code)) serializer_.disable_check_field_name();
+        if (is_system_code(code)) {
+            serializer_.set_check_field_name(false);
+        }
         serializer_.set_abi(abi, max_abi_time_);
 
         CYBERWAY_ASSERT(abi.tables.size() <= max_table_cnt(), max_table_count_exception,

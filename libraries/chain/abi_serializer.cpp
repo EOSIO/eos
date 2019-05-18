@@ -102,8 +102,8 @@ namespace eosio { namespace chain {
       built_in_types.emplace("asset",                     pack_unpack<asset_info>());
    }
 
-   void abi_serializer::disable_check_field_name() {
-       check_field_name_ = false;
+   void abi_serializer::set_check_field_name(const bool value) {
+       check_field_name_ = value;
    }
 
    void abi_serializer::set_abi(const abi_def& abi, const fc::microseconds& max_serialization_time) {

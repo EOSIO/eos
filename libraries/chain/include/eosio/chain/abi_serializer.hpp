@@ -34,7 +34,8 @@ namespace impl {
 struct abi_serializer {
    abi_serializer(){ configure_built_in_types(); }
    abi_serializer( const abi_def& abi, const fc::microseconds& max_serialization_time );
-   void disable_check_field_name();
+   bool is_check_field_name() const { return check_field_name_; }
+   void set_check_field_name(bool);
    void set_abi(const abi_def& abi, const fc::microseconds& max_serialization_time);
    void add_struct(struct_def st, const fc::microseconds& max_serialization_time);
 
