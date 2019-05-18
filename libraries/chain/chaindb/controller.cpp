@@ -821,6 +821,10 @@ namespace cyberway { namespace chaindb {
         return impl_->object_at_cursor(request).value;
     }
 
+    index_info chaindb_controller::index_at_cursor(const cursor_request& request) const {
+        return impl_->current(request).index;
+    }
+
     object_value chaindb_controller::object_at_cursor(const cursor_request& request) const {
         return impl_->object_at_cursor(request);
     }

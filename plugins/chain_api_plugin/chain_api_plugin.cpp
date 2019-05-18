@@ -14,6 +14,7 @@
 
 #include <cyberway/chaindb/controller.hpp>
 #include <cyberway/chaindb/names.hpp>
+#include <cyberway/chaindb/typed_name.hpp>
 
 #include <fc/io/json.hpp>
 
@@ -562,6 +563,7 @@ get_table_rows_result chain_api_plugin_impl::walk_table_row_range(const get_tabl
 
     auto& chaindb = chain_controller_.chaindb();
     cyberway::chaindb::cursor_request cursor{p.code, itr.cursor};
+    auto index = chaindb.index_at_cursor(cursor);
 
     for(unsigned int count = 0;
         cur_time <= end_time && count < p.limit && itr.pk != end_pk;
@@ -571,10 +573,10 @@ get_table_rows_result chain_api_plugin_impl::walk_table_row_range(const get_tabl
             const auto object = chaindb.object_at_cursor(cursor);
             auto value = fc::mutable_variant_object()
                 ("data",    object.value)
-                ("scope",   object.service.scope)
-                ("primary", object.service.pk)
-                ("payer",   object.service.payer)
-                ("owner",   object.service.owner)
+                ("scope",   cyberway::chaindb::scope_name::from_table(index).to_string())
+                ("primary", cyberway::chaindb::primary_key::from_table(index, object.service.pk).to_string())
+                ("payer",   chain::account_name(object.service.payer))
+                ("owner",   chain::account_name(object.service.owner))
                 ("size",    object.service.size)
                 ("in_ram",  object.service.in_ram);
             result.rows.push_back(std::move(value));
@@ -809,8 +811,8 @@ get_scheduled_transactions_result chain_api_plugin_impl::get_scheduled_transacti
               ("trx_id", itr->trx_id)
               ("sender", itr->sender)
               ("sender_id", itr->sender_id)
-              ("owner", itr.service().owner)
-              ("payer", itr.service().payer)
+              ("owner", chain::account_name(itr.service().owner))
+              ("payer", chain::account_name(itr.service().payer))
               ("delay_until", itr->delay_until)
               ("expiration", itr->expiration)
               ("published", itr->published)
