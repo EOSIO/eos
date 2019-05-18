@@ -32,7 +32,12 @@ namespace impl {
  *  be converted to and from JSON.
  */
 struct abi_serializer {
-   abi_serializer(){ configure_built_in_types(); }
+   enum mode {
+       DBMode,
+       PublicMode,
+   }; // enum mode
+
+   abi_serializer( mode m = PublicMode ){ configure_built_in_types(m); }
    abi_serializer( const abi_def& abi, const fc::microseconds& max_serialization_time );
    bool is_check_field_name() const { return check_field_name_; }
    void set_check_field_name(bool);
@@ -105,7 +110,7 @@ private:
    map<type_name, variant_def>   variants;
 
    map<type_name, pair<unpack_function, pack_function>> built_in_types;
-   void configure_built_in_types();
+   void configure_built_in_types(mode);
 
    fc::variant _binary_to_variant( const type_name& type, const bytes& binary, impl::binary_to_variant_context& ctx )const;
    fc::variant _binary_to_variant( const type_name& type, fc::datastream<const char*>& binary, impl::binary_to_variant_context& ctx )const;

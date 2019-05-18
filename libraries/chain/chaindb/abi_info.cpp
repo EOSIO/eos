@@ -223,7 +223,8 @@ namespace cyberway { namespace chaindb {
     const fc::microseconds abi_info::max_abi_time_ = fc::seconds(60);
 
     abi_info::abi_info(const account_name& code, abi_def abi)
-    : code_(code) {
+    : code_(code),
+      serializer_(eosio::chain::abi_serializer::DBMode) {
         if (is_system_code(code)) {
             serializer_.set_check_field_name(false);
         }
