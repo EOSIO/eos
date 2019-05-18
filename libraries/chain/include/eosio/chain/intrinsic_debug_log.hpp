@@ -40,7 +40,8 @@ namespace eosio { namespace chain {
 
          void start_block( uint32_t block_num );
          void start_transaction( const transaction_id_type& trx_id );
-         void start_action( uint64_t global_sequence_num );
+         void start_action( uint64_t global_sequence_num,
+                            name receiver, name first_receiver, name action_name );
          void acknowledge_intrinsic_without_recording();
          void record_intrinsic( const digest_type& arguments_hash, const digest_type& memory_hash );
          void finish_block();
@@ -53,6 +54,9 @@ namespace eosio { namespace chain {
 
          struct action_data {
             uint64_t                        global_sequence_num = 0;
+            name                            receiver{};
+            name                            first_receiver{};
+            name                            action_name{};
             std::vector< intrinsic_record > recorded_intrinsics;
          };
 
@@ -133,6 +137,7 @@ namespace eosio { namespace chain {
 } }
 
 FC_REFLECT( eosio::chain::intrinsic_debug_log::intrinsic_record, (intrinsic_ordinal)(arguments_hash)(memory_hash) )
-FC_REFLECT( eosio::chain::intrinsic_debug_log::action_data, (global_sequence_num)(recorded_intrinsics) )
+FC_REFLECT( eosio::chain::intrinsic_debug_log::action_data,
+            (global_sequence_num)(receiver)(first_receiver)(action_name)(recorded_intrinsics) )
 FC_REFLECT( eosio::chain::intrinsic_debug_log::transaction_data, (trx_id)(actions) )
 FC_REFLECT( eosio::chain::intrinsic_debug_log::block_data, (block_num)(transactions) )

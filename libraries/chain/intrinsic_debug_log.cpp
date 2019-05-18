@@ -209,6 +209,9 @@ namespace eosio { namespace chain {
                   block_data.transactions.back().actions.emplace_back();
                   auto& act = block_data.transactions.back().actions.back();
                   act.global_sequence_num = global_sequence_num;
+                  log.read( (char*)&act.receiver.value,        sizeof(act.receiver.value) );
+                  log.read( (char*)&act.first_receiver.value,  sizeof(act.first_receiver.value) );
+                  log.read( (char*)&act.action_name.value,     sizeof(act.action_name.value) );
                   in_action = true;
                   minimum_accepted_global_sequence_num = global_sequence_num + 1;
                } else if( tag == intrinsic_tag ) {
@@ -312,7 +315,9 @@ namespace eosio { namespace chain {
       my->intrinsic_counter = 0;
    }
 
-   void intrinsic_debug_log::start_action( uint64_t global_sequence_num ) {
+   void intrinsic_debug_log::start_action( uint64_t global_sequence_num,
+                                           name receiver, name first_receiver, name action_name )
+   {
       FC_ASSERT( my->state != detail::intrinsic_debug_log_impl::state_t::read_only,
                  "invalid operation in read-only mode" );
       FC_ASSERT( my->state == detail::intrinsic_debug_log_impl::state_t::in_transaction
@@ -320,7 +325,10 @@ namespace eosio { namespace chain {
                  "cannot start action in the current state" );
 
       my->log.put( detail::intrinsic_debug_log_impl::action_tag );
-      my->log.write( (char*)&global_sequence_num, sizeof(global_sequence_num) );
+      my->log.write( (char*)&global_sequence_num,  sizeof(global_sequence_num) );
+      my->log.write( (char*)&receiver.value,       sizeof(receiver.value) );
+      my->log.write( (char*)&first_receiver.value, sizeof(first_receiver.value) );
+      my->log.write( (char*)&action_name.value,    sizeof(action_name.value) );
 
       my->state = detail::intrinsic_debug_log_impl::state_t::in_action;
       my->intrinsic_counter = 0;

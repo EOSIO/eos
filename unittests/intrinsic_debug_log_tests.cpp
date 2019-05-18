@@ -19,11 +19,13 @@ BOOST_AUTO_TEST_CASE(basic_test) {
    auto log_path = tempdir.path() / "intrinsic.log";
    {
       auto digest = fc::variant("0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20").as<digest_type>();
+      name alice("alice");
+      name foo("foo");
       intrinsic_debug_log log( log_path );
       log.open();
       log.start_block( 2u );
       log.start_transaction( transaction_id_type() );
-      log.start_action( 1ull );
+      log.start_action( 1ull, alice, alice, foo );
       log.acknowledge_intrinsic_without_recording();
       log.record_intrinsic( digest, digest );
       log.finish_block();
@@ -42,7 +44,11 @@ BOOST_AUTO_TEST_CASE(basic_test) {
    const char* expected =
       "00" "02000000" // start of block 2
       "01" "0000000000000000000000000000000000000000000000000000000000000000" // start of transaction
-      "02" "0100000000000000" // start of action with global sequence number of 1
+      "02"            // start of action with:
+      "0100000000000000"  // global sequence number of 1,
+      "0000000000855c34"  // receiver "alice",
+      "0000000000855c34"  // first_receiver "alice",
+      "000000000000285d"  // and action_name "foo".
       "03"                                                            // recording an intrinsic with:
       "01000000"                                                          // an ordinal of 1,
       "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20"  // this arguments hash,
@@ -57,22 +63,26 @@ BOOST_AUTO_TEST_CASE(iterate_test) {
    fc::temp_directory  tempdir;
    auto log_path = tempdir.path() / "intrinsic.log";
    auto digest = fc::variant("0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20").as<digest_type>();
+   name alice("alice");
+   name bob("bob");
+   name foo("foo");
+   name bar("bar");
 
    intrinsic_debug_log log( log_path );
    log.open();
    log.start_block( 2u );
    log.start_transaction( transaction_id_type() );
-   log.start_action( 1ull );
+   log.start_action( 1ull, alice, alice, foo );
    log.acknowledge_intrinsic_without_recording();
    log.record_intrinsic( digest, digest );
    log.finish_block();
    log.start_block( 4u );
    log.start_transaction( transaction_id_type() );
    log.start_transaction( transaction_id_type() );
-   log.start_action( 2ull );
+   log.start_action( 2ull, alice, alice, bar );
    log.record_intrinsic( digest, digest );
    log.record_intrinsic( digest, digest );
-   log.start_action( 3ull );
+   log.start_action( 3ull, bob, alice, bar );
    log.finish_block();
    log.close();
 
