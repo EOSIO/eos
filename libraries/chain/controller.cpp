@@ -1142,8 +1142,16 @@ struct controller_impl {
 
       uint32_t cpu_time_to_bill_us = billed_cpu_time_us;
 
-      // TODO: Figure out how to handle deferred transactions.
-      // It seems like I need to augment intrinsic_debug_log to support transaction level rollback.
+      auto abort_transaction_in_intrinsic_log_on_exit = fc::make_scoped_exit(
+      [abort_transaction=static_cast<bool>(intrinsic_log), this] {
+         if( abort_transaction ) {
+            intrinsic_log->abort_transaction();
+         }
+      });
+
+      if( intrinsic_log ) {
+         intrinsic_log->start_transaction( gtrx.trx_id );
+      }
 
       transaction_context trx_context( self, dtrx, gtrx.trx_id );
       trx_context.leeway =  fc::microseconds(0); // avoid stealing cpu resource
@@ -1186,6 +1194,7 @@ struct controller_impl {
          undo_session.squash();
 
          restore.cancel();
+         abort_transaction_in_intrinsic_log_on_exit.cancel();
 
          return trace;
       } catch( const disallowed_transaction_extensions_bad_block_exception& ) {
@@ -1216,6 +1225,7 @@ struct controller_impl {
             emit( self.accepted_transaction, trx );
             emit( self.applied_transaction, std::tie(trace, dtrx) );
             undo_session.squash();
+            abort_transaction_in_intrinsic_log_on_exit.cancel();
             return trace;
          }
          trace->elapsed = fc::time_point::now() - trx_context.start;
@@ -1233,10 +1243,6 @@ struct controller_impl {
 
       if ( !subjective ) {
          // hard failure logic
-
-         if( intrinsic_log ) {
-            intrinsic_log->start_transaction( gtrx.trx_id );
-         }
 
          if( !explicit_billed_cpu_time ) {
             auto& rl = self.get_mutable_resource_limits_manager();
@@ -1259,6 +1265,7 @@ struct controller_impl {
          emit( self.applied_transaction, std::tie(trace, dtrx) );
 
          undo_session.squash();
+         abort_transaction_in_intrinsic_log_on_exit.cancel();
       } else {
          emit( self.accepted_transaction, trx );
          emit( self.applied_transaction, std::tie(trace, dtrx) );
@@ -1318,9 +1325,18 @@ struct controller_impl {
 
          const signed_transaction& trn = trx->packed_trx()->get_signed_transaction();
          transaction_context trx_context(self, trn, trx->id(), start);
+
+         auto abort_transaction_in_intrinsic_log_on_exit = fc::make_scoped_exit(
+         [abort_transaction=static_cast<bool>(intrinsic_log), this] {
+            if( abort_transaction ) {
+               intrinsic_log->abort_transaction();
+            }
+         });
+
          if( intrinsic_log ) {
             intrinsic_log->start_transaction( trx_context.id );
          }
+
          if ((bool)subjective_cpu_leeway && pending->_block_status == controller::block_status::incomplete) {
             trx_context.leeway = *subjective_cpu_leeway;
          }
@@ -1387,6 +1403,7 @@ struct controller_impl {
                trx_context.undo();
             } else {
                restore.cancel();
+               abort_transaction_in_intrinsic_log_on_exit.cancel();
                trx_context.squash();
             }
 
@@ -2006,6 +2023,15 @@ struct controller_impl {
          }
          pending.reset();
          protocol_features.popped_blocks_to( head->block_num );
+
+         // intrinsic_log is only supported in replay at the moment and abort_block should not be called during replay.
+         // But this is here since intrinsic_log already supports abort_block and it sets things up for the future
+         // in case we want to adapt the intrinsic_log to working during regular operation.
+         // In that case, we would also need to add support for popping committed blocks from the intrinsic log
+         // and call the appropriate function from controller_impl::pop_block().
+         if( intrinsic_log ) {
+            intrinsic_log->abort_block();
+         }
       }
    }
 
