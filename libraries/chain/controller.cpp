@@ -601,9 +601,11 @@ struct controller_impl {
          db.undo();
       }
 
-      if( intrinsic_log && intrinsic_log->last_block_num() > 0 && head->block_num != intrinsic_log->last_block_num() ) {
+      if( intrinsic_log && intrinsic_log->last_committed_block_num() > 0
+             && head->block_num != intrinsic_log->last_committed_block_num() )
+      {
          wlog( "head block num (${head}) does not match last block in intrinsic.log (${last}): replacing intrinsic.log",
-               ("head", head->block_num)("last", intrinsic_log->last_block_num())
+               ("head", head->block_num)("last", intrinsic_log->last_committed_block_num())
          );
          intrinsic_log->close();
          fc::remove( intrinsic_log->get_path() );

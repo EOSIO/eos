@@ -39,7 +39,9 @@ namespace eosio { namespace chain {
          void close();
 
          void start_block( uint32_t block_num );
+         void abort_block();
          void start_transaction( const transaction_id_type& trx_id );
+         void abort_transaction();
          void start_action( uint64_t global_sequence_num,
                             name receiver, name first_receiver, name action_name );
          void acknowledge_intrinsic_without_recording();
@@ -139,8 +141,13 @@ namespace eosio { namespace chain {
          block_reverse_iterator rbegin_block()const { return std::make_reverse_iterator( begin_block() ); }
          block_reverse_iterator rend_blocks()const   { return std::make_reverse_iterator( end_block() ); }
 
+         bool is_open()const;
+         bool is_read_only()const;
+
          const boost::filesystem::path& get_path()const;
-         uint32_t last_block_num()const;
+
+         /** @returns the block number of the last committed block in the log or 0 if no blocks are committed in the log */
+         uint32_t last_committed_block_num()const;
 
          struct intrinsic_differences {
             uint32_t                        block_num = 0;

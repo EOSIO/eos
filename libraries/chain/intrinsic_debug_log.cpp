@@ -8,16 +8,30 @@
 #include <fc/scoped_exit.hpp>
 #include <fstream>
 #include <map>
+#include <variant>
 #include <boost/filesystem.hpp>
 
 namespace bfs = boost::filesystem;
 
+template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
+template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
+
+using pos_t = uint64_t;
+
 namespace eosio { namespace chain {
 
    namespace detail {
+
+      template<typename T, typename... Us>
+      struct is_one_of {
+         static constexpr bool value = (std::is_same_v<T, Us> || ...);
+      };
+
       struct extended_block_data {
          extended_block_data( intrinsic_debug_log::block_data&& block_data,
-                              int64_t pos, int64_t previous_pos, int64_t next_pos )
+                              const pos_t& pos,
+                              const std::optional<pos_t>& previous_pos,
+                              const std::optional<pos_t>& next_pos )
          :block_data( std::move(block_data) )
          ,pos( pos )
          ,previous_pos( previous_pos )
@@ -25,61 +39,211 @@ namespace eosio { namespace chain {
          {}
 
          intrinsic_debug_log::block_data block_data;
-         int64_t pos; //< pos should never be negative
-         int64_t previous_pos; //< if previous_pos is -1, then this is first block in the log
-         int64_t next_pos; //< if next_pos is -1, then this is the last block in the log
+         pos_t                           pos;
+         std::optional<pos_t>            previous_pos; //< if empty, then this is first block in the log
+         std::optional<pos_t>            next_pos; //< if empty, then this is the last block in the log
       };
 
       class intrinsic_debug_log_impl {
          public:
-            enum class state_t {
-               closed,
-               read_only,
-               waiting_to_start_block,
-               in_block,
-               in_transaction,
-               in_action
+            static constexpr uint8_t block_tag       = 0;
+            static constexpr uint8_t transaction_tag = 1;
+            static constexpr uint8_t action_tag      = 2;
+            static constexpr uint8_t intrinsic_tag   = 3;
+
+            struct closed {};
+
+            struct read_only {
+               explicit read_only( uint32_t last_committed_block_num )
+               :last_committed_block_num( last_committed_block_num )
+               {}
+
+               uint32_t last_committed_block_num;
             };
 
-            static const uint8_t block_tag       = 0;
-            static const uint8_t transaction_tag = 1;
-            static const uint8_t action_tag      = 2;
-            static const uint8_t intrinsic_tag   = 3;
+            struct in_block;
+            struct in_transaction;
+            struct in_action;
 
-            std::fstream             log;
-            bfs::path                log_path;
-            std::map<uint64_t, extended_block_data> block_data_cache;
-            state_t                  state = state_t::closed;
-            int64_t                  file_size = -1;
-            uint64_t                 last_committed_block_pos = 0;
-            uint64_t                 most_recent_block_pos = 0;
-            uint32_t                 most_recent_block_num = 0;
-            uint32_t                 intrinsic_counter = 0;
-            bool                     written_start_block = false;
+            struct waiting_to_start_block {
+               explicit waiting_to_start_block( uint32_t last_committed_block_num );
+               explicit waiting_to_start_block( const in_block& s );
+               explicit waiting_to_start_block( const in_transaction& s );
+               explicit waiting_to_start_block( const in_action& s );
 
-            void open( bool read_only, bool start_fresh );
+               uint32_t last_committed_block_num;
+            };
+
+            struct in_block {
+               in_block( const waiting_to_start_block& s, pos_t pos, uint32_t num );
+               explicit in_block( const in_transaction& s );
+               explicit in_block( const in_action& s );
+
+               pos_t    block_start_pos;
+               uint32_t block_num;
+               uint32_t last_committed_block_num;
+               bool     block_header_written = false;
+            };
+
+            struct in_transaction {
+               in_transaction( const in_block& s, pos_t transaction_start_pos );
+               in_transaction( const in_transaction& s, pos_t transaction_start_pos );
+               in_transaction( const in_action& s, pos_t transaction_start_pos );
+
+               pos_t    block_start_pos;
+               pos_t    transaction_start_pos;
+               uint32_t block_num;
+               uint32_t last_committed_block_num;
+            };
+
+            struct in_action {
+               struct force_new_t {};
+
+               explicit in_action( const in_transaction& s );
+               in_action( const in_transaction& s, force_new_t ):in_action( s ){}
+               in_action( const in_action& s, force_new_t );
+
+               pos_t    block_start_pos;
+               pos_t    transaction_start_pos;
+               uint32_t block_num;
+               uint32_t last_committed_block_num;
+               uint32_t intrinsic_counter = 0;
+            };
+
+            using state_type = std::variant<
+                                 closed,
+                                 read_only,
+                                 waiting_to_start_block,
+                                 in_block,
+                                 in_transaction,
+                                 in_action
+                               >;
+
+            struct log_metadata_t {
+               pos_t    last_committed_block_begin_pos{};
+               pos_t    last_committed_block_end_pos{};
+            };
+
+            std::fstream                          log;
+            bfs::path                             log_path;
+            std::map<pos_t, extended_block_data>  block_data_cache;
+            state_type                            state{ closed{} };
+            std::optional<log_metadata_t>         log_metadata;
+
+            void open( bool open_as_read_only, bool start_fresh );
             void close();
 
-            void truncate_to( uint64_t pos );
-
             void start_block( uint32_t block_num );
-            void ensure_block_start_written();
+            void abort_block();
+            void start_transaction( const transaction_id_type& trx_id );
+            void abort_transaction();
+            void start_action( uint64_t global_sequence_num,
+                               name receiver, name first_receiver, name action_name );
+            void acknowledge_intrinsic_without_recording();
+            void record_intrinsic( const digest_type& arguments_hash, const digest_type& memory_hash );
             void finish_block();
 
-            int64_t get_position_of_previous_block( int64_t pos );
-            const extended_block_data& get_block_at_position( int64_t pos );
+            bool is_open()const {
+               return !std::holds_alternative<closed>( state );
+            }
+
+            bool is_read_only()const {
+               return std::holds_alternative<read_only>( state );
+            }
+
+            bool can_write()const {
+               return !std::holds_alternative<closed>( state ) && !std::holds_alternative<read_only>( state );
+            }
+
+         protected:
+            void truncate_to( uint64_t pos );
+            std::optional<pos_t> get_position_of_previous_block( pos_t pos );
+            const extended_block_data& get_block_at_position( pos_t pos );
+
+            friend class intrinsic_debug_log::block_iterator;
       };
 
-      void intrinsic_debug_log_impl::open( bool read_only, bool start_fresh ) {
+      intrinsic_debug_log_impl::waiting_to_start_block::waiting_to_start_block( uint32_t last_committed_block_num )
+      :last_committed_block_num( last_committed_block_num )
+      {}
+
+      intrinsic_debug_log_impl::waiting_to_start_block::waiting_to_start_block( const in_block& s )
+      :last_committed_block_num( s.last_committed_block_num )
+      {}
+
+      intrinsic_debug_log_impl::waiting_to_start_block::waiting_to_start_block( const in_transaction& s )
+      :last_committed_block_num( s.last_committed_block_num )
+      {}
+
+      intrinsic_debug_log_impl::waiting_to_start_block::waiting_to_start_block( const in_action& s )
+      :last_committed_block_num( s.last_committed_block_num )
+      {}
+
+      intrinsic_debug_log_impl::in_block::in_block( const waiting_to_start_block& s, pos_t pos, uint32_t num )
+      :block_start_pos( pos )
+      ,block_num( num )
+      ,last_committed_block_num( s.last_committed_block_num )
+      {}
+
+      intrinsic_debug_log_impl::in_block::in_block( const in_transaction& s )
+      :block_start_pos( s.block_start_pos )
+      ,block_num( s.block_num )
+      ,last_committed_block_num( s.last_committed_block_num )
+      ,block_header_written(true)
+      {}
+
+      intrinsic_debug_log_impl::in_block::in_block( const in_action& s )
+      :block_start_pos( s.block_start_pos )
+      ,block_num( s.block_num )
+      ,last_committed_block_num( s.last_committed_block_num )
+      ,block_header_written(true)
+      {}
+
+      intrinsic_debug_log_impl::in_transaction::in_transaction( const in_block& s, pos_t transaction_start_pos )
+      :block_start_pos( s.block_start_pos )
+      ,transaction_start_pos( transaction_start_pos )
+      ,block_num( s.block_num )
+      ,last_committed_block_num( s.last_committed_block_num )
+      {}
+
+      intrinsic_debug_log_impl::in_transaction::in_transaction( const in_transaction& s, pos_t transaction_start_pos )
+      :block_start_pos( s.block_start_pos )
+      ,transaction_start_pos( transaction_start_pos )
+      ,block_num( s.block_num )
+      ,last_committed_block_num( s.last_committed_block_num )
+      {}
+
+      intrinsic_debug_log_impl::in_transaction::in_transaction( const in_action& s, pos_t transaction_start_pos )
+      :block_start_pos( s.block_start_pos )
+      ,transaction_start_pos( transaction_start_pos )
+      ,block_num( s.block_num )
+      ,last_committed_block_num( s.last_committed_block_num )
+      {}
+
+      intrinsic_debug_log_impl::in_action::in_action( const in_transaction& s )
+      :block_start_pos( s.block_start_pos )
+      ,transaction_start_pos( s.transaction_start_pos )
+      ,block_num( s.block_num )
+      ,last_committed_block_num( s.last_committed_block_num )
+      {}
+
+      intrinsic_debug_log_impl::in_action::in_action( const in_action& s, in_action::force_new_t )
+      :block_start_pos( s.block_start_pos )
+      ,transaction_start_pos( s.transaction_start_pos )
+      ,block_num( s.block_num )
+      ,last_committed_block_num( s.last_committed_block_num )
+      {}
+
+      void intrinsic_debug_log_impl::open( bool open_as_read_only, bool start_fresh ) {
          FC_ASSERT( !log.is_open(), "cannot open when the log is already open" );
-         FC_ASSERT( state == state_t::closed, "state out of sync" );
+         FC_ASSERT( std::holds_alternative<closed>( state ), "state out of sync" );
 
          std::ios_base::openmode open_mode = std::ios::in | std::ios::binary;
 
-         if( !read_only ) {
-            open_mode |= (std::ios::out | std::ios::app);
-         } else {
+         if( open_as_read_only ) {
             FC_ASSERT( !start_fresh, "start_fresh cannot be true in read-only mode" );
+         } else {
+            open_mode |= (std::ios::out | std::ios::app);
          }
 
          if( start_fresh ) {
@@ -87,64 +251,89 @@ namespace eosio { namespace chain {
          }
 
          log.open( log_path.generic_string().c_str(), open_mode );
-         state = (read_only ? state_t::read_only : state_t::waiting_to_start_block);
+
+         uint32_t last_committed_block_num = 0; // 0 indicates no committed blocks in log
 
          log.seekg( 0, std::ios::end );
-         file_size = log.tellg();
+         pos_t file_size = log.tellg();
          if( file_size > 0 ) {
-            log.seekg( -sizeof(last_committed_block_pos), std::ios::end );
-            log.read( (char*)&last_committed_block_pos, sizeof(last_committed_block_pos) );
-            FC_ASSERT( last_committed_block_pos < file_size, "corrupted log: invalid block position" );
-            most_recent_block_pos = last_committed_block_pos;
+            pos_t last_committed_block_begin_pos{};
+            FC_ASSERT( file_size > sizeof(last_committed_block_begin_pos),
+                       "corrupted log: file size is too small to be valid" );
+            log.seekg( -sizeof(last_committed_block_begin_pos), std::ios::end );
+            fc::raw::unpack( log, last_committed_block_begin_pos );
+            FC_ASSERT( last_committed_block_begin_pos < file_size, "corrupted log: invalid block position" );
 
-            log.seekg( last_committed_block_pos, std::ios::beg	);
+            log.seekg( last_committed_block_begin_pos, std::ios::beg	);
             uint8_t tag = 0;
-            log.read( (char*)&tag, sizeof(tag) );
+            fc::raw::unpack( log, tag );
             FC_ASSERT( tag == block_tag, "corrupted log: expected block tag" );
 
-            log.read( (char*)&most_recent_block_num, sizeof(most_recent_block_num) );
+            fc::raw::unpack( log, last_committed_block_num );
+
+            log_metadata.emplace( log_metadata_t{ last_committed_block_begin_pos, file_size } );
          }
 
-         if( read_only ) {
+         if( open_as_read_only ) {
+            state.emplace<read_only>( last_committed_block_num );
             log.seekg( 0, std::ios::beg );
          } else {
+            state.emplace<waiting_to_start_block>( last_committed_block_num );
             log.seekp( 0, std::ios::end );
          }
       }
 
       void intrinsic_debug_log_impl::close() {
          if( !log.is_open() ) return;
-         FC_ASSERT( state != state_t::closed, "state out of sync" );
 
-         log.flush();
-         log.close();
-         if( state != state_t::read_only && state != state_t::waiting_to_start_block ) {
-            bfs::resize_file( log_path, most_recent_block_pos );
+         std::optional<pos_t> truncate_pos = std::visit( overloaded{
+            []( closed ) -> std::optional<pos_t> {
+               FC_ASSERT( false, "state out of sync" );
+               return {}; // unreachable, only added for compilation purposes
+            },
+            []( const read_only& ) -> std::optional<pos_t> { return {}; },
+            []( const waiting_to_start_block&  ) -> std::optional<pos_t> { return {}; },
+            []( const in_block&  ) -> std::optional<pos_t> { return {}; },
+            []( auto&& s )
+            -> std::enable_if_t<
+                  detail::is_one_of< std::decay_t<decltype(s)>,
+                     in_transaction, in_action
+                  >::value,
+                  std::optional<pos_t>
+            >
+            {
+               return s.block_start_pos;
+            }
+         }, state );
+
+         if( truncate_pos ) {
+            truncate_to( *truncate_pos );
+         } else {
+            log.flush();
          }
-         state = state_t::closed;
-         file_size = -1;
-         last_committed_block_pos = 0;
-         most_recent_block_pos = 0;
-         most_recent_block_num = 0;
-         intrinsic_counter = 0;
-         written_start_block = false;
 
+         log.close();
+
+         state.emplace<closed>();
+         log_metadata.reset();
          block_data_cache.clear();
       }
 
-      void intrinsic_debug_log_impl::truncate_to( uint64_t pos ) {
-         FC_ASSERT( state != state_t::closed && state != state_t::read_only,  "called while in invalid state" );
-         FC_ASSERT( pos >= most_recent_block_pos, "truncation would violate invariants" );
+      void intrinsic_debug_log_impl::truncate_to( pos_t pos ) {
+         FC_ASSERT( can_write(),  "called while in invalid state" );
 
          log.seekp( 0, std::ios::end );
-         file_size = log.tellp();
-         FC_ASSERT( pos <= file_size, "position is out of bounds" );
+         pos_t file_size = log.tellp();
+         FC_ASSERT( 0 <= pos && pos <= file_size, "position is out of bounds" );
+
+         FC_ASSERT( !log_metadata || log_metadata->last_committed_block_end_pos <= pos,
+                    "truncation would erase committed block data which is currently not supported" );
 
          log.flush();
          if( pos == file_size ) return;
 
-         if( log.tellg() > pos ) {
-            log.seekg( pos );
+         if( log.tellp() > pos ) {
+            log.seekp( pos );
          }
 
          bfs::resize_file( log_path, pos );
@@ -152,72 +341,235 @@ namespace eosio { namespace chain {
          log.sync();
       }
 
-
       void intrinsic_debug_log_impl::start_block( uint32_t block_num  ) {
-         FC_ASSERT( state == state_t::waiting_to_start_block, "cannot start block while still processing a block" );
-         FC_ASSERT( most_recent_block_num < block_num,
-                    "must start a block with greater height than previously started blocks" );
-
-         state = state_t::in_block;
-         most_recent_block_pos = log.tellp();
-         most_recent_block_num = block_num;
+         FC_ASSERT( block_num > 0, "block number cannot be 0" );
+         bool writable = std::visit( overloaded{
+            []( closed ) { return false; },
+            []( const read_only& ) { return false; },
+            [&]( const waiting_to_start_block& s ) {
+               FC_ASSERT( s.last_committed_block_num < block_num,
+                          "must start a block with greater height than previously started blocks" );
+               state = in_block( s, log.tellp(), block_num );
+               return true;
+            },
+            []( auto&& s )
+            -> std::enable_if_t<
+                  detail::is_one_of< std::decay_t<decltype(s)>,
+                     in_block, in_transaction, in_action
+                  >::value,
+                  bool
+            >
+            {
+               FC_ASSERT( false, "cannot start block while still processing a block" );
+               return false; // unreachable, only added for compilation purposes
+            }
+         }, state );
+         FC_ASSERT( writable, "log is not setup for writing" );
       }
 
-      void intrinsic_debug_log_impl::ensure_block_start_written() {
-         if( written_start_block ) return;
-         FC_ASSERT( state == state_t::in_block, "called while in invalid state" );
-         log.put( block_tag );
-         log.write( (char*)&most_recent_block_num, sizeof(most_recent_block_num) );
-         written_start_block = true;
+      void intrinsic_debug_log_impl::abort_block() {
+         bool writable = std::visit( overloaded{
+            []( closed ) { return false; },
+            []( const read_only& ) { return false; },
+            []( const waiting_to_start_block& ) {
+               return true; // nothing to abort
+            },
+            [&]( auto&& s )
+            -> std::enable_if_t<
+                  detail::is_one_of< std::decay_t<decltype(s)>,
+                     in_block, in_transaction, in_action
+                  >::value,
+                  bool
+            >
+            {
+               truncate_to( s.block_start_pos );
+               state = waiting_to_start_block( s );
+               return true;
+            }
+         }, state );
+         FC_ASSERT( writable, "log is not setup for writing" );
+      }
+
+      void intrinsic_debug_log_impl::start_transaction( const transaction_id_type& trx_id ) {
+         auto write_transaction_header = [&] {
+            uint64_t transaction_start_pos = log.tellp();
+            fc::raw::pack( log, transaction_tag );
+            fc::raw::pack( log, trx_id );
+            return transaction_start_pos;
+         };
+
+         bool writable = std::visit( overloaded{
+            []( closed ) { return false; },
+            []( const read_only& ) { return false; },
+            []( const waiting_to_start_block& ) {
+               FC_ASSERT( false, "cannot start transaction in the current state" );
+               return false; // unreachable, only added for compilation purposes
+            },
+            [&]( const in_block& s ) {
+               if( !s.block_header_written ) {
+                  fc::raw::pack( log, block_tag );
+                  fc::raw::pack( log, s.block_num );
+               }
+               uint64_t transaction_start_pos = write_transaction_header();
+               state = in_transaction( s, transaction_start_pos );
+               return true;
+            },
+            [&]( auto&& s )
+            -> std::enable_if_t<
+                  detail::is_one_of< std::decay_t<decltype(s)>,
+                     in_transaction, in_action
+                  >::value,
+                  bool
+            >
+            {
+               uint64_t transaction_start_pos = write_transaction_header();
+               state = in_transaction( s, transaction_start_pos );
+               return true;
+            }
+         }, state );
+         FC_ASSERT( writable, "log is not setup for writing" );
+      }
+
+      void intrinsic_debug_log_impl::abort_transaction() {
+         bool writable = std::visit( overloaded{
+            []( closed ) { return false; },
+            []( const read_only& ) { return false; },
+            []( const waiting_to_start_block& ) {
+               FC_ASSERT( false, "cannot abort transaction in the current state" );
+               return false; // unreachable, only added for compilation purposes
+            },
+            []( const in_block& s ) {
+               FC_ASSERT( false, "cannot abort transaction in the current state" );
+               return false; // unreachable, only added for compilation purposes
+            },
+            [&]( auto&& s )
+            -> std::enable_if_t<
+                  detail::is_one_of< std::decay_t<decltype(s)>,
+                     in_transaction, in_action
+                  >::value,
+                  bool
+            >
+            {
+               truncate_to( s.transaction_start_pos );
+               state = in_block( s );
+               return true;
+            }
+         }, state );
+         FC_ASSERT( writable, "log is not setup for writing" );
+      }
+
+      void intrinsic_debug_log_impl::start_action( uint64_t global_sequence_num,
+                                                   name receiver, name first_receiver, name action_name )
+      {
+         bool writable = std::visit( overloaded{
+            []( closed ) { return false; },
+            []( const read_only& ) { return false; },
+            []( const waiting_to_start_block& ) {
+               FC_ASSERT( false, "cannot start action in the current state" );
+               return false; // unreachable, only added for compilation purposes
+            },
+            []( const in_block& ) {
+               FC_ASSERT( false, "cannot start action in the current state" );
+               return false; // unreachable, only added for compilation purposes
+            },
+            [&]( auto&& s )
+            -> std::enable_if_t<
+                  detail::is_one_of< std::decay_t<decltype(s)>,
+                     in_transaction, in_action
+                  >::value,
+                  bool
+            >
+            {
+               fc::raw::pack( log, action_tag );
+               fc::raw::pack( log, global_sequence_num );
+               fc::raw::pack( log, receiver );
+               fc::raw::pack( log, first_receiver );
+               fc::raw::pack( log, action_name );
+               state = in_action( s, in_action::force_new_t{} );
+               return true;
+            }
+         }, state );
+         FC_ASSERT( writable, "log is not setup for writing" );
+      }
+
+      void intrinsic_debug_log_impl::acknowledge_intrinsic_without_recording() {
+         FC_ASSERT( can_write(), "log is not setup for writing" );
+         in_action& s = std::get<in_action>( state );
+         ++(s.intrinsic_counter);
+      }
+
+      void intrinsic_debug_log_impl::record_intrinsic( const digest_type& arguments_hash, const digest_type& memory_hash ) {
+         FC_ASSERT( can_write(), "log is not setup for writing" );
+         in_action& s = std::get<in_action>( state );
+
+         fc::raw::pack( log, intrinsic_tag );
+         fc::raw::pack( log, s.intrinsic_counter );
+         fc::raw::pack( log, arguments_hash );
+         fc::raw::pack( log, memory_hash );
+
+         ++(s.intrinsic_counter);
       }
 
       void intrinsic_debug_log_impl::finish_block() {
-         if( written_start_block ) {
-            log.put( block_tag );
-            log.write( (char*)&most_recent_block_pos, sizeof(most_recent_block_pos) );
-            file_size = log.tellp();
-            last_committed_block_pos = most_recent_block_pos;
-            log.flush();
-         } else {
-            most_recent_block_pos = last_committed_block_pos;
-            if( file_size > 0 ) {
-               auto old_pos = log.tellg();
-               log.seekg( most_recent_block_pos, std::ios::beg	);
-               uint8_t tag = 0;
-               log.read( (char*)&tag, sizeof(tag) );
-               FC_ASSERT( tag == block_tag, "corrupted log: expected block tag" );
+         bool writable = std::visit( overloaded{
+            []( closed ) { return false; },
+            []( const read_only& ) { return false; },
+            []( const waiting_to_start_block& ) {
+               FC_ASSERT( false, "no started block" );
+               return false; // unreachable, only added for compilation purposes
+            },
+            [&]( const in_block& s ) {
+               state = waiting_to_start_block( s.last_committed_block_num );
+               return true; // nothing to commit
+            },
+            [&]( auto&& s )
+            -> std::enable_if_t<
+                  detail::is_one_of< std::decay_t<decltype(s)>,
+                     in_transaction, in_action
+                  >::value,
+                  bool
+            >
+            {
+               fc::raw::pack( log, block_tag );
+               fc::raw::pack( log, s.block_start_pos );
+               pos_t new_last_committed_block_end_pos = log.tellp();
+               log.flush();
 
-               log.read( (char*)&most_recent_block_num, sizeof(most_recent_block_num) );
-               log.seekg( old_pos, std::ios::beg	);
-            } else {
-               most_recent_block_num = 0;
+               pos_t new_last_committed_block_begin_pos{};
+               if( log_metadata ) {
+                  new_last_committed_block_begin_pos = log_metadata->last_committed_block_end_pos;
+               }
+
+               log_metadata.emplace( log_metadata_t{ new_last_committed_block_begin_pos, new_last_committed_block_end_pos} );
+
+               state = waiting_to_start_block( s.last_committed_block_num );
+               return true;
             }
-         }
-         state = state_t::waiting_to_start_block;
-         intrinsic_counter = 0;
-         written_start_block = false;
+         }, state );
+         FC_ASSERT( writable, "log is not setup for writing" );
       }
 
-      int64_t intrinsic_debug_log_impl::get_position_of_previous_block( int64_t pos ) {
-         int64_t previous_pos = -1;
-         if( pos > sizeof(last_committed_block_pos) ) {
-            decltype(last_committed_block_pos) read_pos{};
+      std::optional<pos_t> intrinsic_debug_log_impl::get_position_of_previous_block( pos_t pos ) {
+         std::optional<pos_t> previous_pos;
+         if( pos > sizeof(pos_t) ) {
+            pos_t read_pos = 0;
             log.seekg( pos - sizeof(read_pos), std::ios::beg );
-            log.read( (char*)&read_pos, sizeof(read_pos) );
+            fc::raw::unpack( log, read_pos );
             FC_ASSERT( read_pos < log.tellg(), "corrupted log: invalid block position" );
             previous_pos = read_pos;
          }
          return previous_pos;
       }
 
-      const extended_block_data& intrinsic_debug_log_impl::get_block_at_position( int64_t pos ) {
-         FC_ASSERT( state == state_t::read_only, "only allowed in read-only mode" );
-         FC_ASSERT( 0 <= pos && pos < file_size, "position is out of bounds" );
+      const extended_block_data& intrinsic_debug_log_impl::get_block_at_position( pos_t pos ) {
+         FC_ASSERT( is_read_only(), "only allowed in read-only mode" );
+         FC_ASSERT( log_metadata && 0 <= pos && pos < log_metadata->last_committed_block_end_pos,
+                    "position is out of bounds" );
 
-         auto itr = block_data_cache.find( static_cast<uint64_t>(pos) );
+         auto itr = block_data_cache.find( pos );
          if( itr != block_data_cache.end() ) return itr->second;
 
-         int64_t previous_pos = get_position_of_previous_block( pos );
+         std::optional<pos_t> previous_pos = get_position_of_previous_block( pos );
          log.seekg( pos, std::ios::beg );
 
          intrinsic_debug_log::block_data block_data;
@@ -225,42 +577,39 @@ namespace eosio { namespace chain {
          // Read all data for the current block.
          {
             uint8_t tag = 0;
-            log.read( (char*)&tag, sizeof(tag) );
+            fc::raw::unpack( log, tag );
             FC_ASSERT( tag == block_tag, "corrupted log: expected block tag" );
-            log.read( (char*)&block_data.block_num, sizeof(block_data.block_num) );
+            fc::raw::unpack( log, block_data.block_num );
 
             bool in_transaction = false;
             bool in_action      = false;
             uint64_t minimum_accepted_global_sequence_num = 0;
 
             for(;;) {
-               log.read( (char*)&tag, sizeof(tag) );
+               fc::raw::unpack( log, tag );
                if( tag == block_tag ) {
-                  decltype(last_committed_block_pos) read_pos{};
-                  log.read( (char*)&read_pos, sizeof(read_pos) );
+                  pos_t read_pos{};
+                  fc::raw::unpack( log, read_pos );
                   FC_ASSERT( read_pos == pos, "corrupted log: block position did not match" );
                   break;
                } else if( tag == transaction_tag ) {
-                  char buffer[32];
-                  log.read( buffer, sizeof(buffer) );
-                  fc::datastream<char*> ds( buffer, sizeof(buffer) );
                   block_data.transactions.emplace_back();
-                  fc::raw::unpack( ds, block_data.transactions.back().trx_id );
+                  fc::raw::unpack( log, block_data.transactions.back().trx_id );
                   in_transaction = true;
                   in_action      = false;
                } else if( tag == action_tag ) {
                   FC_ASSERT( in_transaction, "corrupted log: no start of transaction before encountering action tag");
                   uint64_t global_sequence_num = 0;
-                  log.read( (char*)&global_sequence_num, sizeof(global_sequence_num) );
+                  fc::raw::unpack( log, global_sequence_num );
                   FC_ASSERT( global_sequence_num >= minimum_accepted_global_sequence_num,
                              "corrupted log: global sequence numbers of actions within a block are not monotonically increasing"
                   );
                   block_data.transactions.back().actions.emplace_back();
                   auto& act = block_data.transactions.back().actions.back();
                   act.global_sequence_num = global_sequence_num;
-                  log.read( (char*)&act.receiver.value,        sizeof(act.receiver.value) );
-                  log.read( (char*)&act.first_receiver.value,  sizeof(act.first_receiver.value) );
-                  log.read( (char*)&act.action_name.value,     sizeof(act.action_name.value) );
+                  fc::raw::unpack( log, act.receiver );
+                  fc::raw::unpack( log, act.first_receiver );
+                  fc::raw::unpack( log, act.action_name );
                   in_action = true;
                   minimum_accepted_global_sequence_num = global_sequence_num + 1;
                } else if( tag == intrinsic_tag ) {
@@ -271,17 +620,14 @@ namespace eosio { namespace chain {
                      minimum_accepted_ordinal = intrinsics.back().intrinsic_ordinal + 1;
                   }
                   uint32_t ordinal = 0;
-                  log.read( (char*)&ordinal, sizeof(ordinal) );
+                  fc::raw::unpack( log, ordinal );
                   FC_ASSERT( ordinal >= minimum_accepted_ordinal,
                              "corrupted log: intrinsic ordinals within an action are not monotonically increasing" );
-                  char buffer[64];
-                  log.read( buffer, sizeof(buffer) );
-                  fc::datastream<char*> ds( buffer, sizeof(buffer) );
                   intrinsics.emplace_back();
                   auto& intrinsic = intrinsics.back();
                   intrinsic.intrinsic_ordinal = ordinal;
-                  fc::raw::unpack( ds, intrinsic.arguments_hash );
-                  fc::raw::unpack( ds, intrinsic.memory_hash );
+                  fc::raw::unpack( log, intrinsic.arguments_hash );
+                  fc::raw::unpack( log, intrinsic.memory_hash );
                } else {
                   FC_ASSERT( false, "corrupted log: unrecognized tag" );
                }
@@ -290,12 +636,12 @@ namespace eosio { namespace chain {
             FC_ASSERT( block_data.transactions.size() > 0, "corrupted log: empty block included" );
          }
 
-         int64_t next_pos = -1;
-         if( log.tellg() < file_size ) next_pos = log.tellg();
+         std::optional<pos_t> next_pos;
+         if( log.tellg() < log_metadata->last_committed_block_end_pos ) next_pos = log.tellg();
 
          auto res = block_data_cache.emplace(
                         std::piecewise_construct,
-                        std::forward_as_tuple( static_cast<uint64_t>(pos) ),
+                        std::forward_as_tuple( pos ),
                         std::forward_as_tuple( std::move(block_data), pos, previous_pos, next_pos )
          );
          return res.first->second;
@@ -314,14 +660,16 @@ namespace eosio { namespace chain {
 
    intrinsic_debug_log::~intrinsic_debug_log() {
       if( my ) {
-         my->close();
+         try {
+            my->close();
+         } FC_LOG_AND_DROP()
          my.reset();
       }
    }
 
    void intrinsic_debug_log::open( open_mode mode ) {
-      bool read_only = (mode == open_mode::read_only);
-      my->open( read_only, ( read_only ? false : (mode == open_mode::create_new) ) );
+      bool open_as_read_only = (mode == open_mode::read_only);
+      my->open( open_as_read_only, ( open_as_read_only ? false : (mode == open_mode::create_new) ) );
    }
 
    void intrinsic_debug_log::close() {
@@ -333,101 +681,80 @@ namespace eosio { namespace chain {
    }
 
    void intrinsic_debug_log::start_block( uint32_t block_num ) {
-      FC_ASSERT( my->state != detail::intrinsic_debug_log_impl::state_t::read_only,
-                 "invalid operation in read-only mode" );
       my->start_block( block_num );
    }
 
-   void intrinsic_debug_log::finish_block() {
-      FC_ASSERT( my->state != detail::intrinsic_debug_log_impl::state_t::read_only,
-                 "invalid operation in read-only mode" );
-      my->finish_block();
+   void intrinsic_debug_log::abort_block() {
+      my->abort_block();
    }
 
    void intrinsic_debug_log::start_transaction( const transaction_id_type& trx_id ) {
-      FC_ASSERT( my->state != detail::intrinsic_debug_log_impl::state_t::read_only,
-                 "invalid operation in read-only mode" );
-      FC_ASSERT( my->state != detail::intrinsic_debug_log_impl::state_t::closed
-                 && my->state != detail::intrinsic_debug_log_impl::state_t::waiting_to_start_block,
-                 "cannot start transaction in the current state" );
+      my->start_transaction( trx_id );
+   }
 
-      char buffer[32];
-      fc::datastream<char*> ds( buffer, sizeof(buffer) );
-      fc::raw::pack( ds, trx_id );
-      FC_ASSERT( !ds.remaining(), "unexpected size for transaction id" );
-
-      my->ensure_block_start_written();
-      my->log.put( detail::intrinsic_debug_log_impl::transaction_tag );
-      my->log.write( buffer, sizeof(buffer) );
-
-      my->state = detail::intrinsic_debug_log_impl::state_t::in_transaction;
-      my->intrinsic_counter = 0;
+   void intrinsic_debug_log::abort_transaction() {
+      my->abort_transaction();
    }
 
    void intrinsic_debug_log::start_action( uint64_t global_sequence_num,
                                            name receiver, name first_receiver, name action_name )
    {
-      FC_ASSERT( my->state != detail::intrinsic_debug_log_impl::state_t::read_only,
-                 "invalid operation in read-only mode" );
-      FC_ASSERT( my->state == detail::intrinsic_debug_log_impl::state_t::in_transaction
-                 || my->state == detail::intrinsic_debug_log_impl::state_t::in_action,
-                 "cannot start action in the current state" );
-
-      my->log.put( detail::intrinsic_debug_log_impl::action_tag );
-      my->log.write( (char*)&global_sequence_num,  sizeof(global_sequence_num) );
-      my->log.write( (char*)&receiver.value,       sizeof(receiver.value) );
-      my->log.write( (char*)&first_receiver.value, sizeof(first_receiver.value) );
-      my->log.write( (char*)&action_name.value,    sizeof(action_name.value) );
-
-      my->state = detail::intrinsic_debug_log_impl::state_t::in_action;
-      my->intrinsic_counter = 0;
+      my->start_action( global_sequence_num, receiver, first_receiver, action_name );
    }
 
    void intrinsic_debug_log::acknowledge_intrinsic_without_recording() {
-      FC_ASSERT( my->state != detail::intrinsic_debug_log_impl::state_t::read_only,
-                 "invalid operation in read-only mode" );
-      FC_ASSERT( my->state == detail::intrinsic_debug_log_impl::state_t::in_action,
-                 "can only acknowledge intrinsic within action state" );
-      ++(my->intrinsic_counter);
+      my->acknowledge_intrinsic_without_recording();
    }
 
    void intrinsic_debug_log::record_intrinsic( const digest_type& arguments_hash, const digest_type& memory_hash ) {
-      FC_ASSERT( my->state != detail::intrinsic_debug_log_impl::state_t::read_only,
-                 "invalid operation in read-only mode" );
-      FC_ASSERT( my->state == detail::intrinsic_debug_log_impl::state_t::in_action,
-                 "can only record intrinsic within action state" );
+      my->record_intrinsic( arguments_hash, memory_hash );
+   }
 
-      char buffer[64];
-      fc::datastream<char*> ds( buffer, sizeof(buffer) );
-      fc::raw::pack( ds, arguments_hash );
-      fc::raw::pack( ds, memory_hash );
-      FC_ASSERT( !ds.remaining(), "unexpected size for digest" );
+   void intrinsic_debug_log::finish_block() {
+      my->finish_block();
+   }
 
-      my->log.put( detail::intrinsic_debug_log_impl::intrinsic_tag );
-      my->log.write( (char*)&my->intrinsic_counter, sizeof(my->intrinsic_counter) );
-      my->log.write( buffer, sizeof(buffer) );
+   bool intrinsic_debug_log::is_open()const {
+      return my->is_open();
+   }
 
-      ++(my->intrinsic_counter);
+   bool intrinsic_debug_log::is_read_only()const {
+      return my->is_read_only();
    }
 
    const boost::filesystem::path& intrinsic_debug_log::get_path()const {
       return my->log_path;
    }
 
-   uint32_t intrinsic_debug_log::last_block_num()const {
-      FC_ASSERT( my->state != detail::intrinsic_debug_log_impl::state_t::closed, "log is closed" );
-      return my->most_recent_block_num;
+   uint32_t intrinsic_debug_log::last_committed_block_num()const {
+      std::optional<uint32_t> result = std::visit( overloaded{
+         []( detail::intrinsic_debug_log_impl::closed ) -> std::optional<uint32_t> { return {}; },
+         [&]( auto&& s )
+         -> std::enable_if_t<
+               detail::is_one_of< std::decay_t<decltype(s)>,
+                  detail::intrinsic_debug_log_impl::read_only,
+                  detail::intrinsic_debug_log_impl::waiting_to_start_block,
+                  detail::intrinsic_debug_log_impl::in_block,
+                  detail::intrinsic_debug_log_impl::in_transaction,
+                  detail::intrinsic_debug_log_impl::in_action
+               >::value,
+               std::optional<uint32_t>
+         >
+         {
+            return s.last_committed_block_num;
+         }
+      }, my->state );
+      FC_ASSERT( result, "log is closed" );
+      return *result;
    }
 
    intrinsic_debug_log::block_iterator intrinsic_debug_log::begin_block()const {
-      FC_ASSERT( my->state == detail::intrinsic_debug_log_impl::state_t::read_only,
-                 "block_begin is only allowed in read-only mode" );
-      return block_iterator( my.get(), (my->file_size > 0 ? 0ll : -1ll) );
+      FC_ASSERT( my->is_read_only(), "block_begin is only allowed in read-only mode" );
+      return block_iterator( my.get(), (my->log_metadata ? 0ll : -1ll) );
    }
 
    intrinsic_debug_log::block_iterator intrinsic_debug_log::end_block()const {
-      FC_ASSERT( my->state == detail::intrinsic_debug_log_impl::state_t::read_only,
-                 "block_end is only allowed in read-only mode" );
+      FC_ASSERT( my->is_read_only(), "block_end is only allowed in read-only mode" );
       return block_iterator( my.get() );
    }
 
@@ -448,10 +775,10 @@ namespace eosio { namespace chain {
       FC_ASSERT( _pos >= 0, "cannot increment end block iterator" );
 
       if( !_cached_block_data ) {
-         _cached_block_data = &_log->get_block_at_position( _pos );
+         _cached_block_data = &_log->get_block_at_position( static_cast<pos_t>(_pos) );
       }
 
-      _pos = _cached_block_data->next_pos;
+      _pos = (_cached_block_data->next_pos ? static_cast<int64_t>(*_cached_block_data->next_pos) : -1ll);
       _cached_block_data = nullptr;
 
       return *this;
@@ -462,20 +789,20 @@ namespace eosio { namespace chain {
 
       if( _pos < 0 ) {
          FC_ASSERT( !_cached_block_data, "invariant failure" );
-         FC_ASSERT( _log->file_size > 0, "cannot decrement end block iterator when the log contains no blocks" );
-         _pos = static_cast<int64_t>( _log->last_committed_block_pos );
+         FC_ASSERT( _log->log_metadata, "cannot decrement end block iterator when the log contains no blocks" );
+         _pos = static_cast<int64_t>( _log->log_metadata->last_committed_block_begin_pos );
          return *this;
       }
 
-      int64_t prev_pos = -1;
+      std::optional<pos_t> prev_pos;
       if( _cached_block_data ) {
          prev_pos = _cached_block_data->previous_pos;
       } else {
-         prev_pos = _log->get_position_of_previous_block( _pos );
+         prev_pos = _log->get_position_of_previous_block( static_cast<pos_t>(_pos) );
       }
 
-      FC_ASSERT( prev_pos >= 0, "cannot decrement begin block iterator" );
-      _pos = prev_pos;
+      FC_ASSERT( prev_pos, "cannot decrement begin block iterator" );
+      _pos = static_cast<int64_t>(*prev_pos);
       _cached_block_data = nullptr;
       return *this;
    }

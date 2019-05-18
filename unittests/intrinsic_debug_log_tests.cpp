@@ -225,6 +225,8 @@ BOOST_AUTO_TEST_CASE(equivalence_test) {
       log1.finish_block();
       log1.start_block( 2u );
       log1.start_transaction( transaction_id_type() );
+      log1.abort_transaction();
+      log1.start_transaction( transaction_id_type() );
       log1.start_action( 1ull, alice, alice, foo );
       log1.acknowledge_intrinsic_without_recording();
       log1.record_intrinsic( digest, digest );
@@ -235,6 +237,10 @@ BOOST_AUTO_TEST_CASE(equivalence_test) {
       log1.record_intrinsic( digest, digest );
       log1.start_action( 3ull, bob, alice, bar );
       log1.finish_block();
+      log1.start_block( 5u );
+      log1.start_transaction( transaction_id_type() );
+      log1.start_action( 4ull, alice, alice, foo );
+      log1.abort_block();
       log1.start_block( 5u );
       log1.close();
    }
