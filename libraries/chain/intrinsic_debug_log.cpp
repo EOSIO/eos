@@ -51,7 +51,7 @@ namespace eosio { namespace chain {
             std::map<uint64_t, extended_block_data> block_data_cache;
             state_t                  state = state_t::closed;
             int64_t                  file_size = -1;
-            uint64_t                 last_commited_block_pos = 0;
+            uint64_t                 last_committed_block_pos = 0;
             uint64_t                 most_recent_block_pos = 0;
             uint32_t                 most_recent_block_num = 0;
             uint32_t                 intrinsic_counter = 0;
@@ -59,6 +59,8 @@ namespace eosio { namespace chain {
 
             void open( bool read_only, bool start_fresh );
             void close();
+
+            void truncate_to( uint64_t pos );
 
             void start_block( uint32_t block_num );
             void ensure_block_start_written();
@@ -90,19 +92,24 @@ namespace eosio { namespace chain {
          log.seekg( 0, std::ios::end );
          file_size = log.tellg();
          if( file_size > 0 ) {
-            log.seekg( -sizeof(last_commited_block_pos), std::ios::end );
-            log.read( (char*)&last_commited_block_pos, sizeof(last_commited_block_pos) );
-            FC_ASSERT( last_commited_block_pos < file_size, "corrupted log: invalid block position" );
-            most_recent_block_pos = last_commited_block_pos;
+            log.seekg( -sizeof(last_committed_block_pos), std::ios::end );
+            log.read( (char*)&last_committed_block_pos, sizeof(last_committed_block_pos) );
+            FC_ASSERT( last_committed_block_pos < file_size, "corrupted log: invalid block position" );
+            most_recent_block_pos = last_committed_block_pos;
 
-            log.seekg( last_commited_block_pos, std::ios::beg	);
+            log.seekg( last_committed_block_pos, std::ios::beg	);
             uint8_t tag = 0;
             log.read( (char*)&tag, sizeof(tag) );
             FC_ASSERT( tag == block_tag, "corrupted log: expected block tag" );
 
             log.read( (char*)&most_recent_block_num, sizeof(most_recent_block_num) );
          }
-         log.seekg( 0, std::ios::beg );
+
+         if( read_only ) {
+            log.seekg( 0, std::ios::beg );
+         } else {
+            log.seekp( 0, std::ios::end );
+         }
       }
 
       void intrinsic_debug_log_impl::close() {
@@ -112,11 +119,11 @@ namespace eosio { namespace chain {
          log.flush();
          log.close();
          if( state != state_t::read_only && state != state_t::waiting_to_start_block ) {
-            bfs::resize_file( log_path, last_commited_block_pos );
+            bfs::resize_file( log_path, most_recent_block_pos );
          }
          state = state_t::closed;
          file_size = -1;
-         last_commited_block_pos = 0;
+         last_committed_block_pos = 0;
          most_recent_block_pos = 0;
          most_recent_block_num = 0;
          intrinsic_counter = 0;
@@ -125,13 +132,34 @@ namespace eosio { namespace chain {
          block_data_cache.clear();
       }
 
+      void intrinsic_debug_log_impl::truncate_to( uint64_t pos ) {
+         FC_ASSERT( state != state_t::closed && state != state_t::read_only,  "called while in invalid state" );
+         FC_ASSERT( pos >= most_recent_block_pos, "truncation would violate invariants" );
+
+         log.seekp( 0, std::ios::end );
+         file_size = log.tellp();
+         FC_ASSERT( pos <= file_size, "position is out of bounds" );
+
+         log.flush();
+         if( pos == file_size ) return;
+
+         if( log.tellg() > pos ) {
+            log.seekg( pos );
+         }
+
+         bfs::resize_file( log_path, pos );
+
+         log.sync();
+      }
+
+
       void intrinsic_debug_log_impl::start_block( uint32_t block_num  ) {
          FC_ASSERT( state == state_t::waiting_to_start_block, "cannot start block while still processing a block" );
          FC_ASSERT( most_recent_block_num < block_num,
                     "must start a block with greater height than previously started blocks" );
 
          state = state_t::in_block;
-         most_recent_block_pos = log.tellg();
+         most_recent_block_pos = log.tellp();
          most_recent_block_num = block_num;
       }
 
@@ -147,6 +175,23 @@ namespace eosio { namespace chain {
          if( written_start_block ) {
             log.put( block_tag );
             log.write( (char*)&most_recent_block_pos, sizeof(most_recent_block_pos) );
+            file_size = log.tellp();
+            last_committed_block_pos = most_recent_block_pos;
+            log.flush();
+         } else {
+            most_recent_block_pos = last_committed_block_pos;
+            if( file_size > 0 ) {
+               auto old_pos = log.tellg();
+               log.seekg( most_recent_block_pos, std::ios::beg	);
+               uint8_t tag = 0;
+               log.read( (char*)&tag, sizeof(tag) );
+               FC_ASSERT( tag == block_tag, "corrupted log: expected block tag" );
+
+               log.read( (char*)&most_recent_block_num, sizeof(most_recent_block_num) );
+               log.seekg( old_pos, std::ios::beg	);
+            } else {
+               most_recent_block_num = 0;
+            }
          }
          state = state_t::waiting_to_start_block;
          intrinsic_counter = 0;
@@ -155,8 +200,8 @@ namespace eosio { namespace chain {
 
       int64_t intrinsic_debug_log_impl::get_position_of_previous_block( int64_t pos ) {
          int64_t previous_pos = -1;
-         if( pos > sizeof(last_commited_block_pos) ) {
-            decltype(last_commited_block_pos) read_pos{};
+         if( pos > sizeof(last_committed_block_pos) ) {
+            decltype(last_committed_block_pos) read_pos{};
             log.seekg( pos - sizeof(read_pos), std::ios::beg );
             log.read( (char*)&read_pos, sizeof(read_pos) );
             FC_ASSERT( read_pos < log.tellg(), "corrupted log: invalid block position" );
@@ -191,7 +236,7 @@ namespace eosio { namespace chain {
             for(;;) {
                log.read( (char*)&tag, sizeof(tag) );
                if( tag == block_tag ) {
-                  decltype(last_commited_block_pos) read_pos{};
+                  decltype(last_committed_block_pos) read_pos{};
                   log.read( (char*)&read_pos, sizeof(read_pos) );
                   FC_ASSERT( read_pos == pos, "corrupted log: block position did not match" );
                   break;
@@ -377,7 +422,7 @@ namespace eosio { namespace chain {
    intrinsic_debug_log::block_iterator intrinsic_debug_log::begin_block()const {
       FC_ASSERT( my->state == detail::intrinsic_debug_log_impl::state_t::read_only,
                  "block_begin is only allowed in read-only mode" );
-      return block_iterator( my.get(), (my->last_commited_block_pos == 0ull ? -1ll : 0ll) );
+      return block_iterator( my.get(), (my->file_size > 0 ? 0ll : -1ll) );
    }
 
    intrinsic_debug_log::block_iterator intrinsic_debug_log::end_block()const {
@@ -418,7 +463,7 @@ namespace eosio { namespace chain {
       if( _pos < 0 ) {
          FC_ASSERT( !_cached_block_data, "invariant failure" );
          FC_ASSERT( _log->file_size > 0, "cannot decrement end block iterator when the log contains no blocks" );
-         _pos = static_cast<int64_t>( _log->last_commited_block_pos );
+         _pos = static_cast<int64_t>( _log->last_committed_block_pos );
          return *this;
       }
 
@@ -478,7 +523,7 @@ namespace eosio { namespace chain {
       const char* error_msg = nullptr;
 
       auto status = find_if_mismatched(
-         lhs.begin_block(), rhs.end_block(),
+         lhs.begin_block(), lhs.end_block(),
          rhs.begin_block(), rhs.end_block(),
          [&find_if_mismatched, &result, &error_msg]
          ( const block_data& block_lhs, const block_data& block_rhs ) {
