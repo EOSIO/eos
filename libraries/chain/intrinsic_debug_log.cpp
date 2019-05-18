@@ -6,6 +6,7 @@
 #include <eosio/chain/exceptions.hpp>
 #include <fc/io/raw.hpp>
 #include <fstream>
+#include <map>
 #include <boost/filesystem.hpp>
 
 namespace bfs = boost::filesystem;
@@ -13,6 +14,21 @@ namespace bfs = boost::filesystem;
 namespace eosio { namespace chain {
 
    namespace detail {
+      struct extended_block_data {
+         extended_block_data( intrinsic_debug_log::block_data&& block_data,
+                              int64_t pos, int64_t previous_pos, int64_t next_pos )
+         :block_data( std::move(block_data) )
+         ,pos( pos )
+         ,previous_pos( previous_pos )
+         ,next_pos( next_pos )
+         {}
+
+         intrinsic_debug_log::block_data block_data;
+         int64_t pos; //< pos should never be negative
+         int64_t previous_pos; //< if previous_pos is -1, then this is first block in the log
+         int64_t next_pos; //< if next_pos is -1, then this is the last block in the log
+      };
+
       class intrinsic_debug_log_impl {
          public:
             enum class state_t {
@@ -31,7 +47,9 @@ namespace eosio { namespace chain {
 
             std::fstream             log;
             bfs::path                log_path;
+            std::map<uint64_t, extended_block_data> block_data_cache;
             state_t                  state = state_t::closed;
+            int64_t                  file_size = -1;
             uint64_t                 last_commited_block_pos = 0;
             uint64_t                 most_recent_block_pos = 0;
             uint32_t                 most_recent_block_num = 0;
@@ -44,6 +62,9 @@ namespace eosio { namespace chain {
             void start_block( uint32_t block_num );
             void ensure_block_start_written();
             void finish_block();
+
+            int64_t get_position_of_previous_block( int64_t pos );
+            const extended_block_data& get_block_at_position( int64_t pos );
       };
 
       void intrinsic_debug_log_impl::open( bool read_only, bool start_fresh ) {
@@ -63,14 +84,14 @@ namespace eosio { namespace chain {
          }
 
          log.open( log_path.generic_string().c_str(), open_mode );
-         state = state_t::waiting_to_start_block;
+         state = (read_only ? state_t::read_only : state_t::waiting_to_start_block);
 
          log.seekg( 0, std::ios::end );
-         auto file_size = log.tellg();
+         file_size = log.tellg();
          if( file_size > 0 ) {
             log.seekg( -sizeof(last_commited_block_pos), std::ios::end );
             log.read( (char*)&last_commited_block_pos, sizeof(last_commited_block_pos) );
-            FC_ASSERT( last_commited_block_pos < file_size, "corrupted log: invalid block pos" );
+            FC_ASSERT( last_commited_block_pos < file_size, "corrupted log: invalid block position" );
             most_recent_block_pos = last_commited_block_pos;
 
             log.seekg( last_commited_block_pos, std::ios::beg	);
@@ -89,12 +110,15 @@ namespace eosio { namespace chain {
 
          log.flush();
          log.close();
-         if( state != state_t::waiting_to_start_block ) {
+         if( state != state_t::read_only && state != state_t::waiting_to_start_block ) {
             bfs::resize_file( log_path, last_commited_block_pos );
          }
          state = state_t::closed;
          intrinsic_counter = 0;
          written_start_block = false;
+         file_size = -1;
+
+         block_data_cache.clear();
       }
 
       void intrinsic_debug_log_impl::start_block( uint32_t block_num  ) {
@@ -123,6 +147,106 @@ namespace eosio { namespace chain {
          state = state_t::waiting_to_start_block;
          intrinsic_counter = 0;
          written_start_block = false;
+      }
+
+      int64_t intrinsic_debug_log_impl::get_position_of_previous_block( int64_t pos ) {
+         int64_t previous_pos = -1;
+         if( pos > sizeof(last_commited_block_pos) ) {
+            decltype(last_commited_block_pos) read_pos{};
+            log.seekg( pos - sizeof(read_pos), std::ios::beg );
+            log.read( (char*)&read_pos, sizeof(read_pos) );
+            FC_ASSERT( read_pos < log.tellg(), "corrupted log: invalid block position" );
+            previous_pos = read_pos;
+         }
+         return previous_pos;
+      }
+
+      const extended_block_data& intrinsic_debug_log_impl::get_block_at_position( int64_t pos ) {
+         FC_ASSERT( state == state_t::read_only, "only allowed in read-only mode" );
+         FC_ASSERT( 0 <= pos && pos < file_size, "position is out of bounds" );
+
+         auto itr = block_data_cache.find( static_cast<uint64_t>(pos) );
+         if( itr != block_data_cache.end() ) return itr->second;
+
+         int64_t previous_pos = get_position_of_previous_block( pos );
+         log.seekg( pos, std::ios::beg );
+
+         intrinsic_debug_log::block_data block_data;
+
+         // Read all data for the current block.
+         {
+            uint8_t tag = 0;
+            log.read( (char*)&tag, sizeof(tag) );
+            FC_ASSERT( tag == block_tag, "corrupted log: expected block tag" );
+            log.read( (char*)&block_data.block_num, sizeof(block_data.block_num) );
+
+            bool in_transaction = false;
+            bool in_action      = false;
+            uint64_t minimum_accepted_global_sequence_num = 0;
+
+            for(;;) {
+               log.read( (char*)&tag, sizeof(tag) );
+               if( tag == block_tag ) {
+                  decltype(last_commited_block_pos) read_pos{};
+                  log.read( (char*)&read_pos, sizeof(read_pos) );
+                  FC_ASSERT( read_pos == pos, "corrupted log: block position did not match" );
+                  break;
+               } else if( tag == transaction_tag ) {
+                  char buffer[32];
+                  log.read( buffer, sizeof(buffer) );
+                  fc::datastream<char*> ds( buffer, sizeof(buffer) );
+                  block_data.transactions.emplace_back();
+                  fc::raw::unpack( ds, block_data.transactions.back().trx_id );
+                  in_transaction = true;
+                  in_action      = false;
+               } else if( tag == action_tag ) {
+                  FC_ASSERT( in_transaction, "corrupted log: no start of transaction before encountering action tag");
+                  uint64_t global_sequence_num = 0;
+                  log.read( (char*)&global_sequence_num, sizeof(global_sequence_num) );
+                  FC_ASSERT( global_sequence_num >= minimum_accepted_global_sequence_num,
+                             "corrupted log: global sequence numbers of actions within a block are not monotonically increasing"
+                  );
+                  block_data.transactions.back().actions.emplace_back();
+                  auto& act = block_data.transactions.back().actions.back();
+                  act.global_sequence_num = global_sequence_num;
+                  in_action = true;
+                  minimum_accepted_global_sequence_num = global_sequence_num + 1;
+               } else if( tag == intrinsic_tag ) {
+                  FC_ASSERT( in_action, "corrupted log: no start of action before encountering intrinsic tag");
+                  auto& intrinsics = block_data.transactions.back().actions.back().recorded_intrinsics;
+                  uint32_t minimum_accepted_ordinal = 0;
+                  if( intrinsics.size() > 0 ) {
+                     minimum_accepted_ordinal = intrinsics.back().intrinsic_ordinal + 1;
+                  }
+                  uint32_t ordinal = 0;
+                  log.read( (char*)&ordinal, sizeof(ordinal) );
+                  FC_ASSERT( ordinal >= minimum_accepted_ordinal,
+                             "corrupted log: intrinsic ordinals within an action are not monotonically increasing" );
+                  char buffer[64];
+                  log.read( buffer, sizeof(buffer) );
+                  fc::datastream<char*> ds( buffer, sizeof(buffer) );
+                  intrinsics.emplace_back();
+                  auto& intrinsic = intrinsics.back();
+                  intrinsic.intrinsic_ordinal = ordinal;
+                  fc::raw::unpack( ds, intrinsic.arguments_hash );
+                  fc::raw::unpack( ds, intrinsic.memory_hash );
+               } else {
+                  FC_ASSERT( false, "corrupted log: unrecognized tag" );
+               }
+            }
+
+            FC_ASSERT( block_data.transactions.size() > 0, "corrupted log: empty block included" );
+         }
+
+         int64_t next_pos = -1;
+         if( log.tellg() < file_size ) next_pos = log.tellg();
+
+         auto res = block_data_cache.emplace(
+                        std::piecewise_construct,
+                        std::forward_as_tuple( static_cast<uint64_t>(pos) ),
+                        std::forward_as_tuple( std::move(block_data), pos, previous_pos, next_pos )
+         );
+         return res.first->second;
       }
    }
 
@@ -177,7 +301,7 @@ namespace eosio { namespace chain {
 
       char buffer[32];
       fc::datastream<char*> ds( buffer, sizeof(buffer) );
-      fc::raw::pack(ds, trx_id);
+      fc::raw::pack( ds, trx_id );
       FC_ASSERT( !ds.remaining(), "unexpected size for transaction id" );
 
       my->ensure_block_start_written();
@@ -218,8 +342,8 @@ namespace eosio { namespace chain {
 
       char buffer[64];
       fc::datastream<char*> ds( buffer, sizeof(buffer) );
-      fc::raw::pack(ds, arguments_hash);
-      fc::raw::pack(ds, memory_hash);
+      fc::raw::pack( ds, arguments_hash );
+      fc::raw::pack( ds, memory_hash );
       FC_ASSERT( !ds.remaining(), "unexpected size for digest" );
 
       my->log.put( detail::intrinsic_debug_log_impl::intrinsic_tag );
@@ -227,6 +351,67 @@ namespace eosio { namespace chain {
       my->log.write( buffer, sizeof(buffer) );
 
       ++(my->intrinsic_counter);
+   }
+
+   intrinsic_debug_log::block_iterator intrinsic_debug_log::begin_block()const {
+      FC_ASSERT( my->state == detail::intrinsic_debug_log_impl::state_t::read_only,
+                 "block_begin is only allowed in read-only mode" );
+      return block_iterator( my.get(), (my->last_commited_block_pos == 0ull ? -1ll : 0ll) );
+   }
+
+   intrinsic_debug_log::block_iterator intrinsic_debug_log::end_block()const {
+      FC_ASSERT( my->state == detail::intrinsic_debug_log_impl::state_t::read_only,
+                 "block_end is only allowed in read-only mode" );
+      return block_iterator( my.get() );
+   }
+
+   const intrinsic_debug_log::block_data* intrinsic_debug_log::block_iterator::get_pointer()const {
+      FC_ASSERT( _log, "cannot dereference default constructed block iterator" );
+      FC_ASSERT( _pos >= 0, "cannot dereference an end block iterator" );
+
+      if( !_cached_block_data ) {
+         _cached_block_data = &_log->get_block_at_position( _pos );
+      }
+
+      return &(_cached_block_data->block_data);
+
+   }
+
+   intrinsic_debug_log::block_iterator& intrinsic_debug_log::block_iterator::operator++() {
+      FC_ASSERT( _log, "cannot increment default constructed block iterator" );
+      FC_ASSERT( _pos >= 0, "cannot increment end block iterator" );
+
+      if( !_cached_block_data ) {
+         _cached_block_data = &_log->get_block_at_position( _pos );
+      }
+
+      _pos = _cached_block_data->next_pos;
+      _cached_block_data = nullptr;
+
+      return *this;
+   }
+
+   intrinsic_debug_log::block_iterator& intrinsic_debug_log::block_iterator::operator--() {
+      FC_ASSERT( _log, "cannot decrement default constructed block iterator" );
+
+      if( _pos < 0 ) {
+         FC_ASSERT( !_cached_block_data, "invariant failure" );
+         FC_ASSERT( _log->file_size > 0, "cannot decrement end block iterator when the log contains no blocks" );
+         _pos = static_cast<int64_t>( _log->last_commited_block_pos );
+         return *this;
+      }
+
+      int64_t prev_pos = -1;
+      if( _cached_block_data ) {
+         prev_pos = _cached_block_data->previous_pos;
+      } else {
+         prev_pos = _log->get_position_of_previous_block( _pos );
+      }
+
+      FC_ASSERT( prev_pos >= 0, "cannot decrement begin block iterator" );
+      _pos = prev_pos;
+      _cached_block_data = nullptr;
+      return *this;
    }
 
 } } /// eosio::chain
