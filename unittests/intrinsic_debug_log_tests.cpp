@@ -130,4 +130,67 @@ BOOST_AUTO_TEST_CASE(iterate_test) {
    }
 }
 
+BOOST_AUTO_TEST_CASE(difference_test) {
+   fc::temp_directory  tempdir;
+   auto log1_path = tempdir.path() / "intrinsic1.log";
+   auto log2_path = tempdir.path() / "intrinsic2.log";
+   auto trx_id = fc::variant("0102030405060708090a0b0c0d0e0f100102030405060708090a0b0c0d0e0f10").as<transaction_id_type>();
+   auto digest = fc::variant("0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20").as<digest_type>();
+   name alice("alice");
+   name bob("bob");
+   name foo("foo");
+   name bar("bar");
+
+   intrinsic_debug_log log1( log1_path );
+   {
+      log1.open();
+      log1.start_block( 2u );
+      log1.start_transaction( transaction_id_type() );
+      log1.start_action( 1ull, alice, alice, foo );
+      log1.acknowledge_intrinsic_without_recording();
+      log1.record_intrinsic( digest, digest );
+      log1.finish_block();
+      log1.start_block( 4u );
+      log1.start_transaction( trx_id );
+      log1.start_action( 2ull, alice, alice, bar );
+      log1.record_intrinsic( digest, digest );
+      log1.record_intrinsic( digest, digest );
+      log1.start_action( 3ull, bob, alice, bar );
+      log1.finish_block();
+      log1.close();
+   }
+
+   intrinsic_debug_log log2( log2_path );
+   {
+      log2.open();
+      log2.start_block( 2u );
+      log2.start_transaction( transaction_id_type() );
+      log2.start_action( 1ull, alice, alice, foo );
+      log2.acknowledge_intrinsic_without_recording();
+      log2.record_intrinsic( digest, digest );
+      log2.finish_block();
+      log2.start_block( 4u );
+      log2.start_transaction( trx_id );
+      log2.start_action( 2ull, alice, alice, bar );
+      log2.record_intrinsic( digest, digest );
+      log2.start_action( 3ull, bob, alice, bar );
+      log2.finish_block();
+      log2.close();
+   }
+
+   auto result = intrinsic_debug_log::find_first_difference( log1, log2 );
+   BOOST_REQUIRE( result.has_value() );
+
+   wdump( (fc::json::to_pretty_string(*result)) );
+
+   BOOST_CHECK_EQUAL( result->block_num, 4u );
+   BOOST_CHECK_EQUAL( result->trx_id, trx_id );
+   BOOST_CHECK_EQUAL( result->global_sequence_num, 2ull );
+   BOOST_CHECK_EQUAL( result->receiver.to_string(), "alice" );
+   BOOST_CHECK_EQUAL( result->first_receiver.to_string(), "alice" );
+   BOOST_CHECK_EQUAL( result->action_name.to_string(), "bar" );
+   BOOST_CHECK_EQUAL( result->lhs_recorded_intrinsics.size(), 2 );
+   BOOST_CHECK_EQUAL( result->rhs_recorded_intrinsics.size(), 1 );
+}
+
 BOOST_AUTO_TEST_SUITE_END()

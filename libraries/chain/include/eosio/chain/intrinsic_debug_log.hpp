@@ -50,6 +50,15 @@ namespace eosio { namespace chain {
             uint32_t                        intrinsic_ordinal = 0;
             digest_type                     arguments_hash;
             digest_type                     memory_hash;
+
+            friend bool operator == ( const intrinsic_record& lhs, const intrinsic_record& rhs ) {
+               return std::tie( lhs.intrinsic_ordinal, lhs.arguments_hash, lhs.memory_hash )
+                        == std::tie( rhs.intrinsic_ordinal, rhs.arguments_hash, rhs.memory_hash );
+            }
+
+            friend bool operator != ( const intrinsic_record& lhs, const intrinsic_record& rhs ) {
+               return !(lhs == rhs);
+            }
          };
 
          struct action_data {
@@ -57,7 +66,7 @@ namespace eosio { namespace chain {
             name                            receiver{};
             name                            first_receiver{};
             name                            action_name{};
-            std::vector< intrinsic_record > recorded_intrinsics;
+            std::vector<intrinsic_record>   recorded_intrinsics;
          };
 
          struct transaction_data {
@@ -67,7 +76,7 @@ namespace eosio { namespace chain {
 
          struct block_data {
             uint32_t                        block_num = 0;
-            std::vector< transaction_data > transactions;
+            std::vector<transaction_data>   transactions;
          };
 
          class block_iterator : public std::iterator<std::bidirectional_iterator_tag, const block_data> {
@@ -130,6 +139,24 @@ namespace eosio { namespace chain {
          block_reverse_iterator rbegin_block()const { return std::make_reverse_iterator( begin_block() ); }
          block_reverse_iterator rend_blocks()const   { return std::make_reverse_iterator( end_block() ); }
 
+         struct intrinsic_differences {
+            uint32_t                        block_num = 0;
+            transaction_id_type             trx_id;
+            uint64_t                        global_sequence_num = 0;
+            name                            receiver{};
+            name                            first_receiver{};
+            name                            action_name{};
+            std::vector<intrinsic_record>   lhs_recorded_intrinsics;
+            std::vector<intrinsic_record>   rhs_recorded_intrinsics;
+         };
+
+         /**
+          * @pre requires both lhs and rhs to both have the same blocks, transactions, and actions (otherwise it throws)
+          * @return empty optional if no difference; otherwise the intrinsic_differences for the first different action
+          */
+         static std::optional<intrinsic_differences>
+         find_first_difference( intrinsic_debug_log& lhs, intrinsic_debug_log& rhs );
+
       private:
          std::unique_ptr<detail::intrinsic_debug_log_impl> my;
    };
@@ -138,6 +165,11 @@ namespace eosio { namespace chain {
 
 FC_REFLECT( eosio::chain::intrinsic_debug_log::intrinsic_record, (intrinsic_ordinal)(arguments_hash)(memory_hash) )
 FC_REFLECT( eosio::chain::intrinsic_debug_log::action_data,
-            (global_sequence_num)(receiver)(first_receiver)(action_name)(recorded_intrinsics) )
+            (global_sequence_num)(receiver)(first_receiver)(action_name)(recorded_intrinsics)
+)
 FC_REFLECT( eosio::chain::intrinsic_debug_log::transaction_data, (trx_id)(actions) )
 FC_REFLECT( eosio::chain::intrinsic_debug_log::block_data, (block_num)(transactions) )
+FC_REFLECT( eosio::chain::intrinsic_debug_log::intrinsic_differences,
+            (block_num)(trx_id)(global_sequence_num)(receiver)(first_receiver)(action_name)
+            (lhs_recorded_intrinsics)(rhs_recorded_intrinsics)
+)

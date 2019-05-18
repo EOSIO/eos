@@ -5,6 +5,7 @@
 #include <eosio/chain/intrinsic_debug_log.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <fc/io/raw.hpp>
+#include <fc/scoped_exit.hpp>
 #include <fstream>
 #include <map>
 #include <boost/filesystem.hpp>
@@ -420,6 +421,123 @@ namespace eosio { namespace chain {
       _pos = prev_pos;
       _cached_block_data = nullptr;
       return *this;
+   }
+
+   std::optional<intrinsic_debug_log::intrinsic_differences>
+   intrinsic_debug_log::find_first_difference( intrinsic_debug_log& lhs, intrinsic_debug_log& rhs ) {
+      lhs.close();
+      rhs.close();
+      lhs.open( intrinsic_debug_log::open_mode::read_only );
+      rhs.open( intrinsic_debug_log::open_mode::read_only );
+
+      auto close_logs = fc::make_scoped_exit([&lhs, &rhs] {
+         lhs.close();
+         rhs.close();
+      });
+
+      enum class mismatch_t {
+         equivalent,
+         lhs_ended_early,
+         rhs_ended_early,
+         mismatch
+      };
+
+      auto find_if_mismatched = []( auto&& lhs_begin, auto&& lhs_end,
+                                    auto&& rhs_begin, auto&& rhs_end,
+                                    auto&& compare_equivalent ) -> mismatch_t
+      {
+         for( ; lhs_begin != lhs_end && rhs_begin != rhs_end; ++lhs_begin, ++rhs_begin ) {
+            const auto& lhs_value = *lhs_begin;
+            const auto& rhs_value = *rhs_begin;
+            if( compare_equivalent( lhs_value, rhs_value ) ) continue;
+            return mismatch_t::mismatch;
+         }
+
+         bool lhs_empty = (lhs_begin == lhs_end);
+         bool rhs_empty = (rhs_begin == rhs_end);
+         // lhs_empty and rhs_empty cannot both be false at this point since we exited the for loop.
+
+         if( lhs_empty && !rhs_empty ) return mismatch_t::lhs_ended_early;
+         if( !lhs_empty && rhs_empty ) return mismatch_t::rhs_ended_early;
+         return mismatch_t::equivalent;
+      };
+
+      std::optional<intrinsic_differences> result;
+      const char* error_msg = nullptr;
+
+      auto status = find_if_mismatched(
+         lhs.begin_block(), rhs.end_block(),
+         rhs.begin_block(), rhs.end_block(),
+         [&find_if_mismatched, &result, &error_msg]
+         ( const block_data& block_lhs, const block_data& block_rhs ) {
+            if( block_lhs.block_num != block_rhs.block_num ) {
+               error_msg = "logs do not have the same blocks";
+               return false;
+            }
+            auto status2 = find_if_mismatched(
+               block_lhs.transactions.begin(), block_lhs.transactions.end(),
+               block_rhs.transactions.begin(), block_rhs.transactions.end(),
+               [&find_if_mismatched, &result, &error_msg, &block_lhs]
+               ( const transaction_data& trx_lhs, const transaction_data& trx_rhs ) {
+                  if( trx_lhs.trx_id != trx_rhs.trx_id ) {
+                     return false;
+                  }
+                  auto status3 = find_if_mismatched(
+                     trx_lhs.actions.begin(), trx_lhs.actions.end(),
+                     trx_rhs.actions.begin(), trx_rhs.actions.end(),
+                     [&result, &block_lhs, &trx_lhs]
+                     ( const action_data& act_lhs, const action_data& act_rhs ) {
+                        if( std::tie( act_lhs.global_sequence_num,
+                                      act_lhs.receiver,
+                                      act_lhs.first_receiver,
+                                      act_lhs.action_name )
+                              != std::tie( act_rhs.global_sequence_num,
+                                           act_rhs.receiver,
+                                           act_rhs.first_receiver,
+                                           act_rhs.action_name )
+                        ) {
+                           return false;
+                        }
+                        if( act_lhs.recorded_intrinsics != act_rhs.recorded_intrinsics ) {
+                           result.emplace( intrinsic_differences{
+                              .block_num               = block_lhs.block_num,
+                              .trx_id                  = trx_lhs.trx_id,
+                              .global_sequence_num     = act_lhs.global_sequence_num,
+                              .receiver                = act_lhs.receiver,
+                              .first_receiver          = act_lhs.first_receiver,
+                              .action_name             = act_lhs.action_name,
+                              .lhs_recorded_intrinsics = act_lhs.recorded_intrinsics,
+                              .rhs_recorded_intrinsics = act_rhs.recorded_intrinsics
+                           } );
+                           return false;
+                        }
+                        return true;
+                     }
+                  );
+                  if( status3 == mismatch_t::equivalent ) return true;
+                  if( error_msg == nullptr && !result ) {
+                     error_msg = "different actions within a particular transaction";
+                  }
+                  return false;
+               }
+            );
+            if( status2 == mismatch_t::equivalent ) return true;
+            if( error_msg == nullptr && !result ) {
+               error_msg = "different transactions in a particular block";
+            }
+            return false;
+         }
+      );
+
+      if( status == mismatch_t::mismatch ) {
+         if( error_msg != nullptr ) {
+            FC_THROW_EXCEPTION( fc::exception, error_msg );
+         }
+         return result;
+      }
+
+      FC_ASSERT( status == mismatch_t::equivalent, "logs do not have the same blocks" );
+      return {}; // the logs are equivalent
    }
 
 } } /// eosio::chain
