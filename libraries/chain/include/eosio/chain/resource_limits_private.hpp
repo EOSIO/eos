@@ -59,8 +59,8 @@ using namespace int_arithmetic;
             uint64_t units = std::abs(units_signed);
             bool neg = units_signed < 0;
             // check for some numerical limits before doing any state mutations
-            EOS_ASSERT(units <= max_raw_value, rate_limiting_state_inconsistent, "Usage exceeds maximum value representable after extending for precision");
-            EOS_ASSERT(std::numeric_limits<decltype(consumed)>::max() - consumed >= units, rate_limiting_state_inconsistent, "Overflow in tracked usage when adding usage!");
+            EOS_ASSERT(neg || units <= max_raw_value, rate_limiting_state_inconsistent, "Usage exceeds maximum value representable after extending for precision");
+            EOS_ASSERT(neg || std::numeric_limits<decltype(consumed)>::max() - consumed >= units, rate_limiting_state_inconsistent, "Overflow in tracked usage when adding usage!");
 
             auto value_ex_contrib = downgrade_cast<uint64_t>(integer_divide_ceil((uint128_t)units * Precision, (uint128_t)window_size));
             EOS_ASSERT(neg || (std::numeric_limits<decltype(value_ex)>::max() - value_ex >= value_ex_contrib), rate_limiting_state_inconsistent, "Overflow in accumulated value when adding usage!");
