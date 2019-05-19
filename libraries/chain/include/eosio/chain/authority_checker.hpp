@@ -224,7 +224,7 @@ namespace detail {
                return total_weight;
             }
 
-            uint32_t operator()(const key_weight& permission) {
+            uint32_t operator()(const shared_key_weight& permission) {
                auto itr = boost::find( checker.provided_keys, permission.key );
                if( itr != checker.provided_keys.end() ) {
                   checker._used_keys[itr - checker.provided_keys.begin()] = true;

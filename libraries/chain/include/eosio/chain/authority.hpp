@@ -45,6 +45,30 @@ struct shared_public_key {
    friend bool operator == ( const shared_public_key& lhs, const shared_public_key& rhs ) {
       return lhs.pubkey == rhs.pubkey;
    }
+
+   friend bool operator==(const shared_public_key& l, const public_key_type& r) {
+      if(l.pubkey.which() != r._storage.which())
+         return false;
+
+      return l.pubkey.visit<bool>(overloaded {
+         [&](const fc::ecc::public_key_shim& k1) {
+            return k1._data == r._storage.get<fc::ecc::public_key_shim>()._data;
+         },
+         [&](const fc::crypto::r1::public_key_shim& r1) {
+            return r1._data == r._storage.get<fc::crypto::r1::public_key_shim>()._data;
+         },
+         [&](const shared_string& wa) {
+            fc::datastream ds(wa.data(), wa.size());
+            fc::crypto::webauthn::public_key pub;
+            fc::raw::unpack(ds, pub);
+            return pub == r._storage;
+         }
+      });
+   }
+
+   friend bool operator==(const public_key_type& l, const shared_public_key& r) {
+      return r == l;
+   }
 };
 
 struct permission_level_weight {
