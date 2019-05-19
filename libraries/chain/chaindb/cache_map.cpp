@@ -678,7 +678,7 @@ namespace cyberway { namespace chaindb {
                 using state_object = eosio::chain::resource_limits::resource_limits_state_object;
                 if (obj.has_data() && obj.service().table == chaindb::tag<state_object>::get_code()) {
                     auto& state = multi_index_item_data<state_object>::get_T(obj);
-                    ram_limit_ = get_ram_limit(state.virtual_limits[eosio::chain::resource_limits::RAM], state.reserved_ram_size);
+                    ram_limit_ = get_ram_limit(state.ram_size, state.reserved_ram_size);
                 }
 
                 // don't rebuild indicies for interchain objects
@@ -714,10 +714,10 @@ namespace cyberway { namespace chaindb {
         uint64_t               ram_used_  = 0;
 
         static uint64_t get_ram_limit(
-            const uint64_t limit   = eosio::chain::config::default_virtual_ram_limit,
+            const uint64_t limit   = eosio::chain::config::default_ram_size,
             const uint64_t reserve = eosio::chain::config::default_reserved_ram_size
         ) {
-            // reserve for system objects (transactions, blocks, abi cache, ...)
+            // reserve for system objects (transactions, blocks, ...)
             //     and for pending caches (pending_cell_list_, ...)
             return limit - reserve;
         }
