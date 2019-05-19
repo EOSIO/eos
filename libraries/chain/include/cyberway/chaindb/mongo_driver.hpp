@@ -41,7 +41,7 @@ namespace cyberway { namespace chaindb {
         cursor_info& prev(const cursor_info&) const override;
 
               object_value  object_by_pk(const table_info&, primary_key_t) const override;
-        const object_value& object_at_cursor(const cursor_info&) const override;
+        const object_value& object_at_cursor(const cursor_info&, bool) const override;
 
         primary_key_t available_pk(const table_info&) const override;
 

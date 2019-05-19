@@ -290,7 +290,7 @@ namespace cyberway { namespace chaindb {
 
             auto item = cache_.find(cursor.index, cursor.pk);
             if (BOOST_UNLIKELY(!item)) {
-                auto obj = object_at_cursor(cursor);
+                auto obj = object_at_cursor(cursor, false);
                 if (!obj.is_null()) {
                     item = cache_.emplace(cursor.index, std::move(obj));
                 }
@@ -390,8 +390,8 @@ namespace cyberway { namespace chaindb {
             return object_by_pk(table, pk);
         }
 
-        object_value object_at_cursor(const cursor_request& request) {
-            return object_at_cursor(current(request));
+        object_value object_at_cursor(const cursor_request& request, const bool with_decors) {
+            return object_at_cursor(current(request), with_decors);
         }
 
         void set_revision(revision_t revision) {
@@ -426,8 +426,8 @@ namespace cyberway { namespace chaindb {
         }
 
     private:
-        object_value object_at_cursor(const cursor_info& cursor) {
-            auto obj = driver_.object_at_cursor(cursor);
+        object_value object_at_cursor(const cursor_info& cursor, const bool with_decors) {
+            auto obj = driver_.object_at_cursor(cursor, with_decors);
             validate_object(cursor.index, obj, cursor.pk);
             return obj;
         }
@@ -502,7 +502,7 @@ namespace cyberway { namespace chaindb {
             if (abi_cursor.pk == primary_key::End) {
                 return {};
             }
-            return object_at_cursor({N(), abi_cursor.id}).value["abi"].as_blob().data;
+            return object_at_cursor({N(), abi_cursor.id}, false).value["abi"].as_blob().data;
         }
 
         static abi_def bytes_to_abi(const std::vector<char>& abi_bytes) {
@@ -822,7 +822,7 @@ namespace cyberway { namespace chaindb {
     }
 
     variant chaindb_controller::value_at_cursor(const cursor_request& request) const {
-        return impl_->object_at_cursor(request).value;
+        return impl_->object_at_cursor(request, false).value;
     }
 
     table_info chaindb_controller::table_by_request(const table_request& request) const {
@@ -834,7 +834,7 @@ namespace cyberway { namespace chaindb {
     }
 
     object_value chaindb_controller::object_at_cursor(const cursor_request& request) const {
-        return impl_->object_at_cursor(request);
+        return impl_->object_at_cursor(request, true);
     }
 
     revision_t chaindb_controller::revision() const {

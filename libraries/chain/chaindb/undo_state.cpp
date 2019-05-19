@@ -487,7 +487,7 @@ namespace cyberway { namespace chaindb {
 
             auto& cursor = driver_.lower_bound(std::move(index), {});
             for (; cursor.pk != primary_key::End; driver_.next(cursor)) {
-                auto  obj   = driver_.object_at_cursor(cursor);
+                auto  obj   = driver_.object_at_cursor(cursor, false);
                 auto  pk    = obj.pk();
                 auto& state = get_state(obj.service);
 

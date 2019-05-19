@@ -97,7 +97,7 @@ namespace cyberway { namespace chaindb {
         NOT_SUPPORTED;
     }
 
-    const object_value& mongodb_driver::object_at_cursor(const cursor_info&) const {
+    const object_value& mongodb_driver::object_at_cursor(const cursor_info&, bool ) const {
         NOT_SUPPORTED;
     }
 

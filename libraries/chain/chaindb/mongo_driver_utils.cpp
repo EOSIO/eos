@@ -117,9 +117,9 @@ namespace cyberway { namespace chaindb {
         return bsoncxx::types::b_date(as_time_point);
     }
 
-    variant build_variant(const document_view&);
+    variant build_variant(const document_view&, bool);
 
-    variants build_variant(const array_view& src) {
+    variants build_variant(const array_view& src, const bool with_decors) {
         variants dst;
 
         dst.reserve(std::distance(src.begin(), src.end()));
@@ -150,10 +150,10 @@ namespace cyberway { namespace chaindb {
                     dst.emplace_back(from_timestamp(item.get_timestamp()));
                     break;
                 case type::k_document:
-                    dst.emplace_back(build_variant(item.get_document().value));
+                    dst.emplace_back(build_variant(item.get_document().value, with_decors));
                     break;
                 case type::k_array:
-                    dst.emplace_back(build_variant(item.get_array().value));
+                    dst.emplace_back(build_variant(item.get_array().value, with_decors));
                     break;
                 case type::k_binary:
                     dst.emplace_back(blob{build_blob_content(item.get_binary())});
@@ -425,7 +425,7 @@ namespace cyberway { namespace chaindb {
         validate_exist_field(service_field_cnt == field_cnt, src);
     }
 
-    void build_variant(mutable_variant_object& dst, string key, const element& src) {
+    void build_variant(mutable_variant_object& dst, string key, const element& src, const bool with_decors) {
         switch (src.type()) {
             case type::k_null:
                 dst(std::move(key), variant());
@@ -452,10 +452,10 @@ namespace cyberway { namespace chaindb {
                 dst(std::move(key), from_timestamp(src.get_timestamp()));
                 break;
             case type::k_document:
-                dst(std::move(key), build_variant(src.get_document().value));
+                dst(std::move(key), build_variant(src.get_document().value, with_decors));
                 break;
             case type::k_array:
-                dst(std::move(key), build_variant(src.get_array().value));
+                dst(std::move(key), build_variant(src.get_array().value, with_decors));
                 break;
             case type::k_binary:
                 dst(std::move(key), blob{build_blob_content(src.get_binary())});
@@ -482,25 +482,27 @@ namespace cyberway { namespace chaindb {
         }
     }
 
-    variant build_variant(const document_view& src) {
+    variant build_variant(const document_view& src, const bool with_decors) {
         const mongo_bigint_converter bigint_converter(src);
         if (bigint_converter.is_valid_value()) {
             return bigint_converter.get_raw_value();
         }
 
-        const mongo_asset_converter asset_converter(src);
-        if (asset_converter.is_valid_value()) {
-            return asset_converter.get_variant();
+        if (with_decors) {
+            const mongo_asset_converter asset_converter(src);
+            if (asset_converter.is_valid_value()) {
+                return asset_converter.get_variant();
+            }
         }
 
         mutable_variant_object dst;
         for (auto& itm: src) {
-            build_variant(dst, itm.key().to_string(), itm);
+            build_variant(dst, itm.key().to_string(), itm, with_decors);
         }
         return variant(std::move(dst));
     }
 
-    object_value build_object(const table_info& info, const document_view& src) {
+    object_value build_object(const table_info& info, const document_view& src, const bool with_decors) {
         object_value obj;
         bool was_service = false;
         mutable_variant_object dst;
@@ -514,7 +516,7 @@ namespace cyberway { namespace chaindb {
                 build_service_state(info, obj.service, itm.get_document().value);
                 was_service = true;
             } else {
-                build_variant(dst, std::move(key), itm);
+                build_variant(dst, std::move(key), itm, with_decors);
             }
         }
         validate_exist_field(was_service, src);

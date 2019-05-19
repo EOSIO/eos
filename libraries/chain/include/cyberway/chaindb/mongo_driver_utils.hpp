@@ -44,7 +44,7 @@ namespace cyberway { namespace chaindb {
 
     std::string to_json(const bsoncxx::document::view&);
 
-    object_value build_object(const table_info&, const bsoncxx::document::view&);
+    object_value build_object(const table_info&, const bsoncxx::document::view&, bool with_decors);
 
     basic::sub_document& append_scope_value(basic::sub_document&, const table_info&);
     basic::sub_document& append_pk_value(basic::sub_document&, const table_info&, primary_key_t);

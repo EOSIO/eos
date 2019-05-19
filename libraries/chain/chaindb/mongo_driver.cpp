@@ -230,7 +230,7 @@ namespace cyberway { namespace chaindb {
             return *this;
         }
 
-        const object_value& get_object_value() {
+        const object_value& get_object_value(bool with_decors = false) {
             lazy_open();
             if (!object_.value.is_null()) return object_;
 
@@ -242,7 +242,7 @@ namespace cyberway { namespace chaindb {
                 object_.service.table = index.table->name;
             } else {
                 auto& view = *source_->begin();
-                object_ = build_object(index, view);
+                object_ = build_object(index, view, with_decors);
                 pk      = object_.service.pk;
             }
 
@@ -664,7 +664,7 @@ namespace cyberway { namespace chaindb {
             auto doc = get_db_table(table).find_one(pk_doc.view());
 
             if (!!doc) {
-                return build_object(table, doc->view());
+                return build_object(table, doc->view(), false);
             } else {
                 obj.clear();
                 obj.service.pk    = primary_key::End;
@@ -982,9 +982,9 @@ namespace cyberway { namespace chaindb {
         return impl_->object_by_pk(table, pk);
     }
 
-    const object_value& mongodb_driver::object_at_cursor(const cursor_info& info) const {
+    const object_value& mongodb_driver::object_at_cursor(const cursor_info& info, bool with_decors) const {
         return impl_->get_applied_cursor(info)
-            .get_object_value();
+            .get_object_value(with_decors);
     }
 
 } } // namespace cyberway::chaindb
