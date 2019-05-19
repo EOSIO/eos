@@ -15,8 +15,8 @@ namespace cyberway { namespace chaindb {
         constexpr size_t NUMBER_128_BLOB_SIZE   = sizeof(__int128) + 1;
     }
 
-    const std::string mongo_bigint_converter::BINARY_FIELD = "binary";
-    const std::string mongo_bigint_converter::STRING_FIELD = "string";
+    const std::string mongo_bigint_converter::BINARY_FIELD = "_binary";
+    const std::string mongo_bigint_converter::STRING_FIELD = "_string";
 
     mongo_bigint_converter::mongo_bigint_converter(const bsoncxx::document::view& document) {
         type_ = type::invalid;
@@ -30,6 +30,7 @@ namespace cyberway { namespace chaindb {
 
         auto end_itr = string_itr;
         ++end_itr;
+        if (end_itr != document.end()) return;
 
         parse_binary(cyberway::chaindb::build_blob_content(binary_itr->get_binary()));
     }
