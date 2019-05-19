@@ -103,6 +103,7 @@ fc::sha256 check_hash(const genesis_info::file_hash& fh) {
 }
 
 void read_contract(const genesis_info::account& acc, contract_abicode& abicode) {
+    abicode.update = acc.update && *acc.update;
     if (acc.abi) {
         auto fh = *acc.abi;
         check_hash(fh);
@@ -149,10 +150,10 @@ void config_reader::read_config(const variables_map& options) {
 void config_reader::read_contracts() {
     ilog("Reading pre-configured accounts");
     for (const auto& acc: info.accounts) {
-        ilog("  ${a}...", ("a",acc.name));
+        std::cout << "  " << acc.name << " account..." << std::flush;
         auto& data = contracts[acc.name];
         read_contract(acc, data);
-        ilog("    done: abi size: ${a}, code size: ${c}.", ("a",data.abi.size())("c",data.code.size()));
+        std::cout << " done: abi size: " << data.abi.size() << ", code size: " << data.code.size() << "." << std::endl;
     }
 }
 

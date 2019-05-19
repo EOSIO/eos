@@ -42,6 +42,24 @@ struct genesis_import::impl final {
         return resource_mng.get_storage_payer(0, row.ram_payer);
     };
 
+    void update_account(const sys_table_row& r) {
+        // we need primary key for update, but it depends on table. add this hacky shortcut for accounts
+        primary_key_t pk = ((primary_key_t*)r.data.data())[1];
+        const name n(pk);
+        const auto& old = db.get<account_object,by_name>(n);  // vm_type/vm_version/privileged not set in genesis, copy
+        fc::datastream<const char*> ds(r.data.data(), r.data.size());
+        auto acc = account_object([&](auto& a){
+            fc::raw::unpack(ds, a);
+        }, 0);
+        db.modify(old, [&](auto& a) {
+            a.last_code_update = acc.last_code_update;
+            a.code_version = acc.code_version;
+            a.creation_date = acc.creation_date;
+            a.code = acc.code;
+            a.abi = acc.abi;
+        });
+    }
+
     void import_state() {
         // file existance already checked when calculated hash
         std::cout << "Reading state from " << _state_file << "..." << std::endl;
@@ -62,16 +80,21 @@ struct genesis_import::impl final {
                 " (type: " << t.abi_type << ")" << std::endl;
             int i = 0;
             if (t.code == config::system_account_name) {
+                bool is_accounts_tbl = t.name == N(account);
                 while (i++ < t.count) {
                     sys_table_row r;
                     fc::raw::unpack(in, r);
                     EOS_ASSERT(r.data.size() >= 8, extract_genesis_exception, "System table row is too small");
                     primary_key_t pk = ((primary_key_t*)r.data.data())[0]; // all system tables have pk in the 1st field
-                    db.insert(r.request(t.name), ram_payer_info(r), pk, r.data.data(), r.data.size());
+                    if (is_accounts_tbl && pk == primary_key_t(-1)) {
+                        update_account(r);
+                    } else {
+                        db.insert(r.request(t.name), ram_payer_info(r), pk, r.data.data(), r.data.size());
+                    }
                     apply_db_changes();
 
                     // need to directly add abi to chaindb if exists
-                    if (!abis_initialized && t.name == N(account)) {
+                    if (!abis_initialized && is_accounts_tbl) {
                         fc::datastream<const char*> ds(static_cast<const char*>(r.data.data()), r.data.size());
                         auto acc = sys_abi.binary_to_variant("account_object", ds, abi_serializer_max_time);
                         auto abi_bytes = acc["abi"].as<bytes>();
@@ -117,4 +140,4 @@ void genesis_import::import() {
 }
 
 
-}} // cyberway::gensis
+}} // cyberway::genesis

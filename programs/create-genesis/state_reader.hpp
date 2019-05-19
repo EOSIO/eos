@@ -243,7 +243,7 @@ public:
         // TODO: checksum
         EOS_ASSERT(fc::is_regular_file(_state_file), genesis_exception,
             "Genesis state file '${f}' does not exist.", ("f", _state_file.generic_string()));
-        std::cout << "Reading state from " << _state_file << "..." << std::endl;
+        ilog("Reading state from ${f}...", ("f", _state_file.generic_string()));
         read_maps();
 
         bfs::ifstream in(_state_file);
@@ -269,7 +269,7 @@ public:
             }
             std::cout << "  Done, " << i << " record(s) read." << std::endl;
         }
-        std::cout << "Done reading Genesis state." << std::endl;
+        ilog("Done reading Genesis state.");
         in.close();
     }
 };
