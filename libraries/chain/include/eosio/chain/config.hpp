@@ -35,7 +35,7 @@ const static auto default_state_dir_name     = "state";
 const static auto forkdb_filename            = "forkdb.dat";
 const static auto default_state_size            = _GB;
 const static auto default_state_guard_size      =    128*_MB;
-const static uint64_t default_virtual_ram_limit = 8*_GB;
+const static uint64_t default_ram_size          = 8*_GB;
 const static uint64_t default_reserved_ram_size = 512*_MB;
 const static uint64_t min_resource_usage_pct = percent_1 / 10;
 

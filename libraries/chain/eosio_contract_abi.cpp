@@ -464,6 +464,7 @@ abi_def eosio_contract_abi(abi_def eos_abi)
          {"block_usage_accumulators", "usage_accumulator[]"},
          {"pending_usage", "int64[]"},
          {"virtual_limits", "uint64[]"},
+         {"ram_size", "uint64"},
          {"reserved_ram_size", "uint64"}}
    });
 

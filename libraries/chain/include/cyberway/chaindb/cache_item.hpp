@@ -87,6 +87,19 @@ namespace cyberway { namespace chaindb {
         cache_data_ptr      data_;  // for interchain tables
         cache_indicies      indicies_;
 
+    private:
+        friend class  cache_map_impl;
+        friend struct lru_cache_cell;
+        friend struct system_cache_cell;
+        friend struct pending_cache_cell;
+        friend struct pending_cache_object_state;
+
+        const cache_cell&   cell() const;
+        cache_cell&         cell();
+        cache_map_impl&     map();
+        cache_object_state& state();
+        cache_object_state* swap_state(cache_object_state& state);
+
     public:
         cache_object() = default;
         cache_object(cache_object&&) = default;
@@ -98,12 +111,6 @@ namespace cyberway { namespace chaindb {
         bool is_same_cell(const cache_cell& cell) const;
 
         bool is_deleted() const;
-
-        const cache_cell&   cell() const;
-        cache_cell&         cell();
-        cache_map_impl&     map();
-        cache_object_state& state();
-        cache_object_state* swap_state(cache_object_state& state);
 
         template <typename Request>
         bool is_valid_table(const Request& request) const {

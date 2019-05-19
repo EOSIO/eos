@@ -152,6 +152,7 @@ struct genesis_create::genesis_create_impl final {
             if (updated_accs.count(n) == 0) {
                 db.emplace<resource_usage_object>(n, [&](auto& u) {
                     u.owner = n;
+                    u.accumulators.resize(resource_limits::resources_num);
                 });
             }
         }

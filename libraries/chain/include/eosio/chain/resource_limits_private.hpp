@@ -59,8 +59,8 @@ using namespace int_arithmetic;
             uint64_t units = std::abs(units_signed);
             bool neg = units_signed < 0;
             // check for some numerical limits before doing any state mutations
-            EOS_ASSERT(units <= max_raw_value, rate_limiting_state_inconsistent, "Usage exceeds maximum value representable after extending for precision");
-            EOS_ASSERT(std::numeric_limits<decltype(consumed)>::max() - consumed >= units, rate_limiting_state_inconsistent, "Overflow in tracked usage when adding usage!");
+            EOS_ASSERT(neg || units <= max_raw_value, rate_limiting_state_inconsistent, "Usage exceeds maximum value representable after extending for precision");
+            EOS_ASSERT(neg || std::numeric_limits<decltype(consumed)>::max() - consumed >= units, rate_limiting_state_inconsistent, "Overflow in tracked usage when adding usage!");
 
             auto value_ex_contrib = downgrade_cast<uint64_t>(integer_divide_ceil((uint128_t)units * Precision, (uint128_t)window_size));
             EOS_ASSERT(neg || (std::numeric_limits<decltype(value_ex)>::max() - value_ex >= value_ex_contrib), rate_limiting_state_inconsistent, "Overflow in accumulated value when adding usage!");
@@ -136,6 +136,7 @@ using namespace int_arithmetic;
       std::vector<usage_accumulator> block_usage_accumulators;
       std::vector<int64_t> pending_usage;
       std::vector<uint64_t> virtual_limits;
+      uint64_t ram_size = config::default_ram_size;
       uint64_t reserved_ram_size = config::default_reserved_ram_size;
       void update_virtual_limit(const resource_limits_config_object& cfg, resource_id res);
       void add_pending_delta(int64_t delta, const resource_limits_config_object& config, resource_id res);
@@ -164,4 +165,4 @@ FC_REFLECT(eosio::chain::resource_limits::resource_usage_object, (id)(owner)(acc
 
 FC_REFLECT(eosio::chain::resource_limits::resource_limits_config_object, (id)(limit_parameters)(account_usage_average_windows))
 
-FC_REFLECT(eosio::chain::resource_limits::resource_limits_state_object, (id)(block_usage_accumulators)(pending_usage)(virtual_limits)(reserved_ram_size))
+FC_REFLECT(eosio::chain::resource_limits::resource_limits_state_object, (id)(block_usage_accumulators)(pending_usage)(virtual_limits)(ram_size)(reserved_ram_size))
