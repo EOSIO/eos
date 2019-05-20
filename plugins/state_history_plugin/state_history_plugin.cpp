@@ -53,6 +53,16 @@ static bytes zlib_compress_bytes(bytes in) {
    return out;
 }
 
+static bytes zlib_decompress(const bytes& in) {
+   bytes                  out;
+   bio::filtering_ostream decomp;
+   decomp.push(bio::zlib_decompressor());
+   decomp.push(bio::back_inserter(out));
+   bio::write(decomp, in.data(), in.size());
+   bio::close(decomp);
+   return out;
+}
+
 template <typename T>
 bool include_delta(const T& old, const T& curr) {
    return true;
@@ -126,10 +136,10 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       auto&                    stream = log.get_entry(block_num, header);
       uint32_t                 s;
       stream.read((char*)&s, sizeof(s));
-      result.emplace();
-      result->resize(s);
+      bytes compressed(s);
       if (s)
-         stream.read(result->data(), s);
+         stream.read(compressed.data(), s);
+      result = zlib_decompress(compressed);
    }
 
    void get_block(uint32_t block_num, fc::optional<bytes>& result) {
@@ -139,7 +149,8 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       } catch (...) {
          return;
       }
-      result = fc::raw::pack(*p);
+      if (p)
+         result = fc::raw::pack(*p);
    }
 
    fc::optional<chain::block_id_type> get_block_id(uint32_t block_num) {
