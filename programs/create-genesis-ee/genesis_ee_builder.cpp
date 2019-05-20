@@ -44,8 +44,11 @@ golos_dump_header genesis_ee_builder::read_header(bfs::ifstream& in) {
     return h;
 }
 
-bool genesis_ee_builder::read_op_header(bfs::ifstream& in, operation_header& op) {
+template<typename Operation>
+bool genesis_ee_builder::read_operation(bfs::ifstream& in, Operation& op) {
+    auto op_offset = in.tellg();
     fc::raw::unpack(in, op);
+    op.offset = op_offset;
 
     if (!in) {
         return false;
@@ -65,8 +68,8 @@ void genesis_ee_builder::process_delete_comments() {
     bfs::ifstream in(in_dump_dir_ / "delete_comments");
     read_header(in);
 
-    operation_header op;
-    while (read_op_header(in, op)) {
+    delete_comment_operation op;
+    while (read_operation(in, op)) {
         auto comment_itr = comment_index.find(op.hash);
         if (comment_itr != comment_index.end()) {
             maps_.modify(*comment_itr, [&](auto& comment) {
@@ -90,13 +93,8 @@ void genesis_ee_builder::process_comments() {
     bfs::ifstream in(in_dump_dir_ / "comments");
     read_header(in);
 
-    operation_header op;
-    while (read_op_header(in, op)) {
-        auto comment_offset = uint64_t(in.tellg());
-
-        cyberway::golos::comment_operation cop;
-        fc::raw::unpack(in, cop);
-
+    comment_operation op;
+    while (read_operation(in, op)) {
         auto comment_itr = comment_index.find(op.hash);
         if (comment_itr != comment_index.end()) {
             if (comment_itr->last_delete_op > op.num) {
@@ -104,10 +102,10 @@ void genesis_ee_builder::process_comments() {
             }
 
             maps_.modify(*comment_itr, [&](auto& comment) {
-                comment.offset = comment_offset;
+                comment.offset = op.offset;
                 comment.create_op = op.num;
                 if (comment.created == fc::time_point_sec::min()) {
-                    comment.created = cop.timestamp;
+                    comment.created = op.timestamp;
                 }
             });
             continue;
@@ -115,9 +113,9 @@ void genesis_ee_builder::process_comments() {
 
         maps_.create<comment_header>([&](auto& comment) {
             comment.hash = op.hash;
-            comment.offset = comment_offset;
+            comment.offset = op.offset;
             comment.create_op = op.num;
-            comment.created = cop.timestamp;
+            comment.created = op.timestamp;
         });
     }
 }
@@ -130,18 +128,15 @@ void genesis_ee_builder::process_rewards() {
     bfs::ifstream in(in_dump_dir_ / "total_comment_rewards");
     read_header(in);
 
-    operation_header op;
-    while (read_op_header(in, op)) {
-        cyberway::golos::total_comment_reward_operation tcrop;
-        fc::raw::unpack(in, tcrop);
-
+    total_comment_reward_operation op;
+    while (read_operation(in, op)) {
         auto comment_itr = comment_index.find(op.hash);
         if (comment_itr != comment_index.end() && op.num > comment_itr->last_delete_op) {
             maps_.modify(*comment_itr, [&](auto& comment) {
-                comment.author_reward += tcrop.author_reward.get_amount();
-                comment.benefactor_reward += tcrop.benefactor_reward.get_amount();
-                comment.curator_reward += tcrop.curator_reward.get_amount();
-                comment.net_rshares = tcrop.net_rshares;
+                comment.author_reward += op.author_reward.get_amount();
+                comment.benefactor_reward += op.benefactor_reward.get_amount();
+                comment.curator_reward += op.curator_reward.get_amount();
+                comment.net_rshares = op.net_rshares;
             });
         }
     }
@@ -155,29 +150,26 @@ void genesis_ee_builder::process_votes() {
     bfs::ifstream in(in_dump_dir_ / "votes");
     read_header(in);
 
-    operation_header op;
-    while (read_op_header(in, op)) {
-        cyberway::golos::vote_operation vop;
-        fc::raw::unpack(in, vop);
-
-        auto vote_itr = vote_index.find(std::make_tuple(op.hash, vop.voter));
+    vote_operation op;
+    while (read_operation(in, op)) {
+        auto vote_itr = vote_index.find(std::make_tuple(op.hash, op.voter));
         if (vote_itr != vote_index.end()) {
             maps_.modify(*vote_itr, [&](auto& vote) {
                 vote.op_num = op.num;
-                vote.weight = vop.weight;
-                vote.rshares = vop.rshares;
-                vote.timestamp = vop.timestamp;
+                vote.weight = op.weight;
+                vote.rshares = op.rshares;
+                vote.timestamp = op.timestamp;
             });
             continue;
         }
 
         maps_.create<vote_header>([&](auto& vote) {
             vote.hash = op.hash;
-            vote.voter = vop.voter;
+            vote.voter = op.voter;
             vote.op_num = op.num;
-            vote.weight = vop.weight;
-            vote.rshares = vop.rshares;
-            vote.timestamp = vop.timestamp;
+            vote.weight = op.weight;
+            vote.rshares = op.rshares;
+            vote.timestamp = op.timestamp;
         });
     }
 }
@@ -190,27 +182,22 @@ void genesis_ee_builder::process_reblogs() {
     bfs::ifstream in(in_dump_dir_ / "reblogs");
     read_header(in);
 
-    operation_header op;
-    while (read_op_header(in, op)) {
-        auto reblog_offset = uint64_t(in.tellg());
-
-        cyberway::golos::reblog_operation rop;
-        fc::raw::unpack(in, rop);
-
-        auto reblog_itr = reblog_index.find(std::make_tuple(op.hash, rop.account));
+    reblog_operation op;
+    while (read_operation(in, op)) {
+        auto reblog_itr = reblog_index.find(std::make_tuple(op.hash, op.account));
         if (reblog_itr != reblog_index.end()) {
             maps_.modify(*reblog_itr, [&](auto& reblog) {
                 reblog.op_num = op.num;
-                reblog.offset = reblog_offset;
+                reblog.offset = op.offset;
             });
             continue;
         }
 
         maps_.create<reblog_header>([&](auto& reblog) {
             reblog.hash = op.hash;
-            reblog.account = rop.account;
+            reblog.account = op.account;
             reblog.op_num = op.num;
-            reblog.offset = reblog_offset;
+            reblog.offset = op.offset;
         });
     }
 }
@@ -223,12 +210,9 @@ void genesis_ee_builder::process_delete_reblogs() {
     bfs::ifstream in(in_dump_dir_ / "delete_reblogs");
     read_header(in);
 
-    operation_header op;
-    while (read_op_header(in, op)) {
-        cyberway::golos::delete_reblog_operation drop;
-        fc::raw::unpack(in, drop);
-
-        auto reblog_itr = reblog_index.find(std::make_tuple(op.hash, drop.account));
+    delete_reblog_operation op;
+    while (read_operation(in, op)) {
+        auto reblog_itr = reblog_index.find(std::make_tuple(op.hash, op.account));
         if (op.num > reblog_itr->op_num) {
             maps_.remove(*reblog_itr);
         }
@@ -243,19 +227,16 @@ void genesis_ee_builder::process_follows() {
     bfs::ifstream in(in_dump_dir_ / "follows");
     read_header(in);
 
-    operation_header op;
-    while (read_op_header(in, op)) {
-        cyberway::golos::follow_operation fop;
-        fc::raw::unpack(in, fop);
-
+    follow_operation op;
+    while (read_operation(in, op)) {
         bool ignores = false;
-        if (fop.what & (1 << ignore)) {
+        if (op.what & (1 << ignore)) {
             ignores = true;
         }
 
-        auto follow_itr = follow_index.find(std::make_tuple(fop.follower, fop.following));
+        auto follow_itr = follow_index.find(std::make_tuple(op.follower, op.following));
         if (follow_itr != follow_index.end()) {
-            if (fop.what == 0) {
+            if (op.what == 0) {
                 maps_.remove(*follow_itr);
                 continue;
             }
@@ -266,13 +247,13 @@ void genesis_ee_builder::process_follows() {
             continue;
         }
 
-        if (fop.what == 0) {
+        if (op.what == 0) {
             continue;
         }
 
         maps_.create<follow_header>([&](auto& follow) {
-            follow.follower = fop.follower;
-            follow.following = fop.following;
+            follow.follower = op.follower;
+            follow.following = op.following;
             follow.ignores = ignores;
         });
     }
@@ -325,14 +306,14 @@ void genesis_ee_builder::build_reblogs(std::vector<reblog_info>& reblogs, uint64
         }
 
         dump_reblogs.seekg(reblog_itr->offset);
-        cyberway::golos::reblog_operation rop;
-        fc::raw::unpack(dump_reblogs, rop);
+        reblog_operation op;
+        read_operation(dump_reblogs, op);
 
         reblogs.emplace_back([&](auto& r) {
             r.account = generate_name(reblog_itr->account);
-            r.title = rop.title;
-            r.body = rop.body;
-            r.time = rop.timestamp;
+            r.title = op.title;
+            r.body = op.body;
+            r.time = op.timestamp;
         }, 0);
     }
 
@@ -351,19 +332,19 @@ void genesis_ee_builder::build_messages() {
     auto comment_itr = comment_index.upper_bound(fc::time_point_sec::min());
     for (; comment_itr != comment_index.end(); ++comment_itr) {
         dump_comments.seekg(comment_itr->offset);
-        cyberway::golos::comment_operation cop;
-        fc::raw::unpack(dump_comments, cop);
+        comment_operation op;
+        read_operation(dump_comments, op);
 
         out_.messages.emplace<comment_info>([&](auto& c) {
-            c.parent_author = generate_name(cop.parent_author);
-            c.parent_permlink = cop.parent_permlink;
-            c.author = generate_name(cop.author);
-            c.permlink = cop.permlink;
+            c.parent_author = generate_name(op.parent_author);
+            c.parent_permlink = op.parent_permlink;
+            c.author = generate_name(op.author);
+            c.permlink = op.permlink;
             c.created = comment_itr->created;
-            c.title = cop.title;
-            c.body = cop.body;
-            c.tags = cop.tags;
-            c.language = cop.language;
+            c.title = op.title;
+            c.body = op.body;
+            c.tags = op.tags;
+            c.language = op.language;
             c.net_rshares = comment_itr->net_rshares;
             c.author_reward = asset(comment_itr->author_reward, symbol(GLS));
             c.benefactor_reward = asset(comment_itr->benefactor_reward, symbol(GLS));
@@ -382,17 +363,14 @@ void genesis_ee_builder::build_transfers() {
     bfs::ifstream in(in_dump_dir_ / "transfers");
     read_header(in);
 
-    operation_header op;
-    while (read_op_header(in, op)) {
-        cyberway::golos::transfer_operation top;
-        fc::raw::unpack(in, top);
-
+    transfer_operation op;
+    while (read_operation(in, op)) {
         out_.transfers.emplace<transfer_info>([&](auto& t) {
-            t.from = generate_name(top.from);
-            t.to = generate_name(top.to);
-            t.quantity = top.amount;
-            t.memo = top.memo;
-            t.time = top.timestamp;
+            t.from = generate_name(op.from);
+            t.to = generate_name(op.to);
+            t.quantity = op.amount;
+            t.memo = op.memo;
+            t.time = op.timestamp;
         });
     }
 }
