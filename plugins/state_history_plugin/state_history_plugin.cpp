@@ -149,7 +149,8 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       } catch (...) {
          return;
       }
-      result = fc::raw::pack(*p);
+      if (p)
+         result = fc::raw::pack(*p);
    }
 
    fc::optional<chain::block_id_type> get_block_id(uint32_t block_num) {
