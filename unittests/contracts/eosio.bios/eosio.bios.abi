@@ -55,6 +55,20 @@
             ]
         },
         {
+            "name": "block_signing_authority_v0",
+            "base": "",
+            "fields": [
+                {
+                    "name": "threshold",
+                    "type": "uint32"
+                },
+                {
+                    "name": "keys",
+                    "type": "key_weight[]"
+                }
+            ]
+        },
+        {
             "name": "blockchain_parameters",
             "base": "",
             "fields": [
@@ -265,7 +279,7 @@
                     "type": "name"
                 },
                 {
-                    "name": "block_signing_authority",
+                    "name": "authority",
                     "type": "block_signing_authority"
                 }
             ]

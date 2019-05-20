@@ -313,7 +313,7 @@ extern const char* const state_history_plugin_abi = R"({
         },
         {
             "name": "block_signing_authority_v0", "fields": [
-                { "type": "uint32", "name": "weight" }
+                { "type": "uint32", "name": "weight" },
                 { "type": "key_weight[]", "name": "keys" }
             ]
         },
