@@ -14,7 +14,7 @@ set(RUN_RE2C OFF CACHE BOOL "Run re2c")
 set(WITH_EXCEPTIONS ON CACHE BOOL "Build with exceptions enabled" FORCE)
 add_subdirectory( wabt )
 
-set(USE_EXISTING_SOFTFLOAT ON)
+set(USE_EXISTING_SOFTFLOAT ON CACHE BOOL "use pre-exisiting softfloat lib")
 set(ENABLE_TESTS OFF)
 set(ENABLE_ADDRESS_SANITIZER OFF)
 set(ENABLE_UNDEFINED_BEHAVIOR_SANITIZER OFF)
