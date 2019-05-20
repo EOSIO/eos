@@ -1,0 +1,41 @@
+{
+    "eosio-build-unpinned":
+    {
+        "pipeline-branch": "protocol-features-sync-nodes"
+    },
+    "eosio-lrt":
+    {
+        "pipeline-branch": "protocol-features-sync-nodes"
+    },
+    "eos-multiversion-tests":
+    {
+        "pipeline-branch": "protocol-features-sync-nodes",
+        "configuration":
+        [
+            "170=v1.7.0"
+        ]
+    },
+    "eosio-docker-builds":
+    {
+        "environment":
+        {
+            "BUILDER_TAG": "v1.8.0"
+        }
+    },
+    "eosio-sync-tests":
+    {
+        "environment":
+        {
+            "SKIP_PRE_V180": "true",
+            "SKIP_V180": "false"
+        }
+    },
+    "eosio-replay-tests":
+    {
+        "environment":
+        {
+            "SKIP_PRE_V180": "true",
+            "SKIP_V180": "false"
+        }
+    }
+}

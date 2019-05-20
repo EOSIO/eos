@@ -160,4 +160,13 @@ void wavm_runtime::immediately_exit_currently_running_module() {
 #endif
 }
 
+digest_type calc_memory_hash( MemoryInstance* mem ) {
+   const char* base_of_memory = (const char*)( getMemoryBaseAddress(mem) );
+   std::size_t mem_size = IR::numBytesPerPage * Runtime::getMemoryNumPages(mem);
+
+   digest_type::encoder enc;
+   enc.write( base_of_memory, mem_size );
+   return enc.result();
+}
+
 }}}}

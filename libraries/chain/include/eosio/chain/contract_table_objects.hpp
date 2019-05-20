@@ -20,9 +20,9 @@ namespace eosio { namespace chain {
       OBJECT_CTOR(table_id_object)
 
       id_type        id;
-      account_name   code;
-      scope_name     scope;
-      table_name     table;
+      account_name   code;  //< code should not be changed within a chainbase modifier lambda
+      scope_name     scope; //< scope should not be changed within a chainbase modifier lambda
+      table_name     table; //< table should not be changed within a chainbase modifier lambda
       account_name   payer;
       uint32_t       count = 0; /// the number of elements in the table
    };
@@ -59,8 +59,8 @@ namespace eosio { namespace chain {
       static const int number_of_keys = 1;
 
       id_type               id;
-      table_id              t_id;
-      uint64_t              primary_key;
+      table_id              t_id; //< t_id should not be changed within a chainbase modifier lambda
+      uint64_t              primary_key; //< primary_key should not be changed within a chainbase modifier lambda
       account_name          payer = 0;
       shared_blob           value;
    };
@@ -90,10 +90,10 @@ namespace eosio { namespace chain {
          typedef SecondaryKey secondary_key_type;
 
          typename chainbase::object<ObjectTypeId,index_object>::id_type       id;
-         table_id      t_id;
-         uint64_t      primary_key;
+         table_id      t_id; //< t_id should not be changed within a chainbase modifier lambda
+         uint64_t      primary_key; //< primary_key should not be changed within a chainbase modifier lambda
          account_name  payer = 0;
-         SecondaryKey  secondary_key;
+         SecondaryKey  secondary_key; //< secondary_key should not be changed within a chainbase modifier lambda
       };
 
 

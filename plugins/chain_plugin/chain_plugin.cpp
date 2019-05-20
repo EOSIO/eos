@@ -7,7 +7,6 @@
 #include <eosio/chain/block_log.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/authorization_manager.hpp>
-#include <eosio/chain/producer_object.hpp>
 #include <eosio/chain/code_object.hpp>
 #include <eosio/chain/config.hpp>
 #include <eosio/chain/wasm_interface.hpp>
@@ -267,6 +266,8 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
 #ifdef __linux__
          ("database-hugepage-path", bpo::value<vector<string>>()->composing(), "Optional path for database hugepages when in \"locked\" mode (may specify multiple times)")
 #endif
+         ("debug-log-intrinsics", bpo::bool_switch()->default_value(false),
+          "enable logging of intrinsics for debugging purposes")
          ;
 
 // TODO: rate limiting
@@ -601,6 +602,10 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
             my->blocks_dir = app().data_dir() / bld;
          else
             my->blocks_dir = bld;
+      }
+
+      if( options.at( "debug-log-intrinsics" ).as<bool>() ) {
+         my->chain_config->intrinsic_debug_log_path = app().data_dir() / "intrinsics.log";
       }
 
       protocol_feature_set pfs;
@@ -1255,6 +1260,7 @@ void chain_plugin::log_guard_exception(const chain::guard_exception&e ) const {
 void chain_plugin::handle_guard_exception(const chain::guard_exception& e) const {
    log_guard_exception(e);
 
+   elog("database chain::guard_exception, quiting..."); // log string searched for in: tests/nodeos_under_min_avail_ram.py
    // quit the app
    app().quit();
 }
@@ -2232,6 +2238,17 @@ read_only::get_account_results read_only::get_account( const get_account_params&
             vector<char> data;
             copy_inline_row(*it, data);
             result.voter_info = abis.binary_to_variant( "voter_info", data, abi_serializer_max_time, shorten_abi_errors );
+         }
+      }
+
+      t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, config::system_account_name, N(rexbal) ));
+      if (t_id != nullptr) {
+         const auto &idx = d.get_index<key_value_index, by_scope_primary>();
+         auto it = idx.find(boost::make_tuple( t_id->id, params.account_name ));
+         if( it != idx.end() ) {
+            vector<char> data;
+            copy_inline_row(*it, data);
+            result.rex_info = abis.binary_to_variant( "rex_balance", data, abi_serializer_max_time, shorten_abi_errors );
          }
       }
    }

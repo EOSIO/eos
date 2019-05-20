@@ -100,4 +100,10 @@ void wabt_runtime::immediately_exit_currently_running_module() {
    throw wasm_exit();
 }
 
+digest_type calc_memory_hash( const Memory& mem ) {
+   digest_type::encoder enc;
+   enc.write( mem.data.data(), mem.data.size() );
+   return enc.result();
+}
+
 }}}}

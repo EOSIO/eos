@@ -34,6 +34,7 @@ apply_context::apply_context(controller& con, transaction_context& trx_ctx, uint
 :control(con)
 ,db(con.mutable_db())
 ,trx_context(trx_ctx)
+,intrinsic_log(con.get_intrinsic_debug_log())
 ,recurse_depth(depth)
 ,first_receiver_action_ordinal(action_ordinal)
 ,action_ordinal(action_ordinal)
@@ -52,6 +53,11 @@ apply_context::apply_context(controller& con, transaction_context& trx_ctx, uint
 void apply_context::exec_one()
 {
    auto start = fc::time_point::now();
+
+   if( intrinsic_log ) {
+      intrinsic_log->start_action( control.get_dynamic_global_properties().global_action_sequence + 1,
+                                   receiver, act->account, act->name );
+   }
 
    action_receipt r;
    r.receiver         = receiver;
@@ -480,10 +486,17 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
          control.add_to_ram_correction( ptr->payer, orig_trx_ram_bytes );
       }
 
-      db.modify<generated_transaction_object>( *ptr, [&]( auto& gtx ) {
-         if( replace_deferred_activated ) {
-            gtx.trx_id = trx.id();
-         }
+      transaction_id_type trx_id_for_new_obj;
+      if( replace_deferred_activated ) {
+         trx_id_for_new_obj = trx.id();
+      } else {
+         trx_id_for_new_obj = ptr->trx_id;
+      }
+
+      // Use remove and create rather than modify because mutating the trx_id field in a modifier is unsafe.
+      db.remove( *ptr );
+      db.create<generated_transaction_object>( [&]( auto& gtx ) {
+         gtx.trx_id      = trx_id_for_new_obj;
          gtx.sender      = receiver;
          gtx.sender_id   = sender_id;
          gtx.payer       = payer;

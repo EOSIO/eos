@@ -46,7 +46,7 @@ printf "Yum installation found at ${YUM}.\\n"
 if [ $ANSWER != 1 ]; then read -p "Do you wish to update YUM repositories? (y/n) " ANSWER; fi
 case $ANSWER in
 	1 | [Yy]* )
-		if ! sudo $YUM -y update; then
+		if ! sudo -E $YUM -y update; then
 			printf " - YUM update failed.\\n"
 			exit 1;
 		else
@@ -76,7 +76,7 @@ if [ "${COUNT}" -gt 1 ]; then
 	if [ $ANSWER != 1 ]; then read -p "Do you wish to install these dependencies? (y/n) " ANSWER; fi
 	case $ANSWER in
 		1 | [Yy]* )
-			if ! sudo $YUM -y install ${DEP}; then
+			if ! sudo -E $YUM -y install ${DEP}; then
 				printf " - YUM dependency installation failed!\\n"
 				exit 1;
 			else
@@ -313,7 +313,7 @@ if [ $BUILD_MONGO ]; then
       && cd mongo-c-driver-$MONGO_C_DRIVER_VERSION \
       && mkdir -p cmake-build \
       && cd cmake-build \
-      && $CMAKE -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$PREFIX -DENABLE_BSON=ON -DENABLE_SSL=OPENSSL -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF -DENABLE_STATIC=ON -DENABLE_ICU=OFF $PINNED_TOOLCHAIN .. \
+      && $CMAKE -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$PREFIX -DENABLE_BSON=ON -DENABLE_SSL=OPENSSL -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF -DENABLE_STATIC=ON -DENABLE_ICU=OFF -DENABLE_SNAPPY=OFF $PINNED_TOOLCHAIN .. \
       && make -j"${JOBS}" \
       && make install \
       && cd ../.. \

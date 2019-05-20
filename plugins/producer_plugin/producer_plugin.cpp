@@ -3,7 +3,6 @@
  *  @copyright defined in eos/LICENSE
  */
 #include <eosio/producer_plugin/producer_plugin.hpp>
-#include <eosio/chain/producer_object.hpp>
 #include <eosio/chain/plugin_interface.hpp>
 #include <eosio/chain/global_property_object.hpp>
 #include <eosio/chain/generated_transaction_object.hpp>
@@ -200,7 +199,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       transaction_id_with_expiry_index                          _persistent_transactions;
       fc::optional<named_thread_pool>                           _thread_pool;
 
-      int32_t                                                   _max_transaction_time_ms;
+      std::atomic<int32_t>                                      _max_transaction_time_ms; // modified by app thread, read by net_plugin thread pool
       fc::microseconds                                          _max_irreversible_block_age_us;
       int32_t                                                   _produce_time_offset_us = 0;
       int32_t                                                   _last_block_time_offset_us = 0;
@@ -433,16 +432,18 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 
       void on_incoming_transaction_async(const transaction_metadata_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next) {
          chain::controller& chain = chain_plug->chain();
-         const auto& cfg = chain.get_global_properties().configuration;
-         signing_keys_future_type future = transaction_metadata::start_recover_keys( trx, _thread_pool->get_executor(),
-               chain.get_chain_id(), fc::microseconds( cfg.max_transaction_cpu_usage ) );
-         boost::asio::post( _thread_pool->get_executor(), [self = this, future, trx, persist_until_expired, next]() {
-            if( future.valid() )
-               future.wait();
-            app().post(priority::low, [self, trx, persist_until_expired, next]() {
-               self->process_incoming_transaction_async( trx, persist_until_expired, next );
-            });
-         });
+         const auto max_trx_time_ms = _max_transaction_time_ms.load();
+         fc::microseconds max_trx_cpu_usage = max_trx_time_ms < 0 ? fc::microseconds::maximum() : fc::milliseconds( max_trx_time_ms );
+
+         auto after_sig_recovery =
+               [self = this, trx, persist_until_expired, next{std::move(next)}]() mutable {
+                  app().post(priority::low, [self, trx{std::move(trx)}, persist_until_expired, next{std::move(next)}]() {
+                     self->process_incoming_transaction_async( trx, persist_until_expired, next );
+                  });
+               };
+
+         transaction_metadata::start_recover_keys( trx, chain.get_thread_pool(), chain.get_chain_id(),
+                  max_trx_cpu_usage, std::move( after_sig_recovery ) );
       }
 
       void process_incoming_transaction_async(const transaction_metadata_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next) {
@@ -462,11 +463,11 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                   fc_dlog(_trx_trace_log, "[TRX_TRACE] Block ${block_num} for producer ${prod} is REJECTING tx: ${txid} : ${why} ",
                         ("block_num", chain.head_block_num() + 1)
                         ("prod", chain.pending_block_producer())
-                        ("txid", trx->id)
+                        ("txid", trx->id())
                         ("why",response.get<fc::exception_ptr>()->what()));
                } else {
                   fc_dlog(_trx_trace_log, "[TRX_TRACE] Speculative execution is REJECTING tx: ${txid} : ${why} ",
-                          ("txid", trx->id)
+                          ("txid", trx->id())
                           ("why",response.get<fc::exception_ptr>()->what()));
                }
             } else {
@@ -475,17 +476,20 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                   fc_dlog(_trx_trace_log, "[TRX_TRACE] Block ${block_num} for producer ${prod} is ACCEPTING tx: ${txid}",
                           ("block_num", chain.head_block_num() + 1)
                           ("prod", chain.pending_block_producer())
-                          ("txid", trx->id));
+                          ("txid", trx->id()));
                } else {
                   fc_dlog(_trx_trace_log, "[TRX_TRACE] Speculative execution is ACCEPTING tx: ${txid}",
-                          ("txid", trx->id));
+                          ("txid", trx->id()));
                }
             }
          };
 
-         const auto& id = trx->id;
-         if( fc::time_point(trx->packed_trx->expiration()) < block_time ) {
-            send_response(std::static_pointer_cast<fc::exception>(std::make_shared<expired_tx_exception>(FC_LOG_MESSAGE(error, "expired transaction ${id}", ("id", id)) )));
+         const auto& id = trx->id();
+         if( fc::time_point(trx->packed_trx()->expiration()) < block_time ) {
+            send_response(std::static_pointer_cast<fc::exception>(
+                  std::make_shared<expired_tx_exception>(
+                        FC_LOG_MESSAGE(error, "expired transaction ${id}, expiration ${e}, block time ${bt}",
+                                       ("id", id)("e", trx->packed_trx()->expiration())("bt", block_time)) )));
             return;
          }
 
@@ -511,10 +515,10 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                      fc_dlog(_trx_trace_log, "[TRX_TRACE] Block ${block_num} for producer ${prod} COULD NOT FIT, tx: ${txid} RETRYING ",
                              ("block_num", chain.head_block_num() + 1)
                              ("prod", chain.pending_block_producer())
-                             ("txid", trx->id));
+                             ("txid", trx->id()));
                   } else {
                      fc_dlog(_trx_trace_log, "[TRX_TRACE] Speculative execution COULD NOT FIT tx: ${txid} RETRYING",
-                             ("txid", trx->id));
+                             ("txid", trx->id()));
                   }
                } else {
                   auto e_ptr = trace->except->dynamic_copy_exception();
@@ -524,7 +528,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                if (persist_until_expired) {
                   // if this trx didnt fail/soft-fail and the persist flag is set, store its ID so that we can
                   // ensure its applied to all future speculative blocks as well.
-                  _persistent_transactions.insert(transaction_id_with_expiry{trx->id, trx->packed_trx->expiration()});
+                  _persistent_transactions.insert(transaction_id_with_expiry{trx->id(), trx->packed_trx()->expiration()});
                }
                send_response(trace);
             }
@@ -1478,9 +1482,9 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
                int num_failed = 0;
                int num_processed = 0;
                auto calculate_transaction_category = [&](const transaction_metadata_ptr& trx) {
-                  if (trx->packed_trx->expiration() < pending_block_time) {
+                  if (trx->packed_trx()->expiration() < pending_block_time) {
                      return tx_category::EXPIRED;
-                  } else if (persisted_by_id.find(trx->id) != persisted_by_id.end()) {
+                  } else if (persisted_by_id.find(trx->id()) != persisted_by_id.end()) {
                      return tx_category::PERSISTED;
                   } else {
                      return tx_category::UNEXPIRED_UNPERSISTED;
@@ -1501,7 +1505,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
                   {
                      if (!_producers.empty()) {
                         fc_dlog(_trx_trace_log, "[TRX_TRACE] Node with producers configured is dropping an EXPIRED transaction that was PREVIOUSLY ACCEPTED : ${txid}",
-                               ("txid", trx->id));
+                               ("txid", trx->id()));
                      }
                      itr = unapplied_trxs.erase( itr ); // unapplied_trxs map has not been modified, so simply erase and continue
                      continue;
@@ -1526,7 +1530,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
                            } else {
                               // this failed our configured maximum transaction time, we don't want to replay it
                               // chain.plus_transactions can modify unapplied_trxs, so erase by id
-                              unapplied_trxs.erase( trx->signed_id );
+                              unapplied_trxs.erase( trx->signed_id() );
                               ++num_failed;
                            }
                         } else {

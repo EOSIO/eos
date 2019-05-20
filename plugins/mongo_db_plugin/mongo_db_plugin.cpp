@@ -3,6 +3,7 @@
  *  @copyright defined in eos/LICENSE
  */
 #include <eosio/mongo_db_plugin/mongo_db_plugin.hpp>
+#include <eosio/mongo_db_plugin/bson.hpp>
 #include <eosio/chain/eosio_contract.hpp>
 #include <eosio/chain/config.hpp>
 #include <eosio/chain/exceptions.hpp>
@@ -22,9 +23,6 @@
 #include <thread>
 #include <mutex>
 
-#include <bsoncxx/builder/basic/kvp.hpp>
-#include <bsoncxx/builder/basic/document.hpp>
-#include <bsoncxx/exception/exception.hpp>
 #include <bsoncxx/json.hpp>
 
 #include <mongocxx/client.hpp>
@@ -615,7 +613,7 @@ optional<abi_serializer> mongo_db_plugin_impl::get_abi_serializer( account_name 
             abi_def abi;
             if( view.find( "abi" ) != view.end()) {
                try {
-                  abi = fc::json::from_string( bsoncxx::to_json( view["abi"].get_document())).as<abi_def>();
+                  abi = from_bson( view["abi"].get_document() ).as<abi_def>();
                } catch (...) {
                   ilog( "Unable to convert account abi to abi_def for ${n}", ( "n", n ));
                   return optional<abi_serializer>();
@@ -748,7 +746,7 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
    using bsoncxx::builder::basic::make_array;
    namespace bbb = bsoncxx::builder::basic;
 
-   const signed_transaction& trx = t->packed_trx->get_signed_transaction();
+   const signed_transaction& trx = t->packed_trx()->get_signed_transaction();
 
    if( !filter_include( trx ) ) return;
 
@@ -757,48 +755,36 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
    auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
          std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()} );
 
-   const auto& trx_id = t->id;
+   const auto& trx_id = t->id();
    const auto trx_id_str = trx_id.str();
 
    trans_doc.append( kvp( "trx_id", trx_id_str ) );
 
    auto v = to_variant_with_abi( trx );
-   string trx_json = fc::json::to_string( v );
 
    try {
-      const auto& trx_value = bsoncxx::from_json( trx_json );
+      const auto& trx_value = to_bson( v );
       trans_doc.append( bsoncxx::builder::concatenate_doc{trx_value.view()} );
-   } catch( bsoncxx::exception& ) {
-      try {
-         trx_json = fc::prune_invalid_utf8( trx_json );
-         const auto& trx_value = bsoncxx::from_json( trx_json );
-         trans_doc.append( bsoncxx::builder::concatenate_doc{trx_value.view()} );
-         trans_doc.append( kvp( "non-utf8-purged", b_bool{true} ) );
-      } catch( bsoncxx::exception& e ) {
-         elog( "Unable to convert transaction JSON to MongoDB JSON: ${e}", ("e", e.what()) );
-         elog( "  JSON: ${j}", ("j", trx_json) );
-      }
+   } catch( bsoncxx::exception& e) {
+      elog( "Unable to convert transaction to BSON: ${e}", ("e", e.what()) );
+      elog( "  JSON: ${j}", ("j", fc::json::to_string( v )) );
    }
 
-   string signing_keys_json;
-   if( t->signing_keys_future.valid() ) {
-      signing_keys_json = fc::json::to_string( std::get<2>( t->signing_keys_future.get() ) );
-   } else {
-      flat_set<public_key_type> keys;
-      trx.get_signature_keys( *chain_id, fc::time_point::maximum(), keys, false );
-      if( !keys.empty() ) {
-         signing_keys_json = fc::json::to_string( keys );
-      }
+   fc::variant signing_keys;
+   std::shared_ptr<flat_set<public_key_type>> keys;
+   std::tie( std::ignore, keys ) = t->recover_keys( *chain_id );
+   if( !keys->empty() ) {
+      signing_keys = *keys;
    }
 
-   if( !signing_keys_json.empty() ) {
+   if( signing_keys.get_type() == fc::variant::array_type && signing_keys.get_array().size() > 0) {
       try {
-         const auto& keys_value = bsoncxx::from_json( signing_keys_json );
-         trans_doc.append( kvp( "signing_keys", keys_value ) );
+         bsoncxx::builder::core keys_value(true);
+         to_bson( signing_keys.get_array(), keys_value );
+         trans_doc.append( kvp( "signing_keys", keys_value.extract_array() ) );
       } catch( bsoncxx::exception& e ) {
-         // should never fail, so don't attempt to remove invalid utf8
-         elog( "Unable to convert signing keys JSON to MongoDB JSON: ${e}", ("e", e.what()) );
-         elog( "  JSON: ${j}", ("j", signing_keys_json) );
+         elog( "Unable to convert signing keys to BSON: ${e}", ("e", e.what()) );
+         elog( "  JSON: ${j}", ("j", fc::json::to_string(signing_keys)) );
       }
    }
 
@@ -844,20 +830,11 @@ mongo_db_plugin_impl::add_action_trace( mongocxx::bulk_write& bulk_action_traces
       action_traces_doc.append( kvp( "_id", make_custom_oid() ) );
 
       auto v = to_variant_with_abi( atrace );
-      string json = fc::json::to_string( v );
       try {
-         const auto& value = bsoncxx::from_json( json );
-         action_traces_doc.append( bsoncxx::builder::concatenate_doc{value.view()} );
-      } catch( bsoncxx::exception& ) {
-         try {
-            json = fc::prune_invalid_utf8( json );
-            const auto& value = bsoncxx::from_json( json );
-            action_traces_doc.append( bsoncxx::builder::concatenate_doc{value.view()} );
-            action_traces_doc.append( kvp( "non-utf8-purged", b_bool{true} ) );
-         } catch( bsoncxx::exception& e ) {
-            elog( "Unable to convert action trace JSON to MongoDB JSON: ${e}", ("e", e.what()) );
-            elog( "  JSON: ${j}", ("j", json) );
-         }
+         action_traces_doc.append( bsoncxx::builder::concatenate_doc{to_bson( v )} );
+      } catch( bsoncxx::exception& e ) {
+         elog( "Unable to convert action trace to BSON: ${e}", ("e", e.what()) );
+         elog( "  JSON: ${j}", ("j", fc::json::to_string( v )) );
       }
       if( t->receipt.valid() ) {
          action_traces_doc.append( kvp( "trx_status", std::string( t->receipt->status ) ) );
@@ -904,20 +881,11 @@ void mongo_db_plugin_impl::_process_applied_transaction( const chain::transactio
    if( store_transaction_traces && write_ttrace ) {
       try {
          auto v = to_variant_with_abi( *t );
-         string json = fc::json::to_string( v );
          try {
-            const auto& value = bsoncxx::from_json( json );
-            trans_traces_doc.append( bsoncxx::builder::concatenate_doc{value.view()} );
-         } catch( bsoncxx::exception& ) {
-            try {
-               json = fc::prune_invalid_utf8( json );
-               const auto& value = bsoncxx::from_json( json );
-               trans_traces_doc.append( bsoncxx::builder::concatenate_doc{value.view()} );
-               trans_traces_doc.append( kvp( "non-utf8-purged", b_bool{true} ) );
-            } catch( bsoncxx::exception& e ) {
-               elog( "Unable to convert transaction JSON to MongoDB JSON: ${e}", ("e", e.what()) );
-               elog( "  JSON: ${j}", ("j", json) );
-            }
+            trans_traces_doc.append( bsoncxx::builder::concatenate_doc{to_bson( v )} );
+         } catch( bsoncxx::exception& e ) {
+            elog( "Unable to convert transaction to BSON: ${e}", ("e", e.what()) );
+            elog( "  JSON: ${j}", ("j", fc::json::to_string( v )) );
          }
          trans_traces_doc.append( kvp( "createdAt", b_date{now} ) );
 
@@ -926,7 +894,7 @@ void mongo_db_plugin_impl::_process_applied_transaction( const chain::transactio
                EOS_ASSERT( false, chain::mongo_db_insert_fail, "Failed to insert trans ${id}", ("id", t->id) );
             }
          } catch( ... ) {
-            handle_mongo_exception( "trans_traces insert: " + json, __LINE__ );
+            handle_mongo_exception( "trans_traces insert: " + fc::json::to_string( v ), __LINE__ );
          }
       } catch( ... ) {
          handle_mongo_exception( "trans_traces serialization: " + t->id.str(), __LINE__ );
@@ -973,20 +941,11 @@ void mongo_db_plugin_impl::_process_accepted_block( const chain::block_state_ptr
 
       const chain::block_header_state& bhs = *bs;
 
-      auto json = fc::json::to_string( bhs );
       try {
-         const auto& value = bsoncxx::from_json( json );
-         block_state_doc.append( kvp( "block_header_state", value ) );
-      } catch( bsoncxx::exception& ) {
-         try {
-            json = fc::prune_invalid_utf8( json );
-            const auto& value = bsoncxx::from_json( json );
-            block_state_doc.append( kvp( "block_header_state", value ) );
-            block_state_doc.append( kvp( "non-utf8-purged", b_bool{true} ) );
-         } catch( bsoncxx::exception& e ) {
-            elog( "Unable to convert block_header_state JSON to MongoDB JSON: ${e}", ("e", e.what()) );
-            elog( "  JSON: ${j}", ("j", json) );
-         }
+         block_state_doc.append( kvp( "block_header_state", to_bson( fc::variant(bhs) ) ) );
+      } catch( bsoncxx::exception& e ) {
+         elog( "Unable to convert block_header_state to BSON: ${e}", ("e", e.what()) );
+         elog( "  JSON: ${j}", ("j", fc::json::to_string( bhs )) );
       }
       block_state_doc.append( kvp( "createdAt", b_date{now} ) );
 
@@ -1003,7 +962,7 @@ void mongo_db_plugin_impl::_process_accepted_block( const chain::block_state_ptr
             }
          }
       } catch( ... ) {
-         handle_mongo_exception( "block_states insert: " + json, __LINE__ );
+         handle_mongo_exception( "block_states insert: " + fc::json::to_string( bhs ), __LINE__ );
       }
    }
 
@@ -1013,20 +972,11 @@ void mongo_db_plugin_impl::_process_accepted_block( const chain::block_state_ptr
                         kvp( "block_id", block_id_str ) );
 
       auto v = to_variant_with_abi( *bs->block );
-      auto json = fc::json::to_string( v );
       try {
-         const auto& value = bsoncxx::from_json( json );
-         block_doc.append( kvp( "block", value ) );
-      } catch( bsoncxx::exception& ) {
-         try {
-            json = fc::prune_invalid_utf8( json );
-            const auto& value = bsoncxx::from_json( json );
-            block_doc.append( kvp( "block", value ) );
-            block_doc.append( kvp( "non-utf8-purged", b_bool{true} ) );
-         } catch( bsoncxx::exception& e ) {
-            elog( "Unable to convert block JSON to MongoDB JSON: ${e}", ("e", e.what()) );
-            elog( "  JSON: ${j}", ("j", json) );
-         }
+         block_doc.append( kvp( "block", to_bson( v ) ) );
+      } catch( bsoncxx::exception& e ) {
+         elog( "Unable to convert block to BSON: ${e}", ("e", e.what()) );
+         elog( "  JSON: ${j}", ("j", fc::json::to_string( v )) );
       }
       block_doc.append( kvp( "createdAt", b_date{now} ) );
 
@@ -1043,7 +993,7 @@ void mongo_db_plugin_impl::_process_accepted_block( const chain::block_state_ptr
             }
          }
       } catch( ... ) {
-         handle_mongo_exception( "blocks insert: " + json, __LINE__ );
+         handle_mongo_exception( "blocks insert: " + fc::json::to_string( v ), __LINE__ );
       }
    }
 }
@@ -1321,11 +1271,11 @@ void mongo_db_plugin_impl::update_account(const chain::action& act)
          }
          if( account ) {
             abi_def abi_def = fc::raw::unpack<chain::abi_def>( setabi.abi );
-            const string json_str = fc::json::to_string( abi_def );
+            auto v = fc::variant( abi_def );
 
-            try{
+            try {
                auto update_from = make_document(
-                     kvp( "$set", make_document( kvp( "abi", bsoncxx::from_json( json_str )),
+                     kvp( "$set", make_document( kvp( "abi", to_bson( v )),
                                                  kvp( "updatedAt", b_date{now} ))));
 
                try {
@@ -1337,8 +1287,8 @@ void mongo_db_plugin_impl::update_account(const chain::action& act)
                   handle_mongo_exception( "account update", __LINE__ );
                }
             } catch( bsoncxx::exception& e ) {
-               elog( "Unable to convert abi JSON to MongoDB JSON: ${e}", ("e", e.what()));
-               elog( "  JSON: ${j}", ("j", json_str));
+               elog( "Unable to convert abi JSON to BSON: ${e}", ("e", e.what()));
+               elog( "  JSON: ${j}", ("j", fc::json::to_string( v )));
             }
          }
       }
@@ -1439,7 +1389,7 @@ void mongo_db_plugin_impl::init() {
       auto& mongo_conn = *client;
 
       auto accounts = mongo_conn[db_name][accounts_col];
-      if( accounts.count( make_document()) == 0 ) {
+      if( accounts.estimated_document_count() == 0 ) {
          auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
                std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()} );
 
@@ -1725,3 +1675,4 @@ void mongo_db_plugin::plugin_shutdown()
 }
 
 } // namespace eosio
+

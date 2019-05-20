@@ -43,13 +43,13 @@ template<typename T>
 inline array_ptr<T> array_ptr_impl (running_instance_context& ctx, U32 ptr, size_t length)
 {
    MemoryInstance* mem = ctx.memory;
-   if (!mem) 
+   if (!mem)
       Runtime::causeException(Exception::Cause::accessViolation);
 
    size_t mem_total = IR::numBytesPerPage * Runtime::getMemoryNumPages(mem);
    if (ptr >= mem_total || length > (mem_total - ptr) / sizeof(T))
       Runtime::causeException(Exception::Cause::accessViolation);
-   
+
    T* ret_ptr = (T*)(getMemoryBaseAddress(mem) + ptr);
 
    return array_ptr<T>((T*)(getMemoryBaseAddress(mem) + ptr));
@@ -408,7 +408,7 @@ struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, uint32_t, Inputs...>
          std::vector<std::remove_const_t<T> > copy(length > 0 ? length : 1);
          T* copy_ptr = &copy[0];
          memcpy( (void*)copy_ptr, (void*)base, length * sizeof(T) );
-         Ret ret = Then(ctx, static_cast<array_ptr<T>>(copy_ptr), length, rest..., translated...);  
+         Ret ret = Then(ctx, static_cast<array_ptr<T>>(copy_ptr), length, rest..., translated...);
          memcpy( (void*)base, (void*)copy_ptr, length * sizeof(T) );
          return ret;
       }
@@ -633,6 +633,8 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T &, Inputs...>, std::tuple<Transl
    }
 };
 
+digest_type calc_memory_hash( MemoryInstance* mem );
+
 /**
  * forward declaration of a wrapper class to call methods of the class
  */
@@ -643,6 +645,10 @@ struct intrinsic_function_invoker {
    template<MethodSig Method>
    static Ret wrapper(running_instance_context& ctx, Params... params) {
       class_from_wasm<Cls>::value(*ctx.apply_ctx).checktime();
+      auto& intrinsic_log = ctx.apply_ctx->control.get_intrinsic_debug_log();
+      if( intrinsic_log ) {
+         intrinsic_log->record_intrinsic( calc_arguments_hash( params... ), calc_memory_hash( ctx.memory ) );
+      }
       return (class_from_wasm<Cls>::value(*ctx.apply_ctx).*Method)(params...);
    }
 
@@ -662,6 +668,10 @@ struct intrinsic_function_invoker<WasmSig, void, MethodSig, Cls, Params...> {
    template<MethodSig Method>
    static void_type wrapper(running_instance_context& ctx, Params... params) {
       class_from_wasm<Cls>::value(*ctx.apply_ctx).checktime();
+      auto& intrinsic_log = ctx.apply_ctx->control.get_intrinsic_debug_log();
+      if( intrinsic_log ) {
+         intrinsic_log->record_intrinsic( calc_arguments_hash( params... ), calc_memory_hash( ctx.memory ) );
+      }
       (class_from_wasm<Cls>::value(*ctx.apply_ctx).*Method)(params...);
       return void_type();
    }

@@ -106,8 +106,14 @@
 
 namespace eosio { namespace chain {
 
-   FC_DECLARE_EXCEPTION( chain_exception,
-                         3000000, "blockchain exception" )
+   enum class system_error_code : uint64_t {
+      generic_system_error = 10000000000000000000ULL,
+      contract_restricted_error_code, //< contract used an error code reserved for system usage
+   };
+
+
+   FC_DECLARE_DERIVED_EXCEPTION_WITH_ERROR_CODE( chain_exception, fc::exception,
+                                                 3000000, "blockchain exception" )
    /**
     *  chain_exception
     *   |- chain_type_exception
@@ -237,7 +243,7 @@ namespace eosio { namespace chain {
       FC_DECLARE_DERIVED_EXCEPTION( ill_formed_deferred_transaction_generation_context, transaction_exception,
                                     3040016, "Transaction includes an ill-formed deferred transaction generation context extension" )
       FC_DECLARE_DERIVED_EXCEPTION( disallowed_transaction_extensions_bad_block_exception, transaction_exception,
-                                    3250002, "Transaction includes disallowed extensions (invalid block)" )
+                                    3040017, "Transaction includes disallowed extensions (invalid block)" )
 
 
    FC_DECLARE_DERIVED_EXCEPTION( action_validate_exception, chain_exception,
@@ -249,7 +255,7 @@ namespace eosio { namespace chain {
                                     3050002, "Invalid Action Arguments" )
       FC_DECLARE_DERIVED_EXCEPTION( eosio_assert_message_exception, action_validate_exception,
                                     3050003, "eosio_assert_message assertion failure" )
-      FC_DECLARE_DERIVED_EXCEPTION_WITH_ERROR_CODE( eosio_assert_code_exception, action_validate_exception,
+      FC_DECLARE_DERIVED_EXCEPTION( eosio_assert_code_exception, action_validate_exception,
                                     3050004, "eosio_assert_code assertion failure" )
       FC_DECLARE_DERIVED_EXCEPTION( action_not_found_exception, action_validate_exception,
                                     3050005, "Action can not be found" )
@@ -263,6 +269,8 @@ namespace eosio { namespace chain {
                                     3050009, "Inline Action exceeds maximum size limit" )
       FC_DECLARE_DERIVED_EXCEPTION( unauthorized_ram_usage_increase, action_validate_exception,
                                     3050010, "Action attempts to increase RAM usage of account without authorization" )
+      FC_DECLARE_DERIVED_EXCEPTION( restricted_error_code_exception, action_validate_exception,
+                                    3050011, "eosio_assert_code assertion failure uses restricted error code value" )
 
    FC_DECLARE_DERIVED_EXCEPTION( database_exception, chain_exception,
                                  3060000, "Database exception" )
@@ -317,6 +325,7 @@ namespace eosio { namespace chain {
                                     3080007, "Transaction exceeded the current greylisted account network usage limit" )
       FC_DECLARE_DERIVED_EXCEPTION( greylist_cpu_usage_exceeded, resource_exhausted_exception,
                                     3080008, "Transaction exceeded the current greylisted account CPU usage limit" )
+
       FC_DECLARE_DERIVED_EXCEPTION( leeway_deadline_exception, deadline_exception,
                                     3081001, "Transaction reached the deadline set due to leeway on account CPU limits" )
 
@@ -531,6 +540,8 @@ namespace eosio { namespace chain {
                                     3190003, "block log can not be found" )
       FC_DECLARE_DERIVED_EXCEPTION( block_log_backup_dir_exist, block_log_exception,
                                     3190004, "block log backup dir already exists" )
+      FC_DECLARE_DERIVED_EXCEPTION( block_index_not_found, block_log_exception,
+                                    3190005, "block index can not be found"  )
 
    FC_DECLARE_DERIVED_EXCEPTION( http_exception, chain_exception,
                                  3200000, "http exception" )

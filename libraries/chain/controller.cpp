@@ -23,6 +23,7 @@
 #include <eosio/chain/resource_limits.hpp>
 #include <eosio/chain/chain_snapshot.hpp>
 #include <eosio/chain/thread_utils.hpp>
+#include <eosio/chain/intrinsic_debug_log.hpp>
 
 #include <chainbase/chainbase.hpp>
 #include <fc/io/json.hpp>
@@ -211,6 +212,7 @@ struct controller_impl {
    chainbase::database            db;
    chainbase::database            reversible_blocks; ///< a special database to persist blocks that have successfully been applied but are still reversible
    block_log                      blog;
+   optional<intrinsic_debug_log>  intrinsic_log;
    optional<pending_state>        pending;
    block_state_ptr                head;
    fork_database                  fork_db;
@@ -219,7 +221,7 @@ struct controller_impl {
    authorization_manager          authorization;
    protocol_feature_manager       protocol_features;
    controller::config             conf;
-   chain_id_type                  chain_id;
+   const chain_id_type            chain_id; // read by thread_pool threads
    optional<fc::time_point>       replay_head_time;
    db_read_mode                   read_mode = db_read_mode::SPECULATIVE;
    bool                           in_trx_requiring_checks = false; ///< if true, checks that are normally skipped on replay (e.g. auth checks) cannot be skipped
@@ -255,7 +257,7 @@ struct controller_impl {
       if ( read_mode == db_read_mode::SPECULATIVE ) {
          EOS_ASSERT( head->block, block_validate_exception, "attempting to pop a block that was sparsely loaded from a snapshot");
          for( const auto& t : head->trxs )
-            unapplied_transactions[t->signed_id] = t;
+            unapplied_transactions[t->signed_id()] = t;
       }
 
       head = prev;
@@ -292,6 +294,7 @@ struct controller_impl {
         cfg.read_only ? database::read_only : database::read_write,
         cfg.reversible_cache_size, false, cfg.db_map_mode, cfg.db_hugepage_paths ),
     blog( cfg.blocks_dir ),
+    intrinsic_log( cfg.intrinsic_debug_log_path ? *cfg.intrinsic_debug_log_path : optional<intrinsic_debug_log>() ),
     fork_db( cfg.state_dir ),
     wasmif( cfg.wasm_runtime, db ),
     resource_limits( db ),
@@ -308,6 +311,10 @@ struct controller_impl {
                             const vector<digest_type>& new_features )
                            { check_protocol_features( timestamp, cur_features, new_features ); }
       );
+
+      if( intrinsic_log ) {
+         intrinsic_log->open();
+      }
 
       set_activation_handler<builtin_protocol_feature_t::preactivate_feature>();
       set_activation_handler<builtin_protocol_feature_t::replace_deferred>();
@@ -515,7 +522,7 @@ struct controller_impl {
 
    void init(std::function<bool()> shutdown, const snapshot_reader_ptr& snapshot) {
       // Setup state if necessary (or in the default case stay with already loaded state):
-      auto lib_num = 1;
+      uint32_t lib_num = 1u;
       if( snapshot ) {
          snapshot->validate();
          if( blog.head() ) {
@@ -594,6 +601,17 @@ struct controller_impl {
          db.undo();
       }
 
+      if( intrinsic_log && intrinsic_log->last_committed_block_num() > 0
+             && head->block_num != intrinsic_log->last_committed_block_num() )
+      {
+         wlog( "head block num (${head}) does not match last block in intrinsic.log (${last}): replacing intrinsic.log",
+               ("head", head->block_num)("last", intrinsic_log->last_committed_block_num())
+         );
+         intrinsic_log->close();
+         fc::remove( intrinsic_log->get_path() );
+         intrinsic_log->open();
+      }
+
       protocol_features.init( db );
 
       const auto& rbi = reversible_blocks.get_index<reversible_block_index,by_num>();
@@ -661,6 +679,22 @@ struct controller_impl {
 
       if( last_block_num > head->block_num ) {
          replay( shutdown ); // replay any irreversible and reversible blocks ahead of current head
+      }
+
+      if( intrinsic_log ) {
+         intrinsic_log->close();
+
+         /*
+         // Print intrinsic_log in JSON form
+         intrinsic_log->open( intrinsic_debug_log::open_mode::read_only );
+         const auto end_itr = intrinsic_log->end_block();
+         for( auto itr = intrinsic_log->begin_block(); itr != end_itr; ++itr ) {
+            dlog( "\n${json}", ("json", fc::json::to_pretty_string(*itr)) );
+         }
+         intrinsic_log->close();
+         */
+
+         intrinsic_log.reset();
       }
 
       if( shutdown() ) return;
@@ -1084,6 +1118,9 @@ struct controller_impl {
 
       transaction_trace_ptr trace;
       if( gtrx.expiration < self.pending_block_time() ) {
+         if( intrinsic_log ) {
+            intrinsic_log->start_transaction( gtrx.trx_id );
+         }
          trace = std::make_shared<transaction_trace>();
          trace->id = gtrx.trx_id;
          trace->block_num = self.head_block_num() + 1;
@@ -1104,6 +1141,17 @@ struct controller_impl {
       in_trx_requiring_checks = true;
 
       uint32_t cpu_time_to_bill_us = billed_cpu_time_us;
+
+      auto abort_transaction_in_intrinsic_log_on_exit = fc::make_scoped_exit(
+      [abort_transaction=static_cast<bool>(intrinsic_log), this] {
+         if( abort_transaction ) {
+            intrinsic_log->abort_transaction();
+         }
+      });
+
+      if( intrinsic_log ) {
+         intrinsic_log->start_transaction( gtrx.trx_id );
+      }
 
       transaction_context trx_context( self, dtrx, gtrx.trx_id );
       trx_context.leeway =  fc::microseconds(0); // avoid stealing cpu resource
@@ -1146,6 +1194,7 @@ struct controller_impl {
          undo_session.squash();
 
          restore.cancel();
+         abort_transaction_in_intrinsic_log_on_exit.cancel();
 
          return trace;
       } catch( const disallowed_transaction_extensions_bad_block_exception& ) {
@@ -1176,6 +1225,7 @@ struct controller_impl {
             emit( self.accepted_transaction, trx );
             emit( self.applied_transaction, std::tie(trace, dtrx) );
             undo_session.squash();
+            abort_transaction_in_intrinsic_log_on_exit.cancel();
             return trace;
          }
          trace->elapsed = fc::time_point::now() - trx_context.start;
@@ -1215,6 +1265,7 @@ struct controller_impl {
          emit( self.applied_transaction, std::tie(trace, dtrx) );
 
          undo_session.squash();
+         abort_transaction_in_intrinsic_log_on_exit.cancel();
       } else {
          emit( self.accepted_transaction, trx );
          emit( self.applied_transaction, std::tie(trace, dtrx) );
@@ -1258,8 +1309,10 @@ struct controller_impl {
          auto start = fc::time_point::now();
          const bool check_auth = !self.skip_auth_check() && !trx->implicit;
          // call recover keys so that trx->sig_cpu_usage is set correctly
-         const fc::microseconds sig_cpu_usage = check_auth ? std::get<0>( trx->recover_keys( chain_id ) ) : fc::microseconds();
-         const flat_set<public_key_type>& recovered_keys = check_auth ? std::get<1>( trx->recover_keys( chain_id ) ) : flat_set<public_key_type>();
+         const fc::microseconds sig_cpu_usage =
+               check_auth ? std::get<0>( trx->recover_keys( chain_id ) ) : fc::microseconds();
+         const std::shared_ptr<flat_set<public_key_type>> recovered_keys =
+               check_auth ? std::get<1>( trx->recover_keys( chain_id ) ) : nullptr;
          if( !explicit_billed_cpu_time ) {
             fc::microseconds already_consumed_time( EOS_PERCENT(sig_cpu_usage.count(), conf.sig_cpu_bill_pct) );
 
@@ -1270,8 +1323,20 @@ struct controller_impl {
             }
          }
 
-         const signed_transaction& trn = trx->packed_trx->get_signed_transaction();
-         transaction_context trx_context(self, trn, trx->id, start);
+         const signed_transaction& trn = trx->packed_trx()->get_signed_transaction();
+         transaction_context trx_context(self, trn, trx->id(), start);
+
+         auto abort_transaction_in_intrinsic_log_on_exit = fc::make_scoped_exit(
+         [abort_transaction=static_cast<bool>(intrinsic_log), this] {
+            if( abort_transaction ) {
+               intrinsic_log->abort_transaction();
+            }
+         });
+
+         if( intrinsic_log ) {
+            intrinsic_log->start_transaction( trx_context.id );
+         }
+
          if ((bool)subjective_cpu_leeway && pending->_block_status == controller::block_status::incomplete) {
             trx_context.leeway = *subjective_cpu_leeway;
          }
@@ -1285,17 +1350,18 @@ struct controller_impl {
                trx_context.enforce_whiteblacklist = false;
             } else {
                bool skip_recording = replay_head_time && (time_point(trn.expiration) <= *replay_head_time);
-               trx_context.init_for_input_trx( trx->packed_trx->get_unprunable_size(),
-                                               trx->packed_trx->get_prunable_size(),
+               trx_context.init_for_input_trx( trx->packed_trx()->get_unprunable_size(),
+                                               trx->packed_trx()->get_prunable_size(),
                                                skip_recording);
             }
 
             trx_context.delay = fc::seconds(trn.delay_sec);
 
             if( check_auth ) {
+               EOS_ASSERT( recovered_keys, missing_auth_exception, "recovered_keys should never be null" );
                authorization.check_authorization(
                        trn.actions,
-                       recovered_keys,
+                       *recovered_keys,
                        {},
                        trx_context.delay,
                        [&trx_context](){ trx_context.checktime(); },
@@ -1311,7 +1377,7 @@ struct controller_impl {
                transaction_receipt::status_enum s = (trx_context.delay == fc::seconds(0))
                                                     ? transaction_receipt::executed
                                                     : transaction_receipt::delayed;
-               trace->receipt = push_receipt(*trx->packed_trx, s, trx_context.billed_cpu_time_us, trace->net_usage);
+               trace->receipt = push_receipt(*trx->packed_trx(), s, trx_context.billed_cpu_time_us, trace->net_usage);
                pending->_block_stage.get<building_block>()._pending_trx_metas.emplace_back(trx);
             } else {
                transaction_receipt_header r;
@@ -1337,11 +1403,12 @@ struct controller_impl {
                trx_context.undo();
             } else {
                restore.cancel();
+               abort_transaction_in_intrinsic_log_on_exit.cancel();
                trx_context.squash();
             }
 
             if (!trx->implicit) {
-               unapplied_transactions.erase( trx->signed_id );
+               unapplied_transactions.erase( trx->signed_id() );
             }
             return trace;
          } catch( const disallowed_transaction_extensions_bad_block_exception& ) {
@@ -1355,7 +1422,7 @@ struct controller_impl {
          }
 
          if (!failure_is_subjective(*trace->except)) {
-            unapplied_transactions.erase( trx->signed_id );
+            unapplied_transactions.erase( trx->signed_id() );
          }
 
          emit( self.accepted_transaction, trx );
@@ -1385,6 +1452,10 @@ struct controller_impl {
          pending.emplace( maybe_session(db), *head, when, confirm_block_count, new_protocol_feature_activations );
       } else {
          pending.emplace( maybe_session(), *head, when, confirm_block_count, new_protocol_feature_activations );
+      }
+
+      if( intrinsic_log ) {
+         intrinsic_log->start_block( head->block_num + 1 );
       }
 
       pending->_block_status = s;
@@ -1517,6 +1588,10 @@ struct controller_impl {
       EOS_ASSERT( pending->_block_stage.contains<building_block>(), block_validate_exception, "already called finalize_block");
 
       try {
+
+      if( intrinsic_log ) {
+         intrinsic_log->finish_block();
+      }
 
       auto& pbhs = pending->get_pending_block_header_state();
 
@@ -1944,16 +2019,20 @@ struct controller_impl {
       if( pending ) {
          if ( read_mode == db_read_mode::SPECULATIVE ) {
             for( const auto& t : pending->get_trx_metas() )
-               unapplied_transactions[t->signed_id] = t;
+               unapplied_transactions[t->signed_id()] = t;
          }
          pending.reset();
          protocol_features.popped_blocks_to( head->block_num );
+
+         // intrinsic_log is only supported in replay at the moment and abort_block should not be called during replay.
+         // But this is here since intrinsic_log already supports abort_block and it sets things up for the future
+         // in case we want to adapt the intrinsic_log to working during regular operation.
+         // In that case, we would also need to add support for popping committed blocks from the intrinsic log
+         // and call the appropriate function from controller_impl::pop_block().
+         if( intrinsic_log ) {
+            intrinsic_log->abort_block();
+         }
       }
-   }
-
-
-   bool should_enforce_runtime_limits()const {
-      return false;
    }
 
    checksum256_type calculate_action_merkle() {
@@ -2224,6 +2303,11 @@ authorization_manager&         controller::get_mutable_authorization_manager()
 const protocol_feature_manager& controller::get_protocol_feature_manager()const
 {
    return my->protocol_features;
+}
+
+optional<intrinsic_debug_log>&  controller::get_intrinsic_debug_log()
+{
+   return my->intrinsic_log;
 }
 
 controller::controller( const controller::config& cfg )
@@ -3030,9 +3114,11 @@ bool controller::all_subjective_mitigations_disabled()const {
 }
 
 fc::optional<uint64_t> controller::convert_exception_to_error_code( const fc::exception& e ) {
-   const eosio_assert_code_exception* e_ptr = dynamic_cast<const eosio_assert_code_exception*>( &e );
+   const chain_exception* e_ptr = dynamic_cast<const chain_exception*>( &e );
 
    if( e_ptr == nullptr ) return {};
+
+   if( !e_ptr->error_code ) return static_cast<uint64_t>(system_error_code::generic_system_error);
 
    return e_ptr->error_code;
 }

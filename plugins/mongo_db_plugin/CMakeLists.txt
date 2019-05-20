@@ -4,13 +4,16 @@ if(BUILD_MONGO_DB_PLUGIN)
 
   if (libmongoc-1.0_FOUND)
 
+      find_package(libbson-1.0 REQUIRED)
+      message(STATUS "Found bson headers: ${BSON_INCLUDE_DIRS}")
+
       find_package(libbsoncxx-static REQUIRED)
       find_package(libmongocxx-static REQUIRED)
       find_package(libmongoc-static-1.0 REQUIRED)
       find_package(libbson-static-1.0 REQUIRED)
 
   else()
-      message("Could NOT find MongoDB. mongo_db_plugin with MongoDB support will not be included.")
+      message(FATAL_ERROR "Could NOT find mongo-c-driver. Disable mongo support or ensure mongo-c-driver and mongo-cxx-driver is built and installed")
       return()
   endif()
 
@@ -21,7 +24,7 @@ if(BUILD_MONGO_DB_PLUGIN)
                ${HEADERS} )
 
   target_include_directories(mongo_db_plugin
-          PRIVATE ${LIBMONGOCXX_STATIC_INCLUDE_DIRS} ${LIBBSONCXX_STATIC_INCLUDE_DIRS}
+          PRIVATE ${LIBMONGOCXX_STATIC_INCLUDE_DIRS} ${LIBBSONCXX_STATIC_INCLUDE_DIRS} ${BSON_INCLUDE_DIRS}
           PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include"
           )
 
@@ -31,8 +34,8 @@ if(BUILD_MONGO_DB_PLUGIN)
 
   # We can't just use *_STATIC_LIBRARIES variables to link against because the static
   # variants of these may try to static link against libraries we don't want (like a system
-  # libc/c++). But we need to know if mongo c driver was built with ICU or SASL2 support so
-  # that we can continue to link to those. This certainly is a bit on the fragile side but
+  # libc/c++). But we need to know if mongo c driver was built with ICU, SASL2, or snappy support
+  # so that we can continue to link to those. This certainly is a bit on the fragile side but
   # try to parse what is included in MONGOC_STATIC_LIBRARIES to see what we should link to
   foreach(MONGO_S_LIB ${MONGOC_STATIC_LIBRARIES})
     string(REGEX MATCH "libsasl2\\${CMAKE_SHARED_LIBRARY_SUFFIX}$" REGOUT ${MONGO_S_LIB})
@@ -44,15 +47,20 @@ if(BUILD_MONGO_DB_PLUGIN)
     if(REGOUT)
       set(LINK_ICU "icuuc")
     endif()
+
+    string(REGEX MATCH "libsnappy\\${CMAKE_SHARED_LIBRARY_SUFFIX}$" REGOUT ${MONGO_S_LIB})
+    if(REGOUT)
+      set(LINK_SNAPPY "snappy")
+    endif()
   endforeach()
 
   target_link_libraries(mongo_db_plugin
           PUBLIC chain_plugin eosio_chain appbase
           ${LIBMONGOCXX_STATIC_LIBRARY_PATH} ${LIBBSONCXX_STATIC_LIBRARY_PATH}
           ${MONGOC_STATIC_LIBRARY} ${BSON_STATIC_LIBRARY}
-          resolv ${LINK_SASL} ${LINK_ICU}
+          resolv ${LINK_SASL} ${LINK_ICU} ${LINK_SNAPPY}
           )
-               
+
 else()
   message("mongo_db_plugin not selected and will be omitted.")
 endif()

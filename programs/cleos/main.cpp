@@ -1747,8 +1747,8 @@ struct unstaketorex_subcommand {
       auto unstaketorex = actionRoot->add_subcommand("unstaketorex", localized("Buy REX using staked tokens"));
       unstaketorex->add_option("owner",    owner_str,    localized("Account buying REX tokens"))->required();
       unstaketorex->add_option("receiver", receiver_str, localized("Account that tokens have been staked to"))->required();
-      unstaketorex->add_option("from_net", from_net_str, localized("Amount to be unstaked from CPU resources and used in REX purchase"))->required();
-      unstaketorex->add_option("from_cpu", from_cpu_str, localized("Amount to be unstaked from Net resources and used in REX purchase"))->required();
+      unstaketorex->add_option("from_net", from_net_str, localized("Amount to be unstaked from Net resources and used in REX purchase"))->required();
+      unstaketorex->add_option("from_cpu", from_cpu_str, localized("Amount to be unstaked from CPU resources and used in REX purchase"))->required();
       add_standard_transaction_options(unstaketorex, "owner@active");
       unstaketorex->set_callback([this] {
          fc::variant act_payload = fc::mutable_variant_object()
@@ -2288,6 +2288,18 @@ void get_account( const string& accountName, const string& coresym, bool json_fo
          std::cout << std::endl;
       }
 
+      if( res.rex_info.is_object() ) {
+         auto& obj = res.rex_info.get_object();
+         asset vote_stake = asset::from_string( obj["vote_stake"].as_string() );
+         asset rex_balance = asset::from_string( obj["rex_balance"].as_string() );
+         std::cout << rex_balance.get_symbol().name() << " balances: " << std::endl;
+         std::cout << indent << std::left << std::setw(11)
+                   << "balance:" << std::right << std::setw(18) << rex_balance << std::endl;
+         std::cout << indent << std::left << std::setw(11)
+                   << "staked:" << std::right << std::setw(18) << vote_stake << std::endl;
+         std::cout << std::endl;
+      }
+
       if ( res.voter_info.is_object() ) {
          auto& obj = res.voter_info.get_object();
          string proxy = obj["proxy"].as_string();
@@ -2605,7 +2617,6 @@ int main( int argc, char** argv ) {
    getTable->add_option( "account", code, localized("The account who owns the table") )->required();
    getTable->add_option( "scope", scope, localized("The scope within the contract in which the table is found") )->required();
    getTable->add_option( "table", table, localized("The name of the table as specified by the contract abi") )->required();
-   getTable->add_option( "-b,--binary", binary, localized("Return the value as BINARY rather than using abi to interpret as JSON") );
    getTable->add_option( "-l,--limit", limit, localized("The maximum number of rows to return") );
    getTable->add_option( "-k,--key", table_key, localized("Deprecated") );
    getTable->add_option( "-L,--lower", lower, localized("JSON representation of lower bound value of key, defaults to first") );
@@ -2619,6 +2630,7 @@ int main( int argc, char** argv ) {
    getTable->add_option( "--encode-type", encode_type,
                          localized("The encoding type of key_type (i64 , i128 , float64, float128) only support decimal encoding e.g. 'dec'"
                                     "i256 - supports both 'dec' and 'hex', ripemd160 and sha256 is 'hex' only"));
+   getTable->add_flag("-b,--binary", binary, localized("Return the value as BINARY rather than using abi to interpret as JSON"));
    getTable->add_flag("-r,--reverse", reverse, localized("Iterate in reverse order"));
    getTable->add_flag("--show-payer", show_payer, localized("show RAM payer"));
 

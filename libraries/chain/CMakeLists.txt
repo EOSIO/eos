@@ -53,6 +53,7 @@ add_library( eosio_chain
              genesis_intrinsics.cpp
              whitelisted_intrinsics.cpp
              thread_utils.cpp
+             intrinsic_debug_log.cpp
              ${HEADERS}
              )
 
