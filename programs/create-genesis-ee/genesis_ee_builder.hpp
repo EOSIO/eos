@@ -11,8 +11,8 @@
 
 namespace cyberway { namespace genesis {
 
+using namespace cyberway::golos;
 namespace bfs = boost::filesystem;
-using mvo = fc::mutable_variant_object;
 
 FC_DECLARE_EXCEPTION(genesis_exception, 9000000, "genesis create exception");
 
@@ -26,7 +26,8 @@ public:
     void build(const bfs::path& out_dir);
 private:
     golos_dump_header read_header(bfs::ifstream& in);
-    bool read_op_header(bfs::ifstream& in, operation_header& op);
+    template<typename Operation>
+    bool read_operation(bfs::ifstream& in, Operation& op);
 
     void process_delete_comments();
     void process_comments();
