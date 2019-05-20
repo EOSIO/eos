@@ -90,9 +90,18 @@ datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_big_vector_w
 }
 
 template <typename ST>
+inline void history_pack_varuint64(datastream<ST>& ds, uint64_t val) {
+   do {
+      uint8_t b = uint8_t(val) & 0x7f;
+      val >>= 7;
+      b |= ((val > 0) << 7);
+      ds.write((char*)&b, 1);
+   } while (val);
+}
+
+template <typename ST>
 void history_pack_big_bytes(datastream<ST>& ds, const eosio::chain::bytes& v) {
-   FC_ASSERT(v.size() <= 1024 * 1024 * 1024);
-   fc::raw::pack(ds, unsigned_int((uint32_t)v.size()));
+   history_pack_varuint64(ds, v.size());
    if (v.size())
       ds.write(&v.front(), (uint32_t)v.size());
 }
