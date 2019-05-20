@@ -62,7 +62,7 @@
       "indexes": [{
           "name": "primary",
           "unique": "true",
-          "orders": [{"field": "balance.sym", "order": "asc"}]
+          "orders": [{"field": "balance._sym", "order": "asc"}]
         }
       ]
 
@@ -72,7 +72,7 @@
       "indexes": [{
           "name": "primary",
           "unique": "true",
-          "orders": [{"field": "supply.sym", "order": "asc"}]
+          "orders": [{"field": "supply._sym", "order": "asc"}]
         }
       ]
     }
