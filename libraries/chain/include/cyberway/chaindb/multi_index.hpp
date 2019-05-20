@@ -336,7 +336,7 @@ private:
         constexpr static table_name_t   table_name() { return code_extractor<TableName>::get_code(); }
         constexpr static index_name_t   index_name() { return code_extractor<IndexName>::get_code(); }
         constexpr static account_name_t code_name()  { return 0; }
-        constexpr static account_name_t scope_name() { return 0; }
+        constexpr static scope_name_t   scope_name() { return 0; }
 
         const T& operator*() const {
             lazy_load_object();
@@ -365,7 +365,7 @@ private:
         }
         const_iterator_impl& operator++() {
             lazy_open();
-            CYBERWAY_ASSERT(primary_key_ != end_primary_key, chaindb_midx_pk_exception,
+            CYBERWAY_ASSERT(primary_key_ != primary_key::End, chaindb_midx_pk_exception,
                 "Can't increment end iterator for the index ${index}", ("index", get_index_name()));
             primary_key_ = controller().next(get_cursor_request());
             item_.reset();
@@ -381,7 +381,7 @@ private:
             lazy_open();
             primary_key_ = controller().prev(get_cursor_request());
             item_.reset();
-            CYBERWAY_ASSERT(primary_key_ != end_primary_key, chaindb_midx_pk_exception,
+            CYBERWAY_ASSERT(primary_key_ != primary_key::End, chaindb_midx_pk_exception,
                 "Out of range on decrement of iterator for the index ${index}", ("index", get_index_name()));
             return *this;
         }
@@ -400,7 +400,7 @@ private:
             item_ = std::move(src.item_);
 
             src.cursor_ = uninitilized_cursor::state;
-            src.primary_key_ = end_primary_key;
+            src.primary_key_ = primary_key::End;
 
             return *this;
         }
@@ -453,7 +453,7 @@ private:
 
         const chaindb_controller* controller_ = nullptr;
         mutable cursor_t cursor_ = uninitilized_cursor::state;
-        mutable primary_key_t primary_key_ = end_primary_key;
+        mutable primary_key_t primary_key_ = primary_key::End;
         mutable cache_object_ptr item_;
 
         void lazy_load_object() const {
@@ -464,7 +464,7 @@ private:
             }
 
             lazy_open();
-            CYBERWAY_ASSERT(primary_key_ != end_primary_key, chaindb_midx_pk_exception,
+            CYBERWAY_ASSERT(primary_key_ != primary_key::End, chaindb_midx_pk_exception,
                 "Cannot load object from the end iterator for the index ${index}", ("index", get_index_name()));
 
             auto ptr = controller().get_cache_object({code_name(), cursor_}, false);
@@ -556,7 +556,7 @@ public:
         constexpr static table_name_t   table_name() { return code_extractor<TableName>::get_code(); }
         constexpr static index_name_t   index_name() { return code_extractor<IndexName>::get_code(); }
         constexpr static account_name_t code_name()  { return 0; }
-        constexpr static account_name_t scope_name() { return 0; }
+        constexpr static scope_name_t   scope_name() { return 0; }
 
         index(const chaindb_controller& ctrl)
         : controller_(ctrl) {
@@ -725,7 +725,7 @@ public:
 
     constexpr static table_name_t   table_name() { return code_extractor<TableName>::get_code(); }
     constexpr static account_name_t code_name()  { return 0; }
-    constexpr static account_name_t scope_name() { return 0; }
+    constexpr static scope_name_t   scope_name() { return 0; }
 
     static const table_request& get_table_request() {
         static table_request request{code_name(), scope_name(), table_name()};

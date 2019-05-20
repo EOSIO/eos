@@ -14,6 +14,7 @@
 
 #include <cyberway/chaindb/controller.hpp>
 #include <cyberway/chaindb/names.hpp>
+#include <cyberway/chaindb/typed_name.hpp>
 
 #include <fc/io/json.hpp>
 
@@ -393,7 +394,7 @@ fc::variant chain_api_plugin_impl::get_payout(chain::account_name account) const
     auto payouts_it = chain_db.lower_bound(request, fc::mutable_variant_object() ("token_code", chain::symbol(CORE_SYMBOL).to_symbol_code())
                                                                                  ("account", account));
 
-    if (payouts_it.pk != cyberway::chaindb::end_primary_key) {
+    if (payouts_it.pk != cyberway::chaindb::primary_key::End) {
         return chain_db.value_at_cursor({N(cyber.stake), payouts_it.cursor});
     }
     return fc::variant();
@@ -540,15 +541,23 @@ get_transaction_id_result chain_api_plugin_impl::get_transaction_id( const get_t
 
 get_table_rows_result chain_api_plugin_impl::get_table_rows( const get_table_rows_params& p )const {
    auto& chaindb = chain_controller_.chaindb();
+   cyberway::chaindb::scope_name_t scope = 0;
 
-   const cyberway::chaindb::index_request request{p.code, p.scope, p.table, p.index};
+   try {
+       auto table = chaindb.table_by_request({p.code, scope, p.table});
+       scope = cyberway::chaindb::scope_name::from_string(table, p.scope).value();
+   } catch (...) {
+        return get_table_rows_result();
+   }
+
+   const cyberway::chaindb::index_request request{p.code, scope, p.table, p.index};
 
    if (p.reverse && *p.reverse) {
        // TODO: implement rbegin end rend methods in mongo driver https://github.com/GolosChain/cyberway/issues/446
        EOS_THROW(cyberway::chaindb::driver_unsupported_operation_exception, "Backward iteration through table not supported yet");
    } else {
        auto begin = p.lower_bound.is_null() ? chaindb.begin(request) : chaindb.lower_bound(request, p.lower_bound);
-       const auto end_pk = p.upper_bound.is_null() ? cyberway::chaindb::end_primary_key : chaindb.upper_bound(request, p.upper_bound).pk;
+       const auto end_pk = p.upper_bound.is_null() ? cyberway::chaindb::primary_key::End : chaindb.upper_bound(request, p.upper_bound).pk;
        return walk_table_row_range(p, begin, end_pk);
    }
 
@@ -562,6 +571,7 @@ get_table_rows_result chain_api_plugin_impl::walk_table_row_range(const get_tabl
 
     auto& chaindb = chain_controller_.chaindb();
     cyberway::chaindb::cursor_request cursor{p.code, itr.cursor};
+    auto index = chaindb.index_at_cursor(cursor);
 
     for(unsigned int count = 0;
         cur_time <= end_time && count < p.limit && itr.pk != end_pk;
@@ -571,10 +581,10 @@ get_table_rows_result chain_api_plugin_impl::walk_table_row_range(const get_tabl
             const auto object = chaindb.object_at_cursor(cursor);
             auto value = fc::mutable_variant_object()
                 ("data",    object.value)
-                ("scope",   object.service.scope)
-                ("primary", object.service.pk)
-                ("payer",   object.service.payer)
-                ("owner",   object.service.owner)
+                ("scope",   cyberway::chaindb::scope_name::from_table(index).to_string())
+                ("primary", cyberway::chaindb::primary_key::from_table(index, object.service.pk).to_string())
+                ("payer",   chain::account_name(object.service.payer))
+                ("owner",   chain::account_name(object.service.owner))
                 ("size",    object.service.size)
                 ("in_ram",  object.service.in_ram);
             result.rows.push_back(std::move(value));
@@ -647,7 +657,7 @@ std::vector<chain::asset> chain_api_plugin_impl::get_currency_balance( const get
 
     const auto next_request = cyberway::chaindb::cursor_request{p.code, accounts_it.cursor};
 
-    for (; accounts_it.pk != cyberway::chaindb::end_primary_key; accounts_it.pk = chaindb.next(next_request)) {
+    for (; accounts_it.pk != cyberway::chaindb::primary_key::End; accounts_it.pk = chaindb.next(next_request)) {
 
         const auto value = chaindb.value_at_cursor({p.code, accounts_it.cursor});
 
@@ -674,7 +684,7 @@ fc::variant chain_api_plugin_impl::get_currency_stats( const get_currency_stats_
     auto& chaindb = chain_controller_.chaindb();
     auto itr = chaindb.begin({p.code, scope, N(stat), cyberway::chaindb::names::primary_index});
 
-    if (itr.pk == cyberway::chaindb::end_primary_key) {
+    if (itr.pk == cyberway::chaindb::primary_key::End) {
         return {};
     }
 
@@ -706,7 +716,7 @@ get_producers_result chain_api_plugin_impl::get_producers( const get_producers_p
     std::string next_producer;
     uint64_t total_votes = 0;
 
-    for (size_t count = 0; producers_it.pk != cyberway::chaindb::end_primary_key; producers_it.pk = chaindb.next(cursor_req)) {
+    for (size_t count = 0; producers_it.pk != cyberway::chaindb::primary_key::End; producers_it.pk = chaindb.next(cursor_req)) {
 
         const auto value = chaindb.value_at_cursor(cursor_req);
         const auto account = value["account"].as_string();
@@ -755,7 +765,7 @@ std::string chain_api_plugin_impl::get_agent_public_key(chain::account_name acco
 
     const auto it = chaindb.lower_bound(request, fc::mutable_variant_object()("token_code", chain::symbol(CORE_SYMBOL).to_symbol_code())("account", account));
 
-    if (it.pk != cyberway::chaindb::end_primary_key) {
+    if (it.pk != cyberway::chaindb::primary_key::End) {
         return chaindb.value_at_cursor({N(), it.cursor})["signing_key"].as_string();
     }
     return "";
@@ -809,8 +819,8 @@ get_scheduled_transactions_result chain_api_plugin_impl::get_scheduled_transacti
               ("trx_id", itr->trx_id)
               ("sender", itr->sender)
               ("sender_id", itr->sender_id)
-              ("owner", itr.service().owner)
-              ("payer", itr.service().payer)
+              ("owner", chain::account_name(itr.service().owner))
+              ("payer", chain::account_name(itr.service().payer))
               ("delay_until", itr->delay_until)
               ("expiration", itr->expiration)
               ("published", itr->published)

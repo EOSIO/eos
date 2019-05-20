@@ -13,6 +13,7 @@ namespace eosio { namespace chain {
 
     using cyberway::chaindb::cursor_t;
     using cyberway::chaindb::account_name_t;
+    using cyberway::chaindb::scope_name_t;
     using cyberway::chaindb::table_name_t;
     using cyberway::chaindb::index_name_t;
     using cyberway::chaindb::primary_key_t;
@@ -32,46 +33,46 @@ namespace eosio { namespace chain {
         }
 
         cursor_t chaindb_lower_bound(
-            account_name_t code, account_name_t scope, table_name_t table, index_name_t index,
+            account_name_t code, scope_name_t scope, table_name_t table, index_name_t index,
             array_ptr<const char> key, size_t size
         ) {
             return context.chaindb.lower_bound({code, scope, table, index}, key, size).cursor;
         }
 
         cursor_t chaindb_lower_bound_pk(
-            account_name_t code, account_name_t scope, table_name_t table, primary_key_t pk
+            account_name_t code, scope_name_t scope, table_name_t table, primary_key_t pk
         ) {
             return context.chaindb.lower_bound({code, scope, table}, pk).cursor;
         }
 
         cursor_t chaindb_upper_bound(
-            account_name_t code, account_name_t scope, table_name_t table, index_name_t index,
+            account_name_t code, scope_name_t scope, table_name_t table, index_name_t index,
             array_ptr<const char> key, size_t size
         ) {
             return context.chaindb.upper_bound({code, scope, table, index}, key, size).cursor;
         }
 
         cursor_t chaindb_upper_bound_pk(
-            account_name_t code, account_name_t scope, table_name_t table, primary_key_t pk
+            account_name_t code, scope_name_t scope, table_name_t table, primary_key_t pk
         ) {
             return context.chaindb.upper_bound({code, scope, table}, pk).cursor;
         }
 
         cursor_t chaindb_locate_to(
-            account_name_t code, account_name_t scope, table_name_t table, index_name_t index,
+            account_name_t code, scope_name_t scope, table_name_t table, index_name_t index,
             primary_key_t pk, array_ptr<const char> key, size_t size
         ) {
             return context.chaindb.locate_to({code, scope, table, index}, key, size, pk).cursor;
         }
 
         cursor_t chaindb_begin(
-            account_name_t code, account_name_t scope, table_name_t table, index_name_t index
+            account_name_t code, scope_name_t scope, table_name_t table, index_name_t index
         ) {
             return context.chaindb.begin({code, scope, table, index}).cursor;
         }
 
         cursor_t chaindb_end(
-            account_name_t code, account_name_t scope, table_name_t table, index_name_t index
+            account_name_t code, scope_name_t scope, table_name_t table, index_name_t index
         ) {
             return context.chaindb.end({code, scope, table, index}).cursor;
         }
@@ -169,7 +170,7 @@ namespace eosio { namespace chain {
             return s;
         }
 
-        primary_key_t chaindb_available_primary_key(account_name_t code, account_name_t scope, table_name_t table) {
+        primary_key_t chaindb_available_primary_key(account_name_t code, scope_name_t scope, table_name_t table) {
             return context.chaindb.available_pk({code, scope, table});
         }
 
@@ -179,7 +180,7 @@ namespace eosio { namespace chain {
         }
 
         int32_t chaindb_insert(
-            account_name_t code, account_name_t scope, table_name_t table,
+            account_name_t code, scope_name_t scope, table_name_t table,
             account_name_t payer, primary_key_t pk, array_ptr<const char> data, size_t size
         ) {
             EOS_ASSERT(account_name(payer) != account_name(), invalid_table_payer,
@@ -190,7 +191,7 @@ namespace eosio { namespace chain {
         }
 
         int32_t chaindb_update(
-            account_name_t code, account_name_t scope, table_name_t table,
+            account_name_t code, scope_name_t scope, table_name_t table,
             account_name_t payer, primary_key_t pk, array_ptr<const char> data, size_t size
         ) {
             validate_db_access_violation(code);
@@ -199,7 +200,7 @@ namespace eosio { namespace chain {
         }
 
         int32_t chaindb_delete(
-            account_name_t code, account_name_t scope, table_name_t table, primary_key_t pk
+            account_name_t code, scope_name_t scope, table_name_t table, primary_key_t pk
         ) {
             validate_db_access_violation(code);
             auto delta = context.chaindb.remove({code, scope, table}, context.get_storage_payer(), pk);
@@ -207,7 +208,7 @@ namespace eosio { namespace chain {
         }
 
         void chaindb_ram_state(
-            account_name_t code, account_name_t scope, table_name_t table, primary_key_t pk, bool in_ram
+            account_name_t code, scope_name_t scope, table_name_t table, primary_key_t pk, bool in_ram
         ) {
             // This realization doesn't allow to call handler in system contract,
             //   but as result it works faster - is it good or not?
@@ -223,7 +224,9 @@ namespace eosio { namespace chain {
             op.in_ram = in_ram;
 
             cyberway::chain::apply_set_ram_state(context, op, [&](const cyberway::chaindb::service_state& service) {
-                if (context.privileged || (service.owner == context.receiver && service.payer == context.receiver)) {
+                if (context.privileged ||
+                    (service.owner == context.receiver.value && service.payer == context.receiver.value)
+                ) {
                     return;
                 } else if (service.owner == service.payer || !context.weak_require_authorization(service.payer)) {
                     context.require_authorization(service.owner);

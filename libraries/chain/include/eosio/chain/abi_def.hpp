@@ -100,9 +100,13 @@ struct table_def {
    table_def(const table_name& name, const type_name& type, const vector<index_def>& indexes)
    :name(name), type(type), indexes(indexes)
    {}
+   table_def(const table_name& name, const type_name& type, const type_name& scope, const vector<index_def>& indexes)
+   :name(name), type(type), scope_type(scope), indexes(indexes)
+   {}
 
    table_name         name;        // the name of the table
    type_name          type;        // type of binary data stored in this table
+   type_name          scope_type;  // type of scope
    vector<index_def>  indexes;     //
 
    // The following fields are service and set by chain code
@@ -193,7 +197,7 @@ FC_REFLECT( eosio::chain::action_def                       , (name)(type) )
 FC_REFLECT( eosio::chain::event_def                        , (name)(type) )
 FC_REFLECT( eosio::chain::order_def                        , (field)(order) )
 FC_REFLECT( eosio::chain::index_def                        , (name)(unique)(orders) )
-FC_REFLECT( eosio::chain::table_def                        , (name)(type)(indexes) )
+FC_REFLECT( eosio::chain::table_def                        , (name)(type)(scope_type)(indexes) )
 FC_REFLECT( eosio::chain::error_message                    , (error_code)(error_msg) )
 FC_REFLECT( eosio::chain::variant_def                      , (name)(types) )
 FC_REFLECT( eosio::chain::abi_def                          , (version)(types)(structs)(actions)(events)(tables)

@@ -39,7 +39,7 @@ namespace cyberway { namespace chaindb {
         object_value next_pk_object(variant val = variant()) const;
 
         bool has_next_pk() const {
-            return unset_primary_key != next_pk_;
+            return primary_key::Unset != next_pk_;
         }
 
         primary_key_t next_pk() const {
@@ -62,8 +62,8 @@ namespace cyberway { namespace chaindb {
         pk_value_map_t_   removed_values_;
 
     private:
-        primary_key_t     next_pk_      = unset_primary_key;
-        primary_key_t     undo_next_pk_ = unset_primary_key;
+        primary_key_t     next_pk_      = primary_key::Unset;
+        primary_key_t     undo_next_pk_ = primary_key::Unset;
         revision_t        revision_     = impossible_revision;
     }; // struct undo_state
 
@@ -268,8 +268,8 @@ namespace cyberway { namespace chaindb {
     }
 
     void undo_state::reset_next_pk() {
-        next_pk_      = unset_primary_key;
-        undo_next_pk_ = unset_primary_key;
+        next_pk_      = primary_key::Unset;
+        undo_next_pk_ = primary_key::Unset;
     }
 
     object_value undo_state::next_pk_object(variant val) const {
@@ -304,6 +304,7 @@ namespace cyberway { namespace chaindb {
             undo_abi_.tables.emplace_back( eosio::chain::table_def {
                 names::undo_table,
                 names::undo_table,
+                "uint64",
                 {{"primary", true, {{ names::undo_pk_path , names::asc_order}} }},
             });
 
@@ -485,8 +486,8 @@ namespace cyberway { namespace chaindb {
             index.index = &undo_table_.table->indexes.front();
 
             auto& cursor = driver_.lower_bound(std::move(index), {});
-            for (; cursor.pk != end_primary_key; driver_.next(cursor)) {
-                auto  obj   = driver_.object_at_cursor(cursor);
+            for (; cursor.pk != primary_key::End; driver_.next(cursor)) {
+                auto  obj   = driver_.object_at_cursor(cursor, false);
                 auto  pk    = obj.pk();
                 auto& state = get_state(obj.service);
 
@@ -545,9 +546,9 @@ namespace cyberway { namespace chaindb {
             auto& head = table.head();
 
             CYBERWAY_SESSION_ASSERT(head.revision() == undo_rev,
-                "Wrong undo revision ${undo_revision} != ${revision} for the table ${table} for the scope '${scope}",
+                "Wrong undo revision ${undo_revision} != ${revision} for the table ${table}:${scope}",
                 ("revision", head.revision())("undo_revision", undo_rev)
-                ("table", get_full_table_name(table.info()))("scope", get_scope_name(table.info())));
+                ("table", get_full_table_name(table.info()))("scope", table.scope()));
 
             auto ctx = journal_.create_ctx(table.info());
 
@@ -649,9 +650,9 @@ namespace cyberway { namespace chaindb {
 
             auto& state = table.head();
             CYBERWAY_SESSION_ASSERT(state.revision() == squash_rev,
-                "Wrong squash revision ${squash_revision} != ${revision} for the table ${table} for the scope '${scope}",
+                "Wrong squash revision ${squash_revision} != ${revision} for the table ${table}:${scope}",
                 ("revision", state.revision())("squash_revision", squash_rev)
-                ("table", get_full_table_name(table.info()))("scope", get_scope_name(table.info())));
+                ("table", get_full_table_name(table.info()))("scope", table.scope()));
 
             // Only one stack item
             if (table.size() == 1) {

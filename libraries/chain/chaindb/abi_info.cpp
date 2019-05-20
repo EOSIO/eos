@@ -17,16 +17,16 @@ namespace cyberway { namespace chaindb {
 
                 init_types.emplace("asset", struct_def{
                     "asset", "", {
-                        {"amount", "uint64"},
-                        {"decs",   "uint8"},
-                        {"sym",    "symbol_code"},
+                        {"_amount", "uint64"},
+                        {"_decs",   "uint8"},
+                        {"_sym",    "symbol_code"},
                     }
                 });
 
                 init_types.emplace("symbol", struct_def{
                     "symbol", "", {
-                        {"decs", "uint8"},
-                        {"sym",  "symbol_code"},
+                        {"_decs", "uint8"},
+                        {"_sym",  "symbol_code"},
                     }
                 });
 
@@ -89,6 +89,12 @@ namespace cyberway { namespace chaindb {
         }
 
         void build_indexes() {
+            const bool check_field_name = serializer_.is_check_field_name();
+            serializer_.set_check_field_name(false);
+            auto reset_field_name = fc::make_scoped_exit([this, check_field_name]{
+                serializer_.set_check_field_name(check_field_name);
+            });
+
             for (auto& t: table_map_) try {
                 // if abi was loaded instead of declared
                 auto& table = t.second;
@@ -199,10 +205,17 @@ namespace cyberway { namespace chaindb {
                 ("table", get_table_name(table))("index", get_index_name(p)));
 
             auto& k = p.orders.front();
-            CYBERWAY_ASSERT(k.type == "int64" || k.type == "uint64" || k.type == "name" || k.type == "symbol_code",
+            CYBERWAY_ASSERT(
+                primary_key::is_valid_kind(k.type),
                 invalid_primary_key_exception,
-                "The field ${field} of the table ${table} is declared as primary "
-                "and it should has type int64, uint64, name or symbol_code",
+                "The field ${field} of the table ${table} is declared as primary and it should has type: "
+                "int64, uint64, name, symbol_code or symbol",
+                ("field", k.field)("table", get_table_name(table)));
+
+            CYBERWAY_ASSERT(
+                scope_name::is_valid_kind(table.scope_type),
+                invalid_scope_name_exception,
+                "Scope type should has type: int64, uint64, name, symbol_code or symbol",
                 ("field", k.field)("table", get_table_name(table)));
         }
     }; // struct index_builder
@@ -210,8 +223,11 @@ namespace cyberway { namespace chaindb {
     const fc::microseconds abi_info::max_abi_time_ = fc::seconds(60);
 
     abi_info::abi_info(const account_name& code, abi_def abi)
-    : code_(code) {
-        if (is_system_code(code)) serializer_.disable_check_field_name();
+    : code_(code),
+      serializer_(eosio::chain::abi_serializer::DBMode) {
+        if (is_system_code(code)) {
+            serializer_.set_check_field_name(false);
+        }
         serializer_.set_abi(abi, max_abi_time_);
 
         CYBERWAY_ASSERT(abi.tables.size() <= max_table_cnt(), max_table_count_exception,

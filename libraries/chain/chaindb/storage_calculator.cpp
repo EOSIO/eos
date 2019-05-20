@@ -94,8 +94,10 @@ namespace cyberway { namespace chaindb {
             case variant::type_id::uint128_type:
                 return base_size + 32;
 
-            case variant::type_id::string_type:
-                return base_size + var.get_string().size();
+            case variant::type_id::string_type: {
+                auto size = base_size + var.get_string().size();
+                return ((size >> 4) + 1) << 4;
+            }
 
             case variant::type_id::blob_type:
                 return base_size + 2 * var.get_blob().data.size();

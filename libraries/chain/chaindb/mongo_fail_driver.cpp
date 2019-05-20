@@ -1,7 +1,7 @@
 #include <cyberway/chaindb/mongo_driver.hpp>
 #include <cyberway/chaindb/exception.hpp>
 
-#define NOT_SUPPORTED CYBERWAY_ASSERT(false, broken_driver_exception, "MongoDB driver is not supported")
+#define NOT_SUPPORTED CYBERWAY_THROW(broken_driver_exception, "MongoDB driver is not supported")
 
 namespace cyberway { namespace chaindb {
     struct mongodb_driver::mongodb_impl_ {
@@ -97,7 +97,7 @@ namespace cyberway { namespace chaindb {
         NOT_SUPPORTED;
     }
 
-    const object_value& mongodb_driver::object_at_cursor(const cursor_info&) const {
+    const object_value& mongodb_driver::object_at_cursor(const cursor_info&, bool ) const {
         NOT_SUPPORTED;
     }
 

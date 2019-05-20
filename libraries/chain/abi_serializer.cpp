@@ -51,7 +51,7 @@ namespace eosio { namespace chain {
    }
 
    abi_serializer::abi_serializer( const abi_def& abi, const fc::microseconds& max_serialization_time ) {
-      configure_built_in_types();
+      configure_built_in_types(PublicMode);
       set_abi(abi, max_serialization_time);
    }
 
@@ -60,7 +60,7 @@ namespace eosio { namespace chain {
       built_in_types[name] = std::move( unpack_pack );
    }
 
-   void abi_serializer::configure_built_in_types() {
+   void abi_serializer::configure_built_in_types(mode m) {
 
       built_in_types.emplace("bool",                      pack_unpack<bool>());
       built_in_types.emplace("int8",                      pack_unpack<int8_t>());
@@ -97,13 +97,28 @@ namespace eosio { namespace chain {
       built_in_types.emplace("public_key",                pack_unpack<public_key_type>());
       built_in_types.emplace("signature",                 pack_unpack<signature_type>());
 
-      built_in_types.emplace("symbol",                    pack_unpack<symbol_info>());
       built_in_types.emplace("symbol_code",               pack_unpack<symbol_code>());
-      built_in_types.emplace("asset",                     pack_unpack<asset_info>());
+
+      switch (m) {
+         default:
+            assert(false);
+
+         case PublicMode: {
+            built_in_types.emplace("symbol",              pack_unpack<symbol>());
+            built_in_types.emplace("asset",               pack_unpack<asset>());
+         }
+         break;
+
+         case DBMode: {
+            built_in_types.emplace("symbol",              pack_unpack<symbol_info>());
+            built_in_types.emplace("asset",               pack_unpack<asset_info>());
+         }
+         break;
+      }
    }
 
-   void abi_serializer::disable_check_field_name() {
-       check_field_name_ = false;
+   void abi_serializer::set_check_field_name(const bool value) {
+       check_field_name_ = value;
    }
 
    void abi_serializer::set_abi(const abi_def& abi, const fc::microseconds& max_serialization_time) {

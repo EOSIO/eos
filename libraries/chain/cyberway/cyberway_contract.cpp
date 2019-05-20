@@ -112,8 +112,8 @@ void apply_cyber_domain_newusername(apply_context& context) {
 
 #define _CYBERWAY_OBJECT_QUERY_CHECK(_CHECK, _OP)  \
     EOS_ASSERT((_CHECK), eosio::chain::object_query_exception, \
-        "Object with the primary key ${scope}:${pk} doesn't exist in the table ${table}", \
-        ("pk", (_OP).pk)("scope", chaindb::get_scope_name((_OP).scope))("table", chaindb::get_full_table_name(_OP)))
+        "Object with the primary key ${pk} doesn't exist in the table ${table}:${scope}", \
+        ("pk", (_OP).pk)("table", chaindb::get_full_table_name(_OP))("scope", (_OP).scope))
 
 template <typename Operation>
 chaindb::cache_object_ptr get_cache_object(apply_context& context, const Operation& op) {
@@ -138,9 +138,8 @@ void apply_cyber_setrampayer(apply_context& context) {
         context.require_authorization(owner);
 
         EOS_ASSERT(op.new_payer != cache->service().payer, eosio::chain::object_ram_payer_exception,
-            "Object with the primary key ${scope}:${pk} in the table ${table} already has the RAM payer ${payer}",
-            ("pk", op.pk)("scope", chaindb::get_scope_name(op.scope))("table", chaindb::get_full_table_name(op))
-            ("payer", op.new_payer));
+            "Object with the primary key ${pk} in the table ${table}:${scope} already has the RAM payer ${payer}",
+            ("pk", op.pk)("scope", op.scope)("table", chaindb::get_full_table_name(op))("payer", op.new_payer));
 
         context.chaindb.recalc_ram_usage(*cache.get(), context.get_storage_payer(owner, op.new_payer));
     } FC_CAPTURE_AND_RETHROW((op))
@@ -156,9 +155,8 @@ void apply_set_ram_state(
     validate(service);
 
     EOS_ASSERT(op.in_ram != cache->service().in_ram, eosio::chain::object_ram_state_exception,
-        "Object with the primary key ${scope}:${pk} in the table ${table} already has RAM state = ${state}",
-        ("pk", op.pk)("scope", chaindb::get_scope_name(op.scope))("table", chaindb::get_full_table_name(op))
-        ("state", op.in_ram));
+        "Object with the primary key ${pk} in the table ${table}:${scope} already has RAM state = ${state}",
+        ("pk", op.pk)("table", chaindb::get_full_table_name(op))("scope", op.scope)("state", op.in_ram));
 
     auto info = context.get_storage_payer(service.owner, service.payer);
     info.in_ram  = op.in_ram;

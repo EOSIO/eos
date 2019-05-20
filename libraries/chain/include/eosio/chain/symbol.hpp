@@ -165,29 +165,33 @@ namespace eosio {
       }
 
       struct symbol_info final {
-          uint8_t     decs;
-          symbol_code sym;
+          uint8_t     _decs;
+          symbol_code _sym;
 
           symbol_info() = default;
 
-          symbol_info(const symbol& src)
-          : decs(src.decimals()),
-            sym(src.to_symbol_code())
+          explicit symbol_info(const symbol& src)
+          : _decs(src.decimals()),
+            _sym(src.to_symbol_code())
           { }
 
+          explicit symbol_info(const uint64_t src)
+          : symbol_info(symbol(src)) {
+          }
+
           operator symbol() const {
-              return symbol(sym.value << 8 | decs);
+              return symbol(_sym.value << 8 | _decs);
           }
 
           static symbol_info from_string(const string& from) {
-              return symbol::from_string(from);
+              return symbol_info(symbol::from_string(from));
           }
       };
 
    } // namespace chain
 } // namespace eosio
 
-FC_REFLECT(eosio::chain::symbol_info, (decs)(sym))
+FC_REFLECT(eosio::chain::symbol_info, (_decs)(_sym))
 FC_REFLECT(eosio::chain::symbol_code, (value))
 FC_REFLECT(eosio::chain::symbol, (m_value))
 
@@ -207,7 +211,7 @@ namespace fc {
    inline void from_variant(const variant& var, eosio::chain::symbol_info& vo) {
       using namespace eosio::chain;
       if (var.get_type() == variant::type_id::string_type) {
-         vo = symbol::from_string(var.get_string());
+         vo = symbol_info::from_string(var.get_string());
       } else {
          reflector<symbol_info>::visit(from_variant_visitor<symbol_info>(var.get_object(), vo));
       }

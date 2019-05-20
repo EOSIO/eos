@@ -14,28 +14,28 @@ namespace cyberway { namespace chaindb {
     }; // enum class undo_type
 
     struct service_state final {
-        primary_key_t pk       = unset_primary_key;
-        account_name  payer;
-        account_name  owner;
-        int           size     = 0;
-        bool          in_ram   = true;
+        primary_key_t  pk       = primary_key::Unset;
+        account_name_t payer    = 0;
+        account_name_t owner    = 0;
+        int            size     = 0;
+        bool           in_ram   = true;
 
-        account_name  code;
-        account_name  scope;
-        table_name    table;
+        account_name_t code     = 0;
+        scope_name_t   scope    = 0;
+        table_name_t   table    = 0;
 
-        revision_t    revision = impossible_revision;
+        revision_t     revision = impossible_revision;
 
         // the following fields are part of undo state,
         // TODO: refactor to move them into write_operation
-        primary_key_t undo_pk  = unset_primary_key;
-        undo_record   undo_rec = undo_record::Unknown;
+        primary_key_t  undo_pk  = primary_key::Unset;
+        undo_record    undo_rec = undo_record::Unknown;
 
-        revision_t    undo_revision = impossible_revision;
-        account_name  undo_payer;
-        account_name  undo_owner;
-        size_t        undo_size     = 0;
-        bool          undo_in_ram   = true;
+        revision_t     undo_revision = impossible_revision;
+        account_name_t undo_payer    = 0;
+        account_name_t undo_owner    = 0;
+        size_t         undo_size     = 0;
+        bool           undo_in_ram   = true;
 
         service_state(const table_info& table, primary_key_t pk)
         : pk(pk), code(table.code), scope(table.scope), table(table.table->name) {
@@ -58,7 +58,7 @@ namespace cyberway { namespace chaindb {
         }
 
         bool empty() const {
-            return scope.empty() && code.empty() && table.empty();
+            return 0 == scope && 0 == code && 0 == table;
         }
     }; // struct service_state
 

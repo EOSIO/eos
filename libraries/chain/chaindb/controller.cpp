@@ -22,6 +22,7 @@ namespace cyberway { namespace chaindb {
 
     using eosio::chain::name;
     using eosio::chain::symbol;
+    using eosio::chain::symbol_info;
 
     using fc::variant;
     using fc::variants;
@@ -77,35 +78,6 @@ namespace cyberway { namespace chaindb {
             CYBERWAY_ASSERT(
                 false, unknown_connection_type_exception,
                 "Invalid type ${type} of ChainDB connection", ("type", type));
-        }
-
-        variant get_pk_value(const table_info& table, const primary_key_t pk) {
-            auto& pk_order = *table.pk_order;
-
-            variant value;
-            switch (pk_order.type.front()) {
-                case 'i': // int64
-                    value = variant(static_cast<int64_t>(pk));
-                    break;
-                case 'u': // uint64
-                    value = variant(pk);
-                    break;
-                case 'n': // name
-                    value = variant(name(pk).to_string());
-                    break;
-                case 's': // symbol_code
-                    value = variant(symbol(pk << 8).name());
-                    break;
-                default:
-                    CYBERWAY_ASSERT(false, invalid_primary_key_exception,
-                        "Invalid type ${type} of the primary key for the table ${table}",
-                        ("type", pk_order.type)("table", get_full_table_name(table)));
-            }
-
-            for (auto itr = pk_order.path.rbegin(), etr = pk_order.path.rend(); etr != itr; ++itr) {
-                value = variant(mutable_variant_object(*itr, value));
-            }
-            return value;
         }
 
     } } // namespace _detail
@@ -210,7 +182,7 @@ namespace cyberway { namespace chaindb {
         }
 
         const cursor_info& current(const cursor_info& cursor) const {
-            if (unset_primary_key == cursor.pk) {
+            if (primary_key::Unset == cursor.pk) {
                 driver_.current(cursor);
             }
             return cursor;
@@ -218,6 +190,10 @@ namespace cyberway { namespace chaindb {
 
         const cursor_info& current(const cursor_request& request) const {
             return current(driver_.cursor(request));
+        }
+
+        table_info table_by_request(const table_request& request) {
+            return get_table(request);
         }
 
         const cursor_info& lower_bound(const index_request& request, const char* key, const size_t size) {
@@ -238,7 +214,7 @@ namespace cyberway { namespace chaindb {
 
         const cursor_info& lower_bound(const table_request& request, const primary_key_t pk) {
             auto  index  = get_pk_index(request);
-            auto  value  = _detail::get_pk_value(index, pk);
+            auto  value  = primary_key::to_variant(index, pk);
             auto  cache  = cache_.find(index, pk);
             auto& cursor = driver_.lower_bound(std::move(index), std::move(value));
 
@@ -263,7 +239,7 @@ namespace cyberway { namespace chaindb {
 
         const cursor_info& upper_bound(const table_request& request, const primary_key_t pk) {
             auto index = get_pk_index(request);
-            auto value = _detail::get_pk_value(index, pk);
+            auto value = primary_key::to_variant(index, pk);
             return current(driver_.upper_bound(std::move(index), std::move(value)));
         }
 
@@ -308,13 +284,13 @@ namespace cyberway { namespace chaindb {
         cache_object_ptr get_cache_object(const cursor_request& req, const bool with_blob) {
             auto& cursor = current(req);
 
-            CYBERWAY_ASSERT(end_primary_key != cursor.pk, driver_absent_object_exception,
+            CYBERWAY_ASSERT(primary_key::End != cursor.pk, driver_absent_object_exception,
                 "Requesting object from the end of the table ${table}",
                 ("table", get_full_table_name(cursor.index)));
 
             auto item = cache_.find(cursor.index, cursor.pk);
             if (BOOST_UNLIKELY(!item)) {
-                auto obj = object_at_cursor(cursor);
+                auto obj = object_at_cursor(cursor, false);
                 if (!obj.is_null()) {
                     item = cache_.emplace(cursor.index, std::move(obj));
                 }
@@ -414,8 +390,8 @@ namespace cyberway { namespace chaindb {
             return object_by_pk(table, pk);
         }
 
-        object_value object_at_cursor(const cursor_request& request) {
-            return object_at_cursor(current(request));
+        object_value object_at_cursor(const cursor_request& request, const bool with_decors) {
+            return object_at_cursor(current(request), with_decors);
         }
 
         void set_revision(revision_t revision) {
@@ -450,8 +426,8 @@ namespace cyberway { namespace chaindb {
         }
 
     private:
-        object_value object_at_cursor(const cursor_info& cursor) {
-            auto obj = driver_.object_at_cursor(cursor);
+        object_value object_at_cursor(const cursor_info& cursor, const bool with_decors) {
+            auto obj = driver_.object_at_cursor(cursor, with_decors);
             validate_object(cursor.index, obj, cursor.pk);
             return obj;
         }
@@ -523,10 +499,10 @@ namespace cyberway { namespace chaindb {
             index_request request{N(), N(), N(account), N(name)};
             const auto abi_cursor = lower_bound(request, fc::mutable_variant_object()("name", abi_code));
 
-            if (abi_cursor.pk == end_primary_key) {
+            if (abi_cursor.pk == primary_key::End) {
                 return {};
             }
-            return object_at_cursor({N(), abi_cursor.id}).value["abi"].as_blob().data;
+            return object_at_cursor({N(), abi_cursor.id}, false).value["abi"].as_blob().data;
         }
 
         static abi_def bytes_to_abi(const std::vector<char>& abi_bytes) {
@@ -561,82 +537,8 @@ namespace cyberway { namespace chaindb {
             return obj;
         }
 
-        void validate_pk_field(const table_info& table, const variant& row, const primary_key_t pk) const try {
-            CYBERWAY_ASSERT(pk != unset_primary_key && pk != end_primary_key, primary_key_exception,
-                "Value ${pk} can't be used as primary key in the row ${row} "
-                "from the table ${table} for the scope '${scope}'",
-                ("pk", pk)("row", row)("table", get_full_table_name(table))("scope", get_scope_name(table)));
-
-            auto& pk_order = *table.pk_order;
-            const variant* value = &row;
-            for (auto& key: pk_order.path) {
-                CYBERWAY_ASSERT(value->is_object(), primary_key_exception,
-                    "The part ${key} in the primary key is not an object in the row ${row}"
-                    "from the table ${table} for the scope '${scope}'",
-                    ("key", key)("row", row)("table", get_full_table_name(table))("scope", get_scope_name(table)));
-
-                auto& object = value->get_object();
-                auto itr = object.find(key);
-                CYBERWAY_ASSERT(object.end() != itr, primary_key_exception,
-                    "Can't find the part ${key} for the primary key in the row ${row} "
-                    "from the table ${table} for the scope '${scope}'",
-                    ("key", key)("row", row)("table", get_full_table_name(table))("scope", get_scope_name(table)));
-
-                value = &(*itr).value();
-            }
-
-            auto type = value->get_type();
-
-            auto validate_type = [&](const bool test) {
-                CYBERWAY_ASSERT(test, primary_key_exception,
-                    "Wrong value type '${type} for the primary key in the row ${row}"
-                    "from the table ${table} for the scope '${scope}'",
-                    ("type", type)("row", row)("table", get_full_table_name(table))("scope", get_scope_name(table)));
-            };
-
-            auto validate_value = [&](const bool test) {
-                CYBERWAY_ASSERT(test, primary_key_exception,
-                    "Wrong value ${pk} != ${value} for the primary key in the row ${row}"
-                    "from the table ${table} for the scope '${scope}'",
-                    ("pk", pk)("value", *value)
-                    ("type", type)("row", row)("table", get_full_table_name(table))("scope", get_scope_name(table)));
-            };
-
-            switch(pk_order.type.front()) {
-                case 'i': { // int64
-                    validate_type(variant::type_id::int64_type == type);
-                    validate_value(value->as_uint64() == pk);
-                    break;
-                }
-                case 'u': { // uint64
-                    validate_type(variant::type_id::uint64_type == type);
-                    validate_value(value->as_uint64() == pk);
-                    break;
-                }
-                case 'n': { // name
-                    validate_type(variant::type_id::string_type == type);
-                    validate_value(name(value->as_string()).value == pk);
-                    break;
-                }
-                case 's': { // symbol_code
-                    validate_type(variant::type_id::string_type == type);
-                    validate_value(symbol(0, value->as_string().c_str()).to_symbol_code() == pk);
-                    break;
-                }
-                default:
-                    validate_type(false);
-            }
-        } catch (const primary_key_exception&) {
-            throw;
-        } catch (...) {
-            CYBERWAY_ASSERT(false, primary_key_exception,
-                "Wrong value of the primary key in the row ${row} "
-                "from the table ${table} for the scope '${scope}'",
-                ("row", row)("table", get_full_table_name(table))("scope", get_scope_name(table)));
-        }
-
         void validate_object(const table_info& table, const object_value& obj, const primary_key_t pk) const {
-            if (end_primary_key == obj.pk()) {
+            if (primary_key::End == obj.pk()) {
                 CYBERWAY_ASSERT(obj.is_null(), driver_wrong_object_exception,
                     "Driver returns the row '${obj}' from the table ${table} instead of null for end iterator",
                     ("obj", obj.value)("table", get_full_table_name(table)));
@@ -648,13 +550,11 @@ namespace cyberway { namespace chaindb {
                 ("obj", obj.value)("table", get_full_table_name(table)));
             auto& value = obj.value.get_object();
 
-            if (pk == end_primary_key && obj.service.pk == pk) return;
+            if (pk == primary_key::End && obj.service.pk == pk) return;
 
             CYBERWAY_ASSERT(value.end() == value.find(names::service_field), reserved_field_exception,
-                "Object has the reserved field ${field} for the table ${table} for the scope '${scope}'",
-                ("field", names::service_field)("table", get_full_table_name(table))("scope", get_scope_name(table)));
-
-            validate_pk_field(table, obj.value, pk);
+                "Object has the reserved field ${field} for the table ${table}",
+                ("field", names::service_field)("table", get_full_table_name(table)));
         }
 
         abi_map::iterator set_abi(const account_name& code, abi_info info) {
@@ -922,11 +822,19 @@ namespace cyberway { namespace chaindb {
     }
 
     variant chaindb_controller::value_at_cursor(const cursor_request& request) const {
-        return impl_->object_at_cursor(request).value;
+        return impl_->object_at_cursor(request, false).value;
+    }
+
+    table_info chaindb_controller::table_by_request(const table_request& request) const {
+        return impl_->table_by_request(request);
+    }
+
+    index_info chaindb_controller::index_at_cursor(const cursor_request& request) const {
+        return impl_->current(request).index;
     }
 
     object_value chaindb_controller::object_at_cursor(const cursor_request& request) const {
-        return impl_->object_at_cursor(request);
+        return impl_->object_at_cursor(request, true);
     }
 
     revision_t chaindb_controller::revision() const {
