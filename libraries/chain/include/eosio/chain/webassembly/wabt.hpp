@@ -35,7 +35,7 @@ struct intrinsic_registrator {
    struct intrinsic_func_info {
       FuncSignature sig;
       intrinsic_fn func;
-   }; 
+   };
 
    static auto& get_map(){
       static map<string, map<string, intrinsic_func_info>> _map;
@@ -395,13 +395,13 @@ struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, size_t, Inputs...>> 
          std::vector<std::remove_const_t<T> > copy(length > 0 ? length : 1);
          T* copy_ptr = &copy[0];
          memcpy( (void*)copy_ptr, (void*)base, length * sizeof(T) );
-         Ret ret = Then(vars, static_cast<array_ptr<T>>(copy_ptr), length, rest..., args, (uint32_t)offset - 2);  
+         Ret ret = Then(vars, static_cast<array_ptr<T>>(copy_ptr), length, rest..., args, (uint32_t)offset - 2);
          memcpy( (void*)base, (void*)copy_ptr, length * sizeof(T) );
          return ret;
       }
       return Then(vars, static_cast<array_ptr<T>>(base), length, rest..., args, (uint32_t)offset - 2);
    };
-   
+
    template<then_type Then>
    static const auto fn() {
       return next_step::template fn<translate_one<Then>>();
@@ -525,7 +525,7 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T *, Inputs...>> {
          memcpy( (void*)&copy, (void*)base, sizeof(T) );
          Ret ret = Then(vars, &copy, rest..., args, (uint32_t)offset - 1);
          memcpy( (void*)base, (void*)&copy, sizeof(T) );
-         return ret; 
+         return ret;
       }
       return Then(vars, base, rest..., args, (uint32_t)offset - 1);
    };
@@ -632,7 +632,7 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T &, Inputs...>> {
          memcpy( (void*)&copy, (void*)base, sizeof(T) );
          Ret ret = Then(vars, copy, rest..., args, (uint32_t)offset - 1);
          memcpy( (void*)base, (void*)&copy, sizeof(T) );
-         return ret; 
+         return ret;
       }
       return Then(vars, *base, rest..., args, (uint32_t)offset - 1);
    }
@@ -646,6 +646,8 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T &, Inputs...>> {
 
 extern apply_context* fixme_context;
 
+digest_type calc_memory_hash( const Memory& mem );
+
 /**
  * forward declaration of a wrapper class to call methods of the class
  */
@@ -656,6 +658,10 @@ struct intrinsic_function_invoker {
    template<MethodSig Method>
    static Ret wrapper(wabt_apply_instance_vars& vars, Params... params, const TypedValues&, int) {
       class_from_wasm<Cls>::value(vars.ctx).checktime();
+      auto& intrinsic_log = vars.ctx.control.get_intrinsic_debug_log();
+      if( intrinsic_log ) {
+         intrinsic_log->record_intrinsic( calc_arguments_hash( params... ), calc_memory_hash( *vars.memory ) );
+      }
       return (class_from_wasm<Cls>::value(vars.ctx).*Method)(params...);
    }
 
@@ -672,6 +678,10 @@ struct intrinsic_function_invoker<void, MethodSig, Cls, Params...> {
    template<MethodSig Method>
    static void_type wrapper(wabt_apply_instance_vars& vars, Params... params, const TypedValues& args, int offset) {
       class_from_wasm<Cls>::value(vars.ctx).checktime();
+      auto& intrinsic_log = vars.ctx.control.get_intrinsic_debug_log();
+      if( intrinsic_log ) {
+         intrinsic_log->record_intrinsic( calc_arguments_hash( params... ), calc_memory_hash( *vars.memory ) );
+      }
       (class_from_wasm<Cls>::value(vars.ctx).*Method)(params...);
       return void_type();
    }

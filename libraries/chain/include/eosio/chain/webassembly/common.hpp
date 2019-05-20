@@ -7,7 +7,7 @@
 
 using namespace fc;
 
-namespace eosio { namespace chain { 
+namespace eosio { namespace chain {
 
    class apply_context;
    class transaction_context;
@@ -23,7 +23,7 @@ namespace eosio { namespace chain {
          return T(ctx);
       }
    };
-   
+
    template<>
    struct class_from_wasm<transaction_context> {
       /**
@@ -73,8 +73,15 @@ namespace eosio { namespace chain {
          return static_cast<U *>(value);
       }
 
+      template<typename DataStream>
+      friend inline DataStream& operator<<( DataStream& ds, const array_ptr<T>& ) {
+         uint64_t zero = 0;
+         ds.write( (const char*)&zero, sizeof(zero) ); // Serializing pointers is not currently supported
+         return ds;
+      }
+
       T *value;
-   }; 
+   };
 
    /**
     * class to represent an in-wasm-memory char array that must be null terminated
@@ -95,7 +102,21 @@ namespace eosio { namespace chain {
          return static_cast<U *>(value);
       }
 
+      template<typename DataStream>
+      friend inline DataStream& operator<<( DataStream& ds, const null_terminated_ptr& ) {
+         uint64_t zero = 0;
+         ds.write( (const char*)&zero, sizeof(zero) ); // Serializing pointers is not currently supported
+         return ds;
+      }
+
       char *value;
    };
+
+   template<typename... Params>
+   digest_type calc_arguments_hash( Params&&... params ) {
+      digest_type::encoder enc;
+      (fc::raw::pack( enc, std::forward<Params>(params) ), ...);
+      return enc.result();
+   }
 
  } } // eosio::chain
