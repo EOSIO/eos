@@ -62,7 +62,7 @@ namespace eosio {
     struct get_table_rows_params {
         bool                json = false;
         chain::name         code;
-        chain::name         scope;
+        std::string         scope;
         chain::name         table;
         std::string         table_key;
         fc::variant         lower_bound;

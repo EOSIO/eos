@@ -57,6 +57,8 @@ namespace cyberway { namespace chaindb {
         static typed_name from_value(value_kind, int64_t);
         static typed_name from_value(value_kind, const string&);
 
+        static typed_name from_string(value_kind, const string&);
+
     private:
         value_kind kind_  = Unknown;
         value_type value_ = 0;
@@ -83,6 +85,8 @@ namespace cyberway { namespace chaindb {
             return typed_name::from_value(kind_from_table(info), std::forward<Args>(args)...);
         }
 
+        static primary_key from_string(const table_info&, const string&);
+
         static primary_key from_table(const table_info&, value_type);
 
         variant to_variant(const table_info&) const;
@@ -102,6 +106,8 @@ namespace cyberway { namespace chaindb {
         static scope_name from_value(const table_info& info, Args&&... args) {
             return typed_name::from_value(kind_from_table(info), std::forward<Args>(args)...);
         }
+
+        static scope_name from_string(const table_info&, const string&);
 
         static scope_name from_table(const table_info&);
 

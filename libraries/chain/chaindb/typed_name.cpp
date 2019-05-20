@@ -119,6 +119,25 @@ namespace cyberway { namespace chaindb {
         TYPED_THROW("Bad kind of typed name on initialize from string");
     }
 
+    typed_name typed_name::from_string(const value_kind kind, const string& value) {
+        switch (kind) {
+            case Int64:
+                return from_value(kind, fc::to_int64(value));
+
+            case Uint64:
+                return from_value(kind, fc::to_uint64(value));
+
+            case Name:
+            case SymbolCode:
+            case Symbol:
+            case Unknown:
+            default:
+                break;
+        }
+
+        return from_value(kind, value);
+    }
+
     bool typed_name::is_valid(const value_kind kind , const value_type value) {
         switch (kind) {
             case Int64:
@@ -215,6 +234,10 @@ namespace cyberway { namespace chaindb {
         return kind_from_string(info.pk_order->type);
     }
 
+    primary_key primary_key::from_string(const table_info& info, const string& value) {
+        return typed_name::from_string(kind_from_table(info), value);
+    }
+
     primary_key primary_key::from_table(const table_info& info, const value_type value) {
         assert(info.pk_order);
         assert(!info.pk_order->type.empty());
@@ -255,6 +278,10 @@ namespace cyberway { namespace chaindb {
             return typed_name::Name;
         }
         return typed_name::kind_from_string(scope_type);
+    }
+
+    scope_name scope_name::from_string(const table_info& info, const string& value) {
+        return typed_name::from_string(kind_from_table(info), value);
     }
 
     scope_name scope_name::from_table(const table_info& info) {

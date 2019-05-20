@@ -541,8 +541,16 @@ get_transaction_id_result chain_api_plugin_impl::get_transaction_id( const get_t
 
 get_table_rows_result chain_api_plugin_impl::get_table_rows( const get_table_rows_params& p )const {
    auto& chaindb = chain_controller_.chaindb();
+   cyberway::chaindb::scope_name_t scope = 0;
 
-   const cyberway::chaindb::index_request request{p.code, p.scope, p.table, p.index};
+   try {
+       auto table = chaindb.table_by_request({p.code, scope, p.table});
+       scope = cyberway::chaindb::scope_name::from_string(table, p.scope).value();
+   } catch (...) {
+        return get_table_rows_result();
+   }
+
+   const cyberway::chaindb::index_request request{p.code, scope, p.table, p.index};
 
    if (p.reverse && *p.reverse) {
        // TODO: implement rbegin end rend methods in mongo driver https://github.com/GolosChain/cyberway/issues/446

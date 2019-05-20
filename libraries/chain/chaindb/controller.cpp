@@ -192,6 +192,10 @@ namespace cyberway { namespace chaindb {
             return current(driver_.cursor(request));
         }
 
+        table_info table_by_request(const table_request& request) {
+            return get_table(request);
+        }
+
         const cursor_info& lower_bound(const index_request& request, const char* key, const size_t size) {
             auto  index  = get_index(request);
             auto  value  = index.abi->to_object(index, key, size);
@@ -819,6 +823,10 @@ namespace cyberway { namespace chaindb {
 
     variant chaindb_controller::value_at_cursor(const cursor_request& request) const {
         return impl_->object_at_cursor(request).value;
+    }
+
+    table_info chaindb_controller::table_by_request(const table_request& request) const {
+        return impl_->table_by_request(request);
     }
 
     index_info chaindb_controller::index_at_cursor(const cursor_request& request) const {
