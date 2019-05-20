@@ -1955,8 +1955,8 @@ BOOST_AUTO_TEST_CASE(abi_type_redefine)
    }
    )=====";
 
-   auto is_type_exception = [](fc::exception const & e) -> bool { return e.to_detail_string().find("invalid type") != std::string::npos; };
-   BOOST_CHECK_EXCEPTION( abi_serializer abis(fc::json::from_string(repeat_abi).as<abi_def>(), max_serialization_time), invalid_type_inside_abi, is_type_exception );
+   auto is_type_exception = [](fc::exception const & e) -> bool { return e.to_detail_string().find("Circular reference in type account_name") != std::string::npos; };
+   BOOST_CHECK_EXCEPTION( abi_serializer abis(fc::json::from_string(repeat_abi).as<abi_def>(), max_serialization_time), abi_circular_def_exception, is_type_exception );
 
 } FC_LOG_AND_RETHROW() }
 
@@ -2301,6 +2301,57 @@ BOOST_AUTO_TEST_CASE(variants)
       verify_round_trip_conversion(abis, "v1", R"(["int16",4])", "020400");
       verify_round_trip_conversion(abis, "v2", R"(["foo",{"i0":5,"i1":6}])", "000506");
       verify_round_trip_conversion(abis, "v2", R"(["bar",{"i0":5,"i1":6}])", "010506");
+   } FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE(aliased_variants)
+{
+   using eosio::testing::fc_exception_message_starts_with;
+
+   auto aliased_variant = R"({
+      "version": "eosio::abi/1.1",
+      "types": [
+         { "new_type_name": "foo", "type": "foo_variant" }
+      ],
+      "variants": [
+         {"name": "foo_variant", "types": ["int8", "string"]}
+      ],
+   })";
+
+   try {
+      // round-trip abi through multiple formats
+      // json -> variant -> abi_def -> bin
+      auto bin = fc::raw::pack(fc::json::from_string(aliased_variant).as<abi_def>());
+      // bin -> abi_def -> variant -> abi_def
+      abi_serializer abis(variant(fc::raw::unpack<abi_def>(bin)).as<abi_def>(), max_serialization_time );
+
+      verify_round_trip_conversion(abis, "foo", R"(["int8",21])", "0015");
+   } FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE(variant_of_aliases)
+{
+   using eosio::testing::fc_exception_message_starts_with;
+
+   auto aliased_variant = R"({
+      "version": "eosio::abi/1.1",
+      "types": [
+         { "new_type_name": "foo_0", "type": "int8" },
+         { "new_type_name": "foo_1", "type": "string" }
+      ],
+      "variants": [
+         {"name": "foo", "types": ["foo_0", "foo_1"]}
+      ],
+   })";
+
+   try {
+      // round-trip abi through multiple formats
+      // json -> variant -> abi_def -> bin
+      auto bin = fc::raw::pack(fc::json::from_string(aliased_variant).as<abi_def>());
+      // bin -> abi_def -> variant -> abi_def
+      abi_serializer abis(variant(fc::raw::unpack<abi_def>(bin)).as<abi_def>(), max_serialization_time );
+
+      verify_round_trip_conversion(abis, "foo", R"(["foo_0",21])", "0015");
    } FC_LOG_AND_RETHROW()
 }
 
