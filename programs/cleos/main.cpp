@@ -1715,18 +1715,10 @@ struct sellram_subcommand {
    uint64_t amount;
 
    sellram_subcommand(CLI::App* actionRoot) {
-      auto sellram = actionRoot->add_subcommand("sellram", localized("Sell RAM"));
-      sellram->add_option("account", receiver_str, localized("The account to receive tokens for sold RAM"))->required();
-      sellram->add_option("bytes", amount, localized("Number of RAM bytes to sell"))->required();
-      add_standard_transaction_options(sellram, "account@active");
-
+      auto sellram = actionRoot->add_subcommand("sellram", localized("Deprecated command"));
       sellram->set_callback([this] {
-            fc::variant act_payload = fc::mutable_variant_object()
-               ("account", receiver_str)
-               ("bytes", amount);
-            auto accountPermissions = get_account_permissions(tx_permission, {receiver_str,config::active_name});
-            send_actions({create_action(accountPermissions, config::system_account_name, N(sellram), act_payload)});
-         });
+          EOS_THROW(action_not_found_exception, "Operation sellram is not supported anymore");
+      });
    }
 };
 
