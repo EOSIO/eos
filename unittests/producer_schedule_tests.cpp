@@ -340,7 +340,7 @@ BOOST_AUTO_TEST_CASE( empty_producer_schedule_has_no_effect ) try {
       return std::equal( a.begin(), a.end(), b.producers.begin(), b.producers.end() );
    };
 
-   auto res = c.set_producers( {N(alice),N(bob)} );
+   auto res = c.set_producers_legacy( {N(alice),N(bob)} );
    vector<producer_authority> sch1 = {
                                  producer_authority{N(alice), block_signing_authority_v0{ 1, {{ get_public_key(N(alice), "active"),1}}}},
                                  producer_authority{N(bob),   block_signing_authority_v0{ 1, {{ get_public_key(N(bob),   "active"),1}}}}
@@ -362,7 +362,7 @@ BOOST_AUTO_TEST_CASE( empty_producer_schedule_has_no_effect ) try {
    BOOST_CHECK_EQUAL( true, compare_schedules( sch1, c.control->active_producers() ) );
    c.produce_blocks(6);
 
-   res = c.set_producers( {} );
+   res = c.set_producers_legacy( {} );
    wlog("set producer schedule to []");
    BOOST_REQUIRE_EQUAL( true, c.control->proposed_producers().valid() );
    BOOST_CHECK_EQUAL( c.control->proposed_producers()->producers.size(), 0u );
@@ -382,7 +382,7 @@ BOOST_AUTO_TEST_CASE( empty_producer_schedule_has_no_effect ) try {
    BOOST_CHECK_EQUAL( c.control->pending_producers().version, 2u );
 
    // Setting a new producer schedule should still use version 2
-   res = c.set_producers( {N(alice),N(bob),N(carol)} );
+   res = c.set_producers_legacy( {N(alice),N(bob),N(carol)} );
    vector<producer_authority> sch2 = {
                                  producer_authority{N(alice), block_signing_authority_v0{ 1, {{get_public_key(N(alice), "active"),1}}}},
                                  producer_authority{N(bob),   block_signing_authority_v0{ 1, {{get_public_key(N(bob),   "active"),1}}}},

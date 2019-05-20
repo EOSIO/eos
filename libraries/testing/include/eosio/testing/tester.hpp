@@ -173,6 +173,7 @@ namespace eosio { namespace testing {
 
          vector<producer_authority>  get_producer_authorities( const vector<account_name>& producer_names )const;
          transaction_trace_ptr       set_producers(const vector<account_name>& producer_names);
+         transaction_trace_ptr       set_producers_legacy(const vector<account_name>& producer_names);
 
          void link_authority( account_name account, account_name code,  permission_name req, action_name type = "" );
          void unlink_authority( account_name account, account_name code, action_name type = "" );

@@ -52,8 +52,8 @@ BOOST_AUTO_TEST_CASE( activate_preactivate_feature ) try {
    c.produce_block();
 
    // Now the latest bios contract can be set.
-   c.set_code( config::system_account_name, contracts::eosio_bios_wasm() );
-   c.set_abi( config::system_account_name, contracts::eosio_bios_abi().data() );
+   c.set_code( config::system_account_name, contracts::before_producer_authority_eosio_bios_wasm() );
+   c.set_abi( config::system_account_name, contracts::before_producer_authority_eosio_bios_abi().data() );
 
    c.produce_block();
 
@@ -332,7 +332,7 @@ BOOST_AUTO_TEST_CASE( subjective_restrictions_test ) try {
 
    // Second, test subjective_restrictions on feature that need to be activated WITH preactivation (ONLY_LINK_TO_EXISTING_PERMISSION)
 
-   c.set_bios_contract();
+   c.set_before_producer_authority_bios_contract();
    c.produce_block();
 
    custom_subjective_restrictions = {
@@ -763,7 +763,7 @@ BOOST_AUTO_TEST_CASE( disallow_empty_producer_schedule_test ) { try {
    BOOST_REQUIRE( d );
 
    // Before activation, it is allowed to set empty producer schedule
-   c.set_producers( {} );
+   c.set_producers_legacy( {} );
 
    // After activation, it should not be allowed
    c.preactivate_protocol_features( {*d} );
@@ -775,7 +775,7 @@ BOOST_AUTO_TEST_CASE( disallow_empty_producer_schedule_test ) { try {
    // Setting non empty producer schedule should still be fine
    vector<name> producer_names = {N(alice),N(bob),N(carol)};
    c.create_accounts( producer_names );
-   c.set_producers( producer_names );
+   c.set_producers_legacy( producer_names );
    c.produce_blocks(2);
    const auto& schedule = c.get_producer_authorities( producer_names );
    BOOST_CHECK( std::equal( schedule.begin(), schedule.end(), c.control->active_producers().producers.begin()) );
@@ -969,7 +969,7 @@ BOOST_AUTO_TEST_CASE( forward_setcode_test ) { try {
    const auto& pfm = c.control->get_protocol_feature_manager();
    const auto& d = pfm.get_builtin_digest( builtin_protocol_feature_t::forward_setcode );
    BOOST_REQUIRE( d );
-   c.set_bios_contract();
+   c.set_before_producer_authority_bios_contract();
    c.preactivate_protocol_features( {*d} );
    c.produce_block();
    c.set_code( config::system_account_name, contracts::reject_all_wasm() );
@@ -985,7 +985,7 @@ BOOST_AUTO_TEST_CASE( forward_setcode_test ) { try {
    tester c2(setup_policy::none);
    push_blocks( c, c2 ); // make a backup of the chain to enable testing further conditions.
 
-   c.set_bios_contract(); // To allow pushing further actions for setting up the other part of the test.
+   c.set_before_producer_authority_bios_contract(); // To allow pushing further actions for setting up the other part of the test.
    c.create_account( N(rejectall) );
    c.produce_block();
    // The existence of the rejectall account will make the reject_all contract reject all actions with no exception.
@@ -1005,7 +1005,7 @@ BOOST_AUTO_TEST_CASE( forward_setcode_test ) { try {
 
    // However, it should still be possible to set the bios contract because the WASM on eosio is called after the
    // native setcode function completes.
-   c2.set_bios_contract();
+   c2.set_before_producer_authority_bios_contract();
    c2.produce_block();
 } FC_LOG_AND_RETHROW() }
 
