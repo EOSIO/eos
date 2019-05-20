@@ -738,6 +738,9 @@ namespace cyberway { namespace chaindb {
 
         void add_lru_object(cache_object_ptr obj_ptr) {
             assert(obj_ptr);
+            if (lru_cell_list_.empty()) {
+                set_revision(-1);
+            }
             auto& lru = lru_cell_list_.back();
             add_ram_usage(lru, obj_ptr->service().size);
             lru.emplace(std::move(obj_ptr));
