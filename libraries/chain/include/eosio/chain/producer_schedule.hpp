@@ -84,6 +84,20 @@ namespace eosio { namespace chain {
          return key_is_relevant(key, authority);
       }
 
+      /**
+       * ABI's for contracts expect variants to be serialized as a 2 entry array of
+       * [type-name, value].
+       *
+       * This is incompatible with standard FC rules for
+       * static_variants which produce
+       *
+       * [ordinal, value]
+       *
+       * this method produces an appropriate variant for contracts where the authority field
+       * is correctly formatted
+       */
+      fc::variant get_abi_variant() const;
+
       friend bool operator == ( const producer_authority& lhs, const producer_authority& rhs ) {
          return tie( lhs.producer_name, lhs.authority ) == tie( rhs.producer_name, rhs.authority );
       }

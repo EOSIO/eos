@@ -970,8 +970,15 @@ namespace eosio { namespace testing {
    transaction_trace_ptr base_tester::set_producers(const vector<account_name>& producer_names) {
       auto schedule = get_producer_authorities( producer_names );
 
+      // FC reflection does not create variants that are compatible with ABI 1.1 so we manually translate.
+      fc::variants schedule_variant;
+      schedule_variant.reserve(schedule.size());
+      for( const auto& e: schedule ) {
+         schedule_variant.emplace_back(e.get_abi_variant());
+      }
+
       return push_action( config::system_account_name, N(setprods), config::system_account_name,
-                          fc::mutable_variant_object()("schedule", schedule));
+                          fc::mutable_variant_object()("schedule", schedule_variant));
    }
 
    const table_id_object* base_tester::find_table( name code, name scope, name table ) {
