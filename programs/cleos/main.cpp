@@ -1568,26 +1568,27 @@ struct delegate_bandwidth_subcommand {
 struct undelegate_bandwidth_subcommand {
    string from_str;
    string receiver_str;
-   string unstake_net_amount;
-   string unstake_cpu_amount;
+   string unstake_amount;
+   string not_used;
    uint64_t unstake_storage_bytes;
 
    undelegate_bandwidth_subcommand(CLI::App* actionRoot) {
       auto undelegate_bandwidth = actionRoot->add_subcommand("undelegatebw", localized("Undelegate bandwidth"));
       undelegate_bandwidth->add_option("from", from_str, localized("The account undelegating bandwidth"))->required();
       undelegate_bandwidth->add_option("receiver", receiver_str, localized("The account to undelegate bandwidth from"))->required();
-      undelegate_bandwidth->add_option("unstake_net_quantity", unstake_net_amount, localized("The amount of tokens to undelegate for network bandwidth"))->required();
-      undelegate_bandwidth->add_option("unstake_cpu_quantity", unstake_cpu_amount, localized("The amount of tokens to undelegate for CPU bandwidth"))->required();
+      undelegate_bandwidth->add_option("unstake_quantity", unstake_amount, localized("The amount of tokens to undelegate"))->required();
+      undelegate_bandwidth->add_option("unstake_net_quantity", not_used, localized("Deprecated. Not used"));
+      undelegate_bandwidth->add_option("unstake_cpu_quantity", not_used, localized("Deprecated. Not used"));
       add_standard_transaction_options(undelegate_bandwidth, "from@active");
 
       undelegate_bandwidth->set_callback([this] {
          fc::variant act_payload = fc::mutable_variant_object()
                   ("from", from_str)
                   ("receiver", receiver_str)
-                  ("unstake_net_quantity", to_asset(unstake_net_amount))
-                  ("unstake_cpu_quantity", to_asset(unstake_cpu_amount));
+                  ("unstake_quantity", to_asset(unstake_amount));
          auto accountPermissions = get_account_permissions(tx_permission, {from_str,config::active_name});
-         send_actions({create_action(accountPermissions, config::system_account_name, N(undelegatebw), act_payload)});
+         EOS_THROW(action_not_found_exception, "Action undelegatebw is not supported yet");
+//         send_actions({create_action(accountPermissions, config::system_account_name, N(undelegatebw), act_payload)});
       });
    }
 };
