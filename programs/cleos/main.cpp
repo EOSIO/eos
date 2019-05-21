@@ -702,28 +702,38 @@ void print_result( const fc::variant& result ) { try {
          string status = processed["receipt"].is_object() ? processed["receipt"]["status"].as_string() : "failed";
          int64_t net = -1;
          int64_t cpu = -1;
+         int64_t ram = -1;
+         int64_t storage = -1;
+         bool has_receipt = false;
          if( processed.get_object().contains( "receipt" )) {
             const auto& receipt = processed["receipt"];
             if( receipt.is_object()) {
+               has_receipt = true;
                net = receipt["net_usage_words"].as_int64() * 8;
                cpu = receipt["cpu_usage_us"].as_int64();
+               ram = receipt["ram_kbytes"].as_int64() << 10;
+               storage = receipt["storage_kbytes"].as_int64() << 10;
             }
          }
 
          cerr << status << " transaction: " << transaction_id << "  ";
-         if( net < 0 ) {
-            cerr << "<unknown>";
-         } else {
-            cerr << net;
-         }
-         cerr << " bytes  ";
-         if( cpu < 0 ) {
-            cerr << "<unknown>";
-         } else {
-            cerr << cpu;
-         }
 
-         cerr << " us\n";
+         auto print_usage = [&]( const int64_t& value, const char* units ) {
+            cerr << "  ";
+            if( !has_receipt ) {
+               cerr << "<unknown>";
+            } else {
+               cerr << value;
+            }
+            cerr << " " << units;
+         };
+
+         print_usage(net, "bytes");
+         print_usage(cpu, "us");
+         print_usage(ram, "bytes");
+         print_usage(storage, "bytes");
+
+         cerr << std::endl;
 
          if( status == "failed" ) {
             auto soft_except = processed["except"].as<optional<fc::exception>>();
