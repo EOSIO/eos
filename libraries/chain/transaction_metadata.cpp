@@ -16,7 +16,7 @@ recovery_keys_type transaction_metadata::recover_keys( const chain_id_type& chai
 
    g.unlock();
    // shared_keys_future not created or different chain_id
-   wlog( "recovering keys in recover_keys" );
+   dlog( "recovering keys in recover_keys" );
    auto recovered_pub_keys = std::make_shared<flat_set<public_key_type>>();
    const signed_transaction& trn = _packed_trx->get_signed_transaction();
    fc::microseconds cpu_usage = trn.get_signature_keys( chain_id, fc::time_point::maximum(), *recovered_pub_keys );
