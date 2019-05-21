@@ -201,10 +201,9 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 
       std::atomic<int32_t>                                      _max_transaction_time_ms; // modified by app thread, read by net_plugin thread pool
       fc::microseconds                                          _max_irreversible_block_age_us;
-      static uint64_t                                           _max_incoming_transaction_queue_size;
       int32_t                                                   _produce_time_offset_us = 0;
       int32_t                                                   _last_block_time_offset_us = 0;
-      int32_t                                                   _max_scheduled_transaction_time_per_block_ms;
+      int32_t                                                   _max_scheduled_transaction_time_per_block_ms = 0;
       fc::time_point                                            _irreversible_block_time;
       fc::microseconds                                          _keosd_provider_timeout_us;
 
@@ -430,18 +429,21 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       }
 
       class incoming_transaction_queue {
+         uint64_t max_incoming_transaction_queue_size = 0;
          uint64_t size_in_bytes = 0;
          std::deque<std::tuple<transaction_metadata_ptr, bool, next_function<transaction_trace_ptr>>> _incoming_transactions;
 
       private:
-         uint64_t calc_size( const transaction_metadata_ptr& trx ) {
+         static uint64_t calc_size( const transaction_metadata_ptr& trx ) {
             return trx->packed_trx()->get_unprunable_size() + trx->packed_trx()->get_prunable_size() + sizeof( *trx );
          }
 
       public:
+         void set_max_incoming_transaction_queue_size( uint64_t v ) { max_incoming_transaction_queue_size = v; }
+
          void add( const transaction_metadata_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next ) {
             auto size = calc_size( trx );
-            EOS_ASSERT( size_in_bytes + size < _max_incoming_transaction_queue_size, tx_resource_exhaustion, "Transaction exceeded producer resource limit" );
+            EOS_ASSERT( size_in_bytes + size < max_incoming_transaction_queue_size, tx_resource_exhaustion, "Transaction exceeded producer resource limit" );
             size_in_bytes += size;
             _incoming_transactions.emplace_back( trx, persist_until_expired, std::move( next ) );
          }
@@ -602,8 +604,6 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       fc::time_point calculate_block_deadline( const fc::time_point& ) const;
       void schedule_delayed_production_loop(const std::weak_ptr<producer_plugin_impl>& weak_this, const block_timestamp_type& current_block_time);
 };
-
-uint64_t producer_plugin_impl::_max_incoming_transaction_queue_size = 0;
 
 void new_chain_banner(const eosio::chain::controller& db)
 {
@@ -810,9 +810,12 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
 
    my->_max_irreversible_block_age_us = fc::seconds(options.at("max-irreversible-block-age").as<int32_t>());
 
-   my->_max_incoming_transaction_queue_size = options.at("incoming-transaction-queue-size-mb").as<uint16_t>() * 1024*1024;
-   EOS_ASSERT( my->_max_incoming_transaction_queue_size > 0, plugin_config_exception,
-               "incoming-transaction-queue-size-mb ${mb} must be greater than 0", ("mb", my->_max_incoming_transaction_queue_size) );
+   auto max_incoming_transaction_queue_size = options.at("incoming-transaction-queue-size-mb").as<uint16_t>() * 1024*1024;
+
+   EOS_ASSERT( max_incoming_transaction_queue_size > 0, plugin_config_exception,
+               "incoming-transaction-queue-size-mb ${mb} must be greater than 0", ("mb", max_incoming_transaction_queue_size) );
+
+   my->_pending_incoming_transactions.set_max_incoming_transaction_queue_size( max_incoming_transaction_queue_size );
 
    my->_incoming_defer_ratio = options.at("incoming-defer-ratio").as<double>();
 
