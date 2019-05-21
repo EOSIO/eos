@@ -77,6 +77,8 @@ abi_def eosio_contract_abi(abi_def eos_abi)
          {"ref_block_prefix", "uint32"},
          {"max_net_usage_words", "varuint32"},
          {"max_cpu_usage_ms", "uint8"},
+         {"max_ram_kbytes", "varuint32"},
+         {"max_storage_kbytes", "varuint32"},
          {"delay_sec", "varuint32"}
       }
    });

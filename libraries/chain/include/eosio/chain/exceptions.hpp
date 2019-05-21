@@ -281,6 +281,11 @@ namespace eosio { namespace chain {
                                     3080005, "Transaction CPU usage is too much for the remaining allowable usage of the current block" )
       FC_DECLARE_DERIVED_EXCEPTION( deadline_exception, resource_exhausted_exception,
                                     3080006, "Transaction took too long" )
+      FC_DECLARE_DERIVED_EXCEPTION( tx_ram_usage_exceeded, resource_exhausted_exception,
+                                    3080007, "Transaction exceeded the current RAM usage limit imposed on the transaction" )
+      FC_DECLARE_DERIVED_EXCEPTION( tx_storage_usage_exceeded, resource_exhausted_exception,
+                                    3080008, "Transaction exceeded the current STORAGE usage limit imposed on the transaction" )
+
 // CYBERWAY: greylist removed (3080007, 3080008)
       FC_DECLARE_DERIVED_EXCEPTION( leeway_deadline_exception, deadline_exception,
                                     3081001, "Transaction reached the deadline set due to leeway on account CPU limits" )

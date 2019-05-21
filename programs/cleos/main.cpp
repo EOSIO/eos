@@ -204,6 +204,8 @@ bool   no_auto_keosd = false;
 
 uint8_t  tx_max_cpu_usage = 0;
 uint32_t tx_max_net_usage = 0;
+uint32_t tx_max_ram_usage = 0;
+uint32_t tx_max_storage_usage = 0;
 uint32_t delaysec = 0;
 
 vector<string> bandwidth_provider;
@@ -291,6 +293,8 @@ void add_standard_transaction_options(CLI::App* cmd, string default_permission =
 
    cmd->add_option("--max-cpu-usage-ms", tx_max_cpu_usage, localized("set an upper limit on the milliseconds of cpu usage budget, for the execution of the transaction (defaults to 0 which means no limit)"));
    cmd->add_option("--max-net-usage", tx_max_net_usage, localized("set an upper limit on the net usage budget, in bytes, for the transaction (defaults to 0 which means no limit)"));
+   cmd->add_option("--max-ram-usage", tx_max_ram_usage, localized("set an upper limit on the ram usage budget, in bytes, for the transaction (defaults to 0 which means no limit)"));
+   cmd->add_option("--max-storage-usage", tx_max_storage_usage, localized("set an upper limit on the storage usage budget, in bytes, for the transaction (defaults to 0 which means no limit)"));
 
    cmd->add_option("--delay-sec", delaysec, localized("set the delay_sec seconds, defaults to 0s"));
 
@@ -445,6 +449,8 @@ fc::variant push_transaction( signed_transaction& trx, int32_t extra_kcpu = 1000
 
       trx.max_cpu_usage_ms = tx_max_cpu_usage;
       trx.max_net_usage_words = (tx_max_net_usage + 7)/8;
+      trx.max_ram_kbytes = tx_max_ram_usage >> 10;
+      trx.max_storage_kbytes = tx_max_storage_usage >> 10;
       trx.delay_sec = delaysec;
 
       if (!bandwidth_provider.empty()) {
@@ -3260,6 +3266,8 @@ int main( int argc, char** argv ) {
       trx.ref_block_prefix = 0;
       trx.max_net_usage_words = 0;
       trx.max_cpu_usage_ms = 0;
+      trx.max_ram_kbytes = 0;
+      trx.max_storage_kbytes = 0;
       trx.delay_sec = 0;
       trx.actions = { chain::action(trxperm, name(proposed_contract), name(proposed_action), proposed_trx_serialized) };
 

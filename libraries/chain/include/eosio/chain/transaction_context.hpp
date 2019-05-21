@@ -99,6 +99,10 @@ namespace eosio { namespace chain {
 
          void check_net_usage()const;
 
+         void check_ram_usage()const;
+
+         void check_storage_usage()const;
+
          void checktime()const;
 
          void pause_billing_timer();
@@ -190,6 +194,9 @@ namespace eosio { namespace chain {
          uint64_t&                     net_usage; /// reference to trace->net_usage
 
          int64_t&                      storage_bytes; /// reference to trace->storage_bytes
+         uint64_t                      storage_bytes_limit = 0;
+
+         uint64_t                      ram_bytes_limit = 0;
 
          fc::microseconds              initial_objective_duration_limit;
          fc::microseconds              objective_duration_limit;

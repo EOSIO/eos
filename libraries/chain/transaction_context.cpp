@@ -233,6 +233,16 @@ namespace bacc = boost::accumulators;
          net_limit_due_to_block = false;
       }
 
+      // Possibly lower RAM limit to optional limit set in transaction header
+      if( trx.max_ram_kbytes > 0 ) {
+         ram_bytes_limit = uint64_t(trx.max_ram_kbytes) << 10;
+      }
+
+      // Possibly lower STORAGE limit to optional limit set in transaction header
+      if( trx.max_storage_kbytes > 0 ) {
+         storage_bytes_limit = uint64_t(trx.max_storage_kbytes) << 10;
+      }
+
       // Possibly lower objective_duration_limit to optional limit set in transaction header
       if( trx.max_cpu_usage_ms > 0 ) {
          auto trx_specified_cpu_usage_limit = fc::milliseconds(trx.max_cpu_usage_ms);
@@ -425,6 +435,10 @@ namespace bacc = boost::accumulators;
 
        update_billed_ram_bytes();
 
+       check_ram_usage();
+
+       check_storage_usage();
+
        net_usage = ((net_usage + 7)/8)*8; // Round up to nearest multiple of word size (8 bytes)
 
        eager_net_limit = net_limit;
@@ -465,6 +479,18 @@ namespace bacc = boost::accumulators;
             }
          }
       }
+   }
+
+   void transaction_context::check_ram_usage()const {
+      EOS_ASSERT(control.skip_trx_checks() || explicit_billed_ram_bytes || !ram_bytes_limit || billed_ram_bytes < ram_bytes_limit,
+         tx_ram_usage_exceeded, "transaction ram usage is too high: ${ram_usage} > ${ram_limit}",
+         ("ram_usage", billed_ram_bytes)("ram_limit", ram_bytes_limit) );
+   }
+
+   void transaction_context::check_storage_usage()const {
+      EOS_ASSERT(control.skip_trx_checks() || !storage_bytes_limit || storage_bytes < storage_bytes_limit,
+         tx_storage_usage_exceeded, "transaction storage usage is too high: ${storage_usage} > ${storage_limit}",
+         ("storage_usage", storage_bytes)("storage_limit", storage_bytes_limit) );
    }
 
    void transaction_context::checktime()const {
@@ -549,10 +575,13 @@ namespace bacc = boost::accumulators;
 
    void transaction_context::add_storage_usage( const storage_payer_info& storage ) {
       storage_bytes += storage.delta;
+      check_storage_usage();
+
       auto now = fc::time_point::now();
       if (available_resources.update_storage_usage(storage)) {
          available_resources.check_cpu_usage((now - pseudo_start).count());
       }
+
       auto& rl = control.get_mutable_resource_limits_manager();
       rl.add_storage_usage(storage.payer, storage.delta, control.pending_block_slot());
    }
@@ -576,6 +605,8 @@ namespace bacc = boost::accumulators;
          billed_ram_bytes = chaindb_undo_session->calc_ram_bytes();
          billed_ram_bytes = ((billed_ram_bytes + 1023) >> 10) << 10; // Round up to nearest kbytes
          billed_ram_bytes = std::max(billed_ram_bytes, cfg.min_transaction_ram_usage);
+
+         check_ram_usage();
          explicit_billed_ram_bytes = true;
       }
       return billed_ram_bytes;
