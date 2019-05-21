@@ -1726,15 +1726,9 @@ struct claimrewards_subcommand {
    string owner;
 
    claimrewards_subcommand(CLI::App* actionRoot) {
-      auto claim_rewards = actionRoot->add_subcommand("claimrewards", localized("Claim producer rewards"));
-      claim_rewards->add_option("owner", owner, localized("The account to claim rewards for"))->required();
-      add_standard_transaction_options(claim_rewards, "owner@active");
-
+      auto claim_rewards = actionRoot->add_subcommand("claimrewards", localized("Deprecated command"));
       claim_rewards->set_callback([this] {
-         fc::variant act_payload = fc::mutable_variant_object()
-                  ("owner", owner);
-         auto accountPermissions = get_account_permissions(tx_permission, {owner,config::active_name});
-         send_actions({create_action(accountPermissions, config::system_account_name, N(claimrewards), act_payload)});
+          EOS_THROW(action_not_found_exception, "Operation claimrewards is not supported anymore");
       });
    }
 };
