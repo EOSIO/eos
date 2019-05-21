@@ -92,7 +92,7 @@ namespace eosio { namespace chain {
             available_resources.add_net_usage(u);
             available_resources.check_cpu_usage((fc::time_point::now() - pseudo_start).count());
          }
-         inline void add_cpu_usage( uint64_t u ) { billed_cpu_time_us += u;}
+         // inline void add_cpu_usage( uint64_t u ) { billed_cpu_time_us += u;}
 
          uint64_t get_net_usage() const {return net_usage;}
          uint64_t get_cpu_usage() const {return billed_cpu_time_us;}
@@ -178,7 +178,7 @@ namespace eosio { namespace chain {
          int64_t                       billed_cpu_time_us = 0;
          bool                          explicit_billed_cpu_time = false;
 
-         uint64_t                      billed_ram_bytes = 0;
+         uint64_t&                     billed_ram_bytes;
          bool                          explicit_billed_ram_bytes = false;
 
       private:
@@ -188,6 +188,8 @@ namespace eosio { namespace chain {
          bool                          net_limit_due_to_block = true;
          uint64_t                      eager_net_limit = 0;
          uint64_t&                     net_usage; /// reference to trace->net_usage
+
+         int64_t&                      storage_bytes; /// reference to trace->storage_bytes
 
          fc::microseconds              initial_objective_duration_limit;
          fc::microseconds              objective_duration_limit;

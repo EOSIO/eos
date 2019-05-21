@@ -56,7 +56,9 @@ namespace eosio { namespace chain {
       fc::optional<block_id_type>                producer_block_id;
       fc::optional<transaction_receipt_header>   receipt;
       fc::microseconds                           elapsed;
+      uint64_t                                   ram_bytes = 0;
       uint64_t                                   net_usage = 0;
+      int64_t                                    storage_bytes = 0;
       bool                                       scheduled = false;
       vector<action_trace>                       action_traces; ///< disposable
 
@@ -78,5 +80,5 @@ FC_REFLECT_DERIVED( eosio::chain::action_trace,
                     (eosio::chain::base_action_trace), (inline_traces) )
 
 FC_REFLECT( eosio::chain::transaction_trace, (id)(block_num)(block_time)(producer_block_id)
-                                             (receipt)(elapsed)(net_usage)(scheduled)
+                                             (receipt)(elapsed)(ram_bytes)(net_usage)(storage_bytes)(scheduled)
                                              (action_traces)(failed_dtrx_trace)(except) )

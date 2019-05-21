@@ -23,13 +23,15 @@ namespace eosio { namespace chain {
       explicit transaction_receipt_header( status_enum s ):status(s){}
 
       friend inline bool operator ==( const transaction_receipt_header& lhs, const transaction_receipt_header& rhs ) {
-         return std::tie(lhs.status, lhs.cpu_usage_us, lhs.net_usage_words) == std::tie(rhs.status, rhs.cpu_usage_us, rhs.net_usage_words);
+         return std::tie(lhs.status, lhs.cpu_usage_us, lhs.net_usage_words, lhs.ram_kbytes, lhs.storage_kbytes) ==
+             std::tie(rhs.status, rhs.cpu_usage_us, rhs.net_usage_words, rhs.ram_kbytes, rhs.storage_kbytes);
       }
 
       fc::enum_type<uint8_t,status_enum>   status;
-      uint32_t                             cpu_usage_us = 0; ///< total billed CPU usage (microseconds)
-      fc::unsigned_int                     net_usage_words; ///<  total billed NET usage, so we can reconstruct resource state when skipping context free data... hard failures...
-      uint64_t                             ram_kbytes = 0;   ///< total billed RAM usage (kbytes)
+      fc::unsigned_int                     cpu_usage_us = 0;   ///< total billed CPU usage (microseconds)
+      fc::unsigned_int                     net_usage_words;    ///< total billed NET usage, so we can reconstruct resource state when skipping context free data... hard failures...
+      fc::unsigned_int                     ram_kbytes = 0;     ///< total billed RAM usage (kbytes)
+      fc::signed_int                       storage_kbytes = 0; ///< total billed STORAGE usage (kbytes)
    };
 
    struct transaction_receipt : public transaction_receipt_header {
@@ -45,6 +47,8 @@ namespace eosio { namespace chain {
          fc::raw::pack( enc, status );
          fc::raw::pack( enc, cpu_usage_us );
          fc::raw::pack( enc, net_usage_words );
+         fc::raw::pack( enc, ram_kbytes );
+         fc::raw::pack( enc, storage_kbytes );
          if( trx.contains<transaction_id_type>() )
             fc::raw::pack( enc, trx.get<transaction_id_type>() );
          else
@@ -84,6 +88,6 @@ namespace eosio { namespace chain {
 FC_REFLECT_ENUM( eosio::chain::transaction_receipt::status_enum,
                  (executed)(soft_fail)(hard_fail)(delayed)(expired) )
 
-FC_REFLECT(eosio::chain::transaction_receipt_header, (status)(cpu_usage_us)(net_usage_words)(ram_kbytes) )
+FC_REFLECT(eosio::chain::transaction_receipt_header, (status)(cpu_usage_us)(net_usage_words)(ram_kbytes)(storage_kbytes) )
 FC_REFLECT_DERIVED(eosio::chain::transaction_receipt, (eosio::chain::transaction_receipt_header), (trx) )
 FC_REFLECT_DERIVED(eosio::chain::signed_block, (eosio::chain::signed_block_header), (transactions)(archive_records)(block_extensions) )

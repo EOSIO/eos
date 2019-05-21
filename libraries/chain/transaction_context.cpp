@@ -182,7 +182,9 @@ namespace bacc = boost::accumulators;
    ,chaindb_undo_session()
    ,trace(std::make_shared<transaction_trace>())
    ,start(s)
+   ,billed_ram_bytes(trace->ram_bytes)
    ,net_usage(trace->net_usage)
+   ,storage_bytes(trace->storage_bytes)
    ,pseudo_start(s)
    {
       if (!c.skip_db_sessions()) {
@@ -546,6 +548,7 @@ namespace bacc = boost::accumulators;
    }
 
    void transaction_context::add_storage_usage( const storage_payer_info& storage ) {
+      storage_bytes += storage.delta;
       auto now = fc::time_point::now();
       if (available_resources.update_storage_usage(storage)) {
          available_resources.check_cpu_usage((now - pseudo_start).count());
