@@ -513,19 +513,14 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          };
 
          try {
-            if( !chain.is_building_block()) {
-               _pending_incoming_transactions.add( trx, persist_until_expired, next );
-               return;
-            }
-
-            auto block_time = chain.pending_block_time();
-
             const auto& id = trx->id();
-            if( fc::time_point( trx->packed_trx()->expiration()) < block_time ) {
+
+            fc::time_point bt = chain.is_building_block() ? chain.pending_block_time() : chain.head_block_time();
+            if( fc::time_point( trx->packed_trx()->expiration()) < bt ) {
                send_response( std::static_pointer_cast<fc::exception>(
                      std::make_shared<expired_tx_exception>(
                            FC_LOG_MESSAGE( error, "expired transaction ${id}, expiration ${e}, block time ${bt}",
-                                           ("id", id)("e", trx->packed_trx()->expiration())( "bt", block_time )))));
+                                           ("id", id)("e", trx->packed_trx()->expiration())( "bt", bt )))));
                return;
             }
 
@@ -535,9 +530,14 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                return;
             }
 
+            if( !chain.is_building_block()) {
+               _pending_incoming_transactions.add( trx, persist_until_expired, next );
+               return;
+            }
+
             auto deadline = fc::time_point::now() + fc::milliseconds( _max_transaction_time_ms );
             bool deadline_is_subjective = false;
-            const auto block_deadline = calculate_block_deadline( block_time );
+            const auto block_deadline = calculate_block_deadline( chain.pending_block_time() );
             if( _max_transaction_time_ms < 0 ||
                 (_pending_block_mode == pending_block_mode::producing && block_deadline < deadline)) {
                deadline_is_subjective = true;
