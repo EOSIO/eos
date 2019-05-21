@@ -314,6 +314,7 @@ namespace eosio { namespace chain {
 
    block_header_state pending_block_header_state::finish_next(
                                  const signed_block_header& h,
+                                 const vector<signature_type>& additional_signatures,
                                  const protocol_feature_set& pfs,
                                  const std::function<void( block_timestamp_type,
                                                            const flat_set<digest_type>&,
@@ -322,6 +323,15 @@ namespace eosio { namespace chain {
    )&&
    {
       auto result = std::move(*this)._finish_next( h, pfs, validator );
+
+      if( !additional_signatures.empty() ) {
+         auto wtmsig_digest = pfs.get_builtin_digest(builtin_protocol_feature_t::wtmsig_block_signatures);
+         const auto& protocol_features = prev_activated_protocol_features->protocol_features;
+         bool wtmsig_enabled = wtmsig_digest && protocol_features.find(*wtmsig_digest) != protocol_features.end();
+
+         EOS_ASSERT(wtmsig_enabled, producer_schedule_exception, "Block contains multiple signatures before WTMsig block signatures are enabled" );
+         result.additional_signatures = additional_signatures;
+      }
 
       // ASSUMPTION FROM controller_impl::apply_block = all untrusted blocks will have their signatures pre-validated here
       if( !skip_validate_signee ) {
@@ -343,6 +353,15 @@ namespace eosio { namespace chain {
       auto result = std::move(*this)._finish_next( h, pfs, validator );
       result.sign( signer );
       h.producer_signature = result.header.producer_signature;
+
+      if( !result.additional_signatures.empty() ) {
+         auto wtmsig_digest = pfs.get_builtin_digest(builtin_protocol_feature_t::wtmsig_block_signatures);
+         const auto& protocol_features = prev_activated_protocol_features->protocol_features;
+         bool wtmsig_enabled = wtmsig_digest && protocol_features.find(*wtmsig_digest) != protocol_features.end();
+
+         EOS_ASSERT(wtmsig_enabled, producer_schedule_exception, "Block was signed with multiple signatures before WTMsig block signatures are enabled" );
+      }
+
       return result;
    }
 
@@ -356,13 +375,14 @@ namespace eosio { namespace chain {
     */
    block_header_state block_header_state::next(
                         const signed_block_header& h,
+                        const vector<signature_type>& _additional_signatures,
                         const protocol_feature_set& pfs,
                         const std::function<void( block_timestamp_type,
                                                   const flat_set<digest_type>&,
                                                   const vector<digest_type>& )>& validator,
                         bool skip_validate_signee )const
    {
-      return next( h.timestamp, h.confirmed ).finish_next( h, pfs, validator, skip_validate_signee );
+      return next( h.timestamp, h.confirmed ).finish_next( h, _additional_signatures, pfs, validator, skip_validate_signee );
    }
 
    digest_type   block_header_state::sig_digest()const {
@@ -374,21 +394,39 @@ namespace eosio { namespace chain {
       auto d = sig_digest();
       // TODO: modify block to allow multiple sigs
       auto sigs = signer( d );
-      header.producer_signature = sigs.front();
 
-      EOS_ASSERT( producer_authority::key_is_relevant(signee(), valid_block_signing_authority), wrong_signing_key, "block is signed with unexpected key" );
-   }
+      EOS_ASSERT(!sigs.empty(), no_block_signatures, "Signer returned no signatures");
+      header.producer_signature = sigs.back();
+      sigs.pop_back();
 
-   public_key_type block_header_state::signee()const {
-      return fc::crypto::public_key( header.producer_signature, sig_digest(), true );
+      additional_signatures = std::move(sigs);
+
+      verify_signee();
    }
 
    void block_header_state::verify_signee( )const {
-      auto signing_key = signee();
+      flat_set<public_key_type> keys;
+      keys.reserve(1 + additional_signatures.size());
+      keys.emplace(fc::crypto::public_key( header.producer_signature, sig_digest(), true ));
 
-      EOS_ASSERT( producer_authority::key_is_relevant(signing_key, valid_block_signing_authority), wrong_signing_key,
-                  "block not signed by expected key",
-                  ("signing_key", signing_key)( "valid_keys", valid_block_signing_authority ) );
+      for (const auto& s: additional_signatures) {
+         auto key = fc::crypto::public_key( s, sig_digest(), true );
+         EOS_ASSERT(keys.find(key) != keys.end(), wrong_signing_key,
+               "block signed by same key twice",
+               ("key", key));
+
+         keys.emplace(std::move(key));
+      }
+
+      for (const auto& k: keys) {
+         EOS_ASSERT(producer_authority::key_is_relevant(k, valid_block_signing_authority), wrong_signing_key,
+                    "block signed by unexpected key",
+                    ("signing_key", k)("valid_keys", valid_block_signing_authority));
+      }
+
+      EOS_ASSERT(producer_authority::keys_satisfy(keys, valid_block_signing_authority), wrong_signing_key,
+            "block signatures do not satisfy the block signing authority",
+            ("keys", keys)("authority", valid_block_signing_authority));
    }
 
    /**

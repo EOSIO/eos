@@ -204,7 +204,10 @@ namespace eosio { namespace chain {
                                     3030010, "Invalid block header extension" )
       FC_DECLARE_DERIVED_EXCEPTION( ill_formed_protocol_feature_activation, block_validate_exception,
                                     3030011, "Block includes an ill-formed protocol feature activation extension" )
-
+      FC_DECLARE_DERIVED_EXCEPTION( invalid_block_extension, block_validate_exception,
+                                    3030012, "Invalid block extension" )
+      FC_DECLARE_DERIVED_EXCEPTION( ill_formed_additional_block_signatures_extension, block_validate_exception,
+                                    3030013, "Block includes an ill-formed additional block signature extension" )
 
 
    FC_DECLARE_DERIVED_EXCEPTION( transaction_exception,             chain_exception,
@@ -519,6 +522,10 @@ namespace eosio { namespace chain {
                                     3170009, "Snapshot Finalization Exception" )
       FC_DECLARE_DERIVED_EXCEPTION( invalid_protocol_features_to_activate,  producer_exception,
                                     3170010, "The protocol features to be activated were not valid" )
+      FC_DECLARE_DERIVED_EXCEPTION( no_block_signatures,  producer_exception,
+                                    3170011, "The signer returned no valid block signatures" )
+      FC_DECLARE_DERIVED_EXCEPTION( unsupported_multiple_block_signatures,  producer_exception,
+                                    3170011, "The signer returned multiple signatures but that is not supported" )
 
    FC_DECLARE_DERIVED_EXCEPTION( reversible_blocks_exception,           chain_exception,
                                  3180000, "Reversible Blocks exception" )

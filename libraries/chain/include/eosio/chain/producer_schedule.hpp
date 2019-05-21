@@ -60,6 +60,10 @@ namespace eosio { namespace chain {
          }) != keys.end();
       }
 
+      bool keys_satisfy( const flat_set<public_key_type>& keys ) const {
+         return true;
+      }
+
       friend bool operator == ( const block_signing_authority_v0& lhs, const block_signing_authority_v0& rhs ) {
          return tie( lhs.threshold, lhs.keys ) == tie( rhs.threshold, rhs.keys );
       }
@@ -82,6 +86,16 @@ namespace eosio { namespace chain {
 
       bool key_is_relevant( const public_key_type& key ) const {
          return key_is_relevant(key, authority);
+      }
+
+      static bool keys_satisfy( const flat_set<public_key_type>& keys, const block_signing_authority& authority ) {
+         return authority.visit([&keys](const auto &a){
+            return a.keys_satisfy(keys);
+         });
+      }
+
+      bool keys_satisfy( const flat_set<public_key_type>& keys ) const {
+         return keys_satisfy(keys, authority);
       }
 
       /**

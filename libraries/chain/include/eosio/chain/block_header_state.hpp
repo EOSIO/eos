@@ -47,6 +47,7 @@ struct pending_block_header_state : public detail::block_header_state_common {
                                           const protocol_feature_set& pfs)const;
 
    block_header_state  finish_next( const signed_block_header& h,
+                                    const vector<signature_type>& additional_signatures,
                                     const protocol_feature_set& pfs,
                                     const std::function<void( block_timestamp_type,
                                                               const flat_set<digest_type>&,
@@ -78,6 +79,7 @@ struct block_header_state : public detail::block_header_state_common {
    signed_block_header                  header;
    detail::schedule_info                pending_schedule;
    protocol_feature_activation_set_ptr  activated_protocol_features;
+   vector<signature_type>               additional_signatures;
 
    /// this data is redundant with the data stored in header, but it acts as a cache that avoids
    /// duplication of work
@@ -92,6 +94,7 @@ struct block_header_state : public detail::block_header_state_common {
    pending_block_header_state  next( block_timestamp_type when, uint16_t num_prev_blocks_to_confirm )const;
 
    block_header_state   next( const signed_block_header& h,
+                              const vector<signature_type>& additional_signatures,
                               const protocol_feature_set& pfs,
                               const std::function<void( block_timestamp_type,
                                                         const flat_set<digest_type>&,
@@ -102,12 +105,11 @@ struct block_header_state : public detail::block_header_state_common {
    uint32_t             calc_dpos_last_irreversible( account_name producer_of_next_block )const;
    bool                 is_active_producer( account_name n )const;
 
-   producer_authority   get_scheduled_producer( block_timestamp_type t )const;
-   const block_id_type& prev()const { return header.previous; }
-   digest_type          sig_digest()const;
-   void                 sign( const signer_callback_type& signer );
-   public_key_type      signee()const;
-   void                 verify_signee()const;
+   producer_authority     get_scheduled_producer( block_timestamp_type t )const;
+   const block_id_type&   prev()const { return header.previous; }
+   digest_type            sig_digest()const;
+   void                   sign( const signer_callback_type& signer );
+   void                   verify_signee()const;
 
    const vector<digest_type>& get_new_protocol_feature_activations()const;
 };
