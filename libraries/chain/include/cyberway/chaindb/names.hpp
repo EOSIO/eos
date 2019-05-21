@@ -22,13 +22,11 @@ namespace cyberway { namespace chaindb {
         static const string undo_pk_field;
         static const string undo_rec_field;
         static const string undo_payer_field;
-        static const string undo_owner_field;
         static const string undo_size_field;
         static const string undo_ram_field;
         static const string revision_field;
 
         static const string payer_field;
-        static const string owner_field;
         static const string size_field;
         static const string ram_field;
 
@@ -82,10 +80,6 @@ namespace cyberway { namespace chaindb {
 
     inline string get_payer_name(const account_name& payer) {
         return payer.to_string();
-    }
-
-    inline string get_owner_name(const account_name& owner) {
-        return owner.to_string();
     }
 
     ///----

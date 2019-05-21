@@ -232,7 +232,7 @@ namespace eosio { namespace chain {
                 "Object with the primary key ${pk} in the table ${table}:${scope} already has RAM state = ${state}",
                 ("pk", pk)("table", chaindb::get_full_table_name(request))("scope", scope));
 
-            auto info = context.get_storage_payer(service.owner, service.payer);
+            auto info = context.get_storage_payer(service.payer, service.payer);
             info.in_ram  = in_ram;
             context.chaindb.change_ram_state(*cache_ptr.get(), info);
         }

@@ -1107,8 +1107,7 @@ namespace cyberway { namespace chaindb {
             return {};
         }
         auto value   = service_state(table, pk);
-        value.payer  = storage.payer;
-        value.owner  = storage.owner;
+        value.payer  = storage.owner;
         value.in_ram = true;
         return impl_->emplace({std::move(value), {}});
     }

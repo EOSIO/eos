@@ -104,15 +104,14 @@ namespace cyberway { namespace chaindb {
     }
 
     void storage_payer_info::get_payer_from(const object_value& obj) {
-        owner  = obj.service.owner;
+        owner  = obj.service.payer;
         payer  = obj.service.payer;
         size   = obj.service.size;
         in_ram = obj.service.in_ram;
     }
 
     void storage_payer_info::set_payer_in(object_value& obj) const {
-        obj.service.owner  = owner;
-        obj.service.payer  = payer;
+        obj.service.payer  = owner;
         obj.service.size   = size;
         obj.service.in_ram = in_ram;
     }
@@ -588,7 +587,7 @@ namespace cyberway { namespace chaindb {
             validate_object(table, obj, obj.pk());
 
             if (charge.owner.empty()) {
-                charge.owner = orig_obj.service.owner;
+                charge.owner = orig_obj.service.payer;
             }
 
             if (charge.payer.empty()) {
@@ -598,10 +597,7 @@ namespace cyberway { namespace chaindb {
             charge.calc_usage(table, obj);
             auto delta = charge.size - orig_obj.service.size;
 
-            if (charge.payer  != orig_obj.service.payer ||
-                charge.owner  != orig_obj.service.owner ||
-                charge.in_ram != orig_obj.service.in_ram
-            ) {
+            if (charge.payer  != orig_obj.service.payer || charge.in_ram != orig_obj.service.in_ram) {
                 auto refund = charge;
                 refund.get_payer_from(orig_obj);
                 refund.delta = -orig_obj.service.size;

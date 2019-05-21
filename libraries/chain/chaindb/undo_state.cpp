@@ -532,7 +532,6 @@ namespace cyberway { namespace chaindb {
         void restore_undo_state(object_value& obj) {
             obj.service.revision = obj.service.undo_revision;
             obj.service.payer    = obj.service.undo_payer;
-            obj.service.owner    = obj.service.undo_owner;
             obj.service.size     = obj.service.undo_size;
             obj.service.in_ram   = obj.service.undo_in_ram;
         }
@@ -856,7 +855,6 @@ namespace cyberway { namespace chaindb {
 
         void copy_undo_object(object_value& dst, const object_value& src) {
             dst.service.payer  = src.service.payer;
-            dst.service.owner  = src.service.owner;
             dst.service.size   = src.service.size;
             dst.service.in_ram = src.service.in_ram;
         }
@@ -869,7 +867,6 @@ namespace cyberway { namespace chaindb {
         void init_undo_object(object_value& dst, undo_record rec) {
             dst.service.undo_revision = dst.service.revision;
             dst.service.undo_payer    = dst.service.payer;
-            dst.service.undo_owner    = dst.service.owner;
             dst.service.undo_size     = dst.service.size;
             dst.service.undo_in_ram   = dst.service.in_ram;
 

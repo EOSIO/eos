@@ -550,7 +550,6 @@ namespace bacc = boost::accumulators;
       if (available_resources.update_storage_usage(storage)) {
          available_resources.check_cpu_usage((now - pseudo_start).count());
       }
-      // TODO: issue #480 - ICE BW
       auto& rl = control.get_mutable_resource_limits_manager();
       rl.add_storage_usage(storage.payer, storage.delta, control.pending_block_slot());
    }

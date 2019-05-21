@@ -282,11 +282,6 @@ namespace cyberway { namespace chaindb {
                     }
                     break;
                 }
-                case 'o': {
-                    validate_field_name(names::owner_field == key, src, itm);
-                    state.owner = from_decimal128(itm);
-                    break;
-                }
                 case 'p': {
                     if (key == names::pk_field) {
                         state.pk = from_decimal128(itm);
@@ -318,11 +313,6 @@ namespace cyberway { namespace chaindb {
                         case 'y': {
                             validate_field_name(names::undo_payer_field == key, src, itm);
                             state.undo_payer = from_decimal128(itm);
-                            break;
-                        }
-                        case 'o': {
-                            validate_field_name(names::undo_owner_field == key, src, itm);
-                            state.undo_owner = from_decimal128(itm);
                             break;
                         }
                         case 's': {
@@ -358,7 +348,7 @@ namespace cyberway { namespace chaindb {
             validate_field_type(false, src, itm);
         }
 
-        constexpr int undo_field_cnt = 15 /* list of them above */ - 2 /* ram_field */;
+        constexpr int undo_field_cnt = 13 /* list of them above */ - 2 /* ram_field */;
         validate_exist_field(undo_field_cnt == field_cnt, src);
     }
 
@@ -385,11 +375,6 @@ namespace cyberway { namespace chaindb {
                         validate_field_name(names::size_field == key, src, itm);
                         state.size = itm.get_int32().value;
                     }
-                    break;
-                }
-                case 'o': {
-                    validate_field_name(names::owner_field == key, src, itm);
-                    state.owner = account_name(from_utf8(itm));
                     break;
                 }
                 case 'p': {
@@ -421,7 +406,7 @@ namespace cyberway { namespace chaindb {
             validate_field_type(false, src, itm);
         }
 
-        constexpr int service_field_cnt = 6 /* list of them above */ - 1 /* ram_field */;
+        constexpr int service_field_cnt = 5 /* list of them above */ - 1 /* ram_field */;
         validate_exist_field(service_field_cnt == field_cnt, src);
     }
 
@@ -721,7 +706,6 @@ namespace cyberway { namespace chaindb {
             append_typed_value(serv_doc, names::scope_field, scope_name::from_table(table));
             serv_doc.append(kvp(names::revision_field, obj.service.revision));
             serv_doc.append(kvp(names::payer_field, get_payer_name(obj.service.payer)));
-            serv_doc.append(kvp(names::owner_field, get_owner_name(obj.service.owner)));
             serv_doc.append(kvp(names::size_field, static_cast<int32_t>(obj.service.size)));
             append_ram_field(serv_doc, names::ram_field, obj.service.in_ram);
         }));
@@ -734,7 +718,6 @@ namespace cyberway { namespace chaindb {
             serv_doc.append(kvp(names::undo_pk_field, to_decimal128(obj.service.undo_pk)));
             serv_doc.append(kvp(names::undo_rec_field, static_cast<int32_t>(obj.service.undo_rec)));
             serv_doc.append(kvp(names::undo_payer_field, to_decimal128(obj.service.undo_payer)));
-            serv_doc.append(kvp(names::undo_owner_field, to_decimal128(obj.service.undo_owner)));
             serv_doc.append(kvp(names::undo_size_field, static_cast<int32_t>(obj.service.undo_size)));
             serv_doc.append(kvp(names::code_field, to_decimal128(obj.service.code)));
             serv_doc.append(kvp(names::table_field, to_decimal128(obj.service.table)));
@@ -742,7 +725,6 @@ namespace cyberway { namespace chaindb {
             serv_doc.append(kvp(names::pk_field, to_decimal128(obj.service.pk)));
             serv_doc.append(kvp(names::revision_field, obj.service.revision));
             serv_doc.append(kvp(names::payer_field, to_decimal128(obj.service.payer)));
-            serv_doc.append(kvp(names::owner_field, to_decimal128(obj.service.owner)));
             serv_doc.append(kvp(names::size_field, static_cast<int32_t>(obj.service.size)));
             append_ram_field(serv_doc, names::ram_field, obj.service.in_ram);
             append_ram_field(serv_doc, names::undo_ram_field, obj.service.undo_in_ram);
