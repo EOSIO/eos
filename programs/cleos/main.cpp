@@ -1659,37 +1659,15 @@ struct bidname_info_subcommand {
 
 struct list_bw_subcommand {
    eosio::name account;
-   bool print_json = false;
+   bool not_used = false;
 
    list_bw_subcommand(CLI::App* actionRoot) {
       auto list_bw = actionRoot->add_subcommand("listbw", localized("List delegated bandwidth"));
       list_bw->add_option("account", account, localized("The account delegated bandwidth"))->required();
-      list_bw->add_flag("--json,-j", print_json, localized("Output in JSON format") );
+      list_bw->add_flag("--json,-j", not_used, localized("Deprecated. Result always in JSON") );
 
       list_bw->set_callback([this] {
-            //get entire table in scope of user account
-            auto result = call(get_table_func, fc::mutable_variant_object("json", true)
-                               ("code", name(config::system_account_name).to_string())
-                               ("scope", account.to_string())
-                               ("table", "delband")
-            );
-            if (!print_json) {
-               auto res = result.as<eosio::get_table_rows_result>();
-               if ( !res.rows.empty() ) {
-                  std::cout << std::setw(13) << std::left << "Receiver" << std::setw(21) << std::left << "Net bandwidth"
-                            << std::setw(21) << std::left << "CPU bandwidth" << std::endl;
-                  for ( auto& r : res.rows ){
-                     std::cout << std::setw(13) << std::left << r["to"].as_string()
-                               << std::setw(21) << std::left << r["net_weight"].as_string()
-                               << std::setw(21) << std::left << r["cpu_weight"].as_string()
-                               << std::endl;
-                  }
-               } else {
-                  std::cerr << "Delegated bandwidth not found" << std::endl;
-               }
-            } else {
-               std::cout << fc::json::to_pretty_string(result) << std::endl;
-            }
+         EOS_THROW(action_not_found_exception, "Delegating bandwith is not implemented yet");
       });
    }
 };
