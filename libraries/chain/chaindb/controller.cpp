@@ -357,7 +357,7 @@ namespace cyberway { namespace chaindb {
             return delta;
         }
 
-        void recalc_ram_usage(cache_object& itm, storage_payer_info storage) {
+        void change_ram_state(cache_object& itm, storage_payer_info storage) {
             auto table = get_table(itm);
             auto obj = itm.object();
             auto orig_obj = object_by_pk(table, obj.pk());
@@ -813,8 +813,8 @@ namespace cyberway { namespace chaindb {
         return impl_->remove(itm, storage);
     }
 
-    void chaindb_controller::recalc_ram_usage(cache_object& itm, const storage_payer_info& storage) const {
-        impl_->recalc_ram_usage(itm, storage);
+    void chaindb_controller::change_ram_state(cache_object& itm, const storage_payer_info& storage) const {
+        impl_->change_ram_state(itm, storage);
     }
 
     variant chaindb_controller::value_by_pk(const table_request& request, primary_key_t pk) const {

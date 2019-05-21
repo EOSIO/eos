@@ -180,7 +180,7 @@ namespace cyberway { namespace chaindb {
         int update(cache_object&, variant, const storage_payer_info&) const;
         int remove(cache_object&, const storage_payer_info&) const;
 
-        void recalc_ram_usage(cache_object&, const storage_payer_info&) const;
+        void change_ram_state(cache_object&, const storage_payer_info&) const;
 
         variant value_by_pk(const table_request& request, primary_key_t pk) const;
         variant value_at_cursor(const cursor_request&) const;

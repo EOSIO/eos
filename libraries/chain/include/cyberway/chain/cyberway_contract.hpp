@@ -15,8 +15,6 @@ namespace cyberway { namespace chain {
     using eosio::chain::apply_context;
     using cyberway::chaindb::service_state;
 
-    struct set_ram_state;
-
     /**
      * @defgroup native_action_handlers Native Action Handlers
      */
@@ -40,8 +38,5 @@ namespace cyberway { namespace chain {
     */
 
     void apply_cyber_setrampayer(apply_context&);
-    void apply_cyber_setramstate(apply_context&);
-
-    void apply_set_ram_state(apply_context&, const set_ram_state&, const std::function<void(const service_state&)>&);
 
 } } // namespace cyberway::chain
