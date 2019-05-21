@@ -2088,8 +2088,6 @@ CLI::callback_t header_opt_callback = [](CLI::results_t res) {
    return true;
 };
 
-#include "set_ram_subcommand.hpp"
-
 int main( int argc, char** argv ) {
    setlocale(LC_ALL, "");
    bindtextdomain(locale_domain, locale_path);
@@ -2699,8 +2697,6 @@ int main( int argc, char** argv ) {
                      // ->required();
    contractSubcommand->add_option("wasm-file", wasmPath, localized("The file containing the contract WASM relative to contract-dir"));
 //                     ->check(CLI::ExistingFile);
-
-   auto ramSubcommand = set_ram_subcommand(setSubcommand);
 
    auto abi = contractSubcommand->add_option("abi-file,-a,--abi", abiPath, localized("The ABI for the contract relative to contract-dir"));
 //                                ->check(CLI::ExistingFile);
