@@ -1,6 +1,7 @@
 #pragma once
 #include "posting_rules.hpp"
 #include <eosio/chain/types.hpp>
+#include <eosio/chain/asset.hpp>
 #include <eosio/chain/authority.hpp>
 #include <fc/reflect/reflect.hpp>
 #include <boost/filesystem.hpp>
@@ -101,10 +102,21 @@ struct genesis_info {
 
     struct table {
         struct row {
-            name scope;
+            string scope;   // can be name/symbol/symbol_code
             name payer;
             uint64_t pk;
             variant data;
+
+            uint64_t get_scope() const {
+                name maybe_name{string_to_name(scope.c_str())};
+                if (maybe_name.to_string() == scope) {
+                    return name{scope}.value;
+                } else if (scope.find(',') != string::npos) {
+                    return symbol::from_string(scope).value();
+                } else {
+                    return symbol::from_string("0,"+scope).to_symbol_code().value;
+                }
+            }
         };
         account_name code;
         name table;
