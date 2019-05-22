@@ -114,7 +114,7 @@ namespace eosio { namespace chain {
 
          int64_t get_min_cpu_limit()const;
 
-         void add_storage_usage( const storage_payer_info& );
+         void add_storage_usage( const storage_payer_info&, bool is_authorized );
 
 // TODO: request bw, why provided?
 //         uint64_t get_provided_net_limit(account_name account) const;

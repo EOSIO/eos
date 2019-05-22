@@ -171,10 +171,16 @@ void resource_limits_manager::add_transaction_usage(const flat_set<account_name>
    });
 }
 
-void resource_limits_manager::add_storage_usage(const account_name& account, int64_t delta, uint32_t time_slot) {
+void resource_limits_manager::add_storage_usage(const account_name& account, int64_t delta, uint32_t time_slot, bool is_authorized) {
    if (delta == 0) {
       return;
    }
+
+   // don't `curve the storage bw`, if no signature from the account
+   if (!is_authorized && delta < 0 ) {
+       return;
+   }
+
    const auto& config = _chaindb.get<resource_limits_config_object>();
    auto state_table  = _chaindb.get_table<resource_limits_state_object>();
    const auto& state = state_table.get();

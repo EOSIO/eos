@@ -573,7 +573,7 @@ namespace bacc = boost::accumulators;
       }
    }
 
-   void transaction_context::add_storage_usage( const storage_payer_info& storage ) {
+   void transaction_context::add_storage_usage( const storage_payer_info& storage, const bool is_authorized ) {
       storage_bytes += storage.delta;
       check_storage_usage();
 
@@ -583,7 +583,7 @@ namespace bacc = boost::accumulators;
       }
 
       auto& rl = control.get_mutable_resource_limits_manager();
-      rl.add_storage_usage(storage.payer, storage.delta, control.pending_block_slot());
+      rl.add_storage_usage(storage.payer, storage.delta, control.pending_block_slot(), is_authorized);
    }
 
    int64_t transaction_context::get_billed_cpu_time(fc::time_point now)const {

@@ -97,9 +97,9 @@ namespace cyberway { namespace chaindb {
         } else if (BOOST_LIKELY(!!apply_ctx)) {
             apply_ctx->add_storage_usage(*this);
         } else if (!!transaction_ctx) {
-            transaction_ctx->add_storage_usage(*this);
+            transaction_ctx->add_storage_usage(*this, false);
         } else if (!!resource_mng) {
-            resource_mng->add_storage_usage(payer, delta, time_slot);
+            resource_mng->add_storage_usage(payer, delta, time_slot, false);
         }
     }
 

@@ -544,15 +544,21 @@ storage_payer_info apply_context::get_storage_payer( account_name owner, account
 }
 
 void apply_context::add_storage_usage( const storage_payer_info& storage ) {
+   bool is_authorized = false;
+
    if( storage.delta > 0 ) {
       if( !(privileged || storage.payer == receiver) ) {
          EOS_ASSERT( control.is_ram_billing_in_notify_allowed() || (receiver == act.account), subjective_block_production_exception,
              "Cannot charge RAM to other accounts during notify." );
          require_authorization( storage.payer );
       }
+
+      is_authorized = true;
+   } else {
+      is_authorized = has_authorization( storage.payer );
    }
 
-   trx_context.add_storage_usage( storage );
+   trx_context.add_storage_usage( storage, is_authorized );
 }
 
 int apply_context::get_action( uint32_t type, uint32_t index, char* buffer, size_t buffer_size )const
