@@ -241,7 +241,7 @@ struct genesis_create::genesis_create_impl final {
         for (const auto& tbl: _info.tables) {
             db.start_section(tbl.code, tbl.table, tbl.abi_type, tbl.rows.size());
             for (const auto& r: tbl.rows) {
-                db.insert(r.pk, r.scope, r.payer, r.data);
+                db.insert(r.pk, r.get_scope(), r.payer, r.data);
             }
         }
         ilog("Done.");
