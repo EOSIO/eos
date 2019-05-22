@@ -55,6 +55,9 @@ using eosio::chain::uint128_t;
 uint64_t to_fbase(uint64_t value)   { return value << fixp_fract_digits; }
 uint128_t to_fwide(uint128_t value) { return value << fixp_fract_digits; }
 
+// Golos state holds uint128 as pair of uint64 values in Big Endian order: high, then low, incompatible with __int128
+uint128_t fix_fc128(uint128_t x)    { return (x << 64) | (x >> 64); }
+
 string pubkey_string(const golos::public_key_type& k, bool prefix = true);
 asset golos2sys(const asset& golos);
 
@@ -863,6 +866,7 @@ struct genesis_create::genesis_create_impl final {
         // store pool
         const auto& gp = _visitor.gpo;
         const int n = _visitor.comments.size();     // messages count
+        uint128_t total_rshares = fix_fc128(gp.total_reward_shares2);
         primary_key_t pk = 0;                       // created
         db.start_section(_info.golos.names.posting, N(rewardpools), "rewardpool", 1);
         db.insert(pk, _info.golos.names.posting, mvo
@@ -871,8 +875,8 @@ struct genesis_create::genesis_create_impl final {
             ("state", mvo
                 ("msgs", n)
                 ("funds", gp.total_reward_fund_steem)
-                ("rshares", gp.total_reward_shares2)
-                ("rsharesfn", gp.total_reward_shares2)
+                ("rshares", total_rshares)
+                ("rsharesfn", total_rshares)
             )
         );
 
@@ -907,15 +911,15 @@ struct genesis_create::genesis_create_impl final {
             }
             auto vname = name_by_id(v.voter);
             db.insert(pk, authors[cid], vname, mvo
-                ("id", pk)            // uint64_t
-                ("message_id", cid)    // uint64_t
+                ("id", pk)
+                ("message_id", cid)
                 ("voter", vname)
-                ("weight", v.vote_percent)        // int16_t
-                ("time", time_point(v.last_update).time_since_epoch().count())          // uint64_t
-                ("count", v.num_changes)         // uint8_t
-                ("delegators", delegators)    // std::vector<delegate_voter>
-                ("curatorsw", w)     // base_t
-                ("rshares", v.rshares)       // base_t
+                ("weight", v.vote_percent)
+                ("time", time_point(v.last_update).time_since_epoch().count())
+                ("count", v.num_changes)
+                ("delegators", delegators)
+                ("curatorsw", w)
+                ("rshares", v.rshares)
             );
             pk++;
         }

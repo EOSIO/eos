@@ -16,7 +16,7 @@ struct gls_mapped_str {
 };
 
 using fc::time_point_sec;
-using eosio::chain::uint128_t;
+using eosio::chain::uint128_t;      // NOTE: differs in Golos. use fix_fc128() to get correct value
 using eosio::chain::asset;
 using eosio::chain::share_type;
 
