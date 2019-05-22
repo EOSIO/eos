@@ -470,13 +470,6 @@ datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosi
 }
 
 template <typename ST>
-datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosio::chain::account_delta>& obj) {
-   fc::raw::pack(ds, as_type<uint64_t>(obj.obj.account.value));
-   fc::raw::pack(ds, as_type<int64_t>(obj.obj.delta));
-   return ds;
-}
-
-template <typename ST>
 datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosio::chain::action_trace>& obj) {
    fc::raw::pack(ds, fc::unsigned_int(0));
    fc::raw::pack(ds, make_history_serial_wrapper(obj.db, as_type<eosio::chain::action_receipt>(obj.obj.receipt)));
@@ -484,7 +477,6 @@ datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosi
    fc::raw::pack(ds, as_type<bool>(obj.obj.context_free));
    fc::raw::pack(ds, as_type<int64_t>(obj.obj.elapsed.count()));
    fc::raw::pack(ds, as_type<std::string>(obj.obj.console));
-   history_serialize_container(ds, obj.db, as_type<flat_set<eosio::chain::account_delta>>(obj.obj.account_ram_deltas));
 
    fc::optional<std::string> e;
    if (obj.obj.except)

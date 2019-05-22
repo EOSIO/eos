@@ -98,7 +98,6 @@ extern const char* const state_history_plugin_abi = R"({
                 { "name": "context_free", "type": "bool" },
                 { "name": "elapsed", "type": "int64" },
                 { "name": "console", "type": "string" },
-                { "name": "account_ram_deltas", "type": "account_delta[]" },
                 { "name": "except", "type": "string?" },
                 { "name": "inline_traces", "type": "action_trace[]" }
             ]

@@ -108,9 +108,6 @@ void apply_context::exec_one( action_trace& trace )
 
 void apply_context::finalize_trace( action_trace& trace, const fc::time_point& start )
 {
-   trace.account_ram_deltas = std::move( _account_ram_deltas );
-   _account_ram_deltas.clear();
-
    trace.console = _pending_console_output.str();
    reset_console();
 
@@ -556,15 +553,6 @@ void apply_context::add_storage_usage( const storage_payer_info& storage ) {
    }
 
    trx_context.add_storage_usage( storage );
-
-   if( !storage.in_ram ) {
-      return;
-   }
-
-   auto p = _account_ram_deltas.emplace( storage.payer, storage.delta );
-   if( !p.second && storage.delta) {
-      p.first->delta += storage.delta;
-   }
 }
 
 int apply_context::get_action( uint32_t type, uint32_t index, char* buffer, size_t buffer_size )const
