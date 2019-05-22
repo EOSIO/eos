@@ -83,8 +83,10 @@ else()
   set(no_whole_archive_flag "--no-whole-archive")
 endif()
 
-SET( Boost_USE_STATIC_LIBS ON CACHE STRING "ON or OFF" )
-FIND_PACKAGE(Boost 1.67 REQUIRED COMPONENTS
+set( Boost_USE_STATIC_LIBS ON CACHE STRING "ON or OFF" )
+### Remove after Boost 1.70 CMake fixes are in place
+set( Boost_NO_BOOST_CMAKE ON CACHE STRING "ON or OFF" )
+find_package(Boost 1.67 REQUIRED COMPONENTS
     date_time
     filesystem
     system

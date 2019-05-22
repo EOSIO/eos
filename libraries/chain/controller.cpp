@@ -319,7 +319,8 @@ struct controller_impl {
 
 
 #define SET_APP_HANDLER( receiver, contract, action) \
-   set_apply_handler( #receiver, #contract, #action, &BOOST_PP_CAT(apply_, BOOST_PP_CAT(contract, BOOST_PP_CAT(_,action) ) ) )
+   set_apply_handler( account_name(#receiver), account_name(#contract), action_name(#action), \
+                      &BOOST_PP_CAT(apply_, BOOST_PP_CAT(contract, BOOST_PP_CAT(_,action) ) ) )
 
    SET_APP_HANDLER( eosio, eosio, newaccount );
    SET_APP_HANDLER( eosio, eosio, setcode );
@@ -515,7 +516,7 @@ struct controller_impl {
 
    void init(std::function<bool()> shutdown, const snapshot_reader_ptr& snapshot) {
       // Setup state if necessary (or in the default case stay with already loaded state):
-      auto lib_num = 1;
+      uint32_t lib_num = 1u;
       if( snapshot ) {
          snapshot->validate();
          if( blog.head() ) {

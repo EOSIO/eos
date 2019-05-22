@@ -1163,10 +1163,10 @@ class console_api : public context_aware_api {
 
 #define DB_API_METHOD_WRAPPERS_SIMPLE_SECONDARY(IDX, TYPE)\
       int db_##IDX##_store( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, const TYPE& secondary ) {\
-         return context.IDX.store( scope, table, payer, id, secondary );\
+         return context.IDX.store( scope, table, account_name(payer), id, secondary );\
       }\
       void db_##IDX##_update( int iterator, uint64_t payer, const TYPE& secondary ) {\
-         return context.IDX.update( iterator, payer, secondary );\
+         return context.IDX.update( iterator, account_name(payer), secondary );\
       }\
       void db_##IDX##_remove( int iterator ) {\
          return context.IDX.remove( iterator );\
@@ -1199,14 +1199,14 @@ class console_api : public context_aware_api {
                     db_api_exception,\
                     "invalid size of secondary key array for " #IDX ": given ${given} bytes but expected ${expected} bytes",\
                     ("given",data_len)("expected",ARR_SIZE) );\
-         return context.IDX.store(scope, table, payer, id, data.value);\
+         return context.IDX.store(scope, table, account_name(payer), id, data.value);\
       }\
       void db_##IDX##_update( int iterator, uint64_t payer, array_ptr<const ARR_ELEMENT_TYPE> data, size_t data_len ) {\
          EOS_ASSERT( data_len == ARR_SIZE,\
                     db_api_exception,\
                     "invalid size of secondary key array for " #IDX ": given ${given} bytes but expected ${expected} bytes",\
                     ("given",data_len)("expected",ARR_SIZE) );\
-         return context.IDX.update(iterator, payer, data.value);\
+         return context.IDX.update(iterator, account_name(payer), data.value);\
       }\
       void db_##IDX##_remove( int iterator ) {\
          return context.IDX.remove(iterator);\
@@ -1252,11 +1252,11 @@ class console_api : public context_aware_api {
 #define DB_API_METHOD_WRAPPERS_FLOAT_SECONDARY(IDX, TYPE)\
       int db_##IDX##_store( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, const TYPE& secondary ) {\
          EOS_ASSERT( !softfloat_api::is_nan( secondary ), transaction_exception, "NaN is not an allowed value for a secondary key" );\
-         return context.IDX.store( scope, table, payer, id, secondary );\
+         return context.IDX.store( scope, table, account_name(payer), id, secondary );\
       }\
       void db_##IDX##_update( int iterator, uint64_t payer, const TYPE& secondary ) {\
          EOS_ASSERT( !softfloat_api::is_nan( secondary ), transaction_exception, "NaN is not an allowed value for a secondary key" );\
-         return context.IDX.update( iterator, payer, secondary );\
+         return context.IDX.update( iterator, account_name(payer), secondary );\
       }\
       void db_##IDX##_remove( int iterator ) {\
          return context.IDX.remove( iterator );\
@@ -1291,10 +1291,10 @@ class database_api : public context_aware_api {
       using context_aware_api::context_aware_api;
 
       int db_store_i64( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, array_ptr<const char> buffer, size_t buffer_size ) {
-         return context.db_store_i64( scope, table, payer, id, buffer, buffer_size );
+         return context.db_store_i64( name(scope), name(table), account_name(payer), id, buffer, buffer_size );
       }
       void db_update_i64( int itr, uint64_t payer, array_ptr<const char> buffer, size_t buffer_size ) {
-         context.db_update_i64( itr, payer, buffer, buffer_size );
+         context.db_update_i64( itr, account_name(payer), buffer, buffer_size );
       }
       void db_remove_i64( int itr ) {
          context.db_remove_i64( itr );
@@ -1309,16 +1309,16 @@ class database_api : public context_aware_api {
          return context.db_previous_i64(itr, primary);
       }
       int db_find_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id ) {
-         return context.db_find_i64( code, scope, table, id );
+         return context.db_find_i64( name(code), name(scope), name(table), id );
       }
       int db_lowerbound_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id ) {
-         return context.db_lowerbound_i64( code, scope, table, id );
+         return context.db_lowerbound_i64( name(code), name(scope), name(table), id );
       }
       int db_upperbound_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id ) {
-         return context.db_upperbound_i64( code, scope, table, id );
+         return context.db_upperbound_i64( name(code), name(scope), name(table), id );
       }
       int db_end_i64( uint64_t code, uint64_t scope, uint64_t table ) {
-         return context.db_end_i64( code, scope, table );
+         return context.db_end_i64( name(code), name(scope), name(table) );
       }
 
       DB_API_METHOD_WRAPPERS_SIMPLE_SECONDARY(idx64,  uint64_t)

@@ -5,7 +5,7 @@
 #include "fork_test_utilities.hpp"
 
 private_key_type get_private_key( name keyname, string role ) {
-   return private_key_type::regenerate<fc::ecc::private_key_shim>(fc::sha256::hash(string(keyname)+role));
+   return private_key_type::regenerate<fc::ecc::private_key_shim>(fc::sha256::hash(keyname.to_string()+role));
 }
 
 public_key_type  get_public_key( name keyname, string role ){
