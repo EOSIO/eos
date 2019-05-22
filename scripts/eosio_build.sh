@@ -150,7 +150,7 @@ if [ $# -ne 0 ]; then
    done
 fi
 
-if [ ! -d "${REPO_ROOT}/.git" ]; then
+if [ ! -e "${REPO_ROOT}/.git" ]; then
    printf "\\nThis build script only works with sources cloned from git\\n"
    printf "Please clone a new eos directory with 'git clone https://github.com/EOSIO/eos --recursive'\\n"
    printf "See the wiki for instructions: https://github.com/EOSIO/eos/wiki\\n"
