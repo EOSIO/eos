@@ -16,7 +16,7 @@ services:
     container_name: cyberway-notifier
     image: cyberway/cyberway-notifier:latest
     restart: always
-    command: bash -c "/opt/cyberway/bin/cyber-notifier </queue/msg.pipe -s nats://${NATS_USER}:${NATS_PASS}@nats-streaming:4222"
+    command: bash -c "exec /opt/cyberway/bin/cyber-notifier </queue/msg.pipe -s nats://${NATS_USER}:${NATS_PASS}@nats-streaming:4222"
     volumes:
       - cyberway-queue:/queue:ro
     networks:
