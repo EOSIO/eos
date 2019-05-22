@@ -200,10 +200,10 @@ namespace eosio { namespace chain {
         }
 
         int32_t chaindb_delete(
-            account_name_t code, scope_name_t scope, table_name_t table, primary_key_t pk
+            account_name_t code, scope_name_t scope, table_name_t table, account_name_t payer, primary_key_t pk
         ) {
             validate_db_access_violation(code);
-            auto delta = context.chaindb.remove({code, scope, table}, context.get_storage_payer(), pk);
+            auto delta = context.chaindb.remove({code, scope, table}, context.get_storage_payer(payer), pk);
             return static_cast<int32_t>(delta);
         }
 
@@ -265,7 +265,7 @@ namespace eosio { namespace chain {
 
         (chaindb_insert,      int(int64_t, int64_t, int64_t, int64_t, int64_t, int, int) )
         (chaindb_update,      int(int64_t, int64_t, int64_t, int64_t, int64_t, int, int) )
-        (chaindb_delete,      int(int64_t, int64_t, int64_t, int64_t)                    )
+        (chaindb_delete,      int(int64_t, int64_t, int64_t, int64_t, int64_t)           )
 
         (chaindb_ram_state,   void(int64_t, int64_t, int64_t, int64_t, int) )
     );

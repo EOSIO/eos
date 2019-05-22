@@ -104,10 +104,13 @@ namespace cyberway { namespace chaindb {
     }
 
     void storage_payer_info::get_payer_from(const object_value& obj) {
-        owner  = obj.service.payer;
-        payer  = obj.service.payer;
-        size   = obj.service.size;
-        in_ram = obj.service.in_ram;
+        if (owner.empty()) {
+            owner = obj.service.payer;
+        }
+
+        if (payer.empty()) {
+            payer = obj.service.payer;
+        }
     }
 
     void storage_payer_info::set_payer_in(object_value& obj) const {
@@ -575,8 +578,8 @@ namespace cyberway { namespace chaindb {
 
             undo_.insert(table, obj);
 
+            // don't charge on genesis
             if (undo_.revision() != start_revision) {
-                // charge the payer
                 charge.add_usage();
             }
 
@@ -586,33 +589,12 @@ namespace cyberway { namespace chaindb {
         int update(const table_info& table, storage_payer_info charge, object_value& obj, object_value orig_obj) {
             validate_object(table, obj, obj.pk());
 
-            if (charge.owner.empty()) {
-                charge.owner = orig_obj.service.payer;
-            }
-
-            if (charge.payer.empty()) {
-                charge.payer = orig_obj.service.payer;
-            }
-
+            charge.get_payer_from(orig_obj);
             charge.calc_usage(table, obj);
-            auto delta = charge.size - orig_obj.service.size;
+            charge.delta = charge.size - orig_obj.service.size;
 
-            if (charge.payer  != orig_obj.service.payer || charge.in_ram != orig_obj.service.in_ram) {
-                auto refund = charge;
-                refund.get_payer_from(orig_obj);
-                refund.delta = -orig_obj.service.size;
-                if (undo_.revision() != start_revision) {
-                    // refund the existing payer
-                    refund.add_usage();
-                }
-
-                charge.delta = charge.size;
-            } else {
-                charge.delta = delta;
-            }
-
+            // don't charge on genesis
             if (undo_.revision() != start_revision) {
-                // charge the new payer
                 charge.add_usage();
             }
 
@@ -622,14 +604,15 @@ namespace cyberway { namespace chaindb {
 
             undo_.update(table, std::move(orig_obj), obj);
 
-            return delta;
+            return charge.delta;
         }
 
         int remove(const table_info& table, storage_payer_info refund, object_value orig_obj) {
             auto pk = orig_obj.pk();
 
             refund.get_payer_from(orig_obj);
-            refund.delta  = -orig_obj.service.size;
+            refund.size  =  orig_obj.service.size;
+            refund.delta = -orig_obj.service.size;
 
             // refund the payer
             refund.add_usage();
