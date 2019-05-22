@@ -570,11 +570,19 @@ namespace eosio { namespace chain {
          return var.as<bytes>();
       }
 
+#ifdef __APPLE__
+      char temp[1024*1024];
+      char* pt = temp;
+      fc::datastream<char*> ds(pt, sizeof(temp));
+      _variant_to_binary(type, var, ds, ctx);
+      return bytes{pt, pt + ds.tellp()};
+#else
       bytes temp( 1024*1024 );
       fc::datastream<char*> ds(temp.data(), temp.size() );
       _variant_to_binary(type, var, ds, ctx);
       temp.resize(ds.tellp());
       return temp;
+#endif
    } FC_CAPTURE_AND_RETHROW( (type)(var) ) }
 
    bytes abi_serializer::variant_to_binary( const type_name& type, const fc::variant& var, const fc::microseconds& max_serialization_time, bool short_path )const {
