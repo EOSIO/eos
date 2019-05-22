@@ -2077,6 +2077,10 @@ vector<transaction_id_type> controller::get_scheduled_transactions() const {
 
    vector<transaction_id_type> result;
 
+   if( 1 == head_block_num() ) {
+      return result;
+   }
+
    static const size_t max_reserve = 1024;
    result.reserve(max_reserve);
 
