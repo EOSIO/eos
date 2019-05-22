@@ -376,8 +376,8 @@ namespace eosio {
    constexpr auto     def_send_buffer_size = 1024*1024*def_send_buffer_size_mb;
    constexpr auto     def_max_write_queue_size = def_send_buffer_size*10;
    constexpr boost::asio::chrono::milliseconds def_read_delay_for_full_write_queue{100};
-   constexpr auto     def_max_reads_in_flight = 1000;
    constexpr auto     def_max_trx_in_progress_size = 100*1024*1024; // 100 MB
+   constexpr auto     def_max_read_delays = 100; // number of times read_delay_timer started without any reads
    constexpr auto     def_max_consecutive_rejected_blocks = 3; // num of rejected blocks before disconnect
    constexpr auto     def_max_consecutive_immediate_connection_close = 9; // back off if client keeps closing
    constexpr auto     def_max_clients = 25; // 0 for unlimited clients
@@ -573,7 +573,6 @@ namespace eosio {
 
       queued_buffer           buffer_queue;
 
-      std::atomic<uint32_t>   reads_in_flight{0};
       std::atomic<uint32_t>   trx_in_progress_size{0};
       fc::sha256              node_id;
       const uint32_t          connection_id;
@@ -587,6 +586,7 @@ namespace eosio {
       std::mutex                            response_expected_timer_mtx;
       boost::asio::steady_timer             response_expected_timer;
 
+      uint16_t                              read_delay_count = 0; // only accessed from strand
       std::mutex                            read_delay_timer_mtx;
       boost::asio::steady_timer             read_delay_timer;
 
@@ -970,6 +970,7 @@ namespace eosio {
       {
          std::lock_guard<std::mutex> g( self->read_delay_timer_mtx );
          self->read_delay_timer.cancel();
+         self->read_delay_count = 0;
       }
 
       if( reconnect ) {
@@ -2234,47 +2235,43 @@ namespace eosio {
          };
 
          if( buffer_queue.write_queue_size() > def_max_write_queue_size ||
-             reads_in_flight > def_max_reads_in_flight   ||
              trx_in_progress_size > def_max_trx_in_progress_size )
          {
             // too much queued up, reschedule
             uint32_t write_queue_size = buffer_queue.write_queue_size();
             uint32_t trx_in_progress_size = this->trx_in_progress_size.load();
-            uint32_t reads_in_flight = this->reads_in_flight.load();
             if( write_queue_size > def_max_write_queue_size ) {
                peer_wlog( this, "write_queue full ${s} bytes", ("s", write_queue_size) );
-            } else if( reads_in_flight > def_max_reads_in_flight ) {
-               peer_wlog( this, "max reads in flight ${s}", ("s", reads_in_flight) );
             } else {
                peer_wlog( this, "max trx in progress ${s} bytes", ("s", trx_in_progress_size) );
             }
             if( write_queue_size > 2*def_max_write_queue_size ||
-                reads_in_flight > 2*def_max_reads_in_flight   ||
-                trx_in_progress_size > 2*def_max_trx_in_progress_size )
+                trx_in_progress_size > 2*def_max_trx_in_progress_size ||
+                ++read_delay_count > def_max_read_delays )
             {
                fc_elog( logger, "queues over full, giving up on connection, closing connection to: ${p}",
                         ("p", peer_name()) );
-               close();
+               close( false );
                return;
             }
             std::lock_guard<std::mutex> g( read_delay_timer_mtx );
+            read_delay_timer.cancel();
             read_delay_timer.expires_from_now( def_read_delay_for_full_write_queue );
             connection_wptr weak_conn = shared_from_this();
-            read_delay_timer.async_wait( boost::asio::bind_executor(strand, [weak_conn]( boost::system::error_code ) {
+            read_delay_timer.async_wait( boost::asio::bind_executor(strand, [weak_conn]( boost::system::error_code ec ) {
+               if( ec == boost::asio::error::operation_aborted ) return;
                auto conn = weak_conn.lock();
                if( !conn ) return;
                conn->start_read_message();
             } ) );
             return;
          }
+         read_delay_count = 0;
 
-         ++reads_in_flight;
          boost::asio::async_read( socket,
             pending_message_buffer.get_buffer_sequence_for_boost_async_read(), completion_handler,
             boost::asio::bind_executor( strand,
             [conn = shared_from_this()]( boost::system::error_code ec, std::size_t bytes_transferred ) {
-               --conn->reads_in_flight;
-
                // may have closed connection and cleared pending_message_buffer
                if( !conn->socket_is_open() ) return;
 
