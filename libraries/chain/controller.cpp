@@ -1688,7 +1688,6 @@ struct controller_impl {
          const signed_block_ptr& b = bsp->block;
          const auto& new_protocol_feature_activations = bsp->get_new_protocol_feature_activations();
 
-         EOS_ASSERT( b->block_extensions.size() == 0, block_validate_exception, "no supported block extensions" );
          auto producer_block_id = b->id();
          start_block( b->timestamp, b->confirmed, new_protocol_feature_activations, s, producer_block_id);
 

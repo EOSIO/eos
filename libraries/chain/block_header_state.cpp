@@ -322,15 +322,18 @@ namespace eosio { namespace chain {
                                  bool skip_validate_signee
    )&&
    {
-      auto result = std::move(*this)._finish_next( h, pfs, validator );
-
       if( !additional_signatures.empty() ) {
          auto wtmsig_digest = pfs.get_builtin_digest(builtin_protocol_feature_t::wtmsig_block_signatures);
          const auto& protocol_features = prev_activated_protocol_features->protocol_features;
          bool wtmsig_enabled = wtmsig_digest && protocol_features.find(*wtmsig_digest) != protocol_features.end();
 
          EOS_ASSERT(wtmsig_enabled, producer_schedule_exception, "Block contains multiple signatures before WTMsig block signatures are enabled" );
-         result.additional_signatures = additional_signatures;
+      }
+
+      auto result = std::move(*this)._finish_next( h, pfs, validator );
+
+      if( !additional_signatures.empty() ) {
+         result.additional_signatures = std::move(additional_signatures);
       }
 
       // ASSUMPTION FROM controller_impl::apply_block = all untrusted blocks will have their signatures pre-validated here
@@ -350,15 +353,15 @@ namespace eosio { namespace chain {
                                  const signer_callback_type& signer
    )&&
    {
+      auto wtmsig_digest = pfs.get_builtin_digest(builtin_protocol_feature_t::wtmsig_block_signatures);
+      const auto& protocol_features = prev_activated_protocol_features->protocol_features;
+      bool wtmsig_enabled = wtmsig_digest && protocol_features.find(*wtmsig_digest) != protocol_features.end();
+
       auto result = std::move(*this)._finish_next( h, pfs, validator );
       result.sign( signer );
       h.producer_signature = result.header.producer_signature;
 
       if( !result.additional_signatures.empty() ) {
-         auto wtmsig_digest = pfs.get_builtin_digest(builtin_protocol_feature_t::wtmsig_block_signatures);
-         const auto& protocol_features = prev_activated_protocol_features->protocol_features;
-         bool wtmsig_enabled = wtmsig_digest && protocol_features.find(*wtmsig_digest) != protocol_features.end();
-
          EOS_ASSERT(wtmsig_enabled, producer_schedule_exception, "Block was signed with multiple signatures before WTMsig block signatures are enabled" );
       }
 
@@ -410,7 +413,7 @@ namespace eosio { namespace chain {
 
       for (const auto& s: additional_signatures) {
          auto key = fc::crypto::public_key( s, sig_digest(), true );
-         EOS_ASSERT(keys.find(key) != keys.end(), wrong_signing_key,
+         EOS_ASSERT(keys.find(key) == keys.end(), wrong_signing_key,
                "block signed by same key twice",
                ("key", key));
 

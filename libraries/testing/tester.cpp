@@ -309,19 +309,26 @@ namespace eosio { namespace testing {
       FC_ASSERT( control->is_building_block(), "must first start a block before it can be finished" );
 
       auto producer = control->head_block_state()->get_scheduled_producer( control->pending_block_time() );
-      private_key_type priv_key = producer.authority.visit([this, &producer](const block_signing_authority_v0& a){
-         for (const auto& k: a.keys) {
-            auto private_key_itr = block_signing_private_keys.find( k.key );
-            if (private_key_itr != block_signing_private_keys.end()) {
-               return private_key_itr->second;
-            }
-         }
+      vector<private_key_type> signing_keys;
 
-         return get_private_key( producer.producer_name, "active" );
-      });
+      for ( const auto& bsk : block_signing_private_keys ) {
+         if (producer.key_is_relevant(bsk.first)) {
+            signing_keys.push_back( bsk.second );
+         }
+      }
+
+      // if the "active" key is relevant or no other keys were found, add the "active" private key
+      if( signing_keys.empty() || producer.key_is_relevant(get_public_key( producer.producer_name, "active") ) ) {
+         signing_keys.emplace_back( get_private_key( producer.producer_name, "active") );
+      }
 
       control->finalize_block( [&]( digest_type d ) {
-                    return std::vector<signature_type>{priv_key.sign(d)};
+         std::vector<signature_type> result;
+         result.reserve(signing_keys.size());
+         for (const auto& k: signing_keys)
+             result.emplace_back(k.sign(d));
+
+         return result;
       } );
 
       control->commit_block();
@@ -970,6 +977,10 @@ namespace eosio { namespace testing {
    transaction_trace_ptr base_tester::set_producers(const vector<account_name>& producer_names) {
       auto schedule = get_producer_authorities( producer_names );
 
+      return set_producer_schedule(schedule);
+   }
+
+   transaction_trace_ptr base_tester::set_producer_schedule(const vector<producer_authority>& schedule ) {
       // FC reflection does not create variants that are compatible with ABI 1.1 so we manually translate.
       fc::variants schedule_variant;
       schedule_variant.reserve(schedule.size());
@@ -979,6 +990,7 @@ namespace eosio { namespace testing {
 
       return push_action( config::system_account_name, N(setprods), config::system_account_name,
                           fc::mutable_variant_object()("schedule", schedule_variant));
+
    }
 
    transaction_trace_ptr base_tester::set_producers_legacy(const vector<account_name>& producer_names) {
