@@ -120,6 +120,7 @@ namespace eosio {
 
    struct BlockMessage : public BaseMessage {
        chain::block_id_type          id;
+       chain::block_id_type          previous;
        uint32_t                      block_num;
        chain::block_timestamp_type   block_time;
        bool                          validated;
@@ -128,6 +129,7 @@ namespace eosio {
        BlockMessage(MsgType msg_type, const chain::block_state_ptr& bstate)
        : BaseMessage(msg_type)
        , id(bstate->block->id())
+       , previous(bstate->header.previous)
        , block_num(bstate->block->block_num())
        , block_time(bstate->header.timestamp)
        , validated(bstate->validated)
@@ -172,7 +174,7 @@ FC_REFLECT_ENUM(eosio::BaseMessage::MsgType, (Unknown)(GenesisData)(GenesisEnd)(
 FC_REFLECT(eosio::BaseMessage, (msg_type))
 FC_REFLECT_DERIVED(eosio::GenesisDataMessage, (eosio::BaseMessage), (code)(name)(data))
 FC_REFLECT_DERIVED(eosio::GenesisEndMessage, (eosio::BaseMessage), )
-FC_REFLECT_DERIVED(eosio::BlockMessage, (eosio::BaseMessage), (id)(block_num)(block_time)(validated)(in_current_chain))
+FC_REFLECT_DERIVED(eosio::BlockMessage, (eosio::BaseMessage), (id)(previous)(block_num)(block_time)(validated)(in_current_chain))
 FC_REFLECT_DERIVED(eosio::AcceptedBlockMessage, (eosio::BlockMessage), (trxs)(events))
 FC_REFLECT_DERIVED(eosio::AcceptTrxMessage, (eosio::BaseMessage)(eosio::TrxMetadata), )
 FC_REFLECT_DERIVED(eosio::ApplyTrxMessage, (eosio::BaseMessage), (id)(block_num)(block_time)(prod_block_id)(actions))
