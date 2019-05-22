@@ -1,12 +1,13 @@
 #pragma once
 #include <boost/filesystem/fstream.hpp>
 #include <cyberway/chaindb/common.hpp>
-#include <cyberway/genesis/ee_genesis_container.hpp>
+#include <eosio/event_engine_plugin/ee_genesis_container.hpp>
 #include <eosio/chain/abi_serializer.hpp>
 
-namespace cyberway { namespace genesis {
+namespace cyberway { namespace genesis { namespace ee {
 
 using namespace chaindb;
+using namespace eosio;
 namespace bfs = boost::filesystem;
 
 FC_DECLARE_EXCEPTION(ee_genesis_exception, 10000000, "event engine genesis create exception");
@@ -86,4 +87,4 @@ public:
 };
 
 
-}} // cyberway::genesis
+}}} // cyberway::genesis::ee

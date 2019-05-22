@@ -1,8 +1,16 @@
 #pragma once
 
-#include "golos_types.hpp"
+#include <eosio/chain/asset.hpp>
+#include <fc/fixed_string.hpp>
+#include <fc/container/flat_fwd.hpp>
+#include <fc/container/flat.hpp>
 
-namespace cyberway { namespace golos {
+namespace cyberway { namespace golos { namespace ee {
+
+using std::string;
+using account_name_type = fc::fixed_string<>;
+using fc::flat_set;
+using eosio::chain::asset;
 
 struct comment_operation : hashed_operation {
     account_name_type parent_author;
@@ -105,28 +113,28 @@ struct total_comment_reward_operation : hashed_operation {
     int64_t net_rshares;
 };
 
-} } // cyberway::golos
+} } } // cyberway::golos::ee
 
-REFLECT_OP_HASHED(cyberway::golos::comment_operation, (parent_author)(parent_permlink)(author)(permlink)(title)(body)(tags)(language)(timestamp))
+REFLECT_OP_HASHED(cyberway::golos::ee::comment_operation, (parent_author)(parent_permlink)(author)(permlink)(title)(body)(tags)(language)(timestamp))
 
-REFLECT_OP_HASHED(cyberway::golos::delete_comment_operation, )
+REFLECT_OP_HASHED(cyberway::golos::ee::delete_comment_operation, )
 
-REFLECT_OP_HASHED(cyberway::golos::vote_operation, (voter)(author)(permlink)(weight)(rshares)(timestamp))
+REFLECT_OP_HASHED(cyberway::golos::ee::vote_operation, (voter)(author)(permlink)(weight)(rshares)(timestamp))
 
-REFLECT_OP_HASHED(cyberway::golos::reblog_operation, (account)(author)(permlink)(title)(body)(timestamp))
+REFLECT_OP_HASHED(cyberway::golos::ee::reblog_operation, (account)(author)(permlink)(title)(body)(timestamp))
 
-REFLECT_OP_HASHED(cyberway::golos::delete_reblog_operation, (account))
+REFLECT_OP_HASHED(cyberway::golos::ee::delete_reblog_operation, (account))
 
-REFLECT_OP(cyberway::golos::transfer_operation, (from)(to)(amount)(memo)(timestamp))
+REFLECT_OP(cyberway::golos::ee::transfer_operation, (from)(to)(amount)(memo)(timestamp))
 
-REFLECT_OP_HASHED(cyberway::golos::follow_operation, (follower)(following)(what))
+REFLECT_OP_HASHED(cyberway::golos::ee::follow_operation, (follower)(following)(what))
 
-REFLECT_OP_HASHED(cyberway::golos::author_reward_operation, (author)(permlink)(sbd_payout)(steem_payout)(vesting_payout))
+REFLECT_OP_HASHED(cyberway::golos::ee::author_reward_operation, (author)(permlink)(sbd_payout)(steem_payout)(vesting_payout))
 
-REFLECT_OP_HASHED(cyberway::golos::curation_reward_operation, (curator)(reward)(comment_author)(comment_permlink))
+REFLECT_OP_HASHED(cyberway::golos::ee::curation_reward_operation, (curator)(reward)(comment_author)(comment_permlink))
 
-REFLECT_OP_HASHED(cyberway::golos::auction_window_reward_operation, (reward)(comment_author)(comment_permlink))
+REFLECT_OP_HASHED(cyberway::golos::ee::auction_window_reward_operation, (reward)(comment_author)(comment_permlink))
 
-REFLECT_OP_HASHED(cyberway::golos::comment_benefactor_reward_operation, (benefactor)(author)(permlink)(reward))
+REFLECT_OP_HASHED(cyberway::golos::ee::comment_benefactor_reward_operation, (benefactor)(author)(permlink)(reward))
 
-REFLECT_OP_HASHED(cyberway::golos::total_comment_reward_operation, (author)(permlink)(author_reward)(benefactor_reward)(curator_reward)(net_rshares))
+REFLECT_OP_HASHED(cyberway::golos::ee::total_comment_reward_operation, (author)(permlink)(author_reward)(benefactor_reward)(curator_reward)(net_rshares))

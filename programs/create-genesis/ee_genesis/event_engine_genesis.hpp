@@ -1,13 +1,11 @@
 #pragma once
 
-#include <boost/filesystem.hpp>
+#include "ee_genesis_serializer.hpp"
 #include <fc/crypto/sha256.hpp>
-#include <cyberway/genesis/ee_genesis_serializer.hpp>
 
-namespace cyberway { namespace genesis {
+namespace cyberway { namespace genesis { namespace ee {
 
 using namespace eosio::chain;
-namespace bfs = boost::filesystem;
 
 class event_engine_genesis final {
 public:
@@ -20,6 +18,8 @@ public:
     ee_genesis_serializer messages;
     ee_genesis_serializer transfers;
     ee_genesis_serializer pinblocks;
+    ee_genesis_serializer usernames;
+    ee_genesis_serializer balances;
 };
 
 struct vote_info {
@@ -84,12 +84,12 @@ struct block_info {
     name blocking;
 };
 
-} } // cyberway::genesis
+} } } // cyberway::genesis::ee
 
-FC_REFLECT(cyberway::genesis::vote_info, (voter)(weight)(time)(rshares))
-FC_REFLECT(cyberway::genesis::reblog_info, (account)(title)(body)(time))
-FC_REFLECT(cyberway::genesis::comment_info, (parent_author)(parent_permlink)(author)(permlink)(created)(title)(body)
+FC_REFLECT(cyberway::genesis::ee::vote_info, (voter)(weight)(time)(rshares))
+FC_REFLECT(cyberway::genesis::ee::reblog_info, (account)(title)(body)(time))
+FC_REFLECT(cyberway::genesis::ee::comment_info, (parent_author)(parent_permlink)(author)(permlink)(created)(title)(body)
         (tags)(language)(net_rshares)(author_reward)(benefactor_reward)(curator_reward)(votes)(reblogs))
-FC_REFLECT(cyberway::genesis::transfer_info, (from)(to)(quantity)(memo)(time))
-FC_REFLECT(cyberway::genesis::pin_info, (pinner)(pinning))
-FC_REFLECT(cyberway::genesis::block_info, (blocker)(blocking))
+FC_REFLECT(cyberway::genesis::ee::transfer_info, (from)(to)(quantity)(memo)(time))
+FC_REFLECT(cyberway::genesis::ee::pin_info, (pinner)(pinning))
+FC_REFLECT(cyberway::genesis::ee::block_info, (blocker)(blocking))

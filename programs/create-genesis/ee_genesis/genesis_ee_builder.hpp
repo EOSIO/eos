@@ -4,17 +4,14 @@
 #include "event_engine_genesis.hpp"
 #include "map_objects.hpp"
 
-#include <cyberway/genesis/ee_genesis_container.hpp>
 #include <boost/filesystem.hpp>
 #include <fc/exception/exception.hpp>
 #include <chainbase/chainbase.hpp>
 
-namespace cyberway { namespace genesis {
+namespace cyberway { namespace genesis { namespace ee {
 
-using namespace cyberway::golos;
+using namespace cyberway::golos::ee;
 namespace bfs = boost::filesystem;
-
-FC_DECLARE_EXCEPTION(genesis_exception, 9000000, "genesis create exception");
 
 class genesis_ee_builder final {
 public:
@@ -49,4 +46,4 @@ private:
     chainbase::database maps_;
 };
 
-} } // cyberway::genesis
+} } } // cyberway::genesis::ee

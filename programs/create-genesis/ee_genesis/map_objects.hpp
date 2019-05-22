@@ -1,7 +1,7 @@
 #pragma once
 
 #include "golos_dump_container.hpp"
-#include "golos_types.hpp"
+#include "golos_operations.hpp"
 
 #include <boost/multi_index_container.hpp>
 #include <boost/multi_index/member.hpp>
@@ -9,10 +9,10 @@
 #include <boost/multi_index/ordered_index.hpp>
 #include <chainbase/chainbase.hpp>
 
-namespace cyberway { namespace genesis {
+namespace cyberway { namespace genesis { namespace ee {
 
 using namespace boost::multi_index;
-using namespace cyberway::golos;
+using namespace cyberway::golos::ee;
 
 enum object_type
 {
@@ -156,12 +156,12 @@ using follow_header_index = chainbase::shared_multi_index_container<
                 std::less<account_name_type>>>>
 >;
 
-} } // cyberway::genesis
+} } } // cyberway::genesis::ee
 
-CHAINBASE_SET_INDEX_TYPE(cyberway::genesis::comment_header, cyberway::genesis::comment_header_index)
+CHAINBASE_SET_INDEX_TYPE(cyberway::genesis::ee::comment_header, cyberway::genesis::ee::comment_header_index)
 
-CHAINBASE_SET_INDEX_TYPE(cyberway::genesis::vote_header, cyberway::genesis::vote_header_index)
+CHAINBASE_SET_INDEX_TYPE(cyberway::genesis::ee::vote_header, cyberway::genesis::ee::vote_header_index)
 
-CHAINBASE_SET_INDEX_TYPE(cyberway::genesis::reblog_header, cyberway::genesis::reblog_header_index)
+CHAINBASE_SET_INDEX_TYPE(cyberway::genesis::ee::reblog_header, cyberway::genesis::ee::reblog_header_index)
 
-CHAINBASE_SET_INDEX_TYPE(cyberway::genesis::follow_header, cyberway::genesis::follow_header_index)
+CHAINBASE_SET_INDEX_TYPE(cyberway::genesis::ee::follow_header, cyberway::genesis::ee::follow_header_index)

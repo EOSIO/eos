@@ -1,6 +1,6 @@
 #include "genesis_ee_builder.hpp"
 #include "golos_operations.hpp"
-#include <cyberway/genesis/genesis_generate_name.hpp>
+#include "../genesis_generate_name.hpp"
 
 #define MEGABYTE 1024*1024
 
@@ -14,7 +14,7 @@
 // 2300000 * 160 = 0.4 GB
 #define MAP_FILE_SIZE uint64_t(22*1024)*MEGABYTE
 
-namespace cyberway { namespace genesis {
+namespace cyberway { namespace genesis { namespace ee {
 
 static constexpr uint64_t gls_post_account_name = N(gls.publish);
 static constexpr uint64_t gls_social_account_name = N(gls.social);
@@ -36,9 +36,9 @@ golos_dump_header genesis_ee_builder::read_header(bfs::ifstream& in) {
     golos_dump_header h;
     in.read((char*)&h, sizeof(h));
     if (in) {
-        EOS_ASSERT(std::string(h.magic) == golos_dump_header::expected_magic, genesis_exception,
+        EOS_ASSERT(std::string(h.magic) == golos_dump_header::expected_magic, ee_genesis_exception,
             "Unknown format of the operation dump file.");
-        EOS_ASSERT(h.version == golos_dump_header::expected_version, genesis_exception,
+        EOS_ASSERT(h.version == golos_dump_header::expected_version, ee_genesis_exception,
             "Wrong version of the operation dump file.");
     }
     return h;
@@ -421,4 +421,4 @@ void genesis_ee_builder::build(const bfs::path& out_dir) {
     out_.finalize();
 }
 
-} } // cyberway::genesis
+} } } // cyberway::genesis::ee

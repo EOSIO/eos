@@ -1,5 +1,6 @@
 #include "genesis_info.hpp"
 #include "genesis_create.hpp"
+#include "ee_genesis/genesis_ee_builder.hpp"
 #include <eosio/chain/abi_def.hpp>
 
 #include <fc/io/raw.hpp>
@@ -36,6 +37,7 @@ namespace bpo = boost::program_options;
 using bpo::options_description;
 using bpo::variables_map;
 using std::string;
+using cyberway::genesis::ee::genesis_ee_builder;
 
 
 struct config_reader {
@@ -46,6 +48,10 @@ struct config_reader {
     bfs::path info_file;
     bfs::path out_file;
     bfs::path ee_directory;
+    bfs::path op_dump_dir;
+    uint32_t last_block;
+
+    bool create_ee_genesis = false;
 
     genesis_info info;
     genesis_state genesis;
@@ -59,8 +65,12 @@ void config_reader::set_program_options(options_description& cli) {
             "the location of the genesis info file (absolute path or relative to the current directory).")
         ("output-file,o", bpo::value<bfs::path>(&out_file)->default_value("cyberway-genesis.dat"),
             "the file to write generic genesis data to (absolute or relative path).")
-        ("ee-output-directory,e", bpo::value<bfs::path>(&ee_directory)->default_value("events-genesis"),
+        ("ee-output-directory,e", bpo::value<bfs::path>(&ee_directory)->implicit_value("events-genesis")->default_value(""),
             "the directory to write Event-Engine genesis data files to (absolute or relative path).")
+        ("operation-dump-dir,d", bpo::value<bfs::path>(&op_dump_dir)->default_value("operation_dump"),
+            "operation dump dir from Golos (absolute path or relative to the current directory).")
+        ("last-block,l", bpo::value<uint32_t>(&last_block)->default_value(UINT32_MAX),
+            "last block num to read operations from dump and write them to Event-Engine genesis.")
         ("help,h", "Print this help message and exit.")
         ;
 }
@@ -126,9 +136,15 @@ void read_contract(const genesis_info::account& acc, contract_abicode& abicode) 
 
 void config_reader::read_config(const variables_map& options) {
     ilog("Genesis: read config");
+
     make_absolute(info_file, "Info");
     make_absolute(out_file, "Output", false);
-    make_dir_absolute(ee_directory, "Events", false);
+
+    create_ee_genesis = !options["ee-output-directory"].as<bfs::path>().empty();
+    if (create_ee_genesis) {
+        make_dir_absolute(ee_directory, "Events", false);
+        make_dir_absolute(op_dump_dir, "Operation dump", true);
+    }
 
     info = fc::json::from_file(info_file).as<genesis_info>();
     make_absolute(info.state_file, "Golos state");
@@ -178,8 +194,17 @@ int main(int argc, char** argv) {
 
         genesis_create builder{};
         builder.read_state(cr.info.state_file);
-        builder.write_genesis(cr.out_file, cr.ee_directory, cr.info, cr.genesis, cr.contracts);
+        builder.write_genesis(cr.out_file, cr.info, cr.genesis, cr.contracts);
 
+        if (cr.create_ee_genesis) {
+            bfs::remove_all("shared_memory");
+
+            genesis_ee_builder ee_builder("shared_memory", cr.last_block);
+            ee_builder.read_operation_dump(cr.op_dump_dir);
+            ee_builder.build(cr.ee_directory);
+
+            bfs::remove_all("shared_memory");
+        }
     } catch (const fc::exception& e) {
         elog("${e}", ("e", e.to_detail_string()));
         return -1;
