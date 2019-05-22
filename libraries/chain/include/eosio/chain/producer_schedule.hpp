@@ -60,8 +60,18 @@ namespace eosio { namespace chain {
          }) != keys.end();
       }
 
-      bool keys_satisfy( const flat_set<public_key_type>& keys ) const {
-         return true;
+      bool keys_satisfy( const flat_set<public_key_type>& presented_keys ) const {
+         uint32_t total_weight = 0;
+         for (const auto& kw : keys) {
+            const auto& iter = presented_keys.find(kw.key);
+            if (iter != presented_keys.end()) {
+               total_weight += kw.weight;
+            }
+
+            if (total_weight >= threshold)
+               return true;
+         }
+         return false;
       }
 
       friend bool operator == ( const block_signing_authority_v0& lhs, const block_signing_authority_v0& rhs ) {

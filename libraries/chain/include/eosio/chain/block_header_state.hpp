@@ -47,7 +47,7 @@ struct pending_block_header_state : public detail::block_header_state_common {
                                           const protocol_feature_set& pfs)const;
 
    block_header_state  finish_next( const signed_block_header& h,
-                                    const vector<signature_type>& additional_signatures,
+                                    vector<signature_type>&& additional_signatures,
                                     const protocol_feature_set& pfs,
                                     const std::function<void( block_timestamp_type,
                                                               const flat_set<digest_type>&,
@@ -94,7 +94,7 @@ struct block_header_state : public detail::block_header_state_common {
    pending_block_header_state  next( block_timestamp_type when, uint16_t num_prev_blocks_to_confirm )const;
 
    block_header_state   next( const signed_block_header& h,
-                              const vector<signature_type>& additional_signatures,
+                              vector<signature_type>&& additional_signatures,
                               const protocol_feature_set& pfs,
                               const std::function<void( block_timestamp_type,
                                                         const flat_set<digest_type>&,
@@ -141,4 +141,5 @@ FC_REFLECT_DERIVED(  eosio::chain::block_header_state, (eosio::chain::detail::bl
                      (header)
                      (pending_schedule)
                      (activated_protocol_features)
+                     (additional_signatures)
 )

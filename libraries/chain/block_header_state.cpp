@@ -314,7 +314,7 @@ namespace eosio { namespace chain {
 
    block_header_state pending_block_header_state::finish_next(
                                  const signed_block_header& h,
-                                 const vector<signature_type>& additional_signatures,
+                                 vector<signature_type>&& additional_signatures,
                                  const protocol_feature_set& pfs,
                                  const std::function<void( block_timestamp_type,
                                                            const flat_set<digest_type>&,
@@ -375,14 +375,14 @@ namespace eosio { namespace chain {
     */
    block_header_state block_header_state::next(
                         const signed_block_header& h,
-                        const vector<signature_type>& _additional_signatures,
+                        vector<signature_type>&& _additional_signatures,
                         const protocol_feature_set& pfs,
                         const std::function<void( block_timestamp_type,
                                                   const flat_set<digest_type>&,
                                                   const vector<digest_type>& )>& validator,
                         bool skip_validate_signee )const
    {
-      return next( h.timestamp, h.confirmed ).finish_next( h, _additional_signatures, pfs, validator, skip_validate_signee );
+      return next( h.timestamp, h.confirmed ).finish_next( h, std::move(_additional_signatures), pfs, validator, skip_validate_signee );
    }
 
    digest_type   block_header_state::sig_digest()const {
@@ -392,7 +392,6 @@ namespace eosio { namespace chain {
 
    void block_header_state::sign( const signer_callback_type& signer ) {
       auto d = sig_digest();
-      // TODO: modify block to allow multiple sigs
       auto sigs = signer( d );
 
       EOS_ASSERT(!sigs.empty(), no_block_signatures, "Signer returned no signatures");
