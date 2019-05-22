@@ -23,7 +23,11 @@
  * This macro will rethrow the exception as the specified "exception_type"
  */
 #define EOS_RETHROW_EXCEPTIONS(exception_type, FORMAT, ... ) \
-   catch (eosio::chain::chain_exception& e) { \
+   catch( const std::bad_alloc& ) {\
+      throw;\
+   } catch( const boost::interprocess::bad_alloc& ) {\
+      throw;\
+   } catch (eosio::chain::chain_exception& e) { \
       FC_RETHROW_EXCEPTION( e, warn, FORMAT, __VA_ARGS__ ); \
    } catch (fc::exception& e) { \
       exception_type new_exception(FC_LOG_MESSAGE( warn, FORMAT, __VA_ARGS__ )); \
@@ -46,7 +50,11 @@
  * This macro will rethrow the exception as the specified "exception_type"
  */
 #define EOS_CAPTURE_AND_RETHROW( exception_type, ... ) \
-   catch (eosio::chain::chain_exception& e) { \
+   catch( const std::bad_alloc& ) {\
+      throw;\
+   } catch( const boost::interprocess::bad_alloc& ) {\
+      throw;\
+   } catch (eosio::chain::chain_exception& e) { \
       FC_RETHROW_EXCEPTION( e, warn, "", FC_FORMAT_ARG_PARAMS(__VA_ARGS__) ); \
    } catch (fc::exception& e) { \
       exception_type new_exception(e.get_log()); \
@@ -61,6 +69,26 @@
       throw fc::unhandled_exception( \
                 FC_LOG_MESSAGE( warn, "",FC_FORMAT_ARG_PARAMS(__VA_ARGS__)), \
                 std::current_exception() ); \
+   }
+
+/**
+ * Capture all exceptions and pass to NEXT function
+ */
+#define CATCH_AND_CALL(NEXT)\
+   catch ( const fc::exception& err ) {\
+      NEXT(err.dynamic_copy_exception());\
+   } catch ( const std::exception& e ) {\
+      fc::exception fce( \
+         FC_LOG_MESSAGE( warn, "rethrow ${what}: ", ("what",e.what())),\
+         fc::std_exception_code,\
+         BOOST_CORE_TYPEID(e).name(),\
+         e.what() ) ;\
+      NEXT(fce.dynamic_copy_exception());\
+   } catch( ... ) {\
+      fc::unhandled_exception e(\
+         FC_LOG_MESSAGE(warn, "rethrow"),\
+         std::current_exception());\
+      NEXT(e.dynamic_copy_exception());\
    }
 
 #define EOS_RECODE_EXC( cause_type, effect_type ) \

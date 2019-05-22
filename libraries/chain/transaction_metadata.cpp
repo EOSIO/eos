@@ -16,6 +16,7 @@ recovery_keys_type transaction_metadata::recover_keys( const chain_id_type& chai
 
    g.unlock();
    // shared_keys_future not created or different chain_id
+   dlog( "recovering keys in recover_keys" );
    auto recovered_pub_keys = std::make_shared<flat_set<public_key_type>>();
    const signed_transaction& trn = _packed_trx->get_signed_transaction();
    fc::microseconds cpu_usage = trn.get_signature_keys( chain_id, fc::time_point::maximum(), *recovered_pub_keys );
@@ -39,15 +40,22 @@ void transaction_metadata::start_recover_keys( const transaction_metadata_ptr& m
    if( mtrx->_signing_keys_future.valid() && std::get<0>( mtrx->_signing_keys_future.get() ) == chain_id ) { // already created
       g.unlock();
       if( next ) next();
+      return;
    }
 
    mtrx->_signing_keys_future = async_thread_pool( thread_pool, [time_limit, chain_id, mtrx, next{std::move(next)}]() {
-      fc::time_point deadline = time_limit == fc::microseconds::maximum() ?
-                                fc::time_point::maximum() : fc::time_point::now() + time_limit;
-
       auto recovered_pub_keys = std::make_shared<flat_set<public_key_type>>();
-      const signed_transaction& trn = mtrx->_packed_trx->get_signed_transaction();
-      fc::microseconds cpu_usage = trn.get_signature_keys( chain_id, deadline, *recovered_pub_keys );
+      fc::microseconds cpu_usage;
+      try {
+         fc::time_point deadline = time_limit == fc::microseconds::maximum() ?
+                                   fc::time_point::maximum() : fc::time_point::now() + time_limit;
+
+         const signed_transaction& trn = mtrx->_packed_trx->get_signed_transaction();
+         cpu_usage = trn.get_signature_keys( chain_id, deadline, *recovered_pub_keys );
+      } catch( ... ) {
+         if( next ) next();
+         throw;
+      }
       if( next ) next();
       return std::make_tuple( chain_id, cpu_usage, std::move( recovered_pub_keys ));
    } );
