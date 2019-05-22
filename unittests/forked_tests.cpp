@@ -274,7 +274,7 @@ BOOST_AUTO_TEST_CASE( forking ) try {
    c.control->abort_block();
    BOOST_REQUIRE_EXCEPTION(c.control->push_block( bad_block_bs ), fc::exception,
       [] (const fc::exception &ex)->bool {
-         return ex.to_detail_string().find("block not signed by expected key") != std::string::npos;
+         return ex.to_detail_string().find("block signed by unexpected key") != std::string::npos;
       });
 } FC_LOG_AND_RETHROW()
 
