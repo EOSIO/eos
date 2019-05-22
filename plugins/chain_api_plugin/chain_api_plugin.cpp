@@ -415,15 +415,13 @@ fc::optional<eosio::chain::asset> chain_api_plugin_impl::get_account_core_liquid
 
     for (; accounts_it.pk != end_it.pk; accounts_it.pk = db_controller.next({token_code, accounts_it.cursor})) {
         const auto value = db_controller.value_at_cursor({token_code, accounts_it.cursor});
-
         const auto balance_object = value["balance"];
-        const auto sym = balance_object["sym"].as_string();
-        const auto core_symbol_name = core_symbol.name();
+        eosio::chain::asset asset_value;
 
-        if (sym == core_symbol_name) {
-            eosio::chain::asset balance;
-            fc::from_variant(balance_object, balance);
-            return {balance};
+        fc::from_variant(balance_object, asset_value);
+
+        if (asset_value.get_symbol() == core_symbol) {
+            return {asset_value};
         }
     }
 
