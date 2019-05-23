@@ -48,6 +48,7 @@ struct comment_info {
     name author;
     string permlink;
     fc::time_point_sec created;
+    fc::time_point_sec last_update;
     string title;
     string body;
     fc::flat_set<string> tags;
@@ -88,7 +89,7 @@ struct block_info {
 
 FC_REFLECT(cyberway::genesis::ee::vote_info, (voter)(weight)(time)(rshares))
 FC_REFLECT(cyberway::genesis::ee::reblog_info, (account)(title)(body)(time))
-FC_REFLECT(cyberway::genesis::ee::comment_info, (parent_author)(parent_permlink)(author)(permlink)(created)(title)(body)
+FC_REFLECT(cyberway::genesis::ee::comment_info, (parent_author)(parent_permlink)(author)(permlink)(created)(last_update)(title)(body)
         (tags)(language)(net_rshares)(author_reward)(benefactor_reward)(curator_reward)(votes)(reblogs))
 FC_REFLECT(cyberway::genesis::ee::transfer_info, (from)(to)(quantity)(memo)(time))
 FC_REFLECT(cyberway::genesis::ee::pin_info, (pinner)(pinning))

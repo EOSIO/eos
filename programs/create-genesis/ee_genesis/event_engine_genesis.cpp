@@ -33,6 +33,7 @@ static abi_def create_messages_abi() {
             {"author", "name"},
             {"permlink", "string"},
             {"created", "time_point_sec"},
+            {"last_update", "time_point_sec"},
             {"title", "string"},
             {"body", "string"},
             {"tags", "string[]"},

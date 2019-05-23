@@ -347,6 +347,7 @@ void genesis_ee_builder::build_messages() {
             c.tags = op.tags;
             c.language = op.language;
             c.created = comment.created;
+            c.last_update = op.timestamp;
             c.net_rshares = comment.net_rshares;
             c.author_reward = asset(comment.author_reward, symbol(GLS));
             c.benefactor_reward = asset(comment.benefactor_reward, symbol(GLS));
