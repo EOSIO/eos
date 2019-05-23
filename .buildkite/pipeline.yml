@@ -374,7 +374,7 @@ steps:
         buildkite-agent artifact download "build.tar.gz" . --step ":centos: CentOS 7 Build"
         tar -zxf build.tar.gz
         echo "+++ :microscope: Starting package build"
-        yum install -y rpm-build
+        sudo yum install -y rpm-build
         mkdir -p /home/cicd/rpmbuild/BUILD
         mkdir -p /home/cicd/rpmbuild/BUILDROOT
         mkdir -p /home/cicd/rpmbuild/RPMS
