@@ -265,15 +265,19 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_compatible_versions, SNAPSHOT_SUITE, snapshot
 {
    tester chain(setup_policy::preactivate_feature_and_new_bios);
 
+   ///< Begin deterministic code to generate blockchain for comparison
+   // TODO: create a utility that will write new bin/json gzipped files based on this
    chain.create_account(N(snapshot));
    chain.produce_blocks(1);
    chain.set_code(N(snapshot), contracts::snapshot_test_wasm());
    chain.set_abi(N(snapshot), contracts::snapshot_test_abi().data());
    chain.produce_blocks(1);
    chain.control->abort_block();
+   ///< End deterministic code to generate blockchain for comparison
    auto base_integrity_value = chain.control->calculate_integrity_hash();
 
    {
+      static_assert(chain_snapshot_header::minimum_compatible_version <= 2, "version 2 unit test is no longer needed.  Please clean up data files");
       auto v2 = SNAPSHOT_SUITE::template load_from_file<snapshots::snap_v2>();
       snapshotted_tester v2_tester(chain.get_config(), SNAPSHOT_SUITE::get_reader(v2), 0);
       auto v2_integrity_value = v2_tester.control->calculate_integrity_hash();
