@@ -674,7 +674,6 @@ struct genesis_create::genesis_create_impl final {
 
         // accounts GOLOS
         asset total_gls = asset(0, symbol(GLS));
-        supply_distributor vests_to_gls(_visitor.gpo.total_vesting_fund_steem, _visitor.gpo.total_vesting_shares);
         for (const auto& balance: data.gbg) {
             auto acc = balance.first;
             auto gbg = balance.second;
@@ -684,7 +683,7 @@ struct genesis_create::genesis_create_impl final {
             insert_balance_record(n, gls, gls_pk, acc);
             insert_balance_record(n, golos2sys(gls), sys_pk, acc);
             auto& acc_info = _exp_info.account_infos[acc];
-            acc_info["balance_vesting"] = vests_to_gls.convert(asset(data.vests[acc].vesting, symbol(VESTS)));
+            acc_info["vesting_shares"] = asset(data.vests[acc].vesting, symbol(VESTS));
         }
         const auto liquid_supply = supply - (gp.total_vesting_fund_steem + gp.total_reward_fund_steem); // no funds
         std::cout << " Total sum of GOLOS + converted GBG = " << total_gls
