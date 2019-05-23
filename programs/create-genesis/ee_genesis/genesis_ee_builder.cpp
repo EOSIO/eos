@@ -46,6 +46,7 @@ golos_dump_header genesis_ee_builder::read_header(bfs::ifstream& in) {
 template<typename Operation>
 bool genesis_ee_builder::read_operation(bfs::ifstream& in, Operation& op) {
     auto op_offset = in.tellg();
+    op = Operation(); // Some types unpacking without clearing
     fc::raw::unpack(in, op);
     op.offset = op_offset;
 
