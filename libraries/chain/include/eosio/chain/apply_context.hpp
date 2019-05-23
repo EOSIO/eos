@@ -490,11 +490,6 @@ class apply_context {
    public:
       void push_event( event evt );
 
-   /// Archive record methods:
-   public:
-      uint64_t save_record( const char* data, size_t data_len );
-      int lookup_record( uint64_t rec_id, account_name code, char* buffer, size_t buffer_size );
-
    /// Authorization methods:
    public:
 

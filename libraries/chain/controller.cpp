@@ -729,18 +729,15 @@ struct controller_impl {
    // The returned scoped_exit should not exceed the lifetime of the pending which existed when make_block_restore_point was called.
    fc::scoped_exit<std::function<void()>> make_block_restore_point() {
       auto orig_block_transactions_size = pending->_pending_block_state->block->transactions.size();
-      auto orig_block_archive_size      = pending->_pending_block_state->block->archive_records.size();
       auto orig_state_transactions_size = pending->_pending_block_state->trxs.size();
       auto orig_state_actions_size      = pending->_actions.size();
 
       std::function<void()> callback = [this,
                                         orig_block_transactions_size,
-                                        orig_block_archive_size,
                                         orig_state_transactions_size,
                                         orig_state_actions_size]()
       {
          pending->_pending_block_state->block->transactions.resize(orig_block_transactions_size);
-         pending->_pending_block_state->block->archive_records.resize(orig_block_archive_size);
          pending->_pending_block_state->trxs.resize(orig_state_transactions_size);
          pending->_actions.resize(orig_state_actions_size);
       };

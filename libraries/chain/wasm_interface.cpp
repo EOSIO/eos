@@ -1378,19 +1378,6 @@ class event_api : public context_aware_api {
         }
 };
 
-class archive_api : public context_aware_api {
-    public:
-        using context_aware_api::context_aware_api;
-
-        int64_t save_record( array_ptr<char> data, size_t data_len ) {
-            return context.save_record(data, data_len);
-        }
-
-        int lookup_record( int64_t rec_id, account_name code, array_ptr<char> buffer, size_t buffer_size ) {
-            return context.lookup_record(rec_id, code, buffer, buffer_size);
-        }
-};
-
 class context_free_transaction_api : public context_aware_api {
    public:
       context_free_transaction_api( apply_context& ctx )
@@ -1911,11 +1898,6 @@ REGISTER_INTRINSICS(transaction_api,
 
 REGISTER_INTRINSICS(event_api,
    (send_event,                void(int, int)               )
-);
-
-REGISTER_INTRINSICS(archive_api,
-   (save_record,               int64_t(int, int)            )
-   (lookup_record,             int(int64_t,int64_t,int,int)         )
 );
 
 REGISTER_INTRINSICS(context_free_api,

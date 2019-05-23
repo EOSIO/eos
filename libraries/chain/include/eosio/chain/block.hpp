@@ -1,7 +1,6 @@
 #pragma once
 #include <eosio/chain/block_header.hpp>
 #include <eosio/chain/transaction.hpp>
-#include <eosio/chain/archive_record.hpp>
 
 namespace eosio { namespace chain {
 
@@ -71,7 +70,6 @@ namespace eosio { namespace chain {
       signed_block clone() const { return *this; }
 
       vector<transaction_receipt>   transactions; /// new or generated transactions
-      vector<archive_record>        archive_records; /// archive records from all transactions
       extensions_type               block_extensions;
    };
    using signed_block_ptr = std::shared_ptr<signed_block>;
@@ -90,4 +88,4 @@ FC_REFLECT_ENUM( eosio::chain::transaction_receipt::status_enum,
 
 FC_REFLECT(eosio::chain::transaction_receipt_header, (status)(cpu_usage_us)(net_usage_words)(ram_kbytes)(storage_kbytes) )
 FC_REFLECT_DERIVED(eosio::chain::transaction_receipt, (eosio::chain::transaction_receipt_header), (trx) )
-FC_REFLECT_DERIVED(eosio::chain::signed_block, (eosio::chain::signed_block_header), (transactions)(archive_records)(block_extensions) )
+FC_REFLECT_DERIVED(eosio::chain::signed_block, (eosio::chain::signed_block_header), (transactions)(block_extensions) )

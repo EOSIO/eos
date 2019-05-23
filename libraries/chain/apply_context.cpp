@@ -452,43 +452,6 @@ void apply_context::push_event( event evt ) {
    _events.emplace_back(std::move(evt));
 }
 
-uint64_t apply_context::save_record( const char* data, size_t data_len ) {
-   auto block_state = control.pending_block_state();
-   
-   EOS_ASSERT(block_state && block_state->block, block_validate_exception,
-       "No pending block to save archive record");
-
-   auto block = block_state->block;
-   int id = block->archive_records.size() + 1;
-   block->archive_records.emplace_back(receiver, vector<char>(data, data+data_len));
-
-   return (static_cast<uint64_t>(block->block_num()) << 32) | id;
-}
-
-int apply_context::lookup_record( uint64_t rec_id, account_name code, char* buffer, size_t buffer_size) {
-   uint32_t block_num = rec_id >> 32;
-   uint32_t id = static_cast<uint32_t>(rec_id) - 1;
-
-   auto block = control.fetch_block_by_number(block_num);
-   if( !block || id >= block->archive_records.size() ) {
-       return -1;
-   }
-
-   auto &record = block->archive_records[id];
-   if( record.code != code ) {
-       return -1;
-   }
-
-   if( buffer == nullptr || buffer_size == 0) {
-       return record.data.size();
-   }
-
-   auto copy_size = std::min( buffer_size, record.data.size() );
-   memcpy( buffer, record.data.data(), copy_size );
-
-   return copy_size;
-}
-
 // TODO: Removed by CyberWay
 //const table_id_object* apply_context::find_table( name code, name scope, name table ) {
 //   return db.find<table_id_object, by_code_scope_table>(boost::make_tuple(code, scope, table));
