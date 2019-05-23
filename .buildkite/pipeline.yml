@@ -52,7 +52,7 @@ steps:
     command:
       - "git clone ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO} && cd eos && git checkout ${BUILDKITE_COMMIT} && git submodule update --init --recursive && ./scripts/eosio_build.bash -y -m && tar -pczf build.tar.gz build && buildkite-agent artifact upload build.tar.gz"
     plugins:
-      chef/anka#v0.4.4:
+      chef/anka#v0.5.0:
         no-volume: true
         inherit-environment-vars: true
         vm-name: $ANKA_MOJAVE_TEMPLATE
@@ -160,7 +160,7 @@ steps:
     agents:
       - "queue=mac-anka-node-fleet"
     plugins:
-      chef/anka#v0.4.4:
+      chef/anka#v0.5.0:
         no-volume: true
         inherit-environment-vars: true
         bash-interactive: true
@@ -182,7 +182,7 @@ steps:
     agents:
       - "queue=mac-anka-node-fleet"
     plugins:
-      chef/anka#v0.4.4:
+      chef/anka#v0.5.0:
         no-volume: true
         inherit-environment-vars: true
         bash-interactive: true
@@ -470,7 +470,7 @@ steps:
     agents:
       - "queue=mac-anka-node-fleet"
     plugins:
-      chef/anka#v0.4.4:
+      chef/anka#v0.5.0:
         no-volume: true
         inherit-environment-vars: true
         bash-interactive: true
