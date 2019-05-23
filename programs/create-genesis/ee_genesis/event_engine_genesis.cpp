@@ -87,7 +87,7 @@ static abi_def create_pinblocks_abi() {
     return abi;
 }
 
-static abi_def create_usernames_abi() {
+static abi_def create_accounts_abi() {
     abi_def abi;
     abi.version = ABI_VERSION;
 
@@ -100,18 +100,22 @@ static abi_def create_usernames_abi() {
     });
 
     abi.structs.emplace_back( struct_def {
-        "username_info", "", {
+        "account_info", "", {
             {"creator", "name"},
             {"owner", "name"},
-            {"name", "string"}
+            {"name", "string"},
+            {"created", "time_point_sec"},
+            {"last_update", "time_point_sec"},
+            {"balance", "asset"},
+            {"balance_in_sys", "asset"},
+            {"balance_vesting", "asset"}
         }
     });
 
     return abi;
-
 }
 
-static abi_def create_balances_abi() {
+static abi_def create_funds_abi() {
     abi_def abi;
     abi.version = ABI_VERSION;
 
@@ -138,16 +142,16 @@ void event_engine_genesis::start(const bfs::path& ee_directory, const fc::sha256
     messages.start(ee_directory / "messages.dat", hash, create_messages_abi());
     transfers.start(ee_directory / "transfers.dat", hash, create_transfers_abi());
     pinblocks.start(ee_directory / "pinblocks.dat", hash, create_pinblocks_abi());
-    usernames.start(ee_directory / "usernames.dat", hash, create_usernames_abi());
-    balances.start(ee_directory / "balances.dat", hash, create_balances_abi());
+    accounts.start(ee_directory / "accounts.dat", hash, create_accounts_abi());
+    funds.start(ee_directory / "funds.dat", hash, create_funds_abi());
 }
 
 void event_engine_genesis::finalize() {
     messages.finalize();
     transfers.finalize();
     pinblocks.finalize();
-    usernames.finalize();
-    balances.finalize();
+    accounts.finalize();
+    funds.finalize();
 }
 
 } } } // cyberway::genesis::ee

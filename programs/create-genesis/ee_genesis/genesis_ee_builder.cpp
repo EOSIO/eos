@@ -1,5 +1,6 @@
 #include "genesis_ee_builder.hpp"
 #include "golos_operations.hpp"
+#include "../config.hpp"
 #include "../genesis_generate_name.hpp"
 
 #define MEGABYTE 1024*1024
@@ -16,13 +17,10 @@
 
 namespace cyberway { namespace genesis { namespace ee {
 
-static constexpr uint64_t gls_post_account_name = N(gls.publish);
-static constexpr uint64_t gls_social_account_name = N(gls.social);
-
 constexpr auto GLS = SY(3, GOLOS);
 
-genesis_ee_builder::genesis_ee_builder(const std::string& shared_file, uint32_t last_block)
-        : last_block_(last_block), maps_(shared_file, chainbase::database::read_write, MAP_FILE_SIZE) {
+genesis_ee_builder::genesis_ee_builder(const genesis_info& info, const export_info& exp_info, const std::string& shared_file, uint32_t last_block)
+        : info_(info), exp_info_(exp_info), last_block_(last_block), maps_(shared_file, chainbase::database::read_write, MAP_FILE_SIZE) {
     maps_.add_index<comment_header_index>();
     maps_.add_index<vote_header_index>();
     maps_.add_index<reblog_header_index>();
@@ -324,7 +322,7 @@ void genesis_ee_builder::build_reblogs(std::vector<reblog_info>& reblogs, uint64
 void genesis_ee_builder::build_messages() {
     std::cout << "-> Writing messages..." << std::endl;
 
-    out_.messages.start_section(gls_post_account_name, N(message), "message_info");
+    out_.messages.start_section(info_.golos.names.posting, N(message), "message_info");
 
     bfs::ifstream dump_comments(in_dump_dir_ / "comments");
     bfs::ifstream dump_reblogs(in_dump_dir_ / "reblogs");
@@ -384,7 +382,7 @@ void genesis_ee_builder::build_pinblocks() {
 
     const auto& follow_index = maps_.get_index<follow_header_index, by_id>();
 
-    out_.pinblocks.start_section(gls_social_account_name, N(pin), "pin");
+    out_.pinblocks.start_section(info_.golos.names.social, N(pin), "pin");
 
     for (const auto& follow : follow_index) {
         if (follow.ignores) {
@@ -396,7 +394,7 @@ void genesis_ee_builder::build_pinblocks() {
         });
     }
 
-    out_.pinblocks.start_section(gls_social_account_name, N(block), "block");
+    out_.pinblocks.start_section(info_.golos.names.social, N(block), "block");
 
     for (const auto& follow : follow_index) {
         if (!follow.ignores) {
@@ -409,6 +407,42 @@ void genesis_ee_builder::build_pinblocks() {
     }
 }
 
+void genesis_ee_builder::build_accounts() {
+    std::cout << "-> Writing accounts..." << std::endl;
+
+    out_.accounts.start_section(config::system_account_name, N(domain), "domain_info");
+
+    const auto app = info_.golos.names.issuer;
+    out_.accounts.insert(mvo
+        ("owner", app)
+        ("linked_to", app)
+        ("name", info_.golos.domain)
+    );
+
+    out_.accounts.start_section(config::system_account_name, N(account), "account_info");
+
+    for (auto& a : exp_info_.account_infos) {
+        auto acc = a.second;
+        out_.accounts.insert(acc);
+    }
+}
+
+void genesis_ee_builder::build_funds() {
+    std::cout << "-> Writing funds..." << std::endl;
+
+    out_.funds.start_section(config::token_account_name, N(currency), "currency_stats");
+
+    for (auto& cs : exp_info_.currency_stats) {
+        out_.funds.insert(cs);
+    }
+
+    out_.funds.start_section(config::token_account_name, N(balance), "balance_event");
+
+    for (auto& be : exp_info_.balance_events) {
+        out_.funds.insert(be);
+    }
+}
+
 void genesis_ee_builder::build(const bfs::path& out_dir) {
     std::cout << "Writing genesis to " << out_dir << "..." << std::endl;
 
@@ -417,6 +451,8 @@ void genesis_ee_builder::build(const bfs::path& out_dir) {
     build_messages();
     build_transfers();
     build_pinblocks();
+    build_accounts();
+    build_funds();
 
     out_.finalize();
 }

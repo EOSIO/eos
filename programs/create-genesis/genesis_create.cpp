@@ -42,7 +42,6 @@ namespace cyberway { namespace genesis {
 
 using namespace eosio::chain;
 using namespace cyberway::chaindb;
-using mvo = mutable_variant_object;
 using perm_id_t = authorization_manager::permission_id_type;
 
 
@@ -70,6 +69,8 @@ struct genesis_create::genesis_create_impl final {
 
     state_object_visitor _visitor;
     asset _total_staked;
+
+    export_info _exp_info;
 
 #ifdef CACHE_GENERATED_NAMES
     fc::flat_map<acc_idx, account_name> _idx2name;
@@ -346,11 +347,18 @@ struct genesis_create::genesis_create_impl final {
         for (const auto& auth : _visitor.auths) {                // loop through auths to preserve names order
             const auto& s = auth.account.str(_accs_map);
             const auto& n = name_by_acc(auth.account);
+            const auto& acc = _visitor.accounts[auth.account.id];
             db.emplace<username_object>(app, [&](auto& u) {
                 u.owner = n;
                 u.scope = app;
                 u.name = s;
             });
+            _exp_info.account_infos[auth.account.id] = mvo
+                ("creator", app)
+                ("owner", n)
+                ("name", s)
+                ("created", acc.created)
+                ("last_update", acc.last_account_update);
         }
 
         _visitor.auths.clear();
@@ -625,6 +633,7 @@ struct genesis_create::genesis_create_impl final {
                 ("max_supply", asset(max_supply * sym.precision(), sym))
                 ("issuer", issuer);
             db.insert(pk, pk, issuer, stat);
+            _exp_info.currency_stats.push_back(stat);
             return pk;
         };
 
@@ -643,11 +652,21 @@ struct genesis_create::genesis_create_impl final {
         // funds
         const auto n_balances = 3 + 2*data.gbg.size();
         db.start_section(config::token_account_name, N(accounts), "account", n_balances);
-        auto insert_balance_record = [&](name account, const asset& balance, primary_key_t pk) {
+        auto insert_balance_record = [&](name account, const asset& balance, primary_key_t pk, fc::optional<acc_idx> acc_id = fc::optional<acc_idx>()) {
             auto record = mvo
                 ("balance", balance)
                 ("payments", asset(0, balance.get_symbol()));
             db.insert(pk, account, record);
+            if (!acc_id) {
+                _exp_info.balance_events.push_back(record("account", account));
+            } else {
+                auto& acc_info = _exp_info.account_infos[*acc_id];
+                if (pk == gls_pk) {
+                    acc_info["balance"] = balance;
+                } else {
+                    acc_info["balance_in_sys"] = balance;
+                }
+            }
         };
         insert_balance_record(config::stake_account_name, _total_staked, sys_pk);
         insert_balance_record(_info.golos.names.vesting, gp.total_vesting_fund_steem, gls_pk);
@@ -655,14 +674,17 @@ struct genesis_create::genesis_create_impl final {
 
         // accounts GOLOS
         asset total_gls = asset(0, symbol(GLS));
+        supply_distributor vests_to_gls(_visitor.gpo.total_vesting_fund_steem, _visitor.gpo.total_vesting_shares);
         for (const auto& balance: data.gbg) {
             auto acc = balance.first;
             auto gbg = balance.second;
             auto gls = data.gls[acc] + to_gls.convert(gbg);
             total_gls += gls;
             auto n = name_by_idx(acc);
-            insert_balance_record(n, gls, gls_pk);
-            insert_balance_record(n, golos2sys(gls), sys_pk);
+            insert_balance_record(n, gls, gls_pk, acc);
+            insert_balance_record(n, golos2sys(gls), sys_pk, acc);
+            auto& acc_info = _exp_info.account_infos[acc];
+            acc_info["balance_vesting"] = vests_to_gls.convert(asset(data.vests[acc].vesting, symbol(VESTS)));
         }
         const auto liquid_supply = supply - (gp.total_vesting_fund_steem + gp.total_reward_fund_steem); // no funds
         std::cout << " Total sum of GOLOS + converted GBG = " << total_gls
@@ -1046,7 +1068,7 @@ void genesis_create::read_state(const bfs::path& state_file) {
 }
 
 void genesis_create::write_genesis(
-    const bfs::path& out_file, const genesis_info& info, const genesis_state& conf, const contracts_map& accs
+    const bfs::path& out_file, export_info& exp_info, const genesis_info& info, const genesis_state& conf, const contracts_map& accs
 ) {
     _impl->_info = info;
     _impl->_conf = conf;
@@ -1067,6 +1089,8 @@ void genesis_create::write_genesis(
     _impl->store_witnesses();
 
     _impl->db.finalize();
+
+    exp_info = _impl->_exp_info;
 }
 
 

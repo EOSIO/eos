@@ -18,8 +18,8 @@ public:
     ee_genesis_serializer messages;
     ee_genesis_serializer transfers;
     ee_genesis_serializer pinblocks;
-    ee_genesis_serializer usernames;
-    ee_genesis_serializer balances;
+    ee_genesis_serializer accounts;
+    ee_genesis_serializer funds;
 };
 
 struct vote_info {

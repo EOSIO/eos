@@ -3,6 +3,8 @@
 #include "golos_dump_container.hpp"
 #include "event_engine_genesis.hpp"
 #include "map_objects.hpp"
+#include "../genesis_info.hpp"
+#include "../export_info.hpp"
 
 #include <boost/filesystem.hpp>
 #include <fc/exception/exception.hpp>
@@ -10,13 +12,15 @@
 
 namespace cyberway { namespace genesis { namespace ee {
 
-using namespace cyberway::golos::ee;
 namespace bfs = boost::filesystem;
+using mvo = fc::mutable_variant_object;
+using cyberway::genesis::genesis_info;
+using namespace cyberway::golos::ee;
 
 class genesis_ee_builder final {
 public:
     genesis_ee_builder(const genesis_ee_builder&) = delete;
-    genesis_ee_builder(const std::string& shared_file, uint32_t last_block);
+    genesis_ee_builder(const genesis_info& info, const export_info& exp_info, const std::string& shared_file, uint32_t last_block);
     ~genesis_ee_builder();
 
     void read_operation_dump(const bfs::path& in_dump_dir);
@@ -39,8 +43,12 @@ private:
     void build_messages();
     void build_transfers();
     void build_pinblocks();
+    void build_accounts();
+    void build_funds();
 
     bfs::path in_dump_dir_;
+    const genesis_info& info_;
+    const export_info& exp_info_;
     event_engine_genesis out_;
     uint32_t last_block_;
     chainbase::database maps_;
