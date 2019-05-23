@@ -401,9 +401,10 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
    if ( auto ptr = chaindb.find<generated_transaction_object,by_sender_id>(boost::make_tuple(receiver, sender_id)) ) {
       EOS_ASSERT( replace_existing, deferred_tx_duplicate, "deferred transaction with the same sender_id and payer already exists" );
 
-      // TODO: Remove the following subjective check when the deferred trx replacement RAM bug has been fixed with a hard fork.
-      EOS_ASSERT( !control.is_producing_block(), subjective_block_production_exception,
-                  "Replacing a deferred transaction is temporarily disabled." );
+// TODO: Removed by CyberWay
+//      // TODO: Remove the following subjective check when the deferred trx replacement RAM bug has been fixed with a hard fork.
+//      EOS_ASSERT( !control.is_producing_block(), subjective_block_production_exception,
+//                  "Replacing a deferred transaction is temporarily disabled." );
 
 // TODO: Removed by CyberWay
 //      // TODO: The logic of the next line needs to be incorporated into the next hard fork.
