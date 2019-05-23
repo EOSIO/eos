@@ -67,25 +67,6 @@ namespace cyberway { namespace chain {
 //    }
 //};
 
-    struct provideram final {
-        account_name provider;
-        account_name account;
-
-        provideram() = default;
-        provideram(const account_name& provider, const account_name& account)
-            : provider(provider), account(account) {
-        }
-
-        static account_name get_account() {
-            return eosio::chain::config::system_account_name;
-        }
-
-        static action_name get_name() {
-            return N(provideram);
-        }
-    };
-
-
 // it's ugly, but removes boilerplate. TODO: write better
 #define SYS_ACTION_STRUCT(NAME) struct NAME final { \
     NAME() = default; \
@@ -132,7 +113,6 @@ FC_REFLECT(cyberway::chain::providebw,     (provider)(account))
 //TODO: requestbw
 //FC_REFLECT(cyberway::chain::requestbw,   (provider)(account))
 //FC_REFLECT(cyberway::chain::approvebw,   (account))
-FC_REFLECT(cyberway::chain::provideram,    (provider)(account))
 
 FC_REFLECT(cyberway::chain::newdomain,     (creator)(name))
 FC_REFLECT(cyberway::chain::passdomain,    (from)(to)(name))

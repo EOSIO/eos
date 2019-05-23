@@ -248,7 +248,6 @@ struct controller_impl {
    SET_CYBER_HANDLER(cyber, cyber, providebw);
 //TODO: requestbw
 //   SET_CYBER_HANDLER(cyber, cyber, requestbw);
-   SET_CYBER_HANDLER(cyber, cyber, provideram);
 /*
    SET_CYBER_HANDLER(cyber, cyber, postrecovery);
    SET_CYBER_HANDLER(cyber, cyber, passrecovery);

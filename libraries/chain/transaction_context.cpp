@@ -258,19 +258,12 @@ namespace bacc = boost::accumulators;
       if( billed_cpu_time_us > 0 ) // could also call on explicit_billed_cpu_time but it would be redundant
          validate_cpu_usage_to_bill( billed_cpu_time_us, false ); // Fail early if the amount to be billed is too high
 
-      // Record accounts to be billed for network and CPU usage
-      flat_set<account_name> provided_accounts;
-
       using cyberway::chain::providebw;
-      using cyberway::chain::provideram;
 
-      provided_accounts.reserve(trx.actions.size());
-      ram_providers.reserve(trx.actions.size());
+      storage_providers.reserve(trx.actions.size());
       for( const auto& act : trx.actions ) {
          if (act.account == providebw::get_account() && act.name == providebw::get_name()) {
-            provided_accounts.insert(act.data_as<providebw>().account);
-         } else if (act.account == provideram::get_account() && act.name == provideram::get_name()) {
-            add_ram_provider(act.data_as<provideram>());
+            add_storage_provider(act.data_as<providebw>());
          }
          for( const auto& auth : act.authorization ) {
 // TODO: requestbw
@@ -283,8 +276,8 @@ namespace bacc = boost::accumulators;
          }
       }
 
-      for( const auto& acc : provided_accounts ) {
-         bill_to_accounts.erase(acc);
+      for( const auto& bw : storage_providers ) {
+         bill_to_accounts.erase(bw.first);
       }
 
       available_resources.init(explicit_billed_cpu_time, rl, bill_to_accounts, control.pending_block_time());
@@ -318,24 +311,24 @@ namespace bacc = boost::accumulators;
       is_initialized = true;
    }
 
-   void transaction_context::add_ram_provider(const cyberway::chain::provideram& ram) {
-       EOS_ASSERT(ram.provider != ram.account, ram_provider_error,
+   void transaction_context::add_storage_provider(const cyberway::chain::providebw& bw) {
+       EOS_ASSERT(bw.provider != bw.account, bw_provider_error,
            "Fail to set the provider ${provider} for the account ${account}, because it is the same account",
-           ("account", ram.account)("provider", ram.provider));
-       EOS_ASSERT(!ram.provider.empty(), ram_provider_error,
+           ("account", bw.account)("provider", bw.provider));
+       EOS_ASSERT(!bw.provider.empty(), bw_provider_error,
            "Fail to set a empty provider for the account ${account}",
-           ("account", ram.account));
-       EOS_ASSERT(!ram.account.empty(), ram_provider_error,
+           ("account", bw.account));
+       EOS_ASSERT(!bw.account.empty(), bw_provider_error,
            "Fail to set the provider ${provider} for an empty account",
-           ("provider", ram.provider));
+           ("provider", bw.provider));
 
-       const auto itr = ram_providers.find(ram.account);
-       EOS_ASSERT(itr == ram_providers.end(), ram_provider_error,
+       const auto itr = storage_providers.find(bw.account);
+       EOS_ASSERT(itr == storage_providers.end(), bw_provider_error,
            "Fail to set the provider ${new_provider} for the account ${account}, "
            "because it already has the provider ${provider}",
-           ("account", ram.account)("provider", itr->second)("new_provider", ram.provider));
+           ("account", bw.account)("provider", itr->second)("new_provider", bw.provider));
 
-       ram_providers.emplace(ram.account, ram.provider);
+       storage_providers.emplace(bw.account, bw.provider);
    }
 
    void transaction_context::init_for_implicit_trx( uint64_t initial_net_usage  )
@@ -733,20 +726,20 @@ namespace bacc = boost::accumulators;
       EOS_ASSERT( one_auth, tx_no_auths, "transaction must have at least one authorization" );
    }
 
-   const account_name& transaction_context::get_ram_provider(const account_name& owner) const {
+   const account_name& transaction_context::get_storage_provider(const account_name& owner) const {
       if (owner.empty()) {
           return owner;
       }
 
-      auto itr = ram_providers.find(owner);
-      if (ram_providers.end() == itr) {
+      auto itr = storage_providers.find(owner);
+      if (storage_providers.end() == itr) {
           return owner;
       }
       return itr->second;
    }
 
    storage_payer_info transaction_context::get_storage_payer(const account_name& owner) {
-      return {*this, owner, get_ram_provider(owner)};
+      return {*this, owner, get_storage_provider(owner)};
    }
 
     void transaction_context::available_resources_t::init(bool ecpu_time, resource_limits_manager& rl, const flat_set<account_name>& accounts, fc::time_point pending_block_time) {

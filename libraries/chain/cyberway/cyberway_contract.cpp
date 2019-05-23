@@ -28,11 +28,6 @@ void apply_cyber_providebw(apply_context& context) {
 //   context.require_authorization(args.account);
 //}
 
-void apply_cyber_provideram(apply_context& context) {
-    auto args = context.act.data_as<provideram>();
-    context.require_authorization(args.provider);
-}
-
 void apply_cyber_domain_newdomain(apply_context& context) {
     auto op = context.act.data_as<newdomain>();
     try {

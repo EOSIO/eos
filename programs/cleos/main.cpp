@@ -209,7 +209,6 @@ uint32_t tx_max_storage_usage = 0;
 uint32_t delaysec = 0;
 
 vector<string> bandwidth_provider;
-vector<string> ram_providers;
 
 struct resolved_name_info {
     string domain;
@@ -333,29 +332,6 @@ bandwidth_providers get_bandwidth_providers(const vector<string>& providers) {
    return bandwidthProviders;
 }
 
-struct provide_ram_params {
-    provide_ram_params(const string& providers) {
-        vector<string> pieces;
-        split(pieces, providers, boost::algorithm::is_any_of("/"));
-        if (pieces.size() != 2) {
-           std::cerr << localized("Ram provider ${p} not in 'account/provider[@permission]' form", ("p", providers)) << std::endl;
-           return;
-        }
-        actor = pieces[0];
-
-        std::vector<string> provider_and_authority;
-        split(provider_and_authority, pieces[1], boost::algorithm::is_any_of("@"));
-
-        provider = provider_and_authority[0];
-        permission.permission = provider_and_authority.size() == 1 ? "active" : provider_and_authority[1];
-        permission.actor = provider;
-    }
-
-    account_name provider;
-    account_name actor;
-    chain::permission_level permission;
-};
-
 vector<chain::permission_level> get_account_permissions(const vector<string>& permissions, const chain::permission_level& default_permission) {
    if (permissions.empty())
       return vector<chain::permission_level>{default_permission};
@@ -460,16 +436,6 @@ fc::variant push_transaction( signed_transaction& trx, int32_t extra_kcpu = 1000
                 vector<chain::permission_level>{prov.second},
                 cyberway::chain::providebw{prov.second.actor, prov.first} );
          }
-      }
-
-      if (!ram_providers.empty()) {
-          for (const auto& ram_provider : ram_providers) {
-              const provide_ram_params provide_params(ram_provider);
-              trx.actions.emplace_back(
-                  vector<chain::permission_level>{provide_params.permission},
-                  cyberway::chain::provideram{provide_params.provider, provide_params.actor});
-          }
-
       }
 
         bool declare_names = !tx_dont_declare_names && tx_resolved_names.size() > 0;

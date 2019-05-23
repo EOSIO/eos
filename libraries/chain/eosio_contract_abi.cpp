@@ -623,13 +623,6 @@ abi_def eosio_contract_abi(abi_def eos_abi)
 //   });
 
    eos_abi.structs.emplace_back( struct_def {
-      "provideram", "", {
-         {"provider", "account_name"},
-         {"account", "account_name"},
-      }
-   });
-
-   eos_abi.structs.emplace_back( struct_def {
       "canceldelay", "", {
          {"canceling_auth", "permission_level"},
          {"trx_id", "transaction_id_type"},
@@ -665,7 +658,6 @@ abi_def eosio_contract_abi(abi_def eos_abi)
    eos_abi.actions.push_back( action_def{name("providebw"), "providebw"} );
 // TODO: requestbw
 //   eos_abi.actions.push_back( action_def{name("requestbw"), "requestbw"} );
-   eos_abi.actions.push_back( action_def{name("provideram"), "provideram"} );
    eos_abi.actions.push_back( action_def{name("canceldelay"), "canceldelay"} );
    eos_abi.actions.push_back( action_def{name("onerror"), "onerror"} );
    eos_abi.actions.push_back( action_def{name("onblock"), "onblock"} );

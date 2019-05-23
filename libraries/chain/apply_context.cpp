@@ -540,7 +540,7 @@ storage_payer_info apply_context::get_storage_payer( account_name owner, account
        payer = owner;
    }
 
-   return {*this, owner, trx_context.get_ram_provider(payer)};
+   return {*this, owner, trx_context.get_storage_provider(payer)};
 }
 
 void apply_context::add_storage_usage( const storage_payer_info& storage ) {

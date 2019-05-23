@@ -9,7 +9,7 @@ namespace cyberway { namespace chaindb {
 } } // namespace cyberway::chaindb
 
 namespace cyberway { namespace chain {
-    struct provideram;
+    struct providebw;
 } } // namespace cyberway::chaindb
 
 namespace eosio { namespace chain {
@@ -133,7 +133,7 @@ namespace eosio { namespace chain {
 
          void validate_referenced_accounts(const transaction& trx) const;
 
-         const account_name& get_ram_provider(const account_name& owner) const;
+         const account_name& get_storage_provider(const account_name& owner) const;
          storage_payer_info get_storage_payer(const account_name& owner);
 
       private:
@@ -141,7 +141,7 @@ namespace eosio { namespace chain {
          friend struct controller_impl;
          friend class apply_context;
 
-         void add_ram_provider(const cyberway::chain::provideram& provide_ram);
+         void add_storage_provider(const cyberway::chain::providebw& bw);
 
          void dispatch_action( action_trace& trace, const action& a, account_name receiver, bool context_free = false, uint32_t recurse_depth = 0 );
          inline void dispatch_action( action_trace& trace, const action& a, bool context_free = false ) {
@@ -212,7 +212,7 @@ namespace eosio { namespace chain {
 // TODO: request bw, why provided?
 //         std::map<account_name, provided_bandwith> provided_bandwith_;
 
-        fc::flat_map<account_name, account_name> ram_providers;
+        fc::flat_map<account_name, account_name> storage_providers;
          
         class available_resources_t {
             std::vector<resource_limits::ratio> pricelist;
