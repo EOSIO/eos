@@ -443,4 +443,24 @@ namespace eosio { namespace chain {
       return header_exts.lower_bound(protocol_feature_activation::extension_id())->second.get<protocol_feature_activation>().protocol_features;
    }
 
+   block_header_state::block_header_state( legacy::snapshot_block_header_state_v2&& snapshot )
+   {
+      block_num                             = snapshot.block_num;
+      dpos_proposed_irreversible_blocknum   = snapshot.dpos_proposed_irreversible_blocknum;
+      dpos_irreversible_blocknum            = snapshot.dpos_irreversible_blocknum;
+      active_schedule                       = producer_authority_schedule( snapshot.active_schedule );
+      blockroot_merkle                      = std::move(snapshot.blockroot_merkle);
+      producer_to_last_produced             = std::move(snapshot.producer_to_last_produced);
+      producer_to_last_implied_irb          = std::move(snapshot.producer_to_last_implied_irb);
+      valid_block_signing_authority         = block_signing_authority_v0{ 1, {{std::move(snapshot.block_signing_key), 1}} };
+      confirm_count                         = std::move(snapshot.confirm_count);
+      id                                    = std::move(snapshot.id);
+      header                                = std::move(snapshot.header);
+      pending_schedule.schedule_lib_num     = snapshot.pending_schedule.schedule_lib_num;
+      pending_schedule.schedule_hash        = std::move(snapshot.pending_schedule.schedule_hash);
+      pending_schedule.schedule             = producer_authority_schedule( snapshot.pending_schedule.schedule );
+      activated_protocol_features           = std::move(snapshot.activated_protocol_features);
+   }
+
+
 } } /// namespace eosio::chain

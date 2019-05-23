@@ -805,16 +805,28 @@ struct controller_impl {
    }
 
    void read_from_snapshot( const snapshot_reader_ptr& snapshot, uint32_t blog_start, uint32_t blog_end ) {
-      snapshot->read_section<chain_snapshot_header>([this]( auto &section ){
-         chain_snapshot_header header;
+      chain_snapshot_header header;
+      snapshot->read_section<chain_snapshot_header>([this, &header]( auto &section ){
          section.read_row(header, db);
          header.validate();
       });
 
 
-      snapshot->read_section<block_state>([this, blog_start, blog_end]( auto &section ){
+      { /// load an upgrade the block header state
          block_header_state head_header_state;
-         section.read_row(head_header_state, db);
+         using v2 = legacy::snapshot_block_header_state_v2;
+
+         if (std::clamp(header.version, v2::minimum_version, v2::maximum_version) == header.version ) {
+            snapshot->read_section<block_state>([this, &head_header_state]( auto &section ) {
+               legacy::snapshot_block_header_state_v2 legacy_header_state;
+               section.read_row(legacy_header_state, db);
+               head_header_state = block_header_state(std::move(legacy_header_state));
+            });
+         } else {
+            snapshot->read_section<block_state>([this,&head_header_state]( auto &section ){
+               section.read_row(head_header_state, db);
+            });
+         }
 
          snapshot_head_block = head_header_state.block_num;
          EOS_ASSERT( blog_start <= (snapshot_head_block + 1) && snapshot_head_block <= blog_end,
@@ -828,7 +840,7 @@ struct controller_impl {
          fork_db.reset( head_header_state );
          head = fork_db.head();
          snapshot_head_block = head->block_num;
-      });
+      }
 
       controller_index_set::walk_indices([this, &snapshot]( auto utils ){
          using value_t = typename decltype(utils)::index_t::value_type;

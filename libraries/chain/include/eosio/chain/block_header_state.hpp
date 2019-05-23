@@ -2,9 +2,46 @@
 #include <eosio/chain/block_header.hpp>
 #include <eosio/chain/incremental_merkle.hpp>
 #include <eosio/chain/protocol_feature_manager.hpp>
+#include <eosio/chain/chain_snapshot.hpp>
 #include <future>
 
 namespace eosio { namespace chain {
+
+namespace legacy {
+
+   /**
+    * a fc::raw::unpack compatible version of the old block_state structure stored in
+    * version 2 snapshots
+    */
+   struct snapshot_block_header_state_v2 {
+      static constexpr uint32_t minimum_version = 0;
+      static constexpr uint32_t maximum_version = 2;
+      static_assert(chain_snapshot_header::minimum_compatible_version <= maximum_version, "snapshot_block_header_state_v2 is no longer needed");
+
+      struct schedule_info {
+         uint32_t                          schedule_lib_num = 0; /// last irr block num
+         digest_type                       schedule_hash;
+         producer_schedule_type            schedule;
+      };
+
+      /// from block_header_state_common
+      uint32_t                             block_num;
+      uint32_t                             dpos_proposed_irreversible_blocknum;
+      uint32_t                             dpos_irreversible_blocknum;
+      producer_schedule_type               active_schedule;
+      incremental_merkle                   blockroot_merkle;
+      flat_map<account_name,uint32_t>      producer_to_last_produced;
+      flat_map<account_name,uint32_t>      producer_to_last_implied_irb;
+      public_key_type                      block_signing_key;
+      vector<uint8_t>                      confirm_count;
+
+      // from block_header_state
+      block_id_type                        id;
+      signed_block_header                  header;
+      schedule_info                        pending_schedule;
+      protocol_feature_activation_set_ptr  activated_protocol_features;
+   };
+}
 
 using signer_callback_type = std::function<std::vector<signature_type>(const digest_type&)>;
 
@@ -69,7 +106,6 @@ protected:
                                                                const vector<digest_type>& )>& validator )&&;
 };
 
-
 /**
  *  @struct block_header_state
  *  @brief defines the minimum state necessary to validate transaction headers
@@ -90,6 +126,8 @@ struct block_header_state : public detail::block_header_state_common {
    explicit block_header_state( detail::block_header_state_common&& base )
    :detail::block_header_state_common( std::move(base) )
    {}
+
+   explicit block_header_state( legacy::snapshot_block_header_state_v2&& snapshot );
 
    pending_block_header_state  next( block_timestamp_type when, uint16_t num_prev_blocks_to_confirm )const;
 
@@ -142,4 +180,28 @@ FC_REFLECT_DERIVED(  eosio::chain::block_header_state, (eosio::chain::detail::bl
                      (pending_schedule)
                      (activated_protocol_features)
                      (additional_signatures)
+)
+
+
+FC_REFLECT( eosio::chain::legacy::snapshot_block_header_state_v2::schedule_info,
+          ( schedule_lib_num )
+          ( schedule_hash )
+          ( schedule )
+)
+
+
+FC_REFLECT( eosio::chain::legacy::snapshot_block_header_state_v2,
+          ( block_num )
+          ( dpos_proposed_irreversible_blocknum )
+          ( dpos_irreversible_blocknum )
+          ( active_schedule )
+          ( blockroot_merkle )
+          ( producer_to_last_produced )
+          ( producer_to_last_implied_irb )
+          ( block_signing_key )
+          ( confirm_count )
+          ( id )
+          ( header )
+          ( pending_schedule )
+          ( activated_protocol_features )
 )
