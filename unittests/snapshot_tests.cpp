@@ -11,6 +11,7 @@
 #include <boost/test/unit_test.hpp>
 
 #include <contracts.hpp>
+#include <snapshots.hpp>
 
 using namespace eosio;
 using namespace testing;
@@ -102,6 +103,10 @@ struct variant_snapshot_suite {
       return std::make_shared<reader>(buffer);
    }
 
+   template<typename Snapshot>
+   static snapshot_t load_from_file() {
+      return Snapshot::json();
+   }
 };
 
 struct buffered_snapshot_suite {
@@ -145,6 +150,10 @@ struct buffered_snapshot_suite {
       return std::make_shared<reader>(std::make_shared<read_storage_t>(buffer));
    }
 
+   template<typename Snapshot>
+   static snapshot_t load_from_file() {
+      return Snapshot::bin();
+   }
 };
 
 BOOST_AUTO_TEST_SUITE(snapshot_tests)
@@ -250,6 +259,36 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_replay_over_snapshot, SNAPSHOT_SUITE, snapsho
    // replay the block log from the snapshot child, from the snapshot
    snapshotted_tester replay_chain(chain.get_config(), SNAPSHOT_SUITE::get_reader(snapshot), 2, 1);
    BOOST_REQUIRE_EQUAL(expected_post_integrity_hash.str(), snap_chain.control->calculate_integrity_hash().str());
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(test_compatible_versions, SNAPSHOT_SUITE, snapshot_suites)
+{
+   tester chain(setup_policy::preactivate_feature_and_new_bios);
+
+   chain.create_account(N(snapshot));
+   chain.produce_blocks(1);
+   chain.set_code(N(snapshot), contracts::snapshot_test_wasm());
+   chain.set_abi(N(snapshot), contracts::snapshot_test_abi().data());
+   chain.produce_blocks(1);
+   chain.control->abort_block();
+   auto base_integrity_value = chain.control->calculate_integrity_hash();
+
+   {
+      auto v2 = SNAPSHOT_SUITE::template load_from_file<snapshots::snap_v2>();
+      snapshotted_tester v2_tester(chain.get_config(), SNAPSHOT_SUITE::get_reader(v2), 0);
+      auto v2_integrity_value = v2_tester.control->calculate_integrity_hash();
+
+      // create a latest snapshot
+      auto latest_writer = SNAPSHOT_SUITE::get_writer();
+      v2_tester.control->write_snapshot(latest_writer);
+      auto latest = SNAPSHOT_SUITE::finalize(latest_writer);
+
+      // load the latest snapshot
+      snapshotted_tester latest_tester(chain.get_config(), SNAPSHOT_SUITE::get_reader(latest), 1);
+      auto latest_integrity_value = latest_tester.control->calculate_integrity_hash();
+
+      BOOST_REQUIRE_EQUAL(v2_integrity_value.str(), latest_integrity_value.str());
+   }
 }
 
 BOOST_AUTO_TEST_SUITE_END()

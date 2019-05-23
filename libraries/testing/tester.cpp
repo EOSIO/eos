@@ -4,10 +4,15 @@
 #include <eosio/chain/wast_to_wasm.hpp>
 #include <eosio/chain/eosio_contract.hpp>
 #include <eosio/chain/generated_transaction_object.hpp>
+#include <boost/iostreams/filtering_stream.hpp>
+#include <boost/iostreams/copy.hpp>
+#include <boost/iostreams/filter/gzip.hpp>
 
 #include <fstream>
 
 #include <contracts.hpp>
+
+namespace bio = boost::iostreams;
 
 eosio::chain::asset core_from_string(const std::string& s) {
   return eosio::chain::asset::from_string(s + " " CORE_SYMBOL_NAME);
@@ -56,6 +61,28 @@ namespace eosio { namespace testing {
       abi[abi.size()-1] = '\0';
       abi_file.close();
       return abi;
+   }
+
+   namespace {
+      std::string read_gzipped_snapshot( const char* fn ) {
+         std::ifstream file(fn, std::ios_base::in | std::ios_base::binary);
+         bio::filtering_streambuf<bio::input> in;
+
+         in.push(bio::gzip_decompressor());
+         in.push(file);
+
+         std::stringstream decompressed;
+         bio::copy(in, decompressed);
+         return decompressed.str();
+      }
+   }
+
+   std::string read_binary_snapshot( const char* fn ) {
+      return read_gzipped_snapshot(fn);
+   }
+
+   fc::variant read_json_snapshot( const char* fn ) {
+      return fc::json::from_string( read_gzipped_snapshot(fn) );
    }
 
    const fc::microseconds base_tester::abi_serializer_max_time{1000*1000}; // 1s for slow test machines

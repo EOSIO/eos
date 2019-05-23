@@ -67,6 +67,10 @@ namespace eosio { namespace testing {
    std::vector<uint8_t> read_wasm( const char* fn );
    std::vector<char>    read_abi( const char* fn );
    std::string          read_wast( const char* fn );
+
+   std::string          read_binary_snapshot( const char* fn );
+   fc::variant          read_json_snapshot( const char* fn );
+
    using namespace eosio::chain;
 
    fc::variant_object filter_fields(const fc::variant_object& filter, const fc::variant_object& value);
