@@ -1221,13 +1221,6 @@ struct controller_impl {
             }
 
          push_sys_transaction(config::system_account_name, N(onblock), fc::raw::pack(self.head_block_header()));
-         if (was_pending_promoted) {
-             vector<account_name> producer_names;
-             for (auto& prod : pending->_pending_block_state->active_schedule.producers) {
-                producer_names.emplace_back(prod.producer_name);
-             }
-             push_sys_transaction(config::govern_account_name, N(setactprods), fc::raw::pack(producer_names));
-         }
          clear_expired_input_transactions();
          update_producers_authority();
       }

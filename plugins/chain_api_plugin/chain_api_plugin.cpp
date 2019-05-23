@@ -20,6 +20,7 @@
 
 #include <eosio/chain_api_plugin/chain_api_plugin_params.hpp>
 #include <eosio/chain_api_plugin/chain_api_plugin_results.hpp>
+#include <eosio/chain/stake.hpp>
 
 namespace eosio {
 static appbase::abstract_plugin& _chain_api_plugin = app().register_plugin<chain_api_plugin>();
@@ -706,56 +707,45 @@ static float64_t to_softfloat64( double d ) {
 }
 
 get_producers_result chain_api_plugin_impl::get_producers( const get_producers_params& p ) const {
-    auto& chaindb = chain_controller_.chaindb();
-
-    const cyberway::chaindb::index_request request{N(cyber.govern), N(cyber.govern), N(producer), cyberway::chaindb::names::primary_index};
-
-    auto producers_it = chaindb.begin(request);
-    cyberway::chaindb::cursor_request cursor_req{N(cyber.govern), producers_it.cursor};
+    
+    static const auto token_code = chain::symbol(CORE_SYMBOL).to_symbol_code();
+    
+    std::set<chain::account_name> active_producers;
+    for (auto& p : chain_controller_.active_producers().producers) {
+        active_producers.insert(p.producer_name);
+    }
+    
     std::vector<fc::variant> rows;
     std::string next_producer;
-    uint64_t total_votes = 0;
-
-    for (size_t count = 0; producers_it.pk != cyberway::chaindb::primary_key::End; producers_it.pk = chaindb.next(cursor_req)) {
-
-        const auto value = chaindb.value_at_cursor(cursor_req);
-        const auto account = value["account"].as_string();
-        const auto votes = value["votes"].as_int64();
-
-        if (votes >= 0) {
-            total_votes += votes;
+    
+    auto& db = chain_controller_.chaindb();
+    auto cands_table = db.get_table<chain::stake_candidate_object>();
+    auto cands_idx = cands_table.get_index<chain::stake_candidate_object::by_key>();
+    
+    auto cand_itr = cands_idx.lower_bound(chain::stake::agent_key(token_code, chain::string_to_name(p.lower_bound.c_str())));
+    auto count = 0;
+    while ((cand_itr != cands_idx.end()) && (cand_itr->token_code == token_code)) {
+        if (count == p.limit) {
+            next_producer = cand_itr->account.to_string();
+            break;
         }
-
-        if (account < p.lower_bound || count >= p.limit) {
-            if (count == p.limit) {
-                next_producer = account;
-            }
-            continue;
-        }
-
-        const auto key = get_agent_public_key(account);
-        const bool is_active = value["commencement_block"].as_uint64() != 0;
-
-        auto producer_info = fc::mutable_variant_object()("owner", account)
-                                                         ("total_votes", votes)
-                                                         ("producer_key", key)
+        auto producer_info = fc::mutable_variant_object()("owner", cand_itr->account)
+                                                         ("total_votes", cand_itr->votes)
+                                                         ("producer_key", cand_itr->signing_key)
                                                          ("url", "");
-
-        if (is_active) {
+        if (active_producers.find(cand_itr->account) != active_producers.end()) {
             producer_info["is_active"] = 1;
             producer_info["last_claim_time"] = fc::time_point();
         }
         rows.emplace_back(producer_info);
+        
         ++count;
+        ++cand_itr;
     }
-
+    
+    const chain::stake_stat_object* stat = db.find<chain::stake_stat_object, by_id>(token_code.value);
+    uint64_t total_votes = (stat && (stat->total_votes > 0)) ? stat->total_votes : 0;
     return {rows, total_votes, next_producer};
-
-
-    if (p.lower_bound.empty()) {
-    } else {
-        chaindb.lower_bound(request, fc::mutable_variant_object()("name", p.lower_bound));
-    }
 }
 
 std::string chain_api_plugin_impl::get_agent_public_key(chain::account_name account) const {

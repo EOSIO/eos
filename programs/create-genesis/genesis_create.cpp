@@ -548,16 +548,19 @@ struct genesis_create::genesis_create_impl final {
             });
         }
 
+        int64_t total_votes = 0;
         db.start_section(config::system_account_name, N(stake.agent), "stake_agent_object", _visitor.vests.size());
         for (const auto& abl: agents_by_level) {
             for (auto& ag: abl) {
                 auto acc = ag.first;
                 auto& x = ag.second;
+                if (!x.level) {
+                    total_votes += x.balance;
+                }
                 db.emplace<stake_agent_object>(x.name, [&](auto& a) {
                     a.token_code = sys_sym.to_symbol_code();
                     a.account = x.name;
                     a.proxy_level = x.level;
-                    a.votes = x.level ? -1 : x.balance;
                     a.last_proxied_update = _conf.initial_timestamp;
                     a.balance = x.balance;
                     a.proxied = x.proxied;
@@ -565,12 +568,26 @@ struct genesis_create::genesis_create_impl final {
                     a.shares_sum = x.shares_sum;
                     a.fee = config::percent_100;
                     a.min_own_staked = 0;
-                    a.signing_key =
-                        (x.own_staked() >= _info.params.stake.min_own_staked_for_election && keys.count(acc)) ?
-                            keys[acc] : public_key_type();
                 });
             }
         }
+        
+        db.start_section(config::system_account_name, N(stake.cand), "stake_candidate_object", agents_by_level[0].size());
+        for (auto& ag: agents_by_level[0]) {
+            auto acc = ag.first;
+            auto& x = ag.second;
+            
+            bool enabled = (x.own_staked() >= _info.params.stake.min_own_staked_for_election && keys.count(acc));
+            db.emplace<stake_candidate_object>(x.name, [&](auto& a) {
+                a.token_code = sys_sym.to_symbol_code();
+                a.account = x.name;
+                a.latest_pick = _conf.initial_timestamp;
+                a.signing_key = enabled ? keys[acc] : public_key_type();
+                a.enabled = enabled;
+                a.set_votes(x.balance, total_votes);
+            });
+        }
+        
         ilog("Done.");
     }
 

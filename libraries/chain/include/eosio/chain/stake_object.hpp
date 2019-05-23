@@ -18,7 +18,6 @@ class stake_agent_object : public cyberway::chaindb::object<stake_agent_object_t
     symbol_code token_code;
     account_name account;
     uint8_t proxy_level;
-    int64_t votes;
     time_point_sec last_proxied_update;
     int64_t balance;
     int64_t proxied;
@@ -26,16 +25,8 @@ class stake_agent_object : public cyberway::chaindb::object<stake_agent_object_t
     int64_t own_share;
     int16_t fee;
     int64_t min_own_staked;
-    public_key_type signing_key;
     int64_t get_total_funds()const { return balance + proxied; };
     struct by_key {};
-    struct by_votes {};
-    void set_balance(int64_t arg) {
-        balance = arg;
-        if (!proxy_level) {
-            votes = balance;
-        }
-    };
 };
 
 using stake_agent_table = cyberway::chaindb::table_container<
@@ -47,12 +38,61 @@ using stake_agent_table = cyberway::chaindb::table_container<
            cyberway::chaindb::composite_key<stake_agent_object,
               BOOST_MULTI_INDEX_MEMBER(stake_agent_object, symbol_code, token_code),
               BOOST_MULTI_INDEX_MEMBER(stake_agent_object, account_name, account)>
+        >
+    >
+>;
+
+class stake_candidate_object : public cyberway::chaindb::object<stake_candidate_object_type, stake_candidate_object> {
+    OBJECT_CTOR(stake_candidate_object)
+    id_type id;  
+    symbol_code token_code;
+    account_name account;
+    time_point_sec latest_pick;
+    int64_t votes;
+    int64_t priority;
+    public_key_type signing_key;
+    bool enabled;
+    void set_votes(int64_t arg, int64_t total_votes) {
+        votes = arg;
+        if (!votes) {
+            priority = std::numeric_limits<int64_t>::max();
+        }
+        else {
+            static constexpr int128_t int64_max = std::numeric_limits<int64_t>::max();
+            auto priority128 = std::min(static_cast<int128_t>(total_votes) * config::priority_precision / votes, int64_max);
+            priority128 += latest_pick.sec_since_epoch() * config::priority_precision;
+            priority = static_cast<int64_t>(std::min(priority128, int64_max));
+        }
+    }
+    struct by_key {};
+    struct by_votes {};
+    struct by_prior {};
+};
+
+using stake_candidate_table = cyberway::chaindb::table_container<
+    stake_candidate_object,
+    cyberway::chaindb::indexed_by<
+        cyberway::chaindb::ordered_unique<cyberway::chaindb::tag<by_id>, 
+           BOOST_MULTI_INDEX_MEMBER(stake_candidate_object, stake_candidate_object::id_type, id)>,
+        cyberway::chaindb::ordered_unique<cyberway::chaindb::tag<stake_candidate_object::by_key>,
+           cyberway::chaindb::composite_key<stake_candidate_object,
+              BOOST_MULTI_INDEX_MEMBER(stake_candidate_object, symbol_code, token_code),
+              BOOST_MULTI_INDEX_MEMBER(stake_candidate_object, account_name, account)>
         >,
-        cyberway::chaindb::ordered_unique<cyberway::chaindb::tag<stake_agent_object::by_votes>,
-           cyberway::chaindb::composite_key<stake_agent_object,
-              BOOST_MULTI_INDEX_MEMBER(stake_agent_object, symbol_code, token_code),
-              BOOST_MULTI_INDEX_MEMBER(stake_agent_object, int64_t, votes),
-              BOOST_MULTI_INDEX_MEMBER(stake_agent_object, account_name, account)>
+        cyberway::chaindb::ordered_unique<cyberway::chaindb::tag<stake_candidate_object::by_votes>,
+           cyberway::chaindb::composite_key<stake_candidate_object,
+              BOOST_MULTI_INDEX_MEMBER(stake_candidate_object, symbol_code, token_code),
+              BOOST_MULTI_INDEX_MEMBER(stake_candidate_object, bool, enabled),
+              BOOST_MULTI_INDEX_MEMBER(stake_candidate_object, int64_t, votes),
+              BOOST_MULTI_INDEX_MEMBER(stake_candidate_object, account_name, account)>
+        >,
+        cyberway::chaindb::ordered_unique<cyberway::chaindb::tag<stake_candidate_object::by_votes>,
+           cyberway::chaindb::composite_key<stake_candidate_object,
+              BOOST_MULTI_INDEX_MEMBER(stake_candidate_object, symbol_code, token_code),
+              BOOST_MULTI_INDEX_MEMBER(stake_candidate_object, bool, enabled),
+              BOOST_MULTI_INDEX_MEMBER(stake_candidate_object, int64_t, priority),
+              BOOST_MULTI_INDEX_MEMBER(stake_candidate_object, int64_t, votes),
+              BOOST_MULTI_INDEX_MEMBER(stake_candidate_object, account_name, account)>
         >
     >
 >;
@@ -85,7 +125,6 @@ using stake_grant_table = cyberway::chaindb::table_container<
     >
 >;
 
-    
 class stake_param_object : public cyberway::chaindb::object<stake_param_object_type, stake_param_object> {
     OBJECT_CTOR(stake_param_object)
     id_type id;
@@ -108,6 +147,7 @@ class stake_stat_object : public cyberway::chaindb::object<stake_stat_object_typ
     id_type id;
     symbol_code token_code;
     int64_t total_staked;
+    int64_t total_votes;
     time_point_sec last_reward;
     bool enabled;
 };
@@ -123,8 +163,13 @@ using stake_stat_table = cyberway::chaindb::table_container<
 
 CHAINDB_SET_TABLE_TYPE(eosio::chain::stake_agent_object, eosio::chain::stake_agent_table)
 CHAINDB_TAG(eosio::chain::stake_agent_object::by_key, bykey)
-CHAINDB_TAG(eosio::chain::stake_agent_object::by_votes, byvotes)
 CHAINDB_TAG(eosio::chain::stake_agent_object, stake.agent)
+
+CHAINDB_SET_TABLE_TYPE(eosio::chain::stake_candidate_object, eosio::chain::stake_candidate_table)
+CHAINDB_TAG(eosio::chain::stake_candidate_object::by_key, bykey)
+CHAINDB_TAG(eosio::chain::stake_candidate_object::by_votes, byvotes)
+CHAINDB_TAG(eosio::chain::stake_candidate_object::by_prior, byprior)
+CHAINDB_TAG(eosio::chain::stake_candidate_object, stake.cand)
 
 CHAINDB_SET_TABLE_TYPE(eosio::chain::stake_grant_object, eosio::chain::stake_grant_table)
 CHAINDB_TAG(eosio::chain::stake_grant_object::by_key, bykey)
@@ -137,8 +182,11 @@ CHAINDB_SET_TABLE_TYPE(eosio::chain::stake_stat_object, eosio::chain::stake_stat
 CHAINDB_TAG(eosio::chain::stake_stat_object, stake.stat)
 
 FC_REFLECT(eosio::chain::stake_agent_object, 
-    (id)(token_code)(account)(proxy_level)(votes)(last_proxied_update)(balance)
-    (proxied)(shares_sum)(own_share)(fee)(min_own_staked)(signing_key))
+    (id)(token_code)(account)(proxy_level)(last_proxied_update)(balance)
+    (proxied)(shares_sum)(own_share)(fee)(min_own_staked))
+    
+FC_REFLECT(eosio::chain::stake_candidate_object, 
+    (id)(token_code)(account)(latest_pick)(votes)(priority)(signing_key)(enabled))
     
 FC_REFLECT(eosio::chain::stake_grant_object, 
     (id)(token_code)(grantor_name)(agent_name)(pct)(share)(break_fee)(break_min_own_staked))
@@ -147,4 +195,4 @@ FC_REFLECT(eosio::chain::stake_param_object,
     (id)(token_symbol)(max_proxies)(payout_step_length)(payout_steps_num)(min_own_staked_for_election))
     
 FC_REFLECT(eosio::chain::stake_stat_object, 
-    (id)(token_code)(total_staked)(last_reward)(enabled))
+    (id)(token_code)(total_staked)(total_votes)(last_reward)(enabled))
