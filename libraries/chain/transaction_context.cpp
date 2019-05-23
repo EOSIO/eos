@@ -471,28 +471,29 @@ namespace bacc = boost::accumulators;
       if( BOOST_UNLIKELY( now > _deadline ) ) {
          // edump((now-start)(now-pseudo_start));
          if( explicit_billed_cpu_time || deadline_exception_code == deadline_exception::code_value ) {
-            EOS_THROW( deadline_exception, "deadline exceeded", ("now", now)("deadline", _deadline)("start", start) );
+            EOS_THROW( deadline_exception, "deadline exceeded ${billing_timer}us",
+                       ("billing_timer", now - pseudo_start)("now", now)("deadline", _deadline)("start", start) );
          } else if( deadline_exception_code == block_cpu_usage_exceeded::code_value ) {
             EOS_THROW( block_cpu_usage_exceeded,
-                        "not enough time left in block to complete executing transaction",
+                        "not enough time left in block to complete executing transaction ${billing_timer}us",
                         ("now", now)("deadline", _deadline)("start", start)("billing_timer", now - pseudo_start) );
          } else if( deadline_exception_code == tx_cpu_usage_exceeded::code_value ) {
             if (cpu_limit_due_to_greylist) {
                EOS_THROW( greylist_cpu_usage_exceeded,
-                        "greylisted transaction was executing for too long",
+                        "greylisted transaction was executing for too long ${billing_timer}us",
                         ("now", now)("deadline", _deadline)("start", start)("billing_timer", now - pseudo_start) );
             } else {
                EOS_THROW( tx_cpu_usage_exceeded,
-                        "transaction was executing for too long",
+                        "transaction was executing for too long ${billing_timer}us",
                         ("now", now)("deadline", _deadline)("start", start)("billing_timer", now - pseudo_start) );
             }
          } else if( deadline_exception_code == leeway_deadline_exception::code_value ) {
             EOS_THROW( leeway_deadline_exception,
                         "the transaction was unable to complete by deadline, "
-                        "but it is possible it could have succeeded if it were allowed to run to completion",
+                        "but it is possible it could have succeeded if it were allowed to run to completion ${billing_timer}",
                         ("now", now)("deadline", _deadline)("start", start)("billing_timer", now - pseudo_start) );
          }
-         EOS_ASSERT( false,  transaction_exception, "unexpected deadline exception code" );
+         EOS_ASSERT( false,  transaction_exception, "unexpected deadline exception code ${code}", ("code", deadline_exception_code) );
       }
    }
 

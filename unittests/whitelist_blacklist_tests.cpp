@@ -452,7 +452,7 @@ BOOST_AUTO_TEST_CASE( actor_blacklist_inline_deferred ) { try {
    tester1.chain->set_abi( N(charlie),  contracts::deferred_test_abi().data() );
    tester1.chain->produce_blocks();
 
-   auto auth = authority(eosio::testing::base_tester::get_public_key("alice", "active"));
+   auto auth = authority(eosio::testing::base_tester::get_public_key(name("alice"), "active"));
    auth.accounts.push_back( permission_level_weight{{N(alice), config::eosio_code_name}, 1} );
 
    tester1.chain->push_action( N(eosio), N(updateauth), N(alice), mvo()
@@ -462,7 +462,7 @@ BOOST_AUTO_TEST_CASE( actor_blacklist_inline_deferred ) { try {
       ( "auth", auth )
    );
 
-   auth = authority(eosio::testing::base_tester::get_public_key("bob", "active"));
+   auth = authority(eosio::testing::base_tester::get_public_key(name("bob"), "active"));
    auth.accounts.push_back( permission_level_weight{{N(alice), config::eosio_code_name}, 1} );
    auth.accounts.push_back( permission_level_weight{{N(bob), config::eosio_code_name}, 1} );
 
@@ -473,7 +473,7 @@ BOOST_AUTO_TEST_CASE( actor_blacklist_inline_deferred ) { try {
       ( "auth", auth )
    );
 
-   auth = authority(eosio::testing::base_tester::get_public_key("charlie", "active"));
+   auth = authority(eosio::testing::base_tester::get_public_key(name("charlie"), "active"));
    auth.accounts.push_back( permission_level_weight{{N(charlie), config::eosio_code_name}, 1} );
 
    tester1.chain->push_action( N(eosio), N(updateauth), N(charlie), mvo()
@@ -596,7 +596,7 @@ BOOST_AUTO_TEST_CASE( blacklist_sender_bypass ) { try {
    tester1.chain->set_abi( N(charlie),  contracts::deferred_test_abi().data() );
    tester1.chain->produce_blocks();
 
-   auto auth = authority(eosio::testing::base_tester::get_public_key("alice", "active"));
+   auto auth = authority(eosio::testing::base_tester::get_public_key(name("alice"), "active"));
    auth.accounts.push_back( permission_level_weight{{N(alice), config::eosio_code_name}, 1} );
 
    tester1.chain->push_action( N(eosio), N(updateauth), N(alice), mvo()
@@ -606,7 +606,7 @@ BOOST_AUTO_TEST_CASE( blacklist_sender_bypass ) { try {
       ( "auth", auth )
    );
 
-   auth = authority(eosio::testing::base_tester::get_public_key("bob", "active"));
+   auth = authority(eosio::testing::base_tester::get_public_key(name("bob"), "active"));
    auth.accounts.push_back( permission_level_weight{{N(bob), config::eosio_code_name}, 1} );
 
    tester1.chain->push_action( N(eosio), N(updateauth), N(bob), mvo()
@@ -616,7 +616,7 @@ BOOST_AUTO_TEST_CASE( blacklist_sender_bypass ) { try {
       ( "auth", auth )
    );
 
-   auth = authority(eosio::testing::base_tester::get_public_key("charlie", "active"));
+   auth = authority(eosio::testing::base_tester::get_public_key(name("charlie"), "active"));
    auth.accounts.push_back( permission_level_weight{{N(charlie), config::eosio_code_name}, 1} );
 
    tester1.chain->push_action( N(eosio), N(updateauth), N(charlie), mvo()

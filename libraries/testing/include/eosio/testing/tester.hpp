@@ -172,8 +172,8 @@ namespace eosio { namespace testing {
          vector<producer_key>  get_producer_keys( const vector<account_name>& producer_names )const;
          transaction_trace_ptr set_producers(const vector<account_name>& producer_names);
 
-         void link_authority( account_name account, account_name code,  permission_name req, action_name type = "" );
-         void unlink_authority( account_name account, account_name code, action_name type = "" );
+         void link_authority( account_name account, account_name code,  permission_name req, action_name type = {} );
+         void unlink_authority( account_name account, account_name code, action_name type = {} );
          void set_authority( account_name account, permission_name perm, authority auth,
                                      permission_name parent, const vector<permission_level>& auths, const vector<private_key_type>& keys );
          void set_authority( account_name account, permission_name perm, authority auth,
@@ -212,7 +212,7 @@ namespace eosio { namespace testing {
 
          template< typename KeyType = fc::ecc::private_key_shim >
          static private_key_type get_private_key( name keyname, string role = "owner" ) {
-            return private_key_type::regenerate<KeyType>(fc::sha256::hash(string(keyname)+role));
+            return private_key_type::regenerate<KeyType>(fc::sha256::hash(keyname.to_string()+role));
          }
 
          template< typename KeyType = fc::ecc::private_key_shim >
@@ -231,7 +231,7 @@ namespace eosio { namespace testing {
                                                              const symbol&       asset_symbol,
                                                              const account_name& account ) const;
 
-         vector<char> get_row_by_account( uint64_t code, uint64_t scope, uint64_t table, const account_name& act ) const;
+         vector<char> get_row_by_account( name code, name scope, name table, const account_name& act ) const;
 
          map<account_name, block_id_type> get_last_produced_block_map()const { return last_produced_block; };
          void set_last_produced_block_map( const map<account_name, block_id_type>& lpb ) { last_produced_block = lpb; }
