@@ -37,6 +37,7 @@ private:
     void process_reblogs();
     void process_delete_reblogs();
     void process_follows();
+    void process_account_metas();
 
     void build_votes(std::vector<vote_info>& votes, uint64_t msg_hash, operation_number msg_created);
     void build_reblogs(std::vector<reblog_info>& reblogs, uint64_t msg_hash, operation_number msg_created, bfs::ifstream& dump_reblogs);

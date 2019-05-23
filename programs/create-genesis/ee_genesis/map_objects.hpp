@@ -20,7 +20,8 @@ enum object_type
     comment_header_object_type,
     vote_header_object_type,
     reblog_header_object_type,
-    follow_header_object_type
+    follow_header_object_type,
+    account_metadata_object_type,
 };
 
 struct comment_header : public chainbase::object<comment_header_object_type, comment_header> {
@@ -79,6 +80,17 @@ struct follow_header : public chainbase::object<follow_header_object_type, follo
     account_name_type follower;
     account_name_type following;
     bool ignores;
+};
+
+struct account_metadata : public chainbase::object<account_metadata_object_type, account_metadata> {
+    template<typename Constructor, typename Allocator>
+    account_metadata(Constructor &&c, chainbase::allocator<Allocator> a) {
+        c(*this);
+    }
+
+    id_type id;
+    account_name_type account;
+    uint64_t offset;
 };
 
 struct by_id;
@@ -156,6 +168,19 @@ using follow_header_index = chainbase::shared_multi_index_container<
                 std::less<account_name_type>>>>
 >;
 
+struct by_account;
+
+using account_metadata_index = chainbase::shared_multi_index_container<
+    account_metadata,
+    indexed_by<
+        ordered_unique<
+            tag<by_id>,
+            member<account_metadata, account_metadata::id_type, &account_metadata::id>>,
+        ordered_unique<
+            tag<by_account>,
+            member<account_metadata, account_name_type, &account_metadata::account>>>
+>;
+
 } } } // cyberway::genesis::ee
 
 CHAINBASE_SET_INDEX_TYPE(cyberway::genesis::ee::comment_header, cyberway::genesis::ee::comment_header_index)
@@ -165,3 +190,5 @@ CHAINBASE_SET_INDEX_TYPE(cyberway::genesis::ee::vote_header, cyberway::genesis::
 CHAINBASE_SET_INDEX_TYPE(cyberway::genesis::ee::reblog_header, cyberway::genesis::ee::reblog_header_index)
 
 CHAINBASE_SET_INDEX_TYPE(cyberway::genesis::ee::follow_header, cyberway::genesis::ee::follow_header_index)
+
+CHAINBASE_SET_INDEX_TYPE(cyberway::genesis::ee::account_metadata, cyberway::genesis::ee::account_metadata_index)

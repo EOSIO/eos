@@ -113,6 +113,11 @@ struct total_comment_reward_operation : hashed_operation {
     int64_t net_rshares;
 };
 
+struct account_metadata_operation : operation {
+    account_name_type account;
+    std::string json_metadata;
+};
+
 } } } // cyberway::golos::ee
 
 REFLECT_OP_HASHED(cyberway::golos::ee::comment_operation, (parent_author)(parent_permlink)(author)(permlink)(title)(body)(tags)(language)(timestamp))
@@ -138,3 +143,5 @@ REFLECT_OP_HASHED(cyberway::golos::ee::auction_window_reward_operation, (reward)
 REFLECT_OP_HASHED(cyberway::golos::ee::comment_benefactor_reward_operation, (benefactor)(author)(permlink)(reward))
 
 REFLECT_OP_HASHED(cyberway::golos::ee::total_comment_reward_operation, (author)(permlink)(author_reward)(benefactor_reward)(curator_reward)(net_rshares))
+
+REFLECT_OP(cyberway::golos::ee::account_metadata_operation, (account)(json_metadata))

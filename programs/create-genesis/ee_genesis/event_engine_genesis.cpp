@@ -109,7 +109,8 @@ static abi_def create_accounts_abi() {
             {"last_update", "time_point_sec"},
             {"balance", "asset"},
             {"balance_in_sys", "asset"},
-            {"balance_vesting", "asset"}
+            {"balance_vesting", "asset"},
+            {"json_metadata", "string"},
         }
     });
 

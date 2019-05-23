@@ -25,6 +25,7 @@ genesis_ee_builder::genesis_ee_builder(const genesis_info& info, const export_in
     maps_.add_index<vote_header_index>();
     maps_.add_index<reblog_header_index>();
     maps_.add_index<follow_header_index>();
+    maps_.add_index<account_metadata_index>();
 }
 
 genesis_ee_builder::~genesis_ee_builder() {
@@ -257,6 +258,31 @@ void genesis_ee_builder::process_follows() {
     }
 }
 
+void genesis_ee_builder::process_account_metas() {
+    std::cout << "-> Reading account metas..." << std::endl;
+
+    const auto& meta_index = maps_.get_index<account_metadata_index, by_account>();
+
+    bfs::ifstream in(in_dump_dir_ / "account_metas");
+    read_header(in);
+
+    account_metadata_operation op;
+    while (read_operation(in, op)) {
+        auto meta_itr = meta_index.find(op.account);
+        if (meta_itr != meta_index.end()) {
+            maps_.modify(*meta_itr, [&](auto& meta) {
+                meta.offset = op.offset;
+            });
+            continue;
+        }
+
+        maps_.create<account_metadata>([&](auto& meta) {
+            meta.account = op.account;
+            meta.offset = op.offset;
+        });
+    }
+}
+
 void genesis_ee_builder::read_operation_dump(const bfs::path& in_dump_dir) {
     in_dump_dir_ = in_dump_dir;
 
@@ -269,6 +295,7 @@ void genesis_ee_builder::read_operation_dump(const bfs::path& in_dump_dir) {
     process_reblogs();
     process_delete_reblogs();
     process_follows();
+    process_account_metas();
 }
 
 void genesis_ee_builder::build_votes(std::vector<vote_info>& votes, uint64_t msg_hash, operation_number msg_created) {
@@ -420,10 +447,24 @@ void genesis_ee_builder::build_accounts() {
         ("name", info_.golos.domain)
     );
 
+    const auto& meta_index = maps_.get_index<account_metadata_index, by_account>();
+
+    bfs::ifstream dump_metas(in_dump_dir_ / "account_metas");
+
     out_.accounts.start_section(config::system_account_name, N(account), "account_info");
 
     for (auto& a : exp_info_.account_infos) {
         auto acc = a.second;
+        auto meta = meta_index.find(account_name_type(acc["name"].as_string()));
+        if (meta != meta_index.end()) {
+            dump_metas.seekg(meta->offset);
+            account_metadata_operation op;
+            read_operation(dump_metas, op);
+
+            acc["json_metadata"] = op.json_metadata;
+        } else {
+            acc["json_metadata"] = "{created_at: 'GENESIS'}";
+        }
         out_.accounts.insert(acc);
     }
 }
