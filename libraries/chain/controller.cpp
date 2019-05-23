@@ -432,11 +432,13 @@ struct controller_impl {
    void initialize_blockchain_state() {
       wlog( "Initializing new blockchain with genesis state" );
       producer_authority_schedule initial_schedule = { 0, { producer_authority{config::system_account_name, block_signing_authority_v0{ 1, {{conf.genesis.initial_key, 1}} } } } };
+      legacy::producer_schedule_type initial_legacy_schedule{ 0, {{config::system_account_name, conf.genesis.initial_key}} };
 
       block_header_state genheader;
       genheader.active_schedule                = initial_schedule;
       genheader.pending_schedule.schedule      = initial_schedule;
-      genheader.pending_schedule.schedule_hash = fc::sha256::hash(initial_schedule);
+      // TODO: if wtmsig block signatures are enabled this should be the hash of the producer authority
+      genheader.pending_schedule.schedule_hash = fc::sha256::hash(initial_legacy_schedule);
       genheader.header.timestamp               = conf.genesis.initial_timestamp;
       genheader.header.action_mroot            = conf.genesis.compute_chain_id();
       genheader.id                             = genheader.header.id();

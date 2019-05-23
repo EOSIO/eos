@@ -278,6 +278,8 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_compatible_versions, SNAPSHOT_SUITE, snapshot
       snapshotted_tester v2_tester(chain.get_config(), SNAPSHOT_SUITE::get_reader(v2), 0);
       auto v2_integrity_value = v2_tester.control->calculate_integrity_hash();
 
+      BOOST_CHECK_EQUAL(v2_integrity_value.str(), base_integrity_value.str());
+
       // create a latest snapshot
       auto latest_writer = SNAPSHOT_SUITE::get_writer();
       v2_tester.control->write_snapshot(latest_writer);

@@ -234,12 +234,16 @@ namespace eosio { namespace chain {
       auto exts = h.validate_and_extract_header_extensions();
 
       std::optional<producer_authority_schedule> maybe_new_producer_schedule;
+      std::optional<digest_type> maybe_new_producer_schedule_hash;
+      bool wtmsig_enabled = false;
 
-      if( h.new_producers ) {
+      if (h.new_producers || exts.count(producer_schedule_change_extension::extension_id()) > 0 ) {
          auto wtmsig_digest = pfs.get_builtin_digest(builtin_protocol_feature_t::wtmsig_block_signatures);
          const auto& protocol_features = prev_activated_protocol_features->protocol_features;
-         bool wtmsig_enabled = wtmsig_digest && protocol_features.find(*wtmsig_digest) != protocol_features.end();
+         wtmsig_enabled = wtmsig_digest && protocol_features.find(*wtmsig_digest) != protocol_features.end();
+      }
 
+      if( h.new_producers ) {
          EOS_ASSERT(!wtmsig_enabled, producer_schedule_exception, "Block header contains legacy producer schedule outdated by activation of WTMsig Block Signatures" );
 
          EOS_ASSERT( !was_pending_promoted, producer_schedule_exception, "cannot set pending producer schedule in the same block in which pending was promoted to active" );
@@ -249,14 +253,11 @@ namespace eosio { namespace chain {
          EOS_ASSERT( prev_pending_schedule.schedule.producers.empty(), producer_schedule_exception,
                     "cannot set new pending producers until last pending is confirmed" );
 
+         maybe_new_producer_schedule_hash.emplace(digest_type::hash(new_producers));
          maybe_new_producer_schedule.emplace(new_producers);
       }
 
       if ( exts.count(producer_schedule_change_extension::extension_id()) > 0 ) {
-         auto wtmsig_digest = pfs.get_builtin_digest(builtin_protocol_feature_t::wtmsig_block_signatures);
-         const auto& protocol_features = prev_activated_protocol_features->protocol_features;
-         bool wtmsig_enabled = wtmsig_digest && protocol_features.find(*wtmsig_digest) != protocol_features.end();
-
          EOS_ASSERT(wtmsig_enabled, producer_schedule_exception, "Block header producer_schedule_change_extension before activation of WTMsig Block Signatures" );
          EOS_ASSERT( !was_pending_promoted, producer_schedule_exception, "cannot set pending producer schedule in the same block in which pending was promoted to active" );
 
@@ -266,6 +267,7 @@ namespace eosio { namespace chain {
          EOS_ASSERT( prev_pending_schedule.schedule.producers.empty(), producer_schedule_exception,
                      "cannot set new pending producers until last pending is confirmed" );
 
+         maybe_new_producer_schedule_hash.emplace(digest_type::hash(new_producer_schedule));
          maybe_new_producer_schedule.emplace(new_producer_schedule);
       }
 
@@ -295,7 +297,7 @@ namespace eosio { namespace chain {
 
       if( maybe_new_producer_schedule ) {
          result.pending_schedule.schedule = std::move(*maybe_new_producer_schedule);
-         result.pending_schedule.schedule_hash = digest_type::hash(result.pending_schedule.schedule);
+         result.pending_schedule.schedule_hash = std::move(*maybe_new_producer_schedule_hash);
          result.pending_schedule.schedule_lib_num    = block_number;
       } else {
          if( was_pending_promoted ) {
