@@ -71,7 +71,7 @@ if run_and_kill(" --database-map-mode heap") != True:
     errorExit("Failed in restart heap mode")
 
 #test locked mode if max locked memory is unlimited
-ulimits = Utils.checkOutput(shlex.split('ulimit -a'), ignoreError=True).split("\n")
+ulimits = Utils.checkOutput('ulimit -a', ignoreError=True).split("\n")
 for row in ulimits:
     if row.find("max locked memory") != -1:
         print("output of ulimit -a is: %s:" % (row))
