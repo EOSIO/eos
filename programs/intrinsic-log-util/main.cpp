@@ -2,7 +2,7 @@
  *  @file
  *  @copyright defined in eosio/LICENSE.txt
  */
-#include "subcommand.hpp"
+#include "cli_parser.hpp"
 #include <eosio/chain/intrinsic_debug_log.hpp>
 
 #include <fc/io/json.hpp>
@@ -14,6 +14,7 @@
 #include <boost/filesystem/path.hpp>
 
 #include <cstring>
+#include <iostream>
 
 using namespace eosio;
 using namespace eosio::chain;
@@ -48,7 +49,7 @@ struct print_block_subcommand
    }
 
    bpo::positional_options_description
-   get_positional_options( bpo::options_description& options, positional_descriptions& pos_desc )const {
+   get_positional_options( bpo::options_description& options, cli_parser::positional_descriptions& pos_desc )const {
       options.add_options()
          ("block-num", bpo::value<uint32_t>(),
           "the block number to print")
@@ -58,7 +59,7 @@ struct print_block_subcommand
          "block-num"
       };
 
-      return build_positional_descriptions( pos_args, options, pos_desc );
+      return cli_parser::build_positional_descriptions( pos_args, options, pos_desc );
    }
 };
 
@@ -141,7 +142,7 @@ struct diff_subcommand
    }
 
    bpo::positional_options_description
-   get_positional_options( bpo::options_description& options, positional_descriptions& pos_desc )const {
+   get_positional_options( bpo::options_description& options, cli_parser::positional_descriptions& pos_desc )const {
       options.add_options()
          ("first-log", bpo::value<bfs::path>(),
          "path to the first log file to compare")
@@ -154,7 +155,7 @@ struct diff_subcommand
          "second-log"
       };
 
-      return build_positional_descriptions( pos_args, options, pos_desc );
+      return cli_parser::build_positional_descriptions( pos_args, options, pos_desc );
    }
 };
 
@@ -182,29 +183,64 @@ struct root_command
    bool print_help = false;
 };
 
+class subcommand_dispatcher {
+public:
+   subcommand_dispatcher( std::ostream& stream )
+   :stream( stream )
+   {}
+
+   void operator()( const root_command& root, const diff_subcommand& diff ) {
+      stream << "diff was called" << std::endl;
+   }
+
+   void operator()( const root_command& root, const print_subcommand& print, const print_blocks_subcommand& blocks ) {
+      stream << "print blocks was called" << std::endl;
+   }
+
+protected:
+   std::ostream& stream;
+};
+
 int main( int argc, const char** argv ) {
    try {
       root_command rc;
-      auto res = parse_program_options_extended( rc, argc, argv, std::cout, &std::cerr );
+      auto parse_result = cli_parser::parse_program_options_extended( rc, argc, argv, std::cout, &std::cerr );
 
-      if( std::holds_alternative<parse_failure>( res ) ) {
+      if( std::holds_alternative<cli_parser::parse_failure>( parse_result ) ) {
          FC_ASSERT( false, "parse error occurred" );
-      } else if( std::holds_alternative<autocomplete_failure>( res ) ) {
+      } else if( std::holds_alternative<cli_parser::autocomplete_failure>( parse_result ) ) {
          return -1;
-      } else if( std::holds_alternative<autocomplete_success>( res ) ) {
+      } else if( std::holds_alternative<cli_parser::autocomplete_success>( parse_result ) ) {
          return 0;
       }
 
-      const auto& pm = std::get<parse_metadata>( res );
+      const auto& pm = std::get<cli_parser::parse_metadata>( parse_result );
 
       if( argc == 1 || rc.print_help ) {
-         print_subcommand_help( std::cout, bfs::path( argv[0] ).filename().generic_string(), pm );
+         cli_parser::print_subcommand_help( std::cout, bfs::path( argv[0] ).filename().generic_string(), pm );
          return 0;
       }
 
       std::ios::sync_with_stdio(false); // for potential performance boost for large log files
 
+      subcommand_dispatcher d( std::cout );
+      auto dispatch_result = cli_parser::dispatch( d, rc );
 
+      FC_ASSERT( dispatch_result.first != cli_parser::dispatch_status::no_handler_for_terminal_subcommand,
+                 "The ${subcommand} sub-command has not been implemented yet.",
+                 ("subcommand", dispatch_result.second)
+      );
+
+      if( dispatch_result.first == cli_parser::dispatch_status::no_handler_for_nonterminal_subcommand ) {
+         std::cout << "\033[0;31m"
+                   << "The sub-command "
+                   << "\033[1;31m" << dispatch_result.second << "\033[0;31m"
+                   << " cannot be called by itself."
+                   << "\033[0m"
+                   << std::endl;
+         cli_parser::print_subcommand_help( std::cout, bfs::path( argv[0] ).filename().generic_string(), pm );
+         return -1;
+      }
 
    } catch( const fc::exception& e ) {
       elog( "${e}", ("e", e.to_detail_string()));
