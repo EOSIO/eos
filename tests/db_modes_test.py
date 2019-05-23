@@ -13,6 +13,8 @@ import time
 import subprocess
 import shlex
 import tempfile
+import socket
+import sys
 
 errorExit=Utils.errorExit
 
@@ -24,9 +26,23 @@ nodeosCmd="./programs/nodeos/nodeos -d {} --config-dir {} \
 getInfoCmd="./programs/cleos/cleos get info"
 
 def run_and_kill(extraCmd="", killsig=signal.SIGTERM, preCmd=""):
+    #ensure port 8888 is free
+    tries = 30
+    while (tries > 0):
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            server_address = ('127.0.0.1', 8888)
+            sock.bind(server_address)
+            sock.close()
+            time.sleep(1)
+            tries = 0
+        except:
+            tries = tries - 1
+            time.sleep(3)
+    # now start nodeos
     cmdArr= preCmd + nodeosCmd + extraCmd
     proc=subprocess.Popen(cmdArr, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-    tries = 30
+    tries = 10
     ok = False
     while (tries > 0):
         time.sleep(2)
@@ -54,9 +70,17 @@ if run_and_kill(" --delete-all-blocks") != True:
 if run_and_kill(" --database-map-mode heap") != True:
     errorExit("Failed in restart heap mode")
 
-#test lock 
-if run_and_kill(" --database-map-mode locked") != True:
-    errorExit("Failed in restart with locked mode")
+#test locked mode if max locked memory is unlimited
+ulimits = Utils.checkOutput(shlex.split('ulimit -a'), ignoreError=True).split("\n")
+for row in ulimits:
+    if row.find("max locked memory") != -1:
+        print("output of ulimit -a is: %s:" % (row))
+        if row.find("unlimited") != -1:
+            if run_and_kill(" --database-map-mode locked") != True:
+                errorExit("Failed in restart with locked mode")
+        else:
+            print("skip default locked mode test because max locked memory is not unlimited")
+        break
 
 #locked mode should fail when it's not possible to lock anything
 if run_and_kill(" --database-map-mode locked", preCmd="ulimit -l 0; ") != False:
