@@ -26,7 +26,7 @@ getInfoCmd="./programs/cleos/cleos get info"
 def run_and_kill(extraCmd="", killsig=signal.SIGTERM, preCmd=""):
     cmdArr= preCmd + nodeosCmd + extraCmd
     proc=subprocess.Popen(cmdArr, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-    tries = 10
+    tries = 30
     ok = False
     while (tries > 0):
         time.sleep(2)
