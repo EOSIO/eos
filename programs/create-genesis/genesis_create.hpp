@@ -1,5 +1,6 @@
 #pragma once
 #include "genesis_info.hpp"
+#include "export_info.hpp"
 #include <eosio/chain/genesis_state.hpp>
 #include <fc/crypto/sha256.hpp>
 #include <boost/filesystem.hpp>
@@ -11,6 +12,7 @@ FC_DECLARE_EXCEPTION(genesis_exception, 9000000, "genesis create exception");
 
 using namespace eosio::chain;
 namespace bfs = boost::filesystem;
+using mvo = fc::mutable_variant_object;
 
 struct contract_abicode {
     bool update;
@@ -20,7 +22,6 @@ struct contract_abicode {
 };
 using contracts_map = std::map<name, contract_abicode>;
 
-
 class genesis_create final {
 public:
     genesis_create(const genesis_create&) = delete;
@@ -28,7 +29,7 @@ public:
     ~genesis_create();
 
     void read_state(const bfs::path& state_file);
-    void write_genesis(const bfs::path& out_file, const bfs::path& ee_directory, const genesis_info&, const genesis_state&, const contracts_map&);
+    void write_genesis(const bfs::path& out_file, export_info&, const genesis_info&, const genesis_state&, const contracts_map&);
 
 private:
     struct genesis_create_impl;

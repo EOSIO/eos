@@ -4,7 +4,7 @@
 #include <utility>
 #include <fc/reflect/reflect.hpp>
 
-namespace cyberway { namespace golos {
+namespace cyberway { namespace golos { namespace ee {
 
 struct golos_dump_header {
     char magic[13] = "";
@@ -25,14 +25,14 @@ struct hashed_operation : operation {
     uint64_t hash = 0;
 };
 
-} } // cyberway::golos
+} } } // cyberway::golos::ee
 
-FC_REFLECT(cyberway::golos::operation, (num))
+FC_REFLECT(cyberway::golos::ee::operation, (num))
 
-FC_REFLECT_DERIVED(cyberway::golos::hashed_operation, (cyberway::golos::operation),(hash))
+FC_REFLECT_DERIVED(cyberway::golos::ee::hashed_operation, (cyberway::golos::ee::operation),(hash))
 
 #define REFLECT_OP(OP, FIELDS) \
-	FC_REFLECT_DERIVED(OP, (cyberway::golos::operation), FIELDS)
+	FC_REFLECT_DERIVED(OP, (cyberway::golos::ee::operation), FIELDS)
 
 #define REFLECT_OP_HASHED(OP, FIELDS) \
-	FC_REFLECT_DERIVED(OP, (cyberway::golos::hashed_operation), FIELDS)
+	FC_REFLECT_DERIVED(OP, (cyberway::golos::ee::hashed_operation), FIELDS)

@@ -6,12 +6,12 @@
 #include <boost/filesystem/fstream.hpp>
 #include <boost/iostreams/device/mapped_file.hpp>
 #include <eosio/event_engine_plugin/event_engine_plugin.hpp>
+#include <eosio/event_engine_plugin/ee_genesis_container.hpp>
 #include <eosio/event_engine_plugin/messages.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
 #include <fc/exception/exception.hpp>
 #include <fc/variant_object.hpp>
 #include <fc/io/json.hpp>
-#include <cyberway/genesis/ee_genesis_container.hpp>
 
 #include <fstream>
 
@@ -211,9 +211,6 @@ bool event_engine_plugin_impl::is_handled_contract(const account_name n) const {
 }
 
 void event_engine_plugin_impl::send_genesis_file(const bfs::path& genesis_file) {
-    using cyberway::genesis::ee_genesis_header;
-    using cyberway::genesis::ee_table_header;
-
     std::cout << "Reading event engine genesis data from " << genesis_file << "..." << std::endl;
     boost::iostreams::mapped_file mfile;
     mfile.open(genesis_file, boost::iostreams::mapped_file::readonly);

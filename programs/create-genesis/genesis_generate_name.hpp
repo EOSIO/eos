@@ -4,7 +4,9 @@
 
 namespace cyberway { namespace genesis {
 
-inline eosio::chain::name generate_name(std::string txt) {
+using eosio::chain::name;
+
+inline name generate_name(std::string txt) {
     if (txt.length() == 0) return name();
     auto hash = fc::sha1::hash(txt);    // can implement something faster like MurmurHash3, but sha1 looks enough
     uint64_t data = ((uint64_t*)(hash.data()))[0];
@@ -16,7 +18,7 @@ inline eosio::chain::name generate_name(std::string txt) {
         data = quot;
         r |= (rem + 1) << (64 - 5 * (i + 1));
     }
-    return eosio::chain::name(r);
+    return name(r);
 }
 
 }} // cyberway::genesis

@@ -1,6 +1,7 @@
 #include "genesis_ee_builder.hpp"
 #include "golos_operations.hpp"
-#include <cyberway/genesis/genesis_generate_name.hpp>
+#include "../config.hpp"
+#include "../genesis_generate_name.hpp"
 
 #define MEGABYTE 1024*1024
 
@@ -14,19 +15,17 @@
 // 2300000 * 160 = 0.4 GB
 #define MAP_FILE_SIZE uint64_t(22*1024)*MEGABYTE
 
-namespace cyberway { namespace genesis {
-
-static constexpr uint64_t gls_post_account_name = N(gls.publish);
-static constexpr uint64_t gls_social_account_name = N(gls.social);
+namespace cyberway { namespace genesis { namespace ee {
 
 constexpr auto GLS = SY(3, GOLOS);
 
-genesis_ee_builder::genesis_ee_builder(const std::string& shared_file, uint32_t last_block)
-        : last_block_(last_block), maps_(shared_file, chainbase::database::read_write, MAP_FILE_SIZE) {
+genesis_ee_builder::genesis_ee_builder(const genesis_info& info, const export_info& exp_info, const std::string& shared_file, uint32_t last_block)
+        : info_(info), exp_info_(exp_info), last_block_(last_block), maps_(shared_file, chainbase::database::read_write, MAP_FILE_SIZE) {
     maps_.add_index<comment_header_index>();
     maps_.add_index<vote_header_index>();
     maps_.add_index<reblog_header_index>();
     maps_.add_index<follow_header_index>();
+    maps_.add_index<account_metadata_index>();
 }
 
 genesis_ee_builder::~genesis_ee_builder() {
@@ -36,9 +35,9 @@ golos_dump_header genesis_ee_builder::read_header(bfs::ifstream& in) {
     golos_dump_header h;
     in.read((char*)&h, sizeof(h));
     if (in) {
-        EOS_ASSERT(std::string(h.magic) == golos_dump_header::expected_magic, genesis_exception,
+        EOS_ASSERT(std::string(h.magic) == golos_dump_header::expected_magic, ee_genesis_exception,
             "Unknown format of the operation dump file.");
-        EOS_ASSERT(h.version == golos_dump_header::expected_version, genesis_exception,
+        EOS_ASSERT(h.version == golos_dump_header::expected_version, ee_genesis_exception,
             "Wrong version of the operation dump file.");
     }
     return h;
@@ -259,6 +258,31 @@ void genesis_ee_builder::process_follows() {
     }
 }
 
+void genesis_ee_builder::process_account_metas() {
+    std::cout << "-> Reading account metas..." << std::endl;
+
+    const auto& meta_index = maps_.get_index<account_metadata_index, by_account>();
+
+    bfs::ifstream in(in_dump_dir_ / "account_metas");
+    read_header(in);
+
+    account_metadata_operation op;
+    while (read_operation(in, op)) {
+        auto meta_itr = meta_index.find(op.account);
+        if (meta_itr != meta_index.end()) {
+            maps_.modify(*meta_itr, [&](auto& meta) {
+                meta.offset = op.offset;
+            });
+            continue;
+        }
+
+        maps_.create<account_metadata>([&](auto& meta) {
+            meta.account = op.account;
+            meta.offset = op.offset;
+        });
+    }
+}
+
 void genesis_ee_builder::read_operation_dump(const bfs::path& in_dump_dir) {
     in_dump_dir_ = in_dump_dir;
 
@@ -271,6 +295,7 @@ void genesis_ee_builder::read_operation_dump(const bfs::path& in_dump_dir) {
     process_reblogs();
     process_delete_reblogs();
     process_follows();
+    process_account_metas();
 }
 
 void genesis_ee_builder::build_votes(std::vector<vote_info>& votes, uint64_t msg_hash, operation_number msg_created) {
@@ -324,7 +349,7 @@ void genesis_ee_builder::build_reblogs(std::vector<reblog_info>& reblogs, uint64
 void genesis_ee_builder::build_messages() {
     std::cout << "-> Writing messages..." << std::endl;
 
-    out_.messages.start_section(gls_post_account_name, N(message), "message_info");
+    out_.messages.start_section(info_.golos.names.posting, N(message), "message_info");
 
     bfs::ifstream dump_comments(in_dump_dir_ / "comments");
     bfs::ifstream dump_reblogs(in_dump_dir_ / "reblogs");
@@ -349,6 +374,7 @@ void genesis_ee_builder::build_messages() {
             c.tags = op.tags;
             c.language = op.language;
             c.created = comment.created;
+            c.last_update = op.timestamp;
             c.net_rshares = comment.net_rshares;
             c.author_reward = asset(comment.author_reward, symbol(GLS));
             c.benefactor_reward = asset(comment.benefactor_reward, symbol(GLS));
@@ -384,7 +410,7 @@ void genesis_ee_builder::build_pinblocks() {
 
     const auto& follow_index = maps_.get_index<follow_header_index, by_id>();
 
-    out_.pinblocks.start_section(gls_social_account_name, N(pin), "pin");
+    out_.pinblocks.start_section(info_.golos.names.social, N(pin), "pin");
 
     for (const auto& follow : follow_index) {
         if (follow.ignores) {
@@ -396,7 +422,7 @@ void genesis_ee_builder::build_pinblocks() {
         });
     }
 
-    out_.pinblocks.start_section(gls_social_account_name, N(block), "block");
+    out_.pinblocks.start_section(info_.golos.names.social, N(block), "block");
 
     for (const auto& follow : follow_index) {
         if (!follow.ignores) {
@@ -409,6 +435,56 @@ void genesis_ee_builder::build_pinblocks() {
     }
 }
 
+void genesis_ee_builder::build_accounts() {
+    std::cout << "-> Writing accounts..." << std::endl;
+
+    out_.accounts.start_section(config::system_account_name, N(domain), "domain_info");
+
+    const auto app = info_.golos.names.issuer;
+    out_.accounts.insert(mvo
+        ("owner", app)
+        ("linked_to", app)
+        ("name", info_.golos.domain)
+    );
+
+    const auto& meta_index = maps_.get_index<account_metadata_index, by_account>();
+
+    bfs::ifstream dump_metas(in_dump_dir_ / "account_metas");
+
+    out_.accounts.start_section(config::system_account_name, N(account), "account_info");
+
+    for (auto& a : exp_info_.account_infos) {
+        auto acc = a.second;
+        auto meta = meta_index.find(account_name_type(acc["name"].as_string()));
+        if (meta != meta_index.end()) {
+            dump_metas.seekg(meta->offset);
+            account_metadata_operation op;
+            read_operation(dump_metas, op);
+
+            acc["json_metadata"] = op.json_metadata;
+        } else {
+            acc["json_metadata"] = "{created_at: 'GENESIS'}";
+        }
+        out_.accounts.insert(acc);
+    }
+}
+
+void genesis_ee_builder::build_funds() {
+    std::cout << "-> Writing funds..." << std::endl;
+
+    out_.funds.start_section(config::token_account_name, N(currency), "currency_stats");
+
+    for (auto& cs : exp_info_.currency_stats) {
+        out_.funds.insert(cs);
+    }
+
+    out_.funds.start_section(config::token_account_name, N(balance), "balance_event");
+
+    for (auto& be : exp_info_.balance_events) {
+        out_.funds.insert(be);
+    }
+}
+
 void genesis_ee_builder::build(const bfs::path& out_dir) {
     std::cout << "Writing genesis to " << out_dir << "..." << std::endl;
 
@@ -417,8 +493,10 @@ void genesis_ee_builder::build(const bfs::path& out_dir) {
     build_messages();
     build_transfers();
     build_pinblocks();
+    build_accounts();
+    build_funds();
 
     out_.finalize();
 }
 
-} } // cyberway::genesis
+} } } // cyberway::genesis::ee

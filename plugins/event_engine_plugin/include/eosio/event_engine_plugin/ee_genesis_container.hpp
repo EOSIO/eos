@@ -5,7 +5,7 @@
 #include <eosio/chain/abi_def.hpp>
 #include <fc/reflect/reflect.hpp>
 
-namespace cyberway { namespace genesis {
+namespace eosio {
 
 using namespace eosio::chain;
 
@@ -27,6 +27,6 @@ struct ee_table_header {
     uint32_t     count = 0;
 };
 
-}} // cyberway::genesis
+} // eosio
 
-FC_REFLECT(cyberway::genesis::ee_table_header, (code)(name)(abi_type)(count))
+FC_REFLECT(eosio::ee_table_header, (code)(name)(abi_type)(count))
