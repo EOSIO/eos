@@ -88,7 +88,6 @@ namespace cyberway { namespace chaindb {
         if (!size) {
             size = chaindb::calc_storage_usage(*table.table, obj.value);
         }
-        delta = 0;
     }
 
     void storage_payer_info::add_usage() {
@@ -570,7 +569,7 @@ namespace cyberway { namespace chaindb {
 
             charge.calc_usage(table, obj);
             charge.in_ram = true;
-            charge.delta  = charge.size;
+            charge.delta += charge.size;
 
             // insert object to storage
             charge.set_payer_in(obj);
@@ -591,7 +590,7 @@ namespace cyberway { namespace chaindb {
 
             charge.get_payer_from(orig_obj);
             charge.calc_usage(table, obj);
-            charge.delta = charge.size - orig_obj.service.size;
+            charge.delta += charge.size - orig_obj.service.size;
 
             // don't charge on genesis
             if (undo_.revision() != start_revision) {

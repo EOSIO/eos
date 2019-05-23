@@ -106,7 +106,7 @@ void read_contract(const genesis_info::account& acc, contract_abicode& abicode) 
     abicode.update = acc.update && *acc.update;
     if (acc.abi) {
         auto fh = *acc.abi;
-        check_hash(fh);
+        abicode.abi_hash = check_hash(fh);
         auto abi_path = bfs::absolute(fh.path);
         abicode.abi = fc::raw::pack(fc::json::from_file(abi_path).as<abi_def>());
     }

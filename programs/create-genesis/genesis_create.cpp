@@ -126,6 +126,7 @@ struct genesis_create::genesis_create_impl final {
                     }
                     if (abicode.abi.size()) {
                         a.abi = abicode.abi;
+                        a.abi_version = abicode.abi_hash;
                     }
                     const auto& code = abicode.code;
                     if (code.size()) {

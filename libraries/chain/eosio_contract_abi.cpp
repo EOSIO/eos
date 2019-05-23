@@ -165,6 +165,7 @@ abi_def eosio_contract_abi(abi_def eos_abi)
          {"privileged", "bool"},
          {"last_code_update", "time_point"},
          {"code_version", "checksum256"},
+         {"abi_version", "checksum256"},
          {"creation_date", "block_timestamp_type"},
          {"code", "string"},
          {"abi", "bytes"}

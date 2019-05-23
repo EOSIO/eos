@@ -189,6 +189,7 @@ extern const char* const state_history_plugin_abi = R"({
                 { "type": "bool", "name": "privileged" },
                 { "type": "time_point", "name": "last_code_update" },
                 { "type": "checksum256", "name": "code_version" },
+                { "type": "checksum256", "name": "abi_version" },
                 { "type": "block_timestamp_type", "name": "creation_date" },
                 { "type": "bytes", "name": "code" },
                 { "type": "bytes", "name": "abi" }

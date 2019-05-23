@@ -54,6 +54,7 @@ struct genesis_import::impl final {
         db.modify(old, [&](auto& a) {
             a.last_code_update = acc.last_code_update;
             a.code_version = acc.code_version;
+            a.abi_version = acc.abi_version;
             a.creation_date = acc.creation_date;
             a.code = acc.code;
             a.abi = acc.abi;

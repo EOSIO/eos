@@ -103,17 +103,16 @@ void apply_cyber_newaccount(apply_context& context) {
               "Cannot create account named ${name}, as that name is already taken",
               ("name", create.name));
 
-   // CyberWay: set RAM usage to creator, it can rewrite memory usage to account, so no troubles
-   auto ram_payer = context.get_storage_payer(create.name, create.creator);
+   auto storage_payer = context.get_storage_payer(create.name, create.creator);
 
-   context.control.get_mutable_resource_limits_manager().initialize_account(create.name, ram_payer);
+   context.control.get_mutable_resource_limits_manager().initialize_account(create.name, storage_payer);
 
-   chaindb.emplace<account_object>(ram_payer, [&](auto& a) {
+   chaindb.emplace<account_object>(storage_payer, [&](auto& a) {
       a.name = create.name;
       a.creation_date = context.control.pending_block_time();
    });
 
-   chaindb.emplace<account_sequence_object>(ram_payer, [&](auto& a) {
+   chaindb.emplace<account_sequence_object>(storage_payer, [&](auto& a) {
       a.name = create.name;
    });
 
@@ -121,10 +120,10 @@ void apply_cyber_newaccount(apply_context& context) {
       validate_authority_precondition( context, auth );
    }
 
-   const auto& owner_permission  = authorization.create_permission( ram_payer,
+   const auto& owner_permission  = authorization.create_permission( storage_payer,
                                                                     create.name, config::owner_name, 0,
                                                                     std::move(create.owner) );
-   const auto& active_permission = authorization.create_permission( ram_payer,
+   const auto& active_permission = authorization.create_permission( storage_payer,
                                                                     create.name, config::active_name, owner_permission.id,
                                                                     std::move(create.active) );
 
@@ -182,9 +181,10 @@ void apply_cyber_setcode(apply_context& context) {
 
    const auto& account = chaindb.get<account_object,by_name>(act.account);
 
+
    int64_t code_size = (int64_t)act.code.size();
-   int64_t old_size  = (int64_t)account.code.size() * config::setcode_ram_bytes_multiplier;
-   int64_t new_size  = code_size * config::setcode_ram_bytes_multiplier;
+   int64_t old_size  = (int64_t)account.code.size() * (config::setcode_storage_bytes_multiplier - 1/*one code_size is already in size*/);
+   int64_t new_size  = code_size * (config::setcode_storage_bytes_multiplier - 1);
 
    EOS_ASSERT( account.code_version != code_id, set_exact_code, "contract is already running this version of code" );
     const auto& account_sequence = chaindb.get<account_sequence_object, by_name>(act.account);
@@ -200,8 +200,10 @@ void apply_cyber_setcode(apply_context& context) {
         EOS_ASSERT(allowed, protected_contract_code, "can't change code of protected account");
     }
 
-   auto ram_payer = context.get_storage_payer(act.account);
-   chaindb.modify( account, ram_payer, [&]( auto& a ) {
+   auto storage_payer = context.get_storage_payer(act.account);
+   storage_payer.delta = new_size - old_size;
+
+   chaindb.modify( account, storage_payer, [&]( auto& a ) {
       /** TODO: consider whether a microsecond level local timestamp is sufficient to detect code version changes*/
       // TODO: update setcode message to include the hash, then validate it in validate
       a.last_code_update = context.control.pending_block_time();
@@ -212,7 +214,7 @@ void apply_cyber_setcode(apply_context& context) {
 
    });
 
-   chaindb.modify( account_sequence, ram_payer, [&]( auto& aso ) {
+   chaindb.modify( account_sequence, storage_payer, [&]( auto& aso ) {
       aso.code_sequence += 1;
    });
 
@@ -232,8 +234,8 @@ void apply_cyber_setabi(apply_context& context) {
 
    int64_t abi_size = act.abi.size();
 
-   int64_t old_size = (int64_t)account.abi.size();
-   int64_t new_size = abi_size;
+   int64_t old_size = (int64_t)account.abi.size() * (config::setcode_storage_bytes_multiplier - 1 /*one abi_size is already in size*/);
+   int64_t new_size = abi_size * (config::setcode_storage_bytes_multiplier - 1 /*one abi_size is already in size*/);
 
     const auto& account_sequence = chaindb.get<account_sequence_object, by_name>(act.account);
     auto hash = bytes_hash(act.abi);
@@ -241,7 +243,7 @@ void apply_cyber_setabi(apply_context& context) {
         const auto seq = account_sequence.abi_sequence;
         bool allowed = false;
 #ifdef ALLOW_INITIAL_CONTRACT_SET
-        allowed = seq == 0;  // auto-enable initial set
+        allowed = seq == 0 && account.abi_version == fc::sha256();  // auto-enable initial set
 #endif
         if (!allowed) {
             allowed = check_hash_for_accseq(hash, allowed_abi_hashes, act.account, seq);
@@ -249,15 +251,18 @@ void apply_cyber_setabi(apply_context& context) {
         EOS_ASSERT(allowed, protected_contract_code, "can't change abi of protected account");
     }
 
-   auto ram_payer = context.get_storage_payer(act.account);
+   auto storage_payer = context.get_storage_payer(act.account);
+   storage_payer.delta = new_size - old_size;
 
-   chaindb.modify( account, ram_payer, [&]( auto& a ) {
+   EOS_ASSERT( account.abi_version != hash, set_exact_abi, "contract is already has this version of abi" );
+   chaindb.modify( account, storage_payer, [&]( auto& a ) {
+      a.abi_version = hash;
       a.abi.resize( abi_size );
       if( abi_size > 0 )
          memcpy( const_cast<char*>(a.abi.data()), act.abi.data(), abi_size );
    });
 
-   chaindb.modify( account_sequence, ram_payer, [&]( auto& aso ) {
+   chaindb.modify( account_sequence, storage_payer, [&]( auto& aso ) {
       aso.abi_sequence += 1;
    });
 
@@ -312,7 +317,7 @@ void apply_cyber_updateauth(apply_context& context) {
       parent_id = parent.id;
    }
 
-   auto ram_payer = context.get_storage_payer(update.account);
+   auto storage_payer = context.get_storage_payer(update.account);
 
    if( permission ) {
       EOS_ASSERT(parent_id == permission->parent, action_validate_exception,
@@ -322,7 +327,7 @@ void apply_cyber_updateauth(apply_context& context) {
 // TODO: Removed by CyberWay
 //      int64_t old_size = (int64_t)(config::billable_size_v<permission_object> + permission->auth.get_billable_size());
 
-      authorization.modify_permission( *permission, ram_payer, update.auth );
+      authorization.modify_permission( *permission, storage_payer, update.auth );
 
 // TODO: Removed by CyberWay
 //      int64_t new_size = (int64_t)(config::billable_size_v<permission_object> + permission->auth.get_billable_size());
@@ -331,7 +336,7 @@ void apply_cyber_updateauth(apply_context& context) {
 // TODO: Removed by CyberWay
 //      const auto& p =
 
-      authorization.create_permission( ram_payer, update.account, update.permission, parent_id, update.auth );
+      authorization.create_permission( storage_payer, update.account, update.permission, parent_id, update.auth );
 
 // TODO: Removed by CyberWay
 //      int64_t new_size = (int64_t)(config::billable_size_v<permission_object> + p.auth.get_billable_size());
@@ -397,16 +402,16 @@ void apply_cyber_linkauth(apply_context& context) {
 
       auto link_key = boost::make_tuple(requirement.account, requirement.code, requirement.type);
       auto link = chaindb.find<permission_link_object, by_action_name>(link_key);
-      auto ram_payer = context.get_storage_payer(requirement.account);
+      auto storage_payer = context.get_storage_payer(requirement.account);
 
       if( link ) {
          EOS_ASSERT(link->required_permission != requirement.requirement, action_validate_exception,
                     "Attempting to update required authority, but new requirement is same as old");
-         chaindb.modify(*link, ram_payer, [requirement = requirement.requirement](permission_link_object& link) {
+         chaindb.modify(*link, storage_payer, [requirement = requirement.requirement](permission_link_object& link) {
              link.required_permission = requirement;
          });
       } else {
-         chaindb.emplace<permission_link_object>(ram_payer, [&requirement](permission_link_object& link) {
+         chaindb.emplace<permission_link_object>(storage_payer, [&requirement](permission_link_object& link) {
             link.account = requirement.account;
             link.code = requirement.code;
             link.message_type = requirement.type;
