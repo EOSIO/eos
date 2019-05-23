@@ -272,11 +272,8 @@ namespace eosio { namespace chain {
                                     3040016, "Transaction includes an ill-formed deferred transaction generation context extension" )
       FC_DECLARE_DERIVED_EXCEPTION( disallowed_transaction_extensions_bad_block_exception, transaction_exception,
                                     3040017, "Transaction includes disallowed extensions (invalid block)" )
-<<<<<<< HEAD
-=======
       FC_DECLARE_DERIVED_EXCEPTION( tx_resource_exhaustion, transaction_exception,
                                     3040018, "Transaction exceeded transient resource limit" )
->>>>>>> develop
 
 
    FC_DECLARE_DERIVED_EXCEPTION( action_validate_exception, chain_exception,
