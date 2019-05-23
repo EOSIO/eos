@@ -62,7 +62,8 @@ fi
 DEP_ARRAY=(
    git make automake libbz2-dev libssl-dev doxygen graphviz \
    libgmp3-dev autotools-dev build-essential libicu-dev python2.7 python2.7-dev python3 python3-dev \
-   autoconf libtool curl zlib1g-dev sudo ruby libusb-1.0-0-dev libcurl4-gnutls-dev pkg-config
+   autoconf libtool curl zlib1g-dev sudo ruby libusb-1.0-0-dev libcurl4-gnutls-dev pkg-config \
+   libhidapi-dev
 )
 
 # llvm-4.0 is installed into /usr/lib/llvm-4.0
@@ -249,7 +250,7 @@ if [ "$BUILD_CLANG8" = "true" ]; then
       printf " - Boost library found with correct version @ ${BOOST_ROOT} (Symlinked to ${BOOST_LINK_LOCATION}).\\n"
    fi
    if [ $? -ne 0 ]; then exit -1; fi
-   
+
    printf "\\n"
 else
    printf "Checking Boost library (${BOOST_VERSION}) installation...\\n"

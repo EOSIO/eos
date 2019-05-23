@@ -21,7 +21,7 @@ export HOMEBREW_NO_AUTO_UPDATE=1
 
 COUNT=1
 DISPLAY=""
-DEPS=""
+DEPS="hidapi"
 
 printf "\\nOS name: ${OS_NAME}\\n"
 printf "OS Version: ${OS_VER}\\n"
