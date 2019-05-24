@@ -150,7 +150,7 @@ if [ $# -ne 0 ]; then
    done
 fi
 
-if [ ! -d "${REPO_ROOT}/.git" ]; then
+if [ ! -e "${REPO_ROOT}/.git" ]; then
    printf "\\nThis build script only works with sources cloned from git\\n"
    printf "Please clone a new eos directory with 'git clone https://github.com/EOSIO/eos --recursive'\\n"
    printf "See the wiki for instructions: https://github.com/EOSIO/eos/wiki\\n"
@@ -180,7 +180,7 @@ export MONGO_C_DRIVER_ROOT=${SRC_LOCATION}/mongo-c-driver-${MONGO_C_DRIVER_VERSI
 export MONGO_CXX_DRIVER_VERSION=3.4.0
 export MONGO_CXX_DRIVER_ROOT=${SRC_LOCATION}/mongo-cxx-driver-r${MONGO_CXX_DRIVER_VERSION}
 export BOOST_VERSION_MAJOR=1
-export BOOST_VERSION_MINOR=67
+export BOOST_VERSION_MINOR=70
 export BOOST_VERSION_PATCH=0
 export BOOST_VERSION=${BOOST_VERSION_MAJOR}_${BOOST_VERSION_MINOR}_${BOOST_VERSION_PATCH}
 export BOOST_ROOT=${BOOST_ARG:-${SRC_LOCATION}/boost_${BOOST_VERSION}}

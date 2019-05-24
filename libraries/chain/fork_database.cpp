@@ -200,7 +200,7 @@ namespace eosio { namespace chain {
          auto itr = (validated_remaining ? validated_itr : unvalidated_itr);
 
          if( unvalidated_remaining && validated_remaining ) {
-            if( first_preferred( **unvalidated_itr, **validated_itr ) ) {
+            if( first_preferred( **validated_itr, **unvalidated_itr ) ) {
                itr = unvalidated_itr;
                ++unvalidated_itr;
             } else {

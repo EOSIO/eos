@@ -58,9 +58,9 @@ struct filter_entry {
 
    //            receiver          action       actor
    bool match( const name& rr, const name& an, const name& ar ) const {
-      return (receiver.value == 0 || receiver == rr) &&
-             (action.value == 0 || action == an) &&
-             (actor.value == 0 || actor == ar);
+      return (receiver.to_uint64_t() == 0 || receiver == rr) &&
+             (action.to_uint64_t() == 0 || action == an) &&
+             (actor.to_uint64_t() == 0 || actor == ar);
    }
 };
 
@@ -229,7 +229,7 @@ bool mongo_db_plugin_impl::filter_include( const account_name& receiver, const a
       include = true;
    } else {
       auto itr = std::find_if( filter_on.cbegin(), filter_on.cend(), [&receiver, &act_name]( const auto& filter ) {
-         return filter.match( receiver, act_name, 0 );
+         return filter.match( receiver, act_name, {} );
       } );
       if( itr != filter_on.cend() ) {
          include = true;
@@ -250,7 +250,7 @@ bool mongo_db_plugin_impl::filter_include( const account_name& receiver, const a
    if( filter_out.empty() ) { return true; }
 
    auto itr = std::find_if( filter_out.cbegin(), filter_out.cend(), [&receiver, &act_name]( const auto& filter ) {
-      return filter.match( receiver, act_name, 0 );
+      return filter.match( receiver, act_name, {} );
    } );
    if( itr != filter_out.cend() ) { return false; }
 
@@ -746,7 +746,7 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
    using bsoncxx::builder::basic::make_array;
    namespace bbb = bsoncxx::builder::basic;
 
-   const signed_transaction& trx = t->packed_trx->get_signed_transaction();
+   const signed_transaction& trx = t->packed_trx()->get_signed_transaction();
 
    if( !filter_include( trx ) ) return;
 
@@ -755,7 +755,7 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
    auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
          std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()} );
 
-   const auto& trx_id = t->id;
+   const auto& trx_id = t->id();
    const auto trx_id_str = trx_id.str();
 
    trans_doc.append( kvp( "trx_id", trx_id_str ) );
@@ -771,14 +771,10 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
    }
 
    fc::variant signing_keys;
-   if( t->signing_keys_future.valid() ) {
-      signing_keys = std::get<2>( t->signing_keys_future.get() );
-   } else {
-      flat_set<public_key_type> keys;
-      trx.get_signature_keys( *chain_id, fc::time_point::maximum(), keys, false );
-      if( !keys.empty() ) {
-         signing_keys = keys;
-      }
+   std::shared_ptr<flat_set<public_key_type>> keys;
+   std::tie( std::ignore, keys ) = t->recover_keys( *chain_id );
+   if( !keys->empty() ) {
+      signing_keys = *keys;
    }
 
    if( signing_keys.get_type() == fc::variant::array_type && signing_keys.get_array().size() > 0) {
@@ -1598,7 +1594,7 @@ void mongo_db_plugin::plugin_initialize(const variables_map& options)
                std::vector<std::string> v;
                boost::split( v, s, boost::is_any_of( ":" ));
                EOS_ASSERT( v.size() == 3, fc::invalid_arg_exception, "Invalid value ${s} for --mongodb-filter-on", ("s", s));
-               filter_entry fe{v[0], v[1], v[2]};
+               filter_entry fe{eosio::chain::name(v[0]), eosio::chain::name(v[1]), eosio::chain::name(v[2])};
                my->filter_on.insert( fe );
             }
          } else {
@@ -1610,7 +1606,7 @@ void mongo_db_plugin::plugin_initialize(const variables_map& options)
                std::vector<std::string> v;
                boost::split( v, s, boost::is_any_of( ":" ));
                EOS_ASSERT( v.size() == 3, fc::invalid_arg_exception, "Invalid value ${s} for --mongodb-filter-out", ("s", s));
-               filter_entry fe{v[0], v[1], v[2]};
+               filter_entry fe{eosio::chain::name(v[0]), eosio::chain::name(v[1]), eosio::chain::name(v[2])};
                my->filter_out.insert( fe );
             }
          }

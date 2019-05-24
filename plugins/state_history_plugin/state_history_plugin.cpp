@@ -53,6 +53,16 @@ static bytes zlib_compress_bytes(bytes in) {
    return out;
 }
 
+static bytes zlib_decompress(const bytes& in) {
+   bytes                  out;
+   bio::filtering_ostream decomp;
+   decomp.push(bio::zlib_decompressor());
+   decomp.push(bio::back_inserter(out));
+   bio::write(decomp, in.data(), in.size());
+   bio::close(decomp);
+   return out;
+}
+
 template <typename T>
 bool include_delta(const T& old, const T& curr) {
    return true;
@@ -89,7 +99,7 @@ bool include_delta(const eosio::chain::resource_limits::resource_limits_state_ob
 bool include_delta(const eosio::chain::account_metadata_object& old,
                    const eosio::chain::account_metadata_object& curr) {
    return                                               //
-       old.name.value != curr.name.value ||             //
+       old.name != curr.name ||                         //
        old.is_privileged() != curr.is_privileged() ||   //
        old.last_code_update != curr.last_code_update || //
        old.vm_type != curr.vm_type ||                   //
@@ -109,6 +119,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
    chain_plugin*                                              chain_plug = nullptr;
    fc::optional<state_history_log>                            trace_log;
    fc::optional<state_history_log>                            chain_state_log;
+   bool                                                       trace_debug_mode = false;
    bool                                                       stopping = false;
    fc::optional<scoped_connection>                            applied_transaction_connection;
    fc::optional<scoped_connection>                            accepted_block_connection;
@@ -125,10 +136,10 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       auto&                    stream = log.get_entry(block_num, header);
       uint32_t                 s;
       stream.read((char*)&s, sizeof(s));
-      result.emplace();
-      result->resize(s);
+      bytes compressed(s);
       if (s)
-         stream.read(result->data(), s);
+         stream.read(compressed.data(), s);
+      result = zlib_decompress(compressed);
    }
 
    void get_block(uint32_t block_num, fc::optional<bytes>& result) {
@@ -138,7 +149,8 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       } catch (...) {
          return;
       }
-      result = fc::raw::pack(*p);
+      if (p)
+         result = fc::raw::pack(*p);
    }
 
    fc::optional<chain::block_id_type> get_block_id(uint32_t block_num) {
@@ -441,7 +453,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       onblock_trace.reset();
 
       auto& db         = chain_plug->chain().db();
-      auto  traces_bin = zlib_compress_bytes(fc::raw::pack(make_history_serial_wrapper(db, traces)));
+      auto  traces_bin = zlib_compress_bytes(fc::raw::pack(make_history_context_wrapper(db, trace_debug_mode, traces)));
       EOS_ASSERT(traces_bin.size() == (uint32_t)traces_bin.size(), plugin_exception, "traces is too big");
 
       state_history_log_header header{.magic        = ship_magic(ship_current_version),
@@ -570,6 +582,8 @@ void state_history_plugin::set_program_options(options_description& cli, options
    options("state-history-endpoint", bpo::value<string>()->default_value("127.0.0.1:8080"),
            "the endpoint upon which to listen for incoming connections. Caution: only expose this port to "
            "your internal network.");
+   options("trace-history-debug-mode", bpo::bool_switch()->default_value(false),
+           "enable debug mode for trace history");
 }
 
 void state_history_plugin::plugin_initialize(const variables_map& options) {
@@ -606,6 +620,10 @@ void state_history_plugin::plugin_initialize(const variables_map& options) {
          boost::filesystem::remove_all(state_history_dir);
       }
       boost::filesystem::create_directories(state_history_dir);
+
+      if (options.at("trace-history-debug-mode").as<bool>()) {
+         my->trace_debug_mode = true;
+      }
 
       if (options.at("trace-history").as<bool>())
          my->trace_log.emplace("trace_history", (state_history_dir / "trace_history.log").string(),

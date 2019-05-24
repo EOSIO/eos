@@ -17,6 +17,7 @@
 #include <eosio/chain/reversible_block_object.hpp>
 #include <eosio/chain/genesis_intrinsics.hpp>
 #include <eosio/chain/whitelisted_intrinsics.hpp>
+#include <eosio/chain/database_header_object.hpp>
 
 #include <eosio/chain/protocol_feature_manager.hpp>
 #include <eosio/chain/authorization_manager.hpp>
@@ -45,7 +46,8 @@ using controller_index_set = index_set<
    transaction_multi_index,
    generated_transaction_multi_index,
    table_id_multi_index,
-   code_index
+   code_index,
+   database_header_multi_index
 >;
 
 using contract_database_index_set = index_set<
@@ -222,7 +224,7 @@ struct controller_impl {
    authorization_manager          authorization;
    protocol_feature_manager       protocol_features;
    controller::config             conf;
-   chain_id_type                  chain_id;
+   const chain_id_type            chain_id; // read by thread_pool threads
    optional<fc::time_point>       replay_head_time;
    db_read_mode                   read_mode = db_read_mode::SPECULATIVE;
    bool                           in_trx_requiring_checks = false; ///< if true, checks that are normally skipped on replay (e.g. auth checks) cannot be skipped
@@ -258,7 +260,7 @@ struct controller_impl {
       if ( read_mode == db_read_mode::SPECULATIVE ) {
          EOS_ASSERT( head->block, block_validate_exception, "attempting to pop a block that was sparsely loaded from a snapshot");
          for( const auto& t : head->trxs )
-            unapplied_transactions[t->signed_id] = t;
+            unapplied_transactions[t->signed_id()] = t;
       }
 
       head = prev;
@@ -323,7 +325,8 @@ struct controller_impl {
 
 
 #define SET_APP_HANDLER( receiver, contract, action) \
-   set_apply_handler( #receiver, #contract, #action, &BOOST_PP_CAT(apply_, BOOST_PP_CAT(contract, BOOST_PP_CAT(_,action) ) ) )
+   set_apply_handler( account_name(#receiver), account_name(#contract), action_name(#action), \
+                      &BOOST_PP_CAT(apply_, BOOST_PP_CAT(contract, BOOST_PP_CAT(_,action) ) ) )
 
    SET_APP_HANDLER( eosio, eosio, newaccount );
    SET_APP_HANDLER( eosio, eosio, setcode );
@@ -521,7 +524,7 @@ struct controller_impl {
 
    void init(std::function<bool()> shutdown, const snapshot_reader_ptr& snapshot) {
       // Setup state if necessary (or in the default case stay with already loaded state):
-      auto lib_num = 1;
+      uint32_t lib_num = 1u;
       if( snapshot ) {
          snapshot->validate();
          if( blog.head() ) {
@@ -583,6 +586,31 @@ struct controller_impl {
             head = fork_db.head();
          }
       }
+
+      // check database version
+      const auto& header_idx = db.get_index<database_header_multi_index>().indices().get<by_id>();
+
+      if (database_header_object::minimum_version != 0) {
+         EOS_ASSERT(header_idx.begin() != header_idx.end(), bad_database_version_exception,
+                    "state database version pre-dates versioning, please restore from a compatible snapshot or replay!");
+      } else if ( header_idx.empty() ) {
+         // temporary code to upgrade from existing un-versioned state database
+         static_assert(database_header_object::minimum_version == 0, "remove this path once the minimum version moves");
+         db.create<database_header_object>([](const auto& header){
+            // nothing to do here
+         });
+      }
+
+      const auto& header_itr = header_idx.begin();
+      header_itr->validate();
+
+      // upgrade to the latest compatible version
+      if (header_itr->version != database_header_object::current_version) {
+         db.modify(*header_itr, [](auto& header) {
+            header.version = database_header_object::current_version;
+         });
+      }
+
       // At this point head != nullptr && fork_db.head() != nullptr && fork_db.root() != nullptr.
       // Furthermore, fork_db.root()->block_num <= lib_num.
       // Also, even though blog.head() may still be nullptr, blog.first_block_num() is guaranteed to be lib_num + 1.
@@ -793,6 +821,11 @@ struct controller_impl {
             return;
          }
 
+         // skip the database_header as it is only relevant to in-memory database
+         if (std::is_same<value_t, database_header_object>::value) {
+            return;
+         }
+
          snapshot->write_section<value_t>([this]( auto& section ){
             decltype(utils)::walk(db, [this, &section]( const auto &row ) {
                section.add_row(row, db);
@@ -852,6 +885,11 @@ struct controller_impl {
             return;
          }
 
+         // skip the database_header as it is only relevant to in-memory database
+         if (std::is_same<value_t, database_header_object>::value) {
+            return;
+         }
+
          snapshot->read_section<value_t>([this]( auto& section ) {
             bool more = !section.empty();
             while(more) {
@@ -868,6 +906,9 @@ struct controller_impl {
       resource_limits.read_from_snapshot(snapshot);
 
       db.set_revision( head->block_num );
+      db.create<database_header_object>([](const auto& header){
+         // nothing to do
+      });
    }
 
    sha256 calculate_integrity_hash() const {
@@ -910,6 +951,11 @@ struct controller_impl {
    }
 
    void initialize_database() {
+      // create the database header sigil
+      db.create<database_header_object>([&]( auto& header ){
+         // nothing to do for now
+      });
+
       // Initialize block summary index
       for (int i = 0; i < 0x10000; i++)
          db.create<block_summary_object>([&](block_summary_object&) {});
@@ -1276,8 +1322,10 @@ struct controller_impl {
          auto start = fc::time_point::now();
          const bool check_auth = !self.skip_auth_check() && !trx->implicit;
          // call recover keys so that trx->sig_cpu_usage is set correctly
-         const fc::microseconds sig_cpu_usage = check_auth ? std::get<0>( trx->recover_keys( chain_id ) ) : fc::microseconds();
-         const flat_set<public_key_type>& recovered_keys = check_auth ? std::get<1>( trx->recover_keys( chain_id ) ) : flat_set<public_key_type>();
+         const fc::microseconds sig_cpu_usage =
+               check_auth ? std::get<0>( trx->recover_keys( chain_id ) ) : fc::microseconds();
+         const std::shared_ptr<flat_set<public_key_type>> recovered_keys =
+               check_auth ? std::get<1>( trx->recover_keys( chain_id ) ) : nullptr;
          if( !explicit_billed_cpu_time ) {
             fc::microseconds already_consumed_time( EOS_PERCENT(sig_cpu_usage.count(), conf.sig_cpu_bill_pct) );
 
@@ -1288,8 +1336,8 @@ struct controller_impl {
             }
          }
 
-         const signed_transaction& trn = trx->packed_trx->get_signed_transaction();
-         transaction_context trx_context(self, trn, trx->id, start);
+         const signed_transaction& trn = trx->packed_trx()->get_signed_transaction();
+         transaction_context trx_context(self, trn, trx->id(), start);
          if ((bool)subjective_cpu_leeway && pending->_block_status == controller::block_status::incomplete) {
             trx_context.leeway = *subjective_cpu_leeway;
          }
@@ -1303,17 +1351,18 @@ struct controller_impl {
                trx_context.enforce_whiteblacklist = false;
             } else {
                bool skip_recording = replay_head_time && (time_point(trn.expiration) <= *replay_head_time);
-               trx_context.init_for_input_trx( trx->packed_trx->get_unprunable_size(),
-                                               trx->packed_trx->get_prunable_size(),
+               trx_context.init_for_input_trx( trx->packed_trx()->get_unprunable_size(),
+                                               trx->packed_trx()->get_prunable_size(),
                                                skip_recording);
             }
 
             trx_context.delay = fc::seconds(trn.delay_sec);
 
             if( check_auth ) {
+               EOS_ASSERT( recovered_keys, missing_auth_exception, "recovered_keys should never be null" );
                authorization.check_authorization(
                        trn.actions,
-                       recovered_keys,
+                       *recovered_keys,
                        {},
                        trx_context.delay,
                        [&trx_context](){ trx_context.checktime(); },
@@ -1329,7 +1378,7 @@ struct controller_impl {
                transaction_receipt::status_enum s = (trx_context.delay == fc::seconds(0))
                                                     ? transaction_receipt::executed
                                                     : transaction_receipt::delayed;
-               trace->receipt = push_receipt(*trx->packed_trx, s, trx_context.billed_cpu_time_us, trace->net_usage);
+               trace->receipt = push_receipt(*trx->packed_trx(), s, trx_context.billed_cpu_time_us, trace->net_usage);
                pending->_block_stage.get<building_block>()._pending_trx_metas.emplace_back(trx);
             } else {
                transaction_receipt_header r;
@@ -1359,7 +1408,7 @@ struct controller_impl {
             }
 
             if (!trx->implicit) {
-               unapplied_transactions.erase( trx->signed_id );
+               unapplied_transactions.erase( trx->signed_id() );
             }
             return trace;
          } catch( const disallowed_transaction_extensions_bad_block_exception& ) {
@@ -1373,7 +1422,7 @@ struct controller_impl {
          }
 
          if (!failure_is_subjective(*trace->except)) {
-            unapplied_transactions.erase( trx->signed_id );
+            unapplied_transactions.erase( trx->signed_id() );
          }
 
          emit( self.accepted_transaction, trx );
@@ -1966,16 +2015,11 @@ struct controller_impl {
       if( pending ) {
          if ( read_mode == db_read_mode::SPECULATIVE ) {
             for( const auto& t : pending->get_trx_metas() )
-               unapplied_transactions[t->signed_id] = t;
+               unapplied_transactions[t->signed_id()] = t;
          }
          pending.reset();
          protocol_features.popped_blocks_to( head->block_num );
       }
-   }
-
-
-   bool should_enforce_runtime_limits()const {
-      return false;
    }
 
    checksum256_type calculate_action_merkle() {

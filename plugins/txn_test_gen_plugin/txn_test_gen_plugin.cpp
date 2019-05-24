@@ -166,21 +166,21 @@ struct txn_test_gen_plugin_impl {
             auto owner_auth   = eosio::chain::authority{1, {{txn_text_receiver_A_pub_key, 1}}, {}};
             auto active_auth  = eosio::chain::authority{1, {{txn_text_receiver_A_pub_key, 1}}, {}};
 
-            trx.actions.emplace_back(vector<chain::permission_level>{{creator,"active"}}, newaccount{creator, newaccountA, owner_auth, active_auth});
+            trx.actions.emplace_back(vector<chain::permission_level>{{creator,name("active")}}, newaccount{creator, newaccountA, owner_auth, active_auth});
             }
             //create "B" account
             {
             auto owner_auth   = eosio::chain::authority{1, {{txn_text_receiver_B_pub_key, 1}}, {}};
             auto active_auth  = eosio::chain::authority{1, {{txn_text_receiver_B_pub_key, 1}}, {}};
 
-            trx.actions.emplace_back(vector<chain::permission_level>{{creator,"active"}}, newaccount{creator, newaccountB, owner_auth, active_auth});
+            trx.actions.emplace_back(vector<chain::permission_level>{{creator,name("active")}}, newaccount{creator, newaccountB, owner_auth, active_auth});
             }
             //create "T" account
             {
             auto owner_auth   = eosio::chain::authority{1, {{txn_text_receiver_C_pub_key, 1}}, {}};
             auto active_auth  = eosio::chain::authority{1, {{txn_text_receiver_C_pub_key, 1}}, {}};
 
-            trx.actions.emplace_back(vector<chain::permission_level>{{creator,"active"}}, newaccount{creator, newaccountT, owner_auth, active_auth});
+            trx.actions.emplace_back(vector<chain::permission_level>{{creator,name("active")}}, newaccount{creator, newaccountT, owner_auth, active_auth});
             }
 
             trx.expiration = cc.head_block_time() + fc::seconds(180);
@@ -199,13 +199,13 @@ struct txn_test_gen_plugin_impl {
             handler.account = newaccountT;
             handler.code.assign(wasm.begin(), wasm.end());
 
-            trx.actions.emplace_back( vector<chain::permission_level>{{newaccountT,"active"}}, handler);
+            trx.actions.emplace_back( vector<chain::permission_level>{{newaccountT,name("active")}}, handler);
 
             {
                setabi handler;
                handler.account = newaccountT;
                handler.abi = fc::raw::pack(json::from_string(contracts::eosio_token_abi().data()).as<abi_def>());
-               trx.actions.emplace_back( vector<chain::permission_level>{{newaccountT,"active"}}, handler);
+               trx.actions.emplace_back( vector<chain::permission_level>{{newaccountT,name("active")}}, handler);
             }
 
             {
@@ -368,7 +368,7 @@ struct txn_test_gen_plugin_impl {
          {
          signed_transaction trx;
          trx.actions.push_back(act_a_to_b);
-         trx.context_free_actions.emplace_back(action({}, config::null_account_name, "nonce", fc::raw::pack( std::to_string(nonce_prefix)+std::to_string(nonce++) )));
+         trx.context_free_actions.emplace_back(action({}, config::null_account_name, name("nonce"), fc::raw::pack( std::to_string(nonce_prefix)+std::to_string(nonce++) )));
          trx.set_reference_block(reference_block_id);
          trx.expiration = cc.head_block_time() + fc::seconds(30);
          trx.max_net_usage_words = 100;
@@ -379,7 +379,7 @@ struct txn_test_gen_plugin_impl {
          {
          signed_transaction trx;
          trx.actions.push_back(act_b_to_a);
-         trx.context_free_actions.emplace_back(action({}, config::null_account_name, "nonce", fc::raw::pack( std::to_string(nonce_prefix)+std::to_string(nonce++) )));
+         trx.context_free_actions.emplace_back(action({}, config::null_account_name, name("nonce"), fc::raw::pack( std::to_string(nonce_prefix)+std::to_string(nonce++) )));
          trx.set_reference_block(reference_block_id);
          trx.expiration = cc.head_block_time() + fc::seconds(30);
          trx.max_net_usage_words = 100;
@@ -445,9 +445,9 @@ void txn_test_gen_plugin::plugin_initialize(const variables_map& options) {
       my->txn_reference_block_lag = options.at( "txn-reference-block-lag" ).as<int32_t>();
       my->thread_pool_size = options.at( "txn-test-gen-threads" ).as<uint16_t>();
       const std::string thread_pool_account_prefix = options.at( "txn-test-gen-account-prefix" ).as<std::string>();
-      my->newaccountA = thread_pool_account_prefix + "a";
-      my->newaccountB = thread_pool_account_prefix + "b";
-      my->newaccountT = thread_pool_account_prefix + "t";
+      my->newaccountA = eosio::chain::name(thread_pool_account_prefix + "a");
+      my->newaccountB = eosio::chain::name(thread_pool_account_prefix + "b");
+      my->newaccountT = eosio::chain::name(thread_pool_account_prefix + "t");
       EOS_ASSERT( my->thread_pool_size > 0, chain::plugin_config_exception,
                   "txn-test-gen-threads ${num} must be greater than 0", ("num", my->thread_pool_size) );
    } FC_LOG_AND_RETHROW()

@@ -155,6 +155,7 @@ public:
       fc::variant                self_delegated_bandwidth;
       fc::variant                refund_request;
       fc::variant                voter_info;
+      fc::variant                rex_info;
    };
 
    struct get_account_params {
@@ -302,7 +303,7 @@ public:
 
    struct get_table_by_scope_params {
       name        code; // mandatory
-      name        table = 0; // optional, act as filter
+      name        table; // optional, act as filter
       string      lower_bound; // lower bound of scope, optional
       string      upper_bound; // upper bound of scope, optional
       uint32_t    limit = 10;
@@ -413,14 +414,14 @@ public:
       read_only::get_table_rows_result result;
       const auto& d = db.db();
 
-      uint64_t scope = convert_to_type<uint64_t>(p.scope, "scope");
+      name scope{ convert_to_type<uint64_t>(p.scope, "scope") };
 
       abi_serializer abis;
       abis.set_abi(abi, abi_serializer_max_time);
       bool primary = false;
       const uint64_t table_with_index = get_table_index_name(p, primary);
       const auto* t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(p.code, scope, p.table));
-      const auto* index_t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(p.code, scope, table_with_index));
+      const auto* index_t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(p.code, scope, name(table_with_index)));
       if( t_id != nullptr && index_t_id != nullptr ) {
          using secondary_key_type = std::result_of_t<decltype(conv)(SecKeyType)>;
          static_assert( std::is_same<typename IndexType::value_type::secondary_key_type, secondary_key_type>::value, "Return type of conv does not match type of secondary key for IndexType" );
@@ -507,7 +508,7 @@ public:
 
       abi_serializer abis;
       abis.set_abi(abi, abi_serializer_max_time);
-      const auto* t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(p.code, scope, p.table));
+      const auto* t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(p.code, name(scope), p.table));
       if( t_id != nullptr ) {
          const auto& idx = d.get_index<IndexType, chain::by_scope_primary>();
          auto lower_bound_lookup_tuple = std::make_tuple( t_id->id, std::numeric_limits<uint64_t>::lowest() );
@@ -516,7 +517,7 @@ public:
          if( p.lower_bound.size() ) {
             if( p.key_type == "name" ) {
                name s(p.lower_bound);
-               std::get<1>(lower_bound_lookup_tuple) = s.value;
+               std::get<1>(lower_bound_lookup_tuple) = s.to_uint64_t();
             } else {
                auto lv = convert_to_type<typename IndexType::value_type::key_type>( p.lower_bound, "lower_bound" );
                std::get<1>(lower_bound_lookup_tuple) = lv;
@@ -526,7 +527,7 @@ public:
          if( p.upper_bound.size() ) {
             if( p.key_type == "name" ) {
                name s(p.upper_bound);
-               std::get<1>(upper_bound_lookup_tuple) = s.value;
+               std::get<1>(upper_bound_lookup_tuple) = s.to_uint64_t();
             } else {
                auto uv = convert_to_type<typename IndexType::value_type::key_type>( p.upper_bound, "upper_bound" );
                std::get<1>(upper_bound_lookup_tuple) = uv;
@@ -760,7 +761,7 @@ FC_REFLECT( eosio::chain_apis::read_only::get_scheduled_transactions_result, (tr
 FC_REFLECT( eosio::chain_apis::read_only::get_account_results,
             (account_name)(head_block_num)(head_block_time)(privileged)(last_code_update)(created)
             (core_liquid_balance)(ram_quota)(net_weight)(cpu_weight)(net_limit)(cpu_limit)(ram_usage)(permissions)
-            (total_resources)(self_delegated_bandwidth)(refund_request)(voter_info) )
+            (total_resources)(self_delegated_bandwidth)(refund_request)(voter_info)(rex_info) )
 // @swap code_hash
 FC_REFLECT( eosio::chain_apis::read_only::get_code_results, (account_name)(code_hash)(wast)(wasm)(abi) )
 FC_REFLECT( eosio::chain_apis::read_only::get_code_hash_results, (account_name)(code_hash) )

@@ -8,7 +8,6 @@ from Node import ReturnType
 from TestHelper import TestHelper
 from testUtils import Account
 
-import urllib.request
 import re
 import os
 import time
@@ -45,10 +44,6 @@ keepLogs=args.keep_logs
 walletMgr=WalletMgr(True)
 cluster=Cluster(walletd=True)
 cluster.setWalletMgr(walletMgr)
-
-def makeSnapshot(nodeId):
-  req = urllib.request.Request("http://127.0.0.1:{}/v1/producer/create_snapshot".format(8888 + int(nodeId)))
-  urllib.request.urlopen(req)
 
 def backupBlksDir(nodeId):
    dataDir = Utils.getNodeDataDir(nodeId)
@@ -353,7 +348,7 @@ try:
          # Relaunch in irreversible mode and create the snapshot
          relaunchNode(nodeToTest, nodeIdOfNodeToTest, chainArg=" --read-mode irreversible")
          confirmHeadLibAndForkDbHeadOfIrrMode(nodeToTest)
-         makeSnapshot(nodeIdOfNodeToTest)
+         nodeToTest.createSnapshot()
          nodeToTest.kill(signal.SIGTERM)
 
          # Start from clean data dir, recover back up blocks, and then relaunch with irreversible snapshot

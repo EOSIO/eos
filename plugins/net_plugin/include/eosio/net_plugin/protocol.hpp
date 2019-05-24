@@ -36,7 +36,7 @@ namespace eosio {
       block_id_type              head_id;
       string                     os;
       string                     agent;
-      int16_t                    generation;
+      int16_t                    generation = 0;
    };
 
 
