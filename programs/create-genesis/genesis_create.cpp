@@ -979,6 +979,8 @@ struct genesis_create::genesis_create_impl final {
                     ("voteshares", c.active.vote_rshares)
                     ("sumcuratorsw", vote_weights_sum[c.id]))
                 ("curators_prcnt", c.active.curation_rewards_percent)
+                ("closed", false)
+                ("mssg_reward", asset(0, symbol(GLS)))
             );
             sum_net_rshares += c.active.net_rshares;
             sum_net_positive += (c.active.net_rshares > 0) ? c.active.net_rshares : 0;
