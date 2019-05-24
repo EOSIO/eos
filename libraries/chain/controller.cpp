@@ -888,6 +888,9 @@ struct controller_impl {
       resource_limits.read_from_snapshot(snapshot);
 
       db.set_revision( head->block_num );
+      db.create<database_header_object>([](const auto& header){
+         // nothing to do
+      });
    }
 
    sha256 calculate_integrity_hash() const {
