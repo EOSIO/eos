@@ -27,7 +27,7 @@ else()
   set(nodeos_BUILD_VERSION 0)
 endif()
 
-configure_file(config.hpp.in config.hpp ESCAPE_QUOTES)
+configure_file(config.hpp.in ${CMAKE_CURRENT_BINARY_DIR}/config.hpp ESCAPE_QUOTES)
 
 target_include_directories(${NODE_EXECUTABLE_NAME} PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
 

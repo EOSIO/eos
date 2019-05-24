@@ -6,6 +6,10 @@
 #pragma once
 
 namespace eosio { namespace client { namespace config {
+   constexpr char cleos_version_full[] = "${VERSION_FULL}";
+   constexpr char cleos_build_hash[]   = "${cleos_BUILD_HASH}";
+   constexpr char cleos_build_dirty[]  = "${cleos_BUILD_DIRTY}";
+         
    constexpr char version_str[] = "${cleos_BUILD_VERSION}";
    constexpr char locale_path[] = "${LOCALEDIR}";
    constexpr char locale_domain[] = "${LOCALEDOMAIN}";

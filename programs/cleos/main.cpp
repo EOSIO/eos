@@ -2366,8 +2366,16 @@ int main( int argc, char** argv ) {
    auto version = app.add_subcommand("version", localized("Retrieve version information"), false);
    version->require_subcommand();
 
-   version->add_subcommand("client", localized("Retrieve version information of the client"))->set_callback([] {
-     std::cout << localized("Build version: ${ver}", ("ver", eosio::client::config::version_str)) << std::endl;
+   version->add_subcommand("client", localized("Retrieve basic version information of the client"))->set_callback([] {
+      std::string version_string{ localized("${str}", ("str", eosio::client::config::cleos_version_full)) };
+      std::cout << version_string << '\n';
+   });
+
+   version->add_subcommand("full", localized("Retrieve full version information of the client"))->set_callback([] {
+      std::string version_string{localized("${str}", ("str", eosio::client::config::cleos_version_full)) + "-" +
+                                 localized("${str}", ("str", eosio::client::config::cleos_build_hash))   +
+                                 localized("${str}", ("str", eosio::client::config::cleos_build_dirty))};
+      std::cout << version_string << '\n';
    });
 
    // Create subcommand

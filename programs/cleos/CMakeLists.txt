@@ -16,9 +16,16 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../../.git)
     execute_process(
       COMMAND ${GIT_EXECUTABLE} rev-parse --short=8 HEAD
       WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../.."
-      OUTPUT_VARIABLE "cleos_BUILD_VERSION"
+      OUTPUT_VARIABLE "cleos_BUILD_HASH"
       ERROR_QUIET
       OUTPUT_STRIP_TRAILING_WHITESPACE)
+    execute_process(
+      COMMAND ${GIT_EXECUTABLE} describe --tags --dirty
+      WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../.."
+      OUTPUT_VARIABLE "cleos_BUILD_DIRTY"
+      ERROR_QUIET
+      OUTPUT_STRIP_TRAILING_WHITESPACE)
+    string(REGEX MATCH "-dirty$" cleos_BUILD_DIRTY "${cleos_BUILD_DIRTY}")
     message(STATUS "Git commit revision: ${cleos_BUILD_VERSION}")
   else()
     set(cleos_BUILD_VERSION 0)
