@@ -27,7 +27,8 @@ getInfoCmd="./programs/cleos/cleos get info"
 
 def run_and_kill(extraCmd="", killsig=signal.SIGTERM, preCmd=""):
     #ensure port 8888 is free
-    tries = 30
+    print("waiting port 8888 to be freed")
+    tries = 90
     while (tries > 0):
         try:
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -38,21 +39,24 @@ def run_and_kill(extraCmd="", killsig=signal.SIGTERM, preCmd=""):
             tries = 0
         except:
             tries = tries - 1
-            time.sleep(3)
+            time.sleep(1)
     # now start nodeos
     cmdArr= preCmd + nodeosCmd + extraCmd
-    proc=subprocess.Popen(cmdArr, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-    tries = 10
+    print("port is free now, start to run nodeosCmd with extra parameter \"%s\"" % (extraCmd))
+    proc=subprocess.Popen(cmdArr, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, preexec_fn=os.setsid)
+    tries = 20
     ok = False
     while (tries > 0):
-        time.sleep(2)
+        time.sleep(1)
         reply = Utils.checkOutput(shlex.split(getInfoCmd), ignoreError=True)
         if reply.find("server_version") != -1:
             ok = True
+            time.sleep(1)
             break
         tries = tries - 1
-    os.kill(proc.pid, killsig)
-    print("executed nodeosCmd with extra parameter \"%s\", killsig %d, result %d" % (extraCmd, killsig, ok))
+    if ok is True:
+        os.killpg(os.getpgid(proc.pid), killsig)
+    print("got result %d, killed with signal %d" % (ok, killsig))
     return ok
 
 print("=== db_modes_test.py starts ===")
