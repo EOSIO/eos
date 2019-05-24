@@ -719,7 +719,7 @@ void chain_plugin::plugin_startup()
       } else {
          my->chain->startup(shutdown);
       }
-      if (my->replace_producer_keys) {
+      if (my->replace_producer_keys && !shutdown()) {
          my->chain->replace_producer_keys(*my->replace_producer_keys);
       }
    } catch (const database_guard_exception& e) {
