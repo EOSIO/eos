@@ -257,6 +257,7 @@ bool yubihsm_wallet::import_key(string wif_key) {
 }
 
 string yubihsm_wallet::create_key(string key_type) {
+   EOS_ASSERT(key_type.empty() || key_type == "R1", chain::unsupported_key_type_exception, "YubiHSM wallet only supports R1 keys");
    return (string)my->create();
 }
 
