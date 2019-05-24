@@ -939,19 +939,21 @@ struct genesis_create::genesis_create_impl final {
         }
 
         db.start_section(_info.golos.names.posting, N(permlink), "permlink", _visitor.permlinks.size());
-        fc::flat_map<std::pair<acc_idx,plk_idx>, uint64_t> post_ids;
+        auto key = [](acc_idx a, plk_idx p) { return uint64_t(a) << 32 | p; };
+        std::unordered_map<uint64_t, uint64_t> post_ids;
+        post_ids.reserve(_visitor.permlinks.size());
         for (const auto& cp : _visitor.permlinks) {
             const auto& c = cp.second;
             pk = cp.first;
             db.insert(pk, name_by_idx(c.author), mvo
                 ("id", pk)
                 ("parentacc", name_by_idx(c.parent_author))
-                ("parent_id", post_ids[{c.parent_author, c.parent_permlink}])
+                ("parent_id", post_ids[key(c.parent_author, c.parent_permlink)])
                 ("value", _plnk_map[c.permlink])
                 ("level", c.depth)
                 ("childcount", c.children)
             );
-            post_ids[{c.author, c.permlink}] = pk;
+            post_ids[key(c.author, c.permlink)] = pk;
         }
         post_ids.clear();
         _visitor.permlinks.clear();
