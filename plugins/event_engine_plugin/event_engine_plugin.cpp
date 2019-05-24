@@ -359,7 +359,8 @@ void event_engine_plugin::plugin_startup() {
        for(const auto& file: my->genesis_files) {
            my->send_genesis_file(file);
        }
-       my->send_message(GenesisEndMessage(BaseMessage::GenesisEnd));
+       GenesisDataMessage msg(BaseMessage::GenesisData, core_genesis_code, N(dataend), fc::variant_object());
+       my->send_message(msg);
    }
 }
 
