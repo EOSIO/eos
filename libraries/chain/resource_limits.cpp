@@ -335,7 +335,7 @@ uint64_t resource_limits_manager::get_account_balance(fc::time_point pending_blo
     const auto& state  = _chaindb.get<resource_limits_state_object>();
     auto res_usage = get_account_usage(account);
         
-    uint64_t cost = 0;
+    uint64_t cost = resources_num;
     for (size_t i = 0; i < resources_num; i++) {
         auto add = safe_prop(res_usage[i], prices[i].numerator, prices[i].denominator);
         cost = (UINT64_MAX - cost) > add ? cost + add : UINT64_MAX;
