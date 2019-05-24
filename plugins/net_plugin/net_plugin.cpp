@@ -881,12 +881,14 @@ namespace eosio {
       string type = colon2 == string::npos ? "" : end == string::npos ?
             peer_add.substr( colon2 + 1 ) : peer_add.substr( colon2 + 1, end - (colon2 + 1) );
 
-      fc_ilog( logger, "Setting connection type for: ${peer}", ("peer", peer_add) );
       if( type.empty() ) {
+         fc_ilog( logger, "Setting connection type for: ${peer} to both transactions and blocks", ("peer", peer_add) );
          connection_type = both;
       } else if( type == "trx" ) {
+         fc_ilog( logger, "Setting connection type for: ${peer} to transactions only", ("peer", peer_add) );
          connection_type = transactions_only;
       } else if( type == "blk" ) {
+         fc_ilog( logger, "Setting connection type for: ${peer} to blocks only", ("peer", peer_add) );
          connection_type = blocks_only;
       } else {
          fc_wlog( logger, "Unknown connection type: ${t}", ("t", type) );
