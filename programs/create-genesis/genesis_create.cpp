@@ -866,23 +866,6 @@ struct genesis_create::genesis_create_impl final {
     void store_posts() {
         ilog("Creating reward pool, posts & votes...");
 
-        // store pool
-        const auto& gp = _visitor.gpo;
-        const int n = _visitor.comments.size();     // messages count
-        uint128_t total_rshares = fix_fc128(gp.total_reward_shares2);
-        primary_key_t pk = 0;                       // created
-        db.start_section(_info.golos.names.posting, N(rewardpools), "rewardpool", 1);
-        db.insert(pk, _info.golos.names.posting, mvo
-            ("created", pk)
-            ("rules", _info.params.posting_rules)
-            ("state", mvo
-                ("msgs", n)
-                ("funds", gp.total_reward_fund_steem)
-                ("rshares", total_rshares)
-                ("rsharesfn", total_rshares)
-            )
-        );
-
         // first create lookup table to find author by post id
         fc::flat_map<uint64_t, name> authors;           // post_id:name
         for (const auto& c : _visitor.comments) {
@@ -892,6 +875,7 @@ struct genesis_create::genesis_create_impl final {
         // store votes
         fc::flat_map<uint64_t, uint64_t> vote_weights_sum;
         db.start_section(_info.golos.names.posting, N(vote), "voteinfo", _visitor.votes.size());
+        primary_key_t pk = 0;
         for (const auto& v: _visitor.votes) {
             std::vector<mvo> delegators;
             for (const auto& d: v.delegator_vote_interest_rates) {
@@ -927,6 +911,7 @@ struct genesis_create::genesis_create_impl final {
             pk++;
         }
         // store messages
+        const int n = _visitor.comments.size();     // messages count
         db.start_section(config::system_account_name, N(gtransaction), "generated_transaction_object", n);
         transaction tx{};
         tx.actions.emplace_back(action{
@@ -969,6 +954,8 @@ struct genesis_create::genesis_create_impl final {
         }
 
         db.start_section(_info.golos.names.posting, N(message), "message", n);
+        uint128_t sum_net_rshares = 0;
+        uint128_t sum_net_positive = 0;
         using beneficiary = std::pair<name,uint16_t>;
         for (const auto& cp : _visitor.comments) {
             const auto& c = cp.second;
@@ -993,7 +980,28 @@ struct genesis_create::genesis_create_impl final {
                     ("sumcuratorsw", vote_weights_sum[c.id]))
                 ("curators_prcnt", c.active.curation_rewards_percent)
             );
+            sum_net_rshares += c.active.net_rshares;
+            sum_net_positive += (c.active.net_rshares > 0) ? c.active.net_rshares : 0;
         }
+        // invariant
+        const auto& gp = _visitor.gpo;
+        uint128_t total_rshares = fix_fc128(gp.total_reward_shares2);
+        EOS_ASSERT(total_rshares == sum_net_positive, genesis_exception,
+            "GPO total rshares ${t} do not match to sum from posts ${s}", ("t", total_rshares)("s", sum_net_positive));
+
+        // store pool
+        pk = 0;
+        db.start_section(_info.golos.names.posting, N(rewardpools), "rewardpool", 1);
+        db.insert(pk, _info.golos.names.posting, mvo
+            ("created", pk)
+            ("rules", _info.params.posting_rules)
+            ("state", mvo
+                ("msgs", n)
+                ("funds", gp.total_reward_fund_steem)
+                ("rshares", sum_net_rshares)
+                ("rsharesfn", total_rshares)
+            )
+        );
 
         _visitor.comments.clear();
         _visitor.votes.clear();
