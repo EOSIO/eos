@@ -937,21 +937,23 @@ struct genesis_create::genesis_create_impl final {
             });
         }
 
-        db.start_section(_info.golos.names.posting, N(permlink), "permlink", n);
+        db.start_section(_info.golos.names.posting, N(permlink), "permlink", _visitor.permlinks.size());
         fc::flat_map<std::pair<acc_idx,plk_idx>, uint64_t> post_ids;
-        for (const auto& cp : _visitor.comments) {
+        for (const auto& cp : _visitor.permlinks) {
             const auto& c = cp.second;
-            pk = c.id;
-            db.insert(pk, name_by_acc(c.author), mvo
+            pk = cp.first;
+            db.insert(pk, name_by_idx(c.author), mvo
                 ("id", pk)
-                ("parentacc", name_by_acc(c.parent_author))
-                ("parent_id", post_ids[{c.parent_author.id, c.parent_permlink.id}])
-                ("value", c.permlink.str(_plnk_map))
-                ("level", c.active.depth)
-                ("childcount", c.active.children)
+                ("parentacc", name_by_idx(c.parent_author))
+                ("parent_id", post_ids[{c.parent_author, c.parent_permlink}])
+                ("value", _plnk_map[c.permlink])
+                ("level", c.depth)
+                ("childcount", c.children)
             );
-            post_ids[{c.author.id, c.permlink.id}] = pk;
+            post_ids[{c.author, c.permlink}] = pk;
         }
+        post_ids.clear();
+        _visitor.permlinks.clear();
 
         db.start_section(_info.golos.names.posting, N(message), "message", n);
         uint128_t sum_net_rshares = 0;
