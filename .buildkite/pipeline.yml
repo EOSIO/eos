@@ -67,7 +67,7 @@ steps:
     timeout: 120
     retry:
       automatic:
-        - exit_status: 17 # failed to open image, error 2
+        - exit_status: -1
           limit: 2
 
   - label: ":aws: Amazon Linux 2 Build"
@@ -172,7 +172,7 @@ steps:
     timeout: 120
     retry:
       automatic:
-        - exit_status: 17 # failed to open image, error 2
+        - exit_status: -1
           limit: 2
 
   - label: ":darwin: [Darwin] Mojave NP Tests"
@@ -194,7 +194,7 @@ steps:
     timeout: 120
     retry:
       automatic:
-        - exit_status: 17 # failed to open image, error 2
+        - exit_status: -1
           limit: 2
           
   # AmazonLinux #
