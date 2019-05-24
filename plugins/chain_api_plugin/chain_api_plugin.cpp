@@ -173,21 +173,24 @@ namespace {
 
     public:
 
-        resource_calculator(chain::resource_limits_manager& rm, chain::account_name name) :
-            rm_(rm),
-            account_(name),
-            prices_(rm.get_pricelist()),
-            total_stake_(rm.get_account_stake_ratio(fc::time_point::now(), account_, false).numerator),
-            account_balance_(rm.get_account_balance(fc::time_point::now(), account_,prices_, false)),
-            //storage_usage_(rm.get_account_storage_usage(name)),
-            resources_usage_(rm.get_account_usage(name)),
-            resources_info_(chain::resource_limits::resources_num),
-            resource_limits_(chain::resource_limits::resources_num),
-            resources_stake_parts_(chain::resource_limits::resources_num) {
-                init_resources_info();
-                init_account_resource_limits();
-                init_resources_available_stake_part();
-                //init_ram_qouta();
+        resource_calculator(chain::resource_limits_manager& rm, chain::account_name name) 
+        : rm_(rm),
+          account_(name),
+          prices_(rm.get_pricelist()),
+          total_stake_(rm.get_account_stake_ratio(fc::time_point::now(), account_, false).numerator),
+          //storage_usage_(rm.get_account_storage_usage(name)),
+          resources_usage_(rm.get_account_usage(name)),
+          resources_info_(chain::resource_limits::resources_num),
+          resource_limits_(chain::resource_limits::resources_num),
+          resources_stake_parts_(chain::resource_limits::resources_num) {
+            init_resources_info();
+            init_account_resource_limits();
+            init_resources_available_stake_part();
+            //init_ram_qouta();
+            try {
+                account_balance_ = rm.get_account_balance(fc::time_point::now(), account_,prices_, false);
+            } catch(...) {
+            }
         }
 
         const account_resource_limit& get_net_limit() const {
@@ -294,7 +297,7 @@ namespace {
         chain::account_name account_;
         std::vector<chain::resource_limits::ratio> prices_;
         uint64_t total_stake_;
-        uint64_t account_balance_;
+        uint64_t account_balance_ = 0;
         //chain::resource_limits::account_storage_usage storage_usage_;
         std::vector<uint64_t> resources_usage_;
         std::vector<resource_info> resources_info_;
