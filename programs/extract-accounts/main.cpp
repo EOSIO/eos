@@ -14,11 +14,19 @@ using namespace eosio::chain;
 
 struct fake_account_object {
    account_name         name;
+   uint8_t              vm_type;
+   uint8_t              vm_version;
+   bool                 privileged;
+
+   time_point           last_code_update;
+   digest_type          code_version;
    block_timestamp_type creation_date;
+
+   vector<char>         code;
    vector<char>         abi;
 };
 
-FC_REFLECT(fake_account_object, (name)(creation_date)(abi))
+FC_REFLECT(fake_account_object, (name)(vm_type)(vm_version)(privileged)(last_code_update)(code_version)(creation_date)(code)(abi))
 
 
 int main(int argc, char** argv) { try {
