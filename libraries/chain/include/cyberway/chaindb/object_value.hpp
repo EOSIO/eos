@@ -16,7 +16,6 @@ namespace cyberway { namespace chaindb {
     struct service_state final {
         primary_key_t  pk       = primary_key::Unset;
         account_name_t payer    = 0;
-        account_name_t owner    = 0;
         int            size     = 0;
         bool           in_ram   = true;
 
@@ -33,7 +32,6 @@ namespace cyberway { namespace chaindb {
 
         revision_t     undo_revision = impossible_revision;
         account_name_t undo_payer    = 0;
-        account_name_t undo_owner    = 0;
         size_t         undo_size     = 0;
         bool           undo_in_ram   = true;
 
@@ -89,4 +87,4 @@ namespace cyberway { namespace chaindb {
 } } // namespace cyberway::chaindb
 
 FC_REFLECT_ENUM(cyberway::chaindb::undo_record, (Unknown)(OldValue)(RemovedValue)(NewValue)(NextPk))
-FC_REFLECT(cyberway::chaindb::service_state, (owner)(size)(in_ram))
+FC_REFLECT(cyberway::chaindb::service_state, (payer)(size)(in_ram))

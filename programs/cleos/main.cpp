@@ -204,10 +204,11 @@ bool   no_auto_keosd = false;
 
 uint8_t  tx_max_cpu_usage = 0;
 uint32_t tx_max_net_usage = 0;
+uint32_t tx_max_ram_usage = 0;
+uint32_t tx_max_storage_usage = 0;
 uint32_t delaysec = 0;
 
 vector<string> bandwidth_provider;
-vector<string> ram_providers;
 
 struct resolved_name_info {
     string domain;
@@ -291,6 +292,8 @@ void add_standard_transaction_options(CLI::App* cmd, string default_permission =
 
    cmd->add_option("--max-cpu-usage-ms", tx_max_cpu_usage, localized("set an upper limit on the milliseconds of cpu usage budget, for the execution of the transaction (defaults to 0 which means no limit)"));
    cmd->add_option("--max-net-usage", tx_max_net_usage, localized("set an upper limit on the net usage budget, in bytes, for the transaction (defaults to 0 which means no limit)"));
+   cmd->add_option("--max-ram-usage", tx_max_ram_usage, localized("set an upper limit on the ram usage budget, in bytes, for the transaction (defaults to 0 which means no limit)"));
+   cmd->add_option("--max-storage-usage", tx_max_storage_usage, localized("set an upper limit on the storage usage budget, in bytes, for the transaction (defaults to 0 which means no limit)"));
 
    cmd->add_option("--delay-sec", delaysec, localized("set the delay_sec seconds, defaults to 0s"));
 
@@ -328,29 +331,6 @@ bandwidth_providers get_bandwidth_providers(const vector<string>& providers) {
    }
    return bandwidthProviders;
 }
-
-struct provide_ram_params {
-    provide_ram_params(const string& providers) {
-        vector<string> pieces;
-        split(pieces, providers, boost::algorithm::is_any_of("/"));
-        if (pieces.size() != 2) {
-           std::cerr << localized("Ram provider ${p} not in 'account/provider[@permission]' form", ("p", providers)) << std::endl;
-           return;
-        }
-        actor = pieces[0];
-
-        std::vector<string> provider_and_authority;
-        split(provider_and_authority, pieces[1], boost::algorithm::is_any_of("@"));
-
-        provider = provider_and_authority[0];
-        permission.permission = provider_and_authority.size() == 1 ? "active" : provider_and_authority[1];
-        permission.actor = provider;
-    }
-
-    account_name provider;
-    account_name actor;
-    chain::permission_level permission;
-};
 
 vector<chain::permission_level> get_account_permissions(const vector<string>& permissions, const chain::permission_level& default_permission) {
    if (permissions.empty())
@@ -445,6 +425,8 @@ fc::variant push_transaction( signed_transaction& trx, int32_t extra_kcpu = 1000
 
       trx.max_cpu_usage_ms = tx_max_cpu_usage;
       trx.max_net_usage_words = (tx_max_net_usage + 7)/8;
+      trx.max_ram_kbytes = tx_max_ram_usage >> 10;
+      trx.max_storage_kbytes = tx_max_storage_usage >> 10;
       trx.delay_sec = delaysec;
 
       if (!bandwidth_provider.empty()) {
@@ -454,16 +436,6 @@ fc::variant push_transaction( signed_transaction& trx, int32_t extra_kcpu = 1000
                 vector<chain::permission_level>{prov.second},
                 cyberway::chain::providebw{prov.second.actor, prov.first} );
          }
-      }
-
-      if (!ram_providers.empty()) {
-          for (const auto& ram_provider : ram_providers) {
-              const provide_ram_params provide_params(ram_provider);
-              trx.actions.emplace_back(
-                  vector<chain::permission_level>{provide_params.permission},
-                  cyberway::chain::provideram{provide_params.provider, provide_params.actor});
-          }
-
       }
 
         bool declare_names = !tx_dont_declare_names && tx_resolved_names.size() > 0;
@@ -702,28 +674,38 @@ void print_result( const fc::variant& result ) { try {
          string status = processed["receipt"].is_object() ? processed["receipt"]["status"].as_string() : "failed";
          int64_t net = -1;
          int64_t cpu = -1;
+         int64_t ram = -1;
+         int64_t storage = -1;
+         bool has_receipt = false;
          if( processed.get_object().contains( "receipt" )) {
             const auto& receipt = processed["receipt"];
             if( receipt.is_object()) {
+               has_receipt = true;
                net = receipt["net_usage_words"].as_int64() * 8;
                cpu = receipt["cpu_usage_us"].as_int64();
+               ram = receipt["ram_kbytes"].as_int64() << 10;
+               storage = receipt["storage_kbytes"].as_int64() << 10;
             }
          }
 
          cerr << status << " transaction: " << transaction_id << "  ";
-         if( net < 0 ) {
-            cerr << "<unknown>";
-         } else {
-            cerr << net;
-         }
-         cerr << " bytes  ";
-         if( cpu < 0 ) {
-            cerr << "<unknown>";
-         } else {
-            cerr << cpu;
-         }
 
-         cerr << " us\n";
+         auto print_usage = [&]( const int64_t& value, const char* units ) {
+            cerr << "  ";
+            if( !has_receipt ) {
+               cerr << "<unknown>";
+            } else {
+               cerr << value;
+            }
+            cerr << " " << units;
+         };
+
+         print_usage(net, "bytes");
+         print_usage(cpu, "us");
+         print_usage(ram, "bytes");
+         print_usage(storage, "bytes");
+
+         cerr << std::endl;
 
          if( status == "failed" ) {
             auto soft_except = processed["except"].as<optional<fc::exception>>();
@@ -2088,8 +2070,6 @@ CLI::callback_t header_opt_callback = [](CLI::results_t res) {
    return true;
 };
 
-#include "set_ram_subcommand.hpp"
-
 int main( int argc, char** argv ) {
    setlocale(LC_ALL, "");
    bindtextdomain(locale_domain, locale_path);
@@ -2700,8 +2680,6 @@ int main( int argc, char** argv ) {
    contractSubcommand->add_option("wasm-file", wasmPath, localized("The file containing the contract WASM relative to contract-dir"));
 //                     ->check(CLI::ExistingFile);
 
-   auto ramSubcommand = set_ram_subcommand(setSubcommand);
-
    auto abi = contractSubcommand->add_option("abi-file,-a,--abi", abiPath, localized("The ABI for the contract relative to contract-dir"));
 //                                ->check(CLI::ExistingFile);
    contractSubcommand->add_flag( "-c,--clear", contract_clear, localized("Rmove contract on an account"));
@@ -3254,6 +3232,8 @@ int main( int argc, char** argv ) {
       trx.ref_block_prefix = 0;
       trx.max_net_usage_words = 0;
       trx.max_cpu_usage_ms = 0;
+      trx.max_ram_kbytes = 0;
+      trx.max_storage_kbytes = 0;
       trx.delay_sec = 0;
       trx.actions = { chain::action(trxperm, name(proposed_contract), name(proposed_action), proposed_trx_serialized) };
 

@@ -88,7 +88,6 @@ namespace cyberway { namespace chaindb {
         if (!size) {
             size = chaindb::calc_storage_usage(*table.table, obj.value);
         }
-        delta = 0;
     }
 
     void storage_payer_info::add_usage() {
@@ -97,22 +96,24 @@ namespace cyberway { namespace chaindb {
         } else if (BOOST_LIKELY(!!apply_ctx)) {
             apply_ctx->add_storage_usage(*this);
         } else if (!!transaction_ctx) {
-            transaction_ctx->add_storage_usage(*this);
+            transaction_ctx->add_storage_usage(*this, false);
         } else if (!!resource_mng) {
-            resource_mng->add_storage_usage(payer, delta, time_slot);
+            resource_mng->add_storage_usage(payer, delta, time_slot, false);
         }
     }
 
     void storage_payer_info::get_payer_from(const object_value& obj) {
-        owner  = obj.service.owner;
-        payer  = obj.service.payer;
-        size   = obj.service.size;
-        in_ram = obj.service.in_ram;
+        if (owner.empty()) {
+            owner = obj.service.payer;
+        }
+
+        if (payer.empty()) {
+            payer = obj.service.payer;
+        }
     }
 
     void storage_payer_info::set_payer_in(object_value& obj) const {
-        obj.service.owner  = owner;
-        obj.service.payer  = payer;
+        obj.service.payer  = owner;
         obj.service.size   = size;
         obj.service.in_ram = in_ram;
     }
@@ -357,7 +358,7 @@ namespace cyberway { namespace chaindb {
             return delta;
         }
 
-        void recalc_ram_usage(cache_object& itm, storage_payer_info storage) {
+        void change_ram_state(cache_object& itm, storage_payer_info storage) {
             auto table = get_table(itm);
             auto obj = itm.object();
             auto orig_obj = object_by_pk(table, obj.pk());
@@ -568,7 +569,7 @@ namespace cyberway { namespace chaindb {
 
             charge.calc_usage(table, obj);
             charge.in_ram = true;
-            charge.delta  = charge.size;
+            charge.delta += charge.size;
 
             // insert object to storage
             charge.set_payer_in(obj);
@@ -576,8 +577,8 @@ namespace cyberway { namespace chaindb {
 
             undo_.insert(table, obj);
 
+            // don't charge on genesis
             if (undo_.revision() != start_revision) {
-                // charge the payer
                 charge.add_usage();
             }
 
@@ -587,36 +588,12 @@ namespace cyberway { namespace chaindb {
         int update(const table_info& table, storage_payer_info charge, object_value& obj, object_value orig_obj) {
             validate_object(table, obj, obj.pk());
 
-            if (charge.owner.empty()) {
-                charge.owner = orig_obj.service.owner;
-            }
-
-            if (charge.payer.empty()) {
-                charge.payer = orig_obj.service.payer;
-            }
-
+            charge.get_payer_from(orig_obj);
             charge.calc_usage(table, obj);
-            auto delta = charge.size - orig_obj.service.size;
+            charge.delta += charge.size - orig_obj.service.size;
 
-            if (charge.payer  != orig_obj.service.payer ||
-                charge.owner  != orig_obj.service.owner ||
-                charge.in_ram != orig_obj.service.in_ram
-            ) {
-                auto refund = charge;
-                refund.get_payer_from(orig_obj);
-                refund.delta = -orig_obj.service.size;
-                if (undo_.revision() != start_revision) {
-                    // refund the existing payer
-                    refund.add_usage();
-                }
-
-                charge.delta = charge.size;
-            } else {
-                charge.delta = delta;
-            }
-
+            // don't charge on genesis
             if (undo_.revision() != start_revision) {
-                // charge the new payer
                 charge.add_usage();
             }
 
@@ -626,14 +603,15 @@ namespace cyberway { namespace chaindb {
 
             undo_.update(table, std::move(orig_obj), obj);
 
-            return delta;
+            return charge.delta;
         }
 
         int remove(const table_info& table, storage_payer_info refund, object_value orig_obj) {
             auto pk = orig_obj.pk();
 
             refund.get_payer_from(orig_obj);
-            refund.delta  = -orig_obj.service.size;
+            refund.size  =  orig_obj.service.size;
+            refund.delta = -orig_obj.service.size;
 
             // refund the payer
             refund.add_usage();
@@ -813,8 +791,8 @@ namespace cyberway { namespace chaindb {
         return impl_->remove(itm, storage);
     }
 
-    void chaindb_controller::recalc_ram_usage(cache_object& itm, const storage_payer_info& storage) const {
-        impl_->recalc_ram_usage(itm, storage);
+    void chaindb_controller::change_ram_state(cache_object& itm, const storage_payer_info& storage) const {
+        impl_->change_ram_state(itm, storage);
     }
 
     variant chaindb_controller::value_by_pk(const table_request& request, primary_key_t pk) const {

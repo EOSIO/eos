@@ -19,6 +19,7 @@ struct contract_abicode {
     bytes abi;
     bytes code;
     fc::sha256 code_hash;
+    fc::sha256 abi_hash;
 };
 using contracts_map = std::map<name, contract_abicode>;
 

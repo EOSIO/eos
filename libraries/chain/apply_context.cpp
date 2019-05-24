@@ -108,9 +108,6 @@ void apply_context::exec_one( action_trace& trace )
 
 void apply_context::finalize_trace( action_trace& trace, const fc::time_point& start )
 {
-   trace.account_ram_deltas = std::move( _account_ram_deltas );
-   _account_ram_deltas.clear();
-
    trace.console = _pending_console_output.str();
    reset_console();
 
@@ -404,9 +401,10 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
    if ( auto ptr = chaindb.find<generated_transaction_object,by_sender_id>(boost::make_tuple(receiver, sender_id)) ) {
       EOS_ASSERT( replace_existing, deferred_tx_duplicate, "deferred transaction with the same sender_id and payer already exists" );
 
-      // TODO: Remove the following subjective check when the deferred trx replacement RAM bug has been fixed with a hard fork.
-      EOS_ASSERT( !control.is_producing_block(), subjective_block_production_exception,
-                  "Replacing a deferred transaction is temporarily disabled." );
+// TODO: Removed by CyberWay
+//      // TODO: Remove the following subjective check when the deferred trx replacement RAM bug has been fixed with a hard fork.
+//      EOS_ASSERT( !control.is_producing_block(), subjective_block_production_exception,
+//                  "Replacing a deferred transaction is temporarily disabled." );
 
 // TODO: Removed by CyberWay
 //      // TODO: The logic of the next line needs to be incorporated into the next hard fork.
@@ -453,43 +451,6 @@ bool apply_context::cancel_deferred_transaction( const uint128_t& sender_id, acc
 
 void apply_context::push_event( event evt ) {
    _events.emplace_back(std::move(evt));
-}
-
-uint64_t apply_context::save_record( const char* data, size_t data_len ) {
-   auto block_state = control.pending_block_state();
-   
-   EOS_ASSERT(block_state && block_state->block, block_validate_exception,
-       "No pending block to save archive record");
-
-   auto block = block_state->block;
-   int id = block->archive_records.size() + 1;
-   block->archive_records.emplace_back(receiver, vector<char>(data, data+data_len));
-
-   return (static_cast<uint64_t>(block->block_num()) << 32) | id;
-}
-
-int apply_context::lookup_record( uint64_t rec_id, account_name code, char* buffer, size_t buffer_size) {
-   uint32_t block_num = rec_id >> 32;
-   uint32_t id = static_cast<uint32_t>(rec_id) - 1;
-
-   auto block = control.fetch_block_by_number(block_num);
-   if( !block || id >= block->archive_records.size() ) {
-       return -1;
-   }
-
-   auto &record = block->archive_records[id];
-   if( record.code != code ) {
-       return -1;
-   }
-
-   if( buffer == nullptr || buffer_size == 0) {
-       return record.data.size();
-   }
-
-   auto copy_size = std::min( buffer_size, record.data.size() );
-   memcpy( buffer, record.data.data(), copy_size );
-
-   return copy_size;
 }
 
 // TODO: Removed by CyberWay
@@ -543,28 +504,25 @@ storage_payer_info apply_context::get_storage_payer( account_name owner, account
        payer = owner;
    }
 
-   return {*this, owner, trx_context.get_ram_provider(payer)};
+   return {*this, owner, trx_context.get_storage_provider(payer)};
 }
 
 void apply_context::add_storage_usage( const storage_payer_info& storage ) {
+   bool is_authorized = false;
+
    if( storage.delta > 0 ) {
       if( !(privileged || storage.payer == receiver) ) {
          EOS_ASSERT( control.is_ram_billing_in_notify_allowed() || (receiver == act.account), subjective_block_production_exception,
              "Cannot charge RAM to other accounts during notify." );
          require_authorization( storage.payer );
       }
+
+      is_authorized = true;
+   } else {
+      is_authorized = has_authorization( storage.payer );
    }
 
-   trx_context.add_storage_usage( storage );
-
-   if( !storage.in_ram ) {
-      return;
-   }
-
-   auto p = _account_ram_deltas.emplace( storage.payer, storage.delta );
-   if( !p.second && storage.delta) {
-      p.first->delta += storage.delta;
-   }
+   trx_context.add_storage_usage( storage, is_authorized );
 }
 
 int apply_context::get_action( uint32_t type, uint32_t index, char* buffer, size_t buffer_size )const

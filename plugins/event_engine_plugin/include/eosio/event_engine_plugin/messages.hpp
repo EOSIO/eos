@@ -42,9 +42,11 @@ namespace eosio {
 
        chain::transaction_id_type         id;
        fc::enum_type<uint8_t,status_enum> status;
-       uint32_t                           cpu_usage_us;
+       fc::unsigned_int                   cpu_usage_us;
        fc::unsigned_int                   net_usage_words;
-       uint64_t                           ram_kbytes;
+       fc::unsigned_int                   ram_kbytes;
+       fc::signed_int                     storage_kbytes;
+
 
        TrxReceipt(const chain::transaction_id_type &id, const chain::transaction_receipt &receipt)
        : id(id)
@@ -52,6 +54,7 @@ namespace eosio {
        , cpu_usage_us(receipt.cpu_usage_us)
        , net_usage_words(receipt.net_usage_words)
        , ram_kbytes(receipt.ram_kbytes)
+       , storage_kbytes(receipt.storage_kbytes)
        { }
     };
 
@@ -168,7 +171,7 @@ namespace eosio {
 FC_REFLECT(eosio::EventData, (code)(event)(data)(args))
 FC_REFLECT(eosio::ActionData, (receiver)(code)(action)(data)(args)(events))
 FC_REFLECT(eosio::TrxMetadata, (id)(accepted)(implicit)(scheduled))
-FC_REFLECT(eosio::TrxReceipt, (id)(status)(cpu_usage_us)(net_usage_words))
+FC_REFLECT(eosio::TrxReceipt, (id)(status)(cpu_usage_us)(net_usage_words)(ram_kbytes)(storage_kbytes))
 
 FC_REFLECT_ENUM(eosio::BaseMessage::MsgType, (Unknown)(GenesisData)(GenesisEnd)(AcceptBlock)(CommitBlock)(AcceptTrx)(ApplyTrx))
 FC_REFLECT(eosio::BaseMessage, (msg_type))

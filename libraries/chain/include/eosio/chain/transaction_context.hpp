@@ -9,7 +9,7 @@ namespace cyberway { namespace chaindb {
 } } // namespace cyberway::chaindb
 
 namespace cyberway { namespace chain {
-    struct provideram;
+    struct providebw;
 } } // namespace cyberway::chaindb
 
 namespace eosio { namespace chain {
@@ -92,12 +92,16 @@ namespace eosio { namespace chain {
             available_resources.add_net_usage(u);
             available_resources.check_cpu_usage((fc::time_point::now() - pseudo_start).count());
          }
-         inline void add_cpu_usage( uint64_t u ) { billed_cpu_time_us += u;}
+         // inline void add_cpu_usage( uint64_t u ) { billed_cpu_time_us += u;}
 
          uint64_t get_net_usage() const {return net_usage;}
          uint64_t get_cpu_usage() const {return billed_cpu_time_us;}
 
          void check_net_usage()const;
+
+         void check_ram_usage()const;
+
+         void check_storage_usage()const;
 
          void checktime()const;
 
@@ -110,7 +114,7 @@ namespace eosio { namespace chain {
 
          int64_t get_min_cpu_limit()const;
 
-         void add_storage_usage( const storage_payer_info& );
+         void add_storage_usage( const storage_payer_info&, bool is_authorized );
 
 // TODO: request bw, why provided?
 //         uint64_t get_provided_net_limit(account_name account) const;
@@ -129,7 +133,7 @@ namespace eosio { namespace chain {
 
          void validate_referenced_accounts(const transaction& trx) const;
 
-         const account_name& get_ram_provider(const account_name& owner) const;
+         const account_name& get_storage_provider(const account_name& owner) const;
          storage_payer_info get_storage_payer(const account_name& owner);
 
       private:
@@ -137,7 +141,7 @@ namespace eosio { namespace chain {
          friend struct controller_impl;
          friend class apply_context;
 
-         void add_ram_provider(const cyberway::chain::provideram& provide_ram);
+         void add_storage_provider(const cyberway::chain::providebw& bw);
 
          void dispatch_action( action_trace& trace, const action& a, account_name receiver, bool context_free = false, uint32_t recurse_depth = 0 );
          inline void dispatch_action( action_trace& trace, const action& a, bool context_free = false ) {
@@ -178,7 +182,7 @@ namespace eosio { namespace chain {
          int64_t                       billed_cpu_time_us = 0;
          bool                          explicit_billed_cpu_time = false;
 
-         uint64_t                      billed_ram_bytes = 0;
+         uint64_t&                     billed_ram_bytes;
          bool                          explicit_billed_ram_bytes = false;
 
       private:
@@ -188,6 +192,11 @@ namespace eosio { namespace chain {
          bool                          net_limit_due_to_block = true;
          uint64_t                      eager_net_limit = 0;
          uint64_t&                     net_usage; /// reference to trace->net_usage
+
+         int64_t&                      storage_bytes; /// reference to trace->storage_bytes
+         uint64_t                      storage_bytes_limit = 0;
+
+         uint64_t                      ram_bytes_limit = 0;
 
          fc::microseconds              initial_objective_duration_limit;
          fc::microseconds              objective_duration_limit;
@@ -203,7 +212,7 @@ namespace eosio { namespace chain {
 // TODO: request bw, why provided?
 //         std::map<account_name, provided_bandwith> provided_bandwith_;
 
-        fc::flat_map<account_name, account_name> ram_providers;
+        fc::flat_map<account_name, account_name> storage_providers;
          
         class available_resources_t {
             std::vector<resource_limits::ratio> pricelist;

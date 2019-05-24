@@ -200,38 +200,41 @@ namespace eosio { namespace chain {
         }
 
         int32_t chaindb_delete(
-            account_name_t code, scope_name_t scope, table_name_t table, primary_key_t pk
+            account_name_t code, scope_name_t scope, table_name_t table, account_name_t payer, primary_key_t pk
         ) {
             validate_db_access_violation(code);
-            auto delta = context.chaindb.remove({code, scope, table}, context.get_storage_payer(), pk);
+            auto delta = context.chaindb.remove({code, scope, table}, context.get_storage_payer(payer), pk);
             return static_cast<int32_t>(delta);
         }
 
         void chaindb_ram_state(
             account_name_t code, scope_name_t scope, table_name_t table, primary_key_t pk, bool in_ram
         ) {
-            // This realization doesn't allow to call handler in system contract,
-            //   but as result it works faster - is it good or not?
-            // As an alternative, the account contract can send inline action by itself ...
+            namespace chaindb = cyberway::chaindb;
 
             validate_db_access_violation(code);
 
-            cyberway::chain::set_ram_state op;
-            op.code   = code;
-            op.scope  = scope;
-            op.table  = table;
-            op.pk     = pk;
-            op.in_ram = in_ram;
+            chaindb::cache_object_ptr cache_ptr;
+            chaindb::table_request    request{code, scope, table};
 
-            cyberway::chain::apply_set_ram_state(context, op, [&](const cyberway::chaindb::service_state& service) {
-                if (context.privileged ||
-                    (service.owner == context.receiver.value && service.payer == context.receiver.value)
-                ) {
-                    return;
-                } else if (service.owner == service.payer || !context.weak_require_authorization(service.payer)) {
-                    context.require_authorization(service.owner);
-                }
-            });
+            auto find = context.chaindb.lower_bound(request, pk);
+            if (find.pk == pk) {
+                cache_ptr = context.chaindb.get_cache_object({code, find.cursor}, false);
+            }
+
+            EOS_ASSERT(cache_ptr, eosio::chain::object_query_exception,
+                "Object with the primary key ${pk} doesn't exist in the table ${table}:${scope}",
+                ("pk", pk)("table", chaindb::get_full_table_name(request))("scope", scope));
+
+            auto& service = cache_ptr->service();
+
+            EOS_ASSERT(in_ram != service.in_ram, eosio::chain::object_ram_state_exception,
+                "Object with the primary key ${pk} in the table ${table}:${scope} already has RAM state = ${state}",
+                ("pk", pk)("table", chaindb::get_full_table_name(request))("scope", scope));
+
+            auto info = context.get_storage_payer(service.payer, service.payer);
+            info.in_ram  = in_ram;
+            context.chaindb.change_ram_state(*cache_ptr.get(), info);
         }
 
     }; // class chaindb_api
@@ -262,7 +265,7 @@ namespace eosio { namespace chain {
 
         (chaindb_insert,      int(int64_t, int64_t, int64_t, int64_t, int64_t, int, int) )
         (chaindb_update,      int(int64_t, int64_t, int64_t, int64_t, int64_t, int, int) )
-        (chaindb_delete,      int(int64_t, int64_t, int64_t, int64_t)                    )
+        (chaindb_delete,      int(int64_t, int64_t, int64_t, int64_t, int64_t)           )
 
         (chaindb_ram_state,   void(int64_t, int64_t, int64_t, int64_t, int) )
     );

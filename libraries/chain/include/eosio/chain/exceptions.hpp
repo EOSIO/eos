@@ -197,8 +197,8 @@ namespace eosio { namespace chain {
                                     3040014, "Unknown transaction compression" )
       FC_DECLARE_DERIVED_EXCEPTION( bandwith_already_confirmed, transaction_exception,
                                     3040015, "Bandwith has been already confirmed" )
-      FC_DECLARE_DERIVED_EXCEPTION( ram_provider_error, transaction_exception,
-                                    3040016, "Ram provider error" )
+      FC_DECLARE_DERIVED_EXCEPTION( bw_provider_error, transaction_exception,
+                                    3040016, "Bandwith provider error" )
 
 
    FC_DECLARE_DERIVED_EXCEPTION( action_validate_exception, chain_exception,
@@ -281,6 +281,11 @@ namespace eosio { namespace chain {
                                     3080005, "Transaction CPU usage is too much for the remaining allowable usage of the current block" )
       FC_DECLARE_DERIVED_EXCEPTION( deadline_exception, resource_exhausted_exception,
                                     3080006, "Transaction took too long" )
+      FC_DECLARE_DERIVED_EXCEPTION( tx_ram_usage_exceeded, resource_exhausted_exception,
+                                    3080007, "Transaction exceeded the current RAM usage limit imposed on the transaction" )
+      FC_DECLARE_DERIVED_EXCEPTION( tx_storage_usage_exceeded, resource_exhausted_exception,
+                                    3080008, "Transaction exceeded the current STORAGE usage limit imposed on the transaction" )
+
 // CYBERWAY: greylist removed (3080007, 3080008)
       FC_DECLARE_DERIVED_EXCEPTION( leeway_deadline_exception, deadline_exception,
                                     3081001, "Transaction reached the deadline set due to leeway on account CPU limits" )
@@ -438,6 +443,8 @@ namespace eosio { namespace chain {
                                     3160007, "Invalid contract vm version" )
       FC_DECLARE_DERIVED_EXCEPTION( set_exact_code,          contract_exception,
                                     3160008, "Contract is already running this version of code" )
+      FC_DECLARE_DERIVED_EXCEPTION( set_exact_abi,          contract_exception,
+                                    3160011, "Contract is already has this version of abi" )
       FC_DECLARE_DERIVED_EXCEPTION( wasm_file_not_found,          contract_exception,
                                     3160009, "No wasm file found" )
       FC_DECLARE_DERIVED_EXCEPTION( abi_file_not_found,          contract_exception,

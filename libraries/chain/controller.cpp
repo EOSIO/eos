@@ -248,7 +248,6 @@ struct controller_impl {
    SET_CYBER_HANDLER(cyber, cyber, providebw);
 //TODO: requestbw
 //   SET_CYBER_HANDLER(cyber, cyber, requestbw);
-   SET_CYBER_HANDLER(cyber, cyber, provideram);
 /*
    SET_CYBER_HANDLER(cyber, cyber, postrecovery);
    SET_CYBER_HANDLER(cyber, cyber, passrecovery);
@@ -266,9 +265,6 @@ struct controller_impl {
     SET_CYBER_DOMAIN_HANDLER(passdomain);
     SET_CYBER_DOMAIN_HANDLER(linkdomain);
     SET_CYBER_DOMAIN_HANDLER(unlinkdomain);
-
-   SET_CYBER_HANDLER(cyber, cyber, setrampayer);
-   SET_CYBER_HANDLER(cyber, cyber, setramstate);
 
    fork_db.irreversible.connect( [&]( auto b ) {
                                  on_irreversible(b);
@@ -733,18 +729,15 @@ struct controller_impl {
    // The returned scoped_exit should not exceed the lifetime of the pending which existed when make_block_restore_point was called.
    fc::scoped_exit<std::function<void()>> make_block_restore_point() {
       auto orig_block_transactions_size = pending->_pending_block_state->block->transactions.size();
-      auto orig_block_archive_size      = pending->_pending_block_state->block->archive_records.size();
       auto orig_state_transactions_size = pending->_pending_block_state->trxs.size();
       auto orig_state_actions_size      = pending->_actions.size();
 
       std::function<void()> callback = [this,
                                         orig_block_transactions_size,
-                                        orig_block_archive_size,
                                         orig_state_transactions_size,
                                         orig_state_actions_size]()
       {
          pending->_pending_block_state->block->transactions.resize(orig_block_transactions_size);
-         pending->_pending_block_state->block->archive_records.resize(orig_block_archive_size);
          pending->_pending_block_state->trxs.resize(orig_state_transactions_size);
          pending->_actions.resize(orig_state_actions_size);
       };
@@ -783,7 +776,8 @@ struct controller_impl {
 
          auto restore = make_block_restore_point();
          trace->receipt = push_receipt( gtrx.trx_id, transaction_receipt::soft_fail,
-                                        trx_context.billed_cpu_time_us, trace->net_usage, trx_context.billed_ram_bytes );
+                                        trx_context.billed_cpu_time_us, trace->net_usage,
+                                        trx_context.billed_ram_bytes, trace->storage_bytes );
          fc::move_append( pending->_actions, move(trx_context.executed) );
 
          trx_context.squash();
@@ -902,7 +896,8 @@ struct controller_impl {
          trace->block_time = self.pending_block_time();
          trace->producer_block_id = self.pending_producer_block_id();
          trace->scheduled = true;
-         trace->receipt = push_receipt( gtrx.trx_id, transaction_receipt::expired, billed.cpu_time_us, 0, billed.ram_bytes ); // expire the transaction
+         trace->receipt = push_receipt( gtrx.trx_id, transaction_receipt::expired, billed.cpu_time_us, 0,
+             billed.ram_bytes, 0 ); // expire the transaction
          emit( self.accepted_transaction, trx );
          emit( self.applied_transaction, trace );
          undo_session.squash();
@@ -942,7 +937,8 @@ struct controller_impl {
                                         transaction_receipt::executed,
                                         trx_context.billed_cpu_time_us,
                                         trace->net_usage,
-                                        trx_context.billed_ram_bytes);
+                                        trx_context.billed_ram_bytes,
+                                        trace->storage_bytes);
 
          fc::move_append( pending->_actions, move(trx_context.executed) );
 
@@ -1009,7 +1005,7 @@ struct controller_impl {
          
          resource_limits.add_transaction_usage( trx_context.bill_to_accounts, cpu_time_to_bill_us, 0, ram_to_bill_bytes, self.pending_block_time() ); // Should never fail
 
-         trace->receipt = push_receipt(gtrx.trx_id, transaction_receipt::hard_fail, cpu_time_to_bill_us, 0, ram_to_bill_bytes);
+         trace->receipt = push_receipt(gtrx.trx_id, transaction_receipt::hard_fail, cpu_time_to_bill_us, 0, ram_to_bill_bytes, 0);
 
          emit( self.accepted_transaction, trx );
          emit( self.applied_transaction, trace );
@@ -1029,7 +1025,8 @@ struct controller_impl {
     */
    template<typename T>
    const transaction_receipt& push_receipt( const T& trx, transaction_receipt_header::status_enum status,
-                                            uint64_t cpu_usage_us, uint64_t net_usage, uint64_t ram_bytes ) {
+                                            uint64_t cpu_usage_us, uint64_t net_usage,
+                                            uint64_t ram_bytes, int64_t storage_bytes ) {
       uint64_t net_usage_words = net_usage / 8;
       EOS_ASSERT( net_usage_words*8 == net_usage, transaction_exception, "net_usage is not divisible by 8" );
       pending->_pending_block_state->block->transactions.emplace_back( trx );
@@ -1037,6 +1034,7 @@ struct controller_impl {
       r.cpu_usage_us         = cpu_usage_us;
       r.net_usage_words      = net_usage_words;
       r.ram_kbytes           = ram_bytes >> 10;
+      r.storage_kbytes       = storage_bytes >> 10;
       r.status               = status;
       return r;
    }
@@ -1117,7 +1115,8 @@ struct controller_impl {
                transaction_receipt::status_enum s = (trx_context.delay == fc::seconds(0))
                                                     ? transaction_receipt::executed
                                                     : transaction_receipt::delayed;
-               trace->receipt = push_receipt(*trx->packed_trx, s, trx_context.billed_cpu_time_us, trace->net_usage, trx_context.billed_ram_bytes);
+               trace->receipt = push_receipt(*trx->packed_trx, s, trx_context.billed_cpu_time_us, trace->net_usage,
+                   trx_context.billed_ram_bytes, trace->storage_bytes);
                pending->_pending_block_state->trxs.emplace_back(trx);
             } else {
                transaction_receipt_header r;
@@ -1125,6 +1124,7 @@ struct controller_impl {
                r.cpu_usage_us = trx_context.billed_cpu_time_us;
                r.net_usage_words = trace->net_usage / 8;
                r.ram_kbytes = trx_context.billed_ram_bytes >> 10;
+               r.storage_kbytes = trace->storage_bytes >> 10;
                trace->receipt = r;
             }
 
@@ -2072,6 +2072,10 @@ vector<transaction_id_type> controller::get_scheduled_transactions() const {
    auto delay_idx = chaindb().get_index<generated_transaction_object, by_delay>();
 
    vector<transaction_id_type> result;
+
+   if( 1 == head_block_num() ) {
+      return result;
+   }
 
    static const size_t max_reserve = 1024;
    result.reserve(max_reserve);

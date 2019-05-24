@@ -159,8 +159,8 @@ void resource_limits_manager::add_transaction_usage(const flat_set<account_name>
           bu.accumulators[NET].add(net_usage, time_slot, config.account_usage_average_windows[NET]);
           bu.accumulators[RAM].add(ram_usage, time_slot, config.account_usage_average_windows[RAM]);
       });
-      EOS_ASSERT(get_account_balance(pending_block_time, a, prices, true) >= 0, resource_exhausted_exception, 
-             "authorizing account '${n}' has insufficient resources for this transaction", ("n", name(a))); 
+      // validate the resources available
+      get_account_balance(pending_block_time, a, prices, true);
    }
    // account for this transaction in the block and do not exceed those limits either
 
@@ -171,10 +171,16 @@ void resource_limits_manager::add_transaction_usage(const flat_set<account_name>
    });
 }
 
-void resource_limits_manager::add_storage_usage(const account_name& account, int64_t delta, uint32_t time_slot) {
+void resource_limits_manager::add_storage_usage(const account_name& account, int64_t delta, uint32_t time_slot, bool is_authorized) {
    if (delta == 0) {
       return;
    }
+
+   // don't `curve the storage bw`, if no signature from the account
+   if (!is_authorized && delta < 0 ) {
+       return;
+   }
+
    const auto& config = _chaindb.get<resource_limits_config_object>();
    auto state_table  = _chaindb.get_table<resource_limits_state_object>();
    const auto& state = state_table.get();
@@ -329,7 +335,7 @@ uint64_t resource_limits_manager::get_account_balance(fc::time_point pending_blo
     const auto& state  = _chaindb.get<resource_limits_state_object>();
     auto res_usage = get_account_usage(account);
         
-    uint64_t cost = 0;
+    uint64_t cost = resources_num;
     for (size_t i = 0; i < resources_num; i++) {
         auto add = safe_prop(res_usage[i], prices[i].numerator, prices[i].denominator);
         cost = (UINT64_MAX - cost) > add ? cost + add : UINT64_MAX;

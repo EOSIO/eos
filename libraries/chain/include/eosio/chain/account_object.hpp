@@ -22,6 +22,7 @@ namespace eosio { namespace chain {
 
       time_point           last_code_update;
       digest_type          code_version;
+      digest_type          abi_version;
       block_timestamp_type creation_date;
 
       string               code;
@@ -81,5 +82,5 @@ CHAINDB_TAG(eosio::chain::account_object, account)
 CHAINDB_SET_TABLE_TYPE(eosio::chain::account_sequence_object, eosio::chain::account_sequence_table)
 CHAINDB_TAG(eosio::chain::account_sequence_object, accountseq)
 
-FC_REFLECT(eosio::chain::account_object, (id)(name)(vm_type)(vm_version)(privileged)(last_code_update)(code_version)(creation_date)(code)(abi))
+FC_REFLECT(eosio::chain::account_object, (id)(name)(vm_type)(vm_version)(privileged)(last_code_update)(code_version)(abi_version)(creation_date)(code)(abi))
 FC_REFLECT(eosio::chain::account_sequence_object, (id)(name)(recv_sequence)(auth_sequence)(code_sequence)(abi_sequence))
