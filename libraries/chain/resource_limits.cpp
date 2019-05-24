@@ -159,8 +159,8 @@ void resource_limits_manager::add_transaction_usage(const flat_set<account_name>
           bu.accumulators[NET].add(net_usage, time_slot, config.account_usage_average_windows[NET]);
           bu.accumulators[RAM].add(ram_usage, time_slot, config.account_usage_average_windows[RAM]);
       });
-      EOS_ASSERT(get_account_balance(pending_block_time, a, prices, true) >= 0, resource_exhausted_exception, 
-             "authorizing account '${n}' has insufficient resources for this transaction", ("n", name(a))); 
+      // validate the resources available
+      get_account_balance(pending_block_time, a, prices, true);
    }
    // account for this transaction in the block and do not exceed those limits either
 
