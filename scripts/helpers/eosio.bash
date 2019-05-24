@@ -23,8 +23,6 @@ fi
 # Load general helpers
 . ./scripts/helpers/general.bash
 
-[[ $ARCH == "Darwin" ]] && export CTEST_BIN=ctest || export CTEST_BIN=$BIN_DIR/ctest
-
 function setup() {
     if $VERBOSE; then
         echo "VERBOSE: ${VERBOSE}"

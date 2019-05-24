@@ -10,7 +10,6 @@ elseif ("${CMAKE_INSTALL_PREFIX}" STREQUAL "/usr/local")
    message(WARNING "CMAKE_INSTALL_PREFIX is explicitly set to /usr/local. This is not recommended.")
 endif()
 
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/libraries/fc/CMakeModules")
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules")
 
 if (UNIX AND APPLE)
@@ -18,8 +17,6 @@ if (UNIX AND APPLE)
 endif()
 
 include( GNUInstallDirs )
-include( VersionMacros )
-include( SetupTargetMacros )
 include( InstallDirectoryPermissions )
 include( MASSigning )
 
@@ -83,21 +80,9 @@ else()
 endif()
 
 set( Boost_USE_STATIC_LIBS ON CACHE STRING "ON or OFF" )
-### Remove after Boost 1.70 CMake fixes are in place
-set( Boost_NO_BOOST_CMAKE ON CACHE STRING "ON or OFF" )
-find_package(Boost 1.67 REQUIRED COMPONENTS
-    date_time
-    filesystem
-    system
-    program_options
-    chrono
-    unit_test_framework
-    iostreams)
-
-set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
-set(THREADS_PREFER_PTHREAD_FLAG TRUE)
-find_package(Threads)
-link_libraries(Threads::Threads)
+# Most boost deps get implictly picked up via fc, as just about everything links to fc. In addition we pick up
+# the pthread dependency through fc.
+find_package(Boost 1.67 REQUIRED COMPONENTS program_options unit_test_framework)
 
 if( APPLE AND UNIX )
 # Apple Specific Options Here
