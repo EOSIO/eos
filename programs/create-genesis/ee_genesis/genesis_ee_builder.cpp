@@ -491,9 +491,11 @@ void genesis_ee_builder::build(const bfs::path& out_dir) {
 
     out_.start(out_dir, fc::sha256());
 
-    build_messages();
-    build_transfers();
-    build_pinblocks();
+    if (!in_dump_dir_.empty()) {
+        build_messages();
+        build_transfers();
+        build_pinblocks();
+    }
     build_accounts();
     build_funds();
 
