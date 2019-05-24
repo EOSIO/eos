@@ -68,7 +68,6 @@ namespace eosio {
            ApplyTrx,
 
            GenesisData,
-           GenesisEnd,
        };
 
        MsgType msg_type;
