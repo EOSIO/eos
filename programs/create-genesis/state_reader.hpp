@@ -5,6 +5,9 @@
 #include "config.hpp"
 
 
+//#define STORE_CLOSED_PERMLINKS    // disabled by default (there are 8M posts), can be enabled with -D
+
+
 namespace cyberway { namespace genesis {
 
 using namespace eosio::chain;
@@ -19,6 +22,14 @@ struct state_object_visitor {
         share_type vesting;
         share_type delegated;
         share_type received;
+    };
+    struct post_permlink {
+        acc_idx author;
+        plk_idx permlink;
+        acc_idx parent_author;
+        plk_idx parent_permlink;
+        uint16_t depth;
+        uint32_t children;
     };
 
     enum balance_type {
@@ -74,6 +85,7 @@ struct state_object_visitor {
     using post_bw_info = std::pair<int64_t,time_point_sec>;
     fc::flat_map<acc_idx,post_bw_info> post_bws;
     fc::flat_map<uint64_t,golos::comment_object> comments;  // id:comment
+    fc::flat_map<uint64_t,post_permlink> permlinks;         // id:permlink
     std::vector<golos::comment_vote_object> votes;
 
     template<typename T>
@@ -181,8 +193,22 @@ struct state_object_visitor {
     }
 
     void operator()(const golos::comment_object& c) {
-        if (c.mode != golos::comment_mode::archived) {
+        bool active = c.mode != golos::comment_mode::archived;
+        if (active) {
             comments.emplace(c.id, std::move(c));
+        }
+#ifndef STORE_CLOSED_PERMLINKS
+        if (active)
+#endif
+        {
+            permlinks.emplace(c.id, post_permlink{
+                .author = c.author.id,
+                .permlink = c.permlink.id,
+                .parent_author = c.parent_author.id,
+                .parent_permlink = c.parent_permlink.id,
+                .depth = c.active.depth,      // TODO: should be in consensus part of golos state GolosChain/golos#1302
+                .children = c.active.children
+            });
         }
     }
 
