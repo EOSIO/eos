@@ -846,10 +846,9 @@ namespace cyberway { namespace chaindb {
             for (auto& i: ttr->indexes) if (i.unique && i.name != names::primary_index) {
                 info.index = &i;
 
-                auto big_blob = abi.to_bytes(info, object.value); // size of this object is 1 Mb
-                if (big_blob.empty()) continue;
+                auto blob = abi.to_bytes(info, object.value);
+                if (blob.empty()) continue;
 
-                auto blob = bytes(big_blob.begin(), big_blob.end()); // minize memory usage
                 indicies.emplace_back(i.name, std::move(blob), obj);
                 CYBERWAY_ASSERT(cache_index_tree_.end() == cache_index_tree_.find(indicies.back()),
                     driver_duplicate_exception, "Cache duplicate unique records in the index ${index}",

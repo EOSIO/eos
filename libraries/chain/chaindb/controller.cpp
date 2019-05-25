@@ -299,8 +299,7 @@ namespace cyberway { namespace chaindb {
 
             if (item && with_blob && !item->has_blob()) {
                 auto& table  = static_cast<const table_info&>(cursor.index);
-                auto  buffer = cursor.index.abi->to_bytes(table, item->object().value); // 1 Mb
-                item->set_blob(bytes(buffer.begin(), buffer.end()));                    // Minimize memory usage
+                item->set_blob(cursor.index.abi->to_bytes(table, item->object().value));
             }
 
             return item;
