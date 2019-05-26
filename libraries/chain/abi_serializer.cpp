@@ -51,7 +51,7 @@ namespace eosio { namespace chain {
    }
 
    abi_serializer::abi_serializer( const abi_def& abi, const fc::microseconds& max_serialization_time ) {
-      configure_built_in_types(PublicMode);
+      configure_built_in_types();
       set_abi(abi, max_serialization_time);
    }
 
@@ -60,7 +60,7 @@ namespace eosio { namespace chain {
       built_in_types[name] = std::move( unpack_pack );
    }
 
-   void abi_serializer::configure_built_in_types(mode m) {
+   void abi_serializer::configure_built_in_types() {
 
       built_in_types.emplace("bool",                      pack_unpack<bool>());
       built_in_types.emplace("int8",                      pack_unpack<int8_t>());
@@ -98,23 +98,11 @@ namespace eosio { namespace chain {
       built_in_types.emplace("signature",                 pack_unpack<signature_type>());
 
       built_in_types.emplace("symbol_code",               pack_unpack<symbol_code>());
+      built_in_types.emplace("symbol",                    pack_unpack<symbol>());
+      built_in_types.emplace("asset",                     pack_unpack<asset>());
 
-      switch (m) {
-         default:
-            assert(false);
-
-         case PublicMode: {
-            built_in_types.emplace("symbol",              pack_unpack<symbol>());
-            built_in_types.emplace("asset",               pack_unpack<asset>());
-         }
-         break;
-
-         case DBMode: {
-            built_in_types.emplace("symbol",              pack_unpack<symbol_info>());
-            built_in_types.emplace("asset",               pack_unpack<asset_info>());
-         }
-         break;
-      }
+      db_built_in_types.emplace("symbol",                 pack_unpack<symbol_info>());
+      db_built_in_types.emplace("asset",                  pack_unpack<asset_info>());
    }
 
    void abi_serializer::set_check_field_name(const bool value) {
@@ -378,6 +366,18 @@ namespace eosio { namespace chain {
       auto h = ctx.enter_scope();
       type_name rtype = resolve_type(type);
       auto ftype = fundamental_type(rtype);
+
+      if( ctx.mode == abi_serializer::DBMode ) {
+         auto btype = db_built_in_types.find(ftype );
+         if( btype != db_built_in_types.end() ) {
+            try {
+               return btype->second.first(stream, is_array(rtype), is_optional(rtype));
+            } EOS_RETHROW_EXCEPTIONS( unpack_exception, "Unable to unpack ${class} type '${type}' while processing '${p}'",
+                                      ("class", is_array(rtype) ? "array of built-in" : is_optional(rtype) ? "optional of built-in" : "built-in")
+                                      ("type", ftype)("p", ctx.get_path_string()) )
+          }
+      }
+
       auto btype = built_in_types.find(ftype );
       if( btype != built_in_types.end() ) {
          try {
@@ -453,6 +453,13 @@ namespace eosio { namespace chain {
    fc::variant abi_serializer::binary_to_variant( const type_name& type, fc::datastream<const char*>& binary, const fc::microseconds& max_serialization_time, bool short_path )const {
       impl::binary_to_variant_context ctx(*this, max_serialization_time, type);
       ctx.short_path = short_path;
+      return _binary_to_variant(type, binary, ctx);
+   }
+
+   fc::variant abi_serializer::binary_to_variant( const type_name& type, fc::datastream<const char*>& binary, const fc::microseconds& max_serialization_time, mode m )const {
+      impl::binary_to_variant_context ctx(*this, max_serialization_time, type);
+      ctx.mode = m;
+      ctx.short_path = false;
       return _binary_to_variant(type, binary, ctx);
    }
 

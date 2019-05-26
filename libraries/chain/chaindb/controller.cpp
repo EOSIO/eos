@@ -502,9 +502,6 @@ namespace cyberway { namespace chaindb {
             return info;
         }
 
-        cache_object_ptr get_account_object(account_name code) {
-        }
-
         abi_map::iterator recache_chaindb_abi(account_name code) {
            const auto& abi = load_abi(code);
            if (!abi.empty()) {

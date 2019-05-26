@@ -224,7 +224,7 @@ namespace cyberway { namespace chaindb {
 
     abi_info::abi_info(const account_name& code, abi_def abi)
     : code_(code),
-      serializer_(eosio::chain::abi_serializer::DBMode) {
+      serializer_() {
         if (is_system_code(code)) {
             serializer_.set_check_field_name(false);
         }

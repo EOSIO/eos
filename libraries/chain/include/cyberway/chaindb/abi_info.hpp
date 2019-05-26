@@ -99,7 +99,7 @@ namespace cyberway { namespace chaindb {
             if (nullptr == data || 0 == size) return fc::variant_object();
 
             fc::datastream<const char*> ds(static_cast<const char*>(data), size);
-            auto value = serializer_.binary_to_variant(type, ds, max_abi_time_);
+            auto value = serializer_.binary_to_variant(type, ds, max_abi_time_, abi_serializer::DBMode);
 
 //            dlog(
 //                "The ${value_type} '${type}': ${value}",
