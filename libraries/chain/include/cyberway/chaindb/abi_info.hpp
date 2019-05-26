@@ -19,6 +19,8 @@ namespace cyberway { namespace chaindb {
 
     template <typename Info>
     const index_def& get_pk_index(const Info& info) {
+        assert(info.table);
+        assert(info.table->indexes.size());
         // abi structure is already validated by abi_serializer
         return info.table->indexes.front();
     }
@@ -29,31 +31,30 @@ namespace cyberway { namespace chaindb {
         return get_pk_index(info).orders.front();
     }
 
-    class abi_info final {
-    public:
+    struct abi_info final {
         abi_info() = default;
         abi_info(const account_name& code, abi_def);
 
         void verify_tables_structure(driver_interface&) const;
 
         variant to_object(const table_info& info, const void* data, const size_t size) const {
-            CYBERWAY_ASSERT(info.table, unknown_table_exception, "NULL table");
+            assert(info.table);
             return to_object_("table", [&]{return get_full_table_name(info);}, info.table->type, data, size);
         }
 
         variant to_object(const index_info& info, const void* data, const size_t size) const {
-            CYBERWAY_ASSERT(info.index, unknown_index_exception, "NULL index");
+            assert(info.index);
             auto type = get_full_index_name(info);
             return to_object_("index", [&](){return type;}, type, data, size);
         }
 
         bytes to_bytes(const table_info& info, const variant& value) const {
-            CYBERWAY_ASSERT(info.table, unknown_table_exception, "NULL table");
+            assert(info.table);
             return to_bytes_("table", [&]{return get_full_table_name(info);}, info.table->type, value);
         }
 
         bytes to_bytes(const index_info& info, const variant& value) const {
-            CYBERWAY_ASSERT(info.index, unknown_index_exception, "NULL index");
+            assert(info.index);
             auto type = get_full_index_name(info);
             return to_bytes_("index", [&]{return type;}, type, value);
         }

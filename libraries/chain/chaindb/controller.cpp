@@ -18,6 +18,31 @@
 
 #include <boost/algorithm/string.hpp>
 
+namespace eosio { namespace chain {
+
+    namespace chaindb = cyberway::chaindb;
+
+    eosio::chain::abi_def select_abi(const account_object& account) {
+        if (account.name == config::system_account_name) {
+            auto abi = eosio_contract_abi();
+            chaindb::undo_stack::add_abi_tables(abi);
+            return abi;
+        } else if (account.name == config::domain_account_name) {
+            return domain_contract_abi();
+        } else {
+            return account.get_abi();
+        }
+    }
+
+    chaindb::abi_info& account_object::get_abi_info() {
+        if (!abi_info_) {
+            abi_info_ = std::make_unique<cyberway::chaindb::abi_info>(name, select_abi(*this));
+        }
+        return *abi_info_.get();
+    }
+
+} } // namespace eosio::chain
+
 namespace cyberway { namespace chaindb {
 
     using eosio::chain::name;
@@ -162,20 +187,6 @@ namespace cyberway { namespace chaindb {
 
             abi_info info(code, std::move(abi));
             return set_abi(code, std::move(info));
-        }
-
-        void remove_abi(const account_name& code) {
-            auto itr = abi_map_.find(code);
-            if (abi_map_.end() == itr) return;
-
-            itr->second.mark_removed();
-        }
-
-        bool has_abi(const account_name& code) const {
-            auto itr = abi_map_.find(code);
-            if (abi_map_.end() == itr) return false;
-
-            return !itr->second.is_removed();
         }
 
         const abi_map& get_abi_map() const {
@@ -491,6 +502,9 @@ namespace cyberway { namespace chaindb {
             return info;
         }
 
+        cache_object_ptr get_account_object(account_name code) {
+        }
+
         abi_map::iterator recache_chaindb_abi(account_name code) {
            const auto& abi = load_abi(code);
            if (!abi.empty()) {
@@ -627,7 +641,7 @@ namespace cyberway { namespace chaindb {
     }; // class chaindb_controller::controller_impl_
 
     chaindb_controller::chaindb_controller(const chaindb_type t, string address, string sys_name)
-    : impl_(new chaindb_controller_impl(*this, t, std::move(address), std::move(sys_name))) {
+    : impl_(std::make_unique<chaindb_controller_impl>(*this, t, std::move(address), std::move(sys_name))) {
     }
 
     chaindb_controller::~chaindb_controller() = default;
@@ -646,14 +660,6 @@ namespace cyberway { namespace chaindb {
 
     void chaindb_controller::add_abi(const account_name& code, abi_def abi) const {
         impl_->set_abi(code, std::move(abi));
-    }
-
-    void chaindb_controller::remove_abi(const account_name& code) const {
-        impl_->remove_abi(code);
-    }
-
-    bool chaindb_controller::has_abi(const account_name& code) const {
-        return impl_->has_abi(code);
     }
 
     const abi_map& chaindb_controller::get_abi_map() const {

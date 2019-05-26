@@ -9,6 +9,8 @@
 #include <eosio/chain/abi_def.hpp>
 #include <eosio/chain/multi_index_includes.hpp>
 
+#include <cyberway/chaindb/abi_info.hpp>
+
 namespace eosio { namespace chain {
 
    class account_object : public cyberway::chaindb::object<account_object_type, account_object> {
@@ -42,6 +44,11 @@ namespace eosio { namespace chain {
          fc::raw::unpack( ds, a );
          return a;
       }
+
+      cyberway::chaindb::abi_info& get_abi_info();
+
+   private:
+      std::unique_ptr<cyberway::chaindb::abi_info> abi_info_;
    };
    using account_id_type = account_object::id_type;
 

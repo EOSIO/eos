@@ -64,10 +64,10 @@ namespace cyberway { namespace chaindb {
         // TODO: RocksDB
     };
 
-    class chaindb_controller;
-    class abi_info;
-    class cache_object;
-    using cache_object_ptr = boost::intrusive_ptr<cache_object>;
+    class  chaindb_controller;
+    struct abi_info;
+    class  cache_object;
+    using  cache_object_ptr = boost::intrusive_ptr<cache_object>;
 
     using abi_map = std::map<account_name /* code */, abi_info>;
 

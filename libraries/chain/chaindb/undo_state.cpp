@@ -28,6 +28,8 @@ namespace cyberway { namespace chaindb {
         Stack,
     }; // enum undo_stage
 
+    static table_info undo_table{0, 0};
+
     class table_undo_stack;
 
     struct undo_state final {
@@ -297,35 +299,42 @@ namespace cyberway { namespace chaindb {
           cache_(cache) {
         }
 
-        void add_abi_tables(eosio::chain::abi_def& abi) {
-            undo_abi_.structs.emplace_back( eosio::chain::struct_def{
-               names::service_field, "",
-               {{names::undo_pk_field,  "uint64"}}
-            });
+        static void add_abi_tables(eosio::chain::abi_def& abi) {
+            static bool    undo_abi_init = false;
+            static abi_def undo_abi;
 
-            undo_abi_.structs.emplace_back( eosio::chain::struct_def{
-                names::undo_table, "",
-                {{names::service_field, names::service_field}}
-            });
+            if (!undo_abi_init) {
+                undo_abi_init = true;
 
-            undo_abi_.tables.emplace_back( eosio::chain::table_def {
-                names::undo_table,
-                names::undo_table,
-                "uint64",
-                {{"primary", true, {{ names::undo_pk_path , names::asc_order}} }},
-            });
+                undo_abi.structs.emplace_back(eosio::chain::struct_def{
+                    names::service_field, "",
+                    {{names::undo_pk_field, "uint64"}}
+                });
 
-            abi.structs.insert(abi.structs.end(), undo_abi_.structs.begin(), undo_abi_.structs.end());
-            abi.tables.emplace_back(undo_abi_.tables.front());
+                undo_abi.structs.emplace_back(eosio::chain::struct_def{
+                    names::undo_table, "",
+                    {{names::service_field, names::service_field}}
+                });
 
-            auto& undo_def = undo_abi_.tables.front();
+                undo_abi.tables.emplace_back(eosio::chain::table_def{
+                    names::undo_table,
+                    names::undo_table,
+                    "uint64",
+                    {{"primary", true, {{names::undo_pk_path, names::asc_order}}}},
+                });
 
-            auto& pk_order = undo_def.indexes.front().orders.front();
-            pk_order.type = "uint64";
-            pk_order.path = {names::service_field, names::undo_pk_field};
+                auto& undo_def = undo_abi.tables.front();
 
-            undo_table_.table = &undo_def;
-            undo_table_.pk_order = &pk_order;
+                auto& pk_order = undo_def.indexes.front().orders.front();
+                pk_order.type = "uint64";
+                pk_order.path = {names::service_field, names::undo_pk_field};
+
+                undo_table.table = &undo_def;
+                undo_table.pk_order = &pk_order;
+            }
+
+            abi.structs.insert(abi.structs.end(), undo_abi.structs.begin(), undo_abi.structs.end());
+            abi.tables.emplace_back(undo_abi.tables.front());
         }
 
         void clear() {
@@ -489,8 +498,8 @@ namespace cyberway { namespace chaindb {
                 return stack.head();
             };
 
-            auto index = index_info(undo_table_);
-            index.index = &undo_table_.table->indexes.front();
+            auto index = index_info(undo_table);
+            index.index = &undo_table.table->indexes.front();
 
             auto& cursor = driver_.lower_bound(std::move(index), {});
             for (; cursor.pk != primary_key::End; driver_.next(cursor)) {
@@ -1002,8 +1011,6 @@ namespace cyberway { namespace chaindb {
         undo_stage          stage_ = undo_stage::Unknown;
         revision_t&         revision_;
         revision_t          tail_revision_ = 0;
-        abi_def             undo_abi_;
-        table_info          undo_table_ = {account_name(), account_name()};
         primary_key_t       undo_pk_ = 1;
         chaindb_controller& controller_;
         driver_interface&   driver_;
@@ -1019,8 +1026,8 @@ namespace cyberway { namespace chaindb {
 
     undo_stack::~undo_stack() = default;
 
-    void undo_stack::add_abi_tables(eosio::chain::abi_def& abi) const {
-        impl_->add_abi_tables(abi);
+    void undo_stack::add_abi_tables(eosio::chain::abi_def& abi) {
+        undo_stack_impl_::add_abi_tables(abi);
     }
 
     void undo_stack::restore() const {

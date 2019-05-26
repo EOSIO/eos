@@ -132,9 +132,7 @@ namespace cyberway { namespace chaindb {
         void drop_db() const;
         void clear_cache() const;
 
-        bool has_abi(const account_name&) const;
         void add_abi(const account_name&, abi_def) const;
-        void remove_abi(const account_name&) const;
 
         const abi_map& get_abi_map() const;
 
