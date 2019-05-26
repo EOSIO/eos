@@ -351,6 +351,14 @@ namespace eosio { namespace chain {
             return tail_t::template extract<ResultVariant>( id, data, result );
          }
       };
+
+      template<typename T, typename ... Ts>
+      struct is_any_of {
+         static constexpr bool value = std::disjunction_v<std::is_same<T, Ts>...>;
+      };
+
+      template<typename T, typename ... Ts>
+      constexpr bool is_any_of_v = is_any_of<T, Ts...>::value;
    }
 
    template<typename E, typename F>
