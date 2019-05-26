@@ -7,9 +7,6 @@
 #include <cyberway/chaindb/common.hpp>
 #include <cyberway/chaindb/object_value.hpp>
 
-#include <boost/smart_ptr/intrusive_ptr.hpp>
-#include <boost/smart_ptr/intrusive_ref_counter.hpp>
-
 #include <boost/intrusive/set.hpp>
 #include <boost/intrusive/list.hpp>
 
@@ -18,8 +15,6 @@ namespace cyberway { namespace chaindb {
     using  eosio::chain::bytes;
 
     class cache_map_impl;
-    class cache_object;
-    using cache_object_ptr = boost::intrusive_ptr<cache_object>;
 
     struct cache_data {
         virtual ~cache_data() = default;

@@ -2,6 +2,7 @@
 #include <cyberway/chaindb/exception.hpp>
 #include <cyberway/chaindb/common.hpp>
 #include <cyberway/chaindb/names.hpp>
+#include <cyberway/chaindb/table_info.hpp>
 
 #include <eosio/chain/symbol.hpp>
 #include <eosio/chain/name.hpp>

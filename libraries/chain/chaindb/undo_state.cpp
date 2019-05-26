@@ -272,8 +272,15 @@ namespace cyberway { namespace chaindb {
         undo_next_pk_ = primary_key::Unset;
     }
 
-    object_value undo_state::next_pk_object(variant val) const {
-        return object_value{{table_.info(), undo_next_pk_, undo_record::NextPk, revision_}, std::move(val)};
+    object_value undo_state::next_pk_object(variant value) const {
+        auto& info = table_.info();
+        auto  obj  = object_value{info.to_service(), std::move(value)};
+
+        obj.service.revision = revision_;
+        obj.service.undo_pk  = undo_next_pk_;
+        obj.service.undo_rec = undo_record::NextPk;
+
+        return obj;
     }
 
     struct undo_stack::undo_stack_impl_ final {

@@ -239,7 +239,7 @@ namespace cyberway { namespace chaindb {
                 object_.service.pk    = pk;
                 object_.service.code  = index.code;
                 object_.service.scope = index.scope;
-                object_.service.table = index.table->name;
+                object_.service.table = index.table_name();
             } else {
                 auto& view = *source_->begin();
                 object_ = build_object(index, view, with_decors);
@@ -670,7 +670,7 @@ namespace cyberway { namespace chaindb {
                 obj.service.pk    = primary_key::End;
                 obj.service.code  = table.code;
                 obj.service.scope = table.scope;
-                obj.service.table = table.table->name;
+                obj.service.table = table.table_name();
                 return obj;
             }
         }
@@ -773,7 +773,7 @@ namespace cyberway { namespace chaindb {
                 if (BOOST_LIKELY(
                         old_table != nullptr &&
                         table.code == old_table->code &&
-                        table.table->name == old_table->table->name))
+                        table.table_name() == old_table->table_name()))
                     return;
 
                 auto db_table = impl_.get_db_table(table);

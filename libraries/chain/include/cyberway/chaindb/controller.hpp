@@ -6,6 +6,7 @@
 
 #include <cyberway/chaindb/common.hpp>
 #include <cyberway/chaindb/cache_item.hpp>
+#include <cyberway/chaindb/table_info.hpp>
 #include <cyberway/chaindb/storage_payer_info.hpp>
 
 namespace cyberway { namespace chaindb {
@@ -16,6 +17,8 @@ namespace cyberway { namespace chaindb {
 
     template<class> struct object_to_table;
     struct storage_payer_info;
+
+    struct chaindb_controller_impl;
 
     class chaindb_controller final {
     public:
@@ -191,8 +194,7 @@ namespace cyberway { namespace chaindb {
     private:
         friend class chaindb_session;
 
-        struct controller_impl_;
-        std::unique_ptr<controller_impl_> impl_;
+        std::unique_ptr<chaindb_controller_impl> impl_;
     }; // class chaindb_controller
 
     class chaindb_guard final {

@@ -99,8 +99,8 @@ namespace cyberway { namespace chaindb {
 
         template <typename Ctx>
         void apply_table_changes(Ctx&& ctx, const table_info& table) {
-            auto begin_itr = index_.lower_bound(std::make_tuple(table.code, table.table->name));
-            auto end_itr = index_.upper_bound(std::make_tuple(table.code, table.table->name));
+            auto begin_itr = index_.lower_bound(std::make_tuple(table.code, table.table_name()));
+            auto end_itr = index_.upper_bound(std::make_tuple(table.code, table.table_name()));
 
             apply_range_changes(std::forward<Ctx>(ctx), begin_itr, end_itr);
         }

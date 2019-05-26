@@ -5,6 +5,10 @@
 
 namespace cyberway { namespace chaindb {
 
+    struct table_info;
+    struct index_info;
+    struct object_value;
+
     class cache_map final {
     public:
         cache_map(abi_map&);

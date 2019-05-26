@@ -120,7 +120,7 @@ namespace cyberway { namespace chaindb {
 
     //------------------------------------
 
-    struct chaindb_controller::controller_impl_ final {
+    struct chaindb_controller_impl final {
         chaindb_controller& controller_;
         journal journal_;
         std::unique_ptr<driver_interface> driver_ptr_;
@@ -129,7 +129,7 @@ namespace cyberway { namespace chaindb {
         cache_map cache_;
         undo_stack undo_;
 
-        controller_impl_(chaindb_controller& controller, const chaindb_type t, string address, string sys_name)
+        chaindb_controller_impl(chaindb_controller& controller, const chaindb_type t, string address, string sys_name)
         : controller_(controller),
           driver_ptr_(_detail::create_driver(t, journal_, std::move(address), std::move(sys_name))),
           driver_(*driver_ptr_.get()),
@@ -137,7 +137,7 @@ namespace cyberway { namespace chaindb {
           undo_(controller, driver_, journal_, cache_) {
         }
 
-        ~controller_impl_() = default;
+        ~chaindb_controller_impl() = default;
 
         void restore_db() {
             undo_.restore();
@@ -312,7 +312,7 @@ namespace cyberway { namespace chaindb {
         ) {
             auto table = get_table(request);
             auto value = table.abi->to_object(table, data, size);
-            auto obj = object_value{{table, pk}, std::move(value)};
+            auto obj   = to_object_value(table, pk, std::move(value));
 
             return insert(table, storage, obj);
         }
@@ -320,7 +320,7 @@ namespace cyberway { namespace chaindb {
         // From internal
         int insert(cache_object& itm, variant value, const storage_payer_info& storage) {
             auto table = get_table(itm);
-            auto obj = object_value{{table, itm.pk()}, std::move(value)};
+            auto obj   = to_object_value(table, itm.pk(), std::move(value));
 
             auto delta = insert(table, storage, obj);
             itm.set_object(std::move(obj));
@@ -335,7 +335,7 @@ namespace cyberway { namespace chaindb {
         ) {
             auto table = get_table(request);
             auto value = table.abi->to_object(table, data, size);
-            auto obj = object_value{{table, pk}, std::move(value)};
+            auto obj   = to_object_value(table, pk, std::move(value));
             auto orig_obj = object_by_pk(table, obj.pk());
 
             storage.in_ram = orig_obj.service.in_ram;
@@ -348,7 +348,7 @@ namespace cyberway { namespace chaindb {
         // From internal
         int update(cache_object& itm, variant value, storage_payer_info storage) {
             auto table = get_table(itm);
-            auto obj = object_value{{table, itm.pk()}, std::move(value)};
+            auto obj = object_value{table.to_service(itm.pk()), std::move(value)};
 
             storage.in_ram = itm.service().in_ram;
             auto delta = update(table, std::move(storage), obj, itm.object());
@@ -362,7 +362,7 @@ namespace cyberway { namespace chaindb {
             auto obj = itm.object();
             auto orig_obj = object_by_pk(table, obj.pk());
 
-            // obj.service.in_ram = ram_payer.in_ram;
+            obj.service.in_ram = storage.in_ram;
             storage.size  = orig_obj.service.size;
             storage.delta = 0;
             update(table, storage, obj, std::move(orig_obj));
@@ -426,6 +426,10 @@ namespace cyberway { namespace chaindb {
         }
 
     private:
+        object_value to_object_value(const table_info& table, const primary_key_t pk, variant value) const {
+            return {table.to_service(pk), std::move(value)};
+        }
+
         object_value object_at_cursor(const cursor_info& cursor, const bool with_decors) {
             auto obj = driver_.object_at_cursor(cursor, with_decors);
             validate_object(cursor.index, obj, cursor.pk);
@@ -623,7 +627,7 @@ namespace cyberway { namespace chaindb {
     }; // class chaindb_controller::controller_impl_
 
     chaindb_controller::chaindb_controller(const chaindb_type t, string address, string sys_name)
-    : impl_(new controller_impl_(*this, t, std::move(address), std::move(sys_name))) {
+    : impl_(new chaindb_controller_impl(*this, t, std::move(address), std::move(sys_name))) {
     }
 
     chaindb_controller::~chaindb_controller() = default;

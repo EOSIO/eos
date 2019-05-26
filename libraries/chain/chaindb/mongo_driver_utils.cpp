@@ -511,7 +511,7 @@ namespace cyberway { namespace chaindb {
             obj.service.pk    = get_pk_value(info, src);
             obj.service.code  = info.code;
             obj.service.scope = info.scope;
-            obj.service.table = info.table->name;
+            obj.service.table = info.table_name();
         }
         return obj;
     }

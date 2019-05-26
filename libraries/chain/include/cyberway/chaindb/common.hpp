@@ -5,6 +5,9 @@
 #include <eosio/chain/types.hpp>
 #include <eosio/chain/abi_def.hpp>
 
+#include <boost/smart_ptr/intrusive_ptr.hpp>
+#include <boost/smart_ptr/intrusive_ref_counter.hpp>
+
 #include <cyberway/chaindb/typed_name.hpp>
 
 namespace cyberway { namespace chaindb {
@@ -63,30 +66,10 @@ namespace cyberway { namespace chaindb {
 
     class chaindb_controller;
     class abi_info;
+    class cache_object;
+    using cache_object_ptr = boost::intrusive_ptr<cache_object>;
 
     using abi_map = std::map<account_name /* code */, abi_info>;
-
-    struct table_info {
-        const account_name_t code     = 0;
-        const scope_name_t   scope    = 0;
-        const table_def*     table    = nullptr;
-        const order_def*     pk_order = nullptr;
-        const abi_info*      abi      = nullptr;
-
-        table_info(account_name_t c, scope_name_t s)
-        : code(c), scope(s) {
-        }
-    }; // struct table_info
-
-    struct index_info: public table_info {
-        const index_def* index = nullptr;
-
-        using table_info::table_info;
-
-        index_info(const table_info& src)
-        : table_info(src) {
-        }
-    }; // struct index_info
 
     struct find_info final {
         cursor_t      cursor = invalid_cursor;
@@ -118,7 +101,7 @@ namespace cyberway { namespace chaindb {
         }
 
     private:
-        friend class chaindb_controller;
+        friend struct chaindb_controller_impl;
 
         chaindb_session(chaindb_controller&, revision_t);
 

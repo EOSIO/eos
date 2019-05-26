@@ -17,7 +17,17 @@
 
 namespace cyberway { namespace chaindb {
 
+    namespace intr = boost::intrusive;
+
     struct cache_object_compare {
+        const service_state& service(const service_state& v) const { return v;           }
+        const service_state& service(const cache_object&  v) const { return v.service(); }
+
+        template<typename LeftKey, typename RightKey>
+        bool operator()(const LeftKey& l, const RightKey& r) const {
+            return operator()(service(l), service(r));
+        }
+
         bool operator()(const service_state& l, const service_state& r) const {
             if (l.pk    < r.pk   ) return true;
             if (l.pk    > r.pk   ) return false;
@@ -29,18 +39,6 @@ namespace cyberway { namespace chaindb {
             if (l.code  > r.code ) return false;
 
             return l.scope < r.scope;
-        }
-
-        bool operator()(const cache_object& l, const cache_object& r) const {
-            return (*this)(l.object().service, r.object().service);
-        }
-
-        bool operator()(const cache_object& l, const service_state& r) const {
-            return (*this)(l.object().service, r);
-        }
-
-        bool operator()(const service_state& l, const cache_object& r) const {
-            return (*this)(l, r.object().service);
         }
     }; // struct cache_object_compare
 
@@ -59,7 +57,7 @@ namespace cyberway { namespace chaindb {
         }
 
         cache_service_key(const table_info& tab)
-        : code(tab.code), table(tab.table->name) {
+        : code(tab.code), table(tab.table_name()) {
         }
     }; // cache_service_key
 
@@ -107,7 +105,7 @@ namespace cyberway { namespace chaindb {
         index_name_t   index(const cache_index_key& v  ) const { return v.info.index->name;        }
 
         table_name_t   table(const cache_index_value& v) const { return v.object->service().table; }
-        table_name_t   table(const cache_index_key& v  ) const { return v.info.table->name;        }
+        table_name_t   table(const cache_index_key& v  ) const { return v.info.table_name();       }
 
         account_name_t code (const cache_index_value& v) const { return v.object->service().code;  }
         account_name_t code (const cache_index_key& v  ) const { return v.info.code;               }
@@ -692,8 +690,8 @@ namespace cyberway { namespace chaindb {
         }
 
     private:
-        using cache_object_tree_type = boost::intrusive::set<cache_object>;
-        using cache_index_tree_type  = boost::intrusive::set<cache_index_value>;
+        using cache_object_tree_type = intr::set<cache_object, intr::constant_time_size<false>>;
+        using cache_index_tree_type  = intr::set<cache_index_value, intr::constant_time_size<false>>;
         using lru_cell_list_type     = std::deque<lru_cache_cell>;
         using pending_cell_list_type = std::deque<pending_cache_cell>;
         using service_tree_type      = fc::flat_map<cache_service_key, cache_service_info>;
@@ -1096,19 +1094,20 @@ namespace cyberway { namespace chaindb {
 
     cache_map::~cache_map() = default;
 
-    void cache_map::set_cache_converter(const table_info& table, const cache_converter_interface& converter) const  {
-        impl_->set_cache_converter(cache_service_key(table), converter);
+    void cache_map::set_cache_converter(const table_info& info, const cache_converter_interface& converter) const  {
+        impl_->set_cache_converter(cache_service_key(info), converter);
     }
 
-    cache_object_ptr cache_map::create(const table_info& table, const storage_payer_info& storage) const {
-        auto pk = impl_->get_next_pk(table);
+    cache_object_ptr cache_map::create(const table_info& info, const storage_payer_info& storage) const {
+        auto pk = impl_->get_next_pk(info);
         if (BOOST_UNLIKELY(primary_key::Unset == pk)) {
             return {};
         }
-        auto value   = service_state(table, pk);
-        value.payer  = storage.owner;
-        value.in_ram = true;
-        return impl_->emplace({std::move(value), {}});
+
+        auto obj = object_value{info.to_service(pk), {}};
+        obj.service.payer  = storage.owner;
+        obj.service.in_ram = true;
+        return impl_->emplace(std::move(obj));
     }
 
     void cache_map::set_next_pk(const table_info& table, const primary_key_t pk) const {
@@ -1116,7 +1115,7 @@ namespace cyberway { namespace chaindb {
     }
 
     cache_object_ptr cache_map::find(const table_info& table, const primary_key_t pk) const {
-        return impl_->find({table, pk});
+        return impl_->find(table.to_service(pk));
     }
 
     cache_object_ptr cache_map::find(const index_info& info, const char* value, const size_t size) const {
@@ -1130,7 +1129,7 @@ namespace cyberway { namespace chaindb {
 
     void cache_map::remove(const table_info& table, const primary_key_t pk) const {
         assert(pk != primary_key::Unset);
-        impl_->remove_cache_object({table, pk});
+        impl_->remove_cache_object(table.to_service(pk));
     }
 
     void cache_map::set_revision(const object_value& obj, const revision_t rev) const {
