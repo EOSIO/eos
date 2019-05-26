@@ -131,7 +131,7 @@ namespace cyberway { namespace chaindb {
             _detail::struct_def_map_type dst_struct_map;
             std::vector<struct_def*> dst_structs;
 
-            auto max_size = index.orders.size() * abi_info::max_path_depth();
+            auto max_size = index.orders.size() * abi_info::MaxPathDepth;
             dst_struct_map.reserve(max_size);
             dst_structs.reserve(max_size);
             auto struct_name = get_root_index_name(table, index);
@@ -144,7 +144,7 @@ namespace cyberway { namespace chaindb {
                     ("type", order.order)("index", root_struct.name));
 
                 boost::split(order.path, order.field, [](char c){return c == '.';});
-                CYBERWAY_ASSERT(order.path.size() <= abi_info::max_path_depth(), invalid_index_description_exception,
+                CYBERWAY_ASSERT(order.path.size() <= abi_info::MaxPathDepth, invalid_index_description_exception,
                     "Path for index is too long in the index ${index}", ("index", root_struct.name));
 
                 auto dst_struct = &root_struct;
@@ -230,16 +230,16 @@ namespace cyberway { namespace chaindb {
         }
         serializer_.set_abi(abi, max_abi_time_);
 
-        CYBERWAY_ASSERT(abi.tables.size() <= max_table_cnt(), max_table_count_exception,
+        CYBERWAY_ASSERT(abi.tables.size() <= MaxTableCnt, max_table_count_exception,
             "The account '${code}' can't create more than ${max} tables",
-            ("code", get_code_name(code_))("max", max_table_cnt()));
+            ("code", get_code_name(code_))("max", size_t(MaxTableCnt)));
 
 
         table_map_.reserve(abi.tables.size());
         for (auto& table: abi.tables) {
-            CYBERWAY_ASSERT(table.indexes.size() <= max_index_cnt(), max_index_count_exception,
+            CYBERWAY_ASSERT(table.indexes.size() <= MaxIndexCnt, max_index_count_exception,
                 "The table '${table}' can't has more than ${max} indexes",
-                ("table", get_full_table_name(code_, table))("max", max_index_cnt()));
+                ("table", get_full_table_name(code_, table))("max", size_t(MaxIndexCnt)));
             auto id = table.name;
             table_map_.emplace(id, std::move(table));
         }
@@ -261,7 +261,7 @@ namespace cyberway { namespace chaindb {
         fc::flat_set<std::string> paths;
 
         auto db_tables = driver.db_tables(code_);
-        const auto max_db_index_cnt = db_tables.size() * max_index_cnt();
+        const auto max_db_index_cnt = db_tables.size() * MaxIndexCnt;
         drop_tables.reserve(    db_tables.size());
         drop_indexes.reserve(   max_db_index_cnt);
         create_indexes.reserve( max_db_index_cnt);

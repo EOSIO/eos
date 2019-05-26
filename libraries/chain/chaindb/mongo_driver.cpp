@@ -473,7 +473,7 @@ namespace cyberway { namespace chaindb {
             std::vector<index_def> result;
             auto indexes = db_table.list_indexes();
 
-            result.reserve(abi_info::max_index_cnt() * 2);
+            result.reserve(abi_info::MaxIndexCnt * 2);
             for (auto& info: indexes) {
                 index_def index;
 
@@ -528,7 +528,7 @@ namespace cyberway { namespace chaindb {
             static constexpr std::chrono::milliseconds max_time(10);
             std::vector<table_def> tables;
 
-            tables.reserve(abi_info::max_table_cnt() * 2);
+            tables.reserve(abi_info::MaxTableCnt * 2);
             _detail::auto_reconnect([&]() {
                 tables.clear();
                 auto db = mongo_conn_.database(get_code_name(sys_code_name_, code));

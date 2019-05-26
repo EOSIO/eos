@@ -4,7 +4,7 @@
 
 #include <eosio/chain/abi_serializer.hpp>
 
-#include <cyberway/chaindb/common.hpp>
+#include <cyberway/chaindb/table_info.hpp>
 #include <cyberway/chaindb/controller.hpp>
 #include <cyberway/chaindb/driver_interface.hpp>
 #include <cyberway/chaindb/exception.hpp>
@@ -15,7 +15,6 @@ namespace cyberway { namespace chaindb {
     using eosio::chain::abi_serializer;
     using eosio::chain::bytes;
 
-    using fc::time_point;
     using fc::variant;
 
     template <typename Info>
@@ -78,17 +77,11 @@ namespace cyberway { namespace chaindb {
             return code_;
         }
 
-        static constexpr size_t max_table_cnt() {
-            return 64;
-        }
-
-        static constexpr size_t max_index_cnt() {
-            return 16;
-        }
-
-        static constexpr size_t max_path_depth() {
-            return 4;
-        }
+        enum : size_t {
+            MaxTableCnt  = 64,
+            MaxIndexCnt  = 16,
+            MaxPathDepth = 4,
+        }; // constants
 
     private:
         const account_name code_;
