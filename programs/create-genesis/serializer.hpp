@@ -119,11 +119,29 @@ public:
     }
 
     template<typename T, typename Lambda>
+    const T emplace(const uint64_t pk, const name ram_payer, Lambda&& constructor) {
+        T obj(pk, constructor);
+#ifndef IGNORE_SYSTEM_ABI
+        static abi_serializer& ser = abis[name()];
+        variant v;
+        to_variant(obj, v);
+        fc::datastream<char*> ds(_buffer.data(), _buffer.size());
+        ser.variant_to_binary(_section.abi_type, v, ds, abi_serializer_max_time);
+        sys_table_row record{ram_payer, {_buffer.begin(), _buffer.begin() + ds.tellp()}};
+#else
+        sys_table_row record{ram_payer, fc::raw::pack(obj)};
+#endif
+        fc::raw::pack(out, record);
+        _row_count--;
+        return obj;
+    }
+
+    template<typename T, typename Lambda>
     const T emplace(const name ram_payer, Lambda&& constructor) {
-        T obj(constructor, 0);
+        T obj(0, constructor);
         constexpr auto tid = T::type_id;
         auto& id = autoincrement[tid];
-        if (obj.id == 0) {
+        if (obj.id._id == 0) {
             obj.id = id++;
         }
 #ifndef IGNORE_SYSTEM_ABI

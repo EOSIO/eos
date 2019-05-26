@@ -43,16 +43,19 @@ struct genesis_import::impl final {
         return resource_mng.get_storage_payer(0, row.ram_payer);
     };
 
-    void update_account(const sys_table_row& r) {
+    bool update_account(const sys_table_row& r) {
         // we need primary key for update, but it depends on table. add this hacky shortcut for accounts
-        primary_key_t pk = ((primary_key_t*)r.data.data())[1];
+        primary_key_t pk = ((primary_key_t*)r.data.data())[0];
         const name n(pk);
-        const auto& old = db.get<account_object>(n);  // vm_type/vm_version/privileged not set in genesis, copy
+        const auto* old = db.find<account_object>(n);  // vm_type/vm_version/privileged not set in genesis, copy
+        if (!old) {
+            return false;
+        }
         fc::datastream<const char*> ds(r.data.data(), r.data.size());
-        auto acc = account_object(primary_key::Unset, [&](auto& a){
+        auto acc = account_object(primary_key::Unset, [&](auto& a) {
             fc::raw::unpack(ds, a);
         });
-        db.modify(old, [&](auto& a) {
+        db.modify(*old, [&](auto& a) {
             a.last_code_update = acc.last_code_update;
             a.code_version = acc.code_version;
             a.abi_version = acc.abi_version;
@@ -66,6 +69,7 @@ struct genesis_import::impl final {
                 a.abi = acc.abi;
             }
         });
+        return true;
     }
 
     void import_state() {
@@ -93,10 +97,8 @@ struct genesis_import::impl final {
                     sys_table_row r;
                     fc::raw::unpack(in, r);
                     EOS_ASSERT(r.data.size() >= 8, extract_genesis_exception, "System table row is too small");
-                    primary_key_t pk = ((primary_key_t*)r.data.data())[0]; // all system tables have pk in the 1st field
-                    if (is_accounts_tbl && pk == primary_key_t(-1)) {
-                        update_account(r);
-                    } else {
+                    if (!is_accounts_tbl || !update_account(r)) {
+                        primary_key_t pk = ((primary_key_t*)r.data.data())[0]; // all system tables have pk in the 1st field
                         db.insert(r.request(t.name), ram_payer_info(r), pk, r.data.data(), r.data.size());
                     }
                     apply_db_changes();

@@ -47,7 +47,6 @@ using namespace cyberway::chaindb;
 using perm_id_t = authorization_manager::permission_id_type;
 
 
-constexpr uint64_t accounts_tbl_start_id = 7;           // some accounts created natively by node, this value is starting autoincrement for tables
 constexpr uint64_t permissions_tbl_start_id = 17;       // Note: usage_id is id-1
 
 
@@ -106,10 +105,6 @@ struct genesis_create::genesis_create_impl final {
     genesis_create_impl() {
         db.set_autoincrement<permission_object>(permissions_tbl_start_id);
         db.set_autoincrement<permission_usage_object>(permissions_tbl_start_id-1);
-
-        db.set_autoincrement<account_object>(accounts_tbl_start_id);
-        db.set_autoincrement<account_sequence_object>(accounts_tbl_start_id);
-        db.set_autoincrement<resource_usage_object>(accounts_tbl_start_id);
     }
 
     template<typename T, typename Lambda>
@@ -121,13 +116,11 @@ struct genesis_create::genesis_create_impl final {
         db.start_section(config::system_account_name, N(account), "account_object", l);
         for (const auto& acc: accounts) {
             auto n = get_name(acc);
-            db.emplace<account_object>(n, [&](auto& a) {
-                a.name = n;
+            db.emplace<account_object>(n, n, [&](auto& a) {
                 a.creation_date = ts;
                 if (_contracts.count(n) > 0) {
                     const auto& abicode = _contracts[n];
                     if (abicode.update) {
-                        a.id = -1;
                         updated_accs.insert(n);
                     }
                     if (abicode.abi.size()) {
@@ -150,9 +143,7 @@ struct genesis_create::genesis_create_impl final {
         for (const auto& acc: accounts) {
             auto n = get_name(acc);
             if (updated_accs.count(n) == 0) {
-                db.emplace<account_sequence_object>(n, [&](auto& a) {
-                    a.name = n;
-                });
+                db.emplace<account_sequence_object>(n, n, [&](auto& a) {});
             }
         }
 
@@ -160,8 +151,7 @@ struct genesis_create::genesis_create_impl final {
         for (const auto& acc: accounts) {
             auto n = get_name(acc);
             if (updated_accs.count(n) == 0) {
-                db.emplace<resource_usage_object>(n, [&](auto& u) {
-                    u.owner = n;
+                db.emplace<resource_usage_object>(n, n, [&](auto& u) {
                     u.accumulators.resize(resource_limits::resources_num);
                 });
             }
@@ -215,7 +205,7 @@ struct genesis_create::genesis_create_impl final {
                 bool custom_parent = !root && parent.value < max_custom_parent_id;
                 EOS_ASSERT(root || custom_parent || parents.count(parent) > 0, genesis_exception,
                     "Parent ${pa} not found for permission ${p} of account ${a}", ("a",n)("p",p.name)("pa",p.parent));
-                perm_id_t parent_id = root ? 0 : custom_parent ? parent.value : parents[parent];
+                perm_id_t parent_id = root ? perm_id_t(0) : custom_parent ? perm_id_t(parent.value) : parents[parent];
                 const auto& perm = store_permission(n, p.name, parent_id, auth, usage_id++);
                 parents[p.name] = perm.id;
             }

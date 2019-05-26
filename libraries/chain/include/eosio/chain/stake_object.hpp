@@ -43,7 +43,7 @@ using stake_agent_table = cyberway::chaindb::table_container<
 >;
 
 class stake_candidate_object : public cyberway::chaindb::object<stake_candidate_object_type, stake_candidate_object> {
-    OBJECT_CTOR(stake_candidate_object)
+    CHAINDB_OBJECT_ID_CTOR(stake_candidate_object)
     id_type id;  
     symbol_code token_code;
     account_name account;

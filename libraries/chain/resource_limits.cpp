@@ -185,9 +185,9 @@ void resource_limits_manager::add_storage_usage(const account_name& account, int
     const stake_param_object* param = nullptr;
     const stake_stat_object* stat = nullptr;
 
-    if (_chaindb.get<account_object, by_name>(account).privileged || //assignments:
-        !(_chaindb.find<stake_param_object, by_id>(token_code.value)) ||
-        !(stat  = _chaindb.find<stake_stat_object, by_id>(token_code.value)) ||
+    if (_chaindb.get<account_object>(account).privileged || //assignments:
+        !(_chaindb.find<stake_param_object>(token_code.value)) ||
+        !(stat  = _chaindb.find<stake_stat_object>(token_code.value)) ||
         !stat->enabled || stat->total_staked == 0) {
 
         return;
@@ -200,7 +200,7 @@ void resource_limits_manager::add_storage_usage(const account_name& account, int
       rls.add_pending_delta(delta, config, STORAGE);
    });
    
-   auto& usage = _chaindb.get<resource_usage_object, by_id>(account);
+   auto& usage = _chaindb.get<resource_usage_object>(account);
    _chaindb.modify( usage, [&]( auto& u ) {
       u.accumulators[STORAGE].add(delta, time_slot, config.account_usage_average_windows[STORAGE]);
    });
@@ -266,8 +266,8 @@ std::vector<ratio> resource_limits_manager::get_pricelist() const {
     const stake_param_object* param = nullptr;
     const stake_stat_object* stat = nullptr;
     
-    if ((param = _chaindb.find<stake_param_object, by_id>(token_code.value)) && 
-        (stat  = _chaindb.find<stake_stat_object, by_id>(token_code.value)) && stat->enabled && stat->total_staked != 0) {
+    if ((param = _chaindb.find<stake_param_object>(token_code.value)) &&
+        (stat  = _chaindb.find<stake_stat_object>(token_code.value)) && stat->enabled && stat->total_staked != 0) {
         EOS_ASSERT(stat->total_staked > 0, chain_exception, "SYSTEM: incorrect total_staked");
         
         for (size_t i = 0; i < resources_num; i++) {
@@ -304,8 +304,8 @@ ratio resource_limits_manager::get_account_stake_ratio(fc::time_point pending_bl
     const stake_stat_object* stat = nullptr;
 
     if (_chaindb.get<account_object>(account).privileged || //assignments:
-        !(param = _chaindb.find<stake_param_object, by_id>(token_code.value)) ||
-        !(stat  = _chaindb.find<stake_stat_object, by_id>(token_code.value)) ||
+        !(param = _chaindb.find<stake_param_object>(token_code.value)) ||
+        !(stat  = _chaindb.find<stake_stat_object>(token_code.value)) ||
         !stat->enabled || stat->total_staked == 0) {
 
         return {0,0};
