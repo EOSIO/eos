@@ -2698,7 +2698,7 @@ namespace eosio {
          return;
       }
 
-      auto ptrx = std::make_shared<transaction_metadata>( trx );
+      auto ptrx = std::make_shared<transaction_metadata>( trx, my_impl->chain_plug->chain().configured_subjective_signature_length_limit() );
       const auto& tid = ptrx->id();
       peer_dlog( this, "received packed_transaction ${id}", ("id", tid) );
 

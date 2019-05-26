@@ -21,7 +21,7 @@ namespace eosio { namespace chain {
 namespace detail {
 
    // Order of the template types in the static_variant matters to meta_permission_comparator.
-   using meta_permission = static_variant<permission_level_weight, key_weight, wait_weight>;
+   using meta_permission = static_variant<permission_level_weight, shared_key_weight, wait_weight>;
 
    struct get_weight_visitor {
       using result_type = uint32_t;
@@ -224,7 +224,7 @@ namespace detail {
                return total_weight;
             }
 
-            uint32_t operator()(const key_weight& permission) {
+            uint32_t operator()(const shared_key_weight& permission) {
                auto itr = boost::find( checker.provided_keys, permission.key );
                if( itr != checker.provided_keys.end() ) {
                   checker._used_keys[itr - checker.provided_keys.begin()] = true;
