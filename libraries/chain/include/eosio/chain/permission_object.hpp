@@ -10,7 +10,7 @@
 namespace eosio { namespace chain {
 
    class permission_usage_object : public cyberway::chaindb::object<permission_usage_object_type, permission_usage_object> {
-      OBJECT_CTOR(permission_usage_object)
+      CHAINDB_OBJECT_ID_CTOR(permission_usage_object)
 
       id_type           id;
       time_point        last_used;   ///< when this permission was last used
@@ -26,7 +26,7 @@ namespace eosio { namespace chain {
 
 
    class permission_object : public cyberway::chaindb::object<permission_object_type, permission_object> {
-      OBJECT_CTOR(permission_object)
+      CHAINDB_OBJECT_ID_CTOR(permission_object)
 
       id_type                           id;
       permission_usage_object::id_type  usage_id;

@@ -47,11 +47,11 @@ struct genesis_import::impl final {
         // we need primary key for update, but it depends on table. add this hacky shortcut for accounts
         primary_key_t pk = ((primary_key_t*)r.data.data())[1];
         const name n(pk);
-        const auto& old = db.get<account_object,by_name>(n);  // vm_type/vm_version/privileged not set in genesis, copy
+        const auto& old = db.get<account_object>(n);  // vm_type/vm_version/privileged not set in genesis, copy
         fc::datastream<const char*> ds(r.data.data(), r.data.size());
-        auto acc = account_object([&](auto& a){
+        auto acc = account_object(primary_key::Unset, [&](auto& a){
             fc::raw::unpack(ds, a);
-        }, 0);
+        });
         db.modify(old, [&](auto& a) {
             a.last_code_update = acc.last_code_update;
             a.code_version = acc.code_version;

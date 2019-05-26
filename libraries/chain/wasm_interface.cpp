@@ -182,7 +182,7 @@ class privileged_api : public context_aware_api {
       }
 
       bool is_privileged( account_name n )const {
-         return context.chaindb.get<account_object, by_name>( n ).privileged;
+         return context.chaindb.get<account_object>( n ).privileged;
       }
 
 };
@@ -819,7 +819,7 @@ class permission_api : public context_aware_api {
       };
 
       int64_t get_account_creation_time( account_name account ) {
-         auto* acct = context.chaindb.find<account_object, by_name>(account);
+         auto* acct = context.chaindb.find<account_object>(account);
          EOS_ASSERT( acct != nullptr, action_validate_exception,
                      "account '${account}' does not exist", ("account", account) );
          return time_point(acct->creation_date).time_since_epoch().count();

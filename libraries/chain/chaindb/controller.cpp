@@ -293,6 +293,13 @@ namespace cyberway { namespace chaindb {
             return item;
         }
 
+        cache_object_ptr create_cache_object(
+            const table_request& req, const primary_key_t pk, const storage_payer_info& storage
+        ) {
+            auto table = get_table(req);
+            return cache_.create(table, pk, storage);
+        }
+
         cache_object_ptr get_cache_object(const cursor_request& req, const bool with_blob) {
             auto& cursor = current(req);
 
@@ -511,7 +518,7 @@ namespace cyberway { namespace chaindb {
         }
 
         std::vector<char> load_abi(account_name abi_code) {
-            index_request request{N(), N(), N(account), N(name)};
+            index_request request{N(), N(), N(account), N(primary)};
             const auto abi_cursor = lower_bound(request, fc::mutable_variant_object()("name", abi_code));
 
             if (abi_cursor.pk == primary_key::End) {
@@ -755,6 +762,12 @@ namespace cyberway { namespace chaindb {
         const table_request& table, const storage_payer_info& storage
     ) const {
         return impl_->create_cache_object(table, storage);
+    }
+
+    cache_object_ptr chaindb_controller::create_cache_object(
+        const table_request& table, const primary_key_t pk, const storage_payer_info& storage
+    ) const {
+        return impl_->create_cache_object(table, pk, storage);
     }
 
     cache_object_ptr chaindb_controller::get_cache_object(const cursor_request& cursor, const bool with_blob) const {

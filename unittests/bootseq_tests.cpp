@@ -156,7 +156,7 @@ public:
         set_code(account, wast, signer);
         set_abi(account, abi, signer);
         if (account == config::system_account_name) {
-           const auto& accnt = control->chaindb().get<account_object,by_name>( account );
+           const auto& accnt = control->chaindb().get<account_object>( account );
            abi_def abi_definition;
            BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi_definition), true);
            abi_ser.set_abi(abi_definition, abi_serializer_max_time);
@@ -191,9 +191,9 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
       //   set_privileged(config::token_account_name);
 
         // Verify eosio.msig and eosio.token is privileged
-        const auto& eosio_msig_acc = get<account_object, by_name>(config::msig_account_name);
+        const auto& eosio_msig_acc = get<account_object>(config::msig_account_name);
         BOOST_TEST(eosio_msig_acc.privileged == true);
-        const auto& eosio_token_acc = get<account_object, by_name>(config::token_account_name);
+        const auto& eosio_token_acc = get<account_object>(config::token_account_name);
       //   BOOST_TEST(eosio_token_acc.privileged == true);
 
 

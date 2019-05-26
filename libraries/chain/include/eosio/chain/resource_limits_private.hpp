@@ -99,10 +99,9 @@ using namespace int_arithmetic;
    struct by_owner;
    struct by_dirty;
 
-   struct resource_usage_object : public chainbase::object<resource_usage_object_type, resource_usage_object> {
-      OBJECT_CTOR(resource_usage_object)
+   struct resource_usage_object {
+      CHAINDB_OBJECT_CTOR(resource_usage_object, owner.value)
 
-      id_type id;
       account_name owner;
        
       std::vector<usage_accumulator> accumulators;
@@ -111,13 +110,12 @@ using namespace int_arithmetic;
    using resource_usage_table = cyberway::chaindb::table_container<
       resource_usage_object,
        cyberway::chaindb::indexed_by<
-         cyberway::chaindb::ordered_unique<cyberway::chaindb::tag<by_id>, BOOST_MULTI_INDEX_MEMBER(resource_usage_object, resource_usage_object::id_type, id)>,
-         cyberway::chaindb::ordered_unique<cyberway::chaindb::tag<by_owner>, BOOST_MULTI_INDEX_MEMBER(resource_usage_object, account_name, owner) >
+         cyberway::chaindb::ordered_unique<cyberway::chaindb::tag<by_id>, BOOST_MULTI_INDEX_MEMBER(resource_usage_object, account_name, owner) >
       >
    >;
 
    class resource_limits_config_object : public cyberway::chaindb::object<resource_limits_config_object_type, resource_limits_config_object> {
-      OBJECT_CTOR(resource_limits_config_object);
+      CHAINDB_OBJECT_ID_CTOR(resource_limits_config_object);
       id_type id;
       std::vector<elastic_limit_parameters> limit_parameters;
       std::vector<uint32_t> account_usage_average_windows;
@@ -131,7 +129,7 @@ using namespace int_arithmetic;
    >;
 
    class resource_limits_state_object : public cyberway::chaindb::object<resource_limits_state_object_type, resource_limits_state_object> {
-      OBJECT_CTOR(resource_limits_state_object);
+      CHAINDB_OBJECT_ID_CTOR(resource_limits_state_object);
       id_type id;
       std::vector<usage_accumulator> block_usage_accumulators;
       std::vector<int64_t> pending_usage;
@@ -161,7 +159,7 @@ CHAINDB_TAG(eosio::chain::resource_limits::resource_limits_state_object,  ressta
 
 FC_REFLECT(eosio::chain::resource_limits::usage_accumulator, (last_ordinal)(value_ex)(consumed))
 
-FC_REFLECT(eosio::chain::resource_limits::resource_usage_object, (id)(owner)(accumulators))
+FC_REFLECT(eosio::chain::resource_limits::resource_usage_object, (owner)(accumulators))
 
 FC_REFLECT(eosio::chain::resource_limits::resource_limits_config_object, (id)(limit_parameters)(account_usage_average_windows))
 

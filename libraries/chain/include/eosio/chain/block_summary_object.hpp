@@ -18,7 +18,7 @@ namespace eosio { namespace chain {
     */
    class block_summary_object : public cyberway::chaindb::object<block_summary_object_type, block_summary_object>
    {
-         OBJECT_CTOR(block_summary_object)
+         CHAINDB_OBJECT_ID_CTOR(block_summary_object)
 
          id_type        id;
          block_id_type  block_id;

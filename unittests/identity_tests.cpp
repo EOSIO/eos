@@ -43,12 +43,12 @@ public:
       set_abi(N(identitytest), identity_test_abi);
       produce_blocks(1);
 
-      const auto& accnt = control->chaindb().get<account_object,by_name>( N(identity) );
+      const auto& accnt = control->chaindb().get<account_object>( N(identity) );
       abi_def abi;
       BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
       abi_ser.set_abi(abi, abi_serializer_max_time);
 
-      const auto& acnt_test = control->chaindb().get<account_object,by_name>( N(identitytest) );
+      const auto& acnt_test = control->chaindb().get<account_object>( N(identitytest) );
       abi_def abi_test;
       BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(acnt_test.abi, abi_test), true);
       abi_ser_test.set_abi(abi_test, abi_serializer_max_time);

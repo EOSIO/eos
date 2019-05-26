@@ -27,7 +27,7 @@ namespace eosio { namespace chain {
     * account's active authority is used.
     */
    class permission_link_object : public cyberway::chaindb::object<permission_link_object_type, permission_link_object> {
-      OBJECT_CTOR(permission_link_object)
+      CHAINDB_OBJECT_ID_CTOR(permission_link_object)
 
       id_type        id;
       /// The account which is defining its permission requirements

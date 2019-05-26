@@ -34,7 +34,7 @@ BOOST_FIXTURE_TEST_CASE(accounts_exists, tester)
       chain::controller *control = this->control.get();
       auto& chain1_db = control->chaindb();
 
-      auto nobody = chain1_db.find<account_object, by_name>(config::null_account_name);
+      auto nobody = chain1_db.find<account_object>(config::null_account_name);
       BOOST_CHECK(nobody != nullptr);
       const auto& nobody_active_authority = chain1_db.get<permission_object, by_owner>(boost::make_tuple(config::null_account_name, config::active_name));
       BOOST_CHECK_EQUAL(nobody_active_authority.auth.threshold, 1);
@@ -46,7 +46,7 @@ BOOST_FIXTURE_TEST_CASE(accounts_exists, tester)
       BOOST_CHECK_EQUAL(nobody_owner_authority.auth.accounts.size(), 0);
       BOOST_CHECK_EQUAL(nobody_owner_authority.auth.keys.size(), 0);
 
-      auto producers = chain1_db.find<account_object, by_name>(config::producers_account_name);
+      auto producers = chain1_db.find<account_object>(config::producers_account_name);
       BOOST_CHECK(producers != nullptr);
 
       const auto& active_producers = control->head_block_state()->active_schedule;

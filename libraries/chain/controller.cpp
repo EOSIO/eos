@@ -589,8 +589,7 @@ struct controller_impl {
    }
 
    void create_native_account( account_name name, const authority& owner, const authority& active, bool is_privileged = false ) {
-      chaindb.emplace<account_object>([&](auto& a) {
-         a.name = name;
+      chaindb.emplace<account_object>(name.value, [&](auto& a) {
          a.creation_date = conf.genesis.initial_timestamp;
          a.privileged = is_privileged;
 
@@ -600,10 +599,7 @@ struct controller_impl {
             a.set_abi(domain_contract_abi());
          }
       });
-
-      chaindb.emplace<account_sequence_object>([&](auto & a) {
-        a.name = name;
-      });
+      chaindb.emplace<account_sequence_object>(name.value, [&](auto & a) { });
 
       const auto& owner_permission  = authorization.create_permission({}, name, config::owner_name, 0,
                                                                       owner, conf.genesis.initial_timestamp );
@@ -2025,7 +2021,7 @@ wasm_interface& controller::get_wasm_interface() {
 
 const account_object& controller::get_account( account_name name )const
 { try {
-   return my->chaindb.get<account_object, by_name>(name);
+   return my->chaindb.get<account_object>(name);
 } FC_CAPTURE_AND_RETHROW( (name) ) }
 
 const domain_object& controller::get_domain(const domain_name& name) const { try {

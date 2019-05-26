@@ -111,8 +111,8 @@ namespace cyberway { namespace chaindb {
     struct table_container_impl;
 
     struct object_id_extractor {
-        template<typename T> uint64_t operator()(const T& o) const {
-            return o.id._id;
+        template<typename T> primary_key_t operator()(const T& o) const {
+            return o.pk();
         }
     }; // struct object_id_extractor
 

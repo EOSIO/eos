@@ -106,6 +106,9 @@ namespace cyberway { namespace chaindb {
         FC_DECLARE_DERIVED_EXCEPTION(driver_scope_exception, chaindb_internal_exception,
                                      3710020, "ChainDB driver returns bad scope")
 
+        FC_DECLARE_DERIVED_EXCEPTION(cache_primary_key_exception, chaindb_internal_exception,
+                                     3710021, "ChainDB cache return bad primary key")
+
     FC_DECLARE_DERIVED_EXCEPTION(chaindb_abi_exception, chaindb_exception,
                                  3720000, "ChainDB ABI exception")
 

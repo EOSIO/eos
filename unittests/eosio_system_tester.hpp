@@ -57,7 +57,7 @@ public:
       set_abi(config::token_account_name, eosio_token_abi);
 
       {
-         const auto& accnt = control->chaindb().get<account_object,by_name>(config::token_account_name);
+         const auto& accnt = control->chaindb().get<account_object>(config::token_account_name);
          abi_def abi;
          BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
          token_abi_ser.set_abi(abi, abi_serializer_max_time);
@@ -71,7 +71,7 @@ public:
       set_abi( config::system_account_name, eosio_system_abi );
 
       {
-         const auto& accnt = control->chaindb().get<account_object,by_name>( config::system_account_name );
+         const auto& accnt = control->chaindb().get<account_object>( config::system_account_name );
          abi_def abi;
          BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
          abi_ser.set_abi(abi, abi_serializer_max_time);
@@ -420,7 +420,7 @@ public:
          set_abi(config::msig_account_name, eosio_msig_abi);
 
          produce_blocks();
-         const auto& accnt = control->chaindb().get<account_object,by_name>(config::msig_account_name);
+         const auto& accnt = control->chaindb().get<account_object>(config::msig_account_name);
          abi_def msig_abi;
          BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, msig_abi), true);
          msig_abi_ser.set_abi(msig_abi, abi_serializer_max_time);

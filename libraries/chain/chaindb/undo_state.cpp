@@ -456,7 +456,7 @@ namespace cyberway { namespace chaindb {
                 return;
             }
 
-            auto account_idx = controller_.get_index<eosio::chain::account_object, eosio::chain::by_name>();
+            auto account_idx = controller_.get_index<eosio::chain::account_object,by_id>();
             auto& abi_map = controller_.get_abi_map();
 
             auto get_system_table_def = [&](const auto& service) -> table_def {

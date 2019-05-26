@@ -18,6 +18,7 @@ namespace cyberway { namespace chaindb {
 
         void set_next_pk(const table_info&, primary_key_t) const;
 
+        cache_object_ptr create(const table_info&, primary_key_t, const storage_payer_info&) const;
         cache_object_ptr create(const table_info&, const storage_payer_info&) const;
         cache_object_ptr find(const table_info&, primary_key_t) const;
         cache_object_ptr find(const index_info&, const char*, size_t) const;

@@ -38,7 +38,7 @@ uint128_t transaction_id_to_sender_id( const transaction_id_type& tid ) {
 
 void validate_authority_precondition( const apply_context& context, const authority& auth ) {
    for(const auto& a : auth.accounts) {
-      auto* acct = context.chaindb.find<account_object, by_name>(a.permission.actor);
+      auto* acct = context.chaindb.find<account_object>(a.permission.actor);
       EOS_ASSERT( acct != nullptr, action_validate_exception,
                   "account '${account}' does not exist",
                   ("account", a.permission.actor)
@@ -93,13 +93,13 @@ void apply_cyber_newaccount(apply_context& context) {
    EOS_ASSERT( name_str.size() <= 12, action_validate_exception, "account names can only be 12 chars long" );
 
    // Check if the creator is privileged
-   const auto &creator = chaindb.get<account_object, by_name>(create.creator);
+   const auto &creator = chaindb.get<account_object>(create.creator);
    if( !creator.privileged ) {
       EOS_ASSERT(name_str.find(system_prefix()) != 0, action_validate_exception,
          "only privileged accounts can have names that start with '${prefix}'", ("prefix", system_prefix()));
    }
 
-   auto existing_account = chaindb.find<account_object, by_name>(create.name);
+   auto existing_account = chaindb.find<account_object>(create.name);
    EOS_ASSERT(existing_account == nullptr, account_name_exists_exception,
               "Cannot create account named ${name}, as that name is already taken",
               ("name", create.name));
@@ -108,14 +108,11 @@ void apply_cyber_newaccount(apply_context& context) {
 
    context.control.get_mutable_resource_limits_manager().initialize_account(create.name, storage_payer);
 
-   chaindb.emplace<account_object>(storage_payer, [&](auto& a) {
-      a.name = create.name;
+   chaindb.emplace<account_object>(create.name.value, storage_payer, [&](auto& a) {
       a.creation_date = context.control.pending_block_time();
    });
 
-   chaindb.emplace<account_sequence_object>(storage_payer, [&](auto& a) {
-      a.name = create.name;
-   });
+   chaindb.emplace<account_sequence_object>(create.name.value, storage_payer, [&](auto& a) {});
 
    for( const auto& auth : { create.owner, create.active } ){
       validate_authority_precondition( context, auth );
@@ -180,7 +177,7 @@ void apply_cyber_setcode(apply_context& context) {
      wasm_interface::validate(context.control, act.code);
    }
 
-   const auto& account = chaindb.get<account_object,by_name>(act.account);
+   const auto& account = chaindb.get<account_object>(act.account);
 
 
    int64_t code_size = (int64_t)act.code.size();
@@ -188,7 +185,7 @@ void apply_cyber_setcode(apply_context& context) {
    int64_t new_size  = code_size * (config::setcode_storage_bytes_multiplier - 1);
 
    EOS_ASSERT( account.code_version != code_id, set_exact_code, "contract is already running this version of code" );
-    const auto& account_sequence = chaindb.get<account_sequence_object, by_name>(act.account);
+    const auto& account_sequence = chaindb.get<account_sequence_object>(act.account);
     if (is_protected_account(act.account)) {
         const auto seq = account_sequence.code_sequence;
         bool allowed = false;
@@ -231,7 +228,7 @@ void apply_cyber_setabi(apply_context& context) {
 
    context.require_authorization(act.account);
 
-   const auto& account = chaindb.get<account_object,by_name>(act.account);
+   const auto& account = chaindb.get<account_object>(act.account);
 
     if (act.account == chain::config::system_account_name) {
         act.abi = cyberway::chaindb::merge_abi_def(eosio::chain::eosio_contract_abi(), act.abi);
@@ -244,8 +241,7 @@ void apply_cyber_setabi(apply_context& context) {
    int64_t old_size = (int64_t)account.abi.size() * (config::setcode_storage_bytes_multiplier - 1 /*one abi_size is already in size*/);
    int64_t new_size = abi_size * (config::setcode_storage_bytes_multiplier - 1 /*one abi_size is already in size*/);
 
-    const auto& account_sequence = chaindb.get<account_sequence_object, by_name>(act.account);
-
+    const auto& account_sequence = chaindb.get<account_sequence_object>(act.account);
     auto hash = bytes_hash(act.abi);
     if (is_protected_account(act.account)) {
         const auto seq = account_sequence.abi_sequence;
@@ -298,7 +294,7 @@ void apply_cyber_updateauth(apply_context& context) {
    EOS_ASSERT( update.permission.to_string().find(system_prefix()) != 0, action_validate_exception,
       "Permission names that start with '${prefix}' are reserved", ("prefix", system_prefix()));
    EOS_ASSERT(update.permission != update.parent, action_validate_exception, "Cannot set an authority as its own parent");
-   chaindb.get<account_object, by_name>(update.account);
+   chaindb.get<account_object>(update.account);
    EOS_ASSERT(validate(update.auth), action_validate_exception,
               "Invalid authority: ${auth}", ("auth", update.auth));
    if( update.permission == config::active_name )
@@ -400,10 +396,10 @@ void apply_cyber_linkauth(apply_context& context) {
       context.require_authorization(requirement.account); // only here to mark the single authority on this action as used
 
       auto& chaindb = context.chaindb;
-      const auto *account = chaindb.find<account_object, by_name>(requirement.account);
+      const auto *account = chaindb.find<account_object>(requirement.account);
       EOS_ASSERT(account != nullptr, account_query_exception,
                  "Failed to retrieve account: ${account}", ("account", requirement.account)); // Redundant?
-      const auto *code = chaindb.find<account_object, by_name>(requirement.code);
+      const auto *code = chaindb.find<account_object>(requirement.code);
       EOS_ASSERT(code != nullptr, account_query_exception,
                  "Failed to retrieve code for account: ${account}", ("account", requirement.code));
       if( requirement.requirement != config::eosio_any_name ) {

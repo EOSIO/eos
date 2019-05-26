@@ -24,7 +24,7 @@ namespace eosio { namespace chain {
     */
    class generated_transaction_object : public cyberway::chaindb::object<generated_transaction_object_type, generated_transaction_object>
    {
-         OBJECT_CTOR(generated_transaction_object)
+         CHAINDB_OBJECT_ID_CTOR(generated_transaction_object)
 
          id_type                       id;
          transaction_id_type           trx_id;

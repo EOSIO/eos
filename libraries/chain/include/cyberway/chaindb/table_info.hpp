@@ -19,7 +19,6 @@ namespace cyberway { namespace chaindb {
         }
 
         bool is_valid() const {
-            assert((nullptr == table) == (!account_ptr) == (nullptr == pk_order) == (nullptr == abi));
             return nullptr != table;
         }
 

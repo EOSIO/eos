@@ -32,9 +32,7 @@ BOOST_AUTO_TEST_SUITE(database_tests)
          auto ses = chaindb.start_undo_session(true);
 
          // Create an account
-         chaindb.emplace<account_object>([](account_object &a) {
-            a.name = "billy";
-         });
+         chaindb.emplace<account_object>(N(billy), [](account_object &a) {});
 
          // Make sure we can retrieve that account by name
          auto ptr = chaindb.find<account_object, by_name, std::string>("billy");

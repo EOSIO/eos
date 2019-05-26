@@ -1100,10 +1100,17 @@ namespace cyberway { namespace chaindb {
 
     cache_object_ptr cache_map::create(const table_info& info, const storage_payer_info& storage) const {
         auto pk = impl_->get_next_pk(info);
-        if (BOOST_UNLIKELY(primary_key::Unset == pk)) {
-            return {};
+        if (BOOST_LIKELY(primary_key::Unset != pk)) {
+            return create(info, pk, storage);
         }
+        return {};
+    }
 
+    cache_object_ptr cache_map::create(
+        const table_info& info, const primary_key_t pk, const storage_payer_info& storage
+    ) const {
+        CYBERWAY_ASSERT(primary_key::Unset != pk && primary_key::End != pk, cache_primary_key_exception,
+            "Value ${pk} can't be used as primary key", ("pk", pk));
         auto obj = object_value{info.to_service(pk), {}};
         obj.service.payer  = storage.owner;
         obj.service.in_ram = true;

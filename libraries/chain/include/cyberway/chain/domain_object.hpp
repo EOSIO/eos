@@ -14,7 +14,7 @@ using eosio::chain::account_name;
 using eosio::chain::block_timestamp_type;
 
 class domain_object : public cyberway::chaindb::object<eosio::chain::domain_object_type, domain_object> {
-   OBJECT_CTOR(domain_object)
+   CHAINDB_OBJECT_ID_CTOR(domain_object)
 
    id_type              id;
    account_name         owner;
@@ -42,7 +42,7 @@ using domain_table = cyberway::chaindb::table_container<
 >;
 
 class username_object : public cyberway::chaindb::object<eosio::chain::username_object_type, username_object> {
-   OBJECT_CTOR(username_object)
+   CHAINDB_OBJECT_ID_CTOR(username_object)
 
    id_type              id;
    account_name         owner;

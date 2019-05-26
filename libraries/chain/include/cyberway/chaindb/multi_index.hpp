@@ -239,17 +239,17 @@ template <typename T>
 struct multi_index_item_data final: public cache_data {
     struct item_type: public T {
         template<typename Constructor>
-        item_type(cache_object& cache, Constructor&& constructor)
-            : T(std::forward<Constructor>(constructor), 0),
-              cache(cache) {
+        item_type(cache_object& cache, primary_key_t pk, Constructor&& constructor)
+        : T(pk, std::forward<Constructor>(constructor)),
+          cache(cache) {
         }
 
         cache_object& cache;
     } item;
 
     template<typename Constructor>
-    multi_index_item_data(cache_object& cache, Constructor&& constructor)
-    : item(cache, std::forward<Constructor>(constructor)) {
+    multi_index_item_data(cache_object& cache, primary_key_t pk, Constructor&& constructor)
+    : item(cache, pk, std::forward<Constructor>(constructor)) {
     }
 
     static const T& get_T(const cache_object& cache) {
@@ -282,7 +282,7 @@ private:
         ~cache_converter_() = default;
 
         void convert_variant(cache_object& cache, const object_value& obj) const override {
-            cache.set_data<item_data>([&](auto& o) {
+            cache.set_data<item_data>(primary_key::Unset, [&](auto& o) {
                 T& data = static_cast<T&>(o);
                 fc::from_variant(obj.value, data);
             });
@@ -532,7 +532,7 @@ private:
 
     indices_type indices_;
 
-    using primary_index_type = index<typename PrimaryIndex::tag, typename PrimaryIndex::extractor>;
+    using primary_index_type = index<typename PrimaryIndex::tag::type, typename PrimaryIndex::extractor>;
     primary_index_type primary_idx_;
 
 public:
@@ -549,7 +549,7 @@ public:
         }; // struct emplace_result
 
         using extractor_type = Extractor;
-        using iterator_extractor_type = iterator_extractor_impl<IndexName, Extractor>;
+        using iterator_extractor_type = iterator_extractor_impl<tag<IndexName>, Extractor>;
         using key_type = typename std::decay<decltype(Extractor()(static_cast<const T&>(*(const T*)nullptr)))>::type;
         using const_iterator = const_iterator_impl<IndexName>;
 
@@ -596,7 +596,7 @@ public:
         }
 
         const_iterator lower_bound(const key_type& key) const {
-            chaindb::lower_bound<std::is_same<IndexName, typename PrimaryIndex::tag>::value> finder;
+            chaindb::lower_bound<std::is_same<tag<IndexName>, typename PrimaryIndex::tag>::value> finder;
             auto info = finder(controller_, get_index_request(), key);
             return const_iterator(&controller_, info.cursor, info.pk);
         }
@@ -606,7 +606,7 @@ public:
             return lower_bound(key_converter<key_type>::convert(value));
         }
         const_iterator upper_bound(const key_type& key) const {
-            chaindb::upper_bound<std::is_same<IndexName, typename PrimaryIndex::tag>::value> finder;
+            chaindb::upper_bound<std::is_same<tag<IndexName>, typename PrimaryIndex::tag>::value> finder;
             auto info = finder(controller_, get_index_request(), key);
             return const_iterator(&controller_, info.cursor, info.pk);
         }
@@ -635,34 +635,27 @@ public:
 
         template<typename Lambda>
         emplace_result emplace(const storage_payer_info& payer, Lambda&& constructor) const {
-            auto cache = controller_.create_cache_object(get_table_request(), payer);
-            try {
-                auto pk = cache->pk();
-                cache->template set_data<item_data>([&](auto& o) {
-                    o.id = pk;
-                    constructor(static_cast<T&>(o));
-                });
+            auto cache_ptr = controller_.create_cache_object(get_table_request(), payer);
+            return emplace_impl(cache_ptr, payer, std::forward<Lambda>(constructor));
+        }
 
-                auto& obj = item_data::get_T(cache);
-                auto obj_pk = primary_key_extractor_type()(obj);
-                CYBERWAY_ASSERT(obj_pk == pk, chaindb_midx_pk_exception,
-                    "Invalid value of primary key ${pk} for the object ${obj} on emplace for the index ${index}",
-                    ("pk", pk)("obj", obj)("index", get_index_name()));
-
-                fc::variant value;
-                fc::to_variant(obj, value);
-                auto delta = controller_.insert(*cache.get(), std::move(value), payer);
-
-                return {obj, delta};
-            } catch (...) {
-                cache->mark_deleted();
-                throw;
-            }
+        template<typename Lambda>
+        emplace_result emplace(const primary_key_t pk, const storage_payer_info& payer, Lambda&& constructor) const {
+            auto cache_ptr = controller_.create_cache_object(get_table_request(), pk, payer);
+            CYBERWAY_ASSERT(pk == cache_ptr->pk(), chaindb_midx_pk_exception,
+                "Invalid value of primary key ${pk} on emplace for the index ${index}",
+                ("pk", pk)("index", get_index_name()));
+            return emplace_impl(cache_ptr, payer, std::forward<Lambda>(constructor));
         }
 
         template<typename Lambda>
         emplace_result emplace(Lambda&& constructor) const {
-            return emplace({}, std::forward<Lambda>(constructor));
+            return emplace(storage_payer_info(), std::forward<Lambda>(constructor));
+        }
+
+        template<typename Lambda>
+        emplace_result emplace(const primary_key_t pk, Lambda&& constructor) const {
+            return emplace(pk, storage_payer_info(), std::forward<Lambda>(constructor));
         }
 
         template<typename Lambda>
@@ -705,6 +698,29 @@ public:
 
     private:
         friend multi_index;
+
+        template<typename Lambda>
+        emplace_result emplace_impl(cache_object_ptr cache_ptr, const storage_payer_info& payer, Lambda&& constructor) const try {
+            auto pk = cache_ptr->pk();
+            cache_ptr->template set_data<item_data>(pk, [&](auto& o) {
+                constructor(static_cast<T&>(o));
+            });
+
+            auto& obj = item_data::get_T(cache_ptr);
+            auto obj_pk = primary_key_extractor_type()(obj);
+            CYBERWAY_ASSERT(obj_pk == pk, chaindb_midx_pk_exception,
+                "Invalid value of primary key ${pk} for the object ${obj} on emplace for the index ${index}",
+                ("pk", pk)("obj", obj)("index", get_index_name()));
+
+            fc::variant value;
+            fc::to_variant(obj, value);
+            auto delta = controller_.insert(*cache_ptr.get(), std::move(value), payer);
+
+            return {obj, delta};
+        } catch (...) {
+            cache_ptr->mark_deleted();
+            throw;
+        }
 
         static const index_request& get_index_request() {
             static index_request request{code_name(), scope_name(), table_name(), index_name()};
@@ -777,14 +793,9 @@ public:
         return primary_idx_.size();
     }
 
-    template<typename Lambda>
-    emplace_result emplace(Lambda&& constructor) const {
-        return primary_idx_.emplace(std::forward<Lambda>(constructor));
-    }
-
-    template<typename Lambda>
-    emplace_result emplace(const storage_payer_info& payer, Lambda&& constructor) const {
-        return primary_idx_.emplace(payer, std::forward<Lambda>(constructor));
+    template<typename... Args>
+    emplace_result emplace(Args&&... args) const {
+        return primary_idx_.emplace(std::forward<Args>(args)...);
     }
 
     template<typename Lambda>

@@ -95,7 +95,7 @@ void apply_cyber_domain_newusername(apply_context& context) {
         auto exists = chaindb.find<username_object, by_scope_name>(boost::make_tuple(op.creator, op.name));
         EOS_ASSERT(exists == nullptr, eosio::chain::username_exists_exception,
             "Cannot create username ${n} in scope ${s}, as it's already taken", ("n", op.name)("s", op.creator));
-        auto owner = chaindb.find<eosio::chain::account_object, by_name>(op.owner);
+        auto owner = chaindb.find<eosio::chain::account_object>(op.owner);
         EOS_ASSERT(owner, eosio::chain::account_name_exists_exception, "Username owner (${o}) must exist", ("o", op.owner));
         chaindb.emplace<username_object>(context.get_storage_payer(op.creator), [&](auto& d) {
             d.owner = op.owner;

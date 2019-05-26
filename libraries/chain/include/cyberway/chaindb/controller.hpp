@@ -86,17 +86,10 @@ namespace cyberway { namespace chaindb {
             return idx.get(std::forward<Key>(key));
         }
 
-        template<typename Object, typename Lambda>
-        const Object& emplace(Lambda&& constructor) const {
-            return emplace<Object>({}, std::forward<Lambda>(constructor));
-        }
-
-        template<typename Object, typename Lambda>
-        const Object& emplace(const storage_payer_info& payer, Lambda&& constructor) const {
+        template<typename Object, typename... Args>
+        const Object& emplace(Args&&... args) const {
             auto midx = get_table<Object>();
-            auto res = midx.emplace(payer, std::forward<Lambda>(constructor));
-            // should not be critical - object is stored in cache map
-            return res.obj;
+            return midx.emplace(std::forward<Args>(args)...).obj;
         }
 
         template<typename Object, typename Lambda>
@@ -169,6 +162,7 @@ namespace cyberway { namespace chaindb {
 
         void set_cache_converter(const table_request&, const cache_converter_interface&) const;
         cache_object_ptr create_cache_object(const table_request&, const storage_payer_info&) const;
+        cache_object_ptr create_cache_object(const table_request&, const primary_key_t, const storage_payer_info&) const;
         cache_object_ptr get_cache_object(const cursor_request&, bool with_blob) const;
 
         primary_key_t available_pk(const table_request&) const;

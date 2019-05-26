@@ -254,7 +254,7 @@ namespace eosio { namespace testing {
          auto get_resolver() {
             return [this]( const account_name& name ) -> optional<abi_serializer> {
                try {
-                  const auto& accnt = control->chaindb().get<account_object, by_name>( name );
+                  const auto& accnt = control->chaindb().get<account_object>( name );
                   abi_def abi;
                   if( abi_serializer::to_abi( accnt.abi, abi )) {
                      return abi_serializer( abi, abi_serializer_max_time );

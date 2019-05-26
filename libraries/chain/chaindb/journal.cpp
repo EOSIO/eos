@@ -141,7 +141,8 @@ namespace cyberway { namespace chaindb {
         auto& info = ctx.info(data.object.pk());
         _detail::write(std::move(data), info.data);
     } FC_CAPTURE_LOG_AND_RETHROW(
-        (data.object.service)
+       (data.object.service.code)(data.object.service.scope)(data.object.service.table)
+       (data.object.service.pk)(data.object.service)
     )
 
     void journal::write_data(const table_info& table, write_operation data) {
