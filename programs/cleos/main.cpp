@@ -1767,18 +1767,27 @@ struct regproxy_subcommand {
 
 struct unregproxy_subcommand {
    string proxy;
+   string symbol;
 
    unregproxy_subcommand(CLI::App* actionRoot) {
       auto unregister_proxy = actionRoot->add_subcommand("unregproxy", localized("Unregister an account as a proxy (for voting)"));
       unregister_proxy->add_option("proxy", proxy, localized("The proxy account to unregister"))->required();
+      unregister_proxy->add_option("symbol", symbol, localized("A token symbol used by producers"))->required();
       add_standard_transaction_options(unregister_proxy, "proxy@active");
 
       unregister_proxy->set_callback([this] {
-         fc::variant act_payload = fc::mutable_variant_object()
-                  ("proxy", proxy)
-                  ("isproxy", false);
-         auto accountPermissions = get_account_permissions(tx_permission, {proxy,config::active_name});
-         send_actions({create_action(accountPermissions, config::system_account_name, N(regproxy), act_payload)});
+          const auto limits = call(get_proxylevel_limits_func, fc::mutable_variant_object("symbol", symbol));
+          const auto limits_array = limits.get_array();
+
+          if(limits_array.size() < 2) {
+             return;
+          }
+
+         const auto proxy_status = call(get_proxy_status_func, fc::mutable_variant_object("account", proxy)("symbol", symbol));
+
+         if (proxy_status["proxylevel"].as_uint64() != limits_array.size() ) {
+             set_proxy_level(proxy, symbol, limits_array.size());
+         }
       });
    }
 };
