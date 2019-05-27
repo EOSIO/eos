@@ -1729,18 +1729,36 @@ struct setproxylvl_subcommand {
 
 struct regproxy_subcommand {
    string proxy;
+   string symbol;
+   int8_t level = -1;
 
    regproxy_subcommand(CLI::App* actionRoot) {
       auto register_proxy = actionRoot->add_subcommand("regproxy", localized("Register an account as a proxy (for voting)"));
-      register_proxy->add_option("proxy", proxy, localized("The proxy account to register"))->required();
+      register_proxy->add_option("proxy", proxy, localized("A proxy account to register"))->required();
+      register_proxy->add_option("symbol", symbol, localized("A token symbol used by producers"))->required();
+      register_proxy->add_option("level", level, localized("A proxy level. Must be 0 < level < MAX_LEVEL. Default MAX_LEVEL - 1"));
       add_standard_transaction_options(register_proxy, "proxy@active");
 
       register_proxy->set_callback([this] {
-         fc::variant act_payload = fc::mutable_variant_object()
-                  ("proxy", proxy)
-                  ("isproxy", true);
-         auto accountPermissions = get_account_permissions(tx_permission, {proxy,config::active_name});
-         send_actions({create_action(accountPermissions, config::system_account_name, N(regproxy), act_payload)});
+          const auto limits = call(get_proxylevel_limits_func, fc::mutable_variant_object("symbol", symbol));
+          const auto limits_array = limits.get_array();
+
+          EOS_ASSERT(limits_array.size() > 1, action_validate_exception, "Proxies are disabled by stake configs" );
+
+          if (level < 0) {
+              level = limits_array.size() - 1;
+          } else {
+              EOS_ASSERT(level < limits_array.size(), action_validate_exception, "Proxy level must be < ${max_level}", ("max_level", limits_array.size()) );
+          }
+
+         EOS_ASSERT(level > 0, action_validate_exception, "Proxy level must be > 0" );
+
+         const auto proxy_status = call(get_proxy_status_func, fc::mutable_variant_object("account", proxy)("symbol", symbol));
+
+         if (proxy_status["proxylevel"].as_uint64() != level) {
+             set_proxy_level(proxy, symbol, level);
+         }
+
       });
    }
 };
