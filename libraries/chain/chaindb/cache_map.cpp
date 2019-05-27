@@ -2,6 +2,7 @@
 #include <cyberway/chaindb/controller.hpp>
 #include <cyberway/chaindb/abi_info.hpp>
 #include <cyberway/chaindb/exception.hpp>
+#include <cyberway/chaindb/table_info.hpp>
 
 #include <eosio/chain/resource_limits.hpp>
 #include <eosio/chain/resource_limits_private.hpp>
@@ -102,7 +103,7 @@ namespace cyberway { namespace chaindb {
 
     struct cache_index_compare {
         index_name_t   index(const cache_index_value& v) const { return v.index;                   }
-        index_name_t   index(const cache_index_key& v  ) const { return v.info.index->name;        }
+        index_name_t   index(const cache_index_key& v  ) const { return v.info.index_name();       }
 
         table_name_t   table(const cache_index_value& v) const { return v.object->service().table; }
         table_name_t   table(const cache_index_key& v  ) const { return v.info.table_name();       }
@@ -463,9 +464,8 @@ namespace cyberway { namespace chaindb {
 
     class cache_map_impl final {
     public:
-        cache_map_impl(abi_map& map)
-        : abi_map_(map),
-          system_cell_(*this) {
+        cache_map_impl()
+        : system_cell_(*this) {
         }
 
         ~cache_map_impl() {
@@ -491,11 +491,11 @@ namespace cyberway { namespace chaindb {
             return obj_ptr;
         }
 
-        cache_object_ptr emplace(object_value value) {
+        cache_object_ptr emplace(const table_info& table, object_value value) {
             if (!value.service.in_ram) {
-                return create_cache_object(std::move(value));
+                return create_cache_object(table, std::move(value));
             } else {
-                return emplace_in_ram(std::move(value));
+                return emplace_in_ram(table, std::move(value));
             }
         }
 
@@ -506,10 +506,49 @@ namespace cyberway { namespace chaindb {
             }
         }
 
+        void set_object(const table_info& table, cache_object& cache_obj, object_value value) {
+            assert(cache_obj.service().empty() || cache_obj.is_valid_table(value.service));
+
+            int delta = value.service.size - cache_obj.service().size;
+            cache_obj.object_ = std::move(value);
+            cache_obj.blob_.clear();
+
+            if (!cache_obj.has_cell()) {
+                return;
+            }
+
+            add_ram_usage(cache_obj.cell(), delta);
+
+            if (is_system_code(cache_obj.service().code)) {
+                using state_object = eosio::chain::resource_limits::resource_limits_state_object;
+                if (cache_obj.has_data() && cache_obj.service().table == chaindb::tag<state_object>::get_code()) {
+                    auto& state = multi_index_item_data<state_object>::get_T(cache_obj);
+                    ram_limit_ = get_ram_limit(state.ram_size, state.reserved_ram_size);
+                }
+
+                // don't rebuild indicies for interchain objects
+                if (cache_obj.indicies_.capacity()) {
+                    return;
+                }
+            }
+
+            delete_cache_indicies(cache_obj.indicies_);
+            build_cache_indicies(table, cache_obj);
+        }
+
+        void set_service(const table_info&, cache_object& cache_obj, service_state service) {
+            assert(cache_obj.is_valid_table(service));
+
+            cache_obj.object_.service = std::move(service);
+            if (!cache_obj.service().in_ram && cache_obj.has_cell()) {
+                cache_obj.mark_deleted();
+            }
+        }
+
         void set_revision(const service_state& key, const revision_t rev) {
             auto obj_ptr = find(key);
             if (obj_ptr) {
-                obj_ptr->set_revision(rev);
+                obj_ptr->object_.service.revision = rev;
             }
         }
 
@@ -669,34 +708,12 @@ namespace cyberway { namespace chaindb {
             return false;
         }
 
-        void change_cache_object(cache_object& obj, const int delta) {
-            add_ram_usage(obj.cell(), delta);
-
-            if (is_system_code(obj.service().code)) {
-                using state_object = eosio::chain::resource_limits::resource_limits_state_object;
-                if (obj.has_data() && obj.service().table == chaindb::tag<state_object>::get_code()) {
-                    auto& state = multi_index_item_data<state_object>::get_T(obj);
-                    ram_limit_ = get_ram_limit(state.ram_size, state.reserved_ram_size);
-                }
-
-                // don't rebuild indicies for interchain objects
-                if (obj.indicies_.capacity()) {
-                    return;
-                }
-            }
-
-            delete_cache_indicies(obj.indicies_);
-            build_cache_indicies(obj);
-        }
-
     private:
         using cache_object_tree_type = intr::set<cache_object, intr::constant_time_size<false>>;
         using cache_index_tree_type  = intr::set<cache_index_value, intr::constant_time_size<false>>;
         using lru_cell_list_type     = std::deque<lru_cache_cell>;
         using pending_cell_list_type = std::deque<pending_cache_cell>;
         using service_tree_type      = fc::flat_map<cache_service_key, cache_service_info>;
-
-        abi_map&               abi_map_;
 
         cache_object_tree_type cache_object_tree_;
         cache_object_tree_type deleted_object_tree_;
@@ -824,37 +841,35 @@ namespace cyberway { namespace chaindb {
             return nullptr;
         }
 
-        void build_cache_indicies(cache_object& obj) {
-            auto& object  = obj.object();
-            if (object.is_null()) return;
-
-            auto& service = obj.service();
-            auto  ctr = abi_map_.find(service.code);
-            if (abi_map_.end() == ctr) return;
-
-            auto& abi = ctr->second;
-            auto  ttr = abi.find_table(service.table);
-            if (!ttr) return;
-
-            auto& indicies = obj.indicies_;
-            indicies.reserve(ttr->indexes.size() - 1 /* skip primary */);
-            auto info = index_info(service.code, service.scope);
-            info.table = ttr;
-
-            for (auto& i: ttr->indexes) if (i.unique && i.name != names::primary_index) {
-                info.index = &i;
-
-                auto blob = abi.to_bytes(info, object.value);
-                if (blob.empty()) continue;
-
-                indicies.emplace_back(i.name, std::move(blob), obj);
-                CYBERWAY_ASSERT(cache_index_tree_.end() == cache_index_tree_.find(indicies.back()),
-                    driver_duplicate_exception, "Cache duplicate unique records in the index ${index}",
-                    ("index", get_full_index_name(info)));
+        void build_cache_indicies(const table_info& table, cache_object& cache_obj) {
+            if (cache_obj.object_.is_null()) {
+                return;
             }
 
-            for (auto& i: indicies) {
-                cache_index_tree_.insert(i);
+            auto& object   = cache_obj.object_;
+            auto& service  = object.service;
+            auto& indicies = cache_obj.indicies_;
+            indicies.reserve(table.table->indexes.size() - 1 /* skip primary */);
+
+            auto index = index_info(service.code, service.scope);
+            index.table = table.table;
+
+            for (auto& idx: table.table->indexes) if (idx.unique && idx.name != names::primary_index) {
+                index.index = &idx;
+
+                auto blob = table.abi().to_bytes(index, object.value);
+                if (blob.empty()) {
+                    continue;
+                }
+
+                indicies.emplace_back(idx.name, std::move(blob), cache_obj);
+                CYBERWAY_ASSERT(cache_index_tree_.end() == cache_index_tree_.find(indicies.back()),
+                    driver_duplicate_exception, "Cache duplicate unique records in the index ${index}",
+                    ("index", get_full_index_name(index)));
+            }
+
+            for (auto& idx: indicies) {
+                cache_index_tree_.insert(idx);
             }
         }
 
@@ -884,53 +899,52 @@ namespace cyberway { namespace chaindb {
             return obj_ptr;
         }
 
-        cache_object_ptr emplace_in_ram(object_value value) {
-            auto obj_ptr = find_in_cache(value.service);
+        cache_object_ptr emplace_in_ram(const table_info& table, object_value value) {
+            auto cache_obj_ptr = find_in_cache(value.service);
             bool is_new_ptr = false;
             bool is_del_ptr = false;
 
-            if (!obj_ptr && has_pending_cell()) {
-                obj_ptr = find_in_deleted(value.service);
-                is_del_ptr = !!obj_ptr;
+            if (!cache_obj_ptr && has_pending_cell()) {
+                cache_obj_ptr = find_in_deleted(value.service);
+                is_del_ptr = !!cache_obj_ptr;
             }
 
-            if (!obj_ptr) {
-                obj_ptr = cache_object_ptr(new cache_object());
+            if (!cache_obj_ptr) {
+                cache_obj_ptr = cache_object_ptr(new cache_object(value.service));
                 is_new_ptr = true;
             }
 
             assert(!is_new_ptr || !is_del_ptr);
 
+            auto& cache_obj = *cache_obj_ptr.get();
             auto& service = get_cache_service(value);
-            set_cache_value(&service, *obj_ptr.get(), std::move(value));
+            convert_value(&service, cache_obj, std::move(value));
 
             if (is_del_ptr) {
-                auto itr = deleted_object_tree_.iterator_to(*obj_ptr.get());
+                auto itr = deleted_object_tree_.iterator_to(cache_obj);
                 deleted_object_tree_.erase(itr);
-                add_pending_object(obj_ptr, false);
+                add_pending_object(cache_obj_ptr, false);
             } else if (is_new_ptr) {
                 if (!value.service.payer) {
-                    add_system_object(obj_ptr);
+                    add_system_object(cache_obj_ptr);
                 } else if (has_pending_cell()) {
-                    add_pending_object(obj_ptr);
+                    add_pending_object(cache_obj_ptr);
                 } else {
-                    add_lru_object(obj_ptr);
+                    add_lru_object(cache_obj_ptr);
                 }
             }
 
             if (is_new_ptr || is_del_ptr) {
-                cache_object_tree_.insert(*obj_ptr.get());
+                cache_object_tree_.insert(cache_obj);
                 service.cache_object_cnt++;
             }
 
-            if (is_new_ptr) {
-                build_cache_indicies(*obj_ptr.get());
-            }
+            set_object(table, cache_obj, std::move(value));
 
-            return obj_ptr;
+            return cache_obj_ptr;
         }
 
-        cache_object_ptr create_cache_object(object_value value) {
+        cache_object_ptr create_cache_object(const table_info& table, object_value value) {
             auto obj_ptr = find_in_cache(value.service);
             bool is_new_ptr = !obj_ptr;
 
@@ -945,24 +959,23 @@ namespace cyberway { namespace chaindb {
 
             if (is_new_ptr) {
                 // create object, but don't add it to RAM
-                obj_ptr = cache_object_ptr(new cache_object());
+                obj_ptr = cache_object_ptr(new cache_object(value.service));
+                obj_ptr->object_ = std::move(value);
             }
 
             auto service_ptr = find_cache_service(value);
-            set_cache_value(service_ptr, *obj_ptr.get(), std::move(value));
+            convert_value(service_ptr, *obj_ptr.get(), std::move(value));
             return obj_ptr;
         }
 
-        void set_cache_value(cache_service_info* service_ptr, cache_object& obj, object_value value) const {
+        void convert_value(cache_service_info* service_ptr, cache_object& cache_obj, const object_value& value) const {
             // set_cache_value happens in three cases:
             //   1. create object for interchain tables ->  value.is_null()
             //   2. loading object from chaindb         -> !value.is_null()
             //   3. restore from undo state             -> !value.is_null()
             if (service_ptr && service_ptr->converter && !value.is_null()) {
-                service_ptr->converter->convert_variant(obj, value);
+                service_ptr->converter->convert_variant(cache_obj, value);
             }
-
-            obj.set_object(std::move(value));
         }
 
         void add_ram_usage(cache_cell& cell, const int64_t delta) {
@@ -985,6 +998,10 @@ namespace cyberway { namespace chaindb {
     }; // struct table_cache_map
 
     //---------------------------------------
+
+    cache_object::cache_object(service_state service) {
+        object_.service = std::move(service);
+    }
 
     bool cache_object::is_valid_cell() const {
         return !state_ || (state_->cell && state_->cell->map);
@@ -1010,11 +1027,6 @@ namespace cyberway { namespace chaindb {
         return *state_->cell;
     }
 
-    const cache_cell& cache_object::cell() const {
-        assert(has_cell());
-        return *state_->cell;
-    }
-
     cache_map_impl& cache_object::map() {
         assert(has_cell());
         return *state_->cell->map;
@@ -1026,27 +1038,6 @@ namespace cyberway { namespace chaindb {
         auto tmp = state_;
         state_ = &state;
         return tmp;
-    }
-
-    void cache_object::set_object(object_value obj) {
-        assert(object_.service.empty() || is_valid_table(obj.service));
-
-        int delta = obj.service.size - object_.service.size;
-        object_ = std::move(obj);
-        blob_.clear();
-
-        if (has_cell()) {
-            map().change_cache_object(*this, delta);
-        }
-    }
-
-    void cache_object::set_service(service_state service) {
-        assert(is_valid_table(service));
-
-        object_.service = std::move(service);
-        if (!object_.service.in_ram && has_cell()) {
-            mark_deleted();
-        }
     }
 
     void cache_object::mark_deleted() {
@@ -1088,8 +1079,8 @@ namespace cyberway { namespace chaindb {
 
     //---------------------------------------
 
-    cache_map::cache_map(abi_map& map)
-    : impl_(new cache_map_impl(map)) {
+    cache_map::cache_map()
+    : impl_(std::make_unique<cache_map_impl>()) {
     }
 
     cache_map::~cache_map() = default;
@@ -1109,12 +1100,12 @@ namespace cyberway { namespace chaindb {
     cache_object_ptr cache_map::create(
         const table_info& info, const primary_key_t pk, const storage_payer_info& storage
     ) const {
-        CYBERWAY_ASSERT(primary_key::Unset != pk && primary_key::End != pk, cache_primary_key_exception,
+        CYBERWAY_ASSERT(primary_key::is_good(pk), cache_primary_key_exception,
             "Value ${pk} can't be used as primary key", ("pk", pk));
         auto obj = object_value{info.to_service(pk), {}};
         obj.service.payer  = storage.owner;
         obj.service.in_ram = true;
-        return impl_->emplace(std::move(obj));
+        return impl_->emplace(info, std::move(obj));
     }
 
     void cache_map::set_next_pk(const table_info& table, const primary_key_t pk) const {
@@ -1131,12 +1122,20 @@ namespace cyberway { namespace chaindb {
 
     cache_object_ptr cache_map::emplace(const table_info& table, object_value obj) const {
         assert(obj.pk() != primary_key::Unset && !obj.is_null());
-        return impl_->emplace(std::move(obj));
+        return impl_->emplace(table, std::move(obj));
     }
 
     void cache_map::remove(const table_info& table, const primary_key_t pk) const {
         assert(pk != primary_key::Unset);
         impl_->remove_cache_object(table.to_service(pk));
+    }
+
+    void cache_map::set_object(const table_info& table, cache_object& cache_obj, object_value value) const {
+        impl_->set_object(table, cache_obj, std::move(value));
+    }
+
+    void cache_map::set_service(const table_info& table, cache_object& cache_obj, service_state service) const {
+        impl_->set_service(table, cache_obj, std::move(service));
     }
 
     void cache_map::set_revision(const object_value& obj, const revision_t rev) const {

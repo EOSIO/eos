@@ -6,7 +6,6 @@
 #include <eosio/chain/abi_def.hpp>
 
 #include <boost/smart_ptr/intrusive_ptr.hpp>
-#include <boost/smart_ptr/intrusive_ref_counter.hpp>
 
 #include <cyberway/chaindb/typed_name.hpp>
 
@@ -64,12 +63,12 @@ namespace cyberway { namespace chaindb {
         // TODO: RocksDB
     };
 
-    class  chaindb_controller;
-    struct abi_info;
-    class  cache_object;
-    using  cache_object_ptr = boost::intrusive_ptr<cache_object>;
+    class chaindb_controller;
+    class cache_object;
+    using cache_object_ptr = boost::intrusive_ptr<cache_object>;
 
-    using abi_map = std::map<account_name /* code */, abi_info>;
+    struct table_info;
+    struct index_info;
 
     struct find_info final {
         cursor_t      cursor = invalid_cursor;

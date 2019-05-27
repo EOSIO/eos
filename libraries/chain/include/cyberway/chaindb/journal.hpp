@@ -2,6 +2,7 @@
 
 #include <cyberway/chaindb/controller.hpp>
 #include <cyberway/chaindb/object_value.hpp>
+#include <cyberway/chaindb/table_info.hpp>
 #include <cyberway/chaindb/table_object.hpp>
 
 namespace cyberway { namespace chaindb {

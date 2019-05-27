@@ -44,7 +44,8 @@ namespace eosio { namespace chain {
          return a;
       }
 
-      cyberway::chaindb::abi_info& get_abi_info();
+      void generate_abi_info();
+      const cyberway::chaindb::abi_info& get_abi_info() const;
 
    private:
       std::unique_ptr<cyberway::chaindb::abi_info> abi_info_;

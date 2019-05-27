@@ -270,10 +270,6 @@ struct controller_impl {
                                  on_irreversible(b);
                                  });
 
-   self.setabi.connect( [&]( auto b ) {
-       chaindb.add_abi( std::get<0>(b), std::get<1>(b) );
-   });
-
    }
 
    /**
@@ -504,8 +500,6 @@ struct controller_impl {
    }
 
    void add_indices() {
-      chaindb.add_abi(0, eosio_contract_abi());
-
       reversible_blocks.add_index<reversible_block_index>();
 
       controller_index_set::add_indices(chaindb);

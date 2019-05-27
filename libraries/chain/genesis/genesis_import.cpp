@@ -112,7 +112,7 @@ struct genesis_import::impl final {
                             auto n = acc["name"].as<account_name>();
                             abi_def abi;
                             if (abi_serializer::to_abi(abi_bytes, abi) ) {
-                                db.add_abi(n, abi);
+                                // db.add_abi(n, abi); // TOOD: is it needed?
                                 std::cout << "  add " << n << " abi" << std::endl;
                             } else {
                                 elog("Failed to read abi provided in ${a} contract", ("a",n));

@@ -4,32 +4,20 @@
 
 #include <eosio/chain/abi_serializer.hpp>
 
-#include <cyberway/chaindb/table_info.hpp>
 #include <cyberway/chaindb/controller.hpp>
-#include <cyberway/chaindb/driver_interface.hpp>
 #include <cyberway/chaindb/exception.hpp>
 #include <cyberway/chaindb/names.hpp>
 
 namespace cyberway { namespace chaindb {
 
+    using eosio::chain::abi_def;
     using eosio::chain::abi_serializer;
     using eosio::chain::bytes;
 
     using fc::variant;
 
-    template <typename Info>
-    const index_def& get_pk_index(const Info& info) {
-        assert(info.table);
-        assert(info.table->indexes.size());
-        // abi structure is already validated by abi_serializer
-        return info.table->indexes.front();
-    }
+    class driver_interface;
 
-    template <typename Info>
-    const order_def& get_pk_order(const Info& info) {
-        // abi structure is already validated by abi_serializer
-        return get_pk_index(info).orders.front();
-    }
 
     struct abi_info final {
         abi_info() = default;
@@ -37,40 +25,38 @@ namespace cyberway { namespace chaindb {
 
         void verify_tables_structure(driver_interface&) const;
 
-        variant to_object(const table_info& info, const void* data, const size_t size) const {
-            assert(info.table);
-            return to_object_("table", [&]{return get_full_table_name(info);}, info.table->type, data, size);
-        }
-
-        variant to_object(const index_info& info, const void* data, const size_t size) const {
-            assert(info.index);
-            auto type = get_full_index_name(info);
-            return to_object_("index", [&](){return type;}, type, data, size);
-        }
-
-        bytes to_bytes(const table_info& info, const variant& value) const {
-            assert(info.table);
-            return to_bytes_("table", [&]{return get_full_table_name(info);}, info.table->type, value);
-        }
-
-        bytes to_bytes(const index_info& info, const variant& value) const {
-            assert(info.index);
-            auto type = get_full_index_name(info);
-            return to_bytes_("index", [&]{return type;}, type, value);
-        }
-
-        void mark_removed() {
-            is_removed_ = true;
-        }
-
-        bool is_removed() const {
-            return is_removed_;
-        }
+        variant to_object(const table_info&, const void*, size_t) const;
+        variant to_object(const index_info&, const void*, size_t) const;
+        bytes to_bytes(const table_info&, const variant&) const;
+        bytes to_bytes(const index_info& info, const variant& value) const;
 
         const table_def* find_table(table_name_t table) const {
             auto itr = table_map_.find(table);
-            if (table_map_.end() != itr) return &itr->second;
+            if (table_map_.end() != itr) {
+                return &itr->second;
+            }
 
+            return nullptr;
+        }
+
+        const index_def* find_index(const table_def& table, const index_name_t index) const {
+            for (auto& idx: table.indexes) if (index == idx.name.value) {
+                return &idx;
+            }
+            return nullptr;
+        }
+
+        const index_def* find_pk_index(const table_def& table) const {
+            if (!table.indexes.empty()) {
+                return &table.indexes.front();
+            }
+            return nullptr;
+        }
+
+        const order_def* find_pk_order(const table_def& table) const {
+            if (!table.indexes.empty()) {
+                return &table.indexes.front().orders.front();
+            }
             return nullptr;
         }
 
@@ -86,9 +72,8 @@ namespace cyberway { namespace chaindb {
 
     private:
         const account_name code_;
-        eosio::chain::abi_serializer serializer_;
+        abi_serializer serializer_;
         fc::flat_map<table_name_t, table_def> table_map_;
-        bool is_removed_ = false;
         static const fc::microseconds max_abi_time_;
 
         template<typename Type>

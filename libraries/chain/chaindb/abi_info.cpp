@@ -1,4 +1,6 @@
 #include <cyberway/chaindb/abi_info.hpp>
+#include <cyberway/chaindb/table_info.hpp>
+#include <cyberway/chaindb/driver_interface.hpp>
 
 #include <boost/algorithm/string.hpp>
 
@@ -48,7 +50,6 @@ namespace cyberway { namespace chaindb {
         table_info generate_table_info(const abi_info& abi, const table_def& table) {
             table_info info(abi.code(), abi.code());
             info.table = &table;
-            info.abi = &abi;
             return info;
         }
 
@@ -56,8 +57,7 @@ namespace cyberway { namespace chaindb {
             index_info info(abi.code(), abi.code());
             info.table = &table;
             info.index = &index;
-            info.abi = &abi;
-            info.pk_order = &get_pk_order(info);
+            info.pk_order = abi.find_pk_order(table);
             return info;
         }
 
@@ -246,6 +246,28 @@ namespace cyberway { namespace chaindb {
 
         index_builder builder(code_, table_map_, serializer_, max_abi_time_);
         builder.build_indexes();
+    }
+
+    variant abi_info::to_object(const table_info& info, const void* data, const size_t size) const {
+        assert(info.table);
+        return to_object_("table", [&]{return get_full_table_name(info);}, info.table->type, data, size);
+    }
+
+    variant abi_info::to_object(const index_info& info, const void* data, const size_t size) const {
+        assert(info.index);
+        auto type = get_full_index_name(info);
+        return to_object_("index", [&](){return type;}, type, data, size);
+    }
+
+    bytes abi_info::to_bytes(const table_info& info, const variant& value) const {
+        assert(info.table);
+        return to_bytes_("table", [&]{return get_full_table_name(info);}, info.table->type, value);
+    }
+
+    bytes abi_info::to_bytes(const index_info& info, const variant& value) const {
+        assert(info.index);
+        auto type = get_full_index_name(info);
+        return to_bytes_("index", [&]{return type;}, type, value);
     }
 
     void abi_info::verify_tables_structure(driver_interface& driver) const {

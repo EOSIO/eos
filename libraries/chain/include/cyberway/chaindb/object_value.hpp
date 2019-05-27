@@ -1,7 +1,9 @@
 #pragma once
 
 #include <cyberway/chaindb/common.hpp>
-#include <cyberway/chaindb/storage_payer_info.hpp>
+#include <cyberway/chaindb/typed_name.hpp>
+
+#include <fc/variant.hpp>
 
 namespace cyberway { namespace chaindb {
 

@@ -2,6 +2,7 @@
 
 #include <cyberway/chaindb/common.hpp>
 #include <cyberway/chaindb/cache_item.hpp>
+#include <cyberway/chaindb/account_abi_info.hpp>
 
 namespace cyberway { namespace chaindb {
 
@@ -10,9 +11,10 @@ namespace cyberway { namespace chaindb {
         const scope_name_t   scope    = 0;
         const table_def*     table    = nullptr;
         const order_def*     pk_order = nullptr;
-        const abi_info*      abi      = nullptr;
 
-        cache_object_ptr     account_ptr; // ptr to account with abi
+        account_abi_info     account_abi;
+
+        table_info() = default;
 
         table_info(account_name_t c, scope_name_t s)
         : code(c), scope(s) {
@@ -25,6 +27,11 @@ namespace cyberway { namespace chaindb {
         table_name_t table_name() const {
             assert(is_valid());
             return table->name.value;
+        }
+
+        const abi_info& abi() const {
+            assert(is_valid() && account_abi.has_abi_info());
+            return account_abi.abi();
         }
 
         service_state to_service(const primary_key_t pk = primary_key::Unset) const {

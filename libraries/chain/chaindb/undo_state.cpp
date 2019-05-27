@@ -5,9 +5,6 @@
 #include <cyberway/chaindb/cache_map.hpp>
 #include <cyberway/chaindb/table_object.hpp>
 #include <cyberway/chaindb/journal.hpp>
-#include <cyberway/chaindb/abi_info.hpp>
-
-#include <eosio/chain/account_object.hpp>
 
 /** Session exception is a critical errors and they doesn't handle by chain */
 #define CYBERWAY_SESSION_ASSERT(expr, FORMAT, ...)                      \
@@ -28,7 +25,7 @@ namespace cyberway { namespace chaindb {
         Stack,
     }; // enum undo_stage
 
-    static table_info undo_table{0, 0};
+    static table_info undo_table{N(), N()};
 
     class table_undo_stack;
 
@@ -456,40 +453,12 @@ namespace cyberway { namespace chaindb {
                 return;
             }
 
-            auto account_idx = controller_.get_index<eosio::chain::account_object,by_id>();
-            auto& abi_map = controller_.get_abi_map();
-
-            auto get_system_table_def = [&](const auto& service) -> table_def {
-                auto itr = abi_map.find(account_name());
-                assert(itr != abi_map.end());
-
-                auto def = itr->second.find_table(service.table);
-                CYBERWAY_SESSION_ASSERT(nullptr != def, "The table ${table} doesn't exist on restore",
-                    ("table", get_full_table_name(service)));
-                return *def;
-            };
-
-            auto get_contract_table_def = [&](const auto& service) -> table_def {
-                auto itr = account_idx.find(service.code);
-                auto abi = itr->get_abi();
-                auto dtr = std::find_if(abi.tables.begin(), abi.tables.end(), [&](auto& def){
-                    return def.name == service.table;
-                });
-                CYBERWAY_SESSION_ASSERT(dtr != abi.tables.end(), "The table ${table} doesn't exist",
-                    ("table", get_full_table_name(service)));
-                return (*dtr);
-            };
-
             auto get_state = [&](const auto& service) -> undo_state& {
                 auto table = table_info(service.code, service.scope);
-                auto def   = table_def();
-                if (account_name() == service.code) {
-                    def = get_system_table_def(service);
-                } else {
-                    def = get_contract_table_def(service);
-                }
-                table.table = &def;
-                table.pk_order = &get_pk_order(table);
+
+                table.account_abi = controller_.get_account_abi_info(service.code);
+                table.table       = table.abi().find_table(service.table);
+                table.pk_order    = table.abi().find_pk_order(*table.table);
 
                 auto& stack = get_table(table);
                 if (stack.revision() != service.revision) {
@@ -1020,7 +989,7 @@ namespace cyberway { namespace chaindb {
     }; // struct undo_stack::undo_stack_impl_
 
     undo_stack::undo_stack(chaindb_controller& controller, driver_interface& driver, journal& jrnl, cache_map& cache)
-    : impl_(new undo_stack_impl_(revision_, controller, driver, jrnl, cache)) {
+    : impl_(std::make_unique<undo_stack_impl_>(revision_, controller, driver, jrnl, cache)) {
         revision_ = 0;
     }
 

@@ -16,6 +16,7 @@
 #include <cyberway/chaindb/controller.hpp>
 #include <cyberway/chaindb/names.hpp>
 #include <cyberway/chaindb/typed_name.hpp>
+#include <cyberway/chaindb/table_info.hpp>
 
 #include <fc/io/json.hpp>
 

@@ -6,18 +6,16 @@
 
 #include <cyberway/chaindb/common.hpp>
 #include <cyberway/chaindb/cache_item.hpp>
-#include <cyberway/chaindb/table_info.hpp>
 #include <cyberway/chaindb/storage_payer_info.hpp>
 
 namespace cyberway { namespace chaindb {
-    using fc::microseconds;
     using fc::variant;
 
     using eosio::chain::abi_def;
 
     template<class> struct object_to_table;
     struct storage_payer_info;
-
+    struct account_abi_info;
     struct chaindb_controller_impl;
 
     class chaindb_controller final {
@@ -92,16 +90,10 @@ namespace cyberway { namespace chaindb {
             return midx.emplace(std::forward<Args>(args)...).obj;
         }
 
-        template<typename Object, typename Lambda>
-        int64_t modify(const Object& obj, Lambda&& updater) const {
+        template<typename Object, typename... Args>
+        int64_t modify(const Object& obj, Args&&... args) const {
             auto midx = get_table<Object>();
-            return midx.modify(obj, std::forward<Lambda>(updater));
-        }
-
-        template<typename Object, typename Lambda>
-        int64_t modify(const Object& obj, const storage_payer_info& payer, Lambda&& updater) const {
-            auto midx = get_table<Object>();
-            return midx.modify(obj, payer, std::forward<Lambda>(updater));
+            return midx.modify(obj, std::forward<Args>(args)...);
         }
 
         template<typename Object>
@@ -124,10 +116,6 @@ namespace cyberway { namespace chaindb {
         void restore_db() const;
         void drop_db() const;
         void clear_cache() const;
-
-        void add_abi(const account_name&, abi_def) const;
-
-        const abi_map& get_abi_map() const;
 
         void close(const cursor_request&) const;
         void close_code_cursors(const account_name&) const;
@@ -164,6 +152,7 @@ namespace cyberway { namespace chaindb {
         cache_object_ptr create_cache_object(const table_request&, const storage_payer_info&) const;
         cache_object_ptr create_cache_object(const table_request&, const primary_key_t, const storage_payer_info&) const;
         cache_object_ptr get_cache_object(const cursor_request&, bool with_blob) const;
+        account_abi_info get_account_abi_info(account_name_t) const;
 
         primary_key_t available_pk(const table_request&) const;
 

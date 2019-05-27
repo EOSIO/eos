@@ -6,6 +6,8 @@
 #include <cyberway/chaindb/names.hpp>
 #include <cyberway/chaindb/table_object.hpp>
 #include <cyberway/chaindb/mongo_driver_utils.hpp>
+#include <cyberway/chaindb/journal.hpp>
+#include <cyberway/chaindb/abi_info.hpp>
 
 #include <bsoncxx/builder/basic/kvp.hpp>
 #include <bsoncxx/builder/basic/document.hpp>
@@ -17,7 +19,6 @@
 #include <mongocxx/exception/bulk_write_exception.hpp>
 #include <mongocxx/exception/logic_error.hpp>
 #include <mongocxx/exception/query_exception.hpp>
-#include <cyberway/chaindb/abi_info.hpp>
 
 namespace cyberway { namespace chaindb {
 
@@ -900,7 +901,7 @@ namespace cyberway { namespace chaindb {
     ///----
 
     mongodb_driver::mongodb_driver(journal& jrnl, string address, string sys_name)
-    : impl_(new mongodb_impl_(jrnl, std::move(address), std::move(sys_name))) {
+    : impl_(std::make_unique<mongodb_impl_>(jrnl, std::move(address), std::move(sys_name))) {
     }
 
     mongodb_driver::~mongodb_driver() = default;
