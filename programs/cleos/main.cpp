@@ -280,7 +280,7 @@ chain::action generate_nonce_action() {
 }
 
 void prompt_for_wallet_password(string& pw, const string& name) {
-   if(pw.size() == 0 && name != "SecureEnclave") {
+   if(pw.size() == 0 && name != "SecureEnclave" && name != "WebAuthn") {
       std::cout << localized("password: ");
       fc::set_console_echo(false);
       std::getline( std::cin, pw, '\n' );

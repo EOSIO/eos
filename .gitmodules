@@ -18,3 +18,6 @@
 [submodule "libraries/yubihsm"]
 	path = libraries/yubihsm
 	url = https://github.com/Yubico/yubihsm-shell
+[submodule "libraries/microfido/tinycbor/upstream"]
+	path = libraries/microfido/tinycbor/upstream
+	url = https://github.com/intel/tinycbor
