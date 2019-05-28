@@ -65,6 +65,7 @@ public:
     get_producer_schedule_result get_producer_schedule( const get_producer_schedule_params& params )const;
     get_scheduled_transactions_result get_scheduled_transactions( const get_scheduled_transactions_params& params ) const;
     std::string get_agent_public_key(const get_agent_public_key_params& params) const;
+    get_proxy_status_result get_proxy_status(const get_proxy_status_params& params) const;
     std::vector<uint8_t> get_proxylevel_limits(const get_proxylevel_limits_params& params) const;
 
 private:
@@ -76,6 +77,10 @@ private:
     fc::variant get_refunds(chain::account_name account, const resource_calculator& resource_calc) const;
     fc::variant get_payout(chain::account_name account) const;
     std::string get_agent_public_key(chain::account_name account, chain::symbol symbol) const;
+
+    uint32_t get_grantors_count(chain::account_name account, chain::symbol_code token_code) const;
+    uint8_t get_proxy_level(chain::account_name account, chain::symbol_code token_code) const;
+
 
 private:
 
@@ -789,6 +794,41 @@ get_producer_schedule_result chain_api_plugin_impl::get_producer_schedule( const
    return result;
 }
 
+get_proxy_status_result chain_api_plugin_impl::get_proxy_status(const get_proxy_status_params& params) const {
+    const auto token_code = params.symbol.to_symbol_code();
+
+    const auto grantors_count = get_grantors_count(params.account, token_code);
+    const auto proxy_level = get_proxy_level(params.account, token_code);
+
+    return {params.account, params.symbol, proxy_level, grantors_count};
+}
+
+uint32_t chain_api_plugin_impl::get_grantors_count(chain::account_name account, chain::symbol_code token_code) const {
+    auto& chaindb = chain_controller_.chaindb();
+
+    auto grants_table = chaindb.get_table<eosio::chain::stake_grant_object>();
+    auto grants_idx = grants_table.get_index<eosio::chain::stake_grant_object::by_key>();
+
+    auto grant_itr = grants_idx.lower_bound(eosio::chain::stake::grant_key(token_code, account));
+
+    uint32_t count = 0;
+    for (;grant_itr != grants_idx.end() && grant_itr->token_code == token_code && grant_itr->grantor_name == account; ++grant_itr, ++count);
+    return count;
+}
+
+uint8_t chain_api_plugin_impl::get_proxy_level(chain::account_name account, chain::symbol_code token_code) const {
+    auto& chaindb = chain_controller_.chaindb();
+
+    auto agents_table = chaindb.get_table<eosio::chain::stake_agent_object>();
+    auto agents_idx = agents_table.get_index<eosio::chain::stake_agent_object::by_key>();
+
+    auto agents_itr = agents_idx.lower_bound(eosio::chain::stake::agent_key(token_code, account));
+
+    EOS_ASSERT(agents_itr != agents_idx.end(), chain::action_validate_exception, "Account ${account} is not an agent", ("account", account));
+
+    return agents_itr->proxy_level;
+}
+
 std::vector<uint8_t> chain_api_plugin_impl::get_proxylevel_limits(const get_proxylevel_limits_params& params) const {
     auto& chaindb = chain_controller_.chaindb();
 
@@ -890,8 +930,9 @@ void chain_api_plugin::plugin_startup() {
       CREATE_READ_HANDLER((*my), abi_bin_to_json, 200),
       CREATE_READ_HANDLER((*my), get_required_keys, 200),
       CREATE_READ_HANDLER((*my), get_transaction_id, 200),
-      CREATE_READ_HANDLER((*my), resolve_names, 200),
       CREATE_READ_HANDLER((*my), get_agent_public_key, 200),
+      CREATE_READ_HANDLER((*my), resolve_names, 200),
+      CREATE_READ_HANDLER((*my), get_proxy_status, 200),
       CREATE_READ_HANDLER((*my), get_proxylevel_limits, 200)
     });
 }

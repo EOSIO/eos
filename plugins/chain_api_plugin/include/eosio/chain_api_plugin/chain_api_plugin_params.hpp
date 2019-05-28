@@ -108,6 +108,11 @@ namespace eosio {
     struct get_producer_schedule_params {
     };
 
+    struct get_proxy_status_params {
+        chain::account_name account;
+        chain::symbol symbol;
+    };
+
     struct get_proxylevel_limits_params {
         chain::symbol symbol;
     };
@@ -137,4 +142,5 @@ FC_REFLECT( eosio::abi_json_to_bin_params, (code)(action)(args) )
 FC_REFLECT( eosio::abi_bin_to_json_params, (code)(action)(binargs) )
 FC_REFLECT( eosio::get_required_keys_params, (transaction)(available_keys) )
 FC_REFLECT( eosio::get_agent_public_key_params, (account)(symbol))
+FC_REFLECT( eosio::get_proxy_status_params, (account)(symbol))
 FC_REFLECT( eosio::get_proxylevel_limits_params, (symbol))
