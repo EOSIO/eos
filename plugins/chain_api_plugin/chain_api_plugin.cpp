@@ -63,6 +63,7 @@ public:
     get_producers_result get_producers( const get_producers_params& params )const;
     get_producer_schedule_result get_producer_schedule( const get_producer_schedule_params& params )const;
     get_scheduled_transactions_result get_scheduled_transactions( const get_scheduled_transactions_params& params ) const;
+    std::string get_agent_public_key(const get_agent_public_key_params& params) const;
 
 private:
    get_table_rows_result walk_table_row_range(const get_table_rows_params& p,
@@ -72,7 +73,7 @@ private:
 
     fc::variant get_refunds(chain::account_name account, const resource_calculator& resource_calc) const;
     fc::variant get_payout(chain::account_name account) const;
-    std::string get_agent_public_key(chain::account_name account) const;
+    std::string get_agent_public_key(chain::account_name account, chain::symbol symbol) const;
 
 private:
 
@@ -733,7 +734,7 @@ get_producers_result chain_api_plugin_impl::get_producers( const get_producers_p
             continue;
         }
 
-        const auto key = get_agent_public_key(account);
+        const auto key = get_agent_public_key(account, chain::symbol(CORE_SYMBOL));
         const bool is_active = value["commencement_block"].as_uint64() != 0;
 
         auto producer_info = fc::mutable_variant_object()("owner", account)
@@ -758,17 +759,21 @@ get_producers_result chain_api_plugin_impl::get_producers( const get_producers_p
     }
 }
 
-std::string chain_api_plugin_impl::get_agent_public_key(chain::account_name account) const {
+std::string chain_api_plugin_impl::get_agent_public_key(chain::account_name account, chain::symbol symbol) const {
     auto& chaindb = chain_controller_.chaindb();
 
     const cyberway::chaindb::index_request request{N(), N(), N(stake.agent), N(bykey)};
 
-    const auto it = chaindb.lower_bound(request, fc::mutable_variant_object()("token_code", chain::symbol(CORE_SYMBOL).to_symbol_code())("account", account));
+    const auto it = chaindb.lower_bound(request, fc::mutable_variant_object()("token_code", symbol.to_symbol_code())("account", account));
 
     if (it.pk != cyberway::chaindb::primary_key::End) {
         return chaindb.value_at_cursor({N(), it.cursor})["signing_key"].as_string();
     }
     return "";
+}
+
+std::string chain_api_plugin_impl::get_agent_public_key(const get_agent_public_key_params& params) const {
+    return get_agent_public_key(params.account, params.symbol);
 }
 
 get_producer_schedule_result chain_api_plugin_impl::get_producer_schedule( const get_producer_schedule_params& p ) const {
@@ -875,7 +880,8 @@ void chain_api_plugin::plugin_startup() {
       CREATE_READ_HANDLER((*my), abi_bin_to_json, 200),
       CREATE_READ_HANDLER((*my), get_required_keys, 200),
       CREATE_READ_HANDLER((*my), get_transaction_id, 200),
-      CREATE_READ_HANDLER((*my), resolve_names, 200)
+      CREATE_READ_HANDLER((*my), resolve_names, 200),
+      CREATE_READ_HANDLER((*my), get_agent_public_key, 200)
     });
 }
 
