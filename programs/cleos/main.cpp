@@ -789,15 +789,6 @@ chain::action create_delegate(const name& from, const name& receiver, const asse
                         config::system_account_name, N(delegatebw), act_payload);
 }
 
-fc::variant regproducer_variant(const account_name& producer, const public_key_type& key, const string& url, uint16_t location) {
-   return fc::mutable_variant_object()
-            ("producer", producer)
-            ("producer_key", key)
-            ("url", url)
-            ("location", location)
-            ;
-}
-
 chain::action create_open(const string& contract, const name& owner, symbol sym, const name& ram_payer) {
    auto open_ = fc::mutable_variant_object
       ("owner", owner)
@@ -1170,40 +1161,51 @@ CLI::callback_t obsoleted_option_host_port = [](CLI::results_t) {
    return false;
 };
 
-void set_proxy_level(const string& account, const string& symbol, uint8_t proxy_level) {
+chain::action create_set_proxy_level_action(const string& account, const string& symbol, uint8_t proxy_level) {
     fc::variant act_payload = fc::mutable_variant_object()
                       ("account", account)
                       ("token_code", chain::symbol::from_string(symbol).to_symbol_code())
                       ("level", proxy_level);
 
     const auto account_permissions = get_account_permissions(tx_permission, {account, config::active_name});
-    send_actions({create_action(account_permissions, N(cyber.stake), N(setproxylvl), act_payload)});
+    return create_action(account_permissions, N(cyber.stake), N(setproxylvl), act_payload);
 }
 
 struct register_producer_subcommand {
-   string producer_str;
+   string account;
    string producer_key_str;
-   string url;
-   uint16_t loc = 0;
+   string symbol;
+   string not_used;
 
    register_producer_subcommand(CLI::App* actionRoot) {
       auto register_producer = actionRoot->add_subcommand("regproducer", localized("Register a new producer"));
-      register_producer->add_option("account", producer_str, localized("The account to register as a producer"))->required();
+      register_producer->add_option("account", account, localized("The account to register as a producer"))->required();
       register_producer->add_option("producer_key", producer_key_str, localized("The producer's public key"))->required();
-      register_producer->add_option("url", url, localized("url where info about producer can be found"), true);
-      register_producer->add_option("location", loc, localized("relative location for purpose of nearest neighbor scheduling"), true);
+      register_producer->add_option("symbol", symbol, localized("A token symbol of an asset used by the registering producer"))->required();
+      register_producer->add_option("url", not_used, localized("Deprecated. Not used."), true);
+      register_producer->add_option("location", not_used, localized("Deprecated. Not used."), true);
       add_standard_transaction_options(register_producer, "account@active");
 
-
       register_producer->set_callback([this] {
-         public_key_type producer_key;
-         try {
-            producer_key = public_key_type(producer_key_str);
-         } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid producer public key: ${public_key}", ("public_key", producer_key_str))
+         const auto proxy_status_info = call(get_proxy_status_func, fc::mutable_variant_object("account", account)("symbol", symbol));
+         const auto proxy_level = proxy_status_info["proxylevel"].as_uint64();
+         std::vector<chain::action> register_producer_actions;
 
-         auto regprod_var = regproducer_variant(producer_str, producer_key, url, loc );
-         auto accountPermissions = get_account_permissions(tx_permission, {producer_str,config::active_name});
-         send_actions({create_action(accountPermissions, config::system_account_name, N(regproducer), regprod_var)});
+         if (proxy_level != 0) {
+             register_producer_actions.push_back(create_set_proxy_level_action(account, symbol, 0));
+         }
+
+         try {
+            public_key_type producer_key = public_key_type(producer_key_str);
+            const auto setkey_var = fc::mutable_variant_object()("account", account)
+                                                                ("token_code", chain::symbol::from_string(symbol).to_symbol_code())
+                                                                ("signing_key", producer_key);
+
+            const auto account_permissions = get_account_permissions(tx_permission, {account, config::active_name});
+
+            register_producer_actions.push_back(create_action(account_permissions, N(cyber.stake), N(setkey), setkey_var));
+            send_actions(std::move(register_producer_actions));
+         } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid producer public key: ${public_key}", ("public_key", producer_key_str))
       });
    }
 };
@@ -1718,7 +1720,7 @@ struct setproxylvl_subcommand {
           const auto proxy_status = call(get_proxy_status_func, fc::mutable_variant_object("account", account)("symbol", symbol));
 
           if (proxy_status["proxylevel"].as_uint64() != level) {
-              set_proxy_level(account, symbol, level);
+              send_actions({create_set_proxy_level_action(account, symbol, level)});;
           } else {
               std::cout << localized("Warning: Proxy level value not changed") << std::endl;
           }
@@ -1756,7 +1758,7 @@ struct regproxy_subcommand {
          const auto proxy_status = call(get_proxy_status_func, fc::mutable_variant_object("account", proxy)("symbol", symbol));
 
          if (proxy_status["proxylevel"].as_uint64() != level) {
-             set_proxy_level(proxy, symbol, level);
+             send_actions({create_set_proxy_level_action(proxy, symbol, level)});
          } else {
              std::cout << localized("Warning: Proxy level value not changed") << std::endl;
          }
@@ -1786,7 +1788,7 @@ struct unregproxy_subcommand {
          const auto proxy_status = call(get_proxy_status_func, fc::mutable_variant_object("account", proxy)("symbol", symbol));
 
          if (proxy_status["proxylevel"].as_uint64() != limits_array.size() ) {
-             set_proxy_level(proxy, symbol, limits_array.size());
+             send_actions({create_set_proxy_level_action(proxy, symbol, limits_array.size())});
          }
       });
    }
