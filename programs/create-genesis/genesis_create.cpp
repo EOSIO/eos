@@ -375,16 +375,16 @@ struct genesis_create::genesis_create_impl final {
         const auto sys_sym = asset().get_symbol();
 
         db.start_section(config::system_account_name, N(stake.stat), "stake_stat_object", 1);
+        const auto inf = _info.params.stake;
         db.emplace<stake_stat_object>(config::system_account_name, [&](auto& s) {
             s.id = sys_sym.to_symbol_code().value;
             s.token_code = sys_sym.to_symbol_code();
             s.total_staked = _total_staked.get_amount();
             s.last_reward = time_point_sec();
-            s.enabled = false;      // ?
+            s.enabled = inf.enabled;
         });
         db.start_section(config::system_account_name, N(stake.param), "stake_param_object", 1);
         db.emplace<stake_param_object>(config::system_account_name, [&](auto& p) {
-            const auto inf = _info.params.stake;
             p.id = sys_sym.to_symbol_code().value;
             p.token_symbol = sys_sym;
             p.max_proxies = inf.max_proxies;
@@ -627,8 +627,6 @@ struct genesis_create::genesis_create_impl final {
         // token stats
         const auto n_stats = 2;
         db.start_section(config::token_account_name, N(stat), "currency_stats", n_stats);
-
-        auto supply = gp.current_supply + golos_from_gbg;
         auto insert_stat_record = [&](const asset& supply, int64_t max_supply, name issuer) {
             const symbol& sym = supply.get_symbol();
             primary_key_t pk = sym.to_symbol_code();
@@ -640,7 +638,7 @@ struct genesis_create::genesis_create_impl final {
             _exp_info.currency_stats.push_back(stat);
             return pk;
         };
-
+        auto supply = gp.current_supply + golos_from_gbg;
         auto sys_supply = golos2sys(supply - gp.total_reward_fund_steem);
         auto sys_pk = insert_stat_record(sys_supply, _info.golos.sys_max_supply, config::system_account_name);
         auto gls_pk = insert_stat_record(supply, _info.golos.max_supply, _info.golos.names.issuer);
@@ -656,7 +654,9 @@ struct genesis_create::genesis_create_impl final {
         // funds
         const auto n_balances = 3 + 2*data.gbg.size();
         db.start_section(config::token_account_name, N(accounts), "account", n_balances);
-        auto insert_balance_record = [&](name account, const asset& balance, primary_key_t pk, fc::optional<acc_idx> acc_id = fc::optional<acc_idx>()) {
+        auto insert_balance_record = [&](name account, const asset& balance, primary_key_t pk,
+            fc::optional<acc_idx> acc_id = {}
+        ) {
             auto record = mvo
                 ("balance", balance)
                 ("payments", asset(0, balance.get_symbol()));
@@ -665,11 +665,7 @@ struct genesis_create::genesis_create_impl final {
                 _exp_info.balance_events.push_back(record("account", account));
             } else {
                 auto& acc_info = _exp_info.account_infos[*acc_id];
-                if (pk == gls_pk) {
-                    acc_info["balance"] = balance;
-                } else {
-                    acc_info["balance_in_sys"] = balance;
-                }
+                acc_info[pk == gls_pk ? "balance" : "balance_in_sys"] = balance;
             }
         };
         insert_balance_record(config::stake_account_name, _total_staked, sys_pk);
@@ -921,7 +917,9 @@ struct genesis_create::genesis_create_impl final {
             N(closemssg),
             {}
         });
-        const auto expiration_time = fc::hours(48);
+        const auto expiration_time = fc::hours(_info.golos.posts_trx.expiration_hours);
+        const auto delay = !_info.golos.posts_trx.initial_from ? microseconds{0} :
+            time_point_sec{_conf.initial_timestamp} - *_info.golos.posts_trx.initial_from - fc::days(7);
         for (const auto& cp : _visitor.comments) {
             const auto& c = cp.second;
             const auto n = name_by_acc(c.author);
@@ -932,7 +930,7 @@ struct genesis_create::genesis_create_impl final {
                 t.trx_id = tx.id();
                 t.sender = _info.golos.names.posting;
                 t.sender_id = (uint128_t(c.id) << 64) | n.value;
-                t.delay_until = std::max(time_point(c.active.cashout_time), _conf.initial_timestamp);
+                t.delay_until = std::max(time_point(c.active.cashout_time + delay), _conf.initial_timestamp);
                 t.expiration = t.delay_until + expiration_time;
                 t.published = c.active.created;
             });
@@ -1017,34 +1015,8 @@ struct genesis_create::genesis_create_impl final {
 
     void store_bandwidth() {
         ilog("Creating bandwidth (charge) balances and posting limits...");
-
-        enum charge_id_t: uint8_t {vote, post, comm, postbw};   // vote should have id=0
-        enum act_t: uint8_t {POST, COMM, VOTE, POSTBW};         // copied from posting contract
-
-        db.start_section(_info.golos.names.posting, N(limit), "limitparams", 4);
-        auto insert_limit = [&](uint8_t charge_id, int64_t price, int64_t cutoff) {
-            primary_key_t pk =
-                charge_id == charge_id_t::vote ? act_t::VOTE :
-                charge_id == charge_id_t::comm ? act_t::COMM :
-                charge_id == charge_id_t::post ? act_t::POST : act_t::POSTBW;
-            db.insert(pk, _info.golos.names.posting, mvo
-                ("act", pk)
-                ("charge_id", charge_id)
-                ("price", price)
-                ("cutoff", cutoff)
-                ("vesting_price", 0)
-                ("min_vesting", 0)
-            );
-        };
-        insert_limit(charge_id_t::vote, 50, config::percent_100);
-        insert_limit(charge_id_t::postbw, config::percent_100, 4*config::percent_100);
-        insert_limit(charge_id_t::post, 300/1, 300);    // 1 post per 300 seconds;      TODO: use actual median values #607
-        insert_limit(charge_id_t::comm, 200/10, 200);   // 10 comments per 200 seconds
-        // insert_limit(charge_id_t::vote_op, 15/5, 15);   // 5 votes per 15 seconds
-
-        // TODO: restorers #608
-
         // store charge balances
+        enum charge_id_t: uint8_t {vote, post, comm, postbw};   // vote should have id=0
         const auto& accs = _visitor.accounts;
         db.start_section(_info.golos.names.charge, N(balances), "balance", accs.size()*2);
         const auto sym = symbol(GLS).to_symbol_code();
@@ -1069,7 +1041,7 @@ struct genesis_create::genesis_create_impl final {
     }
 
     void prepare_writer(const bfs::path& out_file) {
-        const int n_sections = 5*2 + static_cast<int>(stored_contract_tables::_max) + _info.tables.size();  // there are 5 duplicating account tables (system+golos)
+        const int n_sections = static_cast<int>(stored_contract_tables::_max) + _info.tables.size();
         db.start(out_file, n_sections);
         db.prepare_serializers(_contracts);
     };
