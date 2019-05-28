@@ -1213,6 +1213,37 @@ struct register_producer_subcommand {
 const std::string register_producer_subcommand::symbol = chain::symbol(CORE_SYMBOL).to_string();
 
 
+struct unregister_producer_subcommand {
+    string account;
+    string symbol;
+
+    unregister_producer_subcommand(CLI::App* actionRoot) {
+        auto unregister_producer = actionRoot->add_subcommand("unregprod", localized("Unregister an existing producer"));
+        unregister_producer->add_option("account", account, localized("An account to unregister from producers"))->required();
+        unregister_producer->add_option("symbol", symbol, localized("A token symbol of an asset used by the unregistering producer"))->required();
+        add_standard_transaction_options(unregister_producer, "account@active");
+
+        unregister_producer->set_callback([this] {
+            const auto proxy_status_info = call(get_proxy_status_func, fc::mutable_variant_object("account", account)
+                                                                                                 ("symbol", symbol));
+            const auto proxy_level = proxy_status_info["proxylevel"].as_uint64();
+
+            EOS_ASSERT(proxy_level == 0, action_validate_exception, "Account ${account} is not a producer as it proxy level = ${level}", ("account", account)
+                                                                                                                                         ("level", proxy_level));
+
+            const auto agent_public_key = call(get_agent_public_key_func, fc::mutable_variant_object("account", account)
+                                                                                                    ("symbol", symbol)).get_string();
+
+            EOS_ASSERT(!agent_public_key.empty(), action_validate_exception, "Account ${account} is not a producer as it has no key", ("account", account));
+
+            const auto proxylevels_limits = call(get_proxylevel_limits_func, fc::mutable_variant_object("symbol", symbol)).get_array();
+
+            send_actions({create_set_proxy_level_action(account, symbol, proxylevels_limits.size())});
+        });
+    }
+};
+
+
 struct create_account_subcommand {
    string creator;
    string account_name;
@@ -1276,24 +1307,6 @@ struct create_account_subcommand {
             } else {
                send_actions( { create } );
             }
-      });
-   }
-};
-
-struct unregister_producer_subcommand {
-   string producer_str;
-
-   unregister_producer_subcommand(CLI::App* actionRoot) {
-      auto unregister_producer = actionRoot->add_subcommand("unregprod", localized("Unregister an existing producer"));
-      unregister_producer->add_option("account", producer_str, localized("The account to unregister as a producer"))->required();
-      add_standard_transaction_options(unregister_producer, "account@active");
-
-      unregister_producer->set_callback([this] {
-         fc::variant act_payload = fc::mutable_variant_object()
-                  ("producer", producer_str);
-
-         auto accountPermissions = get_account_permissions(tx_permission, {producer_str,config::active_name});
-         send_actions({create_action(accountPermissions, config::system_account_name, N(unregprod), act_payload)});
       });
    }
 };
