@@ -2592,7 +2592,7 @@ namespace eosio {
                   ("m", modes_str( msg.known_trx.mode ))( "n", msg.known_trx.pending ) );
       }
       switch (msg.known_trx.mode) {
-      case packed_transaction::compression_type::none:
+      case none:
          break;
       case last_irr_catch_up: {
          std::unique_lock<std::mutex> g_conn( conn_mtx );
