@@ -14,7 +14,9 @@ fi
 
 bioscontractpath=$BIOS_CONTRACT_PATH
 if [ -z "$bioscontractpath" ]; then
-    bioscontractpath="unittests/contracts/eosio.bios"
+    # this is defaulted to the version of bios that only requires the preactivate_feature
+    # newer versions may require 
+    bioscontractpath="unittests/contracts/old_versions/v1.7.0-develop-preactivate_feature/eosio.bios/"
 fi
 
 wddir=eosio-ignition-wd
