@@ -317,6 +317,7 @@ struct controller_impl {
       set_activation_handler<builtin_protocol_feature_t::preactivate_feature>();
       set_activation_handler<builtin_protocol_feature_t::replace_deferred>();
       set_activation_handler<builtin_protocol_feature_t::get_sender>();
+      set_activation_handler<builtin_protocol_feature_t::webauthn_key>();
       set_activation_handler<builtin_protocol_feature_t::wtmsig_block_signatures>();
 
       self.irreversible_block.connect([this](const block_state_ptr& bsp) {
@@ -1095,7 +1096,8 @@ struct controller_impl {
              || (code == contract_whitelist_exception::code_value)
              || (code == contract_blacklist_exception::code_value)
              || (code == action_blacklist_exception::code_value)
-             || (code == key_blacklist_exception::code_value);
+             || (code == key_blacklist_exception::code_value)
+             || (code == sig_variable_size_limit_exception::code_value);
    }
 
    bool scheduled_failure_is_subjective( const fc::exception& e ) const {
@@ -2998,6 +3000,10 @@ bool controller::is_ram_billing_in_notify_allowed()const {
    return my->conf.disable_all_subjective_mitigations || !is_producing_block() || my->conf.allow_ram_billing_in_notify;
 }
 
+uint32_t controller::configured_subjective_signature_length_limit()const {
+   return my->conf.maximum_variable_signature_length;
+}
+
 void controller::validate_expiration( const transaction& trx )const { try {
    const auto& chain_configuration = get_global_properties().configuration;
 
@@ -3137,6 +3143,13 @@ void controller_impl::on_activation<builtin_protocol_feature_t::replace_deferred
       resource_limits.add_pending_ram_usage( itr->name, ram_delta );
       db.remove( *itr );
    }
+}
+
+template<>
+void controller_impl::on_activation<builtin_protocol_feature_t::webauthn_key>() {
+   db.modify( db.get<protocol_state_object>(), [&]( auto& ps ) {
+      ps.num_supported_key_types = 3;
+   } );
 }
 
 template<>

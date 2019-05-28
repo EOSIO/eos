@@ -198,6 +198,10 @@ namespace eosio { namespace chain {
                                     3010013, "Invalid fixed key" )
       FC_DECLARE_DERIVED_EXCEPTION( symbol_type_exception,           chain_type_exception,
                                     3010014, "Invalid symbol" )
+      FC_DECLARE_DERIVED_EXCEPTION( unactivated_key_type,              chain_type_exception,
+                                    3010015, "Key type is not a currently activated type" )
+      FC_DECLARE_DERIVED_EXCEPTION( unactivated_signature_type,        chain_type_exception,
+                                    3010016, "Signature type is not a currently activated type" )
 
 
    FC_DECLARE_DERIVED_EXCEPTION( fork_database_exception, chain_exception,
@@ -406,7 +410,8 @@ namespace eosio { namespace chain {
                                     3100008, "Feature is currently unsupported" )
       FC_DECLARE_DERIVED_EXCEPTION( node_management_success,                misc_exception,
                                     3100009, "Node management operation successfully executed" )
-
+      FC_DECLARE_DERIVED_EXCEPTION( sig_variable_size_limit_exception,      misc_exception,
+                                    3100010, "Variable length component of signature too large" )
 
 
    FC_DECLARE_DERIVED_EXCEPTION( plugin_exception, chain_exception,

@@ -157,6 +157,17 @@ either the account authorized the action or the action's net effect on RAM usage
 */
             {}
          } )
+         (  builtin_protocol_feature_t::webauthn_key, builtin_protocol_feature_spec{
+            "WEBAUTHN_KEY",
+            fc::variant("927fdf78c51e77a899f2db938249fb1f8bb38f4e43d9c1f75b190492080cbc34").as<digest_type>(),
+            // SHA256 hash of the raw message below within the comment delimiters (do not modify message below).
+/*
+Builtin protocol feature: WEBAUTHN_KEY
+
+Enables usage of WebAuthn keys and signatures.
+*/
+            {}
+         } )
          (  builtin_protocol_feature_t::wtmsig_block_signatures, builtin_protocol_feature_spec{
             "WTMSIG_BLOCK_SIGNATURES",
             fc::variant("46d65101388a44ebdbbb152978ac1879e34785a2d57ad050196826734370b995").as<digest_type>(),

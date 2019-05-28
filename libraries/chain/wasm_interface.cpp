@@ -188,9 +188,12 @@ class privileged_api : public context_aware_api {
          for (const auto& p: producers) {
             EOS_ASSERT( context.is_account(p.producer_name), wasm_execution_error, "producer schedule includes a nonexisting account" );
 
-            p.authority.visit([](const auto& a) {
+            p.authority.visit([this](const auto& a) {
                uint32_t sum_weights = 0;
                for (const auto& kw: a.keys ) {
+                  EOS_ASSERT( kw.key.which() < context.db.get<protocol_state_object>().num_supported_key_types, unactivated_key_type,
+                              "Unactivated key type used in proposed producer schedule");
+
                   EOS_ASSERT( kw.key.valid(), wasm_execution_error, "producer schedule includes an invalid key" );
 
                   if (std::numeric_limits<uint32_t>::max() - sum_weights <= kw.weight) {
@@ -779,6 +782,15 @@ class crypto_api : public context_aware_api {
          fc::raw::unpack(ds, s);
          fc::raw::unpack(pubds, p);
 
+         EOS_ASSERT(s.which() < context.db.get<protocol_state_object>().num_supported_key_types, unactivated_signature_type,
+           "Unactivated signature type used during assert_recover_key");
+         EOS_ASSERT(p.which() < context.db.get<protocol_state_object>().num_supported_key_types, unactivated_key_type,
+           "Unactivated key type used when creating assert_recover_key");
+
+         if(context.control.is_producing_block())
+            EOS_ASSERT(s.variable_size() <= context.control.configured_subjective_signature_length_limit(),
+                       sig_variable_size_limit_exception, "signature variable length component size greater than subjective maximum");
+
          auto check = fc::crypto::public_key( s, digest, false );
          EOS_ASSERT( check == p, crypto_api_exception, "Error expected key different than recovered key" );
       }
@@ -791,6 +803,14 @@ class crypto_api : public context_aware_api {
          datastream<char*> pubds( pub, publen );
 
          fc::raw::unpack(ds, s);
+
+         EOS_ASSERT(s.which() < context.db.get<protocol_state_object>().num_supported_key_types, unactivated_signature_type,
+           "Unactivated signature type used during recover_key");
+
+         if(context.control.is_producing_block())
+            EOS_ASSERT(s.variable_size() <= context.control.configured_subjective_signature_length_limit(),
+                       sig_variable_size_limit_exception, "signature variable length component size greater than subjective maximum");
+
          fc::raw::pack( pubds, fc::crypto::public_key( s, digest, false ) );
          return pubds.tellp();
       }

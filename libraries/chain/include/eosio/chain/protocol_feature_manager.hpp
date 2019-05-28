@@ -25,6 +25,7 @@ enum class builtin_protocol_feature_t : uint32_t {
    forward_setcode,
    get_sender,
    ram_restrictions,
+   webauthn_key,
    wtmsig_block_signatures,
 };
 
