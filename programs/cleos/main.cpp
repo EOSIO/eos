@@ -1170,6 +1170,16 @@ CLI::callback_t obsoleted_option_host_port = [](CLI::results_t) {
    return false;
 };
 
+void set_proxy_level(const string& account, const string& symbol, uint8_t proxy_level) {
+    fc::variant act_payload = fc::mutable_variant_object()
+                      ("account", account)
+                      ("token_code", chain::symbol::from_string(symbol).to_symbol_code())
+                      ("level", proxy_level);
+
+    const auto account_permissions = get_account_permissions(tx_permission, {account, config::active_name});
+    send_actions({create_action(account_permissions, N(cyber.stake), N(setproxylvl), act_payload)});
+}
+
 struct register_producer_subcommand {
    string producer_str;
    string producer_key_str;
@@ -1689,6 +1699,28 @@ struct claimrewards_subcommand {
       auto claim_rewards = actionRoot->add_subcommand("claimrewards", localized("Deprecated command"));
       claim_rewards->set_callback([this] {
           EOS_THROW(action_not_found_exception, "Operation claimrewards is not supported anymore");
+      });
+   }
+};
+
+struct setproxylvl_subcommand {
+   string account;
+   string symbol;
+   int8_t level;
+
+   setproxylvl_subcommand(CLI::App* actionRoot) {
+      auto set_proxy_level_action = actionRoot->add_subcommand("setproxylvl", localized("Set an account proxy level"));
+      set_proxy_level_action->add_option("account", account, localized("An account whose proxy level will be set"))->required();
+      set_proxy_level_action->add_option("symbol", symbol, localized("A symbol of an asset used in the system"))->required();
+      set_proxy_level_action->add_option("level", level, localized("A proxy level to set"))->required();
+
+      set_proxy_level_action->set_callback([this] {
+          const auto proxy_status = call(get_proxy_status_func, fc::mutable_variant_object("account", account)("symbol", symbol));
+
+          if (proxy_status["proxylevel"].as_uint64() != level) {
+              set_proxy_level(account, symbol, level);
+          }
+
       });
    }
 };
@@ -3655,6 +3687,7 @@ int main( int argc, char** argv ) {
 
    auto claimRewards = claimrewards_subcommand(system);
 
+   auto setProxyLvl = setproxylvl_subcommand(system);
    auto regProxy = regproxy_subcommand(system);
    auto unregProxy = unregproxy_subcommand(system);
 
