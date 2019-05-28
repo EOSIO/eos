@@ -8,6 +8,7 @@
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/authorization_manager.hpp>
 #include <eosio/chain/generated_transaction_object.hpp>
+#include <eosio/chain/stake.hpp>
 
 #include <eosio/plugins_common/http_request_handlers.hpp>
 #include <eosio/plugins_common/chain_utils.hpp>
@@ -64,6 +65,7 @@ public:
     get_producer_schedule_result get_producer_schedule( const get_producer_schedule_params& params )const;
     get_scheduled_transactions_result get_scheduled_transactions( const get_scheduled_transactions_params& params ) const;
     std::string get_agent_public_key(const get_agent_public_key_params& params) const;
+    std::vector<uint8_t> get_proxylevel_limits(const get_proxylevel_limits_params& params) const;
 
 private:
    get_table_rows_result walk_table_row_range(const get_table_rows_params& p,
@@ -787,6 +789,14 @@ get_producer_schedule_result chain_api_plugin_impl::get_producer_schedule( const
    return result;
 }
 
+std::vector<uint8_t> chain_api_plugin_impl::get_proxylevel_limits(const get_proxylevel_limits_params& params) const {
+    auto& chaindb = chain_controller_.chaindb();
+
+    auto params_table = chaindb.get_table<eosio::chain::stake_param_object>();
+    auto stake_param = params_table.get(params.symbol.to_symbol_code());
+    return stake_param.max_proxies;
+}
+
 auto find_scheduled_transacions_begin(cyberway::chaindb::chaindb_controller& chaindb, const get_scheduled_transactions_params& p) {
     auto by_delay_index = chaindb.get_index<chain::generated_transaction_object, chain::by_delay>();
 
@@ -881,7 +891,8 @@ void chain_api_plugin::plugin_startup() {
       CREATE_READ_HANDLER((*my), get_required_keys, 200),
       CREATE_READ_HANDLER((*my), get_transaction_id, 200),
       CREATE_READ_HANDLER((*my), resolve_names, 200),
-      CREATE_READ_HANDLER((*my), get_agent_public_key, 200)
+      CREATE_READ_HANDLER((*my), get_agent_public_key, 200),
+      CREATE_READ_HANDLER((*my), get_proxylevel_limits, 200)
     });
 }
 
