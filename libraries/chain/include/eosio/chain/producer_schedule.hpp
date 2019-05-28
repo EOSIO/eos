@@ -139,8 +139,8 @@ namespace eosio { namespace chain {
       shared_block_signing_authority_v0( chainbase::allocator<char> alloc )
       :keys(alloc){}
 
-      uint32_t                    threshold;
-      shared_vector<key_weight>   keys;
+      uint32_t                           threshold;
+      shared_vector<shared_key_weight>   keys;
 
       friend bool operator == ( const shared_block_signing_authority_v0& lhs, const shared_block_signing_authority_v0& rhs ) {
          return tie( lhs.threshold, lhs.keys ) == tie( rhs.threshold, rhs.keys );
@@ -197,7 +197,7 @@ namespace eosio { namespace chain {
             result.keys.clear();
             result.keys.reserve(src.keys.size());
             for (const auto& k: src.keys) {
-               result.keys.push_back(k);
+               result.keys.emplace_back(shared_key_weight::convert(alloc, k));
             }
 
             return result;

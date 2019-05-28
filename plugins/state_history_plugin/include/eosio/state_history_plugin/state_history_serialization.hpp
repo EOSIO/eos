@@ -273,7 +273,7 @@ datastream<ST>& operator<<(datastream<ST>& ds,
                            const history_serial_wrapper<eosio::chain::shared_block_signing_authority_v0>& obj) {
    fc::raw::pack(ds, as_type<uint32_t>(obj.obj.threshold));
    history_serialize_container(ds, obj.db,
-                               as_type<eosio::chain::shared_vector<eosio::chain::key_weight>>(obj.obj.keys));
+                               as_type<eosio::chain::shared_vector<eosio::chain::shared_key_weight>>(obj.obj.keys));
 
 }
 

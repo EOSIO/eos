@@ -111,6 +111,23 @@ struct shared_key_weight {
       return key_weight{key, weight};
    }
 
+   static shared_key_weight convert(chainbase::allocator<char> allocator, const key_weight& k) {
+      return k.key._storage.visit<shared_key_weight>(overloaded {
+         [&](const auto& k1r1) {
+            return shared_key_weight(k1r1, k.weight);
+         },
+         [&](const fc::crypto::webauthn::public_key& wa) {
+            fc::datastream<size_t> dsz;
+            fc::raw::pack(dsz, wa);
+            shared_string wa_ss(dsz.tellp(), boost::container::default_init, std::move(allocator));
+            fc::datastream<char*> ds(wa_ss.data(), wa_ss.size());
+            fc::raw::pack(ds, wa);
+
+            return shared_key_weight(std::move(wa_ss), k.weight);
+         }
+      });
+   }
+
    shared_public_key key;
    weight_type       weight;
 
@@ -192,20 +209,7 @@ struct shared_authority {
       keys.clear();
       keys.reserve(a.keys.size());
       for(const key_weight& k : a.keys) {
-         k.key._storage.visit(overloaded {
-            [&](const auto& k1r1) {
-               keys.emplace_back(k1r1, k.weight);
-            },
-            [&](const fc::crypto::webauthn::public_key& wa) {
-               fc::datastream<size_t> dsz;
-               fc::raw::pack(dsz, wa);
-               shared_string wa_ss(dsz.tellp(), boost::container::default_init, keys.get_allocator());
-               fc::datastream<char*> ds(wa_ss.data(), wa_ss.size());
-               fc::raw::pack(ds, wa);
-
-               keys.emplace_back(std::move(wa_ss), k.weight);
-            }
-         });
+         keys.emplace_back(shared_key_weight::convert(keys.get_allocator(), k));
       }
       accounts = decltype(accounts)(a.accounts.begin(), a.accounts.end(), accounts.get_allocator());
       waits = decltype(waits)(a.waits.begin(), a.waits.end(), waits.get_allocator());
