@@ -6,5 +6,9 @@
     "eosio-nightly-builds":
     {
         "pipeline-branch": "legacy-os"
+    },
+    "eosio-base-images":
+    {
+        "pipeline-branch": "release/1.7.x"
     }
 }
