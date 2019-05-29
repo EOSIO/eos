@@ -146,7 +146,6 @@ namespace cyberway { namespace chaindb {
         void apply_range_changes(Ctx&& ctx, index_t_::iterator begin, index_t_::iterator end) {
             if (begin == end) return;
 
-            ctx.init();
             for (auto itr = begin; end != itr; ++itr) {
                 auto& table = *itr;
                 if (table.info_map.empty()) continue;

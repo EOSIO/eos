@@ -732,25 +732,39 @@ namespace cyberway { namespace chaindb {
 
         class write_ctx_t_ final {
             struct bulk_info_t_ final {
-                bulk_write bulk_;
-                int op_cnt_ = 0;
+                bulk_write bulk;
+                int op_cnt = 0;
 
-                bulk_info_t_(bulk_write bulk): bulk_(std::move(bulk)) { }
+                bulk_info_t_(bulk_write b)
+                : bulk(std::move(b)) {
+                }
+
+                template <typename... Args> void append(Args&&... args) {
+                    op_cnt++;
+                    bulk.append(std::forward<Args>(args)...);
+                }
             }; // struct bulk_info_t_;
+
+            struct bulk_group_t_ final {
+                bulk_info_t_* remove = nullptr;
+                bulk_info_t_* update = nullptr;
+                bulk_info_t_* insert = nullptr;
+
+                bulk_group_t_() = default;
+
+                bulk_group_t_(bulk_info_t_& info)
+                : remove(&info),
+                  update(&info),
+                  insert(&info) {
+                }
+            }; // struct bulk_group_t_;
 
         public:
             write_ctx_t_(mongodb_impl_& impl)
-            : impl_(impl) {
-            }
-
-            bulk_info_t_ create_bulk_info(collection db_table) {
-                static options::bulk_write opts(options::bulk_write().ordered(false));
-                return bulk_info_t_(db_table.create_bulk_write(opts));
-            }
-
-            void init() {
-                data_bulk_list_.emplace_back(create_bulk_info(impl_.get_undo_db_table()));
-                complete_undo_bulk_ = std::make_unique<bulk_info_t_>(create_bulk_info(impl_.get_undo_db_table()));
+            : impl_(impl),
+              undo_table_(impl_.get_undo_db_table()),
+              complete_undo_bulk_(create_bulk_info(undo_table_)),
+              prepare_undo_bulk_(create_bulk_info(undo_table_)) {
             }
 
             void start_table(const table_info& table) {
@@ -762,42 +776,60 @@ namespace cyberway { namespace chaindb {
                         table.table->name == old_table->table->name))
                     return;
 
-                data_bulk_list_.emplace_back(create_bulk_info(impl_.get_db_table(table)));
+                auto db_table = impl_.get_db_table(table);
+
+                data_bulk_.remove = &create_bulk_info(db_table);
+                data_bulk_.update = &create_bulk_info(db_table);
+                data_bulk_.insert = &create_bulk_info(db_table);
             }
 
             void add_data(const write_operation& op) {
-                append_bulk(build_find_pk_document, build_service_document, data_bulk_list_.back(), op);
+                append_bulk(build_find_pk_document, build_service_document, data_bulk_, op);
             }
 
             void add_prepare_undo(const write_operation& op) {
-                append_bulk(build_find_undo_pk_document, build_undo_document, data_bulk_list_.front(), op);
+                append_bulk(build_find_undo_pk_document, build_undo_document, prepare_undo_bulk_, op);
             }
 
             void add_complete_undo(const write_operation& op) {
-                append_bulk(build_find_undo_pk_document, build_undo_document, *complete_undo_bulk_, op);
+                append_bulk(build_find_undo_pk_document, build_undo_document, complete_undo_bulk_, op);
             }
 
             void write() {
-                for (auto& data_bulk: data_bulk_list_) {
-                    execute_bulk(data_bulk);
+                auto itr = bulk_list_.begin();
+                auto etr = bulk_list_.end();
+                for (++itr /* skip complete undo */; etr != itr; ++itr) {
+                    execute_bulk(*itr);
                 }
-                execute_bulk(*complete_undo_bulk_);
+                execute_bulk(bulk_list_.front() /* complete undo */);
 
                 CYBERWAY_ASSERT(error_.empty(), driver_duplicate_exception, error_);
             }
 
         private:
             mongodb_impl_& impl_;
+            collection undo_table_;
+            std::deque<bulk_info_t_> bulk_list_;
+            bulk_group_t_ complete_undo_bulk_;
+            bulk_group_t_ prepare_undo_bulk_;
+            bulk_group_t_ data_bulk_;
+
             std::string error_;
             const table_info* table_ = nullptr;
-            std::unique_ptr<bulk_info_t_> complete_undo_bulk_;
-            std::deque<bulk_info_t_> data_bulk_list_;
+
+            bulk_info_t_& create_bulk_info(collection& db_table) {
+                static options::bulk_write opts(options::bulk_write().ordered(false));
+                bulk_list_.emplace_back(db_table.create_bulk_write(opts));
+                return bulk_list_.back();
+            }
 
             template <typename BuildFindDocument, typename BuildServiceDocument>
             void append_bulk(
                 BuildFindDocument&& build_find_document, BuildServiceDocument&& build_service_document,
-                bulk_info_t_& info, const write_operation& op
+                bulk_group_t_& group, const write_operation& op
             ) {
+                assert(group.insert && group.update && group.remove);
+
                 document data_doc;
                 document pk_doc;
 
@@ -826,23 +858,21 @@ namespace cyberway { namespace chaindb {
                         return;
                 }
 
-                ++info.op_cnt_;
-
                 switch(op.operation) {
                     case write_operation::Insert:
-                        info.bulk_.append(insert_one(data_doc.view()));
+                        group.insert->append(insert_one(data_doc.view()));
                         break;
 
                     case write_operation::Update:
-                        info.bulk_.append(replace_one(pk_doc.view(), data_doc.view()));
+                        group.update->append(replace_one(pk_doc.view(), data_doc.view()));
                         break;
 
                     case write_operation::Revision:
-                        info.bulk_.append(update_one(pk_doc.view(), make_document(kvp("$set", data_doc))));
+                        group.update->append(update_one(pk_doc.view(), make_document(kvp("$set", data_doc))));
                         break;
 
                     case write_operation::Remove:
-                        info.bulk_.append(delete_one(pk_doc.view()));
+                        group.remove->append(delete_one(pk_doc.view()));
                         break;
 
                     case write_operation::Unknown:
@@ -851,10 +881,10 @@ namespace cyberway { namespace chaindb {
             }
 
             void execute_bulk(bulk_info_t_& info) {
-                if (!info.op_cnt_) return;
+                if (!info.op_cnt) return;
 
                 _detail::auto_reconnect([&]() { try {
-                    info.bulk_.execute();
+                    info.bulk.execute();
                 } catch (const mongocxx::bulk_write_exception& e) {
                     error_ = e.what();
                     elog("Error on bulk write: ${code}, ${what}", ("what", error_)("code", e.code().value()));
