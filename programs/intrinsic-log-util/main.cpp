@@ -4,6 +4,7 @@
  */
 #include "cli_parser.hpp"
 #include <eosio/chain/intrinsic_debug_log.hpp>
+#include <eosio/chain/exceptions.hpp>
 
 #include <fc/io/json.hpp>
 #include <fc/filesystem.hpp>
@@ -41,7 +42,7 @@ struct print_block_subcommand
       return "Print a specific block";
    }
 
-   void set_options( bpo::options_description& options )const {
+   void set_options( bpo::options_description& options ) {
       options.add_options()
          ("output-file,o", bpo::value<bfs::path>(),
           "the file to write the output to (absolute or relative path).  If not specified then output is to stdout.")
@@ -49,18 +50,29 @@ struct print_block_subcommand
    }
 
    bpo::positional_options_description
-   get_positional_options( bpo::options_description& options, cli_parser::positional_descriptions& pos_desc )const {
+   get_positional_options( bpo::options_description& options, cli_parser::positional_descriptions& pos_desc ) {
       options.add_options()
-         ("block-num", bpo::value<uint32_t>(),
+         ("block-num", bpo::value<uint32_t>(&block_num),
           "the block number to print")
+         ("trx-id", bpo::value<std::vector<std::string>>(),
+          "ID of transaction to print (optional)")
       ;
 
-      std::array<std::string, 1> pos_args = {
-         "block-num"
-      };
-
-      return cli_parser::build_positional_descriptions( pos_args, options, pos_desc );
+      return cli_parser::build_positional_descriptions( options, pos_desc, { "block-num" }, {}, "trx-id" );
    }
+
+   void initialize( bpo::variables_map&& vm ) {
+      if( vm.count( "trx-id" ) ) {
+         for( const auto& trx_id : vm.at( "trx-id" ).as<std::vector<std::string>>() ) {
+            try {
+               trxs_filter.emplace_back( fc::variant( trx_id ).as<transaction_id_type>() );
+            } EOS_RETHROW_EXCEPTIONS( fc::exception, "invalid transaction id: ${trx_id}", ("trx_id", trx_id) )
+         }
+      }
+   }
+
+   uint32_t                          block_num = 0;
+   std::vector<transaction_id_type>  trxs_filter;
 };
 
 struct print_blocks_subcommand
@@ -75,11 +87,11 @@ struct print_blocks_subcommand
       return "Print a range of blocks";
    }
 
-   void set_options( bpo::options_description& options )const {
+   void set_options( bpo::options_description& options ) {
       options.add_options()
          ("output-file,o", bpo::value<bfs::path>(),
           "the file to write the output to (absolute or relative path).  If not specified then output is to stdout.")
-         ("first,f", bpo::value<uint32_t>()->default_value(0),
+         ("first,f", bpo::value<uint32_t>(&first_block_num)->default_value(0),
           "the first block number to print")
          ("last,l", bpo::value<uint32_t>()->default_value(std::numeric_limits<uint32_t>::max()),
           "the first block number to print")
@@ -87,10 +99,6 @@ struct print_blocks_subcommand
    }
 
    void initialize( bpo::variables_map&& vm ) {
-      if( vm.count( "first" ) ) {
-         first_block_num = vm.at( "first" ).as<uint32_t>();
-      }
-
       if( vm.count( "last" ) ) {
          last_block_num = vm.at( "last" ).as<uint32_t>();
          FC_ASSERT( last_block_num >= first_block_num, "invalid range" );
@@ -104,7 +112,7 @@ struct print_blocks_subcommand
 struct print_subcommand
    :  public subcommand<
          print_subcommand,
-         subcommand_style::contains_subcommands,
+         subcommand_style::invokable_and_contains_subcommands,
          print_block_subcommand,
          print_blocks_subcommand
       >
@@ -115,7 +123,7 @@ struct print_subcommand
       return "Print blocks in a log file";
    }
 
-   void set_options( bpo::options_description& options )const {
+   void set_options( bpo::options_description& options ) {
       options.add_options()
          ("no-pretty-print", bpo::bool_switch()->default_value(false), "avoid pretty printing")
       ;
@@ -134,7 +142,7 @@ struct diff_subcommand
       return "Find the differences between two log files";
    }
 
-   void set_options( bpo::options_description& options )const {
+   void set_options( bpo::options_description& options ) {
       options.add_options()
          ("start-block", bpo::value<uint32_t>()->default_value(0),
           "ignore any differences prior to this block")
@@ -142,7 +150,7 @@ struct diff_subcommand
    }
 
    bpo::positional_options_description
-   get_positional_options( bpo::options_description& options, cli_parser::positional_descriptions& pos_desc )const {
+   get_positional_options( bpo::options_description& options, cli_parser::positional_descriptions& pos_desc ) {
       options.add_options()
          ("first-log", bpo::value<bfs::path>(),
          "path to the first log file to compare")
@@ -150,19 +158,16 @@ struct diff_subcommand
          "path to the second log file to compare")
       ;
 
-      std::array<std::string, 2> pos_args = {
-         "first-log",
-         "second-log"
-      };
-
-      return cli_parser::build_positional_descriptions( pos_args, options, pos_desc );
+      return cli_parser::build_positional_descriptions( options, pos_desc, {
+         "first-log", "second-log"
+      } );
    }
 };
 
 struct root_command
    : public subcommand<
       root_command,
-      subcommand_style::contains_subcommands,
+      subcommand_style::only_contains_subcommands,
       print_subcommand,
       diff_subcommand
      >
@@ -195,6 +200,12 @@ public:
 
    void operator()( const root_command& root, const print_subcommand& print, const print_blocks_subcommand& blocks ) {
       stream << "print blocks was called" << std::endl;
+      idump((blocks.first_block_num)(blocks.last_block_num));
+   }
+
+   void operator()( const root_command& root, const print_subcommand& print, const print_block_subcommand& block ) {
+      stream << "print block was called" << std::endl;
+      idump((block.block_num)(block.trxs_filter));
    }
 
 protected:

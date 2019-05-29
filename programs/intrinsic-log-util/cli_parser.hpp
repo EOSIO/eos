@@ -22,7 +22,8 @@ namespace eosio::cli_parser {
    namespace bpo = boost::program_options;
 
    enum class subcommand_style {
-      contains_subcommands,
+      only_contains_subcommands,
+      invokable_and_contains_subcommands,
       terminal_subcommand_with_positional_arguments,
       terminal_subcommand_without_positional_arguments
    };
@@ -37,16 +38,29 @@ namespace eosio::cli_parser {
       std::string description;
    };
 
-   using subcommand_descriptions = std::vector<subcommand_description>;
+   struct subcommand_descriptions {
+      std::vector<subcommand_description> descriptions;
+      bool                                requires_subcommand = false;
+   };
 
    struct positional_description {
-      positional_description( const std::string& positional_name, const std::string& description )
+      enum argument_restriction {
+         required,
+         optional,
+         repeating
+      };
+
+      positional_description( const std::string& positional_name,
+                              const std::string& description,
+                              argument_restriction restriction )
       :positional_name( positional_name )
       ,description( description )
+      ,restriction( restriction )
       {}
 
-      std::string positional_name;
-      std::string description;
+      std::string          positional_name;
+      std::string          description;
+      argument_restriction restriction;
    };
 
    using positional_descriptions = std::vector<positional_description>;
@@ -63,7 +77,7 @@ namespace eosio::cli_parser {
       /** @pre subcommand_descriptions alternative of other_description must be present */
       void add_subcommand_description( const std::string& subcommand, const std::string& description )
       {
-         std::get<subcommand_descriptions>( other_description ).emplace_back( subcommand, description );
+         std::get<subcommand_descriptions>( other_description ).descriptions.emplace_back( subcommand, description );
       }
 
       void set_positional_descriptions( const positional_descriptions& pos_desc ) {
@@ -284,20 +298,26 @@ namespace eosio::cli_parser {
       template<typename T, subcommand_style SubcommandStyle, typename... Us>
       class subcommand;
 
-      template<typename T, typename... Us>
-      class subcommand<T, subcommand_style::contains_subcommands, Us...>
+      template<typename T, subcommand_style SubcommandStyle, typename... Us>
+      class subcommand
          : public subcommand_base<T,  Us...>
       {
       protected:
          using base_type = subcommand_base<T,  Us...>;
          using subcommands_type = std::variant<no_subcommand, Us...>;
 
+         using _enable = std::enable_if_t<
+            SubcommandStyle == subcommand_style::only_contains_subcommands
+            || SubcommandStyle == subcommand_style::invokable_and_contains_subcommands
+         >;
+
          static_assert( sizeof...(Us) > 0 );
 
          subcommands_type _subcommand;
 
       public:
-         static constexpr bool has_subcommands = true;
+         static constexpr bool has_subcommands      = true;
+         static constexpr bool invokable_subcommand = (SubcommandStyle == subcommand_style::invokable_and_contains_subcommands);
 
          parse_metadata parse( const std::vector<std::string>& opts, bool skip_initialize,
                                const std::vector<std::string>& subcommand_context = std::vector<std::string>() )
@@ -357,6 +377,8 @@ namespace eosio::cli_parser {
                                                 .run();
                bpo::store( parsed2, vm );
 
+               std::get<subcommand_descriptions>( pm.other_description ).requires_subcommand = !invokable_subcommand;
+
                static_visit_all<std::decay_t<decltype(_subcommand)>>(
                   [&pm]( const char* name, const std::string& desc ) {
                      pm.add_subcommand_description( name, desc );
@@ -388,6 +410,7 @@ namespace eosio::cli_parser {
 
       public:
          static constexpr bool has_subcommands = false;
+         static constexpr bool invokable_subcommand = true;
 
          parse_metadata parse( const std::vector<std::string>& opts, bool skip_initialize,
                                const std::vector<std::string>& subcommand_context = std::vector<std::string>() )
@@ -421,9 +444,9 @@ namespace eosio::cli_parser {
 
       protected:
          bpo::positional_options_description _get_positional_options( bpo::options_description& options,
-                                                                      positional_descriptions& pos_desc )const
+                                                                      positional_descriptions& pos_desc )
          {
-            const T& derived = static_cast<const T&>( *this );
+            T& derived = static_cast<T&>( *this );
             return derived.get_positional_options( options, pos_desc );
          }
       };
@@ -437,6 +460,7 @@ namespace eosio::cli_parser {
 
       public:
          static constexpr bool has_subcommands = false;
+         static constexpr bool invokable_subcommand = true;
 
 
          parse_metadata parse( const std::vector<std::string>& opts, bool skip_initialize,
@@ -469,22 +493,38 @@ namespace eosio::cli_parser {
    template<typename T, subcommand_style SubcommandStyle, typename... Us>
    using subcommand = eosio::cli_parser::detail::subcommand<T, SubcommandStyle, Us...>;
 
-   template<std::size_t N>
    bpo::positional_options_description
-   build_positional_descriptions( const std::array<std::string, N>& pos_names,
-                                  const bpo::options_description& options,
-                                  positional_descriptions& pos_desc )
+   build_positional_descriptions( const bpo::options_description& options,
+                                  positional_descriptions& pos_desc,
+                                  const std::vector<std::string>& required_pos_names,
+                                  const std::vector<std::string>& optional_pos_names = std::vector<std::string>(),
+                                  const std::string& repeat_name = std::string{}
+                                )
    {
       bpo::positional_options_description pos;
 
-      for( std::size_t i = 0; i < pos_names.size(); ++i ) {
-         pos.add( pos_names[i].c_str(), 1 );
-         const bpo::option_description* opt = options.find_nothrow( pos_names[i], false );
+      auto add_positional = [&pos, &pos_desc, &options]( const std::string& pos_name,
+                                                         positional_description::argument_restriction restriction )
+      {
+         pos.add( pos_name.c_str(), (restriction == positional_description::repeating ? -1 : 1) );
+         const bpo::option_description* opt = options.find_nothrow( pos_name, false );
          if( opt ) {
-            pos_desc.emplace_back( pos_names[i], opt->description() );
+            pos_desc.emplace_back( pos_name, opt->description(), restriction );
          } else {
-            pos_desc.emplace_back( pos_names[i], "" );
+            pos_desc.emplace_back( pos_name, "", restriction );
          }
+      };
+
+      for( const auto& n : required_pos_names ) {
+         add_positional( n, positional_description::required );
+      }
+
+      for( const auto& n : optional_pos_names ) {
+         add_positional( n, positional_description::optional );
+      }
+
+      if( repeat_name.size() > 0 ) {
+         add_positional( repeat_name, positional_description::repeating );
       }
 
       return pos;
@@ -492,7 +532,7 @@ namespace eosio::cli_parser {
 
    void print_subcommand_help( std::ostream& stream, const std::string& program_name, const parse_metadata& pm ) {
       const subcommand_descriptions* subcommands = std::get_if<subcommand_descriptions>( &pm.other_description );
-      bool subcommands_present = (subcommands && subcommands->size() > 0);
+      bool subcommands_present = (subcommands && subcommands->descriptions.size() > 0);
 
       const positional_descriptions* positionals = std::get_if<positional_descriptions>( &pm.other_description );
       bool positionals_present = (positionals && positionals->size() > 0);
@@ -505,7 +545,10 @@ namespace eosio::cli_parser {
          subcommand_usage += s;
       }
       if( subcommands_present ) {
-         subcommand_usage += " SUBCOMMAND";
+         if( subcommands->requires_subcommand )
+            subcommand_usage += " SUBCOMMAND";
+         else
+            subcommand_usage += " [SUBCOMMAND]";
       }
 
       if( pm.subcommand_desc.size() > 0 ) {
@@ -518,7 +561,12 @@ namespace eosio::cli_parser {
 
       if( positionals_present ) {
          for( const auto& p : *positionals ) {
-            stream << " " << p.positional_name;
+            bool optional_arg = (p.restriction == positional_description::optional);
+            stream << " ";
+            if( optional_arg ) stream << "[";
+            stream << p.positional_name;
+            if( optional_arg ) stream << "]";
+            if( p.restriction == positional_description::repeating ) stream << "...";
          }
       }
 
@@ -555,7 +603,7 @@ namespace eosio::cli_parser {
          }
 
          stream << subcommands_title << std::endl;
-         for( const auto& s : *subcommands ) {
+         for( const auto& s : subcommands->descriptions ) {
             stream << "  ";
             auto orig_width = stream.width( formatting_width );
             stream << std::left << s.subcommand_name;
@@ -569,7 +617,7 @@ namespace eosio::cli_parser {
       bool printed_something = false;
 
       if( std::holds_alternative<subcommand_descriptions>( pm.other_description ) ) {
-         for( const auto& s : std::get<subcommand_descriptions>( pm.other_description ) ) {
+         for( const auto& s : std::get<subcommand_descriptions>( pm.other_description ).descriptions ) {
             if( s.subcommand_name.find( last_token ) != 0 ) continue;
             if( printed_something )
                stream << " ";
