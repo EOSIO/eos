@@ -1339,7 +1339,7 @@ BOOST_AUTO_TEST_CASE( webauthn_producer ) { try {
    c.create_account(N(waprod));
    c.produce_block();
 
-   vector<legacy::producer_key> waprodsched = {{N(waprod), public_key_type("PUB_WA_WdCPfafVNxVMiW5ybdNs83oWjenQXvSt1F49fg9mv7qrCiRwHj5b38U3ßonCFWxQTkDsMC"s)}};
+   vector<legacy::producer_key> waprodsched = {{N(waprod), public_key_type("PUB_WA_WdCPfafVNxVMiW5ybdNs83oWjenQXvSt1F49fg9mv7qrCiRwHj5b38U3ponCFWxQTkDsMC"s)}};
 
    BOOST_CHECK_THROW(
       c.push_action(config::system_account_name, N(setprods), config::system_account_name, fc::mutable_variant_object()("schedule", waprodsched)),
