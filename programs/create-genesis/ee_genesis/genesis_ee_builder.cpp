@@ -81,6 +81,7 @@ void genesis_ee_builder::process_delete_comments() {
         maps_.create<comment_header>([&](auto& c) {
             c.hash = op.hash;
             c.last_delete_op = op.num;
+            c.parent_hash = 1; // mark as deleted
         });
     }
 }
@@ -95,6 +96,12 @@ void genesis_ee_builder::process_comments() {
 
     comment_operation op;
     while (read_operation(in, op)) {
+        uint64_t parent_hash = 0;
+        if (op.parent_author.size() != 0) {
+            auto parent = std::string(op.parent_author) + "/" + op.parent_permlink;
+            parent_hash = fc::hash64(parent.c_str(), parent.length());
+        }
+
         auto comment = comments.find(op.hash);
         if (comment != comments.end()) {
             if (comment->last_delete_op > op.num) {
@@ -102,6 +109,7 @@ void genesis_ee_builder::process_comments() {
             }
 
             maps_.modify(*comment, [&](auto& c) {
+                c.parent_hash = parent_hash;
                 c.offset = op.offset;
                 c.create_op = op.num;
                 if (c.created == fc::time_point_sec::min()) {
@@ -113,6 +121,7 @@ void genesis_ee_builder::process_comments() {
 
         maps_.create<comment_header>([&](auto& c) {
             c.hash = op.hash;
+            c.parent_hash = parent_hash;
             c.offset = op.offset;
             c.create_op = op.num;
             c.created = op.timestamp;
@@ -355,35 +364,41 @@ void genesis_ee_builder::build_messages() {
     bfs::ifstream dump_comments(in_dump_dir_ / "comments");
     bfs::ifstream dump_reblogs(in_dump_dir_ / "reblogs");
 
-    const auto& comment_idx = maps_.get_index<comment_header_index, by_created>();
+    const auto& comment_idx = maps_.get_index<comment_header_index, by_parent_hash>();
 
-    auto comment_itr = comment_idx.upper_bound(fc::time_point_sec::min());
-    for (; comment_itr != comment_idx.end(); ++comment_itr) {
-        auto& comment = *comment_itr;
+    std::function<void(uint64_t)> build_children = [&](uint64_t parent_hash) {
+        auto comment_itr = comment_idx.lower_bound(parent_hash);
+        for (; comment_itr != comment_idx.end() && comment_itr->parent_hash == parent_hash; ++comment_itr) {
+            auto& comment = *comment_itr;
 
-        dump_comments.seekg(comment.offset);
-        comment_operation op;
-        read_operation(dump_comments, op);
+            dump_comments.seekg(comment.offset);
+            comment_operation op;
+            read_operation(dump_comments, op);
 
-        out_.messages.emplace<comment_info>([&](auto& c) {
-            c.parent_author = generate_name(op.parent_author);
-            c.parent_permlink = op.parent_permlink;
-            c.author = generate_name(op.author);
-            c.permlink = op.permlink;
-            c.title = op.title;
-            c.body = op.body;
-            c.tags = op.tags;
-            c.language = op.language;
-            c.created = comment.created;
-            c.last_update = op.timestamp;
-            c.net_rshares = comment.net_rshares;
-            c.author_reward = asset(comment.author_reward, symbol(GLS));
-            c.benefactor_reward = asset(comment.benefactor_reward, symbol(GLS));
-            c.curator_reward = asset(comment.curator_reward, symbol(GLS));
-            build_votes(c.votes, comment.hash, comment.last_delete_op);
-            build_reblogs(c.reblogs, comment.hash, comment.last_delete_op, dump_reblogs);
-        });
-    }
+            out_.messages.emplace<comment_info>([&](auto& c) {
+                c.parent_author = generate_name(op.parent_author);
+                c.parent_permlink = op.parent_permlink;
+                c.author = generate_name(op.author);
+                c.permlink = op.permlink;
+                c.title = op.title;
+                c.body = op.body;
+                c.tags = op.tags;
+                c.language = op.language;
+                c.created = comment.created;
+                c.last_update = op.timestamp;
+                c.net_rshares = comment.net_rshares;
+                c.author_reward = asset(comment.author_reward, symbol(GLS));
+                c.benefactor_reward = asset(comment.benefactor_reward, symbol(GLS));
+                c.curator_reward = asset(comment.curator_reward, symbol(GLS));
+                build_votes(c.votes, comment.hash, comment.last_delete_op);
+                build_reblogs(c.reblogs, comment.hash, comment.last_delete_op, dump_reblogs);
+            });
+
+            build_children(comment.hash);
+        }
+    };
+
+    build_children(0);
 }
 
 void genesis_ee_builder::build_transfers() {
