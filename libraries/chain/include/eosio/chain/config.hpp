@@ -77,17 +77,17 @@ static constexpr uint32_t _DAY = 24*_HOUR;
 static constexpr uint32_t _MONTH = 30*_DAY;
 
 //////////////////////////////////////////////////////////////////////     CPU             NET            RAM             STORAGE                                  
-static constexpr resource_limits_t  default_target_virtual_limits      = {{250'000,       512*_KB,       64*_MB,         32*_GB / blocks_per_year}};
-static constexpr resource_limits_t  default_min_virtual_limits         = {{2'500'000,     1*_MB,         32*_MB,         16*_GB  / blocks_per_year}};
-static constexpr resource_limits_t  default_max_virtual_limits         = {{2'500'000'000, 1000*_MB,      1000*32*_MB,    100*32*_GB / blocks_per_year}};
+static constexpr resource_limits_t  default_target_virtual_limits      = {{140'000,       512*_KB,       64*_MB,         32*_GB / blocks_per_year}};
+static constexpr resource_limits_t  default_min_virtual_limits         = {{1'400'000,     1*_MB,         32*_MB,         16*_GB  / blocks_per_year}};
+static constexpr resource_limits_t  default_max_virtual_limits         = {{1'400'000'000, 1000*_MB,      1000*32*_MB,    100*32*_GB / blocks_per_year}};
 static constexpr resource_windows_t default_usage_windows              = {{_MINUTE,       _MINUTE,       _MINUTE,         _DAY}};
 static constexpr resource_pct_t     default_virtual_limit_decrease_pct = {{100,           100,           100,            100}};
 static constexpr resource_pct_t     default_virtual_limit_increase_pct = {{10,            10,            10,             10}};
                                                                 
 static constexpr resource_windows_t default_account_usage_windows      = {{_HOUR,         _HOUR,         _HOUR,          _MONTH}};
                                                                 
-static constexpr resource_limits_t  max_block_usage                    = {{2'500'000,     1*_MB,         128*_MB,         32*_MB}};
-static constexpr resource_limits_t  max_transaction_usage              = {{2'000'000,     512*_KB,       64*_MB,          16*_MB}};
+static constexpr resource_limits_t  max_block_usage                    = {{1'400'000,     1*_MB,         128*_MB,         32*_MB}};
+static constexpr resource_limits_t  max_transaction_usage              = {{800'000,     512*_KB,       64*_MB,          16*_MB}};
 
 static constexpr uint64_t ram_load_multiplier = 2;
 
