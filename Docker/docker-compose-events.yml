@@ -5,7 +5,9 @@ services:
     container_name: nats-streaming
     image: nats-streaming:0.11.2-linux
     restart: always
-    entrypoint: /nats-streaming-server -p 4222 -m 8222 --cluster_id=cyberway --user=${NATS_USER} --pass=${NATS_PASS}
+    entrypoint: /nats-streaming-server -p 4222 -m 8222 --cluster_id=cyberway --user=${NATS_USER} --pass=${NATS_PASS} --config /config.conf
+    volumes:
+      - ${PWD}/nats/config.conf:/config.conf
     ports:
       - 0.0.0.0:4222:4222
       - 127.0.0.1:8222:8222
