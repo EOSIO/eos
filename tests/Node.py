@@ -1516,7 +1516,7 @@ class Node(object):
         self.scheduleProtocolFeatureActivations([preactivateFeatureDigest])
 
         # Wait for the next block to be produced so the scheduled protocol feature is activated
-        self.waitForHeadToAdvance()
+        assert self.waitForHeadToAdvance(), print("ERROR: TIMEOUT WAITING FOR PREACTIVATE")
 
     # Return an array of feature digests to be preactivated in a correct order respecting dependencies
     # Require producer_api_plugin

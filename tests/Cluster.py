@@ -951,7 +951,7 @@ class Cluster(object):
             "FEATURE_DIGESTS": ""
         }
         if PFSetupPolicy.hasPreactivateFeature(pfSetupPolicy):
-            env["BIOS_CONTRACT_PATH"] = "unittests/contracts/old_versions/v1.7.0-develop-preactivate_feature/eosio.bios/"
+            env["BIOS_CONTRACT_PATH"] = "unittests/contracts/old_versions/v1.7.0-develop-preactivate_feature/eosio.bios"
 
         if pfSetupPolicy == PFSetupPolicy.FULL:
             allBuiltinProtocolFeatureDigests = biosNode.getAllBuiltinFeatureDigestsToPreactivate()

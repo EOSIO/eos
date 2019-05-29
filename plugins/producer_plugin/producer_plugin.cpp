@@ -1870,11 +1870,17 @@ void producer_plugin_impl::produce_block() {
 
 
    const auto& auth = chain.pending_block_signing_authority();
-   auto num_relevant_signatures = std::count_if(_signature_providers.begin(), _signature_providers.end(), [&auth](const auto& p){
-      return producer_authority::key_is_relevant(p.first, auth);
-   });
+   std::vector<std::reference_wrapper<const signature_provider_type>> relevant_providers;
 
-   EOS_ASSERT(num_relevant_signatures > 0, producer_priv_key_not_found, "Attempting to produce a block for which we don't have any relevant private keys");
+   relevant_providers.reserve(_signature_providers.size());
+
+   for (const auto& p : _signature_providers) {
+      if (producer_authority::key_is_relevant(p.first, auth)) {
+         relevant_providers.emplace_back(p.second);
+      }
+   }
+
+   EOS_ASSERT(relevant_providers.size() > 0, producer_priv_key_not_found, "Attempting to produce a block for which we don't have any relevant private keys");
 
    if (_protocol_features_signaled) {
       _protocol_features_to_activate.clear(); // clear _protocol_features_to_activate as it is already set in pending_block
@@ -1885,13 +1891,11 @@ void producer_plugin_impl::produce_block() {
    chain.finalize_block( [&]( const digest_type& d ) {
       auto debug_logger = maybe_make_debug_time_logger();
       vector<signature_type> sigs;
-      sigs.reserve(num_relevant_signatures);
+      sigs.reserve(relevant_providers.size());
 
       // sign with all relevant public keys
-      for (const auto& p : _signature_providers) {
-         if (producer_authority::key_is_relevant(p.first, auth)) {
-            sigs.emplace_back(p.second(d));
-         }
+      for (const auto& p : relevant_providers) {
+         sigs.emplace_back(p.get()(d));
       }
       return sigs;
    } );
