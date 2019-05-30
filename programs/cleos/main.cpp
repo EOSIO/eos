@@ -3221,7 +3221,7 @@ int main( int argc, char** argv ) {
       try {
          wallet_key = private_key_type( wallet_key_str );
       } catch (...) {
-         EOS_THROW(private_key_type_exception, "Invalid private key: ${private_key}", ("private_key", wallet_key_str))
+         EOS_THROW(private_key_type_exception, "Invalid private key")
       }
       public_key_type pubkey = wallet_key.get_public_key();
 
@@ -3301,16 +3301,22 @@ int main( int argc, char** argv ) {
    string trx_json_to_sign;
    string str_private_key;
    string str_chain_id;
+   string str_private_key_file;
+   string str_public_key;
    bool push_trx = false;
 
    auto sign = app.add_subcommand("sign", localized("Sign a transaction"), false);
    sign->add_option("transaction", trx_json_to_sign,
                                  localized("The JSON string or filename defining the transaction to sign"), true)->required();
    sign->add_option("-k,--private-key", str_private_key, localized("The private key that will be used to sign the transaction"));
+   sign->add_option("--public-key", str_public_key, localized("Ask ${exec} to sign with the corresponding private key of the given public key", ("exec", key_store_executable_name)));
    sign->add_option("-c,--chain-id", str_chain_id, localized("The chain id that will be used to sign the transaction"));
-   sign->add_flag( "-p,--push-transaction", push_trx, localized("Push transaction after signing"));
+   sign->add_flag("-p,--push-transaction", push_trx, localized("Push transaction after signing"));
 
    sign->set_callback([&] {
+
+      EOSC_ASSERT( str_private_key.empty() || str_public_key.empty(), "ERROR: Either -k/--private-key or --public-key or none of them can be set" );
+
       signed_transaction trx = json_from_file_or_string(trx_json_to_sign).as<signed_transaction>();
 
       fc::optional<chain_id_type> chain_id;
@@ -3323,15 +3329,26 @@ int main( int argc, char** argv ) {
          chain_id = chain_id_type(str_chain_id);
       }
 
-      if( str_private_key.size() == 0 ) {
-         std::cerr << localized("private key: ");
-         fc::set_console_echo(false);
-         std::getline( std::cin, str_private_key, '\n' );
-         fc::set_console_echo(true);
+      if( str_public_key.size() > 0 ) {
+         public_key_type pub_key;
+         try {
+            pub_key = public_key_type(str_public_key);
+         } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid public key: ${public_key}", ("public_key", str_public_key))
+         fc::variant keys_var(flat_set<public_key_type>{ pub_key });
+         sign_transaction(trx, keys_var, *chain_id);
+      } else {
+         if( str_private_key.size() == 0 ) {
+            std::cerr << localized("private key: ");
+            fc::set_console_echo(false);
+            std::getline( std::cin, str_private_key, '\n' );
+            fc::set_console_echo(true);
+         }
+         private_key_type priv_key;
+         try {
+            priv_key = private_key_type(str_private_key);
+         } EOS_RETHROW_EXCEPTIONS(private_key_type_exception, "Invalid private key")
+         trx.sign(priv_key, *chain_id);
       }
-
-      auto priv_key = private_key_type(str_private_key);
-      trx.sign(priv_key, *chain_id);
 
       if(push_trx) {
          auto trx_result = call(push_txn_func, packed_transaction(trx, packed_transaction::none));
