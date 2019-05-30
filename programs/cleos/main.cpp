@@ -3327,13 +3327,7 @@ int main( int argc, char** argv ) {
          chain_id = chain_id_type(str_chain_id);
       }
 
-      if( str_private_key.size() > 0 ) {
-         private_key_type priv_key;
-         try {
-            priv_key = private_key_type(str_private_key);
-         } EOS_RETHROW_EXCEPTIONS(private_key_type_exception, "Invalid private key: ${private_key}", ("private_key", str_private_key))
-         trx.sign(priv_key, *chain_id);
-      } else if( str_keosd_pub_key.size() > 0 ) {
+      if( str_keosd_pub_key.size() > 0 ) {
          public_key_type pub_key;
          try {
             pub_key = public_key_type(str_keosd_pub_key);
@@ -3341,10 +3335,17 @@ int main( int argc, char** argv ) {
          fc::variant keys_var(flat_set<public_key_type>{ pub_key });
          sign_transaction(trx, keys_var, *chain_id);
       } else {
-         std::cerr << localized("private key: ");
-         fc::set_console_echo(false);
-         std::getline( std::cin, str_private_key, '\n' );
-         fc::set_console_echo(true);
+         if( str_private_key.size() == 0 ) {
+            std::cerr << localized("private key: ");
+            fc::set_console_echo(false);
+            std::getline( std::cin, str_private_key, '\n' );
+            fc::set_console_echo(true);
+         }
+         private_key_type priv_key;
+         try {
+            priv_key = private_key_type(str_private_key);
+         } EOS_RETHROW_EXCEPTIONS(private_key_type_exception, "Invalid private key: ${private_key}", ("private_key", str_private_key))
+         trx.sign(priv_key, *chain_id);
       }
 
       if(push_trx) {
