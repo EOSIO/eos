@@ -503,15 +503,18 @@ void print_result( const fc::variant& result ) { try {
 
 using std::cout;
 void send_actions(std::vector<chain::action>&& actions, packed_transaction::compression_type compression = packed_transaction::none ) {
+   std::ofstream out;
+   if (tx_json_save_file.length()) {
+      out.open(tx_json_save_file);
+      EOSC_ASSERT(!out.fail(), "ERROR: Failed to create file \"${p}\"", ("p", tx_json_save_file));
+   }
    auto result = push_actions( move(actions), compression);
 
    string jsonstr;
    if (tx_json_save_file.length()) {
-      if (jsonstr.length() == 0) {
-         jsonstr = fc::json::to_pretty_string( result );
-      }
-      std::ofstream out(tx_json_save_file);
+      jsonstr = fc::json::to_pretty_string( result );
       out << jsonstr;
+      out.close();
    }
    if( tx_print_json ) {
       if (jsonstr.length() == 0) {
@@ -524,15 +527,18 @@ void send_actions(std::vector<chain::action>&& actions, packed_transaction::comp
 }
 
 void send_transaction( signed_transaction& trx, packed_transaction::compression_type compression = packed_transaction::none  ) {
+   std::ofstream out;
+   if (tx_json_save_file.length()) {
+      out.open(tx_json_save_file);
+      EOSC_ASSERT(!out.fail(), "ERROR: Failed to create file \"${p}\"", ("p", tx_json_save_file));
+   }
    auto result = push_transaction(trx, compression);
 
    string jsonstr;
    if (tx_json_save_file.length()) {
-      if (jsonstr.length() == 0) {
-         jsonstr = fc::json::to_pretty_string( result );
-      }
-      std::ofstream out(tx_json_save_file);
+      jsonstr = fc::json::to_pretty_string( result );
       out << jsonstr;
+      out.close();
    }
    if( tx_print_json ) {
       if (jsonstr.length() == 0) {
