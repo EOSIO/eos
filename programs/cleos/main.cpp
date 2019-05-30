@@ -888,10 +888,12 @@ void try_local_port(uint32_t duration) {
 void ensure_keosd_running(CLI::App* app) {
     if (no_auto_keosd)
         return;
-    // get, version, net do not require keosd
-    if (tx_skip_sign || app->got_subcommand("get") || app->got_subcommand("version") || app->got_subcommand("net"))
+    // get, version, net, convert do not require keosd
+    if (tx_skip_sign || app->got_subcommand("get") || app->got_subcommand("version") || app->got_subcommand("net") || app->got_subcommand("convert"))
         return;
     if (app->get_subcommand("create")->got_subcommand("key")) // create key does not require wallet
+       return;
+    if (app->get_subcommand("multisig")->got_subcommand("review")) // multisig review does not require wallet
        return;
     if (auto* subapp = app->get_subcommand("system")) {
        if (subapp->got_subcommand("listproducers") || subapp->got_subcommand("listbw") || subapp->got_subcommand("bidnameinfo")) // system list* do not require wallet
