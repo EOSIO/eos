@@ -102,6 +102,7 @@ namespace eosio {
       block_id_type id;
       uint32_t      block_num = 0;
       uint32_t      connection_id = 0;
+      bool          have_block = false; // true if we have received the block not just the id notification
    };
 
    typedef multi_index_container<
@@ -110,9 +111,10 @@ namespace eosio {
          ordered_unique< tag<by_id>,
                composite_key< peer_block_state,
                      member<peer_block_state, block_id_type, &eosio::peer_block_state::id>,
-                     member<peer_block_state, uint32_t, &eosio::peer_block_state::connection_id>
+                     member<peer_block_state, uint32_t, &eosio::peer_block_state::connection_id>,
+                     member<peer_block_state, bool, &eosio::peer_block_state::have_block>
                >,
-               composite_key_compare< sha256_less, std::less<uint32_t> >
+               composite_key_compare< sha256_less, std::less<uint32_t>, std::greater<bool> >
          >,
          ordered_non_unique< tag<by_block_num>, member<eosio::peer_block_state, uint32_t, &eosio::peer_block_state::block_num > >
       >
@@ -177,6 +179,7 @@ namespace eosio {
       void rejected_transaction(const transaction_id_type& msg, uint32_t head_blk_num);
       void bcast_block(const block_state_ptr& bs);
       void rejected_block(const block_id_type& id);
+      void bcast_notice( const block_id_type& id );
 
       void recv_block(const connection_ptr& conn, const block_id_type& msg, uint32_t bnum);
       void expire_blocks( uint32_t bnum );
@@ -185,7 +188,8 @@ namespace eosio {
 
       void retry_fetch(const connection_ptr& conn);
 
-      bool add_peer_block(const peer_block_state& pbs);
+      bool add_peer_block(const block_id_type& blkid, uint32_t connection_id);
+      bool add_peer_block_id(const block_id_type& blkid, uint32_t connection_id);
       bool peer_has_block(const block_id_type& blkid, uint32_t connection_id);
       bool have_block(const block_id_type& blkid);
 
@@ -716,6 +720,8 @@ namespace eosio {
       void handle_message( const packed_transaction& msg ) = delete; // packed_transaction_ptr overload used instead
       void handle_message( const packed_transaction_ptr& msg );
 
+      void process_signed_block( const signed_block_ptr& msg );
+
       fc::optional<fc::variant_object> _logger_variant;
       const fc::variant_object& get_logger_variant()  {
          if (!_logger_variant) {
@@ -754,12 +760,9 @@ namespace eosio {
       }
 
       void operator()( signed_block&& msg ) const {
+         // continue call to handle_message on connection strand
          shared_ptr<signed_block> ptr = std::make_shared<signed_block>( std::move( msg ) );
-         connection_wptr weak = c;
-         app().post(priority::high, [ptr{std::move(ptr)}, weak{std::move(weak)}] {
-            connection_ptr c = weak.lock();
-            if( c ) c->handle_message( ptr );
-         });
+         c->handle_message( ptr );
       }
 
       void operator()( packed_transaction&& msg ) const {
@@ -1029,7 +1032,7 @@ namespace eosio {
             signed_block_ptr b = cc.fetch_block_by_id( blkid );
             if( b ) {
                fc_dlog( logger, "found block for id at num ${n}", ("n", b->block_num()) );
-               my_impl->dispatcher->add_peer_block( {blkid, block_header::num_from_id( blkid ), c->connection_id} );
+               my_impl->dispatcher->add_peer_block( blkid, c->connection_id );
                c->strand.post( [c, b{std::move(b)}]() {
                   c->enqueue_block( b );
                } );
@@ -1774,12 +1777,26 @@ namespace eosio {
    //------------------------------------------------------------------------
 
    // thread safe
-   bool dispatch_manager::add_peer_block(const peer_block_state& entry) {
+   bool dispatch_manager::add_peer_block(const block_id_type& blkid, uint32_t connection_id) {
       std::lock_guard<std::mutex> g( blk_state_mtx );
-      auto bptr = blk_state.get<by_id>().find(std::make_tuple(std::ref(entry.id), entry.connection_id));
+      auto bptr = blk_state.get<by_id>().find(std::make_tuple(std::ref(blkid), connection_id));
       bool added = (bptr == blk_state.end());
       if( added ) {
-         blk_state.insert(entry);
+         blk_state.insert( {blkid, block_header::num_from_id( blkid ), connection_id, true} );
+      } else if( !bptr->have_block ) {
+         blk_state.modify( bptr, []( auto& pb ) {
+            pb.have_block = true;
+         } );
+      }
+      return added;
+   }
+
+   bool dispatch_manager::add_peer_block_id(const block_id_type& blkid, uint32_t connection_id) {
+      std::lock_guard<std::mutex> g( blk_state_mtx );
+      auto bptr = blk_state.get<by_id>().find(std::make_tuple(std::ref(blkid), connection_id));
+      bool added = (bptr == blk_state.end());
+      if( added ) {
+         blk_state.insert( {blkid, block_header::num_from_id( blkid ), connection_id, false} );
       }
       return added;
    }
@@ -1793,7 +1810,10 @@ namespace eosio {
    bool dispatch_manager::have_block( const block_id_type& blkid ) {
       std::lock_guard<std::mutex> g(blk_state_mtx);
       auto blk_itr = blk_state.get<by_id>().find( blkid );
-      return blk_itr != blk_state.end();
+      if( blk_itr != blk_state.end() ) {
+         return blk_itr->have_block;
+      }
+      return false;
    }
 
    bool dispatch_manager::add_peer_txn( const node_transaction_state& nts ) {
@@ -1898,8 +1918,7 @@ namespace eosio {
             bool has_block = cp->last_handshake_recv.last_irreversible_block_num >= bnum;
             g_conn.unlock();
             if( !has_block ) {
-               peer_block_state pbstate{bs->id, bnum, cp->connection_id};
-               if( !add_peer_block( pbstate ) ) {
+               if( !add_peer_block( bs->id, cp->connection_id ) ) {
                   return;
                }
                fc_dlog( logger, "bcast block ${b} to ${p}", ("b", bnum)( "p", cp->peer_name() ) );
@@ -1910,10 +1929,34 @@ namespace eosio {
       } );
    }
 
+   void dispatch_manager::bcast_notice( const block_id_type& id ) {
+      fc_dlog( logger, "bcast notice ${b}", ("b", block_header::num_from_id( id )) );
+
+      if( my_impl->sync_master->syncing_with_peer() ) return;
+
+      notice_message note;
+      note.known_blocks.mode = normal;
+      note.known_blocks.pending = 0;
+      note.known_blocks.ids.emplace_back( id );
+
+      for_each_block_connection( [this, note]( auto& cp ) {
+         if( !cp->current() ) {
+            return true;
+         }
+         cp->strand.post( [this, cp, note]() {
+            const block_id_type& id = note.known_blocks.ids.back();
+            if( peer_has_block( id, cp->connection_id ) ) {
+               return;
+            }
+            fc_dlog( logger, "bcast block id ${b} to ${p}", ("b", block_header::num_from_id( id ))( "p", cp->peer_name() ) );
+            cp->enqueue( note );
+         });
+         return true;
+      } );
+   }
+
    // called from connection strand
    void dispatch_manager::recv_block(const connection_ptr& c, const block_id_type& id, uint32_t bnum) {
-      peer_block_state pbstate{id, bnum, c->connection_id};
-      add_peer_block( pbstate );
       std::unique_lock<std::mutex> g( c->conn_mtx );
       if (c &&
           c->last_req &&
@@ -1988,6 +2031,13 @@ namespace eosio {
          req.req_blocks.mode = normal;
          // known_blocks.ids is never > 1
          if( !msg.known_blocks.ids.empty() ) {
+            const block_id_type& blkid = msg.known_blocks.ids.back();
+            if( have_block( blkid )) {
+               add_peer_block( blkid, c->connection_id );
+               return;
+            } else {
+               add_peer_block_id( blkid, c->connection_id );
+            }
             connection_wptr weak = c;
             app().post( priority::low, [this, msg{std::move(msg)}, req{std::move(req)}, weak{std::move(weak)}]() mutable {
                connection_ptr c = weak.lock();
@@ -1998,7 +2048,7 @@ namespace eosio {
                   controller& cc = my_impl->chain_plug->chain();
                   b = cc.fetch_block_by_id( blkid ); // if exists
                   if( b ) {
-                     add_peer_block( {blkid, block_header::num_from_id( blkid ), c->connection_id} );
+                     add_peer_block( blkid, c->connection_id );
                   }
                } catch( const assert_exception& ex ) {
                   fc_ilog( logger, "caught assert on fetch_block_by_id, ${ex}", ("ex", ex.what()) );
@@ -2368,7 +2418,9 @@ namespace eosio {
             fc::raw::unpack( peek_ds, bh );
 
             block_id_type blk_id = bh.id();
-            if( my_impl->dispatcher->have_block( blk_id ) ) {
+            bool have_block = my_impl->dispatcher->have_block( blk_id );
+            my_impl->dispatcher->add_peer_block( blk_id, connection_id );
+            if( have_block ) {
                auto blk_num = block_header::num_from_id( blk_id );
                connection_ptr c = shared_from_this();
                my_impl->dispatcher->recv_block( c, blk_id, blk_num );
@@ -2630,9 +2682,6 @@ namespace eosio {
    }
 
    void connection::handle_message( const notice_message& msg ) {
-      // peer tells us about one or more blocks or txns. When done syncing, forward on
-      // notices of previously unknown blocks or txns,
-      //
       peer_ilog( this, "received notice_message" );
       connecting = false;
       if( msg.known_trx.mode != none ) {
@@ -2794,8 +2843,18 @@ namespace eosio {
       });
    }
 
+   // called from connection strand
+   void connection::handle_message( const signed_block_ptr& ptr ) {
+      connection_wptr weak = weak_from_this();
+      app().post(priority::high, [ptr, weak{std::move(weak)}] {
+         connection_ptr c = weak.lock();
+         if( c ) c->process_signed_block( ptr );
+      });
+      my_impl->dispatcher->bcast_notice( ptr->id() );
+   }
+
    // called from application thread
-   void connection::handle_message( const signed_block_ptr& msg ) {
+   void connection::process_signed_block( const signed_block_ptr& msg ) {
       controller& cc = my_impl->chain_plug->chain();
       block_id_type blk_id = msg->id();
       uint32_t blk_num = msg->block_num();
