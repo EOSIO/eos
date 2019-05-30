@@ -179,6 +179,7 @@ bool   tx_dont_broadcast = false;
 bool   tx_return_packed = false;
 bool   tx_skip_sign = false;
 bool   tx_print_json = false;
+string tx_json_save_file;
 bool   print_request = false;
 bool   print_response = false;
 bool   no_auto_keosd = false;
@@ -208,6 +209,7 @@ void add_standard_transaction_options(CLI::App* cmd, string default_permission =
    cmd->add_flag("-f,--force-unique", tx_force_unique, localized("force the transaction to be unique. this will consume extra bandwidth and remove any protections against accidently issuing the same transaction multiple times"));
    cmd->add_flag("-s,--skip-sign", tx_skip_sign, localized("Specify if unlocked wallet keys should be used to sign transaction"));
    cmd->add_flag("-j,--json", tx_print_json, localized("print result as json"));
+   cmd->add_option("--json-file", tx_json_save_file, localized("save result in json format into a file"));
    cmd->add_flag("-d,--dont-broadcast", tx_dont_broadcast, localized("don't broadcast transaction to the network (just print to stdout)"));
    cmd->add_flag("--return-packed", tx_return_packed, localized("used in conjunction with --dont-broadcast to get the packed transaction"));
    cmd->add_option("-r,--ref-block", tx_ref_block_num_or_id, (localized("set the reference block num or block id used for TAPOS (Transaction as Proof-of-Stake)")));
@@ -501,20 +503,48 @@ void print_result( const fc::variant& result ) { try {
 
 using std::cout;
 void send_actions(std::vector<chain::action>&& actions, packed_transaction::compression_type compression = packed_transaction::none ) {
+   std::ofstream out;
+   if (tx_json_save_file.length()) {
+      out.open(tx_json_save_file);
+      EOSC_ASSERT(!out.fail(), "ERROR: Failed to create file \"${p}\"", ("p", tx_json_save_file));
+   }
    auto result = push_actions( move(actions), compression);
 
+   string jsonstr;
+   if (tx_json_save_file.length()) {
+      jsonstr = fc::json::to_pretty_string( result );
+      out << jsonstr;
+      out.close();
+   }
    if( tx_print_json ) {
-      cout << fc::json::to_pretty_string( result ) << endl;
+      if (jsonstr.length() == 0) {
+         jsonstr = fc::json::to_pretty_string( result );
+      }
+      cout << jsonstr << endl;
    } else {
       print_result( result );
    }
 }
 
 void send_transaction( signed_transaction& trx, packed_transaction::compression_type compression = packed_transaction::none  ) {
+   std::ofstream out;
+   if (tx_json_save_file.length()) {
+      out.open(tx_json_save_file);
+      EOSC_ASSERT(!out.fail(), "ERROR: Failed to create file \"${p}\"", ("p", tx_json_save_file));
+   }
    auto result = push_transaction(trx, compression);
 
+   string jsonstr;
+   if (tx_json_save_file.length()) {
+      jsonstr = fc::json::to_pretty_string( result );
+      out << jsonstr;
+      out.close();
+   }
    if( tx_print_json ) {
-      cout << fc::json::to_pretty_string( result ) << endl;
+      if (jsonstr.length() == 0) {
+         jsonstr = fc::json::to_pretty_string( result );
+      }
+      cout << jsonstr << endl;
    } else {
       print_result( result );
    }
