@@ -3307,8 +3307,7 @@ int main( int argc, char** argv ) {
    sign->add_option("transaction", trx_json_to_sign,
                                  localized("The JSON string or filename defining the transaction to sign"), true)->required();
    sign->add_option("-k,--private-key", str_private_key, localized("The private key that will be used to sign the transaction"));
-   sign->add_option("--public-key", str_public_key, localized(string("Ask ") + string(key_store_executable_name +
-                                                                 "to sign with the corresponding private key of the given public key"));
+   sign->add_option("--public-key", str_public_key, localized("Ask ${exec} to sign with the corresponding private key of the given public key", ("exec", key_store_executable_name)));
    sign->add_option("-c,--chain-id", str_chain_id, localized("The chain id that will be used to sign the transaction"));
    sign->add_flag("-p,--push-transaction", push_trx, localized("Push transaction after signing"));
 
