@@ -3219,7 +3219,7 @@ int main( int argc, char** argv ) {
       try {
          wallet_key = private_key_type( wallet_key_str );
       } catch (...) {
-         EOS_THROW(private_key_type_exception, "Invalid private key: ${private_key}", ("private_key", wallet_key_str))
+         EOS_THROW(private_key_type_exception, "Invalid private key")
       }
       public_key_type pubkey = wallet_key.get_public_key();
 
@@ -3345,7 +3345,7 @@ int main( int argc, char** argv ) {
          private_key_type priv_key;
          try {
             priv_key = private_key_type(str_private_key);
-         } EOS_RETHROW_EXCEPTIONS(private_key_type_exception, "Invalid private key: ${private_key}", ("private_key", str_private_key))
+         } EOS_RETHROW_EXCEPTIONS(private_key_type_exception, "Invalid private key")
          trx.sign(priv_key, *chain_id);
       }
 
