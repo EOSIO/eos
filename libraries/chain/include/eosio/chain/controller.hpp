@@ -6,10 +6,11 @@
 
 #include <eosio/chain/abi_serializer.hpp>
 #include <eosio/chain/account_object.hpp>
-#include <eosio/chain/domain_object.hpp>
 #include <eosio/chain/snapshot.hpp>
 
 #include <cyberway/chaindb/common.hpp>
+#include <cyberway/chain/domain_name.hpp>
+#include <cyberway/chain/domain_object.hpp>
 
 namespace chainbase {
    class database;
@@ -23,6 +24,11 @@ namespace eosio { namespace chain {
    using cyberway::chaindb::chaindb_controller;
    using cyberway::chaindb::chaindb_type;
    using cyberway::chaindb::chaindb_session;
+
+   using cyberway::chain::domain_name;
+   using cyberway::chain::domain_object;
+   using cyberway::chain::username;
+   using cyberway::chain::username_object;
 
    class authorization_manager;
 
@@ -53,6 +59,32 @@ namespace eosio { namespace chain {
    enum class validation_mode {
       FULL,
       LIGHT
+   };
+
+   struct billed_bw_usage {
+       const uint32_t cpu_time_us = 0;
+       const uint64_t ram_bytes = 0;
+       const bool explicit_usage = false;
+
+       billed_bw_usage() = default;
+
+       billed_bw_usage(const uint32_t us, const uint64_t kbytes)
+       : cpu_time_us(us),
+         ram_bytes(kbytes << 10),
+         explicit_usage(us > 0 || kbytes > 0) {
+       }
+
+       billed_bw_usage(const transaction_receipt& r)
+       : cpu_time_us(r.cpu_usage_us),
+         ram_bytes(r.ram_kbytes << 10),
+         explicit_usage(true) {
+       }
+       
+       billed_bw_usage(const chain_config& c)
+       : cpu_time_us(c.min_transaction_cpu_usage),
+         ram_bytes(c.min_transaction_ram_usage),
+         explicit_usage(true) {
+       }
    };
 
    class controller {
@@ -139,13 +171,13 @@ namespace eosio { namespace chain {
          /**
           *
           */
-         transaction_trace_ptr push_transaction( const transaction_metadata_ptr& trx, fc::time_point deadline, uint32_t billed_cpu_time_us = 0 );
+         transaction_trace_ptr push_transaction( const transaction_metadata_ptr& trx, fc::time_point deadline, const billed_bw_usage& = {} );
 
          /**
           * Attempt to execute a specific transaction in our deferred trx database
           *
           */
-         transaction_trace_ptr push_scheduled_transaction( const transaction_id_type& scheduled, fc::time_point deadline, uint32_t billed_cpu_time_us = 0 );
+         transaction_trace_ptr push_scheduled_transaction( const transaction_id_type& scheduled, fc::time_point deadline, const billed_bw_usage& = {} );
 
          void finalize_block();
          void sign_block( const std::function<signature_type( const digest_type& )>& signer_callback );
@@ -184,6 +216,7 @@ namespace eosio { namespace chain {
          account_name         fork_db_head_block_producer()const;
 
          time_point              pending_block_time()const;
+         uint32_t                pending_block_slot()const;
          block_state_ptr         pending_block_state()const;
          optional<block_id_type> pending_producer_block_id()const;
 

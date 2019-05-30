@@ -22,13 +22,17 @@ namespace cyberway { namespace chaindb {
         static const string undo_pk_field;
         static const string undo_rec_field;
         static const string undo_payer_field;
-        static const string undo_owner_field;
         static const string undo_size_field;
+        static const string undo_ram_field;
         static const string revision_field;
 
         static const string payer_field;
-        static const string owner_field;
         static const string size_field;
+        static const string ram_field;
+
+        static const string amount_field;
+        static const string decs_field;
+        static const string sym_field;
 
         static const string scope_path;
         static const string undo_pk_path;
@@ -37,9 +41,9 @@ namespace cyberway { namespace chaindb {
         static const string asc_order;
         static const string desc_order;
 
+
         static constexpr uint64_t primary_index = N(primary);
     }; // struct names
-
 
     ///----
 
@@ -72,25 +76,10 @@ namespace cyberway { namespace chaindb {
         return get_code_name(info.code);
     }
 
-    ///----
-
-    inline string get_scope_name(const account_name& scope) {
-        return scope.to_string();
-    }
-
-    template <typename Info>
-    inline string get_scope_name(const Info& info) {
-        return get_scope_name(info.scope);
-    }
-
     ///---
 
     inline string get_payer_name(const account_name& payer) {
         return payer.to_string();
-    }
-
-    inline string get_owner_name(const account_name& owner) {
-        return owner.to_string();
     }
 
     ///----

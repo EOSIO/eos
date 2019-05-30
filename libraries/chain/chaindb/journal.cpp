@@ -30,7 +30,7 @@ namespace cyberway { namespace chaindb {
                 case write_operation::Insert:
                 case write_operation::Update:
                 case write_operation::Revision:
-                    CYBERWAY_ASSERT(false, driver_write_exception, "Wrong state on insert");
+                    CYBERWAY_THROW(driver_write_exception, "Wrong state on insert");
             }
         }
 
@@ -46,7 +46,7 @@ namespace cyberway { namespace chaindb {
                     break;
 
                 case write_operation::Remove:
-                    CYBERWAY_ASSERT(false, driver_write_exception, "Wrong state on update_revision");
+                    CYBERWAY_THROW(driver_write_exception, "Wrong state on update_revision");
             }
         }
 
@@ -62,7 +62,7 @@ namespace cyberway { namespace chaindb {
                     break;
 
                 case write_operation::Remove:
-                    CYBERWAY_ASSERT(false, driver_write_exception, "Wrong state on update");
+                    CYBERWAY_THROW(driver_write_exception, "Wrong state on update");
             }
         }
 
@@ -81,7 +81,7 @@ namespace cyberway { namespace chaindb {
                     break;
 
                 case write_operation::Remove:
-                    CYBERWAY_ASSERT(false, driver_write_exception, "Wrong state on delete");
+                    CYBERWAY_THROW(driver_write_exception, "Wrong state on delete");
             }
         }
 
@@ -141,10 +141,8 @@ namespace cyberway { namespace chaindb {
         auto& info = ctx.info(data.object.pk());
         _detail::write(std::move(data), info.data);
     } FC_CAPTURE_LOG_AND_RETHROW(
-        (get_full_table_name(data.object.service))
-        (get_scope_name(data.object.service))(data.object.service.pk)
+        (data.object.service)
     )
-
 
     void journal::write_data(const table_info& table, write_operation data) {
         auto ctx = create_ctx(table);
@@ -166,8 +164,7 @@ namespace cyberway { namespace chaindb {
             _detail::write(std::move(undo), itr->second);
         }
     } FC_CAPTURE_LOG_AND_RETHROW(
-        (get_full_table_name(undo.object.service))
-        (get_scope_name(undo.object.service))(undo.object.service.pk)
+        (undo.object.service)
     )
 
     void journal::write(write_ctx& ctx, write_operation data, write_operation undo) {

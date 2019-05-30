@@ -7,7 +7,7 @@ steps:
 
   - label: ":floppy_disk: upload base image"
     command: ".buildkite/steps/publish-builder.sh"
-    branches: "master develop ci-*"
+    branches: "master alfa develop ci-*"
 
   - wait
 
@@ -18,7 +18,7 @@ steps:
 
   - label: ":floppy_disk: upload image"
     command: ".buildkite/steps/publish-image.sh"
-    branches: "master develop ci-*"
+    branches: "master alfa develop ci-*"
 
   - wait
 

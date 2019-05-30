@@ -65,7 +65,6 @@ class stake_grant_object : public cyberway::chaindb::object<stake_grant_object_t
     account_name agent_name;
     int16_t pct;
     int64_t share;
-    int64_t granted;
     int16_t break_fee;
     int64_t break_min_own_staked;
     
@@ -92,8 +91,7 @@ class stake_param_object : public cyberway::chaindb::object<stake_param_object_t
     id_type id;
     symbol token_symbol;
     std::vector<uint8_t> max_proxies;
-    int64_t frame_length;
-    int64_t payout_step_lenght;
+    int64_t payout_step_length;
     uint16_t payout_steps_num;
     int64_t min_own_staked_for_election = 0;
 };
@@ -110,6 +108,7 @@ class stake_stat_object : public cyberway::chaindb::object<stake_stat_object_typ
     id_type id;
     symbol_code token_code;
     int64_t total_staked;
+    time_point_sec last_reward;
     bool enabled;
 };
 
@@ -142,10 +141,10 @@ FC_REFLECT(eosio::chain::stake_agent_object,
     (proxied)(shares_sum)(own_share)(fee)(min_own_staked)(signing_key))
     
 FC_REFLECT(eosio::chain::stake_grant_object, 
-    (id)(token_code)(grantor_name)(agent_name)(pct)(share)(granted)(break_fee)(break_min_own_staked))
+    (id)(token_code)(grantor_name)(agent_name)(pct)(share)(break_fee)(break_min_own_staked))
     
 FC_REFLECT(eosio::chain::stake_param_object, 
-    (id)(token_symbol)(max_proxies)(frame_length)(payout_step_lenght)(payout_steps_num)(min_own_staked_for_election))
+    (id)(token_symbol)(max_proxies)(payout_step_length)(payout_steps_num)(min_own_staked_for_election))
     
 FC_REFLECT(eosio::chain::stake_stat_object, 
-    (id)(token_code)(total_staked)(enabled))
+    (id)(token_code)(total_staked)(last_reward)(enabled))

@@ -3,6 +3,7 @@
 #include <eosio/chain/exceptions.hpp>
 
 #define CYBERWAY_ASSERT(expr, exc_type, FORMAT, ...) EOS_ASSERT(expr, exc_type, FORMAT, __VA_ARGS__)
+#define CYBERWAY_THROW(exc_type, FORMAT, ...) FC_THROW_EXCEPTION(exc_type, FORMAT, __VA_ARGS__)
 
 namespace cyberway { namespace chaindb {
 
@@ -34,6 +35,7 @@ namespace cyberway { namespace chaindb {
      *  chaindb_exception
      *   |- chaindb_internal_exception
      *   |- chaindb_abi_exception
+     *      |- invalid_typed_name_exception
      *   |- chaindb_contract_exception
      *   |- chaindb_object_exception
      */
@@ -98,6 +100,12 @@ namespace cyberway { namespace chaindb {
         FC_DECLARE_DERIVED_EXCEPTION(driver_wrong_object_exception, chaindb_internal_exception,
                                      3710018, "ChainDB driver return wrong object")
 
+        FC_DECLARE_DERIVED_EXCEPTION(cache_exception, chaindb_internal_exception,
+                                     3710019, "ChainDB cache failed")
+
+        FC_DECLARE_DERIVED_EXCEPTION(driver_scope_exception, chaindb_internal_exception,
+                                     3710020, "ChainDB driver returns bad scope")
+
     FC_DECLARE_DERIVED_EXCEPTION(chaindb_abi_exception, chaindb_exception,
                                  3720000, "ChainDB ABI exception")
 
@@ -109,9 +117,6 @@ namespace cyberway { namespace chaindb {
 
         FC_DECLARE_DERIVED_EXCEPTION(invalid_abi_store_type_exception, chaindb_abi_exception,
                                      3720003, "Invalid type for serialization")
-
-        FC_DECLARE_DERIVED_EXCEPTION(invalid_primary_key_exception, chaindb_abi_exception,
-                                     3720004, "Invalid primary key information")
 
         FC_DECLARE_DERIVED_EXCEPTION(invalid_index_description_exception, chaindb_abi_exception,
                                      3720005, "Invalid index description")
@@ -137,11 +142,23 @@ namespace cyberway { namespace chaindb {
         FC_DECLARE_DERIVED_EXCEPTION(array_field_exception, chaindb_abi_exception,
                                      3720012, "Array field can't be used for index")
 
+        FC_DECLARE_DERIVED_EXCEPTION(invalid_typed_name_exception, chaindb_abi_exception,
+                                     3721000, "Invalid typed name information")
+
+            FC_DECLARE_DERIVED_EXCEPTION(invalid_primary_key_exception, invalid_typed_name_exception,
+                                         3721001, "Invalid primary key information")
+
+            FC_DECLARE_DERIVED_EXCEPTION(invalid_scope_name_exception, invalid_typed_name_exception,
+                                         3721002, "Invalid scope name information")
+
     FC_DECLARE_DERIVED_EXCEPTION(chaindb_contract_exception, chaindb_exception,
                                  3730000, "ChainDB contract exception")
 
         FC_DECLARE_DERIVED_EXCEPTION(invalid_data_size_exception, chaindb_contract_exception,
                                      3730001, "Requested data with wrong size")
+
+        FC_DECLARE_DERIVED_EXCEPTION(invalid_data_exception, chaindb_contract_exception,
+                                     3730002, "Requested data is invalid")
 
     FC_DECLARE_DERIVED_EXCEPTION(chaindb_object_exception, chaindb_exception,
                                  3740000, "ChainDB object exception")

@@ -419,10 +419,10 @@ try {
 
    const auto &usage2 = chaindb.get<resource_usage_object,by_owner>(acc1a);
 
-   BOOST_TEST(usage.cpu_usage.average() > 0);
-   BOOST_TEST(usage.net_usage.average() > 0);
-   BOOST_REQUIRE_EQUAL(usage.cpu_usage.average(), usage2.cpu_usage.average());
-   BOOST_REQUIRE_EQUAL(usage.net_usage.average(), usage2.net_usage.average());
+   BOOST_TEST(usage.accumulators[resource_limits::CPU].average() > 0);
+   BOOST_TEST(usage.accumulators[resource_limits::NET].average() > 0);
+   BOOST_REQUIRE_EQUAL(usage.accumulators[resource_limits::CPU].average(), usage2.accumulators[resource_limits::CPU].average());
+   BOOST_REQUIRE_EQUAL(usage.accumulators[resource_limits::NET].average(), usage2.accumulators[resource_limits::NET].average());
    chain.produce_block();
 
 } FC_LOG_AND_RETHROW() }

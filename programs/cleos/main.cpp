@@ -96,6 +96,8 @@ Options:
 
 #include <eosio/chain/contract_types.hpp>
 
+#include <cyberway/chain/cyberway_contract_types.hpp>
+
 #pragma push_macro("N")
 #undef N
 
@@ -202,10 +204,11 @@ bool   no_auto_keosd = false;
 
 uint8_t  tx_max_cpu_usage = 0;
 uint32_t tx_max_net_usage = 0;
+uint32_t tx_max_ram_usage = 0;
+uint32_t tx_max_storage_usage = 0;
 uint32_t delaysec = 0;
 
 vector<string> bandwidth_provider;
-vector<string> ram_providers;
 
 struct resolved_name_info {
     string domain;
@@ -289,11 +292,12 @@ void add_standard_transaction_options(CLI::App* cmd, string default_permission =
 
    cmd->add_option("--max-cpu-usage-ms", tx_max_cpu_usage, localized("set an upper limit on the milliseconds of cpu usage budget, for the execution of the transaction (defaults to 0 which means no limit)"));
    cmd->add_option("--max-net-usage", tx_max_net_usage, localized("set an upper limit on the net usage budget, in bytes, for the transaction (defaults to 0 which means no limit)"));
+   cmd->add_option("--max-ram-usage", tx_max_ram_usage, localized("set an upper limit on the ram usage budget, in bytes, for the transaction (defaults to 0 which means no limit)"));
+   cmd->add_option("--max-storage-usage", tx_max_storage_usage, localized("set an upper limit on the storage usage budget, in bytes, for the transaction (defaults to 0 which means no limit)"));
 
    cmd->add_option("--delay-sec", delaysec, localized("set the delay_sec seconds, defaults to 0s"));
 
    cmd->add_option("--bandwidth-provider", bandwidth_provider, localized("set an account which provide own bandwidth for transaction"));
-   cmd->add_option("--ram-provider", ram_providers, localized("set an account which provide own ram for transaction"));
 
    cmd->add_flag("--dont-declare-names", tx_dont_declare_names, localized("don't add `declarenames` action for resolved account names"));
 }
@@ -327,42 +331,6 @@ bandwidth_providers get_bandwidth_providers(const vector<string>& providers) {
    }
    return bandwidthProviders;
 }
-
-struct provide_ram_params {
-    provide_ram_params(const string& providers) {
-        vector<string> pieces;
-        split(pieces, providers, boost::algorithm::is_any_of("/"));
-        if (pieces.size() != 3) {
-           std::cerr << localized("Ram provider ${p} not in 'account/provider[@permission]/list,of,contracts' form", ("p", providers)) << std::endl;
-           return;
-        }
-        actor = pieces[0];
-
-        std::vector<string> provider_and_authority;
-        split(provider_and_authority, pieces[1], boost::algorithm::is_any_of("@"));
-
-        provider = provider_and_authority[0];
-        permission.permission = provider_and_authority.size() == 1 ? "active" : provider_and_authority[1];
-        permission.actor = provider;
-
-        std::vector<string> contracts_as_strings;
-
-        split(contracts_as_strings, pieces[2], boost::algorithm::is_any_of(","));
-        if (contracts_as_strings.empty()) {
-            std::cerr << localized("List of contracts is empty") << std::endl;
-            return;
-        }
-
-        for (const auto& contract : contracts_as_strings) {
-            contracts.emplace_back(contract);
-        }
-    }
-
-    account_name provider;
-    account_name actor;
-    std::vector<account_name> contracts;
-    chain::permission_level permission;
-};
 
 vector<chain::permission_level> get_account_permissions(const vector<string>& permissions, const chain::permission_level& default_permission) {
    if (permissions.empty())
@@ -457,21 +425,17 @@ fc::variant push_transaction( signed_transaction& trx, int32_t extra_kcpu = 1000
 
       trx.max_cpu_usage_ms = tx_max_cpu_usage;
       trx.max_net_usage_words = (tx_max_net_usage + 7)/8;
+      trx.max_ram_kbytes = tx_max_ram_usage >> 10;
+      trx.max_storage_kbytes = tx_max_storage_usage >> 10;
       trx.delay_sec = delaysec;
 
       if (!bandwidth_provider.empty()) {
          auto providers = get_bandwidth_providers({bandwidth_provider});
          for (const auto& prov: providers) {
-            trx.actions.emplace_back(vector<chain::permission_level>{prov.second}, providebw{prov.second.actor, prov.first} );
+            trx.actions.emplace_back(
+                vector<chain::permission_level>{prov.second},
+                cyberway::chain::providebw{prov.second.actor, prov.first} );
          }
-      }
-
-      if (!ram_providers.empty()) {
-          for (const auto& ram_provider : ram_providers) {
-              const provide_ram_params provide_params(ram_provider);
-              trx.actions.emplace_back(vector<chain::permission_level>{provide_params.permission}, provideram{provide_params.provider, provide_params.actor, provide_params.contracts});
-          }
-
       }
 
         bool declare_names = !tx_dont_declare_names && tx_resolved_names.size() > 0;
@@ -710,28 +674,38 @@ void print_result( const fc::variant& result ) { try {
          string status = processed["receipt"].is_object() ? processed["receipt"]["status"].as_string() : "failed";
          int64_t net = -1;
          int64_t cpu = -1;
+         int64_t ram = -1;
+         int64_t storage = -1;
+         bool has_receipt = false;
          if( processed.get_object().contains( "receipt" )) {
             const auto& receipt = processed["receipt"];
             if( receipt.is_object()) {
+               has_receipt = true;
                net = receipt["net_usage_words"].as_int64() * 8;
                cpu = receipt["cpu_usage_us"].as_int64();
+               ram = receipt["ram_kbytes"].as_int64() << 10;
+               storage = receipt["storage_kbytes"].as_int64() << 10;
             }
          }
 
          cerr << status << " transaction: " << transaction_id << "  ";
-         if( net < 0 ) {
-            cerr << "<unknown>";
-         } else {
-            cerr << net;
-         }
-         cerr << " bytes  ";
-         if( cpu < 0 ) {
-            cerr << "<unknown>";
-         } else {
-            cerr << cpu;
-         }
 
-         cerr << " us\n";
+         auto print_usage = [&]( const int64_t& value, const char* units ) {
+            cerr << "  ";
+            if( !has_receipt ) {
+               cerr << "<unknown>";
+            } else {
+               cerr << value;
+            }
+            cerr << " " << units;
+         };
+
+         print_usage(net, "bytes");
+         print_usage(cpu, "us");
+         print_usage(ram, "bytes");
+         print_usage(storage, "bytes");
+
+         cerr << std::endl;
 
          if( status == "failed" ) {
             auto soft_except = processed["except"].as<optional<fc::exception>>();
@@ -805,12 +779,11 @@ chain::action create_buyrambytes(const name& creator, const name& newaccount, ui
                         config::system_account_name, N(buyrambytes), act_payload);
 }
 
-chain::action create_delegate(const name& from, const name& receiver, const asset& net, const asset& cpu, bool transfer) {
+chain::action create_delegate(const name& from, const name& receiver, const asset& stake, bool transfer) {
    fc::variant act_payload = fc::mutable_variant_object()
          ("from", from.to_string())
          ("receiver", receiver.to_string())
-         ("stake_net_quantity", net.to_string())
-         ("stake_cpu_quantity", cpu.to_string())
+         ("stake", stake.to_string())
          ("transfer", transfer);
    return create_action(get_account_permissions(tx_permission, {from,config::active_name}),
                         config::system_account_name, N(delegatebw), act_payload);
@@ -1230,11 +1203,8 @@ struct create_account_subcommand {
    string account_name;
    string owner_key_str;
    string active_key_str;
-   string stake_net;
-   string stake_cpu;
-   uint32_t buy_ram_bytes_in_kbytes = 0;
-   uint32_t buy_ram_bytes = 0;
-   string buy_ram_eos;
+   string not_used;
+   string stake;
    bool transfer;
    bool simple;
 
@@ -1250,16 +1220,18 @@ struct create_account_subcommand {
       createAccount->add_option("ActiveKey", active_key_str, localized("The active public key for the new account"));
 
       if (!simple) {
-         createAccount->add_option("--stake-net", stake_net,
-                                   (localized("The amount of tokens delegated for net bandwidth")))->required();
-         createAccount->add_option("--stake-cpu", stake_cpu,
-                                   (localized("The amount of tokens delegated for CPU bandwidth")))->required();
-         createAccount->add_option("--buy-ram-kbytes", buy_ram_bytes_in_kbytes,
-                                   (localized("The amount of RAM bytes to purchase for the new account in kibibytes (KiB)")));
-         createAccount->add_option("--buy-ram-bytes", buy_ram_bytes,
-                                   (localized("The amount of RAM bytes to purchase for the new account in bytes")));
-         createAccount->add_option("--buy-ram", buy_ram_eos,
-                                   (localized("The amount of RAM bytes to purchase for the new account in tokens")));
+         createAccount->add_option("--stake", stake,
+                                    (localized("The amount of tokens delegated for the account")))->required();
+         createAccount->add_option("--stake-net", not_used,
+                                   (localized("Deprecated. Not used")));
+         createAccount->add_option("--stake-cpu", not_used,
+                                   (localized("Deprecated. Not used")));
+         createAccount->add_option("--buy-ram-kbytes", not_used,
+                                   (localized("Deprecated. Not used")));
+         createAccount->add_option("--buy-ram-bytes", not_used,
+                                   (localized("Deprecated. Not used")));
+         createAccount->add_option("--buy-ram", not_used,
+                                   (localized("Deprecated. Not used")));
          createAccount->add_flag("--transfer", transfer,
                                  (localized("Transfer voting power and right to unstake tokens to receiver")));
       }
@@ -1278,17 +1250,13 @@ struct create_account_subcommand {
             } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid active public key: ${public_key}", ("public_key", active_key_str));
             auto create = create_newaccount(creator, account_name, owner_key, active_key);
             if (!simple) {
-               EOSC_ASSERT( buy_ram_eos.size() || buy_ram_bytes_in_kbytes || buy_ram_bytes, "ERROR: One of --buy-ram, --buy-ram-kbytes or --buy-ram-bytes should have non-zero value" );
-               EOSC_ASSERT( !buy_ram_bytes_in_kbytes || !buy_ram_bytes, "ERROR: --buy-ram-kbytes and --buy-ram-bytes cannot be set at the same time" );
-               action buyram = !buy_ram_eos.empty() ? create_buyram(creator, account_name, to_asset(buy_ram_eos))
-                  : create_buyrambytes(creator, account_name, (buy_ram_bytes_in_kbytes) ? (buy_ram_bytes_in_kbytes * 1024) : buy_ram_bytes);
-               auto net = to_asset(stake_net);
-               auto cpu = to_asset(stake_cpu);
-               if ( net.get_amount() != 0 || cpu.get_amount() != 0 ) {
-                  action delegate = create_delegate( creator, account_name, net, cpu, transfer);
-                  send_actions( { create, buyram, delegate } );
+                const auto stake_asset = to_asset(stake);
+               if ( stake_asset.get_amount() != 0) {
+                   EOS_THROW(action_not_found_exception, "Action delegatebw is not supported yet");
+//                  action delegate = create_delegate( creator, account_name, stake_asset, transfer);
+//                  send_actions( { create, delegate } );
                } else {
-                  send_actions( { create, buyram } );
+                  send_actions( { create } );
                }
             } else {
                send_actions( { create } );
@@ -1555,40 +1523,26 @@ struct get_transaction_id_subcommand {
 struct delegate_bandwidth_subcommand {
    string from_str;
    string receiver_str;
-   string stake_net_amount;
-   string stake_cpu_amount;
-   string stake_storage_amount;
-   string buy_ram_amount;
-   uint32_t buy_ram_bytes = 0;
+   string stake;
+   string not_used;
    bool transfer = false;
 
    delegate_bandwidth_subcommand(CLI::App* actionRoot) {
       auto delegate_bandwidth = actionRoot->add_subcommand("delegatebw", localized("Delegate bandwidth"));
       delegate_bandwidth->add_option("from", from_str, localized("The account to delegate bandwidth from"))->required();
       delegate_bandwidth->add_option("receiver", receiver_str, localized("The account to receive the delegated bandwidth"))->required();
-      delegate_bandwidth->add_option("stake_net_quantity", stake_net_amount, localized("The amount of tokens to stake for network bandwidth"))->required();
-      delegate_bandwidth->add_option("stake_cpu_quantity", stake_cpu_amount, localized("The amount of tokens to stake for CPU bandwidth"))->required();
-      delegate_bandwidth->add_option("--buyram", buy_ram_amount, localized("The amount of tokens to buyram"));
-      delegate_bandwidth->add_option("--buy-ram-bytes", buy_ram_bytes, localized("The amount of RAM to buy in number of bytes"));
+      delegate_bandwidth->add_option("stake_quantity", stake, localized("The amount of tokens to stake"))->required();
+      delegate_bandwidth->add_option("stake_net_quantity", not_used, localized("Deprecated. Not used"));
+      delegate_bandwidth->add_option("stake_cpu_quantity", not_used, localized("Deprecated. Not used"));
+      delegate_bandwidth->add_option("--buyram", not_used, localized("Deprecated. Not used"));
+      delegate_bandwidth->add_option("--buy-ram-bytes", not_used, localized("Deprecated. Not used"));
       delegate_bandwidth->add_flag("--transfer", transfer, localized("Transfer voting power and right to unstake tokens to receiver"));
       add_standard_transaction_options(delegate_bandwidth, "from@active");
 
       delegate_bandwidth->set_callback([this] {
-         fc::variant act_payload = fc::mutable_variant_object()
-                  ("from", from_str)
-                  ("receiver", receiver_str)
-                  ("stake_net_quantity", to_asset(stake_net_amount))
-                  ("stake_cpu_quantity", to_asset(stake_cpu_amount))
-                  ("transfer", transfer);
-         auto accountPermissions = get_account_permissions(tx_permission, {from_str,config::active_name});
-         std::vector<chain::action> acts{create_action(accountPermissions, config::system_account_name, N(delegatebw), act_payload)};
-         EOSC_ASSERT( !(buy_ram_amount.size()) || !buy_ram_bytes, "ERROR: --buyram and --buy-ram-bytes cannot be set at the same time" );
-         if (buy_ram_amount.size()) {
-            acts.push_back( create_buyram(from_str, receiver_str, to_asset(buy_ram_amount)) );
-         } else if (buy_ram_bytes) {
-            acts.push_back( create_buyrambytes(from_str, receiver_str, buy_ram_bytes) );
-         }
-         send_actions(std::move(acts));
+          EOS_THROW(action_not_found_exception, "Action delegatebw is not supported yet");
+//         std::vector<chain::action> acts{create_delegate(from_str, receiver_str, stake, transfer)};
+//         send_actions(std::move(acts));
       });
    }
 };
@@ -1596,26 +1550,27 @@ struct delegate_bandwidth_subcommand {
 struct undelegate_bandwidth_subcommand {
    string from_str;
    string receiver_str;
-   string unstake_net_amount;
-   string unstake_cpu_amount;
+   string unstake_amount;
+   string not_used;
    uint64_t unstake_storage_bytes;
 
    undelegate_bandwidth_subcommand(CLI::App* actionRoot) {
       auto undelegate_bandwidth = actionRoot->add_subcommand("undelegatebw", localized("Undelegate bandwidth"));
       undelegate_bandwidth->add_option("from", from_str, localized("The account undelegating bandwidth"))->required();
       undelegate_bandwidth->add_option("receiver", receiver_str, localized("The account to undelegate bandwidth from"))->required();
-      undelegate_bandwidth->add_option("unstake_net_quantity", unstake_net_amount, localized("The amount of tokens to undelegate for network bandwidth"))->required();
-      undelegate_bandwidth->add_option("unstake_cpu_quantity", unstake_cpu_amount, localized("The amount of tokens to undelegate for CPU bandwidth"))->required();
+      undelegate_bandwidth->add_option("unstake_quantity", unstake_amount, localized("The amount of tokens to undelegate"))->required();
+      undelegate_bandwidth->add_option("unstake_net_quantity", not_used, localized("Deprecated. Not used"));
+      undelegate_bandwidth->add_option("unstake_cpu_quantity", not_used, localized("Deprecated. Not used"));
       add_standard_transaction_options(undelegate_bandwidth, "from@active");
 
       undelegate_bandwidth->set_callback([this] {
          fc::variant act_payload = fc::mutable_variant_object()
                   ("from", from_str)
                   ("receiver", receiver_str)
-                  ("unstake_net_quantity", to_asset(unstake_net_amount))
-                  ("unstake_cpu_quantity", to_asset(unstake_cpu_amount));
+                  ("unstake_quantity", to_asset(unstake_amount));
          auto accountPermissions = get_account_permissions(tx_permission, {from_str,config::active_name});
-         send_actions({create_action(accountPermissions, config::system_account_name, N(undelegatebw), act_payload)});
+         EOS_THROW(action_not_found_exception, "Action undelegatebw is not supported yet");
+//         send_actions({create_action(accountPermissions, config::system_account_name, N(undelegatebw), act_payload)});
       });
    }
 };
@@ -1686,37 +1641,15 @@ struct bidname_info_subcommand {
 
 struct list_bw_subcommand {
    eosio::name account;
-   bool print_json = false;
+   bool not_used = false;
 
    list_bw_subcommand(CLI::App* actionRoot) {
       auto list_bw = actionRoot->add_subcommand("listbw", localized("List delegated bandwidth"));
       list_bw->add_option("account", account, localized("The account delegated bandwidth"))->required();
-      list_bw->add_flag("--json,-j", print_json, localized("Output in JSON format") );
+      list_bw->add_flag("--json,-j", not_used, localized("Deprecated. Result always in JSON") );
 
       list_bw->set_callback([this] {
-            //get entire table in scope of user account
-            auto result = call(get_table_func, fc::mutable_variant_object("json", true)
-                               ("code", name(config::system_account_name).to_string())
-                               ("scope", account.to_string())
-                               ("table", "delband")
-            );
-            if (!print_json) {
-               auto res = result.as<eosio::get_table_rows_result>();
-               if ( !res.rows.empty() ) {
-                  std::cout << std::setw(13) << std::left << "Receiver" << std::setw(21) << std::left << "Net bandwidth"
-                            << std::setw(21) << std::left << "CPU bandwidth" << std::endl;
-                  for ( auto& r : res.rows ){
-                     std::cout << std::setw(13) << std::left << r["to"].as_string()
-                               << std::setw(21) << std::left << r["net_weight"].as_string()
-                               << std::setw(21) << std::left << r["cpu_weight"].as_string()
-                               << std::endl;
-                  }
-               } else {
-                  std::cerr << "Delegated bandwidth not found" << std::endl;
-               }
-            } else {
-               std::cout << fc::json::to_pretty_string(result) << std::endl;
-            }
+         EOS_THROW(action_not_found_exception, "Delegating bandwith is not implemented yet");
       });
    }
 };
@@ -1729,20 +1662,9 @@ struct buyram_subcommand {
    bool bytes = false;
 
    buyram_subcommand(CLI::App* actionRoot) {
-      auto buyram = actionRoot->add_subcommand("buyram", localized("Buy RAM"));
-      buyram->add_option("payer", from_str, localized("The account paying for RAM"))->required();
-      buyram->add_option("receiver", receiver_str, localized("The account receiving bought RAM"))->required();
-      buyram->add_option("amount", amount, localized("The amount of tokens to pay for RAM, or number of bytes/kibibytes of RAM if --bytes/--kbytes is set"))->required();
-      buyram->add_flag("--kbytes,-k", kbytes, localized("buyram in number of kibibytes (KiB)"));
-      buyram->add_flag("--bytes,-b", bytes, localized("buyram in number of bytes"));
-      add_standard_transaction_options(buyram, "payer@active");
+      auto buyram = actionRoot->add_subcommand("buyram", localized("Deprecated command"));
       buyram->set_callback([this] {
-         EOSC_ASSERT( !kbytes || !bytes, "ERROR: --kbytes and --bytes cannot be set at the same time" );
-         if (kbytes || bytes) {
-            send_actions( { create_buyrambytes(from_str, receiver_str, fc::to_uint64(amount) * ((kbytes) ? 1024ull : 1ull)) } );
-         } else {
-            send_actions( { create_buyram(from_str, receiver_str, to_asset(amount)) } );
-         }
+          EOS_THROW(action_not_found_exception, "Operation buyram is not supported anymore");
       });
    }
 };
@@ -1753,18 +1675,10 @@ struct sellram_subcommand {
    uint64_t amount;
 
    sellram_subcommand(CLI::App* actionRoot) {
-      auto sellram = actionRoot->add_subcommand("sellram", localized("Sell RAM"));
-      sellram->add_option("account", receiver_str, localized("The account to receive tokens for sold RAM"))->required();
-      sellram->add_option("bytes", amount, localized("Number of RAM bytes to sell"))->required();
-      add_standard_transaction_options(sellram, "account@active");
-
+      auto sellram = actionRoot->add_subcommand("sellram", localized("Deprecated command"));
       sellram->set_callback([this] {
-            fc::variant act_payload = fc::mutable_variant_object()
-               ("account", receiver_str)
-               ("bytes", amount);
-            auto accountPermissions = get_account_permissions(tx_permission, {receiver_str,config::active_name});
-            send_actions({create_action(accountPermissions, config::system_account_name, N(sellram), act_payload)});
-         });
+          EOS_THROW(action_not_found_exception, "Operation sellram is not supported anymore");
+      });
    }
 };
 
@@ -1772,15 +1686,9 @@ struct claimrewards_subcommand {
    string owner;
 
    claimrewards_subcommand(CLI::App* actionRoot) {
-      auto claim_rewards = actionRoot->add_subcommand("claimrewards", localized("Claim producer rewards"));
-      claim_rewards->add_option("owner", owner, localized("The account to claim rewards for"))->required();
-      add_standard_transaction_options(claim_rewards, "owner@active");
-
+      auto claim_rewards = actionRoot->add_subcommand("claimrewards", localized("Deprecated command"));
       claim_rewards->set_callback([this] {
-         fc::variant act_payload = fc::mutable_variant_object()
-                  ("owner", owner);
-         auto accountPermissions = get_account_permissions(tx_permission, {owner,config::active_name});
-         send_actions({create_action(accountPermissions, config::system_account_name, N(claimrewards), act_payload)});
+          EOS_THROW(action_not_found_exception, "Operation claimrewards is not supported anymore");
       });
    }
 };
@@ -1981,8 +1889,14 @@ void get_account( const string& accountName, const string& coresym, bool json_fo
 
 
 
-      std::cout << "memory: " << std::endl
-                << indent << "quota: " << std::setw(15) << to_pretty_net(res.ram_quota) << "  used: " << std::setw(15) << to_pretty_net(res.ram_usage) << std::endl << std::endl;
+      std::cout << "memory: " << std::endl << indent
+          <<   "quota: " << std::setw(15) << to_pretty_net(res.ram_quota)
+          <<  "  used: " << std::setw(15) << to_pretty_net(res.ram_usage)
+          << "  owned: " << std::setw(15) << to_pretty_net(res.ram_usage) << std::endl << std::endl;
+
+      std::cout << "storage: " << std::endl << indent
+          <<   " used: " << std::setw(15) << to_pretty_net(res.storage_usage)
+          << "  owned: " << std::setw(14) << to_pretty_net(res.storage_owned) << std::endl << std::endl;
 
       std::cout << "net bandwidth: " << std::endl;
       if ( res.total_resources.is_object() ) {
@@ -2765,6 +2679,7 @@ int main( int argc, char** argv ) {
                      // ->required();
    contractSubcommand->add_option("wasm-file", wasmPath, localized("The file containing the contract WASM relative to contract-dir"));
 //                     ->check(CLI::ExistingFile);
+
    auto abi = contractSubcommand->add_option("abi-file,-a,--abi", abiPath, localized("The ABI for the contract relative to contract-dir"));
 //                                ->check(CLI::ExistingFile);
    contractSubcommand->add_flag( "-c,--clear", contract_clear, localized("Rmove contract on an account"));
@@ -3317,6 +3232,8 @@ int main( int argc, char** argv ) {
       trx.ref_block_prefix = 0;
       trx.max_net_usage_words = 0;
       trx.max_cpu_usage_ms = 0;
+      trx.max_ram_kbytes = 0;
+      trx.max_storage_kbytes = 0;
       trx.delay_sec = 0;
       trx.actions = { chain::action(trxperm, name(proposed_contract), name(proposed_action), proposed_trx_serialized) };
 

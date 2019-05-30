@@ -4,7 +4,6 @@
  */
 #include <eosio/chain/eosio_contract.hpp>
 #include <eosio/chain/system_contracts.hpp>
-#include <eosio/chain/contract_table_objects.hpp>
 
 #include <eosio/chain/controller.hpp>
 #include <eosio/chain/transaction_context.hpp>
@@ -104,14 +103,16 @@ void apply_cyber_newaccount(apply_context& context) {
               "Cannot create account named ${name}, as that name is already taken",
               ("name", create.name));
 
-   context.control.get_mutable_resource_limits_manager().initialize_account(create.name);
+   auto storage_payer = context.get_storage_payer(create.name, create.creator);
 
-   chaindb.emplace<account_object>({context, create.name}, [&](auto& a) {
+   context.control.get_mutable_resource_limits_manager().initialize_account(create.name, storage_payer);
+
+   chaindb.emplace<account_object>(storage_payer, [&](auto& a) {
       a.name = create.name;
       a.creation_date = context.control.pending_block_time();
    });
 
-   chaindb.emplace<account_sequence_object>({context, create.name}, [&](auto& a) {
+   chaindb.emplace<account_sequence_object>(storage_payer, [&](auto& a) {
       a.name = create.name;
    });
 
@@ -119,10 +120,10 @@ void apply_cyber_newaccount(apply_context& context) {
       validate_authority_precondition( context, auth );
    }
 
-   const auto& owner_permission  = authorization.create_permission( {context, create.name},
+   const auto& owner_permission  = authorization.create_permission( storage_payer,
                                                                     create.name, config::owner_name, 0,
                                                                     std::move(create.owner) );
-   const auto& active_permission = authorization.create_permission( {context, create.name},
+   const auto& active_permission = authorization.create_permission( storage_payer,
                                                                     create.name, config::active_name, owner_permission.id,
                                                                     std::move(create.active) );
 
@@ -180,9 +181,10 @@ void apply_cyber_setcode(apply_context& context) {
 
    const auto& account = chaindb.get<account_object,by_name>(act.account);
 
+
    int64_t code_size = (int64_t)act.code.size();
-   int64_t old_size  = (int64_t)account.code.size() * config::setcode_ram_bytes_multiplier;
-   int64_t new_size  = code_size * config::setcode_ram_bytes_multiplier;
+   int64_t old_size  = (int64_t)account.code.size() * (config::setcode_storage_bytes_multiplier - 1/*one code_size is already in size*/);
+   int64_t new_size  = code_size * (config::setcode_storage_bytes_multiplier - 1);
 
    EOS_ASSERT( account.code_version != code_id, set_exact_code, "contract is already running this version of code" );
     const auto& account_sequence = chaindb.get<account_sequence_object, by_name>(act.account);
@@ -198,7 +200,10 @@ void apply_cyber_setcode(apply_context& context) {
         EOS_ASSERT(allowed, protected_contract_code, "can't change code of protected account");
     }
 
-   chaindb.modify( account, {context}, [&]( auto& a ) {
+   auto storage_payer = context.get_storage_payer(act.account);
+   storage_payer.delta = new_size - old_size;
+
+   chaindb.modify( account, storage_payer, [&]( auto& a ) {
       /** TODO: consider whether a microsecond level local timestamp is sufficient to detect code version changes*/
       // TODO: update setcode message to include the hash, then validate it in validate
       a.last_code_update = context.control.pending_block_time();
@@ -209,7 +214,7 @@ void apply_cyber_setcode(apply_context& context) {
 
    });
 
-   chaindb.modify( account_sequence, [&]( auto& aso ) {
+   chaindb.modify( account_sequence, storage_payer, [&]( auto& aso ) {
       aso.code_sequence += 1;
    });
 
@@ -229,8 +234,8 @@ void apply_cyber_setabi(apply_context& context) {
 
    int64_t abi_size = act.abi.size();
 
-   int64_t old_size = (int64_t)account.abi.size();
-   int64_t new_size = abi_size;
+   int64_t old_size = (int64_t)account.abi.size() * (config::setcode_storage_bytes_multiplier - 1 /*one abi_size is already in size*/);
+   int64_t new_size = abi_size * (config::setcode_storage_bytes_multiplier - 1 /*one abi_size is already in size*/);
 
     const auto& account_sequence = chaindb.get<account_sequence_object, by_name>(act.account);
     auto hash = bytes_hash(act.abi);
@@ -238,7 +243,7 @@ void apply_cyber_setabi(apply_context& context) {
         const auto seq = account_sequence.abi_sequence;
         bool allowed = false;
 #ifdef ALLOW_INITIAL_CONTRACT_SET
-        allowed = seq == 0;  // auto-enable initial set
+        allowed = seq == 0 && account.abi_version == fc::sha256();  // auto-enable initial set
 #endif
         if (!allowed) {
             allowed = check_hash_for_accseq(hash, allowed_abi_hashes, act.account, seq);
@@ -246,13 +251,18 @@ void apply_cyber_setabi(apply_context& context) {
         EOS_ASSERT(allowed, protected_contract_code, "can't change abi of protected account");
     }
 
-   chaindb.modify( account, {context}, [&]( auto& a ) {
+   auto storage_payer = context.get_storage_payer(act.account);
+   storage_payer.delta = new_size - old_size;
+
+   EOS_ASSERT( account.abi_version != hash, set_exact_abi, "contract is already has this version of abi" );
+   chaindb.modify( account, storage_payer, [&]( auto& a ) {
+      a.abi_version = hash;
       a.abi.resize( abi_size );
       if( abi_size > 0 )
          memcpy( const_cast<char*>(a.abi.data()), act.abi.data(), abi_size );
    });
 
-   chaindb.modify( account_sequence, [&]( auto& aso ) {
+   chaindb.modify( account_sequence, storage_payer, [&]( auto& aso ) {
       aso.abi_sequence += 1;
    });
 
@@ -307,6 +317,8 @@ void apply_cyber_updateauth(apply_context& context) {
       parent_id = parent.id;
    }
 
+   auto storage_payer = context.get_storage_payer(update.account);
+
    if( permission ) {
       EOS_ASSERT(parent_id == permission->parent, action_validate_exception,
                  "Changing parent authority is not currently supported");
@@ -315,7 +327,7 @@ void apply_cyber_updateauth(apply_context& context) {
 // TODO: Removed by CyberWay
 //      int64_t old_size = (int64_t)(config::billable_size_v<permission_object> + permission->auth.get_billable_size());
 
-      authorization.modify_permission( *permission, {context}, update.auth );
+      authorization.modify_permission( *permission, storage_payer, update.auth );
 
 // TODO: Removed by CyberWay
 //      int64_t new_size = (int64_t)(config::billable_size_v<permission_object> + permission->auth.get_billable_size());
@@ -324,7 +336,7 @@ void apply_cyber_updateauth(apply_context& context) {
 // TODO: Removed by CyberWay
 //      const auto& p =
 
-      authorization.create_permission( {context, update.account}, update.account, update.permission, parent_id, update.auth );
+      authorization.create_permission( storage_payer, update.account, update.permission, parent_id, update.auth );
 
 // TODO: Removed by CyberWay
 //      int64_t new_size = (int64_t)(config::billable_size_v<permission_object> + p.auth.get_billable_size());
@@ -359,7 +371,7 @@ void apply_cyber_deleteauth(apply_context& context) {
 // TODO: Removed by CyberWay
 //   int64_t old_size = config::billable_size_v<permission_object> + permission.auth.get_billable_size();
 
-   authorization.remove_permission( permission, {context} );
+   authorization.remove_permission( permission, context.get_storage_payer() );
 
 // TODO: Removed by CyberWay
 //   context.add_ram_usage( remove.account, -old_size );
@@ -390,15 +402,16 @@ void apply_cyber_linkauth(apply_context& context) {
 
       auto link_key = boost::make_tuple(requirement.account, requirement.code, requirement.type);
       auto link = chaindb.find<permission_link_object, by_action_name>(link_key);
+      auto storage_payer = context.get_storage_payer(requirement.account);
 
       if( link ) {
          EOS_ASSERT(link->required_permission != requirement.requirement, action_validate_exception,
                     "Attempting to update required authority, but new requirement is same as old");
-         chaindb.modify(*link, {context}, [requirement = requirement.requirement](permission_link_object& link) {
+         chaindb.modify(*link, storage_payer, [requirement = requirement.requirement](permission_link_object& link) {
              link.required_permission = requirement;
          });
       } else {
-         chaindb.emplace<permission_link_object>({context, requirement.account}, [&requirement](permission_link_object& link) {
+         chaindb.emplace<permission_link_object>(storage_payer, [&requirement](permission_link_object& link) {
             link.account = requirement.account;
             link.code = requirement.code;
             link.message_type = requirement.type;
@@ -432,22 +445,7 @@ void apply_cyber_unlinkauth(apply_context& context) {
 //      -(int64_t)(config::billable_size_v<permission_link_object>)
 //   );
 
-   chaindb.erase(*link, {context});
-}
-
-void apply_cyber_providebw(apply_context& context) {
-   auto args = context.act.data_as<providebw>();
-   context.require_authorization(args.provider);
-}
-
-void apply_cyber_requestbw(apply_context& context) {
-   auto args = context.act.data_as<requestbw>();
-   context.require_authorization(args.account);
-}
-
-void apply_cyber_provideram(apply_context& context) {
-   auto args = context.act.data_as<provideram>();
-   context.require_authorization(args.provider);
+   chaindb.erase(*link, context.get_storage_payer());
 }
 
 void apply_cyber_canceldelay(apply_context& context) {
@@ -458,79 +456,5 @@ void apply_cyber_canceldelay(apply_context& context) {
 
    context.cancel_deferred_transaction(transaction_id_to_sender_id(trx_id), account_name());
 }
-
-
-void apply_cyber_domain_newdomain(apply_context& context) {
-   auto op = context.act.data_as<newdomain>();
-   try {
-      context.require_authorization(op.creator);
-      validate_domain_name(op.name);             // TODO: can move validation to domain_name deserializer
-      auto& chaindb = context.chaindb;
-      auto exists = chaindb.find<domain_object, by_name>(op.name);
-      EOS_ASSERT(exists == nullptr, domain_exists_exception,
-         "Cannot create domain named ${n}, as that name is already taken", ("n", op.name));
-      chaindb.emplace<domain_object>({context, op.creator}, [&](auto& d) {
-         d.owner = op.creator;
-         d.creation_date = context.control.pending_block_time();
-         d.name = op.name;
-      });
-} FC_CAPTURE_AND_RETHROW((op)) }
-
-void apply_cyber_domain_passdomain(apply_context& context) {
-   auto op = context.act.data_as<passdomain>();
-   try {
-      context.require_authorization(op.from);   // TODO: special case if nobody owns domain
-      validate_domain_name(op.name);
-      const auto& domain = context.control.get_domain(op.name);
-      EOS_ASSERT(op.from == domain.owner, action_validate_exception, "Only owner can pass domain name");
-      context.chaindb.modify(domain, {context, op.to}, [&](auto& d) {
-         d.owner = op.to;
-      });
-} FC_CAPTURE_AND_RETHROW((op)) }
-
-void apply_cyber_domain_linkdomain(apply_context& context) {
-   auto op = context.act.data_as<linkdomain>();
-   try {
-      context.require_authorization(op.owner);
-      validate_domain_name(op.name);
-      const auto& domain = context.control.get_domain(op.name);
-      EOS_ASSERT(op.owner == domain.owner, action_validate_exception, "Only owner can change domain link");
-      EOS_ASSERT(op.to != domain.linked_to, action_validate_exception, "Domain name already linked to the same account");
-      context.chaindb.modify(domain, {context, domain.owner}, [&](auto& d) {
-         d.linked_to = op.to;
-      });
-} FC_CAPTURE_AND_RETHROW((op)) }
-
-void apply_cyber_domain_unlinkdomain(apply_context& context) {
-   auto op = context.act.data_as<unlinkdomain>();
-   try {
-      context.require_authorization(op.owner);
-      validate_domain_name(op.name);
-      const auto& domain = context.control.get_domain(op.name);
-      EOS_ASSERT(op.owner == domain.owner, action_validate_exception, "Only owner can unlink domain");
-      EOS_ASSERT(domain.linked_to != account_name(), action_validate_exception, "Domain name already unlinked");
-      context.chaindb.modify(domain, {context, domain.owner}, [&](auto& d) {
-         d.linked_to = account_name();
-      });
-} FC_CAPTURE_AND_RETHROW((op)) }
-
-void apply_cyber_domain_newusername(apply_context& context) {
-   auto op = context.act.data_as<newusername>();
-   try {
-      context.require_authorization(op.creator);
-      validate_username(op.name);               // TODO: can move validation to username deserializer
-      auto& chaindb = context.chaindb;
-      auto exists = chaindb.find<username_object, by_scope_name>(boost::make_tuple(op.creator, op.name));
-      EOS_ASSERT(exists == nullptr, username_exists_exception,
-         "Cannot create username ${n} in scope ${s}, as it's already taken", ("n", op.name)("s", op.creator));
-      auto owner = chaindb.find<account_object, by_name>(op.owner);
-      EOS_ASSERT(owner, account_name_exists_exception, "Username owner (${o}) must exist", ("o", op.owner));
-      chaindb.emplace<username_object>({context, op.creator}, [&](auto& d) {
-         d.owner = op.owner;
-         d.scope = op.creator;
-         d.name = op.name;
-      });
-} FC_CAPTURE_AND_RETHROW((op)) }
-
 
 } } // namespace eosio::chain

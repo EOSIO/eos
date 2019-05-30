@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cyberway/chaindb/common.hpp>
+#include <cyberway/chaindb/storage_payer_info.hpp>
 
 namespace cyberway { namespace chaindb {
 
@@ -13,24 +14,26 @@ namespace cyberway { namespace chaindb {
     }; // enum class undo_type
 
     struct service_state final {
-        primary_key_t pk       = unset_primary_key;
-        account_name  payer;
-        account_name  owner;
-        size_t        size     = 0;
+        primary_key_t  pk       = primary_key::Unset;
+        account_name_t payer    = 0;
+        int            size     = 0;
+        bool           in_ram   = true;
 
-        account_name  code;
-        account_name  scope;
-        table_name    table;
+        account_name_t code     = 0;
+        scope_name_t   scope    = 0;
+        table_name_t   table    = 0;
 
-        revision_t    revision = impossible_revision;
+        revision_t     revision = impossible_revision;
 
-        primary_key_t undo_pk  = unset_primary_key;
-        undo_record   undo_rec = undo_record::Unknown;
+        // the following fields are part of undo state,
+        // TODO: refactor to move them into write_operation
+        primary_key_t  undo_pk  = primary_key::Unset;
+        undo_record    undo_rec = undo_record::Unknown;
 
-        revision_t    undo_revision = impossible_revision;
-        account_name  undo_payer;
-        account_name  undo_owner;
-        size_t        undo_size     = 0;
+        revision_t     undo_revision = impossible_revision;
+        account_name_t undo_payer    = 0;
+        size_t         undo_size     = 0;
+        bool           undo_in_ram   = true;
 
         service_state(const table_info& table, primary_key_t pk)
         : pk(pk), code(table.code), scope(table.scope), table(table.table->name) {
@@ -51,6 +54,10 @@ namespace cyberway { namespace chaindb {
         void clear() {
             *this = {};
         }
+
+        bool empty() const {
+            return 0 == scope && 0 == code && 0 == table;
+        }
     }; // struct service_state
 
     struct object_value final {
@@ -58,7 +65,7 @@ namespace cyberway { namespace chaindb {
         fc::variant   value;
 
         bool is_null() const {
-            return value.get_type() == fc::variant::type_id::null_type;
+            return value.is_null();
         }
 
         object_value clone_service() const {
@@ -80,3 +87,4 @@ namespace cyberway { namespace chaindb {
 } } // namespace cyberway::chaindb
 
 FC_REFLECT_ENUM(cyberway::chaindb::undo_record, (Unknown)(OldValue)(RemovedValue)(NewValue)(NextPk))
+FC_REFLECT(cyberway::chaindb::service_state, (payer)(size)(in_ram))

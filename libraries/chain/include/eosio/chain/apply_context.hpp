@@ -5,19 +5,24 @@
 #pragma once
 #include <eosio/chain/controller.hpp>
 #include <eosio/chain/transaction.hpp>
-#include <eosio/chain/contract_table_objects.hpp>
 #include <fc/utility.hpp>
 #include <sstream>
 #include <algorithm>
 #include <set>
 
-namespace cyberway { namespace chaindb { class chaindb_controller; }}
+namespace cyberway { namespace chaindb {
+    class chaindb_controller;
+    struct storage_payer_info;
+    struct chaindb_cursor_cache;
+} }
 
 namespace chainbase { class database; }
 
 namespace eosio { namespace chain {
 
 using cyberway::chaindb::chaindb_controller;
+using cyberway::chaindb::chaindb_cursor_cache;
+using cyberway::chaindb::storage_payer_info;
 
 class controller;
 class transaction_context;
@@ -481,18 +486,9 @@ class apply_context {
       bool cancel_deferred_transaction( const uint128_t& sender_id, account_name sender );
       bool cancel_deferred_transaction( const uint128_t& sender_id ) { return cancel_deferred_transaction(sender_id, receiver); }
 
-   /// ChainDB methods:
-   public:
-      void lazy_init_chaindb_abi(account_name code);
-
    /// Event methods:
    public:
       void push_event( event evt );
-
-   /// Archive record methods:
-   public:
-      uint64_t save_record( const char* data, size_t data_len );
-      int lookup_record( uint64_t rec_id, account_name code, char* buffer, size_t buffer_size );
 
    /// Authorization methods:
    public:
@@ -507,8 +503,10 @@ class apply_context {
        * @throws missing_auth_exception If no sufficient permission was found
        */
       void require_authorization(const account_name& account);
+      bool weak_require_authorization(const account_name& account);
       bool has_authorization(const account_name& account) const;
       void require_authorization(const account_name& account, const permission_name& permission);
+      bool weak_require_authorization(const account_name& account, const permission_name& permission);
 
       /**
        * @return true if account exists, false if it does not
@@ -611,7 +609,8 @@ class apply_context {
       uint64_t next_recv_sequence( account_name receiver );
       uint64_t next_auth_sequence( account_name actor );
 
-      void add_ram_usage( const account_name& account, int64_t ram_delta );
+      storage_payer_info get_storage_payer( account_name owner = account_name(), account_name payer = account_name() );
+      void add_storage_usage( const storage_payer_info& );
       void finalize_trace( action_trace& trace, const fc::time_point& start );
 
    /// Fields:
@@ -621,6 +620,7 @@ class apply_context {
 // TODO: Removed by CyberWay
 //      chainbase::database&          db;
       chaindb_controller&           chaindb; ///< database where state is stored
+      chaindb_cursor_cache*         chaindb_cache = nullptr;
       transaction_context&          trx_context; ///< transaction context in which the action is running
       const action&                 act; ///< message being applied
       account_name                  receiver; ///< the code that is currently running
@@ -646,7 +646,6 @@ class apply_context {
       vector<event>                       _events; ///< generated events
       vector<action>                      _cfa_inline_actions; ///< queued inline messages
       std::ostringstream                  _pending_console_output;
-      flat_set<account_delta>             _account_ram_deltas; ///< flat_set of account_delta so json is an array of objects
 
       //bytes                               _cached_trx;
 };

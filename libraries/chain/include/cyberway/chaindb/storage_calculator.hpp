@@ -1,4 +1,4 @@
-#include <fc/variant.hpp>
+#pragma once
 
 namespace fc{
     class variant;
@@ -9,5 +9,5 @@ namespace eosio { namespace chain {
 } } // namespace eosio::chain
 
 namespace cyberway { namespace chaindb {
-    uint calc_ram_usage(const eosio::chain::table_def&, const fc::variant&);
+    int calc_storage_usage(const eosio::chain::table_def&, const fc::variant&);
 } } // namespace cyberway::chaindb

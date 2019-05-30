@@ -33,6 +33,8 @@ namespace eosio { namespace chain {
       uint32_t               ref_block_prefix    = 0UL; ///< specifies the lower 32 bits of the blockid at get_ref_blocknum
       fc::unsigned_int       max_net_usage_words = 0UL; /// upper limit on total network bandwidth (in 8 byte words) billed for this transaction
       uint8_t                max_cpu_usage_ms    = 0; /// upper limit on the total CPU time billed for this transaction
+      fc::unsigned_int       max_ram_kbytes      = 0UL; /// upper limit on total RAM kbytes billed for this transaction
+      fc::unsigned_int       max_storage_kbytes  = 0UL; /// upper limit on total STORAGE kbytes billed for this transaction
       fc::unsigned_int       delay_sec           = 0UL; /// number of seconds to delay this transaction for during which it may be canceled.
 
       /**
@@ -172,52 +174,53 @@ namespace eosio { namespace chain {
 
    using packed_transaction_ptr = std::shared_ptr<packed_transaction>;
 
-   /**
-    *  When a transaction is generated it can be scheduled to occur
-    *  in the future. It may also fail to execute for some reason in
-    *  which case the sender needs to be notified. When the sender
-    *  sends a transaction they will assign it an ID which will be
-    *  passed back to the sender if the transaction fails for some
-    *  reason.
-    */
-   struct deferred_transaction : public signed_transaction
-   {
-      uint128_t      sender_id; /// ID assigned by sender of generated, accessible via WASM api when executing normal or error
-      account_name   sender; /// receives error handler callback
-      account_name   payer;
-      time_point_sec execute_after; /// delayed execution
-
-      deferred_transaction() = default;
-
-      deferred_transaction(uint128_t sender_id, account_name sender, account_name payer,time_point_sec execute_after,
-                           const signed_transaction& txn)
-      : signed_transaction(txn),
-        sender_id(sender_id),
-        sender(sender),
-        payer(payer),
-        execute_after(execute_after)
-      {}
-   };
-
-   struct deferred_reference {
-      deferred_reference(){}
-      deferred_reference( const account_name& sender, const uint128_t& sender_id)
-      :sender(sender),sender_id(sender_id)
-      {}
-
-      account_name   sender;
-      uint128_t      sender_id;
-   };
+// TODO: Removed by CyberWay
+//   /**
+//    *  When a transaction is generated it can be scheduled to occur
+//    *  in the future. It may also fail to execute for some reason in
+//    *  which case the sender needs to be notified. When the sender
+//    *  sends a transaction they will assign it an ID which will be
+//    *  passed back to the sender if the transaction fails for some
+//    *  reason.
+//    */
+//   struct deferred_transaction : public signed_transaction
+//   {
+//      uint128_t      sender_id; /// ID assigned by sender of generated, accessible via WASM api when executing normal or error
+//      account_name   sender; /// receives error handler callback
+//      account_name   payer;
+//      time_point_sec execute_after; /// delayed execution
+//
+//      deferred_transaction() = default;
+//
+//      deferred_transaction(uint128_t sender_id, account_name sender, account_name payer,time_point_sec execute_after,
+//                           const signed_transaction& txn)
+//      : signed_transaction(txn),
+//        sender_id(sender_id),
+//        sender(sender),
+//       // payer(payer),
+//        execute_after(execute_after)
+//      {}
+//   };
+//
+//   struct deferred_reference {
+//      deferred_reference(){}
+//      deferred_reference( const account_name& sender, const uint128_t& sender_id)
+//      :sender(sender),sender_id(sender_id)
+//      {}
+//
+//      account_name   sender;
+//      uint128_t      sender_id;
+//   };
 
    uint128_t transaction_id_to_sender_id( const transaction_id_type& tid );
 
 } } /// namespace eosio::chain
 
 FC_REFLECT( eosio::chain::transaction_header, (expiration)(ref_block_num)(ref_block_prefix)
-                                              (max_net_usage_words)(max_cpu_usage_ms)(delay_sec) )
+    (max_net_usage_words)(max_cpu_usage_ms)(max_ram_kbytes)(max_storage_kbytes)(delay_sec) )
 FC_REFLECT_DERIVED( eosio::chain::transaction, (eosio::chain::transaction_header), (context_free_actions)(actions)(transaction_extensions) )
 FC_REFLECT_DERIVED( eosio::chain::signed_transaction, (eosio::chain::transaction), (signatures)(context_free_data) )
 FC_REFLECT_ENUM( eosio::chain::packed_transaction::compression_type, (none)(zlib))
 FC_REFLECT( eosio::chain::packed_transaction, (signatures)(compression)(packed_context_free_data)(packed_trx) )
-FC_REFLECT_DERIVED( eosio::chain::deferred_transaction, (eosio::chain::signed_transaction), (sender_id)(sender)(payer)(execute_after) )
-FC_REFLECT( eosio::chain::deferred_reference, (sender)(sender_id) )
+//FC_REFLECT_DERIVED( eosio::chain::deferred_transaction, (eosio::chain::signed_transaction), (sender_id)(sender)(payer)(execute_after) )
+//FC_REFLECT( eosio::chain::deferred_reference, (sender)(sender_id) )

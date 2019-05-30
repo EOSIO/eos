@@ -98,7 +98,6 @@ extern const char* const state_history_plugin_abi = R"({
                 { "name": "context_free", "type": "bool" },
                 { "name": "elapsed", "type": "int64" },
                 { "name": "console", "type": "string" },
-                { "name": "account_ram_deltas", "type": "account_delta[]" },
                 { "name": "except", "type": "string?" },
                 { "name": "inline_traces", "type": "action_trace[]" }
             ]
@@ -190,6 +189,7 @@ extern const char* const state_history_plugin_abi = R"({
                 { "type": "bool", "name": "privileged" },
                 { "type": "time_point", "name": "last_code_update" },
                 { "type": "checksum256", "name": "code_version" },
+                { "type": "checksum256", "name": "abi_version" },
                 { "type": "block_timestamp_type", "name": "creation_date" },
                 { "type": "bytes", "name": "code" },
                 { "type": "bytes", "name": "abi" }
@@ -288,6 +288,7 @@ extern const char* const state_history_plugin_abi = R"({
                 { "type": "uint32", "name": "target_block_cpu_usage_pct" },
                 { "type": "uint32", "name": "max_transaction_cpu_usage" },
                 { "type": "uint32", "name": "min_transaction_cpu_usage" },
+                { "type": "uint64", "name": "min_transaction_ram_usage" },
                 { "type": "uint32", "name": "max_transaction_lifetime" },
                 { "type": "uint32", "name": "deferred_trx_expiration_window" },
                 { "type": "uint32", "name": "max_transaction_delay" },

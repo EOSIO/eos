@@ -6,12 +6,13 @@
 #include <eosio/chain/block_summary_object.hpp>
 #include <eosio/chain/transaction_object.hpp>
 #include <eosio/chain/generated_transaction_object.hpp>
-#include <eosio/chain/domain_object.hpp>
 #include <eosio/chain/stake_object.hpp>
 #include <eosio/chain/permission_object.hpp>
 #include <eosio/chain/permission_link_object.hpp>
 #include <eosio/chain/resource_limits.hpp>
 #include <eosio/chain/resource_limits_private.hpp>
+
+#include <cyberway/chain/domain_object.hpp>
 
 namespace eosio { namespace chain {
 
@@ -76,6 +77,8 @@ abi_def eosio_contract_abi(abi_def eos_abi)
          {"ref_block_prefix", "uint32"},
          {"max_net_usage_words", "varuint32"},
          {"max_cpu_usage_ms", "uint8"},
+         {"max_ram_kbytes", "varuint32"},
+         {"max_storage_kbytes", "varuint32"},
          {"delay_sec", "varuint32"}
       }
    });
@@ -162,6 +165,7 @@ abi_def eosio_contract_abi(abi_def eos_abi)
          {"privileged", "bool"},
          {"last_code_update", "time_point"},
          {"code_version", "checksum256"},
+         {"abi_version", "checksum256"},
          {"creation_date", "block_timestamp_type"},
          {"code", "string"},
          {"abi", "bytes"}
@@ -192,26 +196,28 @@ abi_def eosio_contract_abi(abi_def eos_abi)
          {cyberway::chaindb::tag<by_name>::get_code(), true, {{"name", "asc"}}}
       }
    });
-
+   
    eos_abi.structs.emplace_back( eosio::chain::struct_def{
       "chain_config", "", {
-         {"max_block_net_usage", "uint64"},
-         {"target_block_net_usage_pct", "uint32"},
-         {"max_transaction_net_usage", "uint32"},
          {"base_per_transaction_net_usage", "uint32"},
          {"net_usage_leeway", "uint32"},
          {"context_free_discount_net_usage_num", "uint32"},
          {"context_free_discount_net_usage_den", "uint32"},
-         {"max_block_cpu_usage", "uint32"},
-         {"target_block_cpu_usage_pct", "uint32"},
-         {"max_transaction_cpu_usage", "uint32"},
          {"min_transaction_cpu_usage", "uint32"},
+         {"min_transaction_ram_usage", "uint64"},
          {"max_transaction_lifetime", "uint32"},
          {"deferred_trx_expiration_window", "uint32"},
          {"max_transaction_delay", "uint32"},
          {"max_inline_action_size", "uint32"},
          {"max_inline_action_depth", "uint16"},
-         {"max_authority_depth", "uint16"}
+         {"max_authority_depth", "uint16"},
+         {"target_virtual_limits", "uint64[]"},
+         {"min_virtual_limits", "uint64[]"},
+         {"max_virtual_limits", "uint64[]"},
+         {"usage_windows", "uint32[]"},
+         {"virtual_limit_decrease_pct", "uint16[]"},
+         {"virtual_limit_increase_pct", "uint16[]"},
+         {"account_usage_windows", "uint32[]"}
       }
    });
 
@@ -278,7 +284,6 @@ abi_def eosio_contract_abi(abi_def eos_abi)
          {"trx_id", "checksum256"},
          {"sender", "name"},
          {"sender_id", "uint128"},
-         {"payer", "name"},
          {"delay_until", "time_point"},
          {"expiration", "time_point"},
          {"published", "time_point"},
@@ -307,7 +312,7 @@ abi_def eosio_contract_abi(abi_def eos_abi)
    });
 
    eos_abi.tables.emplace_back(eosio::chain::table_def{
-      cyberway::chaindb::tag<domain_object>::get_code(), "domain_object", {
+      cyberway::chaindb::tag<cyberway::chain::domain_object>::get_code(), "domain_object", {
          {cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}},
          {cyberway::chaindb::tag<by_name>::get_code(), true, {{"name", "asc"}}},
          {cyberway::chaindb::tag<by_owner>::get_code(), true, {{"owner", "asc"},{"name", "asc"}}}
@@ -324,7 +329,7 @@ abi_def eosio_contract_abi(abi_def eos_abi)
    });
 
    eos_abi.tables.emplace_back(eosio::chain::table_def{
-      cyberway::chaindb::tag<username_object>::get_code(), "username_object", {
+      cyberway::chaindb::tag<cyberway::chain::username_object>::get_code(), "username_object", {
          {cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}},
          {cyberway::chaindb::tag<by_scope_name>::get_code(), true, {{"scope", "asc"},{"name", "asc"}}},
          {cyberway::chaindb::tag<by_owner>::get_code(), true, {{"owner","asc"},{"scope","asc"},{"name","asc"}}}
@@ -414,9 +419,7 @@ abi_def eosio_contract_abi(abi_def eos_abi)
       "resource_usage_object", "", {
          {"id", "uint64"},
          {"owner", "name"},
-         {"net_usage", "usage_accumulator"},
-         {"cpu_usage", "usage_accumulator"},
-         {"ram_usage", "uint64"}
+         {"accumulators", "usage_accumulator[]"}
       }
    });
 
@@ -437,21 +440,19 @@ abi_def eosio_contract_abi(abi_def eos_abi)
    eos_abi.structs.emplace_back( eosio::chain::struct_def{
       "elastic_limit_params", "", {
          {"target", "uint64"},
+         {"min", "uint64"},
          {"max", "uint64"},
          {"periods", "uint32"},
-         {"max_multiplier", "uint32"},
-         {"contract_rate", "ratio64"},
-         {"expand_rate", "ratio64"}
+         {"decrease_rate", "ratio64"},
+         {"increase_rate", "ratio64"}
       }
    });
 
    eos_abi.structs.emplace_back( eosio::chain::struct_def{
       "resource_limits_config_object", "", {
          {"id", "uint64"},
-         {"cpu_limit", "elastic_limit_params"},
-         {"net_limit", "elastic_limit_params"},
-         {"acc_cpu_usage_avg_window", "uint32"},
-         {"acc_net_usage_avg_window", "uint32"}}
+         {"limit_parameters", "elastic_limit_params[]"},
+         {"account_usage_average_windows", "uint32[]"}}
    });
 
    eos_abi.tables.emplace_back( eosio::chain::table_def {
@@ -463,14 +464,11 @@ abi_def eosio_contract_abi(abi_def eos_abi)
    eos_abi.structs.emplace_back( eosio::chain::struct_def{
       "resource_limits_state_object", "", {
          {"id", "uint64"},
-         {"avg_block_net_usage", "usage_accumulator"},
-         {"avg_block_cpu_usage", "usage_accumulator"},
-         {"pending_net_usage", "uint64"},
-         {"pending_cpu_usage", "uint64"},
-         {"virtual_net_limit", "uint64"},
-         {"virtual_cpu_limit", "uint64"},
-         {"virtual_ram_limit", "uint64"}
-      }
+         {"block_usage_accumulators", "usage_accumulator[]"},
+         {"pending_usage", "int64[]"},
+         {"virtual_limits", "uint64[]"},
+         {"ram_size", "uint64"},
+         {"reserved_ram_size", "uint64"}}
    });
 
    eos_abi.tables.emplace_back( eosio::chain::table_def {
@@ -478,9 +476,9 @@ abi_def eosio_contract_abi(abi_def eos_abi)
           {cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}}
       }
    });
-   
+
    eos_abi.structs.emplace_back( eosio::chain::struct_def {
-     "agent_struct", "",{
+     "stake_agent_object", "",{
         {"id", "uint64"},
         {"token_code", "symbol_code"},
         {"account", "name"},
@@ -496,27 +494,26 @@ abi_def eosio_contract_abi(abi_def eos_abi)
         {"signing_key", "public_key"}}});
 
    eos_abi.tables.emplace_back( eosio::chain::table_def {
-      cyberway::chaindb::tag<stake_agent_object>::get_code(), "agent_struct", {
+      cyberway::chaindb::tag<stake_agent_object>::get_code(), "stake_agent_object", {
          {cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}},
          {cyberway::chaindb::tag<stake_agent_object::by_key>::get_code(), true, {{"token_code", "asc"},{"account", "asc"}}},
          {cyberway::chaindb::tag<stake_agent_object::by_votes>::get_code(), true, {{"token_code", "asc"},{"votes", "desc"},{"account", "asc"}}}
       }
    });
-   
+
    eos_abi.structs.emplace_back( eosio::chain::struct_def {
-      "grant_struct", "",{
+      "stake_grant_object", "",{
         {"id", "uint64"},
         {"token_code", "symbol_code"},
         {"grantor_name", "name"},
         {"agent_name", "name"},
         {"pct", "int16"},
         {"share", "int64"},
-        {"granted", "int64"},
         {"break_fee", "int16"},
         {"break_min_own_staked", "int64" }}});
-        
+
    eos_abi.tables.emplace_back( eosio::chain::table_def {
-      cyberway::chaindb::tag<stake_grant_object>::get_code(), "grant_struct", {
+      cyberway::chaindb::tag<stake_grant_object>::get_code(), "stake_grant_object", {
          {cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}},
          {cyberway::chaindb::tag<stake_agent_object::by_key>::get_code(), true,
              {{"token_code", "asc"},{"grantor_name", "asc"},{"agent_name", "asc"}}}
@@ -524,29 +521,29 @@ abi_def eosio_contract_abi(abi_def eos_abi)
    });
 
    eos_abi.structs.emplace_back( eosio::chain::struct_def {
-      "param_struct", "",{
+      "stake_param_object", "",{
         {"id", "uint64"},
         {"token_symbol", "symbol"},
         {"max_proxies", "uint8[]"},
-        {"frame_length", "int64"},
-        {"payout_step_lenght", "int64"},
+        {"payout_step_length", "int64"},
         {"payout_steps_num", "uint16"},
         {"min_own_staked_for_election", "int64"}}});
-        
+
    eos_abi.tables.emplace_back( eosio::chain::table_def {
-      cyberway::chaindb::tag<stake_param_object>::get_code(), "param_struct", {
+      cyberway::chaindb::tag<stake_param_object>::get_code(), "stake_param_object", {  // Maybe add "stake_" prefix? it's in cyber.abi namespace
          {cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}}}
    });
 
    eos_abi.structs.emplace_back( eosio::chain::struct_def {
-      "stat_struct", "",{
+      "stake_stat_object", "",{
         {"id", "uint64"},
         {"token_code", "symbol_code"},
         {"total_staked", "int64"},
+        {"last_reward", "time_point_sec"},
         {"enabled", "bool"}}});
-        
+
    eos_abi.tables.emplace_back( eosio::chain::table_def {
-      cyberway::chaindb::tag<stake_stat_object>::get_code(), "stat_struct", {
+      cyberway::chaindb::tag<stake_stat_object>::get_code(), "stake_stat_object", {
          {cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}}
          }
    });
@@ -618,21 +615,13 @@ abi_def eosio_contract_abi(abi_def eos_abi)
          {"account", "account_name"},
       }
    });
-
-   eos_abi.structs.emplace_back( struct_def {
-      "requestbw", "", {
-         {"provider", "account_name"},
-         {"account", "account_name"},
-      }
-   });
-
-   eos_abi.structs.emplace_back( struct_def {
-      "provideram", "", {
-         {"provider", "account_name"},
-         {"account", "account_name"},
-         {"contracts", "account_name[]"},
-      }
-   });
+// TODO: requestbw
+//   eos_abi.structs.emplace_back( struct_def {
+//      "requestbw", "", {
+//         {"provider", "account_name"},
+//         {"account", "account_name"},
+//      }
+//   });
 
    eos_abi.structs.emplace_back( struct_def {
       "canceldelay", "", {
@@ -642,15 +631,21 @@ abi_def eosio_contract_abi(abi_def eos_abi)
    });
 
    eos_abi.structs.emplace_back( struct_def {
-         "onerror", "", {
-            {"sender_id", "uint128"},
-            {"sent_trx",  "bytes"}
+      "onerror", "", {
+         {"sender_id", "uint128"},
+         {"sent_trx",  "bytes"}
       }
    });
 
    eos_abi.structs.emplace_back( struct_def {
-         "onblock", "", {
-            {"header", "block_header"}
+      "onblock", "", {
+         {"header", "block_header"}
+      }
+   });
+
+   eos_abi.structs.emplace_back( struct_def {
+      "setparams", "", {
+         {"params",      "chain_config"}
       }
    });
 
@@ -662,11 +657,13 @@ abi_def eosio_contract_abi(abi_def eos_abi)
    eos_abi.actions.push_back( action_def{name("linkauth"), "linkauth"} );
    eos_abi.actions.push_back( action_def{name("unlinkauth"), "unlinkauth"} );
    eos_abi.actions.push_back( action_def{name("providebw"), "providebw"} );
-   eos_abi.actions.push_back( action_def{name("requestbw"), "requestbw"} );
-   eos_abi.actions.push_back( action_def{name("provideram"), "provideram"} );
+// TODO: requestbw
+//   eos_abi.actions.push_back( action_def{name("requestbw"), "requestbw"} );
    eos_abi.actions.push_back( action_def{name("canceldelay"), "canceldelay"} );
    eos_abi.actions.push_back( action_def{name("onerror"), "onerror"} );
    eos_abi.actions.push_back( action_def{name("onblock"), "onblock"} );
+
+   eos_abi.actions.push_back( action_def{name("setparams"), "setparams"} );
 
    return eos_abi;
 }

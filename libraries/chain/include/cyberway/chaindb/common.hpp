@@ -5,16 +5,14 @@
 #include <eosio/chain/types.hpp>
 #include <eosio/chain/abi_def.hpp>
 
+#include <cyberway/chaindb/typed_name.hpp>
+
 namespace cyberway { namespace chaindb {
 
     using revision_t = int64_t;
     static constexpr revision_t impossible_revision = (-1);
     static constexpr revision_t unset_revision = (-2);
     static constexpr revision_t start_revision = (1);
-
-    using primary_key_t = uint64_t;
-    static constexpr primary_key_t unset_primary_key = (-2);
-    static constexpr primary_key_t end_primary_key = (-1);
 
     using cursor_t = int32_t;
     static constexpr cursor_t invalid_cursor = (0);
@@ -28,27 +26,34 @@ namespace cyberway { namespace chaindb {
     using eosio::chain::index_def;
     using eosio::chain::order_def;
     using eosio::chain::field_name;
+    using eosio::chain::type_name;
 
-    using table_name_t = table_name::value_type;
-    using index_name_t = index_name::value_type;
+    using primary_key_t  = primary_key::value_type;
+    using table_name_t   = table_name::value_type;
+    using index_name_t   = index_name::value_type;
     using account_name_t = account_name::value_type;
-
-    struct index_request final {
-        const account_name code;
-        const account_name scope;
-        const table_name_t table;
-        const index_name_t index;
-    }; // struct index_request
+    using scope_name_t   = scope_name::value_type;
 
     struct table_request final {
-        const account_name code;
-        const account_name scope;
-        const table_name_t table;
+        const account_name_t code  = 0;
+        const scope_name_t   scope = 0;
+        const table_name_t   table = 0;
     }; // struct table_request
 
+    struct index_request final {
+        const account_name_t code  = 0;
+        const scope_name_t   scope = 0;
+        const table_name_t   table = 0;
+        const index_name_t   index = 0;
+
+        operator table_request() const {
+            return {code, scope, table};
+        }
+    }; // struct index_request
+
     struct cursor_request final {
-        const account_name code;
-        const cursor_t     id;
+        const account_name_t code;
+        const cursor_t       id;
     }; // struct cursor_request
 
     enum class chaindb_type {
@@ -57,20 +62,19 @@ namespace cyberway { namespace chaindb {
     };
 
     class chaindb_controller;
-    class undo_stack;
     class abi_info;
 
     using abi_map = std::map<account_name /* code */, abi_info>;
 
     struct table_info {
-        const account_name code;
-        const account_name scope;
-        const table_def*   table    = nullptr;
-        const order_def*   pk_order = nullptr;
-        const abi_info*    abi      = nullptr;
+        const account_name_t code     = 0;
+        const scope_name_t   scope    = 0;
+        const table_def*     table    = nullptr;
+        const order_def*     pk_order = nullptr;
+        const abi_info*      abi      = nullptr;
 
-        table_info(const account_name& code, const account_name& scope)
-        : code(code), scope(scope) {
+        table_info(account_name_t c, scope_name_t s)
+        : code(c), scope(s) {
         }
     }; // struct table_info
 
@@ -86,7 +90,7 @@ namespace cyberway { namespace chaindb {
 
     struct find_info final {
         cursor_t      cursor = invalid_cursor;
-        primary_key_t pk     = end_primary_key;
+        primary_key_t pk     = primary_key::End;
     }; // struct find_info
 
     class chaindb_session final {
@@ -107,18 +111,20 @@ namespace cyberway { namespace chaindb {
         /** Undo changes made in this session */
         void undo();
 
+        uint64_t calc_ram_bytes() const;
+
         revision_t revision() const {
             return revision_;
         }
 
     private:
-        friend class undo_stack;
+        friend class chaindb_controller;
 
-        chaindb_session(undo_stack& stack, revision_t revision);
+        chaindb_session(chaindb_controller&, revision_t);
 
-        undo_stack& stack_;
+        chaindb_controller& controller_;
         bool apply_ = true;
-        const revision_t revision_ = -1;
+        const revision_t revision_ = impossible_revision;
     }; // struct session
 
     std::ostream& operator<<(std::ostream&, const chaindb_type);

@@ -4,44 +4,35 @@
 #include <cyberway/chaindb/common.hpp>
 #include <cyberway/genesis/genesis_container.hpp>
 #include <eosio/chain/controller.hpp>
+#include <eosio/chain/abi_serializer.hpp>
 #include <eosio/chain/authorization_manager.hpp>
+#include <eosio/chain/permission_link_object.hpp>
 #include <eosio/chain/resource_limits.hpp>
 #include <eosio/chain/resource_limits_private.hpp>  // public interface is not enough
-#include <eosio/chain/abi_serializer.hpp>
+#include <eosio/chain/generated_transaction_object.hpp>
 
 
-#define IGNORE_SYSTEM_ABI
+// #define IGNORE_SYSTEM_ABI
 
 namespace cyberway { namespace genesis {
 
 using namespace chaindb;
-const fc::microseconds abi_serializer_max_time = fc::seconds(10);
-
-
 using resource_limits::resource_usage_object;
-// There sould be proper way to get type name for abi, but it was faster to implement this
-template<typename T> bool get_type_name_fail() { return false; }
-template<typename T> type_name get_type_name() { static_assert(get_type_name_fail<T>(), "specialize type"); return ""; }
-template<> type_name get_type_name<permission_object>()         { return "permission_object"; }
-template<> type_name get_type_name<permission_usage_object>()   { return "permission_usage_object"; }
-template<> type_name get_type_name<account_object>()            { return "account_object"; }
-template<> type_name get_type_name<account_sequence_object>()   { return "account_sequence_object"; }
-template<> type_name get_type_name<resource_usage_object>()     { return "resource_usage_object"; }
-template<> type_name get_type_name<domain_object>()             { return "domain_object"; }
-template<> type_name get_type_name<username_object>()           { return "username_object"; }
-template<> type_name get_type_name<stake_agent_object>()        { return "stake_agent_object"; }
-template<> type_name get_type_name<stake_grant_object>()        { return "stake_grant_object"; }
-template<> type_name get_type_name<stake_param_object>()        { return "stake_param_object"; }
-template<> type_name get_type_name<stake_stat_object>()         { return "stake_stat_object"; }
+const fc::microseconds abi_serializer_max_time = fc::seconds(10);
 
 
 enum class stored_contract_tables: int {
     domains,        usernames,
+    permissionlink, sys_permissionlink,
     token_stats,    vesting_stats,
     token_balance,  vesting_balance,
     delegation,     rdelegation,
     withdrawal,
     witness_vote,   witness_info,
+    reward_pool,    post_limits,
+    gtransaction,   bandwidths,
+    messages,       permlinks,
+    votes,
     // the following are system tables, but it's simpler to have them here
     stake_agents,   stake_grants,
     stake_stats,    stake_params,
@@ -59,6 +50,7 @@ private:
     int _row_count = 0;
     int _section_count = 0;
     table_header _section;
+    bytes _buffer;
 
 public:
     void start(const bfs::path& out_file, int n_sections) {
@@ -68,6 +60,7 @@ public:
         hdr.tables_count = n_sections;
         out.write((char*)(&hdr), sizeof(hdr));
         _section_count = n_sections;
+        _buffer.resize(1024*1024);
     }
 
     void finalize() {
@@ -94,7 +87,8 @@ public:
 
     void prepare_serializers(const contracts_map& contracts) {
         abi_def abi;
-        abis[name()] = abi_serializer(eosio_contract_abi(abi), abi_serializer_max_time);
+        abis[name()] = abis[config::system_account_name] =
+            abi_serializer(eosio_contract_abi(abi), abi_serializer_max_time);
         for (const auto& c: contracts) {
             auto abi_bytes = c.second.abi;
             if (abi_bytes.size() > 0) {
@@ -121,42 +115,38 @@ public:
     }
 
     template<typename T, typename Lambda>
-    const T emplace(Lambda&& constructor) {
-        return emplace<T>({}, constructor);
-    }
-
-    template<typename T, typename Lambda>
-    const T emplace(const ram_payer_info& ram, Lambda&& constructor) {
+    const T emplace(const name ram_payer, Lambda&& constructor) {
         T obj(constructor, 0);
         constexpr auto tid = T::type_id;
         auto& id = autoincrement[tid];
-        obj.id = id++;
-        if ((id & 0x7FFF) == 0) {
-            ilog("AINC ${t} = ${n}", ("t",tid)("n",id));
+        if (obj.id == 0) {
+            obj.id = id++;
         }
 #ifndef IGNORE_SYSTEM_ABI
         static abi_serializer& ser = abis[name()];
         variant v;
         to_variant(obj, v);
-        bytes data = ser.variant_to_binary(get_type_name<T>(), v, abi_serializer_max_time);
+        fc::datastream<char*> ds(_buffer.data(), _buffer.size());
+        ser.variant_to_binary(_section.abi_type, v, ds, abi_serializer_max_time);
+        sys_table_row record{ram_payer, {_buffer.begin(), _buffer.begin() + ds.tellp()}};
 #else
-        bytes data = fc::raw::pack(obj);
+        sys_table_row record{ram_payer, fc::raw::pack(obj)};
 #endif
-        sys_table_row record{{}, data};
         fc::raw::pack(out, record);
         _row_count--;
         return obj;
     }
 
-    // TODO: there should be way to get type from table name
-    void insert(//const string& type,
-        const table_request& req, primary_key_t pk, variant v, const ram_payer_info& ram
-    ) {
-        EOS_ASSERT(abis.count(req.code) > 0, genesis_exception, "ABI not found");
-        auto& ser = abis[req.code];
-        bytes data = ser.variant_to_binary(_section.abi_type, v, abi_serializer_max_time);
-        table_row record{ram.payer, data, pk, req.scope};
-        fc::raw::pack(out, record);
+    void insert(primary_key_t pk, uint64_t scope, const variant& v) {   // common case where scope is owner account
+        insert (pk, scope, scope, v);
+    }
+
+    void insert(primary_key_t pk, uint64_t scope, name ram_payer, const variant& v) {
+        EOS_ASSERT(abis.count(_section.code) > 0, genesis_exception, "ABI not found");
+        fc::datastream<char*> ds(_buffer.data(), _buffer.size());
+        auto& ser = abis[_section.code];
+        ser.variant_to_binary(_section.abi_type, v, ds, abi_serializer_max_time);
+        fc::raw::pack(out, table_row{ram_payer, bytes{_buffer.begin(), _buffer.begin() + ds.tellp()}, pk, scope});
         _row_count--;
     }
 };

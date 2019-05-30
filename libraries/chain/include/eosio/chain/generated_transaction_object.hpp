@@ -30,7 +30,6 @@ namespace eosio { namespace chain {
          transaction_id_type           trx_id;
          account_name                  sender;
          uint128_t                     sender_id = 0; /// ID given this transaction by the sender
-         account_name                  payer;
          time_point                    delay_until; /// this generated transaction will not be applied until the specified time
          time_point                    expiration; /// this generated transaction will not be applied after this time
          time_point                    published;
@@ -84,7 +83,6 @@ namespace eosio { namespace chain {
          :trx_id(gto.trx_id)
          ,sender(gto.sender)
          ,sender_id(gto.sender_id)
-         ,payer(gto.payer)
          ,delay_until(gto.delay_until)
          ,expiration(gto.expiration)
          ,published(gto.published)
@@ -97,7 +95,6 @@ namespace eosio { namespace chain {
          transaction_id_type           trx_id;
          account_name                  sender;
          uint128_t                     sender_id;
-         account_name                  payer;
          time_point                    delay_until; /// this generated transaction will not be applied until the specified time
          time_point                    expiration; /// this generated transaction will not be applied after this time
          time_point                    published;
@@ -116,5 +113,5 @@ namespace eosio { namespace chain {
 
 CHAINDB_SET_TABLE_TYPE(eosio::chain::generated_transaction_object, eosio::chain::generated_transaction_table)
 CHAINDB_TAG(eosio::chain::generated_transaction_object, gtransaction)
-FC_REFLECT(eosio::chain::generated_transaction_object, (id)(trx_id)(sender)(sender_id)(payer)(delay_until)(expiration)(published)(packed_trx))
+FC_REFLECT(eosio::chain::generated_transaction_object, (id)(trx_id)(sender)(sender_id)(delay_until)(expiration)(published)(packed_trx))
 

@@ -10,13 +10,13 @@ namespace cyberway { namespace golos {
 struct gls_mapped_str {
     fc::unsigned_int id;
 
-    std::string value(const std::vector<std::string>& lookup) const {
+    std::string str(const std::vector<std::string>& lookup) const {
         return lookup.at(id.value);
     };
 };
 
-using fc::uint128_t;
 using fc::time_point_sec;
+using eosio::chain::uint128_t;      // NOTE: differs in Golos. use fix_fc128() to get correct value
 using eosio::chain::asset;
 using eosio::chain::share_type;
 

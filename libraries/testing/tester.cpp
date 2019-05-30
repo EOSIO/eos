@@ -350,12 +350,15 @@ namespace eosio { namespace testing {
 
    transaction_trace_ptr base_tester::push_transaction( packed_transaction& trx,
                                                         fc::time_point deadline,
-                                                        uint32_t billed_cpu_time_us
+                                                        uint32_t billed_cpu_time_us,
+                                                        uint64_t billed_ram_bytes
                                                       )
-   { try {
+   {
+        try {
       if( !control->pending_block_state() )
          _start_block(control->head_block_time() + fc::microseconds(config::block_interval_us));
-      auto r = control->push_transaction( std::make_shared<transaction_metadata>(std::make_shared<packed_transaction>(trx)), deadline, billed_cpu_time_us );
+      auto r = control->push_transaction( std::make_shared<transaction_metadata>(std::make_shared<packed_transaction>(trx)), deadline,
+           { billed_cpu_time_us, billed_ram_bytes >> 10 } );
       if( r->except_ptr ) std::rethrow_exception( r->except_ptr );
       if( r->except ) throw *r->except;
       return r;
@@ -363,9 +366,11 @@ namespace eosio { namespace testing {
 
    transaction_trace_ptr base_tester::push_transaction( signed_transaction& trx,
                                                         fc::time_point deadline,
-                                                        uint32_t billed_cpu_time_us
+                                                        uint32_t billed_cpu_time_us,
+                                                        uint64_t billed_ram_bytes
                                                       )
-   { try {
+   {
+        try {
       if( !control->pending_block_state() )
          _start_block(control->head_block_time() + fc::microseconds(config::block_interval_us));
       auto c = packed_transaction::none;
@@ -373,8 +378,9 @@ namespace eosio { namespace testing {
       if( fc::raw::pack_size(trx) > 1000 ) {
          c = packed_transaction::zlib;
       }
-
-      auto r = control->push_transaction( std::make_shared<transaction_metadata>(trx,c), deadline, billed_cpu_time_us );
+      
+      auto r = control->push_transaction( std::make_shared<transaction_metadata>(trx,c), deadline,
+          { billed_cpu_time_us, billed_ram_bytes >> 10 } );
       if( r->except_ptr ) std::rethrow_exception( r->except_ptr );
       if( r->except)  throw *r->except;
       return r;

@@ -21,18 +21,13 @@ struct genesis_state {
    static const string eosio_root_key;
 
    chain_config   initial_configuration = {
-      .max_block_net_usage                  = config::default_max_block_net_usage,
-      .target_block_net_usage_pct           = config::default_target_block_net_usage_pct,
-      .max_transaction_net_usage            = config::default_max_transaction_net_usage,
       .base_per_transaction_net_usage       = config::default_base_per_transaction_net_usage,
       .net_usage_leeway                     = config::default_net_usage_leeway,
       .context_free_discount_net_usage_num  = config::default_context_free_discount_net_usage_num,
       .context_free_discount_net_usage_den  = config::default_context_free_discount_net_usage_den,
 
-      .max_block_cpu_usage                  = config::default_max_block_cpu_usage,
-      .target_block_cpu_usage_pct           = config::default_target_block_cpu_usage_pct,
-      .max_transaction_cpu_usage            = config::default_max_transaction_cpu_usage,
       .min_transaction_cpu_usage            = config::default_min_transaction_cpu_usage,
+      .min_transaction_ram_usage            = config::default_min_transaction_ram_usage,
 
       .max_transaction_lifetime             = config::default_max_trx_lifetime,
       .deferred_trx_expiration_window       = config::default_deferred_trx_expiration_window,

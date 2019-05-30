@@ -42,14 +42,19 @@ namespace eosio {
 
        chain::transaction_id_type         id;
        fc::enum_type<uint8_t,status_enum> status;
-       uint32_t                           cpu_usage_us;
+       fc::unsigned_int                   cpu_usage_us;
        fc::unsigned_int                   net_usage_words;
+       fc::unsigned_int                   ram_kbytes;
+       fc::signed_int                     storage_kbytes;
+
 
        TrxReceipt(const chain::transaction_id_type &id, const chain::transaction_receipt &receipt)
        : id(id)
        , status(receipt.status)
        , cpu_usage_us(receipt.cpu_usage_us)
        , net_usage_words(receipt.net_usage_words)
+       , ram_kbytes(receipt.ram_kbytes)
+       , storage_kbytes(receipt.storage_kbytes)
        { }
     };
 
@@ -61,6 +66,8 @@ namespace eosio {
 
            AcceptTrx,
            ApplyTrx,
+
+           GenesisData,
        };
 
        MsgType msg_type;
@@ -69,6 +76,21 @@ namespace eosio {
        : msg_type(type)
        {}
    };
+
+   struct GenesisDataMessage : public BaseMessage {
+       chain::name code;
+       chain::name name;
+       fc::variant data;
+
+       GenesisDataMessage(BaseMessage::MsgType msg_type, const chain::name code, const chain::name name, const fc::variant& data)
+       : BaseMessage(msg_type)
+       , code(code)
+       , name(name)
+       , data(data)
+       {}
+   };
+
+   const auto core_genesis_code = N(core);
 
    struct AcceptTrxMessage : public BaseMessage, TrxMetadata {
        AcceptTrxMessage(BaseMessage::MsgType msg_type, const chain::transaction_metadata_ptr &trx_meta)
@@ -95,6 +117,7 @@ namespace eosio {
 
    struct BlockMessage : public BaseMessage {
        chain::block_id_type          id;
+       chain::block_id_type          previous;
        uint32_t                      block_num;
        chain::block_timestamp_type   block_time;
        bool                          validated;
@@ -103,6 +126,7 @@ namespace eosio {
        BlockMessage(MsgType msg_type, const chain::block_state_ptr& bstate)
        : BaseMessage(msg_type)
        , id(bstate->block->id())
+       , previous(bstate->header.previous)
        , block_num(bstate->block->block_num())
        , block_time(bstate->header.timestamp)
        , validated(bstate->validated)
@@ -141,11 +165,12 @@ namespace eosio {
 FC_REFLECT(eosio::EventData, (code)(event)(data)(args))
 FC_REFLECT(eosio::ActionData, (receiver)(code)(action)(data)(args)(events))
 FC_REFLECT(eosio::TrxMetadata, (id)(accepted)(implicit)(scheduled))
-FC_REFLECT(eosio::TrxReceipt, (id)(status)(cpu_usage_us)(net_usage_words))
+FC_REFLECT(eosio::TrxReceipt, (id)(status)(cpu_usage_us)(net_usage_words)(ram_kbytes)(storage_kbytes))
 
-FC_REFLECT_ENUM(eosio::BaseMessage::MsgType, (Unknown)(AcceptBlock)(CommitBlock)(AcceptTrx)(ApplyTrx))
+FC_REFLECT_ENUM(eosio::BaseMessage::MsgType, (Unknown)(GenesisData)(AcceptBlock)(CommitBlock)(AcceptTrx)(ApplyTrx))
 FC_REFLECT(eosio::BaseMessage, (msg_type))
-FC_REFLECT_DERIVED(eosio::BlockMessage, (eosio::BaseMessage), (id)(block_num)(block_time)(validated)(in_current_chain))
+FC_REFLECT_DERIVED(eosio::GenesisDataMessage, (eosio::BaseMessage), (code)(name)(data))
+FC_REFLECT_DERIVED(eosio::BlockMessage, (eosio::BaseMessage), (id)(previous)(block_num)(block_time)(validated)(in_current_chain))
 FC_REFLECT_DERIVED(eosio::AcceptedBlockMessage, (eosio::BlockMessage), (trxs)(events))
 FC_REFLECT_DERIVED(eosio::AcceptTrxMessage, (eosio::BaseMessage)(eosio::TrxMetadata), )
 FC_REFLECT_DERIVED(eosio::ApplyTrxMessage, (eosio::BaseMessage), (id)(block_num)(block_time)(prod_block_id)(actions))

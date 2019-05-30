@@ -129,15 +129,15 @@ class privileged_api : public context_aware_api {
       void activate_feature( int64_t feature_name ) {
          EOS_ASSERT( false, unsupported_feature, "Unsupported Hardfork Detected" );
       }
-      
-      void update_stake_proxied(uint64_t token_code_raw, account_name account, int64_t frame_length, int force) {
+
+      void update_stake_proxied(uint64_t token_code_raw, account_name account, int force) {
           int64_t now = context.control.pending_block_time().sec_since_epoch();
-          stake::update_proxied(context.chaindb, {context}, now, symbol_code{token_code_raw}, account, frame_length, static_cast<bool>(force));
+          stake::update_proxied(context.chaindb, context.get_storage_payer(), now, symbol_code{token_code_raw}, account, static_cast<bool>(force));
       }
 
       void recall_stake_proxied(uint64_t token_code_raw, account_name grantor_name, account_name agent_name, int32_t pct) {
           int64_t now = context.control.pending_block_time().sec_since_epoch();
-          stake::recall_proxied(context.chaindb, {context}, now, symbol_code{token_code_raw}, grantor_name, agent_name, pct);
+          stake::recall_proxied(context.chaindb, context.get_storage_payer(), now, symbol_code{token_code_raw}, grantor_name, agent_name, pct);
       }
 
       int64_t set_proposed_producers( array_ptr<char> packed_producer_schedule, size_t datalen) {
@@ -850,13 +850,22 @@ class authorization_api : public context_aware_api {
       context.require_authorization( account );
    }
 
+   bool weak_require_authorization( const account_name& account ) {
+      return context.weak_require_authorization( account );
+   }
+
    bool has_authorization( const account_name& account )const {
       return context.has_authorization( account );
    }
 
    void require_authorization(const account_name& account,
-                                                 const permission_name& permission) {
+                              const permission_name& permission) {
       context.require_authorization( account, permission );
+   }
+
+   bool weak_require_authorization(const account_name& account,
+                                   const permission_name& permission) {
+      return context.weak_require_authorization( account, permission );
    }
 
    void require_recipient( account_name recipient ) {
@@ -1095,44 +1104,32 @@ class console_api : public context_aware_api {
       bool ignore;
 };
 
-
-class bandwith_api : public context_aware_api {
-    public:
-        bandwith_api( apply_context& ctx )
-        : context_aware_api(ctx,true) {}
-
-        int64_t get_bw_cpu_limit(account_name account) const {
-            return context.trx_context.get_provided_cpu_limit(account);
-        }
-
-        int64_t get_bw_net_limit(account_name account) const {
-            return context.trx_context.get_provided_net_limit(account);
-        }
-
-        bool is_provided_bw_confirmed(account_name account) const {
-            return context.trx_context.is_provided_bandwith_confirmed(account);
-        }
-
-        void set_bw_limits(account_name account, int64_t net_limit, int64_t cpu_limit) {
-            context.trx_context.set_provided_bandwith_limits(account, net_limit, cpu_limit);
-        }
-
-        void confirm_bw_limits(account_name account) {
-            context.trx_context.confirm_provided_bandwith_limits(account, context.receiver);
-        }
-};
-
-class ram_provide_api : public context_aware_api {
-    public:
-        ram_provide_api( apply_context& ctx )
-        : context_aware_api(ctx,true) {}
-
-        account_name get_ram_provider(account_name user) const {
-            const account_name running_contract = context.receiver;
-            return context.trx_context.get_ram_provider(running_contract, user);
-        }
-};
-
+//TODO: requestbw
+//class bandwith_api : public context_aware_api {
+//    public:
+//        bandwith_api( apply_context& ctx )
+//        : context_aware_api(ctx,true) {}
+//
+//        int64_t get_bw_cpu_limit(account_name account) const {
+//            return context.trx_context.get_provided_cpu_limit(account);
+//        }
+//
+//        int64_t get_bw_net_limit(account_name account) const {
+//            return context.trx_context.get_provided_net_limit(account);
+//        }
+//
+//        bool is_provided_bw_confirmed(account_name account) const {
+//            return context.trx_context.is_provided_bandwith_confirmed(account);
+//        }
+//
+//        void set_bw_limits(account_name account, int64_t net_limit, int64_t cpu_limit) {
+//            context.trx_context.set_provided_bandwith_limits(account, net_limit, cpu_limit);
+//        }
+//
+//        void confirm_bw_limits(account_name account) {
+//            context.trx_context.confirm_provided_bandwith_limits(account, context.receiver);
+//        }
+//};
 
 #define DB_API_METHOD_WRAPPERS_SIMPLE_SECONDARY(IDX, TYPE)\
       int db_##IDX##_store( uint64_t scope, uint64_t table, uint64_t payer, uint64_t id, const TYPE& secondary ) {\
@@ -1378,19 +1375,6 @@ class event_api : public context_aware_api {
             event evt;
             fc::raw::unpack<event>(data, data_len, evt);
             context.push_event(std::move(evt));
-        }
-};
-
-class archive_api : public context_aware_api {
-    public:
-        using context_aware_api::context_aware_api;
-
-        int64_t save_record( array_ptr<char> data, size_t data_len ) {
-            return context.save_record(data, data_len);
-        }
-
-        int lookup_record( int64_t rec_id, account_name code, array_ptr<char> buffer, size_t buffer_size ) {
-            return context.lookup_record(rec_id, code, buffer, buffer_size);
         }
 };
 
@@ -1750,8 +1734,8 @@ REGISTER_INTRINSICS(compiler_builtins,
 REGISTER_INTRINSICS(privileged_api,
    (is_feature_active,                int(int64_t)                          )
    (activate_feature,                 void(int64_t)                         )
-   (update_stake_proxied,             void(int64_t,int64_t,int64_t,int))
-   (recall_stake_proxied,             void(int64_t,int64_t,int64_t,int32_t))
+   (update_stake_proxied,             void(int64_t,int64_t,int)             )
+   (recall_stake_proxied,             void(int64_t,int64_t,int64_t,int32_t) )
    (set_proposed_producers,           int64_t(int,int)                      )
    (get_blockchain_parameters_packed, int(int, int)                         )
    (set_blockchain_parameters_packed, void(int,int)                         )
@@ -1858,6 +1842,8 @@ REGISTER_INTRINSICS(authorization_api,
    (require_recipient,     void(int64_t)          )
    (require_authorization, void(int64_t), "require_auth", void(authorization_api::*)(const account_name&) )
    (require_authorization, void(int64_t, int64_t), "require_auth2", void(authorization_api::*)(const account_name&, const permission_name& permission) )
+   (weak_require_authorization, int(int64_t), "weak_require_auth", bool(authorization_api::*)(const account_name&) )
+   (weak_require_authorization, int(int64_t, int64_t), "weak_require_auth2", bool(authorization_api::*)(const account_name&, const permission_name& permission) )
    (has_authorization,     int(int64_t), "has_auth", bool(authorization_api::*)(const account_name&)const )
    (is_account,            int(int64_t)           )
 );
@@ -1884,18 +1870,15 @@ REGISTER_INTRINSICS(console_api,
    (printhex,              void(int, int) )
 );
 
-
-REGISTER_INTRINSICS(bandwith_api,
-    (get_bw_cpu_limit, int64_t(int64_t))
-    (get_bw_net_limit, int64_t(int64_t ))
-    (is_provided_bw_confirmed, int(int64_t))
-    (set_bw_limits, void(int64_t, int64_t, int64_t))
-    (confirm_bw_limits, void(int64_t))
-);
-
-REGISTER_INTRINSICS(ram_provide_api,
-    (get_ram_provider, int64_t(int64_t))
-);
+// TODO: Rename
+//
+//REGISTER_INTRINSICS(bandwith_api,
+//    (get_bw_cpu_limit, int64_t(int64_t))
+//    (get_bw_net_limit, int64_t(int64_t ))
+//    (is_provided_bw_confirmed, int(int64_t))
+//    (set_bw_limits, void(int64_t, int64_t, int64_t))
+//    (confirm_bw_limits, void(int64_t))
+//);
 
 REGISTER_INTRINSICS(context_free_transaction_api,
    (read_transaction,       int(int, int)            )
@@ -1915,11 +1898,6 @@ REGISTER_INTRINSICS(transaction_api,
 
 REGISTER_INTRINSICS(event_api,
    (send_event,                void(int, int)               )
-);
-
-REGISTER_INTRINSICS(archive_api,
-   (save_record,               int64_t(int, int)            )
-   (lookup_record,             int(int64_t,int64_t,int,int)         )
 );
 
 REGISTER_INTRINSICS(context_free_api,

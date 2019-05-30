@@ -126,7 +126,7 @@ namespace cyberway { namespace chaindb {
         }; // struct table_t_
 
         class write_ctx final {
-            primary_key_t pk_   = unset_primary_key;
+            primary_key_t pk_   = primary_key::Unset;
             info_t_*      info_ = nullptr;
 
         public:
@@ -146,7 +146,6 @@ namespace cyberway { namespace chaindb {
         void apply_range_changes(Ctx&& ctx, index_t_::iterator begin, index_t_::iterator end) {
             if (begin == end) return;
 
-            ctx.init();
             for (auto itr = begin; end != itr; ++itr) {
                 auto& table = *itr;
                 if (table.info_map.empty()) continue;

@@ -4,6 +4,7 @@ set(CHAINDB_LIBS "")
 set(CHAINDB_SRCS "")
 
 if (BUILD_CYBERWAY_CHAINDB_MONGO)
+    message("chaindb with MongoDB support is selected and will be builded.")
 
     find_package(libmongoc-1.0 1.8)
 
@@ -35,7 +36,11 @@ if (BUILD_CYBERWAY_CHAINDB_MONGO)
         set(CHAINDB_DEFS ${CHAINDB_DEFS} CYBERWAY_CHAINDB=1 ${LIBMONGOCXX_STATIC_DEFINITIONS} ${LIBBSONCXX_STATIC_DEFINITIONS})
         set(CHAINDB_INCS ${CHAINDB_INCS} ${BSON_INCLUDE_DIRS} ${LIBMONGOCXX_STATIC_INCLUDE_DIRS} ${LIBBSONCXX_STATIC_INCLUDE_DIRS})
         set(CHAINDB_LIBS ${CHAINDB_LIBS} ${CHAINDB_LIBMONGOCXX} ${CHAINDB_LIBBSONCXX} ${BSON_LIBRARIES})
-        set(CHAINDB_SRCS ${CHAINDB_SRCS} chaindb/mongo_driver.cpp chaindb/mongo_driver_utils.cpp chaindb/mongo_bigint_converter.cpp)
+        set(CHAINDB_SRCS ${CHAINDB_SRCS}
+            chaindb/mongo_driver.cpp
+            chaindb/mongo_driver_utils.cpp
+            chaindb/mongo_bigint_converter.cpp
+            chaindb/mongo_asset_converter.cpp)
 
     else()
         message("Could NOT find MongoDB. chaindb with MongoDB support will not be included.")

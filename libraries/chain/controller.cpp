@@ -28,6 +28,8 @@
 
 #include <cyberway/chaindb/controller.hpp>
 #include <cyberway/genesis/genesis_import.hpp>
+#include <cyberway/chain/cyberway_contract_types.hpp>
+#include <cyberway/chain/cyberway_contract.hpp>
 
 namespace eosio { namespace chain {
 
@@ -41,8 +43,8 @@ using controller_index_set = index_set<
    block_summary_table,
    transaction_table,
    generated_transaction_table,
-   domain_table,
-   username_table
+   cyberway::chain::domain_table,
+   cyberway::chain::username_table
 >;
 
 class maybe_session {
@@ -199,7 +201,7 @@ struct controller_impl {
       head = prev;
 // TODO: removed by CyberWay
 //      db.undo();
-      chaindb.undo();
+      chaindb.undo_last_revision();
    }
 
 
@@ -231,6 +233,9 @@ struct controller_impl {
 #define SET_APP_HANDLER( receiver, contract, action) \
    set_apply_handler( #receiver, #contract, #action, &BOOST_PP_CAT(apply_, BOOST_PP_CAT(contract, BOOST_PP_CAT(_,action) ) ) )
 
+#define SET_CYBER_HANDLER( receiver, contract, action) \
+   set_apply_handler( #receiver, #contract, #action, &BOOST_PP_CAT(cyberway::chain::apply_, BOOST_PP_CAT(contract, BOOST_PP_CAT(_,action) ) ) )
+
    SET_APP_HANDLER(cyber, cyber, newaccount);
    SET_APP_HANDLER(cyber, cyber, setcode);
    SET_APP_HANDLER(cyber, cyber, setabi);
@@ -238,21 +243,21 @@ struct controller_impl {
    SET_APP_HANDLER(cyber, cyber, deleteauth);
    SET_APP_HANDLER(cyber, cyber, linkauth);
    SET_APP_HANDLER(cyber, cyber, unlinkauth);
+   SET_APP_HANDLER(cyber, cyber, canceldelay);
 
-   SET_APP_HANDLER(cyber, cyber, providebw);
-   SET_APP_HANDLER(cyber, cyber, requestbw);
-   SET_APP_HANDLER(cyber, cyber, provideram);
+   SET_CYBER_HANDLER(cyber, cyber, providebw);
+//TODO: requestbw
+//   SET_CYBER_HANDLER(cyber, cyber, requestbw);
 /*
-   SET_APP_HANDLER(cyber, cyber, postrecovery);
-   SET_APP_HANDLER(cyber, cyber, passrecovery);
-   SET_APP_HANDLER(cyber, cyber, vetorecovery);
+   SET_CYBER_HANDLER(cyber, cyber, postrecovery);
+   SET_CYBER_HANDLER(cyber, cyber, passrecovery);
+   SET_CYBER_HANDLER(cyber, cyber, vetorecovery);
 */
 
-   SET_APP_HANDLER(cyber, cyber, canceldelay);
 
 #define SET_CONTRACT_HANDLER(contract, action, function) set_apply_handler(contract, contract, #action, function);
 #define SET_DOTCONTRACT_HANDLER(base, sub, action) SET_CONTRACT_HANDLER(#base "." #sub, action, \
-    &BOOST_PP_CAT(apply_, BOOST_PP_CAT(base, BOOST_PP_CAT(_, BOOST_PP_CAT(sub, BOOST_PP_CAT(_,action))))))
+    &BOOST_PP_CAT(cyberway::chain::apply_, BOOST_PP_CAT(base, BOOST_PP_CAT(_, BOOST_PP_CAT(sub, BOOST_PP_CAT(_,action))))))
 #define SET_CYBER_DOMAIN_HANDLER(action) SET_DOTCONTRACT_HANDLER(cyber, domain, action)
 
     SET_CYBER_DOMAIN_HANDLER(newusername);
@@ -322,7 +327,7 @@ struct controller_impl {
 
 // TODO: removed by CyberWay
 //      db.commit( s->block_num );
-      chaindb.commit( s->block_num );
+      chaindb.commit_revision( s->block_num );
 
       if( append_to_blog ) {
          blog.append(s->block);
@@ -374,11 +379,16 @@ struct controller_impl {
             ("s", start_block_num)("n", blog_head->block_num()) );
 
       auto start = fc::time_point::now();
+      auto skip_session = self.skip_db_sessions( controller::block_status::irreversible );
       while( auto next = blog.read_block_by_num( head->block_num + 1 ) ) {
-         auto session = chaindb.start_undo_session(true);
-         session.push();
+         if( skip_session ) {
+            set_revision( next->block_num() );
+         }
          replay_push_block( next, controller::block_status::irreversible );
          if( next->block_num() % 100 == 0 ) {
+            if( next->block_num() % 10000 && skip_session ) {
+               chaindb.apply_all_changes();
+            }
             std::cerr << std::setw(10) << next->block_num() << " of " << blog_head->block_num() <<"\r";
             if( shutdown() ) break;
          }
@@ -386,11 +396,12 @@ struct controller_impl {
       std::cerr<< "\n";
       ilog( "${n} blocks replayed", ("n", head->block_num - start_block_num) );
 
-// TODO: Removed by CyberWay
-//      // if the irreverible log is played without undo sessions enabled, we need to sync the
-//      // revision ordinal to the appropriate expected value here.
-//      if( self.skip_db_sessions( controller::block_status::irreversible ) )
-//         set_revision(head->block_num);
+      // if the irreverible log is played without undo sessions enabled, we need to sync the
+      // revision ordinal to the appropriate expected value here.
+      if( skip_session ) {
+         chaindb.apply_all_changes();
+         set_revision( head->block_num );
+      }
 
       int rev = 0;
       auto total = blog_head->block_num() + reversible_blocks.get_index<reversible_block_index>().indices().size();
@@ -474,7 +485,7 @@ struct controller_impl {
       while (chaindb.revision() > head->block_num) {
 // TODO: removed by CyberWay
 //         db.undo();
-         chaindb.undo();
+         chaindb.undo_last_revision();
       }
 
       if( report_integrity_hash ) {
@@ -509,7 +520,7 @@ struct controller_impl {
 //      // Rewind the database to the last irreversible block
 //       db.with_write_lock([&] {
 //         db.undo_all();
-//         chaindb.undo_all();
+//         chaindb.undo_all_revisions();
 //         /*
 //         FC_ASSERT(db.revision() == self.head_block_num(),
 //                   "Chainbase revision does not match head block num",
@@ -598,7 +609,7 @@ struct controller_impl {
       const auto& active_permission = authorization.create_permission({}, name, config::active_name, owner_permission.id,
                                                                       active, conf.genesis.initial_timestamp );
 
-      resource_limits.initialize_account(name);
+      resource_limits.initialize_account(name, {});
 
       // Does exist any reason to calculate ram usage for system accounts?
 
@@ -622,6 +633,21 @@ struct controller_impl {
       blocksum_table.modify( tapos_block_summary, [&]( auto& bs ) {
         bs.block_id = head->id;
       });
+
+      conf.genesis.initial_configuration.target_virtual_limits = 
+        std::vector<uint64_t>(config::default_target_virtual_limits.begin(), config::default_target_virtual_limits.end());
+      conf.genesis.initial_configuration.min_virtual_limits = 
+        std::vector<uint64_t>(config::default_min_virtual_limits.begin(), config::default_min_virtual_limits.end());
+      conf.genesis.initial_configuration.max_virtual_limits = 
+        std::vector<uint64_t>(config::default_max_virtual_limits.begin(), config::default_max_virtual_limits.end());
+      conf.genesis.initial_configuration.usage_windows = 
+        std::vector<uint32_t>(config::default_usage_windows.begin(), config::default_usage_windows.end());
+      conf.genesis.initial_configuration.virtual_limit_decrease_pct = 
+        std::vector<uint16_t>(config::default_virtual_limit_decrease_pct.begin(), config::default_virtual_limit_decrease_pct.end());
+      conf.genesis.initial_configuration.virtual_limit_increase_pct = 
+        std::vector<uint16_t>(config::default_virtual_limit_increase_pct.begin(), config::default_virtual_limit_increase_pct.end());
+      conf.genesis.initial_configuration.account_usage_windows = 
+        std::vector<uint32_t>(config::default_account_usage_windows.begin(), config::default_account_usage_windows.end());
 
       conf.genesis.initial_configuration.validate();
       chaindb.emplace<global_property_object>([&](auto& gpo ){
@@ -703,18 +729,15 @@ struct controller_impl {
    // The returned scoped_exit should not exceed the lifetime of the pending which existed when make_block_restore_point was called.
    fc::scoped_exit<std::function<void()>> make_block_restore_point() {
       auto orig_block_transactions_size = pending->_pending_block_state->block->transactions.size();
-      auto orig_block_archive_size      = pending->_pending_block_state->block->archive_records.size();
       auto orig_state_transactions_size = pending->_pending_block_state->trxs.size();
       auto orig_state_actions_size      = pending->_actions.size();
 
       std::function<void()> callback = [this,
                                         orig_block_transactions_size,
-                                        orig_block_archive_size,
                                         orig_state_transactions_size,
                                         orig_state_actions_size]()
       {
          pending->_pending_block_state->block->transactions.resize(orig_block_transactions_size);
-         pending->_pending_block_state->block->archive_records.resize(orig_block_archive_size);
          pending->_pending_block_state->trxs.resize(orig_state_transactions_size);
          pending->_actions.resize(orig_state_actions_size);
       };
@@ -726,8 +749,8 @@ struct controller_impl {
                                         fc::time_point deadline,
                                         fc::time_point start,
                                         uint32_t& cpu_time_to_bill_us, // only set on failure
-                                        uint32_t billed_cpu_time_us,
-                                        bool explicit_billed_cpu_time = false
+                                        uint64_t& ram_to_bill_bytes, // only set on failure
+                                        const billed_bw_usage& billed
                                       )
    {
       signed_transaction etrx;
@@ -739,8 +762,10 @@ struct controller_impl {
 
       transaction_context trx_context( self, etrx, etrx.id(), start );
       trx_context.deadline = deadline;
-      trx_context.explicit_billed_cpu_time = explicit_billed_cpu_time;
-      trx_context.billed_cpu_time_us = billed_cpu_time_us;
+      trx_context.explicit_billed_cpu_time = billed.explicit_usage;
+      trx_context.billed_cpu_time_us = billed.cpu_time_us;
+      trx_context.explicit_billed_ram_bytes = billed.explicit_usage;
+      trx_context.billed_ram_bytes = billed.ram_bytes;
       transaction_trace_ptr trace = trx_context.trace;
       try {
          trx_context.init_for_implicit_trx();
@@ -751,7 +776,8 @@ struct controller_impl {
 
          auto restore = make_block_restore_point();
          trace->receipt = push_receipt( gtrx.trx_id, transaction_receipt::soft_fail,
-                                        trx_context.billed_cpu_time_us, trace->net_usage );
+                                        trx_context.billed_cpu_time_us, trace->net_usage,
+                                        trx_context.billed_ram_bytes, trace->storage_bytes );
          fc::move_append( pending->_actions, move(trx_context.executed) );
 
          trx_context.squash();
@@ -759,6 +785,7 @@ struct controller_impl {
          return trace;
       } catch( const fc::exception& e ) {
          cpu_time_to_bill_us = trx_context.update_billed_cpu_time( fc::time_point::now() );
+         ram_to_bill_bytes = trx_context.update_billed_ram_bytes();
          trace->except = e;
          trace->except_ptr = std::current_exception();
       }
@@ -772,8 +799,7 @@ struct controller_impl {
 //         -(config::billable_size_v<generated_transaction_object> + gto.packed_trx.size())
 //      );
       // No need to verify_account_ram_usage since we are only reducing memory
-
-      chaindb.erase( gto, {resource_limits} );
+      chaindb.erase( gto, resource_limits.get_storage_payer(self.pending_block_slot(), account_name()));
    }
 
    bool failure_is_subjective( const fc::exception& e ) const {
@@ -791,50 +817,51 @@ struct controller_impl {
              || failure_is_subjective(e);
    }
 
-   transaction_trace_ptr push_scheduled_transaction( const transaction_id_type& trxid, fc::time_point deadline, uint32_t billed_cpu_time_us, bool explicit_billed_cpu_time = false ) {
+   transaction_trace_ptr push_scheduled_transaction( const transaction_id_type& trxid, fc::time_point deadline, const billed_bw_usage& billed ) {
       auto idx = chaindb.get_index<generated_transaction_object, by_trx_id>();
       auto itr = idx.find( trxid );
       EOS_ASSERT( itr != idx.end(), unknown_transaction_exception, "unknown transaction" );
-      return push_scheduled_transaction( *itr, deadline, billed_cpu_time_us, explicit_billed_cpu_time );
+      return push_scheduled_transaction( *itr, deadline, billed );
    }
 
-    void call_approvebw_actions(signed_transaction& call_provide_trx, transaction_context& trx_context) {
-        call_provide_trx.expiration = self.pending_block_time() + fc::microseconds(999'999); // Round up to avoid appearing expired
-        call_provide_trx.set_reference_block( self.head_block_id() );
+// TODO: request bw, why provided?
+//    void call_approvebw_actions(signed_transaction& call_provide_trx, transaction_context& trx_context) {
+//        call_provide_trx.expiration = self.pending_block_time() + fc::microseconds(999'999); // Round up to avoid appearing expired
+//        call_provide_trx.set_reference_block( self.head_block_id() );
+//
+//        trx_context.init_for_implicit_trx();
+//        trx_context.exec();
+//        trx_context.validate_bw_usage();
+//
+//        auto restore = make_block_restore_point();
+//        fc::move_append( pending->_actions, move(trx_context.executed) );
+//        trx_context.squash();
+//        restore.cancel();
+//    }
+//
+//    bandwith_request_result get_provided_bandwith(const vector<action>& actions, fc::time_point deadline)  {
+//        signed_transaction call_provide_trx;
+//        transaction_context trx_context( self, call_provide_trx, call_provide_trx.id());
+//        for (const auto& action : actions) {
+//            if (action.account == config::system_account_name && action.name == config::request_bw_action) {
+//                const auto request_bw = action.data_as<requestbw>();
+//                call_provide_trx.actions.emplace_back(
+//                    vector<permission_level>{{request_bw.provider, config::active_name}},
+//                    request_bw.provider,
+//                    config::approve_bw_action,
+//                    fc::raw::pack(approvebw(request_bw.account)));
+//            }
+//        }
+//
+//        if (!call_provide_trx.actions.empty()) {
+//            trx_context.deadline = deadline;
+//            call_approvebw_actions(call_provide_trx, trx_context);
+//        }
+//
+//        return {trx_context.get_provided_bandwith(), trx_context.get_net_usage(), trx_context.get_cpu_usage()};
+//    }
 
-        trx_context.init_for_implicit_trx();
-        trx_context.exec();
-        trx_context.validate_bw_usage();
-
-        auto restore = make_block_restore_point();
-        fc::move_append( pending->_actions, move(trx_context.executed) );
-        trx_context.squash();
-        restore.cancel();
-    }
-
-    bandwith_request_result get_provided_bandwith(const vector<action>& actions, fc::time_point deadline)  {
-        signed_transaction call_provide_trx;
-        transaction_context trx_context( self, call_provide_trx, call_provide_trx.id());
-        for (const auto& action : actions) {
-            if (action.account == config::system_account_name && action.name == config::request_bw_action) {
-                const auto request_bw = action.data_as<requestbw>();
-                call_provide_trx.actions.emplace_back(
-                    vector<permission_level>{{request_bw.provider, config::active_name}},
-                    request_bw.provider,
-                    config::approve_bw_action,
-                    fc::raw::pack(approvebw(request_bw.account)));
-            }
-        }
-
-        if (!call_provide_trx.actions.empty()) {
-            trx_context.deadline = deadline;
-            call_approvebw_actions(call_provide_trx, trx_context);
-        }
-
-        return {trx_context.get_provided_bandwith(), trx_context.get_net_usage(), trx_context.get_cpu_usage()};
-    }
-
-   transaction_trace_ptr push_scheduled_transaction( const generated_transaction_object& gto, fc::time_point deadline, uint32_t billed_cpu_time_us, bool explicit_billed_cpu_time = false )
+   transaction_trace_ptr push_scheduled_transaction( const generated_transaction_object& gto, fc::time_point deadline, const billed_bw_usage& billed )
    try {
       maybe_session undo_session;
       if ( !self.skip_db_sessions() )
@@ -869,7 +896,8 @@ struct controller_impl {
          trace->block_time = self.pending_block_time();
          trace->producer_block_id = self.pending_producer_block_id();
          trace->scheduled = true;
-         trace->receipt = push_receipt( gtrx.trx_id, transaction_receipt::expired, billed_cpu_time_us, 0 ); // expire the transaction
+         trace->receipt = push_receipt( gtrx.trx_id, transaction_receipt::expired, billed.cpu_time_us, 0,
+             billed.ram_bytes, 0 ); // expire the transaction
          emit( self.accepted_transaction, trx );
          emit( self.applied_transaction, trace );
          undo_session.squash();
@@ -881,15 +909,19 @@ struct controller_impl {
       });
       in_trx_requiring_checks = true;
 
-      uint32_t cpu_time_to_bill_us = billed_cpu_time_us;
+      uint32_t cpu_time_to_bill_us = billed.cpu_time_us;
+      uint64_t ram_to_bill_bytes = billed.ram_bytes;
 
       transaction_context trx_context( self, dtrx, gtrx.trx_id );
       trx_context.leeway =  fc::microseconds(0); // avoid stealing cpu resource
       trx_context.deadline = deadline;
-      trx_context.explicit_billed_cpu_time = explicit_billed_cpu_time;
-      trx_context.billed_cpu_time_us = billed_cpu_time_us;
+      trx_context.explicit_billed_cpu_time = billed.explicit_usage;
+      trx_context.billed_cpu_time_us = billed.cpu_time_us;
+      trx_context.explicit_billed_ram_bytes = billed.explicit_usage;
+      trx_context.billed_ram_bytes = billed.ram_bytes;
       trace = trx_context.trace;
       try {
+         //TODO: request bw, why provided?
          //auto bandwith_request_result = get_provided_bandwith(dtrx.actions, deadline);
          //trx_context.set_provided_bandwith(std::move(bandwith_request_result.bandwith));
          //trx_context.add_cpu_usage(bandwith_request_result.used_cpu);
@@ -904,7 +936,9 @@ struct controller_impl {
          trace->receipt = push_receipt( gtrx.trx_id,
                                         transaction_receipt::executed,
                                         trx_context.billed_cpu_time_us,
-                                        trace->net_usage );
+                                        trace->net_usage,
+                                        trx_context.billed_ram_bytes,
+                                        trace->storage_bytes);
 
          fc::move_append( pending->_actions, move(trx_context.executed) );
 
@@ -919,6 +953,7 @@ struct controller_impl {
          return trace;
       } catch( const fc::exception& e ) {
          cpu_time_to_bill_us = trx_context.update_billed_cpu_time( fc::time_point::now() );
+         ram_to_bill_bytes = trx_context.update_billed_ram_bytes();
          trace->except = e;
          trace->except_ptr = std::current_exception();
          trace->elapsed = fc::time_point::now() - trx_context.start;
@@ -931,7 +966,7 @@ struct controller_impl {
          // Attempt error handling for the generated transaction.
 
          auto error_trace = apply_onerror( gtrx, deadline, trx_context.pseudo_start,
-                                           cpu_time_to_bill_us, billed_cpu_time_us, explicit_billed_cpu_time);
+                                           cpu_time_to_bill_us, ram_to_bill_bytes, billed);
          error_trace->failed_dtrx_trace = trace;
          trace = error_trace;
          if( !trace->except_ptr ) {
@@ -947,7 +982,7 @@ struct controller_impl {
 
       // subjectivity changes based on producing vs validating
       bool subjective  = false;
-      if (explicit_billed_cpu_time) {
+      if (billed.explicit_usage) {
          subjective = failure_is_subjective(*trace->except);
       } else {
          subjective = scheduled_failure_is_subjective(*trace->except);
@@ -956,19 +991,21 @@ struct controller_impl {
       if ( !subjective ) {
          // hard failure logic
 
-         if( !explicit_billed_cpu_time ) {
+         if( !billed.explicit_usage ) {
             auto& rl = self.get_mutable_resource_limits_manager();
-            rl.update_account_usage( trx_context.bill_to_accounts, block_timestamp_type(self.pending_block_time()).slot );
+            rl.update_account_usage( trx_context.bill_to_accounts, self.pending_block_slot() );
             int64_t account_cpu_limit = trx_context.get_min_cpu_limit();
 
             cpu_time_to_bill_us = static_cast<uint32_t>( std::min( std::min( static_cast<int64_t>(cpu_time_to_bill_us),
                                                                              account_cpu_limit                          ),
                                                                    trx_context.initial_objective_duration_limit.count()    ) );
+
+             // TODO: CyberWay #616 should be here correction of ram_to_bill_bytes?
          }
+         
+         resource_limits.add_transaction_usage( trx_context.bill_to_accounts, cpu_time_to_bill_us, 0, ram_to_bill_bytes, self.pending_block_time() ); // Should never fail
 
-         resource_limits.add_transaction_usage( trx_context.bill_to_accounts, cpu_time_to_bill_us, 0, self.pending_block_time() ); // Should never fail
-
-         trace->receipt = push_receipt(gtrx.trx_id, transaction_receipt::hard_fail, cpu_time_to_bill_us, 0);
+         trace->receipt = push_receipt(gtrx.trx_id, transaction_receipt::hard_fail, cpu_time_to_bill_us, 0, ram_to_bill_bytes, 0);
 
          emit( self.accepted_transaction, trx );
          emit( self.applied_transaction, trace );
@@ -988,13 +1025,16 @@ struct controller_impl {
     */
    template<typename T>
    const transaction_receipt& push_receipt( const T& trx, transaction_receipt_header::status_enum status,
-                                            uint64_t cpu_usage_us, uint64_t net_usage ) {
+                                            uint64_t cpu_usage_us, uint64_t net_usage,
+                                            uint64_t ram_bytes, int64_t storage_bytes ) {
       uint64_t net_usage_words = net_usage / 8;
       EOS_ASSERT( net_usage_words*8 == net_usage, transaction_exception, "net_usage is not divisible by 8" );
       pending->_pending_block_state->block->transactions.emplace_back( trx );
       transaction_receipt& r = pending->_pending_block_state->block->transactions.back();
       r.cpu_usage_us         = cpu_usage_us;
       r.net_usage_words      = net_usage_words;
+      r.ram_kbytes           = ram_bytes >> 10;
+      r.storage_kbytes       = storage_bytes >> 10;
       r.status               = status;
       return r;
    }
@@ -1006,15 +1046,14 @@ struct controller_impl {
     */
    transaction_trace_ptr push_transaction( const transaction_metadata_ptr& trx,
                                            fc::time_point deadline,
-                                           uint32_t billed_cpu_time_us,
-                                           bool explicit_billed_cpu_time = false )
+                                           const billed_bw_usage& billed )
    {
       EOS_ASSERT(deadline != fc::time_point(), transaction_exception, "deadline cannot be uninitialized");
 
       transaction_trace_ptr trace;
       try {
          auto start = fc::time_point::now();
-         if( !explicit_billed_cpu_time ) {
+         if( !billed.explicit_usage ) {
             fc::microseconds already_consumed_time( EOS_PERCENT(trx->sig_cpu_usage.count(), conf.sig_cpu_bill_pct) );
 
             if( start.time_since_epoch() <  already_consumed_time ) {
@@ -1030,10 +1069,13 @@ struct controller_impl {
             trx_context.leeway = *subjective_cpu_leeway;
          }
          trx_context.deadline = deadline;
-         trx_context.explicit_billed_cpu_time = explicit_billed_cpu_time;
-         trx_context.billed_cpu_time_us = billed_cpu_time_us;
+         trx_context.explicit_billed_cpu_time = billed.explicit_usage;
+         trx_context.billed_cpu_time_us = billed.cpu_time_us;
+         trx_context.explicit_billed_ram_bytes = billed.explicit_usage;
+         trx_context.billed_ram_bytes = billed.ram_bytes;
          trace = trx_context.trace;
          try {
+            //TODO: request bw, why provided?
             //auto bandwith_request_result = get_provided_bandwith(trn.actions, deadline);
 
             //trx_context.set_provided_bandwith(std::move(bandwith_request_result.bandwith));
@@ -1073,13 +1115,16 @@ struct controller_impl {
                transaction_receipt::status_enum s = (trx_context.delay == fc::seconds(0))
                                                     ? transaction_receipt::executed
                                                     : transaction_receipt::delayed;
-               trace->receipt = push_receipt(*trx->packed_trx, s, trx_context.billed_cpu_time_us, trace->net_usage);
+               trace->receipt = push_receipt(*trx->packed_trx, s, trx_context.billed_cpu_time_us, trace->net_usage,
+                   trx_context.billed_ram_bytes, trace->storage_bytes);
                pending->_pending_block_state->trxs.emplace_back(trx);
             } else {
                transaction_receipt_header r;
                r.status = transaction_receipt::executed;
                r.cpu_usage_us = trx_context.billed_cpu_time_us;
                r.net_usage_words = trace->net_usage / 8;
+               r.ram_kbytes = trx_context.billed_ram_bytes >> 10;
+               r.storage_kbytes = trace->storage_bytes >> 10;
                trace->receipt = r;
             }
 
@@ -1225,9 +1270,9 @@ struct controller_impl {
          for( const auto& receipt : b->transactions ) {
             auto num_pending_receipts = pending->_pending_block_state->block->transactions.size();
             if( receipt.trx.contains<packed_transaction>() ) {
-               trace = push_transaction( packed_transactions.at(packed_idx++), fc::time_point::maximum(), receipt.cpu_usage_us, true );
+               trace = push_transaction( packed_transactions.at(packed_idx++), fc::time_point::maximum(), {receipt} );
             } else if( receipt.trx.contains<transaction_id_type>() ) {
-               trace = push_scheduled_transaction( receipt.trx.get<transaction_id_type>(), fc::time_point::maximum(), receipt.cpu_usage_us, true );
+               trace = push_scheduled_transaction( receipt.trx.get<transaction_id_type>(), fc::time_point::maximum(), {receipt} );
             } else {
                EOS_ASSERT( false, block_validate_exception, "encountered unexpected receipt type" );
             }
@@ -1471,15 +1516,8 @@ struct controller_impl {
             ("np",pending->_pending_block_state->header.new_producers)
             );
       */
-
-      const auto& chain_config = self.get_global_properties().configuration;
-      uint32_t max_virtual_mult = 1000;
-      uint64_t CPU_TARGET = EOS_PERCENT(chain_config.max_block_cpu_usage, chain_config.target_block_cpu_usage_pct);
-      resource_limits.set_block_parameters(
-         { CPU_TARGET, chain_config.max_block_cpu_usage, config::block_cpu_usage_average_window_ms / config::block_interval_ms, max_virtual_mult, {99, 100}, {1000, 999}},
-         {EOS_PERCENT(chain_config.max_block_net_usage, chain_config.target_block_net_usage_pct), chain_config.max_block_net_usage, config::block_size_average_window_ms / config::block_interval_ms, max_virtual_mult, {99, 100}, {1000, 999}}
-      );
-      resource_limits.process_block_usage(pending->_pending_block_state->block_num);
+      resource_limits.set_limit_params(self.get_global_properties().configuration);
+      resource_limits.process_block_usage(self.pending_block_slot());
 
       set_action_merkle();
       set_trx_merkle();
@@ -1604,7 +1642,7 @@ struct controller_impl {
                   in_trx_requiring_checks = old_value;
                });
             in_trx_requiring_checks = true;
-            auto trace = push_transaction( onbtrx, fc::time_point::maximum(), self.get_global_properties().configuration.min_transaction_cpu_usage, true );
+            auto trace = push_transaction( onbtrx, fc::time_point::maximum(), { self.get_global_properties().configuration } );
 
             if(trace && trace->except) {
                 edump((*trace));
@@ -1709,17 +1747,17 @@ void controller::push_block( std::future<block_state_ptr>& block_state_future ) 
    my->push_block( block_state_future );
 }
 
-transaction_trace_ptr controller::push_transaction(const transaction_metadata_ptr& trx, fc::time_point deadline, uint32_t billed_cpu_time_us ) {
+transaction_trace_ptr controller::push_transaction(const transaction_metadata_ptr& trx, fc::time_point deadline, const billed_bw_usage& billed ) {
    validate_db_available_size();
    EOS_ASSERT( get_read_mode() != chain::db_read_mode::READ_ONLY, transaction_type_exception, "push transaction not allowed in read-only mode" );
    EOS_ASSERT( trx && !trx->implicit && !trx->scheduled, transaction_type_exception, "Implicit/Scheduled transaction not allowed" );
-   return my->push_transaction(trx, deadline, billed_cpu_time_us, billed_cpu_time_us > 0 );
+   return my->push_transaction(trx, deadline, billed );
 }
 
-transaction_trace_ptr controller::push_scheduled_transaction( const transaction_id_type& trxid, fc::time_point deadline, uint32_t billed_cpu_time_us )
+transaction_trace_ptr controller::push_scheduled_transaction( const transaction_id_type& trxid, fc::time_point deadline, const billed_bw_usage& billed )
 {
    validate_db_available_size();
-   return my->push_scheduled_transaction( trxid, deadline, billed_cpu_time_us, billed_cpu_time_us > 0 );
+   return my->push_scheduled_transaction( trxid, deadline, billed );
 }
 
 
@@ -1765,6 +1803,10 @@ block_state_ptr controller::pending_block_state()const {
 time_point controller::pending_block_time()const {
    EOS_ASSERT( my->pending, block_validate_exception, "no pending block" );
    return my->pending->_pending_block_state->header.timestamp;
+}
+uint32_t controller::pending_block_slot()const {
+   EOS_ASSERT( my->pending, block_validate_exception, "no pending block" );
+   return my->pending->_pending_block_state->header.timestamp.slot;
 }
 
 optional<block_id_type> controller::pending_producer_block_id()const {
@@ -2031,6 +2073,10 @@ vector<transaction_id_type> controller::get_scheduled_transactions() const {
 
    vector<transaction_id_type> result;
 
+   if( 1 == head_block_num() ) {
+      return result;
+   }
+
    static const size_t max_reserve = 1024;
    result.reserve(max_reserve);
 
@@ -2066,7 +2112,7 @@ bool controller::is_producing_block()const {
 }
 
 bool controller::is_ram_billing_in_notify_allowed()const {
-   return !is_producing_block() || my->conf.allow_ram_billing_in_notify;
+   return !is_producing_block(); // || my->conf.allow_ram_billing_in_notify;
 }
 
 void controller::validate_expiration( const transaction& trx )const { try {

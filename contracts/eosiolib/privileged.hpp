@@ -20,91 +20,44 @@ namespace eosio {
     */
    struct blockchain_parameters {
 
-      uint64_t max_block_net_usage;
+   uint32_t   base_per_transaction_net_usage;      ///< the base amount of net usage billed for a transaction to cover incidentals
+   uint32_t   net_usage_leeway;
+   uint32_t   context_free_discount_net_usage_num; ///< the numerator for the discount on net usage of context-free data
+   uint32_t   context_free_discount_net_usage_den; ///< the denominator for the discount on net usage of context-free data
 
-      uint32_t target_block_net_usage_pct;
+   uint32_t   min_transaction_cpu_usage;           ///< the minimum billable cpu usage (in microseconds) that the chain requires
 
-      uint32_t max_transaction_net_usage;
+   uint64_t   min_transaction_ram_usage;           ///< the minimum billable ram usage (in bytes) that the chain requires
 
-      /**
-       * The base amount of net usage billed for a transaction to cover incidentals
-       * @brief The base amount of net usage billed for a transaction to cover incidentals
-       */
-      uint32_t base_per_transaction_net_usage;
+   uint32_t   max_transaction_lifetime;            ///< the maximum number of seconds that an input transaction's expiration can be ahead of the time of the block in which it is first included
+   uint32_t   deferred_trx_expiration_window;      ///< the number of seconds after the time a deferred transaction can first execute until it expires
+   uint32_t   max_transaction_delay;               ///< the maximum number of seconds that can be imposed as a delay requirement by authorization checks
+   uint32_t   max_inline_action_size;              ///< maximum allowed size (in bytes) of an inline action
+   uint16_t   max_inline_action_depth;             ///< recursion depth limit on sending inline actions
+   uint16_t   max_authority_depth;                 ///< recursion depth limit for checking if an authority is satisfied
+   std::vector<uint64_t> target_virtual_limits;
+   std::vector<uint64_t> min_virtual_limits;
+   std::vector<uint64_t> max_virtual_limits;
+   std::vector<uint32_t> usage_windows;
+   
+   std::vector<uint16_t> virtual_limit_decrease_pct;
+   std::vector<uint16_t> virtual_limit_increase_pct;
 
-      uint32_t net_usage_leeway;
-
-      uint32_t context_free_discount_net_usage_num;
-
-      uint32_t context_free_discount_net_usage_den;
-
-      uint32_t max_block_cpu_usage;
-
-      uint32_t target_block_cpu_usage_pct;
-
-      uint32_t max_transaction_cpu_usage;
-
-      uint32_t min_transaction_cpu_usage;
-
-
-      /**
-       * The numerator for the discount on cpu usage for CFA's
-       *
-       * @brief The numerator for the discount on cpu usage for CFA's
-       */
-      uint64_t context_free_discount_cpu_usage_num;
-
-      /**
-       * The denominator for the discount on cpu usage for CFA's
-       *
-       * @brief The denominator for the discount on cpu usage for CFA's
-
-       */
-      uint64_t context_free_discount_cpu_usage_den;
-
-      /**
-       * Maximum lifetime of a transacton
-       *
-       * @brief Maximum lifetime of a transacton
-       */
-      uint32_t max_transaction_lifetime;
-
-      uint32_t deferred_trx_expiration_window;
-
-      uint32_t max_transaction_delay;
-
-      /**
-       * Maximum size of inline action
-       *
-       * @brief Maximum size of inline action
-       */
-      uint32_t max_inline_action_size;
-
-      /**
-       * Maximum depth of inline action
-       *
-       * @brief Maximum depth of inline action
-       */
-      uint16_t max_inline_action_depth;
-
-      /**
-       * Maximum authority depth
-       *
-       * @brief Maximum authority depth
-       */
-      uint16_t max_authority_depth;
+   std::vector<uint32_t> account_usage_windows;
 
 
       EOSLIB_SERIALIZE( blockchain_parameters,
-                        (max_block_net_usage)(target_block_net_usage_pct)
-                        (max_transaction_net_usage)(base_per_transaction_net_usage)(net_usage_leeway)
-                        (context_free_discount_net_usage_num)(context_free_discount_net_usage_den)
+           (base_per_transaction_net_usage)(net_usage_leeway)
+           (context_free_discount_net_usage_num)(context_free_discount_net_usage_den)
 
-                        (max_block_cpu_usage)(target_block_cpu_usage_pct)
-                        (max_transaction_cpu_usage)(min_transaction_cpu_usage)
+           (min_transaction_cpu_usage)
+           (min_transaction_ram_usage)
 
-                        (max_transaction_lifetime)(deferred_trx_expiration_window)(max_transaction_delay)
-                        (max_inline_action_size)(max_inline_action_depth)(max_authority_depth)
+           (max_transaction_lifetime)(deferred_trx_expiration_window)(max_transaction_delay)
+           (max_inline_action_size)(max_inline_action_depth)(max_authority_depth)
+           
+           (target_virtual_limits)(min_virtual_limits)(max_virtual_limits)(usage_windows)
+           (virtual_limit_decrease_pct)(virtual_limit_increase_pct)(account_usage_windows)
       )
    };
 

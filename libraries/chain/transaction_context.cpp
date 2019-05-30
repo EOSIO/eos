@@ -8,6 +8,7 @@
 #include <eosio/chain/global_property_object.hpp>
 
 #include <cyberway/chaindb/controller.hpp>
+#include <cyberway/chain/cyberway_contract_types.hpp>
 
 #pragma push_macro("N")
 #undef N
@@ -86,25 +87,26 @@ namespace bacc = boost::accumulators;
    volatile sig_atomic_t deadline_timer_verify::hit;
    static deadline_timer_verify deadline_timer_verification;
 
-   void provided_bandwith::confirm(account_name provider) {
-       verify_limits_not_confirmed();
-       confirmed_ = true;
-       provider_ = provider;
-   }
-
-   void provided_bandwith::set_net_limit(int64_t net_limit) {
-       verify_limits_not_confirmed();
-       this->net_limit_ = net_limit;
-   }
-
-   void provided_bandwith::set_cpu_limit(int64_t cpu_limit) {
-       verify_limits_not_confirmed();
-       this->cpu_limit_ = cpu_limit;
-   }
-
-   void provided_bandwith::verify_limits_not_confirmed() {
-        EOS_ASSERT(!confirmed_,  bandwith_already_confirmed, "Bandwith has been already confirmed. No changes could be done");
-   }
+// TODO: request bw, why provided?
+//   void provided_bandwith::confirm(account_name provider) {
+//       verify_limits_not_confirmed();
+//       confirmed_ = true;
+//       provider_ = provider;
+//   }
+//
+//   void provided_bandwith::set_net_limit(int64_t net_limit) {
+//       verify_limits_not_confirmed();
+//       this->net_limit_ = net_limit;
+//   }
+//
+//   void provided_bandwith::set_cpu_limit(int64_t cpu_limit) {
+//       verify_limits_not_confirmed();
+//       this->cpu_limit_ = cpu_limit;
+//   }
+//
+//   void provided_bandwith::verify_limits_not_confirmed() {
+//        EOS_ASSERT(!confirmed_,  bandwith_already_confirmed, "Bandwith has been already confirmed. No changes could be done");
+//   }
 
    deadline_timer::deadline_timer() {
       if(initialized)
@@ -180,7 +182,9 @@ namespace bacc = boost::accumulators;
    ,chaindb_undo_session()
    ,trace(std::make_shared<transaction_trace>())
    ,start(s)
+   ,billed_ram_bytes(trace->ram_bytes)
    ,net_usage(trace->net_usage)
+   ,storage_bytes(trace->storage_bytes)
    ,pseudo_start(s)
    {
       if (!c.skip_db_sessions()) {
@@ -200,24 +204,24 @@ namespace bacc = boost::accumulators;
    {
       EOS_ASSERT( !is_initialized, transaction_exception, "cannot initialize twice" );
       const static int64_t large_number_no_overflow = std::numeric_limits<int64_t>::max()/2;
-      
+
       const auto& cfg = control.get_global_properties().configuration;
       auto& rl = control.get_mutable_resource_limits_manager();
 
-      net_limit = rl.get_block_net_limit();
-      objective_duration_limit = fc::microseconds( rl.get_block_cpu_limit() );
+      net_limit = rl.get_block_limit(resource_limits::NET, cfg);
+      objective_duration_limit = fc::microseconds( rl.get_block_limit(resource_limits::CPU, cfg) );
 
       _deadline = start + objective_duration_limit;
 
       // Possibly lower net_limit to the maximum net usage a transaction is allowed to be billed
-      if( cfg.max_transaction_net_usage <= net_limit ) {
-         net_limit = cfg.max_transaction_net_usage;
+      if( config::max_transaction_usage[resource_limits::NET] <= net_limit ) {
+         net_limit = config::max_transaction_usage[resource_limits::NET];
          net_limit_due_to_block = false;
       }
 
       // Possibly lower objective_duration_limit to the maximum cpu usage a transaction is allowed to be billed
-      if( cfg.max_transaction_cpu_usage <= objective_duration_limit.count() ) {
-         objective_duration_limit = fc::microseconds(cfg.max_transaction_cpu_usage);
+      if( config::max_transaction_usage[resource_limits::CPU] <= objective_duration_limit.count() ) {
+         objective_duration_limit = fc::microseconds(config::max_transaction_usage[resource_limits::CPU]);
          billing_timer_exception_code = tx_cpu_usage_exceeded::code_value;
          _deadline = start + objective_duration_limit;
       }
@@ -227,6 +231,16 @@ namespace bacc = boost::accumulators;
       if( trx_specified_net_usage_limit > 0 && trx_specified_net_usage_limit <= net_limit ) {
          net_limit = trx_specified_net_usage_limit;
          net_limit_due_to_block = false;
+      }
+
+      // Possibly lower RAM limit to optional limit set in transaction header
+      if( trx.max_ram_kbytes > 0 ) {
+         ram_bytes_limit = uint64_t(trx.max_ram_kbytes) << 10;
+      }
+
+      // Possibly lower STORAGE limit to optional limit set in transaction header
+      if( trx.max_storage_kbytes > 0 ) {
+         storage_bytes_limit = uint64_t(trx.max_storage_kbytes) << 10;
       }
 
       // Possibly lower objective_duration_limit to optional limit set in transaction header
@@ -244,36 +258,34 @@ namespace bacc = boost::accumulators;
       if( billed_cpu_time_us > 0 ) // could also call on explicit_billed_cpu_time but it would be redundant
          validate_cpu_usage_to_bill( billed_cpu_time_us, false ); // Fail early if the amount to be billed is too high
 
-      // Record accounts to be billed for network and CPU usage
-      flat_set<account_name> provided_accounts;
-      
+      using cyberway::chain::providebw;
+
+      storage_providers.reserve(trx.actions.size());
       for( const auto& act : trx.actions ) {
-         if (act.account == config::system_account_name && act.name == config::provide_bw_action) {
-            auto args = act.data_as<providebw>();
-            provided_accounts.insert(args.account);
-         } else if (act.account == config::system_account_name && act.name == N(provideram)) {
-            add_ram_provider(act.data_as<provideram>());
+         if (act.account == providebw::get_account() && act.name == providebw::get_name()) {
+            add_storage_provider(act.data_as<providebw>());
          }
          for( const auto& auth : act.authorization ) {
-             const auto provided_bw_it = provided_bandwith_.find(auth.actor);
-             if(provided_bw_it != provided_bandwith_.end()) {
-                 bill_to_accounts.insert( provided_bw_it->second.get_provider() );
-             } else {
+// TODO: requestbw
+//             const auto provided_bw_it = provided_bandwith_.find(auth.actor);
+//             if(provided_bw_it != provided_bandwith_.end()) {
+//                 bill_to_accounts.insert( provided_bw_it->second.get_provider() );
+//             } else {
                  bill_to_accounts.insert( auth.actor );
-             }
+//             }
          }
       }
 
-      for( const auto& acc : provided_accounts ) {
-         bill_to_accounts.erase(acc);
+      for( const auto& bw : storage_providers ) {
+         bill_to_accounts.erase(bw.first);
       }
-      
-      available_resources.init(rl, bill_to_accounts, control.pending_block_time());
+
+      available_resources.init(explicit_billed_cpu_time, rl, bill_to_accounts, control.pending_block_time());
 
       eager_net_limit = net_limit;
-      
+
       //TODO:? net/cpu leeway
-      
+
       billing_timer_duration_limit = _deadline - start;
 
       // Check if deadline is limited by caller-set deadline (only change deadline if billed_cpu_time_us is not set)
@@ -299,18 +311,24 @@ namespace bacc = boost::accumulators;
       is_initialized = true;
    }
 
-   void transaction_context::add_ram_provider(const provideram& provide_ram) {
-       for (const auto& contract : provide_ram.contracts) {
-           add_ram_provider(contract, provide_ram.account, provide_ram.provider);
-       }
-   }
+   void transaction_context::add_storage_provider(const cyberway::chain::providebw& bw) {
+       EOS_ASSERT(bw.provider != bw.account, bw_provider_error,
+           "Fail to set the provider ${provider} for the account ${account}, because it is the same account",
+           ("account", bw.account)("provider", bw.provider));
+       EOS_ASSERT(!bw.provider.empty(), bw_provider_error,
+           "Fail to set a empty provider for the account ${account}",
+           ("account", bw.account));
+       EOS_ASSERT(!bw.account.empty(), bw_provider_error,
+           "Fail to set the provider ${provider} for an empty account",
+           ("provider", bw.provider));
 
-   void transaction_context::add_ram_provider(account_name contract, account_name user, account_name provider)    {
-       const auto provider_it = ram_providers_.find({contract, user});
+       const auto itr = storage_providers.find(bw.account);
+       EOS_ASSERT(itr == storage_providers.end(), bw_provider_error,
+           "Fail to set the provider ${new_provider} for the account ${account}, "
+           "because it already has the provider ${provider}",
+           ("account", bw.account)("provider", itr->second)("new_provider", bw.provider));
 
-       EOS_ASSERT(provider_it == ram_providers_.end(), ram_provider_error, "Provider has been already setted up");
-
-       ram_providers_[{contract, user}] = provider;
+       storage_providers.emplace(bw.account, bw.provider);
    }
 
    void transaction_context::init_for_implicit_trx( uint64_t initial_net_usage  )
@@ -386,10 +404,12 @@ namespace bacc = boost::accumulators;
    }
 
    void transaction_context::finalize() {
-        validate_bw_usage();
-
-        control.get_mutable_resource_limits_manager().add_transaction_usage( bill_to_accounts, static_cast<uint64_t>(billed_cpu_time_us), net_usage,
-                                control.pending_block_time()); // Should never fail
+      validate_bw_usage();
+      control.get_mutable_resource_limits_manager().add_transaction_usage( bill_to_accounts,
+         static_cast<uint64_t>(billed_cpu_time_us),
+         net_usage,
+         billed_ram_bytes,
+         control.pending_block_time()); // can fail due to billed_ram_bytes
    }
 
    void transaction_context::validate_bw_usage() {
@@ -406,10 +426,16 @@ namespace bacc = boost::accumulators;
        int64_t block_time = control.pending_block_time().sec_since_epoch();
        auto& rl = control.get_mutable_resource_limits_manager();
 
+       update_billed_ram_bytes();
+
+       check_ram_usage();
+
+       check_storage_usage();
+
        net_usage = ((net_usage + 7)/8)*8; // Round up to nearest multiple of word size (8 bytes)
 
        eager_net_limit = net_limit;
-       
+
        check_net_usage();
 
        auto now = fc::time_point::now();
@@ -448,8 +474,20 @@ namespace bacc = boost::accumulators;
       }
    }
 
+   void transaction_context::check_ram_usage()const {
+      EOS_ASSERT(control.skip_trx_checks() || explicit_billed_ram_bytes || !ram_bytes_limit || billed_ram_bytes < ram_bytes_limit,
+         tx_ram_usage_exceeded, "transaction ram usage is too high: ${ram_usage} > ${ram_limit}",
+         ("ram_usage", billed_ram_bytes)("ram_limit", ram_bytes_limit) );
+   }
+
+   void transaction_context::check_storage_usage()const {
+      EOS_ASSERT(control.skip_trx_checks() || !storage_bytes_limit || storage_bytes < storage_bytes_limit,
+         tx_storage_usage_exceeded, "transaction storage usage is too high: ${storage_usage} > ${storage_limit}",
+         ("storage_usage", storage_bytes)("storage_limit", storage_bytes_limit) );
+   }
+
    void transaction_context::checktime()const {
-       
+
       if(BOOST_LIKELY(_deadline_timer.expired == false))
          return;
       auto now = fc::time_point::now();
@@ -481,7 +519,7 @@ namespace bacc = boost::accumulators;
 
       auto now = fc::time_point::now();
       billed_time = now - pseudo_start;
-      
+
       deadline_exception_code = deadline_exception::code_value; // Other timeout exceptions cannot be thrown while billable timer is paused.
       pseudo_start = fc::time_point();
       _deadline_timer.stop();
@@ -528,14 +566,19 @@ namespace bacc = boost::accumulators;
       }
    }
 
-   void transaction_context::add_ram_usage( account_name account, int64_t ram_delta ) {
-      if (available_resources.update_ram_usage(account, ram_delta)) {
-         available_resources.check_cpu_usage((fc::time_point::now() - pseudo_start).count());
+   void transaction_context::add_storage_usage( const storage_payer_info& storage, const bool is_authorized ) {
+      storage_bytes += storage.delta;
+      check_storage_usage();
+
+      auto now = fc::time_point::now();
+      if (available_resources.update_storage_usage(storage)) {
+         available_resources.check_cpu_usage((now - pseudo_start).count());
       }
+
       auto& rl = control.get_mutable_resource_limits_manager();
-      rl.add_pending_ram_usage( account, ram_delta );
+      rl.add_storage_usage(storage.payer, storage.delta, control.pending_block_slot(), is_authorized);
    }
-   
+
    int64_t transaction_context::get_billed_cpu_time(fc::time_point now)const {
       if (explicit_billed_cpu_time){
          return billed_cpu_time_us;
@@ -549,48 +592,62 @@ namespace bacc = boost::accumulators;
       return static_cast<uint32_t>(billed_cpu_time_us);
    }
 
-   uint64_t transaction_context::get_provided_net_limit(account_name account) const {
-       const auto provided_bw_it = provided_bandwith_.find(account);
+   uint64_t transaction_context::update_billed_ram_bytes() {
+      if( !explicit_billed_ram_bytes ) {
+         const auto& cfg = control.get_global_properties().configuration;
+         billed_ram_bytes = chaindb_undo_session->calc_ram_bytes();
+         billed_ram_bytes = ((billed_ram_bytes + 1023) >> 10) << 10; // Round up to nearest kbytes
+         billed_ram_bytes = std::max(billed_ram_bytes, cfg.min_transaction_ram_usage);
 
-       if (provided_bw_it == provided_bandwith_.end()) {
-           return 0;
-       }
-
-       return provided_bw_it->second.get_net_limit();
+         check_ram_usage();
+         explicit_billed_ram_bytes = true;
+      }
+      return billed_ram_bytes;
    }
 
-   uint64_t transaction_context::get_provided_cpu_limit(account_name account) const {
-       const auto provided_bw_it = provided_bandwith_.find(account);
-
-       if (provided_bw_it == provided_bandwith_.end()) {
-           return 0;
-       }
-
-       return provided_bw_it->second.get_cpu_limit();
-   }
-
-   bool transaction_context::is_provided_bandwith_confirmed(account_name account) const {
-       const auto provided_bw_it = provided_bandwith_.find(account);
-
-       if (provided_bw_it == provided_bandwith_.end()) {
-           return 0;
-       }
-
-       return provided_bw_it->second.is_confirmed();
-   }
-
-   void transaction_context::set_provided_bandwith(std::map<account_name, provided_bandwith>&& bandwith) {
-       provided_bandwith_ = std::move(bandwith);
-   }
-
-   void transaction_context::set_provided_bandwith_limits(account_name account, uint64_t net_limit, uint64_t cpu_limit) {
-        provided_bandwith_[account].set_net_limit(net_limit);
-        provided_bandwith_[account].set_cpu_limit(cpu_limit);
-   }
-
-   void transaction_context::confirm_provided_bandwith_limits(account_name account, account_name provider) {
-        provided_bandwith_[account].confirm(provider);
-   }
+// TODO: requested bw, why provided ?
+//   uint64_t transaction_context::get_provided_net_limit(account_name account) const {
+//       const auto provided_bw_it = provided_bandwith_.find(account);
+//
+//       if (provided_bw_it == provided_bandwith_.end()) {
+//           return 0;
+//       }
+//
+//       return provided_bw_it->second.get_net_limit();
+//   }
+//
+//   uint64_t transaction_context::get_provided_cpu_limit(account_name account) const {
+//       const auto provided_bw_it = provided_bandwith_.find(account);
+//
+//       if (provided_bw_it == provided_bandwith_.end()) {
+//           return 0;
+//       }
+//
+//       return provided_bw_it->second.get_cpu_limit();
+//   }
+//
+//   bool transaction_context::is_provided_bandwith_confirmed(account_name account) const {
+//       const auto provided_bw_it = provided_bandwith_.find(account);
+//
+//       if (provided_bw_it == provided_bandwith_.end()) {
+//           return 0;
+//       }
+//
+//       return provided_bw_it->second.is_confirmed();
+//   }
+//
+//   void transaction_context::set_provided_bandwith(std::map<account_name, provided_bandwith>&& bandwith) {
+//       provided_bandwith_ = std::move(bandwith);
+//   }
+//
+//   void transaction_context::set_provided_bandwith_limits(account_name account, uint64_t net_limit, uint64_t cpu_limit) {
+//        provided_bandwith_[account].set_net_limit(net_limit);
+//        provided_bandwith_[account].set_cpu_limit(cpu_limit);
+//   }
+//
+//   void transaction_context::confirm_provided_bandwith_limits(account_name account, account_name provider) {
+//        provided_bandwith_[account].confirm(provider);
+//   }
 
    void transaction_context::dispatch_action( action_trace& trace, const action& a, account_name receiver, bool context_free, uint32_t recurse_depth ) {
       apply_context  acontext( control, *this, a, recurse_depth );
@@ -614,9 +671,8 @@ namespace bacc = boost::accumulators;
       uint32_t trx_size = 0;
       auto& chaindb = control.chaindb();
       auto trx_table = chaindb.get_table<generated_transaction_object>();
-      auto res = trx_table.emplace( {*this, first_auth}, [&]( auto& gto ) {
+      auto res = trx_table.emplace( get_storage_payer(first_auth), [&]( auto& gto ) {
         gto.trx_id      = id;
-        gto.payer       = first_auth;
         gto.sender      = account_name(); /// delayed transactions have no sender
         gto.sender_id   = transaction_id_to_sender_id( gto.trx_id );
         gto.published   = control.pending_block_time();
@@ -670,94 +726,104 @@ namespace bacc = boost::accumulators;
       EOS_ASSERT( one_auth, tx_no_auths, "transaction must have at least one authorization" );
    }
 
-   account_name transaction_context::get_ram_provider(account_name running_contract, account_name user) const {
-       const auto contract_provider = ram_providers_.find({running_contract, user});
+   const account_name& transaction_context::get_storage_provider(const account_name& owner) const {
+      if (owner.empty()) {
+          return owner;
+      }
 
-       return contract_provider == ram_providers_.end() ? user : contract_provider->second;
+      auto itr = storage_providers.find(owner);
+      if (storage_providers.end() == itr) {
+          return owner;
+      }
+      return itr->second;
    }
-   
-    void transaction_context::available_resources_t::init(resource_limits_manager& rl, const flat_set<account_name>& accounts, fc::time_point now) {
-        auto pricelist = rl.get_pricelist();
-        cpu_price = pricelist.at(resource_limits::cpu_code);
-        net_price = pricelist.at(resource_limits::net_code);
-        ram_price = pricelist.at(resource_limits::ram_code);
-        rl.update_account_usage(accounts, block_timestamp_type(now).slot);
-        min_cpu = UINT64_MAX;
+
+   storage_payer_info transaction_context::get_storage_payer(const account_name& owner) {
+      return {*this, owner, get_storage_provider(owner)};
+   }
+
+    void transaction_context::available_resources_t::init(bool ecpu_time, resource_limits_manager& rl, const flat_set<account_name>& accounts, fc::time_point pending_block_time) {
+        explicit_cpu_time = ecpu_time;
+        pricelist = rl.get_pricelist();
+        auto& cpu_price = pricelist[resource_limits::CPU];
+        rl.update_account_usage(accounts, block_timestamp_type(pending_block_time).slot);
+        min_cpu_limit = UINT64_MAX;
         for (const auto& a : accounts) {
-            auto balance = rl.get_account_balance(now.sec_since_epoch(), a, pricelist);
-            auto& lim = limits[a];
-            lim.ram = balance.ram;
-            if (cpu_price.numerator && balance.stake < UINT64_MAX) {
-                lim.cpu = safe_prop(balance.stake, cpu_price.denominator, cpu_price.numerator);
+            auto balance = rl.get_account_balance(pending_block_time, a, pricelist, true);
+            auto& lim = cpu_limits[a];
+            lim = UINT64_MAX;
+            if (cpu_price.numerator && balance < UINT64_MAX) {
+                lim = safe_prop(balance, cpu_price.denominator, cpu_price.numerator);
             }
-            min_cpu = std::min(lim.cpu, min_cpu);
+            min_cpu_limit = std::min(lim, min_cpu_limit);
         }
     }
 
-    bool transaction_context::available_resources_t::update_ram_usage(account_name account, int64_t delta) {
-        if (!delta) {
+    bool transaction_context::available_resources_t::update_storage_usage(const storage_payer_info& storage) {
+        if (explicit_cpu_time || !storage.delta) {
             return false;
         }
-        auto lim_itr = limits.find(account);
-        if (lim_itr == limits.end()) {
-            return false; 
+        auto lim_itr = cpu_limits.find(storage.payer);
+        if (lim_itr == cpu_limits.end()) {
+            return false;
         }
         auto& lim = lim_itr->second;
-        uint64_t delta_abs = std::abs(delta);
-                
-        auto cost = safe_prop(delta_abs, ram_price.numerator, ram_price.denominator);
+        uint64_t delta_abs = std::abs(storage.delta);
+        
+        auto& storage_price = pricelist[resource_limits::STORAGE];
+        auto& cpu_price     = pricelist[resource_limits::CPU];
+
+        auto cost = safe_prop(delta_abs, storage_price.numerator, storage_price.denominator);
         auto cpu = cost ? (cpu_price.numerator ? safe_prop(cost, cpu_price.denominator, cpu_price.numerator) : UINT64_MAX) : 0;
 
-        bool need_to_update_min = (lim.cpu == min_cpu) && (delta < 0);
-        if (delta > 0) {
-            EOS_ASSERT(lim.ram >= delta_abs, ram_usage_exceeded, 
-                "account ${a} has insufficient staked tokens: balance.ram = ${b}, delta = ${d}", 
-                ("a", account)("b", lim.ram)("d", delta));
-            EOS_ASSERT(lim.cpu >= cpu, resource_exhausted_exception, 
-                "account ${a} has insufficient staked tokens: unspent cpu = ${b}, cost = ${c}, cpu equivalent = ${e}", 
-                ("a", account)("b", lim.cpu)("c", cost)("e", cpu));
-            lim.ram -= delta_abs;
-            lim.cpu -= cpu;
+        bool need_to_update_min = (lim == min_cpu_limit) && (storage.delta < 0);
+        if (storage.delta > 0) {
+            EOS_ASSERT(lim >= cpu, resource_exhausted_exception,
+                "account ${a} has insufficient staked tokens: unspent cpu = ${b}, cost = ${c}, cpu equivalent = ${e}",
+                ("a", storage.payer)("b", lim)("c", cost)("e", cpu));
+            lim -= cpu;
         }
         else {
-            lim.ram = (UINT64_MAX - lim.ram) > delta_abs ? lim.ram + delta_abs : UINT64_MAX;
-            lim.cpu = (UINT64_MAX - lim.cpu) > cpu       ? lim.cpu + cpu       : UINT64_MAX;
+            lim = (UINT64_MAX - lim) > cpu ? lim + cpu : UINT64_MAX;
         }
-        auto prev_min_cpu = min_cpu;
+        auto prev_min_cpu = min_cpu_limit;
         if (need_to_update_min) {
-            min_cpu = UINT64_MAX;
-            for (const auto& b : limits) {
-                min_cpu = std::min(min_cpu, b.second.cpu);
+            min_cpu_limit = UINT64_MAX;
+            for (const auto& b : cpu_limits) {
+                min_cpu_limit = std::min(min_cpu_limit, b.second);
             }
         }
         else {
-            min_cpu = std::min(lim.cpu, min_cpu);
+            min_cpu_limit = std::min(lim, min_cpu_limit);
         }
-        return min_cpu < prev_min_cpu;
+        return min_cpu_limit < prev_min_cpu;
     }
-    
+
     void transaction_context::available_resources_t::add_net_usage(int64_t delta) {
         EOS_ASSERT(delta >= 0, transaction_exception, "SYSTEM: available_resources_t::add_net_usage, usage_delta < 0");
-        if (!delta || !cpu_price.numerator) {
+        auto& cpu_price = pricelist[resource_limits::CPU];
+        if (explicit_cpu_time || !delta || !cpu_price.numerator) {
             return;
         }
+        
+        auto& net_price = pricelist[resource_limits::NET];
         
         auto cost = safe_prop(static_cast<uint64_t>(delta), net_price.numerator, net_price.denominator);
         auto cpu = safe_prop(cost, cpu_price.denominator, cpu_price.numerator);
 
-        EOS_ASSERT(min_cpu >= cpu, resource_exhausted_exception, 
-            "transaction costs too much; unspent cpu = ${b}, cost cpu equivalent = ${e}", ("b", min_cpu)("e", cpu));
-        min_cpu = UINT64_MAX;
-        for (auto& b : limits) {
-            EOS_ASSERT(b.second.cpu >= cpu, transaction_exception, "SYSTEM: incorrect cpu limit");
-            b.second.cpu -= cpu;
-            min_cpu = std::min(min_cpu, b.second.cpu);
+        EOS_ASSERT(min_cpu_limit >= cpu, resource_exhausted_exception,
+            "transaction costs too much; unspent cpu = ${b}, cost cpu equivalent = ${e}", ("b", min_cpu_limit)("e", cpu));
+        min_cpu_limit = UINT64_MAX;
+        for (auto& b : cpu_limits) {
+            EOS_ASSERT(b.second >= cpu, transaction_exception, "SYSTEM: incorrect cpu limit");
+            b.second -= cpu;
+            min_cpu_limit = std::min(min_cpu_limit, b.second);
         }
     }
-    
+
     void transaction_context::available_resources_t::check_cpu_usage(int64_t usage)const {
-        EOS_ASSERT(min_cpu >= usage, resource_exhausted_exception, 
-            "transaction costs too much; unspent cpu = ${b}, usage = ${u}", ("b", min_cpu)("u", usage));
+        EOS_ASSERT(explicit_cpu_time || min_cpu_limit >= usage, resource_exhausted_exception,
+            "transaction costs too much; unspent cpu = ${b}, usage = ${u}", ("b", min_cpu_limit)("u", usage));
     }
 
     int64_t transaction_context::get_min_cpu_limit()const {
