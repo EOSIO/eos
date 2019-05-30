@@ -1161,13 +1161,22 @@ CLI::callback_t obsoleted_option_host_port = [](CLI::results_t) {
    return false;
 };
 
-chain::action create_set_proxy_level_action(const string& account, const string& symbol, uint8_t proxy_level) {
+chain::action create_fee_action(const vector<chain::permission_level>& account_permissions, const std::string& account, const std::string& symbol, int16_t fee) {
+    EOS_ASSERT(fee < config::percent_100, action_validate_exception, "The fee param must be 0 < fee < ${max_percents}", ("max_percents", config::percent_100));
+
+    const auto set_fee_var = fc::mutable_variant_object()("account", account)
+                                                         ("token_code", chain::symbol::from_string(symbol).to_symbol_code())
+                                                         ("fee", fee);
+
+    return create_action(account_permissions, N(cyber.stake), N(setproxyfee), set_fee_var);
+}
+
+chain::action create_set_proxy_level_action(const vector<chain::permission_level>& account_permissions, const string& account, const string& symbol, uint8_t proxy_level) {
     fc::variant act_payload = fc::mutable_variant_object()
                       ("account", account)
                       ("token_code", chain::symbol::from_string(symbol).to_symbol_code())
                       ("level", proxy_level);
 
-    const auto account_permissions = get_account_permissions(tx_permission, {account, config::active_name});
     return create_action(account_permissions, N(cyber.stake), N(setproxylvl), act_payload);
 }
 
@@ -1191,8 +1200,10 @@ struct register_producer_subcommand {
          const auto proxy_level = proxy_status_info["proxylevel"].as_uint64();
          std::vector<chain::action> register_producer_actions;
 
+         const auto account_permissions = get_account_permissions(tx_permission, {account, config::active_name});
+
          if (proxy_level != 0) {
-             register_producer_actions.push_back(create_set_proxy_level_action(account, symbol, 0));
+             register_producer_actions.push_back(create_set_proxy_level_action(account_permissions, account, symbol, 0));
          }
 
          try {
@@ -1200,8 +1211,6 @@ struct register_producer_subcommand {
             const auto setkey_var = fc::mutable_variant_object()("account", account)
                                                                 ("token_code", chain::symbol::from_string(symbol).to_symbol_code())
                                                                 ("signing_key", producer_key);
-
-            const auto account_permissions = get_account_permissions(tx_permission, {account, config::active_name});
 
             register_producer_actions.push_back(create_action(account_permissions, N(cyber.stake), N(setkey), setkey_var));
             send_actions(std::move(register_producer_actions));
@@ -1238,7 +1247,10 @@ struct unregister_producer_subcommand {
 
             const auto proxylevels_limits = call(get_proxylevel_limits_func, fc::mutable_variant_object("symbol", symbol)).get_array();
 
-            send_actions({create_set_proxy_level_action(account, symbol, proxylevels_limits.size())});
+            send_actions({create_set_proxy_level_action(get_account_permissions(tx_permission, {account, config::active_name}),
+                                                        account,
+                                                        symbol,
+                                                        proxylevels_limits.size())});
         });
     }
 };
@@ -1738,7 +1750,10 @@ struct setproxylvl_subcommand {
           const auto proxy_status = call(get_proxy_status_func, fc::mutable_variant_object("account", account)("symbol", symbol));
 
           if (proxy_status["proxylevel"].as_uint64() != level) {
-              send_actions({create_set_proxy_level_action(account, symbol, level)});;
+              send_actions({create_set_proxy_level_action(get_account_permissions(tx_permission, {account, config::active_name}),
+                                                          account,
+                                                          symbol,
+                                                          level)});
           } else {
               std::cout << localized("Warning: Proxy level value not changed") << std::endl;
           }
@@ -1751,12 +1766,14 @@ struct regproxy_subcommand {
    string proxy;
    string symbol = chain::symbol(CORE_SYMBOL).to_string();
    int8_t level = -1;
+   int16_t fee = -1;
 
    regproxy_subcommand(CLI::App* actionRoot) {
       auto register_proxy = actionRoot->add_subcommand("regproxy", localized("Register an account as a proxy (for voting)"));
       register_proxy->add_option("proxy", proxy, localized("A proxy account to register"))->required();
       register_proxy->add_option("--symbol", symbol, localized("A token symbol used by producers"), true);
       register_proxy->add_option("--level", level, localized("A proxy level. Must be 0 < level < MAX_LEVEL. Default MAX_LEVEL - 1"), true);
+      register_proxy->add_option("--fee", fee, localized("A part of the fee proxies get for a block producing. An ineteger value between 0 and 10000 (10000 means 100,00%)"), true);
       add_standard_transaction_options(register_proxy, "proxy@active");
 
       register_proxy->set_callback([this] {
@@ -1773,14 +1790,23 @@ struct regproxy_subcommand {
 
          EOS_ASSERT(level > 0, action_validate_exception, "Proxy level must be > 0" );
 
+         const auto account_permissions = get_account_permissions(tx_permission, {proxy, config::active_name});
+         std::vector<action> register_proxy_actions;
+         if (fee >= 0) {
+             register_proxy_actions.push_back(create_fee_action(account_permissions, proxy, symbol, fee));
+         }
+
          const auto proxy_status = call(get_proxy_status_func, fc::mutable_variant_object("account", proxy)("symbol", symbol));
 
-         if (proxy_status["proxylevel"].as_uint64() != level) {
-             send_actions({create_set_proxy_level_action(proxy, symbol, level)});
+         if (proxy_status["proxylevel"].as_uint64() != level && fee < 0) {
+             register_proxy_actions.push_back(create_set_proxy_level_action(account_permissions, proxy, symbol, level));
          } else {
              std::cout << localized("Warning: Proxy level value not changed") << std::endl;
          }
 
+         if (!register_proxy_actions.empty()) {
+             send_actions(std::move(register_proxy_actions));
+         }
       });
    }
 };
@@ -1806,7 +1832,10 @@ struct unregproxy_subcommand {
          const auto proxy_status = call(get_proxy_status_func, fc::mutable_variant_object("account", proxy)("symbol", symbol));
 
          if (proxy_status["proxylevel"].as_uint64() != limits_array.size() ) {
-             send_actions({create_set_proxy_level_action(proxy, symbol, limits_array.size())});
+             send_actions({create_set_proxy_level_action(get_account_permissions(tx_permission, {proxy, config::active_name}),
+                                                         proxy,
+                                                         symbol,
+                                                         limits_array.size())});
          }
       });
    }
