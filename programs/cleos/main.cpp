@@ -3300,20 +3300,21 @@ int main( int argc, char** argv ) {
    string str_private_key;
    string str_chain_id;
    string str_private_key_file;
-   string str_keosd_pub_key;
+   string str_public_key;
    bool push_trx = false;
 
    auto sign = app.add_subcommand("sign", localized("Sign a transaction"), false);
    sign->add_option("transaction", trx_json_to_sign,
                                  localized("The JSON string or filename defining the transaction to sign"), true)->required();
    sign->add_option("-k,--private-key", str_private_key, localized("The private key that will be used to sign the transaction"));
-   sign->add_option("-w,--wallet", str_keosd_pub_key, localized("Ask keosd to sign with the given public key"));
+   sign->add_option("--public-key", str_public_key, localized(string("Ask ") + string(key_store_executable_name +
+                                                                 "to sign with the corresponding private key of the given public key"));
    sign->add_option("-c,--chain-id", str_chain_id, localized("The chain id that will be used to sign the transaction"));
-   sign->add_flag( "-p,--push-transaction", push_trx, localized("Push transaction after signing"));
+   sign->add_flag("-p,--push-transaction", push_trx, localized("Push transaction after signing"));
 
    sign->set_callback([&] {
 
-      EOSC_ASSERT( str_private_key.empty() || str_keosd_pub_key.empty(), "ERROR: Either -k/--private-key or -w/--wallet or none of them can be set" );
+      EOSC_ASSERT( str_private_key.empty() || str_public_key.empty(), "ERROR: Either -k/--private-key or --public-key or none of them can be set" );
 
       signed_transaction trx = json_from_file_or_string(trx_json_to_sign).as<signed_transaction>();
 
@@ -3327,11 +3328,11 @@ int main( int argc, char** argv ) {
          chain_id = chain_id_type(str_chain_id);
       }
 
-      if( str_keosd_pub_key.size() > 0 ) {
+      if( str_public_key.size() > 0 ) {
          public_key_type pub_key;
          try {
-            pub_key = public_key_type(str_keosd_pub_key);
-         } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid public key: ${public_key}", ("public_key", str_keosd_pub_key))
+            pub_key = public_key_type(str_public_key);
+         } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid public key: ${public_key}", ("public_key", str_public_key))
          fc::variant keys_var(flat_set<public_key_type>{ pub_key });
          sign_transaction(trx, keys_var, *chain_id);
       } else {
