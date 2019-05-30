@@ -1890,9 +1890,9 @@ namespace eosio {
 
    // thread safe
    void dispatch_manager::bcast_block(const block_state_ptr& bs) {
-      fc_dlog( logger, "bcast block ${b}", ("b", bs->block_num) );
-
       if( my_impl->sync_master->syncing_with_peer() ) return;
+
+      fc_dlog( logger, "bcast block ${b}", ("b", bs->block_num) );
       bool have_connection = false;
       for_each_block_connection( [&have_connection]( auto& cp ) {
          peer_dlog( cp, "socket_is_open ${s}, connecting ${c}, syncing ${ss}",
@@ -1930,10 +1930,9 @@ namespace eosio {
    }
 
    void dispatch_manager::bcast_notice( const block_id_type& id ) {
-      fc_dlog( logger, "bcast notice ${b}", ("b", block_header::num_from_id( id )) );
-
       if( my_impl->sync_master->syncing_with_peer() ) return;
 
+      fc_dlog( logger, "bcast notice ${b}", ("b", block_header::num_from_id( id )) );
       notice_message note;
       note.known_blocks.mode = normal;
       note.known_blocks.pending = 0;
