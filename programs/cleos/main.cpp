@@ -1184,6 +1184,7 @@ struct register_producer_subcommand {
    string account;
    string producer_key_str;
    string not_used;
+   int64_t min_own_stake = -1;
 
    const static std::string symbol;
 
@@ -1191,6 +1192,7 @@ struct register_producer_subcommand {
       auto register_producer = actionRoot->add_subcommand("regproducer", localized("Register a new producer"));
       register_producer->add_option("account", account, localized("The account to register as a producer"))->required();
       register_producer->add_option("producer_key", producer_key_str, localized("The producer's public key"))->required();
+      register_producer->add_option("--min-own-stake", min_own_stake, localized("A min value the producer guarantees to stake"), true);
       register_producer->add_option("url", not_used, localized("Deprecated. Not used."), true);
       register_producer->add_option("location", not_used, localized("Deprecated. Not used."), true);
       add_standard_transaction_options(register_producer, "account@active");
@@ -1211,6 +1213,14 @@ struct register_producer_subcommand {
             const auto setkey_var = fc::mutable_variant_object()("account", account)
                                                                 ("token_code", chain::symbol::from_string(symbol).to_symbol_code())
                                                                 ("signing_key", producer_key);
+
+            if (min_own_stake > 0) {
+                const auto min_own_stake_var = fc::mutable_variant_object()("account", account)
+                                                                           ("token_code", chain::symbol::from_string(symbol).to_symbol_code())
+                                                                           ("min_own_staked", min_own_stake);
+
+                register_producer_actions.push_back(create_action(account_permissions, N(cyber.stake), N(setminstaked), min_own_stake_var));
+            }
 
             register_producer_actions.push_back(create_action(account_permissions, N(cyber.stake), N(setkey), setkey_var));
             send_actions(std::move(register_producer_actions));
