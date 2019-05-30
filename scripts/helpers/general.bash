@@ -12,6 +12,8 @@ if [[ $- == *i* ]]; then # Disable if the shell isn't interactive (avoids: tput:
   export COLOR_WHITE=$(tput setaf 7)
 fi
 
+# Execution helpers; necessary for BATS testing and log output in buildkite
+
 function execute() {
   $VERBOSE && echo "--- Executing: $@"
   $DRYRUN || "$@"
