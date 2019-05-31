@@ -167,14 +167,14 @@ struct pending_state {
       return _block_stage.get<completed_block>()._block_state->block->transactions;
    }
 
-   const vector<transaction_metadata_ptr>& get_trx_metas()const {
+   vector<transaction_metadata_ptr> extract_trx_metas()const {
       if( _block_stage.contains<building_block>() )
-         return _block_stage.get<building_block>()._pending_trx_metas;
+         return std::move( _block_stage.get<building_block>()._pending_trx_metas );
 
       if( _block_stage.contains<assembled_block>() )
-         return _block_stage.get<assembled_block>()._trx_metas;
+         return std::move( _block_stage.get<assembled_block>()._trx_metas );
 
-      return _block_stage.get<completed_block>()._block_state->trxs;
+      return std::move( _block_stage.get<completed_block>()._block_state->trxs );
    }
 
    bool is_protocol_feature_activated( const digest_type& feature_digest )const {
@@ -1995,15 +1995,16 @@ struct controller_impl {
       return unapplied_branch;
    } /// push_block
 
-   void abort_block() {
+   vector<transaction_metadata_ptr> abort_block() {
+      vector<transaction_metadata_ptr> applied_trxs;
       if( pending ) {
          if ( read_mode == db_read_mode::SPECULATIVE ) {
-            for( const auto& t : pending->get_trx_metas() )
-               unapplied_transactions[t->signed_id()] = t;
+            applied_trxs = pending->extract_trx_metas();
          }
          pending.reset();
          protocol_features.popped_blocks_to( head->block_num );
       }
+      return applied_trxs;
    }
 
    checksum256_type calculate_action_merkle() {
@@ -2510,8 +2511,8 @@ void controller::commit_block() {
    my->commit_block(true);
 }
 
-void controller::abort_block() {
-   my->abort_block();
+vector<transaction_metadata_ptr> controller::abort_block() {
+   return my->abort_block();
 }
 
 boost::asio::io_context& controller::get_thread_pool() {

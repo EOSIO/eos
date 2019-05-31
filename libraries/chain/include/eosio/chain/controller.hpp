@@ -127,7 +127,10 @@ namespace eosio { namespace chain {
                            uint16_t confirm_block_count,
                            const vector<digest_type>& new_protocol_feature_activations );
 
-         void abort_block();
+         /**
+          * @return transactions applied in aborted block
+          */
+         vector<transaction_metadata_ptr> abort_block();
 
          /**
           *  These transactions were previously pushed by have since been unapplied, recalling push_transaction
