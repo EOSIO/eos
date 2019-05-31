@@ -112,7 +112,7 @@ namespace eosio { namespace testing {
          void                 produce_blocks_for_n_rounds(const uint32_t num_of_rounds = 1);
          // Produce minimal number of blocks as possible to spend the given time without having any producer become inactive
          void                 produce_min_num_of_blocks_to_spend_time_wo_inactive_prod(const fc::microseconds target_elapsed_time = fc::microseconds());
-         signed_block_ptr     push_block(signed_block_ptr b);
+         void                 push_block(signed_block_ptr b);
 
          /**
           * These transaction IDs represent transactions available in the head chain state as scheduled

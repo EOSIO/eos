@@ -223,7 +223,7 @@ namespace eosio { namespace testing {
       });
    }
 
-   signed_block_ptr base_tester::push_block(signed_block_ptr b) {
+   void base_tester::push_block(signed_block_ptr b) {
       auto bs = control->create_block_state_future(b);
       control->abort_block();
       control->push_block(bs);
@@ -232,9 +232,7 @@ namespace eosio { namespace testing {
       if (itr == last_produced_block.end() || block_header::num_from_id(b->id()) > block_header::num_from_id(itr->second)) {
          last_produced_block[b->producer] = b->id();
       }
-
-      return b;
-   }
+}
 
    signed_block_ptr base_tester::_produce_block( fc::microseconds skip_time, bool skip_pending_trxs) {
       auto head = control->head_block_state();
