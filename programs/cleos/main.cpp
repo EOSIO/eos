@@ -1174,14 +1174,14 @@ chain::action create_set_proxy_level_action(const string& account, const string&
 struct register_producer_subcommand {
    string account;
    string producer_key_str;
-   string symbol;
    string not_used;
+
+   const static std::string symbol;
 
    register_producer_subcommand(CLI::App* actionRoot) {
       auto register_producer = actionRoot->add_subcommand("regproducer", localized("Register a new producer"));
       register_producer->add_option("account", account, localized("The account to register as a producer"))->required();
       register_producer->add_option("producer_key", producer_key_str, localized("The producer's public key"))->required();
-      register_producer->add_option("symbol", symbol, localized("A token symbol of an asset used by the registering producer"))->required();
       register_producer->add_option("url", not_used, localized("Deprecated. Not used."), true);
       register_producer->add_option("location", not_used, localized("Deprecated. Not used."), true);
       add_standard_transaction_options(register_producer, "account@active");
@@ -1209,6 +1209,9 @@ struct register_producer_subcommand {
       });
    }
 };
+
+const std::string register_producer_subcommand::symbol = chain::symbol(CORE_SYMBOL).to_string();
+
 
 struct create_account_subcommand {
    string creator;
