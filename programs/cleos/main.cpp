@@ -1384,50 +1384,9 @@ struct approve_producer_subcommand {
    eosio::name producer_name;
 
    approve_producer_subcommand(CLI::App* actionRoot) {
-      auto approve_producer = actionRoot->add_subcommand("approve", localized("Add one producer to list of voted producers"));
-      approve_producer->add_option("voter", voter, localized("The voting account"))->required();
-      approve_producer->add_option("producer", producer_name, localized("The account to vote for"))->required();
-      add_standard_transaction_options(approve_producer, "voter@active");
-
+      auto approve_producer = actionRoot->add_subcommand("approve", localized("Deprecated. Not used"));
       approve_producer->set_callback([this] {
-            auto result = call(get_table_func, fc::mutable_variant_object("json", true)
-                               ("code", name(config::system_account_name).to_string())
-                               ("scope", name(config::system_account_name).to_string())
-                               ("table", "voters")
-                               ("table_key", "owner")
-                               ("lower_bound", voter.value)
-                               ("upper_bound", voter.value + 1)
-                               // Less than ideal upper_bound usage preserved so cleos can still work with old buggy nodeos versions
-                               // Change to voter.value when cleos no longer needs to support nodeos versions older than 1.5.0
-                               ("limit", 1)
-            );
-            auto res = result.as<eosio::get_table_rows_result>();
-            // Condition in if statement below can simply be res.rows.empty() when cleos no longer needs to support nodeos versions older than 1.5.0
-            // Although since this subcommand will actually change the voter's vote, it is probably better to just keep this check to protect
-            //  against future potential chain_plugin bugs.
-            if( res.rows.empty() || res.rows[0].get_object()["owner"].as_string() != name(voter).to_string() ) {
-               std::cerr << "Voter info not found for account " << voter << std::endl;
-               return;
-            }
-            EOS_ASSERT( 1 == res.rows.size(), multiple_voter_info, "More than one voter_info for account" );
-            auto prod_vars = res.rows[0]["producers"].get_array();
-            vector<eosio::name> prods;
-            for ( auto& x : prod_vars ) {
-               prods.push_back( name(x.as_string()) );
-            }
-            prods.push_back( producer_name );
-            std::sort( prods.begin(), prods.end() );
-            auto it = std::unique( prods.begin(), prods.end() );
-            if (it != prods.end() ) {
-               std::cerr << "Producer \"" << producer_name << "\" is already on the list." << std::endl;
-               return;
-            }
-            fc::variant act_payload = fc::mutable_variant_object()
-               ("voter", voter)
-               ("proxy", "")
-               ("producers", prods);
-            auto accountPermissions = get_account_permissions(tx_permission, {voter,config::active_name});
-            send_actions({create_action(accountPermissions, config::system_account_name, N(voteproducer), act_payload)});
+          EOS_THROW(action_not_found_exception, "Operation approve is not supported anymore");
       });
    }
 };
@@ -1437,49 +1396,10 @@ struct unapprove_producer_subcommand {
    eosio::name producer_name;
 
    unapprove_producer_subcommand(CLI::App* actionRoot) {
-      auto approve_producer = actionRoot->add_subcommand("unapprove", localized("Remove one producer from list of voted producers"));
-      approve_producer->add_option("voter", voter, localized("The voting account"))->required();
-      approve_producer->add_option("producer", producer_name, localized("The account to remove from voted producers"))->required();
-      add_standard_transaction_options(approve_producer, "voter@active");
+      auto approve_producer = actionRoot->add_subcommand("unapprove", localized("Deprecated. Not used"));
 
       approve_producer->set_callback([this] {
-            auto result = call(get_table_func, fc::mutable_variant_object("json", true)
-                               ("code", name(config::system_account_name).to_string())
-                               ("scope", name(config::system_account_name).to_string())
-                               ("table", "voters")
-                               ("table_key", "owner")
-                               ("lower_bound", voter.value)
-                               ("upper_bound", voter.value + 1)
-                               // Less than ideal upper_bound usage preserved so cleos can still work with old buggy nodeos versions
-                               // Change to voter.value when cleos no longer needs to support nodeos versions older than 1.5.0
-                               ("limit", 1)
-            );
-            auto res = result.as<eosio::get_table_rows_result>();
-            // Condition in if statement below can simply be res.rows.empty() when cleos no longer needs to support nodeos versions older than 1.5.0
-            // Although since this subcommand will actually change the voter's vote, it is probably better to just keep this check to protect
-            //  against future potential chain_plugin bugs.
-            if( res.rows.empty() || res.rows[0].get_object()["owner"].as_string() != name(voter).to_string() ) {
-               std::cerr << "Voter info not found for account " << voter << std::endl;
-               return;
-            }
-            EOS_ASSERT( 1 == res.rows.size(), multiple_voter_info, "More than one voter_info for account" );
-            auto prod_vars = res.rows[0]["producers"].get_array();
-            vector<eosio::name> prods;
-            for ( auto& x : prod_vars ) {
-               prods.push_back( name(x.as_string()) );
-            }
-            auto it = std::remove( prods.begin(), prods.end(), producer_name );
-            if (it == prods.end() ) {
-               std::cerr << "Cannot remove: producer \"" << producer_name << "\" is not on the list." << std::endl;
-               return;
-            }
-            prods.erase( it, prods.end() ); //should always delete only one element
-            fc::variant act_payload = fc::mutable_variant_object()
-               ("voter", voter)
-               ("proxy", "")
-               ("producers", prods);
-            auto accountPermissions = get_account_permissions(tx_permission, {voter,config::active_name});
-            send_actions({create_action(accountPermissions, config::system_account_name, N(voteproducer), act_payload)});
+          EOS_THROW(action_not_found_exception, "Operation unapprove is not supported anymore");
       });
    }
 };
