@@ -1767,12 +1767,12 @@ struct regproxy_subcommand {
 
 struct unregproxy_subcommand {
    string proxy;
-   string symbol;
+   string symbol = chain::symbol(CORE_SYMBOL).to_string();
 
    unregproxy_subcommand(CLI::App* actionRoot) {
       auto unregister_proxy = actionRoot->add_subcommand("unregproxy", localized("Unregister an account as a proxy (for voting)"));
       unregister_proxy->add_option("proxy", proxy, localized("The proxy account to unregister"))->required();
-      unregister_proxy->add_option("symbol", symbol, localized("A token symbol used by producers"))->required();
+      unregister_proxy->add_option("--symbol", symbol, localized("A token symbol used by producers"), true);
       add_standard_transaction_options(unregister_proxy, "proxy@active");
 
       unregister_proxy->set_callback([this] {
