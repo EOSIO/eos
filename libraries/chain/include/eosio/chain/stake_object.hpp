@@ -52,14 +52,15 @@ class stake_candidate_object : public cyberway::chaindb::object<stake_candidate_
     int64_t priority;
     public_key_type signing_key;
     bool enabled;
-    void set_votes(int64_t arg, int64_t total_votes) {
+    void set_votes(int64_t arg, int64_t cur_supply) {
+        EOS_ASSERT(arg >= 0, transaction_exception, "SYSTEM: votes can't be nagative");
         votes = arg;
         if (!votes) {
             priority = std::numeric_limits<int64_t>::max();
         }
         else {
             static constexpr int128_t int64_max = std::numeric_limits<int64_t>::max();
-            auto priority128 = std::min(static_cast<int128_t>(total_votes) * config::priority_precision / votes, int64_max);
+            auto priority128 = std::min(static_cast<int128_t>(cur_supply) * config::priority_precision / votes, int64_max);
             priority128 += latest_pick.sec_since_epoch() * config::priority_precision;
             priority = static_cast<int64_t>(std::min(priority128, int64_max));
         }

@@ -1,5 +1,9 @@
 #include <eosio/chain/stake.hpp>
+#include <eosio/chain/asset.hpp>
 #include <eosio/chain/int_arithmetic.hpp>
+#include <cyberway/chaindb/controller.hpp>
+#include <cyberway/chaindb/names.hpp>
+
 namespace eosio { namespace chain { namespace stake {
 using namespace int_arithmetic;
 
@@ -10,12 +14,18 @@ void set_votes(cyberway::chaindb::chaindb_controller& db, const stake_stat_objec
     }
     db.get_table<stake_stat_object>().modify(*stat, [&](auto& s) { s.total_votes += votes_changes_sum; });
     
+    auto stat_itr = db.begin({config::token_account_name, token_code, N(stat), cyberway::chaindb::names::primary_index});
+    EOS_ASSERT(stat_itr.pk != cyberway::chaindb::primary_key::End, transaction_exception, "SYSTEM: token doesn't exist");
+    const auto stat_obj = db.value_at_cursor({config::token_account_name, stat_itr.cursor});
+    asset supply;
+    fc::from_variant(stat_obj["supply"], supply);
+    
     auto candidates_table = db.get_table<stake_candidate_object>();
     auto candidates_idx = candidates_table.get_index<stake_candidate_object::by_key>();
     for (const auto& v : votes_changes) {
         auto cand = candidates_idx.find(agent_key(token_code, v.first));
         EOS_ASSERT(cand != candidates_idx.end(), transaction_exception, "SYSTEM: candidate doesn't exist");
-        candidates_idx.modify(*cand, [&](auto& a) { a.set_votes(a.votes + v.second, stat->total_votes); });
+        candidates_idx.modify(*cand, [&](auto& a) { a.set_votes(a.votes + v.second, supply.get_amount()); });
     }
 }
 
