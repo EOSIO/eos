@@ -122,6 +122,22 @@ add_test(NAME nodeos_startup_catchup_lr_test COMMAND tests/nodeos_startup_catchu
 set_tests_properties(nodeos_startup_catchup_lr_test PROPERTIES TIMEOUT 3000)
 set_property(TEST nodeos_startup_catchup_lr_test PROPERTY LABELS long_running_tests)
 
+
+# parallelizable tests (Group 1)
+add_test(NAME nodeos_forked_chain_lr_test_parallel COMMAND tests/nodeos_forked_chain_test.py -v --wallet-port 9910 --cluster-id 1 --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST nodeos_forked_chain_lr_test_parallel PROPERTY LABELS parallel_tests_group_1)
+
+add_test(NAME nodeos_irreversible_mode_lr_test_parallel COMMAND tests/nodeos_irreversible_mode_test.py -v --cluster-id 2 --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST nodeos_irreversible_mode_lr_test_parallel PROPERTY LABELS parallel_tests_group_1)
+
+add_test(NAME nodeos_startup_catchup_lr_test_parallel COMMAND tests/nodeos_startup_catchup.py -v --cluster-id 3 --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST nodeos_startup_catchup_lr_test_parallel PROPERTY LABELS parallel_tests_group_1)
+
+add_test(NAME nodeos_voting_lr_test_parallel COMMAND tests/nodeos_voting_test.py -v --wallet-port 9911 --cluster-id 4 --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST nodeos_voting_lr_test_parallel PROPERTY LABELS parallel_tests_group_1)
+
+
+
 set(ALTERNATE_VERSION_LABELS_FILE "${CMAKE_BINARY_DIR}/tests/multiversion_paths.conf")
 
 add_test(NAME nodeos_multiple_version_protocol_feature_mv_test COMMAND tests/nodeos_multiple_version_protocol_feature_test.py

@@ -19,7 +19,7 @@ class WalletMgr(object):
 
     # pylint: disable=too-many-arguments
     # walletd [True|False] True=Launch wallet(keosd) process; False=Manage launch process externally.
-    def __init__(self, walletd, nodeosPort=8888, nodeosHost="localhost", port=9899, host="localhost"):
+    def __init__(self, walletd, nodeosPort=8888, nodeosHost="localhost", port=9899, host="localhost", clusterID=0):
         self.walletd=walletd
         self.nodeosPort=nodeosPort
         self.nodeosHost=nodeosHost
@@ -27,6 +27,14 @@ class WalletMgr(object):
         self.host=host
         self.wallets={}
         self.__walletPid=None
+        if clusterID != 0:
+            WalletMgr.__walletLogOutFile = "test_keosd_cluster" + str(clusterID) + "_out.log"
+            WalletMgr.__walletLogErrFile="test_keosd_cluster" + str(clusterID) + "_err.log"
+            WalletMgr.__walletDataDir="test_wallet_" + str(clusterID) 
+            if self.port == 9899:
+                self.port += clusterID     
+            if self.nodeosPort == 8888:
+                self.nodeosPort += clusterID * 2000
 
     def getWalletEndpointArgs(self):
         if not self.walletd or not self.isLaunched():
@@ -95,7 +103,7 @@ class WalletMgr(object):
             psOut=Utils.checkOutput(pgrepCmd.split())
             if Utils.Debug: Utils.Print("Launched %s. {%s}" % (Utils.EosWalletName, psOut))
         except subprocess.CalledProcessError as ex:
-            Utils.errorExit("Failed to launch the wallet manager")
+            Utils.errorExit("Failed to launch the wallet manager. failed cmd is %s" % (pgrepCmd))
 
         return True
 
@@ -291,9 +299,8 @@ class WalletMgr(object):
 
         if allInstances:
             cmd="pkill -9 %s" % (Utils.EosWalletName)
-            if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
+            Utils.Print("Killing all wallet instances, cmd: %s" % (cmd))
             subprocess.call(cmd.split())
-
 
     @staticmethod
     def cleanup():

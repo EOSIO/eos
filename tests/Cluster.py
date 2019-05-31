@@ -46,11 +46,12 @@ class Cluster(object):
     __BiosPort=8788
     __LauncherCmdArr=[]
     __bootlog="eosio-ignition-wd/bootlog.txt"
+    __BootScript="bios_boot.sh"
 
     # pylint: disable=too-many-arguments
     # walletd [True|False] Is keosd running. If not load the wallet plugin
     def __init__(self, walletd=False, localCluster=True, host="localhost", port=8888, walletHost="localhost", walletPort=9899, enableMongo=False
-                 , mongoHost="localhost", mongoPort=27017, mongoDb="EOStest", defproduceraPrvtKey=None, defproducerbPrvtKey=None, staging=False):
+                 , mongoHost="localhost", mongoPort=27017, mongoDb="EOStest", defproduceraPrvtKey=None, defproducerbPrvtKey=None, staging=False, clusterID=0):
         """Cluster container.
         walletd [True|False] Is wallet keosd running. If not load the wallet plugin
         localCluster [True|False] Is cluster local to host.
@@ -65,6 +66,12 @@ class Cluster(object):
         defproducerbPrvtKey: Defproducerb account private key
         """
         self.accounts={}
+        self.clusterID=clusterID
+        if clusterID != 0:
+            port += clusterID * 2000
+            Cluster.__BiosPort = 8788 + clusterID * 2000
+            Cluster.__BootScript = "bios_boot_cluster" + str(clusterID) + ".sh"
+
         self.nodes={}
         self.unstartedNodes=[]
         self.localCluster=localCluster
@@ -213,6 +220,9 @@ class Cluster(object):
         cmd="%s -p %s -n %s -d %s -i %s -f %s --unstarted-nodes %s" % (
             Utils.EosLauncherPath, pnodes, totalNodes, delay, datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3],
             producerFlag, unstartedNodes)
+        if self.clusterID != 0:
+            cmd += " --cluster-id %d" % (self.clusterID)
+            cmd += " --script %s" % (Cluster.__BootScript)
         cmdArr=cmd.split()
         if self.staging:
             cmdArr.append("--nogen")
@@ -944,7 +954,7 @@ class Cluster(object):
         Utils.Print("Starting cluster bootstrap.")
         assert PFSetupPolicy.isValid(pfSetupPolicy)
 
-        cmd="bash bios_boot.sh"
+        cmd="bash " + Util.__BootScript
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         env = {
             "BIOS_CONTRACT_PATH": "unittests/contracts/old_versions/v1.6.0-rc3/eosio.bios",
@@ -966,7 +976,7 @@ class Cluster(object):
         with open(Cluster.__bootlog) as bootFile:
             for line in bootFile:
                 if p.search(line):
-                    Utils.Print("ERROR: bios_boot.sh script resulted in errors. See %s" % (Cluster.__bootlog))
+                    Utils.Print("ERROR: %s script resulted in errors. See %s" % (Util.__BootScript, Cluster.__bootlog))
                     Utils.Print(line)
                     return None
 
@@ -1450,9 +1460,12 @@ class Cluster(object):
     def killall(self, silent=True, allInstances=False):
         """Kill cluster nodeos instances. allInstances will kill all nodeos instances running on the system."""
         cmd="%s -k 9" % (Utils.EosLauncherPath)
+        if self.clusterID != 0:
+            cmd += " --cluster-id %d" % (self.clusterID)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         if 0 != subprocess.call(cmd.split(), stdout=Utils.FNull):
             if not silent: Utils.Print("Launcher failed to shut down eos cluster.")
+            
 
         if allInstances:
             # ocassionally the launcher cannot kill the eos server
@@ -1512,10 +1525,22 @@ class Cluster(object):
         node=self.nodes[0]
         return node.waitForNextBlock(timeout)
 
+    def getDataDir(self):
+        if self.clusterID == 0:
+            return Utils.DataDir
+        else:
+            return Utils.DataDir + "/cluster%d" % (self.clusterID)
+
+    def getConfigDir(self):
+        if self.clusterID == 0:
+            return Utils.ConfigDir
+        else:
+            return Utils.ConfigDir + "/cluster%d" % (self.clusterID)
+
     def cleanup(self):
-        for f in glob.glob(Utils.DataDir + "node_*"):
+        for f in glob.glob(self.getDataDir()+ "node_*"):
             shutil.rmtree(f)
-        for f in glob.glob(Utils.ConfigDir + "node_*"):
+        for f in glob.glob(self.getConfigDir() + "node_*"):
             shutil.rmtree(f)
 
         for f in self.filesToCleanup:
@@ -1695,8 +1720,8 @@ class Cluster(object):
                 if Utils.Debug: Utils.Print("context=%s" % (context))
                 ret=Utils.compare(commonBlockLogs[0], commonBlockLogs[i], context)
                 if ret is not None:
-                    blockLogDir1=Utils.DataDir + Utils.nodeExtensionToName(commonBlockNameExtensions[0]) + "/blocks/"
-                    blockLogDir2=Utils.DataDir + Utils.nodeExtensionToName(commonBlockNameExtensions[i]) + "/blocks/"
+                    blockLogDir1=self.getDataDir() + Utils.nodeExtensionToName(commonBlockNameExtensions[0]) + "/blocks/"
+                    blockLogDir2=self.getDataDir() + Utils.nodeExtensionToName(commonBlockNameExtensions[i]) + "/blocks/"
                     Utils.Print(Utils.FileDivider)
                     Utils.Print("Block log from %s:\n%s" % (blockLogDir1, json.dumps(commonBlockLogs[0], indent=1)))
                     Utils.Print(Utils.FileDivider)

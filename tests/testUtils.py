@@ -49,6 +49,8 @@ addEnum(BlockLogAction, "return_blocks")
 
 ###########################################################################################
 class Utils:
+    
+    clusterID=0
     Debug=False
     FNull = open(os.devnull, 'w')
 
@@ -116,7 +118,10 @@ class Utils:
 
     @staticmethod
     def getNodeDataDir(ext, relativeDir=None, trailingSlash=False):
-        path=os.path.join(Utils.DataDir, Utils.nodeExtensionToName(ext))
+        if Utils.clusterID:
+            path=os.path.join(Utils.DataDir + "cluster" + str(Utils.clusterID) + "/", Utils.nodeExtensionToName(ext))
+        else:
+            path=os.path.join(Utils.DataDir, Utils.nodeExtensionToName(ext))
         if relativeDir is not None:
            path=os.path.join(path, relativeDir)
         if trailingSlash:
@@ -125,7 +130,10 @@ class Utils:
 
     @staticmethod
     def getNodeConfigDir(ext, relativeDir=None, trailingSlash=False):
-        path=os.path.join(Utils.ConfigDir, Utils.nodeExtensionToName(ext))
+        if Utils.clusterID:
+            path=os.path.join(Utils.ConfigDir + "cluster" + str(Utils.clusterID) + "/", Utils.nodeExtensionToName(ext))
+        else:
+            path=os.path.join(Utils.ConfigDir, Utils.nodeExtensionToName(ext))
         if relativeDir is not None:
            path=os.path.join(path, relativeDir)
         if trailingSlash:

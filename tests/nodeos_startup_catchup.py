@@ -37,11 +37,12 @@ appArgs=AppArgs()
 extraArgs = appArgs.add(flag="--catchup-count", type=int, help="How many catchup-nodes to launch", default=10)
 extraArgs = appArgs.add(flag="--txn-gen-nodes", type=int, help="How many transaction generator nodes", default=2)
 args = TestHelper.parse_args({"--prod-count","--dump-error-details","--keep-logs","-v","--leave-running","--clean-run",
-                              "-p","--wallet-port"}, applicationSpecificArgs=appArgs)
+                              "-p","--wallet-port", "--cluster-id"}, applicationSpecificArgs=appArgs)
 Utils.Debug=args.v
 pnodes=args.p if args.p > 0 else 1
 startedNonProdNodes = args.txn_gen_nodes if args.txn_gen_nodes >= 2 else 2
-cluster=Cluster(walletd=True)
+Utils.clusterID=args.cluster_id
+cluster=Cluster(walletd=True, clusterID=Utils.clusterID)
 dumpErrorDetails=args.dump_error_details
 keepLogs=args.keep_logs
 dontKill=args.leave_running
@@ -51,7 +52,7 @@ walletPort=args.wallet_port
 catchupCount=args.catchup_count if args.catchup_count > 0 else 1
 totalNodes=startedNonProdNodes+pnodes+catchupCount
 
-walletMgr=WalletMgr(True, port=walletPort)
+walletMgr=WalletMgr(True, port=walletPort, clusterID=Utils.clusterID)
 testSuccessful=False
 killEosInstances=not dontKill
 killWallet=not dontKill

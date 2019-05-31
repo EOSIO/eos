@@ -114,14 +114,15 @@ def getMinHeadAndLib(prodNodes):
 
 
 args = TestHelper.parse_args({"--prod-count","--dump-error-details","--keep-logs","-v","--leave-running","--clean-run",
-                              "--wallet-port"})
+                              "--wallet-port", "--cluster-id"})
 Utils.Debug=args.v
 totalProducerNodes=2
 totalNonProducerNodes=1
 totalNodes=totalProducerNodes+totalNonProducerNodes
 maxActiveProducers=21
 totalProducers=maxActiveProducers
-cluster=Cluster(walletd=True)
+Utils.clusterID=args.cluster_id
+cluster=Cluster(walletd=True, clusterID=Utils.clusterID)
 dumpErrorDetails=args.dump_error_details
 keepLogs=args.keep_logs
 dontKill=args.leave_running
@@ -129,7 +130,7 @@ prodCount=args.prod_count
 killAll=args.clean_run
 walletPort=args.wallet_port
 
-walletMgr=WalletMgr(True, port=walletPort)
+walletMgr=WalletMgr(True, port=walletPort, clusterID=Utils.clusterID)
 testSuccessful=False
 killEosInstances=not dontKill
 killWallet=not dontKill

@@ -120,8 +120,9 @@ class eosd_def;
 
 class host_def {
 public:
-  host_def ()
-    : genesis("genesis.json"),
+  host_def (uint32_t cluster_id_ = 0)
+    : cluster_id(cluster_id_),
+      genesis("genesis.json"),
       ssh_identity (""),
       ssh_args (""),
       eosio_home(),
@@ -137,6 +138,8 @@ public:
       dot_label_str()
   {}
 
+  uint32_t         cluster_id;
+  const uint32_t   cluster_port_offset = 2000;
   string           genesis;
   string           ssh_identity;
   string           ssh_args;
@@ -150,19 +153,19 @@ public:
   vector<eosd_def> instances;
 
   uint16_t p2p_port() {
-    return base_p2p_port + p2p_count++;
+    return cluster_id * cluster_port_offset + base_p2p_port + p2p_count++;
   }
 
   uint16_t http_port() {
-    return base_http_port + http_count++;
+    return cluster_id * cluster_port_offset + base_http_port + http_count++;
   }
 
   uint16_t p2p_bios_port() {
-    return base_p2p_port - 100;
+    return cluster_id * cluster_port_offset + base_p2p_port - 100;
   }
 
   uint16_t http_bios_port() {
-     return base_http_port - 100;
+     return cluster_id * cluster_port_offset + base_http_port - 100;
   }
 
   bool is_local( ) const {
@@ -385,6 +388,7 @@ string producer_names::producer_name(unsigned int producer_number) {
 
 struct launcher_def {
    bool force_overwrite;
+   uint32_t cluster_id = 0; 
    size_t total_nodes;
    size_t unstarted_nodes;
    size_t prod_nodes;
@@ -399,6 +403,7 @@ struct launcher_def {
    bfs::path stage;
 
    string erd;
+   bfs::path config_dir_base_cluster0;
    bfs::path config_dir_base;
    bfs::path data_dir_base;
    bool skip_transaction_signatures = false;
@@ -555,6 +560,10 @@ launcher_def::initialize (const variables_map &vmap) {
     }
   }
 
+  if (vmap.count("cluster-id")) {
+    cluster_id = vmap["cluster-id"].as<uint32_t>();
+  }
+
   if (vmap.count("max-block-cpu-usage")) {
      max_block_cpu_usage = vmap["max-block-cpu-usage"].as<uint32_t>();
   }
@@ -594,6 +603,7 @@ launcher_def::initialize (const variables_map &vmap) {
     try {
       fc::json::from_file(host_map_file).as<vector<host_def>>(bindings);
       for (auto &binding : bindings) {
+        binding.cluster_id = cluster_id;
         for (auto &eosd : binding.instances) {
           eosd.host = binding.host_name;
           eosd.p2p_endpoint = binding.public_name + ":" + boost::lexical_cast<string,uint16_t>(eosd.p2p_port);
@@ -605,8 +615,17 @@ launcher_def::initialize (const variables_map &vmap) {
     }
   }
 
-  config_dir_base = "etc/eosio";
-  data_dir_base = "var/lib";
+  config_dir_base_cluster0 = "etc/eosio";
+  if (cluster_id == 0) {
+    config_dir_base = config_dir_base_cluster0;
+    data_dir_base = "var/lib";
+  } else {
+    std::stringstream config_s, data_s;
+    config_s << "etc/eosio/cluster" << cluster_id;
+    config_dir_base = config_s.str();
+    data_s << "var/lib/cluster" << cluster_id;
+    data_dir_base = data_s.str();
+  }
   next_node = 0;
   ++prod_nodes; // add one for the bios node
   ++total_nodes;
@@ -783,7 +802,7 @@ void
 launcher_def::define_network () {
 
   if (per_host == 0) {
-    host_def local_host;
+    host_def local_host(cluster_id);
     local_host.eosio_home = erd;
     local_host.genesis = genesis.string();
     for (size_t i = 0; i < (total_nodes); i++) {
@@ -808,7 +827,7 @@ launcher_def::define_network () {
           bindings.emplace_back(move(*lhost));
           delete lhost;
         }
-        lhost = new host_def;
+        lhost = new host_def(cluster_id);
         lhost->genesis = genesis.string();
         if (host_ndx < num_prod_addr ) {
            do_bios = servers.producer[host_ndx].has_bios;
@@ -1229,9 +1248,9 @@ launcher_def::write_setprods_file() {
 
 void
 launcher_def::write_bios_boot () {
-   bfs::ifstream src(bfs::path(config_dir_base) / "launcher" / start_temp);
+   bfs::ifstream src(bfs::path(config_dir_base_cluster0 / "launcher" / start_temp));
    if(!src.good()) {
-      cerr << "unable to open " << config_dir_base << "launcher/" << start_temp << " " << strerror(errno) << "\n";
+      cerr << "unable to open " << config_dir_base_cluster0 << "launcher/" << start_temp << " " << strerror(errno) << "\n";
     exit (9);
   }
 
@@ -1635,6 +1654,11 @@ launcher_def::kill (launch_modes mode, string sig_opt) {
   case LM_LOCAL:
   case LM_REMOTE : {
     bfs::path source = "last_run.json";
+    if (cluster_id) {
+      std::stringstream s;
+      s << "last_run_cluster" << cluster_id << ".json";
+      source = s.str();
+    }
     try {
        fc::json::from_file( source ).as<last_run_def>( last_run );
        for( auto& info : last_run.running_nodes ) {
@@ -1866,6 +1890,11 @@ launcher_def::start_all (string &gts, launch_modes mode) {
   }
   }
   bfs::path savefile = "last_run.json";
+  if (cluster_id) {
+    std::stringstream s;
+    s << "last_run_cluster" << cluster_id << ".json";
+    savefile = s.str();
+  }
   bfs::ofstream sf (savefile);
 
   sf << fc::json::to_pretty_string (last_run) << endl;
@@ -1930,6 +1959,7 @@ int main (int argc, char *argv[]) {
   string roll_nodes;
   bfs::path config_dir;
   bfs::path config_file;
+  uint32_t cluster_id = 0;
 
   local_id.initialize();
   top.set_options(cfg);
@@ -1945,7 +1975,8 @@ int main (int argc, char *argv[]) {
     ("version,v", "print version information")
     ("help,h","print this list")
     ("config-dir", bpo::value<bfs::path>(), "Directory containing configuration files such as config.ini")
-    ("config,c", bpo::value<bfs::path>()->default_value( "config.ini" ), "Configuration file name relative to config-dir");
+    ("config,c", bpo::value<bfs::path>()->default_value( "config.ini" ), "Configuration file name relative to config-dir")
+    ("cluster-id", bpo::value<uint32_t>()->default_value(0), "Cluster ID for parallel execution, for local nodes only");
 
   cli.add(cfg);
 
@@ -2055,7 +2086,7 @@ FC_REFLECT( producer_set_def,
 
 // @ignore listen_addr, p2p_count, http_count, dot_label_str
 FC_REFLECT( host_def,
-            (genesis)(ssh_identity)(ssh_args)(eosio_home)
+            (cluster_id)(genesis)(ssh_identity)(ssh_args)(eosio_home)
             (host_name)(public_name)
             (base_p2p_port)(base_http_port)(def_file_size)
             (instances) )

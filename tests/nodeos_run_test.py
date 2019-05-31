@@ -23,7 +23,7 @@ from core_symbol import CORE_SYMBOL
 
 args = TestHelper.parse_args({"--host","--port","--prod-count","--defproducera_prvt_key","--defproducerb_prvt_key","--mongodb"
                               ,"--dump-error-details","--dont-launch","--keep-logs","-v","--leave-running","--only-bios","--clean-run"
-                              ,"--sanity-test","--wallet-port"})
+                              ,"--sanity-test","--wallet-port", "--cluster-id"})
 server=args.host
 port=args.port
 debug=args.v
@@ -41,9 +41,10 @@ sanityTest=args.sanity_test
 walletPort=args.wallet_port
 
 Utils.Debug=debug
+Utils.clusterID=args.cluster_id
 localTest=True if server == TestHelper.LOCAL_HOST else False
-cluster=Cluster(host=server, port=port, walletd=True, enableMongo=enableMongo, defproduceraPrvtKey=defproduceraPrvtKey, defproducerbPrvtKey=defproducerbPrvtKey)
-walletMgr=WalletMgr(True, port=walletPort)
+cluster=Cluster(clusterID=Utils.clusterID,host=server, port=port, walletd=True, enableMongo=enableMongo, defproduceraPrvtKey=defproduceraPrvtKey, defproducerbPrvtKey=defproducerbPrvtKey)
+walletMgr=WalletMgr(True, port=walletPort, clusterID=Utils.clusterID)
 testSuccessful=False
 killEosInstances=not dontKill
 killWallet=not dontKill

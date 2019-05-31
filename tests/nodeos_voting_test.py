@@ -144,10 +144,11 @@ errorExit=Utils.errorExit
 from core_symbol import CORE_SYMBOL
 
 args = TestHelper.parse_args({"--prod-count","--dump-error-details","--keep-logs","-v","--leave-running","--clean-run",
-                              "--wallet-port"})
+                              "--wallet-port", "--cluster-id"})
 Utils.Debug=args.v
+Utils.clusterID=args.cluster_id
 totalNodes=4
-cluster=Cluster(walletd=True)
+cluster=Cluster(clusterID=Utils.clusterID, walletd=True)
 dumpErrorDetails=args.dump_error_details
 keepLogs=args.keep_logs
 dontKill=args.leave_running
@@ -155,7 +156,7 @@ prodCount=args.prod_count
 killAll=args.clean_run
 walletPort=args.wallet_port
 
-walletMgr=WalletMgr(True, port=walletPort)
+walletMgr=WalletMgr(True, port=walletPort, clusterID=Utils.clusterID)
 testSuccessful=False
 killEosInstances=not dontKill
 killWallet=not dontKill

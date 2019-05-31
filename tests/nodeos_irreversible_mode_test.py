@@ -31,7 +31,7 @@ numOfProducers = 4
 totalNodes = 10
 
 # Parse command line arguments
-args = TestHelper.parse_args({"-v","--clean-run","--dump-error-details","--leave-running","--keep-logs"})
+args = TestHelper.parse_args({"-v","--clean-run","--dump-error-details","--leave-running","--keep-logs", "--cluster-id"})
 Utils.Debug = args.v
 killAll=args.clean_run
 dumpErrorDetails=args.dump_error_details
@@ -41,8 +41,9 @@ killWallet=not dontKill
 keepLogs=args.keep_logs
 
 # Setup cluster and it's wallet manager
-walletMgr=WalletMgr(True)
-cluster=Cluster(walletd=True)
+Utils.clusterID=args.cluster_id
+walletMgr=WalletMgr(True, clusterID=Utils.clusterID)
+cluster=Cluster(walletd=True, clusterID=Utils.clusterID)
 cluster.setWalletMgr(walletMgr)
 
 def backupBlksDir(nodeId):

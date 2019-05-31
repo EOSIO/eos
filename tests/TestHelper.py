@@ -46,6 +46,8 @@ class TestHelper(object):
         parser.add_argument('-?', action='help', default=argparse.SUPPRESS,
                                  help=argparse._('show this help message and exit'))
 
+        if "--cluster-id" in includeArgs:
+            parser.add_argument("--cluster-id", type=int, help="cluster id for parallel execution", default=0)
         if "-p" in includeArgs:
             parser.add_argument("-p", type=int, help="producing nodes count", default=1)
         if "-n" in includeArgs:
