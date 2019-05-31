@@ -683,7 +683,7 @@ authority parse_json_authority(const std::string& authorityJsonOrFile) {
    fc::variant authority_var = json_from_file_or_string(authorityJsonOrFile);
    try {
       return authority_var.as<authority>();
-   } EOS_RETHROW_EXCEPTIONS(authority_type_exception, "Invalid authority format '${data}'", ("data",authorityJsonOrFile))
+   } EOS_RETHROW_EXCEPTIONS(authority_type_exception, "Invalid authority format '${data}'", ("data", fc::json::to_string(authority_var)))
 }
 
 authority parse_json_authority_or_key(const std::string& authorityJsonOrFile) {
@@ -2456,7 +2456,7 @@ int main( int argc, char** argv ) {
          signed_transaction trx;
          try {
             abi_serializer::from_variant( trx_var, trx, abi_serializer_resolver, abi_serializer_max_time );
-         } EOS_RETHROW_EXCEPTIONS( transaction_type_exception, "Invalid transaction format: '${data}'", ("data", plain_signed_transaction_json))
+         } EOS_RETHROW_EXCEPTIONS( transaction_type_exception, "Invalid transaction format: '${data}'", ("data", fc::json::to_string(trx_var)))
          std::cout << fc::json::to_pretty_string( packed_transaction( trx, packed_transaction::none )) << std::endl;
       } else {
          try {
@@ -2477,7 +2477,7 @@ int main( int argc, char** argv ) {
       packed_transaction packed_trx;
       try {
          fc::from_variant<packed_transaction>( packed_trx_var, packed_trx );
-      } EOS_RETHROW_EXCEPTIONS( transaction_type_exception, "Invalid packed transaction format '${data}'", ("data", packed_transaction_json))
+      } EOS_RETHROW_EXCEPTIONS( transaction_type_exception, "Invalid packed transaction format: '${data}'", ("data", fc::json::to_string(packed_trx_var)))
       signed_transaction strx = packed_trx.get_signed_transaction();
       fc::variant trx_var;
       if( unpack_action_data_flag ) {
@@ -3352,7 +3352,7 @@ int main( int argc, char** argv ) {
       signed_transaction trx;
       try {
         trx = trx_var.as<signed_transaction>();
-      } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Invalid transaction format: '${data}'", ("data", trx_json_to_sign))
+      } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Invalid transaction format: '${data}'", ("data", fc::json::to_string(trx_var)))
 
       fc::optional<chain_id_type> chain_id;
 
@@ -3493,7 +3493,7 @@ int main( int argc, char** argv ) {
       transaction proposed_trx;
       try {
          proposed_trx = trx_var.as<transaction>();
-      } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Invalid transaction format: '${data}'", ("data",proposed_transaction))
+      } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Invalid transaction format: '${data}'", ("data", fc::json::to_string(trx_var)))
       bytes proposed_trx_serialized = variant_to_bin( name(proposed_contract), name(proposed_action), trx_var );
 
       vector<permission_level> reqperm;
