@@ -427,9 +427,14 @@ fc::variant json_from_file_or_string(const string& file_or_str, fc::json::parse_
 {
    regex r("^[ \t]*[\{\[]");
    if ( !regex_search(file_or_str, r) && fc::is_regular_file(file_or_str) ) {
-      return fc::json::from_file(file_or_str, ptype);
+      try {
+         return fc::json::from_file(file_or_str, ptype);
+      } EOS_RETHROW_EXCEPTIONS(json_parse_exception, "Fail to parse JSON from file: ${file}", ("file", file_or_str));
+
    } else {
-      return fc::json::from_string(file_or_str, ptype);
+      try {
+         return fc::json::from_string(file_or_str, ptype);
+      } EOS_RETHROW_EXCEPTIONS(json_parse_exception, "Fail to parse JSON from string: ${string}", ("string", file_or_str));
    }
 }
 
