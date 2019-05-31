@@ -1215,12 +1215,12 @@ const std::string register_producer_subcommand::symbol = chain::symbol(CORE_SYMB
 
 struct unregister_producer_subcommand {
     string account;
-    string symbol;
+
+    const static std::string symbol;
 
     unregister_producer_subcommand(CLI::App* actionRoot) {
         auto unregister_producer = actionRoot->add_subcommand("unregprod", localized("Unregister an existing producer"));
         unregister_producer->add_option("account", account, localized("An account to unregister from producers"))->required();
-        unregister_producer->add_option("symbol", symbol, localized("A token symbol of an asset used by the unregistering producer"))->required();
         add_standard_transaction_options(unregister_producer, "account@active");
 
         unregister_producer->set_callback([this] {
@@ -1242,6 +1242,8 @@ struct unregister_producer_subcommand {
         });
     }
 };
+
+const std::string unregister_producer_subcommand::symbol = chain::symbol(CORE_SYMBOL).to_string();
 
 
 struct create_account_subcommand {
