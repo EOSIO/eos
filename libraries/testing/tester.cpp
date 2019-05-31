@@ -246,14 +246,6 @@ namespace eosio { namespace testing {
       }
 
       if( !skip_pending_trxs ) {
-         unapplied_transactions_type unapplied_trxs = control->get_unapplied_transactions(); // make copy of map
-         for (const auto& entry : unapplied_trxs ) {
-            auto trace = control->push_transaction(entry.second, fc::time_point::maximum());
-            if(trace->except) {
-               trace->except->dynamic_rethrow_exception();
-            }
-         }
-
          vector<transaction_id_type> scheduled_trxs;
          while( (scheduled_trxs = get_scheduled_transactions() ).size() > 0 ) {
             for (const auto& trx : scheduled_trxs ) {
