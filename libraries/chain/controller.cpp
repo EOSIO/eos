@@ -585,16 +585,8 @@ struct controller_impl {
       // check database version
       const auto& header_idx = db.get_index<database_header_multi_index>().indices().get<by_id>();
 
-      if (database_header_object::minimum_version != 0) {
-         EOS_ASSERT(header_idx.begin() != header_idx.end(), bad_database_version_exception,
-                    "state database version pre-dates versioning, please restore from a compatible snapshot or replay!");
-      } else if ( header_idx.empty() ) {
-         // temporary code to upgrade from existing un-versioned state database
-         static_assert(database_header_object::minimum_version == 0, "remove this path once the minimum version moves");
-         db.create<database_header_object>([](const auto& header){
-            // nothing to do here
-         });
-      }
+      EOS_ASSERT(header_idx.begin() != header_idx.end(), bad_database_version_exception,
+                 "state database version pre-dates versioning, please restore from a compatible snapshot or replay!");
 
       const auto& header_itr = header_idx.begin();
       header_itr->validate();
