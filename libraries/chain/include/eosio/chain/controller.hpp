@@ -154,10 +154,14 @@ namespace eosio { namespace chain {
          block_state_ptr finalize_block( const std::function<signature_type( const digest_type& )>& signer_callback );
          void sign_block( const std::function<signature_type( const digest_type& )>& signer_callback );
          void commit_block();
-         void pop_block();
 
          std::future<block_state_ptr> create_block_state_future( const signed_block_ptr& b );
-         void push_block( std::future<block_state_ptr>& block_state_future );
+
+         /**
+          * @param block_state_future provide from call to create_block_state_future
+          * @return branch of unapplied blocks from fork switch
+          */
+         branch_type push_block( std::future<block_state_ptr>& block_state_future );
 
          boost::asio::io_context& get_thread_pool();
 

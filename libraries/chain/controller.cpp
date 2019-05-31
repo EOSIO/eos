@@ -1840,7 +1840,7 @@ struct controller_impl {
       } );
    }
 
-   void push_block( std::future<block_state_ptr>& block_state_future ) {
+   branch_type push_block( std::future<block_state_ptr>& block_state_future ) {
       controller::block_status s = controller::block_status::complete;
       EOS_ASSERT(!pending, block_validate_exception, "it is not valid to push a block when there is a pending block");
 
@@ -1862,9 +1862,10 @@ struct controller_impl {
          emit( self.accepted_block_header, bsp );
 
          if( read_mode != db_read_mode::IRREVERSIBLE ) {
-            maybe_switch_forks( fork_db.pending_head(), s );
+            return maybe_switch_forks( fork_db.pending_head(), s );
          } else {
             log_irreversible();
+            return {};
          }
 
       } FC_LOG_AND_RETHROW( )
@@ -1920,8 +1921,9 @@ struct controller_impl {
       } FC_LOG_AND_RETHROW( )
    }
 
-   void maybe_switch_forks( const block_state_ptr& new_head, controller::block_status s ) {
+   branch_type maybe_switch_forks( const block_state_ptr& new_head, controller::block_status s ) {
       bool head_changed = true;
+      branch_type unapplied_branch;
       if( new_head->header.previous == head->id ) {
          try {
             apply_block( new_head, s );
@@ -1980,6 +1982,8 @@ struct controller_impl {
             } // end if exception
          } /// end for each block in branch
 
+         unapplied_branch = std::move( branches.second );
+
          ilog("successfully switched fork to new head ${new_head_id}", ("new_head_id", new_head->id));
       } else {
          head_changed = false;
@@ -1987,6 +1991,8 @@ struct controller_impl {
 
       if( head_changed )
          log_irreversible();
+
+      return unapplied_branch;
    } /// push_block
 
    void abort_block() {
@@ -2516,10 +2522,10 @@ std::future<block_state_ptr> controller::create_block_state_future( const signed
    return my->create_block_state_future( b );
 }
 
-void controller::push_block( std::future<block_state_ptr>& block_state_future ) {
+branch_type controller::push_block( std::future<block_state_ptr>& block_state_future ) {
    validate_db_available_size();
    validate_reversible_available_size();
-   my->push_block( block_state_future );
+   return my->push_block( block_state_future );
 }
 
 transaction_trace_ptr controller::push_transaction( const transaction_metadata_ptr& trx, fc::time_point deadline, uint32_t billed_cpu_time_us ) {
@@ -2762,10 +2768,6 @@ sha256 controller::calculate_integrity_hash()const { try {
 void controller::write_snapshot( const snapshot_writer_ptr& snapshot ) const {
    EOS_ASSERT( !my->pending, block_validate_exception, "cannot take a consistent snapshot with a pending block" );
    return my->add_to_snapshot(snapshot);
-}
-
-void controller::pop_block() {
-   my->pop_block();
 }
 
 int64_t controller::set_proposed_producers( vector<producer_key> producers ) {
