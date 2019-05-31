@@ -1705,20 +1705,22 @@ struct claimrewards_subcommand {
 
 struct setproxylvl_subcommand {
    string account;
-   string symbol;
    int8_t level;
+   string symbol = chain::symbol(CORE_SYMBOL).to_string();
 
    setproxylvl_subcommand(CLI::App* actionRoot) {
       auto set_proxy_level_action = actionRoot->add_subcommand("setproxylvl", localized("Set an account proxy level"));
       set_proxy_level_action->add_option("account", account, localized("An account whose proxy level will be set"))->required();
-      set_proxy_level_action->add_option("symbol", symbol, localized("A symbol of an asset used in the system"))->required();
       set_proxy_level_action->add_option("level", level, localized("A proxy level to set"))->required();
+      set_proxy_level_action->add_option("--symbol", symbol, localized("A symbol of an asset used in the system"), true);
 
       set_proxy_level_action->set_callback([this] {
           const auto proxy_status = call(get_proxy_status_func, fc::mutable_variant_object("account", account)("symbol", symbol));
 
           if (proxy_status["proxylevel"].as_uint64() != level) {
               set_proxy_level(account, symbol, level);
+          } else {
+              std::cout << localized("Warning: Proxy level value not changed") << std::endl;
           }
 
       });
