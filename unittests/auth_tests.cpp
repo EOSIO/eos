@@ -77,7 +77,8 @@ BOOST_FIXTURE_TEST_CASE( delegate_auth, TESTER ) { try {
    wdump((new_auth));
    BOOST_CHECK_EQUAL((new_auth == delegated_auth), true);
 
-   produce_block( fc::milliseconds(config::block_interval_ms*2) );
+   produce_block();
+   produce_block();
 
    auto auth = static_cast<authority>(control->get_authorization_manager().get_permission({N(alice), config::active_name}).auth);
    wdump((auth));
