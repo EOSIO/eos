@@ -36,7 +36,6 @@ namespace eosio { namespace chain {
    class account_object;
    using resource_limits::resource_limits_manager;
    using apply_handler = std::function<void(apply_context&)>;
-   using unapplied_transactions_type = map<transaction_id_type, transaction_metadata_ptr, sha256_less>;
 
    class fork_database;
 
@@ -131,17 +130,6 @@ namespace eosio { namespace chain {
           * @return transactions applied in aborted block
           */
          vector<transaction_metadata_ptr> abort_block();
-
-         /**
-          *  These transactions were previously pushed by have since been unapplied, recalling push_transaction
-          *  with the transaction_metadata_ptr will remove them from the source of this data IFF it succeeds.
-          *
-          *  The caller is responsible for calling drop_unapplied_transaction on a failing transaction that
-          *  they never intend to retry
-          *
-          *  @return map of transactions which have been unapplied
-          */
-         unapplied_transactions_type& get_unapplied_transactions();
 
          /**
           *

@@ -234,13 +234,6 @@ struct controller_impl {
    map< account_name, map<handler_key, apply_handler> >   apply_handlers;
    unordered_map< builtin_protocol_feature_t, std::function<void(controller_impl&)>, enum_hash<builtin_protocol_feature_t> > protocol_feature_activation_handlers;
 
-   /**
-    *  Transactions that were undone by pop_block or abort_block, transactions
-    *  are removed from this list if they are re-applied in other blocks. Producers
-    *  can query this list when scheduling new transactions into blocks.
-    */
-   unapplied_transactions_type     unapplied_transactions;
-
    void pop_block() {
       auto prev = fork_db.get_block( head->header.previous );
 
@@ -256,8 +249,6 @@ struct controller_impl {
 
       if ( read_mode == db_read_mode::SPECULATIVE ) {
          EOS_ASSERT( head->block, block_validate_exception, "attempting to pop a block that was sparsely loaded from a snapshot");
-         for( const auto& t : head->trxs )
-            unapplied_transactions[t->signed_id()] = t;
       }
 
       head = prev;
@@ -1389,9 +1380,6 @@ struct controller_impl {
                trx_context.squash();
             }
 
-            if (!trx->implicit) {
-               unapplied_transactions.erase( trx->signed_id() );
-            }
             return trace;
          } catch( const disallowed_transaction_extensions_bad_block_exception& ) {
             throw;
@@ -1401,10 +1389,6 @@ struct controller_impl {
             trace->error_code = controller::convert_exception_to_error_code( e );
             trace->except = e;
             trace->except_ptr = std::current_exception();
-         }
-
-         if (!failure_is_subjective(*trace->except)) {
-            unapplied_transactions.erase( trx->signed_id() );
          }
 
          emit( self.accepted_transaction, trx );
@@ -2936,14 +2920,6 @@ const account_object& controller::get_account( account_name name )const
 { try {
    return my->db.get<account_object, by_name>(name);
 } FC_CAPTURE_AND_RETHROW( (name) ) }
-
-unapplied_transactions_type& controller::get_unapplied_transactions() {
-   if ( my->read_mode != db_read_mode::SPECULATIVE ) {
-      EOS_ASSERT( my->unapplied_transactions.empty(), transaction_exception,
-                  "not empty unapplied_transactions in non-speculative mode" ); //should never happen
-   }
-   return my->unapplied_transactions;
-}
 
 bool controller::sender_avoids_whitelist_blacklist_enforcement( account_name sender )const {
    return my->sender_avoids_whitelist_blacklist_enforcement( sender );
