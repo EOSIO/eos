@@ -1729,14 +1729,14 @@ struct setproxylvl_subcommand {
 
 struct regproxy_subcommand {
    string proxy;
-   string symbol;
+   string symbol = chain::symbol(CORE_SYMBOL).to_string();
    int8_t level = -1;
 
    regproxy_subcommand(CLI::App* actionRoot) {
       auto register_proxy = actionRoot->add_subcommand("regproxy", localized("Register an account as a proxy (for voting)"));
       register_proxy->add_option("proxy", proxy, localized("A proxy account to register"))->required();
-      register_proxy->add_option("symbol", symbol, localized("A token symbol used by producers"))->required();
-      register_proxy->add_option("level", level, localized("A proxy level. Must be 0 < level < MAX_LEVEL. Default MAX_LEVEL - 1"));
+      register_proxy->add_option("--symbol", symbol, localized("A token symbol used by producers"), true);
+      register_proxy->add_option("--level", level, localized("A proxy level. Must be 0 < level < MAX_LEVEL. Default MAX_LEVEL - 1"), true);
       add_standard_transaction_options(register_proxy, "proxy@active");
 
       register_proxy->set_callback([this] {
@@ -1757,6 +1757,8 @@ struct regproxy_subcommand {
 
          if (proxy_status["proxylevel"].as_uint64() != level) {
              set_proxy_level(proxy, symbol, level);
+         } else {
+             std::cout << localized("Warning: Proxy level value not changed") << std::endl;
          }
 
       });
