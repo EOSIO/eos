@@ -1357,25 +1357,24 @@ struct vote_producer_proxy_subcommand {
 };
 
 struct vote_producers_subcommand {
-   string voter_str;
-   vector<eosio::name> producer_names;
+   string grantor;
+   string producer;
+   string quantity;
 
    vote_producers_subcommand(CLI::App* actionRoot) {
-      auto vote_producers = actionRoot->add_subcommand("prods", localized("Vote for one or more producers"));
-      vote_producers->add_option("voter", voter_str, localized("The voting account"))->required();
-      vote_producers->add_option("producers", producer_names, localized("The account(s) to vote for. All options from this position and following will be treated as the producer list."))->required();
+      auto vote_producers = actionRoot->add_subcommand("prods", localized("Vote for a producer"));
+      vote_producers->add_option("voter", grantor, localized("A voting account"))->required();
+      vote_producers->add_option("producer", producer, localized("An account to vote for"))->required();
+      vote_producers->add_option("quantity", quantity, localized("An asset quantity  that the voter votes for the producer"))->required();
       add_standard_transaction_options(vote_producers, "voter@active");
 
       vote_producers->set_callback([this] {
+         const fc::variant vote_action_params = fc::mutable_variant_object("grantor_name", grantor)
+                                                                          ("agent_name", producer)
+                                                                          ("quantity", quantity);
 
-         std::sort( producer_names.begin(), producer_names.end() );
-
-         fc::variant act_payload = fc::mutable_variant_object()
-                  ("voter", voter_str)
-                  ("proxy", "")
-                  ("producers", producer_names);
-         auto accountPermissions = get_account_permissions(tx_permission, {voter_str,config::active_name});
-         send_actions({create_action(accountPermissions, config::system_account_name, N(voteproducer), act_payload)});
+         auto accountPermissions = get_account_permissions(tx_permission, {grantor, config::active_name});
+         send_actions({create_action(accountPermissions, N(cyber.stake), N(delegate), vote_action_params)});
       });
    }
 };
