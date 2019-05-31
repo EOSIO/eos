@@ -317,6 +317,8 @@ namespace eosio { namespace chain {
                                     3060003, "Contract Table Query Exception" )
       FC_DECLARE_DERIVED_EXCEPTION( contract_query_exception,       database_exception,
                                     3060004, "Contract Query Exception" )
+      FC_DECLARE_DERIVED_EXCEPTION( bad_database_version_exception, database_exception,
+                                    3060005, "Database is an unknown or unsupported version" )
 
    FC_DECLARE_DERIVED_EXCEPTION( guard_exception, database_exception,
                                  3060100, "Guard Exception" )
