@@ -144,9 +144,15 @@ struct genesis_info {
 
         int64_t max_supply;
         int64_t sys_max_supply;
+
+        struct posts_trx_params {
+            uint16_t expiration_hours = 48;     // allows close-post transaction to live longer
+            fc::optional<time_point_sec> initial_from;  // set to time of golos_state creation to shift transactions delay relatively (offset between initial_time and this value will be added to trxs)
+        } posts_trx;
     } golos;
 
     struct stake_params {
+        bool enabled = false;
         std::vector<uint8_t> max_proxies;
         int64_t payout_step_length;
         uint16_t payout_steps_num;
@@ -174,9 +180,10 @@ FC_REFLECT(cyberway::genesis::genesis_info::table::row, (scope)(payer)(pk)(data)
 FC_REFLECT(cyberway::genesis::genesis_info::table, (code)(table)(abi_type)(rows))
 FC_REFLECT(cyberway::genesis::genesis_info::golos_config::golos_names, (issuer)(control)(vesting)(posting)(social)(charge))
 FC_REFLECT(cyberway::genesis::genesis_info::golos_config::recovery_params, (wait_days))
-FC_REFLECT(cyberway::genesis::genesis_info::golos_config, (domain)(names)(recovery)(max_supply)(sys_max_supply))
+FC_REFLECT(cyberway::genesis::genesis_info::golos_config::posts_trx_params, (expiration_hours)(initial_from))
+FC_REFLECT(cyberway::genesis::genesis_info::golos_config, (domain)(names)(recovery)(max_supply)(sys_max_supply)(posts_trx))
 FC_REFLECT(cyberway::genesis::genesis_info::stake_params,
-    (max_proxies)(payout_step_length)(payout_steps_num)(min_own_staked_for_election))
+    (enabled)(max_proxies)(payout_step_length)(payout_steps_num)(min_own_staked_for_election))
 FC_REFLECT(cyberway::genesis::genesis_info::hardfork_info, (version)(time))
 FC_REFLECT(cyberway::genesis::genesis_info::parameters, (stake)(posting_rules)(require_hardfork))
 FC_REFLECT(cyberway::genesis::genesis_info, (state_file)(genesis_json)(accounts)(auth_links)(tables)(golos)(params))

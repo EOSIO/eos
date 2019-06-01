@@ -163,6 +163,7 @@ namespace eosio { namespace chain {
       permission_link_object_type,
       domain_object_type,
       stake_agent_object_type,
+      stake_candidate_object_type,
       stake_grant_object_type,
       stake_param_object_type,
       stake_stat_object_type,

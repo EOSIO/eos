@@ -22,6 +22,8 @@ const fc::microseconds abi_serializer_max_time = fc::seconds(10);
 
 
 enum class stored_contract_tables: int {
+    system_account, system_acc_seq, system_res_usage, system_permission, system_perm_usage,
+    import_account, import_acc_seq, import_res_usage, import_permission, import_perm_usage,
     domains,        usernames,
     permissionlink, sys_permissionlink,
     token_stats,    vesting_stats,
@@ -29,12 +31,13 @@ enum class stored_contract_tables: int {
     delegation,     rdelegation,
     withdrawal,
     witness_vote,   witness_info,
-    reward_pool,    post_limits,
+    reward_pool,    //post_limits,
     gtransaction,   bandwidths,
     messages,       permlinks,
     votes,
     // the following are system tables, but it's simpler to have them here
-    stake_agents,   stake_grants,
+    stake_agents,   stake_cands,
+    stake_grants,
     stake_stats,    stake_params,
 
     _max                // to simplify setting tables_count of genesis container
