@@ -483,21 +483,40 @@ abi_def eosio_contract_abi(abi_def eos_abi)
         {"token_code", "symbol_code"},
         {"account", "name"},
         {"proxy_level", "uint8"},
-        {"votes", "int64"},
         {"last_proxied_update", "time_point_sec"},
         {"balance", "int64"},
         {"proxied", "int64" },
         {"shares_sum", "int64"},
         {"own_share",  "int64"},
         {"fee", "int16"},
-        {"min_own_staked", "int64"},
-        {"signing_key", "public_key"}}});
+        {"min_own_staked", "int64"}}});
 
    eos_abi.tables.emplace_back( eosio::chain::table_def {
       cyberway::chaindb::tag<stake_agent_object>::get_code(), "stake_agent_object", {
          {cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}},
-         {cyberway::chaindb::tag<stake_agent_object::by_key>::get_code(), true, {{"token_code", "asc"},{"account", "asc"}}},
-         {cyberway::chaindb::tag<stake_agent_object::by_votes>::get_code(), true, {{"token_code", "asc"},{"votes", "desc"},{"account", "asc"}}}
+         {cyberway::chaindb::tag<stake_agent_object::by_key>::get_code(), true, {{"token_code", "asc"},{"account", "asc"}}}
+      }
+   });
+   
+   eos_abi.structs.emplace_back( eosio::chain::struct_def {
+     "stake_candidate_object", "",{
+        {"id", "uint64"},
+        {"token_code", "symbol_code"},
+        {"account", "name"},
+        {"latest_pick", "time_point_sec"},
+        {"votes", "int64"},
+        {"priority", "int64"},
+        {"signing_key", "public_key"},
+        {"enabled", "bool"}}});
+        
+   eos_abi.tables.emplace_back( eosio::chain::table_def {
+      cyberway::chaindb::tag<stake_candidate_object>::get_code(), "stake_candidate_object", {
+         {cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}},
+         {cyberway::chaindb::tag<stake_candidate_object::by_key>::get_code(), true, {{"token_code", "asc"},{"account", "asc"}}},
+         {cyberway::chaindb::tag<stake_candidate_object::by_votes>::get_code(), true, 
+             {{"token_code", "asc"},{"enabled", "asc"},{"votes", "desc"},{"account", "asc"}}},
+         {cyberway::chaindb::tag<stake_candidate_object::by_prior>::get_code(), true, 
+             {{"token_code", "asc"},{"enabled", "asc"},{"priority", "asc"},{"votes", "desc"},{"account", "asc"}}}
       }
    });
 
@@ -539,6 +558,7 @@ abi_def eosio_contract_abi(abi_def eos_abi)
         {"id", "uint64"},
         {"token_code", "symbol_code"},
         {"total_staked", "int64"},
+        {"total_votes", "int64"},
         {"last_reward", "time_point_sec"},
         {"enabled", "bool"}}});
 

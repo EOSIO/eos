@@ -36,7 +36,8 @@ enum class stored_contract_tables: int {
     messages,       permlinks,
     votes,
     // the following are system tables, but it's simpler to have them here
-    stake_agents,   stake_grants,
+    stake_agents,   stake_cands,
+    stake_grants,
     stake_stats,    stake_params,
 
     _max                // to simplify setting tables_count of genesis container
