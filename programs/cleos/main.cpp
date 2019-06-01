@@ -789,15 +789,6 @@ chain::action create_delegate(const name& from, const name& receiver, const asse
                         config::system_account_name, N(delegatebw), act_payload);
 }
 
-fc::variant regproducer_variant(const account_name& producer, const public_key_type& key, const string& url, uint16_t location) {
-   return fc::mutable_variant_object()
-            ("producer", producer)
-            ("producer_key", key)
-            ("url", url)
-            ("location", location)
-            ;
-}
-
 chain::action create_open(const string& contract, const name& owner, symbol sym, const name& ram_payer) {
    auto open_ = fc::mutable_variant_object
       ("owner", owner)
@@ -1170,33 +1161,112 @@ CLI::callback_t obsoleted_option_host_port = [](CLI::results_t) {
    return false;
 };
 
+chain::action create_fee_action(const vector<chain::permission_level>& account_permissions, const std::string& account, const std::string& symbol, int16_t fee) {
+    EOS_ASSERT(fee < config::percent_100, action_validate_exception, "The fee param must be 0 < fee < ${max_percents}", ("max_percents", config::percent_100));
+
+    const auto set_fee_var = fc::mutable_variant_object()("account", account)
+                                                         ("token_code", chain::symbol::from_string(symbol).to_symbol_code())
+                                                         ("fee", fee);
+
+    return create_action(account_permissions, N(cyber.stake), N(setproxyfee), set_fee_var);
+}
+
+chain::action create_set_proxy_level_action(const vector<chain::permission_level>& account_permissions, const string& account, const string& symbol, uint8_t proxy_level) {
+    fc::variant act_payload = fc::mutable_variant_object()
+                      ("account", account)
+                      ("token_code", chain::symbol::from_string(symbol).to_symbol_code())
+                      ("level", proxy_level);
+
+    return create_action(account_permissions, N(cyber.stake), N(setproxylvl), act_payload);
+}
+
 struct register_producer_subcommand {
-   string producer_str;
+   string account;
    string producer_key_str;
-   string url;
-   uint16_t loc = 0;
+   string not_used;
+   int64_t min_own_stake = -1;
+
+   const static std::string symbol;
 
    register_producer_subcommand(CLI::App* actionRoot) {
       auto register_producer = actionRoot->add_subcommand("regproducer", localized("Register a new producer"));
-      register_producer->add_option("account", producer_str, localized("The account to register as a producer"))->required();
+      register_producer->add_option("account", account, localized("The account to register as a producer"))->required();
       register_producer->add_option("producer_key", producer_key_str, localized("The producer's public key"))->required();
-      register_producer->add_option("url", url, localized("url where info about producer can be found"), true);
-      register_producer->add_option("location", loc, localized("relative location for purpose of nearest neighbor scheduling"), true);
+      register_producer->add_option("--min-own-stake", min_own_stake, localized("A min value the producer guarantees to stake"), true);
+      register_producer->add_option("url", not_used, localized("Deprecated. Not used."), true);
+      register_producer->add_option("location", not_used, localized("Deprecated. Not used."), true);
       add_standard_transaction_options(register_producer, "account@active");
 
-
       register_producer->set_callback([this] {
-         public_key_type producer_key;
-         try {
-            producer_key = public_key_type(producer_key_str);
-         } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid producer public key: ${public_key}", ("public_key", producer_key_str))
+         const auto proxy_status_info = call(get_proxy_status_func, fc::mutable_variant_object("account", account)("symbol", symbol));
+         const auto proxy_level = proxy_status_info["proxylevel"].as_uint64();
+         std::vector<chain::action> register_producer_actions;
 
-         auto regprod_var = regproducer_variant(producer_str, producer_key, url, loc );
-         auto accountPermissions = get_account_permissions(tx_permission, {producer_str,config::active_name});
-         send_actions({create_action(accountPermissions, config::system_account_name, N(regproducer), regprod_var)});
+         const auto account_permissions = get_account_permissions(tx_permission, {account, config::active_name});
+
+         if (proxy_level != 0) {
+             register_producer_actions.push_back(create_set_proxy_level_action(account_permissions, account, symbol, 0));
+         }
+
+         try {
+            public_key_type producer_key = public_key_type(producer_key_str);
+            const auto setkey_var = fc::mutable_variant_object()("account", account)
+                                                                ("token_code", chain::symbol::from_string(symbol).to_symbol_code())
+                                                                ("signing_key", producer_key);
+
+            if (min_own_stake > 0) {
+                const auto min_own_stake_var = fc::mutable_variant_object()("account", account)
+                                                                           ("token_code", chain::symbol::from_string(symbol).to_symbol_code())
+                                                                           ("min_own_staked", min_own_stake);
+
+                register_producer_actions.push_back(create_action(account_permissions, N(cyber.stake), N(setminstaked), min_own_stake_var));
+            }
+
+            register_producer_actions.push_back(create_action(account_permissions, N(cyber.stake), N(setkey), setkey_var));
+            send_actions(std::move(register_producer_actions));
+         } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid producer public key: ${public_key}", ("public_key", producer_key_str))
       });
    }
 };
+
+const std::string register_producer_subcommand::symbol = chain::symbol(CORE_SYMBOL).to_string();
+
+
+struct unregister_producer_subcommand {
+    string account;
+
+    const static std::string symbol;
+
+    unregister_producer_subcommand(CLI::App* actionRoot) {
+        auto unregister_producer = actionRoot->add_subcommand("unregprod", localized("Unregister an existing producer"));
+        unregister_producer->add_option("account", account, localized("An account to unregister from producers"))->required();
+        add_standard_transaction_options(unregister_producer, "account@active");
+
+        unregister_producer->set_callback([this] {
+            const auto proxy_status_info = call(get_proxy_status_func, fc::mutable_variant_object("account", account)
+                                                                                                 ("symbol", symbol));
+            const auto proxy_level = proxy_status_info["proxylevel"].as_uint64();
+
+            EOS_ASSERT(proxy_level == 0, action_validate_exception, "Account ${account} is not a producer as it proxy level = ${level}", ("account", account)
+                                                                                                                                         ("level", proxy_level));
+
+            const auto agent_public_key = call(get_agent_public_key_func, fc::mutable_variant_object("account", account)
+                                                                                                    ("symbol", symbol)).get_string();
+
+            EOS_ASSERT(!agent_public_key.empty(), action_validate_exception, "Account ${account} is not a producer as it has no key", ("account", account));
+
+            const auto proxylevels_limits = call(get_proxylevel_limits_func, fc::mutable_variant_object("symbol", symbol)).get_array();
+
+            send_actions({create_set_proxy_level_action(get_account_permissions(tx_permission, {account, config::active_name}),
+                                                        account,
+                                                        symbol,
+                                                        proxylevels_limits.size())});
+        });
+    }
+};
+
+const std::string unregister_producer_subcommand::symbol = chain::symbol(CORE_SYMBOL).to_string();
+
 
 struct create_account_subcommand {
    string creator;
@@ -1265,24 +1335,6 @@ struct create_account_subcommand {
    }
 };
 
-struct unregister_producer_subcommand {
-   string producer_str;
-
-   unregister_producer_subcommand(CLI::App* actionRoot) {
-      auto unregister_producer = actionRoot->add_subcommand("unregprod", localized("Unregister an existing producer"));
-      unregister_producer->add_option("account", producer_str, localized("The account to unregister as a producer"))->required();
-      add_standard_transaction_options(unregister_producer, "account@active");
-
-      unregister_producer->set_callback([this] {
-         fc::variant act_payload = fc::mutable_variant_object()
-                  ("producer", producer_str);
-
-         auto accountPermissions = get_account_permissions(tx_permission, {producer_str,config::active_name});
-         send_actions({create_action(accountPermissions, config::system_account_name, N(unregprod), act_payload)});
-      });
-   }
-};
-
 struct vote_producer_proxy_subcommand {
    string voter_str;
    string proxy_str;
@@ -1305,25 +1357,24 @@ struct vote_producer_proxy_subcommand {
 };
 
 struct vote_producers_subcommand {
-   string voter_str;
-   vector<eosio::name> producer_names;
+   string grantor;
+   string producer;
+   string quantity;
 
    vote_producers_subcommand(CLI::App* actionRoot) {
-      auto vote_producers = actionRoot->add_subcommand("prods", localized("Vote for one or more producers"));
-      vote_producers->add_option("voter", voter_str, localized("The voting account"))->required();
-      vote_producers->add_option("producers", producer_names, localized("The account(s) to vote for. All options from this position and following will be treated as the producer list."))->required();
+      auto vote_producers = actionRoot->add_subcommand("prods", localized("Vote for a producer"));
+      vote_producers->add_option("voter", grantor, localized("A voting account"))->required();
+      vote_producers->add_option("producer", producer, localized("An account to vote for"))->required();
+      vote_producers->add_option("quantity", quantity, localized("An asset quantity  that the voter votes for the producer"))->required();
       add_standard_transaction_options(vote_producers, "voter@active");
 
       vote_producers->set_callback([this] {
+         const fc::variant vote_action_params = fc::mutable_variant_object("grantor_name", grantor)
+                                                                          ("agent_name", producer)
+                                                                          ("quantity", quantity);
 
-         std::sort( producer_names.begin(), producer_names.end() );
-
-         fc::variant act_payload = fc::mutable_variant_object()
-                  ("voter", voter_str)
-                  ("proxy", "")
-                  ("producers", producer_names);
-         auto accountPermissions = get_account_permissions(tx_permission, {voter_str,config::active_name});
-         send_actions({create_action(accountPermissions, config::system_account_name, N(voteproducer), act_payload)});
+         auto accountPermissions = get_account_permissions(tx_permission, {grantor, config::active_name});
+         send_actions({create_action(accountPermissions, N(cyber.stake), N(delegate), vote_action_params)});
       });
    }
 };
@@ -1333,50 +1384,9 @@ struct approve_producer_subcommand {
    eosio::name producer_name;
 
    approve_producer_subcommand(CLI::App* actionRoot) {
-      auto approve_producer = actionRoot->add_subcommand("approve", localized("Add one producer to list of voted producers"));
-      approve_producer->add_option("voter", voter, localized("The voting account"))->required();
-      approve_producer->add_option("producer", producer_name, localized("The account to vote for"))->required();
-      add_standard_transaction_options(approve_producer, "voter@active");
-
+      auto approve_producer = actionRoot->add_subcommand("approve", localized("Deprecated. Not used"));
       approve_producer->set_callback([this] {
-            auto result = call(get_table_func, fc::mutable_variant_object("json", true)
-                               ("code", name(config::system_account_name).to_string())
-                               ("scope", name(config::system_account_name).to_string())
-                               ("table", "voters")
-                               ("table_key", "owner")
-                               ("lower_bound", voter.value)
-                               ("upper_bound", voter.value + 1)
-                               // Less than ideal upper_bound usage preserved so cleos can still work with old buggy nodeos versions
-                               // Change to voter.value when cleos no longer needs to support nodeos versions older than 1.5.0
-                               ("limit", 1)
-            );
-            auto res = result.as<eosio::get_table_rows_result>();
-            // Condition in if statement below can simply be res.rows.empty() when cleos no longer needs to support nodeos versions older than 1.5.0
-            // Although since this subcommand will actually change the voter's vote, it is probably better to just keep this check to protect
-            //  against future potential chain_plugin bugs.
-            if( res.rows.empty() || res.rows[0].get_object()["owner"].as_string() != name(voter).to_string() ) {
-               std::cerr << "Voter info not found for account " << voter << std::endl;
-               return;
-            }
-            EOS_ASSERT( 1 == res.rows.size(), multiple_voter_info, "More than one voter_info for account" );
-            auto prod_vars = res.rows[0]["producers"].get_array();
-            vector<eosio::name> prods;
-            for ( auto& x : prod_vars ) {
-               prods.push_back( name(x.as_string()) );
-            }
-            prods.push_back( producer_name );
-            std::sort( prods.begin(), prods.end() );
-            auto it = std::unique( prods.begin(), prods.end() );
-            if (it != prods.end() ) {
-               std::cerr << "Producer \"" << producer_name << "\" is already on the list." << std::endl;
-               return;
-            }
-            fc::variant act_payload = fc::mutable_variant_object()
-               ("voter", voter)
-               ("proxy", "")
-               ("producers", prods);
-            auto accountPermissions = get_account_permissions(tx_permission, {voter,config::active_name});
-            send_actions({create_action(accountPermissions, config::system_account_name, N(voteproducer), act_payload)});
+          EOS_THROW(action_not_found_exception, "Operation approve is not supported anymore");
       });
    }
 };
@@ -1386,49 +1396,10 @@ struct unapprove_producer_subcommand {
    eosio::name producer_name;
 
    unapprove_producer_subcommand(CLI::App* actionRoot) {
-      auto approve_producer = actionRoot->add_subcommand("unapprove", localized("Remove one producer from list of voted producers"));
-      approve_producer->add_option("voter", voter, localized("The voting account"))->required();
-      approve_producer->add_option("producer", producer_name, localized("The account to remove from voted producers"))->required();
-      add_standard_transaction_options(approve_producer, "voter@active");
+      auto approve_producer = actionRoot->add_subcommand("unapprove", localized("Deprecated. Not used"));
 
       approve_producer->set_callback([this] {
-            auto result = call(get_table_func, fc::mutable_variant_object("json", true)
-                               ("code", name(config::system_account_name).to_string())
-                               ("scope", name(config::system_account_name).to_string())
-                               ("table", "voters")
-                               ("table_key", "owner")
-                               ("lower_bound", voter.value)
-                               ("upper_bound", voter.value + 1)
-                               // Less than ideal upper_bound usage preserved so cleos can still work with old buggy nodeos versions
-                               // Change to voter.value when cleos no longer needs to support nodeos versions older than 1.5.0
-                               ("limit", 1)
-            );
-            auto res = result.as<eosio::get_table_rows_result>();
-            // Condition in if statement below can simply be res.rows.empty() when cleos no longer needs to support nodeos versions older than 1.5.0
-            // Although since this subcommand will actually change the voter's vote, it is probably better to just keep this check to protect
-            //  against future potential chain_plugin bugs.
-            if( res.rows.empty() || res.rows[0].get_object()["owner"].as_string() != name(voter).to_string() ) {
-               std::cerr << "Voter info not found for account " << voter << std::endl;
-               return;
-            }
-            EOS_ASSERT( 1 == res.rows.size(), multiple_voter_info, "More than one voter_info for account" );
-            auto prod_vars = res.rows[0]["producers"].get_array();
-            vector<eosio::name> prods;
-            for ( auto& x : prod_vars ) {
-               prods.push_back( name(x.as_string()) );
-            }
-            auto it = std::remove( prods.begin(), prods.end(), producer_name );
-            if (it == prods.end() ) {
-               std::cerr << "Cannot remove: producer \"" << producer_name << "\" is not on the list." << std::endl;
-               return;
-            }
-            prods.erase( it, prods.end() ); //should always delete only one element
-            fc::variant act_payload = fc::mutable_variant_object()
-               ("voter", voter)
-               ("proxy", "")
-               ("producers", prods);
-            auto accountPermissions = get_account_permissions(tx_permission, {voter,config::active_name});
-            send_actions({create_action(accountPermissions, config::system_account_name, N(voteproducer), act_payload)});
+          EOS_THROW(action_not_found_exception, "Operation unapprove is not supported anymore");
       });
    }
 };
@@ -1693,38 +1664,108 @@ struct claimrewards_subcommand {
    }
 };
 
+struct setproxylvl_subcommand {
+   string account;
+   int8_t level;
+   string symbol = chain::symbol(CORE_SYMBOL).to_string();
+
+   setproxylvl_subcommand(CLI::App* actionRoot) {
+      auto set_proxy_level_action = actionRoot->add_subcommand("setproxylvl", localized("Set an account proxy level"));
+      set_proxy_level_action->add_option("account", account, localized("An account whose proxy level will be set"))->required();
+      set_proxy_level_action->add_option("level", level, localized("A proxy level to set"))->required();
+      set_proxy_level_action->add_option("--symbol", symbol, localized("A symbol of an asset used in the system"), true);
+
+      set_proxy_level_action->set_callback([this] {
+          const auto proxy_status = call(get_proxy_status_func, fc::mutable_variant_object("account", account)("symbol", symbol));
+
+          if (proxy_status["proxylevel"].as_uint64() != level) {
+              send_actions({create_set_proxy_level_action(get_account_permissions(tx_permission, {account, config::active_name}),
+                                                          account,
+                                                          symbol,
+                                                          level)});
+          } else {
+              std::cout << localized("Warning: Proxy level value not changed") << std::endl;
+          }
+
+      });
+   }
+};
+
 struct regproxy_subcommand {
    string proxy;
+   string symbol = chain::symbol(CORE_SYMBOL).to_string();
+   int8_t level = -1;
+   int16_t fee = -1;
 
    regproxy_subcommand(CLI::App* actionRoot) {
       auto register_proxy = actionRoot->add_subcommand("regproxy", localized("Register an account as a proxy (for voting)"));
-      register_proxy->add_option("proxy", proxy, localized("The proxy account to register"))->required();
+      register_proxy->add_option("proxy", proxy, localized("A proxy account to register"))->required();
+      register_proxy->add_option("--symbol", symbol, localized("A token symbol used by producers"), true);
+      register_proxy->add_option("--level", level, localized("A proxy level. Must be 0 < level < MAX_LEVEL. Default MAX_LEVEL - 1"), true);
+      register_proxy->add_option("--fee", fee, localized("A part of the fee proxies get for a block producing. An ineteger value between 0 and 10000 (10000 means 100,00%)"), true);
       add_standard_transaction_options(register_proxy, "proxy@active");
 
       register_proxy->set_callback([this] {
-         fc::variant act_payload = fc::mutable_variant_object()
-                  ("proxy", proxy)
-                  ("isproxy", true);
-         auto accountPermissions = get_account_permissions(tx_permission, {proxy,config::active_name});
-         send_actions({create_action(accountPermissions, config::system_account_name, N(regproxy), act_payload)});
+          const auto limits = call(get_proxylevel_limits_func, fc::mutable_variant_object("symbol", symbol));
+          const auto limits_array = limits.get_array();
+
+          EOS_ASSERT(limits_array.size() > 1, action_validate_exception, "Proxies are disabled by stake configs" );
+
+          if (level < 0) {
+              level = limits_array.size() - 1;
+          } else {
+              EOS_ASSERT(level < limits_array.size(), action_validate_exception, "Proxy level must be < ${max_level}", ("max_level", limits_array.size()) );
+          }
+
+         EOS_ASSERT(level > 0, action_validate_exception, "Proxy level must be > 0" );
+
+         const auto account_permissions = get_account_permissions(tx_permission, {proxy, config::active_name});
+         std::vector<action> register_proxy_actions;
+         if (fee >= 0) {
+             register_proxy_actions.push_back(create_fee_action(account_permissions, proxy, symbol, fee));
+         }
+
+         const auto proxy_status = call(get_proxy_status_func, fc::mutable_variant_object("account", proxy)("symbol", symbol));
+
+         if (proxy_status["proxylevel"].as_uint64() != level && fee < 0) {
+             register_proxy_actions.push_back(create_set_proxy_level_action(account_permissions, proxy, symbol, level));
+         } else {
+             std::cout << localized("Warning: Proxy level value not changed") << std::endl;
+         }
+
+         if (!register_proxy_actions.empty()) {
+             send_actions(std::move(register_proxy_actions));
+         }
       });
    }
 };
 
 struct unregproxy_subcommand {
    string proxy;
+   string symbol = chain::symbol(CORE_SYMBOL).to_string();
 
    unregproxy_subcommand(CLI::App* actionRoot) {
       auto unregister_proxy = actionRoot->add_subcommand("unregproxy", localized("Unregister an account as a proxy (for voting)"));
       unregister_proxy->add_option("proxy", proxy, localized("The proxy account to unregister"))->required();
+      unregister_proxy->add_option("--symbol", symbol, localized("A token symbol used by producers"), true);
       add_standard_transaction_options(unregister_proxy, "proxy@active");
 
       unregister_proxy->set_callback([this] {
-         fc::variant act_payload = fc::mutable_variant_object()
-                  ("proxy", proxy)
-                  ("isproxy", false);
-         auto accountPermissions = get_account_permissions(tx_permission, {proxy,config::active_name});
-         send_actions({create_action(accountPermissions, config::system_account_name, N(regproxy), act_payload)});
+          const auto limits = call(get_proxylevel_limits_func, fc::mutable_variant_object("symbol", symbol));
+          const auto limits_array = limits.get_array();
+
+          if(limits_array.size() < 2) {
+             return;
+          }
+
+         const auto proxy_status = call(get_proxy_status_func, fc::mutable_variant_object("account", proxy)("symbol", symbol));
+
+         if (proxy_status["proxylevel"].as_uint64() != limits_array.size() ) {
+             send_actions({create_set_proxy_level_action(get_account_permissions(tx_permission, {proxy, config::active_name}),
+                                                         proxy,
+                                                         symbol,
+                                                         limits_array.size())});
+         }
       });
    }
 };
@@ -3655,6 +3696,7 @@ int main( int argc, char** argv ) {
 
    auto claimRewards = claimrewards_subcommand(system);
 
+   auto setProxyLvl = setproxylvl_subcommand(system);
    auto regProxy = regproxy_subcommand(system);
    auto unregProxy = unregproxy_subcommand(system);
 

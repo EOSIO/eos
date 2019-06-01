@@ -107,6 +107,9 @@ namespace eosio { namespace client { namespace http {
    const string get_schedule_func = chain_func_base + "/get_producer_schedule";
    const string get_required_keys = chain_func_base + "/get_required_keys";
    const string resolve_names_func = chain_func_base + "/resolve_names";
+   const string get_proxy_status_func = chain_func_base + "/get_proxy_status";
+   const string get_agent_public_key_func = chain_func_base + "/get_agent_public_key";
+   const string get_proxylevel_limits_func = chain_func_base + "/get_proxylevel_limits";
 
 
    const string history_func_base = "/v1/history";

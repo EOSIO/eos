@@ -139,6 +139,13 @@ namespace eosio {
         fc::variants transactions;
         std::string  more; ///< fill lower_bound with this to fetch next set of transactions
     };
+
+    struct get_proxy_status_result {
+        chain::account_name account;
+        chain::symbol symbol;
+        uint8_t proxylevel;
+        uint32_t proxies_count;
+    };
 }
 
 FC_REFLECT( eosio::get_table_rows_result, (rows)(more) )
@@ -163,3 +170,4 @@ FC_REFLECT( eosio::abi_json_to_bin_result, (binargs) )
 FC_REFLECT( eosio::abi_bin_to_json_result, (args) )
 FC_REFLECT( eosio::get_required_keys_result, (required_keys) )
 FC_REFLECT(eosio::resolve_names_item, (resolved_domain)(resolved_username))
+FC_REFLECT( eosio::get_proxy_status_result, (account)(symbol)(proxylevel)(proxies_count))
