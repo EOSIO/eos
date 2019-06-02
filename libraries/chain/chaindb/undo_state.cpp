@@ -5,6 +5,7 @@
 #include <cyberway/chaindb/cache_map.hpp>
 #include <cyberway/chaindb/table_object.hpp>
 #include <cyberway/chaindb/journal.hpp>
+#include <cyberway/chaindb/value_verifier.hpp>
 
 /** Session exception is a critical errors and they doesn't handle by chain */
 #define CYBERWAY_SESSION_ASSERT(expr, FORMAT, ...)                      \
@@ -282,15 +283,17 @@ namespace cyberway { namespace chaindb {
         return obj;
     }
 
-    struct undo_stack::undo_stack_impl_ final {
-        undo_stack_impl_(
+    struct undo_stack_impl final {
+        undo_stack_impl(
             revision_t& revision,
             chaindb_controller& controller,
+            value_verifier& verifier,
             driver_interface& driver,
             journal& jrnl,
             cache_map& cache)
         : revision_(revision),
           controller_(controller),
+          verifier_(verifier),
           driver_(driver),
           journal_(jrnl),
           cache_(cache) {
@@ -540,6 +543,7 @@ namespace cyberway { namespace chaindb {
                 auto undo_pk = obj.second.clone_service();
 
                 restore_undo_state(obj.second);
+                verifier_.verify(table.info(), obj.second);
                 cache_.emplace(table.info(), obj.second);
 
                 journal_.write(ctx,
@@ -558,6 +562,7 @@ namespace cyberway { namespace chaindb {
                 auto undo_pk = obj.second.clone_service();
 
                 restore_undo_state(obj.second);
+                verifier_.verify(table.info(), obj.second);
                 cache_.emplace(table.info(), obj.second);
 
                 journal_.write(ctx,
@@ -982,21 +987,22 @@ namespace cyberway { namespace chaindb {
         revision_t          tail_revision_ = 0;
         primary_key_t       undo_pk_ = 1;
         chaindb_controller& controller_;
+        value_verifier&     verifier_;
         driver_interface&   driver_;
         journal&            journal_;
         cache_map&          cache_;
         index_t_            tables_;
-    }; // struct undo_stack::undo_stack_impl_
+    }; // struct undo_stack_impl
 
-    undo_stack::undo_stack(chaindb_controller& controller, driver_interface& driver, journal& jrnl, cache_map& cache)
-    : impl_(std::make_unique<undo_stack_impl_>(revision_, controller, driver, jrnl, cache)) {
+    undo_stack::undo_stack(chaindb_controller& controller, value_verifier& verifier, driver_interface& driver, journal& jrnl, cache_map& cache)
+    : impl_(std::make_unique<undo_stack_impl>(revision_, controller, verifier, driver, jrnl, cache)) {
         revision_ = 0;
     }
 
     undo_stack::~undo_stack() = default;
 
     void undo_stack::add_abi_tables(eosio::chain::abi_def& abi) {
-        undo_stack_impl_::add_abi_tables(abi);
+        undo_stack_impl::add_abi_tables(abi);
     }
 
     void undo_stack::restore() const {
