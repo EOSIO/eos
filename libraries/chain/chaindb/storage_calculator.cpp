@@ -1,9 +1,20 @@
 #include <cyberway/chaindb/storage_calculator.hpp>
+#include <cyberway/chaindb/table_info.hpp>
 
 #include <eosio/chain/abi_def.hpp>
 
 #include <fc/variant.hpp>
 #include <fc/variant_object.hpp>
+
+#include <fc/io/json.hpp>
+
+#include <eosio/chain/account_object.hpp>
+#include <eosio/chain/block_summary_object.hpp>
+#include <eosio/chain/resource_limits.hpp>
+#include <eosio/chain/resource_limits_private.hpp>
+#include <eosio/chain/global_property_object.hpp>
+#include <eosio/chain/permission_link_object.hpp>
+#include <eosio/chain/permission_object.hpp>
 
 namespace cyberway { namespace chaindb {
 
@@ -95,7 +106,7 @@ namespace cyberway { namespace chaindb {
                 return base_size + 32;
 
             case variant::type_id::string_type: {
-                auto size = base_size + var.get_string().size();
+                auto size = var.get_string().size();
                 return ((size >> 4) + 1) << 4;
             }
 
@@ -111,11 +122,54 @@ namespace cyberway { namespace chaindb {
         return base_size;
     }
 
-    int calc_storage_usage(const eosio::chain::table_def& table, const variant& var) {
+    int get_fixed_storage_usage(const table_info& info, const variant& var) {
+        if (is_system_code(info.code)) switch (info.table->name.value) {
+            case tag<eosio::chain::account_object>::get_code(): {
+                return 736 + var["code"].get_string().size() + var["abi"].get_blob().data.size();
+            }
+
+            case tag<eosio::chain::account_sequence_object>::get_code():
+                return 460;
+
+            case tag<eosio::chain::permission_link_object>::get_code():
+                return 576;
+
+            case tag<eosio::chain::permission_usage_object>::get_code():
+                return 360;
+
+            case tag<eosio::chain::block_summary_object>::get_code():
+                return 416;
+
+            case tag<eosio::chain::global_property_object>::get_code():
+                return 1400;
+
+            case tag<eosio::chain::dynamic_global_property_object>::get_code():
+                return 360;
+
+            case tag<eosio::chain::resource_limits::resource_usage_object>::get_code():
+                return 796;
+
+            case tag<eosio::chain::resource_limits::resource_limits_config_object>::get_code():
+                return 1768;
+
+            case tag<eosio::chain::resource_limits::resource_limits_state_object>::get_code():
+                return 1016;
+        }
+        return 0;
+    }
+
+    int calc_storage_usage(const table_info& info, const variant& var) {
+        int size = get_fixed_storage_usage(info, var);
+        if (size) {
+            return size;
+        }
+
         constexpr static int base_size  = 256; /* memory usage of structures in RAM */
         constexpr static int index_size = 12 + 8 /* scope:pk */ + 8; /* pk */
 
-        int size = base_size + index_size * table.indexes.size();
+        auto& table = *info.table;
+
+        size = base_size + index_size * table.indexes.size();
         if (table.indexes.size() > 1) {
             auto path = path_info(table);
             size += calc_storage_usage(var, &path);

@@ -539,7 +539,7 @@ namespace cyberway { namespace chaindb {
         int insert(const table_info& table, storage_payer_info charge, object_value& obj) {
             validate_object(table, obj, obj.pk());
 
-            charge.calc_usage(table, obj);
+            charge.size   = calc_storage_usage(table, obj.value);
             charge.in_ram = true;
             charge.delta += charge.size;
 
@@ -561,7 +561,7 @@ namespace cyberway { namespace chaindb {
             validate_object(table, obj, obj.pk());
 
             charge.get_payer_from(orig_obj);
-            charge.calc_usage(table, obj);
+            charge.size   = calc_storage_usage(table, obj.value);
             charge.delta += charge.size - orig_obj.service.size;
 
             // don't charge on genesis
