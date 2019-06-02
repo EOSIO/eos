@@ -5,7 +5,9 @@ namespace eosio { namespace chain {
     namespace chaindb = cyberway::chaindb;
 
     void account_object::generate_abi_info() {
-        abi_info_ = std::make_unique<chaindb::abi_info>(name, get_abi());
+        if (!abi_info_) {
+            abi_info_ = std::make_unique<chaindb::abi_info>(name, get_abi());
+        }
     }
 
     const chaindb::abi_info& account_object::get_abi_info() const {

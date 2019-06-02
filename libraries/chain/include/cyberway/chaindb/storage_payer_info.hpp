@@ -46,7 +46,6 @@ namespace cyberway { namespace chaindb {
         : transaction_ctx(&t), owner(std::move(o)), payer(std::move(p)) {
         }
 
-        void calc_usage(const table_info&, const object_value&);
         void add_usage();
 
         void get_payer_from(const object_value&);

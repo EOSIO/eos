@@ -55,6 +55,7 @@ add_library( eosio_chain
              chaindb/storage_calculator.cpp
              chaindb/typed_name.cpp
              chaindb/account_abi_info.cpp
+             chaindb/value_verifier.cpp
 
              cyberway/domain_name.cpp
              cyberway/cyberway_contract.cpp

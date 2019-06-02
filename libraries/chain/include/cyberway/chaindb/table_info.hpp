@@ -30,7 +30,7 @@ namespace cyberway { namespace chaindb {
         }
 
         const abi_info& abi() const {
-            assert(is_valid() && account_abi.has_abi_info());
+            assert(account_abi.has_abi_info());
             return account_abi.abi();
         }
 

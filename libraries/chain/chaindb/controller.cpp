@@ -9,6 +9,7 @@
 #include <cyberway/chaindb/mongo_driver.hpp>
 #include <cyberway/chaindb/storage_calculator.hpp>
 #include <cyberway/chaindb/storage_payer_info.hpp>
+#include <cyberway/chaindb/value_verifier.hpp>
 
 #include <eosio/chain/name.hpp>
 #include <eosio/chain/symbol.hpp>
@@ -96,12 +97,6 @@ namespace cyberway { namespace chaindb {
 
     //------------------------------------
 
-    void storage_payer_info::calc_usage(const table_info& table, const object_value& obj) {
-        if (!size) {
-            size = chaindb::calc_storage_usage(*table.table, obj.value);
-        }
-    }
-
     void storage_payer_info::add_usage() {
         if (BOOST_UNLIKELY(payer.empty() || !delta)) {
             // do nothing
@@ -137,6 +132,7 @@ namespace cyberway { namespace chaindb {
         journal journal_;
         std::unique_ptr<driver_interface> driver_ptr_;
         driver_interface& driver_;
+        value_verifier verifier_;
         cache_map cache_;
         undo_stack undo_;
 
@@ -144,8 +140,9 @@ namespace cyberway { namespace chaindb {
         : controller_(controller),
           driver_ptr_(_detail::create_driver(t, journal_, std::move(address), std::move(sys_name))),
           driver_(*driver_ptr_.get()),
+          verifier_(driver_),
           cache_(),
-          undo_(controller, driver_, journal_, cache_) {
+          undo_(controller, verifier_, driver_, journal_, cache_) {
         }
 
         ~chaindb_controller_impl() = default;
@@ -539,6 +536,8 @@ namespace cyberway { namespace chaindb {
         int insert(const table_info& table, storage_payer_info charge, object_value& obj) {
             validate_object(table, obj, obj.pk());
 
+            verifier_.verify(table, obj);
+
             charge.size   = calc_storage_usage(table, obj.value);
             charge.in_ram = true;
             charge.delta += charge.size;
@@ -559,6 +558,8 @@ namespace cyberway { namespace chaindb {
 
         int update(const table_info& table, storage_payer_info charge, object_value& obj, object_value orig_obj) {
             validate_object(table, obj, obj.pk());
+
+            verifier_.verify(table, obj);
 
             charge.get_payer_from(orig_obj);
             charge.size   = calc_storage_usage(table, obj.value);

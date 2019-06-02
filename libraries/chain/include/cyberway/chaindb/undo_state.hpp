@@ -8,11 +8,13 @@ namespace cyberway { namespace chaindb {
     class cache_map;
     class driver_interface;
     class journal;
+    class value_verifier;
     struct table_info;
+    struct undo_stack_impl;
 
     class undo_stack final {
     public:
-        undo_stack(chaindb_controller&, driver_interface&, journal&, cache_map&);
+        undo_stack(chaindb_controller&, value_verifier&, driver_interface&, journal&, cache_map&);
 
         undo_stack(const undo_stack&) = delete;
         undo_stack(undo_stack&&) = delete;
@@ -68,8 +70,7 @@ namespace cyberway { namespace chaindb {
         void remove(const table_info&, object_value orig_obj) const;
 
     private:
-        struct undo_stack_impl_;
-        std::unique_ptr<undo_stack_impl_> impl_;
+        std::unique_ptr<undo_stack_impl> impl_;
         revision_t revision_;
     }; // class table_undo_stack
 
