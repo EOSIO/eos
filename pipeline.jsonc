@@ -1,4 +1,14 @@
 {
+    "eosio": {
+        "pipeline-branch": "bats-v3",
+        "environment": {
+            "IMAGE_TAG": "bats-v3",
+            "DEBUG": true
+        }
+    },
+    "eosio-base-images": {
+        "pipeline-branch": "bats-v3"
+    },
     "eosio-build-unpinned":
     {
         "pipeline-branch": "protocol-features-sync-nodes"
