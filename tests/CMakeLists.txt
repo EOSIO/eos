@@ -10,7 +10,8 @@ find_package(LLVM 4.0 REQUIRED CONFIG)
 
 link_directories(${LLVM_LIBRARY_DIR})
 
-include_directories("${CMAKE_SOURCE_DIR}/plugins/wallet_plugin/include")
+include_directories( "${CMAKE_SOURCE_DIR}/plugins/wallet_plugin/include"
+                     "${CMAKE_SOURCE_DIR}/plugins/producer_plugin/include" )
 
 file(GLOB UNIT_TESTS "*.cpp")
 
