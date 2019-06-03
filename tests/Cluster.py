@@ -1529,13 +1529,13 @@ class Cluster(object):
         if self.clusterID == 0:
             return Utils.DataDir
         else:
-            return Utils.DataDir + "/cluster%d" % (self.clusterID)
+            return Utils.DataDir + "cluster%d/" % (self.clusterID)
 
     def getConfigDir(self):
         if self.clusterID == 0:
             return Utils.ConfigDir
         else:
-            return Utils.ConfigDir + "/cluster%d" % (self.clusterID)
+            return Utils.ConfigDir + "cluster%d/" % (self.clusterID)
 
     def cleanup(self):
         for f in glob.glob(self.getDataDir()+ "node_*"):
