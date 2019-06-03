@@ -223,15 +223,22 @@ namespace eosio { namespace testing {
       });
    }
 
-   void base_tester::push_block(signed_block_ptr b) {
+   vector<transaction_metadata_ptr> base_tester::push_block(signed_block_ptr b) {
       auto bs = control->create_block_state_future(b);
-      control->abort_block();
-      control->push_block(bs);
+      vector<transaction_metadata_ptr> trxs;
+      trxs = control->abort_block();
+      branch_type forked_branch = control->push_block(bs);
+      // branch is in reverse order
+      for( auto ritr = forked_branch.rbegin(), end = forked_branch.rend(); ritr != end; ++ritr ) {
+         trxs.insert( trxs.end(), (*ritr)->trxs.begin(), (*ritr)->trxs.end() );
+      }
 
       auto itr = last_produced_block.find(b->producer);
       if (itr == last_produced_block.end() || block_header::num_from_id(b->id()) > block_header::num_from_id(itr->second)) {
          last_produced_block[b->producer] = b->id();
       }
+
+      return trxs;
 }
 
    signed_block_ptr base_tester::_produce_block( fc::microseconds skip_time, bool skip_pending_trxs) {
