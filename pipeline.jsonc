@@ -2,7 +2,7 @@
     "eosio": {
         "pipeline-branch": "bats-v3",
         "environment": {
-            "IMAGE_TAG": "1.8.x",
+            "IMAGE_TAG": "1.8.0",
             "DEBUG": true
         }
     },
