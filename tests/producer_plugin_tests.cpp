@@ -163,7 +163,11 @@ BOOST_AUTO_TEST_CASE( unapplied_transaction_queue_test ) try {
    BOOST_REQUIRE( q.next() == trx7 );
    BOOST_REQUIRE( q.next() == nullptr );
 
-
+   q.add_forked( { bs3, bs2, bs1 } );
+   q.add_aborted( { trx9, trx11 } );
+   q.add_subjective_failure( trx8 );
+   q.clear();
+   BOOST_REQUIRE( q.next() == nullptr );
 
 } FC_LOG_AND_RETHROW() /// unapplied_transaction_queue_test
 

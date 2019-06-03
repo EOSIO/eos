@@ -23,6 +23,15 @@ class unapplied_transaction_queue {
    size_t current_trx_in_block = 0;
    std::deque<chain::transaction_metadata_ptr> subjective_failed_trxs;
 public:
+
+   void clear() {
+      aborted_block_trxs.clear();
+      current_trx_in_trxs = 0;
+      forked_branches.clear();
+      current_trx_in_block = 0;
+      subjective_failed_trxs.clear();
+   }
+
    void add_aborted( std::vector<chain::transaction_metadata_ptr> aborted_trxs ) {
       if( aborted_trxs.empty() ) return;
       // fifo queue so pop back
