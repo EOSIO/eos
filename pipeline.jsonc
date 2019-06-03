@@ -1,13 +1,13 @@
 {
     "eosio": {
-        "pipeline-branch": "bats-v3",
+        "pipeline-branch": "1.8.x-bash-scripts",
         "environment": {
             "IMAGE_TAG": "1.8.x",
             "DEBUG": true
         }
     },
     "eosio-base-images": {
-        "pipeline-branch": "bats-v3"
+        "pipeline-branch": "1.8.x-bash-scripts"
     },
     "eosio-build-unpinned":
     {
