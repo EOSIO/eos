@@ -26,6 +26,7 @@ auto unique_trx_meta_data() {
 BOOST_AUTO_TEST_CASE( unapplied_transaction_queue_test ) try {
 
    unapplied_transaction_queue q;
+   BOOST_CHECK( q.empty() );
 
    auto trx1 = unique_trx_meta_data();
    auto trx2 = unique_trx_meta_data();
@@ -46,6 +47,7 @@ BOOST_AUTO_TEST_CASE( unapplied_transaction_queue_test ) try {
    BOOST_REQUIRE( q.next() == trx1 );
    BOOST_REQUIRE( q.next() == nullptr );
    BOOST_REQUIRE( q.next() == nullptr );
+   BOOST_CHECK( q.empty() );
 
    // fifo subjective
    q.add_subjective_failure( trx1 );
@@ -55,6 +57,7 @@ BOOST_AUTO_TEST_CASE( unapplied_transaction_queue_test ) try {
    BOOST_REQUIRE( q.next() == trx2 );
    BOOST_REQUIRE( q.next() == trx3 );
    BOOST_REQUIRE( q.next() == nullptr );
+   BOOST_CHECK( q.empty() );
 
    // fifo aborted
    q.add_aborted( { trx1, trx2, trx3 } );
@@ -62,6 +65,7 @@ BOOST_AUTO_TEST_CASE( unapplied_transaction_queue_test ) try {
    BOOST_REQUIRE( q.next() == trx2 );
    BOOST_REQUIRE( q.next() == trx3 );
    BOOST_REQUIRE( q.next() == nullptr );
+   BOOST_CHECK( q.empty() );
 
    // order: aborted, subjective
    q.add_subjective_failure( trx6 );
@@ -76,6 +80,7 @@ BOOST_AUTO_TEST_CASE( unapplied_transaction_queue_test ) try {
    BOOST_REQUIRE( q.next() == trx6 );
    BOOST_REQUIRE( q.next() == trx7 );
    BOOST_REQUIRE( q.next() == nullptr );
+   BOOST_CHECK( q.empty() );
 
    // fifo forked, one fork
    auto bs1 = std::make_shared<block_state>();
@@ -92,6 +97,7 @@ BOOST_AUTO_TEST_CASE( unapplied_transaction_queue_test ) try {
    BOOST_REQUIRE( q.next() == trx5 );
    BOOST_REQUIRE( q.next() == trx6 );
    BOOST_REQUIRE( q.next() == nullptr );
+   BOOST_CHECK( q.empty() );
 
    // fifo forked, multi forks
    auto bs4 = std::make_shared<block_state>();
@@ -111,6 +117,7 @@ BOOST_AUTO_TEST_CASE( unapplied_transaction_queue_test ) try {
    BOOST_REQUIRE( q.next() == trx5 );
    BOOST_REQUIRE( q.next() == trx6 );
    BOOST_REQUIRE( q.next() == nullptr );
+   BOOST_CHECK( q.empty() );
 
    // fifo forked
    q.add_forked( { bs1 } );
@@ -124,6 +131,7 @@ BOOST_AUTO_TEST_CASE( unapplied_transaction_queue_test ) try {
    BOOST_REQUIRE( q.next() == trx6 );
    BOOST_REQUIRE( q.next() == trx7 );
    BOOST_REQUIRE( q.next() == nullptr );
+   BOOST_CHECK( q.empty() );
 
    auto trx11 = unique_trx_meta_data();
    auto trx12 = unique_trx_meta_data();
@@ -162,11 +170,13 @@ BOOST_AUTO_TEST_CASE( unapplied_transaction_queue_test ) try {
    BOOST_REQUIRE( q.next() == trx6 );
    BOOST_REQUIRE( q.next() == trx7 );
    BOOST_REQUIRE( q.next() == nullptr );
+   BOOST_CHECK( q.empty() );
 
    q.add_forked( { bs3, bs2, bs1 } );
    q.add_aborted( { trx9, trx11 } );
    q.add_subjective_failure( trx8 );
    q.clear();
+   BOOST_CHECK( q.empty() );
    BOOST_REQUIRE( q.next() == nullptr );
 
 } FC_LOG_AND_RETHROW() /// unapplied_transaction_queue_test

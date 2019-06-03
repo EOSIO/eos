@@ -24,6 +24,10 @@ class unapplied_transaction_queue {
    std::deque<chain::transaction_metadata_ptr> subjective_failed_trxs;
 public:
 
+   bool empty() const {
+      return aborted_block_trxs.empty() && forked_branches.empty() && subjective_failed_trxs.empty();
+   }
+
    void clear() {
       aborted_block_trxs.clear();
       current_trx_in_trxs = 0;
