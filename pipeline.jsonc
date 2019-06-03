@@ -1,4 +1,10 @@
 {
+    "eosio": {
+        "pipeline-branch": "kayan_parallel_tests",
+        "environment": {
+            "DEBUG": true
+        }
+    },
     "eosio-build-unpinned":
     {
         "pipeline-branch": "protocol-features-sync-nodes"
