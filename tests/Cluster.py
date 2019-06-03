@@ -954,7 +954,7 @@ class Cluster(object):
         Utils.Print("Starting cluster bootstrap.")
         assert PFSetupPolicy.isValid(pfSetupPolicy)
 
-        cmd="bash " + Util.__BootScript
+        cmd="bash " + Cluster.__BootScript
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         env = {
             "BIOS_CONTRACT_PATH": "unittests/contracts/old_versions/v1.6.0-rc3/eosio.bios",
@@ -976,7 +976,7 @@ class Cluster(object):
         with open(Cluster.__bootlog) as bootFile:
             for line in bootFile:
                 if p.search(line):
-                    Utils.Print("ERROR: %s script resulted in errors. See %s" % (Util.__BootScript, Cluster.__bootlog))
+                    Utils.Print("ERROR: %s script resulted in errors. See %s" % (Cluster.__BootScript, Cluster.__bootlog))
                     Utils.Print(line)
                     return None
 
