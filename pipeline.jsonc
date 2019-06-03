@@ -17,10 +17,6 @@
     {
         "pipeline-branch": "protocol-features-sync-nodes"
     },
-    "eosio-base-images":
-    {
-        "pipeline-branch": "release/1.8.x"
-    },
     "eos-multiversion-tests":
     {
         "pipeline-branch": "protocol-features-sync-nodes",
