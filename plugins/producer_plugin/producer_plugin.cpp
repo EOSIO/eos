@@ -3,6 +3,7 @@
  *  @copyright defined in eos/LICENSE
  */
 #include <eosio/producer_plugin/producer_plugin.hpp>
+#include <eosio/producer_plugin/unapplied_transaction_queue.hpp>
 #include <eosio/chain/plugin_interface.hpp>
 #include <eosio/chain/global_property_object.hpp>
 #include <eosio/chain/generated_transaction_object.hpp>
@@ -181,6 +182,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       std::map<chain::account_name, uint32_t>                   _producer_watermarks;
       pending_block_mode                                        _pending_block_mode;
       transaction_id_with_expiry_index                          _persistent_transactions;
+      unapplied_transaction_queue                               _unapplied_transactions;
       fc::optional<named_thread_pool>                           _thread_pool;
 
       std::atomic<int32_t>                                      _max_transaction_time_ms; // modified by app thread, read by net_plugin thread pool
@@ -372,7 +374,8 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          auto bsf = chain.create_block_state_future( block );
 
          // abort the pending block
-         chain.abort_block();
+         vector<transaction_metadata_ptr> aborted_trxs = chain.abort_block();
+         _unapplied_transactions.add_aborted( std::move( aborted_trxs ) );
 
          // exceptions throw out, make sure we restart our loop
          auto ensure = fc::make_scoped_exit([this](){
@@ -382,7 +385,8 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          // push the new block
          bool except = false;
          try {
-            chain.push_block( bsf );
+            branch_type forked_branch = chain.push_block( bsf );
+            _unapplied_transactions.add_forked( std::move( forked_branch ) );
          } catch ( const guard_exception& e ) {
             chain_plug->handle_guard_exception(e);
             return;
@@ -443,7 +447,6 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 
          bool empty()const { return _incoming_transactions.empty(); }
          size_t size()const { return _incoming_transactions.size(); }
-
       };
 
       incoming_transaction_queue _pending_incoming_transactions;
@@ -932,7 +935,8 @@ void producer_plugin::resume() {
    //
    if (my->_pending_block_mode == pending_block_mode::speculating) {
       chain::controller& chain = my->chain_plug->chain();
-      chain.abort_block();
+      vector<transaction_metadata_ptr> aborted_trxs = chain.abort_block();
+      my->_unapplied_transactions.add_aborted( std::move( aborted_trxs ) );
       my->schedule_production_loop();
    }
 }
@@ -971,7 +975,8 @@ void producer_plugin::update_runtime_options(const runtime_options& options) {
 
    if (check_speculating && my->_pending_block_mode == pending_block_mode::speculating) {
       chain::controller& chain = my->chain_plug->chain();
-      chain.abort_block();
+      vector<transaction_metadata_ptr> aborted_trxs = chain.abort_block();
+      my->_unapplied_transactions.add_aborted( std::move( aborted_trxs ) );
       my->schedule_production_loop();
    }
 
@@ -1047,7 +1052,8 @@ producer_plugin::integrity_hash_information producer_plugin::get_integrity_hash(
 
    if (chain.is_building_block()) {
       // abort the pending block
-      chain.abort_block();
+      vector<transaction_metadata_ptr> aborted_trxs = chain.abort_block();
+      my->_unapplied_transactions.add_aborted( std::move( aborted_trxs ) );
    } else {
       reschedule.cancel();
    }
@@ -1076,7 +1082,8 @@ void producer_plugin::create_snapshot(producer_plugin::next_function<producer_pl
 
       if (chain.is_building_block()) {
          // abort the pending block
-         chain.abort_block();
+         vector<transaction_metadata_ptr> aborted_trxs = chain.abort_block();
+         my->_unapplied_transactions.add_aborted( std::move( aborted_trxs ) );
       } else {
          reschedule.cancel();
       }
@@ -1405,7 +1412,8 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
          }
       }
 
-      chain.abort_block();
+      vector<transaction_metadata_ptr> aborted_trxs = chain.abort_block();
+      _unapplied_transactions.add_aborted( std::move( aborted_trxs ) );
 
       auto features_to_activate = chain.get_preactivated_protocol_features();
       if( _pending_block_mode == pending_block_mode::producing && _protocol_features_to_activate.size() > 0 ) {
@@ -1504,12 +1512,10 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
          if (_producers.empty() && persisted_by_id.empty()) {
             // if this node can never produce and has no persisted transactions,
             // there is no need for unapplied transactions they can be dropped
-            chain.get_unapplied_transactions().clear();
+            _unapplied_transactions.clear();
          } else {
             // derive appliable transactions from unapplied_transactions and drop droppable transactions
-            unapplied_transactions_type& unapplied_trxs = chain.get_unapplied_transactions();
-            if( !unapplied_trxs.empty() ) {
-               auto unapplied_trxs_size = unapplied_trxs.size();
+            if( !_unapplied_transactions.empty() ) {
                int num_applied = 0;
                int num_failed = 0;
                int num_processed = 0;
@@ -1523,14 +1529,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
                   }
                };
 
-               auto itr = unapplied_trxs.begin();
-               while( itr != unapplied_trxs.end() ) {
-                  auto itr_next = itr; // save off next since itr may be invalidated by loop
-                  ++itr_next;
-
-                  if( preprocess_deadline <= fc::time_point::now() ) exhausted = true;
-                  if( exhausted ) break;
-                  const transaction_metadata_ptr trx = itr->second;
+               while( transaction_metadata_ptr trx = _unapplied_transactions.next() ) {
                   auto category = calculate_transaction_category(trx);
                   if (category == tx_category::EXPIRED ||
                      (category == tx_category::UNEXPIRED_UNPERSISTED && _producers.empty()))
@@ -1539,8 +1538,10 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
                         fc_dlog(_trx_trace_log, "[TRX_TRACE] Node with producers configured is dropping an EXPIRED transaction that was PREVIOUSLY ACCEPTED : ${txid}",
                                ("txid", trx->id()));
                      }
-                     itr = unapplied_trxs.erase( itr ); // unapplied_trxs map has not been modified, so simply erase and continue
-                     continue;
+                     if( preprocess_deadline <= fc::time_point::now() ) exhausted = true;
+                     if( exhausted ) break;
+                     continue; // _unapplied_transactions removed trx, so just continue
+
                   } else if (category == tx_category::PERSISTED ||
                             (category == tx_category::UNEXPIRED_UNPERSISTED && _pending_block_mode == pending_block_mode::producing))
                   {
@@ -1558,11 +1559,10 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
                         if (trace->except) {
                            if (failure_is_subjective(*trace->except, deadline_is_subjective)) {
                               exhausted = true;
+                              _unapplied_transactions.add_subjective_failure( trx );
                               break;
                            } else {
                               // this failed our configured maximum transaction time, we don't want to replay it
-                              // chain.plus_transactions can modify unapplied_trxs, so erase by id
-                              unapplied_trxs.erase( trx->signed_id() );
                               ++num_failed;
                            }
                         } else {
@@ -1574,14 +1574,12 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
                      } FC_LOG_AND_DROP();
                   }
 
-                  itr = itr_next;
+                  if( preprocess_deadline <= fc::time_point::now() ) exhausted = true;
+                  if( exhausted ) break;
                }
 
-               fc_dlog(_log, "Processed ${m} of ${n} previously applied transactions, Applied ${applied}, Failed/Dropped ${failed}",
-                             ("m", num_processed)
-                             ("n", unapplied_trxs_size)
-                             ("applied", num_applied)
-                             ("failed", num_failed));
+               fc_dlog(_log, "Processed ${all} of the ${m} previously applied transactions, Applied ${applied}, Failed/Dropped ${failed}",
+                             ("all", exhausted ? "some" : "all")("m", num_processed)("applied", num_applied)("failed", num_failed));
             }
          }
 
@@ -1860,7 +1858,8 @@ bool producer_plugin_impl::maybe_produce_block() {
 
    fc_dlog(_log, "Aborting block due to produce_block error");
    chain::controller& chain = chain_plug->chain();
-   chain.abort_block();
+   vector<transaction_metadata_ptr> aborted_trxs = chain.abort_block();
+   _unapplied_transactions.add_aborted( std::move( aborted_trxs ) );
    return false;
 }
 
