@@ -1,5 +1,6 @@
 #include <cyberway/genesis/genesis_import.hpp>
 #include <cyberway/genesis/genesis_container.hpp>
+#include <cyberway/chaindb/abi_info.hpp>
 #include <eosio/chain/config.hpp>
 #include <eosio/chain/controller.hpp>
 #include <eosio/chain/resource_limits.hpp>
@@ -57,7 +58,13 @@ struct genesis_import::impl final {
             a.abi_version = acc.abi_version;
             a.creation_date = acc.creation_date;
             a.code = acc.code;
-            a.abi = acc.abi;
+            if (a.name == eosio::chain::config::system_account_name) {
+                a.abi = chaindb::merge_abi_def(eosio::chain::eosio_contract_abi(), acc.abi);
+            } else if (a.name == eosio::chain::config::domain_account_name) {
+                a.abi = chaindb::merge_abi_def(eosio::chain::domain_contract_abi(), acc.abi);
+            } else {
+                a.abi = acc.abi;
+            }
         });
     }
 

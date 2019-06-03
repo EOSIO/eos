@@ -25,6 +25,7 @@
 #include <eosio/chain/resource_limits.hpp>
 
 #include <cyberway/chaindb/controller.hpp>
+#include <cyberway/chaindb/abi_info.hpp>
 
 namespace eosio { namespace chain {
 
@@ -232,12 +233,19 @@ void apply_cyber_setabi(apply_context& context) {
 
    const auto& account = chaindb.get<account_object,by_name>(act.account);
 
+    if (act.account == chain::config::system_account_name) {
+        act.abi = cyberway::chaindb::merge_abi_def(eosio::chain::eosio_contract_abi(), act.abi);
+    } else if (act.account == eosio::chain::config::domain_account_name) {
+        act.abi = cyberway::chaindb::merge_abi_def(eosio::chain::domain_contract_abi(), act.abi);
+    }
+
    int64_t abi_size = act.abi.size();
 
    int64_t old_size = (int64_t)account.abi.size() * (config::setcode_storage_bytes_multiplier - 1 /*one abi_size is already in size*/);
    int64_t new_size = abi_size * (config::setcode_storage_bytes_multiplier - 1 /*one abi_size is already in size*/);
 
     const auto& account_sequence = chaindb.get<account_sequence_object, by_name>(act.account);
+
     auto hash = bytes_hash(act.abi);
     if (is_protected_account(act.account)) {
         const auto seq = account_sequence.abi_sequence;
@@ -267,6 +275,10 @@ void apply_cyber_setabi(apply_context& context) {
    });
 
    context.control.set_abi(act.account, account.get_abi());
+
+   if (act.account == chain::config::system_account_name) {
+       context.control.set_abi(0, account.get_abi());
+   }
 
 // TODO: Removed by CyberWay
 //   if (new_size != old_size) {

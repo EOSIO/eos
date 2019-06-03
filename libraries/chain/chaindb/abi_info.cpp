@@ -329,4 +329,56 @@ namespace cyberway { namespace chaindb {
         for (auto& index: create_indexes) driver.create_index(index);
     }
 
+    //-------------------------------------
+
+    abi_def unpack_abi_def(const bytes& src) {
+        abi_def dst;
+
+        if (!src.empty()) {
+            fc::datastream<const char*> ds(src.data(), src.size());
+            fc::raw::unpack(ds, dst);
+        }
+        return dst;
+    };
+
+    abi_def merge_abi_def(abi_def src1, abi_def src2) {
+        abi_def dst;
+
+        auto merge  = [&](auto&& param, auto&& cmp) {
+            std::sort( (src1.*param).begin(), (src1.*param).end(), cmp);
+            std::sort( (src2.*param).begin(), (src2.*param).end(), cmp);
+
+            std::set_union((src1.*param).begin(), (src1.*param).end(),
+                (src2.*param).begin(), (src2.*param).end(),
+                std::back_inserter(dst.*param), cmp);
+        };
+
+        merge(&abi_def::types,    [&](const auto& l, const auto& r) { return l.new_type_name < r.new_type_name; });
+        merge(&abi_def::structs,  [&](const auto& l, const auto& r) { return l.name < r.name; });
+        merge(&abi_def::actions,  [&](const auto& l, const auto& r) { return l.name < r.name; });
+        merge(&abi_def::events,   [&](const auto& l, const auto& r) { return l.name < r.name; });
+        merge(&abi_def::tables,   [&](const auto& l, const auto& r) { return l.name < r.name; });
+        merge(&abi_def::variants, [&](const auto& l, const auto& r) { return l.name < r.name; });
+
+        merge(&abi_def::error_messages, [&](const auto& l, const auto& r) { return l.error_code < r.error_code; });
+        merge(&abi_def::abi_extensions, [&](const auto& l, const auto& r) { return l.first      < r.first; }     );
+
+        return dst;
+    }
+
+    bytes merge_abi_def(abi_def src1, const bytes& b2) {
+        auto dst = merge_abi_def(std::move(src1), unpack_abi_def(b2));
+
+        bytes result;
+        result.resize(fc::raw::pack_size(dst));
+        fc::datastream<char*> ds(const_cast<char*>(result.data()), result.size());
+        fc::raw::pack(ds, dst);
+
+        return result;
+    }
+
+    bytes merge_abi_def(const bytes& b1, const bytes& b2) {
+        return merge_abi_def(unpack_abi_def(b1), b2);
+    }
+
 } } // namespace cyberway::chaindb
