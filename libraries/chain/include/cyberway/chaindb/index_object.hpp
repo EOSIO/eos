@@ -63,8 +63,16 @@ namespace cyberway { namespace chaindb {
             return a._id == b._id;
         }
 
+        friend bool operator == (const oid& a, const int b) {
+            return a._id == primary_key_t(b);
+        }
+
         friend bool operator != (const oid& a, const oid& b) {
             return a._id != b._id;
+        }
+
+        friend bool operator != (const oid& a, const primary_key_t b) {
+            return a._id != b;
         }
 
         friend std::ostream& operator<<(std::ostream& s, const oid& id) {

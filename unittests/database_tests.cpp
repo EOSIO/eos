@@ -35,14 +35,14 @@ BOOST_AUTO_TEST_SUITE(database_tests)
          chaindb.emplace<account_object>(N(billy), [](account_object &a) {});
 
          // Make sure we can retrieve that account by name
-         auto ptr = chaindb.find<account_object, by_name, std::string>("billy");
+         auto ptr = chaindb.find<account_object, by_id, std::string>("billy");
          BOOST_TEST(ptr != nullptr);
 
          // Undo creation of the account
          ses.undo();
 
          // Make sure we can no longer find the account
-         ptr = chaindb.find<account_object, by_name, std::string>("billy");
+         ptr = chaindb.find<account_object, by_id, std::string>("billy");
          BOOST_TEST(ptr == nullptr);
       } FC_LOG_AND_RETHROW()
    }
