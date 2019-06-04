@@ -153,7 +153,7 @@ class TestHelper(object):
         if not testSuccessful and dumpErrorDetails:
             cluster.reportStatus()
             Utils.Print(Utils.FileDivider)
-            psOut=Cluster.pgrepEosServers(timeout=60)
+            psOut=Cluster.pgrepEosServers(timeout=1) # pgrep nodeos only need to execute once
             Utils.Print("pgrep output:\n%s" % (psOut))
             cluster.dumpErrorDetails()
             if walletMgr:
