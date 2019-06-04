@@ -385,7 +385,6 @@ struct txn_test_gen_plugin_impl {
          next(e.dynamic_copy_exception());
       }
 
-      ilog("send ${c} transactions", ("c",trxs.size()));
       push_transactions(std::move(trxs), next);
    }
 
