@@ -33,11 +33,11 @@ VERSION=2.0
 ##########################################################################
 
 # Load eosio specific helper functions
-. ./scripts/helpers/eosio.bash
+. ./scripts/helpers/eosio.sh
 
 [[ ! $NAME == "Ubuntu" ]] && set -i # Ubuntu doesn't support interactive mode since it uses dash
 
-[[ ! -d $BUILD_DIR ]] && printf "${COLOR_RED}Please run ./eosio_build.bash first!${COLOR_NC}" && exit 1
+[[ ! -d $BUILD_DIR ]] && printf "${COLOR_RED}Please run ./eosio_build.sh first!${COLOR_NC}" && exit 1
 echo "${COLOR_CYAN}====================================================================================="
 echo "========================== ${COLOR_WHITE}Starting EOSIO Installation${COLOR_CYAN} ==============================${COLOR_NC}"
 execute cd $BUILD_DIR
@@ -59,6 +59,6 @@ printf "     \\__\\/         \\__\\/         \\__\\/                     \\__\\/
 
 printf "==============================================================================================\\n"
 printf "${COLOR_GREEN}EOSIO has been installed into ${EOSIO_INSTALL_DIR}/bin${COLOR_NC}"
-printf "\\n${COLOR_YELLOW}Uninstall with: ./scripts/eosio_uninstall.bash${COLOR_NC}\\n"
+printf "\\n${COLOR_YELLOW}Uninstall with: ./scripts/eosio_uninstall.sh${COLOR_NC}\\n"
 printf "==============================================================================================\\n\\n"
 resources

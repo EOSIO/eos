@@ -1,7 +1,7 @@
 #!/usr/bin/env bats
 load helpers/general
 
-SCRIPT_LOCATION="scripts/eosio_uninstall.bash"
+SCRIPT_LOCATION="scripts/eosio_uninstall.sh"
 TEST_LABEL="[eosio_uninstall]"
 
 mkdir -p $SRC_DIR

@@ -2,7 +2,7 @@
 set -eo pipefail
 
 # Load bash script helper functions
-. ./scripts/helpers/eosio.bash
+. ./scripts/helpers/eosio.sh
 
 usage() {
    printf "Usage --- \\n $ %s [ --full ] [ --force ]\\n
@@ -108,7 +108,7 @@ while true; do
             INSTALL_PATHS+=("${HOME}/.local/share/eosio")
          fi
          # Version < 1.8.0; Before we started using ~/eosio/1.8.x
-         # Arrays should return with newlines (IFS=\n;helpers.bash) as Application\ Support will split into two
+         # Arrays should return with newlines (IFS=\n;helpers.sh) as Application\ Support will split into two
          for INSTALL_PATH in ${INSTALL_PATHS[@]}; do
             execute rm -rf $INSTALL_PATH
          done

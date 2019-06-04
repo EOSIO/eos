@@ -1,4 +1,4 @@
-. ./scripts/helpers/eosio.bash # Obtain dependency versions and paths
+. ./scripts/helpers/eosio.sh # Obtain dependency versions and paths
 
 function debug() {
   printf " ---------\\n STATUS: ${status}\\n${output}\\n ---------\\n\\n" >&3
