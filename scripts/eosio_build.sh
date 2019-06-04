@@ -108,7 +108,7 @@ if [ $# -ne 0 ]; then
 fi
 
 # Load eosio specific helper functions
-. ./scripts/helpers/eosio.bash
+. ./scripts/helpers/eosio.sh
 
 echo "Beginning build version: ${SCRIPT_VERSION}"
 echo "EOSIO version to install: ${EOSIO_VERSION}"
@@ -146,13 +146,13 @@ if [[ $ARCH == "Linux" ]]; then
    case $NAME in
       "Amazon Linux AMI" | "Amazon Linux")
          echo "${COLOR_CYAN}[Ensuring YUM installation]${COLOR_NC}"
-         FILE="${REPO_ROOT}/scripts/eosio_build_amazonlinux.bash"
+         FILE="${REPO_ROOT}/scripts/eosio_build_amazonlinux.sh"
       ;;
       "CentOS Linux")
-         FILE="${REPO_ROOT}/scripts/eosio_build_centos.bash"
+         FILE="${REPO_ROOT}/scripts/eosio_build_centos.sh"
       ;;
       "Ubuntu")
-         FILE="${REPO_ROOT}/scripts/eosio_build_ubuntu.bash"
+         FILE="${REPO_ROOT}/scripts/eosio_build_ubuntu.sh"
       ;;
       *) print_supported_linux_distros_and_exit;;
    esac
@@ -163,7 +163,7 @@ if [ "$ARCH" == "Darwin" ]; then
    # opt/gettext: cleos requires Intl, which requires gettext; it's keg only though and we don't want to force linking: https://github.com/EOSIO/eos/issues/2240#issuecomment-396309884
    # EOSIO_INSTALL_DIR/lib/cmake: mongo_db_plugin.cpp:25:10: fatal error: 'bsoncxx/builder/basic/kvp.hpp' file not found
    LOCAL_CMAKE_FLAGS="-DCMAKE_PREFIX_PATH='/usr/local/opt/gettext;$EOSIO_INSTALL_DIR' ${LOCAL_CMAKE_FLAGS}" 
-   FILE="${SCRIPT_DIR}/eosio_build_darwin.bash"
+   FILE="${SCRIPT_DIR}/eosio_build_darwin.sh"
    OPENSSL_ROOT_DIR=/usr/local/opt/openssl
    export CMAKE=${CMAKE}
 fi
@@ -216,8 +216,8 @@ echo "(_______/(_______)\_______)\_______/(_______)"
 echo "=============================================${COLOR_NC}"
 
 echo "${COLOR_GREEN}EOSIO has been successfully built. $(($TIME_END/3600)):$(($TIME_END%3600/60)):$(($TIME_END%60))"
-echo "${COLOR_GREEN}You can now install using: ./scripts/eosio_install.bash${COLOR_NC}"
-echo "${COLOR_YELLOW}Uninstall with: ./scripts/eosio_uninstall.bash${COLOR_NC}"
+echo "${COLOR_GREEN}You can now install using: ./scripts/eosio_install.sh${COLOR_NC}"
+echo "${COLOR_YELLOW}Uninstall with: ./scripts/eosio_uninstall.sh${COLOR_NC}"
 
 echo ""
 echo "${COLOR_CYAN}If you wish to perform tests to ensure functional code:${COLOR_NC}"

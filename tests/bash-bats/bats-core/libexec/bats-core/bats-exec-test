@@ -44,7 +44,7 @@ load() {
   if [[ "${name:0:1}" == '/' ]]; then
     filename="${name}"
   else
-    filename="$BATS_TEST_DIRNAME/${name}.bash"
+    filename="$BATS_TEST_DIRNAME/${name}.sh"
   fi
 
   if [[ ! -f "$filename" ]]; then

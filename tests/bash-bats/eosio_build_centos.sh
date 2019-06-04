@@ -1,7 +1,7 @@
 #!/usr/bin/env bats
 load helpers/general
 
-export SCRIPT_LOCATION="scripts/eosio_build.bash"
+export SCRIPT_LOCATION="scripts/eosio_build.sh"
 export TEST_LABEL="[eosio_build_centos]"
 
 [[ $ARCH == "Linux" ]] || exit 0 # Exit 0 is required for pipeline
@@ -10,15 +10,15 @@ export TEST_LABEL="[eosio_build_centos]"
 # A helper function is available to show output and status: `debug`
 
 # Testing Root user
-./tests/bash-bats/modules/root-user.bash
+./tests/bash-bats/modules/root-user.sh
 # Testing Options
-./tests/bash-bats/modules/dep_script_options.bash
+./tests/bash-bats/modules/dep_script_options.sh
 # Testing CMAKE
-./tests/bash-bats/modules/cmake.bash
+./tests/bash-bats/modules/cmake.sh
 # Testing Clang
-./tests/bash-bats/modules/clang.bash
+./tests/bash-bats/modules/clang.sh
 # Testing MongoDB
-./tests/bash-bats/modules/mongodb.bash
+./tests/bash-bats/modules/mongodb.sh
 
 ## Needed to load eosio_build_ files properly; it can be empty
 @test "${TEST_LABEL} > General" {

@@ -1,7 +1,7 @@
 #!/usr/bin/env bats
 load helpers/general
 
-SCRIPT_LOCATION="scripts/eosio_build.bash"
+SCRIPT_LOCATION="scripts/eosio_build.sh"
 TEST_LABEL="[eosio_build]"
 
 ###################################################################
@@ -14,7 +14,7 @@ TEST_LABEL="[eosio_build]"
     if [[ $NAME =~ "Amazon Linux" ]] || [[ $NAME == "CentOS Linux" ]]; then
         # which package isn't installed
         uninstall-package which WETRUN &>/dev/null
-        run bash -c "printf \"n\nn\n\" | ./scripts/eosio_build.bash"
+        run bash -c "printf \"n\nn\n\" | ./scripts/eosio_build.sh"
         [[ ! -z $(echo "${output}" | grep "EOSIO compiler checks require the 'which'") ]] || exit
         [[ ! -z $(echo "${output}" | grep "Please install the 'which'") ]] || exit
     fi

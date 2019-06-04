@@ -1,5 +1,5 @@
 # Checks for Arch and OS + Support for tests setting them manually
-## Necessary for linux exclusion while running bats tests/bash-bats/*.bash
+## Necessary for linux exclusion while running bats tests/bash-bats/*.sh
 [[ -z "${ARCH}" ]] && export ARCH=$( uname )
 if [[ -z "${NAME}" ]]; then
     if [[ $ARCH == "Linux" ]]; then
@@ -21,7 +21,7 @@ fi
 # Obtain dependency versions; Must come first in the script
 . ./scripts/.environment
 # Load general helpers
-. ./scripts/helpers/general.bash
+. ./scripts/helpers/general.sh
 
 function setup() {
     if $VERBOSE; then
