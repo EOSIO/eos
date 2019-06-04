@@ -1,5 +1,6 @@
 {
     "eosio": {
+        "pipeline-branch": "develop",
         "environment": {
             "IMAGE_TAG": "develop",
             "DEBUG": true
