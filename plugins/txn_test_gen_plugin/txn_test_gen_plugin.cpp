@@ -5,6 +5,7 @@
 #include <eosio/txn_test_gen_plugin/txn_test_gen_plugin.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
 #include <eosio/chain/wast_to_wasm.hpp>
+#include <eosio/chain/thread_utils.hpp>
 
 #include <fc/variant.hpp>
 #include <fc/io/json.hpp>
@@ -41,7 +42,6 @@ namespace eosio {
 static appbase::abstract_plugin& _txn_test_gen_plugin = app().register_plugin<txn_test_gen_plugin>();
 
 using namespace eosio::chain;
-using io_work_t = boost::asio::executor_work_guard<boost::asio::io_context::executor_type>;
 
 #define CALL(api_name, api_handle, call_name, INVOKE, http_response_code) \
 {std::string("/v1/" #api_name "/" #call_name), \
@@ -100,10 +100,8 @@ struct txn_test_gen_plugin_impl {
    uint64_t _total_us = 0;
    uint64_t _txcount = 0;
 
-   std::shared_ptr<boost::asio::io_context>             gen_ioc;
-   optional<io_work_t>                                  gen_ioc_work;
    uint16_t                                             thread_pool_size;
-   optional<boost::asio::thread_pool>                   thread_pool;
+   fc::optional<eosio::chain::named_thread_pool>        thread_pool;
    std::shared_ptr<boost::asio::high_resolution_timer>  timer;
    name                                                 newaccountA;
    name                                                 newaccountB;
@@ -305,17 +303,13 @@ struct txn_test_gen_plugin_impl {
       batch = batch_size/2;
       nonce_prefix = 0;
 
-      gen_ioc = std::make_shared<boost::asio::io_context>();
-      gen_ioc_work.emplace( boost::asio::make_work_guard(*gen_ioc) );
-      thread_pool.emplace( thread_pool_size );
-      for( uint16_t i = 0; i < thread_pool_size; i++ )
-         boost::asio::post( *thread_pool, [ioc = gen_ioc]() { ioc->run(); } );
-      timer = std::make_shared<boost::asio::high_resolution_timer>(*gen_ioc);
+      thread_pool.emplace( "txntest", thread_pool_size );
+      timer = std::make_shared<boost::asio::high_resolution_timer>(thread_pool->get_executor());
 
       ilog("Started transaction test plugin; generating ${p} transactions every ${m} ms by ${t} load generation threads",
          ("p", batch_size) ("m", period) ("t", thread_pool_size));
 
-      boost::asio::post( *gen_ioc, [this]() {
+      boost::asio::post( thread_pool->get_executor(), [this]() {
          arm_timer(boost::asio::high_resolution_timer::clock_type::now());
       });
       return "success";
@@ -323,7 +317,7 @@ struct txn_test_gen_plugin_impl {
 
    void arm_timer(boost::asio::high_resolution_timer::time_point s) {
       timer->expires_at(s + std::chrono::milliseconds(timer_timeout));
-      boost::asio::post( *gen_ioc, [this]() {
+      boost::asio::post( thread_pool->get_executor(), [this]() {
          send_transaction([this](const fc::exception_ptr& e){
             if (e) {
                elog("pushing transaction failed: ${e}", ("e", e->to_detail_string()));
@@ -400,14 +394,9 @@ struct txn_test_gen_plugin_impl {
          throw fc::exception(fc::invalid_operation_exception_code);
       timer->cancel();
       running = false;
-      if( gen_ioc_work )
-         gen_ioc_work->reset();
-      if( gen_ioc )
-         gen_ioc->stop();
-      if( thread_pool ) {
-         thread_pool->join();
+      if( thread_pool )
          thread_pool->stop();
-      }
+
       ilog("Stopping transaction generation test");
 
       if (_txcount) {
