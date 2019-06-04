@@ -124,7 +124,8 @@ namespace bacc = boost::accumulators;
       else {
          struct itimerval enable = {{0, 0}, {0, (int)x.count()-deadline_timer_verification.timer_overhead}};
          expired = 0;
-         expired |= !!setitimer(ITIMER_REAL, &enable, NULL);
+         if(setitimer(ITIMER_REAL, &enable, NULL))
+            expired = 1;
       }
    }
 
