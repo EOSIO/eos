@@ -1935,7 +1935,7 @@ namespace eosio {
       fc_dlog( logger, "bcast notice ${b}", ("b", block_header::num_from_id( id )) );
       notice_message note;
       note.known_blocks.mode = normal;
-      note.known_blocks.pending = 0;
+      note.known_blocks.pending = 1; // 1 indicates this is a block id notice
       note.known_blocks.ids.emplace_back( id );
 
       for_each_block_connection( [this, note]( auto& cp ) {
@@ -2036,6 +2036,9 @@ namespace eosio {
                return;
             } else {
                add_peer_block_id( blkid, c->connection_id );
+            }
+            if( msg.known_blocks.pending == 1 ) { // block id notify
+               return;
             }
             connection_wptr weak = c;
             app().post( priority::low, [this, msg{std::move(msg)}, req{std::move(req)}, weak{std::move(weak)}]() mutable {
