@@ -71,6 +71,7 @@ namespace eosio {
        };
 
        MsgType msg_type;
+       uint32_t msg_id;
 
        BaseMessage(MsgType type = Unknown)
        : msg_type(type)
@@ -168,7 +169,7 @@ FC_REFLECT(eosio::TrxMetadata, (id)(accepted)(implicit)(scheduled))
 FC_REFLECT(eosio::TrxReceipt, (id)(status)(cpu_usage_us)(net_usage_words)(ram_kbytes)(storage_kbytes))
 
 FC_REFLECT_ENUM(eosio::BaseMessage::MsgType, (Unknown)(GenesisData)(AcceptBlock)(CommitBlock)(AcceptTrx)(ApplyTrx))
-FC_REFLECT(eosio::BaseMessage, (msg_type))
+FC_REFLECT(eosio::BaseMessage, (msg_type)(msg_id))
 FC_REFLECT_DERIVED(eosio::GenesisDataMessage, (eosio::BaseMessage), (code)(name)(data))
 FC_REFLECT_DERIVED(eosio::BlockMessage, (eosio::BaseMessage), (id)(previous)(block_num)(block_time)(validated)(in_current_chain))
 FC_REFLECT_DERIVED(eosio::AcceptedBlockMessage, (eosio::BlockMessage), (trxs)(events))

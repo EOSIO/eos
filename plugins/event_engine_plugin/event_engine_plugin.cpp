@@ -67,6 +67,10 @@ public:
     std::fstream dumpstream;
     bool dumpstream_opened;
 
+    uint32_t msg_id = 0;
+    uint32_t tmp_msg_id;
+    block_id_type last_block;
+
     std::map<chain::name,abi_info> abi_map;
     controller &db;
     fc::microseconds abi_serializer_max_time;
@@ -85,12 +89,20 @@ public:
 
     bool is_handled_contract(const account_name n) const;
 
+private:
     template<typename Msg>
-    void send_message(const Msg& msg) {
+    void send_message(const Msg& msg, uint32_t id) {
         if(dumpstream_opened) {
+            msg.msg_id = id;
             dumpstream << fc::json::to_string(fc::variant(msg)) << std::endl;
             dumpstream.flush();
         }
+    }
+
+    void send_genesis_message(const chain::name code, const chain::name name, const fc::variant& data) {
+        GenesisDataMessage msg(BaseMessage::GenesisData, code, name, data);
+        msg_id++;
+        send_message(msg, msg_id);
     }
 
     const abi_info *get_account_abi(name account) {
@@ -191,21 +203,27 @@ void event_engine_plugin_impl::accepted_block( const chain::block_state_ptr& sta
     ilog("Accepted block: ${block_num}", ("block_num", state->block_num));
 
     AcceptedBlockMessage msg(BlockMessage::AcceptBlock, state);
-    send_message(msg);
+    if (last_block != state->id) {
+        msg_id = 0;
+        last_block = state->id;
+    } else {
+        msg_id++;
+    }
+    send_message(msg, msg_id);
 }
 
 void event_engine_plugin_impl::irreversible_block(const chain::block_state_ptr& state) {
     ilog("Irreversible block: ${block_num}", ("block_num", state->block_num));
 
     BlockMessage msg(BlockMessage::CommitBlock, state);
-    send_message(msg);
+    send_message(msg, UINT32_MAX);
 }
 
 void event_engine_plugin_impl::accepted_transaction(const chain::transaction_metadata_ptr& trx_meta) {
     ilog("Accepted trx: ${id}, ${signed_id}", ("id", trx_meta->id)("signed_id", trx_meta->signed_id));
 
     AcceptTrxMessage msg(BaseMessage::AcceptTrx, trx_meta);
-    send_message(msg);
+    send_message(msg, UINT32_MAX);
 }
 
 bool event_engine_plugin_impl::is_handled_contract(const account_name n) const {
@@ -213,13 +231,14 @@ bool event_engine_plugin_impl::is_handled_contract(const account_name n) const {
 }
 
 void event_engine_plugin_impl::send_genesis_start() {
-    GenesisDataMessage msg(BaseMessage::GenesisData, core_genesis_code, N(datastart), fc::variant_object());
-    send_message(msg);
+    tmp_msg_id = msg_id; // EE-genesis splits ApplyTrx and AcceptBlock on block 2
+    msg_id = 0;
+    send_genesis_message(core_genesis_code, N(datastart), fc::variant_object());
 }
 
 void event_engine_plugin_impl::send_genesis_end() {
-    GenesisDataMessage msg(BaseMessage::GenesisData, core_genesis_code, N(dataend), fc::variant_object());
-    send_message(msg);
+    send_genesis_message(core_genesis_code, N(dataend), fc::variant_object());
+    msg_id = tmp_msg_id;
 }
 
 void event_engine_plugin_impl::send_genesis_file(const bfs::path& genesis_file) {
@@ -249,8 +268,7 @@ void event_engine_plugin_impl::send_genesis_file(const bfs::path& genesis_file) 
         std::cout << "Reading " << t.count << " record(s) with type: " << t.abi_type << std::endl;
         for (unsigned i = 0; i < t.count; ++i) {
             fc::variant args = serializer.binary_to_variant(t.abi_type, ds, abi_serializer_max_time);
-            GenesisDataMessage msg(BaseMessage::GenesisData, t.code, t.name, args);
-            send_message(msg);
+            send_genesis_message(t.code, t.name, args);
         }
     }
     std::cout << "Done reading Event Engine Genesis data from " << genesis_file << std::endl;
@@ -293,10 +311,19 @@ void event_engine_plugin_impl::applied_transaction(const chain::transaction_trac
     };
 
     ApplyTrxMessage msg(BaseMessage::ApplyTrx, trx_trace);
+    const auto& block_id = trx_trace->producer_block_id;
+    if (!block_id) {
+        msg_id = UINT32_MAX;
+    } else if (last_block != *block_id) {
+        msg_id = 0;
+        last_block = *block_id;
+    } else {
+        msg_id++;
+    }
     for(auto &trace: trx_trace->action_traces) {
         process_action_trace(msg, trace);
     }
-    send_message(msg);
+    send_message(msg, msg_id);
 }
 
 
