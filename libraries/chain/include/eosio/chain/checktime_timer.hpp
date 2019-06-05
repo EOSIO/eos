@@ -13,8 +13,6 @@ struct checktime_timer {
    void start(fc::time_point tp);
    void stop();
 
-   int ms;
-
    volatile sig_atomic_t expired = 1;
 
 private:
