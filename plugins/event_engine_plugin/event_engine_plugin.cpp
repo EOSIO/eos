@@ -91,7 +91,7 @@ public:
 
 private:
     template<typename Msg>
-    void send_message(const Msg& msg, uint32_t id) {
+    void send_message(Msg& msg, uint32_t id) {
         if(dumpstream_opened) {
             msg.msg_id = id;
             dumpstream << fc::json::to_string(fc::variant(msg)) << std::endl;
@@ -231,14 +231,12 @@ bool event_engine_plugin_impl::is_handled_contract(const account_name n) const {
 }
 
 void event_engine_plugin_impl::send_genesis_start() {
-    tmp_msg_id = msg_id; // EE-genesis splits ApplyTrx and AcceptBlock on block 2
     msg_id = 0;
     send_genesis_message(core_genesis_code, N(datastart), fc::variant_object());
 }
 
 void event_engine_plugin_impl::send_genesis_end() {
     send_genesis_message(core_genesis_code, N(dataend), fc::variant_object());
-    msg_id = tmp_msg_id;
 }
 
 void event_engine_plugin_impl::send_genesis_file(const bfs::path& genesis_file) {
@@ -363,6 +361,12 @@ void event_engine_plugin::plugin_initialize(const variables_map& options) {
             my->dumpstream.open(dump_filename, std::ofstream::out | std::ofstream::app);
             EOS_ASSERT(!my->dumpstream.fail(), chain::plugin_config_exception, "Can't open event-engine-dumpfile");
             my->dumpstream_opened = true;
+
+            my->send_genesis_start();
+            for(const auto& file: my->genesis_files) {
+                my->send_genesis_file(file);
+            }
+            my->send_genesis_end();
         }
 
         my->accepted_block_connection.emplace( 
@@ -392,15 +396,6 @@ void event_engine_plugin::plugin_initialize(const variables_map& options) {
 }
 
 void event_engine_plugin::plugin_startup() {
-   auto& chain = app().find_plugin<chain_plugin>()->chain();
-   // Make the magic happen
-   if (chain.head_block_num() == 1) {
-       my->send_genesis_start();
-       for(const auto& file: my->genesis_files) {
-           my->send_genesis_file(file);
-       }
-       my->send_genesis_end();
-   }
 }
 
 void event_engine_plugin::plugin_shutdown() {
