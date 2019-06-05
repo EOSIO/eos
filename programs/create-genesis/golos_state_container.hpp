@@ -6,6 +6,7 @@ namespace cyberway { namespace genesis {
 struct golos_state_header {
     char magic[12];
     uint32_t version;
+    uint32_t block_num;
 
     static constexpr auto expected_magic = "Golos\astatE";
 };

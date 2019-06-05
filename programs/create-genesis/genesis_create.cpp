@@ -29,6 +29,8 @@ template<typename T> void unpack(T& s, cyberway::golos::comment_object& c) {
     fc::raw::unpack(s, c.parent_permlink);
     fc::raw::unpack(s, c.author);
     fc::raw::unpack(s, c.permlink);
+    fc::raw::unpack(s, c.depth);
+    fc::raw::unpack(s, c.children);
     fc::raw::unpack(s, c.mode);
     if (c.mode != cyberway::golos::comment_mode::archived) {
         fc::raw::unpack(s, c.active);

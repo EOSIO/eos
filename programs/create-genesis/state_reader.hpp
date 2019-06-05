@@ -206,8 +206,8 @@ struct state_object_visitor {
                 .permlink = c.permlink.id,
                 .parent_author = c.parent_author.id,
                 .parent_permlink = c.parent_permlink.id,
-                .depth = c.active.depth,      // TODO: should be in consensus part of golos state GolosChain/golos#1302
-                .children = c.active.children
+                .depth = static_cast<uint16_t>(c.depth.value),
+                .children = c.children.value
             });
         }
     }
@@ -273,10 +273,13 @@ public:
         read_maps();
 
         bfs::ifstream in(_state_file);
-        golos_state_header h{"", 0};
+        golos_state_header h{"", 0, 0};
         in.read((char*)&h, sizeof(h));
-        EOS_ASSERT(string(h.magic) == golos_state_header::expected_magic && h.version == 1, genesis_exception,
-            "Unknown format of the Genesis state file.");
+        EOS_ASSERT(string(h.magic) == golos_state_header::expected_magic, genesis_exception,
+            "Unknown format of the Golos state file.");
+        EOS_ASSERT(h.version == 2, genesis_exception,
+            "Can only open Golos state file version 2, but version ${v} provided.", ("v", h.version));
+        EOS_ASSERT(h.block_num > 0, genesis_exception, "Golos state file block_num should be greater than 0.");
 
         while (in && !visitor.early_exit) {
             golos_table_header t;

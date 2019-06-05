@@ -209,8 +209,6 @@ struct block_summary_object {
 struct active_comment_data {
     time_point_sec created;
     time_point_sec last_payout;
-    uint16_t depth;
-    uint32_t children;
     uint128_t children_rshares2;
     share_type net_rshares;
     share_type abs_rshares;
@@ -239,7 +237,9 @@ struct comment_object {
     shared_permlink parent_permlink;
     account_name_type author;
     shared_permlink permlink;
-    comment_mode mode;
+    fc::unsigned_int depth;
+    fc::unsigned_int children;
+    uint8_t mode;                   // comment_mode
     active_comment_data active;
 };
 struct comment_vote_object {
@@ -447,9 +447,9 @@ FC_REFLECT(cyberway::golos::witness_vote_object, (id)(witness)(account))
 FC_REFLECT(cyberway::golos::block_summary_object, (id)(block_id))
 
 // comment must be unpacked manually
-// FC_REFLECT(cyberway::golos::comment_object, (id)(parent_author)(parent_permlink)(author)(permlink)(mode))
+// FC_REFLECT(cyberway::golos::comment_object, (id)(parent_author)(parent_permlink)(author)(permlink)(depth)(children)(mode))
 FC_REFLECT(cyberway::golos::active_comment_data,
-    (created)(last_payout)(depth)(children)
+    (created)(last_payout)
     (children_rshares2)(net_rshares)(abs_rshares)(vote_rshares)(children_abs_rshares)(cashout_time)(max_cashout_time)
     (reward_weight)(net_votes)(total_votes)(root_comment)
     (curation_reward_curve)(auction_window_reward_destination)(auction_window_size)(max_accepted_payout)
