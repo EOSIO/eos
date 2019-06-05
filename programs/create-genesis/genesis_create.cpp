@@ -286,7 +286,7 @@ struct genesis_create::genesis_create_impl final {
             const auto n = a.account.str(_accs_map);
             auto convert_authority = [&](permission_name perm, const golos::shared_authority& a, name recovery = {}) {
                 bool recoverable = recovery != name() && a.weight_threshold == 1 && a.account_auths.size() == 0;
-                uint32_t threshold = recoverable ? 2 : a.weight_threshold;
+                uint32_t threshold = recoverable ? 2 : n == "temp" ? 1 : a.weight_threshold;
                 vector<key_weight> keys;
                 for (const auto& k: a.key_auths) {
                     // can't construct public key directly, constructor is private. transform to string first:
@@ -382,6 +382,7 @@ struct genesis_create::genesis_create_impl final {
             s.id = sys_sym.to_symbol_code().value;
             s.token_code = sys_sym.to_symbol_code();
             s.total_staked = _total_staked.get_amount();
+            s.total_votes = 0;                              // TODO: fix #789
             s.last_reward = time_point_sec();
             s.enabled = inf.enabled;
         });
@@ -573,12 +574,12 @@ struct genesis_create::genesis_create_impl final {
                 });
             }
         }
-        
+
         db.start_section(config::system_account_name, N(stake.cand), "stake_candidate_object", agents_by_level[0].size());
         for (auto& ag: agents_by_level[0]) {
             auto acc = ag.first;
             auto& x = ag.second;
-            
+
             bool enabled = (x.own_staked() >= _info.params.stake.min_own_staked_for_election && keys.count(acc));
             db.emplace<stake_candidate_object>(x.name, [&](auto& a) {
                 a.token_code = sys_sym.to_symbol_code();
@@ -589,7 +590,7 @@ struct genesis_create::genesis_create_impl final {
                 a.set_votes(x.balance, total_votes);
             });
         }
-        
+
         ilog("Done.");
     }
 
