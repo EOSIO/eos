@@ -2155,6 +2155,7 @@ namespace eosio {
 
    void net_plugin_impl::start_listen_loop() {
       connection_ptr new_connection = std::make_shared<connection>();
+      new_connection->connecting = true;
       acceptor->async_accept( new_connection->socket,
             boost::asio::bind_executor( new_connection->strand, [new_connection, this]( boost::system::error_code ec ) {
          if( !ec ) {
