@@ -2685,7 +2685,7 @@ namespace eosio {
 
    void connection::handle_message( const notice_message& msg ) {
       peer_ilog( this, "received notice_message" );
-      connecting = false;
+      //connecting = false;
       if( msg.known_trx.mode != none ) {
          fc_dlog( logger, "this is a ${m} notice with ${n} transactions",
                   ("m", modes_str( msg.known_trx.mode ))( "n", msg.known_trx.pending ) );
