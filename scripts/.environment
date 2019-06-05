@@ -1,0 +1,95 @@
+export SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+export REPO_ROOT="${SCRIPT_DIR}/.."
+export BUILD_DIR="${REPO_ROOT}/build"
+
+export EOSIO_VERSION_MAJOR=$(cat $REPO_ROOT/CMakeLists.txt | grep -E "set\([ +]?VERSION_MAJOR" | sed 's/set(.*VERSION_MAJOR //g' | sed 's/ //g' | cut -d\) -f1)
+export EOSIO_VERSION_MINOR=$(cat $REPO_ROOT/CMakeLists.txt | grep -E "set\([ +]?VERSION_MINOR" | sed 's/set(.*VERSION_MINOR //g' | sed 's/ //g' | cut -d\) -f1)
+export EOSIO_VERSION_PATCH=$(cat $REPO_ROOT/CMakeLists.txt | grep -E "set\([ +]?VERSION_PATCH" | sed 's/set(.*VERSION_PATCH //g' | sed 's/ //g' | cut -d\) -f1)
+export EOSIO_VERSION_SUFFIX=$(cat $REPO_ROOT/CMakeLists.txt | grep -E "set\([ +]?VERSION_SUFFIX" | sed 's/set(.*VERSION_SUFFIX //g' | sed 's/ //g' | cut -d\) -f1)
+export EOSIO_VERSION="${EOSIO_VERSION_MAJOR}.${EOSIO_VERSION_MINOR}.${EOSIO_VERSION_PATCH}-${EOSIO_VERSION_SUFFIX}"
+
+export INSTALL_LOCATION=${INSTALL_LOCATION:-$HOME}
+export EOSIO_INSTALL_DIR="${INSTALL_LOCATION}/eosio/${EOSIO_VERSION}"
+export TEMP_DIR="${INSTALL_LOCATION}/tmp"
+
+export SRC_DIR=${EOSIO_INSTALL_DIR}/src
+export OPT_DIR=${EOSIO_INSTALL_DIR}/opt
+export VAR_DIR=${EOSIO_INSTALL_DIR}/var
+export ETC_DIR=${EOSIO_INSTALL_DIR}/etc
+export BIN_DIR=${EOSIO_INSTALL_DIR}/bin
+export LIB_DIR=${EOSIO_INSTALL_DIR}/lib
+export DATA_DIR=${EOSIO_INSTALL_DIR}/data
+
+# CMAKE
+export CMAKE_VERSION_MAJOR=3
+export CMAKE_VERSION_MINOR=13
+export CMAKE_VERSION_PATCH=2
+export CMAKE_VERSION=${CMAKE_VERSION_MAJOR}.${CMAKE_VERSION_MINOR}.${CMAKE_VERSION_PATCH}
+
+# MONGO
+export MONGODB_VERSION=3.6.3
+export MONGODB_ROOT=${OPT_DIR}/mongodb-${MONGODB_VERSION}
+export MONGODB_BIN=${BIN_DIR}/mongod
+export MONGODB_CONF=${ETC_DIR}/mongod.conf
+export MONGODB_LOG_DIR=${VAR_DIR}/log/mongodb
+export MONGODB_LINK_DIR=${OPT_DIR}/mongodb
+export MONGODB_DATA_DIR=${DATA_DIR}/mongodb
+export MONGO_C_DRIVER_VERSION=1.13.0
+export MONGO_C_DRIVER_ROOT=${SRC_DIR}/mongo-c-driver-${MONGO_C_DRIVER_VERSION}
+export MONGO_CXX_DRIVER_VERSION=3.4.0
+export MONGO_CXX_DRIVER_ROOT=${SRC_DIR}/mongo-cxx-driver-r${MONGO_CXX_DRIVER_VERSION}
+export ENABLE_MONGO=${ENABLE_MONGO:-false}
+export INSTALL_MONGO=${INSTALL_MONGO:-false}
+
+# BOOST
+export BOOST_VERSION_MAJOR=1
+export BOOST_VERSION_MINOR=70
+export BOOST_VERSION_PATCH=0
+export BOOST_VERSION=${BOOST_VERSION_MAJOR}_${BOOST_VERSION_MINOR}_${BOOST_VERSION_PATCH}
+export BOOST_ROOT=${BOOST_LOCATION:-${SRC_DIR}/boost_${BOOST_VERSION}}
+export BOOST_LINK_LOCATION=${OPT_DIR}/boost
+
+# LLVM
+export LLVM_VERSION=release_40
+export LLVM_ROOT=${OPT_DIR}/llvm
+export LLVM_DIR=${LLVM_ROOT}/lib/cmake/llvm
+
+# DOXYGEN
+export DOXYGEN_VERSION=1_8_14
+export DOXYGEN_ROOT=${SRC_DIR}/doxygen-${DOXYGEN_VERSION}
+export ENABLE_DOXYGEN=${ENABLE_DOXYGEN:-false}
+
+# CLANG
+export CLANG_ROOT=${OPT_DIR}/clang8
+export PINNED_COMPILER_BRANCH=release_80
+export PINNED_COMPILER_LLVM_COMMIT=18e41dc
+export PINNED_COMPILER_CLANG_COMMIT=a03da8b
+export PINNED_COMPILER_LLD_COMMIT=d60a035
+export PINNED_COMPILER_POLLY_COMMIT=1bc06e5
+export PINNED_COMPILER_CLANG_TOOLS_EXTRA_COMMIT=6b34834
+export PINNED_COMPILER_LIBCXX_COMMIT=1853712
+export PINNED_COMPILER_LIBCXXABI_COMMIT=d7338a4
+export PINNED_COMPILER_LIBUNWIND_COMMIT=57f6739
+export PINNED_COMPILER_COMPILER_RT_COMMIT=5bc7979
+export NO_CPP17=${NO_CPP17:-false}
+export PIN_COMPILER=${PIN_COMPILER:-false}
+export BUILD_CLANG=${BUILD_CLANG:-false}
+
+export CORE_SYMBOL_NAME=${CORE_SYMBOL_NAME:-SYS}
+
+export CPU_CORES=$(grep -c ^processor /proc/cpuinfo 2>/dev/null || sysctl -n hw.ncpu)
+export CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release}
+
+export NONINTERACTIVE=${NONINTERACTIVE:-false}
+export PROCEED=${PROCEED:-false}
+
+export CURRENT_USER=${CURRENT_USER:-$(whoami)}
+
+export ENABLE_COVERAGE_TESTING=${ENABLE_COVERAGE_TESTING:-false}
+export HOMEBREW_NO_AUTO_UPDATE=1
+export TINI_VERSION=0.18.0
+export DISK_MIN=5
+export COUNT=0
+export DRYRUN=${DRYRUN:-false}
+export VERBOSE=${VERBOSE:-false}
+export SUDO_LOCATION=$( command -v sudo )

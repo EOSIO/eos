@@ -403,6 +403,8 @@ namespace eosio { namespace chain {
                                     3100008, "Feature is currently unsupported" )
       FC_DECLARE_DERIVED_EXCEPTION( node_management_success,                misc_exception,
                                     3100009, "Node management operation successfully executed" )
+      FC_DECLARE_DERIVED_EXCEPTION( json_parse_exception,                misc_exception,
+                                    3100010, "JSON parse exception" )
 
 
 
