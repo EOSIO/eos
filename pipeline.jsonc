@@ -1,9 +1,10 @@
 {
-    "eosio": {
-        "pipeline-branch": "develop",
-        "environment": {
-            "IMAGE_TAG": "develop",
-            "DEBUG": true
+    "eosio":
+    {
+        "pipeline-branch": "master",
+        "environment":
+        {
+            "IMAGE_TAG": "_develop"
         }
     },
     "eosio-base-images":
