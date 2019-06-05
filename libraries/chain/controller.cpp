@@ -600,6 +600,7 @@ struct controller_impl {
             a.set_abi(domain_contract_abi());
          }
       });
+
       chaindb.emplace<account_sequence_object>([&](auto & a) {
         a.name = name;
       });
