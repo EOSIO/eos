@@ -39,6 +39,7 @@ enum class stored_contract_tables: int {
     stake_agents,   stake_cands,
     stake_grants,
     stake_stats,    stake_params,
+    memo_key,
 
     _max                // to simplify setting tables_count of genesis container
 };

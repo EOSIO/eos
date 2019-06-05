@@ -319,8 +319,6 @@ struct genesis_create::genesis_create_impl final {
             const auto& owner  = store_permission(name, config::owner_name, 0, own, usage_id++);
             const auto& active = store_permission(name, config::active_name, owner.id, act, usage_id++);
             const auto& posting= store_permission(name, posting_auth_name, active.id, post, usage_id++);
-
-            // TODO: do we need memo key ? #651
         }
 
         // link posting permission with gls.publish and gls.social
@@ -1060,6 +1058,21 @@ struct genesis_create::genesis_create_impl final {
         ilog("Done.");
     }
 
+    void store_memo_keys() {
+        ilog("Creating memo keys...");
+        const auto& accs = _visitor.accounts;
+        db.start_section(_info.golos.names.memo, N(memo), "memo_key", accs.size());
+        for (const auto& ac : accs) {
+            const auto& a = ac.second;
+            const auto n = name_by_acc(a.name);
+            db.insert(n.value, n, mvo
+                ("name", n)
+                ("key", public_key_type{pubkey_string(a.memo_key)})
+            );
+        }
+        ilog("Done.");
+    }
+
     void prepare_writer(const bfs::path& out_file) {
         const int n_sections = static_cast<int>(stored_contract_tables::_max) + _info.tables.size();
         db.start(out_file, n_sections);
@@ -1097,6 +1110,7 @@ void genesis_create::write_genesis(
     _impl->store_delegation_records();
     _impl->store_withdrawals();
     _impl->store_witnesses();
+    _impl->store_memo_keys();
 
     _impl->db.finalize();
 

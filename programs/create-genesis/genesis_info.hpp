@@ -136,6 +136,7 @@ struct genesis_info {
             account_name posting;
             account_name social;
             account_name charge;
+            account_name memo;
         } names;
 
         struct recovery_params {
@@ -178,7 +179,8 @@ FC_REFLECT(cyberway::genesis::genesis_info::account, (name)(update)(permissions)
 FC_REFLECT(cyberway::genesis::genesis_info::auth_link, (permission)(links))
 FC_REFLECT(cyberway::genesis::genesis_info::table::row, (scope)(payer)(pk)(data))
 FC_REFLECT(cyberway::genesis::genesis_info::table, (code)(table)(abi_type)(rows))
-FC_REFLECT(cyberway::genesis::genesis_info::golos_config::golos_names, (issuer)(control)(vesting)(posting)(social)(charge))
+FC_REFLECT(cyberway::genesis::genesis_info::golos_config::golos_names,
+    (issuer)(control)(vesting)(posting)(social)(charge)(memo))
 FC_REFLECT(cyberway::genesis::genesis_info::golos_config::recovery_params, (wait_days))
 FC_REFLECT(cyberway::genesis::genesis_info::golos_config::posts_trx_params, (expiration_hours)(initial_from))
 FC_REFLECT(cyberway::genesis::genesis_info::golos_config, (domain)(names)(recovery)(max_supply)(sys_max_supply)(posts_trx))
