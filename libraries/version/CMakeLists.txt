@@ -29,9 +29,9 @@ target_include_directories(
 install(
    TARGETS
    version
-   RUNTIME       DESTINATION ${CMAKE_INSTALL_FULL_BINDIR}   ### Is this needed? It's just a library?
-   ARCHIVE       DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}   ### Is this needed as both a static and dynamic lib?
-   LIBRARY       DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR} ) ### ...
+   RUNTIME DESTINATION ${CMAKE_INSTALL_FULL_BINDIR}   ### Is this needed? It's just a library?
+   ARCHIVE DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}   ### Is this needed as both a static and dynamic lib?
+   LIBRARY DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR} ) ### ...
 
 # Install the header file in the appropriate place.
 install(
