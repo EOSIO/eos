@@ -1,13 +1,13 @@
 {
     "eosio": {
-        "pipeline-branch": "develop",
+        "pipeline-branch": "support-for-improvements",
         "environment": {
             "IMAGE_TAG": "develop",
             "DEBUG": true
         }
     },
     "eosio-base-images": {
-        "pipeline-branch": "develop"
+        "pipeline-branch": "support-for-improvements"
     },
     "eosio-build-unpinned": {
         "pipeline-branch": "protocol-features-sync-nodes"
