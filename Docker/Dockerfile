@@ -2,6 +2,7 @@ ARG builder=master
 FROM cyberway/builder:$builder as builder
 ARG branch=master
 ARG symbol=CYBER
+ARG compiletype=RelWithDebInfo
 
 ADD https://api.github.com/repos/GolosChain/cyberway/git/refs/heads/$branch /etc/version.json
 
@@ -11,7 +12,7 @@ RUN cd cyberway \
     && echo "$branch:$(git rev-parse HEAD)" > /etc/cyberway-version \
     && cmake -H. -B"/tmp/build" \
         -GNinja \
-        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_BUILD_TYPE=$compiletype \
         -DWASM_ROOT=/opt/wasm \
         -DCMAKE_CXX_COMPILER=clang++ \
         -DCMAKE_C_COMPILER=clang \
