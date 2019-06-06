@@ -2544,23 +2544,23 @@ namespace eosio {
                   // we need to avoid the case where they would both tell a different connection to go away.
                   // Using the sum of the initial handshake times of the two connections, we will
                   // arbitrarily (but consistently between the two peers) keep one of them.
-                  std::unique_lock<std::mutex> g_check_conn( check->conn_mtx );
-                  auto check_time = check->last_handshake_sent.time + check->last_handshake_recv.time;
-                  g_check_conn.unlock();
-                  g_conn.lock();
-                  auto c_time = last_handshake_sent.time;
-                  g_conn.unlock();
-                  if (msg.time + c_time <= check_time)
-                     continue;
-
-                  g_cnts.unlock();
-                  fc_dlog( logger, "sending go_away duplicate to ${ep}", ("ep",msg.p2p_address) );
-                  go_away_message gam(duplicate);
-                  gam.node_id = node_id;
-                  enqueue(gam);
-                  no_retry = duplicate;
-                  my_impl->sync_master->send_handshakes();
-                  return;
+//                  std::unique_lock<std::mutex> g_check_conn( check->conn_mtx );
+//                  auto check_time = check->last_handshake_sent.time + check->last_handshake_recv.time;
+//                  g_check_conn.unlock();
+//                  g_conn.lock();
+//                  auto c_time = last_handshake_sent.time;
+//                  g_conn.unlock();
+//                  if (msg.time + c_time <= check_time)
+//                     continue;
+//
+//                  g_cnts.unlock();
+//                  fc_dlog( logger, "sending go_away duplicate to ${ep}", ("ep",msg.p2p_address) );
+//                  go_away_message gam(duplicate);
+//                  gam.node_id = node_id;
+//                  enqueue(gam);
+//                  no_retry = duplicate;
+//                  my_impl->sync_master->send_handshakes();
+//                  return;
                }
             }
          } else {
