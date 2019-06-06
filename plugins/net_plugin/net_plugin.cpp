@@ -2521,11 +2521,11 @@ namespace eosio {
          connecting = false;
       }
       if (msg.generation == 1) {
-         if( msg.node_id == node_id) {
-            fc_elog( logger, "Self connection detected node_id ${id}. Closing connection", ("id", node_id) );
-            enqueue( go_away_message( self ) );
-            return;
-         }
+//         if( msg.node_id == node_id) {
+//            fc_elog( logger, "Self connection detected node_id ${id}. Closing connection", ("id", node_id) );
+//            enqueue( go_away_message( self ) );
+//            return;
+//         }
 
          if( peer_address().empty() ) {
             set_connection_type( msg.p2p_address );
