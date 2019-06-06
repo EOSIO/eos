@@ -179,6 +179,7 @@ bool   tx_dont_broadcast = false;
 bool   tx_return_packed = false;
 bool   tx_skip_sign = false;
 bool   tx_print_json = false;
+string tx_json_save_file;
 bool   print_request = false;
 bool   print_response = false;
 bool   no_auto_keosd = false;
@@ -208,6 +209,7 @@ void add_standard_transaction_options(CLI::App* cmd, string default_permission =
    cmd->add_flag("-f,--force-unique", tx_force_unique, localized("force the transaction to be unique. this will consume extra bandwidth and remove any protections against accidently issuing the same transaction multiple times"));
    cmd->add_flag("-s,--skip-sign", tx_skip_sign, localized("Specify if unlocked wallet keys should be used to sign transaction"));
    cmd->add_flag("-j,--json", tx_print_json, localized("print result as json"));
+   cmd->add_option("--json-file", tx_json_save_file, localized("save result in json format into a file"));
    cmd->add_flag("-d,--dont-broadcast", tx_dont_broadcast, localized("don't broadcast transaction to the network (just print to stdout)"));
    cmd->add_flag("--return-packed", tx_return_packed, localized("used in conjunction with --dont-broadcast to get the packed transaction"));
    cmd->add_option("-r,--ref-block", tx_ref_block_num_or_id, (localized("set the reference block num or block id used for TAPOS (Transaction as Proof-of-Stake)")));
@@ -501,20 +503,48 @@ void print_result( const fc::variant& result ) { try {
 
 using std::cout;
 void send_actions(std::vector<chain::action>&& actions, packed_transaction::compression_type compression = packed_transaction::compression_type::none ) {
+   std::ofstream out;
+   if (tx_json_save_file.length()) {
+      out.open(tx_json_save_file);
+      EOSC_ASSERT(!out.fail(), "ERROR: Failed to create file \"${p}\"", ("p", tx_json_save_file));
+   }
    auto result = push_actions( move(actions), compression);
 
+   string jsonstr;
+   if (tx_json_save_file.length()) {
+      jsonstr = fc::json::to_pretty_string( result );
+      out << jsonstr;
+      out.close();
+   }
    if( tx_print_json ) {
-      cout << fc::json::to_pretty_string( result ) << endl;
+      if (jsonstr.length() == 0) {
+         jsonstr = fc::json::to_pretty_string( result );
+      }
+      cout << jsonstr << endl;
    } else {
       print_result( result );
    }
 }
 
 void send_transaction( signed_transaction& trx, packed_transaction::compression_type compression = packed_transaction::compression_type::none  ) {
+   std::ofstream out;
+   if (tx_json_save_file.length()) {
+      out.open(tx_json_save_file);
+      EOSC_ASSERT(!out.fail(), "ERROR: Failed to create file \"${p}\"", ("p", tx_json_save_file));
+   }
    auto result = push_transaction(trx, compression);
 
+   string jsonstr;
+   if (tx_json_save_file.length()) {
+      jsonstr = fc::json::to_pretty_string( result );
+      out << jsonstr;
+      out.close();
+   }
    if( tx_print_json ) {
-      cout << fc::json::to_pretty_string( result ) << endl;
+      if (jsonstr.length() == 0) {
+         jsonstr = fc::json::to_pretty_string( result );
+      }
+      cout << jsonstr << endl;
    } else {
       print_result( result );
    }
@@ -888,10 +918,12 @@ void try_local_port(uint32_t duration) {
 void ensure_keosd_running(CLI::App* app) {
     if (no_auto_keosd)
         return;
-    // get, version, net do not require keosd
-    if (tx_skip_sign || app->got_subcommand("get") || app->got_subcommand("version") || app->got_subcommand("net"))
+    // get, version, net, convert do not require keosd
+    if (tx_skip_sign || app->got_subcommand("get") || app->got_subcommand("version") || app->got_subcommand("net") || app->got_subcommand("convert"))
         return;
     if (app->get_subcommand("create")->got_subcommand("key")) // create key does not require wallet
+       return;
+    if (app->get_subcommand("multisig")->got_subcommand("review")) // multisig review does not require wallet
        return;
     if (auto* subapp = app->get_subcommand("system")) {
        if (subapp->got_subcommand("listproducers") || subapp->got_subcommand("listbw") || subapp->got_subcommand("bidnameinfo")) // system list* do not require wallet
@@ -3219,7 +3251,7 @@ int main( int argc, char** argv ) {
       try {
          wallet_key = private_key_type( wallet_key_str );
       } catch (...) {
-         EOS_THROW(private_key_type_exception, "Invalid private key: ${private_key}", ("private_key", wallet_key_str))
+         EOS_THROW(private_key_type_exception, "Invalid private key")
       }
       public_key_type pubkey = wallet_key.get_public_key();
 
@@ -3299,16 +3331,22 @@ int main( int argc, char** argv ) {
    string trx_json_to_sign;
    string str_private_key;
    string str_chain_id;
+   string str_private_key_file;
+   string str_public_key;
    bool push_trx = false;
 
    auto sign = app.add_subcommand("sign", localized("Sign a transaction"), false);
    sign->add_option("transaction", trx_json_to_sign,
                                  localized("The JSON string or filename defining the transaction to sign"), true)->required();
    sign->add_option("-k,--private-key", str_private_key, localized("The private key that will be used to sign the transaction"));
+   sign->add_option("--public-key", str_public_key, localized("Ask ${exec} to sign with the corresponding private key of the given public key", ("exec", key_store_executable_name)));
    sign->add_option("-c,--chain-id", str_chain_id, localized("The chain id that will be used to sign the transaction"));
-   sign->add_flag( "-p,--push-transaction", push_trx, localized("Push transaction after signing"));
+   sign->add_flag("-p,--push-transaction", push_trx, localized("Push transaction after signing"));
 
    sign->set_callback([&] {
+
+      EOSC_ASSERT( str_private_key.empty() || str_public_key.empty(), "ERROR: Either -k/--private-key or --public-key or none of them can be set" );
+
       signed_transaction trx = json_from_file_or_string(trx_json_to_sign).as<signed_transaction>();
 
       fc::optional<chain_id_type> chain_id;
@@ -3321,15 +3359,26 @@ int main( int argc, char** argv ) {
          chain_id = chain_id_type(str_chain_id);
       }
 
-      if( str_private_key.size() == 0 ) {
-         std::cerr << localized("private key: ");
-         fc::set_console_echo(false);
-         std::getline( std::cin, str_private_key, '\n' );
-         fc::set_console_echo(true);
+      if( str_public_key.size() > 0 ) {
+         public_key_type pub_key;
+         try {
+            pub_key = public_key_type(str_public_key);
+         } EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid public key: ${public_key}", ("public_key", str_public_key))
+         fc::variant keys_var(flat_set<public_key_type>{ pub_key });
+         sign_transaction(trx, keys_var, *chain_id);
+      } else {
+         if( str_private_key.size() == 0 ) {
+            std::cerr << localized("private key: ");
+            fc::set_console_echo(false);
+            std::getline( std::cin, str_private_key, '\n' );
+            fc::set_console_echo(true);
+         }
+         private_key_type priv_key;
+         try {
+            priv_key = private_key_type(str_private_key);
+         } EOS_RETHROW_EXCEPTIONS(private_key_type_exception, "Invalid private key")
+         trx.sign(priv_key, *chain_id);
       }
-
-      auto priv_key = private_key_type(str_private_key);
-      trx.sign(priv_key, *chain_id);
 
       if(push_trx) {
          auto trx_result = call(push_txn_func, packed_transaction(trx, packed_transaction::compression_type::none));
