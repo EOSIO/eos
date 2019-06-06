@@ -21,15 +21,17 @@ add_library(
 target_include_directories(
    version
    PUBLIC
-   "${CMAKE_CURRENT_SOURCE_DIR}/src" )
+   "${CMAKE_CURRENT_SOURCE_DIR}/include/"
+   PRIVATE
+   "${CMAKE_CURRENT_SOURCE_DIR}/src/" )
 
 # Install the library in the appropriate places.
 install(
    TARGETS
    version
-   RUNTIME DESTINATION ${CMAKE_INSTALL_FULL_BINDIR}   #  Is it needed as a RUNTIME? It' just a library?
-   ARCHIVE DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}   ## Is it needed as both a static and dynamic lib?
-   LIBRARY DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR} ) ## ...
+   RUNTIME       DESTINATION ${CMAKE_INSTALL_FULL_BINDIR}   #  Is it needed as a RUNTIME? It' just a library?
+   ARCHIVE       DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}   ## Is it needed as both a static and dynamic lib?
+   LIBRARY       DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR} ) ## ...
 
 # Install the header file in the appropriate place.
 install(

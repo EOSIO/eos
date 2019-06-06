@@ -14,5 +14,5 @@ namespace eosio { namespace version {
 
    ///< Helper function for `version_full()`
    const std::string& _version_full();
-      
+
 } }
