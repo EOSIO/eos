@@ -626,6 +626,11 @@ namespace eosio {
 
       void populate_handshake( handshake_message& hello );
 
+      bool handshake_received()const {
+         std::lock_guard<std::mutex> g( conn_mtx );
+         return last_handshake_recv.network_version > 0;
+      }
+
       bool resolve_and_connect();
       void connect(const std::shared_ptr<tcp::resolver>& resolver, tcp::resolver::iterator endpoint_itr);
       void start_read_message();
@@ -1909,7 +1914,7 @@ namespace eosio {
       std::shared_ptr<std::vector<char>> send_buffer = create_send_buffer( bs->block );
 
       for_each_block_connection( [this, bs, send_buffer]( auto& cp ) {
-         if( !cp->current() ) {
+         if( !cp->current() || !cp->handshake_received() ) {
             return true;
          }
          cp->strand.post( [this, cp, bs, send_buffer]() {
@@ -1939,7 +1944,7 @@ namespace eosio {
       note.known_blocks.ids.emplace_back( id );
 
       for_each_block_connection( [this, note]( auto& cp ) {
-         if( !cp->current() ) {
+         if( !cp->current() || !cp->handshake_received() ) {
             return true;
          }
          cp->strand.post( [this, cp, note]() {
@@ -2521,11 +2526,11 @@ namespace eosio {
          connecting = false;
       }
       if (msg.generation == 1) {
-//         if( msg.node_id == node_id) {
-//            fc_elog( logger, "Self connection detected node_id ${id}. Closing connection", ("id", node_id) );
-//            enqueue( go_away_message( self ) );
-//            return;
-//         }
+         if( msg.node_id == node_id) {
+            fc_elog( logger, "Self connection detected node_id ${id}. Closing connection", ("id", node_id) );
+            enqueue( go_away_message( self ) );
+            return;
+         }
 
          if( peer_address().empty() ) {
             set_connection_type( msg.p2p_address );
@@ -2544,23 +2549,23 @@ namespace eosio {
                   // we need to avoid the case where they would both tell a different connection to go away.
                   // Using the sum of the initial handshake times of the two connections, we will
                   // arbitrarily (but consistently between the two peers) keep one of them.
-//                  std::unique_lock<std::mutex> g_check_conn( check->conn_mtx );
-//                  auto check_time = check->last_handshake_sent.time + check->last_handshake_recv.time;
-//                  g_check_conn.unlock();
-//                  g_conn.lock();
-//                  auto c_time = last_handshake_sent.time;
-//                  g_conn.unlock();
-//                  if (msg.time + c_time <= check_time)
-//                     continue;
-//
-//                  g_cnts.unlock();
-//                  fc_dlog( logger, "sending go_away duplicate to ${ep}", ("ep",msg.p2p_address) );
-//                  go_away_message gam(duplicate);
-//                  gam.node_id = node_id;
-//                  enqueue(gam);
-//                  no_retry = duplicate;
-//                  my_impl->sync_master->send_handshakes();
-//                  return;
+                  std::unique_lock<std::mutex> g_check_conn( check->conn_mtx );
+                  auto check_time = check->last_handshake_sent.time + check->last_handshake_recv.time;
+                  g_check_conn.unlock();
+                  g_conn.lock();
+                  auto c_time = last_handshake_sent.time;
+                  g_conn.unlock();
+                  if (msg.time + c_time <= check_time)
+                     continue;
+
+                  g_cnts.unlock();
+                  fc_dlog( logger, "sending go_away duplicate to ${ep}", ("ep",msg.p2p_address) );
+                  go_away_message gam(duplicate);
+                  gam.node_id = node_id;
+                  enqueue(gam);
+                  no_retry = duplicate;
+                  my_impl->sync_master->send_handshakes();
+                  return;
                }
             }
          } else {
