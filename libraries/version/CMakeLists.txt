@@ -14,13 +14,14 @@ GENERATE_VERSION_METADATA()
 # Construct the library.
 add_library(
    version
-   "${CMAKE_CURRENT_SOURCE_DIR}/src/version.cpp" )
+   "${CMAKE_CURRENT_SOURCE_DIR}/src/version.cpp"
+   "${CMAKE_CURRENT_BINARY_DIR}/src/version_impl.cpp" )
 
 # Make dependencies visible.
 target_include_directories(
    version
    PUBLIC
-   "${CMAKE_CURRENT_SOURCE_DIR}/include/" )
+   "${CMAKE_CURRENT_SOURCE_DIR}/src" )
 
 # Install the library in the appropriate places.
 install(
