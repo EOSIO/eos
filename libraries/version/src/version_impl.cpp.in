@@ -4,25 +4,23 @@
  *  \warning This file is machine generated. DO NOT EDIT.  See version_impl.cpp.in for changes.
  */
 
-#pragma once
-
-#include <version_impl.hpp>
+#include "version_impl.hpp"
 
 namespace eosio { namespace version {
 
-   constexpr std::string_view version_major {"@_VERSION_MAJOR_@"};
-   constexpr std::string_view version_minor {"@_VERSION_MINOR_@"};
-   constexpr std::string_view version_patch {"@_VERSION_PATCH_@"};
-   constexpr std::string_view version_suffix{"@_VERSION_SUFFIX_@"};
-   constexpr std::string_view version_hash  {"@_VERSION_HASH_@"};
-   constexpr std::string_view version_dirty {"@_VERSION_DIRTY_@"};
+   const std::string version_major {"@_VERSION_MAJOR_@"};
+   const std::string version_minor {"@_VERSION_MINOR_@"};
+   const std::string version_patch {"@_VERSION_PATCH_@"};
+   const std::string version_suffix{"@_VERSION_SUFFIX_@"};
+   const std::string version_hash  {"@_VERSION_HASH_@"};
+   const std::string version_dirty {"@_VERSION_DIRTY_@"};
 
-   const std::string_view& _version_client() {
-      return std::string{"v"+version_major+'.'+version_minor+'.'+version_patch+'-'+version_suffix};
+   const std::string& _version_client() {
+      return std::string{'v'+version_major+'.'+version_minor+'.'+version_patch+'-'+version_suffix};
    }
 
-   const std::string_view& _version_full() {
-      return std::string{"v"+version_major+'.'+version_minor+'.'+version_patch+'-'+version_suffix+'-'+version_hash+version_dirty};
+   const std::string& _version_full() {
+      return std::string{'v'+version_major+'.'+version_minor+'.'+version_patch+'-'+version_suffix+'-'+version_hash+version_dirty};
    }
       
 } }

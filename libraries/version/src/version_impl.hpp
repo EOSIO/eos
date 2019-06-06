@@ -5,21 +5,14 @@
 
 #pragma once
 
-#include <string> // std::string_view
+#include <string> // std::string
 
 namespace eosio { namespace version {
-      
-   constexpr std::string_view version_major;
-   constexpr std::string_view version_minor;
-   constexpr std::string_view version_patch;
-   constexpr std::string_view version_suffix;
-   constexpr std::string_view version_hash;
-   constexpr std::string_view version_dirty;
 
-   ///< Helper function `version_client()`
-   const std::string_view& _version_client();
+   ///< Helper function for `version_client()`
+   const std::string& _version_client();
 
-   ///< Helper function `version_full()`
-   const std::string_view& _version_full();
+   ///< Helper function for `version_full()`
+   const std::string& _version_full();
       
 } }

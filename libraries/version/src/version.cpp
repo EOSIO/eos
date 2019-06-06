@@ -3,19 +3,18 @@
  *  @copyright defined in eos/LICENSE
  */
 
-#pragma once
-
-#include <version.hpp>
-#include <version_impl.hpp>
+#include "version_impl.hpp"
 
 namespace eosio { namespace version {
 
-   const std::string_view& version_client() {
-      return static const std::string{_version_client()};
+   const std::string& version_client() {
+      static const std::string version{_version_client()};
+      return version;
    }
       
-   const std::string_view& version_full() {
-      return static const std::string{_version_full()};
+   const std::string& version_full() {
+      static const std::string version{_version_full()};
+      return version;
    }
       
 } }
