@@ -16,11 +16,13 @@ namespace eosio { namespace version {
    const std::string version_dirty {"@_VERSION_DIRTY_@"};
 
    const std::string& _version_client() {
-      return std::string{'v'+version_major+'.'+version_minor+'.'+version_patch+'-'+version_suffix};
+      static const std::string version{'v'+version_major+'.'+version_minor+'.'+version_patch+'-'+version_suffix};
+      return version;
    }
 
    const std::string& _version_full() {
-      return std::string{'v'+version_major+'.'+version_minor+'.'+version_patch+'-'+version_suffix+'-'+version_hash+version_dirty};
+      static const std::string version{'v'+version_major+'.'+version_minor+'.'+version_patch+'-'+version_suffix+'-'+version_hash+version_dirty};
+      return version;
    }
       
 } }

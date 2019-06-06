@@ -16,13 +16,15 @@ function(GENERATE_VERSION_METADATA)
          OUTPUT_VARIABLE _VERSION_DIRTY_
          ERROR_QUIET
          OUTPUT_STRIP_TRAILING_WHITESPACE )
-       string(REGEX MATCH "-dirty$" _VERSION_DIRTY_ ${_VERSION_DIRTY_})
-       # if dirty empty -> false
-       # else -> true
-       #
+      string(REGEX MATCH "-dirty$" _VERSION_DIRTY_ ${_VERSION_DIRTY_})
+      if(${_VERSION_DIRTY_} STREQUAL "")
+	 set(_VERSION_DIRTY_ "false")
+       else()
+	 set(_VERSION_DIRTY_ "true")
+      endif()
    endif()
-   set(_VERSION_HASH_   ${_VERSION_HASH_}  PARENT_SCOPE)
-   set(_VERSION_DIRTY_  ${_VERSION_DIRTY_} PARENT_SCOPE)
+   set(_VERSION_HASH_  ${_VERSION_HASH_}  PARENT_SCOPE)
+   set(_VERSION_DIRTY_ ${_VERSION_DIRTY_} PARENT_SCOPE)
    message(STATUS "-------begin-------")
    message(STATUS ${_VERSION_MAJOR_})
    message(STATUS ${_VERSION_MINOR_})
