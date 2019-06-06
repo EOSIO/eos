@@ -1,23 +1,10 @@
 {
-    "eosio":
-    {
-        "pipeline-branch": "master",
-        "environment":
-        {
-            "IMAGE_TAG": "_2-5"
-        }
-    },
     "eosio-base-images":
     {
         "pipeline-branch": "develop"
     },
-    "eosio-build-unpinned":
-    {
-        "pipeline-branch": "master"
-    },
     "eosio-lrt":
     {
-        "pipeline-branch": "master",
         "environment":
         {
             "BUILD_FLAGS": "-y -P -m",
@@ -26,7 +13,6 @@
     },
     "eos-multiversion-tests":
     {
-        "pipeline-branch": "master",
         "environment":
         {
             "IMAGE_TAG": "_1-8-0-rc2"
