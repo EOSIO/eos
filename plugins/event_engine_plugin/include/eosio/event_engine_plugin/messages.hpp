@@ -73,8 +73,8 @@ namespace eosio {
        MsgType msg_type;
        uint32_t msg_id;
 
-       BaseMessage(MsgType type = Unknown)
-       : msg_type(type)
+       BaseMessage(MsgType type = Unknown, uint32_t id = 0)
+       : msg_type(type), msg_id(id)
        {}
    };
 
@@ -83,8 +83,8 @@ namespace eosio {
        chain::name name;
        fc::variant data;
 
-       GenesisDataMessage(BaseMessage::MsgType msg_type, const chain::name code, const chain::name name, const fc::variant& data)
-       : BaseMessage(msg_type)
+       GenesisDataMessage(BaseMessage::MsgType msg_type, uint32_t msg_id, const chain::name code, const chain::name name, const fc::variant& data)
+       : BaseMessage(msg_type, msg_id)
        , code(code)
        , name(name)
        , data(data)
@@ -94,8 +94,8 @@ namespace eosio {
    const auto core_genesis_code = N(core);
 
    struct AcceptTrxMessage : public BaseMessage, TrxMetadata {
-       AcceptTrxMessage(BaseMessage::MsgType msg_type, const chain::transaction_metadata_ptr &trx_meta)
-       : BaseMessage(msg_type)
+       AcceptTrxMessage(BaseMessage::MsgType msg_type, uint32_t msg_id, const chain::transaction_metadata_ptr &trx_meta)
+       : BaseMessage(msg_type, msg_id)
        , TrxMetadata(trx_meta)
        {}
    };
@@ -107,8 +107,8 @@ namespace eosio {
        fc::optional<chain::block_id_type> prod_block_id;
        std::vector<ActionData>            actions;
 
-       ApplyTrxMessage(MsgType msg_type, const chain::transaction_trace_ptr& trace)
-       : BaseMessage(msg_type)
+       ApplyTrxMessage(MsgType msg_type, uint32_t msg_id, const chain::transaction_trace_ptr& trace)
+       : BaseMessage(msg_type, msg_id)
        , id(trace->id)
        , block_num(trace->block_num)
        , block_time(trace->block_time)
@@ -124,8 +124,8 @@ namespace eosio {
        bool                          validated;
        bool                          in_current_chain;
 
-       BlockMessage(MsgType msg_type, const chain::block_state_ptr& bstate)
-       : BaseMessage(msg_type)
+       BlockMessage(MsgType msg_type, uint32_t msg_id, const chain::block_state_ptr& bstate)
+       : BaseMessage(msg_type, msg_id)
        , id(bstate->block->id())
        , previous(bstate->header.previous)
        , block_num(bstate->block->block_num())
@@ -139,8 +139,8 @@ namespace eosio {
        std::vector<TrxReceipt> trxs;
        std::vector<EventData> events;
 
-       AcceptedBlockMessage(MsgType msg_type, const chain::block_state_ptr& bstate)
-       : BlockMessage(msg_type, bstate)
+       AcceptedBlockMessage(MsgType msg_type, uint32_t msg_id, const chain::block_state_ptr& bstate)
+       : BlockMessage(msg_type, msg_id, bstate)
        {
            if (!bstate->block) {
                return;
