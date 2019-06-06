@@ -172,6 +172,11 @@ struct state_object_visitor {
         }
     }
 
+    void operator()(const golos::change_recovery_account_request_object& r) {
+        // instant apply new recovery
+        accounts[r.account_to_recover.id].recovery_account = r.recovery_account;
+    }
+
     // witnesses
     void operator()(const golos::witness_object& w) {
         witnesses.emplace_back(w);
