@@ -1,5 +1,5 @@
 cmake_minimum_required(
-  VERSION 2.8.12 ) # What should the version actually be?
+  VERSION 2.8.12 ) ### What should the version actually be?
 
 project(
   Version )
@@ -8,7 +8,7 @@ project(
 include(
   VersionUtils )
 
-# Generate the most up-to-date metadata of the repository.
+# Generate the most up-to-date version metadata of the repository.
 GENERATE_VERSION_METADATA()
 
 # Construct the library.
@@ -29,9 +29,9 @@ target_include_directories(
 install(
    TARGETS
    version
-   RUNTIME       DESTINATION ${CMAKE_INSTALL_FULL_BINDIR}   #  Is it needed as a RUNTIME? It' just a library?
-   ARCHIVE       DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}   ## Is it needed as both a static and dynamic lib?
-   LIBRARY       DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR} ) ## ...
+   RUNTIME       DESTINATION ${CMAKE_INSTALL_FULL_BINDIR}   ### Is this needed? It's just a library?
+   ARCHIVE       DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}   ### Is this needed as both a static and dynamic lib?
+   LIBRARY       DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR} ) ### ...
 
 # Install the header file in the appropriate place.
 install(
