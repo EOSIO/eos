@@ -181,6 +181,19 @@ void resource_limits_manager::add_storage_usage(const account_name& account, int
        return;
    }
 
+    symbol_code token_code { symbol(CORE_SYMBOL).to_symbol_code() };
+
+    const stake_param_object* param = nullptr;
+    const stake_stat_object* stat = nullptr;
+
+    if (_chaindb.get<account_object, by_name>(account).privileged || //assignments:
+        !(_chaindb.find<stake_param_object, by_id>(token_code.value)) ||
+        !(stat  = _chaindb.find<stake_stat_object, by_id>(token_code.value)) ||
+        !stat->enabled || stat->total_staked == 0) {
+
+        return;
+    }
+
    const auto& config = _chaindb.get<resource_limits_config_object>();
    auto state_table  = _chaindb.get_table<resource_limits_state_object>();
    const auto& state = state_table.get();
