@@ -66,9 +66,7 @@ public:
 
     std::fstream dumpstream;
     bool dumpstream_opened;
-
-    uint32_t msg_id = 0;
-    block_id_type last_block;
+    uint32_t genesis_msg_id = 0;
 
     std::map<chain::name,abi_info> abi_map;
     controller &db;
@@ -98,10 +96,8 @@ private:
     }
 
     void send_genesis_message(const chain::name code, const chain::name name, const fc::variant& data) {
-        GenesisDataMessage msg(BaseMessage::GenesisData, msg_id, code, name, data);
+        GenesisDataMessage msg(BaseMessage::GenesisData, genesis_msg_id++, code, name, data);
         send_message(msg);
-
-        msg_id++;
     }
 
     const abi_info *get_account_abi(name account) {
@@ -201,28 +197,21 @@ void event_engine_plugin_impl::set_abi(name account, const abi_def& abi) {
 void event_engine_plugin_impl::accepted_block( const chain::block_state_ptr& state) {
     ilog("Accepted block: ${block_num}", ("block_num", state->block_num));
 
-    if (last_block != state->id) {
-        msg_id = 0;
-        last_block = state->id;
-    } else {
-        msg_id++;
-    }
-
-    AcceptedBlockMessage msg(BlockMessage::AcceptBlock, msg_id, state);
+    AcceptedBlockMessage msg(BlockMessage::AcceptBlock, state);
     send_message(msg);
 }
 
 void event_engine_plugin_impl::irreversible_block(const chain::block_state_ptr& state) {
     ilog("Irreversible block: ${block_num}", ("block_num", state->block_num));
 
-    BlockMessage msg(BlockMessage::CommitBlock, 0, state);
+    BlockMessage msg(BlockMessage::CommitBlock, state);
     send_message(msg);
 }
 
 void event_engine_plugin_impl::accepted_transaction(const chain::transaction_metadata_ptr& trx_meta) {
     ilog("Accepted trx: ${id}, ${signed_id}", ("id", trx_meta->id)("signed_id", trx_meta->signed_id));
 
-    AcceptTrxMessage msg(BaseMessage::AcceptTrx, UINT32_MAX, trx_meta);
+    AcceptTrxMessage msg(BaseMessage::AcceptTrx, trx_meta);
     send_message(msg);
 }
 
@@ -231,7 +220,6 @@ bool event_engine_plugin_impl::is_handled_contract(const account_name n) const {
 }
 
 void event_engine_plugin_impl::send_genesis_start() {
-    msg_id = 0;
     send_genesis_message(core_genesis_code, N(datastart), fc::variant_object());
 }
 
@@ -308,17 +296,7 @@ void event_engine_plugin_impl::applied_transaction(const chain::transaction_trac
         }
     };
 
-    const auto& block_id = trx_trace->producer_block_id;
-    if (!block_id) {
-        msg_id = UINT32_MAX;
-    } else if (last_block != *block_id) {
-        msg_id = 0;
-        last_block = *block_id;
-    } else {
-        msg_id++;
-    }
-
-    ApplyTrxMessage msg(BaseMessage::ApplyTrx, msg_id, trx_trace);
+    ApplyTrxMessage msg(BaseMessage::ApplyTrx, trx_trace);
     for(auto &trace: trx_trace->action_traces) {
         process_action_trace(msg, trace);
     }
