@@ -19,6 +19,7 @@ function teardown() { # teardown is run once after each test, even if it fails
   [[ -d "$HOME" ]] && rm -rf "$HOME"
   [[ -d /opt/rh/devtoolset-7 ]] && rm -rf /opt/rh/devtoolset-7
   uninstall-package which WETRUN
+  export SUDO_FORCE_REMOVE=yes
   uninstall-package sudo WETRUN
   uninstall-package devtoolset-7* WETRUN
   uninstall-package centos-release-scl
