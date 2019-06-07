@@ -6,6 +6,7 @@
 #include <cyberway/chaindb/table_object.hpp>
 #include <cyberway/chaindb/journal.hpp>
 #include <cyberway/chaindb/value_verifier.hpp>
+#include <eosio/chain/config.hpp>
 
 /** Session exception is a critical errors and they doesn't handle by chain */
 #define CYBERWAY_SESSION_ASSERT(expr, FORMAT, ...)                      \
@@ -25,8 +26,6 @@ namespace cyberway { namespace chaindb {
         New,
         Stack,
     }; // enum undo_stage
-
-    static table_info undo_table{N(), N()};
 
     class table_undo_stack;
 
@@ -284,57 +283,13 @@ namespace cyberway { namespace chaindb {
     }
 
     struct undo_stack_impl final {
-        undo_stack_impl(
-            revision_t& revision,
-            chaindb_controller& controller,
-            value_verifier& verifier,
-            driver_interface& driver,
-            journal& jrnl,
-            cache_map& cache)
+        undo_stack_impl(revision_t& revision, chaindb_controller& controller, journal& jrnl)
         : revision_(revision),
           controller_(controller),
-          verifier_(verifier),
-          driver_(driver),
+          driver_(controller.get_driver()),
+          cache_(controller.get_cache_map()),
           journal_(jrnl),
-          cache_(cache) {
-        }
-
-        static void add_abi_tables(eosio::chain::abi_def& abi) {
-            static bool    undo_abi_init = false;
-            static abi_def undo_abi;
-
-            if (!undo_abi_init) {
-                undo_abi_init = true;
-
-                undo_abi.structs.emplace_back(eosio::chain::struct_def{
-                    names::service_field, "",
-                    {{names::undo_pk_field, "uint64"}}
-                });
-
-                undo_abi.structs.emplace_back(eosio::chain::struct_def{
-                    names::undo_table, "",
-                    {{names::service_field, names::service_field}}
-                });
-
-                undo_abi.tables.emplace_back(eosio::chain::table_def{
-                    names::undo_table,
-                    names::undo_table,
-                    "uint64",
-                    {{"primary", true, {{names::undo_pk_path, names::asc_order}}}},
-                });
-
-                auto& undo_def = undo_abi.tables.front();
-
-                auto& pk_order = undo_def.indexes.front().orders.front();
-                pk_order.type = "uint64";
-                pk_order.path = {names::service_field, names::undo_pk_field};
-
-                undo_table.table = &undo_def;
-                undo_table.pk_order = &pk_order;
-            }
-
-            abi.structs.insert(abi.structs.end(), undo_abi.structs.begin(), undo_abi.structs.end());
-            abi.tables.emplace_back(undo_abi.tables.front());
+          verifier_(controller) {
         }
 
         void clear() {
@@ -426,6 +381,7 @@ namespace cyberway { namespace chaindb {
         }
 
         void insert(const table_info& table, object_value obj) {
+            verifier_.verify(table, obj);
             if (enabled()) {
                 insert(get_table(table), std::move(obj));
             } else {
@@ -434,6 +390,7 @@ namespace cyberway { namespace chaindb {
         }
 
         void update(const table_info& table, object_value orig_obj, object_value obj) {
+            verifier_.verify(table, obj);
             if (enabled()) {
                 update(get_table(table), std::move(orig_obj), std::move(obj));
             } else {
@@ -470,8 +427,12 @@ namespace cyberway { namespace chaindb {
                 return stack.head();
             };
 
-            auto index = index_info(undo_table);
-            index.index = &undo_table.table->indexes.front();
+            index_info index;
+
+            index.account_abi = controller_.get_account_abi_info(config::system_account_name);
+            index.table = index.abi().find_table(N(undo));
+            index.index = index.abi().find_pk_index(*index.table);
+            index.pk_order = index.abi().find_pk_order(*index.table);
 
             auto& cursor = driver_.lower_bound(std::move(index), {});
             for (; cursor.pk != primary_key::End; driver_.next(cursor)) {
@@ -982,27 +943,29 @@ namespace cyberway { namespace chaindb {
 
         using index_t_ = table_object::index<table_undo_stack>;
 
-        undo_stage          stage_ = undo_stage::Unknown;
-        revision_t&         revision_;
-        revision_t          tail_revision_ = 0;
-        primary_key_t       undo_pk_ = 1;
-        chaindb_controller& controller_;
-        value_verifier&     verifier_;
-        driver_interface&   driver_;
-        journal&            journal_;
-        cache_map&          cache_;
-        index_t_            tables_;
+        undo_stage    stage_ = undo_stage::Unknown;
+        revision_t&   revision_;
+        revision_t    tail_revision_ = 0;
+        primary_key_t undo_pk_ = 1;
+        index_t_      tables_;
+
+        const chaindb_controller& controller_;
+        const driver_interface&   driver_;
+        const cache_map&          cache_;
+        journal&                  journal_;
+
+        value_verifier verifier_;
     }; // struct undo_stack_impl
 
-    undo_stack::undo_stack(chaindb_controller& controller, value_verifier& verifier, driver_interface& driver, journal& jrnl, cache_map& cache)
-    : impl_(std::make_unique<undo_stack_impl>(revision_, controller, verifier, driver, jrnl, cache)) {
-        revision_ = 0;
+    undo_stack::undo_stack()
+    : revision_(0) {
     }
 
     undo_stack::~undo_stack() = default;
 
-    void undo_stack::add_abi_tables(eosio::chain::abi_def& abi) {
-        undo_stack_impl::add_abi_tables(abi);
+    void undo_stack::init(chaindb_controller& controller, journal& jrnl) {
+        assert(!impl_);
+        impl_ = std::make_unique<undo_stack_impl>(revision_, controller, jrnl);
     }
 
     void undo_stack::restore() const {

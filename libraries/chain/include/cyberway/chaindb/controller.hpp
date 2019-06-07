@@ -14,8 +14,6 @@ namespace cyberway { namespace chaindb {
     using eosio::chain::abi_def;
 
     template<class> struct object_to_table;
-    struct storage_payer_info;
-    struct account_abi_info;
     struct chaindb_controller_impl;
 
     class chaindb_controller final {
@@ -112,6 +110,11 @@ namespace cyberway { namespace chaindb {
         int64_t erase(const oid<Object>& id, const storage_payer_info& payer = {}) const {
             return erase<Object>(id._id, payer);
         }
+
+        const system_abi_info& get_system_abi_info() const;
+        const driver_interface& get_driver() const;
+        const cache_map& get_cache_map() const;
+        const undo_stack& get_undo_stack() const;
 
         void restore_db() const;
         void drop_db() const;

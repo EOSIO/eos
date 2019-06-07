@@ -268,7 +268,7 @@ namespace cyberway { namespace chaindb {
     
             auto delta = state.prev_state ?
                 std::max(eosio::chain::int_arithmetic::safe_prop<uint64_t>(object_size, pos - state.prev_state->cell->pos, max_distance_), uint64_t(1)) : 
-                object_size * eosio::chain::config::ram_load_multiplier;
+                object_size * config::ram_load_multiplier;
                 
             CYBERWAY_CACHE_ASSERT(UINT64_MAX - size >= delta, "Pending delta would overflow UINT64_MAX");
             size += delta;
@@ -729,8 +729,8 @@ namespace cyberway { namespace chaindb {
         uint64_t               ram_used_  = 0;
 
         static uint64_t get_ram_limit(
-            const uint64_t limit   = eosio::chain::config::default_ram_size,
-            const uint64_t reserve = eosio::chain::config::default_reserved_ram_size
+            const uint64_t limit   = config::default_ram_size,
+            const uint64_t reserve = config::default_reserved_ram_size
         ) {
             // reserve for system objects (transactions, blocks, ...)
             //     and for pending caches (pending_cell_list_, ...)

@@ -261,9 +261,7 @@ void apply_cyber_setabi(apply_context& context) {
    EOS_ASSERT( account.abi_version != hash, set_exact_abi, "contract is already has this version of abi" );
    chaindb.modify( account, storage_payer, [&]( auto& a ) {
       a.abi_version = hash;
-      a.abi.resize( abi_size );
-      if( abi_size > 0 )
-         memcpy( const_cast<char*>(a.abi.data()), act.abi.data(), abi_size );
+      a.set_abi( std::move(act.abi) );
    });
 
    chaindb.modify( account_sequence, storage_payer, [&]( auto& aso ) {

@@ -20,9 +20,6 @@ namespace cyberway { namespace chaindb {
 
     using eosio::chain::table_def;
 
-    using std::string;
-
-    using fc::variant;
     using fc::variants;
     using fc::variant_object;
 

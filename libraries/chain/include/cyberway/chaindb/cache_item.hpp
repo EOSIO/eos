@@ -14,8 +14,6 @@
 
 namespace cyberway { namespace chaindb {
 
-    using  eosio::chain::bytes;
-
     class cache_map_impl;
 
     struct cache_data {

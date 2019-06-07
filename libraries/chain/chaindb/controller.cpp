@@ -9,7 +9,6 @@
 #include <cyberway/chaindb/mongo_driver.hpp>
 #include <cyberway/chaindb/storage_calculator.hpp>
 #include <cyberway/chaindb/storage_payer_info.hpp>
-#include <cyberway/chaindb/value_verifier.hpp>
 
 #include <eosio/chain/name.hpp>
 #include <eosio/chain/symbol.hpp>
@@ -21,12 +20,13 @@
 
 namespace cyberway { namespace chaindb {
 
+    namespace config = eosio::chain::config;
+
     using eosio::chain::name;
     using eosio::chain::symbol;
     using eosio::chain::symbol_info;
     using eosio::chain::account_object;
 
-    using fc::variant;
     using fc::variants;
     using fc::variant_object;
     using fc::mutable_variant_object;
@@ -82,17 +82,6 @@ namespace cyberway { namespace chaindb {
                 "Invalid type ${type} of ChainDB connection", ("type", type));
         }
 
-        static const index_info& get_account_index_info() {
-            static index_info info([&]() -> index_info {
-                auto& abi = account_abi_info::system_abi_info().abi();
-                index_info info;
-                info.table    = abi.find_table(chaindb::tag<account_object>::get_code());
-                info.index    = abi.find_pk_index(*info.table);
-                info.pk_order = abi.find_pk_order(*info.table);
-                return info;
-            }());
-            return info;
-        };
     } } // namespace _detail
 
     //------------------------------------
@@ -132,7 +121,7 @@ namespace cyberway { namespace chaindb {
         journal journal_;
         std::unique_ptr<driver_interface> driver_ptr_;
         driver_interface& driver_;
-        value_verifier verifier_;
+        system_abi_info system_abi_info_;
         cache_map cache_;
         undo_stack undo_;
 
@@ -140,14 +129,13 @@ namespace cyberway { namespace chaindb {
         : controller_(controller),
           driver_ptr_(_detail::create_driver(t, journal_, std::move(address), std::move(sys_name))),
           driver_(*driver_ptr_.get()),
-          verifier_(driver_),
-          cache_(),
-          undo_(controller, verifier_, driver_, journal_, cache_) {
+          system_abi_info_(driver_) {
         }
 
         ~chaindb_controller_impl() = default;
 
         void restore_db() {
+            system_abi_info_.init_abi();
             undo_.restore();
         }
 
@@ -290,18 +278,17 @@ namespace cyberway { namespace chaindb {
 
         account_abi_info get_account_abi_info(const account_name_t code) {
             if (is_system_code(code)) {
-                return account_abi_info::system_abi_info();
+                return system_abi_info_.info();
             }
 
-            auto& index = _detail::get_account_index_info();
-            auto cache_ptr = cache_.find(index, code);
+            auto cache_ptr = cache_.find(system_abi_info_.account_index(), code);
             if (cache_ptr) {
                 return account_abi_info(std::move(cache_ptr));
             }
 
-            auto obj = driver_.object_by_pk(index, code);
+            auto obj = driver_.object_by_pk(system_abi_info_.account_index(), code);
             if (!obj.is_null()) {
-                auto cache_ptr = cache_.emplace(index, std::move(obj));
+                auto cache_ptr = cache_.emplace(system_abi_info_.account_index(), std::move(obj));
                 return account_abi_info(std::move(cache_ptr));
             }
             return account_abi_info();
@@ -536,8 +523,6 @@ namespace cyberway { namespace chaindb {
         int insert(const table_info& table, storage_payer_info charge, object_value& obj) {
             validate_object(table, obj, obj.pk());
 
-            verifier_.verify(table, obj);
-
             charge.size   = calc_storage_usage(table, obj.value);
             charge.in_ram = true;
             charge.delta += charge.size;
@@ -558,8 +543,6 @@ namespace cyberway { namespace chaindb {
 
         int update(const table_info& table, storage_payer_info charge, object_value& obj, object_value orig_obj) {
             validate_object(table, obj, obj.pk());
-
-            verifier_.verify(table, obj);
 
             charge.get_payer_from(orig_obj);
             charge.size   = calc_storage_usage(table, obj.value);
@@ -598,9 +581,26 @@ namespace cyberway { namespace chaindb {
 
     chaindb_controller::chaindb_controller(const chaindb_type t, string address, string sys_name)
     : impl_(std::make_unique<chaindb_controller_impl>(*this, t, std::move(address), std::move(sys_name))) {
+        impl_->undo_.init(*this, impl_->journal_);
     }
 
     chaindb_controller::~chaindb_controller() = default;
+
+    const system_abi_info& chaindb_controller::get_system_abi_info() const {
+        return impl_->system_abi_info_;
+    }
+
+    const driver_interface& chaindb_controller::get_driver() const {
+        return impl_->driver_;
+    }
+
+    const cache_map& chaindb_controller::get_cache_map() const {
+        return impl_->cache_;
+    }
+
+    const undo_stack& chaindb_controller::get_undo_stack() const {
+        return impl_->undo_;
+    }
 
     void chaindb_controller::restore_db() const {
         impl_->restore_db();

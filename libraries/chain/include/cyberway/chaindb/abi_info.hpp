@@ -12,18 +12,12 @@ namespace cyberway { namespace chaindb {
 
     using eosio::chain::abi_def;
     using eosio::chain::abi_serializer;
-    using eosio::chain::bytes;
-
-    using fc::variant;
-
-    class driver_interface;
-
 
     struct abi_info final {
         abi_info() = default;
         abi_info(const account_name& code, abi_def);
 
-        void verify_tables_structure(driver_interface&) const;
+        void verify_tables_structure(const driver_interface&) const;
 
         variant to_object(const table_info&, const void*, size_t) const;
         variant to_object(const index_info&, const void*, size_t) const;

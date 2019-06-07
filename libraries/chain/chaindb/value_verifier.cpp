@@ -2,13 +2,14 @@
 #include <cyberway/chaindb/table_info.hpp>
 #include <cyberway/chaindb/driver_interface.hpp>
 #include <cyberway/chaindb/account_abi_info.hpp>
+#include <eosio/chain/config.hpp>
 
 namespace cyberway { namespace chaindb {
 
     struct value_verifier_impl final {
-
-        value_verifier_impl(driver_interface& driver)
-        : driver_(driver) {
+        value_verifier_impl(const chaindb_controller& controller)
+        : driver_(controller.get_driver()),
+          info_(controller.get_system_abi_info()) {
         }
 
         void verify(const table_info& table, const object_value& obj) {
@@ -24,19 +25,18 @@ namespace cyberway { namespace chaindb {
 
     private:
         void verify_account(const object_value& obj) {
-            if (is_system_code(obj.pk())) {
-                account_abi_info::system_abi_info().abi().verify_tables_structure(driver_);
-                return;
-            }
-
-            eosio::chain::abi_def def;
+            abi_def def;
             auto& abi_value = obj.value["abi"];
             if (abi_value.is_blob()) {
-                auto& blob = abi_value.get_blob().data;
+                auto& blob = abi_value.get_blob();
 
-                if (!blob.empty()) {
-                    fc::datastream<const char*> ds(blob.data(), blob.size());
+                if (!blob.data.empty()) {
+                    fc::datastream<const char*> ds(blob.data.data(), blob.data.size());
                     fc::raw::unpack(ds, def);
+                }
+
+                if (obj.pk() == config::system_account_name) {
+                    info_.set_abi(blob);
                 }
             }
 
@@ -44,11 +44,12 @@ namespace cyberway { namespace chaindb {
             info.verify_tables_structure(driver_);
         }
 
-        driver_interface& driver_;
+        const driver_interface& driver_;
+        const system_abi_info&  info_;
     }; // struct value_verifier_impl
 
-    value_verifier::value_verifier(driver_interface& driver)
-    : impl_(std::make_unique<value_verifier_impl>(driver)) {
+    value_verifier::value_verifier(const chaindb_controller& controller)
+    : impl_(std::make_unique<value_verifier_impl>(controller)) {
     }
 
     value_verifier::~value_verifier() = default;

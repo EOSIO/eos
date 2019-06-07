@@ -7,8 +7,6 @@
 
 namespace cyberway { namespace chaindb {
 
-    struct object_value;
-
     struct cursor_info {
         cursor_t      id = invalid_cursor;
         index_info    index;

@@ -29,10 +29,16 @@ namespace eosio { namespace chain {
       string               code;
       bytes                abi;
 
+      void set_abi( bytes a ) {
+         abi = std::move(a);
+         abi_info_.reset();
+      }
+
       void set_abi( const eosio::chain::abi_def& a ) {
          abi.resize( fc::raw::pack_size( a ) );
          fc::datastream<char*> ds( const_cast<char*>(abi.data()), abi.size() );
          fc::raw::pack( ds, a );
+         abi_info_.reset();
       }
 
       eosio::chain::abi_def get_abi()const {

@@ -270,7 +270,7 @@ namespace cyberway { namespace chaindb {
         return to_bytes_("index", [&]{return type;}, type, value);
     }
 
-    void abi_info::verify_tables_structure(driver_interface& driver) const {
+    void abi_info::verify_tables_structure(const driver_interface& driver) const {
         fc::flat_map<table_name, const table_def*> tables;
         fc::flat_map<index_name, const index_def*> indexes;
         tables.reserve(tables.size());

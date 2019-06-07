@@ -4,12 +4,15 @@
 
 #include <eosio/chain/types.hpp>
 #include <eosio/chain/abi_def.hpp>
+#include <eosio/chain/config.hpp>
 
 #include <boost/smart_ptr/intrusive_ptr.hpp>
 
 #include <cyberway/chaindb/typed_name.hpp>
 
 namespace cyberway { namespace chaindb {
+
+    namespace config = eosio::chain::config;
 
     using revision_t = int64_t;
     static constexpr revision_t impossible_revision = (-1);
@@ -21,6 +24,9 @@ namespace cyberway { namespace chaindb {
 
     using std::string;
 
+    using fc::blob;
+    using fc::variant;
+
     using eosio::chain::account_name;
     using eosio::chain::table_name;
     using eosio::chain::index_name;
@@ -29,6 +35,7 @@ namespace cyberway { namespace chaindb {
     using eosio::chain::order_def;
     using eosio::chain::field_name;
     using eosio::chain::type_name;
+    using eosio::chain::bytes;
 
     using primary_key_t  = primary_key::value_type;
     using table_name_t   = table_name::value_type;
@@ -63,12 +70,21 @@ namespace cyberway { namespace chaindb {
         // TODO: RocksDB
     };
 
-    class chaindb_controller;
-    class cache_object;
-    using cache_object_ptr = boost::intrusive_ptr<cache_object>;
-
+    class  chaindb_controller;
+    class  cache_object;
+    class  cache_map;
+    class  driver_interface;
+    class  journal;
+    class  value_verifier;
+    class  undo_stack;
     struct table_info;
     struct index_info;
+    struct undo_stack_impl;
+    struct account_abi_info;
+    struct system_abi_info;
+    struct system_abi_info_impl;
+
+    using cache_object_ptr = boost::intrusive_ptr<cache_object>;
 
     struct find_info final {
         cursor_t      cursor = invalid_cursor;

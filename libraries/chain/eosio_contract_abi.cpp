@@ -562,6 +562,22 @@ abi_def eosio_contract_abi(abi_def eos_abi)
          }
    });
 
+   eos_abi.structs.emplace_back(struct_def{
+        "_SERVICE_", "",
+        {{"upk", "uint64"}}
+   });
+
+   eos_abi.structs.emplace_back(struct_def{
+        "undo", "",
+        {{"_SERVICE_", "_SERVICE_"}}
+   });
+
+   eos_abi.tables.emplace_back(table_def{
+       "undo", "undo", "uint64", {
+           {cyberway::chaindb::tag<by_id>::get_code(), true, {{"_SERVICE_.upk", "asc"}}}
+       },
+   });
+
     ////////////////////////
    // ACTION PAYLOADS
 
