@@ -1,6 +1,6 @@
 {
     "eosio": {
-        "pipeline-branch": "1.8.x-bash-scripts",
+        "pipeline-branch": "support-for-improvements",
         "environment": {
             "IMAGE_TAG": "1.8.x",
             "DEBUG": true
