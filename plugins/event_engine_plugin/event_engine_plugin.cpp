@@ -66,6 +66,7 @@ public:
 
     std::fstream dumpstream;
     bool dumpstream_opened;
+    uint32_t genesis_msg_id = 0;
 
     std::map<chain::name,abi_info> abi_map;
     controller &db;
@@ -85,12 +86,18 @@ public:
 
     bool is_handled_contract(const account_name n) const;
 
+private:
     template<typename Msg>
     void send_message(const Msg& msg) {
         if(dumpstream_opened) {
             dumpstream << fc::json::to_string(fc::variant(msg)) << std::endl;
             dumpstream.flush();
         }
+    }
+
+    void send_genesis_message(const chain::name code, const chain::name name, const fc::variant& data) {
+        GenesisDataMessage msg(BaseMessage::GenesisData, genesis_msg_id++, code, name, data);
+        send_message(msg);
     }
 
     const abi_info *get_account_abi(name account) {
@@ -213,13 +220,11 @@ bool event_engine_plugin_impl::is_handled_contract(const account_name n) const {
 }
 
 void event_engine_plugin_impl::send_genesis_start() {
-    GenesisDataMessage msg(BaseMessage::GenesisData, core_genesis_code, N(datastart), fc::variant_object());
-    send_message(msg);
+    send_genesis_message(core_genesis_code, N(datastart), fc::variant_object());
 }
 
 void event_engine_plugin_impl::send_genesis_end() {
-    GenesisDataMessage msg(BaseMessage::GenesisData, core_genesis_code, N(dataend), fc::variant_object());
-    send_message(msg);
+    send_genesis_message(core_genesis_code, N(dataend), fc::variant_object());
 }
 
 void event_engine_plugin_impl::send_genesis_file(const bfs::path& genesis_file) {
@@ -249,8 +254,7 @@ void event_engine_plugin_impl::send_genesis_file(const bfs::path& genesis_file) 
         std::cout << "Reading " << t.count << " record(s) with type: " << t.abi_type << std::endl;
         for (unsigned i = 0; i < t.count; ++i) {
             fc::variant args = serializer.binary_to_variant(t.abi_type, ds, abi_serializer_max_time);
-            GenesisDataMessage msg(BaseMessage::GenesisData, t.code, t.name, args);
-            send_message(msg);
+            send_genesis_message(t.code, t.name, args);
         }
     }
     std::cout << "Done reading Event Engine Genesis data from " << genesis_file << std::endl;
@@ -336,6 +340,12 @@ void event_engine_plugin::plugin_initialize(const variables_map& options) {
             my->dumpstream.open(dump_filename, std::ofstream::out | std::ofstream::app);
             EOS_ASSERT(!my->dumpstream.fail(), chain::plugin_config_exception, "Can't open event-engine-dumpfile");
             my->dumpstream_opened = true;
+
+            my->send_genesis_start();
+            for(const auto& file: my->genesis_files) {
+                my->send_genesis_file(file);
+            }
+            my->send_genesis_end();
         }
 
         my->accepted_block_connection.emplace( 
@@ -365,15 +375,6 @@ void event_engine_plugin::plugin_initialize(const variables_map& options) {
 }
 
 void event_engine_plugin::plugin_startup() {
-   auto& chain = app().find_plugin<chain_plugin>()->chain();
-   // Make the magic happen
-   if (chain.head_block_num() == 1) {
-       my->send_genesis_start();
-       for(const auto& file: my->genesis_files) {
-           my->send_genesis_file(file);
-       }
-       my->send_genesis_end();
-   }
 }
 
 void event_engine_plugin::plugin_shutdown() {
