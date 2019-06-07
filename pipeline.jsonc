@@ -1,6 +1,6 @@
 {
     "eosio": {
-        "pipeline-branch": "support-for-improvements",
+        "pipeline-branch": "support-for-improvements"
     },
     "eosio-base-images": {
         "pipeline-branch": "support-for-improvements"
