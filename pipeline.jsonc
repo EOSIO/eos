@@ -1,10 +1,6 @@
 {
     "eosio": {
         "pipeline-branch": "support-for-improvements",
-        "environment": {
-            "IMAGE_TAG": "develop",
-            "DEBUG": true
-        }
     },
     "eosio-base-images": {
         "pipeline-branch": "support-for-improvements"
