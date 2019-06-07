@@ -73,7 +73,8 @@ struct genesis_create::genesis_create_impl final {
     vector<string> _plnk_map;
 
     state_object_visitor _visitor;
-    asset _total_staked;
+    asset _total_staked = asset();
+    asset _sys_supply = asset();
 
     export_info _exp_info;
 
@@ -371,19 +372,11 @@ struct genesis_create::genesis_create_impl final {
 
     void store_stakes() {
         ilog("Creating staking agents and grants...");
-        _total_staked = golos2sys(_visitor.gpo.total_vesting_fund_steem);
+        EOS_ASSERT(_total_staked != asset(), genesis_exception, "SYSTEM: _total_staked not initialized");
+        EOS_ASSERT(_sys_supply != asset(), genesis_exception, "SYSTEM: _sys_supply not initialized");
         const auto sys_sym = asset().get_symbol();
-
-        db.start_section(config::system_account_name, N(stake.stat), "stake_stat_object", 1);
         const auto inf = _info.params.stake;
-        db.emplace<stake_stat_object>(config::system_account_name, [&](auto& s) {
-            s.id = sys_sym.to_symbol_code().value;
-            s.token_code = sys_sym.to_symbol_code();
-            s.total_staked = _total_staked.get_amount();
-            s.total_votes = 0;                              // TODO: fix #789
-            s.last_reward = time_point_sec();
-            s.enabled = inf.enabled;
-        });
+
         db.start_section(config::system_account_name, N(stake.param), "stake_param_object", 1);
         db.emplace<stake_param_object>(config::system_account_name, [&](auto& p) {
             p.id = sys_sym.to_symbol_code().value;
@@ -574,6 +567,7 @@ struct genesis_create::genesis_create_impl final {
         }
 
         db.start_section(config::system_account_name, N(stake.cand), "stake_candidate_object", agents_by_level[0].size());
+        const auto sys_supply = _sys_supply.get_amount();
         for (auto& ag: agents_by_level[0]) {
             auto acc = ag.first;
             auto& x = ag.second;
@@ -585,9 +579,19 @@ struct genesis_create::genesis_create_impl final {
                 a.latest_pick = _conf.initial_timestamp;
                 a.signing_key = enabled ? keys[acc] : public_key_type();
                 a.enabled = enabled;
-                a.set_votes(x.balance, total_votes);
+                a.set_votes(x.balance, sys_supply);
             });
         }
+
+        db.start_section(config::system_account_name, N(stake.stat), "stake_stat_object", 1);
+        db.emplace<stake_stat_object>(config::system_account_name, [&](auto& s) {
+            s.id = sys_sym.to_symbol_code().value;
+            s.token_code = sys_sym.to_symbol_code();
+            s.total_staked = _total_staked.get_amount();
+            s.total_votes = total_votes;
+            s.last_reward = time_point_sec();
+            s.enabled = inf.enabled;
+        });
 
         ilog("Done.");
     }
@@ -656,9 +660,11 @@ struct genesis_create::genesis_create_impl final {
             _exp_info.currency_stats.push_back(stat);
             return pk;
         };
+
+        _total_staked = golos2sys(gp.total_vesting_fund_steem);
         auto supply = gp.current_supply + golos_from_gbg;
-        auto sys_supply = golos2sys(supply - gp.total_reward_fund_steem);
-        auto sys_pk = insert_stat_record(sys_supply, _info.golos.sys_max_supply, config::system_account_name);
+        _sys_supply = golos2sys(supply - gp.total_reward_fund_steem);
+        auto sys_pk = insert_stat_record(_sys_supply, _info.golos.sys_max_supply, config::system_account_name);
         auto gls_pk = insert_stat_record(supply, _info.golos.max_supply, _info.golos.names.issuer);
 
         // vesting info
@@ -1105,8 +1111,8 @@ void genesis_create::write_genesis(
     _impl->store_accounts();
     _impl->store_bandwidth();
     _impl->store_posts();   // also pool and votes
-    _impl->store_stakes();
     _impl->store_balances();
+    _impl->store_stakes();
     _impl->store_delegation_records();
     _impl->store_withdrawals();
     _impl->store_witnesses();
