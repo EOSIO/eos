@@ -13,9 +13,9 @@ fi
 
 # Setup yum and apt variables
 if [[ $NAME =~ "Amazon Linux" ]] || [[ $NAME == "CentOS Linux" ]]; then
-    if ! YUM=$( command -v yum 2>/dev/null ); then echo "${COLOR_RED}YUM must be installed to compile EOS.IO${COLOR_NC}" && exit 1; fi
+    if ! YUM=$( command -v yum 2>/dev/null ); then echo "${COLOR_RED}YUM must be installed to compile EOSIO${COLOR_NC}" && exit 1; fi
 elif [[ $NAME == "Ubuntu" ]]; then
-    if ! APTGET=$( command -v apt-get 2>/dev/null ); then echo "${COLOR_RED}APT-GET must be installed to compile EOS.IO${COLOR_NC}" && exit 1; fi
+    if ! APTGET=$( command -v apt-get 2>/dev/null ); then echo "${COLOR_RED}APT-GET must be installed to compile EOSIO${COLOR_NC}" && exit 1; fi
 fi
 
 # Obtain dependency versions; Must come first in the script
@@ -43,15 +43,8 @@ function setup() {
         echo "SUDO_LOCATION: ${SUDO_LOCATION}"
         echo "PIN_COMPILER: ${PIN_COMPILER}"
     fi
-    [[ -d $BUILD_DIR ]] && execute rm -rf $BUILD_DIR # cleanup old build directory
-    # Be absolutely sure TEMP_DIR is set (we could do damage here)
-    ## IF user set, they can be responsible for creating and then removing stale data
-    if [[ $TEMP_DIR =~ "/tmp" ]]; then
-        if [[ ! -d $TEMP_DIR ]]; then
-            execute-always mkdir -p $TEMP_DIR
-            execute-always rm -rf $TEMP_DIR/*
-        fi
-    fi
+    ( [[ -d $BUILD_DIR ]] && [[ -z $BUILD_DIR_CLEANUP_SKIP ]] ) && execute rm -rf $BUILD_DIR # cleanup old build directory; support disabling it (Zach requested)
+    execute-always mkdir -p $TEMP_DIR
     execute mkdir -p $BUILD_DIR
     execute mkdir -p $SRC_DIR
     execute mkdir -p $OPT_DIR
@@ -62,6 +55,37 @@ function setup() {
     execute mkdir -p $LIB_DIR
     execute mkdir -p $MONGODB_LOG_DIR
     execute mkdir -p $MONGODB_DATA_DIR
+}
+
+function ensure-which() {
+  if ! which ls &>/dev/null; then
+    while true; do
+      [[ $NONINTERACTIVE == false ]] && printf "${COLOR_YELLOW}EOSIO compiler checks require the 'which' package: Would you like for us to install it? (y/n)?${COLOR_NC}" && read -p " " PROCEED
+      echo ""
+      case $PROCEED in
+          "" ) echo "What would you like to do?";;
+          0 | true | [Yy]* ) install-package which WETRUN; break;;
+          1 | false | [Nn]* ) echo "${COLOR_RED}Please install the 'which' command before proceeding!${COLOR_NC}"; exit 1;;
+          * ) echo "Please type 'y' for yes or 'n' for no.";;
+      esac
+    done
+  fi
+}
+
+function previous-install-prompt() {
+  if [[ -d $EOSIO_INSTALL_DIR ]]; then
+    echo "EOSIO has already been installed into ${EOSIO_INSTALL_DIR}... It's suggested that you eosio_uninstall.sh before re-running this script."
+    while true; do
+      [[ $NONINTERACTIVE == false ]] && printf "${COLOR_YELLOW}Do you wish to proceed anyway? (y/n)${COLOR_NC}" && read -p " " PROCEED
+      echo ""
+      case $PROCEED in
+        "" ) echo "What would you like to do?";;
+        0 | true | [Yy]* ) break;;
+        1 | false | [Nn]* ) exit;;
+        * ) echo "Please type 'y' for yes or 'n' for no.";;
+      esac
+	  done
+  fi
 }
 
 function resources() {
@@ -96,93 +120,6 @@ function prompt-mongo-install() {
     fi
 }
 
-function ensure-homebrew() {
-    echo "${COLOR_CYAN}[Ensuring HomeBrew installation]${COLOR_NC}"
-    if ! BREW=$( command -v brew ); then
-        while true; do
-            [[ $NONINTERACTIVE == false ]] && printf "${COLOR_YELLOW}Do you wish to install HomeBrew? (y/n)?${COLOR_NC}" &&  read -p " " PROCEED
-            echo ""
-            case $PROCEED in
-                "" ) echo "What would you like to do?";;
-                0 | true | [Yy]* )
-                    execute "${XCODESELECT}" --install 2>/dev/null || true
-                    if ! execute "${RUBY}" -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"; then
-                        echo "${COLOR_RED}Unable to install HomeBrew!${COLOR_NC}" && exit 1;
-                    else BREW=$( command -v brew ); fi
-                break;;
-                1 | false | [Nn]* ) echo "${COLOR_RED} - User aborted required HomeBrew installation.${COLOR_NC}"; exit 1;;
-                * ) echo "Please type 'y' for yes or 'n' for no.";;
-            esac
-        done
-    else
-        echo " - HomeBrew installation found @ ${BREW}"
-    fi
-}
-
-function ensure-scl() {
-    echo "${COLOR_CYAN}[Ensuring installation of Centos Software Collections Repository]${COLOR_NC}" # Needed for rh-python36
-    SCL=$( rpm -qa | grep -E 'centos-release-scl-[0-9].*' || true )
-    if [[ -z "${SCL}" ]]; then
-        while true; do
-            [[ $NONINTERACTIVE == false ]] && read -p "${COLOR_YELLOW}Do you wish to install and enable the Centos Software Collections Repository? (y/n)?${COLOR_NC} " PROCEED
-            echo ""
-            case $PROCEED in
-                "" ) echo "What would you like to do?";;
-                0 | true | [Yy]* ) install-package centos-release-scl "--enablerepo=extras"; break;;
-                1 | false | [Nn]* ) echo " - User aborted installation of required Centos Software Collections Repository."; exit 1;;
-                * ) echo "Please type 'y' for yes or 'n' for no.";;
-            esac
-        done
-    else
-        echo " - ${SCL} found."
-    fi
-}
-
-function ensure-devtoolset() {
-    echo "${COLOR_CYAN}[Ensuring installation of devtoolset-7 with C++7]${COLOR_NC}"
-    DEVTOOLSET=$( rpm -qa | grep -E 'devtoolset-7-[0-9].*' || true )
-    if [[ -z "${DEVTOOLSET}" ]]; then
-        while true; do
-            [[ $NONINTERACTIVE == false ]] && printf "${COLOR_YELLOW}Not Found: Do you wish to install it? (y/n)?${COLOR_NC}" && read -p " " PROCEED
-            echo ""
-            case $PROCEED in
-                "" ) echo "What would you like to do?";;
-                0 | true | [Yy]* ) install-package devtoolset-7; break;;
-                1 | false | [Nn]* ) echo " - User aborted installation of devtoolset-7."; break;;
-                * ) echo "Please type 'y' for yes or 'n' for no.";;
-            esac
-        done
-    else
-        echo " - ${DEVTOOLSET} found."
-    fi
-}
-
-function ensure-build-essential() {
-    echo "${COLOR_CYAN}[Ensuring installation of build-essential with C++7]${COLOR_NC}"
-    BUILD_ESSENTIAL=$( dpkg -s build-essential | grep 'Package: build-essential' || true )
-    if [[ -z $BUILD_ESSENTIAL ]]; then
-        while true; do
-            [[ $NONINTERACTIVE == false ]] && printf "${COLOR_YELLOW}Do you wish to install it? (y/n)?${COLOR_NC}" && read -p " " PROCEED
-            echo ""
-            case $PROCEED in
-                "" ) echo "What would you like to do?";;
-                0 | true | [Yy]* ) 
-                    if install-package build-essential; then
-                        echo " - ${COLOR_GREEN}Installed build-essential${COLOR_NC}"
-                    else
-                        echo " - ${COLOR_GREEN}Install of build-essential failed. Please try a manual install.${COLOR_NC}"
-                        exit 1
-                    fi
-                break;;
-                1 | false | [Nn]* ) echo " - User aborted installation of build-essential."; break;;
-                * ) echo "Please type 'y' for yes or 'n' for no.";;
-            esac
-        done
-    else
-        echo " - ${BUILD_ESSENTIAL} found."
-    fi
-}
-
 function ensure-compiler() {
     export CXX=${CXX:-c++}
     export CC=${CC:-cc}
@@ -212,6 +149,18 @@ function ensure-compiler() {
         else
             ## Check for c++ version 7 or higher
             [[ $( $(which $CXX) -dumpversion | cut -d '.' -f 1 ) -lt 7 ]] && export NO_CPP17=true
+            if [[ $NO_CPP17 == false ]]; then # https://github.com/EOSIO/eos/issues/7402
+                while true; do
+                    echo "${COLOR_YELLOW}WARNING: Your GCC compiler is less performant than clang (https://github.com/EOSIO/eos/issues/7402). We suggest running the build script with -P or install your own clang and try again. ${CXX}!${COLOR_NC}"
+                    [[ $NONINTERACTIVE == false ]] && printf "${COLOR_YELLOW}Do you wish to proceed anyway? (y/n)?${COLOR_NC}" && read -p " " PROCEED
+                    case $PROCEED in
+                        "" ) echo "What would you like to do?";;
+                        0 | true | [Yy]* ) break;;
+                        1 | false | [Nn]* ) exit 1;;
+                        * ) echo "Please type 'y' for yes or 'n' for no.";;
+                    esac
+                done
+            fi
         fi
     fi
     if $NO_CPP17; then
@@ -334,7 +283,7 @@ function build-clang() {
             && git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/polly.git \
             && cd polly && git checkout $PINNED_COMPILER_POLLY_COMMIT && cd ../ \
             && git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/clang.git clang && cd clang/tools \
-            && git checkout $PINNED_COMPILER_CLANG_VERSION \
+            && git checkout $PINNED_COMPILER_CLANG_COMMIT \
             && mkdir extra && cd extra \
             && git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/clang-tools-extra.git \
             && cd clang-tools-extra && git checkout $PINNED_COMPILER_CLANG_TOOLS_EXTRA_COMMIT && cd .. \
@@ -352,7 +301,7 @@ function build-clang() {
             && ${CMAKE} -G 'Unix Makefiles' -DCMAKE_INSTALL_PREFIX='${CLANG_ROOT}' -DLLVM_BUILD_EXTERNAL_COMPILER_RT=ON -DLLVM_BUILD_LLVM_DYLIB=ON -DLLVM_ENABLE_LIBCXX=ON -DLLVM_ENABLE_RTTI=ON -DLLVM_INCLUDE_DOCS=OFF -DLLVM_OPTIMIZED_TABLEGEN=ON -DLLVM_TARGETS_TO_BUILD=all -DCMAKE_BUILD_TYPE=Release .. \
             && make -j${JOBS} \
             && make install \
-            && rm -rf ${TEMP_DIR}/*"
+            && rm -rf ${TEMP_DIR}/clang8"
             echo " - Clang 8 successfully installed @ ${CLANG_ROOT}"
             echo ""
         else
@@ -362,190 +311,4 @@ function build-clang() {
         export CXX=$CPP_COMP
         export CC=$CC_COMP
     fi
-}
-
-function ensure-yum-packages() {
-    ( [[ -z "${1}" ]] || [[ ! -f "${1}" ]] ) && echo "\$1 must be the location of your dependency file!" && exit 1
-    DEPS_FILE="${TEMP_DIR}/$(basename ${1})"
-    # Create temp file so we can add to it
-    cat $1 > $DEPS_FILE
-    if [[ ! -z "${2}" ]]; then # Handle EXTRA_DEPS passed in and add them to temp DEPS_FILE
-        printf "\n" >> $DEPS_FILE # Avoid needing a new line at the end of deps files
-        OLDIFS="$IFS"; IFS=$''
-        _2=("$(echo $2 | sed 's/-qa /-qa\n/g')")
-        for ((i = 0; i < ${#_2[@]}; i++)); do echo "${_2[$i]}\n" | sed 's/-qa\\n/-qa/g' >> $DEPS_FILE; done
-    fi
-    while true; do
-        [[ $NONINTERACTIVE == false ]] && printf "${COLOR_YELLOW}Do you wish to update YUM repositories? (y/n)?${COLOR_NC}" && read -p " " PROCEED
-        echo ""
-        case $PROCEED in
-            "" ) echo "What would you like to do?";;
-            0 | true | [Yy]* ) execute eval $( [[ $CURRENT_USER == "root" ]] || echo $SUDO_LOCATION -E ) $YUM -y update; break;;
-            1 | false | [Nn]* ) echo " - Proceeding without update!"; break;;
-            * ) echo "Please type 'y' for yes or 'n' for no.";;
-        esac
-    done
-    echo "${COLOR_CYAN}[Ensuring package dependencies]${COLOR_NC}"
-    OLDIFS="$IFS"; IFS=$','
-    # || [[ -n "$testee" ]]; needed to see last line of deps file (https://stackoverflow.com/questions/12916352/shell-script-read-missing-last-line)
-    while read -r testee tester || [[ -n "$testee" ]]; do
-        if [[ ! -z $(eval $tester $testee) ]]; then
-            echo " - ${testee} ${COLOR_GREEN}found!${COLOR_NC}"
-        else
-            DEPS=$DEPS"${testee} "
-            echo " - ${testee} ${COLOR_RED}NOT${COLOR_NC} found."
-            (( COUNT+=1 ))
-        fi
-    done < $DEPS_FILE
-    IFS=$OLDIFS
-    OLDIFS="$IFS"; IFS=$' '
-    echo ""
-    if [[ $COUNT > 0 ]]; then
-        while true; do
-            [[ $NONINTERACTIVE == false ]] && printf "${COLOR_YELLOW}Do you wish to install missing dependencies? (y/n)?${COLOR_NC}" && read -p " " PROCEED
-            echo ""
-            case $PROCEED in
-                "" ) echo "What would you like to do?";;
-                0 | true | [Yy]* )
-                    for DEP in $DEPS; do
-                        install-package $DEP
-                    done
-                break;;
-                1 | false | [Nn]* ) echo " ${COLOR_RED}- User aborted installation of required dependencies.${COLOR_NC}"; exit;;
-                * ) echo "Please type 'y' for yes or 'n' for no.";;
-            esac
-        done
-        echo ""
-    else
-        echo "${COLOR_GREEN} - No required package dependencies to install.${COLOR_NC}"
-        echo ""
-    fi
-    IFS=$OLDIFS
-}
-
-function ensure-brew-packages() {
-    ( [[ -z "${1}" ]] || [[ ! -f "${1}" ]] ) && echo "\$1 must be the location of your dependency file!" && exit 1
-    DEPS_FILE="${TEMP_DIR}/$(basename ${1})"
-    # Create temp file so we can add to it
-    cat $1 > $DEPS_FILE
-    if [[ ! -z "${2}" ]]; then # Handle EXTRA_DEPS passed in and add them to temp DEPS_FILE
-        printf "\n" >> $DEPS_FILE # Avoid needing a new line at the end of deps files
-        OLDIFS="$IFS"; IFS=$''
-        _2=("$(echo $2 | sed 's/-s /-s\n/g')")
-        for ((i = 0; i < ${#_2[@]}; i++)); do echo "${_2[$i]}\n" | sed 's/-s\\n/-s/g' >> $DEPS_FILE; done
-    fi
-    echo "${COLOR_CYAN}[Ensuring HomeBrew dependencies]${COLOR_NC}"
-    OLDIFS="$IFS"; IFS=$','
-    # || [[ -n "$nmae" ]]; needed to see last line of deps file (https://stackoverflow.com/questions/12916352/shell-script-read-missing-last-line)
-    while read -r name path || [[ -n "$name" ]]; do
-        if [[ -f $path ]] || [[ -d $path ]]; then
-            echo " - ${name} ${COLOR_GREEN}found!${COLOR_NC}"
-            continue
-        fi
-        # resolve conflict with homebrew glibtool and apple/gnu installs of libtool
-        if [[ "${testee}" == "/usr/local/bin/glibtool" ]]; then
-            if [ "${tester}" "/usr/local/bin/libtool" ]; then
-                echo " - ${name} ${COLOR_GREEN}found!${COLOR_NC}"
-                continue
-            fi
-        fi
-        DEPS=$DEPS"${name} "
-        echo " - ${name} ${COLOR_RED}NOT${COLOR_NC} found."
-        (( COUNT+=1 ))
-    done < $DEPS_FILE
-    if [[ $COUNT > 0 ]]; then
-        echo ""
-        while true; do
-            [[ $NONINTERACTIVE == false ]] && printf "${COLOR_YELLOW}Do you wish to install missing dependencies? (y/n)${COLOR_NC}" && read -p " " PROCEED
-            echo ""
-            case $PROCEED in
-                "" ) echo "What would you like to do?";;
-                0 | true | [Yy]* )
-                    execute "${XCODESELECT}" --install 2>/dev/null || true
-                    while true; do
-                        [[ $NONINTERACTIVE == false ]] && printf "${COLOR_YELLOW}Do you wish to update HomeBrew packages first? (y/n)${COLOR_NC}" && read -p " " PROCEED
-                        case $PROCEED in
-                            "" ) echo "What would you like to do?";;
-                            0 | true | [Yy]* ) echo "${COLOR_CYAN}[Updating HomeBrew]${COLOR_NC}" && execute brew update; break;;
-                            1 | false | [Nn]* ) echo " - Proceeding without update!"; break;;
-                            * ) echo "Please type 'y' for yes or 'n' for no.";;
-                        esac
-                    done
-                    execute brew tap eosio/eosio
-                    echo "${COLOR_CYAN}[Installing HomeBrew Dependencies]${COLOR_NC}"
-                    execute eval $BREW install $DEPS
-                    IFS="$OIFS"
-                break;;
-                1 | false | [Nn]* ) echo " ${COLOR_RED}- User aborted installation of required dependencies.${COLOR_NC}"; exit;;
-                * ) echo "Please type 'y' for yes or 'n' for no.";;
-            esac
-        done
-    else
-        echo "${COLOR_GREEN} - No required package dependencies to install.${COLOR_NC}"
-        echo ""
-    fi
-}
-
-function apt-update-prompt() {
-    if [[ $NAME == "Ubuntu" ]]; then
-        while true; do # APT
-            [[ $NONINTERACTIVE == false ]] && read -p "${COLOR_YELLOW}Do you wish to update APT-GET repositories before proceeding? (y/n)?${COLOR_NC} " PROCEED
-            echo ""
-            case $PROCEED in
-                "" ) echo "What would you like to do?";;
-                0 | true | [Yy]* ) execute-always $APTGET update; break;;
-                1 | false | [Nn]* ) echo " - Proceeding without update!"; break;;
-                * ) echo "Please type 'y' for yes or 'n' for no.";;
-            esac
-        done
-    fi
-    true
-}
-
-function ensure-apt-packages() {
-    ( [[ -z "${1}" ]] || [[ ! -f "${1}" ]] ) && echo "\$1 must be the location of your dependency file!" && exit 1
-    DEPS_FILE="${TEMP_DIR}/$(basename ${1})"
-    # Create temp file so we can add to it
-    cat $1 > $DEPS_FILE
-    if [[ ! -z "${2}" ]]; then # Handle EXTRA_DEPS passed in and add them to temp DEPS_FILE
-        printf "\n" >> $DEPS_FILE # Avoid needing a new line at the end of deps files
-        OLDIFS="$IFS"; IFS=$''
-        _2=("$(echo $2 | sed 's/-s /-s\n/g')")
-        for ((i = 0; i < ${#_2[@]}; i++)); do echo "${_2[$i]}" >> $DEPS_FILE; done
-    fi
-    echo "${COLOR_CYAN}[Ensuring package dependencies]${COLOR_NC}"
-    OLDIFS="$IFS"; IFS=$','
-    # || [[ -n "$testee" ]]; needed to see last line of deps file (https://stackoverflow.com/questions/12916352/shell-script-read-missing-last-line)
-    while read -r testee tester || [[ -n "$testee" ]]; do
-        if [[ ! -z $(eval $tester $testee 2>/dev/null) ]]; then
-            echo " - ${testee} ${COLOR_GREEN}found!${COLOR_NC}"
-        else
-            DEPS=$DEPS"${testee} "
-            echo " - ${testee} ${COLOR_RED}NOT${COLOR_NC} found."
-            (( COUNT+=1 ))
-        fi
-    done < $DEPS_FILE
-    IFS=$OLDIFS
-    OLDIFS="$IFS"; IFS=$' '
-    if [[ $COUNT > 0 ]]; then
-        echo ""
-        while true; do
-            [[ $NONINTERACTIVE == false ]] && printf "${COLOR_YELLOW}Do you wish to install missing dependencies? (y/n)?${COLOR_NC}" && read -p " " PROCEED
-            echo ""
-            case $PROCEED in
-                "" ) echo "What would you like to do?";;
-                0 | true | [Yy]* )
-                    for DEP in $DEPS; do
-                        install-package $DEP
-                    done
-                break;;
-                1 | false | [Nn]* ) echo " ${COLOR_RED}- User aborted installation of required dependencies.${COLOR_NC}"; exit;;
-                * ) echo "Please type 'y' for yes or 'n' for no.";;
-            esac
-        done
-    else
-        echo "${COLOR_GREEN} - No required package dependencies to install.${COLOR_NC}"
-        echo ""
-    fi
-    IFS=$OLDIFS
 }
