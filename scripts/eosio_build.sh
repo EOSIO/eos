@@ -40,6 +40,7 @@ function usage() {
   -b DIR      Use pre-built boost in DIR
   -i DIR      Directory to use for installing dependencies & EOSIO (default: $HOME)
   -y          Noninteractive mode (answers yes to every prompt)
+  -u          Ignores compiler mismatch from previous build
   -c          Enable Code Coverage
   -d          Generate Doxygen
    \\n" "$0" 1>&2
@@ -48,7 +49,7 @@ function usage() {
 
 TIME_BEGIN=$( date -u +%s )
 if [ $# -ne 0 ]; then
-   while getopts "o:s:b:i:ycdhmP" opt; do
+   while getopts "o:s:b:i:ycdhmPu" opt; do
       case "${opt}" in
          o )
             options=( "Debug" "Release" "RelWithDebInfo" "MinSizeRel" )
@@ -88,6 +89,9 @@ if [ $# -ne 0 ]; then
          ;;
          P )
             PIN_COMPILER=true
+         ;;
+         u )
+            SKIP_COMPILER_CHECK=true
          ;;
          h )
             usage
@@ -198,6 +202,7 @@ else
 fi
 $ENABLE_DOXYGEN && LOCAL_CMAKE_FLAGS="-DBUILD_DOXYGEN='${DOXYGEN}' ${LOCAL_CMAKE_FLAGS}"
 $ENABLE_COVERAGE_TESTING && LOCAL_CMAKE_FLAGS="-DENABLE_COVERAGE_TESTING='${ENABLE_COVERAGE_TESTING}' ${LOCAL_CMAKE_FLAGS}"
+$SKIP_COMPILER_CHECK && LOCAL_CMAKE_FLAGS=" -ULAST_COMPILE ${LOCAL_CMAKE_FLAGS}"
 
 execute bash -c "$CMAKE -DCMAKE_BUILD_TYPE='${CMAKE_BUILD_TYPE}' -DCORE_SYMBOL_NAME='${CORE_SYMBOL_NAME}' -DOPENSSL_ROOT_DIR='${OPENSSL_ROOT_DIR}' -DCMAKE_INSTALL_PREFIX='${EOSIO_INSTALL_DIR}' ${LOCAL_CMAKE_FLAGS} '${REPO_ROOT}'"
 execute make -j$JOBS

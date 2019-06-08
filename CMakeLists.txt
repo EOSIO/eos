@@ -117,6 +117,7 @@ if(ENABLE_COVERAGE_TESTING)
 endif()
 
 include(utils)
+include(version-check)
 
 if ("${CORE_SYMBOL_NAME}" STREQUAL "")
   set( CORE_SYMBOL_NAME "SYS" )
