@@ -49,7 +49,7 @@ function usage() {
 
 TIME_BEGIN=$( date -u +%s )
 if [ $# -ne 0 ]; then
-   while getopts "o:s:b:i:ycdhmP" opt; do
+   while getopts "o:s:b:i:ycdhmPf" opt; do
       case "${opt}" in
          o )
             options=( "Debug" "Release" "RelWithDebInfo" "MinSizeRel" )
@@ -78,6 +78,9 @@ if [ $# -ne 0 ]; then
             NONINTERACTIVE=true
             PROCEED=true
          ;;
+         f ) 
+            echo "DEPRECATION NOTICE: -f will be removed in the next release..."
+         ;; # Needs to be removed in 1.9
          c )
             ENABLE_COVERAGE_TESTING=true
          ;;
