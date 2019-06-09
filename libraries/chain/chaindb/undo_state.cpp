@@ -406,6 +406,43 @@ namespace cyberway { namespace chaindb {
             }
         }
 
+        struct abi_history_t_ final {
+            revision_t revision;
+            account_abi_info info;
+        }; // struct abi_history
+
+        using abi_history_map_t_ = std::map<account_name_t, std::deque<abi_history_t_>>;
+
+        abi_history_map_t_ load_abi_history() {
+            abi_history_map_t_ map;
+            index_info index;
+
+            index.account_abi = controller_.get_account_abi_info(config::system_account_name);
+            index.table = index.abi().find_table(N(undo));
+            index.pk_order = index.abi().find_pk_order(*index.table);
+            index.index = index.abi().find_index(*index.table, N(table));
+
+            auto account_table = tag<account_object>::get_code();
+            auto key = mutable_variant_object()
+                (names::code_field, 0)
+                (names::table_field, account_table);
+            auto& cursor = driver_.lower_bound(index, mutable_variant_object()(names::service_field, key));
+            for (; cursor.pk != primary_key::End; driver_.next(cursor)) {
+                auto obj = driver_.object_at_cursor(cursor, false);
+                if (obj.service.code != 0 || obj.service.table != account_table) {
+                    break;
+                }
+
+                auto& abi = obj.value["abi"];
+                abi_def def;
+                if (abi.is_blob() && abi_serializer::to_abi(abi.get_blob().data, def)) {
+                    map[cursor.pk].push_back({obj.service.revision, account_abi_info(cursor.pk, std::move(def))});
+                }
+            }
+            driver_.close({cursor.index.code, cursor.id});
+            return map;
+        }
+
         void restore() try {
             if (start_revision <= revision_ || start_revision <= tail_revision_) {
                 ilog( "Skip restore undo state, tail revision ${tail}, head revision = ${head}",
@@ -413,10 +450,20 @@ namespace cyberway { namespace chaindb {
                 return;
             }
 
+            auto abi_map = load_abi_history();
+
+            auto get_account_abi_info = [&](const auto code, const auto rev) -> account_abi_info {
+                auto mtr = abi_map.find(code);
+                if (abi_map.end() != mtr) for (auto& itm: mtr->second) if (itm.revision > rev) {
+                    return itm.info;
+                }
+                return controller_.get_account_abi_info(code);
+            };
+
             auto get_state = [&](const auto& service) -> undo_state& {
                 auto table = table_info(service.code, service.scope);
 
-                table.account_abi = controller_.get_account_abi_info(service.code);
+                table.account_abi = get_account_abi_info(service.code, service.revision);
                 table.table       = table.abi().find_table(service.table);
                 table.pk_order    = table.abi().find_pk_order(*table.table);
 
@@ -431,10 +478,10 @@ namespace cyberway { namespace chaindb {
 
             index.account_abi = controller_.get_account_abi_info(config::system_account_name);
             index.table = index.abi().find_table(N(undo));
-            index.index = index.abi().find_pk_index(*index.table);
             index.pk_order = index.abi().find_pk_order(*index.table);
+            index.index = index.abi().find_pk_index(*index.table);
 
-            auto& cursor = driver_.lower_bound(std::move(index), {});
+            auto& cursor = driver_.lower_bound(index, {});
             for (; cursor.pk != primary_key::End; driver_.next(cursor)) {
                 auto  obj   = driver_.object_at_cursor(cursor, false);
                 auto  pk    = obj.pk();
@@ -469,6 +516,7 @@ namespace cyberway { namespace chaindb {
                         CYBERWAY_SESSION_ASSERT(false, "Unknown undo state on loading from DB");
                 }
             }
+            driver_.close({cursor.index.code, cursor.id});
 
             if (revision_ != tail_revision_) stage_ = undo_stage::Stack;
         } catch (const session_exception&) {
@@ -935,7 +983,7 @@ namespace cyberway { namespace chaindb {
         } FC_LOG_AND_RETHROW()
 
         primary_key_t generate_undo_pk() {
-            if (undo_pk_ > 1'000'000'000) {
+            if (!primary_key::is_good(undo_pk_)) {
                 undo_pk_ = 1;
             }
             return undo_pk_++;

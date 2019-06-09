@@ -16,6 +16,7 @@ namespace cyberway { namespace chaindb {
     struct abi_info final {
         abi_info() = default;
         abi_info(const account_name& code, abi_def);
+        abi_info(const account_name& code, blob);
 
         void verify_tables_structure(const driver_interface&) const;
 
@@ -73,6 +74,8 @@ namespace cyberway { namespace chaindb {
         abi_serializer serializer_;
         fc::flat_map<table_name_t, table_def> table_map_;
         static const fc::microseconds max_abi_time_;
+
+        void init(abi_def);
 
         template<typename Type>
         variant to_object_(

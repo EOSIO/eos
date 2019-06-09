@@ -222,21 +222,33 @@ namespace cyberway { namespace chaindb {
 
     const fc::microseconds abi_info::max_abi_time_ = fc::seconds(60);
 
-    abi_info::abi_info(const account_name& code, abi_def abi)
+    abi_info::abi_info(const account_name& code, abi_def def)
     : code_(code),
       serializer_() {
-        if (!is_system_code(code)) {
+        init(std::move(def));
+    }
+
+    abi_info::abi_info(const account_name& code, blob b)
+    : code_(code),
+      serializer_() {
+        abi_def def;
+        abi_serializer::to_abi(b.data, def);
+        init(std::move(def));
+    }
+
+    void abi_info::init(abi_def def) {
+        if (!is_system_code(code_)) {
             serializer_.set_check_field_name(true);
         }
-        serializer_.set_abi(abi, max_abi_time_);
+        serializer_.set_abi(def, max_abi_time_);
 
-        CYBERWAY_ASSERT(abi.tables.size() <= MaxTableCnt, max_table_count_exception,
+        CYBERWAY_ASSERT(def.tables.size() <= MaxTableCnt, max_table_count_exception,
             "The account '${code}' can't create more than ${max} tables",
             ("code", get_code_name(code_))("max", size_t(MaxTableCnt)));
 
 
-        table_map_.reserve(abi.tables.size());
-        for (auto& table: abi.tables) {
+        table_map_.reserve(def.tables.size());
+        for (auto& table: def.tables) {
             CYBERWAY_ASSERT(table.indexes.size() <= MaxIndexCnt, max_index_count_exception,
                 "The table '${table}' can't has more than ${max} indexes",
                 ("table", get_full_table_name(code_, table))("max", size_t(MaxIndexCnt)));
@@ -355,11 +367,7 @@ namespace cyberway { namespace chaindb {
 
     abi_def unpack_abi_def(const bytes& src) {
         abi_def dst;
-
-        if (!src.empty()) {
-            fc::datastream<const char*> ds(src.data(), src.size());
-            fc::raw::unpack(ds, dst);
-        }
+        abi_serializer::to_abi(src, dst);
         return dst;
     };
 

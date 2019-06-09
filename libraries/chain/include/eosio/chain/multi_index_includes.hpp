@@ -40,21 +40,21 @@ using bmi::const_mem_fun;
 using bmi::tag;
 using bmi::composite_key_compare;
 
-struct by_id {};
+struct by_id;
+struct by_table;
 
 namespace eosio { namespace chain {
 
-    struct by_parent {};
-    struct by_owner {};
-    struct by_name {};
-    struct by_action_name {};
-    struct by_permission_name {};
-    struct by_trx_id {};
-    struct by_expiration {};
-    struct by_delay {};
-    struct by_status {};
-    struct by_sender_id {};
-    struct by_scope_name {};
+    struct by_parent;
+    struct by_owner;
+    struct by_name;
+    struct by_action_name;
+    struct by_permission_name;
+    struct by_trx_id;
+    struct by_expiration;
+    struct by_delay;
+    struct by_sender_id;
+    struct by_scope_name;
 
 } } // namespace eosio::chain
 
@@ -65,6 +65,7 @@ namespace eosio { namespace chain { namespace resource_limits {
 } } } // namespace eosio::chain::resource_limits
 
 CHAINDB_TAG(by_id, primary) // "primary" for compatibility with contracts
+CHAINDB_TAG(by_table, table)
 CHAINDB_TAG(eosio::chain::by_parent, parent)
 CHAINDB_TAG(eosio::chain::by_owner, owner)
 CHAINDB_TAG(eosio::chain::by_name, name)

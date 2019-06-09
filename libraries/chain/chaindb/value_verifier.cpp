@@ -31,12 +31,11 @@ namespace cyberway { namespace chaindb {
                 auto& blob = abi_value.get_blob();
 
                 if (!blob.data.empty()) {
-                    fc::datastream<const char*> ds(blob.data.data(), blob.data.size());
-                    fc::raw::unpack(ds, def);
+                    abi_serializer::to_abi(blob.data, def);
                 }
 
                 if (obj.pk() == config::system_account_name) {
-                    info_.set_abi(blob);
+                    info_.set_abi(def);
                 }
             }
 

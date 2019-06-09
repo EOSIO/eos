@@ -56,7 +56,7 @@ namespace cyberway { namespace chaindb {
     }
 
     inline bool is_system_code(const account_name& code) {
-        return (code.empty()) || (code.value == eosio::chain::config::system_account_name);
+        return (code.empty()) || (code.value == config::system_account_name);
     }
 
     inline string get_code_name(string name, const account_name& code) {
