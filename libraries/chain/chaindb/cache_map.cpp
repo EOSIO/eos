@@ -910,7 +910,10 @@ namespace cyberway { namespace chaindb {
             }
 
             if (!cache_obj_ptr) {
-                cache_obj_ptr = cache_object_ptr(new cache_object(value.service));
+                object_value obj;
+                obj.service = value.service;
+                obj.service.size = 0;
+                cache_obj_ptr = cache_object_ptr(new cache_object(std::move(obj)));
                 is_new_ptr = true;
             }
 
@@ -959,8 +962,7 @@ namespace cyberway { namespace chaindb {
 
             if (is_new_ptr) {
                 // create object, but don't add it to RAM
-                obj_ptr = cache_object_ptr(new cache_object(value.service));
-                obj_ptr->object_ = std::move(value);
+                obj_ptr = cache_object_ptr(new cache_object(std::move(value)));
             }
 
             auto service_ptr = find_cache_service(value);
@@ -999,8 +1001,8 @@ namespace cyberway { namespace chaindb {
 
     //---------------------------------------
 
-    cache_object::cache_object(service_state service) {
-        object_.service = std::move(service);
+    cache_object::cache_object(object_value obj) {
+        object_ = std::move(obj);
     }
 
     bool cache_object::is_valid_cell() const {

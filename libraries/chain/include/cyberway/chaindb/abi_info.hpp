@@ -58,6 +58,10 @@ namespace cyberway { namespace chaindb {
             return code_;
         }
 
+        const abi_serializer& serializer() const {
+            return serializer_;
+        }
+
         enum : size_t {
             MaxTableCnt  = 64,
             MaxIndexCnt  = 16,

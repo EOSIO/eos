@@ -27,6 +27,7 @@
 
 
 #include <cyberway/chaindb/controller.hpp>
+#include <cyberway/chaindb/account_abi_info.hpp>
 #include <cyberway/genesis/genesis_import.hpp>
 #include <cyberway/chain/cyberway_contract_types.hpp>
 #include <cyberway/chain/cyberway_contract.hpp>
@@ -2011,6 +2012,16 @@ const apply_handler* controller::find_apply_handler( account_name receiver, acco
 }
 wasm_interface& controller::get_wasm_interface() {
    return my->wasmif;
+}
+
+optional_ptr<abi_serializer> controller::get_abi_serializer( account_name n, const fc::microseconds& max_serialization_time )const {
+    if( n.good() ) {
+        auto a = my->chaindb.get_account_abi_info(n);
+        if( a.has_abi_info() ) {
+           return optional_ptr<abi_serializer>( a.abi().serializer() );
+        }
+    }
+    return optional_ptr<abi_serializer>();
 }
 
 const account_object& controller::get_account( account_name name )const

@@ -87,6 +87,35 @@ namespace eosio { namespace chain {
        }
    };
 
+   template<typename T>
+   class optional_ptr final {
+   public:
+       optional_ptr(const T* t = nullptr)
+       : impl_(t) {
+       }
+
+       optional_ptr(const T& t)
+       : impl_(&t) {
+       }
+
+       bool valid() const {
+           return nullptr != impl_;
+       }
+
+       const T& operator*() const {
+           assert(valid());
+           return *impl_;
+       }
+
+       const T* operator->() const {
+           assert(valid());
+           return impl_;
+       }
+
+   private:
+       const T* impl_ = nullptr;
+   }; // class optional_ptr
+
    class controller {
       public:
 
@@ -296,17 +325,7 @@ namespace eosio { namespace chain {
          wasm_interface& get_wasm_interface();
 
 
-         optional<abi_serializer> get_abi_serializer( account_name n, const fc::microseconds& max_serialization_time )const {
-            if( n.good() ) {
-               try {
-                  const auto& a = get_account( n );
-                  abi_def abi;
-                  if( abi_serializer::to_abi( a.abi, abi ))
-                     return abi_serializer( abi, max_serialization_time );
-               } FC_CAPTURE_AND_LOG((n))
-            }
-            return optional<abi_serializer>();
-         }
+         optional_ptr<abi_serializer> get_abi_serializer( account_name n, const fc::microseconds& max_serialization_time )const;
 
          template<typename T>
          fc::variant to_variant_with_abi( const T& obj, const fc::microseconds& max_serialization_time ) {

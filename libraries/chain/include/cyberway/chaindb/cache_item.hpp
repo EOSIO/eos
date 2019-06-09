@@ -95,7 +95,7 @@ namespace cyberway { namespace chaindb {
         cache_object_state* swap_state(cache_object_state& state);
 
     public:
-        cache_object(service_state);
+        cache_object(object_value);
 
         cache_object(cache_object&&) = delete;
         cache_object(const cache_object&) = delete;
