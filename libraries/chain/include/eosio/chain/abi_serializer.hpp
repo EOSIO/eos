@@ -100,7 +100,7 @@ struct abi_serializer {
    static const size_t max_recursion_depth = 32; // arbitrary depth to prevent infinite recursion
 
 private:
-   bool check_field_name_ = true;
+   bool check_field_name_ = false;
 
    map<type_name, type_name>     typedefs;
    map<type_name, struct_def>    structs;
