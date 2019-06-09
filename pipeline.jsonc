@@ -1,10 +1,4 @@
 {
-    "eosio": {
-        "pipeline-branch": "support-for-improvements"
-    },
-    "eosio-base-images": {
-        "pipeline-branch": "support-for-improvements"
-    },
     "eosio-build-unpinned": {
         "pipeline-branch": "protocol-features-sync-nodes"
     },
