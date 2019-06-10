@@ -1,7 +1,8 @@
 {
     "eosio": {
         "environment": {
-            "IMAGE_TAG": "_1.9.0-develop"
+            "IMAGE_TAG": "_1.9.0-develop",
+            "HELPER_ENABLED": true
         }
     },
     "eosio-build-unpinned": {
