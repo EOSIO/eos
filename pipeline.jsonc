@@ -1,16 +1,29 @@
 {
-    "eosio-base-images": {
+    "eosio": {
+        {
+            "IMAGE_TAG": "_1-8-0-rc2"
+        }
+    },
+    "eosio-base-images":
+    {
         "pipeline-branch": "release/1.8.x"
     },
-    "eosio-lrt": {
-        "pipeline-branch": "protocol-features-sync-nodes"
+    "eosio-lrt":
+    {
+        "environment":
+        {
+            "BUILD_FLAGS": "-y -P -m",
+            "IMAGE_TAG": "_1-8-0-rc2"
+        }
     },
     "eos-multiversion-tests":
     {
-        "environment": {
+        "environment":
+        {
             "IMAGE_TAG": "_1-8-0-rc2"
         },
-        "configuration": [
+        "configuration":
+        [
             "170=v1.7.0"
         ]
     },
