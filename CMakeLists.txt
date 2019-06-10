@@ -279,3 +279,5 @@ file(WRITE "${CMAKE_BINARY_DIR}/CTestCustom.cmake" "SET(CTEST_CUSTOM_TESTS_IGNOR
 
 include(package)
 include(doxygen)
+
+add_subdirectory(contracts)
