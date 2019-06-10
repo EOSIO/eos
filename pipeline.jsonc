@@ -1,4 +1,9 @@
 {
+    "eosio": {
+        "environment": {
+            "IMAGE_TAG": "2-5"
+        }
+    },
     "eosio-base-images":
     {
         "pipeline-branch": "release/1.8.x"
