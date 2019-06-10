@@ -999,6 +999,26 @@ class Node(object):
 
         return self.waitForTransBlockIfNeeded(trans, waitForTransBlock, exitOnError=exitOnError)
 
+    def buyrambytes(self, payer, receiver, rambytes, waitForTransBlock=False, exitOnError=False):
+        data = "{\"payer\":\"%s\",\"receiver\":\"%s\",\"bytes\":\"%s\"}" % (payer.name, receiver.name, rambytes)
+        opts = "--permission %s@active" % payer.name
+        
+        trans = self.pushMessage("eosio", "buyrambytes", data, opts)
+        self.trackCmdTransaction(trans)
+
+        return self.waitForTransBlockIfNeeded(trans, waitForTransBlock, exitOnError=exitOnError)
+
+    def buyram(self, payer, receiver, tokens, waitForTransBlock=False, exitOnError=False):
+        cmdDesc = "system buyram"
+        args = "%s %s \"%s\"" % (payer.name, receiver.name, tokens)
+        cmd  = "%s -j %s" % (cmdDesc, args)
+        msg  = "buyram payer=%s, receiver=%s, amount=%s" % (payer.name, receiver.name, tokens)
+
+        trans = self.processCleosCmd(cmd, cmdDesc, exitOnError=exitOnError, exitMsg=msg)
+        self.trackCmdTransaction(trans)
+
+        return self.waitForTransBlockIfNeeded(trans, waitForTransBlock, exitOnError=exitOnError)
+
     def delegatebw(self, fromAccount, netQuantity, cpuQuantity, toAccount=None, transferTo=False, waitForTransBlock=False, exitOnError=False):
         if toAccount is None:
             toAccount=fromAccount
@@ -1008,7 +1028,7 @@ class Node(object):
         cmd="%s -j %s %s \"%s %s\" \"%s %s\" %s" % (
             cmdDesc, fromAccount.name, toAccount.name, netQuantity, CORE_SYMBOL, cpuQuantity, CORE_SYMBOL, transferStr)
         msg="fromAccount=%s, toAccount=%s" % (fromAccount.name, toAccount.name);
-        trans=self.processCleosCmd(cmd, cmdDesc, exitOnError=exitOnError, exitMsg=msg)
+        trans=self.processCleosCmd(cmd, cmdDesc, exitOnError=exitOnError, exitMsg=msg, silentErrors=False)
         self.trackCmdTransaction(trans)
 
         return self.waitForTransBlockIfNeeded(trans, waitForTransBlock, exitOnError=exitOnError)
@@ -1021,7 +1041,7 @@ class Node(object):
         cmd="%s -j %s %s \"%s %s\" \"%s %s\"" % (
             cmdDesc, fromAccount.name, toAccount.name, netQuantity, CORE_SYMBOL, cpuQuantity, CORE_SYMBOL)
         msg="fromAccount=%s, toAccount=%s" % (fromAccount.name, toAccount.name);
-        trans=self.processCleosCmd(cmd, cmdDesc, exitOnError=exitOnError, exitMsg=msg)
+        trans=self.processCleosCmd(cmd, cmdDesc, exitOnError=exitOnError, exitMsg=msg, silentErrors=False)
         self.trackCmdTransaction(trans)
 
         return self.waitForTransBlockIfNeeded(trans, waitForTransBlock, exitOnError=exitOnError)
@@ -1031,12 +1051,12 @@ class Node(object):
         cmd="%s -j %s %s %s %s" % (
             cmdDesc, producer.name, producer.activePublicKey, url, location)
         msg="producer=%s" % (producer.name);
-        trans=self.processCleosCmd(cmd, cmdDesc, exitOnError=exitOnError, exitMsg=msg)
+        trans=self.processCleosCmd(cmd, cmdDesc, exitOnError=exitOnError, exitMsg=msg, silentErrors=False)
         self.trackCmdTransaction(trans)
 
         return self.waitForTransBlockIfNeeded(trans, waitForTransBlock, exitOnError=exitOnError)
 
-    def vote(self, account, producers, waitForTransBlock=False, exitOnError=False):
+    def vote(self, account, producers, waitForTransBlock=False, exitOnError=True):
         cmdDesc = "system voteproducer prods"
         cmd="%s -j %s %s" % (
             cmdDesc, account.name, " ".join(producers))

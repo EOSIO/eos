@@ -18,16 +18,22 @@
 #include <cmath>
 
 namespace eosiosystem {
-   
+
    using eosio::const_mem_fun;
    using eosio::indexed_by;
    using eosio::singleton;
    using eosio::transaction;
+   using namespace std::string_literals;
+
 
    void system_contract::regproducer( const name& producer, const eosio::public_key& producer_key, const std::string& url, uint16_t location ) {
       check( url.size() < 512, "url too long" );
       check( producer_key != eosio::public_key(), "public key should not be the default value" );
       require_auth( producer );
+
+      // TODO implement as constexpr string
+      static const auto stake_err = "user should stake at least "s + std::to_string( producer_stake_threshold ) + " REM to become a producer"s;
+      check( does_satisfy_stake_requirement( producer ), stake_err );
 
       auto prod = _producers.find( producer.value );
       const auto ct = current_time_point();
@@ -84,8 +90,10 @@ namespace eosiosystem {
       auto idx = _producers.get_index<"prototalvote"_n>();
 
       std::vector< std::pair<eosio::producer_key,uint16_t> > top_producers;
-      top_producers.reserve(21);
+      top_producers.reserve(max_block_producers);
 
+      // TODO rewrite in algorithm terms
+      // TODO check if we can rely on producer_info::active()
       for ( auto it = idx.cbegin(); it != idx.cend() && top_producers.size() < 21 && 0 < it->total_votes && it->active(); ++it ) {
          top_producers.emplace_back( std::pair<eosio::producer_key,uint16_t>({{it->owner, it->producer_key}, it->location}) );
       }
@@ -167,6 +175,9 @@ namespace eosiosystem {
 
    void system_contract::voteproducer( const name& voter_name, const name& proxy, const std::vector<name>& producers ) {
       require_auth( voter_name );
+
+      check( is_block_producer( voter_name ), "only block producers are allowed to vote" );
+      
       vote_stake_updater( voter_name );
       update_votes( voter_name, proxy, producers, true );
       auto rex_itr = _rexbalance.find( voter_name.value );
@@ -376,6 +387,20 @@ namespace eosiosystem {
             v.last_vote_weight = new_weight;
          }
       );
+   }
+
+   bool system_contract::does_satisfy_stake_requirement( const name& producer ) const {
+      const auto voter = _voters.find( producer.value );
+
+      if ( voter == _voters.end() ) {
+         return false;
+      }
+
+      return voter->staked >= producer_stake_threshold;
+   }
+
+   bool system_contract::is_block_producer( const name& producer ) const {
+      return _producers.find( producer.value ) != _producers.end();
    }
 
 } /// namespace eosiosystem
