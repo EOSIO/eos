@@ -1,7 +1,8 @@
 {
     "eosio": {
         "environment": {
-            "IMAGE_TAG": "_1-8-0-rc2"
+            "IMAGE_TAG": "_1-8-0-rc2",
+            "HELPER_ENABLED": true
         }
     },
     "eosio-base-images":
