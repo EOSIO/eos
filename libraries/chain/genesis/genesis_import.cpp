@@ -15,7 +15,6 @@ FC_DECLARE_EXCEPTION(extract_genesis_exception, 9000000, "genesis extract except
 using namespace eosio::chain;
 using namespace cyberway::chaindb;
 using resource_manager = eosio::chain::resource_limits::resource_limits_manager;
-const fc::microseconds abi_serializer_max_time = fc::seconds(10);
 
 
 struct genesis_import::impl final {
@@ -81,8 +80,6 @@ struct genesis_import::impl final {
         std::cout << "Header magic: " << h.magic << "; ver: " << h.version << std::endl;
         EOS_ASSERT(h.is_valid(), extract_genesis_exception, "Unknown format of the Genesis state file.");
 
-        bool abis_initialized = false;  // we don't want to deserialize golos contracts twice, so mark system
-        abi_serializer sys_abi(eosio_contract_abi(), abi_serializer_max_time);
         while (in) {
             table_header t;
             fc::raw::unpack(in, t);
@@ -102,26 +99,6 @@ struct genesis_import::impl final {
                         db.insert(r.request(t.name), ram_payer_info(r), pk, r.data.data(), r.data.size());
                     }
                     apply_db_changes();
-
-                    // need to directly add abi to chaindb if exists
-                    if (!abis_initialized && is_accounts_tbl) {
-                        fc::datastream<const char*> ds(static_cast<const char*>(r.data.data()), r.data.size());
-                        auto acc = sys_abi.binary_to_variant("account_object", ds, abi_serializer_max_time);
-                        auto abi_bytes = acc["abi"].as<bytes>();
-                        if (abi_bytes.size() > 0) {
-                            auto n = acc["name"].as<account_name>();
-                            abi_def abi;
-                            if (abi_serializer::to_abi(abi_bytes, abi) ) {
-                                // db.add_abi(n, abi); // TOOD: is it needed?
-                                std::cout << "  add " << n << " abi" << std::endl;
-                            } else {
-                                elog("Failed to read abi provided in ${a} contract", ("a",n));
-                            }
-                        }
-                    }
-                }
-                if (t.name == N(account)) {
-                    abis_initialized = true;
                 }
             } else {
                 while (i++ < t.count) {
