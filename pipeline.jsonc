@@ -1,6 +1,6 @@
 {
     "eosio": {
-        {
+        "environment": {
             "IMAGE_TAG": "_1-8-0-rc2"
         }
     },
