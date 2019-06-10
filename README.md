@@ -1,7 +1,16 @@
+# The REMME development flow
+
+The REMME team will use EOSIO branch **release/1.8.x** as initial starting point to create **develop** branch.
+All new fixes made by EOSIO on the **release/1.8.x** branch will be pulled into **eos-release/1.8.x** and merged into **develop** branch.
+Any REMME related changes will be done on separate feature (ex **feature_branch_01**) branches and pulled into **develop** branch.
+
+Once **develop** branch is stable, the **release/1.0.x** branch will be created to prepare the first production release.
+Once **release/1.0.x** branch is stable and reached production quality **master** branch will be created to point to latest stable release.
+
+![PlantUML model](http://www.plantuml.com/plantuml/proxy?src=https://raw.github.com/Remmeauth/remchain/develop/README_branches.puml)
+
 
 # EOSIO - The Most Powerful Infrastructure for Decentralized Applications
-
-[![Build status](https://badge.buildkite.com/370fe5c79410f7d695e4e34c500b4e86e3ac021c6b1f739e20.svg?branch=master)](https://buildkite.com/EOSIO/eosio)
 
 Welcome to the EOSIO source code repository! This software enables businesses to rapidly build and deploy high-performance and high-security blockchain-based applications.
 
