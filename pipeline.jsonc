@@ -1,4 +1,9 @@
 {
+    "eosio": {
+        "environment": {
+            "IMAGE_TAG": "_1.9.0-develop"
+        }
+    },
     "eosio-build-unpinned": {
         "pipeline-branch": "protocol-features-sync-nodes"
     },
