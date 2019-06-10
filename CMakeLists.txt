@@ -4,10 +4,8 @@ project( EOSIO )
 include(CTest) # suppresses DartConfiguration.tcl error
 enable_testing()
 
-if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-   set(CMAKE_INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}")
-elseif ("${CMAKE_INSTALL_PREFIX}" STREQUAL "/usr/local")
-   message(WARNING "CMAKE_INSTALL_PREFIX is explicitly set to /usr/local. This is not recommended.")
+if ("${CMAKE_INSTALL_PREFIX}" STREQUAL "/usr/local")
+   message(WARNING "CMAKE_INSTALL_PREFIX is set to /usr/local. This is not recommended.")
 endif()
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules")
