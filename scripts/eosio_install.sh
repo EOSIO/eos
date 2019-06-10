@@ -41,7 +41,6 @@ VERSION=2.0
 echo "${COLOR_CYAN}====================================================================================="
 echo "========================== ${COLOR_WHITE}Starting EOSIO Installation${COLOR_CYAN} ==============================${COLOR_NC}"
 execute cd $BUILD_DIR
-CMAKE_INSTALL_PREFIX=$(grep ^CMAKE_INSTALL_PREFIX: CMakeCache.txt | sed 's/.*=//')
 execute make install
 execute cd ..
 
