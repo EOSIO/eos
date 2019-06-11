@@ -107,6 +107,7 @@ static abi_def create_accounts_abi() {
             {"name", "string"},
             {"created", "time_point_sec"},
             {"last_update", "time_point_sec"},
+            {"reputation", "int64"},
             {"balance", "asset"},
             {"balance_in_sys", "asset"},
             {"vesting_shares", "asset"},

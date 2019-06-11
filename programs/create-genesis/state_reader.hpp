@@ -88,6 +88,8 @@ struct state_object_visitor {
     fc::flat_map<uint64_t,post_permlink> permlinks;         // id:permlink
     std::vector<golos::comment_vote_object> votes;
 
+    fc::flat_map<acc_idx, share_type> reputations;
+
     template<typename T>
     void operator()(const T& x) {}
 
@@ -227,20 +229,23 @@ struct state_object_visitor {
         }
     }
 
+    void operator()(const golos::reputation_object& rep) {
+        reputations[rep.account.id] = rep.reputation;
+    }
 };
 
 class state_reader {
-    const bfs::path& _state_file;
+    const bfs::path& _main_state_file;
     vector<string>& _accs_map;
     vector<string>& _plnk_map;
 
 public:
-    state_reader(const bfs::path& state_file, vector<string>& accs, vector<string>& permlinks)
-    : _state_file(state_file), _accs_map(accs), _plnk_map(permlinks) {
+    state_reader(const bfs::path& main_state_file, vector<string>& accs, vector<string>& permlinks)
+    : _main_state_file(main_state_file), _accs_map(accs), _plnk_map(permlinks) {
     }
 
     void read_maps() {
-        auto map_file = _state_file;
+        auto map_file = _main_state_file;
         map_file += ".map";
         EOS_ASSERT(fc::is_regular_file(map_file), genesis_exception,
             "Genesis state map file '${f}' does not exist.", ("f", map_file.generic_string()));
@@ -270,14 +275,14 @@ public:
         im.close();
     }
 
-    void read_state(state_object_visitor& visitor) {
-        // TODO: checksum
-        EOS_ASSERT(fc::is_regular_file(_state_file), genesis_exception,
-            "Genesis state file '${f}' does not exist.", ("f", _state_file.generic_string()));
-        ilog("Reading state from ${f}...", ("f", _state_file.generic_string()));
-        read_maps();
+    void read_state_file(const bfs::path& state_file, state_object_visitor& visitor) {
+        if (!bfs::exists(state_file)) {
+            return;
+        }
 
-        bfs::ifstream in(_state_file);
+        ilog("Reading state from ${f}...", ("f", state_file.generic_string()));
+
+        bfs::ifstream in(state_file);
         golos_state_header h{"", 0, 0};
         in.read((char*)&h, sizeof(h));
         EOS_ASSERT(string(h.magic) == golos_state_header::expected_magic, genesis_exception,
@@ -303,8 +308,23 @@ public:
             }
             std::cout << "  Done, " << i << " record(s) read." << std::endl;
         }
-        ilog("Done reading Genesis state.");
+
         in.close();
+    }
+
+    void read_state(state_object_visitor& visitor) {
+        // TODO: checksum
+        EOS_ASSERT(fc::is_regular_file(_main_state_file), genesis_exception,
+            "Genesis state file '${f}' does not exist.", ("f", _main_state_file.generic_string()));
+        read_maps();
+
+        read_state_file(_main_state_file, visitor);
+
+        auto rep_state = _main_state_file;
+        rep_state += ".reputation";
+        read_state_file(rep_state, visitor);
+
+        ilog("Done reading Genesis state.");
     }
 };
 

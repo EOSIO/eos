@@ -295,6 +295,12 @@ struct account_metadata_object {};
 struct proposal_object {};
 struct required_approval_object {};
 
+struct reputation_object {
+    id_type id;
+    account_name_type account;
+    share_type reputation;
+};
+
 } // golos
 
 
@@ -327,7 +333,8 @@ enum object_type {
     vesting_delegation_expiration_object_id,
     account_metadata_object_id,
     proposal_object_id,
-    required_approval_object_id
+    required_approval_object_id,
+    reputation_object_id
 };
 
 // variant must be ordered the same way as enum (including not required objects):
@@ -360,7 +367,8 @@ using objects = fc::static_variant<
     golos::vesting_delegation_expiration_object,
     golos::account_metadata_object,
     golos::proposal_object,
-    golos::required_approval_object
+    golos::required_approval_object,
+    golos::reputation_object
 >;
 
 } // cyberway
@@ -442,3 +450,5 @@ FC_REFLECT(cyberway::golos::liquidity_reward_balance_object,        BOOST_PP_SEQ
 FC_REFLECT(cyberway::golos::owner_authority_history_object,         BOOST_PP_SEQ_NIL)
 FC_REFLECT(cyberway::golos::account_recovery_request_object,        BOOST_PP_SEQ_NIL)
 FC_REFLECT(cyberway::golos::decline_voting_rights_request_object,   BOOST_PP_SEQ_NIL)
+
+FC_REFLECT(cyberway::golos::reputation_object, (id)(account)(reputation))

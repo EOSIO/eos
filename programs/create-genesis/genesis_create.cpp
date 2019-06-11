@@ -363,7 +363,8 @@ struct genesis_create::genesis_create_impl final {
                 ("owner", n)
                 ("name", s)
                 ("created", acc.created)
-                ("last_update", acc.last_account_update);
+                ("last_update", acc.last_account_update)
+                ("reputation", _visitor.reputations[auth.account.id]);
         }
 
         _visitor.auths.clear();
