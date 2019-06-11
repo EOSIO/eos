@@ -50,6 +50,13 @@ addEnum(BlockLogAction, "return_blocks")
 ###########################################################################################
 class Utils:
     
+    portBase = 1600
+    cluster_stride = 1000
+    node_stride = 10
+    port_type_p2p = 0
+    port_type_http = 1
+    port_type_keosd = 2
+    
     clusterID=0
     Debug=False
     FNull = open(os.devnull, 'w')
@@ -118,10 +125,7 @@ class Utils:
 
     @staticmethod
     def getNodeDataDir(ext, relativeDir=None, trailingSlash=False):
-        if Utils.clusterID:
-            path=os.path.join(Utils.DataDir + "cluster" + str(Utils.clusterID) + "/", Utils.nodeExtensionToName(ext))
-        else:
-            path=os.path.join(Utils.DataDir, Utils.nodeExtensionToName(ext))
+        path=os.path.join(Utils.DataDir + "cluster" + ("%05d" % (Utils.clusterID)) + "/", Utils.nodeExtensionToName(ext))
         if relativeDir is not None:
            path=os.path.join(path, relativeDir)
         if trailingSlash:
@@ -130,10 +134,7 @@ class Utils:
 
     @staticmethod
     def getNodeConfigDir(ext, relativeDir=None, trailingSlash=False):
-        if Utils.clusterID:
-            path=os.path.join(Utils.ConfigDir + "cluster" + str(Utils.clusterID) + "/", Utils.nodeExtensionToName(ext))
-        else:
-            path=os.path.join(Utils.ConfigDir, Utils.nodeExtensionToName(ext))
+        path=os.path.join(Utils.ConfigDir + "cluster" + ("%05d" % (Utils.clusterID)) + "/", Utils.nodeExtensionToName(ext))
         if relativeDir is not None:
            path=os.path.join(path, relativeDir)
         if trailingSlash:

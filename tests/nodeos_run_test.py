@@ -678,7 +678,7 @@ try:
 
     if localTest:
         p = re.compile('Assert')
-        errFileName="var/lib/node_00/stderr.txt"
+        errFileName = Utils.getNodeDataDir(0) + "/stderr.txt"
         assertionsFound=False
         with open(errFileName) as errFile:
             for line in errFile:
@@ -688,8 +688,7 @@ try:
         if assertionsFound:
             # Too many assertion logs, hard to validate how many are genuine. Make this a warning
             #  for now, hopefully the logs will get cleaned up in future.
-            Print("WARNING: Asserts in var/lib/node_00/stderr.txt")
-            #errorExit("FAILURE - Assert in var/lib/node_00/stderr.txt")
+            Print("WARNING: Asserts in %s" % (errFileName))
 
     Print("Validating accounts at end of test")
     accounts=[testeraAccount, currencyAccount, exchangeAccount]

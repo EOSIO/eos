@@ -4,7 +4,8 @@
  */
 #include <cstdlib>
 #include <iostream>
-#include <boost/test/included/unit_test.hpp>
+#include <boost/test/unit_test.hpp>
+#include <boost/test/unit_test_monitor.hpp>
 #include <fc/log/logger.hpp>
 #include <eosio/chain/exceptions.hpp>
 

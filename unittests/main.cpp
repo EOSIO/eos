@@ -10,7 +10,8 @@
 
 #include <fc/log/logger.hpp>
 
-#include <boost/test/included/unit_test.hpp>
+#include <boost/test/unit_test.hpp>
+#include <boost/test/unit_test_monitor.hpp>
 
 //extern uint32_t EOS_TESTING_GENESIS_TIMESTAMP;
 

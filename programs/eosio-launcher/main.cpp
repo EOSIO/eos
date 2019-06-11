@@ -116,6 +116,46 @@ struct local_identity {
 
 } local_id;
 
+enum class port_type : uint8_t {
+   p2p,
+   http,
+   keosd,
+   NUM_PORT_TYPES
+};
+
+namespace port_constants {
+   static constexpr uint16_t base = 1600;
+   static constexpr uint16_t cluster_stride = 1000;
+   static constexpr uint8_t  node_stride = 10;
+   static constexpr uint16_t max_listen_port_number = 32767; // default linux ephemeral port starts from 32768
+   // maximum number of different types of ports = node_stride
+
+   static_assert( cluster_stride > 0 );
+   static_assert( base + cluster_stride <= max_listen_port_number );
+
+   static constexpr uint16_t max_num_clusters = (max_listen_port_number - base) / cluster_stride;
+   // maximum number of clusters = max_num_clusters
+
+   static_assert( node_stride > 0 );
+   static_assert( node_stride <= cluster_stride );
+   static_assert( node_stride >= static_cast<uint8_t>(port_type::NUM_PORT_TYPES) );
+
+   static constexpr uint16_t max_num_nodes_per_cluster = cluster_stride / node_stride;
+   // maximum number of nodes (including bios node) per cluster = max_num_nodes_per_cluster
+}
+
+uint16_t calculate_port( uint16_t cluster_index, uint16_t node_index, port_type t ) {
+   if( cluster_index >= port_constants::max_num_clusters )
+     throw std::out_of_range( "invalid cluster index" );
+   if( node_index >= port_constants::max_num_nodes_per_cluster )
+     throw std::out_of_range( "invalid node index" );
+    
+   return port_constants::base 
+            + (port_constants::cluster_stride * cluster_index)
+            + (port_constants::node_stride * node_index)
+            + static_cast<uint16_t>(t);
+}
+
 class eosd_def;
 
 class host_def {
@@ -129,8 +169,6 @@ public:
       host_name("127.0.0.1"),
       public_name("localhost"),
       listen_addr("0.0.0.0"),
-      base_p2p_port(9876),
-      base_http_port(8888),
       def_file_size(8192),
       instances(),
       p2p_count(0),
@@ -138,8 +176,7 @@ public:
       dot_label_str()
   {}
 
-  uint32_t         cluster_id;
-  const uint32_t   cluster_port_offset = 2000;
+  uint16_t         cluster_id;
   string           genesis;
   string           ssh_identity;
   string           ssh_args;
@@ -147,25 +184,23 @@ public:
   string           host_name;
   string           public_name;
   string           listen_addr;
-  uint16_t         base_p2p_port;
-  uint16_t         base_http_port;
   uint16_t         def_file_size;
   vector<eosd_def> instances;
 
   uint16_t p2p_port() {
-    return cluster_id * cluster_port_offset + base_p2p_port + p2p_count++;
+    return calculate_port(cluster_id, ++p2p_count, port_type::p2p);
   }
 
   uint16_t http_port() {
-    return cluster_id * cluster_port_offset + base_http_port + http_count++;
+    return calculate_port(cluster_id, ++http_count, port_type::http);
   }
 
   uint16_t p2p_bios_port() {
-    return cluster_id * cluster_port_offset + base_p2p_port - 100;
+    return calculate_port(cluster_id, 0, port_type::p2p);
   }
 
   uint16_t http_bios_port() {
-     return cluster_id * cluster_port_offset + base_http_port - 100;
+    return calculate_port(cluster_id, 0, port_type::http);
   }
 
   bool is_local( ) const {
@@ -388,7 +423,7 @@ string producer_names::producer_name(unsigned int producer_number) {
 
 struct launcher_def {
    bool force_overwrite;
-   uint32_t cluster_id = 0; 
+   uint16_t cluster_id = 0; 
    size_t total_nodes;
    size_t unstarted_nodes;
    size_t prod_nodes;
@@ -403,7 +438,6 @@ struct launcher_def {
    bfs::path stage;
 
    string erd;
-   bfs::path config_dir_base_cluster0;
    bfs::path config_dir_base;
    bfs::path data_dir_base;
    bool skip_transaction_signatures = false;
@@ -561,7 +595,7 @@ launcher_def::initialize (const variables_map &vmap) {
   }
 
   if (vmap.count("cluster-id")) {
-    cluster_id = vmap["cluster-id"].as<uint32_t>();
+    cluster_id = vmap["cluster-id"].as<uint16_t>();
   }
 
   if (vmap.count("max-block-cpu-usage")) {
@@ -615,17 +649,15 @@ launcher_def::initialize (const variables_map &vmap) {
     }
   }
 
-  config_dir_base_cluster0 = "etc/eosio";
-  if (cluster_id == 0) {
-    config_dir_base = config_dir_base_cluster0;
-    data_dir_base = "var/lib";
-  } else {
-    std::stringstream config_s, data_s;
-    config_s << "etc/eosio/cluster" << cluster_id;
-    config_dir_base = config_s.str();
-    data_s << "var/lib/cluster" << cluster_id;
-    data_dir_base = data_s.str();
-  }
+	char cluster_id_str[10];
+	sprintf(cluster_id_str, "%05u", cluster_id);
+
+	config_dir_base = "etc/eosio/cluster";
+	config_dir_base += (const char *)cluster_id_str;
+
+	data_dir_base = "var/lib/cluster";
+	data_dir_base += (const char *)cluster_id_str;
+
   next_node = 0;
   ++prod_nodes; // add one for the bios node
   ++total_nodes;
@@ -1248,9 +1280,9 @@ launcher_def::write_setprods_file() {
 
 void
 launcher_def::write_bios_boot () {
-   bfs::ifstream src(bfs::path(config_dir_base_cluster0 / "launcher" / start_temp));
+   bfs::ifstream src(bfs::path("etc/eosio/launcher") / start_temp);
    if(!src.good()) {
-      cerr << "unable to open " << config_dir_base_cluster0 << "launcher/" << start_temp << " " << strerror(errno) << "\n";
+      cerr << "unable to open " << "etc/eosio/launcher/" << start_temp << " " << strerror(errno) << "\n";
     exit (9);
   }
 
@@ -1653,12 +1685,9 @@ launcher_def::kill (launch_modes mode, string sig_opt) {
   case LM_ALL:
   case LM_LOCAL:
   case LM_REMOTE : {
-    bfs::path source = "last_run.json";
-    if (cluster_id) {
-      std::stringstream s;
-      s << "last_run_cluster" << cluster_id << ".json";
-      source = s.str();
-    }
+    char last_run_str[100];
+	  sprintf(last_run_str, "last_run_cluster%05u.json", cluster_id);
+    std::string source = (const char *)last_run_str;
     try {
        fc::json::from_file( source ).as<last_run_def>( last_run );
        for( auto& info : last_run.running_nodes ) {
@@ -1889,12 +1918,10 @@ launcher_def::start_all (string &gts, launch_modes mode) {
     break;
   }
   }
-  bfs::path savefile = "last_run.json";
-  if (cluster_id) {
-    std::stringstream s;
-    s << "last_run_cluster" << cluster_id << ".json";
-    savefile = s.str();
-  }
+
+  char last_run_str[100];
+	sprintf(last_run_str, "last_run_cluster%05u.json", cluster_id);
+  bfs::path savefile = (const char *)last_run_str;
   bfs::ofstream sf (savefile);
 
   sf << fc::json::to_pretty_string (last_run) << endl;
@@ -1959,7 +1986,7 @@ int main (int argc, char *argv[]) {
   string roll_nodes;
   bfs::path config_dir;
   bfs::path config_file;
-  uint32_t cluster_id = 0;
+  uint16_t cluster_id = 0;
 
   local_id.initialize();
   top.set_options(cfg);
@@ -1976,7 +2003,7 @@ int main (int argc, char *argv[]) {
     ("help,h","print this list")
     ("config-dir", bpo::value<bfs::path>(), "Directory containing configuration files such as config.ini")
     ("config,c", bpo::value<bfs::path>()->default_value( "config.ini" ), "Configuration file name relative to config-dir")
-    ("cluster-id", bpo::value<uint32_t>()->default_value(0), "Cluster ID for parallel execution, for local nodes only");
+    ("cluster-id", bpo::value<uint16_t>()->default_value(0), "Cluster ID for parallel execution, for local nodes only");
 
   cli.add(cfg);
 
@@ -2088,7 +2115,7 @@ FC_REFLECT( producer_set_def,
 FC_REFLECT( host_def,
             (cluster_id)(genesis)(ssh_identity)(ssh_args)(eosio_home)
             (host_name)(public_name)
-            (base_p2p_port)(base_http_port)(def_file_size)
+						(def_file_size)
             (instances) )
 
 // @ignore node, dot_label_str

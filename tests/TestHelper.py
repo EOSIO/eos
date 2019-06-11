@@ -30,8 +30,8 @@ class AppArgs:
 # pylint: disable=too-many-instance-attributes
 class TestHelper(object):
     LOCAL_HOST="localhost"
-    DEFAULT_PORT=8888
-    DEFAULT_WALLET_PORT=9899
+    DEFAULT_PORT=-1 # now depends on cluster id
+    DEFAULT_WALLET_PORT=-1 # now depends on cluster id
 
     @staticmethod
     # pylint: disable=too-many-branches

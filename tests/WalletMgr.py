@@ -12,14 +12,14 @@ from testUtils import Utils
 Wallet=namedtuple("Wallet", "name password host port")
 # pylint: disable=too-many-instance-attributes
 class WalletMgr(object):
-    __walletLogOutFile="test_keosd_out.log"
-    __walletLogErrFile="test_keosd_err.log"
-    __walletDataDir="test_wallet_0"
+    __walletLogOutFile="test_keosd_00000_out.log"
+    __walletLogErrFile="test_keosd_00000_err.log"
+    __walletDataDir="test_wallet_00000"
     __MaxPort=9999
 
     # pylint: disable=too-many-arguments
     # walletd [True|False] True=Launch wallet(keosd) process; False=Manage launch process externally.
-    def __init__(self, walletd, nodeosPort=8888, nodeosHost="localhost", port=9899, host="localhost", clusterID=0):
+    def __init__(self, walletd, nodeosPort=-1, nodeosHost="localhost", port=-1, host="localhost", clusterID=0):
         self.walletd=walletd
         self.nodeosPort=nodeosPort
         self.nodeosHost=nodeosHost
@@ -27,14 +27,14 @@ class WalletMgr(object):
         self.host=host
         self.wallets={}
         self.__walletPid=None
-        if clusterID != 0:
-            WalletMgr.__walletLogOutFile = "test_keosd_cluster" + str(clusterID) + "_out.log"
-            WalletMgr.__walletLogErrFile="test_keosd_cluster" + str(clusterID) + "_err.log"
-            WalletMgr.__walletDataDir="test_wallet_" + str(clusterID) 
-            if self.port == 9899:
-                self.port += clusterID     
-            if self.nodeosPort == 8888:
-                self.nodeosPort += clusterID * 2000
+
+        WalletMgr.__walletLogOutFile = "test_keosd_cluster" + ("%05d" % clusterID) + "_out.log"
+        WalletMgr.__walletLogErrFile="test_keosd_cluster" + ("%05d" % clusterID) + "_err.log"
+        WalletMgr.__walletDataDir="test_wallet_" + ("%05d" % clusterID)
+        if self.port == -1:
+            self.port = Utils.portBase + clusterID * Utils.cluster_stride + Utils.port_type_keosd     
+        if self.nodeosPort == -1:
+            self.nodeosPort = Utils.portBase + clusterID * Utils.cluster_stride + Utils.node_stride + Utils.port_type_http
 
     def getWalletEndpointArgs(self):
         if not self.walletd or not self.isLaunched():

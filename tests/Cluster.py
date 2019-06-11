@@ -46,11 +46,18 @@ class Cluster(object):
     __BiosPort=8788
     __LauncherCmdArr=[]
     __bootlog="eosio-ignition-wd/bootlog.txt"
-    __BootScript="bios_boot.sh"
+    __BootScript="bios_boot_cluster0000.sh"
+
+    __portBase = Utils.portBase
+    __cluster_stride = Utils.cluster_stride
+    __node_stride = Utils.node_stride
+    __port_type_p2p = Utils.port_type_p2p
+    __port_type_http = Utils.port_type_http
+    __port_type_keosd = Utils.port_type_keosd
 
     # pylint: disable=too-many-arguments
     # walletd [True|False] Is keosd running. If not load the wallet plugin
-    def __init__(self, walletd=False, localCluster=True, host="localhost", port=8888, walletHost="localhost", walletPort=9899, enableMongo=False
+    def __init__(self, walletd=False, localCluster=True, host="localhost", port=-1, walletHost="localhost", walletPort=9899, enableMongo=False
                  , mongoHost="localhost", mongoPort=27017, mongoDb="EOStest", defproduceraPrvtKey=None, defproducerbPrvtKey=None, staging=False, clusterID=0):
         """Cluster container.
         walletd [True|False] Is wallet keosd running. If not load the wallet plugin
@@ -67,10 +74,12 @@ class Cluster(object):
         """
         self.accounts={}
         self.clusterID=clusterID
-        if clusterID != 0:
-            port += clusterID * 2000
-            Cluster.__BiosPort = 8788 + clusterID * 2000
-            Cluster.__BootScript = "bios_boot_cluster" + str(clusterID) + ".sh"
+
+        Cluster.__BiosPort = Cluster.__portBase + clusterID * Cluster.__cluster_stride + Cluster.__port_type_http
+        Cluster.__BootScript = "bios_boot_cluster" + ("%05d" % clusterID) + ".sh"
+        
+        if port == -1:
+            port = Cluster.__BiosPort + Cluster.__node_stride
 
         self.nodes={}
         self.unstartedNodes=[]
@@ -210,7 +219,7 @@ class Cluster(object):
         self.setAlternateVersionLabels(alternateVersionLabelsFile)
 
         tries = 30
-        while not Utils.arePortsAvailable(set(range(self.port, self.port+totalNodes+1))):
+        while not Utils.arePortsAvailable(set(range(self.port, self.port + totalNodes * Cluster.__node_stride))):
             Utils.Print("ERROR: Another process is listening on nodeos default port. wait...")
             if tries == 0:
                 return False
@@ -220,9 +229,8 @@ class Cluster(object):
         cmd="%s -p %s -n %s -d %s -i %s -f %s --unstarted-nodes %s" % (
             Utils.EosLauncherPath, pnodes, totalNodes, delay, datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3],
             producerFlag, unstartedNodes)
-        if self.clusterID != 0:
-            cmd += " --cluster-id %d" % (self.clusterID)
-            cmd += " --script %s" % (Cluster.__BootScript)
+        cmd += " --cluster-id %d" % (self.clusterID)
+        cmd += " --script %s" % (Cluster.__BootScript)
         cmdArr=cmd.split()
         if self.staging:
             cmdArr.append("--nogen")
@@ -1367,7 +1375,7 @@ class Cluster(object):
         if m is None:
             Utils.Print("ERROR: Failed to find %s pid. Pattern %s" % (Utils.EosServerName, pattern))
             return None
-        instance=Node(self.host, self.port + nodeNum, pid=int(m.group(1)), cmd=m.group(2), walletMgr=self.walletMgr, enableMongo=self.enableMongo, mongoHost=self.mongoHost, mongoPort=self.mongoPort, mongoDb=self.mongoDb)
+        instance=Node(self.host, self.port + Cluster.__node_stride * nodeNum, pid=int(m.group(1)), cmd=m.group(2), walletMgr=self.walletMgr, enableMongo=self.enableMongo, mongoHost=self.mongoHost, mongoPort=self.mongoPort, mongoDb=self.mongoDb)
         if Utils.Debug: Utils.Print("Node>", instance)
         return instance
 
@@ -1460,13 +1468,11 @@ class Cluster(object):
     def killall(self, silent=True, allInstances=False):
         """Kill cluster nodeos instances. allInstances will kill all nodeos instances running on the system."""
         cmd="%s -k 9" % (Utils.EosLauncherPath)
-        if self.clusterID != 0:
-            cmd += " --cluster-id %d" % (self.clusterID)
+        cmd += " --cluster-id %d" % (self.clusterID)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         if 0 != subprocess.call(cmd.split(), stdout=Utils.FNull):
             if not silent: Utils.Print("Launcher failed to shut down eos cluster.")
             
-
         if allInstances:
             # ocassionally the launcher cannot kill the eos server
             cmd="pkill -9 %s" % (Utils.EosServerName)
@@ -1592,7 +1598,7 @@ class Cluster(object):
             cmd=file.read()
             Utils.Print("unstarted local node cmd: %s" % (cmd))
         p=re.compile(r'^\s*(\w+)\s*=\s*([^\s](?:.*[^\s])?)\s*$')
-        instance=Node(self.host, port=self.port+nodeId, pid=None, cmd=cmd, walletMgr=self.walletMgr, enableMongo=self.enableMongo, mongoHost=self.mongoHost, mongoPort=self.mongoPort, mongoDb=self.mongoDb)
+        instance=Node(self.host, port=self.port+Cluster.__node_stride, pid=None, cmd=cmd, walletMgr=self.walletMgr, enableMongo=self.enableMongo, mongoHost=self.mongoHost, mongoPort=self.mongoPort, mongoDb=self.mongoDb)
         if Utils.Debug: Utils.Print("Unstarted Node>", instance)
         return instance
 
