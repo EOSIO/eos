@@ -1,15 +1,19 @@
 {
-    "eosio": {
-        "environment": {
-            "IMAGE_TAG": "1.9.0-develop",
-            "HELPER_ENABLED": true
+    "eosio":
+    {
+        "environment":
+        {
+            "HELPER_ENABLED": true,
+            "IMAGE_TAG": "1.9.0-develop"
         }
     },
-    "eosio-build-unpinned": {
-        "pipeline-branch": "protocol-features-sync-nodes"
-    },
-    "eosio-lrt": {
-        "pipeline-branch": "protocol-features-sync-nodes"
+    "eosio-lrt":
+    {
+        "environment":
+        {
+            "BUILD_FLAGS": "-y -P -m",
+            "IMAGE_TAG": "_1-8-0-rc2"
+        }
     },
     "eos-multiversion-tests":
     {
