@@ -1,7 +1,7 @@
 {
     "eosio": {
         "environment": {
-            "IMAGE_TAG": "1.7.x-v1",
+            "IMAGE_TAG": "1.7.x",
             "HIGH_SIERRA_ENABLED": true
         }
     },
