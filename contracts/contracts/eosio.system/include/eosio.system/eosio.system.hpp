@@ -1125,6 +1125,17 @@ namespace eosiosystem {
          [[eosio::action]]
          void claimrewards( const name& owner );
 
+         // functions defined in producer_pay.cpp
+         /**
+          * Pay fees action.
+          *
+          * @details Calculates per_block, per_vote and remme fees.
+          * @param payer - fee payer.
+          * @param quantity - fee quantity.
+          */
+         [[eosio::action]]
+         void fee( const name& payer, const asset& quantity );
+
          /**
           * Set privilege status for an account.
           *
@@ -1274,6 +1285,7 @@ namespace eosiosystem {
          using voteproducer_action = eosio::action_wrapper<"voteproducer"_n, &system_contract::voteproducer>;
          using regproxy_action = eosio::action_wrapper<"regproxy"_n, &system_contract::regproxy>;
          using claimrewards_action = eosio::action_wrapper<"claimrewards"_n, &system_contract::claimrewards>;
+         using fee_action = eosio::action_wrapper<"fee"_n, &system_contract::fee>;
 
          using rmvproducer_action = eosio::action_wrapper<"rmvproducer"_n, &system_contract::rmvproducer>;
          using updtrevision_action = eosio::action_wrapper<"updtrevision"_n, &system_contract::updtrevision>;
