@@ -20,15 +20,19 @@ target_include_directories(
    PUBLIC  "${CMAKE_CURRENT_SOURCE_DIR}/include/"
    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/" )
 
-# Generate the most up-to-date version metadata of the repository on every build.
-add_custom_target(
-   on_every_build
-   COMMAND ${CMAKE_COMMAND} -P ${CMAKE_SOURCE_DIR}/CMakeModules/VersionUtils.cmake )
+add_custom_target( on_every_build ALL
+   COMMAND ${CMAKE_COMMAND} -P ${CMAKE_SOURCE_DIR}/CMakeModules/VersionUtils.cmake
+   COMMENT "generating........................" VERBATIM)
 
-# ...
-add_dependencies(
-   version
-   on_every_build )
+# # Generate the most up-to-date version metadata of the repository on every build.
+# add_custom_target(
+#    on_every_build
+#    COMMAND ${CMAKE_COMMAND} -P ${CMAKE_SOURCE_DIR}/CMakeModules/VersionUtils.cmake )
+
+# # ...
+# add_dependencies(
+#    version
+#    on_every_build )
 
 # Install the library in the appropriate places.
 install(
