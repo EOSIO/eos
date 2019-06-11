@@ -2,10 +2,7 @@ cmake_minimum_required(
   VERSION 3.5 )
 
 project(
-   Version
-   VERSION      0.0.0.1
-   DESCRIPTION  "This library determines the current version in which the target was built"
-   HOMEPAGE_URL "https://eos.io/" )
+   Version )
 
 # Found in directory `eos/CMakeModules/`.
 include(
