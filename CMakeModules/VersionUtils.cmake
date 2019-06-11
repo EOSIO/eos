@@ -1,4 +1,6 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(
+  VERSION 3.5 )
+
 function(GENERATE_VERSION_METADATA)
    find_package(Git)
    if(EXISTS ${CMAKE_SOURCE_DIR}/.git AND GIT_FOUND)
