@@ -690,8 +690,8 @@ void print_result( const fc::variant& result ) { try {
 
          cerr << status << " transaction: " << transaction_id << "  ";
 
-         auto print_usage = [&]( const int64_t& value, const char* units ) {
-            cerr << "  ";
+         auto print_usage = [&]( const char* caption, const int64_t& value, const char* units ) {
+            cerr << ' ' << caption << ' ';
             if( !has_receipt ) {
                cerr << "<unknown>";
             } else {
@@ -700,10 +700,10 @@ void print_result( const fc::variant& result ) { try {
             cerr << " " << units;
          };
 
-         print_usage(net, "bytes");
-         print_usage(cpu, "us");
-         print_usage(ram, "bytes");
-         print_usage(storage, "bytes");
+         print_usage("NET", net, "bytes");
+         print_usage("CPU", cpu, "us");
+         print_usage("RAM", ram, "bytes");
+         print_usage("STORAGE", storage, "bytes");
 
          cerr << std::endl;
 
