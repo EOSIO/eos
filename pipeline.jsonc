@@ -1,8 +1,7 @@
 {
     "eosio": {
         "environment": {
-            "PIPELINE_BRANCH": "release/1.7.x",
-            "IMAGE_TAG": "1.7.x-testing"
+            "IMAGE_TAG": "1.7.x-v1"
         }
     },
     "eosio-lrt": {
