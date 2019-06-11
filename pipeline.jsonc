@@ -2,7 +2,9 @@
     "eosio": {
         "environment": {
             "IMAGE_TAG": "1.7.x",
-            "HIGH_SIERRA_ENABLED": true
+            "HIGH_SIERRA_ENABLED": true,
+            "FEDORA27_ENABLED": true,
+            "AMAZON1_ENABLED": true
         }
     },
     "eosio-lrt": {
