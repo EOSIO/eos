@@ -13,7 +13,7 @@ if [[ $NAME == "Ubuntu" ]]; then # Ubuntu won't find any packages until this run
   [[ -z $(find /tmp/apt-updated -mmin -60 2>/dev/null) ]] && apt-get update &>/dev/null
   [[ ! -f /tmp/apt-updated ]] && touch /tmp/apt-updated
 else
-  yum -y update &>/dev/null
+  [[ $ARCH != "Darwin" ]] && yum -y update &>/dev/null
 fi
 
 # Ensure we're in the root directory to execute
