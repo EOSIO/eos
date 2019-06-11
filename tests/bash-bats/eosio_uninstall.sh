@@ -47,8 +47,6 @@ mkdir -p $MONGODB_DATA_DIR
   ### Make sure deps are loaded properly
   [[ "${output}" =~ "Executing: rm -rf" ]] || exit
   [[ $ARCH == "Darwin" ]] && ( [[ "${output}" =~ "Executing: brew uninstall cmake --force" ]] || exit )
-  # Legacy support
-  [[ ! -z $( echo $output | grep "Executing: rmdir ${HOME}/src") ]] || exit
 }
 
 
