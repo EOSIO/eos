@@ -260,26 +260,72 @@ namespace cyberway { namespace chaindb {
         builder.build_indexes();
     }
 
+    template<typename Type>
+    variant abi_info::to_object_(
+        abi_serializer::mode m,
+        const char* value_type, Type&& db_type, const string& type,
+        const void* data, const size_t size
+    ) const {
+        // begin()
+        if (nullptr == data || 0 == size) return fc::variant_object();
+
+        fc::datastream<const char*> ds(static_cast<const char*>(data), size);
+        auto value = serializer_.binary_to_variant(type, ds, max_abi_time_, m);
+
+//            dlog(
+//                "The ${value_type} '${type}': ${value}",
+//                ("value_type", value_type)("type", db_type())("value", value));
+
+        CYBERWAY_ASSERT(value.is_object(), invalid_abi_store_type_exception,
+            "ABI serializer returns bad type for the ${value_type} for ${type}: ${value}",
+            ("value_type", value_type)("type", db_type())("value", value));
+
+        return value;
+    }
+
+    template<typename Type>
+    bytes abi_info::to_bytes_(const char* value_type, Type&& db_type, const string& type, const variant& value) const {
+
+//            dlog(
+//                "The ${value_type} '${type}': ${value}",
+//                ("value", value_type)("type", db_type())("value", value));
+
+        CYBERWAY_ASSERT(value.is_object(), invalid_abi_store_type_exception,
+            "ABI serializer receive wrong type for the ${value_type} for '${type}': ${value}",
+            ("value_type", value_type)("type", db_type())("value", value));
+
+        return serializer_.variant_to_binary(type, value, max_abi_time_);
+    }
+
     variant abi_info::to_object(const table_info& info, const void* data, const size_t size) const {
         assert(info.table);
-        return to_object_("table", [&]{return get_full_table_name(info);}, info.table->type, data, size);
+        auto db_type = [&]{return get_full_table_name(info);};
+        return to_object_(abi_serializer::DBMode, "table", std::move(db_type), info.table->type, data, size);
     }
 
     variant abi_info::to_object(const index_info& info, const void* data, const size_t size) const {
         assert(info.index);
         auto type = get_full_index_name(info);
-        return to_object_("index", [&](){return type;}, type, data, size);
+        auto db_type = [&](){return type;};
+        return to_object_(abi_serializer::DBMode, "index", std::move(db_type), type, data, size);
+    }
+
+    variant abi_info::to_object(const string& type, const void* data, const size_t size) const {
+        auto db_type = [&](){return type;};
+        return to_object_(abi_serializer::PublicMode, "object", std::move(db_type), type, data, size);
     }
 
     bytes abi_info::to_bytes(const table_info& info, const variant& value) const {
         assert(info.table);
-        return to_bytes_("table", [&]{return get_full_table_name(info);}, info.table->type, value);
+        auto db_type = [&]{return get_full_table_name(info);};
+        return to_bytes_("table", std::move(db_type), info.table->type, value);
     }
 
     bytes abi_info::to_bytes(const index_info& info, const variant& value) const {
         assert(info.index);
         auto type = get_full_index_name(info);
-        return to_bytes_("index", [&]{return type;}, type, value);
+        auto db_type = [&]{return type;};
+        return to_bytes_("index", std::move(db_type), type, value);
     }
 
     void abi_info::verify_tables_structure(const driver_interface& driver) const {

@@ -35,6 +35,28 @@ namespace cyberway { namespace chaindb {
 
     using eosio::chain::abi_serialization_deadline_exception;
 
+    service_state table_request::to_service(const primary_key_t pk) const {
+        service_state service;
+
+        service.code  = code;
+        service.scope = scope;
+        service.table = table;
+        service.pk    = pk;
+
+        return service;
+    }
+
+    service_state index_request::to_service(const primary_key_t pk) const {
+        service_state service;
+
+        service.code  = code;
+        service.scope = scope;
+        service.table = table;
+        service.pk    = pk;
+
+        return service;
+    }
+
     std::ostream& operator<<(std::ostream& osm, const chaindb_type t) {
         switch (t) {
             case chaindb_type::MongoDB:
@@ -167,7 +189,7 @@ namespace cyberway { namespace chaindb {
             auto& cursor = driver_.lower_bound(std::move(index), std::move(value));
 
             if (index.index->unique) {
-                auto cache = cache_.find(index, key, size);
+                auto cache = cache_.find(request.to_service(), request.index, key, size);
                 if (cache) {
                     cursor.pk = cache->pk();
                     return cursor;
@@ -178,9 +200,9 @@ namespace cyberway { namespace chaindb {
         }
 
         const cursor_info& lower_bound(const table_request& request, const primary_key_t pk) {
+            auto  cache  = cache_.find(request.to_service(pk));
             auto  index  = get_pk_index(request);
             auto  value  = primary_key::to_variant(index, pk);
-            auto  cache  = cache_.find(index, pk);
             auto& cursor = driver_.lower_bound(std::move(index), std::move(value));
 
             if (cache) {
@@ -260,7 +282,7 @@ namespace cyberway { namespace chaindb {
                 "Requesting object from the end of the table ${table}",
                 ("table", get_full_table_name(cursor.index)));
 
-            auto cache_ptr = cache_.find(cursor.index, cursor.pk);
+            auto cache_ptr = cache_.find(cursor.index.to_service(cursor.pk));
             if (BOOST_UNLIKELY(!cache_ptr)) {
                 auto obj = object_at_cursor(cursor, false);
                 if (!obj.is_null()) {
@@ -281,7 +303,7 @@ namespace cyberway { namespace chaindb {
                 return system_abi_info_.info();
             }
 
-            auto cache_ptr = cache_.find(system_abi_info_.account_index(), code);
+            auto cache_ptr = cache_.find(system_abi_info_.to_service(code));
             if (cache_ptr) {
                 return account_abi_info(std::move(cache_ptr));
             }
@@ -491,7 +513,7 @@ namespace cyberway { namespace chaindb {
         }
 
         object_value object_by_pk(const table_info& table, const primary_key_t pk) {
-            auto itm = cache_.find(table, pk);
+            auto itm = cache_.find(table.to_service(pk));
             if (itm) return itm->object();
 
             auto obj = driver_.object_by_pk(table, pk);

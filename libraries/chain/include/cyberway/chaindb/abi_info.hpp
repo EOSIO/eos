@@ -22,8 +22,17 @@ namespace cyberway { namespace chaindb {
 
         variant to_object(const table_info&, const void*, size_t) const;
         variant to_object(const index_info&, const void*, size_t) const;
+        variant to_object(const string&, const void*, size_t) const;
         bytes to_bytes(const table_info&, const variant&) const;
         bytes to_bytes(const index_info& info, const variant& value) const;
+
+        string get_event_type(const event_name& n) const {
+            return serializer_.get_event_type(n);
+        }
+
+        string get_action_type(const event_name& n) const {
+            return serializer_.get_action_type(n);
+        }
 
         const table_def* find_table(table_name_t table) const {
             auto itr = table_map_.find(table);
@@ -77,40 +86,8 @@ namespace cyberway { namespace chaindb {
 
         void init(abi_def);
 
-        template<typename Type>
-        variant to_object_(
-            const char* value_type, Type&& db_type, const string& type, const void* data, const size_t size
-        ) const {
-            // begin()
-            if (nullptr == data || 0 == size) return fc::variant_object();
-
-            fc::datastream<const char*> ds(static_cast<const char*>(data), size);
-            auto value = serializer_.binary_to_variant(type, ds, max_abi_time_, abi_serializer::DBMode);
-
-//            dlog(
-//                "The ${value_type} '${type}': ${value}",
-//                ("value_type", value_type)("type", db_type())("value", value));
-
-            CYBERWAY_ASSERT(value.is_object(), invalid_abi_store_type_exception,
-                "ABI serializer returns bad type for the ${value_type} for ${type}: ${value}",
-                ("value_type", value_type)("type", db_type())("value", value));
-
-            return value;
-        }
-
-        template<typename Type>
-        bytes to_bytes_(const char* value_type, Type&& db_type, const string& type, const variant& value) const {
-
-//            dlog(
-//                "The ${value_type} '${type}': ${value}",
-//                ("value", value_type)("type", db_type())("value", value));
-
-            CYBERWAY_ASSERT(value.is_object(), invalid_abi_store_type_exception,
-                "ABI serializer receive wrong type for the ${value_type} for '${type}': ${value}",
-                ("value_type", value_type)("type", db_type())("value", value));
-
-            return serializer_.variant_to_binary(type, value, max_abi_time_);
-        }
+        template<typename Type> variant to_object_(abi_serializer::mode, const char*, Type&&, const string&, const void*, size_t) const;
+        template<typename Type> bytes to_bytes_(const char*, Type&&, const string&, const variant&) const;
     }; // struct abi_info
 
     //-------------------------------------------------------------------

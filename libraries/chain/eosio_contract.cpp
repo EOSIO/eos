@@ -268,12 +268,6 @@ void apply_cyber_setabi(apply_context& context) {
       aso.abi_sequence += 1;
    });
 
-   context.control.set_abi(act.account, account.get_abi());
-
-   if (act.account == chain::config::system_account_name) {
-       context.control.set_abi(0, account.get_abi());
-   }
-
 // TODO: Removed by CyberWay
 //   if (new_size != old_size) {
 //      context.add_ram_usage( act.account, new_size - old_size );

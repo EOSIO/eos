@@ -15,43 +15,15 @@
 
 #include <fstream>
 
+#include <cyberway/chaindb/controller.hpp>
+#include <cyberway/chaindb/account_abi_info.hpp>
+
 using namespace eosio::chain;
 
 namespace eosio {
    FC_DECLARE_EXCEPTION(ee_extract_genesis_exception, 10000000, "event engine genesis extract exception");
 
    static appbase::abstract_plugin& _event_engine_plugin = app().register_plugin<event_engine_plugin>();
-
-class abi_info final {
-public:
-    abi_info() = default;
-    abi_info(const account_name& code, abi_def abi, const chain::microseconds& max_time)
-    : code_(code) {
-        serializer_.set_abi(abi, max_time);
-    }
-
-    std::string get_event_type(const chain::event_name& n) const {
-        return serializer_.get_event_type(n);
-    }
-
-    std::string get_action_type(const chain::event_name& n) const {
-        return serializer_.get_action_type(n);
-    }
-
-    fc::variant to_object(
-        const string& type, const void* data, const size_t size, const chain::microseconds& max_time
-    ) const {
-        if (nullptr == data || 0 == size) return fc::variant();
-
-        fc::datastream<const char*> ds(static_cast<const char*>(data), size);
-        auto value = serializer_.binary_to_variant(type, ds, max_time);
-
-        return value;
-    }
-private:
-    const account_name code_;
-    eosio::chain::abi_serializer serializer_;
-};
 
 class event_engine_plugin_impl {
 public:
@@ -68,13 +40,12 @@ public:
     bool dumpstream_opened;
     uint32_t genesis_msg_id = 0;
 
-    std::map<chain::name,abi_info> abi_map;
     controller &db;
     fc::microseconds abi_serializer_max_time;
     std::set<account_name> receiver_filter;
     std::vector<bfs::path> genesis_files;
+    cyberway::chaindb::account_abi_info account_abi;
 
-    void set_abi(name account, const abi_def& abi);
     void accepted_block( const chain::block_state_ptr& );
     void irreversible_block(const chain::block_state_ptr&);
     void accepted_transaction(const chain::transaction_metadata_ptr&);
@@ -100,28 +71,18 @@ private:
         send_message(msg);
     }
 
-    const abi_info *get_account_abi(name account) {
-        auto itr = abi_map.find(account);
-        if(itr == abi_map.end()) {
-            try {
-                const auto& a = db.get_account(account);
-                if(a.abi.size() > 0) {
-                    abi_info info(account, a.get_abi(), abi_serializer_max_time);
-                    itr = abi_map.emplace(account, std::move(info)).first;
-                }
-            } catch(const fc::exception &err) {
-                ilog("Can't process ABI for ${account}: ${err}",
-                        ("account", account)("err", err.to_string()));
-                return nullptr;
-            }
+    const cyberway::chaindb::abi_info* get_account_abi(name code) {
+        if (account_abi.code() == code) {
+            return &account_abi.abi();
         }
 
-        if(itr == abi_map.end()) {
-            ilog("Missing ABI-description for ${account}", ("account", account));
-            return nullptr;
+        account_abi = db.chaindb().get_account_abi_info(code);
+        if (account_abi.has_abi_info()) {
+            return &account_abi.abi();
         }
 
-        return &itr->second;
+        ilog("Missing ABI-description for ${account}", ("account", code));
+        return nullptr;
     }
 
     fc::variant unpack_action_data(const chain::action &act) {
@@ -138,7 +99,7 @@ private:
         }
 
         try {
-            auto result = abi->to_object(action_type, act.data.data(), act.data.size(), abi_serializer_max_time);
+            auto result = abi->to_object(action_type, act.data.data(), act.data.size());
             return result;
         } catch (const fc::exception &err) {
             ilog("Can't unpack arguments for action ${account}:${action}: ${err}",
@@ -161,7 +122,7 @@ private:
         }
 
         try {
-            auto result = abi->to_object(event_type, evt.data.data(), evt.data.size(), abi_serializer_max_time);
+            auto result = abi->to_object(event_type, evt.data.data(), evt.data.size());
             return result;
         } catch (const fc::exception &err) {
             ilog("Can't unpack arguments for event ${account}:${event}: ${err}",
@@ -177,21 +138,6 @@ event_engine_plugin_impl::event_engine_plugin_impl(controller &db, fc::microseco
 }
 
 event_engine_plugin_impl::~event_engine_plugin_impl() {
-}
-
-void event_engine_plugin_impl::set_abi(name account, const abi_def& abi) {
-    auto itr = abi_map.find(account);
-    if(itr != abi_map.end()) {
-        try {
-            abi_map.erase(itr);
-            abi_info info(account, abi, abi_serializer_max_time);
-            abi_map.emplace(account, std::move(info));
-            ilog("ABI updated for ${account}", ("account", account));
-        } catch(const fc::exception &err) {
-            ilog("Can't process ABI for ${account}: ${err}",
-                    ("account", account)("err", err.to_string()));
-        }
-    }
 }
 
 void event_engine_plugin_impl::accepted_block( const chain::block_state_ptr& state) {
@@ -363,10 +309,6 @@ void event_engine_plugin::plugin_initialize(const variables_map& options) {
         my->applied_transaction_connection.emplace(
                 chain.applied_transaction.connect( [&]( const chain::transaction_trace_ptr& t ) {
                     my->applied_transaction( t );
-                } ));
-        my->setabi_connection.emplace(
-                chain.setabi.connect( [&]( const std::tuple<chain::name,const chain::abi_def&> arg) {
-                    my->set_abi( std::get<0>(arg), std::get<1>(arg) );
                 } ));
 
         ilog("event_engine initialized");

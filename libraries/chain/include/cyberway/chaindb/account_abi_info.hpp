@@ -15,6 +15,13 @@ namespace cyberway { namespace chaindb {
         account_abi_info(account_name_t, abi_def);
         account_abi_info(account_name_t, blob);
 
+        account_name code() const {
+            if (has_abi_info()) {
+                return account().name;
+            }
+            return account_name();
+        }
+
         bool has_abi_info() const {
             return !!account_ptr_;
         }
@@ -54,6 +61,15 @@ namespace cyberway { namespace chaindb {
 
         account_abi_info info() const {
             return info_;
+        }
+
+        service_state to_service(const primary_key_t code) const {
+            service_state service;
+
+            service.table = tag<account_object>::get_code();
+            service.pk = code;
+
+            return service;
         }
 
     private:

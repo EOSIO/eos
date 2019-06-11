@@ -35,6 +35,7 @@ namespace cyberway { namespace chaindb {
     using eosio::chain::order_def;
     using eosio::chain::field_name;
     using eosio::chain::type_name;
+    using eosio::chain::event_name;
     using eosio::chain::bytes;
 
     using primary_key_t  = primary_key::value_type;
@@ -43,10 +44,14 @@ namespace cyberway { namespace chaindb {
     using account_name_t = account_name::value_type;
     using scope_name_t   = scope_name::value_type;
 
+    struct service_state;
+
     struct table_request final {
         const account_name_t code  = 0;
         const scope_name_t   scope = 0;
         const table_name_t   table = 0;
+
+        service_state to_service(primary_key_t pk = primary_key::Unset) const;
     }; // struct table_request
 
     struct index_request final {
@@ -58,6 +63,8 @@ namespace cyberway { namespace chaindb {
         operator table_request() const {
             return {code, scope, table};
         }
+
+        service_state to_service(primary_key_t pk = primary_key::Unset) const;
     }; // struct index_request
 
     struct cursor_request final {

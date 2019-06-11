@@ -96,23 +96,24 @@ namespace cyberway { namespace chaindb {
     }
 
     struct cache_index_key final {
-        const index_info& info;
-        const char*       blob;
-        const size_t      size;
+        const service_state& service;
+        const index_name_t   index;
+        const char*          blob;
+        const size_t         size;
     }; // struct cache_index_key
 
     struct cache_index_compare {
         index_name_t   index(const cache_index_value& v) const { return v.index;                   }
-        index_name_t   index(const cache_index_key& v  ) const { return v.info.index_name();       }
+        index_name_t   index(const cache_index_key& v  ) const { return v.index;                   }
 
         table_name_t   table(const cache_index_value& v) const { return v.object->service().table; }
-        table_name_t   table(const cache_index_key& v  ) const { return v.info.table_name();       }
+        table_name_t   table(const cache_index_key& v  ) const { return v.service.table;           }
 
         account_name_t code (const cache_index_value& v) const { return v.object->service().code;  }
-        account_name_t code (const cache_index_key& v  ) const { return v.info.code;               }
+        account_name_t code (const cache_index_key& v  ) const { return v.service.code;            }
 
         scope_name_t   scope(const cache_index_value& v) const { return v.object->service().scope; }
-        scope_name_t   scope(const cache_index_key& v  ) const { return v.info.scope;              }
+        scope_name_t   scope(const cache_index_key& v  ) const { return v.service.scope;           }
 
         size_t         size (const cache_index_value& v) const { return v.blob.size();             }
         size_t         size (const cache_index_key& v  ) const { return v.size;                    }
@@ -1114,12 +1115,14 @@ namespace cyberway { namespace chaindb {
         impl_->set_next_pk(table, pk);
     }
 
-    cache_object_ptr cache_map::find(const table_info& table, const primary_key_t pk) const {
-        return impl_->find(table.to_service(pk));
+    cache_object_ptr cache_map::find(const service_state& service) const {
+        return impl_->find(service);
     }
 
-    cache_object_ptr cache_map::find(const index_info& info, const char* value, const size_t size) const {
-        return impl_->find({info, value, size});
+    cache_object_ptr cache_map::find(
+        const service_state& service, const index_name_t index, const char* value, const size_t size
+    ) const {
+        return impl_->find({service, index, value, size});
     }
 
     cache_object_ptr cache_map::emplace(const table_info& table, object_value obj) const {
