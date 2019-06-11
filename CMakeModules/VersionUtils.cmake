@@ -1,3 +1,4 @@
+cmake_minimum_required(VERSION 3.5)
 function(GENERATE_VERSION_METADATA)
    find_package(Git)
    if(EXISTS ${CMAKE_SOURCE_DIR}/.git AND GIT_FOUND)
@@ -12,7 +13,7 @@ function(GENERATE_VERSION_METADATA)
          ERROR_QUIET
          OUTPUT_STRIP_TRAILING_WHITESPACE )
       string(REGEX MATCH "-dirty$" _VERSION_DIRTY_ ${_VERSION_DIRTY_})
-      if(_VERSION_DIRTY_ STREQUAL "")
+      if("${_VERSION_DIRTY_}" STREQUAL "")
          set(_VERSION_DIRTY_ "false")
       else()
          set(_VERSION_DIRTY_ "true")
