@@ -76,8 +76,8 @@ enum return_codes {
    SUCCESS           = 0,
    BAD_ALLOC         = 1,
    DATABASE_DIRTY    = 2,
-   FIXED_REVERSIBLE  = 3,
-   EXTRACTED_GENESIS = 4,
+   FIXED_REVERSIBLE  = SUCCESS,
+   EXTRACTED_GENESIS = SUCCESS,
    NODE_MANAGEMENT_SUCCESS = 5
 };
 
@@ -93,8 +93,12 @@ int main(int argc, char** argv)
          .default_unix_socket_path = "",
          .default_http_port = 8888
       });
-      if(!app().initialize<chain_plugin, net_plugin, producer_plugin>(argc, argv))
+      if(!app().initialize<chain_plugin, net_plugin, producer_plugin>(argc, argv)) {
+         if(app().get_options().count("help") || app().get_options().count("version")) {
+            return SUCCESS;
+         }
          return INITIALIZE_FAIL;
+      }
       initialize_logging();
       ilog("${name} version ${ver}", ("name", nodeos::config::node_executable_name)("ver", app().version_string()));
       ilog("${name} using configuration file ${c}", ("name", nodeos::config::node_executable_name)("c", app().full_config_file_path().string()));
