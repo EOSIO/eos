@@ -12,7 +12,7 @@ function(GENERATE_VERSION_METADATA)
          ERROR_QUIET
          OUTPUT_STRIP_TRAILING_WHITESPACE )
       string(REGEX MATCH "-dirty$" _VERSION_DIRTY_ ${_VERSION_DIRTY_})
-      if(${_VERSION_DIRTY_} STREQUAL "")
+      if(_VERSION_DIRTY_ STREQUAL "")
          set(_VERSION_DIRTY_ "false")
       else()
          set(_VERSION_DIRTY_ "true")
