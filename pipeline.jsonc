@@ -1,14 +1,16 @@
 {
-    "eosio-lrt":
-    {
+    "eosio": {
+        "environment": {
+            "IMAGE_TAG": "1.7.x-testing"
+        }
+    },
+    "eosio-lrt": {
         "pipeline-branch": "legacy-os"
     },
-    "eosio-nightly-builds":
-    {
+    "eosio-nightly-builds": {
         "pipeline-branch": "legacy-os"
     },
-    "eosio-base-images":
-    {
+    "eosio-base-images": {
         "pipeline-branch": "release/1.7.x"
     }
 }
