@@ -5,10 +5,6 @@
             "HELPER_ENABLED": true
         }
     },
-    "eosio-base-images":
-    {
-        "pipeline-branch": "release/1.8.x"
-    },
     "eosio-lrt":
     {
         "environment":
