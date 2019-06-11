@@ -44,11 +44,11 @@ mkdir -p $MONGODB_DATA_DIR
 
 @test "${TEST_LABEL} > Testing executions" {
   run bash -c "printf \"y\n%.0s\" {1..100} | ./$SCRIPT_LOCATION"
-  ### Make sure deps are loaded properly
-  [[ "${output}" =~ "Executing: rm -rf" ]] || exit
-  [[ $ARCH == "Darwin" ]] && ( [[ "${output}" =~ "Executing: brew uninstall cmake --force" ]] || exit )
+  [[ "${output[*]}" =~ "Executing: rm -rf" ]] || exit
+  if [[ $ARCH == "Darwin" ]]; then
+    [[ "${output}" =~ "Executing: brew uninstall cmake --force" ]] || exit
+  fi
 }
-
 
 @test "${TEST_LABEL} > --force" {
   run ./$SCRIPT_LOCATION --force
