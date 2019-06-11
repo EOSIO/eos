@@ -1,7 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
 
-project(remme_contracts)
-
 set(VERSION_MAJOR 1)
 set(VERSION_MINOR 7)
 set(VERSION_PATCH 0)
