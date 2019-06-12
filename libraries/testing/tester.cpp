@@ -225,14 +225,15 @@ namespace eosio { namespace testing {
 
    vector<transaction_metadata_ptr> base_tester::push_block(signed_block_ptr b) {
       auto bs = control->create_block_state_future(b);
-      vector<transaction_metadata_ptr> trxs;
-      trxs = control->abort_block();
+      vector<transaction_metadata_ptr> aborted_trxs = control->abort_block();
       branch_type forked_branch = control->push_block(bs);
-      // branch is in reverse order
+      // forked branch is in reverse order
+      vector<transaction_metadata_ptr> trxs;
       for( auto ritr = forked_branch.rbegin(), end = forked_branch.rend(); ritr != end; ++ritr ) {
          trxs.insert( trxs.end(), (*ritr)->trxs.begin(), (*ritr)->trxs.end() );
       }
-
+      // aborted added after forked branch
+      trxs.insert( trxs.end(), aborted_trxs.begin(), aborted_trxs.end() );
       auto itr = last_produced_block.find(b->producer);
       if (itr == last_produced_block.end() || block_header::num_from_id(b->id()) > block_header::num_from_id(itr->second)) {
          last_produced_block[b->producer] = b->id();
