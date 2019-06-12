@@ -74,6 +74,7 @@ class Cluster(object):
         """
         self.accounts={}
         self.clusterID=clusterID
+        Utils.clusterID=clusterID
 
         Cluster.__BiosPort = Cluster.__portBase + clusterID * Cluster.__cluster_stride + Cluster.__port_type_http
         Cluster.__BootScript = "bios_boot_cluster" + ("%05d" % clusterID) + ".sh"
@@ -1532,16 +1533,10 @@ class Cluster(object):
         return node.waitForNextBlock(timeout)
 
     def getDataDir(self):
-        if self.clusterID == 0:
-            return Utils.DataDir
-        else:
-            return Utils.DataDir + "cluster%d/" % (self.clusterID)
+        return Utils.DataDir + "cluster%05d/" % (self.clusterID)
 
     def getConfigDir(self):
-        if self.clusterID == 0:
-            return Utils.ConfigDir
-        else:
-            return Utils.ConfigDir + "cluster%d/" % (self.clusterID)
+        return Utils.ConfigDir + "cluster%05d/" % (self.clusterID)
 
     def cleanup(self):
         for f in glob.glob(self.getDataDir()+ "node_*"):
