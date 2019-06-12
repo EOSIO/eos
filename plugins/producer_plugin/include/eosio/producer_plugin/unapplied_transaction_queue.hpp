@@ -22,7 +22,7 @@ class unapplied_transaction_queue {
    std::deque<std::vector<chain::transaction_metadata_ptr>> aborted_block_trxs;
    size_t current_trx_in_trxs = 0;
    std::deque<chain::transaction_metadata_ptr> subjective_failed_trxs;
-
+   size_t total_size;
 public:
 
    bool empty() const {
@@ -30,7 +30,7 @@ public:
    }
 
    size_t size() const {
-      return forked_branches.size() + aborted_block_trxs.size() + subjective_failed_trxs.size();
+      return total_size;
    }
 
    void clear() {
@@ -39,24 +39,33 @@ public:
       aborted_block_trxs.clear();
       current_trx_in_trxs = 0;
       subjective_failed_trxs.clear();
+      total_size = 0;
    }
 
    void add_forked( chain::branch_type forked_branch ) {
       if( forked_branch.empty() ) return;
       // forked_branch is in reverse order
       // fifo queue for branches so pop back
+      size_t size = 0;
+      for( const auto& bptr : forked_branch ) {
+         size += bptr->trxs.size();
+      }
       forked_branches.emplace_front( std::move( forked_branch ) );
+      total_size += size;
    }
 
    void add_aborted( std::vector<chain::transaction_metadata_ptr> aborted_trxs ) {
       if( aborted_trxs.empty() ) return;
       // fifo queue so pop back
+      size_t size = aborted_trxs.size();
       aborted_block_trxs.emplace_front( std::move( aborted_trxs ) );
+      total_size += size;
    }
 
    void add_subjective_failure( chain::transaction_metadata_ptr trx ) {
       // fifo queue so pop back
       subjective_failed_trxs.emplace_front( std::move( trx ) );
+      ++total_size;
    }
 
    /// Order returned: forked block transactions, aborted block transactions, subjectively failed
@@ -88,6 +97,7 @@ public:
                   forked_branches.pop_back();
                }
             }
+            --total_size;
             return n;
          }
       }
@@ -99,11 +109,13 @@ public:
             current_trx_in_trxs = 0;
             aborted_block_trxs.pop_back();
          }
+         --total_size;
          return n;
       }
       if( !subjective_failed_trxs.empty() ) {
          chain::transaction_metadata_ptr n = subjective_failed_trxs.back();
          subjective_failed_trxs.pop_back();
+         --total_size;
          return n;
       }
       return {};
