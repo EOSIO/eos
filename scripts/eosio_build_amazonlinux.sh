@@ -5,20 +5,20 @@ echo "Physical Memory: ${MEM_GIG}G"
 echo "Disk space total: ${DISK_TOTAL}G"
 echo "Disk space available: ${DISK_AVAIL}G"
 
-( [[ $NAME == "Ubuntu" ]] && ( [[ "$(echo ${VERSION_ID})" == "16.04" ]] || [[ "$(echo ${VERSION_ID})" == "18.04" ]] )  ) || ( echo " - You must be running 16.04.x or 18.04.x to install EOSIO." && exit 1 )
+if [[ "${NAME}" == "Amazon Linux" ]] && [[ $VERSION == 2 ]]; then
+	DEPS_FILE="${REPO_ROOT}/scripts/eosio_build_amazonlinux2_deps"
+else
+	echo " - You must be running Amazon Linux 2017.09 or higher to install EOSIO." && exit 1
+fi
 
 [[ $MEM_GIG -lt 7 ]] && echo "Your system must have 7 or more Gigabytes of physical memory installed." && exit 1
 [[ "${DISK_AVAIL}" -lt "${DISK_MIN}" ]] && echo " - You must have at least ${DISK_MIN}GB of available storage to install EOSIO." && exit 1
 
-# C++7 for Ubuntu 18 (16 build-essential has cpp5)
-( [[ $PIN_COMPILER == false ]] && [[ "$(echo ${VERSION_ID})" == "18.04" ]] ) && ensure-build-essential
 # Handle clang/compiler
 ensure-compiler
 # Ensure packages exist
-([[ $PIN_COMPILER == false ]] && [[ $BUILD_CLANG == false ]]) && EXTRA_DEPS=(llvm-4.0,dpkg\ -s libclang-4.0-dev,dpkg\ -s)
-$ENABLE_COVERAGE_TESTING && EXTRA_DEPS+=(lcov,dpkg\ -s)
-ensure-apt-packages "${REPO_ROOT}/scripts/eosio_build_ubuntu_deps" $(echo ${EXTRA_DEPS[@]})
-echo ""
+($PIN_COMPILER && $BUILD_CLANG) && EXTRA_DEPS=(gcc-c++,rpm\ -qa)
+ensure-yum-packages $DEPS_FILE $(echo ${EXTRA_DEPS[@]})
 # CMAKE Installation
 ensure-cmake
 # CLANG Installation
@@ -27,23 +27,17 @@ build-clang
 ensure-llvm
 # BOOST Installation
 ensure-boost
-VERSION_MAJ=$(echo "${VERSION_ID}" | cut -d'.' -f1)
-VERSION_MIN=$(echo "${VERSION_ID}" | cut -d'.' -f2)
+
 if $INSTALL_MONGO; then
-	if [[ $VERSION_MAJ == 18 ]]; then
-		# UBUNTU 18 doesn't have MONGODB 3.6.3
-		MONGODB_VERSION=4.1.1
-		# We have to re-set this with the new version
-		MONGODB_ROOT=${OPT_DIR}/mongodb-${MONGODB_VERSION}
-	fi
+
 	echo "${COLOR_CYAN}[Ensuring MongoDB installation]${COLOR_NC}"
 	if [[ ! -d $MONGODB_ROOT ]]; then
 		execute bash -c "cd $SRC_DIR && \
-		curl -OL http://downloads.mongodb.org/linux/mongodb-linux-x86_64-ubuntu${VERSION_MAJ}${VERSION_MIN}-$MONGODB_VERSION.tgz \
-		&& tar -xzf mongodb-linux-x86_64-ubuntu${VERSION_MAJ}${VERSION_MIN}-${MONGODB_VERSION}.tgz \
-		&& mv $SRC_DIR/mongodb-linux-x86_64-ubuntu${VERSION_MAJ}${VERSION_MIN}-${MONGODB_VERSION} $MONGODB_ROOT \
+		curl -OL https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-amazon-$MONGODB_VERSION.tgz \
+		&& tar -xzf mongodb-linux-x86_64-amazon-$MONGODB_VERSION.tgz \
+		&& mv $SRC_DIR/mongodb-linux-x86_64-amazon-$MONGODB_VERSION $MONGODB_ROOT \
 		&& touch $MONGODB_LOG_DIR/mongod.log \
-		&& rm -f mongodb-linux-x86_64-ubuntu${VERSION_MAJ}${VERSION_MIN}-$MONGODB_VERSION.tgz \
+		&& rm -f mongodb-linux-x86_64-amazon-$MONGODB_VERSION.tgz \
 		&& cp -f $REPO_ROOT/scripts/mongod.conf $MONGODB_CONF \
 		&& mkdir -p $MONGODB_DATA_DIR \
 		&& rm -rf $MONGODB_LINK_DIR \
@@ -80,7 +74,7 @@ if $INSTALL_MONGO; then
 		&& sed -i 's/\"maxAwaitTimeMS\", count/\"maxAwaitTimeMS\", static_cast<int64_t>(count)/' src/mongocxx/options/change_stream.cpp \
 		&& sed -i 's/add_subdirectory(test)//' src/mongocxx/CMakeLists.txt src/bsoncxx/CMakeLists.txt \
 		&& cd build \
-		&& $CMAKE -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$EOSIO_INSTALL_DIR -DCMAKE_PREFIX_PATH=$EOSIO_INSTALL_DIR $PINNED_TOOLCHAIN .. \
+		&& $CMAKE -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX='$EOSIO_INSTALL_DIR' -DCMAKE_PREFIX_PATH='$EOSIO_INSTALL_DIR' $PINNED_TOOLCHAIN .. \
 		&& make -j${JOBS} VERBOSE=1 \
 		&& make install \
 		&& cd ../.. \
@@ -90,3 +84,4 @@ if $INSTALL_MONGO; then
 		echo " - MongoDB C++ driver found with correct version @ ${MONGO_CXX_DRIVER_ROOT}."
 	fi
 fi
+echo ""
