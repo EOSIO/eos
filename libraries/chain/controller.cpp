@@ -167,7 +167,7 @@ struct pending_state {
       return _block_stage.get<completed_block>()._block_state->block->transactions;
    }
 
-   vector<transaction_metadata_ptr> extract_trx_metas()const {
+   vector<transaction_metadata_ptr> extract_trx_metas() {
       if( _block_stage.contains<building_block>() )
          return std::move( _block_stage.get<building_block>()._pending_trx_metas );
 
