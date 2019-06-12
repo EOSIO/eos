@@ -58,7 +58,11 @@ uint128_t to_fwide(uint128_t value) { return value << fixp_fract_digits; }
 // Golos state holds uint128 as pair of uint64 values in Big Endian order: high, then low, incompatible with __int128
 uint128_t fix_fc128(uint128_t x)    { return (x << 64) | (x >> 64); }
 
-string pubkey_string(const golos::public_key_type& k, bool prefix = true);
+string pubkey_string(const golos::public_key_type& k);
+public_key_type pubkey_from_golos(const golos::public_key_type& k) {
+    // can't construct public key directly, constructor is private. transform to string first:
+    return public_key_type(pubkey_string(k));
+}
 asset golos2sys(const asset& golos);
 
 
@@ -287,12 +291,10 @@ struct genesis_create::genesis_create_impl final {
             const auto n = a.account.str(_accs_map);
             auto convert_authority = [&](permission_name perm, const golos::shared_authority& a, name recovery = {}) {
                 bool recoverable = recovery != name() && a.weight_threshold == 1 && a.account_auths.size() == 0;
-                uint32_t threshold = recoverable ? 2 : n == "temp" ? 1 : a.weight_threshold;
+                uint32_t threshold = recoverable ? 3 : n == "temp" ? 1 : a.weight_threshold;
                 vector<key_weight> keys;
                 for (const auto& k: a.key_auths) {
-                    // can't construct public key directly, constructor is private. transform to string first:
-                    const auto key = pubkey_string(k.first);
-                    keys.emplace_back(key_weight{public_key_type(key), k.second});
+                    keys.emplace_back(key_weight{pubkey_from_golos(k.first), recoverable ? weight_type{2} : k.second});
                 }
                 vector<permission_level_weight> accounts;
                 for (const auto& p: a.account_auths) {
@@ -391,7 +393,7 @@ struct genesis_create::genesis_create_impl final {
         fc::flat_map<acc_idx,public_key_type> keys;         // agent:key
         auto hf = _info.params.require_hardfork;
         for (const auto& w: _visitor.witnesses) {
-            auto key = public_key_type(pubkey_string(w.signing_key));
+            auto key = pubkey_from_golos(w.signing_key);
             if (hf && key != public_key_type()) {
                 // the following cases exist:
                 //  1. running version == required
@@ -434,7 +436,7 @@ struct genesis_create::genesis_create_impl final {
             }
         };
         using agents_map = fc::flat_map<acc_idx,agent>;
-        std::vector<agents_map> agents_by_level{5};
+        std::vector<agents_map> agents_by_level{_info.params.stake.max_proxies.size() + 1};
         auto find_proxy_level = [&](acc_idx a) {
             uint8_t l = 0;
             if (keys.count(a)) {
@@ -1073,7 +1075,7 @@ struct genesis_create::genesis_create_impl final {
             const auto n = name_by_acc(a.name);
             db.insert(n.value, n, mvo
                 ("name", n)
-                ("key", public_key_type{pubkey_string(a.memo_key)})
+                ("key", pubkey_from_golos(a.memo_key))
             );
         }
         ilog("Done.");
@@ -1124,14 +1126,14 @@ void genesis_create::write_genesis(
 }
 
 
-string pubkey_string(const golos::public_key_type& k, bool prefix/* = true*/) {
+string pubkey_string(const golos::public_key_type& k) {
     using checksummer = fc::crypto::checksummed_data<golos::public_key_type>;
     checksummer wrapper;
     wrapper.data = k;
     wrapper.check = checksummer::calculate_checksum(wrapper.data);
     auto packed = raw::pack(wrapper);
     auto tail = fc::to_base58(packed.data(), packed.size());
-    return prefix ? string(fc::crypto::config::public_key_legacy_prefix) + tail : tail;
+    return string(fc::crypto::config::public_key_legacy_prefix) + tail;
 }
 
 asset golos2sys(const asset& golos) {
