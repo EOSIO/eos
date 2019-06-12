@@ -148,7 +148,7 @@ namespace eosio {
       }; // class symbol
 
       struct extended_symbol {
-         symbol       sym;
+         symbol       symbol;
          account_name contract;
       };
 
@@ -190,4 +190,4 @@ namespace fc {
 
 FC_REFLECT(eosio::chain::symbol_code, (value))
 FC_REFLECT(eosio::chain::symbol, (m_value))
-FC_REFLECT(eosio::chain::extended_symbol, (sym)(contract))
+FC_REFLECT(eosio::chain::extended_symbol, (symbol)(contract))
