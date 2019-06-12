@@ -1,7 +1,6 @@
 {
     "eosio": {
         "environment": {
-            "IMAGE_TAG": "1.7.x-v1",
             "HIGH_SIERRA_ENABLED": true,
             "FEDORA27_ENABLED": true,
             "AMAZON1_ENABLED": true
