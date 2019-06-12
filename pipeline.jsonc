@@ -1,9 +1,9 @@
 {
     "eosio": {
         "environment": {
-            "HIGH_SIERRA_ENABLED": true,
-            "FEDORA27_ENABLED": true,
-            "AMAZON1_ENABLED": true
+            "ENABLE_HIGH_SIERRA": true,
+            "ENABLE_FEDORA27": true,
+            "ENABLE_AMAZON1": true,
         }
     },
     "eosio-lrt": {
