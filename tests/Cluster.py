@@ -950,7 +950,7 @@ class Cluster(object):
             "FEATURE_DIGESTS": ""
         }
         if PFSetupPolicy.hasPreactivateFeature(pfSetupPolicy):
-            env["BIOS_CONTRACT_PATH"] = "unittests/contracts/eosio.bios"
+            env["BIOS_CONTRACT_PATH"] = "contracts/contracts/eosio.bios"
 
         if pfSetupPolicy == PFSetupPolicy.FULL:
             allBuiltinProtocolFeatureDigests = biosNode.getAllBuiltinFeatureDigestsToPreactivate()
@@ -1066,9 +1066,9 @@ class Cluster(object):
             return None
 
         contract="eosio.bios"
-        contractDir="unittests/contracts/%s" % (contract)
+        contractDir="contracts/contracts/%s" % (contract)
         if PFSetupPolicy.hasPreactivateFeature(pfSetupPolicy):
-            contractDir="unittests/contracts/%s" % (contract)
+            contractDir="contracts/contracts/%s" % (contract)
         else:
             contractDir="unittests/contracts/old_versions/v1.6.0-rc3/%s" % (contract)
         wasmFile="%s.wasm" % (contract)
@@ -1199,7 +1199,7 @@ class Cluster(object):
             return None
 
         contract="eosio.token"
-        contractDir="unittests/contracts/%s" % (contract)
+        contractDir="contracts/contracts/%s" % (contract)
         wasmFile="%s.wasm" % (contract)
         abiFile="%s.abi" % (contract)
         Utils.Print("Publish %s contract" % (contract))
@@ -1255,7 +1255,7 @@ class Cluster(object):
 
         if loadSystemContract:
             contract="eosio.system"
-            contractDir="unittests/contracts/%s" % (contract)
+            contractDir="contracts/contracts/%s" % (contract)
             wasmFile="%s.wasm" % (contract)
             abiFile="%s.abi" % (contract)
             Utils.Print("Publish %s contract" % (contract))
