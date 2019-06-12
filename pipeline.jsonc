@@ -5,6 +5,13 @@
             "HELPER_ENABLED": true
         }
     },
+    "eosio-build-unpinned":
+    {
+        "environment":
+        {
+            "HELPER_ENABLED": true
+        }
+    },
     "eosio-lrt":
     {
         "environment":
