@@ -29,7 +29,7 @@ namespace eosio { namespace version {
                                        '.' + version_patch  +
                                        '-' + version_suffix +
                                        '-' + version_hash   +
-                                       '-' + ((version_dirty == true) ? ("true") : ("false"))};
+                                       ((version_dirty == true) ? ("-dirty") : (""))};
       return version;
    }
 
