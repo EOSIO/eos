@@ -72,6 +72,12 @@ foreach(TEST_SUITE ${UNIT_TESTS}) # create an independent target for each test s
 endforeach(TEST_SUITE)
 set(ctest_tests "'${ctest_tests}' -j8") # surround test list string in apostrophies
 
+# The following tests are known to take the longest, bump up their cost (priority) so that they'll run first
+# even on fresh first time test runs before ctest auto-detects costs
+set_tests_properties(api_unit_test_wavm api_unit_test_wabt PROPERTIES COST 5000)
+set_tests_properties(wasm_unit_test_wavm wasm_unit_test_wabt PROPERTIES COST 4000)
+set_tests_properties(delay_unit_test_wavm delay_unit_test_wabt PROPERTIES COST 3000)
+
 ### COVERAGE TESTING ###
 if(ENABLE_COVERAGE_TESTING)
   set(Coverage_NAME ${PROJECT_NAME}_ut_coverage)
