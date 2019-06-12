@@ -13,27 +13,39 @@
 namespace eosio {
 
 /**
- * Track unapplied transactions for aborted blocks, forked blocks, and subjectively
+ * Track unapplied transactions for forked blocks, aborted blocks, and subjectively
  * failed transactions.
  */
 class unapplied_transaction_queue {
-   std::deque<std::vector<chain::transaction_metadata_ptr>> aborted_block_trxs;
-   size_t current_trx_in_trxs = 0;
    std::deque<chain::branch_type> forked_branches;
    size_t current_trx_in_block = 0;
+   std::deque<std::vector<chain::transaction_metadata_ptr>> aborted_block_trxs;
+   size_t current_trx_in_trxs = 0;
    std::deque<chain::transaction_metadata_ptr> subjective_failed_trxs;
+
 public:
 
    bool empty() const {
-      return aborted_block_trxs.empty() && forked_branches.empty() && subjective_failed_trxs.empty();
+      return forked_branches.empty() && aborted_block_trxs.empty() && subjective_failed_trxs.empty();
+   }
+
+   size_t size() const {
+      return forked_branches.size() + aborted_block_trxs.size() + subjective_failed_trxs.size();
    }
 
    void clear() {
-      aborted_block_trxs.clear();
-      current_trx_in_trxs = 0;
       forked_branches.clear();
       current_trx_in_block = 0;
+      aborted_block_trxs.clear();
+      current_trx_in_trxs = 0;
       subjective_failed_trxs.clear();
+   }
+
+   void add_forked( chain::branch_type forked_branch ) {
+      if( forked_branch.empty() ) return;
+      // forked_branch is in reverse order
+      // fifo queue for branches so pop back
+      forked_branches.emplace_front( std::move( forked_branch ) );
    }
 
    void add_aborted( std::vector<chain::transaction_metadata_ptr> aborted_trxs ) {
@@ -47,32 +59,10 @@ public:
       subjective_failed_trxs.emplace_front( std::move( trx ) );
    }
 
-   void add_forked( chain::branch_type forked_branch ) {
-      if( forked_branch.empty() ) return;
-      // forked_branch is in reverse order
-      // fifo queue for branches so pop back
-      forked_branches.emplace_front( std::move( forked_branch ) );
-   }
-
-   /// Order returned: aborted block transactions, subjectively failed, forked
+   /// Order returned: forked block transactions, aborted block transactions, subjectively failed
    /// FIFO within each category
    /// @return nullptr if no next
    chain::transaction_metadata_ptr next() {
-      if( !aborted_block_trxs.empty() ) {
-         std::vector<chain::transaction_metadata_ptr>& p = aborted_block_trxs.back();
-         chain::transaction_metadata_ptr n = p[current_trx_in_trxs];
-         ++current_trx_in_trxs;
-         if( current_trx_in_trxs >= p.size() ) {
-            current_trx_in_trxs = 0;
-            aborted_block_trxs.pop_back();
-         }
-         return n;
-      }
-      if( !subjective_failed_trxs.empty() ) {
-         chain::transaction_metadata_ptr n = subjective_failed_trxs.back();
-         subjective_failed_trxs.pop_back();
-         return n;
-      }
       while( !forked_branches.empty() ) {
          chain::branch_type& branch = forked_branches.back();
          if( branch.empty() ) {
@@ -100,6 +90,21 @@ public:
             }
             return n;
          }
+      }
+      if( !aborted_block_trxs.empty() ) {
+         std::vector<chain::transaction_metadata_ptr>& p = aborted_block_trxs.back();
+         chain::transaction_metadata_ptr n = p[current_trx_in_trxs];
+         ++current_trx_in_trxs;
+         if( current_trx_in_trxs >= p.size() ) {
+            current_trx_in_trxs = 0;
+            aborted_block_trxs.pop_back();
+         }
+         return n;
+      }
+      if( !subjective_failed_trxs.empty() ) {
+         chain::transaction_metadata_ptr n = subjective_failed_trxs.back();
+         subjective_failed_trxs.pop_back();
+         return n;
       }
       return {};
    }
