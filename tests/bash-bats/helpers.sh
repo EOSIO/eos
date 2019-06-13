@@ -28,9 +28,25 @@ TEST_LABEL="[helpers]"
   ( [[ ! $output =~ "Executing: echo VERBOSE!" ]] && [[ $status -eq 0 ]] ) || exit
 }
 
+# Add BATS test for install-directory-prompt.
+@test "${TEST_LABEL} > install directory prompt" {
+  NONINTERACTIVE=true
+  PROCEED=true
+  run install-directory-prompt
+  # Default directory used.
+  [[ ! -z $(echo "${output}" | grep "home") ]] || exit
+  NONINTERACTIVE=false
+  PROCEED=false
+  INSTALL_LOCATION="/etc/eos"
+  run install-directory-prompt
+  # Function received given input.
+  [[ ! -z $(echo "${output}") ]] || exit
+}
+
 @test "${TEST_LABEL} > previous install prompt" {
   NONINTERACTIVE=true
   PROCEED=true
+  EOSIO_INSTALL_DIR=$HOME/eosio/
   # Doesn't exists, no output
   run previous-install-prompt
   [[ -z $(echo "${output}") ]] || exit
