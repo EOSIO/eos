@@ -3,13 +3,13 @@
  *  @copyright defined in eos/LICENSE
  */
 #include <eosio/producer_plugin/producer_plugin.hpp>
-#include <eosio/producer_plugin/unapplied_transaction_queue.hpp>
 #include <eosio/chain/plugin_interface.hpp>
 #include <eosio/chain/global_property_object.hpp>
 #include <eosio/chain/generated_transaction_object.hpp>
+#include <eosio/chain/snapshot.hpp>
 #include <eosio/chain/transaction_object.hpp>
 #include <eosio/chain/thread_utils.hpp>
-#include <eosio/chain/snapshot.hpp>
+#include <eosio/chain/unapplied_transaction_queue.hpp>
 
 #include <fc/io/json.hpp>
 #include <fc/log/logger_config.hpp>
@@ -374,8 +374,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          auto bsf = chain.create_block_state_future( block );
 
          // abort the pending block
-         vector<transaction_metadata_ptr> aborted_trxs = chain.abort_block();
-         _unapplied_transactions.add_aborted( std::move( aborted_trxs ) );
+         _unapplied_transactions.add_aborted( chain.abort_block() );
 
          // exceptions throw out, make sure we restart our loop
          auto ensure = fc::make_scoped_exit([this](){
@@ -385,8 +384,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          // push the new block
          bool except = false;
          try {
-            branch_type forked_branch = chain.push_block( bsf );
-            _unapplied_transactions.add_forked( std::move( forked_branch ) );
+            _unapplied_transactions.add_forked( chain.push_block( bsf ) );
          } catch ( const guard_exception& e ) {
             chain_plug->handle_guard_exception(e);
             return;

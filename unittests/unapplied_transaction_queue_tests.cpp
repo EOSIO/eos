@@ -3,13 +3,13 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #include <boost/test/unit_test.hpp>
-#include <eosio/producer_plugin/unapplied_transaction_queue.hpp>
+#include <eosio/chain/unapplied_transaction_queue.hpp>
 #include <eosio/chain/contract_types.hpp>
 
 using namespace eosio;
 using namespace eosio::chain;
 
-BOOST_AUTO_TEST_SUITE(producer_plugin_tests)
+BOOST_AUTO_TEST_SUITE(unapplied_transaction_queue_tests)
 
 auto unique_trx_meta_data() {
 

@@ -10,7 +10,7 @@
 
 #include <queue>
 
-namespace eosio {
+namespace eosio { namespace chain {
 
 /**
  * Track unapplied transactions for forked blocks, aborted blocks, and subjectively
@@ -123,4 +123,4 @@ public:
 
 };
 
-} //eosio
+} } //eosio::chain
