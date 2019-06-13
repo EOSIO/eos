@@ -1,15 +1,11 @@
 #pragma once
 
+#include <cyberway/chaindb/common.hpp>
+#include <cyberway/chaindb/table_info.hpp>
+
 #include <fc/variant.hpp>
 
-#include <cyberway/chaindb/controller.hpp>
-#include <cyberway/chaindb/object_value.hpp>
-
 namespace cyberway { namespace chaindb {
-
-    using fc::variant;
-
-    using eosio::chain::bytes;
 
     struct cursor_info {
         cursor_t      id = invalid_cursor;

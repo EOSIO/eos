@@ -26,7 +26,7 @@ namespace eosio { namespace chain {
     */
    class global_property_object : public cyberway::chaindb::object<global_property_object_type, global_property_object>
    {
-      OBJECT_CTOR(global_property_object)
+      CHAINDB_OBJECT_ID_CTOR(global_property_object)
 
       id_type                           id;
       optional<block_num_type>          proposed_schedule_block_num;
@@ -47,7 +47,7 @@ namespace eosio { namespace chain {
     */
    class dynamic_global_property_object : public cyberway::chaindb::object<dynamic_global_property_object_type, dynamic_global_property_object>
    {
-        OBJECT_CTOR(dynamic_global_property_object)
+        CHAINDB_OBJECT_ID_CTOR(dynamic_global_property_object)
 
         id_type    id;
         uint64_t   global_action_sequence = 0;

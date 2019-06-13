@@ -30,11 +30,7 @@ namespace cyberway { namespace chaindb {
     using eosio::chain::symbol;
     using eosio::chain::symbol_info;
 
-    using std::string;
-
-    using fc::blob;
     using fc::__uint128;
-    using fc::variant;
     using fc::variants;
     using fc::variant_object;
     using fc::mutable_variant_object;
@@ -511,7 +507,7 @@ namespace cyberway { namespace chaindb {
             obj.service.pk    = get_pk_value(info, src);
             obj.service.code  = info.code;
             obj.service.scope = info.scope;
-            obj.service.table = info.table->name;
+            obj.service.table = info.table_name();
         }
         return obj;
     }

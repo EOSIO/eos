@@ -1,7 +1,9 @@
 #pragma once
 
 #include <cyberway/chaindb/common.hpp>
-#include <cyberway/chaindb/storage_payer_info.hpp>
+#include <cyberway/chaindb/typed_name.hpp>
+
+#include <fc/variant.hpp>
 
 namespace cyberway { namespace chaindb {
 
@@ -34,15 +36,6 @@ namespace cyberway { namespace chaindb {
         account_name_t undo_payer    = 0;
         size_t         undo_size     = 0;
         bool           undo_in_ram   = true;
-
-        service_state(const table_info& table, primary_key_t pk)
-        : pk(pk), code(table.code), scope(table.scope), table(table.table->name) {
-        }
-
-        service_state(const table_info& table, primary_key_t undo_pk, undo_record rec, revision_t rev)
-        : code(table.code), scope(table.scope), table(table.table->name),
-          revision(rev), undo_pk(undo_pk), undo_rec(rec) {
-        }
 
         service_state() = default;
         service_state(service_state&&) = default;

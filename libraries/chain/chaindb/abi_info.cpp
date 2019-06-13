@@ -1,4 +1,6 @@
 #include <cyberway/chaindb/abi_info.hpp>
+#include <cyberway/chaindb/table_info.hpp>
+#include <cyberway/chaindb/driver_interface.hpp>
 
 #include <boost/algorithm/string.hpp>
 
@@ -48,7 +50,6 @@ namespace cyberway { namespace chaindb {
         table_info generate_table_info(const abi_info& abi, const table_def& table) {
             table_info info(abi.code(), abi.code());
             info.table = &table;
-            info.abi = &abi;
             return info;
         }
 
@@ -56,8 +57,7 @@ namespace cyberway { namespace chaindb {
             index_info info(abi.code(), abi.code());
             info.table = &table;
             info.index = &index;
-            info.abi = &abi;
-            info.pk_order = &get_pk_order(info);
+            info.pk_order = abi.find_pk_order(table);
             return info;
         }
 
@@ -131,7 +131,7 @@ namespace cyberway { namespace chaindb {
             _detail::struct_def_map_type dst_struct_map;
             std::vector<struct_def*> dst_structs;
 
-            auto max_size = index.orders.size() * abi_info::max_path_depth();
+            auto max_size = index.orders.size() * abi_info::MaxPathDepth;
             dst_struct_map.reserve(max_size);
             dst_structs.reserve(max_size);
             auto struct_name = get_root_index_name(table, index);
@@ -144,7 +144,7 @@ namespace cyberway { namespace chaindb {
                     ("type", order.order)("index", root_struct.name));
 
                 boost::split(order.path, order.field, [](char c){return c == '.';});
-                CYBERWAY_ASSERT(order.path.size() <= abi_info::max_path_depth(), invalid_index_description_exception,
+                CYBERWAY_ASSERT(order.path.size() <= abi_info::MaxPathDepth, invalid_index_description_exception,
                     "Path for index is too long in the index ${index}", ("index", root_struct.name));
 
                 auto dst_struct = &root_struct;
@@ -222,24 +222,36 @@ namespace cyberway { namespace chaindb {
 
     const fc::microseconds abi_info::max_abi_time_ = fc::seconds(60);
 
-    abi_info::abi_info(const account_name& code, abi_def abi)
+    abi_info::abi_info(const account_name& code, abi_def def)
     : code_(code),
-      serializer_(eosio::chain::abi_serializer::DBMode) {
-        if (is_system_code(code)) {
-            serializer_.set_check_field_name(false);
+      serializer_() {
+        init(std::move(def));
+    }
+
+    abi_info::abi_info(const account_name& code, blob b)
+    : code_(code),
+      serializer_() {
+        abi_def def;
+        abi_serializer::to_abi(b.data, def);
+        init(std::move(def));
+    }
+
+    void abi_info::init(abi_def def) {
+        if (!is_system_code(code_)) {
+            serializer_.set_check_field_name(true);
         }
-        serializer_.set_abi(abi, max_abi_time_);
+        serializer_.set_abi(def, max_abi_time_);
 
-        CYBERWAY_ASSERT(abi.tables.size() <= max_table_cnt(), max_table_count_exception,
+        CYBERWAY_ASSERT(def.tables.size() <= MaxTableCnt, max_table_count_exception,
             "The account '${code}' can't create more than ${max} tables",
-            ("code", get_code_name(code_))("max", max_table_cnt()));
+            ("code", get_code_name(code_))("max", size_t(MaxTableCnt)));
 
 
-        table_map_.reserve(abi.tables.size());
-        for (auto& table: abi.tables) {
-            CYBERWAY_ASSERT(table.indexes.size() <= max_index_cnt(), max_index_count_exception,
+        table_map_.reserve(def.tables.size());
+        for (auto& table: def.tables) {
+            CYBERWAY_ASSERT(table.indexes.size() <= MaxIndexCnt, max_index_count_exception,
                 "The table '${table}' can't has more than ${max} indexes",
-                ("table", get_full_table_name(code_, table))("max", max_index_cnt()));
+                ("table", get_full_table_name(code_, table))("max", size_t(MaxIndexCnt)));
             auto id = table.name;
             table_map_.emplace(id, std::move(table));
         }
@@ -248,7 +260,75 @@ namespace cyberway { namespace chaindb {
         builder.build_indexes();
     }
 
-    void abi_info::verify_tables_structure(driver_interface& driver) const {
+    template<typename Type>
+    variant abi_info::to_object_(
+        abi_serializer::mode m,
+        const char* value_type, Type&& db_type, const string& type,
+        const void* data, const size_t size
+    ) const {
+        // begin()
+        if (nullptr == data || 0 == size) return fc::variant_object();
+
+        fc::datastream<const char*> ds(static_cast<const char*>(data), size);
+        auto value = serializer_.binary_to_variant(type, ds, max_abi_time_, m);
+
+//            dlog(
+//                "The ${value_type} '${type}': ${value}",
+//                ("value_type", value_type)("type", db_type())("value", value));
+
+        CYBERWAY_ASSERT(value.is_object(), invalid_abi_store_type_exception,
+            "ABI serializer returns bad type for the ${value_type} for ${type}: ${value}",
+            ("value_type", value_type)("type", db_type())("value", value));
+
+        return value;
+    }
+
+    template<typename Type>
+    bytes abi_info::to_bytes_(const char* value_type, Type&& db_type, const string& type, const variant& value) const {
+
+//            dlog(
+//                "The ${value_type} '${type}': ${value}",
+//                ("value", value_type)("type", db_type())("value", value));
+
+        CYBERWAY_ASSERT(value.is_object(), invalid_abi_store_type_exception,
+            "ABI serializer receive wrong type for the ${value_type} for '${type}': ${value}",
+            ("value_type", value_type)("type", db_type())("value", value));
+
+        return serializer_.variant_to_binary(type, value, max_abi_time_);
+    }
+
+    variant abi_info::to_object(const table_info& info, const void* data, const size_t size) const {
+        assert(info.table);
+        auto db_type = [&]{return get_full_table_name(info);};
+        return to_object_(abi_serializer::DBMode, "table", std::move(db_type), info.table->type, data, size);
+    }
+
+    variant abi_info::to_object(const index_info& info, const void* data, const size_t size) const {
+        assert(info.index);
+        auto type = get_full_index_name(info);
+        auto db_type = [&](){return type;};
+        return to_object_(abi_serializer::DBMode, "index", std::move(db_type), type, data, size);
+    }
+
+    variant abi_info::to_object(const string& type, const void* data, const size_t size) const {
+        auto db_type = [&](){return type;};
+        return to_object_(abi_serializer::PublicMode, "object", std::move(db_type), type, data, size);
+    }
+
+    bytes abi_info::to_bytes(const table_info& info, const variant& value) const {
+        assert(info.table);
+        auto db_type = [&]{return get_full_table_name(info);};
+        return to_bytes_("table", std::move(db_type), info.table->type, value);
+    }
+
+    bytes abi_info::to_bytes(const index_info& info, const variant& value) const {
+        assert(info.index);
+        auto type = get_full_index_name(info);
+        auto db_type = [&]{return type;};
+        return to_bytes_("index", std::move(db_type), type, value);
+    }
+
+    void abi_info::verify_tables_structure(const driver_interface& driver) const {
         fc::flat_map<table_name, const table_def*> tables;
         fc::flat_map<index_name, const index_def*> indexes;
         tables.reserve(tables.size());
@@ -261,7 +341,7 @@ namespace cyberway { namespace chaindb {
         fc::flat_set<std::string> paths;
 
         auto db_tables = driver.db_tables(code_);
-        const auto max_db_index_cnt = db_tables.size() * max_index_cnt();
+        const auto max_db_index_cnt = db_tables.size() * MaxIndexCnt;
         drop_tables.reserve(    db_tables.size());
         drop_indexes.reserve(   max_db_index_cnt);
         create_indexes.reserve( max_db_index_cnt);
@@ -333,11 +413,7 @@ namespace cyberway { namespace chaindb {
 
     abi_def unpack_abi_def(const bytes& src) {
         abi_def dst;
-
-        if (!src.empty()) {
-            fc::datastream<const char*> ds(src.data(), src.size());
-            fc::raw::unpack(ds, dst);
-        }
+        abi_serializer::to_abi(src, dst);
         return dst;
     };
 

@@ -16,6 +16,7 @@
 #include <cyberway/chaindb/controller.hpp>
 #include <cyberway/chaindb/names.hpp>
 #include <cyberway/chaindb/typed_name.hpp>
+#include <cyberway/chaindb/table_info.hpp>
 
 #include <fc/io/json.hpp>
 
@@ -101,7 +102,7 @@ get_abi_results chain_api_plugin_impl::get_abi( const get_abi_params& params )co
    get_abi_results result;
    result.account_name = params.account_name;
    auto& d = chain_controller_.chaindb();
-   const auto& accnt  = d.get<chain::account_object, chain::by_name>( params.account_name );
+   const auto& accnt  = d.get<chain::account_object>( params.account_name );
 
    chain::abi_def abi;
    if( chain::abi_serializer::to_abi(accnt.abi, abi) ) {
@@ -115,7 +116,7 @@ get_code_results chain_api_plugin_impl::get_code( const get_code_params& params 
    get_code_results result;
    result.account_name = params.account_name;
    auto& d = chain_controller_.chaindb();
-   const auto& accnt  = d.get<chain::account_object,chain::by_name>( params.account_name );
+   const auto& accnt  = d.get<chain::account_object>( params.account_name );
 
    EOS_ASSERT( params.code_as_wasm, chain::unsupported_feature, "Returning WAST from get_code is no longer supported" );
 
@@ -136,7 +137,7 @@ get_code_hash_results chain_api_plugin_impl::get_code_hash( const get_code_hash_
    get_code_hash_results result;
    result.account_name = params.account_name;
    auto& d = chain_controller_.chaindb();
-   const auto& accnt  = d.get<chain::account_object, chain::by_name>( params.account_name );
+   const auto& accnt  = d.get<chain::account_object>( params.account_name );
 
    if( accnt.code.size() ) {
       result.code_hash = fc::sha256::hash( accnt.code.data(), accnt.code.size() );
@@ -150,7 +151,7 @@ get_raw_code_and_abi_results chain_api_plugin_impl::get_raw_code_and_abi( const 
    result.account_name = params.account_name;
 
    auto& d = chain_controller_.chaindb();
-   const auto& accnt = d.get<chain::account_object, chain::by_name>(params.account_name);
+   const auto& accnt = d.get<chain::account_object>(params.account_name);
    result.wasm = fc::base64_encode({accnt.code.begin(), accnt.code.end()});
    result.abi = fc::base64_encode({accnt.abi.begin(), accnt.abi.end()});
 
@@ -162,7 +163,7 @@ get_raw_abi_results chain_api_plugin_impl::get_raw_abi( const get_raw_abi_params
    result.account_name = params.account_name;
 
    auto& d = chain_controller_.chaindb();
-   const auto& accnt = d.get<chain::account_object, chain::by_name>(params.account_name);
+   const auto& accnt = d.get<chain::account_object>(params.account_name);
    result.abi_hash = fc::sha256::hash( accnt.abi.data(), accnt.abi.size() );
    result.code_hash = fc::sha256::hash( accnt.code.data(), accnt.code.size() );
    if( !params.abi_hash || *params.abi_hash != result.abi_hash )
@@ -499,7 +500,7 @@ static fc::variant action_abi_to_variant( const chain::abi_def& abi, chain::type
 
 abi_json_to_bin_result chain_api_plugin_impl::abi_json_to_bin( const abi_json_to_bin_params& params )const try {
    abi_json_to_bin_result result;
-   const auto code_account = chain_controller_.chaindb().find<chain::account_object, chain::by_name>( params.code );
+   const auto code_account = chain_controller_.chaindb().find<chain::account_object>( params.code );
    EOS_ASSERT(code_account != nullptr, chain::contract_query_exception, "Contract can't be found ${contract}", ("contract", params.code));
 
    chain::abi_def abi;
@@ -521,7 +522,7 @@ abi_json_to_bin_result chain_api_plugin_impl::abi_json_to_bin( const abi_json_to
 
 abi_bin_to_json_result chain_api_plugin_impl::abi_bin_to_json( const abi_bin_to_json_params& params )const {
    abi_bin_to_json_result result;
-   const auto& code_account = chain_controller_.chaindb().get<chain::account_object, chain::by_name>( params.code );
+   const auto& code_account = chain_controller_.chaindb().get<chain::account_object>( params.code );
    chain::abi_def abi;
    if( chain::abi_serializer::to_abi(code_account.abi, abi) ) {
       chain::abi_serializer abis( abi, abi_serializer_max_time_);

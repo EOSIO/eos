@@ -15,7 +15,6 @@ FC_DECLARE_EXCEPTION(extract_genesis_exception, 9000000, "genesis extract except
 using namespace eosio::chain;
 using namespace cyberway::chaindb;
 using resource_manager = eosio::chain::resource_limits::resource_limits_manager;
-const fc::microseconds abi_serializer_max_time = fc::seconds(10);
 
 
 struct genesis_import::impl final {
@@ -43,16 +42,19 @@ struct genesis_import::impl final {
         return resource_mng.get_storage_payer(0, row.ram_payer);
     };
 
-    void update_account(const sys_table_row& r) {
+    bool update_account(const sys_table_row& r) {
         // we need primary key for update, but it depends on table. add this hacky shortcut for accounts
-        primary_key_t pk = ((primary_key_t*)r.data.data())[1];
+        primary_key_t pk = ((primary_key_t*)r.data.data())[0];
         const name n(pk);
-        const auto& old = db.get<account_object,by_name>(n);  // vm_type/vm_version/privileged not set in genesis, copy
+        const auto* old = db.find<account_object>(n);  // vm_type/vm_version/privileged not set in genesis, copy
+        if (!old) {
+            return false;
+        }
         fc::datastream<const char*> ds(r.data.data(), r.data.size());
-        auto acc = account_object([&](auto& a){
+        auto acc = account_object(primary_key::Unset, [&](auto& a) {
             fc::raw::unpack(ds, a);
-        }, 0);
-        db.modify(old, [&](auto& a) {
+        });
+        db.modify(*old, [&](auto& a) {
             a.last_code_update = acc.last_code_update;
             a.code_version = acc.code_version;
             a.abi_version = acc.abi_version;
@@ -66,6 +68,7 @@ struct genesis_import::impl final {
                 a.abi = acc.abi;
             }
         });
+        return true;
     }
 
     void import_state() {
@@ -77,8 +80,6 @@ struct genesis_import::impl final {
         std::cout << "Header magic: " << h.magic << "; ver: " << h.version << std::endl;
         EOS_ASSERT(h.is_valid(), extract_genesis_exception, "Unknown format of the Genesis state file.");
 
-        bool abis_initialized = false;  // we don't want to deserialize golos contracts twice, so mark system
-        abi_serializer sys_abi(eosio_contract_abi(), abi_serializer_max_time);
         while (in) {
             table_header t;
             fc::raw::unpack(in, t);
@@ -93,33 +94,11 @@ struct genesis_import::impl final {
                     sys_table_row r;
                     fc::raw::unpack(in, r);
                     EOS_ASSERT(r.data.size() >= 8, extract_genesis_exception, "System table row is too small");
-                    primary_key_t pk = ((primary_key_t*)r.data.data())[0]; // all system tables have pk in the 1st field
-                    if (is_accounts_tbl && pk == primary_key_t(-1)) {
-                        update_account(r);
-                    } else {
+                    if (!is_accounts_tbl || !update_account(r)) {
+                        primary_key_t pk = ((primary_key_t*)r.data.data())[0]; // all system tables have pk in the 1st field
                         db.insert(r.request(t.name), ram_payer_info(r), pk, r.data.data(), r.data.size());
                     }
                     apply_db_changes();
-
-                    // need to directly add abi to chaindb if exists
-                    if (!abis_initialized && is_accounts_tbl) {
-                        fc::datastream<const char*> ds(static_cast<const char*>(r.data.data()), r.data.size());
-                        auto acc = sys_abi.binary_to_variant("account_object", ds, abi_serializer_max_time);
-                        auto abi_bytes = acc["abi"].as<bytes>();
-                        if (abi_bytes.size() > 0) {
-                            auto n = acc["name"].as<account_name>();
-                            abi_def abi;
-                            if (abi_serializer::to_abi(abi_bytes, abi) ) {
-                                db.add_abi(n, abi);
-                                std::cout << "  add " << n << " abi" << std::endl;
-                            } else {
-                                elog("Failed to read abi provided in ${a} contract", ("a",n));
-                            }
-                        }
-                    }
-                }
-                if (t.name == N(account)) {
-                    abis_initialized = true;
                 }
             } else {
                 while (i++ < t.count) {

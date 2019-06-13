@@ -62,22 +62,22 @@ namespace cyberway { namespace chaindb { namespace table_object {
 
     template <typename Object>
     typename index<Object>::iterator find(index<Object>& idx, const table_info& table) {
-        return idx.find(std::make_tuple(table.code, table.table->name, table.scope));
+        return idx.find(std::make_tuple(table.code, table.table_name(), table.scope));
     }
 
     template <typename Object>
     typename index<Object>::iterator find(const index<Object>& idx, const table_info& table) {
-        return idx.find(std::make_tuple(table.code, table.table->name, table.scope));
+        return idx.find(std::make_tuple(table.code, table.table_name(), table.scope));
     }
 
     template <typename Object>
     typename index<Object>::iterator find_without_scope(index<Object>& idx, const table_info& table) {
-        return idx.find(std::make_tuple(table.code, table.table->name, 0));
+        return idx.find(std::make_tuple(table.code, table.table_name(), 0));
     }
 
     template <typename Object>
     typename index<Object>::iterator find_without_scope(const index<Object>& idx, const table_info& table) {
-        return idx.find(std::make_tuple(table.code, table.table->name, 0));
+        return idx.find(std::make_tuple(table.code, table.table_name(), 0));
     }
 
     template <typename Object, typename... Args>

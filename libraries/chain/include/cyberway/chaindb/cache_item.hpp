@@ -7,19 +7,14 @@
 #include <cyberway/chaindb/common.hpp>
 #include <cyberway/chaindb/object_value.hpp>
 
-#include <boost/smart_ptr/intrusive_ptr.hpp>
-#include <boost/smart_ptr/intrusive_ref_counter.hpp>
-
 #include <boost/intrusive/set.hpp>
 #include <boost/intrusive/list.hpp>
 
+#include <boost/smart_ptr/intrusive_ref_counter.hpp>
+
 namespace cyberway { namespace chaindb {
 
-    using  eosio::chain::bytes;
-
     class cache_map_impl;
-    class cache_object;
-    using cache_object_ptr = boost::intrusive_ptr<cache_object>;
 
     struct cache_data {
         virtual ~cache_data() = default;
@@ -94,15 +89,16 @@ namespace cyberway { namespace chaindb {
         friend struct pending_cache_cell;
         friend struct pending_cache_object_state;
 
-        const cache_cell&   cell() const;
         cache_cell&         cell();
         cache_map_impl&     map();
         cache_object_state& state();
         cache_object_state* swap_state(cache_object_state& state);
 
     public:
-        cache_object() = default;
-        cache_object(cache_object&&) = default;
+        cache_object(object_value);
+
+        cache_object(cache_object&&) = delete;
+        cache_object(const cache_object&) = delete;
 
         ~cache_object() = default;
 
@@ -122,13 +118,6 @@ namespace cyberway { namespace chaindb {
 
         void mark_deleted();
         void release();
-
-        void set_object(object_value);
-        void set_service(service_state service);
-
-        void set_revision(const revision_t rev) {
-            object_.service.revision = rev;
-        }
 
         template <typename T, typename... Args> void set_data(Args&&... args) {
             data_ = std::make_unique<T>(*this, std::forward<Args>(args)...);

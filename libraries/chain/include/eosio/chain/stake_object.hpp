@@ -13,7 +13,7 @@
 namespace eosio { namespace chain {
 
 class stake_agent_object : public cyberway::chaindb::object<stake_agent_object_type, stake_agent_object> {
-    OBJECT_CTOR(stake_agent_object)
+    CHAINDB_OBJECT_ID_CTOR(stake_agent_object)
     id_type id;  
     symbol_code token_code;
     account_name account;
@@ -43,7 +43,7 @@ using stake_agent_table = cyberway::chaindb::table_container<
 >;
 
 class stake_candidate_object : public cyberway::chaindb::object<stake_candidate_object_type, stake_candidate_object> {
-    OBJECT_CTOR(stake_candidate_object)
+    CHAINDB_OBJECT_ID_CTOR(stake_candidate_object)
     id_type id;  
     symbol_code token_code;
     account_name account;
@@ -99,7 +99,7 @@ using stake_candidate_table = cyberway::chaindb::table_container<
 >;
 
 class stake_grant_object : public cyberway::chaindb::object<stake_grant_object_type, stake_grant_object> {
-    OBJECT_CTOR(stake_grant_object)
+    CHAINDB_OBJECT_ID_CTOR(stake_grant_object)
     id_type id;
     symbol_code token_code;
     account_name grantor_name;
@@ -127,7 +127,7 @@ using stake_grant_table = cyberway::chaindb::table_container<
 >;
 
 class stake_param_object : public cyberway::chaindb::object<stake_param_object_type, stake_param_object> {
-    OBJECT_CTOR(stake_param_object)
+    CHAINDB_OBJECT_ID_CTOR(stake_param_object)
     id_type id;
     symbol token_symbol;
     std::vector<uint8_t> max_proxies;
@@ -144,7 +144,7 @@ using stake_param_table = cyberway::chaindb::table_container<
 >;
     
 class stake_stat_object : public cyberway::chaindb::object<stake_stat_object_type, stake_stat_object> {
-    OBJECT_CTOR(stake_stat_object)
+    CHAINDB_OBJECT_ID_CTOR(stake_stat_object)
     id_type id;
     symbol_code token_code;
     int64_t total_staked;

@@ -4,9 +4,10 @@
 #include <memory>
 
 #include <cyberway/chaindb/driver_interface.hpp>
-#include <cyberway/chaindb/journal.hpp>
 
 namespace cyberway { namespace chaindb {
+
+    class journal;
 
     class mongodb_driver final: public driver_interface {
     public:

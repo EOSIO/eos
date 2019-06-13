@@ -158,7 +158,6 @@ abi_def eosio_contract_abi(abi_def eos_abi)
 
    eos_abi.structs.emplace_back( eosio::chain::struct_def{
       "account_object", "", {
-         {"id", "uint64"},
          {"name", "name"},
          {"vm_type", "uint8"},
          {"vm_version", "uint8"},
@@ -174,14 +173,12 @@ abi_def eosio_contract_abi(abi_def eos_abi)
 
    eos_abi.tables.emplace_back( eosio::chain::table_def {
       cyberway::chaindb::tag<account_object>::get_code(), "account_object", {
-         {cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}},
-         {cyberway::chaindb::tag<by_name>::get_code(), true, {{"name", "asc"}}}
+         {cyberway::chaindb::tag<by_id>::get_code(), true, {{"name", "asc"}}}
       }
    });
 
    eos_abi.structs.emplace_back( eosio::chain::struct_def{
       "account_sequence_object", "", {
-         {"id", "uint64"},
          {"name", "name"},
          {"recv_sequence", "uint64"},
          {"auth_sequence", "uint64"},
@@ -192,8 +189,7 @@ abi_def eosio_contract_abi(abi_def eos_abi)
 
    eos_abi.tables.emplace_back( eosio::chain::table_def {
       cyberway::chaindb::tag<account_sequence_object>::get_code(), "account_sequence_object", {
-         {cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}},
-         {cyberway::chaindb::tag<by_name>::get_code(), true, {{"name", "asc"}}}
+         {cyberway::chaindb::tag<by_id>::get_code(), true, {{"name", "asc"}}}
       }
    });
    
@@ -417,7 +413,6 @@ abi_def eosio_contract_abi(abi_def eos_abi)
 
    eos_abi.structs.emplace_back( eosio::chain::struct_def{
       "resource_usage_object", "", {
-         {"id", "uint64"},
          {"owner", "name"},
          {"accumulators", "usage_accumulator[]"}
       }
@@ -425,8 +420,7 @@ abi_def eosio_contract_abi(abi_def eos_abi)
 
    eos_abi.tables.emplace_back( eosio::chain::table_def {
       cyberway::chaindb::tag<rl::resource_usage_object>::get_code(), "resource_usage_object", {
-         {cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}},
-         {cyberway::chaindb::tag<by_owner>::get_code(), true, {{"owner", "asc"}}}
+         {cyberway::chaindb::tag<by_id>::get_code(), true, {{"owner", "asc"}}}
       }
    });
 
@@ -566,6 +560,27 @@ abi_def eosio_contract_abi(abi_def eos_abi)
       cyberway::chaindb::tag<stake_stat_object>::get_code(), "stake_stat_object", {
          {cyberway::chaindb::tag<by_id>::get_code(), true, {{"id", "asc"}}}
          }
+   });
+
+   eos_abi.structs.emplace_back(struct_def{
+      "_SERVICE_", "", {
+         {"upk", "uint64"},
+         {"code", "uint64"},
+         {"table", "uint64"}}
+   });
+
+   eos_abi.structs.emplace_back(struct_def{
+        "undo", "",
+        {{"_SERVICE_", "_SERVICE_"}}
+   });
+
+   eos_abi.tables.emplace_back(table_def{
+       "undo", "undo", "uint64", {
+           {cyberway::chaindb::tag<by_id>::get_code(), true, {{"_SERVICE_.upk", "asc"}}},
+           {cyberway::chaindb::tag<by_table>::get_code(), false, {
+               {"_SERVICE_.code", "asc"},
+               {"_SERVICE_.table", "asc"}}},
+       },
    });
 
     ////////////////////////

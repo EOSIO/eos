@@ -176,7 +176,7 @@ struct faucet_testnet_plugin_impl {
                } catch (const fc::assert_exception& ) {
                   continue;
                }
-               const account_object* const obj = database().find<account_object, by_name>(alt);
+               const account_object* const obj = database().find<account_object>(alt);
                if (obj == nullptr) {
                   names.push_back(alt);
                }
@@ -193,11 +193,11 @@ struct faucet_testnet_plugin_impl {
 
    results_pair create_account(const std::string& new_account_name, const fc::crypto::public_key& owner_pub_key, const fc::crypto::public_key& active_pub_key) {
 
-      auto creating_account = database().find<account_object, by_name>(_create_account_name);
+      auto creating_account = database().find<account_object>(_create_account_name);
       EOS_ASSERT(creating_account != nullptr, transaction_exception,
                  "To create account using the faucet, must already have created account \"${a}\"",("a",_create_account_name));
 
-      auto existing_account = database().find<account_object, by_name>(new_account_name);
+      auto existing_account = database().find<account_object>(new_account_name);
       if (existing_account != nullptr)
       {
          return find_alternates(new_account_name);

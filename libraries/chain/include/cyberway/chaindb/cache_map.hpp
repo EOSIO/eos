@@ -7,19 +7,23 @@ namespace cyberway { namespace chaindb {
 
     class cache_map final {
     public:
-        cache_map(abi_map&);
+        cache_map();
         ~cache_map();
 
         void set_cache_converter(const table_info&, const cache_converter_interface&) const;
 
         void set_next_pk(const table_info&, primary_key_t) const;
 
+        cache_object_ptr create(const table_info&, primary_key_t, const storage_payer_info&) const;
         cache_object_ptr create(const table_info&, const storage_payer_info&) const;
-        cache_object_ptr find(const table_info&, primary_key_t) const;
-        cache_object_ptr find(const index_info&, const char*, size_t) const;
+        cache_object_ptr find(const service_state&) const;
+        cache_object_ptr find(const service_state&, index_name_t, const char*, size_t) const;
 
         cache_object_ptr emplace(const table_info&, object_value) const;
         void remove(const table_info&, primary_key_t) const;
+
+        void set_object(const table_info&, cache_object&, object_value) const;
+        void set_service(const table_info&, cache_object&, service_state) const;
         void set_revision(const object_value&, revision_t) const;
 
         uint64_t calc_ram_bytes(revision_t) const;

@@ -6,6 +6,8 @@
 #include <cyberway/chaindb/names.hpp>
 #include <cyberway/chaindb/table_object.hpp>
 #include <cyberway/chaindb/mongo_driver_utils.hpp>
+#include <cyberway/chaindb/journal.hpp>
+#include <cyberway/chaindb/abi_info.hpp>
 
 #include <bsoncxx/builder/basic/kvp.hpp>
 #include <bsoncxx/builder/basic/document.hpp>
@@ -17,7 +19,6 @@
 #include <mongocxx/exception/bulk_write_exception.hpp>
 #include <mongocxx/exception/logic_error.hpp>
 #include <mongocxx/exception/query_exception.hpp>
-#include <cyberway/chaindb/abi_info.hpp>
 
 namespace cyberway { namespace chaindb {
 
@@ -239,7 +240,7 @@ namespace cyberway { namespace chaindb {
                 object_.service.pk    = pk;
                 object_.service.code  = index.code;
                 object_.service.scope = index.scope;
-                object_.service.table = index.table->name;
+                object_.service.table = index.table_name();
             } else {
                 auto& view = *source_->begin();
                 object_ = build_object(index, view, with_decors);
@@ -473,7 +474,7 @@ namespace cyberway { namespace chaindb {
             std::vector<index_def> result;
             auto indexes = db_table.list_indexes();
 
-            result.reserve(abi_info::max_index_cnt() * 2);
+            result.reserve(abi_info::MaxIndexCnt * 2);
             for (auto& info: indexes) {
                 index_def index;
 
@@ -528,7 +529,7 @@ namespace cyberway { namespace chaindb {
             static constexpr std::chrono::milliseconds max_time(10);
             std::vector<table_def> tables;
 
-            tables.reserve(abi_info::max_table_cnt() * 2);
+            tables.reserve(abi_info::MaxTableCnt * 2);
             _detail::auto_reconnect([&]() {
                 tables.clear();
                 auto db = mongo_conn_.database(get_code_name(sys_code_name_, code));
@@ -670,7 +671,7 @@ namespace cyberway { namespace chaindb {
                 obj.service.pk    = primary_key::End;
                 obj.service.code  = table.code;
                 obj.service.scope = table.scope;
-                obj.service.table = table.table->name;
+                obj.service.table = table.table_name();
                 return obj;
             }
         }
@@ -773,7 +774,7 @@ namespace cyberway { namespace chaindb {
                 if (BOOST_LIKELY(
                         old_table != nullptr &&
                         table.code == old_table->code &&
-                        table.table->name == old_table->table->name))
+                        table.table_name() == old_table->table_name()))
                     return;
 
                 auto db_table = impl_.get_db_table(table);
@@ -900,7 +901,7 @@ namespace cyberway { namespace chaindb {
     ///----
 
     mongodb_driver::mongodb_driver(journal& jrnl, string address, string sys_name)
-    : impl_(new mongodb_impl_(jrnl, std::move(address), std::move(sys_name))) {
+    : impl_(std::make_unique<mongodb_impl_>(jrnl, std::move(address), std::move(sys_name))) {
     }
 
     mongodb_driver::~mongodb_driver() = default;

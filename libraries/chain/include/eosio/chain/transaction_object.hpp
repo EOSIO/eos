@@ -21,7 +21,7 @@ namespace eosio { namespace chain {
     */
    class transaction_object : public cyberway::chaindb::object<transaction_object_type, transaction_object>
    {
-         OBJECT_CTOR(transaction_object)
+         CHAINDB_OBJECT_ID_CTOR(transaction_object)
 
          id_type             id;
          time_point_sec      expiration;

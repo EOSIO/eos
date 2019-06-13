@@ -27,6 +27,7 @@
 
 
 #include <cyberway/chaindb/controller.hpp>
+#include <cyberway/chaindb/account_abi_info.hpp>
 #include <cyberway/genesis/genesis_import.hpp>
 #include <cyberway/chain/cyberway_contract_types.hpp>
 #include <cyberway/chain/cyberway_contract.hpp>
@@ -180,10 +181,6 @@ struct controller_impl {
     */
    map<digest_type, transaction_metadata_ptr>     unapplied_transactions;
 
-   void set_abi(name account, const abi_def& abi) {
-       emit(self.setabi, std::make_tuple(account, std::ref(abi)));
-   }
-
    void pop_block() {
       auto prev = fork_db.get_block( head->header.previous );
       EOS_ASSERT( prev, block_validate_exception, "attempt to pop beyond last irreversible block" );
@@ -269,10 +266,6 @@ struct controller_impl {
    fork_db.irreversible.connect( [&]( auto b ) {
                                  on_irreversible(b);
                                  });
-
-   self.setabi.connect( [&]( auto b ) {
-       chaindb.add_abi( std::get<0>(b), std::get<1>(b) );
-   });
 
    }
 
@@ -504,8 +497,6 @@ struct controller_impl {
    }
 
    void add_indices() {
-      chaindb.add_abi(0, eosio_contract_abi());
-
       reversible_blocks.add_index<reversible_block_index>();
 
       controller_index_set::add_indices(chaindb);
@@ -589,8 +580,7 @@ struct controller_impl {
    }
 
    void create_native_account( account_name name, const authority& owner, const authority& active, bool is_privileged = false ) {
-      chaindb.emplace<account_object>([&](auto& a) {
-         a.name = name;
+      chaindb.emplace<account_object>(name.value, [&](auto& a) {
          a.creation_date = conf.genesis.initial_timestamp;
          a.privileged = is_privileged;
 
@@ -600,10 +590,7 @@ struct controller_impl {
             a.set_abi(domain_contract_abi());
          }
       });
-
-      chaindb.emplace<account_sequence_object>([&](auto & a) {
-        a.name = name;
-      });
+      chaindb.emplace<account_sequence_object>(name.value, [&](auto & a) { });
 
       const auto& owner_permission  = authorization.create_permission({}, name, config::owner_name, 0,
                                                                       owner, conf.genesis.initial_timestamp );
@@ -2005,10 +1992,6 @@ validation_mode controller::get_validation_mode()const {
    return my->conf.block_validation_mode;
 }
 
-void controller::set_abi(name account, const abi_def &abi) {
-    my->set_abi(account, abi);
-}
-
 const apply_handler* controller::find_apply_handler( account_name receiver, account_name scope, action_name act ) const
 {
    auto native_handler_scope = my->apply_handlers.find( receiver );
@@ -2023,9 +2006,19 @@ wasm_interface& controller::get_wasm_interface() {
    return my->wasmif;
 }
 
+optional_ptr<abi_serializer> controller::get_abi_serializer( account_name n, const fc::microseconds& max_serialization_time )const {
+    if( n.good() ) {
+        auto a = my->chaindb.get_account_abi_info(n);
+        if( a.has_abi_info() ) {
+           return optional_ptr<abi_serializer>( a.abi().serializer() );
+        }
+    }
+    return optional_ptr<abi_serializer>();
+}
+
 const account_object& controller::get_account( account_name name )const
 { try {
-   return my->chaindb.get<account_object, by_name>(name);
+   return my->chaindb.get<account_object>(name);
 } FC_CAPTURE_AND_RETHROW( (name) ) }
 
 const domain_object& controller::get_domain(const domain_name& name) const { try {

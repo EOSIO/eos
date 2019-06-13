@@ -176,7 +176,7 @@ BOOST_FIXTURE_TEST_CASE( abi_from_variant, TESTER ) try {
 
    auto resolver = [&,this]( const account_name& name ) -> optional<abi_serializer> {
       try {
-         const auto& accnt  = this->control->chaindb().get<account_object,by_name>( name );
+         const auto& accnt  = this->control->chaindb().get<account_object>( name );
          abi_def abi;
          if (abi_serializer::to_abi(accnt.abi, abi)) {
             return abi_serializer(abi, abi_serializer_max_time);
@@ -638,7 +638,7 @@ BOOST_FIXTURE_TEST_CASE( stl_test, TESTER ) try {
     set_abi(N(stltest), stltest_abi);
     produce_blocks(1);
 
-    const auto& accnt  = control->chaindb().get<account_object,by_name>( N(stltest) );
+    const auto& accnt  = control->chaindb().get<account_object>( N(stltest) );
     abi_def abi;
     BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
     abi_serializer abi_ser(abi, abi_serializer_max_time);
@@ -954,7 +954,7 @@ BOOST_FIXTURE_TEST_CASE(noop, TESTER) try {
    set_code(N(noop), noop_wast);
 
    set_abi(N(noop), noop_abi);
-   const auto& accnt  = control->chaindb().get<account_object,by_name>(N(noop));
+   const auto& accnt  = control->chaindb().get<account_object>(N(noop));
    abi_def abi;
    BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
    abi_serializer abi_ser(abi, abi_serializer_max_time);
@@ -1017,7 +1017,7 @@ BOOST_FIXTURE_TEST_CASE(noop, TESTER) try {
 BOOST_FIXTURE_TEST_CASE(eosio_abi, TESTER) try {
    produce_blocks(2);
 
-   const auto& accnt  = control->chaindb().get<account_object,by_name>(config::system_account_name);
+   const auto& accnt  = control->chaindb().get<account_object>(config::system_account_name);
    abi_def abi;
    BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
    abi_serializer abi_ser(abi, abi_serializer_max_time);

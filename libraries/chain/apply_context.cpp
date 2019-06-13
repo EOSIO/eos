@@ -87,7 +87,7 @@ void apply_context::exec_one( action_trace& trace )
    r.global_sequence  = next_global_sequence();
    r.recv_sequence    = next_recv_sequence( receiver );
 
-   const auto& account_sequence = chaindb.get<account_sequence_object, by_name>(act.account);
+   const auto& account_sequence = chaindb.get<account_sequence_object>(act.account);
    r.code_sequence    = account_sequence.code_sequence; // could be modified by action execution above
    r.abi_sequence     = account_sequence.abi_sequence;  // could be modified by action execution above
 
@@ -163,7 +163,7 @@ account_name apply_context::resolve_username(const account_name& scope, const us
 
 
 bool apply_context::is_account( const account_name& account )const {
-   return nullptr != chaindb.find<account_object,by_name>( account );
+   return nullptr != chaindb.find<account_object>( account );
 }
 
 void apply_context::require_authorization( const account_name& account ) {
@@ -248,7 +248,7 @@ void apply_context::require_recipient( account_name recipient ) {
  *   can better understand the security risk.
  */
 void apply_context::execute_inline( action&& a ) {
-   auto* code = chaindb.find<account_object, by_name>(a.account);
+   auto* code = chaindb.find<account_object>(a.account);
    EOS_ASSERT( code != nullptr, action_validate_exception,
                "inline action's code account ${account} does not exist", ("account", a.account) );
 
@@ -264,7 +264,7 @@ void apply_context::execute_inline( action&& a ) {
    }
 
    for( const auto& auth : a.authorization ) {
-      auto* actor = chaindb.find<account_object, by_name>(auth.actor);
+      auto* actor = chaindb.find<account_object>(auth.actor);
       EOS_ASSERT( actor != nullptr, action_validate_exception,
                   "inline action's authorizing actor ${account} does not exist", ("account", auth.actor) );
       EOS_ASSERT( control.get_authorization_manager().find_permission(auth) != nullptr, action_validate_exception,
@@ -315,7 +315,7 @@ void apply_context::execute_inline( action&& a ) {
 }
 
 void apply_context::execute_context_free_inline( action&& a ) {
-   auto* code = chaindb.find<account_object, by_name>(a.account);
+   auto* code = chaindb.find<account_object>(a.account);
    EOS_ASSERT( code != nullptr, action_validate_exception,
                "inline action's code account ${account} does not exist", ("account", a.account) );
 
@@ -771,14 +771,14 @@ uint64_t apply_context::next_global_sequence() {
 }
 
 uint64_t apply_context::next_recv_sequence( account_name receiver ) {
-   const auto& rs = chaindb.get<account_sequence_object,by_name>( receiver );
+   const auto& rs = chaindb.get<account_sequence_object>( receiver );
    chaindb.modify( rs, [&]( auto& mrs ) {
       ++mrs.recv_sequence;
    });
    return rs.recv_sequence;
 }
 uint64_t apply_context::next_auth_sequence( account_name actor ) {
-   const auto& rs = chaindb.get<account_sequence_object,by_name>( actor );
+   const auto& rs = chaindb.get<account_sequence_object>( actor );
    chaindb.modify( rs, [&](auto& mrs ){
       ++mrs.auth_sequence;
    });

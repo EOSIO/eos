@@ -80,7 +80,7 @@ namespace eosio { namespace chain {
 
    void authorization_manager::remove_permission( const permission_object& permission, const storage_payer_info& payer ) {
       auto parent_idx = _chaindb.get_index<permission_object, by_parent>();
-      auto range = parent_idx.equal_range(permission.id._id);
+      auto range = parent_idx.equal_range(permission.id);
       EOS_ASSERT( range.first == range.second, action_validate_exception,
                   "Cannot remove a permission which has children. Remove the children first.");
 

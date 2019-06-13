@@ -92,8 +92,7 @@ storage_payer_info resource_limits_manager::get_storage_payer(uint32_t time_slot
 }
 
 void resource_limits_manager::initialize_account(const account_name& account, const storage_payer_info& payer) {
-   _chaindb.emplace<resource_usage_object>(payer, [&]( resource_usage_object& bu ) {
-      bu.owner = account;
+   _chaindb.emplace<resource_usage_object>(account.value, payer, [&]( resource_usage_object& bu ) {
       bu.accumulators.resize(resources_num);
    });
 }
@@ -119,7 +118,7 @@ void resource_limits_manager::set_limit_params(const chain_config& chain_cfg) {
 void resource_limits_manager::update_account_usage(const flat_set<account_name>& accounts, uint32_t time_slot) {
    const auto& config = _chaindb.get<resource_limits_config_object>();
    auto usage_table = _chaindb.get_table<resource_usage_object>();
-   auto owner_idx = usage_table.get_index<by_owner>();
+   auto owner_idx = usage_table.get_index<by_id>();
    for( const auto& a : accounts ) {
       const auto& usage = owner_idx.get( a );
       usage_table.modify( usage, [&]( auto& bu ) {
@@ -146,7 +145,7 @@ void resource_limits_manager::add_transaction_usage(const flat_set<account_name>
    const auto& state = state_table.get();
    const auto& config = _chaindb.get<resource_limits_config_object>();
    auto usage_table = _chaindb.get_table<resource_usage_object>();
-   auto owner_idx = usage_table.get_index<by_owner>();
+   auto owner_idx = usage_table.get_index<by_id>();
    const auto& prices = get_pricelist();
    auto time_slot = block_timestamp_type(pending_block_time).slot;
 
@@ -186,9 +185,9 @@ void resource_limits_manager::add_storage_usage(const account_name& account, int
     const stake_param_object* param = nullptr;
     const stake_stat_object* stat = nullptr;
 
-    if (_chaindb.get<account_object, by_name>(account).privileged || //assignments:
-        !(_chaindb.find<stake_param_object, by_id>(token_code.value)) ||
-        !(stat  = _chaindb.find<stake_stat_object, by_id>(token_code.value)) ||
+    if (_chaindb.get<account_object>(account).privileged || //assignments:
+        !(_chaindb.find<stake_param_object>(token_code.value)) ||
+        !(stat  = _chaindb.find<stake_stat_object>(token_code.value)) ||
         !stat->enabled || stat->total_staked == 0) {
 
         return;
@@ -201,7 +200,7 @@ void resource_limits_manager::add_storage_usage(const account_name& account, int
       rls.add_pending_delta(delta, config, STORAGE);
    });
    
-   auto& usage = _chaindb.get<resource_usage_object, by_owner>(account);
+   auto& usage = _chaindb.get<resource_usage_object>(account);
    _chaindb.modify( usage, [&]( auto& u ) {
       u.accumulators[STORAGE].add(delta, time_slot, config.account_usage_average_windows[STORAGE]);
    });
@@ -209,7 +208,7 @@ void resource_limits_manager::add_storage_usage(const account_name& account, int
 
 std::vector<uint64_t> resource_limits_manager::get_account_usage(const account_name& account)const {
     const auto& config = _chaindb.get<resource_limits_config_object>();
-    auto usage_index = _chaindb.get_index<resource_usage_object,by_owner>();
+    auto usage_index = _chaindb.get_index<resource_usage_object, by_id>();
     const auto& usage = usage_index.get(account);
     std::vector<uint64_t> ret(resources_num);
     
@@ -267,8 +266,8 @@ std::vector<ratio> resource_limits_manager::get_pricelist() const {
     const stake_param_object* param = nullptr;
     const stake_stat_object* stat = nullptr;
     
-    if ((param = _chaindb.find<stake_param_object, by_id>(token_code.value)) && 
-        (stat  = _chaindb.find<stake_stat_object, by_id>(token_code.value)) && stat->enabled && stat->total_staked != 0) {
+    if ((param = _chaindb.find<stake_param_object>(token_code.value)) &&
+        (stat  = _chaindb.find<stake_stat_object>(token_code.value)) && stat->enabled && stat->total_staked != 0) {
         EOS_ASSERT(stat->total_staked > 0, chain_exception, "SYSTEM: incorrect total_staked");
         
         for (size_t i = 0; i < resources_num; i++) {
@@ -304,9 +303,9 @@ ratio resource_limits_manager::get_account_stake_ratio(fc::time_point pending_bl
     const stake_param_object* param = nullptr;
     const stake_stat_object* stat = nullptr;
 
-    if (_chaindb.get<account_object, by_name>(account).privileged || //assignments:
-        !(param = _chaindb.find<stake_param_object, by_id>(token_code.value)) ||
-        !(stat  = _chaindb.find<stake_stat_object, by_id>(token_code.value)) ||
+    if (_chaindb.get<account_object>(account).privileged || //assignments:
+        !(param = _chaindb.find<stake_param_object>(token_code.value)) ||
+        !(stat  = _chaindb.find<stake_stat_object>(token_code.value)) ||
         !stat->enabled || stat->total_staked == 0) {
 
         return {0,0};

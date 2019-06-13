@@ -415,9 +415,9 @@ try {
 
    create_acc(acc2);
 
-   const auto &usage = chaindb.get<resource_usage_object,by_owner>(acc1);
+   const auto &usage = chaindb.get<resource_usage_object,by_id>(acc1);
 
-   const auto &usage2 = chaindb.get<resource_usage_object,by_owner>(acc1a);
+   const auto &usage2 = chaindb.get<resource_usage_object,by_id>(acc1a);
 
    BOOST_TEST(usage.accumulators[resource_limits::CPU].average() > 0);
    BOOST_TEST(usage.accumulators[resource_limits::NET].average() > 0);

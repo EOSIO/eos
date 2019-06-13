@@ -1,7 +1,8 @@
 #pragma once
 
 #include <cyberway/chaindb/common.hpp>
-#include <algorithm>
+
+#include <eosio/chain/config.hpp>
 
 namespace cyberway { namespace chaindb {
 
@@ -55,7 +56,7 @@ namespace cyberway { namespace chaindb {
     }
 
     inline bool is_system_code(const account_name& code) {
-        return (code.empty());
+        return (code.empty()) || (code.value == config::system_account_name);
     }
 
     inline string get_code_name(string name, const account_name& code) {

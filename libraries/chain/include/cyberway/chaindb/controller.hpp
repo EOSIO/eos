@@ -9,13 +9,12 @@
 #include <cyberway/chaindb/storage_payer_info.hpp>
 
 namespace cyberway { namespace chaindb {
-    using fc::microseconds;
     using fc::variant;
 
     using eosio::chain::abi_def;
 
     template<class> struct object_to_table;
-    struct storage_payer_info;
+    struct chaindb_controller_impl;
 
     class chaindb_controller final {
     public:
@@ -83,29 +82,16 @@ namespace cyberway { namespace chaindb {
             return idx.get(std::forward<Key>(key));
         }
 
-        template<typename Object, typename Lambda>
-        const Object& emplace(Lambda&& constructor) const {
-            return emplace<Object>({}, std::forward<Lambda>(constructor));
+        template<typename Object, typename... Args>
+        const Object& emplace(Args&&... args) const {
+            auto midx = get_table<Object>();
+            return midx.emplace(std::forward<Args>(args)...).obj;
         }
 
-        template<typename Object, typename Lambda>
-        const Object& emplace(const storage_payer_info& payer, Lambda&& constructor) const {
+        template<typename Object, typename... Args>
+        int64_t modify(const Object& obj, Args&&... args) const {
             auto midx = get_table<Object>();
-            auto res = midx.emplace(payer, std::forward<Lambda>(constructor));
-            // should not be critical - object is stored in cache map
-            return res.obj;
-        }
-
-        template<typename Object, typename Lambda>
-        int64_t modify(const Object& obj, Lambda&& updater) const {
-            auto midx = get_table<Object>();
-            return midx.modify(obj, std::forward<Lambda>(updater));
-        }
-
-        template<typename Object, typename Lambda>
-        int64_t modify(const Object& obj, const storage_payer_info& payer, Lambda&& updater) const {
-            auto midx = get_table<Object>();
-            return midx.modify(obj, payer, std::forward<Lambda>(updater));
+            return midx.modify(obj, std::forward<Args>(args)...);
         }
 
         template<typename Object>
@@ -125,15 +111,14 @@ namespace cyberway { namespace chaindb {
             return erase<Object>(id._id, payer);
         }
 
+        const system_abi_info& get_system_abi_info() const;
+        const driver_interface& get_driver() const;
+        const cache_map& get_cache_map() const;
+        const undo_stack& get_undo_stack() const;
+
         void restore_db() const;
         void drop_db() const;
         void clear_cache() const;
-
-        bool has_abi(const account_name&) const;
-        void add_abi(const account_name&, abi_def) const;
-        void remove_abi(const account_name&) const;
-
-        const abi_map& get_abi_map() const;
 
         void close(const cursor_request&) const;
         void close_code_cursors(const account_name&) const;
@@ -168,7 +153,9 @@ namespace cyberway { namespace chaindb {
 
         void set_cache_converter(const table_request&, const cache_converter_interface&) const;
         cache_object_ptr create_cache_object(const table_request&, const storage_payer_info&) const;
+        cache_object_ptr create_cache_object(const table_request&, const primary_key_t, const storage_payer_info&) const;
         cache_object_ptr get_cache_object(const cursor_request&, bool with_blob) const;
+        account_abi_info get_account_abi_info(account_name_t) const;
 
         primary_key_t available_pk(const table_request&) const;
 
@@ -191,8 +178,7 @@ namespace cyberway { namespace chaindb {
     private:
         friend class chaindb_session;
 
-        struct controller_impl_;
-        std::unique_ptr<controller_impl_> impl_;
+        std::unique_ptr<chaindb_controller_impl> impl_;
     }; // class chaindb_controller
 
     class chaindb_guard final {

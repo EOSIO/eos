@@ -37,7 +37,7 @@ struct abi_serializer {
        PublicMode,
    }; // enum mode
 
-   abi_serializer( mode m = PublicMode ){ configure_built_in_types(m); }
+   abi_serializer( ){ configure_built_in_types(); }
    abi_serializer( const abi_def& abi, const fc::microseconds& max_serialization_time );
    bool is_check_field_name() const { return check_field_name_; }
    void set_check_field_name(bool);
@@ -64,6 +64,7 @@ struct abi_serializer {
 
    fc::variant binary_to_variant( const type_name& type, const bytes& binary, const fc::microseconds& max_serialization_time, bool short_path = false )const;
    fc::variant binary_to_variant( const type_name& type, fc::datastream<const char*>& binary, const fc::microseconds& max_serialization_time, bool short_path = false )const;
+   fc::variant binary_to_variant( const type_name& type, fc::datastream<const char*>& binary, const fc::microseconds& max_serialization_time, mode)const;
 
    bytes       variant_to_binary( const type_name& type, const fc::variant& var, const fc::microseconds& max_serialization_time, bool short_path = false )const;
    void        variant_to_binary( const type_name& type, const fc::variant& var, fc::datastream<char*>& ds, const fc::microseconds& max_serialization_time, bool short_path = false )const;
@@ -99,7 +100,7 @@ struct abi_serializer {
    static const size_t max_recursion_depth = 32; // arbitrary depth to prevent infinite recursion
 
 private:
-   bool check_field_name_ = true;
+   bool check_field_name_ = false;
 
    map<type_name, type_name>     typedefs;
    map<type_name, struct_def>    structs;
@@ -110,7 +111,8 @@ private:
    map<type_name, variant_def>   variants;
 
    map<type_name, pair<unpack_function, pack_function>> built_in_types;
-   void configure_built_in_types(mode);
+   map<type_name, pair<unpack_function, pack_function>> db_built_in_types;
+   void configure_built_in_types();
 
    fc::variant _binary_to_variant( const type_name& type, const bytes& binary, impl::binary_to_variant_context& ctx )const;
    fc::variant _binary_to_variant( const type_name& type, fc::datastream<const char*>& binary, impl::binary_to_variant_context& ctx )const;
@@ -230,6 +232,7 @@ namespace impl {
 
    struct binary_to_variant_context : public abi_traverse_context_with_path {
       using abi_traverse_context_with_path::abi_traverse_context_with_path;
+      abi_serializer::mode mode = abi_serializer::PublicMode;
    };
 
    struct variant_to_binary_context : public abi_traverse_context_with_path {
