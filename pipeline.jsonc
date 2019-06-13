@@ -4,7 +4,7 @@
         "environment":
         {
             "HELPER_ENABLED": true,
-            "IMAGE_TAG": "1.9.0-develop"
+            "IMAGE_TAG_VERSION": "v2"
         }
     },
     "eosio-build-unpinned":
