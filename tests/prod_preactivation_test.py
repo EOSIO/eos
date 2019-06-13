@@ -108,7 +108,7 @@ try:
 
     node0 = cluster.getNode(0)
     contract="eosio.bios"
-    contractDir="unittests/contracts/%s" % (contract)
+    contractDir="contracts/contracts/%s" % (contract)
     wasmFile="%s.wasm" % (contract)
     abiFile="%s.abi" % (contract)
 
