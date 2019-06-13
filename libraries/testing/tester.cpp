@@ -246,12 +246,19 @@ namespace eosio { namespace testing {
 
       if( !skip_pending_trxs ) {
          vector<transaction_id_type> scheduled_trxs;
-         while( (scheduled_trxs = get_scheduled_transactions() ).size() > 0 ) {
-            for (const auto& trx : scheduled_trxs ) {
-               auto trace = control->push_scheduled_transaction(trx, fc::time_point::maximum());
-               if(trace->except) {
+         while ((scheduled_trxs = get_scheduled_transactions()).size() > 0 ) {
+            for( const auto& trx : scheduled_trxs ) {
+               auto trace = control->push_scheduled_transaction( trx, fc::time_point::maximum());
+               if( trace->except ) {
                   trace->except->dynamic_rethrow_exception();
                }
+            }
+         }
+
+         while( transaction_metadata_ptr trx = unapplied_transactions.next() ) {
+            auto trace = control->push_transaction(trx, fc::time_point::maximum());
+            if(trace->except) {
+               trace->except->dynamic_rethrow_exception();
             }
          }
       }
@@ -272,7 +279,7 @@ namespace eosio { namespace testing {
          last_produced_block_num = std::max(control->last_irreversible_block_num(), block_header::num_from_id(itr->second));
       }
 
-      control->abort_block();
+      unapplied_transactions.add_aborted( control->abort_block() );
 
       vector<digest_type> feature_to_be_activated;
       // First add protocol features to be activated WITHOUT preactivation
