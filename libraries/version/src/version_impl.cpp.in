@@ -15,22 +15,31 @@ namespace eosio { namespace version {
    const std::string version_hash  {"@_VERSION_HASH_@"  };
    const bool        version_dirty { @_VERSION_DIRTY_@  };
 
-   const std::string& _version_client() {
-      static const std::string version{'v' + version_major +
-                                       '.' + version_minor +
-                                       '.' + version_patch +
-                                       '-' + version_suffix};
-      return version;
+   std::string _version_client() {
+      if (version_major == "Unknown") {
+         std::string version{"Unknown"};
+         return version;
+      }
+      else {
+         std::string version{'v' + version_major + '.' + version_minor + '.' + version_patch + '-' + version_suffix};
+         return version;
+      }
    }
 
-   const std::string& _version_full() {
-      static const std::string version{'v' + version_major  +
-                                       '.' + version_minor  +
-                                       '.' + version_patch  +
-                                       '-' + version_suffix +
-                                       '-' + version_hash   +
-                                       ((version_dirty == true) ? ("-dirty") : (""))};
-      return version;
+   std::string _version_full() {
+      if (version_major == "Unknown") {
+         std::string version{"Unknown"};
+         return version;
+      }
+      else {
+         std::string version{'v' + version_major + '.' + version_minor + '.' + version_patch + '-' + version_suffix + '-' + version_hash};
+         
+         if (version_dirty == true) {
+            version += "-dirty";
+         }
+         
+         return version;
+      }
    }
 
 } }

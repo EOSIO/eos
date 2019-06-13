@@ -10,9 +10,9 @@
 namespace eosio { namespace version {
 
    ///< Helper function for `version_client()`
-   const std::string& _version_client();
+   std::string _version_client();
 
    ///< Helper function for `version_full()`
-   const std::string& _version_full();
+   std::string _version_full();
 
 } }
