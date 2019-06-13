@@ -642,18 +642,16 @@ BOOST_AUTO_TEST_CASE( push_block_returns_forked_transactions ) try {
 
    // dan on chain 1 now gets all of the blocks from chain 2 which should cause fork switch
    wlog( "push c2 blocks to c1" );
-   vector<transaction_metadata_ptr> trxs;
    for( uint32_t start = fork_block_num + 1, end = c2.control->head_block_num(); start <= end; ++start ) {
       auto fb = c2.control->fetch_block_by_number( start );
-      vector<transaction_metadata_ptr> push_block_trxs = c.push_block( fb );
-      trxs.insert( trxs.end(), push_block_trxs.begin(), push_block_trxs.end() );
+      c.push_block( fb );
    }
 
    // verify transaction on fork is reported by push_block in order
-   BOOST_REQUIRE_EQUAL( 3, trxs.size() );
-   BOOST_REQUIRE_EQUAL( trace1->id, trxs.at(0)->id() );
-   BOOST_REQUIRE_EQUAL( trace2->id, trxs.at(1)->id() );
-   BOOST_REQUIRE_EQUAL( trace3->id, trxs.at(2)->id() );
+   BOOST_REQUIRE_EQUAL( 3, c.get_unapplied_transaction_queue().size() );
+   BOOST_REQUIRE_EQUAL( trace1->id, c.get_unapplied_transaction_queue().next()->id() );
+   BOOST_REQUIRE_EQUAL( trace2->id, c.get_unapplied_transaction_queue().next()->id() );
+   BOOST_REQUIRE_EQUAL( trace3->id, c.get_unapplied_transaction_queue().next()->id() );
 
 } FC_LOG_AND_RETHROW()
 
