@@ -1513,6 +1513,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
                int num_applied = 0;
                int num_failed = 0;
                int num_processed = 0;
+               auto unapplied_trxs_size = _unapplied_transactions.size();
                auto calculate_transaction_category = [&](const transaction_metadata_ptr& trx) {
                   if (trx->packed_trx()->expiration() < pending_block_time) {
                      return tx_category::EXPIRED;
@@ -1572,8 +1573,8 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
                   if( exhausted ) break;
                }
 
-               fc_dlog(_log, "Processed ${all} of the ${m} previously applied transactions, Applied ${applied}, Failed/Dropped ${failed}",
-                             ("all", exhausted ? "some" : "all")("m", num_processed)("applied", num_applied)("failed", num_failed));
+               fc_dlog(_log, "Processed ${m} of ${n} previously applied transactions, Applied ${applied}, Failed/Dropped ${failed}",
+                       ("m", num_processed)("n", unapplied_trxs_size)("applied", num_applied)("failed", num_failed));
             }
          }
 
