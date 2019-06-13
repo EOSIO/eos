@@ -1,8 +1,8 @@
 {
     "eosio": {
         "environment": {
-            "IMAGE_TAG": "1.8.0-rc2",
-            "HELPER_ENABLED": true
+            "HELPER_ENABLED": true,
+            "IMAGE_TAG_VERSION": "v1"
         }
     },
     "eosio-build-unpinned":
