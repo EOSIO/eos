@@ -3,7 +3,9 @@
  *  @copyright defined in eos/LICENSE
  */
 #include <eosio/http_plugin/http_plugin.hpp>
+#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
 #include <eosio/http_plugin/local_endpoint.hpp>
+#endif
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/thread_utils.hpp>
 
@@ -99,6 +101,7 @@ namespace eosio {
           static const long timeout_open_handshake = 0;
       };
 
+#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
       struct asio_local_with_stub_log : public websocketpp::config::asio {
           typedef asio_local_with_stub_log type;
           typedef asio base;
@@ -130,10 +133,13 @@ namespace eosio {
 
           static const long timeout_open_handshake = 0;
       };
+#endif
    }
 
    using websocket_server_type = websocketpp::server<detail::asio_with_stub_log<websocketpp::transport::asio::basic_socket::endpoint>>;
+#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
    using websocket_local_server_type = websocketpp::server<detail::asio_local_with_stub_log>;
+#endif
    using websocket_server_tls_type =  websocketpp::server<detail::asio_with_stub_log<websocketpp::transport::asio::tls_socket::endpoint>>;
    using ssl_context_ptr =  websocketpp::lib::shared_ptr<websocketpp::lib::asio::ssl::context>;
 
@@ -163,8 +169,10 @@ namespace eosio {
 
          websocket_server_tls_type https_server;
 
+#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
          optional<asio::local::stream_protocol::endpoint> unix_endpoint;
          websocket_local_server_type unix_server;
+#endif
 
          bool                     validate_host;
          set<string>              valid_hosts;
@@ -374,10 +382,12 @@ namespace eosio {
          }
    };
 
+#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
    template<>
    bool http_plugin_impl::allow_host<detail::asio_local_with_stub_log>(const detail::asio_local_with_stub_log::request_type& req, websocketpp::server<detail::asio_local_with_stub_log>::connection_ptr con) {
       return true;
    }
+#endif
 
    http_plugin::http_plugin():my(new http_plugin_impl()){
       app().register_config_type<https_ecdh_curve_t>();
@@ -385,10 +395,12 @@ namespace eosio {
    http_plugin::~http_plugin(){}
 
    void http_plugin::set_program_options(options_description&, options_description& cfg) {
+#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
       if(current_http_plugin_defaults.default_unix_socket_path.length())
          cfg.add_options()
             ("unix-socket-path", bpo::value<string>()->default_value(current_http_plugin_defaults.default_unix_socket_path),
              "The filename (relative to data-dir) to create a unix socket for HTTP RPC; set blank to disable.");
+#endif
 
       if(current_http_plugin_defaults.default_http_port)
          cfg.add_options()
@@ -484,12 +496,14 @@ namespace eosio {
             }
          }
 
+#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
          if( options.count( "unix-socket-path" ) && !options.at( "unix-socket-path" ).as<string>().empty()) {
             boost::filesystem::path sock_path = options.at("unix-socket-path").as<string>();
             if (sock_path.is_relative())
                sock_path = app().data_dir() / sock_path;
             my->unix_endpoint = asio::local::stream_protocol::endpoint(sock_path.string());
          }
+#endif
 
          if( options.count( "https-server-address" ) && options.at( "https-server-address" ).as<string>().length()) {
             if( !options.count( "https-certificate-chain-file" ) ||
@@ -562,6 +576,7 @@ namespace eosio {
          }
       }
 
+#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
       if(my->unix_endpoint) {
          try {
             my->unix_server.clear_access_channels(websocketpp::log::alevel::all);
@@ -583,6 +598,7 @@ namespace eosio {
             throw;
          }
       }
+#endif
 
       if(my->https_listen_endpoint) {
          try {
@@ -631,8 +647,10 @@ namespace eosio {
          my->server.stop_listening();
       if(my->https_server.is_listening())
          my->https_server.stop_listening();
+#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
       if(my->unix_server.is_listening())
          my->unix_server.stop_listening();
+#endif
 
       if( my->thread_pool ) {
          my->thread_pool->stop();
