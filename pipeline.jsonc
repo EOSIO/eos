@@ -1,4 +1,12 @@
 {
+    "eosio": {
+        "environment": {
+            "ENABLE_HIGH_SIERRA": true,
+            "ENABLE_FEDORA_27": true,
+            "ENABLE_AMAZON_LINUX_1": true,
+            "IMAGE_TAG_VERSION": "v2"
+        }
+    },
     "eosio-lrt":
     {
         "pipeline-branch": "legacy-os"
