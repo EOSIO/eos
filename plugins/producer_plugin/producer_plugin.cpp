@@ -378,7 +378,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 
          // exceptions throw out, make sure we restart our loop
          auto ensure = fc::make_scoped_exit([this, &aborted_trxs](){
-            _unapplied_transactions.add_aborted( aborted_trxs );
+            _unapplied_transactions.add_aborted( std::move( aborted_trxs ) );
             schedule_production_loop();
          });
 
@@ -1524,24 +1524,26 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
                   }
                };
 
-               while( transaction_metadata_ptr trx = _unapplied_transactions.next() ) {
+               while( !exhausted ) {
+                  transaction_metadata_ptr trx = _unapplied_transactions.next();
+                  if( trx == nullptr ) break;
+
+                  ++num_processed;
                   auto category = calculate_transaction_category(trx);
                   if (category == tx_category::EXPIRED ||
                      (category == tx_category::UNEXPIRED_UNPERSISTED && _producers.empty()))
                   {
+                     ++num_failed;
                      if (!_producers.empty()) {
                         fc_dlog(_trx_trace_log, "[TRX_TRACE] Node with producers configured is dropping an EXPIRED transaction that was PREVIOUSLY ACCEPTED : ${txid}",
                                ("txid", trx->id()));
                      }
                      if( preprocess_deadline <= fc::time_point::now() ) exhausted = true;
-                     if( exhausted ) break;
                      continue; // _unapplied_transactions removed trx, so just continue
 
                   } else if (category == tx_category::PERSISTED ||
                             (category == tx_category::UNEXPIRED_UNPERSISTED && _pending_block_mode == pending_block_mode::producing))
                   {
-                     ++num_processed;
-
                      try {
                         auto deadline = fc::time_point::now() + fc::milliseconds(_max_transaction_time_ms);
                         bool deadline_is_subjective = false;
@@ -1570,7 +1572,6 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
                   }
 
                   if( preprocess_deadline <= fc::time_point::now() ) exhausted = true;
-                  if( exhausted ) break;
                }
 
                fc_dlog(_log, "Processed ${m} of ${n} previously applied transactions, Applied ${applied}, Failed/Dropped ${failed}",
