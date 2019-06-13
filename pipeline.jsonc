@@ -5,6 +5,13 @@
             "DEBUG": true
         }
     },
+    "eosio": {
+        "environment": {
+            "HELPER_ENABLED": true,
+            "CONTAINER_LEVEL_PARALLELIZATION": false,
+            "IMAGE_TAG": "1.9.0-develop"
+        }
+    },
     "eosio-build-unpinned": {
         "pipeline-branch": "protocol-features-sync-nodes"
     },
