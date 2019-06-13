@@ -343,7 +343,7 @@ namespace eosio { namespace testing {
       }
 
       signed_block_ptr produce_empty_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms) )override {
-         control->abort_block();
+         unapplied_transactions.add_aborted( control->abort_block() );
          return _produce_block(skip_time, true);
       }
 
@@ -440,7 +440,7 @@ namespace eosio { namespace testing {
       }
 
       signed_block_ptr produce_empty_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms) )override {
-         control->abort_block();
+         unapplied_transactions.add_aborted( control->abort_block() );
          auto sb = _produce_block(skip_time, true);
          auto bs = validating_node->create_block_state_future( sb );
          validating_node->push_block( bs );
