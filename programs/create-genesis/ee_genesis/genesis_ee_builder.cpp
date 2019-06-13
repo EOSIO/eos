@@ -31,15 +31,18 @@ genesis_ee_builder::genesis_ee_builder(const genesis_info& info, const export_in
 genesis_ee_builder::~genesis_ee_builder() {
 }
 
-golos_dump_header genesis_ee_builder::read_header(bfs::ifstream& in) {
+golos_dump_header genesis_ee_builder::read_header(bfs::ifstream& in, const bfs::path& file) {
+    EOS_ASSERT(!in_dump_dir_.empty() && bfs::exists(file), file_not_found_exception,
+        "Operation dump file not found.");
+
+    in.open(file);
+
     golos_dump_header h;
     in.read((char*)&h, sizeof(h));
-    if (in) {
-        EOS_ASSERT(std::string(h.magic) == golos_dump_header::expected_magic, ee_genesis_exception,
-            "Unknown format of the operation dump file.");
-        EOS_ASSERT(h.version == golos_dump_header::expected_version, ee_genesis_exception,
-            "Wrong version of the operation dump file.");
-    }
+    EOS_ASSERT(std::string(h.magic) == golos_dump_header::expected_magic, ee_genesis_exception,
+        "Unknown format of the operation dump file.");
+    EOS_ASSERT(h.version == golos_dump_header::expected_version, ee_genesis_exception,
+        "Wrong version of the operation dump file.");
     return h;
 }
 
@@ -63,13 +66,17 @@ bool genesis_ee_builder::read_operation(bfs::ifstream& in, Operation& op) {
 void genesis_ee_builder::process_delete_comments() {
     std::cout << "-> Reading comment deletions..." << std::endl;
 
+    try {
+        read_header(dump_delete_comments, in_dump_dir_ / "delete_comments");
+    } catch (file_not_found_exception& ex) {
+        wlog("No comment deletions file");
+        return;
+    }
+
     const auto& comments = maps_.get_index<comment_header_index, by_hash>();
 
-    bfs::ifstream in(in_dump_dir_ / "delete_comments");
-    read_header(in);
-
     delete_comment_operation op;
-    while (read_operation(in, op)) {
+    while (read_operation(dump_delete_comments, op)) {
         auto comment = comments.find(op.hash);
         if (comment != comments.end()) {
             maps_.modify(*comment, [&](auto& c) {
@@ -89,13 +96,17 @@ void genesis_ee_builder::process_delete_comments() {
 void genesis_ee_builder::process_comments() {
     std::cout << "-> Reading comments..." << std::endl;
 
+    try {
+        read_header(dump_comments, in_dump_dir_ / "comments");
+    } catch (file_not_found_exception& ex) {
+        wlog("No comments file");
+        return;
+    }
+
     const auto& comments = maps_.get_index<comment_header_index, by_hash>();
 
-    bfs::ifstream in(in_dump_dir_ / "comments");
-    read_header(in);
-
     comment_operation op;
-    while (read_operation(in, op)) {
+    while (read_operation(dump_comments, op)) {
         uint64_t parent_hash = 0;
         if (op.parent_author.size() != 0) {
             auto parent = std::string(op.parent_author) + "/" + op.parent_permlink;
@@ -132,13 +143,17 @@ void genesis_ee_builder::process_comments() {
 void genesis_ee_builder::process_rewards() {
     std::cout << "-> Reading rewards..." << std::endl;
 
+    try {
+        read_header(dump_rewards, in_dump_dir_ / "total_comment_rewards");
+    } catch (file_not_found_exception& ex) {
+        wlog("No rewards file");
+        return;
+    }
+
     const auto& comments = maps_.get_index<comment_header_index, by_hash>();
 
-    bfs::ifstream in(in_dump_dir_ / "total_comment_rewards");
-    read_header(in);
-
     total_comment_reward_operation op;
-    while (read_operation(in, op)) {
+    while (read_operation(dump_rewards, op)) {
         auto comment = comments.find(op.hash);
         if (comment != comments.end() && op.num > comment->last_delete_op) {
             maps_.modify(*comment, [&](auto& c) {
@@ -154,13 +169,17 @@ void genesis_ee_builder::process_rewards() {
 void genesis_ee_builder::process_votes() {
     std::cout << "-> Reading votes..." << std::endl;
 
+    try {
+        read_header(dump_votes, in_dump_dir_ / "votes");
+    } catch (file_not_found_exception& ex) {
+        wlog("No votes file");
+        return;
+    }
+
     const auto& votes = maps_.get_index<vote_header_index, by_hash_voter>();
 
-    bfs::ifstream in(in_dump_dir_ / "votes");
-    read_header(in);
-
     vote_operation op;
-    while (read_operation(in, op)) {
+    while (read_operation(dump_votes, op)) {
         auto vote = votes.find(std::make_tuple(op.hash, op.voter));
         if (vote != votes.end()) {
             maps_.modify(*vote, [&](auto& v) {
@@ -186,13 +205,17 @@ void genesis_ee_builder::process_votes() {
 void genesis_ee_builder::process_reblogs() {
     std::cout << "-> Reading reblogs..." << std::endl;
 
+    try {
+        read_header(dump_reblogs, in_dump_dir_ / "reblogs");
+    } catch (file_not_found_exception& ex) {
+        wlog("No reblogs file");
+        return;
+    }
+
     const auto& reblogs = maps_.get_index<reblog_header_index, by_hash_account>();
 
-    bfs::ifstream in(in_dump_dir_ / "reblogs");
-    read_header(in);
-
     reblog_operation op;
-    while (read_operation(in, op)) {
+    while (read_operation(dump_reblogs, op)) {
         auto reblog = reblogs.find(std::make_tuple(op.hash, op.account));
         if (reblog != reblogs.end()) {
             maps_.modify(*reblog, [&](auto& r) {
@@ -212,15 +235,19 @@ void genesis_ee_builder::process_reblogs() {
 }
 
 void genesis_ee_builder::process_delete_reblogs() {
-    std::cout << "-> Reading delete reblogs..." << std::endl;
+    std::cout << "-> Reading reblog deletions..." << std::endl;
+
+    try {
+        read_header(dump_delete_reblogs, in_dump_dir_ / "delete_reblogs");
+    } catch (file_not_found_exception& ex) {
+        wlog("No reblog deletions file");
+        return;
+    }
 
     const auto& reblogs = maps_.get_index<reblog_header_index, by_hash_account>();
 
-    bfs::ifstream in(in_dump_dir_ / "delete_reblogs");
-    read_header(in);
-
     delete_reblog_operation op;
-    while (read_operation(in, op)) {
+    while (read_operation(dump_delete_reblogs, op)) {
         auto reblog = reblogs.find(std::make_tuple(op.hash, op.account));
         if (op.num > reblog->op_num) {
             maps_.remove(*reblog);
@@ -228,16 +255,31 @@ void genesis_ee_builder::process_delete_reblogs() {
     }
 }
 
+void genesis_ee_builder::process_transfers() {
+    std::cout << "-> Reading transfers..." << std::endl;
+
+    try {
+        read_header(dump_transfers, in_dump_dir_ / "transfers");
+    } catch (file_not_found_exception& ex) {
+        wlog("No transfers file");
+        return;
+    }
+}
+
 void genesis_ee_builder::process_follows() {
     std::cout << "-> Reading follows..." << std::endl;
 
+    try {
+        read_header(dump_follows, in_dump_dir_ / "follows");
+    } catch (file_not_found_exception& ex) {
+        wlog("No follows file");
+        return;
+    }
+
     const auto& follows = maps_.get_index<follow_header_index, by_pair>();
 
-    bfs::ifstream in(in_dump_dir_ / "follows");
-    read_header(in);
-
     follow_operation op;
-    while (read_operation(in, op)) {
+    while (read_operation(dump_follows, op)) {
         bool ignores = false;
         if (op.what & (1 << ignore)) {
             ignores = true;
@@ -271,13 +313,17 @@ void genesis_ee_builder::process_follows() {
 void genesis_ee_builder::process_account_metas() {
     std::cout << "-> Reading account metas..." << std::endl;
 
+    try {
+        read_header(dump_metas, in_dump_dir_ / "account_metas");
+    } catch (file_not_found_exception& ex) {
+        wlog("No account metas file");
+        return;
+    }
+
     const auto& meta_index = maps_.get_index<account_metadata_index, by_account>();
 
-    bfs::ifstream in(in_dump_dir_ / "account_metas");
-    read_header(in);
-
     account_metadata_operation op;
-    while (read_operation(in, op)) {
+    while (read_operation(dump_metas, op)) {
         auto meta_itr = meta_index.find(op.account);
         if (meta_itr != meta_index.end()) {
             maps_.modify(*meta_itr, [&](auto& meta) {
@@ -304,6 +350,7 @@ void genesis_ee_builder::read_operation_dump(const bfs::path& in_dump_dir) {
     process_votes();
     process_reblogs();
     process_delete_reblogs();
+    process_transfers();
     process_follows();
     process_account_metas();
 }
@@ -333,6 +380,10 @@ void genesis_ee_builder::build_votes(std::vector<vote_info>& votes, uint64_t msg
 }
 
 void genesis_ee_builder::build_reblogs(std::vector<reblog_info>& reblogs, uint64_t msg_hash, operation_number msg_created, bfs::ifstream& dump_reblogs) {
+    if (!dump_reblogs.is_open()) {
+        return;
+    }
+
     const auto& reblog_idx = maps_.get_index<reblog_header_index, by_hash_account>();
 
     auto reblog_itr = reblog_idx.lower_bound(msg_hash);
@@ -357,12 +408,13 @@ void genesis_ee_builder::build_reblogs(std::vector<reblog_info>& reblogs, uint64
 }
 
 void genesis_ee_builder::build_messages() {
+    if (!dump_comments.is_open()) {
+        return;
+    }
+
     std::cout << "-> Writing messages..." << std::endl;
 
     out_.messages.start_section(info_.golos.names.posting, N(message), "message_info");
-
-    bfs::ifstream dump_comments(in_dump_dir_ / "comments");
-    bfs::ifstream dump_reblogs(in_dump_dir_ / "reblogs");
 
     const auto& comment_idx = maps_.get_index<comment_header_index, by_parent_hash>();
 
@@ -402,15 +454,16 @@ void genesis_ee_builder::build_messages() {
 }
 
 void genesis_ee_builder::build_transfers() {
+    if (!dump_transfers.is_open()) {
+        return;
+    }
+
     std::cout << "-> Writing transfers..." << std::endl;
 
     out_.transfers.start_section(config::token_account_name, N(transfer), "transfer");
 
-    bfs::ifstream in(in_dump_dir_ / "transfers");
-    read_header(in);
-
     transfer_operation op;
-    while (read_operation(in, op)) {
+    while (read_operation(dump_transfers, op)) {
         out_.transfers.emplace<transfer_info>([&](auto& t) {
             t.from = generate_name(op.from);
             t.to = generate_name(op.to);
@@ -422,6 +475,10 @@ void genesis_ee_builder::build_transfers() {
 }
 
 void genesis_ee_builder::build_pinblocks() {
+    if (!dump_follows.is_open()) {
+        return;
+    }
+
     std::cout << "-> Writing pinblocks..." << std::endl;
 
     const auto& follow_index = maps_.get_index<follow_header_index, by_id>();
@@ -465,21 +522,22 @@ void genesis_ee_builder::build_accounts() {
 
     const auto& meta_index = maps_.get_index<account_metadata_index, by_account>();
 
-    bfs::ifstream dump_metas(in_dump_dir_ / "account_metas");
-
     out_.accounts.start_section(config::system_account_name, N(account), "account_info");
 
     for (auto& a : exp_info_.account_infos) {
         auto acc = a.second;
-        auto meta = meta_index.find(account_name_type(acc["name"].as_string()));
-        if (meta != meta_index.end()) {
-            dump_metas.seekg(meta->offset);
-            account_metadata_operation op;
-            read_operation(dump_metas, op);
+        acc["json_metadata"] = "";
+        if (dump_metas) {
+            auto meta = meta_index.find(account_name_type(acc["name"].as_string()));
+            if (meta == meta_index.end()) {
+                dump_metas.seekg(meta->offset);
+                account_metadata_operation op;
+                read_operation(dump_metas, op);
 
-            acc["json_metadata"] = op.json_metadata;
-        } else {
-            acc["json_metadata"] = "{created_at: 'GENESIS'}";
+                acc["json_metadata"] = op.json_metadata;
+            } else {
+                acc["json_metadata"] = "{created_at: 'GENESIS'}";
+            }
         }
         out_.accounts.insert(acc);
     }
@@ -506,11 +564,9 @@ void genesis_ee_builder::build(const bfs::path& out_dir) {
 
     out_.start(out_dir, fc::sha256());
 
-    if (!in_dump_dir_.empty()) {
-        build_messages();
-        build_transfers();
-        build_pinblocks();
-    }
+    build_messages();
+    build_transfers();
+    build_pinblocks();
     build_accounts();
     build_funds();
 

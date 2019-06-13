@@ -26,7 +26,7 @@ public:
     void read_operation_dump(const bfs::path& in_dump_dir);
     void build(const bfs::path& out_dir);
 private:
-    golos_dump_header read_header(bfs::ifstream& in);
+    golos_dump_header read_header(bfs::ifstream& in, const bfs::path& file);
     template<typename Operation>
     bool read_operation(bfs::ifstream& in, Operation& op);
 
@@ -36,6 +36,7 @@ private:
     void process_votes();
     void process_reblogs();
     void process_delete_reblogs();
+    void process_transfers();
     void process_follows();
     void process_account_metas();
 
@@ -46,6 +47,16 @@ private:
     void build_pinblocks();
     void build_accounts();
     void build_funds();
+
+    bfs::ifstream dump_delete_comments;
+    bfs::ifstream dump_comments;
+    bfs::ifstream dump_rewards;
+    bfs::ifstream dump_votes;
+    bfs::ifstream dump_reblogs;
+    bfs::ifstream dump_delete_reblogs;
+    bfs::ifstream dump_transfers;
+    bfs::ifstream dump_follows;
+    bfs::ifstream dump_metas;
 
     bfs::path in_dump_dir_;
     const genesis_info& info_;
