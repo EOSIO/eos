@@ -1,11 +1,5 @@
 {
     "eosio": {
-        "pipeline-branch": "kayan_parallel_tests",
-        "environment": {
-            "DEBUG": true
-        }
-    },
-    "eosio": {
         "environment": {
             "HELPER_ENABLED": true,
             "CONTAINER_LEVEL_PARALLELIZATION": false,
