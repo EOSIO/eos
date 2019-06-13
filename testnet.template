@@ -14,7 +14,7 @@ fi
 
 bioscontractpath=$BIOS_CONTRACT_PATH
 if [ -z "$bioscontractpath" ]; then
-    bioscontractpath="unittests/contracts/eosio.bios"
+    bioscontractpath="contracts/contracts/eosio.bios"
 fi
 
 wddir=eosio-ignition-wd
@@ -107,9 +107,9 @@ ecmd create account eosio eosio.token $pubsyskey $pubsyskey
 ecmd create account eosio eosio.vpay $pubsyskey $pubsyskey
 ecmd create account eosio eosio.wrap $pubsyskey $pubsyskey
 
-ecmd set contract eosio.token unittests/contracts/eosio.token eosio.token.wasm eosio.token.abi
-ecmd set contract eosio.msig unittests/contracts/eosio.msig eosio.msig.wasm eosio.msig.abi
-ecmd set contract eosio.wrap unittests/contracts/eosio.wrap eosio.wrap.wasm eosio.wrap.abi
+ecmd set contract eosio.token contracts/contracts/eosio.token eosio.token.wasm eosio.token.abi
+ecmd set contract eosio.msig contracts/contracts/eosio.msig eosio.msig.wasm eosio.msig.abi
+ecmd set contract eosio.wrap contracts/contracts/eosio.wrap eosio.wrap.wasm eosio.wrap.abi
 
 echo ===== Start: $step ============ >> $logfile
 echo executing: cleos --wallet-url $wdurl --url http://$bioshost:$biosport push action eosio.token create '[ "eosio", "10000000000.0000 SYS" ]' -p eosio.token | tee -a $logfile
@@ -120,7 +120,7 @@ programs/cleos/cleos --wallet-url $wdurl --url http://$bioshost:$biosport push a
 echo ==== End: $step ============== >> $logfile
 step=$(($step + 1))
 
-ecmd set contract eosio unittests/contracts/eosio.system eosio.system.wasm eosio.system.abi
+ecmd set contract eosio contracts/contracts/eosio.system eosio.system.wasm eosio.system.abi
 programs/cleos/cleos --wallet-url $wdurl --url http://$bioshost:$biosport push action eosio init '[0, "4,SYS"]' -p eosio >> $logfile 2>&1
 
 # Manual deployers, add a series of lines below this block that looks like:
