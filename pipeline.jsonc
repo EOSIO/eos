@@ -2,8 +2,8 @@
     "eosio": {
         "environment": {
             "ENABLE_HIGH_SIERRA": true,
-            "ENABLE_FEDORA27": true,
-            "ENABLE_AMAZON1": true,
+            "ENABLE_FEDORA_27": true,
+            "ENABLE_AMAZON_LINUX_1": true,
             "IMAGE_TAG_VERSION": "v2"
         }
     },
