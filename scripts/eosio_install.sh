@@ -1,4 +1,6 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -eo pipefail
+VERSION=2.0
 ##########################################################################
 # This is the EOSIO automated install script for Linux and Mac OS.
 # This file was downloaded from https://github.com/EOSIO/eos
@@ -30,33 +32,19 @@
 # https://github.com/EOSIO/eos/blob/master/LICENSE.txt
 ##########################################################################
 
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-REPO_ROOT="${SCRIPT_DIR}/.."
-BUILD_DIR="${REPO_ROOT}/build"
+# Load eosio specific helper functions
+. ./scripts/helpers/eosio.sh
 
-txtbld=$(tput bold)
-bldred=${txtbld}$(tput setaf 1)
-txtrst=$(tput sgr0)
+[[ ! $NAME == "Ubuntu" ]] && set -i # Ubuntu doesn't support interactive mode since it uses dash
 
-if [ ! -d $BUILD_DIR ]; then
-   printf "\\nError, eosio_build.sh has not ran.  Please run ./eosio_build.sh first!\\n\\n"
-   exit -1
-fi
+[[ ! -d $BUILD_DIR ]] && printf "${COLOR_RED}Please run ./eosio_build.sh first!${COLOR_NC}" && exit 1
+echo "${COLOR_CYAN}====================================================================================="
+echo "========================== ${COLOR_WHITE}Starting EOSIO Installation${COLOR_CYAN} ==============================${COLOR_NC}"
+execute cd $BUILD_DIR
+execute make install
+execute cd ..
 
-if ! pushd "${BUILD_DIR}" &> /dev/null;then
-   printf "Unable to enter build directory %s.\\n Exiting now.\\n" "${BUILD_DIR}"
-   exit 1;
-fi
-
-CMAKE_INSTALL_PREFIX=$(grep ^CMAKE_INSTALL_PREFIX: CMakeCache.txt | sed 's/.*=//')
-
-if ! make install; then
-   printf "\\nMAKE installing EOSIO has exited with the above error.\\n\\n"
-   exit -1
-fi
-popd &> /dev/null
-
-printf "\n${bldred}      ___           ___           ___                       ___\n"
+printf "\n${COLOR_RED}      ___           ___           ___                       ___\n"
 printf "     /  /\\         /  /\\         /  /\\        ___          /  /\\ \n"
 printf "    /  /:/_       /  /::\\       /  /:/_      /  /\\        /  /::\\ \n"
 printf "   /  /:/ /\\     /  /:/\\:\\     /  /:/ /\\    /  /:/       /  /:/\\:\\ \n"
@@ -66,13 +54,10 @@ printf " \\  \\:\\/:/ /:/ \\  \\:\\ /  /:/ \\  \\:\\/:/~/:/    \\  \\:\\/\\ \\  
 printf "  \\  \\::/ /:/   \\  \\:\\  /:/   \\  \\::/ /:/      \\__\\::/  \\  \\:\\  /:/ \n"
 printf "   \\  \\:\\/:/     \\  \\:\\/:/     \\__\\/ /:/       /__/:/    \\  \\:\\/:/ \n"
 printf "    \\  \\::/       \\  \\::/        /__/:/        \\__\\/      \\  \\::/ \n"
-printf "     \\__\\/         \\__\\/         \\__\\/                     \\__\\/ \n\n${txtrst}"
+printf "     \\__\\/         \\__\\/         \\__\\/                     \\__\\/ \n\n${COLOR_NC}"
 
 printf "==============================================================================================\\n"
-printf "EOSIO has been installed into ${CMAKE_INSTALL_PREFIX}/bin!\\n"
-printf "If you need to, you can uninstall using: ./scripts/full_uninstaller.sh (it will leave your data directory).\\n"
+printf "${COLOR_GREEN}EOSIO has been installed into ${EOSIO_INSTALL_DIR}/bin${COLOR_NC}"
+printf "\\n${COLOR_YELLOW}Uninstall with: ./scripts/eosio_uninstall.sh${COLOR_NC}\\n"
 printf "==============================================================================================\\n\\n"
-
-printf "EOSIO website: https://eos.io\\n"
-printf "EOSIO resources: https://eos.io/resources/\\n"
-printf "EOSIO Stack Exchange: https://eosio.stackexchange.com\\n"
+resources
