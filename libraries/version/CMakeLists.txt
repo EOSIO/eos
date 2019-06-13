@@ -13,7 +13,7 @@ set(_VERSION_DIRTY_  "")
 add_library(
   version
   "${CMAKE_CURRENT_SOURCE_DIR}/src/version.cpp"
-  "${CMAKE_CURRENT_BINARY_DIR}/src/version_impl.cpp" )
+  "${CMAKE_CURRENT_BINARY_DIR}/src/version_impl.cpp")
 
 # Make dependencies visible.
 target_include_directories(
@@ -30,10 +30,10 @@ if(EXISTS ${CMAKE_SOURCE_DIR}/.git AND ${GIT_FOUND})
                                -DLIB_BIN_DIR=${CMAKE_CURRENT_BINARY_DIR}
                                -DLIB_CUR_DIR=${CMAKE_CURRENT_SOURCE_DIR}
                                -DROOT_DIR=${CMAKE_SOURCE_DIR}
-			       -DV_MAJOR=${VERSION_MAJOR}
-			       -DV_MINOR=${VERSION_MINOR}
-			       -DV_PATCH=${VERSION_PATCH}
-			       -DV_SUFFIX=${VERSION_SUFFIX}
+                               -DV_MAJOR=${VERSION_MAJOR}
+                               -DV_MINOR=${VERSION_MINOR}
+                               -DV_PATCH=${VERSION_PATCH}
+                               -DV_SUFFIX=${VERSION_SUFFIX}
                                -P ${CMAKE_SOURCE_DIR}/CMakeModules/VersionUtils.cmake
       COMMENT "Updating version metadata.." VERBATIM )
 else()
@@ -43,6 +43,12 @@ else()
       ${CMAKE_CURRENT_BINARY_DIR}/src/version_impl.cpp
       @ONLY )
 endif()
+
+# ...
+set_property(SOURCE ${CMAKE_CURRENT_BINARY_DIR}/src/version_impl.cpp PROPERTY GENERATED 1)
+
+# ...
+add_dependencies(version evaluate_every_build)
 
 # Install the library in the appropriate places.
 install(
