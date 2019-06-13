@@ -227,7 +227,7 @@ namespace eosio { namespace testing {
       auto bs = control->create_block_state_future(b);
       vector<transaction_metadata_ptr> aborted_trxs = control->abort_block();
       unapplied_transactions.add_forked( control->push_block( bs ) );
-      unapplied_transactions.add_aborted( aborted_trxs );
+      unapplied_transactions.add_aborted( std::move( aborted_trxs ) );
 
       auto itr = last_produced_block.find(b->producer);
       if (itr == last_produced_block.end() || block_header::num_from_id(b->id()) > block_header::num_from_id(itr->second)) {
@@ -245,6 +245,13 @@ namespace eosio { namespace testing {
       }
 
       if( !skip_pending_trxs ) {
+         while( transaction_metadata_ptr trx = unapplied_transactions.next() ) {
+            auto trace = control->push_transaction(trx, fc::time_point::maximum());
+            if(trace->except) {
+               trace->except->dynamic_rethrow_exception();
+            }
+         }
+
          vector<transaction_id_type> scheduled_trxs;
          while ((scheduled_trxs = get_scheduled_transactions()).size() > 0 ) {
             for( const auto& trx : scheduled_trxs ) {
@@ -252,13 +259,6 @@ namespace eosio { namespace testing {
                if( trace->except ) {
                   trace->except->dynamic_rethrow_exception();
                }
-            }
-         }
-
-         while( transaction_metadata_ptr trx = unapplied_transactions.next() ) {
-            auto trace = control->push_transaction(trx, fc::time_point::maximum());
-            if(trace->except) {
-               trace->except->dynamic_rethrow_exception();
             }
          }
       }
