@@ -934,8 +934,7 @@ void producer_plugin::resume() {
    //
    if (my->_pending_block_mode == pending_block_mode::speculating) {
       chain::controller& chain = my->chain_plug->chain();
-      vector<transaction_metadata_ptr> aborted_trxs = chain.abort_block();
-      my->_unapplied_transactions.add_aborted( std::move( aborted_trxs ) );
+      my->_unapplied_transactions.add_aborted( chain.abort_block() );
       my->schedule_production_loop();
    }
 }
@@ -974,8 +973,7 @@ void producer_plugin::update_runtime_options(const runtime_options& options) {
 
    if (check_speculating && my->_pending_block_mode == pending_block_mode::speculating) {
       chain::controller& chain = my->chain_plug->chain();
-      vector<transaction_metadata_ptr> aborted_trxs = chain.abort_block();
-      my->_unapplied_transactions.add_aborted( std::move( aborted_trxs ) );
+      my->_unapplied_transactions.add_aborted( chain.abort_block() );
       my->schedule_production_loop();
    }
 
@@ -1051,8 +1049,7 @@ producer_plugin::integrity_hash_information producer_plugin::get_integrity_hash(
 
    if (chain.is_building_block()) {
       // abort the pending block
-      vector<transaction_metadata_ptr> aborted_trxs = chain.abort_block();
-      my->_unapplied_transactions.add_aborted( std::move( aborted_trxs ) );
+      my->_unapplied_transactions.add_aborted( chain.abort_block() );
    } else {
       reschedule.cancel();
    }
@@ -1081,8 +1078,7 @@ void producer_plugin::create_snapshot(producer_plugin::next_function<producer_pl
 
       if (chain.is_building_block()) {
          // abort the pending block
-         vector<transaction_metadata_ptr> aborted_trxs = chain.abort_block();
-         my->_unapplied_transactions.add_aborted( std::move( aborted_trxs ) );
+         my->_unapplied_transactions.add_aborted( chain.abort_block() );
       } else {
          reschedule.cancel();
       }
@@ -1411,8 +1407,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
          }
       }
 
-      vector<transaction_metadata_ptr> aborted_trxs = chain.abort_block();
-      _unapplied_transactions.add_aborted( std::move( aborted_trxs ) );
+      _unapplied_transactions.add_aborted( chain.abort_block() );
 
       auto features_to_activate = chain.get_preactivated_protocol_features();
       if( _pending_block_mode == pending_block_mode::producing && _protocol_features_to_activate.size() > 0 ) {
@@ -1857,8 +1852,7 @@ bool producer_plugin_impl::maybe_produce_block() {
 
    fc_dlog(_log, "Aborting block due to produce_block error");
    chain::controller& chain = chain_plug->chain();
-   vector<transaction_metadata_ptr> aborted_trxs = chain.abort_block();
-   _unapplied_transactions.add_aborted( std::move( aborted_trxs ) );
+   _unapplied_transactions.add_aborted( chain.abort_block() );
    return false;
 }
 
