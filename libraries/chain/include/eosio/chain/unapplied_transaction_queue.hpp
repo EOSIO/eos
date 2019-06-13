@@ -22,7 +22,7 @@ class unapplied_transaction_queue {
    std::deque<std::vector<chain::transaction_metadata_ptr>> aborted_block_trxs;
    size_t current_trx_in_trxs = 0;
    std::deque<chain::transaction_metadata_ptr> subjective_failed_trxs;
-   size_t total_size;
+   size_t total_size = 0;
 public:
 
    bool empty() const {
