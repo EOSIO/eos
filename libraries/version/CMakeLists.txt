@@ -36,6 +36,9 @@ if(EXISTS ${CMAKE_SOURCE_DIR}/.git AND ${GIT_FOUND})
                                -DV_SUFFIX=${VERSION_SUFFIX}
                                -P ${CMAKE_SOURCE_DIR}/CMakeModules/VersionUtils.cmake
       COMMENT "Updating version metadata..." VERBATIM )
+                             
+      # Create a dependency for the given library target.
+      add_dependencies(version evaluate_every_build)
 else()
    # Modify and substitute the `.cpp.in` file for a `.cpp` in the build directory.
    configure_file(
@@ -46,6 +49,3 @@ endif()
 
 # Wait for `version_impl.cpp` to get generated before building the target library.
 set_property(SOURCE ${CMAKE_CURRENT_BINARY_DIR}/src/version_impl.cpp PROPERTY GENERATED 1)
-
-# Create a dependency for the given library target.
-add_dependencies(version evaluate_every_build)

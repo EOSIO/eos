@@ -16,8 +16,8 @@ namespace eosio { namespace version {
    const bool        version_dirty { @_VERSION_DIRTY_@  };
 
    std::string _version_client() {
-      if (version_major == "Unknown") {
-         std::string version{"Unknown"};
+      if (version_major == "unknown") {
+         std::string version{"unknown"};
          return version;
       }
       else {
@@ -27,8 +27,8 @@ namespace eosio { namespace version {
    }
 
    std::string _version_full() {
-      if (version_major == "Unknown") {
-         std::string version{"Unknown"};
+      if (version_major == "unknown") {
+         std::string version{"unknown"};
          return version;
       }
       else {
