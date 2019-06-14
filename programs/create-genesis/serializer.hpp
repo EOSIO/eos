@@ -31,15 +31,15 @@ enum class stored_contract_tables: int {
     delegation,     rdelegation,
     withdrawal,
     witness_vote,   witness_info,
-    reward_pool,    //post_limits,
+    reward_pool,
     gtransaction,   bandwidths,
     messages,       permlinks,
     votes,
-    // the following are system tables, but it's simpler to have them here
+
     stake_agents,   stake_cands,
     stake_grants,
     stake_stats,    stake_params,
-    memo_key,
+    memo_key,       start_transaction,
 
     _max                // to simplify setting tables_count of genesis container
 };

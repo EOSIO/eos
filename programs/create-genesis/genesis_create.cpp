@@ -1072,6 +1072,28 @@ struct genesis_create::genesis_create_impl final {
         ilog("Done.");
     }
 
+    void schedule_start() {
+        ilog("Scheduling Golos start...");
+        db.start_section(config::system_account_name, N(gtransaction), "generated_transaction_object", 2);
+        auto store_tx = [&](name code, name act_name, uint64_t sender_id_low) {
+            transaction tx{};
+            tx.actions.emplace_back(action{{{code, config::active_name}}, code, act_name, {}});
+            auto actor = _info.golos.names.issuer;
+            db.emplace<generated_transaction_object>(actor, [&](auto& t){
+                t.set(tx);
+                t.trx_id = tx.id();
+                t.sender = actor;
+                t.sender_id = (uint128_t(actor.value) << 64) | sender_id_low;
+                t.delay_until = _conf.initial_timestamp + fc::minutes(_info.golos.start_trx.delay_minutes);
+                t.expiration = t.delay_until + fc::hours(_info.golos.start_trx.expiration_hours);
+                t.published = _conf.initial_timestamp;
+            });
+        };
+        store_tx(_info.golos.names.emission, N(start), 1);
+        store_tx(_info.golos.names.vesting, N(timeout), 2);
+        ilog("Done.");
+    }
+
     void prepare_writer(const bfs::path& out_file) {
         const int n_sections = static_cast<int>(stored_contract_tables::_max) + _info.tables.size();
         db.start(out_file, n_sections);
@@ -1110,6 +1132,7 @@ void genesis_create::write_genesis(
     _impl->store_withdrawals();
     _impl->store_witnesses();
     _impl->store_memo_keys();
+    _impl->schedule_start();
 
     _impl->db.finalize();
 
