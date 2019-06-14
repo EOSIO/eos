@@ -18,8 +18,6 @@ if [ -z "$bioscontractpath" ]; then
 fi
 
 wddir=eosio-ignition-wd
-wdaddr=localhost:8899
-wdurl=http://$wdaddr
 # Manual deployers, add a line below this block that looks like:
 #    bioshost=$BIOS_HOSTNAME
 #    biosport=$BIOS_HTTP_PORT
@@ -44,8 +42,12 @@ echo "FEATURE_DIGESTS: $FEATURE_DIGESTS" >> $logfile
 
 echo "http-server-address = $wdaddr" > $wddir/config.ini
 
+echo "starting keosd" >> $logfile
+
 programs/keosd/keosd --config-dir $wddir --data-dir $wddir 2> $wddir/wdlog.txt &
-echo $$ > ignition_wallet.pid
+wpid=$!
+echo "pid is $wpid, saving to $pwidfile" >> $logfile
+echo $wpid > $wpidfile
 echo keosd log in $wddir/wdlog.txt >> $logfile
 sleep 1
 
@@ -71,6 +73,7 @@ cacmd () {
 sleep 2
 ecmd get info
 
+echo "creating wallet" >> $logfile
 wcmd create --to-console -n ignition
 
 # Manual deployers, add a line below this block that looks like:
@@ -82,6 +85,7 @@ wcmd create --to-console -n ignition
 # ------ DO NOT ALTER THE NEXT LINE -------
 ###INSERT prodkeys
 
+echo "setting contract $bioscontractpath to eosio" >> $logfile
 ecmd set contract eosio $bioscontractpath eosio.bios.wasm eosio.bios.abi
 
 # Preactivate all digests
@@ -107,6 +111,7 @@ ecmd create account eosio eosio.token $pubsyskey $pubsyskey
 ecmd create account eosio eosio.vpay $pubsyskey $pubsyskey
 ecmd create account eosio eosio.wrap $pubsyskey $pubsyskey
 
+echo "setting eosio.token, eosio.msig, eosio.wrap contracts" >> $logfile
 ecmd set contract eosio.token unittests/contracts/eosio.token eosio.token.wasm eosio.token.abi
 ecmd set contract eosio.msig unittests/contracts/eosio.msig eosio.msig.wasm eosio.msig.abi
 ecmd set contract eosio.wrap unittests/contracts/eosio.wrap eosio.wrap.wasm eosio.wrap.abi
@@ -120,7 +125,11 @@ programs/cleos/cleos --wallet-url $wdurl --url http://$bioshost:$biosport push a
 echo ==== End: $step ============== >> $logfile
 step=$(($step + 1))
 
+echo "setting eosio.system contract" >> $logfile
+
 ecmd set contract eosio unittests/contracts/eosio.system eosio.system.wasm eosio.system.abi
+
+echo "pushing init action" >> $logfile
 programs/cleos/cleos --wallet-url $wdurl --url http://$bioshost:$biosport push action eosio init '[0, "4,SYS"]' -p eosio >> $logfile 2>&1
 
 # Manual deployers, add a series of lines below this block that looks like:
@@ -133,4 +142,9 @@ programs/cleos/cleos --wallet-url $wdurl --url http://$bioshost:$biosport push a
 # ------ DO NOT ALTER THE NEXT LINE -------
 ###INSERT cacmd
 
-pkill -15 keosd
+killcmd="kill -15 \`cat $wpidfile\`"
+echo "ready to kill keosd with cmd:$killcmd" >> $logfile
+eval "$killcmd"
+
+echo "boot script finished successfully" >> $logfile
+exit 0

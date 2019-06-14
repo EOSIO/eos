@@ -124,17 +124,27 @@ set_property(TEST nodeos_startup_catchup_lr_test PROPERTY LABELS long_running_te
 
 
 # parallelizable tests (Group 1)
-add_test(NAME nodeos_forked_chain_lr_test_parallel COMMAND tests/nodeos_forked_chain_test.py -v --wallet-port 9910 --cluster-id 1 --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+add_test(NAME nodeos_sanity_lr_test_parallel COMMAND tests/nodeos_run_test.py -v --sanity-test --cluster-id 1 --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST nodeos_sanity_lr_test_parallel PROPERTY LABELS parallel_tests_group_1)
+
+add_test(NAME nodeos_run_check_lr_test_parallel COMMAND tests/nodeos_run_test.py -v --cluster-id 2 --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST nodeos_run_check_lr_test_parallel PROPERTY LABELS parallel_tests_group_1)
+
+add_test(NAME nodeos_forked_chain_lr_test_parallel COMMAND tests/nodeos_forked_chain_test.py -v --wallet-port 9910 --cluster-id 3 --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_property(TEST nodeos_forked_chain_lr_test_parallel PROPERTY LABELS parallel_tests_group_1)
 
-add_test(NAME nodeos_irreversible_mode_lr_test_parallel COMMAND tests/nodeos_irreversible_mode_test.py -v --cluster-id 2 --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+add_test(NAME nodeos_irreversible_mode_lr_test_parallel COMMAND tests/nodeos_irreversible_mode_test.py -v --cluster-id 4 --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_property(TEST nodeos_irreversible_mode_lr_test_parallel PROPERTY LABELS parallel_tests_group_1)
 
-add_test(NAME nodeos_startup_catchup_lr_test_parallel COMMAND tests/nodeos_startup_catchup.py -v --cluster-id 3 --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+add_test(NAME nodeos_startup_catchup_lr_test_parallel COMMAND tests/nodeos_startup_catchup.py -v --cluster-id 5 --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_property(TEST nodeos_startup_catchup_lr_test_parallel PROPERTY LABELS parallel_tests_group_1)
 
-add_test(NAME nodeos_voting_lr_test_parallel COMMAND tests/nodeos_voting_test.py -v --wallet-port 9911 --cluster-id 4 --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+add_test(NAME nodeos_voting_lr_test_parallel COMMAND tests/nodeos_voting_test.py -v --wallet-port 9911 --cluster-id 6 --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_property(TEST nodeos_voting_lr_test_parallel PROPERTY LABELS parallel_tests_group_1)
+
+add_test(NAME nodeos_under_min_avail_ram_lr_test_parallel COMMAND tests/nodeos_under_min_avail_ram.py -v --wallet-port 9912 --cluster-id 7 --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_tests_properties(nodeos_under_min_avail_ram_lr_test_parallel PROPERTIES TIMEOUT 3000)
+set_property(TEST nodeos_under_min_avail_ram_lr_test_parallel PROPERTY LABELS parallel_tests_group_1)
 
 
 
@@ -170,6 +180,9 @@ if(ENABLE_COVERAGE_TESTING)
     COMMAND ${LCOV_PATH} --directory . --zerocounters
 
     COMMAND ctest -R ${ctest_tests} -E ${ctest_exclude_tests}
+
+    COMMENT "Running parallel tests."
+    COMMAND ctest -L parallel_tests_group_1 --parallel 30 
 
     COMMENT "Capturing lcov counters and generating report"
     COMMAND ${LCOV_PATH} --directory . --capture --gcov-tool ${CMAKE_SOURCE_DIR}/tools/llvm-gcov.sh --output-file ${Coverage_NAME}.info

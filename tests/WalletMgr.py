@@ -73,7 +73,7 @@ class WalletMgr(object):
         if self.isLocal():
             self.port=self.findAvailablePort()
 
-        pgrepCmd=Utils.pgrepCmd(Utils.EosWalletName)
+        pgrepCmd=Utils.pgrepCmd(WalletMgr.__walletDataDir)
         if Utils.Debug:
             portTaken=False
             if self.isLocal():

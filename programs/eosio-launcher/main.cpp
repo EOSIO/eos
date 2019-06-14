@@ -120,6 +120,7 @@ enum class port_type : uint8_t {
    p2p,
    http,
    keosd,
+   keosd_boot,
    NUM_PORT_TYPES
 };
 
@@ -1303,6 +1304,12 @@ launcher_def::write_bios_boot () {
          string key = line.substr(len);
          if (key == "envars") {
             brb << "bioshost=" << bhost << "\nbiosport=" << biosport << "\n";
+            char cluster_str[20];
+            sprintf(cluster_str, "cluster%05d", cluster_id);
+            brb << "wddir=$wddir/" << (const char *)cluster_str << "\n";
+            brb << "wdaddr=localhost:" << calculate_port(cluster_id, 0, port_type::keosd_boot) << "\n";
+            brb << "wdurl=http://$wdaddr\n";
+            brb << "wpidfile=ignition_wallet" << cluster_str << ".pid\n";
          }
          else if (key == "prodkeys" ) {
             for (auto &node : network.nodes) {

@@ -55,17 +55,18 @@ class NamedAccounts:
 # --keep-logs <Don't delete var/lib/node_* folders upon test completion>
 ###############################################################
 
-args = TestHelper.parse_args({"--dump-error-details","--keep-logs","-v","--leave-running","--clean-run","--wallet-port"})
+args = TestHelper.parse_args({"--dump-error-details","--keep-logs","-v","--leave-running","--clean-run","--wallet-port", "--cluster-id"})
 Utils.Debug=args.v
+Utils.clusterID=args.cluster_id
 totalNodes=4
-cluster=Cluster(walletd=True)
+cluster=Cluster(clusterID=Utils.clusterID, walletd=True)
 dumpErrorDetails=args.dump_error_details
 keepLogs=args.keep_logs
 dontKill=args.leave_running
 killAll=args.clean_run
 walletPort=args.wallet_port
 
-walletMgr=WalletMgr(True, port=walletPort)
+walletMgr=WalletMgr(True, port=walletPort,  clusterID=Utils.clusterID)
 testSuccessful=False
 killEosInstances=not dontKill
 killWallet=not dontKill

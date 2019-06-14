@@ -220,7 +220,7 @@ class Cluster(object):
         self.setAlternateVersionLabels(alternateVersionLabelsFile)
 
         tries = 30
-        while not Utils.arePortsAvailable(set(range(self.port, self.port + totalNodes * Cluster.__node_stride))):
+        while not Utils.arePortsAvailable(set(range(Cluster.__BiosPort, Cluster.__BiosPort + (totalNodes+1) * Cluster.__node_stride))):
             Utils.Print("ERROR: Another process is listening on nodeos default port. wait...")
             if tries == 0:
                 return False
@@ -452,17 +452,17 @@ class Cluster(object):
         if onlyBios or not useBiosBootFile:
             self.biosNode=self.bootstrap(biosNode, startedNodes, prodCount, totalProducers, pfSetupPolicy, onlyBios, onlySetProds, loadSystemContract)
             if self.biosNode is None:
-                Utils.Print("ERROR: Bootstrap failed.")
+                Utils.Print("ERROR: Bootstrap failed: bootstrap failed")
                 return False
         else:
             self.useBiosBootFile=True
             self.biosNode=self.bios_bootstrap(biosNode, startedNodes, pfSetupPolicy)
             if self.biosNode is None:
-                Utils.Print("ERROR: Bootstrap failed.")
+                Utils.Print("ERROR: Bootstrap failed: bios_bootstrap failed")
                 return False
 
         if self.biosNode is None:
-            Utils.Print("ERROR: Bootstrap failed.")
+            Utils.Print("ERROR: Bootstrap failed:biosNode is None")
             return False
 
         # validate iniX accounts can be retrieved
@@ -978,7 +978,7 @@ class Cluster(object):
             Utils.Print("Set FEATURE_DIGESTS to: %s" % env["FEATURE_DIGESTS"])
 
         if 0 != subprocess.call(cmd.split(), stdout=Utils.FNull, env=env):
-            if not silent: Utils.Print("Launcher failed to shut down eos cluster.")
+            if not silent: Utils.Print("Launcher failed to shut down eos cluster. The failing cmd is \"%s\"" % (cmd))
             return None
 
         p = re.compile('error', re.IGNORECASE)

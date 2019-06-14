@@ -169,14 +169,14 @@ class TestHelper(object):
                 Utils.Print("== cmd/cout/cerr pairs done. ==")
 
         if killEosInstances:
-            Utils.Print("Shut down the cluster.")
+            Utils.Print("Shut down the cluster, cleanRun = %d" % (cleanRun))
             cluster.killall(allInstances=cleanRun)
             if testSuccessful and not keepLogs:
                 Utils.Print("Cleanup cluster data.")
                 cluster.cleanup()
 
         if walletMgr and killWallet:
-            Utils.Print("Shut down the wallet.")
+            Utils.Print("Shut down the wallet, cleanRun = %d" % (cleanRun))
             walletMgr.killall(allInstances=cleanRun)
             if testSuccessful and not keepLogs:
                 Utils.Print("Cleanup wallet data.")
