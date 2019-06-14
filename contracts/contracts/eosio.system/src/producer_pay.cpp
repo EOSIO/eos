@@ -197,22 +197,20 @@ namespace eosiosystem {
 
    void system_contract::torewards( const name& payer, const asset& amount ) {
       require_auth( payer );
-      auto to_per_block_pay = amount.amount * 0.2; //TODO: move 0.2 to constants section
-      auto to_per_vote_pay  = amount.amount * 0.7; //TODO: move 0.7 to constants section
-      auto to_remme         = amount.amount - (to_per_block_pay + to_per_vote_pay);
+      const auto to_per_block_pay = amount.amount * 0.2; //TODO: move 0.2 to constants section
+      const auto to_per_vote_pay  = amount.amount * 0.7; //TODO: move 0.7 to constants section
+      const auto to_remme         = amount.amount - (to_per_block_pay + to_per_vote_pay);
       if( amount.amount > 0 ) {
-         {
-            token::transfer_action transfer_act{ token_account, { {_self, active_permission} } };
-            if( to_remme > 0 ) {
-               transfer_act.send( _self, saving_account, asset(to_remme, core_symbol()), "Remme Savings" );
-            }
-            if( to_per_block_pay > 0 ) {
-               transfer_act.send( _self, bpay_account, asset(to_per_block_pay, core_symbol()), "fund per-block bucket" );
-            }
-            if( to_per_vote_pay > 0 ) {
-               transfer_act.send( _self, vpay_account, asset(to_per_vote_pay, core_symbol()), "fund per-vote bucket" );
-            }
-         }
+        token::transfer_action transfer_act{ token_account, { {_self, active_permission} } };
+        if( to_remme > 0 ) {
+           transfer_act.send( _self, saving_account, asset(to_remme, core_symbol()), "Remme Savings" );
+        }
+        if( to_per_block_pay > 0 ) {
+           transfer_act.send( _self, bpay_account, asset(to_per_block_pay, core_symbol()), "fund per-block bucket" );
+        }
+        if( to_per_vote_pay > 0 ) {
+           transfer_act.send( _self, vpay_account, asset(to_per_vote_pay, core_symbol()), "fund per-vote bucket" );
+        }
       }
 
       _gstate.pervote_bucket          += to_per_vote_pay;
