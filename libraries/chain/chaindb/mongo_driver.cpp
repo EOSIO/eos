@@ -235,7 +235,7 @@ namespace cyberway { namespace chaindb {
             lazy_open();
             if (!object_.value.is_null()) return object_;
 
-            if (primary_key::End == get_pk_value()) {
+            if (is_end()) {
                 object_.clear();
                 object_.service.pk    = pk;
                 object_.service.code  = index.code;
@@ -250,7 +250,7 @@ namespace cyberway { namespace chaindb {
             return object_;
         }
 
-        bool is_openned() const {
+        bool is_opened() const {
             return !!source_;
         }
 
@@ -266,12 +266,15 @@ namespace cyberway { namespace chaindb {
         account_name_t scope_ = 0;
 
         void change_direction(const direction dir) {
-            direction_ = dir;
+            if (!source_) {
+                get_object_value();
+            }
             if (source_) {
                 find_key_ = get_object_value().value;
                 find_pk_  = get_pk_value();
             }
             source_.reset();
+            direction_ = dir;
         }
 
         void reset_object() {
@@ -712,7 +715,7 @@ namespace cyberway { namespace chaindb {
 
         mongodb_cursor_info& get_applied_cursor(cursor_info& info) {
             auto& cursor = static_cast<mongodb_cursor_info&>(info);
-            if (!cursor.is_openned()) {
+            if (!cursor.is_opened()) {
                 apply_table_changes(cursor.index);
             }
             return cursor;
