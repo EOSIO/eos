@@ -5,33 +5,42 @@
 #include <eosio/chain/webassembly/runtime_interface.hpp>
 #include <eosio/chain/apply_context.hpp>
 #include <softfloat.hpp>
-#include "Runtime/Runtime.h"
 #include "IR/Types.h"
 
+#include <eosio/chain/webassembly/eos-vm-oc/eos-vm-oc.hpp>
+#include <eosio/chain/webassembly/eos-vm-oc/memory.hpp>
+#include <eosio/chain/webassembly/eos-vm-oc/executor.hpp>
+#include <eosio/chain/webassembly/eos-vm-oc/code_cache.hpp>
+#include <eosio/chain/webassembly/eos-vm-oc/config.hpp>
+#include <eosio/chain/webassembly/eos-vm-oc/intrinsic.hpp>
 
-namespace eosio { namespace chain { namespace webassembly { namespace wavm {
+#include <boost/hana/equal.hpp>
+
+namespace eosio { namespace chain { namespace webassembly { namespace eosvmoc {
 
 using namespace IR;
 using namespace Runtime;
 using namespace fc;
 using namespace eosio::chain::webassembly::common;
 
-class wavm_runtime : public eosio::chain::wasm_runtime_interface {
+using namespace eosio::chain::eosvmoc;
+
+class eosvmoc_instantiated_module;
+
+class eosvmoc_runtime : public eosio::chain::wasm_runtime_interface {
    public:
-      wavm_runtime();
-      ~wavm_runtime();
+      eosvmoc_runtime(const boost::filesystem::path data_dir, const eosvmoc::config& eosvmoc_config);
+      ~eosvmoc_runtime();
       std::unique_ptr<wasm_instantiated_module_interface> instantiate_module(std::vector<uint8_t>&& wasm, std::vector<uint8_t>&& initial_memory,
                                                                              const digest_type& code_hash, const uint8_t& vm_type, const uint8_t& vm_version) override;
 
       void immediately_exit_currently_running_module() override;
-};
 
-//This is a temporary hack for the single threaded implementation
-struct running_instance_context {
-   MemoryInstance* memory;
-   apply_context*  apply_ctx;
+      friend eosvmoc_instantiated_module;
+      eosvmoc::code_cache cc;
+      eosvmoc::executor exec;
+      eosvmoc::memory mem;
 };
-extern running_instance_context the_running_instance_context;
 
 /**
  * class to represent an in-wasm-memory array
@@ -41,38 +50,32 @@ extern running_instance_context the_running_instance_context;
  * @tparam T
  */
 template<typename T>
-inline array_ptr<T> array_ptr_impl (running_instance_context& ctx, U32 ptr, size_t length)
+inline array_ptr<T> array_ptr_impl (U32 ptr, size_t length)
 {
-   MemoryInstance* mem = ctx.memory;
-   if (!mem) 
-      Runtime::causeException(Exception::Cause::accessViolation);
+   EOSVMOC_MEMORY_PTR_cb_ptr;
+   volatile GS_PTR char* p = 0;
+   char check;
+   if(length || cb_ptr->current_linear_memory_pages < 0)
+      check = p[ptr];
+   if constexpr(sizeof(T) > 1)
+      EOS_ASSERT(length < INT_MAX/(uint32_t)sizeof(T), wasm_execution_error, "access violation");
+   check = p[ptr+length*sizeof(T)-1];
 
-   size_t mem_total = IR::numBytesPerPage * Runtime::getMemoryNumPages(mem);
-   if (ptr >= mem_total || length > (mem_total - ptr) / sizeof(T))
-      Runtime::causeException(Exception::Cause::accessViolation);
-   
-   T* ret_ptr = (T*)(getMemoryBaseAddress(mem) + ptr);
-
-   return array_ptr<T>((T*)(getMemoryBaseAddress(mem) + ptr));
+   return array_ptr<T>((T*)((char*)(cb_ptr->full_linear_memory_start) + ptr));
 }
 
 /**
  * class to represent an in-wasm-memory char array that must be null terminated
  */
-inline null_terminated_ptr null_terminated_ptr_impl(running_instance_context& ctx, U32 ptr)
+inline null_terminated_ptr null_terminated_ptr_impl(U32 ptr)
 {
-   MemoryInstance* mem = ctx.memory;
-   if(!mem)
-      Runtime::causeException(Exception::Cause::accessViolation);
-
-   char *value                     = (char*)(getMemoryBaseAddress(mem) + ptr);
-   const char* p                   = value;
-   const char* const top_of_memory = (char*)(getMemoryBaseAddress(mem) + IR::numBytesPerPage*Runtime::getMemoryNumPages(mem));
-   while(p < top_of_memory)
-      if(*p++ == '\0')
-         return null_terminated_ptr(value);
-
-   Runtime::causeException(Exception::Cause::accessViolation);
+   EOSVMOC_MEMORY_PTR_cb_ptr;
+   GS_PTR char* p = (GS_PTR char*)ptr;
+   do {
+      if(*p == '\0')
+         return null_terminated_ptr((char*)(cb_ptr->full_linear_memory_start) + ptr);
+   } while(p++);
+   __builtin_unreachable();
 }
 
 
@@ -147,27 +150,26 @@ template<typename T>
 using native_to_wasm_t = typename native_to_wasm<T>::type;
 
 template<typename T>
-inline auto convert_native_to_wasm(const running_instance_context& ctx, T val) {
+inline auto convert_native_to_wasm(T val) {
    return native_to_wasm_t<T>(val);
 }
 
-inline auto convert_native_to_wasm(const running_instance_context& ctx, const name &val) {
+inline auto convert_native_to_wasm(const name &val) {
    return native_to_wasm_t<const name &>(val.to_uint64_t());
 }
 
-inline auto convert_native_to_wasm(const running_instance_context& ctx, const fc::time_point_sec& val) {
+inline auto convert_native_to_wasm(const fc::time_point_sec& val) {
    return native_to_wasm_t<const fc::time_point_sec &>(val.sec_since_epoch());
 }
 
-inline auto convert_native_to_wasm(running_instance_context& ctx, char* ptr) {
-   MemoryInstance* mem = ctx.memory;
-   if(!mem)
-      Runtime::causeException(Exception::Cause::accessViolation);
-   char* base = (char*)getMemoryBaseAddress(mem);
-   char* top_of_memory = base + IR::numBytesPerPage*Runtime::getMemoryNumPages(mem);
-   if(ptr < base || ptr >= top_of_memory)
-      Runtime::causeException(Exception::Cause::accessViolation);
-   return (U32)(ptr - base);
+inline auto convert_native_to_wasm(char* ptr) {
+   EOSVMOC_MEMORY_PTR_cb_ptr;
+   ///XXX this validation isn't as strict
+   U64 delta = (U64)(ptr - cb_ptr->full_linear_memory_start);
+   volatile GS_PTR char* p = 0;
+   char temp;
+   temp = p[delta];
+   return (U32)delta;
 }
 
 template<typename T>
@@ -291,7 +293,7 @@ struct wasm_function_type_provider<Ret(Args...)> {
  * @tparam NativeParameters - a std::tuple of the remaining native parameters to transcribe
  * @tparam WasmParameters - a std::tuple of the transribed parameters
  */
-template<typename Ret, typename NativeParameters, typename WasmParameters>
+template<bool is_injected, typename Ret, typename NativeParameters, typename WasmParameters>
 struct intrinsic_invoker_impl;
 
 /**
@@ -299,17 +301,22 @@ struct intrinsic_invoker_impl;
  * @tparam Ret - the return type of the native function
  * @tparam Translated - the arguments to the wasm function
  */
-template<typename Ret, typename ...Translated>
-struct intrinsic_invoker_impl<Ret, std::tuple<>, std::tuple<Translated...>> {
-   using next_method_type        = Ret (*)(running_instance_context &, Translated...);
+template<bool is_injected, typename Ret, typename ...Translated>
+struct intrinsic_invoker_impl<is_injected, Ret, std::tuple<>, std::tuple<Translated...>> {
+   using next_method_type        = Ret (*)(Translated...);
 
    template<next_method_type Method>
    static native_to_wasm_t<Ret> invoke(Translated... translated) {
+      EOSVMOC_MEMORY_PTR_cb_ptr;
       try {
-         return convert_native_to_wasm(the_running_instance_context, Method(the_running_instance_context, translated...));
+         if constexpr(!is_injected)
+            EOS_ASSERT(cb_ptr->current_call_depth_remaining != 1, wasm_execution_error, "Exceeded call depth maximum");
+         return convert_native_to_wasm(Method(translated...));
       }
       catch(...) {
-         Platform::immediately_exit(std::current_exception());
+         *cb_ptr->eptr = std::current_exception();
+         siglongjmp(*cb_ptr->jmp, 4); ///XXX 4 means due to exception
+         __builtin_unreachable();
       }
    }
 
@@ -323,17 +330,22 @@ struct intrinsic_invoker_impl<Ret, std::tuple<>, std::tuple<Translated...>> {
  * specialization of the fully transcribed signature for void return values
  * @tparam Translated - the arguments to the wasm function
  */
-template<typename ...Translated>
-struct intrinsic_invoker_impl<void_type, std::tuple<>, std::tuple<Translated...>> {
-   using next_method_type        = void_type (*)(running_instance_context &, Translated...);
+template<bool is_injected, typename ...Translated>
+struct intrinsic_invoker_impl<is_injected, void_type, std::tuple<>, std::tuple<Translated...>> {
+   using next_method_type        = void_type (*)(Translated...);
 
    template<next_method_type Method>
    static void invoke(Translated... translated) {
+      EOSVMOC_MEMORY_PTR_cb_ptr;
       try {
-         Method(the_running_instance_context, translated...);
+         if constexpr(!is_injected)
+            EOS_ASSERT(cb_ptr->current_call_depth_remaining != 1, wasm_execution_error, "Exceeded call depth maximum");
+         Method(translated...);
       }
       catch(...) {
-         Platform::immediately_exit(std::current_exception());
+         *cb_ptr->eptr = std::current_exception();
+         siglongjmp(*cb_ptr->jmp, 4); ///XXX 4 means due to exception
+         __builtin_unreachable();
       }
    }
 
@@ -350,16 +362,16 @@ struct intrinsic_invoker_impl<void_type, std::tuple<>, std::tuple<Translated...>
  * @tparam Inputs - the remaining native parameters to transcribe
  * @tparam Translated - the list of transcribed wasm parameters
  */
-template<typename Ret, typename Input, typename... Inputs, typename... Translated>
-struct intrinsic_invoker_impl<Ret, std::tuple<Input, Inputs...>, std::tuple<Translated...>> {
+template<bool is_injected, typename Ret, typename Input, typename... Inputs, typename... Translated>
+struct intrinsic_invoker_impl<is_injected, Ret, std::tuple<Input, Inputs...>, std::tuple<Translated...>> {
    using translated_type = native_to_wasm_t<Input>;
-   using next_step = intrinsic_invoker_impl<Ret, std::tuple<Inputs...>, std::tuple<Translated..., translated_type>>;
-   using then_type = Ret (*)(running_instance_context &, Input, Inputs..., Translated...);
+   using next_step = intrinsic_invoker_impl<is_injected, Ret, std::tuple<Inputs...>, std::tuple<Translated..., translated_type>>;
+   using then_type = Ret (*)(Input, Inputs..., Translated...);
 
    template<then_type Then>
-   static Ret translate_one(running_instance_context& ctx, Inputs... rest, Translated... translated, translated_type last) {
+   static Ret translate_one(Inputs... rest, Translated... translated, translated_type last) {
       auto native = convert_wasm_to_native<Input>(last);
-      return Then(ctx, native, rest..., translated...);
+      return Then(native, rest..., translated...);
    };
 
    template<then_type Then>
@@ -377,43 +389,45 @@ struct intrinsic_invoker_impl<Ret, std::tuple<Input, Inputs...>, std::tuple<Tran
  * @tparam Inputs - the remaining native parameters to transcribe
  * @tparam Translated - the list of transcribed wasm parameters
  */
-template<typename T, typename Ret, typename... Inputs, typename ...Translated>
-struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, size_t, Inputs...>, std::tuple<Translated...>> {
-   using next_step = intrinsic_invoker_impl<Ret, std::tuple<Inputs...>, std::tuple<Translated..., I32, I32>>;
-   using then_type = Ret(*)(running_instance_context&, array_ptr<T>, size_t, Inputs..., Translated...);
+template<bool is_injected, typename T, typename Ret, typename... Inputs, typename ...Translated>
+struct intrinsic_invoker_impl<is_injected, Ret, std::tuple<array_ptr<T>, size_t, Inputs...>, std::tuple<Translated...>> {
+   using next_step = intrinsic_invoker_impl<is_injected, Ret, std::tuple<Inputs...>, std::tuple<Translated..., I32, I32>>;
+   using then_type = Ret(*)(array_ptr<T>, size_t, Inputs..., Translated...);
 
    template<then_type Then, typename U=T>
-   static auto translate_one(running_instance_context& ctx, Inputs... rest, Translated... translated, I32 ptr, I32 size) -> std::enable_if_t<std::is_const<U>::value, Ret> {
+   static auto translate_one(Inputs... rest, Translated... translated, I32 ptr, I32 size) -> std::enable_if_t<std::is_const<U>::value, Ret> {
       static_assert(!std::is_pointer<U>::value, "Currently don't support array of pointers");
-      const auto length = size_t(size);
-      T* base = array_ptr_impl<T>(ctx, (U32)ptr, length);
+      const auto length = size_t((U32)size);
+      T* base = array_ptr_impl<T>((U32)ptr, length);
       if ( reinterpret_cast<uintptr_t>(base) % alignof(T) != 0 ) {
-         if(ctx.apply_ctx->control.contracts_console())
+         EOSVMOC_MEMORY_PTR_cb_ptr;
+         if(cb_ptr->ctx->control.contracts_console())
             wlog( "misaligned array of const values" );
-         std::vector<std::remove_const_t<T> > copy(length > 0 ? length : 1);
-         T* copy_ptr = &copy[0];
-         memcpy( (void*)copy_ptr, (void*)base, length * sizeof(T) );
-         return Then(ctx, static_cast<array_ptr<T>>(copy_ptr), length, rest..., translated...);
+         std::vector<uint8_t>& copy = cb_ptr->bounce_buffers->emplace_back(length > 0 ? length*sizeof(T) : 1);
+         T* copy_ptr = (T*)&copy[0];
+         memcpy( (void*)copy.data(), (void*)base, length * sizeof(T) );
+         return Then(static_cast<array_ptr<T>>(copy_ptr), length, rest..., translated...);
       }
-      return Then(ctx, static_cast<array_ptr<T>>(base), length, rest..., translated...);
+      return Then(static_cast<array_ptr<T>>(base), length, rest..., translated...);
    };
 
    template<then_type Then, typename U=T>
-   static auto translate_one(running_instance_context& ctx, Inputs... rest, Translated... translated, I32 ptr, I32 size) -> std::enable_if_t<!std::is_const<U>::value, Ret> {
+   static auto translate_one(Inputs... rest, Translated... translated, I32 ptr, I32 size) -> std::enable_if_t<!std::is_const<U>::value, Ret> {
       static_assert(!std::is_pointer<U>::value, "Currently don't support array of pointers");
-      const auto length = size_t(size);
-      T* base = array_ptr_impl<T>(ctx, (U32)ptr, length);
+      const auto length = size_t((U32)size);
+      T* base = array_ptr_impl<T>((U32)ptr, length);
       if ( reinterpret_cast<uintptr_t>(base) % alignof(T) != 0 ) {
-         if(ctx.apply_ctx->control.contracts_console())
+         EOSVMOC_MEMORY_PTR_cb_ptr;
+         if(cb_ptr->ctx->control.contracts_console())
             wlog( "misaligned array of values" );
-         std::vector<std::remove_const_t<T> > copy(length > 0 ? length : 1);
-         T* copy_ptr = &copy[0];
-         memcpy( (void*)copy_ptr, (void*)base, length * sizeof(T) );
-         Ret ret = Then(ctx, static_cast<array_ptr<T>>(copy_ptr), length, rest..., translated...);  
-         memcpy( (void*)base, (void*)copy_ptr, length * sizeof(T) );
+         std::vector<uint8_t>& copy = cb_ptr->bounce_buffers->emplace_back(length > 0 ? length*sizeof(T) : 1);
+         T* copy_ptr = (T*)&copy[0];
+         memcpy( (void*)copy.data(), (void*)base, length * sizeof(T) );
+         Ret ret = Then(static_cast<array_ptr<T>>(copy_ptr), length, rest..., translated...);
+         memcpy( (void*)base, (void*)copy.data(), length * sizeof(T) );
          return ret;
       }
-      return Then(ctx, static_cast<array_ptr<T>>(base), length, rest..., translated...);
+      return Then(static_cast<array_ptr<T>>(base), length, rest..., translated...);
    };
 
    template<then_type Then>
@@ -431,14 +445,14 @@ struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, size_t, Inputs...>, 
  * @tparam Inputs - the remaining native parameters to transcribe
  * @tparam Translated - the list of transcribed wasm parameters
  */
-template<typename Ret, typename... Inputs, typename ...Translated>
-struct intrinsic_invoker_impl<Ret, std::tuple<null_terminated_ptr, Inputs...>, std::tuple<Translated...>> {
-   using next_step = intrinsic_invoker_impl<Ret, std::tuple<Inputs...>, std::tuple<Translated..., I32>>;
-   using then_type = Ret(*)(running_instance_context&, null_terminated_ptr, Inputs..., Translated...);
+template<bool is_injected, typename Ret, typename... Inputs, typename ...Translated>
+struct intrinsic_invoker_impl<is_injected, Ret, std::tuple<null_terminated_ptr, Inputs...>, std::tuple<Translated...>> {
+   using next_step = intrinsic_invoker_impl<is_injected, Ret, std::tuple<Inputs...>, std::tuple<Translated..., I32>>;
+   using then_type = Ret(*)(null_terminated_ptr, Inputs..., Translated...);
 
    template<then_type Then>
-   static Ret translate_one(running_instance_context& ctx, Inputs... rest, Translated... translated, I32 ptr) {
-      return Then(ctx, null_terminated_ptr_impl(ctx, (U32)ptr), rest..., translated...);
+   static Ret translate_one(Inputs... rest, Translated... translated, I32 ptr) {
+      return Then(null_terminated_ptr_impl((U32)ptr), rest..., translated...);
    };
 
    template<then_type Then>
@@ -456,16 +470,16 @@ struct intrinsic_invoker_impl<Ret, std::tuple<null_terminated_ptr, Inputs...>, s
  * @tparam Inputs - the remaining native parameters to transcribe
  * @tparam Translated - the list of transcribed wasm parameters
  */
-template<typename T, typename U, typename Ret, typename... Inputs, typename ...Translated>
-struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, array_ptr<U>, size_t, Inputs...>, std::tuple<Translated...>> {
-   using next_step = intrinsic_invoker_impl<Ret, std::tuple<Inputs...>, std::tuple<Translated..., I32, I32, I32>>;
-   using then_type = Ret(*)(running_instance_context&, array_ptr<T>, array_ptr<U>, size_t, Inputs..., Translated...);
+template<bool is_injected, typename T, typename U, typename Ret, typename... Inputs, typename ...Translated>
+struct intrinsic_invoker_impl<is_injected, Ret, std::tuple<array_ptr<T>, array_ptr<U>, size_t, Inputs...>, std::tuple<Translated...>> {
+   using next_step = intrinsic_invoker_impl<is_injected, Ret, std::tuple<Inputs...>, std::tuple<Translated..., I32, I32, I32>>;
+   using then_type = Ret(*)(array_ptr<T>, array_ptr<U>, size_t, Inputs..., Translated...);
 
    template<then_type Then>
-   static Ret translate_one(running_instance_context& ctx, Inputs... rest, Translated... translated, I32 ptr_t, I32 ptr_u, I32 size) {
+   static Ret translate_one(Inputs... rest, Translated... translated, I32 ptr_t, I32 ptr_u, I32 size) {
       static_assert(std::is_same<std::remove_const_t<T>, char>::value && std::is_same<std::remove_const_t<U>, char>::value, "Currently only support array of (const)chars");
-      const auto length = size_t(size);
-      return Then(ctx, array_ptr_impl<T>(ctx, (U32)ptr_t, length), array_ptr_impl<U>(ctx, (U32)ptr_u, length), length, rest..., translated...);
+      const auto length = size_t((U32)size);
+      return Then(array_ptr_impl<T>((U32)ptr_t, length), array_ptr_impl<U>((U32)ptr_u, length), length, rest..., translated...);
    };
 
    template<then_type Then>
@@ -481,15 +495,15 @@ struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, array_ptr<U>, size_t
  * @tparam Inputs - the remaining native parameters to transcribe
  * @tparam Translated - the list of transcribed wasm parameters
  */
-template<typename Ret>
-struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<char>, int, size_t>, std::tuple<>> {
-   using next_step = intrinsic_invoker_impl<Ret, std::tuple<>, std::tuple<I32, I32, I32>>;
-   using then_type = Ret(*)(running_instance_context&, array_ptr<char>, int, size_t);
+template<bool is_injected, typename Ret>
+struct intrinsic_invoker_impl<is_injected, Ret, std::tuple<array_ptr<char>, int, size_t>, std::tuple<>> {
+   using next_step = intrinsic_invoker_impl<is_injected, Ret, std::tuple<>, std::tuple<I32, I32, I32>>;
+   using then_type = Ret(*)(array_ptr<char>, int, size_t);
 
    template<then_type Then>
-   static Ret translate_one(running_instance_context& ctx, I32 ptr, I32 value, I32 size) {
-      const auto length = size_t(size);
-      return Then(ctx, array_ptr_impl<char>(ctx, (U32)ptr, length), value, length);
+   static Ret translate_one(I32 ptr, I32 value, I32 size) {
+      const auto length = size_t((U32)size);
+      return Then(array_ptr_impl<char>((U32)ptr, length), value, length);
    };
 
    template<then_type Then>
@@ -507,39 +521,41 @@ struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<char>, int, size_t>, std
  * @tparam Inputs - the remaining native parameters to transcribe
  * @tparam Translated - the list of transcribed wasm parameters
  */
-template<typename T, typename Ret, typename... Inputs, typename ...Translated>
-struct intrinsic_invoker_impl<Ret, std::tuple<T *, Inputs...>, std::tuple<Translated...>> {
-   using next_step = intrinsic_invoker_impl<Ret, std::tuple<Inputs...>, std::tuple<Translated..., I32>>;
-   using then_type = Ret (*)(running_instance_context&, T *, Inputs..., Translated...);
+template<bool is_injected, typename T, typename Ret, typename... Inputs, typename ...Translated>
+struct intrinsic_invoker_impl<is_injected, Ret, std::tuple<T *, Inputs...>, std::tuple<Translated...>> {
+   using next_step = intrinsic_invoker_impl<is_injected, Ret, std::tuple<Inputs...>, std::tuple<Translated..., I32>>;
+   using then_type = Ret (*)(T *, Inputs..., Translated...);
 
    template<then_type Then, typename U=T>
-   static auto translate_one(running_instance_context& ctx, Inputs... rest, Translated... translated, I32 ptr) -> std::enable_if_t<std::is_const<U>::value, Ret> {
-      T* base = array_ptr_impl<T>(ctx, (U32)ptr, 1);
+   static auto translate_one(Inputs... rest, Translated... translated, I32 ptr) -> std::enable_if_t<std::is_const<U>::value, Ret> {
+      T* base = array_ptr_impl<T>((U32)ptr, 1);
       if ( reinterpret_cast<uintptr_t>(base) % alignof(T) != 0 ) {
-         if(ctx.apply_ctx->control.contracts_console())
-            wlog( "misaligned const pointer" );
+         //XXX
+         //if(ctx.apply_ctx->control.contracts_console())
+         //   wlog( "misaligned const pointer" );
          std::remove_const_t<T> copy;
          T* copy_ptr = &copy;
          memcpy( (void*)copy_ptr, (void*)base, sizeof(T) );
-         return Then(ctx, copy_ptr, rest..., translated...);
+         return Then(copy_ptr, rest..., translated...);
       }
-      return Then(ctx, base, rest..., translated...);
+      return Then(base, rest..., translated...);
    };
 
    template<then_type Then, typename U=T>
-   static auto translate_one(running_instance_context& ctx, Inputs... rest, Translated... translated, I32 ptr) -> std::enable_if_t<!std::is_const<U>::value, Ret> {
-      T* base = array_ptr_impl<T>(ctx, (U32)ptr, 1);
+   static auto translate_one(Inputs... rest, Translated... translated, I32 ptr) -> std::enable_if_t<!std::is_const<U>::value, Ret> {
+      T* base = array_ptr_impl<T>((U32)ptr, 1);
       if ( reinterpret_cast<uintptr_t>(base) % alignof(T) != 0 ) {
-         if(ctx.apply_ctx->control.contracts_console())
-            wlog( "misaligned pointer" );
+         //XXX
+         //if(ctx.apply_ctx->control.contracts_console())
+         //   wlog( "misaligned pointer" );
          std::remove_const_t<T> copy;
          T* copy_ptr = &copy;
          memcpy( (void*)copy_ptr, (void*)base, sizeof(T) );
-         Ret ret = Then(ctx, copy_ptr, rest..., translated...);
+         Ret ret = Then(copy_ptr, rest..., translated...);
          memcpy( (void*)base, (void*)copy_ptr, sizeof(T) );
          return ret;
       }
-      return Then(ctx, base, rest..., translated...);
+      return Then(base, rest..., translated...);
    };
 
    template<then_type Then>
@@ -557,15 +573,15 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T *, Inputs...>, std::tuple<Transl
  * @tparam Inputs - the remaining native parameters to transcribe
  * @tparam Translated - the list of transcribed wasm parameters
  */
-template<typename Ret, typename... Inputs, typename ...Translated>
-struct intrinsic_invoker_impl<Ret, std::tuple<const name&, Inputs...>, std::tuple<Translated...>> {
-   using next_step = intrinsic_invoker_impl<Ret, std::tuple<Inputs...>, std::tuple<Translated..., native_to_wasm_t<const name&> >>;
-   using then_type = Ret (*)(running_instance_context&, const name&, Inputs..., Translated...);
+template<bool is_injected, typename Ret, typename... Inputs, typename ...Translated>
+struct intrinsic_invoker_impl<is_injected, Ret, std::tuple<const name&, Inputs...>, std::tuple<Translated...>> {
+   using next_step = intrinsic_invoker_impl<is_injected, Ret, std::tuple<Inputs...>, std::tuple<Translated..., native_to_wasm_t<const name&> >>;
+   using then_type = Ret (*)(const name&, Inputs..., Translated...);
 
    template<then_type Then>
-   static Ret translate_one(running_instance_context& ctx, Inputs... rest, Translated... translated, native_to_wasm_t<const name&> wasm_value) {
+   static Ret translate_one(Inputs... rest, Translated... translated, native_to_wasm_t<const name&> wasm_value) {
       auto value = name(wasm_value);
-      return Then(ctx, value, rest..., translated...);
+      return Then(value, rest..., translated...);
    }
 
    template<then_type Then>
@@ -583,49 +599,55 @@ struct intrinsic_invoker_impl<Ret, std::tuple<const name&, Inputs...>, std::tupl
  * @tparam Inputs - the remaining native parameters to transcribe
  * @tparam Translated - the list of transcribed wasm parameters
  */
-template<typename T, typename Ret, typename... Inputs, typename ...Translated>
-struct intrinsic_invoker_impl<Ret, std::tuple<T &, Inputs...>, std::tuple<Translated...>> {
-   using next_step = intrinsic_invoker_impl<Ret, std::tuple<Inputs...>, std::tuple<Translated..., I32>>;
-   using then_type = Ret (*)(running_instance_context &, T &, Inputs..., Translated...);
+template<bool is_injected, typename T, typename Ret, typename... Inputs, typename ...Translated>
+struct intrinsic_invoker_impl<is_injected, Ret, std::tuple<T &, Inputs...>, std::tuple<Translated...>> {
+   using next_step = intrinsic_invoker_impl<is_injected, Ret, std::tuple<Inputs...>, std::tuple<Translated..., I32>>;
+   using then_type = Ret (*)(T &, Inputs..., Translated...);
 
    template<then_type Then, typename U=T>
-   static auto translate_one(running_instance_context& ctx, Inputs... rest, Translated... translated, I32 ptr) -> std::enable_if_t<std::is_const<U>::value, Ret> {
+   static auto translate_one(Inputs... rest, Translated... translated, I32 ptr) -> std::enable_if_t<std::is_const<U>::value, Ret> {
+      EOSVMOC_MEMORY_PTR_cb_ptr;
       // references cannot be created for null pointers
       EOS_ASSERT((U32)ptr != 0, wasm_exception, "references cannot be created for null pointers");
-      MemoryInstance* mem = ctx.memory;
-      if(!mem || (U32)ptr+sizeof(T) >= IR::numBytesPerPage*Runtime::getMemoryNumPages(mem))
-         Runtime::causeException(Exception::Cause::accessViolation);
-      T &base = *(T*)(getMemoryBaseAddress(mem)+(U32)ptr);
+      volatile GS_PTR char* p = 0;
+      char check;
+      check = p[(U32)ptr];
+      check = p[(U32)(ptr)+sizeof(T)-1u];
+      T &base = *(T*)(((char*)(cb_ptr->full_linear_memory_start))+(U32)ptr);
+
       if ( reinterpret_cast<uintptr_t>(&base) % alignof(T) != 0 ) {
-         if(ctx.apply_ctx->control.contracts_console())
+         if(cb_ptr->ctx->control.contracts_console())
             wlog( "misaligned const reference" );
          std::remove_const_t<T> copy;
          T* copy_ptr = &copy;
          memcpy( (void*)copy_ptr, (void*)&base, sizeof(T) );
-         return Then(ctx, *copy_ptr, rest..., translated...);
+         return Then(*copy_ptr, rest..., translated...);
       }
-      return Then(ctx, base, rest..., translated...);
+      return Then(base, rest..., translated...);
    }
 
    template<then_type Then, typename U=T>
-   static auto translate_one(running_instance_context& ctx, Inputs... rest, Translated... translated, I32 ptr) -> std::enable_if_t<!std::is_const<U>::value, Ret> {
+   static auto translate_one(Inputs... rest, Translated... translated, I32 ptr) -> std::enable_if_t<!std::is_const<U>::value, Ret> {
+      EOSVMOC_MEMORY_PTR_cb_ptr;
       // references cannot be created for null pointers
       EOS_ASSERT((U32)ptr != 0, wasm_exception, "reference cannot be created for null pointers");
-      MemoryInstance* mem = ctx.memory;
-      if(!mem || (U32)ptr+sizeof(T) >= IR::numBytesPerPage*Runtime::getMemoryNumPages(mem))
-         Runtime::causeException(Exception::Cause::accessViolation);
-      T &base = *(T*)(getMemoryBaseAddress(mem)+(U32)ptr);
+      volatile GS_PTR char* p = 0;
+      char check;
+      check = p[(U32)ptr];
+      check = p[(U32)(ptr)+sizeof(T)-1u];
+      T &base = *(T*)(((char*)(cb_ptr->full_linear_memory_start))+(U32)ptr);
+
       if ( reinterpret_cast<uintptr_t>(&base) % alignof(T) != 0 ) {
-         if(ctx.apply_ctx->control.contracts_console())
+         if(cb_ptr->ctx->control.contracts_console())
             wlog( "misaligned reference" );
          std::remove_const_t<T> copy;
          T* copy_ptr = &copy;
          memcpy( (void*)copy_ptr, (void*)&base, sizeof(T) );
-         Ret ret = Then(ctx, *copy_ptr, rest..., translated...);
+         Ret ret = Then(*copy_ptr, rest..., translated...);
          memcpy( (void*)&base, (void*)copy_ptr, sizeof(T) );
          return ret;
       }
-      return Then(ctx, base, rest..., translated...);
+      return Then(base, rest..., translated...);
    }
 
    template<then_type Then>
@@ -637,14 +659,14 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T &, Inputs...>, std::tuple<Transl
 /**
  * forward declaration of a wrapper class to call methods of the class
  */
-template<typename WasmSig, typename Ret, typename MethodSig, typename Cls, typename... Params>
+template<bool is_injected, typename WasmSig, typename Ret, typename MethodSig, typename Cls, typename... Params>
 struct intrinsic_function_invoker {
-   using impl = intrinsic_invoker_impl<Ret, std::tuple<Params...>, std::tuple<>>;
+   using impl = intrinsic_invoker_impl<is_injected, Ret, std::tuple<Params...>, std::tuple<>>;
 
    template<MethodSig Method>
-   static Ret wrapper(running_instance_context& ctx, Params... params) {
-      class_from_wasm<Cls>::value(*ctx.apply_ctx).checktime();
-      return (class_from_wasm<Cls>::value(*ctx.apply_ctx).*Method)(params...);
+   static Ret wrapper(Params... params) {
+      EOSVMOC_MEMORY_PTR_cb_ptr;
+      return (class_from_wasm<Cls>::value(*cb_ptr->ctx).*Method)(params...);
    }
 
    template<MethodSig Method>
@@ -656,14 +678,14 @@ struct intrinsic_function_invoker {
    }
 };
 
-template<typename WasmSig, typename MethodSig, typename Cls, typename... Params>
-struct intrinsic_function_invoker<WasmSig, void, MethodSig, Cls, Params...> {
-   using impl = intrinsic_invoker_impl<void_type, std::tuple<Params...>, std::tuple<>>;
+template<bool is_injected, typename WasmSig, typename MethodSig, typename Cls, typename... Params>
+struct intrinsic_function_invoker<is_injected, WasmSig, void, MethodSig, Cls, Params...> {
+   using impl = intrinsic_invoker_impl<is_injected, void_type, std::tuple<Params...>, std::tuple<>>;
 
    template<MethodSig Method>
-   static void_type wrapper(running_instance_context& ctx, Params... params) {
-      class_from_wasm<Cls>::value(*ctx.apply_ctx).checktime();
-      (class_from_wasm<Cls>::value(*ctx.apply_ctx).*Method)(params...);
+   static void_type wrapper(Params... params) {
+      EOSVMOC_MEMORY_PTR_cb_ptr;
+      (class_from_wasm<Cls>::value(*cb_ptr->ctx).*Method)(params...);
       return void_type();
    }
 
@@ -676,27 +698,27 @@ struct intrinsic_function_invoker<WasmSig, void, MethodSig, Cls, Params...> {
    }
 };
 
-template<typename, typename>
+template<bool, typename, typename>
 struct intrinsic_function_invoker_wrapper;
 
-template<typename WasmSig, typename Cls, typename Ret, typename... Params>
-struct intrinsic_function_invoker_wrapper<WasmSig, Ret (Cls::*)(Params...)> {
-   using type = intrinsic_function_invoker<WasmSig, Ret, Ret (Cls::*)(Params...), Cls, Params...>;
+template<bool is_injected, typename WasmSig, typename Cls, typename Ret, typename... Params>
+struct intrinsic_function_invoker_wrapper<is_injected, WasmSig, Ret (Cls::*)(Params...)> {
+   using type = intrinsic_function_invoker<is_injected, WasmSig, Ret, Ret (Cls::*)(Params...), Cls, Params...>;
 };
 
-template<typename WasmSig, typename Cls, typename Ret, typename... Params>
-struct intrinsic_function_invoker_wrapper<WasmSig, Ret (Cls::*)(Params...) const> {
-   using type = intrinsic_function_invoker<WasmSig, Ret, Ret (Cls::*)(Params...) const, Cls, Params...>;
+template<bool is_injected, typename WasmSig, typename Cls, typename Ret, typename... Params>
+struct intrinsic_function_invoker_wrapper<is_injected, WasmSig, Ret (Cls::*)(Params...) const> {
+   using type = intrinsic_function_invoker<is_injected, WasmSig, Ret, Ret (Cls::*)(Params...) const, Cls, Params...>;
 };
 
-template<typename WasmSig, typename Cls, typename Ret, typename... Params>
-struct intrinsic_function_invoker_wrapper<WasmSig, Ret (Cls::*)(Params...) volatile> {
-   using type = intrinsic_function_invoker<WasmSig, Ret, Ret (Cls::*)(Params...) volatile, Cls, Params...>;
+template<bool is_injected, typename WasmSig, typename Cls, typename Ret, typename... Params>
+struct intrinsic_function_invoker_wrapper<is_injected, WasmSig, Ret (Cls::*)(Params...) volatile> {
+   using type = intrinsic_function_invoker<is_injected, WasmSig, Ret, Ret (Cls::*)(Params...) volatile, Cls, Params...>;
 };
 
-template<typename WasmSig, typename Cls, typename Ret, typename... Params>
-struct intrinsic_function_invoker_wrapper<WasmSig, Ret (Cls::*)(Params...) const volatile> {
-   using type = intrinsic_function_invoker<WasmSig, Ret, Ret (Cls::*)(Params...) const volatile, Cls, Params...>;
+template<bool is_injected, typename WasmSig, typename Cls, typename Ret, typename... Params>
+struct intrinsic_function_invoker_wrapper<is_injected, WasmSig, Ret (Cls::*)(Params...) const volatile> {
+   using type = intrinsic_function_invoker<is_injected, WasmSig, Ret, Ret (Cls::*)(Params...) const volatile, Cls, Params...>;
 };
 
 #define _ADD_PAREN_1(...) ((__VA_ARGS__)) _ADD_PAREN_2
@@ -708,12 +730,13 @@ struct intrinsic_function_invoker_wrapper<WasmSig, Ret (Cls::*)(Params...) const
 #define __INTRINSIC_NAME(LABEL, SUFFIX) LABEL##SUFFIX
 #define _INTRINSIC_NAME(LABEL, SUFFIX) __INTRINSIC_NAME(LABEL,SUFFIX)
 
-#define _REGISTER_WAVM_INTRINSIC(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)\
-   static Intrinsics::Function _INTRINSIC_NAME(__intrinsic_fn, __COUNTER__) (\
+#define _REGISTER_EOSVMOC_INTRINSIC(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)\
+   static eosio::chain::eosvmoc::intrinsic _INTRINSIC_NAME(__intrinsic_fn, __COUNTER__) (\
       MOD "." NAME,\
-      eosio::chain::webassembly::wavm::wasm_function_type_provider<WASM_SIG>::type(),\
-      (void *)eosio::chain::webassembly::wavm::intrinsic_function_invoker_wrapper<WASM_SIG, SIG>::type::fn<&CLS::METHOD>()\
+      eosio::chain::webassembly::eosvmoc::wasm_function_type_provider<WASM_SIG>::type(),\
+      (void *)eosio::chain::webassembly::eosvmoc::intrinsic_function_invoker_wrapper<std::string_view(MOD) != "env", WASM_SIG, SIG>::type::fn<&CLS::METHOD>(),\
+      ::boost::hana::index_if(eosio::chain::eosvmoc::intrinsic_table, ::boost::hana::equal.to(BOOST_HANA_STRING(MOD "." NAME))).value()\
    );\
 
 
-} } } }// eosio::chain::webassembly::wavm
+} } } }// eosio::chain::webassembly::eosvmoc

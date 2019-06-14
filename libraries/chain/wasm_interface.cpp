@@ -26,10 +26,12 @@
 #include <string.h>
 
 namespace eosio { namespace chain {
-   using namespace webassembly;
    using namespace webassembly::common;
 
-   wasm_interface::wasm_interface(vm_type vm, const chainbase::database& d) : my( new wasm_interface_impl(vm, d) ) {}
+   wasm_interface::wasm_interface(vm_type vm, const chainbase::database& d, const boost::filesystem::path data_dir, const eosvmoc::config& eosvmoc_config)
+     : my( new wasm_interface_impl(vm, d, data_dir, eosvmoc_config) ) {}
+
+   using namespace webassembly;
 
    wasm_interface::~wasm_interface() {}
 
@@ -2040,6 +2042,8 @@ std::istream& operator>>(std::istream& in, wasm_interface::vm_type& runtime) {
       runtime = eosio::chain::wasm_interface::vm_type::wavm;
    else if (s == "wabt")
       runtime = eosio::chain::wasm_interface::vm_type::wabt;
+   else if (s == "eos-vm-oc")
+      runtime = eosio::chain::wasm_interface::vm_type::eos_vm_oc;
    else
       in.setstate(std::ios_base::failbit);
    return in;

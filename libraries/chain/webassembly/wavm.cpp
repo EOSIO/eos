@@ -57,7 +57,8 @@ static wavm_live_modules the_wavm_live_modules;
 
 class wavm_instantiated_module : public wasm_instantiated_module_interface {
    public:
-      wavm_instantiated_module(ModuleInstance* instance, std::unique_ptr<Module> module, std::vector<uint8_t> initial_mem) :
+      wavm_instantiated_module(std::vector<uint8_t>&& initial_mem, std::vector<uint8_t>&& wasm, 
+                               const digest_type& code_hash, const uint8_t& vm_version, wavm_runtime& wr) :
          _initial_memory(initial_mem),
          _instance(instance),
          _module_ref(detail::the_wavm_live_modules.add_live_module(instance))
