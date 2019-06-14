@@ -57,6 +57,15 @@ add_library( eosio_chain
              ${CHAIN_WAVM_SOURCES}
              webassembly/wabt.cpp
 
+             webassembly/eos-vm-oc/code_cache.cpp
+             webassembly/eos-vm-oc/executor.cpp
+             webassembly/eos-vm-oc/memory.cpp
+             webassembly/eos-vm-oc/config.cpp
+             webassembly/eos-vm-oc/intrinsic.cpp
+             webassembly/eos-vm-oc/LLVMJIT.cpp
+             webassembly/eos-vm-oc/LLVMEmitIR.cpp
+             webassembly/eos-vm-oc.cpp
+
 #             get_config.cpp
 #
 #             contracts/chain_initializer.cpp

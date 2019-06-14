@@ -133,10 +133,11 @@ wavm_runtime::wavm_runtime() {
 wavm_runtime::~wavm_runtime() {
 }
 
-std::unique_ptr<wasm_instantiated_module_interface> wavm_runtime::instantiate_module(const char* code_bytes, size_t code_size, std::vector<uint8_t> initial_memory) {
+std::unique_ptr<wasm_instantiated_module_interface> wavm_runtime::instantiate_module(std::vector<uint8_t>&& wasm, std::vector<uint8_t>&& initial_memory,
+                                                                                     const digest_type& code_hash, const uint8_t& vm_type, const uint8_t& vm_version) {
    std::unique_ptr<Module> module = std::make_unique<Module>();
    try {
-      Serialization::MemoryInputStream stream((const U8*)code_bytes, code_size);
+      Serialization::MemoryInputStream stream(wasm.data(), wasm.size());
       WASM::serialize(stream, *module);
    } catch(const Serialization::FatalSerializationException& e) {
       EOS_ASSERT(false, wasm_serialization_error, e.message.c_str());

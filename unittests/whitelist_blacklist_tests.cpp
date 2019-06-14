@@ -34,6 +34,7 @@ class whitelist_blacklist_tester {
          cfg.reversible_cache_size = 1024*1024*8;
          cfg.reversible_guard_size = 0;
          cfg.contracts_console = true;
+         cfg.eosvmoc_config.cache_size = 1024*1024*8;
 
          cfg.genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
          cfg.genesis.initial_key = base_tester::get_public_key( config::system_account_name, "active" );
@@ -43,6 +44,8 @@ class whitelist_blacklist_tester {
                cfg.wasm_runtime = chain::wasm_interface::vm_type::wavm;
             else if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--wabt"))
                cfg.wasm_runtime = chain::wasm_interface::vm_type::wabt;
+            else if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--eos-vm-oc"))
+               cfg.wasm_runtime = chain::wasm_interface::vm_type::eos_vm_oc;
          }
 
          return cfg;

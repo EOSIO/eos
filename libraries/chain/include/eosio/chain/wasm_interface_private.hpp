@@ -3,6 +3,7 @@
 #include <eosio/chain/wasm_interface.hpp>
 #include <eosio/chain/webassembly/wavm.hpp>
 #include <eosio/chain/webassembly/wabt.hpp>
+#include <eosio/chain/webassembly/eos-vm-oc.hpp>
 #include <eosio/chain/webassembly/runtime_interface.hpp>
 #include <eosio/chain/wasm_eosio_injection.hpp>
 #include <eosio/chain/transaction_context.hpp>
@@ -24,6 +25,8 @@ using boost::multi_index_container;
 
 namespace eosio { namespace chain {
 
+   namespace eosvmoc { struct config; }
+
    struct wasm_interface_impl {
       struct wasm_cache_entry {
          digest_type                                          code_hash;
@@ -37,13 +40,15 @@ namespace eosio { namespace chain {
       struct by_first_block_num;
       struct by_last_block_num;
 
-      wasm_interface_impl(wasm_interface::vm_type vm, const chainbase::database& d) : db(d) {
+      wasm_interface_impl(wasm_interface::vm_type vm, const chainbase::database& d, const boost::filesystem::path data_dir, const eosvmoc::config& eosvmoc_config) : db(d), wasm_runtime_time(vm) {
 #ifdef EOSIO_WAVM_RUNTIME_ENABLED
          if(vm == wasm_interface::vm_type::wavm)
             runtime_interface = std::make_unique<webassembly::wavm::wavm_runtime>();
 #endif
          if(vm == wasm_interface::vm_type::wabt)
             runtime_interface = std::make_unique<webassembly::wabt_runtime::wabt_runtime>();
+         if(vm == wasm_interface::vm_type::eos_vm_oc)
+            runtime_interface = std::make_unique<webassembly::eosvmoc::eosvmoc_runtime>(data_dir, eosvmoc_config);
          if(!runtime_interface)
             EOS_THROW(wasm_exception, "${r} wasm runtime not supported on this platform and/or configuration", ("r", vm));
       }
@@ -125,8 +130,14 @@ namespace eosio { namespace chain {
                EOS_ASSERT(false, wasm_serialization_error, e.message.c_str());
             }
 
-            wasm_injections::wasm_binary_injection<true> injector(module);
-            injector.inject();
+            if(wasm_runtime_time == wasm_interface::vm_type::wabt) {
+               wasm_injections::wasm_binary_injection<true> injector(module);
+               injector.inject();
+            }
+            else {
+               wasm_injections::wasm_binary_injection<false> injector(module);
+               injector.inject();
+            }
 
             std::vector<U8> bytes;
             try {
@@ -140,7 +151,7 @@ namespace eosio { namespace chain {
             }
 
             wasm_instantiation_cache.modify(it, [&](auto& c) {
-               c.module = runtime_interface->instantiate_module((const char*)bytes.data(), bytes.size(), parse_initial_memory(module));
+               c.module = runtime_interface->instantiate_module(std::move(bytes), parse_initial_memory(module), code_hash, vm_type, vm_version);
             });
          }
          return it->module;
@@ -166,6 +177,7 @@ namespace eosio { namespace chain {
       wasm_cache_index wasm_instantiation_cache;
 
       const chainbase::database& db;
+      const wasm_interface::vm_type wasm_runtime_time;
    };
 
 #define _ADD_PAREN_1(...) ((__VA_ARGS__)) _ADD_PAREN_2
@@ -176,6 +188,7 @@ namespace eosio { namespace chain {
 
 #define _REGISTER_INTRINSIC_EXPLICIT(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)\
    _REGISTER_WAVM_INTRINSIC(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)\
+   _REGISTER_EOSVMOC_INTRINSIC(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)\
    _REGISTER_WABT_INTRINSIC(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)
 
 #define _REGISTER_INTRINSIC4(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)\
