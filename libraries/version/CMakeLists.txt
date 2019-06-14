@@ -49,16 +49,3 @@ set_property(SOURCE ${CMAKE_CURRENT_BINARY_DIR}/src/version_impl.cpp PROPERTY GE
 
 # Create a dependency for the given library target.
 add_dependencies(version evaluate_every_build)
-
-# Install the library in the appropriate places.
-install(
-   TARGETS version
-   RUNTIME DESTINATION ${CMAKE_INSTALL_FULL_BINDIR}
-   ARCHIVE DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}
-   LIBRARY DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR} )
-
-# Install the header file in the appropriate place.
-install(
-   DIRECTORY   ${CMAKE_CURRENT_SOURCE_DIR}/include/eosio/version
-   DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR}/eosio/
-   FILES_MATCHING PATTERN "*.hpp" )
