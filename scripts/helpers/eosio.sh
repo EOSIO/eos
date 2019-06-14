@@ -31,7 +31,6 @@ function setup() {
         echo "CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}"
         echo "CORE_SYMBOL_NAME: ${CORE_SYMBOL_NAME}"
         echo "BOOST_LOCATION: ${BOOST_LOCATION}"
-        echo "INSTALL_LOCATION: ${INSTALL_LOCATION}"
         echo "BUILD_DIR: ${BUILD_DIR}"
         echo "EOSIO_INSTALL_DIR: ${EOSIO_INSTALL_DIR}"
         echo "NONINTERACTIVE: ${NONINTERACTIVE}"
@@ -77,22 +76,24 @@ function install-directory-prompt() {
   if [[ -z $INSTALL_LOCATION ]]; then
     echo "No installation location was specified. Please provide the location where EOSIO is installed."
     while true; do
-      [[ $NONINTERACTIVE == false ]] && printf "${COLOR_YELLOW}Do you wish to use the default location? (y/n)${COLOR_NC}" && read -p " " PROCEED
+      [[ $NONINTERACTIVE == false ]] && printf "${COLOR_YELLOW}Do you wish to use the default location? ${EOSIO_INSTALL_DIR}? (y/n)${COLOR_NC}" && read -p " " PROCEED
       echo ""
       case $PROCEED in
-        "" ) echo "What would you like to do?";;
+        "" )
+          echo "What would you like to do?";;
         0 | true | [Yy]* )
-          INSTALL_LOCATION=${HOME};
           break;;
         1 | false | [Nn]* )
-          printf "Enter the desired installation location." && read -p " " INSTALL_LOCATION;
+          printf "Enter the desired installation location." && read -p " " EOSIO_INSTALL_DIR;
+          export EOSIO_INSTALL_DIR;
           break;;
         * ) echo "Please type 'y' for yes or 'n' for no.";;
       esac
     done
-  # Many environment variables rely on INSTALL_LOCATION. Sourcing again...
-  . ./scripts/.environment
+  else
+    export EOSIO_INSTALL_DIR=${INSTALL_LOCATION}
   fi
+  . ./scripts/.build_vars
   echo "EOSIO will be installed to: ${EOSIO_INSTALL_DIR}"
 }
 
