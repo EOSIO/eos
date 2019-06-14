@@ -131,10 +131,10 @@ public:
         return r;
     }
 
-    auto payfee( name caller, name payer, asset quantity ) {
-        auto r = base_tester::push_action(config::system_account_name, N(fee), caller, mvo()
+    auto torewards( name caller, name payer, asset amount ) {
+        auto r = base_tester::push_action(config::system_account_name, N(torewards), caller, mvo()
                 ("payer", payer)
-                ("quantity", quantity)
+                ("amount", amount)
         );
         produce_block();
         return r;
@@ -335,8 +335,8 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         // Spend some time so the producer pay pool is filled by the inflation rate
         produce_min_num_of_blocks_to_spend_time_wo_inactive_prod(fc::seconds(30 * 24 * 3600)); // 30 days
 
-        BOOST_REQUIRE_THROW(payfee(N(b1), config::system_account_name, core_from_string("100.0000")), missing_auth_exception);
-        payfee(config::system_account_name, config::system_account_name, core_from_string("100.0000"));
+        BOOST_REQUIRE_THROW(torewards(N(b1), config::system_account_name, core_from_string("100.0000")), missing_auth_exception);
+        torewards(config::system_account_name, config::system_account_name, core_from_string("100.0000"));
         BOOST_REQUIRE_EQUAL(get_balance(N(eosio.saving)).get_amount(), 10'0000);
         BOOST_REQUIRE_EQUAL(get_balance(N(eosio.bpay)).get_amount(), 20'0000);
         BOOST_REQUIRE_EQUAL(get_balance(N(eosio.vpay)).get_amount(), 70'0000);
