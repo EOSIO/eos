@@ -1854,7 +1854,7 @@ bool producer_plugin_impl::maybe_produce_block() {
          return false;
       } FC_LOG_AND_DROP();
    } catch ( boost::interprocess::bad_alloc&) {
-      raise(SIGUSR1);
+      chain_plugin::handle_db_exhaustion();
       return false;
    }
 

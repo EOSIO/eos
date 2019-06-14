@@ -1,7 +1,18 @@
 {
-    "eosio-base-images":
+    "eosio":
     {
-        "pipeline-branch": "develop"
+        "environment":
+        {
+            "HELPER_ENABLED": true,
+            "IMAGE_TAG": "1.9.0-develop"
+        }
+    },
+    "eosio-build-unpinned":
+    {
+        "environment":
+        {
+            "HELPER_ENABLED": true
+        }
     },
     "eosio-lrt":
     {
