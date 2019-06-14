@@ -2789,7 +2789,8 @@ int main( int argc, char** argv ) {
       if (!suppress_duplicate_check) {
          try {
             const auto result = call(get_raw_abi_func, fc::mutable_variant_object("account_name", account));
-            old_abi = result["abi"].as_blob().data;
+            const std::string abi = fc::base64_decode(result["abi"].as_string());
+            old_abi = bytes{abi.begin(), abi.end()};
          } catch (...) {
             std::cerr << "Failed to get existing raw abi, continue without duplicate check..." << std::endl;
             suppress_duplicate_check = true;
