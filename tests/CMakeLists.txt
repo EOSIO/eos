@@ -6,7 +6,7 @@ if( GPERFTOOLS_FOUND )
     list( APPEND PLATFORM_SPECIFIC_LIBS tcmalloc )
 endif()
 
-find_package(LLVM 4.0 REQUIRED CONFIG)
+find_package(LLVM REQUIRED CONFIG)
 
 link_directories(${LLVM_LIBRARY_DIR})
 
