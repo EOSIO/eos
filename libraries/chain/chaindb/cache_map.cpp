@@ -184,7 +184,8 @@ namespace cyberway { namespace chaindb {
             }
 
             if (!tmp_prev_state) {
-                tmp_obj_ptr->release();
+                object_ptr->state_ = nullptr;
+                cell->map->release_cache_object(*object_ptr, is_deleted);
                 return;
             }
 
@@ -194,8 +195,6 @@ namespace cyberway { namespace chaindb {
             if (pending_prev_state) {
                 pending_prev_state->is_deleted = is_deleted;
             }
-
-            prev_state = nullptr;
         }
 
         void commit() {
@@ -215,8 +214,8 @@ namespace cyberway { namespace chaindb {
             }
 
             if (is_deleted) {
-                object_ptr->release();
-                object_ptr.reset();
+                object_ptr->state_ = nullptr;
+                cell->map->release_cache_object(*object_ptr, is_deleted);
             }
         }
 
@@ -322,7 +321,8 @@ namespace cyberway { namespace chaindb {
             }
 
             if (object_ptr->has_cell()) {
-                object_ptr->release();
+                object_ptr->state_ = nullptr;
+                cell->map->release_cache_object(*object_ptr, false);
             }
             object_ptr.reset();
         }
@@ -399,7 +399,7 @@ namespace cyberway { namespace chaindb {
             for (auto& state: state_list) if (state.object_ptr) {
                 assert(state.object_ptr->is_same_cell(*this));
                 state.itr = state_list.end();
-                map->remove_cache_object(*state.object_ptr.get());
+                map->remove_cache_object(*state.object_ptr);
             }
 
             state_list.clear();
@@ -503,14 +503,14 @@ namespace cyberway { namespace chaindb {
         void remove_cache_object(const service_state& key) {
             auto obj_ptr = find(key);
             if (obj_ptr) {
-                remove_cache_object(*obj_ptr.get());
+                remove_cache_object(*obj_ptr);
             }
         }
 
         void remove_cache_object(cache_object& obj) {
             assert(!obj.is_deleted());
 
-            auto is_released = delete_cache_object(obj, obj.indicies_);
+            auto is_released = delete_cache_object(obj);
             if (is_released) {
                 auto& tmp_state = *obj.state_;
                 obj.state_ = nullptr;
@@ -685,16 +685,16 @@ namespace cyberway { namespace chaindb {
                 "Tree with deleted object still has items");
         }
 
-        void release_cache_object(cache_object& obj, cache_indicies& indicies, const bool is_deleted) {
+        void release_cache_object(cache_object& cache_obj, const bool is_deleted) {
             if (is_deleted) {
-                auto itr = deleted_object_tree_.iterator_to(obj);
+                auto itr = deleted_object_tree_.iterator_to(cache_obj);
                 deleted_object_tree_.erase(itr);
             } else {
-                auto tree_itr = cache_object_tree_.iterator_to(obj);
+                auto tree_itr = cache_object_tree_.iterator_to(cache_obj);
                 cache_object_tree_.erase(tree_itr);
-                delete_cache_indicies(indicies);
+                delete_cache_indicies(cache_obj.indicies_);
 
-                auto service_itr = service_tree_.find(obj.object());
+                auto service_itr = service_tree_.find(cache_obj.object());
                 CYBERWAY_CACHE_ASSERT(service_tree_.end() != service_itr, "No service info on release object");
 
                 service_itr->second.cache_object_cnt--;
@@ -702,14 +702,14 @@ namespace cyberway { namespace chaindb {
                     service_tree_.erase(service_itr);
                 }
 
-                if (obj.has_cell()) {
-                    add_ram_usage(obj.cell(), -obj.service().size);
+                if (cache_obj.has_cell()) {
+                    add_ram_usage(cache_obj.cell(), -cache_obj.service().size);
                 }
             }
         }
 
-        bool delete_cache_object(cache_object& obj, cache_indicies& indicies) {
-            release_cache_object(obj, indicies, false);
+        bool delete_cache_object(cache_object& obj) {
+            release_cache_object(obj, false);
 
             if (!has_pending_cell() || obj.cell().kind == cache_cell::System) {
                 return true;
@@ -931,7 +931,7 @@ namespace cyberway { namespace chaindb {
 
             assert(!is_new_ptr || !is_del_ptr);
 
-            auto& cache_obj = *cache_obj_ptr.get();
+            auto& cache_obj = *cache_obj_ptr;
             auto& service = get_cache_service(value);
             convert_value(&service, cache_obj, std::move(value));
 
@@ -965,7 +965,7 @@ namespace cyberway { namespace chaindb {
 
             if (!is_new_ptr) {
                 // find object in RAM, and delete it from RAM
-                remove_cache_object(*obj_ptr.get());
+                remove_cache_object(*obj_ptr);
             } else if (has_pending_cell()) {
                 // find object in pending deletes, and don't add it to RAM
                 obj_ptr = find_in_deleted(value.service);
@@ -978,7 +978,7 @@ namespace cyberway { namespace chaindb {
             }
 
             auto service_ptr = find_cache_service(value);
-            convert_value(service_ptr, *obj_ptr.get(), std::move(value));
+            convert_value(service_ptr, *obj_ptr, std::move(value));
             return obj_ptr;
         }
 
@@ -1052,19 +1052,6 @@ namespace cyberway { namespace chaindb {
         auto tmp = state_;
         state_ = &state;
         return tmp;
-    }
-
-    void cache_object::release() {
-        auto state = state_;
-        state_ = nullptr;
-
-        auto lru_state_ptr = lru_cache_object_state::cast(state);
-        if (lru_state_ptr) {
-            lru_state_ptr->cell->map->release_cache_object(*this, indicies_, false);
-        } else {
-            auto& pending_state = pending_cache_object_state::cast(*state);
-            pending_state.cell->map->release_cache_object(*this, indicies_, pending_state.is_deleted);
-        }
     }
 
     bool cache_object::is_deleted() const {

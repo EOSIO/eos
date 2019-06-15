@@ -85,6 +85,7 @@ namespace cyberway { namespace chaindb {
     private:
         friend class  cache_map_impl;
         friend struct lru_cache_cell;
+        friend struct lru_cache_object_state;
         friend struct system_cache_cell;
         friend struct pending_cache_cell;
         friend struct pending_cache_object_state;
@@ -115,8 +116,6 @@ namespace cyberway { namespace chaindb {
                 object_.service.scope == request.scope &&
                 object_.service.table == request.table;
         }
-
-        void release();
 
         template <typename T, typename... Args> void set_data(Args&&... args) {
             data_ = std::make_unique<T>(*this, std::forward<Args>(args)...);
