@@ -226,20 +226,24 @@ namespace cyberway { namespace chaindb {
             assert(max_distance_ > 0);
         }
 
-        void emplace(cache_object_ptr obj_ptr, const bool is_deleted) {
+        void emplace(cache_object_ptr obj_ptr, const bool is_deleted = false, const bool copy_prev = false) {
             assert(obj_ptr);
+            assert(!copy_prev || obj_ptr->cell().kind == cache_cell::Pending);
 
-            auto& state = emplace_impl(std::move(obj_ptr), is_deleted);
-            add_ram_usage(state);
-        }
+            state_list.emplace_back(*this, std::move(obj_ptr));
 
-        void emplace(cache_object_ptr obj_ptr, const bool is_deleted, cache_object_state* prev_state) {
-            assert(obj_ptr);
-            assert(obj_ptr->cell().kind == cache_cell::Pending);
+            auto& state = state_list.back();
+            auto  prev_state = state.object_ptr->swap_state(state);
 
-            // squash case - don't add ram usage
-            auto& state = emplace_impl(std::move(obj_ptr), is_deleted);
-            state.prev_state = prev_state;
+            if (copy_prev) {
+                auto& pending_prev_state = pending_cache_object_state::cast(*prev_state);
+                state.prev_state = pending_prev_state.prev_state;
+                state.is_deleted = pending_prev_state.is_deleted;
+            } else {
+                state.prev_state = prev_state;
+                state.is_deleted = is_deleted;
+                add_ram_usage(state);
+            }
         }
 
         void squash_revision() {
@@ -255,7 +259,7 @@ namespace cyberway { namespace chaindb {
 
     private:
         void add_ram_usage(const pending_cache_object_state& state) {
-            auto object_size = state.object_ptr->object().service.size;
+            auto object_size = state.object_ptr->service().size;
             if (!object_size) {
                 return;
             }
@@ -267,20 +271,6 @@ namespace cyberway { namespace chaindb {
             CYBERWAY_CACHE_ASSERT(UINT64_MAX - size >= delta, "Pending delta would overflow UINT64_MAX");
             size += delta;
 
-        }
-
-        pending_cache_object_state& emplace_impl(cache_object_ptr obj_ptr, const bool is_deleted) {
-            assert(obj_ptr);
-
-            state_list.emplace_back(*this, std::move(obj_ptr));
-
-            auto& state = state_list.back();
-            auto  prev_state = state.object_ptr->swap_state(state);
-
-            state.prev_state = prev_state;
-            state.is_deleted = is_deleted;
-
-            return state;
         }
 
         revision_t revision_ = impossible_revision;
@@ -612,7 +602,8 @@ namespace cyberway { namespace chaindb {
             for (auto& state: pending.state_list) {
                 state.commit();
                 if (!state.is_deleted) {
-                    add_lru_object(std::move(state.object_ptr));
+                    add_ram_usage(lru, state.object_ptr->service().size);
+                    lru.emplace(std::move(state.object_ptr));
                 }
             }
             pending_cell_list_.pop_back();
@@ -649,7 +640,7 @@ namespace cyberway { namespace chaindb {
                 if (!src_state.prev_state && src_state.is_deleted) {
                     // undo it
                 } else if (!src_state.prev_state || src_state.prev_state->cell != &dst_cell) {
-                    dst_cell.emplace(std::move(src_state.object_ptr), src_state.is_deleted, src_state.prev_state);
+                    dst_cell.emplace(std::move(src_state.object_ptr), false, true);
                 }
             }
 
@@ -765,7 +756,7 @@ namespace cyberway { namespace chaindb {
             }
 
             if (!obj_ptr->has_cell() || cache_cell::LRU == obj_ptr->cell().kind) {
-                pending_ptr->emplace(std::move(obj_ptr), false);
+                pending_ptr->emplace(std::move(obj_ptr), false, false);
             }
         }
 
@@ -802,7 +793,7 @@ namespace cyberway { namespace chaindb {
                     assert(false);
             }
 
-            pending_ptr->emplace(std::move(obj_ptr), is_deleted);
+            pending_ptr->emplace(std::move(obj_ptr), is_deleted, false);
         }
 
         pending_cache_cell* find_pending_cell() {
