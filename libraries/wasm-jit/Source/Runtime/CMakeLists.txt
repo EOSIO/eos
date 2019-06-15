@@ -23,7 +23,7 @@ include_directories(${WAVM_INCLUDE_DIR}/Runtime)
 add_library(Runtime STATIC ${Sources} ${PublicHeaders})
 
 # Find an installed build of LLVM
-find_package(LLVM 4.0 REQUIRED CONFIG)
+find_package(LLVM REQUIRED CONFIG)
 
 # Include the LLVM headers
 include_directories(${LLVM_INCLUDE_DIRS})
@@ -34,7 +34,7 @@ add_definitions(-DRUNTIME_API=DLL_EXPORT)
 target_include_directories( Runtime PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../../../chain/include )
 
 # Link against the LLVM libraries
-llvm_map_components_to_libnames(LLVM_LIBS support core passes mcjit native DebugInfoDWARF)
+llvm_map_components_to_libnames(LLVM_LIBS support core passes mcjit native DebugInfoDWARF orcjit)
 target_link_libraries(Runtime Platform Logging IR ${LLVM_LIBS})
 
 install(TARGETS Runtime 
