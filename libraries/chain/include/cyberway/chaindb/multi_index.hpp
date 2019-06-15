@@ -718,7 +718,7 @@ public:
 
             return {obj, delta};
         } catch (...) {
-            cache_ptr->mark_deleted();
+            controller_.destroy_cache_object(*cache_ptr.get());
             throw;
         }
 

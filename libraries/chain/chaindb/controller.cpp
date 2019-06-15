@@ -275,6 +275,10 @@ namespace cyberway { namespace chaindb {
             return cache_.create(table, pk, storage);
         }
 
+        void destroy_cache_object(cache_object& obj) {
+            cache_.destroy(obj);
+        }
+
         cache_object_ptr get_cache_object(const cursor_request& req, const bool with_blob) {
             auto& cursor = current(req);
 
@@ -742,6 +746,10 @@ namespace cyberway { namespace chaindb {
 
     account_abi_info chaindb_controller::get_account_abi_info(const account_name_t code) const {
         return impl_->get_account_abi_info(code);
+    }
+
+    void chaindb_controller::destroy_cache_object(cache_object& obj) const {
+        return impl_->destroy_cache_object(obj);
     }
 
     primary_key_t chaindb_controller::available_pk(const table_request& request) const {

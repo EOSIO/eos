@@ -16,6 +16,9 @@ namespace cyberway { namespace chaindb {
 
         cache_object_ptr create(const table_info&, primary_key_t, const storage_payer_info&) const;
         cache_object_ptr create(const table_info&, const storage_payer_info&) const;
+
+        void destroy(cache_object& obj) const;
+
         cache_object_ptr find(const service_state&) const;
         cache_object_ptr find(const service_state&, index_name_t, const char*, size_t) const;
 

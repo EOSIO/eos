@@ -116,7 +116,6 @@ namespace cyberway { namespace chaindb {
                 object_.service.table == request.table;
         }
 
-        void mark_deleted();
         void release();
 
         template <typename T, typename... Args> void set_data(Args&&... args) {

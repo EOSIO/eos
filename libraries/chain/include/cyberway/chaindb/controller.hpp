@@ -157,6 +157,8 @@ namespace cyberway { namespace chaindb {
         cache_object_ptr get_cache_object(const cursor_request&, bool with_blob) const;
         account_abi_info get_account_abi_info(account_name_t) const;
 
+        void destroy_cache_object(cache_object&) const;
+
         primary_key_t available_pk(const table_request&) const;
 
         int insert(const table_request&, const storage_payer_info&, primary_key_t, const char*, size_t) const;

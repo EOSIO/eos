@@ -399,7 +399,7 @@ namespace cyberway { namespace chaindb {
             for (auto& state: state_list) if (state.object_ptr) {
                 assert(state.object_ptr->is_same_cell(*this));
                 state.itr = state_list.end();
-                state.object_ptr->mark_deleted();
+                map->remove_cache_object(*state.object_ptr.get());
             }
 
             state_list.clear();
@@ -503,7 +503,18 @@ namespace cyberway { namespace chaindb {
         void remove_cache_object(const service_state& key) {
             auto obj_ptr = find(key);
             if (obj_ptr) {
-                obj_ptr->mark_deleted();
+                remove_cache_object(*obj_ptr.get());
+            }
+        }
+
+        void remove_cache_object(cache_object& obj) {
+            assert(!obj.is_deleted());
+
+            auto is_released = delete_cache_object(obj, obj.indicies_);
+            if (is_released) {
+                auto& tmp_state = *obj.state_;
+                obj.state_ = nullptr;
+                tmp_state.reset();
             }
         }
 
@@ -542,7 +553,7 @@ namespace cyberway { namespace chaindb {
 
             cache_obj.object_.service = std::move(service);
             if (!cache_obj.service().in_ram && cache_obj.has_cell()) {
-                cache_obj.mark_deleted();
+                remove_cache_object(cache_obj);
             }
         }
 
@@ -954,7 +965,7 @@ namespace cyberway { namespace chaindb {
 
             if (!is_new_ptr) {
                 // find object in RAM, and delete it from RAM
-                obj_ptr->mark_deleted();
+                remove_cache_object(*obj_ptr.get());
             } else if (has_pending_cell()) {
                 // find object in pending deletes, and don't add it to RAM
                 obj_ptr = find_in_deleted(value.service);
@@ -1043,17 +1054,6 @@ namespace cyberway { namespace chaindb {
         return tmp;
     }
 
-    void cache_object::mark_deleted() {
-        assert(!is_deleted());
-
-        auto is_released = map().delete_cache_object(*this, indicies_);
-        if (is_released) {
-            auto& tmp_state = *state_;
-            state_ = nullptr;
-            tmp_state.reset();
-        }
-    }
-
     void cache_object::release() {
         auto state = state_;
         state_ = nullptr;
@@ -1109,6 +1109,10 @@ namespace cyberway { namespace chaindb {
         obj.service.payer  = storage.owner;
         obj.service.in_ram = true;
         return impl_->emplace(info, std::move(obj));
+    }
+
+    void cache_map::destroy(cache_object& obj) const {
+        return impl_->remove_cache_object(obj);
     }
 
     void cache_map::set_next_pk(const table_info& table, const primary_key_t pk) const {
