@@ -51,14 +51,24 @@ namespace cyberway { namespace chaindb {
         }; // enum cell_kind
 
         cache_map_impl* const map  = nullptr;
-        const cache_cell_kind kind = Unknown;
 
-        uint64_t pos  = 0;
         uint64_t size = 0;
 
-        cache_cell(cache_map_impl& m, cache_cell_kind k)
-        : map(&m), kind(k) {
+        cache_cell(cache_map_impl& m, uint64_t p, cache_cell_kind k)
+        : map(&m), pos_(p), kind_(k) {
         }
+
+        cache_cell_kind kind() const {
+            return kind_;
+        }
+
+        uint64_t pos() const {
+            return pos_;
+        }
+
+    protected:
+        const uint64_t pos_ = 0;
+        cache_cell_kind kind_ = Unknown;
     }; // struct cache_cell
 
     struct cache_object_state {
@@ -70,6 +80,7 @@ namespace cyberway { namespace chaindb {
         }
 
         void reset();
+        cache_cell::cache_cell_kind kind() const;
     }; // struct cache_object_state
 
     class cache_object final:
@@ -87,12 +98,13 @@ namespace cyberway { namespace chaindb {
         friend struct lru_cache_cell;
         friend struct lru_cache_object_state;
         friend struct system_cache_cell;
-        friend struct pending_cache_cell;
-        friend struct pending_cache_object_state;
 
-        cache_cell&         cell();
-        cache_map_impl&     map();
-        cache_object_state& state();
+        using cache_cell_kind = cache_cell::cache_cell_kind;
+
+        cache_cell&         cell() const;
+        cache_cell_kind     kind() const;
+        cache_map_impl&     map() const;
+        cache_object_state& state() const;
         cache_object_state* swap_state(cache_object_state& state);
 
     public:

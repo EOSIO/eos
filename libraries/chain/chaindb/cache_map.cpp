@@ -149,137 +149,6 @@ namespace cyberway { namespace chaindb {
 
     //---------------------------------------
 
-    struct pending_cache_object_state final: public cache_object_state {
-        using cache_object_state::cache_object_state;
-
-        ~pending_cache_object_state() {
-            reset();
-        }
-
-        static pending_cache_object_state* cast(cache_object_state* state) {
-            if (state && state->cell && cache_cell::Pending == state->cell->kind) {
-                return static_cast<pending_cache_object_state*>(state);
-            }
-            return nullptr;
-        }
-
-        static pending_cache_object_state& cast(cache_object_state& state) {
-            auto pending_ptr = cast(&state);
-            assert(pending_ptr);
-            return *pending_ptr;
-        }
-
-        void reset() {
-            if (!object_ptr) {
-                return;
-            }
-
-            auto tmp_obj_ptr = std::move(object_ptr);
-
-            auto tmp_prev_state = prev_state;
-            prev_state = nullptr;
-
-            if (!tmp_obj_ptr->is_same_cell(*cell)) {
-                return;
-            }
-
-            if (!tmp_prev_state) {
-                object_ptr->state_ = nullptr;
-                cell->map->release_cache_object(*object_ptr, is_deleted);
-                return;
-            }
-
-            tmp_obj_ptr->swap_state(*tmp_prev_state);
-
-            auto pending_prev_state = cast(tmp_prev_state);
-            if (pending_prev_state) {
-                pending_prev_state->is_deleted = is_deleted;
-            }
-        }
-
-        void commit() {
-            if (!object_ptr) {
-                return;
-            }
-
-            if (prev_state) {
-                prev_state->object_ptr.reset();
-            }
-            prev_state = nullptr;
-
-            if (is_deleted) {
-                object_ptr->state_ = nullptr;
-                cell->map->release_cache_object(*object_ptr, is_deleted);
-            }
-        }
-
-        cache_object_state* prev_state = nullptr;
-        bool is_deleted = false;
-    }; // struct pending_cache_object_state
-
-    struct pending_cache_cell final: public cache_cell {
-        pending_cache_cell(cache_map_impl& m, const revision_t r, const uint64_t d)
-        : cache_cell(m, cache_cell::Pending),
-          revision_(r),
-          max_distance_(d) {
-            assert(revision_ >= start_revision);
-            assert(max_distance_ > 0);
-        }
-
-        void emplace(cache_object_ptr obj_ptr, const bool is_deleted = false, const bool copy_prev = false) {
-            assert(obj_ptr);
-            assert(!copy_prev || obj_ptr->cell().kind == cache_cell::Pending);
-
-            state_list.emplace_back(*this, std::move(obj_ptr));
-
-            auto& state = state_list.back();
-            auto  prev_state = state.object_ptr->swap_state(state);
-
-            if (copy_prev) {
-                auto& pending_prev_state = pending_cache_object_state::cast(*prev_state);
-                state.prev_state = pending_prev_state.prev_state;
-                state.is_deleted = pending_prev_state.is_deleted;
-            } else {
-                state.prev_state = prev_state;
-                state.is_deleted = is_deleted;
-                add_ram_bytes(state);
-            }
-        }
-
-        void squash_revision() {
-            revision_--;
-            assert(revision_ >= start_revision);
-        }
-
-        revision_t revision() {
-            return revision_;
-        }
-
-        uint64_t ram_bytes = 0;
-        std::deque<pending_cache_object_state> state_list; // Expansion of a std::deque is cheaper than the expansion of a std::vector
-
-    private:
-        void add_ram_bytes(const pending_cache_object_state& state) {
-            auto object_size = state.object_ptr->service().size;
-            if (!object_size) {
-                return;
-            }
-    
-            auto delta = state.prev_state ?
-                std::max(eosio::chain::int_arithmetic::safe_prop<uint64_t>(object_size, pos - state.prev_state->cell->pos, max_distance_), uint64_t(1)) : 
-                object_size * config::ram_load_multiplier;
-                
-            CYBERWAY_CACHE_ASSERT(UINT64_MAX - ram_bytes >= delta, "Pending delta would overflow UINT64_MAX");
-            ram_bytes += delta;
-
-        }
-
-        revision_t revision_ = impossible_revision;
-        const uint64_t max_distance_ = 0;
-    }; // struct pending_cache_cell
-
-    //---------------------------------------
-
     struct lru_cache_object_state final: public cache_object_state {
         using cache_object_state::cache_object_state;
 
@@ -288,7 +157,7 @@ namespace cyberway { namespace chaindb {
         }
 
         static lru_cache_object_state* cast(cache_object_state* state) {
-            if (state && state->cell && cache_cell::LRU == state->cell->kind) {
+            if (state && state->cell && (cache_cell::Pending == state->kind() || cache_cell::LRU == state->kind())) {
                 return static_cast<lru_cache_object_state*>(state);
             }
             return nullptr;
@@ -300,37 +169,109 @@ namespace cyberway { namespace chaindb {
             return *lru_ptr;
         }
 
-        void reset() {
-            if (!object_ptr) {
-                return;
-            }
+        void commit();
+        void reset();
 
-            if (object_ptr->has_cell()) {
-                object_ptr->state_ = nullptr;
-                cell->map->release_cache_object(*object_ptr, false);
-            }
-            object_ptr.reset();
-        }
+        lru_cache_object_state* prev_state = nullptr;
+        bool is_deleted = false;
     }; // struct lru_cache_object_state
 
     struct lru_cache_cell final: public cache_cell {
-        lru_cache_cell(cache_map_impl& m, const uint64_t p)
-        : cache_cell(m, cache_cell::LRU) {
-            pos = p;
+        lru_cache_cell(cache_map_impl& m, const uint64_t p, const revision_t r, const uint64_t d)
+        : cache_cell(m, p, cache_cell::Pending),
+          revision_(r),
+          max_distance_(d) {
+            assert(revision_ >= start_revision);
+            assert(max_distance_ > 0);
         }
 
-        void emplace(cache_object_ptr obj_ptr) {
-            state_list.emplace_back(*this, std::move(obj_ptr));
+        void emplace(cache_object_ptr obj_ptr, const bool is_deleted) {
+            assert(obj_ptr);
+            assert(cache_cell::Pending == kind());
 
+            auto  lru_prev_state = emplace_impl(std::move(obj_ptr));
             auto& state = state_list.back();
-            auto* prev_state = state.object_ptr->swap_state(state);
 
-            if (prev_state) {
-                prev_state->reset();
+            state.prev_state = lru_prev_state;
+            state.is_deleted = is_deleted;
+            add_ram_bytes(state);
+        }
+
+        void squash_revision(lru_cache_cell& src_cell) {
+            for (auto& src_state: src_cell.state_list) {
+                if (!src_state.prev_state && src_state.is_deleted) {
+                    // undo it
+                } else if (!src_state.prev_state || src_state.prev_state->cell != this) {
+                    auto  lru_prev_state = emplace_impl(std::move(src_state.object_ptr));
+                    auto& state = state_list.back();
+
+                    state.prev_state = lru_prev_state->prev_state;
+                    state.is_deleted = lru_prev_state->is_deleted;
+                }
             }
         }
 
+        int64_t commit_revision() {
+            int64_t commited_size = 0;
+
+            kind_ = cache_cell::LRU;
+
+            for (auto& state: state_list) {
+                state.commit();
+                if (!state.is_deleted) {
+                    auto delta = state.object_ptr->service().size;
+                    CYBERWAY_CACHE_ASSERT(UINT64_MAX - commited_size >= delta, "Commiting delta would overflow UINT64_MAX");
+                    commited_size += delta;
+                }
+            }
+
+            return commited_size;
+        }
+
+        revision_t revision() const {
+            return revision_;
+        }
+
+        uint64_t ram_bytes() const {
+            return ram_bytes_;
+        }
+
         std::deque<lru_cache_object_state> state_list; // Expansion of a std::deque is cheaper than the expansion of a std::vector
+
+    private:
+        lru_cache_object_state* emplace_impl(cache_object_ptr obj_ptr) {
+            state_list.emplace_back(*this, std::move(obj_ptr));
+
+            auto& state = state_list.back();
+            auto  prev_state = state.object_ptr->swap_state(state);
+            auto  lru_prev_state = lru_cache_object_state::cast(prev_state);
+            assert(!prev_state || lru_prev_state);
+
+            return lru_prev_state;
+        }
+
+        void add_ram_bytes(const lru_cache_object_state& state) {
+            assert(cache_cell::Pending == kind());
+
+            auto object_size = state.object_ptr->service().size;
+            if (!object_size) {
+                return;
+            }
+
+            auto delta = state.prev_state ?
+               std::max(
+                   eosio::chain::int_arithmetic::safe_prop<uint64_t>(
+                       object_size, pos() - state.prev_state->cell->pos(), max_distance_),
+                   uint64_t(1)) :
+               object_size * config::ram_load_multiplier;
+
+            CYBERWAY_CACHE_ASSERT(UINT64_MAX - ram_bytes_ >= delta, "Pending delta would overflow UINT64_MAX");
+            ram_bytes_ += delta;
+        }
+
+        uint64_t ram_bytes_ = 0;
+        revision_t revision_ = impossible_revision;
+        const uint64_t max_distance_ = 0;
     }; // struct lru_cache_cell
 
     //---------------------------------------
@@ -343,7 +284,7 @@ namespace cyberway { namespace chaindb {
         }
 
         static system_cache_object_state* cast(cache_object_state* state) {
-            if (state && state->cell && cache_cell::System == state->cell->kind) {
+            if (state && state->cell && cache_cell::System == state->kind()) {
                 return static_cast<system_cache_object_state*>(state);
             }
             return nullptr;
@@ -362,22 +303,14 @@ namespace cyberway { namespace chaindb {
 
     struct system_cache_cell final: public cache_cell {
         system_cache_cell(cache_map_impl& m)
-        : cache_cell(m, cache_cell::System) {
+        : cache_cell(m, 0, cache_cell::System) {
         }
 
         ~system_cache_cell() {
             clear();
         }
 
-        void clear() {
-            for (auto& state: state_list) if (state.object_ptr) {
-                assert(state.object_ptr->is_same_cell(*this));
-                state.itr = state_list.end();
-                map->remove_cache_object(*state.object_ptr);
-            }
-
-            state_list.clear();
-        }
+        void clear();
 
         void emplace(cache_object_ptr obj_ptr) {
             size += obj_ptr->service().size;
@@ -393,47 +326,6 @@ namespace cyberway { namespace chaindb {
 
         std::list<system_cache_object_state> state_list;
     }; // struct system_cache_cell
-
-    void system_cache_object_state::reset() {
-        if (!object_ptr) {
-            return;
-        }
-
-        assert(!object_ptr->has_cell());
-
-        auto system_cell = static_cast<system_cache_cell*>(cell);
-        auto system_itr  = itr;
-
-        object_ptr.reset();
-
-        if (system_cell->state_list.end() != system_itr) {
-            itr = system_cell->state_list.end();
-            system_cell->state_list.erase(system_itr);
-        }
-    }
-
-    //---------------------------------------
-
-    void cache_object_state::reset() {
-        switch (cell->kind) {
-            case cache_cell::System:
-                system_cache_object_state::cast(*this).reset();
-                break;
-
-            case cache_cell::Pending:
-                pending_cache_object_state::cast(*this).reset();
-                break;
-
-            case cache_cell::LRU: {
-                lru_cache_object_state::cast(*this).reset();
-                break;
-            }
-
-            case cache_cell::Unknown:
-            default:
-                assert(false);
-        }
-    }
 
     //---------------------------------------
 
@@ -484,9 +376,9 @@ namespace cyberway { namespace chaindb {
         void remove_cache_object(cache_object& obj) {
             assert(!obj.is_deleted());
 
-            release_cache_object(obj, false);
+            release_cache_object(obj, obj.is_deleted());
 
-            if (!has_pending_cell() || obj.cell().kind == cache_cell::System) {
+            if (!has_pending_cell() || obj.kind() == cache_cell::System) {
                 auto& tmp_state = *obj.state_;
                 obj.state_ = nullptr;
                 tmp_state.reset();
@@ -574,44 +466,37 @@ namespace cyberway { namespace chaindb {
         }
 
         uint64_t calc_ram_bytes(const revision_t revision) {
-            return get_pending_cell(revision).ram_bytes;
+            return get_pending_cell(revision).ram_bytes();
         }
 
         void set_revision(const revision_t revision) {
-            if (lru_cell_list_.empty() || !lru_cell_list_.back().state_list.empty()) {
-                uint64_t pos = 0;
-                if (!lru_cell_list_.empty()) {
-                    pos = lru_cell_list_.back().pos;
-                }
-                lru_cell_list_.emplace_back(*this, pos);
-            }
             lru_revision_ = revision;
         }
 
         void start_session(const revision_t revision) {
-            pending_cell_list_.emplace_back(*this, revision, ram_limit_);
-            auto& pending = pending_cell_list_.back();
+            uint64_t pos = 0;
+
             if (!lru_cell_list_.empty()) {
-                auto& lru = lru_cell_list_.back();
-                pending.pos = lru.pos + lru.size;
+                auto& lru_cell = lru_cell_list_.back();
+                pos = lru_cell.pos();
+                if (lru_cell.kind() == cache_cell::LRU) {
+                    pos += lru_cell.size;
+                }
             }
+
+            lru_cell_list_.emplace_back(*this, pos, revision, ram_limit_);
+            pending_cell_list_.emplace_back(&lru_cell_list_.back());
         }
 
         void push_session(const revision_t revision) {
-            CYBERWAY_CACHE_ASSERT(!pending_cell_list_.empty(), "Push session for empty pending caches");
+            CYBERWAY_CACHE_ASSERT(has_pending_cell(), "Push session for empty pending caches");
             auto& pending = get_pending_cell(revision);
 
             set_revision(revision - 1);
-            auto& lru = lru_cell_list_.back();
-            lru.pos = pending.pos;
+            auto size = pending.commit_revision();
 
-            for (auto& state: pending.state_list) {
-                state.commit();
-                if (!state.is_deleted) {
-                    add_ram_usage(lru, state.object_ptr->service().size);
-                    lru.emplace(std::move(state.object_ptr));
-                }
-            }
+            add_ram_usage(pending, size);
+
             pending_cell_list_.pop_back();
             CYBERWAY_CACHE_ASSERT(pending_cell_list_.empty(), "After pushing session still exist pending caches");
             CYBERWAY_CACHE_ASSERT(deleted_object_tree_.empty(), "Tree with deleted object still has items");
@@ -620,10 +505,10 @@ namespace cyberway { namespace chaindb {
         }
 
         void squash_session(const revision_t revision) {
-            CYBERWAY_CACHE_ASSERT(!pending_cell_list_.empty(), "Squash session for empty pending caches");
+            CYBERWAY_CACHE_ASSERT(has_pending_cell(), "Squash session for empty pending caches");
 
             auto itr = pending_cell_list_.end();
-            --itr; auto& src_cell =*itr;
+            --itr; auto& src_cell = *(*itr);
             CYBERWAY_CACHE_ASSERT(revision == src_cell.revision(), "Wrong revision of top pending caches");
 
             // replay and squashing system transaction to LRU
@@ -633,23 +518,10 @@ namespace cyberway { namespace chaindb {
                 return push_session(revision);
             }
 
-            --itr; auto& dst_cell =*itr;
+            --itr; auto& dst_cell = *(*itr);
             CYBERWAY_CACHE_ASSERT(revision - 1 == dst_cell.revision(), "Wrong revision of pending caches");
-            
-            if (pending_cell_list_.begin() == itr && dst_cell.state_list.empty()) {
-                src_cell.squash_revision();
-                pending_cell_list_.pop_front();
-                return;
-            } 
-                
-            for (auto& src_state: src_cell.state_list) {
-                if (!src_state.prev_state && src_state.is_deleted) {
-                    // undo it
-                } else if (!src_state.prev_state || src_state.prev_state->cell != &dst_cell) {
-                    dst_cell.emplace(std::move(src_state.object_ptr), false, true);
-                }
-            }
 
+            dst_cell.squash_revision(src_cell);
             pending_cell_list_.pop_back();
         }
 
@@ -661,6 +533,8 @@ namespace cyberway { namespace chaindb {
 
             auto& pending = get_pending_cell(revision);
             pending_cell_list_.pop_back();
+            lru_cell_list_.pop_back();
+
             CYBERWAY_CACHE_ASSERT(!pending_cell_list_.empty() || deleted_object_tree_.empty(),
                 "Tree with deleted object still has items");
         }
@@ -692,7 +566,7 @@ namespace cyberway { namespace chaindb {
         using cache_object_tree_type = intr::set<cache_object, intr::constant_time_size<false>>;
         using cache_index_tree_type  = intr::set<cache_index_value, intr::constant_time_size<false>>;
         using lru_cell_list_type     = std::deque<lru_cache_cell>;
-        using pending_cell_list_type = std::deque<pending_cache_cell>;
+        using pending_cell_list_type = std::deque<lru_cache_cell*>;
         using service_tree_type      = fc::flat_map<cache_service_key, cache_service_info>;
 
         cache_object_tree_type cache_object_tree_;
@@ -727,18 +601,8 @@ namespace cyberway { namespace chaindb {
         }
 
         void add_system_object(cache_object_ptr obj_ptr) {
-            assert(obj_ptr && !obj_ptr->service().payer);
+            assert(obj_ptr && is_system_object(*obj_ptr));
             system_cell_.emplace(std::move(obj_ptr));
-        }
-
-        void add_lru_object(cache_object_ptr obj_ptr) {
-            assert(obj_ptr);
-            if (lru_cell_list_.empty()) {
-                set_revision(-1);
-            }
-            auto& lru = lru_cell_list_.back();
-            add_ram_usage(lru, obj_ptr->service().size);
-            lru.emplace(std::move(obj_ptr));
         }
 
         void add_pending_object(cache_object_ptr obj_ptr) {
@@ -749,8 +613,8 @@ namespace cyberway { namespace chaindb {
                 return;
             }
 
-            if (!obj_ptr->has_cell() || cache_cell::LRU == obj_ptr->cell().kind) {
-                pending_ptr->emplace(std::move(obj_ptr), false, false);
+            if (!obj_ptr->has_cell() || cache_cell::LRU == obj_ptr->kind()) {
+                pending_ptr->emplace(std::move(obj_ptr), false);
             }
         }
 
@@ -762,12 +626,12 @@ namespace cyberway { namespace chaindb {
                 return;
             }
 
-            if (obj_ptr->has_cell()) switch(obj_ptr->cell().kind) {
+            if (obj_ptr->has_cell()) switch(obj_ptr->kind()) {
                 case cache_cell::System:
                     return;
 
                 case cache_cell::Pending: {
-                    auto& state = pending_cache_object_state::cast(obj_ptr->state());
+                    auto& state = lru_cache_object_state::cast(obj_ptr->state());
                     if (state.is_deleted == is_deleted) {
                         return;
                     }
@@ -787,21 +651,21 @@ namespace cyberway { namespace chaindb {
                     assert(false);
             }
 
-            pending_ptr->emplace(std::move(obj_ptr), is_deleted, false);
+            pending_ptr->emplace(std::move(obj_ptr), is_deleted);
         }
 
-        pending_cache_cell* find_pending_cell() {
-            if (pending_cell_list_.empty()) {
+        lru_cache_cell* find_pending_cell() {
+            if (!has_pending_cell()) {
                 return nullptr;
             }
-            return &pending_cell_list_.back();
+            return pending_cell_list_.back();
         }
 
         bool has_pending_cell() const {
             return !pending_cell_list_.empty();
         }
 
-        pending_cache_cell& get_pending_cell(const revision_t revision) {
+        lru_cache_cell& get_pending_cell(const revision_t revision) {
             auto pending_ptr = find_pending_cell();
             CYBERWAY_CACHE_ASSERT(pending_ptr && pending_ptr->revision() == revision,
                 "Wrong pending revision ${pending_revision} != ${revision}",
@@ -879,6 +743,10 @@ namespace cyberway { namespace chaindb {
             return obj_ptr;
         }
 
+        bool is_system_object(const cache_object& cache_obj) const {
+            return !cache_obj.service().payer;
+        }
+
         cache_object_ptr emplace_in_ram(const table_info& table, object_value value) {
             auto cache_obj_ptr = find_in_cache(value.service);
             bool is_new_ptr = false;
@@ -908,16 +776,15 @@ namespace cyberway { namespace chaindb {
                 deleted_object_tree_.erase(itr);
                 add_pending_object(cache_obj_ptr, false);
             } else if (is_new_ptr) {
-                if (!value.service.payer) {
+                if (is_system_object(cache_obj)) {
                     add_system_object(cache_obj_ptr);
                 } else if (has_pending_cell()) {
                     add_pending_object(cache_obj_ptr);
-                } else {
-                    add_lru_object(cache_obj_ptr);
                 }
+                // return object but don't emplace it in cache_map
             }
 
-            if (is_new_ptr || is_del_ptr) {
+            if ((is_new_ptr || is_del_ptr) && cache_obj.has_cell()) {
                 cache_object_tree_.insert(cache_obj);
                 service.cache_object_cnt++;
             }
@@ -961,7 +828,7 @@ namespace cyberway { namespace chaindb {
         }
 
         void add_ram_usage(cache_cell& cell, const int64_t delta) {
-            if (!delta || cell.kind != cache_cell::LRU) {
+            if (!delta || cell.kind() != cache_cell::LRU) {
                 return;
             }
 
@@ -978,6 +845,109 @@ namespace cyberway { namespace chaindb {
             return usage + delta;
         }
     }; // struct table_cache_map
+
+    //---------------------------------------
+
+    void lru_cache_object_state::commit() {
+        if (!object_ptr) {
+            return;
+        }
+
+        if (prev_state) {
+            prev_state->object_ptr.reset();
+        }
+        prev_state = nullptr;
+
+        if (is_deleted) {
+            object_ptr->state_ = nullptr;
+            cell->map->release_cache_object(*object_ptr, is_deleted);
+        }
+    }
+
+    void lru_cache_object_state::reset() {
+        if (!object_ptr) {
+            return;
+        }
+
+        auto tmp_obj_ptr = std::move(object_ptr);
+        auto tmp_prev_state = prev_state;
+        prev_state = nullptr;
+
+        if (!tmp_obj_ptr->is_same_cell(*cell)) {
+            return;
+        }
+
+        if (!tmp_prev_state) {
+            tmp_obj_ptr->state_ = nullptr;
+            cell->map->release_cache_object(*tmp_obj_ptr, is_deleted);
+            return;
+        }
+
+        tmp_obj_ptr->swap_state(*tmp_prev_state);
+
+        auto lru_prev_state = cast(tmp_prev_state);
+        if (lru_prev_state) {
+            lru_prev_state->is_deleted = is_deleted;
+        }
+    }
+
+    //---------------------------------------
+
+    void system_cache_object_state::reset() {
+        if (!object_ptr) {
+            return;
+        }
+
+        assert(!object_ptr->has_cell());
+
+        auto system_cell = static_cast<system_cache_cell*>(cell);
+        auto system_itr  = itr;
+
+        system_cell->size -= object_ptr->service().size;
+
+        object_ptr.reset();
+
+        if (system_cell->state_list.end() != system_itr) {
+            itr = system_cell->state_list.end();
+            system_cell->state_list.erase(system_itr);
+        }
+    }
+
+    void system_cache_cell::clear() {
+        for (auto& state: state_list) if (state.object_ptr) {
+            assert(state.object_ptr->is_same_cell(*this));
+            state.itr = state_list.end();
+            state.object_ptr->state_ = nullptr;
+            map->release_cache_object(*state.object_ptr, false);
+        }
+
+        state_list.clear();
+    }
+
+    //---------------------------------------
+
+    void cache_object_state::reset() {
+        switch (kind()) {
+            case cache_cell::System:
+                system_cache_object_state::cast(*this).reset();
+                break;
+
+            case cache_cell::Pending:
+            case cache_cell::LRU: {
+                lru_cache_object_state::cast(*this).reset();
+                break;
+            }
+
+            case cache_cell::Unknown:
+            default:
+                assert(false);
+        }
+    }
+
+    cache_cell::cache_cell_kind cache_object_state::kind() const {
+        assert(cell);
+        return cell->kind();
+    }
 
     //---------------------------------------
 
@@ -999,17 +969,21 @@ namespace cyberway { namespace chaindb {
         return state_ && &cell == state_->cell;
     }
 
-    cache_object_state& cache_object::state() {
+    cache_object_state& cache_object::state() const {
         assert(has_cell());
         return *state_;
     }
 
-    cache_cell& cache_object::cell() {
+    cache_cell& cache_object::cell() const {
         assert(has_cell());
         return *state_->cell;
     }
 
-    cache_map_impl& cache_object::map() {
+    cache_cell::cache_cell_kind cache_object::kind() const {
+        return cell().kind();
+    }
+
+    cache_map_impl& cache_object::map() const {
         assert(has_cell());
         return *state_->cell->map;
     }
@@ -1027,9 +1001,9 @@ namespace cyberway { namespace chaindb {
             return true;
         }
 
-        auto pending_ptr = pending_cache_object_state::cast(state_);
-        if (pending_ptr) {
-            return pending_ptr->is_deleted;
+        auto lru_state_ptr = lru_cache_object_state::cast(state_);
+        if (lru_state_ptr) {
+            return lru_state_ptr->is_deleted;
         }
 
         return false;
