@@ -18,6 +18,14 @@
 using namespace IR;
 using namespace Runtime;
 
+struct counter {
+   unsigned long long count;
+   ~counter() {
+      printf("total wasm exectuion time %llu\n", count);
+   }
+};
+static counter the_counter;
+
 namespace eosio { namespace chain { namespace webassembly { namespace wavm {
 
 running_instance_context the_running_instance_context;
@@ -83,6 +91,10 @@ class wavm_instantiated_module : public wasm_instantiated_module_interface {
 
    private:
       void call(const string &entry_point, const vector <Value> &args, apply_context &context) {
+         unsigned long long start = __builtin_readcyclecounter();
+         auto count_it = fc::make_scoped_exit([&start](){
+            the_counter.count += __builtin_readcyclecounter() - start;
+         });
          try {
             FunctionInstance* call = asFunctionNullable(getInstanceExport(_instance,entry_point));
             if( !call )
