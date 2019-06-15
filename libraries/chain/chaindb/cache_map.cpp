@@ -483,12 +483,17 @@ namespace cyberway { namespace chaindb {
         void remove_cache_object(cache_object& obj) {
             assert(!obj.is_deleted());
 
-            auto is_released = delete_cache_object(obj);
-            if (is_released) {
+            release_cache_object(obj, false);
+
+            if (!has_pending_cell() || obj.cell().kind == cache_cell::System) {
                 auto& tmp_state = *obj.state_;
                 obj.state_ = nullptr;
                 tmp_state.reset();
+                return;
             }
+
+            add_pending_object(cache_object_ptr(&obj), true);
+            deleted_object_tree_.insert(obj); // to save position in LRU
         }
 
         void set_object(const table_info& table, cache_object& cache_obj, object_value value) {
@@ -680,18 +685,6 @@ namespace cyberway { namespace chaindb {
                     add_ram_usage(cache_obj.cell(), -cache_obj.service().size);
                 }
             }
-        }
-
-        bool delete_cache_object(cache_object& obj) {
-            release_cache_object(obj, false);
-
-            if (!has_pending_cell() || obj.cell().kind == cache_cell::System) {
-                return true;
-            }
-
-            add_pending_object(cache_object_ptr(&obj), true);
-            deleted_object_tree_.insert(obj); // to save position in LRU
-            return false;
         }
 
     private:
