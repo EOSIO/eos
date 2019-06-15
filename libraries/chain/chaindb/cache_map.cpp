@@ -202,16 +202,10 @@ namespace cyberway { namespace chaindb {
                 return;
             }
 
-            while (prev_state) {
+            if (prev_state) {
                 prev_state->object_ptr.reset();
-
-                auto pending_prev_state = cast(prev_state);
-                if (pending_prev_state) {
-                    prev_state = pending_prev_state->prev_state;
-                } else {
-                    prev_state = nullptr;
-                }
             }
+            prev_state = nullptr;
 
             if (is_deleted) {
                 object_ptr->state_ = nullptr;
