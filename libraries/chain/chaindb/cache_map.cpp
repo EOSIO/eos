@@ -242,7 +242,7 @@ namespace cyberway { namespace chaindb {
             } else {
                 state.prev_state = prev_state;
                 state.is_deleted = is_deleted;
-                add_ram_usage(state);
+                add_ram_bytes(state);
             }
         }
 
@@ -255,10 +255,11 @@ namespace cyberway { namespace chaindb {
             return revision_;
         }
 
+        uint64_t ram_bytes = 0;
         std::deque<pending_cache_object_state> state_list; // Expansion of a std::deque is cheaper than the expansion of a std::vector
 
     private:
-        void add_ram_usage(const pending_cache_object_state& state) {
+        void add_ram_bytes(const pending_cache_object_state& state) {
             auto object_size = state.object_ptr->service().size;
             if (!object_size) {
                 return;
@@ -268,8 +269,8 @@ namespace cyberway { namespace chaindb {
                 std::max(eosio::chain::int_arithmetic::safe_prop<uint64_t>(object_size, pos - state.prev_state->cell->pos, max_distance_), uint64_t(1)) : 
                 object_size * config::ram_load_multiplier;
                 
-            CYBERWAY_CACHE_ASSERT(UINT64_MAX - size >= delta, "Pending delta would overflow UINT64_MAX");
-            size += delta;
+            CYBERWAY_CACHE_ASSERT(UINT64_MAX - ram_bytes >= delta, "Pending delta would overflow UINT64_MAX");
+            ram_bytes += delta;
 
         }
 
@@ -573,7 +574,7 @@ namespace cyberway { namespace chaindb {
         }
 
         uint64_t calc_ram_bytes(const revision_t revision) {
-            return get_pending_cell(revision).size;
+            return get_pending_cell(revision).ram_bytes;
         }
 
         void set_revision(const revision_t revision) {
