@@ -1034,9 +1034,14 @@ namespace cyberway { namespace chaindb {
     ) const {
         CYBERWAY_ASSERT(primary_key::is_good(pk), cache_primary_key_exception,
             "Value ${pk} can't be used as primary key", ("pk", pk));
+
         auto obj = object_value{info.to_service(pk), {}};
         obj.service.payer  = storage.owner;
         obj.service.in_ram = true;
+
+        CYBERWAY_ASSERT(!impl_->find(obj.service), driver_duplicate_exception,
+            "Duplicate unique records in the cache table ${table}", ("table", get_full_table_name(info)));
+
         return impl_->emplace(info, std::move(obj));
     }
 
