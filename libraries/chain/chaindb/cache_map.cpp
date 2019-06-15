@@ -328,17 +328,6 @@ namespace cyberway { namespace chaindb {
             pos = p;
         }
 
-        ~lru_cache_cell() {
-            clear();
-        }
-
-        void clear() {
-            for (auto& state: state_list) if (state.object_ptr) {
-                state.reset();
-            }
-            state_list.clear();
-        }
-
         void emplace(cache_object_ptr obj_ptr) {
             state_list.emplace_back(*this, std::move(obj_ptr));
 
