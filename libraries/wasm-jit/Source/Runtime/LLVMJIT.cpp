@@ -117,6 +117,9 @@ namespace LLVMJIT
 			if(numAllocatedImagePages)
 				Platform::decommitVirtualPages(imageBaseAddress,numAllocatedImagePages);
 		}
+
+		void registerEHFrames(U8* addr, U64 loadAddr,uintptr_t numBytes) override {}
+		void deregisterEHFrames() override {}
 		
 		virtual bool needsToReserveAllocationSpace() override { return true; }
 		virtual void reserveAllocationSpace(uintptr_t numCodeBytes,U32 codeAlignment,uintptr_t numReadOnlyBytes,U32 readOnlyAlignment,uintptr_t numReadWriteBytes,U32 readWriteAlignment) override
