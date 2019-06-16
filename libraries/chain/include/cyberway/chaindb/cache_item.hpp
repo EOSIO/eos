@@ -1,14 +1,13 @@
 #pragma once
 
 #include <memory>
+#include <set>
+#include <deque>
 
 #include <eosio/chain/types.hpp>
 
 #include <cyberway/chaindb/common.hpp>
 #include <cyberway/chaindb/object_value.hpp>
-
-#include <boost/intrusive/set.hpp>
-#include <boost/intrusive/list.hpp>
 
 #include <boost/smart_ptr/intrusive_ref_counter.hpp>
 
@@ -28,19 +27,6 @@ namespace cyberway { namespace chaindb {
 
         virtual void convert_variant(cache_object&, const object_value&) const = 0;
     }; // struct cache_converter_interface
-
-    struct cache_index_value final: public boost::intrusive::set_base_hook<> {
-        const index_name_t index;
-        const bytes        blob;
-        const cache_object* const object = nullptr;
-
-        cache_index_value(index_name, bytes, const cache_object&);
-        cache_index_value(cache_index_value&&) = default;
-
-        ~cache_index_value() = default;
-    }; // struct cache_index_value
-
-    using cache_indicies = std::vector<cache_index_value>;
 
     struct cache_cell {
         enum cache_cell_kind {
@@ -83,31 +69,25 @@ namespace cyberway { namespace chaindb {
         cache_cell::cache_cell_kind kind() const;
     }; // struct cache_object_state
 
-    class cache_object final:
-        public boost::intrusive_ref_counter<cache_object>,
-        public boost::intrusive::set_base_hook<>
+    struct cache_index_value;
+    struct cache_index_key;
+
+    struct cache_index_compare final {
+        using is_transparent = void;
+        template<typename LeftKey, typename RightKey> bool operator()(const LeftKey&, const RightKey&) const;
+    }; // struct cache_index_compare
+
+    using cache_index_tree = std::set<cache_index_value, cache_index_compare>;
+    using cache_indicies   = std::deque<cache_index_tree::const_iterator>;
+
+    struct cache_object final: public boost::intrusive_ref_counter<cache_object>
     {
-        cache_object_state* state_ = nullptr;
-        object_value        object_;
-        bytes               blob_;  // for contracts tables
-        cache_data_ptr      data_;  // for interchain tables
-        cache_indicies      indicies_;
+        enum stage_kind {
+            Released,
+            Active,
+            Deleted,
+        }; // enum Stage
 
-    private:
-        friend class  cache_map_impl;
-        friend struct lru_cache_cell;
-        friend struct lru_cache_object_state;
-        friend struct system_cache_cell;
-
-        using cache_cell_kind = cache_cell::cache_cell_kind;
-
-        cache_cell&         cell() const;
-        cache_cell_kind     kind() const;
-        cache_map_impl&     map() const;
-        cache_object_state& state() const;
-        cache_object_state* swap_state(cache_object_state& state);
-
-    public:
         cache_object(object_value);
 
         cache_object(cache_object&&) = delete;
@@ -119,10 +99,15 @@ namespace cyberway { namespace chaindb {
         bool has_cell() const;
         bool is_same_cell(const cache_cell& cell) const;
 
-        bool is_deleted() const;
+        stage_kind stage() const {
+            return stage_;
+        }
 
-        template <typename Request>
-        bool is_valid_table(const Request& request) const {
+        bool is_deleted() const {
+            return stage_ != Active;
+        }
+
+        template <typename Request> bool is_valid_table(const Request& request) const {
             return
                 object_.service.code  == request.code  &&
                 object_.service.scope == request.scope &&
@@ -167,6 +152,30 @@ namespace cyberway { namespace chaindb {
             return blob_;
         }
 
+    private:
+        cache_object_state* state_ = nullptr;
+        object_value        object_;
+        bytes               blob_;  // for contracts tables
+        cache_data_ptr      data_;  // for interchain tables
+        cache_indicies      indicies_;
+        stage_kind          stage_ = Released;
+
+        friend class  cache_map_impl;
+        friend struct lru_cache_cell;
+        friend struct lru_cache_object_state;
+        friend struct system_cache_cell;
+
+        using cache_cell_kind = cache_cell::cache_cell_kind;
+
+        cache_cell&         cell() const;
+        cache_cell_kind     kind() const;
+        cache_map_impl&     map() const;
+        cache_object_state& state() const;
+        cache_object_state* swap_state(cache_object_state& state);
     }; // class cache_object
+
+    struct cache_object_key;
+
+    using cache_object_tree = std::map<cache_object_key, cache_object_ptr>;
 
 } } // namespace cyberway::chaindb

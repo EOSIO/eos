@@ -78,12 +78,12 @@ namespace cyberway { namespace chaindb {
     };
 
     class  chaindb_controller;
-    class  cache_object;
     class  cache_map;
     class  driver_interface;
     class  journal;
     class  value_verifier;
     class  undo_stack;
+    struct cache_object;
     struct table_info;
     struct index_info;
     struct undo_stack_impl;
