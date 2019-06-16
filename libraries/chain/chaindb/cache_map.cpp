@@ -48,7 +48,17 @@ namespace cyberway { namespace chaindb {
 
     //----------------------------------------------------------------------------------------------
 
+    struct cache_index_key final {
+        const index_name_t index = 0;
+        const scope_name_t scope = 0;
+        const char*        data  = nullptr;
+        const size_t       size  = 0;
+    }; // struct cache_index_key
+
     struct cache_index_value final {
+        struct by_key;
+        struct by_object;
+
         const index_name_t  index = 0;
         const bytes         blob;
         cache_object_ptr    object_ptr;
@@ -60,25 +70,30 @@ namespace cyberway { namespace chaindb {
         cache_index_value(cache_index_value&&) = default;
 
         ~cache_index_value() = default;
-    }; // struct cache_index_value
 
-    struct cache_index_key final {
-        const index_name_t index = 0;
-        const scope_name_t scope = 0;
-        const char*        data  = nullptr;
-        const size_t       size  = 0;
-    }; // struct cache_index_key
-
-    struct cache_index_compare_impl final {
-        static const cache_index_key& key(const cache_index_key&   k) { return k;          }
-        static cache_index_key        key(const cache_index_value& v) {
-            return {v.index, v.object_ptr->service().scope, v.blob.data(), v.blob.size()}; }
-
-        template<typename LeftKey, typename RightKey> static bool compare(const LeftKey& l, const RightKey& r) {
-            return compare(key(l), key(r));
+        cache_index_key value_key() const {
+            return {index, object_ptr->service().scope, blob.data(), blob.size()};
         }
 
-        static bool compare(const cache_index_key& l, const cache_index_key& r) {
+        static const void* object_key(const cache_object& cache_obj) {
+            return static_cast<const void*>(&cache_obj);
+        }
+
+        const void* object_key() const {
+            return object_key(*object_ptr);
+        }
+    }; // struct cache_index_value
+
+
+    struct cache_index_compare final {
+        const cache_index_key& key(const cache_index_key&   k) const { return k;             }
+        cache_index_key        key(const cache_index_value& v) const { return v.value_key(); }
+
+        template<typename LeftKey, typename RightKey> bool operator()(const LeftKey& l, const RightKey& r) const {
+            return operator()(key(l), key(r));
+        }
+
+        bool operator()(const cache_index_key& l, const cache_index_key& r) const {
             if (l.index < r.index) return true;
             if (l.index > r.index) return false;
 
@@ -92,10 +107,17 @@ namespace cyberway { namespace chaindb {
         }
     }; // struct cache_index_compare
 
-    template<typename LeftKey, typename RightKey>
-    bool cache_index_compare::operator()(const LeftKey& l, const RightKey& r) const {
-        return cache_index_compare_impl::compare(l, r);
-    }
+    using cache_index_tree = bmi::multi_index_container<
+        cache_index_value,
+        bmi::indexed_by<
+            bmi::ordered_unique<
+                bmi::tag<cache_index_value::by_key>,
+                bmi::const_mem_fun<cache_index_value, cache_index_key, &cache_index_value::value_key>,
+                cache_index_compare>,
+            bmi::ordered_non_unique<
+                bmi::tag<cache_index_value::by_object>,
+                bmi::const_mem_fun<cache_index_value, const void*, &cache_index_value::object_key>,
+                std::less<const void*>>>>;
 
     //-----------------------------------------------------------------------------------------------
 
@@ -420,8 +442,9 @@ namespace cyberway { namespace chaindb {
             }
 
             cache_index_key key{index, service.scope, value, size};
-            auto itr = service_ptr->index_tree.find(key);
-            if (service_ptr->index_tree.end() != itr && primary_key::is_good(itr->object_ptr->pk())) {
+            auto& idx = service_ptr->index_tree.get<cache_index_value::by_key>();
+            auto  itr = idx.find(key);
+            if (idx.end() != itr && primary_key::is_good(itr->object_ptr->pk())) {
                 add_pending_object(itr->object_ptr);
                 return itr->object_ptr;
             }
@@ -743,9 +766,10 @@ namespace cyberway { namespace chaindb {
             std::vector<cache_index_value> indicies;
             indicies.reserve(table.table->indexes.size() + 10);
 
-            auto index = index_info(cache_obj.service().code, cache_obj.service().scope);
+            auto  index = index_info(cache_obj.service().code, cache_obj.service().scope);
             index.table = table.table;
 
+            auto& key_idx = service.index_tree.get<cache_index_value::by_key>();
             for (auto& idx: table.table->indexes) if (idx.unique && idx.name != names::primary_index) {
                 index.index = &idx;
 
@@ -755,23 +779,24 @@ namespace cyberway { namespace chaindb {
                 }
 
                 indicies.emplace_back(idx.name, std::move(blob), cache_object_ptr(&cache_obj));
-                CYBERWAY_ASSERT(service.index_tree.end() == service.index_tree.find(indicies.back()),
+                CYBERWAY_ASSERT(key_idx.end() == key_idx.find(indicies.back()),
                     driver_duplicate_exception, "Cache duplicate unique records in the index ${index}",
                     ("index", get_full_index_name(index)));
             }
 
-            cache_obj.indicies_.push_back(service.index_tree.end());
-            for (auto& idx: indicies) {
-                auto itr = service.index_tree.emplace(std::move(idx)).first;
-                cache_obj.indicies_.push_back(itr);
+            for (auto& value: indicies) {
+                service.index_tree.insert(std::move(value));
             }
         }
 
         void delete_cache_indicies(cache_service_info& service, cache_object& cache_obj) {
-            for (auto itr: cache_obj.indicies_) if (service.index_tree.end() != itr) {
-                service.index_tree.erase(itr);
+            auto& idx = service.index_tree.get<cache_index_value::by_object>();
+            auto  key = cache_index_value::object_key(cache_obj);
+            auto  itr = idx.lower_bound(key);
+
+            for (; idx.end() != itr && itr->object_key() == key; ) {
+                itr = idx.erase(itr);
             }
-            cache_obj.indicies_.clear();
         }
 
         void delete_unsuccess_pk(cache_service_info& service, cache_object& cache_obj) {
@@ -804,11 +829,6 @@ namespace cyberway { namespace chaindb {
                 if (cache_obj.has_data() && cache_obj.service().table == chaindb::tag<state_object>::get_code()) {
                     auto& state = multi_index_item_data<state_object>::get_T(cache_obj);
                     ram_limit_ = get_ram_limit(state.ram_size, state.reserved_ram_size);
-                }
-
-                // don't rebuild indicies for interchain objects
-                if (cache_obj.indicies_.size()) {
-                    return;
                 }
             }
 

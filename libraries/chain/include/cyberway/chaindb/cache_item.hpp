@@ -69,19 +69,7 @@ namespace cyberway { namespace chaindb {
         cache_cell::cache_cell_kind kind() const;
     }; // struct cache_object_state
 
-    struct cache_index_value;
-    struct cache_index_key;
-
-    struct cache_index_compare final {
-        using is_transparent = void;
-        template<typename LeftKey, typename RightKey> bool operator()(const LeftKey&, const RightKey&) const;
-    }; // struct cache_index_compare
-
-    using cache_index_tree = std::set<cache_index_value, cache_index_compare>;
-    using cache_indicies   = std::deque<cache_index_tree::const_iterator>;
-
-    struct cache_object final: public boost::intrusive_ref_counter<cache_object>
-    {
+    struct cache_object final: public boost::intrusive_ref_counter<cache_object> {
         enum stage_kind {
             Released,
             Active,
@@ -157,7 +145,6 @@ namespace cyberway { namespace chaindb {
         object_value        object_;
         bytes               blob_;  // for contracts tables
         cache_data_ptr      data_;  // for interchain tables
-        cache_indicies      indicies_;
         stage_kind          stage_ = Released;
 
         friend class  cache_map_impl;
