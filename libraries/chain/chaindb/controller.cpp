@@ -189,9 +189,10 @@ namespace cyberway { namespace chaindb {
             auto& cursor = driver_.lower_bound(std::move(index), std::move(value));
 
             if (index.index->unique) {
-                auto cache = cache_.find(request.to_service(), request.index, key, size);
-                if (cache) {
-                    cursor.pk = cache->pk();
+                auto cache_ptr = cache_.find(request.to_service(), request.index, key, size);
+                if (cache_ptr) {
+                    cursor.pk =     cache_ptr->pk();
+                    cursor.object = cache_ptr->object();
                     return cursor;
                 }
             }
@@ -200,15 +201,26 @@ namespace cyberway { namespace chaindb {
         }
 
         const cursor_info& lower_bound(const table_request& request, const primary_key_t pk) {
-            auto  cache  = cache_.find(request.to_service(pk));
             auto  index  = get_pk_index(request);
             auto  value  = primary_key::to_variant(index, pk);
             auto& cursor = driver_.lower_bound(std::move(index), std::move(value));
 
-            if (cache) {
-                cursor.pk = pk;
+            auto cache_ptr = cache_.find(request.to_service(pk));
+            if (!cache_ptr) {
+                cache_ptr = cache_.find_unsuccess(cursor.index, pk);
+            }
+
+            if (cache_ptr) {
+                cursor.pk     = cache_ptr->pk();
+                cursor.object = cache_ptr->object();
             } else {
                 current(cursor);
+                if (pk != cursor.pk) {
+                    if (primary_key::is_good(cursor.pk)) {
+                        cache_ptr = get_cache_object(cursor);
+                    }
+                    cache_.emplace_unsuccess(cursor.index, pk, cursor.pk);
+                }
             }
             return cursor;
         }
@@ -279,6 +291,18 @@ namespace cyberway { namespace chaindb {
             cache_.destroy(obj);
         }
 
+        cache_object_ptr get_cache_object(const cursor_info& cursor) {
+            auto cache_ptr = cache_.find(cursor.index.to_service(cursor.pk));
+
+            if (BOOST_UNLIKELY(!cache_ptr)) {
+                auto obj = object_at_cursor(cursor, false);
+                if (!obj.is_null()) {
+                    cache_ptr = cache_.emplace(cursor.index, std::move(obj));
+                }
+            }
+            return cache_ptr;
+        }
+
         cache_object_ptr get_cache_object(const cursor_request& req, const bool with_blob) {
             auto& cursor = current(req);
 
@@ -286,13 +310,7 @@ namespace cyberway { namespace chaindb {
                 "Requesting object from the end of the table ${table}",
                 ("table", get_full_table_name(cursor.index)));
 
-            auto cache_ptr = cache_.find(cursor.index.to_service(cursor.pk));
-            if (BOOST_UNLIKELY(!cache_ptr)) {
-                auto obj = object_at_cursor(cursor, false);
-                if (!obj.is_null()) {
-                    cache_ptr = cache_.emplace(cursor.index, std::move(obj));
-                }
-            }
+            auto cache_ptr = get_cache_object(cursor);
 
             if (cache_ptr && with_blob && !cache_ptr->has_blob()) {
                 auto& table  = static_cast<const table_info&>(cursor.index);

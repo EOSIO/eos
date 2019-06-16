@@ -164,15 +164,15 @@ namespace cyberway { namespace chaindb {
 
             if (source_) {
                 // it is faster to get object from exist cursor then to open a new cursor, locate, and get object
-                dst.object_    = get_object_value();
-                dst.find_key_  = dst.object_.value;
+                dst.object     = get_object_value();
+                dst.find_key_  = dst.object.value;
                 dst.find_pk_   = get_pk_value();
                 // don't copy direction, because direction::Backward starts from previous, not from currently
                 dst.direction_ = direction::Forward;
             } else {
                 dst.find_key_  = find_key_;
                 dst.find_pk_   = find_pk_;
-                dst.object_    = object_;
+                dst.object     = object;
                 dst.direction_ = direction_;
             }
 
@@ -233,21 +233,23 @@ namespace cyberway { namespace chaindb {
 
         const object_value& get_object_value(bool with_decors = false) {
             lazy_open();
-            if (!object_.value.is_null()) return object_;
-
-            if (is_end()) {
-                object_.clear();
-                object_.service.pk    = pk;
-                object_.service.code  = index.code;
-                object_.service.scope = index.scope;
-                object_.service.table = index.table_name();
-            } else {
-                auto& view = *source_->begin();
-                object_ = build_object(index, view, with_decors);
-                pk      = object_.service.pk;
+            if (!object.value.is_null()) {
+                return object;
             }
 
-            return object_;
+            if (is_end()) {
+                object.clear();
+                object.service.pk    = pk;
+                object.service.code  = index.code;
+                object.service.scope = index.scope;
+                object.service.table = index.table_name();
+            } else {
+                auto& view = *source_->begin();
+                object = build_object(index, view, with_decors);
+                pk     = object.service.pk;
+            }
+
+            return object;
         }
 
         bool is_opened() const {
@@ -262,7 +264,6 @@ namespace cyberway { namespace chaindb {
         variant       find_key_;
 
         std::unique_ptr<mongocxx::cursor> source_;
-        object_value  object_;
         account_name_t scope_ = 0;
 
         void change_direction(const direction dir) {
@@ -279,7 +280,9 @@ namespace cyberway { namespace chaindb {
 
         void reset_object() {
             pk = primary_key::Unset;
-            if (!object_.is_null()) object_.clear();
+            if (!object.is_null()) {
+                object.clear();
+            }
         }
 
         document create_bound_document() {

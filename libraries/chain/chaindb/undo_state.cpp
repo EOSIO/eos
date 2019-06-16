@@ -382,6 +382,7 @@ namespace cyberway { namespace chaindb {
 
         void insert(const table_info& table, object_value obj) {
             verifier_.verify(table, obj);
+            cache_.clear_unsuccess(table);
             if (enabled()) {
                 insert(get_table(table), std::move(obj));
             } else {
@@ -391,6 +392,7 @@ namespace cyberway { namespace chaindb {
 
         void update(const table_info& table, object_value orig_obj, object_value obj) {
             verifier_.verify(table, obj);
+            cache_.clear_unsuccess(table);
             if (enabled()) {
                 update(get_table(table), std::move(orig_obj), std::move(obj));
             } else {
@@ -399,6 +401,7 @@ namespace cyberway { namespace chaindb {
         }
 
         void remove(const table_info& table, object_value orig_obj) {
+            cache_.clear_unsuccess(table);
             if (enabled()) {
                 remove(get_table(table), std::move(orig_obj));
             } else {
@@ -553,6 +556,7 @@ namespace cyberway { namespace chaindb {
 
                 restore_undo_state(obj.second);
                 verifier_.verify(table.info(), obj.second);
+                cache_.clear_unsuccess(table.info());
                 cache_.emplace(table.info(), obj.second);
 
                 journal_.write(ctx,
@@ -561,6 +565,7 @@ namespace cyberway { namespace chaindb {
             }
 
             for (auto& obj: head.new_values_) {
+                cache_.clear_unsuccess(table.info());
                 cache_.remove(table.info(), obj.first);
                 journal_.write(ctx,
                     write_operation::remove(undo_rev, obj.second.clone_service()),
@@ -572,6 +577,7 @@ namespace cyberway { namespace chaindb {
 
                 restore_undo_state(obj.second);
                 verifier_.verify(table.info(), obj.second);
+                cache_.clear_unsuccess(table.info());
                 cache_.emplace(table.info(), obj.second);
 
                 journal_.write(ctx,

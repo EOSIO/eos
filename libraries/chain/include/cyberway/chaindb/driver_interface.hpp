@@ -11,6 +11,7 @@ namespace cyberway { namespace chaindb {
         cursor_t      id = invalid_cursor;
         index_info    index;
         primary_key_t pk = primary_key::End;
+        object_value  object;
     }; // struct cursor_info
 
     class driver_interface {
