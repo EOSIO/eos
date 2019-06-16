@@ -25,6 +25,12 @@ namespace cyberway { namespace chaindb {
         cache_object_ptr emplace(const table_info&, object_value) const;
         void remove(const table_info&, primary_key_t) const;
 
+        void emplace_unsuccess(const table_info&, primary_key_t, primary_key_t) const;
+
+        cache_object_ptr find_unsuccess(const table_info&, primary_key_t) const;
+
+        void clear_unsuccess(const table_info&) const;
+
         void set_object(const table_info&, cache_object&, object_value) const;
         void set_service(const table_info&, cache_object&, service_state) const;
         void set_revision(const object_value&, revision_t) const;

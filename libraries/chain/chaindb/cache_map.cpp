@@ -3,9 +3,16 @@
 #include <cyberway/chaindb/abi_info.hpp>
 #include <cyberway/chaindb/exception.hpp>
 #include <cyberway/chaindb/table_info.hpp>
+#include <cyberway/chaindb/typed_name.hpp>
 
 #include <eosio/chain/resource_limits.hpp>
 #include <eosio/chain/resource_limits_private.hpp>
+
+#include <boost/multi_index_container.hpp>
+#include <boost/multi_index/member.hpp>
+#include <boost/multi_index/ordered_index.hpp>
+#include <boost/multi_index/mem_fun.hpp>
+#include <boost/multi_index/composite_key.hpp>
 
 /** Cache exception is a critical errors and it doesn't handle by chain */
 #define CYBERWAY_CACHE_ASSERT(expr, FORMAT, ...)                      \
@@ -17,10 +24,11 @@
     FC_MULTILINE_MACRO_END
 
 namespace cyberway { namespace chaindb {
+    namespace bmi = boost::multi_index;
 
     struct cache_object_key final {
-        const primary_key_t pk;
-        const scope_name_t  scope;
+        const primary_key_t pk    = primary_key::Unset;
+        const scope_name_t  scope = 0;
 
         cache_object_key(const service_state& v)
         : pk(v.pk), scope(v.scope) {
@@ -41,14 +49,12 @@ namespace cyberway { namespace chaindb {
     //----------------------------------------------------------------------------------------------
 
     struct cache_index_value final {
-        const index_name_t  index;
+        const index_name_t  index = 0;
         const bytes         blob;
         cache_object_ptr    object_ptr;
 
         cache_index_value(index_name i, bytes b, cache_object_ptr o)
-        : index(i),
-          blob(std::move(b)),
-          object_ptr(std::move(o)) {
+        : index(i), blob(std::move(b)), object_ptr(std::move(o)) {
         }
 
         cache_index_value(cache_index_value&&) = default;
@@ -57,10 +63,10 @@ namespace cyberway { namespace chaindb {
     }; // struct cache_index_value
 
     struct cache_index_key final {
-        const index_name_t index;
-        const scope_name_t scope;
-        const char*        data;
-        const size_t       size;
+        const index_name_t index = 0;
+        const scope_name_t scope = 0;
+        const char*        data  = nullptr;
+        const size_t       size  = 0;
     }; // struct cache_index_key
 
     struct cache_index_compare_impl final {
@@ -90,6 +96,49 @@ namespace cyberway { namespace chaindb {
     bool cache_index_compare::operator()(const LeftKey& l, const RightKey& r) const {
         return cache_index_compare_impl::compare(l, r);
     }
+
+    //-----------------------------------------------------------------------------------------------
+
+    struct cache_unsuccess_pk final {
+        enum : uint64_t {
+            size = 128
+        }; // constants
+
+        struct by_pk;
+        struct by_object;
+
+        scope_name_t  scope = 0;
+        primary_key_t pk    = primary_key::Unset;
+        cache_object_ptr object_ptr;
+
+        cache_unsuccess_pk(scope_name_t s, primary_key_t p, cache_object_ptr o)
+        : scope(s), pk(p), object_ptr(std::move(o)) {
+        }
+
+        static const void* object_key(const cache_object& cache_obj) {
+            return static_cast<const void*>(&cache_obj);
+        }
+
+        const void* object_key() const {
+            return object_key(*object_ptr);
+        }
+    }; // struct cache_unsuccess_pk
+
+    using cache_unsuccess_pk_tree = bmi::multi_index_container<
+        cache_unsuccess_pk,
+        bmi::indexed_by<
+            bmi::ordered_unique<
+                bmi::tag<cache_unsuccess_pk::by_pk>,
+                bmi::composite_key<cache_unsuccess_pk,
+                    bmi::member<cache_unsuccess_pk, primary_key_t, &cache_unsuccess_pk::pk>,
+                    bmi::member<cache_unsuccess_pk, scope_name_t,  &cache_unsuccess_pk::scope>>,
+                composite_key_compare<
+                    std::less<primary_key_t>,
+                    std::less<scope_name_t>>>,
+            bmi::ordered_non_unique<
+                bmi::tag<cache_unsuccess_pk::by_object>,
+                bmi::const_mem_fun<cache_unsuccess_pk, const void*, &cache_unsuccess_pk::object_key>,
+                std::less<const void*>>>>;
 
     //-----------------------------------------------------------------------------------------------
 
@@ -131,6 +180,8 @@ namespace cyberway { namespace chaindb {
         cache_index_tree  index_tree;
 
         cache_object_tree deleted_object_tree;
+
+        cache_unsuccess_pk_tree unsuccess_pk_tree;
 
         cache_service_info() = default;
 
@@ -208,6 +259,8 @@ namespace cyberway { namespace chaindb {
                     state.prev_state = lru_prev_state->prev_state;
                 }
             }
+
+            add_ram_bytes(src_cell.ram_bytes_);
         }
 
         int64_t commit_revision() {
@@ -235,6 +288,11 @@ namespace cyberway { namespace chaindb {
 
         uint64_t ram_bytes() const {
             return ram_bytes_;
+        }
+
+        void add_ram_bytes(const uint64_t delta) {
+            CYBERWAY_CACHE_ASSERT(UINT64_MAX - ram_bytes_ >= delta, "Pending delta would overflow UINT64_MAX");
+            ram_bytes_ += delta;
         }
 
         std::deque<lru_cache_object_state> state_list; // Expansion of a std::deque is cheaper than the expansion of a std::vector
@@ -266,8 +324,7 @@ namespace cyberway { namespace chaindb {
                    uint64_t(1)) :
                object_size * config::ram_load_multiplier;
 
-            CYBERWAY_CACHE_ASSERT(UINT64_MAX - ram_bytes_ >= delta, "Pending delta would overflow UINT64_MAX");
-            ram_bytes_ += delta;
+            add_ram_bytes(delta);
         }
 
         uint64_t ram_bytes_ = 0;
@@ -354,16 +411,39 @@ namespace cyberway { namespace chaindb {
         ) {
             auto service_ptr = find_cache_service(service);
 
-            if (service_ptr) {
-                cache_index_key key{index, service.scope, value, size};
-                auto itr = service_ptr->index_tree.find(key);
-                if (service_ptr->index_tree.end() != itr) {
-                    add_pending_object(itr->object_ptr);
-                    return itr->object_ptr;
-                }
+            if (!service_ptr) {
+                return {};
+            }
+
+            cache_index_key key{index, service.scope, value, size};
+            auto itr = service_ptr->index_tree.find(key);
+            if (service_ptr->index_tree.end() != itr) {
+                add_pending_object(itr->object_ptr);
+                return itr->object_ptr;
             }
 
             return {};
+        }
+
+        cache_object_ptr find_unsuccess(const service_state& service) {
+            auto service_ptr = find_cache_service(service);
+            if (!service_ptr) {
+                return {};
+            }
+
+            auto& idx = service_ptr->unsuccess_pk_tree.get<cache_unsuccess_pk::by_pk>();
+            auto  itr = idx.find(std::make_tuple(service.scope, service.pk));
+
+            if (idx.end() == itr) {
+                return {};
+            }
+
+            if (itr->object_ptr->is_deleted()) {
+                idx.erase(itr);
+                return {};
+            }
+
+            return itr->object_ptr;
         }
 
         cache_object_ptr emplace(const table_info& table, object_value value) {
@@ -371,6 +451,54 @@ namespace cyberway { namespace chaindb {
                 return create_cache_object(table, std::move(value));
             } else {
                 return emplace_in_ram(table, std::move(value));
+            }
+        }
+
+        void emplace_unsuccess(const table_info& table, const primary_key_t pk, const primary_key_t rpk) {
+            if (!has_pending_cell()) {
+                return;
+            }
+
+            auto service_ptr = find_cache_service(table);
+            if (!service_ptr) {
+                return;
+            }
+
+            auto obj_ptr = find_in_cache(*service_ptr, table.to_service(rpk));
+            if (!obj_ptr) {
+                return;
+            }
+
+            bool is_pended = false;
+            if (!is_system_object(*obj_ptr)) {
+                is_pended = add_pending_object(obj_ptr);
+            }
+
+            auto& idx = service_ptr->unsuccess_pk_tree.get<cache_unsuccess_pk::by_pk>();
+            auto  itr = idx.find(std::make_tuple(table.scope, pk));
+
+            if (idx.end() != itr) {
+                if (rpk == itr->object_ptr->pk()) {
+                    if (is_pended) {
+                        find_pending_cell()->add_ram_bytes(cache_unsuccess_pk::size);
+                    }
+                    return;
+                }
+
+                idx.erase(itr);
+            }
+
+            service_ptr->unsuccess_pk_tree.insert(cache_unsuccess_pk(pk, table.scope, std::move(obj_ptr)));
+
+            if (is_pended ) {
+                find_pending_cell()->add_ram_bytes(cache_unsuccess_pk::size);
+            }
+        }
+
+        void clear_unsuccess(const service_state& key) {
+            auto service_ptr = find_cache_service(key);
+            if (service_ptr) {
+                service_ptr->unsuccess_pk_tree.clear();
             }
         }
 
@@ -554,22 +682,26 @@ namespace cyberway { namespace chaindb {
             }
         }
 
-        void add_system_object(cache_object_ptr obj_ptr) {
+        bool add_system_object(cache_object_ptr obj_ptr) {
             assert(obj_ptr && is_system_object(*obj_ptr));
             system_cell_.emplace(std::move(obj_ptr));
+            return true;
         }
 
-        void add_pending_object(cache_object_ptr obj_ptr) {
+        bool add_pending_object(cache_object_ptr obj_ptr) {
             assert(obj_ptr);
 
             auto pending_ptr = find_pending_cell();
             if (!pending_ptr) {
-                return;
+                return false;
             }
 
             if (!obj_ptr->has_cell() || cache_cell::LRU == obj_ptr->kind()) {
                 pending_ptr->emplace(std::move(obj_ptr));
+                return true;
             }
+
+            return false;
         }
 
         lru_cache_cell* find_pending_cell() {
@@ -605,7 +737,7 @@ namespace cyberway { namespace chaindb {
             }
 
             std::vector<cache_index_value> indicies;
-            indicies.reserve(table.table->indexes.size() - 1 /* skip primary */);
+            indicies.reserve(table.table->indexes.size() + 10);
 
             auto index = index_info(cache_obj.service().code, cache_obj.service().scope);
             index.table = table.table;
@@ -686,6 +818,14 @@ namespace cyberway { namespace chaindb {
                     service.object_tree.erase(cache_object_key(cache_obj));
                     delete_cache_indicies(service, cache_obj);
 
+                    auto  obj_pk_key = cache_unsuccess_pk::object_key(cache_obj);
+                    auto& obj_pk_idx = service.unsuccess_pk_tree.get<cache_unsuccess_pk::by_object>();
+                    auto  obj_pk_itr = obj_pk_idx.lower_bound(obj_pk_key);
+
+                    for (; obj_pk_idx.end() != obj_pk_itr && obj_pk_itr->object_key() == obj_pk_key; ) {
+                        obj_pk_itr = obj_pk_idx.erase(obj_pk_itr);
+                    }
+
                     if (cache_obj.has_cell()) {
                         add_ram_usage(cache_obj.cell(), -cache_obj.service().size);
                     }
@@ -765,7 +905,7 @@ namespace cyberway { namespace chaindb {
                 obj.service = value.service;
                 obj.service.size = 0;
 
-                cache_obj_ptr = cache_object_ptr(new cache_object(std::move(obj)));
+                cache_obj_ptr = new cache_object(std::move(obj));
                 is_new_ptr    = true;
             }
 
@@ -812,7 +952,7 @@ namespace cyberway { namespace chaindb {
 
             if (is_new_ptr) {
                 // create object, but don't add it to RAM
-                obj_ptr = cache_object_ptr(new cache_object(std::move(value)));
+                obj_ptr = new cache_object(value);
             }
 
             convert_value(service_ptr, *obj_ptr, value);
@@ -1055,6 +1195,19 @@ namespace cyberway { namespace chaindb {
     void cache_map::remove(const table_info& table, const primary_key_t pk) const {
         assert(pk != primary_key::Unset);
         impl_->remove_cache_object(table.to_service(pk));
+    }
+
+    void cache_map::emplace_unsuccess(const table_info& table, const primary_key_t pk, const primary_key_t rpk) const {
+        assert(pk != rpk);
+        impl_->emplace_unsuccess(table, pk, rpk);
+    }
+
+    void cache_map::clear_unsuccess(const table_info& table) const {
+        impl_->clear_unsuccess(table.to_service());
+    }
+
+    cache_object_ptr cache_map::find_unsuccess(const table_info& table, primary_key_t pk) const {
+        return impl_->find_unsuccess(table.to_service(pk));
     }
 
     void cache_map::set_object(const table_info& table, cache_object& cache_obj, object_value value) const {
