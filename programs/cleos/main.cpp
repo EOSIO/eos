@@ -1335,23 +1335,29 @@ struct create_account_subcommand {
    }
 };
 
+void delegate_stake(const std::string& grantor, const std::string& agent, const string& asset_quantity) {
+    const fc::variant vote_action_params = fc::mutable_variant_object("grantor_name", grantor)
+                                                                     ("agent_name", agent)
+                                                                     ("quantity", asset_quantity);
+
+    auto accountPermissions = get_account_permissions(tx_permission, {grantor, config::active_name});
+    send_actions({create_action(accountPermissions, N(cyber.stake), N(delegate), vote_action_params)});
+}
+
 struct vote_producer_proxy_subcommand {
    string voter_str;
    string proxy_str;
+   string quantity;
 
    vote_producer_proxy_subcommand(CLI::App* actionRoot) {
       auto vote_proxy = actionRoot->add_subcommand("proxy", localized("Vote your stake through a proxy"));
       vote_proxy->add_option("voter", voter_str, localized("The voting account"))->required();
       vote_proxy->add_option("proxy", proxy_str, localized("The proxy account"))->required();
+      vote_proxy->add_option("quantity", quantity, localized("An asset quantity that the voter delegates to the proxy to vote for the producer"))->required();
       add_standard_transaction_options(vote_proxy, "voter@active");
 
       vote_proxy->set_callback([this] {
-         fc::variant act_payload = fc::mutable_variant_object()
-                  ("voter", voter_str)
-                  ("proxy", proxy_str)
-                  ("producers", std::vector<account_name>{});
-         auto accountPermissions = get_account_permissions(tx_permission, {voter_str,config::active_name});
-         send_actions({create_action(accountPermissions, config::system_account_name, N(voteproducer), act_payload)});
+         delegate_stake(voter_str, proxy_str, quantity);
       });
    }
 };
@@ -1369,12 +1375,7 @@ struct vote_producers_subcommand {
       add_standard_transaction_options(vote_producers, "voter@active");
 
       vote_producers->set_callback([this] {
-         const fc::variant vote_action_params = fc::mutable_variant_object("grantor_name", grantor)
-                                                                          ("agent_name", producer)
-                                                                          ("quantity", quantity);
-
-         auto accountPermissions = get_account_permissions(tx_permission, {grantor, config::active_name});
-         send_actions({create_action(accountPermissions, N(cyber.stake), N(delegate), vote_action_params)});
+          delegate_stake(grantor, producer, quantity);
       });
    }
 };
