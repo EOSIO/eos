@@ -9,6 +9,8 @@ namespace cyberway { namespace chaindb {
 
     class journal;
 
+    struct mongodb_driver_impl;
+
     class mongodb_driver final: public driver_interface {
     public:
         mongodb_driver(journal&, string, string);
@@ -47,8 +49,7 @@ namespace cyberway { namespace chaindb {
         primary_key_t available_pk(const table_info&) const override;
 
     private:
-        struct mongodb_impl_;
-        std::unique_ptr<mongodb_impl_> impl_;
+        std::unique_ptr<mongodb_driver_impl> impl_;
     }; // class mongodb_driver
 
 } } // namespace cyberway::chaindb
