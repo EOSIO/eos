@@ -880,6 +880,8 @@ struct genesis_create::genesis_create_impl final {
     void store_posts() {
         ilog("Creating reward pool, posts & votes...");
 
+        primary_key_t pool_date = 0;
+
         // first create lookup table to find author by post id
         fc::flat_map<uint64_t, name> authors;           // post_id:name
         for (const auto& c : _visitor.comments) {
@@ -991,6 +993,7 @@ struct genesis_create::genesis_create_impl final {
             db.insert(pk, name_by_acc(c.author), mvo
                 ("id", pk)
                 ("date", time_point(c.active.created).time_since_epoch().count())
+                ("pool_date", pool_date)
                 ("tokenprop", c.active.percent_steem_dollars / 2)
                 ("beneficiaries", beneficiaries)
                 ("rewardweight", c.active.reward_weight)
@@ -1012,7 +1015,7 @@ struct genesis_create::genesis_create_impl final {
             "GPO total rshares ${t} do not match to sum from posts ${s}", ("t", total_rshares)("s", sum_net_positive));
 
         // store pool
-        pk = 0;
+        pk = pool_date;
         db.start_section(_info.golos.names.posting, N(rewardpools), "rewardpool", 1);
         db.insert(pk, _info.golos.names.posting, mvo
             ("created", pk)
