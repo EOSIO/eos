@@ -57,7 +57,7 @@ class Cluster(object):
 
     # pylint: disable=too-many-arguments
     # walletd [True|False] Is keosd running. If not load the wallet plugin
-    def __init__(self, walletd=False, localCluster=True, host="localhost", port=-1, walletHost="localhost", walletPort=9899, enableMongo=False
+    def __init__(self, walletd=False, localCluster=True, host="localhost", port=-1, walletHost="localhost", walletPort=-1, enableMongo=False
                  , mongoHost="localhost", mongoPort=27017, mongoDb="EOStest", defproduceraPrvtKey=None, defproducerbPrvtKey=None, staging=False, clusterID=0):
         """Cluster container.
         walletd [True|False] Is wallet keosd running. If not load the wallet plugin
@@ -83,6 +83,9 @@ class Cluster(object):
         
         if port == -1:
             port = Cluster.__BiosPort + Cluster.__node_stride
+
+        if walletPort == -1:
+            walletPort = Cluster.__portBase + clusterID * Cluster.__cluster_stride + Cluster.__port_type_keosd
 
         self.nodes={}
         self.unstartedNodes=[]
