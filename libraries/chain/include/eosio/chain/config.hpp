@@ -23,21 +23,21 @@ const static auto default_state_size            = 1*1024*1024*1024ll;
 const static auto default_state_guard_size      =    128*1024*1024ll;
 
 
-const static uint64_t system_account_name    = N(eosio);
-const static uint64_t null_account_name      = N(eosio.null);
-const static uint64_t producers_account_name = N(eosio.prods);
+const static name system_account_name    { N(eosio) };
+const static name null_account_name      { N(eosio.null) };
+const static name producers_account_name { N(eosio.prods) };
 
 // Active permission of producers account requires greater than 2/3 of the producers to authorize
-const static uint64_t majority_producers_permission_name = N(prod.major); // greater than 1/2 of producers needed to authorize
-const static uint64_t minority_producers_permission_name = N(prod.minor); // greater than 1/3 of producers needed to authorize0
+const static name majority_producers_permission_name { N(prod.major) }; // greater than 1/2 of producers needed to authorize
+const static name minority_producers_permission_name { N(prod.minor) }; // greater than 1/3 of producers needed to authorize0
 
-const static uint64_t eosio_auth_scope       = N(eosio.auth);
-const static uint64_t eosio_all_scope        = N(eosio.all);
+const static name eosio_auth_scope       { N(eosio.auth) };
+const static name eosio_all_scope        { N(eosio.all) };
 
-const static uint64_t active_name = N(active);
-const static uint64_t owner_name  = N(owner);
-const static uint64_t eosio_any_name = N(eosio.any);
-const static uint64_t eosio_code_name = N(eosio.code);
+const static name active_name     { N(active) };
+const static name owner_name      { N(owner) };
+const static name eosio_any_name  { N(eosio.any) };
+const static name eosio_code_name { N(eosio.code) };
 
 const static int      block_interval_ms = 500;
 const static int      block_interval_us = block_interval_ms*1000;

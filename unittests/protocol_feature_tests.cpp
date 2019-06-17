@@ -236,7 +236,7 @@ BOOST_AUTO_TEST_CASE( only_link_to_existing_permission_test ) try {
       ("account", "alice")
       ("permission", "test")
       ("parent", "active")
-      ("auth", authority(get_public_key("testapi", "test")))
+      ("auth", authority(get_public_key(name("testapi"), "test")))
    );
 
    c.produce_block();
@@ -660,7 +660,7 @@ BOOST_AUTO_TEST_CASE( no_duplicate_deferred_id_test ) try {
 
    check_generation_context( index.begin()->packed_trx,
                              trace2->id,
-                             ((static_cast<unsigned __int128>(N(alice)) << 64) | 1),
+                             ((static_cast<unsigned __int128>(N(alice).to_uint64_t()) << 64) | 1),
                              N(test) );
 
    c.produce_block();
@@ -678,7 +678,7 @@ BOOST_AUTO_TEST_CASE( no_duplicate_deferred_id_test ) try {
 
    check_generation_context( index.begin()->packed_trx,
                              trace3->id,
-                             ((static_cast<unsigned __int128>(N(alice)) << 64) | 1),
+                             ((static_cast<unsigned __int128>(N(alice).to_uint64_t()) << 64) | 1),
                              N(test) );
 
    c.produce_block();

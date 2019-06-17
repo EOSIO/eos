@@ -7,7 +7,7 @@ add_library( eosio_testing
              ${HEADERS}
         )
 
-target_link_libraries( eosio_testing eosio_chain fc chainbase Logging IR WAST WASM Runtime )
+target_link_libraries( eosio_testing eosio_chain fc chainbase Logging IR WAST WASM Runtime Boost::unit_test_framework )
 target_include_directories( eosio_testing
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_BINARY_DIR}/include"
                                    "${CMAKE_CURRENT_SOURCE_DIR}/../wasm-jit/Include"
