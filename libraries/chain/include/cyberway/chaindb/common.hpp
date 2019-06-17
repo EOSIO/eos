@@ -21,6 +21,7 @@ namespace cyberway { namespace chaindb {
 
     using cursor_t = int32_t;
     static constexpr cursor_t invalid_cursor = (0);
+    static constexpr cursor_t ram_cursor = std::numeric_limits<cursor_t>::max();
 
     using std::string;
 

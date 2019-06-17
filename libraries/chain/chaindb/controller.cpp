@@ -183,7 +183,9 @@ namespace cyberway { namespace chaindb {
             return get_table(request);
         }
 
-        const cursor_info& lower_bound(const index_request& request, const char* value, const size_t size) {
+        const cursor_info& lower_bound(
+            const index_request& request, const cursor_kind kind, const char* value, const size_t size
+        ) {
             auto  key    = request.to_service();
             auto  index  = get_index(request);
             auto  object = index.abi().to_object(index, value, size);
@@ -219,7 +221,7 @@ namespace cyberway { namespace chaindb {
             return cursor;
         }
 
-        const cursor_info& lower_bound(const table_request& request, const primary_key_t pk) {
+        const cursor_info& lower_bound(const table_request& request, const cursor_kind kind, const primary_key_t pk) {
             auto  key    = request.to_service(pk);
             auto  index  = get_pk_index(request);
             auto  value  = primary_key::to_variant(index, pk);
@@ -693,13 +695,17 @@ namespace cyberway { namespace chaindb {
         impl_->driver_.apply_code_changes(code);
     }
 
-    find_info chaindb_controller::lower_bound(const index_request& request, const char* key, size_t size) const {
-        const auto& info = impl_->lower_bound(request, key, size);
+    find_info chaindb_controller::lower_bound(
+        const index_request& request, const cursor_kind kind, const char* key, size_t size
+    ) const {
+        const auto& info = impl_->lower_bound(request, kind, key, size);
         return {info.id, info.pk};
     }
 
-    find_info chaindb_controller::lower_bound(const table_request& request, const primary_key_t pk) const {
-        const auto& info = impl_->lower_bound(request, pk);
+    find_info chaindb_controller::lower_bound(
+        const table_request& request, const cursor_kind kind, const primary_key_t pk
+    ) const {
+        const auto& info = impl_->lower_bound(request, kind, pk);
         return {info.id, info.pk};
     }
 

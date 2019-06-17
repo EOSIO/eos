@@ -57,6 +57,7 @@ namespace cyberway { namespace chaindb {
         static constexpr cursor_t state = 0;
         static constexpr cursor_t end = -1;
         static constexpr cursor_t begin = -2;
+        static constexpr cursor_t ram = ram_cursor;
     }
 
 template<typename O>
@@ -100,19 +101,23 @@ void safe_allocate(const Value& value, const char* error_msg, Lambda&& callback)
 
 template<bool IsPrimaryIndex> struct lower_bound final {
     template<typename Key>
-    find_info operator()(const chaindb_controller& chaindb, const index_request& request, const Key& key) const {
+    find_info operator()(
+        const chaindb_controller& chaindb, const index_request& request, const cursor_kind kind, const Key& key
+    ) const {
         find_info info;
         safe_allocate(key, "Invalid size of key on lower_bound", [&](auto& data, auto& size) {
             pack_object(key, data, size);
-            info = chaindb.lower_bound(request, data, size);
+            info = chaindb.lower_bound(request, kind, data, size);
         });
         return info;
     }
 }; // struct lower_bound
 
 template<> struct lower_bound<true /*IsPrimaryIndex*/> final {
-    find_info operator()(const chaindb_controller& chaindb, const table_request& request, const primary_key_t pk) const {
-        return chaindb.lower_bound(request, pk);
+    find_info operator()(
+        const chaindb_controller& chaindb, const table_request& request, const cursor_kind kind, const primary_key_t pk
+    ) const {
+        return chaindb.lower_bound(request, kind, pk);
     }
 }; // struct lower_bound
 
@@ -364,6 +369,8 @@ private:
             return result;
         }
         const_iterator_impl& operator++() {
+            CYBERWAY_ASSERT(uninitilized_cursor::ram != cursor_, chaindb_midx_pk_exception,
+                "Can't increment RAM iterator for the index ${index}", ("index", get_index_name()));
             lazy_open();
             CYBERWAY_ASSERT(primary_key_ != primary_key::End, chaindb_midx_pk_exception,
                 "Can't increment end iterator for the index ${index}", ("index", get_index_name()));
@@ -378,6 +385,8 @@ private:
             return result;
         }
         const_iterator_impl& operator--() {
+            CYBERWAY_ASSERT(uninitilized_cursor::ram != cursor_, chaindb_midx_pk_exception,
+                "Can't decrement RAM iterator for the index ${index}", ("index", get_index_name()));
             lazy_open();
             primary_key_ = controller().prev(get_cursor_request());
             item_.reset();
@@ -425,7 +434,9 @@ private:
         }
 
         ~const_iterator_impl() {
-            if (is_cursor_initialized()) controller().close(get_cursor_request());
+            if (uninitilized_cursor::ram != cursor_ && is_cursor_initialized()) {
+                controller().close(get_cursor_request());
+            }
         }
 
     private:
@@ -573,15 +584,15 @@ public:
         const_iterator end() const  { return cend(); }
 
         template<typename Value>
-        const_iterator find(const Value& value) const {
-            auto itr = lower_bound(value);
+        const_iterator find(const Value& value, const cursor_kind kind = cursor_kind::ManyRecords) const {
+            auto itr = lower_bound(value, kind);
             auto etr = cend();
             if (itr == etr) return etr;
             if (!key_comparator<key_type>::compare_eq(iterator_extractor_type()(itr), value)) return etr;
             return itr;
         }
-        const_iterator find(const key_type& key) const {
-            auto itr = lower_bound(key);
+        const_iterator find(const key_type& key, const cursor_kind kind = cursor_kind::ManyRecords) const {
+            auto itr = lower_bound(key, kind);
             auto etr = cend();
             if (itr == etr) return etr;
             if (key != iterator_extractor_type()(itr)) return etr;
@@ -589,22 +600,23 @@ public:
         }
 
         const T& get(const key_type& key) const {
-            auto itr = find(key);
+            auto itr = find(key, cursor_kind::OneRecord);
             CYBERWAY_ASSERT(itr != cend(), chaindb_midx_find_exception,
                 "Unable to find key ${key} in the index ${index}", ("key", key)("index", get_index_name()));
             return *itr;
         }
 
-        const_iterator lower_bound(const key_type& key) const {
+        const_iterator lower_bound(const key_type& key, const cursor_kind kind = cursor_kind::ManyRecords) const {
             chaindb::lower_bound<std::is_same<tag<IndexName>, typename PrimaryIndex::tag>::value> finder;
-            auto info = finder(controller_, get_index_request(), key);
+            auto info = finder(controller_, get_index_request(), kind, key);
             return const_iterator(&controller_, info.cursor, info.pk);
         }
 
         template<typename Value>
-        const_iterator lower_bound(const Value& value) const {
-            return lower_bound(key_converter<key_type>::convert(value));
+        const_iterator lower_bound(const Value& value, const cursor_kind kind = cursor_kind::ManyRecords) const {
+            return lower_bound(key_converter<key_type>::convert(value), kind);
         }
+
         const_iterator upper_bound(const key_type& key) const {
             chaindb::upper_bound<std::is_same<tag<IndexName>, typename PrimaryIndex::tag>::value> finder;
             auto info = finder(controller_, get_index_request(), key);
@@ -754,14 +766,14 @@ public:
     }
 
     const_iterator cbegin() const { return primary_idx_.cbegin(); }
-    const_iterator begin() const  { return cbegin(); }
+    const_iterator begin()  const { return cbegin(); }
 
     const_iterator cend() const  { return primary_idx_.cend(); }
-    const_iterator end() const   { return cend(); }
+    const_iterator end()  const  { return cend(); }
 
 
-    const_iterator lower_bound(primary_key_t pk) const {
-        return primary_idx_.lower_bound(pk);
+    const_iterator lower_bound(primary_key_t pk, const cursor_kind kind = cursor_kind::ManyRecords) const {
+        return primary_idx_.lower_bound(pk, kind);
     }
 
     const_iterator upper_bound(primary_key_t pk) const {
@@ -772,8 +784,8 @@ public:
         return primary_idx_.get(pk);
     }
 
-    const_iterator find(const primary_key_t pk = 0) const {
-        return primary_idx_.find(pk);
+    const_iterator find(const primary_key_t pk = 0, const cursor_kind kind = cursor_kind::ManyRecords) const {
+        return primary_idx_.find(pk, kind);
     }
 
     template<typename IndexTag>

@@ -17,6 +17,7 @@ namespace eosio { namespace chain {
     using cyberway::chaindb::table_name_t;
     using cyberway::chaindb::index_name_t;
     using cyberway::chaindb::primary_key_t;
+    using cyberway::chaindb::cursor_kind;
 
     class chaindb_api : public context_aware_api {
     public:
@@ -36,13 +37,13 @@ namespace eosio { namespace chain {
             account_name_t code, scope_name_t scope, table_name_t table, index_name_t index,
             array_ptr<const char> key, size_t size
         ) {
-            return context.chaindb.lower_bound({code, scope, table, index}, key, size).cursor;
+            return context.chaindb.lower_bound({code, scope, table, index}, cursor_kind::ManyRecords, key, size).cursor;
         }
 
         cursor_t chaindb_lower_bound_pk(
             account_name_t code, scope_name_t scope, table_name_t table, primary_key_t pk
         ) {
-            return context.chaindb.lower_bound({code, scope, table}, pk).cursor;
+            return context.chaindb.lower_bound({code, scope, table}, cursor_kind::ManyRecords, pk).cursor;
         }
 
         cursor_t chaindb_upper_bound(
@@ -217,7 +218,7 @@ namespace eosio { namespace chain {
             chaindb::cache_object_ptr cache_ptr;
             chaindb::table_request    request{code, scope, table};
 
-            auto find = context.chaindb.lower_bound(request, pk);
+            auto find = context.chaindb.lower_bound(request, cursor_kind::ManyRecords, pk);
             if (find.pk == pk) {
                 cache_ptr = context.chaindb.get_cache_object({code, find.cursor}, false);
             }

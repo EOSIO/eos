@@ -16,6 +16,12 @@ namespace cyberway { namespace chaindb {
     template<class> struct object_to_table;
     struct chaindb_controller_impl;
 
+    enum class cursor_kind {
+        ManyRecords,
+        OneRecord,
+        InRAM,
+    }; // enum class cursor_open
+
     class chaindb_controller final {
     public:
         chaindb_controller() = delete;
@@ -35,9 +41,9 @@ namespace cyberway { namespace chaindb {
         }
 
         template<typename Object>
-        const Object* find(const primary_key_t pk) const {
+        const Object* find(const primary_key_t pk, const cursor_kind k=cursor_kind::ManyRecords) const {
             auto midx = get_table<Object>();
-            auto itr = midx.find(pk);
+            auto itr = midx.find(pk, k);
             if (midx.end() == itr) {
                 return nullptr;
             }
@@ -46,15 +52,15 @@ namespace cyberway { namespace chaindb {
         }
 
         template<typename Object>
-        const Object* find(const oid<Object>& id = oid<Object>()) const {
-            return find<Object>(id._id);
+        const Object* find(const oid<Object>& id = oid<Object>(), const cursor_kind k=cursor_kind::ManyRecords) const {
+            return find<Object>(id._id, k);
         }
 
         template<typename Object, typename ByIndex, typename Key>
-        const Object* find(Key&& key) const {
+        const Object* find(Key&& key, const cursor_kind k=cursor_kind::ManyRecords) const {
             auto midx = get_table<Object>();
             auto idx = midx.template get_index<ByIndex>();
-            auto itr = idx.find(std::forward<Key>(key));
+            auto itr = idx.find(std::forward<Key>(key), k);
             if (idx.end() == itr) {
                 return nullptr;
             }
@@ -133,13 +139,13 @@ namespace cyberway { namespace chaindb {
         void undo_last_revision() const;
         void commit_revision(revision_t) const;
 
-        find_info lower_bound(const index_request&, const char* key, size_t) const;
-        find_info lower_bound(const table_request&, primary_key_t) const;
-        find_info lower_bound(const index_request& request, const variant&) const;
+        find_info lower_bound(const index_request&, cursor_kind, const char* key, size_t) const;
+        find_info lower_bound(const table_request&, cursor_kind, primary_key_t) const;
+        find_info lower_bound(const index_request&, const variant&) const;
 
         find_info upper_bound(const index_request&, const char* key, size_t) const;
         find_info upper_bound(const table_request&, primary_key_t) const;
-        find_info upper_bound(const index_request& request, const variant&) const;
+        find_info upper_bound(const index_request&, const variant&) const;
 
         find_info locate_to(const index_request&, const char* key, size_t, primary_key_t) const;
 
