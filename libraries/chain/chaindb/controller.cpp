@@ -312,33 +312,32 @@ namespace cyberway { namespace chaindb {
             cache_.destroy(obj);
         }
 
-        cache_object_ptr get_cache_object(const cursor_info& cursor) {
+        cache_object_ptr get_cache_object(const cursor_info& cursor, const bool with_blob) {
             auto cache_ptr = cache_.find(cursor.index.to_service(cursor.pk));
 
             if (BOOST_UNLIKELY(!cache_ptr)) {
                 auto obj = object_at_cursor(cursor, false);
-                if (!obj.is_null()) {
-                    cache_ptr = cache_.emplace(cursor.index, std::move(obj));
-                }
+
+                CYBERWAY_ASSERT(!obj.is_null(), driver_absent_object_exception,
+                    "Requesting not-exist object from the table ${table}",
+                    ("table", get_full_table_name(cursor.index)));
+
+                cache_ptr = cache_.emplace(cursor.index, std::move(obj));
             }
+
+            init_blob(cache_ptr, cursor.index, with_blob);
+
             return cache_ptr;
         }
 
         cache_object_ptr get_cache_object(const cursor_request& req, const bool with_blob) {
-            auto& cursor = current(req);
+            return get_cache_object(current(req), with_blob);
+        }
 
-            CYBERWAY_ASSERT(primary_key::End != cursor.pk, driver_absent_object_exception,
-                "Requesting object from the end of the table ${table}",
-                ("table", get_full_table_name(cursor.index)));
-
-            auto cache_ptr = get_cache_object(cursor);
-
+        void init_blob(cache_object_ptr& cache_ptr, const table_info& info, const bool with_blob) {
             if (cache_ptr && with_blob && !cache_ptr->has_blob()) {
-                auto& table  = static_cast<const table_info&>(cursor.index);
-                cache_ptr->set_blob(cursor.index.abi().to_bytes(table, cache_ptr->object().value));
+                cache_ptr->set_blob(info.abi().to_bytes(info, cache_ptr->object().value));
             }
-
-            return cache_ptr;
         }
 
         account_abi_info get_account_abi_info(const account_name_t code) {
@@ -390,10 +389,10 @@ namespace cyberway { namespace chaindb {
             auto table = get_table(request);
             auto value = table.abi().to_object(table, data, size);
             auto obj   = to_object_value(table, pk, std::move(value));
-            auto orig_obj = object_by_pk(table, obj.pk());
+            auto orig_cache_ptr = get_cache_object(table, obj.pk(), false);
 
-            storage.in_ram = orig_obj.service.in_ram;
-            auto delta = update(table, std::move(storage), obj, std::move(orig_obj));
+            storage.in_ram = orig_cache_ptr->object().service.in_ram;
+            auto delta = update(table, std::move(storage), obj, orig_cache_ptr->object());
             cache_.emplace(table, std::move(obj));
 
             return delta;
@@ -414,10 +413,10 @@ namespace cyberway { namespace chaindb {
         void change_ram_state(cache_object& cache_obj, storage_payer_info storage) {
             auto table    = get_table(cache_obj);
             auto obj      = cache_obj.object();
-            auto orig_obj = object_by_pk(table, obj.pk());
+            auto orig_obj = cache_obj.object();
 
             obj.service.in_ram = storage.in_ram;
-            storage.size  = orig_obj.service.size;
+            storage.size  = obj.service.size;
             storage.delta = 0;
             update(table, storage, obj, std::move(orig_obj));
             cache_.set_service(table, cache_obj, std::move(obj.service));
@@ -426,9 +425,9 @@ namespace cyberway { namespace chaindb {
         // From contracts
         int remove(const table_request& request, const storage_payer_info& storage, const primary_key_t pk) {
             auto table = get_table(request);
-            auto obj = object_by_pk(table, pk);
+            auto cache_ptr = get_cache_object(table, pk, false);
 
-            return remove(table, storage, obj);
+            return remove(table, storage, cache_ptr->object());
         }
 
         // From internal
@@ -439,9 +438,8 @@ namespace cyberway { namespace chaindb {
             return remove(table, storage, std::move(orig_obj));
         }
 
-        object_value object_by_pk(const table_request& request, const primary_key_t pk) {
-            auto table = get_table(request);
-            return object_by_pk(table, pk);
+        cache_object_ptr get_cache_object(const table_request& request, const primary_key_t pk, const bool with_blob) {
+            return get_cache_object(get_table(request), pk, with_blob);
         }
 
         object_value object_at_cursor(const cursor_request& request, const bool with_decors) {
@@ -555,16 +553,23 @@ namespace cyberway { namespace chaindb {
             return info;
         }
 
-        object_value object_by_pk(const table_info& table, const primary_key_t pk) {
-            auto itm = cache_.find(table.to_service(pk));
-            if (itm) return itm->object();
+        cache_object_ptr get_cache_object(const table_info& table, const primary_key_t pk, const bool with_blob) {
+            auto cache_ptr = cache_.find(table.to_service(pk));
 
-            auto obj = driver_.object_by_pk(table, pk);
-            validate_object(table, obj, pk);
-            if (!obj.value.is_null()) {
-                cache_.emplace(table, obj);
+            if (BOOST_UNLIKELY(!cache_ptr)) {
+                auto obj = driver_.object_by_pk(table, pk);
+                validate_object(table, obj, pk);
+
+                CYBERWAY_ASSERT(!obj.is_null(), driver_absent_object_exception,
+                    "Requesting not-exist object from the table ${table}",
+                    ("table", get_full_table_name(table)));
+
+                cache_ptr = cache_.emplace(table, std::move(obj));
             }
-            return obj;
+
+            init_blob(cache_ptr, table, with_blob);
+
+            return cache_ptr;
         }
 
         void validate_object(const table_info& table, const object_value& obj, const primary_key_t pk) const {
@@ -725,7 +730,7 @@ namespace cyberway { namespace chaindb {
     }
 
     find_info chaindb_controller::upper_bound(const index_request& request, const variant& orders) const {
-        auto info = impl_->lower_bound(request, orders);
+        auto info = impl_->upper_bound(request, orders);
         return {info.id, info.pk};
     }
 
@@ -787,6 +792,12 @@ namespace cyberway { namespace chaindb {
         return impl_->get_cache_object(cursor, with_blob);
     }
 
+    cache_object_ptr chaindb_controller::get_cache_object(
+        const table_request& request, const primary_key_t pk, const bool with_blob
+    ) const {
+        return impl_->get_cache_object(request, pk, with_blob);
+    }
+
     account_abi_info chaindb_controller::get_account_abi_info(const account_name_t code) const {
         return impl_->get_account_abi_info(code);
     }
@@ -831,12 +842,12 @@ namespace cyberway { namespace chaindb {
         return impl_->remove(itm, storage);
     }
 
-    void chaindb_controller::change_ram_state(cache_object& itm, const storage_payer_info& storage) const {
-        impl_->change_ram_state(itm, storage);
+    void chaindb_controller::change_ram_state(cache_object& cache_obj, const storage_payer_info& storage) const {
+        impl_->change_ram_state(cache_obj, storage);
     }
 
     variant chaindb_controller::value_by_pk(const table_request& request, primary_key_t pk) const {
-        return impl_->object_by_pk(request, pk).value;
+        return impl_->get_cache_object(request, pk, false)->object().value;
     }
 
     variant chaindb_controller::value_at_cursor(const cursor_request& request) const {
