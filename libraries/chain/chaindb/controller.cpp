@@ -183,39 +183,58 @@ namespace cyberway { namespace chaindb {
             return get_table(request);
         }
 
-        const cursor_info& lower_bound(const index_request& request, const char* key, const size_t size) {
+        const cursor_info& lower_bound(const index_request& request, const char* value, const size_t size) {
+            auto  key    = request.to_service();
             auto  index  = get_index(request);
-            auto  value  = index.abi().to_object(index, key, size);
-            auto& cursor = driver_.lower_bound(std::move(index), std::move(value));
+            auto  object = index.abi().to_object(index, value, size);
+            auto& cursor = driver_.lower_bound(std::move(index), object);
 
-            if (index.index->unique) {
-                auto cache_ptr = cache_.find(request.to_service(), request.index, key, size);
-                if (cache_ptr) {
-                    cursor.pk =     cache_ptr->pk();
-                    cursor.object = cache_ptr->object();
-                    return cursor;
+            cache_object_ptr cache_ptr;
+
+            if (value && size) {
+                if (cursor.index.index->unique) {
+                    cache_ptr = cache_.find(key, request.index, value, size);
+                }
+
+                if (!cache_ptr) {
+                    cache_ptr = cache_.find_unsuccess(key, request.index, value, size);
                 }
             }
 
-            return current(cursor);
+            if (cache_ptr) {
+                cursor.pk =     cache_ptr->pk();
+                cursor.object = cache_ptr->object();
+                return cursor;
+            }
+
+            current(cursor);
+            if (primary_key::is_good(cursor.pk)) {
+                cache_ptr = get_cache_object(cursor);
+            }
+
+            if (value && size && !cursor.object.value.has_value(object)) {
+                cache_.emplace_unsuccess(cursor.index, value, size, cursor.pk);
+            }
+
+            return cursor;
         }
 
         const cursor_info& lower_bound(const table_request& request, const primary_key_t pk) {
+            auto  key    = request.to_service(pk);
             auto  index  = get_pk_index(request);
             auto  value  = primary_key::to_variant(index, pk);
             auto& cursor = driver_.lower_bound(std::move(index), std::move(value));
 
-            auto cache_ptr = cache_.find(request.to_service(pk));
+            auto cache_ptr = cache_.find(key);
             if (!cache_ptr) {
-                cache_ptr = cache_.find_unsuccess(cursor.index, pk);
+                cache_ptr = cache_.find_unsuccess(key);
             }
 
             if (cache_ptr) {
                 cursor.pk     = cache_ptr->pk();
                 cursor.object = cache_ptr->object();
             } else {
-                current(cursor);
-                if (pk != cursor.pk) {
+                if (pk != current(cursor).pk) {
                     if (primary_key::is_good(cursor.pk)) {
                         cache_ptr = get_cache_object(cursor);
                     }
