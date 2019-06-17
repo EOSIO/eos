@@ -1031,7 +1031,9 @@ namespace cyberway { namespace chaindb {
                 service.object_tree.emplace(cache_object_key(cache_obj), cache_obj_ptr);
             }
 
-            set_object(table, &service, cache_obj, std::move(value));
+            if (!value.is_null()) {
+                set_object(table, &service, cache_obj, std::move(value));
+            }
 
             return cache_obj_ptr;
         }
