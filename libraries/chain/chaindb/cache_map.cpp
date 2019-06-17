@@ -121,7 +121,7 @@ namespace cyberway { namespace chaindb {
 
     //-----------------------------------------------------------------------------------------------
 
-    struct cache_unsuccess_pk final {
+    struct cache_pk_value final {
         enum : uint64_t {
             size = 128
         }; // constants
@@ -129,12 +129,15 @@ namespace cyberway { namespace chaindb {
         struct by_pk;
         struct by_object;
 
-        scope_name_t  scope = 0;
-        primary_key_t pk    = primary_key::Unset;
-        cache_object_ptr object_ptr;
+        const primary_key_t pk = primary_key::Unset;
+        const cache_object_ptr object_ptr;
 
-        cache_unsuccess_pk(scope_name_t s, primary_key_t p, cache_object_ptr o)
-        : scope(s), pk(p), object_ptr(std::move(o)) {
+        cache_pk_value(primary_key_t p, cache_object_ptr o)
+        : pk(p), object_ptr(std::move(o)) {
+        }
+
+        scope_name_t scope_key() const {
+            return object_ptr->service().scope;
         }
 
         static const void* object_key(const cache_object& cache_obj) {
@@ -144,22 +147,22 @@ namespace cyberway { namespace chaindb {
         const void* object_key() const {
             return object_key(*object_ptr);
         }
-    }; // struct cache_unsuccess_pk
+    }; // struct cache_pk_value
 
-    using cache_unsuccess_pk_tree = bmi::multi_index_container<
-        cache_unsuccess_pk,
+    using cache_pk_tree = bmi::multi_index_container<
+        cache_pk_value,
         bmi::indexed_by<
             bmi::ordered_unique<
-                bmi::tag<cache_unsuccess_pk::by_pk>,
-                bmi::composite_key<cache_unsuccess_pk,
-                    bmi::member<cache_unsuccess_pk, primary_key_t, &cache_unsuccess_pk::pk>,
-                    bmi::member<cache_unsuccess_pk, scope_name_t,  &cache_unsuccess_pk::scope>>,
+                bmi::tag<cache_pk_value::by_pk>,
+                bmi::composite_key<cache_pk_value,
+                    bmi::member<cache_pk_value, const primary_key_t, &cache_pk_value::pk>,
+                    bmi::const_mem_fun<cache_pk_value, scope_name_t, &cache_pk_value::scope_key>>,
                 composite_key_compare<
                     std::less<primary_key_t>,
                     std::less<scope_name_t>>>,
             bmi::ordered_non_unique<
-                bmi::tag<cache_unsuccess_pk::by_object>,
-                bmi::const_mem_fun<cache_unsuccess_pk, const void*, &cache_unsuccess_pk::object_key>,
+                bmi::tag<cache_pk_value::by_object>,
+                bmi::const_mem_fun<cache_pk_value, const void*, &cache_pk_value::object_key>,
                 std::less<const void*>>>>;
 
     //-----------------------------------------------------------------------------------------------
@@ -203,7 +206,7 @@ namespace cyberway { namespace chaindb {
 
         cache_object_tree deleted_object_tree;
 
-        cache_unsuccess_pk_tree unsuccess_pk_tree;
+        cache_pk_tree     unsuccess_pk_tree;
 
         cache_service_info() = default;
 
@@ -458,7 +461,7 @@ namespace cyberway { namespace chaindb {
                 return {};
             }
 
-            auto& idx = service_ptr->unsuccess_pk_tree.get<cache_unsuccess_pk::by_pk>();
+            auto& idx = service_ptr->unsuccess_pk_tree.get<cache_pk_value::by_pk>();
             auto  itr = idx.find(std::make_tuple(service.scope, service.pk));
 
             if (idx.end() == itr) {
@@ -501,13 +504,13 @@ namespace cyberway { namespace chaindb {
                 is_pended = add_pending_object(obj_ptr);
             }
 
-            auto& idx = service_ptr->unsuccess_pk_tree.get<cache_unsuccess_pk::by_pk>();
+            auto& idx = service_ptr->unsuccess_pk_tree.get<cache_pk_value::by_pk>();
             auto  itr = idx.find(std::make_tuple(table.scope, pk));
 
             if (idx.end() != itr) {
                 if (rpk == itr->object_ptr->pk()) {
                     if (is_pended) {
-                        find_pending_cell()->add_ram_bytes(cache_unsuccess_pk::size);
+                        find_pending_cell()->add_ram_bytes(cache_pk_value::size);
                     }
                     return;
                 }
@@ -515,10 +518,10 @@ namespace cyberway { namespace chaindb {
                 idx.erase(itr);
             }
 
-            service_ptr->unsuccess_pk_tree.insert(cache_unsuccess_pk(pk, table.scope, std::move(obj_ptr)));
+            service_ptr->unsuccess_pk_tree.insert(cache_pk_value(pk, std::move(obj_ptr)));
 
             if (is_pended ) {
-                find_pending_cell()->add_ram_bytes(cache_unsuccess_pk::size);
+                find_pending_cell()->add_ram_bytes(cache_pk_value::size);
             }
         }
 
@@ -800,8 +803,8 @@ namespace cyberway { namespace chaindb {
         }
 
         void delete_unsuccess_pk(cache_service_info& service, cache_object& cache_obj) {
-            auto& idx = service.unsuccess_pk_tree.get<cache_unsuccess_pk::by_object>();
-            auto  key = cache_unsuccess_pk::object_key(cache_obj);
+            auto& idx = service.unsuccess_pk_tree.get<cache_pk_value::by_object>();
+            auto  key = cache_pk_value::object_key(cache_obj);
             auto  itr = idx.lower_bound(key);
 
             for (; idx.end() != itr && itr->object_key() == key; ) {
