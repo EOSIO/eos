@@ -1771,6 +1771,25 @@ struct unregproxy_subcommand {
    }
 };
 
+struct stake_subcommand {
+    string account;
+    string quantity;
+    string beneficiary;
+
+    stake_subcommand(CLI::App* actionRoot) {
+        auto stake = actionRoot->add_subcommand("stake", localized("Stake assets to gain resources"));
+        stake->add_option("account", account, localized("An account who stakes assets"))->required();
+        stake->add_option("quantity", quantity, localized("Assets quantity to stake"))->required();
+        stake->add_option("--beneficiary", beneficiary, localized("An account wich will gain resources"), true);
+
+        stake->set_callback([this] {
+            fc::variant transfer_params = fc::mutable_variant_object("from", account)("to", "cyber.stake")("quantity", quantity)("memo", beneficiary);
+            auto accountPermissions = get_account_permissions(tx_permission, {account, config::active_name});
+            send_actions({create_action(accountPermissions, N(cyber.token), N(transfer), transfer_params)});
+        });
+    }
+};
+
 struct canceldelay_subcommand {
    string canceling_account;
    string canceling_permission;
@@ -3701,6 +3720,7 @@ int main( int argc, char** argv ) {
    auto setProxyLvl = setproxylvl_subcommand(system);
    auto regProxy = regproxy_subcommand(system);
    auto unregProxy = unregproxy_subcommand(system);
+   auto stake = stake_subcommand(system);
 
    auto cancelDelay = canceldelay_subcommand(system);
 
