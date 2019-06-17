@@ -402,6 +402,7 @@ namespace cyberway { namespace chaindb {
 
         void remove(const table_info& table, object_value orig_obj) {
             cache_.clear_unsuccess(table);
+            driver_.skip_pk(table, orig_obj.pk());
             if (enabled()) {
                 remove(get_table(table), std::move(orig_obj));
             } else {
@@ -567,6 +568,7 @@ namespace cyberway { namespace chaindb {
             for (auto& obj: head.new_values_) {
                 cache_.clear_unsuccess(table.info());
                 cache_.remove(table.info(), obj.first);
+                driver_.skip_pk(table.info(), obj.first);
                 journal_.write(ctx,
                     write_operation::remove(undo_rev, obj.second.clone_service()),
                     write_operation::remove(undo_rev, obj.second.clone_service()));

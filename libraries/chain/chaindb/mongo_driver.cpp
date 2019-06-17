@@ -258,6 +258,15 @@ namespace cyberway { namespace chaindb {
             return !!source_;
         }
 
+        void skip_pk(const primary_key_t pk) {
+            if (is_opened()) {
+                if (!skipped_pk_tree_.capacity()) {
+                    skipped_pk_tree_.reserve(128);
+                }
+                skipped_pk_tree_.insert(pk);
+            }
+        }
+
     private:
         mongodb_driver_impl& driver_;
 
@@ -267,6 +276,7 @@ namespace cyberway { namespace chaindb {
 
         std::unique_ptr<mongocxx::cursor> source_;
         account_name_t scope_ = 0;
+        fc::flat_set<primary_key_t> skipped_pk_tree_;
 
         void change_direction(const direction dir) {
             if (!source_) {
@@ -356,6 +366,7 @@ namespace cyberway { namespace chaindb {
             }
 
             _detail::auto_reconnect([&]() {
+                skipped_pk_tree_.clear();
                 source_ = std::make_unique<mongocxx::cursor>(_detail::get_db_table(driver_, index).find({}, opts));
                 try_to_init_pk_value();
             });
@@ -368,9 +379,13 @@ namespace cyberway { namespace chaindb {
         void lazy_next() {
             lazy_open();
 
-            if (!is_end()) {
+            for ( ; !is_end(); ) {
                 ++source_->begin();
                 try_to_init_pk_value();
+
+                if (!skipped_pk_tree_.count(pk)) {
+                    break;
+                }
             }
         }
 
@@ -459,6 +474,17 @@ namespace cyberway { namespace chaindb {
 
         void apply_all_changes() {
             journal_.apply_all_changes(write_ctx_t_(*this));
+        }
+
+        void skip_pk(const table_info& table, const primary_key_t pk) {
+            auto itr = code_cursor_map_.find(table.code);
+            if (code_cursor_map_.end() == itr) {
+                return;
+            }
+
+            for (auto& id_cursor: itr->second) if (id_cursor.second.index.scope == table.scope) {
+                id_cursor.second.skip_pk(pk);
+            }
         }
 
         void close_cursor(const cursor_request& request) {
@@ -993,6 +1019,10 @@ namespace cyberway { namespace chaindb {
 
     void mongodb_driver::apply_all_changes() const {
         impl_->apply_all_changes();
+    }
+
+    void mongodb_driver::skip_pk(const table_info& table, const primary_key_t pk) const {
+        impl_->skip_pk(table, pk);
     }
 
     cursor_info& mongodb_driver::lower_bound(index_info index, variant key) const {

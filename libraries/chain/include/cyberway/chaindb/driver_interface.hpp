@@ -33,6 +33,8 @@ namespace cyberway { namespace chaindb {
         virtual void apply_all_changes() const = 0;
         virtual void apply_code_changes(const account_name& code) const = 0;
 
+        virtual void skip_pk(const table_info&, primary_key_t) const = 0;
+
         virtual cursor_info& lower_bound(index_info, variant key) const = 0;
         virtual cursor_info& upper_bound(index_info, variant key) const = 0;
         virtual cursor_info& locate_to(index_info, variant key, primary_key_t) const = 0;

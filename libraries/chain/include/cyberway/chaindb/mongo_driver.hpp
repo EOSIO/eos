@@ -31,6 +31,8 @@ namespace cyberway { namespace chaindb {
         void apply_code_changes(const account_name& code) const override;
         void apply_all_changes() const override;
 
+        void skip_pk(const table_info&, primary_key_t) const override;
+
         cursor_info& lower_bound(index_info, variant key) const override;
         cursor_info& upper_bound(index_info, variant key) const override;
         cursor_info& locate_to(index_info, variant key, primary_key_t) const override;
