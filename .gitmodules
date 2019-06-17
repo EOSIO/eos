@@ -20,4 +20,4 @@
 	url = https://github.com/Yubico/yubihsm-shell
 [submodule "libraries/eos-vm"]
 	path = libraries/eos-vm
-	url = git@github.com:eosio/eos-vm
+	url = https://github.com/eosio/eos-vm
