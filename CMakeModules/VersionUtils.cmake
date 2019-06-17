@@ -9,20 +9,17 @@ function(GENERATE_VERSION_METADATA)
       ERROR_QUIET
       OUTPUT_STRIP_TRAILING_WHITESPACE )
    execute_process(
-      COMMAND ${GIT_EXEC} describe --tags --dirty
+      COMMAND ${GIT_EXEC} diff --quiet
       WORKING_DIRECTORY ${SRC_DIR}
-      OUTPUT_VARIABLE V_DIRTY
+      RESULT_VARIABLE V_DIRTY
       ERROR_QUIET
       OUTPUT_STRIP_TRAILING_WHITESPACE )
 
-   # Look for the substring "-dirty" in the variable `_VERSION_DIRTY_`.
-   string(REGEX MATCH "-dirty$" V_DIRTY ${V_DIRTY})
-
-   # If `_VERSION_DIRTY_` is empty, we know that the repository isn't dirty and vice versa.
-   if("${V_DIRTY}" STREQUAL "")
-      set(V_DIRTY "false")
-   else()
+   # If `V_DIRTY` is equal to 1, we know that the repository is dirty and vice versa.
+   if(${V_DIRTY})
       set(V_DIRTY "true")
+   else()
+      set(V_DIRTY "false")
    endif()
 
    # Define the proper version metadata for the file `version_impl.cpp.in`.
