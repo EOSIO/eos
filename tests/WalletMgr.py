@@ -12,9 +12,9 @@ from testUtils import Utils
 Wallet=namedtuple("Wallet", "name password host port")
 # pylint: disable=too-many-instance-attributes
 class WalletMgr(object):
-    __walletLogOutFile="test_keosd_00000_out.log"
-    __walletLogErrFile="test_keosd_00000_err.log"
-    __walletDataDir="test_wallet_00000"
+    __walletLogOutFile=""
+    __walletLogErrFile=""
+    __walletDataDir=""
     __MaxPort=9999
 
     # pylint: disable=too-many-arguments
@@ -28,9 +28,17 @@ class WalletMgr(object):
         self.wallets={}
         self.__walletPid=None
 
-        WalletMgr.__walletLogOutFile = "test_keosd_cluster" + ("%05d" % clusterID) + "_out.log"
-        WalletMgr.__walletLogErrFile="test_keosd_cluster" + ("%05d" % clusterID) + "_err.log"
-        WalletMgr.__walletDataDir="test_wallet_" + ("%05d" % clusterID)
+        WalletMgr.__walletDataDir=("cluster%05d/test_wallet" % clusterID)
+
+        try:
+            Utils.Print("WalletMgr: creating directory %s" % (WalletMgr.__walletDataDir))
+            os.mkdir(WalletMgr.__walletDataDir)
+        except:
+            pass
+
+        WalletMgr.__walletLogOutFile = ("cluster%05d/test_keosd_out.log" % clusterID)
+        WalletMgr.__walletLogErrFile = ("cluster%05d/test_keosd_err.log" % clusterID)
+        
         if self.port == -1:
             self.port = Utils.portBase + clusterID * Utils.cluster_stride + Utils.port_type_keosd     
         if self.nodeosPort == -1:
@@ -304,6 +312,7 @@ class WalletMgr(object):
 
     @staticmethod
     def cleanup():
+        Utils.Print("WalletMgr: removing dir %s" % (WalletMgr.__walletDataDir))
         dataDir=WalletMgr.__walletDataDir
         if os.path.isdir(dataDir) and os.path.exists(dataDir):
             shutil.rmtree(WalletMgr.__walletDataDir)

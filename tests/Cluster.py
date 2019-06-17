@@ -43,10 +43,10 @@ class Cluster(object):
     __WalletName="MyWallet"
     __localHost="localhost"
     __BiosHost="localhost"
-    __BiosPort=8788
+    __BiosPort=-1
     __LauncherCmdArr=[]
-    __bootlog="eosio-ignition-wd/bootlog.txt"
-    __BootScript="bios_boot_cluster0000.sh"
+    __bootlog=""
+    __BootScript=""
 
     __portBase = Utils.portBase
     __cluster_stride = Utils.cluster_stride
@@ -77,7 +77,9 @@ class Cluster(object):
         Utils.clusterID=clusterID
 
         Cluster.__BiosPort = Cluster.__portBase + clusterID * Cluster.__cluster_stride + Cluster.__port_type_http
-        Cluster.__BootScript = "bios_boot_cluster" + ("%05d" % clusterID) + ".sh"
+        Cluster.__BootScript = ("cluster%05d/bios_boot.sh" % clusterID)
+
+        Cluster.__bootlog=("cluster%05d/eosio-ignition-wd/bootlog.txt" % clusterID)
         
         if port == -1:
             port = Cluster.__BiosPort + Cluster.__node_stride
@@ -283,7 +285,7 @@ class Cluster(object):
         # must be last cmdArr.append before subprocess.call, so that everything is on the command line
         # before constructing the shape.json file for "bridge"
         if topo=="bridge":
-            shapeFilePrefix="shape_bridge"
+            shapeFilePrefix=("cluster%05d/shape_bridge" % self.clusterID)
             shapeFile=shapeFilePrefix+".json"
             cmdArrForOutput=copy.deepcopy(cmdArr)
             cmdArrForOutput.append("--output")
@@ -1131,7 +1133,7 @@ class Cluster(object):
 
         if not onlyBios:
             if prodCount == -1:
-                setProdsFile="setprods.json"
+                setProdsFile=("cluster%05d/setprods.json" % (self.clusterID))
                 if Utils.Debug: Utils.Print("Reading in setprods file %s." % (setProdsFile))
                 with open(setProdsFile, "r") as f:
                     setProdsStr=f.read()

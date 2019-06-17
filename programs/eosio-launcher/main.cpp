@@ -466,6 +466,27 @@ struct launcher_def {
    fc::optional<uint32_t> max_transaction_cpu_usage;
    eosio::chain::genesis_state genesis_from_file;
 
+   std::string cluster_id_str() const {
+      char cluster_id_str[20];
+	   sprintf(cluster_id_str, "cluster%05u", cluster_id);
+      std::string str = cluster_id_str;
+      if (!bfs::exists(str)) {
+         try {
+            bfs::create_directories (str);
+         } catch (bfs::filesystem_error &ex) {
+            cerr << "could not create new directory: " << str
+               << " caught " << ex.what() << endl;
+            exit(-1);
+         }
+      }
+      return str;
+   }
+   std::string last_run_json_str() const {
+      std::string s = cluster_id_str();
+      s += "/last_run.json";
+      return s;
+   }
+
    void assign_name (eosd_def &node, bool is_bios);
 
    void set_options (bpo::options_description &cli);
@@ -650,14 +671,15 @@ launcher_def::initialize (const variables_map &vmap) {
     }
   }
 
-	char cluster_id_str[10];
-	sprintf(cluster_id_str, "%05u", cluster_id);
+  if (!host_map_file.empty() && host_map_file.string().find(cluster_id_str()) == std::string::npos) {
+     host_map_file = bfs::path(cluster_id_str()) / host_map_file;
+  }
 
-	config_dir_base = "etc/eosio/cluster";
-	config_dir_base += (const char *)cluster_id_str;
+	config_dir_base = "etc/eosio/";
+	config_dir_base += cluster_id_str();
 
-	data_dir_base = "var/lib/cluster";
-	data_dir_base += (const char *)cluster_id_str;
+	data_dir_base = "var/lib/";
+	data_dir_base += cluster_id_str();
 
   next_node = 0;
   ++prod_nodes; // add one for the bios node
@@ -798,7 +820,7 @@ launcher_def::generate () {
       sf.close();
     }
     if (host_map_file.empty()) {
-      savefile = bfs::path (output.stem().string() + "_hosts.json");
+      savefile = bfs::path (bfs::path(cluster_id_str()) / (output.stem().string() + "_hosts.json"));
     }
     else {
       savefile = bfs::path (host_map_file);
@@ -818,7 +840,7 @@ launcher_def::generate () {
 
 void
 launcher_def::write_dot_file () {
-  bfs::ofstream df ("testnet.dot");
+  bfs::ofstream df (cluster_id_str() + "/testnet.dot");
   df << "digraph G\n{\nlayout=\"circo\";\n";
   for (auto &node : network.nodes) {
     for (const auto &p : node.second.peers) {
@@ -1263,7 +1285,7 @@ launcher_def::write_genesis_file(tn_node_def &node) {
 
 void
 launcher_def::write_setprods_file() {
-   bfs::path filename = bfs::current_path() / "setprods.json";
+   bfs::path filename = bfs::current_path() / cluster_id_str() / "setprods.json";
    bfs::ofstream psfile (filename);
    if(!psfile.good()) {
       cerr << "unable to open " << filename << " " << strerror(errno) << "\n";
@@ -1304,12 +1326,10 @@ launcher_def::write_bios_boot () {
          string key = line.substr(len);
          if (key == "envars") {
             brb << "bioshost=" << bhost << "\nbiosport=" << biosport << "\n";
-            char cluster_str[20];
-            sprintf(cluster_str, "cluster%05d", cluster_id);
-            brb << "wddir=$wddir/" << (const char *)cluster_str << "\n";
+            brb << "wddir=" << cluster_id_str() << "/$wddir\n";
             brb << "wdaddr=localhost:" << calculate_port(cluster_id, 0, port_type::keosd_boot) << "\n";
             brb << "wdurl=http://$wdaddr\n";
-            brb << "wpidfile=ignition_wallet" << cluster_str << ".pid\n";
+            brb << "wpidfile=" << cluster_id_str() << "/ignition_wallet.pid\n";
          }
          else if (key == "prodkeys" ) {
             for (auto &node : network.nodes) {
@@ -1692,9 +1712,7 @@ launcher_def::kill (launch_modes mode, string sig_opt) {
   case LM_ALL:
   case LM_LOCAL:
   case LM_REMOTE : {
-    char last_run_str[100];
-	  sprintf(last_run_str, "last_run_cluster%05u.json", cluster_id);
-    std::string source = (const char *)last_run_str;
+    std::string source = last_run_json_str();
     try {
        fc::json::from_file( source ).as<last_run_def>( last_run );
        for( auto& info : last_run.running_nodes ) {
@@ -1926,9 +1944,7 @@ launcher_def::start_all (string &gts, launch_modes mode) {
   }
   }
 
-  char last_run_str[100];
-	sprintf(last_run_str, "last_run_cluster%05u.json", cluster_id);
-  bfs::path savefile = (const char *)last_run_str;
+  bfs::path savefile = last_run_json_str();
   bfs::ofstream sf (savefile);
 
   sf << fc::json::to_pretty_string (last_run) << endl;
