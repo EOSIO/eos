@@ -19,7 +19,7 @@ namespace eosio { namespace vm {
    template <typename S, typename Args, typename T, typename WAlloc>
    constexpr auto get_value(WAlloc*, T&& val) 
          -> std::enable_if_t<std::is_same_v<i64_const_t, T> && std::is_same_v<chain::name, std::decay_t<S>>, S> {
-      return {(uint64_t)val.data.ui};
+      return std::move(chain::name{(uint64_t)val.data.ui});
    } 
 
    // we can clean these up if we go with custom vms

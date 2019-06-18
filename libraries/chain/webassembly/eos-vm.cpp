@@ -25,9 +25,9 @@ class eos_vm_instantiated_module : public wasm_instantiated_module_interface {
          //   EOS_ASSERT(false, wasm_execution_error, "eos-vm start function failure (${s})", ("s", res.to_string()));
         
          const auto& res = _instantiated_module->call(&context, "env", "apply",
-                                          (uint64_t)context.get_receiver(),
-                                          (uint64_t)context.get_action().account,
-                                          (uint64_t)context.get_action().name);
+                                          context.get_receiver().to_uint64_t(),
+                                          context.get_action().account.to_uint64_t(),
+                                          context.get_action().name.to_uint64_t());
          //EOS_ASSERT(res, wasm_execution_error, "eos-vm execution failure (${s})", ("s", res.to_string()));
       }
 
