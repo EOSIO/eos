@@ -490,7 +490,7 @@ namespace LLVMJIT
 
 		auto targetTriple = llvm::sys::getProcessTriple();
 
-		targetMachine = llvm::EngineBuilder().selectTarget(
+		targetMachine = llvm::EngineBuilder().setRelocationModel(llvm::Reloc::PIC_).setCodeModel(llvm::CodeModel::Small).selectTarget(
 			llvm::Triple(targetTriple),"","",llvm::SmallVector<std::string,0>()
 			);
 
