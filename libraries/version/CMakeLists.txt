@@ -47,6 +47,3 @@ else()
       ${CMAKE_CURRENT_BINARY_DIR}/src/version_impl.cpp
       @ONLY )
 endif()
-
-# Wait for `version_impl.cpp` to get generated before building the target library.
-set_property(SOURCE ${CMAKE_CURRENT_BINARY_DIR}/src/version_impl.cpp PROPERTY GENERATED 1)
