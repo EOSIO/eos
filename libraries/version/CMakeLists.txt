@@ -35,6 +35,7 @@ if(EXISTS ${CMAKE_SOURCE_DIR}/.git AND ${GIT_FOUND})
                                -DV_PATCH=${VERSION_PATCH}
                                -DV_SUFFIX=${VERSION_SUFFIX}
                                -P ${CMAKE_SOURCE_DIR}/CMakeModules/VersionUtils.cmake
+      BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/src/version_impl.cpp
       COMMENT "Updating version metadata..." VERBATIM )
                              
       # Create a dependency for the given library target.
