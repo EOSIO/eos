@@ -481,9 +481,13 @@ struct controller_impl {
          chaindb.undo_last_revision();
       }
 
+      initialize_caches();
+
       if( report_integrity_hash ) {
-         const auto hash = calculate_integrity_hash();
-         ilog( "database initialized with hash: ${hash}", ("hash", hash) );
+// TODO: removed by CyberWay
+//         const auto hash = calculate_integrity_hash();
+//         ilog( "database initialized with hash: ${hash}", ("hash", hash) );
+          wlog( "integrity hash is disabled" );
       }
    }
 
@@ -577,6 +581,18 @@ struct controller_impl {
 
       initialize_database();
       read_genesis();
+   }
+
+   void initialize_caches() {
+       auto block_summary_table = chaindb.get_table<block_summary_object>();
+       for (auto& value: block_summary_table) {
+           // only load to RAM
+       }
+
+       auto transaction_table = chaindb.get_table<transaction_object>();
+       for (auto& value: transaction_table) {
+           // only load to RAM
+       }
    }
 
    void create_native_account( account_name name, const authority& owner, const authority& active, bool is_privileged = false ) {
@@ -2138,7 +2154,7 @@ void controller::validate_reversible_available_size() const {
 }
 
 bool controller::is_known_unexpired_transaction( const transaction_id_type& id) const {
-   return chaindb().find<transaction_object, by_trx_id>(id);
+   return chaindb().find<transaction_object, by_trx_id>(id, cyberway::chaindb::cursor_kind::InRAM);
 }
 
 void controller::set_subjective_cpu_leeway(fc::microseconds leeway) {
