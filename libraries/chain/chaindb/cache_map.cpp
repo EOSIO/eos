@@ -636,8 +636,7 @@ namespace cyberway { namespace chaindb {
         }
 
         void clear() {
-            CYBERWAY_CACHE_ASSERT(!has_pending_cell(), "Clearing of cache with pending changes");
-
+            pending_cell_list_.clear();
             lru_cell_list_.clear();
 
             for (auto& service: service_tree_) {
@@ -650,7 +649,14 @@ namespace cyberway { namespace chaindb {
         }
 
         void set_revision(const revision_t revision) {
-            lru_revision_ = revision;
+            auto pending_ptr = find_pending_cell();
+            if (pending_ptr) {
+                push_session(revision - 1);
+            }
+
+            if (!has_pending_cell()) {
+                start_session(revision);
+            }
         }
 
         void start_session(const revision_t revision) {
@@ -669,18 +675,24 @@ namespace cyberway { namespace chaindb {
         }
 
         void push_session(const revision_t revision) {
-            CYBERWAY_CACHE_ASSERT(has_pending_cell(), "Push session for empty pending caches");
-            auto& pending = get_pending_cell(revision);
+            while (has_pending_cell()) {
+                auto& pending = *pending_cell_list_.front();
+                if (pending.revision() > revision) {
+                    break;
+                }
 
-            set_revision(revision - 1);
-            auto size = pending.commit_revision();
+                auto size = pending.commit_revision();
+                add_ram_usage(pending, size);
 
-            add_ram_usage(pending, size);
+                pending_cell_list_.pop_front();
+            }
 
-            pending_cell_list_.pop_back();
-            CYBERWAY_CACHE_ASSERT(pending_cell_list_.empty(), "After pushing session still exist pending caches");
+            while (!lru_cell_list_.empty() && !lru_cell_list_.back().size) {
+                lru_cell_list_.pop_back();
+            }
 
             clear_overused_ram();
+            lru_revision_ = revision - 1;
         }
 
         void squash_session(const revision_t revision) {

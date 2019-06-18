@@ -393,7 +393,6 @@ struct controller_impl {
       // revision ordinal to the appropriate expected value here.
       if( skip_session ) {
          chaindb.apply_all_changes();
-         set_revision( head->block_num );
       }
 
       int rev = 0;
