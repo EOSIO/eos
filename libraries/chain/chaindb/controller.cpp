@@ -183,18 +183,17 @@ namespace cyberway { namespace chaindb {
             return get_table(request);
         }
 
-        const cursor_info& lower_bound(
+        find_info lower_bound(
             const index_request& request, const cursor_kind kind, const char* value, const size_t size
         ) {
             auto  key    = request.to_service();
             auto  index  = get_index(request);
             auto  object = index.abi().to_object(index, value, size);
-            auto& cursor = driver_.lower_bound(std::move(index), object);
 
             cache_object_ptr cache_ptr;
 
             if (value && size) {
-                if (cursor.index.index->unique) {
+                if (index.index->unique) {
                     cache_ptr = cache_.find(key, request.index, value, size);
                 }
 
@@ -203,52 +202,96 @@ namespace cyberway { namespace chaindb {
                 }
             }
 
+            switch (kind) {
+                case cursor_kind::ManyRecords:
+                    break;
+
+                case cursor_kind::InRAM:
+                    if (!cache_ptr) {
+                        return {ram_cursor, primary_key::End};
+                    }
+
+                case cursor_kind::OneRecord:
+                    if (cache_ptr) {
+                        return {ram_cursor, cache_ptr->pk()};
+                    }
+                    break;
+
+                default:
+                    assert(false);
+            }
+
+            auto& cursor = driver_.lower_bound(std::move(index), object);
             if (cache_ptr) {
                 cursor.pk =     cache_ptr->pk();
                 cursor.object = cache_ptr->object();
-                return cursor;
+                return {cursor.id, cursor.pk};
             }
 
             current(cursor);
             if (primary_key::is_good(cursor.pk)) {
-                cache_ptr = get_cache_object(cursor);
+                cache_ptr = get_cache_object(cursor, false);
             }
 
             if (value && size && !cursor.object.value.has_value(object)) {
                 cache_.emplace_unsuccess(cursor.index, value, size, cursor.pk);
             }
 
-            return cursor;
+            return {cursor.id, cursor.pk};
         }
 
-        const cursor_info& lower_bound(const table_request& request, const cursor_kind kind, const primary_key_t pk) {
+        find_info lower_bound(const table_request& request, const cursor_kind kind, const primary_key_t pk) {
             auto  key    = request.to_service(pk);
             auto  index  = get_pk_index(request);
             auto  value  = primary_key::to_variant(index, pk);
-            auto& cursor = driver_.lower_bound(std::move(index), std::move(value));
 
             auto cache_ptr = cache_.find(key);
             if (!cache_ptr) {
                 cache_ptr = cache_.find_unsuccess(key);
             }
 
+            switch (kind) {
+                case cursor_kind::ManyRecords:
+                    break;
+
+                case cursor_kind::InRAM:
+                    if (!cache_ptr) {
+                        return {ram_cursor, primary_key::End};
+                    }
+
+                case cursor_kind::OneRecord:
+                    if (cache_ptr) {
+                        return {ram_cursor, cache_ptr->pk()};
+                    }
+                    break;
+
+                default:
+                    assert(false);
+            }
+
+            auto& cursor = driver_.lower_bound(std::move(index), std::move(value));
             if (cache_ptr) {
                 cursor.pk     = cache_ptr->pk();
                 cursor.object = cache_ptr->object();
-            } else {
-                if (pk != current(cursor).pk) {
-                    if (primary_key::is_good(cursor.pk)) {
-                        cache_ptr = get_cache_object(cursor);
-                    }
-                    cache_.emplace_unsuccess(cursor.index, pk, cursor.pk);
-                }
+                return {cursor.id, cursor.pk};
             }
-            return cursor;
+
+            current(cursor);
+            if (primary_key::is_good(cursor.pk)) {
+                cache_ptr = get_cache_object(cursor, false);
+            }
+
+            if (pk != current(cursor).pk) {
+                cache_.emplace_unsuccess(cursor.index, pk, cursor.pk);
+            }
+
+            return {cursor.id, cursor.pk};
         }
 
         // API request, it can't use cache
-        const cursor_info& lower_bound(const index_request& request, const variant& orders) {
-            return current(driver_.lower_bound(get_index(request), orders));
+        find_info lower_bound(const index_request& request, const variant& orders) {
+            auto& cursor = current(driver_.lower_bound(get_index(request), orders));
+            return {cursor.id, cursor.pk};
         }
 
         const cursor_info& upper_bound(const index_request& request, const char* key, const size_t size) {
@@ -703,20 +746,17 @@ namespace cyberway { namespace chaindb {
     find_info chaindb_controller::lower_bound(
         const index_request& request, const cursor_kind kind, const char* key, size_t size
     ) const {
-        const auto& info = impl_->lower_bound(request, kind, key, size);
-        return {info.id, info.pk};
+        return impl_->lower_bound(request, kind, key, size);
     }
 
     find_info chaindb_controller::lower_bound(
         const table_request& request, const cursor_kind kind, const primary_key_t pk
     ) const {
-        const auto& info = impl_->lower_bound(request, kind, pk);
-        return {info.id, info.pk};
+        return impl_->lower_bound(request, kind, pk);
     }
 
     find_info chaindb_controller::lower_bound(const index_request& request, const variant& orders) const {
-        auto info = impl_->lower_bound(request, orders);
-        return {info.id, info.pk};
+        return impl_->lower_bound(request, orders);
     }
 
     find_info chaindb_controller::upper_bound(const index_request& request, const char* key, size_t size) const {

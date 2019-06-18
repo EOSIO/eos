@@ -330,6 +330,8 @@ private:
     class const_iterator_impl final: public std::iterator<std::bidirectional_iterator_tag, const T> {
     public:
         friend bool operator == (const const_iterator_impl& a, const const_iterator_impl& b) {
+            if (a.cursor_ == b.cursor_) return true;
+
             a.lazy_open();
             b.lazy_open();
             return a.primary_key_ == b.primary_key_;
@@ -434,14 +436,14 @@ private:
         }
 
         ~const_iterator_impl() {
-            if (uninitilized_cursor::ram != cursor_ && is_cursor_initialized()) {
+            if (is_cursor_initialized()) {
                 controller().close(get_cursor_request());
             }
         }
 
     private:
         bool is_cursor_initialized() const {
-            return cursor_ > uninitilized_cursor::state;
+            return (cursor_ != uninitilized_cursor::ram && cursor_ > uninitilized_cursor::state);
         }
 
         template<typename, typename> friend class index;
@@ -457,8 +459,7 @@ private:
         : controller_(ctrl), cursor_(cursor), primary_key_(pk), item_(std::move(item)) { }
 
         const chaindb_controller& controller() const {
-            CYBERWAY_ASSERT(controller_, chaindb_midx_logic_exception,
-                "Iterator is not initialized for the index ${index}", ("index", get_index_name()));
+            assert(controller_);
             return *controller_;
         }
 
@@ -478,7 +479,13 @@ private:
             CYBERWAY_ASSERT(primary_key_ != primary_key::End, chaindb_midx_pk_exception,
                 "Cannot load object from the end iterator for the index ${index}", ("index", get_index_name()));
 
-            auto ptr = controller().get_cache_object({code_name(), cursor_}, false);
+            cache_object_ptr ptr;
+
+            if (uninitilized_cursor::ram == cursor_) {
+                ptr = controller().get_cache_object(get_table_request(), primary_key_, false);
+            } else {
+                ptr = controller().get_cache_object(get_cursor_request(), false);
+            }
 
             auto& obj = item_data::get_T(ptr);
             auto ptr_pk = primary_key_extractor_type()(obj);
@@ -488,21 +495,19 @@ private:
             item_ = ptr;
         }
 
-        void lazy_open_begin() const {
-           if (BOOST_LIKELY(uninitilized_cursor::begin != cursor_)) return;
-
-            auto info = controller().begin(get_index_request());
-            cursor_ = info.cursor;
-            primary_key_ = info.pk;
-        }
-
         void lazy_open() const {
             if (BOOST_LIKELY(is_cursor_initialized())) return;
 
             switch (cursor_) {
-                case uninitilized_cursor::begin:
-                    lazy_open_begin();
+                case uninitilized_cursor::ram:
+                    return;
+
+                case uninitilized_cursor::begin: {
+                    auto info = controller().begin(get_index_request());
+                    cursor_ = info.cursor;
+                    primary_key_ = info.pk;
                     break;
+                }
 
                 case uninitilized_cursor::end:
                     cursor_ = controller().end(get_index_request()).cursor;
@@ -673,9 +678,7 @@ public:
         template<typename Lambda>
         int modify(const T& obj, const storage_payer_info& payer, Lambda&& updater) const {
             auto& itm = item_data::get_cache(obj);
-            CYBERWAY_ASSERT(itm.is_valid_table(get_table_request()), chaindb_midx_logic_exception,
-                "Object ${obj} passed to modify is not from the index ${index}",
-                ("obj", obj)("index", get_index_name()));
+            assert(itm.is_valid_table(get_table_request()));
 
             auto pk = primary_key_extractor_type()(obj);
 
@@ -699,9 +702,7 @@ public:
 
         int erase(const T& obj, const storage_payer_info& payer = {}) const {
             auto& itm = item_data::get_cache(obj);
-            CYBERWAY_ASSERT(itm.is_valid_table(get_table_request()), chaindb_midx_logic_exception,
-                "Object ${obj} passed to erase is not from the index ${index}",
-                ("obj", obj)("index", get_index_name()));
+            assert(itm.is_valid_table(get_table_request()));
 
             return controller_.remove(itm, payer);
         }
