@@ -144,7 +144,7 @@ void config_reader::read_config(const variables_map& options) {
     if (create_ee_genesis) {
         make_dir_absolute(ee_directory, "Events", false);
         if (!op_dump_dir.empty()) {
-           make_dir_absolute(op_dump_dir, "Operation dump", true);
+            make_dir_absolute(op_dump_dir, "Operation dump", true);
         }
     }
 
@@ -194,22 +194,22 @@ int main(int argc, char** argv) {
         cr.read_config(vmap);
         cr.read_contracts();
 
-        export_info exp_info;
 
         genesis_create builder{};
         builder.read_state(cr.info.state_file);
-        builder.write_genesis(cr.out_file, exp_info, cr.info, cr.genesis, cr.contracts);
+        builder.write_genesis(cr.out_file, cr.info, cr.genesis, cr.contracts);
 
+        const auto ee_shared_name = "shared_memory";
         if (cr.create_ee_genesis) {
-            bfs::remove_all("shared_memory");
+            bfs::remove_all(ee_shared_name);
 
-            genesis_ee_builder ee_builder(cr.info, exp_info, "shared_memory", cr.last_block);
+            genesis_ee_builder ee_builder{builder, ee_shared_name, cr.last_block};
             if (!cr.op_dump_dir.empty()) {
                 ee_builder.read_operation_dump(cr.op_dump_dir);
             }
             ee_builder.build(cr.ee_directory);
 
-            bfs::remove_all("shared_memory");
+            bfs::remove_all(ee_shared_name);
         }
     } catch (const fc::exception& e) {
         elog("${e}", ("e", e.to_detail_string()));

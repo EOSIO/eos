@@ -35,9 +35,9 @@ struct state_object_visitor {
     enum balance_type {
         account, savings, order, conversion, escrow, escrow_fee, savings_withdraw, _size
     };
-    static string balance_name(balance_type t) {
+    static string balance_name(balance_type t, bool memo = false) {
         switch (t) {
-            case account:       return "accounts";
+            case account:       return memo ? "balance" : "accounts";
             case savings:       return "savings";
             case order:         return "orders";
             case conversion:    return "conversions";
@@ -74,6 +74,8 @@ struct state_object_visitor {
     asset total_gests;
     fc::flat_map<balance_type, asset> gbg_by_type;
     fc::flat_map<balance_type, asset> gls_by_type;
+    fc::flat_map<acc_idx, converted_info> conv_gbg;
+    fc::flat_map<acc_idx, converted_info> conv_gls;
 
     std::vector<golos::vesting_delegation_object> delegations;
     std::vector<golos::vesting_delegation_expiration_object> delegation_expirations;
@@ -106,51 +108,44 @@ struct state_object_visitor {
         auto idx = acc.name.id;
         acc_id2idx[acc.id] = idx;
         accounts[idx]   = acc;
-        gls[idx]        = acc.balance + acc.savings_balance;
-        gbg[idx]        = acc.sbd_balance + acc.savings_sbd_balance;
+        // GOLOS balance is not part of genesis conversions, but GBG balance is
+        gls[idx]        = acc.balance;
+        gbg[idx]        = asset(0, symbol(GBG));
         vests[idx]      = vesting_balance{
             acc.vesting_shares.get_amount(),
             acc.delegated_vesting_shares.get_amount(),
             acc.received_vesting_shares.get_amount()};
         total_gests          += acc.vesting_shares;
         gls_by_type[account] += acc.balance;
-        gbg_by_type[account] += acc.sbd_balance;
-        gls_by_type[savings] += acc.savings_balance;
-        gbg_by_type[savings] += acc.savings_sbd_balance;
+        add_asset_balance(acc.name, acc.sbd_balance, account);
+        add_asset_balance(acc.name, acc.savings_balance, savings);
+        add_asset_balance(acc.name, acc.savings_sbd_balance, savings);
     }
 
     void operator()(const golos::limit_order_object& o) {
-        switch (o.sell_price.base.get_symbol().value()) {
-        case GBG: {auto a = asset(o.for_sale, symbol(GBG)); gbg[o.seller.id] += a; gbg_by_type[order] += a;} break;
-        case GLS: {auto a = asset(o.for_sale, symbol(GLS)); gls[o.seller.id] += a; gls_by_type[order] += a;} break;
-        default:
-            EOS_ASSERT(false, genesis_exception, "Unknown asset ${a} in limit order", ("a", o.sell_price.base));
-        }
+        add_asset_balance(o.seller, asset(o.for_sale, o.sell_price.base.get_symbol()), order);
     }
 
     void operator()(const golos::convert_request_object& obj) {
-        add_asset_balance(obj, &golos::convert_request_object::owner, &golos::convert_request_object::amount, conversion);
+        add_asset_balance(obj.owner, obj.amount, conversion);
     }
 
     void operator()(const golos::escrow_object& e) {
-        gls[e.from.id] += e.steem_balance;
-        gbg[e.from.id] += e.sbd_balance;
-        gls_by_type[escrow] += e.steem_balance;
-        gbg_by_type[escrow] += e.sbd_balance;
-        add_asset_balance(e, &golos::escrow_object::from, &golos::escrow_object::pending_fee, escrow_fee);
+        add_asset_balance(e.from, e.steem_balance, escrow);
+        add_asset_balance(e.from, e.sbd_balance, escrow);
+        add_asset_balance(e.from, e.pending_fee, escrow_fee);
     }
 
     void operator()(const golos::savings_withdraw_object& sw) {
-        add_asset_balance(sw, &golos::savings_withdraw_object::to, &golos::savings_withdraw_object::amount, savings_withdraw);
+        ilog("swo: ${o}", ("o", sw));
+        add_asset_balance(sw.to, sw.amount, savings_withdraw);
     }
 
-    template<typename T, typename A, typename F>
-    void add_asset_balance(const T& item, A account, F field, balance_type type) {
-        const auto acc = (item.*account).id;
-        const auto val = item.*field;
+    void add_asset_balance(golos::account_name_type account, const asset& val, balance_type type) {
+        const auto acc = account.id;
         switch (val.get_symbol().value()) {
-        case GBG: gbg[acc] += val; gbg_by_type[type] += val; break;
-        case GLS: gls[acc] += val; gls_by_type[type] += val; break;
+        case GBG: gbg[acc] += val; gbg_by_type[type] += val; conv_gbg[acc].add(val, balance_name(type, true)); break;
+        case GLS: gls[acc] += val; gls_by_type[type] += val; conv_gls[acc].add(val, balance_name(type, true)); break;
         default:
             EOS_ASSERT(false, genesis_exception, string("Unknown asset ${a} in ") + balance_name(type), ("a", val));
         }
@@ -229,6 +224,8 @@ struct state_object_visitor {
         }
     }
 
+// EE-genesis
+
     void operator()(const golos::reputation_object& rep) {
         reputations[rep.account.id] = rep.reputation;
     }
@@ -279,7 +276,6 @@ public:
         if (!bfs::exists(state_file)) {
             return;
         }
-
         ilog("Reading state from ${f}...", ("f", state_file.generic_string()));
 
         bfs::ifstream in(state_file);

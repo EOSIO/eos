@@ -160,7 +160,7 @@ public:
     }
 
     void insert(primary_key_t pk, uint64_t scope, const variant& v) {   // common case where scope is owner account
-        insert (pk, scope, scope, v);
+        insert(pk, scope, scope, v);
     }
 
     void insert(primary_key_t pk, uint64_t scope, name ram_payer, const variant& v) {

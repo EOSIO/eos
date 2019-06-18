@@ -19,8 +19,10 @@ namespace cyberway { namespace genesis { namespace ee {
 
 constexpr auto GLS = SY(3, GOLOS);
 
-genesis_ee_builder::genesis_ee_builder(const genesis_info& info, const export_info& exp_info, const std::string& shared_file, uint32_t last_block)
-        : info_(info), exp_info_(exp_info), last_block_(last_block), maps_(shared_file, chainbase::database::read_write, MAP_FILE_SIZE) {
+genesis_ee_builder::genesis_ee_builder(
+    const genesis_create& genesis, const std::string& shared_file, uint32_t last_block)
+    :   genesis_(genesis), info_(genesis.get_info()), exp_info_(genesis.get_exp_info()),
+        last_block_(last_block), maps_(shared_file, chainbase::database::read_write, MAP_FILE_SIZE) {
     maps_.add_index<comment_header_index>();
     maps_.add_index<vote_header_index>();
     maps_.add_index<reblog_header_index>();
@@ -407,14 +409,13 @@ void genesis_ee_builder::build_reblogs(std::vector<reblog_info>& reblogs, uint64
     }
 }
 
-void genesis_ee_builder::build_messages() {
+void genesis_ee_builder::write_messages() {
     if (!dump_comments.is_open()) {
         return;
     }
-
     std::cout << "-> Writing messages..." << std::endl;
-
-    out_.messages.start_section(info_.golos.names.posting, N(message), "message_info");
+    auto& out = out_.get_serializer(event_engine_genesis::messages);
+    out.start_section(info_.golos.names.posting, N(message), "message_info");
 
     const auto& comment_idx = maps_.get_index<comment_header_index, by_parent_hash>();
 
@@ -427,7 +428,7 @@ void genesis_ee_builder::build_messages() {
             comment_operation op;
             read_operation(dump_comments, op);
 
-            out_.messages.emplace<comment_info>([&](auto& c) {
+            out.emplace<comment_info>([&](auto& c) {
                 c.parent_author = generate_name(op.parent_author);
                 c.parent_permlink = op.parent_permlink;
                 c.author = generate_name(op.author);
@@ -453,18 +454,17 @@ void genesis_ee_builder::build_messages() {
     build_children(0);
 }
 
-void genesis_ee_builder::build_transfers() {
+void genesis_ee_builder::write_transfers() {
     if (!dump_transfers.is_open()) {
         return;
     }
-
     std::cout << "-> Writing transfers..." << std::endl;
-
-    out_.transfers.start_section(config::token_account_name, N(transfer), "transfer");
+    auto& out = out_.get_serializer(event_engine_genesis::transfers);
+    out.start_section(config::token_account_name, N(transfer), "transfer");
 
     transfer_operation op;
     while (read_operation(dump_transfers, op)) {
-        out_.transfers.emplace<transfer_info>([&](auto& t) {
+        out.emplace<transfer_info>([&](auto& t) {
             t.from = generate_name(op.from);
             t.to = generate_name(op.to);
             t.quantity = op.amount;
@@ -474,47 +474,46 @@ void genesis_ee_builder::build_transfers() {
     }
 }
 
-void genesis_ee_builder::build_pinblocks() {
+void genesis_ee_builder::write_pinblocks() {
     if (!dump_follows.is_open()) {
         return;
     }
-
     std::cout << "-> Writing pinblocks..." << std::endl;
-
     const auto& follow_index = maps_.get_index<follow_header_index, by_id>();
 
-    out_.pinblocks.start_section(info_.golos.names.social, N(pin), "pin");
+    auto& out = out_.get_serializer(event_engine_genesis::pinblocks);
+    out.start_section(info_.golos.names.social, N(pin), "pin");
 
     for (const auto& follow : follow_index) {
         if (follow.ignores) {
             continue;
         }
-        out_.pinblocks.emplace<pin_info>([&](auto& p) {
+        out.emplace<pin_info>([&](auto& p) {
             p.pinner = generate_name(follow.follower);
             p.pinning = generate_name(follow.following);
         });
     }
 
-    out_.pinblocks.start_section(info_.golos.names.social, N(block), "block");
+    out.start_section(info_.golos.names.social, N(block), "block");
 
     for (const auto& follow : follow_index) {
         if (!follow.ignores) {
             continue;
         }
-        out_.pinblocks.emplace<block_info>([&](auto& b) {
+        out.emplace<block_info>([&](auto& b) {
             b.blocker = generate_name(follow.follower);
             b.blocking = generate_name(follow.following);
         });
     }
 }
 
-void genesis_ee_builder::build_accounts() {
+void genesis_ee_builder::write_accounts() {
     std::cout << "-> Writing accounts..." << std::endl;
-
-    out_.accounts.start_section(config::system_account_name, N(domain), "domain_info");
+    auto& out = out_.get_serializer(event_engine_genesis::accounts);
+    out.start_section(config::system_account_name, N(domain), "domain_info");
 
     const auto app = info_.golos.names.issuer;
-    out_.accounts.insert(mvo
+    out.insert(mvo
         ("owner", app)
         ("linked_to", app)
         ("name", info_.golos.domain)
@@ -522,7 +521,7 @@ void genesis_ee_builder::build_accounts() {
 
     const auto& meta_index = maps_.get_index<account_metadata_index, by_account>();
 
-    out_.accounts.start_section(config::system_account_name, N(account), "account_info");
+    out.start_section(config::system_account_name, N(account), "account_info");
 
     for (auto& a : exp_info_.account_infos) {
         auto acc = a.second;
@@ -539,24 +538,45 @@ void genesis_ee_builder::build_accounts() {
                 acc["json_metadata"] = "{created_at: 'GENESIS'}";
             }
         }
-        out_.accounts.insert(acc);
+        out.insert(acc);
     }
 }
 
-void genesis_ee_builder::build_funds() {
+void genesis_ee_builder::write_funds() {
     std::cout << "-> Writing funds..." << std::endl;
 
-    out_.funds.start_section(config::token_account_name, N(currency), "currency_stats");
+    auto& out = out_.get_serializer(event_engine_genesis::funds);
+    out.start_section(config::token_account_name, N(currency), "currency_stats");
 
     for (auto& cs : exp_info_.currency_stats) {
-        out_.funds.insert(cs);
+        out.insert(cs);
     }
 
-    out_.funds.start_section(config::token_account_name, N(balance), "balance_event");
+    out.start_section(config::token_account_name, N(balance), "balance_event");
 
     for (auto& be : exp_info_.balance_events) {
-        out_.funds.insert(be);
+        out.insert(be);
     }
+}
+
+void genesis_ee_builder::write_balance_converts() {
+    std::cout << "-> Writing genesis balance conversions..." << std::endl;
+    auto& out = out_.get_serializer(event_engine_genesis::balance_conversions);
+    out.start_section(config::token_account_name, N(genesis.conv), "balance_convert");
+    auto store_convs = [&](auto* conv) {
+        for (const auto& cg: *conv) {
+            auto& c = cg.second;
+            if (c.value.get_amount() > 0) {
+                out.emplace<balance_convert_info>([&](auto& t) {
+                    t.owner = genesis_.name_by_idx(cg.first);
+                    t.amount = c.value;
+                    t.memo = c.memo;
+                });
+            }
+        }
+    };
+    store_convs(exp_info_.conv_gls);
+    store_convs(exp_info_.conv_gbg);
 }
 
 void genesis_ee_builder::build(const bfs::path& out_dir) {
@@ -564,11 +584,12 @@ void genesis_ee_builder::build(const bfs::path& out_dir) {
 
     out_.start(out_dir, fc::sha256());
 
-    build_messages();
-    build_transfers();
-    build_pinblocks();
-    build_accounts();
-    build_funds();
+    write_messages();
+    write_transfers();
+    write_pinblocks();
+    write_accounts();
+    write_funds();
+    write_balance_converts();
 
     out_.finalize();
 }

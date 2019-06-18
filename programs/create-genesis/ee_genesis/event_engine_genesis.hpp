@@ -14,12 +14,15 @@ public:
 
     void start(const bfs::path& ee_directory, const fc::sha256& hash);
     void finalize();
-public:
-    ee_genesis_serializer messages;
-    ee_genesis_serializer transfers;
-    ee_genesis_serializer pinblocks;
-    ee_genesis_serializer accounts;
-    ee_genesis_serializer funds;
+
+    enum ee_ser_type {messages, transfers, pinblocks, accounts, funds, balance_conversions};
+    ee_genesis_serializer& get_serializer(ee_ser_type type) {
+        return serializers.at(type);
+    }
+
+private:
+    std::map<ee_ser_type, ee_genesis_serializer> serializers;
+
 };
 
 struct vote_info {
@@ -42,7 +45,7 @@ struct reblog_info {
 
 struct comment_info {
     OBJECT_CTOR(comment_info);
-    
+
     name parent_author;
     string parent_permlink;
     name author;
@@ -71,6 +74,14 @@ struct transfer_info {
     fc::time_point_sec time;
 };
 
+struct balance_convert_info {
+    OBJECT_CTOR(balance_convert_info);
+
+    name owner;
+    asset amount;
+    string memo;
+};
+
 struct pin_info {
     OBJECT_CTOR(pin_info);
 
@@ -89,8 +100,9 @@ struct block_info {
 
 FC_REFLECT(cyberway::genesis::ee::vote_info, (voter)(weight)(time)(rshares))
 FC_REFLECT(cyberway::genesis::ee::reblog_info, (account)(title)(body)(time))
-FC_REFLECT(cyberway::genesis::ee::comment_info, (parent_author)(parent_permlink)(author)(permlink)(created)(last_update)(title)(body)
-        (tags)(language)(net_rshares)(author_reward)(benefactor_reward)(curator_reward)(votes)(reblogs))
+FC_REFLECT(cyberway::genesis::ee::comment_info, (parent_author)(parent_permlink)(author)(permlink)(created)(last_update)
+    (title)(body)(tags)(language)(net_rshares)(author_reward)(benefactor_reward)(curator_reward)(votes)(reblogs))
 FC_REFLECT(cyberway::genesis::ee::transfer_info, (from)(to)(quantity)(memo)(time))
+FC_REFLECT(cyberway::genesis::ee::balance_convert_info, (owner)(amount)(memo))
 FC_REFLECT(cyberway::genesis::ee::pin_info, (pinner)(pinning))
 FC_REFLECT(cyberway::genesis::ee::block_info, (blocker)(blocking))

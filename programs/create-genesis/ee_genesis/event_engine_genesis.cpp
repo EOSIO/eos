@@ -67,6 +67,19 @@ static abi_def create_transfers_abi() {
     return abi;
 }
 
+static abi_def create_balance_convert_abi() {
+    abi_def abi;
+    abi.version = ABI_VERSION;
+    abi.structs.emplace_back( struct_def {
+        "balance_convert", "", {
+            {"owner",  "name"},
+            {"amount", "asset"},
+            {"memo",   "string"},
+        }
+    });
+    return abi;
+}
+
 static abi_def create_pinblocks_abi() {
     abi_def abi;
     abi.version = ABI_VERSION;
@@ -142,19 +155,25 @@ static abi_def create_funds_abi() {
 }
 
 void event_engine_genesis::start(const bfs::path& ee_directory, const fc::sha256& hash) {
-    messages.start(ee_directory / "messages.dat", hash, create_messages_abi());
-    transfers.start(ee_directory / "transfers.dat", hash, create_transfers_abi());
-    pinblocks.start(ee_directory / "pinblocks.dat", hash, create_pinblocks_abi());
-    accounts.start(ee_directory / "accounts.dat", hash, create_accounts_abi());
-    funds.start(ee_directory / "funds.dat", hash, create_funds_abi());
+    using ser_info = std::tuple<string, abi_def>;
+    const std::map<ee_ser_type, ser_info> infos = {
+        {ee_ser_type::messages,  {"messages.dat",   create_messages_abi()}},
+        {ee_ser_type::transfers, {"transfers.dat",  create_transfers_abi()}},
+        {ee_ser_type::pinblocks, {"pinblocks.dat",  create_pinblocks_abi()}},
+        {ee_ser_type::accounts,  {"accounts.dat",   create_accounts_abi()}},
+        {ee_ser_type::funds,     {"funds.dat",      create_funds_abi()}},
+        {ee_ser_type::balance_conversions, {"balance_conversions.dat", create_balance_convert_abi()}}
+    };
+    for (const auto& i: infos) {
+        const auto& info = i.second;
+        serializers[i.first].start(ee_directory / std::get<0>(info), hash, std::get<1>(info));
+    }
 }
 
 void event_engine_genesis::finalize() {
-    messages.finalize();
-    transfers.finalize();
-    pinblocks.finalize();
-    accounts.finalize();
-    funds.finalize();
+    for (auto& s: serializers) {
+        s.second.finalize();
+    }
 }
 
 } } } // cyberway::genesis::ee

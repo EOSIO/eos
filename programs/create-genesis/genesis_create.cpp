@@ -636,7 +636,7 @@ struct genesis_create::genesis_create_impl final {
         }
         supply_distributor to_gls(price.quote, price.base);     // flip price to convert GBG to GOLOS
         auto golos_from_gbg = to_gls.convert(gp.current_sbd_supply);
-        std::cout << "GBG 2 GOLOS = " << golos_from_gbg << std::endl;
+        std::cout << "GBG to GOLOS = " << golos_from_gbg << std::endl;
         to_gls.reset();
 
         // token stats
@@ -694,7 +694,10 @@ struct genesis_create::genesis_create_impl final {
         for (const auto& balance: data.gbg) {
             auto acc = balance.first;
             auto gbg = balance.second;
-            auto gls = data.gls[acc] + to_gls.convert(gbg);
+            auto gls = to_gls.convert(gbg);
+            _visitor.conv_gbg[acc].converted(gls);
+            _visitor.conv_gls[acc].finish();
+            gls += data.gls[acc];
             total_gls += gls;
             auto n = name_by_idx(acc);
             insert_balance_record(n, gls, gls_pk, acc);
@@ -1115,7 +1118,7 @@ void genesis_create::read_state(const bfs::path& state_file) {
 }
 
 void genesis_create::write_genesis(
-    const bfs::path& out_file, export_info& exp_info, const genesis_info& info, const genesis_state& conf, const contracts_map& accs
+    const bfs::path& out_file, const genesis_info& info, const genesis_state& conf, const contracts_map& accs
 ) {
     _impl->_info = info;
     _impl->_conf = conf;
@@ -1139,9 +1142,23 @@ void genesis_create::write_genesis(
 
     _impl->db.finalize();
 
-    exp_info = _impl->_exp_info;
+    _impl->_exp_info.conv_gbg = &_impl->_visitor.conv_gbg;
+    _impl->_exp_info.conv_gls = &_impl->_visitor.conv_gls;
 }
 
+const genesis_info& genesis_create::get_info() const {
+    return _impl->_info;
+}
+const genesis_state& genesis_create::get_conf() const {
+    return _impl->_conf;
+}
+const export_info& genesis_create::get_exp_info() const {
+    return _impl->_exp_info;
+}
+
+name genesis_create::name_by_idx(acc_idx idx) const {
+    return _impl->name_by_idx(idx);
+}
 
 string pubkey_string(const golos::public_key_type& k) {
     using checksummer = fc::crypto::checksummed_data<golos::public_key_type>;

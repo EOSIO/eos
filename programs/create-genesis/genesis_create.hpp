@@ -30,7 +30,13 @@ public:
     ~genesis_create();
 
     void read_state(const bfs::path& state_file);
-    void write_genesis(const bfs::path& out_file, export_info&, const genesis_info&, const genesis_state&, const contracts_map&);
+    void write_genesis(const bfs::path& out_file, const genesis_info&, const genesis_state&, const contracts_map&);
+
+    // ee interface
+    const genesis_info& get_info() const;
+    const genesis_state& get_conf() const;
+    const export_info& get_exp_info() const;
+    name name_by_idx(acc_idx idx) const;
 
 private:
     struct genesis_create_impl;
