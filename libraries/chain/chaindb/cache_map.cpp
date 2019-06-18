@@ -280,7 +280,9 @@ namespace cyberway { namespace chaindb {
 
         void squash_revision(lru_cache_cell& src_cell) {
             for (auto& src_state: src_cell.state_list) {
-                if (!src_state.prev_state && src_state.object_ptr->is_deleted()) {
+                if (!src_state.object_ptr) {
+                    // skip
+                } else if (!src_state.prev_state && src_state.object_ptr->is_deleted()) {
                     // undo it
                 } else if (!src_state.prev_state || src_state.prev_state->cell != this) {
                     auto  lru_prev_state = emplace_impl(std::move(src_state.object_ptr));
@@ -293,24 +295,7 @@ namespace cyberway { namespace chaindb {
             add_ram_bytes(src_cell.ram_bytes_);
         }
 
-        int64_t commit_revision() {
-            int64_t commited_size = 0;
-
-            kind_ = cache_cell::LRU;
-
-            for (auto& state: state_list) {
-                state.commit();
-                if (state.object_ptr->is_deleted()) {
-                    continue;
-                }
-
-                auto delta = state.object_ptr->service().size;
-                CYBERWAY_CACHE_ASSERT(UINT64_MAX - commited_size >= delta, "Commiting delta would overflow UINT64_MAX");
-                commited_size += delta;
-            }
-
-            return commited_size;
-        }
+        int64_t commit_revision();
 
         revision_t revision() const {
             return revision_;
@@ -496,11 +481,52 @@ namespace cyberway { namespace chaindb {
         }
 
         cache_object_ptr emplace(const table_info& table, object_value value) {
-            if (!value.service.in_ram) {
-                return create_cache_object(table, std::move(value));
-            } else {
-                return emplace_in_ram(table, std::move(value));
+            auto& service       = service_tree_.emplace(cache_service_key(value), cache_service_info()).first->second;
+            auto  cache_obj_ptr = find_in_cache(service, value.service);
+            bool  is_new_ptr    = false;
+            bool  is_del_ptr    = false;
+
+            if (!cache_obj_ptr && has_pending_cell()) {
+                auto itr = service.deleted_object_tree.find(value.service);
+                if (service.deleted_object_tree.end() != itr) {
+                    cache_obj_ptr = std::move(itr->second);
+                    is_del_ptr    = true;
+                    service.deleted_object_tree.erase(itr);
+                }
             }
+
+            if (!cache_obj_ptr) {
+                object_value obj;
+                obj.service = value.service;
+                obj.service.size = 0;
+
+                cache_obj_ptr = new cache_object(std::move(obj));
+                is_new_ptr    = true;
+            }
+
+            assert(!is_new_ptr || !is_del_ptr);
+
+            auto& cache_obj = *cache_obj_ptr;
+            convert_value(service, cache_obj, value);
+
+            if (is_system_object(cache_obj)) {
+                if (is_new_ptr) {
+                    add_system_object(cache_obj_ptr);
+                }
+            } else {
+                add_pending_object(cache_obj_ptr);
+            }
+
+            if ((is_new_ptr || is_del_ptr) && cache_obj.has_cell()) {
+                cache_obj.stage_ = cache_object::Active;
+                service.object_tree.emplace(cache_object_key(cache_obj), cache_obj_ptr);
+            }
+
+            if (!value.is_null()) {
+                set_object(table, &service, cache_obj, std::move(value));
+            }
+
+            return cache_obj_ptr;
         }
 
         void emplace_unsuccess(const table_info& table, const primary_key_t pk, const primary_key_t rpk) {
@@ -580,9 +606,6 @@ namespace cyberway { namespace chaindb {
             assert(cache_obj.is_valid_table(service));
 
             cache_obj.object_.service = std::move(service);
-            if (!cache_obj.service().in_ram && !cache_obj.is_deleted()) {
-                remove_cache_object(cache_obj);
-            }
         }
 
         void set_revision(const service_state& key, const revision_t rev) {
@@ -989,89 +1012,13 @@ namespace cyberway { namespace chaindb {
             }
         }
 
-        cache_object_ptr emplace_in_ram(const table_info& table, object_value value) {
-            auto& service       = service_tree_.emplace(cache_service_key(value), cache_service_info()).first->second;
-            auto  cache_obj_ptr = find_in_cache(service, value.service);
-            bool  is_new_ptr    = false;
-            bool  is_del_ptr    = false;
-
-            if (!cache_obj_ptr && has_pending_cell()) {
-                auto itr = service.deleted_object_tree.find(value.service);
-                if (service.deleted_object_tree.end() != itr) {
-                    cache_obj_ptr = std::move(itr->second);
-                    is_del_ptr    = true;
-                    service.deleted_object_tree.erase(itr);
-                }
-            }
-
-            if (!cache_obj_ptr) {
-                object_value obj;
-                obj.service = value.service;
-                obj.service.size = 0;
-
-                cache_obj_ptr = new cache_object(std::move(obj));
-                is_new_ptr    = true;
-            }
-
-            assert(!is_new_ptr || !is_del_ptr);
-
-            auto& cache_obj = *cache_obj_ptr;
-            convert_value(&service, cache_obj, value);
-
-            if (is_system_object(cache_obj)) {
-                if (is_new_ptr) {
-                    add_system_object(cache_obj_ptr);
-                }
-            } else {
-                add_pending_object(cache_obj_ptr);
-            }
-
-            if ((is_new_ptr || is_del_ptr) && cache_obj.has_cell()) {
-                cache_obj.stage_ = cache_object::Active;
-                service.object_tree.emplace(cache_object_key(cache_obj), cache_obj_ptr);
-            }
-
-            if (!value.is_null()) {
-                set_object(table, &service, cache_obj, std::move(value));
-            }
-
-            return cache_obj_ptr;
-        }
-
-        cache_object_ptr create_cache_object(const table_info& table, object_value value) {
-            auto service_ptr = find_cache_service(value);
-            auto obj_ptr     = find_in_cache(service_ptr, value.service);
-            bool is_new_ptr  = !obj_ptr;
-
-            if (!is_new_ptr) {
-                // find object in RAM, and delete it from RAM
-                remove_cache_object(*obj_ptr);
-            } else if (has_pending_cell() && service_ptr) {
-                // find object in pending deletes, and don't add it to RAM
-                auto itr = service_ptr->deleted_object_tree.find(value.service);
-
-                if (service_ptr->deleted_object_tree.end() != itr) {
-                    obj_ptr = itr->second;
-                    is_new_ptr = true;
-                }
-            }
-
-            if (is_new_ptr) {
-                // create object, but don't add it to RAM
-                obj_ptr = new cache_object(value);
-            }
-
-            convert_value(service_ptr, *obj_ptr, value);
-            return obj_ptr;
-        }
-
-        void convert_value(cache_service_info* service_ptr, cache_object& cache_obj, const object_value& value) const {
+        void convert_value(cache_service_info& service, cache_object& cache_obj, const object_value& value) const {
             // set_cache_value happens in three cases:
             //   1. create object for interchain tables ->  value.is_null()
             //   2. loading object from chaindb         -> !value.is_null()
             //   3. restore from undo state             -> !value.is_null()
-            if (service_ptr && service_ptr->converter && !value.is_null()) {
-                service_ptr->converter->convert_variant(cache_obj, value);
+            if (service.converter && !value.is_null()) {
+                service.converter->convert_variant(cache_obj, value);
             }
         }
 
@@ -1134,6 +1081,33 @@ namespace cyberway { namespace chaindb {
         tmp_obj_ptr->swap_state(*tmp_prev_state);
     }
 
+    //-----------------------------------------------------------------------------------------------
+
+    int64_t lru_cache_cell::commit_revision() {
+        int64_t commited_size = 0;
+
+        kind_ = cache_cell::LRU;
+
+        for (auto& state: state_list) {
+            if (!state.object_ptr) {
+                continue;
+            }
+            if (!state.object_ptr->service().in_ram && !state.object_ptr->is_deleted()) {
+                map->remove_cache_object(*state.object_ptr);
+            }
+
+            state.commit();
+            if (!state.object_ptr) {
+                continue;
+            }
+
+            auto delta = state.object_ptr->service().size;
+            CYBERWAY_CACHE_ASSERT(UINT64_MAX - commited_size >= delta, "Commiting delta would overflow UINT64_MAX");
+            commited_size += delta;
+        }
+
+        return commited_size;
+    }
     //-----------------------------------------------------------------------------------------------
 
     void system_cache_object_state::reset() {
