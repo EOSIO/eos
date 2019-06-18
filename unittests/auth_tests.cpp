@@ -386,7 +386,6 @@ try {
    auto& chaindb = chain.control->chaindb();
 
    using resource_usage_object = eosio::chain::resource_limits::resource_usage_object;
-   using by_owner = eosio::chain::resource_limits::by_owner;
 
    auto create_acc = [&](account_name a) {
 
