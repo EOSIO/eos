@@ -419,6 +419,7 @@ struct controller_impl {
    void init(std::function<bool()> shutdown, const snapshot_reader_ptr& snapshot) {
 
       bool report_integrity_hash = !!snapshot;
+      bool initialized = false;
 
       EOS_ASSERT( !snapshot, fork_database_exception, "Snapshot not supported");
       if (snapshot) {
@@ -439,6 +440,7 @@ struct controller_impl {
       } else {
          if( !head ) {
             initialize_fork_db(); // set head to genesis state
+            initialized = true;
          }
 
          auto end = blog.read_head();
@@ -481,7 +483,9 @@ struct controller_impl {
          chaindb.undo_last_revision();
       }
 
-      initialize_caches();
+      if( !initialized ) {
+         initialize_caches();
+      }
 
       if( report_integrity_hash ) {
 // TODO: removed by CyberWay
