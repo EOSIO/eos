@@ -520,6 +520,23 @@ namespace cyberway { namespace chaindb {
             undo_.commit(revision);
         }
 
+        object_value object_by_pk(const table_request& request, const primary_key_t pk) {
+            auto cache_ptr = cache_.find(request.to_service(pk));
+            if (cache_ptr) {
+                return cache_ptr->object();
+            }
+
+            auto table = get_table(request);
+            auto obj   = driver_.object_by_pk(table, pk);
+            validate_object(table, obj, pk);
+
+            if (!obj.is_null()) {
+                return cache_.emplace(table, std::move(obj))->object();
+            }
+
+            return obj;
+        }
+
     private:
         object_value to_object_value(const table_info& table, const primary_key_t pk, variant value) const {
             return {table.to_service(pk), std::move(value)};
@@ -886,14 +903,6 @@ namespace cyberway { namespace chaindb {
         impl_->change_ram_state(cache_obj, storage);
     }
 
-    variant chaindb_controller::value_by_pk(const table_request& request, primary_key_t pk) const {
-        return impl_->get_cache_object(request, pk, false)->object().value;
-    }
-
-    variant chaindb_controller::value_at_cursor(const cursor_request& request) const {
-        return impl_->object_at_cursor(request, false).value;
-    }
-
     table_info chaindb_controller::table_by_request(const table_request& request) const {
         return impl_->table_by_request(request);
     }
@@ -904,6 +913,10 @@ namespace cyberway { namespace chaindb {
 
     object_value chaindb_controller::object_at_cursor(const cursor_request& request) const {
         return impl_->object_at_cursor(request, true);
+    }
+
+    object_value chaindb_controller::object_by_pk(const table_request& request, primary_key_t pk) const {
+        return impl_->object_by_pk(request, pk);
     }
 
     revision_t chaindb_controller::revision() const {

@@ -178,11 +178,10 @@ namespace cyberway { namespace chaindb {
 
         void change_ram_state(cache_object&, const storage_payer_info&) const;
 
-        variant value_by_pk(const table_request& request, primary_key_t pk) const;
-        variant value_at_cursor(const cursor_request&) const;
         table_info   table_by_request(const table_request&) const;
         index_info   index_at_cursor(const cursor_request&) const;
         object_value object_at_cursor(const cursor_request&) const;
+        object_value object_by_pk(const table_request& request, primary_key_t) const;
 
     private:
         friend class chaindb_session;

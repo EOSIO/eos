@@ -60,7 +60,7 @@ public:
 
    uint64_t get_result_uint64() {
       auto& chaindb = control->chaindb();
-      auto value = chaindb.value_by_pk({N(identitytest), 0, N(result)}, N(result));
+      auto value = chaindb.object_by_pk({N(identitytest), 0, N(result)}, N(result)).value;
       return value["identity"].as_uint64();
    }
 
@@ -104,7 +104,7 @@ public:
 
    fc::variant get_identity(uint64_t idnt) {
       auto& chaindb = control->chaindb();
-      auto value = chaindb.value_by_pk({N(identity), N(identity), N(idents)}, idnt);
+      auto value = chaindb.object_by_pk({N(identity), N(identity), N(idents)}, idnt).value;
       return value;
    }
 
@@ -142,7 +142,7 @@ public:
    fc::variant get_accountrow(const string& account) {
       auto& chaindb = control->chaindb();
       auto acnt = string_to_name(account.c_str());
-      return chaindb.value_by_pk({N(identity), acnt, N(account)}, N(account));
+      return chaindb.object_by_pk({N(identity), acnt, N(account)}, N(account)).value;
    }
 
    action_result settrust(const string& trustor, const string& trusting, uint64_t trust, bool auth = true)
@@ -164,7 +164,7 @@ public:
    bool get_trust(const string& trustor, const string& trusting) {
       auto& chaindb = control->chaindb();
       uint64_t tng = string_to_name(trusting.c_str());
-      return !chaindb.value_by_pk({N(identity), string_to_name(trustor.c_str()), N(trust)}, tng).is_null();
+      return !chaindb.object_by_pk({N(identity), string_to_name(trustor.c_str()), N(trust)}, tng).value.is_null();
    }
 
 public:
