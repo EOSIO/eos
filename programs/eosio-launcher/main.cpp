@@ -120,7 +120,6 @@ enum class port_type : uint8_t {
    p2p,
    http,
    keosd,
-   keosd_boot,
    NUM_PORT_TYPES
 };
 
@@ -467,24 +466,14 @@ struct launcher_def {
    eosio::chain::genesis_state genesis_from_file;
 
    std::string cluster_id_str() const {
-      char cluster_id_str[20];
+     char cluster_id_str[20];
 	   sprintf(cluster_id_str, "cluster%05u", cluster_id);
-      std::string str = cluster_id_str;
-      if (!bfs::exists(str)) {
-         try {
-            bfs::create_directories (str);
-         } catch (bfs::filesystem_error &ex) {
-            cerr << "could not create new directory: " << str
-               << " caught " << ex.what() << endl;
-            exit(-1);
-         }
-      }
-      return str;
+     std::string str = cluster_id_str;
+     return str;
    }
-   std::string last_run_json_str() const {
-      std::string s = cluster_id_str();
-      s += "/last_run.json";
-      return s;
+
+   bfs::path cluster_dir_path() const {
+     return bfs::current_path() / cluster_id_str();
    }
 
    void assign_name (eosd_def &node, bool is_bios);
@@ -618,6 +607,20 @@ launcher_def::initialize (const variables_map &vmap) {
 
   if (vmap.count("cluster-id")) {
     cluster_id = vmap["cluster-id"].as<uint16_t>();
+    if (cluster_id >= port_constants::max_num_clusters) {
+       cerr << "cluster_id need to be smaller than " << port_constants::max_num_clusters << endl;
+       exit(-1);
+    }
+  }
+
+  if (!bfs::exists(cluster_dir_path())) {
+    try {
+      bfs::create_directories(cluster_dir_path());
+    } catch (bfs::filesystem_error &ex) {
+      cerr << "could not create new directory: " << cluster_dir_path()
+        << " caught " << ex.what() << endl;
+      exit(-1);
+    }
   }
 
   if (vmap.count("max-block-cpu-usage")) {
@@ -652,7 +655,7 @@ launcher_def::initialize (const variables_map &vmap) {
           boost::iequals( shape, "mesh" )) &&
        host_map_file.empty()) {
     bfs::path src = shape;
-    host_map_file = src.stem().string() + "_hosts.json";
+    host_map_file = cluster_dir_path() / (src.stem().string() + "_hosts.json");
   }
 
   if( !host_map_file.empty() ) {
@@ -669,10 +672,6 @@ launcher_def::initialize (const variables_map &vmap) {
       }
     } catch (...) { // this is an optional feature, so an exception is OK
     }
-  }
-
-  if (!host_map_file.empty() && host_map_file.string().find(cluster_id_str()) == std::string::npos) {
-     host_map_file = bfs::path(cluster_id_str()) / host_map_file;
   }
 
 	config_dir_base = "etc/eosio/";
@@ -820,7 +819,7 @@ launcher_def::generate () {
       sf.close();
     }
     if (host_map_file.empty()) {
-      savefile = bfs::path (bfs::path(cluster_id_str()) / (output.stem().string() + "_hosts.json"));
+      savefile = cluster_dir_path() / (output.stem().string() + "_hosts.json");
     }
     else {
       savefile = bfs::path (host_map_file);
@@ -1327,7 +1326,7 @@ launcher_def::write_bios_boot () {
          if (key == "envars") {
             brb << "bioshost=" << bhost << "\nbiosport=" << biosport << "\n";
             brb << "wddir=" << cluster_id_str() << "/$wddir\n";
-            brb << "wdaddr=localhost:" << calculate_port(cluster_id, 0, port_type::keosd_boot) << "\n";
+            brb << "wdaddr=localhost:" << calculate_port(cluster_id, 0, port_type::keosd) << "\n";
             brb << "wdurl=http://$wdaddr\n";
             brb << "wpidfile=" << cluster_id_str() << "/ignition_wallet.pid\n";
          }
@@ -1712,7 +1711,7 @@ launcher_def::kill (launch_modes mode, string sig_opt) {
   case LM_ALL:
   case LM_LOCAL:
   case LM_REMOTE : {
-    std::string source = last_run_json_str();
+    std::string source = (cluster_dir_path() / "last_run.json").generic_string();
     try {
        fc::json::from_file( source ).as<last_run_def>( last_run );
        for( auto& info : last_run.running_nodes ) {
@@ -1944,7 +1943,7 @@ launcher_def::start_all (string &gts, launch_modes mode) {
   }
   }
 
-  bfs::path savefile = last_run_json_str();
+  bfs::path savefile = cluster_dir_path() / "last_run.json";
   bfs::ofstream sf (savefile);
 
   sf << fc::json::to_pretty_string (last_run) << endl;

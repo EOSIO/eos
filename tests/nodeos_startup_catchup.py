@@ -42,7 +42,7 @@ Utils.Debug=args.v
 pnodes=args.p if args.p > 0 else 1
 startedNonProdNodes = args.txn_gen_nodes if args.txn_gen_nodes >= 2 else 2
 Utils.clusterID=args.cluster_id
-cluster=Cluster(walletd=True, clusterID=Utils.clusterID)
+cluster=Cluster(walletd=True)
 dumpErrorDetails=args.dump_error_details
 keepLogs=args.keep_logs
 dontKill=args.leave_running
@@ -52,7 +52,7 @@ walletPort=args.wallet_port
 catchupCount=args.catchup_count if args.catchup_count > 0 else 1
 totalNodes=startedNonProdNodes+pnodes+catchupCount
 
-walletMgr=WalletMgr(True, port=walletPort, clusterID=Utils.clusterID)
+walletMgr=WalletMgr(True, port=walletPort)
 testSuccessful=False
 killEosInstances=not dontKill
 killWallet=not dontKill

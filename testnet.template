@@ -46,7 +46,7 @@ echo "starting keosd" >> $logfile
 
 programs/keosd/keosd --config-dir $wddir --data-dir $wddir 2> $wddir/wdlog.txt &
 wpid=$!
-echo "pid is $wpid, saving to $pwidfile" >> $logfile
+echo "pid is $wpid, saving to $wpidfile" >> $logfile
 echo $wpid > $wpidfile
 echo keosd log in $wddir/wdlog.txt >> $logfile
 sleep 1
@@ -143,7 +143,7 @@ programs/cleos/cleos --wallet-url $wdurl --url http://$bioshost:$biosport push a
 ###INSERT cacmd
 
 killcmd="kill -15 \`cat $wpidfile\`"
-echo "ready to kill keosd with cmd:$killcmd" >> $logfile
+echo "ready to kill keosd with cmd: $killcmd" >> $logfile
 eval "$killcmd"
 
 echo "boot script finished successfully" >> $logfile

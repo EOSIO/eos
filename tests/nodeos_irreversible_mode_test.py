@@ -42,8 +42,8 @@ keepLogs=args.keep_logs
 
 # Setup cluster and it's wallet manager
 Utils.clusterID=args.cluster_id
-walletMgr=WalletMgr(True, clusterID=Utils.clusterID)
-cluster=Cluster(walletd=True, clusterID=Utils.clusterID)
+walletMgr=WalletMgr(True)
+cluster=Cluster(walletd=True)
 cluster.setWalletMgr(walletMgr)
 
 def backupBlksDir(nodeId):

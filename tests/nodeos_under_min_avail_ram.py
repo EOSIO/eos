@@ -59,14 +59,14 @@ args = TestHelper.parse_args({"--dump-error-details","--keep-logs","-v","--leave
 Utils.Debug=args.v
 Utils.clusterID=args.cluster_id
 totalNodes=4
-cluster=Cluster(clusterID=Utils.clusterID, walletd=True)
+cluster=Cluster(walletd=True)
 dumpErrorDetails=args.dump_error_details
 keepLogs=args.keep_logs
 dontKill=args.leave_running
 killAll=args.clean_run
 walletPort=args.wallet_port
 
-walletMgr=WalletMgr(True, port=walletPort,  clusterID=Utils.clusterID)
+walletMgr=WalletMgr(True, port=walletPort)
 testSuccessful=False
 killEosInstances=not dontKill
 killWallet=not dontKill

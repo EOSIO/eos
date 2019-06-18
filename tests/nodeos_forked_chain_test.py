@@ -122,7 +122,7 @@ totalNodes=totalProducerNodes+totalNonProducerNodes
 maxActiveProducers=21
 totalProducers=maxActiveProducers
 Utils.clusterID=args.cluster_id
-cluster=Cluster(walletd=True, clusterID=Utils.clusterID)
+cluster=Cluster(walletd=True)
 dumpErrorDetails=args.dump_error_details
 keepLogs=args.keep_logs
 dontKill=args.leave_running
@@ -130,7 +130,7 @@ prodCount=args.prod_count
 killAll=args.clean_run
 walletPort=args.wallet_port
 
-walletMgr=WalletMgr(True, port=walletPort, clusterID=Utils.clusterID)
+walletMgr=WalletMgr(True, port=walletPort)
 testSuccessful=False
 killEosInstances=not dontKill
 killWallet=not dontKill

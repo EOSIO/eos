@@ -43,8 +43,8 @@ walletPort=args.wallet_port
 Utils.Debug=debug
 Utils.clusterID=args.cluster_id
 localTest=True if server == TestHelper.LOCAL_HOST else False
-cluster=Cluster(clusterID=Utils.clusterID,host=server, port=port, walletd=True, enableMongo=enableMongo, defproduceraPrvtKey=defproduceraPrvtKey, defproducerbPrvtKey=defproducerbPrvtKey)
-walletMgr=WalletMgr(True, port=walletPort, clusterID=Utils.clusterID)
+cluster=Cluster(host=server, port=port, walletd=True, enableMongo=enableMongo, defproduceraPrvtKey=defproduceraPrvtKey, defproducerbPrvtKey=defproducerbPrvtKey)
+walletMgr=WalletMgr(True, port=walletPort)
 testSuccessful=False
 killEosInstances=not dontKill
 killWallet=not dontKill

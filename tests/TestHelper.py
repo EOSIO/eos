@@ -147,9 +147,9 @@ class TestHelper(object):
         Utils.ShuttingDown=True
 
         if testSuccessful:
-            Utils.Print("Test succeeded.")
+            Utils.Print("Test succeeded, ready to shutdown cluster and wallet.")
         else:
-            Utils.Print("Test failed.")
+            Utils.Print("Test failed, ready to shutdown cluster and wallet.")
         if not testSuccessful and dumpErrorDetails:
             cluster.reportStatus()
             Utils.Print(Utils.FileDivider)

@@ -15,11 +15,10 @@ class WalletMgr(object):
     __walletLogOutFile=""
     __walletLogErrFile=""
     __walletDataDir=""
-    __MaxPort=9999
 
     # pylint: disable=too-many-arguments
     # walletd [True|False] True=Launch wallet(keosd) process; False=Manage launch process externally.
-    def __init__(self, walletd, nodeosPort=-1, nodeosHost="localhost", port=-1, host="localhost", clusterID=0):
+    def __init__(self, walletd, nodeosPort=-1, nodeosHost="localhost", port=-1, host="localhost"):
         self.walletd=walletd
         self.nodeosPort=nodeosPort
         self.nodeosHost=nodeosHost
@@ -28,7 +27,7 @@ class WalletMgr(object):
         self.wallets={}
         self.__walletPid=None
 
-        WalletMgr.__walletDataDir=("cluster%05d/test_wallet" % clusterID)
+        WalletMgr.__walletDataDir=("cluster%05d/test_wallet" % Utils.clusterID)
 
         try:
             Utils.Print("WalletMgr: creating directory %s" % (WalletMgr.__walletDataDir))
@@ -36,13 +35,13 @@ class WalletMgr(object):
         except:
             pass
 
-        WalletMgr.__walletLogOutFile = ("cluster%05d/test_keosd_out.log" % clusterID)
-        WalletMgr.__walletLogErrFile = ("cluster%05d/test_keosd_err.log" % clusterID)
+        WalletMgr.__walletLogOutFile = ("cluster%05d/test_keosd_out.log" % Utils.clusterID)
+        WalletMgr.__walletLogErrFile = ("cluster%05d/test_keosd_err.log" % Utils.clusterID)
         
         if self.port == -1:
-            self.port = Utils.portBase + clusterID * Utils.cluster_stride + Utils.port_type_keosd     
+            self.port = Utils.portBase + Utils.clusterID * Utils.cluster_stride + Utils.node_stride + Utils.port_type_keosd     
         if self.nodeosPort == -1:
-            self.nodeosPort = Utils.portBase + clusterID * Utils.cluster_stride + Utils.node_stride + Utils.port_type_http
+            self.nodeosPort = Utils.portBase + Utils.clusterID * Utils.cluster_stride + Utils.node_stride + Utils.port_type_http
 
     def getWalletEndpointArgs(self):
         if not self.walletd or not self.isLaunched():
@@ -59,17 +58,6 @@ class WalletMgr(object):
     def isLocal(self):
         return self.host=="localhost" or self.host=="127.0.0.1"
 
-    def findAvailablePort(self):
-        for i in range(WalletMgr.__MaxPort):
-            port=self.port+i
-            if port > WalletMgr.__MaxPort:
-                port-=WalletMgr.__MaxPort
-            if Utils.arePortsAvailable(port):
-                return port
-            if Utils.Debug: Utils.Print("Port %d not available for %s" % (port, Utils.EosWalletPath))
-
-        Utils.errorExit("Failed to find free port to use for %s" % (Utils.EosWalletPath))
-
     def launch(self):
         if not self.walletd:
             Utils.Print("ERROR: Wallet Manager wasn't configured to launch keosd")
@@ -78,22 +66,22 @@ class WalletMgr(object):
         if self.isLaunched():
             return True
 
-        if self.isLocal():
-            self.port=self.findAvailablePort()
+        tries = 30
+        while not Utils.arePortsAvailable(self.port):
+            if tries == 0:
+                Utils.Print("failed to launch walletMgr because port %d not available" % (self.port, Utils.EosWalletPath))
+                return False
+            Utils.Print("wallet port %d not available for %s, wait..." % (self.port, Utils.EosWalletPath))
+            tries = tries - 1
+            time.sleep(2)
 
         pgrepCmd=Utils.pgrepCmd(WalletMgr.__walletDataDir)
         if Utils.Debug:
-            portTaken=False
-            if self.isLocal():
-                if not Utils.arePortsAvailable(self.port):
-                    portTaken=True
             psOut=Utils.checkOutput(pgrepCmd.split(), ignoreError=True)
-            if psOut or portTaken:
+            if psOut:
                 statusMsg=""
                 if psOut:
                     statusMsg+=" %s - {%s}." % (pgrepCmd, psOut)
-                if portTaken:
-                    statusMsg+=" port %d is NOT available." % (self.port)
                 Utils.Print("Launching %s, note similar processes running. %s" % (Utils.EosWalletName, statusMsg))
 
         cmd="%s --data-dir %s --config-dir %s --http-server-address=%s:%d --verbose-http-errors" % (
@@ -109,7 +97,7 @@ class WalletMgr(object):
         try:
             if Utils.Debug: Utils.Print("Checking if %s launched. %s" % (Utils.EosWalletName, pgrepCmd))
             psOut=Utils.checkOutput(pgrepCmd.split())
-            if Utils.Debug: Utils.Print("Launched %s. {%s}" % (Utils.EosWalletName, psOut))
+            Utils.Print("walletMgr launched successfully for cluster %d. output: %s" % (Utils.clusterID, psOut))
         except subprocess.CalledProcessError as ex:
             Utils.errorExit("Failed to launch the wallet manager. failed cmd is %s" % (pgrepCmd))
 
@@ -309,6 +297,15 @@ class WalletMgr(object):
             cmd="pkill -9 %s" % (Utils.EosWalletName)
             Utils.Print("Killing all wallet instances, cmd: %s" % (cmd))
             subprocess.call(cmd.split())
+        else:
+            cmd=Utils.pgrepCmd(WalletMgr.__walletDataDir)
+            psOut=Utils.checkOutput(cmd.split(), ignoreError=True)
+            if psOut is not None:
+                m=psOut.split()
+                if len(m) > 0:
+                    cmd="kill -9 %s" % (m[0])
+                    if 0 != subprocess.call(cmd.split(), stdout=Utils.FNull):
+                        if not silent: Utils.Print("Failed to kill wallet")                 
 
     @staticmethod
     def cleanup():

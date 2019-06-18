@@ -47,6 +47,7 @@ class Cluster(object):
     __LauncherCmdArr=[]
     __bootlog=""
     __BootScript=""
+    __totalNodes=1
 
     __portBase = Utils.portBase
     __cluster_stride = Utils.cluster_stride
@@ -58,7 +59,7 @@ class Cluster(object):
     # pylint: disable=too-many-arguments
     # walletd [True|False] Is keosd running. If not load the wallet plugin
     def __init__(self, walletd=False, localCluster=True, host="localhost", port=-1, walletHost="localhost", walletPort=-1, enableMongo=False
-                 , mongoHost="localhost", mongoPort=27017, mongoDb="EOStest", defproduceraPrvtKey=None, defproducerbPrvtKey=None, staging=False, clusterID=0):
+                 , mongoHost="localhost", mongoPort=27017, mongoDb="EOStest", defproduceraPrvtKey=None, defproducerbPrvtKey=None, staging=False):
         """Cluster container.
         walletd [True|False] Is wallet keosd running. If not load the wallet plugin
         localCluster [True|False] Is cluster local to host.
@@ -73,19 +74,17 @@ class Cluster(object):
         defproducerbPrvtKey: Defproducerb account private key
         """
         self.accounts={}
-        self.clusterID=clusterID
-        Utils.clusterID=clusterID
 
-        Cluster.__BiosPort = Cluster.__portBase + clusterID * Cluster.__cluster_stride + Cluster.__port_type_http
-        Cluster.__BootScript = ("cluster%05d/bios_boot.sh" % clusterID)
+        Cluster.__BiosPort = Cluster.__portBase + Utils.clusterID * Cluster.__cluster_stride + Cluster.__port_type_http
+        Cluster.__BootScript = ("cluster%05d/bios_boot.sh" % Utils.clusterID)
 
-        Cluster.__bootlog=("cluster%05d/eosio-ignition-wd/bootlog.txt" % clusterID)
+        Cluster.__bootlog=("cluster%05d/eosio-ignition-wd/bootlog.txt" % Utils.clusterID)
         
         if port == -1:
             port = Cluster.__BiosPort + Cluster.__node_stride
 
         if walletPort == -1:
-            walletPort = Cluster.__portBase + clusterID * Cluster.__cluster_stride + Cluster.__port_type_keosd
+            walletPort = Cluster.__portBase + Utils.clusterID * Cluster.__cluster_stride + Cluster.__port_type_keosd
 
         self.nodes={}
         self.unstartedNodes=[]
@@ -104,6 +103,8 @@ class Cluster(object):
         self.mongoEndpointArgs=""
         self.mongoUri=""
         if self.enableMongo:
+            if Utils.clusterID != 0:
+                Utils.errorExit("tests with mongodb enabled must use clusterID 0")
             self.mongoUri="mongodb://%s:%d/%s" % (mongoHost, mongoPort, mongoDb)
             self.mongoEndpointArgs += "--host %s --port %d %s" % (mongoHost, mongoPort, mongoDb)
         self.staging=staging
@@ -209,6 +210,7 @@ class Cluster(object):
         if len(self.nodes) > 0:
             raise RuntimeError("Cluster already running.")
 
+        Cluster.__totalNodes = totalNodes
         if pnodes > totalNodes:
             raise RuntimeError("totalNodes (%d) must be equal to or greater than pnodes(%d)." % (totalNodes, pnodes))
         if pnodes + unstartedNodes > totalNodes:
@@ -235,7 +237,7 @@ class Cluster(object):
         cmd="%s -p %s -n %s -d %s -i %s -f %s --unstarted-nodes %s" % (
             Utils.EosLauncherPath, pnodes, totalNodes, delay, datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3],
             producerFlag, unstartedNodes)
-        cmd += " --cluster-id %d" % (self.clusterID)
+        cmd += " --cluster-id %d" % (Utils.clusterID)
         cmd += " --script %s" % (Cluster.__BootScript)
         cmdArr=cmd.split()
         if self.staging:
@@ -288,7 +290,7 @@ class Cluster(object):
         # must be last cmdArr.append before subprocess.call, so that everything is on the command line
         # before constructing the shape.json file for "bridge"
         if topo=="bridge":
-            shapeFilePrefix=("cluster%05d/shape_bridge" % self.clusterID)
+            shapeFilePrefix=("cluster%05d/shape_bridge" % Utils.clusterID)
             shapeFile=shapeFilePrefix+".json"
             cmdArrForOutput=copy.deepcopy(cmdArr)
             cmdArrForOutput.append("--output")
@@ -1136,7 +1138,7 @@ class Cluster(object):
 
         if not onlyBios:
             if prodCount == -1:
-                setProdsFile=("cluster%05d/setprods.json" % (self.clusterID))
+                setProdsFile=("cluster%05d/setprods.json" % (Utils.clusterID))
                 if Utils.Debug: Utils.Print("Reading in setprods file %s." % (setProdsFile))
                 with open(setProdsFile, "r") as f:
                     setProdsStr=f.read()
@@ -1452,7 +1454,7 @@ class Cluster(object):
     def dumpErrorDetails(self):
         fileName=Utils.getNodeConfigDir("bios", "config.ini")
         Cluster.dumpErrorDetailImpl(fileName)
-        path=Utils.getNodeDataDir("bios")
+        path=self.getNodeDataDir("bios")
         fileNames=Cluster.__findFiles(path)
         for fileName in fileNames:
             Cluster.dumpErrorDetailImpl(fileName)
@@ -1463,7 +1465,7 @@ class Cluster(object):
             Cluster.dumpErrorDetailImpl(fileName)
             fileName=os.path.join(configLocation, "genesis.json")
             Cluster.dumpErrorDetailImpl(fileName)
-            path=Utils.getNodeDataDir(i)
+            path=self.getNodeDataDir(i)
             fileNames=Cluster.__findFiles(path)
             for fileName in fileNames:
                 Cluster.dumpErrorDetailImpl(fileName)
@@ -1471,10 +1473,21 @@ class Cluster(object):
         if self.useBiosBootFile:
             Cluster.dumpErrorDetailImpl(Cluster.__bootlog)
 
+    def killnode(self, index):
+        pattern=Utils.getNodeDataDir(index)
+        cmd=Utils.pgrepCmd(pattern)
+        psOut=Utils.checkOutput(cmd.split(), ignoreError=True)
+        if psOut is not None:
+            m=psOut.split()
+            if len(m) > 0:
+                cmd="kill -9 %s" % (m[0])
+                if 0 != subprocess.call(cmd.split(), stdout=Utils.FNull):
+                    if not silent: Utils.Print("Failed to kill nodeos")     
+
     def killall(self, silent=True, allInstances=False):
         """Kill cluster nodeos instances. allInstances will kill all nodeos instances running on the system."""
         cmd="%s -k 9" % (Utils.EosLauncherPath)
-        cmd += " --cluster-id %d" % (self.clusterID)
+        cmd += " --cluster-id %d" % (Utils.clusterID)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         if 0 != subprocess.call(cmd.split(), stdout=Utils.FNull):
             if not silent: Utils.Print("Launcher failed to shut down eos cluster.")
@@ -1485,6 +1498,10 @@ class Cluster(object):
             if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
             if 0 != subprocess.call(cmd.split(), stdout=Utils.FNull):
                 if not silent: Utils.Print("Failed to shut down eos cluster.")
+        else:
+            self.killnode("bios")
+            for i in range(0,Cluster.__totalNodes+1):
+                self.killnode(i)
 
         # another explicit nodes shutdown
         for node in self.nodes:
@@ -1538,10 +1555,10 @@ class Cluster(object):
         return node.waitForNextBlock(timeout)
 
     def getDataDir(self):
-        return Utils.DataDir + "cluster%05d/" % (self.clusterID)
+        return Utils.DataDir + "cluster%05d/" % (Utils.clusterID)
 
     def getConfigDir(self):
-        return Utils.ConfigDir + "cluster%05d/" % (self.clusterID)
+        return Utils.ConfigDir + "cluster%05d/" % (Utils.clusterID)
 
     def cleanup(self):
         for f in glob.glob(self.getDataDir()+ "node_*"):
