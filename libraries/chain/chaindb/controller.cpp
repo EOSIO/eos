@@ -186,9 +186,9 @@ namespace cyberway { namespace chaindb {
         find_info lower_bound(
             const index_request& request, const cursor_kind kind, const char* value, const size_t size
         ) {
-            auto  key    = request.to_service();
-            auto  index  = get_index(request);
-            auto  object = index.abi().to_object(index, value, size);
+            auto key    = request.to_service();
+            auto index  = get_index(request);
+            auto object = index.abi().to_object(index, value, size);
 
             cache_object_ptr cache_ptr;
 
@@ -223,7 +223,7 @@ namespace cyberway { namespace chaindb {
 
             auto& cursor = driver_.lower_bound(std::move(index), object);
             if (cache_ptr) {
-                cursor.pk =     cache_ptr->pk();
+                cursor.pk     = cache_ptr->pk();
                 cursor.object = cache_ptr->object();
                 return {cursor.id, cursor.pk};
             }
@@ -241,9 +241,9 @@ namespace cyberway { namespace chaindb {
         }
 
         find_info lower_bound(const table_request& request, const cursor_kind kind, const primary_key_t pk) {
-            auto  key    = request.to_service(pk);
-            auto  index  = get_pk_index(request);
-            auto  value  = primary_key::to_variant(index, pk);
+            auto key   = request.to_service(pk);
+            auto index = get_pk_index(request);
+            auto value = primary_key::to_variant(index, pk);
 
             auto cache_ptr = cache_.find(key);
             if (!cache_ptr) {

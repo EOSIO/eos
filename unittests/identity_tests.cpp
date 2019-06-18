@@ -127,11 +127,12 @@ public:
       auto find = cyberway::chaindb::lower_bound<false>()(
          chaindb,
          {N(identity), identity, N( certs ), N(bytuple)},
+         cyberway::chaindb::cursor_kind::OneRecord,
          boost::make_tuple(string_to_name(property.c_str()), trusted, string_to_name(certifier.c_str())));
       if (find.pk != cyberway::chaindb::primary_key::End) {
-         auto val = chaindb.value_at_cursor({N(identity), find.cursor});
-         auto& obj = val.get_object();
-         if (obj["property"].as_string() == property && obj["trusted"].as_uint64() == trusted && obj["certifier"].as_string() == certifier) {
+         auto cache = chaindb.get_cache_object({N(identity), identity, N(certs)}, find.pk, true);
+         auto val = cache->object().value;
+         if (val["property"].as_string() == property && val["trusted"].as_uint64() == trusted && val["certifier"].as_string() == certifier) {
              return val;
          }
       }
