@@ -380,7 +380,7 @@ protocol_feature_set initialize_protocol_features( const fc::path& p, bool popul
       );
    } else {
       if( populate_missing_builtins )
-         bfs::create_directory( p );
+         bfs::create_directories( p );
       else
          directory_exists = false;
    }
