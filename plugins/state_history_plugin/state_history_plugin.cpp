@@ -136,10 +136,20 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       chain::signed_block_ptr p;
       try {
          p = chain_plug->chain().fetch_block_by_number(block_num);
+      } catch (const fc::exception& e) {
+         elog("get_block failure: block_num=${b} ${e}", ("b", block_num)("e", e.to_detail_string()));
+         return;
+      } catch (const std::exception& e) {
+         elog("get_block failure: block_num=${b} ${e}", ("b", block_num)("e", e.what()));
+         return;
       } catch (...) {
+         elog("get_block failure: block_num=${b} unknown exception", ("b", block_num));
          return;
       }
+      if (p)
       result = fc::raw::pack(*p);
+      else
+         elog("get_block failure: block_num=${b} fetch_block_by_number returned null", ("b", block_num));
    }
 
    fc::optional<chain::block_id_type> get_block_id(uint32_t block_num) {
