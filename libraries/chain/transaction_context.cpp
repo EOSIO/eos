@@ -776,8 +776,8 @@ namespace bacc = boost::accumulators;
         auto& storage_price = pricelist[resource_limits::STORAGE];
         auto& cpu_price     = pricelist[resource_limits::CPU];
 
-        auto cost = safe_prop(delta_abs, storage_price.numerator, storage_price.denominator);
-        auto cpu = cost ? (cpu_price.numerator ? safe_prop(cost, cpu_price.denominator, cpu_price.numerator) : UINT64_MAX) : 0;
+        auto cost = safe_prop_ceil(delta_abs, storage_price.numerator, storage_price.denominator);
+        auto cpu = cost ? (cpu_price.numerator ? safe_prop_ceil(cost, cpu_price.denominator, cpu_price.numerator) : UINT64_MAX) : 0;
 
         bool need_to_update_min = (lim == min_cpu_limit) && (storage.delta < 0);
         if (storage.delta > 0) {
@@ -811,8 +811,8 @@ namespace bacc = boost::accumulators;
         
         auto& net_price = pricelist[resource_limits::NET];
         
-        auto cost = safe_prop(static_cast<uint64_t>(delta), net_price.numerator, net_price.denominator);
-        auto cpu = safe_prop(cost, cpu_price.denominator, cpu_price.numerator);
+        auto cost = safe_prop_ceil(static_cast<uint64_t>(delta), net_price.numerator, net_price.denominator);
+        auto cpu = safe_prop_ceil(cost, cpu_price.denominator, cpu_price.numerator);
 
         EOS_ASSERT(min_cpu_limit >= cpu, resource_exhausted_exception,
             "transaction costs too much; unspent cpu = ${b}, cost cpu equivalent = ${e}", ("b", min_cpu_limit)("e", cpu));
