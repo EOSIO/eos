@@ -24,7 +24,6 @@
 #include <fc/scoped_exit.hpp>
 #include <fc/variant_object.hpp>
 
-
 namespace eosio { namespace chain {
 
 using resource_limits::resource_limits_manager;
@@ -143,7 +142,7 @@ struct controller_impl {
     *  are removed from this list if they are re-applied in other blocks. Producers
     *  can query this list when scheduling new transactions into blocks.
     */
-   map<digest_type, transaction_metadata_ptr>     unapplied_transactions;
+   unapplied_transactions_type     unapplied_transactions;
 
    void pop_block() {
       auto prev = fork_db.get_block( head->header.previous );
@@ -310,15 +309,14 @@ struct controller_impl {
       auto start = fc::time_point::now();
       while( auto next = blog.read_block_by_num( head->block_num + 1 ) ) {
          replay_push_block( next, controller::block_status::irreversible );
-         if( next->block_num() % 100 == 0 ) {
-            std::cerr << std::setw(10) << next->block_num() << " of " << blog_head->block_num() <<"\r";
+         if( next->block_num() % 500 == 0 ) {
+            ilog( "${n} of ${head}", ("n", next->block_num())("head", blog_head->block_num()) );
             if( shutdown() ) break;
          }
       }
-      std::cerr<< "\n";
       ilog( "${n} blocks replayed", ("n", head->block_num - start_block_num) );
 
-      // if the irreverible log is played without undo sessions enabled, we need to sync the
+      // if the irreversible log is played without undo sessions enabled, we need to sync the
       // revision ordinal to the appropriate expected value here.
       if( self.skip_db_sessions( controller::block_status::irreversible ) )
          db.set_revision(head->block_num);
@@ -423,14 +421,7 @@ struct controller_impl {
 
    void clear_all_undo() {
       // Rewind the database to the last irreversible block
-      db.with_write_lock([&] {
-         db.undo_all();
-         /*
-         FC_ASSERT(db.revision() == self.head_block_num(),
-                   "Chainbase revision does not match head block num",
-                   ("rev", db.revision())("head_block", self.head_block_num()));
-                   */
-      });
+      db.undo_all();
    }
 
    void add_contract_tables_to_snapshot( const snapshot_writer_ptr& snapshot ) const {
@@ -999,8 +990,12 @@ struct controller_impl {
       transaction_trace_ptr trace;
       try {
          auto start = fc::time_point::now();
+         const bool check_auth = !self.skip_auth_check() && !trx->implicit;
+         // call recover keys so that trx->sig_cpu_usage is set correctly
+         const fc::microseconds sig_cpu_usage = check_auth ? std::get<0>( trx->recover_keys( chain_id ) ) : fc::microseconds();
+         const flat_set<public_key_type>& recovered_keys = check_auth ? std::get<1>( trx->recover_keys( chain_id ) ) : flat_set<public_key_type>();
          if( !explicit_billed_cpu_time ) {
-            fc::microseconds already_consumed_time( EOS_PERCENT(trx->sig_cpu_usage.count(), conf.sig_cpu_bill_pct) );
+            fc::microseconds already_consumed_time( EOS_PERCENT(sig_cpu_usage.count(), conf.sig_cpu_bill_pct) );
 
             if( start.time_since_epoch() <  already_consumed_time ) {
                start = fc::time_point();
@@ -1031,15 +1026,13 @@ struct controller_impl {
 
             trx_context.delay = fc::seconds(trn.delay_sec);
 
-            if( !self.skip_auth_check() && !trx->implicit ) {
+            if( check_auth ) {
                authorization.check_authorization(
                        trn.actions,
-                       trx->recover_keys( chain_id ),
+                       recovered_keys,
                        {},
                        trx_context.delay,
-                       [](){}
-                       /*std::bind(&transaction_context::add_cpu_usage_and_check_time, &trx_context,
-                                 std::placeholders::_1)*/,
+                       [&trx_context](){ trx_context.checktime(); },
                        false
                );
             }
@@ -1200,7 +1193,7 @@ struct controller_impl {
                auto& pt = receipt.trx.get<packed_transaction>();
                auto mtrx = std::make_shared<transaction_metadata>( std::make_shared<packed_transaction>( pt ) );
                if( !self.skip_auth_check() ) {
-                  transaction_metadata::create_signing_keys_future( mtrx, thread_pool, chain_id, microseconds::maximum() );
+                  transaction_metadata::start_recover_keys( mtrx, thread_pool, chain_id, microseconds::maximum() );
                }
                packed_transactions.emplace_back( std::move( mtrx ) );
             }
@@ -1735,10 +1728,23 @@ void controller::add_indices() {
 
 void controller::startup( std::function<bool()> shutdown, const snapshot_reader_ptr& snapshot ) {
    my->head = my->fork_db.head();
-   if( !my->head ) {
+   if( snapshot ) {
+      ilog( "Starting initialization from snapshot, this may take a significant amount of time" );
+   }
+   else if( !my->head ) {
       elog( "No head block in fork db, perhaps we need to replay" );
    }
-   my->init(shutdown, snapshot);
+
+   try {
+      my->init(shutdown, snapshot);
+   } catch (boost::interprocess::bad_alloc& e) {
+      if ( snapshot )
+         elog( "db storage not configured to have enough storage for the provided snapshot, please increase and retry snapshot" );
+      throw e;
+   }
+   if( snapshot ) {
+      ilog( "Finished initialization from snapshot" );
+   }
 }
 
 const chainbase::database& controller::db()const { return my->db; }
@@ -2106,41 +2112,12 @@ const account_object& controller::get_account( account_name name )const
    return my->db.get<account_object, by_name>(name);
 } FC_CAPTURE_AND_RETHROW( (name) ) }
 
-vector<transaction_metadata_ptr> controller::get_unapplied_transactions() const {
-   vector<transaction_metadata_ptr> result;
-   if ( my->read_mode == db_read_mode::SPECULATIVE ) {
-      result.reserve(my->unapplied_transactions.size());
-      for ( const auto& entry: my->unapplied_transactions ) {
-         result.emplace_back(entry.second);
-      }
-   } else {
-      EOS_ASSERT( my->unapplied_transactions.empty(), transaction_exception, "not empty unapplied_transactions in non-speculative mode" ); //should never happen
+unapplied_transactions_type& controller::get_unapplied_transactions() {
+   if ( my->read_mode != db_read_mode::SPECULATIVE ) {
+      EOS_ASSERT( my->unapplied_transactions.empty(), transaction_exception,
+                  "not empty unapplied_transactions in non-speculative mode" ); //should never happen
    }
-   return result;
-}
-
-void controller::drop_unapplied_transaction(const transaction_metadata_ptr& trx) {
-   my->unapplied_transactions.erase(trx->signed_id);
-}
-
-void controller::drop_all_unapplied_transactions() {
-   my->unapplied_transactions.clear();
-}
-
-vector<transaction_id_type> controller::get_scheduled_transactions() const {
-   const auto& idx = db().get_index<generated_transaction_multi_index,by_delay>();
-
-   vector<transaction_id_type> result;
-
-   static const size_t max_reserve = 64;
-   result.reserve(std::min(idx.size(), max_reserve));
-
-   auto itr = idx.begin();
-   while( itr != idx.end() && itr->delay_until <= pending_block_time() ) {
-      result.emplace_back(itr->trx_id);
-      ++itr;
-   }
-   return result;
+   return my->unapplied_transactions;
 }
 
 bool controller::sender_avoids_whitelist_blacklist_enforcement( account_name sender )const {

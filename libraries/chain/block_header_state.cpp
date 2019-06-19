@@ -204,7 +204,7 @@ namespace eosio { namespace chain {
            dpos_proposed_irreversible_blocknum = block_num_for_i;
            //idump((dpos2_lib)(block_num)(dpos_irreversible_blocknum));
 
-           if (i == confirm_count.size() - 1) {
+           if (i == static_cast<int32_t>(confirm_count.size() - 1)) {
               confirm_count.resize(0);
            } else {
               memmove( &confirm_count[0], &confirm_count[i + 1], confirm_count.size() - i  - 1);

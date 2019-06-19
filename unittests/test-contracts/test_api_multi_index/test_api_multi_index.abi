@@ -1,0 +1,332 @@
+{
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT ",
+    "version": "eosio::abi/1.1",
+    "types": [],
+    "structs": [
+        {
+            "name": "idx128_autoincrement_test",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "idx128_autoincrement_test_part1",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "idx128_autoincrement_test_part2",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "idx128_check_without_storing",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "idx128_general",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "idx128_store_only",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "idx256_general",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "idx64_check_without_storing",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "idx64_general",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "idx64_modify_primary_key",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "idx64_pass_pk_end_itr_to_erase",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "idx64_pass_pk_end_itr_to_iterator_to",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "idx64_pass_pk_end_itr_to_modify",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "idx64_pass_pk_ref_to_other_table",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "idx64_pass_sk_end_itr_to_erase",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "idx64_pass_sk_end_itr_to_iterator_to",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "idx64_pass_sk_end_itr_to_modify",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "idx64_pass_sk_ref_to_other_table",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "idx64_pk_cache_sk_lookup",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "idx64_pk_iterator_exceed_begin",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "idx64_pk_iterator_exceed_end",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "idx64_require_find_fail",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "idx64_require_find_fail_with_msg",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "idx64_require_find_sk_fail",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "idx64_require_find_sk_fail_with_msg",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "idx64_run_out_of_avl_pk",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "idx64_sk_cache_pk_lookup",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "idx64_sk_iterator_exceed_begin",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "idx64_sk_iterator_exceed_end",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "idx64_store_only",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "idx_double_general",
+            "base": "",
+            "fields": []
+        },
+        {
+            "name": "idx_long_double_general",
+            "base": "",
+            "fields": []
+        }
+    ],
+    "actions": [
+        {
+            "name": "s1check",
+            "type": "idx64_check_without_storing",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "s1exhaustpk",
+            "type": "idx64_run_out_of_avl_pk",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "s1findfail1",
+            "type": "idx64_require_find_fail",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "s1findfail2",
+            "type": "idx64_require_find_fail_with_msg",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "s1findfail3",
+            "type": "idx64_require_find_sk_fail",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "s1findfail4",
+            "type": "idx64_require_find_sk_fail_with_msg",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "s1g",
+            "type": "idx64_general",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "s1modpk",
+            "type": "idx64_modify_primary_key",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "s1pkbegin",
+            "type": "idx64_pk_iterator_exceed_begin",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "s1pkcache",
+            "type": "idx64_pk_cache_sk_lookup",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "s1pkend",
+            "type": "idx64_pk_iterator_exceed_end",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "s1pkerase",
+            "type": "idx64_pass_pk_end_itr_to_erase",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "s1pkitrto",
+            "type": "idx64_pass_pk_end_itr_to_iterator_to",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "s1pkmodify",
+            "type": "idx64_pass_pk_end_itr_to_modify",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "s1pkref",
+            "type": "idx64_pass_pk_ref_to_other_table",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "s1skbegin",
+            "type": "idx64_sk_iterator_exceed_begin",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "s1skcache",
+            "type": "idx64_sk_cache_pk_lookup",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "s1skend",
+            "type": "idx64_sk_iterator_exceed_end",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "s1skerase",
+            "type": "idx64_pass_sk_end_itr_to_erase",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "s1skitrto",
+            "type": "idx64_pass_sk_end_itr_to_iterator_to",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "s1skmodify",
+            "type": "idx64_pass_sk_end_itr_to_modify",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "s1skref",
+            "type": "idx64_pass_sk_ref_to_other_table",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "s1store",
+            "type": "idx64_store_only",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "s2autoinc",
+            "type": "idx128_autoincrement_test",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "s2autoinc1",
+            "type": "idx128_autoincrement_test_part1",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "s2autoinc2",
+            "type": "idx128_autoincrement_test_part2",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "s2check",
+            "type": "idx128_check_without_storing",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "s2g",
+            "type": "idx128_general",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "s2store",
+            "type": "idx128_store_only",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "s3g",
+            "type": "idx256_general",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "sdg",
+            "type": "idx_double_general",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "sldg",
+            "type": "idx_long_double_general",
+            "ricardian_contract": ""
+        }
+    ],
+    "tables": [],
+    "ricardian_clauses": [],
+    "variants": []
+}
