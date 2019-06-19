@@ -46,7 +46,7 @@ struct genesis_import::impl final {
         // we need primary key for update, but it depends on table. add this hacky shortcut for accounts
         primary_key_t pk = ((primary_key_t*)r.data.data())[0];
         const name n(pk);
-        const auto* old = db.find<account_object>(n);  // vm_type/vm_version/privileged not set in genesis, copy
+        const auto* old = db.find<account_object>(n, cyberway::chaindb::cursor_kind::InRAM);  // vm_type/vm_version/privileged not set in genesis, copy
         if (!old) {
             return false;
         }

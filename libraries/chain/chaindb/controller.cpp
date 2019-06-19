@@ -207,7 +207,7 @@ namespace cyberway { namespace chaindb {
 
                 case cursor_kind::InRAM:
                     if (!cache_ptr) {
-                        return {ram_cursor, primary_key::End};
+                        return {end_cursor, primary_key::End};
                     }
 
                 case cursor_kind::OneRecord:
@@ -220,7 +220,7 @@ namespace cyberway { namespace chaindb {
                     assert(false);
             }
 
-            auto object = index.abi().to_object(index, value, size);
+            auto  object = index.abi().to_object(index, value, size);
             auto& cursor = driver_.lower_bound(std::move(index), object);
             if (cache_ptr) {
                 cursor.pk     = cache_ptr->pk();
@@ -259,7 +259,7 @@ namespace cyberway { namespace chaindb {
 
                 case cursor_kind::InRAM:
                     if (!cache_ptr) {
-                        return {ram_cursor, primary_key::End};
+                        return {end_cursor, primary_key::End};
                     }
 
                 case cursor_kind::OneRecord:
@@ -740,7 +740,7 @@ namespace cyberway { namespace chaindb {
     }
 
     void chaindb_controller::clear_cache() const {
-        impl_->cache_.clear();
+        impl_->cache_.set_revision(revision());
     }
 
     void chaindb_controller::close(const cursor_request& request) const {

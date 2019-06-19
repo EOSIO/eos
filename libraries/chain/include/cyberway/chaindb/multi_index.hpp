@@ -54,10 +54,10 @@ namespace cyberway { namespace chaindb {
 
 namespace cyberway { namespace chaindb {
     namespace uninitilized_cursor {
-        static constexpr cursor_t state = 0;
-        static constexpr cursor_t end = -1;
-        static constexpr cursor_t begin = -2;
-        static constexpr cursor_t ram = ram_cursor;
+        static constexpr cursor_t state = invalid_cursor;
+        static constexpr cursor_t end   = end_cursor;
+        static constexpr cursor_t begin = begin_cursor;
+        static constexpr cursor_t ram   = ram_cursor;
     }
 
 template<typename O>
@@ -443,7 +443,7 @@ private:
 
     private:
         bool is_cursor_initialized() const {
-            return (cursor_ != uninitilized_cursor::ram && cursor_ > uninitilized_cursor::state);
+            return (cursor_ > uninitilized_cursor::state);
         }
 
         template<typename, typename> friend class index;
