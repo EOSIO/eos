@@ -21,6 +21,9 @@ namespace cyberway { namespace chaindb {
 
     using cursor_t = int32_t;
     static constexpr cursor_t invalid_cursor = (0);
+    static constexpr cursor_t end_cursor     = (-1);
+    static constexpr cursor_t begin_cursor   = (-2);
+    static constexpr cursor_t ram_cursor     = (-3);
 
     using std::string;
 
@@ -78,12 +81,12 @@ namespace cyberway { namespace chaindb {
     };
 
     class  chaindb_controller;
-    class  cache_object;
     class  cache_map;
     class  driver_interface;
     class  journal;
     class  value_verifier;
     class  undo_stack;
+    struct cache_object;
     struct table_info;
     struct index_info;
     struct undo_stack_impl;

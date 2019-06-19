@@ -16,9 +16,9 @@ void set_votes(cyberway::chaindb::chaindb_controller& db, const stake_stat_objec
     
     auto stat_itr = db.begin({config::token_account_name, token_code, N(stat), cyberway::chaindb::names::primary_index});
     EOS_ASSERT(stat_itr.pk != cyberway::chaindb::primary_key::End, transaction_exception, "SYSTEM: token doesn't exist");
-    const auto stat_obj = db.value_at_cursor({config::token_account_name, stat_itr.cursor});
+    const auto stat_obj = db.object_at_cursor({config::token_account_name, stat_itr.cursor});
     asset supply;
-    fc::from_variant(stat_obj["supply"], supply);
+    fc::from_variant(stat_obj.value["supply"], supply);
     
     auto candidates_table = db.get_table<stake_candidate_object>();
     auto candidates_idx = candidates_table.get_index<stake_candidate_object::by_key>();

@@ -750,9 +750,9 @@ namespace eosio { namespace testing {
       share_type result = 0;
 
       auto& db = control->chaindb();
-      auto find = db.lower_bound({code, account, N(accounts)}, asset_symbol.to_symbol_code());
+      auto find = db.lower_bound({code, account, N(accounts)}, cyberway::chaindb::cursor_kind::OneRecord, asset_symbol.to_symbol_code());
       if (find.pk == asset_symbol.to_symbol_code()) {
-         auto cache = db.get_cache_object({code, find.cursor}, true);
+         auto cache = db.get_cache_object({code, account, N(accounts)}, find.pk, true);
          fc::datastream<const char *> ds(cache->blob().data(), cache->blob().size());
          fc::raw::unpack(ds, result);
       }
@@ -763,7 +763,7 @@ namespace eosio { namespace testing {
       vector<char> data;
 
       auto& db = control->chaindb();
-      auto find = db.lower_bound({code, scope, table}, act.value);
+      auto find = db.lower_bound({code, scope, table}, cyberway::chaindb::cursor_kind::ManyRecords, act.value);
       if (find.pk != act.value) return data;
 
       auto cache = db.get_cache_object({code, find.cursor}, true);

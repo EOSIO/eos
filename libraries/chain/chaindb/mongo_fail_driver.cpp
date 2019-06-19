@@ -53,6 +53,10 @@ namespace cyberway { namespace chaindb {
         NOT_SUPPORTED;
     }
 
+    void mongodb_driver::skip_pk(const table_info&, primary_key_t) const {
+        NOT_SUPPORTED;
+    }
+
     cursor_info& mongodb_driver::lower_bound(index_info, variant) const {
         NOT_SUPPORTED;
     }

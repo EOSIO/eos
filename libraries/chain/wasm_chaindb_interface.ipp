@@ -11,12 +11,15 @@
 
 namespace eosio { namespace chain {
 
-    using cyberway::chaindb::cursor_t;
-    using cyberway::chaindb::account_name_t;
-    using cyberway::chaindb::scope_name_t;
-    using cyberway::chaindb::table_name_t;
-    using cyberway::chaindb::index_name_t;
-    using cyberway::chaindb::primary_key_t;
+    namespace chaindb = cyberway::chaindb;
+
+    using chaindb::cursor_t;
+    using chaindb::account_name_t;
+    using chaindb::scope_name_t;
+    using chaindb::table_name_t;
+    using chaindb::index_name_t;
+    using chaindb::primary_key_t;
+    using chaindb::cursor_kind;
 
     class chaindb_api : public context_aware_api {
     public:
@@ -36,13 +39,13 @@ namespace eosio { namespace chain {
             account_name_t code, scope_name_t scope, table_name_t table, index_name_t index,
             array_ptr<const char> key, size_t size
         ) {
-            return context.chaindb.lower_bound({code, scope, table, index}, key, size).cursor;
+            return context.chaindb.lower_bound({code, scope, table, index}, cursor_kind::ManyRecords, key, size).cursor;
         }
 
         cursor_t chaindb_lower_bound_pk(
             account_name_t code, scope_name_t scope, table_name_t table, primary_key_t pk
         ) {
-            return context.chaindb.lower_bound({code, scope, table}, pk).cursor;
+            return context.chaindb.lower_bound({code, scope, table}, cursor_kind::ManyRecords, pk).cursor;
         }
 
         cursor_t chaindb_upper_bound(
@@ -99,10 +102,12 @@ namespace eosio { namespace chain {
             assert(context.chaindb_cache);
             auto& chaindb_cache = *context.chaindb_cache;
 
+            chaindb::cursor_request request{code, cursor};
+
             chaindb_cache.cache_code   = code;
             chaindb_cache.cache_cursor = cursor;
 
-            chaindb_cache.cache = context.chaindb.get_cache_object({code, cursor}, true);
+            chaindb_cache.cache = context.chaindb.get_cache_object(request, true);
 
             if (chaindb_cache.cache) {
                 auto& blob = chaindb_cache.cache->blob();
@@ -210,17 +215,11 @@ namespace eosio { namespace chain {
         void chaindb_ram_state(
             account_name_t code, scope_name_t scope, table_name_t table, primary_key_t pk, bool in_ram
         ) {
-            namespace chaindb = cyberway::chaindb;
-
             validate_db_access_violation(code);
 
-            chaindb::cache_object_ptr cache_ptr;
-            chaindb::table_request    request{code, scope, table};
+            chaindb::table_request request{code, scope, table};
 
-            auto find = context.chaindb.lower_bound(request, pk);
-            if (find.pk == pk) {
-                cache_ptr = context.chaindb.get_cache_object({code, find.cursor}, false);
-            }
+            auto cache_ptr = context.chaindb.get_cache_object(request, pk, false);
 
             EOS_ASSERT(cache_ptr, eosio::chain::object_query_exception,
                 "Object with the primary key ${pk} doesn't exist in the table ${table}:${scope}",

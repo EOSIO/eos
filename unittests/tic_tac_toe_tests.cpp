@@ -52,7 +52,7 @@ namespace fc {
 
 struct ttt_tester : TESTER {
    void get_game(game& game, account_name scope, account_name key) {
-      auto value = control->chaindb().value_by_pk({N(tic.tac.toe), scope, N(games)}, key.value);
+      auto value = control->chaindb().object_by_pk({N(tic.tac.toe), scope, N(games)}, key.value).value;
       fc::from_variant(value, game);
    }
 };

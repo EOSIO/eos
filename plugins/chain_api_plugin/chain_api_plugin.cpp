@@ -408,7 +408,7 @@ fc::variant chain_api_plugin_impl::get_payout(chain::account_name account) const
                                                                                  ("account", account));
 
     if (payouts_it.pk != cyberway::chaindb::primary_key::End) {
-        return chain_db.value_at_cursor({N(cyber.stake), payouts_it.cursor});
+        return chain_db.object_at_cursor({N(cyber.stake), payouts_it.cursor}).value;
     }
     return fc::variant();
 }
@@ -427,7 +427,7 @@ fc::optional<eosio::chain::asset> chain_api_plugin_impl::get_account_core_liquid
     const auto end_it = db_controller.end(request);
 
     for (; accounts_it.pk != end_it.pk; accounts_it.pk = db_controller.next({token_code, accounts_it.cursor})) {
-        const auto value = db_controller.value_at_cursor({token_code, accounts_it.cursor});
+        const auto value = db_controller.object_at_cursor({token_code, accounts_it.cursor}).value;
         const auto balance_object = value["balance"];
         eosio::chain::asset asset_value;
 
@@ -599,7 +599,7 @@ get_table_rows_result chain_api_plugin_impl::walk_table_row_range(const get_tabl
                 ("in_ram",  object.service.in_ram);
             result.rows.push_back(std::move(value));
         } else {
-            result.rows.push_back(chaindb.value_at_cursor(cursor));
+            result.rows.push_back(chaindb.object_at_cursor(cursor).value);
         }
     }
 
@@ -669,7 +669,7 @@ std::vector<chain::asset> chain_api_plugin_impl::get_currency_balance( const get
 
     for (; accounts_it.pk != cyberway::chaindb::primary_key::End; accounts_it.pk = chaindb.next(next_request)) {
 
-        const auto value = chaindb.value_at_cursor({p.code, accounts_it.cursor});
+        const auto value = chaindb.object_at_cursor({p.code, accounts_it.cursor}).value;
 
         const auto balance_object = value["balance"];
         eosio::chain::asset asset_value;
@@ -698,7 +698,7 @@ fc::variant chain_api_plugin_impl::get_currency_stats( const get_currency_stats_
         return {};
     }
 
-    const auto currency_stat_object = chaindb.value_at_cursor({p.code, itr.cursor});
+    const auto currency_stat_object = chaindb.object_at_cursor({p.code, itr.cursor}).value;
 
     chain::asset supply;
     fc::from_variant(currency_stat_object["supply"], supply);
@@ -765,7 +765,7 @@ std::string chain_api_plugin_impl::get_agent_public_key(chain::account_name acco
     const auto it = chaindb.lower_bound(request, fc::mutable_variant_object()("token_code", symbol.to_symbol_code())("account", account));
 
     if (it.pk != cyberway::chaindb::primary_key::End) {
-        return chaindb.value_at_cursor({N(), it.cursor})["signing_key"].as_string();
+        return chaindb.object_at_cursor({N(), it.cursor}).value["signing_key"].as_string();
     }
     return "";
 }

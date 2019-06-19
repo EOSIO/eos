@@ -11,6 +11,7 @@ namespace cyberway { namespace chaindb {
         cursor_t      id = invalid_cursor;
         index_info    index;
         primary_key_t pk = primary_key::End;
+        object_value  object;
     }; // struct cursor_info
 
     class driver_interface {
@@ -31,6 +32,8 @@ namespace cyberway { namespace chaindb {
 
         virtual void apply_all_changes() const = 0;
         virtual void apply_code_changes(const account_name& code) const = 0;
+
+        virtual void skip_pk(const table_info&, primary_key_t) const = 0;
 
         virtual cursor_info& lower_bound(index_info, variant key) const = 0;
         virtual cursor_info& upper_bound(index_info, variant key) const = 0;

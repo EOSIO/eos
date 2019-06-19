@@ -16,6 +16,12 @@ namespace cyberway { namespace chaindb {
     template<class> struct object_to_table;
     struct chaindb_controller_impl;
 
+    enum class cursor_kind {
+        ManyRecords,
+        OneRecord,
+        InRAM,
+    }; // enum class cursor_open
+
     class chaindb_controller final {
     public:
         chaindb_controller() = delete;
@@ -35,9 +41,9 @@ namespace cyberway { namespace chaindb {
         }
 
         template<typename Object>
-        const Object* find(const primary_key_t pk) const {
+        const Object* find(const primary_key_t pk, const cursor_kind k=cursor_kind::ManyRecords) const {
             auto midx = get_table<Object>();
-            auto itr = midx.find(pk);
+            auto itr = midx.find(pk, k);
             if (midx.end() == itr) {
                 return nullptr;
             }
@@ -46,15 +52,15 @@ namespace cyberway { namespace chaindb {
         }
 
         template<typename Object>
-        const Object* find(const oid<Object>& id = oid<Object>()) const {
-            return find<Object>(id._id);
+        const Object* find(const oid<Object>& id = oid<Object>(), const cursor_kind k=cursor_kind::ManyRecords) const {
+            return find<Object>(id._id, k);
         }
 
         template<typename Object, typename ByIndex, typename Key>
-        const Object* find(Key&& key) const {
+        const Object* find(Key&& key, const cursor_kind k=cursor_kind::ManyRecords) const {
             auto midx = get_table<Object>();
             auto idx = midx.template get_index<ByIndex>();
-            auto itr = idx.find(std::forward<Key>(key));
+            auto itr = idx.find(std::forward<Key>(key), k);
             if (idx.end() == itr) {
                 return nullptr;
             }
@@ -133,13 +139,13 @@ namespace cyberway { namespace chaindb {
         void undo_last_revision() const;
         void commit_revision(revision_t) const;
 
-        find_info lower_bound(const index_request&, const char* key, size_t) const;
-        find_info lower_bound(const table_request&, primary_key_t) const;
-        find_info lower_bound(const index_request& request, const variant&) const;
+        find_info lower_bound(const index_request&, cursor_kind, const char* key, size_t) const;
+        find_info lower_bound(const table_request&, cursor_kind, primary_key_t) const;
+        find_info lower_bound(const index_request&, const variant&) const;
 
         find_info upper_bound(const index_request&, const char* key, size_t) const;
         find_info upper_bound(const table_request&, primary_key_t) const;
-        find_info upper_bound(const index_request& request, const variant&) const;
+        find_info upper_bound(const index_request&, const variant&) const;
 
         find_info locate_to(const index_request&, const char* key, size_t, primary_key_t) const;
 
@@ -153,9 +159,12 @@ namespace cyberway { namespace chaindb {
 
         void set_cache_converter(const table_request&, const cache_converter_interface&) const;
         cache_object_ptr create_cache_object(const table_request&, const storage_payer_info&) const;
-        cache_object_ptr create_cache_object(const table_request&, const primary_key_t, const storage_payer_info&) const;
+        cache_object_ptr create_cache_object(const table_request&, primary_key_t, const storage_payer_info&) const;
         cache_object_ptr get_cache_object(const cursor_request&, bool with_blob) const;
+        cache_object_ptr get_cache_object(const table_request&, primary_key_t, bool with_blob) const;
         account_abi_info get_account_abi_info(account_name_t) const;
+
+        void destroy_cache_object(cache_object&) const;
 
         primary_key_t available_pk(const table_request&) const;
 
@@ -169,11 +178,10 @@ namespace cyberway { namespace chaindb {
 
         void change_ram_state(cache_object&, const storage_payer_info&) const;
 
-        variant value_by_pk(const table_request& request, primary_key_t pk) const;
-        variant value_at_cursor(const cursor_request&) const;
         table_info   table_by_request(const table_request&) const;
         index_info   index_at_cursor(const cursor_request&) const;
         object_value object_at_cursor(const cursor_request&) const;
+        object_value object_by_pk(const table_request& request, primary_key_t) const;
 
     private:
         friend class chaindb_session;

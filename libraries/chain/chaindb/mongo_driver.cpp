@@ -145,13 +145,15 @@ namespace cyberway { namespace chaindb {
             CYBERWAY_THROW(driver_open_exception, "Fail to connect to MongoDB server");
         }
 
+        collection get_db_table(const mongodb_driver_impl&, const table_info&);
+
     } } // namespace _detail
 
     class mongodb_cursor_info: public cursor_info {
     public:
-        mongodb_cursor_info(cursor_t id, index_info index, collection db_table)
+        mongodb_cursor_info(cursor_t id, index_info index, mongodb_driver_impl& driver)
         : cursor_info{id, std::move(index)},
-          db_table_(std::move(db_table)) {
+          driver_(driver) {
         }
 
         mongodb_cursor_info() = default;
@@ -160,19 +162,19 @@ namespace cyberway { namespace chaindb {
         mongodb_cursor_info(const mongodb_cursor_info&) = delete;
 
         mongodb_cursor_info clone(cursor_t id) {
-            mongodb_cursor_info dst(id, index, db_table_);
+            mongodb_cursor_info dst(id, index, driver_);
 
             if (source_) {
                 // it is faster to get object from exist cursor then to open a new cursor, locate, and get object
-                dst.object_    = get_object_value();
-                dst.find_key_  = dst.object_.value;
+                dst.object     = get_object_value();
+                dst.find_key_  = dst.object.value;
                 dst.find_pk_   = get_pk_value();
                 // don't copy direction, because direction::Backward starts from previous, not from currently
                 dst.direction_ = direction::Forward;
             } else {
                 dst.find_key_  = find_key_;
                 dst.find_pk_   = find_pk_;
-                dst.object_    = object_;
+                dst.object     = object;
                 dst.direction_ = direction_;
             }
 
@@ -233,37 +235,48 @@ namespace cyberway { namespace chaindb {
 
         const object_value& get_object_value(bool with_decors = false) {
             lazy_open();
-            if (!object_.value.is_null()) return object_;
-
-            if (is_end()) {
-                object_.clear();
-                object_.service.pk    = pk;
-                object_.service.code  = index.code;
-                object_.service.scope = index.scope;
-                object_.service.table = index.table_name();
-            } else {
-                auto& view = *source_->begin();
-                object_ = build_object(index, view, with_decors);
-                pk      = object_.service.pk;
+            if (!object.value.is_null()) {
+                return object;
             }
 
-            return object_;
+            if (is_end()) {
+                object.clear();
+                object.service.pk    = pk;
+                object.service.code  = index.code;
+                object.service.scope = index.scope;
+                object.service.table = index.table_name();
+            } else {
+                auto& view = *source_->begin();
+                object = build_object(index, view, with_decors);
+                pk     = object.service.pk;
+            }
+
+            return object;
         }
 
         bool is_opened() const {
             return !!source_;
         }
 
+        void skip_pk(const primary_key_t pk) {
+            if (is_opened()) {
+                if (!skipped_pk_tree_.capacity()) {
+                    skipped_pk_tree_.reserve(128);
+                }
+                skipped_pk_tree_.insert(pk);
+            }
+        }
+
     private:
-        collection    db_table_;
+        mongodb_driver_impl& driver_;
 
         direction     direction_ = direction::Forward;
         primary_key_t find_pk_   = primary_key::Unset;
         variant       find_key_;
 
         std::unique_ptr<mongocxx::cursor> source_;
-        object_value  object_;
         account_name_t scope_ = 0;
+        fc::flat_set<primary_key_t> skipped_pk_tree_;
 
         void change_direction(const direction dir) {
             if (!source_) {
@@ -279,7 +292,9 @@ namespace cyberway { namespace chaindb {
 
         void reset_object() {
             pk = primary_key::Unset;
-            if (!object_.is_null()) object_.clear();
+            if (!object.is_null()) {
+                object.clear();
+            }
         }
 
         document create_bound_document() {
@@ -351,7 +366,8 @@ namespace cyberway { namespace chaindb {
             }
 
             _detail::auto_reconnect([&]() {
-                source_ = std::make_unique<mongocxx::cursor>(db_table_.find({}, opts));
+                skipped_pk_tree_.clear();
+                source_ = std::make_unique<mongocxx::cursor>(_detail::get_db_table(driver_, index).find({}, opts));
                 try_to_init_pk_value();
             });
         }
@@ -363,9 +379,13 @@ namespace cyberway { namespace chaindb {
         void lazy_next() {
             lazy_open();
 
-            if (!is_end()) {
+            for ( ; !is_end(); ) {
                 ++source_->begin();
                 try_to_init_pk_value();
+
+                if (!skipped_pk_tree_.count(pk)) {
+                    break;
+                }
             }
         }
 
@@ -419,13 +439,13 @@ namespace cyberway { namespace chaindb {
 
     ///----
 
-    struct mongodb_driver::mongodb_impl_ {
+    struct mongodb_driver_impl {
         journal& journal_;
         string sys_code_name_;
         mongocxx::client mongo_conn_;
         code_cursor_map code_cursor_map_;
 
-        mongodb_impl_(journal& jrnl, string address, string sys_name)
+        mongodb_driver_impl(journal& jrnl, string address, string sys_name)
         : journal_(jrnl),
           sys_code_name_(std::move(sys_name)) {
             init_instance();
@@ -433,7 +453,7 @@ namespace cyberway { namespace chaindb {
             mongo_conn_ = mongocxx::client{uri};
         }
 
-        ~mongodb_impl_() = default;
+        ~mongodb_driver_impl() = default;
 
         mongodb_cursor_info& get_unapplied_cursor(const cursor_request& request) {
             return get_cursor(request).cursor();
@@ -454,6 +474,17 @@ namespace cyberway { namespace chaindb {
 
         void apply_all_changes() {
             journal_.apply_all_changes(write_ctx_t_(*this));
+        }
+
+        void skip_pk(const table_info& table, const primary_key_t pk) {
+            auto itr = code_cursor_map_.find(table.code);
+            if (code_cursor_map_.end() == itr) {
+                return;
+            }
+
+            for (auto& id_cursor: itr->second) if (id_cursor.second.index.scope == table.scope) {
+                id_cursor.second.skip_pk(pk);
+            }
         }
 
         void close_cursor(const cursor_request& request) {
@@ -610,7 +641,7 @@ namespace cyberway { namespace chaindb {
             auto itr = code_cursor_map_.find(code);
             auto id = get_next_cursor_id(itr);
             auto db_table = get_db_table(index);
-            mongodb_cursor_info new_cursor(id, std::move(index), std::move(db_table), std::forward<Args>(args)...);
+            mongodb_cursor_info new_cursor(id, std::move(index), *this, std::forward<Args>(args)...);
             // apply_table_changes(index);
             return add_cursor(std::move(itr), code, std::move(new_cursor));
         }
@@ -638,19 +669,30 @@ namespace cyberway { namespace chaindb {
         }
 
         primary_key_t available_pk(const table_info& table) {
-            apply_table_changes(table);
             primary_key_t pk = 0;
+            auto& pk_index = table.table->indexes.front();
+            auto  pk_order = table.pk_order;
+            auto  hint = db_name_to_string(pk_index.name).append(_detail::pk_index_postfix);
+            document sort;
+            document bound;
+
+            apply_table_changes(table);
+
+            build_bound_document(bound, pk_order->field, -1);
+
+            sort.append(kvp(table.pk_order->field, -1));
+
+            auto opts = options::find()
+                .hint(mongocxx::hint(hint))
+                .sort(sort.view())
+                .max(bound.view())
+                .limit(1);
 
             _detail::auto_reconnect([&] {
-                auto cursor = get_db_table(table).find(
-                    make_document(),
-                    options::find()
-                        .sort(make_document(kvp(table.pk_order->field, -1)))
-                        .limit(1));
+                auto doc = get_db_table(table).find_one(make_document(), opts);
 
-                auto itr = cursor.begin();
-                if (cursor.end() != itr) {
-                    pk = chaindb::get_pk_value(table, *itr) + 1;
+                if (!!doc) {
+                    pk = chaindb::get_pk_value(table, *doc) + 1;
                 }
             });
 
@@ -658,35 +700,59 @@ namespace cyberway { namespace chaindb {
         }
 
         object_value object_by_pk(const table_info& table, const primary_key_t pk) {
-            document pk_doc;
             object_value obj;
+            auto& pk_index = table.table->indexes.front();
+            auto  pk_order = table.pk_order;
+            document bound;
+            document sort;
 
             apply_table_changes(table);
 
-            obj.service.pk = pk;
-            build_find_pk_document(pk_doc, table, obj);
-            auto doc = get_db_table(table).find_one(pk_doc.view());
 
-            if (!!doc) {
-                return build_object(table, doc->view(), false);
-            } else {
+            append_scope_value(bound, table);
+            append_pk_value(bound, table, pk);
+
+            sort.append(kvp(names::scope_path, 1));
+            sort.append(kvp(table.pk_order->field, 1));
+
+            auto opts = options::find()
+                .hint(mongocxx::hint(db_name_to_string(pk_index.name)))
+                .sort(sort.view())
+                .min(bound.view())
+                .limit(1);
+
+            obj.service.pk = pk;
+
+            _detail::auto_reconnect([&] {
+                auto doc = get_db_table(table).find_one(make_document(), opts);
+
+                if (!!doc) {
+                    auto dpk = chaindb::get_pk_value(table, *doc);
+                    auto scope = chaindb::get_scope_value(table, *doc);
+                    if (dpk == pk && scope == table.scope) {
+                        obj = build_object(table, doc->view(), false);
+                        return;
+                    }
+                }
+
                 obj.clear();
                 obj.service.pk    = primary_key::End;
                 obj.service.code  = table.code;
                 obj.service.scope = table.scope;
                 obj.service.table = table.table_name();
-                return obj;
-            }
+            });
+
+            return obj;
+        }
+
+        collection get_db_table(const table_info& table) const {
+            return mongo_conn_.database(get_code_name(sys_code_name_, table.code)).collection(get_table_name(table));
         }
 
     private:
         static mongocxx::instance& init_instance() {
             static mongocxx::instance instance;
             return instance;
-        }
-
-        collection get_db_table(const table_info& table) const {
-            return mongo_conn_.database(get_code_name(sys_code_name_, table.code)).collection(get_table_name(table));
         }
 
         collection get_undo_db_table() const {
@@ -764,7 +830,7 @@ namespace cyberway { namespace chaindb {
             }; // struct bulk_group_t_;
 
         public:
-            write_ctx_t_(mongodb_impl_& impl)
+            write_ctx_t_(mongodb_driver_impl& impl)
             : impl_(impl),
               undo_table_(impl_.get_undo_db_table()),
               complete_undo_bulk_(create_bulk_info(undo_table_)),
@@ -811,7 +877,7 @@ namespace cyberway { namespace chaindb {
             }
 
         private:
-            mongodb_impl_& impl_;
+            mongodb_driver_impl& impl_;
             collection undo_table_;
             std::deque<bulk_info_t_> bulk_list_;
             bulk_group_t_ complete_undo_bulk_;
@@ -899,12 +965,18 @@ namespace cyberway { namespace chaindb {
             }
         }; // class write_ctx_t_
 
-    }; // struct mongodb_driver::mongodb_impl_
+    }; // struct mongodb_driver_impl
+
+    namespace { namespace _detail {
+        collection get_db_table(const mongodb_driver_impl& driver, const table_info& info) {
+            return driver.get_db_table(info);
+        }
+    } } // namespace _detail
 
     ///----
 
     mongodb_driver::mongodb_driver(journal& jrnl, string address, string sys_name)
-    : impl_(std::make_unique<mongodb_impl_>(jrnl, std::move(address), std::move(sys_name))) {
+    : impl_(std::make_unique<mongodb_driver_impl>(jrnl, std::move(address), std::move(sys_name))) {
     }
 
     mongodb_driver::~mongodb_driver() = default;
@@ -947,6 +1019,10 @@ namespace cyberway { namespace chaindb {
 
     void mongodb_driver::apply_all_changes() const {
         impl_->apply_all_changes();
+    }
+
+    void mongodb_driver::skip_pk(const table_info& table, const primary_key_t pk) const {
+        impl_->skip_pk(table, pk);
     }
 
     cursor_info& mongodb_driver::lower_bound(index_info index, variant key) const {

@@ -449,7 +449,10 @@ namespace bacc = boost::accumulators;
    void transaction_context::squash() {
       // TODO: removed by CyberWay
       // if (undo_session) undo_session->squash();
-      if (chaindb_undo_session) chaindb_undo_session->squash();
+      if (chaindb_undo_session) {
+          control.chaindb().apply_all_changes();
+          chaindb_undo_session->squash();
+      }
    }
 
    void transaction_context::undo() {
@@ -687,7 +690,7 @@ namespace bacc = boost::accumulators;
 
    void transaction_context::record_transaction( const transaction_id_type& id, fc::time_point_sec expire ) {
       auto trx_idx = control.chaindb().get_index<transaction_object, by_trx_id>();
-      auto itr = trx_idx.find(id);
+      auto itr = trx_idx.find(id, cyberway::chaindb::cursor_kind::InRAM);
       EOS_ASSERT(trx_idx.end() == itr, tx_duplicate, "duplicate transaction ${id}", ("id", id ));
 
       trx_idx.emplace([&](transaction_object& transaction) {
