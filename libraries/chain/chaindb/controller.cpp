@@ -188,7 +188,6 @@ namespace cyberway { namespace chaindb {
         ) {
             auto key    = request.to_service();
             auto index  = get_index(request);
-            auto object = index.abi().to_object(index, value, size);
 
             cache_object_ptr cache_ptr;
 
@@ -221,6 +220,7 @@ namespace cyberway { namespace chaindb {
                     assert(false);
             }
 
+            auto object = index.abi().to_object(index, value, size);
             auto& cursor = driver_.lower_bound(std::move(index), object);
             if (cache_ptr) {
                 cursor.pk     = cache_ptr->pk();
@@ -229,12 +229,15 @@ namespace cyberway { namespace chaindb {
             }
 
             current(cursor);
-            if (primary_key::is_good(cursor.pk)) {
-                cache_ptr = get_cache_object(cursor, false);
-            }
-
-            if (value && size && !cursor.object.value.has_value(object)) {
-                cache_.emplace_unsuccess(cursor.index, value, size, cursor.pk);
+            if (value && size) {
+                if (primary_key::is_good(cursor.pk)) {
+                    cache_ptr = cache_.find(request.to_service(cursor.pk));
+                    if (cache_ptr && !cache_ptr->object().value.has_value(object)) {
+                        cache_.emplace_unsuccess(cursor.index, value, size, cursor.pk);
+                    }
+                } else {
+                    cache_.emplace_unsuccess(cursor.index, value, size, cursor.pk);
+                }
             }
 
             return {cursor.id, cursor.pk};
@@ -277,11 +280,7 @@ namespace cyberway { namespace chaindb {
             }
 
             current(cursor);
-            if (primary_key::is_good(cursor.pk)) {
-                cache_ptr = get_cache_object(cursor, false);
-            }
-
-            if (pk != current(cursor).pk) {
+            if (pk != cursor.pk) {
                 cache_.emplace_unsuccess(cursor.index, pk, cursor.pk);
             }
 

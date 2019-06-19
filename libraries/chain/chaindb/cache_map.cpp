@@ -676,15 +676,12 @@ namespace cyberway { namespace chaindb {
 
         void push_session(const revision_t revision) {
             while (has_pending_cell()) {
-                auto& pending = *pending_cell_list_.front();
-                if (pending.revision() > revision) {
-                    break;
-                }
+                auto& pending = *pending_cell_list_.back();
 
                 auto size = pending.commit_revision();
                 add_ram_usage(pending, size);
 
-                pending_cell_list_.pop_front();
+                pending_cell_list_.pop_back();
             }
 
             while (!lru_cell_list_.empty() && !lru_cell_list_.back().size) {
@@ -714,6 +711,7 @@ namespace cyberway { namespace chaindb {
 
             dst_cell.squash_revision(src_cell);
             pending_cell_list_.pop_back();
+            lru_cell_list_.pop_back();
         }
 
         void undo_session(const revision_t revision) {
@@ -754,6 +752,7 @@ namespace cyberway { namespace chaindb {
             while (ram_limit_ < ram_used_) {
                 assert(!lru_cell_list_.empty());
                 auto& lru = lru_cell_list_.front();
+                assert(lru.kind() == cache_cell::LRU);
                 add_ram_usage(lru, -lru.size);
                 lru_cell_list_.pop_front();
             }
@@ -1098,8 +1097,6 @@ namespace cyberway { namespace chaindb {
     int64_t lru_cache_cell::commit_revision() {
         int64_t commited_size = 0;
 
-        kind_ = cache_cell::LRU;
-
         for (auto& state: state_list) {
             if (!state.object_ptr) {
                 continue;
@@ -1118,6 +1115,7 @@ namespace cyberway { namespace chaindb {
             commited_size += delta;
         }
 
+        kind_ = cache_cell::LRU;
         return commited_size;
     }
     //-----------------------------------------------------------------------------------------------
