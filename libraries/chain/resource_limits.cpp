@@ -282,7 +282,7 @@ std::vector<ratio> resource_limits_manager::get_pricelist() const {
     return ret;
 }
 
-ratio resource_limits_manager::get_account_usage_ratio(account_name account, resource_id res) const {
+ratio resource_limits_manager::get_resource_usage_by_account_cost_ratio(account_name account, resource_id res) const {
     const auto resources_usage = get_account_usage(account);
     const auto price_list = get_pricelist();
 
