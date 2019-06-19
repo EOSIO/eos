@@ -445,6 +445,17 @@ void genesis_ee_builder::write_messages() {
                 c.curator_reward = asset(comment.curator_reward, symbol(GLS));
                 build_votes(c.votes, comment.hash, comment.last_delete_op);
                 build_reblogs(c.reblogs, comment.hash, comment.last_delete_op, dump_reblogs);
+                const auto active_itr = exp_info_.active_comments.find(comment.hash);
+                if (active_itr != exp_info_.active_comments.end()) {
+                    auto& active = active_itr->second;
+                    c.archived = false;
+                    for (const auto& b: active.beneficiaries) {
+                        c.benefics_prcnt += b.weight;
+                    }
+                    c.rewardweight = active.reward_weight;
+                    c.curators_prcnt = active.curation_rewards_percent;
+                    c.tokenprop = active.percent_steem_dollars / 2;
+                }
             });
 
             build_children(comment.hash);
