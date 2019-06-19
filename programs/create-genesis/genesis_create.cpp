@@ -1010,6 +1010,11 @@ struct genesis_create::genesis_create_impl final {
             );
             sum_net_rshares += c.active.net_rshares;
             sum_net_positive += (c.active.net_rshares > 0) ? c.active.net_rshares : 0;
+            if (c.mode != cyberway::golos::comment_mode::archived) {
+                auto id = std::string(_accs_map[c.author.id]) + "/" + _plnk_map[c.permlink.id];
+                auto hash = fc::hash64(id.c_str(), id.length());
+                _exp_info.active_comments[hash] = c.active;
+            }
         }
         // invariant
         const auto& gp = _visitor.gpo;
