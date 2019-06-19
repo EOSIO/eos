@@ -353,14 +353,14 @@ uint64_t resource_limits_manager::get_account_balance(fc::time_point pending_blo
         cost = (UINT64_MAX - cost) > add ? cost + add : UINT64_MAX;
     }
     
-    EOS_ASSERT(staked >= cost, resource_exhausted_exception, 
+    EOS_ASSERT(!update_state || (staked >= cost), resource_exhausted_exception, 
         "account ${a} has insufficient staked tokens (${s}).\n usage: cpu ${uc}, net ${un}, ram ${ur}, storage ${us}; \n prices: cpu ${pc}, net ${pn}, ram ${pr}, storage ${ps};\n cost ${c}", 
         ("a", account)("s",staked)
         ("uc", res_usage[CPU])("un", res_usage[NET])("ur", res_usage[RAM])("us", res_usage[STORAGE])
         ("pc", prices   [CPU])("pn", prices   [NET])("pr", prices   [RAM])("ps", prices   [STORAGE])
         ("c", cost));
 
-    return staked - cost;
+    return (staked > cost) ? (staked - cost) : 0;
 }
 
 } } } /// eosio::chain::resource_limits
