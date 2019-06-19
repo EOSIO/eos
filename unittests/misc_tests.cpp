@@ -1128,6 +1128,7 @@ BOOST_AUTO_TEST_CASE(stable_priority_queue_test) {
   } FC_LOG_AND_RETHROW()
 }
 
+
 BOOST_AUTO_TEST_SUITE_END()
 
 } // namespace eosio
