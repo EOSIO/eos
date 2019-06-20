@@ -197,9 +197,8 @@ struct shared_authority {
                keys.emplace_back(k1r1, k.weight);
             },
             [&](const fc::crypto::webauthn::public_key& wa) {
-               fc::datastream<size_t> dsz;
-               fc::raw::pack(dsz, wa);
-               shared_string wa_ss(dsz.tellp(), boost::container::default_init, keys.get_allocator());
+               size_t psz = fc::raw::pack_size(wa);
+               shared_string wa_ss(psz, boost::container::default_init, keys.get_allocator());
                fc::datastream<char*> ds(wa_ss.data(), wa_ss.size());
                fc::raw::pack(ds, wa);
 
