@@ -30,11 +30,12 @@ TEST_LABEL="[eosio_build]"
         [[ ! -z $(echo "${output}" | grep "Unable to find compiler") ]] || exit
     fi 
 
-    # -P with -y
-    run bash -c "./$SCRIPT_LOCATION -y -P"
+    cd .. # Also test that we can run the script from a directory other than the root
+    run bash -c "./eos/$SCRIPT_LOCATION -y -P"
     [[ ! -z $(echo "${output}" | grep "PIN_COMPILER: true") ]] || exit
     [[ "${output}" =~ -DCMAKE_TOOLCHAIN_FILE=\'.*/scripts/../build/pinned_toolchain.cmake\' ]] || exit
     [[ "${output}" =~ "Clang 8 successfully installed" ]] || exit
+    cd eos
     # -P with prompts
     run bash -c "printf \"n\nn\nn\n\" | ./$SCRIPT_LOCATION -P"
     [[ "${output}" =~ .*User.aborted.* ]] || exit
