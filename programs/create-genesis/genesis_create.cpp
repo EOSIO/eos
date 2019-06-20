@@ -998,7 +998,7 @@ struct genesis_create::genesis_create_impl final {
         });
         const auto expiration_time = fc::hours(_info.golos.posts_trx.expiration_hours);
         const auto delay = !_info.golos.posts_trx.initial_from ? microseconds{0} :
-            time_point_sec{_conf.initial_timestamp} - *_info.golos.posts_trx.initial_from - fc::days(7);
+            time_point_sec{_conf.initial_timestamp} - *_info.golos.posts_trx.initial_from;
         for (const auto& cp : _visitor.comments) {
             const auto& c = cp.second;
             const auto n = name_by_acc(c.author);
