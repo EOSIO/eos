@@ -72,6 +72,32 @@ function ensure-which() {
   fi
 }
 
+# Prompt user for installation directory.
+function install-directory-prompt() {
+  if [[ -z $INSTALL_LOCATION ]]; then
+    echo "No installation location was specified. Please provide the location where EOSIO is installed."
+    while true; do
+      [[ $NONINTERACTIVE == false ]] && printf "${COLOR_YELLOW}Do you wish to use the default location? ${EOSIO_INSTALL_DIR}? (y/n)${COLOR_NC}" && read -p " " PROCEED
+      echo ""
+      case $PROCEED in
+        "" )
+          echo "What would you like to do?";;
+        0 | true | [Yy]* )
+          break;;
+        1 | false | [Nn]* )
+          printf "Enter the desired installation location." && read -p " " EOSIO_INSTALL_DIR;
+          export EOSIO_INSTALL_DIR;
+          break;;
+        * ) echo "Please type 'y' for yes or 'n' for no.";;
+      esac
+    done
+  else
+    export EOSIO_INSTALL_DIR=${INSTALL_LOCATION}
+  fi
+  . ./scripts/.build_vars
+  echo "EOSIO will be installed to: ${EOSIO_INSTALL_DIR}"
+}
+
 function previous-install-prompt() {
   if [[ -d $EOSIO_INSTALL_DIR ]]; then
     echo "EOSIO has already been installed into ${EOSIO_INSTALL_DIR}... It's suggested that you eosio_uninstall.sh before re-running this script."
