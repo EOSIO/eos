@@ -16,6 +16,7 @@ using mvo = fc::mutable_variant_object;
 
 struct contract_abicode {
     bool update;
+    bool privileged;
     bytes abi;
     bytes code;
     fc::sha256 code_hash;

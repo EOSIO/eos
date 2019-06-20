@@ -114,6 +114,7 @@ fc::sha256 check_hash(const genesis_info::file_hash& fh) {
 
 void read_contract(const genesis_info::account& acc, contract_abicode& abicode) {
     abicode.update = acc.update && *acc.update;
+    abicode.privileged = acc.privileged && *acc.privileged;
     if (acc.abi) {
         auto fh = *acc.abi;
         abicode.abi_hash = check_hash(fh);
