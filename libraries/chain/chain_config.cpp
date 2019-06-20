@@ -11,7 +11,8 @@ namespace eosio { namespace chain {
    void chain_config::validate()const {
 
       for (size_t i = 0; i < resource_limits::resources_num; i++) {
-         EOS_ASSERT(min_virtual_limits[i] <= max_virtual_limits[i], action_validate_exception, "min virtual limit > max virtual limits" );
+         EOS_ASSERT( min_virtual_limits[i] <= max_virtual_limits[i], action_validate_exception, "min virtual limit > max virtual limits" );
+         EOS_ASSERT( max_transaction_usage[i] < max_block_usage[i], action_validate_exception, "max transaction usage must be less than max block usage" );
       }
 
       EOS_ASSERT( context_free_discount_net_usage_den > 0, action_validate_exception,
@@ -19,14 +20,14 @@ namespace eosio { namespace chain {
       EOS_ASSERT( context_free_discount_net_usage_num <= context_free_discount_net_usage_den, action_validate_exception,
                   "net usage discount ratio for context free data cannot exceed 1" );
 
-      EOS_ASSERT( min_transaction_cpu_usage <= config::max_transaction_usage[resource_limits::CPU], action_validate_exception,
+      EOS_ASSERT( min_transaction_cpu_usage <= max_transaction_usage[resource_limits::CPU], action_validate_exception,
                   "min transaction cpu usage cannot exceed max transaction cpu usage" );
-      EOS_ASSERT( config::max_transaction_usage[resource_limits::CPU] < (config::max_block_usage[resource_limits::CPU] - min_transaction_cpu_usage), action_validate_exception,
+      EOS_ASSERT( max_transaction_usage[resource_limits::CPU] < (max_block_usage[resource_limits::CPU] - min_transaction_cpu_usage), action_validate_exception,
                   "max transaction cpu usage must be at less than the difference between the max block cpu usage and the min transaction cpu usage" );
       
-      EOS_ASSERT( min_transaction_ram_usage <= config::max_transaction_usage[resource_limits::RAM], action_validate_exception,
+      EOS_ASSERT( min_transaction_ram_usage <= max_transaction_usage[resource_limits::RAM], action_validate_exception,
                   "min transaction ram usage cannot exceed max transaction ram usage" );
-      EOS_ASSERT( config::max_transaction_usage[resource_limits::RAM] < (config::max_block_usage[resource_limits::RAM] - min_transaction_ram_usage), action_validate_exception,
+      EOS_ASSERT( max_transaction_usage[resource_limits::RAM] < (max_block_usage[resource_limits::RAM] - min_transaction_ram_usage), action_validate_exception,
                   "max transaction ram usage must be at less than the difference between the max block ram usage and the min transaction ram usage" );
 
       EOS_ASSERT( 1 <= max_authority_depth, action_validate_exception,

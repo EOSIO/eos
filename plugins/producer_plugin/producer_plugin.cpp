@@ -350,7 +350,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          chain::controller& chain = chain_plug->chain();
          const auto& cfg = chain.get_global_properties().configuration;
          transaction_metadata::create_signing_keys_future( trx, *_thread_pool, chain.get_chain_id(), 
-            fc::microseconds( chain::config::max_transaction_usage[chain::resource_limits::CPU] ) );
+            fc::microseconds( cfg.max_transaction_usage[chain::resource_limits::CPU] ) );
          boost::asio::post( *_thread_pool, [self = this, trx, persist_until_expired, next]() {
             if( trx->signing_keys_future.valid() )
                trx->signing_keys_future.wait();

@@ -22,7 +22,6 @@ struct genesis_state {
 
    chain_config   initial_configuration = {
       .base_per_transaction_net_usage       = config::default_base_per_transaction_net_usage,
-      .net_usage_leeway                     = config::default_net_usage_leeway,
       .context_free_discount_net_usage_num  = config::default_context_free_discount_net_usage_num,
       .context_free_discount_net_usage_den  = config::default_context_free_discount_net_usage_den,
 

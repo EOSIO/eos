@@ -137,7 +137,7 @@ using namespace int_arithmetic;
       uint64_t ram_size = config::default_ram_size;
       uint64_t reserved_ram_size = config::default_reserved_ram_size;
       void update_virtual_limit(const resource_limits_config_object& cfg, resource_id res);
-      void add_pending_delta(int64_t delta, const resource_limits_config_object& config, resource_id res);
+      void add_pending_delta(int64_t delta, const chain_config& chain_cfg, resource_id res);
    };
 
    using resource_limits_state_table = cyberway::chaindb::table_container<
