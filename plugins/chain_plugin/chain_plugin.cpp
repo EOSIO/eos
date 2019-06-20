@@ -157,7 +157,6 @@ public:
    ,irreversible_block_channel(app().get_channel<channels::irreversible_block>())
    ,accepted_transaction_channel(app().get_channel<channels::accepted_transaction>())
    ,applied_transaction_channel(app().get_channel<channels::applied_transaction>())
-   ,accepted_confirmation_channel(app().get_channel<channels::accepted_confirmation>())
    ,incoming_block_channel(app().get_channel<incoming::channels::block>())
    ,incoming_block_sync_method(app().get_method<incoming::methods::block_sync>())
    ,incoming_transaction_async_method(app().get_method<incoming::methods::transaction_async>())
@@ -185,7 +184,6 @@ public:
    channels::irreversible_block::channel_type&     irreversible_block_channel;
    channels::accepted_transaction::channel_type&   accepted_transaction_channel;
    channels::applied_transaction::channel_type&    applied_transaction_channel;
-   channels::accepted_confirmation::channel_type&  accepted_confirmation_channel;
    incoming::channels::block::channel_type&         incoming_block_channel;
 
    // retained references to methods for easy calling
@@ -205,7 +203,6 @@ public:
    fc::optional<scoped_connection>                                   irreversible_block_connection;
    fc::optional<scoped_connection>                                   accepted_transaction_connection;
    fc::optional<scoped_connection>                                   applied_transaction_connection;
-   fc::optional<scoped_connection>                                   accepted_confirmation_connection;
 
    void validate() const;
 
@@ -218,7 +215,6 @@ public:
    void push_transaction(const push_transaction_params& params, chain::plugin_interface::next_function<push_transaction_results> next);
 
    void push_transactions(const push_transactions_params& params, chain::plugin_interface::next_function<push_transactions_results> next);
-
 };
 
 void chain_plugin_impl::push_block(push_block_params&& params, next_function<push_block_results> next) {
@@ -385,6 +381,9 @@ fc::variant chain_plugin_impl::get_block_header_state(const get_block_header_sta
 
 chain_plugin::chain_plugin()
 :my(new chain_plugin_impl()) {
+   app().register_config_type<eosio::chain::db_read_mode>();
+   app().register_config_type<eosio::chain::validation_mode>();
+   app().register_config_type<cyberway::chaindb::chaindb_type>();
 }
 
 chain_plugin::~chain_plugin(){}
@@ -871,35 +870,30 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
             );
          }
 
-         my->pre_accepted_block_channel.publish(blk);
+         my->pre_accepted_block_channel.publish(priority::medium, blk);
       });
 
       my->accepted_block_header_connection = my->chain->accepted_block_header.connect(
             [this]( const block_state_ptr& blk ) {
-               my->accepted_block_header_channel.publish( blk );
+               my->accepted_block_header_channel.publish( priority::medium, blk );
             } );
 
       my->accepted_block_connection = my->chain->accepted_block.connect( [this]( const block_state_ptr& blk ) {
-         my->accepted_block_channel.publish( blk );
+         my->accepted_block_channel.publish( priority::high, blk );
       } );
 
       my->irreversible_block_connection = my->chain->irreversible_block.connect( [this]( const block_state_ptr& blk ) {
-         my->irreversible_block_channel.publish( blk );
+         my->irreversible_block_channel.publish( priority::low, blk );
       } );
 
       my->accepted_transaction_connection = my->chain->accepted_transaction.connect(
             [this]( const transaction_metadata_ptr& meta ) {
-               my->accepted_transaction_channel.publish( meta );
+               my->accepted_transaction_channel.publish( priority::low, meta );
             } );
 
       my->applied_transaction_connection = my->chain->applied_transaction.connect(
             [this]( const transaction_trace_ptr& trace ) {
-               my->applied_transaction_channel.publish( trace );
-            } );
-
-      my->accepted_confirmation_connection = my->chain->accepted_confirmation.connect(
-            [this]( const header_confirmation& conf ) {
-               my->accepted_confirmation_channel.publish( conf );
+               my->applied_transaction_channel.publish( priority::low, trace );
             } );
 
       my->chain->add_indices();
@@ -962,7 +956,6 @@ void chain_plugin::plugin_shutdown() {
    my->irreversible_block_connection.reset();
    my->accepted_transaction_connection.reset();
    my->applied_transaction_connection.reset();
-   my->accepted_confirmation_connection.reset();
    my->chain->get_thread_pool().stop();
    my->chain->get_thread_pool().join();
    my->chain.reset();
@@ -1098,7 +1091,7 @@ bool chain_plugin::import_reversible_blocks( const fc::path& reversible_dir,
    reversible_blocks.open( reversible_blocks_file.generic_string().c_str(), std::ios::in | std::ios::binary );
 
    reversible_blocks.seekg( 0, std::ios::end );
-   uint64_t end_pos = reversible_blocks.tellg();
+   auto end_pos = reversible_blocks.tellg();
    reversible_blocks.seekg( 0 );
 
    uint32_t num = 0;

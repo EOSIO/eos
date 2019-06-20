@@ -20,10 +20,10 @@ cd eos/Docker
 docker build . -t eosio/eos
 ```
 
-The above will build off the most recent commit to the master branch by default. If you would like to target a specific branch/tag, you may use a build argument. For example, if you wished to generate a docker image based off of the 1.6.0 tag, you could do the following:
+The above will build off the most recent commit to the master branch by default. If you would like to target a specific branch/tag, you may use a build argument. For example, if you wished to generate a docker image based off of the v1.7.4 tag, you could do the following:
 
 ```bash
-docker build -t eosio/eos:1.6.0 --build-arg branch=1.6.0 .
+docker build -t eosio/eos:v1.7.4 --build-arg branch=v1.7.4 .
 ```
 
 By default, the symbol in eosio.system is set to SYS. You can override this using the symbol argument while building the docker image.
@@ -133,45 +133,7 @@ docker volume rm keosd-data-volume
 
 ### Docker Hub
 
-Docker Hub image available from [docker hub](https://hub.docker.com/r/eosio/eos/).
-Create a new `docker-compose.yaml` file with the content below
-
-```bash
-version: "3"
-
-services:
-  nodeosd:
-    image: eosio/eos:latest
-    command: /opt/eosio/bin/nodeosd.sh --data-dir /opt/eosio/bin/data-dir -e --http-alias=nodeosd:8888 --http-alias=127.0.0.1:8888 --http-alias=localhost:8888
-    hostname: nodeosd
-    ports:
-      - 8888:8888
-      - 9876:9876
-    expose:
-      - "8888"
-    volumes:
-      - nodeos-data-volume:/opt/eosio/bin/data-dir
-
-  keosd:
-    image: eosio/eos:latest
-    command: /opt/eosio/bin/keosd --wallet-dir /opt/eosio/bin/data-dir --http-server-address=127.0.0.1:8900 --http-alias=localhost:8900 --http-alias=keosd:8900
-    hostname: keosd
-    links:
-      - nodeosd
-    volumes:
-      - keosd-data-volume:/opt/eosio/bin/data-dir
-
-volumes:
-  nodeos-data-volume:
-  keosd-data-volume:
-
-```
-
-*NOTE:* the default version is the latest, you can change it to what you want
-
-run `docker pull eosio/eos:latest`
-
-run `docker-compose up`
+Docker Hub images are now deprecated. New build images were discontinued on January 1st, 2019. The existing old images will be removed on June 1st, 2019.
 
 ### EOSIO Testnet
 
