@@ -108,7 +108,8 @@ if [ $# -ne 0 ]; then
    done
 fi
 
-[[ ! -d scripts ]] && echo "You must run this script from the eos root." && exit 1
+# Ensure we're in the repo root and not inside of scripts
+cd $( dirname "${BASH_SOURCE[0]}" )/..
 
 # Load eosio specific helper functions
 . ./scripts/helpers/eosio.sh
