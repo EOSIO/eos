@@ -112,7 +112,9 @@ if [ $# -ne 0 ]; then
 fi
 
 # Ensure we're in the repo root
+pwd
 cd $( dirname "${BASH_SOURCE[0]}" )/..
+pwd
 
 # Load eosio specific helper functions
 . ./scripts/helpers/eosio.sh
