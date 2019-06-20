@@ -93,6 +93,8 @@ Options:
 #include <eosio/chain_plugin/chain_plugin.hpp>
 #include <eosio/chain/contract_types.hpp>
 
+#include <eosio/version/version.hpp>
+
 #pragma push_macro("N")
 #undef N
 
@@ -2402,8 +2404,12 @@ int main( int argc, char** argv ) {
    auto version = app.add_subcommand("version", localized("Retrieve version information"), false);
    version->require_subcommand();
 
-   version->add_subcommand("client", localized("Retrieve version information of the client"))->set_callback([] {
-     std::cout << localized("Build version: ${ver}", ("ver", eosio::client::config::version_str)) << std::endl;
+   version->add_subcommand("client", localized("Retrieve basic version information of the client"))->set_callback([] {
+      std::cout << eosio::version::version_client() << '\n';
+   });
+
+   version->add_subcommand("full", localized("Retrieve full version information of the client"))->set_callback([] {
+     std::cout << eosio::version::version_full() << '\n';
    });
 
    // Create subcommand
