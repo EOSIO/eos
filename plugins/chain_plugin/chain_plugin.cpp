@@ -1439,6 +1439,13 @@ double convert_to_type(const string& str, const string& desc) {
    return val;
 }
 
+template<typename Type>
+string convert_to_string(const Type& source, const string& key_type, const string& encode_type, const string& desc) {
+   try {
+      return fc::variant(source).as<string>();
+   } FC_RETHROW_EXCEPTIONS(warn, "Could not convert ${desc} from '${source}' to string.", ("desc", desc)("source",source) )
+}
+
 abi_def get_abi( const controller& db, const name& account ) {
    const auto &d = db.db();
    const account_object *code_accnt = d.find<account_object, by_name>(account);
