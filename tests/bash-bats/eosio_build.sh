@@ -36,6 +36,7 @@ TEST_LABEL="[eosio_build]"
     [[ "${output}" =~ -DCMAKE_TOOLCHAIN_FILE=\'.*/scripts/../build/pinned_toolchain.cmake\' ]] || exit
     [[ "${output}" =~ "Clang 8 successfully installed" ]] || exit
     # -P with prompts
+    cd ..
     run bash -c "printf \"y\nn\nn\nn\n\" | ./$SCRIPT_LOCATION -P"
     [[ "${output}" =~ .*User.aborted.* ]] || exit
     # lack of -m
