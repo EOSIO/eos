@@ -78,7 +78,7 @@ namespace resource_limits {
          
          std::vector<ratio> get_pricelist() const;
 
-         ratio get_account_usage_ratio(account_name account, resource_id res) const;
+         ratio get_resource_usage_by_account_cost_ratio(account_name account, resource_id res) const;
          ratio get_account_stake_ratio(fc::time_point pending_block_time, const account_name& account, bool update_state);
 
          uint64_t get_account_balance(fc::time_point pending_block_time, const account_name& account, const std::vector<ratio>& prices, bool update_state);
