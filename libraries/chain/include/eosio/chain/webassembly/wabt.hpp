@@ -659,7 +659,8 @@ struct intrinsic_function_invoker {
    static Ret wrapper(wabt_apply_instance_vars& vars, Params... params, const TypedValues&, int) {
       class_from_wasm<Cls>::value(vars.ctx).checktime();
       auto& intrinsic_log = vars.ctx.control.get_intrinsic_debug_log();
-      if( intrinsic_log ) {
+      if( intrinsic_log && vars.ctx.control.head_block_num() == 446 ) {
+         std::cout << "**** " << vars.ctx.control.head_block_num() << "\n";
          intrinsic_log->record_intrinsic( calc_arguments_hash( params... ), calc_memory_hash( *vars.memory ) );
       }
       return (class_from_wasm<Cls>::value(vars.ctx).*Method)(params...);
@@ -679,7 +680,8 @@ struct intrinsic_function_invoker<void, MethodSig, Cls, Params...> {
    static void_type wrapper(wabt_apply_instance_vars& vars, Params... params, const TypedValues& args, int offset) {
       class_from_wasm<Cls>::value(vars.ctx).checktime();
       auto& intrinsic_log = vars.ctx.control.get_intrinsic_debug_log();
-      if( intrinsic_log ) {
+      if( intrinsic_log && vars.ctx.control.head_block_num() == 446 ) {
+         std::cout << "**** " << vars.ctx.control.head_block_num() << "\n";
          intrinsic_log->record_intrinsic( calc_arguments_hash( params... ), calc_memory_hash( *vars.memory ) );
       }
       (class_from_wasm<Cls>::value(vars.ctx).*Method)(params...);

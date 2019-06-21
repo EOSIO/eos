@@ -315,7 +315,7 @@ struct controller_impl {
       );
 
       if( intrinsic_log ) {
-         intrinsic_log->open();
+         intrinsic_log->open(intrinsic_debug_log::open_mode::continue_existing_and_auto_finish_block);
       }
 
       set_activation_handler<builtin_protocol_feature_t::preactivate_feature>();
@@ -471,7 +471,7 @@ struct controller_impl {
          try {
             while( auto next = blog.read_block_by_num( head->block_num + 1 ) ) {
                replay_push_block( next, controller::block_status::irreversible );
-               if( next->block_num() % 500 == 0 ) {
+               if( next->block_num() % 500 == 0 || true ) {
                   ilog( "${n} of ${head}", ("n", next->block_num())("head", blog_head->block_num()) );
                   if( shutdown() ) break;
                }
@@ -637,7 +637,7 @@ struct controller_impl {
          );
          intrinsic_log->close();
          fc::remove( intrinsic_log->get_path() );
-         intrinsic_log->open();
+         intrinsic_log->open(intrinsic_debug_log::open_mode::continue_existing_and_auto_finish_block);
       }
 
       protocol_features.init( db );

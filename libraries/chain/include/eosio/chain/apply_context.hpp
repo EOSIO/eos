@@ -564,7 +564,7 @@ class apply_context {
       transaction_context&            trx_context; ///< transaction context in which the action is running
       optional<intrinsic_debug_log>&  intrinsic_log;
 
-   private:
+   // private:
       const action*                 act = nullptr; ///< action being applied
       // act pointer may be invalidated on call to trx_context.schedule_action
       account_name                  receiver; ///< the code that is currently running

@@ -73,7 +73,8 @@ namespace eosio { namespace vm {
       return std::function<void(Cls*, WAlloc*, operand_stack&)>{ [](Cls* self, WAlloc* walloc, operand_stack& os) {
          size_t i = sizeof...(Is) - 1;
          auto& intrinsic_log = self->control.get_intrinsic_debug_log();
-         if (intrinsic_log) {
+         if (intrinsic_log && self->control.head_block_num() == 446) {
+            std::cout << "**** " << self->control.head_block_num() << " " << self->action_ordinal << " " << self->get_action().account.to_string() << " " << self->get_action().name.to_string() << "\n";
             eosio::chain::digest_type::encoder enc;
             enc.write(walloc->template get_base_ptr<char>(), walloc->get_current_page() * 64 * 1024);
             intrinsic_log->record_intrinsic(

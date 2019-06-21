@@ -293,13 +293,15 @@ namespace eosio { namespace chain {
       }
 
       void intrinsic_debug_log_impl::close() {
+         std::cout << "\n\nintrinsic_debug_log_impl::close\n\n";
          if( !log.is_open() ) return;
 
-         if( finish_block_on_shutdown
+         if( true || finish_block_on_shutdown
                && !std::holds_alternative<closed>( state )
                && !std::holds_alternative<read_only>( state )
                && !std::holds_alternative<waiting_to_start_block>( state )
          ) {
+            std::cout << "\n\n\n********************************************************* close \n\n\n";
             finish_block();
          }
 
@@ -387,6 +389,7 @@ namespace eosio { namespace chain {
       }
 
       void intrinsic_debug_log_impl::abort_block() {
+         return;
          bool writable = std::visit( overloaded{
             []( closed ) { return false; },
             []( const read_only& ) { return false; },
@@ -450,6 +453,7 @@ namespace eosio { namespace chain {
       }
 
       void intrinsic_debug_log_impl::abort_transaction() {
+         return;
          bool writable = std::visit( overloaded{
             []( closed ) { return false; },
             []( const read_only& ) { return false; },
@@ -525,6 +529,7 @@ namespace eosio { namespace chain {
          fc::raw::pack( log, s.intrinsic_counter );
          fc::raw::pack( log, arguments_hash );
          fc::raw::pack( log, memory_hash );
+         log.flush();
 
          ++(s.intrinsic_counter);
       }
@@ -678,6 +683,7 @@ namespace eosio { namespace chain {
    }
 
    intrinsic_debug_log::~intrinsic_debug_log() {
+      std::cout << "\n\n~intrinsic_debug_log()\n\n";
       if( my ) {
          try {
             my->close();
