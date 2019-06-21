@@ -23,6 +23,16 @@ auto unique_trx_meta_data() {
    return std::make_shared<transaction_metadata>( trx );
 }
 
+auto next( unapplied_transaction_queue& q ) {
+   transaction_metadata_ptr trx;
+   auto itr = q.begin();
+   if( itr != q.end() ) {
+      trx = itr->trx_meta;
+      q.erase( itr );
+   }
+   return trx;
+}
+
 BOOST_AUTO_TEST_CASE( unapplied_transaction_queue_test ) try {
 
    unapplied_transaction_queue q;
@@ -40,16 +50,16 @@ BOOST_AUTO_TEST_CASE( unapplied_transaction_queue_test ) try {
    auto trx9 = unique_trx_meta_data();
 
    // empty
-   auto p = q.next();
+   auto p = next( q );
    BOOST_CHECK( p == nullptr );
 
    // 1 subjective failure
    q.add_subjective_failure( trx1 );
    BOOST_CHECK( q.size() == 1 );
-   BOOST_REQUIRE( q.next() == trx1 );
+   BOOST_REQUIRE( next( q ) == trx1 );
    BOOST_CHECK( q.size() == 0 );
-   BOOST_REQUIRE( q.next() == nullptr );
-   BOOST_REQUIRE( q.next() == nullptr );
+   BOOST_REQUIRE( next( q ) == nullptr );
+   BOOST_REQUIRE( next( q ) == nullptr );
    BOOST_CHECK( q.empty() );
 
    // fifo subjective
@@ -57,25 +67,25 @@ BOOST_AUTO_TEST_CASE( unapplied_transaction_queue_test ) try {
    q.add_subjective_failure( trx2 );
    q.add_subjective_failure( trx3 );
    BOOST_CHECK( q.size() == 3 );
-   BOOST_REQUIRE( q.next() == trx1 );
+   BOOST_REQUIRE( next( q ) == trx1 );
    BOOST_CHECK( q.size() == 2 );
-   BOOST_REQUIRE( q.next() == trx2 );
+   BOOST_REQUIRE( next( q ) == trx2 );
    BOOST_CHECK( q.size() == 1 );
-   BOOST_REQUIRE( q.next() == trx3 );
+   BOOST_REQUIRE( next( q ) == trx3 );
    BOOST_CHECK( q.size() == 0 );
-   BOOST_REQUIRE( q.next() == nullptr );
+   BOOST_REQUIRE( next( q ) == nullptr );
    BOOST_CHECK( q.empty() );
 
    // fifo aborted
    q.add_aborted( { trx1, trx2, trx3 } );
    BOOST_CHECK( q.size() == 3 );
-   BOOST_REQUIRE( q.next() == trx1 );
+   BOOST_REQUIRE( next( q ) == trx1 );
    BOOST_CHECK( q.size() == 2 );
-   BOOST_REQUIRE( q.next() == trx2 );
+   BOOST_REQUIRE( next( q ) == trx2 );
    BOOST_CHECK( q.size() == 1 );
-   BOOST_REQUIRE( q.next() == trx3 );
+   BOOST_REQUIRE( next( q ) == trx3 );
    BOOST_CHECK( q.size() == 0 );
-   BOOST_REQUIRE( q.next() == nullptr );
+   BOOST_REQUIRE( next( q ) == nullptr );
    BOOST_CHECK( q.empty() );
 
    // order: aborted, subjective
@@ -84,21 +94,21 @@ BOOST_AUTO_TEST_CASE( unapplied_transaction_queue_test ) try {
    q.add_aborted( { trx4, trx5 } );
    q.add_subjective_failure( trx7 );
    BOOST_CHECK( q.size() == 7 );
-   BOOST_REQUIRE( q.next() == trx1 );
+   BOOST_REQUIRE( next( q ) == trx1 );
    BOOST_CHECK( q.size() == 6 );
-   BOOST_REQUIRE( q.next() == trx2 );
+   BOOST_REQUIRE( next( q ) == trx2 );
    BOOST_CHECK( q.size() == 5 );
-   BOOST_REQUIRE( q.next() == trx3 );
+   BOOST_REQUIRE( next( q ) == trx3 );
    BOOST_CHECK( q.size() == 4 );
-   BOOST_REQUIRE( q.next() == trx4 );
+   BOOST_REQUIRE( next( q ) == trx4 );
    BOOST_CHECK( q.size() == 3 );
-   BOOST_REQUIRE( q.next() == trx5 );
+   BOOST_REQUIRE( next( q ) == trx5 );
    BOOST_CHECK( q.size() == 2 );
-   BOOST_REQUIRE( q.next() == trx6 );
+   BOOST_REQUIRE( next( q ) == trx6 );
    BOOST_CHECK( q.size() == 1 );
-   BOOST_REQUIRE( q.next() == trx7 );
+   BOOST_REQUIRE( next( q ) == trx7 );
    BOOST_CHECK( q.size() == 0 );
-   BOOST_REQUIRE( q.next() == nullptr );
+   BOOST_REQUIRE( next( q ) == nullptr );
    BOOST_CHECK( q.empty() );
 
    // fifo forked, one fork
@@ -110,73 +120,43 @@ BOOST_AUTO_TEST_CASE( unapplied_transaction_queue_test ) try {
    bs3->trxs = { trx6 };
    q.add_forked( { bs3, bs2, bs1 } );
    BOOST_CHECK( q.size() == 6 );
-   BOOST_REQUIRE( q.next() == trx1 );
+   BOOST_REQUIRE( next( q ) == trx1 );
    BOOST_CHECK( q.size() == 5 );
-   BOOST_REQUIRE( q.next() == trx2 );
+   BOOST_REQUIRE( next( q ) == trx2 );
    BOOST_CHECK( q.size() == 4 );
-   BOOST_REQUIRE_EQUAL( q.next(), trx3 );
+   BOOST_REQUIRE_EQUAL( next( q ), trx3 );
    BOOST_CHECK( q.size() == 3 );
-   BOOST_REQUIRE( q.next() == trx4 );
+   BOOST_REQUIRE( next( q ) == trx4 );
    BOOST_CHECK( q.size() == 2 );
-   BOOST_REQUIRE( q.next() == trx5 );
+   BOOST_REQUIRE( next( q ) == trx5 );
    BOOST_CHECK( q.size() == 1 );
-   BOOST_REQUIRE( q.next() == trx6 );
+   BOOST_REQUIRE( next( q ) == trx6 );
    BOOST_CHECK( q.size() == 0 );
-   BOOST_REQUIRE( q.next() == nullptr );
-   BOOST_CHECK( q.empty() );
-
-   // fifo forked, multi forks
-   auto bs4 = std::make_shared<block_state>();
-   bs4->trxs = { trx7 };
-   q.add_forked( { bs3, bs2, bs1 } );
-   q.add_forked( { bs4 } );
-   q.add_forked( { bs3, bs2 } );
-   BOOST_CHECK( q.size() == 11 );
-   BOOST_REQUIRE( q.next() == trx1 );
-   BOOST_CHECK( q.size() == 10 );
-   BOOST_REQUIRE( q.next() == trx2 );
-   BOOST_CHECK( q.size() == 9 );
-   BOOST_REQUIRE_EQUAL( q.next(), trx3 );
-   BOOST_CHECK( q.size() == 8 );
-   BOOST_REQUIRE( q.next() == trx4 );
-   BOOST_CHECK( q.size() == 7 );
-   BOOST_REQUIRE( q.next() == trx5 );
-   BOOST_CHECK( q.size() == 6 );
-   BOOST_REQUIRE( q.next() == trx6 );
-   BOOST_CHECK( q.size() == 5 );
-   BOOST_REQUIRE( q.next() == trx7 );
-   BOOST_CHECK( q.size() == 4 );
-   BOOST_REQUIRE_EQUAL( q.next(), trx3 );
-   BOOST_CHECK( q.size() == 3 );
-   BOOST_REQUIRE( q.next() == trx4 );
-   BOOST_CHECK( q.size() == 2 );
-   BOOST_REQUIRE( q.next() == trx5 );
-   BOOST_CHECK( q.size() == 1 );
-   BOOST_REQUIRE( q.next() == trx6 );
-   BOOST_CHECK( q.size() == 0 );
-   BOOST_REQUIRE( q.next() == nullptr );
+   BOOST_REQUIRE( next( q ) == nullptr );
    BOOST_CHECK( q.empty() );
 
    // fifo forked
+   auto bs4 = std::make_shared<block_state>();
+   bs4->trxs = { trx7 };
    q.add_forked( { bs1 } );
    q.add_forked( { bs3, bs2 } );
    q.add_forked( { bs4 } );
    BOOST_CHECK( q.size() == 7 );
-   BOOST_REQUIRE( q.next() == trx1 );
+   BOOST_REQUIRE( next( q ) == trx1 );
    BOOST_CHECK( q.size() == 6 );
-   BOOST_REQUIRE( q.next() == trx2 );
+   BOOST_REQUIRE( next( q ) == trx2 );
    BOOST_CHECK( q.size() == 5 );
-   BOOST_REQUIRE_EQUAL( q.next(), trx3 );
+   BOOST_REQUIRE_EQUAL( next( q ), trx3 );
    BOOST_CHECK( q.size() == 4 );
-   BOOST_REQUIRE( q.next() == trx4 );
+   BOOST_REQUIRE( next( q ) == trx4 );
    BOOST_CHECK( q.size() == 3 );
-   BOOST_REQUIRE( q.next() == trx5 );
+   BOOST_REQUIRE( next( q ) == trx5 );
    BOOST_CHECK( q.size() == 2 );
-   BOOST_REQUIRE( q.next() == trx6 );
+   BOOST_REQUIRE( next( q ) == trx6 );
    BOOST_CHECK( q.size() == 1 );
-   BOOST_REQUIRE( q.next() == trx7 );
+   BOOST_REQUIRE( next( q ) == trx7 );
    BOOST_CHECK( q.size() == 0 );
-   BOOST_REQUIRE( q.next() == nullptr );
+   BOOST_REQUIRE( next( q ) == nullptr );
    BOOST_CHECK( q.empty() );
 
    auto trx11 = unique_trx_meta_data();
@@ -189,53 +169,84 @@ BOOST_AUTO_TEST_CASE( unapplied_transaction_queue_test ) try {
    auto trx18 = unique_trx_meta_data();
    auto trx19 = unique_trx_meta_data();
 
+   // fifo forked, multi forks
+   auto bs5 = std::make_shared<block_state>();
+   auto bs6 = std::make_shared<block_state>();
+   bs5->trxs = { trx11, trx12, trx13 };
+   bs6->trxs = { trx11, trx15 };
+   q.add_forked( { bs3, bs2, bs1 } );
+   q.add_forked( { bs4 } );
+   q.add_forked( { bs3, bs2 } ); // dups removed
+   q.add_forked( { bs6, bs5 } );
+   BOOST_CHECK_EQUAL( q.size(), 11 );
+   BOOST_REQUIRE( next( q ) == trx1 );
+   BOOST_CHECK( q.size() == 10 );
+   BOOST_REQUIRE( next( q ) == trx2 );
+   BOOST_CHECK( q.size() == 9 );
+   BOOST_REQUIRE_EQUAL( next( q ), trx3 );
+   BOOST_CHECK( q.size() == 8 );
+   BOOST_REQUIRE( next( q ) == trx4 );
+   BOOST_CHECK( q.size() == 7 );
+   BOOST_REQUIRE( next( q ) == trx5 );
+   BOOST_CHECK( q.size() == 6 );
+   BOOST_REQUIRE( next( q ) == trx6 );
+   BOOST_CHECK( q.size() == 5 );
+   BOOST_REQUIRE( next( q ) == trx7 );
+   BOOST_CHECK( q.size() == 4 );
+   BOOST_REQUIRE_EQUAL( next( q ), trx11 );
+   BOOST_CHECK( q.size() == 3 );
+   BOOST_REQUIRE( next( q ) == trx12 );
+   BOOST_CHECK( q.size() == 2 );
+   BOOST_REQUIRE( next( q ) == trx13 );
+   BOOST_CHECK( q.size() == 1 );
+   BOOST_REQUIRE( next( q ) == trx15 );
+   BOOST_CHECK( q.size() == 0 );
+   BOOST_REQUIRE( next( q ) == nullptr );
+   BOOST_CHECK( q.empty() );
+
    // altogether, order fifo: forked, aborted, subjectively failed
    q.add_forked( { bs3, bs2, bs1 } );
-   q.add_subjective_failure( trx7 );
-   q.add_aborted( { trx9, trx11 } );
+   q.add_subjective_failure( trx16 );
+   q.add_aborted( { trx9, trx14 } );
    q.add_subjective_failure( trx8 );
-   q.add_aborted( { trx12, trx13 } );
-   q.add_forked( { bs4, bs3, bs2, bs1 } );
-   BOOST_CHECK( q.size() == 19 );
-   BOOST_REQUIRE( q.next() == trx1 );
-   BOOST_CHECK( q.size() == 18 );
-   BOOST_REQUIRE( q.next() == trx2 );
+   q.add_aborted( { trx18, trx19 } );
+   q.add_forked( { bs6, bs5, bs4 } );
    BOOST_CHECK( q.size() == 17 );
-   BOOST_REQUIRE_EQUAL( q.next(), trx3 );
+   BOOST_REQUIRE( next( q ) == trx1 );
    BOOST_CHECK( q.size() == 16 );
-   BOOST_REQUIRE( q.next() == trx4 );
+   BOOST_REQUIRE( next( q ) == trx2 );
    BOOST_CHECK( q.size() == 15 );
-   BOOST_REQUIRE( q.next() == trx5 );
+   BOOST_REQUIRE_EQUAL( next( q ), trx3 );
    BOOST_CHECK( q.size() == 14 );
-   BOOST_REQUIRE( q.next() == trx6 );
+   BOOST_REQUIRE( next( q ) == trx4 );
    BOOST_CHECK( q.size() == 13 );
-   BOOST_REQUIRE( q.next() == trx1 );
+   BOOST_REQUIRE( next( q ) == trx5 );
    BOOST_CHECK( q.size() == 12 );
-   BOOST_REQUIRE( q.next() == trx2 );
+   BOOST_REQUIRE( next( q ) == trx6 );
    BOOST_CHECK( q.size() == 11 );
-   BOOST_REQUIRE_EQUAL( q.next(), trx3 );
+   BOOST_REQUIRE( next( q ) == trx7 );
    BOOST_CHECK( q.size() == 10 );
-   BOOST_REQUIRE( q.next() == trx4 );
+   BOOST_REQUIRE( next( q ) == trx11 );
    BOOST_CHECK( q.size() == 9 );
-   BOOST_REQUIRE( q.next() == trx5 );
+   BOOST_REQUIRE_EQUAL( next( q ), trx12 );
    BOOST_CHECK( q.size() == 8 );
-   BOOST_REQUIRE( q.next() == trx6 );
+   BOOST_REQUIRE( next( q ) == trx13 );
    BOOST_CHECK( q.size() == 7 );
-   BOOST_REQUIRE( q.next() == trx7 );
+   BOOST_REQUIRE( next( q ) == trx15 );
    BOOST_CHECK( q.size() == 6 );
-   BOOST_REQUIRE( q.next() == trx9 );
+   BOOST_REQUIRE( next( q ) == trx9 );
    BOOST_CHECK( q.size() == 5 );
-   BOOST_REQUIRE( q.next() == trx11 );
+   BOOST_REQUIRE( next( q ) == trx14 );
    BOOST_CHECK( q.size() == 4 );
-   BOOST_REQUIRE( q.next() == trx12 );
+   BOOST_REQUIRE( next( q ) == trx18 );
    BOOST_CHECK( q.size() == 3 );
-   BOOST_REQUIRE( q.next() == trx13 );
+   BOOST_REQUIRE( next( q ) == trx19 );
    BOOST_CHECK( q.size() == 2 );
-   BOOST_REQUIRE( q.next() == trx7 );
+   BOOST_REQUIRE( next( q ) == trx16 );
    BOOST_CHECK( q.size() == 1 );
-   BOOST_REQUIRE( q.next() == trx8 );
+   BOOST_REQUIRE( next( q ) == trx8 );
    BOOST_CHECK( q.size() == 0 );
-   BOOST_REQUIRE( q.next() == nullptr );
+   BOOST_REQUIRE( next( q ) == nullptr );
    BOOST_CHECK( q.empty() );
 
    q.add_forked( { bs3, bs2, bs1 } );
@@ -244,7 +255,7 @@ BOOST_AUTO_TEST_CASE( unapplied_transaction_queue_test ) try {
    q.clear();
    BOOST_CHECK( q.empty() );
    BOOST_CHECK( q.size() == 0 );
-   BOOST_REQUIRE( q.next() == nullptr );
+   BOOST_REQUIRE( next( q ) == nullptr );
 
 } FC_LOG_AND_RETHROW() /// unapplied_transaction_queue_test
 
