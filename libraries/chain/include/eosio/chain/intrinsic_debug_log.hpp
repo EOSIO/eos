@@ -29,7 +29,9 @@ namespace eosio { namespace chain {
          enum class open_mode {
             read_only,
             create_new,
-            continue_existing
+            continue_existing,
+            create_new_and_auto_finish_block,
+            continue_existing_and_auto_finish_block
          };
 
          void open( open_mode mode = open_mode::continue_existing );

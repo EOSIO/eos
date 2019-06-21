@@ -270,4 +270,83 @@ BOOST_AUTO_TEST_CASE(equivalence_test) {
    BOOST_REQUIRE( !result );
 }
 
+BOOST_AUTO_TEST_CASE(auto_finish_block_test) {
+   fc::temp_directory  tempdir;
+   auto ref_log1_path = tempdir.path() / "intrinsic1.log";
+   auto ref_log2_path = tempdir.path() / "intrinsic2.log";
+   auto log_path      = tempdir.path() / "intrinsic.log";
+   auto trx_id = fc::variant("0102030405060708090a0b0c0d0e0f100102030405060708090a0b0c0d0e0f10").as<transaction_id_type>();
+   auto digest = fc::variant("0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20").as<digest_type>();
+   name alice("alice");
+   name foo("foo");
+
+   intrinsic_debug_log ref_log1( ref_log1_path ); // reference log 1
+   {
+      ref_log1.open();
+      ref_log1.start_block( 1u );
+      ref_log1.finish_block();
+      ref_log1.close();
+   }
+
+   intrinsic_debug_log ref_log2( ref_log2_path ); // reference log 2
+   {
+      ref_log2.open();
+      ref_log2.start_block( 1u );
+      ref_log2.finish_block();
+      ref_log2.start_block( 2u );
+      ref_log2.start_transaction( trx_id );
+      ref_log2.start_action( 1ull, alice, alice, foo );
+      ref_log2.acknowledge_intrinsic_without_recording();
+      ref_log2.record_intrinsic( digest, digest );
+      ref_log2.finish_block();
+      ref_log2.close();
+   }
+
+   // Mode 1 (default mode): do not automatically finish any pending block.
+   // This mode enforces that the log remains consistent with block activity (truncate blocks if necessary).
+   {
+      {
+         intrinsic_debug_log log( log_path );
+         log.open();
+         log.start_block( 1u );
+         log.finish_block();
+         log.start_block( 2u );
+         log.start_transaction( trx_id );
+         log.start_action( 1ull, alice, alice, foo );
+         log.acknowledge_intrinsic_without_recording();
+         log.record_intrinsic( digest, digest );
+      }
+
+      intrinsic_debug_log log( log_path );
+      log.open( intrinsic_debug_log::open_mode::read_only );
+
+      auto result = intrinsic_debug_log::find_first_difference( log, ref_log1 );
+      BOOST_REQUIRE( !result );
+   }
+
+   // Mode 2: automatically finish any pending block.
+   // This mode keeps recent information in log during any shutdown by automatically finish the block even if it
+   // is not explicitly called. This may result in the data recorded for last block in the log to not have all
+   // the data that actually occurred in that block.
+   {
+      {
+         intrinsic_debug_log log( log_path );
+         log.open( intrinsic_debug_log::open_mode::continue_existing_and_auto_finish_block );
+         log.start_block( 1u );
+         log.finish_block();
+         log.start_block( 2u );
+         log.start_transaction( trx_id);
+         log.start_action( 1ull, alice, alice, foo );
+         log.acknowledge_intrinsic_without_recording();
+         log.record_intrinsic( digest, digest );
+      }
+
+      intrinsic_debug_log log( log_path );
+      log.open( intrinsic_debug_log::open_mode::read_only );
+
+      auto result = intrinsic_debug_log::find_first_difference( log, ref_log2 );
+      BOOST_REQUIRE( !result );
+   }
+}
+
 BOOST_AUTO_TEST_SUITE_END()

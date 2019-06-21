@@ -129,8 +129,9 @@ namespace eosio { namespace chain {
             std::map<pos_t, extended_block_data>  block_data_cache;
             state_type                            state{ closed{} };
             std::optional<log_metadata_t>         log_metadata;
+            bool                                  finish_block_on_shutdown = false;
 
-            void open( bool open_as_read_only, bool start_fresh );
+            void open( bool open_as_read_only, bool start_fresh, bool auto_finish_block );
             void close();
 
             void start_block( uint32_t block_num );
@@ -234,14 +235,15 @@ namespace eosio { namespace chain {
       ,last_committed_block_num( s.last_committed_block_num )
       {}
 
-      void intrinsic_debug_log_impl::open( bool open_as_read_only, bool start_fresh ) {
+      void intrinsic_debug_log_impl::open( bool open_as_read_only, bool start_fresh, bool auto_finish_block ) {
          FC_ASSERT( !log.is_open(), "cannot open when the log is already open" );
          FC_ASSERT( std::holds_alternative<closed>( state ), "state out of sync" );
 
          std::ios_base::openmode open_mode = std::ios::in | std::ios::binary;
 
          if( open_as_read_only ) {
-            FC_ASSERT( !start_fresh, "start_fresh cannot be true in read-only mode" );
+            FC_ASSERT( !start_fresh,       "start_fresh cannot be true in read-only mode" );
+            FC_ASSERT( !auto_finish_block, "auto_finish_block cannot be true in read-only mode" );
          } else {
             open_mode |= (std::ios::out | std::ios::app);
          }
@@ -254,25 +256,32 @@ namespace eosio { namespace chain {
 
          uint32_t last_committed_block_num = 0; // 0 indicates no committed blocks in log
 
-         log.seekg( 0, std::ios::end );
-         pos_t file_size = log.tellg();
-         if( file_size > 0 ) {
-            pos_t last_committed_block_begin_pos{};
-            FC_ASSERT( file_size > sizeof(last_committed_block_begin_pos),
-                       "corrupted log: file size is too small to be valid" );
-            log.seekg( -sizeof(last_committed_block_begin_pos), std::ios::end );
-            fc::raw::unpack( log, last_committed_block_begin_pos );
-            FC_ASSERT( last_committed_block_begin_pos < file_size, "corrupted log: invalid block position" );
+         try {
+            log.seekg( 0, std::ios::end );
+            pos_t file_size = log.tellg();
+            if( file_size > 0 ) {
+               pos_t last_committed_block_begin_pos{};
+               FC_ASSERT( file_size > sizeof(last_committed_block_begin_pos),
+                          "corrupted log: file size is too small to be valid" );
+               log.seekg( -sizeof(last_committed_block_begin_pos), std::ios::end );
+               fc::raw::unpack( log, last_committed_block_begin_pos );
+               FC_ASSERT( last_committed_block_begin_pos < file_size, "corrupted log: invalid block position" );
 
-            log.seekg( last_committed_block_begin_pos, std::ios::beg	);
-            uint8_t tag = 0;
-            fc::raw::unpack( log, tag );
-            FC_ASSERT( tag == block_tag, "corrupted log: expected block tag" );
+               log.seekg( last_committed_block_begin_pos, std::ios::beg	);
+               uint8_t tag = 0;
+               fc::raw::unpack( log, tag );
+               FC_ASSERT( tag == block_tag, "corrupted log: expected block tag" );
 
-            fc::raw::unpack( log, last_committed_block_num );
+               fc::raw::unpack( log, last_committed_block_num );
 
-            log_metadata.emplace( log_metadata_t{ last_committed_block_begin_pos, file_size } );
+               log_metadata.emplace( log_metadata_t{ last_committed_block_begin_pos, file_size } );
+            }
+         } catch( ... ) {
+            log.close();
+            throw;
          }
+
+         finish_block_on_shutdown = auto_finish_block;
 
          if( open_as_read_only ) {
             state.emplace<read_only>( last_committed_block_num );
@@ -285,6 +294,14 @@ namespace eosio { namespace chain {
 
       void intrinsic_debug_log_impl::close() {
          if( !log.is_open() ) return;
+
+         if( finish_block_on_shutdown
+               && !std::holds_alternative<closed>( state )
+               && !std::holds_alternative<read_only>( state )
+               && !std::holds_alternative<waiting_to_start_block>( state )
+         ) {
+            finish_block();
+         }
 
          std::optional<pos_t> truncate_pos = std::visit( overloaded{
             []( closed ) -> std::optional<pos_t> {
@@ -313,6 +330,8 @@ namespace eosio { namespace chain {
          }
 
          log.close();
+
+         finish_block_on_shutdown = false;
 
          state.emplace<closed>();
          log_metadata.reset();
@@ -669,7 +688,16 @@ namespace eosio { namespace chain {
 
    void intrinsic_debug_log::open( open_mode mode ) {
       bool open_as_read_only = (mode == open_mode::read_only);
-      my->open( open_as_read_only, ( open_as_read_only ? false : (mode == open_mode::create_new) ) );
+      bool start_fresh = false;
+      bool auto_finish_block = false;
+
+      if( !open_as_read_only ) {
+         start_fresh = ( mode == open_mode::create_new || mode == open_mode::create_new_and_auto_finish_block );
+         auto_finish_block = ( mode == open_mode::create_new_and_auto_finish_block
+                                 || mode == open_mode::continue_existing_and_auto_finish_block );
+      }
+
+      my->open( open_as_read_only, start_fresh, auto_finish_block );
    }
 
    void intrinsic_debug_log::close() {
