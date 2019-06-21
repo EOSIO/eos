@@ -27,13 +27,13 @@ export TEST_LABEL="[eosio_build_ubuntu]"
 
     # Testing clang already existing (no pinning of clang8)
     [[ "$(echo ${VERSION_ID})" == "16.04" ]] && install-package clang WETRUN &>/dev/null || install-package build-essential WETRUN
-    run bash -c "printf \"y\n%.0s\" {1..100} | ./$SCRIPT_LOCATION"
+    run bash -c "printf \"y\n%.0s\" {1..100} | ./$SCRIPT_LOCATION -i /NEWPATH"
     
     [[ ! -z $(echo "${output}" | grep "Executing: make -j${JOBS}") ]] || exit
     [[ ! -z $(echo "${output}" | grep "Starting EOSIO Dependency Install") ]] || exit
     [[ ! -z $(echo "${output}" | grep python.*found) ]] || exit
     [[ ! -z $(echo "${output}" | grep make.*NOT.*found) ]] || exit
-    [[ ! -z $(echo "${output}" | grep ${HOME}.*/src/boost) ]] || exit
+    [[ ! -z $(echo "${output}" | grep /NEWPATH.*/src/boost) ]] || exit
     [[ ! -z $(echo "${output}" | grep "make -j${CPU_CORES}") ]] || exit
     [[ ! -z $(echo "${output}" | grep " --with-iostreams --with-date_time") ]] || exit # BOOST
     if [[ "$(echo ${VERSION_ID})" == "18.04" ]]; then
