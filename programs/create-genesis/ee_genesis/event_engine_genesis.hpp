@@ -58,6 +58,7 @@ struct comment_info {
     string language;
     int64_t net_rshares;
     uint16_t rewardweight = 0;
+    asset max_payout;
     uint16_t benefics_prcnt = 0;
     uint16_t curators_prcnt = 0;
     uint16_t tokenprop = 0;
@@ -106,7 +107,7 @@ struct block_info {
 FC_REFLECT(cyberway::genesis::ee::vote_info, (voter)(weight)(time)(rshares))
 FC_REFLECT(cyberway::genesis::ee::reblog_info, (account)(title)(body)(time))
 FC_REFLECT(cyberway::genesis::ee::comment_info, (parent_author)(parent_permlink)(author)(permlink)(created)(last_update)
-    (title)(body)(tags)(language)(net_rshares)(rewardweight)(benefics_prcnt)(curators_prcnt)(tokenprop)(archived)
+    (title)(body)(tags)(language)(net_rshares)(rewardweight)(max_payout)(benefics_prcnt)(curators_prcnt)(tokenprop)(archived)
     (author_reward)(benefactor_reward)(curator_reward)(votes)(reblogs))
 FC_REFLECT(cyberway::genesis::ee::transfer_info, (from)(to)(quantity)(memo)(time))
 FC_REFLECT(cyberway::genesis::ee::balance_convert_info, (owner)(amount)(memo))
