@@ -67,9 +67,13 @@ struct genesis_info {
     struct account {
         account_name name;
         fc::optional<bool> update;
+        fc::optional<bool> privileged;
         std::vector<permission> permissions;
         fc::optional<file_hash> abi;
         fc::optional<file_hash> code;
+        fc::optional<asset> sys_balance;
+        fc::optional<asset> sys_staked;
+        fc::optional<string> prod_key;
     };
 
     bfs::path state_file;   // ? file_hash
@@ -181,7 +185,7 @@ struct genesis_info {
 
 FC_REFLECT(cyberway::genesis::genesis_info::file_hash, (path)(hash))
 FC_REFLECT(cyberway::genesis::genesis_info::permission, (name)(parent)(key)(keys)(accounts))
-FC_REFLECT(cyberway::genesis::genesis_info::account, (name)(update)(permissions)(abi)(code))
+FC_REFLECT(cyberway::genesis::genesis_info::account, (name)(update)(privileged)(permissions)(abi)(code)(sys_balance)(sys_staked)(prod_key))
 FC_REFLECT(cyberway::genesis::genesis_info::auth_link, (permission)(links))
 FC_REFLECT(cyberway::genesis::genesis_info::table::row, (scope)(payer)(pk)(data))
 FC_REFLECT(cyberway::genesis::genesis_info::table, (code)(table)(abi_type)(rows))

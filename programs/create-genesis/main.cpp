@@ -114,6 +114,7 @@ fc::sha256 check_hash(const genesis_info::file_hash& fh) {
 
 void read_contract(const genesis_info::account& acc, contract_abicode& abicode) {
     abicode.update = acc.update && *acc.update;
+    abicode.privileged = acc.privileged && *acc.privileged;
     if (acc.abi) {
         auto fh = *acc.abi;
         abicode.abi_hash = check_hash(fh);
@@ -152,6 +153,8 @@ void config_reader::read_config(const variables_map& options) {
     make_absolute(info.state_file, "Golos state");
     make_absolute(info.genesis_json, "Genesis json");
     genesis = fc::json::from_file(info.genesis_json).as<genesis_state>();
+    
+    std::cout << "Initial configuration = {" << std::endl << genesis.initial_configuration << "}" << std::endl;
 
     // base validation and init
     for (auto& a: info.accounts) {

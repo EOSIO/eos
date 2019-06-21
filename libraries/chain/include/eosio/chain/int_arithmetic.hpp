@@ -49,6 +49,17 @@ template<typename T>
 T safe_prop(T arg, T numer, T denom) {
     return !arg || !numer ? T(0) : downgrade_cast<T>((static_cast<typename greater_int_t<T>::type>(arg) * numer) / denom);
 }
+
+template<typename T>
+T safe_prop_ceil(T arg, T numer, T denom) {
+    if (!arg || !numer) {
+        return T(0);
+    }
+    auto mul = static_cast<typename greater_int_t<T>::type>(arg) * numer;
+    auto div = mul / denom;
+    return (mul % denom) ? ((mul >= 0) == (denom >= T(0)) ? div + 1 : div - 1) : div;
+}
+
 template<typename T> T safe_pct(T arg, T total) { return safe_prop(arg, total, static_cast<T>(config::percent_100)); }
 template<typename T> T safe_share_to_pct(T arg, T total) { return safe_prop(arg, static_cast<T>(config::percent_100), total); }
 

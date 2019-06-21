@@ -580,7 +580,8 @@ struct controller_impl {
       fork_db.set( head );
       set_revision(head->block_num);
 
-      initialize_database();
+      bool need_native_accounts = !conf.read_genesis;
+      initialize_database(need_native_accounts);
       read_genesis();
    }
 
@@ -628,7 +629,7 @@ struct controller_impl {
 //      resource_limits.verify_account_ram_usage(name);
    }
 
-   void initialize_database() {
+   void initialize_database(bool need_native_accounts = true) {
       // Initialize block summary index
       auto blocksum_table = chaindb.get_table<block_summary_object>();
       for (int i = 0; i < 0x10000; i++)
@@ -638,7 +639,11 @@ struct controller_impl {
       blocksum_table.modify( tapos_block_summary, [&]( auto& bs ) {
         bs.block_id = head->id;
       });
-
+      
+      conf.genesis.initial_configuration.max_block_usage = 
+        std::vector<uint64_t>(config::default_max_block_usage.begin(), config::default_max_block_usage.end());
+      conf.genesis.initial_configuration.max_transaction_usage = 
+        std::vector<uint64_t>(config::default_max_transaction_usage.begin(), config::default_max_transaction_usage.end());
       conf.genesis.initial_configuration.target_virtual_limits = 
         std::vector<uint64_t>(config::default_target_virtual_limits.begin(), config::default_target_virtual_limits.end());
       conf.genesis.initial_configuration.min_virtual_limits = 
@@ -663,32 +668,40 @@ struct controller_impl {
       authorization.initialize_database();
       resource_limits.initialize_database();
 
-      authority system_auth(conf.genesis.initial_key);
-      create_native_account( config::system_account_name, system_auth, system_auth, true );
-      create_native_account(config::msig_account_name, system_auth, system_auth, true);
-      create_native_account(config::domain_account_name, system_auth, system_auth);
-      create_native_account(config::govern_account_name, system_auth, system_auth, true);
-      create_native_account(config::stake_account_name, system_auth, system_auth, true);
-
-      auto empty_authority = authority(1, {}, {});
-      auto active_producers_authority = authority(1, {}, {});
-      active_producers_authority.accounts.push_back({{config::system_account_name, config::active_name}, 1});
-
-      create_native_account( config::null_account_name, empty_authority, empty_authority );
-      create_native_account( config::producers_account_name, empty_authority, active_producers_authority );
-      const auto& active_permission       = authorization.get_permission({config::producers_account_name, config::active_name});
-      const auto& majority_permission     = authorization.create_permission( {},
-                                                                             config::producers_account_name,
-                                                                             config::majority_producers_permission_name,
-                                                                             active_permission.id,
-                                                                             active_producers_authority,
-                                                                             conf.genesis.initial_timestamp );
-      const auto& minority_permission     = authorization.create_permission( {},
-                                                                             config::producers_account_name,
-                                                                             config::minority_producers_permission_name,
-                                                                             majority_permission.id,
-                                                                             active_producers_authority,
-                                                                             conf.genesis.initial_timestamp );
+      if (need_native_accounts) {
+          authority system_auth(conf.genesis.initial_key);
+          create_native_account( config::system_account_name, system_auth, system_auth, true );
+          create_native_account(config::msig_account_name, system_auth, system_auth, true);
+          create_native_account(config::domain_account_name, system_auth, system_auth);
+          create_native_account(config::govern_account_name, system_auth, system_auth, true);
+          create_native_account(config::stake_account_name, system_auth, system_auth, true);
+    
+          auto empty_authority = authority(1, {}, {});
+          auto active_producers_authority = authority(1, {}, {});
+          active_producers_authority.accounts.push_back({{config::system_account_name, config::active_name}, 1});
+    
+          create_native_account( config::null_account_name, empty_authority, empty_authority );
+          create_native_account( config::producers_account_name, empty_authority, active_producers_authority );
+          const auto& active_permission       = authorization.get_permission({config::producers_account_name, config::active_name});
+          const auto& majority_permission     = authorization.create_permission( {},
+                                                                                 config::producers_account_name,
+                                                                                 config::majority_producers_permission_name,
+                                                                                 active_permission.id,
+                                                                                 active_producers_authority,
+                                                                                 conf.genesis.initial_timestamp );
+          const auto& minority_permission     = authorization.create_permission( {},
+                                                                                 config::producers_account_name,
+                                                                                 config::minority_producers_permission_name,
+                                                                                 majority_permission.id,
+                                                                                 active_producers_authority,
+                                                                                 conf.genesis.initial_timestamp );
+      } else {
+          chaindb.emplace<account_object>(config::system_account_name, [&](auto& a) {
+             a.creation_date = conf.genesis.initial_timestamp;
+             a.privileged = true;
+             a.set_abi(eosio_contract_abi());
+          });
+      }
    }
 
 

@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <eosio/chain/stake.hpp>
 #include <eosio/chain/account_object.hpp>
+#include <eosio/chain/global_property_object.hpp>
 
 #include <cyberway/chaindb/storage_payer_info.hpp>
 
@@ -129,12 +130,12 @@ void resource_limits_manager::update_account_usage(const flat_set<account_name>&
    }
 }
 
-void resource_limits_state_object::add_pending_delta(int64_t delta, const resource_limits_config_object& config, resource_id res) {
+void resource_limits_state_object::add_pending_delta(int64_t delta, const chain_config& chain_cfg, resource_id res) {
     static auto constexpr large_number_no_overflow = std::numeric_limits<int64_t>::max() / 2;
     delta = std::max(std::min(delta, large_number_no_overflow), -large_number_no_overflow);
     auto& pending = pending_usage[res];
     pending = std::max(std::min(pending + delta, large_number_no_overflow), -large_number_no_overflow);
-    decltype(delta) max = config::max_block_usage[res];
+    decltype(delta) max = chain_cfg.max_block_usage[res];
     EOS_ASSERT(pending <= max, block_resource_exhausted, 
         "Block has insufficient resources(${res}): delta = ${delta}, new_pending = ${new_pending}, max = ${max}",
         ("res", static_cast<int>(res))("delta", delta)("new_pending", pending)("max", max));
@@ -162,11 +163,11 @@ void resource_limits_manager::add_transaction_usage(const flat_set<account_name>
       get_account_balance(pending_block_time, a, prices, true);
    }
    // account for this transaction in the block and do not exceed those limits either
-
+   const auto& chain_cfg = _chaindb.get<global_property_object>().configuration;
    state_table.modify(state, [&](resource_limits_state_object& rls) {
-      rls.add_pending_delta(cpu_usage, config, CPU);
-      rls.add_pending_delta(net_usage, config, NET);
-      rls.add_pending_delta(ram_usage, config, RAM);
+      rls.add_pending_delta(cpu_usage, chain_cfg, CPU);
+      rls.add_pending_delta(net_usage, chain_cfg, NET);
+      rls.add_pending_delta(ram_usage, chain_cfg, RAM);
    });
 }
 
@@ -192,12 +193,11 @@ void resource_limits_manager::add_storage_usage(const account_name& account, int
 
         return;
     }
-
    const auto& config = _chaindb.get<resource_limits_config_object>();
    auto state_table  = _chaindb.get_table<resource_limits_state_object>();
    const auto& state = state_table.get();
    state_table.modify(state, [&](resource_limits_state_object& rls) {
-      rls.add_pending_delta(delta, config, STORAGE);
+      rls.add_pending_delta(delta, _chaindb.get<global_property_object>().configuration, STORAGE);
    });
    
    auto& usage = _chaindb.get<resource_usage_object>(account);
@@ -244,7 +244,7 @@ uint64_t resource_limits_manager::get_block_limit(resource_id res, const chain_c
    const auto& state = _chaindb.get<resource_limits_state_object>();
    const auto& config = _chaindb.get<resource_limits_config_object>();
    uint64_t usage = std::max(state.pending_usage[res], int64_t(0));
-   uint64_t max = config::max_block_usage[res];
+   uint64_t max = chain_cfg.max_block_usage[res];
    EOS_ASSERT(max >= usage, chain_exception, "SYSTEM: incorrect usage");
    return max - usage;
 }
@@ -273,7 +273,7 @@ std::vector<ratio> resource_limits_manager::get_pricelist() const {
         for (size_t i = 0; i < resources_num; i++) {
             auto virtual_capacity_in_window = static_cast<uint128_t>(state.virtual_limits[i]) * config.account_usage_average_windows[i];
             ret[i] = ratio {
-                safe_prop<uint64_t>(stat->total_staked, used_pct[i], used_pct_sum), 
+                safe_prop_ceil<uint64_t>(stat->total_staked, used_pct[i], used_pct_sum), 
                 static_cast<uint64_t>(std::min(virtual_capacity_in_window, static_cast<uint128_t>(UINT64_MAX))) 
             };
         }
@@ -282,7 +282,7 @@ std::vector<ratio> resource_limits_manager::get_pricelist() const {
     return ret;
 }
 
-ratio resource_limits_manager::get_account_usage_ratio(account_name account, resource_id res) const {
+ratio resource_limits_manager::get_resource_usage_by_account_cost_ratio(account_name account, resource_id res) const {
     const auto resources_usage = get_account_usage(account);
     const auto price_list = get_pricelist();
 
@@ -291,10 +291,10 @@ ratio resource_limits_manager::get_account_usage_ratio(account_name account, res
 
     uint64_t total_usage_cost = 0;
     for (size_t i = 0; i < resources_num; i++) {
-        total_usage_cost += safe_prop(resources_usage[i], price_list[i].numerator, price_list[i].denominator);
+        total_usage_cost += safe_prop_ceil(resources_usage[i], price_list[i].numerator, price_list[i].denominator);
     }
 
-    return ratio{safe_prop(requested_resource_usage, requested_resource_price.numerator, requested_resource_price.denominator), total_usage_cost};
+    return ratio{safe_prop_ceil(requested_resource_usage, requested_resource_price.numerator, requested_resource_price.denominator), total_usage_cost};
 }
 
 ratio resource_limits_manager::get_account_stake_ratio(fc::time_point pending_block_time, const account_name& account, bool update_state) {
@@ -347,9 +347,9 @@ uint64_t resource_limits_manager::get_account_balance(fc::time_point pending_blo
     const auto& state  = _chaindb.get<resource_limits_state_object>();
     auto res_usage = get_account_usage(account);
         
-    uint64_t cost = resources_num;
+    uint64_t cost = 0;
     for (size_t i = 0; i < resources_num; i++) {
-        auto add = safe_prop(res_usage[i], prices[i].numerator, prices[i].denominator);
+        auto add = safe_prop_ceil(res_usage[i], prices[i].numerator, prices[i].denominator);
         cost = (UINT64_MAX - cost) > add ? cost + add : UINT64_MAX;
     }
     

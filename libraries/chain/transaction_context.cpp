@@ -215,14 +215,14 @@ namespace bacc = boost::accumulators;
       _deadline = start + objective_duration_limit;
 
       // Possibly lower net_limit to the maximum net usage a transaction is allowed to be billed
-      if( config::max_transaction_usage[resource_limits::NET] <= net_limit ) {
-         net_limit = config::max_transaction_usage[resource_limits::NET];
+      if( cfg.max_transaction_usage[resource_limits::NET] <= net_limit ) {
+         net_limit = cfg.max_transaction_usage[resource_limits::NET];
          net_limit_due_to_block = false;
       }
 
       // Possibly lower objective_duration_limit to the maximum cpu usage a transaction is allowed to be billed
-      if( config::max_transaction_usage[resource_limits::CPU] <= objective_duration_limit.count() ) {
-         objective_duration_limit = fc::microseconds(config::max_transaction_usage[resource_limits::CPU]);
+      if( cfg.max_transaction_usage[resource_limits::CPU] <= objective_duration_limit.count() ) {
+         objective_duration_limit = fc::microseconds(cfg.max_transaction_usage[resource_limits::CPU]);
          billing_timer_exception_code = tx_cpu_usage_exceeded::code_value;
          _deadline = start + objective_duration_limit;
       }
@@ -238,11 +238,14 @@ namespace bacc = boost::accumulators;
       if( trx.max_ram_kbytes > 0 ) {
          ram_bytes_limit = uint64_t(trx.max_ram_kbytes) << 10;
       }
-
+      
       // Possibly lower STORAGE limit to optional limit set in transaction header
       if( trx.max_storage_kbytes > 0 ) {
          storage_bytes_limit = uint64_t(trx.max_storage_kbytes) << 10;
       }
+      
+      ram_bytes_limit     = std::min(ram_bytes_limit,     cfg.max_transaction_usage[resource_limits::RAM]);
+      storage_bytes_limit = std::min(storage_bytes_limit, cfg.max_transaction_usage[resource_limits::STORAGE]);
 
       // Possibly lower objective_duration_limit to optional limit set in transaction header
       if( trx.max_cpu_usage_ms > 0 ) {
@@ -777,8 +780,8 @@ namespace bacc = boost::accumulators;
         auto& storage_price = pricelist[resource_limits::STORAGE];
         auto& cpu_price     = pricelist[resource_limits::CPU];
 
-        auto cost = safe_prop(delta_abs, storage_price.numerator, storage_price.denominator);
-        auto cpu = cost ? (cpu_price.numerator ? safe_prop(cost, cpu_price.denominator, cpu_price.numerator) : UINT64_MAX) : 0;
+        auto cost = safe_prop_ceil(delta_abs, storage_price.numerator, storage_price.denominator);
+        auto cpu = cost ? (cpu_price.numerator ? safe_prop_ceil(cost, cpu_price.denominator, cpu_price.numerator) : UINT64_MAX) : 0;
 
         bool need_to_update_min = (lim == min_cpu_limit) && (storage.delta < 0);
         if (storage.delta > 0) {
@@ -812,8 +815,8 @@ namespace bacc = boost::accumulators;
         
         auto& net_price = pricelist[resource_limits::NET];
         
-        auto cost = safe_prop(static_cast<uint64_t>(delta), net_price.numerator, net_price.denominator);
-        auto cpu = safe_prop(cost, cpu_price.denominator, cpu_price.numerator);
+        auto cost = safe_prop_ceil(static_cast<uint64_t>(delta), net_price.numerator, net_price.denominator);
+        auto cpu = safe_prop_ceil(cost, cpu_price.denominator, cpu_price.numerator);
 
         EOS_ASSERT(min_cpu_limit >= cpu, resource_exhausted_exception,
             "transaction costs too much; unspent cpu = ${b}, cost cpu equivalent = ${e}", ("b", min_cpu_limit)("e", cpu));

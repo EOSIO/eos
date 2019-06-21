@@ -123,6 +123,9 @@ struct genesis_create::genesis_create_impl final {
                     if (abicode.update) {
                         updated_accs.insert(n);
                     }
+                    if (abicode.privileged) {
+                        a.privileged = abicode.privileged;
+                    }
                     if (abicode.abi.size()) {
                         a.abi = abicode.abi;
                         a.abi_version = abicode.abi_hash;
@@ -536,7 +539,8 @@ struct genesis_create::genesis_create_impl final {
         }
 
         int64_t total_votes = 0;
-        db.start_section(config::system_account_name, N(stake.agent), "stake_agent_object", _visitor.vests.size());
+        auto n_acc_agents = std::count_if(_info.accounts.begin(), _info.accounts.end(), [](const auto& acc){return acc.sys_staked;});
+        db.start_section(config::system_account_name, N(stake.agent), "stake_agent_object", _visitor.vests.size() + n_acc_agents);
         for (const auto& abl: agents_by_level) {
             for (auto& ag: abl) {
                 auto acc = ag.first;
@@ -558,8 +562,26 @@ struct genesis_create::genesis_create_impl final {
                 });
             }
         }
+        for (const auto& acc: _info.accounts) {
+            if (acc.sys_staked) {
+                total_votes += acc.sys_staked->get_amount();
+                db.emplace<stake_agent_object>(acc.name, [&](auto& a) {
+                    a.token_code = sys_sym.to_symbol_code();
+                    a.account = acc.name;
+                    a.proxy_level = acc.prod_key ? 0 : 1;
+                    a.last_proxied_update = _conf.initial_timestamp;
+                    a.balance = acc.sys_staked->get_amount();
+                    a.proxied = 0;
+                    a.own_share = acc.sys_staked->get_amount();
+                    a.shares_sum = acc.sys_staked->get_amount();
+                    a.fee = config::percent_100;
+                    a.min_own_staked = 0;
+                });
+            }
+        }
 
-        db.start_section(config::system_account_name, N(stake.cand), "stake_candidate_object", agents_by_level[0].size());
+        auto n_acc_cand = std::count_if(_info.accounts.begin(), _info.accounts.end(), [](const auto& acc){return acc.prod_key;});
+        db.start_section(config::system_account_name, N(stake.cand), "stake_candidate_object", agents_by_level[0].size() + n_acc_cand);
         const auto sys_supply = _sys_supply.get_amount();
         for (auto& ag: agents_by_level[0]) {
             auto acc = ag.first;
@@ -574,6 +596,20 @@ struct genesis_create::genesis_create_impl final {
                 a.enabled = enabled;
                 a.set_votes(x.balance, sys_supply);
             });
+        }
+        public_key_type system_key(_conf.initial_key);
+        for (const auto& acc: _info.accounts) {
+            if (acc.prod_key) {
+                auto balance = acc.sys_staked ? acc.sys_staked->get_amount() : 0;
+                db.emplace<stake_candidate_object>(acc.name, [&](auto& a) {
+                    a.token_code = sys_sym.to_symbol_code();
+                    a.account = acc.name;
+                    a.latest_pick = _conf.initial_timestamp;
+                    a.signing_key = *acc.prod_key == "INITIAL" ? system_key : public_key_type(*acc.prod_key);
+                    a.enabled = true;
+                    a.set_votes(balance, sys_supply);
+                });
+            }
         }
 
         db.start_section(config::system_account_name, N(stake.stat), "stake_stat_object", 1);
@@ -654,9 +690,20 @@ struct genesis_create::genesis_create_impl final {
             return pk;
         };
 
+        auto total_acc_balances = asset();
+        auto total_acc_staked = asset();
+        for(const auto& acc: _info.accounts) {
+            if(acc.sys_balance) {
+                total_acc_balances += *acc.sys_balance;
+            }
+            if(acc.sys_staked) {
+                total_acc_staked += *acc.sys_staked;
+            }
+        }
+
         _total_staked = golos2sys(gp.total_vesting_fund_steem);
         auto supply = gp.current_supply + golos_from_gbg;
-        _sys_supply = golos2sys(supply - gp.total_reward_fund_steem);
+        _sys_supply = golos2sys(supply - gp.total_reward_fund_steem) + total_acc_balances + total_acc_staked;
         auto sys_pk = insert_stat_record(_sys_supply, _info.golos.sys_max_supply, config::system_account_name);
         auto gls_pk = insert_stat_record(supply, _info.golos.max_supply, _info.golos.names.issuer);
 
@@ -669,7 +716,8 @@ struct genesis_create::genesis_create_impl final {
         );
 
         // funds
-        const auto n_balances = 3 + 2*data.gbg.size();
+        const auto n_acc_balances = std::count_if(_info.accounts.begin(), _info.accounts.end(), [](const auto& a) {return a.sys_balance;}); //
+        const auto n_balances = 3 + 2*data.gbg.size() + n_acc_balances;
         db.start_section(config::token_account_name, N(accounts), "account", n_balances);
         auto insert_balance_record = [&](name account, const asset& balance, primary_key_t pk,
             fc::optional<acc_idx> acc_id = {}
@@ -685,9 +733,15 @@ struct genesis_create::genesis_create_impl final {
                 acc_info[pk == gls_pk ? "balance" : "balance_in_sys"] = balance;
             }
         };
-        insert_balance_record(config::stake_account_name, _total_staked, sys_pk);
+        insert_balance_record(config::stake_account_name, _total_staked + total_acc_staked, sys_pk);
         insert_balance_record(_info.golos.names.vesting, gp.total_vesting_fund_steem, gls_pk);
         insert_balance_record(_info.golos.names.posting, gp.total_reward_fund_steem, gls_pk);
+
+        for(const auto& acc: _info.accounts) {
+            if(acc.sys_balance) {
+                insert_balance_record(acc.name, *acc.sys_balance, sys_pk);
+            }
+        }
 
         // accounts GOLOS
         asset total_gls = asset(0, symbol(GLS));
