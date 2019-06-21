@@ -73,7 +73,7 @@ class eos_vm_runtime : public eosio::chain::wasm_runtime_interface {
       eos_vm_runtime();
       std::unique_ptr<wasm_instantiated_module_interface> instantiate_module(const char* code_bytes, size_t code_size, std::vector<uint8_t>) override;
 
-      void immediately_exit_currently_running_module() override { _bkend->immediate_exit(); }
+      void immediately_exit_currently_running_module() override { _bkend->exit({}); }
 
    private:
       backend<apply_context>* _bkend;  // non owning pointer to allow for immediate exit
