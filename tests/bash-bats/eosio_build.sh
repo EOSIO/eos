@@ -31,7 +31,7 @@ TEST_LABEL="[eosio_build]"
     fi 
 
     cd .. # Also test that we can run the script from a directory other than the root
-    echo $(pwd) >&3
+    echo $(pwd && ls) >&3
     run bash -c "./eos/$SCRIPT_LOCATION -y -P"
     echo $output >&3
     [[ ! -z $(echo "${output}" | grep "PIN_COMPILER: true") ]] || exit
