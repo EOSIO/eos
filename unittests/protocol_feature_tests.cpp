@@ -1345,20 +1345,20 @@ BOOST_AUTO_TEST_CASE( safe_varint_parsing_test ) { try {
          {{tester1_account, name("active")}},
          mutable_variant_object()("payload", 0)
    ));
-   trx.max_net_usage_words = 0xFFFFFFFF;
-   trx.delay_sec = 0xFFFFFFFF;
-
-   auto base_encoded_transaction = fc::raw::pack(trx);
 
    // corrupt the last byte of max_net_usage_words
-   assert(base_encoded_transaction.at(14) == 0x0f);
-   auto encoded_bad_net_limit_transaction = base_encoded_transaction;
-   encoded_bad_net_limit_transaction.at(14) = 0x10;
+   trx.max_net_usage_words = 0xFFFFFFFF;
+   trx.delay_sec = 0;
+   auto encoded_bad_net_limit_transaction = fc::raw::pack(trx);
+   BOOST_REQUIRE_EQUAL((uint8_t)encoded_bad_net_limit_transaction.at(14), 0x0f);
+   encoded_bad_net_limit_transaction.at(14) = 0x1F;
 
    // corrupt the last byte of delay_sec
-   assert(base_encoded_transaction.at(20) == 0x0f);
-   auto encoded_bad_delay_transaction = base_encoded_transaction;
-   encoded_bad_delay_transaction.at(20) = 0x10;
+   trx.max_net_usage_words = 0;
+   trx.delay_sec = 0xFFFFFFFF;
+   auto encoded_bad_delay_transaction = fc::raw::pack(trx);
+   BOOST_REQUIRE_EQUAL((uint8_t)encoded_bad_delay_transaction.at(16), 0x0f);
+   encoded_bad_delay_transaction.at(16) = 0x1F;
 
 
    // Ensure subjective mitigations are in place
@@ -1404,6 +1404,24 @@ BOOST_AUTO_TEST_CASE( safe_varint_parsing_test ) { try {
          ("raw", encoded_bad_delay_transaction)
          ("replace_existing", 0)
    );
+
+   // Ensure that as part of recording these to the chain database we sanitized them
+   const auto& idx = c.control->db().get_index<generated_transaction_multi_index, by_id>();
+    for( auto itr = idx.begin(); itr != idx.end(); ++itr ) {
+      if (itr->sender_id == 1) {
+         for (int b = 10; b < 14; b++) {
+            BOOST_REQUIRE_EQUAL((uint8_t) itr->packed_trx.at(b), 0xFF);
+         }
+
+         BOOST_REQUIRE_EQUAL((uint8_t) itr->packed_trx.at(14), 0x0F);
+      } else if (itr->sender_id == 2) {
+         for (int b = 12; b < 16; b++) {
+            BOOST_REQUIRE_EQUAL((uint8_t) itr->packed_trx.at(b), 0xFF);
+         }
+
+         BOOST_REQUIRE_EQUAL((uint8_t) itr->packed_trx.at(16), 0x0F);
+      }
+   }
 
    // remove these from the stored deferred transactions so we can dupe them
    c.control->abort_block();
