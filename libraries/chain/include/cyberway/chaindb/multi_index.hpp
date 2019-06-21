@@ -364,6 +364,12 @@ private:
         bool in_ram() const {
             return service().in_ram;
         }
+        bool is_valid() const {
+            if (!item_) {
+                lazy_load_object();
+            }
+            return (item_ && !item_->is_deleted());
+        }
 
         const_iterator_impl operator++(int) {
             const_iterator_impl result(*this);

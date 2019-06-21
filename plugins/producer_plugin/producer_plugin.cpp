@@ -515,7 +515,7 @@ void producer_plugin::set_program_options(
    producer_options.add_options()
          ("enable-stale-production,e", boost::program_options::bool_switch()->notifier([this](bool e){my->_production_enabled = e;}), "Enable block production, even if the chain is stale.")
          ("pause-on-startup,x", boost::program_options::bool_switch()->notifier([this](bool p){my->_pause_production = p;}), "Start this node in a state where production is paused")
-         ("max-transaction-time", bpo::value<int32_t>()->default_value(800),
+         ("max-transaction-time", bpo::value<int32_t>()->default_value(1000),
           "Limits the maximum time (in milliseconds) that is allowed a pushed transaction's code to execute before being considered invalid")
          ("max-irreversible-block-age", bpo::value<int32_t>()->default_value( -1 ),
           "Limits the maximum age (in seconds) of the DPOS Irreversible Block for a chain this node will produce blocks on (use negative value to indicate unlimited)")
@@ -537,7 +537,7 @@ void producer_plugin::set_program_options(
           "offset of non last block producing time in microseconds. Negative number results in blocks to go out sooner, and positive number results in blocks to go out later")
          ("last-block-time-offset-us", boost::program_options::value<int32_t>()->default_value(0),
           "offset of last block producing time in microseconds. Negative number results in blocks to go out sooner, and positive number results in blocks to go out later")
-         ("max-scheduled-transaction-time-per-block-ms", boost::program_options::value<int32_t>()->default_value(800),
+         ("max-scheduled-transaction-time-per-block-ms", boost::program_options::value<int32_t>()->default_value(1000),
           "Maximum wall-clock time, in milliseconds, spent retiring scheduled transactions in any block before returning to normal transaction processing.")
          ("incoming-defer-ratio", bpo::value<double>()->default_value(1.0),
           "ratio between incoming transations and deferred transactions when both are exhausted")
@@ -1244,11 +1244,10 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
             time_point pending_block_time = chain.pending_block_time();
             const auto sch_idx = chain.chaindb().get_index<chain::generated_transaction_object,by_delay>();
             const auto scheduled_trxs_size = sch_idx.size();
-            auto sch_itr = sch_idx.begin();
-            while( sch_itr != sch_idx.end() ) {
+            bool is_first = true;
+            for(auto sch_itr = sch_idx.begin(); sch_itr.is_valid(); is_first = false, ++sch_itr ) {
                if( sch_itr->delay_until > pending_block_time) break;    // not scheduled yet
                if( sch_itr->published >= pending_block_time ) {
-                  ++sch_itr;
                   continue; // do not allow schedule and execute in same block
                }
                if( scheduled_trx_deadline <= fc::time_point::now() ) {
@@ -1256,16 +1255,10 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
                   break;
                }
 
-               const transaction_id_type trx_id = sch_itr->trx_id; // make copy since reference could be invalidated
-               if (blacklist_by_id.find(trx_id) != blacklist_by_id.end()) {
-                  ++sch_itr;
+               auto& trx = *sch_itr;
+               if (blacklist_by_id.find(trx.trx_id) != blacklist_by_id.end()) {
                   continue;
                }
-
-               auto sch_itr_next = sch_itr; // save off next since sch_itr may be invalidated by loop
-               ++sch_itr_next;
-               const auto next_delay_until = sch_itr_next != sch_idx.end() ? sch_itr_next->delay_until : sch_itr->delay_until;
-               const auto next_id = sch_itr_next != sch_idx.end() ? sch_itr_next->id : sch_itr->id;
 
                num_processed++;
 
@@ -1278,11 +1271,18 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
                   --orig_pending_txn_size;
                   _incoming_trx_weight -= 1.0;
                   process_incoming_transaction_async(std::get<0>(e), std::get<1>(e), std::get<2>(e));
+
+                  is_first = false;
                }
 
                if (scheduled_trx_deadline <= fc::time_point::now()) {
                   exhausted = true;
                   break;
+               }
+
+               if( !sch_itr.is_valid() ) {
+                  // transaction was changed
+                  continue;
                }
 
                try {
@@ -1293,16 +1293,20 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
                      deadline = scheduled_trx_deadline;
                   }
 
-                  auto trace = chain.push_scheduled_transaction(trx_id, deadline);
+
+                  auto trace = chain.push_scheduled_transaction(trx.trx_id, deadline);
                   if (trace->except) {
-                     if (failure_is_subjective(*trace->except, deadline_is_subjective)) {
-                        exhausted = true;
-                        break;
-                     } else {
+                     bool is_subjective = failure_is_subjective(*trace->except, deadline_is_subjective);
+                     if (!is_subjective || is_first) {
                         auto expiration = fc::time_point::now() + fc::seconds(chain.get_global_properties().configuration.deferred_trx_expiration_window);
                         // this failed our configured maximum transaction time, we don't want to replay it add it to a blacklist
-                        _blacklisted_transactions.insert(transaction_id_with_expiry{trx_id, expiration});
+                        _blacklisted_transactions.insert(transaction_id_with_expiry{trx.trx_id, expiration});
                         num_failed++;
+                     }
+
+                     if( is_subjective) {
+                       exhausted = true;
+                       break;
                      }
                   } else {
                      num_applied++;
@@ -1314,9 +1318,6 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
 
                _incoming_trx_weight += _incoming_defer_ratio;
                if (!orig_pending_txn_size) _incoming_trx_weight = 0.0;
-
-               if( sch_itr_next == sch_idx.end() ) break;
-               sch_itr = sch_idx.lower_bound( boost::make_tuple( next_delay_until, next_id ) );
             }
 
             if( scheduled_trxs_size > 0 ) {
