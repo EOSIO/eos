@@ -26,7 +26,8 @@ export TEST_LABEL="[eosio_build_ubuntu]"
     set_system_vars # Obtain current machine's resources and set the necessary variables (like JOBS, etc)
 
     # Testing clang already existing (no pinning of clang8)
-    [[ "$(echo ${VERSION_ID})" == "16.04" ]] && install-package clang WETRUN &>/dev/null || install-package build-essential WETRUN
+    # [[ "$(echo ${VERSION_ID})" == "16.04" ]] && install-package clang WETRUN &>/dev/null || install-package build-essential WETRUN
+    install-package clang WETRUN &>/dev/null 
     run bash -c "printf \"y\n%.0s\" {1..100} | ./$SCRIPT_LOCATION -i /NEWPATH"
     
     [[ ! -z $(echo "${output}" | grep "Executing: make -j${JOBS}") ]] || exit

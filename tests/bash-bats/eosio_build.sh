@@ -25,7 +25,7 @@ TEST_LABEL="[eosio_build]"
             run bash -c "printf \"y\ny\ny\nn\n\" | ./${SCRIPT_LOCATION}"
         else
             # No c++!
-            run bash -c "printf \"y\ny\nn\nn\n\" | ./${SCRIPT_LOCATION}"
+            run bash -c "printf \"y\ny\ny\nn\nn\n\" | ./${SCRIPT_LOCATION}"
         fi
         [[ ! -z $(echo "${output}" | grep "Unable to find compiler") ]] || exit
     fi 
