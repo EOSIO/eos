@@ -18,7 +18,6 @@ namespace eosio { namespace chain {
  */
 struct chain_config {
    uint32_t   base_per_transaction_net_usage;      ///< the base amount of net usage billed for a transaction to cover incidentals
-   uint32_t   net_usage_leeway;
    uint32_t   context_free_discount_net_usage_num; ///< the numerator for the discount on net usage of context-free data
    uint32_t   context_free_discount_net_usage_den; ///< the denominator for the discount on net usage of context-free data
 
@@ -32,6 +31,10 @@ struct chain_config {
    uint32_t   max_inline_action_size;              ///< maximum allowed size (in bytes) of an inline action
    uint16_t   max_inline_action_depth;             ///< recursion depth limit on sending inline actions
    uint16_t   max_authority_depth;                 ///< recursion depth limit for checking if an authority is satisfied
+   
+   std::vector<uint64_t> max_block_usage;
+   std::vector<uint64_t> max_transaction_usage;
+   
    std::vector<uint64_t> target_virtual_limits;
    std::vector<uint64_t> min_virtual_limits;
    std::vector<uint64_t> max_virtual_limits;
@@ -46,33 +49,36 @@ struct chain_config {
 
    template<typename Stream>
    friend Stream& operator << ( Stream& out, const chain_config& c ) {
-      return out 
-                 << "Base Per-Transaction Net Usage: " << c.base_per_transaction_net_usage << ", "
-                 << "Net Usage Leeway: " << c.net_usage_leeway << ", "
-                 << "Context-Free Data Net Usage Discount: " << (double)c.context_free_discount_net_usage_num * 100.0 / (double)c.context_free_discount_net_usage_den << "% , "
+      out 
+         << "Base Per-Transaction Net Usage: " << c.base_per_transaction_net_usage << ", "
+         << "Context-Free Data Net Usage Discount: " << (double)c.context_free_discount_net_usage_num * 100.0 / (double)c.context_free_discount_net_usage_den << "% , "
 
-                 << "Min Transaction CPU Usage: " << c.min_transaction_cpu_usage << ", "
+         << "Min Transaction CPU Usage: " << c.min_transaction_cpu_usage << ", "
 
-                 << "Min Transaction RAM Usage: " << c.min_transaction_ram_usage << ", "
+         << "Min Transaction RAM Usage: " << c.min_transaction_ram_usage << ", "
 
-                 << "Max Transaction Lifetime: " << c.max_transaction_lifetime << ", "
-                 << "Deferred Transaction Expiration Window: " << c.deferred_trx_expiration_window << ", "
-                 << "Max Transaction Delay: " << c.max_transaction_delay << ", "
-                 << "Max Inline Action Size: " << c.max_inline_action_size << ", "
-                 << "Max Inline Action Depth: " << c.max_inline_action_depth << ", "
-                 << "Max Authority Depth: " << c.max_authority_depth << ", "
-                 << "Target Virtual Limits: " << c.target_virtual_limits << ", "
-                 << "Min Virtual Limits: " << c.min_virtual_limits << ", "
-                 << "Max Virtual Limits: " << c.max_virtual_limits << ", "
-                 << "Usage Windows: " << c.usage_windows << ", "
-                 << "Virtual Limit Decrease pct: " << c.virtual_limit_decrease_pct << ", "
-                 << "Virtual Limit Increase pct: " << c.virtual_limit_increase_pct << ", "
-                 << "Account Usage Windows: " << c.account_usage_windows << "\n";
+         << "Max Transaction Lifetime: " << c.max_transaction_lifetime << ", "
+         << "Deferred Transaction Expiration Window: " << c.deferred_trx_expiration_window << ", "
+         << "Max Transaction Delay: " << c.max_transaction_delay << ", "
+         << "Max Inline Action Size: " << c.max_inline_action_size << ", "
+         << "Max Inline Action Depth: " << c.max_inline_action_depth << ", "
+         << "Max Authority Depth: " << c.max_authority_depth << "\n";
+                 
+      out << "Max Block Usage: ";            for (auto r : c.max_block_usage)            { out << r << " "; } out << "\n";
+      out << "Max Transaction Usage: ";      for (auto r : c.max_transaction_usage)      { out << r << " "; } out << "\n";
+      out << "Target Virtual Limits: ";      for (auto r : c.target_virtual_limits)      { out << r << " "; } out << "\n";
+      out << "Min Virtual Limits: ";         for (auto r : c.min_virtual_limits)         { out << r << " "; } out << "\n";
+      out << "Max Virtual Limits: ";         for (auto r : c.max_virtual_limits)         { out << r << " "; } out << "\n";
+      out << "Usage Windows: ";              for (auto r : c.usage_windows)              { out << r << " "; } out << "\n";
+      out << "Virtual Limit Decrease pct: "; for (auto r : c.virtual_limit_decrease_pct) { out << r << " "; } out << "\n";
+      out << "Virtual Limit Increase pct: "; for (auto r : c.virtual_limit_increase_pct) { out << r << " "; } out << "\n";
+      out << "Account Usage Windows: ";      for (auto r : c.account_usage_windows)      { out << r << " "; } out << "\n";
+   
+      return out;
    }
 
    friend inline bool operator ==( const chain_config& lhs, const chain_config& rhs ) {
       return   std::tie(   lhs.base_per_transaction_net_usage,
-                           lhs.net_usage_leeway,
                            lhs.context_free_discount_net_usage_num,
                            lhs.context_free_discount_net_usage_den,
                            lhs.min_transaction_cpu_usage,
@@ -83,6 +89,8 @@ struct chain_config {
                            lhs.max_inline_action_size,
                            lhs.max_inline_action_depth,
                            lhs.max_authority_depth,
+                           lhs.max_block_usage,
+                           lhs.max_transaction_usage,
                            lhs.target_virtual_limits,
                            lhs.min_virtual_limits,
                            lhs.max_virtual_limits,
@@ -93,7 +101,6 @@ struct chain_config {
                         )
                ==
                std::tie(   rhs.base_per_transaction_net_usage,
-                           rhs.net_usage_leeway,
                            rhs.context_free_discount_net_usage_num,
                            rhs.context_free_discount_net_usage_den,
                            rhs.min_transaction_cpu_usage,
@@ -104,6 +111,8 @@ struct chain_config {
                            rhs.max_inline_action_size,
                            rhs.max_inline_action_depth,
                            rhs.max_authority_depth,
+                           rhs.max_block_usage,
+                           rhs.max_transaction_usage,
                            rhs.target_virtual_limits,
                            rhs.min_virtual_limits,
                            rhs.max_virtual_limits,
@@ -121,7 +130,7 @@ struct chain_config {
 } } // namespace eosio::chain
 
 FC_REFLECT(eosio::chain::chain_config,
-           (base_per_transaction_net_usage)(net_usage_leeway)
+           (base_per_transaction_net_usage)
            (context_free_discount_net_usage_num)(context_free_discount_net_usage_den)
 
            (min_transaction_cpu_usage)
@@ -129,6 +138,8 @@ FC_REFLECT(eosio::chain::chain_config,
 
            (max_transaction_lifetime)(deferred_trx_expiration_window)(max_transaction_delay)
            (max_inline_action_size)(max_inline_action_depth)(max_authority_depth)
+           
+           (max_block_usage)(max_transaction_usage)
            
            (target_virtual_limits)(min_virtual_limits)(max_virtual_limits)(usage_windows)
            (virtual_limit_decrease_pct)(virtual_limit_increase_pct)(account_usage_windows)

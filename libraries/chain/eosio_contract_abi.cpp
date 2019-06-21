@@ -196,7 +196,6 @@ abi_def eosio_contract_abi(abi_def eos_abi)
    eos_abi.structs.emplace_back( eosio::chain::struct_def{
       "chain_config", "", {
          {"base_per_transaction_net_usage", "uint32"},
-         {"net_usage_leeway", "uint32"},
          {"context_free_discount_net_usage_num", "uint32"},
          {"context_free_discount_net_usage_den", "uint32"},
          {"min_transaction_cpu_usage", "uint32"},
@@ -207,6 +206,8 @@ abi_def eosio_contract_abi(abi_def eos_abi)
          {"max_inline_action_size", "uint32"},
          {"max_inline_action_depth", "uint16"},
          {"max_authority_depth", "uint16"},
+         {"max_block_usage", "uint64[]"},
+         {"max_transaction_usage", "uint64[]"},
          {"target_virtual_limits", "uint64[]"},
          {"min_virtual_limits", "uint64[]"},
          {"max_virtual_limits", "uint64[]"},

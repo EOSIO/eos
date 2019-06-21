@@ -641,7 +641,11 @@ struct controller_impl {
       blocksum_table.modify( tapos_block_summary, [&]( auto& bs ) {
         bs.block_id = head->id;
       });
-
+      
+      conf.genesis.initial_configuration.max_block_usage = 
+        std::vector<uint64_t>(config::default_max_block_usage.begin(), config::default_max_block_usage.end());
+      conf.genesis.initial_configuration.max_transaction_usage = 
+        std::vector<uint64_t>(config::default_max_transaction_usage.begin(), config::default_max_transaction_usage.end());
       conf.genesis.initial_configuration.target_virtual_limits = 
         std::vector<uint64_t>(config::default_target_virtual_limits.begin(), config::default_target_virtual_limits.end());
       conf.genesis.initial_configuration.min_virtual_limits = 

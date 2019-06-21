@@ -21,7 +21,6 @@ namespace eosio {
    struct blockchain_parameters {
 
    uint32_t   base_per_transaction_net_usage;      ///< the base amount of net usage billed for a transaction to cover incidentals
-   uint32_t   net_usage_leeway;
    uint32_t   context_free_discount_net_usage_num; ///< the numerator for the discount on net usage of context-free data
    uint32_t   context_free_discount_net_usage_den; ///< the denominator for the discount on net usage of context-free data
 
@@ -35,6 +34,10 @@ namespace eosio {
    uint32_t   max_inline_action_size;              ///< maximum allowed size (in bytes) of an inline action
    uint16_t   max_inline_action_depth;             ///< recursion depth limit on sending inline actions
    uint16_t   max_authority_depth;                 ///< recursion depth limit for checking if an authority is satisfied
+   
+   std::vector<uint64_t> max_block_usage;
+   std::vector<uint64_t> max_transaction_usage;
+   
    std::vector<uint64_t> target_virtual_limits;
    std::vector<uint64_t> min_virtual_limits;
    std::vector<uint64_t> max_virtual_limits;
@@ -47,7 +50,7 @@ namespace eosio {
 
 
       EOSLIB_SERIALIZE( blockchain_parameters,
-           (base_per_transaction_net_usage)(net_usage_leeway)
+           (base_per_transaction_net_usage)
            (context_free_discount_net_usage_num)(context_free_discount_net_usage_den)
 
            (min_transaction_cpu_usage)
@@ -55,6 +58,8 @@ namespace eosio {
 
            (max_transaction_lifetime)(deferred_trx_expiration_window)(max_transaction_delay)
            (max_inline_action_size)(max_inline_action_depth)(max_authority_depth)
+           
+           (max_block_usage)(max_transaction_usage)
            
            (target_virtual_limits)(min_virtual_limits)(max_virtual_limits)(usage_windows)
            (virtual_limit_decrease_pct)(virtual_limit_increase_pct)(account_usage_windows)
