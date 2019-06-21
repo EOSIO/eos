@@ -99,7 +99,7 @@ struct genesis_create::genesis_create_impl final {
         return name_by_idx(_visitor.acc_id2idx[id]);
     }
 
-    supply_distributor get_gbg_supply_distributor() {
+    supply_distributor get_gbg_to_golos_converter() {
         const auto& gp = _visitor.gpo;
         golos::price price;
         if (gp.is_forced_min_price) {
@@ -673,7 +673,7 @@ struct genesis_create::genesis_create_impl final {
 
         auto& data = _visitor;
         const auto& gp = data.gpo;
-        auto to_gls = get_gbg_supply_distributor();
+        auto to_gls = get_gbg_to_golos_converter();
         auto golos_from_gbg = to_gls.convert(gp.current_sbd_supply);
         std::cout << "GBG to GOLOS = " << golos_from_gbg << std::endl;
         to_gls.reset();
@@ -1035,8 +1035,7 @@ struct genesis_create::genesis_create_impl final {
         post_ids.clear();
         _visitor.permlinks.clear();
 
-        auto to_gls = get_gbg_supply_distributor();
-        to_gls.reset();
+        auto to_gls = get_gbg_to_golos_converter();
         db.start_section(_info.golos.names.posting, N(message), "message", n);
         uint128_t sum_net_rshares = 0;
         uint128_t sum_net_positive = 0;
@@ -1225,8 +1224,8 @@ name genesis_create::name_by_idx(acc_idx idx) const {
     return _impl->name_by_idx(idx);
 }
 
-supply_distributor genesis_create::get_gbg_supply_distributor() const {
-    return _impl->get_gbg_supply_distributor();
+supply_distributor genesis_create::get_gbg_to_golos_converter() const {
+    return _impl->get_gbg_to_golos_converter();
 }
 
 string pubkey_string(const golos::public_key_type& k) {

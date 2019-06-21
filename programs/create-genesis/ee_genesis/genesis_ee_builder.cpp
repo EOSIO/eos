@@ -417,8 +417,7 @@ void genesis_ee_builder::write_messages() {
     auto& out = out_.get_serializer(event_engine_genesis::messages);
     out.start_section(info_.golos.names.posting, N(message), "message_info");
 
-    auto to_gls = genesis_.get_gbg_supply_distributor();
-    to_gls.reset();
+    auto to_gls = genesis_.get_gbg_to_golos_converter();
 
     const auto& comment_idx = maps_.get_index<comment_header_index, by_parent_hash>();
 
