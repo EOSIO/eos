@@ -254,24 +254,29 @@ namespace eosio { namespace chain {
 
          uint32_t last_committed_block_num = 0; // 0 indicates no committed blocks in log
 
-         log.seekg( 0, std::ios::end );
-         pos_t file_size = log.tellg();
-         if( file_size > 0 ) {
-            pos_t last_committed_block_begin_pos{};
-            FC_ASSERT( file_size > sizeof(last_committed_block_begin_pos),
-                       "corrupted log: file size is too small to be valid" );
-            log.seekg( -sizeof(last_committed_block_begin_pos), std::ios::end );
-            fc::raw::unpack( log, last_committed_block_begin_pos );
-            FC_ASSERT( last_committed_block_begin_pos < file_size, "corrupted log: invalid block position" );
+         try {
+            log.seekg( 0, std::ios::end );
+            pos_t file_size = log.tellg();
+            if( file_size > 0 ) {
+               pos_t last_committed_block_begin_pos{};
+               FC_ASSERT( file_size > sizeof(last_committed_block_begin_pos),
+                          "corrupted log: file size is too small to be valid" );
+               log.seekg( -sizeof(last_committed_block_begin_pos), std::ios::end );
+               fc::raw::unpack( log, last_committed_block_begin_pos );
+               FC_ASSERT( last_committed_block_begin_pos < file_size, "corrupted log: invalid block position" );
 
-            log.seekg( last_committed_block_begin_pos, std::ios::beg	);
-            uint8_t tag = 0;
-            fc::raw::unpack( log, tag );
-            FC_ASSERT( tag == block_tag, "corrupted log: expected block tag" );
+               log.seekg( last_committed_block_begin_pos, std::ios::beg	);
+               uint8_t tag = 0;
+               fc::raw::unpack( log, tag );
+               FC_ASSERT( tag == block_tag, "corrupted log: expected block tag" );
 
-            fc::raw::unpack( log, last_committed_block_num );
+               fc::raw::unpack( log, last_committed_block_num );
 
-            log_metadata.emplace( log_metadata_t{ last_committed_block_begin_pos, file_size } );
+               log_metadata.emplace( log_metadata_t{ last_committed_block_begin_pos, file_size } );
+            }
+         } catch( ... ) {
+            log.close();
+            throw;
          }
 
          if( open_as_read_only ) {
