@@ -76,6 +76,10 @@ string convert_to_string(const Type& source, const string& key_type, const strin
 template<>
 string convert_to_string(const chain::key256_t& source, const string& key_type, const string& encode_type, const string& desc);
 
+template<>
+string convert_to_string(const float128_t& source, const string& key_type, const string& encode_type, const string& desc);
+
+
 class read_only {
    const controller& db;
    const fc::microseconds abi_serializer_max_time;
