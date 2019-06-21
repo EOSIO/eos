@@ -14,11 +14,11 @@ load ../helpers/functions
         run bash -c "printf \"y\n%.0s\" {1..100} | ./$SCRIPT_LOCATION -i /NEWPATH"
         ## CLANG already exists (c++/default) (Ubuntu doesn't have clang>7, so we need to make sure it installs Clang 8)
         [[ ! -z $(echo "${output}" | grep "PIN_COMPILER: false") ]] || exit
-        if [[ $VERSION_ID == "16.04" ]]; then
-            [[ ! -z $(echo "${output}" | grep "Unable to find C++17 support") ]] || exit
-            [[ ! -z $(echo "${output}" | grep "Clang 8 successfully installed") ]] || exit
-            [[ ! -z $(echo "${output}" | grep "$CLANG_ROOT") ]] || exit
-        fi
+        # if [[ $VERSION_ID == "16.04" ]]; then
+        #     [[ ! -z $(echo "${output}" | grep "Unable to find compiler") ]] || exit
+        #     [[ ! -z $(echo "${output}" | grep "Clang 8 successfully installed") ]] || exit
+        #     [[ ! -z $(echo "${output}" | grep "$CLANG_ROOT") ]] || exit
+        # fi
         ## CLANG
         uninstall-package build-essential WETRUN 1>/dev/null
         run bash -c "./$SCRIPT_LOCATION -y -P"
