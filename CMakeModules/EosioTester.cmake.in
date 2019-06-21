@@ -26,7 +26,7 @@ find_package(LLVM 4.0 REQUIRED CONFIG)
 
 link_directories(${LLVM_LIBRARY_DIR})
 
-set( CMAKE_CXX_STANDARD 14 )
+set( CMAKE_CXX_STANDARD 17 )
 set( CMAKE_CXX_EXTENSIONS ON )
 set( CXX_STANDARD_REQUIRED ON )
 
@@ -36,6 +36,8 @@ else ( APPLE )
    set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
    set( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libstdc++ -static-libgcc")
 endif ( APPLE )
+
+set( BOOST_ROOT @BOOST_ROOT@ )
 
 set( Boost_USE_STATIC_LIBS ON CACHE STRING "ON or OFF" )
 find_package(Boost 1.67 REQUIRED COMPONENTS
