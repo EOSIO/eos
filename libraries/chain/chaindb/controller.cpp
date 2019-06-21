@@ -739,8 +739,8 @@ namespace cyberway { namespace chaindb {
         impl_->drop_db();
     }
 
-    void chaindb_controller::clear_cache() const {
-        impl_->cache_.set_revision(revision());
+    void chaindb_controller::push_cache() const {
+        impl_->cache_.push(revision());
     }
 
     void chaindb_controller::close(const cursor_request& request) const {

@@ -33,7 +33,7 @@ struct genesis_import::impl final {
     void apply_db_changes(bool force = false) {
         if (force || (++db_updates & 0xFFF) == 0) {
             db.apply_all_changes();
-            db.clear_cache();
+            db.push_cache();
         }
     }
 
@@ -111,7 +111,7 @@ struct genesis_import::impl final {
         }
         std::cout << "Done reading Genesis state." << std::endl;
         in.close();
-        db.clear_cache();
+        db.push_cache();
     }
 };
 
