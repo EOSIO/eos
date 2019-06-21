@@ -165,8 +165,7 @@ function ensure-compiler() {
         # readlink on mac differs from linux readlink (mac doesn't have -f)
         [[ $ARCH == "Linux" ]] && READLINK_COMMAND="readlink -f" || READLINK_COMMAND="readlink"
         COMPILER_TYPE=$( eval $READLINK_COMMAND $(which $CXX) || true )
-        [[ -z $COMPILER_TYPE ]] && echo "${COLOR_RED}COMPILER_TYPE not set!${COLOR_NC}" && exit 1
-        if [[ $COMPILER_TYPE =~ "clang" ]]; then
+        if [[ $CXX =~ "clang" ]] || [[ $COMPILER_TYPE =~ "clang" ]]; then
             if [[ $ARCH == "Darwin" ]]; then
                 ### Check for apple clang version 10 or higher
                 [[ $( $(which $CXX) --version | cut -d ' ' -f 4 | cut -d '.' -f 1 | head -n 1 ) -lt 10 ]] && export NO_CPP17=true
