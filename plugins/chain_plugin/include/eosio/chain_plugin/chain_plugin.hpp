@@ -15,6 +15,7 @@
 #include <eosio/chain/abi_serializer.hpp>
 #include <eosio/chain/plugin_interface.hpp>
 #include <eosio/chain/types.hpp>
+#include <eosio/chain/fixed_bytes.hpp>
 
 #include <boost/container/flat_set.hpp>
 #include <boost/multiprecision/cpp_int.hpp>
@@ -71,6 +72,9 @@ double convert_to_type(const string& str, const string& desc);
 
 template<typename Type>
 string convert_to_string(const Type& source, const string& key_type, const string& encode_type, const string& desc);
+
+template<>
+string convert_to_string(const chain::key256_t& source, const string& key_type, const string& encode_type, const string& desc);
 
 class read_only {
    const controller& db;

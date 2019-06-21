@@ -1446,6 +1446,28 @@ string convert_to_string(const Type& source, const string& key_type, const strin
    } FC_RETHROW_EXCEPTIONS(warn, "Could not convert ${desc} from '${source}' to string.", ("desc", desc)("source",source) )
 }
 
+template<>
+string convert_to_string(const chain::key256_t& source, const string& key_type, const string& encode_type, const string& desc) {
+   try {
+      if (key_type == chain_apis::sha256 || (key_type == chain_apis::i256 && encode_type == chain_apis::hex)) {
+         auto byte_array = fixed_bytes<32>(source).extract_as_byte_array();
+         fc::sha256 val(reinterpret_cast<char *>(byte_array.data()), byte_array.size());
+         return std::string(val);
+      } else if (key_type == chain_apis::i256) {
+         auto byte_array = fixed_bytes<32>(source).extract_as_byte_array();
+         fc::sha256 val(reinterpret_cast<char *>(byte_array.data()), byte_array.size());
+         return std::string("0x") + std::string(val);
+      } else if (key_type == chain_apis::ripemd160) {
+         auto byte_array = fixed_bytes<20>(source).extract_as_byte_array();
+         fc::ripemd160 val;
+         memcpy(val._hash, byte_array.data(), byte_array.size() );
+         return std::string(val);
+      }
+      EOS_ASSERT( false, chain_type_exception, "Incompatible key_type and encode_type for key256_t more2" );
+     
+   } FC_RETHROW_EXCEPTIONS(warn, "Could not convert ${desc} source '${source}' to string.", ("desc", desc)("source",source) )
+}
+
 abi_def get_abi( const controller& db, const name& account ) {
    const auto &d = db.db();
    const account_object *code_accnt = d.find<account_object, by_name>(account);
