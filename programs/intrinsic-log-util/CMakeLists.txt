@@ -1,4 +1,8 @@
-add_executable( intrinsic-log-util main.cpp )
+add_executable( intrinsic-log-util
+   main.cpp
+   print.cpp
+   diff.cpp
+)
 
 if( UNIX AND NOT APPLE )
   set(rt_library rt )

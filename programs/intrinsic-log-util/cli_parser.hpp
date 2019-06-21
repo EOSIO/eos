@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eosio/LICENSE.txt
- */
 #pragma once
 
 #include <fc/exception/exception.hpp>
