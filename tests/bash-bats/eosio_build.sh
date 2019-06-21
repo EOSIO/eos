@@ -14,18 +14,18 @@ TEST_LABEL="[eosio_build]"
     if [[ $NAME =~ "Amazon Linux" ]] || [[ $NAME == "CentOS Linux" ]]; then
         # which package isn't installed
         uninstall-package which WETRUN &>/dev/null
-        run bash -c "printf \"y\nn\nn\n\" | ./scripts/eosio_build.sh"
+        run bash -c "printf \"y\ny\nn\nn\n\" | ./scripts/eosio_build.sh"
         [[ ! -z $(echo "${output}" | grep "EOSIO compiler checks require the 'which'") ]] || exit
-        [[ ! -z $(echo "${output}" | grep "Please install the 'which'") ]] || exit
+        # [[ ! -z $(echo "${output}" | grep "Please install the 'which'") ]] || exit
     fi
 
     if [[ $ARCH == "Linux" ]]; then
         if [[ $NAME == "CentOS Linux" ]]; then # Centos has the SCL prompt before checking for the compiler
             # No c++!
-            run bash -c "printf \"y\ny\nn\n\" | ./${SCRIPT_LOCATION}"
+            run bash -c "printf \"y\ny\ny\nn\n\" | ./${SCRIPT_LOCATION}"
         else
             # No c++!
-            run bash -c "printf \"y\nn\nn\n\" | ./${SCRIPT_LOCATION}"
+            run bash -c "printf \"y\ny\nn\nn\n\" | ./${SCRIPT_LOCATION}"
         fi
         [[ ! -z $(echo "${output}" | grep "Unable to find compiler") ]] || exit
     fi 
