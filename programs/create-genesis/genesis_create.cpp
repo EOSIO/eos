@@ -2,7 +2,6 @@
 #include "genesis_create.hpp"
 #include "state_reader.hpp"
 #include "golos_objects.hpp"
-#include "supply_distributor.hpp"
 #include "serializer.hpp"
 #include "genesis_generate_name.hpp"
 #include <eosio/chain/config.hpp>
@@ -64,7 +63,6 @@ public_key_type pubkey_from_golos(const golos::public_key_type& k) {
 }
 asset golos2sys(const asset& golos);
 
-
 struct genesis_create::genesis_create_impl final {
     genesis_info _info;
     genesis_state _conf;
@@ -101,6 +99,18 @@ struct genesis_create::genesis_create_impl final {
         return name_by_idx(_visitor.acc_id2idx[id]);
     }
 
+    supply_distributor get_gbg_supply_distributor() {
+        const auto& gp = _visitor.gpo;
+        golos::price price;
+        if (gp.is_forced_min_price) {
+            // This price limits SBD to 10% market cap
+            price = golos::price{asset(9 * gp.current_sbd_supply.get_amount(), symbol(GBG)), gp.current_supply};
+        } else {
+            EOS_ASSERT(false, genesis_exception, "Not implemented");
+        }
+        supply_distributor to_gls(price.quote, price.base);
+        return to_gls;
+    }
 
     genesis_create_impl() {
         db.set_autoincrement<permission_object>(permissions_tbl_start_id);
@@ -663,14 +673,7 @@ struct genesis_create::genesis_create_impl final {
 
         auto& data = _visitor;
         const auto& gp = data.gpo;
-        golos::price price;
-        if (gp.is_forced_min_price) {
-            // This price limits SBD to 10% market cap
-            price = golos::price{asset(9 * gp.current_sbd_supply.get_amount(), symbol(GBG)), gp.current_supply};
-        } else {
-            EOS_ASSERT(false, genesis_exception, "Not implemented");
-        }
-        supply_distributor to_gls(price.quote, price.base);     // flip price to convert GBG to GOLOS
+        auto to_gls = get_gbg_supply_distributor();
         auto golos_from_gbg = to_gls.convert(gp.current_sbd_supply);
         std::cout << "GBG to GOLOS = " << golos_from_gbg << std::endl;
         to_gls.reset();
@@ -1032,6 +1035,8 @@ struct genesis_create::genesis_create_impl final {
         post_ids.clear();
         _visitor.permlinks.clear();
 
+        auto to_gls = get_gbg_supply_distributor();
+        to_gls.reset();
         db.start_section(_info.golos.names.posting, N(message), "message", n);
         uint128_t sum_net_rshares = 0;
         uint128_t sum_net_positive = 0;
@@ -1061,6 +1066,7 @@ struct genesis_create::genesis_create_impl final {
                 ("curators_prcnt", c.active.curation_rewards_percent)
                 ("closed", false)
                 ("mssg_reward", asset(0, symbol(GLS)))
+                ("max_payout", to_gls.convert(c.active.max_accepted_payout))
             );
             sum_net_rshares += c.active.net_rshares;
             sum_net_positive += (c.active.net_rshares > 0) ? c.active.net_rshares : 0;
@@ -1219,6 +1225,10 @@ name genesis_create::name_by_idx(acc_idx idx) const {
     return _impl->name_by_idx(idx);
 }
 
+supply_distributor genesis_create::get_gbg_supply_distributor() const {
+    return _impl->get_gbg_supply_distributor();
+}
+
 string pubkey_string(const golos::public_key_type& k) {
     using checksummer = fc::crypto::checksummed_data<golos::public_key_type>;
     checksummer wrapper;
@@ -1234,6 +1244,5 @@ asset golos2sys(const asset& golos) {
     return asset(int_arithmetic::safe_prop(
         golos.get_amount(), sys_precision, static_cast<int64_t>(golos.get_symbol().precision())));
 }
-
 
 }} // cyberway::genesis

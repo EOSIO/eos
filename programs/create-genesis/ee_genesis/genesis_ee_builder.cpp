@@ -417,6 +417,9 @@ void genesis_ee_builder::write_messages() {
     auto& out = out_.get_serializer(event_engine_genesis::messages);
     out.start_section(info_.golos.names.posting, N(message), "message_info");
 
+    auto to_gls = genesis_.get_gbg_supply_distributor();
+    to_gls.reset();
+
     const auto& comment_idx = maps_.get_index<comment_header_index, by_parent_hash>();
 
     std::function<void(uint64_t)> build_children = [&](uint64_t parent_hash) {
@@ -453,6 +456,7 @@ void genesis_ee_builder::write_messages() {
                         c.benefics_prcnt += b.weight;
                     }
                     c.rewardweight = active.reward_weight;
+                    c.max_payout = to_gls.convert(active.max_accepted_payout);
                     c.curators_prcnt = active.curation_rewards_percent;
                     c.tokenprop = active.percent_steem_dollars / 2;
                 }
