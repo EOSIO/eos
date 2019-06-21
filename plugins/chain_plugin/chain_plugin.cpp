@@ -364,7 +364,7 @@ protocol_feature_set initialize_protocol_features( const fc::path& p, bool popul
       );
    } else {
       if( populate_missing_builtins )
-         bfs::create_directory( p );
+         bfs::create_directories( p );
       else
          directory_exists = false;
    }
@@ -715,7 +715,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          if( options.at( "truncate-at-block" ).as<uint32_t>() > 0 )
             wlog( "The --truncate-at-block option does not make sense when deleting all blocks." );
          clear_directory_contents( my->chain_config->state_dir );
-         fc::remove_all( my->blocks_dir );
+         clear_directory_contents( my->blocks_dir );
       } else if( options.at( "hard-replay-blockchain" ).as<bool>()) {
          ilog( "Hard replay requested: deleting state database" );
          clear_directory_contents( my->chain_config->state_dir );
