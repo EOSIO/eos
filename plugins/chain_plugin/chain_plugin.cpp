@@ -117,26 +117,6 @@ using fc::flat_map;
 
 using boost::signals2::scoped_connection;
 
-//using txn_msg_rate_limits = controller::txn_msg_rate_limits;
-
-#define CATCH_AND_CALL(NEXT)\
-   catch ( const fc::exception& err ) {\
-      NEXT(err.dynamic_copy_exception());\
-   } catch ( const std::exception& e ) {\
-      fc::exception fce( \
-         FC_LOG_MESSAGE( warn, "rethrow ${what}: ", ("what",e.what())),\
-         fc::std_exception_code,\
-         BOOST_CORE_TYPEID(e).name(),\
-         e.what() ) ;\
-      NEXT(fce.dynamic_copy_exception());\
-   } catch( ... ) {\
-      fc::unhandled_exception e(\
-         FC_LOG_MESSAGE(warn, "rethrow"),\
-         std::current_exception());\
-      NEXT(e.dynamic_copy_exception());\
-   }
-
-
 class chain_plugin_impl {
 public:
    chain_plugin_impl()
@@ -310,10 +290,12 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
 
 }
 
-#define LOAD_VALUE_SET(options, name, container) \
-if( options.count(name) ) { \
-   const std::vector<std::string>& ops = options[name].as<std::vector<std::string>>(); \
-   std::copy(ops.begin(), ops.end(), std::inserter(container, container.end())); \
+#define LOAD_VALUE_SET(options, op_name, container) \
+if( options.count(op_name) ) { \
+   const std::vector<std::string>& ops = options[op_name].as<std::vector<std::string>>(); \
+   for( const auto& v : ops ) { \
+      container.emplace( eosio::chain::name( v ) ); \
+   } \
 }
 
 fc::time_point calculate_genesis_timestamp( string tstr ) {
@@ -382,7 +364,7 @@ protocol_feature_set initialize_protocol_features( const fc::path& p, bool popul
       );
    } else {
       if( populate_missing_builtins )
-         bfs::create_directory( p );
+         bfs::create_directories( p );
       else
          directory_exists = false;
    }
@@ -584,7 +566,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
             EOS_ASSERT( pos != std::string::npos, plugin_config_exception, "Invalid entry in action-blacklist: '${a}'", ("a", a));
             account_name code( a.substr( 0, pos ));
             action_name act( a.substr( pos + 2 ));
-            list.emplace( code.value, act.value );
+            list.emplace( code, act );
          }
       }
 
@@ -733,7 +715,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          if( options.at( "truncate-at-block" ).as<uint32_t>() > 0 )
             wlog( "The --truncate-at-block option does not make sense when deleting all blocks." );
          clear_directory_contents( my->chain_config->state_dir );
-         fc::remove_all( my->blocks_dir );
+         clear_directory_contents( my->blocks_dir );
       } else if( options.at( "hard-replay-blockchain" ).as<bool>()) {
          ilog( "Hard replay requested: deleting state database" );
          clear_directory_contents( my->chain_config->state_dir );
@@ -1378,7 +1360,7 @@ read_only::get_activated_protocol_features( const read_only::get_activated_proto
 uint64_t read_only::get_table_index_name(const read_only::get_table_rows_params& p, bool& primary) {
    using boost::algorithm::starts_with;
    // see multi_index packing of index name
-   const uint64_t table = p.table;
+   const uint64_t table = p.table.to_uint64_t();
    uint64_t index = table & 0xFFFFFFFFFFFFFFF0ULL;
    EOS_ASSERT( index == table, chain::contract_table_query_exception, "Unsupported table name: ${n}", ("n", p.table) );
 
@@ -1431,7 +1413,7 @@ uint64_t convert_to_type(const string& str, const string& desc) {
       auto trimmed_str = str;
       boost::trim(trimmed_str);
       name s(trimmed_str);
-      return s.value;
+      return s.to_uint64_t();
    } catch( ... ) { }
 
    if (str.find(',') != string::npos) { // fix #6274 only match formats like 4,EOS
@@ -1547,18 +1529,18 @@ read_only::get_table_by_scope_result read_only::get_table_by_scope( const read_o
    const auto& d = db.db();
 
    const auto& idx = d.get_index<chain::table_id_multi_index, chain::by_code_scope_table>();
-   auto lower_bound_lookup_tuple = std::make_tuple( p.code.value, std::numeric_limits<uint64_t>::lowest(), p.table.value );
-   auto upper_bound_lookup_tuple = std::make_tuple( p.code.value, std::numeric_limits<uint64_t>::max(),
-                                                    (p.table.empty() ? std::numeric_limits<uint64_t>::max() : p.table.value) );
+   auto lower_bound_lookup_tuple = std::make_tuple( p.code, name(std::numeric_limits<uint64_t>::lowest()), p.table );
+   auto upper_bound_lookup_tuple = std::make_tuple( p.code, name(std::numeric_limits<uint64_t>::max()),
+                                                    (p.table.empty() ? name(std::numeric_limits<uint64_t>::max()) : p.table) );
 
    if( p.lower_bound.size() ) {
       uint64_t scope = convert_to_type<uint64_t>(p.lower_bound, "lower_bound scope");
-      std::get<1>(lower_bound_lookup_tuple) = scope;
+      std::get<1>(lower_bound_lookup_tuple) = name(scope);
    }
 
    if( p.upper_bound.size() ) {
       uint64_t scope = convert_to_type<uint64_t>(p.upper_bound, "upper_bound scope");
-      std::get<1>(upper_bound_lookup_tuple) = scope;
+      std::get<1>(upper_bound_lookup_tuple) = name(scope);
    }
 
    if( upper_bound_lookup_tuple < lower_bound_lookup_tuple )
@@ -1575,7 +1557,7 @@ read_only::get_table_by_scope_result read_only::get_table_by_scope( const read_o
          ++count;
       }
       if( itr != end_itr ) {
-         result.more = string(itr->scope);
+         result.more = itr->scope.to_string();
       }
    };
 
@@ -1593,7 +1575,7 @@ read_only::get_table_by_scope_result read_only::get_table_by_scope( const read_o
 vector<asset> read_only::get_currency_balance( const read_only::get_currency_balance_params& p )const {
 
    const abi_def abi = eosio::chain_apis::get_abi( db, p.code );
-   (void)get_table_type( abi, "accounts" );
+   (void)get_table_type( abi, name("accounts") );
 
    vector<asset> results;
    walk_key_value_table(p.code, p.account, N(accounts), [&](const key_value_object& obj){
@@ -1620,11 +1602,11 @@ fc::variant read_only::get_currency_stats( const read_only::get_currency_stats_p
    fc::mutable_variant_object results;
 
    const abi_def abi = eosio::chain_apis::get_abi( db, p.code );
-   (void)get_table_type( abi, "stat" );
+   (void)get_table_type( abi, name("stat") );
 
    uint64_t scope = ( eosio::chain::string_to_symbol( 0, boost::algorithm::to_upper_copy(p.symbol).c_str() ) >> 8 );
 
-   walk_key_value_table(p.code, scope, N(stat), [&](const key_value_object& obj){
+   walk_key_value_table(p.code, name(scope), N(stat), [&](const key_value_object& obj){
       EOS_ASSERT( obj.value.size() >= sizeof(read_only::get_currency_stats_result), chain::asset_type_exception, "Invalid data on table");
 
       fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
@@ -1649,7 +1631,7 @@ fc::variant get_global_row( const database& db, const abi_def& abi, const abi_se
    EOS_ASSERT(table_id, chain::contract_table_query_exception, "Missing table global");
 
    const auto& kv_index = db.get_index<key_value_index, by_scope_primary>();
-   const auto it = kv_index.find(boost::make_tuple(table_id->id, N(global)));
+   const auto it = kv_index.find(boost::make_tuple(table_id->id, N(global).to_uint64_t()));
    EOS_ASSERT(it != kv_index.end(), chain::contract_table_query_exception, "Missing row in table global");
 
    vector<char> data;
@@ -1670,7 +1652,7 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
    const auto* const table_id = d.find<chain::table_id_object, chain::by_code_scope_table>(
            boost::make_tuple(config::system_account_name, config::system_account_name, N(producers)));
    const auto* const secondary_table_id = d.find<chain::table_id_object, chain::by_code_scope_table>(
-           boost::make_tuple(config::system_account_name, config::system_account_name, N(producers) | secondary_index_num));
+           boost::make_tuple(config::system_account_name, config::system_account_name, name(N(producers).to_uint64_t() | secondary_index_num)));
    EOS_ASSERT(table_id && secondary_table_id, chain::contract_table_query_exception, "Missing producers table");
 
    const auto& kv_index = d.get_index<key_value_index, by_scope_primary>();
@@ -1683,13 +1665,13 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
    vector<char> data;
 
    auto it = [&]{
-      if(lower.value == 0)
+      if(lower.to_uint64_t() == 0)
          return secondary_index_by_secondary.lower_bound(
             boost::make_tuple(secondary_table_id->id, to_softfloat64(std::numeric_limits<double>::lowest()), 0));
       else
          return secondary_index.project<by_secondary>(
             secondary_index_by_primary.lower_bound(
-               boost::make_tuple(secondary_table_id->id, lower.value)));
+               boost::make_tuple(secondary_table_id->id, lower.to_uint64_t())));
    }();
 
    for( ; it != secondary_index_by_secondary.end() && it->t_id == secondary_table_id->id; ++it ) {
@@ -2200,7 +2182,7 @@ read_only::get_account_results read_only::get_account( const get_account_params&
       t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, params.account_name, N(userres) ));
       if (t_id != nullptr) {
          const auto &idx = d.get_index<key_value_index, by_scope_primary>();
-         auto it = idx.find(boost::make_tuple( t_id->id, params.account_name ));
+         auto it = idx.find(boost::make_tuple( t_id->id, params.account_name.to_uint64_t() ));
          if ( it != idx.end() ) {
             vector<char> data;
             copy_inline_row(*it, data);
@@ -2211,7 +2193,7 @@ read_only::get_account_results read_only::get_account( const get_account_params&
       t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, params.account_name, N(delband) ));
       if (t_id != nullptr) {
          const auto &idx = d.get_index<key_value_index, by_scope_primary>();
-         auto it = idx.find(boost::make_tuple( t_id->id, params.account_name ));
+         auto it = idx.find(boost::make_tuple( t_id->id, params.account_name.to_uint64_t() ));
          if ( it != idx.end() ) {
             vector<char> data;
             copy_inline_row(*it, data);
@@ -2222,7 +2204,7 @@ read_only::get_account_results read_only::get_account( const get_account_params&
       t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, params.account_name, N(refunds) ));
       if (t_id != nullptr) {
          const auto &idx = d.get_index<key_value_index, by_scope_primary>();
-         auto it = idx.find(boost::make_tuple( t_id->id, params.account_name ));
+         auto it = idx.find(boost::make_tuple( t_id->id, params.account_name.to_uint64_t() ));
          if ( it != idx.end() ) {
             vector<char> data;
             copy_inline_row(*it, data);
@@ -2233,7 +2215,7 @@ read_only::get_account_results read_only::get_account( const get_account_params&
       t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, config::system_account_name, N(voters) ));
       if (t_id != nullptr) {
          const auto &idx = d.get_index<key_value_index, by_scope_primary>();
-         auto it = idx.find(boost::make_tuple( t_id->id, params.account_name ));
+         auto it = idx.find(boost::make_tuple( t_id->id, params.account_name.to_uint64_t() ));
          if ( it != idx.end() ) {
             vector<char> data;
             copy_inline_row(*it, data);
@@ -2244,7 +2226,7 @@ read_only::get_account_results read_only::get_account( const get_account_params&
       t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, config::system_account_name, N(rexbal) ));
       if (t_id != nullptr) {
          const auto &idx = d.get_index<key_value_index, by_scope_primary>();
-         auto it = idx.find(boost::make_tuple( t_id->id, params.account_name ));
+         auto it = idx.find(boost::make_tuple( t_id->id, params.account_name.to_uint64_t() ));
          if( it != idx.end() ) {
             vector<char> data;
             copy_inline_row(*it, data);

@@ -17,6 +17,7 @@
 #include <eosio/chain/reversible_block_object.hpp>
 #include <eosio/chain/genesis_intrinsics.hpp>
 #include <eosio/chain/whitelisted_intrinsics.hpp>
+#include <eosio/chain/database_header_object.hpp>
 
 #include <eosio/chain/protocol_feature_manager.hpp>
 #include <eosio/chain/authorization_manager.hpp>
@@ -46,7 +47,8 @@ using controller_index_set = index_set<
    transaction_multi_index,
    generated_transaction_multi_index,
    table_id_multi_index,
-   code_index
+   code_index,
+   database_header_multi_index
 >;
 
 using contract_database_index_set = index_set<
@@ -326,7 +328,8 @@ struct controller_impl {
 
 
 #define SET_APP_HANDLER( receiver, contract, action) \
-   set_apply_handler( #receiver, #contract, #action, &BOOST_PP_CAT(apply_, BOOST_PP_CAT(contract, BOOST_PP_CAT(_,action) ) ) )
+   set_apply_handler( account_name(#receiver), account_name(#contract), action_name(#action), \
+                      &BOOST_PP_CAT(apply_, BOOST_PP_CAT(contract, BOOST_PP_CAT(_,action) ) ) )
 
    SET_APP_HANDLER( eosio, eosio, newaccount );
    SET_APP_HANDLER( eosio, eosio, setcode );
@@ -584,6 +587,31 @@ struct controller_impl {
             head = fork_db.head();
          }
       }
+
+      // check database version
+      const auto& header_idx = db.get_index<database_header_multi_index>().indices().get<by_id>();
+
+      if (database_header_object::minimum_version != 0) {
+         EOS_ASSERT(header_idx.begin() != header_idx.end(), bad_database_version_exception,
+                    "state database version pre-dates versioning, please restore from a compatible snapshot or replay!");
+      } else if ( header_idx.empty() ) {
+         // temporary code to upgrade from existing un-versioned state database
+         static_assert(database_header_object::minimum_version == 0, "remove this path once the minimum version moves");
+         db.create<database_header_object>([](const auto& header){
+            // nothing to do here
+         });
+      }
+
+      const auto& header_itr = header_idx.begin();
+      header_itr->validate();
+
+      // upgrade to the latest compatible version
+      if (header_itr->version != database_header_object::current_version) {
+         db.modify(*header_itr, [](auto& header) {
+            header.version = database_header_object::current_version;
+         });
+      }
+
       // At this point head != nullptr && fork_db.head() != nullptr && fork_db.root() != nullptr.
       // Furthermore, fork_db.root()->block_num <= lib_num.
       // Also, even though blog.head() may still be nullptr, blog.first_block_num() is guaranteed to be lib_num + 1.
@@ -821,6 +849,11 @@ struct controller_impl {
             return;
          }
 
+         // skip the database_header as it is only relevant to in-memory database
+         if (std::is_same<value_t, database_header_object>::value) {
+            return;
+         }
+
          snapshot->write_section<value_t>([this]( auto& section ){
             decltype(utils)::walk(db, [this, &section]( const auto &row ) {
                section.add_row(row, db);
@@ -868,6 +901,11 @@ struct controller_impl {
             return;
          }
 
+         // skip the database_header as it is only relevant to in-memory database
+         if (std::is_same<value_t, database_header_object>::value) {
+            return;
+         }
+
          snapshot->read_section<value_t>([this]( auto& section ) {
             bool more = !section.empty();
             while(more) {
@@ -884,6 +922,9 @@ struct controller_impl {
       resource_limits.read_from_snapshot(snapshot);
 
       db.set_revision( head->block_num );
+      db.create<database_header_object>([](const auto& header){
+         // nothing to do
+      });
    }
 
    sha256 calculate_integrity_hash() const {
@@ -926,6 +967,11 @@ struct controller_impl {
    }
 
    void initialize_database() {
+      // create the database header sigil
+      db.create<database_header_object>([&]( auto& header ){
+         // nothing to do for now
+      });
+
       // Initialize block summary index
       for (int i = 0; i < 0x10000; i++)
          db.create<block_summary_object>([&](block_summary_object&) {});

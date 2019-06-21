@@ -148,14 +148,14 @@ namespace eosio {
             if (bypass_filter) {
               pass_on = true;
             }
-            if (filter_on.find({ act.receiver, 0, 0 }) != filter_on.end()) {
+            if (filter_on.find({ act.receiver, {}, {} }) != filter_on.end()) {
               pass_on = true;
             }
-            if (filter_on.find({ act.receiver, act.act.name, 0 }) != filter_on.end()) {
+            if (filter_on.find({ act.receiver, act.act.name, {} }) != filter_on.end()) {
               pass_on = true;
             }
             for (const auto& a : act.act.authorization) {
-              if (filter_on.find({ act.receiver, 0, a.actor }) != filter_on.end()) {
+              if (filter_on.find({ act.receiver, {}, a.actor }) != filter_on.end()) {
                 pass_on = true;
               }
               if (filter_on.find({ act.receiver, act.act.name, a.actor }) != filter_on.end()) {
@@ -165,14 +165,14 @@ namespace eosio {
 
             if (!pass_on) {  return false;  }
 
-            if (filter_out.find({ act.receiver, 0, 0 }) != filter_out.end()) {
+            if (filter_out.find({ act.receiver, {}, {} }) != filter_out.end()) {
               return false;
             }
-            if (filter_out.find({ act.receiver, act.act.name, 0 }) != filter_out.end()) {
+            if (filter_out.find({ act.receiver, act.act.name, {} }) != filter_out.end()) {
               return false;
             }
             for (const auto& a : act.act.authorization) {
-              if (filter_out.find({ act.receiver, 0, a.actor }) != filter_out.end()) {
+              if (filter_out.find({ act.receiver, {}, a.actor }) != filter_out.end()) {
                 return false;
               }
               if (filter_out.find({ act.receiver, act.act.name, a.actor }) != filter_out.end()) {
@@ -189,13 +189,13 @@ namespace eosio {
             result.insert( act.receiver );
             for( const auto& a : act.act.authorization ) {
                if( bypass_filter ||
-                   filter_on.find({ act.receiver, 0, 0}) != filter_on.end() ||
-                   filter_on.find({ act.receiver, 0, a.actor}) != filter_on.end() ||
-                   filter_on.find({ act.receiver, act.act.name, 0}) != filter_on.end() ||
+                   filter_on.find({ act.receiver, {}, {}}) != filter_on.end() ||
+                   filter_on.find({ act.receiver, {}, a.actor}) != filter_on.end() ||
+                   filter_on.find({ act.receiver, act.act.name, {}}) != filter_on.end() ||
                    filter_on.find({ act.receiver, act.act.name, a.actor }) != filter_on.end() ) {
-                 if ((filter_out.find({ act.receiver, 0, 0 }) == filter_out.end()) &&
-                     (filter_out.find({ act.receiver, 0, a.actor }) == filter_out.end()) &&
-                     (filter_out.find({ act.receiver, act.act.name, 0 }) == filter_out.end()) &&
+                 if ((filter_out.find({ act.receiver, {}, {} }) == filter_out.end()) &&
+                     (filter_out.find({ act.receiver, {}, a.actor }) == filter_out.end()) &&
+                     (filter_out.find({ act.receiver, act.act.name, {} }) == filter_out.end()) &&
                      (filter_out.find({ act.receiver, act.act.name, a.actor }) == filter_out.end())) {
                    result.insert( a.actor );
                  }
@@ -209,7 +209,7 @@ namespace eosio {
             chainbase::database& db = const_cast<chainbase::database&>( chain.db() ); // Override read-only access to state DB (highly unrecommended practice!)
 
             const auto& idx = db.get_index<account_history_index, by_account_action_seq>();
-            auto itr = idx.lower_bound( boost::make_tuple( name(n.value+1), 0 ) );
+            auto itr = idx.lower_bound( boost::make_tuple( name(n.to_uint64_t()+1), 0 ) );
 
             uint64_t asn = 0;
             if( itr != idx.begin() ) --itr;
@@ -320,8 +320,8 @@ namespace eosio {
                std::vector<std::string> v;
                boost::split( v, s, boost::is_any_of( ":" ));
                EOS_ASSERT( v.size() == 3, fc::invalid_arg_exception, "Invalid value ${s} for --filter-on", ("s", s));
-               filter_entry fe{v[0], v[1], v[2]};
-               EOS_ASSERT( fe.receiver.value, fc::invalid_arg_exception,
+               filter_entry fe{eosio::chain::name(v[0]), eosio::chain::name(v[1]), eosio::chain::name(v[2])};
+               EOS_ASSERT( fe.receiver.to_uint64_t(), fc::invalid_arg_exception,
                            "Invalid value ${s} for --filter-on", ("s", s));
                my->filter_on.insert( fe );
             }
@@ -332,8 +332,8 @@ namespace eosio {
                std::vector<std::string> v;
                boost::split( v, s, boost::is_any_of( ":" ));
                EOS_ASSERT( v.size() == 3, fc::invalid_arg_exception, "Invalid value ${s} for --filter-out", ("s", s));
-               filter_entry fe{v[0], v[1], v[2]};
-               EOS_ASSERT( fe.receiver.value, fc::invalid_arg_exception,
+               filter_entry fe{eosio::chain::name(v[0]), eosio::chain::name(v[1]), eosio::chain::name(v[2])};
+               EOS_ASSERT( fe.receiver.to_uint64_t(), fc::invalid_arg_exception,
                            "Invalid value ${s} for --filter-out", ("s", s));
                my->filter_out.insert( fe );
             }
@@ -383,7 +383,7 @@ namespace eosio {
         auto n = params.account_name;
         idump((pos));
         if( pos == -1 ) {
-            auto itr = idx.lower_bound( boost::make_tuple( name(n.value+1), 0 ) );
+            auto itr = idx.lower_bound( boost::make_tuple( name(n.to_uint64_t()+1), 0 ) );
             if( itr == idx.begin() ) {
                if( itr->account == n )
                   pos = itr->account_sequence_num+1;

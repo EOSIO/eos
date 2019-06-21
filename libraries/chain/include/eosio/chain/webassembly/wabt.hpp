@@ -188,7 +188,7 @@ inline auto convert_native_to_literal(const wabt_apply_instance_vars&, const dou
 
 inline auto convert_native_to_literal(const wabt_apply_instance_vars&, const name &val) {
    TypedValue tv(Type::I64);
-   tv.set_i64(val.value);
+   tv.set_i64(val.to_uint64_t());
    return tv;
 }
 

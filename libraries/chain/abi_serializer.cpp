@@ -119,7 +119,6 @@ namespace eosio { namespace chain {
          structs[st.name] = st;
 
       for( const auto& td : abi.types ) {
-         EOS_ASSERT(_is_type(td.type, ctx), invalid_type_inside_abi, "invalid type ${type}", ("type",td.type));
          EOS_ASSERT(!_is_type(td.new_type_name, ctx), duplicate_abi_type_def_exception, "type already exists", ("new_type_name",td.new_type_name));
          typedefs[td.new_type_name] = td.type;
       }
