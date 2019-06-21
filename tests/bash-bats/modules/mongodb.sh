@@ -4,9 +4,9 @@ load ../helpers/functions
 @test "${TEST_LABEL} > MongoDB" {
     # Existing MongoDB
     if [[ $NAME == "CentOS Linux" ]] || [[ $NAME == "Amazon Linux" ]]; then
-        run bash -c "printf \"y\nn\ny\ny\ny\n\" | ./$SCRIPT_LOCATION -m -P" # which prompt requires first y
+        run bash -c "printf \"y\yn\nn\ny\ny\ny\n\" | ./$SCRIPT_LOCATION -m -P" # which prompt requires first y
     else
-        run bash -c "printf \"n\nn\ny\ny\n\" | ./$SCRIPT_LOCATION -m -P"
+        run bash -c "printf \"y\nn\nn\ny\ny\n\" | ./$SCRIPT_LOCATION -m -P"
     fi
     [[ ! -z $(echo "${output}" | grep "Existing MongoDB will be used") ]] || exit
     [[ -z $(echo "${output}" | grep "Ensuring MongoDB installation") ]] || exit
