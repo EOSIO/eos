@@ -29,7 +29,7 @@ export TEST_LABEL="[eosio_build_centos]"
     # Ensure SCL and devtoolset-8 for c++ binary installation
     run bash -c "printf \"y\n%.0s\" {1..100}| ./${SCRIPT_LOCATION} -i /NEWPATH"
     [[ ! -z $(echo "${output}" | grep "centos-release-scl-2-3.el7.centos.noarch found") ]] || exit
-    [[ ! -z $(echo "${output}" | grep "devtoolset-8-8.0-2.el7.0.1.x86_64 found") ]] || exit
+    [[ ! -z $(echo "${output}" | grep "devtoolset-8-8.0-2.el7.x86_64 found") ]] || exit
     [[ ! -z $(echo "${output}" | grep "Executing: source /opt/rh/devtoolset-8/enable") ]] || exit
     [[ ! -z $(echo "${output}" | grep "Executing: make -j${JOBS}") ]] || exit
     [[ ! -z $(echo "${output}" | grep "Starting EOSIO Dependency Install") ]] || exit
@@ -44,5 +44,5 @@ export TEST_LABEL="[eosio_build_centos]"
     [[ ! -z $(echo "${output}" | grep "EOSIO has been successfully built") ]] || exit
     uninstall-package devtoolset-8* WETRUN &>/dev/null
     uninstall-package centos-release-scl WETRUN &>/dev/null
-
+devtoolset-8-8.0-2.el7.x86_64 found
 }
