@@ -1535,11 +1535,8 @@ read_only::get_table_rows_result read_only::get_table_rows( const read_only::get
          });
       }
       else if (p.key_type == chain_apis::float128) {
-         return get_table_rows_by_seckey<index_long_double_index, double>(p, abi, [](double v)->float128_t{
-            float64_t f = *(float64_t *)&v;
-            float128_t f128;
-            f64_to_f128M(f, &f128);
-            return f128;
+         return get_table_rows_by_seckey<index_long_double_index, uint128_t>(p, abi, [](uint128_t v)->float128_t{
+            return *reinterpret_cast<float128_t *>(&v);
          });
       }
       else if (p.key_type == chain_apis::sha256) {
