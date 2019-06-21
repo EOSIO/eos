@@ -87,6 +87,28 @@
                     "type": "uint64"
                 }
             ]
+        },
+        {
+            "name": "sendraw",
+            "base": "",
+            "fields": [
+                {
+                    "name": "sender_id",
+                    "type": "uint64"
+                },
+                {
+                    "name": "payer",
+                    "type": "name"
+                },
+                {
+                    "name": "raw",
+                    "type": "bytes"
+                },
+                {
+                    "name": "replace_existing",
+                    "type": "bool"
+                }
+            ]
         }
     ],
     "actions": [
@@ -113,6 +135,11 @@
         {
             "name": "inlinecall",
             "type": "inlinecall",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "sendraw",
+            "type": "sendraw",
             "ricardian_contract": ""
         }
     ],

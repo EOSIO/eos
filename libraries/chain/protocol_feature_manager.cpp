@@ -157,6 +157,21 @@ either the account authorized the action or the action's net effect on RAM usage
 */
             {}
          } )
+         (  builtin_protocol_feature_t::safe_varint_parsing, builtin_protocol_feature_spec{
+            "SAFE_VARINT_PARSING",
+            fc::variant("2178cf2086b4548b5e5e1fd8079f565531da39d92172b3185a0128a666d5bfc7").as<digest_type>(),
+            // SHA256 hash of the raw message below within the comment delimiters (do not modify message below).
+/*
+Builtin protocol feature: SAFE_VARINT_PARSING
+
+Adopts upstream changes to the code that parses `fc::unsigned_int` and `fc::signed_int`.
+
+The new processing will assert that a resulting value does not overflow the appropriate 32bit container for the final
+value.  This altered how the contract intrinsic `send_deferred` behaves in these malformed cases and was therefore
+not safe to adopt outside of a consensus upgrade.
+*/
+            {}
+         } )
    ;
 
 

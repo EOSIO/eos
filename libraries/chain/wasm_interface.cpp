@@ -25,6 +25,33 @@
 #include <fstream>
 #include <string.h>
 
+
+/**
+ * This datastream wrapper and specific unpack overloads exist to maintain backwards compatibility with pre-consensus
+ * upgrade parsing of varint encoded numbers submitted from contracts.  These legacy versions do not properly check for
+ * malformed values which overflow the storage type.  To maintain deterministic behavior of the chain in these edge
+ * cases we must maintain the original parsing logic.
+ */
+namespace fc {
+
+   struct legacy_varint_datastream: public datastream<const char*> {
+      using datastream::datastream;
+   };
+
+   namespace raw {
+      template<>
+      inline void unpack<legacy_varint_datastream>( legacy_varint_datastream& s, unsigned_int& vi ) {
+         uint64_t v = 0; char b = 0; uint8_t by = 0;
+         do {
+             s.get(b);
+             v |= uint32_t(uint8_t(b) & 0x7f) << by;
+             by += 7;
+         } while( uint8_t(b) & 0x80 && by < 32 );
+         vi.value = static_cast<uint32_t>(v);
+      }
+   }
+}
+
 namespace eosio { namespace chain {
    using namespace webassembly;
    using namespace webassembly::common;
@@ -1383,7 +1410,28 @@ class transaction_api : public context_aware_api {
 
       void send_deferred( const uint128_t& sender_id, account_name payer, array_ptr<char> data, size_t data_len, uint32_t replace_existing) {
          transaction trx;
-         fc::raw::unpack<transaction>(data, data_len, trx);
+         bool subjective_protections = context.control.is_producing_block() && !context.control.all_subjective_mitigations_disabled();
+         bool objective_protections = context.control.is_builtin_activated(builtin_protocol_feature_t::safe_varint_parsing);
+         if (subjective_protections || objective_protections) {
+            try {
+               fc::raw::unpack(data, data_len, trx);
+            } catch ( const overflow_exception& e ) {
+               // if we are producing a block but have not enabled the consensus upgrade and we catch the overflow
+               // exception, rethrow it as a subjective failure.
+               //
+               if (subjective_protections && !objective_protections) {
+                  throw( subjective_block_production_exception( e.what(), e.get_log() ) );
+               } else {
+                  throw;
+               }
+            }
+         } else {
+            try {
+               auto legacy_ds = legacy_varint_datastream(data, data_len);
+               fc::raw::unpack(legacy_ds, trx);
+            } FC_RETHROW_EXCEPTIONS( warn, "error unpacking ${type}", ("type",fc::get_typename<transaction>::name() ) )
+         }
+
          context.schedule_deferred_transaction(sender_id, payer, std::move(trx), replace_existing);
       }
 

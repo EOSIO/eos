@@ -19,6 +19,9 @@ public:
                      uint64_t payload, uint32_t delay_sec, bool replace_existing );
 
    [[eosio::action]]
+   void sendraw( uint64_t sender_id, eosio::name payer, std::vector<char> raw, bool replace_existing);
+
+   [[eosio::action]]
    void deferfunc( uint64_t payload );
    using deferfunc_action = eosio::action_wrapper<"deferfunc"_n, &deferred_test::deferfunc>;
 

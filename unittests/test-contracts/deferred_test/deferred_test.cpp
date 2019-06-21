@@ -56,6 +56,11 @@ void deferred_test::delayedcall( name payer, uint64_t sender_id, name contract,
    trx.send( sender_id, payer, replace_existing );
 }
 
+void deferred_test::sendraw( uint64_t sender_id, name payer, std::vector<char> raw, bool replace_existing)
+{
+   send_deferred( sender_id, payer, raw.data(), raw.size(), replace_existing);
+}
+
 void deferred_test::deferfunc( uint64_t payload ) {
    print( "deferfunc called on ", get_self(), " with payload = ", payload, "\n" );
    check( payload != 13, "value 13 not allowed in payload" );

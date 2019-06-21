@@ -1328,4 +1328,116 @@ BOOST_AUTO_TEST_CASE( ram_restrictions_test ) { try {
 
 } FC_LOG_AND_RETHROW() }
 
+BOOST_AUTO_TEST_CASE( safe_varint_parsing_test ) { try {
+   tester c( setup_policy::preactivate_feature_and_new_bios );
+
+   const auto& tester1_account = account_name("tester1");
+   c.create_accounts( {tester1_account} );
+   c.produce_block();
+   c.set_code( tester1_account, contracts::deferred_test_wasm() );
+   c.set_abi( tester1_account, contracts::deferred_test_abi().data() );
+   c.produce_block();
+
+   transaction trx;
+   trx.actions.emplace_back(c.get_action(
+         tester1_account,
+         action_name("deferfunc"),
+         {{tester1_account, name("active")}},
+         mutable_variant_object()("payload", 0)
+   ));
+   trx.max_net_usage_words = 0xFFFFFFFF;
+   trx.delay_sec = 0xFFFFFFFF;
+
+   auto base_encoded_transaction = fc::raw::pack(trx);
+
+   // corrupt the last byte of max_net_usage_words
+   assert(base_encoded_transaction.at(14) == 0x0f);
+   auto encoded_bad_net_limit_transaction = base_encoded_transaction;
+   encoded_bad_net_limit_transaction.at(14) = 0x10;
+
+   // corrupt the last byte of delay_sec
+   assert(base_encoded_transaction.at(20) == 0x0f);
+   auto encoded_bad_delay_transaction = base_encoded_transaction;
+   encoded_bad_delay_transaction.at(20) = 0x10;
+
+
+   // Ensure subjective mitigations are in place
+   BOOST_REQUIRE_EXCEPTION(
+      c.push_action( tester1_account, N(sendraw), tester1_account, mutable_variant_object()
+            ("sender_id", 1)
+            ("payer", tester1_account)
+            ("raw", encoded_bad_net_limit_transaction)
+            ("replace_existing", 0)
+      ),
+      subjective_block_production_exception,
+      fc_exception_message_is( "unsigned_int out of bounds" )
+   );
+
+   BOOST_REQUIRE_EXCEPTION(
+      c.push_action( tester1_account, N(sendraw), tester1_account, mutable_variant_object()
+            ("sender_id", 2)
+            ("payer", tester1_account)
+            ("raw", encoded_bad_delay_transaction)
+            ("replace_existing", 0)
+      ),
+      subjective_block_production_exception,
+      fc_exception_message_is( "unsigned_int out of bounds" )
+   );
+
+   c.control->abort_block();
+   c.close();
+   auto cfg = c.get_config();
+   cfg.disable_all_subjective_mitigations = true;
+   c.init( cfg, nullptr );
+
+   // Ensure old behavior is accepted
+   c.push_action( tester1_account, N(sendraw), tester1_account, mutable_variant_object()
+         ("sender_id", 1)
+         ("payer", tester1_account)
+         ("raw", encoded_bad_net_limit_transaction)
+         ("replace_existing", 0)
+   );
+
+   c.push_action( tester1_account, N(sendraw), tester1_account, mutable_variant_object()
+         ("sender_id", 2)
+         ("payer", tester1_account)
+         ("raw", encoded_bad_delay_transaction)
+         ("replace_existing", 0)
+   );
+
+   // remove these from the stored deferred transactions so we can dupe them
+   c.control->abort_block();
+
+   // Enable upgrade
+   const auto& pfm = c.control->get_protocol_feature_manager();
+   const auto& d = pfm.get_builtin_digest( builtin_protocol_feature_t::safe_varint_parsing );
+   BOOST_REQUIRE( d );
+
+   c.preactivate_protocol_features( {*d} );
+   c.produce_block();
+
+   // Ensure new behavior is enforced
+   BOOST_REQUIRE_EXCEPTION(
+      c.push_action( tester1_account, N(sendraw), tester1_account, mutable_variant_object()
+            ("sender_id", 1)
+            ("payer", tester1_account)
+            ("raw", encoded_bad_net_limit_transaction)
+            ("replace_existing", 0)
+      ),
+      fc::overflow_exception,
+      fc_exception_message_is( "unsigned_int out of bounds" )
+   );
+
+   BOOST_REQUIRE_EXCEPTION(
+      c.push_action( tester1_account, N(sendraw), tester1_account, mutable_variant_object()
+            ("sender_id", 2)
+            ("payer", tester1_account)
+            ("raw", encoded_bad_delay_transaction)
+            ("replace_existing", 0)
+      ),
+      fc::overflow_exception,
+      fc_exception_message_is( "unsigned_int out of bounds" )
+   );
+} FC_LOG_AND_RETHROW() }
+
 BOOST_AUTO_TEST_SUITE_END()
