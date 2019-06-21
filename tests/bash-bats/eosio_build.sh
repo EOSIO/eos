@@ -31,7 +31,9 @@ TEST_LABEL="[eosio_build]"
     fi 
 
     cd .. # Also test that we can run the script from a directory other than the root
+    echo $(pwd) >&3
     run bash -c "./eos/$SCRIPT_LOCATION -y -P"
+    echo $output >&3
     [[ ! -z $(echo "${output}" | grep "PIN_COMPILER: true") ]] || exit
     [[ "${output}" =~ -DCMAKE_TOOLCHAIN_FILE=\'.*/scripts/../build/pinned_toolchain.cmake\' ]] || exit
     [[ "${output}" =~ "Clang 8 successfully installed" ]] || exit
