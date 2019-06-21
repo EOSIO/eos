@@ -10,8 +10,6 @@
 
 #include <eosio/chain/exceptions.hpp>
 
-#include <fc/io/json.hpp>
-
 #include <boost/program_options.hpp>
 #include <boost/exception/diagnostic_information.hpp>
 

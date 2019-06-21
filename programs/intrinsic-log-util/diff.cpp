@@ -5,6 +5,9 @@
 
 #include <ostream>
 
+using namespace eosio;
+using namespace eosio::chain;
+
 void exec_diff( subcommand_dispatcher_base& dispatcher,
                 const configuration::root& root,
                 const configuration::diff& diff  )
