@@ -489,6 +489,7 @@ public:
             }
             if( itr != end_itr ) {
                result.more = true;
+               result.more2 = convert_to_string(itr->secondary_key, p.key_type, p.encode_type, "more2 - next lower bound");
             }
          };
 
