@@ -331,7 +331,7 @@ BOOST_AUTO_TEST_CASE(auto_finish_block_test) {
    {
       {
          intrinsic_debug_log log( log_path );
-         log.open( intrinsic_debug_log::open_mode::continue_existing_and_auto_finish_block );
+         log.open( intrinsic_debug_log::open_mode::create_new_and_auto_finish_block );
          log.start_block( 1u );
          log.finish_block();
          log.start_block( 2u );
@@ -339,6 +339,34 @@ BOOST_AUTO_TEST_CASE(auto_finish_block_test) {
          log.start_action( 1ull, alice, alice, foo );
          log.acknowledge_intrinsic_without_recording();
          log.record_intrinsic( digest, digest );
+      }
+
+      intrinsic_debug_log log( log_path );
+      log.open( intrinsic_debug_log::open_mode::read_only );
+
+      auto result = intrinsic_debug_log::find_first_difference( log, ref_log2 );
+      BOOST_REQUIRE( !result );
+   }
+
+   // Mode 2 again (but different exit scenario)
+   // Abort block or abort transaction should typically be avoided in this mode,
+   // since they basically finish the block (and therefore also transaction) rather than aborting anything.
+   // However, when shutting down due to an error encountered, controller would normally abort the transaction
+   // and then the block. So intrinsic_debug_log is designed to do the right thing when this happens to not lose
+   // the latest information.
+   {
+      {
+         intrinsic_debug_log log( log_path );
+         log.open( intrinsic_debug_log::open_mode::create_new_and_auto_finish_block );
+         log.start_block( 1u );
+         log.finish_block();
+         log.start_block( 2u );
+         log.start_transaction( trx_id);
+         log.start_action( 1ull, alice, alice, foo );
+         log.acknowledge_intrinsic_without_recording();
+         log.record_intrinsic( digest, digest );
+         log.abort_transaction();
+         log.abort_block();
       }
 
       intrinsic_debug_log log( log_path );

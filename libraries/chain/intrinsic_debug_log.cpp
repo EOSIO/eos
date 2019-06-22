@@ -249,7 +249,8 @@ namespace eosio { namespace chain {
          }
 
          if( start_fresh ) {
-            open_mode |= std::ios::trunc;
+            log.open( log_path.generic_string().c_str(), std::ios::out | std::ios::trunc );
+            log.close();
          }
 
          log.open( log_path.generic_string().c_str(), open_mode );
@@ -401,6 +402,10 @@ namespace eosio { namespace chain {
                   bool
             >
             {
+               if( finish_block_on_shutdown ) {
+                  finish_block();
+                  return true;
+               }
                truncate_to( s.block_start_pos );
                state = waiting_to_start_block( s );
                return true;
@@ -469,6 +474,10 @@ namespace eosio { namespace chain {
                   bool
             >
             {
+               if( finish_block_on_shutdown ) {
+                  finish_block();
+                  return true;
+               }
                truncate_to( s.transaction_start_pos );
                state = in_block( s );
                return true;
