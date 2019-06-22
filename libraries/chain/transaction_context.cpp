@@ -414,6 +414,9 @@ namespace bacc = boost::accumulators;
          net_usage,
          billed_ram_bytes,
          control.pending_block_time()); // can fail due to billed_ram_bytes
+      if( !control.skip_db_sessions() ) {
+         control.chaindb().apply_all_changes();
+      }
    }
 
    void transaction_context::validate_bw_usage() {
@@ -453,10 +456,7 @@ namespace bacc = boost::accumulators;
    void transaction_context::squash() {
       // TODO: removed by CyberWay
       // if (undo_session) undo_session->squash();
-      if (chaindb_undo_session) {
-          control.chaindb().apply_all_changes();
-          chaindb_undo_session->squash();
-      }
+      if (chaindb_undo_session) chaindb_undo_session->squash();
    }
 
    void transaction_context::undo() {
