@@ -57,7 +57,6 @@ struct state_object_visitor {
         total_gests = asset(0, symbol(GESTS));
     }
 
-    bool early_exit = false;
     golos::dynamic_global_property_object   gpo;
     fc::flat_map<acc_idx,golos::account_object> accounts;
     vector<golos::account_authority_object>     auths;
@@ -160,7 +159,6 @@ struct state_object_visitor {
     void operator()(const golos::vesting_delegation_expiration_object& d) {
         delegation_expirations.emplace_back(d);
         delegated_vests[d.delegator.id] += d.vesting_shares.get_amount();
-        early_exit = true;
     }
 
     void operator()(const golos::withdraw_vesting_route_object& w) {
@@ -272,6 +270,18 @@ public:
         im.close();
     }
 
+    uint32_t object_type_by_id(uint32_t type) {
+        if (type == object_type::reputation_object_id) {
+            wlog("warning, deprecated type used for reputaion");
+        }
+        if (type <= object_type::reputation_object_id) {
+            return type;
+        }
+        if (type == object_type::follow_plugin_reputation_object_id)
+            return object_type::reputation_object_id;
+        EOS_ASSERT(false, genesis_exception, "Unknown object type ${t} in serialized state, can't read.", ("t", type));
+    }
+
     void read_state_file(const bfs::path& state_file, state_object_visitor& visitor) {
         if (!bfs::exists(state_file)) {
             return;
@@ -287,7 +297,7 @@ public:
             "Can only open Golos state file version 2, but version ${v} provided.", ("v", h.version));
         EOS_ASSERT(h.block_num > 0, genesis_exception, "Golos state file block_num should be greater than 0.");
 
-        while (in && !visitor.early_exit) {
+        while (in) {
             golos_table_header t;
             fc::raw::unpack(in, t);
             if (!in)
@@ -295,7 +305,7 @@ public:
             auto type = t.type_id;
             std::cout << "Reading " << t.records_count << " record(s) from table with id=" << type << "." << std::flush;
             objects o;
-            o.set_which(type);
+            o.set_which(object_type_by_id(type));
             auto unpacker = fc::raw::unpack_static_variant<decltype(in)>(in);
             int i = 0;
             for (; in && i < t.records_count; i++) {
