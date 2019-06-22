@@ -15,6 +15,8 @@
 namespace eosio { namespace chain { namespace resource_limits {
 using namespace stake;
 
+using cyberway::chaindb::cursor_kind;
+
 using resource_index_set = index_set<
    resource_usage_table,
    resource_limits_state_table,
@@ -187,8 +189,8 @@ void resource_limits_manager::add_storage_usage(const account_name& account, int
     const stake_stat_object* stat = nullptr;
 
     if (_chaindb.get<account_object>(account).privileged || //assignments:
-        !(_chaindb.find<stake_param_object>(token_code.value)) ||
-        !(stat  = _chaindb.find<stake_stat_object>(token_code.value)) ||
+        !(_chaindb.find<stake_param_object>(token_code.value, cursor_kind::OneRecord)) ||
+        !(stat  = _chaindb.find<stake_stat_object>(token_code.value, cursor_kind::OneRecord)) ||
         !stat->enabled || stat->total_staked == 0) {
 
         return;
@@ -266,8 +268,10 @@ std::vector<ratio> resource_limits_manager::get_pricelist() const {
     const stake_param_object* param = nullptr;
     const stake_stat_object* stat = nullptr;
     
-    if ((param = _chaindb.find<stake_param_object>(token_code.value)) &&
-        (stat  = _chaindb.find<stake_stat_object>(token_code.value)) && stat->enabled && stat->total_staked != 0) {
+    if ((param = _chaindb.find<stake_param_object>(token_code.value, cursor_kind::OneRecord)) &&
+        (stat  = _chaindb.find<stake_stat_object>(token_code.value, cursor_kind::OneRecord)) &&
+        stat->enabled && stat->total_staked != 0
+    ) {
         EOS_ASSERT(stat->total_staked > 0, chain_exception, "SYSTEM: incorrect total_staked");
         
         for (size_t i = 0; i < resources_num; i++) {
@@ -317,7 +321,7 @@ ratio resource_limits_manager::get_account_stake_ratio(fc::time_point pending_bl
     auto agents_idx = agents_table.get_index<stake_agent_object::by_key>();
 
     uint64_t staked = 0;
-    auto agent = agents_idx.find(agent_key(token_code, account));
+    auto agent = agents_idx.find(agent_key(token_code, account), cursor_kind::OneRecord);
     if (agent != agents_idx.end()) {
         if (update_state) {
             update_proxied(_chaindb, get_storage_payer(block_timestamp_type(pending_block_time).slot, account_name()), 

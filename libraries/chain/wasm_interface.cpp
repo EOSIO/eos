@@ -29,6 +29,8 @@ namespace eosio { namespace chain {
    using namespace webassembly;
    using namespace webassembly::common;
 
+   using cyberway::chaindb::cursor_kind;
+
    wasm_interface::wasm_interface(vm_type vm) : my( new wasm_interface_impl(vm) ) {}
 
    wasm_interface::~wasm_interface() {}
@@ -823,7 +825,7 @@ class permission_api : public context_aware_api {
       };
 
       int64_t get_account_creation_time( account_name account ) {
-         auto* acct = context.chaindb.find<account_object>(account);
+         auto* acct = context.chaindb.find<account_object>(account, cursor_kind::OneRecord);
          EOS_ASSERT( acct != nullptr, action_validate_exception,
                      "account '${account}' does not exist", ("account", account) );
          return time_point(acct->creation_date).time_since_epoch().count();

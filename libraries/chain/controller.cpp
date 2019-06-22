@@ -33,7 +33,9 @@
 
 namespace eosio { namespace chain {
 
+
 using resource_limits::resource_limits_manager;
+using cyberway::chaindb::cursor_kind;
 
 using controller_index_set = index_set<
    account_table,
@@ -837,7 +839,7 @@ struct controller_impl {
 
    transaction_trace_ptr push_scheduled_transaction( const transaction_id_type& trxid, fc::time_point deadline, const billed_bw_usage& billed ) {
       auto idx = chaindb.get_index<generated_transaction_object, by_trx_id>();
-      auto itr = idx.find( trxid );
+      auto itr = idx.find( trxid, cyberway::chaindb::cursor_kind::OneRecord );
       EOS_ASSERT( itr != idx.end(), unknown_transaction_exception, "unknown transaction" );
       return push_scheduled_transaction( *itr, deadline, billed );
    }
@@ -2070,13 +2072,13 @@ const account_object& controller::get_account( account_name name )const
 } FC_CAPTURE_AND_RETHROW( (name) ) }
 
 const domain_object& controller::get_domain(const domain_name& name) const { try {
-    const auto* d = my->chaindb.find<domain_object, by_name>(name);
+    const auto* d = my->chaindb.find<domain_object, by_name>(name, cursor_kind::OneRecord);
     EOS_ASSERT(d != nullptr, chain::domain_query_exception, "domain `${name}` not found", ("name", name));
     return *d;
 } FC_CAPTURE_AND_RETHROW((name)) }
 
 const username_object& controller::get_username(account_name scope, const username& name) const { try {
-    const auto* user = my->chaindb.find<username_object, by_scope_name>(boost::make_tuple(scope,name));
+    const auto* user = my->chaindb.find<username_object, by_scope_name>(boost::make_tuple(scope,name), cursor_kind::OneRecord);
     EOS_ASSERT(user != nullptr, username_query_exception,
         "username `${name}` not found in scope `${scope}`", ("name",name)("scope",scope));
     return *user;

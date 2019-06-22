@@ -24,6 +24,7 @@
 
 namespace eosio { namespace chain {
 using namespace int_arithmetic;
+using cyberway::chaindb::cursor_kind;
 
 namespace bacc = boost::accumulators;
 
@@ -708,7 +709,7 @@ namespace bacc = boost::accumulators;
       const auto& auth_manager = control.get_authorization_manager();
 
       for( const auto& a : trx.context_free_actions ) {
-         auto* code = chaindb.find<account_object>(a.account);
+         auto* code = chaindb.find<account_object>(a.account, cursor_kind::OneRecord);
          EOS_ASSERT( code != nullptr, transaction_exception,
                      "action's code account '${account}' does not exist", ("account", a.account) );
          EOS_ASSERT( a.authorization.size() == 0, transaction_exception,
@@ -717,12 +718,12 @@ namespace bacc = boost::accumulators;
 
       bool one_auth = false;
       for( const auto& a : trx.actions ) {
-         auto* code = chaindb.find<account_object>(a.account);
+         auto* code = chaindb.find<account_object>(a.account, cursor_kind::OneRecord);
          EOS_ASSERT( code != nullptr, transaction_exception,
                      "action's code account '${account}' does not exist", ("account", a.account) );
          for( const auto& auth : a.authorization ) {
             one_auth = true;
-            auto* actor = chaindb.find<account_object>(auth.actor);
+            auto* actor = chaindb.find<account_object>(auth.actor, cursor_kind::OneRecord);
             EOS_ASSERT( actor  != nullptr, transaction_exception,
                         "action's authorizing actor '${account}' does not exist", ("account", auth.actor) );
             EOS_ASSERT( auth_manager.find_permission(auth) != nullptr, transaction_exception,
