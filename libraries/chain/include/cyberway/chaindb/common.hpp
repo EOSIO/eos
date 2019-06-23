@@ -99,6 +99,8 @@ namespace cyberway { namespace chaindb {
     struct find_info final {
         cursor_t      cursor = invalid_cursor;
         primary_key_t pk     = primary_key::End;
+
+        cache_object_ptr object_ptr;
     }; // struct find_info
 
     class chaindb_session final {
