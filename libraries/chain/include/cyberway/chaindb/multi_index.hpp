@@ -365,6 +365,10 @@ private:
             return service().in_ram;
         }
         bool is_valid() const {
+            lazy_open();
+            if (primary_key_ == primary_key::End) {
+                return false;
+            }
             if (!item_) {
                 lazy_load_object();
             }

@@ -1244,8 +1244,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
             time_point pending_block_time = chain.pending_block_time();
             const auto sch_idx = chain.chaindb().get_index<chain::generated_transaction_object,by_delay>();
             const auto scheduled_trxs_size = sch_idx.size();
-            bool is_first = true;
-            for(auto sch_itr = sch_idx.begin(); sch_itr.is_valid(); is_first = false, ++sch_itr ) {
+            for(auto sch_itr = sch_idx.begin(); sch_itr.is_valid(); ++sch_itr ) {
                if( sch_itr->delay_until > pending_block_time) break;    // not scheduled yet
                if( sch_itr->published >= pending_block_time ) {
                   continue; // do not allow schedule and execute in same block
@@ -1255,8 +1254,8 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
                   break;
                }
 
-               auto& trx = *sch_itr;
-               if (blacklist_by_id.find(trx.trx_id) != blacklist_by_id.end()) {
+               auto trx_id = sch_itr->trx_id;
+               if (blacklist_by_id.find(trx_id) != blacklist_by_id.end()) {
                   continue;
                }
 
@@ -1271,8 +1270,6 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
                   --orig_pending_txn_size;
                   _incoming_trx_weight -= 1.0;
                   process_incoming_transaction_async(std::get<0>(e), std::get<1>(e), std::get<2>(e));
-
-                  is_first = false;
                }
 
                if (scheduled_trx_deadline <= fc::time_point::now()) {
@@ -1294,13 +1291,14 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
                   }
 
 
-                  auto trace = chain.push_scheduled_transaction(trx.trx_id, deadline);
+                  auto trace = chain.push_scheduled_transaction(trx_id, deadline);
                   if (trace->except) {
+                     fc_dlog( _log, "scheduled failed: ${e}", ("e", trace->except->to_detail_string()) );
                      bool is_subjective = failure_is_subjective(*trace->except, deadline_is_subjective);
-                     if (!is_subjective || is_first) {
+                     if (!is_subjective || !deadline_is_subjective) {
                         auto expiration = fc::time_point::now() + fc::seconds(chain.get_global_properties().configuration.deferred_trx_expiration_window);
                         // this failed our configured maximum transaction time, we don't want to replay it add it to a blacklist
-                        _blacklisted_transactions.insert(transaction_id_with_expiry{trx.trx_id, expiration});
+                        _blacklisted_transactions.insert(transaction_id_with_expiry{trx_id, expiration});
                         num_failed++;
                      }
 
