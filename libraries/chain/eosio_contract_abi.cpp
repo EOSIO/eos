@@ -578,9 +578,6 @@ abi_def eosio_contract_abi(abi_def eos_abi)
    eos_abi.tables.emplace_back(table_def{
        "undo", "undo", "uint64", {
            {cyberway::chaindb::tag<by_id>::get_code(), true, {{"_SERVICE_.upk", "asc"}}},
-           {cyberway::chaindb::tag<by_table>::get_code(), false, {
-               {"_SERVICE_.code", "asc"},
-               {"_SERVICE_.table", "asc"}}},
        },
    });
 
