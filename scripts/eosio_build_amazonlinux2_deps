@@ -15,7 +15,6 @@ libcurl-devel,rpm -qa
 libusbx-devel,rpm -qa
 python3,rpm -qa
 python3-devel,rpm -qa
-python-devel,rpm -qa
 libedit-devel,rpm -qa
 doxygen,rpm -qa
 graphviz,rpm -qa
