@@ -32,7 +32,10 @@ TEST_LABEL="[eosio_build]"
     cd ./scripts # Also test that we can run the script from a directory other than the root
     run bash -c "./eosio_build.sh -y -P"
     [[ ! -z $(echo "${output}" | grep "PIN_COMPILER: true") ]] || exit
-    [[ ! -z $(echo "${output}" | grep "Installed build-essential") ]] || exit # Ensure build-essentials is installed so we can compile cmake, clang, boost, etc
+    # Ensure build-essentials is installed so we can compile cmake, clang, boost, etc
+    if [[ $NAME == "Ubuntu" ]]; then
+        [[ ! -z $(echo "${output}" | grep "Installed build-essential") ]] || exit
+    fi
     [[ "${output}" =~ -DCMAKE_TOOLCHAIN_FILE=\'.*/scripts/../build/pinned_toolchain.cmake\' ]] || exit
     [[ "${output}" =~ "Clang 8 successfully installed" ]] || exit
     # -P with prompts

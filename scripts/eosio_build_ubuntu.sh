@@ -93,4 +93,4 @@ if $INSTALL_MONGO; then
 fi
 
 # Cleanup build-essential as they were only needed for installing source packages
-( $PINNED_BUILD_ESSENTIAL && $PIN_COMPILER ) && apt autoremove build-essential -y >/dev/null
+($PIN_COMPILER && $PINNED_BUILD_ESSENTIALS) && apt autoremove build-essential -y; true

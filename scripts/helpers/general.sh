@@ -169,29 +169,31 @@ function ensure-devtoolset() {
 }
 
 function ensure-build-essential() {
-    echo "${COLOR_CYAN}[Ensuring installation of build-essential (needed for installing depedencies; we will remove it after)]${COLOR_NC}"
-    BUILD_ESSENTIAL=$( dpkg -s build-essential | grep 'Package: build-essential' || true )
-    if [[ -z $BUILD_ESSENTIAL ]]; then
-        while true; do
-            [[ $NONINTERACTIVE == false ]] && printf "${COLOR_YELLOW}Do you wish to install it? (y/n)?${COLOR_NC}" && read -p " " PROCEED
-            echo ""
-            case $PROCEED in
-                "" ) echo "What would you like to do?";;
-                0 | true | [Yy]* )
-                    if install-package build-essential; then
-                        $PIN_COMPILER && export PINNED_BUILD_ESSENTIALS=true
-                        echo " - ${COLOR_GREEN}Installed build-essential${COLOR_NC}"
-                    else
-                        echo " - ${COLOR_GREEN}Install of build-essential failed. Please try a manual install.${COLOR_NC}"
-                        exit 1
-                    fi
-                break;;
-                1 | false | [Nn]* ) echo " - User aborted installation of build-essential."; break;;
-                * ) echo "Please type 'y' for yes or 'n' for no.";;
-            esac
-        done
-    else
-        echo " - ${BUILD_ESSENTIAL} found."
+    if [[ ! $(dpkg -s clang 2>/dev/null) ]]; then # Clang already exists, so no need for build essentials
+        echo "${COLOR_CYAN}[Ensuring installation of build-essential (needed for installing depedencies; we will remove it after)]${COLOR_NC}"
+        BUILD_ESSENTIAL=$( dpkg -s build-essential | grep 'Package: build-essential' || true )
+        if [[ -z $BUILD_ESSENTIAL ]]; then
+            while true; do
+                [[ $NONINTERACTIVE == false ]] && printf "${COLOR_YELLOW}Do you wish to install it? (y/n)?${COLOR_NC}" && read -p " " PROCEED
+                echo ""
+                case $PROCEED in
+                    "" ) echo "What would you like to do?";;
+                    0 | true | [Yy]* )
+                        if install-package build-essential; then
+                            $PIN_COMPILER && export PINNED_BUILD_ESSENTIALS=true
+                            echo " - ${COLOR_GREEN}Installed build-essential${COLOR_NC}"
+                        else
+                            echo " - ${COLOR_GREEN}Install of build-essential failed. Please try a manual install.${COLOR_NC}"
+                            exit 1
+                        fi
+                    break;;
+                    1 | false | [Nn]* ) echo " - User aborted installation of build-essential."; break;;
+                    * ) echo "Please type 'y' for yes or 'n' for no.";;
+                esac
+            done
+        else
+            echo " - ${BUILD_ESSENTIAL} found."
+        fi
     fi
 }
 
