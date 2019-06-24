@@ -27,18 +27,16 @@ enum trx_enum_type {
    unknown = 0,
    persisted = 1,
    forked = 2,
-   aborted = 3,
-   subjective = 4
+   aborted = 3
 };
 
 struct unapplied_transaction {
    const transaction_metadata_ptr trx_meta;
    const fc::time_point           expiry;
-   const trx_enum_type            trx_type = unknown;
+   trx_enum_type                  trx_type = unknown;
 
    const transaction_id_type& signed_id()const { return trx_meta->signed_id(); }
    const transaction_id_type& id()const { return trx_meta->id(); }
-   bool is_persisted()const { return trx_type == persisted; }
 
    unapplied_transaction(const unapplied_transaction&) = delete;
    unapplied_transaction() = delete;
@@ -47,7 +45,7 @@ struct unapplied_transaction {
 };
 
 /**
- * Track unapplied transactions for persisted, forked blocks, aborted blocks, and subjectively
+ * Track unapplied transactions for persisted, forked blocks, aborted blocks
  * failed transactions.
  */
 class unapplied_transaction_queue {
@@ -62,19 +60,13 @@ class unapplied_transaction_queue {
          hashed_unique< tag<by_signed_id>,
                const_mem_fun<unapplied_transaction, const transaction_id_type&, &unapplied_transaction::signed_id>
          >,
-         ordered_non_unique< tag<by_type>, member<unapplied_transaction, const trx_enum_type, &unapplied_transaction::trx_type> >,
+         ordered_non_unique< tag<by_type>, member<unapplied_transaction, trx_enum_type, &unapplied_transaction::trx_type> >,
          ordered_non_unique< tag<by_expiry>, member<unapplied_transaction, const fc::time_point, &unapplied_transaction::expiry> >
       >
    > unapplied_trx_queue_type;
 
    unapplied_trx_queue_type queue;
 
-   std::deque<chain::branch_type> forked_branches;
-   size_t current_trx_in_block = 0;
-   std::deque<std::vector<transaction_metadata_ptr>> aborted_block_trxs;
-   size_t current_trx_in_trxs = 0;
-   std::deque<chain::transaction_metadata_ptr> subjective_failed_trxs;
-   size_t total_size = 0;
 public:
 
    bool empty() const {
@@ -93,6 +85,12 @@ public:
       return queue.get<by_type>().find( persisted ) != queue.get<by_type>().end();
    }
 
+   bool is_persisted(const transaction_metadata_ptr& trx)const {
+      auto itr = queue.get<by_signed_id>().find( trx->signed_id() );
+      if( itr == queue.get<by_signed_id>().end() ) return false;
+      return itr->trx_type == persisted;
+   }
+
    template <typename Func>
    bool clear_expired( const time_point& pending_block_time, const time_point& deadline, Func&& callback ) {
       auto& persisted_by_expiry = queue.get<by_expiry>();
@@ -100,31 +98,42 @@ public:
          if (deadline <= fc::time_point::now()) {
             return false;
          }
-         callback( persisted_by_expiry.begin()->id() );
+         callback( persisted_by_expiry.begin()->id(), persisted_by_expiry.begin()->trx_type );
          persisted_by_expiry.erase( persisted_by_expiry.begin() );
       }
       return true;
    }
 
-   void add_forked( chain::branch_type forked_branch ) {
+   void add_forked( branch_type forked_branch ) {
       // forked_branch is in reverse order
       for( auto ritr = forked_branch.rbegin(), rend = forked_branch.rend(); ritr != rend; ++ritr ) {
-         for( auto itr = (*ritr)->trxs.begin(), end = (*ritr)->trxs.end(); itr != end; ++itr ) {
+         block_state_ptr& bsptr = *ritr;
+         for( auto itr = bsptr->trxs.begin(), end = bsptr->trxs.end(); itr != end; ++itr ) {
             const auto& trx = *itr;
-            queue.push_back( {trx, trx->packed_trx()->expiration(), forked} );
+            fc::time_point expiry = trx->packed_trx()->expiration();
+            queue.push_back( { trx, std::move( expiry ), forked } );
          }
       }
    }
 
-   void add_aborted( std::vector<chain::transaction_metadata_ptr> aborted_trxs ) {
+   void add_aborted( std::vector<transaction_metadata_ptr> aborted_trxs ) {
       if( aborted_trxs.empty() ) return;
-      for( const auto& trx : aborted_trxs ) {
-         queue.push_back( { trx, trx->packed_trx()->expiration(), aborted } );
+      for( auto& trx : aborted_trxs ) {
+         fc::time_point expiry = trx->packed_trx()->expiration();
+         queue.push_back( { std::move( trx ), std::move( expiry ), aborted } );
       }
    }
 
-   void add_subjective_failure( chain::transaction_metadata_ptr trx ) {
-      queue.push_back( { trx, trx->packed_trx()->expiration(), subjective } );
+   void add_persisted( const transaction_metadata_ptr& trx ) {
+      auto itr = queue.get<by_signed_id>().find( trx->signed_id() );
+      if( itr == queue.get<by_signed_id>().end() ) {
+         fc::time_point expiry = trx->packed_trx()->expiration();
+         queue.push_back( { trx, std::move( expiry ), persisted } );
+      } else if( itr->trx_type != persisted ) {
+         queue.get<by_signed_id>().modify( itr, [](auto& un){
+            un.trx_type = persisted;
+         } );
+      }
    }
 
    using iterator = unapplied_trx_queue_type::index<by_type>::type::iterator;
