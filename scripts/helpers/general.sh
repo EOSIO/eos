@@ -169,7 +169,7 @@ function ensure-devtoolset() {
 }
 
 function ensure-build-essential() {
-    echo "${COLOR_CYAN}[Ensuring installation of build-essential with C++7]${COLOR_NC}"
+    echo "${COLOR_CYAN}[Ensuring installation of build-essential (needed for installing depedencies; we will remove it after)]${COLOR_NC}"
     BUILD_ESSENTIAL=$( dpkg -s build-essential | grep 'Package: build-essential' || true )
     if [[ -z $BUILD_ESSENTIAL ]]; then
         while true; do
@@ -177,8 +177,9 @@ function ensure-build-essential() {
             echo ""
             case $PROCEED in
                 "" ) echo "What would you like to do?";;
-                0 | true | [Yy]* ) 
-                    if install-package build-essential; then
+                0 | true | [Yy]* )
+                    if install-package build-essential WETRUN; then
+                        $PIN_COMPILER && export PINNED_BUILD_ESSENTIALS=true
                         echo " - ${COLOR_GREEN}Installed build-essential${COLOR_NC}"
                     else
                         echo " - ${COLOR_GREEN}Install of build-essential failed. Please try a manual install.${COLOR_NC}"

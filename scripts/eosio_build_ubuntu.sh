@@ -11,14 +11,15 @@ echo "Disk space available: ${DISK_AVAIL}G"
 [[ "${DISK_AVAIL}" -lt "${DISK_MIN}" ]] && echo " - You must have at least ${DISK_MIN}GB of available storage to install EOSIO." && exit 1
 
 # system clang and build essential for Ubuntu 18 (16 too old)
-( [[ $PIN_COMPILER == false ]] && [[ "$(echo ${VERSION_ID})" == "18.04" ]] ) && ensure-build-essential && EXTRA_DEPS=(clang,dpkg\ -s)
+ensure-build-essential # We need build-essential regardless to build cmake, clang, llvm, etc
+# Handle clang/compiler; Must come before PIN_COMPILER/BUILD_CLANG
+ensure-compiler
+( [[ $PIN_COMPILER == false ]] && [[ "$(echo ${VERSION_ID})" == "18.04" ]] ) && EXTRA_DEPS=(clang,dpkg\ -s)
 # Ensure packages exist
 ([[ $PIN_COMPILER == false ]] && [[ $BUILD_CLANG == false ]]) && EXTRA_DEPS+=(llvm-4.0,dpkg\ -s)
 $ENABLE_COVERAGE_TESTING && EXTRA_DEPS+=(lcov,dpkg\ -s)
 ensure-apt-packages "${REPO_ROOT}/scripts/eosio_build_ubuntu_deps" $(echo ${EXTRA_DEPS[@]})
 echo ""
-# Handle clang/compiler
-ensure-compiler
 # CMAKE Installation
 ensure-cmake
 # CLANG Installation
@@ -90,3 +91,6 @@ if $INSTALL_MONGO; then
 		echo " - MongoDB C++ driver found with correct version @ ${MONGO_CXX_DRIVER_ROOT}."
 	fi
 fi
+
+# Cleanup build-essential as they were only needed for installing source packages
+( $PINNED_BUILD_ESSENTIAL && $PIN_COMPILER ) && apt autoremove build-essential -y >/dev/null
