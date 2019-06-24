@@ -245,11 +245,12 @@ namespace eosio { namespace testing {
       }
 
       if( !skip_pending_trxs ) {
-         while( transaction_metadata_ptr trx = unapplied_transactions.next() ) {
-            auto trace = control->push_transaction(trx, fc::time_point::maximum());
+         for( auto itr = unapplied_transactions.begin(); itr != unapplied_transactions.end();  ) {
+            auto trace = control->push_transaction(itr->trx_meta, fc::time_point::maximum());
             if(trace->except) {
                trace->except->dynamic_rethrow_exception();
             }
+            itr = unapplied_transactions.erase( itr );
          }
 
          vector<transaction_id_type> scheduled_trxs;
