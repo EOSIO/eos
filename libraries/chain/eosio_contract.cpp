@@ -29,6 +29,7 @@
 
 namespace eosio { namespace chain {
 
+using cyberway::chaindb::cursor_kind;
 
 
 uint128_t transaction_id_to_sender_id( const transaction_id_type& tid ) {
@@ -38,7 +39,7 @@ uint128_t transaction_id_to_sender_id( const transaction_id_type& tid ) {
 
 void validate_authority_precondition( const apply_context& context, const authority& auth ) {
    for(const auto& a : auth.accounts) {
-      auto* acct = context.chaindb.find<account_object>(a.permission.actor);
+      auto* acct = context.chaindb.find<account_object>(a.permission.actor, cursor_kind::OneRecord);
       EOS_ASSERT( acct != nullptr, action_validate_exception,
                   "account '${account}' does not exist",
                   ("account", a.permission.actor)
@@ -99,7 +100,7 @@ void apply_cyber_newaccount(apply_context& context) {
          "only privileged accounts can have names that start with '${prefix}'", ("prefix", system_prefix()));
    }
 
-   auto existing_account = chaindb.find<account_object>(create.name);
+   auto existing_account = chaindb.find<account_object>(create.name, cursor_kind::OneRecord);
    EOS_ASSERT(existing_account == nullptr, account_name_exists_exception,
               "Cannot create account named ${name}, as that name is already taken",
               ("name", create.name));
@@ -388,20 +389,20 @@ void apply_cyber_linkauth(apply_context& context) {
       context.require_authorization(requirement.account); // only here to mark the single authority on this action as used
 
       auto& chaindb = context.chaindb;
-      const auto *account = chaindb.find<account_object>(requirement.account);
+      const auto *account = chaindb.find<account_object>(requirement.account, cursor_kind::OneRecord);
       EOS_ASSERT(account != nullptr, account_query_exception,
                  "Failed to retrieve account: ${account}", ("account", requirement.account)); // Redundant?
-      const auto *code = chaindb.find<account_object>(requirement.code);
+      const auto *code = chaindb.find<account_object>(requirement.code, cursor_kind::OneRecord);
       EOS_ASSERT(code != nullptr, account_query_exception,
                  "Failed to retrieve code for account: ${account}", ("account", requirement.code));
       if( requirement.requirement != config::eosio_any_name ) {
-         const auto *permission = chaindb.find<permission_object, by_name>(requirement.requirement);
+         const auto *permission = chaindb.find<permission_object, by_name>(requirement.requirement, cursor_kind::OneRecord);
          EOS_ASSERT(permission != nullptr, permission_query_exception,
                     "Failed to retrieve permission: ${permission}", ("permission", requirement.requirement));
       }
 
       auto link_key = boost::make_tuple(requirement.account, requirement.code, requirement.type);
-      auto link = chaindb.find<permission_link_object, by_action_name>(link_key);
+      auto link = chaindb.find<permission_link_object, by_action_name>(link_key, cursor_kind::OneRecord);
       auto storage_payer = context.get_storage_payer(requirement.account);
 
       if( link ) {
@@ -437,7 +438,7 @@ void apply_cyber_unlinkauth(apply_context& context) {
    context.require_authorization(unlink.account); // only here to mark the single authority on this action as used
 
    auto link_key = boost::make_tuple(unlink.account, unlink.code, unlink.type);
-   auto link = chaindb.find<permission_link_object, by_action_name>(link_key);
+   auto link = chaindb.find<permission_link_object, by_action_name>(link_key, cursor_kind::OneRecord);
    EOS_ASSERT(link != nullptr, action_validate_exception, "Attempting to unlink authority, but no link found");
 // TODO: Removed by CyberWay
 //   context.add_ram_usage(

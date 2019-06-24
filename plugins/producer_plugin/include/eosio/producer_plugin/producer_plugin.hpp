@@ -52,6 +52,7 @@ public:
    virtual void plugin_initialize(const boost::program_options::variables_map& options);
    virtual void plugin_startup();
    virtual void plugin_shutdown();
+   void handle_sighup() override;
 
    void pause();
    void resume();
@@ -69,7 +70,7 @@ private:
 
 } //eosio
 
-FC_REFLECT(eosio::producer_plugin::runtime_options, (max_transaction_time)(max_irreversible_block_age)(produce_time_offset_us)(last_block_time_offset_us)(subjective_cpu_leeway_us)(incoming_defer_ratio));
-FC_REFLECT(eosio::producer_plugin::integrity_hash_information, (head_block_id)(integrity_hash))
-FC_REFLECT(eosio::producer_plugin::snapshot_information, (head_block_id)(snapshot_name))
-
+FC_REFLECT(eosio::producer_plugin::runtime_options, (max_transaction_time)(max_irreversible_block_age)(produce_time_offset_us)(last_block_time_offset_us)(max_scheduled_transaction_time_per_block_ms)(subjective_cpu_leeway_us)(incoming_defer_ratio));
+//TODO: Removed by CyberWay
+//FC_REFLECT(eosio::producer_plugin::integrity_hash_information, (head_block_id)(integrity_hash))
+//FC_REFLECT(eosio::producer_plugin::snapshot_information, (head_block_id)(snapshot_name))

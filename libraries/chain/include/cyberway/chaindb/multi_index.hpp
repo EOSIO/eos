@@ -364,6 +364,16 @@ private:
         bool in_ram() const {
             return service().in_ram;
         }
+        bool is_valid() const {
+            lazy_open();
+            if (primary_key_ == primary_key::End) {
+                return false;
+            }
+            if (!item_) {
+                lazy_load_object();
+            }
+            return (item_ && !item_->is_deleted());
+        }
 
         const_iterator_impl operator++(int) {
             const_iterator_impl result(*this);
@@ -614,7 +624,7 @@ public:
         const_iterator lower_bound(const key_type& key, const cursor_kind kind = cursor_kind::ManyRecords) const {
             chaindb::lower_bound<std::is_same<tag<IndexName>, typename PrimaryIndex::tag>::value> finder;
             auto info = finder(controller_, get_index_request(), kind, key);
-            return const_iterator(&controller_, info.cursor, info.pk);
+            return const_iterator(&controller_, info.cursor, info.pk, std::move(info.object_ptr));
         }
 
         template<typename Value>
@@ -625,7 +635,7 @@ public:
         const_iterator upper_bound(const key_type& key) const {
             chaindb::upper_bound<std::is_same<tag<IndexName>, typename PrimaryIndex::tag>::value> finder;
             auto info = finder(controller_, get_index_request(), key);
-            return const_iterator(&controller_, info.cursor, info.pk);
+            return const_iterator(&controller_, info.cursor, info.pk, std::move(info.object_ptr));
         }
 
         std::pair<const_iterator,const_iterator> equal_range(const key_type& key) const {

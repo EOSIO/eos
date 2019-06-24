@@ -212,7 +212,7 @@ namespace cyberway { namespace chaindb {
 
                 case cursor_kind::OneRecord:
                     if (cache_ptr) {
-                        return {ram_cursor, cache_ptr->pk()};
+                        return {ram_cursor, cache_ptr->pk(), std::move(cache_ptr)};
                     }
                     break;
 
@@ -225,7 +225,7 @@ namespace cyberway { namespace chaindb {
             if (cache_ptr) {
                 cursor.pk     = cache_ptr->pk();
                 cursor.object = cache_ptr->object();
-                return {cursor.id, cursor.pk};
+                return {cursor.id, cursor.pk, std::move(cache_ptr)};
             }
 
             current(cursor);
@@ -240,7 +240,7 @@ namespace cyberway { namespace chaindb {
                 }
             }
 
-            return {cursor.id, cursor.pk};
+            return {cursor.id, cursor.pk, std::move(cache_ptr)};
         }
 
         find_info lower_bound(const table_request& request, const cursor_kind kind, const primary_key_t pk) {
@@ -264,7 +264,7 @@ namespace cyberway { namespace chaindb {
 
                 case cursor_kind::OneRecord:
                     if (cache_ptr) {
-                        return {ram_cursor, cache_ptr->pk()};
+                        return {ram_cursor, cache_ptr->pk(), std::move(cache_ptr)};
                     }
                     break;
 
@@ -276,7 +276,7 @@ namespace cyberway { namespace chaindb {
             if (cache_ptr) {
                 cursor.pk     = cache_ptr->pk();
                 cursor.object = cache_ptr->object();
-                return {cursor.id, cursor.pk};
+                return {cursor.id, cursor.pk, std::move(cache_ptr)};
             }
 
             current(cursor);

@@ -18,6 +18,7 @@
 using boost::container::flat_set;
 
 namespace eosio { namespace chain {
+using cyberway::chaindb::cursor_kind;
 
 static inline void print_debug(account_name receiver, const action_trace& ar) {
    if (!ar.console.empty()) {
@@ -143,10 +144,10 @@ void apply_context::exec( action_trace& trace )
 
 
 bool apply_context::is_domain(const domain_name& domain) const {
-   return nullptr != chaindb.find<cyberway::chain::domain_object,by_name>(domain);
+   return nullptr != chaindb.find<cyberway::chain::domain_object,by_name>(domain, cursor_kind::OneRecord);
 }
 bool apply_context::is_username(const account_name& scope, const username& name) const {
-   return nullptr != chaindb.find<cyberway::chain::username_object,by_scope_name>(boost::make_tuple(scope,name));
+   return nullptr != chaindb.find<cyberway::chain::username_object,by_scope_name>(boost::make_tuple(scope,name), cursor_kind::OneRecord);
 }
 account_name apply_context::get_domain_owner(const domain_name& domain) const {
    return control.get_domain(domain).owner;
@@ -160,7 +161,7 @@ account_name apply_context::resolve_username(const account_name& scope, const us
 
 
 bool apply_context::is_account( const account_name& account )const {
-   return nullptr != chaindb.find<account_object>( account );
+   return nullptr != chaindb.find<account_object>( account, cursor_kind::OneRecord );
 }
 
 void apply_context::require_authorization( const account_name& account ) {
@@ -245,7 +246,7 @@ void apply_context::require_recipient( account_name recipient ) {
  *   can better understand the security risk.
  */
 void apply_context::execute_inline( action&& a ) {
-   auto* code = chaindb.find<account_object>(a.account);
+   auto* code = chaindb.find<account_object>(a.account, cursor_kind::OneRecord);
    EOS_ASSERT( code != nullptr, action_validate_exception,
                "inline action's code account ${account} does not exist", ("account", a.account) );
 
@@ -261,7 +262,7 @@ void apply_context::execute_inline( action&& a ) {
    }
 
    for( const auto& auth : a.authorization ) {
-      auto* actor = chaindb.find<account_object>(auth.actor);
+      auto* actor = chaindb.find<account_object>(auth.actor, cursor_kind::OneRecord);
       EOS_ASSERT( actor != nullptr, action_validate_exception,
                   "inline action's authorizing actor ${account} does not exist", ("account", auth.actor) );
       EOS_ASSERT( control.get_authorization_manager().find_permission(auth) != nullptr, action_validate_exception,
@@ -312,7 +313,7 @@ void apply_context::execute_inline( action&& a ) {
 }
 
 void apply_context::execute_context_free_inline( action&& a ) {
-   auto* code = chaindb.find<account_object>(a.account);
+   auto* code = chaindb.find<account_object>(a.account, cursor_kind::OneRecord);
    EOS_ASSERT( code != nullptr, action_validate_exception,
                "inline action's code account ${account} does not exist", ("account", a.account) );
 
@@ -395,7 +396,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
    }
 
    uint32_t trx_size = 0;
-   if ( auto ptr = chaindb.find<generated_transaction_object,by_sender_id>(boost::make_tuple(receiver, sender_id)) ) {
+   if ( auto ptr = chaindb.find<generated_transaction_object,by_sender_id>(boost::make_tuple(receiver, sender_id), cursor_kind::OneRecord) ) {
       EOS_ASSERT( replace_existing, deferred_tx_duplicate, "deferred transaction with the same sender_id and payer already exists" );
 
 // TODO: Removed by CyberWay
@@ -437,7 +438,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
 
 bool apply_context::cancel_deferred_transaction( const uint128_t& sender_id, account_name sender ) {
    auto trx_table = chaindb.get_table<generated_transaction_object>();
-   const auto* gto = chaindb.find<generated_transaction_object,by_sender_id>(boost::make_tuple(sender, sender_id));
+   const auto* gto = chaindb.find<generated_transaction_object,by_sender_id>(boost::make_tuple(sender, sender_id), cursor_kind::OneRecord);
    if ( gto ) {
 // TODO: Removed by CyberWay
 //      add_ram_usage( gto->payer, -(config::billable_size_v<generated_transaction_object> + gto->packed_trx.size()) );

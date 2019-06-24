@@ -24,6 +24,7 @@
 
 namespace eosio { namespace chain {
 using namespace int_arithmetic;
+using cyberway::chaindb::cursor_kind;
 
 namespace bacc = boost::accumulators;
 
@@ -149,7 +150,8 @@ namespace bacc = boost::accumulators;
       else {
          struct itimerval enable = {{0, 0}, {0, (int)x.count()-deadline_timer_verification.timer_overhead}};
          expired = 0;
-         expired |= !!setitimer(ITIMER_REAL, &enable, NULL);
+         if(setitimer(ITIMER_REAL, &enable, NULL))
+            expired = 1;
       }
    }
 
@@ -413,6 +415,9 @@ namespace bacc = boost::accumulators;
          net_usage,
          billed_ram_bytes,
          control.pending_block_time()); // can fail due to billed_ram_bytes
+      if( !control.skip_db_sessions() ) {
+         control.chaindb().apply_all_changes();
+      }
    }
 
    void transaction_context::validate_bw_usage() {
@@ -452,10 +457,7 @@ namespace bacc = boost::accumulators;
    void transaction_context::squash() {
       // TODO: removed by CyberWay
       // if (undo_session) undo_session->squash();
-      if (chaindb_undo_session) {
-          control.chaindb().apply_all_changes();
-          chaindb_undo_session->squash();
-      }
+      if (chaindb_undo_session) chaindb_undo_session->squash();
    }
 
    void transaction_context::undo() {
@@ -707,7 +709,7 @@ namespace bacc = boost::accumulators;
       const auto& auth_manager = control.get_authorization_manager();
 
       for( const auto& a : trx.context_free_actions ) {
-         auto* code = chaindb.find<account_object>(a.account);
+         auto* code = chaindb.find<account_object>(a.account, cursor_kind::OneRecord);
          EOS_ASSERT( code != nullptr, transaction_exception,
                      "action's code account '${account}' does not exist", ("account", a.account) );
          EOS_ASSERT( a.authorization.size() == 0, transaction_exception,
@@ -716,12 +718,12 @@ namespace bacc = boost::accumulators;
 
       bool one_auth = false;
       for( const auto& a : trx.actions ) {
-         auto* code = chaindb.find<account_object>(a.account);
+         auto* code = chaindb.find<account_object>(a.account, cursor_kind::OneRecord);
          EOS_ASSERT( code != nullptr, transaction_exception,
                      "action's code account '${account}' does not exist", ("account", a.account) );
          for( const auto& auth : a.authorization ) {
             one_auth = true;
-            auto* actor = chaindb.find<account_object>(auth.actor);
+            auto* actor = chaindb.find<account_object>(auth.actor, cursor_kind::OneRecord);
             EOS_ASSERT( actor  != nullptr, transaction_exception,
                         "action's authorizing actor '${account}' does not exist", ("account", auth.actor) );
             EOS_ASSERT( auth_manager.find_permission(auth) != nullptr, transaction_exception,

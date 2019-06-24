@@ -53,7 +53,7 @@ namespace cyberway { namespace chaindb {
             --revision_;
         }
 
-        using pk_value_map_t_ = fc::flat_map<primary_key_t, object_value>;
+        using pk_value_map_t_ = std::map<primary_key_t, object_value>;
 
         table_undo_stack& table_;
         pk_value_map_t_   new_values_;
@@ -424,17 +424,14 @@ namespace cyberway { namespace chaindb {
             index.account_abi = controller_.get_account_abi_info(config::system_account_name);
             index.table = index.abi().find_table(N(undo));
             index.pk_order = index.abi().find_pk_order(*index.table);
-            index.index = index.abi().find_index(*index.table, N(table));
+            index.index = index.abi().find_pk_index(*index.table);
 
-            auto account_table = tag<account_object>::get_code();
-            auto key = mutable_variant_object()
-                (names::code_field, 0)
-                (names::table_field, account_table);
-            auto& cursor = driver_.lower_bound(index, mutable_variant_object()(names::service_field, key));
+            auto  account_table = tag<account_object>::get_code();
+            auto& cursor = driver_.lower_bound(index, {});
             for (; cursor.pk != primary_key::End; driver_.next(cursor)) {
                 auto obj = driver_.object_at_cursor(cursor, false);
                 if (obj.service.code != 0 || obj.service.table != account_table) {
-                    break;
+                    continue;
                 }
 
                 auto& abi = obj.value["abi"];

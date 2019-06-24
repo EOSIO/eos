@@ -18,6 +18,8 @@
 
 namespace eosio { namespace chain {
 
+   using cyberway::chaindb::cursor_kind;
+
    using authorization_index_set = index_set<
       permission_table,
       permission_usage_table,
@@ -102,7 +104,7 @@ namespace eosio { namespace chain {
    const permission_object*  authorization_manager::find_permission( const permission_level& level )const
    { try {
       EOS_ASSERT( !level.actor.empty() && !level.permission.empty(), invalid_permission, "Invalid permission" );
-      return _chaindb.find<permission_object, by_owner>( boost::make_tuple(level.actor,level.permission) );
+      return _chaindb.find<permission_object, by_owner>( boost::make_tuple(level.actor,level.permission), cursor_kind::OneRecord );
    } EOS_RETHROW_EXCEPTIONS( chain::permission_query_exception, "Failed to retrieve permission: ${level}", ("level", level) ) }
 
    const permission_object&  authorization_manager::get_permission( const permission_level& level )const
@@ -120,11 +122,11 @@ namespace eosio { namespace chain {
          // First look up a specific link for this message act_name
          auto key = boost::make_tuple(authorizer_account, scope, act_name);
          auto action_idx = _chaindb.get_index<permission_link_object, by_action_name>();
-         auto itr = action_idx.find(key);
+         auto itr = action_idx.find(key, cursor_kind::OneRecord);
          // If no specific link found, check for a contract-wide default
          if (action_idx.end() == itr) {
             boost::get<2>(key) = action_name();
-            itr = action_idx.find(key);
+            itr = action_idx.find(key, cursor_kind::OneRecord);
          }
 
          // If no specific or default link found, use active permission

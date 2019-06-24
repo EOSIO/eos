@@ -4,7 +4,7 @@ NAME=$1
 EOS_PREFIX=${PREFIX}/${SUBPREFIX}
 mkdir -p ${PREFIX}/bin/
 #mkdir -p ${PREFIX}/lib/cmake/${PROJECT}
-mkdir -p ${EOS_PREFIX}/bin 
+mkdir -p ${EOS_PREFIX}/bin
 mkdir -p ${EOS_PREFIX}/licenses/eosio
 #mkdir -p ${EOS_PREFIX}/include
 #mkdir -p ${EOS_PREFIX}/lib/cmake/${PROJECT}
@@ -12,10 +12,10 @@ mkdir -p ${EOS_PREFIX}/licenses/eosio
 #mkdir -p ${EOS_PREFIX}/scripts
 
 # install binaries 
-cp -R ${BUILD_DIR}/bin/* ${EOS_PREFIX}/bin 
+cp -R ${BUILD_DIR}/bin/* ${EOS_PREFIX}/bin  || exit 1
 
 # install licenses
-cp -R ${BUILD_DIR}/licenses/eosio/* ${EOS_PREFIX}/licenses
+cp -R ${BUILD_DIR}/licenses/eosio/* ${EOS_PREFIX}/licenses || exit 1
 
 # install libraries
 #cp -R ${BUILD_DIR}/lib/* ${EOS_PREFIX}/lib
@@ -33,12 +33,10 @@ cp -R ${BUILD_DIR}/licenses/eosio/* ${EOS_PREFIX}/licenses
 #ln -sf ../../../${SUBPREFIX}/lib/cmake/${PROJECT}/EosioTester.cmake EosioTester.cmake
 #popd &> /dev/null
 
-pushd ${PREFIX}/bin &> /dev/null
-for f in `ls ${BUILD_DIR}/bin/`; do
+for f in $(ls "${BUILD_DIR}/bin/"); do
    bn=$(basename $f)
-   ln -sf ../${SUBPREFIX}/bin/$bn $bn
+   ln -sf ../${SUBPREFIX}/bin/$bn ${PREFIX}/bin/$bn || exit 1
 done
-popd &> /dev/null
-
-tar -cvzf $NAME ./${PREFIX}/*
-rm -r ${PREFIX}
+echo "Generating Tarball $NAME.tar.gz..."
+tar -cvzf $NAME.tar.gz ./${PREFIX}/* || exit 1
+rm -r ${PREFIX} || exit 1
