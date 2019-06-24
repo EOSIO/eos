@@ -164,9 +164,8 @@ function ensure-compiler() {
         which $CXX &>/dev/null || ( echo "${COLOR_RED}Unable to find compiler: Pass in the -P option if you wish for us to install it or install a C++17 compiler and set \$CXX and \$CC to the proper binary locations. ${COLOR_NC}"; exit 1 )
         # readlink on mac differs from linux readlink (mac doesn't have -f)
         [[ $ARCH == "Linux" ]] && READLINK_COMMAND="readlink -f" || READLINK_COMMAND="readlink"
-        COMPILER_TYPE=$( eval $READLINK_COMMAND $(which $CXX) )
-        [[ -z "${COMPILER_TYPE}" ]] && echo "${COLOR_RED}COMPILER_TYPE not set!${COLOR_NC}" && exit 1
-        if [[ $COMPILER_TYPE =~ "clang" ]]; then
+        COMPILER_TYPE=$( eval $READLINK_COMMAND $(which $CXX) || true )
+        if [[ $CXX =~ "clang" ]] || [[ $COMPILER_TYPE =~ "clang" ]]; then
             if [[ $ARCH == "Darwin" ]]; then
                 ### Check for apple clang version 10 or higher
                 [[ $( $(which $CXX) --version | cut -d ' ' -f 4 | cut -d '.' -f 1 | head -n 1 ) -lt 10 ]] && export NO_CPP17=true
