@@ -194,11 +194,11 @@ printf "\\n"
 printf "Checking MongoDB installation...\\n"
 if [ ! -d $MONGODB_ROOT ]; then
 	printf "Installing MongoDB into ${MONGODB_ROOT}...\\n"
-	curl -OL https://fastdl.mongodb.org/osx/mongodb-osx-ssl-x86_64-$MONGODB_VERSION.tgz \
-	&& tar -xzf mongodb-osx-ssl-x86_64-$MONGODB_VERSION.tgz \
+	curl -OL https://fastdl.mongodb.org/osx/mongodb-macos-x86_64-$MONGODB_VERSION.tgz \
+	&& tar -xzf mongodb-macos-x86_64-$MONGODB_VERSION.tgz \
 	&& mv $SRC_LOCATION/mongodb-osx-x86_64-$MONGODB_VERSION $MONGODB_ROOT \
 	&& touch $MONGODB_LOG_LOCATION/mongod.log \
-	&& rm -f mongodb-osx-ssl-x86_64-$MONGODB_VERSION.tgz \
+	&& rm -f mongodb-macos-x86_64-$MONGODB_VERSION.tgz \
 	&& cp -f $REPO_ROOT/scripts/mongod.conf $MONGODB_CONF \
 	&& mkdir -p $MONGODB_DATA_LOCATION \
 	&& rm -rf $MONGODB_LINK_LOCATION \
