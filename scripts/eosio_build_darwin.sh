@@ -248,6 +248,24 @@ else
 fi
 if [ $? -ne 0 ]; then exit -1; fi
 
+printf "Checking WASM installation...\\n"
+if [ ! -d $WASM_ROOT ]; then
+  printf "Installing WASM...\\n"
+  git clone --depth 1 --single-branch --branch release_40 https://github.com/llvm-mirror/llvm.git \
+  && git clone --depth 1 --single-branch --branch release_40 https://github.com/llvm-mirror/clang.git llvm/tools/clang \
+  && cd llvm \
+  && cmake -H. -Bbuild -GNinja -DCMAKE_INSTALL_PREFIX="${WASM_ROOT}" -DLLVM_TARGETS_TO_BUILD= -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=WebAssembly -DCMAKE_BUILD_TYPE=Release  \
+  && cmake --build build --target install \
+  && cd .. \
+  && rm -rf llvm \
+  || exit 1
+  printf " - WASM successfully installed @ ${WASM_ROOT}.\\n"
+else
+  printf " - WASM found with correct version @ ${WASM_ROOT}.\\n"
+fi
+if [ $? -ne 0 ]; then exit -1; fi
+
+
 printf "\\n"
 
 
