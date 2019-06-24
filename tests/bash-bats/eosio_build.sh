@@ -14,37 +14,34 @@ TEST_LABEL="[eosio_build]"
     if [[ $NAME =~ "Amazon Linux" ]] || [[ $NAME == "CentOS Linux" ]]; then
         # which package isn't installed
         uninstall-package which WETRUN &>/dev/null
-        run bash -c "printf \"y\nn\nn\n\" | ./scripts/eosio_build.sh"
+        run bash -c "printf \"y\ny\nn\nn\n\" | ./scripts/eosio_build.sh"
         [[ ! -z $(echo "${output}" | grep "EOSIO compiler checks require the 'which'") ]] || exit
-        [[ ! -z $(echo "${output}" | grep "Please install the 'which'") ]] || exit
     fi
 
     if [[ $ARCH == "Linux" ]]; then
         if [[ $NAME == "CentOS Linux" ]]; then # Centos has the SCL prompt before checking for the compiler
             # No c++!
-            run bash -c "printf \"y\ny\nn\n\" | ./${SCRIPT_LOCATION}"
+            run bash -c "printf \"y\ny\ny\nn\n\" | ./${SCRIPT_LOCATION}"
         else
             # No c++!
-            run bash -c "printf \"y\nn\nn\n\" | ./${SCRIPT_LOCATION}"
+            run bash -c "printf \"y\ny\ny\nn\nn\n\" | ./${SCRIPT_LOCATION}"
         fi
         [[ ! -z $(echo "${output}" | grep "Unable to find compiler") ]] || exit
     fi 
 
-    # -P with -y
-    cd .. # Also test that we can run the script from a directory other than the root
-    run bash -c "./eos/$SCRIPT_LOCATION -y -P"
+    cd ./scripts # Also test that we can run the script from a directory other than the root
+    run bash -c "./eosio_build.sh -y -P"
     [[ ! -z $(echo "${output}" | grep "PIN_COMPILER: true") ]] || exit
     [[ "${output}" =~ -DCMAKE_TOOLCHAIN_FILE=\'.*/scripts/../build/pinned_toolchain.cmake\' ]] || exit
     [[ "${output}" =~ "Clang 8 successfully installed" ]] || exit
-    cd eos
     # -P with prompts
+    cd ..
     run bash -c "printf \"y\nn\nn\nn\n\" | ./$SCRIPT_LOCATION -P"
     [[ "${output}" =~ .*User.aborted.* ]] || exit
     # lack of -m
     [[ ! -z $(echo "${output}" | grep "ENABLE_MONGO: false") ]] || exit
     [[ ! -z $(echo "${output}" | grep "INSTALL_MONGO: false") ]] || exit
     # lack of -i
-    # [[ ! -z $(echo "${output}" | grep "INSTALL_LOCATION: ${HOME}") ]] || exit
     [[ ! -z $(echo "${output}" | grep "EOSIO_INSTALL_DIR: ${HOME}/eosio/${EOSIO_VERSION}") ]] || exit
     ## -o
     run bash -c "printf \"y\ny\nn\nn\n\" | ./$SCRIPT_LOCATION -o Debug -P"
