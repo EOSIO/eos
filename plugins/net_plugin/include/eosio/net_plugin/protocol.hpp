@@ -6,6 +6,7 @@
 #include <eosio/chain/block.hpp>
 #include <eosio/chain/types.hpp>
 #include <chrono>
+#include <eosio/topology_plugin/messages.hpp>
 
 namespace eosio {
    using namespace chain;
@@ -140,7 +141,8 @@ namespace eosio {
                                       request_message,
                                       sync_request_message,
                                       signed_block,         // which = 7
-                                      packed_transaction>;  // which = 8
+                                      packed_transaction,   // which = 8
+                                      topology_message>;
 
 } // namespace eosio
 
