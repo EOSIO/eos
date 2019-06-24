@@ -130,7 +130,6 @@ namespace cyberway { namespace chaindb {
         auto itr = table.info_map.find(pk);
         if (itr == table.info_map.end()) {
             itr = table.info_map.emplace(pk, info_t_()).first;
-            itr->second.undo_map.reserve(10);
         }
         info_ = &itr->second;
 

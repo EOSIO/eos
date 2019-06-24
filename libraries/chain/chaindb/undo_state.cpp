@@ -53,7 +53,7 @@ namespace cyberway { namespace chaindb {
             --revision_;
         }
 
-        using pk_value_map_t_ = fc::flat_map<primary_key_t, object_value>;
+        using pk_value_map_t_ = std::map<primary_key_t, object_value>;
 
         table_undo_stack& table_;
         pk_value_map_t_   new_values_;
