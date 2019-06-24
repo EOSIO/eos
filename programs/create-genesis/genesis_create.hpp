@@ -1,6 +1,7 @@
 #pragma once
 #include "genesis_info.hpp"
 #include "export_info.hpp"
+#include "supply_distributor.hpp"
 #include <eosio/chain/genesis_state.hpp>
 #include <fc/crypto/sha256.hpp>
 #include <boost/filesystem.hpp>
@@ -38,6 +39,7 @@ public:
     const genesis_state& get_conf() const;
     const export_info& get_exp_info() const;
     name name_by_idx(acc_idx idx) const;
+    supply_distributor get_gbg_to_golos_converter() const;
 
 private:
     struct genesis_create_impl;

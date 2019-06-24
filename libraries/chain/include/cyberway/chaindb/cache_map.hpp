@@ -45,6 +45,7 @@ namespace cyberway { namespace chaindb {
         void undo_session(revision_t) const;
 
         void clear() const;
+        void push(revision_t) const;
 
     private:
         std::unique_ptr<cache_map_impl> impl_;

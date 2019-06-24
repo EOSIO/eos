@@ -37,10 +37,11 @@ namespace eosio {
 
        account_resource_limit     net_limit;
        account_resource_limit     cpu_limit;
+       account_resource_limit     ram_limit;
+       account_resource_limit     storage_limit;
+
        int64_t                    ram_usage = 0;
-       int64_t                    ram_owned = 0;
-       int64_t                    storage_usage = 0;
-       int64_t                    storage_owned = 0;
+
        std::vector<permission>    permissions;
        fc::variant                total_resources;
        fc::variant                self_delegated_bandwidth;
@@ -159,7 +160,7 @@ FC_REFLECT( eosio::permission, (perm_name)(parent)(required_auth) )
 FC_REFLECT( eosio::account_resource_limit, (used)(available)(max) )
 FC_REFLECT( eosio::get_account_results,
             (account_name)(head_block_num)(head_block_time)(privileged)(last_code_update)(created)
-            (core_liquid_balance)(ram_quota)(net_weight)(cpu_weight)(net_limit)(cpu_limit)(ram_usage)(permissions)
+            (core_liquid_balance)(ram_quota)(net_weight)(cpu_weight)(net_limit)(cpu_limit)(ram_limit)(storage_limit)(ram_usage)(permissions)
             (total_resources)(self_delegated_bandwidth)(refund_request)(voter_info) )
 FC_REFLECT( eosio::get_code_results, (account_name)(code_hash)(wast)(wasm)(abi) )
 FC_REFLECT( eosio::get_code_hash_results, (account_name)(code_hash) )

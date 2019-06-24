@@ -334,7 +334,9 @@ enum object_type {
     account_metadata_object_id,
     proposal_object_id,
     required_approval_object_id,
-    reputation_object_id
+    reputation_object_id,
+
+    follow_plugin_reputation_object_id = (8 << 8) + 2
 };
 
 // variant must be ordered the same way as enum (including not required objects):

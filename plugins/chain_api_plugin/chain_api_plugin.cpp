@@ -183,24 +183,23 @@ namespace {
 
     public:
 
-        resource_calculator(chain::resource_limits_manager& rm, chain::account_name name) 
-        : rm_(rm),
+        resource_calculator(chain::resource_limits_manager& rm, chain::account_name name) :
+          rm_(rm),
           account_(name),
           prices_(rm.get_pricelist()),
           total_stake_(rm.get_account_stake_ratio(fc::time_point::now(), account_, false).numerator),
-          //storage_usage_(rm.get_account_storage_usage(name)),
           resources_usage_(rm.get_account_usage(name)),
           resources_info_(chain::resource_limits::resources_num),
           resource_limits_(chain::resource_limits::resources_num),
           resources_stake_parts_(chain::resource_limits::resources_num) {
             init_resources_info();
             init_account_resource_limits();
-            init_resources_available_stake_part();
-            //init_ram_qouta();
             try {
                 account_balance_ = rm.get_account_balance(fc::time_point::now(), account_,prices_, false);
             } catch(...) {
             }
+            init_resources_available_stake_part();
+
         }
 
         const account_resource_limit& get_net_limit() const {
@@ -210,23 +209,18 @@ namespace {
         const account_resource_limit& get_cpu_limit() const {
             return resource_limits_.at(chain::resource_limits::CPU);
         }
-/*
+
+        const account_resource_limit& get_ram_limit() const {
+            return resource_limits_.at(chain::resource_limits::RAM);
+        }
+
+        const account_resource_limit& get_storage_limit() const {
+            return resource_limits_.at(chain::resource_limits::STORAGE);
+        }
+
         int64_t get_ram_usage() const {
-            return storage_usage_.ram_usage;
+            return resources_usage_.at(chain::resource_limits::RAM);
         }
-
-        int64_t get_ram_owned() const {
-            return storage_usage_.ram_owned;
-        }
-
-        int64_t get_storage_usage() const {
-            return storage_usage_.storage_usage;
-        }
-
-        int64_t get_storage_owned() const {
-            return storage_usage_.storage_owned;
-        }
-*/
 
         int64_t get_net_weight() const {
             return resources_stake_parts_.at(chain::resource_limits::NET);
@@ -252,34 +246,35 @@ namespace {
     private:
 
         void init_resources_info() {
-            init_resource_info(chain::resource_limits::NET);
-            init_resource_info(chain::resource_limits::CPU);
-            init_resource_info(chain::resource_limits::STORAGE);
+            for (int i = 0; i < chain::resource_limits::resources_num; ++i) {
+                init_resource_info(chain::resource_limits::resource_id(i));
+            }
         }
 
         void init_resource_info(chain::resource_limits::resource_id code) {
             const auto usage = resources_usage_.at(code);
             const auto price = prices_.at(code);
-            const auto weight = rm_.get_account_usage_ratio(account_, code);
-
+            const auto weight = rm_.get_resource_usage_by_account_cost_ratio(account_, code);
             resources_info_[code] = {usage, weight, price};
         }
 
         void init_account_resource_limits() {
-            init_account_resource_limit(chain::resource_limits::NET);
-            init_account_resource_limit(chain::resource_limits::CPU);
+            for (int i = 0; i < chain::resource_limits::resources_num; ++i) {
+                init_account_resource_limit(chain::resource_limits::resource_id(i));
+            }
         }
 
         void init_account_resource_limit(chain::resource_limits::resource_id code) {
             const int64_t max = get_resource_total_count(code);
             const int64_t usage = resources_usage_[code];
-            const int64_t available = max - usage;
+            const int64_t available = max== 0 ? 0 : max - usage;
             resource_limits_[code] = account_resource_limit{usage, available, max};
         }
 
         void init_resources_available_stake_part() {
-            init_resource_available_stake_part(chain::resource_limits::NET);
-            init_resource_available_stake_part(chain::resource_limits::CPU);
+            for (int i = 0; i < chain::resource_limits::resources_num; ++i) {
+                init_resource_available_stake_part(chain::resource_limits::resource_id(i));
+            }
         }
 
         void init_resource_available_stake_part(chain::resource_limits::resource_id code) {
@@ -308,7 +303,6 @@ namespace {
         std::vector<chain::resource_limits::ratio> prices_;
         uint64_t total_stake_;
         uint64_t account_balance_ = 0;
-        //chain::resource_limits::account_storage_usage storage_usage_;
         std::vector<uint64_t> resources_usage_;
         std::vector<resource_info> resources_info_;
         std::vector<account_resource_limit> resource_limits_;
@@ -358,11 +352,11 @@ get_account_results chain_api_plugin_impl::get_account(const get_account_params&
 
     result.net_limit = resource_calc.get_net_limit();
     result.cpu_limit = resource_calc.get_cpu_limit();
+    result.ram_limit = resource_calc.get_ram_limit();
+    result.storage_limit = resource_calc.get_storage_limit();
     
-    //result.ram_usage = resource_calc.get_ram_usage();
-    //result.ram_owned = resource_calc.get_ram_owned();
-    //result.storage_usage = resource_calc.get_storage_usage();
-    //result.storage_owned = resource_calc.get_storage_owned();
+    result.ram_usage = resource_calc.get_ram_usage();
+    result.ram_quota = result.storage_limit.max;
 
     result.net_weight = resource_calc.get_net_weight();
     result.cpu_weight = resource_calc.get_cpu_weight();

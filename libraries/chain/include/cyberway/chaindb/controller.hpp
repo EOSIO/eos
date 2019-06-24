@@ -124,7 +124,7 @@ namespace cyberway { namespace chaindb {
 
         void restore_db() const;
         void drop_db() const;
-        void clear_cache() const;
+        void push_cache() const;
 
         void close(const cursor_request&) const;
         void close_code_cursors(const account_name&) const;

@@ -644,6 +644,14 @@ namespace cyberway { namespace chaindb {
             }
         }
 
+        void push(const revision_t revision) {
+            set_revision(revision);
+
+            for (auto& service: service_tree_) {
+                service.second.next_pk = primary_key::Unset;
+            }
+        }
+
         uint64_t calc_ram_bytes(const revision_t revision) {
             return get_pending_cell(revision).ram_bytes();
         }
@@ -1358,6 +1366,10 @@ namespace cyberway { namespace chaindb {
 
     void cache_map::clear() const {
         impl_->clear();
+    }
+
+    void cache_map::push(const revision_t revision) const {
+        impl_->push(revision);
     }
 
 } } // namespace cyberway::chaindb

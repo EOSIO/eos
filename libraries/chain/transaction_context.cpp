@@ -214,14 +214,14 @@ namespace bacc = boost::accumulators;
       _deadline = start + objective_duration_limit;
 
       // Possibly lower net_limit to the maximum net usage a transaction is allowed to be billed
-      if( config::max_transaction_usage[resource_limits::NET] <= net_limit ) {
-         net_limit = config::max_transaction_usage[resource_limits::NET];
+      if( cfg.max_transaction_usage[resource_limits::NET] <= net_limit ) {
+         net_limit = cfg.max_transaction_usage[resource_limits::NET];
          net_limit_due_to_block = false;
       }
 
       // Possibly lower objective_duration_limit to the maximum cpu usage a transaction is allowed to be billed
-      if( config::max_transaction_usage[resource_limits::CPU] <= objective_duration_limit.count() ) {
-         objective_duration_limit = fc::microseconds(config::max_transaction_usage[resource_limits::CPU]);
+      if( cfg.max_transaction_usage[resource_limits::CPU] <= objective_duration_limit.count() ) {
+         objective_duration_limit = fc::microseconds(cfg.max_transaction_usage[resource_limits::CPU]);
          billing_timer_exception_code = tx_cpu_usage_exceeded::code_value;
          _deadline = start + objective_duration_limit;
       }
@@ -237,11 +237,14 @@ namespace bacc = boost::accumulators;
       if( trx.max_ram_kbytes > 0 ) {
          ram_bytes_limit = uint64_t(trx.max_ram_kbytes) << 10;
       }
-
+      
       // Possibly lower STORAGE limit to optional limit set in transaction header
       if( trx.max_storage_kbytes > 0 ) {
          storage_bytes_limit = uint64_t(trx.max_storage_kbytes) << 10;
       }
+      
+      ram_bytes_limit     = std::min(ram_bytes_limit,     cfg.max_transaction_usage[resource_limits::RAM]);
+      storage_bytes_limit = std::min(storage_bytes_limit, cfg.max_transaction_usage[resource_limits::STORAGE]);
 
       // Possibly lower objective_duration_limit to optional limit set in transaction header
       if( trx.max_cpu_usage_ms > 0 ) {

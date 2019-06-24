@@ -236,6 +236,7 @@ datastream<ST>& operator<<(datastream<ST>&                                      
    return ds;
 }
 
+//TODO: update according to the new chain_config
 template <typename ST>
 datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosio::chain::chain_config>& obj) {
    fc::raw::pack(ds, fc::unsigned_int(0));
