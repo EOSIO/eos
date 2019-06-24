@@ -9,6 +9,8 @@ add_subdirectory(producer_api_plugin)
 add_subdirectory(history_plugin)
 add_subdirectory(history_api_plugin)
 add_subdirectory(state_history_plugin)
+add_subdirectory(topology_plugin)
+add_subdirectory(topology_api_plugin)
 
 add_subdirectory(wallet_plugin)
 add_subdirectory(wallet_api_plugin)

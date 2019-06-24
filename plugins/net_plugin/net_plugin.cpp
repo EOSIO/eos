@@ -13,6 +13,7 @@
 #include <eosio/chain/thread_utils.hpp>
 #include <eosio/producer_plugin/producer_plugin.hpp>
 #include <eosio/chain/contract_types.hpp>
+#include <eosio/topology_plugin/topology_plugin.hpp>
 
 #include <fc/network/message_buffer.hpp>
 #include <fc/network/ip.hpp>
@@ -173,6 +174,8 @@ namespace eosio {
       node_transaction_index  local_txns;
 
    public:
+      void bcast_topology_message (const topology_message_ptr& tm);
+
       void bcast_transaction(const transaction_metadata_ptr& trx);
       void rejected_transaction(const transaction_id_type& msg, uint32_t head_blk_num);
       void bcast_block(const block_state_ptr& bs);
@@ -228,6 +231,7 @@ namespace eosio {
       boost::asio::steady_timer::duration   txn_exp_period;
       boost::asio::steady_timer::duration   resp_expected_period;
       boost::asio::steady_timer::duration   keepalive_interval{std::chrono::seconds{32}};
+      boost::asio::steady_timer::duration   sample_interval;
 
       int                                   max_cleanup_time_ms = 0;
       uint32_t                              max_client_count = 0;
@@ -244,6 +248,7 @@ namespace eosio {
       eosio::db_read_mode                   db_read_mode = eosio::db_read_mode::SPECULATIVE;
       chain_plugin*                         chain_plug = nullptr;
       producer_plugin*                      producer_plug = nullptr;
+      topology_plugin*                      topology_plug = nullptr;
       bool                                  use_socket_read_watermark = false;
       /** @} */
 
@@ -268,6 +273,9 @@ namespace eosio {
       std::mutex                            keepalive_timer_mtx;
       unique_ptr<boost::asio::steady_timer> keepalive_timer;
 
+      std::mutex                            sample_timer_mtx;
+      unique_ptr<boost::asio::steady_timer> sample_timer;
+
       std::atomic<bool>                     in_shutdown{false};
 
       compat::channels::transaction_ack::channel_type::handle  incoming_transaction_ack_subscription;
@@ -275,6 +283,7 @@ namespace eosio {
 
       uint16_t                                  thread_pool_size = 2;
       optional<eosio::chain::named_thread_pool> thread_pool;
+      eosio::node_id                topo_id;
 
    private:
       mutable std::mutex            chain_info_mtx; // protects chain_*
@@ -292,6 +301,7 @@ namespace eosio {
 
       void start_listen_loop();
 
+      void on_topology_update( const topology_message_ptr& tm );
       void on_accepted_block( const block_state_ptr& bs );
       void transaction_ack(const std::pair<fc::exception_ptr, transaction_metadata_ptr>&);
       void on_irreversible_block( const block_state_ptr& blk );
@@ -309,6 +319,10 @@ namespace eosio {
       /** \brief Peer heartbeat ticker.
        */
       void ticker();
+      /** \brief Topology monitor sample metrics collection strobe
+       */
+      void strobe();
+
       /** @} */
       /** \brief Determine if a peer is allowed to connect.
        *
@@ -556,7 +570,7 @@ namespace eosio {
 
       optional<sync_state>    peer_requested;  // this peer is requesting info from us
 
-      std::atomic<bool>                         socket_open{false};
+      std::atomic<bool>       socket_open{false};
 
       const string            peer_addr;
       string                  remote_endpoint_ip;     // not updated after start
@@ -599,6 +613,7 @@ namespace eosio {
       block_id_type               fork_head;
       uint32_t                    fork_head_num{0};
       fc::time_point              last_close;
+      link_id                     topo_id;
 
       connection_status get_status()const;
 
@@ -635,6 +650,8 @@ namespace eosio {
       bool process_next_message(uint32_t message_length);
 
       void send_handshake();
+
+      void collect_samples ();
 
       /** \name Peer Timestamps
        *  Time message handling
@@ -678,6 +695,10 @@ namespace eosio {
       void fetch_wait();
       void sync_timeout(boost::system::error_code ec);
       void fetch_timeout(boost::system::error_code ec);
+      /**
+       * periodically forward metrics samples to the topology manager if present.
+       */
+      void strobe_metrics(boost::system::error_code ec);
 
       void queue_write(const std::shared_ptr<vector<char>>& buff,
                        bool trigger_send,
@@ -732,6 +753,7 @@ namespace eosio {
    };
 
    const string connection::unknown = "<unknown>";
+
 
    // called from connection strand
    struct msg_handler : public fc::visitor<void> {
@@ -808,7 +830,37 @@ namespace eosio {
          fc_dlog( logger, "handle sync_request_message" );
          c->handle_message( msg );
       }
+
+      void operator()( const topology_message& msg ) const {
+         // continue call to handle_message on connection strand
+         fc_dlog( logger, "handle topology_message" );
+      }
    };
+
+#if 0
+   // for future use - when the topology manager is engaged in actively routing block/transaction
+   // messages the dynamic dipsatcher functionality will be key for replacing the default static
+   // dispatcher.
+   class dynamic_dispatch_manager : public dispatch_manager {
+   public:
+      virtual void bcast_transaction (const packed_transaction& msg);
+      virtual void bcast_block (const block_state_ptr& bs);
+      virtual void recv_block (const connection_ptr& conn, const block_id_type& msg, uint32_t bnum);
+      virtual void recv_transaction (const connection_ptr& conn, const transaction_id_type& id);
+   };
+
+   void dynamic_dispatch_manager::bcast_transaction( const packed_transaction& msg) {
+   }
+
+   void dynamic_dispatch_manager::bcast_block( const block_state_ptr& msg) {
+   }
+
+   void dynamic_dispatch_manager::recv_block( const connection_ptr& conn, const block_id_type& msg, uint32_t bnum) {
+   }
+
+   void dynamic_dispatch_manager::recv_transaction( const connection_ptr& conn, const transaction_id_type& id) {
+   }
+#endif
 
    //---------------------------------------------------------------------------
 
@@ -1019,6 +1071,13 @@ namespace eosio {
                   ( "head", last_handshake_sent.head_num ) );
          c->enqueue( last_handshake_sent );
       });
+   }
+
+   void connection::collect_samples() {
+      vector<pair<metric_kind,uint32_t> > down;
+      vector<pair<metric_kind,uint32_t> > up;
+      // todo: fill in list
+      my_impl->topology_plug->update_samples (topo_id, down, up);
    }
 
    void connection::send_time() {
@@ -1887,6 +1946,18 @@ namespace eosio {
       fc_dlog( logger, "rejected block ${id}", ("id", id) );
    }
 
+   void dispatch_manager::bcast_topology_message (const topology_message_ptr& tm) {
+      std::shared_ptr<std::vector<char>> send_buffer;
+      my_impl->for_each_connection
+         ( [this, tm, &send_buffer]( auto &cp )
+           {
+              if( !cp->current() ) {
+                 return true;
+              }
+              //todo: implement this
+           });
+   }
+
    void dispatch_manager::bcast_transaction(const transaction_metadata_ptr& ptrx) {
       const auto& id = ptrx->id();
       const packed_transaction& trx = *ptrx->packed_trx();
@@ -2341,9 +2412,16 @@ namespace eosio {
          msg_handler m( shared_from_this() );
          if( msg.contains<signed_block>() ) {
             m( std::move( msg.get<signed_block>() ) );
-         } else if( msg.contains<packed_transaction>() ) {
+         }
+         else if( msg.contains<packed_transaction>() ) {
             m( std::move( msg.get<packed_transaction>() ) );
+         }
+         else if( msg.contains<topology_message>() ) {
+            if (my_impl->topology_plug != nullptr) {
+               my_impl->topology_plug->handle_message( std::move( msg.get<topology_message>() ) );
+            }
          } else {
+
             msg.visit( m );
          }
       } catch( const fc::exception& e ) {
@@ -2555,6 +2633,7 @@ namespace eosio {
        */
       msg.dst = get_time();
 
+      peer_ilog(this, "received time_message");
       // If the transmit timestamp is zero, the peer is horribly broken.
       if(msg.xmt == 0)
          return;                 /* invalid timestamp */
@@ -2855,6 +2934,28 @@ namespace eosio {
       } );
    }
 
+   // thread_safe
+   void net_plugin_impl::strobe() {
+      if( in_shutdown ) return;
+      std::lock_guard<std::mutex> g( sample_timer_mtx );
+      sample_timer->expires_from_now(sample_interval);
+      sample_timer->async_wait( [my = shared_from_this()]( boost::system::error_code ec ) {
+            my->strobe();
+            if( ec ) {
+               if( my->in_shutdown ) return;
+               fc_wlog( logger, "Peer sample strobed sooner than expected: ${m}", ("m", ec.message()) );
+            }
+            my->for_each_connection( []( auto& c ) {
+               if( c->socket_is_open() ) {
+                  c->strand.post( [c]() {
+                     c->collect_samples();
+                  } );
+               }
+               return true;
+            } );
+         } );
+   }
+
    // thread safe
    void net_plugin_impl::ticker() {
       if( in_shutdown ) return;
@@ -2938,6 +3039,14 @@ namespace eosio {
       if( reschedule ) {
          start_conn_timer( connector_period, std::weak_ptr<connection>());
       }
+   }
+
+   void net_plugin_impl::on_topology_update(const topology_message_ptr& tm) {
+      update_chain_info();
+      boost::asio::post( my_impl->thread_pool->get_executor(), [this, tm]() {
+            //         fc_dlog( logger, "signaled, blk id = ${id}", ("id", block->id) );
+         dispatcher->bcast_topology_message( tm );
+      });
    }
 
    // called from application thread
@@ -3204,6 +3313,20 @@ namespace eosio {
       fc_ilog( logger, "my node_id is ${id}", ("id", my->node_id ));
 
       my->producer_plug = app().find_plugin<producer_plugin>();
+      my->topology_plug = app().find_plugin<topology_plugin>();
+      if( my->topology_plug != nullptr ) {
+#if 0 // for future use
+         my->dispatcher.reset( new dynamic_dispatch_manager );
+#endif
+         my->topology_plug->topo_update.connect([my = my]( const topology_message_ptr & t) {
+                                                    my->on_topology_update ( t );
+                                                 });
+      }
+      my->chain_plug = app().find_plugin<chain_plugin>();
+      EOS_ASSERT( my->chain_plug, chain::missing_chain_plugin_exception, ""  );
+      my->chain_id = my->chain_plug->get_chain_id();
+      fc::rand_pseudo_bytes( my->node_id.data(), my->node_id.data_size());
+      ilog( "my node_id is ${id}", ("id", my->node_id));
 
       my->thread_pool.emplace( "net", my->thread_pool_size );
 
@@ -3235,6 +3358,18 @@ namespace eosio {
                my->p2p_address = host + port;
             }
          }
+      }
+
+      if (my->topology_plug != nullptr) {
+         //todo: populate the struct
+         node_descriptor nd ({0,0,0,"",producer,scheduled,""});
+         my->topo_id = my->topology_plug->add_node( std::move(nd) );
+         {
+            std::lock_guard<std::mutex> g( my->keepalive_timer_mtx );
+            my->sample_timer.reset( new boost::asio::steady_timer(my->thread_pool->get_executor() ));
+         }
+         my->sample_interval = std::chrono::seconds( my->topology_plug->sample_interval_sec());
+         my->strobe();
       }
 
       {

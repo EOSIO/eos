@@ -31,7 +31,7 @@ namespace eosio {
         void plugin_startup();
         void plugin_shutdown();
 
-        void   broadcast_block(const chain::signed_block &sb);
+        void broadcast_block(const chain::signed_block &sb);
 
         string                       connect( const string& endpoint );
         string                       disconnect( const string& endpoint );

@@ -1,0 +1,106 @@
+/**
+ *  @file
+ *  @copyright defined in eos/LICENSE
+ */
+#pragma once
+#include <stdlib.h>
+#include <time.h>
+#include <vector>
+
+
+namespace eosio {
+
+   using namespace std;
+
+   /**
+    * all measurements are normalized to integer samples.
+    * metric.last is the last observed measurement for the sample.
+    * metric.min is the smallest sampled value
+    * metric.max is the largest sampled value
+    * metric.avg is the "average" value. Since historical measurements are not
+    *           retained, the average is computed by multiplying the previous avg
+    *           value times the number of samples taken so far, adding the new
+    *           sample and dividing by the number of samples + 1.
+    */
+   struct metric {
+      uint32_t count;
+      uint32_t last;
+      uint32_t min;
+      uint32_t max;
+      uint32_t avg;
+
+      metric() : count(0), last(0), min((uint32_t)-1),max(0),avg(0) {}
+      void add_sample(uint32_t value ) {
+         last = value;
+         if( value < min ) min = value;
+         if( value > max ) max = value;
+         uint64_t num = avg * count + value;
+         avg = (uint32_t)(num / (++count));
+      }
+   };
+
+   /**
+    * In order to have maximum flexibility and minimize the size of in-flight sample
+    * updates, the link metrics are stored in a map with this enumeration providing
+    * key values.
+    */
+   enum metric_kind
+      {
+       queue_depth = 0x01,
+       queue_latency = 0x02,
+       net_latency = 0x04,
+       bytes_sent = 0x08,
+       bytes_per_second = 0x10,
+       messages_sent = 0x20,
+       messages_per_second = 0x40,
+       fork_instances = 0x80,
+       fork_depth = 0x100,
+       fork_max_depth = 0x200
+      };
+
+
+   /**
+    * Link metrics is the accumulator of sample measurements. The measurements are all
+    * kept in the context of the sender.
+    * @attributes
+    * last_sample  is the time when the metrics
+    * measurements is the container for all the sampled info.
+    * link_metrics.total_bytes  is the quantity of data sent measured in bytes and
+    *
+    */
+   struct link_metrics {
+      time_t                       last_sample;
+      time_t                       first_sample;
+      fc::flat_map<metric_kind,metric> measurements;
+      uint64_t                     total_bytes;
+      uint64_t                     total_messages;
+
+
+      void sample(const vector<pair<metric_kind,uint32_t> >& samples) {
+         last_sample = time(0);
+         if (first_sample == 0) {
+            first_sample = last_sample;
+         }
+         time_t duration = last_sample - first_sample;
+         for (const auto& s : samples) {
+            uint32_t value = s.second;
+            metric_kind kind = s.first;
+            if (s.first == messages_sent) {
+               total_messages += s.second;
+               kind = messages_per_second;
+               value = duration == 0 ? 0 : total_messages / duration;
+            }
+            else if (s.first == bytes_sent) {
+               total_bytes += s.second;
+               kind = bytes_per_second;
+               value = duration == 0 ? 0: total_bytes / duration;
+            }
+            measurements[kind].add_sample(value);
+         }
+      }
+   };
+
+} // namespace eosio
+
+FC_REFLECT(eosio::metric, (last)(min)(max)(avg))
+FC_REFLECT(eosio::link_metrics, (last_sample)(measurements)(total_bytes)(total_messages))
