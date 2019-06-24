@@ -178,7 +178,7 @@ function ensure-build-essential() {
             case $PROCEED in
                 "" ) echo "What would you like to do?";;
                 0 | true | [Yy]* )
-                    if install-package build-essential WETRUN; then
+                    if install-package build-essential; then
                         $PIN_COMPILER && export PINNED_BUILD_ESSENTIALS=true
                         echo " - ${COLOR_GREEN}Installed build-essential${COLOR_NC}"
                     else

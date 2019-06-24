@@ -26,12 +26,13 @@ TEST_LABEL="[eosio_build]"
             # No c++!
             run bash -c "printf \"y\ny\ny\nn\nn\n\" | ./${SCRIPT_LOCATION}"
         fi
-        [[ ! -z $(echo "${output}" | grep "Unable to find compiler") ]] || exit
+        [[ ! -z $(echo "${output}" | grep "Unable to find .* compiler") ]] || exit
     fi 
 
     cd ./scripts # Also test that we can run the script from a directory other than the root
     run bash -c "./eosio_build.sh -y -P"
     [[ ! -z $(echo "${output}" | grep "PIN_COMPILER: true") ]] || exit
+    [[ ! -z $(echo "${output}" | grep "Installed build-essential") ]] || exit # Ensure build-essentials is installed so we can compile cmake, clang, boost, etc
     [[ "${output}" =~ -DCMAKE_TOOLCHAIN_FILE=\'.*/scripts/../build/pinned_toolchain.cmake\' ]] || exit
     [[ "${output}" =~ "Clang 8 successfully installed" ]] || exit
     # -P with prompts

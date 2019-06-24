@@ -22,6 +22,6 @@ function teardown() { # teardown is run once after each test, even if it fails
   uninstall-package devtoolset-8* WETRUN
   uninstall-package centos-release-scl
   uninstall-package gcc-c++ WETRUN
-  uninstall-package build-essential WETRUN
+  ( [[ $NAME == 'Ubuntu' ]] && [[ ! $( dpkg -s build-essential 2>/dev/null ) ]] ) && apt autoremove build-essential -y &>/dev/null
 }
 trap teardown EXIT
