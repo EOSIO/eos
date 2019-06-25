@@ -2554,9 +2554,10 @@ namespace eosio {
                   auto check_time = check->last_handshake_sent.time + check->last_handshake_recv.time;
                   g_check_conn.unlock();
                   g_conn.lock();
+                  bool last_sent_init = last_handshake_sent.node_id != fc::sha256();
                   auto c_time = last_handshake_sent.time;
                   g_conn.unlock();
-                  if (msg.time + c_time <= check_time)
+                  if( !last_sent_init || (msg.time + c_time <= check_time) )
                      continue;
 
                   g_cnts.unlock();
