@@ -57,7 +57,6 @@ class transaction_metadata {
 
       const packed_transaction_ptr& packed_trx()const { return _packed_trx; }
       const transaction_id_type& id()const { return _id; }
-      const transaction_id_type& signed_id()const { return _signed_id; }
 
       // can be called from any thread. It is recommended that next() immediately post to application thread for
       // future processing since next() will be called from the thread_pool.

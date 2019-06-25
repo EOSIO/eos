@@ -35,7 +35,6 @@ struct unapplied_transaction {
    const fc::time_point           expiry;
    trx_enum_type                  trx_type = unknown;
 
-   const transaction_id_type& signed_id()const { return trx_meta->signed_id(); }
    const transaction_id_type& id()const { return trx_meta->id(); }
 
    unapplied_transaction(const unapplied_transaction&) = delete;
@@ -50,15 +49,15 @@ struct unapplied_transaction {
  */
 class unapplied_transaction_queue {
 
-   struct by_signed_id;
+   struct by_id;
    struct by_type;
    struct by_expiry;
 
    typedef multi_index_container< unapplied_transaction,
       indexed_by<
          sequenced<>,
-         hashed_unique< tag<by_signed_id>,
-               const_mem_fun<unapplied_transaction, const transaction_id_type&, &unapplied_transaction::signed_id>
+         hashed_unique< tag<by_id>,
+               const_mem_fun<unapplied_transaction, const transaction_id_type&, &unapplied_transaction::id>
          >,
          ordered_non_unique< tag<by_type>, member<unapplied_transaction, trx_enum_type, &unapplied_transaction::trx_type> >,
          ordered_non_unique< tag<by_expiry>, member<unapplied_transaction, const fc::time_point, &unapplied_transaction::expiry> >
@@ -86,8 +85,8 @@ public:
    }
 
    bool is_persisted(const transaction_metadata_ptr& trx)const {
-      auto itr = queue.get<by_signed_id>().find( trx->signed_id() );
-      if( itr == queue.get<by_signed_id>().end() ) return false;
+      auto itr = queue.get<by_id>().find( trx->id() );
+      if( itr == queue.get<by_id>().end() ) return false;
       return itr->trx_type == persisted;
    }
 
@@ -125,12 +124,12 @@ public:
    }
 
    void add_persisted( const transaction_metadata_ptr& trx ) {
-      auto itr = queue.get<by_signed_id>().find( trx->signed_id() );
-      if( itr == queue.get<by_signed_id>().end() ) {
+      auto itr = queue.get<by_id>().find( trx->id() );
+      if( itr == queue.get<by_id>().end() ) {
          fc::time_point expiry = trx->packed_trx()->expiration();
          queue.push_back( { trx, std::move( expiry ), persisted } );
       } else if( itr->trx_type != persisted ) {
-         queue.get<by_signed_id>().modify( itr, [](auto& un){
+         queue.get<by_id>().modify( itr, [](auto& un){
             un.trx_type = persisted;
          } );
       }
