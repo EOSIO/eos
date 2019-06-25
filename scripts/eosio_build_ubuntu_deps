@@ -11,6 +11,8 @@ autotools-dev,dpkg -s
 libicu-dev,dpkg -s
 python3,dpkg -s
 python3-dev,dpkg -s
+python2.7,dpkg -s
+python2.7-dev,dpkg -s
 autoconf,dpkg -s
 libtool,dpkg -s
 curl,dpkg -s
