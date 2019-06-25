@@ -169,7 +169,7 @@ namespace eosio { namespace chain {
             fc::raw::pack(ds, service);
 
             s = std::min(s, size);
-            std::memset(data, size, 0);
+            std::memset(data, 0, size);
             std::memcpy(data, pack_buffer.data(), s);
 
             return s;
