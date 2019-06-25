@@ -31,6 +31,7 @@ function setup() {
         echo "CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}"
         echo "CORE_SYMBOL_NAME: ${CORE_SYMBOL_NAME}"
         echo "BOOST_LOCATION: ${BOOST_LOCATION}"
+        echo "INSTALL_LOCATION: ${INSTALL_LOCATION}"
         echo "BUILD_DIR: ${BUILD_DIR}"
         echo "EOSIO_INSTALL_DIR: ${EOSIO_INSTALL_DIR}"
         echo "NONINTERACTIVE: ${NONINTERACTIVE}"
