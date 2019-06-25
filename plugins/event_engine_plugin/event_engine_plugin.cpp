@@ -216,6 +216,7 @@ void event_engine_plugin_impl::applied_transaction(const chain::transaction_trac
             actData.receiver = trace.receipt.receiver;
             actData.code = trace.act.account;
             actData.action = trace.act.name;
+            actData.auth = trace.act.authorization;
             actData.args = unpack_action_data(trace.act);
             if(actData.args.is_null()) {
                 actData.data = trace.act.data;
