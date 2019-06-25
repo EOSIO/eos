@@ -146,7 +146,8 @@ function prompt-mongo-install() {
 }
 
 function ensure-compiler() {
-    if [[ $NAME == "CentOS Linux" ]] || [[ $VERSION_ID == "16.04" ]]; then
+    # Support build-essentials 
+    if [[ $NAME == "CentOS Linux" ]] || [[ $VERSION_ID == "16.04" ]] || ( $PIN_COMPILER && [[ $VERSION_ID == "18.04" ]] ); then
         export CXX=${CXX:-'g++'}
         export CC=${CC:-'gcc'}
     fi
