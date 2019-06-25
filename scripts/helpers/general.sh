@@ -152,16 +152,16 @@ function ensure-scl() {
 }
 
 function ensure-devtoolset() {
-    echo "${COLOR_CYAN}[Ensuring installation of devtoolset-8]${COLOR_NC}"
-    DEVTOOLSET=$( rpm -qa | grep -E 'devtoolset-8-[0-9].*' || true )
+    echo "${COLOR_CYAN}[Ensuring installation of devtoolset-7]${COLOR_NC}"
+    DEVTOOLSET=$( rpm -qa | grep -E 'devtoolset-7-[0-9].*' || true )
     if [[ -z "${DEVTOOLSET}" ]]; then
         while true; do
             [[ $NONINTERACTIVE == false ]] && printf "${COLOR_YELLOW}Not Found: Do you wish to install it? (y/n)?${COLOR_NC}" && read -p " " PROCEED
             echo ""
             case $PROCEED in
                 "" ) echo "What would you like to do?";;
-                0 | true | [Yy]* ) install-package devtoolset-8; break;;
-                1 | false | [Nn]* ) echo " - User aborted installation of devtoolset-8."; break;;
+                0 | true | [Yy]* ) install-package devtoolset-7; break;;
+                1 | false | [Nn]* ) echo " - User aborted installation of devtoolset-7."; break;;
                 * ) echo "Please type 'y' for yes or 'n' for no.";;
             esac
         done

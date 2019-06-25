@@ -21,7 +21,7 @@ function teardown() { # teardown is run once after each test, even if it fails
     uninstall-package which WETRUN
     export SUDO_FORCE_REMOVE=yes
     uninstall-package sudo WETRUN
-    uninstall-package devtoolset-8* WETRUN
+    uninstall-package devtoolset-7* WETRUN
     uninstall-package centos-release-scl
     uninstall-package gcc-c++ WETRUN
     if [[ $NAME == 'Ubuntu' ]]; then
