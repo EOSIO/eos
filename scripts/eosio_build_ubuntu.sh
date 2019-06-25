@@ -92,6 +92,3 @@ if $INSTALL_MONGO; then
 		echo " - MongoDB C++ driver found with correct version @ ${MONGO_CXX_DRIVER_ROOT}."
 	fi
 fi
-
-# Cleanup build-essential as they were only needed for installing source packages
-($PIN_COMPILER && $PINNED_BUILD_ESSENTIALS) && uninstall-package build-essential autoremove; true

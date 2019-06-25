@@ -6,9 +6,6 @@ export BIN_DIR=${EOSIO_INSTALL_DIR}/bin
 export LIB_DIR=${EOSIO_INSTALL_DIR}/lib
 export DATA_DIR=${EOSIO_INSTALL_DIR}/data
 
-# Used to cleanup build-essential, unless the user has it already when they execute build scripts
-export PINNED_BUILD_ESSENTIALS=false
-
 # CMAKE
 export CMAKE_VERSION_MAJOR=3
 export CMAKE_VERSION_MINOR=13
