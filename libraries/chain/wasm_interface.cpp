@@ -1152,7 +1152,7 @@ class console_api : public context_aware_api {
          }
       }
 
-      void printn(const name& value) {
+      void printn(name value) {
          if ( !ignore ) {
             context.console_append(value.to_string());
          }

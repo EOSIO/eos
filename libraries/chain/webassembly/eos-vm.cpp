@@ -21,6 +21,7 @@ class eos_vm_instantiated_module : public wasm_instantiated_module_interface {
 
       void apply(apply_context& context) override {
          _instantiated_module->set_wasm_allocator( wasm_interface::get_wasm_allocator() );
+         _instantiated_module->get_wasm_allocator()->reset();
          //if (!(const auto& res = _instantiated_module->run_start()))
          //   EOS_ASSERT(false, wasm_execution_error, "eos-vm start function failure (${s})", ("s", res.to_string()));
         
