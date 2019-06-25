@@ -2550,6 +2550,7 @@ namespace eosio {
                   // Using the sum of the initial handshake times of the two connections, we will
                   // arbitrarily (but consistently between the two peers) keep one of them.
                   std::unique_lock<std::mutex> g_check_conn( check->conn_mtx );
+                  if( check->last_handshake_recv.node_id == fc::sha256() ) continue;
                   auto check_time = check->last_handshake_sent.time + check->last_handshake_recv.time;
                   g_check_conn.unlock();
                   g_conn.lock();
