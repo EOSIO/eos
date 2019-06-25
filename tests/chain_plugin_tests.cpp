@@ -220,7 +220,7 @@ BOOST_FIXTURE_TEST_CASE( get_table_test, TESTER ) try {
       // i128 secondary key type
       params.key_type = "i128";
       params.index_position = "3";
-      params.lower_bound = "0x05000000000000000000000000000000";
+      params.lower_bound = "0x05000000000000000000000000000000"; // This is 5 in uint128 representation
 
       auto res_3 = plugin.get_table_rows(params);
       chain::uint128_t sec128_expected_value = 5;
@@ -241,7 +241,7 @@ BOOST_FIXTURE_TEST_CASE( get_table_test, TESTER ) try {
       // float128 secondary key type
       params.key_type = "float128";
       params.index_position = "5";
-      params.lower_bound = "0x00000000000000000000000000400140";
+      params.lower_bound = "0x00000000000000000000000000400140"; // This is 5.0 in uint128 representation
 
       auto res_5 = plugin.get_table_rows(params);
       float128_t secldouble_expected_value = ui64_to_f128(5);
@@ -254,7 +254,7 @@ BOOST_FIXTURE_TEST_CASE( get_table_test, TESTER ) try {
        // sha256 secondary key type
       params.key_type = "sha256";
       params.index_position = "2";
-      params.lower_bound = "2652d68fbbf6000c703b35fdc607b09cd8218cbeea1d108b5c9e84842cdd5ea5";
+      params.lower_bound = "2652d68fbbf6000c703b35fdc607b09cd8218cbeea1d108b5c9e84842cdd5ea5"; // This is hash of "thirdinput"
 
       auto res_6 = plugin.get_table_rows(params);
      
@@ -268,7 +268,7 @@ BOOST_FIXTURE_TEST_CASE( get_table_test, TESTER ) try {
       // i256 secondary key type
       params.key_type = "i256";
       params.index_position = "2";
-      params.lower_bound = "0x2652d68fbbf6000c703b35fdc607b09cd8218cbeea1d108b5c9e84842cdd5ea5";
+      params.lower_bound = "0x2652d68fbbf6000c703b35fdc607b09cd8218cbeea1d108b5c9e84842cdd5ea5"; // This is sha256 hash of "thirdinput" as number
 
       auto res_7 = plugin.get_table_rows(params);
       checksum256_type i256_expected_value = checksum256_type::hash(std::string("thirdinput"));
@@ -280,7 +280,7 @@ BOOST_FIXTURE_TEST_CASE( get_table_test, TESTER ) try {
       // ripemd160 secondary key type
       params.key_type = "ripemd160";
       params.index_position = "3";
-      params.lower_bound = "ab4314638b573fdc39e5a7b107938ad1b5a16414";
+      params.lower_bound = "ab4314638b573fdc39e5a7b107938ad1b5a16414"; // This is ripemd160 hash of "thirdinput"
 
       auto res_8 = plugin.get_table_rows(params);
       ripemd160 sec160_expected_value =  ripemd160::hash(std::string("thirdinput"));
