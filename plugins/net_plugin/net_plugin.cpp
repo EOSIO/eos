@@ -2566,7 +2566,7 @@ namespace eosio {
                   gam.node_id = node_id;
                   enqueue(gam);
                   no_retry = duplicate;
-                  my_impl->sync_master->send_handshakes();
+//                  my_impl->sync_master->send_handshakes();
                   return;
                }
             }
