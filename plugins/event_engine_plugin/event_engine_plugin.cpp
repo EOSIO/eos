@@ -225,7 +225,7 @@ void event_engine_plugin_impl::applied_transaction(const chain::transaction_trac
             for(auto &event: trace.events) {
                 events.push_back(event.name);
                 EventData evData;
-                evData.code = trace.act.account;
+                evData.code = event.account;
                 evData.event = event.name;
                 evData.args = unpack_event_data(event);
                 if(evData.args.is_null()) {
