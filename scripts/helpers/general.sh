@@ -97,12 +97,14 @@ function install-package() {
 function uninstall-package() {
   if [[ $ARCH == "Linux" ]]; then
     EXECUTION_FUNCTION="execute"
+    REMOVE="remove"
     [[ $2 == "WETRUN" ]] && EXECUTION_FUNCTION="execute-always"
+    ( [[ $2 == "autoremove" ]] || [[ $3 == "autoremove" ]] ) && REMOVE="autoremove"
     ( [[ $2 =~ "--" ]] || [[ $3 =~ "--" ]] ) && OPTIONS="${2}${3}"
     [[ $CURRENT_USER != "root" ]] && [[ ! -z $SUDO_LOCATION ]] && SUDO_COMMAND="$SUDO_LOCATION -E"
     # Check if the packages exist before uninstalling them. This speeds things up for tests.
-    ( ( [[ $NAME =~ "Amazon Linux" ]] || [[ $NAME == "CentOS Linux" ]] ) && [[ ! -z $(rpm -qa $1) ]] ) && eval $EXECUTION_FUNCTION $SUDO_COMMAND $YUM $OPTIONS remove -y $1
-    ( [[ $NAME =~ "Ubuntu" ]] && $(dpkg -s $1 &>/dev/null) ) && eval $EXECUTION_FUNCTION $SUDO_COMMAND $APTGET $OPTIONS remove -y $1
+    ( ( [[ $NAME =~ "Amazon Linux" ]] || [[ $NAME == "CentOS Linux" ]] ) && [[ ! -z $(rpm -qa $1) ]] ) && eval $EXECUTION_FUNCTION $SUDO_COMMAND $YUM $OPTIONS $REMOVE -y $1
+    ( [[ $NAME =~ "Ubuntu" ]] && $(dpkg -s $1 &>/dev/null) ) && eval $EXECUTION_FUNCTION $SUDO_COMMAND $APTGET $OPTIONS $REMOVE -y $1
   fi
   true
 }
