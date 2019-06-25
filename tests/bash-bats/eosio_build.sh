@@ -33,7 +33,7 @@ TEST_LABEL="[eosio_build]"
     run bash -c "./eosio_build.sh -y -P"
     [[ ! -z $(echo "${output}" | grep "PIN_COMPILER: true") ]] || exit
     # Ensure build-essentials is installed so we can compile cmake, clang, boost, etc
-    if [[ $NAME == "Ubuntu" ]]; then
+    if [[ $VERSION_ID == "16.04" ]]; then
         [[ ! -z $(echo "${output}" | grep "Installed build-essential") ]] || exit
     fi
     [[ "${output}" =~ -DCMAKE_TOOLCHAIN_FILE=\'.*/scripts/../build/pinned_toolchain.cmake\' ]] || exit
