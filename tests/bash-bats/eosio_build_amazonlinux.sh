@@ -23,10 +23,10 @@ export TEST_LABEL="[eosio_build_amazonlinux]"
 @test "${TEST_LABEL} > General" {
     set_system_vars # Obtain current machine's resources and set the necessary variables (like JOBS, etc)
 
-    run bash -c "printf \"y\n%.0s\" {1..100} | ./$SCRIPT_LOCATION -P"
+    run bash -c "printf \"y\n%.0s\" {1..100} | ./$SCRIPT_LOCATION -P  -i /NEWPATH"
     [[ ! -z $(echo "${output}" | grep "Executing: make -j${JOBS}") ]] || exit
     ### Make sure deps are loaded properly
-    [[ ! -z $(echo "${output}" | grep "Executing: cd ${SRC_DIR}") ]] || exit
+    [[ ! -z $(echo "${output}" | grep "Executing: cd /NEWPATH/src") ]] || exit
     [[ ! -z $(echo "${output}" | grep "Starting EOSIO Dependency Install") ]] || exit
     [[ ! -z $(echo "${output}" | grep "Executing: eval /usr/bin/yum -y update") ]] || exit
     if [[ $NAME == "Amazon Linux" ]]; then
@@ -36,14 +36,16 @@ export TEST_LABEL="[eosio_build_amazonlinux]"
     fi
     [[ ! -z $(echo "${output}" | grep "sudo.*NOT.*found.") ]] || exit
     [[ -z $(echo "${output}" | grep "-   NOT found.") ]] || exit
-    [[ ! -z $(echo "${output}" | grep ${HOME}.*/src/boost) ]] || exit
+    [[ ! -z $(echo "${output}" | grep /NEWPATH*/src/boost) ]] || exit
     [[ ! -z $(echo "${output}" | grep "Starting EOSIO Build") ]] || exit
     [[ ! -z $(echo "${output}" | grep "make -j${CPU_CORES}") ]] || exit
     [[ -z $(echo "${output}" | grep "MongoDB C++ driver successfully installed") ]] || exit # Mongo is off
     # Ensure PIN_COMPILER=false uses proper flags for the various installs
     install-package gcc-c++ WETRUN
+    install-package clang WETRUN
     run bash -c "./$SCRIPT_LOCATION -y"
     [[ ! -z $(echo "${output}" | grep " -G 'Unix Makefiles'") ]] || exit # CMAKE
     [[ ! -z $(echo "${output}" | grep " --with-iostreams --with-date_time") ]] || exit # BOOST
     uninstall-package gcc-c++ WETRUN
+    uninstall-package clang WETRUN
 }

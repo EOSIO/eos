@@ -1,16 +1,4 @@
 {
-    "eosio-base-images":
-    {
-        "pipeline-branch": "develop"
-    },
-    "eosio-lrt":
-    {
-        "environment":
-        {
-            "BUILD_FLAGS": "-y -P -m",
-            "IMAGE_TAG": "_1-8-0-rc2"
-        }
-    },
     "eos-multiversion-tests":
     {
         "environment":
