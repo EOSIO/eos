@@ -179,13 +179,10 @@ function ensure-build-essential() {
                 case $PROCEED in
                     "" ) echo "What would you like to do?";;
                     0 | true | [Yy]* )
-                        if install-package build-essential; then
-                            $PIN_COMPILER && export PINNED_BUILD_ESSENTIALS=true
-                            echo " - ${COLOR_GREEN}Installed build-essential${COLOR_NC}"
-                        else
-                            echo " - ${COLOR_GREEN}Install of build-essential failed. Please try a manual install.${COLOR_NC}"
-                            exit 1
-                        fi
+                        apt update
+                        install-package build-essential
+                        $PIN_COMPILER && export PINNED_BUILD_ESSENTIALS=true
+                        echo " - ${COLOR_GREEN}Installed build-essential${COLOR_NC}"
                     break;;
                     1 | false | [Nn]* ) echo " - User aborted installation of build-essential."; break;;
                     * ) echo "Please type 'y' for yes or 'n' for no.";;
