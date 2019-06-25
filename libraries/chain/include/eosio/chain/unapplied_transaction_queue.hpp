@@ -44,8 +44,8 @@ struct unapplied_transaction {
 };
 
 /**
- * Track unapplied transactions for persisted, forked blocks, aborted blocks
- * failed transactions.
+ * Track unapplied transactions for persisted, forked blocks, and aborted blocks.
+ * Persisted to first so that they can be applied in each block until expired.
  */
 class unapplied_transaction_queue {
 
