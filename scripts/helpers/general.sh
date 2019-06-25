@@ -97,12 +97,14 @@ function install-package() {
 function uninstall-package() {
   if [[ $ARCH == "Linux" ]]; then
     EXECUTION_FUNCTION="execute"
+    REMOVE="remove"
     [[ $2 == "WETRUN" ]] && EXECUTION_FUNCTION="execute-always"
+    ( [[ $2 == "autoremove" ]] || [[ $3 == "autoremove" ]] ) && REMOVE="autoremove"
     ( [[ $2 =~ "--" ]] || [[ $3 =~ "--" ]] ) && OPTIONS="${2}${3}"
     [[ $CURRENT_USER != "root" ]] && [[ ! -z $SUDO_LOCATION ]] && SUDO_COMMAND="$SUDO_LOCATION -E"
     # Check if the packages exist before uninstalling them. This speeds things up for tests.
-    ( ( [[ $NAME =~ "Amazon Linux" ]] || [[ $NAME == "CentOS Linux" ]] ) && [[ ! -z $(rpm -qa $1) ]] ) && eval $EXECUTION_FUNCTION $SUDO_COMMAND $YUM $OPTIONS remove -y $1
-    ( [[ $NAME =~ "Ubuntu" ]] && $(dpkg -s $1 &>/dev/null) ) && eval $EXECUTION_FUNCTION $SUDO_COMMAND $APTGET $OPTIONS remove -y $1
+    ( ( [[ $NAME =~ "Amazon Linux" ]] || [[ $NAME == "CentOS Linux" ]] ) && [[ ! -z $(rpm -qa $1) ]] ) && eval $EXECUTION_FUNCTION $SUDO_COMMAND $YUM $OPTIONS $REMOVE -y $1
+    ( [[ $NAME =~ "Ubuntu" ]] && $(dpkg -s $1 &>/dev/null) ) && eval $EXECUTION_FUNCTION $SUDO_COMMAND $APTGET $OPTIONS $REMOVE -y $1
   fi
   true
 }
@@ -150,16 +152,16 @@ function ensure-scl() {
 }
 
 function ensure-devtoolset() {
-    echo "${COLOR_CYAN}[Ensuring installation of devtoolset-8]${COLOR_NC}"
-    DEVTOOLSET=$( rpm -qa | grep -E 'devtoolset-8-[0-9].*' || true )
+    echo "${COLOR_CYAN}[Ensuring installation of devtoolset-7]${COLOR_NC}"
+    DEVTOOLSET=$( rpm -qa | grep -E 'devtoolset-7-[0-9].*' || true )
     if [[ -z "${DEVTOOLSET}" ]]; then
         while true; do
             [[ $NONINTERACTIVE == false ]] && printf "${COLOR_YELLOW}Not Found: Do you wish to install it? (y/n)?${COLOR_NC}" && read -p " " PROCEED
             echo ""
             case $PROCEED in
                 "" ) echo "What would you like to do?";;
-                0 | true | [Yy]* ) install-package devtoolset-8; break;;
-                1 | false | [Nn]* ) echo " - User aborted installation of devtoolset-8."; break;;
+                0 | true | [Yy]* ) install-package devtoolset-7; break;;
+                1 | false | [Nn]* ) echo " - User aborted installation of devtoolset-7."; break;;
                 * ) echo "Please type 'y' for yes or 'n' for no.";;
             esac
         done
@@ -169,28 +171,27 @@ function ensure-devtoolset() {
 }
 
 function ensure-build-essential() {
-    echo "${COLOR_CYAN}[Ensuring installation of build-essential with C++7]${COLOR_NC}"
-    BUILD_ESSENTIAL=$( dpkg -s build-essential | grep 'Package: build-essential' || true )
-    if [[ -z $BUILD_ESSENTIAL ]]; then
-        while true; do
-            [[ $NONINTERACTIVE == false ]] && printf "${COLOR_YELLOW}Do you wish to install it? (y/n)?${COLOR_NC}" && read -p " " PROCEED
-            echo ""
-            case $PROCEED in
-                "" ) echo "What would you like to do?";;
-                0 | true | [Yy]* ) 
-                    if install-package build-essential; then
+    if [[ ! $(dpkg -s clang 2>/dev/null) ]]; then # Clang already exists, so no need for build essentials
+        echo "${COLOR_CYAN}[Ensuring installation of build-essential (needed for installing depedencies; we will remove it after)]${COLOR_NC}"
+        BUILD_ESSENTIAL=$( dpkg -s build-essential | grep 'Package: build-essential' || true )
+        if [[ -z $BUILD_ESSENTIAL ]]; then
+            while true; do
+                [[ $NONINTERACTIVE == false ]] && printf "${COLOR_YELLOW}Do you wish to install it? (y/n)?${COLOR_NC}" && read -p " " PROCEED
+                echo ""
+                case $PROCEED in
+                    "" ) echo "What would you like to do?";;
+                    0 | true | [Yy]* )
+                        install-package build-essential
+                        $PIN_COMPILER && export PINNED_BUILD_ESSENTIALS=true
                         echo " - ${COLOR_GREEN}Installed build-essential${COLOR_NC}"
-                    else
-                        echo " - ${COLOR_GREEN}Install of build-essential failed. Please try a manual install.${COLOR_NC}"
-                        exit 1
-                    fi
-                break;;
-                1 | false | [Nn]* ) echo " - User aborted installation of build-essential."; break;;
-                * ) echo "Please type 'y' for yes or 'n' for no.";;
-            esac
-        done
-    else
-        echo " - ${BUILD_ESSENTIAL} found."
+                    break;;
+                    1 | false | [Nn]* ) echo " - User aborted installation of build-essential."; break;;
+                    * ) echo "Please type 'y' for yes or 'n' for no.";;
+                esac
+            done
+        else
+            echo " - ${BUILD_ESSENTIAL} found."
+        fi
     fi
 }
 
