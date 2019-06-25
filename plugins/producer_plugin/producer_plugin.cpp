@@ -181,7 +181,6 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       boost::asio::deadline_timer                               _timer;
       std::map<chain::account_name, uint32_t>                   _producer_watermarks;
       pending_block_mode                                        _pending_block_mode;
-      transaction_id_with_expiry_index                          _persistent_transactions;
       unapplied_transaction_queue                               _unapplied_transactions;
       fc::optional<named_thread_pool>                           _thread_pool;
 
@@ -551,7 +550,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                if( persist_until_expired ) {
                   // if this trx didnt fail/soft-fail and the persist flag is set, store its ID so that we can
                   // ensure its applied to all future speculative blocks as well.
-                  _persistent_transactions.insert( transaction_id_with_expiry{trx->id(), trx->packed_trx()->expiration()} );
+                  _unapplied_transactions.add_persisted( trx );
                }
                send_response( trace );
             }
@@ -1326,8 +1325,7 @@ fc::time_point producer_plugin_impl::calculate_block_deadline( const fc::time_po
 
 enum class tx_category {
    PERSISTED,
-   UNEXPIRED_UNPERSISTED,
-   EXPIRED,
+   UNEXPIRED_UNPERSISTED
 };
 
 
@@ -1457,44 +1455,39 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
          _pending_block_mode = pending_block_mode::speculating;
       }
 
-      // attempt to play persisted transactions first
+      // order: persisted, forked, aborted
+
       bool exhausted = false;
 
-      // remove all persisted transactions that have now expired
-      auto& persisted_by_id = _persistent_transactions.get<by_id>();
-      auto& persisted_by_expiry = _persistent_transactions.get<by_expiry>();
-      if (!persisted_by_expiry.empty()) {
-         int num_expired_persistent = 0;
-         int orig_count = _persistent_transactions.size();
+      // remove all expired transactions
+      size_t num_expired_persistent = 0;
+      size_t orig_count = _unapplied_transactions.size();
+      exhausted = !_unapplied_transactions.clear_expired( pending_block_time, preprocess_deadline,
+                     [&num_expired_persistent, pbm = _pending_block_mode,
+                      &chain, has_producers = !_producers.empty()]( const transaction_id_type& txid, trx_enum_type trx_type ) {
+               if( trx_type == persisted ) {
+                  if( pbm == pending_block_mode::producing ) {
+                     fc_dlog( _trx_trace_log,
+                              "[TRX_TRACE] Block ${block_num} for producer ${prod} is EXPIRING PERSISTED tx: ${txid}",
+                              ("block_num", chain.head_block_num() + 1)("prod", chain.pending_block_producer())("txid", txid));
+                  } else {
+                     fc_dlog( _trx_trace_log, "[TRX_TRACE] Speculative execution is EXPIRING PERSISTED tx: ${txid}", ("txid", txid));
+                  }
+                  ++num_expired_persistent;
+               } else if (has_producers) {
+                  fc_dlog(_trx_trace_log,
+                          "[TRX_TRACE] Node with producers configured is dropping an EXPIRED transaction that was PREVIOUSLY ACCEPTED : ${txid}",
+                          ("txid", txid));
+               }
+      });
 
-         while(!persisted_by_expiry.empty() && persisted_by_expiry.begin()->expiry <= pending_block_time) {
-            if (preprocess_deadline <= fc::time_point::now()) {
-               exhausted = true;
-               break;
-            }
-            auto const& txid = persisted_by_expiry.begin()->trx_id;
-            if (_pending_block_mode == pending_block_mode::producing) {
-               fc_dlog(_trx_trace_log, "[TRX_TRACE] Block ${block_num} for producer ${prod} is EXPIRING PERSISTED tx: ${txid}",
-                       ("block_num", chain.head_block_num() + 1)
-                       ("prod", chain.pending_block_producer())
-                       ("txid", txid));
-            } else {
-               fc_dlog(_trx_trace_log, "[TRX_TRACE] Speculative execution is EXPIRING PERSISTED tx: ${txid}",
-                       ("txid", txid));
-            }
-
-            persisted_by_expiry.erase(persisted_by_expiry.begin());
-            num_expired_persistent++;
-         }
-
+      if( exhausted || num_expired_persistent > 0 ) {
          if( exhausted ) {
-            fc_wlog( _log, "Unable to process all ${n} persisted transactions before deadline, Expired ${expired}",
-                     ( "n", orig_count )
-                     ( "expired", num_expired_persistent ) );
+            fc_wlog( _log, "Unable to process all ${n} transactions before deadline, Persistent expired ${expired}",
+                     ( "n", orig_count )( "expired", num_expired_persistent ) );
          } else {
-            fc_dlog( _log, "Processed ${n} persisted transactions, Expired ${expired}",
-                     ( "n", orig_count )
-                     ( "expired", num_expired_persistent ) );
+            fc_dlog( _log, "Processed ${n} transactions, Persistent expired ${expired}",
+                     ( "n", orig_count )( "expired", num_expired_persistent ) );
          }
       }
 
@@ -1502,8 +1495,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
          size_t orig_pending_txn_size = _pending_incoming_transactions.size();
 
          // Processing unapplied transactions...
-         //
-         if (_producers.empty() && persisted_by_id.empty()) {
+         if( _producers.empty() && !_unapplied_transactions.contains_persisted() ) {
             // if this node can never produce and has no persisted transactions,
             // there is no need for unapplied transactions they can be dropped
             _unapplied_transactions.clear();
@@ -1515,32 +1507,26 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
                int num_processed = 0;
                auto unapplied_trxs_size = _unapplied_transactions.size();
                auto calculate_transaction_category = [&](const transaction_metadata_ptr& trx) {
-                  if (trx->packed_trx()->expiration() < pending_block_time) {
-                     return tx_category::EXPIRED;
-                  } else if (persisted_by_id.find(trx->id()) != persisted_by_id.end()) {
+                  if (_unapplied_transactions.is_persisted(trx)) {
                      return tx_category::PERSISTED;
                   } else {
                      return tx_category::UNEXPIRED_UNPERSISTED;
                   }
                };
 
-               while( !exhausted ) {
-                  transaction_metadata_ptr trx = _unapplied_transactions.next();
-                  if( trx == nullptr ) break;
+               auto itr = _unapplied_transactions.begin();
+               while( itr != _unapplied_transactions.end() ) {
+                  if( preprocess_deadline <= fc::time_point::now() ) exhausted = true;
+                  if( exhausted ) break;
 
+                  const transaction_metadata_ptr trx = itr->trx_meta;
                   ++num_processed;
                   auto category = calculate_transaction_category(trx);
-                  if (category == tx_category::EXPIRED ||
-                     (category == tx_category::UNEXPIRED_UNPERSISTED && _producers.empty()))
+                  if (category == tx_category::UNEXPIRED_UNPERSISTED && _producers.empty())
                   {
                      ++num_failed;
-                     if (!_producers.empty()) {
-                        fc_dlog(_trx_trace_log, "[TRX_TRACE] Node with producers configured is dropping an EXPIRED transaction that was PREVIOUSLY ACCEPTED : ${txid}",
-                               ("txid", trx->id()));
-                     }
-                     if( preprocess_deadline <= fc::time_point::now() ) exhausted = true;
-                     continue; // _unapplied_transactions removed trx, so just continue
-
+                     itr = _unapplied_transactions.erase( itr );
+                     continue;
                   } else if (category == tx_category::PERSISTED ||
                             (category == tx_category::UNEXPIRED_UNPERSISTED && _pending_block_mode == pending_block_mode::producing))
                   {
@@ -1556,22 +1542,25 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
                         if (trace->except) {
                            if (failure_is_subjective(*trace->except, deadline_is_subjective)) {
                               exhausted = true;
-                              _unapplied_transactions.add_subjective_failure( trx );
+                              // don't erase, subjective failure so try again next time
                               break;
                            } else {
                               // this failed our configured maximum transaction time, we don't want to replay it
                               ++num_failed;
+                              itr = _unapplied_transactions.erase( itr );
+                              continue;
                            }
                         } else {
                            ++num_applied;
+                           itr = _unapplied_transactions.erase( itr );
+                           continue;
                         }
                      } catch ( const guard_exception& e ) {
                         chain_plug->handle_guard_exception(e);
                         return start_block_result::failed;
                      } FC_LOG_AND_DROP();
                   }
-
-                  if( preprocess_deadline <= fc::time_point::now() ) exhausted = true;
+                  ++itr;
                }
 
                fc_dlog(_log, "Processed ${m} of ${n} previously applied transactions, Applied ${applied}, Failed/Dropped ${failed}",
