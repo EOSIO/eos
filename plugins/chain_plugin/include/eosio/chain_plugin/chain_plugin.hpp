@@ -669,7 +669,7 @@ public:
      static auto function() {
         return [](const input_type v) {
             chain::key256_t k;
-            k[0] = ((uint128_t *)&v)[1]; //128-256
+            k[0] = ((uint128_t *)&v)[1]; //128-255
             k[1] = ((uint128_t *)&v)[0]; //0-127
             return k;
         };
