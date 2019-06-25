@@ -877,6 +877,13 @@ class permission_api : public context_aware_api {
          return time_point(acct->creation_date).time_since_epoch().count();
       }
 
+      int64_t get_account_last_code_update_time( account_name account ) {
+         auto* acct = context.db.find<account_object, by_name>(account);
+         EOS_ASSERT( acct != nullptr, action_validate_exception,
+                     "account '${account}' does not exist", ("account", account) );
+         return acct->last_code_update.time_since_epoch().count();
+      }
+
    private:
       void unpack_provided_keys( flat_set<public_key_type>& keys, const char* pubkeys_data, size_t pubkeys_size ) {
          keys.clear();
@@ -1830,6 +1837,7 @@ REGISTER_INTRINSICS(permission_api,
    (check_permission_authorization,  int(int64_t, int64_t, int, int, int, int, int64_t) )
    (get_permission_last_used,        int64_t(int64_t, int64_t) )
    (get_account_creation_time,       int64_t(int64_t) )
+   (get_account_last_code_update_time, int64_t(int64_t) )
 );
 
 
