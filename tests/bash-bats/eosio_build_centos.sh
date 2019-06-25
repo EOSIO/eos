@@ -29,7 +29,7 @@ export TEST_LABEL="[eosio_build_centos]"
     # Ensure SCL and devtoolset-7 for c++ binary installation
     run bash -c "printf \"y\n%.0s\" {1..100}| ./${SCRIPT_LOCATION} -i /NEWPATH"
     [[ ! -z $(echo "${output}" | grep "centos-release-scl-2-3.el7.centos.noarch found") ]] || exit
-    [[ ! -z $(echo "${output}" | grep "devtoolset-7-8.0-2.el7.x86_64 found") ]] || exit
+    [[ ! -z $(echo "${output}" | grep "devtoolset-7.* found") ]] || exit
     [[ ! -z $(echo "${output}" | grep "Executing: source /opt/rh/devtoolset-7/enable") ]] || exit
     [[ ! -z $(echo "${output}" | grep "Executing: make -j${JOBS}") ]] || exit
     [[ ! -z $(echo "${output}" | grep "Starting EOSIO Dependency Install") ]] || exit

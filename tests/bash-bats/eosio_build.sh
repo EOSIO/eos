@@ -19,14 +19,11 @@ TEST_LABEL="[eosio_build]"
     fi
 
     if [[ $ARCH == "Linux" ]]; then
-        if [[ $NAME == "CentOS Linux" ]]; then # Centos has the SCL prompt before checking for the compiler
-            # No c++!
-            run bash -c "printf \"y\ny\ny\nn\n\" | ./${SCRIPT_LOCATION}"
-        else
+        if [[ $NAME != "CentOS Linux" ]]; then # Centos has the SCL prompt before checking for the compiler
             # No c++!
             run bash -c "printf \"y\ny\ny\nn\nn\n\" | ./${SCRIPT_LOCATION}"
+            [[ ! -z $(echo "${output}" | grep "Unable to find .* compiler") ]] || exit
         fi
-        [[ ! -z $(echo "${output}" | grep "Unable to find .* compiler") ]] || exit
     fi 
 
     cd ./scripts # Also test that we can run the script from a directory other than the root
