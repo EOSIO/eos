@@ -317,44 +317,95 @@ namespace eosio { namespace chain {
 
       my->reopen();
 
-      uint64_t end_pos;
+      my->close();
 
-      my->block_stream.seekg(-sizeof( uint64_t), std::ios::end);
-      my->block_stream.read((char*)&end_pos, sizeof(end_pos));
+      block_log::construct_index(my->block_file, my->index_file);
 
-      if( end_pos == npos ) {
+      my->reopen();
+   } // construct_index
+
+   void block_log::construct_index(const fc::path& block_file_name, const fc::path& index_file_name) {
+
+      uint64_t pos;
+
+      FILE* fin = fopen(block_file_name.generic_string().c_str(), "r");
+      if (fin == nullptr) {
+         elog("cannot read block file ${file}", ("file", block_file_name.string()) );
+         return;
+      }
+
+
+      const auto block_stream_position = ftell(fin);
+      const auto pos_size = sizeof(pos);
+      auto status = fseek(fin, -pos_size, SEEK_END);
+      uint64_t current_pos = ftell(fin);
+      auto size = fread((char*)&pos, pos_size, 1, fin);
+
+      if( pos == npos ) {
          ilog( "Block log contains no blocks. No need to construct index." );
          return;
       }
 
-      signed_block tmp;
-
-      uint64_t pos = 0;
-      if (my->version == 1) {
-         pos = 4; // Skip version which should have already been checked.
-      } else {
-         pos = 8; // Skip version and first block offset which should have already been checked
+      status = fseek(fin, 0, SEEK_SET);
+      uint32_t version = 0;
+      size = fread((char*)&version, sizeof(version), 1, fin);
+      uint32_t first_block_num;
+      if (version == 1) {
+         first_block_num = 1;
       }
-      my->block_stream.seekg(pos);
-
-      genesis_state gs;
-      fc::raw::unpack(my->block_stream, gs);
-
-      // skip the totem
-      if (my->version > 1) {
-         uint64_t totem;
-         my->block_stream.read((char*) &totem, sizeof(totem));
+      else if (version == 2) {
+         size = fread ( (char*)&first_block_num, sizeof(first_block_num), 1, fin );
+         if (first_block_num < 1) {
+            elog( "Invalid first block number: ${first}", ("first", first_block_num) );
+            return;
+         }
+         status = fseek(fin, sizeof(npos), SEEK_CUR);
+      }
+      else {
+         elog( "Block log does not support version ${version}", ("version", version) );
+         return;
       }
 
-      my->index_stream.seekp(0, std::ios::end);
-      while( pos < end_pos ) {
-         fc::raw::unpack(my->block_stream, tmp);
-         my->block_stream.read((char*)&pos, sizeof(pos));
-         if(tmp.block_num() % 1000 == 0)
-            ilog( "Block log index reconstructed for block ${n}", ("n", tmp.block_num()));
-         my->index_stream.write((char*)&pos, sizeof(pos));
+      const auto start = ftell(fin);
+
+      const auto reverse_file_name = index_file_name.generic_string() + ".rev";
+      FILE* fout_rev = fopen(reverse_file_name.c_str(), "w+");
+      size = fwrite((void*)&pos, pos_size, 1, fout_rev);
+      status = fseek(fin, -pos_size, SEEK_END);
+
+      uint32_t num_blocks = 0;
+      const auto last = current_pos;
+      auto diff = current_pos - pos + pos_size;
+      current_pos -= diff;
+      // subsequent calculations of diff need to account for read which shifts us forward pos_size
+      // and our current_pos doesn't have that pos_size shift, so need to take it back out
+      for ( ; ; diff = current_pos - pos + pos_size, current_pos -= diff ) {
+         status = fseek(fin, -diff, SEEK_CUR);
+         size = fread((char*)&pos, pos_size, 1, fin);
+         if (pos == npos)
+            break;
+         ++num_blocks;
+         size = fwrite((void*)&pos, pos_size, 1, fout_rev);
+         current_pos += pos_size;
       }
-   } // construct_index
+
+      const uint32_t last_block_num = first_block_num + num_blocks;
+
+      std::fstream  index_stream;
+      index_stream.open(index_file_name.generic_string().c_str(), LOG_WRITE);
+      EOS_ASSERT( index_stream.is_open(), block_log_exception, "Not able to open ${file}", ("file", index_file_name.generic_string()) );
+      index_stream.seekg(0, std::ios::beg);
+      int64_t reverse_offset = pos_size;
+      for (uint32_t block_num = last_block_num; block_num >= first_block_num; --block_num) {
+         status = fseek(fout_rev, -reverse_offset, SEEK_CUR);
+         size = fread((char*)&pos, pos_size, 1, fout_rev);
+         index_stream.write((char*)&pos, pos_size);
+         reverse_offset = pos_size + pos_size; //need to counteract the stream moving forward
+      }
+      fclose(fin);
+      fclose(fout_rev);
+      index_stream.close();
+   }
 
    fc::path block_log::repair_log( const fc::path& data_dir, uint32_t truncate_at_block ) {
       ilog("Recovering Block Log...");
