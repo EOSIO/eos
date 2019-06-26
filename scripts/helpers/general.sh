@@ -182,7 +182,6 @@ function ensure-build-essential() {
                     "" ) echo "What would you like to do?";;
                     0 | true | [Yy]* )
                         install-package build-essential
-                        $PIN_COMPILER && export PINNED_BUILD_ESSENTIALS=true
                         echo " - ${COLOR_GREEN}Installed build-essential${COLOR_NC}"
                     break;;
                     1 | false | [Nn]* ) echo " - User aborted installation of build-essential."; break;;
