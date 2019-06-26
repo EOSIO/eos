@@ -9,7 +9,7 @@
 #include <fc/variant.hpp>
 #include <fc/filesystem.hpp>
 
-// #include <boost/exception/diagnostic_information.hpp>
+#include <boost/exception/diagnostic_information.hpp>
 #include <boost/program_options.hpp>
 #include <boost/filesystem/path.hpp>
 
