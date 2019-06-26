@@ -101,8 +101,8 @@ try:
     def waitForNodeStarted(node):
         sleepTime=0
         while sleepTime < 10 and node.getInfo(silentErrors=True) is None:
-            time.sleep(1)
-            sleepTime+=1
+            time.sleep(0.1)
+            sleepTime+=0.1
 
     node0=cluster.getNode(0)
 

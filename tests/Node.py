@@ -1393,7 +1393,7 @@ class Node(object):
                 pass
             return False
 
-        isAlive=Utils.waitForBool(isNodeAlive, timeout, sleepTime=1)
+        isAlive=Utils.waitForBool(isNodeAlive, timeout, sleepTime=0.1)
         if isAlive:
             Utils.Print("Node relaunch was successfull.")
         else:
