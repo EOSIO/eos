@@ -147,14 +147,13 @@ function prompt-mongo-install() {
 }
 
 function ensure-compiler() {
-    DEFAULT_CXX=clang++
-    DEFAULT_CC=clang
-    if [[ $NAME == "CentOS Linux" ]]; then
-        DEFAULT_CXX=g++
-        DEFAULT_CC=gcc
+    # Support build-essentials on ubuntu
+    if [[ $NAME == "CentOS Linux" ]] || [[ $VERSION_ID == "16.04" ]] || ( $PIN_COMPILER && [[ $VERSION_ID == "18.04" ]] ); then
+        export CXX=${CXX:-'g++'}
+        export CC=${CC:-'gcc'}
     fi
-    export CXX=${CXX:-$DEFAULT_CXX}
-    export CC=${CC:-$DEFAULT_CC}
+    export CXX=${CXX:-'clang++'}
+    export CC=${CC:-'clang'}
     if $PIN_COMPILER || [[ -f $CLANG_ROOT/bin/clang++ ]]; then
         export PIN_COMPILER=true
         export BUILD_CLANG=true
@@ -162,7 +161,7 @@ function ensure-compiler() {
         export CC_COMP=$CLANG_ROOT/bin/clang
         export PATH=$CLANG_ROOT/bin:$PATH
     elif [[ $PIN_COMPILER == false ]]; then
-        which $CXX &>/dev/null || ( echo "${COLOR_RED}Unable to find compiler: Pass in the -P option if you wish for us to install it or install a C++17 compiler and set \$CXX and \$CC to the proper binary locations. ${COLOR_NC}"; exit 1 )
+        which $CXX &>/dev/null || ( echo "${COLOR_RED}Unable to find $CXX compiler: Pass in the -P option if you wish for us to install it or install a C++17 compiler and set \$CXX and \$CC to the proper binary locations. ${COLOR_NC}"; exit 1 )
         # readlink on mac differs from linux readlink (mac doesn't have -f)
         [[ $ARCH == "Linux" ]] && READLINK_COMMAND="readlink -f" || READLINK_COMMAND="readlink"
         COMPILER_TYPE=$( eval $READLINK_COMMAND $(which $CXX) || true )
@@ -182,7 +181,7 @@ function ensure-compiler() {
             [[ $( $(which $CXX) -dumpversion | cut -d '.' -f 1 ) -lt 7 ]] && export NO_CPP17=true
             if [[ $NO_CPP17 == false ]]; then # https://github.com/EOSIO/eos/issues/7402
                 while true; do
-                    echo "${COLOR_YELLOW}WARNING: Your GCC compiler is less performant than clang (https://github.com/EOSIO/eos/issues/7402). We suggest running the build script with -P or install your own clang and try again. ${CXX}!${COLOR_NC}"
+                    echo "${COLOR_YELLOW}WARNING: Your GCC compiler ($CXX) is less performant than clang (https://github.com/EOSIO/eos/issues/7402). We suggest running the build script with -P or install your own clang and try again.${COLOR_NC}"
                     [[ $NONINTERACTIVE == false ]] && printf "${COLOR_YELLOW}Do you wish to proceed anyway? (y/n)?${COLOR_NC}" && read -p " " PROCEED
                     case $PROCEED in
                         "" ) echo "What would you like to do?";;

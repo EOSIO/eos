@@ -20,7 +20,7 @@ load ../helpers/functions
         #     [[ ! -z $(echo "${output}" | grep "$CLANG_ROOT") ]] || exit
         # fi
         ## CLANG
-        uninstall-package build-essential WETRUN 1>/dev/null
+        apt autoremove build-essential -y 1>/dev/null
         run bash -c "./$SCRIPT_LOCATION -y -P"
         [[ ! -z $(echo "${output}" | grep "PIN_COMPILER: true") ]] || exit
         [[ ! -z $(echo "${output}" | grep "Clang 8 successfully installed") ]] || exit
@@ -30,6 +30,6 @@ load ../helpers/functions
     export CXX=c2234
     export CC=ewwqd
     run bash -c "./$SCRIPT_LOCATION -y"
-    [[ ! -z $(echo "${output}" | grep "Unable to find compiler") ]] || exit
+    [[ ! -z $(echo "${output}" | grep "Unable to find .* compiler") ]] || exit
     
 }
