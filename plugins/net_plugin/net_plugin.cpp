@@ -578,7 +578,7 @@ namespace eosio {
       const uint32_t          connection_id;
       int16_t                 sent_handshake_count = 0;
       std::atomic<bool>       connecting{true};
-      std::atomic<bool>       syncing{true};
+      std::atomic<bool>       syncing{false};
       uint16_t                protocol_version = 0;
       uint16_t                consecutive_rejected_blocks = 0;
       std::atomic<uint16_t>   consecutive_immediate_connection_close = 0;
