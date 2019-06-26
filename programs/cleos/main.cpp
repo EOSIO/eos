@@ -2717,23 +2717,28 @@ int main( int argc, char** argv ) {
    // currency accessors
    // get currency balance
    string symbol;
+   bool currency_balance_print_json = false;
    auto get_currency = get->add_subcommand( "currency", localized("Retrieve information related to standard currencies"), true);
    get_currency->require_subcommand();
    auto get_balance = get_currency->add_subcommand( "balance", localized("Retrieve the balance of an account for a given currency"), false);
    get_balance->add_option( "contract", code, localized("The contract that operates the currency") )->required();
    get_balance->add_option( "account", accountName, localized("The account to query balances for") )->required();
    get_balance->add_option( "symbol", symbol, localized("The symbol for the currency if the contract operates multiple currencies") );
+   get_balance->add_flag("--json,-j", currency_balance_print_json, localized("Output in JSON format") );
    get_balance->set_callback([&] {
       auto result = call(get_currency_balance_func, fc::mutable_variant_object
          ("account", accountName)
          ("code", code)
          ("symbol", symbol.empty() ? fc::variant() : symbol)
       );
-
-      const auto& rows = result.get_array();
-      for( const auto& r : rows ) {
-         std::cout << r.as_string()
-                   << std::endl;
+      if (!currency_balance_print_json) {
+        const auto& rows = result.get_array();
+        for( const auto& r : rows ) {
+           std::cout << r.as_string()
+                     << std::endl;
+        }
+      } else {
+        std::cout << fc::json::to_pretty_string(result) << std::endl;
       }
    });
 
