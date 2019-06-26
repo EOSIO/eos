@@ -446,10 +446,15 @@ namespace cyberway { namespace chaindb {
             auto obj   = object_value{table.to_service(cache_obj.pk()), std::move(value)};
 
             storage.in_ram = cache_obj.service().in_ram;
-            auto delta = update(table, std::move(storage), obj, cache_obj.object());
-            cache_.set_object(table, cache_obj, std::move(obj));
-
-            return delta;
+            try {
+                auto delta = update(table, std::move(storage), obj, cache_obj.object());
+                cache_.set_object(table, cache_obj, std::move(obj));
+                return delta;
+            } catch (...) {
+                // case of throwing in storage_payer_info::add_usage
+                cache_.set_object(table, cache_obj, cache_obj.object());
+                throw;
+            }
         }
 
         void change_ram_state(cache_object& cache_obj, storage_payer_info storage) {

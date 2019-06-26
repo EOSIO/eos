@@ -690,15 +690,14 @@ public:
             auto& itm = item_data::get_cache(obj);
             assert(itm.is_valid_table(get_table_request()));
 
-            auto pk = primary_key_extractor_type()(obj);
-
-            auto& mobj = const_cast<T&>(obj);
-            updater(mobj);
-
-            auto mpk = primary_key_extractor_type()(obj);
-            CYBERWAY_ASSERT(pk == mpk, chaindb_midx_pk_exception,
-                "Updater change primary key ${pk} on modifying of the object ${obj} for the index ${index}",
-                ("pk", pk)("obj", obj)("index", get_index_name()));
+            try {
+                auto pk = primary_key_extractor_type()(obj); (void)pk;
+                updater(const_cast<T&>(obj));
+                assert(pk == primary_key_extractor_type()(obj));
+            } catch (...) {
+                multi_index::cache_converter().convert_variant(itm, itm.object());
+                throw;
+            }
 
             fc::variant value;
             fc::to_variant(obj, value);
@@ -771,9 +770,13 @@ public:
         return request;
     }
 
-    static void set_cache_converter(const chaindb_controller& controller) {
+    static cache_converter_& cache_converter() {
         static cache_converter_ converter;
-        controller.set_cache_converter(get_table_request(), converter);
+        return converter;
+    }
+
+    static void set_cache_converter(const chaindb_controller& controller) {
+        controller.set_cache_converter(get_table_request(), cache_converter());
     }
 
     const_iterator cbegin() const { return primary_idx_.cbegin(); }
