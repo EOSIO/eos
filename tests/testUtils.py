@@ -154,7 +154,7 @@ class Utils:
                 if ret is not None:
                     return ret
                 if Utils.Debug:
-                    Utils.Print("cmd: sleep %d seconds, remaining time: %d seconds" %
+                    Utils.Print("cmd: sleep %f seconds, remaining time: %d seconds" %
                                 (sleepTime, endTime - time.time()))
                 else:
                     stdout.write('.')
