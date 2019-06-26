@@ -72,6 +72,32 @@ function ensure-which() {
   fi
 }
 
+# Prompt user for installation directory.
+function install-directory-prompt() {
+  if [[ -z $INSTALL_LOCATION ]]; then
+    echo "No installation location was specified. Please provide the location where EOSIO is installed."
+    while true; do
+      [[ $NONINTERACTIVE == false ]] && printf "${COLOR_YELLOW}Do you wish to use the default location? ${EOSIO_INSTALL_DIR}? (y/n)${COLOR_NC}" && read -p " " PROCEED
+      echo ""
+      case $PROCEED in
+        "" )
+          echo "What would you like to do?";;
+        0 | true | [Yy]* )
+          break;;
+        1 | false | [Nn]* )
+          printf "Enter the desired installation location." && read -p " " EOSIO_INSTALL_DIR;
+          export EOSIO_INSTALL_DIR;
+          break;;
+        * ) echo "Please type 'y' for yes or 'n' for no.";;
+      esac
+    done
+  else
+    export EOSIO_INSTALL_DIR=${INSTALL_LOCATION}
+  fi
+  . ./scripts/.build_vars
+  echo "EOSIO will be installed to: ${EOSIO_INSTALL_DIR}"
+}
+
 function previous-install-prompt() {
   if [[ -d $EOSIO_INSTALL_DIR ]]; then
     echo "EOSIO has already been installed into ${EOSIO_INSTALL_DIR}... It's suggested that you eosio_uninstall.sh before re-running this script."
@@ -121,8 +147,14 @@ function prompt-mongo-install() {
 }
 
 function ensure-compiler() {
-    export CXX=${CXX:-c++}
-    export CC=${CC:-cc}
+    DEFAULT_CXX=clang++
+    DEFAULT_CC=clang
+    if [[ $NAME == "CentOS Linux" ]]; then
+        DEFAULT_CXX=g++
+        DEFAULT_CC=gcc
+    fi
+    export CXX=${CXX:-$DEFAULT_CXX}
+    export CC=${CC:-$DEFAULT_CC}
     if $PIN_COMPILER || [[ -f $CLANG_ROOT/bin/clang++ ]]; then
         export PIN_COMPILER=true
         export BUILD_CLANG=true
@@ -141,9 +173,9 @@ function ensure-compiler() {
                 [[ $( $(which $CXX) --version | cut -d ' ' -f 4 | cut -d '.' -f 1 | head -n 1 ) -lt 10 ]] && export NO_CPP17=true
             else
                 if [[ $( $(which $CXX) --version | cut -d ' ' -f 3 | head -n 1 | cut -d '.' -f1) =~ ^[0-9]+$ ]]; then # Check if the version message cut returns an integer
-                    [[ $( $(which $CXX) --version | cut -d ' ' -f 3 | head -n 1 | cut -d '.' -f1) < 5 ]] && export NO_CPP17=true
+                    [[ $( $(which $CXX) --version | cut -d ' ' -f 3 | head -n 1 | cut -d '.' -f1) < 6 ]] && export NO_CPP17=true
                 elif [[ $(clang --version | cut -d ' ' -f 4 | head -n 1 | cut -d '.' -f1) =~ ^[0-9]+$ ]]; then # Check if the version message cut returns an integer
-                    [[ $( $(which $CXX) --version | cut -d ' ' -f 4 | cut -d '.' -f 1 | head -n 1 ) < 5 ]] && export NO_CPP17=true
+                    [[ $( $(which $CXX) --version | cut -d ' ' -f 4 | cut -d '.' -f 1 | head -n 1 ) < 6 ]] && export NO_CPP17=true
                 fi
             fi
         else

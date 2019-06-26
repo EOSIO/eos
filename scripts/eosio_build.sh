@@ -111,6 +111,9 @@ if [ $# -ne 0 ]; then
    done
 fi
 
+# Ensure we're in the repo root
+cd $( dirname "${BASH_SOURCE[0]}" )/..
+
 # Load eosio specific helper functions
 . ./scripts/helpers/eosio.sh
 
@@ -129,6 +132,8 @@ ensure-sudo
 ensure-which
 # Prevent a non-git clone from running
 ensure-git-clone
+# Prompt user for installation path.
+install-directory-prompt
 # If the same version has already been installed...
 previous-install-prompt
 # Prompt user and asks if we should install mongo or not
