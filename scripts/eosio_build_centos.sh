@@ -17,7 +17,7 @@ ensure-scl
 # GCC7 for Centos / Needed for CMAKE install even if we're pinning
 ensure-devtoolset
 if [[ -d /opt/rh/devtoolset-7 ]]; then
-	echo "${COLOR_CYAN}[Enabling Centos devtoolset-7 (for newer GCC)]${COLOR_NC}"
+	echo "${COLOR_CYAN}[Enabling Centos devtoolset-7 (so we can use GCC 7)]${COLOR_NC}"
 	execute-always source /opt/rh/devtoolset-7/enable
 	echo " - ${COLOR_GREEN}Centos devtoolset-7 successfully enabled!${COLOR_NC}"
 fi
