@@ -674,7 +674,7 @@ class Node(object):
         ret=Utils.waitForBool(lam, timeout)
         return ret
 
-    def waitForBlock(self, blockNum, timeout=None, blockType=BlockType.head, reportInterval=None):
+    def waitForBlock(self, blockNum, timeout=None, blockType=BlockType.head, reportInterval=None, sleepTime=0.5):
         lam = lambda: self.getBlockNum(blockType=blockType) > blockNum
         blockDesc = "head" if blockType == BlockType.head else "LIB"
         count = 0
@@ -692,7 +692,7 @@ class Node(object):
                     Utils.Print("Waiting on %s block num %d, get info = {\n%s\n}" % (blockDesc, blockNum, info))
 
         reporter = WaitReporter(self, reportInterval) if reportInterval is not None else None
-        ret=Utils.waitForBool(lam, timeout, reporter=reporter)
+        ret=Utils.waitForBool(lam, timeout, reporter=reporter, sleepTime=sleepTime)
         return ret
 
     def waitForIrreversibleBlock(self, blockNum, timeout=None, blockType=BlockType.head):
