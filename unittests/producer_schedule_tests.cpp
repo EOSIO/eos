@@ -2,7 +2,7 @@
 #include <eosio/testing/tester.hpp>
 #include <eosio/chain/global_property_object.hpp>
 #include <eosio/chain/random.hpp>
-#include <boost/range/algorithm.hpp>
+// #include <boost/range/algorithm.hpp>
 
 #ifdef NON_VALIDATING_TEST
 #define TESTER tester
