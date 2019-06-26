@@ -172,7 +172,7 @@ function ensure-devtoolset() {
 
 function ensure-build-essential() {
     if [[ ! $(dpkg -s clang 2>/dev/null) ]]; then # Clang already exists, so no need for build essentials
-        echo "${COLOR_CYAN}[Ensuring installation of build-essential (needed for installing depedencies; we will remove it after)]${COLOR_NC}"
+        echo "${COLOR_CYAN}[Ensuring installation of build-essential]${COLOR_NC}"
         BUILD_ESSENTIAL=$( dpkg -s build-essential | grep 'Package: build-essential' || true )
         if [[ -z $BUILD_ESSENTIAL ]]; then
             while true; do
