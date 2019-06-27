@@ -311,9 +311,10 @@ function build-clang() {
             && cd lld && git checkout $PINNED_COMPILER_LLD_COMMIT && cd ../ \
             && git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/polly.git \
             && cd polly && git checkout $PINNED_COMPILER_POLLY_COMMIT && cd ../ \
-            && git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/clang.git clang && cd clang/tools \
+            && git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/clang.git clang && cd clang \
             && git checkout $PINNED_COMPILER_CLANG_COMMIT \
-            && mkdir extra && cd extra \
+            && patch -p2 < \"$REPO_ROOT/scripts/clang-devtoolset8-support.patch\" \
+            && cd tools && mkdir extra && cd extra \
             && git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/clang-tools-extra.git \
             && cd clang-tools-extra && git checkout $PINNED_COMPILER_CLANG_TOOLS_EXTRA_COMMIT && cd .. \
             && cd ../../../../projects \
