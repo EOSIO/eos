@@ -9,6 +9,7 @@
 
 #define LOG_READ  (std::ios::in | std::ios::binary)
 #define LOG_WRITE (std::ios::out | std::ios::binary | std::ios::app)
+#define LOG_WRITE_NEW (std::ios::out | std::ios::binary)
 #define LOG_RW ( std::ios::in | std::ios::out | std::ios::binary )
 
 namespace eosio { namespace chain {
@@ -392,7 +393,7 @@ namespace eosio { namespace chain {
       const uint32_t last_block_num = first_block_num + num_blocks;
 
       std::fstream  index_stream;
-      index_stream.open(index_file_name.generic_string().c_str(), LOG_WRITE);
+      index_stream.open(index_file_name.generic_string().c_str(), LOG_WRITE_NEW);
       EOS_ASSERT( index_stream.is_open(), block_log_exception, "Not able to open ${file}", ("file", index_file_name.generic_string()) );
       index_stream.seekg(0, std::ios::beg);
       int64_t reverse_offset = pos_size;
