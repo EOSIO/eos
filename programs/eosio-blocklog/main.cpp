@@ -707,10 +707,17 @@ int main(int argc, char** argv) {
          return 0;
       }
       if (blog.make_index) {
-         bfs::path out_file = "blocks.index";
+         const bfs::path blocks_dir = vmap.at("blocks-dir").as<bfs::path>();
+         bfs::path out_file = blocks_dir / "blocks.index";
+         const bfs::path block_file = blocks_dir / "blocks.log";
+
          if (vmap.count("output-file") > 0)
              out_file = vmap.at("output-file").as<bfs::path>();
-         return make_index(vmap.at("blocks-dir").as<bfs::path>(), out_file);
+
+         report_time rt("making index");
+         block_log::construct_index(block_file.generic_string(), out_file.generic_string());
+         rt.report();
+         return 0;
       }
       //else print blocks.log as JSON
       blog.initialize(vmap);
