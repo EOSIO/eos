@@ -12,14 +12,14 @@ echo "Disk space available: ${DISK_AVAIL}G"
 
 echo ""
 
-# Repo necessary for rh-python3 and devtoolset-7
+# Repo necessary for rh-python3 and devtoolset-8
 ensure-scl
-# GCC7 for Centos / Needed for CMAKE install even if we're pinning
+# GCC8 for Centos / Needed for CMAKE install even if we're pinning
 ensure-devtoolset
-if [[ -d /opt/rh/devtoolset-7 ]]; then
-	echo "${COLOR_CYAN}[Enabling Centos devtoolset-7 (so we can use GCC 7)]${COLOR_NC}"
-	execute-always source /opt/rh/devtoolset-7/enable
-	echo " - ${COLOR_GREEN}Centos devtoolset-7 successfully enabled!${COLOR_NC}"
+if [[ -d /opt/rh/devtoolset-8 ]]; then
+	echo "${COLOR_CYAN}[Enabling Centos devtoolset-8 (so we can use GCC 8)]${COLOR_NC}"
+	execute-always source /opt/rh/devtoolset-8/enable
+	echo " - ${COLOR_GREEN}Centos devtoolset-8 successfully enabled!${COLOR_NC}"
 fi
 # Ensure packages exist
 ensure-yum-packages "${REPO_ROOT}/scripts/eosio_build_centos7_deps"
