@@ -347,6 +347,7 @@ namespace eosio { namespace chain {
          return;
       }
 
+      ilog("start block index creation");
       status = fseek(fin, 0, SEEK_SET);
       uint32_t version = 0;
       size = fread((char*)&version, sizeof(version), 1, fin);
@@ -391,6 +392,7 @@ namespace eosio { namespace chain {
       }
 
       const uint32_t last_block_num = first_block_num + num_blocks;
+      ilog("reverse order block index creation");
 
       std::fstream  index_stream;
       index_stream.open(index_file_name.generic_string().c_str(), LOG_WRITE_NEW);
@@ -406,6 +408,7 @@ namespace eosio { namespace chain {
       fclose(fin);
       fclose(fout_rev);
       index_stream.close();
+      ilog("stop block index creation");
    }
 
    fc::path block_log::repair_log( const fc::path& data_dir, uint32_t truncate_at_block ) {
