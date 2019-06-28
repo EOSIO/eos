@@ -2068,7 +2068,53 @@ BOOST_AUTO_TEST_CASE( billed_cpu_test ) try {
 
 } FC_LOG_AND_RETHROW()
 
+/**
+ * various tests with wasm & 0 pages worth of memory
+ */
+BOOST_FIXTURE_TEST_CASE( zero_memory_pages, TESTER ) try {
+   produce_blocks(2);
 
+   create_accounts( {"zero"_n} );
+   produce_block();
+
+   signed_transaction trx;
+   trx.actions.emplace_back(vector<permission_level>{{"zero"_n,config::active_name}}, "zero"_n, name(), bytes{});
+   trx.actions[0].authorization = vector<permission_level>{{"zero"_n,config::active_name}};
+
+   auto pushit = [&]() {
+      produce_block();
+      trx.signatures.clear();
+      set_transaction_headers(trx);
+      trx.sign(get_private_key("zero"_n, "active"), control->get_chain_id());
+      push_transaction(trx);
+   };
+
+   //first, let's run another large memory contract just to prime the pump so to catch any
+   //memory reinit faults.
+   set_code("zero"_n, misaligned_ref_wast);
+   pushit();
+
+   //contract w/ 0 pages that does nothing
+   set_code("zero"_n, zero_memory_do_nothing);
+   pushit();
+
+   //memory load with 0 pages of memory
+   set_code("zero"_n, zero_memory_load);
+   BOOST_CHECK_THROW(pushit(), wasm_execution_error);
+
+   //do an intrinsic with 0 pages of memory
+   set_code("zero"_n, zero_memory_intrinsic);
+   BOOST_CHECK_THROW(pushit(), wasm_execution_error);
+
+   //grow memory from 0 -> 1, should be able to access byte 0 now
+   set_code("zero"_n, zero_memory_grow);
+   pushit();
+
+   //grow memory from 0 -> 1, should be unable to access byte 70K
+   set_code("zero"_n, zero_memory_grow_hi);
+   BOOST_CHECK_THROW(pushit(), wasm_execution_error);
+
+} FC_LOG_AND_RETHROW()
 
 // TODO: restore net_usage_tests
 #if 0

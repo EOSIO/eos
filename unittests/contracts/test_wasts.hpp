@@ -876,3 +876,55 @@ static const std::vector<uint8_t> varuint_memory_flags{
   0x07, 0x09, 0x01, 0x05, 'a', 'p', 'p', 'l', 'y', 0x00, 0x00, // exports
   0x0a, 0x04, 0x01, 0x02, 0x00, 0x0b // code
 };
+
+static const char zero_memory_do_nothing[] = R"=====(
+(module
+ (export "apply" (func $apply))
+ (memory $0 0)
+ (func $apply (param i64) (param i64) (param i64)
+ )
+)
+)=====";
+
+static const char zero_memory_load[] = R"=====(
+(module
+ (export "apply" (func $apply))
+ (memory $0 0)
+ (func $apply (param i64) (param i64) (param i64)
+   (drop (i64.load (i32.const 0)))
+ )
+)
+)=====";
+
+static const char zero_memory_intrinsic[] = R"=====(
+(module
+ (export "apply" (func $apply))
+ (import "env" "read_transaction" (func $read_transaction (param i32 i32) (result i32)))
+ (memory $0 0)
+ (func $apply (param i64) (param i64) (param i64)
+   (drop (call $read_transaction (i32.const 16) (i32.const 0)))
+ )
+)
+)=====";
+
+static const char zero_memory_grow[] = R"=====(
+(module
+ (export "apply" (func $apply))
+ (memory $0 0)
+ (func $apply (param i64) (param i64) (param i64)
+   (drop (grow_memory (i32.const 1)))
+   (drop (i64.load (i32.const 0)))
+ )
+)
+)=====";
+
+static const char zero_memory_grow_hi[] = R"=====(
+(module
+ (export "apply" (func $apply))
+ (memory $0 0)
+ (func $apply (param i64) (param i64) (param i64)
+   (drop (grow_memory (i32.const 1)))
+   (drop (i64.load (i32.const 70000)))
+ )
+)
+)=====";
