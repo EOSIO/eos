@@ -25,24 +25,22 @@ export TEST_LABEL="[eosio_build_centos]"
     set_system_vars # Obtain current machine's resources and set the necessary variables (like JOBS, etc)
 
     execute-always yum -y --enablerepo=extras install centos-release-scl &>/dev/null
-    install-package devtoolset-7 WETRUN &>/dev/null
-    # Ensure SCL and devtoolset-7 for c++ binary installation
-    run bash -c "printf \"y\n%.0s\" {1..100}| ./${SCRIPT_LOCATION}"
+    install-package devtoolset-8 WETRUN &>/dev/null
+    # Ensure SCL and devtoolset-8 for c++ binary installation
+    run bash -c "printf \"y\n%.0s\" {1..100}| ./${SCRIPT_LOCATION} -i /NEWPATH"
     [[ ! -z $(echo "${output}" | grep "centos-release-scl-2-3.el7.centos.noarch found") ]] || exit
-    [[ ! -z $(echo "${output}" | grep "devtoolset-7-7.1-4.el7.x86_64 found") ]] || exit
-    [[ ! -z $(echo "${output}" | grep "Executing: source /opt/rh/devtoolset-7/enable") ]] || exit
+    [[ ! -z $(echo "${output}" | grep "devtoolset-8.* found") ]] || exit
+    [[ ! -z $(echo "${output}" | grep "Executing: source /opt/rh/devtoolset-8/enable") ]] || exit
     [[ ! -z $(echo "${output}" | grep "Executing: make -j${JOBS}") ]] || exit
     [[ ! -z $(echo "${output}" | grep "Starting EOSIO Dependency Install") ]] || exit
     [[ ! -z $(echo "${output}" | grep "Executing: eval /usr/bin/yum -y update") ]] || exit
     [[ ! -z $(echo "${output}" | grep "Python36 successfully enabled") ]] || exit
-    [[ ! -z $(echo "${output}" | grep "python.*found!") ]] || exit
     [[ -z $(echo "${output}" | grep "-   NOT found.") ]] || exit
     [[ ! -z $(echo "${output}" | grep "Ensuring CMAKE") ]] || exit
-    [[ ! -z $(echo "${output}" | grep ${HOME}.*/src/boost) ]] || exit
+    [[ ! -z $(echo "${output}" | grep /NEWPATH.*/src/boost) ]] || exit
     [[ ! -z $(echo "${output}" | grep "Starting EOSIO Build") ]] || exit
     [[ ! -z $(echo "${output}" | grep "make -j${CPU_CORES}") ]] || exit
     [[ ! -z $(echo "${output}" | grep "EOSIO has been successfully built") ]] || exit
-    uninstall-package devtoolset-7* WETRUN &>/dev/null
+    uninstall-package devtoolset-8* WETRUN &>/dev/null
     uninstall-package centos-release-scl WETRUN &>/dev/null
-
 }

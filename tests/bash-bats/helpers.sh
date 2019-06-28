@@ -28,6 +28,20 @@ TEST_LABEL="[helpers]"
   ( [[ ! $output =~ "Executing: echo VERBOSE!" ]] && [[ $status -eq 0 ]] ) || exit
 }
 
+@test "${TEST_LABEL} > install directory prompt" {
+  NONINTERACTIVE=true
+  PROCEED=true
+  run install-directory-prompt
+  # Use default location
+  [[ ! -z $(echo "${output}" | grep "home") ]] || exit
+  NONINTERACTIVE=false
+  PROCEED=false
+  INSTALL_LOCATION="/etc/eos"
+  run install-directory-prompt
+  # Function received given input.
+  [[ ! -z $(echo "${output}") ]] || exit
+}
+
 @test "${TEST_LABEL} > previous install prompt" {
   NONINTERACTIVE=true
   PROCEED=true

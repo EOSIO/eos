@@ -19,3 +19,5 @@ python-devel,rpm -qa
 libedit-devel,rpm -qa
 doxygen,rpm -qa
 graphviz,rpm -qa
+clang,rpm -qa
+patch,rpm -qa
