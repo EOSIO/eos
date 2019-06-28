@@ -36,6 +36,8 @@ class Utils:
     EosBlockLogPath="programs/eosio-blocklog/eosio-blocklog"
 
     FileDivider="================================================================="
+    DataDir="var/lib/"
+    ConfigDir="etc/eosio/"
 
     @staticmethod
     def Print(*args, **kwargs):
@@ -64,6 +66,38 @@ class Utils:
     @staticmethod
     def setSystemWaitTimeout(timeout):
         Utils.systemWaitTimeout=timeout
+
+    @staticmethod
+    def getDateString(dt):
+        return "%d_%02d_%02d_%02d_%02d_%02d" % (
+            dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
+
+    @staticmethod
+    def nodeExtensionToName(ext):
+        r"""Convert node extension (bios, 0, 1, etc) to node name. """
+        prefix="node_"
+        if ext == "bios":
+            return prefix + ext
+
+        return "node_%02d" % (ext)
+
+    @staticmethod
+    def getNodeDataDir(ext, relativeDir=None, trailingSlash=False):
+        path=os.path.join(Utils.DataDir, Utils.nodeExtensionToName(ext))
+        if relativeDir is not None:
+           path=os.path.join(path, relativeDir)
+        if trailingSlash:
+           path=os.path.join(path, "")
+        return path
+
+    @staticmethod
+    def getNodeConfigDir(ext, relativeDir=None, trailingSlash=False):
+        path=os.path.join(Utils.ConfigDir, Utils.nodeExtensionToName(ext))
+        if relativeDir is not None:
+           path=os.path.join(path, relativeDir)
+        if trailingSlash:
+           path=os.path.join(path, "")
+        return path
 
     @staticmethod
     def getChainStrategies():
@@ -108,7 +142,7 @@ class Utils:
         Utils.Print(msg)
 
     @staticmethod
-    def waitForObj(lam, timeout=None):
+    def waitForObj(lam, timeout=None, sleepTime=3, reporter=None):
         if timeout is None:
             timeout=60
 
@@ -119,7 +153,6 @@ class Utils:
                 ret=lam()
                 if ret is not None:
                     return ret
-                sleepTime=3
                 if Utils.Debug:
                     Utils.Print("cmd: sleep %d seconds, remaining time: %d seconds" %
                                 (sleepTime, endTime - time.time()))
@@ -127,6 +160,8 @@ class Utils:
                     stdout.write('.')
                     stdout.flush()
                     needsNewLine=True
+                if reporter is not None:
+                    reporter()
                 time.sleep(sleepTime)
         finally:
             if needsNewLine:
@@ -135,9 +170,9 @@ class Utils:
         return None
 
     @staticmethod
-    def waitForBool(lam, timeout=None):
+    def waitForBool(lam, timeout=None, sleepTime=3, reporter=None):
         myLam = lambda: True if lam() else None
-        ret=Utils.waitForObj(myLam, timeout)
+        ret=Utils.waitForObj(myLam, timeout, sleepTime, reporter=reporter)
         return False if ret is None else ret
 
     @staticmethod
@@ -180,7 +215,8 @@ class Utils:
 
     @staticmethod
     def runCmdReturnStr(cmd, trace=False):
-        retStr=Utils.checkOutput(cmd.split())
+        cmdArr=shlex.split(cmd)
+        retStr=Utils.checkOutput(cmdArr)
         if trace: Utils.Print ("RAW > %s" % (retStr))
         return retStr
 
@@ -230,7 +266,7 @@ class Utils:
             # If no -a, AttributeError: 'NoneType' object has no attribute 'group'
             pgrepOpts="-fl"
 
-        return "pgrep %s %s" % (pgrepOpts, serverName)\
+        return "pgrep %s %s" % (pgrepOpts, serverName)
 
     @staticmethod
     def getBlockLog(blockLogLocation, silentErrors=False, exitOnError=False):

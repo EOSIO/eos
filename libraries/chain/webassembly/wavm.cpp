@@ -12,7 +12,8 @@
 #include "Runtime/Linker.h"
 #include "Runtime/Intrinsics.h"
 
-#include <mutex>
+#include <vector>
+#include <iterator>
 
 using namespace IR;
 using namespace Runtime;
@@ -21,18 +22,61 @@ namespace eosio { namespace chain { namespace webassembly { namespace wavm {
 
 running_instance_context the_running_instance_context;
 
+namespace detail {
+struct wavm_runtime_initializer {
+   wavm_runtime_initializer() {
+      Runtime::init();
+   }
+};
+
+using live_module_ref = std::list<ObjectInstance*>::iterator;
+
+struct wavm_live_modules {
+   live_module_ref add_live_module(ModuleInstance* module_instance) {
+      return live_modules.insert(live_modules.begin(), asObject(module_instance));
+   }
+
+   void remove_live_module(live_module_ref it) {
+      live_modules.erase(it);
+      run_wavm_garbage_collection();
+   }
+
+   void run_wavm_garbage_collection() {
+      //need to pass in a mutable list of root objects we want the garbage collector to retain
+      std::vector<ObjectInstance*> root;
+      std::copy(live_modules.begin(), live_modules.end(), std::back_inserter(root));
+      Runtime::freeUnreferencedObjects(std::move(root));
+   }
+
+   std::list<ObjectInstance*> live_modules;
+};
+
+static wavm_live_modules the_wavm_live_modules;
+
+}
+
 class wavm_instantiated_module : public wasm_instantiated_module_interface {
    public:
       wavm_instantiated_module(ModuleInstance* instance, std::unique_ptr<Module> module, std::vector<uint8_t> initial_mem) :
          _initial_memory(initial_mem),
          _instance(instance),
-         _module(std::move(module))
-      {}
+         _module_ref(detail::the_wavm_live_modules.add_live_module(instance))
+      {
+         //The memory instance is reused across all wavm_instantiated_modules, but for wasm instances
+         // that didn't declare "memory", getDefaultMemory() won't see it. It would also be possible
+         // to say something like if(module->memories.size()) here I believe
+         if(getDefaultMemory(_instance))
+            _initial_memory_config = module->memories.defs.at(0).type;
+      }
+
+      ~wavm_instantiated_module() {
+         detail::the_wavm_live_modules.remove_live_module(_module_ref);
+      }
 
       void apply(apply_context& context) override {
-         vector<Value> args = {Value(uint64_t(context.receiver)),
-	                       Value(uint64_t(context.act.account)),
-                               Value(uint64_t(context.act.name))};
+         vector<Value> args = {Value(uint64_t(context.get_receiver())),
+	                            Value(uint64_t(context.get_action().account)),
+                               Value(uint64_t(context.get_action().name))};
 
          call("apply", args, context);
       }
@@ -52,7 +96,7 @@ class wavm_instantiated_module : public wasm_instantiated_module_interface {
             if(default_mem) {
                //reset memory resizes the sandbox'ed memory to the module's init memory size and then
                // (effectively) memzeros it all
-               resetMemory(default_mem, _module->memories.defs[0].type);
+               resetMemory(default_mem, _initial_memory_config);
 
                char* memstart = &memoryRef<char>(getDefaultMemory(_instance), 0);
                memcpy(memstart, _initial_memory.data(), _initial_memory.size());
@@ -78,31 +122,12 @@ class wavm_instantiated_module : public wasm_instantiated_module_interface {
       //naked pointer because ModuleInstance is opaque
       //_instance is deleted via WAVM's object garbage collection when wavm_rutime is deleted
       ModuleInstance*          _instance;
-      std::unique_ptr<Module>  _module;
+      detail::live_module_ref  _module_ref;
+      MemoryType               _initial_memory_config;
 };
 
-
-wavm_runtime::runtime_guard::runtime_guard() {
-   // TODO clean this up
-   //check_wasm_opcode_dispositions();
-   Runtime::init();
-}
-
-wavm_runtime::runtime_guard::~runtime_guard() {
-   Runtime::freeUnreferencedObjects({});
-}
-
-static weak_ptr<wavm_runtime::runtime_guard> __runtime_guard_ptr;
-static std::mutex __runtime_guard_lock;
-
 wavm_runtime::wavm_runtime() {
-   std::lock_guard<std::mutex> l(__runtime_guard_lock);
-   if (__runtime_guard_ptr.use_count() == 0) {
-      _runtime_guard = std::make_shared<runtime_guard>();
-      __runtime_guard_ptr = _runtime_guard;
-   } else {
-      _runtime_guard = __runtime_guard_ptr.lock();
-   }
+   static detail::wavm_runtime_initializer the_wavm_runtime_initializer;
 }
 
 wavm_runtime::~wavm_runtime() {
@@ -131,7 +156,7 @@ void wavm_runtime::immediately_exit_currently_running_module() {
 #ifdef _WIN32
    throw wasm_exit();
 #else
-   Platform::immediately_exit();
+   Platform::immediately_exit(nullptr);
 #endif
 }
 

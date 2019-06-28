@@ -7,7 +7,6 @@ from Cluster import Cluster
 from WalletMgr import WalletMgr
 from Node import BlockType
 from Node import Node
-from TestHelper import AppArgs
 from TestHelper import TestHelper
 
 import decimal
@@ -115,7 +114,7 @@ def getMinHeadAndLib(prodNodes):
 
 
 args = TestHelper.parse_args({"--prod-count","--dump-error-details","--keep-logs","-v","--leave-running","--clean-run",
-                              "--p2p-plugin","--wallet-port"})
+                              "--wallet-port"})
 Utils.Debug=args.v
 totalProducerNodes=2
 totalNonProducerNodes=1
@@ -128,7 +127,6 @@ keepLogs=args.keep_logs
 dontKill=args.leave_running
 prodCount=args.prod_count
 killAll=args.clean_run
-p2pPlugin=args.p2p_plugin
 walletPort=args.wallet_port
 
 walletMgr=WalletMgr(True, port=walletPort)
@@ -156,8 +154,8 @@ try:
     # "bridge" shape connects defprocera through defproducerk (in node0) to each other and defproducerl through defproduceru (in node01)
     # and the only connection between those 2 groups is through the bridge node
 
-    if cluster.launch(prodCount=prodCount, onlyBios=False, topo="bridge", pnodes=totalProducerNodes,
-                      totalNodes=totalNodes, totalProducers=totalProducers, p2pPlugin=p2pPlugin,
+    if cluster.launch(prodCount=prodCount, topo="bridge", pnodes=totalProducerNodes,
+                      totalNodes=totalNodes, totalProducers=totalProducers,
                       useBiosBootFile=False, specificExtraNodeosArgs=specificExtraNodeosArgs) is False:
         Utils.cmdError("launcher")
         Utils.errorExit("Failed to stand up eos cluster.")

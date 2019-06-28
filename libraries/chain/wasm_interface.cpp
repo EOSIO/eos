@@ -11,6 +11,7 @@
 #include <eosio/chain/wasm_eosio_validation.hpp>
 #include <eosio/chain/wasm_eosio_injection.hpp>
 #include <eosio/chain/global_property_object.hpp>
+#include <eosio/chain/protocol_state_object.hpp>
 #include <eosio/chain/account_object.hpp>
 #include <fc/exception/exception.hpp>
 #include <fc/crypto/sha256.hpp>
@@ -28,7 +29,7 @@ namespace eosio { namespace chain {
    using namespace webassembly;
    using namespace webassembly::common;
 
-   wasm_interface::wasm_interface(vm_type vm) : my( new wasm_interface_impl(vm) ) {}
+   wasm_interface::wasm_interface(vm_type vm, const chainbase::database& d) : my( new wasm_interface_impl(vm, d) ) {}
 
    wasm_interface::~wasm_interface() {}
 
@@ -46,7 +47,9 @@ namespace eosio { namespace chain {
       wasm_validations::wasm_binary_validation validator(control, module);
       validator.validate();
 
-      root_resolver resolver(true);
+      const auto& pso = control.db().get<protocol_state_object>();
+
+      root_resolver resolver( pso.whitelisted_intrinsics );
       LinkResult link_result = linkModule(module, resolver);
 
       //there are a couple opportunties for improvement here--
@@ -54,8 +57,20 @@ namespace eosio { namespace chain {
       //Hard: Kick off instantiation in a separate thread at this location
 	 }
 
-   void wasm_interface::apply( const digest_type& code_id, const shared_string& code, apply_context& context ) {
-      my->get_instantiated_module(code_id, code, context.trx_context)->apply(context);
+   void wasm_interface::indicate_shutting_down() {
+      my->is_shutting_down = true;
+   }
+
+   void wasm_interface::code_block_num_last_used(const digest_type& code_hash, const uint8_t& vm_type, const uint8_t& vm_version, const uint32_t& block_num) {
+      my->code_block_num_last_used(code_hash, vm_type, vm_version, block_num);
+   }
+
+   void wasm_interface::current_lib(const uint32_t lib) {
+      my->current_lib(lib);
+   }
+
+   void wasm_interface::apply( const digest_type& code_hash, const uint8_t& vm_type, const uint8_t& vm_version, apply_context& context ) {
+      my->get_instantiated_module(code_hash, vm_type, vm_version, context.trx_context)->apply(context);
    }
 
    void wasm_interface::exit() {
@@ -74,9 +89,8 @@ class context_aware_api {
       context_aware_api(apply_context& ctx, bool context_free = false )
       :context(ctx)
       {
-         if( context.context_free )
+         if( context.is_context_free() )
             EOS_ASSERT( context_free, unaccessible_api, "only context free api's can be used in this context" );
-         context.used_context_free_api |= !context_free;
       }
 
       void checktime() {
@@ -93,7 +107,7 @@ class context_free_api : public context_aware_api {
       context_free_api( apply_context& ctx )
       :context_aware_api(ctx, true) {
          /* the context_free_data is not available during normal application because it is prunable */
-         EOS_ASSERT( context.context_free, unaccessible_api, "this API may only be called from context_free apply" );
+         EOS_ASSERT( context.is_context_free(), unaccessible_api, "this API may only be called from context_free apply" );
       }
 
       int get_context_free_data( uint32_t index, array_ptr<char> buffer, size_t buffer_size )const {
@@ -106,7 +120,7 @@ class privileged_api : public context_aware_api {
       privileged_api( apply_context& ctx )
       :context_aware_api(ctx)
       {
-         EOS_ASSERT( context.privileged, unaccessible_api, "${code} does not have permission to call this API", ("code",context.receiver) );
+         EOS_ASSERT( context.is_privileged(), unaccessible_api, "${code} does not have permission to call this API", ("code",context.get_receiver()) );
       }
 
       /**
@@ -128,6 +142,15 @@ class privileged_api : public context_aware_api {
        */
       void activate_feature( int64_t feature_name ) {
          EOS_ASSERT( false, unsupported_feature, "Unsupported Hardfork Detected" );
+      }
+
+      /**
+       *  Pre-activates the specified protocol feature.
+       *  Fails if the feature is unrecognized, disabled, or not allowed to be activated at the current time.
+       *  Also fails if the feature was already activated or pre-activated.
+       */
+      void preactivate_feature( const digest_type& feature_digest ) {
+         context.control.preactivate_feature( feature_digest );
       }
 
       /**
@@ -156,6 +179,13 @@ class privileged_api : public context_aware_api {
          datastream<const char*> ds( packed_producer_schedule, datalen );
          vector<producer_key> producers;
          fc::raw::unpack(ds, producers);
+         EOS_ASSERT( producers.size() > 0
+                        || !context.control.is_builtin_activated(
+                              builtin_protocol_feature_t::disallow_empty_producer_schedule
+                           ),
+                     wasm_execution_error,
+                     "Producer schedule cannot be empty"
+         );
          EOS_ASSERT(producers.size() <= config::max_producers, wasm_execution_error, "Producer schedule exceeds the maximum producer count for this chain");
          // check that producers are unique
          std::set<account_name> unique_producers;
@@ -194,13 +224,13 @@ class privileged_api : public context_aware_api {
       }
 
       bool is_privileged( account_name n )const {
-         return context.db.get<account_object, by_name>( n ).privileged;
+         return context.db.get<account_metadata_object, by_name>( n ).is_privileged();
       }
 
       void set_privileged( account_name n, bool is_priv ) {
-         const auto& a = context.db.get<account_object, by_name>( n );
+         const auto& a = context.db.get<account_metadata_object, by_name>( n );
          context.db.modify( a, [&]( auto& ma ){
-            ma.privileged = is_priv;
+            ma.set_privileged( is_priv );
          });
       }
 
@@ -903,6 +933,16 @@ class system_api : public context_aware_api {
          return static_cast<uint64_t>( context.trx_context.published.time_since_epoch().count() );
       }
 
+      /**
+       * Returns true if the specified protocol feature is activated, false if not.
+       */
+      bool is_feature_activated( const digest_type& feature_digest ) {
+         return context.control.is_protocol_feature_activated( feature_digest );
+      }
+
+      name get_sender() {
+         return context.get_sender();
+      }
 };
 
 constexpr size_t max_assert_message = 1024;
@@ -935,8 +975,23 @@ public:
 
    void eosio_assert_code( bool condition, uint64_t error_code ) {
       if( BOOST_UNLIKELY( !condition ) ) {
-         EOS_THROW( eosio_assert_code_exception,
-                    "assertion failure with error code: ${error_code}", ("error_code", error_code) );
+         if( error_code >= static_cast<uint64_t>(system_error_code::generic_system_error) ) {
+            restricted_error_code_exception e( FC_LOG_MESSAGE(
+                                                   error,
+                                                   "eosio_assert_code called with reserved error code: ${error_code}",
+                                                   ("error_code", error_code)
+            ) );
+            e.error_code = static_cast<uint64_t>(system_error_code::contract_restricted_error_code);
+            throw e;
+         } else {
+            eosio_assert_code_exception e( FC_LOG_MESSAGE(
+                                             error,
+                                             "assertion failure with error code: ${error_code}",
+                                             ("error_code", error_code)
+            ) );
+            e.error_code = error_code;
+            throw e;
+         }
       }
    }
 
@@ -952,21 +1007,21 @@ class action_api : public context_aware_api {
       :context_aware_api(ctx,true){}
 
       int read_action_data(array_ptr<char> memory, size_t buffer_size) {
-         auto s = context.act.data.size();
+         auto s = context.get_action().data.size();
          if( buffer_size == 0 ) return s;
 
          auto copy_size = std::min( buffer_size, s );
-         memcpy( memory, context.act.data.data(), copy_size );
+         memcpy( memory, context.get_action().data.data(), copy_size );
 
          return copy_size;
       }
 
       int action_data_size() {
-         return context.act.data.size();
+         return context.get_action().data.size();
       }
 
       name current_receiver() {
-         return context.receiver;
+         return context.get_receiver();
       }
 };
 
@@ -979,7 +1034,7 @@ class console_api : public context_aware_api {
       // Kept as intrinsic rather than implementing on WASM side (using prints_l and strlen) because strlen is faster on native side.
       void prints(null_terminated_ptr str) {
          if ( !ignore ) {
-            context.console_append<const char*>(str);
+            context.console_append( static_cast<const char*>(str) );
          }
       }
 
@@ -991,13 +1046,17 @@ class console_api : public context_aware_api {
 
       void printi(int64_t val) {
          if ( !ignore ) {
-            context.console_append(val);
+            std::ostringstream oss;
+            oss << val;
+            context.console_append( oss.str() );
          }
       }
 
       void printui(uint64_t val) {
          if ( !ignore ) {
-            context.console_append(val);
+            std::ostringstream oss;
+            oss << val;
+            context.console_append( oss.str() );
          }
       }
 
@@ -1013,11 +1072,13 @@ class console_api : public context_aware_api {
 
             fc::uint128_t v(val_magnitude>>64, static_cast<uint64_t>(val_magnitude) );
 
+            string s;
             if( is_negative ) {
-               context.console_append("-");
+               s += '-';
             }
+            s += fc::variant(v).get_string();
 
-            context.console_append(fc::variant(v).get_string());
+            context.console_append( s );
          }
       }
 
@@ -1031,26 +1092,22 @@ class console_api : public context_aware_api {
       void printsf( float val ) {
          if ( !ignore ) {
             // Assumes float representation on native side is the same as on the WASM side
-            auto& console = context.get_console_stream();
-            auto orig_prec = console.precision();
-
-            console.precision( std::numeric_limits<float>::digits10 );
-            context.console_append(val);
-
-            console.precision( orig_prec );
+            std::ostringstream oss;
+            oss.setf( std::ios::scientific, std::ios::floatfield );
+            oss.precision( std::numeric_limits<float>::digits10 );
+            oss << val;
+            context.console_append( oss.str() );
          }
       }
 
       void printdf( double val ) {
          if ( !ignore ) {
             // Assumes double representation on native side is the same as on the WASM side
-            auto& console = context.get_console_stream();
-            auto orig_prec = console.precision();
-
-            console.precision( std::numeric_limits<double>::digits10 );
-            context.console_append(val);
-
-            console.precision( orig_prec );
+            std::ostringstream oss;
+            oss.setf( std::ios::scientific, std::ios::floatfield );
+            oss.precision( std::numeric_limits<double>::digits10 );
+            oss << val;
+            context.console_append( oss.str() );
          }
       }
 
@@ -1068,23 +1125,23 @@ class console_api : public context_aware_api {
           */
 
          if ( !ignore ) {
-            auto& console = context.get_console_stream();
-            auto orig_prec = console.precision();
+            std::ostringstream oss;
+            oss.setf( std::ios::scientific, std::ios::floatfield );
 
 #ifdef __x86_64__
-            console.precision( std::numeric_limits<long double>::digits10 );
+            oss.precision( std::numeric_limits<long double>::digits10 );
             extFloat80_t val_approx;
             f128M_to_extF80M(&val, &val_approx);
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wstrict-aliasing"
-            context.console_append( *(long double*)(&val_approx) );
+            oss << *(long double*)(&val_approx);
 #pragma GCC diagnostic pop
 #else
-            console.precision( std::numeric_limits<double>::digits10 );
+            oss.precision( std::numeric_limits<double>::digits10 );
             double val_approx = from_softfloat64( f128M_to_f64(&val) );
-            context.console_append(val_approx);
+            oss << val_approx;
 #endif
-            console.precision( orig_prec );
+            context.console_append( oss.str() );
          }
       }
 
@@ -1700,6 +1757,7 @@ REGISTER_INTRINSICS(privileged_api,
    (set_blockchain_parameters_packed, void(int,int)                         )
    (is_privileged,                    int(int64_t)                          )
    (set_privileged,                   void(int64_t, int)                    )
+   (preactivate_feature,              void(int)                             )
 );
 
 REGISTER_INJECTED_INTRINSICS(transaction_context,
@@ -1776,8 +1834,10 @@ REGISTER_INTRINSICS(permission_api,
 
 
 REGISTER_INTRINSICS(system_api,
-   (current_time, int64_t()       )
-   (publication_time,   int64_t() )
+   (current_time,          int64_t() )
+   (publication_time,      int64_t() )
+   (is_feature_activated,  int(int)  )
+   (get_sender,            int64_t() )
 );
 
 REGISTER_INTRINSICS(context_free_system_api,

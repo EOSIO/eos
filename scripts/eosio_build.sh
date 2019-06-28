@@ -1,4 +1,6 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -eo pipefail
+SCRIPT_VERSION=3.0 # Build script version (change this to re-build the CICD image)
 ##########################################################################
 # This is the EOSIO automated install script for Linux and Mac OS.
 # This file was downloaded from https://github.com/EOSIO/eos
@@ -30,288 +32,211 @@
 # https://github.com/EOSIO/eos/blob/master/LICENSE
 ##########################################################################
 
-VERSION=2.1 # Build script version
-CMAKE_BUILD_TYPE=Release
-export DISK_MIN=20
-DOXYGEN=false
-ENABLE_COVERAGE_TESTING=false
-CORE_SYMBOL_NAME="SYS"
-START_MAKE=true
-
-TIME_BEGIN=$( date -u +%s )
-txtbld=$(tput bold)
-bldred=${txtbld}$(tput setaf 1)
-txtrst=$(tput sgr0)
-
-export SRC_LOCATION=${HOME}/src
-export OPT_LOCATION=${HOME}/opt
-export VAR_LOCATION=${HOME}/var
-export ETC_LOCATION=${HOME}/etc
-export BIN_LOCATION=${HOME}/bin
-export DATA_LOCATION=${HOME}/data
-export CMAKE_VERSION_MAJOR=3
-export CMAKE_VERSION_MINOR=13
-export CMAKE_VERSION_PATCH=2
-export CMAKE_VERSION=${CMAKE_VERSION_MAJOR}.${CMAKE_VERSION_MINOR}.${CMAKE_VERSION_PATCH}
-export MONGODB_VERSION=3.6.3
-export MONGODB_ROOT=${OPT_LOCATION}/mongodb-${MONGODB_VERSION}
-export MONGODB_CONF=${ETC_LOCATION}/mongod.conf
-export MONGODB_LOG_LOCATION=${VAR_LOCATION}/log/mongodb
-export MONGODB_LINK_LOCATION=${OPT_LOCATION}/mongodb
-export MONGODB_DATA_LOCATION=${DATA_LOCATION}/mongodb
-export MONGO_C_DRIVER_VERSION=1.13.0
-export MONGO_C_DRIVER_ROOT=${SRC_LOCATION}/mongo-c-driver-${MONGO_C_DRIVER_VERSION}
-export MONGO_CXX_DRIVER_VERSION=3.4.0
-export MONGO_CXX_DRIVER_ROOT=${SRC_LOCATION}/mongo-cxx-driver-r${MONGO_CXX_DRIVER_VERSION}
-export BOOST_VERSION_MAJOR=1
-export BOOST_VERSION_MINOR=67
-export BOOST_VERSION_PATCH=0
-export BOOST_VERSION=${BOOST_VERSION_MAJOR}_${BOOST_VERSION_MINOR}_${BOOST_VERSION_PATCH}
-export BOOST_ROOT=${SRC_LOCATION}/boost_${BOOST_VERSION}
-export BOOST_LINK_LOCATION=${OPT_LOCATION}/boost
-export LLVM_VERSION=release_40
-export LLVM_ROOT=${OPT_LOCATION}/llvm
-export LLVM_DIR=${LLVM_ROOT}/lib/cmake/llvm
-export DOXYGEN_VERSION=1_8_14
-export DOXYGEN_ROOT=${SRC_LOCATION}/doxygen-${DOXYGEN_VERSION}
-export TINI_VERSION=0.18.0
-
-# Setup directories
-mkdir -p $SRC_LOCATION
-mkdir -p $OPT_LOCATION
-mkdir -p $VAR_LOCATION
-mkdir -p $BIN_LOCATION
-mkdir -p $VAR_LOCATION/log
-mkdir -p $ETC_LOCATION
-mkdir -p $MONGODB_LOG_LOCATION
-mkdir -p $MONGODB_DATA_LOCATION
-
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-REPO_ROOT="${SCRIPT_DIR}/.."
-BUILD_DIR="${REPO_ROOT}/build"
-
-# Use current directory's tmp directory if noexec is enabled for /tmp
-if (mount | grep "/tmp " | grep --quiet noexec); then
-      mkdir -p $REPO_ROOT/tmp
-      TEMP_DIR="${REPO_ROOT}/tmp"
-      rm -rf $REPO_ROOT/tmp/*
-else # noexec wasn't found
-      TEMP_DIR="/tmp"
-fi
-
-function usage()
-{
-   printf "Usage: %s \\n[Build Option -o <Debug|Release|RelWithDebInfo|MinSizeRel>] \\n[CodeCoverage -c] \\n[Doxygen -d] \\n[CoreSymbolName -s <1-7 characters>] \\n[Avoid Compiling -a]\\n[Noninteractive -y]\\n\\n" "$0" 1>&2
+function usage() {
+   printf "Usage: $0 OPTION...
+  -P          Build with pinned clang and libcxx
+  -o TYPE     Build <Debug|Release|RelWithDebInfo|MinSizeRel> (default: Release)
+  -s NAME     Core Symbol Name <1-7 characters> (default: SYS)
+  -b DIR      Use pre-built boost in DIR
+  -i DIR      Directory to use for installing dependencies & EOSIO (default: $HOME)
+  -y          Noninteractive mode (answers yes to every prompt)
+  -c          Enable Code Coverage
+  -d          Generate Doxygen
+  -m          Build MongoDB dependencies
+   \\n" "$0" 1>&2
    exit 1
 }
 
-NONINTERACTIVE=0
-
+TIME_BEGIN=$( date -u +%s )
 if [ $# -ne 0 ]; then
-   while getopts ":cdo:s:ahy" opt; do
+   while getopts "o:s:b:i:ycdhmPf" opt; do
       case "${opt}" in
          o )
             options=( "Debug" "Release" "RelWithDebInfo" "MinSizeRel" )
             if [[ "${options[*]}" =~ "${OPTARG}" ]]; then
-               CMAKE_BUILD_TYPE="${OPTARG}"
+               CMAKE_BUILD_TYPE=$OPTARG
             else
-               printf "\\nInvalid argument: %s\\n" "${OPTARG}" 1>&2
+               echo  "Invalid argument: ${OPTARG}" 1>&2
                usage
-               exit 1
             fi
          ;;
+         s )
+            if [ "${#OPTARG}" -gt 7 ] || [ -z "${#OPTARG}" ]; then
+               echo "Invalid argument: ${OPTARG}" 1>&2
+               usage
+            else
+               CORE_SYMBOL_NAME=$OPTARG
+            fi
+         ;;
+         b )
+            BOOST_LOCATION=$OPTARG
+         ;;
+         i )
+            INSTALL_LOCATION=$OPTARG
+         ;;
+         y )
+            NONINTERACTIVE=true
+            PROCEED=true
+         ;;
+         f ) 
+            echo "DEPRECATION NOTICE: -f will be removed in the next release..."
+         ;; # Needs to be removed in 1.9
          c )
             ENABLE_COVERAGE_TESTING=true
          ;;
          d )
-            DOXYGEN=true
+            ENABLE_DOXYGEN=true
          ;;
-         s)
-            if [ "${#OPTARG}" -gt 7 ] || [ -z "${#OPTARG}" ]; then
-               printf "\\nInvalid argument: %s\\n" "${OPTARG}" 1>&2
-               usage
-               exit 1
-            else
-               CORE_SYMBOL_NAME="${OPTARG}"
-            fi
+         m )
+            ENABLE_MONGO=true
          ;;
-         a)
-            START_MAKE=false
+         P )
+            PIN_COMPILER=true
          ;;
-         h)
+         h )
             usage
-            exit 1
          ;;
-         y)
-            NONINTERACTIVE=1
-         ;;
-         \? )
-            printf "\\nInvalid Option: %s\\n" "-${OPTARG}" 1>&2
+         ? )
+            echo "Invalid Option!" 1>&2
             usage
-            exit 1
          ;;
          : )
-            printf "\\nInvalid Option: %s requires an argument.\\n" "-${OPTARG}" 1>&2
+            echo "Invalid Option: -${OPTARG} requires an argument." 1>&2
             usage
-            exit 1
          ;;
          * )
             usage
-            exit 1
          ;;
       esac
    done
 fi
 
-if [ ! -d "${REPO_ROOT}/.git" ]; then
-   printf "\\nThis build script only works with sources cloned from git\\n"
-   printf "Please clone a new eos directory with 'git clone https://github.com/EOSIO/eos --recursive'\\n"
-   printf "See the wiki for instructions: https://github.com/EOSIO/eos/wiki\\n"
-   exit 1
-fi
+# Ensure we're in the repo root and not inside of scripts
+cd $( dirname "${BASH_SOURCE[0]}" )/..
 
-cd $REPO_ROOT
+# Load eosio specific helper functions
+. ./scripts/helpers/eosio.sh
 
-STALE_SUBMODS=$(( $(git submodule status --recursive | grep -c "^[+\-]") ))
-if [ $STALE_SUBMODS -gt 0 ]; then
-   printf "\\ngit submodules are not up to date.\\n"
-   printf "Please run the command 'git submodule update --init --recursive'.\\n"
-   exit 1
-fi
+$VERBOSE && echo "Build Script Version: ${SCRIPT_VERSION}"
+echo "EOSIO Version: ${EOSIO_VERSION_FULL}"
+echo "$( date -u )"
+echo "User: ${CURRENT_USER}"
+# echo "git head id: %s" "$( cat .git/refs/heads/master )"
+echo "Current branch: $( execute git rev-parse --abbrev-ref HEAD 2>/dev/null )"
 
-printf "\\nBeginning build version: %s\\n" "${VERSION}"
-printf "%s\\n" "$( date -u )"
-printf "User: %s\\n" "$( whoami )"
-# printf "git head id: %s\\n" "$( cat .git/refs/heads/master )"
-printf "Current branch: %s\\n" "$( git rev-parse --abbrev-ref HEAD )"
+( [[ ! $NAME == "Ubuntu" ]] && [[ ! $ARCH == "Darwin" ]] ) && set -i # Ubuntu doesn't support interactive mode since it uses dash + Some folks are having this issue on Darwin; colors aren't supported yet anyway
 
-ARCH=$( uname )
-printf "\\nARCHITECTURE: %s\\n" "${ARCH}"
+# Ensure sudo is available (only if not using the root user)
+ensure-sudo
+# Test that which is on the system before proceeding
+ensure-which
+# Prevent a non-git clone from running
+ensure-git-clone
+# Prompt user for installation path.
+install-directory-prompt
+# If the same version has already been installed...
+previous-install-prompt
+# Prompt user and asks if we should install mongo or not
+prompt-mongo-install
+# Setup directories and envs we need (must come last)
+setup
 
-# Find and use existing CMAKE
-export CMAKE=$(command -v cmake 2>/dev/null)
+execute cd $REPO_ROOT
 
-if [ "$ARCH" == "Linux" ]; then
-   # Check if cmake is already installed or not and use source install location
-   if [ -z $CMAKE ]; then export CMAKE=$HOME/bin/cmake; fi
-   export OS_NAME=$( cat /etc/os-release | grep ^NAME | cut -d'=' -f2 | sed 's/\"//gI' )
+# Submodules need to be up to date
+ensure-submodules-up-to-date
+
+# Check if cmake already exists
+( [[ -z "${CMAKE}" ]] && [[ ! -z $(command -v cmake 2>/dev/null) ]] ) && export CMAKE=$(command -v cmake 2>/dev/null)
+
+# Use existing cmake on system (either global or specific to eosio)
+# Setup based on architecture
+if [[ $ARCH == "Linux" ]]; then
+   export CMAKE=${CMAKE:-${EOSIO_INSTALL_DIR}/bin/cmake}
    OPENSSL_ROOT_DIR=/usr/include/openssl
-   if [ ! -e /etc/os-release ]; then
-      printf "\\nEOSIO currently supports Amazon, Centos, Fedora, Mint & Ubuntu Linux only.\\n"
-      printf "Please install on the latest version of one of these Linux distributions.\\n"
-      printf "https://aws.amazon.com/amazon-linux-ami/\\n"
-      printf "https://www.centos.org/\\n"
-      printf "https://start.fedoraproject.org/\\n"
-      printf "https://linuxmint.com/\\n"
-      printf "https://www.ubuntu.com/\\n"
-      printf "Exiting now.\\n"
-      exit 1
-   fi
-   case "$OS_NAME" in
-      "Amazon Linux AMI"|"Amazon Linux")
-         FILE="${REPO_ROOT}/scripts/eosio_build_amazon.sh"
-         CXX_COMPILER=g++
-         C_COMPILER=gcc
+   [[ ! -e /etc/os-release ]] && print_supported_linux_distros_and_exit
+   case $NAME in
+      "Amazon Linux AMI" | "Amazon Linux")
+         echo "${COLOR_CYAN}[Ensuring YUM installation]${COLOR_NC}"
+         FILE="${REPO_ROOT}/scripts/eosio_build_amazonlinux.sh"
       ;;
       "CentOS Linux")
          FILE="${REPO_ROOT}/scripts/eosio_build_centos.sh"
-         CXX_COMPILER=g++
-         C_COMPILER=gcc
-      ;;
-      "elementary OS")
-         FILE="${REPO_ROOT}/scripts/eosio_build_ubuntu.sh"
-         CXX_COMPILER=clang++-4.0
-         C_COMPILER=clang-4.0
-      ;;
-      "Fedora")
-         export CPATH=/usr/include/llvm4.0:$CPATH # llvm4.0 for fedora package path inclusion
-         FILE="${REPO_ROOT}/scripts/eosio_build_fedora.sh"
-         CXX_COMPILER=g++
-         C_COMPILER=gcc
-      ;;
-      "Linux Mint")
-         FILE="${REPO_ROOT}/scripts/eosio_build_ubuntu.sh"
-         CXX_COMPILER=clang++-4.0
-         C_COMPILER=clang-4.0
       ;;
       "Ubuntu")
          FILE="${REPO_ROOT}/scripts/eosio_build_ubuntu.sh"
-         CXX_COMPILER=clang++-4.0
-         C_COMPILER=clang-4.0
       ;;
-      "Debian GNU/Linux")
-         FILE="${REPO_ROOT}/scripts/eosio_build_ubuntu.sh"
-         CXX_COMPILER=clang++-4.0
-         C_COMPILER=clang-4.0
-      ;;
-      *)
-         printf "\\nUnsupported Linux Distribution. Exiting now.\\n\\n"
-         exit 1
+      *) print_supported_linux_distros_and_exit;;
    esac
+   CMAKE_PREFIX_PATHS="${EOSIO_INSTALL_DIR}"
 fi
 
 if [ "$ARCH" == "Darwin" ]; then
-   # Check if cmake is already installed or not and use source install location
-   if [ -z $CMAKE ]; then export CMAKE=/usr/local/bin/cmake; fi
-   export OS_NAME=MacOSX
    # opt/gettext: cleos requires Intl, which requires gettext; it's keg only though and we don't want to force linking: https://github.com/EOSIO/eos/issues/2240#issuecomment-396309884
-   # HOME/lib/cmake: mongo_db_plugin.cpp:25:10: fatal error: 'bsoncxx/builder/basic/kvp.hpp' file not found
-   LOCAL_CMAKE_FLAGS="-DCMAKE_PREFIX_PATH=/usr/local/opt/gettext;$HOME/lib/cmake ${LOCAL_CMAKE_FLAGS}" 
-   FILE="${REPO_ROOT}/scripts/eosio_build_darwin.sh"
-   CXX_COMPILER=clang++
-   C_COMPILER=clang
+   # EOSIO_INSTALL_DIR/lib/cmake: mongo_db_plugin.cpp:25:10: fatal error: 'bsoncxx/builder/basic/kvp.hpp' file not found
+   CMAKE_PREFIX_PATHS="/usr/local/opt/gettext;${EOSIO_INSTALL_DIR}"
+   FILE="${SCRIPT_DIR}/eosio_build_darwin.sh"
    OPENSSL_ROOT_DIR=/usr/local/opt/openssl
+   export CMAKE=${CMAKE}
 fi
 
-# Cleanup old installation
-. ./scripts/full_uninstaller.sh $NONINTERACTIVE
-if [ $? -ne 0 ]; then exit -1; fi # Stop if exit from script is not 0
+# Find and replace OPT_DIR in pinned_toolchain.cmake, then move it into build dir
+execute bash -c "sed -e 's~@~$OPT_DIR~g' $SCRIPT_DIR/pinned_toolchain.cmake &> $BUILD_DIR/pinned_toolchain.cmake"
 
-pushd $SRC_LOCATION &> /dev/null
-. "$FILE" $NONINTERACTIVE # Execute OS specific build file
-popd &> /dev/null
+echo "${COLOR_CYAN}====================================================================================="
+echo "======================= ${COLOR_WHITE}Starting EOSIO Dependency Install${COLOR_CYAN} ===========================${COLOR_NC}"
+execute cd $SRC_DIR
+set_system_vars # JOBS, Memory, disk space available, etc
+echo "Architecture: ${ARCH}"
+. $FILE # Execute OS specific build file
+execute cd $REPO_ROOT
 
-printf "\\n========================================================================\\n"
-printf "======================= Starting EOSIO Build =======================\\n"
-printf "## CMAKE_BUILD_TYPE=%s\\n" "${CMAKE_BUILD_TYPE}"
-printf "## ENABLE_COVERAGE_TESTING=%s\\n" "${ENABLE_COVERAGE_TESTING}"
+echo ""
+echo "${COLOR_CYAN}========================================================================"
+echo "======================= ${COLOR_WHITE}Starting EOSIO Build${COLOR_CYAN} ===========================${COLOR_NC}"
+if $VERBOSE; then
+   echo "CXX: $CXX"
+   echo "CC: $CC"
+fi
+execute cd $BUILD_DIR
+# LOCAL_CMAKE_FLAGS
+$ENABLE_MONGO && LOCAL_CMAKE_FLAGS="-DBUILD_MONGO_DB_PLUGIN=true ${LOCAL_CMAKE_FLAGS}" # Enable Mongo DB Plugin if user has enabled -m
+if $PIN_COMPILER; then
+   CMAKE_PREFIX_PATHS="${CMAKE_PREFIX_PATHS};${LLVM_ROOT}"
+   LOCAL_CMAKE_FLAGS="${PINNED_TOOLCHAIN} -DCMAKE_PREFIX_PATH='${CMAKE_PREFIX_PATHS}' ${LOCAL_CMAKE_FLAGS}"
+else
+   LOCAL_CMAKE_FLAGS="-DCMAKE_CXX_COMPILER='${CXX}' -DCMAKE_C_COMPILER='${CC}' -DCMAKE_PREFIX_PATH='${CMAKE_PREFIX_PATHS}' ${LOCAL_CMAKE_FLAGS}"
+fi
+$ENABLE_DOXYGEN && LOCAL_CMAKE_FLAGS="-DBUILD_DOXYGEN='${DOXYGEN}' ${LOCAL_CMAKE_FLAGS}"
+$ENABLE_COVERAGE_TESTING && LOCAL_CMAKE_FLAGS="-DENABLE_COVERAGE_TESTING='${ENABLE_COVERAGE_TESTING}' ${LOCAL_CMAKE_FLAGS}"
 
-mkdir -p $BUILD_DIR
-cd $BUILD_DIR
-
-$CMAKE -DCMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE}" -DCMAKE_CXX_COMPILER="${CXX_COMPILER}" \
-   -DCMAKE_C_COMPILER="${C_COMPILER}" -DCORE_SYMBOL_NAME="${CORE_SYMBOL_NAME}" \
-   -DOPENSSL_ROOT_DIR="${OPENSSL_ROOT_DIR}" -DBUILD_MONGO_DB_PLUGIN=true \
-   -DENABLE_COVERAGE_TESTING="${ENABLE_COVERAGE_TESTING}" -DBUILD_DOXYGEN="${DOXYGEN}" \
-   -DCMAKE_INSTALL_PREFIX=$OPT_LOCATION/eosio $LOCAL_CMAKE_FLAGS "${REPO_ROOT}"
-if [ $? -ne 0 ]; then exit -1; fi
-make -j"${JOBS}"
-if [ $? -ne 0 ]; then exit -1; fi
-
-cd $REPO_ROOT
+execute bash -c "$CMAKE -DCMAKE_BUILD_TYPE='${CMAKE_BUILD_TYPE}' -DCORE_SYMBOL_NAME='${CORE_SYMBOL_NAME}' -DOPENSSL_ROOT_DIR='${OPENSSL_ROOT_DIR}' -DCMAKE_INSTALL_PREFIX='${EOSIO_INSTALL_DIR}' ${LOCAL_CMAKE_FLAGS} '${REPO_ROOT}'"
+execute make -j$JOBS
+execute cd $REPO_ROOT 1>/dev/null
 
 TIME_END=$(( $(date -u +%s) - $TIME_BEGIN ))
 
-printf "${bldred}\n\n _______  _______  _______ _________ _______\n"
-printf '(  ____ \(  ___  )(  ____ \\\\__   __/(  ___  )\n'
-printf "| (    \/| (   ) || (    \/   ) (   | (   ) |\n"
-printf "| (__    | |   | || (_____    | |   | |   | |\n"
-printf "|  __)   | |   | |(_____  )   | |   | |   | |\n"
-printf "| (      | |   | |      ) |   | |   | |   | |\n"
-printf "| (____/\| (___) |/\____) |___) (___| (___) |\n"
-printf "(_______/(_______)\_______)\_______/(_______)\n\n${txtrst}"
+echo " _______  _______  _______ _________ _______"
+echo "(  ____ \(  ___  )(  ____   __   __ (  ___  )"
+echo "| (    \/| (   ) || (    \/   ) (   | (   ) |"
+echo "| (__    | |   | || (_____    | |   | |   | |"
+echo "|  __)   | |   | |(_____  )   | |   | |   | |"
+echo "| (      | |   | |      ) |   | |   | |   | |"
+echo "| (____/\| (___) |/\____) |___) (___| (___) |"
+echo "(_______/(_______)\_______)\_______/(_______)"
+echo "=============================================${COLOR_NC}"
 
-printf "\\nEOSIO has been successfully built. %02d:%02d:%02d\\n" $(($TIME_END/3600)) $(($TIME_END%3600/60)) $(($TIME_END%60))
-printf "==============================================================================================\\n${bldred}"
-printf "(Optional) Testing Instructions:\\n"
-print_instructions
-printf "${BIN_LOCATION}/mongod --dbpath ${MONGODB_DATA_LOCATION} -f ${MONGODB_CONF} --logpath ${MONGODB_LOG_LOCATION}/mongod.log &\\n"
-printf "cd ./build && PATH=\$PATH:$HOME/opt/mongodb/bin make test\\n" # PATH is set as currently 'mongo' binary is required for the mongodb test
-printf "${txtrst}==============================================================================================\\n"
-printf "For more information:\\n"
-printf "EOSIO website: https://eos.io\\n"
-printf "EOSIO Telegram channel @ https://t.me/EOSProject\\n"
-printf "EOSIO resources: https://eos.io/resources/\\n"
-printf "EOSIO Stack Exchange: https://eosio.stackexchange.com\\n"
-printf "EOSIO wiki: https://github.com/EOSIO/eos/wiki\\n\\n\\n"
+echo "${COLOR_GREEN}EOSIO has been successfully built. $(($TIME_END/3600)):$(($TIME_END%3600/60)):$(($TIME_END%60))"
+echo "${COLOR_GREEN}You can now install using: ./scripts/eosio_install.sh${COLOR_NC}"
+echo "${COLOR_YELLOW}Uninstall with: ./scripts/eosio_uninstall.sh${COLOR_NC}"
 
+echo ""
+echo "${COLOR_CYAN}If you wish to perform tests to ensure functional code:${COLOR_NC}"
+if $ENABLE_MONGO; then
+   echo "${BIN_DIR}/mongod --dbpath ${MONGODB_DATA_DIR} -f ${MONGODB_CONF} --logpath ${MONGODB_LOG_DIR}/mongod.log &"
+   PATH_TO_USE=" PATH=\$PATH:$OPT_DIR/mongodb/bin"
+fi
+echo "cd ./build &&${PATH_TO_USE} make test" # PATH is set as currently 'mongo' binary is required for the mongodb test
+
+echo ""
+resources
