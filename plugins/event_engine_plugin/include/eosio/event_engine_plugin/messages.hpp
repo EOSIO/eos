@@ -166,7 +166,7 @@ namespace eosio {
 } // namespace eosio
 
 FC_REFLECT(eosio::EventData, (code)(event)(data)(args))
-FC_REFLECT(eosio::ActionData, (receiver)(code)(action)(authorization)(data)(args)(events))
+FC_REFLECT(eosio::ActionData, (receiver)(code)(action)(auth)(data)(args)(events))
 FC_REFLECT(eosio::TrxMetadata, (id)(accepted)(implicit)(scheduled))
 FC_REFLECT(eosio::TrxReceipt, (id)(status)(cpu_usage_us)(net_usage_words)(ram_kbytes)(storage_kbytes))
 
