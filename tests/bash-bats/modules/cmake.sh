@@ -7,6 +7,9 @@ load ../helpers/functions
     touch $CMAKE
     run bash -c " ./$SCRIPT_LOCATION -y -P"
     [[ ! -z $(echo "${output}" | grep "Executing: bash -c ${HOME}/cmake") ]] || exit
+    export CMAKE_CURRENT_VERSION=3.7.1
+    run bash -c " ./$SCRIPT_LOCATION -y -P"
+    [[ ! -z $(echo "${output}" | grep "We will be installing $CMAKE_VERSION") ]] || exit
     # Testing for if cmake doesn't exist to be sure it's set properly
     export CMAKE=
     run bash -c "./$SCRIPT_LOCATION -y -P"
