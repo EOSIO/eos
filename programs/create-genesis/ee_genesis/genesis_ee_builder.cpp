@@ -556,6 +556,15 @@ void genesis_ee_builder::write_accounts() {
     }
 }
 
+void genesis_ee_builder::write_witnesses() {
+    std::cout << "-> Writing witnesses..." << std::endl;
+    auto& out = out_.get_serializer(event_engine_genesis::witnesses);
+    out.start_section(info_.golos.names.control, N(witnessstate), "witnessstate");
+    for (auto& w : exp_info_.witness_events) {
+        out.insert(w);
+    }
+}
+
 void genesis_ee_builder::write_funds() {
     std::cout << "-> Writing funds..." << std::endl;
 
@@ -602,6 +611,7 @@ void genesis_ee_builder::build(const bfs::path& out_dir) {
     write_transfers();
     write_pinblocks();
     write_accounts();
+    write_witnesses();
     write_funds();
     write_balance_converts();
 

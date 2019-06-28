@@ -136,6 +136,21 @@ static abi_def create_accounts_abi() {
     return abi;
 }
 
+static abi_def create_witnesses_abi() {
+    abi_def abi;
+    abi.version = ABI_VERSION;
+
+    abi.structs.emplace_back( struct_def {
+        "witnessstate", "", {
+            {"witness", "name"},
+            {"weight", "uint64"},
+            {"active", "bool"},
+        }
+    });
+
+    return abi;
+}
+
 static abi_def create_funds_abi() {
     abi_def abi;
     abi.version = ABI_VERSION;
@@ -166,6 +181,7 @@ void event_engine_genesis::start(const bfs::path& ee_directory, const fc::sha256
         {ee_ser_type::transfers, {"transfers.dat",  create_transfers_abi()}},
         {ee_ser_type::pinblocks, {"pinblocks.dat",  create_pinblocks_abi()}},
         {ee_ser_type::accounts,  {"accounts.dat",   create_accounts_abi()}},
+        {ee_ser_type::witnesses,  {"witnesses.dat",   create_witnesses_abi()}},
         {ee_ser_type::funds,     {"funds.dat",      create_funds_abi()}},
         {ee_ser_type::balance_conversions, {"balance_conversions.dat", create_balance_convert_abi()}}
     };

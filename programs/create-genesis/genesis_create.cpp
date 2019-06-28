@@ -924,6 +924,11 @@ struct genesis_create::genesis_create_impl final {
                 ("total_weight", w.votes)
                 ("counter_votes", vote_counts[w.owner.id])
             );
+            _exp_info.witness_events.push_back(mvo
+                ("witness", n)
+                ("weight", w.votes)
+                ("active", true)
+            );
             if (weights[w.owner.id] != w.votes) {
                 wlog("Witness `${a}` .votes value ${w} ≠ ${c}",
                     ("a",w.owner.str(_accs_map))("w",w.votes)("c",weights[w.owner.id]));
