@@ -43,12 +43,6 @@ using std::vector;
 using std::deque;
 using boost::signals2::scoped_connection;
 
-// HACK TO EXPOSE LOGGER MAP
-
-namespace fc {
-   extern std::unordered_map<std::string,logger>& get_logger_map();
-}
-
 const fc::string logger_name("producer_plugin");
 fc::logger _log;
 
@@ -875,13 +869,8 @@ void producer_plugin::plugin_shutdown() {
 }
 
 void producer_plugin::handle_sighup() {
-   auto& logger_map = fc::get_logger_map();
-   if(logger_map.find(logger_name) != logger_map.end()) {
-      _log = logger_map[logger_name];
-   }
-   if( logger_map.find(trx_trace_logger_name) != logger_map.end()) {
-      _trx_trace_log = logger_map[trx_trace_logger_name];
-   }
+   fc::logger::update( logger_name, _log );
+   fc::logger::update( trx_trace_logger_name, _trx_trace_log );
 }
 
 void producer_plugin::pause() {
