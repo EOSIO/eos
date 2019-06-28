@@ -7,7 +7,6 @@ export LIB_DIR=${EOSIO_INSTALL_DIR}/lib
 export DATA_DIR=${EOSIO_INSTALL_DIR}/data
 
 # CMAKE
-export CMAKE_REQUIRED_VERSION=$(cat $REPO_ROOT/CMakeLists.txt | grep -E "^[[:blank:]]*cmake_minimum_required[[:blank:]]*\([[:blank:]]*VERSION" | tail -1 | sed 's/.*VERSION //g' | sed 's/ //g' | sed 's/"//g' | cut -d\) -f1)
 export CMAKE_VERSION_MAJOR=3
 export CMAKE_VERSION_MINOR=13
 export CMAKE_VERSION_PATCH=2
