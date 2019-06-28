@@ -9,7 +9,7 @@ load ../helpers/functions
     export CMAKE_CURRENT_VERSION=3.7.1
     run bash -c " ./$SCRIPT_LOCATION -y -P"
     if [[ $ARCH == "Darwin" ]]; then
-        [[ ! -z $(echo "${output}" | grep "($CMAKE_REQUIRED_VERSION). Cannot proceed") ]] || exit # Test the required version
+        [[ "${output##*$'\n'}" =~ "($CMAKE_REQUIRED_VERSION). Cannot proceed" ]] || exit # Test the required version
     else
         [[ ! -z $(echo "${output}" | grep "We will be installing $CMAKE_VERSION") ]] || exit # Test the required version
         [[ ! -z $(echo "${output}" | grep "Executing: bash -c ${BIN_DIR}/cmake") ]] || exit
@@ -26,7 +26,7 @@ load ../helpers/functions
     export CMAKE_CURRENT_VERSION=3.6
     run bash -c "./$SCRIPT_LOCATION -y -P"
     if [[ $ARCH == "Darwin" ]]; then
-        [[ ! -z $(echo "${output}" | grep "($CMAKE_REQUIRED_VERSION). Cannot proceed") ]] || exit # Test the required version
+        [[ "${output##*$'\n'}" =~ "($CMAKE_REQUIRED_VERSION). Cannot proceed" ]] || exit # Test the required version
     else
         [[ ! -z $(echo "${output}" | grep "We will be installing $CMAKE_VERSION") ]] || exit # Test the required version
         [[ ! -z $(echo "${output}" | grep "Executing: bash -c ${BIN_DIR}/cmake") ]] || exit

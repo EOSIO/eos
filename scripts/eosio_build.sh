@@ -145,8 +145,8 @@ ensure-submodules-up-to-date
 
 # Check if cmake already exists
 ( [[ -z "${CMAKE}" ]] && [[ ! -z $(command -v cmake 2>/dev/null) ]] ) && export CMAKE=$(command -v cmake 2>/dev/null) && export CMAKE_CURRENT_VERSION=$($CMAKE --version | grep -E "cmake version[[:blank:]]*" | sed 's/.*cmake version //g')
-# If it exists, check that it's > required version
-if [[ ! -z $CMAKE_CURRENT_VERSION ]] && (( $( echo $CURRENT_CMAKE_VERSION | awk -F. '{ printf("%03d%03d%03d\n", $1,$2,$3); }' ) < $( echo $CMAKE_REQUIRED_VERSION | awk -F. '{ printf("%03d%03d%03d\n", $1,$2,$3); }' ) )); then
+# If it exists, check that it's > required version + 
+if [[ ! -z $CMAKE_CURRENT_VERSION ]] && [[ $((10#$( echo $CMAKE_CURRENT_VERSION | awk -F. '{ printf("%03d%03d%03d\n", $1,$2,$3); }' ))) -lt $((10#$( echo $CMAKE_REQUIRED_VERSION | awk -F. '{ printf("%03d%03d%03d\n", $1,$2,$3); }' ))) ]]; then
    export CMAKE=
    if [[ $ARCH == 'Darwin' ]]; then
       echo "${COLOR_RED}The currently installed cmake version ($CMAKE_CURRENT_VERSION) is less than the required version ($CMAKE_REQUIRED_VERSION). Cannot proceed."
