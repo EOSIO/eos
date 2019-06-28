@@ -17,7 +17,7 @@ git submodule update --init --recursive
 
 Install the additional libs:
 ```
-Debian/Ubuntu: apt -y install libboost-all-dev
+Debian/Ubuntu: apt -y install libboost-all-dev build-essential llvm-4.0-dev
 CentOS7: yum -y install boost-devel
 ```
 
