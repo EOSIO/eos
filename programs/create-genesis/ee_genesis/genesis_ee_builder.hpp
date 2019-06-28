@@ -44,6 +44,7 @@ private:
     void write_transfers();
     void write_pinblocks();
     void write_accounts();
+    void write_witnesses();
     void write_funds();
     void write_balance_converts();
 
