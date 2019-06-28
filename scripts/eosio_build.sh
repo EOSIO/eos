@@ -150,7 +150,7 @@ if [[ ! -z $CMAKE_CURRENT_VERSION ]] && [[ $( echo $CURRENT_CMAKE_VERSION | awk 
    export CMAKE=
    if [[ $ARCH == 'Darwin' ]]; then
       echo "${COLOR_RED}The currently installed cmake version ($CMAKE_CURRENT_VERSION) is less than the required version ($CMAKE_REQUIRED_VERSION). Cannot proceed."
-      exit
+      exit 1
    else
       echo "${COLOR_YELLOW}The currently installed cmake version ($CMAKE_CURRENT_VERSION) is less than the required version ($CMAKE_REQUIRED_VERSION). We will be installing $CMAKE_VERSION.${COLOR_NC}"
    fi
