@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -eo pipefail
 
+# Ensure we're in the repo root and not inside of scripts
+cd $( dirname "${BASH_SOURCE[0]}" )/..
+
 # Load bash script helper functions
 . ./scripts/helpers/eosio.sh
 
