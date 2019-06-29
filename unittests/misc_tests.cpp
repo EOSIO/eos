@@ -686,9 +686,9 @@ BOOST_AUTO_TEST_CASE(transaction_test) { try {
    BOOST_CHECK_EQUAL(1u, trx.signatures.size());
    trx.validate();
 
-   packed_transaction pkt(trx, packed_transaction::none);
+   packed_transaction pkt(trx, packed_transaction::compression_type::none);
 
-   packed_transaction pkt2(trx, packed_transaction::zlib);
+   packed_transaction pkt2(trx, packed_transaction::compression_type::zlib);
 
    BOOST_CHECK_EQUAL(true, trx.expiration ==  pkt.expiration());
    BOOST_CHECK_EQUAL(true, trx.expiration == pkt2.expiration());
@@ -829,11 +829,11 @@ BOOST_AUTO_TEST_CASE(transaction_metadata_test) { try {
       trx.sign( private_key, test.control->get_chain_id()  );
       BOOST_CHECK_EQUAL(1u, trx.signatures.size());
 
-      packed_transaction pkt(trx, packed_transaction::none);
-      packed_transaction pkt2(trx, packed_transaction::zlib);
+      packed_transaction pkt(trx, packed_transaction::compression_type::none);
+      packed_transaction pkt2(trx, packed_transaction::compression_type::zlib);
 
-      transaction_metadata_ptr mtrx = std::make_shared<transaction_metadata>( std::make_shared<packed_transaction>( trx, packed_transaction::none) );
-      transaction_metadata_ptr mtrx2 = std::make_shared<transaction_metadata>( std::make_shared<packed_transaction>( trx, packed_transaction::zlib) );
+      transaction_metadata_ptr mtrx = std::make_shared<transaction_metadata>( std::make_shared<packed_transaction>( trx, packed_transaction::compression_type::none) );
+      transaction_metadata_ptr mtrx2 = std::make_shared<transaction_metadata>( std::make_shared<packed_transaction>( trx, packed_transaction::compression_type::zlib) );
 
       BOOST_CHECK_EQUAL(trx.id(), pkt.id());
       BOOST_CHECK_EQUAL(trx.id(), pkt2.id());
@@ -863,8 +863,8 @@ BOOST_AUTO_TEST_CASE(transaction_metadata_test) { try {
       BOOST_CHECK_EQUAL(public_key, *keys3.second->begin());
 
       // recover keys without first calling start_recover_keys
-      transaction_metadata_ptr mtrx4 = std::make_shared<transaction_metadata>( std::make_shared<packed_transaction>( trx, packed_transaction::none) );
-      transaction_metadata_ptr mtrx5 = std::make_shared<transaction_metadata>( std::make_shared<packed_transaction>( trx, packed_transaction::zlib) );
+      transaction_metadata_ptr mtrx4 = std::make_shared<transaction_metadata>( std::make_shared<packed_transaction>( trx, packed_transaction::compression_type::none) );
+      transaction_metadata_ptr mtrx5 = std::make_shared<transaction_metadata>( std::make_shared<packed_transaction>( trx, packed_transaction::compression_type::zlib) );
 
       auto keys4 = mtrx4->recover_keys( test.control->get_chain_id() );
       BOOST_CHECK_EQUAL(1u, keys4.second->size());

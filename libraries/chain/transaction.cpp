@@ -328,9 +328,9 @@ bytes packed_transaction::get_raw_transaction() const
 {
    try {
       switch(compression) {
-         case none:
+         case compression_type::none:
             return packed_trx;
-         case zlib:
+         case compression_type::zlib:
             return zlib_decompress(packed_trx);
          default:
             EOS_THROW(unknown_transaction_compression, "Unknown transaction compression algorithm");
@@ -387,10 +387,10 @@ void packed_transaction::local_unpack_transaction(vector<bytes>&& context_free_d
 {
    try {
       switch( compression ) {
-         case none:
+         case compression_type::none:
             unpacked_trx = signed_transaction( unpack_transaction( packed_trx ), signatures, std::move(context_free_data) );
             break;
-         case zlib:
+         case compression_type::zlib:
             unpacked_trx = signed_transaction( zlib_decompress_transaction( packed_trx ), signatures, std::move(context_free_data) );
             break;
          default:
@@ -404,10 +404,10 @@ void packed_transaction::local_unpack_context_free_data()
    try {
       EOS_ASSERT(unpacked_trx.context_free_data.empty(), tx_decompression_error, "packed_transaction.context_free_data not empty");
       switch( compression ) {
-         case none:
+         case compression_type::none:
             unpacked_trx.context_free_data = unpack_context_free_data( packed_context_free_data );
             break;
-         case zlib:
+         case compression_type::zlib:
             unpacked_trx.context_free_data = zlib_decompress_context_free_data( packed_context_free_data );
             break;
          default:
@@ -420,10 +420,10 @@ void packed_transaction::local_pack_transaction()
 {
    try {
       switch(compression) {
-         case none:
+         case compression_type::none:
             packed_trx = pack_transaction(unpacked_trx);
             break;
-         case zlib:
+         case compression_type::zlib:
             packed_trx = zlib_compress_transaction(unpacked_trx);
             break;
          default:
@@ -436,10 +436,10 @@ void packed_transaction::local_pack_context_free_data()
 {
    try {
       switch(compression) {
-         case none:
+         case compression_type::none:
             packed_context_free_data = pack_context_free_data(unpacked_trx.context_free_data);
             break;
-         case zlib:
+         case compression_type::zlib:
             packed_context_free_data = zlib_compress_context_free_data(unpacked_trx.context_free_data);
             break;
          default:
