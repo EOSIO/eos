@@ -32,6 +32,9 @@ VERSION=2.0
 # https://github.com/EOSIO/eos/blob/master/LICENSE.txt
 ##########################################################################
 
+# Ensure we're in the repo root and not inside of scripts
+cd $( dirname "${BASH_SOURCE[0]}" )/..
+
 # Load eosio specific helper functions
 . ./scripts/helpers/eosio.sh
 
