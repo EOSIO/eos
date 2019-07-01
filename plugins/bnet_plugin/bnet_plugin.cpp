@@ -73,10 +73,6 @@ namespace eosio {
 
 } /// namespace eosio
 
-namespace fc {
-   extern std::unordered_map<std::string,logger>& get_logger_map();
-}
-
 const fc::string logger_name("bnet_plugin");
 fc::logger plugin_logger;
 std::string peer_log_format;
@@ -1440,8 +1436,7 @@ namespace eosio {
    }
 
    void bnet_plugin::handle_sighup() {
-      if(fc::get_logger_map().find(logger_name) != fc::get_logger_map().end())
-         plugin_logger = fc::get_logger_map()[logger_name];
+      fc::logger::update( logger_name, plugin_logger );
    }
 
 
