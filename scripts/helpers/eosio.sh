@@ -52,8 +52,10 @@ function setup() {
     execute mkdir -p $VAR_DIR/log
     execute mkdir -p $ETC_DIR
     execute mkdir -p $LIB_DIR
-    execute mkdir -p $MONGODB_LOG_DIR
-    execute mkdir -p $MONGODB_DATA_DIR
+    if [[ $ENABLE_MONGO != false ]]; then
+        execute mkdir -p $MONGODB_LOG_DIR
+        execute mkdir -p $MONGODB_DATA_DIR
+    fi
 }
 
 function ensure-which() {
