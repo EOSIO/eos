@@ -275,7 +275,7 @@ function ensure-brew-packages() {
         # resolve conflict with homebrew glibtool and apple/gnu installs of libtool
         if [[ "${testee}" == "/usr/local/bin/glibtool" ]]; then
             if [ "${tester}" "/usr/local/bin/libtool" ]; then
-                echo " - ${name} ${COLOR_GREEN}ok!${COLOR_NC}"
+                echo " - ${name} ${COLOR_GREEN}ok${COLOR_NC}"
                 continue
             fi
         fi
