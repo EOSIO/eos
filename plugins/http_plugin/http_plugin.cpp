@@ -5,6 +5,7 @@
 #include <eosio/http_plugin/http_plugin.hpp>
 #include <eosio/http_plugin/local_endpoint.hpp>
 #include <eosio/chain/exceptions.hpp>
+#include <eosio/chain/thread_utils.hpp>
 
 #include <fc/network/ip.hpp>
 #include <fc/log/logger_config.hpp>
@@ -43,6 +44,11 @@ namespace eosio {
    using boost::asio::ip::address_v6;
    using std::shared_ptr;
    using websocketpp::connection_hdl;
+
+   enum https_ecdh_curve_t {
+      SECP384R1,
+      PRIME256V1
+   };
 
    static http_plugin_defaults current_http_plugin_defaults;
 
@@ -123,7 +129,6 @@ namespace eosio {
    using websocket_local_server_type = websocketpp::server<detail::asio_local_with_stub_log>;
    using websocket_server_tls_type =  websocketpp::server<detail::asio_with_stub_log<websocketpp::transport::asio::tls_socket::endpoint>>;
    using ssl_context_ptr =  websocketpp::lib::shared_ptr<websocketpp::lib::asio::ssl::context>;
-   using io_work_t = boost::asio::executor_work_guard<boost::asio::io_context::executor_type>;
 
    static bool verbose_http_errors = false;
 
@@ -140,15 +145,14 @@ namespace eosio {
          websocket_server_type    server;
 
          uint16_t                                    thread_pool_size = 2;
-         optional<boost::asio::thread_pool>          thread_pool;
-         std::shared_ptr<boost::asio::io_context>    server_ioc;
-         optional<io_work_t>                         server_ioc_work;
-         std::atomic<int64_t>                        bytes_in_flight{0};
+         optional<eosio::chain::named_thread_pool>   thread_pool;
+         std::atomic<size_t>                         bytes_in_flight{0};
          size_t                                      max_bytes_in_flight = 0;
 
          optional<tcp::endpoint>  https_listen_endpoint;
          string                   https_cert_chain;
          string                   https_key;
+         https_ecdh_curve_t       https_ecdh_curve = SECP384R1;
 
          websocket_server_tls_type https_server;
 
@@ -193,7 +197,7 @@ namespace eosio {
 
                //going for the A+! Do a few more things on the native context to get ECDH in use
 
-               fc::ec_key ecdh = EC_KEY_new_by_curve_name(NID_secp384r1);
+               fc::ec_key ecdh = EC_KEY_new_by_curve_name(https_ecdh_curve == SECP384R1 ? NID_secp384r1 : NID_X9_62_prime256v1);
                if (!ecdh)
                   EOS_THROW(chain::http_exception, "Failed to set NID_secp384r1");
                if(SSL_CTX_set_tmp_ecdh(ctx->native_handle(), (EC_KEY*)ecdh) != 1)
@@ -301,21 +305,23 @@ namespace eosio {
                   con->defer_http_response();
                   bytes_in_flight += body.size();
                   app().post( appbase::priority::low,
-                              [ioc = this->server_ioc, &bytes_in_flight = this->bytes_in_flight, handler_itr,
+                              [&ioc = thread_pool->get_executor(), &bytes_in_flight = this->bytes_in_flight, handler_itr,
                                resource{std::move( resource )}, body{std::move( body )}, con]() {
                      try {
-                        bytes_in_flight -= body.size();
                         handler_itr->second( resource, body,
-                              [ioc{std::move(ioc)}, &bytes_in_flight, con]( int code, std::string response_body ) {
-                           bytes_in_flight += response_body.size();
-                           boost::asio::post( *ioc, [ioc, response_body{std::move( response_body )}, &bytes_in_flight, con, code]() {
-                              size_t body_size = response_body.size();
-                              con->set_body( std::move( response_body ) );
+                              [&ioc, &bytes_in_flight, con]( int code, fc::variant response_body ) {
+                           boost::asio::post( ioc, [response_body{std::move( response_body )}, &bytes_in_flight, con, code]() mutable {
+                              std::string json = fc::json::to_string( response_body );
+                              response_body.clear();
+                              const size_t json_size = json.size();
+                              bytes_in_flight += json_size;
+                              con->set_body( std::move( json ) );
                               con->set_status( websocketpp::http::status_code::value( code ) );
                               con->send_http_response();
-                              bytes_in_flight -= body_size;
+                              bytes_in_flight -= json_size;
                            } );
                         });
+                        bytes_in_flight -= body.size();
                      } catch( ... ) {
                         handle_exception<T>( con );
                         con->send_http_response();
@@ -338,11 +344,11 @@ namespace eosio {
          void create_server_for_endpoint(const tcp::endpoint& ep, websocketpp::server<detail::asio_with_stub_log<T>>& ws) {
             try {
                ws.clear_access_channels(websocketpp::log::alevel::all);
-               ws.init_asio(&(*server_ioc));
+               ws.init_asio( &thread_pool->get_executor() );
                ws.set_reuse_addr(true);
                ws.set_max_http_body_size(max_body_size);
                // capture server_ioc shared_ptr in http handler to keep it alive while in use
-               ws.set_http_handler([&, ioc = this->server_ioc](connection_hdl hdl) {
+               ws.set_http_handler([&](connection_hdl hdl) {
                   handle_http_request<detail::asio_with_stub_log<T>>(ws.get_con_from_hdl(hdl));
                });
             } catch ( const fc::exception& e ){
@@ -366,7 +372,9 @@ namespace eosio {
       return true;
    }
 
-   http_plugin::http_plugin():my(new http_plugin_impl()){}
+   http_plugin::http_plugin():my(new http_plugin_impl()){
+      app().register_config_type<https_ecdh_curve_t>();
+   }
    http_plugin::~http_plugin(){}
 
    void http_plugin::set_program_options(options_description&, options_description& cfg) {
@@ -393,6 +401,11 @@ namespace eosio {
 
             ("https-private-key-file", bpo::value<string>(),
              "Filename with https private key in PEM format. Required for https")
+
+            ("https-ecdh-curve", bpo::value<https_ecdh_curve_t>()->notifier([this](https_ecdh_curve_t c) {
+               my->https_ecdh_curve = c;
+            })->default_value(SECP384R1),
+            "Configure https ECDH curve to use: secp384r1 or prime256v1")
 
             ("access-control-allow-origin", bpo::value<string>()->notifier([this](const string& v) {
                 my->access_control_allow_origin = v;
@@ -516,12 +529,7 @@ namespace eosio {
 
    void http_plugin::plugin_startup() {
 
-      my->thread_pool.emplace( my->thread_pool_size );
-      my->server_ioc = std::make_shared<boost::asio::io_context>();
-      my->server_ioc_work.emplace( boost::asio::make_work_guard(*my->server_ioc) );
-      for( uint16_t i = 0; i < my->thread_pool_size; ++i ) {
-         boost::asio::post( *my->thread_pool, [ioc = my->server_ioc]() { ioc->run(); } );
-      }
+      my->thread_pool.emplace( "http", my->thread_pool_size );
 
       if(my->listen_endpoint) {
          try {
@@ -545,10 +553,10 @@ namespace eosio {
       if(my->unix_endpoint) {
          try {
             my->unix_server.clear_access_channels(websocketpp::log::alevel::all);
-            my->unix_server.init_asio(&(*my->server_ioc));
+            my->unix_server.init_asio( &my->thread_pool->get_executor() );
             my->unix_server.set_max_http_body_size(my->max_body_size);
             my->unix_server.listen(*my->unix_endpoint);
-            my->unix_server.set_http_handler([&, ioc = my->server_ioc](connection_hdl hdl) {
+            my->unix_server.set_http_handler([&, &ioc = my->thread_pool->get_executor()](connection_hdl hdl) {
                my->handle_http_request<detail::asio_local_with_stub_log>( my->unix_server.get_con_from_hdl(hdl));
             });
             my->unix_server.start_accept();
@@ -592,7 +600,7 @@ namespace eosio {
             try {
                if (body.empty()) body = "{}";
                auto result = (*this).get_supported_apis();
-               cb(200, fc::json::to_string(result));
+               cb(200, fc::variant(result));
             } catch (...) {
                handle_exception("node", "get_supported_apis", body, cb);
             }
@@ -608,12 +616,7 @@ namespace eosio {
       if(my->unix_server.is_listening())
          my->unix_server.stop_listening();
 
-      if( my->server_ioc_work )
-         my->server_ioc_work->reset();
-      if( my->server_ioc )
-         my->server_ioc->stop();
       if( my->thread_pool ) {
-         my->thread_pool->join();
          my->thread_pool->stop();
       }
    }
@@ -629,21 +632,21 @@ namespace eosio {
             throw;
          } catch (chain::unknown_block_exception& e) {
             error_results results{400, "Unknown Block", error_results::error_info(e, verbose_http_errors)};
-            cb( 400, fc::json::to_string( results ));
+            cb( 400, fc::variant( results ));
          } catch (chain::unsatisfied_authorization& e) {
             error_results results{401, "UnAuthorized", error_results::error_info(e, verbose_http_errors)};
-            cb( 401, fc::json::to_string( results ));
+            cb( 401, fc::variant( results ));
          } catch (chain::tx_duplicate& e) {
             error_results results{409, "Conflict", error_results::error_info(e, verbose_http_errors)};
-            cb( 409, fc::json::to_string( results ));
+            cb( 409, fc::variant( results ));
          } catch (fc::eof_exception& e) {
             error_results results{422, "Unprocessable Entity", error_results::error_info(e, verbose_http_errors)};
-            cb( 422, fc::json::to_string( results ));
+            cb( 422, fc::variant( results ));
             elog( "Unable to parse arguments to ${api}.${call}", ("api", api_name)( "call", call_name ));
             dlog("Bad arguments: ${args}", ("args", body));
          } catch (fc::exception& e) {
             error_results results{500, "Internal Service Error", error_results::error_info(e, verbose_http_errors)};
-            cb( 500, fc::json::to_string( results ));
+            cb( 500, fc::variant( results ));
             if (e.code() != chain::greylist_net_usage_exceeded::code_value && e.code() != chain::greylist_cpu_usage_exceeded::code_value) {
                elog( "FC Exception encountered while processing ${api}.${call}",
                      ("api", api_name)( "call", call_name ));
@@ -651,14 +654,14 @@ namespace eosio {
             }
          } catch (std::exception& e) {
             error_results results{500, "Internal Service Error", error_results::error_info(fc::exception( FC_LOG_MESSAGE( error, e.what())), verbose_http_errors)};
-            cb( 500, fc::json::to_string( results ));
+            cb( 500, fc::variant( results ));
             elog( "STD Exception encountered while processing ${api}.${call}",
                   ("api", api_name)( "call", call_name ));
             dlog( "Exception Details: ${e}", ("e", e.what()));
          } catch (...) {
             error_results results{500, "Internal Service Error",
                error_results::error_info(fc::exception( FC_LOG_MESSAGE( error, "Unknown Exception" )), verbose_http_errors)};
-            cb( 500, fc::json::to_string( results ));
+            cb( 500, fc::variant( results ));
             elog( "Unknown Exception encountered while processing ${api}.${call}",
                   ("api", api_name)( "call", call_name ));
          }
@@ -688,5 +691,27 @@ namespace eosio {
       }
 
       return result;
+   }
+
+   std::istream& operator>>(std::istream& in, https_ecdh_curve_t& curve) {
+      std::string s;
+      in >> s;
+      if (s == "secp384r1")
+         curve = SECP384R1;
+      else if (s == "prime256v1")
+         curve = PRIME256V1;
+      else
+         in.setstate(std::ios_base::failbit);
+      return in;
+   }
+
+   std::ostream& operator<<(std::ostream& osm, https_ecdh_curve_t curve) {
+      if (curve == SECP384R1) {
+         osm << "secp384r1";
+      } else if (curve == PRIME256V1) {
+         osm << "prime256v1";
+      }
+
+      return osm;
    }
 }

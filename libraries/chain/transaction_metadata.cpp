@@ -26,7 +26,7 @@ recovery_keys_type transaction_metadata::recover_keys( const chain_id_type& chai
 }
 
 signing_keys_future_type transaction_metadata::start_recover_keys( const transaction_metadata_ptr& mtrx,
-                                                                   boost::asio::thread_pool& thread_pool,
+                                                                   boost::asio::io_context& thread_pool,
                                                                    const chain_id_type& chain_id,
                                                                    fc::microseconds time_limit )
 {

@@ -259,3 +259,86 @@ void test_action::test_ram_billing_in_notify( uint64_t receiver, uint64_t code, 
          db_store_i64( "notifytest"_n.value, "notifytest"_n.value, payer, "notifytest"_n.value, &to_notify, sizeof(to_notify) );
    }
 }
+
+void test_action::test_action_ordinal1(uint64_t receiver, uint64_t code, uint64_t action) {
+   uint64_t _self = receiver;
+   if (receiver == "testapi"_n.value) {
+      print("exec 1");
+      eosio::require_recipient( "bob"_n ); //-> exec 2 which would then cause execution of 4, 10
+
+      eosio::action act1({name(_self), "active"_n}, name(_self),
+                         name(WASM_TEST_ACTION("test_action", "test_action_ordinal2")),
+                         std::tuple<>());
+      act1.send(); // -> exec 5 which would then cause execution of 6, 7, 8
+
+      if (is_account("fail1"_n)) {
+         eosio_assert(false, "fail at point 1");
+      }
+
+      eosio::action act2({name(_self), "active"_n}, name(_self),
+                         name(WASM_TEST_ACTION("test_action", "test_action_ordinal3")),
+                         std::tuple<>());
+      act2.send(); // -> exec 9
+
+      eosio::require_recipient( "charlie"_n ); // -> exec 3 which would then cause execution of 11
+
+   } else if (receiver == "bob"_n.value) {
+      print("exec 2");
+      eosio::action act1({name(_self), "active"_n}, name(_self),
+                         name(WASM_TEST_ACTION("test_action", "test_action_ordinal_foo")),
+                         std::tuple<>());
+      act1.send(); // -> exec 10
+
+      eosio::require_recipient( "david"_n );  // -> exec 4
+   } else if (receiver == "charlie"_n.value) {
+      print("exec 3");
+      eosio::action act1({name(_self), "active"_n}, name(_self),
+                         name(WASM_TEST_ACTION("test_action", "test_action_ordinal_bar")),
+                         std::tuple<>()); // exec 11
+      act1.send();
+
+      if (is_account("fail3"_n)) {
+         eosio_assert(false, "fail at point 3");
+      }
+
+   } else if (receiver == "david"_n.value) {
+      print("exec 4");
+   } else {
+      eosio_assert(false, "assert failed at test_action::test_action_ordinal1");
+   }
+}
+void test_action::test_action_ordinal2(uint64_t receiver, uint64_t code, uint64_t action) {
+   uint64_t _self = receiver;
+   if (receiver == "testapi"_n.value) {
+      print("exec 5");
+      eosio::require_recipient( "david"_n ); // -> exec 6
+      eosio::require_recipient( "erin"_n ); // -> exec 7
+
+      eosio::action act1({name(_self), "active"_n}, name(_self),
+                         name(WASM_TEST_ACTION("test_action", "test_action_ordinal4")),
+                         std::tuple<>());
+      act1.send(); // -> exec 8
+   } else if (receiver == "david"_n.value) {
+      print("exec 6");
+   } else if (receiver == "erin"_n.value) {
+      print("exec 7");
+   } else {
+      eosio_assert(false, "assert failed at test_action::test_action_ordinal2");
+   }
+}
+void test_action::test_action_ordinal4(uint64_t receiver, uint64_t code, uint64_t action) {
+   print("exec 8");
+}
+void test_action::test_action_ordinal3(uint64_t receiver, uint64_t code, uint64_t action) {
+   print("exec 9");
+
+   if (is_account("failnine"_n)) {
+      eosio_assert(false, "fail at point 9");
+   }
+}
+void test_action::test_action_ordinal_foo(uint64_t receiver, uint64_t code, uint64_t action) {
+   print("exec 10");
+}
+void test_action::test_action_ordinal_bar(uint64_t receiver, uint64_t code, uint64_t action) {
+   print("exec 11");
+}

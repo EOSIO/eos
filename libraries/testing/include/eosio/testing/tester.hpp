@@ -56,6 +56,14 @@ namespace boost { namespace test_tools { namespace tt_detail {
 } } }
 
 namespace eosio { namespace testing {
+  enum class setup_policy {
+      none,
+      old_bios_only,
+      preactivate_feature_only,
+      preactivate_feature_and_new_bios,
+      full
+   };
+
    std::vector<uint8_t> read_wasm( const char* fn );
    std::vector<char>    read_abi( const char* fn );
    std::string          read_wast( const char* fn );
@@ -66,6 +74,10 @@ namespace eosio { namespace testing {
    void copy_row(const chain::key_value_object& obj, vector<char>& data);
 
    bool expect_assert_message(const fc::exception& ex, string expected);
+
+   using subjective_restriction_map = std::map<builtin_protocol_feature_t, protocol_feature_subjective_restrictions>;
+
+   protocol_feature_set make_protocol_feature_set(const subjective_restriction_map& custom_subjective_restrictions = {});
 
    /**
     *  @class tester
@@ -82,15 +94,18 @@ namespace eosio { namespace testing {
 
          virtual ~base_tester() {};
 
-         void              init(bool push_genesis = true, db_read_mode read_mode = db_read_mode::SPECULATIVE);
+         void              init(const setup_policy policy = setup_policy::full, db_read_mode read_mode = db_read_mode::SPECULATIVE);
          void              init(controller::config config, const snapshot_reader_ptr& snapshot = nullptr);
+         void              init(controller::config config, protocol_feature_set&& pfs, const snapshot_reader_ptr& snapshot = nullptr);
+         void              execute_setup_policy(const setup_policy policy);
 
          void              close();
-         void              open( const snapshot_reader_ptr& snapshot );
+         void              open( protocol_feature_set&& pfs, const snapshot_reader_ptr& snapshot);
+         void              open( const snapshot_reader_ptr& snapshot);
          bool              is_same_chain( base_tester& other );
 
-         virtual signed_block_ptr produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = 0/*skip_missed_block_penalty*/ ) = 0;
-         virtual signed_block_ptr produce_empty_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = 0/*skip_missed_block_penalty*/ ) = 0;
+         virtual signed_block_ptr produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms) ) = 0;
+         virtual signed_block_ptr produce_empty_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms) ) = 0;
          virtual signed_block_ptr finish_block() = 0;
          void                 produce_blocks( uint32_t n = 1, bool empty = false );
          void                 produce_blocks_until_end_of_round();
@@ -111,7 +126,7 @@ namespace eosio { namespace testing {
          vector<transaction_id_type> get_scheduled_transactions() const;
 
          transaction_trace_ptr    push_transaction( packed_transaction& trx, fc::time_point deadline = fc::time_point::maximum(), uint32_t billed_cpu_time_us = DEFAULT_BILLED_CPU_TIME_US );
-         transaction_trace_ptr    push_transaction( signed_transaction& trx, fc::time_point deadline = fc::time_point::maximum(), uint32_t billed_cpu_time_us = DEFAULT_BILLED_CPU_TIME_US );
+         transaction_trace_ptr    push_transaction( signed_transaction& trx, fc::time_point deadline = fc::time_point::maximum(), uint32_t billed_cpu_time_us = DEFAULT_BILLED_CPU_TIME_US, bool no_throw = false );
          action_result            push_action(action&& cert_act, uint64_t authorizer); // TODO/QUESTION: Is this needed?
 
          transaction_trace_ptr    push_action( const account_name& code,
@@ -152,7 +167,8 @@ namespace eosio { namespace testing {
             return traces;
          }
 
-         void                  push_genesis_block();
+         void                  set_before_preactivate_bios_contract();
+         void                  set_bios_contract();
          vector<producer_key>  get_producer_keys( const vector<account_name>& producer_names )const;
          transaction_trace_ptr set_producers(const vector<account_name>& producer_names);
 
@@ -280,8 +296,12 @@ namespace eosio { namespace testing {
             return cfg;
          }
 
+         void schedule_protocol_features_wo_preactivation(const vector<digest_type> feature_digests);
+         void preactivate_protocol_features(const vector<digest_type> feature_digests);
+         void preactivate_all_builtin_protocol_features();
+
       protected:
-         signed_block_ptr _produce_block( fc::microseconds skip_time, bool skip_pending_trxs = false, uint32_t skip_flag = 0 );
+         signed_block_ptr _produce_block( fc::microseconds skip_time, bool skip_pending_trxs = false );
          void             _start_block(fc::time_point block_time);
          signed_block_ptr _finish_block();
 
@@ -296,25 +316,31 @@ namespace eosio { namespace testing {
          controller::config                            cfg;
          map<transaction_id_type, transaction_receipt> chain_transactions;
          map<account_name, block_id_type>              last_produced_block;
+      public:
+         vector<digest_type>                           protocol_features_to_be_activated_wo_preactivation;
    };
 
    class tester : public base_tester {
    public:
-      tester(bool push_genesis = true, db_read_mode read_mode = db_read_mode::SPECULATIVE ) {
-         init(push_genesis, read_mode);
+      tester(setup_policy policy = setup_policy::full, db_read_mode read_mode = db_read_mode::SPECULATIVE) {
+         init(policy, read_mode);
       }
 
       tester(controller::config config) {
          init(config);
       }
 
-      signed_block_ptr produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = 0/*skip_missed_block_penalty*/ )override {
-         return _produce_block(skip_time, false, skip_flag);
+      tester(controller::config config, protocol_feature_set&& pfs) {
+         init(config, std::move(pfs));
       }
 
-      signed_block_ptr produce_empty_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = 0/*skip_missed_block_penalty*/ )override {
+      signed_block_ptr produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms) )override {
+         return _produce_block(skip_time, false);
+      }
+
+      signed_block_ptr produce_empty_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms) )override {
          control->abort_block();
-         return _produce_block(skip_time, true, skip_flag);
+         return _produce_block(skip_time, true);
       }
 
       signed_block_ptr finish_block()override {
@@ -327,6 +353,10 @@ namespace eosio { namespace testing {
    class validating_tester : public base_tester {
    public:
       virtual ~validating_tester() {
+         if( !validating_node ) {
+            elog( "~validating_tester() called with empty validating_node; likely in the middle of failure" );
+            return;
+         }
          try {
             if( num_blocks_to_producer_before_shutdown > 0 )
                produce_blocks( num_blocks_to_producer_before_shutdown );
@@ -366,11 +396,11 @@ namespace eosio { namespace testing {
 
          vcfg.trusted_producers = trusted_producers;
 
-         validating_node = std::make_unique<controller>(vcfg);
+         validating_node = std::make_unique<controller>(vcfg, make_protocol_feature_set());
          validating_node->add_indices();
          validating_node->startup( []() { return false; } );
 
-         init(true);
+         init();
       }
 
       validating_tester(controller::config config) {
@@ -381,23 +411,23 @@ namespace eosio { namespace testing {
          vcfg.blocks_dir = vcfg.blocks_dir.parent_path() / std::string("v_").append( vcfg.blocks_dir.filename().generic_string() );
          vcfg.state_dir  = vcfg.state_dir.parent_path() / std::string("v_").append( vcfg.state_dir.filename().generic_string() );
 
-         validating_node = std::make_unique<controller>(vcfg);
+         validating_node = std::make_unique<controller>(vcfg, make_protocol_feature_set());
          validating_node->add_indices();
          validating_node->startup( []() { return false; } );
 
          init(config);
       }
 
-      signed_block_ptr produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = 0 /*skip_missed_block_penalty*/ )override {
-         auto sb = _produce_block(skip_time, false, skip_flag | 2);
+      signed_block_ptr produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms) )override {
+         auto sb = _produce_block(skip_time, false);
          auto bs = validating_node->create_block_state_future( sb );
          validating_node->push_block( bs );
 
          return sb;
       }
 
-      signed_block_ptr produce_block_no_validation( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = 0 /*skip_missed_block_penalty*/ ) {
-         return _produce_block(skip_time, false, skip_flag | 2);
+      signed_block_ptr produce_block_no_validation( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms) ) {
+         return _produce_block(skip_time, false);
       }
 
       void validate_push_block(const signed_block_ptr& sb) {
@@ -405,9 +435,9 @@ namespace eosio { namespace testing {
          validating_node->push_block( bs );
       }
 
-      signed_block_ptr produce_empty_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = 0 /*skip_missed_block_penalty*/ )override {
+      signed_block_ptr produce_empty_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms) )override {
          control->abort_block();
-         auto sb = _produce_block(skip_time, true, skip_flag | 2);
+         auto sb = _produce_block(skip_time, true);
          auto bs = validating_node->create_block_state_future( sb );
          validating_node->push_block( bs );
 
@@ -431,7 +461,7 @@ namespace eosio { namespace testing {
                hbh.producer == vn_hbh.producer;
 
         validating_node.reset();
-        validating_node = std::make_unique<controller>(vcfg);
+        validating_node = std::make_unique<controller>(vcfg, make_protocol_feature_set());
         validating_node->add_indices();
         validating_node->startup( []() { return false; } );
 

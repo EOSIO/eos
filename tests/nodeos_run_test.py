@@ -23,7 +23,7 @@ from core_symbol import CORE_SYMBOL
 
 args = TestHelper.parse_args({"--host","--port","--prod-count","--defproducera_prvt_key","--defproducerb_prvt_key","--mongodb"
                               ,"--dump-error-details","--dont-launch","--keep-logs","-v","--leave-running","--only-bios","--clean-run"
-                              ,"--sanity-test","--p2p-plugin","--wallet-port"})
+                              ,"--sanity-test","--wallet-port"})
 server=args.host
 port=args.port
 debug=args.v
@@ -38,7 +38,6 @@ prodCount=args.prod_count
 onlyBios=args.only_bios
 killAll=args.clean_run
 sanityTest=args.sanity_test
-p2pPlugin=args.p2p_plugin
 walletPort=args.wallet_port
 
 Utils.Debug=debug
@@ -68,7 +67,7 @@ try:
         cluster.killall(allInstances=killAll)
         cluster.cleanup()
         Print("Stand up cluster")
-        if cluster.launch(prodCount=prodCount, onlyBios=onlyBios, dontBootstrap=dontBootstrap, p2pPlugin=p2pPlugin) is False:
+        if cluster.launch(prodCount=prodCount, onlyBios=onlyBios, dontBootstrap=dontBootstrap) is False:
             cmdError("launcher")
             errorExit("Failed to stand up eos cluster.")
     else:

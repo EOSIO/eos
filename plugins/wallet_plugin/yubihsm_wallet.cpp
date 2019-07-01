@@ -125,7 +125,7 @@ struct yubihsm_wallet_impl {
 
    void prime_keepalive_timer() {
       keepalive_timer.expires_at(std::chrono::steady_clock::now() + std::chrono::seconds(20));
-      keepalive_timer.async_wait([this](auto ec){
+      keepalive_timer.async_wait([this](const boost::system::error_code& ec){
          if(ec || !session)
             return;
 
@@ -139,10 +139,10 @@ struct yubihsm_wallet_impl {
       });
    }
 
-   optional<signature_type> try_sign_digest(const digest_type d, const public_key_type public_key) {
+   fc::optional<signature_type> try_sign_digest(const digest_type d, const public_key_type public_key) {
       auto it = _keys.find(public_key);
       if(it == _keys.end())
-         return optional<signature_type>{};
+         return fc::optional<signature_type>{};
 
       size_t der_sig_sz = 128;
       uint8_t der_sig[der_sig_sz];
@@ -265,7 +265,7 @@ bool yubihsm_wallet::remove_key(string key) {
    return true;
 }
 
-optional<signature_type> yubihsm_wallet::try_sign_digest(const digest_type digest, const public_key_type public_key) {
+fc::optional<signature_type> yubihsm_wallet::try_sign_digest(const digest_type digest, const public_key_type public_key) {
    return my->try_sign_digest(digest, public_key);
 }
 

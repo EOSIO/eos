@@ -7,11 +7,13 @@
 #include <eosio/chain/authority_checker.hpp>
 #include <eosio/chain/chain_config.hpp>
 #include <eosio/chain/types.hpp>
+#include <eosio/chain/thread_utils.hpp>
 #include <eosio/testing/tester.hpp>
 
 #include <fc/io/json.hpp>
+#include <fc/log/logger_config.hpp>
+#include <appbase/execution_priority_queue.hpp>
 
-#include <boost/asio/thread_pool.hpp>
 #include <boost/test/unit_test.hpp>
 
 #ifdef NON_VALIDATING_TEST
@@ -828,20 +830,20 @@ BOOST_AUTO_TEST_CASE(transaction_metadata_test) { try {
       BOOST_CHECK_EQUAL(trx.id(), mtrx->id);
       BOOST_CHECK_EQUAL(trx.id(), mtrx2->id);
 
-      boost::asio::thread_pool thread_pool(5);
+      named_thread_pool thread_pool( "misc", 5 );
 
       BOOST_CHECK( !mtrx->signing_keys_future.valid() );
       BOOST_CHECK( !mtrx2->signing_keys_future.valid() );
 
-      transaction_metadata::start_recover_keys( mtrx, thread_pool, test.control->get_chain_id(), fc::microseconds::maximum() );
-      transaction_metadata::start_recover_keys( mtrx2, thread_pool, test.control->get_chain_id(), fc::microseconds::maximum() );
+      transaction_metadata::start_recover_keys( mtrx, thread_pool.get_executor(), test.control->get_chain_id(), fc::microseconds::maximum() );
+      transaction_metadata::start_recover_keys( mtrx2, thread_pool.get_executor(), test.control->get_chain_id(), fc::microseconds::maximum() );
 
       BOOST_CHECK( mtrx->signing_keys_future.valid() );
       BOOST_CHECK( mtrx2->signing_keys_future.valid() );
 
       // no-op
-      transaction_metadata::start_recover_keys( mtrx, thread_pool, test.control->get_chain_id(), fc::microseconds::maximum() );
-      transaction_metadata::start_recover_keys( mtrx2, thread_pool, test.control->get_chain_id(), fc::microseconds::maximum() );
+      transaction_metadata::start_recover_keys( mtrx, thread_pool.get_executor(), test.control->get_chain_id(), fc::microseconds::maximum() );
+      transaction_metadata::start_recover_keys( mtrx2, thread_pool.get_executor(), test.control->get_chain_id(), fc::microseconds::maximum() );
 
       auto keys = mtrx->recover_keys( test.control->get_chain_id() );
       BOOST_CHECK_EQUAL(1u, keys.second.size());
@@ -867,6 +869,8 @@ BOOST_AUTO_TEST_CASE(transaction_metadata_test) { try {
       auto keys5 = mtrx5->recover_keys( test.control->get_chain_id() );
       BOOST_CHECK_EQUAL(1u, keys5.second.size());
       BOOST_CHECK_EQUAL(public_key, *keys5.second.begin());
+
+      thread_pool.stop();
 
 } FC_LOG_AND_RETHROW() }
 
@@ -1065,6 +1069,59 @@ BOOST_AUTO_TEST_CASE(reflector_init_test) {
       }
 
    } FC_LOG_AND_RETHROW()
+}
+
+// Verify appbase::execution_priority_queue uses a stable priority queue so that jobs are executed
+// in order, FIFO, as submitted.
+BOOST_AUTO_TEST_CASE(stable_priority_queue_test) {
+  try {
+     using namespace std::chrono_literals;
+
+     appbase::execution_priority_queue pri_queue;
+     auto io_serv = std::make_shared<boost::asio::io_service>();
+     auto work_ptr = std::make_unique<boost::asio::io_service::work>(*io_serv);
+     std::atomic<int> posted{0};
+
+     std::thread t( [io_serv, &pri_queue, &posted]() {
+        while( posted < 100 && io_serv->run_one() ) {
+           ++posted;
+        }
+        bool more = true;
+        while( more || io_serv->run_one() ) {
+           while( io_serv->poll_one() ) {}
+           // execute the highest priority item
+           more = pri_queue.execute_highest();
+        }
+     } );
+     std::atomic<int> ran{0};
+     std::mutex mx;
+     std::vector<int> results;
+     for( int i = 0; i < 50; ++i ) {
+        boost::asio::post(*io_serv, pri_queue.wrap(appbase::priority::low, [io_serv, &mx, &ran, &results, i](){
+           std::lock_guard<std::mutex> g(mx);
+           results.push_back( 50 + i );
+           ++ran;
+        }));
+        boost::asio::post(*io_serv, pri_queue.wrap(appbase::priority::high, [io_serv, &mx, &ran, &results, i](){
+           std::lock_guard<std::mutex> g(mx);
+           results.push_back( i );
+           ++ran;
+        }));
+     }
+
+     while( ran < 100 ) std::this_thread::sleep_for( 5us );
+
+     work_ptr.reset();
+     io_serv->stop();
+     t.join();
+
+     std::lock_guard<std::mutex> g(mx);
+     BOOST_CHECK_EQUAL( 100, results.size() );
+     for( int i = 0; i < 100; ++i ) {
+        BOOST_CHECK_EQUAL( i, results.at( i ) );
+     }
+
+  } FC_LOG_AND_RETHROW()
 }
 
 
