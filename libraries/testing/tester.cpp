@@ -166,10 +166,10 @@ namespace eosio { namespace testing {
       };
 
       switch (policy) {
-         case setup_policy::old_bios_only: {
-            set_before_preactivate_bios_contract();
-            break;
-         }
+//         case setup_policy::old_bios_only: {
+//            set_before_preactivate_bios_contract();
+//            break;
+//         }
          case setup_policy::preactivate_feature_only: {
             schedule_preactivate_protocol_feature();
             produce_block(); // block production is required to activate protocol feature
@@ -940,10 +940,10 @@ namespace eosio { namespace testing {
       sync_dbs(other, *this);
    }
 
-   void base_tester::set_before_preactivate_bios_contract() {
-      set_code(config::system_account_name, contracts::before_preactivate_eosio_bios_wasm());
-      set_abi(config::system_account_name, contracts::before_preactivate_eosio_bios_abi().data());
-   }
+//   void base_tester::set_before_preactivate_bios_contract() {
+//      set_code(config::system_account_name, contracts::before_preactivate_eosio_bios_wasm());
+//      set_abi(config::system_account_name, contracts::before_preactivate_eosio_bios_abi().data());
+//   }
 
    void base_tester::set_bios_contract() {
       set_code(config::system_account_name, contracts::eosio_bios_wasm());
