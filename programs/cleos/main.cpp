@@ -93,6 +93,8 @@ Options:
 #include <eosio/chain_plugin/chain_plugin.hpp>
 #include <eosio/chain/contract_types.hpp>
 
+#include <eosio/version/version.hpp>
+
 #pragma push_macro("N")
 #undef N
 
@@ -307,7 +309,7 @@ void sign_transaction(signed_transaction& trx, fc::variant& required_keys, const
    trx = signed_trx.as<signed_transaction>();
 }
 
-fc::variant push_transaction( signed_transaction& trx, packed_transaction::compression_type compression = packed_transaction::none ) {
+fc::variant push_transaction( signed_transaction& trx, packed_transaction::compression_type compression = packed_transaction::compression_type::none ) {
    auto info = get_info();
 
    if (trx.signatures.size() == 0) { // #5445 can't change txn content if already signed
@@ -349,7 +351,7 @@ fc::variant push_transaction( signed_transaction& trx, packed_transaction::compr
    }
 }
 
-fc::variant push_actions(std::vector<chain::action>&& actions, packed_transaction::compression_type compression = packed_transaction::none ) {
+fc::variant push_actions(std::vector<chain::action>&& actions, packed_transaction::compression_type compression = packed_transaction::compression_type::none ) {
    signed_transaction trx;
    trx.actions = std::forward<decltype(actions)>(actions);
 
@@ -427,18 +429,21 @@ fc::variant json_from_file_or_string(const string& file_or_str, fc::json::parse_
 {
    regex r("^[ \t]*[\{\[]");
    if ( !regex_search(file_or_str, r) && fc::is_regular_file(file_or_str) ) {
-      return fc::json::from_file(file_or_str, ptype);
+      try {
+         return fc::json::from_file(file_or_str, ptype);
+      } EOS_RETHROW_EXCEPTIONS(json_parse_exception, "Fail to parse JSON from file: ${file}", ("file", file_or_str));
+
    } else {
-      return fc::json::from_string(file_or_str, ptype);
+      try {
+         return fc::json::from_string(file_or_str, ptype);
+      } EOS_RETHROW_EXCEPTIONS(json_parse_exception, "Fail to parse JSON from string: ${string}", ("string", file_or_str));
    }
 }
 
 bytes json_or_file_to_bin( const account_name& account, const action_name& action, const string& data_or_filename ) {
    fc::variant action_args_var;
    if( !data_or_filename.empty() ) {
-      try {
-         action_args_var = json_from_file_or_string(data_or_filename, fc::json::relaxed_parser);
-      } EOS_RETHROW_EXCEPTIONS(action_type_exception, "Fail to parse action JSON data='${data}'", ("data", data_or_filename));
+      action_args_var = json_from_file_or_string(data_or_filename, fc::json::relaxed_parser);
    }
    return variant_to_bin( account, action, action_args_var );
 }
@@ -502,7 +507,7 @@ void print_result( const fc::variant& result ) { try {
 } FC_CAPTURE_AND_RETHROW( (result) ) }
 
 using std::cout;
-void send_actions(std::vector<chain::action>&& actions, packed_transaction::compression_type compression = packed_transaction::none ) {
+void send_actions(std::vector<chain::action>&& actions, packed_transaction::compression_type compression = packed_transaction::compression_type::none ) {
    std::ofstream out;
    if (tx_json_save_file.length()) {
       out.open(tx_json_save_file);
@@ -526,7 +531,7 @@ void send_actions(std::vector<chain::action>&& actions, packed_transaction::comp
    }
 }
 
-void send_transaction( signed_transaction& trx, packed_transaction::compression_type compression = packed_transaction::none  ) {
+void send_transaction( signed_transaction& trx, packed_transaction::compression_type compression = packed_transaction::compression_type::none  ) {
    std::ofstream out;
    if (tx_json_save_file.length()) {
       out.open(tx_json_save_file);
@@ -677,9 +682,10 @@ chain::action create_unlinkauth(const name& account, const name& code, const nam
 }
 
 authority parse_json_authority(const std::string& authorityJsonOrFile) {
+   fc::variant authority_var = json_from_file_or_string(authorityJsonOrFile);
    try {
-      return json_from_file_or_string(authorityJsonOrFile).as<authority>();
-   } EOS_RETHROW_EXCEPTIONS(authority_type_exception, "Fail to parse Authority JSON '${data}'", ("data",authorityJsonOrFile))
+      return authority_var.as<authority>();
+   } EOS_RETHROW_EXCEPTIONS(authority_type_exception, "Invalid authority format '${data}'", ("data", fc::json::to_string(authority_var)))
 }
 
 authority parse_json_authority_or_key(const std::string& authorityJsonOrFile) {
@@ -2398,8 +2404,12 @@ int main( int argc, char** argv ) {
    auto version = app.add_subcommand("version", localized("Retrieve version information"), false);
    version->require_subcommand();
 
-   version->add_subcommand("client", localized("Retrieve version information of the client"))->set_callback([] {
-     std::cout << localized("Build version: ${ver}", ("ver", eosio::client::config::version_str)) << std::endl;
+   version->add_subcommand("client", localized("Retrieve basic version information of the client"))->set_callback([] {
+      std::cout << eosio::version::version_client() << '\n';
+   });
+
+   version->add_subcommand("full", localized("Retrieve full version information of the client"))->set_callback([] {
+     std::cout << eosio::version::version_full() << '\n';
    });
 
    // Create subcommand
@@ -2447,18 +2457,17 @@ int main( int argc, char** argv ) {
    pack_transaction->add_option("transaction", plain_signed_transaction_json, localized("The plain signed json (string)"))->required();
    pack_transaction->add_flag("--pack-action-data", pack_action_data_flag, localized("Pack all action data within transaction, needs interaction with ${n}", ("n", node_executable_name)));
    pack_transaction->set_callback([&] {
-      fc::variant trx_var;
-      try {
-         trx_var = json_from_file_or_string( plain_signed_transaction_json );
-      } EOS_RETHROW_EXCEPTIONS( transaction_type_exception, "Fail to parse plain transaction JSON '${data}'", ("data", plain_signed_transaction_json))
+      fc::variant trx_var = json_from_file_or_string( plain_signed_transaction_json );
       if( pack_action_data_flag ) {
          signed_transaction trx;
-         abi_serializer::from_variant( trx_var, trx, abi_serializer_resolver, abi_serializer_max_time );
-         std::cout << fc::json::to_pretty_string( packed_transaction( trx, packed_transaction::none )) << std::endl;
+         try {
+            abi_serializer::from_variant( trx_var, trx, abi_serializer_resolver, abi_serializer_max_time );
+         } EOS_RETHROW_EXCEPTIONS( transaction_type_exception, "Invalid transaction format: '${data}'", ("data", fc::json::to_string(trx_var)))
+         std::cout << fc::json::to_pretty_string( packed_transaction( trx, packed_transaction::compression_type::none )) << std::endl;
       } else {
          try {
             signed_transaction trx = trx_var.as<signed_transaction>();
-            std::cout << fc::json::to_pretty_string( fc::variant( packed_transaction( trx, packed_transaction::none ))) << std::endl;
+            std::cout << fc::json::to_pretty_string( fc::variant( packed_transaction( trx, packed_transaction::compression_type::none ))) << std::endl;
          } EOS_RETHROW_EXCEPTIONS( transaction_type_exception, "Fail to convert transaction, --pack-action-data likely needed" )
       }
    });
@@ -2470,12 +2479,11 @@ int main( int argc, char** argv ) {
    unpack_transaction->add_option("transaction", packed_transaction_json, localized("The packed transaction json (string containing packed_trx and optionally compression fields)"))->required();
    unpack_transaction->add_flag("--unpack-action-data", unpack_action_data_flag, localized("Unpack all action data within transaction, needs interaction with ${n}", ("n", node_executable_name)));
    unpack_transaction->set_callback([&] {
-      fc::variant packed_trx_var;
+      fc::variant packed_trx_var = json_from_file_or_string( packed_transaction_json );
       packed_transaction packed_trx;
       try {
-         packed_trx_var = json_from_file_or_string( packed_transaction_json );
          fc::from_variant<packed_transaction>( packed_trx_var, packed_trx );
-      } EOS_RETHROW_EXCEPTIONS( transaction_type_exception, "Fail to parse packed transaction JSON '${data}'", ("data", packed_transaction_json))
+      } EOS_RETHROW_EXCEPTIONS( transaction_type_exception, "Invalid packed transaction format: '${data}'", ("data", fc::json::to_string(packed_trx_var)))
       signed_transaction strx = packed_trx.get_signed_transaction();
       fc::variant trx_var;
       if( unpack_action_data_flag ) {
@@ -2495,11 +2503,11 @@ int main( int argc, char** argv ) {
    pack_action_data->add_option("name", unpacked_action_data_name_string, localized("The name of the function that's called by this action"))->required();
    pack_action_data->add_option("unpacked_action_data", unpacked_action_data_string, localized("The action data expressed as json"))->required();
    pack_action_data->set_callback([&] {
-      fc::variant unpacked_action_data_json;
+      fc::variant unpacked_action_data_json = json_from_file_or_string(unpacked_action_data_string);
+      bytes packed_action_data_string;
       try {
-         unpacked_action_data_json = json_from_file_or_string(unpacked_action_data_string);
+         packed_action_data_string = variant_to_bin(name(unpacked_action_data_account_string), name(unpacked_action_data_name_string), unpacked_action_data_json);
       } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse unpacked action data JSON")
-      bytes packed_action_data_string = variant_to_bin(name(unpacked_action_data_account_string), name(unpacked_action_data_name_string), unpacked_action_data_json);
       std::cout << fc::to_hex(packed_action_data_string.data(), packed_action_data_string.size()) << std::endl;
    });
 
@@ -2709,23 +2717,28 @@ int main( int argc, char** argv ) {
    // currency accessors
    // get currency balance
    string symbol;
+   bool currency_balance_print_json = false;
    auto get_currency = get->add_subcommand( "currency", localized("Retrieve information related to standard currencies"), true);
    get_currency->require_subcommand();
    auto get_balance = get_currency->add_subcommand( "balance", localized("Retrieve the balance of an account for a given currency"), false);
    get_balance->add_option( "contract", code, localized("The contract that operates the currency") )->required();
    get_balance->add_option( "account", accountName, localized("The account to query balances for") )->required();
    get_balance->add_option( "symbol", symbol, localized("The symbol for the currency if the contract operates multiple currencies") );
+   get_balance->add_flag("--json,-j", currency_balance_print_json, localized("Output in JSON format") );
    get_balance->set_callback([&] {
       auto result = call(get_currency_balance_func, fc::mutable_variant_object
          ("account", accountName)
          ("code", code)
          ("symbol", symbol.empty() ? fc::variant() : symbol)
       );
-
-      const auto& rows = result.get_array();
-      for( const auto& r : rows ) {
-         std::cout << r.as_string()
-                   << std::endl;
+      if (!currency_balance_print_json) {
+        const auto& rows = result.get_array();
+        for( const auto& r : rows ) {
+           std::cout << r.as_string()
+                     << std::endl;
+        }
+      } else {
+        std::cout << fc::json::to_pretty_string(result) << std::endl;
       }
    });
 
@@ -3018,7 +3031,7 @@ int main( int argc, char** argv ) {
          actions.emplace_back( create_setcode(name(account), code_bytes ) );
          if ( shouldSend ) {
             std::cerr << localized("Setting Code...") << std::endl;
-            send_actions(std::move(actions), packed_transaction::zlib);
+            send_actions(std::move(actions), packed_transaction::compression_type::zlib);
          }
       } else {
          std::cerr << localized("Skipping set code because the new code is the same as the existing code") << std::endl;
@@ -3066,7 +3079,7 @@ int main( int argc, char** argv ) {
          } EOS_RETHROW_EXCEPTIONS(abi_type_exception,  "Fail to parse ABI JSON")
          if ( shouldSend ) {
             std::cerr << localized("Setting ABI...") << std::endl;
-            send_actions(std::move(actions), packed_transaction::zlib);
+            send_actions(std::move(actions), packed_transaction::compression_type::zlib);
          }
       } else {
          std::cerr << localized("Skipping set abi because the new abi is the same as the existing abi") << std::endl;
@@ -3083,7 +3096,7 @@ int main( int argc, char** argv ) {
       set_abi_callback();
       if (actions.size()) {
          std::cerr << localized("Publishing contract...") << std::endl;
-         send_actions(std::move(actions), packed_transaction::zlib);
+         send_actions(std::move(actions), packed_transaction::compression_type::zlib);
       } else {
          std::cout << "no transaction is sent" << std::endl;
       }
@@ -3346,8 +3359,11 @@ int main( int argc, char** argv ) {
    sign->set_callback([&] {
 
       EOSC_ASSERT( str_private_key.empty() || str_public_key.empty(), "ERROR: Either -k/--private-key or --public-key or none of them can be set" );
-
-      signed_transaction trx = json_from_file_or_string(trx_json_to_sign).as<signed_transaction>();
+      fc::variant trx_var = json_from_file_or_string(trx_json_to_sign);
+      signed_transaction trx;
+      try {
+        trx = trx_var.as<signed_transaction>();
+      } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Invalid transaction format: '${data}'", ("data", fc::json::to_string(trx_var)))
 
       fc::optional<chain_id_type> chain_id;
 
@@ -3381,7 +3397,7 @@ int main( int argc, char** argv ) {
       }
 
       if(push_trx) {
-         auto trx_result = call(push_txn_func, packed_transaction(trx, packed_transaction::none));
+         auto trx_result = call(push_txn_func, packed_transaction(trx, packed_transaction::compression_type::none));
          std::cout << fc::json::to_pretty_string(trx_result) << std::endl;
       } else {
          std::cout << fc::json::to_pretty_string(trx) << std::endl;
@@ -3409,9 +3425,7 @@ int main( int argc, char** argv ) {
    actionsSubcommand->set_callback([&] {
       fc::variant action_args_var;
       if( !data.empty() ) {
-         try {
-            action_args_var = json_from_file_or_string(data, fc::json::relaxed_parser);
-         } EOS_RETHROW_EXCEPTIONS(action_type_exception, "Fail to parse action JSON data='${data}'", ("data", data))
+         action_args_var = json_from_file_or_string(data, fc::json::relaxed_parser);
       }
       auto accountPermissions = get_account_permissions(tx_permission);
 
@@ -3426,10 +3440,7 @@ int main( int argc, char** argv ) {
    add_standard_transaction_options(trxSubcommand);
 
    trxSubcommand->set_callback([&] {
-      fc::variant trx_var;
-      try {
-         trx_var = json_from_file_or_string(trx_to_push);
-      } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse transaction JSON '${data}'", ("data",trx_to_push))
+      fc::variant trx_var = json_from_file_or_string(trx_to_push);
       try {
          signed_transaction trx = trx_var.as<signed_transaction>();
          std::cout << fc::json::to_pretty_string( push_transaction( trx )) << std::endl;
@@ -3446,10 +3457,7 @@ int main( int argc, char** argv ) {
    auto trxsSubcommand = push->add_subcommand("transactions", localized("Push an array of arbitrary JSON transactions"));
    trxsSubcommand->add_option("transactions", trxsJson, localized("The JSON string or filename defining the array of the transactions to push"))->required();
    trxsSubcommand->set_callback([&] {
-      fc::variant trx_var;
-      try {
-         trx_var = json_from_file_or_string(trxsJson);
-      } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse transaction JSON '${data}'", ("data",trxsJson))
+      fc::variant trx_var = json_from_file_or_string(trxsJson);
       auto trxs_result = call(push_txns_func, trx_var);
       std::cout << fc::json::to_pretty_string(trxs_result) << std::endl;
    });
@@ -3490,19 +3498,13 @@ int main( int argc, char** argv ) {
    propose_action->add_option("proposal_expiration", parse_expiration_hours, localized("Proposal expiration interval in hours"));
 
    propose_action->set_callback([&] {
-      fc::variant requested_perm_var;
+      fc::variant requested_perm_var = json_from_file_or_string(requested_perm);
+      fc::variant transaction_perm_var = json_from_file_or_string(transaction_perm);
+      fc::variant trx_var = json_from_file_or_string(proposed_transaction);
+      transaction proposed_trx;
       try {
-         requested_perm_var = json_from_file_or_string(requested_perm);
-      } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse permissions JSON '${data}'", ("data",requested_perm))
-      fc::variant transaction_perm_var;
-      try {
-         transaction_perm_var = json_from_file_or_string(transaction_perm);
-      } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse permissions JSON '${data}'", ("data",transaction_perm))
-      fc::variant trx_var;
-      try {
-         trx_var = json_from_file_or_string(proposed_transaction);
-      } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse transaction JSON '${data}'", ("data",proposed_transaction))
-      transaction proposed_trx = trx_var.as<transaction>();
+         proposed_trx = trx_var.as<transaction>();
+      } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Invalid transaction format: '${data}'", ("data", fc::json::to_string(trx_var)))
       bytes proposed_trx_serialized = variant_to_bin( name(proposed_contract), name(proposed_action), trx_var );
 
       vector<permission_level> reqperm;
@@ -3557,15 +3559,8 @@ int main( int argc, char** argv ) {
    propose_trx->add_option("proposer", proposer, localized("Account proposing the transaction"));
 
    propose_trx->set_callback([&] {
-      fc::variant requested_perm_var;
-      try {
-         requested_perm_var = json_from_file_or_string(requested_perm);
-      } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse permissions JSON '${data}'", ("data",requested_perm))
-
-      fc::variant trx_var;
-      try {
-         trx_var = json_from_file_or_string(trx_to_push);
-      } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse transaction JSON '${data}'", ("data",trx_to_push))
+      fc::variant requested_perm_var = json_from_file_or_string(requested_perm);
+      fc::variant trx_var = json_from_file_or_string(trx_to_push);
 
       auto accountPermissions = get_account_permissions(tx_permission);
       if (accountPermissions.empty()) {
@@ -3790,10 +3785,7 @@ int main( int argc, char** argv ) {
    string perm;
    string proposal_hash;
    auto approve_or_unapprove = [&](const string& action) {
-      fc::variant perm_var;
-      try {
-         perm_var = json_from_file_or_string(perm);
-      } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse permissions JSON '${data}'", ("data",perm))
+      fc::variant perm_var = json_from_file_or_string(perm);
 
       auto args = fc::mutable_variant_object()
          ("proposer", proposer)
@@ -3910,10 +3902,7 @@ int main( int argc, char** argv ) {
    wrap_exec->add_option("--contract,-c", wrap_con, localized("The account which controls the wrap contract"));
 
    wrap_exec->set_callback([&] {
-      fc::variant trx_var;
-      try {
-         trx_var = json_from_file_or_string(trx_to_exec);
-      } EOS_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse transaction JSON '${data}'", ("data",trx_to_exec))
+      fc::variant trx_var = json_from_file_or_string(trx_to_exec);
 
       auto accountPermissions = get_account_permissions(tx_permission);
       if( accountPermissions.empty() ) {

@@ -316,6 +316,7 @@ struct controller_impl {
       set_activation_handler<builtin_protocol_feature_t::preactivate_feature>();
       set_activation_handler<builtin_protocol_feature_t::replace_deferred>();
       set_activation_handler<builtin_protocol_feature_t::get_sender>();
+      set_activation_handler<builtin_protocol_feature_t::webauthn_key>();
 
       self.irreversible_block.connect([this](const block_state_ptr& bsp) {
          wasmif.current_lib(bsp->block_num);
@@ -586,16 +587,8 @@ struct controller_impl {
       // check database version
       const auto& header_idx = db.get_index<database_header_multi_index>().indices().get<by_id>();
 
-      if (database_header_object::minimum_version != 0) {
-         EOS_ASSERT(header_idx.begin() != header_idx.end(), bad_database_version_exception,
-                    "state database version pre-dates versioning, please restore from a compatible snapshot or replay!");
-      } else if ( header_idx.empty() ) {
-         // temporary code to upgrade from existing un-versioned state database
-         static_assert(database_header_object::minimum_version == 0, "remove this path once the minimum version moves");
-         db.create<database_header_object>([](const auto& header){
-            // nothing to do here
-         });
-      }
+      EOS_ASSERT(header_idx.begin() != header_idx.end(), bad_database_version_exception,
+                 "state database version pre-dates versioning, please restore from a compatible snapshot or replay!");
 
       const auto& header_itr = header_idx.begin();
       header_itr->validate();
@@ -1087,7 +1080,8 @@ struct controller_impl {
              || (code == contract_whitelist_exception::code_value)
              || (code == contract_blacklist_exception::code_value)
              || (code == action_blacklist_exception::code_value)
-             || (code == key_blacklist_exception::code_value);
+             || (code == key_blacklist_exception::code_value)
+             || (code == sig_variable_size_limit_exception::code_value);
    }
 
    bool scheduled_failure_is_subjective( const fc::exception& e ) const {
@@ -2978,6 +2972,10 @@ bool controller::is_ram_billing_in_notify_allowed()const {
    return my->conf.disable_all_subjective_mitigations || !is_producing_block() || my->conf.allow_ram_billing_in_notify;
 }
 
+uint32_t controller::configured_subjective_signature_length_limit()const {
+   return my->conf.maximum_variable_signature_length;
+}
+
 void controller::validate_expiration( const transaction& trx )const { try {
    const auto& chain_configuration = get_global_properties().configuration;
 
@@ -3117,6 +3115,13 @@ void controller_impl::on_activation<builtin_protocol_feature_t::replace_deferred
       resource_limits.add_pending_ram_usage( itr->name, ram_delta );
       db.remove( *itr );
    }
+}
+
+template<>
+void controller_impl::on_activation<builtin_protocol_feature_t::webauthn_key>() {
+   db.modify( db.get<protocol_state_object>(), [&]( auto& ps ) {
+      ps.num_supported_key_types = 3;
+   } );
 }
 
 /// End of protocol feature activation handlers

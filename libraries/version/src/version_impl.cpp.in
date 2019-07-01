@@ -1,0 +1,45 @@
+/**
+ *  @file version_impl.cpp.in
+ *  @copyright defined in eos/LICENSE
+ *  \warning This file is machine generated. DO NOT EDIT.  See version_impl.cpp.in for changes.
+ */
+
+#include "version_impl.hpp"
+
+namespace eosio { namespace version {
+
+   const std::string version_major {"@_VERSION_MAJOR_@" };
+   const std::string version_minor {"@_VERSION_MINOR_@" };
+   const std::string version_patch {"@_VERSION_PATCH_@" };
+   const std::string version_suffix{"@_VERSION_SUFFIX_@"};
+   const std::string version_hash  {"@_VERSION_HASH_@"  };
+   const bool        version_dirty { @_VERSION_DIRTY_@  };
+
+   std::string _version_client() {
+      if (version_major == "unknown") {
+         std::string version{"unknown"};
+         return version;
+      }
+      else {
+         std::string version{'v' + version_major + '.' + version_minor + '.' + version_patch + '-' + version_suffix};
+         return version;
+      }
+   }
+
+   std::string _version_full() {
+      if (version_major == "unknown") {
+         std::string version{"unknown"};
+         return version;
+      }
+      else {
+         std::string version{'v' + version_major + '.' + version_minor + '.' + version_patch + '-' + version_suffix + '-' + version_hash};
+         
+         if (version_dirty == true) {
+            version += "-dirty";
+         }
+         
+         return version;
+      }
+   }
+
+} }
