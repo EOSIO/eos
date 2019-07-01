@@ -98,7 +98,7 @@ else
             for INSTALL_PATH in ${INSTALL_PATHS[@]}; do
                execute rm -rf $INSTALL_PATH
             done
-            echo "[EOSIO Removal Complete]"
+            echo " - EOSIO Removal Complete"
             break;;
          1 | false | [Nn]* ) echo " - Cancelled EOSIO Removal!"; exit 1;;
          * ) echo "Please type 'y' for yes or 'n' for no.";;
