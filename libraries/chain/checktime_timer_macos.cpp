@@ -93,7 +93,6 @@ void checktime_timer::start(fc::time_point tp) {
       return;
    }
    fc::microseconds x = tp.time_since_epoch() - fc::time_point::now().time_since_epoch();
-   ms = (int)x.count()-the_calibrate.timer_overhead();
    if(x.count() <= the_calibrate.timer_overhead())
       expired = 1;
    else {
