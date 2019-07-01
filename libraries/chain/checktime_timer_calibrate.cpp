@@ -12,6 +12,7 @@
 #include <boost/accumulators/statistics/weighted_variance.hpp>
 
 #include <chrono>
+#include <mutex>
 
 namespace eosio { namespace chain {
 
