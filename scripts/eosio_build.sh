@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 set -eo pipefail
 SCRIPT_VERSION=3.1 # Build script version (change this to re-build the CICD image)
-export CURRENT_WORKING_DIR=$(pwd) # relative path support
 ##########################################################################
 # This is the EOSIO automated install script for Linux and Mac OS.
 # This file was downloaded from https://github.com/EOSIO/eos
@@ -108,6 +107,8 @@ if [ $# -ne 0 ]; then
       esac
    done
 fi
+
+export CURRENT_WORKING_DIR=$(pwd) # relative path support
 
 # Ensure we're in the repo root and not inside of scripts
 cd $( dirname "${BASH_SOURCE[0]}" )/..

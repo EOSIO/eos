@@ -61,7 +61,7 @@ printf "     \\__\\/         \\__\\/         \\__\\/                     \\__\\/
 
 printf "==============================================================================================\\n"
 
-printf "${COLOR_GREEN}EOSIO has been installed into ${EOSIO_INSTALL_DIR}/bin${COLOR_NC}"
-printf "\\n${COLOR_YELLOW}Uninstall with: ./scripts/eosio_uninstall.sh${COLOR_NC}\\n"
+printf "${COLOR_GREEN}EOSIO has been installed into ${CACHED_INSTALL_PATH}/bin${COLOR_NC}"
+printf "\\n${COLOR_YELLOW}Uninstall with: ${SCRIPT_DIR}/eosio_uninstall.sh${COLOR_NC}\\n"
 printf "==============================================================================================\\n\\n"
 resources

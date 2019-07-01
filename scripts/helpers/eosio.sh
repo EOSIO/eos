@@ -90,8 +90,6 @@ function install-directory-prompt() {
         * ) echo "Please type 'y' for yes or 'n' for no.";;
       esac
     done
-  else
-    export EOSIO_INSTALL_DIR=${INSTALL_LOCATION}
   fi
   . ./scripts/.build_vars
   echo "EOSIO will be installed to: ${EOSIO_INSTALL_DIR}"
