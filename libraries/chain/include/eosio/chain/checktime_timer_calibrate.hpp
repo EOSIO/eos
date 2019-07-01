@@ -4,15 +4,16 @@
 
 namespace eosio { namespace chain {
 
+struct checktime_timer;
+
 struct checktime_timer_calibrate {
-   //on construction it will do the calibration
    checktime_timer_calibrate();
+   //will run calibration if not already run on this instance
+   void do_calibrate(checktime_timer& t);
    ~checktime_timer_calibrate();
 
    bool use_timer() const {return _use_timer;}
    int timer_overhead() const {return _timer_overhead;}
-
-   void print_stats();
 
 private:
    //These two values will be inspected by checktime_timer impls to determine if they
@@ -21,9 +22,6 @@ private:
    // a checktime_timer to calibrate with.
    bool _use_timer = true;
    int _timer_overhead = 0;
-
-   struct impl;
-   std::unique_ptr<impl> my;
 };
 
 }}

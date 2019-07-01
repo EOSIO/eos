@@ -42,13 +42,9 @@ checktime_timer::checktime_timer() {
    se.sigev_signo = SIGRTMIN;
    se.sigev_value.sival_ptr = (void*)&expired;
 
-   //a kludge until something better: print stats only after calibration completes
-   // (which can be inferred on if timer_overhead in non-zero); because otherwise fc logging
-   // may not be ready
-   if(the_calibrate.timer_overhead())
-      the_calibrate.print_stats();
-
    FC_ASSERT(timer_create(CLOCK_REALTIME, &se, &my->timerid) == 0, "failed to create timer");
+
+   the_calibrate.do_calibrate(*this);
 }
 
 checktime_timer::~checktime_timer() {

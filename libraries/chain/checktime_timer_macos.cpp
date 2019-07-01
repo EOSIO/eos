@@ -12,16 +12,13 @@
 
 namespace eosio { namespace chain {
 
-//a kqueue & thread is shared for all checktime_timer instances, and since we want these
-// available for the checktime_timer_calibrate instance that we want to happen on process
-// start (and not at some first usage of checktime_timer), these gotta go here
+//a kqueue & thread is shared for all checktime_timer_macos instances
 static std::mutex timer_ref_mutex;
 static unsigned next_timerid;
 static unsigned refcount;
 static int kqueue_fd;
 static std::thread kevent_thread;
 
-//last, because need the thread & mutex above initialized first
 static checktime_timer_calibrate the_calibrate;
 
 struct checktime_timer::impl {
@@ -62,13 +59,9 @@ checktime_timer::checktime_timer() {
       });
    }
 
-   //a kludge until something better: print stats only after calibration completes
-   // (which can be inferred on if timer_overhead in non-zero); because otherwise fc logging
-   // may not be ready
-   if(the_calibrate.timer_overhead())
-      the_calibrate.print_stats();
-
    my->timerid = next_timerid++;
+
+   the_calibrate.do_calibrate(*this);
 }
 
 checktime_timer::~checktime_timer() {

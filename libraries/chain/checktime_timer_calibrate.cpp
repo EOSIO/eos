@@ -17,15 +17,19 @@ namespace eosio { namespace chain {
 
 namespace bacc = boost::accumulators;
 
+checktime_timer_calibrate::checktime_timer_calibrate() = default;
 checktime_timer_calibrate::~checktime_timer_calibrate() = default;
 
-struct checktime_timer_calibrate::impl {
-   bacc::accumulator_set<int, bacc::stats<bacc::tag::mean, bacc::tag::min, bacc::tag::max, bacc::tag::variance>, float> samples;
-   bool _stats_once_is_enough = false;
-};
+void checktime_timer_calibrate::do_calibrate(checktime_timer& timer) {
+   static std::mutex m;
+   static bool once_is_enough;
 
-checktime_timer_calibrate::checktime_timer_calibrate() : my(std::make_unique<impl>()) {
-   checktime_timer timer;
+   std::lock_guard guard(m);
+
+   if(once_is_enough)
+      return;
+
+   bacc::accumulator_set<int, bacc::stats<bacc::tag::mean, bacc::tag::min, bacc::tag::max, bacc::tag::variance>, float> samples;
 
    //keep longest first in list. You're effectively going to take test_intervals[0]*sizeof(test_intervals[0])
    //time to do the the "calibration"
@@ -48,28 +52,24 @@ checktime_timer_calibrate::checktime_timer_calibrate() : my(std::make_unique<imp
          //That said, for these platforms, a tighter tolerance may possibly be achieved by taking performance
          //metrics in mulitple bins and appliying the slop based on which bin a deadline resides in. Not clear
          //if that's worth the extra complexity at this point.
-         my->samples(timer_slop, bacc::weight = interval/(float)test_intervals[0]);
+         samples(timer_slop, bacc::weight = interval/(float)test_intervals[0]);
       }
    }
-   _timer_overhead = bacc::mean(my->samples) + sqrt(bacc::variance(my->samples))*2; //target 95% of expirations before deadline
+   _timer_overhead = bacc::mean(samples) + sqrt(bacc::variance(samples))*2; //target 95% of expirations before deadline
    _use_timer = _timer_overhead < 1000;
-}
 
-void checktime_timer_calibrate::print_stats() {
    #define TIMER_STATS_FORMAT "min:${min}us max:${max}us mean:${mean}us stddev:${stddev}us"
    #define TIMER_STATS \
-      ("min", bacc::min(my->samples))("max", bacc::max(my->samples)) \
-      ("mean", (int)bacc::mean(my->samples))("stddev", (int)sqrt(bacc::variance(my->samples))) \
+      ("min", bacc::min(samples))("max", bacc::max(samples)) \
+      ("mean", (int)bacc::mean(samples))("stddev", (int)sqrt(bacc::variance(samples))) \
       ("t", _timer_overhead)
-
-   if(my->_stats_once_is_enough)
-      return;
-   my->_stats_once_is_enough = true;
 
    if(_use_timer)
       ilog("Using ${t}us deadline timer for checktime: " TIMER_STATS_FORMAT, TIMER_STATS);
    else
       wlog("Using polled checktime; deadline timer too inaccurate: " TIMER_STATS_FORMAT, TIMER_STATS);
+
+   once_is_enough = true;
 }
 
 }}
