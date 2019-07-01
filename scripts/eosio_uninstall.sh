@@ -123,5 +123,3 @@ if [[ $ARCH == "Darwin" ]]; then
       done
    done
 fi
-
-true
