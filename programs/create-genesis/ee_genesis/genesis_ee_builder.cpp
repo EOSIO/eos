@@ -498,6 +498,16 @@ void genesis_ee_builder::write_transfers() {
     }
 }
 
+void genesis_ee_builder::write_delegations() {
+    std::cout << "-> Writing delegations..." << std::endl;
+    auto& out = out_.get_serializer(event_engine_genesis::delegations);
+    out.start_section(info_.golos.names.vesting, N(delegate), "delegate");
+
+    for (auto& d : exp_info_.delegations) {
+        out.insert(d);
+    }
+}
+
 void genesis_ee_builder::write_pinblocks() {
     if (!dump_follows.is_open()) {
         return;
@@ -619,6 +629,7 @@ void genesis_ee_builder::build(const bfs::path& out_dir) {
 
     write_messages();
     write_transfers();
+    write_delegations();
     write_pinblocks();
     write_accounts();
     write_witnesses();

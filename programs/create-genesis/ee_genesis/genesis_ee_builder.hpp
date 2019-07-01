@@ -42,6 +42,7 @@ private:
     void build_reblogs(std::vector<reblog_info>& reblogs, uint64_t msg_hash, operation_number msg_created, bfs::ifstream& dump_reblogs);
     void write_messages();
     void write_transfers();
+    void write_delegations();
     void write_pinblocks();
     void write_accounts();
     void write_witnesses();

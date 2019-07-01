@@ -73,6 +73,24 @@ static abi_def create_transfers_abi() {
     return abi;
 }
 
+static abi_def create_delegations_abi() {
+    abi_def abi;
+    abi.version = ABI_VERSION;
+
+    abi.structs.emplace_back( struct_def {
+        "delegate", "", {
+            {"from", "name"},
+            {"to", "name"},
+            {"quantity", "asset"},
+            {"interest_rate", "uint16"},
+            {"payout_strategy", "uint8"},
+            {"time", "time_point_sec"},
+        }
+    });
+
+    return abi;
+}
+
 static abi_def create_balance_convert_abi() {
     abi_def abi;
     abi.version = ABI_VERSION;
@@ -130,6 +148,7 @@ static abi_def create_accounts_abi() {
             {"balance", "asset"},
             {"balance_in_sys", "asset"},
             {"vesting_shares", "asset"},
+            {"received_vesting_shares", "asset"},
             {"json_metadata", "string"},
         }
     });
@@ -178,12 +197,13 @@ static abi_def create_funds_abi() {
 void event_engine_genesis::start(const bfs::path& ee_directory, const fc::sha256& hash) {
     using ser_info = std::tuple<string, abi_def>;
     const std::map<ee_ser_type, ser_info> infos = {
-        {ee_ser_type::messages,  {"messages.dat",   create_messages_abi()}},
-        {ee_ser_type::transfers, {"transfers.dat",  create_transfers_abi()}},
-        {ee_ser_type::pinblocks, {"pinblocks.dat",  create_pinblocks_abi()}},
-        {ee_ser_type::accounts,  {"accounts.dat",   create_accounts_abi()}},
-        {ee_ser_type::witnesses,  {"witnesses.dat",   create_witnesses_abi()}},
-        {ee_ser_type::funds,     {"funds.dat",      create_funds_abi()}},
+        {ee_ser_type::messages,    {"messages.dat",    create_messages_abi()}},
+        {ee_ser_type::transfers,   {"transfers.dat",   create_transfers_abi()}},
+        {ee_ser_type::delegations, {"delegations.dat", create_delegations_abi()}},
+        {ee_ser_type::pinblocks,   {"pinblocks.dat",   create_pinblocks_abi()}},
+        {ee_ser_type::accounts,    {"accounts.dat",    create_accounts_abi()}},
+        {ee_ser_type::witnesses,   {"witnesses.dat",   create_witnesses_abi()}},
+        {ee_ser_type::funds,       {"funds.dat",       create_funds_abi()}},
         {ee_ser_type::balance_conversions, {"balance_conversions.dat", create_balance_convert_abi()}}
     };
     for (const auto& i: infos) {

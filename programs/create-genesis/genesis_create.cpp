@@ -19,6 +19,7 @@
 // suppose name generation is slower than flat_map access by idx
 #define CACHE_GENERATED_NAMES
 
+#define EE_DELEGATION_HISTORY_DAYS 1
 
 namespace fc { namespace raw {
 
@@ -771,6 +772,7 @@ struct genesis_create::genesis_create_impl final {
             insert_balance_record(n, golos2sys(gls), sys_pk, acc);
             auto& acc_info = _exp_info.account_infos[acc];
             acc_info["vesting_shares"] = asset(data.vests[acc].vesting, symbol(VESTS));
+            acc_info["received_vesting_shares"] = asset(data.vests[acc].received, symbol(VESTS));
         }
         const auto liquid_supply = supply - (gp.total_vesting_fund_steem + gp.total_reward_fund_steem); // no funds
         std::cout << " Total sum of GOLOS + converted GBG = " << total_gls
@@ -803,18 +805,23 @@ struct genesis_create::genesis_create_impl final {
 
         db.start_section(_info.golos.names.vesting, N(delegation), "delegation", _visitor.delegations.size());
         primary_key_t pk = 0;
+        auto ee_start_time = _conf.initial_timestamp;
+        ee_start_time -= fc::days(EE_DELEGATION_HISTORY_DAYS);
         for (const auto& d: _visitor.delegations) {
             auto delegator = name_by_acc(d.delegator);
-            db.insert(pk, VESTS >> 8, delegator, mvo
-                ("id", pk)
+            auto delegation = mvo
                 ("delegator", delegator)
                 ("delegatee", name_by_acc(d.delegatee))
                 ("quantity", asset(d.vesting_shares.get_amount(), symbol(VESTS)))
                 ("interest_rate", d.interest_rate)
                 ("payout_strategy", int(d.payout_strategy))
-                ("min_delegation_time", d.min_delegation_time)
-            );
+                ("min_delegation_time", d.min_delegation_time);
+            db.insert(pk, VESTS >> 8, delegator, delegation("id", pk));
             pk++;
+
+            if (d.min_delegation_time >= ee_start_time) {
+                _exp_info.delegations.push_back(delegation);
+            }
         }
 
         db.start_section(_info.golos.names.vesting, N(rdelegation), "return_delegation",
