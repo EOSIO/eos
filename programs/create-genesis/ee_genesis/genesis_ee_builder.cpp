@@ -15,6 +15,8 @@
 // 2300000 * 160 = 0.4 GB
 #define MAP_FILE_SIZE uint64_t(22*1024)*MEGABYTE
 
+#define TRANSFER_HISTORY_DAYS 30
+
 namespace cyberway { namespace genesis { namespace ee {
 
 constexpr auto GLS = SY(3, GOLOS);
@@ -476,13 +478,21 @@ void genesis_ee_builder::write_transfers() {
     auto& out = out_.get_serializer(event_engine_genesis::transfers);
     out.start_section(config::token_account_name, N(transfer), "transfer");
 
+    auto start_time = genesis_.get_conf().initial_timestamp;
+    start_time -= fc::days(TRANSFER_HISTORY_DAYS);
+
     transfer_operation op;
     while (read_operation(dump_transfers, op)) {
+        if (op.timestamp < start_time) {
+            continue;
+        }
+
         out.emplace<transfer_info>([&](auto& t) {
             t.from = generate_name(op.from);
             t.to = generate_name(op.to);
             t.quantity = op.amount;
             t.memo = op.memo;
+            t.to_vesting = op.to_vesting;
             t.time = op.timestamp;
         });
     }

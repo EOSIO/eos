@@ -61,6 +61,7 @@ struct transfer_operation : operation {
     /// The memo is plain-text, any encryption on the memo is up to
     /// a higher level protocol.
     string memo;
+    bool to_vesting;
     fc::time_point_sec timestamp;
 };
 
@@ -130,7 +131,7 @@ REFLECT_OP_HASHED(cyberway::golos::ee::reblog_operation, (account)(author)(perml
 
 REFLECT_OP_HASHED(cyberway::golos::ee::delete_reblog_operation, (account))
 
-REFLECT_OP(cyberway::golos::ee::transfer_operation, (from)(to)(amount)(memo)(timestamp))
+REFLECT_OP(cyberway::golos::ee::transfer_operation, (from)(to)(amount)(memo)(to_vesting)(timestamp))
 
 REFLECT_OP_HASHED(cyberway::golos::ee::follow_operation, (follower)(following)(what))
 

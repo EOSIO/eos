@@ -65,6 +65,7 @@ static abi_def create_transfers_abi() {
             {"to", "name"},
             {"quantity", "asset"},
             {"memo", "string"},
+            {"to_vesting", "bool"},
             {"time", "time_point_sec"},
         }
     });

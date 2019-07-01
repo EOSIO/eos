@@ -1,6 +1,7 @@
 #pragma once
 #include <eosio/chain/name.hpp>
 
+#define EE_TRANSFER_HISTORY_DAYS 30
 
 namespace cyberway { namespace genesis {
 

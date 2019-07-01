@@ -77,6 +77,7 @@ struct transfer_info {
     name to;
     asset quantity;
     string memo;
+    bool to_vesting;
     fc::time_point_sec time;
 };
 
@@ -109,7 +110,7 @@ FC_REFLECT(cyberway::genesis::ee::reblog_info, (account)(title)(body)(time))
 FC_REFLECT(cyberway::genesis::ee::comment_info, (parent_author)(parent_permlink)(author)(permlink)(created)(last_update)
     (title)(body)(tags)(language)(net_rshares)(rewardweight)(max_payout)(benefics_prcnt)(curators_prcnt)(tokenprop)(archived)
     (author_reward)(benefactor_reward)(curator_reward)(votes)(reblogs))
-FC_REFLECT(cyberway::genesis::ee::transfer_info, (from)(to)(quantity)(memo)(time))
+FC_REFLECT(cyberway::genesis::ee::transfer_info, (from)(to)(quantity)(memo)(to_vesting)(time))
 FC_REFLECT(cyberway::genesis::ee::balance_convert_info, (owner)(amount)(memo))
 FC_REFLECT(cyberway::genesis::ee::pin_info, (pinner)(pinning))
 FC_REFLECT(cyberway::genesis::ee::block_info, (blocker)(blocking))
