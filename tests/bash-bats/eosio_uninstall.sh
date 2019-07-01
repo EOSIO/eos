@@ -44,7 +44,6 @@ mkdir -p $MONGODB_DATA_DIR
 
 @test "${TEST_LABEL} > Testing executions" {
   run bash -c "printf \"y\n%.0s\" {1..100} | ./$SCRIPT_LOCATION"
-  ### Make sure deps are loaded properly
   [[ "${output[*]}" =~ "Executing: rm -rf" ]] || exit
   if [[ $ARCH == "Darwin" ]]; then
     [[ "${output}" =~ "Executing: brew uninstall cmake --force" ]] || exit
@@ -59,11 +58,7 @@ mkdir -p $MONGODB_DATA_DIR
 
 @test "${TEST_LABEL} > --force + --full" {
   run ./$SCRIPT_LOCATION --force --full
-  if [[ $ARCH == "Darwin" ]]; then
-    [[ "${output[*]}" =~ "Library/Application\ Support/eosio" ]] || exit
-  else
-    [[ "${output[*]}" =~ ".local/share/eosio" ]] || exit
-  fi
+  ([[ ! "${output[*]}" =~ "Library/Application\ Support/eosio" ]] && [[ ! "${output[*]}" =~ ".local/share/eosio" ]]) && exit
   [[ "${output##*$'\n'}" == "[EOSIO Removal Complete]" ]] || exit
 }
 

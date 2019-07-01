@@ -111,7 +111,7 @@ if [ $# -ne 0 ]; then
    done
 fi
 
-# Ensure we're in the repo root
+# Ensure we're in the repo root and not inside of scripts
 cd $( dirname "${BASH_SOURCE[0]}" )/..
 
 # Load eosio specific helper functions
