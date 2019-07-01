@@ -173,11 +173,18 @@ struct genesis_info {
         uint32_t version;       // High byte is major version, next one is hardfork version, low 16bits are revision
         time_point_sec time;
     };
+    struct funds_share {
+        account_name name;
+        // value multiplied to base CYBER supply. use num/denom to avoid floating point
+        int64_t numerator;
+        int64_t denominator;
+    };
 
     struct parameters {
         stake_params stake;
         posting_rules posting_rules;
         fc::optional<hardfork_info> require_hardfork;
+        std::vector<funds_share> funds;
     } params;
 };
 
@@ -199,5 +206,6 @@ FC_REFLECT(cyberway::genesis::genesis_info::golos_config,
 FC_REFLECT(cyberway::genesis::genesis_info::stake_params,
     (enabled)(max_proxies)(payout_step_length)(payout_steps_num)(min_own_staked_for_election))
 FC_REFLECT(cyberway::genesis::genesis_info::hardfork_info, (version)(time))
-FC_REFLECT(cyberway::genesis::genesis_info::parameters, (stake)(posting_rules)(require_hardfork))
+FC_REFLECT(cyberway::genesis::genesis_info::funds_share, (name)(numerator)(denominator))
+FC_REFLECT(cyberway::genesis::genesis_info::parameters, (stake)(posting_rules)(require_hardfork)(funds))
 FC_REFLECT(cyberway::genesis::genesis_info, (state_file)(genesis_json)(accounts)(auth_links)(tables)(golos)(params))

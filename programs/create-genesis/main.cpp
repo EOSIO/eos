@@ -153,7 +153,7 @@ void config_reader::read_config(const variables_map& options) {
     make_absolute(info.state_file, "Golos state");
     make_absolute(info.genesis_json, "Genesis json");
     genesis = fc::json::from_file(info.genesis_json).as<genesis_state>();
-    
+
     std::cout << "Initial configuration = {" << std::endl << genesis.initial_configuration << "}" << std::endl;
 
     // base validation and init
@@ -166,6 +166,9 @@ void config_reader::read_config(const variables_map& options) {
     }
     EOS_ASSERT(info.golos.max_supply >= 0, genesis_exception, "max_supply can't be negative");
     EOS_ASSERT(info.golos.sys_max_supply >= 0, genesis_exception, "sys_max_supply can't be negative");
+    for (const auto& f: info.params.funds) {
+        EOS_ASSERT(f.numerator * f.denominator != 0, genesis_exception, "funds numerator & denominator must not be 0");
+    }
 }
 
 void config_reader::read_contracts() {

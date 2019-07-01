@@ -695,18 +695,23 @@ struct genesis_create::genesis_create_impl final {
 
         auto total_acc_balances = asset();
         auto total_acc_staked = asset();
-        for(const auto& acc: _info.accounts) {
-            if(acc.sys_balance) {
+        for (const auto& acc: _info.accounts) {
+            if (acc.sys_balance) {
                 total_acc_balances += *acc.sys_balance;
             }
-            if(acc.sys_staked) {
+            if (acc.sys_staked) {
                 total_acc_staked += *acc.sys_staked;
             }
         }
 
         _total_staked = golos2sys(gp.total_vesting_fund_steem);
         auto supply = gp.current_supply + golos_from_gbg;
-        _sys_supply = golos2sys(supply - gp.total_reward_fund_steem) + total_acc_balances + total_acc_staked;
+        auto base = golos2sys(supply - gp.total_reward_fund_steem) + total_acc_balances + total_acc_staked;
+        auto sys_supply = base.get_amount();
+        for (const auto& fund: _info.params.funds) {
+            sys_supply += int_arithmetic::safe_prop(base.get_amount(), fund.numerator, fund.denominator);
+        }
+        _sys_supply = asset(sys_supply, base.get_symbol());
         auto sys_pk = insert_stat_record(_sys_supply, _info.golos.sys_max_supply, config::system_account_name);
         auto gls_pk = insert_stat_record(supply, _info.golos.max_supply, _info.golos.names.issuer);
 
@@ -720,7 +725,7 @@ struct genesis_create::genesis_create_impl final {
 
         // funds
         const auto n_acc_balances = std::count_if(_info.accounts.begin(), _info.accounts.end(), [](const auto& a) {return a.sys_balance;}); //
-        const auto n_balances = 3 + 2*data.gbg.size() + n_acc_balances;
+        const auto n_balances = 3 + 2*data.gbg.size() + n_acc_balances + _info.params.funds.size();
         db.start_section(config::token_account_name, N(accounts), "account", n_balances);
         auto insert_balance_record = [&](name account, const asset& balance, primary_key_t pk,
             fc::optional<acc_idx> acc_id = {}
@@ -740,8 +745,13 @@ struct genesis_create::genesis_create_impl final {
         insert_balance_record(_info.golos.names.vesting, gp.total_vesting_fund_steem, gls_pk);
         insert_balance_record(_info.golos.names.posting, gp.total_reward_fund_steem, gls_pk);
 
-        for(const auto& acc: _info.accounts) {
-            if(acc.sys_balance) {
+        for (const auto& fund: _info.params.funds) {
+            auto value = int_arithmetic::safe_prop(base.get_amount(), fund.numerator, fund.denominator);
+            insert_balance_record(fund.name, asset(value, base.get_symbol()), sys_pk);
+        }
+
+        for (const auto& acc: _info.accounts) {
+            if (acc.sys_balance) {
                 insert_balance_record(acc.name, *acc.sys_balance, sys_pk);
             }
         }
