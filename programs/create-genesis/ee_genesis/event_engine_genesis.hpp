@@ -16,7 +16,7 @@ public:
     void start(const bfs::path& ee_directory, const fc::sha256& hash);
     void finalize();
 
-    enum ee_ser_type {messages, transfers, delegations, rewards, pinblocks, accounts, witnesses, funds, balance_conversions};
+    enum ee_ser_type {messages, transfers, withdraws, delegations, rewards, pinblocks, accounts, witnesses, funds, balance_conversions};
     ee_genesis_serializer& get_serializer(ee_ser_type type) {
         return serializers.at(type);
     }
@@ -82,6 +82,15 @@ struct transfer_info {
     fc::time_point_sec time;
 };
 
+struct withdraw_info {
+    OBJECT_CTOR(withdraw_info);
+
+    name from;
+    name to;
+    asset quantity;
+    fc::time_point_sec time;
+};
+
 struct author_reward {
     OBJECT_CTOR(author_reward);
 
@@ -142,6 +151,7 @@ FC_REFLECT(cyberway::genesis::ee::comment_info, (parent_author)(parent_permlink)
     (title)(body)(tags)(language)(net_rshares)(rewardweight)(max_payout)(benefics_prcnt)(curators_prcnt)(tokenprop)(archived)
     (author_reward)(benefactor_reward)(curator_reward)(votes)(reblogs))
 FC_REFLECT(cyberway::genesis::ee::transfer_info, (from)(to)(quantity)(memo)(to_vesting)(time))
+FC_REFLECT(cyberway::genesis::ee::withdraw_info, (from)(to)(quantity)(time))
 FC_REFLECT(cyberway::genesis::ee::author_reward, (author)(permlink)(sbd_and_steem_payout)(vesting_payout)(time))
 FC_REFLECT(cyberway::genesis::ee::curation_reward, (curator)(reward)(comment_author)(comment_permlink)(time))
 FC_REFLECT(cyberway::genesis::ee::delegation_reward, (delegator)(delegatee)(payout_strategy)(reward)(time))

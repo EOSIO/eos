@@ -73,6 +73,22 @@ static abi_def create_transfers_abi() {
     return abi;
 }
 
+static abi_def create_withdraws_abi() {
+    abi_def abi;
+    abi.version = ABI_VERSION;
+
+    abi.structs.emplace_back( struct_def {
+        "withdraw", "", {
+            {"from", "name"},
+            {"to", "name"},
+            {"quantity", "asset"},
+            {"time", "time_point_sec"},
+        }
+    });
+
+    return abi;
+}
+
 static abi_def create_delegations_abi() {
     abi_def abi;
     abi.version = ABI_VERSION;
@@ -236,6 +252,7 @@ void event_engine_genesis::start(const bfs::path& ee_directory, const fc::sha256
     const std::map<ee_ser_type, ser_info> infos = {
         {ee_ser_type::messages,    {"messages.dat",    create_messages_abi()}},
         {ee_ser_type::transfers,   {"transfers.dat",   create_transfers_abi()}},
+        {ee_ser_type::withdraws,   {"withdraws.dat",   create_withdraws_abi()}},
         {ee_ser_type::delegations, {"delegations.dat", create_delegations_abi()}},
         {ee_ser_type::rewards,     {"rewards.dat",     create_rewards_abi()}},
         {ee_ser_type::pinblocks,   {"pinblocks.dat",   create_pinblocks_abi()}},

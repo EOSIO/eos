@@ -66,6 +66,13 @@ struct transfer_operation : operation {
     fc::time_point_sec timestamp;
 };
 
+struct fill_vesting_withdraw_operation : operation {
+    account_name_type from_account;
+    account_name_type to_account;
+    asset deposited;
+    fc::time_point_sec timestamp;
+};
+
 enum follow_type {
     undefined,
     blog,
@@ -134,6 +141,8 @@ REFLECT_OP_HASHED(cyberway::golos::ee::reblog_operation, (account)(author)(perml
 REFLECT_OP_HASHED(cyberway::golos::ee::delete_reblog_operation, (account))
 
 REFLECT_OP(cyberway::golos::ee::transfer_operation, (from)(to)(amount)(memo)(to_vesting)(timestamp))
+
+REFLECT_OP(cyberway::golos::ee::fill_vesting_withdraw_operation, (from_account)(to_account)(deposited)(timestamp))
 
 REFLECT_OP_HASHED(cyberway::golos::ee::follow_operation, (follower)(following)(what))
 

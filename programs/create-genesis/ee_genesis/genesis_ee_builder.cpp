@@ -16,6 +16,7 @@
 #define MAP_FILE_SIZE uint64_t(22*1024)*MEGABYTE
 
 #define TRANSFER_HISTORY_DAYS 30
+#define WITHDRAW_HISTORY_DAYS 30
 #define REWARD_HISTORY_DAYS   1
 
 namespace cyberway { namespace genesis { namespace ee {
@@ -269,6 +270,17 @@ void genesis_ee_builder::process_transfers() {
     }
 }
 
+void genesis_ee_builder::process_withdraws() {
+    std::cout << "-> Reading withdraws..." << std::endl;
+
+    try {
+        read_header(dump_vesting_withdraws, in_dump_dir_ / "vesting_withdraws");
+    } catch (file_not_found_exception& ex) {
+        wlog("No vesting withdraws file");
+        return;
+    }
+}
+
 void genesis_ee_builder::process_rewards_history() {
     std::cout << "-> Reading rewards history..." << std::endl;
 
@@ -376,6 +388,7 @@ void genesis_ee_builder::read_operation_dump(const bfs::path& in_dump_dir) {
     process_reblogs();
     process_delete_reblogs();
     process_transfers();
+    process_withdraws();
     process_rewards_history();
     process_follows();
     process_account_metas();
@@ -515,6 +528,32 @@ void genesis_ee_builder::write_transfers() {
             t.quantity = op.amount;
             t.memo = op.memo;
             t.to_vesting = op.to_vesting;
+            t.time = op.timestamp;
+        });
+    }
+}
+
+void genesis_ee_builder::write_withdraws() {
+    if (!dump_vesting_withdraws.is_open()) {
+        return;
+    }
+    std::cout << "-> Writing withdraws..." << std::endl;
+    auto& out = out_.get_serializer(event_engine_genesis::withdraws);
+    out.start_section(info_.golos.names.vesting, N(withdraw), "withdraw");
+
+    auto start_time = genesis_.get_conf().initial_timestamp;
+    start_time -= fc::days(WITHDRAW_HISTORY_DAYS);
+
+    fill_vesting_withdraw_operation op;
+    while (read_operation(dump_vesting_withdraws, op)) {
+        if (op.timestamp < start_time) {
+            continue;
+        }
+
+        out.emplace<withdraw_info>([&](auto& t) {
+            t.from = generate_name(op.from_account);
+            t.to = generate_name(op.to_account);
+            t.quantity = op.deposited;
             t.time = op.timestamp;
         });
     }
@@ -718,6 +757,7 @@ void genesis_ee_builder::build(const bfs::path& out_dir) {
 
     write_messages();
     write_transfers();
+    write_withdraws();
     write_delegations();
     write_rewards_history();
     write_pinblocks();
