@@ -31,6 +31,9 @@ struct chain_config {
    uint32_t   max_inline_action_size;              ///< maximum allowed size (in bytes) of an inline action
    uint16_t   max_inline_action_depth;             ///< recursion depth limit on sending inline actions
    uint16_t   max_authority_depth;                 ///< recursion depth limit for checking if an authority is satisfied
+
+   uint64_t   ram_size;
+   uint64_t   reserved_ram_size;
    
    std::vector<uint64_t> max_block_usage;
    std::vector<uint64_t> max_transaction_usage;
@@ -62,8 +65,10 @@ struct chain_config {
          << "Max Transaction Delay: " << c.max_transaction_delay << ", "
          << "Max Inline Action Size: " << c.max_inline_action_size << ", "
          << "Max Inline Action Depth: " << c.max_inline_action_depth << ", "
-         << "Max Authority Depth: " << c.max_authority_depth << "\n";
-                 
+         << "Max Authority Depth: " << c.max_authority_depth << ", "
+         << "RAM size: " << c.ram_size << ", "
+         << "Reserved RAM size: " << c.reserved_ram_size << "\n";
+
       out << "Max Block Usage: ";            for (auto r : c.max_block_usage)            { out << r << " "; } out << "\n";
       out << "Max Transaction Usage: ";      for (auto r : c.max_transaction_usage)      { out << r << " "; } out << "\n";
       out << "Target Virtual Limits: ";      for (auto r : c.target_virtual_limits)      { out << r << " "; } out << "\n";
@@ -89,6 +94,8 @@ struct chain_config {
                            lhs.max_inline_action_size,
                            lhs.max_inline_action_depth,
                            lhs.max_authority_depth,
+                           lhs.ram_size,
+                           lhs.reserved_ram_size,
                            lhs.max_block_usage,
                            lhs.max_transaction_usage,
                            lhs.target_virtual_limits,
@@ -111,6 +118,8 @@ struct chain_config {
                            rhs.max_inline_action_size,
                            rhs.max_inline_action_depth,
                            rhs.max_authority_depth,
+                           rhs.ram_size,
+                           rhs.reserved_ram_size,
                            rhs.max_block_usage,
                            rhs.max_transaction_usage,
                            rhs.target_virtual_limits,
@@ -138,7 +147,8 @@ FC_REFLECT(eosio::chain::chain_config,
 
            (max_transaction_lifetime)(deferred_trx_expiration_window)(max_transaction_delay)
            (max_inline_action_size)(max_inline_action_depth)(max_authority_depth)
-           
+
+           (ram_size)(reserved_ram_size)
            (max_block_usage)(max_transaction_usage)
            
            (target_virtual_limits)(min_virtual_limits)(max_virtual_limits)(usage_windows)

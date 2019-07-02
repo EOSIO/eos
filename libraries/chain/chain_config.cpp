@@ -15,6 +15,11 @@ namespace eosio { namespace chain {
          EOS_ASSERT( max_transaction_usage[i] < max_block_usage[i], action_validate_exception, "max transaction usage must be less than max block usage" );
       }
 
+      EOS_ASSERT( ram_size >= config::_GB, action_validate_exception,
+                  "RAM size can't be less than 1 GB");
+      EOS_ASSERT( reserved_ram_size * 2 <= ram_size, action_validate_exception,
+                  "Reserved RAM size can't be less than half of RAM size");
+
       EOS_ASSERT( context_free_discount_net_usage_den > 0, action_validate_exception,
                   "net usage discount ratio for context free data cannot have a 0 denominator" );
       EOS_ASSERT( context_free_discount_net_usage_num <= context_free_discount_net_usage_den, action_validate_exception,
