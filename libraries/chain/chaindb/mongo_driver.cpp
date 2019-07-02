@@ -1,13 +1,11 @@
-#include <limits>
-
 #include <cyberway/chaindb/mongo_bigint_converter.hpp>
 #include <cyberway/chaindb/mongo_driver.hpp>
 #include <cyberway/chaindb/exception.hpp>
 #include <cyberway/chaindb/names.hpp>
-#include <cyberway/chaindb/table_object.hpp>
 #include <cyberway/chaindb/mongo_driver_utils.hpp>
 #include <cyberway/chaindb/journal.hpp>
 #include <cyberway/chaindb/abi_info.hpp>
+#include <cyberway/chaindb/noscope_tables.hpp>
 
 #include <bsoncxx/builder/basic/kvp.hpp>
 #include <bsoncxx/builder/basic/document.hpp>
@@ -18,7 +16,6 @@
 #include <mongocxx/exception/operation_exception.hpp>
 #include <mongocxx/exception/bulk_write_exception.hpp>
 #include <mongocxx/exception/logic_error.hpp>
-#include <mongocxx/exception/query_exception.hpp>
 
 namespace cyberway { namespace chaindb {
 
@@ -36,7 +33,6 @@ namespace cyberway { namespace chaindb {
     using mongocxx::model::delete_one;
     using mongocxx::database;
     using mongocxx::collection;
-    using mongocxx::query_exception;
     namespace options = mongocxx::options;
 
     using document_view = bsoncxx::document::view;
@@ -306,7 +302,9 @@ namespace cyberway { namespace chaindb {
                 find_object = &find_key_.get_object();
             }
 
-            append_scope_value(bound, index);
+            if (!is_noscope_table(index)) {
+                append_scope_value(bound, index);
+            }
 
             auto& orders = index.index->orders;
             for (auto& o: orders) {
@@ -333,7 +331,9 @@ namespace cyberway { namespace chaindb {
             document sort;
             auto order = static_cast<int>(direction_);
 
-            sort.append(kvp(names::scope_path, order));
+            if (!is_noscope_table(index)) {
+                sort.append(kvp(names::scope_path, order));
+            }
 
             auto& orders = index.index->orders;
             for (auto& o: orders) {
@@ -373,7 +373,12 @@ namespace cyberway { namespace chaindb {
         }
 
         bool is_end() const {
-            return source_->begin() == source_->end() || scope_ != index.scope;
+            if (source_->begin() == source_->end()) {
+                return true;
+            } else if (!is_noscope_table(index)) {
+                return scope_ != index.scope;
+            }
+            return false;
         }
 
         void lazy_next() {
@@ -606,7 +611,9 @@ namespace cyberway { namespace chaindb {
             bool was_pk = false;
             auto& index = *info.index;
 
-            idx_doc.append(kvp(names::scope_path, 1));
+            if (!is_noscope_table(info)) {
+                idx_doc.append(kvp(names::scope_path, 1));
+            }
             for (auto& order: index.orders) {
                 auto field = _detail::get_order_field(order);
                 if (_detail::is_asc_order(order.order)) {
@@ -627,7 +634,7 @@ namespace cyberway { namespace chaindb {
             db_table.create_index(idx_doc.view(), options::index().name(idx_name).unique(index.unique));
 
             // for available primary key
-            if (info.pk_order == &index.orders.front()) {
+            if (!is_noscope_table(info) && info.pk_order == &index.orders.front()) {
                 document id_doc;
                 idx_name.append(_detail::pk_index_postfix);
                 id_doc.append(kvp(info.pk_order->field, 1));
@@ -672,7 +679,7 @@ namespace cyberway { namespace chaindb {
             primary_key_t pk = 0;
             auto& pk_index = table.table->indexes.front();
             auto  pk_order = table.pk_order;
-            auto  hint = db_name_to_string(pk_index.name).append(_detail::pk_index_postfix);
+            auto  hint = db_name_to_string(pk_index.name);
             document sort;
             document bound;
 
@@ -681,6 +688,10 @@ namespace cyberway { namespace chaindb {
             build_bound_document(bound, pk_order->field, -1);
 
             sort.append(kvp(table.pk_order->field, -1));
+
+            if (!is_noscope_table(table)) {
+                hint.append(_detail::pk_index_postfix);
+            }
 
             auto opts = options::find()
                 .hint(mongocxx::hint(hint))
@@ -708,11 +719,12 @@ namespace cyberway { namespace chaindb {
 
             apply_table_changes(table);
 
+            if (!is_noscope_table(table)) {
+                append_scope_value(bound, table);
+                sort.append(kvp(names::scope_path, 1));
+            }
 
-            append_scope_value(bound, table);
             append_pk_value(bound, table, pk);
-
-            sort.append(kvp(names::scope_path, 1));
             sort.append(kvp(table.pk_order->field, 1));
 
             auto opts = options::find()
