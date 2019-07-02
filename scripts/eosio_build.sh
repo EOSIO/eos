@@ -119,9 +119,6 @@ cd $( dirname "${BASH_SOURCE[0]}" )/..
 # Load eosio specific helper functions
 . ./scripts/helpers/eosio.sh
 
-# Support relative paths : https://github.com/EOSIO/eos/issues/7560
-( [[ ! -z $INSTALL_LOCATION ]] && [[ ! $INSTALL_LOCATION =~ ^\/ ]] ) && export INSTALL_LOCATION="${CURRENT_WORKING_DIR}/$INSTALL_LOCATION"
-
 $VERBOSE && echo "Build Script Version: ${SCRIPT_VERSION}"
 echo "EOSIO Version: ${EOSIO_VERSION_FULL}"
 echo "$( date -u )"
