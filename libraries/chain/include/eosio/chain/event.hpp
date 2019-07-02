@@ -10,8 +10,6 @@ struct event {
     account_name   account;
     event_name     name;
     bytes          data;
-
-    event() {}
 };
 
 } } // namespace eosio::chain

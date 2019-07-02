@@ -89,6 +89,7 @@ namespace eosio { namespace chain {
 
          generated_transaction(const generated_transaction& gt) = default;
          generated_transaction(generated_transaction&& gt) = default;
+         generated_transaction() = default;
 
          transaction_id_type           trx_id;
          account_name                  sender;
@@ -112,3 +113,4 @@ namespace eosio { namespace chain {
 CHAINDB_SET_TABLE_TYPE(eosio::chain::generated_transaction_object, eosio::chain::generated_transaction_table)
 CHAINDB_TAG(eosio::chain::generated_transaction_object, gtransaction)
 FC_REFLECT(eosio::chain::generated_transaction_object, (id)(trx_id)(sender)(sender_id)(delay_until)(expiration)(published)(packed_trx))
+FC_REFLECT(eosio::chain::generated_transaction, (trx_id)(sender)(sender_id)(delay_until)(expiration)(published)(packed_trx))
