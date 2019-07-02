@@ -69,7 +69,7 @@ $ sudo yum remove eosio
 #### Build Script Uninstall
 
 If you have previously installed EOSIO using build scripts, you can execute `eosio_uninstall.sh` to uninstall.
-- Passing `-y` will answer yes to all prompts (forces `-f`)
+- Passing `-y` will answer yes to all prompts (does not remove data directories)
 - Passing `-f` will remove data directories (be very careful with this)
 - Passing in `-i` allows you to specify where your eosio installation is located
 
