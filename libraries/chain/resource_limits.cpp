@@ -76,7 +76,7 @@ void resource_limits_manager::initialize_database() {
       state.virtual_limits.resize(resources_num);
       
       for (size_t i = 0; i < resources_num; i++) {
-         state.virtual_limits[i] = cfg.limit_parameters[i].min;
+         state.virtual_limits[i] = cfg.limit_parameters[i].max;
       }
    });
 
