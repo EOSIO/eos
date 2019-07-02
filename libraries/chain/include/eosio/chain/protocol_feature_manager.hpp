@@ -24,7 +24,8 @@ enum class builtin_protocol_feature_t : uint32_t {
    only_bill_first_authorizer,
    forward_setcode,
    get_sender,
-   ram_restrictions
+   ram_restrictions,
+   webauthn_key
 };
 
 struct protocol_feature_subjective_restrictions {
