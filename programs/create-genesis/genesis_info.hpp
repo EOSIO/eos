@@ -186,6 +186,15 @@ struct genesis_info {
         fc::optional<hardfork_info> require_hardfork;
         std::vector<funds_share> funds;
     } params;
+
+    struct ee_parameters {
+        struct ee_history_days {
+            uint16_t transfers = 30;
+            uint16_t withdraws = 30;
+            uint16_t delegations = 30;
+            uint16_t rewards = 1;
+        } history_days;
+    } ee_params;
 };
 
 }} // cyberway::genesis
@@ -208,4 +217,6 @@ FC_REFLECT(cyberway::genesis::genesis_info::stake_params,
 FC_REFLECT(cyberway::genesis::genesis_info::hardfork_info, (version)(time))
 FC_REFLECT(cyberway::genesis::genesis_info::funds_share, (name)(numerator)(denominator))
 FC_REFLECT(cyberway::genesis::genesis_info::parameters, (stake)(posting_rules)(require_hardfork)(funds))
-FC_REFLECT(cyberway::genesis::genesis_info, (state_file)(genesis_json)(accounts)(auth_links)(tables)(golos)(params))
+FC_REFLECT(cyberway::genesis::genesis_info::ee_parameters::ee_history_days, (transfers)(withdraws)(delegations)(rewards))
+FC_REFLECT(cyberway::genesis::genesis_info::ee_parameters, (history_days))
+FC_REFLECT(cyberway::genesis::genesis_info, (state_file)(genesis_json)(accounts)(auth_links)(tables)(golos)(params)(ee_params))

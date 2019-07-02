@@ -15,10 +15,6 @@
 // 2300000 * 160 = 0.4 GB
 #define MAP_FILE_SIZE uint64_t(22*1024)*MEGABYTE
 
-#define TRANSFER_HISTORY_DAYS 30
-#define WITHDRAW_HISTORY_DAYS 30
-#define REWARD_HISTORY_DAYS   1
-
 namespace cyberway { namespace genesis { namespace ee {
 
 genesis_ee_builder::genesis_ee_builder(
@@ -514,7 +510,7 @@ void genesis_ee_builder::write_transfers() {
     out.start_section(config::token_account_name, N(transfer), "transfer");
 
     auto start_time = genesis_.get_conf().initial_timestamp;
-    start_time -= fc::days(TRANSFER_HISTORY_DAYS);
+    start_time -= fc::days(info_.ee_params.history_days.transfers);
 
     transfer_operation op;
     while (read_operation(dump_transfers, op)) {
@@ -542,7 +538,7 @@ void genesis_ee_builder::write_withdraws() {
     out.start_section(info_.golos.names.vesting, N(withdraw), "withdraw");
 
     auto start_time = genesis_.get_conf().initial_timestamp;
-    start_time -= fc::days(WITHDRAW_HISTORY_DAYS);
+    start_time -= fc::days(info_.ee_params.history_days.withdraws);
 
     fill_vesting_withdraw_operation op;
     while (read_operation(dump_vesting_withdraws, op)) {
@@ -573,7 +569,7 @@ void genesis_ee_builder::write_rewards_history() {
     auto& out = out_.get_serializer(event_engine_genesis::rewards);
 
     auto start_time = genesis_.get_conf().initial_timestamp;
-    start_time -= fc::days(REWARD_HISTORY_DAYS);
+    start_time -= fc::days(info_.ee_params.history_days.rewards);
 
     if (dump_author_rewards.is_open()) {
         std::cout << "-> Writing author rewards..." << std::endl;

@@ -19,8 +19,6 @@
 // suppose name generation is slower than flat_map access by idx
 #define CACHE_GENERATED_NAMES
 
-#define EE_DELEGATION_HISTORY_DAYS 1
-
 namespace fc { namespace raw {
 
 template<typename T> void unpack(T& s, cyberway::golos::comment_object& c) {
@@ -806,7 +804,7 @@ struct genesis_create::genesis_create_impl final {
         db.start_section(_info.golos.names.vesting, N(delegation), "delegation", _visitor.delegations.size());
         primary_key_t pk = 0;
         auto ee_start_time = _conf.initial_timestamp;
-        ee_start_time -= fc::days(EE_DELEGATION_HISTORY_DAYS);
+        ee_start_time -= fc::days(_info.ee_params.history_days.delegations);
         for (const auto& d: _visitor.delegations) {
             auto delegator = name_by_acc(d.delegator);
             auto delegation = mvo
