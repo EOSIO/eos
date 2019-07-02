@@ -15,9 +15,8 @@ fi
 
 export CMAKE_REQUIRED_VERSION=$(cat $REPO_ROOT/CMakeLists.txt | grep -E "^[[:blank:]]*cmake_minimum_required[[:blank:]]*\([[:blank:]]*VERSION" | tail -1 | sed 's/.*VERSION //g' | sed 's/ //g' | sed 's/"//g' | cut -d\) -f1)
 
-export EOSIO_INSTALL_DIR="${EOSIO_INSTALL_DIR:-${HOME}/eosio/${EOSIO_VERSION}}"
+export EOSIO_INSTALL_DIR="${HOME}/eosio/${EOSIO_VERSION}"
 export TEMP_DIR="${TEMP_DIR:-${HOME}/tmp}"
 
 [[ -f ${BUILD_DIR}/CMakeCache.txt ]] && export CACHED_INSTALL_PATH=$(grep "CMAKE_INSTALL_PREFIX:PATH" ${BUILD_DIR}/CMakeCache.txt | cut -d= -f2)
-
 . ./scripts/.build_vars
