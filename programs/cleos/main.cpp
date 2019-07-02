@@ -181,6 +181,7 @@ bool   tx_dont_broadcast = false;
 bool   tx_return_packed = false;
 bool   tx_skip_sign = false;
 bool   tx_print_json = false;
+bool   tx_use_old_rpc = false;
 string tx_json_save_file;
 bool   print_request = false;
 bool   print_response = false;
@@ -215,6 +216,7 @@ void add_standard_transaction_options(CLI::App* cmd, string default_permission =
    cmd->add_flag("-d,--dont-broadcast", tx_dont_broadcast, localized("don't broadcast transaction to the network (just print to stdout)"));
    cmd->add_flag("--return-packed", tx_return_packed, localized("used in conjunction with --dont-broadcast to get the packed transaction"));
    cmd->add_option("-r,--ref-block", tx_ref_block_num_or_id, (localized("set the reference block num or block id used for TAPOS (Transaction as Proof-of-Stake)")));
+   cmd->add_flag("--use-old-rpc", tx_use_old_rpc, localized("use old RPC push_transaction, rather than new RPC send_transaction"));
 
    string msg = "An account and permission level to authorize, as in 'account@permission'";
    if(!default_permission.empty())
@@ -341,7 +343,14 @@ fc::variant push_transaction( signed_transaction& trx, packed_transaction::compr
    }
 
    if (!tx_dont_broadcast) {
-      return call(push_txn_func, packed_transaction(trx, compression));
+      bool send_txn_func_supported = true;
+      if (info.server_version_string) {
+        int major, minor;
+        if (sscanf(info.server_version_string->c_str(), "v%d.%d", &major, &minor) == 2) {
+          send_txn_func_supported = !(major == 1 && minor < 8);
+        }
+      }
+      return call(!tx_use_old_rpc && send_txn_func_supported ? send_txn_func : push_txn_func, packed_transaction(trx, compression));
    } else {
       if (!tx_return_packed) {
         return fc::variant(trx);
@@ -3452,7 +3461,7 @@ int main( int argc, char** argv ) {
       }
    });
 
-
+   // push transactions
    string trxsJson;
    auto trxsSubcommand = push->add_subcommand("transactions", localized("Push an array of arbitrary JSON transactions"));
    trxsSubcommand->add_option("transactions", trxsJson, localized("The JSON string or filename defining the array of the transactions to push"))->required();
