@@ -1,7 +1,6 @@
 #pragma once
 #include <eosio/chain/name.hpp>
 
-
 namespace cyberway { namespace genesis {
 
 constexpr auto GBG = SY(3,GBG);
