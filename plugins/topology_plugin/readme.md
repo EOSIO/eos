@@ -16,6 +16,16 @@ Links are defined by the pair of nodes being connected, which node is the active
 The topology plugin will produce a graphvis compatible rendition of the network map to help operators visualize the possible areas of network congestion that leads to missed blocks and microforks.
 
 Ultimately this map could help further reduce network traffic by not forwarding unblocked transactions to _all_ nodes, preferring to route them only to producer nodes which might be responsible for enblocking or verifying. Likewise new block messages can be routed in a way that avoids duplication.
+##API
+this table highlights the calls available using the http interface
+
+| request |   arguments   |   result   | description | 
+|---------|---------------|------------|-------------|
+ nodes | string: in\_roles | vector of node descriptors | Nodes have specific roles in the network, producers, api, backup, proxy, etc. This function allows you to retrieve a list of nodes on the tenwork for a specific role, or for any role. 
+  links | string: with_node | vector of link descriptors | supply a [list of?] node ideentifies as retrived with the /nodes/ function and get back a list of descriptors covering all of the connections to or from the identified node
+   watch | string: udp\_addr string: links string: metrics | void | supply a watcher callback address for metrics related to the specified links
+  unwatch | string: udp\_addr string: links string: metrics | void | remove a watcher callback address for metrics related to the specified links
+ 
 ##source file map
 The plugin follows the common idiom of a lightweight interface class and a more robust hidden implementation class. To improve the atomicity of included headers, these are broken apart as shown
 

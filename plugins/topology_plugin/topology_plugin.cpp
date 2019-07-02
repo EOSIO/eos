@@ -533,15 +533,13 @@ namespace eosio {
 
 
    void topology_plugin::watch( const string& udp_addr,
-                                const string& first_peer,
-                                const string& second_peer,
+                                const string& link_def,
                                 const string& metrics ) {
 
    }
 
    void topology_plugin::unwatch( const string& udp_addr,
-                                  const string& first_peer,
-                                  const string& second_peer,
+                                  const string& link_def,
                                   const string& metrics ) {
    }
 
