@@ -60,7 +60,10 @@ cd $( dirname "${BASH_SOURCE[0]}" )/..
 
 INSTALL_PATHS=()
 
-if [[ $NONINTERACTIVE == false ]]; then
+# -y alone should not remove the data directories and not prompt the user for anything. 
+# -f alone should remove the data directories after prompting the user if they are sure. 
+# -f -y should proceed forward with removing the data directories without prompting the user.
+if [[ $NONINTERACTIVE == false ]] && $FULL; then
    while true; do
       read -p "By specifying -f, removal of the eosio data directory will require a resync of data which can take days. Do you wish to proceed? (y/n) " PROCEED
       case $PROCEED in
