@@ -60,7 +60,7 @@ cd $( dirname "${BASH_SOURCE[0]}" )/..
 
 INSTALL_PATHS=()
 
-if [[ $NONINTERACTIVE == false ]] && $FULL; then
+if [[ $NONINTERACTIVE == false ]]; then
    while true; do
       read -p "By specifying -f, removal of the eosio data directory will require a resync of data which can take days. Do you wish to proceed? (y/n) " PROCEED
       case $PROCEED in
@@ -70,9 +70,6 @@ if [[ $NONINTERACTIVE == false ]] && $FULL; then
          * ) echo "Please type 'y' for yes or 'n' for no.";;
       esac
    done
-elif $NONINTERACTIVE && $FULL; then
-   echo "${COLOR_RED}By specifying -f, removal of the eosio data directory will require a resync of data which can take days. The script is sleeping for 15 seconds to give you a chance to cancel if this is not what you want.${COLOR_NC}"
-   $DRYRUN || sleep 15
 fi
 
 export EOSIO_INSTALL_DIR=${INSTALL_LOCATION:-$EOSIO_INSTALL_DIR}
