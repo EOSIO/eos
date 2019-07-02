@@ -416,6 +416,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
             gtx.expiration  = gtx.delay_until + fc::seconds(control.get_global_properties().configuration.deferred_trx_expiration_window);
 
             trx_size = gtx.set( trx );
+            push_event({name(), name("senddeferred"), fc::raw::pack(generated_transaction(gtx))});
          });
    } else {
       chaindb.emplace<generated_transaction_object>( get_storage_payer(owner), [&]( auto& gtx ) {
@@ -427,6 +428,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
             gtx.expiration  = gtx.delay_until + fc::seconds(control.get_global_properties().configuration.deferred_trx_expiration_window);
 
             trx_size = gtx.set( trx );
+            push_event({name(), name("senddeferred"), fc::raw::pack(generated_transaction(gtx))});
          });
    }
 
@@ -443,6 +445,7 @@ bool apply_context::cancel_deferred_transaction( const uint128_t& sender_id, acc
 // TODO: Removed by CyberWay
 //      add_ram_usage( gto->payer, -(config::billable_size_v<generated_transaction_object> + gto->packed_trx.size()) );
       trx_table.erase(*gto, get_storage_payer());
+      push_event({name(), name("canceldefer"), fc::raw::pack(std::make_pair(sender, sender_id))});
    }
    return gto;
 }

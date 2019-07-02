@@ -222,6 +222,8 @@ namespace eosio { namespace chain {
                                     3050008, "Abort Called" )
       FC_DECLARE_DERIVED_EXCEPTION( inline_action_too_big, action_validate_exception,
                                     3050009, "Inline Action exceeds maximum size limit" )
+      FC_DECLARE_DERIVED_EXCEPTION( event_not_valid, action_validate_exception,
+                                    3050010, "Event not valid" )
 
    FC_DECLARE_DERIVED_EXCEPTION( database_exception, chain_exception,
                                  3060000, "Database exception" )

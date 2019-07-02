@@ -1387,6 +1387,7 @@ class event_api : public context_aware_api {
         void send_event( array_ptr<char> data, size_t data_len ) {
             event evt;
             fc::raw::unpack<event>(data, data_len, evt);
+            EOS_ASSERT(evt.account != name(), event_not_valid, "Contract can't send event with empty account");
             context.push_event(std::move(evt));
         }
 };

@@ -9,6 +9,7 @@
 #include <eosio/event_engine_plugin/ee_genesis_container.hpp>
 #include <eosio/event_engine_plugin/messages.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
+#include <eosio/chain/generated_transaction_object.hpp>
 #include <fc/exception/exception.hpp>
 #include <fc/variant_object.hpp>
 #include <fc/io/json.hpp>
@@ -109,6 +110,29 @@ private:
     }
 
     fc::variant unpack_event_data(const chain::event &evt) {
+        if(evt.account == name()) {
+            if(evt.name == name("senddeferred")) {
+                generated_transaction gtx;
+                fc::raw::unpack(evt.data, gtx);
+
+                fc::datastream<char*> packed_trx_stream(gtx.packed_trx.data(), gtx.packed_trx.size());
+                transaction trx;
+                fc::raw::unpack(packed_trx_stream, trx);
+                fc::variant trx_object = db.to_variant_with_abi(trx, abi_serializer_max_time);
+
+                fc::variant gtx_object;
+                fc::to_variant(gtx, gtx_object);
+
+                fc::mutable_variant_object result(std::move(gtx_object));
+                result["trx"] = trx_object;
+                return result;
+            } else if(evt.name == name("canceldefer")) {
+                std::pair<account_name, uint128_t> args;
+                fc::raw::unpack<std::pair<account_name, uint128_t>>(evt.data, args);
+                return fc::mutable_variant_object()("sender",args.first)("sender_id",args.second);
+            }
+        }
+
         const auto *abi = get_account_abi(evt.account);
         if(abi == nullptr) {
             return fc::variant();
