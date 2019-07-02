@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -eo pipefail
-VERSION=2.0
+VERSION=2.1
 ##########################################################################
 # This is the EOSIO automated install script for Linux and Mac OS.
 # This file was downloaded from https://github.com/EOSIO/eos
@@ -32,12 +32,15 @@ VERSION=2.0
 # https://github.com/EOSIO/eos/blob/master/LICENSE.txt
 ##########################################################################
 
+# Ensure we're in the repo root and not inside of scripts
+cd $( dirname "${BASH_SOURCE[0]}" )/..
+
 # Load eosio specific helper functions
 . ./scripts/helpers/eosio.sh
 
 [[ ! $NAME == "Ubuntu" ]] && set -i # Ubuntu doesn't support interactive mode since it uses dash
 
-[[ ! -d $BUILD_DIR ]] && printf "${COLOR_RED}Please run ./eosio_build.sh first!${COLOR_NC}" && exit 1
+[[ -f ${BUILD_DIR}/CMakeCache.txt ]] && printf "${COLOR_RED}Please run ${SCRIPT_DIR}/eosio_build.sh first!${COLOR_NC}" && exit 1
 echo "${COLOR_CYAN}====================================================================================="
 echo "========================== ${COLOR_WHITE}Starting EOSIO Installation${COLOR_CYAN} ==============================${COLOR_NC}"
 execute cd $BUILD_DIR
@@ -57,7 +60,8 @@ printf "    \\  \\::/       \\  \\::/        /__/:/        \\__\\/      \\  \\::
 printf "     \\__\\/         \\__\\/         \\__\\/                     \\__\\/ \n\n${COLOR_NC}"
 
 printf "==============================================================================================\\n"
-printf "${COLOR_GREEN}EOSIO has been installed into ${EOSIO_INSTALL_DIR}/bin${COLOR_NC}"
-printf "\\n${COLOR_YELLOW}Uninstall with: ./scripts/eosio_uninstall.sh${COLOR_NC}\\n"
+printf "${COLOR_GREEN}EOSIO has been installed into ${CACHED_INSTALL_PATH}/bin${COLOR_NC}"
+printf "\\n${COLOR_YELLOW}Uninstall with: ${SCRIPT_DIR}/eosio_uninstall.sh${COLOR_NC}\\n"
 printf "==============================================================================================\\n\\n"
 resources
+

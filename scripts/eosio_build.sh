@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -eo pipefail
-SCRIPT_VERSION=3.0 # Build script version (change this to re-build the CICD image)
+SCRIPT_VERSION=3.1 # Build script version (change this to re-build the CICD image)
 ##########################################################################
 # This is the EOSIO automated install script for Linux and Mac OS.
 # This file was downloaded from https://github.com/EOSIO/eos
@@ -111,11 +111,16 @@ if [ $# -ne 0 ]; then
    done
 fi
 
+export CURRENT_WORKING_DIR=$(pwd) # relative path support
+
 # Ensure we're in the repo root and not inside of scripts
 cd $( dirname "${BASH_SOURCE[0]}" )/..
 
 # Load eosio specific helper functions
 . ./scripts/helpers/eosio.sh
+
+# Support relative paths : https://github.com/EOSIO/eos/issues/7560
+( [[ ! -z $INSTALL_LOCATION ]] && [[ ! $INSTALL_LOCATION =~ ^\/ ]] ) && export INSTALL_LOCATION="${CURRENT_WORKING_DIR}/$INSTALL_LOCATION"
 
 $VERBOSE && echo "Build Script Version: ${SCRIPT_VERSION}"
 echo "EOSIO Version: ${EOSIO_VERSION_FULL}"
@@ -237,8 +242,8 @@ echo "(_______/(_______)\_______)\_______/(_______)"
 echo "=============================================${COLOR_NC}"
 
 echo "${COLOR_GREEN}EOSIO has been successfully built. $(($TIME_END/3600)):$(($TIME_END%3600/60)):$(($TIME_END%60))"
-echo "${COLOR_GREEN}You can now install using: ./scripts/eosio_install.sh${COLOR_NC}"
-echo "${COLOR_YELLOW}Uninstall with: ./scripts/eosio_uninstall.sh${COLOR_NC}"
+echo "${COLOR_GREEN}You can now install using: ${SCRIPT_DIR}/eosio_install.sh${COLOR_NC}"
+echo "${COLOR_YELLOW}Uninstall with: ${SCRIPT_DIR}/eosio_uninstall.sh${COLOR_NC}"
 
 echo ""
 echo "${COLOR_CYAN}If you wish to perform tests to ensure functional code:${COLOR_NC}"
@@ -246,7 +251,7 @@ if $ENABLE_MONGO; then
    echo "${BIN_DIR}/mongod --dbpath ${MONGODB_DATA_DIR} -f ${MONGODB_CONF} --logpath ${MONGODB_LOG_DIR}/mongod.log &"
    PATH_TO_USE=" PATH=\$PATH:$OPT_DIR/mongodb/bin"
 fi
-echo "cd ./build &&${PATH_TO_USE} make test" # PATH is set as currently 'mongo' binary is required for the mongodb test
+echo "cd ${BUILD_DIR} && ${PATH_TO_USE} make test" # PATH is set as currently 'mongo' binary is required for the mongodb test
 
 echo ""
 resources
