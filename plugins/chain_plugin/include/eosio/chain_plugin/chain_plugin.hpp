@@ -643,6 +643,9 @@ public:
      using index_type = chain::index256_index;
      static auto function() {
         return [](const input_type& v) {
+            // The input is in big endian, i.e. f58262c8005bb64b8f99ec6083faf050c502d099d9929ae37ffed2fe1bb954fb
+            // fixed_bytes will convert the input to array of 2 uint128_t in little endian, i.e. 50f0fa8360ec998f4bb65b00c86282f5 fb54b91bfed2fe7fe39a92d999d002c5
+            // which is the format used by secondary index
             fixed_bytes<32> fb(*reinterpret_cast<const std::array<const uint8_t, 32>*>(v.data())); 
             return chain::key256_t(fb.get_array());
         };
@@ -656,6 +659,9 @@ public:
      using index_type = chain::index256_index;
      static auto function() {
         return [](const input_type& v) {
+            // The input is in big endian, i.e. 83a83a3876c64c33f66f33c54f1869edef5b5d4a000000000000000000000000
+            // fixed_bytes will convert the input to array of 2 uint128_t in little endian, i.e. ed69184fc5336ff6334cc676383aa883 0000000000000000000000004a5d5bef
+            // which is the format used by secondary index
             fixed_bytes<20> fb(*reinterpret_cast<const std::array<const uint8_t, 20>*>(v.data())); 
             return chain::key256_t(fb.get_array());
         };
@@ -668,6 +674,9 @@ public:
      using index_type = chain::index256_index;
      static auto function() {
         return [](const input_type v) {
+            // The input is in little endian of uint256_t, i.e. fb54b91bfed2fe7fe39a92d999d002c550f0fa8360ec998f4bb65b00c86282f5
+            // fixed_bytes will convert the input to array of 2 uint128_t in little endian, i.e. 50f0fa8360ec998f4bb65b00c86282f5 fb54b91bfed2fe7fe39a92d999d002c5
+            // which is the format used by secondary index
             chain::key256_t k;
             k[0] = ((uint128_t *)&v)[1]; //128-255
             k[1] = ((uint128_t *)&v)[0]; //0-127
