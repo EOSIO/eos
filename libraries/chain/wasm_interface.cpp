@@ -25,6 +25,8 @@
 #include <fstream>
 #include <string.h>
 
+#include <cyberway/chain/domain_name.hpp>
+
 namespace eosio { namespace chain {
    using namespace webassembly;
    using namespace webassembly::common;
@@ -883,24 +885,31 @@ class authorization_api : public context_aware_api {
    }
 };
 
+constexpr size_t max_assert_message = 1024;
+
 class domain_api : public context_aware_api {
    public:
       using context_aware_api::context_aware_api;
 
    bool is_domain(null_terminated_ptr ptr) const {
-      return context.is_domain(std::string(ptr));
+      const size_t sz_ptr = strnlen( ptr, cyberway::chain::domain_max_size );
+      return context.is_domain(std::string(ptr, sz_ptr));
    }
    bool is_username(const account_name& scope, null_terminated_ptr ptr) const {
-      return context.is_username(scope, std::string(ptr));
+      const size_t sz_ptr = strnlen( ptr, cyberway::chain::username_max_size );
+      return context.is_username(scope, std::string(ptr, sz_ptr));
    }
    account_name get_domain_owner(null_terminated_ptr ptr) const {
-      return context.get_domain_owner(std::string(ptr));
+      const size_t sz_ptr = strnlen( ptr, cyberway::chain::domain_max_size );
+      return context.get_domain_owner(std::string(ptr, sz_ptr));
    }
    account_name resolve_domain(null_terminated_ptr ptr) const {
-      return context.resolve_domain(std::string(ptr));
+      const size_t sz_ptr = strnlen( ptr, cyberway::chain::domain_max_size );
+      return context.resolve_domain(std::string(ptr, sz_ptr));
    }
    account_name resolve_username(const account_name& scope, null_terminated_ptr ptr) const {
-      return context.resolve_username(scope, std::string(ptr));
+      const size_t sz_ptr = strnlen( ptr, cyberway::chain::username_max_size );
+      return context.resolve_username(scope, std::string(ptr, sz_ptr));
    }
 };
 
@@ -917,8 +926,6 @@ class system_api : public context_aware_api {
       }
 
 };
-
-constexpr size_t max_assert_message = 1024;
 
 class context_free_system_api :  public context_aware_api {
 public:
@@ -992,7 +999,8 @@ class console_api : public context_aware_api {
       // Kept as intrinsic rather than implementing on WASM side (using prints_l and strlen) because strlen is faster on native side.
       void prints(null_terminated_ptr str) {
          if ( !ignore ) {
-            context.console_append<const char*>(str);
+            const size_t sz_ptr = strnlen( str, max_assert_message );
+            context.console_append<const char*>(std::string(str, sz_ptr).c_str());
          }
       }
 
