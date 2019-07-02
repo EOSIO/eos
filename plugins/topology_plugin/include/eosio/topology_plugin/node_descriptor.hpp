@@ -5,6 +5,7 @@
 #pragma once
 #include <fc/reflect/reflect.hpp>
 #include <eosio/chain/name.hpp>
+#include <fc/crypto/sha256.hpp>
 
 namespace eosio{
    using node_id = uint64_t;
@@ -31,9 +32,7 @@ namespace eosio{
 
    struct node_descriptor {
       node_id      my_id; // a copy of the computed unique id for this node
-      uint32_t     host_addr;     // local to the BP lan
-      uint16_t     p2p_port;      // identify the specific instance
-      std::string  bp_id;         // a configured value to disambiguate non-routable host addrs
+      std::string  location;      // a combination of the bp_name and p2p address
       node_role    role;          // see list above
       node_status  status;        // see list above
       std::string  version;       // software version running
@@ -45,4 +44,4 @@ namespace eosio{
 
 FC_REFLECT_ENUM( eosio::node_status, (scheduled)(standby)(clone)(running)(no_topology)(rejecting) )
 FC_REFLECT_ENUM( eosio::node_role, (producer)(backup)(api)(full)(gateway)(special) )
-FC_REFLECT( eosio::node_descriptor, (my_id)(host_addr)(p2p_port)(bp_id)(role)(status)(version)(producers))
+FC_REFLECT( eosio::node_descriptor, (my_id)(location)(role)(status)(version)(producers))

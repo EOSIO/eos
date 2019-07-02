@@ -13,7 +13,8 @@ namespace eosio{
       {
        blocks       = 0x1,  // link is used to send blocks to peers
        transactions = 0x2,  // link is used to sent trx to peers
-       control      = 0x4   // link is used to send control messages to peers
+       control      = 0x4,   // link is used to send control messages to peers
+       combined     = 0x7
       };
 
    struct link_descriptor {
@@ -24,7 +25,14 @@ namespace eosio{
       link_role    role;     // how the link is used
    };
 
+   struct watcher_def {
+      string           udp_address;
+      vector<link_id>  subjects;
+      uint64_t         metrics;
+   };
+
 }
 
-FC_REFLECT_ENUM( eosio::link_role, (blocks)(transactions)(control))
+FC_REFLECT_ENUM( eosio::link_role, (blocks)(transactions)(control)(combined))
 FC_REFLECT( eosio::link_descriptor, (my_id)(active)(passive)(hops)(role))
+FC_REFLECT(eosio::watcher_def, (udp_address)(subjects)(metrics))

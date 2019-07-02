@@ -13,16 +13,15 @@ namespace eosio{
    /**
     * a watcher is an entity looking for datagrams containing metrics for a specific links
     */
-   struct watcher {
+   struct watch_update {
       bool             adding;
-      string           host_address;
-      vector<link_id>  subjects;
-      uint64_t         metrics;
+      watcher_def      watcher;
    };
 
    struct link_sample {
       link_id    link;
-      vector<pair<metric_kind,metric> > samples;
+      vector<pair<metric_kind,uint32_t> > down;
+      vector<pair<metric_kind,uint32_t> > up;
    };
 
       /**
@@ -36,9 +35,11 @@ namespace eosio{
    };
 
 
-   using topo_data = static_variant<watcher, map_update, link_sample>;
+   using topo_data = static_variant<watch_update, map_update, link_sample>;
    struct topology_message {
       node_id         origin;            // the origin of the message
+      node_id         destination;       // set to 0 for bcast
+      uint16_t        fwds;              // count of the number of forwards used
       uint16_t        ttl;               // time-to-live, the number of forwards allowed
       vector<topo_data> payload;         // the collecion of data to share
    };
@@ -46,7 +47,7 @@ namespace eosio{
    typedef std::shared_ptr<topology_message> topology_message_ptr;
 }
 
-FC_REFLECT(eosio::watcher, (adding)(host_address)(subjects)(metrics))
-FC_REFLECT(eosio::link_sample, (link)(samples))
+FC_REFLECT(eosio::watch_update, (adding)(watcher))
+FC_REFLECT(eosio::link_sample, (link)(down)(up))
 FC_REFLECT(eosio::map_update, (add_nodes)(add_links)(drop_nodes)(drop_links))
-FC_REFLECT(eosio::topology_message, (origin)(ttl)(payload))
+FC_REFLECT(eosio::topology_message, (origin)(destination)(fwds)(ttl)(payload))

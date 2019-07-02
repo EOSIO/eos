@@ -59,6 +59,11 @@ using namespace eosio;
      api_handle.call_name(vs.at(0).as<in_param0>(), vs.at(1).as<in_param1>(), vs.at(2).as<in_param2>()); \
      eosio::detail::topology_api_plugin_empty result;
 
+#define INVOKE_V_R_R_R_R(api_handle, call_name, in_param0, in_param1, in_param2, in_param3) \
+     const auto& vs = fc::json::json::from_string(body).as<fc::variants>(); \
+     api_handle.call_name(vs.at(0).as<in_param0>(), vs.at(1).as<in_param1>(), vs.at(2).as<in_param2>(), vs.at(3).as<in_param3>() ); \
+     eosio::detail::topology_api_plugin_empty result;
+
 #define INVOKE_V_V(api_handle, call_name) \
      api_handle.call_name(); \
      eosio::detail::topology_api_plugin_empty result;
@@ -75,9 +80,9 @@ void topology_api_plugin::plugin_startup() {
        CALL(topology, topo_mgr, links,
             INVOKE_R_R(topo_mgr, links, std::string), 201),
        CALL(topology, topo_mgr, watch,
-            INVOKE_V_R_R_R(topo_mgr, watch, std::string, std::string, std::string), 201),
+            INVOKE_V_R_R_R_R(topo_mgr, watch, std::string, std::string, std::string, std::string), 201),
        CALL(topology, topo_mgr, unwatch,
-            INVOKE_V_R_R_R(topo_mgr, unwatch, std::string, std::string, std::string), 201),
+            INVOKE_V_R_R_R_R(topo_mgr, unwatch, std::string, std::string, std::string, std::string), 201),
        CALL(topology, topo_mgr, gen_grid,
             INVOKE_R_V(topo_mgr, gen_grid), 201)
    });
@@ -99,6 +104,7 @@ void topology_api_plugin::plugin_initialize(const variables_map& options) {
 #undef INVOKE_V_R
 #undef INVOKE_V_R_R
 #undef INVOKE_V_R_R_R
+#undef INVOKE_V_R_R_R_R
 #undef INVOKE_V_V
 #undef CALL
 

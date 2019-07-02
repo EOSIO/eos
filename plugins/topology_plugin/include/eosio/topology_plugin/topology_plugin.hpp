@@ -39,27 +39,28 @@ namespace eosio{
 
       void forward_block(const string& from_producer, vector<string>& to_peers);
       void forward_transaction(vector<string>& to_peers);
-      void forward_topo_change(const string& from_node, vector<string>& to_peers);
 #endif
       /**
        * supply the latest round measurements
        */
-      void update_samples( link_id link,
-                           const vector<pair<metric_kind,uint32_t> >& down,
-                           const vector<pair<metric_kind,uint32_t> >& up);
+      void update_samples( const link_sample& ls);
+
       uint16_t sample_interval_sec ();
 
       /**
        * receive topology-specific messages from the net module
        */
-      void handle_message( topology_message&& msg );
-      boost::signals2::signal<void(const topology_message_ptr& )>  topo_update;
-
+      void handle_message( topology_message& msg );
+      boost::signals2::signal<void(const topology_message& )>  topo_update;
+      bool forward_topology_message(const topology_message&, link_id link );
+      void make_map_update(topology_message& tm);
       /**
        * adding or removing nodes and links. called from the net plugin, these operations
        * take
        */
-
+      const string& bp_name();
+      fc::sha256 gen_long_id (const node_descriptor &desc);
+      void set_local_node_id (node_id id);
       node_id add_node(node_descriptor &&desc );
       void drop_node(node_id id);
 
@@ -74,8 +75,8 @@ namespace eosio{
        */
       string nodes( const string& in_roles );
       string links( const string& with_node );
-      void watch( const string& udp_addr, const string& link_def, const string& metric_def );
-      void unwatch( const string& udp_addr, const string& link_def, const string& metric_def );
+      void watch( const string& udp_addr, const string& first_node, const string& second_node, const string& metric_def );
+      void unwatch( const string& udp_addr, const string& first_node, const string& second_node, const string& metric_def );
       string gen_grid( );
 
    private:

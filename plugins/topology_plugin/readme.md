@@ -3,6 +3,9 @@ This optional plugin facilitates the gathering of network performance metrics fo
 
 The topology plugin is tied closely to the net plugin, adding a new timer along with an optional reference to the topology plugin and local node and link ids that are globally unique. A new topology message is added to the net protocol list which is used to communicate changes to the network map, periodic updates of perfomance data, or changes of interested watchers.
 
+##watching the network
+this is the way to receive periodic updates on performance metrics. Although each node will have an entire map of the network, each node only has the performance metrics for itself and its direct peers. Watcher subscriptions are shared over the network so that the buden of updating watchers is spread acreoss the network.
+
 A watcher is defined by a UDP endpoint along with a list of link ids it is interested in and a specification of which data points it is interested in. watchers are updated by the node that owns the passive connection side of the identified link. 
 
 ##identifying nodes and links
@@ -28,4 +31,8 @@ The plugin follows the common idiom of a lightweight interface class and a more 
  | link\_descriptor | the verbose description of the link as defined by the connected nodes. This gets stringified and hashed to generate a universally unique, but otherwise anonymous identifier.
  node\_descriptor | node\_descriptor | the verbose description of a node used to generate a globally unique node id.
  
+ The implementation details are entirely contained in a single source file for now, topology\_plugin.cpp. The types defined in this source file are described here.
  
+|  typename  |  description  |
+|------------|---------------|
+   topo\_node | contains the verbose description of the node along with it's hashed id along with a list of no
