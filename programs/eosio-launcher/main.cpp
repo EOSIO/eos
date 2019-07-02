@@ -1102,7 +1102,7 @@ launcher_def::write_config_file (tn_node_def &node) {
    cfg << "http-validate-host = false\n";
    cfg << "p2p-listen-endpoint = " << host->listen_addr << ":" << instance.p2p_port << "\n";
    cfg << "p2p-server-address = " << host->public_name << ":" << instance.p2p_port << "\n";
-
+   cfg << "p2p-max-nodes-per-host = " << total_nodes + 1 << "\n";
 
    if (is_bios) {
     cfg << "enable-stale-production = true\n";
@@ -1147,6 +1147,9 @@ launcher_def::write_config_file (tn_node_def &node) {
     cfg << "plugin = eosio::mongo_db_plugin\n";
   }
   cfg << "plugin = eosio::net_plugin\n";
+  cfg << "plugin = eosio::topology_plugin\n";
+  cfg << "plugin = eosio::topology_api_plugin\n";
+  cfg << "bp-name = \"eosio testnet\"\n";
   cfg << "plugin = eosio::chain_api_plugin\n"
       << "plugin = eosio::history_api_plugin\n";
   cfg.close();
@@ -1578,7 +1581,7 @@ launcher_def::launch (eosd_def &instance, string &gts) {
 
   if (!host->is_local()) {
     if (instance.node->dont_start) {
-      cerr << "Unable to use \"unstarted-nodes\" with a remote hose" << endl;
+      cerr << "Unable to use \"unstarted-nodes\" with a remote host" << endl;
       exit (-1);
     }
     string cmdl ("cd ");

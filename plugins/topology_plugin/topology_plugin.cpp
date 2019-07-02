@@ -78,6 +78,9 @@ namespace eosio {
       flat_map<node_id,int16_t> distance;
       uint64_t primary_key() const { return info.my_id; }
 
+      string dot_label() {
+         return info.location;
+      }
    };
 
 
@@ -86,7 +89,9 @@ namespace eosio {
       case blocks: return "blocks";
       case transactions: return "transactions";
       case control: return "control";
+      case combined: return "combined";
       }
+      return "error";
    }
 
    constexpr auto node_role_str( node_role role ) {
@@ -98,8 +103,47 @@ namespace eosio {
       case gateway : return "gateway";
       case special : return "special";
       }
+      return "error";
    }
 
+
+   const fc::string logger_name("topology_plugin_impl");
+   fc::logger topo_logger;
+
+   #if 0
+   std::string peer_log_format;
+
+#define peer_dlog( PEER, FORMAT, ... ) \
+  FC_MULTILINE_MACRO_BEGIN \
+   if( logger.is_enabled( fc::log_level::debug ) ) \
+      logger.log( FC_LOG_MESSAGE( debug, peer_log_format + FORMAT, __VA_ARGS__ (PEER->get_logger_variant()) ) ); \
+  FC_MULTILINE_MACRO_END
+
+#define peer_ilog( PEER, FORMAT, ... ) \
+  FC_MULTILINE_MACRO_BEGIN \
+   if( logger.is_enabled( fc::log_level::info ) ) \
+      logger.log( FC_LOG_MESSAGE( info, peer_log_format + FORMAT, __VA_ARGS__ (PEER->get_logger_variant()) ) ); \
+  FC_MULTILINE_MACRO_END
+
+#define peer_wlog( PEER, FORMAT, ... ) \
+  FC_MULTILINE_MACRO_BEGIN \
+   if( logger.is_enabled( fc::log_level::warn ) ) \
+      logger.log( FC_LOG_MESSAGE( warn, peer_log_format + FORMAT, __VA_ARGS__ (PEER->get_logger_variant()) ) ); \
+  FC_MULTILINE_MACRO_END
+
+#define peer_elog( PEER, FORMAT, ... ) \
+  FC_MULTILINE_MACRO_BEGIN \
+   if( logger.is_enabled( fc::log_level::error ) ) \
+      logger.log( FC_LOG_MESSAGE( error, peer_log_format + FORMAT, __VA_ARGS__ (PEER->get_logger_variant())) ); \
+  FC_MULTILINE_MACRO_END
+#endif
+
+   template<class enum_type, class=typename std::enable_if<std::is_enum<enum_type>::value>::type>
+   inline enum_type& operator|=(enum_type& lhs, const enum_type& rhs)
+   {
+      using T = std::underlying_type_t <enum_type>;
+      return lhs = static_cast<enum_type>(static_cast<T>(lhs) | static_cast<T>(rhs));
+   }
 
    constexpr uint16_t def_max_watchers = 100;
    constexpr uint16_t def_sample_imterval = 5; // seconds betwteen samples
@@ -115,29 +159,38 @@ namespace eosio {
       flat_map<node_id, topo_node> nodes;
       flat_map<link_id, topo_link> links;
 
-      vector<watcher> watchers;
+      vector<watcher_def> watchers;
       flat_map<metric_kind, std::string> units;
 
+      fc::sha256 gen_long_id_i( const node_descriptor &desc );
       node_id gen_id( const node_descriptor &desc );
       link_id gen_id( const link_descriptor &desc );
       int16_t count_hops_i (set<node_id>& seen, node_id to, topo_node& from);
       int16_t count_hops (node_id to);
+      node_id peer_node (link_id onlink, node_id from);
+      void    update_samples_i( const link_sample &ls, bool flip );
+      void    add_watcher (const  watcher_def& watcher);
+      void    drop_watcher (const watcher_def& watcher);
 
       uint16_t sample_imterval_sec;
       uint16_t watcher_update;
       uint16_t max_watchers;
       string bp_name;
-      node_id my_id;
-
+      node_id local_node_id;
       bool done = false;
       net_plugin * net_plug = nullptr;
    };
 
-   node_id topology_plugin_impl::gen_id( const node_descriptor &desc ) {
+   fc::sha256 topology_plugin_impl::gen_long_id_i( const node_descriptor &desc ) {
       ostringstream infostrm;
-      infostrm << desc.bp_id << desc.host_addr << desc.p2p_port;
-      hash<string> hasher;
-      return hasher(infostrm.str());
+      infostrm << desc.location << desc.role << desc.version;
+      string istr = infostrm.str();
+      return fc::sha256::hash(istr.c_str(), istr.size());
+   }
+
+   node_id topology_plugin_impl::gen_id( const node_descriptor &desc ) {
+      fc::sha256 lid = gen_long_id_i (desc);
+      return lid.data()[0];
    }
 
    link_id topology_plugin_impl::gen_id( const link_descriptor &desc ) {
@@ -173,17 +226,76 @@ namespace eosio {
 
    int16_t topology_plugin_impl::count_hops (node_id to) {
       if( nodes.find( to ) == nodes.end() ) {
-         elog(" no table entry for target node");
+         fc_elog(topo_logger, " no table entry for target node");
          return -1;
       }
 
-      if (to == my_id) {
+      if (to == local_node_id) {
          return 0;
       }
-      topo_node &my_node = nodes[my_id];
+      auto &my_node = nodes[local_node_id];
       set<node_id> seen;
       return count_hops_i( seen, to, my_node );
    }
+
+   node_id topology_plugin_impl::peer_node (link_id onlink, node_id from)
+   {
+      return links[onlink].info.active == from ? links[onlink].info.passive : links[onlink].info.active;
+   }
+
+   void topology_plugin_impl::update_samples_i( const link_sample &ls, bool flip) {
+      links[ls.link].down.sample(flip ? ls.up : ls.down);
+      links[ls.link].up.sample(flip ? ls.down : ls.up);
+   }
+
+   void topology_plugin_impl::add_watcher( const watcher_def &watcher) {
+      for (auto &w : watchers) {
+         if (w.udp_address == watcher.udp_address ) {
+            for (auto l : watcher.subjects) {
+               bool found = false;
+               for (auto wl : w.subjects) {
+                  if (wl == l) {
+                     found = true;
+                     break;
+                  }
+               }
+               if( !found) {
+                  w.subjects.push_back(l);
+                  break;
+               }
+            }
+            w.metrics |= watcher.metrics;
+            return;
+         }
+      }
+      watchers.push_back(watcher);
+   }
+
+   void topology_plugin_impl::drop_watcher( const watcher_def &watcher) {
+      for (auto w = watchers.begin(); w != watchers.end(); w++) {
+         if (w->udp_address == watcher.udp_address ) {
+            w->metrics &= ~watcher.metrics;
+            if (w->metrics == 0 || watcher.subjects.empty()) {
+               watchers.erase(w);
+            }
+            else {
+               for (auto l : watcher.subjects) {
+                  for (auto wl = w->subjects.begin(); wl != w->subjects.end(); wl++) {
+                     if( l == *wl ) {
+                        w->subjects.erase(wl);
+                        break;
+                     }
+                  }
+               }
+               if( w->subjects.empty() ) {
+                  watchers.erase(w);
+               }
+            }
+            break;
+         }
+      }
+   }
+
 
    //----------------------------------------------------------------------------------------
 
@@ -213,7 +325,7 @@ namespace eosio {
    }
 
    void topology_plugin::plugin_initialize( const variables_map& options ) {
-      ilog("Initialize topology plugin");
+      fc_ilog(topo_logger, "Initialize topology plugin");
       EOS_ASSERT( options.count( "bp-name" ) > 0, chain::plugin_config_exception,
                   "the topology module requires a bp-name be supplied" );
       try {
@@ -228,23 +340,59 @@ namespace eosio {
    }
 
    void topology_plugin::plugin_startup() {
-      ilog("Starting topology plugin");
+      fc_ilog(topo_logger, "Starting topology plugin");
       my->net_plug = app().find_plugin<net_plugin>();
       EOS_ASSERT( my->net_plug != nullptr, chain::plugin_config_exception, "No net plugin found.");
    }
 
    void topology_plugin::plugin_shutdown() {
       try {
-         ilog( "shutdown.." );
+         fc_ilog(topo_logger,  "shutdown.." );
          my->done = true;
-         ilog( "exit shutdown" );
+         fc_ilog(topo_logger,  "exit shutdown" );
       }
       FC_CAPTURE_AND_RETHROW()
    }
 
+
+   const string& topology_plugin::bp_name () {
+      return my->bp_name;
+   }
+
+   void topology_plugin::make_map_update ( topology_message &tm ) {
+      tm.origin = my->local_node_id;
+      tm.fwds = 0;
+      tm.ttl = 1;
+
+      map_update mu;
+      for (auto &np : my->nodes) {
+         mu.add_nodes.push_back(np.second.info);
+      }
+      for (auto &lp : my->links) {
+         mu.add_links.push_back(lp.second.info);
+      }
+      tm.payload.emplace_back(move(mu));
+
+   }
+
+   fc::sha256 topology_plugin::gen_long_id( const node_descriptor &desc ) {
+      return my->gen_long_id_i (desc);
+   }
+
+
+   void topology_plugin::set_local_node_id( node_id id) {
+      my->local_node_id = id;
+   }
+
    node_id topology_plugin::add_node ( node_descriptor&& n ) {
-      auto id = my->gen_id (n);
-      my->nodes.emplace( id, move(n));
+      n.my_id = my->gen_id (n);
+      node_id id = n.my_id;
+      topo_node tn(move(n));
+      for (auto &np : my->nodes) {
+         np.second.distance[id] = my->count_hops(id);
+         tn.distance[np.first] = np.second.distance[id];
+      }
+      my->nodes.emplace( id, move(tn));
 
       return id;
    }
@@ -297,33 +445,133 @@ namespace eosio {
       res << fc::json::to_pretty_string( specific_links ) << ends;
 
       return res.str();
-
    }
 
-   void topology_plugin::update_samples( link_id link,
-                                         const vector<pair<metric_kind,uint32_t> >& down,
-                                         const vector<pair<metric_kind,uint32_t> >& up) {
-      my->links[link].down.sample(down);
-      my->links[link].up.sample(up);
+   void topology_plugin::update_samples( const link_sample &ls) {
+      my->update_samples_i( ls, false );
+      topology_message tm;
+      tm.origin = my->local_node_id;
+      tm.destination = my->peer_node(ls.link, tm.origin);
+      tm.fwds = 0;
+      tm.ttl = 1;
+      tm.payload.push_back( ls );
+      dlog("sending new sample update message");
+      topo_update(tm);
    }
 
    uint16_t topology_plugin::sample_interval_sec () {
       return my->sample_imterval_sec;
    }
 
-   void topology_plugin::handle_message( topology_message&& msg )
+   class topo_msg_handler : public fc::visitor<void> {
+   public:
+      void operator()( const watch_update& msg) {
+         fc_dlog(topo_logger,"got a watcher message");
+         bool found = msg.watcher.subjects.empty();
+         if (!found) {
+            for (auto l : msg.watcher.subjects) {
+               found = my_impl->links.find( l ) != my_impl->links.end();
+               if (found) {
+                  break;
+               }
+            }
+         }
+         if (found) {
+            if( msg.adding ) {
+               my_impl->add_watcher( msg.watcher );
+            }
+            else {
+               my_impl->drop_watcher( msg.watcher );
+            }
+         }
+      }
+
+      void operator()( const map_update& msg) {
+         fc_dlog(topo_logger,"got a map update message");
+
+      }
+
+      void operator()( const link_sample& msg) {
+         fc_dlog(topo_logger,"got a link sample message");
+         my_impl->update_samples_i( msg, true );
+      }
+   };
+
+   void topology_plugin::handle_message( topology_message& msg )
    {
-      topology_message_ptr ptr = std::make_shared<topology_message>( std::move( msg ) );
+      topology_message_ptr ptr = std::make_shared<topology_message>( msg );
+      for (auto &p : ptr->payload) {
+         topo_msg_handler tm;
+         p.visit( tm );
+      }
+      ptr->fwds++;
+      if( ptr->ttl > ptr->fwds ) {
+         dlog("forwarding topology message. ttl = ${t}. fwds = ${f}",("t",ptr->ttl)("f",ptr->fwds));
+         topo_update(*ptr);
+      }
    }
 
-   void topology_plugin::watch( const string& udp_addr, const string& link_def, const string& metrics ) {
+   // deciding whether or not to forward depends on:
+   // 1. did this already come from us?
+   // 2. are we on the shortest path?
+   // 3. is the forward count equal to our number of hops from the origin?
+   bool topology_plugin::forward_topology_message(const topology_message& tm, link_id li ) {
+      auto &link = my->links[li];
+      node_id peerid = link.info.active == my->local_node_id ? link.info.passive : link.info.active;
+      elog ("origin = ${id} dest = ${to}, forwards = ${f}, ttl = ${tt}", ("id",tm.origin)("f",tm.fwds)("tt",tm.ttl)("to",tm.destination));
+      if( tm.origin == my->local_node_id && tm.fwds > 0 ) {
+         return false;
+      }
+
+      if (my->nodes[tm.origin].distance[my->local_node_id] < tm.fwds) {
+         elog ("message has too many hops, distance = ${d}, ttl = ${t}",
+                  ("d",my->nodes[tm.origin].distance[my->local_node_id])("t",tm.fwds));
+         return false;
+      }
+      return true;
    }
 
-   void topology_plugin::unwatch( const string& udp_addr, const string& link_def, const string& metrics ) {
+
+   void topology_plugin::watch( const string& udp_addr,
+                                const string& first_peer,
+                                const string& second_peer,
+                                const string& metrics ) {
+
+   }
+
+   void topology_plugin::unwatch( const string& udp_addr,
+                                  const string& first_peer,
+                                  const string& second_peer,
+                                  const string& metrics ) {
    }
 
    string topology_plugin::gen_grid( ) {
-      return "should be a graphviz compatible description of all nodes and links";
+      ostringstream df;
+      df << "digraph G\n{\nlayout=\"circo\";\n";
+      set<link_id> seen;
+      for (auto &tnode : my->nodes) {
+         for (const auto &l : tnode.second.links) {
+            if (seen.find(l) != seen.end())
+               continue;
+            auto &tlink = my->links[l];
+            seen.insert(tlink.info.my_id);
+            string alabel, plabel;
+            if (tlink.info.passive == tnode.first) {
+               alabel = my->nodes[tlink.info.active].dot_label();
+               plabel = tnode.second.dot_label();
+            } else {
+               plabel = my->nodes[tlink.info.active].dot_label();
+               alabel = tnode.second.dot_label();
+            }
+
+            df << "\"" << alabel
+               << "\"->\"" << plabel
+               << "\" [dir=\"forward\"];" << std::endl;
+         }
+      }
+      df << "}\n";
+      return df.str();
+
    }
 
 }

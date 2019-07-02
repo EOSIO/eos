@@ -58,7 +58,6 @@ namespace eosio {
        fork_max_depth = 0x200
       };
 
-
    /**
     * Link metrics is the accumulator of sample measurements. The measurements are all
     * kept in the context of the sender.
