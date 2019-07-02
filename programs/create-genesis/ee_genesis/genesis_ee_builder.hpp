@@ -35,6 +35,7 @@ private:
     void process_reblogs();
     void process_delete_reblogs();
     void process_transfers();
+    void process_rewards_history();
     void process_follows();
     void process_account_metas();
 
@@ -43,6 +44,7 @@ private:
     void write_messages();
     void write_transfers();
     void write_delegations();
+    void write_rewards_history();
     void write_pinblocks();
     void write_accounts();
     void write_witnesses();
@@ -56,6 +58,9 @@ private:
     bfs::ifstream dump_reblogs;
     bfs::ifstream dump_delete_reblogs;
     bfs::ifstream dump_transfers;
+    bfs::ifstream dump_author_rewards;
+    bfs::ifstream dump_curation_rewards;
+    bfs::ifstream dump_delegation_rewards;
     bfs::ifstream dump_follows;
     bfs::ifstream dump_metas;
 

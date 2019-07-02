@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ee_genesis_serializer.hpp"
+#include "golos_operations.hpp"
 #include <fc/crypto/sha256.hpp>
 
 namespace cyberway { namespace genesis { namespace ee {
@@ -15,7 +16,7 @@ public:
     void start(const bfs::path& ee_directory, const fc::sha256& hash);
     void finalize();
 
-    enum ee_ser_type {messages, transfers, delegations, pinblocks, accounts, witnesses, funds, balance_conversions};
+    enum ee_ser_type {messages, transfers, delegations, rewards, pinblocks, accounts, witnesses, funds, balance_conversions};
     ee_genesis_serializer& get_serializer(ee_ser_type type) {
         return serializers.at(type);
     }
@@ -81,6 +82,36 @@ struct transfer_info {
     fc::time_point_sec time;
 };
 
+struct author_reward {
+    OBJECT_CTOR(author_reward);
+
+    name author;
+    string permlink;
+    asset sbd_and_steem_payout;
+    asset vesting_payout;
+    fc::time_point_sec time;
+};
+
+struct curation_reward {
+    OBJECT_CTOR(curation_reward);
+
+    name curator;
+    asset reward;
+    name comment_author;
+    string comment_permlink;
+    fc::time_point_sec time;
+};
+
+struct delegation_reward {
+    OBJECT_CTOR(delegation_reward);
+
+    name delegator;
+    name delegatee;
+    cyberway::golos::ee::delegator_payout_strategy payout_strategy;
+    asset reward;
+    fc::time_point_sec time;
+};
+
 struct balance_convert_info {
     OBJECT_CTOR(balance_convert_info);
 
@@ -111,6 +142,9 @@ FC_REFLECT(cyberway::genesis::ee::comment_info, (parent_author)(parent_permlink)
     (title)(body)(tags)(language)(net_rshares)(rewardweight)(max_payout)(benefics_prcnt)(curators_prcnt)(tokenprop)(archived)
     (author_reward)(benefactor_reward)(curator_reward)(votes)(reblogs))
 FC_REFLECT(cyberway::genesis::ee::transfer_info, (from)(to)(quantity)(memo)(to_vesting)(time))
+FC_REFLECT(cyberway::genesis::ee::author_reward, (author)(permlink)(sbd_and_steem_payout)(vesting_payout)(time))
+FC_REFLECT(cyberway::genesis::ee::curation_reward, (curator)(reward)(comment_author)(comment_permlink)(time))
+FC_REFLECT(cyberway::genesis::ee::delegation_reward, (delegator)(delegatee)(payout_strategy)(reward)(time))
 FC_REFLECT(cyberway::genesis::ee::balance_convert_info, (owner)(amount)(memo))
 FC_REFLECT(cyberway::genesis::ee::pin_info, (pinner)(pinning))
 FC_REFLECT(cyberway::genesis::ee::block_info, (blocker)(blocking))

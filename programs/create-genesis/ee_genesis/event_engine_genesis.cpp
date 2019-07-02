@@ -91,6 +91,43 @@ static abi_def create_delegations_abi() {
     return abi;
 }
 
+static abi_def create_rewards_abi() {
+    abi_def abi;
+    abi.version = ABI_VERSION;
+
+    abi.structs.emplace_back( struct_def {
+        "author_reward", "", {
+            {"author", "name"},
+            {"permlink", "string"},
+            {"sbd_and_steem_payout", "asset"},
+            {"vesting_payout", "asset"},
+            {"time", "time_point_sec"},
+        }
+    });
+
+    abi.structs.emplace_back( struct_def {
+        "curation_reward", "", {
+            {"curator", "name"},
+            {"reward", "asset"},
+            {"comment_author", "name"},
+            {"comment_permlink", "string"},
+            {"time", "time_point_sec"},
+        }
+    });
+
+    abi.structs.emplace_back( struct_def {
+        "delegation_reward", "", {
+            {"delegator", "name"},
+            {"delegatee", "name"},
+            {"payout_strategy", "uint8"},
+            {"reward", "asset"},
+            {"time", "time_point_sec"},
+        }
+    });
+
+    return abi;
+}
+
 static abi_def create_balance_convert_abi() {
     abi_def abi;
     abi.version = ABI_VERSION;
@@ -200,6 +237,7 @@ void event_engine_genesis::start(const bfs::path& ee_directory, const fc::sha256
         {ee_ser_type::messages,    {"messages.dat",    create_messages_abi()}},
         {ee_ser_type::transfers,   {"transfers.dat",   create_transfers_abi()}},
         {ee_ser_type::delegations, {"delegations.dat", create_delegations_abi()}},
+        {ee_ser_type::rewards,     {"rewards.dat",     create_rewards_abi()}},
         {ee_ser_type::pinblocks,   {"pinblocks.dat",   create_pinblocks_abi()}},
         {ee_ser_type::accounts,    {"accounts.dat",    create_accounts_abi()}},
         {ee_ser_type::witnesses,   {"witnesses.dat",   create_witnesses_abi()}},
