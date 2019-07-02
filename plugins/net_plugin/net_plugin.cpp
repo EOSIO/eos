@@ -1450,6 +1450,12 @@ namespace eosio {
          c->syncing = true;
          return;
       }
+      // TODO: added by CyberWay
+      if (lib_num < peer_lib && head > msg.head_num) {
+         fc_dlog(logger, "sync check state 5");
+         verify_catchup(c, msg.head_num, msg.head_id);
+         return;
+      }
 
       if (head < msg.head_num ) {
          fc_dlog(logger, "sync check state 3");
