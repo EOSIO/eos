@@ -3002,8 +3002,8 @@ namespace eosio {
          if (results.first) {
             fc_dlog( logger, "signaled NACK, trx-id = ${id} : ${why}", ("id", id)( "why", results.first->to_detail_string() ) );
 
-            controller& cc = chain_plug->chain();
-            uint32_t head_blk_num = cc.head_block_num();
+            uint32_t head_blk_num = 0;
+            std::tie( std::ignore, head_blk_num, std::ignore, std::ignore, std::ignore, std::ignore ) = get_chain_info();
             dispatcher->rejected_transaction(id, head_blk_num);
          } else {
             fc_dlog( logger, "signaled ACK, trx-id = ${id}", ("id", id) );
