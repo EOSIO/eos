@@ -2997,17 +2997,19 @@ namespace eosio {
 
    // called from application thread
    void net_plugin_impl::transaction_ack(const std::pair<fc::exception_ptr, transaction_metadata_ptr>& results) {
-      const auto& id = results.second->id();
-      if (results.first) {
-         fc_dlog( logger, "signaled NACK, trx-id = ${id} : ${why}", ("id", id)( "why", results.first->to_detail_string() ) );
+      boost::asio::post( my_impl->thread_pool->get_executor(), [this, results]() {
+         const auto& id = results.second->id();
+         if (results.first) {
+            fc_dlog( logger, "signaled NACK, trx-id = ${id} : ${why}", ("id", id)( "why", results.first->to_detail_string() ) );
 
-         controller& cc = chain_plug->chain();
-         uint32_t head_blk_num = cc.head_block_num();
-         dispatcher->rejected_transaction(id, head_blk_num);
-      } else {
-         fc_dlog( logger, "signaled ACK, trx-id = ${id}", ("id", id) );
-         dispatcher->bcast_transaction(results.second);
-      }
+            uint32_t head_blk_num = 0;
+            std::tie( std::ignore, head_blk_num, std::ignore, std::ignore, std::ignore, std::ignore ) = get_chain_info();
+            dispatcher->rejected_transaction(id, head_blk_num);
+         } else {
+            fc_dlog( logger, "signaled ACK, trx-id = ${id}", ("id", id) );
+            dispatcher->bcast_transaction(results.second);
+         }
+      });
    }
 
    bool net_plugin_impl::authenticate_peer(const handshake_message& msg) const {
