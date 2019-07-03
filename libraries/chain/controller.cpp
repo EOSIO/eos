@@ -9,7 +9,6 @@
 #include <eosio/chain/block_summary_object.hpp>
 #include <eosio/chain/eosio_contract.hpp>
 #include <eosio/chain/global_property_object.hpp>
-#include <eosio/chain/contract_table_objects.hpp>
 #include <eosio/chain/generated_transaction_object.hpp>
 #include <eosio/chain/transaction_object.hpp>
 #include <eosio/chain/reversible_block_object.hpp>
@@ -17,7 +16,6 @@
 #include <eosio/chain/authorization_manager.hpp>
 #include <eosio/chain/resource_limits.hpp>
 #include <eosio/chain/stake.hpp>
-#include <eosio/chain/chain_snapshot.hpp>
 #include <eosio/chain/thread_utils.hpp>
 
 #include <chainbase/chainbase.hpp>
@@ -641,25 +639,6 @@ struct controller_impl {
       blocksum_table.modify( tapos_block_summary, [&]( auto& bs ) {
         bs.block_id = head->id;
       });
-      
-      conf.genesis.initial_configuration.max_block_usage = 
-        std::vector<uint64_t>(config::default_max_block_usage.begin(), config::default_max_block_usage.end());
-      conf.genesis.initial_configuration.max_transaction_usage = 
-        std::vector<uint64_t>(config::default_max_transaction_usage.begin(), config::default_max_transaction_usage.end());
-      conf.genesis.initial_configuration.target_virtual_limits = 
-        std::vector<uint64_t>(config::default_target_virtual_limits.begin(), config::default_target_virtual_limits.end());
-      conf.genesis.initial_configuration.min_virtual_limits = 
-        std::vector<uint64_t>(config::default_min_virtual_limits.begin(), config::default_min_virtual_limits.end());
-      conf.genesis.initial_configuration.max_virtual_limits = 
-        std::vector<uint64_t>(config::default_max_virtual_limits.begin(), config::default_max_virtual_limits.end());
-      conf.genesis.initial_configuration.usage_windows = 
-        std::vector<uint32_t>(config::default_usage_windows.begin(), config::default_usage_windows.end());
-      conf.genesis.initial_configuration.virtual_limit_decrease_pct = 
-        std::vector<uint16_t>(config::default_virtual_limit_decrease_pct.begin(), config::default_virtual_limit_decrease_pct.end());
-      conf.genesis.initial_configuration.virtual_limit_increase_pct = 
-        std::vector<uint16_t>(config::default_virtual_limit_increase_pct.begin(), config::default_virtual_limit_increase_pct.end());
-      conf.genesis.initial_configuration.account_usage_windows = 
-        std::vector<uint32_t>(config::default_account_usage_windows.begin(), config::default_account_usage_windows.end());
 
       conf.genesis.initial_configuration.validate();
       chaindb.emplace<global_property_object>([&](auto& gpo ){

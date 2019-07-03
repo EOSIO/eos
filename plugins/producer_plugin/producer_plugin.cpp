@@ -471,6 +471,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 
       fc::time_point calculate_pending_block_time() const;
       fc::time_point calculate_block_deadline( const fc::time_point& ) const;
+      fc::time_point calculate_block_starttime( const fc::time_point& ) const;
       void schedule_delayed_production_loop(const std::weak_ptr<producer_plugin_impl>& weak_this, const block_timestamp_type& current_block_time);
 };
 
@@ -971,15 +972,27 @@ fc::time_point producer_plugin_impl::calculate_pending_block_time() const {
    fc::time_point block_time = base + fc::microseconds(min_time_to_next_block);
 
 
-   if((block_time - now) < fc::microseconds(config::block_interval_us/10) ) {     // we must sleep for at least 50ms
+   // we must sleep for at least 50ms
+   if((block_time - now) < fc::microseconds(50'000) ) { // TODO: CyberWay changes from `fc::microseconds(config::block_interval_us/10)`
       block_time += fc::microseconds(config::block_interval_us);
    }
    return block_time;
 }
 
 fc::time_point producer_plugin_impl::calculate_block_deadline( const fc::time_point& block_time ) const {
-   bool last_block = ((block_timestamp_type(block_time).slot % config::producer_repetitions) == config::producer_repetitions - 1);
-   return block_time + fc::microseconds(last_block ? _last_block_time_offset_us : _produce_time_offset_us);
+   // TODO: refactored by CyberWay
+   // bool last_block = ((block_timestamp_type(block_time).slot % config::producer_repetitions) == config::producer_repetitions - 1);
+   // return block_time + fc::microseconds(last_block ? _last_block_time_offset_us : _produce_time_offset_us);
+   return block_time + fc::microseconds(_produce_time_offset_us);
+}
+
+fc::time_point producer_plugin_impl::calculate_block_starttime( const fc::time_point& block_time ) const {
+   chain::controller& chain = chain_plug->chain();
+   const auto& cfg = chain.get_global_properties().configuration;
+   const auto max_block_cpu_us = cfg.max_block_usage[chain::resource_limits::CPU];
+
+   return block_time - fc::microseconds(max_block_cpu_us + max_block_cpu_us/10);
+
 }
 
 enum class tx_category {
@@ -1000,7 +1013,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
    const auto& hbs = chain.head_block_state();
 
    //Schedule for the next second's tick regardless of chain state
-   // If we would wait less than 50ms (1/10 of block_interval), wait for the whole block interval.
+   // If we would wait less than 50ms, wait for the whole block interval.
    const fc::time_point now = fc::time_point::now();
    const fc::time_point block_time = calculate_pending_block_time();
 
@@ -1046,6 +1059,19 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
          chain.start_block(block_time);
       }
       return start_block_result::waiting;
+   }
+
+   // waiting block from previous BP, until we have time to produce block
+   if (_pending_block_mode == pending_block_mode::producing) {
+      auto head_block_age  = block_time - chain.head_block_time();
+      auto block_starttime = calculate_block_starttime(block_time);
+
+      if (head_block_age > fc::microseconds(config::block_interval_us) && now < block_starttime) {
+         if (!chain.pending_block_state()) {
+            chain.start_block(block_time);
+         }
+         return start_block_result::failed;
+      }
    }
 
    try {
@@ -1367,7 +1393,7 @@ void producer_plugin_impl::schedule_production_loop() {
 
    if (result == start_block_result::failed) {
       elog("Failed to start a pending block, will try again later");
-      _timer.expires_from_now( boost::posix_time::microseconds( config::block_interval_us  / 10 ));
+      _timer.expires_from_now( boost::posix_time::microseconds(50'000)); // TODO: CyberWay change from `boost::posix_time::microseconds(config::block_interval_us/10));`
 
       // we failed to start a block, so try again later?
       _timer.async_wait( app().get_priority_queue().wrap( priority::high,

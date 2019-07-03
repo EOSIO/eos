@@ -415,7 +415,7 @@ namespace bacc = boost::accumulators;
          net_usage,
          billed_ram_bytes,
          control.pending_block_time()); // can fail due to billed_ram_bytes
-      if( !control.skip_db_sessions() ) {
+      if( control.is_producing_block() ) {
          control.chaindb().apply_all_changes();
       }
    }

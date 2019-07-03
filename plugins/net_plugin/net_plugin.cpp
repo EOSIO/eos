@@ -1450,6 +1450,12 @@ namespace eosio {
          c->syncing = true;
          return;
       }
+      // TODO: added by CyberWay
+      if (lib_num < peer_lib && head > msg.head_num) {
+         fc_dlog(logger, "sync check state 5");
+         verify_catchup(c, msg.head_num, msg.head_id);
+         return;
+      }
 
       if (head < msg.head_num ) {
          fc_dlog(logger, "sync check state 3");
@@ -3029,7 +3035,7 @@ namespace eosio {
       }
       chain::controller&cc = my->chain_plug->chain();
       {
-         cc.accepted_block.connect(  boost::bind(&net_plugin_impl::accepted_block, my.get(), _1));
+         cc.accepted_block_header.connect(  boost::bind(&net_plugin_impl::accepted_block, my.get(), _1));
       }
 
       my->incoming_transaction_ack_subscription = app().get_channel<channels::transaction_ack>().subscribe(boost::bind(&net_plugin_impl::transaction_ack, my.get(), _1));

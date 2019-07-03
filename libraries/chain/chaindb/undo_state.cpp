@@ -424,7 +424,7 @@ namespace cyberway { namespace chaindb {
             index.account_abi = controller_.get_account_abi_info(config::system_account_name);
             index.table = index.abi().find_table(N(undo));
             index.pk_order = index.abi().find_pk_order(*index.table);
-            index.index = index.abi().find_pk_index(*index.table);
+            index.index = index.abi().find_index(*index.table, tag<by_rev>::get_code());
 
             auto  account_table = tag<account_object>::get_code();
             auto& cursor = driver_.lower_bound(index, {});
@@ -480,7 +480,7 @@ namespace cyberway { namespace chaindb {
             index.account_abi = controller_.get_account_abi_info(config::system_account_name);
             index.table = index.abi().find_table(N(undo));
             index.pk_order = index.abi().find_pk_order(*index.table);
-            index.index = index.abi().find_pk_index(*index.table);
+            index.index = index.abi().find_index(*index.table, tag<by_rev>::get_code());
 
             auto& cursor = driver_.lower_bound(index, {});
             for (; cursor.pk != primary_key::End; driver_.next(cursor)) {

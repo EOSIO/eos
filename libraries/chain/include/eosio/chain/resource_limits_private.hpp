@@ -134,8 +134,6 @@ using namespace int_arithmetic;
       std::vector<usage_accumulator> block_usage_accumulators;
       std::vector<int64_t> pending_usage;
       std::vector<uint64_t> virtual_limits;
-      uint64_t ram_size = config::default_ram_size;
-      uint64_t reserved_ram_size = config::default_reserved_ram_size;
       void update_virtual_limit(const resource_limits_config_object& cfg, resource_id res);
       void add_pending_delta(int64_t delta, const chain_config& chain_cfg, resource_id res);
    };
@@ -163,4 +161,4 @@ FC_REFLECT(eosio::chain::resource_limits::resource_usage_object, (owner)(accumul
 
 FC_REFLECT(eosio::chain::resource_limits::resource_limits_config_object, (id)(limit_parameters)(account_usage_average_windows))
 
-FC_REFLECT(eosio::chain::resource_limits::resource_limits_state_object, (id)(block_usage_accumulators)(pending_usage)(virtual_limits)(ram_size)(reserved_ram_size))
+FC_REFLECT(eosio::chain::resource_limits::resource_limits_state_object, (id)(block_usage_accumulators)(pending_usage)(virtual_limits))

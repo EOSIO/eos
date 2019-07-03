@@ -8,6 +8,7 @@
 #include <cyberway/chaindb/mongo_asset_converter.hpp>
 #include <cyberway/chaindb/exception.hpp>
 #include <cyberway/chaindb/names.hpp>
+#include <cyberway/chaindb/noscope_tables.hpp>
 
 #include <fc/time.hpp>
 #include <fc/variant_object.hpp>
@@ -754,7 +755,9 @@ namespace cyberway { namespace chaindb {
     }
 
     sub_document& build_find_pk_document(sub_document& doc, const table_info& table, const object_value& obj) {
-        append_scope_value(doc, table);
+        if (!is_noscope_table(table)) {
+            append_scope_value(doc, table);
+        }
         append_pk_value(doc, table, obj.service.pk);
         return doc;
     }

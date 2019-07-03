@@ -34,6 +34,9 @@ struct genesis_state {
       .max_inline_action_size               = config::default_max_inline_action_size,
       .max_inline_action_depth              = config::default_max_inline_action_depth,
       .max_authority_depth                  = config::default_max_auth_depth,
+
+      .ram_size                             = config::default_ram_size,
+      .reserved_ram_size                    = config::default_reserved_ram_size,
    };
 
    time_point                               initial_timestamp;

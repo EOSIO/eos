@@ -34,7 +34,10 @@ namespace eosio {
    uint32_t   max_inline_action_size;              ///< maximum allowed size (in bytes) of an inline action
    uint16_t   max_inline_action_depth;             ///< recursion depth limit on sending inline actions
    uint16_t   max_authority_depth;                 ///< recursion depth limit for checking if an authority is satisfied
-   
+
+   uint64_t   ram_size;
+   uint64_t   reserved_ram_size;
+
    std::vector<uint64_t> max_block_usage;
    std::vector<uint64_t> max_transaction_usage;
    
@@ -58,6 +61,8 @@ namespace eosio {
 
            (max_transaction_lifetime)(deferred_trx_expiration_window)(max_transaction_delay)
            (max_inline_action_size)(max_inline_action_depth)(max_authority_depth)
+
+           (ram_size)(reserved_ram_size)
            
            (max_block_usage)(max_transaction_usage)
            
