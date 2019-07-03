@@ -95,11 +95,11 @@ static abi_def create_delegations_abi() {
 
     abi.structs.emplace_back( struct_def {
         "delegate", "", {
-            {"from", "name"},
-            {"to", "name"},
+            {"delegator", "name"},
+            {"delegatee", "name"},
             {"quantity", "asset"},
             {"interest_rate", "uint16"},
-            {"time", "time_point_sec"},
+            {"min_delegation_time", "time_point_sec"},
         }
     });
 
