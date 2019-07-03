@@ -996,6 +996,7 @@ struct genesis_create::genesis_create_impl final {
                 ("delegators", delegators)
                 ("curatorsw", w)
                 ("rshares", v.rshares)
+                ("paid_amount", 0)
             );
             pk++;
         }
@@ -1079,6 +1080,7 @@ struct genesis_create::genesis_create_impl final {
                 ("closed", false)
                 ("mssg_reward", asset(0, symbol(GLS)))
                 ("max_payout", to_gls.convert(c.active.max_accepted_payout))
+                ("paid_amount", 0)
             );
             sum_net_rshares += c.active.net_rshares;
             sum_net_positive += (c.active.net_rshares > 0) ? c.active.net_rshares : 0;
