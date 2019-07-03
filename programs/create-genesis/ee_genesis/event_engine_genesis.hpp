@@ -1,7 +1,6 @@
 #pragma once
 
 #include "ee_genesis_serializer.hpp"
-#include "golos_operations.hpp"
 #include <fc/crypto/sha256.hpp>
 
 namespace cyberway { namespace genesis { namespace ee {
@@ -116,7 +115,6 @@ struct delegation_reward {
 
     name delegator;
     name delegatee;
-    cyberway::golos::ee::delegator_payout_strategy payout_strategy;
     asset reward;
     fc::time_point_sec time;
 };
@@ -154,7 +152,7 @@ FC_REFLECT(cyberway::genesis::ee::transfer_info, (from)(to)(quantity)(memo)(to_v
 FC_REFLECT(cyberway::genesis::ee::withdraw_info, (from)(to)(quantity)(time))
 FC_REFLECT(cyberway::genesis::ee::author_reward, (author)(permlink)(sbd_and_steem_payout)(vesting_payout)(time))
 FC_REFLECT(cyberway::genesis::ee::curation_reward, (curator)(reward)(comment_author)(comment_permlink)(time))
-FC_REFLECT(cyberway::genesis::ee::delegation_reward, (delegator)(delegatee)(payout_strategy)(reward)(time))
+FC_REFLECT(cyberway::genesis::ee::delegation_reward, (delegator)(delegatee)(reward)(time))
 FC_REFLECT(cyberway::genesis::ee::balance_convert_info, (owner)(amount)(memo))
 FC_REFLECT(cyberway::genesis::ee::pin_info, (pinner)(pinning))
 FC_REFLECT(cyberway::genesis::ee::block_info, (blocker)(blocking))

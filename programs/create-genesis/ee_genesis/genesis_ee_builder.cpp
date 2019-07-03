@@ -624,7 +624,6 @@ void genesis_ee_builder::write_rewards_history() {
             out.emplace<delegation_reward>([&](auto& r) {
                 r.delegator = generate_name(op.delegator);
                 r.delegatee = generate_name(op.delegatee);
-                r.payout_strategy = op.payout_strategy;
                 r.reward = op.vesting_shares_in_golos;
                 r.time = op.timestamp;
             });
