@@ -2,6 +2,11 @@
 
 # set up a wallet just for holding the key used during blockchain ignition
 
+coresym=$1
+if [ -z "$coresym" ]; then
+    coresym=SYS
+fi
+
 bioshost=$BIOS_HOSTNAME
 if [ -z "$bioshost" ]; then
    bioshost=localhost
@@ -96,14 +101,15 @@ ecmd create account cyber cyber.token $pubsyskey $pubsyskey
 ecmd create account cyber cyber.vpay $pubsyskey $pubsyskey
 
 ecmd set contract cyber.token contracts/cyber.token
+sleep 3 # prevent "Transaction exceeded the current CPU usage limit"
 ecmd set contract cyber.msig contracts/cyber.msig
 
 echo ===== Start: $step ============ >> $logfile
-echo executing: cleos --wallet-url $wdurl --url http://$bioshost:$biosport push action cyber.token create '["cyber", "10000000000.0000 SYS"]' -p cyber.token | tee -a $logfile
-echo executing: cleos --wallet-url $wdurl --url http://$bioshost:$biosport push action cyber.token issue '["cyber", "1000000000.0000 SYS", "memo"]' -p cyber | tee -a $logfile
+echo executing: cleos --wallet-url $wdurl --url http://$bioshost:$biosport push action cyber.token create '["cyber", "10000000000.0000 '$coresym'"]' -p cyber.token | tee -a $logfile
+echo executing: cleos --wallet-url $wdurl --url http://$bioshost:$biosport push action cyber.token issue '["cyber", "1000000000.0000 '$coresym'", "memo"]' -p cyber | tee -a $logfile
 echo ----------------------- >> $logfile
-programs/cleos/cleos --wallet-url $wdurl --url http://$bioshost:$biosport push action cyber.token create '["cyber", "10000000000.0000 SYS"]' -p cyber.token >> $logfile 2>&1
-programs/cleos/cleos --wallet-url $wdurl --url http://$bioshost:$biosport push action cyber.token issue '["cyber", "1000000000.0000 SYS", "memo"]' -p cyber >> $logfile 2>&1
+programs/cleos/cleos --wallet-url $wdurl --url http://$bioshost:$biosport push action cyber.token create '["cyber", "10000000000.0000 '$coresym'"]' -p cyber.token >> $logfile 2>&1
+programs/cleos/cleos --wallet-url $wdurl --url http://$bioshost:$biosport push action cyber.token issue '["cyber", "1000000000.0000 '$coresym'", "memo"]' -p cyber >> $logfile 2>&1
 echo ==== End: $step ============== >> $logfile
 step=$(($step + 1))
 
