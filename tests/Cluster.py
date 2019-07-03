@@ -849,7 +849,7 @@ class Cluster(object):
             Utils.Print("ERROR: Bios node doesn't appear to be running...")
             return None
 
-        cmd="bash bios_boot.sh"
+        cmd="bash bios_boot.sh %s" % (CORE_SYMBOL)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         if 0 != subprocess.call(cmd.split(), stdout=Utils.FNull):
             if not silent: Utils.Print("Launcher failed to shut down eos cluster.")

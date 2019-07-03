@@ -55,7 +55,7 @@ class Node(object):
         self.missingTransaction=False
         self.popenProc=None           # initial process is started by launcher, this will only be set on relaunch
         if self.enableMongo:
-            self.mongoEndpointArgs += "--host %s --port %d %s" % (mongoHost, mongoPort, mongoDb)
+            self.mongoEndpointArgs += "--host %s --port %d --quiet %s" % (mongoHost, mongoPort, mongoDb)
 
     def eosClientArgs(self):
         walletArgs=" " + self.walletMgr.getWalletEndpointArgs() if self.walletMgr is not None else ""
@@ -67,7 +67,7 @@ class Node(object):
 
     @staticmethod
     def assetToValue(asset):
-        return "%.*f %s" % (asset["decs"], asset["amount"]/(10**asset["decs"]), asset["sym"])
+        return asset #"%.*f %s" % (asset["decs"], asset["amount"]/(10**asset["decs"]), asset["sym"])
 
     @staticmethod
     def validateTransaction(trans):

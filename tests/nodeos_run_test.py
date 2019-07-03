@@ -301,7 +301,8 @@ try:
             key="[actions][0][name]"
             typeVal=  transaction["actions"][0]["name"]
             key="[actions][0][data][quantity]"
-            amountVal=transaction["actions"][0]["data"]["quantity"]["amount"]
+            amountVal=transaction["actions"][0]["data"]["quantity"]
+            amountVal=int(decimal.Decimal(amountVal.split()[0])*10000)
     except (TypeError, KeyError) as e:
         Print("transaction%s not found. Transaction: %s" % (key, transaction))
         raise
@@ -320,9 +321,9 @@ try:
     if hashNum != 0:
         errorExit("FAILURE - get code currency1111 failed", raw=True)
 
-    contractDir="unittests/contracts/eosio.token"
-    wasmFile="eosio.token.wasm"
-    abiFile="eosio.token.abi"
+    contractDir="contracts/cyber.token"
+    wasmFile="cyber.token.wasm"
+    abiFile="cyber.token.abi"
     Print("Publish contract")
     trans=node.publishContract(currencyAccount.name, contractDir, wasmFile, abiFile, waitForTransBlock=True)
     if trans is None:
@@ -384,7 +385,7 @@ try:
         raise
 
     Print("Verify currency1111 contract has proper initial balance (via get currency1111 balance)")
-    amountStr=node.getTableAccountBalance("currency1111", currencyAccount.name)
+    amountStr=node.getTableAccountBalance("currency1111", currencyAccount.name) #? cleos get currency balance
 
     expected="100000.0000 CUR"
     actual=amountStr
