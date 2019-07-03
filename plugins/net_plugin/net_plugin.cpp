@@ -712,6 +712,8 @@ namespace eosio {
       void handle_message( const packed_transaction& msg ) = delete; // packed_transaction_ptr overload used instead
       void handle_message( const packed_transaction_ptr& msg );
 
+      void process_signed_block( const signed_block_ptr& msg );
+
       fc::optional<fc::variant_object> _logger_variant;
       const fc::variant_object& get_logger_variant()  {
          if (!_logger_variant) {
@@ -750,12 +752,9 @@ namespace eosio {
       }
 
       void operator()( signed_block&& msg ) const {
+         // continue call to handle_message on connection strand
          shared_ptr<signed_block> ptr = std::make_shared<signed_block>( std::move( msg ) );
-         connection_wptr weak = c;
-         app().post(priority::high, [ptr{std::move(ptr)}, weak{std::move(weak)}] {
-            connection_ptr c = weak.lock();
-            if( c ) c->handle_message( ptr );
-         });
+         c->handle_message( ptr );
       }
 
       void operator()( packed_transaction&& msg ) const {
@@ -2787,8 +2786,16 @@ namespace eosio {
       });
    }
 
+   // called from connection strand
+   void connection::handle_message( const signed_block_ptr& ptr ) {
+      app().post(priority::high, [ptr, weak = weak_from_this()] {
+         connection_ptr c = weak.lock();
+         if( c ) c->process_signed_block( ptr );
+      });
+   }
+
    // called from application thread
-   void connection::handle_message( const signed_block_ptr& msg ) {
+   void connection::process_signed_block( const signed_block_ptr& msg ) {
       controller& cc = my_impl->chain_plug->chain();
       block_id_type blk_id = msg->id();
       uint32_t blk_num = msg->block_num();
