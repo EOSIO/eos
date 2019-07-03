@@ -2776,10 +2776,10 @@ int main( int argc, char** argv ) {
          const std::string abi_string = fc::base64_decode(result["abi"].as_string());
          const std::vector<char> abi_v(abi_string.begin(), abi_string.end());
 
-
-         if(!wasm.empty()) {
-            code_hash = fc::sha256::hash(wasm.data(), wasm.size());
-         }
+         fc::sha256 hash;
+         if(wasm.size())
+            hash = fc::sha256::hash(wasm.data(), wasm.size());
+         code_hash = (string)hash;
 
          if(!code_as_wasm && !wasm.empty()) {
             wast = wasm_to_wast(reinterpret_cast<const uint8_t*>(wasm.data()), wasm.size(), false);
