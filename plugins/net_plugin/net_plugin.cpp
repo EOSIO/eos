@@ -1088,6 +1088,18 @@ namespace eosio {
    void connection::collect_samples() {
       link_sample ls;
       ls.link = topo_id;
+      #if 0
+       queue_depth = 0x01,          // how many messages are waiting to be sent
+       queue_latency = 0x02,        // how long does a message sit in the queue
+       net_latency = 0x04,          // how long does a network traversal take
+       bytes_sent = 0x08,           // how many bytes have been sent on a link since its connection
+       bytes_per_second = 0x10,     // average flow rate in bytes/second
+       messages_sent = 0x20,        // how many messages have been sent on a link since connection
+       messages_per_second = 0x40,  // average flow rate in messages/second
+       fork_instances = 0x80,       // how many forks have been detected from a peer
+       fork_depth = 0x100,          // how many blocks we on the most recent / current fork
+       fork_max_depth = 0x200       // how many blocks on the longest fork since connection
+      #endif
       // todo: fill in list
       // down metrics are related to flow from the peer to me
       // up metrics are related to flow from me to the peer
@@ -3425,7 +3437,6 @@ namespace eosio {
       }
 
       if (my->topology_plug != nullptr) {
-         //todo: populate the struct
          node_descriptor nd;
          nd.location = my->topology_plug->bp_name() + ":" + my->p2p_address;
          eosio::chain_apis::read_only::get_producers_params parm({false, "", 100});
