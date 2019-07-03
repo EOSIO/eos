@@ -1400,6 +1400,7 @@ class Cluster(object):
             node=self.nodes[i]
             if node.killed and not node.relaunch(i, chainArg, newChain=newChain, cachePopen=cachePopen):
                 return False
+            time.sleep(1)
 
         return True
 
