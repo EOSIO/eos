@@ -17,7 +17,7 @@ The topology plugin will produce a graphvis compatible rendition of the network 
 
 Ultimately this map could help further reduce network traffic by not forwarding unblocked transactions to _all_ nodes, preferring to route them only to producer nodes which might be responsible for enblocking or verifying. Likewise new block messages can be routed in a way that avoids duplication.
 ##API
-this table highlights the calls available using the http interface
+this table highlights the calls available using the http interface. This list is tentative and subject to change.
 
 | request |   arguments   |   result   | description | 
 |---------|---------------|------------|-------------|
@@ -25,7 +25,32 @@ this table highlights the calls available using the http interface
   links | string: with_node | vector of link descriptors | supply a [list of?] node ideentifies as retrived with the /nodes/ function and get back a list of descriptors covering all of the connections to or from the identified node
    watch | string: udp\_addr string: links string: metrics | void | supply a watcher callback address for metrics related to the specified links
   unwatch | string: udp\_addr string: links string: metrics | void | remove a watcher callback address for metrics related to the specified links
+
+##configuration options
+These are the new setting introduced by the topology plugin
+
+| option | values | description |
+|--------|--------|-------------|
+
+
+##metrics gathered 
+These are the tentative connection metrics that are accumulated by the topology module. Some metrics refer to flow from the local to the peer and others from the peer to the local node. To disambiguate, the flow is either "up" from the active connector to the passive connector, or "down" which is from passive to active. An "active" connector is typically considered a client, and a "passive" connector is typically a server. However with this protocol the two nodes are equivalent in responsibility. 
+
+| name | description |
+|------|-------------|
+ queue\_depth | how many messages are waiting to be sent
+ queue\_latency | how long does a message sit in the queue
+ net\_latency | how long does a network traversal take
+ bytes\_sent | how many bytes have been sent on a link since its connection
+ bytes\_per\_second | average flow rate in bytes/second
+ messages\_sent | how many messages have been sent on a link since connection
+ messages\_per\_second | average flow rate in messages/second
+ fork\_instances | how many forks have been detected from a peer
+ fork\_depth | how many blocks we on the most recent / current fork
+ fork\_max\_depth | how many blocks on the longest fork since connection
  
+
+
 ##source file map
 The plugin follows the common idiom of a lightweight interface class and a more robust hidden implementation class. To improve the atomicity of included headers, these are broken apart as shown
 

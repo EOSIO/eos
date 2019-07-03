@@ -18,6 +18,8 @@ namespace eosio{
       watcher_def      watcher;
    };
 
+   using sample_metric = pair<metric_kind,uint32_t>;
+
    struct link_sample {
       link_id    link;
       vector<pair<metric_kind,uint32_t> > down;
