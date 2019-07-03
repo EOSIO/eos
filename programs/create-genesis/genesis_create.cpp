@@ -803,8 +803,6 @@ struct genesis_create::genesis_create_impl final {
 
         db.start_section(_info.golos.names.vesting, N(delegation), "delegation", _visitor.delegations.size());
         primary_key_t pk = 0;
-        auto ee_start_time = _conf.initial_timestamp;
-        ee_start_time -= fc::days(_info.ee_params.history_days.delegations);
         for (const auto& d: _visitor.delegations) {
             auto delegator = name_by_acc(d.delegator);
             auto delegation = mvo
@@ -816,10 +814,7 @@ struct genesis_create::genesis_create_impl final {
                 ("min_delegation_time", d.min_delegation_time);
             db.insert(pk, VESTS >> 8, delegator, delegation("id", pk));
             pk++;
-
-            if (d.min_delegation_time >= ee_start_time) {
-                _exp_info.delegations.push_back(delegation);
-            }
+            _exp_info.delegations.push_back(delegation);
         }
 
         db.start_section(_info.golos.names.vesting, N(rdelegation), "return_delegation",
