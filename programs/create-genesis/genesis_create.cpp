@@ -812,7 +812,6 @@ struct genesis_create::genesis_create_impl final {
                 ("delegatee", name_by_acc(d.delegatee))
                 ("quantity", asset(d.vesting_shares.get_amount(), symbol(VESTS)))
                 ("interest_rate", d.interest_rate)
-                ("payout_strategy", int(d.payout_strategy))
                 ("min_delegation_time", d.min_delegation_time);
             db.insert(pk, VESTS >> 8, delegator, delegation("id", pk));
             pk++;
@@ -978,7 +977,6 @@ struct genesis_create::genesis_create_impl final {
                 delegators.emplace_back(mvo
                     ("delegator", name_by_acc(d.account))
                     ("interest_rate", d.interest_rate)
-                    ("payout_strategy", int(d.payout_strategy))
                 );
             }
             auto cid = v.comment;

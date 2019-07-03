@@ -99,7 +99,6 @@ static abi_def create_delegations_abi() {
             {"to", "name"},
             {"quantity", "asset"},
             {"interest_rate", "uint16"},
-            {"payout_strategy", "uint8"},
             {"time", "time_point_sec"},
         }
     });
@@ -135,7 +134,6 @@ static abi_def create_rewards_abi() {
         "delegation_reward", "", {
             {"delegator", "name"},
             {"delegatee", "name"},
-            {"payout_strategy", "uint8"},
             {"reward", "asset"},
             {"time", "time_point_sec"},
         }
