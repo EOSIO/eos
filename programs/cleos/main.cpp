@@ -343,14 +343,17 @@ fc::variant push_transaction( signed_transaction& trx, packed_transaction::compr
    }
 
    if (!tx_dont_broadcast) {
-      bool send_txn_func_supported = true;
-      if (info.server_version_string) {
-        int major, minor;
-        if (sscanf(info.server_version_string->c_str(), "v%d.%d", &major, &minor) == 2) {
-          send_txn_func_supported = !(major == 1 && minor < 8);
-        }
+      if (tx_use_old_rpc) {
+         return call(push_txn_func, packed_transaction(trx, compression));
+      } else {
+         try {
+            return call(send_txn_func, packed_transaction(trx, compression));
+         }
+         catch (chain::missing_chain_api_plugin_exception &) {
+            std::cerr << "New RPC send_transaction may not be supported. Add flag --use-old-rpc to use old RPC push_transaction instead." << std::endl;
+            throw;
+         }
       }
-      return call(!tx_use_old_rpc && send_txn_func_supported ? send_txn_func : push_txn_func, packed_transaction(trx, compression));
    } else {
       if (!tx_return_packed) {
         return fc::variant(trx);
