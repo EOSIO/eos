@@ -43,16 +43,23 @@ class transaction_metadata {
       transaction_metadata operator=(transaction_metadata&) = delete;
       transaction_metadata operator=(transaction_metadata&&) = delete;
 
-      explicit transaction_metadata( const signed_transaction& t, packed_transaction::compression_type c = packed_transaction::none )
+      explicit transaction_metadata( const signed_transaction& t, uint32_t max_variable_sig_size = UINT32_MAX, packed_transaction::compression_type c = packed_transaction::compression_type::none )
             : _packed_trx( std::make_shared<packed_transaction>( t, c ) )
             , _id( t.id() )
             , _signed_id( digest_type::hash( *_packed_trx ) ) {
+         check_variable_sig_size(max_variable_sig_size);
       }
 
-      explicit transaction_metadata( const packed_transaction_ptr& ptrx )
+      explicit transaction_metadata( const packed_transaction_ptr& ptrx, uint32_t max_variable_sig_size = UINT32_MAX )
             : _packed_trx( ptrx )
             , _id( ptrx->id() )
             , _signed_id( digest_type::hash( *_packed_trx ) ) {
+         check_variable_sig_size(max_variable_sig_size);
+      }
+
+      void check_variable_sig_size(uint32_t max) {
+         for(const signature_type& sig : _packed_trx->get_signed_transaction().signatures)
+            EOS_ASSERT(sig.variable_size() <= max, sig_variable_size_limit_exception, "signature variable length component size (${s}) greater than subjective maximum (${m})", ("s", sig.variable_size())("m", max));
       }
 
       const packed_transaction_ptr& packed_trx()const { return _packed_trx; }

@@ -410,7 +410,7 @@ class Cluster(object):
 
         Cluster.__LauncherCmdArr = cmdArr.copy()
 
-        s=" ".join(cmdArr)
+        s=" ".join([("'{0}'".format(element) if (' ' in element) else element) for element in cmdArr.copy()])
         if Utils.Debug: Utils.Print("cmd: %s" % (s))
         if 0 != subprocess.call(cmdArr):
             Utils.Print("ERROR: Launcher failed to launch. failed cmd: %s" % (s))

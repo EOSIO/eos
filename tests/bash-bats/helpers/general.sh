@@ -7,6 +7,7 @@ export VERBOSE=true
 export BATS_RUN=true
 export CURRENT_USER=$(whoami)
 export HOME="$BATS_TMPDIR/bats-eosio-user-home" # Ensure $HOME is available for all scripts
+export CURRENT_WORKING_DIR=$(pwd)
 load helpers/functions
 
 if [[ $NAME == "Ubuntu" ]]; then # Ubuntu won't find any packages until this runs + ensure update only runs once
