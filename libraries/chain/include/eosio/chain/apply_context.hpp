@@ -14,6 +14,7 @@ namespace cyberway { namespace chaindb {
     class chaindb_controller;
     struct storage_payer_info;
     struct chaindb_cursor_cache;
+    struct chaindb_guard;
 } }
 
 namespace chainbase { class database; }
@@ -22,6 +23,7 @@ namespace eosio { namespace chain {
 
 using cyberway::chaindb::chaindb_controller;
 using cyberway::chaindb::chaindb_cursor_cache;
+using cyberway::chaindb::chaindb_guard;
 using cyberway::chaindb::storage_payer_info;
 
 class controller;
@@ -622,6 +624,7 @@ class apply_context {
 //      chainbase::database&          db;
       chaindb_controller&           chaindb; ///< database where state is stored
       chaindb_cursor_cache*         chaindb_cache = nullptr;
+      chaindb_guard*                cursors_guard = nullptr;
       transaction_context&          trx_context; ///< transaction context in which the action is running
       const action&                 act; ///< message being applied
       account_name                  receiver; ///< the code that is currently running

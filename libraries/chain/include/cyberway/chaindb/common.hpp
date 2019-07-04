@@ -97,10 +97,27 @@ namespace cyberway { namespace chaindb {
     using cache_object_ptr = boost::intrusive_ptr<cache_object>;
 
     struct find_info final {
-        cursor_t      cursor = invalid_cursor;
-        primary_key_t pk     = primary_key::End;
+        find_info(cursor_t cursor, primary_key_t pk, cache_object_ptr object_ptr, const chaindb_controller& controller, account_name_t code);
+        find_info(const chaindb_controller& controller, account_name_t code);
 
+        find_info(find_info&& other) noexcept;
+
+        bool operator == (cursor_t cursor) const;
+        find_info& operator = (find_info&& other) noexcept;
+        find_info& operator ++ ();
+        find_info& operator -- ();
+
+        find_info clone() const;
+        bool is_cursor_initialized() const;
+
+        ~find_info();
+
+        cursor_t cursor = cyberway::chaindb::invalid_cursor;
+        primary_key_t pk = cyberway::chaindb::primary_key::End;
         cache_object_ptr object_ptr;
+        const chaindb_controller& controller;
+        const account_name_t code;
+
     }; // struct find_info
 
     class chaindb_session final {

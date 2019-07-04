@@ -67,10 +67,11 @@ void apply_context::exec_one( action_trace& trace )
                   this->chaindb_cache = nullptr;
                });
 
-               cyberway::chaindb::chaindb_guard guard(chaindb, receiver);
+               chaindb_guard guard(*this);
                chaindb_cursor_cache cache;
 
                this->chaindb_cache = &cache;
+               this->cursors_guard = &guard;
                control.get_wasm_interface().apply( a.code_version, a.code, *this );
             } catch( const wasm_exit& ) {}
          }

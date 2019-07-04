@@ -151,7 +151,7 @@ namespace cyberway { namespace chaindb {
 
         find_info begin(const index_request&) const;
         find_info end(const index_request&) const;
-        find_info clone(const cursor_request&) const;
+        cursor_t clone(const cursor_request&) const;
 
         primary_key_t current(const cursor_request&) const;
         primary_key_t next(const cursor_request&) const;
@@ -188,23 +188,5 @@ namespace cyberway { namespace chaindb {
 
         std::unique_ptr<chaindb_controller_impl> impl_;
     }; // class chaindb_controller
-
-    class chaindb_guard final {
-    public:
-        chaindb_guard() = delete;
-        chaindb_guard(const chaindb_guard&) = delete;
-
-        chaindb_guard(chaindb_controller& controller, const account_name& code)
-        : controller_(controller), code_(code) {
-        }
-
-        ~chaindb_guard() {
-            controller_.close_code_cursors(code_);
-        }
-
-    private:
-        const chaindb_controller& controller_;
-        const account_name& code_;
-    }; // class chaindb_guard
 
 } } // namespace cyberway::chaindb
