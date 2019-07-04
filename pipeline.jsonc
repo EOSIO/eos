@@ -30,7 +30,7 @@
         "environment":
         {
             "SKIP_PRE_V180": "true",
-            "SKIP_V180": "true"
+            "SKIP_V180": "true",
             "SKIP_V200": "false"
         }
     }
