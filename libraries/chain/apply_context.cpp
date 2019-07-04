@@ -515,7 +515,9 @@ void apply_context::add_storage_usage( const storage_payer_info& storage ) {
       if( !(privileged || storage.payer == receiver) ) {
          EOS_ASSERT( control.is_ram_billing_in_notify_allowed() || (receiver == act.account), subjective_block_production_exception,
              "Cannot charge RAM to other accounts during notify." );
-         require_authorization( storage.payer );
+         if( storage.owner == storage.payer ) {
+            require_authorization( storage.payer );
+         }
       }
 
       is_authorized = true;
