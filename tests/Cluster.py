@@ -1078,10 +1078,11 @@ class Cluster(object):
 
         eosioStakeAccount=copy.deepcopy(eosioAccount)
         eosioStakeAccount.name="cyber.stake"
-        trans=biosNode.createAccount(eosioStakeAccount, eosioAccount, 0)
-        if trans is None:
-            Utils.Print("ERROR: Failed to create account %s" % (eosioStakeAccount.name))
-            return None
+        ## created by nodeos
+        # trans=biosNode.createAccount(eosioStakeAccount, eosioAccount, 0)
+        # if trans is None:
+        #     Utils.Print("ERROR: Failed to create account %s" % (eosioStakeAccount.name))
+        #     return None
 
         Node.validateTransaction(trans)
         transId=Node.getTransId(trans)
@@ -1144,17 +1145,17 @@ class Cluster(object):
                         (expectedAmount, actualAmount))
             return None
 
-        contract="eosio.system"
-        contractDir="unittests/contracts/%s" % (contract)
-        wasmFile="%s.wasm" % (contract)
-        abiFile="%s.abi" % (contract)
-        Utils.Print("Publish %s contract" % (contract))
-        trans=biosNode.publishContract(eosioAccount.name, contractDir, wasmFile, abiFile, waitForTransBlock=True)
-        if trans is None:
-            Utils.Print("ERROR: Failed to publish contract %s." % (contract))
-            return None
+        # contract="eosio.system"
+        # contractDir="unittests/contracts/%s" % (contract)
+        # wasmFile="%s.wasm" % (contract)
+        # abiFile="%s.abi" % (contract)
+        # Utils.Print("Publish %s contract" % (contract))
+        # trans=biosNode.publishContract(eosioAccount.name, contractDir, wasmFile, abiFile, waitForTransBlock=True)
+        # if trans is None:
+        #     Utils.Print("ERROR: Failed to publish contract %s." % (contract))
+        #     return None
 
-        Node.validateTransaction(trans)
+        # Node.validateTransaction(trans)
 
         initialFunds="1000000.0000 {0}".format(CORE_SYMBOL)
         Utils.Print("Transfer initial fund %s to individual accounts." % (initialFunds))

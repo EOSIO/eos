@@ -143,11 +143,12 @@ errorExit=Utils.errorExit
 
 from core_symbol import CORE_SYMBOL
 
-args = TestHelper.parse_args({"--prod-count","--dump-error-details","--keep-logs","-v","--leave-running","--clean-run",
+args = TestHelper.parse_args({"--prod-count","--mongodb","--dump-error-details","--keep-logs","-v","--leave-running","--clean-run",
                               "--p2p-plugin","--wallet-port"})
 Utils.Debug=args.v
+enableMongo=args.mongodb
 totalNodes=4
-cluster=Cluster(walletd=True)
+cluster=Cluster(walletd=True, enableMongo=enableMongo)
 dumpErrorDetails=args.dump_error_details
 keepLogs=args.keep_logs
 dontKill=args.leave_running
