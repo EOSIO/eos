@@ -46,7 +46,7 @@ BOOST_FIXTURE_TEST_CASE(ram_tests, eosio_system::eosio_system_tester) { try {
       try {
          set_code( N(testram11111), test_ram_limit_wast );
          break;
-      } catch (const ram_usage_exceeded&) {
+      } catch (const tx_subjective_usage_exceeded&) {
          init_request_bytes += increment_contract_bytes;
          buyrambytes(config::system_account_name, N(testram11111), increment_contract_bytes);
          buyrambytes(config::system_account_name, N(testram22222), increment_contract_bytes);
@@ -58,7 +58,7 @@ BOOST_FIXTURE_TEST_CASE(ram_tests, eosio_system::eosio_system_tester) { try {
       try {
          set_abi( N(testram11111), test_ram_limit_abi );
          break;
-      } catch (const ram_usage_exceeded&) {
+      } catch (const tx_subjective_usage_exceeded&) {
          init_request_bytes += increment_contract_bytes;
          buyrambytes(config::system_account_name, N(testram11111), increment_contract_bytes);
          buyrambytes(config::system_account_name, N(testram22222), increment_contract_bytes);
@@ -104,7 +104,7 @@ BOOST_FIXTURE_TEST_CASE(ram_tests, eosio_system::eosio_system_tester) { try {
                            ("from", 1)
                            ("to", 10)
                            ("size", 1790 /*1920*/)),
-                           ram_usage_exceeded,
+                           tx_subjective_usage_exceeded,
                            fc_exception_message_starts_with("account testram11111 has insufficient ram"));
    wlog("ram_tests 2    %%%%%%");
    produce_blocks(1);
@@ -126,7 +126,7 @@ BOOST_FIXTURE_TEST_CASE(ram_tests, eosio_system::eosio_system_tester) { try {
                            ("from", 1)
                            ("to", 11)
                            ("size", 1680/*1810*/)),
-                           ram_usage_exceeded,
+                           tx_subjective_usage_exceeded,
                            fc_exception_message_starts_with("account testram11111 has insufficient ram"));
    produce_blocks(1);
    BOOST_REQUIRE_EQUAL(ram_usage - 1000, rlm.get_account_usage(N(testram11111))[resource_limits::STORAGE]);
@@ -138,7 +138,7 @@ BOOST_FIXTURE_TEST_CASE(ram_tests, eosio_system::eosio_system_tester) { try {
                            ("from", 1)
                            ("to", 11)
                            ("size", 1760)),
-                           ram_usage_exceeded,
+                           tx_subjective_usage_exceeded,
                            fc_exception_message_starts_with("account testram11111 has insufficient ram"));
    produce_blocks(1);
    BOOST_REQUIRE_EQUAL(ram_usage - 1000, rlm.get_account_usage(N(testram11111))[resource_limits::STORAGE]);
@@ -163,7 +163,7 @@ BOOST_FIXTURE_TEST_CASE(ram_tests, eosio_system::eosio_system_tester) { try {
                            ("from", 12)
                            ("to", 12)
                            ("size", 1780)),
-                           ram_usage_exceeded,
+                           tx_subjective_usage_exceeded,
                            fc_exception_message_starts_with("account testram11111 has insufficient ram"));
    produce_blocks(1);
 
@@ -182,7 +182,7 @@ BOOST_FIXTURE_TEST_CASE(ram_tests, eosio_system::eosio_system_tester) { try {
                            ("from", 13)
                            ("to", 13)
                            ("size", 1660)),
-                           ram_usage_exceeded,
+                           tx_subjective_usage_exceeded,
                            fc_exception_message_starts_with("account testram11111 has insufficient ram"));
    produce_blocks(1);
 
@@ -201,7 +201,7 @@ BOOST_FIXTURE_TEST_CASE(ram_tests, eosio_system::eosio_system_tester) { try {
                            ("from", 13)
                            ("to", 13)
                            ("size", 1900)),
-                           ram_usage_exceeded,
+                           tx_subjective_usage_exceeded,
                            fc_exception_message_starts_with("account testram11111 has insufficient ram"));
    produce_blocks(1);
 
@@ -221,7 +221,7 @@ BOOST_FIXTURE_TEST_CASE(ram_tests, eosio_system::eosio_system_tester) { try {
                            ("from", 12)
                            ("to", 21)
                            ("size", 1930)),
-                           ram_usage_exceeded,
+                           tx_subjective_usage_exceeded,
                            fc_exception_message_starts_with("account testram22222 has insufficient ram"));
    produce_blocks(1);
 
@@ -240,7 +240,7 @@ BOOST_FIXTURE_TEST_CASE(ram_tests, eosio_system::eosio_system_tester) { try {
                            ("from", 22)
                            ("to", 22)
                            ("size", 1910)),
-                           ram_usage_exceeded,
+                           tx_subjective_usage_exceeded,
                            fc_exception_message_starts_with("account testram22222 has insufficient ram"));
    produce_blocks(1);
 

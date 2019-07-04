@@ -1805,7 +1805,7 @@ BOOST_FIXTURE_TEST_CASE(net_usage_tests, tester ) try {
          push_transaction(ptrx);
          produce_blocks(1);
          return true;
-      } catch (tx_net_usage_exceeded &) {
+      } catch (tx_usage_exceeded &) {
          return false;
       } catch (transaction_exception &) {
          return false;
@@ -1857,7 +1857,7 @@ BOOST_FIXTURE_TEST_CASE(weighted_net_usage_tests, tester ) try {
          push_transaction(ptrx );
          produce_blocks(1);
          return true;
-      } catch (tx_net_usage_exceeded &) {
+      } catch (tx_usage_exceeded &) {
          return false;
       }
    };

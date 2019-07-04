@@ -212,10 +212,10 @@ bool is_assert_exception(fc::assert_exception const & e) { return true; }
 bool is_page_memory_error(page_memory_error const &e) { return true; }
 bool is_unsatisfied_authorization(unsatisfied_authorization const & e) { return true;}
 bool is_wasm_execution_error(eosio::chain::wasm_execution_error const& e) {return true;}
-bool is_tx_net_usage_exceeded(const tx_net_usage_exceeded& e) { return true; }
-bool is_block_net_usage_exceeded(const tx_cpu_usage_exceeded& e) { return true; }
-bool is_tx_cpu_usage_exceeded(const tx_cpu_usage_exceeded& e) { return true; }
-bool is_block_cpu_usage_exceeded(const tx_cpu_usage_exceeded& e) { return true; }
+bool is_tx_net_usage_exceeded(const tx_usage_exceeded& e) { return true; }
+bool is_block_net_usage_exceeded(const tx_subjective_usage_exceeded& e) { return true; }
+bool is_tx_cpu_usage_exceeded(const tx_subjective_usage_exceeded& e) { return true; }
+bool is_block_cpu_usage_exceeded(const tx_subjective_usage_exceeded& e) { return true; }
 bool is_deadline_exception(const deadline_exception& e) { return true; }
 
 /*
@@ -776,7 +776,7 @@ BOOST_AUTO_TEST_CASE(checktime_fail_tests) { try {
 
    BOOST_CHECK_EXCEPTION( call_test( t, test_api_action<TEST_METHOD("test_checktime", "checktime_failure")>{},
                                      0 ),
-                          tx_cpu_usage_exceeded, is_tx_cpu_usage_exceeded );
+                          tx_subjective_usage_exceeded, is_tx_cpu_usage_exceeded );
 
    uint32_t time_left_in_block_us = config::default_max_block_usage[eosio::chain::resource_limits::CPU] - config::default_min_transaction_cpu_usage;
    std::string dummy_string = "nonce";
@@ -787,7 +787,7 @@ BOOST_AUTO_TEST_CASE(checktime_fail_tests) { try {
    }
    BOOST_CHECK_EXCEPTION( call_test( t, test_api_action<TEST_METHOD("test_checktime", "checktime_failure")>{},
                                     0 ),
-                          block_cpu_usage_exceeded, is_block_cpu_usage_exceeded );
+                          block_usage_exceeded, is_block_cpu_usage_exceeded );
 
    BOOST_REQUIRE_EQUAL( t.validate(), true );
 } FC_LOG_AND_RETHROW() }

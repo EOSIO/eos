@@ -176,7 +176,10 @@ namespace bacc = boost::accumulators;
                                              const signed_transaction& t,
                                              const transaction_id_type& trx_id,
                                              fc::time_point s )
-   :control(c)
+   :hard_limits {{
+       {c, resource_limits::CPU, true}, {c, resource_limits::NET, false}, 
+       {c, resource_limits::RAM, true}, {c, resource_limits::STORAGE, false}}}
+   ,control(c)
    ,trx(t)
    ,id(trx_id)
    // TODO: removed by CyberWay
@@ -209,60 +212,25 @@ namespace bacc = boost::accumulators;
 
       const auto& cfg = control.get_global_properties().configuration;
       auto& rl = control.get_mutable_resource_limits_manager();
-
-      net_limit = rl.get_block_limit(resource_limits::NET, cfg);
-      objective_duration_limit = fc::microseconds( rl.get_block_limit(resource_limits::CPU, cfg) );
-
-      _deadline = start + objective_duration_limit;
-
-      // Possibly lower net_limit to the maximum net usage a transaction is allowed to be billed
-      if( cfg.max_transaction_usage[resource_limits::NET] <= net_limit ) {
-         net_limit = cfg.max_transaction_usage[resource_limits::NET];
-         net_limit_due_to_block = false;
+      
+      for (size_t i = 0; i < resource_limits::resources_num; i++) {
+         hard_limits[i].init(rl.get_block_limit(static_cast<resource_limits::resource_id>(i), cfg));
+         hard_limits[i].update(cfg.max_transaction_usage[i]); 
       }
+      hard_limits[resource_limits::CPU    ].update(static_cast<uint64_t>(trx.max_cpu_usage_ms) * 1000); 
+      hard_limits[resource_limits::NET    ].update(static_cast<uint64_t>(trx.max_net_usage_words.value) * 8); 
+      hard_limits[resource_limits::RAM    ].update(static_cast<uint64_t>(trx.max_ram_kbytes) << 10); 
+      hard_limits[resource_limits::STORAGE].update(static_cast<uint64_t>(trx.max_storage_kbytes) << 10);
+      
+      hard_limits[resource_limits::NET].max = (hard_limits[resource_limits::NET].max / 8) * 8;
 
-      // Possibly lower objective_duration_limit to the maximum cpu usage a transaction is allowed to be billed
-      if( cfg.max_transaction_usage[resource_limits::CPU] <= objective_duration_limit.count() ) {
-         objective_duration_limit = fc::microseconds(cfg.max_transaction_usage[resource_limits::CPU]);
-         billing_timer_exception_code = tx_cpu_usage_exceeded::code_value;
-         _deadline = start + objective_duration_limit;
+      if(billed_cpu_time_us > 0) { // could also call on explicit_billed_cpu_time but it would be redundant
+         hard_limits[resource_limits::CPU].check(billed_cpu_time_us); // Fail early if the amount to be billed is too high
       }
-
-      // Possibly lower net_limit to optional limit set in the transaction header
-      uint64_t trx_specified_net_usage_limit = static_cast<uint64_t>(trx.max_net_usage_words.value) * 8;
-      if( trx_specified_net_usage_limit > 0 && trx_specified_net_usage_limit <= net_limit ) {
-         net_limit = trx_specified_net_usage_limit;
-         net_limit_due_to_block = false;
-      }
-
-      // Possibly lower RAM limit to optional limit set in transaction header
-      if( trx.max_ram_kbytes > 0 ) {
-         ram_bytes_limit = uint64_t(trx.max_ram_kbytes) << 10;
+      if(billed_ram_bytes > 0) {
+         hard_limits[resource_limits::RAM].check(billed_ram_bytes);
       }
       
-      // Possibly lower STORAGE limit to optional limit set in transaction header
-      if( trx.max_storage_kbytes > 0 ) {
-         storage_bytes_limit = uint64_t(trx.max_storage_kbytes) << 10;
-      }
-      
-      ram_bytes_limit     = std::min(ram_bytes_limit,     cfg.max_transaction_usage[resource_limits::RAM]);
-      storage_bytes_limit = std::min(storage_bytes_limit, cfg.max_transaction_usage[resource_limits::STORAGE]);
-
-      // Possibly lower objective_duration_limit to optional limit set in transaction header
-      if( trx.max_cpu_usage_ms > 0 ) {
-         auto trx_specified_cpu_usage_limit = fc::milliseconds(trx.max_cpu_usage_ms);
-         if( trx_specified_cpu_usage_limit <= objective_duration_limit ) {
-            objective_duration_limit = trx_specified_cpu_usage_limit;
-            billing_timer_exception_code = tx_cpu_usage_exceeded::code_value;
-            _deadline = start + objective_duration_limit;
-         }
-      }
-
-      initial_objective_duration_limit = objective_duration_limit;
-
-      if( billed_cpu_time_us > 0 ) // could also call on explicit_billed_cpu_time but it would be redundant
-         validate_cpu_usage_to_bill( billed_cpu_time_us, false ); // Fail early if the amount to be billed is too high
-
       using cyberway::chain::providebw;
 
       storage_providers.reserve(trx.actions.size());
@@ -287,22 +255,13 @@ namespace bacc = boost::accumulators;
 
       available_resources.init(explicit_billed_cpu_time, rl, bill_to_accounts, control.pending_block_time());
 
-      eager_net_limit = net_limit;
-
-      //TODO:? net/cpu leeway
-
-      billing_timer_duration_limit = _deadline - start;
+      _deadline = start + get_billing_timer_duration_limit();
 
       // Check if deadline is limited by caller-set deadline (only change deadline if billed_cpu_time_us is not set)
-      if( explicit_billed_cpu_time || deadline < _deadline ) {
-         _deadline = deadline;
-         deadline_exception_code = deadline_exception::code_value;
-      } else {
-         deadline_exception_code = billing_timer_exception_code;
+      if( explicit_billed_cpu_time || caller_set_deadline < _deadline ) {
+         _deadline = caller_set_deadline;
       }
-
-      eager_net_limit = (eager_net_limit/8)*8; // Round down to nearest multiple of word size (8 bytes) so check_net_usage can be efficient
-
+      
       if( initial_net_usage > 0 )
          add_net_usage( initial_net_usage );  // Fail early if current net usage is already greater than the calculated limit
 
@@ -435,23 +394,23 @@ namespace bacc = boost::accumulators;
        auto& rl = control.get_mutable_resource_limits_manager();
 
        update_billed_ram_bytes();
-
-       check_ram_usage();
-
-       check_storage_usage();
-
-       net_usage = ((net_usage + 7)/8)*8; // Round up to nearest multiple of word size (8 bytes)
-
-       eager_net_limit = net_limit;
-
-       check_net_usage();
-
+       
+       net_usage = ((net_usage + 7)/8)*8;
+       
        auto now = fc::time_point::now();
        trace->elapsed = now - start;
 
-       update_billed_cpu_time( now );
+       update_billed_cpu_time(now);
+       
+       const auto& cfg = control.get_global_properties().configuration;
+       EOS_ASSERT( billed_cpu_time_us >= cfg.min_transaction_cpu_usage, transaction_exception,
+          "cannot bill CPU time less than the minimum of ${min_billable} us",
+          ("min_billable", cfg.min_transaction_cpu_usage)("billed_cpu_time_us", billed_cpu_time_us));
 
-       validate_cpu_usage_to_bill( billed_cpu_time_us );
+       hard_limits[resource_limits::CPU    ].check(billed_cpu_time_us);
+       hard_limits[resource_limits::NET    ].check(net_usage);
+       hard_limits[resource_limits::RAM    ].check(billed_ram_bytes); //? how about an explicitly_billed_exception case?
+       hard_limits[resource_limits::STORAGE].check(storage_bytes);
    }
 
    void transaction_context::squash() {
@@ -465,62 +424,40 @@ namespace bacc = boost::accumulators;
       // if (undo_session) undo_session->undo();
       if (chaindb_undo_session) chaindb_undo_session->undo();
    }
+   
+    fc::time_point transaction_context::get_current_time() const { 
+        return explicit_billed_cpu_time ? start + fc::microseconds(billed_cpu_time_us) : fc::time_point::now();
+    };
 
-   void transaction_context::check_net_usage()const {
-      if (!control.skip_trx_checks()) {
-         if( BOOST_UNLIKELY(net_usage > eager_net_limit) ) {
-            if ( net_limit_due_to_block ) {
-               EOS_THROW( block_net_usage_exceeded,
-                          "not enough space left in block: ${net_usage} > ${net_limit}",
-                          ("net_usage", net_usage)("net_limit", eager_net_limit) );
-            } else {
-               EOS_THROW( tx_net_usage_exceeded,
-                          "transaction net usage is too high: ${net_usage} > ${net_limit}",
-                          ("net_usage", net_usage)("net_limit", eager_net_limit) );
-            }
-         }
+    void transaction_context::checktime()const {
+
+        if (!explicit_billed_cpu_time && BOOST_LIKELY((_deadline_timer.expired == false)))
+            return;
+
+        auto now = get_current_time();
+        if (BOOST_UNLIKELY(now > _deadline)) {
+            auto cpu_used = (now - pseudo_start).count();
+            EOS_ASSERT(!explicit_billed_cpu_time, explicitly_billed_exception,
+            //? in this case, EOS throws deadline_exception
+                "explicitly_billed_exception",
+                ("now", now)("deadline", _deadline)("start", start)("cpu_used", cpu_used));
+            
+            EOS_ASSERT(!timer_off, timer_off_exception,
+            //? again, deadline_exception in EOS
+                "timer_off_exception",
+                ("now", now)("deadline", _deadline)("start", start)("cpu_used", cpu_used));
+            
+            EOS_ASSERT(now <= caller_set_deadline, deadline_exception,
+                "deadline_exception",
+                ("now", now)("deadline", _deadline)("start", start)("cpu_used", cpu_used));
+                
+            hard_limits[resource_limits::CPU].check(cpu_used);
+            available_resources.check_cpu_usage(cpu_used);
+    
+            EOS_ASSERT( false,  transaction_exception, "unexpected deadline exception code" );
       }
    }
-
-   void transaction_context::check_ram_usage()const {
-      EOS_ASSERT(control.skip_trx_checks() || explicit_billed_ram_bytes || !ram_bytes_limit || billed_ram_bytes < ram_bytes_limit,
-         tx_ram_usage_exceeded, "transaction ram usage is too high: ${ram_usage} > ${ram_limit}",
-         ("ram_usage", billed_ram_bytes)("ram_limit", ram_bytes_limit) );
-   }
-
-   void transaction_context::check_storage_usage()const {
-      EOS_ASSERT(control.skip_trx_checks() || !storage_bytes_limit || storage_bytes < storage_bytes_limit,
-         tx_storage_usage_exceeded, "transaction storage usage is too high: ${storage_usage} > ${storage_limit}",
-         ("storage_usage", storage_bytes)("storage_limit", storage_bytes_limit) );
-   }
-
-   void transaction_context::checktime()const {
-
-      if(BOOST_LIKELY(_deadline_timer.expired == false))
-         return;
-      auto now = fc::time_point::now();
-      if( BOOST_UNLIKELY( now > _deadline ) ) {
-         // edump((now-start)(now-pseudo_start));
-         if( explicit_billed_cpu_time || deadline_exception_code == deadline_exception::code_value ) {
-            EOS_THROW( deadline_exception, "deadline exceeded", ("now", now)("deadline", _deadline)("start", start) );
-         } else if( deadline_exception_code == block_cpu_usage_exceeded::code_value ) {
-            EOS_THROW( block_cpu_usage_exceeded,
-                        "not enough time left in block to complete executing transaction",
-                        ("now", now)("deadline", _deadline)("start", start)("billing_timer", now - pseudo_start) );
-         } else if( deadline_exception_code == tx_cpu_usage_exceeded::code_value ) {
-            EOS_THROW( tx_cpu_usage_exceeded,
-                     "transaction was executing for too long",
-                     ("now", now)("deadline", _deadline)("start", start)("billing_timer", now - pseudo_start) );
-         } else if( deadline_exception_code == leeway_deadline_exception::code_value ) {
-            EOS_THROW( leeway_deadline_exception,
-                        "the transaction was unable to complete by deadline, "
-                        "but it is possible it could have succeeded if it were allowed to run to completion",
-                        ("now", now)("deadline", _deadline)("start", start)("billing_timer", now - pseudo_start) );
-         }
-         EOS_ASSERT( false,  transaction_exception, "unexpected deadline exception code" );
-      }
-      available_resources.check_cpu_usage((now - pseudo_start).count());
-   }
+   
 
    void transaction_context::pause_billing_timer() {
       if( explicit_billed_cpu_time || pseudo_start == fc::time_point() ) return; // either irrelevant or already paused
@@ -528,9 +465,9 @@ namespace bacc = boost::accumulators;
       auto now = fc::time_point::now();
       billed_time = now - pseudo_start;
 
-      deadline_exception_code = deadline_exception::code_value; // Other timeout exceptions cannot be thrown while billable timer is paused.
       pseudo_start = fc::time_point();
       _deadline_timer.stop();
+      timer_off = true;
    }
 
    void transaction_context::resume_billing_timer() {
@@ -538,15 +475,20 @@ namespace bacc = boost::accumulators;
 
       auto now = fc::time_point::now();
       pseudo_start = now - billed_time;
-      if( (pseudo_start + billing_timer_duration_limit) <= deadline ) {
-         _deadline = pseudo_start + billing_timer_duration_limit;
-         deadline_exception_code = billing_timer_exception_code;
-      } else {
-         _deadline = deadline;
-         deadline_exception_code = deadline_exception::code_value;
+      
+      _deadline = pseudo_start + get_billing_timer_duration_limit();
+      if(caller_set_deadline < _deadline) {
+         _deadline = caller_set_deadline;
       }
+
       _deadline_timer.start(_deadline);
+      timer_off = false;
    }
+   
+   void transaction_context::reset_billing_timer() {
+      pause_billing_timer();
+      resume_billing_timer();
+   };
 
    void transaction_context::validate_cpu_usage_to_bill( int64_t billed_us, bool check_minimum )const {
       if (!control.skip_trx_checks()) {
@@ -557,46 +499,27 @@ namespace bacc = boost::accumulators;
                         ("min_billable", cfg.min_transaction_cpu_usage)("billed_cpu_time_us", billed_us)
                       );
          }
-
-         if( billing_timer_exception_code == block_cpu_usage_exceeded::code_value ) {
-            EOS_ASSERT( billed_us <= objective_duration_limit.count(),
-                        block_cpu_usage_exceeded,
-                        "billed CPU time (${billed} us) is greater than the billable CPU time left in the block (${billable} us)",
-                        ("billed", billed_us)("billable", objective_duration_limit.count())
-                      );
-         } else {
-            EOS_ASSERT( billed_us <= objective_duration_limit.count(),
-                        tx_cpu_usage_exceeded,
-                        "billed CPU time (${billed} us) is greater than the maximum billable CPU time for the transaction (${billable} us)",
-                        ("billed", billed_us)("billable", objective_duration_limit.count())
-                     );
-         }
+         hard_limits[resource_limits::CPU].check(billed_us);
       }
    }
 
    void transaction_context::add_storage_usage( const storage_payer_info& storage, const bool is_authorized ) {
       storage_bytes += storage.delta;
-      check_storage_usage();
+      hard_limits[resource_limits::STORAGE].check(storage_bytes);
 
-      auto now = fc::time_point::now();
-      if (available_resources.update_storage_usage(storage)) {
-         available_resources.check_cpu_usage((now - pseudo_start).count());
-      }
+      auto now = get_current_time();
+      available_resources.update_storage_usage(storage);
+      reset_billing_timer();
 
       auto& rl = control.get_mutable_resource_limits_manager();
       rl.add_storage_usage(storage.payer, storage.delta, control.pending_block_slot(), is_authorized);
    }
 
-   int64_t transaction_context::get_billed_cpu_time(fc::time_point now)const {
-      if (explicit_billed_cpu_time){
-         return billed_cpu_time_us;
-      }
-      const auto& cfg = control.get_global_properties().configuration;
-      return std::max((now - pseudo_start).count(), static_cast<int64_t>(cfg.min_transaction_cpu_usage));
-   }
-
    uint32_t transaction_context::update_billed_cpu_time( fc::time_point now ) {
-      billed_cpu_time_us = get_billed_cpu_time(now);
+      if (!explicit_billed_cpu_time) {
+         const auto& cfg = control.get_global_properties().configuration;
+         billed_cpu_time_us = std::max((now - pseudo_start).count(), static_cast<int64_t>(cfg.min_transaction_cpu_usage));
+      }
       return static_cast<uint32_t>(billed_cpu_time_us);
    }
 
@@ -607,7 +530,6 @@ namespace bacc = boost::accumulators;
          billed_ram_bytes = ((billed_ram_bytes + 1023) >> 10) << 10; // Round up to nearest kbytes
          billed_ram_bytes = std::max(billed_ram_bytes, cfg.min_transaction_ram_usage);
 
-         check_ram_usage();
          explicit_billed_ram_bytes = true;
       }
       return billed_ram_bytes;
@@ -757,7 +679,7 @@ namespace bacc = boost::accumulators;
         rl.update_account_usage(accounts, block_timestamp_type(pending_block_time).slot);
         min_cpu_limit = UINT64_MAX;
         for (const auto& a : accounts) {
-            auto balance = rl.get_account_balance(pending_block_time, a, pricelist, true);
+            auto balance = rl.get_account_balance(pending_block_time, a, pricelist, true); //тут нада объективное бросать?ы
             auto& lim = cpu_limits[a];
             lim = UINT64_MAX;
             if (cpu_price.numerator && balance < UINT64_MAX) {
@@ -767,13 +689,13 @@ namespace bacc = boost::accumulators;
         }
     }
 
-    bool transaction_context::available_resources_t::update_storage_usage(const storage_payer_info& storage) {
+    void transaction_context::available_resources_t::update_storage_usage(const storage_payer_info& storage) {
         if (explicit_cpu_time || !storage.delta) {
-            return false;
+            return;
         }
         auto lim_itr = cpu_limits.find(storage.payer);
         if (lim_itr == cpu_limits.end()) {
-            return false;
+            return;
         }
         auto& lim = lim_itr->second;
         uint64_t delta_abs = std::abs(storage.delta);
@@ -786,7 +708,7 @@ namespace bacc = boost::accumulators;
 
         bool need_to_update_min = (lim == min_cpu_limit) && (storage.delta < 0);
         if (storage.delta > 0) {
-            EOS_ASSERT(lim >= cpu, resource_exhausted_exception,
+            EOS_ASSERT(lim >= cpu, account_resources_exceeded,
                 "account ${a} has insufficient staked tokens: unspent cpu = ${b}, cost = ${c}, cpu equivalent = ${e}",
                 ("a", storage.payer)("b", lim)("c", cost)("e", cpu));
             lim -= cpu;
@@ -804,7 +726,6 @@ namespace bacc = boost::accumulators;
         else {
             min_cpu_limit = std::min(lim, min_cpu_limit);
         }
-        return min_cpu_limit < prev_min_cpu;
     }
 
     void transaction_context::available_resources_t::add_net_usage(int64_t delta) {
@@ -819,7 +740,7 @@ namespace bacc = boost::accumulators;
         auto cost = safe_prop_ceil(static_cast<uint64_t>(delta), net_price.numerator, net_price.denominator);
         auto cpu = safe_prop_ceil(cost, cpu_price.denominator, cpu_price.numerator);
 
-        EOS_ASSERT(min_cpu_limit >= cpu, resource_exhausted_exception,
+        EOS_ASSERT(min_cpu_limit >= cpu, account_resources_exceeded,
             "transaction costs too much; unspent cpu = ${b}, cost cpu equivalent = ${e}", ("b", min_cpu_limit)("e", cpu));
         min_cpu_limit = UINT64_MAX;
         for (auto& b : cpu_limits) {
@@ -830,12 +751,43 @@ namespace bacc = boost::accumulators;
     }
 
     void transaction_context::available_resources_t::check_cpu_usage(int64_t usage)const {
-        EOS_ASSERT(explicit_cpu_time || min_cpu_limit >= usage, resource_exhausted_exception,
+        EOS_ASSERT(min_cpu_limit >= usage, account_resources_exceeded,
             "transaction costs too much; unspent cpu = ${b}, usage = ${u}", ("b", min_cpu_limit)("u", usage));
     }
-
-    int64_t transaction_context::get_min_cpu_limit()const {
-        auto ret_unsigned = available_resources.get_min_cpu_limit();
-        return ret_unsigned > static_cast<uint64_t>(INT64_MAX) ? INT64_MAX : static_cast<int64_t>(ret_unsigned);
-    }
+    
+   transaction_context::hard_limit::hard_limit(const controller& control_, const resource_limits::resource_id res_id_, bool subjective_)  
+      : control(control_), res_id(res_id_), subjective(subjective_) {}
+      
+   void transaction_context::hard_limit::init(uint64_t block_limit) {
+      max = block_limit; 
+      due_to_block = true;
+   }
+    
+   void transaction_context::hard_limit::update(uint64_t limit) { 
+      if (limit && limit <= max) {
+         max = limit; 
+         due_to_block = false; 
+      }
+   }
+    
+   void transaction_context::hard_limit::check(int64_t arg) const {
+      if (!control.skip_trx_checks()) {
+         if(BOOST_UNLIKELY(arg > 0 && arg > max)) {
+            if (due_to_block) { 
+               EOS_THROW(block_usage_exceeded, 
+                          "not enough resource(${res_id}) left in block: ${arg} > ${max}", 
+                          ("res_id", static_cast<int>(res_id))("arg", arg)("max", max)); 
+            } else if (subjective) { 
+               EOS_THROW(tx_subjective_usage_exceeded, 
+                          "transaction resource(${res_id}) usage is too high (subjectively): ${arg} > ${max}", 
+                          ("res_id", static_cast<int>(res_id))("arg", arg)("max", max)); 
+            } 
+            else { 
+               EOS_THROW(tx_usage_exceeded, 
+                          "transaction resource(${res_id}) usage is too high: ${arg} > ${max}", 
+                          ("res_id", static_cast<int>(res_id))("arg", arg)("max", max)); 
+            } 
+         } 
+      } 
+   }
 } } /// eosio::chain

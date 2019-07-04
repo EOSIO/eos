@@ -58,9 +58,10 @@ using namespace eosio::chain::plugin_interface;
 namespace {
    bool failure_is_subjective(const fc::exception& e, bool deadline_is_subjective) {
       auto code = e.code();
-      return (code == block_cpu_usage_exceeded::code_value) ||
-             (code == block_net_usage_exceeded::code_value) ||
-             (code == deadline_exception::code_value && deadline_is_subjective);
+      return (code == block_usage_exceeded::code_value) || (deadline_is_subjective && (
+                (code == deadline_exception::code_value)
+             || (code == timer_off_exception::code_value)
+             || (code == explicitly_billed_exception::code_value)));
    }
 }
 

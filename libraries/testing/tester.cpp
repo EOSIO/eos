@@ -179,17 +179,24 @@ namespace eosio { namespace testing {
 
          vector<transaction_id_type> scheduled_trxs;
          while( (scheduled_trxs = get_scheduled_transactions() ).size() > 0 ) {
+            bool successful_transaction_exists = false; 
             for (const auto& trx : scheduled_trxs ) {
                auto trace = control->push_scheduled_transaction(trx, fc::time_point::maximum());
                if(trace->except) {
-                  trace->except->dynamic_rethrow_exception();
+                  if (!controller::scheduled_failure_is_subjective((*trace->except), true)) {
+                     trace->except->dynamic_rethrow_exception();
+                  }
                }
+               else {
+                   successful_transaction_exists = true;
+               }
+            }
+            if (!successful_transaction_exists) {
+               break;
             }
          }
       }
-
       auto head_block = _finish_block();
-
       _start_block( next_time + fc::microseconds(config::block_interval_us));
       return head_block;
    }

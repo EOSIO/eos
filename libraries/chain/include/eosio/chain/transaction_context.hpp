@@ -88,31 +88,19 @@ namespace eosio { namespace chain {
 
          inline void add_net_usage( uint64_t u ) {
             net_usage += u;
-            check_net_usage();
+            hard_limits[resource_limits::NET].check(net_usage);
             available_resources.add_net_usage(u);
-            available_resources.check_cpu_usage((fc::time_point::now() - pseudo_start).count());
+            reset_billing_timer();
          }
-         // inline void add_cpu_usage( uint64_t u ) { billed_cpu_time_us += u;}
-
-         uint64_t get_net_usage() const {return net_usage;}
-         uint64_t get_cpu_usage() const {return billed_cpu_time_us;}
-
-         void check_net_usage()const;
-
-         void check_ram_usage()const;
-
-         void check_storage_usage()const;
 
          void checktime()const;
 
          void pause_billing_timer();
          void resume_billing_timer();
-         int64_t get_billed_cpu_time( fc::time_point now )const;
+         void reset_billing_timer();
+         
          uint32_t update_billed_cpu_time( fc::time_point now );
-
          uint64_t update_billed_ram_bytes();
-
-         int64_t get_min_cpu_limit()const;
 
          void add_storage_usage( const storage_payer_info&, bool is_authorized );
 
@@ -154,6 +142,20 @@ namespace eosio { namespace chain {
 
       /// Fields:
       public:
+      
+         struct hard_limit {
+            const controller& control;
+            const resource_limits::resource_id res_id; 
+            const bool subjective; 
+            uint64_t max = 0; 
+            bool due_to_block = true; 
+            hard_limit(const controller& control_, const resource_limits::resource_id res_id_, bool subjective_); 
+            void init(uint64_t block_limit);
+            void update(uint64_t limit); 
+            void check(int64_t arg) const;
+         }; 
+          
+         std::array<hard_limit, resource_limits::resources_num> hard_limits; 
 
          controller&                   control;
          const signed_transaction&     trx;
@@ -166,19 +168,15 @@ namespace eosio { namespace chain {
 
          fc::time_point                published;
 
-
          vector<action_receipt>        executed;
          flat_set<account_name>        bill_to_accounts;
-
-         /// the maximum number of virtual CPU instructions of the transaction that can be safely billed to the billable accounts
-         uint64_t                      initial_max_billable_cpu = 0;
 
          fc::microseconds              delay;
          bool                          is_input           = false;
          bool                          apply_context_free = true;
          
-         fc::time_point                deadline = fc::time_point::maximum();
-         fc::microseconds              leeway = fc::microseconds(3000);
+         fc::time_point                caller_set_deadline = fc::time_point::maximum();
+         fc::microseconds              leeway = fc::microseconds(3000); //TODO: remove it
          int64_t                       billed_cpu_time_us = 0;
          bool                          explicit_billed_cpu_time = false;
 
@@ -188,26 +186,20 @@ namespace eosio { namespace chain {
       private:
          bool                          is_initialized = false;
 
-         uint64_t                      net_limit = 0;
-         bool                          net_limit_due_to_block = true;
-         uint64_t                      eager_net_limit = 0;
          uint64_t&                     net_usage; /// reference to trace->net_usage
 
          int64_t&                      storage_bytes; /// reference to trace->storage_bytes
-         uint64_t                      storage_bytes_limit = 0;
 
-         uint64_t                      ram_bytes_limit = 0;
-
-         fc::microseconds              initial_objective_duration_limit;
-         fc::microseconds              objective_duration_limit;
          fc::time_point                _deadline = fc::time_point::maximum();
-         int64_t                       deadline_exception_code = block_cpu_usage_exceeded::code_value;
-         int64_t                       billing_timer_exception_code = block_cpu_usage_exceeded::code_value;
+         bool                          timer_off = false;    
          fc::time_point                pseudo_start;
          fc::microseconds              billed_time;
-         fc::microseconds              billing_timer_duration_limit;
+         fc::microseconds get_billing_timer_duration_limit() {
+             return fc::microseconds(std::min(available_resources.get_min_cpu_limit(), hard_limits[resource_limits::CPU].max));
+         };
 
          deadline_timer                _deadline_timer;
+         fc::time_point get_current_time() const;
 
 // TODO: request bw, why provided?
 //         std::map<account_name, provided_bandwith> provided_bandwith_;
@@ -221,7 +213,7 @@ namespace eosio { namespace chain {
             bool explicit_cpu_time = false;
         public:
             void init(bool, resource_limits_manager& rl, const flat_set<account_name>& accounts, fc::time_point pending_block_time);
-            bool update_storage_usage(const storage_payer_info&);
+            void update_storage_usage(const storage_payer_info&);
             void add_net_usage(int64_t delta);
             void check_cpu_usage(int64_t usage) const;
             uint64_t get_min_cpu_limit()const { return min_cpu_limit; };
