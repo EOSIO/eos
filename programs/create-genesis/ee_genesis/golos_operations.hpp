@@ -93,6 +93,14 @@ struct author_reward_operation : hashed_operation {
     fc::time_point_sec timestamp;
 };
 
+struct comment_benefactor_reward_operation : hashed_operation {
+    account_name_type benefactor;
+    account_name_type author;
+    string permlink;
+    asset reward_in_golos;
+    fc::time_point_sec timestamp;
+};
+
 struct curation_reward_operation : hashed_operation {
     account_name_type curator;
     asset reward_in_golos;
@@ -147,6 +155,8 @@ REFLECT_OP(cyberway::golos::ee::fill_vesting_withdraw_operation, (from_account)(
 REFLECT_OP_HASHED(cyberway::golos::ee::follow_operation, (follower)(following)(what))
 
 REFLECT_OP_HASHED(cyberway::golos::ee::author_reward_operation, (author)(permlink)(sbd_and_steem_in_golos)(vesting_payout_in_golos)(timestamp))
+
+REFLECT_OP_HASHED(cyberway::golos::ee::comment_benefactor_reward_operation, (benefactor)(author)(permlink)(reward_in_golos)(timestamp))
 
 REFLECT_OP_HASHED(cyberway::golos::ee::curation_reward_operation, (curator)(reward_in_golos)(comment_author)(comment_permlink)(timestamp))
 

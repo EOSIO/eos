@@ -100,6 +100,16 @@ struct author_reward {
     fc::time_point_sec time;
 };
 
+struct benefactor_reward {
+    OBJECT_CTOR(benefactor_reward);
+
+    name benefactor;
+    name author;
+    string permlink;
+    asset reward;
+    fc::time_point_sec time;
+};
+
 struct curation_reward {
     OBJECT_CTOR(curation_reward);
 
@@ -151,6 +161,7 @@ FC_REFLECT(cyberway::genesis::ee::comment_info, (parent_author)(parent_permlink)
 FC_REFLECT(cyberway::genesis::ee::transfer_info, (from)(to)(quantity)(memo)(to_vesting)(time))
 FC_REFLECT(cyberway::genesis::ee::withdraw_info, (from)(to)(quantity)(time))
 FC_REFLECT(cyberway::genesis::ee::author_reward, (author)(permlink)(sbd_and_steem_payout)(vesting_payout)(time))
+FC_REFLECT(cyberway::genesis::ee::benefactor_reward, (benefactor)(author)(permlink)(reward)(time))
 FC_REFLECT(cyberway::genesis::ee::curation_reward, (curator)(reward)(comment_author)(comment_permlink)(time))
 FC_REFLECT(cyberway::genesis::ee::delegation_reward, (delegator)(delegatee)(reward)(time))
 FC_REFLECT(cyberway::genesis::ee::balance_convert_info, (owner)(amount)(memo))

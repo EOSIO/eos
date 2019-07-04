@@ -121,6 +121,16 @@ static abi_def create_rewards_abi() {
     });
 
     abi.structs.emplace_back( struct_def {
+        "benefactor_reward", "", {
+            {"benefactor", "name"},
+            {"author", "name"},
+            {"permlink", "string"},
+            {"reward", "asset"},
+            {"time", "time_point_sec"},
+        }
+    });
+
+    abi.structs.emplace_back( struct_def {
         "curation_reward", "", {
             {"curator", "name"},
             {"reward", "asset"},
