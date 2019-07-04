@@ -103,7 +103,7 @@ private:
             auto result = abi->to_object(action_type, act.data.data(), act.data.size());
             return result;
         } catch (const fc::exception &err) {
-            ilog("Can't unpack arguments for action ${account}:${action}: ${err}",
+            ilog("Can't unpack arguments for action ${account}:${event}: ${err}",
                     ("account", act.account)("event", act.name)("err", err.to_string()));
             return fc::variant();
         }
