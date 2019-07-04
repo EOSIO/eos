@@ -33,10 +33,6 @@
 
 using namespace eosio::chain::plugin_interface;
 
-namespace fc {
-   extern std::unordered_map<std::string,logger>& get_logger_map();
-}
-
 namespace eosio {
    static appbase::abstract_plugin& _net_plugin = app().register_plugin<net_plugin>();
 
@@ -577,7 +573,7 @@ namespace eosio {
       fc::sha256              node_id;
       const uint32_t          connection_id;
       int16_t                 sent_handshake_count = 0;
-      std::atomic<bool>       connecting{false};
+      std::atomic<bool>       connecting{true};
       std::atomic<bool>       syncing{false};
       uint16_t                protocol_version = 0;
       uint16_t                consecutive_rejected_blocks = 0;
@@ -914,7 +910,6 @@ namespace eosio {
       socket.set_option( nodelay, ec );
       if( ec ) {
          fc_elog( logger, "connection failed to ${peer}: ${error}", ("peer", peer_name())( "error", ec.message() ) );
-         connecting = false;
          close();
          return false;
       } else {
@@ -2146,7 +2141,6 @@ namespace eosio {
                   } );
                } else {
                   fc_elog( logger, "connection failed to ${peer}: ${error}", ("peer", c->peer_name())( "error", err.message()));
-                  c->connecting = false;
                   c->close( false );
                }
             }
@@ -2155,6 +2149,7 @@ namespace eosio {
 
    void net_plugin_impl::start_listen_loop() {
       connection_ptr new_connection = std::make_shared<connection>();
+      new_connection->connecting = true;
       acceptor->async_accept( new_connection->socket,
             boost::asio::bind_executor( new_connection->strand, [new_connection, this]( boost::system::error_code ec ) {
          if( !ec ) {
@@ -2462,9 +2457,7 @@ namespace eosio {
                ("g", msg.generation)( "ep", peer_name() )
                ( "lib", msg.last_irreversible_block_num )( "head", msg.head_num ) );
 
-      if( connecting ) {
-         connecting = false;
-      }
+      connecting = false;
       if (msg.generation == 1) {
          if( msg.node_id == node_id) {
             fc_elog( logger, "Self connection detected node_id ${id}. Closing connection", ("id", node_id) );
@@ -2746,7 +2739,7 @@ namespace eosio {
          return;
       }
 
-      auto ptrx = std::make_shared<transaction_metadata>( trx );
+      auto ptrx = std::make_shared<transaction_metadata>( trx, my_impl->chain_plug->chain().configured_subjective_signature_length_limit() );
       const auto& tid = ptrx->id();
       peer_dlog( this, "received packed_transaction ${id}", ("id", tid) );
 
@@ -3004,17 +2997,19 @@ namespace eosio {
 
    // called from application thread
    void net_plugin_impl::transaction_ack(const std::pair<fc::exception_ptr, transaction_metadata_ptr>& results) {
-      const auto& id = results.second->id();
-      if (results.first) {
-         fc_dlog( logger, "signaled NACK, trx-id = ${id} : ${why}", ("id", id)( "why", results.first->to_detail_string() ) );
+      boost::asio::post( my_impl->thread_pool->get_executor(), [this, results]() {
+         const auto& id = results.second->id();
+         if (results.first) {
+            fc_dlog( logger, "signaled NACK, trx-id = ${id} : ${why}", ("id", id)( "why", results.first->to_detail_string() ) );
 
-         controller& cc = chain_plug->chain();
-         uint32_t head_blk_num = cc.head_block_num();
-         dispatcher->rejected_transaction(id, head_blk_num);
-      } else {
-         fc_dlog( logger, "signaled ACK, trx-id = ${id}", ("id", id) );
-         dispatcher->bcast_transaction(results.second);
-      }
+            uint32_t head_blk_num = 0;
+            std::tie( std::ignore, head_blk_num, std::ignore, std::ignore, std::ignore, std::ignore ) = get_chain_info();
+            dispatcher->rejected_transaction(id, head_blk_num);
+         } else {
+            fc_dlog( logger, "signaled ACK, trx-id = ${id}", ("id", id) );
+            dispatcher->bcast_transaction(results.second);
+         }
+      });
    }
 
    bool net_plugin_impl::authenticate_peer(const handshake_message& msg) const {
@@ -3344,8 +3339,7 @@ namespace eosio {
    }
 
    void net_plugin::handle_sighup() {
-      if(fc::get_logger_map().find(logger_name) != fc::get_logger_map().end())
-         logger = fc::get_logger_map()[logger_name];
+      fc::logger::update( logger_name, logger );
    }
 
    void net_plugin::plugin_shutdown() {

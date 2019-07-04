@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -eo pipefail
-SCRIPT_VERSION=3.0 # Build script version (change this to re-build the CICD image)
+SCRIPT_VERSION=3.1 # Build script version (change this to re-build the CICD image)
 ##########################################################################
 # This is the EOSIO automated install script for Linux and Mac OS.
 # This file was downloaded from https://github.com/EOSIO/eos
@@ -42,6 +42,7 @@ function usage() {
   -y          Noninteractive mode (answers yes to every prompt)
   -c          Enable Code Coverage
   -d          Generate Doxygen
+  -m          Build MongoDB dependencies
    \\n" "$0" 1>&2
    exit 1
 }
@@ -107,17 +108,22 @@ if [ $# -ne 0 ]; then
    done
 fi
 
+export CURRENT_WORKING_DIR=$(pwd) # relative path support
+
+# Ensure we're in the repo root and not inside of scripts
+cd $( dirname "${BASH_SOURCE[0]}" )/..
+
 # Load eosio specific helper functions
 . ./scripts/helpers/eosio.sh
 
-echo "Beginning build version: ${SCRIPT_VERSION}"
-echo "EOSIO version to install: ${EOSIO_VERSION}"
+$VERBOSE && echo "Build Script Version: ${SCRIPT_VERSION}"
+echo "EOSIO Version: ${EOSIO_VERSION_FULL}"
 echo "$( date -u )"
 echo "User: ${CURRENT_USER}"
 # echo "git head id: %s" "$( cat .git/refs/heads/master )"
 echo "Current branch: $( execute git rev-parse --abbrev-ref HEAD 2>/dev/null )"
 
-[[ ! $NAME == "Ubuntu" ]] && set -i # Ubuntu doesn't support interactive mode since it uses dash
+( [[ ! $NAME == "Ubuntu" ]] && [[ ! $ARCH == "Darwin" ]] ) && set -i # Ubuntu doesn't support interactive mode since it uses dash + Some folks are having this issue on Darwin; colors aren't supported yet anyway
 
 # Ensure sudo is available (only if not using the root user)
 ensure-sudo
@@ -125,6 +131,8 @@ ensure-sudo
 ensure-which
 # Prevent a non-git clone from running
 ensure-git-clone
+# Prompt user for installation path (Set EOSIO_INSTALL_DIR)
+install-directory-prompt
 # If the same version has already been installed...
 previous-install-prompt
 # Prompt user and asks if we should install mongo or not
@@ -136,6 +144,19 @@ execute cd $REPO_ROOT
 
 # Submodules need to be up to date
 ensure-submodules-up-to-date
+
+# Check if cmake already exists
+( [[ -z "${CMAKE}" ]] && [[ ! -z $(command -v cmake 2>/dev/null) ]] ) && export CMAKE=$(command -v cmake 2>/dev/null) && export CMAKE_CURRENT_VERSION=$($CMAKE --version | grep -E "cmake version[[:blank:]]*" | sed 's/.*cmake version //g')
+# If it exists, check that it's > required version + 
+if [[ ! -z $CMAKE_CURRENT_VERSION ]] && [[ $((10#$( echo $CMAKE_CURRENT_VERSION | awk -F. '{ printf("%03d%03d%03d\n", $1,$2,$3); }' ))) -lt $((10#$( echo $CMAKE_REQUIRED_VERSION | awk -F. '{ printf("%03d%03d%03d\n", $1,$2,$3); }' ))) ]]; then
+   export CMAKE=
+   if [[ $ARCH == 'Darwin' ]]; then
+      echo "${COLOR_RED}The currently installed cmake version ($CMAKE_CURRENT_VERSION) is less than the required version ($CMAKE_REQUIRED_VERSION). Cannot proceed."
+      exit 1
+   else
+      echo "${COLOR_YELLOW}The currently installed cmake version ($CMAKE_CURRENT_VERSION) is less than the required version ($CMAKE_REQUIRED_VERSION). We will be installing $CMAKE_VERSION.${COLOR_NC}"
+   fi
+fi
 
 # Use existing cmake on system (either global or specific to eosio)
 # Setup based on architecture
@@ -156,19 +177,17 @@ if [[ $ARCH == "Linux" ]]; then
       ;;
       *) print_supported_linux_distros_and_exit;;
    esac
-   LOCAL_CMAKE_FLAGS="-DCMAKE_PREFIX_PATH='$EOSIO_INSTALL_DIR' ${LOCAL_CMAKE_FLAGS}" 
+   CMAKE_PREFIX_PATHS="${EOSIO_INSTALL_DIR}"
 fi
 
 if [ "$ARCH" == "Darwin" ]; then
    # opt/gettext: cleos requires Intl, which requires gettext; it's keg only though and we don't want to force linking: https://github.com/EOSIO/eos/issues/2240#issuecomment-396309884
    # EOSIO_INSTALL_DIR/lib/cmake: mongo_db_plugin.cpp:25:10: fatal error: 'bsoncxx/builder/basic/kvp.hpp' file not found
-   LOCAL_CMAKE_FLAGS="-DCMAKE_PREFIX_PATH='/usr/local/opt/gettext;$EOSIO_INSTALL_DIR' ${LOCAL_CMAKE_FLAGS}" 
+   CMAKE_PREFIX_PATHS="/usr/local/opt/gettext;${EOSIO_INSTALL_DIR}"
    FILE="${SCRIPT_DIR}/eosio_build_darwin.sh"
    OPENSSL_ROOT_DIR=/usr/local/opt/openssl
    export CMAKE=${CMAKE}
 fi
-
-( [[ -z "${CMAKE}" ]] && [[ ! -z $(command -v cmake 2>/dev/null) ]] ) && export CMAKE=$(command -v cmake 2>/dev/null)
 
 # Find and replace OPT_DIR in pinned_toolchain.cmake, then move it into build dir
 execute bash -c "sed -e 's~@~$OPT_DIR~g' $SCRIPT_DIR/pinned_toolchain.cmake &> $BUILD_DIR/pinned_toolchain.cmake"
@@ -192,9 +211,10 @@ execute cd $BUILD_DIR
 # LOCAL_CMAKE_FLAGS
 $ENABLE_MONGO && LOCAL_CMAKE_FLAGS="-DBUILD_MONGO_DB_PLUGIN=true ${LOCAL_CMAKE_FLAGS}" # Enable Mongo DB Plugin if user has enabled -m
 if $PIN_COMPILER; then
-   LOCAL_CMAKE_FLAGS="${PINNED_TOOLCHAIN} -DCMAKE_PREFIX_PATH='${LLVM_ROOT}' ${LOCAL_CMAKE_FLAGS}"
+   CMAKE_PREFIX_PATHS="${CMAKE_PREFIX_PATHS};${LLVM_ROOT}"
+   LOCAL_CMAKE_FLAGS="${PINNED_TOOLCHAIN} -DCMAKE_PREFIX_PATH='${CMAKE_PREFIX_PATHS}' ${LOCAL_CMAKE_FLAGS}"
 else
-   LOCAL_CMAKE_FLAGS="-DCMAKE_CXX_COMPILER='${CXX}' -DCMAKE_C_COMPILER='${CC}' ${LOCAL_CMAKE_FLAGS}"
+   LOCAL_CMAKE_FLAGS="-DCMAKE_CXX_COMPILER='${CXX}' -DCMAKE_C_COMPILER='${CC}' -DCMAKE_PREFIX_PATH='${CMAKE_PREFIX_PATHS}' ${LOCAL_CMAKE_FLAGS}"
 fi
 $ENABLE_DOXYGEN && LOCAL_CMAKE_FLAGS="-DBUILD_DOXYGEN='${DOXYGEN}' ${LOCAL_CMAKE_FLAGS}"
 $ENABLE_COVERAGE_TESTING && LOCAL_CMAKE_FLAGS="-DENABLE_COVERAGE_TESTING='${ENABLE_COVERAGE_TESTING}' ${LOCAL_CMAKE_FLAGS}"
@@ -216,8 +236,8 @@ echo "(_______/(_______)\_______)\_______/(_______)"
 echo "=============================================${COLOR_NC}"
 
 echo "${COLOR_GREEN}EOSIO has been successfully built. $(($TIME_END/3600)):$(($TIME_END%3600/60)):$(($TIME_END%60))"
-echo "${COLOR_GREEN}You can now install using: ./scripts/eosio_install.sh${COLOR_NC}"
-echo "${COLOR_YELLOW}Uninstall with: ./scripts/eosio_uninstall.sh${COLOR_NC}"
+echo "${COLOR_GREEN}You can now install using: ${SCRIPT_DIR}/eosio_install.sh${COLOR_NC}"
+echo "${COLOR_YELLOW}Uninstall with: ${SCRIPT_DIR}/eosio_uninstall.sh${COLOR_NC}"
 
 echo ""
 echo "${COLOR_CYAN}If you wish to perform tests to ensure functional code:${COLOR_NC}"
@@ -225,7 +245,7 @@ if $ENABLE_MONGO; then
    echo "${BIN_DIR}/mongod --dbpath ${MONGODB_DATA_DIR} -f ${MONGODB_CONF} --logpath ${MONGODB_LOG_DIR}/mongod.log &"
    PATH_TO_USE=" PATH=\$PATH:$OPT_DIR/mongodb/bin"
 fi
-echo "cd ./build &&${PATH_TO_USE} make test" # PATH is set as currently 'mongo' binary is required for the mongodb test
+echo "cd ${BUILD_DIR} &&${PATH_TO_USE} make test" # PATH is set as currently 'mongo' binary is required for the mongodb test
 
 echo ""
 resources

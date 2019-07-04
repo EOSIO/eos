@@ -24,6 +24,7 @@
 #include <eosio/chain/resource_limits.hpp>
 #include <eosio/chain/chain_snapshot.hpp>
 #include <eosio/chain/thread_utils.hpp>
+#include <eosio/chain/checktime_timer.hpp>
 
 #include <chainbase/chainbase.hpp>
 #include <fc/io/json.hpp>
@@ -229,6 +230,7 @@ struct controller_impl {
    bool                           trusted_producer_light_validation = false;
    uint32_t                       snapshot_head_block = 0;
    named_thread_pool              thread_pool;
+   checktime_timer                timer;
 
    typedef pair<scope_name,action_name>                   handler_key;
    map< account_name, map<handler_key, apply_handler> >   apply_handlers;
@@ -314,6 +316,7 @@ struct controller_impl {
       set_activation_handler<builtin_protocol_feature_t::preactivate_feature>();
       set_activation_handler<builtin_protocol_feature_t::replace_deferred>();
       set_activation_handler<builtin_protocol_feature_t::get_sender>();
+      set_activation_handler<builtin_protocol_feature_t::webauthn_key>();
 
       self.irreversible_block.connect([this](const block_state_ptr& bsp) {
          wasmif.current_lib(bsp->block_num);
@@ -584,16 +587,8 @@ struct controller_impl {
       // check database version
       const auto& header_idx = db.get_index<database_header_multi_index>().indices().get<by_id>();
 
-      if (database_header_object::minimum_version != 0) {
-         EOS_ASSERT(header_idx.begin() != header_idx.end(), bad_database_version_exception,
-                    "state database version pre-dates versioning, please restore from a compatible snapshot or replay!");
-      } else if ( header_idx.empty() ) {
-         // temporary code to upgrade from existing un-versioned state database
-         static_assert(database_header_object::minimum_version == 0, "remove this path once the minimum version moves");
-         db.create<database_header_object>([](const auto& header){
-            // nothing to do here
-         });
-      }
+      EOS_ASSERT(header_idx.begin() != header_idx.end(), bad_database_version_exception,
+                 "state database version pre-dates versioning, please restore from a compatible snapshot or replay!");
 
       const auto& header_itr = header_idx.begin();
       header_itr->validate();
@@ -1029,7 +1024,7 @@ struct controller_impl {
          etrx.set_reference_block( self.head_block_id() );
       }
 
-      transaction_context trx_context( self, etrx, etrx.id(), start );
+      transaction_context trx_context( self, etrx, etrx.id(), timer, start );
       trx_context.deadline = deadline;
       trx_context.explicit_billed_cpu_time = explicit_billed_cpu_time;
       trx_context.billed_cpu_time_us = billed_cpu_time_us;
@@ -1085,7 +1080,8 @@ struct controller_impl {
              || (code == contract_whitelist_exception::code_value)
              || (code == contract_blacklist_exception::code_value)
              || (code == action_blacklist_exception::code_value)
-             || (code == key_blacklist_exception::code_value);
+             || (code == key_blacklist_exception::code_value)
+             || (code == sig_variable_size_limit_exception::code_value);
    }
 
    bool scheduled_failure_is_subjective( const fc::exception& e ) const {
@@ -1151,7 +1147,7 @@ struct controller_impl {
 
       uint32_t cpu_time_to_bill_us = billed_cpu_time_us;
 
-      transaction_context trx_context( self, dtrx, gtrx.trx_id );
+      transaction_context trx_context( self, dtrx, gtrx.trx_id, timer );
       trx_context.leeway =  fc::microseconds(0); // avoid stealing cpu resource
       trx_context.deadline = deadline;
       trx_context.explicit_billed_cpu_time = explicit_billed_cpu_time;
@@ -1319,7 +1315,7 @@ struct controller_impl {
          }
 
          const signed_transaction& trn = trx->packed_trx()->get_signed_transaction();
-         transaction_context trx_context(self, trn, trx->id(), start);
+         transaction_context trx_context(self, trn, trx->id(), timer, start);
          if ((bool)subjective_cpu_leeway && pending->_block_status == controller::block_status::incomplete) {
             trx_context.leeway = *subjective_cpu_leeway;
          }
@@ -2976,6 +2972,10 @@ bool controller::is_ram_billing_in_notify_allowed()const {
    return my->conf.disable_all_subjective_mitigations || !is_producing_block() || my->conf.allow_ram_billing_in_notify;
 }
 
+uint32_t controller::configured_subjective_signature_length_limit()const {
+   return my->conf.maximum_variable_signature_length;
+}
+
 void controller::validate_expiration( const transaction& trx )const { try {
    const auto& chain_configuration = get_global_properties().configuration;
 
@@ -3115,6 +3115,13 @@ void controller_impl::on_activation<builtin_protocol_feature_t::replace_deferred
       resource_limits.add_pending_ram_usage( itr->name, ram_delta );
       db.remove( *itr );
    }
+}
+
+template<>
+void controller_impl::on_activation<builtin_protocol_feature_t::webauthn_key>() {
+   db.modify( db.get<protocol_state_object>(), [&]( auto& ps ) {
+      ps.num_supported_key_types = 3;
+   } );
 }
 
 /// End of protocol feature activation handlers

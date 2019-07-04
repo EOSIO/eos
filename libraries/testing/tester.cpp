@@ -466,16 +466,16 @@ namespace eosio { namespace testing {
    { try {
       if( !control->is_building_block() )
          _start_block(control->head_block_time() + fc::microseconds(config::block_interval_us));
-      auto c = packed_transaction::none;
+      auto c = packed_transaction::compression_type::none;
 
       if( fc::raw::pack_size(trx) > 1000 ) {
-         c = packed_transaction::zlib;
+         c = packed_transaction::compression_type::zlib;
       }
 
       auto time_limit = deadline == fc::time_point::maximum() ?
             fc::microseconds::maximum() :
             fc::microseconds( deadline - fc::time_point::now() );
-      auto mtrx = std::make_shared<transaction_metadata>(trx, c);
+      auto mtrx = std::make_shared<transaction_metadata>(trx, UINT32_MAX, c);
       transaction_metadata::start_recover_keys( mtrx, control->get_thread_pool(), control->get_chain_id(), time_limit );
       auto r = control->push_transaction( mtrx, deadline, billed_cpu_time_us );
       if (no_throw) return r;
