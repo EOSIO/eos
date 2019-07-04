@@ -18,26 +18,6 @@ icon: ICON
 
 BODY
 
-<h1 class="contract">buyram</h1>
-
----
-title: TITLE
-summary: SUMMARY
-icon: ICON
----
-
-BODY
-
-<h1 class="contract">buyrambytes</h1>
-
----
-title: TITLE
-summary: SUMMARY
-icon: ICON
----
-
-BODY
-
 <h1 class="contract">buyresult</h1>
 
 ---
@@ -329,16 +309,6 @@ icon: ICON
 BODY
 
 <h1 class="contract">rmvproducer</h1>
-
----
-title: TITLE
-summary: SUMMARY
-icon: ICON
----
-
-BODY
-
-<h1 class="contract">sellram</h1>
 
 ---
 title: TITLE

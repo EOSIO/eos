@@ -135,6 +135,21 @@ namespace eosio {
          }
 
          /**
+          * Get max supply method.
+          *
+          * @details Gets the max supply for token `sym_code`, created by `token_contract_account` account.
+          *
+          * @param token_contract_account - the account to get the supply for,
+          * @param sym_code - the symbol to get the supply for.
+          */
+         static asset get_max_supply( const name& token_contract_account, const symbol_code& sym_code )
+         {
+            stats statstable( token_contract_account, sym_code.raw() );
+            const auto& st = statstable.get( sym_code.raw() );
+            return st.max_supply;
+         }
+
+         /**
           * Get balance method.
           * 
           * @details Get the balance for a token `sym_code` created by `token_contract_account` account,
