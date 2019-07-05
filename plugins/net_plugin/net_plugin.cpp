@@ -411,8 +411,9 @@ namespace eosio {
     */
    constexpr uint16_t proto_base = 0;
    constexpr uint16_t proto_explicit_sync = 1;
+   constexpr uint16_t block_id_notify = 2;
 
-   constexpr uint16_t net_version = proto_explicit_sync;
+   constexpr uint16_t net_version = block_id_notify;
 
    /**
     * Index by start_block_num
@@ -1938,6 +1939,8 @@ namespace eosio {
             return true;
          }
          cp->strand.post( [this, cp, note]() {
+            // check protocol_version here since only accessed from strand
+            if( cp->protocol_version < block_id_notify ) return;
             const block_id_type& id = note.known_blocks.ids.back();
             if( peer_has_block( id, cp->connection_id ) ) {
                return;
