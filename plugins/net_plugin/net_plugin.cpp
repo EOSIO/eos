@@ -174,6 +174,7 @@ namespace eosio {
       void bcast_transaction(const transaction_metadata_ptr& trx);
       void rejected_transaction(const transaction_id_type& msg, uint32_t head_blk_num);
       void bcast_block(const block_state_ptr& bs);
+      void bcast_notice( const block_id_type& id );
       void rejected_block(const block_id_type& id);
 
       void recv_block(const connection_ptr& conn, const block_id_type& msg, uint32_t bnum);
@@ -1923,6 +1924,31 @@ namespace eosio {
       } );
    }
 
+   void dispatch_manager::bcast_notice( const block_id_type& id ) {
+      if( my_impl->sync_master->syncing_with_peer() ) return;
+
+      fc_dlog( logger, "bcast notice ${b}", ("b", block_header::num_from_id( id )) );
+      notice_message note;
+      note.known_blocks.mode = normal;
+      note.known_blocks.pending = 1; // 1 indicates this is a block id notice
+      note.known_blocks.ids.emplace_back( id );
+
+      for_each_block_connection( [this, note]( auto& cp ) {
+         if( !cp->current() ) {
+            return true;
+         }
+         cp->strand.post( [this, cp, note]() {
+            const block_id_type& id = note.known_blocks.ids.back();
+            if( peer_has_block( id, cp->connection_id ) ) {
+               return;
+            }
+            fc_dlog( logger, "bcast block id ${b} to ${p}", ("b", block_header::num_from_id( id ))("p", cp->peer_name()) );
+            cp->enqueue( note );
+         } );
+         return true;
+      } );
+   }
+
    // called from connection strand
    void dispatch_manager::recv_block(const connection_ptr& c, const block_id_type& id, uint32_t bnum) {
       add_peer_block( id, c->connection_id );
@@ -2000,6 +2026,16 @@ namespace eosio {
          req.req_blocks.mode = normal;
          // known_blocks.ids is never > 1
          if( !msg.known_blocks.ids.empty() ) {
+            const block_id_type& blkid = msg.known_blocks.ids.back();
+            if( have_block( blkid )) {
+               add_peer_block( blkid, c->connection_id );
+               return;
+            } else {
+               add_peer_block_id( blkid, c->connection_id );
+            }
+            if( msg.known_blocks.pending == 1 ) { // block id notify
+               return;
+            }
             connection_wptr weak = c;
             app().post( priority::low, [this, msg{std::move(msg)}, req{std::move(req)}, weak{std::move(weak)}]() mutable {
                connection_ptr c = weak.lock();
@@ -2810,6 +2846,7 @@ namespace eosio {
          connection_ptr c = weak.lock();
          if( c ) c->process_signed_block( ptr );
       });
+      my_impl->dispatcher->bcast_notice( ptr->id() );
    }
 
    // called from application thread
