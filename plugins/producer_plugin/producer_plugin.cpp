@@ -654,7 +654,7 @@ void producer_plugin::set_program_options(
           "ratio between incoming transations and deferred transactions when both are exhausted")
          ("incoming-transaction-queue-size-mb", bpo::value<uint16_t>()->default_value( 1024 ),
           "Maximum size (in MiB) of the incoming transaction queue. Exceeding this value will subjectively drop transaction with resource exhaustion.")
-         ("producer-threads", bpo::value<uint16_t>()->default_value(config::default_controller_thread_pool_size),
+         ("producer-threads", bpo::value<uint16_t>()->default_value( 1 ),
           "Number of worker threads in producer thread pool")
          ("snapshots-dir", bpo::value<bfs::path>()->default_value("snapshots"),
           "the location of the snapshots directory (absolute path or relative to application data dir)")
@@ -800,8 +800,8 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
    my->_incoming_defer_ratio = options.at("incoming-defer-ratio").as<double>();
 
    auto thread_pool_size = options.at( "producer-threads" ).as<uint16_t>();
-   EOS_ASSERT( thread_pool_size > 0, plugin_config_exception,
-               "producer-threads ${num} must be greater than 0", ("num", thread_pool_size));
+   EOS_ASSERT( thread_pool_size == 1, plugin_config_exception,
+               "producer-threads ${num} must be 1 currently", ("num", thread_pool_size));
    my->_thread_pool.emplace( "prod", thread_pool_size );
 
    if( options.count( "snapshots-dir" )) {
@@ -886,6 +886,17 @@ void producer_plugin::plugin_startup()
       }
    }
 
+   io_serv = std::make_shared<boost::asio::io_service>();
+   work_ptr = std::make_shared<boost::asio::io_service::work>(*io_serv);
+   boost::asio::post( my->_thread_pool->get_executor(), [this]() {
+      bool more = true;
+      while( more || io_serv->run_one() ) {
+         while( io_serv->poll_one() ) {}
+         // execute the highest priority item
+         more = pri_queue.execute_highest();
+      }
+   });
+
    my->schedule_production_loop();
 
    ilog("producer plugin:  plugin_startup() end");
@@ -898,6 +909,8 @@ void producer_plugin::plugin_shutdown() {
       edump((e.to_detail_string()));
    }
 
+   work_ptr.reset();
+   io_serv->stop();
    if( my->_thread_pool ) {
       my->_thread_pool->stop();
    }

@@ -115,8 +115,23 @@ public:
    get_account_ram_corrections_result  get_account_ram_corrections( const get_account_ram_corrections_params& params ) const;
 
    signal<void(const chain::producer_confirmation&)> confirmed_block;
+
+   boost::asio::io_service& get_io_service() { return *io_serv; }
+
+   template <typename Func>
+   auto post( int priority, Func&& func ) {
+      return boost::asio::post(*io_serv, pri_queue.wrap(priority, std::forward<Func>(func)));
+   }
+
+   auto& get_priority_queue() {
+      return pri_queue;
+   }
 private:
    std::shared_ptr<class producer_plugin_impl> my;
+
+   std::shared_ptr<boost::asio::io_service>  io_serv;
+   std::shared_ptr<boost::asio::io_service::work> work_ptr;
+   execution_priority_queue pri_queue;
 };
 
 } //eosio
