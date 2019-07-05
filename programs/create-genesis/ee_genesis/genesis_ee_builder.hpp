@@ -62,6 +62,7 @@ private:
     bfs::ifstream dump_transfers;
     bfs::ifstream dump_vesting_withdraws;
     bfs::ifstream dump_author_rewards;
+    bfs::ifstream dump_benefactor_rewards;
     bfs::ifstream dump_curation_rewards;
     bfs::ifstream dump_delegation_rewards;
     bfs::ifstream dump_follows;

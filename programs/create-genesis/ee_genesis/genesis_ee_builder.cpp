@@ -287,6 +287,12 @@ void genesis_ee_builder::process_rewards_history() {
     }
 
     try {
+        read_header(dump_benefactor_rewards, in_dump_dir_ / "benefactor_rewards");
+    } catch (file_not_found_exception& ex) {
+        wlog("No benefactor rewards file");
+    }
+
+    try {
         read_header(dump_curation_rewards, in_dump_dir_ / "curation_rewards");
     } catch (file_not_found_exception& ex) {
         wlog("No curation rewards file");
@@ -606,6 +612,26 @@ void genesis_ee_builder::write_rewards_history() {
                 r.reward = op.reward_in_golos;
                 r.comment_author = generate_name(op.comment_author);
                 r.comment_permlink = op.comment_permlink;
+                r.time = op.timestamp;
+            });
+        }
+    }
+
+    if (dump_benefactor_rewards.is_open()) {
+        std::cout << "-> Writing benefactor rewards..." << std::endl;
+        out.start_section(info_.golos.names.posting, N(benreward), "benefactor_reward");
+
+        comment_benefactor_reward_operation op;
+        while (read_operation(dump_benefactor_rewards, op)) {
+            if (op.timestamp < start_time) {
+                continue;
+            }
+
+            out.emplace<benefactor_reward>([&](auto& r) {
+                r.benefactor = generate_name(op.benefactor);
+                r.author = generate_name(op.author);
+                r.permlink = op.permlink;
+                r.reward = op.reward_in_golos;
                 r.time = op.timestamp;
             });
         }
