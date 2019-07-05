@@ -40,6 +40,7 @@ static abi_def create_messages_abi() {
             {"language", "string"},
             {"net_rshares", "int64"},
             {"rewardweight", "uint16"},
+            {"max_payout", "asset"},
             {"benefics_prcnt", "uint16"},
             {"curators_prcnt", "uint16"},
             {"tokenprop", "uint16"},

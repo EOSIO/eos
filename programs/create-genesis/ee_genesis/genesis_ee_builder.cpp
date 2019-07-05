@@ -54,6 +54,7 @@ bool genesis_ee_builder::read_operation(bfs::ifstream& in, Operation& op) {
     op.offset = op_offset;
 
     if (!in) {
+        in.clear(); // Clear EOF flag to allow reuse stream
         return false;
     }
 
@@ -452,6 +453,7 @@ void genesis_ee_builder::write_messages() {
     if (!dump_comments.is_open()) {
         return;
     }
+
     std::cout << "-> Writing messages..." << std::endl;
     auto& out = out_.get_serializer(event_engine_genesis::messages);
     out.start_section(info_.golos.names.posting, N(message), "message_info");
@@ -511,6 +513,7 @@ void genesis_ee_builder::write_transfers() {
     if (!dump_transfers.is_open()) {
         return;
     }
+
     std::cout << "-> Writing transfers..." << std::endl;
     auto& out = out_.get_serializer(event_engine_genesis::transfers);
     out.start_section(config::token_account_name, N(transfer), "transfer");
@@ -539,6 +542,7 @@ void genesis_ee_builder::write_withdraws() {
     if (!dump_vesting_withdraws.is_open()) {
         return;
     }
+
     std::cout << "-> Writing withdraws..." << std::endl;
     auto& out = out_.get_serializer(event_engine_genesis::withdraws);
     out.start_section(info_.golos.names.vesting, N(withdraw), "withdraw");

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ee_genesis_serializer.hpp"
+#include "../config.hpp"
 #include <fc/crypto/sha256.hpp>
 
 namespace cyberway { namespace genesis { namespace ee {
@@ -58,7 +59,7 @@ struct comment_info {
     string language;
     int64_t net_rshares;
     uint16_t rewardweight = 0;
-    asset max_payout;
+    asset max_payout{0, symbol(GLS)};
     uint16_t benefics_prcnt = 0;
     uint16_t curators_prcnt = 0;
     uint16_t tokenprop = 0;
