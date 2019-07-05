@@ -1609,6 +1609,7 @@ struct bidname_info_subcommand {
                                ("table", "namebids")
                                ("lower_bound", newname.value)
                                ("upper_bound", newname.value + 1)
+                               ("index", "primary")
                                // Less than ideal upper_bound usage preserved so cleos can still work with old buggy nodeos versions
                                // Change to newname.value when cleos no longer needs to support nodeos versions older than 1.5.0
                                ("limit", 1));
