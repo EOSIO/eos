@@ -98,6 +98,7 @@ namespace eosio {
       block_id_type id;
       uint32_t      block_num = 0;
       uint32_t      connection_id = 0;
+      bool          have_block = false; // true if we have received the block, false if only received id notification
    };
 
    typedef multi_index_container<
@@ -106,9 +107,10 @@ namespace eosio {
          ordered_unique< tag<by_id>,
                composite_key< peer_block_state,
                      member<peer_block_state, block_id_type, &eosio::peer_block_state::id>,
-                     member<peer_block_state, uint32_t, &eosio::peer_block_state::connection_id>
+                     member<peer_block_state, uint32_t, &eosio::peer_block_state::connection_id>,
+                     member<peer_block_state, bool, &eosio::peer_block_state::have_block>
                >,
-               composite_key_compare< sha256_less, std::less<uint32_t> >
+               composite_key_compare< sha256_less, std::less<uint32_t>, std::greater<bool> >
          >,
          ordered_non_unique< tag<by_block_num>, member<eosio::peer_block_state, uint32_t, &eosio::peer_block_state::block_num > >
       >
@@ -182,6 +184,7 @@ namespace eosio {
       void retry_fetch(const connection_ptr& conn);
 
       bool add_peer_block( const block_id_type& blkid, uint32_t connection_id );
+      bool add_peer_block_id( const block_id_type& blkid, uint32_t connection_id );
       bool peer_has_block(const block_id_type& blkid, uint32_t connection_id);
       bool have_block(const block_id_type& blkid);
 
@@ -1773,7 +1776,21 @@ namespace eosio {
       auto bptr = blk_state.get<by_id>().find(std::make_tuple(std::ref(blkid), connection_id));
       bool added = (bptr == blk_state.end());
       if( added ) {
-         blk_state.insert( {blkid, block_header::num_from_id( blkid ), connection_id} );
+         blk_state.insert( {blkid, block_header::num_from_id( blkid ), connection_id, true} );
+      } else if( !bptr->have_block ) {
+         blk_state.modify( bptr, []( auto& pb ) {
+            pb.have_block = true;
+         });
+      }
+      return added;
+   }
+
+   bool dispatch_manager::add_peer_block_id( const block_id_type& blkid, uint32_t connection_id) {
+      std::lock_guard<std::mutex> g( blk_state_mtx );
+      auto bptr = blk_state.get<by_id>().find(std::make_tuple(std::ref(blkid), connection_id));
+      bool added = (bptr == blk_state.end());
+      if( added ) {
+         blk_state.insert( {blkid, block_header::num_from_id( blkid ), connection_id, false} );
       }
       return added;
    }
@@ -1787,7 +1804,10 @@ namespace eosio {
    bool dispatch_manager::have_block( const block_id_type& blkid ) {
       std::lock_guard<std::mutex> g(blk_state_mtx);
       auto blk_itr = blk_state.get<by_id>().find( blkid );
-      return blk_itr != blk_state.end();
+      if( blk_itr != blk_state.end() ) {
+         return blk_itr->have_block;
+      }
+      return false;
    }
 
    bool dispatch_manager::add_peer_txn( const node_transaction_state& nts ) {
