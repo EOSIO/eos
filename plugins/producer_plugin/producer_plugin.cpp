@@ -296,7 +296,10 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
             }
 
             for( const auto& p: bsp->active_schedule.producers) {
-               new_producers.erase(p.producer_name);
+               // clear watermark unless we have the old key (we were producing before)
+               if (_signature_providers.count(p.block_signing_key) > 0) {
+                  new_producers.erase(p.producer_name);
+               }
             }
 
             for (const auto& new_producer: new_producers) {
@@ -1304,6 +1307,13 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
    auto signature_provider_itr = _signature_providers.find(scheduled_producer.block_signing_key);
    auto irreversible_block_age = get_irreversible_block_age();
 
+   // fix blocks_to_confirm when blocks with same producer (different sign keys) are received
+   uint32_t last_produced_blocknum = 0; // last produced blknum of same producer
+   auto prod_last_produced_itr = hbs->producer_to_last_produced.find( scheduled_producer.producer_name );
+   if (prod_last_produced_itr != hbs->producer_to_last_produced.end()) {
+      last_produced_blocknum = prod_last_produced_itr->second;
+   }
+
    // If the next block production opportunity is in the present or future, we're synced.
    if( !_production_enabled ) {
       _pending_block_mode = pending_block_mode::speculating;
@@ -1355,6 +1365,11 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
                blocks_to_confirm = std::min<uint16_t>(std::numeric_limits<uint16_t>::max(), (uint16_t)(hbs->block_num - watermark));
             }
          }
+      }
+
+      if (last_produced_blocknum && hbs->block_num >= last_produced_blocknum && 
+          (hbs->block_num - last_produced_blocknum) < std::numeric_limits<uint16_t>::max())  {
+         blocks_to_confirm = std::min<uint16_t>(blocks_to_confirm, (uint16_t)(hbs->block_num - last_produced_blocknum));
       }
 
       chain.abort_block();
