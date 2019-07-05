@@ -1270,8 +1270,11 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
             }
             time_point pending_block_time = chain.pending_block_time();
             const auto sch_idx = chain.chaindb().get_index<chain::generated_transaction_object,by_delay>();
-            const auto scheduled_trxs_size = sch_idx.size();
+            // TODO: Removed by CyberWay
+            // const auto scheduled_trxs_size = sch_idx.size();
+            int scheduled_trxs_size = 0;
             for(auto sch_itr = sch_idx.begin(); sch_itr.is_valid(); ++sch_itr ) {
+               ++scheduled_trxs_size;
                if( sch_itr->delay_until > pending_block_time) break;    // not scheduled yet
                if( sch_itr->published >= pending_block_time ) {
                   continue; // do not allow schedule and execute in same block
