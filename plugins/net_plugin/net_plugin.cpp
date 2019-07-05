@@ -2754,35 +2754,37 @@ namespace eosio {
       connection_wptr weak = shared_from_this();
       my_impl->chain_plug->accept_transaction( ptrx,
             [weak{std::move(weak)}, ptrx](const static_variant<fc::exception_ptr, transaction_trace_ptr>& result) {
-         // next (this lambda) called from application thread
-         connection_ptr conn = weak.lock();
-         if( conn ) {
-            conn->trx_in_progress_size -= calc_trx_size( ptrx->packed_trx() );
-         }
-         bool accepted = false;
-         if (result.contains<fc::exception_ptr>()) {
-            fc_dlog( logger, "bad packed_transaction : ${m}", ("m", result.get<fc::exception_ptr>()->what()) );
-         } else {
-            auto trace = result.get<transaction_trace_ptr>();
-            if (!trace->except) {
-               fc_dlog( logger, "chain accepted transaction, bcast ${id}", ("id", trace->id) );
-               accepted = true;
+         // next (this lambda) called from producer thread
+         app().post( priority::low, [weak{std::move(weak)}, ptrx, response = result]() {
+            connection_ptr conn = weak.lock();
+            if( conn ) {
+               conn->trx_in_progress_size -= calc_trx_size( ptrx->packed_trx() );
             }
-
-            if( !accepted ) {
-               fc_elog( logger, "bad packed_transaction : ${m}", ("m", trace->except->what()));
-            }
-         }
-
-         controller& cc = my_impl->chain_plug->chain();
-         uint32_t head_blk_num = cc.head_block_num();
-
-         boost::asio::post( my_impl->thread_pool->get_executor(), [accepted, ptrx{std::move(ptrx)}, head_blk_num]() {
-            if( accepted ) {
-               my_impl->dispatcher->bcast_transaction( ptrx );
+            bool accepted = false;
+            if (response.contains<fc::exception_ptr>()) {
+               fc_dlog( logger, "bad packed_transaction : ${m}", ("m", response.get<fc::exception_ptr>()->what()) );
             } else {
-               my_impl->dispatcher->rejected_transaction( ptrx->id(), head_blk_num );
+               auto trace = response.get<transaction_trace_ptr>();
+               if (!trace->except) {
+                  fc_dlog( logger, "chain accepted transaction, bcast ${id}", ("id", trace->id) );
+                  accepted = true;
+               }
+
+               if( !accepted ) {
+                  fc_elog( logger, "bad packed_transaction : ${m}", ("m", trace->except->what()));
+               }
             }
+
+            controller& cc = my_impl->chain_plug->chain();
+            uint32_t head_blk_num = cc.head_block_num();
+
+            boost::asio::post( my_impl->thread_pool->get_executor(), [accepted, ptrx{std::move(ptrx)}, head_blk_num]() {
+               if( accepted ) {
+                  my_impl->dispatcher->bcast_transaction( ptrx );
+               } else {
+                  my_impl->dispatcher->rejected_transaction( ptrx->id(), head_blk_num );
+               }
+            });
          });
       });
    }
@@ -2818,44 +2820,50 @@ namespace eosio {
       peer_ilog( c, "received signed_block : #${n} block age in secs = ${age}",
                  ("n", blk_num)( "age", age.to_seconds() ) );
 
-      go_away_reason reason = fatal_other;
-      try {
-         my_impl->chain_plug->accept_block(msg);
-         my_impl->update_chain_info();
-         reason = no_reason;
-      } catch( const unlinkable_block_exception &ex) {
-         peer_elog(c, "bad signed_block : ${m}", ("m",ex.what()));
-         reason = unlinkable;
-      } catch( const block_validate_exception &ex) {
-         peer_elog(c, "bad signed_block : ${m}", ("m",ex.what()));
-         fc_elog( logger, "block_validate_exception accept block #${n} syncing from ${p}",("n",blk_num)("p",c->peer_name()) );
-         reason = validation;
-      } catch( const assert_exception &ex) {
-         peer_elog(c, "bad signed_block : ${m}", ("m",ex.what()));
-         fc_elog( logger, "unable to accept block on assert exception ${n} from ${p}",("n",ex.to_string())("p",c->peer_name()));
-      } catch( const fc::exception &ex) {
-         peer_elog(c, "bad signed_block : ${m}", ("m",ex.what()));
-         fc_elog( logger, "accept_block threw a non-assert exception ${x} from ${p}",( "x",ex.to_string())("p",c->peer_name()));
-         reason = no_reason;
-      } catch( ...) {
-         peer_elog(c, "bad signed_block : unknown exception");
-         fc_elog( logger, "handle sync block caught something else from ${p}",("num",blk_num)("p",c->peer_name()));
-      }
-
-      if( reason == no_reason ) {
-         boost::asio::post( my_impl->thread_pool->get_executor(), [dispatcher = my_impl->dispatcher.get(), msg]() {
-            dispatcher->update_txns_block_num( msg );
+      connection_wptr weak = shared_from_this();
+      my_impl->producer_plug->post(priority::high, [weak{std::move(weak)}, msg, blk_id, blk_num]() {
+         connection_ptr c = weak.lock();
+         go_away_reason reason = fatal_other;
+         try {
+            my_impl->chain_plug->accept_block(msg);
+            reason = no_reason;
+         } catch( const unlinkable_block_exception &ex) {
+            peer_elog(c, "bad signed_block : ${m}", ("m",ex.what()));
+            reason = unlinkable;
+         } catch( const block_validate_exception &ex) {
+            peer_elog(c, "bad signed_block : ${m}", ("m",ex.what()));
+            fc_elog( logger, "block_validate_exception accept block #${n} syncing from ${p}",("n",blk_num)("p",c->peer_name()) );
+            reason = validation;
+         } catch( const assert_exception &ex) {
+            peer_elog(c, "bad signed_block : ${m}", ("m",ex.what()));
+            fc_elog( logger, "unable to accept block on assert exception ${n} from ${p}",("n",ex.to_string())("p",c->peer_name()));
+         } catch( const fc::exception &ex) {
+            peer_elog(c, "bad signed_block : ${m}", ("m",ex.what()));
+            fc_elog( logger, "accept_block threw a non-assert exception ${x} from ${p}",( "x",ex.to_string())("p",c->peer_name()));
+            reason = no_reason;
+         } catch( ...) {
+            peer_elog(c, "bad signed_block : unknown exception");
+            fc_elog( logger, "handle sync block caught something else from ${p}",("num",blk_num)("p",c->peer_name()));
+         }
+         app().post( priority::high, [weak{std::move(weak)}, msg, blk_id, blk_num, reason]() {
+            connection_ptr c = weak.lock();
+            if( reason == no_reason ) {
+               my_impl->update_chain_info();
+               boost::asio::post( my_impl->thread_pool->get_executor(), [dispatcher = my_impl->dispatcher.get(), msg]() {
+                  dispatcher->update_txns_block_num( msg );
+               });
+               c->strand.post( [sync_master = my_impl->sync_master.get(), dispatcher = my_impl->dispatcher.get(), c, blk_id, blk_num]() {
+                  dispatcher->recv_block( c, blk_id, blk_num );
+                  sync_master->sync_recv_block( c, blk_id, blk_num );
+               });
+            } else {
+               c->strand.post( [sync_master = my_impl->sync_master.get(), dispatcher = my_impl->dispatcher.get(), c, blk_id, blk_num]() {
+                  sync_master->rejected_block( c, blk_num );
+                  dispatcher->rejected_block( blk_id );
+               });
+            }
          });
-         c->strand.post( [sync_master = my_impl->sync_master.get(), dispatcher = my_impl->dispatcher.get(), c, blk_id, blk_num]() {
-            dispatcher->recv_block( c, blk_id, blk_num );
-            sync_master->sync_recv_block( c, blk_id, blk_num );
-         });
-      } else {
-         c->strand.post( [sync_master = my_impl->sync_master.get(), dispatcher = my_impl->dispatcher.get(), c, blk_id, blk_num]() {
-            sync_master->rejected_block( c, blk_num );
-            dispatcher->rejected_block( blk_id );
-         });
-      }
+      });
    }
 
    // called from any thread

@@ -370,7 +370,10 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 
          // exceptions throw out, make sure we restart our loop
          auto ensure = fc::make_scoped_exit([this](){
-            schedule_production_loop();
+            // process the works of schedule_production_loop directly
+            _timer.cancel();
+            auto result = start_block();
+            process_production_loop(result);
          });
 
          // push the new block
@@ -449,7 +452,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 
          auto after_sig_recovery =
                [self = this, trx, persist_until_expired, next{std::move(next)}]() mutable {
-                  app().post(priority::low, [self, trx{std::move(trx)}, persist_until_expired, next{std::move(next)}]() {
+                  self->_self->post(priority::low, [self, trx{std::move(trx)}, persist_until_expired, next{std::move(next)}]() {
                      self->process_incoming_transaction_async( trx, persist_until_expired, next );
                   });
                };
@@ -577,6 +580,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       };
 
       start_block_result start_block();
+      void process_production_loop(start_block_result result);
 
       fc::time_point calculate_pending_block_time() const;
       fc::time_point calculate_block_deadline( const fc::time_point& ) const;
@@ -1735,11 +1739,16 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
 }
 
 void producer_plugin_impl::schedule_production_loop() {
-   chain::controller& chain = chain_plug->chain();
-   _timer.cancel();
-   std::weak_ptr<producer_plugin_impl> weak_this = shared_from_this();
+   _self->post(priority::high, [this]() {
+      _timer.cancel();
+      auto result = start_block();
+      process_production_loop(result);
+   });
+}
 
-   auto result = start_block();
+void producer_plugin_impl::process_production_loop(start_block_result result) {
+   chain::controller& chain = chain_plug->chain();
+   std::weak_ptr<producer_plugin_impl> weak_this = shared_from_this();
 
    if (result == start_block_result::failed) {
       elog("Failed to start a pending block, will try again later");
@@ -1796,8 +1805,11 @@ void producer_plugin_impl::schedule_production_loop() {
                   fc_dlog( _log, "Produce block timer running at ${time}", ("time", fc::time_point::now()) );
                   // pending_block_state expected, but can't assert inside async_wait
                   auto block_num = chain.is_building_block() ? chain.head_block_num() + 1 : 0;
-                  auto res = self->maybe_produce_block();
-                  fc_dlog( _log, "Producing Block #${num} returned: ${res}", ("num", block_num)( "res", res ) );
+                  self->_self->post(priority::high, [weak_this, block_num](){
+                     auto self = weak_this.lock();
+                     auto res = self->maybe_produce_block();
+                     fc_dlog( _log, "Producing Block #${num} returned: ${res}", ("num", block_num)( "res", res ) );
+                  });
                }
             } ) );
    } else if (_pending_block_mode == pending_block_mode::speculating && !_producers.empty() && !production_disabled_by_policy()){
