@@ -291,6 +291,8 @@ void apply_context::execute_inline( action&& a ) {
          //QUESTION: Is it smart to allow a deferred transaction that has been delayed for some time to get away
          //          with sending an inline action that requires a delay even though the decision to send that inline
          //          action was made at the moment the deferred transaction was executed with potentially no forewarning?
+      } catch( const resource_exhausted_exception& ) {
+         throw;
       } catch( const fc::exception& e ) {
          if( disallow_send_to_self_bypass || !send_to_self ) {
             throw;
@@ -377,6 +379,8 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
                                       std::bind(&transaction_context::checktime, &this->trx_context),
                                       false
                                     );
+      } catch( const resource_exhausted_exception& ) {
+         throw;
       } catch( const fc::exception& e ) {
          if( disallow_send_to_self_bypass || !is_sending_only_to_self(receiver) ) {
             throw;
