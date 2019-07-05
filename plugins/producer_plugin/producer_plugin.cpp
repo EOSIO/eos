@@ -1259,6 +1259,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
             int num_applied = 0;
             int num_failed = 0;
             int num_processed = 0;
+            int num_deferred = 0;
 
             auto scheduled_trx_deadline = preprocess_deadline;
             if (_max_scheduled_transaction_time_per_block_ms >= 0) {
@@ -1322,10 +1323,17 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
                      fc_dlog( _log, "scheduled failed: ${e}", ("e", trace->except->to_detail_string()) );
                      bool is_subjective = failure_is_subjective(*trace->except, deadline_is_subjective);
                      if (!is_subjective || !deadline_is_subjective) {
-                        auto expiration = fc::time_point::now() + fc::seconds(chain.get_global_properties().configuration.deferred_trx_expiration_window);
+                        auto window_sec = chain.get_global_properties().configuration.deferred_trx_expiration_window;
+                        if (!deadline_is_subjective) {
+                            window_sec >>= 2;
+                            num_deferred++;
+                        } else {
+                            num_failed++;
+                        }
+                        auto expiration = fc::time_point::now() + fc::seconds(window_sec);
+
                         // this failed our configured maximum transaction time, we don't want to replay it add it to a blacklist
                         _blacklisted_transactions.insert(transaction_id_with_expiry{trx_id, expiration});
-                        num_failed++;
                      }
 
                      if( is_subjective) {
@@ -1346,11 +1354,12 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
 
             if( scheduled_trxs_size > 0 ) {
                fc_dlog( _log,
-                        "Processed ${m} of ${n} scheduled transactions, Applied ${applied}, Failed/Dropped ${failed}",
+                        "Processed ${m} of ${n} scheduled transactions, Applied ${applied}, Failed/Dropped ${failed}, Deferred ${deferred}",
                         ( "m", num_processed )
                         ( "n", scheduled_trxs_size )
                         ( "applied", num_applied )
-                        ( "failed", num_failed ) );
+                        ( "failed", num_failed )
+                        ( "deferred", num_deferred) );
             }
 
          }
