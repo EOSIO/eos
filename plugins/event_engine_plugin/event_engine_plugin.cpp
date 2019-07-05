@@ -63,6 +63,7 @@ private:
     void send_message(const Msg& msg) {
         if(dumpstream_opened) {
             dumpstream << fc::json::to_string(fc::variant(msg)) << std::endl;
+            EOS_ASSERT(!dumpstream.bad(), chain::plugin_config_exception, "Writing to event-engine-dumpfile failed");
             dumpstream.flush();
         }
     }
