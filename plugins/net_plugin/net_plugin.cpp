@@ -181,7 +181,7 @@ namespace eosio {
 
       void retry_fetch(const connection_ptr& conn);
 
-      bool add_peer_block(const peer_block_state& pbs);
+      bool add_peer_block( const block_id_type& blkid, uint32_t connection_id );
       bool peer_has_block(const block_id_type& blkid, uint32_t connection_id);
       bool have_block(const block_id_type& blkid);
 
@@ -1023,7 +1023,7 @@ namespace eosio {
             signed_block_ptr b = cc.fetch_block_by_id( blkid );
             if( b ) {
                fc_dlog( logger, "found block for id at num ${n}", ("n", b->block_num()) );
-               my_impl->dispatcher->add_peer_block( {blkid, block_header::num_from_id( blkid ), c->connection_id} );
+               my_impl->dispatcher->add_peer_block( blkid, c->connection_id );
                c->strand.post( [c, b{std::move(b)}]() {
                   c->enqueue_block( b );
                } );
@@ -1768,12 +1768,12 @@ namespace eosio {
    //------------------------------------------------------------------------
 
    // thread safe
-   bool dispatch_manager::add_peer_block(const peer_block_state& entry) {
+   bool dispatch_manager::add_peer_block( const block_id_type& blkid, uint32_t connection_id) {
       std::lock_guard<std::mutex> g( blk_state_mtx );
-      auto bptr = blk_state.get<by_id>().find(std::make_tuple(std::ref(entry.id), entry.connection_id));
+      auto bptr = blk_state.get<by_id>().find(std::make_tuple(std::ref(blkid), connection_id));
       bool added = (bptr == blk_state.end());
       if( added ) {
-         blk_state.insert(entry);
+         blk_state.insert( {blkid, block_header::num_from_id( blkid ), connection_id} );
       }
       return added;
    }
@@ -1892,8 +1892,7 @@ namespace eosio {
             bool has_block = cp->last_handshake_recv.last_irreversible_block_num >= bnum;
             g_conn.unlock();
             if( !has_block ) {
-               peer_block_state pbstate{bs->id, bnum, cp->connection_id};
-               if( !add_peer_block( pbstate ) ) {
+               if( !add_peer_block( bs->id, cp->connection_id ) ) {
                   return;
                }
                fc_dlog( logger, "bcast block ${b} to ${p}", ("b", bnum)( "p", cp->peer_name() ) );
@@ -1906,8 +1905,7 @@ namespace eosio {
 
    // called from connection strand
    void dispatch_manager::recv_block(const connection_ptr& c, const block_id_type& id, uint32_t bnum) {
-      peer_block_state pbstate{id, bnum, c->connection_id};
-      add_peer_block( pbstate );
+      add_peer_block( id, c->connection_id );
       std::unique_lock<std::mutex> g( c->conn_mtx );
       if (c &&
           c->last_req &&
@@ -1992,7 +1990,7 @@ namespace eosio {
                   controller& cc = my_impl->chain_plug->chain();
                   b = cc.fetch_block_by_id( blkid ); // if exists
                   if( b ) {
-                     add_peer_block( {blkid, block_header::num_from_id( blkid ), c->connection_id} );
+                     add_peer_block( blkid, c->connection_id );
                   }
                } catch( const assert_exception& ex ) {
                   fc_ilog( logger, "caught assert on fetch_block_by_id, ${ex}", ("ex", ex.what()) );
