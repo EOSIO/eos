@@ -733,8 +733,14 @@ void genesis_ee_builder::write_witnesses() {
     std::cout << "-> Writing witnesses..." << std::endl;
     auto& out = out_.get_serializer(event_engine_genesis::witnesses);
     out.start_section(info_.golos.names.control, N(witnessstate), "witnessstate");
-    for (auto& w : exp_info_.witness_events) {
-        out.insert(w);
+    for (auto& w : exp_info_.witnesses) {
+        auto wtn = w.second;
+        fc::flat_set<name> votes;
+        auto v = exp_info_.witness_votes.find(w.first);
+        if (v != exp_info_.witness_votes.end()) {
+            votes = v->second;
+        }
+        out.insert(wtn("votes", votes));
     }
 }
 
