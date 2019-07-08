@@ -30,7 +30,11 @@ namespace cyberway { namespace chaindb {
     class table_undo_stack;
 
     struct undo_state final {
-        undo_state(table_undo_stack& table, revision_t rev): table_(table), revision_(rev) { }
+        undo_state(table_undo_stack& table, revision_t rev): table_(table), revision_(rev) {
+            new_values_.reserve(32);
+            old_values_.reserve(32);
+            removed_values_.reserve(32);
+        }
 
         void set_next_pk(primary_key_t, primary_key_t);
         void move_next_pk(undo_state& src);
@@ -53,7 +57,7 @@ namespace cyberway { namespace chaindb {
             --revision_;
         }
 
-        using pk_value_map_t_ = std::map<primary_key_t, object_value>;
+        using pk_value_map_t_ = fc::flat_map<primary_key_t, object_value>;
 
         table_undo_stack& table_;
         pk_value_map_t_   new_values_;
@@ -410,22 +414,45 @@ namespace cyberway { namespace chaindb {
             }
         }
 
+        index_info get_revision_index() {
+            static index_def rev_index = [&]() {
+                index_def index(N(revision), true, {});
+
+                order_def rev_order("_SERVICE_.rev", "asc");
+                rev_order.path = {"_SERVICE_", "rev"};
+                rev_order.type = "int64";
+
+                order_def upk_order("_SERVICE_.upk", "asc");
+                upk_order.path = {"_SERVICE_", "upk"};
+                upk_order.type = "uint64";
+
+                index.orders.push_back(rev_order);
+                index.orders.push_back(upk_order);
+
+                return index;
+            }();
+
+            index_info index;
+
+            index.account_abi = controller_.get_account_abi_info(config::system_account_name);
+            index.table    = index.abi().find_table(N(undo));
+            index.pk_order = index.abi().find_pk_order(*index.table);
+            index.index    = &rev_index;
+
+            return index;
+        }
+
         struct abi_history_t_ final {
             revision_t revision;
             account_abi_info info;
         }; // struct abi_history
 
-        using abi_history_map_t_ = std::map<account_name_t, std::deque<abi_history_t_>>;
+        using abi_history_map_t_ = fc::flat_map<account_name_t, std::deque<abi_history_t_>>;
 
-        abi_history_map_t_ load_abi_history() {
+        abi_history_map_t_ load_abi_history(const index_info& index) {
             abi_history_map_t_ map;
-            index_info index;
 
-            index.account_abi = controller_.get_account_abi_info(config::system_account_name);
-            index.table = index.abi().find_table(N(undo));
-            index.pk_order = index.abi().find_pk_order(*index.table);
-            index.index = index.abi().find_index(*index.table, tag<by_rev>::get_code());
-
+            map.reserve(32);
             auto  account_table = tag<account_object>::get_code();
             auto& cursor = driver_.lower_bound(index, {});
             for (; cursor.pk != primary_key::End; driver_.next(cursor)) {
@@ -451,7 +478,10 @@ namespace cyberway { namespace chaindb {
                 return;
             }
 
-            auto abi_map = load_abi_history();
+            auto index = get_revision_index();
+            driver_.create_index(index);
+
+            auto abi_map = load_abi_history(index);
 
             auto get_account_abi_info = [&](const auto code, const auto rev) -> account_abi_info {
                 auto mtr = abi_map.find(code);
@@ -474,13 +504,6 @@ namespace cyberway { namespace chaindb {
                 }
                 return stack.head();
             };
-
-            index_info index;
-
-            index.account_abi = controller_.get_account_abi_info(config::system_account_name);
-            index.table = index.abi().find_table(N(undo));
-            index.pk_order = index.abi().find_pk_order(*index.table);
-            index.index = index.abi().find_index(*index.table, tag<by_rev>::get_code());
 
             auto& cursor = driver_.lower_bound(index, {});
             for (; cursor.pk != primary_key::End; driver_.next(cursor)) {
@@ -518,6 +541,8 @@ namespace cyberway { namespace chaindb {
                 }
             }
             driver_.close({cursor.index.code, cursor.id});
+
+            driver_.drop_index(index);
 
             if (revision_ != tail_revision_) stage_ = undo_stage::Stack;
         } catch (const session_exception&) {

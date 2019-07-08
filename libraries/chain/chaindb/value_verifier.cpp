@@ -8,7 +8,8 @@ namespace cyberway { namespace chaindb {
 
     struct value_verifier_impl final {
         value_verifier_impl(const chaindb_controller& controller)
-        : driver_(controller.get_driver()),
+        : controller_(controller),
+          driver_(controller.get_driver()),
           info_(controller.get_system_abi_info()) {
         }
 
@@ -39,12 +40,16 @@ namespace cyberway { namespace chaindb {
                 }
             }
 
+            if (start_revision != controller_.revision()) {
+                controller_.apply_code_changes(obj.pk());
+            }
             abi_info info(obj.pk(), def);
             info.verify_tables_structure(driver_);
         }
 
-        const driver_interface& driver_;
-        const system_abi_info&  info_;
+        const chaindb_controller& controller_;
+        const driver_interface&   driver_;
+        const system_abi_info&    info_;
     }; // struct value_verifier_impl
 
     value_verifier::value_verifier(const chaindb_controller& controller)

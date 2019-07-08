@@ -191,13 +191,16 @@ namespace cyberway { namespace chaindb {
         : code(v.code), table(v.table_name()) {
         }
 
-        friend bool operator < (const cache_service_key& l, const cache_service_key& r) {
-            if (l.table < r.table) return true;
-            if (l.table > r.table) return false;
-
-            return l.code < r.code;
+        friend bool operator == (const cache_service_key& l, const cache_service_key& r) {
+            return l.code == r.code && l.table == r.table;
         }
     }; // cache_service_key
+
+    struct cache_service_hash final {
+        std::size_t operator()(const cache_service_key& key) const {
+            return (key.code ^ key.table);
+        }
+    }; // cache_service_hash
 
     //-----------------------------------------------------------------------------------------------
 
@@ -225,7 +228,7 @@ namespace cyberway { namespace chaindb {
         }
     }; // struct cache_service_info
 
-    using cache_service_tree = std::map<cache_service_key, cache_service_info>;
+    using cache_service_tree = std::unordered_map<cache_service_key, cache_service_info, cache_service_hash>;
 
     //-----------------------------------------------------------------------------------------------
 
