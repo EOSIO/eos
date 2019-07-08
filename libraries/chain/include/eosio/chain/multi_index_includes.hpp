@@ -41,7 +41,6 @@ using bmi::tag;
 using bmi::composite_key_compare;
 
 struct by_id;
-struct by_rev;
 
 namespace eosio { namespace chain {
 
@@ -65,7 +64,6 @@ namespace eosio { namespace chain { namespace resource_limits {
 } } } // namespace eosio::chain::resource_limits
 
 CHAINDB_TAG(by_id, primary) // "primary" for compatibility with contracts
-CHAINDB_TAG(by_rev, revision)
 CHAINDB_TAG(eosio::chain::by_parent, parent)
 CHAINDB_TAG(eosio::chain::by_owner, owner)
 CHAINDB_TAG(eosio::chain::by_name, name)
