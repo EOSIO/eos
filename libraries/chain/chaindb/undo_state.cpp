@@ -30,7 +30,11 @@ namespace cyberway { namespace chaindb {
     class table_undo_stack;
 
     struct undo_state final {
-        undo_state(table_undo_stack& table, revision_t rev): table_(table), revision_(rev) { }
+        undo_state(table_undo_stack& table, revision_t rev): table_(table), revision_(rev) {
+            new_values_.reserve(32);
+            old_values_.reserve(32);
+            removed_values_.reserve(32);
+        }
 
         void set_next_pk(primary_key_t, primary_key_t);
         void move_next_pk(undo_state& src);
@@ -53,7 +57,7 @@ namespace cyberway { namespace chaindb {
             --revision_;
         }
 
-        using pk_value_map_t_ = std::map<primary_key_t, object_value>;
+        using pk_value_map_t_ = fc::flat_map<primary_key_t, object_value>;
 
         table_undo_stack& table_;
         pk_value_map_t_   new_values_;
@@ -443,11 +447,12 @@ namespace cyberway { namespace chaindb {
             account_abi_info info;
         }; // struct abi_history
 
-        using abi_history_map_t_ = std::map<account_name_t, std::deque<abi_history_t_>>;
+        using abi_history_map_t_ = fc::flat_map<account_name_t, std::deque<abi_history_t_>>;
 
         abi_history_map_t_ load_abi_history(const index_info& index) {
             abi_history_map_t_ map;
 
+            map.reserve(32);
             auto  account_table = tag<account_object>::get_code();
             auto& cursor = driver_.lower_bound(index, {});
             for (; cursor.pk != primary_key::End; driver_.next(cursor)) {

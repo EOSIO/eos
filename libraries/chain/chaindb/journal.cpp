@@ -113,13 +113,15 @@ namespace cyberway { namespace chaindb {
         index_.clear();
     }
 
-    journal::write_ctx journal::create_ctx(const table_info& table) {
-        auto table_itr = table_object::find(index_, table);
+    journal::write_ctx journal::create_ctx(const table_info& info) {
+        auto table_itr = table_object::find(index_, info);
         if (index_.end() != table_itr) {
             return write_ctx(const_cast<table_t_&>(*table_itr));
         }
 
-        return write_ctx(table_object::emplace(index_, table));
+        auto& table = table_object::emplace(index_, info);
+        table.info_map.reserve(64);
+        return write_ctx(table);
     }
 
     journal::info_t_& journal::write_ctx::info(const primary_key_t pk) {
@@ -130,6 +132,7 @@ namespace cyberway { namespace chaindb {
         auto itr = table.info_map.find(pk);
         if (itr == table.info_map.end()) {
             itr = table.info_map.emplace(pk, info_t_()).first;
+            itr->second.undo_map.reserve(16);
         }
         info_ = &itr->second;
 
