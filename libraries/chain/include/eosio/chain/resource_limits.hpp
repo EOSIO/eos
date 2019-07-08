@@ -65,7 +65,7 @@ namespace resource_limits {
 
          void update_account_usage( const flat_set<account_name>& accounts, uint32_t ordinal );
 
-         void add_transaction_usage( const flat_set<account_name>& accounts, uint64_t cpu_usage, uint64_t net_usage, uint64_t ram_usage, fc::time_point pending_block_time );
+         void add_transaction_usage( const flat_set<account_name>& accounts, uint64_t cpu_usage, uint64_t net_usage, uint64_t ram_usage, fc::time_point pending_block_time, bool validate = true );
 
          void add_storage_usage(const account_name& account, int64_t delta, uint32_t time_slot, bool);
 

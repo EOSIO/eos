@@ -760,7 +760,7 @@ struct controller_impl {
       etrx.set_reference_block( self.head_block_id() );
 
       transaction_context trx_context( self, etrx, etrx.id(), start );
-      trx_context.deadline = deadline;
+      trx_context.caller_set_deadline = deadline;
       trx_context.explicit_billed_cpu_time = billed.explicit_usage;
       trx_context.billed_cpu_time_us = billed.cpu_time_us;
       trx_context.explicit_billed_ram_bytes = billed.explicit_usage;
@@ -801,20 +801,7 @@ struct controller_impl {
       chaindb.erase( gto, resource_limits.get_storage_payer(self.pending_block_slot(), account_name()));
    }
 
-   bool failure_is_subjective( const fc::exception& e ) const {
-      auto code = e.code();
-      return    (code == subjective_block_production_exception::code_value)
-             || (code == block_net_usage_exceeded::code_value)
-             || (code == block_cpu_usage_exceeded::code_value)
-             || (code == deadline_exception::code_value)
-             || (code == leeway_deadline_exception::code_value);
-   }
 
-   bool scheduled_failure_is_subjective( const fc::exception& e ) const {
-      auto code = e.code();
-      return    (code == tx_cpu_usage_exceeded::code_value)
-             || failure_is_subjective(e);
-   }
 
    transaction_trace_ptr push_scheduled_transaction( const transaction_id_type& trxid, fc::time_point deadline, const billed_bw_usage& billed ) {
       auto idx = chaindb.get_index<generated_transaction_object, by_trx_id>();
@@ -913,7 +900,7 @@ struct controller_impl {
 
       transaction_context trx_context( self, dtrx, gtrx.trx_id );
       trx_context.leeway =  fc::microseconds(0); // avoid stealing cpu resource
-      trx_context.deadline = deadline;
+      trx_context.caller_set_deadline = deadline;
       trx_context.explicit_billed_cpu_time = billed.explicit_usage;
       trx_context.billed_cpu_time_us = billed.cpu_time_us;
       trx_context.explicit_billed_ram_bytes = billed.explicit_usage;
@@ -961,9 +948,9 @@ struct controller_impl {
 
       // Only subjective OR soft OR hard failure logic below:
 
-      if( gtrx.sender != account_name() && !failure_is_subjective(*trace->except)) {
+      if( gtrx.sender != account_name() && !controller::failure_is_subjective(*trace->except)) {
          // Attempt error handling for the generated transaction.
-
+        
          auto error_trace = apply_onerror( gtrx, deadline, trx_context.pseudo_start,
                                            cpu_time_to_bill_us, ram_to_bill_bytes, billed);
          error_trace->failed_dtrx_trace = trace;
@@ -980,30 +967,18 @@ struct controller_impl {
       // Only subjective OR hard failure logic below:
 
       // subjectivity changes based on producing vs validating
-      bool subjective  = false;
-      if (billed.explicit_usage) {
-         subjective = failure_is_subjective(*trace->except);
-      } else {
-         subjective = scheduled_failure_is_subjective(*trace->except);
-      }
-
-      if ( !subjective ) {
+      if ( !controller::scheduled_failure_is_subjective((*trace->except), !billed.explicit_usage) ) {
          // hard failure logic
-
          if( !billed.explicit_usage ) {
             auto& rl = self.get_mutable_resource_limits_manager();
             rl.update_account_usage( trx_context.bill_to_accounts, self.pending_block_slot() );
-            int64_t account_cpu_limit = trx_context.get_min_cpu_limit();
 
-            cpu_time_to_bill_us = static_cast<uint32_t>( std::min( std::min( static_cast<int64_t>(cpu_time_to_bill_us),
-                                                                             account_cpu_limit                          ),
-                                                                   trx_context.initial_objective_duration_limit.count()    ) );
-
-             // TODO: CyberWay #616 should be here correction of ram_to_bill_bytes?
+            cpu_time_to_bill_us = static_cast<uint32_t>(std::min(
+                static_cast<uint64_t>(cpu_time_to_bill_us), trx_context.hard_limits[resource_limits::CPU].max));
+            ram_to_bill_bytes = std::min(ram_to_bill_bytes, trx_context.hard_limits[resource_limits::RAM].max);
          }
          
-         resource_limits.add_transaction_usage( trx_context.bill_to_accounts, cpu_time_to_bill_us, 0, ram_to_bill_bytes, self.pending_block_time() ); // Should never fail
-
+         resource_limits.add_transaction_usage( trx_context.bill_to_accounts, cpu_time_to_bill_us, 0, ram_to_bill_bytes, self.pending_block_time(), false ); // Should never fail
          trace->receipt = push_receipt(gtrx.trx_id, transaction_receipt::hard_fail, cpu_time_to_bill_us, 0, ram_to_bill_bytes, 0);
 
          emit( self.accepted_transaction, trx );
@@ -1014,7 +989,6 @@ struct controller_impl {
          emit( self.accepted_transaction, trx );
          emit( self.applied_transaction, trace );
       }
-
       return trace;
    } FC_CAPTURE_AND_RETHROW() /// push_scheduled_transaction
 
@@ -1071,7 +1045,7 @@ struct controller_impl {
          if ((bool)subjective_cpu_leeway && pending->_block_status == controller::block_status::incomplete) {
             trx_context.leeway = *subjective_cpu_leeway;
          }
-         trx_context.deadline = deadline;
+         trx_context.caller_set_deadline = deadline;
          trx_context.explicit_billed_cpu_time = billed.explicit_usage;
          trx_context.billed_cpu_time_us = billed.cpu_time_us;
          trx_context.explicit_billed_ram_bytes = billed.explicit_usage;
@@ -1157,7 +1131,7 @@ struct controller_impl {
             trace->except_ptr = std::current_exception();
          }
 
-         if (!failure_is_subjective(*trace->except)) {
+         if (!controller::failure_is_subjective(*trace->except)) {
             unapplied_transactions.erase( trx->signed_id );
          }
 

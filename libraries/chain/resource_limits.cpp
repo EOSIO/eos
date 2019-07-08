@@ -143,7 +143,7 @@ void resource_limits_state_object::add_pending_delta(int64_t delta, const chain_
         ("res", static_cast<int>(res))("delta", delta)("new_pending", pending)("max", max));
 }
 
-void resource_limits_manager::add_transaction_usage(const flat_set<account_name>& accounts, uint64_t cpu_usage, uint64_t net_usage, uint64_t ram_usage, fc::time_point pending_block_time) {
+void resource_limits_manager::add_transaction_usage(const flat_set<account_name>& accounts, uint64_t cpu_usage, uint64_t net_usage, uint64_t ram_usage, fc::time_point pending_block_time, bool validate) {
    auto state_table = _chaindb.get_table<resource_limits_state_object>();
    const auto& state = state_table.get();
    const auto& config = _chaindb.get<resource_limits_config_object>();
@@ -161,8 +161,10 @@ void resource_limits_manager::add_transaction_usage(const flat_set<account_name>
           bu.accumulators[NET].add(net_usage, time_slot, config.account_usage_average_windows[NET]);
           bu.accumulators[RAM].add(ram_usage, time_slot, config.account_usage_average_windows[RAM]);
       });
-      // validate the resources available
-      get_account_balance(pending_block_time, a, prices, true);
+      if (validate) {
+          // validate the resources available
+          get_account_balance(pending_block_time, a, prices, true);
+      }
    }
    // account for this transaction in the block and do not exceed those limits either
    const auto& chain_cfg = _chaindb.get<global_property_object>().configuration;
@@ -357,7 +359,7 @@ uint64_t resource_limits_manager::get_account_balance(fc::time_point pending_blo
         cost = (UINT64_MAX - cost) > add ? cost + add : UINT64_MAX;
     }
     
-    EOS_ASSERT(!update_state || (staked >= cost), resource_exhausted_exception, 
+    EOS_ASSERT(!update_state || (staked >= cost), account_resources_exceeded, 
         "account ${a} has insufficient staked tokens (${s}).\n usage: cpu ${uc}, net ${un}, ram ${ur}, storage ${us}; \n prices: cpu ${pc}, net ${pn}, ram ${pr}, storage ${ps};\n cost ${c}", 
         ("a", account)("s",staked)
         ("uc", res_usage[CPU])("un", res_usage[NET])("ur", res_usage[RAM])("us", res_usage[STORAGE])

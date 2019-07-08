@@ -101,7 +101,7 @@ fc::microseconds transaction::get_signature_keys( const vector<signature_type>& 
    fc::microseconds sig_cpu_usage;
    for(const signature_type& sig : signatures) {
       auto now = fc::time_point::now();
-      EOS_ASSERT( now < deadline, tx_cpu_usage_exceeded, "transaction signature verification executed for too long",
+      EOS_ASSERT( now < deadline, tx_subjective_usage_exceeded, "transaction signature verification executed for too long",
                   ("now", now)("deadline", deadline)("start", start) );
       public_key_type recov;
       const auto& tid = id();

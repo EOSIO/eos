@@ -180,7 +180,7 @@ BOOST_FIXTURE_TEST_CASE( providebw_test, system_contract_tester ) {
                mvo()("from","user")));
         set_transaction_headers(trx);
         trx.sign( get_private_key("user", "active"), control->get_chain_id() );
-        BOOST_REQUIRE_EXCEPTION( push_transaction(trx), tx_net_usage_exceeded, [](auto&){return true;});
+        BOOST_REQUIRE_EXCEPTION( push_transaction(trx), tx_usage_exceeded, [](auto&){return true;});
 
         trx.actions.emplace_back( vector<permission_level>{{"provider", config::active_name}},
                                   cyberway::chain::providebw(N(provider), N(user)));
@@ -213,7 +213,7 @@ BOOST_FIXTURE_TEST_CASE( providebw_test, system_contract_tester ) {
         trx.sign( get_private_key("user", "active"), control->get_chain_id() );
         trx.sign( get_private_key("user2", "active"), control->get_chain_id() );
         trx.sign( get_private_key("provider", "active"), control->get_chain_id() );
-        BOOST_REQUIRE_EXCEPTION(push_transaction( trx ), tx_net_usage_exceeded, [](auto&){return true;});
+        BOOST_REQUIRE_EXCEPTION(push_transaction( trx ), tx_usage_exceeded, [](auto&){return true;});
 
         // Check operation success with 2 providebw
         trx.actions.emplace_back( vector<permission_level>{{"provider", config::active_name}},

@@ -270,27 +270,22 @@ namespace eosio { namespace chain {
 
    FC_DECLARE_DERIVED_EXCEPTION( resource_exhausted_exception, chain_exception,
                                  3080000, "Resource exhausted exception" )
-
-      FC_DECLARE_DERIVED_EXCEPTION( ram_usage_exceeded, resource_exhausted_exception,
-                                    3080001, "Account using more than allotted RAM usage" )
-      FC_DECLARE_DERIVED_EXCEPTION( tx_net_usage_exceeded, resource_exhausted_exception,
-                                    3080002, "Transaction exceeded the current network usage limit imposed on the transaction" )
-      FC_DECLARE_DERIVED_EXCEPTION( block_net_usage_exceeded, resource_exhausted_exception,
-                                    3080003, "Transaction network usage is too much for the remaining allowable usage of the current block" )
-      FC_DECLARE_DERIVED_EXCEPTION( tx_cpu_usage_exceeded, resource_exhausted_exception,
-                                    3080004, "Transaction exceeded the current CPU usage limit imposed on the transaction" )
-      FC_DECLARE_DERIVED_EXCEPTION( block_cpu_usage_exceeded, resource_exhausted_exception,
-                                    3080005, "Transaction CPU usage is too much for the remaining allowable usage of the current block" )
+      FC_DECLARE_DERIVED_EXCEPTION( block_usage_exceeded, resource_exhausted_exception,
+                                    3080001, "Transaction usage is too much for the remaining allowable usage of the current block" )
+      FC_DECLARE_DERIVED_EXCEPTION( tx_usage_exceeded, resource_exhausted_exception,
+                                    3080002, "Transaction exceeded the current usage limit imposed on the transaction" )
+      FC_DECLARE_DERIVED_EXCEPTION( tx_subjective_usage_exceeded, resource_exhausted_exception,
+                                    3080003, "Transaction subjectively exceeded the current usage limit imposed on the transaction" )
       FC_DECLARE_DERIVED_EXCEPTION( deadline_exception, resource_exhausted_exception,
-                                    3080006, "Transaction took too long" )
-      FC_DECLARE_DERIVED_EXCEPTION( tx_ram_usage_exceeded, resource_exhausted_exception,
-                                    3080007, "Transaction exceeded the current RAM usage limit imposed on the transaction" )
-      FC_DECLARE_DERIVED_EXCEPTION( tx_storage_usage_exceeded, resource_exhausted_exception,
-                                    3080008, "Transaction exceeded the current STORAGE usage limit imposed on the transaction" )
+                                    3080004, "Transaction took too long" )
+      FC_DECLARE_DERIVED_EXCEPTION( timer_off_exception, resource_exhausted_exception,
+                                    3080005, "Transaction aborted with timer off" ) 
+      FC_DECLARE_DERIVED_EXCEPTION( explicitly_billed_exception, resource_exhausted_exception,
+                                    3080006, "Transaction aborted while usage is explicitly billed" )
+      FC_DECLARE_DERIVED_EXCEPTION( account_resources_exceeded, resource_exhausted_exception,
+                                    3080007, "Resources available in accounts have been exceeded" )
 
 // CYBERWAY: greylist removed (3080007, 3080008)
-      FC_DECLARE_DERIVED_EXCEPTION( leeway_deadline_exception, deadline_exception,
-                                    3081001, "Transaction reached the deadline set due to leeway on account CPU limits" )
 
    FC_DECLARE_DERIVED_EXCEPTION( authorization_exception, chain_exception,
                                  3090000, "Authorization exception" )
