@@ -101,16 +101,24 @@ namespace eosio {
       bool          have_block = false; // true if we have received the block, false if only received id notification
    };
 
+   struct by_block_id;
+
    typedef multi_index_container<
       eosio::peer_block_state,
       indexed_by<
          ordered_unique< tag<by_id>,
                composite_key< peer_block_state,
-                     member<peer_block_state, block_id_type, &eosio::peer_block_state::id>,
                      member<peer_block_state, uint32_t, &eosio::peer_block_state::connection_id>,
+                     member<peer_block_state, block_id_type, &eosio::peer_block_state::id>
+               >,
+               composite_key_compare< std::less<uint32_t>, sha256_less >
+         >,
+         ordered_non_unique< tag<by_block_id>,
+               composite_key< peer_block_state,
+                     member<peer_block_state, block_id_type, &eosio::peer_block_state::id>,
                      member<peer_block_state, bool, &eosio::peer_block_state::have_block>
                >,
-               composite_key_compare< sha256_less, std::less<uint32_t>, std::greater<bool> >
+               composite_key_compare< sha256_less, std::greater<bool> >
          >,
          ordered_non_unique< tag<by_block_num>, member<eosio::peer_block_state, uint32_t, &eosio::peer_block_state::block_num > >
       >
@@ -188,6 +196,7 @@ namespace eosio {
       bool add_peer_block_id( const block_id_type& blkid, uint32_t connection_id );
       bool peer_has_block(const block_id_type& blkid, uint32_t connection_id);
       bool have_block(const block_id_type& blkid);
+      size_t num_entries( uint32_t connection_id );
 
       bool add_peer_txn( const node_transaction_state& nts );
       void update_txns_block_num( const signed_block_ptr& sb );
@@ -380,6 +389,7 @@ namespace eosio {
    constexpr auto     def_max_read_delays = 100; // number of times read_delay_timer started without any reads
    constexpr auto     def_max_consecutive_rejected_blocks = 3; // num of rejected blocks before disconnect
    constexpr auto     def_max_consecutive_immediate_connection_close = 9; // back off if client keeps closing
+   constexpr auto     def_max_peer_block_ids_per_connection = 1*1024*1024; // if we reach this many then the connection is spaming us, disconnect
    constexpr auto     def_max_clients = 25; // 0 for unlimited clients
    constexpr auto     def_max_nodes_per_host = 1;
    constexpr auto     def_conn_retry_wait = 30;
@@ -1661,12 +1671,6 @@ namespace eosio {
       fc_ilog( logger, "sync_manager got ${m} block notice", ("m", modes_str( msg.known_blocks.mode )) );
       EOS_ASSERT( msg.known_blocks.mode == catch_up || msg.known_blocks.mode == last_irr_catch_up, plugin_exception,
                   "sync_recv_notice only called on catch_up" );
-      if( msg.known_blocks.ids.size() > 1 ) {
-         fc_elog( logger, "Invalid notice_message, known_blocks.ids.size ${s}, closing connection: ${p}",
-                  ("s", msg.known_blocks.ids.size())("p", c->peer_address()) );
-         c->close();
-         return;
-      }
       if (msg.known_blocks.mode == catch_up) {
          if (msg.known_blocks.ids.size() == 0) {
             fc_elog( logger,"got a catch up with ids size = 0" );
@@ -1775,7 +1779,7 @@ namespace eosio {
    // thread safe
    bool dispatch_manager::add_peer_block( const block_id_type& blkid, uint32_t connection_id) {
       std::lock_guard<std::mutex> g( blk_state_mtx );
-      auto bptr = blk_state.get<by_id>().find(std::make_tuple(std::ref(blkid), connection_id));
+      auto bptr = blk_state.get<by_id>().find( std::make_tuple( connection_id, std::ref( blkid )));
       bool added = (bptr == blk_state.end());
       if( added ) {
          blk_state.insert( {blkid, block_header::num_from_id( blkid ), connection_id, true} );
@@ -1789,7 +1793,7 @@ namespace eosio {
 
    bool dispatch_manager::add_peer_block_id( const block_id_type& blkid, uint32_t connection_id) {
       std::lock_guard<std::mutex> g( blk_state_mtx );
-      auto bptr = blk_state.get<by_id>().find(std::make_tuple(std::ref(blkid), connection_id));
+      auto bptr = blk_state.get<by_id>().find( std::make_tuple( connection_id, std::ref( blkid )));
       bool added = (bptr == blk_state.end());
       if( added ) {
          blk_state.insert( {blkid, block_header::num_from_id( blkid ), connection_id, false} );
@@ -1799,17 +1803,24 @@ namespace eosio {
 
    bool dispatch_manager::peer_has_block( const block_id_type& blkid, uint32_t connection_id ) {
       std::lock_guard<std::mutex> g(blk_state_mtx);
-      auto blk_itr = blk_state.get<by_id>().find(std::make_tuple(std::ref(blkid), connection_id));
+      auto blk_itr = blk_state.get<by_id>().find( std::make_tuple( connection_id, std::ref( blkid )));
       return blk_itr != blk_state.end();
    }
 
    bool dispatch_manager::have_block( const block_id_type& blkid ) {
       std::lock_guard<std::mutex> g(blk_state_mtx);
-      auto blk_itr = blk_state.get<by_id>().find( blkid );
-      if( blk_itr != blk_state.end() ) {
+      // by_block_id sorts have_block by greater so have_block == true will be the first one found
+      auto& index = blk_state.get<by_block_id>();
+      auto blk_itr = index.find( blkid );
+      if( blk_itr != index.end() ) {
          return blk_itr->have_block;
       }
       return false;
+   }
+
+   size_t dispatch_manager::num_entries( uint32_t connection_id ) {
+      std::lock_guard<std::mutex> g(blk_state_mtx);
+      return blk_state.get<by_id>().count( connection_id );
    }
 
    bool dispatch_manager::add_peer_txn( const node_transaction_state& nts ) {
@@ -2655,6 +2666,12 @@ namespace eosio {
       //
       peer_ilog( this, "received notice_message" );
       connecting = false;
+      if( msg.known_blocks.ids.size() > 1 ) {
+         fc_elog( logger, "Invalid notice_message, known_blocks.ids.size ${s}, closing connection: ${p}",
+                  ("s", msg.known_blocks.ids.size())("p", peer_address()) );
+         close( false );
+         return;
+      }
       if( msg.known_trx.mode != none ) {
          fc_dlog( logger, "this is a ${m} notice with ${n} transactions",
                   ("m", modes_str( msg.known_trx.mode ))( "n", msg.known_trx.pending ) );
