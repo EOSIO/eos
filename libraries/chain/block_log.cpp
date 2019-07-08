@@ -386,11 +386,12 @@ namespace eosio { namespace chain {
 
    void block_log::construct_index(const fc::path& block_file_name, const fc::path& index_file_name, bool provide_index_log_status) {
       detail::reverse_iterator block_log_iter;
+
+      const uint32_t num_blocks = block_log_iter.open(block_file_name);
       if (provide_index_log_status) {
          std::cout << "\nblock log version= " << block_log_iter.version() << '\n';
       }
 
-      const uint32_t num_blocks = block_log_iter.open(block_file_name);
       if (num_blocks == 0) {
          return;
       }
