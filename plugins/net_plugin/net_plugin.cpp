@@ -985,11 +985,11 @@ namespace eosio {
       std::tie( std::ignore, std::ignore, head_num,
                 std::ignore, std::ignore, head_id ) = my_impl->get_chain_info();
 
-      notice_message note;
-      note.known_blocks.mode = normal;
-      note.known_blocks.pending = 0;
       fc_dlog(logger, "head_num = ${h}",("h",head_num));
       if(head_num == 0) {
+         notice_message note;
+         note.known_blocks.mode = normal;
+         note.known_blocks.pending = 0;
          enqueue(note);
          return;
       }
@@ -2026,9 +2026,9 @@ namespace eosio {
          return;
       }
       if (msg.known_blocks.mode == normal) {
-         req.req_blocks.mode = normal;
          // known_blocks.ids is never > 1
          if( !msg.known_blocks.ids.empty() ) {
+            req.req_blocks.mode = normal;
             const block_id_type& blkid = msg.known_blocks.ids.back();
             if( have_block( blkid )) {
                add_peer_block( blkid, c->connection_id );
@@ -2039,35 +2039,6 @@ namespace eosio {
             if( msg.known_blocks.pending == 1 ) { // block id notify
                return;
             }
-            connection_wptr weak = c;
-            app().post( priority::low, [this, msg{std::move(msg)}, req{std::move(req)}, weak{std::move(weak)}]() mutable {
-               connection_ptr c = weak.lock();
-               if( !c ) return;
-               const block_id_type& blkid = msg.known_blocks.ids.back();
-               signed_block_ptr b;
-               try {
-                  controller& cc = my_impl->chain_plug->chain();
-                  b = cc.fetch_block_by_id( blkid ); // if exists
-                  if( b ) {
-                     add_peer_block( blkid, c->connection_id );
-                  }
-               } catch( const assert_exception& ex ) {
-                  fc_ilog( logger, "caught assert on fetch_block_by_id, ${ex}", ("ex", ex.what()) );
-                  // keep going, client can ask another peer
-               } catch( ... ) {
-                  fc_elog( logger, "failed to retrieve block for id" );
-               }
-               if( !b ) {
-                  req.req_blocks.ids.push_back( blkid );
-                  c->strand.post( [req{std::move(req)}, c{std::move(c)}]() mutable {
-                     fc_dlog( logger, "send req" );
-                     c->enqueue( req );
-                     c->fetch_wait();
-                     std::lock_guard<std::mutex> g( c->conn_mtx );
-                     c->last_req = std::move( req );
-                  });
-               }
-            });
          }
       } else if (msg.known_blocks.mode != none) {
          fc_elog( logger, "passed a notice_message with something other than a normal on none known_blocks" );
