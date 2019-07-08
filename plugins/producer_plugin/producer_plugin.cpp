@@ -280,31 +280,9 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
             }
          } ) );
 
-         // since the watermark has to be set before a block is created, we are looking into the future to
-         // determine the new schedule to identify producers that have become active
-         chain::controller& chain = chain_plug->chain();
-         const auto hbn = bsp->block_num;
-         auto new_pbhs = bsp->next(bsp->header.timestamp.next(), 0);
-
-         // for newly installed producers we can set their watermarks to the block they became active
-         if( bsp->active_schedule.version != new_pbhs.active_schedule.version ) {
-            flat_set<account_name> new_producers;
-            new_producers.reserve(new_pbhs.active_schedule.producers.size());
-            for( const auto& p: new_pbhs.active_schedule.producers) {
-               if (_producers.count(p.producer_name) > 0)
-                  new_producers.insert(p.producer_name);
-            }
-
-            for( const auto& p: bsp->active_schedule.producers) {
-               // clear watermark unless we have the old key (we were producing before)
-               if (_signature_providers.count(p.block_signing_key) > 0) {
-                  new_producers.erase(p.producer_name);
-               }
-            }
-
-            for (const auto& new_producer: new_producers) {
-               _producer_watermarks[new_producer] = hbn;
-            }
+         // simplify handling of watermark in on_block
+         if (bsp->block) {
+            _producer_watermarks[bsp->block->producer] = bsp->block_num;
          }
       }
 
@@ -1307,13 +1285,6 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
    auto signature_provider_itr = _signature_providers.find(scheduled_producer.block_signing_key);
    auto irreversible_block_age = get_irreversible_block_age();
 
-   // fix blocks_to_confirm when blocks with same producer (different sign keys) are received
-   uint32_t last_produced_blocknum = 0; // last produced blknum of same producer
-   auto prod_last_produced_itr = hbs->producer_to_last_produced.find( scheduled_producer.producer_name );
-   if (prod_last_produced_itr != hbs->producer_to_last_produced.end()) {
-      last_produced_blocknum = prod_last_produced_itr->second;
-   }
-
    // If the next block production opportunity is in the present or future, we're synced.
    if( !_production_enabled ) {
       _pending_block_mode = pending_block_mode::speculating;
@@ -1362,14 +1333,12 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
          if (currrent_watermark_itr != _producer_watermarks.end()) {
             auto watermark = currrent_watermark_itr->second;
             if (watermark < hbs->block_num) {
-               blocks_to_confirm = std::min<uint16_t>(std::numeric_limits<uint16_t>::max(), (uint16_t)(hbs->block_num - watermark));
+               blocks_to_confirm = (uint16_t)(std::min<uint32_t>(std::numeric_limits<uint16_t>::max(), (uint32_t)(hbs->block_num - watermark)));
             }
          }
-      }
 
-      if (last_produced_blocknum && hbs->block_num >= last_produced_blocknum && 
-          (hbs->block_num - last_produced_blocknum) < std::numeric_limits<uint16_t>::max())  {
-         blocks_to_confirm = std::min<uint16_t>(blocks_to_confirm, (uint16_t)(hbs->block_num - last_produced_blocknum));
+         // can not confirm irreversible blocks
+         blocks_to_confirm = (uint16_t)(std::min<uint32_t>(blocks_to_confirm, (uint32_t)(hbs->block_num - hbs->dpos_irreversible_blocknum)));
       }
 
       chain.abort_block();
