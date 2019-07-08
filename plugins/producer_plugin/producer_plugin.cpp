@@ -468,6 +468,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       };
 
       start_block_result start_block();
+      start_block_result process_pending_transactions(const fc::time_point& preprocess_deadline, size_t orig_size);
 
       fc::time_point calculate_pending_block_time() const;
       fc::time_point calculate_block_deadline( const fc::time_point& ) const;
@@ -1002,6 +1003,20 @@ enum class tx_category {
 };
 
 
+producer_plugin_impl::start_block_result producer_plugin_impl::process_pending_transactions(
+   const fc::time_point& preprocess_deadline, size_t orig_size
+) {
+   auto ret = start_block_result::succeeded;
+   while (orig_size && _pending_incoming_transactions.size()) {
+      if (preprocess_deadline <= fc::time_point::now()) return start_block_result::exhausted;
+      auto e = _pending_incoming_transactions.front();
+      _pending_incoming_transactions.pop_front();
+      --orig_size;
+      process_incoming_transaction_async(std::get<0>(e), std::get<1>(e), std::get<2>(e));
+   }
+   return start_block_result::succeeded;
+}
+
 producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
    chain::controller& chain = chain_plug->chain();
 
@@ -1058,7 +1073,10 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
       if (!chain.pending_block_state()) {
          chain.start_block(block_time);
       }
-      return start_block_result::waiting;
+      // node do not producing here, but still can have pending incoming transactions. process them
+      const fc::time_point preprocess_deadline = calculate_block_deadline(block_time);
+      auto ret = process_pending_transactions(preprocess_deadline, _pending_incoming_transactions.size());
+      return ret == start_block_result::succeeded ? start_block_result::waiting : ret;
    }
 
    // waiting block from previous BP, until we have time to produce block
@@ -1375,12 +1393,9 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
 
             if (!_pending_incoming_transactions.empty()) {
                fc_dlog(_log, "Processing ${n} pending transactions", ("n", _pending_incoming_transactions.size()));
-               while (orig_pending_txn_size && _pending_incoming_transactions.size()) {
-                  if (preprocess_deadline <= fc::time_point::now()) return start_block_result::exhausted;
-                  auto e = _pending_incoming_transactions.front();
-                  _pending_incoming_transactions.pop_front();
-                  --orig_pending_txn_size;
-                  process_incoming_transaction_async(std::get<0>(e), std::get<1>(e), std::get<2>(e));
+               auto ret = process_pending_transactions(preprocess_deadline, orig_pending_txn_size);
+               if (ret != start_block_result::succeeded) {
+                  return ret;
                }
             }
             return start_block_result::succeeded;
