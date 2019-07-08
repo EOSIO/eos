@@ -2026,12 +2026,7 @@ namespace eosio {
 
    // called from connection strand
    void dispatch_manager::recv_notice(const connection_ptr& c, const notice_message& msg, bool generated) {
-      request_message req;
-      req.req_trx.mode = none;
-      req.req_blocks.mode = none;
       if (msg.known_trx.mode == normal) {
-         req.req_trx.mode = normal;
-         req.req_trx.pending = 0;
       } else if (msg.known_trx.mode != none) {
          fc_elog( logger, "passed a notice_message with something other than a normal on none known_trx" );
          return;
@@ -2039,7 +2034,10 @@ namespace eosio {
       if (msg.known_blocks.mode == normal) {
          // known_blocks.ids is never > 1
          if( !msg.known_blocks.ids.empty() ) {
-            req.req_blocks.mode = normal;
+            if( num_entries( c->connection_id ) > def_max_peer_block_ids_per_connection ) {
+               fc_elog( logger, "received too many notice_messages, diconnecting" );
+               c->close( false );
+            }
             const block_id_type& blkid = msg.known_blocks.ids.back();
             if( have_block( blkid )) {
                add_peer_block( blkid, c->connection_id );
