@@ -904,6 +904,7 @@ struct genesis_create::genesis_create_impl final {
         db.start_section(_info.golos.names.control, N(witnessvote), "witness_voter", _visitor.witness_votes.size());
         for (const auto& v: _visitor.witness_votes) {
             const auto& acc = v.first;
+            const auto n = name_by_idx(acc);
             const auto& votes = v.second;
             EOS_ASSERT(votes.size() <= 30, genesis_exception,
                 "Account `${a}` have ${n} witness votes, but max 30 allowed", ("a",_accs_map[acc])("n",votes.size()));
@@ -914,8 +915,8 @@ struct genesis_create::genesis_create_impl final {
                 witnesses.emplace_back(name_by_idx(w));
                 weights[w] += vests;
                 vote_counts[w]++;
+                _exp_info.witness_votes[w].insert(n);
             }
-            const auto n = name_by_idx(acc);
             db.insert(n.value, _info.golos.names.control, n, mvo
                 ("voter", n)
                 ("witnesses", witnesses)
@@ -926,18 +927,16 @@ struct genesis_create::genesis_create_impl final {
         for (const auto& w : _visitor.witnesses) {
             const auto n = name_by_acc(w.owner);
             primary_key_t pk = n.value;
-            db.insert(pk, _info.golos.names.control, n, mvo
+            auto witness = mvo
                 ("name", n)
                 ("url", w.url)
                 ("active", true)
-                ("total_weight", w.votes)
+                ("total_weight", w.votes);
+            db.insert(pk, _info.golos.names.control, n, witness
                 ("counter_votes", vote_counts[w.owner.id])
             );
-            _exp_info.witness_events.push_back(mvo
-                ("witness", n)
-                ("weight", w.votes)
-                ("active", true)
-            );
+            _exp_info.witnesses[w.owner.id] = witness;
+
             if (weights[w.owner.id] != w.votes) {
                 wlog("Witness `${a}` .votes value ${w} ≠ ${c}",
                     ("a",w.owner.str(_accs_map))("w",w.votes)("c",weights[w.owner.id]));

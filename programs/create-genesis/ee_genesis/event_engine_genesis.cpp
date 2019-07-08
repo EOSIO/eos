@@ -224,9 +224,11 @@ static abi_def create_witnesses_abi() {
 
     abi.structs.emplace_back( struct_def {
         "witnessstate", "", {
-            {"witness", "name"},
-            {"weight", "uint64"},
+            {"name", "name"},
+            {"url", "string"},
             {"active", "bool"},
+            {"total_weight", "int64"},
+            {"votes", "name[]"},
         }
     });
 

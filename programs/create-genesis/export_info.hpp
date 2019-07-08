@@ -66,7 +66,8 @@ public:
 
 struct export_info {
     fc::flat_map<acc_idx, mvo> account_infos;
-    std::vector<mvo> witness_events;
+    fc::flat_map<acc_idx, mvo> witnesses;
+    fc::flat_map<acc_idx, fc::flat_set<name>> witness_votes;
     std::vector<mvo> currency_stats;
     std::vector<mvo> balance_events;
     std::vector<mvo> delegations;
