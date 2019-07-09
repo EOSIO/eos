@@ -10,7 +10,6 @@
 
 #define LOG_READ  (std::ios::in | std::ios::binary)
 #define LOG_WRITE (std::ios::out | std::ios::binary | std::ios::app)
-#define LOG_WRITE_NEW (std::ios::out | std::ios::binary)
 #define LOG_RW ( std::ios::in | std::ios::out | std::ios::binary )
 
 namespace eosio { namespace chain {
@@ -620,7 +619,7 @@ namespace eosio { namespace chain {
       }
 
       auto status = fseek(_file.get(), 0, SEEK_END);
-      EOS_ASSERT( status == 0, block_log_exception, "Could not open Block log file at '${blocks_log}'", ("blocks_log", _block_file_name) );
+      EOS_ASSERT( status == 0, block_log_exception, "Could not open Block log file at '${blocks_log}'. Returned status: ${status}", ("blocks_log", _block_file_name)("status", status) );
 
       _eof_position_in_file = ftell(_file.get());
       EOS_ASSERT( _eof_position_in_file > 0, block_log_exception, "Block log file at '${blocks_log}' could not be read.", ("blocks_log", _block_file_name) );
@@ -632,12 +631,12 @@ namespace eosio { namespace chain {
       char* buf = _buffer_ptr.get();
       const uint32_t index_of_pos = _current_position_in_file - _start_of_buffer_position;
       const uint64_t block_pos = *reinterpret_cast<uint64_t*>(buf + index_of_pos);
-      uint32_t bnum;
 
       if (block_pos == block_log::npos) {
          return 0;
       }
 
+      uint32_t bnum = 0;
       if (block_pos >= _start_of_buffer_position) {
          const uint32_t index_of_block = block_pos - _start_of_buffer_position;
          bnum = *reinterpret_cast<uint32_t*>(buf + index_of_block + _blknum_offset_from_pos);  //block number of previous block (is big endian)
@@ -645,7 +644,7 @@ namespace eosio { namespace chain {
       else {
          const auto blknum_offset_pos = block_pos + _blknum_offset_from_pos;
          auto status = fseek(_file.get(), blknum_offset_pos, SEEK_SET);
-         EOS_ASSERT( status == 0, block_log_exception, "Could not seek in '${blocks_log}' to position: ${pos}", ("blocks_log", _block_file_name)("pos", blknum_offset_pos) );
+         EOS_ASSERT( status == 0, block_log_exception, "Could not seek in '${blocks_log}' to position: ${pos}. Returned status: ${status}", ("blocks_log", _block_file_name)("pos", blknum_offset_pos)("status", status) );
          auto size = fread((void*)&bnum, sizeof(bnum), 1, _file.get());
          EOS_ASSERT( size == 1, block_log_exception, "Could not read in '${blocks_log}' at position: ${pos}", ("blocks_log", _block_file_name)("pos", blknum_offset_pos) );
       }
@@ -703,7 +702,7 @@ namespace eosio { namespace chain {
       }
 
       auto status = fseek(_file.get(), _start_of_buffer_position, SEEK_SET);
-      EOS_ASSERT( status == 0, block_log_exception, "Could not seek in '${blocks_log}' to position: ${pos}", ("blocks_log", _block_file_name)("pos", _start_of_buffer_position) );
+      EOS_ASSERT( status == 0, block_log_exception, "Could not seek in '${blocks_log}' to position: ${pos}. Returned status: ${status}", ("blocks_log", _block_file_name)("pos", _start_of_buffer_position)("status", status) );
       char* buf = _buffer_ptr.get();
       auto size = fread((void*)buf, (_end_of_buffer_position - _start_of_buffer_position), 1, _file.get());//read tail of blocks.log file into buf
       EOS_ASSERT( size == 1, block_log_exception, "blocks.log read fails" );
@@ -735,7 +734,7 @@ namespace eosio { namespace chain {
          // allocate 8 bytes for each block position to store
          const auto full_file_size = buffer_location_to_file_location(_blocks_expected);
          auto status = fseek(_file.get(), full_file_size, SEEK_SET);
-         EOS_ASSERT( status == 0, block_log_exception, "Could not allocate in '${blocks_index}' storage for all the blocks, size: ${size}", ("blocks_index", _block_index_name)("size", full_file_size) );
+         EOS_ASSERT( status == 0, block_log_exception, "Could not allocate in '${blocks_index}' storage for all the blocks, size: ${size}. Returned status: ${status}", ("blocks_index", _block_index_name)("size", full_file_size)("status", status) );
          const auto block_end = file_location_to_buffer_location(full_file_size);
          _current_position = block_end - 1;
          update_buffer_position();
@@ -752,7 +751,7 @@ namespace eosio { namespace chain {
       const auto file_location_start = buffer_location_to_file_location(_start_of_buffer_position);
 
       auto status = fseek(_file.get(), file_location_start, SEEK_SET);
-      EOS_ASSERT( status == 0, block_log_exception, "Could not navigate in '${blocks_index}' file_location_start: ${loc}, _start_of_buffer_position: ${_start_of_buffer_position}", ("blocks_index", _block_index_name)("loc", file_location_start)("_start_of_buffer_position",_start_of_buffer_position) );
+      EOS_ASSERT( status == 0, block_log_exception, "Could not navigate in '${blocks_index}' file_location_start: ${loc}, _start_of_buffer_position: ${_start_of_buffer_position}. Returned status: ${status}", ("blocks_index", _block_index_name)("loc", file_location_start)("_start_of_buffer_position",_start_of_buffer_position)("status", status) );
 
       const auto buffer_size = _end_of_buffer_position - _start_of_buffer_position;
       const auto file_size = buffer_location_to_file_location(buffer_size);
