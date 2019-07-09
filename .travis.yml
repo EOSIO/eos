@@ -13,3 +13,6 @@ script:
 - docker build -t eos-dev -f ./.cicd/Dockerfile-U18 .
 after_success:
 - echo '##### CHECKPOINT 3'
+- echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+- docker tag eos-dev eoio/ci:ubuntu-18.04
+- docker push eoio/ci:ubuntu-18.04
