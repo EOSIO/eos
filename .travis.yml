@@ -8,7 +8,7 @@ before_install:
 - echo '##### CHECKPOINT 1'
 script:
 - echo '##### CHECKPOINT 2'
-- docker build -t eos-dev -f ./.cicd/Dockerfile-U18 .
+- docker build -t eos-dev -f ./.cicd/ubuntu-18.04.dockerfile .
 after_success:
 - echo '##### CHECKPOINT 3'
 - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin

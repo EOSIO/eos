@@ -2,7 +2,7 @@
 set -eu
 
 rm -rf ./eos
-docker build -t eos-dev -f Dockerfile-U18 .
+docker build -t eos-dev -f ubuntu-18.04.dockerfile .
 git clone https://github.com/EOSIO/eos
 cd eos
 git checkout release/1.8.x
