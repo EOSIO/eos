@@ -1,0 +1,12 @@
+language: cpp
+dist: trusty
+compiler:
+- clang
+os:
+- linux
+before_install:
+- echo '##### CHECKPOINT 1 #####'
+script:
+- echo '##### CHECKPOINT 2 #####'
+after_success:
+- echo '##### CHECKPOINT 3 #####'
