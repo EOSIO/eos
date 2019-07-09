@@ -1,5 +1,5 @@
 os: linux
-dist: trusty
+dist: xenial
 language: cpp
 compiler: clang
 services:
