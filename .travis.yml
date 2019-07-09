@@ -1,9 +1,7 @@
-language: cpp
+os: linux
 dist: trusty
-compiler:
-- clang
-os:
-- linux
+language: cpp
+compiler: clang
 services:
 - docker
 before_install:
