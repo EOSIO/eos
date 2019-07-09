@@ -29,7 +29,8 @@ RUN curl -LO https://dl.bintray.com/boostorg/release/1.70.0/source/boost_1_70_0.
 
 # Build appropriate version of MongoDB.
 RUN curl -LO http://downloads.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1804-4.1.1.tgz \
-  && tar -xzf mongodb-linux-x86_64-ubuntu1804-4.1.1.tgz
+  && tar -xzf mongodb-linux-x86_64-ubuntu1804-4.1.1.tgz \
+  && rm -f mongodb-linux-x86_64-ubuntu1804-4.1.1.tgz
 
 # Build appropriate version of MongoDB C Driver. 
 RUN curl -LO https://github.com/mongodb/mongo-c-driver/releases/download/1.13.0/mongo-c-driver-1.13.0.tar.gz \
@@ -55,3 +56,5 @@ RUN curl -L https://github.com/mongodb/mongo-cxx-driver/archive/r3.4.0.tar.gz -o
   && make install \
   && cd / \
   && rm -f mongo-cxx-driver-r3.4.0.tar.gz
+
+ENV PATH=${PATH}:/mongodb-linux-x86_64-ubuntu1804-4.1.1/bin
