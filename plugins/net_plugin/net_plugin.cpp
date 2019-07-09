@@ -2130,17 +2130,19 @@ namespace eosio {
          }
       }
 
-      string::size_type colon2 = peer_address().find(':', colon + 1);
-      string host = peer_address().substr( 0, colon );
-      string port = peer_address().substr( colon + 1, colon2 == string::npos ? string::npos : colon2 - (colon + 1));
-      idump((host)(port));
-      set_connection_type( peer_address() );
-      tcp::resolver::query query( tcp::v4(), host, port );
-      // Note: need to add support for IPv6 too
+      strand.post([c]() {
+         string::size_type colon = c->peer_address().find(':');
+         string::size_type colon2 = c->peer_address().find(':', colon + 1);
+         string host = c->peer_address().substr( 0, colon );
+         string port = c->peer_address().substr( colon + 1, colon2 == string::npos ? string::npos : colon2 - (colon + 1));
+         idump((host)(port));
+         c->set_connection_type( c->peer_address() );
+         tcp::resolver::query query( tcp::v4(), host, port );
+         // Note: need to add support for IPv6 too
 
-      auto resolver = std::make_shared<tcp::resolver>( my_impl->thread_pool->get_executor() );
-      connection_wptr weak_conn = c;
-      resolver->async_resolve( query, boost::asio::bind_executor( strand,
+         auto resolver = std::make_shared<tcp::resolver>( my_impl->thread_pool->get_executor() );
+         connection_wptr weak_conn = c;
+         resolver->async_resolve( query, boost::asio::bind_executor( c->strand,
             [resolver, weak_conn]( const boost::system::error_code& err, tcp::resolver::iterator endpoint_itr ) {
                auto c = weak_conn.lock();
                if( !c ) return;
@@ -2150,7 +2152,8 @@ namespace eosio {
                   fc_elog( logger, "Unable to resolve ${add}: ${error}", ("add", c->peer_name())( "error", err.message() ) );
                   ++c->consecutive_immediate_connection_close;
                }
-            } ) );
+         } ) );
+      } );
       return true;
    }
 
