@@ -22,10 +22,12 @@ struct genesis_info {
 
     struct permission {
         permission_name name;
+        fc::optional<unsigned> threshold;
         fc::optional<permission_name> parent;   // defaults: "" for "owner" permission; "owner" for "active"; "active" for others; numeric id if adding permission to existing account
-        std::string key;                // can use "INITIAL"; only empty "key" can co-exist with non-empty "keys" and vice-versa
-        std::vector<string> keys;       // can use "INITIAL"
-        std::vector<string> accounts;   // can use "name@permission"
+        std::string key;                // can use "INITIAL" and "key/weight"; only empty "key" can co-exist with non-empty "keys" and vice-versa
+        std::vector<string> keys;       // can use "INITIAL" and "key/weight"
+        std::vector<string> accounts;   // can use "name@permission" and "name@permission/weight"
+        std::vector<string> waits;      // can use "wait/weight"
 
         void init() {
             if (key.length() > 0) {
@@ -43,24 +45,44 @@ struct genesis_info {
 
         std::vector<key_weight> key_weights(const public_key_type& initial_key) const {
             std::vector<key_weight> r;
-            for (const auto& k: keys) {
-                r.emplace_back(key_weight{k == "INITIAL" ? initial_key : public_key_type(k), 1});
+            for (const auto& key: keys) {
+                auto k_weight = split_weight(key);
+                r.emplace_back(key_weight{k_weight.first == "INITIAL" ? initial_key : public_key_type(k_weight.first), k_weight.second});
             }
             return r;
         }
+
+        std::pair<string,weight_type> split_weight(const string& str) const {
+            std::vector<string> parts;
+            split(parts, str, boost::algorithm::is_any_of("/"));
+            unsigned weight = parts.size() == 1 ? 1 : boost::lexical_cast<weight_type>(parts[1]);
+            return std::make_pair(parts[0], weight);
+        }
+
         std::vector<permission_level_weight> perm_levels(account_name code) const {
             std::vector<permission_level_weight> r;
             for (const auto& a: accounts) {
                 std::vector<string> parts;
-                split(parts, a, boost::algorithm::is_any_of("@"));
+                auto perm_weight = split_weight(a);
+                split(parts, perm_weight.first, boost::algorithm::is_any_of("@"));
                 auto acc = parts[0].size() == 0 ? code : account_name(parts[0]);
                 auto perm = account_name(parts.size() == 1 ? "" : parts[1].c_str());
-                r.emplace_back(permission_level_weight{permission_level{acc, perm}, 1});
+                r.emplace_back(permission_level_weight{permission_level{acc, perm}, perm_weight.second});
             }
             return r;
         }
+
+        std::vector<wait_weight> wait_weights() const {
+            std::vector<wait_weight> r;
+            for (const auto& w: waits) {
+                auto a = split_weight(w);
+                r.emplace_back(wait_weight{boost::lexical_cast<uint32_t>(a.first), a.second});
+            }
+            return r;
+        }
+
         authority make_authority(const public_key_type& initial_key, account_name code) const {
-            return authority(1, key_weights(initial_key), perm_levels(code));
+            return authority(threshold ? *threshold : 1, key_weights(initial_key), perm_levels(code), wait_weights());
         }
     };
 
@@ -199,7 +221,7 @@ struct genesis_info {
 }} // cyberway::genesis
 
 FC_REFLECT(cyberway::genesis::genesis_info::file_hash, (path)(hash))
-FC_REFLECT(cyberway::genesis::genesis_info::permission, (name)(parent)(key)(keys)(accounts))
+FC_REFLECT(cyberway::genesis::genesis_info::permission, (name)(threshold)(parent)(key)(keys)(accounts)(waits))
 FC_REFLECT(cyberway::genesis::genesis_info::account, (name)(update)(privileged)(permissions)(abi)(code)(sys_balance)(sys_staked)(prod_key))
 FC_REFLECT(cyberway::genesis::genesis_info::auth_link, (permission)(links))
 FC_REFLECT(cyberway::genesis::genesis_info::table::row, (scope)(payer)(pk)(data))
