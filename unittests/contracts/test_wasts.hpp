@@ -647,3 +647,81 @@ static const char large_maligned_host_ptr[] = R"=====(
  )
 )
 )=====";
+
+static const char depth_assert_wasm[] = R"=====(
+(module
+ (export "apply" (func $$apply))
+ (func $$apply (param $$0 i64) (param $$1 i64) (param $$2 i64)
+  (if (i64.eq (get_global $$depth) (i64.const 0)) (then
+    (return)
+  ))
+  (set_global $$depth
+   (i64.sub
+    (get_global $$depth)
+    (i64.const 1)
+   )
+  )
+  (call $$apply
+   (get_local $$0)
+   (get_local $$1)
+   (get_local $$2)
+  )
+ )
+ (global $$depth (mut i64) (i64.const ${MAX_DEPTH}))
+)
+)=====";
+
+static const char depth_assert_intrinsic[] = R"=====(
+(module
+ (import "env" "current_time" (func $$current_time (result i64)))
+ (export "apply" (func $$apply))
+ (func $$apply (param $$0 i64) (param $$1 i64) (param $$2 i64)
+  (if (i64.eq (get_global $$depth) (i64.const 1)) (then
+    (drop (call $$current_time))
+    (return)
+  ))
+  (set_global $$depth
+   (i64.sub
+    (get_global $$depth)
+    (i64.const 1)
+   )
+  )
+  (call $$apply
+   (get_local $$0)
+   (get_local $$1)
+   (get_local $$2)
+  )
+ )
+ (global $$depth (mut i64) (i64.const ${MAX_DEPTH}))
+)
+)=====";
+
+static const char depth_assert_wasm_float[] = R"=====(
+(module
+ (export "apply" (func $$apply))
+ (func $$apply (param $$0 i64) (param $$1 i64) (param $$2 i64)
+  (set_global $$mcfloaty
+   (f64.mul
+    (get_global $$mcfloaty)
+    (f64.const 3.1415)
+   )
+  )
+  (if (i64.eq (get_global $$depth) (i64.const 0)) (then
+    (return)
+  ))
+  (set_global $$depth
+   (i64.sub
+    (get_global $$depth)
+    (i64.const 1)
+   )
+  )
+  (call $$apply
+   (get_local $$0)
+   (get_local $$1)
+   (get_local $$2)
+  )
+ )
+ (global $$depth (mut i64) (i64.const ${MAX_DEPTH}))
+ (global $$mcfloaty (mut f64) (f64.const 3.14))
+)
+)=====";
