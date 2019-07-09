@@ -87,9 +87,9 @@ function install-package() {
     EXECUTION_FUNCTION="execute"
     [[ $2 == "WETRUN" ]] && EXECUTION_FUNCTION="execute-always"
     ( [[ $2 =~ "--" ]] || [[ $3 =~ "--" ]] ) && OPTIONS="${2}${3}"
-    [[ $CURRENT_USER != "root" ]] && [[ ! -z $SUDO_LOCATION ]] && SUDO_COMMAND="$SUDO_LOCATION -E"
-    ( [[ $NAME =~ "Amazon Linux" ]] || [[ $NAME == "CentOS Linux" ]] ) && eval $EXECUTION_FUNCTION $SUDO_COMMAND $YUM $OPTIONS install -y $1
-    ( [[ $NAME =~ "Ubuntu" ]] ) && eval $EXECUTION_FUNCTION $SUDO_COMMAND $APTGET $OPTIONS install -y $1
+    [[ $CURRENT_USER != "root" ]] && [[ ! -z $SUDO_LOCATION ]] && NEW_SUDO_COMMAND="$SUDO_LOCATION -E"
+    ( [[ $NAME =~ "Amazon Linux" ]] || [[ $NAME == "CentOS Linux" ]] ) && eval $EXECUTION_FUNCTION $NEW_SUDO_COMMAND $YUM $OPTIONS install -y $1
+    ( [[ $NAME =~ "Ubuntu" ]] ) && eval $EXECUTION_FUNCTION $NEW_SUDO_COMMAND $APTGET $OPTIONS install -y $1
   fi
   true # Required; Weird behavior without it
 }
@@ -101,10 +101,10 @@ function uninstall-package() {
     [[ $2 == "WETRUN" ]] && EXECUTION_FUNCTION="execute-always"
     ( [[ $2 == "autoremove" ]] || [[ $3 == "autoremove" ]] ) && REMOVE="autoremove"
     ( [[ $2 =~ "--" ]] || [[ $3 =~ "--" ]] ) && OPTIONS="${2}${3}"
-    [[ $CURRENT_USER != "root" ]] && [[ ! -z $SUDO_LOCATION ]] && SUDO_COMMAND="$SUDO_LOCATION -E"
+    [[ $CURRENT_USER != "root" ]] && [[ ! -z $SUDO_LOCATION ]] && NEW_SUDO_COMMAND="$SUDO_LOCATION -E"
     # Check if the packages exist before uninstalling them. This speeds things up for tests.
-    ( ( [[ $NAME =~ "Amazon Linux" ]] || [[ $NAME == "CentOS Linux" ]] ) && [[ ! -z $(rpm -qa $1) ]] ) && eval $EXECUTION_FUNCTION $SUDO_COMMAND $YUM $OPTIONS $REMOVE -y $1
-    ( [[ $NAME =~ "Ubuntu" ]] && $(dpkg -s $1 &>/dev/null) ) && eval $EXECUTION_FUNCTION $SUDO_COMMAND $APTGET $OPTIONS $REMOVE -y $1
+    ( ( [[ $NAME =~ "Amazon Linux" ]] || [[ $NAME == "CentOS Linux" ]] ) && [[ ! -z $(rpm -qa $1) ]] ) && eval $EXECUTION_FUNCTION $NEW_SUDO_COMMAND $YUM $OPTIONS $REMOVE -y $1
+    ( [[ $NAME =~ "Ubuntu" ]] && $(dpkg -s $1 &>/dev/null) ) && eval $EXECUTION_FUNCTION $NEW_SUDO_COMMAND $APTGET $OPTIONS $REMOVE -y $1
   fi
   true
 }
@@ -220,10 +220,10 @@ function ensure-yum-packages() {
     # || [[ -n "$testee" ]]; needed to see last line of deps file (https://stackoverflow.com/questions/12916352/shell-script-read-missing-last-line)
     while read -r testee tester || [[ -n "$testee" ]]; do
         if [[ ! -z $(eval $tester $testee) ]]; then
-            echo " - ${testee} ${COLOR_GREEN}found!${COLOR_NC}"
+            echo " - ${testee} ${COLOR_GREEN}ok${COLOR_NC}"
         else
             DEPS=$DEPS"${testee} "
-            echo " - ${testee} ${COLOR_RED}NOT${COLOR_NC} found."
+            echo " - ${testee} ${COLOR_RED}NOT${COLOR_NC} found!"
             (( COUNT+=1 ))
         fi
     done < $DEPS_FILE
@@ -269,18 +269,18 @@ function ensure-brew-packages() {
     # || [[ -n "$nmae" ]]; needed to see last line of deps file (https://stackoverflow.com/questions/12916352/shell-script-read-missing-last-line)
     while read -r name path || [[ -n "$name" ]]; do
         if [[ -f $path ]] || [[ -d $path ]]; then
-            echo " - ${name} ${COLOR_GREEN}found!${COLOR_NC}"
+            echo " - ${name} ${COLOR_GREEN}ok${COLOR_NC}"
             continue
         fi
         # resolve conflict with homebrew glibtool and apple/gnu installs of libtool
         if [[ "${testee}" == "/usr/local/bin/glibtool" ]]; then
             if [ "${tester}" "/usr/local/bin/libtool" ]; then
-                echo " - ${name} ${COLOR_GREEN}found!${COLOR_NC}"
+                echo " - ${name} ${COLOR_GREEN}ok${COLOR_NC}"
                 continue
             fi
         fi
         DEPS=$DEPS"${name} "
-        echo " - ${name} ${COLOR_RED}NOT${COLOR_NC} found."
+        echo " - ${name} ${COLOR_RED}NOT${COLOR_NC} found!"
         (( COUNT+=1 ))
     done < $DEPS_FILE
     if [[ $COUNT > 0 ]]; then
@@ -348,10 +348,10 @@ function ensure-apt-packages() {
     # || [[ -n "$testee" ]]; needed to see last line of deps file (https://stackoverflow.com/questions/12916352/shell-script-read-missing-last-line)
     while read -r testee tester || [[ -n "$testee" ]]; do
         if [[ ! -z $(eval $tester $testee 2>/dev/null) ]]; then
-            echo " - ${testee} ${COLOR_GREEN}found!${COLOR_NC}"
+            echo " - ${testee} ${COLOR_GREEN}ok${COLOR_NC}"
         else
             DEPS=$DEPS"${testee} "
-            echo " - ${testee} ${COLOR_RED}NOT${COLOR_NC} found."
+            echo " - ${testee} ${COLOR_RED}NOT${COLOR_NC} found!"
             (( COUNT+=1 ))
         fi
     done < $DEPS_FILE

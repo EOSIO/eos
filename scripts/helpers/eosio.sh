@@ -53,8 +53,10 @@ function setup() {
     execute mkdir -p $VAR_DIR/log
     execute mkdir -p $ETC_DIR
     execute mkdir -p $LIB_DIR
-    execute mkdir -p $MONGODB_LOG_DIR
-    execute mkdir -p $MONGODB_DATA_DIR
+    if $ENABLE_MONGO; then
+        execute mkdir -p $MONGODB_LOG_DIR
+        execute mkdir -p $MONGODB_DATA_DIR
+    fi
 }
 
 function ensure-which() {
@@ -74,28 +76,30 @@ function ensure-which() {
 
 # Prompt user for installation directory.
 function install-directory-prompt() {
-  if [[ -z $INSTALL_LOCATION ]]; then
-    echo "No installation location was specified. Please provide the location where EOSIO is installed."
-    while true; do
-      [[ $NONINTERACTIVE == false ]] && printf "${COLOR_YELLOW}Do you wish to use the default location? ${EOSIO_INSTALL_DIR}? (y/n)${COLOR_NC}" && read -p " " PROCEED
-      echo ""
-      case $PROCEED in
-        "" )
-          echo "What would you like to do?";;
-        0 | true | [Yy]* )
-          break;;
-        1 | false | [Nn]* )
-          printf "Enter the desired installation location." && read -p " " EOSIO_INSTALL_DIR;
-          export EOSIO_INSTALL_DIR;
-          break;;
-        * ) echo "Please type 'y' for yes or 'n' for no.";;
-      esac
-    done
-  else
-    export EOSIO_INSTALL_DIR=${INSTALL_LOCATION}
-  fi
-  . ./scripts/.build_vars
-  echo "EOSIO will be installed to: ${EOSIO_INSTALL_DIR}"
+    if [[ -z $INSTALL_LOCATION ]]; then
+        echo "No installation location was specified. Please provide the location where EOSIO is installed."
+        while true; do
+            [[ $NONINTERACTIVE == false ]] && printf "${COLOR_YELLOW}Do you wish to use the default location? ${EOSIO_INSTALL_DIR}? (y/n)${COLOR_NC}" && read -p " " PROCEED
+            echo ""
+            case $PROCEED in
+                "" )
+                echo "What would you like to do?";;
+                0 | true | [Yy]* )
+                break;;
+                1 | false | [Nn]* )
+                printf "Enter the desired installation location." && read -p " " EOSIO_INSTALL_DIR;
+                export EOSIO_INSTALL_DIR;
+                break;;
+                * ) echo "Please type 'y' for yes or 'n' for no.";;
+            esac
+        done
+    else
+        # Support relative paths : https://github.com/EOSIO/eos/issues/7560
+        [[ ! $INSTALL_LOCATION =~ ^\/ ]] && export INSTALL_LOCATION="${CURRENT_WORKING_DIR}/$INSTALL_LOCATION"
+        export EOSIO_INSTALL_DIR="$INSTALL_LOCATION"
+    fi
+    . ./scripts/.build_vars
+    echo "EOSIO will be installed to: ${EOSIO_INSTALL_DIR}"
 }
 
 function previous-install-prompt() {
