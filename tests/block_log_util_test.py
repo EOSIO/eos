@@ -106,14 +106,13 @@ try:
     expectedStr="no problems found"
     assert output.find(expectedStr) != -1, "Couldn't find \"%s\" in:\n\"%s\"\n" % (expectedStr, output)
 
-    duplicateIndexFileName="duplicate.index"
+    blockLogDir=Utils.getNodeDataDir(0, "blocks")
+    duplicateIndexFileName=os.path.join(blockLogDir, "duplicate.index")
     output=cluster.getBlockLog(0, blockLogAction=BlockLogAction.make_index, outputFile=duplicateIndexFileName)
     assert output is not None, "Couldn't make new index file \"%s\"\n" % (duplicateIndexFileName)
 
-    blockLogDir=Utils.getNodeDataDir(0, "blocks")
     blockIndexFileName=os.path.join(blockLogDir, "blocks.index")
     blockIndexFile=open(blockIndexFileName,"rb")
-    duplicateIndexFileName=os.path.join(blockLogDir, duplicateIndexFileName)
     duplicateIndexFile=open(duplicateIndexFileName,"rb")
     blockIndexStr=blockIndexFile.read()
     duplicateIndexStr=duplicateIndexFile.read()

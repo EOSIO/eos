@@ -172,7 +172,7 @@ void blocklog::set_program_options(options_description& cli)
          ("as-json-array", bpo::bool_switch(&as_json_array)->default_value(false),
           "Print out json blocks wrapped in json array (otherwise the output is free-standing json objects).")
          ("make-index", bpo::bool_switch(&make_index)->default_value(false),
-          "Create blocks.index from blocks.log. Must give 'blocks-dir'. Give 'output-file' relative to blocks-dir (default is blocks.index).")
+          "Create blocks.index from blocks.log. Must give 'blocks-dir'. Give 'output-file' relative to current directory or absolute path (default is <blocks-dir>/blocks.index).")
          ("trim-blocklog", bpo::bool_switch(&trim_log)->default_value(false),
           "Trim blocks.log and blocks.index. Must give 'blocks-dir' and 'first and/or 'last'.")
          ("smoke-test", bpo::bool_switch(&smoke_test)->default_value(false),
