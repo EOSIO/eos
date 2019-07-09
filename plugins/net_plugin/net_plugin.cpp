@@ -2035,7 +2035,7 @@ namespace eosio {
          // known_blocks.ids is never > 1
          if( !msg.known_blocks.ids.empty() ) {
             if( num_entries( c->connection_id ) > def_max_peer_block_ids_per_connection ) {
-               fc_elog( logger, "received too many notice_messages, diconnecting" );
+               fc_elog( logger, "received too many notice_messages, disconnecting" );
                c->close( false );
             }
             const block_id_type& blkid = msg.known_blocks.ids.back();
