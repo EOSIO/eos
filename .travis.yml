@@ -14,5 +14,5 @@ script:
 after_success:
 - echo '##### CHECKPOINT 3'
 - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-- docker tag eos-dev eoio/ci:ubuntu-18.04
+- docker tag eos-dev eosio/ci:ubuntu-18.04
 - docker push eosio/ci:ubuntu-18.04
