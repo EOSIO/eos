@@ -4,9 +4,12 @@ compiler:
 - clang
 os:
 - linux
+services:
+- docker
 before_install:
 - echo '##### CHECKPOINT 1'
 script:
 - echo '##### CHECKPOINT 2'
+- docker build -t eos-dev -f ./.cicd/Dockerfile-U18 .
 after_success:
 - echo '##### CHECKPOINT 3'
