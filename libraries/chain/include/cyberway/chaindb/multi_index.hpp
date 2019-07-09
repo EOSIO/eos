@@ -104,7 +104,7 @@ template<bool IsPrimaryIndex> struct lower_bound final {
     find_info operator()(
         const chaindb_controller& chaindb, const index_request& request, const cursor_kind kind, const Key& key
     ) const {
-        find_info info;
+        find_info info(chaindb, request.code);
         safe_allocate(key, "Invalid size of key on lower_bound", [&](auto& data, auto& size) {
             pack_object(key, data, size);
             info = chaindb.lower_bound(request, kind, data, size);
@@ -124,7 +124,7 @@ template<> struct lower_bound<true /*IsPrimaryIndex*/> final {
 template<bool IsPrimaryIndex> struct upper_bound final {
     template<typename Key>
     find_info operator()(const chaindb_controller& chaindb, const index_request& request, const Key& key) const {
-        find_info info;
+        find_info info(chaindb, request.code);
         safe_allocate(key, "Invalid size of key on upper_bound", [&](auto& data, auto& size) {
             pack_object(key, data, size);
             info = chaindb.upper_bound(request, data, size);
@@ -312,7 +312,7 @@ private:
     struct iterator_extractor_impl<typename PrimaryIndex::tag, E> {
         template<typename Iterator>
         const primary_key_t& operator()(const Iterator& itr) const {
-            return itr.primary_key_;
+            return itr.info_.pk;
         }
     }; // iterator_extractor_impl
 
@@ -330,11 +330,11 @@ private:
     class const_iterator_impl final: public std::iterator<std::bidirectional_iterator_tag, const T> {
     public:
         friend bool operator == (const const_iterator_impl& a, const const_iterator_impl& b) {
-            if (a.cursor_ == b.cursor_) return true;
+            if (a.info_.cursor == b.info_.cursor) return true;
 
             a.lazy_open();
             b.lazy_open();
-            return a.primary_key_ == b.primary_key_;
+            return a.info_.pk == b.info_.pk;
         }
         friend bool operator != (const const_iterator_impl& a, const const_iterator_impl& b) {
             return !(operator == (a, b));
@@ -347,22 +347,32 @@ private:
 
         const T& operator*() const {
             lazy_load_object();
-            return item_data::get_T(item_);
+            return item_data::get_T(info_.object_ptr);
         }
         const T* operator->() const {
             lazy_load_object();
-            return &item_data::get_T(item_);
+            return &item_data::get_T(info_.object_ptr);
         }
         const primary_key_t pk() const {
             lazy_open();
-            return primary_key_;
+            return info_.pk;
         }
         const service_state& service() const {
             lazy_load_object();
-            return item_->service();
+            return info_.object_ptr->service();
         }
         bool in_ram() const {
             return service().in_ram;
+        }
+        bool is_valid() const {
+            lazy_open();
+            if (info_.pk == primary_key::End) {
+                return false;
+            }
+            if (!info_.object_ptr) {
+                lazy_load_object();
+            }
+            return (info_.object_ptr && !info_.object_ptr->is_deleted());
         }
 
         const_iterator_impl operator++(int) {
@@ -371,14 +381,13 @@ private:
             return result;
         }
         const_iterator_impl& operator++() {
-            CYBERWAY_ASSERT(uninitilized_cursor::ram != cursor_, chaindb_midx_pk_exception,
+            CYBERWAY_ASSERT(uninitilized_cursor::ram != info_.cursor, chaindb_midx_pk_exception,
                 "Can't increment RAM iterator for the index ${index}", ("index", get_index_name()));
             lazy_open();
-            CYBERWAY_ASSERT(primary_key_ != primary_key::End, chaindb_midx_pk_exception,
+            CYBERWAY_ASSERT(info_.pk != primary_key::End, chaindb_midx_pk_exception,
                 "Can't increment end iterator for the index ${index}", ("index", get_index_name()));
-            primary_key_ = controller().next(get_cursor_request());
-            item_.reset();
-            return *this;
+            ++info_;
+             return *this;
         }
 
         const_iterator_impl operator--(int) {
@@ -387,138 +396,97 @@ private:
             return result;
         }
         const_iterator_impl& operator--() {
-            CYBERWAY_ASSERT(uninitilized_cursor::ram != cursor_, chaindb_midx_pk_exception,
+            CYBERWAY_ASSERT(uninitilized_cursor::ram != info_.cursor, chaindb_midx_pk_exception,
                 "Can't decrement RAM iterator for the index ${index}", ("index", get_index_name()));
             lazy_open();
-            primary_key_ = controller().prev(get_cursor_request());
-            item_.reset();
-            CYBERWAY_ASSERT(primary_key_ != primary_key::End, chaindb_midx_pk_exception,
+            --info_;
+            CYBERWAY_ASSERT(info_.pk != primary_key::End, chaindb_midx_pk_exception,
                 "Out of range on decrement of iterator for the index ${index}", ("index", get_index_name()));
             return *this;
         }
 
         const_iterator_impl() = default;
 
-        const_iterator_impl(const_iterator_impl&& src) {
-            this->operator=(std::move(src));
+        const_iterator_impl(const_iterator_impl&& src) :
+            info_(std::move(src.info_)) {
         }
         const_iterator_impl& operator=(const_iterator_impl&& src) {
             if (this == &src) return *this;
-
-            controller_ = src.controller_;
-            cursor_ = src.cursor_;
-            primary_key_ = src.primary_key_;
-            item_ = std::move(src.item_);
-
-            src.cursor_ = uninitilized_cursor::state;
-            src.primary_key_ = primary_key::End;
-
+            info_ = std::move(src.info_);
             return *this;
         }
 
-        const_iterator_impl(const const_iterator_impl& src) {
-            this->operator=(src);
+        const_iterator_impl(const const_iterator_impl& src) :
+            info_(src.info_.clone()) {
         }
+
         const_iterator_impl& operator=(const const_iterator_impl& src) {
             if (this == &src) return *this;
 
-            controller_ = src.controller_;
-            primary_key_ = src.primary_key_;
-            item_ = src.item_;
-
-            if (src.is_cursor_initialized()) {
-                cursor_ = controller().clone(src.get_cursor_request()).cursor;
-            } else {
-                cursor_ = src.cursor_;
-            }
+            info_ = src.info_.clone();
 
             return *this;
         }
 
-        ~const_iterator_impl() {
-            if (is_cursor_initialized()) {
-                controller().close(get_cursor_request());
-            }
-        }
-
     private:
-        bool is_cursor_initialized() const {
-            return (cursor_ > uninitilized_cursor::state);
-        }
-
         template<typename, typename> friend class index;
         template<typename, typename> friend struct iterator_extractor_impl;
 
-        const_iterator_impl(const chaindb_controller* ctrl, const cursor_t cursor)
-        : controller_(ctrl), cursor_(cursor) { }
-
-        const_iterator_impl(const chaindb_controller* ctrl, const cursor_t cursor, const primary_key_t pk)
-        : controller_(ctrl), cursor_(cursor), primary_key_(pk) { }
-
-        const_iterator_impl(const chaindb_controller* ctrl, const cursor_t cursor, const primary_key_t pk, cache_object_ptr item)
-        : controller_(ctrl), cursor_(cursor), primary_key_(pk), item_(std::move(item)) { }
-
-        const chaindb_controller& controller() const {
-            assert(controller_);
-            return *controller_;
+        const_iterator_impl(cyberway::chaindb::find_info&& info) :
+            info_(std::forward<cyberway::chaindb::find_info>(info)) {
         }
 
-        const chaindb_controller* controller_ = nullptr;
-        mutable cursor_t cursor_ = uninitilized_cursor::state;
-        mutable primary_key_t primary_key_ = primary_key::End;
-        mutable cache_object_ptr item_;
+        mutable cyberway::chaindb::find_info info_;
 
         void lazy_load_object() const {
-            if (item_) {
-                CYBERWAY_ASSERT(!item_->is_deleted(), chaindb_midx_logic_exception,
-                    "Object ${obj} is removed", ("obj", item_data::get_T(item_)));
+            if (info_.object_ptr) {
+                CYBERWAY_ASSERT(!info_.object_ptr->is_deleted(), chaindb_midx_logic_exception,
+                    "Object ${obj} is removed", ("obj", item_data::get_T(info_.object_ptr)));
                 return;
             }
 
             lazy_open();
-            CYBERWAY_ASSERT(primary_key_ != primary_key::End, chaindb_midx_pk_exception,
+            CYBERWAY_ASSERT(info_.pk != primary_key::End, chaindb_midx_pk_exception,
                 "Cannot load object from the end iterator for the index ${index}", ("index", get_index_name()));
 
             cache_object_ptr ptr;
 
-            if (uninitilized_cursor::ram == cursor_) {
-                ptr = controller().get_cache_object(get_table_request(), primary_key_, false);
+            if (uninitilized_cursor::ram == info_.cursor) {
+                ptr = info_.controller.get_cache_object(get_table_request(), info_.pk, false);
             } else {
-                ptr = controller().get_cache_object(get_cursor_request(), false);
+                ptr = info_.controller.get_cache_object(get_cursor_request(), false);
             }
 
             auto& obj = item_data::get_T(ptr);
             auto ptr_pk = primary_key_extractor_type()(obj);
-            CYBERWAY_ASSERT(ptr_pk == primary_key_, chaindb_midx_pk_exception,
+            CYBERWAY_ASSERT(ptr_pk == info_.pk, chaindb_midx_pk_exception,
                 "Invalid primary key ${pk} of object ${obj} for the index ${index}",
-                ("pk", primary_key_)("obj", obj)("index", get_index_name()));
-            item_ = ptr;
+                ("pk", info_.pk)("obj", obj)("index", get_index_name()));
+            info_.object_ptr = ptr;
         }
 
         void lazy_open() const {
-            if (BOOST_LIKELY(is_cursor_initialized())) return;
+            if (BOOST_LIKELY(info_.is_cursor_initialized())) return;
 
-            switch (cursor_) {
+            switch (info_.cursor) {
                 case uninitilized_cursor::ram:
                     return;
 
                 case uninitilized_cursor::begin: {
-                    auto info = controller().begin(get_index_request());
-                    cursor_ = info.cursor;
-                    primary_key_ = info.pk;
+                    info_ = info_.controller.begin(get_index_request());
                     break;
                 }
 
                 case uninitilized_cursor::end:
-                    cursor_ = controller().end(get_index_request()).cursor;
+                    info_ = info_.controller.end(get_index_request());
                     break;
 
                 default:
                     break;
             }
-            CYBERWAY_ASSERT(is_cursor_initialized(), chaindb_midx_pk_exception,
+            CYBERWAY_ASSERT(info_.is_cursor_initialized(), chaindb_midx_pk_exception,
                 "Unable to open cursor for the pk ${pk} for the index ${index}",
-                ("pk", primary_key_)("index", get_index_name()));
+                ("pk", info_.pk)("index", get_index_name()));
         }
 
         static const table_request& get_table_request() {
@@ -535,7 +503,7 @@ private:
         }
 
         cursor_request get_cursor_request() const {
-            return {code_name(), cursor_};
+            return {code_name(), info_.cursor};
         }
     }; // struct multi_index::const_iterator_impl
 
@@ -579,12 +547,12 @@ public:
         }
 
         const_iterator cbegin() const {
-            return const_iterator(&controller_, uninitilized_cursor::begin);
+            return const_iterator({uninitilized_cursor::begin, cyberway::chaindb::primary_key::End, nullptr, controller_, code_name()});
         }
         const_iterator begin() const  { return cbegin(); }
 
         const_iterator cend() const {
-            return const_iterator(&controller_, uninitilized_cursor::end);
+            return const_iterator({uninitilized_cursor::end, cyberway::chaindb::primary_key::End, nullptr, controller_, code_name()});
         }
         const_iterator end() const  { return cend(); }
 
@@ -614,7 +582,7 @@ public:
         const_iterator lower_bound(const key_type& key, const cursor_kind kind = cursor_kind::ManyRecords) const {
             chaindb::lower_bound<std::is_same<tag<IndexName>, typename PrimaryIndex::tag>::value> finder;
             auto info = finder(controller_, get_index_request(), kind, key);
-            return const_iterator(&controller_, info.cursor, info.pk);
+            return const_iterator(std::move(info));
         }
 
         template<typename Value>
@@ -625,7 +593,7 @@ public:
         const_iterator upper_bound(const key_type& key) const {
             chaindb::upper_bound<std::is_same<tag<IndexName>, typename PrimaryIndex::tag>::value> finder;
             auto info = finder(controller_, get_index_request(), key);
-            return const_iterator(&controller_, info.cursor, info.pk);
+            return const_iterator(std::move(info));
         }
 
         std::pair<const_iterator,const_iterator> equal_range(const key_type& key) const {
@@ -680,15 +648,14 @@ public:
             auto& itm = item_data::get_cache(obj);
             assert(itm.is_valid_table(get_table_request()));
 
-            auto pk = primary_key_extractor_type()(obj);
-
-            auto& mobj = const_cast<T&>(obj);
-            updater(mobj);
-
-            auto mpk = primary_key_extractor_type()(obj);
-            CYBERWAY_ASSERT(pk == mpk, chaindb_midx_pk_exception,
-                "Updater change primary key ${pk} on modifying of the object ${obj} for the index ${index}",
-                ("pk", pk)("obj", obj)("index", get_index_name()));
+            try {
+                auto pk = primary_key_extractor_type()(obj); (void)pk;
+                updater(const_cast<T&>(obj));
+                assert(pk == primary_key_extractor_type()(obj));
+            } catch (...) {
+                multi_index::cache_converter().convert_variant(itm, itm.object());
+                throw;
+            }
 
             fc::variant value;
             fc::to_variant(obj, value);
@@ -761,9 +728,13 @@ public:
         return request;
     }
 
-    static void set_cache_converter(const chaindb_controller& controller) {
+    static cache_converter_& cache_converter() {
         static cache_converter_ converter;
-        controller.set_cache_converter(get_table_request(), converter);
+        return converter;
+    }
+
+    static void set_cache_converter(const chaindb_controller& controller) {
+        controller.set_cache_converter(get_table_request(), cache_converter());
     }
 
     const_iterator cbegin() const { return primary_idx_.cbegin(); }

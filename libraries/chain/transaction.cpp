@@ -101,7 +101,7 @@ fc::microseconds transaction::get_signature_keys( const vector<signature_type>& 
    fc::microseconds sig_cpu_usage;
    for(const signature_type& sig : signatures) {
       auto now = fc::time_point::now();
-      EOS_ASSERT( now < deadline, tx_cpu_usage_exceeded, "transaction signature verification executed for too long",
+      EOS_ASSERT( now < deadline, tx_subjective_usage_exceeded, "transaction signature verification executed for too long",
                   ("now", now)("deadline", deadline)("start", start) );
       public_key_type recov;
       const auto& tid = id();
@@ -213,7 +213,7 @@ static bytes zlib_decompress(const bytes& data) {
       bytes out;
       bio::filtering_ostream decomp;
       decomp.push(bio::zlib_decompressor());
-      decomp.push(read_limiter<1*1024*1024>()); // limit to 10 megs decompressed for zip bomb protections
+      decomp.push(read_limiter<1*1024*1024>()); // limit to 1 meg decompressed for zip bomb protections
       decomp.push(bio::back_inserter(out));
       bio::write(decomp, data.data(), data.size());
       bio::close(decomp);
@@ -327,7 +327,6 @@ packed_transaction::packed_transaction( transaction&& t, vector<signature_type>&
 void packed_transaction::reflector_init()
 {
    // called after construction, but always on the same thread and before packed_transaction passed to any other threads
-   static_assert(&fc::reflector_init_visitor<packed_transaction>::reflector_init, "FC with reflector_init required");
    static_assert(fc::raw::has_feature_reflector_init_on_unpacked_reflected_types,
                  "FC unpack needs to call reflector_init otherwise unpacked_trx will not be initialized");
    EOS_ASSERT( unpacked_trx.expiration == time_point_sec(), tx_decompression_error, "packed_transaction already unpacked" );

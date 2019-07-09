@@ -19,7 +19,6 @@
 // suppose name generation is slower than flat_map access by idx
 #define CACHE_GENERATED_NAMES
 
-
 namespace fc { namespace raw {
 
 template<typename T> void unpack(T& s, cyberway::golos::comment_object& c) {
@@ -695,18 +694,23 @@ struct genesis_create::genesis_create_impl final {
 
         auto total_acc_balances = asset();
         auto total_acc_staked = asset();
-        for(const auto& acc: _info.accounts) {
-            if(acc.sys_balance) {
+        for (const auto& acc: _info.accounts) {
+            if (acc.sys_balance) {
                 total_acc_balances += *acc.sys_balance;
             }
-            if(acc.sys_staked) {
+            if (acc.sys_staked) {
                 total_acc_staked += *acc.sys_staked;
             }
         }
 
         _total_staked = golos2sys(gp.total_vesting_fund_steem);
         auto supply = gp.current_supply + golos_from_gbg;
-        _sys_supply = golos2sys(supply - gp.total_reward_fund_steem) + total_acc_balances + total_acc_staked;
+        auto base = golos2sys(supply - gp.total_reward_fund_steem) + total_acc_balances + total_acc_staked;
+        auto sys_supply = base.get_amount();
+        for (const auto& fund: _info.params.funds) {
+            sys_supply += int_arithmetic::safe_prop(base.get_amount(), fund.numerator, fund.denominator);
+        }
+        _sys_supply = asset(sys_supply, base.get_symbol());
         auto sys_pk = insert_stat_record(_sys_supply, _info.golos.sys_max_supply, config::system_account_name);
         auto gls_pk = insert_stat_record(supply, _info.golos.max_supply, _info.golos.names.issuer);
 
@@ -720,7 +724,7 @@ struct genesis_create::genesis_create_impl final {
 
         // funds
         const auto n_acc_balances = std::count_if(_info.accounts.begin(), _info.accounts.end(), [](const auto& a) {return a.sys_balance;}); //
-        const auto n_balances = 3 + 2*data.gbg.size() + n_acc_balances;
+        const auto n_balances = 3 + 2*data.gbg.size() + n_acc_balances + _info.params.funds.size();
         db.start_section(config::token_account_name, N(accounts), "account", n_balances);
         auto insert_balance_record = [&](name account, const asset& balance, primary_key_t pk,
             fc::optional<acc_idx> acc_id = {}
@@ -740,8 +744,13 @@ struct genesis_create::genesis_create_impl final {
         insert_balance_record(_info.golos.names.vesting, gp.total_vesting_fund_steem, gls_pk);
         insert_balance_record(_info.golos.names.posting, gp.total_reward_fund_steem, gls_pk);
 
-        for(const auto& acc: _info.accounts) {
-            if(acc.sys_balance) {
+        for (const auto& fund: _info.params.funds) {
+            auto value = int_arithmetic::safe_prop(base.get_amount(), fund.numerator, fund.denominator);
+            insert_balance_record(fund.name, asset(value, base.get_symbol()), sys_pk);
+        }
+
+        for (const auto& acc: _info.accounts) {
+            if (acc.sys_balance) {
                 insert_balance_record(acc.name, *acc.sys_balance, sys_pk);
             }
         }
@@ -761,6 +770,7 @@ struct genesis_create::genesis_create_impl final {
             insert_balance_record(n, golos2sys(gls), sys_pk, acc);
             auto& acc_info = _exp_info.account_infos[acc];
             acc_info["vesting_shares"] = asset(data.vests[acc].vesting, symbol(VESTS));
+            acc_info["received_vesting_shares"] = asset(data.vests[acc].received, symbol(VESTS));
         }
         const auto liquid_supply = supply - (gp.total_vesting_fund_steem + gp.total_reward_fund_steem); // no funds
         std::cout << " Total sum of GOLOS + converted GBG = " << total_gls
@@ -795,16 +805,15 @@ struct genesis_create::genesis_create_impl final {
         primary_key_t pk = 0;
         for (const auto& d: _visitor.delegations) {
             auto delegator = name_by_acc(d.delegator);
-            db.insert(pk, VESTS >> 8, delegator, mvo
-                ("id", pk)
+            auto delegation = mvo
                 ("delegator", delegator)
                 ("delegatee", name_by_acc(d.delegatee))
                 ("quantity", asset(d.vesting_shares.get_amount(), symbol(VESTS)))
                 ("interest_rate", d.interest_rate)
-                ("payout_strategy", int(d.payout_strategy))
-                ("min_delegation_time", d.min_delegation_time)
-            );
+                ("min_delegation_time", d.min_delegation_time);
+            db.insert(pk, VESTS >> 8, delegator, delegation("id", pk));
             pk++;
+            _exp_info.delegations.push_back(delegation);
         }
 
         db.start_section(_info.golos.names.vesting, N(rdelegation), "return_delegation",
@@ -895,6 +904,7 @@ struct genesis_create::genesis_create_impl final {
         db.start_section(_info.golos.names.control, N(witnessvote), "witness_voter", _visitor.witness_votes.size());
         for (const auto& v: _visitor.witness_votes) {
             const auto& acc = v.first;
+            const auto n = name_by_idx(acc);
             const auto& votes = v.second;
             EOS_ASSERT(votes.size() <= 30, genesis_exception,
                 "Account `${a}` have ${n} witness votes, but max 30 allowed", ("a",_accs_map[acc])("n",votes.size()));
@@ -905,8 +915,8 @@ struct genesis_create::genesis_create_impl final {
                 witnesses.emplace_back(name_by_idx(w));
                 weights[w] += vests;
                 vote_counts[w]++;
+                _exp_info.witness_votes[w].insert(n);
             }
-            const auto n = name_by_idx(acc);
             db.insert(n.value, _info.golos.names.control, n, mvo
                 ("voter", n)
                 ("witnesses", witnesses)
@@ -917,13 +927,16 @@ struct genesis_create::genesis_create_impl final {
         for (const auto& w : _visitor.witnesses) {
             const auto n = name_by_acc(w.owner);
             primary_key_t pk = n.value;
-            db.insert(pk, _info.golos.names.control, n, mvo
+            auto witness = mvo
                 ("name", n)
                 ("url", w.url)
                 ("active", true)
-                ("total_weight", w.votes)
+                ("total_weight", w.votes);
+            db.insert(pk, _info.golos.names.control, n, witness
                 ("counter_votes", vote_counts[w.owner.id])
             );
+            _exp_info.witnesses[w.owner.id] = witness;
+
             if (weights[w.owner.id] != w.votes) {
                 wlog("Witness `${a}` .votes value ${w} ≠ ${c}",
                     ("a",w.owner.str(_accs_map))("w",w.votes)("c",weights[w.owner.id]));
@@ -958,7 +971,6 @@ struct genesis_create::genesis_create_impl final {
                 delegators.emplace_back(mvo
                     ("delegator", name_by_acc(d.account))
                     ("interest_rate", d.interest_rate)
-                    ("payout_strategy", int(d.payout_strategy))
                 );
             }
             auto cid = v.comment;
@@ -983,6 +995,7 @@ struct genesis_create::genesis_create_impl final {
                 ("delegators", delegators)
                 ("curatorsw", w)
                 ("rshares", v.rshares)
+                ("paid_amount", 0)
             );
             pk++;
         }
@@ -1066,6 +1079,7 @@ struct genesis_create::genesis_create_impl final {
                 ("closed", false)
                 ("mssg_reward", asset(0, symbol(GLS)))
                 ("max_payout", to_gls.convert(c.active.max_accepted_payout))
+                ("paid_amount", 0)
             );
             sum_net_rshares += c.active.net_rshares;
             sum_net_positive += (c.active.net_rshares > 0) ? c.active.net_rshares : 0;

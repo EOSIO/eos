@@ -14,6 +14,7 @@ namespace cyberway { namespace chaindb {
     class chaindb_controller;
     struct storage_payer_info;
     struct chaindb_cursor_cache;
+    struct chaindb_guard;
 } }
 
 namespace chainbase { class database; }
@@ -22,6 +23,7 @@ namespace eosio { namespace chain {
 
 using cyberway::chaindb::chaindb_controller;
 using cyberway::chaindb::chaindb_cursor_cache;
+using cyberway::chaindb::chaindb_guard;
 using cyberway::chaindb::storage_payer_info;
 
 class controller;
@@ -72,7 +74,7 @@ class apply_context {
 //            const T& get( int iterator ) {
 //               EOS_ASSERT( iterator != -1, invalid_table_iterator, "invalid iterator" );
 //               EOS_ASSERT( iterator >= 0, table_operation_not_permitted, "dereference of end iterator" );
-//               EOS_ASSERT( iterator < _iterator_to_object.size(), invalid_table_iterator, "iterator out of range" );
+//               EOS_ASSERT( (size_t)iterator < _iterator_to_object.size(), invalid_table_iterator, "iterator out of range" );
 //               auto result = _iterator_to_object[iterator];
 //               EOS_ASSERT( result, table_operation_not_permitted, "dereference of deleted object" );
 //               return *result;
@@ -81,7 +83,8 @@ class apply_context {
 //            void remove( int iterator ) {
 //               EOS_ASSERT( iterator != -1, invalid_table_iterator, "invalid iterator" );
 //               EOS_ASSERT( iterator >= 0, table_operation_not_permitted, "cannot call remove on end iterators" );
-//               EOS_ASSERT( iterator < _iterator_to_object.size(), invalid_table_iterator, "iterator out of range" );
+//               EOS_ASSERT( (size_t)iterator < _iterator_to_object.size(), invalid_table_iterator, "iterator out of range" );
+//
 //               auto obj_ptr = _iterator_to_object[iterator];
 //               if( !obj_ptr ) return;
 //               _iterator_to_object[iterator] = nullptr;
@@ -621,6 +624,7 @@ class apply_context {
 //      chainbase::database&          db;
       chaindb_controller&           chaindb; ///< database where state is stored
       chaindb_cursor_cache*         chaindb_cache = nullptr;
+      chaindb_guard*                cursors_guard = nullptr;
       transaction_context&          trx_context; ///< transaction context in which the action is running
       const action&                 act; ///< message being applied
       account_name                  receiver; ///< the code that is currently running

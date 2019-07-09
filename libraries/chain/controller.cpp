@@ -9,7 +9,6 @@
 #include <eosio/chain/block_summary_object.hpp>
 #include <eosio/chain/eosio_contract.hpp>
 #include <eosio/chain/global_property_object.hpp>
-#include <eosio/chain/contract_table_objects.hpp>
 #include <eosio/chain/generated_transaction_object.hpp>
 #include <eosio/chain/transaction_object.hpp>
 #include <eosio/chain/reversible_block_object.hpp>
@@ -17,14 +16,12 @@
 #include <eosio/chain/authorization_manager.hpp>
 #include <eosio/chain/resource_limits.hpp>
 #include <eosio/chain/stake.hpp>
-#include <eosio/chain/chain_snapshot.hpp>
 #include <eosio/chain/thread_utils.hpp>
 
 #include <chainbase/chainbase.hpp>
 #include <fc/io/json.hpp>
 #include <fc/scoped_exit.hpp>
 #include <fc/variant_object.hpp>
-
 
 #include <cyberway/chaindb/controller.hpp>
 #include <cyberway/chaindb/account_abi_info.hpp>
@@ -34,7 +31,9 @@
 
 namespace eosio { namespace chain {
 
+
 using resource_limits::resource_limits_manager;
+using cyberway::chaindb::cursor_kind;
 
 using controller_index_set = index_set<
    account_table,
@@ -179,7 +178,7 @@ struct controller_impl {
     *  are removed from this list if they are re-applied in other blocks. Producers
     *  can query this list when scheduling new transactions into blocks.
     */
-   map<digest_type, transaction_metadata_ptr>     unapplied_transactions;
+   unapplied_transactions_type     unapplied_transactions;
 
    void pop_block() {
       auto prev = fork_db.get_block( head->header.previous );
@@ -378,18 +377,17 @@ struct controller_impl {
             set_revision( next->block_num() );
          }
          replay_push_block( next, controller::block_status::irreversible );
-         if( next->block_num() % 100 == 0 ) {
+         if( next->block_num() % 500 == 0 ) {
             if( next->block_num() % 10000 && skip_session ) {
                chaindb.apply_all_changes();
             }
-            std::cerr << std::setw(10) << next->block_num() << " of " << blog_head->block_num() <<"\r";
+            ilog( "${n} of ${head}", ("n", next->block_num())("head", blog_head->block_num()) );
             if( shutdown() ) break;
          }
       }
-      std::cerr<< "\n";
       ilog( "${n} blocks replayed", ("n", head->block_num - start_block_num) );
 
-      // if the irreverible log is played without undo sessions enabled, we need to sync the
+      // if the irreversible log is played without undo sessions enabled, we need to sync the
       // revision ordinal to the appropriate expected value here.
       if( skip_session ) {
          chaindb.apply_all_changes();
@@ -516,16 +514,16 @@ struct controller_impl {
 // TODO: removed by CyberWay
 //   void clear_all_undo() {
 //      // Rewind the database to the last irreversible block
-//       db.with_write_lock([&] {
-//         db.undo_all();
-//         chaindb.undo_all_revisions();
-//         /*
-//         FC_ASSERT(db.revision() == self.head_block_num(),
-//                   "Chainbase revision does not match head block num",
-//                   ("rev", db.revision())("head_block", self.head_block_num()));
-//                   */
-//      });
+//      db.undo_all();
 //   }
+
+   void add_contract_tables_to_snapshot( const snapshot_writer_ptr& snapshot ) const {
+       // TODO: Removed by CyberWay
+   }
+
+   void read_contract_tables_from_snapshot( const snapshot_reader_ptr& snapshot ) {
+       // TODO: Removed by CyberWay
+   }
 
    void add_to_snapshot( const snapshot_writer_ptr& snapshot ) const {
       // TODO: Removed by CyberWay
@@ -641,25 +639,6 @@ struct controller_impl {
       blocksum_table.modify( tapos_block_summary, [&]( auto& bs ) {
         bs.block_id = head->id;
       });
-      
-      conf.genesis.initial_configuration.max_block_usage = 
-        std::vector<uint64_t>(config::default_max_block_usage.begin(), config::default_max_block_usage.end());
-      conf.genesis.initial_configuration.max_transaction_usage = 
-        std::vector<uint64_t>(config::default_max_transaction_usage.begin(), config::default_max_transaction_usage.end());
-      conf.genesis.initial_configuration.target_virtual_limits = 
-        std::vector<uint64_t>(config::default_target_virtual_limits.begin(), config::default_target_virtual_limits.end());
-      conf.genesis.initial_configuration.min_virtual_limits = 
-        std::vector<uint64_t>(config::default_min_virtual_limits.begin(), config::default_min_virtual_limits.end());
-      conf.genesis.initial_configuration.max_virtual_limits = 
-        std::vector<uint64_t>(config::default_max_virtual_limits.begin(), config::default_max_virtual_limits.end());
-      conf.genesis.initial_configuration.usage_windows = 
-        std::vector<uint32_t>(config::default_usage_windows.begin(), config::default_usage_windows.end());
-      conf.genesis.initial_configuration.virtual_limit_decrease_pct = 
-        std::vector<uint16_t>(config::default_virtual_limit_decrease_pct.begin(), config::default_virtual_limit_decrease_pct.end());
-      conf.genesis.initial_configuration.virtual_limit_increase_pct = 
-        std::vector<uint16_t>(config::default_virtual_limit_increase_pct.begin(), config::default_virtual_limit_increase_pct.end());
-      conf.genesis.initial_configuration.account_usage_windows = 
-        std::vector<uint32_t>(config::default_account_usage_windows.begin(), config::default_account_usage_windows.end());
 
       conf.genesis.initial_configuration.validate();
       chaindb.emplace<global_property_object>([&](auto& gpo ){
@@ -781,7 +760,7 @@ struct controller_impl {
       etrx.set_reference_block( self.head_block_id() );
 
       transaction_context trx_context( self, etrx, etrx.id(), start );
-      trx_context.deadline = deadline;
+      trx_context.caller_set_deadline = deadline;
       trx_context.explicit_billed_cpu_time = billed.explicit_usage;
       trx_context.billed_cpu_time_us = billed.cpu_time_us;
       trx_context.explicit_billed_ram_bytes = billed.explicit_usage;
@@ -822,24 +801,11 @@ struct controller_impl {
       chaindb.erase( gto, resource_limits.get_storage_payer(self.pending_block_slot(), account_name()));
    }
 
-   bool failure_is_subjective( const fc::exception& e ) const {
-      auto code = e.code();
-      return    (code == subjective_block_production_exception::code_value)
-             || (code == block_net_usage_exceeded::code_value)
-             || (code == block_cpu_usage_exceeded::code_value)
-             || (code == deadline_exception::code_value)
-             || (code == leeway_deadline_exception::code_value);
-   }
 
-   bool scheduled_failure_is_subjective( const fc::exception& e ) const {
-      auto code = e.code();
-      return    (code == tx_cpu_usage_exceeded::code_value)
-             || failure_is_subjective(e);
-   }
 
    transaction_trace_ptr push_scheduled_transaction( const transaction_id_type& trxid, fc::time_point deadline, const billed_bw_usage& billed ) {
       auto idx = chaindb.get_index<generated_transaction_object, by_trx_id>();
-      auto itr = idx.find( trxid );
+      auto itr = idx.find( trxid, cyberway::chaindb::cursor_kind::OneRecord );
       EOS_ASSERT( itr != idx.end(), unknown_transaction_exception, "unknown transaction" );
       return push_scheduled_transaction( *itr, deadline, billed );
    }
@@ -934,7 +900,7 @@ struct controller_impl {
 
       transaction_context trx_context( self, dtrx, gtrx.trx_id );
       trx_context.leeway =  fc::microseconds(0); // avoid stealing cpu resource
-      trx_context.deadline = deadline;
+      trx_context.caller_set_deadline = deadline;
       trx_context.explicit_billed_cpu_time = billed.explicit_usage;
       trx_context.billed_cpu_time_us = billed.cpu_time_us;
       trx_context.explicit_billed_ram_bytes = billed.explicit_usage;
@@ -982,9 +948,9 @@ struct controller_impl {
 
       // Only subjective OR soft OR hard failure logic below:
 
-      if( gtrx.sender != account_name() && !failure_is_subjective(*trace->except)) {
+      if( gtrx.sender != account_name() && !controller::failure_is_subjective(*trace->except)) {
          // Attempt error handling for the generated transaction.
-
+        
          auto error_trace = apply_onerror( gtrx, deadline, trx_context.pseudo_start,
                                            cpu_time_to_bill_us, ram_to_bill_bytes, billed);
          error_trace->failed_dtrx_trace = trace;
@@ -1001,30 +967,18 @@ struct controller_impl {
       // Only subjective OR hard failure logic below:
 
       // subjectivity changes based on producing vs validating
-      bool subjective  = false;
-      if (billed.explicit_usage) {
-         subjective = failure_is_subjective(*trace->except);
-      } else {
-         subjective = scheduled_failure_is_subjective(*trace->except);
-      }
-
-      if ( !subjective ) {
+      if ( !controller::scheduled_failure_is_subjective((*trace->except), !billed.explicit_usage) ) {
          // hard failure logic
-
          if( !billed.explicit_usage ) {
             auto& rl = self.get_mutable_resource_limits_manager();
             rl.update_account_usage( trx_context.bill_to_accounts, self.pending_block_slot() );
-            int64_t account_cpu_limit = trx_context.get_min_cpu_limit();
 
-            cpu_time_to_bill_us = static_cast<uint32_t>( std::min( std::min( static_cast<int64_t>(cpu_time_to_bill_us),
-                                                                             account_cpu_limit                          ),
-                                                                   trx_context.initial_objective_duration_limit.count()    ) );
-
-             // TODO: CyberWay #616 should be here correction of ram_to_bill_bytes?
+            cpu_time_to_bill_us = static_cast<uint32_t>(std::min(
+                static_cast<uint64_t>(cpu_time_to_bill_us), trx_context.hard_limits[resource_limits::CPU].max));
+            ram_to_bill_bytes = std::min(ram_to_bill_bytes, trx_context.hard_limits[resource_limits::RAM].max);
          }
          
-         resource_limits.add_transaction_usage( trx_context.bill_to_accounts, cpu_time_to_bill_us, 0, ram_to_bill_bytes, self.pending_block_time() ); // Should never fail
-
+         resource_limits.add_transaction_usage( trx_context.bill_to_accounts, cpu_time_to_bill_us, 0, ram_to_bill_bytes, self.pending_block_time(), false ); // Should never fail
          trace->receipt = push_receipt(gtrx.trx_id, transaction_receipt::hard_fail, cpu_time_to_bill_us, 0, ram_to_bill_bytes, 0);
 
          emit( self.accepted_transaction, trx );
@@ -1035,7 +989,6 @@ struct controller_impl {
          emit( self.accepted_transaction, trx );
          emit( self.applied_transaction, trace );
       }
-
       return trace;
    } FC_CAPTURE_AND_RETHROW() /// push_scheduled_transaction
 
@@ -1073,8 +1026,12 @@ struct controller_impl {
       transaction_trace_ptr trace;
       try {
          auto start = fc::time_point::now();
+         const bool check_auth = !self.skip_auth_check() && !trx->implicit;
+         // call recover keys so that trx->sig_cpu_usage is set correctly
+         const fc::microseconds sig_cpu_usage = check_auth ? std::get<0>( trx->recover_keys( chain_id ) ) : fc::microseconds();
+         const flat_set<public_key_type>& recovered_keys = check_auth ? std::get<1>( trx->recover_keys( chain_id ) ) : flat_set<public_key_type>();
          if( !billed.explicit_usage ) {
-            fc::microseconds already_consumed_time( EOS_PERCENT(trx->sig_cpu_usage.count(), conf.sig_cpu_bill_pct) );
+            fc::microseconds already_consumed_time( EOS_PERCENT(sig_cpu_usage.count(), conf.sig_cpu_bill_pct) );
 
             if( start.time_since_epoch() <  already_consumed_time ) {
                start = fc::time_point();
@@ -1088,7 +1045,7 @@ struct controller_impl {
          if ((bool)subjective_cpu_leeway && pending->_block_status == controller::block_status::incomplete) {
             trx_context.leeway = *subjective_cpu_leeway;
          }
-         trx_context.deadline = deadline;
+         trx_context.caller_set_deadline = deadline;
          trx_context.explicit_billed_cpu_time = billed.explicit_usage;
          trx_context.billed_cpu_time_us = billed.cpu_time_us;
          trx_context.explicit_billed_ram_bytes = billed.explicit_usage;
@@ -1113,15 +1070,13 @@ struct controller_impl {
 
             trx_context.delay = fc::seconds(trn.delay_sec);
 
-            if( !self.skip_auth_check() && !trx->implicit ) {
+            if( check_auth ) {
                authorization.check_authorization(
                        trn.actions,
-                       trx->recover_keys( chain_id ),
+                       recovered_keys,
                        {},
                        trx_context.delay,
-                       [](){}
-                       /*std::bind(&transaction_context::add_cpu_usage_and_check_time, &trx_context,
-                                 std::placeholders::_1)*/,
+                       [&trx_context](){ trx_context.checktime(); },
                        false
                );
             }
@@ -1176,7 +1131,7 @@ struct controller_impl {
             trace->except_ptr = std::current_exception();
          }
 
-         if (!failure_is_subjective(*trace->except)) {
+         if (!controller::failure_is_subjective(*trace->except)) {
             unapplied_transactions.erase( trx->signed_id );
          }
 
@@ -1271,7 +1226,7 @@ struct controller_impl {
                auto& pt = receipt.trx.get<packed_transaction>();
                auto mtrx = std::make_shared<transaction_metadata>( std::make_shared<packed_transaction>( pt ) );
                if( !self.skip_auth_check() ) {
-                  transaction_metadata::create_signing_keys_future( mtrx, thread_pool, chain_id, microseconds::maximum() );
+                  transaction_metadata::start_recover_keys( mtrx, thread_pool, chain_id, microseconds::maximum() );
                }
                packed_transactions.emplace_back( std::move( mtrx ) );
             }
@@ -1711,10 +1666,26 @@ void controller::add_indices() {
 
 void controller::startup( std::function<bool()> shutdown, const snapshot_reader_ptr& snapshot ) {
    my->head = my->fork_db.head();
+// TODO: Removed by CyberWay
+//   if( snapshot ) {
+//      ilog( "Starting initialization from snapshot, this may take a significant amount of time" );
+//   }
+//   else
    if( !my->head ) {
       elog( "No head block in fork db, perhaps we need to replay" );
    }
-   my->init(shutdown, snapshot);
+
+   try {
+      my->init(shutdown, snapshot);
+   } catch (boost::interprocess::bad_alloc& e) {
+      if ( snapshot )
+         elog( "db storage not configured to have enough storage for the provided snapshot, please increase and retry snapshot" );
+      throw e;
+   }
+// TODO: Removed by CyberWay
+//   if( snapshot ) {
+//      ilog( "Finished initialization from snapshot" );
+//   }
 }
 
 const fork_database& controller::fork_db()const { return my->fork_db; }
@@ -2054,58 +2025,24 @@ const account_object& controller::get_account( account_name name )const
 } FC_CAPTURE_AND_RETHROW( (name) ) }
 
 const domain_object& controller::get_domain(const domain_name& name) const { try {
-    const auto* d = my->chaindb.find<domain_object, by_name>(name);
+    const auto* d = my->chaindb.find<domain_object, by_name>(name, cursor_kind::OneRecord);
     EOS_ASSERT(d != nullptr, chain::domain_query_exception, "domain `${name}` not found", ("name", name));
     return *d;
 } FC_CAPTURE_AND_RETHROW((name)) }
 
 const username_object& controller::get_username(account_name scope, const username& name) const { try {
-    const auto* user = my->chaindb.find<username_object, by_scope_name>(boost::make_tuple(scope,name));
+    const auto* user = my->chaindb.find<username_object, by_scope_name>(boost::make_tuple(scope,name), cursor_kind::OneRecord);
     EOS_ASSERT(user != nullptr, username_query_exception,
         "username `${name}` not found in scope `${scope}`", ("name",name)("scope",scope));
     return *user;
 } FC_CAPTURE_AND_RETHROW((scope)(name)) }
 
-vector<transaction_metadata_ptr> controller::get_unapplied_transactions() const {
-   vector<transaction_metadata_ptr> result;
-   if ( my->read_mode == db_read_mode::SPECULATIVE ) {
-      result.reserve(my->unapplied_transactions.size());
-      for ( const auto& entry: my->unapplied_transactions ) {
-         result.emplace_back(entry.second);
-      }
-   } else {
-      EOS_ASSERT( my->unapplied_transactions.empty(), transaction_exception, "not empty unapplied_transactions in non-speculative mode" ); //should never happen
+unapplied_transactions_type& controller::get_unapplied_transactions() {
+   if ( my->read_mode != db_read_mode::SPECULATIVE ) {
+      EOS_ASSERT( my->unapplied_transactions.empty(), transaction_exception,
+                  "not empty unapplied_transactions in non-speculative mode" ); //should never happen
    }
-   return result;
-}
-
-void controller::drop_unapplied_transaction(const transaction_metadata_ptr& trx) {
-   my->unapplied_transactions.erase(trx->signed_id);
-}
-
-void controller::drop_all_unapplied_transactions() {
-   my->unapplied_transactions.clear();
-}
-
-vector<transaction_id_type> controller::get_scheduled_transactions() const {
-   auto delay_idx = chaindb().get_index<generated_transaction_object, by_delay>();
-
-   vector<transaction_id_type> result;
-
-   if( 1 == head_block_num() ) {
-      return result;
-   }
-
-   static const size_t max_reserve = 1024;
-   result.reserve(max_reserve);
-
-   auto itr = delay_idx.begin();
-   auto etr = delay_idx.end();
-   auto stop_time = pending_block_time();
-   for (; etr != itr && itr->delay_until <= stop_time; ++itr) {
-      result.emplace_back(itr->trx_id);
-   }
-   return result;
+   return my->unapplied_transactions;
 }
 
 void controller::check_actor_list( const flat_set<account_name>& actors )const {

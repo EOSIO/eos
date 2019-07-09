@@ -15,6 +15,8 @@
 namespace eosio { namespace chain { namespace resource_limits {
 using namespace stake;
 
+using cyberway::chaindb::cursor_kind;
+
 using resource_index_set = index_set<
    resource_usage_table,
    resource_limits_state_table,
@@ -74,7 +76,7 @@ void resource_limits_manager::initialize_database() {
       state.virtual_limits.resize(resources_num);
       
       for (size_t i = 0; i < resources_num; i++) {
-         state.virtual_limits[i] = cfg.limit_parameters[i].min;
+         state.virtual_limits[i] = cfg.limit_parameters[i].max;
       }
    });
 
@@ -141,7 +143,7 @@ void resource_limits_state_object::add_pending_delta(int64_t delta, const chain_
         ("res", static_cast<int>(res))("delta", delta)("new_pending", pending)("max", max));
 }
 
-void resource_limits_manager::add_transaction_usage(const flat_set<account_name>& accounts, uint64_t cpu_usage, uint64_t net_usage, uint64_t ram_usage, fc::time_point pending_block_time) {
+void resource_limits_manager::add_transaction_usage(const flat_set<account_name>& accounts, uint64_t cpu_usage, uint64_t net_usage, uint64_t ram_usage, fc::time_point pending_block_time, bool validate) {
    auto state_table = _chaindb.get_table<resource_limits_state_object>();
    const auto& state = state_table.get();
    const auto& config = _chaindb.get<resource_limits_config_object>();
@@ -159,8 +161,10 @@ void resource_limits_manager::add_transaction_usage(const flat_set<account_name>
           bu.accumulators[NET].add(net_usage, time_slot, config.account_usage_average_windows[NET]);
           bu.accumulators[RAM].add(ram_usage, time_slot, config.account_usage_average_windows[RAM]);
       });
-      // validate the resources available
-      get_account_balance(pending_block_time, a, prices, true);
+      if (validate) {
+          // validate the resources available
+          get_account_balance(pending_block_time, a, prices, true);
+      }
    }
    // account for this transaction in the block and do not exceed those limits either
    const auto& chain_cfg = _chaindb.get<global_property_object>().configuration;
@@ -187,8 +191,8 @@ void resource_limits_manager::add_storage_usage(const account_name& account, int
     const stake_stat_object* stat = nullptr;
 
     if (_chaindb.get<account_object>(account).privileged || //assignments:
-        !(_chaindb.find<stake_param_object>(token_code.value)) ||
-        !(stat  = _chaindb.find<stake_stat_object>(token_code.value)) ||
+        !(_chaindb.find<stake_param_object>(token_code.value, cursor_kind::OneRecord)) ||
+        !(stat  = _chaindb.find<stake_stat_object>(token_code.value, cursor_kind::OneRecord)) ||
         !stat->enabled || stat->total_staked == 0) {
 
         return;
@@ -266,8 +270,10 @@ std::vector<ratio> resource_limits_manager::get_pricelist() const {
     const stake_param_object* param = nullptr;
     const stake_stat_object* stat = nullptr;
     
-    if ((param = _chaindb.find<stake_param_object>(token_code.value)) &&
-        (stat  = _chaindb.find<stake_stat_object>(token_code.value)) && stat->enabled && stat->total_staked != 0) {
+    if ((param = _chaindb.find<stake_param_object>(token_code.value, cursor_kind::OneRecord)) &&
+        (stat  = _chaindb.find<stake_stat_object>(token_code.value, cursor_kind::OneRecord)) &&
+        stat->enabled && stat->total_staked != 0
+    ) {
         EOS_ASSERT(stat->total_staked > 0, chain_exception, "SYSTEM: incorrect total_staked");
         
         for (size_t i = 0; i < resources_num; i++) {
@@ -317,7 +323,7 @@ ratio resource_limits_manager::get_account_stake_ratio(fc::time_point pending_bl
     auto agents_idx = agents_table.get_index<stake_agent_object::by_key>();
 
     uint64_t staked = 0;
-    auto agent = agents_idx.find(agent_key(token_code, account));
+    auto agent = agents_idx.find(agent_key(token_code, account), cursor_kind::OneRecord);
     if (agent != agents_idx.end()) {
         if (update_state) {
             update_proxied(_chaindb, get_storage_payer(block_timestamp_type(pending_block_time).slot, account_name()), 
@@ -353,7 +359,7 @@ uint64_t resource_limits_manager::get_account_balance(fc::time_point pending_blo
         cost = (UINT64_MAX - cost) > add ? cost + add : UINT64_MAX;
     }
     
-    EOS_ASSERT(!update_state || (staked >= cost), resource_exhausted_exception, 
+    EOS_ASSERT(!update_state || (staked >= cost), account_resources_exceeded, 
         "account ${a} has insufficient staked tokens (${s}).\n usage: cpu ${uc}, net ${un}, ram ${ur}, storage ${us}; \n prices: cpu ${pc}, net ${pn}, ram ${pr}, storage ${ps};\n cost ${c}", 
         ("a", account)("s",staked)
         ("uc", res_usage[CPU])("un", res_usage[NET])("ur", res_usage[RAM])("us", res_usage[STORAGE])

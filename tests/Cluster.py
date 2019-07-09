@@ -34,7 +34,6 @@ class Cluster(object):
     __bootlog="eosio-ignition-wd/bootlog.txt"
     __configDir="etc/eosio/"
     __dataDir="var/lib/"
-    __fileDivider="================================================================="
 
     # pylint: disable=too-many-arguments
     # walletd [True|False] Is keosd running. If not load the wallet plugin
@@ -850,7 +849,7 @@ class Cluster(object):
             Utils.Print("ERROR: Bios node doesn't appear to be running...")
             return None
 
-        cmd="bash bios_boot.sh"
+        cmd="bash bios_boot.sh %s" % (CORE_SYMBOL)
         if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
         if 0 != subprocess.call(cmd.split(), stdout=Utils.FNull):
             if not silent: Utils.Print("Launcher failed to shut down eos cluster.")
@@ -1079,10 +1078,11 @@ class Cluster(object):
 
         eosioStakeAccount=copy.deepcopy(eosioAccount)
         eosioStakeAccount.name="cyber.stake"
-        trans=biosNode.createAccount(eosioStakeAccount, eosioAccount, 0)
-        if trans is None:
-            Utils.Print("ERROR: Failed to create account %s" % (eosioStakeAccount.name))
-            return None
+        ## created by nodeos
+        # trans=biosNode.createAccount(eosioStakeAccount, eosioAccount, 0)
+        # if trans is None:
+        #     Utils.Print("ERROR: Failed to create account %s" % (eosioStakeAccount.name))
+        #     return None
 
         Node.validateTransaction(trans)
         transId=Node.getTransId(trans)
@@ -1145,17 +1145,17 @@ class Cluster(object):
                         (expectedAmount, actualAmount))
             return None
 
-        contract="eosio.system"
-        contractDir="contracts/%s" % (contract)
-        wasmFile="%s.wasm" % (contract)
-        abiFile="%s.abi" % (contract)
-        Utils.Print("Publish %s contract" % (contract))
-        trans=biosNode.publishContract(eosioAccount.name, contractDir, wasmFile, abiFile, waitForTransBlock=True)
-        if trans is None:
-            Utils.Print("ERROR: Failed to publish contract %s." % (contract))
-            return None
+        # contract="eosio.system"
+        # contractDir="unittests/contracts/%s" % (contract)
+        # wasmFile="%s.wasm" % (contract)
+        # abiFile="%s.abi" % (contract)
+        # Utils.Print("Publish %s contract" % (contract))
+        # trans=biosNode.publishContract(eosioAccount.name, contractDir, wasmFile, abiFile, waitForTransBlock=True)
+        # if trans is None:
+        #     Utils.Print("ERROR: Failed to publish contract %s." % (contract))
+        #     return None
 
-        Node.validateTransaction(trans)
+        # Node.validateTransaction(trans)
 
         initialFunds="1000000.0000 {0}".format(CORE_SYMBOL)
         Utils.Print("Transfer initial fund %s to individual accounts." % (initialFunds))
@@ -1177,7 +1177,10 @@ class Cluster(object):
         if not biosNode.waitForTransInBlock(transId):
             Utils.Print("ERROR: Failed to validate transaction %s got rolled into a block on server port %d." % (transId, biosNode.port))
             return None
-
+        action="init"
+        data="{\"version\":0,\"core\":\"4,%s\"}" % (CORE_SYMBOL)
+        opts="--permission %s@active" % (eosioAccount.name)
+        trans=biosNode.pushMessage(eosioAccount.name, action, data, opts)
         Utils.Print("Cluster bootstrap done.")
 
         return biosNode
@@ -1261,21 +1264,21 @@ class Cluster(object):
         time.sleep(1) # Give processes time to stand down
         return True
 
-    def relaunchEosInstances(self):
+    def relaunchEosInstances(self, cachePopen=False):
 
         chainArg=self.__chainSyncStrategy.arg
 
         newChain= False if self.__chainSyncStrategy.name in [Utils.SyncHardReplayTag, Utils.SyncNoneTag] else True
         for i in range(0, len(self.nodes)):
             node=self.nodes[i]
-            if node.killed and not node.relaunch(i, chainArg, newChain=newChain):
+            if node.killed and not node.relaunch(i, chainArg, newChain=newChain, cachePopen=cachePopen):
                 return False
 
         return True
 
     @staticmethod
     def dumpErrorDetailImpl(fileName):
-        Utils.Print(Cluster.__fileDivider)
+        Utils.Print(Utils.FileDivider)
         Utils.Print("Contents of %s:" % (fileName))
         if os.path.exists(fileName):
             with open(fileName, "r") as f:
@@ -1283,20 +1286,36 @@ class Cluster(object):
         else:
             Utils.Print("File %s not found." % (fileName))
 
+    @staticmethod
+    def __findFiles(path):
+        files=[]
+        it=os.scandir(path)
+        for entry in it:
+            if entry.is_file(follow_symlinks=False):
+                match=re.match("stderr\..+\.txt", entry.name)
+                if match:
+                    files.append(os.path.join(path, entry.name))
+        files.sort()
+        return files
+
     def dumpErrorDetails(self):
-        fileName=Cluster.__configDir + Cluster.nodeExtensionToName("bios") + "/config.ini"
+        fileName=os.path.join(Cluster.__configDir + Cluster.nodeExtensionToName("bios"), "config.ini")
         Cluster.dumpErrorDetailImpl(fileName)
-        fileName=Cluster.__dataDir + Cluster.nodeExtensionToName("bios") + "/stderr.txt"
-        Cluster.dumpErrorDetailImpl(fileName)
+        path=Cluster.__dataDir + Cluster.nodeExtensionToName("bios")
+        fileNames=Cluster.__findFiles(path)
+        for fileName in fileNames:
+            Cluster.dumpErrorDetailImpl(fileName)
 
         for i in range(0, len(self.nodes)):
-            configLocation=Cluster.__configDir + Cluster.nodeExtensionToName(i) + "/"
-            fileName=configLocation + "config.ini"
+            configLocation=Cluster.__configDir + Cluster.nodeExtensionToName(i)
+            fileName=os.path.join(configLocation, "config.ini")
             Cluster.dumpErrorDetailImpl(fileName)
-            fileName=configLocation + "genesis.json"
+            fileName=os.path.join(configLocation, "genesis.json")
             Cluster.dumpErrorDetailImpl(fileName)
-            fileName=Cluster.__dataDir + Cluster.nodeExtensionToName(i) + "/stderr.txt"
-            Cluster.dumpErrorDetailImpl(fileName)
+            path=Cluster.__dataDir + Cluster.nodeExtensionToName(i)
+            fileNames=Cluster.__findFiles(path)
+            for fileName in fileNames:
+                Cluster.dumpErrorDetailImpl(fileName)
 
         if self.useBiosBootFile:
             Cluster.dumpErrorDetailImpl(Cluster.__bootlog)
@@ -1447,8 +1466,8 @@ class Cluster(object):
 
     def printBlockLog(self):
         blockLogBios=self.getBlockLog("bios")
-        Utils.Print(Cluster.__fileDivider)
-        Utils.Print("Block log from %s:\n%s" % (blockLogDir, json.dumps(blockLogBios, indent=1)))
+        Utils.Print(Utils.FileDivider)
+        Utils.Print("Block log from %s:\n%s" % ("bios", json.dumps(blockLogBios, indent=1)))
 
         if not hasattr(self, "nodes"):
             return
@@ -1457,8 +1476,8 @@ class Cluster(object):
         for i in range(numNodes):
             node=self.nodes[i]
             blockLog=self.getBlockLog(i)
-            Utils.Print(Cluster.__fileDivider)
-            Utils.Print("Block log from %s:\n%s" % (blockLogDir, json.dumps(blockLog, indent=1)))
+            Utils.Print(Utils.FileDivider)
+            Utils.Print("Block log from node %s:\n%s" % (i, json.dumps(blockLog, indent=1)))
 
 
     def compareBlockLogs(self):
@@ -1534,11 +1553,11 @@ class Cluster(object):
                 if ret is not None:
                     blockLogDir1=Cluster.__dataDir + Cluster.nodeExtensionToName(commonBlockNameExtensions[0]) + "/blocks/"
                     blockLogDir2=Cluster.__dataDir + Cluster.nodeExtensionToName(commonBlockNameExtensions[i]) + "/blocks/"
-                    Utils.Print(Cluster.__fileDivider)
+                    Utils.Print(Utils.FileDivider)
                     Utils.Print("Block log from %s:\n%s" % (blockLogDir1, json.dumps(commonBlockLogs[0], indent=1)))
-                    Utils.Print(Cluster.__fileDivider)
+                    Utils.Print(Utils.FileDivider)
                     Utils.Print("Block log from %s:\n%s" % (blockLogDir2, json.dumps(commonBlockLogs[i], indent=1)))
-                    Utils.Print(Cluster.__fileDivider)
+                    Utils.Print(Utils.FileDivider)
                     Utils.errorExit("Block logs do not match, difference description -> %s" % (ret))
 
             return True

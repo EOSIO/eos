@@ -206,6 +206,8 @@ abi_def eosio_contract_abi(abi_def eos_abi)
          {"max_inline_action_size", "uint32"},
          {"max_inline_action_depth", "uint16"},
          {"max_authority_depth", "uint16"},
+         {"ram_size", "uint64"},
+         {"reserved_ram_size", "uint64"},
          {"max_block_usage", "uint64[]"},
          {"max_transaction_usage", "uint64[]"},
          {"target_virtual_limits", "uint64[]"},
@@ -461,9 +463,7 @@ abi_def eosio_contract_abi(abi_def eos_abi)
          {"id", "uint64"},
          {"block_usage_accumulators", "usage_accumulator[]"},
          {"pending_usage", "int64[]"},
-         {"virtual_limits", "uint64[]"},
-         {"ram_size", "uint64"},
-         {"reserved_ram_size", "uint64"}}
+         {"virtual_limits", "uint64[]"}}
    });
 
    eos_abi.tables.emplace_back( eosio::chain::table_def {
@@ -566,8 +566,7 @@ abi_def eosio_contract_abi(abi_def eos_abi)
    eos_abi.structs.emplace_back(struct_def{
       "_SERVICE_", "", {
          {"upk", "uint64"},
-         {"code", "uint64"},
-         {"table", "uint64"}}
+         {"rev", "int64"}}
    });
 
    eos_abi.structs.emplace_back(struct_def{
@@ -577,10 +576,7 @@ abi_def eosio_contract_abi(abi_def eos_abi)
 
    eos_abi.tables.emplace_back(table_def{
        "undo", "undo", "uint64", {
-           {cyberway::chaindb::tag<by_id>::get_code(), true, {{"_SERVICE_.upk", "asc"}}},
-           {cyberway::chaindb::tag<by_table>::get_code(), false, {
-               {"_SERVICE_.code", "asc"},
-               {"_SERVICE_.table", "asc"}}},
+           {cyberway::chaindb::tag<by_id>::get_code(), true, {{"_SERVICE_.upk", "asc"}}}
        },
    });
 

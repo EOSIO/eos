@@ -207,12 +207,12 @@ namespace cyberway { namespace chaindb {
 
                 case cursor_kind::InRAM:
                     if (!cache_ptr) {
-                        return {end_cursor, primary_key::End};
+                        return {end_cursor, primary_key::End, nullptr, controller_, request.code};
                     }
 
                 case cursor_kind::OneRecord:
                     if (cache_ptr) {
-                        return {ram_cursor, cache_ptr->pk()};
+                        return {ram_cursor, cache_ptr->pk(), std::move(cache_ptr), controller_, request.code};
                     }
                     break;
 
@@ -225,7 +225,7 @@ namespace cyberway { namespace chaindb {
             if (cache_ptr) {
                 cursor.pk     = cache_ptr->pk();
                 cursor.object = cache_ptr->object();
-                return {cursor.id, cursor.pk};
+                return {cursor.id, cursor.pk, std::move(cache_ptr), controller_, request.code};
             }
 
             current(cursor);
@@ -240,7 +240,7 @@ namespace cyberway { namespace chaindb {
                 }
             }
 
-            return {cursor.id, cursor.pk};
+            return {cursor.id, cursor.pk, std::move(cache_ptr), controller_, request.code};
         }
 
         find_info lower_bound(const table_request& request, const cursor_kind kind, const primary_key_t pk) {
@@ -259,12 +259,12 @@ namespace cyberway { namespace chaindb {
 
                 case cursor_kind::InRAM:
                     if (!cache_ptr) {
-                        return {end_cursor, primary_key::End};
+                        return {end_cursor, primary_key::End, nullptr, controller_, request.code};
                     }
 
                 case cursor_kind::OneRecord:
                     if (cache_ptr) {
-                        return {ram_cursor, cache_ptr->pk()};
+                        return {ram_cursor, cache_ptr->pk(), std::move(cache_ptr), controller_, request.code};
                     }
                     break;
 
@@ -276,7 +276,7 @@ namespace cyberway { namespace chaindb {
             if (cache_ptr) {
                 cursor.pk     = cache_ptr->pk();
                 cursor.object = cache_ptr->object();
-                return {cursor.id, cursor.pk};
+                return {cursor.id, cursor.pk, std::move(cache_ptr), controller_, request.code};
             }
 
             current(cursor);
@@ -284,13 +284,13 @@ namespace cyberway { namespace chaindb {
                 cache_.emplace_unsuccess(cursor.index, pk, cursor.pk);
             }
 
-            return {cursor.id, cursor.pk};
+            return {cursor.id, cursor.pk, nullptr, controller_, request.code};
         }
 
         // API request, it can't use cache
         find_info lower_bound(const index_request& request, const variant& orders) {
             auto& cursor = current(driver_.lower_bound(get_index(request), orders));
-            return {cursor.id, cursor.pk};
+            return {cursor.id, cursor.pk, nullptr, controller_, request.code};
         }
 
         const cursor_info& upper_bound(const index_request& request, const char* key, const size_t size) {
@@ -446,10 +446,15 @@ namespace cyberway { namespace chaindb {
             auto obj   = object_value{table.to_service(cache_obj.pk()), std::move(value)};
 
             storage.in_ram = cache_obj.service().in_ram;
-            auto delta = update(table, std::move(storage), obj, cache_obj.object());
-            cache_.set_object(table, cache_obj, std::move(obj));
-
-            return delta;
+            try {
+                auto delta = update(table, std::move(storage), obj, cache_obj.object());
+                cache_.set_object(table, cache_obj, std::move(obj));
+                return delta;
+            } catch (...) {
+                // case of throwing in storage_payer_info::add_usage
+                cache_.set_object(table, cache_obj, cache_obj.object());
+                throw;
+            }
         }
 
         void change_ram_state(cache_object& cache_obj, storage_payer_info storage) {
@@ -777,39 +782,38 @@ namespace cyberway { namespace chaindb {
 
     find_info chaindb_controller::upper_bound(const index_request& request, const char* key, size_t size) const {
         const auto& info = impl_->upper_bound(request, key, size);
-        return {info.id, info.pk};
+        return {info.id, info.pk, nullptr, *this, request.code};
     }
 
     find_info chaindb_controller::upper_bound(const table_request& request, const primary_key_t pk) const {
         const auto& info = impl_->upper_bound(request, pk);
-        return {info.id, info.pk};
+        return {info.id, info.pk, nullptr, *this, request.code};
     }
 
     find_info chaindb_controller::upper_bound(const index_request& request, const variant& orders) const {
         auto info = impl_->upper_bound(request, orders);
-        return {info.id, info.pk};
+        return {info.id, info.pk, nullptr, *this, request.code};
     }
 
     find_info chaindb_controller::locate_to(
         const index_request& request, const char* key, size_t size, primary_key_t pk
     ) const {
         const auto& info = impl_->locate_to(request, key, size, pk);
-        return {info.id, info.pk};
+        return {info.id, info.pk, nullptr, *this, request.code};
     }
 
     find_info chaindb_controller::begin(const index_request& request) const {
         const auto& info = impl_->begin(request);
-        return {info.id, info.pk};
+        return {info.id, info.pk, nullptr, *this, request.code};
     }
 
     find_info chaindb_controller::end(const index_request& request) const {
         const auto& info = impl_->end(request);
-        return {info.id, info.pk};
+        return {info.id, info.pk, nullptr, *this, request.code};
     }
 
-    find_info chaindb_controller::clone(const cursor_request& request) const {
-        const auto& info = impl_->driver_.clone(request);
-        return {info.id, info.pk};
+    cursor_t chaindb_controller::clone(const cursor_request& request) const {
+        return impl_->driver_.clone(request).id;
     }
 
     primary_key_t chaindb_controller::current(const cursor_request& request) const {
@@ -995,6 +999,72 @@ namespace cyberway { namespace chaindb {
 
     uint64_t chaindb_session::calc_ram_bytes() const {
         return controller_.impl_->cache_.calc_ram_bytes(revision_);
+    }
+
+    find_info::find_info(const chaindb_controller& controller, account_name_t code) :
+        cursor(cyberway::chaindb::invalid_cursor),
+        pk(cyberway::chaindb::primary_key::End),
+        controller(controller),
+        code(code) {
+    }
+
+    find_info::find_info(cursor_t cursor, primary_key_t pk, cache_object_ptr object_ptr, const chaindb_controller& controller, account_name_t code) :
+        cursor(cursor),
+        pk(pk),
+        object_ptr(std::move(object_ptr)),
+        controller(controller),
+        code(code) {
+    }
+
+    find_info::find_info(find_info&& other) noexcept :
+        object_ptr(std::move(other.object_ptr)),
+        controller(other.controller),
+        code(other.code) {
+        this->operator =(std::move(other));
+    }
+
+    find_info::~find_info() {
+        if (is_cursor_initialized()) {
+            controller.close({code, cursor});
+        }
+    }
+
+    find_info&find_info::operator = (find_info&& other) noexcept {
+        if (is_cursor_initialized()) {
+            controller.close({code, cursor});
+        }
+
+        object_ptr = std::move(other.object_ptr);
+        this->cursor = other.cursor;
+        this->pk = other.pk;
+
+        other.cursor = cyberway::chaindb::invalid_cursor;
+        other.pk = cyberway::chaindb::primary_key::End;
+        return *this;
+    }
+
+    find_info& find_info::operator ++() {
+        pk = controller.next({code, cursor});
+        object_ptr.reset();
+        return *this;
+    }
+
+    find_info& find_info::operator --() {
+        pk = controller.prev({code, cursor});
+        object_ptr.reset();
+        return *this;
+    }
+
+    bool find_info::operator == (cursor_t cursor) const {
+        return this->cursor == cursor;
+    }
+
+    bool find_info::is_cursor_initialized() const {
+        return (cursor > cyberway::chaindb::invalid_cursor);
+    }
+
+    find_info find_info::clone() const {
+        return {is_cursor_initialized() ? controller.clone({code, cursor}) : cursor, pk,  object_ptr, controller, code};
     }
 
 } } // namespace cyberway::chaindb

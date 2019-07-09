@@ -17,8 +17,6 @@
 
 namespace cyberway { namespace genesis { namespace ee {
 
-constexpr auto GLS = SY(3, GOLOS);
-
 genesis_ee_builder::genesis_ee_builder(
     const genesis_create& genesis, const std::string& shared_file, uint32_t last_block)
     :   genesis_(genesis), info_(genesis.get_info()), exp_info_(genesis.get_exp_info()),
@@ -56,6 +54,7 @@ bool genesis_ee_builder::read_operation(bfs::ifstream& in, Operation& op) {
     op.offset = op_offset;
 
     if (!in) {
+        in.clear(); // Clear EOF flag to allow reuse stream
         return false;
     }
 
@@ -268,6 +267,45 @@ void genesis_ee_builder::process_transfers() {
     }
 }
 
+void genesis_ee_builder::process_withdraws() {
+    std::cout << "-> Reading withdraws..." << std::endl;
+
+    try {
+        read_header(dump_vesting_withdraws, in_dump_dir_ / "vesting_withdraws");
+    } catch (file_not_found_exception& ex) {
+        wlog("No vesting withdraws file");
+        return;
+    }
+}
+
+void genesis_ee_builder::process_rewards_history() {
+    std::cout << "-> Reading rewards history..." << std::endl;
+
+    try {
+        read_header(dump_author_rewards, in_dump_dir_ / "author_rewards");
+    } catch (file_not_found_exception& ex) {
+        wlog("No author rewards file");
+    }
+
+    try {
+        read_header(dump_benefactor_rewards, in_dump_dir_ / "benefactor_rewards");
+    } catch (file_not_found_exception& ex) {
+        wlog("No benefactor rewards file");
+    }
+
+    try {
+        read_header(dump_curation_rewards, in_dump_dir_ / "curation_rewards");
+    } catch (file_not_found_exception& ex) {
+        wlog("No curation rewards file");
+    }
+
+    try {
+        read_header(dump_delegation_rewards, in_dump_dir_ / "delegation_rewards");
+    } catch (file_not_found_exception& ex) {
+        wlog("No delegation rewards file");
+    }
+}
+
 void genesis_ee_builder::process_follows() {
     std::cout << "-> Reading follows..." << std::endl;
 
@@ -353,6 +391,8 @@ void genesis_ee_builder::read_operation_dump(const bfs::path& in_dump_dir) {
     process_reblogs();
     process_delete_reblogs();
     process_transfers();
+    process_withdraws();
+    process_rewards_history();
     process_follows();
     process_account_metas();
 }
@@ -413,6 +453,7 @@ void genesis_ee_builder::write_messages() {
     if (!dump_comments.is_open()) {
         return;
     }
+
     std::cout << "-> Writing messages..." << std::endl;
     auto& out = out_.get_serializer(event_engine_genesis::messages);
     out.start_section(info_.golos.names.posting, N(message), "message_info");
@@ -472,19 +513,151 @@ void genesis_ee_builder::write_transfers() {
     if (!dump_transfers.is_open()) {
         return;
     }
+
     std::cout << "-> Writing transfers..." << std::endl;
     auto& out = out_.get_serializer(event_engine_genesis::transfers);
     out.start_section(config::token_account_name, N(transfer), "transfer");
 
+    auto start_time = genesis_.get_conf().initial_timestamp;
+    start_time -= fc::days(info_.ee_params.history_days.transfers);
+
     transfer_operation op;
     while (read_operation(dump_transfers, op)) {
+        if (op.timestamp < start_time) {
+            continue;
+        }
+
         out.emplace<transfer_info>([&](auto& t) {
             t.from = generate_name(op.from);
             t.to = generate_name(op.to);
             t.quantity = op.amount;
             t.memo = op.memo;
+            t.to_vesting = op.to_vesting;
             t.time = op.timestamp;
         });
+    }
+}
+
+void genesis_ee_builder::write_withdraws() {
+    if (!dump_vesting_withdraws.is_open()) {
+        return;
+    }
+
+    std::cout << "-> Writing withdraws..." << std::endl;
+    auto& out = out_.get_serializer(event_engine_genesis::withdraws);
+    out.start_section(info_.golos.names.vesting, N(withdraw), "withdraw");
+
+    auto start_time = genesis_.get_conf().initial_timestamp;
+    start_time -= fc::days(info_.ee_params.history_days.withdraws);
+
+    fill_vesting_withdraw_operation op;
+    while (read_operation(dump_vesting_withdraws, op)) {
+        if (op.timestamp < start_time) {
+            continue;
+        }
+
+        out.emplace<withdraw_info>([&](auto& t) {
+            t.from = generate_name(op.from_account);
+            t.to = generate_name(op.to_account);
+            t.quantity = op.deposited;
+            t.time = op.timestamp;
+        });
+    }
+}
+
+void genesis_ee_builder::write_delegations() {
+    std::cout << "-> Writing delegations..." << std::endl;
+    auto& out = out_.get_serializer(event_engine_genesis::delegations);
+    out.start_section(info_.golos.names.vesting, N(delegate), "delegate");
+
+    for (auto& d : exp_info_.delegations) {
+        out.insert(d);
+    }
+}
+
+void genesis_ee_builder::write_rewards_history() {
+    auto& out = out_.get_serializer(event_engine_genesis::rewards);
+
+    auto start_time = genesis_.get_conf().initial_timestamp;
+    start_time -= fc::days(info_.ee_params.history_days.rewards);
+
+    if (dump_author_rewards.is_open()) {
+        std::cout << "-> Writing author rewards..." << std::endl;
+        out.start_section(info_.golos.names.posting, N(authreward), "author_reward");
+
+        author_reward_operation op;
+        while (read_operation(dump_author_rewards, op)) {
+            if (op.timestamp < start_time) {
+                continue;
+            }
+
+            out.emplace<author_reward>([&](auto& r) {
+                r.author = generate_name(op.author);
+                r.permlink = op.permlink;
+                r.sbd_and_steem_payout = op.sbd_and_steem_in_golos;
+                r.vesting_payout = op.vesting_payout_in_golos;
+                r.time = op.timestamp;
+            });
+        }
+    }
+
+    if (dump_curation_rewards.is_open()) {
+        std::cout << "-> Writing curation rewards..." << std::endl;
+        out.start_section(info_.golos.names.posting, N(curreward), "curation_reward");
+
+        curation_reward_operation op;
+        while (read_operation(dump_curation_rewards, op)) {
+            if (op.timestamp < start_time) {
+                continue;
+            }
+
+            out.emplace<curation_reward>([&](auto& r) {
+                r.curator = generate_name(op.curator);
+                r.reward = op.reward_in_golos;
+                r.comment_author = generate_name(op.comment_author);
+                r.comment_permlink = op.comment_permlink;
+                r.time = op.timestamp;
+            });
+        }
+    }
+
+    if (dump_benefactor_rewards.is_open()) {
+        std::cout << "-> Writing benefactor rewards..." << std::endl;
+        out.start_section(info_.golos.names.posting, N(benreward), "benefactor_reward");
+
+        comment_benefactor_reward_operation op;
+        while (read_operation(dump_benefactor_rewards, op)) {
+            if (op.timestamp < start_time) {
+                continue;
+            }
+
+            out.emplace<benefactor_reward>([&](auto& r) {
+                r.benefactor = generate_name(op.benefactor);
+                r.author = generate_name(op.author);
+                r.permlink = op.permlink;
+                r.reward = op.reward_in_golos;
+                r.time = op.timestamp;
+            });
+        }
+    }
+
+    if (dump_delegation_rewards.is_open()) {
+        std::cout << "-> Writing delegation rewards..." << std::endl;
+        out.start_section(info_.golos.names.posting, N(delreward), "delegation_reward");
+
+        delegation_reward_operation op;
+        while (read_operation(dump_delegation_rewards, op)) {
+            if (op.timestamp < start_time) {
+                continue;
+            }
+
+            out.emplace<delegation_reward>([&](auto& r) {
+                r.delegator = generate_name(op.delegator);
+                r.delegatee = generate_name(op.delegatee);
+                r.reward = op.vesting_shares_in_golos;
+                r.time = op.timestamp;
+            });
+        }
     }
 }
 
@@ -556,6 +729,21 @@ void genesis_ee_builder::write_accounts() {
     }
 }
 
+void genesis_ee_builder::write_witnesses() {
+    std::cout << "-> Writing witnesses..." << std::endl;
+    auto& out = out_.get_serializer(event_engine_genesis::witnesses);
+    out.start_section(info_.golos.names.control, N(witnessstate), "witnessstate");
+    for (auto& w : exp_info_.witnesses) {
+        auto wtn = w.second;
+        fc::flat_set<name> votes;
+        auto v = exp_info_.witness_votes.find(w.first);
+        if (v != exp_info_.witness_votes.end()) {
+            votes = v->second;
+        }
+        out.insert(wtn("votes", votes));
+    }
+}
+
 void genesis_ee_builder::write_funds() {
     std::cout << "-> Writing funds..." << std::endl;
 
@@ -600,8 +788,12 @@ void genesis_ee_builder::build(const bfs::path& out_dir) {
 
     write_messages();
     write_transfers();
+    write_withdraws();
+    write_delegations();
+    write_rewards_history();
     write_pinblocks();
     write_accounts();
+    write_witnesses();
     write_funds();
     write_balance_converts();
 

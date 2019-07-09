@@ -18,6 +18,7 @@ namespace eosio {
        chain::account_name receiver;
        chain::account_name code;
        chain::action_name  action;
+       std::vector<chain::permission_level> auth;
        fc::variant         args;
        chain::bytes        data;
        std::vector<EventData> events;
@@ -165,7 +166,7 @@ namespace eosio {
 } // namespace eosio
 
 FC_REFLECT(eosio::EventData, (code)(event)(data)(args))
-FC_REFLECT(eosio::ActionData, (receiver)(code)(action)(data)(args)(events))
+FC_REFLECT(eosio::ActionData, (receiver)(code)(action)(auth)(data)(args)(events))
 FC_REFLECT(eosio::TrxMetadata, (id)(accepted)(implicit)(scheduled))
 FC_REFLECT(eosio::TrxReceipt, (id)(status)(cpu_usage_us)(net_usage_words)(ram_kbytes)(storage_kbytes))
 

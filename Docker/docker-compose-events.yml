@@ -3,7 +3,7 @@ version: "2.1"
 services:
   nats:
     container_name: nats-streaming
-    image: nats-streaming:0.11.2-linux
+    image: nats-streaming:0.14.1-linux
     restart: always
     entrypoint: /nats-streaming-server -p 4222 -m 8222 --cluster_id=cyberway --user=${NATS_USER} --pass=${NATS_PASS} --config /config.conf
     volumes:

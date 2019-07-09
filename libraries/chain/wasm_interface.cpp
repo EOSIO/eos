@@ -23,10 +23,15 @@
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
 #include <fstream>
+#include <string.h>
+
+#include <cyberway/chain/domain_name.hpp>
 
 namespace eosio { namespace chain {
    using namespace webassembly;
    using namespace webassembly::common;
+
+   using cyberway::chaindb::cursor_kind;
 
    wasm_interface::wasm_interface(vm_type vm) : my( new wasm_interface_impl(vm) ) {}
 
@@ -193,6 +198,8 @@ class softfloat_api : public context_aware_api {
       softfloat_api( apply_context& ctx )
       :context_aware_api(ctx, true) {}
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstrict-aliasing"
       // float binops
       float _eosio_f32_add( float a, float b ) {
          float32_t ret = f32_add( to_softfloat32(a), to_softfloat32(b) );
@@ -210,6 +217,7 @@ class softfloat_api : public context_aware_api {
          float32_t ret = f32_mul( to_softfloat32(a), to_softfloat32(b) );
          return *reinterpret_cast<float*>(&ret);
       }
+#pragma GCC diagnostic pop
       float _eosio_f32_min( float af, float bf ) {
          float32_t a = to_softfloat32(af);
          float32_t b = to_softfloat32(bf);
@@ -819,7 +827,7 @@ class permission_api : public context_aware_api {
       };
 
       int64_t get_account_creation_time( account_name account ) {
-         auto* acct = context.chaindb.find<account_object>(account);
+         auto* acct = context.chaindb.find<account_object>(account, cursor_kind::OneRecord);
          EOS_ASSERT( acct != nullptr, action_validate_exception,
                      "account '${account}' does not exist", ("account", account) );
          return time_point(acct->creation_date).time_since_epoch().count();
@@ -877,24 +885,31 @@ class authorization_api : public context_aware_api {
    }
 };
 
+constexpr size_t max_assert_message = 1024;
+
 class domain_api : public context_aware_api {
    public:
       using context_aware_api::context_aware_api;
 
    bool is_domain(null_terminated_ptr ptr) const {
-      return context.is_domain(std::string(ptr));
+      const size_t sz_ptr = strnlen( ptr, cyberway::chain::domain_max_size );
+      return context.is_domain(std::string(ptr, sz_ptr));
    }
    bool is_username(const account_name& scope, null_terminated_ptr ptr) const {
-      return context.is_username(scope, std::string(ptr));
+      const size_t sz_ptr = strnlen( ptr, cyberway::chain::username_max_size );
+      return context.is_username(scope, std::string(ptr, sz_ptr));
    }
    account_name get_domain_owner(null_terminated_ptr ptr) const {
-      return context.get_domain_owner(std::string(ptr));
+      const size_t sz_ptr = strnlen( ptr, cyberway::chain::domain_max_size );
+      return context.get_domain_owner(std::string(ptr, sz_ptr));
    }
    account_name resolve_domain(null_terminated_ptr ptr) const {
-      return context.resolve_domain(std::string(ptr));
+      const size_t sz_ptr = strnlen( ptr, cyberway::chain::domain_max_size );
+      return context.resolve_domain(std::string(ptr, sz_ptr));
    }
    account_name resolve_username(const account_name& scope, null_terminated_ptr ptr) const {
-      return context.resolve_username(scope, std::string(ptr));
+      const size_t sz_ptr = strnlen( ptr, cyberway::chain::username_max_size );
+      return context.resolve_username(scope, std::string(ptr, sz_ptr));
    }
 };
 
@@ -924,14 +939,16 @@ public:
    // Kept as intrinsic rather than implementing on WASM side (using eosio_assert_message and strlen) because strlen is faster on native side.
    void eosio_assert( bool condition, null_terminated_ptr msg ) {
       if( BOOST_UNLIKELY( !condition ) ) {
-         std::string message( msg );
+         const size_t sz = strnlen( msg, max_assert_message );
+         std::string message( msg, sz );
          EOS_THROW( eosio_assert_message_exception, "assertion failure with message: ${s}", ("s",message) );
       }
    }
 
    void eosio_assert_message( bool condition, array_ptr<const char> msg, size_t msg_len ) {
       if( BOOST_UNLIKELY( !condition ) ) {
-         std::string message( msg, msg_len );
+         const size_t sz = msg_len > max_assert_message ? max_assert_message : msg_len;
+         std::string message( msg, sz );
          EOS_THROW( eosio_assert_message_exception, "assertion failure with message: ${s}", ("s",message) );
       }
    }
@@ -982,7 +999,8 @@ class console_api : public context_aware_api {
       // Kept as intrinsic rather than implementing on WASM side (using prints_l and strlen) because strlen is faster on native side.
       void prints(null_terminated_ptr str) {
          if ( !ignore ) {
-            context.console_append<const char*>(str);
+            const size_t sz_ptr = strnlen( str, max_assert_message );
+            context.console_append<const char*>(std::string(str, sz_ptr).c_str());
          }
       }
 
@@ -1078,7 +1096,10 @@ class console_api : public context_aware_api {
             console.precision( std::numeric_limits<long double>::digits10 );
             extFloat80_t val_approx;
             f128M_to_extF80M(&val, &val_approx);
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstrict-aliasing"
             context.console_append( *(long double*)(&val_approx) );
+#pragma GCC diagnostic pop
 #else
             console.precision( std::numeric_limits<double>::digits10 );
             double val_approx = from_softfloat64( f128M_to_f64(&val) );
@@ -1308,7 +1329,7 @@ class memory_api : public context_aware_api {
       :context_aware_api(ctx,true){}
 
       char* memcpy( array_ptr<char> dest, array_ptr<const char> src, size_t length) {
-         EOS_ASSERT((std::abs((ptrdiff_t)dest.value - (ptrdiff_t)src.value)) >= length,
+         EOS_ASSERT((size_t)(std::abs((ptrdiff_t)dest.value - (ptrdiff_t)src.value)) >= length,
                overlapping_memory_error, "memcpy can only accept non-aliasing pointers");
          return (char *)::memcpy(dest, src, length);
       }
@@ -1374,6 +1395,7 @@ class event_api : public context_aware_api {
         void send_event( array_ptr<char> data, size_t data_len ) {
             event evt;
             fc::raw::unpack<event>(data, data_len, evt);
+            EOS_ASSERT(evt.account != name(), event_not_valid, "Contract can't send event with empty account");
             context.push_event(std::move(evt));
         }
 };

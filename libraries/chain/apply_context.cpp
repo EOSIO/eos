@@ -18,6 +18,7 @@
 using boost::container::flat_set;
 
 namespace eosio { namespace chain {
+using cyberway::chaindb::cursor_kind;
 
 static inline void print_debug(account_name receiver, const action_trace& ar) {
    if (!ar.console.empty()) {
@@ -66,10 +67,11 @@ void apply_context::exec_one( action_trace& trace )
                   this->chaindb_cache = nullptr;
                });
 
-               cyberway::chaindb::chaindb_guard guard(chaindb, receiver);
+               chaindb_guard guard(*this);
                chaindb_cursor_cache cache;
 
                this->chaindb_cache = &cache;
+               this->cursors_guard = &guard;
                control.get_wasm_interface().apply( a.code_version, a.code, *this );
             } catch( const wasm_exit& ) {}
          }
@@ -143,10 +145,10 @@ void apply_context::exec( action_trace& trace )
 
 
 bool apply_context::is_domain(const domain_name& domain) const {
-   return nullptr != chaindb.find<cyberway::chain::domain_object,by_name>(domain);
+   return nullptr != chaindb.find<cyberway::chain::domain_object,by_name>(domain, cursor_kind::OneRecord);
 }
 bool apply_context::is_username(const account_name& scope, const username& name) const {
-   return nullptr != chaindb.find<cyberway::chain::username_object,by_scope_name>(boost::make_tuple(scope,name));
+   return nullptr != chaindb.find<cyberway::chain::username_object,by_scope_name>(boost::make_tuple(scope,name), cursor_kind::OneRecord);
 }
 account_name apply_context::get_domain_owner(const domain_name& domain) const {
    return control.get_domain(domain).owner;
@@ -160,7 +162,7 @@ account_name apply_context::resolve_username(const account_name& scope, const us
 
 
 bool apply_context::is_account( const account_name& account )const {
-   return nullptr != chaindb.find<account_object>( account );
+   return nullptr != chaindb.find<account_object>( account, cursor_kind::OneRecord );
 }
 
 void apply_context::require_authorization( const account_name& account ) {
@@ -245,7 +247,7 @@ void apply_context::require_recipient( account_name recipient ) {
  *   can better understand the security risk.
  */
 void apply_context::execute_inline( action&& a ) {
-   auto* code = chaindb.find<account_object>(a.account);
+   auto* code = chaindb.find<account_object>(a.account, cursor_kind::OneRecord);
    EOS_ASSERT( code != nullptr, action_validate_exception,
                "inline action's code account ${account} does not exist", ("account", a.account) );
 
@@ -261,7 +263,7 @@ void apply_context::execute_inline( action&& a ) {
    }
 
    for( const auto& auth : a.authorization ) {
-      auto* actor = chaindb.find<account_object>(auth.actor);
+      auto* actor = chaindb.find<account_object>(auth.actor, cursor_kind::OneRecord);
       EOS_ASSERT( actor != nullptr, action_validate_exception,
                   "inline action's authorizing actor ${account} does not exist", ("account", auth.actor) );
       EOS_ASSERT( control.get_authorization_manager().find_permission(auth) != nullptr, action_validate_exception,
@@ -289,6 +291,8 @@ void apply_context::execute_inline( action&& a ) {
          //QUESTION: Is it smart to allow a deferred transaction that has been delayed for some time to get away
          //          with sending an inline action that requires a delay even though the decision to send that inline
          //          action was made at the moment the deferred transaction was executed with potentially no forewarning?
+      } catch( const resource_exhausted_exception& ) {
+         throw;
       } catch( const fc::exception& e ) {
          if( disallow_send_to_self_bypass || !send_to_self ) {
             throw;
@@ -312,7 +316,7 @@ void apply_context::execute_inline( action&& a ) {
 }
 
 void apply_context::execute_context_free_inline( action&& a ) {
-   auto* code = chaindb.find<account_object>(a.account);
+   auto* code = chaindb.find<account_object>(a.account, cursor_kind::OneRecord);
    EOS_ASSERT( code != nullptr, action_validate_exception,
                "inline action's code account ${account} does not exist", ("account", a.account) );
 
@@ -375,6 +379,8 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
                                       std::bind(&transaction_context::checktime, &this->trx_context),
                                       false
                                     );
+      } catch( const resource_exhausted_exception& ) {
+         throw;
       } catch( const fc::exception& e ) {
          if( disallow_send_to_self_bypass || !is_sending_only_to_self(receiver) ) {
             throw;
@@ -395,7 +401,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
    }
 
    uint32_t trx_size = 0;
-   if ( auto ptr = chaindb.find<generated_transaction_object,by_sender_id>(boost::make_tuple(receiver, sender_id)) ) {
+   if ( auto ptr = chaindb.find<generated_transaction_object,by_sender_id>(boost::make_tuple(receiver, sender_id), cursor_kind::OneRecord) ) {
       EOS_ASSERT( replace_existing, deferred_tx_duplicate, "deferred transaction with the same sender_id and payer already exists" );
 
 // TODO: Removed by CyberWay
@@ -415,6 +421,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
             gtx.expiration  = gtx.delay_until + fc::seconds(control.get_global_properties().configuration.deferred_trx_expiration_window);
 
             trx_size = gtx.set( trx );
+            push_event({name(), name("senddeferred"), fc::raw::pack(generated_transaction(gtx))});
          });
    } else {
       chaindb.emplace<generated_transaction_object>( get_storage_payer(owner), [&]( auto& gtx ) {
@@ -426,6 +433,7 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
             gtx.expiration  = gtx.delay_until + fc::seconds(control.get_global_properties().configuration.deferred_trx_expiration_window);
 
             trx_size = gtx.set( trx );
+            push_event({name(), name("senddeferred"), fc::raw::pack(generated_transaction(gtx))});
          });
    }
 
@@ -437,11 +445,12 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
 
 bool apply_context::cancel_deferred_transaction( const uint128_t& sender_id, account_name sender ) {
    auto trx_table = chaindb.get_table<generated_transaction_object>();
-   const auto* gto = chaindb.find<generated_transaction_object,by_sender_id>(boost::make_tuple(sender, sender_id));
+   const auto* gto = chaindb.find<generated_transaction_object,by_sender_id>(boost::make_tuple(sender, sender_id), cursor_kind::OneRecord);
    if ( gto ) {
 // TODO: Removed by CyberWay
 //      add_ram_usage( gto->payer, -(config::billable_size_v<generated_transaction_object> + gto->packed_trx.size()) );
       trx_table.erase(*gto, get_storage_payer());
+      push_event({name(), name("canceldefer"), fc::raw::pack(std::make_pair(sender, sender_id))});
    }
    return gto;
 }
@@ -511,7 +520,9 @@ void apply_context::add_storage_usage( const storage_payer_info& storage ) {
       if( !(privileged || storage.payer == receiver) ) {
          EOS_ASSERT( control.is_ram_billing_in_notify_allowed() || (receiver == act.account), subjective_block_production_exception,
              "Cannot charge RAM to other accounts during notify." );
-         require_authorization( storage.payer );
+         if( storage.owner == storage.payer ) {
+            require_authorization( storage.payer );
+         }
       }
 
       is_authorized = true;

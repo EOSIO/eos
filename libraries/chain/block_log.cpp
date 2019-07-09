@@ -8,7 +8,7 @@
 #include <fc/io/raw.hpp>
 #include <boost/iostreams/device/mapped_file.hpp>
 #include <boost/filesystem.hpp>
-#include <boost/thread/shared_mutex.hpp>
+// #include <boost/thread/shared_mutex.hpp>
 
 #define LOG_READ  (std::ios::in | std::ios::binary)
 #define LOG_WRITE (std::ios::out | std::ios::binary | std::ios::app)
@@ -24,9 +24,9 @@ namespace eosio { namespace chain {
 
    namespace detail {
 
-      using read_write_mutex = boost::shared_mutex;
-      using read_lock = boost::shared_lock<read_write_mutex>;
-      using write_lock = boost::unique_lock<read_write_mutex>;
+    //   using read_write_mutex = boost::shared_mutex;
+    //   using read_lock = boost::shared_lock<read_write_mutex>;
+    //   using write_lock = boost::unique_lock<read_write_mutex>;
       using boost::iostreams::mapped_file;
       static constexpr boost::iostreams::stream_offset min_valid_file_size = sizeof(uint32_t);
 
@@ -39,7 +39,7 @@ namespace eosio { namespace chain {
             std::string              index_path;
             mapped_file              block_mapped_file;
             mapped_file              index_mapped_file;
-            read_write_mutex         mutex;
+            // read_write_mutex         mutex;
 
             uint32_t                 version = 0;
             const uint32_t           min_supported_version = 1;
@@ -332,13 +332,13 @@ namespace eosio { namespace chain {
    }
 
    void block_log::open(const fc::path& data_dir) {
-        detail::write_lock lock(my->mutex);
+        // detail::write_lock lock(my->mutex);
         my->open(data_dir);
    }
 
    uint64_t block_log::append(const signed_block_ptr& block) try {
         auto data = fc::raw::pack(*block);
-        detail::write_lock lock(my->mutex);
+        // detail::write_lock lock(my->mutex);
         return my->append(block, data);
    } FC_LOG_AND_RETHROW()
 
@@ -355,7 +355,7 @@ namespace eosio { namespace chain {
            data = fc::raw::pack(*first_block);
        }
 
-       detail::write_lock lock(my->mutex);
+    //    detail::write_lock lock(my->mutex);
        my->reset(first_block, data);
 
 // TODO: removed by CyberWay
@@ -392,7 +392,7 @@ namespace eosio { namespace chain {
    }
 
    std::pair<signed_block_ptr, uint64_t> block_log::read_block(uint64_t pos) const {
-        detail::read_lock lock(my->mutex);
+        // detail::read_lock lock(my->mutex);
         std::pair<signed_block_ptr, uint64_t> result;
         result.first = std::make_shared<signed_block>();
         result.second = my->read_block(pos, *result.first);
@@ -400,7 +400,7 @@ namespace eosio { namespace chain {
     }
 
    signed_block_ptr block_log::read_block_by_num(uint32_t block_num) const try {
-       detail::read_lock lock(my->mutex);
+    //    detail::read_lock lock(my->mutex);
        signed_block_ptr block;
        uint64_t pos = my->get_block_pos(block_num);
        if (pos != npos) {
@@ -415,17 +415,17 @@ namespace eosio { namespace chain {
    } FC_LOG_AND_RETHROW()
 
    uint64_t block_log::get_block_pos(uint32_t block_num) const {
-        detail::read_lock lock(my->mutex);
+        // detail::read_lock lock(my->mutex);
         return my->get_block_pos(block_num);
    }
 
    signed_block_ptr block_log::read_head()const {
-       detail::read_lock lock(my->mutex);
+    //    detail::read_lock lock(my->mutex);
        return my->read_head();
    }
 
    const signed_block_ptr& block_log::head()const {
-      detail::read_lock lock(my->mutex);
+    //   detail::read_lock lock(my->mutex);
       return my->head;
    }
 

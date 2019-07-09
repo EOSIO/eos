@@ -74,12 +74,16 @@ namespace cyberway { namespace  chaindb {
         void init_info() {
             init_info(eosio::chain::eosio_contract_abi());
 
-            auto obj = driver_.object_by_pk(index, config::system_account_name);
-            if (obj.value.is_object()) {
-                auto& abi = obj.value["abi"];
-                if (abi.is_blob() && !abi.get_blob().data.empty()) {
-                    init_info(abi.get_blob());
+            try {
+                auto obj = driver_.object_by_pk(index, config::system_account_name);
+                if (obj.value.is_object()) {
+                    auto& abi = obj.value["abi"];
+                    if (abi.is_blob() && !abi.get_blob().data.empty()) {
+                        init_info(abi.get_blob());
+                    }
                 }
+            } catch (...) {
+                // fail to read abi from db
             }
         }
 

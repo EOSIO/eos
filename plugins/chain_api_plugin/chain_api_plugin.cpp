@@ -418,9 +418,8 @@ fc::optional<eosio::chain::asset> chain_api_plugin_impl::get_account_core_liquid
     auto& db_controller = chain_controller_.chaindb();
 
     auto accounts_it = db_controller.begin(request);
-    const auto end_it = db_controller.end(request);
 
-    for (; accounts_it.pk != end_it.pk; accounts_it.pk = db_controller.next({token_code, accounts_it.cursor})) {
+    for (; accounts_it.pk != cyberway::chaindb::primary_key::End; ++accounts_it) {
         const auto value = db_controller.object_at_cursor({token_code, accounts_it.cursor}).value;
         const auto balance_object = value["balance"];
         eosio::chain::asset asset_value;
@@ -580,7 +579,7 @@ get_table_rows_result chain_api_plugin_impl::walk_table_row_range(const get_tabl
 
     for(unsigned int count = 0;
         cur_time <= end_time && count < p.limit && itr.pk != end_pk;
-        itr.pk = chaindb.next(cursor), ++count, cur_time = fc::time_point::now()
+        ++itr, ++count, cur_time = fc::time_point::now()
     ) {
         if (p.show_payer && *p.show_payer) {
             const auto object = chaindb.object_at_cursor(cursor);
@@ -659,9 +658,7 @@ std::vector<chain::asset> chain_api_plugin_impl::get_currency_balance( const get
 
     auto accounts_it = chaindb.begin(request);
 
-    const auto next_request = cyberway::chaindb::cursor_request{p.code, accounts_it.cursor};
-
-    for (; accounts_it.pk != cyberway::chaindb::primary_key::End; accounts_it.pk = chaindb.next(next_request)) {
+    for (; accounts_it.pk != cyberway::chaindb::primary_key::End; ++accounts_it) {
 
         const auto value = chaindb.object_at_cursor({p.code, accounts_it.cursor}).value;
 

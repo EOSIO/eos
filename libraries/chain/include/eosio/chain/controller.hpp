@@ -46,6 +46,7 @@ namespace eosio { namespace chain {
    class account_object;
    using resource_limits::resource_limits_manager;
    using apply_handler = std::function<void(apply_context&)>;
+   using unapplied_transactions_type = map<transaction_id_type, transaction_metadata_ptr>;
 
    class fork_database;
 
@@ -118,6 +119,21 @@ namespace eosio { namespace chain {
 
    class controller {
       public:
+         static bool failure_is_subjective(const fc::exception& e) {
+            auto code = e.code();
+               return (code == subjective_block_production_exception::code_value)
+                   || (code == block_usage_exceeded::code_value)
+                   || (code == deadline_exception::code_value)
+                   || (code == timer_off_exception::code_value)
+                   || (code == explicitly_billed_exception::code_value);
+         }
+
+         static bool scheduled_failure_is_subjective(const fc::exception& e, bool producing) {
+            auto code = e.code();
+            bool is_subj = failure_is_subjective(e);
+            return is_subj || (producing && ((code == tx_subjective_usage_exceeded::code_value)
+                                          || (code == account_resources_exceeded::code_value)));
+         }
 
          struct config {
             path                     blocks_dir             =  chain::config::default_blocks_dir_name;
@@ -180,22 +196,9 @@ namespace eosio { namespace chain {
           *  The caller is responsible for calling drop_unapplied_transaction on a failing transaction that
           *  they never intend to retry
           *
-          *  @return vector of transactions which have been unapplied
+          *  @return map of transactions which have been unapplied
           */
-         vector<transaction_metadata_ptr> get_unapplied_transactions() const;
-         void drop_unapplied_transaction(const transaction_metadata_ptr& trx);
-         void drop_all_unapplied_transactions();
-
-         /**
-          * These transaction IDs represent transactions available in the head chain state as scheduled
-          * or otherwise generated transactions.
-          *
-          * calling push_scheduled_transaction with these IDs will remove the associated transaction from
-          * the chain state IFF it succeeds or objectively fails
-          *
-          * @return
-          */
-         vector<transaction_id_type> get_scheduled_transactions() const;
+         unapplied_transactions_type& get_unapplied_transactions();
 
          /**
           *
@@ -305,7 +308,6 @@ namespace eosio { namespace chain {
          signal<void(const block_state_ptr&)>          irreversible_block;
          signal<void(const transaction_metadata_ptr&)> accepted_transaction;
          signal<void(const transaction_trace_ptr&)>    applied_transaction;
-         signal<void(const header_confirmation&)>      accepted_confirmation;
          signal<void(const int&)>                      bad_alloc;
 
          /*

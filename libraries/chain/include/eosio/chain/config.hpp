@@ -87,7 +87,7 @@ static constexpr resource_pct_t     default_virtual_limit_increase_pct = {{10,  
 static constexpr resource_windows_t default_account_usage_windows      = {{_HOUR,         _HOUR,         _HOUR,          _MONTH}};
                                                                 
 static constexpr resource_limits_t  default_max_block_usage            = {{1'400'000,     1*_MB,         128*_MB,         4*_MB}};
-static constexpr resource_limits_t  default_max_transaction_usage      = {{800'000,       512*_KB,       64*_MB,          2*_MB}};
+static constexpr resource_limits_t  default_max_transaction_usage      = {{800'000,       512*_KB,       64*_MB,          4*_MB - 1}};
 
 static constexpr uint64_t ram_load_multiplier = 2;
 
@@ -103,7 +103,7 @@ const static uint64_t   default_min_transaction_ram_usage           = 1*_KB;
 const static uint32_t   default_max_trx_lifetime               = 60*60; // 1 hour
 const static uint32_t   default_deferred_trx_expiration_window = 10*60; // 10 minutes
 const static uint32_t   default_max_trx_delay                  = 45*24*3600; // 45 days
-const static uint32_t   default_max_inline_action_size         = 4*_KB;
+const static uint32_t   default_max_inline_action_size         = 32*_KB;
 const static uint16_t   default_max_inline_action_depth        = 4;
 const static uint16_t   default_max_auth_depth                 = 6;
 const static uint32_t   default_sig_cpu_bill_pct               = 50 * percent_1; // billable percentage of signature recovery
@@ -118,7 +118,7 @@ const static uint32_t   fixed_net_overhead_of_packed_trx = 16; // TODO: is this 
 const static uint32_t   fixed_overhead_shared_vector_ram_bytes = 16; ///< overhead accounts for fixed portion of size of shared_vector field
 const static uint32_t   overhead_per_row_per_index_ram_bytes = 32;    ///< overhead accounts for basic tracking structures in a row per index
 const static uint32_t   overhead_per_account_ram_bytes     = 2*_KB; ///< overhead accounts for basic account storage and pre-pays features like account recovery
-const static uint32_t   setcode_storage_bytes_multiplier   = 64;    ///< multiplier on contract size to account for multiple copies and cached compilation
+const static uint32_t   setcode_storage_bytes_multiplier   = 4;    ///< multiplier on contract size to account for multiple copies and cached compilation
 
 const static uint32_t   hashing_checktime_block_size       = 10*_KB;  /// call checktime from hashing intrinsic once per this number of bytes
 

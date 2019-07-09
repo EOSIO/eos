@@ -1,7 +1,6 @@
 [submodule "libraries/appbase"]
 	path = libraries/appbase
 	url = https://github.com/GolosChain/cyberway.appbase.git
-        ignore = dirty
 [submodule "contracts/musl/upstream"]
 	path = contracts/musl/upstream
 	url = https://github.com/EOSIO/musl.git
@@ -10,16 +9,15 @@
 	path = contracts/libc++/upstream
 	url = https://github.com/EOSIO/libcxx.git
 	branch = eosio
-[submodule "externals/binaryen"]
-	path = externals/binaryen
-	url = https://github.com/EOSIO/binaryen
-
 [submodule "libraries/softfloat"]
 	path = libraries/softfloat
 	url = https://github.com/eosio/berkeley-softfloat-3
 [submodule "externals/magic_get"]
 	path = externals/magic_get
 	url = https://github.com/EOSIO/magic_get
+[submodule "externals/binaryen"]
+    path = externals/binaryen
+    url = https://github.com/EOSIO/binaryen
 [submodule "libraries/wabt"]
 	path = libraries/wabt
 	url = http://github.com/EOSIO/wabt
@@ -29,3 +27,6 @@
 [submodule "libraries/fc"]
 	path = libraries/fc
 	url = https://github.com/GolosChain/cyberway.fc.git
+[submodule "libraries/yubihsm"]
+	path = libraries/yubihsm
+	url = https://github.com/Yubico/yubihsm-shell

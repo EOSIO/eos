@@ -5,8 +5,8 @@
 #include <cyberway/chaindb/table_info.hpp>
 #include <cyberway/chaindb/typed_name.hpp>
 
-#include <eosio/chain/resource_limits.hpp>
-#include <eosio/chain/resource_limits_private.hpp>
+#include <eosio/chain/int_arithmetic.hpp>
+#include <eosio/chain/global_property_object.hpp>
 
 #include <boost/multi_index_container.hpp>
 #include <boost/multi_index/member.hpp>
@@ -191,13 +191,16 @@ namespace cyberway { namespace chaindb {
         : code(v.code), table(v.table_name()) {
         }
 
-        friend bool operator < (const cache_service_key& l, const cache_service_key& r) {
-            if (l.table < r.table) return true;
-            if (l.table > r.table) return false;
-
-            return l.code < r.code;
+        friend bool operator == (const cache_service_key& l, const cache_service_key& r) {
+            return l.code == r.code && l.table == r.table;
         }
     }; // cache_service_key
+
+    struct cache_service_hash final {
+        std::size_t operator()(const cache_service_key& key) const {
+            return (key.code ^ key.table);
+        }
+    }; // cache_service_hash
 
     //-----------------------------------------------------------------------------------------------
 
@@ -225,7 +228,7 @@ namespace cyberway { namespace chaindb {
         }
     }; // struct cache_service_info
 
-    using cache_service_tree = std::map<cache_service_key, cache_service_info>;
+    using cache_service_tree = std::unordered_map<cache_service_key, cache_service_info, cache_service_hash>;
 
     //-----------------------------------------------------------------------------------------------
 
@@ -892,10 +895,10 @@ namespace cyberway { namespace chaindb {
             add_ram_usage(cache_obj.cell(), delta);
 
             if (is_system_code(cache_obj.service().code)) {
-                using state_object = eosio::chain::resource_limits::resource_limits_state_object;
-                if (cache_obj.has_data() && cache_obj.service().table == chaindb::tag<state_object>::get_code()) {
-                    auto& state = multi_index_item_data<state_object>::get_T(cache_obj);
-                    ram_limit_ = get_ram_limit(state.ram_size, state.reserved_ram_size);
+                using global_property_object = eosio::chain::global_property_object;
+                if (cache_obj.has_data() && cache_obj.service().table == chaindb::tag<global_property_object>::get_code()) {
+                    auto& gpo = multi_index_item_data<global_property_object>::get_T(cache_obj);
+                    ram_limit_ = get_ram_limit(gpo.configuration.ram_size, gpo.configuration.reserved_ram_size);
                 }
             }
 
