@@ -26,6 +26,8 @@ namespace eosio { namespace chain {
    const uint32_t block_log::max_supported_version = 2;
 
    namespace detail {
+      using unique_file = std::unique_ptr<FILE, decltype(&fclose)>;
+
       class block_log_impl {
          public:
             signed_block_ptr         head;
@@ -74,7 +76,6 @@ namespace eosio { namespace chain {
       class reverse_iterator {
       public:
          reverse_iterator();
-         ~reverse_iterator();
          // open a block log file and return the total number of blocks in it
          uint32_t open(const fc::path& block_file_name);
          uint64_t previous();
@@ -83,7 +84,7 @@ namespace eosio { namespace chain {
       private:
          void update_buffer();
 
-         FILE*                          _file                             = nullptr;
+         unique_file                    _file;
          uint32_t                       _version                          = 0;
          uint32_t                       _first_block_num                  = 0;
          uint32_t                       _last_block_num                   = 0;
@@ -106,26 +107,24 @@ namespace eosio { namespace chain {
 
       class index_writer {
       public:
-         index_writer(const fc::path& block_index_name, uint32_t blocks_expected, bool report_status);
-         ~index_writer();
+         index_writer(const fc::path& block_index_name, uint32_t blocks_expected);
          void write(uint64_t pos);
          void complete();
-         void calculate_buffer_position();
+         void update_buffer_position();
       private:
          void prepare_buffer();
          bool shift_buffer();
 
-         FILE*                              _file              = nullptr;
+         unique_file                        _file;
          const std::string                  _block_index_name;
          const uint32_t                     _blocks_expected;
          uint32_t                           _block_written;
-         bool                               _report_status;
          std::unique_ptr<uint64_t[]>        _buffer_ptr;
-         int64_t                            _current_position;
-         int64_t                            _start_of_buffer_position;
-         int64_t                            _end_of_buffer_position;
-         constexpr static uint64_t          _buffer_bytes      = 1U << 22;
-         constexpr static uint64_t          _max_buffer_length = file_location_to_buffer_location(_buffer_bytes);
+         int64_t                            _current_position         = 0;
+         int64_t                            _start_of_buffer_position = 0;
+         int64_t                            _end_of_buffer_position   = 0;
+         constexpr static uint64_t          _buffer_bytes             = 1U << 22;
+         constexpr static uint64_t          _max_buffer_length        = file_location_to_buffer_location(_buffer_bytes);
       };
    }
 
@@ -384,23 +383,24 @@ namespace eosio { namespace chain {
       my->reopen();
    } // construct_index
 
-   void block_log::construct_index(const fc::path& block_file_name, const fc::path& index_file_name, bool provide_index_log_status) {
+   void block_log::construct_index(const fc::path& block_file_name, const fc::path& index_file_name) {
       detail::reverse_iterator block_log_iter;
 
+      ilog("Will read existing blocks.log file ${file}", ("file", block_file_name.generic_string()));
+      ilog("Will write new blocks.index file ${file}", ("file", index_file_name.generic_string()));
+
       const uint32_t num_blocks = block_log_iter.open(block_file_name);
-      if (provide_index_log_status) {
-         std::cout << "\nblock log version= " << block_log_iter.version() << '\n';
-      }
+
+      ilog("block log version= ${version}", ("version", block_log_iter.version()));
 
       if (num_blocks == 0) {
          return;
       }
 
-      if (provide_index_log_status) {
-         std::cout << "\nfirst block= " << block_log_iter.first_block_num() << ", last block= " << (block_log_iter.first_block_num() + num_blocks) << "\n\n";
-      }
+      ilog("first block= ${first}         last block= ${last}",
+           ("first", block_log_iter.first_block_num())("last", (block_log_iter.first_block_num() + num_blocks)));
 
-      detail::index_writer index(index_file_name, num_blocks, provide_index_log_status);
+      detail::index_writer index(index_file_name, num_blocks);
       uint64_t position;
       while ((position = block_log_iter.previous()) != npos) {
          index.write(position);
@@ -596,38 +596,33 @@ namespace eosio { namespace chain {
    }
 
    detail::reverse_iterator::reverse_iterator()
-   : _buffer_ptr(std::make_unique<char[]>(_buf_len)) {
-   }
-
-   detail::reverse_iterator::~reverse_iterator() {
-      if (_file != nullptr) {
-         fclose(_file);
-      }
+   : _file(nullptr, &fclose)
+   , _buffer_ptr(std::make_unique<char[]>(_buf_len)) {
    }
 
    uint32_t detail::reverse_iterator::open(const fc::path& block_file_name) {
       _block_file_name = block_file_name.generic_string();
-      _file = fopen(_block_file_name.c_str(), "r");
-      EOS_ASSERT( _file != nullptr, block_log_exception, "Could not open Block log file at '${blocks_log}'", ("blocks_log", _block_file_name) );
+      _file.reset(fopen(_block_file_name.c_str(), "r"));
+      EOS_ASSERT( _file, block_log_exception, "Could not open Block log file at '${blocks_log}'", ("blocks_log", _block_file_name) );
       _end_of_buffer_position = _unset_position;
 
       //read block log to see if version 1 or 2 and get first blocknum (implicit 1 if version 1)
       _version = 0;
-      auto size = fread((char*)&_version, sizeof(_version), 1, _file);
+      auto size = fread((char*)&_version, sizeof(_version), 1, _file.get());
       EOS_ASSERT( size == 1, block_log_exception, "Block log file at '${blocks_log}' could not be read.", ("file", _block_file_name) );
       EOS_ASSERT( _version == 1 || _version == 2, block_log_unsupported_version, "block log version ${v} is not supported", ("v", _version));
       if (_version == 1) {
          _first_block_num = 1;
       }
       else {
-         size = fread((char*)&_first_block_num, sizeof(_first_block_num), 1, _file);
+         size = fread((char*)&_first_block_num, sizeof(_first_block_num), 1, _file.get());
          EOS_ASSERT( size == 1, block_log_exception, "Block log file at '${blocks_log}' not formatted consistently with version ${v}.", ("file", _block_file_name)("v", _version) );
       }
 
-      auto status = fseek(_file, 0, SEEK_END);
+      auto status = fseek(_file.get(), 0, SEEK_END);
       EOS_ASSERT( status == 0, block_log_exception, "Could not open Block log file at '${blocks_log}'", ("blocks_log", _block_file_name) );
 
-      _eof_position_in_file = ftell(_file);
+      _eof_position_in_file = ftell(_file.get());
       EOS_ASSERT( _eof_position_in_file > 0, block_log_exception, "Block log file at '${blocks_log}' could not be read.", ("blocks_log", _block_file_name) );
       _current_position_in_file = _eof_position_in_file - _position_size;
 
@@ -649,9 +644,9 @@ namespace eosio { namespace chain {
       }
       else {
          const auto blknum_offset_pos = block_pos + _blknum_offset_from_pos;
-         auto status = fseek(_file, blknum_offset_pos, SEEK_SET);
+         auto status = fseek(_file.get(), blknum_offset_pos, SEEK_SET);
          EOS_ASSERT( status == 0, block_log_exception, "Could not seek in '${blocks_log}' to position: ${pos}", ("blocks_log", _block_file_name)("pos", blknum_offset_pos) );
-         auto size = fread((void*)&bnum, sizeof(bnum), 1, _file);
+         auto size = fread((void*)&bnum, sizeof(bnum), 1, _file.get());
          EOS_ASSERT( size == 1, block_log_exception, "Could not read in '${blocks_log}' at position: ${pos}", ("blocks_log", _block_file_name)("pos", blknum_offset_pos) );
       }
       _last_block_num = fc::endian_reverse_u32(bnum) + 1;                     //convert from big endian to little endian and add 1
@@ -707,25 +702,19 @@ namespace eosio { namespace chain {
          _start_of_buffer_position = _end_of_buffer_position - _buf_len;
       }
 
-      auto status = fseek(_file, _start_of_buffer_position, SEEK_SET);
+      auto status = fseek(_file.get(), _start_of_buffer_position, SEEK_SET);
       EOS_ASSERT( status == 0, block_log_exception, "Could not seek in '${blocks_log}' to position: ${pos}", ("blocks_log", _block_file_name)("pos", _start_of_buffer_position) );
       char* buf = _buffer_ptr.get();
-      auto size = fread((void*)buf, (_end_of_buffer_position - _start_of_buffer_position), 1, _file);//read tail of blocks.log file into buf
+      auto size = fread((void*)buf, (_end_of_buffer_position - _start_of_buffer_position), 1, _file.get());//read tail of blocks.log file into buf
       EOS_ASSERT( size == 1, block_log_exception, "blocks.log read fails" );
    }
 
-   detail::index_writer::index_writer(const fc::path& block_index_name, uint32_t blocks_expected, bool report_status)
-   : _block_index_name(block_index_name.generic_string())
+   detail::index_writer::index_writer(const fc::path& block_index_name, uint32_t blocks_expected)
+   : _file(nullptr, &fclose)
+   , _block_index_name(block_index_name.generic_string())
    , _blocks_expected(blocks_expected)
    , _block_written(blocks_expected)
-   , _report_status(report_status)
    , _buffer_ptr(std::make_unique<uint64_t[]>(_max_buffer_length)) {
-   }
-
-   detail::index_writer::~index_writer() {
-      if (_file != nullptr) {
-         fclose(_file);
-      }
    }
 
    void detail::index_writer::write(uint64_t pos) {
@@ -733,23 +722,23 @@ namespace eosio { namespace chain {
       uint64_t* buffer = _buffer_ptr.get();
       buffer[_current_position - _start_of_buffer_position] = pos;
       --_current_position;
-      if (_report_status && (_block_written & 0xfffff) == 0) {                            //periodically print a progress indicator
-         std::cout << "block: " << std::setw(10) << _block_written << "    position in file " << std::setw(14) << pos << '\n';
+      if ((_block_written & 0xfffff) == 0) {                            //periodically print a progress indicator
+         dlog("block: ${block_written}      position in file: ${pos}", ("block_written", _block_written)("pos",pos));
       }
       --_block_written;
    }
 
    void detail::index_writer::prepare_buffer() {
       if (_file == nullptr) {
-         _file = fopen(_block_index_name.c_str(), "w");
-         EOS_ASSERT( _file != nullptr, block_log_exception, "Could not open Block index file at '${blocks_index}'", ("blocks_index", _block_index_name) );
+         _file.reset(fopen(_block_index_name.c_str(), "w"));
+         EOS_ASSERT( _file, block_log_exception, "Could not open Block index file at '${blocks_index}'", ("blocks_index", _block_index_name) );
          // allocate 8 bytes for each block position to store
          const auto full_file_size = buffer_location_to_file_location(_blocks_expected);
-         auto status = fseek(_file, full_file_size, SEEK_SET);
+         auto status = fseek(_file.get(), full_file_size, SEEK_SET);
          EOS_ASSERT( status == 0, block_log_exception, "Could not allocate in '${blocks_index}' storage for all the blocks, size: ${size}", ("blocks_index", _block_index_name)("size", full_file_size) );
          const auto block_end = file_location_to_buffer_location(full_file_size);
          _current_position = block_end - 1;
-         calculate_buffer_position();
+         update_buffer_position();
       }
 
       shift_buffer();
@@ -762,15 +751,15 @@ namespace eosio { namespace chain {
 
       const auto file_location_start = buffer_location_to_file_location(_start_of_buffer_position);
 
-      auto status = fseek(_file, file_location_start, SEEK_SET);
+      auto status = fseek(_file.get(), file_location_start, SEEK_SET);
       EOS_ASSERT( status == 0, block_log_exception, "Could not navigate in '${blocks_index}' file_location_start: ${loc}, _start_of_buffer_position: ${_start_of_buffer_position}", ("blocks_index", _block_index_name)("loc", file_location_start)("_start_of_buffer_position",_start_of_buffer_position) );
 
       const auto buffer_size = _end_of_buffer_position - _start_of_buffer_position;
       const auto file_size = buffer_location_to_file_location(buffer_size);
       uint64_t* buf = _buffer_ptr.get();
-      auto size = fwrite((void*)buf, file_size, 1, _file);
+      auto size = fwrite((void*)buf, file_size, 1, _file.get());
       EOS_ASSERT( size == 1, block_log_exception, "Writing Block Index file '${file}' failed at location: ${loc}", ("file", _block_index_name)("loc", file_location_start) );
-      calculate_buffer_position();
+      update_buffer_position();
       return true;
    }
 
@@ -783,7 +772,7 @@ namespace eosio { namespace chain {
                  ("blocks_index", _block_index_name)("pos", _current_position) );
    }
 
-   void detail::index_writer::calculate_buffer_position() {
+   void detail::index_writer::update_buffer_position() {
       _end_of_buffer_position = _current_position + 1;
       if (_end_of_buffer_position < _max_buffer_length) {
          _start_of_buffer_position = 0;

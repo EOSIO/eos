@@ -715,9 +715,10 @@ int main(int argc, char** argv) {
              out_file = vmap.at("output-file").as<bfs::path>();
 
          report_time rt("making index");
-         std::cout << "\nWill read existing blocks.log file " << block_file << '\n';
-         std::cout << "Will write new blocks.index file " << out_file << '\n';
-         block_log::construct_index(block_file.generic_string(), out_file.generic_string(), true);
+         const auto log_level = fc::logger::get(DEFAULT_LOGGER).get_log_level();
+         fc::logger::get(DEFAULT_LOGGER).set_log_level(fc::log_level::debug);
+         block_log::construct_index(block_file.generic_string(), out_file.generic_string());
+         fc::logger::get(DEFAULT_LOGGER).set_log_level(log_level);
          rt.report();
          return 0;
       }
