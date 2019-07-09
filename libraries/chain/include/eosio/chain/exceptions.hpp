@@ -68,10 +68,52 @@
    { throw( effect_type( e.what(), e.get_log() ) ); }
 
 
+#define FC_DECLARE_DERIVED_EXCEPTION_WITH_ERROR_CODE( TYPE, BASE, CODE, WHAT ) \
+   class TYPE : public BASE  \
+   { \
+      public: \
+       enum code_enum { \
+          code_value = CODE, \
+       }; \
+       explicit TYPE( int64_t code, const std::string& name_value, const std::string& what_value ) \
+       :BASE( code, name_value, what_value ){} \
+       explicit TYPE( fc::log_message&& m, int64_t code, const std::string& name_value, const std::string& what_value ) \
+       :BASE( std::move(m), code, name_value, what_value ){} \
+       explicit TYPE( fc::log_messages&& m, int64_t code, const std::string& name_value, const std::string& what_value )\
+       :BASE( std::move(m), code, name_value, what_value ){}\
+       explicit TYPE( const fc::log_messages& m, int64_t code, const std::string& name_value, const std::string& what_value )\
+       :BASE( m, code, name_value, what_value ){}\
+       TYPE( const std::string& what_value, const fc::log_messages& m ) \
+       :BASE( m, CODE, BOOST_PP_STRINGIZE(TYPE), what_value ){} \
+       TYPE( fc::log_message&& m ) \
+       :BASE( fc::move(m), CODE, BOOST_PP_STRINGIZE(TYPE), WHAT ){}\
+       TYPE( fc::log_messages msgs ) \
+       :BASE( fc::move( msgs ), CODE, BOOST_PP_STRINGIZE(TYPE), WHAT ) {} \
+       TYPE( const TYPE& c ) \
+       :BASE(c),error_code(c.error_code) {} \
+       TYPE( const BASE& c ) \
+       :BASE(c){} \
+       TYPE():BASE(CODE, BOOST_PP_STRINGIZE(TYPE), WHAT){}\
+       \
+       virtual std::shared_ptr<fc::exception> dynamic_copy_exception()const\
+       { return std::make_shared<TYPE>( *this ); } \
+       virtual NO_RETURN void     dynamic_rethrow_exception()const \
+       { if( code() == CODE ) throw *this;\
+         else fc::exception::dynamic_rethrow_exception(); \
+       } \
+       fc::optional<uint64_t> error_code; \
+   };
+
 namespace eosio { namespace chain {
 
-   FC_DECLARE_EXCEPTION( chain_exception,
-                         3000000, "blockchain exception" )
+   enum class system_error_code : uint64_t {
+      generic_system_error = 10000000000000000000ULL,
+      contract_restricted_error_code, //< contract used an error code reserved for system usage
+   };
+
+
+   FC_DECLARE_DERIVED_EXCEPTION_WITH_ERROR_CODE( chain_exception, fc::exception,
+                                                 3000000, "blockchain exception" )
    /**
     *  chain_exception
     *   |- chain_type_exception
@@ -158,7 +200,10 @@ namespace eosio { namespace chain {
                                     3030008, "Block is not signed with expected key" )
       FC_DECLARE_DERIVED_EXCEPTION( wrong_producer,              block_validate_exception,
                                     3030009, "Block is not signed by expected producer" )
-
+      FC_DECLARE_DERIVED_EXCEPTION( invalid_block_header_extension, block_validate_exception,
+                                    3030010, "Invalid block header extension" )
+      FC_DECLARE_DERIVED_EXCEPTION( ill_formed_protocol_feature_activation, block_validate_exception,
+                                    3030011, "Block includes an ill-formed protocol feature activation extension" )
 
 
 
@@ -193,6 +238,12 @@ namespace eosio { namespace chain {
                                     3040013, "Transaction is too big" )
       FC_DECLARE_DERIVED_EXCEPTION( unknown_transaction_compression, transaction_exception,
                                     3040014, "Unknown transaction compression" )
+      FC_DECLARE_DERIVED_EXCEPTION( invalid_transaction_extension, transaction_exception,
+                                    3040015, "Invalid transaction extension" )
+      FC_DECLARE_DERIVED_EXCEPTION( ill_formed_deferred_transaction_generation_context, transaction_exception,
+                                    3040016, "Transaction includes an ill-formed deferred transaction generation context extension" )
+      FC_DECLARE_DERIVED_EXCEPTION( disallowed_transaction_extensions_bad_block_exception, transaction_exception,
+                                    3040017, "Transaction includes disallowed extensions (invalid block)" )
 
 
    FC_DECLARE_DERIVED_EXCEPTION( action_validate_exception, chain_exception,
@@ -216,6 +267,10 @@ namespace eosio { namespace chain {
                                     3050008, "Abort Called" )
       FC_DECLARE_DERIVED_EXCEPTION( inline_action_too_big, action_validate_exception,
                                     3050009, "Inline Action exceeds maximum size limit" )
+      FC_DECLARE_DERIVED_EXCEPTION( unauthorized_ram_usage_increase, action_validate_exception,
+                                    3050010, "Action attempts to increase RAM usage of account without authorization" )
+      FC_DECLARE_DERIVED_EXCEPTION( restricted_error_code_exception, action_validate_exception,
+                                    3050011, "eosio_assert_code assertion failure uses restricted error code value" )
 
    FC_DECLARE_DERIVED_EXCEPTION( database_exception, chain_exception,
                                  3060000, "Database exception" )
@@ -270,6 +325,7 @@ namespace eosio { namespace chain {
                                     3080007, "Transaction exceeded the current greylisted account network usage limit" )
       FC_DECLARE_DERIVED_EXCEPTION( greylist_cpu_usage_exceeded, resource_exhausted_exception,
                                     3080008, "Transaction exceeded the current greylisted account CPU usage limit" )
+
       FC_DECLARE_DERIVED_EXCEPTION( leeway_deadline_exception, deadline_exception,
                                     3081001, "Transaction reached the deadline set due to leeway on account CPU limits" )
 
@@ -460,6 +516,10 @@ namespace eosio { namespace chain {
                                     3170007, "The configured snapshot directory does not exist" )
       FC_DECLARE_DERIVED_EXCEPTION( snapshot_exists_exception,  producer_exception,
                                     3170008, "The requested snapshot already exists" )
+      FC_DECLARE_DERIVED_EXCEPTION( snapshot_finalization_exception,   producer_exception,
+                                    3170009, "Snapshot Finalization Exception" )
+      FC_DECLARE_DERIVED_EXCEPTION( invalid_protocol_features_to_activate,  producer_exception,
+                                    3170010, "The protocol features to be activated were not valid" )
 
    FC_DECLARE_DERIVED_EXCEPTION( reversible_blocks_exception,           chain_exception,
                                  3180000, "Reversible Blocks exception" )
@@ -519,4 +579,13 @@ namespace eosio { namespace chain {
                                  3240000, "Snapshot exception" )
       FC_DECLARE_DERIVED_EXCEPTION( snapshot_validation_exception,   snapshot_exception,
                                     3240001, "Snapshot Validation Exception" )
+
+   FC_DECLARE_DERIVED_EXCEPTION( protocol_feature_exception,    chain_exception,
+                                 3250000, "Protocol feature exception" )
+      FC_DECLARE_DERIVED_EXCEPTION( protocol_feature_validation_exception, protocol_feature_exception,
+                                    3250001, "Protocol feature validation exception" )
+      FC_DECLARE_DERIVED_EXCEPTION( protocol_feature_bad_block_exception, protocol_feature_exception,
+                                    3250002, "Protocol feature exception (invalid block)" )
+      FC_DECLARE_DERIVED_EXCEPTION( protocol_feature_iterator_exception, protocol_feature_exception,
+                                    3250003, "Protocol feature iterator exception" )
 } } // eosio::chain

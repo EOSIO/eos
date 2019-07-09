@@ -36,6 +36,41 @@
             ]
         },
         {
+            "name": "delayedcall",
+            "base": "",
+            "fields": [
+                {
+                    "name": "payer",
+                    "type": "name"
+                },
+                {
+                    "name": "sender_id",
+                    "type": "uint64"
+                },
+                {
+                    "name": "contract",
+                    "type": "name"
+                },
+                {
+                    "name": "payload",
+                    "type": "uint64"
+                },
+                {
+                    "name": "delay_sec",
+                    "type": "uint32"
+                },
+                {
+                    "name": "replace_existing",
+                    "type": "bool"
+                }
+            ]
+        },
+        {
+            "name": "fail",
+            "base": "",
+            "fields": []
+        },
+        {
             "name": "inlinecall",
             "base": "",
             "fields": [
@@ -63,6 +98,16 @@
         {
             "name": "deferfunc",
             "type": "deferfunc",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "delayedcall",
+            "type": "delayedcall",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "fail",
+            "type": "fail",
             "ricardian_contract": ""
         },
         {

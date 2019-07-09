@@ -24,17 +24,18 @@ find_package(LLVM 4.0 REQUIRED CONFIG)
 
 link_directories(${LLVM_LIBRARY_DIR})
 
-set( CMAKE_CXX_STANDARD 14 )
+set( CMAKE_CXX_STANDARD 17 )
 set( CMAKE_CXX_EXTENSIONS ON )
 set( CXX_STANDARD_REQUIRED ON )
 
 if ( APPLE )
-   set( CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -Wall -Wno-deprecated-declarations" )
+   set( CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} ${CMAKE_CXX_FLAGS} -Wall -Wno-deprecated-declarations" )
 else ( APPLE )
-   set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
-   set( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libstdc++ -static-libgcc")
+   set( CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} ${CMAKE_CXX_FLAGS} -Wall")
 endif ( APPLE )
 
+### Remove after Boost 1.70 CMake fixes are in place
+set( Boost_NO_BOOST_CMAKE ON CACHE STRING "ON or OFF" )
 set( Boost_USE_STATIC_LIBS ON CACHE STRING "ON or OFF" )
 find_package(Boost 1.67 REQUIRED COMPONENTS
    date_time
@@ -73,7 +74,7 @@ find_library(GMP_LIBRARIES NAMES libgmp.a gmp.lib gmp libgmp-10 mpir
     DOC "Path to the GMP library"
 )
 
-macro(add_eosio_test test_name)
+macro(add_eosio_test_executable test_name)
    add_executable( ${test_name} ${ARGN} )
    target_link_libraries( ${test_name}
        ${LLVM}
@@ -128,7 +129,6 @@ macro(add_eosio_test test_name)
        ${PLATFORM_SPECIFIC_LIBS}
       )
 
-   #### TODO /usr/local/include is a hack for fc and some other includes
    target_include_directories( ${test_name} PUBLIC
                                ${Boost_INCLUDE_DIRS}
                                @OPENSSL_INCLUDE_DIR@
@@ -137,10 +137,13 @@ macro(add_eosio_test test_name)
                                @CMAKE_INSTALL_FULL_INCLUDEDIR@/wasm-jit
                                @CMAKE_INSTALL_FULL_INCLUDEDIR@/softfloat )
 
+endmacro()
+
+macro(add_eosio_test test_name)
+   add_eosio_test_executable( ${test_name} ${ARGN} )
+   #This will generate a test with the default runtime
+   add_test(NAME ${test_name} COMMAND ${test_name} --report_level=detailed --color_output)
+
    #Manually run unit_test for all supported runtimes
    #To run unit_test with all log from blockchain displayed, put --verbose after --, i.e. unit_test -- --verbose
-   add_test(NAME ${test_name}_binaryen COMMAND ${test_name}
-    --report_level=detailed --color_output -- --binaryen)
-   add_test(NAME ${test_name}_wavm COMMAND ${test_name}
-    --report_level=detailed --color_output --catch_system_errors=no -- --wavm)
 endmacro()

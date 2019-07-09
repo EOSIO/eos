@@ -163,11 +163,18 @@ namespace bacc = boost::accumulators;
          undo_session = c.mutable_db().start_undo_session(true);
       }
       trace->id = id;
-      trace->block_num = c.pending_block_state()->block_num;
+      trace->block_num = c.head_block_num() + 1;
       trace->block_time = c.pending_block_time();
       trace->producer_block_id = c.pending_producer_block_id();
       executed.reserve( trx.total_actions() );
-      EOS_ASSERT( trx.transaction_extensions.size() == 0, unsupported_feature, "we don't support any extensions yet" );
+   }
+
+   void transaction_context::disallow_transaction_extensions( const char* error_msg )const {
+      if( control.is_producing_block() ) {
+         EOS_THROW( subjective_block_production_exception, error_msg );
+      } else {
+         EOS_THROW( disallowed_transaction_extensions_bad_block_exception, error_msg );
+      }
    }
 
    void transaction_context::init(uint64_t initial_net_usage)
@@ -219,9 +226,13 @@ namespace bacc = boost::accumulators;
          validate_cpu_usage_to_bill( billed_cpu_time_us, false ); // Fail early if the amount to be billed is too high
 
       // Record accounts to be billed for network and CPU usage
-      for( const auto& act : trx.actions ) {
-         for( const auto& auth : act.authorization ) {
-            bill_to_accounts.insert( auth.actor );
+      if( control.is_builtin_activated(builtin_protocol_feature_t::only_bill_first_authorizer) ) {
+         bill_to_accounts.insert( trx.first_authorizer() );
+      } else {
+         for( const auto& act : trx.actions ) {
+            for( const auto& auth : act.authorization ) {
+               bill_to_accounts.insert( auth.actor );
+            }
          }
       }
       validate_ram_usage.reserve( bill_to_accounts.size() );
@@ -279,6 +290,10 @@ namespace bacc = boost::accumulators;
 
    void transaction_context::init_for_implicit_trx( uint64_t initial_net_usage  )
    {
+      if( trx.transaction_extensions.size() > 0 ) {
+         disallow_transaction_extensions( "no transaction extensions supported yet for implicit transactions" );
+      }
+
       published = control.pending_block_time();
       init( initial_net_usage);
    }
@@ -287,6 +302,10 @@ namespace bacc = boost::accumulators;
                                                  uint64_t packed_trx_prunable_size,
                                                  bool skip_recording )
    {
+      if( trx.transaction_extensions.size() > 0 ) {
+         disallow_transaction_extensions( "no transaction extensions supported yet for input transactions" );
+      }
+
       const auto& cfg = control.get_global_properties().configuration;
 
       uint64_t discounted_size_for_pruned_data = packed_trx_prunable_size;
@@ -323,6 +342,14 @@ namespace bacc = boost::accumulators;
 
    void transaction_context::init_for_deferred_trx( fc::time_point p )
    {
+      if( (trx.expiration.sec_since_epoch() != 0) && (trx.transaction_extensions.size() > 0) ) {
+         disallow_transaction_extensions( "no transaction extensions supported yet for deferred transactions" );
+      }
+      // If (trx.expiration.sec_since_epoch() == 0) then it was created after NO_DUPLICATE_DEFERRED_ID activation,
+      // and so validation of its extensions was done either in:
+      //   * apply_context::schedule_deferred_transaction for contract-generated transactions;
+      //   * or transaction_context::init_for_input_trx for delayed input transactions.
+
       published = p;
       trace->scheduled = true;
       apply_context_free = false;
@@ -334,17 +361,23 @@ namespace bacc = boost::accumulators;
 
       if( apply_context_free ) {
          for( const auto& act : trx.context_free_actions ) {
-            trace->action_traces.emplace_back();
-            dispatch_action( trace->action_traces.back(), act, true );
+            schedule_action( act, act.account, true, 0, 0 );
          }
       }
 
       if( delay == fc::microseconds() ) {
          for( const auto& act : trx.actions ) {
-            trace->action_traces.emplace_back();
-            dispatch_action( trace->action_traces.back(), act );
+            schedule_action( act, act.account, false, 0, 0 );
          }
-      } else {
+      }
+
+      auto& action_traces = trace->action_traces;
+      uint32_t num_original_actions_to_execute = action_traces.size();
+      for( uint32_t i = 1; i <= num_original_actions_to_execute; ++i ) {
+         execute_action( i, 0 );
+      }
+
+      if( delay != fc::microseconds() ) {
          schedule_transaction();
       }
    }
@@ -567,13 +600,74 @@ namespace bacc = boost::accumulators;
       return std::make_tuple(account_net_limit, account_cpu_limit, greylisted_net, greylisted_cpu);
    }
 
-   void transaction_context::dispatch_action( action_trace& trace, const action& a, account_name receiver, bool context_free, uint32_t recurse_depth ) {
-      apply_context  acontext( control, *this, a, recurse_depth );
-      acontext.context_free = context_free;
-      acontext.receiver     = receiver;
-
-      acontext.exec( trace );
+   action_trace& transaction_context::get_action_trace( uint32_t action_ordinal ) {
+      EOS_ASSERT( 0 < action_ordinal && action_ordinal <= trace->action_traces.size() ,
+                  transaction_exception,
+                  "action_ordinal ${ordinal} is outside allowed range [1,${max}]",
+                  ("ordinal", action_ordinal)("max", trace->action_traces.size())
+      );
+      return trace->action_traces[action_ordinal-1];
    }
+
+   const action_trace& transaction_context::get_action_trace( uint32_t action_ordinal )const {
+      EOS_ASSERT( 0 < action_ordinal && action_ordinal <= trace->action_traces.size() ,
+                  transaction_exception,
+                  "action_ordinal ${ordinal} is outside allowed range [1,${max}]",
+                  ("ordinal", action_ordinal)("max", trace->action_traces.size())
+      );
+      return trace->action_traces[action_ordinal-1];
+   }
+
+   uint32_t transaction_context::schedule_action( const action& act, account_name receiver, bool context_free,
+                                                  uint32_t creator_action_ordinal,
+                                                  uint32_t closest_unnotified_ancestor_action_ordinal )
+   {
+      uint32_t new_action_ordinal = trace->action_traces.size() + 1;
+
+      trace->action_traces.emplace_back( *trace, act, receiver, context_free,
+                                         new_action_ordinal, creator_action_ordinal,
+                                         closest_unnotified_ancestor_action_ordinal );
+
+      return new_action_ordinal;
+   }
+
+   uint32_t transaction_context::schedule_action( action&& act, account_name receiver, bool context_free,
+                                                  uint32_t creator_action_ordinal,
+                                                  uint32_t closest_unnotified_ancestor_action_ordinal )
+   {
+      uint32_t new_action_ordinal = trace->action_traces.size() + 1;
+
+      trace->action_traces.emplace_back( *trace, std::move(act), receiver, context_free,
+                                         new_action_ordinal, creator_action_ordinal,
+                                         closest_unnotified_ancestor_action_ordinal );
+
+      return new_action_ordinal;
+   }
+
+   uint32_t transaction_context::schedule_action( uint32_t action_ordinal, account_name receiver, bool context_free,
+                                                  uint32_t creator_action_ordinal,
+                                                  uint32_t closest_unnotified_ancestor_action_ordinal )
+   {
+      uint32_t new_action_ordinal = trace->action_traces.size() + 1;
+
+      trace->action_traces.reserve( new_action_ordinal );
+
+      const action& provided_action = get_action_trace( action_ordinal ).act;
+
+      // The reserve above is required so that the emplace_back below does not invalidate the provided_action reference.
+
+      trace->action_traces.emplace_back( *trace, provided_action, receiver, context_free,
+                                         new_action_ordinal, creator_action_ordinal,
+                                         closest_unnotified_ancestor_action_ordinal );
+
+      return new_action_ordinal;
+   }
+
+   void transaction_context::execute_action( uint32_t action_ordinal, uint32_t recurse_depth ) {
+      apply_context acontext( control, *this, action_ordinal, recurse_depth );
+      acontext.exec();
+   }
+
 
    void transaction_context::schedule_transaction() {
       // Charge ahead of time for the additional net usage needed to retire the delayed transaction
@@ -584,7 +678,7 @@ namespace bacc = boost::accumulators;
                          + static_cast<uint64_t>(config::transaction_id_net_usage) ); // Will exit early if net usage cannot be payed.
       }
 
-      auto first_auth = trx.first_authorizor();
+      auto first_auth = trx.first_authorizer();
 
       uint32_t trx_size = 0;
       const auto& cgto = control.mutable_db().create<generated_transaction_object>( [&]( auto& gto ) {
@@ -598,7 +692,9 @@ namespace bacc = boost::accumulators;
         trx_size = gto.set( trx );
       });
 
-      add_ram_usage( cgto.payer, (config::billable_size_v<generated_transaction_object> + trx_size) );
+      int64_t ram_delta = (config::billable_size_v<generated_transaction_object> + trx_size);
+      add_ram_usage( cgto.payer, ram_delta );
+      trace->account_ram_delta = account_delta( cgto.payer, ram_delta );
    }
 
    void transaction_context::record_transaction( const transaction_id_type& id, fc::time_point_sec expire ) {

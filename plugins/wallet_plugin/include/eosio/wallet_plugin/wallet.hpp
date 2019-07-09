@@ -181,7 +181,7 @@ class soft_wallet final : public wallet_api
 
       /* Attempts to sign a digest via the given public_key
       */
-      optional<signature_type> try_sign_digest( const digest_type digest, const public_key_type public_key ) override;
+      fc::optional<signature_type> try_sign_digest( const digest_type digest, const public_key_type public_key ) override;
 
       std::shared_ptr<detail::soft_wallet_impl> my;
       void encrypt_keys();

@@ -1,4 +1,5 @@
-#! /bin/bash
+#!/usr/bin/env bash
+set -eo pipefail
 
 NAME=$1
 EOS_PREFIX=${PREFIX}/${SUBPREFIX}

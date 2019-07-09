@@ -26,7 +26,11 @@ Block.one is neither launching nor operating any initial public blockchains base
 
 There is no public testnet running currently.
 
-**If you have previously installed EOSIO, please run the `eosio_uninstall` script (it is in the directory where you cloned EOSIO) before downloading and using the binary releases.**
+---
+
+**If you used our build scripts to install eosio, [please be sure to uninstall](#build-script-uninstall) before using our packages.**
+
+---
 
 #### Mac OS X Brew Install
 ```sh
@@ -37,48 +41,44 @@ $ brew install eosio
 ```sh
 $ brew remove eosio
 ```
-#### Ubuntu 18.04 Debian Package Install
+
+#### Ubuntu 18.04 Package Install
 ```sh
-$ wget https://github.com/eosio/eos/releases/download/v1.7.4/eosio_1.7.4-1-ubuntu-18.04_amd64.deb
-$ sudo apt install ./eosio_1.7.4-1-ubuntu-18.04_amd64.deb
+$ wget https://github.com/eosio/eos/releases/download/v1.8.0/eosio_1.8.0-1-ubuntu-18.04_amd64.deb
+$ sudo apt install ./eosio_1.8.0-1-ubuntu-18.04_amd64.deb
 ```
-#### Ubuntu 16.04 Debian Package Install
+#### Ubuntu 16.04 Package Install
 ```sh
-$ wget https://github.com/eosio/eos/releases/download/v1.7.4/eosio_1.7.4-1-ubuntu-16.04_amd64.deb
-$ sudo apt install ./eosio_1.7.4-1-ubuntu-16.04_amd64.deb
+$ wget https://github.com/eosio/eos/releases/download/v1.8.0/eosio_1.8.0-1-ubuntu-16.04_amd64.deb
+$ sudo apt install ./eosio_1.8.0-1-ubuntu-16.04_amd64.deb
 ```
-#### Debian Package Uninstall
+#### Ubuntu Package Uninstall
 ```sh
 $ sudo apt remove eosio
 ```
 #### Centos RPM Package Install
 ```sh
-$ wget https://github.com/eosio/eos/releases/download/v1.7.4/eosio-1.7.4-1.el7.x86_64.rpm
-$ sudo yum install ./eosio-1.7.4-1.el7.x86_64.rpm
+$ wget https://github.com/eosio/eos/releases/download/v1.8.0/eosio-1.8.0-1.el7.x86_64.rpm
+$ sudo yum install ./eosio-1.8.0-1.el7.x86_64.rpm
 ```
 #### Centos RPM Package Uninstall
 ```sh
 $ sudo yum remove eosio
 ```
-#### Fedora RPM Package Install
-```sh
-$ wget https://github.com/eosio/eos/releases/download/v1.7.4/eosio-1.7.4-1.fc27.x86_64.rpm
-$ sudo yum install ./eosio-1.7.4-1.fc27.x86_64.rpm
-```
-#### Fedora RPM Package Uninstall
-```sh
-$ sudo yum remove eosio
-```
+
+#### Build Script Uninstall
+
+If you have previously installed EOSIO using build scripts, you may execute `./scripts/eosio_uninstall.sh` to uninstall.
+- Passing `--force` will answer yes to all prompts
+- Passing `--full` will remove data directories (be very careful with this)
 
 ## Supported Operating Systems
 EOSIO currently supports the following operating systems:  
-1. Amazon 2017.09 and higher
-2. Centos 7
-3. Fedora 25 and higher (Fedora 27 recommended)
-4. Mint 18
-5. Ubuntu 16.04
-6. Ubuntu 18.04
-7. MacOS Darwin 10.12 and higher (MacOS 10.14.x recommended)
+1. Amazon Linux 2
+2. CentOS 7
+3. Ubuntu 16.04
+4. Ubuntu 18.04
+5. MacOS 10.14 (Mojave)
 
 ## Resources
 1. [Website](https://eos.io)

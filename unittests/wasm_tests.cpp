@@ -92,7 +92,7 @@ BOOST_FIXTURE_TEST_CASE( basic_test, TESTER ) try {
       auto result = push_transaction( trx );
       BOOST_CHECK_EQUAL(result->receipt->status, transaction_receipt::executed);
       BOOST_CHECK_EQUAL(result->action_traces.size(), 1u);
-      BOOST_CHECK_EQUAL(result->action_traces.at(0).receipt.receiver.to_string(),  name(N(asserter)).to_string() );
+      BOOST_CHECK_EQUAL(result->action_traces.at(0).receiver.to_string(),  name(N(asserter)).to_string() );
       BOOST_CHECK_EQUAL(result->action_traces.at(0).act.account.to_string(), name(N(asserter)).to_string() );
       BOOST_CHECK_EQUAL(result->action_traces.at(0).act.name.to_string(),  name(N(procassert)).to_string() );
       BOOST_CHECK_EQUAL(result->action_traces.at(0).act.authorization.size(),  1u );

@@ -12,6 +12,14 @@ namespace eosio { namespace chain { namespace resource_limits {
          static_assert(std::is_integral<T>::value, "ratios must have integral types");
          T numerator;
          T denominator;
+
+         friend inline bool operator ==( const ratio& lhs, const ratio& rhs ) {
+            return std::tie(lhs.numerator, lhs.denominator) == std::tie(rhs.numerator, rhs.denominator);
+         }
+
+         friend inline bool operator !=( const ratio& lhs, const ratio& rhs ) {
+            return !(lhs == rhs);
+         }
       };
    }
 
@@ -27,6 +35,15 @@ namespace eosio { namespace chain { namespace resource_limits {
       ratio    expand_rate;       // the rate at which an uncongested resource expands its limits
 
       void validate()const; // throws if the parameters do not satisfy basic sanity checks
+
+      friend inline bool operator ==( const elastic_limit_parameters& lhs, const elastic_limit_parameters& rhs ) {
+         return std::tie(lhs.target, lhs.max, lhs.periods, lhs.max_multiplier, lhs.contract_rate, lhs.expand_rate)
+                  == std::tie(rhs.target, rhs.max, rhs.periods, rhs.max_multiplier, rhs.contract_rate, rhs.expand_rate);
+      }
+
+      friend inline bool operator !=( const elastic_limit_parameters& lhs, const elastic_limit_parameters& rhs ) {
+         return !(lhs == rhs);
+      }
    };
 
    struct account_resource_limit {

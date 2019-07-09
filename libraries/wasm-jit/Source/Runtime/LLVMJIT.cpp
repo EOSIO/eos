@@ -112,15 +112,9 @@ namespace LLVMJIT
 		
 		void registerEHFrames(U8* addr, U64 loadAddr,uintptr_t numBytes) override
 		{
-			llvm::RTDyldMemoryManager::registerEHFrames(addr,loadAddr,numBytes);
-			hasRegisteredEHFrames = true;
-			ehFramesAddr = addr;
-			ehFramesLoadAddr = loadAddr;
-			ehFramesNumBytes = numBytes;
 		}
 		void deregisterEHFrames(U8* addr, U64 loadAddr,uintptr_t numBytes) override
 		{
-			llvm::RTDyldMemoryManager::deregisterEHFrames(addr,loadAddr,numBytes);
 		}
 		
 		virtual bool needsToReserveAllocationSpace() override { return true; }
@@ -296,13 +290,6 @@ namespace LLVMJIT
 		JITModule(ModuleInstance* inModuleInstance): moduleInstance(inModuleInstance) {}
 		~JITModule() override
 		{
-			// Delete the module's symbols, and remove them from the global address-to-symbol map.
-			Platform::Lock addressToSymbolMapLock(addressToSymbolMapMutex);
-			for(auto symbol : functionDefSymbols)
-			{
-				addressToSymbolMap.erase(addressToSymbolMap.find(symbol->baseAddress + symbol->numBytes));
-				delete symbol;
-			}
 		}
 
 		void notifySymbolLoaded(const char* name,Uptr baseAddress,Uptr numBytes,std::map<U32,U32>&& offsetToOpIndexMap) override
@@ -314,14 +301,7 @@ namespace LLVMJIT
 				WAVM_ASSERT_THROW(moduleInstance);
 				WAVM_ASSERT_THROW(functionDefIndex < moduleInstance->functionDefs.size());
 				FunctionInstance* functionInstance = moduleInstance->functionDefs[functionDefIndex];
-				auto symbol = new JITSymbol(functionInstance,baseAddress,numBytes,std::move(offsetToOpIndexMap));
-				functionDefSymbols.push_back(symbol);
 				functionInstance->nativeFunction = reinterpret_cast<void*>(baseAddress);
-
-				{
-					Platform::Lock addressToSymbolMapLock(addressToSymbolMapMutex);
-					addressToSymbolMap[baseAddress + numBytes] = symbol;
-				}
 			}
 		}
 	};
@@ -498,9 +478,6 @@ namespace LLVMJIT
 			llvm::object::ObjectFile* object = jitUnit->loadedObjects[objectIndex].object;
 			llvm::RuntimeDyld::LoadedObjectInfo* loadedObject = jitUnit->loadedObjects[objectIndex].loadedObject;
 
-			// Create a DWARF context to interpret the debug information in this compilation unit.
-			auto dwarfContext = llvm::make_unique<llvm::DWARFContextInMemory>(*object,loadedObject);
-
 			// Iterate over the functions in the loaded object.
 			for(auto symbolSizePair : llvm::object::computeSymbolSizes(*object))
 			{
@@ -520,16 +497,12 @@ namespace LLVMJIT
 						loadedAddress += (Uptr)loadedObject->getSectionLoadAddress(*symbolSection.get());
 					}
 
-					// Get the DWARF line info for this symbol, which maps machine code addresses to WebAssembly op indices.
-					llvm::DILineInfoTable lineInfoTable = dwarfContext->getLineInfoForAddressRange(loadedAddress,symbolSizePair.second);
-					std::map<U32,U32> offsetToOpIndexMap;
-					for(auto lineInfo : lineInfoTable) { offsetToOpIndexMap.emplace(U32(lineInfo.first - loadedAddress),lineInfo.second.Line); }
-					
 					#if PRINT_DISASSEMBLY
 					Log::printf(Log::Category::error,"Disassembly for function %s\n",name.get().data());
 					disassembleFunction(reinterpret_cast<U8*>(loadedAddress),Uptr(symbolSizePair.second));
 					#endif
 
+					std::map<U32,U32> offsetToOpIndexMap;
 					// Notify the JIT unit that the symbol was loaded.
 					WAVM_ASSERT_THROW(symbolSizePair.second <= UINTPTR_MAX);
 					jitUnit->notifySymbolLoaded(

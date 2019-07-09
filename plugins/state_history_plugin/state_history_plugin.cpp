@@ -53,18 +53,81 @@ static bytes zlib_compress_bytes(bytes in) {
    return out;
 }
 
+static bytes zlib_decompress(const bytes& in) {
+   bytes                  out;
+   bio::filtering_ostream decomp;
+   decomp.push(bio::zlib_decompressor());
+   decomp.push(bio::back_inserter(out));
+   bio::write(decomp, in.data(), in.size());
+   bio::close(decomp);
+   return out;
+}
+
+template <typename T>
+bool include_delta(const T& old, const T& curr) {
+   return true;
+}
+
+bool include_delta(const eosio::chain::table_id_object& old, const eosio::chain::table_id_object& curr) {
+   return old.payer != curr.payer;
+}
+
+bool include_delta(const eosio::chain::resource_limits::resource_limits_object& old,
+                   const eosio::chain::resource_limits::resource_limits_object& curr) {
+   return                                   //
+       old.net_weight != curr.net_weight || //
+       old.cpu_weight != curr.cpu_weight || //
+       old.ram_bytes != curr.ram_bytes;
+}
+
+bool include_delta(const eosio::chain::resource_limits::resource_limits_state_object& old,
+                   const eosio::chain::resource_limits::resource_limits_state_object& curr) {
+   return                                                                                       //
+       old.average_block_net_usage.last_ordinal != curr.average_block_net_usage.last_ordinal || //
+       old.average_block_net_usage.value_ex != curr.average_block_net_usage.value_ex ||         //
+       old.average_block_net_usage.consumed != curr.average_block_net_usage.consumed ||         //
+       old.average_block_cpu_usage.last_ordinal != curr.average_block_cpu_usage.last_ordinal || //
+       old.average_block_cpu_usage.value_ex != curr.average_block_cpu_usage.value_ex ||         //
+       old.average_block_cpu_usage.consumed != curr.average_block_cpu_usage.consumed ||         //
+       old.total_net_weight != curr.total_net_weight ||                                         //
+       old.total_cpu_weight != curr.total_cpu_weight ||                                         //
+       old.total_ram_bytes != curr.total_ram_bytes ||                                           //
+       old.virtual_net_limit != curr.virtual_net_limit ||                                       //
+       old.virtual_cpu_limit != curr.virtual_cpu_limit;
+}
+
+bool include_delta(const eosio::chain::account_metadata_object& old,
+                   const eosio::chain::account_metadata_object& curr) {
+   return                                               //
+       old.name.value != curr.name.value ||             //
+       old.is_privileged() != curr.is_privileged() ||   //
+       old.last_code_update != curr.last_code_update || //
+       old.vm_type != curr.vm_type ||                   //
+       old.vm_version != curr.vm_version ||             //
+       old.code_hash != curr.code_hash;
+}
+
+bool include_delta(const eosio::chain::code_object& old, const eosio::chain::code_object& curr) { //
+   return false;
+}
+
+bool include_delta(const eosio::chain::protocol_state_object& old, const eosio::chain::protocol_state_object& curr) {
+   return old.activated_protocol_features != curr.activated_protocol_features;
+}
+
 struct state_history_plugin_impl : std::enable_shared_from_this<state_history_plugin_impl> {
-   chain_plugin*                                        chain_plug = nullptr;
-   fc::optional<state_history_log>                      trace_log;
-   fc::optional<state_history_log>                      chain_state_log;
-   bool                                                 stopping = false;
-   fc::optional<scoped_connection>                      applied_transaction_connection;
-   fc::optional<scoped_connection>                      accepted_block_connection;
-   string                                               endpoint_address = "0.0.0.0";
-   uint16_t                                             endpoint_port    = 8080;
-   std::unique_ptr<tcp::acceptor>                       acceptor;
-   std::map<transaction_id_type, transaction_trace_ptr> cached_traces;
-   transaction_trace_ptr                                onblock_trace;
+   chain_plugin*                                              chain_plug = nullptr;
+   fc::optional<state_history_log>                            trace_log;
+   fc::optional<state_history_log>                            chain_state_log;
+   bool                                                       trace_debug_mode = false;
+   bool                                                       stopping = false;
+   fc::optional<scoped_connection>                            applied_transaction_connection;
+   fc::optional<scoped_connection>                            accepted_block_connection;
+   string                                                     endpoint_address = "0.0.0.0";
+   uint16_t                                                   endpoint_port    = 8080;
+   std::unique_ptr<tcp::acceptor>                             acceptor;
+   std::map<transaction_id_type, augmented_transaction_trace> cached_traces;
+   fc::optional<augmented_transaction_trace>                  onblock_trace;
 
    void get_log_entry(state_history_log& log, uint32_t block_num, fc::optional<bytes>& result) {
       if (block_num < log.begin_block() || block_num >= log.end_block())
@@ -73,10 +136,10 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       auto&                    stream = log.get_entry(block_num, header);
       uint32_t                 s;
       stream.read((char*)&s, sizeof(s));
-      result.emplace();
-      result->resize(s);
+      bytes compressed(s);
       if (s)
-         stream.read(result->data(), s);
+         stream.read(compressed.data(), s);
+      result = zlib_decompress(compressed);
    }
 
    void get_block(uint32_t block_num, fc::optional<bytes>& result) {
@@ -86,7 +149,8 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       } catch (...) {
          return;
       }
-      result = fc::raw::pack(*p);
+      if (p)
+         result = fc::raw::pack(*p);
    }
 
    fc::optional<chain::block_id_type> get_block_id(uint32_t block_num) {
@@ -315,7 +379,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
 
    void do_accept() {
       auto socket = std::make_shared<tcp::socket>(app().get_io_service());
-      acceptor->async_accept(*socket, [self = shared_from_this(), socket, this](auto ec) {
+      acceptor->async_accept(*socket, [self = shared_from_this(), socket, this](const boost::system::error_code& ec) {
          if (stopping)
             return;
          if (ec) {
@@ -344,14 +408,14 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
              auth.permission == eosio::chain::config::active_name;
    }
 
-   void on_applied_transaction(const transaction_trace_ptr& p) {
+   void on_applied_transaction(const transaction_trace_ptr& p, const signed_transaction& t) {
       if (p->receipt && trace_log) {
          if (is_onblock(p))
-            onblock_trace = p;
+            onblock_trace.emplace(p, t);
          else if (p->failed_dtrx_trace)
-            cached_traces[p->failed_dtrx_trace->id] = p;
+            cached_traces[p->failed_dtrx_trace->id] = augmented_transaction_trace{p, t};
          else
-            cached_traces[p->id] = p;
+            cached_traces[p->id] = augmented_transaction_trace{p, t};
       }
    }
 
@@ -371,9 +435,9 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
    void store_traces(const block_state_ptr& block_state) {
       if (!trace_log)
          return;
-      std::vector<transaction_trace_ptr> traces;
+      std::vector<augmented_transaction_trace> traces;
       if (onblock_trace)
-         traces.push_back(onblock_trace);
+         traces.push_back(*onblock_trace);
       for (auto& r : block_state->block->transactions) {
          transaction_id_type id;
          if (r.trx.contains<transaction_id_type>())
@@ -381,7 +445,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
          else
             id = r.trx.get<packed_transaction>().id();
          auto it = cached_traces.find(id);
-         EOS_ASSERT(it != cached_traces.end() && it->second->receipt, plugin_exception,
+         EOS_ASSERT(it != cached_traces.end() && it->second.trace->receipt, plugin_exception,
                     "missing trace for transaction ${id}", ("id", id));
          traces.push_back(it->second);
       }
@@ -389,10 +453,10 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       onblock_trace.reset();
 
       auto& db         = chain_plug->chain().db();
-      auto  traces_bin = zlib_compress_bytes(fc::raw::pack(make_history_serial_wrapper(db, traces)));
+      auto  traces_bin = zlib_compress_bytes(fc::raw::pack(make_history_context_wrapper(db, trace_debug_mode, traces)));
       EOS_ASSERT(traces_bin.size() == (uint32_t)traces_bin.size(), plugin_exception, "traces is too big");
 
-      state_history_log_header header{.block_num    = block_state->block->block_num(),
+      state_history_log_header header{.magic        = ship_magic(ship_current_version),
                                       .block_id     = block_state->block->id(),
                                       .payload_size = sizeof(uint32_t) + traces_bin.size()};
       trace_log->write_entry(header, block_state->block->previous, [&](auto& stream) {
@@ -453,7 +517,8 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
             delta.name  = name;
             for (auto& old : undo.old_values) {
                auto& row = index.get(old.first);
-               delta.rows.obj.emplace_back(true, pack_row(row));
+               if (include_delta(old.second, row))
+                  delta.rows.obj.emplace_back(true, pack_row(row));
             }
             for (auto& old : undo.removed_values)
                delta.rows.obj.emplace_back(false, pack_row(old.second));
@@ -465,6 +530,8 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       };
 
       process_table("account", db.get_index<account_index>(), pack_row);
+      process_table("account_metadata", db.get_index<account_metadata_index>(), pack_row);
+      process_table("code", db.get_index<code_index>(), pack_row);
 
       process_table("contract_table", db.get_index<table_id_multi_index>(), pack_row);
       process_table("contract_row", db.get_index<key_value_index>(), pack_contract_row);
@@ -476,6 +543,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
 
       process_table("global_property", db.get_index<global_property_multi_index>(), pack_row);
       process_table("generated_transaction", db.get_index<generated_transaction_multi_index>(), pack_row);
+      process_table("protocol_state", db.get_index<protocol_state_multi_index>(), pack_row);
 
       process_table("permission", db.get_index<permission_index>(), pack_row);
       process_table("permission_link", db.get_index<permission_link_index>(), pack_row);
@@ -487,7 +555,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
 
       auto deltas_bin = zlib_compress_bytes(fc::raw::pack(deltas));
       EOS_ASSERT(deltas_bin.size() == (uint32_t)deltas_bin.size(), plugin_exception, "deltas is too big");
-      state_history_log_header header{.block_num    = block_state->block->block_num(),
+      state_history_log_header header{.magic        = ship_magic(ship_current_version),
                                       .block_id     = block_state->block->id(),
                                       .payload_size = sizeof(uint32_t) + deltas_bin.size()};
       chain_state_log->write_entry(header, block_state->block->previous, [&](auto& stream) {
@@ -514,6 +582,8 @@ void state_history_plugin::set_program_options(options_description& cli, options
    options("state-history-endpoint", bpo::value<string>()->default_value("127.0.0.1:8080"),
            "the endpoint upon which to listen for incoming connections. Caution: only expose this port to "
            "your internal network.");
+   options("trace-history-debug-mode", bpo::bool_switch()->default_value(false),
+           "enable debug mode for trace history");
 }
 
 void state_history_plugin::plugin_initialize(const variables_map& options) {
@@ -525,7 +595,9 @@ void state_history_plugin::plugin_initialize(const variables_map& options) {
       EOS_ASSERT(my->chain_plug, chain::missing_chain_plugin_exception, "");
       auto& chain = my->chain_plug->chain();
       my->applied_transaction_connection.emplace(
-          chain.applied_transaction.connect([&](const transaction_trace_ptr& p) { my->on_applied_transaction(p); }));
+          chain.applied_transaction.connect([&](std::tuple<const transaction_trace_ptr&, const signed_transaction&> t) {
+             my->on_applied_transaction(std::get<0>(t), std::get<1>(t));
+          }));
       my->accepted_block_connection.emplace(
           chain.accepted_block.connect([&](const block_state_ptr& p) { my->on_accepted_block(p); }));
 
@@ -548,6 +620,10 @@ void state_history_plugin::plugin_initialize(const variables_map& options) {
          boost::filesystem::remove_all(state_history_dir);
       }
       boost::filesystem::create_directories(state_history_dir);
+
+      if (options.at("trace-history-debug-mode").as<bool>()) {
+         my->trace_debug_mode = true;
+      }
 
       if (options.at("trace-history").as<bool>())
          my->trace_log.emplace("trace_history", (state_history_dir / "trace_history.log").string(),
