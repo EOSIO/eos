@@ -15,6 +15,7 @@
 
 ### More information about CyberWay
 
+* [White Paper](https://cyberway.gitbook.io/en/users/white_paper)
 * [Main features of CyberWay](https://steemit.com/cyberway/@golos/cyberway-need-for-new-platform)
 * [RoadMap](https://steemit.com/cyberway/@golos/cyberway-project-roadmap)
 * [Bandwidth implementation](https://docs.google.com/document/d/1Kmlgu8pf8YytpVZajj2Si86ZNegkbZg0QHopdACmv6Q/edit?ts=5cb7079a)
@@ -27,7 +28,8 @@
 * [System Smart Contracts](https://cyberway.gitbook.io/en/devportal/system_contracts)
 * [Golos Application Smart Contracts](https://cyberway.gitbook.io/en/devportal/golos_contracts)
 * [The Cyberway Wallet designed for the Bittrex Market](https://cyberway.gitbook.io/en/devportal/cyberway_wallet_for_bittrex)
-  
+* [The Event Model](https://cyberway.gitbook.io/en/devportal/event_engine)
+
 
 ## Community
 
