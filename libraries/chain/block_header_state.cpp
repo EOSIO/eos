@@ -156,7 +156,7 @@ namespace eosio { namespace chain {
       } else {
          result.active_schedule                  = active_schedule;
          result.producer_to_last_produced        = producer_to_last_produced;
-         result.producer_to_last_produced[prokey.producer_name] = block_num;
+         result.producer_to_last_produced[prokey.producer_name] = result.block_num;
          result.producer_to_last_implied_irb     = producer_to_last_implied_irb;
          result.producer_to_last_implied_irb[prokey.producer_name] = dpos_proposed_irreversible_blocknum;
       }
