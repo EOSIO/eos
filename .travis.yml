@@ -1,31 +1,15 @@
-os: linux
-dist: xenial
 language: cpp
-compiler: clang
-services:
-- docker
-before_install: |
-  echo '##### CHECKPOINT 1'
-  echo '===== RESOURCES ====='
-  echo "$(getconf _NPROCESSORS_ONLN) CPU cores found."
-  if [[ "$(uname)" == Darwin ]]; then top -l 1 -s 0 | grep PhysMem; else vmstat -sSM | grep -i 'memory'; fi
-  df -h
-  echo '====================='
-# DOCKER
-# script:
-# - echo '##### CHECKPOINT 2'
-# - docker build -t eos-dev -f ./.cicd/ubuntu-18.04.dockerfile .
-# after_success:
-# - echo '##### CHECKPOINT 3'
-# - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-# # - docker tag eos-dev eosio/ci:ubuntu-18.04
-# # - docker push eosio/ci:ubuntu-18.04
-# - docker tag eos-dev eosio/producer:ci-ubuntu-18.04 # temporary workarond while awaiting permissions to docker.io/eosio/ci
-# - docker push eosio/producer:ci-ubuntu-18.04
-# EOSIO
-script:
-- echo '##### CHECKPOINT 2'
-- docker pull eosio/producer:ci-ubuntu-18.04
-- docker run --rm -v $(pwd):/eos eosio/producer:ci-ubuntu-18.04 bash -c "mkdir /eos/build && cd /eos/build && cmake -DCMAKE_BUILD_TYPE='Release' -DCORE_SYMBOL_NAME='SYS' -DOPENSSL_ROOT_DIR='/usr/include/openssl' -DBUILD_MONGO_DB_PLUGIN=true /eos && make -j$(nproc)"
-after_success:
-- echo '##### CHECKPOINT 3'
+
+matrix:
+  include:
+    - os: linux
+      dist: xenial
+      env: $DOCKER_IMAGE=ubuntu:18.04
+    - os: linux
+      dist: xenial
+      env: $DOCKER_IMAGE=ubuntu:16.04
+
+install:
+  - ./.cicd/install.sh
+
+script: echo "ohai"
