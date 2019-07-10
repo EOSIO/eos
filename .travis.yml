@@ -1,9 +1,13 @@
-os: linux
-dist: xenial
 language: cpp
-compiler: clang
-services:
-- docker
+matrix:
+  include:
+    - os: linux
+      dist: xenial
+      services: docker
+      env: IMAGE_TAG='ubuntu-18.04'
+    - os: osx
+      osx_image: xcode10.2
+
 before_install: |
   echo '##### CHECKPOINT 1'
   echo '===== RESOURCES ====='
@@ -23,9 +27,12 @@ before_install: |
 # - docker tag eos-dev eosio/producer:ci-ubuntu-18.04 # temporary workarond while awaiting permissions to docker.io/eosio/ci
 # - docker push eosio/producer:ci-ubuntu-18.04
 # EOSIO
-script:
-- echo '##### CHECKPOINT 2'
-- docker pull eosio/producer:ci-ubuntu-18.04
-- docker run --rm -v $(pwd):/eos eosio/producer:ci-ubuntu-18.04 bash -c "mkdir /eos/build && cd /eos/build && cmake -DCMAKE_BUILD_TYPE='Release' -DCORE_SYMBOL_NAME='SYS' -DOPENSSL_ROOT_DIR='/usr/include/openssl' -DBUILD_MONGO_DB_PLUGIN=true /eos && make -j$(nproc)"
+script: |
+  echo '##### CHECKPOINT 2'
+  echo '$ pwd'
+  pwd
+  echo '$ ls -la'
+  ls -la
+  ./.cicd/travis-build.sh
 after_success:
 - echo '##### CHECKPOINT 3'
