@@ -8,6 +8,7 @@ matrix:
     - os: linux
       dist: xenial
       env: $DOCKER_IMAGE=ubuntu:16.04
+    - os: mac
 
 install:
   - ./.cicd/install.sh
