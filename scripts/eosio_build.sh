@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -eo pipefail
-SCRIPT_VERSION=3.0 # Build script version (change this to re-build the CICD image)
+SCRIPT_VERSION=3.1 # Build script version (change this to re-build the CICD image)
 ##########################################################################
 # This is the EOSIO automated install script for Linux and Mac OS.
 # This file was downloaded from https://github.com/EOSIO/eos
@@ -111,6 +111,8 @@ if [ $# -ne 0 ]; then
    done
 fi
 
+export CURRENT_WORKING_DIR=$(pwd) # relative path support
+
 # Ensure we're in the repo root and not inside of scripts
 cd $( dirname "${BASH_SOURCE[0]}" )/..
 
@@ -147,7 +149,17 @@ execute cd $REPO_ROOT
 ensure-submodules-up-to-date
 
 # Check if cmake already exists
-( [[ -z "${CMAKE}" ]] && [[ ! -z $(command -v cmake 2>/dev/null) ]] ) && export CMAKE=$(command -v cmake 2>/dev/null)
+( [[ -z "${CMAKE}" ]] && [[ ! -z $(command -v cmake 2>/dev/null) ]] ) && export CMAKE=$(command -v cmake 2>/dev/null) && export CMAKE_CURRENT_VERSION=$($CMAKE --version | grep -E "cmake version[[:blank:]]*" | sed 's/.*cmake version //g')
+# If it exists, check that it's > required version + 
+if [[ ! -z $CMAKE_CURRENT_VERSION ]] && [[ $((10#$( echo $CMAKE_CURRENT_VERSION | awk -F. '{ printf("%03d%03d%03d\n", $1,$2,$3); }' ))) -lt $((10#$( echo $CMAKE_REQUIRED_VERSION | awk -F. '{ printf("%03d%03d%03d\n", $1,$2,$3); }' ))) ]]; then
+   export CMAKE=
+   if [[ $ARCH == 'Darwin' ]]; then
+      echo "${COLOR_RED}The currently installed cmake version ($CMAKE_CURRENT_VERSION) is less than the required version ($CMAKE_REQUIRED_VERSION). Cannot proceed."
+      exit 1
+   else
+      echo "${COLOR_YELLOW}The currently installed cmake version ($CMAKE_CURRENT_VERSION) is less than the required version ($CMAKE_REQUIRED_VERSION). We will be installing $CMAKE_VERSION.${COLOR_NC}"
+   fi
+fi
 
 # Use existing cmake on system (either global or specific to eosio)
 # Setup based on architecture
@@ -227,8 +239,8 @@ echo "(_______/(_______)\_______)\_______/(_______)"
 echo "=============================================${COLOR_NC}"
 
 echo "${COLOR_GREEN}EOSIO has been successfully built. $(($TIME_END/3600)):$(($TIME_END%3600/60)):$(($TIME_END%60))"
-echo "${COLOR_GREEN}You can now install using: ./scripts/eosio_install.sh${COLOR_NC}"
-echo "${COLOR_YELLOW}Uninstall with: ./scripts/eosio_uninstall.sh${COLOR_NC}"
+echo "${COLOR_GREEN}You can now install using: ${SCRIPT_DIR}/eosio_install.sh${COLOR_NC}"
+echo "${COLOR_YELLOW}Uninstall with: ${SCRIPT_DIR}/eosio_uninstall.sh${COLOR_NC}"
 
 echo ""
 echo "${COLOR_CYAN}If you wish to perform tests to ensure functional code:${COLOR_NC}"
@@ -236,7 +248,7 @@ if $ENABLE_MONGO; then
    echo "${BIN_DIR}/mongod --dbpath ${MONGODB_DATA_DIR} -f ${MONGODB_CONF} --logpath ${MONGODB_LOG_DIR}/mongod.log &"
    PATH_TO_USE=" PATH=\$PATH:$OPT_DIR/mongodb/bin"
 fi
-echo "cd ./build &&${PATH_TO_USE} make test" # PATH is set as currently 'mongo' binary is required for the mongodb test
+echo "cd ${BUILD_DIR} && ${PATH_TO_USE} make test" # PATH is set as currently 'mongo' binary is required for the mongodb test
 
 echo ""
 resources
