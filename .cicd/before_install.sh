@@ -5,6 +5,7 @@ echo "docker image: $DOCKER_IMAGE"
 
 if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
   #todo: native build
+  echo "building for mac"
 else
   echo "building in docker image $DOCKER_IMAGE"
   docker pull $DOCKER_IMAGE
