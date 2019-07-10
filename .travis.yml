@@ -4,8 +4,13 @@ language: cpp
 compiler: clang
 services:
 - docker
-before_install:
-- echo '##### CHECKPOINT 1'
+before_install: |
+  echo '##### CHECKPOINT 1'
+  echo '===== RESOURCES ====='
+  echo "$(getconf _NPROCESSORS_ONLN) CPU cores found."
+  if [[ "$(uname)" == Darwin ]]; then top -l 1 -s 0 | grep PhysMem; else vmstat -sSM | grep -i 'memory'; fi
+  df -h
+  echo '====================='
 # DOCKER
 # script:
 # - echo '##### CHECKPOINT 2'
