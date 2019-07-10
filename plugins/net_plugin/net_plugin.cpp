@@ -2175,7 +2175,9 @@ namespace eosio {
             } else {
                if( endpoint_itr != tcp::resolver::iterator() ) {
                   c->strand.post( [resolver, c, endpoint_itr]() {
-                     connection::_close( c.get(), false ); // close posts to strand, so also post connect otherwise connect can happen before close
+                     if( c->socket_is_open() ) {
+                        connection::_close( c.get(), false ); // close posts to strand, so also post connect otherwise connect can happen before close
+                     }
                      c->connect( resolver, endpoint_itr );
                   } );
                } else {
