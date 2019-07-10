@@ -13,8 +13,7 @@ matrix:
       env: $DOCKER_IMAGE=ubuntu:16.04
     - os: osx
 
-
-install:
-  - ./.cicd/install.sh
+before_install:
+  - ./.cicd/before_install.sh
 
 script: echo "ohai"
