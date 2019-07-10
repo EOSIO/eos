@@ -147,8 +147,6 @@ namespace eosio {
 
       node_transaction_index        local_txns;
 
-      shared_ptr<tcp::resolver>     resolver;
-
       bool                          use_socket_read_watermark = false;
 
       channels::transaction_ack::channel_type::handle  incoming_transaction_ack_subscription;
@@ -1818,14 +1816,16 @@ namespace eosio {
          return;
       }
 
-      auto host = c->peer_addr.substr( 0, colon );
-      auto port = c->peer_addr.substr( colon + 1);
-      idump((host)(port));
-      tcp::resolver::query query( tcp::v4(), host.c_str(), port.c_str() );
-      connection_wptr weak_conn = c;
-      // Note: need to add support for IPv6 too
-
-      resolver->async_resolve( query, boost::asio::bind_executor( c->strand,
+      shared_ptr<tcp::resolver> resolver = std::make_shared<tcp::resolver>( std::ref( *server_ioc ));
+      c->strand.post( [this, c, resolver{std::move(resolver)}](){
+         auto colon = c->peer_addr.find(':');
+         auto host = c->peer_addr.substr( 0, colon );
+         auto port = c->peer_addr.substr( colon + 1);
+         idump((host)(port));
+         // Note: need to add support for IPv6 too
+         tcp::resolver::query query( tcp::v4(), host.c_str(), port.c_str() );
+         connection_wptr weak_conn = c;
+         resolver->async_resolve( query, boost::asio::bind_executor( c->strand,
                 [weak_conn, this]( const boost::system::error_code& err, tcp::resolver::iterator endpoint_itr ) {
                    app().post( priority::low, [err, endpoint_itr, weak_conn, this]() {
                       auto c = weak_conn.lock();
@@ -1837,7 +1837,8 @@ namespace eosio {
                                   ("peer_addr", c->peer_name())( "error", err.message()) );
                       }
                    } );
-                } ) );
+         } ) );
+      } );
    }
 
    void net_plugin_impl::connect(const connection_ptr& c, tcp::resolver::iterator endpoint_itr) {
@@ -2977,14 +2978,14 @@ namespace eosio {
          boost::asio::post( *my->thread_pool, [ioc = my->server_ioc]() { ioc->run(); } );
       }
 
-      my->resolver = std::make_shared<tcp::resolver>( std::ref( *my->server_ioc ));
+      shared_ptr<tcp::resolver> resolver = std::make_shared<tcp::resolver>( std::ref( *my->server_ioc ));
       if( my->p2p_address.size() > 0 ) {
          auto host = my->p2p_address.substr( 0, my->p2p_address.find( ':' ));
          auto port = my->p2p_address.substr( host.size() + 1, my->p2p_address.size());
          tcp::resolver::query query( tcp::v4(), host.c_str(), port.c_str());
          // Note: need to add support for IPv6 too?
 
-         my->listen_endpoint = *my->resolver->resolve( query );
+         my->listen_endpoint = *resolver->resolve( query );
 
          my->acceptor.reset( new tcp::acceptor( *my->server_ioc ) );
 
