@@ -1861,17 +1861,18 @@ namespace eosio {
          return;
       }
 
-      auto host = c->peer_addr.substr( 0, colon );
-      auto port = c->peer_addr.substr( colon + 1);
-      idump((host)(port));
-      tcp::resolver::query query( tcp::v4(), host.c_str(), port.c_str() );
-      connection_wptr weak_conn = c;
-      // Note: need to add support for IPv6 too
-
-      auto resolver = std::make_shared<tcp::resolver>( my_impl->thread_pool->get_executor() );
-      resolver->async_resolve( query, boost::asio::bind_executor( c->strand,
-                [weak_conn, resolver, this]( const boost::system::error_code& err, tcp::resolver::results_type endpoints ) {
-                   app().post( priority::low, [err, resolver, endpoints, weak_conn, this]() {
+      shared_ptr<tcp::resolver> resolver = std::make_shared<tcp::resolver>( my_impl->thread_pool->get_executor() );
+      c->strand.post( [this, c, resolver{std::move(resolver)}](){
+         auto colon = c->peer_addr.find(':');
+         auto host = c->peer_addr.substr( 0, colon );
+         auto port = c->peer_addr.substr( colon + 1);
+         idump((host)(port));
+         // Note: need to add support for IPv6 too
+         tcp::resolver::query query( tcp::v4(), host.c_str(), port.c_str() );
+         connection_wptr weak_conn = c;
+         resolver->async_resolve( query, boost::asio::bind_executor( c->strand,
+                [weak_conn, this]( const boost::system::error_code& err, tcp::resolver::iterator endpoint_itr ) {
+                   app().post( priority::low, [err, endpoint_itr, weak_conn, this]() {
                       auto c = weak_conn.lock();
                       if( !c ) return;
                       if( !err ) {
@@ -1881,7 +1882,8 @@ namespace eosio {
                                   ("peer_addr", c->peer_name())( "error", err.message()) );
                       }
                    } );
-                } ) );
+         } ) );
+      } );
    }
 
    void net_plugin_impl::connect( const connection_ptr& c, const std::shared_ptr<tcp::resolver>& resolver, tcp::resolver::results_type endpoints ) {
@@ -3019,7 +3021,11 @@ namespace eosio {
       // currently thread_pool only used for server_ioc
       my->thread_pool.emplace( "net", my->thread_pool_size );
 
+<<<<<<< HEAD
       auto resolver = std::make_shared<tcp::resolver>( my_impl->thread_pool->get_executor() );
+=======
+      shared_ptr<tcp::resolver> resolver = std::make_shared<tcp::resolver>( std::ref( *my->server_ioc ));
+>>>>>>> e69068958... Call resolve on connection strand
       if( my->p2p_address.size() > 0 ) {
          auto host = my->p2p_address.substr( 0, my->p2p_address.find( ':' ));
          auto port = my->p2p_address.substr( host.size() + 1, my->p2p_address.size());
