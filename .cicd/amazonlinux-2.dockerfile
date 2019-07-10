@@ -1,8 +1,5 @@
 FROM amazonlinux:2
 
-# COPY ./clang-devtoolset8-support.patch /tmp/clang-devtoolset8-support.patch
-# COPY ./pinned_toolchain.cmake /tmp/pinned_toolchain.cmake
-
 # YUM dependencies.
 RUN yum update -y \
   && yum install -y which git sudo procps-ng util-linux autoconf automake \
@@ -40,7 +37,7 @@ RUN curl -LO https://dl.bintray.com/boostorg/release/1.70.0/source/boost_1_70_0.
   && rm -f boost_1_70_0.tar.bz2    
 
 # Build appropriate version of MongoDB.
-RUN curl -LO http://downloads.mongodb.org/linux/mongodb-linux-x86_64-amazon-3.6.3.tgz \
+RUN curl -LO https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-amazon-3.6.3.tgz \
   && tar -xzf mongodb-linux-x86_64-amazon-3.6.3.tgz \
   && rm -f mongodb-linux-x86_64-amazon-3.6.3.tgz
 
