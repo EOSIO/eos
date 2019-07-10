@@ -172,7 +172,7 @@ void blocklog::set_program_options(options_description& cli)
          ("as-json-array", bpo::bool_switch(&as_json_array)->default_value(false),
           "Print out json blocks wrapped in json array (otherwise the output is free-standing json objects).")
          ("make-index", bpo::bool_switch(&make_index)->default_value(false),
-          "Create blocks.index from blocks.log. Must give 'blocks-dir'. Give 'output-file' relative to blocks-dir (default is blocks.index).")
+          "Create blocks.index from blocks.log. Must give 'blocks-dir'. Give 'output-file' relative to current directory or absolute path (default is <blocks-dir>/blocks.index).")
          ("trim-blocklog", bpo::bool_switch(&trim_log)->default_value(false),
           "Trim blocks.log and blocks.index. Must give 'blocks-dir' and 'first and/or 'last'.")
          ("smoke-test", bpo::bool_switch(&smoke_test)->default_value(false),
@@ -505,145 +505,6 @@ int trim_blocklog_front(bfs::path block_dir, uint32_t n) {        //n is first b
 }
 
 
-int make_index(const bfs::path& block_dir, const bfs::path& out_file) {
-   report_time rt("making index");
-   //this code makes blocks.index much faster than nodeos (in recent test 80 seconds vs. 90 minutes)
-   using namespace std;
-   bfs::path block_file_name = block_dir / "blocks.log";
-   bfs::path out_file_name = block_dir / out_file;
-   cout << '\n';
-   cout << "Will read existing blocks.log file " << block_file_name << '\n';
-   cout << "Will write new blocks.index file " << out_file_name << '\n';
-   FILE* fin = fopen(block_file_name.c_str(), "r");
-   EOS_ASSERT( fin != nullptr, block_log_not_found, "cannot read block file ${file}", ("file", block_file_name.string()) );
-
-   //will read big chunks of blocks.log into buf, will fill fpos_list with file positions before write to blocks.index
-   constexpr uint32_t buf_len{1U << 24};                      //buf_len must be power of 2 >= largest possible block == one MByte
-   auto buffer = make_unique<char[]>(buf_len + 8);            //can write up to 8 bytes past end of buf
-   char* buf = buffer.get();
-   constexpr uint64_t fpos_list_len{1U << 22};                //length of fpos_list[] in bytes
-   auto fpos_buffer = make_unique<uint64_t[]>(fpos_list_len >> 3);
-   uint64_t* fpos_list = fpos_buffer.get();
-
-   //read blocks.log to see if version 1 or 2 and get first_blocknum (implicit 1 if version 1)
-   uint32_t version = 0, first_block = 0;
-   auto size = fread((char*)&version, sizeof(version), 1, fin);
-   EOS_ASSERT( size == 1, block_log_exception, "${file} read fails", ("file", block_file_name.string()) );
-   cout << "block log version= " << version << '\n';
-   EOS_ASSERT( version == 1 || version == 2, block_log_unsupported_version, "block log version ${v} is not supported", ("v",version));
-   if (version == 1)
-      first_block = 1;
-   else {
-      size = fread((void*)&first_block, sizeof(first_block), 1, fin);
-      EOS_ASSERT( size == 1, block_log_exception, "${file} read fails", ("file", block_file_name.string()) );
-   }
-   cout << "first block= " << first_block << '\n';
-
-   auto status = fseek(fin, 0, SEEK_END);                    //get blocks.log file length
-   EOS_ASSERT( status == 0, block_log_exception, "cannot seek to ${file} ${pos} from end of file", ("file", block_file_name.string())("pos", 0) );
-   uint64_t pos = ftell(fin);
-   uint64_t last_buf_len = pos & ((uint64_t)buf_len-1);     //buf_len is a power of 2 so -1 creates low bits all 1
-   if (!last_buf_len)                                       //will read integral number of buf_len and one time read last_buf_len
-      last_buf_len = buf_len;
-   status = fseek(fin, -(uint64_t)last_buf_len, SEEK_END);     //one time read last_buf_len
-   EOS_ASSERT( status == 0, block_log_exception, "cannot seek to ${file} ${pos} from end of file", ("file", block_file_name.string())("pos", last_buf_len) );
-   pos = ftell(fin);
-   uint64_t did_read = fread((void*)buf, last_buf_len, 1, fin);//read tail of blocks.log file into buf
-   EOS_ASSERT( did_read == 1, block_log_exception, "blocks.log read fails" );
-
-   //we traverse linked list of blocks in buf (from end to start), for each block we know this:
-   uint32_t index_start;                                    //buf index for block start
-   uint32_t index_end;                                      //buf index for block end == buf index for block start file position
-   uint64_t file_pos;                                       //file pos of block start
-   uint32_t bnum;                                           //block number
-
-   index_end = last_buf_len - 8;                            //index in buf where last block ends and block file position starts
-   cout << "last_buf_len=" << last_buf_len << " index_end=" << index_end <<  '\n';
-   file_pos = *(uint64_t*)(buf + index_end);                //file pos of block start
-   cout << "file_pos=" << file_pos << " buf=" << (uint64_t)buf <<  '\n';
-   index_start = file_pos - pos;                            //buf index for block start
-   bnum = *(uint32_t*)(buf + index_start + blknum_offset);  //block number of previous block (is big endian)
-   bnum = endian_reverse_u32(bnum) + 1;                     //convert from big endian to little endian and add 1
-   cout << "last block=  " << bnum << '\n';
-   cout << '\n';
-   cout << "block " << setw(10) << bnum << "    file_pos " << setw(14) << file_pos << '\n';  //first progress indicator
-   uint64_t last_file_pos = file_pos;                       //used to check that file_pos is strictly decreasing
-   uint32_t end_block{bnum};                                //save for message at end
-
-   //we use low level file IO because it is distinctly faster than C++ filebuf or iostream
-   FILE* fout = fopen(out_file_name.c_str(), "w");
-   EOS_ASSERT( fout != nullptr, block_index_not_found, "cannot write blocks.index" );
-
-   uint64_t ind_file_len = (bnum + 1 - first_block) << 3;            //index file holds 8 bytes for each block in blocks.log
-   uint64_t last_ind_buf_len = ind_file_len & (fpos_list_len - 1); //fpos_list_len is a power of 2 so -1 creates low bits all 1
-   if (!last_ind_buf_len)                                          //will write integral number of buf_len and last_ind_buf_len one time to index file
-      last_ind_buf_len = buf_len;
-   status = fseek(fout, ind_file_len - last_ind_buf_len, SEEK_SET);
-   EOS_ASSERT( status == 0, block_log_exception, "cannot seek to ${file} ${pos} from beginning of file", ("file", out_file_name.string())("pos", ind_file_len - last_ind_buf_len) );
-   uint64_t ind_pos = ftell(fout);
-   EOS_ASSERT( ind_pos == ind_file_len - last_ind_buf_len, block_log_exception, "cannot seek to ${file} ${pos} from beginning of file", ("file", out_file_name.string())("pos", ind_file_len - last_ind_buf_len) );
-   uint64_t blk_base = (ind_pos >> 3) + first_block;              //first entry in fpos_list is for block blk_base
-   cout << "ind_pos= " << ind_pos << "  blk_base= " << blk_base << '\n';
-   fpos_list[bnum - blk_base] = file_pos;                         //write filepos for block bnum
-
-   for (;;) {
-      if (bnum == blk_base) {                                        //if fpos_list is full
-         size = fwrite((void*)fpos_list, last_ind_buf_len, 1, fout); //write fpos_list to index file
-         EOS_ASSERT( size == 1, block_log_exception, "${file} read fails", ("file", out_file_name.string()) );
-         if (ind_pos == 0) {                                         //if done writing index file
-            cout << "block " << setw(10) << bnum << "    file_pos " << setw(14) << file_pos << '\n';  //last progress indicator
-            EOS_ASSERT( bnum == first_block, block_log_exception, "blocks.log does not contain consecutive block numbers" );
-            break;
-         }
-         ind_pos -= fpos_list_len;
-         blk_base -= (fpos_list_len >> 3);
-         status = fseek(fout, ind_pos, SEEK_SET);
-         EOS_ASSERT( status == 0, block_log_exception, "cannot seek to ${file} ${pos} from beginning of file", ("file", out_file_name.string())("pos", ind_pos) );
-         did_read = ftell(fout);
-         EOS_ASSERT( did_read == ind_pos, block_log_exception, "${file} seek fails", ("file", out_file_name.string()) );
-         last_ind_buf_len = fpos_list_len;                           //from now on all writes to index file write a full fpos_list[]
-      }
-      if (index_start < 8) {                                //if block start is split across buf boundary
-         memcpy(buf + buf_len, buf, 8);                     //copy portion at start of buf to past end of buf
-         pos -= buf_len;                                    //file position of buf
-         status = fseek(fin, pos, SEEK_SET);
-         EOS_ASSERT( status == 0, block_log_exception, "cannot seek to ${file} ${pos} from beginning of file", ("file", block_file_name.string())("pos", pos) );
-         did_read = fread((void*)buf, buf_len, 1, fin);     //read next buf
-         EOS_ASSERT( did_read == 1, block_log_exception, "blocks.log read fails" );
-         index_start += buf_len;
-      }
-      --bnum;                                               //now move index_start and index_end to prior block
-      index_end = index_start - 8;                          //index in buf where block ends and block file position starts
-      file_pos = *(uint64_t*)(buf + index_end);             //file pos of block start
-      if (file_pos >= last_file_pos) {                      //file_pos will decrease if linked list is not corrupt
-         cout << '\n';
-         cout << "file pos for block " << bnum+1 << " is " << last_file_pos << '\n';
-         cout << "file pos for block " << bnum   << " is " <<      file_pos << '\n';
-         cout << "The linked list of blocks in blocks.log should run from last block to first block in reverse order\n";
-         EOS_ASSERT( file_pos < last_file_pos, block_log_exception, "blocks.log linked list of blocks is corrupt" );
-      }
-      last_file_pos = file_pos;
-      if (file_pos < pos) {                                 //if block start is in prior buf
-         pos -= buf_len;                                    //file position of buf
-         status = fseek(fin, pos, SEEK_SET);
-         EOS_ASSERT( status == 0, block_log_exception, "cannot seek to ${file} ${pos} from beginning of file", ("file", block_file_name.string())("pos", pos) );
-         did_read = fread(buf, buf_len, 1, fin);            //read next buf
-         EOS_ASSERT( did_read == 1, block_log_exception, "blocks.log read fails" );
-         index_end += buf_len;
-      }
-      index_start = file_pos - pos;                          //buf index for block start
-      fpos_list[bnum - blk_base]= file_pos;                  //write filepos for block bnum
-      if ((bnum & 0xfffff) == 0)                             //periodically print a progress indicator
-         cout << "block " << setw(10) << bnum << "    file_pos " << setw(14) << file_pos << '\n';
-   }
-
-   fclose(fout);
-   fclose(fin);
-   cout << "\nwrote " << (end_block+1-first_block) << " file positions to " << out_file_name << '\n';
-   rt.report();
-   return 0;
-}
-
 void smoke_test(bfs::path block_dir) {
    using namespace std;
    cout << "\nSmoke test of blocks.log and blocks.index in directory " << block_dir << '\n';
@@ -707,10 +568,20 @@ int main(int argc, char** argv) {
          return 0;
       }
       if (blog.make_index) {
-         bfs::path out_file = "blocks.index";
+         const bfs::path blocks_dir = vmap.at("blocks-dir").as<bfs::path>();
+         bfs::path out_file = blocks_dir / "blocks.index";
+         const bfs::path block_file = blocks_dir / "blocks.log";
+
          if (vmap.count("output-file") > 0)
              out_file = vmap.at("output-file").as<bfs::path>();
-         return make_index(vmap.at("blocks-dir").as<bfs::path>(), out_file);
+
+         report_time rt("making index");
+         const auto log_level = fc::logger::get(DEFAULT_LOGGER).get_log_level();
+         fc::logger::get(DEFAULT_LOGGER).set_log_level(fc::log_level::debug);
+         block_log::construct_index(block_file.generic_string(), out_file.generic_string());
+         fc::logger::get(DEFAULT_LOGGER).set_log_level(log_level);
+         rt.report();
+         return 0;
       }
       //else print blocks.log as JSON
       blog.initialize(vmap);
