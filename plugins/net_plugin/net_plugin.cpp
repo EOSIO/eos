@@ -173,9 +173,9 @@ namespace eosio {
    };
 
    class dispatch_manager {
-      std::mutex              blk_state_mtx;
+      mutable std::mutex      blk_state_mtx;
       peer_block_state_index  blk_state;
-      std::mutex              local_txns_mtx;
+      mutable std::mutex      local_txns_mtx;
       node_transaction_index  local_txns;
 
    public:
@@ -194,15 +194,15 @@ namespace eosio {
 
       bool add_peer_block( const block_id_type& blkid, uint32_t connection_id );
       bool add_peer_block_id( const block_id_type& blkid, uint32_t connection_id );
-      bool peer_has_block(const block_id_type& blkid, uint32_t connection_id);
-      bool have_block(const block_id_type& blkid);
-      size_t num_entries( uint32_t connection_id );
+      bool peer_has_block(const block_id_type& blkid, uint32_t connection_id) const;
+      bool have_block(const block_id_type& blkid) const;
+      size_t num_entries( uint32_t connection_id ) const;
 
       bool add_peer_txn( const node_transaction_state& nts );
       void update_txns_block_num( const signed_block_ptr& sb );
       void update_txns_block_num( const transaction_id_type& id, uint32_t blk_num );
-      bool peer_has_txn( const transaction_id_type& tid, uint32_t connection_id );
-      bool have_txn( const transaction_id_type& tid );
+      bool peer_has_txn( const transaction_id_type& tid, uint32_t connection_id ) const;
+      bool have_txn( const transaction_id_type& tid ) const;
       void expire_txns( uint32_t lib_num );
    };
 
@@ -1801,13 +1801,13 @@ namespace eosio {
       return added;
    }
 
-   bool dispatch_manager::peer_has_block( const block_id_type& blkid, uint32_t connection_id ) {
+   bool dispatch_manager::peer_has_block( const block_id_type& blkid, uint32_t connection_id ) const {
       std::lock_guard<std::mutex> g(blk_state_mtx);
       auto blk_itr = blk_state.get<by_id>().find( std::make_tuple( connection_id, std::ref( blkid )));
       return blk_itr != blk_state.end();
    }
 
-   bool dispatch_manager::have_block( const block_id_type& blkid ) {
+   bool dispatch_manager::have_block( const block_id_type& blkid ) const {
       std::lock_guard<std::mutex> g(blk_state_mtx);
       // by_block_id sorts have_block by greater so have_block == true will be the first one found
       auto& index = blk_state.get<by_block_id>();
@@ -1818,7 +1818,7 @@ namespace eosio {
       return false;
    }
 
-   size_t dispatch_manager::num_entries( uint32_t connection_id ) {
+   size_t dispatch_manager::num_entries( uint32_t connection_id ) const {
       std::lock_guard<std::mutex> g(blk_state_mtx);
       return blk_state.get<by_id>().count( connection_id );
    }
@@ -1857,13 +1857,13 @@ namespace eosio {
       }
    }
 
-   bool dispatch_manager::peer_has_txn( const transaction_id_type& tid, uint32_t connection_id ) {
+   bool dispatch_manager::peer_has_txn( const transaction_id_type& tid, uint32_t connection_id ) const {
       std::lock_guard<std::mutex> g( local_txns_mtx );
       auto tptr = local_txns.get<by_id>().find( std::make_tuple( std::ref( tid ), connection_id ) );
       return tptr != local_txns.end();
    }
 
-   bool dispatch_manager::have_txn( const transaction_id_type& tid ) {
+   bool dispatch_manager::have_txn( const transaction_id_type& tid ) const {
       std::lock_guard<std::mutex> g( local_txns_mtx );
       auto tptr = local_txns.get<by_id>().find( tid );
       return tptr != local_txns.end();
