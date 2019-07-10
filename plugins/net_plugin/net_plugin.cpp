@@ -2182,7 +2182,10 @@ namespace eosio {
                   } );
                } else {
                   fc_elog( logger, "connection failed to ${peer}: ${error}", ("peer", c->peer_name())( "error", err.message()));
-                  c->close( false );
+                  if( err.value() != boost::system::errc::connection_refused ) {
+                     c->close( false );
+                  }
+                  c->connecting = false;
                }
             }
       } ) );
