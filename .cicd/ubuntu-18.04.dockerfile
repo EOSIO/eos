@@ -1,7 +1,7 @@
 FROM ubuntu:18.04
 
 # APT-GET dependencies.
-RUN apt-get update \
+RUN apt-get update && apt-get upgrade -y \
   && DEBIAN_FRONTEND=noninteractive apt-get install -y git make \
   bzip2 automake libbz2-dev libssl-dev doxygen graphviz libgmp3-dev \
   autotools-dev libicu-dev python2.7 python2.7-dev python3 python3-dev \
@@ -12,8 +12,8 @@ RUN apt-get update \
 RUN curl -LO https://cmake.org/files/v3.13/cmake-3.13.2.tar.gz \
   && tar -xzf cmake-3.13.2.tar.gz \
   && cd cmake-3.13.2 \
-  && ./bootstrap \
-  && make \
+  && ./bootstrap --prefix=/usr/local \
+  && make -j$(nproc) \
   && make install \
   && cd .. \
   && rm -f cmake-3.13.2.tar.gz
@@ -39,7 +39,7 @@ RUN curl -LO https://github.com/mongodb/mongo-c-driver/releases/download/1.13.0/
   && mkdir -p build \
   && cd build \
   && cmake --DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local -DENABLE_BSON=ON -DENABLE_SSL=OPENSSL -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF -DENABLE_STATIC=ON .. \
-  && make \
+  && make -j$(nproc) \
   && make install \
   && cd / \
   && rm -rf mongo-c-driver-1.13.0.tar.gz
@@ -52,7 +52,7 @@ RUN curl -L https://github.com/mongodb/mongo-cxx-driver/archive/r3.4.0.tar.gz -o
   && sed -i 's/add_subdirectory(test)//' src/mongocxx/CMakeLists.txt src/bsoncxx/CMakeLists.txt \
   && cd build \
   && cmake -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local .. \
-  && make \
+  && make -j$(nproc) \
   && make install \
   && cd / \
   && rm -f mongo-cxx-driver-r3.4.0.tar.gz
