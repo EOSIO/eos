@@ -359,13 +359,13 @@ class Utils:
 class Account(object):
     # pylint: disable=too-few-public-methods
 
-    def __init__(self, name):
+    def __init__(self, name, ownerPrivateKey = None, ownerPublicKey = None, activePrivateKey = None, activePublicKey = None):
         self.name=name
 
-        self.ownerPrivateKey=None
-        self.ownerPublicKey=None
-        self.activePrivateKey=None
-        self.activePublicKey=None
+        self.ownerPrivateKey  = ownerPrivateKey
+        self.ownerPublicKey   = ownerPublicKey
+        self.activePrivateKey = activePrivateKey
+        self.activePublicKey  = activePublicKey
 
 
     def __str__(self):

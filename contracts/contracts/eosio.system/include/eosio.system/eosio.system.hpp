@@ -518,6 +518,11 @@ namespace eosiosystem {
          static constexpr symbol ram_symbol     = symbol(symbol_code("RAM"), 0);
          static constexpr symbol rex_symbol     = symbol(symbol_code("REX"), 4);
 
+
+         static constexpr uint8_t max_block_producers      = 21;
+         static constexpr int64_t producer_stake_threshold = 250'000'0000LL;
+
+
          /**
           * System contract constructor.
           *
@@ -1359,6 +1364,9 @@ namespace eosiosystem {
                                                double shares_rate, bool reset_to_zero = false );
          double update_total_votepay_share( const time_point& ct,
                                             double additional_shares_delta = 0.0, double shares_rate_delta = 0.0 );
+         bool does_satisfy_stake_requirement( const name& producer ) const;
+         bool is_block_producer( const name& producer ) const;
+         
 
          template <auto system_contract::*...Ptrs>
          class registration {
