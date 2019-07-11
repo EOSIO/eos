@@ -57,8 +57,6 @@ RUN curl -L https://github.com/mongodb/mongo-cxx-driver/archive/r3.4.0.tar.gz -o
   && cd / \
   && rm -f mongo-cxx-driver-r3.4.0.tar.gz
 
-ENV PATH=/usr/lib/ccache:${PATH}:/mongodb-linux-x86_64-ubuntu1804-4.1.1/bin
-
 # CCACHE
 RUN apt-get install -y ccache
 
