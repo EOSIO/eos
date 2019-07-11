@@ -14,7 +14,7 @@ else # linux
     echo 'Detected Linux, building in Docker.'
     echo "$ docker pull eosio/producer:ci-$IMAGE_TAG"
     docker pull eosio/producer:ci-$IMAGE_TAG
-    [[ $IMAGE_TAG  == centos-7 ]] \\
+    [[ $IMAGE_TAG  == centos-7 ]] \
         && PRE_COMMANDS="source /opt/rh/devtoolset-8/enable && source /opt/rh/rh-python36/enable &&"
     [[ $IMAGE_TAG == ubuntu-16.04 ]] \
         && CMAKE_EXTRAS="-DCMAKE_CXX_COMPILER='clang++' -DCMAKE_C_COMPILER='clang'" # Explicitly set to clang else it will try and use gcc that's installed by default
