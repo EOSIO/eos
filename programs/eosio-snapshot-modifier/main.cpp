@@ -108,7 +108,7 @@ int main(int argc, char** argv) {
 
       // Parse command line arguments
       variables_map vmap;
-      options_description cli ("EOSIO Snapshot Modifier Command Line Options");
+      options_description cli("EOSIO Snapshot Modifier Command Line Options");
       cli.add_options()
          ("input,i",bpo::value<string>(),"Path to the snapshot to be modified (Required)")
          ("public-key",bpo::value<string>(),"Public key which will be used to replace the producers' owner, active, and signing key (Required)")
@@ -124,10 +124,16 @@ int main(int argc, char** argv) {
          cli.print(cerr);
          return EXIT_SUCCESS;
       }
+
+      // Assertion on required parameterrs
       FC_ASSERT(vmap.count("input") > 0, "Missing path to the snapshot to be modified");
       FC_ASSERT(vmap.count("public-key") > 0, "Missing public key that will be used to replace the producers' owner, active, and signing key");
+
+      // Extract input path 
       snapshot_input_path = fc::path(vmap["input"].as<string>());
       FC_ASSERT(fc::exists(snapshot_input_path), "Snapshot doesn't exist");
+
+      // Extract output dir path, create the directories if it doesn't exist
       fc::path snapshot_output_dir_path(vmap["output-dir"].as<string>());
       if ( fc::exists(snapshot_output_dir_path) ) {
          FC_ASSERT(fc::is_directory(snapshot_output_dir_path), "Invalid output directory path");
@@ -135,18 +141,24 @@ int main(int argc, char** argv) {
          fc::create_directories(snapshot_output_dir_path);
       }
       snapshot_output_path = snapshot_output_dir_path / string("modified-").append(snapshot_input_path.filename().string());
-      chain_state_db_size = vmap["chain-state-db-size-mb"].as<uint64_t>() * 1024 * 1024;
-      should_generate_block = vmap.count("generate-block") > 0;
+
+      // Extract public key
       try {
          pub_key = public_key_type(vmap["public-key"].as<string>());
       }  EOS_RETHROW_EXCEPTIONS(public_key_type_exception, "Invalid public key")
+
+      // Extract private key, only if --generate block/-g is specified
+      should_generate_block = vmap.count("generate-block") > 0;
       if (should_generate_block) {
-         FC_ASSERT(vmap.count("private-key") > 0, "--private-key must always be used in when --generate-block/-g is used");
+         FC_ASSERT(vmap.count("private-key") > 0, "--private-key must always be used when --generate-block/-g is used");
           try {
             priv_key = private_key_type(vmap["private-key"].as<string>());
          }  EOS_RETHROW_EXCEPTIONS(private_key_type_exception, "Invalid private key")
          FC_ASSERT(priv_key.get_public_key() == pub_key, "Private and public key mismatch");
       }
+      
+      // Extract chain state size
+      chain_state_db_size = vmap["chain-state-db-size-mb"].as<uint64_t>() * 1024 * 1024;
 
       controller::config cfg;
       cfg.blocks_dir = blocks_dir;
