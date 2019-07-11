@@ -8,8 +8,8 @@ matrix:
       dist: xenial
       services: docker
       env: IMAGE_TAG='ubuntu-18.04'
-    - os: osx
-      osx_image: xcode10.2
+    # - os: osx
+    #   osx_image: xcode10.2
 
 before_install: |
   echo '##### CHECKPOINT 1'
