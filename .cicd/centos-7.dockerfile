@@ -83,3 +83,5 @@ ENV PATH=${PATH}:/mongodb-linux-x86_64-amazon-3.6.3/bin
 # CCACHE
 RUN curl -LO http://download-ib01.fedoraproject.org/pub/epel/7/x86_64/Packages/c/ccache-3.3.4-1.el7.x86_64.rpm \
   && yum install -y ccache-3.3.4-1.el7.x86_64.rpm
+## Needed as devtoolset uses c++ and it's not in ccache by default
+RUN cd /usr/lib64/ccache && ln -s ../../bin/ccache c++
