@@ -11,7 +11,15 @@ matrix:
     - os: linux
       dist: xenial
       services: docker
-      env: IMAGE_TAG='ubuntu:16.04'
+      env: IMAGE_TAG='ubuntu-16.04'
+    - os: linux
+      dist: xenial
+      services: docker
+      env: IMAGE_TAG='amazonlinux-2'
+    - os: linux
+      dist: xenial
+      services: docker
+      env: IMAGE_TAG='centos-7'
     # - os: osx
     #   osx_image: xcode10.2
 
