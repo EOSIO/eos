@@ -13,5 +13,3 @@ else
   docker run -itd --name builder $DOCKER_IMAGE
   docker exec builder 'echo "ps aux"'
 fi
-
-docker pull $DOCKER_IMAGE
