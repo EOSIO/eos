@@ -20,29 +20,35 @@ matrix:
       dist: xenial
       services: docker
       env: IMAGE_TAG='centos-7'
-    # - os: osx
-    #   osx_image: xcode10.2
-
+    - os: osx
+      osx_image: xcode10.2
+      addons:
+        homebrew:
+          update: true
+          packages:
+            - graphviz
+            - libtool
+            - gmp
+            - llvm@4
+            - pkgconfig
+            - python
+            - python@2
+            - doxygen
+            - libusb
+            - openssl
+            - boost@1.70
 before_install: |
-  echo '##### CHECKPOINT 1'
-  echo '===== RESOURCES ====='
-  echo "$(getconf _NPROCESSORS_ONLN) CPU cores found."
-  if [[ "$(uname)" == Darwin ]]; then top -l 1 -s 0 | grep PhysMem; else vmstat -sSM | grep -i 'memory'; fi
-  df -h
-  echo '====================='
+  ./.cicd/travis-before.sh
 # DOCKER
 # script:
-# - echo '##### CHECKPOINT 2'
 # # - docker build -t eosio/ci:ubuntu-18.04 -f ./.cicd/ubuntu-18.04.dockerfile .
 # - docker build -t eosio/producer:ci-ubuntu-18.04 -f ./.cicd/ubuntu-18.04.dockerfile .
 # after_success:
-# - echo '##### CHECKPOINT 3'
 # - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
 # # - docker push eosio/ci:ubuntu-18.04
 # - docker push eosio/producer:ci-ubuntu-18.04
 # EOSIO
 script: |
-  echo '##### CHECKPOINT 2'
   ./.cicd/travis-build.sh
 after_success:
 - echo '##### CHECKPOINT 3'
