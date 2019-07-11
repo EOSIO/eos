@@ -1,7 +1,6 @@
 language: cpp
 git:
-  # Depth is needed to prevent git describe failures in appbase
-  depth: false
+  depth: false # prevent git describe failure when executing the appbase version.cmake.in
 cache: ccache
 matrix:
   include:
@@ -32,10 +31,6 @@ before_install: |
 # EOSIO
 script: |
   echo '##### CHECKPOINT 2'
-  echo '$ pwd'
-  pwd
-  echo '$ ls -la'
-  ls -la
   ./.cicd/travis-build.sh
 after_success:
 - echo '##### CHECKPOINT 3'
