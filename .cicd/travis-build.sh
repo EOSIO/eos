@@ -18,8 +18,8 @@ else # linux
     # Per distro additions to docker command
     [[ $IMAGE_TAG  == centos-7 ]] \
         && PRE_COMMANDS="source /opt/rh/devtoolset-8/enable && source /opt/rh/rh-python36/enable &&"
-    ([[ $IMAGE_TAG == ubuntu-16.04 ]] || [[ $IMAGE_TAG == amazonlinux-2 ]] ) \
-        && CMAKE_EXTRAS="-DCMAKE_CXX_COMPILER='clang++' -DCMAKE_C_COMPILER='clang'" # Explicitly set to clang else it will try and use gcc that's installed by default
+    # ([[ $IMAGE_TAG == ubuntu-16.04 ]] || [[ $IMAGE_TAG == amazonlinux-2 ]] ) \
+    #     && CMAKE_EXTRAS="-DCMAKE_CXX_COMPILER='clang++' -DCMAKE_C_COMPILER='clang'" # Explicitly set to clang else it will try and use gcc that's installed by default
     ## Ubuntu 16 is pinned only
     [[ $IMAGE_TAG == ubuntu-16.04 ]] && CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_TOOLCHAIN_FILE='/tmp/pinned_toolchain.cmake'"
     ( [[ $IMAGE_TAG == amazonlinux-2 ]] || [[ $IMAGE_TAG == centos-7 ]] ) && EXPORTS="export PATH=/usr/lib64/ccache:$PATH &&" || EXPORTS="export PATH=/usr/lib/ccache:$PATH &&" # ccache needs to come first in the list (devtoolset-8 overrides that if we include this in the Dockerfile)
