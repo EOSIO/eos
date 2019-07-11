@@ -20,6 +20,14 @@
 
 #include <chrono>
 
+#ifndef _WIN32
+#define FOPEN(p, m) fopen(p, m)
+#else
+#define CAT(s1, s2) s1 ## s2
+#define PREL(s) CAT(L, s)
+#define FOPEN(p, m) _wfopen(p, PREL(m))
+#endif
+
 using namespace eosio::chain;
 namespace bfs = boost::filesystem;
 namespace bpo = boost::program_options;
@@ -234,9 +242,9 @@ trim_data::trim_data(bfs::path block_dir) {
    using namespace std;
    block_file_name = block_dir / "blocks.log";
    index_file_name = block_dir / "blocks.index";
-   blk_in = fopen(block_file_name.c_str(), "r");
+   blk_in = FOPEN(block_file_name.c_str(), "rb");
    EOS_ASSERT( blk_in != nullptr, block_log_not_found, "cannot read file ${file}", ("file",block_file_name.string()) );
-   ind_in = fopen(index_file_name.c_str(), "r");
+   ind_in = FOPEN(index_file_name.c_str(), "rb");
    EOS_ASSERT( ind_in != nullptr, block_log_not_found, "cannot read file ${file}", ("file",index_file_name.string()) );
    auto size = fread((void*)&version,sizeof(version), 1, blk_in);
    EOS_ASSERT( size == 1, block_log_unsupported_version, "invalid format for file ${file}", ("file",block_file_name.string()));
@@ -340,7 +348,7 @@ int trim_blocklog_front(bfs::path block_dir, uint32_t n) {        //n is first b
    char* buf =  buffer.get();
 
    bfs::path block_out_filename = block_dir / "blocks.out";
-   FILE* blk_out = fopen(block_out_filename.c_str(), "w");
+   FILE* blk_out = FOPEN(block_out_filename.c_str(), "wb");
    EOS_ASSERT( blk_out != nullptr, block_log_not_found, "cannot write ${file}", ("file", block_out_filename.string()) );
 
    //in version 1 file: version number, no first block number, rest of header length 0x6e, at 0x72 first block
@@ -385,7 +393,7 @@ int trim_blocklog_front(bfs::path block_dir, uint32_t n) {        //n is first b
    auto fpos_buffer = make_unique<uint64_t[]>(buf_len);
    uint64_t* fpos_list = fpos_buffer.get();                        //list of file positions, periodically write to blocks.index
    bfs::path index_out_filename = block_dir / "index.out";
-   FILE* ind_out = fopen(index_out_filename.c_str(), "w");
+   FILE* ind_out = FOPEN(index_out_filename.c_str(), "wb");
    EOS_ASSERT( ind_out != nullptr, block_log_not_found, "cannot write ${file}", ("file",index_out_filename.string()) );
    uint64_t last_fpos_len = total_fpos_len & ((uint64_t)buf_len - 1);//buf_len is a power of 2 so -1 creates low bits all 1
    if (!last_fpos_len)                                            //will write integral number of buf_len and one time write last_fpos_len
@@ -494,10 +502,10 @@ int trim_blocklog_front(bfs::path block_dir, uint32_t n) {        //n is first b
    fclose(ind_out);
    bfs::path old_log = block_dir / "old.log";
    bfs::path old_ind = block_dir / "old.index";
-   rename(td.block_file_name.c_str(), old_log.c_str());
-   rename(td.index_file_name.c_str(), old_ind.c_str());
-   rename(block_out_filename.c_str(), td.block_file_name.c_str());
-   rename(index_out_filename.c_str(), td.index_file_name.c_str());
+   rename(td.block_file_name, old_log);
+   rename(td.index_file_name, old_ind);
+   rename(block_out_filename, td.block_file_name);
+   rename(index_out_filename, td.index_file_name);
    cout << "The new " << td.block_file_name << " and " << td.index_file_name << " files contain blocks " << n << " through " << td.last_block << '\n';
    cout << "The original (before trim front) files have been renamed to " << old_log << " and " << old_ind << ".\n";
    rt.report();
