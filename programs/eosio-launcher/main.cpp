@@ -487,7 +487,7 @@ launcher_def::set_options (bpo::options_description &cfg) {
     ("nodes,n",bpo::value<size_t>(&total_nodes)->default_value(1),"total number of nodes to configure and launch")
     ("unstarted-nodes",bpo::value<size_t>(&unstarted_nodes)->default_value(0),"total number of nodes to configure, but not launch")
     ("pnodes,p",bpo::value<size_t>(&prod_nodes)->default_value(1),"number of nodes that contain one or more producers")
-    ("producers",bpo::value<size_t>(&producers)->default_value(21),"total number of non-bios producer instances in this network")
+    ("producers",bpo::value<size_t>(&producers)->default_value(21),"total number of non-bios and non-shared producer instances in this network")
     ("shared-producers",bpo::value<size_t>(&shared_producers)->default_value(0),"total number of shared producers on each non-bios nodes")
     ("mode,m",bpo::value<vector<string>>()->multitoken()->default_value({"any"}, "any"),"connection mode, combination of \"any\", \"producers\", \"specified\", \"none\"")
     ("shape,s",bpo::value<string>(&shape)->default_value("star"),"network topology, use \"star\" \"mesh\" or give a filename for custom")

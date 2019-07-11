@@ -281,7 +281,13 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          } ) );
 
          // simplify handling of watermark in on_block
-         _producer_watermarks[bsp->header.producer] = bsp->block_num;
+         auto block_producer = bsp->header.producer;
+         auto watermark_itr = _producer_watermarks.find( block_producer );
+         if( watermark_itr != _producer_watermarks.end() ) {
+            watermark_itr->second = bsp->block_num;
+         } else if( _producers.count( block_producer ) > 0 ) {
+            _producer_watermarks.emplace( block_producer, bsp->block_num );
+         }
       }
 
       void on_irreversible_block( const signed_block_ptr& lib ) {

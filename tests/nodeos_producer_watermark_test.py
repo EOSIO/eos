@@ -13,19 +13,10 @@ import math
 import re
 
 ###############################################################
-# nodeos_voting_test
+# nodeos_producer_watermark_test
 # --dump-error-details <Upon error print etc/eosio/node_*/config.ini and var/lib/node_*/stderr.log to stdout>
 # --keep-logs <Don't delete var/lib/node_* folders upon test completion>
 ###############################################################
-class ProducerToNode:
-    map={}
-
-    @staticmethod
-    def populate(node, num):
-        for prod in node.producers:
-            ProducerToNode.map[prod]=num
-            Utils.Print("Producer=%s for nodeNum=%s" % (prod,num))
-
 def isValidBlockProducer(prodsActive, blockNum, node):
     blockProducer=node.getBlockProducerByNum(blockNum)
     if blockProducer not in prodsActive:
@@ -43,9 +34,26 @@ def validBlockProducer(prodsActive, prodsSeen, blockNum, node):
     prodsSeen[blockProducer]=True
     return blockProducer
 
-def setActiveProducers(prodsActive, activeProducers):
-    for prod in prodsActive:
-        prodsActive[prod]=prod in activeProducers
+def setProds(sharedProdKey):
+    setProdsStr='{"schedule": ['
+    firstTime=True
+    for name in ["defproducera", "shrproducera", "defproducerb", "defproducerc"]:
+        if firstTime:
+            firstTime = False
+        else:
+            setProdsStr += ','
+        key = cluster.defProducerAccounts[name].activePublicKey
+        if name == "shrproducera":
+            key = sharedProdKey
+        setProdsStr += ' { "producer_name": "%s", "block_signing_key": "%s" }' % (name, key)
+
+    setProdsStr += ' ] }'
+    Utils.Print("setprods: %s" % (setProdsStr))
+    opts="--permission eosio@active"
+    # pylint: disable=redefined-variable-type
+    trans=cluster.biosNode.pushMessage("eosio", "setprods", setProdsStr, opts)
+    if trans is None or not trans[0]:
+        Utils.Print("ERROR: Failed to set producer with cmd %s" % (setProdsStr))
 
 def verifyProductionRounds(trans, node, prodsActive, rounds):
     blockNum=node.getNextCleanProductionCycle(trans)
@@ -144,12 +152,10 @@ def verifyProductionRounds(trans, node, prodsActive, rounds):
 Print=Utils.Print
 errorExit=Utils.errorExit
 
-from core_symbol import CORE_SYMBOL
-
 args = TestHelper.parse_args({"--prod-count","--dump-error-details","--keep-logs","-v","--leave-running","--clean-run",
                               "--wallet-port"})
 Utils.Debug=args.v
-totalNodes=4
+totalNodes=3
 cluster=Cluster(walletd=True)
 dumpErrorDetails=args.dump_error_details
 keepLogs=args.keep_logs
@@ -167,102 +173,82 @@ WalletdName=Utils.EosWalletName
 ClientName="cleos"
 
 try:
+    assert(totalNodes == 3)
+
     TestHelper.printSystemInfo("BEGIN")
     cluster.setWalletMgr(walletMgr)
 
     cluster.killall(allInstances=killAll)
     cluster.cleanup()
     Print("Stand up cluster")
-    if cluster.launch(prodCount=prodCount, onlyBios=False, pnodes=totalNodes, totalNodes=totalNodes, totalProducers=totalNodes, useBiosBootFile=False, sharedProducers=1) is False:
+    if cluster.launch(prodCount=prodCount, onlyBios=False, pnodes=totalNodes, totalNodes=totalNodes, totalProducers=totalNodes, useBiosBootFile=False, onlySetProds=True, sharedProducers=1) is False:
         Utils.cmdError("launcher")
         Utils.errorExit("Failed to stand up eos cluster.")
 
     Print("Validating system accounts after bootstrap")
     cluster.validateAccounts(None)
 
-    accounts=cluster.createAccountKeys(totalNodes)
-    if accounts is None:
-        Utils.errorExit("FAILURE - create keys")
-    accounts[0].name="tester111111"
-    accounts[1].name="tester222222"
-    accounts[2].name="tester333333"
-    accounts[3].name="tester444444"
-
-    testWalletName="test"
-
-    Print("Creating wallet \"%s\"." % (testWalletName))
-    testWallet=walletMgr.create(testWalletName, [cluster.eosioAccount,accounts[0],accounts[1],accounts[2],accounts[3]])
-
-    for _, account in cluster.defProducerAccounts.items():
-        walletMgr.importKey(account, testWallet, ignoreDupKeyWarning=True)
-
-    Print("Wallet \"%s\" password=%s." % (testWalletName, testWallet.password.encode("utf-8")))
-
-    for i in range(0, totalNodes):
-        node=cluster.getNode(i)
-        node.producers=Cluster.parseProducers(i)
-        for prod in node.producers:
-            Print("register producer %s" % (cluster.defProducerAccounts[prod].name))
-            trans=node.regproducer(cluster.defProducerAccounts[prod], "http::/mysite.com", 0, waitForTransBlock=True, exitOnError=True)
-
     node0=cluster.getNode(0)
     node1=cluster.getNode(1)
     node2=cluster.getNode(2)
-    node3=cluster.getNode(3)
 
     node=node0
-    # create accounts via eosio as otherwise a bid is needed
-    for account in accounts:
-        Print("Create new account %s via %s" % (account.name, cluster.eosioAccount.name))
-        trans=node.createInitializeAccount(account, cluster.eosioAccount, stakedDeposit=0, waitForTransBlock=False, stakeNet=1000, stakeCPU=1000, buyRAM=1000, exitOnError=True)
-        transferAmount="100000000.0000 {0}".format(CORE_SYMBOL)
-        Print("Transfer funds %s from account %s to %s" % (transferAmount, cluster.eosioAccount.name, account.name))
-        node.transferFunds(cluster.eosioAccount, account, transferAmount, "test transfer")
-        trans=node.delegatebw(account, 20000000.0000, 20000000.0000, waitForTransBlock=True, exitOnError=True)
+    numprod = totalNodes + 1
 
-    # containers for tracking producers
+    trans=None
     prodsActive={}
-    for i in range(0, totalNodes):
-        node=cluster.getNode(i)
-        ProducerToNode.populate(node, i)
-        for prod in node.producers:
-            prodsActive[prod]=True
-        Print("%s start to vote..." % (accounts[i]))
-        trans=node.vote(accounts[i], node.producers, waitForTransBlock=True)
+    prodsActive["shrproducera"] = True
+    prodsActive["defproducera"] = True
+    prodsActive["defproducerb"] = True
+    prodsActive["defproducerc"] = True
 
-    numprod = len(prodsActive) # should be totalNodes + 1
+    Print("Wait for initial schedule: defproducera(node 0) shrproducera(node 2) defproducerb(node 1) defproducerc(node 2)")
+    
+    tries=10
+    while tries > 0:
+        node.infoValid = False
+        info = node.getInfo()
+        if node.infoValid and node.lastRetrievedHeadBlockProducer != "eosio":
+            break
+        time.sleep(1)
+        tries = tries-1
+    if tries == 0:
+        Utils.errorExit("failed to wait for initial schedule")
 
-    Print("sleep for 2 rounds...")
-    time.sleep(numprod * 6 * 2)
-    verifyProductionRounds(trans, node0, prodsActive, 2)
-
-
-    # node1 has different key of shrproducera
-    Print("change producer signing key, shrproducera will be produced by node1 instead of node3")
+    # try to change signing key of shrproducera, shrproducera will produced by node1 instead of node2
+    Print("change producer signing key, shrproducera will be produced by node1 instead of node2")
     shracc_node1 = cluster.defProducerAccounts["shrproducera"]
     shracc_node1.activePublicKey = cluster.defProducerAccounts["defproducerb"].activePublicKey
-    trans=node1.regproducer(shracc_node1, "http::/mysite2.com", 0, waitForTransBlock=False, exitOnError=True)
-    Print("sleep for 2 rounds...")
-    time.sleep(numprod * 6 * 2)
-    verifyProductionRounds(trans, node0, prodsActive, 2)
+    setProds(shracc_node1.activePublicKey)
+    Print("sleep for 4/3 rounds...")
+    time.sleep(numprod * 6 * 4 / 3)
+    verifyProductionRounds(trans, node0, prodsActive, 1)
 
-    # change signing key, no one can sign
+    # change signing key of shrproducera that no one can sign
+    accounts = cluster.createAccountKeys(1)
     Print("change producer signing key of shrproducera that none of the node has")
     shracc_node1.activePublicKey = accounts[0].activePublicKey
     del prodsActive["shrproducera"]
-    trans=node1.regproducer(shracc_node1, "http::/mysite3.com", 0, waitForTransBlock=False, exitOnError=True)
-    Print("sleep for 2 rounds...")
-    time.sleep(numprod * 6 * 2)
-    verifyProductionRounds(trans, node0, prodsActive, 2)
+    setProds(shracc_node1.activePublicKey)
+    Print("sleep for 4/3 rounds...")
+    time.sleep(numprod * 6 * 4 / 3)
+    verifyProductionRounds(trans, node0, prodsActive, 1)
 
-    # change signing key back
+    # change signing key back to node1
     Print("change producer signing key of shrproducera so that node1 can produce again")
     shracc_node1.activePublicKey = cluster.defProducerAccounts["defproducerb"].activePublicKey
     prodsActive["shrproducera"] = True
-    trans=node1.regproducer(shracc_node1, "http::/mysite4.com", 0, waitForTransBlock=False, exitOnError=True)
-    Print("sleep for 2 rounds...")
-    time.sleep(numprod * 6 * 2)
-    verifyProductionRounds(trans, node0, prodsActive, 2)
+    setProds(shracc_node1.activePublicKey)
+    tries=numprod * 6 * 4 # give 4 rounds
+    while tries > 0:
+        node.infoValid = False
+        info = node.getInfo()
+        if node.infoValid and node.lastRetrievedHeadBlockProducer == "shrproducera":
+            break
+        time.sleep(1)
+        tries = tries-1
+    if tries == 0:
+        Utils.errorExit("shrproducera failed to produce")
 
     testSuccessful=True
 finally:
