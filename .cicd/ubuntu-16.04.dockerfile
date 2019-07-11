@@ -79,3 +79,5 @@ ENV PATH=${PATH}:/mongodb-linux-x86_64-ubuntu1604-3.6.3/bin
 RUN apt-get install -y ccache
 ## Needed as devtoolset uses c++ and it's not in ccache by default
 RUN cd /usr/lib/ccache && ln -s ../../bin/ccache clang++ && ln -s ../../bin/ccache clang
+## We need to tell ccache to actually use devtoolset-8 instead of the default system one (ccache resets anything set in PATH when it launches)
+ENV CCACHE_PATH="/usr/local/bin"

@@ -85,3 +85,5 @@ RUN curl -LO http://download-ib01.fedoraproject.org/pub/epel/7/x86_64/Packages/c
   && yum install -y ccache-3.3.4-1.el7.x86_64.rpm
 ## Needed as devtoolset uses c++ and it's not in ccache by default
 RUN cd /usr/lib64/ccache && ln -s ../../bin/ccache c++
+## We need to tell ccache to actually use devtoolset-8 instead of the default system one (ccache resets anything set in PATH when it launches)
+ENV CCACHE_PATH="/opt/rh/devtoolset-8/root/usr/bin"
