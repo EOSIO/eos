@@ -955,8 +955,10 @@ namespace eosio {
    void connection::_close( connection* self, bool reconnect ) {
       self->socket_open = false;
       boost::system::error_code ec;
-      self->socket->shutdown( tcp::socket::shutdown_both, ec );
-      self->socket->close();
+      if( self->socket->is_open() ) {
+         self->socket->shutdown( tcp::socket::shutdown_both, ec );
+         self->socket->close();
+      }
       self->socket.reset( new tcp::socket( my_impl->thread_pool->get_executor() ) );
       self->flush_queues();
       self->connecting = false;
