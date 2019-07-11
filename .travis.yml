@@ -20,6 +20,7 @@ addons:
       - doxygen
       - libusb
       - openssl
+      - boost
 before_install: |
   ./.cicd/travis-before.sh
 # DOCKER
