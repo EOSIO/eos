@@ -4,6 +4,22 @@ git:
 cache: ccache
 os: osx
 osx_image: xcode10.2
+addons:
+  homebrew:
+    packages:
+      # - cmake
+      - graphviz
+      - libtool
+      # - automake
+      # - wget
+      - gmp
+      - llvm@4
+      - pkgconfig
+      - python
+      - python@2
+      - doxygen
+      - libusb
+      - openssl
 before_install: |
   ./.cicd/travis-before.sh
 # DOCKER
