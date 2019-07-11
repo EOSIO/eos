@@ -577,7 +577,7 @@ namespace eosio {
 
    public:
       boost::asio::io_context::strand           strand;
-      tcp::socket                               socket; // only accessed through strand after construction
+      std::unique_ptr<tcp::socket>              socket; // only accessed through strand after construction
 
       fc::message_buffer<1024*1024>    pending_message_buffer;
       std::atomic<std::size_t>         outstanding_read_bytes{0}; // accessed only from strand threads
@@ -844,7 +844,7 @@ namespace eosio {
    connection::connection( string endpoint )
       : peer_addr( endpoint ),
         strand( my_impl->thread_pool->get_executor() ),
-        socket( my_impl->thread_pool->get_executor() ),
+        socket( new tcp::socket( my_impl->thread_pool->get_executor() ) ),
         connection_id( ++my_impl->current_connection_id ),
         response_expected_timer( my_impl->thread_pool->get_executor() ),
         read_delay_timer( my_impl->thread_pool->get_executor() ),
@@ -858,7 +858,7 @@ namespace eosio {
    connection::connection()
       : peer_addr(),
         strand( my_impl->thread_pool->get_executor() ),
-        socket( my_impl->thread_pool->get_executor() ),
+        socket( new tcp::socket( my_impl->thread_pool->get_executor() ) ),
         connection_id( ++my_impl->current_connection_id ),
         response_expected_timer( my_impl->thread_pool->get_executor() ),
         read_delay_timer( my_impl->thread_pool->get_executor() ),
@@ -871,11 +871,11 @@ namespace eosio {
 
    void connection::update_endpoints() {
       boost::system::error_code ec;
-      auto rep = socket.remote_endpoint(ec);
+      auto rep = socket->remote_endpoint(ec);
       remote_endpoint_ip = ec ? unknown : rep.address().to_string();
       remote_endpoint_port = ec ? unknown : std::to_string(rep.port());
 
-      auto lep = socket.local_endpoint(ec);
+      auto lep = socket->local_endpoint(ec);
       local_endpoint_ip = ec ? unknown : lep.address().to_string();
       local_endpoint_port = ec ? unknown : std::to_string(lep.port());
    }
@@ -921,7 +921,7 @@ namespace eosio {
       update_endpoints();
       boost::asio::ip::tcp::no_delay nodelay( true );
       boost::system::error_code ec;
-      socket.set_option( nodelay, ec );
+      socket->set_option( nodelay, ec );
       if( ec ) {
          fc_elog( logger, "connection failed to ${peer}: ${error}", ("peer", peer_name())( "error", ec.message() ) );
          close();
@@ -955,8 +955,9 @@ namespace eosio {
    void connection::_close( connection* self, bool reconnect ) {
       self->socket_open = false;
       boost::system::error_code ec;
-      self->socket.shutdown( tcp::socket::shutdown_both, ec );
-      self->socket.close();
+      self->socket->shutdown( tcp::socket::shutdown_both, ec );
+      self->socket->close();
+      self->socket.reset( new tcp::socket( my_impl->thread_pool->get_executor() ) );
       self->flush_queues();
       self->connecting = false;
       self->syncing = false;
@@ -1117,7 +1118,7 @@ namespace eosio {
       buffer_queue.fill_out_buffer( bufs );
 
       strand.dispatch( [c{std::move(c)}, bufs{std::move(bufs)}, priority]() {
-         boost::asio::async_write( c->socket, bufs,
+         boost::asio::async_write( *c->socket, bufs,
             boost::asio::bind_executor( c->strand, [c, priority]( boost::system::error_code ec, std::size_t w ) {
             try {
                // May have closed connection and cleared buffer_queue
@@ -2166,31 +2167,23 @@ namespace eosio {
       ++endpoint_itr;
       connecting = true;
       pending_message_buffer.reset();
-      socket.async_connect( current_endpoint,
+      socket->async_connect( current_endpoint,
             boost::asio::bind_executor( strand, [resolver, c = shared_from_this(), endpoint_itr]( const boost::system::error_code& err ) {
-            if( !err && c->socket.is_open() ) {
+            if( !err && c->socket->is_open() ) {
                if( c->start_session() ) {
                   c->send_handshake();
                }
             } else {
-               if( c->socket_is_open() ) {
-                  connection::_close( c.get(), false ); // close posts to strand, so also post connect otherwise connect can happen before close
-               }
                if( endpoint_itr != tcp::resolver::iterator() ) {
-                  c->connect( resolver, endpoint_itr );
+                  c->strand.post( [resolver, c, endpoint_itr]() {
+                     if( c->socket_is_open()) {
+                        connection::_close( c.get(), false ); // close posts to strand, so also post connect otherwise connect can happen before close
+                     }
+                     c->connect( resolver, endpoint_itr );
+                  } ) ;
                } else {
                   fc_elog( logger, "connection failed to ${peer}: ${error}", ("peer", c->peer_name())( "error", err.message()));
-                  // add new connection so connection monitor can try again with a new connection
-                  connection_ptr new_c = std::make_shared<connection>( c->peer_address() );
-                  new_c->connecting = false;
-                  std::lock_guard<std::shared_mutex> g( my_impl->connections_mtx );
-                  for( auto itr = my_impl->connections.begin(); itr != my_impl->connections.end(); ++itr ) {
-                     if( (*itr)->peer_address() == c->peer_address() ) {
-                        my_impl->connections.erase(itr);
-                        break;
-                     }
-                  }
-                  my_impl->connections.insert( new_c );
+                  c->close( false );
                }
             }
       } ) );
@@ -2200,13 +2193,13 @@ namespace eosio {
       connection_ptr new_connection = std::make_shared<connection>();
       new_connection->connecting = true;
       new_connection->strand.post( [this, new_connection = std::move( new_connection )](){
-         acceptor->async_accept( new_connection->socket,
+         acceptor->async_accept( *new_connection->socket,
             boost::asio::bind_executor( new_connection->strand, [new_connection, this]( boost::system::error_code ec ) {
             if( !ec ) {
                uint32_t visitors = 0;
                uint32_t from_addr = 0;
                boost::system::error_code rec;
-               const auto& paddr_add = new_connection->socket.remote_endpoint( rec ).address();
+               const auto& paddr_add = new_connection->socket->remote_endpoint( rec ).address();
                string paddr_str;
                if( rec ) {
                   fc_elog( logger, "Error getting remote endpoint: ${m}", ("m", rec.message()));
@@ -2237,7 +2230,8 @@ namespace eosio {
                         fc_elog( logger, "Error max_client_count ${m} exceeded", ("m", max_client_count));
                      }
                      // new_connection never added to connections and start_session not called, lifetime will end
-                     new_connection->socket.close();
+                     new_connection->socket->shutdown( tcp::socket::shutdown_both );
+                     new_connection->socket->close();
                   }
                }
             } else {
@@ -2271,7 +2265,7 @@ namespace eosio {
             const size_t max_socket_read_watermark = 4096;
             std::size_t socket_read_watermark = std::min<std::size_t>(minimum_read, max_socket_read_watermark);
             boost::asio::socket_base::receive_low_watermark read_watermark_opt(socket_read_watermark);
-            socket.set_option(read_watermark_opt);
+            socket->set_option(read_watermark_opt);
          }
 
          auto completion_handler = [minimum_read](boost::system::error_code ec, std::size_t bytes_transferred) -> std::size_t {
@@ -2316,7 +2310,7 @@ namespace eosio {
          }
          read_delay_count = 0;
 
-         boost::asio::async_read( socket,
+         boost::asio::async_read( *socket,
             pending_message_buffer.get_buffer_sequence_for_boost_async_read(), completion_handler,
             boost::asio::bind_executor( strand,
             [conn = shared_from_this()]( boost::system::error_code ec, std::size_t bytes_transferred ) {
