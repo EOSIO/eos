@@ -2182,10 +2182,17 @@ namespace eosio {
                   } );
                } else {
                   fc_elog( logger, "connection failed to ${peer}: ${error}", ("peer", c->peer_name())( "error", err.message()));
-                  if( err.value() != boost::system::errc::connection_refused ) {
-                     c->close( false );
+                  connection_ptr new_c = std::make_shared<connection>( c->peer_address() );
+                  new_c->connecting = false;
+                  std::lock_guard<std::shared_mutex> g( my_impl->connections_mtx );
+                  for( auto itr = my_impl->connections.begin(); itr != my_impl->connections.end(); ++itr ) {
+                     if( (*itr)->peer_address() == c->peer_address() ) {
+                        (*itr)->close( false );
+                        my_impl->connections.erase(itr);
+                        break;
+                     }
                   }
-                  c->connecting = false;
+                  my_impl->connections.insert( new_c );
                }
             }
       } ) );
