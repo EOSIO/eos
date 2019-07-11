@@ -2173,21 +2173,19 @@ namespace eosio {
                   c->send_handshake();
                }
             } else {
+               if( c->socket_is_open() ) {
+                  connection::_close( c.get(), false ); // close posts to strand, so also post connect otherwise connect can happen before close
+               }
                if( endpoint_itr != tcp::resolver::iterator() ) {
-                  c->strand.post( [resolver, c, endpoint_itr]() {
-                     if( c->socket_is_open() ) {
-                        connection::_close( c.get(), false ); // close posts to strand, so also post connect otherwise connect can happen before close
-                     }
-                     c->connect( resolver, endpoint_itr );
-                  } );
+                  c->connect( resolver, endpoint_itr );
                } else {
                   fc_elog( logger, "connection failed to ${peer}: ${error}", ("peer", c->peer_name())( "error", err.message()));
+                  // add new connection so connection monitor can try again with a new connection
                   connection_ptr new_c = std::make_shared<connection>( c->peer_address() );
                   new_c->connecting = false;
                   std::lock_guard<std::shared_mutex> g( my_impl->connections_mtx );
                   for( auto itr = my_impl->connections.begin(); itr != my_impl->connections.end(); ++itr ) {
                      if( (*itr)->peer_address() == c->peer_address() ) {
-                        (*itr)->close( false );
                         my_impl->connections.erase(itr);
                         break;
                      }
