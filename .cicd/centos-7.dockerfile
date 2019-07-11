@@ -78,7 +78,7 @@ RUN curl -L https://github.com/mongodb/mongo-cxx-driver/archive/r3.4.0.tar.gz -o
   && cd / \
   && rm -f mongo-cxx-driver-r3.4.0.tar.gz
 
-ENV PATH=/usr/lib/ccache:${PATH}:/mongodb-linux-x86_64-amazon-3.6.3/bin
+ENV PATH=${PATH}:/mongodb-linux-x86_64-amazon-3.6.3/bin
 
 # CCACHE
 RUN curl -LO http://download-ib01.fedoraproject.org/pub/epel/7/x86_64/Packages/c/ccache-3.3.4-1.el7.x86_64.rpm \
