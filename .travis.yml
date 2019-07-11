@@ -1,7 +1,10 @@
 language: cpp
 git:
   depth: false # prevent git describe failure when executing the appbase version.cmake.in
-cache: ccache
+cache:
+  ccache: true
+  directories:
+    - $HOME/Library/Caches/Homebrew
 matrix:
   include:
     - os: linux
@@ -37,8 +40,10 @@ matrix:
             - libusb
             - openssl
             - boost@1.70
+before_cache: |
+  ./.cicd/travis-before-cache.sh
 before_install: |
-  ./.cicd/travis-before.sh
+  ./.cicd/travis-before-install.sh
 # DOCKER
 # script:
 # # - docker build -t eosio/ci:ubuntu-18.04 -f ./.cicd/ubuntu-18.04.dockerfile .
