@@ -1201,6 +1201,7 @@ class Node(object):
                 return info[headBlockNumTag]
         else:
             # Either this implementation or the one in getIrreversibleBlockNum are likely wrong.
+            time.sleep(1)
             block=self.getBlockFromDb(-1)
             if block is not None:
                 blockNum=block["block_num"]
