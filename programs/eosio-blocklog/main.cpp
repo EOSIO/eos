@@ -87,8 +87,6 @@ void blocklog::read_log() {
    } catch( const std::runtime_error& e ) {
       if( std::string(e.what()) == "database dirty flag set" ) {
          elog( "database dirty flag set (likely due to unclean shutdown): only block_log blocks are available" );
-      } else if( std::string(e.what()) == "database metadata dirty flag set" ) {
-         elog( "database metadata dirty flag set (likely due to unclean shutdown): only block_log blocks are available" );
       } else {
          throw;
       }
