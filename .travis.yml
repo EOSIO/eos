@@ -1,4 +1,7 @@
 language: cpp
+git:
+  # Depth is needed to prevent git describe failures in appbase
+  depth: false
 matrix:
   include:
     - os: linux
