@@ -2,6 +2,7 @@ language: cpp
 git:
   # Depth is needed to prevent git describe failures in appbase
   depth: false
+cache: ccache
 matrix:
   include:
     - os: linux
