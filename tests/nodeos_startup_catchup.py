@@ -142,6 +142,7 @@ try:
     Print("Cycle through catchup scenarios")
     twoRounds=21*2*12
     for catchup_num in range(0, catchupCount):
+        time.sleep(5)
         Print("Start catchup node")
         cluster.launchUnstarted(cachePopen=True)
         lastLibNum=lib(node0)
@@ -165,6 +166,7 @@ try:
         catchupNode.interruptAndVerifyExitStatus(60)
 
         Print("Restart catchup node")
+        time.sleep(5)
         catchupNode.relaunch(catchupNodeNum, cachePopen=True)
         waitForNodeStarted(catchupNode)
         lastCatchupLibNum=lib(catchupNode)
