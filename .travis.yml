@@ -6,6 +6,7 @@ cache:
   directories:
     - $HOME/Library/Caches/Homebrew
     - $HOME/.ccache
+    - /opt/.ccache
 matrix:
   include:
     - os: linux
