@@ -853,7 +853,6 @@ namespace eosio {
    {
       fc_ilog( logger, "creating connection to ${n}", ("n", endpoint) );
       node_id.data()[0] = 0;
-      socket->set_option(tcp::socket::reuse_address(true));
    }
 
    connection::connection()
@@ -868,7 +867,6 @@ namespace eosio {
    {
       fc_ilog( logger, "accepted network connection" );
       node_id.data()[0] = 0;
-      socket->set_option(tcp::socket::reuse_address(true));
    }
 
    void connection::update_endpoints() {
@@ -924,8 +922,11 @@ namespace eosio {
       boost::asio::ip::tcp::no_delay nodelay( true );
       boost::system::error_code ec;
       socket->set_option( nodelay, ec );
-      if( ec ) {
-         fc_elog( logger, "connection failed to ${peer}: ${error}", ("peer", peer_name())( "error", ec.message() ) );
+      boost::system::error_code ec2;
+      socket->set_option(tcp::socket::reuse_address(true), ec2);
+
+      if( ec || ec2 ) {
+         fc_elog( logger, "connection failed (set_option) ${peer}: ${e1}, ${e2}", ("peer", peer_name())( "e1", ec.message() )("e2", ec2.message()) );
          close();
          return false;
       } else {
@@ -964,7 +965,6 @@ namespace eosio {
          self->socket->close();
       }
       self->socket.reset( new tcp::socket( my_impl->thread_pool->get_executor() ) );
-      self->socket->set_option(tcp::socket::reuse_address(true));
       self->flush_queues();
       self->connecting = false;
       self->syncing = false;
