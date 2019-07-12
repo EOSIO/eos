@@ -957,7 +957,7 @@ class Cluster(object):
             env["FEATURE_DIGESTS"] = " ".join(allBuiltinProtocolFeatureDigests)
             Utils.Print("Set FEATURE_DIGESTS to: %s" % env["FEATURE_DIGESTS"])
 
-        if 0 != subprocess.call(cmd.split(), stdout=Utils.FNull, env=env):
+        if 0 != subprocess.call(cmd.split(), env=env):
             if not silent: Utils.Print("Launcher failed to shut down eos cluster.")
             return None
 
