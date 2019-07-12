@@ -5,6 +5,7 @@ cache:
   ccache: true
   directories:
     - $HOME/Library/Caches/Homebrew
+    - $HOME/.ccache
 matrix:
   include:
     - os: linux
