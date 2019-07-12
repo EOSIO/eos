@@ -40,7 +40,7 @@ class eos_vm_instantiated_module : public wasm_instantiated_module_interface {
             //EOS_ASSERT(res, wasm_execution_error, "eos-vm execution failure (${s})", ("s", res.to_string()));
          });
          _runtime->_bkend = nullptr;
-
+	 /* TODO clean this up
          switch(trapType)
          {
          case Platform::HardwareTrapType::none: break;
@@ -57,6 +57,7 @@ class eos_vm_instantiated_module : public wasm_instantiated_module_interface {
          case Platform::HardwareTrapType::intDivideByZeroOrOverflow: throw wasm_execution_error();
          default: Errors::unreachable();
          };
+	 */
       }
 
    private:

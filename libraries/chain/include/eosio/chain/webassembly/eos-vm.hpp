@@ -73,41 +73,39 @@ namespace eosio { namespace vm {
       return std::function<void(Cls*, WAlloc*, operand_stack&)>{ [](Cls* self, WAlloc* walloc, operand_stack& os) {
          size_t i = sizeof...(Is) - 1;
          auto& intrinsic_log = self->control.get_intrinsic_debug_log();
+	 /*
          if (intrinsic_log) {
             eosio::chain::digest_type::encoder enc;
             enc.write(walloc->template get_base_ptr<char>(), walloc->get_current_page() * 64 * 1024);
             intrinsic_log->record_intrinsic(
                eosio::chain::calc_arguments_hash(
                   get_value<typename std::tuple_element<Is, Args>::type, Args>(
-                        walloc, std::get<to_wasm_t<typename std::tuple_element<Is, Args>::type>>(
+                        walloc, get_value<to_wasm_t<typename std::tuple_element<Is, Args>::type>>()))...);
                                        os.get_back(i - Is)))...),
                enc.result());
          }
+	 */
          if constexpr (!std::is_same_v<R, void>) {
             if constexpr (std::is_same_v<Cls2, std::nullptr_t>) {
                R res = std::invoke(F, get_value<typename std::tuple_element<Is, Args>::type, Args>(
-                                            walloc, std::get<to_wasm_t<typename std::tuple_element<Is, Args>::type>>(
-                                                          os.get_back(i - Is)))...);
+                                            walloc, std::move(os.get_back(i - Is).get<to_wasm_t<typename std::tuple_element<Is, Args>::type>>()))...);
                os.trim(sizeof...(Is));
                os.push(resolve_result<R>(std::move(res), walloc));
             } else {
                R res = std::invoke(F, construct_derived<Cls2, Cls>::value(*self),
                                    get_value<typename std::tuple_element<Is, Args>::type, Args>(
-                                         walloc, std::get<to_wasm_t<typename std::tuple_element<Is, Args>::type>>(
-                                                       os.get_back(i - Is)))...);
+                                         walloc, std::move(os.get_back(i - Is).get<to_wasm_t<typename std::tuple_element<Is, Args>::type>>()))...);
                os.trim(sizeof...(Is));
                os.push(resolve_result<R>(std::move(res), walloc));
             }
          } else {
             if constexpr (std::is_same_v<Cls2, std::nullptr_t>) {
                std::invoke(F, get_value<typename std::tuple_element<Is, Args>::type, Args>(
-                                    walloc, std::get<to_wasm_t<typename std::tuple_element<Is, Args>::type>>(
-                                                  os.get_back(i - Is)))...);
+                                    walloc, std::move(os.get_back(i - Is).get<to_wasm_t<typename std::tuple_element<Is, Args>::type>>()))...);
             } else {
                std::invoke(F, construct_derived<Cls2, Cls>::value(*self),
                            get_value<typename std::tuple_element<Is, Args>::type, Args>(
-                                 walloc, std::get<to_wasm_t<typename std::tuple_element<Is, Args>::type>>(
-                                               os.get_back(i - Is)))...);
+                                 walloc, std::move(os.get_back(i - Is).get<to_wasm_t<typename std::tuple_element<Is, Args>::type>>()))...);
             }
             os.trim(sizeof...(Is));
          }
