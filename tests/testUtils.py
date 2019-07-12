@@ -44,7 +44,9 @@ class Utils:
         stackDepth=len(inspect.stack())-2
         s=' '*stackDepth
         stdout.write(s)
-        print(*args, **kwargs)
+        from inspect import currentframe, getframeinfo
+        frameinfo = getframeinfo(currentframe().f_back)
+        print(frameinfo.filename.replace(os.getcwd() + "/","") + ":" + str(frameinfo.lineno) + ":",*args, **kwargs)
 
     SyncStrategy=namedtuple("ChainSyncStrategy", "name id arg")
 
