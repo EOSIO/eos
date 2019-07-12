@@ -46,6 +46,7 @@ matrix:
             - libusb
             - openssl
             - boost@1.70
+            - ccache
 before_cache: |
   ./.cicd/travis-before-cache.sh
 before_install: |
