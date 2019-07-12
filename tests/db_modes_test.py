@@ -42,6 +42,7 @@ def run_and_kill(extraCmd="", killsig=signal.SIGTERM, preCmd=""):
             tries = tries - 1
             port = port + 1
     # now start nodeos
+    time.sleep(5)
     cmdArr= preCmd + nodeosCmd + " --http-server-address=127.0.0.1:" + str(port) + extraCmd
     print("port %d is free now, start to run nodeosCmd with extra parameter \"%s\"" % (port, extraCmd))
     proc=subprocess.Popen(cmdArr, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, preexec_fn=os.setsid)
