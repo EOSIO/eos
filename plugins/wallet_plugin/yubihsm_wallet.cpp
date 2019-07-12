@@ -15,8 +15,6 @@
 #include <boost/asio/posix/stream_descriptor.hpp>
 #include <boost/dll/runtime_symbol_info.hpp>
 
-#include <dlfcn.h>
-
 namespace eosio { namespace wallet {
 
 using namespace fc::crypto::r1;
