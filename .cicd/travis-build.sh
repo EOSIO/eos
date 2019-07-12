@@ -10,6 +10,7 @@ if [[ "$(uname)" == Darwin ]]; then
     cd build
     cmake ..
     make -j $CPU_CORES
+    ctest -j $CPU_CORES -LE _tests --output-on-failure -T Test # run unit tests
 else # linux
     echo 'Detected Linux, building in Docker.'
     echo "$ docker pull eosio/producer:ci-$IMAGE_TAG"
