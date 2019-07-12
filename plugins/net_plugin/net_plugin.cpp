@@ -853,6 +853,7 @@ namespace eosio {
    {
       fc_ilog( logger, "creating connection to ${n}", ("n", endpoint) );
       node_id.data()[0] = 0;
+      socket->set_option(tcp::socket::reuse_address(true));
    }
 
    connection::connection()
@@ -867,6 +868,7 @@ namespace eosio {
    {
       fc_ilog( logger, "accepted network connection" );
       node_id.data()[0] = 0;
+      socket->set_option(tcp::socket::reuse_address(true));
    }
 
    void connection::update_endpoints() {
@@ -962,6 +964,7 @@ namespace eosio {
          self->socket->close();
       }
       self->socket.reset( new tcp::socket( my_impl->thread_pool->get_executor() ) );
+      self->socket->set_option(tcp::socket::reuse_address(true));
       self->flush_queues();
       self->connecting = false;
       self->syncing = false;
