@@ -2,7 +2,7 @@
 
 Remme Protocol is a blockchain-based protocol focused on digital key and identity lifecycle management to resolve issues related to cybersecurity, IoT connectivity, data integrity, digital copyright protection, transparency etc.
 
-Some of the groundbreaking features of EOSIO include:
+Some of the groundbreaking features include:
 
 1. Free Rate Limited Transactions
 1. Low Latency Block confirmation (0.5 seconds)
@@ -21,7 +21,7 @@ Remme is neither launching nor operating any initial public blockchains based up
 There is no public testnet running currently.
 
 ## Supported Operating Systems
-EOSIO currently supports the following operating systems:  
+Remme Protocol currently supports the following operating systems:  
 1. Amazon Linux 2
 2. CentOS 7
 3. Ubuntu 16.04
