@@ -33,7 +33,7 @@ Remme Protocol currently supports the following operating systems:
 1. [Blog](https://medium.com/remme)
 1. [Developer Portal](https://docs.remme.io)
 1. [Community Telegram Group](https://t.me/remme)
-1. [Developer Telegram Group](https://t.me/joinchat/ERlbERXO0RcZo8RNqrY6QA)
+1. [Developer's Gitter Group](https://gitter.im/REMME-Tech)
 1. [Tech Paper](https://github.com/Remmeauth/Documentation/blob/master/RemmeProtocolTechPaper.md)
 
 <a name="gettingstarted"></a>
