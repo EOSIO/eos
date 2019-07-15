@@ -16,7 +16,6 @@ steps:
       - docker#v3.2.0:
           shell: ["/bin/bash", "-i", "-e", "-c"]
           debug: $DEBUG
-          mount-checkout: false
           image: "eosio/producer:ci-amazonlinux-2"
     timeout: $BUILD_TIMEOUT
     skip: $SKIP_AMAZON_LINUX_2
@@ -31,7 +30,6 @@ steps:
       - docker#v3.2.0:
           shell: ["/bin/bash", "-i", "-e", "-c"]
           debug: $DEBUG
-          mount-checkout: false
           image: "eosio/producer:ci-centos-7"
     timeout: $BUILD_TIMEOUT
     skip: $SKIP_CENTOS_7
@@ -46,7 +44,6 @@ steps:
       - docker#v3.2.0:
           shell: ["/bin/bash", "-i", "-e", "-c"]
           debug: $DEBUG
-          mount-checkout: false
           image: "eosio/producer:ci-ubuntu-16.04"
     timeout: $BUILD_TIMEOUT
     skip: $SKIP_UBUNTU_16
@@ -61,7 +58,6 @@ steps:
       - docker#v3.2.0:
           shell: ["/bin/bash", "-i", "-e", "-c"]
           debug: $DEBUG
-          mount-checkout: false
           image: "eosio/producer:ci-ubuntu-18.04"
     timeout: $BUILD_TIMEOUT
     skip: $SKIP_UBUNTU_18
