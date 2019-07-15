@@ -65,7 +65,7 @@ steps:
   - label: ":darwin: [Darwin] 10.14 Build"
     command:
       - "brew install git graphviz libtool gmp llvm@4 pkgconfig python python@2 doxygen libusb openssl boost@1.70"
-      - "git clone $BUILDKITE_HTTPS_REPO_URL eos && cd eos && git checkout $BUILDKITE_COMMIT && git submodule update --init --recursive"
+      - "git clone $BUILDKITE_REPO eos && cd eos && git checkout $BUILDKITE_COMMIT && git submodule update --init --recursive"
       - "cd eos && mkdir build && cd build && cmake .. && make -j$(getconf _NPROCESSORS_ONLN)"
       - "cd eos/build && cd /workdir/build && ctest -j$(getconf _NPROCESSORS_ONLN) -LE _tests --output-on-failure -T Test"
     plugins:
