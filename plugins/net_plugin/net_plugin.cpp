@@ -577,7 +577,7 @@ namespace eosio {
 
    public:
       boost::asio::io_context::strand           strand;
-      std::unique_ptr<tcp::socket>              socket; // only accessed through strand after construction
+      std::shared_ptr<tcp::socket>              socket; // only accessed through strand after construction
 
       fc::message_buffer<1024*1024>    pending_message_buffer;
       std::atomic<std::size_t>         outstanding_read_bytes{0}; // accessed only from strand threads
@@ -1123,7 +1123,7 @@ namespace eosio {
 
       strand.dispatch( [c{std::move(c)}, bufs{std::move(bufs)}, priority]() {
          boost::asio::async_write( *c->socket, bufs,
-            boost::asio::bind_executor( c->strand, [c, priority]( boost::system::error_code ec, std::size_t w ) {
+            boost::asio::bind_executor( c->strand, [c, socket=c->socket, priority]( boost::system::error_code ec, std::size_t w ) {
             try {
                // May have closed connection and cleared buffer_queue
                if( !c->socket_is_open() ) return;
@@ -2171,23 +2171,14 @@ namespace eosio {
       pending_message_buffer.reset();
       boost::asio::async_connect( *socket, endpoints,
          boost::asio::bind_executor( strand,
-               [resolver, c = shared_from_this()]( const boost::system::error_code& err, const tcp::endpoint& endpoint ) {
-            if( !err && c->socket->is_open() ) {
+               [resolver, c = shared_from_this(), socket=socket]( const boost::system::error_code& err, const tcp::endpoint& endpoint ) {
+            if( !err && socket->is_open() ) {
                if( c->start_session() ) {
                   c->send_handshake();
                }
             } else {
-//               if( endpoint_itr != tcp::resolver::iterator() ) {
-//                  c->strand.post( [resolver, c, endpoint_itr]() {
-//                     if( c->socket_is_open()) {
-//                        connection::_close( c.get(), false ); // close posts to strand, so also post connect otherwise connect can happen before close
-//                     }
-//                     c->connect( resolver, endpoint_itr );
-//                  } ) ;
-//               } else {
-                  fc_elog( logger, "connection failed to ${peer}: ${error}", ("peer", c->peer_name())( "error", err.message()));
-                  c->close( false );
-//               }
+               fc_elog( logger, "connection failed to ${peer}: ${error}", ("peer", c->peer_name())( "error", err.message()));
+               c->close( false );
             }
       } ) );
    }
@@ -2197,12 +2188,12 @@ namespace eosio {
       new_connection->connecting = true;
       new_connection->strand.post( [this, new_connection = std::move( new_connection )](){
          acceptor->async_accept( *new_connection->socket,
-            boost::asio::bind_executor( new_connection->strand, [new_connection, this]( boost::system::error_code ec ) {
+            boost::asio::bind_executor( new_connection->strand, [new_connection, socket=new_connection->socket, this]( boost::system::error_code ec ) {
             if( !ec ) {
                uint32_t visitors = 0;
                uint32_t from_addr = 0;
                boost::system::error_code rec;
-               const auto& paddr_add = new_connection->socket->remote_endpoint( rec ).address();
+               const auto& paddr_add = socket->remote_endpoint( rec ).address();
                string paddr_str;
                if( rec ) {
                   fc_elog( logger, "Error getting remote endpoint: ${m}", ("m", rec.message()));
@@ -2233,8 +2224,8 @@ namespace eosio {
                         fc_elog( logger, "Error max_client_count ${m} exceeded", ("m", max_client_count));
                      }
                      // new_connection never added to connections and start_session not called, lifetime will end
-                     new_connection->socket->shutdown( tcp::socket::shutdown_both );
-                     new_connection->socket->close();
+                     socket->shutdown( tcp::socket::shutdown_both );
+                     socket->close();
                   }
                }
             } else {
@@ -2316,7 +2307,7 @@ namespace eosio {
          boost::asio::async_read( *socket,
             pending_message_buffer.get_buffer_sequence_for_boost_async_read(), completion_handler,
             boost::asio::bind_executor( strand,
-            [conn = shared_from_this()]( boost::system::error_code ec, std::size_t bytes_transferred ) {
+              [conn = shared_from_this(), socket=socket]( boost::system::error_code ec, std::size_t bytes_transferred ) {
                // may have closed connection and cleared pending_message_buffer
                if( !conn->socket_is_open() ) return;
 
