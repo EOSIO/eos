@@ -922,11 +922,8 @@ namespace eosio {
       boost::asio::ip::tcp::no_delay nodelay( true );
       boost::system::error_code ec;
       socket->set_option( nodelay, ec );
-      boost::system::error_code ec2;
-      socket->set_option(tcp::socket::reuse_address(true), ec2);
-
-      if( ec || ec2 ) {
-         fc_elog( logger, "connection failed (set_option) ${peer}: ${e1}, ${e2}", ("peer", peer_name())( "e1", ec.message() )("e2", ec2.message()) );
+      if( ec ) {
+         fc_elog( logger, "connection failed (set_option) ${peer}: ${e1}", ("peer", peer_name())( "e1", ec.message() ) );
          close();
          return false;
       } else {
