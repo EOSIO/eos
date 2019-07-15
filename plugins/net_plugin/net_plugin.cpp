@@ -634,7 +634,7 @@ namespace eosio {
       void populate_handshake( handshake_message& hello );
 
       bool resolve_and_connect();
-      void connect(const std::shared_ptr<tcp::resolver>& resolver, tcp::resolver::iterator endpoint_itr);
+      void connect( const std::shared_ptr<tcp::resolver>& resolver, tcp::resolver::results_type endpoints );
       void start_read_message();
 
       /** \brief Process the next message from the pending message buffer
@@ -2148,11 +2148,11 @@ namespace eosio {
          auto resolver = std::make_shared<tcp::resolver>( my_impl->thread_pool->get_executor() );
          connection_wptr weak_conn = c;
          resolver->async_resolve( query, boost::asio::bind_executor( c->strand,
-            [resolver, weak_conn]( const boost::system::error_code& err, tcp::resolver::iterator endpoint_itr ) {
+            [resolver, weak_conn]( const boost::system::error_code& err, tcp::resolver::results_type endpoints ) {
                auto c = weak_conn.lock();
                if( !c ) return;
                if( !err ) {
-                  c->connect( resolver, endpoint_itr );
+                  c->connect( resolver, endpoints );
                } else {
                   fc_elog( logger, "Unable to resolve ${add}: ${error}", ("add", c->peer_name())( "error", err.message() ) );
                   ++c->consecutive_immediate_connection_close;
@@ -2163,32 +2163,31 @@ namespace eosio {
    }
 
    // called from connection strand
-   void connection::connect( const std::shared_ptr<tcp::resolver>& resolver, tcp::resolver::iterator endpoint_itr ) {
+   void connection::connect( const std::shared_ptr<tcp::resolver>& resolver, tcp::resolver::results_type endpoints ) {
       if( no_retry != go_away_reason::no_reason) {
          return;
       }
-      auto current_endpoint = *endpoint_itr;
-      ++endpoint_itr;
       connecting = true;
       pending_message_buffer.reset();
-      socket->async_connect( current_endpoint,
-            boost::asio::bind_executor( strand, [resolver, c = shared_from_this(), endpoint_itr]( const boost::system::error_code& err ) {
+      boost::asio::async_connect( *socket, endpoints,
+         boost::asio::bind_executor( strand,
+               [resolver, c = shared_from_this()]( const boost::system::error_code& err, const tcp::endpoint& endpoint ) {
             if( !err && c->socket->is_open() ) {
                if( c->start_session() ) {
                   c->send_handshake();
                }
             } else {
-               if( endpoint_itr != tcp::resolver::iterator() ) {
-                  c->strand.post( [resolver, c, endpoint_itr]() {
-                     if( c->socket_is_open()) {
-                        connection::_close( c.get(), false ); // close posts to strand, so also post connect otherwise connect can happen before close
-                     }
-                     c->connect( resolver, endpoint_itr );
-                  } ) ;
-               } else {
+//               if( endpoint_itr != tcp::resolver::iterator() ) {
+//                  c->strand.post( [resolver, c, endpoint_itr]() {
+//                     if( c->socket_is_open()) {
+//                        connection::_close( c.get(), false ); // close posts to strand, so also post connect otherwise connect can happen before close
+//                     }
+//                     c->connect( resolver, endpoint_itr );
+//                  } ) ;
+//               } else {
                   fc_elog( logger, "connection failed to ${peer}: ${error}", ("peer", c->peer_name())( "error", err.message()));
                   c->close( false );
-               }
+//               }
             }
       } ) );
    }
