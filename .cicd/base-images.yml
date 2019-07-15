@@ -8,7 +8,7 @@ steps:
 
   - label: ":aws: [Amazon] 2 Ensure Docker Image"
     command:
-      - "pwd"
+      - "/workdir/.cicd/generate-base-images.sh"
     agents:
       queue: "automation-large-builder-fleet"
     plugins:
