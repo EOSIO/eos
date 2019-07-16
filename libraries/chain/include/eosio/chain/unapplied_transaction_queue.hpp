@@ -7,6 +7,7 @@
 
 #include <eosio/chain/transaction_metadata.hpp>
 #include <eosio/chain/block_state.hpp>
+#include <eosio/chain/exceptions.hpp>
 
 #include <boost/multi_index_container.hpp>
 #include <boost/multi_index/sequenced_index.hpp>
@@ -64,8 +65,16 @@ class unapplied_transaction_queue {
    > unapplied_trx_queue_type;
 
    unapplied_trx_queue_type queue;
+   bool only_track_persisted = false;
 
 public:
+
+   void set_only_track_persisted( bool v ) {
+      if( v ) {
+         EOS_ASSERT( empty(), "set_only_track_persisted queue required to be empty" );
+      }
+      only_track_persisted = v;
+   }
 
    bool empty() const {
       return queue.empty();
@@ -103,6 +112,7 @@ public:
    }
 
    void add_forked( const branch_type& forked_branch ) {
+      if( only_track_persisted ) return;
       // forked_branch is in reverse order
       for( auto ritr = forked_branch.rbegin(), rend = forked_branch.rend(); ritr != rend; ++ritr ) {
          const block_state_ptr& bsptr = *ritr;
@@ -115,7 +125,7 @@ public:
    }
 
    void add_aborted( std::vector<transaction_metadata_ptr> aborted_trxs ) {
-      if( aborted_trxs.empty() ) return;
+      if( aborted_trxs.empty() || only_track_persisted ) return;
       for( auto& trx : aborted_trxs ) {
          fc::time_point expiry = trx->packed_trx()->expiration();
          queue.insert( { std::move( trx ), expiry, trx_enum_type::aborted } );
@@ -138,6 +148,10 @@ public:
 
    iterator begin() { return queue.get<by_type>().begin(); }
    iterator end() { return queue.get<by_type>().end(); }
+
+   iterator persisted_begin() { return queue.get<by_type>().lower_bound( persisted ); }
+   iterator persisted_end() { return queue.get<by_type>().upper_bound( persisted ); }
+
    iterator erase( iterator itr ) { return queue.get<by_type>().erase( itr ); }
 
 };
