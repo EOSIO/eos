@@ -1615,6 +1615,12 @@ namespace eosio {
          return;
       }
 
+      request_message req;
+      req.req_blocks.mode = catch_up;
+      req.req_trx.mode = none;
+      c->enqueue( req );
+      /*
+
       bool catch_up_req_sent = false;
       if (head < msg.head_num ) {
          fc_dlog(logger, "sync check state 3");
@@ -1639,6 +1645,7 @@ namespace eosio {
          req.req_trx.mode = none;
          c->enqueue( req );
       }
+       */
    }
 
    bool sync_manager::verify_catchup(const connection_ptr& c, uint32_t num, const block_id_type& id) {
