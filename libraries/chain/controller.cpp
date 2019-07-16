@@ -168,14 +168,14 @@ struct pending_state {
       return _block_stage.get<completed_block>()._block_state->block->transactions;
    }
 
-   const vector<transaction_metadata_ptr>& get_trx_metas()const {
+   vector<transaction_metadata_ptr> extract_trx_metas() {
       if( _block_stage.contains<building_block>() )
-         return _block_stage.get<building_block>()._pending_trx_metas;
+         return std::move( _block_stage.get<building_block>()._pending_trx_metas );
 
       if( _block_stage.contains<assembled_block>() )
-         return _block_stage.get<assembled_block>()._trx_metas;
+         return std::move( _block_stage.get<assembled_block>()._trx_metas );
 
-      return _block_stage.get<completed_block>()._block_state->trxs;
+      return std::move( _block_stage.get<completed_block>()._block_state->trxs );
    }
 
    bool is_protocol_feature_activated( const digest_type& feature_digest )const {
@@ -236,13 +236,6 @@ struct controller_impl {
    map< account_name, map<handler_key, apply_handler> >   apply_handlers;
    unordered_map< builtin_protocol_feature_t, std::function<void(controller_impl&)>, enum_hash<builtin_protocol_feature_t> > protocol_feature_activation_handlers;
 
-   /**
-    *  Transactions that were undone by pop_block or abort_block, transactions
-    *  are removed from this list if they are re-applied in other blocks. Producers
-    *  can query this list when scheduling new transactions into blocks.
-    */
-   unapplied_transactions_type     unapplied_transactions;
-
    void pop_block() {
       auto prev = fork_db.get_block( head->header.previous );
 
@@ -258,8 +251,6 @@ struct controller_impl {
 
       if ( read_mode == db_read_mode::SPECULATIVE ) {
          EOS_ASSERT( head->block, block_validate_exception, "attempting to pop a block that was sparsely loaded from a snapshot");
-         for( const auto& t : head->trxs )
-            unapplied_transactions[t->signed_id()] = t;
       }
 
       head = prev;
@@ -1385,9 +1376,6 @@ struct controller_impl {
                trx_context.squash();
             }
 
-            if (!trx->implicit) {
-               unapplied_transactions.erase( trx->signed_id() );
-            }
             return trace;
          } catch( const disallowed_transaction_extensions_bad_block_exception& ) {
             throw;
@@ -1397,10 +1385,6 @@ struct controller_impl {
             trace->error_code = controller::convert_exception_to_error_code( e );
             trace->except = e;
             trace->except_ptr = std::current_exception();
-         }
-
-         if (!failure_is_subjective(*trace->except)) {
-            unapplied_transactions.erase( trx->signed_id() );
          }
 
          emit( self.accepted_transaction, trx );
@@ -1836,7 +1820,7 @@ struct controller_impl {
       } );
    }
 
-   void push_block( std::future<block_state_ptr>& block_state_future ) {
+   branch_type push_block( std::future<block_state_ptr>& block_state_future ) {
       controller::block_status s = controller::block_status::complete;
       EOS_ASSERT(!pending, block_validate_exception, "it is not valid to push a block when there is a pending block");
 
@@ -1858,9 +1842,10 @@ struct controller_impl {
          emit( self.accepted_block_header, bsp );
 
          if( read_mode != db_read_mode::IRREVERSIBLE ) {
-            maybe_switch_forks( fork_db.pending_head(), s );
+            return maybe_switch_forks( fork_db.pending_head(), s );
          } else {
             log_irreversible();
+            return {};
          }
 
       } FC_LOG_AND_RETHROW( )
@@ -1916,8 +1901,9 @@ struct controller_impl {
       } FC_LOG_AND_RETHROW( )
    }
 
-   void maybe_switch_forks( const block_state_ptr& new_head, controller::block_status s ) {
+   branch_type maybe_switch_forks( const block_state_ptr& new_head, controller::block_status s ) {
       bool head_changed = true;
+      branch_type unapplied_branch;
       if( new_head->header.previous == head->id ) {
          try {
             apply_block( new_head, s );
@@ -1976,6 +1962,8 @@ struct controller_impl {
             } // end if exception
          } /// end for each block in branch
 
+         unapplied_branch = std::move( branches.second );
+
          ilog("successfully switched fork to new head ${new_head_id}", ("new_head_id", new_head->id));
       } else {
          head_changed = false;
@@ -1983,17 +1971,20 @@ struct controller_impl {
 
       if( head_changed )
          log_irreversible();
+
+      return unapplied_branch;
    } /// push_block
 
-   void abort_block() {
+   vector<transaction_metadata_ptr> abort_block() {
+      vector<transaction_metadata_ptr> applied_trxs;
       if( pending ) {
          if ( read_mode == db_read_mode::SPECULATIVE ) {
-            for( const auto& t : pending->get_trx_metas() )
-               unapplied_transactions[t->signed_id()] = t;
+            applied_trxs = pending->extract_trx_metas();
          }
          pending.reset();
          protocol_features.popped_blocks_to( head->block_num );
       }
+      return applied_trxs;
    }
 
    checksum256_type calculate_action_merkle() {
@@ -2500,8 +2491,8 @@ void controller::commit_block() {
    my->commit_block(true);
 }
 
-void controller::abort_block() {
-   my->abort_block();
+vector<transaction_metadata_ptr> controller::abort_block() {
+   return my->abort_block();
 }
 
 boost::asio::io_context& controller::get_thread_pool() {
@@ -2512,10 +2503,10 @@ std::future<block_state_ptr> controller::create_block_state_future( const signed
    return my->create_block_state_future( b );
 }
 
-void controller::push_block( std::future<block_state_ptr>& block_state_future ) {
+branch_type controller::push_block( std::future<block_state_ptr>& block_state_future ) {
    validate_db_available_size();
    validate_reversible_available_size();
-   my->push_block( block_state_future );
+   return my->push_block( block_state_future );
 }
 
 transaction_trace_ptr controller::push_transaction( const transaction_metadata_ptr& trx, fc::time_point deadline, uint32_t billed_cpu_time_us ) {
@@ -2760,10 +2751,6 @@ void controller::write_snapshot( const snapshot_writer_ptr& snapshot ) const {
    return my->add_to_snapshot(snapshot);
 }
 
-void controller::pop_block() {
-   my->pop_block();
-}
-
 int64_t controller::set_proposed_producers( vector<producer_key> producers ) {
    const auto& gpo = get_global_properties();
    auto cur_block_num = head_block_num() + 1;
@@ -2929,14 +2916,6 @@ const account_object& controller::get_account( account_name name )const
 { try {
    return my->db.get<account_object, by_name>(name);
 } FC_CAPTURE_AND_RETHROW( (name) ) }
-
-unapplied_transactions_type& controller::get_unapplied_transactions() {
-   if ( my->read_mode != db_read_mode::SPECULATIVE ) {
-      EOS_ASSERT( my->unapplied_transactions.empty(), transaction_exception,
-                  "not empty unapplied_transactions in non-speculative mode" ); //should never happen
-   }
-   return my->unapplied_transactions;
-}
 
 bool controller::sender_avoids_whitelist_blacklist_enforcement( account_name sender )const {
    return my->sender_avoids_whitelist_blacklist_enforcement( sender );
