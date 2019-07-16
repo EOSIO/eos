@@ -61,7 +61,7 @@ void compute_and_print_timer_accuracy(checktime_timer& timer) {
 
    ilog("Checktime timer accuracy: " TIMER_STATS_FORMAT, TIMER_STATS);
    if(bacc::mean(samples) + sqrt(bacc::variance(samples))*2 > 250)
-      wlog("Checktime timer accuracy on this platform and hardware combination is poor; subjective billing accuracy may suffer");
+      wlog("Checktime timer accuracy on this platform and hardware combination is poor; accuracy of subjective transaction deadline enforcement will suffer");
 
    once_is_enough = true;
 }
