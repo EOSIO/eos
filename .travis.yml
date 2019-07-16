@@ -45,6 +45,8 @@ matrix:
             - openssl
             - boost@1.70
             - ccache
+      env: 
+        - PATH='/foo/bar/fizz:$PATH'
 script: |
   #./.cicd/travis-build.sh
   echo "$PATH"
