@@ -11,7 +11,7 @@ steps:
     build:
       commit: "${BUILDKITE_COMMIT}"
       branch: "${BUILDKITE_BRANCH}"
-      
+
   - wait
 
   - label: ":aws: [Amazon] 2 Build"
@@ -24,7 +24,7 @@ steps:
       - docker#v3.2.0:
           shell: ["/bin/bash", "-i", "-e", "-c"]
           debug: $DEBUG
-          image: "eosio/producer:ci-amazonlinux-2"
+          image: "eosio/producer:ci-amazonlinux-2-266a1fe17771b1c1e9aeb3087516dbe8570e0e25"
     timeout: $BUILD_TIMEOUT
     skip: $SKIP_AMAZON_LINUX_2
 
@@ -38,7 +38,7 @@ steps:
       - docker#v3.2.0:
           shell: ["/bin/bash", "-i", "-e", "-c"]
           debug: $DEBUG
-          image: "eosio/producer:ci-centos-7"
+          image: "eosio/producer:ci-centos-7-9b1b0f1e15eba74234860434ebd82b93b23dd1de"
     timeout: $BUILD_TIMEOUT
     skip: $SKIP_CENTOS_7
 
@@ -52,7 +52,7 @@ steps:
       - docker#v3.2.0:
           shell: ["/bin/bash", "-i", "-e", "-c"]
           debug: $DEBUG
-          image: "eosio/producer:ci-ubuntu-16.04"
+          image: "eosio/producer:ci-ubuntu-16.04-0b3d8a452a4dd471d073d12d7e5971e2416d0536"
     timeout: $BUILD_TIMEOUT
     skip: $SKIP_UBUNTU_16
 
@@ -66,7 +66,7 @@ steps:
       - docker#v3.2.0:
           shell: ["/bin/bash", "-i", "-e", "-c"]
           debug: $DEBUG
-          image: "eosio/producer:ci-ubuntu-18.04"
+          image: "eosio/producer:ci-ubuntu-18.04-254c25845ae6f00c8c4c63a90a5f49e7e61b5662"
     timeout: $BUILD_TIMEOUT
     skip: $SKIP_UBUNTU_18
 
