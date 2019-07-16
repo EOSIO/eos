@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -eo pipefail
 
+[[ -z $1 ]] && echo "Must provide the distro IMAGE_TAG name (example: ubuntu-18.04" && exit 1
+export IMAGE_TAG=$1
+
 function determine-hash() {
     # Determine the sha1 hash of all dockerfiles in the .cicd directory.
     [[ -z $1 ]] && echo "Please provide the files to be hashed (wildcards supported)" && exit 1
@@ -18,7 +21,7 @@ function determine-hash() {
 
 function generate_docker_image() {
     # If we cannot pull the image, we build and push it first.
-    echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+    # echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
     cd ./.cicd
     docker build -t eosio/producer:ci-${HASHED_IMAGE_TAG} -f ./${IMAGE_TAG}.dockerfile .
     docker push eosio/producer:ci-${HASHED_IMAGE_TAG}
