@@ -12,8 +12,6 @@
 
 namespace eosio { namespace chain {
 
-static checktime_timer_calibrate the_calibrate;
-
 struct checktime_timer::impl {
    timer_t timerid;
 
@@ -44,7 +42,7 @@ checktime_timer::checktime_timer() {
 
    FC_ASSERT(timer_create(CLOCK_REALTIME, &se, &my->timerid) == 0, "failed to create timer");
 
-   the_calibrate.do_calibrate(*this);
+   compute_and_print_timer_accuracy(*this);
 }
 
 checktime_timer::~checktime_timer() {
@@ -56,15 +54,11 @@ void checktime_timer::start(fc::time_point tp) {
       expired = 0;
       return;
    }
-   if(!the_calibrate.use_timer()) {
-      expired = 1;
-      return;
-   }
    fc::microseconds x = tp.time_since_epoch() - fc::time_point::now().time_since_epoch();
-   if(x.count() <= the_calibrate.timer_overhead())
+   if(x.count() <= 0)
       expired = 1;
    else {
-      struct itimerspec enable = {{0, 0}, {0, ((int)x.count()-the_calibrate.timer_overhead())*1000}};
+      struct itimerspec enable = {{0, 0}, {0, (int)x.count()*1000}};
       expired = 0;
       if(timer_settime(my->timerid, 0, &enable, NULL) != 0)
          expired = 1;

@@ -4,6 +4,7 @@
 #include <fc/time.hpp>
 #include <fc/fwd_impl.hpp>
 #include <fc/exception/exception.hpp>
+#include <fc/log/logger_config.hpp> //set_os_thread_name()
 
 #include <mutex>
 #include <thread>
@@ -18,8 +19,6 @@ static unsigned next_timerid;
 static unsigned refcount;
 static int kqueue_fd;
 static std::thread kevent_thread;
-
-static checktime_timer_calibrate the_calibrate;
 
 struct checktime_timer::impl {
    uint64_t timerid;
@@ -43,6 +42,7 @@ checktime_timer::checktime_timer() {
       FC_ASSERT(kevent64(kqueue_fd, &quit_event, 1, NULL, 0, KEVENT_FLAG_IMMEDIATE, NULL) == 0, "failed to create quit event");
 
       kevent_thread = std::thread([]() {
+         fc::set_os_thread_name("checktime");
          while(true) {
             struct kevent64_s anEvent;
             int c = kevent64(kqueue_fd, NULL, 0, &anEvent, 1, 0, NULL);
@@ -61,7 +61,7 @@ checktime_timer::checktime_timer() {
 
    my->timerid = next_timerid++;
 
-   the_calibrate.do_calibrate(*this);
+   compute_and_print_timer_accuracy(*this);
 }
 
 checktime_timer::~checktime_timer() {
@@ -81,16 +81,12 @@ void checktime_timer::start(fc::time_point tp) {
       expired = 0;
       return;
    }
-   if(!the_calibrate.use_timer()) {
-      expired = 1;
-      return;
-   }
    fc::microseconds x = tp.time_since_epoch() - fc::time_point::now().time_since_epoch();
-   if(x.count() <= the_calibrate.timer_overhead())
+   if(x.count() <= 0)
       expired = 1;
    else {
       struct kevent64_s aTimerEvent;
-      EV_SET64(&aTimerEvent, my->timerid, EVFILT_TIMER, EV_ADD|EV_ENABLE|EV_ONESHOT, NOTE_USECONDS|NOTE_CRITICAL, (int)x.count()-the_calibrate.timer_overhead(), (uint64_t)&expired, 0, 0);
+      EV_SET64(&aTimerEvent, my->timerid, EVFILT_TIMER, EV_ADD|EV_ENABLE|EV_ONESHOT, NOTE_USECONDS|NOTE_CRITICAL, (int)x.count(), (uint64_t)&expired, 0, 0);
 
       expired = 0;
       if(kevent64(kqueue_fd, &aTimerEvent, 1, NULL, 0, KEVENT_FLAG_IMMEDIATE, NULL) != 0)
