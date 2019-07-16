@@ -71,7 +71,7 @@ public:
 
    void set_only_track_persisted( bool v ) {
       if( v ) {
-         EOS_ASSERT( empty(), "set_only_track_persisted queue required to be empty" );
+         FC_ASSERT( empty(), "set_only_track_persisted queue required to be empty" );
       }
       only_track_persisted = v;
    }
@@ -149,8 +149,8 @@ public:
    iterator begin() { return queue.get<by_type>().begin(); }
    iterator end() { return queue.get<by_type>().end(); }
 
-   iterator persisted_begin() { return queue.get<by_type>().lower_bound( persisted ); }
-   iterator persisted_end() { return queue.get<by_type>().upper_bound( persisted ); }
+   iterator persisted_begin() { return queue.get<by_type>().lower_bound( trx_enum_type::persisted ); }
+   iterator persisted_end() { return queue.get<by_type>().upper_bound( trx_enum_type::persisted ); }
 
    iterator erase( iterator itr ) { return queue.get<by_type>().erase( itr ); }
 
