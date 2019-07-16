@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -eo pipefail
 
-[[ -z $1 ]] && echo "Must provide the distro IMAGE_TAG name (example: ubuntu-18.04" && exit 1
+[[ -z $1 ]] && echo "Must provide the distro IMAGE_TAG name (example: ubuntu-18.04) OR provide 'trigger' if this is the first step in a pipeline" && exit 1
 export IMAGE_TAG=$1
 
 function determine-hash() {

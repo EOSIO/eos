@@ -9,7 +9,7 @@ steps:
     command:
       - ".cicd/generate-base-images.sh amazonlinux-2"
     agents:
-      queue: "automation-eos-builder-fleet"
+      queue: "automation-eos-dockerhub-image-builder-fleet"
     timeout: $BUILD_TIMEOUT
     skip: $SKIP_AMAZON_LINUX_2
 
@@ -17,7 +17,7 @@ steps:
     command:
       - ".cicd/generate-base-images.sh centos-7"
     agents:
-      queue: "automation-eos-builder-fleet"
+      queue: "automation-eos-dockerhub-image-builder-fleet"
     timeout: $BUILD_TIMEOUT
     skip: $SKIP_CENTOS_7
 
@@ -25,7 +25,7 @@ steps:
     command:
       - ".cicd/generate-base-images.sh ubuntu-16.04"
     agents:
-      queue: "automation-eos-builder-fleet"
+      queue: "automation-eos-dockerhub-image-builder-fleet"
     timeout: $BUILD_TIMEOUT
     skip: $SKIP_UBUNTU_16
 
@@ -33,6 +33,6 @@ steps:
     command:
       - ".cicd/generate-base-images.sh ubuntu-18.04"
     agents:
-      queue: "automation-eos-builder-fleet"
+      queue: "automation-eos-dockerhub-image-builder-fleet"
     timeout: $BUILD_TIMEOUT
     skip: $SKIP_UBUNTU_18
