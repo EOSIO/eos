@@ -28,7 +28,6 @@ class transaction_metadata {
    private:
       const packed_transaction_ptr                               _packed_trx;
       const transaction_id_type                                  _id;
-      const transaction_id_type                                  _signed_id;
       mutable std::mutex                                         _signing_keys_future_mtx;
       mutable signing_keys_future_type                           _signing_keys_future;
 
@@ -45,15 +44,13 @@ class transaction_metadata {
 
       explicit transaction_metadata( const signed_transaction& t, uint32_t max_variable_sig_size = UINT32_MAX, packed_transaction::compression_type c = packed_transaction::compression_type::none )
             : _packed_trx( std::make_shared<packed_transaction>( t, c ) )
-            , _id( t.id() )
-            , _signed_id( digest_type::hash( *_packed_trx ) ) {
+            , _id( t.id() ) {
          check_variable_sig_size(max_variable_sig_size);
       }
 
       explicit transaction_metadata( const packed_transaction_ptr& ptrx, uint32_t max_variable_sig_size = UINT32_MAX )
             : _packed_trx( ptrx )
-            , _id( ptrx->id() )
-            , _signed_id( digest_type::hash( *_packed_trx ) ) {
+            , _id( ptrx->id() ) {
          check_variable_sig_size(max_variable_sig_size);
       }
 
