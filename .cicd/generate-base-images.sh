@@ -21,6 +21,7 @@ function determine-hash() {
 
 function generate_docker_image() {
     # If we cannot pull the image, we build and push it first.
+    echo "PASSWORD: $DOCKER_PASSWORD"
     docker login -u "$DOCKER_USERNAME" -p $DOCKER_PASSWORD
     cd ./.cicd
     docker build -t eosio/producer:ci-${HASHED_IMAGE_TAG} -f ./${IMAGE_TAG}.dockerfile .
