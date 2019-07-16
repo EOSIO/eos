@@ -315,7 +315,7 @@ namespace eosio {
                if( handler_itr != url_handlers.end()) {
                   con->defer_http_response();
                   bytes_in_flight += body.size();
-                  app().post( appbase::priority::low+1,
+                  app().post( appbase::priority::low,
                               [&ioc = thread_pool->get_executor(), &bytes_in_flight = this->bytes_in_flight, handler_itr,
                                resource{std::move( resource )}, body{std::move( body )}, con]() {
                      try {
