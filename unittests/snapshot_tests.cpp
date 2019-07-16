@@ -261,6 +261,85 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_replay_over_snapshot, SNAPSHOT_SUITE, snapsho
    BOOST_REQUIRE_EQUAL(expected_post_integrity_hash.str(), snap_chain.control->calculate_integrity_hash().str());
 }
 
+namespace {
+   void variant_diff_helper(const fc::variant& lhs, const fc::variant& rhs, std::function<void(const std::string&, const fc::variant&, const fc::variant&)>&& out){
+      if (lhs.get_type() != rhs.get_type()) {
+         out("", lhs, rhs);
+      } else if (lhs.is_object() ) {
+         const auto& l_obj = lhs.get_object();
+         const auto& r_obj = rhs.get_object();
+         static const std::string sep = ".";
+
+         // test keys from LHS
+         std::set<std::string_view> keys;
+         for (const auto& entry: l_obj) {
+            const auto& l_val = entry.value();
+            const auto& r_iter = r_obj.find(entry.key());
+            if (r_iter == r_obj.end()) {
+               out(sep + entry.key(), l_val, fc::variant());
+            } else {
+               const auto& r_val = r_iter->value();
+               variant_diff_helper(l_val, r_val, [&out, &entry](const std::string& path, const fc::variant& lhs, const fc::variant& rhs){
+                  out(sep + entry.key() + path, lhs, rhs);
+               });
+            }
+
+            keys.insert(entry.key());
+         }
+
+         // print keys in RHS that were not tested
+         for (const auto& entry: r_obj) {
+            if (keys.find(entry.key()) != keys.end()) {
+               continue;
+            }
+            const auto& r_val = entry.value();
+            out(sep + entry.key(), fc::variant(), r_val);
+         }
+      } else if (lhs.is_array()) {
+         const auto& l_arr = lhs.get_array();
+         const auto& r_arr = rhs.get_array();
+
+         // diff common
+         auto common_count = std::min(l_arr.size(), r_arr.size());
+         for (size_t idx = 0; idx < common_count; idx++) {
+            const auto& l_val = l_arr.at(idx);
+            const auto& r_val = r_arr.at(idx);
+            variant_diff_helper(l_val, r_val, [&](const std::string& path, const fc::variant& lhs, const fc::variant& rhs){
+               out( std::string("[") + std::to_string(idx) + std::string("]") + path, lhs, rhs);
+            });
+         }
+
+         // print lhs additions
+         for (size_t idx = common_count; idx < lhs.size(); idx++) {
+            const auto& l_val = l_arr.at(idx);
+            out( std::string("[") + std::to_string(idx) + std::string("]"), l_val, fc::variant());
+         }
+
+         // print rhs additions
+         for (size_t idx = common_count; idx < rhs.size(); idx++) {
+            const auto& r_val = r_arr.at(idx);
+            out( std::string("[") + std::to_string(idx) + std::string("]"), fc::variant(), r_val);
+         }
+
+      } else if (!(lhs == rhs)) {
+         out("", lhs, rhs);
+      }
+   }
+
+   void print_variant_diff(const fc::variant& lhs, const fc::variant& rhs) {
+      variant_diff_helper(lhs, rhs, [](const std::string& path, const fc::variant& lhs, const fc::variant& rhs){
+         std::cout << path << std::endl;
+         if (!lhs.is_null()) {
+            std::cout << " < " << fc::json::to_pretty_string(lhs) << std::endl;
+         }
+
+         if (!rhs.is_null()) {
+            std::cout << " > " << fc::json::to_pretty_string(rhs) << std::endl;
+         }
+      });
+   }
+}
+
 BOOST_AUTO_TEST_CASE_TEMPLATE(test_compatible_versions, SNAPSHOT_SUITE, snapshot_suites)
 {
    tester chain(setup_policy::preactivate_feature_and_new_bios);
@@ -276,18 +355,26 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_compatible_versions, SNAPSHOT_SUITE, snapshot
    ///< End deterministic code to generate blockchain for comparison
    auto base_integrity_value = chain.control->calculate_integrity_hash();
 
+   // create a latest snapshot
+   auto base_writer = SNAPSHOT_SUITE::get_writer();
+   chain.control->write_snapshot(base_writer);
+   auto base = SNAPSHOT_SUITE::finalize(base_writer);
+
    {
       static_assert(chain_snapshot_header::minimum_compatible_version <= 2, "version 2 unit test is no longer needed.  Please clean up data files");
       auto v2 = SNAPSHOT_SUITE::template load_from_file<snapshots::snap_v2>();
       snapshotted_tester v2_tester(chain.get_config(), SNAPSHOT_SUITE::get_reader(v2), 0);
       auto v2_integrity_value = v2_tester.control->calculate_integrity_hash();
-
       BOOST_CHECK_EQUAL(v2_integrity_value.str(), base_integrity_value.str());
 
       // create a latest snapshot
       auto latest_writer = SNAPSHOT_SUITE::get_writer();
       v2_tester.control->write_snapshot(latest_writer);
       auto latest = SNAPSHOT_SUITE::finalize(latest_writer);
+
+      if (std::is_same_v<SNAPSHOT_SUITE, variant_snapshot_suite> && v2_integrity_value.str() != base_integrity_value.str()) {
+         print_variant_diff(base, latest);
+      }
 
       // load the latest snapshot
       snapshotted_tester latest_tester(chain.get_config(), SNAPSHOT_SUITE::get_reader(latest), 1);
