@@ -49,15 +49,6 @@ before_cache: |
   ./.cicd/travis-before-cache.sh
 before_install: |
   ./.cicd/travis-before-install.sh
-# DOCKER
-# script:
-# # - docker build -t eosio/ci:ubuntu-18.04 -f ./.cicd/ubuntu-18.04.dockerfile .
-# - docker build -t eosio/producer:ci-ubuntu-18.04 -f ./.cicd/ubuntu-18.04.dockerfile .
-# after_success:
-# - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-# # - docker push eosio/ci:ubuntu-18.04
-# - docker push eosio/producer:ci-ubuntu-18.04
-# EOSIO
 script: |
   ./.cicd/travis-build.sh
 notifications:
