@@ -12,7 +12,7 @@ else()
    if(POSIX_TIMER_TEST_RUN_RESULT EQUAL 0)
       set(CHECKTIME_TIMER_IMPL checktime_timer_posix.cpp)
    else()
-      set(CHECKTIME_TIMER_IMPL checktime_timer_dummy.cpp)
+      set(CHECKTIME_TIMER_IMPL checktime_timer_asio_fallback.cpp)
    endif()
 endif()
 
@@ -63,7 +63,7 @@ add_library( eosio_chain
              genesis_intrinsics.cpp
              whitelisted_intrinsics.cpp
              thread_utils.cpp
-             checktime_timer_calibrate.cpp
+             checktime_timer_accuracy.cpp
              ${CHECKTIME_TIMER_IMPL}
              ${HEADERS}
              )
