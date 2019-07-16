@@ -75,6 +75,7 @@ namespace eosio { namespace chain {
             bool                     disable_replay_opts    =  false;
             bool                     contracts_console      =  false;
             bool                     allow_ram_billing_in_notify = false;
+            uint32_t                 maximum_variable_signature_length = chain::config::default_max_variable_signature_length;
             bool                     disable_all_subjective_mitigations = false; //< for testing purposes only
 
             genesis_state            genesis;
@@ -234,6 +235,11 @@ namespace eosio { namespace chain {
          bool is_producing_block()const;
 
          bool is_ram_billing_in_notify_allowed()const;
+
+         //This is only an accessor to the user configured subjective limit: i.e. it does not do a
+         // check similar to is_ram_billing_in_notify_allowed() to check if controller is currently
+         // producing a block
+         uint32_t configured_subjective_signature_length_limit()const;
 
          void add_resource_greylist(const account_name &name);
          void remove_resource_greylist(const account_name &name);

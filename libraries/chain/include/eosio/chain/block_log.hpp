@@ -69,6 +69,8 @@ namespace eosio { namespace chain {
 
          static genesis_state extract_genesis_state( const fc::path& data_dir );
 
+         static void construct_index(const fc::path& block_file_name, const fc::path& index_file_name);
+
       private:
          void open(const fc::path& data_dir);
          void construct_index();

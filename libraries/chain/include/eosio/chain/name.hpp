@@ -93,8 +93,7 @@ namespace eosio::chain {
 namespace std {
    template<> struct hash<eosio::chain::name> : private hash<uint64_t> {
       typedef eosio::chain::name argument_type;
-      typedef typename hash<uint64_t>::result_type result_type;
-      result_type operator()(const argument_type& name) const noexcept
+      size_t operator()(const argument_type& name) const noexcept
       {
          return hash<uint64_t>::operator()(name.to_uint64_t());
       }
