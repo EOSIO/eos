@@ -31,7 +31,6 @@ function setup() {
         echo "CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}"
         echo "CORE_SYMBOL_NAME: ${CORE_SYMBOL_NAME}"
         echo "BOOST_LOCATION: ${BOOST_LOCATION}"
-        echo "INSTALL_LOCATION: ${INSTALL_LOCATION}"
         echo "BUILD_DIR: ${BUILD_DIR}"
         echo "EOSIO_INSTALL_DIR: ${EOSIO_INSTALL_DIR}"
         echo "NONINTERACTIVE: ${NONINTERACTIVE}"
@@ -53,8 +52,10 @@ function setup() {
     execute mkdir -p $VAR_DIR/log
     execute mkdir -p $ETC_DIR
     execute mkdir -p $LIB_DIR
-    execute mkdir -p $MONGODB_LOG_DIR
-    execute mkdir -p $MONGODB_DATA_DIR
+    if $ENABLE_MONGO; then
+        execute mkdir -p $MONGODB_LOG_DIR
+        execute mkdir -p $MONGODB_DATA_DIR
+    fi
 }
 
 function ensure-which() {
@@ -70,6 +71,34 @@ function ensure-which() {
       esac
     done
   fi
+}
+
+# Prompt user for installation directory.
+function install-directory-prompt() {
+    if [[ -z $INSTALL_LOCATION ]]; then
+        echo "No installation location was specified. Please provide the location where EOSIO is installed."
+        while true; do
+            [[ $NONINTERACTIVE == false ]] && printf "${COLOR_YELLOW}Do you wish to use the default location? ${EOSIO_INSTALL_DIR}? (y/n)${COLOR_NC}" && read -p " " PROCEED
+            echo ""
+            case $PROCEED in
+                "" )
+                echo "What would you like to do?";;
+                0 | true | [Yy]* )
+                break;;
+                1 | false | [Nn]* )
+                printf "Enter the desired installation location." && read -p " " EOSIO_INSTALL_DIR;
+                export EOSIO_INSTALL_DIR;
+                break;;
+                * ) echo "Please type 'y' for yes or 'n' for no.";;
+            esac
+        done
+    else
+        # Support relative paths : https://github.com/EOSIO/eos/issues/7560
+        [[ ! $INSTALL_LOCATION =~ ^\/ ]] && export INSTALL_LOCATION="${CURRENT_WORKING_DIR}/$INSTALL_LOCATION"
+        export EOSIO_INSTALL_DIR="$INSTALL_LOCATION"
+    fi
+    . ./scripts/.build_vars
+    echo "EOSIO will be installed to: ${EOSIO_INSTALL_DIR}"
 }
 
 function previous-install-prompt() {
@@ -121,8 +150,13 @@ function prompt-mongo-install() {
 }
 
 function ensure-compiler() {
-    export CXX=${CXX:-c++}
-    export CC=${CC:-cc}
+    # Support build-essentials on ubuntu
+    if [[ $NAME == "CentOS Linux" ]] || [[ $VERSION_ID == "16.04" ]] || ( $PIN_COMPILER && [[ $VERSION_ID == "18.04" ]] ); then
+        export CXX=${CXX:-'g++'}
+        export CC=${CC:-'gcc'}
+    fi
+    export CXX=${CXX:-'clang++'}
+    export CC=${CC:-'clang'}
     if $PIN_COMPILER || [[ -f $CLANG_ROOT/bin/clang++ ]]; then
         export PIN_COMPILER=true
         export BUILD_CLANG=true
@@ -130,20 +164,19 @@ function ensure-compiler() {
         export CC_COMP=$CLANG_ROOT/bin/clang
         export PATH=$CLANG_ROOT/bin:$PATH
     elif [[ $PIN_COMPILER == false ]]; then
-        which $CXX &>/dev/null || ( echo "${COLOR_RED}Unable to find compiler: Pass in the -P option if you wish for us to install it or install a C++17 compiler and set \$CXX and \$CC to the proper binary locations. ${COLOR_NC}"; exit 1 )
+        which $CXX &>/dev/null || ( echo "${COLOR_RED}Unable to find $CXX compiler: Pass in the -P option if you wish for us to install it or install a C++17 compiler and set \$CXX and \$CC to the proper binary locations. ${COLOR_NC}"; exit 1 )
         # readlink on mac differs from linux readlink (mac doesn't have -f)
         [[ $ARCH == "Linux" ]] && READLINK_COMMAND="readlink -f" || READLINK_COMMAND="readlink"
-        COMPILER_TYPE=$( eval $READLINK_COMMAND $(which $CXX) )
-        [[ -z "${COMPILER_TYPE}" ]] && echo "${COLOR_RED}COMPILER_TYPE not set!${COLOR_NC}" && exit 1
-        if [[ $COMPILER_TYPE =~ "clang" ]]; then
+        COMPILER_TYPE=$( eval $READLINK_COMMAND $(which $CXX) || true )
+        if [[ $CXX =~ "clang" ]] || [[ $COMPILER_TYPE =~ "clang" ]]; then
             if [[ $ARCH == "Darwin" ]]; then
                 ### Check for apple clang version 10 or higher
                 [[ $( $(which $CXX) --version | cut -d ' ' -f 4 | cut -d '.' -f 1 | head -n 1 ) -lt 10 ]] && export NO_CPP17=true
             else
                 if [[ $( $(which $CXX) --version | cut -d ' ' -f 3 | head -n 1 | cut -d '.' -f1) =~ ^[0-9]+$ ]]; then # Check if the version message cut returns an integer
-                    [[ $( $(which $CXX) --version | cut -d ' ' -f 3 | head -n 1 | cut -d '.' -f1) < 5 ]] && export NO_CPP17=true
+                    [[ $( $(which $CXX) --version | cut -d ' ' -f 3 | head -n 1 | cut -d '.' -f1) < 6 ]] && export NO_CPP17=true
                 elif [[ $(clang --version | cut -d ' ' -f 4 | head -n 1 | cut -d '.' -f1) =~ ^[0-9]+$ ]]; then # Check if the version message cut returns an integer
-                    [[ $( $(which $CXX) --version | cut -d ' ' -f 4 | cut -d '.' -f 1 | head -n 1 ) < 5 ]] && export NO_CPP17=true
+                    [[ $( $(which $CXX) --version | cut -d ' ' -f 4 | cut -d '.' -f 1 | head -n 1 ) < 6 ]] && export NO_CPP17=true
                 fi
             fi
         else
@@ -151,7 +184,7 @@ function ensure-compiler() {
             [[ $( $(which $CXX) -dumpversion | cut -d '.' -f 1 ) -lt 7 ]] && export NO_CPP17=true
             if [[ $NO_CPP17 == false ]]; then # https://github.com/EOSIO/eos/issues/7402
                 while true; do
-                    echo "${COLOR_YELLOW}WARNING: Your GCC compiler is less performant than clang (https://github.com/EOSIO/eos/issues/7402). We suggest running the build script with -P or install your own clang and try again. ${CXX}!${COLOR_NC}"
+                    echo "${COLOR_YELLOW}WARNING: Your GCC compiler ($CXX) is less performant than clang (https://github.com/EOSIO/eos/issues/7402). We suggest running the build script with -P or install your own clang and try again.${COLOR_NC}"
                     [[ $NONINTERACTIVE == false ]] && printf "${COLOR_YELLOW}Do you wish to proceed anyway? (y/n)?${COLOR_NC}" && read -p " " PROCEED
                     case $PROCEED in
                         "" ) echo "What would you like to do?";;
@@ -282,9 +315,10 @@ function build-clang() {
             && cd lld && git checkout $PINNED_COMPILER_LLD_COMMIT && cd ../ \
             && git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/polly.git \
             && cd polly && git checkout $PINNED_COMPILER_POLLY_COMMIT && cd ../ \
-            && git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/clang.git clang && cd clang/tools \
+            && git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/clang.git clang && cd clang \
             && git checkout $PINNED_COMPILER_CLANG_COMMIT \
-            && mkdir extra && cd extra \
+            && patch -p2 < \"$REPO_ROOT/scripts/clang-devtoolset8-support.patch\" \
+            && cd tools && mkdir extra && cd extra \
             && git clone --single-branch --branch $PINNED_COMPILER_BRANCH https://git.llvm.org/git/clang-tools-extra.git \
             && cd clang-tools-extra && git checkout $PINNED_COMPILER_CLANG_TOOLS_EXTRA_COMMIT && cd .. \
             && cd ../../../../projects \

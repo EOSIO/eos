@@ -131,6 +131,8 @@ namespace eosio { namespace testing {
 
          transaction_trace_ptr    push_transaction( packed_transaction& trx, fc::time_point deadline = fc::time_point::maximum(), uint32_t billed_cpu_time_us = DEFAULT_BILLED_CPU_TIME_US );
          transaction_trace_ptr    push_transaction( signed_transaction& trx, fc::time_point deadline = fc::time_point::maximum(), uint32_t billed_cpu_time_us = DEFAULT_BILLED_CPU_TIME_US, bool no_throw = false );
+
+         [[nodiscard]]
          action_result            push_action(action&& cert_act, uint64_t authorizer); // TODO/QUESTION: Is this needed?
 
          transaction_trace_ptr    push_action( const account_name& code,
@@ -376,8 +378,7 @@ namespace eosio { namespace testing {
       }
       controller::config vcfg;
 
-      static controller::config default_config() {
-         fc::temp_directory tempdir;
+      static controller::config default_config(fc::temp_directory& tempdir) {
          controller::config vcfg;
          vcfg.blocks_dir      = tempdir.path() / std::string("v_").append(config::default_blocks_dir_name);
          vcfg.state_dir  = tempdir.path() /  std::string("v_").append(config::default_state_dir_name);
@@ -400,7 +401,7 @@ namespace eosio { namespace testing {
       }
 
       validating_tester(const flat_set<account_name>& trusted_producers = flat_set<account_name>()) {
-         vcfg = default_config();
+         vcfg = default_config(tempdir);
 
          vcfg.trusted_producers = trusted_producers;
 

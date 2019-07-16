@@ -328,7 +328,8 @@ BOOST_FIXTURE_TEST_CASE( producer_schedule_reduction, tester ) try {
 } FC_LOG_AND_RETHROW()
 
 BOOST_AUTO_TEST_CASE( empty_producer_schedule_has_no_effect ) try {
-   validating_tester c( validating_tester::default_config() );
+   fc::temp_directory tempdir;
+   validating_tester c( validating_tester::default_config(tempdir) );
    c.execute_setup_policy( setup_policy::preactivate_feature_and_new_bios );
 
    c.create_accounts( {N(alice),N(bob),N(carol)} );

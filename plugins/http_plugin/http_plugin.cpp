@@ -29,10 +29,6 @@
 #include <memory>
 #include <regex>
 
-namespace fc {
-   extern std::unordered_map<std::string,logger>& get_logger_map();
-}
-
 const fc::string logger_name("http_plugin");
 fc::logger logger;
 
@@ -637,9 +633,7 @@ namespace eosio {
    }
 
    void http_plugin::handle_sighup() {
-      if( fc::get_logger_map().find( logger_name ) != fc::get_logger_map().end() ) {
-         logger = fc::get_logger_map()[logger_name];
-      }
+      fc::logger::update( logger_name, logger );
    }
 
    void http_plugin::plugin_shutdown() {

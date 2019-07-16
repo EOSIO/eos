@@ -591,7 +591,8 @@ BOOST_FIXTURE_TEST_CASE(require_notice_tests, TESTER) { try {
    } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_CASE(ram_billing_in_notify_tests) { try {
-   validating_tester chain( validating_tester::default_config() );
+   fc::temp_directory tempdir;
+   validating_tester chain( validating_tester::default_config(tempdir) );
    chain.execute_setup_policy( setup_policy::preactivate_feature_and_new_bios );
 
    chain.produce_blocks(2);
@@ -1319,7 +1320,8 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
 } FC_LOG_AND_RETHROW() }
 
 BOOST_AUTO_TEST_CASE(more_deferred_transaction_tests) { try {
-   auto cfg = validating_tester::default_config();
+   fc::temp_directory tempdir;
+   auto cfg = validating_tester::default_config(tempdir);
    cfg.contracts_console = true;
    validating_tester chain( cfg );
    chain.execute_setup_policy( setup_policy::preactivate_feature_and_new_bios );
