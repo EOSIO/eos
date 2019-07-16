@@ -23,7 +23,7 @@ namespace eosio { namespace chain {
 
 using namespace boost::multi_index;
 
-enum trx_enum_type {
+enum class trx_enum_type {
    unknown = 0,
    persisted = 1,
    forked = 2,
@@ -33,7 +33,7 @@ enum trx_enum_type {
 struct unapplied_transaction {
    const transaction_metadata_ptr trx_meta;
    const fc::time_point           expiry;
-   trx_enum_type                  trx_type = unknown;
+   trx_enum_type                  trx_type = trx_enum_type::unknown;
 
    const transaction_id_type& id()const { return trx_meta->id(); }
 
@@ -49,14 +49,14 @@ struct unapplied_transaction {
  */
 class unapplied_transaction_queue {
 
-   struct by_id;
+   struct by_trx_id;
    struct by_type;
    struct by_expiry;
 
    typedef multi_index_container< unapplied_transaction,
       indexed_by<
          sequenced<>,
-         hashed_unique< tag<by_id>,
+         hashed_unique< tag<by_trx_id>,
                const_mem_fun<unapplied_transaction, const transaction_id_type&, &unapplied_transaction::id>
          >,
          ordered_non_unique< tag<by_type>, member<unapplied_transaction, trx_enum_type, &unapplied_transaction::trx_type> >,
@@ -81,13 +81,13 @@ public:
    }
 
    bool contains_persisted()const {
-      return queue.get<by_type>().find( persisted ) != queue.get<by_type>().end();
+      return queue.get<by_type>().find( trx_enum_type::persisted ) != queue.get<by_type>().end();
    }
 
    bool is_persisted(const transaction_metadata_ptr& trx)const {
-      auto itr = queue.get<by_id>().find( trx->id() );
-      if( itr == queue.get<by_id>().end() ) return false;
-      return itr->trx_type == persisted;
+      auto itr = queue.get<by_trx_id>().find( trx->id() );
+      if( itr == queue.get<by_trx_id>().end() ) return false;
+      return itr->trx_type == trx_enum_type::persisted;
    }
 
    template <typename Func>
@@ -103,14 +103,14 @@ public:
       return true;
    }
 
-   void add_forked( branch_type forked_branch ) {
+   void add_forked( const branch_type& forked_branch ) {
       // forked_branch is in reverse order
       for( auto ritr = forked_branch.rbegin(), rend = forked_branch.rend(); ritr != rend; ++ritr ) {
-         block_state_ptr& bsptr = *ritr;
+         const block_state_ptr& bsptr = *ritr;
          for( auto itr = bsptr->trxs.begin(), end = bsptr->trxs.end(); itr != end; ++itr ) {
             const auto& trx = *itr;
             fc::time_point expiry = trx->packed_trx()->expiration();
-            queue.push_back( { trx, std::move( expiry ), forked } );
+            queue.push_back( { trx, expiry, trx_enum_type::forked } );
          }
       }
    }
@@ -119,18 +119,18 @@ public:
       if( aborted_trxs.empty() ) return;
       for( auto& trx : aborted_trxs ) {
          fc::time_point expiry = trx->packed_trx()->expiration();
-         queue.push_back( { std::move( trx ), std::move( expiry ), aborted } );
+         queue.push_back( { std::move( trx ), expiry, trx_enum_type::aborted } );
       }
    }
 
    void add_persisted( const transaction_metadata_ptr& trx ) {
-      auto itr = queue.get<by_id>().find( trx->id() );
-      if( itr == queue.get<by_id>().end() ) {
+      auto itr = queue.get<by_trx_id>().find( trx->id() );
+      if( itr == queue.get<by_trx_id>().end() ) {
          fc::time_point expiry = trx->packed_trx()->expiration();
-         queue.push_back( { trx, std::move( expiry ), persisted } );
-      } else if( itr->trx_type != persisted ) {
-         queue.get<by_id>().modify( itr, [](auto& un){
-            un.trx_type = persisted;
+         queue.push_back( { trx, expiry, trx_enum_type::persisted } );
+      } else if( itr->trx_type != trx_enum_type::persisted ) {
+         queue.get<by_trx_id>().modify( itr, [](auto& un){
+            un.trx_type = trx_enum_type::persisted;
          } );
       }
    }

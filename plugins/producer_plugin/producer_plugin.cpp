@@ -1454,7 +1454,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
       exhausted = !_unapplied_transactions.clear_expired( pending_block_time, preprocess_deadline,
                      [&num_expired_persistent, pbm = _pending_block_mode,
                       &chain, has_producers = !_producers.empty()]( const transaction_id_type& txid, trx_enum_type trx_type ) {
-               if( trx_type == persisted ) {
+               if( trx_type == trx_enum_type::persisted ) {
                   if( pbm == pending_block_mode::producing ) {
                      fc_dlog( _trx_trace_log,
                               "[TRX_TRACE] Block ${block_num} for producer ${prod} is EXPIRING PERSISTED tx: ${txid}",
