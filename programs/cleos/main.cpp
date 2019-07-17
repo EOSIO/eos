@@ -3015,10 +3015,14 @@ int main( int argc, char** argv ) {
         std::string wasm;
         fc::path cpath = fc::canonical(fc::path(contractPath));
 
-        if( wasmPath.empty() )
+        if( wasmPath.empty() ) {
            wasmPath = (cpath / (cpath.filename().generic_string()+".wasm")).generic_string();
-        else
-           wasmPath = (cpath / wasmPath).generic_string();
+        } else {
+           fc::path wasm_path = fc::path( wasmPath );
+           if( wasm_path != fc::canonical(wasm_path) ) {
+              wasmPath = (cpath / wasmPath).generic_string();
+           }
+        }
 
         std::cerr << localized(("Reading WASM from " + wasmPath + "...").c_str()) << std::endl;
         fc::read_file_contents(wasmPath, wasm);
@@ -3071,7 +3075,10 @@ int main( int argc, char** argv ) {
         if( abiPath.empty() ) {
            abiPath = (cpath / (cpath.filename().generic_string()+".abi")).generic_string();
         } else {
-           abiPath = (cpath / abiPath).generic_string();
+           fc::path abi_path = fc::path( abiPath );
+           if( abi_path != fc::canonical(abi_path) ) {
+              abiPath = (cpath / abiPath).generic_string();
+           }
         }
 
         EOS_ASSERT( fc::exists( abiPath ), abi_file_not_found, "no abi file found ${f}", ("f", abiPath)  );
