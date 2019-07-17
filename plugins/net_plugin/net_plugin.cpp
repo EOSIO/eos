@@ -441,8 +441,25 @@ namespace eosio {
    constexpr uint16_t proto_base = 0;
    constexpr uint16_t proto_explicit_sync = 1;
    constexpr uint16_t block_id_notify = 2;
+   constexpr uint16_t proto_topology = 3;
 
-   constexpr uint16_t net_version = block_id_notify;
+   constexpr uint16_t net_version = proto_topology;
+
+   constexpr auto  time_placeholder = "-*-TIME-*-";
+   constexpr auto  topology_enabler = "topo:";
+   constexpr size_t   time_placeholder_len = 10; //strlen(time_placeholder);
+
+   /** \brief Read system time and convert to a 64 bit integer.
+    *
+    * There are only two calls on this routine in the program.  One
+    * when a packet arrives from the network and the other when a
+    * packet is placed on the send queue.  Calls the kernel time of
+    * day routine and converts to a (at least) 64 bit integer.
+    */
+   static tstamp get_tstamp() {
+      return std::chrono::system_clock::now().time_since_epoch().count();
+   }
+   /** @} */
 
    /**
     * Index by start_block_num
@@ -508,17 +525,24 @@ namespace eosio {
          return true;
       }
 
-      void fill_out_buffer( std::vector<boost::asio::const_buffer>& bufs ) {
+      void fill_out_buffer( std::vector<boost::asio::const_buffer>& bufs,
+                            uint32_t& bytes,
+                            uint32_t&msgs,
+                            int do_xmt_time ) {
          std::lock_guard<std::mutex> g( _mtx );
+         bytes = _write_queue_size;
          if( _sync_write_queue.size() > 0 ) { // always send msgs from sync_write_queue first
-            fill_out_buffer( bufs, _sync_write_queue );
+            msgs = _sync_write_queue.size();
+            fill_out_buffer( bufs, _sync_write_queue, 0 );
          } else { // postpone real_time write_queue if sync queue is not empty
-            fill_out_buffer( bufs, _write_queue );
+            msgs = _write_queue.size();
+            fill_out_buffer( bufs, _write_queue, do_xmt_time );
             EOS_ASSERT( _write_queue_size == 0, plugin_exception, "write queue size expected to be zero" );
          }
+
       }
 
-      void out_callback( boost::system::error_code ec, std::size_t w ) {
+     void out_callback( boost::system::error_code ec, std::size_t w ) {
          std::lock_guard<std::mutex> g( _mtx );
          for( auto& m : _out_queue ) {
             m.callback( ec, w );
@@ -528,12 +552,36 @@ namespace eosio {
    private:
       struct queued_write;
       void fill_out_buffer( std::vector<boost::asio::const_buffer>& bufs,
-                            deque<queued_write>& w_queue ) {
+                            deque<queued_write>& w_queue, int do_xmt_time ) {
+
+         constexpr size_t header_size = sizeof(uint32_t);
+         constexpr size_t time_data_offset = time_placeholder_len + header_size;
+         constexpr size_t time_msg_size = time_data_offset + sizeof(time_message);
          while ( w_queue.size() > 0 ) {
             auto& m = w_queue.front();
+            size_t msize = m.buff->size();
+            if (do_xmt_time &&
+                m.buff->size() == time_msg_size &&
+                strncmp(time_placeholder, m.buff->data() + header_size, time_placeholder_len) == 0) {
+               time_message* tm = reinterpret_cast<time_message *>(m.buff->data() + time_data_offset);
+               tm->xmt = get_tstamp();
+               const uint32_t payload_size = fc::raw::pack_size( *tm );
+               const char* const header = reinterpret_cast<const char* const>(&payload_size);
+               static_assert( header_size == message_header_size, "invalid message_header_size" );
+               const size_t buffer_size = header_size + payload_size;
+
+               auto send_buffer = std::make_shared<vector<char>>(buffer_size);
+               fc::datastream<char*> ds( send_buffer->data(), buffer_size);
+               ds.write( header, header_size );
+               fc::raw::pack( ds, tm );
+               m.buff = send_buffer;
+               --do_xmt_time;
+            }
+
             bufs.push_back( boost::asio::buffer( *m.buff ));
-            _write_queue_size -= m.buff->size();
             _out_queue.emplace_back( m );
+
+            _write_queue_size -= msize;
             w_queue.pop_front();
          }
       }
@@ -639,11 +687,27 @@ namespace eosio {
        *  @{
        */
       // Members set from network data
-      tstamp                         org{0};          //!< originate timestamp
-      tstamp                         rec{0};          //!< receive timestamp
-      tstamp                         dst{0};          //!< destination timestamp
-      tstamp                         xmt{0};          //!< transmit timestamp
+      time_message                   last_time_recv; //!< a clone of the last time message received
+      time_message                   last_time_sent; //!< a clone of the last time message sent
+      tstamp                         rec{0}; //!< receive timestamp
+
+#if 0
+      tstamp                         org{0}; //!< originate timestamp
+      tstamp                         dst{0}; //!< destination timestamp
+      tstamp                         xmt{0}; //!< transmit timestamp
+#endif
       /** @} */
+
+      // data samples for the topology plugin
+      mutable std::mutex       sample_mtx;
+      uint32_t                 queue_hwm{0};               //!< high water mark for the outbound queue
+      uint32_t                 net_latency_sample{0};      //!< measured propagation delay peer to peer
+      uint32_t                 bytes_sent_sample{0};       //!< count of octets sent to peer during this sample
+      uint32_t                 messages_sent_sample{0};    //!< count of messages sent to peer during this sample
+      uint32_t                 fork_instances_sample{0};   //!< count of instances when a fork was detected
+      uint32_t                 fork_depth_sample{0};       //!< the depth of the current fork
+      uint32_t                 fork_hwm{0};                //!< the depth of the longest fork detected
+      int                      time_message_queued{0}; //!< the buffer stuffer needs to fix up xmt in a time_message
 
       bool connected();
       bool current();
@@ -681,17 +745,6 @@ namespace eosio {
       /** \brief Populate and queue time_message immediately using incoming time_message
        */
       void send_time(const time_message& msg);
-      /** \brief Read system time and convert to a 64 bit integer.
-       *
-       * There are only two calls on this routine in the program.  One
-       * when a packet arrives from the network and the other when a
-       * packet is placed on the send queue.  Calls the kernel time of
-       * day routine and converts to a (at least) 64 bit integer.
-       */
-      static tstamp get_time() {
-         return std::chrono::system_clock::now().time_since_epoch().count();
-      }
-      /** @} */
 
       const string peer_name();
 
@@ -700,6 +753,7 @@ namespace eosio {
       void stop_send();
 
       void enqueue( const net_message &msg, bool trigger_send = true );
+      void enqueue_time( const time_message &msg, bool trigger_send = true );
       void enqueue_block( const signed_block_ptr& sb, bool trigger_send = true, bool to_sync_queue = false);
       void enqueue_buffer( const std::shared_ptr<std::vector<char>>& send_buffer,
                            bool trigger_send, int priority, go_away_reason close_after_send,
@@ -1156,39 +1210,61 @@ namespace eosio {
    void connection::collect_samples() {
       link_sample ls;
       ls.link = topo_id;
-      #if 0
-       queue_depth = 0x01,          // how many messages are waiting to be sent
-       queue_latency = 0x02,        // how long does a message sit in the queue
-       net_latency = 0x04,          // how long does a network traversal take
-       bytes_sent = 0x08,           // how many bytes have been sent on a link since its connection
-       bytes_per_second = 0x10,     // average flow rate in bytes/second
-       messages_sent = 0x20,        // how many messages have been sent on a link since connection
-       messages_per_second = 0x40,  // average flow rate in messages/second
-       fork_instances = 0x80,       // how many forks have been detected from a peer
-       fork_depth = 0x100,          // how many blocks we on the most recent / current fork
-       fork_max_depth = 0x200       // how many blocks on the longest fork since connection
-      #endif
-      // todo: fill in list
-      // down metrics are related to flow from the peer to me
-      // up metrics are related to flow from me to the peer
+      {
+         std::lock_guard<std::mutex> g( sample_mtx );
+         ls.up.emplace_back(topology_sample(queue_depth, buffer_queue.write_queue_size()));
+         ls.up.emplace_back(topology_sample(queue_max_depth, queue_hwm));
+         tstamp ql = last_time_recv.xmt - last_time_recv.org;
+         uint32_t ql32 = ql <= 0xffffffff ? uint32_t(ql) : 0xffffffff;
+         ls.down.emplace_back(topology_sample(queue_latency,ql32));
+         ql = last_time_sent.xmt - last_time_sent.org;
+         ql32 = ql <= 0xffffffff ? uint32_t(ql) : 0xffffffff;
+         ql = last_time_recv.rec - last_time_sent.xmt;
+         ql32 = ql <= 0xffffffff ? uint32_t(ql) : 0xffffffff;
+         ls.down.emplace_back(topology_sample(net_latency,ql32));
+         ls.up.emplace_back(topology_sample(bytes_sent,bytes_sent_sample));
+         ls.up.emplace_back(topology_sample(messages_sent,messages_sent_sample));
+         ls.up.emplace_back(topology_sample(fork_instances,fork_instances_sample));
+         ls.up.emplace_back(topology_sample(fork_depth,fork_depth_sample));
+         ls.up.emplace_back(topology_sample(fork_max_depth,fork_hwm));
+         bytes_sent_sample = 0;
+         messages_sent_sample = 0;
+         queue_hwm = 0;
+         fork_hwm = 0;
+      }
       my_impl->topology_plug->update_samples (ls);
    }
 
+#if 0
    void connection::send_time() {
       time_message xpkt;
-      xpkt.org = rec;
-      xpkt.rec = dst;
-      xpkt.xmt = get_time();
-      org = xpkt.xmt;
-      enqueue(xpkt);
+      xpkt.org = last_time_recv.rec;
+      xpkt.rec = last_time_recv.dst;
+      xpkt.xmt = get_tstamp();
+      last_time_sent.org = xpkt.xmt;
+      enqueue_time(xpkt);
+   }
+#endif
+
+   void connection::send_time() {
+      time_message xpkt;
+      xpkt.org = get_tstamp();
+      xpkt.xmt = 0;
+      xpkt.rec = 0;
+      xpkt.dst = 0;
+      {
+         std::lock_guard<std::mutex> g( sample_mtx );
+         time_message_queued++;
+      }
+      enqueue_time(xpkt);
    }
 
    void connection::send_time(const time_message& msg) {
       time_message xpkt;
       xpkt.org = msg.xmt;
       xpkt.rec = msg.dst;
-      xpkt.xmt = get_time();
-      enqueue(xpkt);
+      xpkt.xmt = get_tstamp();
+      enqueue_time(xpkt);
    }
 
    void connection::queue_write(const std::shared_ptr<vector<char>>& buff,
@@ -1202,6 +1278,9 @@ namespace eosio {
          close();
          return;
       }
+      if( buffer_queue.write_queue_size() > queue_hwm) {
+         queue_hwm = buffer_queue.write_queue_size();
+      }
       if( buffer_queue.is_out_queue_empty() && trigger_send) {
          do_queue_write( priority );
       }
@@ -1211,9 +1290,16 @@ namespace eosio {
       if( !buffer_queue.ready_to_send() )
          return;
       connection_ptr c(shared_from_this());
-
+      int do_xmt_time = 0;
+      if (my_impl->topology_plug != nullptr) {
+         std::lock_guard<std::mutex> g( sample_mtx );
+         do_xmt_time = time_message_queued;
+         time_message_queued = 0;
+      }
       std::vector<boost::asio::const_buffer> bufs;
-      buffer_queue.fill_out_buffer( bufs );
+      uint32_t bytes{0};
+      uint32_t msgs{0};
+      buffer_queue.fill_out_buffer( bufs, bytes, msgs, do_xmt_time);
 
       strand.dispatch( [c{std::move(c)}, bufs{std::move(bufs)}, priority]() {
          boost::asio::async_write( *c->socket, bufs,
@@ -1245,6 +1331,11 @@ namespace eosio {
             }
          }));
       });
+      if( my_impl->topology_plug != nullptr){
+         std::lock_guard<std::mutex> g( sample_mtx );
+         bytes_sent_sample += bytes;
+         messages_sent_sample += msgs;
+      }
    }
 
    void connection::cancel_sync(go_away_reason reason) {
@@ -1292,13 +1383,30 @@ namespace eosio {
       return true;
    }
 
+   void connection::enqueue_time( const time_message& m, bool trigger_send) {
+      verify_strand_in_this_thread( strand, __func__, __LINE__ );
+      go_away_reason close_after_send = no_reason;
+      const uint32_t payload_size = time_placeholder_len + sizeof(m);
+
+      const char* const header = reinterpret_cast<const char* const>(&payload_size); // avoid variable size encoding of uint32_t
+      constexpr size_t header_size = sizeof(payload_size);
+      static_assert( header_size == message_header_size, "invalid message_header_size" );
+      const size_t buffer_size = header_size + payload_size;
+
+      auto send_buffer = std::make_shared<vector<char>>(buffer_size);
+      fc::datastream<char*> ds( send_buffer->data(), buffer_size);
+      ds.write( header, header_size );
+      ds.write( time_placeholder,time_placeholder_len);
+      ds.write( reinterpret_cast<const char *>(&m), sizeof(m));
+      enqueue_buffer( send_buffer, trigger_send, priority::low, close_after_send );
+   }
+
    void connection::enqueue( const net_message& m, bool trigger_send ) {
       verify_strand_in_this_thread( strand, __func__, __LINE__ );
       go_away_reason close_after_send = no_reason;
       if (m.contains<go_away_message>()) {
          close_after_send = m.get<go_away_message>().reason;
       }
-
       const uint32_t payload_size = fc::raw::pack_size( m );
 
       const char* const header = reinterpret_cast<const char* const>(&payload_size); // avoid variable size encoding of uint32_t
@@ -1310,7 +1418,6 @@ namespace eosio {
       fc::datastream<char*> ds( send_buffer->data(), buffer_size);
       ds.write( header, header_size );
       fc::raw::pack( ds, m );
-
       enqueue_buffer( send_buffer, trigger_send, priority::low, close_after_send );
    }
 
@@ -2445,6 +2552,7 @@ namespace eosio {
                bool close_connection = false;
                try {
                   if( !ec ) {
+                     conn->rec = get_tstamp();
                      if (bytes_transferred > conn->pending_message_buffer.bytes_to_write()) {
                         fc_elog( logger,"async_read_some callback: bytes_transfered = ${bt}, buffer.bytes_to_write = ${btw}",
                                  ("bt",bytes_transferred)("btw",conn->pending_message_buffer.bytes_to_write()) );
@@ -2796,37 +2904,35 @@ namespace eosio {
    }
 
    void connection::handle_message( const time_message& msg ) {
-      peer_ilog( this, "received time_message" );
+      last_time_recv.dst = get_tstamp();
+      last_time_recv.rec = rec;
+
       /* We've already lost however many microseconds it took to dispatch
        * the message, but it can't be helped.
        */
-      msg.dst = get_time();
 
       peer_ilog(this, "received time_message");
       // If the transmit timestamp is zero, the peer is horribly broken.
       if(msg.xmt == 0)
          return;                 /* invalid timestamp */
 
-      if(msg.xmt == xmt)
+      if(msg.xmt == last_time_recv.xmt)
          return;                 /* duplicate packet */
-
-      xmt = msg.xmt;
-      rec = msg.rec;
-      dst = msg.dst;
-
+      last_time_recv.org = msg.org;
+      last_time_recv.xmt = msg.xmt;
       if( msg.org == 0 ) {
          send_time( msg );
          return;  // We don't have enough data to perform the calculation yet.
       }
 
-      double offset = (double(rec - org) + double(msg.xmt - dst)) / 2;
+      double offset = (double(msg.rec - last_time_sent.org) + double(msg.xmt - msg.dst)) / 2;
       double NsecPerUsec{1000};
 
       if( logger.is_enabled( fc::log_level::all ) )
          logger.log( FC_LOG_MESSAGE( all, "Clock offset is ${o}ns (${us}us)",
                                      ("o", offset)( "us", offset / NsecPerUsec ) ) );
-      org = 0;
-      rec = 0;
+      last_time_sent.org = 0;
+      last_time_recv.rec = 0;
    }
 
    void connection::handle_message( const notice_message& msg ) {
@@ -3129,6 +3235,7 @@ namespace eosio {
                if( my->in_shutdown ) return;
                fc_wlog( logger, "Peer sample strobed sooner than expected: ${m}", ("m", ec.message()) );
             }
+
             my->for_each_connection( []( auto& c ) {
                if( c->socket_is_open() ) {
                   c->strand.post( [c]() {

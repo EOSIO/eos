@@ -145,9 +145,7 @@ namespace eosio {
       return lhs = static_cast<enum_type>(static_cast<T>(lhs) | static_cast<T>(rhs));
    }
 
-   constexpr uint16_t def_max_watchers = 100;
    constexpr uint16_t def_sample_imterval = 5; // seconds betwteen samples
-   constexpr uint16_t def_update = 3;     // number of samples to collect before updating watchers
 
    /**
     * Topology plugin implementation details.
@@ -159,7 +157,6 @@ namespace eosio {
       flat_map<node_id, topo_node> nodes;
       flat_map<link_id, topo_link> links;
 
-      vector<watcher_def> watchers;
       flat_map<metric_kind, std::string> units;
 
       fc::sha256 gen_long_id_i( const node_descriptor &desc );
@@ -169,12 +166,8 @@ namespace eosio {
       int16_t count_hops (node_id to);
       node_id peer_node (link_id onlink, node_id from);
       void    update_samples_i( const link_sample &ls, bool flip );
-      void    add_watcher (const  watcher_def& watcher);
-      void    drop_watcher (const watcher_def& watcher);
 
       uint16_t sample_imterval_sec;
-      uint16_t watcher_update;
-      uint16_t max_watchers;
       string bp_name;
       node_id local_node_id;
       bool done = false;
@@ -248,54 +241,6 @@ namespace eosio {
       links[ls.link].up.sample(flip ? ls.down : ls.up);
    }
 
-   void topology_plugin_impl::add_watcher( const watcher_def &watcher) {
-      for (auto &w : watchers) {
-         if (w.udp_address == watcher.udp_address ) {
-            for (auto l : watcher.subjects) {
-               bool found = false;
-               for (auto wl : w.subjects) {
-                  if (wl == l) {
-                     found = true;
-                     break;
-                  }
-               }
-               if( !found) {
-                  w.subjects.push_back(l);
-                  break;
-               }
-            }
-            w.metrics |= watcher.metrics;
-            return;
-         }
-      }
-      watchers.push_back(watcher);
-   }
-
-   void topology_plugin_impl::drop_watcher( const watcher_def &watcher) {
-      for (auto w = watchers.begin(); w != watchers.end(); w++) {
-         if (w->udp_address == watcher.udp_address ) {
-            w->metrics &= ~watcher.metrics;
-            if (w->metrics == 0 || watcher.subjects.empty()) {
-               watchers.erase(w);
-            }
-            else {
-               for (auto l : watcher.subjects) {
-                  for (auto wl = w->subjects.begin(); wl != w->subjects.end(); wl++) {
-                     if( l == *wl ) {
-                        w->subjects.erase(wl);
-                        break;
-                     }
-                  }
-               }
-               if( w->subjects.empty() ) {
-                  watchers.erase(w);
-               }
-            }
-            break;
-         }
-      }
-   }
-
 
    //----------------------------------------------------------------------------------------
 
@@ -313,9 +258,7 @@ namespace eosio {
    {
       cfg.add_options()
          ( "bp-name", bpo::value<string>(), "\"block producer name\" but really any identifier that localizes a set of nodeos hosts" )
-         ( "max-watchers", bpo::value<uint16_t>()->default_value(def_max_watchers), "limit the number of watchers refreshed at a time." )
          ( "sample-interval-seconds", bpo::value<uint16_t>()->default_value(def_sample_imterval), "delay between samples")
-         ( "watcher-sample-update", bpo::value<uint16_t>()->default_value(def_update), "number of sampling cycles to wait before updating watchers")
          ;
    }
 
@@ -330,10 +273,8 @@ namespace eosio {
                   "the topology module requires a bp-name be supplied" );
       try {
          my->bp_name = options.at( "bp-name" ).as<string>();
-         my->max_watchers = options.at( "max-watchers" ).as<uint16_t>();
          my->sample_imterval_sec = options.at( "sample-interval-seconds").as<uint16_t>();
          EOS_ASSERT( my->sample_imterval_sec > 0, chain::plugin_config_exception, "sampling frequency must be greater than zero.");
-         my->watcher_update = options.at( "watcher-sample-update" ).as<uint16_t>();
       }
       catch ( const fc::exception &ex) {
       }
@@ -465,27 +406,6 @@ namespace eosio {
 
    class topo_msg_handler : public fc::visitor<void> {
    public:
-      void operator()( const watch_update& msg) {
-         fc_dlog(topo_logger,"got a watcher message");
-         bool found = msg.watcher.subjects.empty();
-         if (!found) {
-            for (auto l : msg.watcher.subjects) {
-               found = my_impl->links.find( l ) != my_impl->links.end();
-               if (found) {
-                  break;
-               }
-            }
-         }
-         if (found) {
-            if( msg.adding ) {
-               my_impl->add_watcher( msg.watcher );
-            }
-            else {
-               my_impl->drop_watcher( msg.watcher );
-            }
-         }
-      }
-
       void operator()( const map_update& msg) {
          fc_dlog(topo_logger,"got a map update message");
 
@@ -531,17 +451,6 @@ namespace eosio {
       return true;
    }
 
-
-   void topology_plugin::watch( const string& udp_addr,
-                                const string& link_def,
-                                const string& metrics ) {
-
-   }
-
-   void topology_plugin::unwatch( const string& udp_addr,
-                                  const string& link_def,
-                                  const string& metrics ) {
-   }
 
    string topology_plugin::gen_grid( ) {
       ostringstream df;

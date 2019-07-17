@@ -25,14 +25,7 @@ namespace eosio{
       link_role    role;     // how the link is used
    };
 
-   struct watcher_def {
-      string           udp_address;
-      vector<link_id>  subjects;
-      uint64_t         metrics;
-   };
-
 }
 
 FC_REFLECT_ENUM( eosio::link_role, (blocks)(transactions)(control)(combined))
 FC_REFLECT( eosio::link_descriptor, (my_id)(active)(passive)(hops)(role))
-FC_REFLECT(eosio::watcher_def, (udp_address)(subjects)(metrics))

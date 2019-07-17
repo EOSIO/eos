@@ -79,10 +79,6 @@ void topology_api_plugin::plugin_startup() {
             INVOKE_R_R(topo_mgr, nodes, std::string), 201),
        CALL(topology, topo_mgr, links,
             INVOKE_R_R(topo_mgr, links, std::string), 201),
-       CALL(topology, topo_mgr, watch,
-            INVOKE_V_R_R_R(topo_mgr, watch, std::string, std::string, std::string), 201),
-       CALL(topology, topo_mgr, unwatch,
-            INVOKE_V_R_R_R(topo_mgr, unwatch, std::string, std::string, std::string), 201),
        CALL(topology, topo_mgr, gen_grid,
             INVOKE_R_V(topo_mgr, gen_grid), 201)
    });

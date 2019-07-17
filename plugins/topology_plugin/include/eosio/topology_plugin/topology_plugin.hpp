@@ -75,8 +75,6 @@ namespace eosio{
        */
       string nodes( const string& in_roles );
       string links( const string& with_node );
-      void watch( const string& udp_addr, const string& link_def, const string& metric_def );
-      void unwatch( const string& udp_addr, const string& link_def, const string& metric_def );
       string gen_grid( );
 
    private:

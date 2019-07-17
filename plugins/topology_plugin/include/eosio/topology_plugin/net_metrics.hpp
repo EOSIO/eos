@@ -47,16 +47,19 @@ namespace eosio {
    enum metric_kind
       {
        queue_depth = 0x01,          // how many messages are waiting to be sent
-       queue_latency = 0x02,        // how long does a message sit in the queue
-       net_latency = 0x04,          // how long does a network traversal take
-       bytes_sent = 0x08,           // how many bytes have been sent on a link since its connection
-       bytes_per_second = 0x10,     // average flow rate in bytes/second
+       queue_max_depth = 0x02,      // what was the high water mark for this period
+       queue_latency = 0x04,        // how long does a message sit in the queue
+       net_latency = 0x08,          // how long does a network traversal take
+       bytes_sent = 0x10,           // how many bytes have been sent on a link since its connection
        messages_sent = 0x20,        // how many messages have been sent on a link since connection
-       messages_per_second = 0x40,  // average flow rate in messages/second
-       fork_instances = 0x80,       // how many forks have been detected from a peer
-       fork_depth = 0x100,          // how many blocks we on the most recent / current fork
-       fork_max_depth = 0x200       // how many blocks on the longest fork since connection
+       bytes_per_second = 0x40,
+       messages_per_second = 0x80,
+       fork_instances = 0x100,      // how many forks have been detected from a peer
+       fork_depth = 0x200,          // how many blocks we on the most recent / current fork
+       fork_max_depth = 0x400       // how many blocks on the longest fork since connection
       };
+
+   using topology_sample = std::pair<metric_kind, uint32_t>;
 
    /**
     * Link metrics is the accumulator of sample measurements. The measurements are all
@@ -75,7 +78,7 @@ namespace eosio {
       uint64_t                     total_messages;
 
 
-      void sample(const vector<pair<metric_kind,uint32_t> >& samples) {
+      void sample(const vector<topology_sample>& samples) {
          last_sample = time(0);
          if (first_sample == 0) {
             first_sample = last_sample;
@@ -100,6 +103,6 @@ namespace eosio {
    };
 
 } // namespace eosio
-
-FC_REFLECT(eosio::metric, (last)(min)(max)(avg))
-FC_REFLECT(eosio::link_metrics, (last_sample)(measurements)(total_bytes)(total_messages))
+FC_REFLECT_ENUM( eosio::metric_kind, (queue_depth)(queue_max_depth)(queue_latency)(net_latency)(bytes_sent)(messages_sent)(bytes_per_second)(messages_per_second)(fork_instances)(fork_depth)(fork_max_depth))
+FC_REFLECT( eosio::metric, (last)(min)(max)(avg))
+FC_REFLECT( eosio::link_metrics, (last_sample)(measurements)(total_bytes)(total_messages))
