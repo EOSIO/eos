@@ -87,3 +87,6 @@ RUN curl -LO http://download-ib01.fedoraproject.org/pub/epel/7/x86_64/Packages/c
 RUN cd /usr/lib64/ccache && ln -s ../../bin/ccache c++
 ## We need to tell ccache to actually use devtoolset-8 instead of the default system one (ccache resets anything set in PATH when it launches)
 ENV CCACHE_PATH="/opt/rh/devtoolset-8/root/usr/bin"
+
+ENV PRECOMMANDS="source /opt/rh/devtoolset-8/enable && source /opt/rh/rh-python36/enable &&"
+ENV EXPORTS="export PATH=/usr/lib64/ccache:$PATH &&"

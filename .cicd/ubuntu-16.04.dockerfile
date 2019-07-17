@@ -82,3 +82,7 @@ RUN curl -LO https://github.com/ccache/ccache/releases/download/v3.4.1/ccache-3.
   && make \
   && make install \
   && cd / && rm -rf ccache-3.4.1/
+
+# pinned only
+ENV CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_TOOLCHAIN_FILE='/tmp/pinned_toolchain.cmake' -DCMAKE_CXX_COMPILER_LAUNCHER=ccache"
+ENV EXPORTS="export PATH=/usr/lib/ccache:$PATH &&"

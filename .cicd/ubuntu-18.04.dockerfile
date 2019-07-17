@@ -61,14 +61,4 @@ RUN curl -L https://github.com/mongodb/mongo-cxx-driver/archive/r3.4.0.tar.gz -o
 RUN apt-get install -y ccache
 
 ENV PATH=${PATH}:/mongodb-linux-x86_64-ubuntu1804-4.1.1/bin
-
-# Git clone, checkout, and submodule update.
-# Make build directory.
-# mkdir /eos/build
-# cd /eos/build
-# cmake -DCMAKE_BUILD_TYPE='Release' -DCORE_SYMBOL_NAME='SYS' -DOPENSSL_ROOT_DIR='/usr/include/openssl' -DBUILD_MONGO_DB_PLUGIN=true /eos
-# make
-# Make mongodb direcotry. Start mongo in background.
-# mkdir -p /eos/data/mongodb
-# mongod --fork --dbpath /eos/data/mongodb -f /eos/scripts/mongod.conf --logpath /eos/mongod.log
-# make test
+ENV EXPORTS="$EXPORTS export PATH=/usr/lib/ccache:$PATH &&"

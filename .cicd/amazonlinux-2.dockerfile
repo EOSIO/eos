@@ -71,3 +71,8 @@ ENV PATH=${PATH}:/mongodb-linux-x86_64-amazon-3.6.3/bin
 # CCACHE
 RUN curl -LO http://download-ib01.fedoraproject.org/pub/epel/7/x86_64/Packages/c/ccache-3.3.4-1.el7.x86_64.rpm \
   && yum install -y ccache-3.3.4-1.el7.x86_64.rpm
+
+# explicitly set to clang as gcc is default
+ENV CMAKE_EXTRAS="-DCMAKE_CXX_COMPILER='clang++' -DCMAKE_C_COMPILER='clang'" 
+ENV EXPORTS="export PATH=/usr/lib64/ccache:$PATH &&"
+
