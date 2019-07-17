@@ -17,5 +17,5 @@ if [[ "$(uname)" == Darwin ]]; then
     echo "$ ctest -j $CPU_CORES -LE _tests --output-on-failure -T Test"
     ctest -j $CPU_CORES -LE _tests --output-on-failure -T Test # run unit tests
 else # linux
-    execute docker run --rm -v $(pwd):/eos -v /usr/lib/ccache -v $HOME/.ccache:/opt/.ccache -e CCACHE_DIR=/opt/.ccache $FULL_TAG
+    execute docker run --rm -v $(pwd):/workdir -v /usr/lib/ccache -v $HOME/.ccache:/opt/.ccache -e CCACHE_DIR=/opt/.ccache $FULL_TAG
 fi

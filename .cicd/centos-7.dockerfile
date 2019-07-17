@@ -93,5 +93,5 @@ ENV CCACHE_PATH="/opt/rh/devtoolset-8/root/usr/bin"
 ENV PRE_COMMANDS="source /opt/rh/devtoolset-8/enable && source /opt/rh/rh-python36/enable && export PATH=/usr/lib64/ccache:$PATH &&"
 
 CMD bash -c "$PRE_COMMANDS ccache -s && \
-    mkdir /eos/build && cd /eos/build && cmake -DCMAKE_BUILD_TYPE='Release' -DCORE_SYMBOL_NAME='SYS' -DOPENSSL_ROOT_DIR='/usr/include/openssl' -DBUILD_MONGO_DB_PLUGIN=true $CMAKE_EXTRAS /eos && make -j $(getconf _NPROCESSORS_ONLN) && \
+    mkdir /workdir/build && cd /workdir/build && cmake -DCMAKE_BUILD_TYPE='Release' -DCORE_SYMBOL_NAME='SYS' -DOPENSSL_ROOT_DIR='/usr/include/openssl' -DBUILD_MONGO_DB_PLUGIN=true $CMAKE_EXTRAS /workdir && make -j $(getconf _NPROCESSORS_ONLN) && \
     ctest -j$(getconf _NPROCESSORS_ONLN) -LE _tests --output-on-failure -T Test"
