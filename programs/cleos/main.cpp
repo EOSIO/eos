@@ -2972,13 +2972,13 @@ int main( int argc, char** argv ) {
    bool suppress_duplicate_check = false;
    auto codeSubcommand = setSubcommand->add_subcommand("code", localized("Create or update the code on an account"));
    codeSubcommand->add_option("account", account, localized("The account to set code for"))->required();
-   codeSubcommand->add_option("code-file", wasmPath, localized("The fullpath containing the contract WASM"));//->required();
+   codeSubcommand->add_option("code-file", wasmPath, localized("The path containing the contract WASM"));//->required();
    codeSubcommand->add_flag( "-c,--clear", contract_clear, localized("Remove code on an account"));
    codeSubcommand->add_flag( "--suppress-duplicate-check", suppress_duplicate_check, localized("Don't check for duplicate"));
 
    auto abiSubcommand = setSubcommand->add_subcommand("abi", localized("Create or update the abi on an account"));
    abiSubcommand->add_option("account", account, localized("The account to set the ABI for"))->required();
-   abiSubcommand->add_option("abi-file", abiPath, localized("The fullpath containing the contract ABI"));//->required();
+   abiSubcommand->add_option("abi-file", abiPath, localized("The path containing the contract ABI"));//->required();
    abiSubcommand->add_flag( "-c,--clear", contract_clear, localized("Remove abi on an account"));
    abiSubcommand->add_flag( "--suppress-duplicate-check", suppress_duplicate_check, localized("Don't check for duplicate"));
 
@@ -3015,10 +3015,11 @@ int main( int argc, char** argv ) {
         std::string wasm;
         fc::path cpath = fc::canonical(fc::path(contractPath));
 
-        if( wasmPath.empty() )
+        if( wasmPath.empty() ) {
            wasmPath = (cpath / (cpath.filename().generic_string()+".wasm")).generic_string();
-        else
+        } else if ( boost::filesystem::path(wasmPath).is_relative() ) {
            wasmPath = (cpath / wasmPath).generic_string();
+        }
 
         std::cerr << localized(("Reading WASM from " + wasmPath + "...").c_str()) << std::endl;
         fc::read_file_contents(wasmPath, wasm);
@@ -3070,7 +3071,7 @@ int main( int argc, char** argv ) {
 
         if( abiPath.empty() ) {
            abiPath = (cpath / (cpath.filename().generic_string()+".abi")).generic_string();
-        } else {
+        } else if ( boost::filesystem::path(abiPath).is_relative() ) {
            abiPath = (cpath / abiPath).generic_string();
         }
 
