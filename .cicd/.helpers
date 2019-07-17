@@ -1,7 +1,10 @@
 DRYRUN=${DRYRUN:-false}
 VERBOSE=${VERBOSE:-true}
-export PROJECT_NAME="eos-vm"
-export IMAGE_TAG=${IMAGE_TAG:-"ubuntu-18.04"}
+export PROJECT_NAME="eosio"
+
+# Set IMAGE_TAG using arg (generate-base-images.sh) or env (travis.yml)
+( [[ -z $IMAGE_TAG ]] && [[ -z $1 ]] ) && echo "You must provide the distro IMAGE_TAG name (example: ubuntu-18.04) as argument \$1 or set it within your ENV" && exit 1
+export IMAGE_TAG=${IMAGE_TAG:-$1}
 
 function execute() {
   $VERBOSE && echo "--- Executing: $@"
@@ -36,8 +39,9 @@ function docker_tag_exists() {
     ORG_REPO=$(echo $1 | cut -d: -f1)
     TAG=$(echo $1 | cut -d: -f2)
     EXISTS=$(curl -s -H "Authorization: Bearer $(curl -sSL "https://auth.docker.io/token?service=registry.docker.io&scope=repository:${ORG_REPO}:pull" | jq --raw-output .token)" "https://registry.hub.docker.com/v2/${ORG_REPO}/manifests/$TAG")
-    [[ $EXISTS =~ '404 page not found' ]] && return 1 || return 0
+    ( [[ $EXISTS =~ '404 page not found' ]] || [[ $EXISTS =~ 'manifest unknown' ]] ) && return 1 || return 0
 }
 
 determine-hash ".cicd/${IMAGE_TAG}.dockerfile"
+[[ -z $DETERMINED_HASH ]] && echo "DETERMINED_HASH empty! (check determine-hash function)" && exit 1
 export FULL_TAG="eosio/producer:${PROJECT_NAME}-$HASHED_IMAGE_TAG"
