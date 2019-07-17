@@ -32,7 +32,7 @@ function docker_tag_exists() {
     ORG_REPO=$(echo $1 | cut -d: -f1)
     TAG=$(echo $1 | cut -d: -f2)
     EXISTS=$(curl -s -H "Authorization: Bearer $(curl -sSL "https://auth.docker.io/token?service=registry.docker.io&scope=repository:${ORG_REPO}:pull" | jq --raw-output .token)" "https://registry.hub.docker.com/v2/${ORG_REPO}/manifests/$TAG")
-    [[ $EXISTS =~ '404 page not found' ]] && return 1 || return 0
+    ( [[ $EXISTS =~ '404 page not found' ]] || [[ $EXISTS =~ 'manifest unknown' ]] ) && return 1 || return 0
 }
 
 determine-hash ".cicd/${IMAGE_TAG}.dockerfile"
