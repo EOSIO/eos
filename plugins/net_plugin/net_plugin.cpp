@@ -687,7 +687,7 @@ namespace eosio {
       void request_next_chunk(const connection_ptr& conn = connection_ptr());
       void start_sync(const connection_ptr& c, uint32_t target);
       void reassign_fetch(const connection_ptr& c, go_away_reason reason);
-      void verify_catchup(const connection_ptr& c, uint32_t num, const block_id_type& id);
+      bool verify_catchup(const connection_ptr& c, uint32_t num, const block_id_type& id);
       void rejected_block(const connection_ptr& c, uint32_t blk_num);
       void recv_block(const connection_ptr& c, const block_id_type& blk_id, uint32_t blk_num);
       void recv_handshake(const connection_ptr& c, const handshake_message& msg);
@@ -1475,7 +1475,12 @@ namespace eosio {
 
       if (head < msg.head_num ) {
          fc_dlog(logger, "sync check state 3");
-         verify_catchup(c, msg.head_num, msg.head_id);
+         if (!verify_catchup(c, msg.head_num, msg.head_id)) {
+            request_message req;
+            req.req_blocks.mode = catch_up;
+            req.req_trx.mode = none;
+            c->enqueue( req );
+         }
          return;
       }
       else {
@@ -1489,12 +1494,16 @@ namespace eosio {
             c->enqueue( note );
          }
          c->syncing = true;
+         request_message req;
+         req.req_blocks.mode = catch_up;
+         req.req_trx.mode = none;
+         c->enqueue( req );
          return;
       }
       fc_elog( logger, "sync check failed to resolve status" );
    }
 
-   void sync_manager::verify_catchup(const connection_ptr& c, uint32_t num, const block_id_type& id) {
+   bool sync_manager::verify_catchup(const connection_ptr& c, uint32_t num, const block_id_type& id) {
       request_message req;
       req.req_blocks.mode = catch_up;
       for (const auto& cc : my_impl->connections) {
@@ -1510,7 +1519,7 @@ namespace eosio {
          fc_ilog( logger, "got a catch_up notice while in ${s}, fork head num = ${fhn} target LIB = ${lib} next_expected = ${ne}",
                   ("s",stage_str(state))("fhn",num)("lib",sync_known_lib_num)("ne", sync_next_expected_num) );
          if (state == lib_catchup)
-            return;
+            return false;
          set_state(head_catchup);
       }
       else {
@@ -1519,6 +1528,7 @@ namespace eosio {
       }
       req.req_trx.mode = none;
       c->enqueue( req );
+      return true;
    }
 
    void sync_manager::recv_notice(const connection_ptr& c, const notice_message& msg) {
