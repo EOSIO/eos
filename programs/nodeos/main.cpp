@@ -122,7 +122,7 @@ int main(int argc, char** argv)
       elog("${e}", ("e",boost::diagnostic_information(e)));
       return OTHER_FAIL;
    } catch( const std::runtime_error& e ) {
-      if( std::string(e.what()) == "database dirty flag set" ) {
+      if( std::string(e.what()).find("database dirty flag set") != std::string::npos ) {
          elog( "database dirty flag set (likely due to unclean shutdown): replay required" );
          return DATABASE_DIRTY;
       } else {
