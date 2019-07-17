@@ -8,8 +8,6 @@ namespace eosio { namespace chain {
 
    struct fork_database_impl;
 
-   typedef vector<block_state_ptr> branch_type;
-
    /**
     * @class fork_database
     * @brief manages light-weight state for all potential unconfirmed forks

@@ -55,6 +55,7 @@ namespace eosio { namespace chain {
    };
 
    using block_state_ptr = std::shared_ptr<block_state>;
+   using branch_type = std::vector<block_state_ptr>;
 
 } } /// namespace eosio::chain
 

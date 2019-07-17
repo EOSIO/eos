@@ -36,7 +36,6 @@ namespace eosio { namespace chain {
    class account_object;
    using resource_limits::resource_limits_manager;
    using apply_handler = std::function<void(apply_context&)>;
-   using unapplied_transactions_type = map<transaction_id_type, transaction_metadata_ptr, sha256_less>;
 
    class fork_database;
 
@@ -128,18 +127,10 @@ namespace eosio { namespace chain {
                            uint16_t confirm_block_count,
                            const vector<digest_type>& new_protocol_feature_activations );
 
-         void abort_block();
-
          /**
-          *  These transactions were previously pushed by have since been unapplied, recalling push_transaction
-          *  with the transaction_metadata_ptr will remove them from the source of this data IFF it succeeds.
-          *
-          *  The caller is responsible for calling drop_unapplied_transaction on a failing transaction that
-          *  they never intend to retry
-          *
-          *  @return map of transactions which have been unapplied
+          * @return transactions applied in aborted block
           */
-         unapplied_transactions_type& get_unapplied_transactions();
+         vector<transaction_metadata_ptr> abort_block();
 
          /**
           *
@@ -155,10 +146,14 @@ namespace eosio { namespace chain {
          block_state_ptr finalize_block( const signer_callback_type& signer_callback );
          void sign_block( const signer_callback_type& signer_callback );
          void commit_block();
-         void pop_block();
 
          std::future<block_state_ptr> create_block_state_future( const signed_block_ptr& b );
-         void push_block( std::future<block_state_ptr>& block_state_future );
+
+         /**
+          * @param block_state_future provide from call to create_block_state_future
+          * @return branch of unapplied blocks from fork switch
+          */
+         branch_type push_block( std::future<block_state_ptr>& block_state_future );
 
          boost::asio::io_context& get_thread_pool();
 
