@@ -88,5 +88,10 @@ RUN cd /usr/lib64/ccache && ln -s ../../bin/ccache c++
 ## We need to tell ccache to actually use devtoolset-8 instead of the default system one (ccache resets anything set in PATH when it launches)
 ENV CCACHE_PATH="/opt/rh/devtoolset-8/root/usr/bin"
 
-ENV PRECOMMANDS="source /opt/rh/devtoolset-8/enable && source /opt/rh/rh-python36/enable &&"
-ENV EXPORTS="export PATH=/usr/lib64/ccache:$PATH &&"
+# PRE_COMMANDS: Executed pre-cmake
+# CMAKE_EXTRAS: Executed right before the cmake path (on the end)
+ENV PRE_COMMANDS="source /opt/rh/devtoolset-8/enable && source /opt/rh/rh-python36/enable && export PATH=/usr/lib64/ccache:$PATH &&"
+
+CMD bash -c "$PRE_COMMANDS ccache -s && \
+    mkdir /eos/build && cd /eos/build && cmake -DCMAKE_BUILD_TYPE='Release' -DCORE_SYMBOL_NAME='SYS' -DOPENSSL_ROOT_DIR='/usr/include/openssl' -DBUILD_MONGO_DB_PLUGIN=true $CMAKE_EXTRAS /eos && make -j $(getconf _NPROCESSORS_ONLN) && \
+    ctest -j$(getconf _NPROCESSORS_ONLN) -LE _tests --output-on-failure -T Test"
