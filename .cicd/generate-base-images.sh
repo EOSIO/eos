@@ -28,10 +28,18 @@ function generate_docker_image() {
     cd -
 }
 
+function docker_tag_exists() {
+    ORG_REPO=$(echo $1 | cut -d: -f1)
+    TAG=$(echo $1 | cut -d: -f2)
+    TOKEN=$(curl -s -H "Content-Type: application/json" -X POST -d '{"username": "'${DOCKERHUB_USERNAME}'", "password": "'${DOCKERHUB_PASSWORD}'"}' https://hub.docker.com/v2/users/login/ | jq -r .token)
+    EXISTS=$(curl -s -H "Authorization: JWT ${TOKEN}" https://hub.docker.com/v2/repositories/${ORG_REPO}/tags/?page_size=10000 | jq -r "[.results | .[] | .name == \"${TAG}\"] | any")
+    test $EXISTS = true
+}
+
 determine-hash ".cicd/${IMAGE_TAG}.dockerfile"
 [[ -z $DETERMINED_HASH ]] && echo "DETERMINED_HASH empty! (check determine-hash function)" && exit 1
 echo "Looking for $IMAGE_TAG-$DETERMINED_HASH"
-if docker pull eosio/producer:ci-${HASHED_IMAGE_TAG}; then
+if docker_tag_exists eosio/producer:ci-${HASHED_IMAGE_TAG}; then
     echo "eosio/producer:ci-${HASHED_IMAGE_TAG} already exists"
 else
     generate_docker_image
