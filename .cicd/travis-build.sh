@@ -2,8 +2,6 @@
 set -e
 CPU_CORES=$(getconf _NPROCESSORS_ONLN)
 if [[ "$(uname)" == Darwin ]]; then
-    ccache -s
-    export PATH="/usr/local/opt/ccache/libexec:$PATH"
     echo 'Detected Darwin, building natively.'
     [[ -d eos ]] && cd eos
     [[ ! -d build ]] && mkdir build
