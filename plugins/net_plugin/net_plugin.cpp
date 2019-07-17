@@ -1631,7 +1631,7 @@ namespace eosio {
             c->enqueue( note );
          }
          c->syncing = true;
-//         return;
+         return;
       }
       if( !catch_up_req_sent ) {
          request_message req;
