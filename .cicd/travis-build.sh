@@ -15,8 +15,6 @@ if [[ "$(uname)" == Darwin ]]; then
     ctest -j $CPU_CORES -LE _tests --output-on-failure -T Test # run unit tests
 else # linux
     echo 'Detected Linux, building in Docker.'
-    echo "$ docker pull eosio/producer:ci-${IMAGE_TAG}"
-    docker pull eosio/producer:ci-${IMAGE_TAG}
     # per-distro additions to docker commands
     [[ $IMAGE_TAG  == centos-7 ]] && PRE_COMMANDS="source /opt/rh/devtoolset-8/enable && source /opt/rh/rh-python36/enable &&"
     [[ $IMAGE_TAG == amazonlinux-2 ]] && CMAKE_EXTRAS="-DCMAKE_CXX_COMPILER='clang++' -DCMAKE_C_COMPILER='clang'" # explicitly set to clang as gcc is default
