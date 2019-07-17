@@ -1619,7 +1619,13 @@ namespace eosio {
       if (head < msg.head_num ) {
          fc_dlog(logger, "sync check state 3");
          c->syncing = false;
-         catch_up_req_sent = verify_catchup(c, msg.head_num, msg.head_id);
+         if (!verify_catchup(c, msg.head_num, msg.head_id)) {
+            request_message req;
+            req.req_blocks.mode = catch_up;
+            req.req_trx.mode = none;
+            c->enqueue( req );
+         }
+         return;
       } else {
          fc_dlog(logger, "sync check state 4");
          if (msg.generation > 1 ||  c->protocol_version > proto_base) {
@@ -1631,14 +1637,14 @@ namespace eosio {
             c->enqueue( note );
          }
          c->syncing = true;
-         return;
-      }
-      if( !catch_up_req_sent ) {
          request_message req;
          req.req_blocks.mode = catch_up;
          req.req_trx.mode = none;
          c->enqueue( req );
+         return;
       }
+      c->syncing = false;
+      fc_elog( logger, "sync check failed to resolve status" );
    }
 
    bool sync_manager::verify_catchup(const connection_ptr& c, uint32_t num, const block_id_type& id) {
@@ -2800,19 +2806,14 @@ namespace eosio {
       }
 
       trx_in_progress_size += calc_trx_size( ptrx->packed_trx() );
-      connection_wptr weak = shared_from_this();
       my_impl->chain_plug->accept_transaction( ptrx,
-            [weak{std::move(weak)}, ptrx](const static_variant<fc::exception_ptr, transaction_trace_ptr>& result) {
+            [weak = weak_from_this(), ptrx](const static_variant<fc::exception_ptr, transaction_trace_ptr>& result) {
          // next (this lambda) called from application thread
-         connection_ptr conn = weak.lock();
-         if( conn ) {
-            conn->trx_in_progress_size -= calc_trx_size( ptrx->packed_trx() );
-         }
          bool accepted = false;
          if (result.contains<fc::exception_ptr>()) {
             fc_dlog( logger, "bad packed_transaction : ${m}", ("m", result.get<fc::exception_ptr>()->what()) );
          } else {
-            auto trace = result.get<transaction_trace_ptr>();
+            const transaction_trace_ptr& trace = result.get<transaction_trace_ptr>();
             if (!trace->except) {
                fc_dlog( logger, "chain accepted transaction, bcast ${id}", ("id", trace->id) );
                accepted = true;
@@ -2823,14 +2824,17 @@ namespace eosio {
             }
          }
 
-         controller& cc = my_impl->chain_plug->chain();
-         uint32_t head_blk_num = cc.head_block_num();
-
-         boost::asio::post( my_impl->thread_pool->get_executor(), [accepted, ptrx{std::move(ptrx)}, head_blk_num]() {
+         boost::asio::post( my_impl->thread_pool->get_executor(), [accepted, weak{std::move(weak)}, ptrx{std::move(ptrx)}]() {
             if( accepted ) {
                my_impl->dispatcher->bcast_transaction( ptrx );
             } else {
+               uint32_t head_blk_num = 0;
+               std::tie( std::ignore, head_blk_num, std::ignore, std::ignore, std::ignore, std::ignore ) = my_impl->get_chain_info();
                my_impl->dispatcher->rejected_transaction( ptrx->id(), head_blk_num );
+            }
+            connection_ptr conn = weak.lock();
+            if( conn ) {
+               conn->trx_in_progress_size -= calc_trx_size( ptrx->packed_trx() );
             }
          });
       });
