@@ -28,10 +28,17 @@ function generate_docker_image() {
     cd -
 }
 
+function docker_tag_exists() {
+    ORG_REPO=$(echo $1 | cut -d: -f1)
+    TAG=$(echo $1 | cut -d: -f2)
+    EXISTS=$(curl -s -H "Authorization: Bearer $(curl -sSL "https://auth.docker.io/token?service=registry.docker.io&scope=repository:${ORG_REPO}:pull" | jq --raw-output .token)" "https://registry.hub.docker.com/v2/${ORG_REPO}/manifests/$TAG")
+    ( [[ $EXISTS =~ '404 page not found' ]] || [[ $EXISTS =~ 'manifest unknown' ]] ) && return 1 || return 0
+}
+
 determine-hash ".cicd/${IMAGE_TAG}.dockerfile"
 [[ -z $DETERMINED_HASH ]] && echo "DETERMINED_HASH empty! (check determine-hash function)" && exit 1
 echo "Looking for $IMAGE_TAG-$DETERMINED_HASH"
-if docker pull eosio/producer:ci-${HASHED_IMAGE_TAG}; then
+if docker_tag_exists eosio/producer:ci-${HASHED_IMAGE_TAG}; then
     echo "eosio/producer:ci-${HASHED_IMAGE_TAG} already exists"
 else
     generate_docker_image
