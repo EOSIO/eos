@@ -3,7 +3,7 @@ VERBOSE=${VERBOSE:-true}
 export PROJECT_NAME="eosio"
 
 # Set IMAGE_TAG using arg (generate-base-images.sh) or env (travis.yml)
-( [[ -z $IMAGE_TAG ]] && [[ -z $1 ]] ) && echo "You must provide the distro IMAGE_TAG name (example: ubuntu-18.04) as argument \$1 or set it within your ENV" && exit 1
+( [[ $(uname) != 'Darwin ]] && [[ -z $IMAGE_TAG ]] && [[ -z $1 ]] ) && echo "You must provide the distro IMAGE_TAG name (example: ubuntu-18.04) as argument \$1 or set it within your ENV" && exit 1
 export IMAGE_TAG=${IMAGE_TAG:-$1}
 
 function execute() {
