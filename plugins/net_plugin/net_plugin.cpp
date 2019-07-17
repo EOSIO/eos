@@ -157,7 +157,7 @@ namespace eosio {
       bool is_sync_required( uint32_t fork_head_block_num );
       void request_next_chunk( std::unique_lock<std::mutex> g_sync, const connection_ptr& conn = connection_ptr() );
       void start_sync( const connection_ptr& c, uint32_t target );
-      void verify_catchup( const connection_ptr& c, uint32_t num, const block_id_type& id );
+      bool verify_catchup( const connection_ptr& c, uint32_t num, const block_id_type& id );
 
    public:
       explicit sync_manager( uint32_t span );
@@ -1613,7 +1613,12 @@ namespace eosio {
       if (head < msg.head_num ) {
          fc_dlog(logger, "sync check state 3");
          c->syncing = false;
-         verify_catchup(c, msg.head_num, msg.head_id);
+         if (!verify_catchup(c, msg.head_num, msg.head_id)) {
+            request_message req;
+            req.req_blocks.mode = catch_up;
+            req.req_trx.mode = none;
+            c->enqueue( req );
+         }
          return;
       }
       else {
@@ -1627,13 +1632,17 @@ namespace eosio {
             c->enqueue( note );
          }
          c->syncing = true;
+         request_message req;
+         req.req_blocks.mode = catch_up;
+         req.req_trx.mode = none;
+         c->enqueue( req );
          return;
       }
       c->syncing = false;
       fc_elog( logger, "sync check failed to resolve status" );
    }
 
-   void sync_manager::verify_catchup(const connection_ptr& c, uint32_t num, const block_id_type& id) {
+   bool sync_manager::verify_catchup(const connection_ptr& c, uint32_t num, const block_id_type& id) {
       request_message req;
       req.req_blocks.mode = catch_up;
       for_each_block_connection( [num, &id, &req]( const auto& cc ) {
@@ -1656,7 +1665,7 @@ namespace eosio {
                   ("s", stage_str( sync_state ))( "fhn", num )( "lib", sync_known_lib_num )
                   ("ne", sync_next_expected_num ) );
          if( sync_state == lib_catchup || sync_state == head_catchup )
-            return;
+            return false;
          set_state( head_catchup );
       } else {
          std::lock_guard<std::mutex> g_conn( c->conn_mtx );
@@ -1665,6 +1674,7 @@ namespace eosio {
       }
       req.req_trx.mode = none;
       c->enqueue( req );
+      return true;
    }
 
    void sync_manager::sync_recv_notice( const connection_ptr& c, const notice_message& msg) {
