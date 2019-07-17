@@ -31,8 +31,7 @@ function generate_docker_image() {
 determine-hash ".cicd/${IMAGE_TAG}.dockerfile"
 [[ -z $DETERMINED_HASH ]] && echo "DETERMINED_HASH empty! (check determine-hash function)" && exit 1
 echo "Looking for $IMAGE_TAG-$DETERMINED_HASH"
-DOCKER_CLI_EXPERIMENTAL=enabled # needed for docker manifest inspect
-if docker manifest inspect eosio/producer:ci-${HASHED_IMAGE_TAG}; then
+if docker pull eosio/producer:ci-${HASHED_IMAGE_TAG}; then
     echo "eosio/producer:ci-${HASHED_IMAGE_TAG} already exists"
 else
     generate_docker_image
