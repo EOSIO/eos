@@ -21,49 +21,42 @@ steps:
       - docker#v3.2.0:
           shell: ["/bin/bash", "-i", "-e", "-c"]
           debug: $DEBUG
-          image: "eosio/producer:eosio-amazonlinux-2-15dbe09dd5b17b21cbdfef1ddeeaae3a6518b7cd"
+          image: "eosio-amazonlinux-2-1a7d9df8d2d7d6508695d520b2c86bdb6544f68f"
     timeout: $BUILD_TIMEOUT
     skip: $SKIP_AMAZON_LINUX_2
 
   - label: ":centos: [CentOS] 7 Build"
     command:
-      - "mkdir /workdir/build && cd /workdir/build && source /opt/rh/devtoolset-8/enable && source /opt/rh/rh-python36/enable && cmake -DCMAKE_BUILD_TYPE='Release' -DCORE_SYMBOL_NAME='SYS' -DOPENSSL_ROOT_DIR='/usr/include/openssl' -DBUILD_MONGO_DB_PLUGIN=true /workdir && make -j $(getconf _NPROCESSORS_ONLN)"
-      - "cd /workdir/build && ctest -j$(getconf _NPROCESSORS_ONLN) -LE _tests --output-on-failure -T Test"
+      - ""
     agents:
       queue: "automation-eos-builder-fleet"
     plugins:
       - docker#v3.2.0:
           shell: ["/bin/bash", "-i", "-e", "-c"]
           debug: $DEBUG
-          image: "eosio/producer:eosio-centos-7-9a44c56bd9e6c4eaf558527023a066848d95d795"
+          image: "eosio-centos-7-55cd019b12caf450396254fd41391695c1e2ff26"
     timeout: $BUILD_TIMEOUT
     skip: $SKIP_CENTOS_7
 
   - label: ":ubuntu: [Ubuntu] 16.04 Build"
-    command:
-      - "mkdir /workdir/build && cd /workdir/build && cmake -DCMAKE_BUILD_TYPE='Release' -DCORE_SYMBOL_NAME='SYS' -DOPENSSL_ROOT_DIR='/usr/include/openssl' -DBUILD_MONGO_DB_PLUGIN=true -DCMAKE_TOOLCHAIN_FILE='/tmp/pinned_toolchain.cmake' /workdir && make -j $(getconf _NPROCESSORS_ONLN)"
-      - "cd /workdir/build && ctest -j$(getconf _NPROCESSORS_ONLN) -LE _tests --output-on-failure -T Test"
     agents:
       queue: "automation-eos-builder-fleet"
     plugins:
       - docker#v3.2.0:
           shell: ["/bin/bash", "-i", "-e", "-c"]
           debug: $DEBUG
-          image: "eosio/producer:eosio-ubuntu-16.04-d7f03e30a16e49dacf4bffe0adb522a4a17c3098"
+          image: "eosio-ubuntu-16.04-607530704f6f0e37ca4a2c8c114a3e21ccc89476"
     timeout: $BUILD_TIMEOUT
     skip: $SKIP_UBUNTU_16
 
   - label: ":ubuntu: [Ubuntu] 18.04 Build"
-    command:
-      - "mkdir /workdir/build && cd /workdir/build && cmake -DCMAKE_BUILD_TYPE='Release' -DCORE_SYMBOL_NAME='SYS' -DOPENSSL_ROOT_DIR='/usr/include/openssl' -DBUILD_MONGO_DB_PLUGIN=true /workdir && make -j $(getconf _NPROCESSORS_ONLN)"
-      - "cd /workdir/build && ctest -j$(getconf _NPROCESSORS_ONLN) -LE _tests --output-on-failure -T Test"
     agents:
       queue: "automation-eos-builder-fleet"
     plugins:
       - docker#v3.2.0:
           shell: ["/bin/bash", "-i", "-e", "-c"]
           debug: $DEBUG
-          image: "eosio/producer:eosio-ubuntu-18.04-3060a37217d3d3daa56432a07edcb2ea24046cd5"
+          image: "eosio-ubuntu-18.04-9f7595b0763a71689cee3a271880d1d1b88f67c9"
     timeout: $BUILD_TIMEOUT
     skip: $SKIP_UBUNTU_18
 
