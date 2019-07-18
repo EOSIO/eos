@@ -2595,7 +2595,6 @@ namespace eosio {
       } catch( const fc::exception &ex) {
          peer_elog(c, "bad signed_block : ${m}", ("m",ex.what()));
          fc_elog( logger, "accept_block threw a non-assert exception ${x} from ${p}",( "x",ex.to_string())("p",c->peer_name()));
-         reason = no_reason;
       } catch( ...) {
          peer_elog(c, "bad signed_block : unknown exception");
          fc_elog( logger, "handle sync block caught something else from ${p}",("num",blk_num)("p",c->peer_name()));
