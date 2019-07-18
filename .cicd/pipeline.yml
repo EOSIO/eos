@@ -20,7 +20,7 @@ steps:
     plugins:
       - docker#v3.2.0:
           debug: $DEBUG
-          image: "eosio/producer:eosio-amazonlinux-2-1a7d9df8d2d7d6508695d520b2c86bdb6544f68f"
+          image: "eosio/producer:eosio-amazonlinux-2-1c266e25276ad1f1147a4df5c12921968079c49b"
     timeout: $BUILD_TIMEOUT
     skip: $SKIP_AMAZON_LINUX_2
 
@@ -32,7 +32,7 @@ steps:
     plugins:
       - docker#v3.2.0:
           debug: $DEBUG
-          image: "eosio/producer:eosio-centos-7-55cd019b12caf450396254fd41391695c1e2ff26"
+          image: "eosio/producer:eosio-centos-7-d45789dfb1a5b830a62381afd205b34d3d7c2d63"
     timeout: $BUILD_TIMEOUT
     skip: $SKIP_CENTOS_7
 
@@ -42,7 +42,7 @@ steps:
     plugins:
       - docker#v3.2.0:
           debug: $DEBUG
-          image: "eosio/producer:eosio-ubuntu-16.04-607530704f6f0e37ca4a2c8c114a3e21ccc89476"
+          image: "eosio/producer:eosio-ubuntu-16.04-4f430ef21e359ef2581c25255c99e5411adfaed9"
     timeout: $BUILD_TIMEOUT
     skip: $SKIP_UBUNTU_16
 
@@ -52,7 +52,7 @@ steps:
     plugins:
       - docker#v3.2.0:
           debug: $DEBUG
-          image: "eosio/producer:eosio-ubuntu-18.04-9f7595b0763a71689cee3a271880d1d1b88f67c9"
+          image: "eosio/producer:eosio-ubuntu-18.04-30943a09d811aa16d86eb60455bc2938b57a7080"
     timeout: $BUILD_TIMEOUT
     skip: $SKIP_UBUNTU_18
 
