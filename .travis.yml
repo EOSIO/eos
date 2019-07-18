@@ -45,10 +45,8 @@ matrix:
             - openssl
             - boost@1.70
             - ccache
-before_cache: |
-  ./.cicd/travis-before-cache.sh
-before_install: |
-  ./.cicd/travis-before-install.sh
+      env: 
+        - PATH="/usr/local/opt/ccache/libexec:$PATH"
 script: |
   ./.cicd/travis-build.sh
 notifications:
