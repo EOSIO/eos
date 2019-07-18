@@ -42,6 +42,8 @@ function docker_tag_exists() {
     ( [[ $EXISTS =~ '404 page not found' ]] || [[ $EXISTS =~ 'manifest unknown' ]] ) && return 1 || return 0
 }
 
-determine-hash ".cicd/${IMAGE_TAG}.dockerfile"
-[[ -z $DETERMINED_HASH ]] && echo "DETERMINED_HASH empty! (check determine-hash function)" && exit 1
-export FULL_TAG="eosio/producer:${PROJECT_NAME}-$HASHED_IMAGE_TAG"
+if [[ $(uname) != 'Darwin' ]]; then # Darwin doesn't need hash (yet)
+    determine-hash ".cicd/${IMAGE_TAG}.dockerfile"
+    [[ -z $DETERMINED_HASH ]] && echo "DETERMINED_HASH empty! (check determine-hash function)" && exit 1
+    export FULL_TAG="eosio/producer:${PROJECT_NAME}-$HASHED_IMAGE_TAG"
+fi
