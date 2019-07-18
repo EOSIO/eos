@@ -249,9 +249,11 @@ namespace eosiosystem {
        *  Every time a vote is cast we must first "undo" the last vote weight, before casting the
        *  new vote weight.  Vote weight is calculated as:
        *
-       *  stated.amount * 2 ^ ( weeks_since_launch/weeks_per_year)
+       *  stated.amount * 2 ^ (weeks_since_launch/weeks_per_year) * (time_to_mature / mature_period)
        */
       double              last_vote_weight = 0; /// the vote weight cast the last time the vote was updated
+      time_point          vote_mature_time;
+      
 
       /**
        * Total vote weight delegated to this voter.
@@ -273,7 +275,7 @@ namespace eosiosystem {
       };
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
-      EOSLIB_SERIALIZE( voter_info, (owner)(proxy)(producers)(staked)(last_vote_weight)(proxied_vote_weight)(is_proxy)(flags1)(reserved2)(reserved3) )
+      EOSLIB_SERIALIZE( voter_info, (owner)(proxy)(producers)(staked)(last_vote_weight)(vote_mature_time)(proxied_vote_weight)(is_proxy)(flags1)(reserved2)(reserved3) )
    };
 
    /**
@@ -521,6 +523,7 @@ namespace eosiosystem {
 
          static constexpr uint8_t max_block_producers      = 21;
          static constexpr int64_t producer_stake_threshold = 250'000'0000LL;
+         static constexpr int64_t vote_mature_period       = 180;
 
 
          /**

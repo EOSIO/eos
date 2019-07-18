@@ -167,6 +167,25 @@ public:
         produce_blocks();
     }
 
+    fc::variant get_producer_info( const account_name& act ) {
+       vector<char> data = get_row_by_account( config::system_account_name, config::system_account_name, N(producers), act );
+       return abi_ser.binary_to_variant( "producer_info", data, abi_serializer_max_time );
+    }
+ 
+    fc::variant get_voter_info( const account_name& act ) {
+       vector<char> data = get_row_by_account( config::system_account_name, config::system_account_name, N(voters), act );
+       return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "voter_info", data, abi_serializer_max_time );
+    }
+ 
+    // Vote for producers
+    void votepro( account_name voter, vector<account_name> producers ) {
+       std::sort( producers.begin(), producers.end() );
+       base_tester::push_action(config::system_account_name, N(voteproducer), voter, mvo()
+                            ("voter", name(voter))
+                            ("proxy", name(0) )
+                            ("producers", producers)
+                );
+    };
 
     abi_serializer abi_ser;
 };
@@ -265,16 +284,6 @@ BOOST_FIXTURE_TEST_CASE( rem_voting_test, voting_tester ) {
            register_producer(producer);
         }
 
-        // Vote for producers
-        auto votepro = [&]( account_name voter, vector<account_name> producers ) {
-          std::sort( producers.begin(), producers.end() );
-          base_tester::push_action(config::system_account_name, N(voteproducer), voter, mvo()
-                                ("voter", name(voter))
-                                ("proxy", name(0) )
-                                ("producers", producers)
-                     );
-        };
-
         // whale3 is not a producer so can't vote
         BOOST_REQUIRE_THROW( votepro( N(whale3), {N(runnerup1), N(runnerup2), N(runnerup3)} ), eosio_assert_message_exception );
 
@@ -291,8 +300,8 @@ BOOST_FIXTURE_TEST_CASE( rem_voting_test, voting_tester ) {
 
         vector<char> data = get_row_by_account( config::system_account_name, config::system_account_name, N(global), N(global) );
 
-        // Total Stakes = whale1 + whale2 + whale3 stake = (40'000'000'0000 - 1,000) + (30'000'000'0000 - 1,000) + (20'000'000'0000 - 1,000)
-        BOOST_TEST(get_global_state()["total_activated_stake"].as<int64_t>() == 699999998000); // 89'999'999.7000
+        // Total Stakes = whale1 + whale2 stakes = (40'000'000'0000 - 1,000) + (30'000'000'0000 - 1,000) = 69'999'999.8000
+        BOOST_TEST(get_global_state()["total_activated_stake"].as<int64_t>() == 699999998000);
 
         // No producers will be set, since the total activated stake is less than 150,000,000
         produce_blocks_for_n_rounds(2); // 2 rounds since new producer schedule is set when the first block of next round is irreversible
@@ -304,7 +313,7 @@ BOOST_FIXTURE_TEST_CASE( rem_voting_test, voting_tester ) {
         votepro( N(b1), {N(proda), N(prodb), N(prodc), N(prodd), N(prode), N(prodf), N(prodg),
                          N(prodh), N(prodi), N(prodj), N(prodk), N(prodl), N(prodm), N(prodn),
                          N(prodo), N(prodp), N(prodq), N(prodr), N(prods), N(prodt), N(produ)} );
-        BOOST_TEST(get_global_state()["total_activated_stake"].as<int64_t>() == 1699999997000); // 189'999'999.6000
+        BOOST_TEST(get_global_state()["total_activated_stake"].as<int64_t>() == 1699999997000); // 169'999'999.7000
 
 
         // Since the total vote stake is more than 150,000,000, the new producer set will be set
@@ -334,6 +343,163 @@ BOOST_FIXTURE_TEST_CASE( rem_voting_test, voting_tester ) {
         BOOST_TEST(active_schedule.producers.at(20).producer_name == "produ");
         return;
     } FC_LOG_AND_RETHROW()
+}
+
+BOOST_FIXTURE_TEST_CASE( rem_vote_weight_test, voting_tester ) {
+   try {
+      // Create eosio.msig and eosio.token
+      create_accounts({N(eosio.msig), N(eosio.token), N(eosio.ram), N(eosio.ramfee), N(eosio.stake), N(eosio.vpay), N(eosio.bpay), N(eosio.saving) });
+
+      // Set code for the following accounts:
+      //  - eosio (code: eosio.bios) (already set by tester constructor)
+      //  - eosio.msig (code: eosio.msig)
+      //  - eosio.token (code: eosio.token)
+      set_code_abi(N(eosio.msig),
+                  contracts::eosio_msig_wasm(),
+                  contracts::eosio_msig_abi().data());//, &eosio_active_pk);
+      set_code_abi(N(eosio.token),
+                  contracts::eosio_token_wasm(),
+                  contracts::eosio_token_abi().data()); //, &eosio_active_pk);
+
+      // Set privileged for eosio.msig and eosio.token
+      set_privileged(N(eosio.msig));
+      set_privileged(N(eosio.token));
+
+      // Verify eosio.msig and eosio.token is privileged
+      const auto& eosio_msig_acc = get<account_metadata_object, by_name>(N(eosio.msig));
+      BOOST_TEST(eosio_msig_acc.is_privileged() == true);
+      const auto& eosio_token_acc = get<account_metadata_object, by_name>(N(eosio.token));
+      BOOST_TEST(eosio_token_acc.is_privileged() == true);
+
+
+      // Create SYS tokens in eosio.token, set its manager as eosio
+      const auto max_supply     = core_from_string("1000000000.0000"); /// 10x larger than 1B initial tokens
+      const auto initial_supply = core_from_string("100000000.0000");  /// 10x larger than 1B initial tokens
+
+      create_currency(N(eosio.token), config::system_account_name, max_supply);
+      // Issue the genesis supply of 1 billion SYS tokens to eosio.system
+      issue(N(eosio.token), config::system_account_name, config::system_account_name, initial_supply);
+
+      auto actual = get_balance(config::system_account_name);
+      BOOST_REQUIRE_EQUAL(initial_supply, actual);
+
+      // Create genesis accounts
+      for( const auto& a : rem_test_genesis ) {
+         create_account( a.name, config::system_account_name );
+      }
+
+      deploy_contract();
+
+      // Buy ram and stake cpu and net for each genesis accounts
+      for( const auto& acc : rem_test_genesis ) {
+         const auto ib = acc.initial_balance;
+         const auto ram = 1000;
+         const auto net = (ib - ram) / 2;
+         const auto cpu = ib - net - ram;
+
+         auto r = buyram(config::system_account_name, acc.name, asset(ram));
+         BOOST_REQUIRE( !r->except_ptr );
+
+         r = delegate_bandwidth(N(eosio.stake), acc.name, asset(net), asset(cpu));
+         BOOST_REQUIRE( !r->except_ptr );
+      }
+
+      // Register producers
+      const auto producer_candidates = {
+               N(proda), N(prodb), N(prodc), N(prodd), N(prode), N(prodf), N(prodg),
+               N(prodh), N(prodi), N(prodj), N(prodk), N(prodl), N(prodm), N(prodn),
+               N(prodo), N(prodp), N(prodq), N(prodr), N(prods), N(prodt), N(produ)
+      };
+      for( const auto& producer : producer_candidates ) {
+         register_producer(producer);
+      }
+
+      // Register whales as producers
+      const auto whales_as_producers = { N(b1), N(whale1), N(whale2), N(whale2) };
+      for( const auto& producer : whales_as_producers ) {
+         register_producer(producer);
+      }
+
+      // 0 days
+      {
+         votepro( N(whale1), { N(proda) } );
+
+         // vote gains full power at:     1593388805500000
+         // voteproducer was done at:     1577836844500000
+         // 180 days in microseconds is:  15552000000000
+         // rem vote weight:             ~0.0000025
+         // eos weight:                  ~1091357.4775723184
+         // staked = 399999999000
+         // 1091357.4775723184 * 0.00000250771 * 399999999000 ~= 1.09472322 × 10^12
+         const auto prod = get_producer_info( "proda" );
+         BOOST_TEST_REQUIRE( 1094725862107.0167 == prod["total_votes"].as_double() );
+      }
+
+      // 30 days
+      {
+         const auto voter = get_voter_info( "whale1" );
+         const auto last_vote_weight = voter["last_vote_weight"].as_double();
+
+         produce_min_num_of_blocks_to_spend_time_wo_inactive_prod(fc::seconds(30 * 24 * 3600)); // +30 days
+         votepro( N(whale1), { N(proda) } );
+
+         // rem vote weight: 0.16666917
+         const auto prod = get_producer_info( "proda" );
+         BOOST_TEST_REQUIRE( 78454001807635136 == prod["total_votes"].as_double() );
+         BOOST_TEST_REQUIRE( last_vote_weight < prod["total_votes"].as_double() );
+      }
+
+      // 180 days
+      {
+         const auto voter = get_voter_info( "whale1" );
+         const auto last_vote_weight = voter["last_vote_weight"].as_double();
+
+         produce_min_num_of_blocks_to_spend_time_wo_inactive_prod(fc::seconds(150 * 24 * 3600)); // +150 days
+         votepro( N(whale1), { N(proda) } );
+
+         // rem vote weight: 1.0
+         const auto prod = get_producer_info( "proda" );
+         BOOST_TEST_REQUIRE( 617365016928612860 == prod["total_votes"].as_double() );
+         BOOST_TEST_REQUIRE( last_vote_weight < prod["total_votes"].as_double() );
+      }
+
+      // re-delegating vote power 100%
+      {
+         const auto voter = get_voter_info( "whale1" );
+         const auto last_vote_weight = voter["last_vote_weight"].as_double();
+
+         const auto r = delegate_bandwidth(N(eosio.stake), N(whale1), asset(10'000'000'0000LL), asset(10'000'000'0000LL));
+         BOOST_REQUIRE( !r->except_ptr );
+
+         votepro( N(whale1), { N(proda) } );
+
+         // staked 40KK + 20KK re-staked
+         // vote mature adjusted time: 0 + 180 * 20 / (40 + 20)
+         // rem vote weight:           0.66
+         const auto prod = get_producer_info( "proda" );
+         BOOST_TEST_REQUIRE( 617365047215702140 == prod["total_votes"].as_double() );
+         BOOST_TEST_REQUIRE( last_vote_weight < prod["total_votes"].as_double() );
+      }
+
+      // TODO validate adjusted voter.vote_mature_time
+      // re-delegating vote power 66%
+      {
+         const auto voter = get_voter_info( "whale1" );
+         const auto last_vote_weight = voter["last_vote_weight"].as_double();
+
+         const auto r = delegate_bandwidth(N(eosio.stake), N(whale1), asset(10'000'000'0000LL), asset(10'000'000'0000LL));
+         BOOST_REQUIRE( !r->except_ptr );
+
+         votepro( N(whale1), { N(proda) } );
+
+         // staked 60KK + 20KK re-staked
+         // vote mature adjusted time: 60 + 180 * 20 / (60 + 20)
+         // rem vote weight:           0.41
+         const auto prod = get_producer_info( "proda" );
+         BOOST_TEST_REQUIRE( 514470927477248640 == prod["total_votes"].as_double() );
+         BOOST_TEST_REQUIRE( last_vote_weight > prod["total_votes"].as_double() );
+      }
+   } FC_LOG_AND_RETHROW()
 }
 
 BOOST_AUTO_TEST_SUITE_END()

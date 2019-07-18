@@ -349,8 +349,8 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         BOOST_REQUIRE_EQUAL(get_balance(N(eosio.vpay)).get_amount(), 70'0000);
 
         // Since the total activated stake is larger than 150,000,000, pool should be filled reward should be bigger than zero
-        claim_rewards(N(runnerup1));
-        BOOST_TEST(get_balance(N(runnerup1)).get_amount() > 0);
+        claim_rewards(N(proda));
+        BOOST_TEST(get_balance(N(proda)).get_amount() > 0);
 
         const auto first_june_2018 = fc::seconds(1527811200); // 2018-06-01
         const auto first_june_2028 = fc::seconds(1843430400); // 2028-06-01
