@@ -62,6 +62,7 @@ ENV PATH=${PATH}:/mongodb-linux-x86_64-ubuntu1804-4.1.1/bin
 # PRE_COMMANDS: Executed pre-cmake
 # CMAKE_EXTRAS: Executed right before the cmake path (on the end)
 ENV PRE_COMMANDS="export PATH=/usr/lib/ccache:$PATH &&"
+ENV CMAKE_EXTRAS="-DCMAKE_CXX_COMPILER='clang++' -DCMAKE_C_COMPILER='clang'"
 
 CMD bash -c "$PRE_COMMANDS ccache -s && \
     mkdir /workdir/build && cd /workdir/build && cmake -DCMAKE_BUILD_TYPE='Release' -DCORE_SYMBOL_NAME='SYS' -DOPENSSL_ROOT_DIR='/usr/include/openssl' -DBUILD_MONGO_DB_PLUGIN=true $CMAKE_EXTRAS /workdir && make -j $(getconf _NPROCESSORS_ONLN) && \
