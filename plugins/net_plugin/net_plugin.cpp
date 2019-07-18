@@ -1625,7 +1625,6 @@ namespace eosio {
          return;
       }
 
-      bool catch_up_req_sent = false;
       if (head < msg.head_num ) {
          fc_dlog(logger, "sync check state 3");
          c->syncing = false;
@@ -1990,7 +1989,6 @@ namespace eosio {
 
    // called from connection strand
    void dispatch_manager::recv_block(const connection_ptr& c, const block_id_type& id, uint32_t bnum) {
-      add_peer_block( id, c->connection_id );
       std::unique_lock<std::mutex> g( c->conn_mtx );
       if (c &&
           c->last_req &&
@@ -2876,7 +2874,9 @@ namespace eosio {
 
       try {
          if( cc.fetch_block_by_id(blk_id) ) {
-            c->strand.post( [sync_master = my_impl->sync_master.get(), c, blk_id, blk_num]() {
+            c->strand.post( [sync_master = my_impl->sync_master.get(),
+                             dispatcher = my_impl->dispatcher.get(), c, blk_id, blk_num]() {
+               dispatcher->add_peer_block( blk_id, c->connection_id );
                sync_master->sync_recv_block( c, blk_id, blk_num );
             });
             return;
@@ -2915,7 +2915,8 @@ namespace eosio {
       }
 
       if( reason == no_reason ) {
-         boost::asio::post( my_impl->thread_pool->get_executor(), [dispatcher = my_impl->dispatcher.get(), msg]() {
+         boost::asio::post( my_impl->thread_pool->get_executor(), [dispatcher = my_impl->dispatcher.get(), c, msg]() {
+            dispatcher->add_peer_block( msg->id(), c->connection_id );
             dispatcher->update_txns_block_num( msg );
          });
          c->strand.post( [sync_master = my_impl->sync_master.get(), dispatcher = my_impl->dispatcher.get(), c, blk_id, blk_num]() {
