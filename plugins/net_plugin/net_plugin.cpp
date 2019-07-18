@@ -864,7 +864,13 @@ namespace eosio {
          uint32_t end   = std::max( peer_requested->end_block, block_header::num_from_id(head_id) );
          peer_requested = sync_state( start, end, start - 1 );
       }
-      enqueue_sync_block();
+
+      if( peer_requested->start_block <= peer_requested->end_block ) {
+         fc_dlog( logger, "enqueue ${s} - ${e}", ("s", peer_requested->start_block)( "e", peer_requested->end_block ) );
+         enqueue_sync_block();
+      } else {
+         peer_requested.reset();
+      }
 
       // still want to send transactions along during blk branch sync
       syncing = false;
