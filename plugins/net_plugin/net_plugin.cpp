@@ -179,6 +179,11 @@ namespace eosio {
       node_transaction_index  local_txns;
 
    public:
+      boost::asio::io_context::strand  strand;
+
+      explicit dispatch_manager(boost::asio::io_context& io_context)
+      : strand( io_context ) {}
+
       void bcast_transaction(const transaction_metadata_ptr& trx);
       void rejected_transaction(const transaction_id_type& msg, uint32_t head_blk_num);
       void bcast_block(const block_state_ptr& bs);
@@ -3047,7 +3052,7 @@ namespace eosio {
    // called from application thread
    void net_plugin_impl::on_accepted_block(const block_state_ptr& block) {
       update_chain_info();
-      boost::asio::post( my_impl->thread_pool->get_executor(), [this, block]() {
+      dispatcher->strand.post( [this, block]() {
          fc_dlog( logger, "signaled, blk id = ${id}", ("id", block->id) );
          dispatcher->bcast_block( block );
       });
@@ -3242,7 +3247,6 @@ namespace eosio {
          my->network_version_match = options.at( "network-version-match" ).as<bool>();
 
          my->sync_master.reset( new sync_manager( options.at( "sync-fetch-span" ).as<uint32_t>()));
-         my->dispatcher.reset( new dispatch_manager );
 
          my->connector_period = std::chrono::seconds( options.at( "connection-cleanup-period" ).as<int>());
          my->max_cleanup_time_ms = options.at("max-cleanup-time-msec").as<int>();
@@ -3322,6 +3326,8 @@ namespace eosio {
       my->producer_plug = app().find_plugin<producer_plugin>();
 
       my->thread_pool.emplace( "net", my->thread_pool_size );
+
+      my->dispatcher.reset( new dispatch_manager( my_impl->thread_pool->get_executor() ) );
 
       tcp::endpoint listen_endpoint;
       if( my->p2p_address.size() > 0 ) {
