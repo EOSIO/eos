@@ -9,6 +9,8 @@ if [[ "$(uname)" == Darwin ]]; then
     [[ -d eos ]] && cd eos
     [[ ! -d build ]] && mkdir build
     cd build
+    echo \$PATH
+    ccache -s
     echo '$ cmake ..'
     cmake ..
     echo "$ make -j $CPU_CORES"
