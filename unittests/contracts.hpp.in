@@ -36,7 +36,7 @@ namespace eosio {
          MAKE_READ_WASM_ABI(eosio_token,  eosio.token,  ../contracts/contracts)
          MAKE_READ_WASM_ABI(eosio_wrap,   eosio.wrap,   ../contracts/contracts)
 
-         MAKE_READ_WASM_ABI(before_preactivate_eosio_bios,   eosio.bios, contracts/old_versions/v1.6.0-rc3)
+//         MAKE_READ_WASM_ABI(before_preactivate_eosio_bios,   eosio.bios, contracts/old_versions/v1.6.0-rc3)
 
          // Contracts in `eos/unittests/unittests/test-contracts' directory
          MAKE_READ_WASM_ABI(asserter,              asserter,              test-contracts)
