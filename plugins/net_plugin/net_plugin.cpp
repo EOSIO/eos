@@ -1035,8 +1035,12 @@ namespace eosio {
          uint32_t end   = std::max( peer_requested->end_block, block_header::num_from_id(head_id) );
          peer_requested = sync_state( start, end, start - 1 );
       }
-      fc_dlog( logger, "enqueue ${s} - ${e}", ("s", peer_requested->start_block)("e", peer_requested->end_block) );
-      enqueue_sync_block();
+      if( peer_requested->start_block <= peer_requested->end_block ) {
+         fc_dlog( logger, "enqueue ${s} - ${e}", ("s", peer_requested->start_block)( "e", peer_requested->end_block ) );
+         enqueue_sync_block();
+      } else {
+         peer_requested.reset();
+      }
    }
 
    void connection::blk_send( const block_id_type& blkid ) {
