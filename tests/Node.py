@@ -328,8 +328,8 @@ class Node(object):
         present = True if blockNum <= node_block_num else False
         if Utils.Debug and blockType==BlockType.lib:
             decorator=""
-            if present:
-                decorator="is not "
+            if not present:
+                decorator="not "
             Utils.Print("Block %d is %sfinalized." % (blockNum, decorator))
 
         return present
