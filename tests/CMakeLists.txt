@@ -10,7 +10,7 @@ find_package(LLVM 4.0 REQUIRED CONFIG)
 
 link_directories(${LLVM_LIBRARY_DIR})
 
-include_directories("${CMAKE_SOURCE_DIR}/plugins/wallet_plugin/include")
+include_directories( "${CMAKE_SOURCE_DIR}/plugins/wallet_plugin/include" )
 
 file(GLOB UNIT_TESTS "*.cpp")
 
@@ -37,6 +37,7 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/sample-cluster-map.json ${CMAKE_CURRE
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/restart-scenarios-test.py ${CMAKE_CURRENT_BINARY_DIR}/restart-scenarios-test.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/nodeos_startup_catchup.py ${CMAKE_CURRENT_BINARY_DIR}/nodeos_startup_catchup.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/nodeos_forked_chain_test.py ${CMAKE_CURRENT_BINARY_DIR}/nodeos_forked_chain_test.py COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/nodeos_short_fork_take_over_test.py ${CMAKE_CURRENT_BINARY_DIR}/nodeos_short_fork_take_over_test.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/nodeos_run_test.py ${CMAKE_CURRENT_BINARY_DIR}/nodeos_run_test.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/nodeos_run_remote_test.py ${CMAKE_CURRENT_BINARY_DIR}/nodeos_run_remote_test.py COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/nodeos_under_min_avail_ram.py ${CMAKE_CURRENT_BINARY_DIR}/nodeos_under_min_avail_ram.py COPYONLY)
@@ -122,6 +123,9 @@ add_test(NAME nodeos_startup_catchup_lr_test COMMAND tests/nodeos_startup_catchu
 set_tests_properties(nodeos_startup_catchup_lr_test PROPERTIES TIMEOUT 3000)
 set_property(TEST nodeos_startup_catchup_lr_test PROPERTY LABELS long_running_tests)
 
+add_test(NAME nodeos_short_fork_take_over_lr_test COMMAND tests/nodeos_short_fork_take_over_test.py -v --wallet-port 9905 --clean-run --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+set_property(TEST nodeos_short_fork_take_over_lr_test PROPERTY LABELS long_running_tests)
+
 
 # parallelizable tests (Group 1)
 add_test(NAME nodeos_sanity_lr_test_parallel COMMAND tests/nodeos_run_test.py -v --sanity-test --cluster-id 1 --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
@@ -145,7 +149,6 @@ set_property(TEST nodeos_voting_lr_test_parallel PROPERTY LABELS parallel_tests_
 add_test(NAME nodeos_under_min_avail_ram_lr_test_parallel COMMAND tests/nodeos_under_min_avail_ram.py -v --wallet-port 9912 --cluster-id 7 --dump-error-detail WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 set_tests_properties(nodeos_under_min_avail_ram_lr_test_parallel PROPERTIES TIMEOUT 3000)
 set_property(TEST nodeos_under_min_avail_ram_lr_test_parallel PROPERTY LABELS parallel_tests_group_1)
-
 
 
 set(ALTERNATE_VERSION_LABELS_FILE "${CMAKE_BINARY_DIR}/tests/multiversion_paths.conf")

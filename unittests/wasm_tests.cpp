@@ -1742,6 +1742,58 @@ BOOST_FIXTURE_TEST_CASE( big_maligned_host_ptr, TESTER ) try {
    produce_blocks(1);
 } FC_LOG_AND_RETHROW()
 
+BOOST_FIXTURE_TEST_CASE( depth_tests, TESTER ) try {
+   produce_block();
+   create_accounts( {N(depth)} );
+   produce_block();
+
+   signed_transaction trx;
+   trx.actions.emplace_back(vector<permission_level>{{N(depth),config::active_name}}, N(depth), N(), bytes{});
+   trx.actions[0].authorization = vector<permission_level>{{N(depth),config::active_name}};
+
+    auto pushit = [&]() {
+      produce_block();
+      trx.signatures.clear();
+      set_transaction_headers(trx);
+      trx.sign(get_private_key(N(depth), "active"), control->get_chain_id());
+      push_transaction(trx);
+   };
+
+   //strictly wasm recursion to maximum_call_depth & maximum_call_depth+1
+   string wasm_depth_okay = fc::format_string(depth_assert_wasm, fc::mutable_variant_object()
+                                              ("MAX_DEPTH", eosio::chain::wasm_constraints::maximum_call_depth));
+   set_code(N(depth), wasm_depth_okay.c_str());
+   pushit();
+
+   string wasm_depth_one_over = fc::format_string(depth_assert_wasm, fc::mutable_variant_object()
+                                              ("MAX_DEPTH", eosio::chain::wasm_constraints::maximum_call_depth+1));
+   set_code(N(depth), wasm_depth_one_over.c_str());
+   BOOST_CHECK_THROW(pushit(), wasm_execution_error);
+
+   //wasm recursion but call an intrinsic as the last function instead
+   string intrinsic_depth_okay = fc::format_string(depth_assert_intrinsic, fc::mutable_variant_object()
+                                              ("MAX_DEPTH", eosio::chain::wasm_constraints::maximum_call_depth));
+   set_code(N(depth), intrinsic_depth_okay.c_str());
+   pushit();
+
+   string intrinsic_depth_one_over = fc::format_string(depth_assert_intrinsic, fc::mutable_variant_object()
+                                              ("MAX_DEPTH", eosio::chain::wasm_constraints::maximum_call_depth+1));
+   set_code(N(depth), intrinsic_depth_one_over.c_str());
+   BOOST_CHECK_THROW(pushit(), wasm_execution_error);
+
+   //add a float operation in the mix to ensure any injected softfloat call doesn't count against limit
+   string wasm_float_depth_okay = fc::format_string(depth_assert_wasm_float, fc::mutable_variant_object()
+                                              ("MAX_DEPTH", eosio::chain::wasm_constraints::maximum_call_depth));
+   set_code(N(depth), wasm_float_depth_okay.c_str());
+   pushit();
+
+   string wasm_float_depth_one_over = fc::format_string(depth_assert_wasm_float, fc::mutable_variant_object()
+                                              ("MAX_DEPTH", eosio::chain::wasm_constraints::maximum_call_depth+1));
+   set_code(N(depth), wasm_float_depth_one_over.c_str());
+   BOOST_CHECK_THROW(pushit(), wasm_execution_error);
+
+} FC_LOG_AND_RETHROW()
+
 // TODO: restore net_usage_tests
 #if 0
 BOOST_FIXTURE_TEST_CASE(net_usage_tests, tester ) try {
