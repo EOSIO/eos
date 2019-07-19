@@ -961,9 +961,7 @@ namespace eosio {
       self->socket_open = false;
       boost::system::error_code ec;
       if( self->socket->is_open() ) {
-#ifndef __APPLE__ /* shutdown seems to cause apple to not recover from connection refused */
          self->socket->shutdown( tcp::socket::shutdown_both, ec );
-#endif
          self->socket->close();
       }
       self->socket.reset( new tcp::socket( my_impl->thread_pool->get_executor() ) );
