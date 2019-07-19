@@ -265,28 +265,13 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
             }
          } ) );
 
-         // since the watermark has to be set before a block is created, we are looking into the future to
-         // determine the new schedule to identify producers that have become active
-         chain::controller& chain = chain_plug->chain();
-         const auto hbn = bsp->block_num;
-         auto new_pbhs = bsp->next(bsp->header.timestamp.next(), 0);
-
-         // for newly installed producers we can set their watermarks to the block they became active
-         if( bsp->active_schedule.version != new_pbhs.active_schedule.version ) {
-            flat_set<account_name> new_producers;
-            new_producers.reserve(new_pbhs.active_schedule.producers.size());
-            for( const auto& p: new_pbhs.active_schedule.producers) {
-               if (_producers.count(p.producer_name) > 0)
-                  new_producers.insert(p.producer_name);
-            }
-
-            for( const auto& p: bsp->active_schedule.producers) {
-               new_producers.erase(p.producer_name);
-            }
-
-            for (const auto& new_producer: new_producers) {
-               _producer_watermarks[new_producer] = hbn;
-            }
+         // simplify handling of watermark in on_block
+         auto block_producer = bsp->header.producer;
+         auto watermark_itr = _producer_watermarks.find( block_producer );
+         if( watermark_itr != _producer_watermarks.end() ) {
+            watermark_itr->second = bsp->block_num;
+         } else if( _producers.count( block_producer ) > 0 ) {
+            _producer_watermarks.emplace( block_producer, bsp->block_num );
          }
       }
 
@@ -1391,9 +1376,12 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
          if (currrent_watermark_itr != _producer_watermarks.end()) {
             auto watermark = currrent_watermark_itr->second;
             if (watermark < hbs->block_num) {
-               blocks_to_confirm = std::min<uint16_t>(std::numeric_limits<uint16_t>::max(), (uint16_t)(hbs->block_num - watermark));
+               blocks_to_confirm = (uint16_t)(std::min<uint32_t>(std::numeric_limits<uint16_t>::max(), (uint32_t)(hbs->block_num - watermark)));
             }
          }
+
+         // can not confirm irreversible blocks
+         blocks_to_confirm = (uint16_t)(std::min<uint32_t>(blocks_to_confirm, (uint32_t)(hbs->block_num - hbs->dpos_irreversible_blocknum)));
       }
 
       _unapplied_transactions.add_aborted( chain.abort_block() );
