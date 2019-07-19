@@ -3058,13 +3058,14 @@ namespace eosio {
    void net_plugin_impl::on_accepted_block(const block_state_ptr& block) {
       update_chain_info();
       dispatcher->strand.post( [this, block]() {
-         fc_dlog( logger, "signaled, blk id = ${id}", ("id", block->id) );
+         fc_dlog( logger, "signaled, blk num = ${num}, id = ${id}", ("num", block->block_num)("id", block->id) );
          dispatcher->bcast_block( block );
       });
    }
 
    // called from application thread
-   void net_plugin_impl::on_irreversible_block( const block_state_ptr& ) {
+   void net_plugin_impl::on_irreversible_block( const block_state_ptr& block) {
+      fc_dlog( logger, "on_irreversible_block, blk num = ${num}, id = ${id}", ("num", block->block_num)("id", block->id) );
       update_chain_info();
    }
 
