@@ -101,4 +101,4 @@ class EthSwapContract:
         Process swap request manually.
         """
         print(kwargs)
-        # call eos contract to create swap request
+        self.remchain_swap_contract.init_swap(**kwargs)
