@@ -10,9 +10,11 @@ from web3 import Web3
 from cli.constants import (
     ETH_SWAP_CONTRACT_ABI,
     ETH_SWAP_CONTRACT_ADDRESS,
+    ETH_SWAP_REQUEST_EVENT_NAME,
     SHORT_POLLING_INTERVAL,
-    ETH_SWAP_REQUEST_EVENT_NAME)
+)
 from cli.eth_swap_contract.interfaces import EthSwapContractInterface
+from cli.remchain_swap_contract.service import RemchainSwapContract
 from cli.utils import print_result
 
 
@@ -34,6 +36,11 @@ class EthSwapContract:
             abi=ETH_SWAP_CONTRACT_ABI
         )
 
+        self.remchain_swap_contract = RemchainSwapContract(
+            nodeos_url=self.nodeos_url,
+            permission=self.permission,
+        )
+
     @staticmethod
     def get_swap_request_parameters(event):
         event_args = event['args']
@@ -46,8 +53,8 @@ class EthSwapContract:
         result = {
             'txid': transaction_id,
             'chain_id': chain_id,
-            'user_public_key': user_public_key,
-            'amount_to_swap': amount_to_swap,
+            'swap_pubkey': user_public_key,
+            'amount': amount_to_swap,
             'timestamp': timestamp,
         }
 
@@ -58,7 +65,7 @@ class EthSwapContract:
 
         print_result(result)
 
-        # call eos contract to create swap request
+        self.remchain_swap_contract.init_swap(**result)
 
     def new_swaps_loop(self, event_filter, poll_interval):
         while True:

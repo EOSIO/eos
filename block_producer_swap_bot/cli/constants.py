@@ -10,5 +10,5 @@ ETH_SWAP_REQUEST_EVENT_NAME = 'SwapRequest'
 
 SHORT_POLLING_INTERVAL = 5  # secs
 
-REMME_SWAP_ACCOUNT = 'remio.swap'
+REMME_SWAP_ACCOUNT =  'useraaaaaaab' #'remio.swap'
 PROCESS_SWAP_ACTION = 'initswap'
