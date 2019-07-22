@@ -325,8 +325,8 @@ class Node(object):
         present = True if blockNum <= node_block_num else False
         if Utils.Debug and blockType==BlockType.lib:
             decorator=""
-            if present:
-                decorator="is not "
+            if not present:
+                decorator="not "
             Utils.Print("Block %d is %sfinalized." % (blockNum, decorator))
 
         return present
@@ -1203,6 +1203,7 @@ class Node(object):
                 return info[headBlockNumTag]
         else:
             # Either this implementation or the one in getIrreversibleBlockNum are likely wrong.
+            time.sleep(1)
             block=self.getBlockFromDb(-1)
             if block is not None:
                 blockNum=block["block_num"]
