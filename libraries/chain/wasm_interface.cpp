@@ -188,8 +188,9 @@ class privileged_api : public context_aware_api {
          for (const auto& p: producers) {
             EOS_ASSERT( context.is_account(p.producer_name), wasm_execution_error, "producer schedule includes a nonexisting account" );
 
-            p.authority.visit([this](const auto& a) {
+            p.authority.visit([this, &p](const auto& a) {
                uint32_t sum_weights = 0;
+               std::set<public_key_type> unique_keys;
                for (const auto& kw: a.keys ) {
                   EOS_ASSERT( kw.key.which() < context.db.get<protocol_state_object>().num_supported_key_types, unactivated_key_type,
                               "Unactivated key type used in proposed producer schedule");
@@ -201,9 +202,12 @@ class privileged_api : public context_aware_api {
                   } else {
                      sum_weights += kw.weight;
                   }
+
+                  unique_keys.insert(kw.key);
                }
 
-               EOS_ASSERT( sum_weights >= a.threshold, wasm_execution_error, "producer schedule includes an unsatisfiable authority" );
+               EOS_ASSERT( a.keys.size() == unique_keys.size(), wasm_execution_error, "producer schedule includes a duplicated key for ${account}", ("account", p.producer_name));
+               EOS_ASSERT( sum_weights >= a.threshold, wasm_execution_error, "producer schedule includes an unsatisfiable authority for ${account}", ("account", p.producer_name));
             });
 
 

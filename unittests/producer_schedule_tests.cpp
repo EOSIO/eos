@@ -612,4 +612,73 @@ BOOST_FIXTURE_TEST_CASE( producer_m_of_n_test, TESTER ) try {
    BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW()
 
+BOOST_FIXTURE_TEST_CASE( satisfiable_msig_test, TESTER ) try {
+   create_accounts( {N(alice),N(bob)} );
+   while (control->head_block_num() < 3) {
+      produce_block();
+   }
+
+   vector<producer_authority> sch1 = {
+           producer_authority{N(alice), block_signing_authority_v0{2, {{get_public_key(N(alice), "bs1"), 1}}}}
+   };
+
+   // ensure that the entries in a wtmsig schedule are rejected if not satisfiable
+   BOOST_REQUIRE_EXCEPTION(
+      set_producer_schedule( sch1 ), wasm_execution_error,
+      fc_exception_message_is( "producer schedule includes an unsatisfiable authority for alice" )
+   );
+
+   BOOST_REQUIRE_EQUAL( false, control->proposed_producers().valid() );
+
+} FC_LOG_AND_RETHROW()
+
+BOOST_FIXTURE_TEST_CASE( duplicate_producers_test, TESTER ) try {
+   create_accounts( {N(alice),N(bob)} );
+   while (control->head_block_num() < 3) {
+      produce_block();
+   }
+
+   vector<producer_authority> sch1 = {
+           producer_authority{N(alice), block_signing_authority_v0{1, {{get_public_key(N(alice), "bs1"), 1}}}},
+           producer_authority{N(alice), block_signing_authority_v0{1, {{get_public_key(N(alice), "bs2"), 1}}}}
+   };
+
+   // ensure that the schedule is rejected if it has duplicate producers in it
+   BOOST_REQUIRE_EXCEPTION(
+      set_producer_schedule( sch1 ), wasm_execution_error,
+      fc_exception_message_is( "duplicate producer name in producer schedule" )
+   );
+
+   BOOST_REQUIRE_EQUAL( false, control->proposed_producers().valid() );
+
+} FC_LOG_AND_RETHROW()
+
+BOOST_FIXTURE_TEST_CASE( duplicate_keys_test, TESTER ) try {
+   create_accounts( {N(alice),N(bob)} );
+   while (control->head_block_num() < 3) {
+      produce_block();
+   }
+
+   vector<producer_authority> sch1 = {
+           producer_authority{N(alice), block_signing_authority_v0{2, {{get_public_key(N(alice), "bs1"), 1}, {get_public_key(N(alice), "bs1"), 1}}}}
+   };
+
+   // ensure that the schedule is rejected if it has duplicate keys for a single producer in it
+   BOOST_REQUIRE_EXCEPTION(
+      set_producer_schedule( sch1 ), wasm_execution_error,
+      fc_exception_message_is( "producer schedule includes a duplicated key for alice" )
+   );
+
+   BOOST_REQUIRE_EQUAL( false, control->proposed_producers().valid() );
+
+   // ensure that multiple producers are allowed to share keys
+   vector<producer_authority> sch2 = {
+           producer_authority{N(alice), block_signing_authority_v0{1, {{get_public_key(N(alice), "bs1"), 1}}}},
+           producer_authority{N(bob),   block_signing_authority_v0{1, {{get_public_key(N(alice), "bs1"), 1}}}}
+   };
+
+   set_producer_schedule( sch2 );
+   BOOST_REQUIRE_EQUAL( true, control->proposed_producers().valid() );
+} FC_LOG_AND_RETHROW()
+
 BOOST_AUTO_TEST_SUITE_END()
