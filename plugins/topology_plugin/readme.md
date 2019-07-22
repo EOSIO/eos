@@ -3,11 +3,6 @@ This optional plugin facilitates the gathering of network performance metrics fo
 
 The topology plugin is tied closely to the net plugin, adding a new timer along with an optional reference to the topology plugin and local node and link ids that are globally unique. A new topology message is added to the net protocol list which is used to communicate changes to the network map, periodic updates of perfomance data, or changes of interested watchers.
 
-##watching the network
-this is the way to receive periodic updates on performance metrics. Although each node will have an entire map of the network, each node only has the performance metrics for itself and its direct peers. Watcher subscriptions are shared over the network so that the buden of updating watchers is spread acreoss the network.
-
-A watcher is defined by a UDP endpoint along with a list of link ids it is interested in and a specification of which data points it is interested in. watchers are updated by the node that owns the passive connection side of the identified link. 
-
 ##identifying nodes and links
 The topology plugin maintains a map of the p2p network in terms of nodes, which are instances of nodeos, and the p2p connections between them. Since in many cases nodes, particularly block producing nodes, are sequestered behind firewalls and using otherwise nontroutable endpoints nodes are identified by a hash of a strinified collection of p2p host and port, and an arbitrary "bp identifier" string which is configured via the command line or config.ini file. Additional node identifiers include the role of the particular node and any specific producer account names, if any. 
 
@@ -57,10 +52,9 @@ The plugin follows the common idiom of a lightweight interface class and a more 
 | filename | definitions | description    |
 |----------|-------------|----------------|
  topology_plugin.hpp | topology\_plugin | The accessable interface for the module 
- messages.hpp | watcher | definition of a watcher 
- | link\_sample | a collection of metrics related to a single link id.
+ messages.hpp | link\_sample | a collection of metrics related to a single link id.
  | map\_update | a collection of updates to the relationships of nodes and links, for example when a new nodeos instance becomes active or one goes down.
- | topo\_data | an amalgam of the previous 3 data types 
+ | topology\_data | a variant that resolves to either of the previous 2 data types 
  | topology\_message | the new p2p message type used to communicate network status information between the various peers. 
  link\_descriptor.hpp | link\_roles | an enumeration of possible specialized use for this link. This could be blocks, transactions, commands, or any combination of those three. 
  | link\_descriptor | the verbose description of the link as defined by the connected nodes. This gets stringified and hashed to generate a universally unique, but otherwise anonymous identifier.
@@ -70,4 +64,4 @@ The plugin follows the common idiom of a lightweight interface class and a more 
  
 |  typename  |  description  |
 |------------|---------------|
-   topo\_node | contains the verbose description of the node along with it's hashed id along with a list of no
+   topo\_node | contains the verbose description of the node along with it's hashed id along with a list of links to peer nodes

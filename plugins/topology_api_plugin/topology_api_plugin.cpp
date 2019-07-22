@@ -80,7 +80,9 @@ void topology_api_plugin::plugin_startup() {
        CALL(topology, topo_mgr, links,
             INVOKE_R_R(topo_mgr, links, std::string), 201),
        CALL(topology, topo_mgr, gen_grid,
-            INVOKE_R_V(topo_mgr, gen_grid), 201)
+            INVOKE_R_V(topo_mgr, gen_grid), 201),
+       CALL(topology, topo_mgr, get_sample,
+            INVOKE_R_V(topo_mgr, get_sample), 201)
    });
 }
 

@@ -44,6 +44,7 @@ namespace eosio {
     * updates, the link metrics are stored in a map with this enumeration providing
     * key values.
     */
+
    enum metric_kind
       {
        queue_depth = 0x01,          // how many messages are waiting to be sent
@@ -70,10 +71,14 @@ namespace eosio {
     * link_metrics.total_bytes  is the quantity of data sent measured in bytes and
     *
     */
+
+   using named_metric = pair<metric_kind, metric>;
+
    struct link_metrics {
-      time_t                       last_sample;
-      time_t                       first_sample;
+      uint32_t                       last_sample;
+      uint32_t                       first_sample;
       fc::flat_map<metric_kind,metric> measurements;
+      // vector<named_metric>         measurements;
       uint64_t                     total_bytes;
       uint64_t                     total_messages;
 
@@ -104,5 +109,5 @@ namespace eosio {
 
 } // namespace eosio
 FC_REFLECT_ENUM( eosio::metric_kind, (queue_depth)(queue_max_depth)(queue_latency)(net_latency)(bytes_sent)(messages_sent)(bytes_per_second)(messages_per_second)(fork_instances)(fork_depth)(fork_max_depth))
-FC_REFLECT( eosio::metric, (last)(min)(max)(avg))
-FC_REFLECT( eosio::link_metrics, (last_sample)(measurements)(total_bytes)(total_messages))
+FC_REFLECT( eosio::metric, (count)(last)(min)(max)(avg))
+FC_REFLECT( eosio::link_metrics, (last_sample)(first_sample)(measurements)(total_bytes)(total_messages))

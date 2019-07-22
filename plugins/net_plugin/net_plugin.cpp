@@ -56,6 +56,11 @@ namespace eosio {
 
    using io_work_t = boost::asio::executor_work_guard<boost::asio::io_context::executor_type>;
 
+   template<typename T>
+   T dejsonify(const string& s) {
+      return fc::json::from_string(s).as<T>();
+   }
+
    template <typename Strand>
    void verify_strand_in_this_thread(const Strand& strand, const char* func, int line) {
       if( !strand.running_in_this_thread() ) {
@@ -1210,6 +1215,7 @@ namespace eosio {
    void connection::collect_samples() {
       link_sample ls;
       ls.link = topo_id;
+      fc_ilog( logger, "collecting samples, topo_id = ${id}",("id", topo_id));
       {
          std::lock_guard<std::mutex> g( sample_mtx );
          ls.up.emplace_back(topology_sample(queue_depth, buffer_queue.write_queue_size()));
@@ -2453,7 +2459,6 @@ namespace eosio {
                         std::lock_guard<std::shared_mutex> g_unique( connections_mtx );
                         connections.insert( new_connection );
                      }
-
                   } else {
                      if( from_addr >= max_nodes_per_host ) {
                         fc_elog( logger, "Number of connections (${n}) from ${ra} exceeds limit ${l}",
@@ -2816,13 +2821,13 @@ namespace eosio {
             enqueue( go_away_message( authentication ) );
             return;
          }
-
-         peer_lacks_topology = msg.p2p_address.find(" - topo:") == string::npos;
+         size_t topo_info = msg.p2p_address.find(topology_enabler);
          if (my_impl->topology_plug != nullptr) {
             link_descriptor ld;
-            eosio::node_id peer;
-            if (peer_lacks_topology) {
-               node_descriptor peer_node;
+            eosio::node_id topo_peer;
+            node_descriptor peer_node;
+            peer_node.my_id = 0;
+            if (topo_info == string::npos) {
                size_t pos = msg.p2p_address.find(" - ");
                if (pos == string::npos) {
                   fc_elog( logger, "peer has invalid p2p_address '${p}'", ("p",msg.p2p_address));
@@ -2836,15 +2841,21 @@ namespace eosio {
                stringstream ss;
                ss << msg.network_version;
                peer_node.version = ss.str();
-               peer = my_impl->topology_plug->add_node(move(peer_node));
             }
             else {
-               peer = msg.node_id.data()[0];
+               topo_info += strlen(topology_enabler);
+
+               string pnjson = msg.p2p_address.substr(topo_info);
+               fc_dlog( logger, "parsing node descriptor from ${nd}",("nd",pnjson));
+               peer_node = dejsonify<node_descriptor>(pnjson);
+               topo_peer = msg.node_id.data()[0];
             }
-            ld.active = peer_addr.empty() ? peer : my_impl->node_id.data()[0];
-            ld.passive = !peer_addr.empty() ? peer : my_impl->node_id.data()[0];
+            topo_peer = my_impl->topology_plug->add_node(move(peer_node));
+            ld.active = peer_addr.empty() ? topo_peer : my_impl->node_id.data()[0];
+            ld.passive = !peer_addr.empty() ? topo_peer : my_impl->node_id.data()[0];
             ld.role = combined;
             ld.hops = 1; // need to compute
+            ilog("calliing add_link");
             topo_id = my_impl->topology_plug->add_link(move(ld));
          }
 
@@ -3460,14 +3471,24 @@ namespace eosio {
       hello.p2p_address = my_impl->p2p_address;
       if( is_transactions_only_connection() ) hello.p2p_address += ":trx";
       if( is_blocks_only_connection() ) hello.p2p_address += ":blk";
-      hello.p2p_address += " - " + hello.node_id.str().substr(0,7);
+      hello.p2p_address += " - ";
       if (my_impl->topology_plug == nullptr) {
-         hello.p2p_address = my_impl->p2p_address + " - " + hello.node_id.str().substr(0,7);
+         hello.p2p_address += hello.node_id.str().substr(0,7);
       }
       else {
-         hello.p2p_address = my_impl->p2p_address + " - topo:" + my_impl->node_id.str().substr(0,7);
+         node_descriptor nd;
+         nd.my_id = my_impl->node_id.data()[0];
+         nd.location = my_impl->topology_plug->bp_name() + ":" + my_impl->p2p_address;
+         nd.role = producer;
+         nd.status = running;
+         stringstream ss;
+         ss << hello.network_version;
+         nd.version = ss.str();
+         //nd.producers = ...
+         string node_desc_str = fc::json::to_string(nd);
+         hello.p2p_address += topology_enabler + node_desc_str;
       }
-      fc_dlog(logger,"set o2o_address = ${p2p}",("p2p", hello.p2p_address));
+      fc_dlog(logger,"set p2p_address = ${p2p}",("p2p", hello.p2p_address));
 #if defined( __APPLE__ )
       hello.os = "osx";
 #elif defined( __linux__ )
@@ -3530,11 +3551,6 @@ namespace eosio {
            "   _lip   \tlocal IP address connected to peer\n\n"
            "   _lport \tlocal port number connected to peer\n\n")
         ;
-   }
-
-   template<typename T>
-   T dejsonify(const string& s) {
-      return fc::json::from_string(s).as<T>();
    }
 
    void net_plugin::plugin_initialize( const variables_map& options ) {
@@ -3673,6 +3689,8 @@ namespace eosio {
 
       if (my->topology_plug != nullptr) {
          node_descriptor nd;
+         nd.my_id = 0;
+         fc_ilog( logger,"init nd.id = ${id}",("id",nd.my_id));
          nd.location = my->topology_plug->bp_name() + ":" + my->p2p_address;
          eosio::chain_apis::read_only::get_producers_params parm({false, "", 100});
          auto prodlist = my->chain_plug->get_read_only_api().get_producers(parm);
@@ -3681,13 +3699,15 @@ namespace eosio {
             nd.status = standby;
          } else {
             nd.role = producer;
-            nd.status = scheduled;
+            nd.status = running;
             for (auto &row : prodlist.rows) {
                string prodname = row["owner"].as_string();
                nd.producers.push_back( chain::name(prodname) );
             }
          }
          my->node_id = my->topology_plug->gen_long_id(nd);
+         uint64_t sid = my->node_id.data()[0];
+         fc_ilog( logger, "setting up local node ${id}",("id",sid) );
          eosio::node_id shortid = my->topology_plug->add_node( std::move(nd) );
          my->topology_plug->set_local_node_id(shortid);
 

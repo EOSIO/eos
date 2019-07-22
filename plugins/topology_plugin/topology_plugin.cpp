@@ -70,7 +70,7 @@ namespace eosio {
    };
 
    struct topo_node {
-      topo_node () : info(), links() {}
+      topo_node () : info(), links(), distance() {}
       topo_node (node_descriptor &&nd) : links() { info = std::move(nd); }
 
       node_descriptor   info;
@@ -165,13 +165,21 @@ namespace eosio {
       int16_t count_hops_i (set<node_id>& seen, node_id to, topo_node& from);
       int16_t count_hops (node_id to);
       node_id peer_node (link_id onlink, node_id from);
+      node_id add_node_i( node_descriptor&& n );
+      void    drop_node_i( node_id id );
+      link_id add_link_i( link_descriptor&& l );
+      void    drop_link_i( link_id id );
+
       void    update_samples_i( const link_sample &ls, bool flip );
+      void    update_map_i( const map_update &mu );
 
       uint16_t sample_imterval_sec;
       string bp_name;
       node_id local_node_id;
       bool done = false;
       net_plugin * net_plug = nullptr;
+
+      std::mutex table_mtx;
    };
 
    fc::sha256 topology_plugin_impl::gen_long_id_i( const node_descriptor &desc ) {
@@ -191,6 +199,69 @@ namespace eosio {
       infostrm << desc.active << desc.passive << link_role_str( desc.role);
       hash<string> hasher;
       return hasher(infostrm.str());
+   }
+
+   node_id topology_plugin_impl::add_node_i( node_descriptor&& n ) {
+      if (n.my_id == 0) {
+         n.my_id = gen_id (n);
+      }
+      ilog( "adding id = ${id} loc = ${loc}",("id", n.my_id)("loc",n.location));
+      node_id id = n.my_id;
+      if (nodes.find(n.my_id) == nodes.end()) {
+         std::lock_guard<std::mutex> g( table_mtx );
+
+         topo_node tn(move(n));
+
+         for (auto &np : nodes) {
+            np.second.distance[id] = count_hops(id);
+            tn.distance[np.first] = np.second.distance[id];
+         }
+         nodes.emplace( id, move(tn));
+      }
+      else {
+         ilog("redundant invocation");
+      }
+      return id;
+   }
+
+   void topology_plugin_impl::drop_node_i ( node_id id ) {
+      nodes.erase( id );
+   }
+
+   link_id topology_plugin_impl::add_link_i ( link_descriptor&& l ) {
+      auto id = gen_id( l );
+      l.my_id = id;
+      ilog ("adding a link ${id} from ${e1} to ${e2}",("id",id)("e1",l.passive)("e2", l.active));
+      {
+         auto mn = nodes.find(l.active);
+         if ( mn != nodes.end()) {
+            std::lock_guard<std::mutex> g( table_mtx );
+
+            mn->second.links.push_back( l.my_id );
+         }
+         else {
+            ilog ("no node found for active peer ${la}", ("la",l.active));
+         }
+      }
+      {
+         auto mn = nodes.find(l.passive);
+         if ( mn != nodes.end()) {
+            std::lock_guard<std::mutex> g( table_mtx );
+            mn->second.links.push_back( l.my_id );
+         }
+         else {
+            ilog ("no node found for passive peer ${la}", ("la",l.active));
+         }
+      }
+      {
+         std::lock_guard<std::mutex> g( table_mtx );
+         links.emplace( id, move(l));
+      }
+      return id;
+   }
+
+   void topology_plugin_impl::drop_link_i( link_id id ) {
+      links.erase( id );
    }
 
    int16_t topology_plugin_impl::count_hops_i( set<node_id>& seen,
@@ -237,10 +308,28 @@ namespace eosio {
    }
 
    void topology_plugin_impl::update_samples_i( const link_sample &ls, bool flip) {
-      links[ls.link].down.sample(flip ? ls.up : ls.down);
-      links[ls.link].up.sample(flip ? ls.down : ls.up);
+      if (links.find(ls.link) != links.end()) {
+         links[ls.link].down.sample(flip ? ls.up : ls.down);
+         links[ls.link].up.sample(flip ? ls.down : ls.up);
+      }
    }
 
+   void topology_plugin_impl::update_map_i( const map_update &mu ) {
+      for( auto &an : mu.add_nodes ) {
+         node_descriptor nd = an;
+         add_node_i(move(nd));
+      }
+      for( auto &al : mu.add_links ) {
+         link_descriptor ld = al;
+         add_link_i(move(ld));
+      }
+      for( auto &dn : mu.drop_nodes ) {
+         drop_node_i(dn);
+      }
+      for( auto &dl : mu.drop_links ) {
+         drop_link_i(dl);
+      }
+   }
 
    //----------------------------------------------------------------------------------------
 
@@ -326,30 +415,19 @@ namespace eosio {
    }
 
    node_id topology_plugin::add_node ( node_descriptor&& n ) {
-      n.my_id = my->gen_id (n);
-      node_id id = n.my_id;
-      topo_node tn(move(n));
-      for (auto &np : my->nodes) {
-         np.second.distance[id] = my->count_hops(id);
-         tn.distance[np.first] = np.second.distance[id];
-      }
-      my->nodes.emplace( id, move(tn));
-
-      return id;
+      return my->add_node_i(move(n));
    }
 
    void  topology_plugin::drop_node ( node_id id ) {
-      my->nodes.erase( id );
+      my->drop_node_i( id );
    }
 
    link_id topology_plugin::add_link ( link_descriptor&& l ) {
-      auto id = my->gen_id( l );
-      my->links.emplace( id, move(l));
-      return id;
+      return my->add_link_i(move(l));
    }
 
    void topology_plugin::drop_link( link_id id ) {
-      my->links.erase( id );
+      my->drop_link_i(id);
    }
 
    string topology_plugin::nodes( const string& in_roles ) {
@@ -396,7 +474,7 @@ namespace eosio {
       tm.fwds = 0;
       tm.ttl = 1;
       tm.payload.push_back( ls );
-      dlog("sending new sample update message");
+      ilog("sending new sample update message");
       topo_update(tm);
    }
 
@@ -407,18 +485,19 @@ namespace eosio {
    class topo_msg_handler : public fc::visitor<void> {
    public:
       void operator()( const map_update& msg) {
-         fc_dlog(topo_logger,"got a map update message");
-
+         ilog("got a map update message");
+         my_impl->update_map_i( msg );
       }
 
       void operator()( const link_sample& msg) {
-         fc_dlog(topo_logger,"got a link sample message");
+         ilog("got a link sample message");
          my_impl->update_samples_i( msg, true );
       }
    };
 
    void topology_plugin::handle_message( topology_message& msg )
    {
+      ilog("handling a new topology message");
       topology_message_ptr ptr = std::make_shared<topology_message>( msg );
       for (auto &p : ptr->payload) {
          topo_msg_handler tm;
@@ -426,7 +505,7 @@ namespace eosio {
       }
       ptr->fwds++;
       if( ptr->ttl > ptr->fwds ) {
-         dlog("forwarding topology message. ttl = ${t}. fwds = ${f}",("t",ptr->ttl)("f",ptr->fwds));
+         ilog("forwarding topology message. ttl = ${t}. fwds = ${f}",("t",ptr->ttl)("f",ptr->fwds));
          topo_update(*ptr);
       }
    }
@@ -454,14 +533,19 @@ namespace eosio {
 
    string topology_plugin::gen_grid( ) {
       ostringstream df;
-      df << "digraph G\n{\nlayout=\"circo\";\n";
+      df << "digraph G\n{\nlayout=\"circo\";" << endl;
       set<link_id> seen;
+      //      ilog("gen grid, node count = ${c}",("c",my->nodes.size()));
       for (auto &tnode : my->nodes) {
+         // ilog("tnode ${n} has ${l} links",("n",tnode.second.info.location)("l",tnode.second.links.size()));
          for (const auto &l : tnode.second.links) {
-            if (seen.find(l) != seen.end())
+            if (seen.find(l) != seen.end()) {
+               ilog("link id ${id} already seen",("id",l));
                continue;
+            }
             auto &tlink = my->links[l];
             seen.insert(tlink.info.my_id);
+            // ilog("adding link ${l} aka ${id}",("id",tlink.info.my_id)("l",l));
             string alabel, plabel;
             if (tlink.info.passive == tnode.first) {
                alabel = my->nodes[tlink.info.active].dot_label();
@@ -473,7 +557,7 @@ namespace eosio {
 
             df << "\"" << alabel
                << "\"->\"" << plabel
-               << "\" [dir=\"forward\"];" << std::endl;
+               << "\" [dir=\"forward\"];" << endl;
          }
       }
       df << "}\n";
@@ -481,4 +565,20 @@ namespace eosio {
 
    }
 
+   string topology_plugin::get_sample( ) {
+      ostringstream df;
+      df << "{ \"links\" = [" << endl;
+      for (auto &tlink : my->links) {
+         df << "{ \"key\" = \"" << tlink.first << "\"," << endl;
+         df << "\"value\" = " << fc::json::to_pretty_string( tlink.second ) << "}" << endl;
+      }
+      df << "]}" << endl;
+
+      return df.str();
+
+   }
+
 }
+
+FC_REFLECT(eosio::topo_link,(info)(up)(down))
+FC_REFLECT(eosio::topo_node,(info)(links)(distance))

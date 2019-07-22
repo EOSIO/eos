@@ -76,6 +76,7 @@ namespace eosio{
       string nodes( const string& in_roles );
       string links( const string& with_node );
       string gen_grid( );
+      string get_sample( );
 
    private:
       std::unique_ptr<class topology_plugin_impl> my;
