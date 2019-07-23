@@ -65,16 +65,21 @@ static wavm_live_modules the_wavm_live_modules;
 
 class wavm_instantiated_module : public wasm_instantiated_module_interface {
    public:
-      wavm_instantiated_module(ModuleInstance* instance, std::unique_ptr<Module> module, std::vector<uint8_t> initial_mem) :
+      wavm_instantiated_module(ModuleInstance* instance, std::unique_ptr<Module> module, std::vector<uint8_t> initial_mem, wavm_runtime& wr) :
          _initial_memory(initial_mem),
          _instance(instance),
-         _module_ref(detail::the_wavm_live_modules.add_live_module(instance))
+         _module_ref(detail::the_wavm_live_modules.add_live_module(instance)),
+         _wavm_runtime(wr)
       {
          //The memory instance is reused across all wavm_instantiated_modules, but for wasm instances
          // that didn't declare "memory", getDefaultMemory() won't see it. It would also be possible
          // to say something like if(module->memories.size()) here I believe
-         if(getDefaultMemory(_instance))
-            _initial_memory_config = module->memories.defs.at(0).type;
+         cd.starting_memory_pages = 0;
+         if(module->memories.size())
+            cd.starting_memory_pages = module->memories.defs.at(0).type.size.min;
+         cd.initdata = _initial_memory;
+         cd.initdata_pre_memory_size = 0;
+         cd.mi = _instance; //XXX
       }
 
       ~wavm_instantiated_module() {
@@ -82,53 +87,15 @@ class wavm_instantiated_module : public wasm_instantiated_module_interface {
       }
 
       void apply(apply_context& context) override {
-         vector<Value> args = {Value(context.get_receiver().to_uint64_t()),
-	                            Value(context.get_action().account.to_uint64_t()),
-                               Value(context.get_action().name.to_uint64_t())};
+         the_running_instance_context.apply_ctx = &context;
 
-         call("apply", args, context);
-      }
-
-   private:
-      void call(const string &entry_point, const vector <Value> &args, apply_context &context) {
          unsigned long long start = __builtin_readcyclecounter();
          auto count_it = fc::make_scoped_exit([&start](){
             the_counter.count += __builtin_readcyclecounter() - start;
          });
-         try {
-            FunctionInstance* call = asFunctionNullable(getInstanceExport(_instance,entry_point));
-            if( !call )
-               return;
 
-            EOS_ASSERT( getFunctionType(call)->parameters.size() == args.size(), wasm_exception, "" );
-
-            //The memory instance is reused across all wavm_instantiated_modules, but for wasm instances
-            // that didn't declare "memory", getDefaultMemory() won't see it
-            MemoryInstance* default_mem = getDefaultMemory(_instance);
-            if(default_mem) {
-               //reset memory resizes the sandbox'ed memory to the module's init memory size and then
-               // (effectively) memzeros it all
-               resetMemory(default_mem, _initial_memory_config);
-
-               char* memstart = &memoryRef<char>(getDefaultMemory(_instance), 0);
-               memcpy(memstart, _initial_memory.data(), _initial_memory.size());
-            }
-
-            the_running_instance_context.memory = default_mem;
-            the_running_instance_context.apply_ctx = &context;
-
-            resetGlobalInstances(_instance);
-            runInstanceStartFunc(_instance);
-            Runtime::invokeFunction(call,args);
-         } catch( const wasm_exit& e ) {
-         } catch( const Runtime::Exception& e ) {
-             FC_THROW_EXCEPTION(wasm_execution_error,
-                         "cause: ${cause}\n${callstack}",
-                         ("cause", string(describeExceptionCause(e.cause)))
-                         ("callstack", e.callStack));
-         } FC_CAPTURE_AND_RETHROW()
+         _wavm_runtime.exec.execute(cd, _wavm_runtime.mem, context);
       }
-
 
       std::vector<uint8_t>     _initial_memory;
       //naked pointer because ModuleInstance is opaque
@@ -136,9 +103,12 @@ class wavm_instantiated_module : public wasm_instantiated_module_interface {
       ModuleInstance*          _instance;
       detail::live_module_ref  _module_ref;
       MemoryType               _initial_memory_config;
+      wavm_runtime&            _wavm_runtime;
+
+      rodeos::code_descriptor cd;
 };
 
-wavm_runtime::wavm_runtime() {
+wavm_runtime::wavm_runtime() : exec(cc) {
    static detail::wavm_runtime_initializer the_wavm_runtime_initializer;
 }
 
@@ -162,7 +132,7 @@ std::unique_ptr<wasm_instantiated_module_interface> wavm_runtime::instantiate_mo
       ModuleInstance *instance = instantiateModule(*module, std::move(link_result.resolvedImports));
       EOS_ASSERT(instance != nullptr, wasm_exception, "Fail to Instantiate WAVM Module");
 
-      return std::make_unique<wavm_instantiated_module>(instance, std::move(module), initial_memory);
+      return std::make_unique<wavm_instantiated_module>(instance, std::move(module), initial_memory, *this);
    }
    catch(const Runtime::Exception& e) {
       EOS_THROW(wasm_execution_error, "Failed to stand up WAVM instance: ${m}", ("m", describeExceptionCause(e.cause)));
@@ -170,11 +140,11 @@ std::unique_ptr<wasm_instantiated_module_interface> wavm_runtime::instantiate_mo
 }
 
 void wavm_runtime::immediately_exit_currently_running_module() {
-#ifdef _WIN32
-   throw wasm_exit();
-#else
-   Platform::immediately_exit(nullptr);
-#endif
+   uint64_t current_gs;
+   arch_prctl(ARCH_GET_GS, &current_gs);  //XXX this should probably be direct syscall
+   control_block* const cb_in_main_segment = reinterpret_cast<control_block* const>(current_gs - memory::cb_offset);
+   siglongjmp(cb_in_main_segment->jmp, 1); ///XXX 1 means clean exit
+   __builtin_unreachable();
 }
 
 }}}}

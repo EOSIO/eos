@@ -281,11 +281,6 @@ namespace Platform
 		return signalType;
 	}
 
-	void immediately_exit(std::exception_ptr except) {
-		thrown_exception = except;
-		siglongjmp(signalReturnEnv,1);
-	}
-
 	CallStack captureCallStack(Uptr numOmittedFramesFromTop)
 	{
 		#if 0

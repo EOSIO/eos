@@ -6,15 +6,37 @@
 
 #include <math.h>
 
+///XXX
+#include <asm/prctl.h>
+#include <sys/prctl.h>
+#include <setjmp.h>
+struct apply_context;
+struct control_block {
+   uint64_t magic;
+   uintptr_t execution_thread_code_start;
+   size_t execution_thread_code_length;
+   uintptr_t execution_thread_memory_start;
+   size_t execution_thread_memory_length;
+   apply_context* ctx;
+   std::exception_ptr eptr;
+   unsigned current_call_depth_remaining;
+   unsigned bouce_buffer_ptr;
+   int64_t current_linear_memory_pages; //-1 if no memory
+   uintptr_t full_linear_memory_start;
+   sigjmp_buf jmp;
+   bool is_running;
+};
+extern "C" int arch_prctl(int code, unsigned long* addr);
+///XXX
+
 namespace Runtime
 {
 	static void causeIntrensicException(Exception::Cause cause) {
-		try {
-		   Platform::immediately_exit(std::make_exception_ptr(Exception{cause, std::vector<std::string>()}));
-		}
-		catch (...) {
-			Platform::immediately_exit(std::current_exception());
-		}
+      uint64_t current_gs;
+      arch_prctl(ARCH_GET_GS, &current_gs);  //XXX this should probably be direct syscall
+      control_block* const cb_in_main_segment = reinterpret_cast<control_block* const>(current_gs - 25088); //XXX hardcode offset
+      cb_in_main_segment->eptr = std::make_exception_ptr(Exception{cause, std::vector<std::string>()});
+      siglongjmp(cb_in_main_segment->jmp, 4); ///XXX 4 means due to exception
 		__builtin_unreachable();
 	}
 
@@ -150,24 +172,7 @@ namespace Runtime
 
 	DEFINE_INTRINSIC_FUNCTION3(wavmIntrinsics,indirectCallSignatureMismatch,indirectCallSignatureMismatch,none,i32,index,i64,expectedSignatureBits,i64,tableBits)
 	{
-		try {
-			TableInstance* table = reinterpret_cast<TableInstance*>(tableBits);
-			void* elementValue = table->baseAddress[index].value;
-			const FunctionType* actualSignature = table->baseAddress[index].type;
-			const FunctionType* expectedSignature = reinterpret_cast<const FunctionType*>((Uptr)expectedSignatureBits);
-			std::string ipDescription = "<unknown>";
-			LLVMJIT::describeInstructionPointer(reinterpret_cast<Uptr>(elementValue),ipDescription);
-			Log::printf(Log::Category::debug,"call_indirect signature mismatch: expected %s at index %u but got %s (%s)\n",
-				asString(expectedSignature).c_str(),
-				index,
-				actualSignature ? asString(actualSignature).c_str() : "nullptr",
-				ipDescription.c_str()
-				);
-			causeIntrensicException(elementValue == nullptr ? Exception::Cause::undefinedTableElement : Exception::Cause::indirectCallSignatureMismatch);
-		}
-		catch (...) {
-			Platform::immediately_exit(std::current_exception());
-		}
+         causeIntrensicException(Exception::Cause::indirectCallSignatureMismatch);
 	}
 
 	DEFINE_INTRINSIC_FUNCTION0(wavmIntrinsics,indirectCallIndexOutOfBounds,indirectCallIndexOutOfBounds,none)

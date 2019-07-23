@@ -26,7 +26,6 @@ namespace LLVMJIT
 		llvm::Constant* defaultTablePointer;
 		llvm::Constant* defaultTableMaxElementIndex;
 		llvm::Constant* defaultMemoryBase;
-		llvm::Constant* defaultMemoryEndOffset;
 
 		llvm::MDNode* likelyFalseBranchWeights;
 		llvm::MDNode* likelyTrueBranchWeights;
@@ -220,7 +219,7 @@ namespace LLVMJIT
 			// Cast the pointer to the appropriate type.
 			auto bytePointer = irBuilder.CreateInBoundsGEP(moduleContext.defaultMemoryBase,byteIndex);
             
-			return irBuilder.CreatePointerCast(bytePointer,memoryType->getPointerTo());
+			return irBuilder.CreatePointerCast(bytePointer,memoryType->getPointerTo(256));
 		}
 
 		// Traps a divide-by-zero
@@ -701,21 +700,21 @@ namespace LLVMJIT
 		void grow_memory(MemoryImm)
 		{
 			auto deltaNumPages = pop();
-			auto defaultMemoryObjectAsI64 = emitLiteral(reinterpret_cast<U64>(moduleContext.moduleInstance->defaultMemory));
+         auto maxMemoryPages = emitLiteral((U32)moduleContext.module.memories.defs[0].type.size.max);
 			auto previousNumPages = emitRuntimeIntrinsic(
-				"wavmIntrinsics.growMemory",
-				FunctionType::get(ResultType::i32,{ValueType::i32,ValueType::i64}),
-				{deltaNumPages,defaultMemoryObjectAsI64});
+				"rodeos_internal.grow_memory",
+				FunctionType::get(ResultType::i32,{ValueType::i32,ValueType::i32}),
+				{deltaNumPages,maxMemoryPages});
 			push(previousNumPages);
 		}
 		void current_memory(MemoryImm)
 		{
-			auto defaultMemoryObjectAsI64 = emitLiteral(reinterpret_cast<U64>(moduleContext.moduleInstance->defaultMemory));
-			auto currentNumPages = emitRuntimeIntrinsic(
-				"wavmIntrinsics.currentMemory",
-				FunctionType::get(ResultType::i32,{ValueType::i64}),
-				{defaultMemoryObjectAsI64});
-			push(currentNumPages);
+         //auto offset = emitLiteral((I32)-memory::cb_offset + offsetof(eosio::chain::rodeos::control_block, current_linear_memory_pages));
+         auto offset = emitLiteral((I32)-25024);
+         auto bytePointer = irBuilder.CreateInBoundsGEP(moduleContext.defaultMemoryBase,offset);
+			auto ptrTo = irBuilder.CreatePointerCast(bytePointer,llvmI32Type->getPointerTo(256));
+			auto load = irBuilder.CreateLoad(ptrTo);
+         push(load);
 		}
 
 		//
@@ -1055,14 +1054,7 @@ namespace LLVMJIT
 	{
 		Timing::Timer emitTimer;
 
-		// Create literals for the default memory base and mask.
-		if(moduleInstance->defaultMemory)
-		{
-			defaultMemoryBase = emitLiteralPointer(moduleInstance->defaultMemory->baseAddress,llvmI8PtrType);
-			const Uptr defaultMemoryEndOffsetValue = Uptr(moduleInstance->defaultMemory->endOffset);
-			defaultMemoryEndOffset = emitLiteral(defaultMemoryEndOffsetValue);
-		}
-		else { defaultMemoryBase = defaultMemoryEndOffset = nullptr; }
+		defaultMemoryBase = emitLiteralPointer(0,llvmI8Type->getPointerTo(256));
 
 		// Set up the LLVM values used to access the global table.
 		if(moduleInstance->defaultTable)

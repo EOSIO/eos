@@ -8,6 +8,14 @@
 #include "Runtime/Runtime.h"
 #include "IR/Types.h"
 
+#include <eosio/chain/webassembly/rodeos/rodeos.hpp>
+#include <eosio/chain/webassembly/rodeos/memory.hpp>
+#include <eosio/chain/webassembly/rodeos/executor.hpp>
+#include <eosio/chain/webassembly/rodeos/code_cache.hpp>
+
+#include <asm/prctl.h>
+#include <sys/prctl.h>
+extern "C" int arch_prctl(int code, unsigned long* addr);
 
 namespace eosio { namespace chain { namespace webassembly { namespace wavm {
 
@@ -16,6 +24,10 @@ using namespace Runtime;
 using namespace fc;
 using namespace eosio::chain::webassembly::common;
 
+using namespace eosio::chain::rodeos;
+
+class wavm_instantiated_module;
+
 class wavm_runtime : public eosio::chain::wasm_runtime_interface {
    public:
       wavm_runtime();
@@ -23,11 +35,15 @@ class wavm_runtime : public eosio::chain::wasm_runtime_interface {
       std::unique_ptr<wasm_instantiated_module_interface> instantiate_module(const char* code_bytes, size_t code_size, std::vector<uint8_t> initial_memory) override;
 
       void immediately_exit_currently_running_module() override;
+
+      friend wavm_instantiated_module;
+      rodeos::code_cache cc;
+      rodeos::executor exec;
+      rodeos::memory mem;
 };
 
 //This is a temporary hack for the single threaded implementation
 struct running_instance_context {
-   MemoryInstance* memory;
    apply_context*  apply_ctx;
 };
 extern running_instance_context the_running_instance_context;
@@ -42,17 +58,14 @@ extern running_instance_context the_running_instance_context;
 template<typename T>
 inline array_ptr<T> array_ptr_impl (running_instance_context& ctx, U32 ptr, size_t length)
 {
-   MemoryInstance* mem = ctx.memory;
-   if (!mem) 
-      Runtime::causeException(Exception::Cause::accessViolation);
+   RODEOS_MEMORY_PTR_cb_ptr;
+   volatile GS_PTR char* p = 0;
+   char check;
+   if(length)
+      check = p[ptr];
+   check = p[ptr+length-1];
 
-   size_t mem_total = IR::numBytesPerPage * Runtime::getMemoryNumPages(mem);
-   if (ptr >= mem_total || length > (mem_total - ptr) / sizeof(T))
-      Runtime::causeException(Exception::Cause::accessViolation);
-   
-   T* ret_ptr = (T*)(getMemoryBaseAddress(mem) + ptr);
-
-   return array_ptr<T>((T*)(getMemoryBaseAddress(mem) + ptr));
+   return array_ptr<T>((T*)((char*)(cb_ptr->full_linear_memory_start) + ptr));
 }
 
 /**
@@ -60,18 +73,13 @@ inline array_ptr<T> array_ptr_impl (running_instance_context& ctx, U32 ptr, size
  */
 inline null_terminated_ptr null_terminated_ptr_impl(running_instance_context& ctx, U32 ptr)
 {
-   MemoryInstance* mem = ctx.memory;
-   if(!mem)
-      Runtime::causeException(Exception::Cause::accessViolation);
-
-   char *value                     = (char*)(getMemoryBaseAddress(mem) + ptr);
-   const char* p                   = value;
-   const char* const top_of_memory = (char*)(getMemoryBaseAddress(mem) + IR::numBytesPerPage*Runtime::getMemoryNumPages(mem));
-   while(p < top_of_memory)
-      if(*p++ == '\0')
-         return null_terminated_ptr(value);
-
-   Runtime::causeException(Exception::Cause::accessViolation);
+   RODEOS_MEMORY_PTR_cb_ptr;
+   GS_PTR char* p = (GS_PTR char*)ptr;
+   do {
+      if(*p == '\0')
+         return null_terminated_ptr((char*)(cb_ptr->full_linear_memory_start) + ptr);
+   } while(p++);
+   __builtin_unreachable();
 }
 
 
@@ -159,14 +167,10 @@ inline auto convert_native_to_wasm(const running_instance_context& ctx, const fc
 }
 
 inline auto convert_native_to_wasm(running_instance_context& ctx, char* ptr) {
-   MemoryInstance* mem = ctx.memory;
-   if(!mem)
-      Runtime::causeException(Exception::Cause::accessViolation);
-   char* base = (char*)getMemoryBaseAddress(mem);
-   char* top_of_memory = base + IR::numBytesPerPage*Runtime::getMemoryNumPages(mem);
-   if(ptr < base || ptr >= top_of_memory)
-      Runtime::causeException(Exception::Cause::accessViolation);
-   return (U32)(ptr - base);
+   RODEOS_MEMORY_PTR_cb_ptr;
+   ///XXX do we need to validate this like previously? probably due to off-by-one issue maybe
+   U64 delta = (U64)(ptr - cb_ptr->full_linear_memory_start);
+   return (U32)delta;
 }
 
 template<typename T>
@@ -308,7 +312,12 @@ struct intrinsic_invoker_impl<Ret, std::tuple<>, std::tuple<Translated...>> {
          return convert_native_to_wasm(the_running_instance_context, Method(the_running_instance_context, translated...));
       }
       catch(...) {
-         Platform::immediately_exit(std::current_exception());
+         uint64_t current_gs;
+         arch_prctl(ARCH_GET_GS, &current_gs);  //XXX this should probably be direct syscall
+         control_block* const cb_in_main_segment = reinterpret_cast<control_block* const>(current_gs - memory::cb_offset);
+         cb_in_main_segment->eptr = std::current_exception();
+         siglongjmp(cb_in_main_segment->jmp, 4); ///XXX 4 means due to exception
+         __builtin_unreachable();
       }
    }
 
@@ -332,7 +341,12 @@ struct intrinsic_invoker_impl<void_type, std::tuple<>, std::tuple<Translated...>
          Method(the_running_instance_context, translated...);
       }
       catch(...) {
-         Platform::immediately_exit(std::current_exception());
+         uint64_t current_gs;
+         arch_prctl(ARCH_GET_GS, &current_gs);  //XXX this should probably be direct syscall
+         control_block* const cb_in_main_segment = reinterpret_cast<control_block* const>(current_gs - memory::cb_offset);
+         cb_in_main_segment->eptr = std::current_exception();
+         siglongjmp(cb_in_main_segment->jmp, 4); ///XXX 4 means due to exception
+         __builtin_unreachable();
       }
    }
 
@@ -589,12 +603,15 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T &, Inputs...>, std::tuple<Transl
 
    template<then_type Then, typename U=T>
    static auto translate_one(running_instance_context& ctx, Inputs... rest, Translated... translated, I32 ptr) -> std::enable_if_t<std::is_const<U>::value, Ret> {
+      RODEOS_MEMORY_PTR_cb_ptr;
       // references cannot be created for null pointers
       EOS_ASSERT((U32)ptr != 0, wasm_exception, "references cannot be created for null pointers");
-      MemoryInstance* mem = ctx.memory;
-      if(!mem || (U32)ptr+sizeof(T) >= IR::numBytesPerPage*Runtime::getMemoryNumPages(mem))
-         Runtime::causeException(Exception::Cause::accessViolation);
-      T &base = *(T*)(getMemoryBaseAddress(mem)+(U32)ptr);
+      volatile GS_PTR char* p = 0;
+      char check;
+      check = p[(U32)ptr];
+      check = p[(U32)(ptr)+sizeof(T)-1u];
+      T &base = *(T*)(((char*)(cb_ptr->full_linear_memory_start))+(U32)ptr);
+
       if ( reinterpret_cast<uintptr_t>(&base) % alignof(T) != 0 ) {
          if(ctx.apply_ctx->control.contracts_console())
             wlog( "misaligned const reference" );
@@ -608,12 +625,15 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T &, Inputs...>, std::tuple<Transl
 
    template<then_type Then, typename U=T>
    static auto translate_one(running_instance_context& ctx, Inputs... rest, Translated... translated, I32 ptr) -> std::enable_if_t<!std::is_const<U>::value, Ret> {
+      RODEOS_MEMORY_PTR_cb_ptr;
       // references cannot be created for null pointers
       EOS_ASSERT((U32)ptr != 0, wasm_exception, "reference cannot be created for null pointers");
-      MemoryInstance* mem = ctx.memory;
-      if(!mem || (U32)ptr+sizeof(T) >= IR::numBytesPerPage*Runtime::getMemoryNumPages(mem))
-         Runtime::causeException(Exception::Cause::accessViolation);
-      T &base = *(T*)(getMemoryBaseAddress(mem)+(U32)ptr);
+      volatile GS_PTR char* p = 0;
+      char check;
+      check = p[(U32)ptr];
+      check = p[(U32)(ptr)+sizeof(T)-1u];
+      T &base = *(T*)(((char*)(cb_ptr->full_linear_memory_start))+(U32)ptr);
+
       if ( reinterpret_cast<uintptr_t>(&base) % alignof(T) != 0 ) {
          if(ctx.apply_ctx->control.contracts_console())
             wlog( "misaligned reference" );
