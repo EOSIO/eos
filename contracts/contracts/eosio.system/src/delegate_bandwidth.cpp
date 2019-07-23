@@ -260,7 +260,9 @@ namespace eosiosystem {
       } else {
          _voters.modify( voter_itr, same_payer, [&]( auto& v ) {
             v.staked += total_update.amount;
-            v.vote_mature_time = std::max( v.vote_mature_time, current_time_point() ) + eosio::days( vote_mature_period * total_update.amount / v.staked );
+            if ( total_update.amount >= 0 ) {
+               v.vote_mature_time = std::max( v.vote_mature_time, current_time_point() ) + eosio::days( std::max( double( vote_mature_period ) * total_update.amount / v.staked, 0.0 ) );
+            }
          });
       }
 

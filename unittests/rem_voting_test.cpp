@@ -411,7 +411,7 @@ BOOST_FIXTURE_TEST_CASE( rem_vote_weight_test, voting_tester ) {
          // staked = 399999999000
          // 1091357.4775723184 * 0.00000250771 * 399999999000 ~= 1.09472322 × 10^12
          const auto prod = get_producer_info( "proda" );
-         BOOST_TEST_REQUIRE( 729817241388.52246 == prod["total_votes"].as_double() );
+         BOOST_TEST_REQUIRE( 4.3654298993756986e+17 == prod["total_votes"].as_double() );
       }
 
       // 30 days
@@ -424,7 +424,7 @@ BOOST_FIXTURE_TEST_CASE( rem_vote_weight_test, voting_tester ) {
 
          // rem vote weight: 0.16666917
          const auto prod = get_producer_info( "proda" );
-         BOOST_TEST_REQUIRE( 78453616914400992 == prod["total_votes"].as_double() );
+         BOOST_TEST_REQUIRE( 4.6045073671201741e+17 == prod["total_votes"].as_double() );
          BOOST_TEST_REQUIRE( last_vote_weight < prod["total_votes"].as_double() );
       }
 
@@ -438,7 +438,7 @@ BOOST_FIXTURE_TEST_CASE( rem_vote_weight_test, voting_tester ) {
 
          // rem vote weight: 1.0
          const auto prod = get_producer_info( "proda" );
-         BOOST_TEST_REQUIRE( 617365016928612860 == prod["total_votes"].as_double() );
+         BOOST_TEST_REQUIRE( 6.1736501692861286e+17 == prod["total_votes"].as_double() );
          BOOST_TEST_REQUIRE( last_vote_weight < prod["total_votes"].as_double() );
       }
 
@@ -456,7 +456,7 @@ BOOST_FIXTURE_TEST_CASE( rem_vote_weight_test, voting_tester ) {
          // vote mature adjusted time: 0 + 180 * 20 / (40 + 20)
          // rem vote weight:           0.66
          const auto prod = get_producer_info( "proda" );
-         BOOST_TEST_REQUIRE( 617365047215702140 == prod["total_votes"].as_double() );
+         BOOST_TEST_REQUIRE( 9.2604752616462554e+17 == prod["total_votes"].as_double() );
          BOOST_TEST_REQUIRE( last_vote_weight < prod["total_votes"].as_double() );
       }
 
@@ -475,8 +475,8 @@ BOOST_FIXTURE_TEST_CASE( rem_vote_weight_test, voting_tester ) {
          // vote mature adjusted time: 60 + 180 * 20 / (60 + 20)
          // rem vote weight:           0.41
          const auto prod = get_producer_info( "proda" );
-         BOOST_TEST_REQUIRE( 514470927477248640 == prod["total_votes"].as_double() );
-         BOOST_TEST_REQUIRE( last_vote_weight > prod["total_votes"].as_double() );
+         BOOST_TEST_REQUIRE( 1.2347300354006382e+18 == prod["total_votes"].as_double() );
+         BOOST_TEST_REQUIRE( last_vote_weight < prod["total_votes"].as_double() );
       }
    } FC_LOG_AND_RETHROW()
 }
