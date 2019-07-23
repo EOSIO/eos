@@ -253,10 +253,14 @@ class Node(object):
         """Given a blockId will return block details."""
         assert(isinstance(blockNum, int))
         if not self.enableMongo:
+            tmpVar = Utils.Debug
+            Utils.Debug = False
             cmdDesc="get block"
             cmd="%s %d" % (cmdDesc, blockNum)
             msg="(block number=%s)" % (blockNum);
-            return self.processCleosCmd(cmd, cmdDesc, silentErrors=silentErrors, exitOnError=exitOnError, exitMsg=msg)
+            res = self.processCleosCmd(cmd, cmdDesc, silentErrors=silentErrors, exitOnError=exitOnError, exitMsg=msg)
+            Utils.Debug = tmpVar
+            return res
         else:
             cmd="%s %s" % (Utils.MongoPath, self.mongoEndpointArgs)
             subcommand='db.blocks.findOne( { "block_num": %d } )' % (blockNum)
@@ -1166,7 +1170,10 @@ class Node(object):
 
     def getInfo(self, silentErrors=False, exitOnError=False):
         cmdDesc = "get info"
+        tmpVar = Utils.Debug
+        Utils.Debug = False
         info=self.processCleosCmd(cmdDesc, cmdDesc, silentErrors=silentErrors, exitOnError=exitOnError)
+        Utils.Debug = tmpVar
         if info is None:
             self.infoValid=False
         else:
