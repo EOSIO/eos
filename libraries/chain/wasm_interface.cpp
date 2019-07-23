@@ -293,7 +293,6 @@ class softfloat_api : public context_aware_api {
       float _eosio_f32_copysign( float af, float bf ) {
          float32_t a = to_softfloat32(af);
          float32_t b = to_softfloat32(bf);
-         uint32_t sign_of_a = a.v >> 31;
          uint32_t sign_of_b = b.v >> 31;
          a.v &= ~(1 << 31);             // clear the sign bit
          a.v = a.v | (sign_of_b << 31); // add the sign of b
@@ -456,7 +455,6 @@ class softfloat_api : public context_aware_api {
       double _eosio_f64_copysign( double af, double bf ) {
          float64_t a = to_softfloat64(af);
          float64_t b = to_softfloat64(bf);
-         uint64_t sign_of_a = a.v >> 63;
          uint64_t sign_of_b = b.v >> 63;
          a.v &= ~(uint64_t(1) << 63);             // clear the sign bit
          a.v = a.v | (sign_of_b << 63); // add the sign of b
