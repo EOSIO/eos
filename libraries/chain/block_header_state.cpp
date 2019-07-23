@@ -4,6 +4,16 @@
 
 namespace eosio { namespace chain {
 
+   namespace detail {
+      bool is_builtin_activated( const protocol_feature_activation_set_ptr& pfa,
+                                 const protocol_feature_set& pfs,
+                                 builtin_protocol_feature_t feature_codename )
+      {
+         auto digest = pfs.get_builtin_digest(feature_codename);
+         const auto& protocol_features = pfa->protocol_features;
+         return digest && protocol_features.find(*digest) != protocol_features.end();
+      }
+   }
 
    bool block_header_state::is_active_producer( account_name n )const {
       return producer_to_last_produced.find(n) != producer_to_last_produced.end();
@@ -190,11 +200,7 @@ namespace eosio { namespace chain {
       }
 
       if (new_producers) {
-         auto wtmsig_digest = pfs.get_builtin_digest(builtin_protocol_feature_t::wtmsig_block_signatures);
-         const auto& protocol_features = prev_activated_protocol_features->protocol_features;
-         bool wtmsig_enabled = wtmsig_digest && protocol_features.find(*wtmsig_digest) != protocol_features.end();
-
-         if ( wtmsig_enabled ) {
+         if ( detail::is_builtin_activated(prev_activated_protocol_features, pfs, builtin_protocol_feature_t::wtmsig_block_signatures) ) {
             // add the header extension to update the block schedule
             h.header_extensions.emplace_back(
                   producer_schedule_change_extension::extension_id(),
@@ -209,7 +215,7 @@ namespace eosio { namespace chain {
                   downgraded_producers.producers.emplace_back(legacy::producer_key{p.producer_name, auth.keys.front().key});
                });
             }
-            h.new_producers = downgraded_producers;
+            h.new_producers = std::move(downgraded_producers);
          }
       }
 
@@ -238,9 +244,7 @@ namespace eosio { namespace chain {
       bool wtmsig_enabled = false;
 
       if (h.new_producers || exts.count(producer_schedule_change_extension::extension_id()) > 0 ) {
-         auto wtmsig_digest = pfs.get_builtin_digest(builtin_protocol_feature_t::wtmsig_block_signatures);
-         const auto& protocol_features = prev_activated_protocol_features->protocol_features;
-         wtmsig_enabled = wtmsig_digest && protocol_features.find(*wtmsig_digest) != protocol_features.end();
+         wtmsig_enabled = detail::is_builtin_activated(prev_activated_protocol_features, pfs, builtin_protocol_feature_t::wtmsig_block_signatures);
       }
 
       if( h.new_producers ) {
@@ -325,9 +329,7 @@ namespace eosio { namespace chain {
    )&&
    {
       if( !additional_signatures.empty() ) {
-         auto wtmsig_digest = pfs.get_builtin_digest(builtin_protocol_feature_t::wtmsig_block_signatures);
-         const auto& protocol_features = prev_activated_protocol_features->protocol_features;
-         bool wtmsig_enabled = wtmsig_digest && protocol_features.find(*wtmsig_digest) != protocol_features.end();
+         bool wtmsig_enabled = detail::is_builtin_activated(prev_activated_protocol_features, pfs, builtin_protocol_feature_t::wtmsig_block_signatures);
 
          EOS_ASSERT(wtmsig_enabled, producer_schedule_exception, "Block contains multiple signatures before WTMsig block signatures are enabled" );
       }
@@ -355,9 +357,7 @@ namespace eosio { namespace chain {
                                  const signer_callback_type& signer
    )&&
    {
-      auto wtmsig_digest = pfs.get_builtin_digest(builtin_protocol_feature_t::wtmsig_block_signatures);
-      const auto& protocol_features = prev_activated_protocol_features->protocol_features;
-      bool wtmsig_enabled = wtmsig_digest && protocol_features.find(*wtmsig_digest) != protocol_features.end();
+      bool wtmsig_enabled = detail::is_builtin_activated(prev_activated_protocol_features, pfs, builtin_protocol_feature_t::wtmsig_block_signatures);
 
       auto result = std::move(*this)._finish_next( h, pfs, validator );
       result.sign( signer );

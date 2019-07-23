@@ -434,7 +434,7 @@ struct controller_impl {
       block_header_state genheader;
       genheader.active_schedule                = initial_schedule;
       genheader.pending_schedule.schedule      = initial_schedule;
-      // TODO: if wtmsig block signatures are enabled this should be the hash of the producer authority
+      // NOTE: if wtmsig block signatures are enabled at genesis time this should be the hash of a producer authority schedule
       genheader.pending_schedule.schedule_hash = fc::sha256::hash(initial_legacy_schedule);
       genheader.header.timestamp               = conf.genesis.initial_timestamp;
       genheader.header.action_mroot            = conf.genesis.compute_chain_id();
@@ -1521,16 +1521,17 @@ struct controller_impl {
                ilog( "promoting proposed schedule (set in block ${proposed_num}) to pending; current block: ${n} lib: ${lib} schedule: ${schedule} ",
                      ("proposed_num", *gpo.proposed_schedule_block_num)("n", pbhs.block_num)
                      ("lib", pbhs.dpos_irreversible_blocknum)
-                     ("schedule", static_cast<producer_authority_schedule>(gpo.proposed_schedule) ) );
+                     ("schedule", producer_authority_schedule::from_shared(gpo.proposed_schedule) ) );
             }
 
             EOS_ASSERT( gpo.proposed_schedule.version == pbhs.active_schedule_version + 1,
                         producer_schedule_exception, "wrong producer schedule version specified" );
 
-            pending->_block_stage.get<building_block>()._new_pending_producer_schedule = gpo.proposed_schedule;
+            pending->_block_stage.get<building_block>()._new_pending_producer_schedule = producer_authority_schedule::from_shared(gpo.proposed_schedule);
             db.modify( gpo, [&]( auto& gp ) {
                gp.proposed_schedule_block_num = optional<block_num_type>();
-               gp.proposed_schedule.clear();
+               gp.proposed_schedule.version=0;
+               gp.proposed_schedule.producers.clear();
             });
          }
 
@@ -2820,7 +2821,7 @@ int64_t controller::set_proposed_producers( vector<producer_authority> producers
 
    my->db.modify( gpo, [&]( auto& gp ) {
       gp.proposed_schedule_block_num = cur_block_num;
-      gp.proposed_schedule = std::move(sch);
+      gp.proposed_schedule = sch.to_shared(gp.proposed_schedule.producers.get_allocator());
    });
    return version;
 }
@@ -2868,7 +2869,7 @@ optional<producer_authority_schedule> controller::proposed_producers()const {
    if( !gpo.proposed_schedule_block_num.valid() )
       return optional<producer_authority_schedule>();
 
-   return (producer_authority_schedule)gpo.proposed_schedule;
+   return producer_authority_schedule::from_shared(gpo.proposed_schedule);
 }
 
 bool controller::light_validation_allowed(bool replay_opts_disabled_by_policy) const {

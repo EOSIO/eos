@@ -22,9 +22,7 @@ namespace eosio { namespace chain {
          auto exts = b->validate_and_extract_extensions();
 
          if ( pfa && exts.count(additional_sigs_eid) > 0 ) {
-            const auto& protocol_features = pfa->protocol_features;
-            auto wtmsig_digest = pfs.get_builtin_digest(builtin_protocol_feature_t::wtmsig_block_signatures);
-            bool wtmsig_enabled = wtmsig_digest && protocol_features.find(*wtmsig_digest) != protocol_features.end();
+            bool wtmsig_enabled = detail::is_builtin_activated(pfa, pfs, builtin_protocol_feature_t::wtmsig_block_signatures);
 
             EOS_ASSERT(wtmsig_enabled, block_validate_exception,
                        "Block contained additional_block_signatures_extension before activation of WTMsig Block Signatures");
@@ -60,13 +58,7 @@ namespace eosio { namespace chain {
                                                        Extras&& ... extras )
       {
          const auto& pfa = cur.prev_activated_protocol_features;
-         bool wtmsig_enabled = false;
-
-         if (pfa) {
-            const auto& protocol_features = pfa->protocol_features;
-            auto wtmsig_digest = pfs.get_builtin_digest(builtin_protocol_feature_t::wtmsig_block_signatures);
-            wtmsig_enabled = wtmsig_digest && protocol_features.find(*wtmsig_digest) != protocol_features.end();
-         }
+         bool wtmsig_enabled = pfa && detail::is_builtin_activated(pfa, pfs, builtin_protocol_feature_t::wtmsig_block_signatures);
 
          block_header_state result = std::move(cur).finish_next(b, pfs, std::forward<Extras>(extras)...);
 

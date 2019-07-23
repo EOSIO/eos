@@ -565,7 +565,7 @@ namespace eosio { namespace chain {
       FC_DECLARE_DERIVED_EXCEPTION( no_block_signatures,  producer_exception,
                                     3170011, "The signer returned no valid block signatures" )
       FC_DECLARE_DERIVED_EXCEPTION( unsupported_multiple_block_signatures,  producer_exception,
-                                    3170011, "The signer returned multiple signatures but that is not supported" )
+                                    3170012, "The signer returned multiple signatures but that is not supported" )
 
    FC_DECLARE_DERIVED_EXCEPTION( reversible_blocks_exception,           chain_exception,
                                  3180000, "Reversible Blocks exception" )

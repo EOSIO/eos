@@ -13,9 +13,6 @@ namespace eosio { namespace chain {
 
 using shared_public_key_data = fc::static_variant<fc::ecc::public_key_shim, fc::crypto::r1::public_key_shim, shared_string>;
 
-template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
-template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
-
 struct shared_public_key {
    shared_public_key( shared_public_key_data&& p ) :
       pubkey(std::move(p)) {}

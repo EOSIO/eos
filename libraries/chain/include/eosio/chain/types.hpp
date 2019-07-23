@@ -382,6 +382,9 @@ namespace eosio { namespace chain {
          return ( flags & ~static_cast<F>(field) );
    }
 
+   template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
+   template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
+
 } }  // eosio::chain
 
 FC_REFLECT_EMPTY( eosio::chain::void_t )

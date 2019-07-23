@@ -25,9 +25,9 @@ namespace legacy {
       };
 
       /// from block_header_state_common
-      uint32_t                             block_num;
-      uint32_t                             dpos_proposed_irreversible_blocknum;
-      uint32_t                             dpos_irreversible_blocknum;
+      uint32_t                             block_num = 0;
+      uint32_t                             dpos_proposed_irreversible_blocknum = 0;
+      uint32_t                             dpos_irreversible_blocknum = 0;
       producer_schedule_type               active_schedule;
       incremental_merkle                   blockroot_merkle;
       flat_map<account_name,uint32_t>      producer_to_last_produced;
@@ -65,6 +65,10 @@ namespace detail {
       digest_type                       schedule_hash;
       producer_authority_schedule       schedule;
    };
+
+   bool is_builtin_activated( const protocol_feature_activation_set_ptr& pfa,
+                              const protocol_feature_set& pfs,
+                              builtin_protocol_feature_t feature_codename );
 }
 
 struct pending_block_header_state : public detail::block_header_state_common {

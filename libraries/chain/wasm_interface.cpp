@@ -222,7 +222,6 @@ class privileged_api : public context_aware_api {
          datastream<const char*> ds( packed_producer_schedule, datalen );
          vector<producer_authority> producers;
 
-//         if ( context.control.is_builtin_activated( builtin_protocol_feature_t::wtmsig_block_signatures )) {
          vector<legacy::producer_key> old_version;
          fc::raw::unpack(ds, old_version);
 
