@@ -1117,8 +1117,8 @@ bool chain_plugin::recover_reversible_blocks( const fc::path& db_dir, uint32_t c
    } catch( const gap_in_reversible_blocks_db& e ) {
       wlog( "${details}", ("details", e.to_detail_string()) );
    } catch(const std::runtime_error&) {
+   	ilog( "Reversible database incompatible");
 	// since we are allowing for dirty, it must be incompatible
-	return false;
    } catch( ... ) {}
 
 
