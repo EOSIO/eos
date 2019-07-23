@@ -5,7 +5,7 @@ RUN apt-get update && apt-get upgrade -y \
   && DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential git automake \
   libbz2-dev libssl-dev doxygen graphviz libgmp3-dev autotools-dev libicu-dev \
   python2.7 python2.7-dev python3 python3-dev autoconf libtool curl zlib1g-dev \
-  sudo ruby libusb-1.0-0-dev libcurl4-gnutls-dev pkg-config
+  sudo ruby libusb-1.0-0-dev libcurl4-gnutls-dev pkg-config apt-transport-https
 
 # Build appropriate version of CMake.
 RUN curl -LO https://cmake.org/files/v3.13/cmake-3.13.2.tar.gz \
@@ -20,10 +20,9 @@ RUN curl -LO https://cmake.org/files/v3.13/cmake-3.13.2.tar.gz \
 # Build appropriate version of Clang.
 RUN mkdir -p /root/tmp && cd /root/tmp && git clone --single-branch --branch release_80 https://git.llvm.org/git/llvm.git clang8             && cd clang8 && git checkout 18e41dc             && cd tools             && git clone --single-branch --branch release_80 https://git.llvm.org/git/lld.git             && cd lld && git checkout d60a035 && cd ../             && git clone --single-branch --branch release_80 https://git.llvm.org/git/polly.git             && cd polly && git checkout 1bc06e5 && cd ../             && git clone --single-branch --branch release_80 https://git.llvm.org/git/clang.git clang && cd clang             && git checkout a03da8b             && cd tools && mkdir extra && cd extra             && git clone --single-branch --branch release_80 https://git.llvm.org/git/clang-tools-extra.git             && cd clang-tools-extra && git checkout 6b34834 && cd ..             && cd ../../../../projects             && git clone --single-branch --branch release_80 https://git.llvm.org/git/libcxx.git             && cd libcxx && git checkout 1853712 && cd ../             && git clone --single-branch --branch release_80 https://git.llvm.org/git/libcxxabi.git             && cd libcxxabi && git checkout d7338a4 && cd ../             && git clone --single-branch --branch release_80 https://git.llvm.org/git/libunwind.git             && cd libunwind && git checkout 57f6739 && cd ../             && git clone --single-branch --branch release_80 https://git.llvm.org/git/compiler-rt.git             && cd compiler-rt && git checkout 5bc7979 && cd ../             && cd /root/tmp/clang8             && mkdir build && cd build             && cmake -G 'Unix Makefiles' -DCMAKE_INSTALL_PREFIX='/usr/local' -DLLVM_BUILD_EXTERNAL_COMPILER_RT=ON -DLLVM_BUILD_LLVM_DYLIB=ON -DLLVM_ENABLE_LIBCXX=ON -DLLVM_ENABLE_RTTI=ON -DLLVM_INCLUDE_DOCS=OFF -DLLVM_OPTIMIZED_TABLEGEN=ON -DLLVM_TARGETS_TO_BUILD=all -DCMAKE_BUILD_TYPE=Release ..             && make -j$(nproc)             && make install \
   && cd / && rm -rf /root/tmp/clang8
+COPY ./docker/pinned_toolchain.cmake /tmp/pinned_toolchain.cmake
 
-COPY ./pinned_toolchain.cmake /tmp/pinned_toolchain.cmake
-
-# # Build appropriate version of LLVM.
+# Build appropriate version of LLVM.
 RUN git clone --depth 1 --single-branch --branch release_40 https://github.com/llvm-mirror/llvm.git llvm \
   && cd llvm \
   && mkdir build \
@@ -83,11 +82,23 @@ RUN curl -LO https://github.com/ccache/ccache/releases/download/v3.4.1/ccache-3.
   && make install \
   && cd / && rm -rf ccache-3.4.1/
 
+RUN echo "deb https://apt.buildkite.com/buildkite-agent stable main" > /etc/apt/sources.list.d/buildkite-agent.list \
+    && apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 32A37959C2FA5C3C99EFBC32A79206696452D198 \
+    && apt-get update && apt-get install -y buildkite-agent
+
 # PRE_COMMANDS: Executed pre-cmake
 # CMAKE_EXTRAS: Executed right before the cmake path (on the end)
-ENV PRE_COMMANDS="export PATH=/usr/lib/ccache:$PATH &&"
+ENV PRE_COMMANDS="export PATH=/usr/lib/ccache:\$PATH"
 ENV CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_TOOLCHAIN_FILE='/tmp/pinned_toolchain.cmake' -DCMAKE_CXX_COMPILER_LAUNCHER=ccache"
 
-CMD bash -c "$PRE_COMMANDS ccache -s && \
-    mkdir /workdir/build && cd /workdir/build && cmake -DCMAKE_BUILD_TYPE='Release' -DCORE_SYMBOL_NAME='SYS' -DOPENSSL_ROOT_DIR='/usr/include/openssl' -DBUILD_MONGO_DB_PLUGIN=true $CMAKE_EXTRAS /workdir && make -j $(getconf _NPROCESSORS_ONLN) && \
-    ctest -j$(getconf _NPROCESSORS_ONLN) -LE _tests --output-on-failure -T Test"
+# Bring in helpers that provides execute function so we can get better logging in BK and TRAV
+COPY ./docker/.helpers-v33 /tmp/.helpers
+
+CMD bash -c ". /tmp/.helpers && $PRE_COMMANDS && \
+    fold-execute ccache -s && \
+    mkdir /workdir/build && cd /workdir/build && fold-execute cmake -DCMAKE_BUILD_TYPE='Release' -DCORE_SYMBOL_NAME='SYS' -DOPENSSL_ROOT_DIR='/usr/include/openssl' -DBUILD_MONGO_DB_PLUGIN=true $CMAKE_EXTRAS /workdir && \
+    fold-execute make -j $(getconf _NPROCESSORS_ONLN) && \
+    if ${ENABLE_PARALLEL_TESTS:-true}; then fold-execute ctest -j$(getconf _NPROCESSORS_ONLN) -LE _tests --output-on-failure -T Test; fi && \
+    if ${ENABLE_SERIAL_TESTS:-true}; then mkdir -p ./mongodb && fold-execute mongod --dbpath ./mongodb --fork --logpath mongod.log && fold-execute ctest -L nonparallelizable_tests --output-on-failure -T Test; fi && \
+    if ${ENABLE_LR_TESTS:-false}; then fold-execute ctest -L long_running_tests --output-on-failure -T Test; fi && \
+    if ! ${TRAVIS:-false}; then cd .. && tar -pczf build.tar.gz build && buildkite-agent artifact upload build.tar.gz --agent-access-token $BUILDKITE_AGENT_ACCESS_TOKEN; fi"
