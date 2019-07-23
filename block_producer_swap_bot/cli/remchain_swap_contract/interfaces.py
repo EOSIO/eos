@@ -13,3 +13,9 @@ class RemchainSwapContractInterface:
         Push initswap action to remio.swap account.
         """
         pass
+
+    def finish_swap(self, **kwargs):
+        """
+        Push finishswap action to remio.swap account.
+        """
+        pass

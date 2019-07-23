@@ -6,14 +6,17 @@ import click
 from cli.eth_swap_contract.help import (
     AMOUNT_TO_SWAP_ARGUMENT_HELP_MESSAGE,
     CHAIN_ID_ARGUMENT_HELP_MESSAGE,
-    ETH_PROVIDER_ARGUMENT_HELP_MESSAGE,
-    NODEOS_URL_ARGUMENT_HELP_MESSAGE,
     PERMISSION_ARGUMENT_HELP_MESSAGE,
     SWAP_PUBLIC_KEY_ARGUMENT_HELP_MESSAGE,
     TIMESTAMP_ARGUMENT_HELP_MESSAGE,
     TXID_ARGUMENT_HELP_MESSAGE,
 )
+from cli.generic.help import (
+    ETH_PROVIDER_ARGUMENT_HELP_MESSAGE,
+    NODEOS_URL_ARGUMENT_HELP_MESSAGE,
+)
 from cli.eth_swap_contract.service import EthSwapContract
+from cli.utils import get_default_eth_provider, get_default_nodeos_url, get_default_permission
 
 
 @click.group('eth-swap-contract', chain=True)
@@ -25,9 +28,12 @@ def eth_swap_contract_commands():
 
 
 @eth_swap_contract_commands.command('process-swaps')
-@click.option('--eth-provider', type=str, required=True, help=ETH_PROVIDER_ARGUMENT_HELP_MESSAGE)
-@click.option('--nodeos-url', type=str, required=True, help=NODEOS_URL_ARGUMENT_HELP_MESSAGE)
-@click.option('--permission', type=str, required=True, help=PERMISSION_ARGUMENT_HELP_MESSAGE)
+@click.option('--eth-provider', type=str, required=True, help=ETH_PROVIDER_ARGUMENT_HELP_MESSAGE,
+              default=get_default_eth_provider())
+@click.option('--nodeos-url', type=str, required=True, help=NODEOS_URL_ARGUMENT_HELP_MESSAGE,
+              default=get_default_nodeos_url())
+@click.option('--permission', type=str, required=True, help=PERMISSION_ARGUMENT_HELP_MESSAGE,
+              default=get_default_permission())
 def process_swaps(eth_provider, nodeos_url, permission):
     """
     Process swap requests.

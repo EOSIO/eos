@@ -2,9 +2,12 @@
 Provide utils for command line interface.
 """
 import json
+from cli.config import ConfigFile
 
 #
 import click
+
+config_file = ConfigFile()
 
 
 def dict_to_pretty_json(data):
@@ -29,3 +32,15 @@ def print_errors(errors):
         - https://click.palletsprojects.com/en/7.x/utils/#ansi-colors
     """
     click.secho(dict_to_pretty_json({'errors': errors}), blink=True, bold=True, fg='red')
+
+
+def get_default_nodeos_url():
+    return config_file.get_nodeos_url()
+
+
+def get_default_eth_provider():
+    return config_file.get_eth_provider()
+
+
+def get_default_permission():
+    return config_file.get_block_producer_permission()

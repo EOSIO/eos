@@ -12,3 +12,6 @@ SHORT_POLLING_INTERVAL = 5  # secs
 
 REMME_SWAP_ACCOUNT =  'useraaaaaaab' #'remio.swap'
 PROCESS_SWAP_ACTION = 'initswap'
+FINISH_SWAP_ACTION = 'finishswap'
+
+CONFIG_FILE_NAME = 'config.ini'

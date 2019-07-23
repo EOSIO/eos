@@ -6,6 +6,7 @@ import subprocess
 from cli.constants import (
     PROCESS_SWAP_ACTION,
     REMME_SWAP_ACCOUNT,
+    FINISH_SWAP_ACTION
 )
 
 
@@ -33,3 +34,21 @@ class RemchainSwapContract:
         print(command)
 
         print(subprocess.call(command, shell=True))
+
+    def finish_swap(self, **kwargs):
+
+        receiver = kwargs.get('receiver')
+        account_name_to_create = kwargs.get('account_name_to_create')
+        txid = kwargs.get('txid')
+        chain_id = kwargs.get('chain-id')
+        swap_pubkey = kwargs.get('swap-pubkey')
+        signature = kwargs.get('signature')
+        amount = kwargs.get('amount')
+        timestamp = kwargs.get('timestamp')
+
+        command = f'cleos --url {self.nodeos_url} push action {REMME_SWAP_ACCOUNT} {FINISH_SWAP_ACTION} ' \
+            f'\'[ "{receiver}", "{account_name_to_create}", "{txid}", "{chain_id}", "{swap_pubkey}", "{signature}", "{amount}", "{timestamp}" ]\' ' \
+            f'-p {self.permission}'
+        print(command)
+
+        #print(subprocess.call(command, shell=True))
