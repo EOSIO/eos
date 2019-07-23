@@ -10,6 +10,11 @@
 #include <asm/prctl.h>
 #include <sys/prctl.h>
 #include <setjmp.h>
+#ifdef __clang__
+   #define GS_PTR __attribute__((address_space(256)))
+#else
+   #define GS_PTR __seg_gs
+#endif
 struct apply_context;
 struct control_block {
    uint64_t magic;
@@ -18,12 +23,12 @@ struct control_block {
    uintptr_t execution_thread_memory_start;
    size_t execution_thread_memory_length;
    apply_context* ctx;
-   std::exception_ptr eptr;
+   std::exception_ptr* eptr;
    unsigned current_call_depth_remaining;
    unsigned bouce_buffer_ptr;
    int64_t current_linear_memory_pages; //-1 if no memory
    uintptr_t full_linear_memory_start;
-   sigjmp_buf jmp;
+   sigjmp_buf* jmp;
    bool is_running;
 };
 extern "C" int arch_prctl(int code, unsigned long* addr);
@@ -32,11 +37,10 @@ extern "C" int arch_prctl(int code, unsigned long* addr);
 namespace Runtime
 {
 	static void causeIntrensicException(Exception::Cause cause) {
-      uint64_t current_gs;
-      arch_prctl(ARCH_GET_GS, &current_gs);  //XXX this should probably be direct syscall
-      control_block* const cb_in_main_segment = reinterpret_cast<control_block* const>(current_gs - 25088); //XXX hardcode offset
-      cb_in_main_segment->eptr = std::make_exception_ptr(Exception{cause, std::vector<std::string>()});
-      siglongjmp(cb_in_main_segment->jmp, 4); ///XXX 4 means due to exception
+      ///XXX
+      GS_PTR control_block* const cb_ptr = reinterpret_cast<GS_PTR control_block* const>(-25088);
+      *cb_ptr->eptr = std::make_exception_ptr(Exception{cause, std::vector<std::string>()});
+      siglongjmp(*cb_ptr->jmp, 4); ///XXX 4 means due to exception
 		__builtin_unreachable();
 	}
 

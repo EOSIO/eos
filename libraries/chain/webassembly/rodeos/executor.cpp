@@ -52,13 +52,13 @@ static void(*chained_handler)(int,siginfo_t*,void*);
    //was the segfault within code? if so, bubble up "2" for now
    if((uintptr_t)info->si_addr >= cb_in_main_segment->execution_thread_code_start &&
       (uintptr_t)info->si_addr < cb_in_main_segment->execution_thread_code_start+cb_in_main_segment->execution_thread_code_length)
-         siglongjmp(cb_in_main_segment->jmp, 2);
+         siglongjmp(*cb_in_main_segment->jmp, 2);
 
 
    //was the segfault within data? if so, bubble up "3" for now
    if((uintptr_t)info->si_addr >= cb_in_main_segment->execution_thread_memory_start &&
       (uintptr_t)info->si_addr < cb_in_main_segment->execution_thread_memory_start+cb_in_main_segment->execution_thread_memory_length)
-         siglongjmp(cb_in_main_segment->jmp, 3);
+         siglongjmp(*cb_in_main_segment->jmp, 3);
 
 notus:
    if(chained_handler)
@@ -73,6 +73,8 @@ DEFINE_INTRINSIC_FUNCTION2(rodeos_internal,_grow_memory,grow_memory,i32,i32,grow
    U32 previous_page_count = cb_ptr->current_linear_memory_pages;
    U32 grow_amount = grow;
    U32 max_pages = max;
+   if(grow == 0)
+      return (I32)cb_ptr->current_linear_memory_pages;
    if(previous_page_count + grow_amount > max_pages)
       return (I32)-1;
 
@@ -90,9 +92,13 @@ DEFINE_INTRINSIC_FUNCTION2(rodeos_internal,_grow_memory,grow_memory,i32,i32,grow
 
 executor::executor(const code_cache& cc) {
    //XXX
-   ///printf("current_linear_memory_pages %li\n", -memory::cb_offset + offsetof(eosio::chain::rodeos::control_block, current_linear_memory_pages));
-   ///printffull_linear_memory_start %li\n", -memory::cb_offset + offsetof(eosio::chain::rodeos::control_block, full_linear_memory_start));
-   ///printf("cb_offset %lu\n", memory::cb_offset);
+   static bool once_is_enough;
+   if(!once_is_enough) {
+      printf("current_linear_memory_pages %li\n", -memory::cb_offset + offsetof(eosio::chain::rodeos::control_block, current_linear_memory_pages));
+      printf("full_linear_memory_start %li\n", -memory::cb_offset + offsetof(eosio::chain::rodeos::control_block, full_linear_memory_start));
+      printf("cb_offset %lu\n", memory::cb_offset);
+      once_is_enough = true;
+   }
 
    //if we're the first executor created, go setup the signal handling. For now we'll just leave this attached forever
    if(std::lock_guard g(inited_signal_mutex); inited_signal == false) {
@@ -138,16 +144,18 @@ void executor::execute(const code_descriptor& code, const memory& mem, apply_con
    cb->execution_thread_memory_start = (uintptr_t)mem.start_of_memory_slices();
    cb->execution_thread_memory_length = mem.size_of_memory_slice_mapping();
    cb->ctx = &context;
-   cb->eptr = nullptr;
+   executors_exception_ptr = nullptr;
+   cb->eptr = &executors_exception_ptr;
    cb->current_call_depth_remaining = eosio::chain::wasm_constraints::maximum_call_depth;
    cb->bouce_buffer_ptr = 0;
    cb->current_linear_memory_pages = code.starting_memory_pages;
    cb->full_linear_memory_start = (uintptr_t)mem.full_page_memory_base();
+   cb->jmp = &executors_sigjmp_buf;
    cb->is_running = true;
 
    resetGlobalInstances(code.mi); ///XXX
 
-   int jmpret = sigsetjmp(cb->jmp, 1);
+   int jmpret = sigsetjmp(*cb->jmp, 0);
    if(jmpret == 0) {
 
       runInstanceStartFunc(code.mi); ///XXX
@@ -178,14 +186,13 @@ void executor::execute(const code_descriptor& code, const memory& mem, apply_con
    else if(jmpret == 3) {
       //data access violation
       cb->is_running = false;
-      printf("back from access violation\n");
       EOS_ASSERT(false, wasm_execution_error, "access violation");
    }
    else if(jmpret == 4) {
       //exception
       cb->is_running = false;
       try {
-         std::rethrow_exception(cb->eptr);
+         std::rethrow_exception(*cb->eptr);
       } catch(const Runtime::Exception& e ) {  //XXX not required forever; just need until internal Runtime Exceptions converted over
              FC_THROW_EXCEPTION(wasm_execution_error,
                          "cause: ${cause}\n${callstack}",

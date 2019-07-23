@@ -25,12 +25,12 @@ struct control_block {
    uintptr_t execution_thread_memory_start;
    size_t execution_thread_memory_length;
    apply_context* ctx;
-   std::exception_ptr eptr;
+   std::exception_ptr* eptr;
    unsigned current_call_depth_remaining;
    unsigned bouce_buffer_ptr;
    int64_t current_linear_memory_pages; //-1 if no memory
    uintptr_t full_linear_memory_start;
-   sigjmp_buf jmp;
+   sigjmp_buf* jmp;
    bool is_running;
 };
 

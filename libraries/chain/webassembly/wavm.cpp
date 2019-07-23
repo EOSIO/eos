@@ -140,10 +140,8 @@ std::unique_ptr<wasm_instantiated_module_interface> wavm_runtime::instantiate_mo
 }
 
 void wavm_runtime::immediately_exit_currently_running_module() {
-   uint64_t current_gs;
-   arch_prctl(ARCH_GET_GS, &current_gs);  //XXX this should probably be direct syscall
-   control_block* const cb_in_main_segment = reinterpret_cast<control_block* const>(current_gs - memory::cb_offset);
-   siglongjmp(cb_in_main_segment->jmp, 1); ///XXX 1 means clean exit
+   RODEOS_MEMORY_PTR_cb_ptr;
+   siglongjmp(*cb_ptr->jmp, 1); ///XXX 1 means clean exit
    __builtin_unreachable();
 }
 

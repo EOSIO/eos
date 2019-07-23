@@ -312,11 +312,9 @@ struct intrinsic_invoker_impl<Ret, std::tuple<>, std::tuple<Translated...>> {
          return convert_native_to_wasm(the_running_instance_context, Method(the_running_instance_context, translated...));
       }
       catch(...) {
-         uint64_t current_gs;
-         arch_prctl(ARCH_GET_GS, &current_gs);  //XXX this should probably be direct syscall
-         control_block* const cb_in_main_segment = reinterpret_cast<control_block* const>(current_gs - memory::cb_offset);
-         cb_in_main_segment->eptr = std::current_exception();
-         siglongjmp(cb_in_main_segment->jmp, 4); ///XXX 4 means due to exception
+         RODEOS_MEMORY_PTR_cb_ptr;
+         *cb_ptr->eptr = std::current_exception();
+         siglongjmp(*cb_ptr->jmp, 4); ///XXX 4 means due to exception
          __builtin_unreachable();
       }
    }
@@ -341,11 +339,9 @@ struct intrinsic_invoker_impl<void_type, std::tuple<>, std::tuple<Translated...>
          Method(the_running_instance_context, translated...);
       }
       catch(...) {
-         uint64_t current_gs;
-         arch_prctl(ARCH_GET_GS, &current_gs);  //XXX this should probably be direct syscall
-         control_block* const cb_in_main_segment = reinterpret_cast<control_block* const>(current_gs - memory::cb_offset);
-         cb_in_main_segment->eptr = std::current_exception();
-         siglongjmp(cb_in_main_segment->jmp, 4); ///XXX 4 means due to exception
+         RODEOS_MEMORY_PTR_cb_ptr;
+         *cb_ptr->eptr = std::current_exception();
+         siglongjmp(*cb_ptr->jmp, 4); ///XXX 4 means due to exception
          __builtin_unreachable();
       }
    }
