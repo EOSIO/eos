@@ -5,6 +5,8 @@
 #include <eosio/chain/apply_context.hpp>
 #include <eosio/chain/transaction_context.hpp>
 
+#include <fc/scoped_exit.hpp>
+
 #include <mutex>
 
 #include <asm/prctl.h>
@@ -40,7 +42,7 @@ static void(*chained_handler)(int,siginfo_t*,void*);
 
    //we can't pass a GS pointer to siglongjmp() so get us back over to the main segment now
    cb_in_main_segment = reinterpret_cast<control_block*>(current_gs - memory::cb_offset);
-   
+
    //as a double check that the control block pointer is what we expect, look for the magic
    if(cb_in_main_segment->magic != 0x43543543)
       goto notus;
@@ -53,7 +55,6 @@ static void(*chained_handler)(int,siginfo_t*,void*);
    if((uintptr_t)info->si_addr >= cb_in_main_segment->execution_thread_code_start &&
       (uintptr_t)info->si_addr < cb_in_main_segment->execution_thread_code_start+cb_in_main_segment->execution_thread_code_length)
          siglongjmp(*cb_in_main_segment->jmp, 2);
-
 
    //was the segfault within data? if so, bubble up "3" for now
    if((uintptr_t)info->si_addr >= cb_in_main_segment->execution_thread_memory_start &&
@@ -153,20 +154,38 @@ void executor::execute(const code_descriptor& code, const memory& mem, apply_con
    cb->jmp = &executors_sigjmp_buf;
    cb->is_running = true;
 
+   auto reset_is_running = fc::make_scoped_exit([cb](){cb->is_running = false;});
+
    resetGlobalInstances(code.mi); ///XXX
+   vector<Value> args = {Value(context.get_receiver().to_uint64_t()),
+                           Value(context.get_action().account.to_uint64_t()),
+                           Value(context.get_action().name.to_uint64_t())};
+   FunctionInstance* call = asFunctionNullable(getInstanceExport(code.mi,"apply"));
 
-   int jmpret = sigsetjmp(*cb->jmp, 0);
-   if(jmpret == 0) {
-
-      runInstanceStartFunc(code.mi); ///XXX
-
-      vector<Value> args = {Value(context.get_receiver().to_uint64_t()),
-                              Value(context.get_action().account.to_uint64_t()),
-                              Value(context.get_action().name.to_uint64_t())};
-      FunctionInstance* call = asFunctionNullable(getInstanceExport(code.mi,"apply"));
-
-      Runtime::invokeFunction(call,args);
-
+   switch(sigsetjmp(*cb->jmp, 0)) {
+      case 0:
+         runInstanceStartFunc(code.mi); ///XXX
+         Runtime::invokeFunction(call,args); //XXX
+         break;
+      //case 1: clean eosio_exit
+      case 2: //checktime violation
+         context.trx_context.checktime();
+         ///XXX consider another assert here
+         break;
+      case 3: //data access violation
+         EOS_ASSERT(false, wasm_execution_error, "access violation");
+         break;
+      case 4: //exception
+         try {
+            std::rethrow_exception(*cb->eptr);
+         } catch(const Runtime::Exception& e ) {  //XXX not required forever; just need until internal Runtime Exceptions converted over
+             FC_THROW_EXCEPTION(wasm_execution_error,
+                         "cause: ${cause}\n${callstack}",
+                         ("cause", string(describeExceptionCause(e.cause)))
+                         ("callstack", e.callStack));
+         } FC_CAPTURE_AND_RETHROW();
+         break;
+   }
 #if 0
       if(code.start_offset >= 0) {
          void(*start_func)() = (void(*)())(code_mapping + code.start_offset);
@@ -175,32 +194,6 @@ void executor::execute(const code_descriptor& code, const memory& mem, apply_con
       void(*apply_func)(uint64_t, uint64_t, uint64_t) = (void(*)(uint64_t, uint64_t, uint64_t))(code_mapping + code.apply_offset);
       apply_func(context.get_receiver().to_uint64_t(), context.get_action().account.to_uint64_t(), context.get_action().name.to_uint64_t());
 #endif
-   }
-   //jmpret == 1 is a successful eosio_exit()
-   else if(jmpret == 2) {
-      cb->is_running = false;
-      //checktime violation; call over to checktime() to finally bubble error
-      context.trx_context.checktime();
-      //XXX we should throw soemthing here incase we faulted for other reasons?
-   }
-   else if(jmpret == 3) {
-      //data access violation
-      cb->is_running = false;
-      EOS_ASSERT(false, wasm_execution_error, "access violation");
-   }
-   else if(jmpret == 4) {
-      //exception
-      cb->is_running = false;
-      try {
-         std::rethrow_exception(*cb->eptr);
-      } catch(const Runtime::Exception& e ) {  //XXX not required forever; just need until internal Runtime Exceptions converted over
-             FC_THROW_EXCEPTION(wasm_execution_error,
-                         "cause: ${cause}\n${callstack}",
-                         ("cause", string(describeExceptionCause(e.cause)))
-                         ("callstack", e.callStack));
-      } FC_CAPTURE_AND_RETHROW();
-   }
-   cb->is_running = false;
 }
 
 }}}
