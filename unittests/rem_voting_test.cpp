@@ -87,22 +87,11 @@ public:
       return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "eosio_global_state", data, abi_serializer_max_time );
    }
 
-    auto buyram( name payer, name receiver, asset ram ) {
-       auto r = base_tester::push_action(config::system_account_name, N(buyram), payer, mvo()
-                    ("payer", payer)
-                    ("receiver", receiver)
-                    ("quant", ram)
-                    );
-       produce_block();
-       return r;
-    }
-
-    auto delegate_bandwidth( name from, name receiver, asset net, asset cpu, uint8_t transfer = 1) {
+    auto delegate_bandwidth( name from, name receiver, asset stake_quantity, uint8_t transfer = 1) {
        auto r = base_tester::push_action(config::system_account_name, N(delegatebw), from, mvo()
                     ("from", from )
                     ("receiver", receiver)
-                    ("stake_net_quantity", net)
-                    ("stake_cpu_quantity", cpu)
+                    ("stake_quantity", stake_quantity)
                     ("transfer", transfer)
                     );
        produce_block();
@@ -240,13 +229,9 @@ BOOST_FIXTURE_TEST_CASE( rem_voting_test, voting_tester ) {
         for( const auto& acc : rem_test_genesis ) {
            const auto ib = acc.initial_balance;
            const auto ram = 1000;
-           const auto net = (ib - ram) / 2;
-           const auto cpu = ib - net - ram;
+           const auto stake = ib - ram;
 
-           auto r = buyram(config::system_account_name, acc.name, asset(ram));
-           BOOST_REQUIRE( !r->except_ptr );
-
-           r = delegate_bandwidth(N(eosio.stake), acc.name, asset(net), asset(cpu));
+           auto r = delegate_bandwidth(N(eosio.stake), acc.name, asset(stake));
            BOOST_REQUIRE( !r->except_ptr );
         }
 
@@ -272,10 +257,9 @@ BOOST_FIXTURE_TEST_CASE( rem_voting_test, voting_tester ) {
 
         // Re-stake for runnerups
         for( const auto& producer : producer_runnerups ) {
-           const auto net = 100'000'0000ll;
-           const auto cpu = 100'000'0000ll;
+           const auto stake = 200'000'0000ll;
 
-           const auto r = delegate_bandwidth(N(eosio.stake), producer, asset(net), asset(cpu));
+           const auto r = delegate_bandwidth(N(eosio.stake), producer, asset(stake));
            BOOST_REQUIRE( !r->except_ptr );
         }
 
@@ -394,13 +378,8 @@ BOOST_FIXTURE_TEST_CASE( rem_vote_weight_test, voting_tester ) {
       for( const auto& acc : rem_test_genesis ) {
          const auto ib = acc.initial_balance;
          const auto ram = 1000;
-         const auto net = (ib - ram) / 2;
-         const auto cpu = ib - net - ram;
-
-         auto r = buyram(config::system_account_name, acc.name, asset(ram));
-         BOOST_REQUIRE( !r->except_ptr );
-
-         r = delegate_bandwidth(N(eosio.stake), acc.name, asset(net), asset(cpu));
+         const auto stake = ib - ram;
+         auto r = delegate_bandwidth(N(eosio.stake), acc.name, asset(stake));
          BOOST_REQUIRE( !r->except_ptr );
       }
 
@@ -432,7 +411,7 @@ BOOST_FIXTURE_TEST_CASE( rem_vote_weight_test, voting_tester ) {
          // staked = 399999999000
          // 1091357.4775723184 * 0.00000250771 * 399999999000 ~= 1.09472322 × 10^12
          const auto prod = get_producer_info( "proda" );
-         BOOST_TEST_REQUIRE( 1094725862107.0167 == prod["total_votes"].as_double() );
+         BOOST_TEST_REQUIRE( 4.3654298993756986e+17 == prod["total_votes"].as_double() );
       }
 
       // 30 days
@@ -445,7 +424,7 @@ BOOST_FIXTURE_TEST_CASE( rem_vote_weight_test, voting_tester ) {
 
          // rem vote weight: 0.16666917
          const auto prod = get_producer_info( "proda" );
-         BOOST_TEST_REQUIRE( 78454001807635136 == prod["total_votes"].as_double() );
+         BOOST_TEST_REQUIRE( 4.6045073671201741e+17 == prod["total_votes"].as_double() );
          BOOST_TEST_REQUIRE( last_vote_weight < prod["total_votes"].as_double() );
       }
 
@@ -459,7 +438,7 @@ BOOST_FIXTURE_TEST_CASE( rem_vote_weight_test, voting_tester ) {
 
          // rem vote weight: 1.0
          const auto prod = get_producer_info( "proda" );
-         BOOST_TEST_REQUIRE( 617365016928612860 == prod["total_votes"].as_double() );
+         BOOST_TEST_REQUIRE( 6.1736501692861286e+17 == prod["total_votes"].as_double() );
          BOOST_TEST_REQUIRE( last_vote_weight < prod["total_votes"].as_double() );
       }
 
@@ -468,7 +447,7 @@ BOOST_FIXTURE_TEST_CASE( rem_vote_weight_test, voting_tester ) {
          const auto voter = get_voter_info( "whale1" );
          const auto last_vote_weight = voter["last_vote_weight"].as_double();
 
-         const auto r = delegate_bandwidth(N(eosio.stake), N(whale1), asset(10'000'000'0000LL), asset(10'000'000'0000LL));
+         const auto r = delegate_bandwidth(N(eosio.stake), N(whale1), asset(20'000'000'0000LL));
          BOOST_REQUIRE( !r->except_ptr );
 
          votepro( N(whale1), { N(proda) } );
@@ -477,7 +456,7 @@ BOOST_FIXTURE_TEST_CASE( rem_vote_weight_test, voting_tester ) {
          // vote mature adjusted time: 0 + 180 * 20 / (40 + 20)
          // rem vote weight:           0.66
          const auto prod = get_producer_info( "proda" );
-         BOOST_TEST_REQUIRE( 617365047215702140 == prod["total_votes"].as_double() );
+         BOOST_TEST_REQUIRE( 9.2604752616462554e+17 == prod["total_votes"].as_double() );
          BOOST_TEST_REQUIRE( last_vote_weight < prod["total_votes"].as_double() );
       }
 
@@ -487,7 +466,7 @@ BOOST_FIXTURE_TEST_CASE( rem_vote_weight_test, voting_tester ) {
          const auto voter = get_voter_info( "whale1" );
          const auto last_vote_weight = voter["last_vote_weight"].as_double();
 
-         const auto r = delegate_bandwidth(N(eosio.stake), N(whale1), asset(10'000'000'0000LL), asset(10'000'000'0000LL));
+         const auto r = delegate_bandwidth(N(eosio.stake), N(whale1), asset(20'000'000'0000LL));
          BOOST_REQUIRE( !r->except_ptr );
 
          votepro( N(whale1), { N(proda) } );
@@ -496,8 +475,8 @@ BOOST_FIXTURE_TEST_CASE( rem_vote_weight_test, voting_tester ) {
          // vote mature adjusted time: 60 + 180 * 20 / (60 + 20)
          // rem vote weight:           0.41
          const auto prod = get_producer_info( "proda" );
-         BOOST_TEST_REQUIRE( 514470927477248640 == prod["total_votes"].as_double() );
-         BOOST_TEST_REQUIRE( last_vote_weight > prod["total_votes"].as_double() );
+         BOOST_TEST_REQUIRE( 1.2347300354006382e+18 == prod["total_votes"].as_double() );
+         BOOST_TEST_REQUIRE( last_vote_weight < prod["total_votes"].as_double() );
       }
    } FC_LOG_AND_RETHROW()
 }

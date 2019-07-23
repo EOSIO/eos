@@ -211,11 +211,11 @@ try:
     # create accounts via eosio as otherwise a bid is needed
     for account in accounts:
         Print("Create new account %s via %s" % (account.name, cluster.eosioAccount.name))
-        trans=node.createInitializeAccount(account, cluster.eosioAccount, stakedDeposit=0, waitForTransBlock=False, stakeNet=1000, stakeCPU=1000, buyRAM=1000, exitOnError=True)
-        transferAmount="100000000.0000 {0}".format(CORE_SYMBOL)
+        trans=node.createInitializeAccount(account, cluster.eosioAccount, stakedDeposit=0, waitForTransBlock=False, stakeQuantity=40000000, exitOnError=True)
+        transferAmount="60000000.0000 {0}".format(CORE_SYMBOL)
         Print("Transfer funds %s from account %s to %s" % (transferAmount, cluster.eosioAccount.name, account.name))
         node.transferFunds(cluster.eosioAccount, account, transferAmount, "test transfer")
-        trans=node.delegatebw(account, 20000000.0000, 20000000.0000, waitForTransBlock=True, exitOnError=True)
+        # trans=node.delegatebw(account, 40000000.0000, waitForTransBlock=True, exitOnError=True)
         trans=node.regproducer(account, "http::/mysite.com", 0, waitForTransBlock=False, exitOnError=True)
 
     # containers for tracking producers

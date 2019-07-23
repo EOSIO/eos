@@ -1,5 +1,8 @@
 #!/bin/bash
 
+set -x
+set -e
+
 # set up a wallet just for holding the key used during blockchain ignition
 
 bioshost=$BIOS_HOSTNAME
@@ -53,8 +56,10 @@ ecmd () {
     echo ===== Start: $step ============ >> $logfile
     echo executing: cleos --wallet-url $wdurl --url http://$bioshost:$biosport $* | tee -a $logfile
     echo ----------------------- >> $logfile
-    programs/cleos/cleos  --wallet-url $wdurl --url http://$bioshost:$biosport $* >> $logfile 2>&1
-    echo ==== End: $step ============== >> $logfile
+    programs/cleos/cleos --wallet-url $wdurl --url http://$bioshost:$biosport $* 2>&1 | tee -a $logfile
+    RES=${PIPESTATUS[0]}
+    echo ==== End: $step - res=$RES ============== >> $logfile
+    if [[ $RES -ne 0 ]];then exit 1;fi
     step=$(($step + 1))
 }
 
@@ -63,7 +68,7 @@ wcmd () {
 }
 
 cacmd () {
-    programs/cleos/cleos  --wallet-url $wdurl --url http://$bioshost:$biosport system newaccount --transfer --stake-net "10000000.0000 SYS" --stake-cpu "10000000.0000 SYS"  --buy-ram "10000000.0000 SYS" eosio $* >> $logfile 2>&1
+    programs/cleos/cleos -v --wallet-url $wdurl --url http://$bioshost:$biosport system newaccount --transfer --stake "10000000.0000 SYS" eosio $* 2>&1 | tee -a $logfile
     ecmd system regproducer $1 $2
     ecmd system voteproducer prods $1 $1
 }
@@ -112,11 +117,11 @@ ecmd set contract eosio.msig contracts/contracts/eosio.msig eosio.msig.wasm eosi
 ecmd set contract eosio.wrap contracts/contracts/eosio.wrap eosio.wrap.wasm eosio.wrap.abi
 
 echo ===== Start: $step ============ >> $logfile
-echo executing: cleos --wallet-url $wdurl --url http://$bioshost:$biosport push action eosio.token create '[ "eosio", "10000000000.0000 SYS" ]' -p eosio.token | tee -a $logfile
-echo executing: cleos --wallet-url $wdurl --url http://$bioshost:$biosport push action eosio.token issue '[ "eosio", "1000000000.0000 SYS", "memo" ]' -p eosio | tee -a $logfile
+echo executing: cleos --wallet-url $wdurl --url http://$bioshost:$biosport push action eosio.token create '[ "eosio", "1000000000.0000 SYS" ]' -p eosio.token | tee -a $logfile
+echo executing: cleos --wallet-url $wdurl --url http://$bioshost:$biosport push action eosio.token issue '[ "eosio", "900000000.0000 SYS", "memo" ]' -p eosio | tee -a $logfile
 echo ----------------------- >> $logfile
-programs/cleos/cleos --wallet-url $wdurl --url http://$bioshost:$biosport push action eosio.token create '[ "eosio", "10000000000.0000 SYS" ]' -p eosio.token >> $logfile 2>&1
-programs/cleos/cleos --wallet-url $wdurl --url http://$bioshost:$biosport push action eosio.token issue '[ "eosio", "1000000000.0000 SYS", "memo" ]' -p eosio >> $logfile 2>&1
+programs/cleos/cleos --wallet-url $wdurl --url http://$bioshost:$biosport push action eosio.token create '[ "eosio", "1000000000.0000 SYS" ]' -p eosio.token >> $logfile 2>&1
+programs/cleos/cleos --wallet-url $wdurl --url http://$bioshost:$biosport push action eosio.token issue '[ "eosio", "900000000.0000 SYS", "memo" ]' -p eosio >> $logfile 2>&1
 echo ==== End: $step ============== >> $logfile
 step=$(($step + 1))
 

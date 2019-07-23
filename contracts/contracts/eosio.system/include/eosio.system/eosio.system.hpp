@@ -132,6 +132,7 @@ namespace eosiosystem {
       uint64_t free_ram()const { return max_ram_size - total_ram_bytes_reserved; }
 
       uint64_t             max_ram_size = 64ll*1024 * 1024 * 1024;
+      uint64_t             min_account_stake = 1000000; //minimum stake for new created account 100'0000 REM
       uint64_t             total_ram_bytes_reserved = 0;
       int64_t              total_ram_stake = 0;
 
@@ -148,7 +149,7 @@ namespace eosiosystem {
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
       EOSLIB_SERIALIZE_DERIVED( eosio_global_state, eosio::blockchain_parameters,
-                                (max_ram_size)(total_ram_bytes_reserved)(total_ram_stake)
+                                (max_ram_size)(min_account_stake)(total_ram_bytes_reserved)(total_ram_stake)
                                 (last_producer_schedule_update)(last_pervote_bucket_fill)
                                 (pervote_bucket)(perblock_bucket)(total_unpaid_blocks)(total_activated_stake)(thresh_activated_stake_time)
                                 (last_producer_schedule_size)(total_producer_vote_weight)(last_name_close) )
@@ -593,39 +594,6 @@ namespace eosiosystem {
          [[eosio::action]]
          void setalimits( const name& account, int64_t ram_bytes, int64_t net_weight, int64_t cpu_weight );
 
-         /**
-          * Set account RAM limits action.
-          *
-          * @details Set the RAM limits of an account
-          *
-          * @param account - name of the account whose resource limit to be set,
-          * @param ram_bytes - ram limit in absolute bytes.
-          */
-         [[eosio::action]]
-         void setacctram( const name& account, const std::optional<int64_t>& ram_bytes );
-
-         /**
-          * Set account NET limits action.
-          *
-          * @details Set the NET limits of an account
-          *
-          * @param account - name of the account whose resource limit to be set,
-          * @param net_weight - fractionally proportionate net limit of available resources based on (weight / total_weight_of_all_accounts).
-          */
-         [[eosio::action]]
-         void setacctnet( const name& account, const std::optional<int64_t>& net_weight );
-
-         /**
-          * Set account CPU limits action.
-          *
-          * @details Set the CPU limits of an account
-          *
-          * @param account - name of the account whose resource limit to be set,
-          * @param cpu_weight - fractionally proportionate cpu limit of available resources based on (weight / total_weight_of_all_accounts).
-          */
-         [[eosio::action]]
-         void setacctcpu( const name& account, const std::optional<int64_t>& cpu_weight );
-
 
          /**
           * Activates a protocol feature.
@@ -648,15 +616,14 @@ namespace eosiosystem {
           *    tokens to be staked,
           * @param receiver - the account to delegate bandwith to, that is, the account to
           *    whose resources staked tokens are added
-          * @param stake_net_quantity - tokens staked for NET bandwidth,
-          * @param stake_cpu_quantity - tokens staked for CPU bandwidth,
+          * @param stake_quantity - tokens staked for resources: NET, CPU and RAM
           * @param transfer - if true, ownership of staked tokens is transfered to `receiver`.
           *
           * @post All producers `from` account has voted for will have their votes updated immediately.
           */
          [[eosio::action]]
          void delegatebw( const name& from, const name& receiver,
-                          const asset& stake_net_quantity, const asset& stake_cpu_quantity, bool transfer );
+                          const asset& stake_quantity, bool transfer );
 
          /**
           * Setrex action.
@@ -939,7 +906,7 @@ namespace eosiosystem {
           * @details Decreases the total tokens delegated by `from` to `receiver` and/or
           * frees the memory associated with the delegation if there is nothing
           * left to delegate.
-          * This will cause an immediate reduction in net/cpu bandwidth of the
+          * This will cause an immediate reduction in net/cpu/ram bandwidth of the
           * receiver.
           * A transaction is scheduled to send the tokens back to `from` after
           * the staking period has passed. If existing transaction is scheduled, it
@@ -952,8 +919,7 @@ namespace eosiosystem {
           *    the account whose tokens will be unstaked,
           * @param receiver - the account to undelegate bandwith to, that is,
           *    the account to whose benefit tokens have been staked,
-          * @param unstake_net_quantity - tokens to be unstaked from NET bandwidth,
-          * @param unstake_cpu_quantity - tokens to be unstaked from CPU bandwidth,
+          * @param unstake_quantity - tokens to be unstaked for resources: NET, CPU and RAM
           *
           * @post Unstaked tokens are transferred to `from` liquid balance via a
           *    deferred transaction with a delay of 3 days.
@@ -964,46 +930,7 @@ namespace eosiosystem {
           */
          [[eosio::action]]
          void undelegatebw( const name& from, const name& receiver,
-                            const asset& unstake_net_quantity, const asset& unstake_cpu_quantity );
-
-         /**
-          * Buy ram action.
-          *
-          * @details Increases receiver's ram quota based upon current price and quantity of
-          * tokens provided. An inline transfer from receiver to system contract of
-          * tokens will be executed.
-          *
-          * @param payer - the ram buyer,
-          * @param receiver - the ram receiver,
-          * @param quant - the quntity of tokens to buy ram with.
-          */
-         [[eosio::action]]
-         void buyram( const name& payer, const name& receiver, const asset& quant );
-
-         /**
-          * Buy a specific amount of ram bytes action.
-          *
-          * @details Increases receiver's ram in quantity of bytes provided.
-          * An inline transfer from receiver to system contract of tokens will be executed.
-          *
-          * @param payer - the ram buyer,
-          * @param receiver - the ram receiver,
-          * @param bytes - the quntity of ram to buy specified in bytes.
-          */
-         [[eosio::action]]
-         void buyrambytes( const name& payer, const name& receiver, uint32_t bytes );
-
-         /**
-          * Sell ram action.
-          *
-          * @details Reduces quota by bytes and then performs an inline transfer of tokens
-          * to receiver based upon the average purchase price of the original quota.
-          *
-          * @param account - the ram seller account,
-          * @param bytes - the amount of ram to sell in bytes.
-          */
-         [[eosio::action]]
-         void sellram( const name& account, int64_t bytes );
+                            const asset& unstake_quantity );
 
          /**
           * Refund action.
@@ -1054,6 +981,15 @@ namespace eosiosystem {
           */
          [[eosio::action]]
          void setram( uint64_t max_ram_size );
+
+         /**
+          * Set min acount stake action.
+          *
+          * @details Set minimum of new account stake, that is not possible to undelegate.
+          * @param min_account_stake - the minimum amount of stake for new account.
+          */
+         [[eosio::action]]
+         void setminstake( uint64_t min_account_stake );
 
          /**
           * Set ram rate action.
@@ -1244,9 +1180,6 @@ namespace eosiosystem {
          void setinflation( int64_t annual_rate, int64_t inflation_pay_factor, int64_t votepay_factor );
 
          using init_action = eosio::action_wrapper<"init"_n, &system_contract::init>;
-         using setacctram_action = eosio::action_wrapper<"setacctram"_n, &system_contract::setacctram>;
-         using setacctnet_action = eosio::action_wrapper<"setacctnet"_n, &system_contract::setacctnet>;
-         using setacctcpu_action = eosio::action_wrapper<"setacctcpu"_n, &system_contract::setacctcpu>;
          using delegatebw_action = eosio::action_wrapper<"delegatebw"_n, &system_contract::delegatebw>;
          using deposit_action = eosio::action_wrapper<"deposit"_n, &system_contract::deposit>;
          using withdraw_action = eosio::action_wrapper<"withdraw"_n, &system_contract::withdraw>;
@@ -1282,13 +1215,11 @@ namespace eosiosystem {
          using consolidate_action = eosio::action_wrapper<"consolidate"_n, &system_contract::consolidate>;
          using closerex_action = eosio::action_wrapper<"closerex"_n, &system_contract::closerex>;
          using undelegatebw_action = eosio::action_wrapper<"undelegatebw"_n, &system_contract::undelegatebw>;
-         using buyram_action = eosio::action_wrapper<"buyram"_n, &system_contract::buyram>;
-         using buyrambytes_action = eosio::action_wrapper<"buyrambytes"_n, &system_contract::buyrambytes>;
-         using sellram_action = eosio::action_wrapper<"sellram"_n, &system_contract::sellram>;
          using refund_action = eosio::action_wrapper<"refund"_n, &system_contract::refund>;
          using regproducer_action = eosio::action_wrapper<"regproducer"_n, &system_contract::regproducer>;
          using unregprod_action = eosio::action_wrapper<"unregprod"_n, &system_contract::unregprod>;
          using setram_action = eosio::action_wrapper<"setram"_n, &system_contract::setram>;
+         using setmin_account_stake_action = eosio::action_wrapper<"setminstake"_n, &system_contract::setminstake>;
          using setramrate_action = eosio::action_wrapper<"setramrate"_n, &system_contract::setramrate>;
          using voteproducer_action = eosio::action_wrapper<"voteproducer"_n, &system_contract::voteproducer>;
          using regproxy_action = eosio::action_wrapper<"regproxy"_n, &system_contract::regproxy>;
@@ -1355,7 +1286,7 @@ namespace eosiosystem {
 
          // defined in delegate_bandwidth.cpp
          void changebw( name from, const name& receiver,
-                        const asset& stake_net_quantity, const asset& stake_cpu_quantity, bool transfer );
+                        const asset& stake_quantity, bool transfer );
          void update_voting_power( const name& voter, const asset& total_update );
 
          // defined in voting.hpp

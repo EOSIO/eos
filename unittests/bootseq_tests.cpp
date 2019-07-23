@@ -61,10 +61,10 @@ std::vector<genesis_account> test_genesis( {
   {N(runnerup1),  1'000'000'0000ll},
   {N(runnerup2),  1'000'000'0000ll},
   {N(runnerup3),  1'000'000'0000ll},
-  {N(minow1),           100'0000ll},
-  {N(minow2),             1'0000ll},
-  {N(minow3),             1'0000ll},
-  {N(masses),   800'000'000'0000ll}
+  {N(minow1),         1'100'0000ll},
+  {N(minow2),         1'050'0000ll},
+  {N(minow3),         1'050'0000ll},
+  {N(masses),   500'000'000'0000ll}
 });
 
 class bootseq_tester : public TESTER {
@@ -91,22 +91,11 @@ public:
       return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "eosio_global_state", data, abi_serializer_max_time );
    }
 
-    auto buyram( name payer, name receiver, asset ram ) {
-       auto r = base_tester::push_action(config::system_account_name, N(buyram), payer, mvo()
-                    ("payer", payer)
-                    ("receiver", receiver)
-                    ("quant", ram)
-                    );
-       produce_block();
-       return r;
-    }
-
-    auto delegate_bandwidth( name from, name receiver, asset net, asset cpu, uint8_t transfer = 1) {
+    auto delegate_bandwidth( name from, name receiver, asset stake_quantity, uint8_t transfer = 1) {
        auto r = base_tester::push_action(config::system_account_name, N(delegatebw), from, mvo()
                     ("from", from )
                     ("receiver", receiver)
-                    ("stake_net_quantity", net)
-                    ("stake_cpu_quantity", cpu)
+                    ("stake_quantity", stake_quantity)
                     ("transfer", transfer)
                     );
        produce_block();
@@ -164,12 +153,11 @@ public:
     }
 
 
-    auto undelegate_bandwidth( name from, name receiver, asset net, asset cpu ) {
+    auto undelegate_bandwidth( name from, name receiver, asset unstake_quantity ) {
        auto r = base_tester::push_action(config::system_account_name, N(undelegatebw), from, mvo()
                     ("from", from )
                     ("receiver", receiver)
-                    ("unstake_net_quantity", net)
-                    ("unstake_cpu_quantity", cpu)
+                    ("unstake_quantity", unstake_quantity)
                     );
        produce_block();
        return r;
@@ -229,8 +217,8 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
 
 
         // Create SYS tokens in eosio.token, set its manager as eosio
-        auto max_supply = core_from_string("10000000000.0000"); /// 1x larger than 1B initial tokens
-        auto initial_supply = core_from_string("1000000000.0000"); /// 1x larger than 1B initial tokens
+        auto max_supply = core_from_string("1000000000.0000");
+        auto initial_supply = core_from_string("900000000.0000");
         create_currency(N(eosio.token), config::system_account_name, max_supply);
         // Issue the genesis supply of 1 billion SYS tokens to eosio.system
         issue(N(eosio.token), config::system_account_name, config::system_account_name, initial_supply);
@@ -247,15 +235,9 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
 
         // Buy ram and stake cpu and net for each genesis accounts
         for( const auto& a : test_genesis ) {
-           auto ib = a.initial_balance;
-           auto ram = 1000;
-           auto net = (ib - ram) / 2;
-           auto cpu = ib - net - ram;
+           auto stake_quantity = a.initial_balance - 1000;
 
-           auto r = buyram(config::system_account_name, a.aname, asset(ram));
-           BOOST_REQUIRE( !r->except_ptr );
-
-           r = delegate_bandwidth(N(eosio.stake), a.aname, asset(net), asset(cpu));
+           auto r = delegate_bandwidth(N(eosio.stake), a.aname, asset(stake_quantity));
            BOOST_REQUIRE( !r->except_ptr );
         }
 
@@ -359,13 +341,13 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
 
         // This should thrown an error, since block one can only unstake all his stake after 10 years
 
-        BOOST_REQUIRE_THROW(undelegate_bandwidth(N(b1), N(b1), core_from_string("49999500.0000"), core_from_string("49999500.0000")), eosio_assert_message_exception);
+        BOOST_REQUIRE_THROW(undelegate_bandwidth(N(b1), N(b1), core_from_string("49999500.0000")), eosio_assert_message_exception);
 
         // Skip 10 years
         produce_block(first_june_2028 - control->head_block_time().time_since_epoch());
 
         // Block one should be able to unstake all his stake now
-        undelegate_bandwidth(N(b1), N(b1), core_from_string("49999500.0000"), core_from_string("49999500.0000"));
+        undelegate_bandwidth(N(b1), N(b1), core_from_string("49999500.0000"));
 
         return;
         produce_blocks(7000); /// produce blocks until virutal bandwidth can acomadate a small user

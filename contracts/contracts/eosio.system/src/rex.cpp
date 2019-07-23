@@ -404,10 +404,6 @@ namespace eosiosystem {
                                  cpu_managed ? cpu : tot_itr->cpu_weight.amount );
          }
       }
-
-      if ( tot_itr->is_empty() ) {
-         totals_tbl.erase( tot_itr );
-      }
    }
 
    /**

@@ -829,11 +829,11 @@ class Cluster(object):
 
         node.validateAccounts(myAccounts)
 
-    def createAccountAndVerify(self, account, creator, stakedDeposit=1000, stakeNet=100, stakeCPU=100, buyRAM=10000):
+    def createAccountAndVerify(self, account, creator, stakedDeposit=1000, stakeQuantity=200):
         """create account, verify account and return transaction id"""
         assert(len(self.nodes) > 0)
         node=self.nodes[0]
-        trans=node.createInitializeAccount(account, creator, stakedDeposit, stakeNet=stakeNet, stakeCPU=stakeCPU, buyRAM=buyRAM, exitOnError=True)
+        trans=node.createInitializeAccount(account, creator, stakedDeposit, stakeQuantity=stakeQuantity, exitOnError=True)
         assert(node.verifyAccount(account))
         return trans
 
@@ -850,10 +850,10 @@ class Cluster(object):
     #         return transId
     #     return None
 
-    def createInitializeAccount(self, account, creatorAccount, stakedDeposit=1000, waitForTransBlock=False, stakeNet=100, stakeCPU=100, buyRAM=10000, exitOnError=False):
+    def createInitializeAccount(self, account, creatorAccount, stakedDeposit=1000, waitForTransBlock=False, stakeQuantity=200, exitOnError=False):
         assert(len(self.nodes) > 0)
         node=self.nodes[0]
-        trans=node.createInitializeAccount(account, creatorAccount, stakedDeposit, waitForTransBlock, stakeNet=stakeNet, stakeCPU=stakeCPU, buyRAM=buyRAM)
+        trans=node.createInitializeAccount(account, creatorAccount, stakedDeposit, waitForTransBlock, stakeQuantity=stakeQuantity)
         return trans
 
     @staticmethod
@@ -1297,12 +1297,10 @@ class Cluster(object):
             if not self.walletMgr.importKey(account, ignWallet):
                 Utils.Print("ERROR: Failed to import %s account keys into ignition wallet." % (name))
                 return None
-            ram="10000.0000 {0}".format(CORE_SYMBOL)
-            biosNode.buyram(eosioAccount, account, ram, waitForTransBlock=True, exitOnError=True);
             # if not self.walletMgr.unlockWallet(account):
             #     Utils.Print("ERROR: Launcher failed to unlock wallet : %s" % (name))
             #     return None
-            biosNode.delegatebw(account, 250000.0000, 250000.0000, waitForTransBlock=True, exitOnError=True)
+            biosNode.delegatebw(account, 500000.0000, waitForTransBlock=True, exitOnError=True)
 
         Utils.Print("Cluster bootstrap done.")
 

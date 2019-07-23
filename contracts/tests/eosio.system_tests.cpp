@@ -315,8 +315,7 @@ BOOST_FIXTURE_TEST_CASE( fail_without_auth, eosio_system_tester ) try {
                         push_action( N(alice1111111), N(delegatebw), mvo()
                                     ("from",     "alice1111111")
                                     ("receiver", "bob111111111")
-                                    ("stake_net_quantity", core_sym::from_string("10.0000"))
-                                    ("stake_cpu_quantity", core_sym::from_string("10.0000"))
+                                    ("stake_quantity", core_sym::from_string("20.0000"))
                                     ("transfer", 0 )
                                     ,false
                         )
@@ -326,8 +325,7 @@ BOOST_FIXTURE_TEST_CASE( fail_without_auth, eosio_system_tester ) try {
                         push_action(N(alice1111111), N(undelegatebw), mvo()
                                     ("from",     "alice1111111")
                                     ("receiver", "bob111111111")
-                                    ("unstake_net_quantity", core_sym::from_string("200.0000"))
-                                    ("unstake_cpu_quantity", core_sym::from_string("100.0000"))
+                                    ("unstake_quantity", core_sym::from_string("300.0000"))
                                     ("transfer", 0 )
                                     ,false
                         )
@@ -1193,13 +1191,13 @@ BOOST_FIXTURE_TEST_CASE(producer_pay, eosio_system_tester, * boost::unit_test::t
    const double secs_per_year   = 52 * 7 * 24 * 3600;
 
 
-   const asset large_asset = core_sym::from_string("80.0000");
-   create_account_with_resources( N(defproducera), config::system_account_name, core_sym::from_string("1.0000"), false, large_asset, large_asset );
-   create_account_with_resources( N(defproducerb), config::system_account_name, core_sym::from_string("1.0000"), false, large_asset, large_asset );
-   create_account_with_resources( N(defproducerc), config::system_account_name, core_sym::from_string("1.0000"), false, large_asset, large_asset );
+   const asset large_asset = core_sym::from_string("160.0000");
+   create_account_with_resources( N(defproducera), config::system_account_name, core_sym::from_string("1.0000"), false, large_asset );
+   create_account_with_resources( N(defproducerb), config::system_account_name, core_sym::from_string("1.0000"), false, large_asset );
+   create_account_with_resources( N(defproducerc), config::system_account_name, core_sym::from_string("1.0000"), false, large_asset );
 
-   create_account_with_resources( N(producvotera), config::system_account_name, core_sym::from_string("1.0000"), false, large_asset, large_asset );
-   create_account_with_resources( N(producvoterb), config::system_account_name, core_sym::from_string("1.0000"), false, large_asset, large_asset );
+   create_account_with_resources( N(producvotera), config::system_account_name, core_sym::from_string("1.0000"), false, large_asset );
+   create_account_with_resources( N(producvoterb), config::system_account_name, core_sym::from_string("1.0000"), false, large_asset );
 
    BOOST_REQUIRE_EQUAL(success(), regproducer(N(defproducera)));
    produce_block(fc::hours(24));
@@ -1381,13 +1379,13 @@ BOOST_FIXTURE_TEST_CASE(producer_pay, eosio_system_tester, * boost::unit_test::t
 BOOST_FIXTURE_TEST_CASE(change_inflation, eosio_system_tester) try {
 
    {
-      const asset large_asset = core_sym::from_string("80.0000");
-      create_account_with_resources( N(defproducera), config::system_account_name, core_sym::from_string("1.0000"), false, large_asset, large_asset );
-      create_account_with_resources( N(defproducerb), config::system_account_name, core_sym::from_string("1.0000"), false, large_asset, large_asset );
-      create_account_with_resources( N(defproducerc), config::system_account_name, core_sym::from_string("1.0000"), false, large_asset, large_asset );
+      const asset large_asset = core_sym::from_string("160.0000");
+      create_account_with_resources( N(defproducera), config::system_account_name, core_sym::from_string("1.0000"), false, large_asset );
+      create_account_with_resources( N(defproducerb), config::system_account_name, core_sym::from_string("1.0000"), false, large_asset );
+      create_account_with_resources( N(defproducerc), config::system_account_name, core_sym::from_string("1.0000"), false, large_asset );
 
-      create_account_with_resources( N(producvotera), config::system_account_name, core_sym::from_string("1.0000"), false, large_asset, large_asset );
-      create_account_with_resources( N(producvoterb), config::system_account_name, core_sym::from_string("1.0000"), false, large_asset, large_asset );
+      create_account_with_resources( N(producvotera), config::system_account_name, core_sym::from_string("1.0000"), false, large_asset );
+      create_account_with_resources( N(producvoterb), config::system_account_name, core_sym::from_string("1.0000"), false, large_asset );
 
       BOOST_REQUIRE_EQUAL(success(), regproducer(N(defproducera)));
       BOOST_REQUIRE_EQUAL(success(), regproducer(N(defproducerb)));
@@ -1470,11 +1468,10 @@ BOOST_FIXTURE_TEST_CASE(multiple_producer_pay, eosio_system_tester, * boost::uni
    const double  usecs_per_year = secs_per_year * 1000000;
    const double  cont_rate      = 4.879/100.;
 
-   const asset net = core_sym::from_string("80.0000");
-   const asset cpu = core_sym::from_string("80.0000");
+   const asset stake = core_sym::from_string("160.0000");
    const std::vector<account_name> voters = { N(producvotera), N(producvoterb), N(producvoterc), N(producvoterd) };
    for (const auto& v: voters) {
-      create_account_with_resources( v, config::system_account_name, core_sym::from_string("1.0000"), false, net, cpu );
+      create_account_with_resources( v, config::system_account_name, core_sym::from_string("1.0000"), false, stake );
       transfer( config::system_account_name, v, core_sym::from_string("100000000.0000"), config::system_account_name );
       BOOST_REQUIRE_EQUAL(success(), stake(v, core_sym::from_string("30000000.0000"), core_sym::from_string("30000000.0000")) );
    }
@@ -1845,11 +1842,10 @@ BOOST_FIXTURE_TEST_CASE(multiple_producer_pay, eosio_system_tester, * boost::uni
 
 BOOST_FIXTURE_TEST_CASE(multiple_producer_votepay_share, eosio_system_tester, * boost::unit_test::tolerance(1e-10)) try {
 
-   const asset net = core_sym::from_string("80.0000");
-   const asset cpu = core_sym::from_string("80.0000");
+   const asset stake = core_sym::from_string("160.0000");
    const std::vector<account_name> voters = { N(producvotera), N(producvoterb), N(producvoterc), N(producvoterd) };
    for (const auto& v: voters) {
-      create_account_with_resources( v, config::system_account_name, core_sym::from_string("1.0000"), false, net, cpu );
+      create_account_with_resources( v, config::system_account_name, core_sym::from_string("1.0000"), false, stake );
       transfer( config::system_account_name, v, core_sym::from_string("100000000.0000"), config::system_account_name );
       BOOST_REQUIRE_EQUAL(success(), stake(v, core_sym::from_string("30000000.0000"), core_sym::from_string("30000000.0000")) );
    }
@@ -2004,11 +2000,10 @@ BOOST_FIXTURE_TEST_CASE(votepay_share_invariant, eosio_system_tester, * boost::u
 
    cross_15_percent_threshold();
 
-   const asset net = core_sym::from_string("80.0000");
-   const asset cpu = core_sym::from_string("80.0000");
+   const asset stake = core_sym::from_string("160.0000");
    const std::vector<account_name> accounts = { N(aliceaccount), N(bobbyaccount), N(carolaccount), N(emilyaccount) };
    for (const auto& a: accounts) {
-      create_account_with_resources( a, config::system_account_name, core_sym::from_string("1.0000"), false, net, cpu );
+      create_account_with_resources( a, config::system_account_name, core_sym::from_string("1.0000"), false, stake );
       transfer( config::system_account_name, a, core_sym::from_string("1000.0000"), config::system_account_name );
    }
    const auto vota  = accounts[0];
@@ -2072,11 +2067,10 @@ BOOST_FIXTURE_TEST_CASE(votepay_share_proxy, eosio_system_tester, * boost::unit_
 
    cross_15_percent_threshold();
 
-   const asset net = core_sym::from_string("80.0000");
-   const asset cpu = core_sym::from_string("80.0000");
+   const asset stake = core_sym::from_string("160.0000");
    const std::vector<account_name> accounts = { N(aliceaccount), N(bobbyaccount), N(carolaccount), N(emilyaccount) };
    for (const auto& a: accounts) {
-      create_account_with_resources( a, config::system_account_name, core_sym::from_string("1.0000"), false, net, cpu );
+      create_account_with_resources( a, config::system_account_name, core_sym::from_string("1.0000"), false, stake );
       transfer( config::system_account_name, a, core_sym::from_string("1000.0000"), config::system_account_name );
    }
    const auto alice = accounts[0];
@@ -2220,11 +2214,10 @@ BOOST_FIXTURE_TEST_CASE(votepay_share_update_order, eosio_system_tester, * boost
 
    cross_15_percent_threshold();
 
-   const asset net = core_sym::from_string("80.0000");
-   const asset cpu = core_sym::from_string("80.0000");
+   const asset stake = core_sym::from_string("160.0000");
    const std::vector<account_name> accounts = { N(aliceaccount), N(bobbyaccount), N(carolaccount), N(emilyaccount) };
    for (const auto& a: accounts) {
-      create_account_with_resources( a, config::system_account_name, core_sym::from_string("1.0000"), false, net, cpu );
+      create_account_with_resources( a, config::system_account_name, core_sym::from_string("1.0000"), false, stake );
       transfer( config::system_account_name, a, core_sym::from_string("1000.0000"), config::system_account_name );
    }
    const auto alice = accounts[0];
@@ -2287,11 +2280,10 @@ BOOST_FIXTURE_TEST_CASE(votepay_share_update_order, eosio_system_tester, * boost
 
 BOOST_FIXTURE_TEST_CASE(votepay_transition, eosio_system_tester, * boost::unit_test::tolerance(1e-10)) try {
 
-   const asset net = core_sym::from_string("80.0000");
-   const asset cpu = core_sym::from_string("80.0000");
+   const asset stake = core_sym::from_string("160.0000");
    const std::vector<account_name> voters = { N(producvotera), N(producvoterb), N(producvoterc), N(producvoterd) };
    for (const auto& v: voters) {
-      create_account_with_resources( v, config::system_account_name, core_sym::from_string("1.0000"), false, net, cpu );
+      create_account_with_resources( v, config::system_account_name, core_sym::from_string("1.0000"), false, stake );
       transfer( config::system_account_name, v, core_sym::from_string("100000000.0000"), config::system_account_name );
       BOOST_REQUIRE_EQUAL(success(), stake(v, core_sym::from_string("30000000.0000"), core_sym::from_string("30000000.0000")) );
    }
@@ -2340,7 +2332,7 @@ BOOST_FIXTURE_TEST_CASE(votepay_transition, eosio_system_tester, * boost::unit_t
    BOOST_REQUIRE_EQUAL( success(), regproducer(N(defproducera)) );
    BOOST_REQUIRE( microseconds_since_epoch_of_iso_string( get_producer_info(N(defproducera))["last_claim_time"] ) < microseconds_since_epoch_of_iso_string( get_producer_info2(N(defproducera))["last_votepay_share_update"] ) );
 
-   create_account_with_resources( N(defproducer1), config::system_account_name, core_sym::from_string("1.0000"), false, net, cpu );
+   create_account_with_resources( N(defproducer1), config::system_account_name, core_sym::from_string("1.0000"), false, stake );
    BOOST_REQUIRE_EQUAL( success(), regproducer(N(defproducer1)) );
    BOOST_REQUIRE( 0 < microseconds_since_epoch_of_iso_string( get_producer_info(N(defproducer1))["last_claim_time"] ) );
    BOOST_REQUIRE_EQUAL( get_producer_info(N(defproducer1))["last_claim_time"].as_string(),
@@ -2368,11 +2360,10 @@ BOOST_AUTO_TEST_CASE(votepay_transition2, * boost::unit_test::tolerance(1e-10)) 
       BOOST_REQUIRE_EQUAL(abi_serializer::to_abi(accnt.abi, abi), true);
       t.abi_ser.set_abi(abi, eosio_system_tester::abi_serializer_max_time);
    }
-   const asset net = old_core_from_string("80.0000");
-   const asset cpu = old_core_from_string("80.0000");
+   const asset stake = old_core_from_string("160.0000");
    const std::vector<account_name> voters = { N(producvotera), N(producvoterb), N(producvoterc), N(producvoterd) };
    for (const auto& v: voters) {
-      t.create_account_with_resources( v, config::system_account_name, old_core_from_string("1.0000"), false, net, cpu );
+      t.create_account_with_resources( v, config::system_account_name, old_core_from_string("1.0000"), false, stake );
       t.transfer( config::system_account_name, v, old_core_from_string("100000000.0000"), config::system_account_name );
       BOOST_REQUIRE_EQUAL(t.success(), t.stake(v, old_core_from_string("30000000.0000"), old_core_from_string("30000000.0000")) );
    }
@@ -2541,10 +2532,10 @@ BOOST_FIXTURE_TEST_CASE(producers_upgrade_system_contract, eosio_system_tester) 
 
 BOOST_FIXTURE_TEST_CASE(producer_onblock_check, eosio_system_tester) try {
 
-   const asset large_asset = core_sym::from_string("80.0000");
-   create_account_with_resources( N(producvotera), config::system_account_name, core_sym::from_string("1.0000"), false, large_asset, large_asset );
-   create_account_with_resources( N(producvoterb), config::system_account_name, core_sym::from_string("1.0000"), false, large_asset, large_asset );
-   create_account_with_resources( N(producvoterc), config::system_account_name, core_sym::from_string("1.0000"), false, large_asset, large_asset );
+   const asset large_asset = core_sym::from_string("160.0000");
+   create_account_with_resources( N(producvotera), config::system_account_name, core_sym::from_string("1.0000"), false, large_asset );
+   create_account_with_resources( N(producvoterb), config::system_account_name, core_sym::from_string("1.0000"), false, large_asset );
+   create_account_with_resources( N(producvoterc), config::system_account_name, core_sym::from_string("1.0000"), false, large_asset );
 
    // create accounts {defproducera, defproducerb, ..., defproducerz} and register as producers
    std::vector<account_name> producer_names;

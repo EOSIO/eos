@@ -51,6 +51,12 @@ public:
       }
    }
 
+   fc::variant get_global_state() {
+      vector<char> data = get_row_by_account( config::system_account_name, config::system_account_name, N(global), N(global) );
+      if (data.empty()) std::cout << "\nData is empty\n" << std::endl;
+      return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "eosio_global_state", data, abi_serializer_max_time );
+   }
+
    void create_core_token( symbol core_symbol = symbol{CORE_SYM} ) {
       FC_ASSERT( core_symbol.precision() != 4, "create_core_token assumes precision of core token is 4" );
       create_currency( N(eosio.token), config::system_account_name, asset(100000000000000, core_symbol) );

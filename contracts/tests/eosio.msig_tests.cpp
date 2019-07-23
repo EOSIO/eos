@@ -40,7 +40,7 @@ public:
    }
 
    transaction_trace_ptr create_account_with_resources( account_name a, account_name creator, asset ramfunds, bool multisig,
-                                                        asset net = core_sym::from_string("10.0000"), asset cpu = core_sym::from_string("10.0000") ) {
+                                                        asset stake_quantity = core_sym::from_string("20.0000") ) {
       signed_transaction trx;
       set_transaction_headers(trx);
 
@@ -71,8 +71,7 @@ public:
                                             mvo()
                                             ("from", creator)
                                             ("receiver", a)
-                                            ("stake_net_quantity", net )
-                                            ("stake_cpu_quantity", cpu )
+                                            ("stake_quantity", stake_quantity )
                                             ("transfer", 0 )
                                           )
                                 );

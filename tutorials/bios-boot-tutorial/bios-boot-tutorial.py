@@ -169,8 +169,8 @@ def createStakedAccounts(b, e):
         stakeCpu = stake - stakeNet
         print('%s: total funds=%s, ram=%s, net=%s, cpu=%s, unstaked=%s' % (a['name'], intToCurrency(a['funds']), intToCurrency(ramFunds), intToCurrency(stakeNet), intToCurrency(stakeCpu), intToCurrency(unstaked)))
         assert(funds == ramFunds + stakeNet + stakeCpu + unstaked)
-        retry(args.cleos + 'system newaccount --transfer eosio %s %s --stake-net "%s" --stake-cpu "%s" --buy-ram "%s"   ' % 
-            (a['name'], a['pub'], intToCurrency(stakeNet), intToCurrency(stakeCpu), intToCurrency(ramFunds)))
+        retry(args.cleos + 'system newaccount --transfer eosio %s %s --stake "%s"   ' %
+            (a['name'], a['pub'], intToCurrency(stakeNet), intToCurrency(stakeCpu)))
         if unstaked:
             retry(args.cleos + 'transfer eosio %s "%s"' % (a['name'], intToCurrency(unstaked)))
 
@@ -257,8 +257,6 @@ def msigExecReplaceSystem(proposer, proposalName):
     retry(args.cleos + 'multisig exec ' + proposer + ' ' + proposalName + ' -p ' + proposer)
 
 def msigReplaceSystem():
-    run(args.cleos + 'push action eosio buyrambytes' + jsonArg(['eosio', accounts[0]['name'], 200000]) + '-p eosio')
-    sleep(1)
     msigProposeReplaceSystem(accounts[0]['name'], 'fast.unstake')
     sleep(1)
     msigApproveReplaceSystem(accounts[0]['name'], 'fast.unstake')
@@ -288,7 +286,7 @@ def stepInstallSystemContracts():
     run(args.cleos + 'set contract eosio.token ' + args.contracts_dir + '/eosio.token/')
     run(args.cleos + 'set contract eosio.msig ' + args.contracts_dir + '/eosio.msig/')
 def stepCreateTokens():
-    run(args.cleos + 'push action eosio.token create \'["eosio", "10000000000.0000 %s"]\' -p eosio.token' % (args.symbol))
+    run(args.cleos + 'push action eosio.token create \'["eosio", "100000000.0000 %s"]\' -p eosio.token' % (args.symbol))
     totalAllocation = allocateFunds(0, len(accounts))
     run(args.cleos + 'push action eosio.token issue \'["eosio", "%s", "memo"]\' -p eosio' % intToCurrency(totalAllocation))
     sleep(1)

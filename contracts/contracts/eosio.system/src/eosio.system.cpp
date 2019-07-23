@@ -72,6 +72,12 @@ namespace eosiosystem {
       _global4.set( _gstate4, _self );
    }
 
+   void system_contract::setminstake( uint64_t min_account_stake ) {
+      require_auth( _self );
+
+      _gstate.min_account_stake = min_account_stake;
+   }
+
    void system_contract::setram( uint64_t max_ram_size ) {
       require_auth( _self );
 
@@ -145,139 +151,6 @@ namespace eosiosystem {
       }
 
       set_resource_limits( account, ram, net, cpu );
-   }
-
-   void system_contract::setacctram( const name& account, const std::optional<int64_t>& ram_bytes ) {
-      require_auth( _self );
-
-      int64_t current_ram, current_net, current_cpu;
-      get_resource_limits( account, current_ram, current_net, current_cpu );
-
-      int64_t ram = 0;
-
-      if( !ram_bytes ) {
-         auto vitr = _voters.find( account.value );
-         check( vitr != _voters.end() && has_field( vitr->flags1, voter_info::flags1_fields::ram_managed ),
-                "RAM of account is already unmanaged" );
-
-         user_resources_table userres( _self, account.value );
-         auto ritr = userres.find( account.value );
-
-         ram = ram_gift_bytes;
-         if( ritr != userres.end() ) {
-            ram += ritr->ram_bytes;
-         }
-
-         _voters.modify( vitr, same_payer, [&]( auto& v ) {
-            v.flags1 = set_field( v.flags1, voter_info::flags1_fields::ram_managed, false );
-         });
-      } else {
-         check( *ram_bytes >= 0, "not allowed to set RAM limit to unlimited" );
-
-         auto vitr = _voters.find( account.value );
-         if ( vitr != _voters.end() ) {
-            _voters.modify( vitr, same_payer, [&]( auto& v ) {
-               v.flags1 = set_field( v.flags1, voter_info::flags1_fields::ram_managed, true );
-            });
-         } else {
-            _voters.emplace( account, [&]( auto& v ) {
-               v.owner  = account;
-               v.flags1 = set_field( v.flags1, voter_info::flags1_fields::ram_managed, true );
-            });
-         }
-
-         ram = *ram_bytes;
-      }
-
-      set_resource_limits( account, ram, current_net, current_cpu );
-   }
-
-   void system_contract::setacctnet( const name& account, const std::optional<int64_t>& net_weight ) {
-      require_auth( _self );
-
-      int64_t current_ram, current_net, current_cpu;
-      get_resource_limits( account, current_ram, current_net, current_cpu );
-
-      int64_t net = 0;
-
-      if( !net_weight ) {
-         auto vitr = _voters.find( account.value );
-         check( vitr != _voters.end() && has_field( vitr->flags1, voter_info::flags1_fields::net_managed ),
-                "Network bandwidth of account is already unmanaged" );
-
-         user_resources_table userres( _self, account.value );
-         auto ritr = userres.find( account.value );
-
-         if( ritr != userres.end() ) {
-            net = ritr->net_weight.amount;
-         }
-
-         _voters.modify( vitr, same_payer, [&]( auto& v ) {
-            v.flags1 = set_field( v.flags1, voter_info::flags1_fields::net_managed, false );
-         });
-      } else {
-         check( *net_weight >= -1, "invalid value for net_weight" );
-
-         auto vitr = _voters.find( account.value );
-         if ( vitr != _voters.end() ) {
-            _voters.modify( vitr, same_payer, [&]( auto& v ) {
-               v.flags1 = set_field( v.flags1, voter_info::flags1_fields::net_managed, true );
-            });
-         } else {
-            _voters.emplace( account, [&]( auto& v ) {
-               v.owner  = account;
-               v.flags1 = set_field( v.flags1, voter_info::flags1_fields::net_managed, true );
-            });
-         }
-
-         net = *net_weight;
-      }
-
-      set_resource_limits( account, current_ram, net, current_cpu );
-   }
-
-   void system_contract::setacctcpu( const name& account, const std::optional<int64_t>& cpu_weight ) {
-      require_auth( _self );
-
-      int64_t current_ram, current_net, current_cpu;
-      get_resource_limits( account, current_ram, current_net, current_cpu );
-
-      int64_t cpu = 0;
-
-      if( !cpu_weight ) {
-         auto vitr = _voters.find( account.value );
-         check( vitr != _voters.end() && has_field( vitr->flags1, voter_info::flags1_fields::cpu_managed ),
-                "CPU bandwidth of account is already unmanaged" );
-
-         user_resources_table userres( _self, account.value );
-         auto ritr = userres.find( account.value );
-
-         if( ritr != userres.end() ) {
-            cpu = ritr->cpu_weight.amount;
-         }
-
-         _voters.modify( vitr, same_payer, [&]( auto& v ) {
-            v.flags1 = set_field( v.flags1, voter_info::flags1_fields::cpu_managed, false );
-         });
-      } else {
-         check( *cpu_weight >= -1, "invalid value for cpu_weight" );
-
-         auto vitr = _voters.find( account.value );
-         if ( vitr != _voters.end() ) {
-            _voters.modify( vitr, same_payer, [&]( auto& v ) {
-               v.flags1 = set_field( v.flags1, voter_info::flags1_fields::cpu_managed, true );
-            });
-         } else {
-            _voters.emplace( account, [&]( auto& v ) {
-               v.owner  = account;
-               v.flags1 = set_field( v.flags1, voter_info::flags1_fields::cpu_managed, true );
-            });
-         }
-
-         cpu = *cpu_weight;
-      }
-
-      set_resource_limits( account, current_ram, current_net, cpu );
    }
 
    void system_contract::activate( const eosio::checksum256& feature_digest ) {
@@ -478,13 +351,13 @@ EOSIO_DISPATCH( eosiosystem::system_contract,
      // native.hpp (newaccount definition is actually in eosio.system.cpp)
      (newaccount)(updateauth)(deleteauth)(linkauth)(unlinkauth)(canceldelay)(onerror)(setabi)
      // eosio.system.cpp
-     (init)(setram)(setramrate)(setparams)(setpriv)(setalimits)(setacctram)(setacctnet)(setacctcpu)(activate)
+     (init)(setram)(setramrate)(setparams)(setpriv)(setalimits)(activate)
      (rmvproducer)(updtrevision)(bidname)(bidrefund)(setinflation)
      // rex.cpp
      (deposit)(withdraw)(buyrex)(unstaketorex)(sellrex)(cnclrexorder)(rentcpu)(rentnet)(fundcpuloan)(fundnetloan)
      (defcpuloan)(defnetloan)(updaterex)(consolidate)(mvtosavings)(mvfrsavings)(setrex)(rexexec)(closerex)
      // delegate_bandwidth.cpp
-     (buyrambytes)(buyram)(sellram)(delegatebw)(undelegatebw)(refund)
+     (delegatebw)(undelegatebw)(refund)
      // voting.cpp
      (regproducer)(unregprod)(voteproducer)(regproxy)
      // producer_pay.cpp

@@ -208,10 +208,10 @@ try:
     transId=node.createInitializeAccount(testeraAccount, cluster.defproduceraAccount, stakedDeposit=0, waitForTransBlock=False, exitOnError=True)
 
     Print("Create new account %s via %s" % (currencyAccount.name, cluster.defproduceraAccount.name))
-    transId=node.createInitializeAccount(currencyAccount, cluster.defproduceraAccount, buyRAM=200000, stakedDeposit=5000, exitOnError=True)
+    transId=node.createInitializeAccount(currencyAccount, cluster.defproduceraAccount, stakeQuantity=200000, stakedDeposit=5000, exitOnError=True)
 
     Print("Create new account %s via %s" % (exchangeAccount.name, cluster.defproduceraAccount.name))
-    transId=node.createInitializeAccount(exchangeAccount, cluster.defproduceraAccount, buyRAM=200000, waitForTransBlock=True, exitOnError=True)
+    transId=node.createInitializeAccount(exchangeAccount, cluster.defproduceraAccount, stakeQuantity=200000, waitForTransBlock=True, exitOnError=True)
 
     Print("Validating accounts after user accounts creation")
     accounts=[testeraAccount, currencyAccount, exchangeAccount]
