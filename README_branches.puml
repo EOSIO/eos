@@ -1,0 +1,44 @@
+@startuml
+' This used in README.md
+' see https://stackoverflow.com/questions/32203610/how-to-integrate-uml-diagrams-into-gitlab-or-github
+' how to insert this picture into README.md
+actor "External Contributor" as EC #lightgreen
+participant "eosio/eos(release/1.8.x)" as EOS18 #red
+participant "eos-release/1.8.x" as REOS18 #lightblue
+participant "develop" as DEVELOP #green
+participant "feature_branch_01" as DEVFEATURE
+participant "release/1.0.x)" as RR10 #green
+participant "hotfix/1.0.x_branch_01" as RF10
+participant "master" as master #green
+note over DEVELOP
+    We start development using
+    eos 1.8.x branch and periodically
+    pull fixes
+end note
+note over REOS18
+    Synced copy with no changes
+    Used to do rebase of remrelease 1.0.x
+end note
+
+DEVFEATURE -> DEVELOP: pull request
+
+DEVELOP -> EC : fork remmeauth/remchain
+DEVELOP <- EC : Pull request
+REOS18 <- EOS18 : Pull/Push fixes
+REOS18 o->o DEVELOP : Merge latest fixes
+
+REOS18 <- EOS18 : Pull/Push fixes
+REOS18 o->o DEVELOP : Merge latest fixes
+
+DEVELOP o->o RR10 : create first release candidate
+
+RF10 -> RR10 : hotfix pull request
+
+RR10 o->o master : stable point rebase master
+
+note over master
+    We will follow approach of the EOSIO to
+    point master to stable release
+end note
+
+@enduml

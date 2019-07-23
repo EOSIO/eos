@@ -131,6 +131,15 @@ public:
         return r;
     }
 
+    auto torewards( name caller, name payer, asset amount ) {
+        auto r = base_tester::push_action(config::system_account_name, N(torewards), caller, mvo()
+                ("payer", payer)
+                ("amount", amount)
+        );
+        produce_block();
+        return r;
+    }
+
     auto claim_rewards( name owner ) {
        auto r = base_tester::push_action( config::system_account_name, N(claimrewards), owner, mvo()("owner",  owner ));
        produce_block();
@@ -250,6 +259,13 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
            BOOST_REQUIRE( !r->except_ptr );
         }
 
+
+        // register whales as producers
+        const auto whales_as_producers = { N(b1), N(whale4), N(whale3), N(whale2) };
+        for( const auto& producer : whales_as_producers ) {
+           register_producer(producer);
+        }
+
         auto producer_candidates = {
                 N(proda), N(prodb), N(prodc), N(prodd), N(prode), N(prodf), N(prodg),
                 N(prodh), N(prodi), N(prodj), N(prodk), N(prodl), N(prodm), N(prodn),
@@ -325,9 +341,16 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
 
         // Spend some time so the producer pay pool is filled by the inflation rate
         produce_min_num_of_blocks_to_spend_time_wo_inactive_prod(fc::seconds(30 * 24 * 3600)); // 30 days
+
+        BOOST_REQUIRE_THROW(torewards(N(b1), config::system_account_name, core_from_string("100.0000")), missing_auth_exception);
+        torewards(config::system_account_name, config::system_account_name, core_from_string("100.0000"));
+        BOOST_REQUIRE_EQUAL(get_balance(N(eosio.saving)).get_amount(), 10'0000);
+        BOOST_REQUIRE_EQUAL(get_balance(N(eosio.bpay)).get_amount(), 20'0000);
+        BOOST_REQUIRE_EQUAL(get_balance(N(eosio.vpay)).get_amount(), 70'0000);
+
         // Since the total activated stake is larger than 150,000,000, pool should be filled reward should be bigger than zero
-        claim_rewards(N(runnerup1));
-        BOOST_TEST(get_balance(N(runnerup1)).get_amount() > 0);
+        claim_rewards(N(proda));
+        BOOST_TEST(get_balance(N(proda)).get_amount() > 0);
 
         const auto first_june_2018 = fc::seconds(1527811200); // 2018-06-01
         const auto first_june_2028 = fc::seconds(1843430400); // 2028-06-01

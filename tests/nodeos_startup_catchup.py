@@ -34,7 +34,7 @@ errorExit=Utils.errorExit
 from core_symbol import CORE_SYMBOL
 
 appArgs=AppArgs()
-extraArgs = appArgs.add(flag="--catchup-count", type=int, help="How many catchup-nodes to launch", default=10)
+extraArgs = appArgs.add(flag="--catchup-count", type=int, help="How many catchup-nodes to launch", default=1)
 extraArgs = appArgs.add(flag="--txn-gen-nodes", type=int, help="How many transaction generator nodes", default=2)
 args = TestHelper.parse_args({"--prod-count","--dump-error-details","--keep-logs","-v","--leave-running","--clean-run",
                               "-p","--wallet-port"}, applicationSpecificArgs=appArgs)
@@ -101,8 +101,8 @@ try:
     def waitForNodeStarted(node):
         sleepTime=0
         while sleepTime < 10 and node.getInfo(silentErrors=True) is None:
-            time.sleep(1)
-            sleepTime+=1
+            time.sleep(0.1)
+            sleepTime+=0.1
 
     node0=cluster.getNode(0)
 
@@ -136,7 +136,7 @@ try:
     avg=transactions / (blockNum - startBlockNum + 1)
 
     Print("Validate transactions are generating")
-    minRequiredTransactions=transactionsPerBlock
+    minRequiredTransactions=transactionsPerBlock - 1
     assert avg>minRequiredTransactions, "Expected to at least receive %s transactions per block, but only getting %s" % (minRequiredTransactions, avg)
 
     Print("Cycle through catchup scenarios")

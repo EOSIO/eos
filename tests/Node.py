@@ -675,7 +675,7 @@ class Node(object):
         ret=Utils.waitForBool(lam, timeout)
         return ret
 
-    def waitForBlock(self, blockNum, timeout=None, blockType=BlockType.head, reportInterval=None):
+    def waitForBlock(self, blockNum, timeout=None, blockType=BlockType.head, reportInterval=None, sleepTime=0.5):
         lam = lambda: self.getBlockNum(blockType=blockType) > blockNum
         blockDesc = "head" if blockType == BlockType.head else "LIB"
         count = 0
@@ -693,7 +693,7 @@ class Node(object):
                     Utils.Print("Waiting on %s block num %d, get info = {\n%s\n}" % (blockDesc, blockNum, info))
 
         reporter = WaitReporter(self, reportInterval) if reportInterval is not None else None
-        ret=Utils.waitForBool(lam, timeout, reporter=reporter)
+        ret=Utils.waitForBool(lam, timeout, reporter=reporter, sleepTime=sleepTime)
         return ret
 
     def waitForIrreversibleBlock(self, blockNum, timeout=None, blockType=BlockType.head):
@@ -1000,6 +1000,26 @@ class Node(object):
 
         return self.waitForTransBlockIfNeeded(trans, waitForTransBlock, exitOnError=exitOnError)
 
+    def buyrambytes(self, payer, receiver, rambytes, waitForTransBlock=False, exitOnError=False):
+        data = "{\"payer\":\"%s\",\"receiver\":\"%s\",\"bytes\":\"%s\"}" % (payer.name, receiver.name, rambytes)
+        opts = "--permission %s@active" % payer.name
+        
+        trans = self.pushMessage("eosio", "buyrambytes", data, opts)
+        self.trackCmdTransaction(trans)
+
+        return self.waitForTransBlockIfNeeded(trans, waitForTransBlock, exitOnError=exitOnError)
+
+    def buyram(self, payer, receiver, tokens, waitForTransBlock=False, exitOnError=False):
+        cmdDesc = "system buyram"
+        args = "%s %s \"%s\"" % (payer.name, receiver.name, tokens)
+        cmd  = "%s -j %s" % (cmdDesc, args)
+        msg  = "buyram payer=%s, receiver=%s, amount=%s" % (payer.name, receiver.name, tokens)
+
+        trans = self.processCleosCmd(cmd, cmdDesc, exitOnError=exitOnError, exitMsg=msg)
+        self.trackCmdTransaction(trans)
+
+        return self.waitForTransBlockIfNeeded(trans, waitForTransBlock, exitOnError=exitOnError)
+
     def delegatebw(self, fromAccount, netQuantity, cpuQuantity, toAccount=None, transferTo=False, waitForTransBlock=False, exitOnError=False):
         if toAccount is None:
             toAccount=fromAccount
@@ -1009,7 +1029,7 @@ class Node(object):
         cmd="%s -j %s %s \"%s %s\" \"%s %s\" %s" % (
             cmdDesc, fromAccount.name, toAccount.name, netQuantity, CORE_SYMBOL, cpuQuantity, CORE_SYMBOL, transferStr)
         msg="fromAccount=%s, toAccount=%s" % (fromAccount.name, toAccount.name);
-        trans=self.processCleosCmd(cmd, cmdDesc, exitOnError=exitOnError, exitMsg=msg)
+        trans=self.processCleosCmd(cmd, cmdDesc, exitOnError=exitOnError, exitMsg=msg, silentErrors=False)
         self.trackCmdTransaction(trans)
 
         return self.waitForTransBlockIfNeeded(trans, waitForTransBlock, exitOnError=exitOnError)
@@ -1022,7 +1042,7 @@ class Node(object):
         cmd="%s -j %s %s \"%s %s\" \"%s %s\"" % (
             cmdDesc, fromAccount.name, toAccount.name, netQuantity, CORE_SYMBOL, cpuQuantity, CORE_SYMBOL)
         msg="fromAccount=%s, toAccount=%s" % (fromAccount.name, toAccount.name);
-        trans=self.processCleosCmd(cmd, cmdDesc, exitOnError=exitOnError, exitMsg=msg)
+        trans=self.processCleosCmd(cmd, cmdDesc, exitOnError=exitOnError, exitMsg=msg, silentErrors=False)
         self.trackCmdTransaction(trans)
 
         return self.waitForTransBlockIfNeeded(trans, waitForTransBlock, exitOnError=exitOnError)
@@ -1032,12 +1052,12 @@ class Node(object):
         cmd="%s -j %s %s %s %s" % (
             cmdDesc, producer.name, producer.activePublicKey, url, location)
         msg="producer=%s" % (producer.name);
-        trans=self.processCleosCmd(cmd, cmdDesc, exitOnError=exitOnError, exitMsg=msg)
+        trans=self.processCleosCmd(cmd, cmdDesc, exitOnError=exitOnError, exitMsg=msg, silentErrors=False)
         self.trackCmdTransaction(trans)
 
         return self.waitForTransBlockIfNeeded(trans, waitForTransBlock, exitOnError=exitOnError)
 
-    def vote(self, account, producers, waitForTransBlock=False, exitOnError=False):
+    def vote(self, account, producers, waitForTransBlock=False, exitOnError=True):
         cmdDesc = "system voteproducer prods"
         cmd="%s -j %s %s" % (
             cmdDesc, account.name, " ".join(producers))
@@ -1398,7 +1418,7 @@ class Node(object):
                 pass
             return False
 
-        isAlive=Utils.waitForBool(isNodeAlive, timeout, sleepTime=1)
+        isAlive=Utils.waitForBool(isNodeAlive, timeout, sleepTime=0.1)
         if isAlive:
             Utils.Print("Node relaunch was successfull.")
         else:

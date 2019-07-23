@@ -29,7 +29,7 @@ class Utils:
     EosServerPath="programs/nodeos/"+ EosServerName
 
     EosLauncherPath="programs/eosio-launcher/eosio-launcher"
-    MongoPath="mongo"
+    MongoPath="mongo --quiet"
     ShuttingDown=False
     CheckOutputDeque=deque(maxlen=10)
 
@@ -44,7 +44,9 @@ class Utils:
         stackDepth=len(inspect.stack())-2
         s=' '*stackDepth
         stdout.write(s)
-        print(*args, **kwargs)
+        from inspect import currentframe, getframeinfo
+        frameinfo = getframeinfo(currentframe().f_back)
+        print(frameinfo.filename.replace(os.getcwd() + "/","") + ":" + str(frameinfo.lineno) + ":",*args, **kwargs)
 
     SyncStrategy=namedtuple("ChainSyncStrategy", "name id arg")
 
@@ -142,7 +144,7 @@ class Utils:
         Utils.Print(msg)
 
     @staticmethod
-    def waitForObj(lam, timeout=None, sleepTime=3, reporter=None):
+    def waitForObj(lam, timeout=None, sleepTime=0.1, reporter=None):
         if timeout is None:
             timeout=60
 
@@ -154,7 +156,7 @@ class Utils:
                 if ret is not None:
                     return ret
                 if Utils.Debug:
-                    Utils.Print("cmd: sleep %d seconds, remaining time: %d seconds" %
+                    Utils.Print("cmd: sleep %f seconds, remaining time: %d seconds" %
                                 (sleepTime, endTime - time.time()))
                 else:
                     stdout.write('.')
@@ -170,7 +172,7 @@ class Utils:
         return None
 
     @staticmethod
-    def waitForBool(lam, timeout=None, sleepTime=3, reporter=None):
+    def waitForBool(lam, timeout=None, sleepTime=0.1, reporter=None):
         myLam = lambda: True if lam() else None
         ret=Utils.waitForObj(myLam, timeout, sleepTime, reporter=reporter)
         return False if ret is None else ret
@@ -359,13 +361,13 @@ class Utils:
 class Account(object):
     # pylint: disable=too-few-public-methods
 
-    def __init__(self, name):
+    def __init__(self, name, ownerPrivateKey = None, ownerPublicKey = None, activePrivateKey = None, activePublicKey = None):
         self.name=name
 
-        self.ownerPrivateKey=None
-        self.ownerPublicKey=None
-        self.activePrivateKey=None
-        self.activePublicKey=None
+        self.ownerPrivateKey  = ownerPrivateKey
+        self.ownerPublicKey   = ownerPublicKey
+        self.activePrivateKey = activePrivateKey
+        self.activePublicKey  = activePublicKey
 
 
     def __str__(self):

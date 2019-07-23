@@ -2295,14 +2295,21 @@ BOOST_AUTO_TEST_CASE( max_transaction_delay_execute ) { try {
            ("issuer", "eosio.token" )
            ("maximum_supply", "9000000.0000 CUR" )
    );
-   chain.push_action(N(eosio.token), name("issue"), N(eosio.token), fc::mutable_variant_object()
-           ("to",       "tester")
+   auto trace = chain.push_action(N(eosio.token), name("issue"), N(eosio.token), fc::mutable_variant_object()
+           ("to",       "eosio.token")
            ("quantity", "100.0000 CUR")
            ("memo", "for stuff")
    );
+   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt->status);
+   trace = chain.push_action(N(eosio.token), name("transfer"), N(eosio.token), fc::mutable_variant_object()
+            ("from", "eosio.token")
+            ("to", "tester")
+            ("quantity", "100.0000 CUR")
+            ("memo", "" ));
+   BOOST_REQUIRE_EQUAL(transaction_receipt::executed, trace->receipt->status);
 
    //create a permission level with delay 30 days and associate it with token transfer
-   auto trace = chain.push_action(config::system_account_name, updateauth::get_name(), tester_account, fc::mutable_variant_object()
+   trace = chain.push_action(config::system_account_name, updateauth::get_name(), tester_account, fc::mutable_variant_object()
                      ("account", "tester")
                      ("permission", "first")
                      ("parent", "active")

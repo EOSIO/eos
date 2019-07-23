@@ -3,6 +3,7 @@ find_package( Gperftools QUIET )
 ### Build contracts with cdt if available ###
 include(ExternalProject)
 
+set(EOSIO_COMPILE_TEST_CONTRACTS true)
 if( EOSIO_COMPILE_TEST_CONTRACTS )
    set(EOSIO_WASM_OLD_BEHAVIOR "Off")
    find_package(eosio.cdt REQUIRED)
@@ -42,6 +43,8 @@ file(GLOB UNIT_TESTS "*.cpp") # find all unit test suites
 add_executable( unit_test ${UNIT_TESTS}) # build unit tests as one executable
 
 target_link_libraries( unit_test eosio_chain chainbase eosio_testing fc appbase ${PLATFORM_SPECIFIC_LIBS} )
+
+add_dependencies( unit_test contracts_project test_contracts_project)
 
 target_compile_options(unit_test PUBLIC -DDISABLE_EOSLIB_SERIALIZE)
 target_include_directories( unit_test PUBLIC

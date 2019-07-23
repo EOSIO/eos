@@ -386,7 +386,7 @@ class Cluster(object):
 
         Cluster.__LauncherCmdArr = cmdArr.copy()
 
-        s=" ".join(cmdArr)
+        s=" ".join([("'{0}'".format(element) if (' ' in element) else element) for element in cmdArr.copy()])
         Utils.Print("cmd: %s" % (s))
         if 0 != subprocess.call(cmdArr):
             Utils.Print("ERROR: Launcher failed to launch. failed cmd: %s" % (s))
@@ -953,14 +953,14 @@ class Cluster(object):
             "FEATURE_DIGESTS": ""
         }
         if PFSetupPolicy.hasPreactivateFeature(pfSetupPolicy):
-            env["BIOS_CONTRACT_PATH"] = "unittests/contracts/eosio.bios"
+            env["BIOS_CONTRACT_PATH"] = "contracts/contracts/eosio.bios"
 
         if pfSetupPolicy == PFSetupPolicy.FULL:
             allBuiltinProtocolFeatureDigests = biosNode.getAllBuiltinFeatureDigestsToPreactivate()
             env["FEATURE_DIGESTS"] = " ".join(allBuiltinProtocolFeatureDigests)
             Utils.Print("Set FEATURE_DIGESTS to: %s" % env["FEATURE_DIGESTS"])
 
-        if 0 != subprocess.call(cmd.split(), stdout=Utils.FNull, env=env):
+        if 0 != subprocess.call(cmd.split(), env=env):
             if not silent: Utils.Print("Launcher failed to shut down eos cluster.")
             return None
 
@@ -1029,9 +1029,122 @@ class Cluster(object):
 
         return biosNode
 
+    def publishContract(self, node, contract, account, old_version = False):
+        contractDir = "contracts/contracts/%s" % (contract)
+        if old_version:
+            contractDir="unittests/contracts/old_versions/v1.6.0-rc3/%s" % (contract)
+
+        wasmFile = "%s.wasm" % (contract)
+        abiFile  = "%s.abi" % (contract)
+
+        Utils.Print("Publishing %s contract" % (contract))
+        return node.publishContract(account, contractDir, wasmFile, abiFile, waitForTransBlock=True)
+
+    def setDefaultProducers(self, node, total_nodes, number_of_producers, producer_keys):
+        if number_of_producers == -1:
+            setProdsFile = "setprods.json"
+            if Utils.Debug: 
+                Utils.Print("Reading in setprods file %s." % (setProdsFile))
+
+            with open(setProdsFile, "r") as f:
+                setProdsStr=f.read()
+                Utils.Print("Setting producers.")
+                opts="--permission eosio@active"
+                myTrans=node.pushMessage("eosio", "setprods", setProdsStr, opts)
+                if myTrans is None or not myTrans[0]:
+                    Utils.Print("ERROR: Failed to set producers.")
+                    return None
+        else:
+            counts = dict.fromkeys(range(total_nodes), 0) #initialize node prods count to 0
+            setProdsStr = '{"schedule": ['
+            prodNames = []
+            for _, keys in producer_keys.items():
+                if counts[keys["node"]] >= number_of_producers:
+                    continue
+                if len( prodNames ) > 0:
+                    setProdsStr += ','
+                setProdsStr += ' { "producer_name": "%s", "block_signing_key": "%s" }' % (keys["name"], keys["public"])
+                prodNames.append(keys["name"])
+                counts[keys["node"]] += 1
+
+            setProdsStr += ' ] }'
+            if Utils.Debug:
+                Utils.Print("setprods: %s" % (setProdsStr))
+            
+            Utils.Print("Setting producers: %s." % (", ".join(prodNames)))
+            opts = "--permission eosio@active"
+            # pylint: disable=redefined-variable-type
+            trans = node.pushMessage("eosio", "setprods", setProdsStr, opts)
+            if trans is None or not trans[0]:
+                Utils.Print("ERROR: Failed to set producer %s." % (keys["name"]))
+                return None
+        
+        trans   = trans[1]
+        transId = Node.getTransId(trans)
+        if not node.waitForTransInBlock(transId):
+            Utils.Print("ERROR: Failed to validate transaction %s got rolled into a block on server port %d." % (transId, node.port))
+            return None
+
+        # wait for block production handover (essentially a block produced by anyone but eosio).
+        lam = lambda: node.getInfo(exitOnError=True)["head_block_producer"] != "eosio"
+        ret = Utils.waitForBool(lam)
+        if not ret:
+            Utils.Print("ERROR: Block production handover failed.")
+            return None
+
+    def issueTokens(self, node, biosAccount, tokenContract, totalProducers = 0):
+        Utils.Print("push create action to %s contract" % (tokenContract))
+        action="create"
+        data="{\"issuer\":\"%s\",\"maximum_supply\":\"1000000000.0000 %s\"}" % (biosAccount.name, CORE_SYMBOL)
+        opts="--permission %s@active" % (tokenContract)
+        trans=node.pushMessage(tokenContract, action, data, opts)
+        if trans is None or not trans[0]:
+            Utils.Print("ERROR: Failed to push create action to eosio contract.")
+            return None
+
+        Node.validateTransaction(trans[1])
+        transId=Node.getTransId(trans[1])
+        if not node.waitForTransInBlock(transId):
+            Utils.Print("ERROR: Failed to validate transaction %s got rolled into a block on server port %d." % (transId, node.port))
+            return None
+
+        Utils.Print("push issue action to %s contract" % (tokenContract))
+        action = "issue"
+        initialAmount = "1000000000.0000 {0}".format(CORE_SYMBOL)
+        data="{\"to\":\"%s\",\"quantity\":\"%s\",\"memo\":\"initial issue\"}" % (biosAccount.name, initialAmount)
+        opts="--permission %s@active" % (biosAccount.name)
+        trans=node.pushMessage(tokenContract, action, data, opts)
+        if trans is None or not trans[0]:
+            Utils.Print("ERROR: Failed to push issue action to eosio contract.")
+            return None
+
+        Node.validateTransaction(trans[1])
+        Utils.Print("Wait for issue action transaction to become finalized.")
+        transId=Node.getTransId(trans[1])
+        # biosNode.waitForTransInBlock(transId)
+        # guesstimating block finalization timeout. Two production rounds of 12 blocks per node, plus 60 seconds buffer
+        timeout = .5 * 12 * 2 * totalProducers + 60
+        if not node.waitForTransFinalization(transId, timeout=timeout):
+            Utils.Print("ERROR: Failed to validate transaction %s got rolled into a finalized block on server port %d." % (transId, node.port))
+            return None
+
+        expectedAmount="1000000000.0000 {0}".format(CORE_SYMBOL)
+        Utils.Print("Verify eosio issue, Expected: %s" % (expectedAmount))
+        actualAmount=node.getAccountEosBalanceStr(biosAccount.name)
+        if expectedAmount != actualAmount:
+            Utils.Print("ERROR: Issue verification failed. Excepted %s, actual: %s" % (expectedAmount, actualAmount))
+            return None
+
+        return True
+        
+
     def bootstrap(self, biosNode, totalNodes, prodCount, totalProducers, pfSetupPolicy, onlyBios=False, onlySetProds=False, loadSystemContract=True):
-        """Create 'prodCount' init accounts and deposits 10000000000 SYS in each. If prodCount is -1 will initialize all possible producers.
-        Ensure nodes are inter-connected prior to this call. One way to validate this will be to check if every node has block 1."""
+        """
+        Create 'prodCount' init accounts and deposits 10000000000 SYS in each.
+        If prodCount is -1 will initialize all possible producers.
+        Ensure nodes are inter-connected prior to this call.
+        One way to validate this will be to check if every node has block 1.
+        """
 
         Utils.Print("Starting cluster bootstrap.")
         assert PFSetupPolicy.isValid(pfSetupPolicy)
@@ -1054,50 +1167,38 @@ class Cluster(object):
             Utils.Print("ERROR: Failed to launch bootstrap wallet.")
             return None
 
-        ignWallet=self.walletMgr.create("ignition")
 
         eosioName="eosio"
-        eosioKeys=producerKeys[eosioName]
-        eosioAccount=Account(eosioName)
-        eosioAccount.ownerPrivateKey=eosioKeys["private"]
-        eosioAccount.ownerPublicKey=eosioKeys["public"]
-        eosioAccount.activePrivateKey=eosioKeys["private"]
-        eosioAccount.activePublicKey=eosioKeys["public"]
+        eosioKeys    = producerKeys[eosioName]
+        eosioAccount = Account(
+            eosioName, eosioKeys["private"], eosioKeys["public"], eosioKeys["private"], eosioKeys["public"]
+        )
 
+        ignWallet = self.walletMgr.create("ignition")
         if not self.walletMgr.importKey(eosioAccount, ignWallet):
             Utils.Print("ERROR: Failed to import %s account keys into ignition wallet." % (eosioName))
             return None
 
-        contract="eosio.bios"
-        contractDir="unittests/contracts/%s" % (contract)
-        if PFSetupPolicy.hasPreactivateFeature(pfSetupPolicy):
-            contractDir="unittests/contracts/%s" % (contract)
-        else:
-            contractDir="unittests/contracts/old_versions/v1.6.0-rc3/%s" % (contract)
-        wasmFile="%s.wasm" % (contract)
-        abiFile="%s.abi" % (contract)
-        Utils.Print("Publish %s contract" % (contract))
-        trans=biosNode.publishContract(eosioAccount.name, contractDir, wasmFile, abiFile, waitForTransBlock=True)
+        contract = "eosio.bios"
+        old_version = not PFSetupPolicy.hasPreactivateFeature(pfSetupPolicy)
+        trans = self.publishContract(biosNode, contract, eosioAccount.name, old_version)
         if trans is None:
             Utils.Print("ERROR: Failed to publish contract %s." % (contract))
             return None
 
+        Node.validateTransaction(trans)
+
         if pfSetupPolicy == PFSetupPolicy.FULL:
             biosNode.preactivateAllBuiltinProtocolFeature()
-
-        Node.validateTransaction(trans)
 
         Utils.Print("Creating accounts: %s " % ", ".join(producerKeys.keys()))
         producerKeys.pop(eosioName)
         accounts=[]
         for name, keys in producerKeys.items():
-            initx = None
-            initx = Account(name)
-            initx.ownerPrivateKey=keys["private"]
-            initx.ownerPublicKey=keys["public"]
-            initx.activePrivateKey=keys["private"]
-            initx.activePublicKey=keys["public"]
-            trans=biosNode.createAccount(initx, eosioAccount, 0)
+            initx = Account(
+                name, keys["private"], keys["public"], keys["private"], keys["public"]
+            )
+            trans = biosNode.createAccount(initx, eosioAccount, 0)
             if trans is None:
                 Utils.Print("ERROR: Failed to create account %s" % (name))
                 return None
@@ -1113,173 +1214,70 @@ class Cluster(object):
         biosNode.validateAccounts(accounts)
 
         if not onlyBios:
-            if prodCount == -1:
-                setProdsFile="setprods.json"
-                if Utils.Debug: Utils.Print("Reading in setprods file %s." % (setProdsFile))
-                with open(setProdsFile, "r") as f:
-                    setProdsStr=f.read()
+            self.setDefaultProducers(biosNode, totalNodes, prodCount, producerKeys)
 
-                    Utils.Print("Setting producers.")
-                    opts="--permission eosio@active"
-                    myTrans=biosNode.pushMessage("eosio", "setprods", setProdsStr, opts)
-                    if myTrans is None or not myTrans[0]:
-                        Utils.Print("ERROR: Failed to set producers.")
-                        return None
-            else:
-                counts=dict.fromkeys(range(totalNodes), 0) #initialize node prods count to 0
-                setProdsStr='{"schedule": ['
-                firstTime=True
-                prodNames=[]
-                for name, keys in producerKeys.items():
-                    if counts[keys["node"]] >= prodCount:
-                        continue
-                    if firstTime:
-                        firstTime = False
-                    else:
-                        setProdsStr += ','
+        if onlySetProds: 
+            return biosNode
 
-                    setProdsStr += ' { "producer_name": "%s", "block_signing_key": "%s" }' % (keys["name"], keys["public"])
-                    prodNames.append(keys["name"])
-                    counts[keys["node"]] += 1
-
-                setProdsStr += ' ] }'
-                if Utils.Debug: Utils.Print("setprods: %s" % (setProdsStr))
-                Utils.Print("Setting producers: %s." % (", ".join(prodNames)))
-                opts="--permission eosio@active"
-                # pylint: disable=redefined-variable-type
-                trans=biosNode.pushMessage("eosio", "setprods", setProdsStr, opts)
-                if trans is None or not trans[0]:
-                    Utils.Print("ERROR: Failed to set producer %s." % (keys["name"]))
-                    return None
-
-            trans=trans[1]
-            transId=Node.getTransId(trans)
-            if not biosNode.waitForTransInBlock(transId):
-                Utils.Print("ERROR: Failed to validate transaction %s got rolled into a block on server port %d." % (transId, biosNode.port))
+        systemAccounts = [
+            Account(
+                "eosio.token",  eosioAccount.ownerPrivateKey, eosioAccount.ownerPublicKey, eosioAccount.activePrivateKey, eosioAccount.activePublicKey
+            ),
+            Account(
+                "eosio.ram",    eosioAccount.ownerPrivateKey, eosioAccount.ownerPublicKey, eosioAccount.activePrivateKey, eosioAccount.activePublicKey
+            ),
+            Account(
+                "eosio.ramfee", eosioAccount.ownerPrivateKey, eosioAccount.ownerPublicKey, eosioAccount.activePrivateKey, eosioAccount.activePublicKey
+            ),
+            Account(
+                "eosio.stake",  eosioAccount.ownerPrivateKey, eosioAccount.ownerPublicKey, eosioAccount.activePrivateKey, eosioAccount.activePublicKey
+            )
+        ]
+        trans = None
+        for account in systemAccounts:
+            Utils.Print("Creating %s account" % account.name)
+            trans = biosNode.createAccount(account, eosioAccount, 0)
+            if trans is None:
+                Utils.Print("ERROR: Failed to create account %s" % (account.name))
                 return None
-
-            # wait for block production handover (essentially a block produced by anyone but eosio).
-            lam = lambda: biosNode.getInfo(exitOnError=True)["head_block_producer"] != "eosio"
-            ret=Utils.waitForBool(lam)
-            if not ret:
-                Utils.Print("ERROR: Block production handover failed.")
-                return None
-
-        if onlySetProds: return biosNode
-
-        eosioTokenAccount=copy.deepcopy(eosioAccount)
-        eosioTokenAccount.name="eosio.token"
-        trans=biosNode.createAccount(eosioTokenAccount, eosioAccount, 0)
-        if trans is None:
-            Utils.Print("ERROR: Failed to create account %s" % (eosioTokenAccount.name))
-            return None
-
-        eosioRamAccount=copy.deepcopy(eosioAccount)
-        eosioRamAccount.name="eosio.ram"
-        trans=biosNode.createAccount(eosioRamAccount, eosioAccount, 0)
-        if trans is None:
-            Utils.Print("ERROR: Failed to create account %s" % (eosioRamAccount.name))
-            return None
-
-        eosioRamfeeAccount=copy.deepcopy(eosioAccount)
-        eosioRamfeeAccount.name="eosio.ramfee"
-        trans=biosNode.createAccount(eosioRamfeeAccount, eosioAccount, 0)
-        if trans is None:
-            Utils.Print("ERROR: Failed to create account %s" % (eosioRamfeeAccount.name))
-            return None
-
-        eosioStakeAccount=copy.deepcopy(eosioAccount)
-        eosioStakeAccount.name="eosio.stake"
-        trans=biosNode.createAccount(eosioStakeAccount, eosioAccount, 0)
-        if trans is None:
-            Utils.Print("ERROR: Failed to create account %s" % (eosioStakeAccount.name))
-            return None
 
         Node.validateTransaction(trans)
-        transId=Node.getTransId(trans)
+        transId = Node.getTransId(trans)
         if not biosNode.waitForTransInBlock(transId):
             Utils.Print("ERROR: Failed to validate transaction %s got rolled into a block on server port %d." % (transId, biosNode.port))
             return None
 
-        contract="eosio.token"
-        contractDir="unittests/contracts/%s" % (contract)
-        wasmFile="%s.wasm" % (contract)
-        abiFile="%s.abi" % (contract)
-        Utils.Print("Publish %s contract" % (contract))
-        trans=biosNode.publishContract(eosioTokenAccount.name, contractDir, wasmFile, abiFile, waitForTransBlock=True)
+        tokenAccountName = "eosio.token"
+        contract = "eosio.token"
+        trans = self.publishContract(biosNode, contract, tokenAccountName)
         if trans is None:
             Utils.Print("ERROR: Failed to publish contract %s." % (contract))
             return None
 
         # Create currency0000, followed by issue currency0000
-        contract=eosioTokenAccount.name
-        Utils.Print("push create action to %s contract" % (contract))
-        action="create"
-        data="{\"issuer\":\"%s\",\"maximum_supply\":\"1000000000.0000 %s\"}" % (eosioAccount.name, CORE_SYMBOL)
-        opts="--permission %s@active" % (contract)
-        trans=biosNode.pushMessage(contract, action, data, opts)
-        if trans is None or not trans[0]:
-            Utils.Print("ERROR: Failed to push create action to eosio contract.")
+        if self.issueTokens(biosNode, eosioAccount, tokenAccountName, len(producerKeys)) is None:
+            Utils.Print("ERROR: Failed to issue tokens")
             return None
 
-        Node.validateTransaction(trans[1])
-        transId=Node.getTransId(trans[1])
-        if not biosNode.waitForTransInBlock(transId):
-            Utils.Print("ERROR: Failed to validate transaction %s got rolled into a block on server port %d." % (transId, biosNode.port))
+        contract = "eosio.system"
+        trans = self.publishContract(biosNode, contract, eosioAccount.name)  
+        if trans is None:
+            Utils.Print("ERROR: Failed to publish contract %s." % (contract))
             return None
 
-        contract=eosioTokenAccount.name
-        Utils.Print("push issue action to %s contract" % (contract))
-        action="issue"
-        data="{\"to\":\"%s\",\"quantity\":\"1000000000.0000 %s\",\"memo\":\"initial issue\"}" % (eosioAccount.name, CORE_SYMBOL)
-        opts="--permission %s@active" % (eosioAccount.name)
-        trans=biosNode.pushMessage(contract, action, data, opts)
-        if trans is None or not trans[0]:
-            Utils.Print("ERROR: Failed to push issue action to eosio contract.")
-            return None
-
-        Node.validateTransaction(trans[1])
-        Utils.Print("Wait for issue action transaction to become finalized.")
-        transId=Node.getTransId(trans[1])
-        # biosNode.waitForTransInBlock(transId)
-        # guesstimating block finalization timeout. Two production rounds of 12 blocks per node, plus 60 seconds buffer
-        timeout = .5 * 12 * 2 * len(producerKeys) + 60
-        if not biosNode.waitForTransFinalization(transId, timeout=timeout):
-            Utils.Print("ERROR: Failed to validate transaction %s got rolled into a finalized block on server port %d." % (transId, biosNode.port))
-            return None
-
-        expectedAmount="1000000000.0000 {0}".format(CORE_SYMBOL)
-        Utils.Print("Verify eosio issue, Expected: %s" % (expectedAmount))
-        actualAmount=biosNode.getAccountEosBalanceStr(eosioAccount.name)
-        if expectedAmount != actualAmount:
-            Utils.Print("ERROR: Issue verification failed. Excepted %s, actual: %s" %
-                        (expectedAmount, actualAmount))
-            return None
-
-        if loadSystemContract:
-            contract="eosio.system"
-            contractDir="unittests/contracts/%s" % (contract)
-            wasmFile="%s.wasm" % (contract)
-            abiFile="%s.abi" % (contract)
-            Utils.Print("Publish %s contract" % (contract))
-            trans=biosNode.publishContract(eosioAccount.name, contractDir, wasmFile, abiFile, waitForTransBlock=True)
-            if trans is None:
-                Utils.Print("ERROR: Failed to publish contract %s." % (contract))
-                return None
-
-            Node.validateTransaction(trans)
+        Node.validateTransaction(trans)
 
         initialFunds="1000000.0000 {0}".format(CORE_SYMBOL)
         Utils.Print("Transfer initial fund %s to individual accounts." % (initialFunds))
         trans=None
-        contract=eosioTokenAccount.name
+        contract=tokenAccountName
         action="transfer"
         for name, keys in producerKeys.items():
             data="{\"from\":\"%s\",\"to\":\"%s\",\"quantity\":\"%s\",\"memo\":\"%s\"}" % (eosioAccount.name, name, initialFunds, "init transfer")
             opts="--permission %s@active" % (eosioAccount.name)
             trans=biosNode.pushMessage(contract, action, data, opts)
             if trans is None or not trans[0]:
-                Utils.Print("ERROR: Failed to transfer funds from %s to %s." % (eosioTokenAccount.name, name))
+                Utils.Print("ERROR: Failed to transfer funds from %s to %s." % (tokenAccountName, name))
                 return None
 
             Node.validateTransaction(trans[1])
@@ -1293,6 +1291,19 @@ class Cluster(object):
         data="{\"version\":0,\"core\":\"4,%s\"}" % (CORE_SYMBOL)
         opts="--permission %s@active" % (eosioAccount.name)
         trans=biosNode.pushMessage(eosioAccount.name, action, data, opts)
+        Node.validateTransaction(trans[1])
+        for name, keys in producerKeys.items():
+            account = Account(name, keys["private"], keys["public"], keys["private"], keys["public"])
+            if not self.walletMgr.importKey(account, ignWallet):
+                Utils.Print("ERROR: Failed to import %s account keys into ignition wallet." % (name))
+                return None
+            ram="10000.0000 {0}".format(CORE_SYMBOL)
+            biosNode.buyram(eosioAccount, account, ram, waitForTransBlock=True, exitOnError=True);
+            # if not self.walletMgr.unlockWallet(account):
+            #     Utils.Print("ERROR: Launcher failed to unlock wallet : %s" % (name))
+            #     return None
+            biosNode.delegatebw(account, 250000.0000, 250000.0000, waitForTransBlock=True, exitOnError=True)
+
         Utils.Print("Cluster bootstrap done.")
 
         return biosNode
