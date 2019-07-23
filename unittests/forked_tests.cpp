@@ -52,7 +52,7 @@ BOOST_AUTO_TEST_CASE( fork_with_bad_block ) try {
    BOOST_REQUIRE( produce_empty_blocks_until( bios, N(e), N(a) ) );
 
    // sync remote node
-   tester remote;
+   tester remote(setup_policy::none);
    push_blocks(bios, remote);
 
    // produce 6 blocks on bios
@@ -170,7 +170,7 @@ BOOST_AUTO_TEST_CASE( forking ) try {
       );
 
 
-   tester c2;
+   tester c2(setup_policy::none);
    wlog( "push c1 blocks to c2" );
    push_blocks(c, c2);
    wlog( "end push c1 blocks to c2" );
@@ -293,7 +293,7 @@ BOOST_AUTO_TEST_CASE( prune_remove_branch ) try {
    wlog("set producer schedule to [dan,sam,pam,scott]");
    c.produce_blocks(50);
 
-   tester c2;
+   tester c2(setup_policy::none);
    wlog( "push c1 blocks to c2" );
    push_blocks(c, c2);
 
@@ -346,9 +346,9 @@ BOOST_AUTO_TEST_CASE( prune_remove_branch ) try {
  */
 BOOST_AUTO_TEST_CASE( validator_accepts_valid_blocks ) try {
 
-   tester n1;
-   tester n2;
-   tester n3;
+   tester n1(setup_policy::none);
+   tester n2(setup_policy::none);
+   tester n3(setup_policy::none);
 
    n1.produce_block();
 
@@ -389,7 +389,7 @@ BOOST_AUTO_TEST_CASE( read_modes ) try {
    auto head_block_num = c.control->head_block_num();
    auto last_irreversible_block_num = c.control->last_irreversible_block_num();
 
-   tester head(setup_policy::old_bios_only, db_read_mode::HEAD);
+   tester head(setup_policy::none, db_read_mode::HEAD);
    push_blocks(c, head);
    BOOST_CHECK_EQUAL(head_block_num, head.control->fork_db_head_block_num());
    BOOST_CHECK_EQUAL(head_block_num, head.control->head_block_num());
@@ -399,7 +399,7 @@ BOOST_AUTO_TEST_CASE( read_modes ) try {
    BOOST_CHECK_EQUAL(head_block_num, read_only.control->fork_db_head_block_num());
    BOOST_CHECK_EQUAL(head_block_num, read_only.control->head_block_num());
 
-   tester irreversible(setup_policy::old_bios_only, db_read_mode::IRREVERSIBLE);
+   tester irreversible(setup_policy::none, db_read_mode::IRREVERSIBLE);
    push_blocks(c, irreversible);
    BOOST_CHECK_EQUAL(head_block_num, irreversible.control->fork_db_pending_head_block_num());
    BOOST_CHECK_EQUAL(last_irreversible_block_num, irreversible.control->fork_db_head_block_num());
@@ -434,7 +434,7 @@ BOOST_AUTO_TEST_CASE( irreversible_mode ) try {
 
    BOOST_REQUIRE( lib2 < hbn1 );
 
-   tester other;
+   tester other(setup_policy::none);
 
    push_blocks( main, other );
    BOOST_CHECK_EQUAL( other.control->head_block_num(), hbn2 );
@@ -533,7 +533,7 @@ BOOST_AUTO_TEST_CASE( reopen_forkdb ) try {
    c1.produce_block();
    produce_empty_blocks_until( c1, N(carol), N(alice) );
 
-   tester c2;
+   tester c2(setup_policy::none);
 
    push_blocks( c1, c2 );
 
@@ -582,7 +582,7 @@ BOOST_AUTO_TEST_CASE( push_block_returns_forked_transactions ) try {
    wlog("set producer schedule to [dan,sam,pam]");
    c.produce_blocks(40);
 
-   tester c2;
+   tester c2(setup_policy::none);
    wlog( "push c1 blocks to c2" );
    push_blocks(c, c2);
 
