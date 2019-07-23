@@ -808,6 +808,7 @@ namespace eosio {
       }
       reset();
       sent_handshake_count = 0;
+      node_id = fc::sha256();
       last_handshake_recv = handshake_message();
       last_handshake_sent = handshake_message();
       my_impl->sync_master->reset_lib_num(shared_from_this());
