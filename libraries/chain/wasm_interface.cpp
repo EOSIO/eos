@@ -215,7 +215,7 @@ class privileged_api : public context_aware_api {
          }
          EOS_ASSERT( producers.size() == unique_producers.size(), wasm_execution_error, "duplicate producer name in producer schedule" );
 
-         return context.control.set_proposed_producers( std::forward<vector<producer_authority>>(producers) );
+         return context.control.set_proposed_producers( std::move(producers) );
       }
 
       int64_t set_proposed_producers( array_ptr<char> packed_producer_schedule, size_t datalen) {

@@ -153,7 +153,7 @@ namespace eosio { namespace chain {
    using shared_block_signing_authority = static_variant<shared_block_signing_authority_v0>;
 
    struct shared_producer_authority {
-      shared_producer_authority() = default;
+      shared_producer_authority() = delete;
       shared_producer_authority( const shared_producer_authority& ) = default;
       shared_producer_authority( shared_producer_authority&& ) = default;
       shared_producer_authority& operator= ( shared_producer_authority && ) = default;
@@ -161,7 +161,7 @@ namespace eosio { namespace chain {
 
       shared_producer_authority( const name& producer_name, shared_block_signing_authority&& authority )
       :producer_name(producer_name)
-      ,authority(std::forward<shared_block_signing_authority>(authority))
+      ,authority(std::move(authority))
       {}
 
       name                                     producer_name;
