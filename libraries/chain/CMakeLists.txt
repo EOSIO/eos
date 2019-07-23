@@ -53,6 +53,10 @@ add_library( eosio_chain
              webassembly/wavm.cpp
              webassembly/wabt.cpp
 
+             webassembly/rodeos/code_cache.cpp
+             webassembly/rodeos/executor.cpp
+             webassembly/rodeos/memory.cpp
+
 #             get_config.cpp
 #
 #             contracts/chain_initializer.cpp

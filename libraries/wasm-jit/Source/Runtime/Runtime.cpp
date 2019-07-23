@@ -109,12 +109,12 @@ namespace Runtime
 
 		// Catch platform-specific runtime exceptions and turn them into Runtime::Values.
 		Result result;
-		Platform::HardwareTrapType trapType;
+		Platform::HardwareTrapType trapType = Platform::HardwareTrapType::none;
 		Platform::CallStack trapCallStack;
 		Uptr trapOperand;
-		trapType = Platform::catchHardwareTraps(trapCallStack,trapOperand,
-			[&]
-			{
+		//trapType = Platform::catchHardwareTraps(trapCallStack,trapOperand,
+		//	[&]
+		//	{
 				// Call the invoke thunk.
 				(*invokeFunctionPointer)(function->nativeFunction,thunkMemory);
 
@@ -124,11 +124,11 @@ namespace Runtime
 					result.type = functionType->ret;
 					result.i64 = thunkMemory[functionType->parameters.size()];
 				}
-			});
+		//	});
 
 		// If there was no hardware trap, just return the result.
 		if(trapType == Platform::HardwareTrapType::none) { return result; }
-		else { handleHardwareTrap(trapType,std::move(trapCallStack),trapOperand); }
+		//else { handleHardwareTrap(trapType,std::move(trapCallStack),trapOperand); }
 	}
 
 	const FunctionType* getFunctionType(FunctionInstance* function)
