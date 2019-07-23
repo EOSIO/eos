@@ -717,6 +717,7 @@ public:
    fc::microseconds get_abi_serializer_max_time() const;
 
    void handle_guard_exception(const chain::guard_exception& e) const;
+   void do_hard_replay(const variables_map& options);
 
    static void handle_db_exhaustion();
 private:
