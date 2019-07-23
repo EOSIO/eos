@@ -6,6 +6,12 @@ env:
 
 steps:
 
+  - label: ":webhook: Trigger Travis CI Build"
+    command:
+      - "./.cicd/travis-trigger.sh"
+    agents:
+      queue: "automation-eos-builder-fleet"
+
   - trigger: "eosio-base-images-beta"
     label: ":docker: Ensure base images exist"
     build:
