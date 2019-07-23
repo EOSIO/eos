@@ -43,15 +43,19 @@ void transaction_metadata::start_recover_keys( const transaction_metadata_ptr& m
       return;
    }
 
-   mtrx->_signing_keys_future = async_thread_pool( thread_pool, [time_limit, chain_id, mtrx, next{std::move(next)}]() {
+   std::weak_ptr<transaction_metadata> mtrx_wp = mtrx;
+   mtrx->_signing_keys_future = async_thread_pool( thread_pool, [time_limit, chain_id, mtrx_wp, next{std::move(next)}]() mutable {
       auto recovered_pub_keys = std::make_shared<flat_set<public_key_type>>();
       fc::microseconds cpu_usage;
       try {
          fc::time_point deadline = time_limit == fc::microseconds::maximum() ?
                                    fc::time_point::maximum() : fc::time_point::now() + time_limit;
 
-         const signed_transaction& trn = mtrx->_packed_trx->get_signed_transaction();
-         cpu_usage = trn.get_signature_keys( chain_id, deadline, *recovered_pub_keys );
+         transaction_metadata_ptr mtrx = mtrx_wp.lock(); // if mtrx no longer exists then no signing_keys_future to get results
+         if( mtrx ) {
+            const signed_transaction& trn = mtrx->_packed_trx->get_signed_transaction();
+            cpu_usage = trn.get_signature_keys( chain_id, deadline, *recovered_pub_keys );
+         }
       } catch( ... ) {
          if( next ) next();
          throw;
