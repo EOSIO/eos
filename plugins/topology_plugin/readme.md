@@ -59,9 +59,17 @@ The plugin follows the common idiom of a lightweight interface class and a more 
  link\_descriptor.hpp | link\_roles | an enumeration of possible specialized use for this link. This could be blocks, transactions, commands, or any combination of those three. 
  | link\_descriptor | the verbose description of the link as defined by the connected nodes. This gets stringified and hashed to generate a universally unique, but otherwise anonymous identifier.
  node\_descriptor | node\_descriptor | the verbose description of a node used to generate a globally unique node id.
- 
+
+##implementation specifics
  The implementation details are entirely contained in a single source file for now, topology\_plugin.cpp. The types defined in this source file are described here.
  
-|  typename  |  description  |
-|------------|---------------|
-   topo\_node | contains the verbose description of the node along with it's hashed id along with a list of links to peer nodes
+|  typename  | members | description  |
+|------------|---------|--------------|
+   topo\_node | info | the description of the node along with it's hashed id 
+   | links | list of links to peer nodes. 
+   | distance | A map of all known nodes indexed by id and storing the number of hops from this node to the indexed node. This distance value may be used to optimize message routing by computing an optimal path for forwarding broadcasted messages. 
+   topo\_link | info | the description of the link with an id
+   | up | the collection of named metrics on the link from the active connector to the passive.
+   | down | the collection of metrics on the link from the passive connector to the active.
+   
+   

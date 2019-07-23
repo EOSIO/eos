@@ -82,7 +82,7 @@ namespace eosio {
       string dot_label() {
          if (dot.empty()) {
             ostringstream dt;
-            dt << info.location << "(" << info.my_id << ")" << ends;
+            dt << info.location << "(" << info.my_id << ")";
             dot = dt.str();
          }
          return dot;
@@ -197,7 +197,7 @@ namespace eosio {
    }
 
    node_id topology_plugin_impl::make_node_id( const fc::sha256 &long_id ) {
-      return long_id.data()[1];
+      return long_id.data()[0];
    }
 
    node_id topology_plugin_impl::gen_id( const node_descriptor &desc ) {
@@ -582,9 +582,9 @@ namespace eosio {
                alabel = tnode.second.dot_label();
             }
 
-            df << "\"" << alabel
-               << "\"->\"" << plabel
-               << "\" [dir=\"forward\"];" << endl;
+            df << alabel
+               << " -> " << plabel
+               << " [dir=\"forward\"];" << endl;
          }
       }
       df << "}\n";
