@@ -105,7 +105,7 @@ executor::executor(const code_cache& cc) {
       struct sigaction sig_action, old_sig_action;
       sig_action.sa_sigaction = segv_handler;
       sigemptyset(&sig_action.sa_mask);
-      sig_action.sa_flags = SA_SIGINFO;
+      sig_action.sa_flags = SA_SIGINFO | SA_NODEFER;
       sigaction(SIGSEGV, &sig_action, &old_sig_action);
       if(old_sig_action.sa_flags & SA_SIGINFO)
          chained_handler = old_sig_action.sa_sigaction;
