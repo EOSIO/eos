@@ -60,6 +60,7 @@ namespace eosio{
        */
       const string& bp_name();
       fc::sha256 gen_long_id (const node_descriptor &desc);
+      node_id make_node_id(const fc::sha256 &long_id);
       void set_local_node_id (node_id id);
       node_id add_node(node_descriptor &&desc );
       void drop_node(node_id id);

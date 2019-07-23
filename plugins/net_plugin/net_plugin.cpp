@@ -977,6 +977,7 @@ namespace eosio {
         connection_id( ++my_impl->current_connection_id ),
         response_expected_timer( my_impl->thread_pool->get_executor() ),
         read_delay_timer( my_impl->thread_pool->get_executor() ),
+        node_id(),
         last_handshake_recv(),
         last_handshake_sent()
    {
@@ -991,11 +992,11 @@ namespace eosio {
         connection_id( ++my_impl->current_connection_id ),
         response_expected_timer( my_impl->thread_pool->get_executor() ),
         read_delay_timer( my_impl->thread_pool->get_executor() ),
+        node_id(),
         last_handshake_recv(),
         last_handshake_sent()
    {
       fc_ilog( logger, "accepted network connection" );
-      node_id.data()[0] = 0;
    }
 
    void connection::update_endpoints() {
@@ -2848,13 +2849,14 @@ namespace eosio {
                string pnjson = msg.p2p_address.substr(topo_info);
                fc_dlog( logger, "parsing node descriptor from ${nd}",("nd",pnjson));
                peer_node = dejsonify<node_descriptor>(pnjson);
-               topo_peer = msg.node_id.data()[0];
+               topo_peer = my_impl->topology_plug->make_node_id(msg.node_id);
             }
             topo_peer = my_impl->topology_plug->add_node(move(peer_node));
-            ld.active = peer_addr.empty() ? topo_peer : my_impl->node_id.data()[0];
-            ld.passive = !peer_addr.empty() ? topo_peer : my_impl->node_id.data()[0];
+            eosio::node_id ni = my_impl->topology_plug->make_node_id(my_impl->node_id);
+            ld.active = peer_addr.empty() ? topo_peer : ni;
+            ld.passive = !peer_addr.empty() ? topo_peer : ni;
             ld.role = combined;
-            ld.hops = 1; // need to compute
+            ld.hops = 1; // need to compute using icmp ttl counts
             ilog("calliing add_link");
             topo_id = my_impl->topology_plug->add_link(move(ld));
          }
@@ -3477,7 +3479,7 @@ namespace eosio {
       }
       else {
          node_descriptor nd;
-         nd.my_id = my_impl->node_id.data()[0];
+         nd.my_id = my_impl->topology_plug->make_node_id(my_impl->node_id);
          nd.location = my_impl->topology_plug->bp_name() + ":" + my_impl->p2p_address;
          nd.role = producer;
          nd.status = running;
@@ -3706,7 +3708,7 @@ namespace eosio {
             }
          }
          my->node_id = my->topology_plug->gen_long_id(nd);
-         uint64_t sid = my->node_id.data()[0];
+         uint64_t sid = my->topology_plug->make_node_id(my->node_id);
          fc_ilog( logger, "setting up local node ${id}",("id",sid) );
          eosio::node_id shortid = my->topology_plug->add_node( std::move(nd) );
          my->topology_plug->set_local_node_id(shortid);

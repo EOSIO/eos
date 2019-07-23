@@ -76,10 +76,16 @@ namespace eosio {
       node_descriptor   info;
       vector<link_id>   links;
       flat_map<node_id,int16_t> distance;
+      string dot;
       uint64_t primary_key() const { return info.my_id; }
 
       string dot_label() {
-         return info.location;
+         if (dot.empty()) {
+            ostringstream dt;
+            dt << info.location << "(" << info.my_id << ")" << ends;
+            dot = dt.str();
+         }
+         return dot;
       }
    };
 
@@ -159,19 +165,20 @@ namespace eosio {
 
       flat_map<metric_kind, std::string> units;
 
-      fc::sha256 gen_long_id_i( const node_descriptor &desc );
+      fc::sha256 gen_long_id( const node_descriptor &desc );
+      node_id make_node_id( const fc::sha256 &long_id);
       node_id gen_id( const node_descriptor &desc );
       link_id gen_id( const link_descriptor &desc );
       int16_t count_hops_i (set<node_id>& seen, node_id to, topo_node& from);
       int16_t count_hops (node_id to);
       node_id peer_node (link_id onlink, node_id from);
-      node_id add_node_i( node_descriptor&& n );
-      void    drop_node_i( node_id id );
-      link_id add_link_i( link_descriptor&& l );
-      void    drop_link_i( link_id id );
+      node_id add_node( node_descriptor&& n );
+      void    drop_node( node_id id );
+      link_id add_link( link_descriptor&& l );
+      void    drop_link( link_id id );
 
-      void    update_samples_i( const link_sample &ls, bool flip );
-      void    update_map_i( const map_update &mu );
+      void    update_samples( const link_sample &ls, bool flip );
+      void    update_map( const map_update &mu );
 
       uint16_t sample_imterval_sec;
       string bp_name;
@@ -182,16 +189,20 @@ namespace eosio {
       std::mutex table_mtx;
    };
 
-   fc::sha256 topology_plugin_impl::gen_long_id_i( const node_descriptor &desc ) {
+   fc::sha256 topology_plugin_impl::gen_long_id( const node_descriptor &desc ) {
       ostringstream infostrm;
       infostrm << desc.location << desc.role << desc.version;
       string istr = infostrm.str();
       return fc::sha256::hash(istr.c_str(), istr.size());
    }
 
+   node_id topology_plugin_impl::make_node_id( const fc::sha256 &long_id ) {
+      return long_id.data()[1];
+   }
+
    node_id topology_plugin_impl::gen_id( const node_descriptor &desc ) {
-      fc::sha256 lid = gen_long_id_i (desc);
-      return lid.data()[0];
+      fc::sha256 lid = gen_long_id (desc);
+      return make_node_id( lid );
    }
 
    link_id topology_plugin_impl::gen_id( const link_descriptor &desc ) {
@@ -201,7 +212,7 @@ namespace eosio {
       return hasher(infostrm.str());
    }
 
-   node_id topology_plugin_impl::add_node_i( node_descriptor&& n ) {
+   node_id topology_plugin_impl::add_node( node_descriptor&& n ) {
       if (n.my_id == 0) {
          n.my_id = gen_id (n);
       }
@@ -224,11 +235,11 @@ namespace eosio {
       return id;
    }
 
-   void topology_plugin_impl::drop_node_i ( node_id id ) {
+   void topology_plugin_impl::drop_node( node_id id ) {
       nodes.erase( id );
    }
 
-   link_id topology_plugin_impl::add_link_i ( link_descriptor&& l ) {
+   link_id topology_plugin_impl::add_link( link_descriptor&& l ) {
       auto id = gen_id( l );
       l.my_id = id;
       ilog ("adding a link ${id} from ${e1} to ${e2}",("id",id)("e1",l.passive)("e2", l.active));
@@ -260,7 +271,7 @@ namespace eosio {
       return id;
    }
 
-   void topology_plugin_impl::drop_link_i( link_id id ) {
+   void topology_plugin_impl::drop_link( link_id id ) {
       links.erase( id );
    }
 
@@ -270,6 +281,10 @@ namespace eosio {
 
       if( from.distance.find(to) == from.distance.end() ) {
          for( auto lid : from.links ) {
+            if(links.find(lid) == links.end()) {
+               ilog( "link id ${id} not found", ("id",lid));
+               continue;
+            }
             auto l = links[lid];
             node_id peer = l.info.active == from.info.my_id ? l.info.passive : l.info.active;
             seen.insert(peer);
@@ -304,30 +319,35 @@ namespace eosio {
 
    node_id topology_plugin_impl::peer_node (link_id onlink, node_id from)
    {
+      if (links.find(onlink) == links.end()) {
+         ilog("link id ${id} not found",("id",onlink));
+         return 0;
+      }
       return links[onlink].info.active == from ? links[onlink].info.passive : links[onlink].info.active;
    }
 
-   void topology_plugin_impl::update_samples_i( const link_sample &ls, bool flip) {
+   void topology_plugin_impl::update_samples( const link_sample &ls, bool flip) {
       if (links.find(ls.link) != links.end()) {
          links[ls.link].down.sample(flip ? ls.up : ls.down);
          links[ls.link].up.sample(flip ? ls.down : ls.up);
       }
    }
 
-   void topology_plugin_impl::update_map_i( const map_update &mu ) {
+   void topology_plugin_impl::update_map( const map_update &mu ) {
       for( auto &an : mu.add_nodes ) {
          node_descriptor nd = an;
-         add_node_i(move(nd));
+         add_node(move(nd));
       }
       for( auto &al : mu.add_links ) {
          link_descriptor ld = al;
-         add_link_i(move(ld));
+         ilog( "add link with id ${id}",("id",ld.my_id));
+         add_link(move(ld));
       }
       for( auto &dn : mu.drop_nodes ) {
-         drop_node_i(dn);
+         drop_node(dn);
       }
       for( auto &dl : mu.drop_links ) {
-         drop_link_i(dl);
+         drop_link(dl);
       }
    }
 
@@ -406,28 +426,31 @@ namespace eosio {
    }
 
    fc::sha256 topology_plugin::gen_long_id( const node_descriptor &desc ) {
-      return my->gen_long_id_i (desc);
+      return my->gen_long_id(desc);
    }
 
+   node_id topology_plugin::make_node_id( const fc::sha256 &long_id ) {
+      return my->make_node_id(long_id);
+   }
 
    void topology_plugin::set_local_node_id( node_id id) {
       my->local_node_id = id;
    }
 
-   node_id topology_plugin::add_node ( node_descriptor&& n ) {
-      return my->add_node_i(move(n));
+   node_id topology_plugin::add_node( node_descriptor&& n ) {
+      return my->add_node(move(n));
    }
 
-   void  topology_plugin::drop_node ( node_id id ) {
-      my->drop_node_i( id );
+   void  topology_plugin::drop_node( node_id id ) {
+      my->drop_node( id );
    }
 
-   link_id topology_plugin::add_link ( link_descriptor&& l ) {
-      return my->add_link_i(move(l));
+   link_id topology_plugin::add_link( link_descriptor&& l ) {
+      return my->add_link(move(l));
    }
 
    void topology_plugin::drop_link( link_id id ) {
-      my->drop_link_i(id);
+      my->drop_link(id);
    }
 
    string topology_plugin::nodes( const string& in_roles ) {
@@ -467,7 +490,7 @@ namespace eosio {
    }
 
    void topology_plugin::update_samples( const link_sample &ls) {
-      my->update_samples_i( ls, false );
+      my->update_samples( ls, false );
       topology_message tm;
       tm.origin = my->local_node_id;
       tm.destination = my->peer_node(ls.link, tm.origin);
@@ -486,12 +509,12 @@ namespace eosio {
    public:
       void operator()( const map_update& msg) {
          ilog("got a map update message");
-         my_impl->update_map_i( msg );
+         my_impl->update_map( msg );
       }
 
       void operator()( const link_sample& msg) {
          ilog("got a link sample message");
-         my_impl->update_samples_i( msg, true );
+         my_impl->update_samples( msg, true );
       }
    };
 
@@ -543,15 +566,19 @@ namespace eosio {
                ilog("link id ${id} already seen",("id",l));
                continue;
             }
-            auto &tlink = my->links[l];
-            seen.insert(tlink.info.my_id);
+            auto tlink = my->links.find(l);
+            if ( tlink == my->links.end() ) {
+               ilog( "did not find link id ${id}", ("id",l));
+               continue;
+            }
+            seen.insert(tlink->second.info.my_id);
             // ilog("adding link ${l} aka ${id}",("id",tlink.info.my_id)("l",l));
             string alabel, plabel;
-            if (tlink.info.passive == tnode.first) {
-               alabel = my->nodes[tlink.info.active].dot_label();
+            if (tlink->second.info.passive == tnode.first) {
+               alabel = my->nodes[tlink->second.info.active].dot_label();
                plabel = tnode.second.dot_label();
             } else {
-               plabel = my->nodes[tlink.info.active].dot_label();
+               plabel = my->nodes[tlink->second.info.active].dot_label();
                alabel = tnode.second.dot_label();
             }
 
