@@ -63,6 +63,8 @@ inline array_ptr<T> array_ptr_impl (running_instance_context& ctx, U32 ptr, size
    char check;
    if(length || cb_ptr->current_linear_memory_pages < 0)
       check = p[ptr];
+   if constexpr(sizeof(T) > 1)
+      EOS_ASSERT(length < INT_MAX/(uint32_t)sizeof(T), wasm_execution_error, "access violation");
    check = p[ptr+length*sizeof(T)-1];
 
    return array_ptr<T>((T*)((char*)(cb_ptr->full_linear_memory_start) + ptr));
@@ -397,7 +399,7 @@ struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, size_t, Inputs...>, 
    template<then_type Then, typename U=T>
    static auto translate_one(running_instance_context& ctx, Inputs... rest, Translated... translated, I32 ptr, I32 size) -> std::enable_if_t<std::is_const<U>::value, Ret> {
       static_assert(!std::is_pointer<U>::value, "Currently don't support array of pointers");
-      const auto length = size_t(size);
+      const auto length = size_t((U32)size);
       T* base = array_ptr_impl<T>(ctx, (U32)ptr, length);
       if ( reinterpret_cast<uintptr_t>(base) % alignof(T) != 0 ) {
          if(ctx.apply_ctx->control.contracts_console())
@@ -413,7 +415,7 @@ struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, size_t, Inputs...>, 
    template<then_type Then, typename U=T>
    static auto translate_one(running_instance_context& ctx, Inputs... rest, Translated... translated, I32 ptr, I32 size) -> std::enable_if_t<!std::is_const<U>::value, Ret> {
       static_assert(!std::is_pointer<U>::value, "Currently don't support array of pointers");
-      const auto length = size_t(size);
+      const auto length = size_t((U32)size);
       T* base = array_ptr_impl<T>(ctx, (U32)ptr, length);
       if ( reinterpret_cast<uintptr_t>(base) % alignof(T) != 0 ) {
          if(ctx.apply_ctx->control.contracts_console())
@@ -476,7 +478,7 @@ struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, array_ptr<U>, size_t
    template<then_type Then>
    static Ret translate_one(running_instance_context& ctx, Inputs... rest, Translated... translated, I32 ptr_t, I32 ptr_u, I32 size) {
       static_assert(std::is_same<std::remove_const_t<T>, char>::value && std::is_same<std::remove_const_t<U>, char>::value, "Currently only support array of (const)chars");
-      const auto length = size_t(size);
+      const auto length = size_t((U32)size);
       return Then(ctx, array_ptr_impl<T>(ctx, (U32)ptr_t, length), array_ptr_impl<U>(ctx, (U32)ptr_u, length), length, rest..., translated...);
    };
 
@@ -500,7 +502,7 @@ struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<char>, int, size_t>, std
 
    template<then_type Then>
    static Ret translate_one(running_instance_context& ctx, I32 ptr, I32 value, I32 size) {
-      const auto length = size_t(size);
+      const auto length = size_t((U32)size);
       return Then(ctx, array_ptr_impl<char>(ctx, (U32)ptr, length), value, length);
    };
 
