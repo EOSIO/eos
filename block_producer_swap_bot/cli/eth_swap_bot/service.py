@@ -1,30 +1,41 @@
 """
-Provide implementation of the eth_swap_contract.
+Provide implementation of the eth_swap_bot.
 """
 import time
+from datetime import datetime
 from threading import Thread
+from time import sleep
 
 from accessify import implements
 from web3 import Web3
 
 from cli.constants import (
+    ETH_CONFIRMATION_BLOCKS,
+    ETH_EVENTS_WINDOW_LENGTH,
     ETH_SWAP_CONTRACT_ABI,
     ETH_SWAP_CONTRACT_ADDRESS,
-    ETH_SWAP_REQUEST_EVENT_NAME,
-    SHORT_POLLING_INTERVAL,
+    SHORT_POLLING_CONFIRMATION_INTERVAL,
+    SHORT_POLLING_EVENTS_INTERVAL,
 )
-from cli.eth_swap_contract.interfaces import EthSwapContractInterface
+from cli.eth_swap_bot.interfaces import EthSwapBotInterface
 from cli.remchain_swap_contract.service import RemchainSwapContract
-from cli.utils import print_result
 
 
-@implements(EthSwapContractInterface)
-class EthSwapContract:
+@implements(EthSwapBotInterface)
+class EthSwapBot:
     """
-    Implements eth_swap_contract.
+    Implements eth_swap_bot.
     """
 
     def __init__(self, eth_provider, nodeos_url, permission):
+        """
+        Constructor.
+
+        Arguments:
+            eth_provider (string, required): a link to ethereum node.
+            nodeos_url (string, required): an address of nodeos url.
+            permission (string, required): a permission to sign process swap transactions
+        """
         self.eth_provider = eth_provider
         self.nodeos_url = nodeos_url
         self.permission = permission
@@ -43,6 +54,12 @@ class EthSwapContract:
 
     @staticmethod
     def get_swap_request_parameters(event):
+        """
+        Get all parameters from swap request on Ethereum.
+
+        Arguments:
+            event (object, required): an object of event on Ethereum.
+        """
         event_args = event['args']
         transaction_id = str(event['transactionHash'].hex())
         chain_id = str(event_args['chainId'])
@@ -60,37 +77,56 @@ class EthSwapContract:
 
         return result
 
+    @staticmethod
+    def get_event_block_number(event):
+        return event.get('blockNumber')
+
+    def wait_for_event_confirmation(self, event):
+        while True:
+            event_block_number = EthSwapBot.get_event_block_number(event)
+            latest_block_nubmer = self.web3.eth.blockNumber
+            if latest_block_nubmer - event_block_number < ETH_CONFIRMATION_BLOCKS:
+                sleep(SHORT_POLLING_CONFIRMATION_INTERVAL)
+            else:
+                break
+
     def handle_swap_request_event(self, event):
         result = self.get_swap_request_parameters(event)
 
-        print_result(result)
+        txid = result.get('txid')
+        timestamp = result.get('timestamp')
+        result['timestamp'] = datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d")
 
-        self.remchain_swap_contract.init_swap(**result)
+        if self.web3.eth.getTransaction(txid):
+            self.remchain_swap_contract.process_swap(**result)
 
     def new_swaps_loop(self, event_filter, poll_interval):
         while True:
             for event in event_filter.get_new_entries():
+                self.wait_for_event_confirmation(event)
                 self.handle_swap_request_event(event)
             time.sleep(poll_interval)
 
     def sync_swaps_loop(self, event_filter):
         for event in event_filter.get_all_entries():
+            self.wait_for_event_confirmation(event)
+            print(event)
             self.handle_swap_request_event(event)
 
     def process_swaps(self):
         """
         Process swap requests.
         """
-        request_swap_event_filter = self.eth_swap_contract.eventFilter(
-            ETH_SWAP_REQUEST_EVENT_NAME,
-            {'fromBlock': 0, 'toBlock': 'latest'}
+        from_block = self.web3.eth.blockNumber - ETH_EVENTS_WINDOW_LENGTH
+        request_swap_event_filter = self.eth_swap_contract.events.SwapRequest.createFilter(
+            fromBlock=from_block, toBlock='latest',
         )
 
         self.sync_swaps_loop(request_swap_event_filter)
 
         worker = Thread(
             target=self.new_swaps_loop,
-            args=(request_swap_event_filter, SHORT_POLLING_INTERVAL),
+            args=(request_swap_event_filter, SHORT_POLLING_EVENTS_INTERVAL),
             daemon=True
         )
         worker.start()
@@ -100,5 +136,4 @@ class EthSwapContract:
         """
         Process swap request manually.
         """
-        print(kwargs)
-        self.remchain_swap_contract.init_swap(**kwargs)
+        self.remchain_swap_contract.process_swap(**kwargs)

@@ -1,11 +1,11 @@
 """
-Provide implementation of the eth_swap_contract interfaces.
+Provide implementation of the eth_swap_bot interfaces.
 """
 
 
-class EthSwapContractInterface:
+class EthSwapBotInterface:
     """
-    Implements eth_swap_contract interface.
+    Implements eth_swap_bot interface.
     """
 
     def process_swaps(self):
@@ -16,6 +16,6 @@ class EthSwapContractInterface:
 
     def manual_process_swap(self, **kwargs):
         """
-        Process swap requests manually.
+        Process swap request manually.
         """
         pass

@@ -2,10 +2,10 @@
 Provide utils for command line interface.
 """
 import json
-from cli.config import ConfigFile
 
-#
 import click
+
+from cli.config import ConfigFile
 
 config_file = ConfigFile()
 
@@ -35,12 +35,21 @@ def print_errors(errors):
 
 
 def get_default_nodeos_url():
+    """
+    Get default nodeos-url from config file.
+    """
     return config_file.get_nodeos_url()
 
 
 def get_default_eth_provider():
+    """
+    Get default ethereum provider from config file.
+    """
     return config_file.get_eth_provider()
 
 
-def get_default_permission():
+def get_block_producer_permission():
+    """
+    Get block producer permission to sign process-swap transactions.
+    """
     return config_file.get_block_producer_permission()
