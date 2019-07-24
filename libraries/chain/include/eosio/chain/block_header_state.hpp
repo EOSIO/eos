@@ -145,7 +145,6 @@ struct block_header_state : public detail::block_header_state_common {
 
    bool                 has_pending_producers()const { return pending_schedule.schedule.producers.size(); }
    uint32_t             calc_dpos_last_irreversible( account_name producer_of_next_block )const;
-   bool                 is_active_producer( account_name n )const;
 
    producer_authority     get_scheduled_producer( block_timestamp_type t )const;
    const block_id_type&   prev()const { return header.previous; }

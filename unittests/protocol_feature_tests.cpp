@@ -1589,7 +1589,8 @@ BOOST_AUTO_TEST_CASE( producer_schedule_change_extension_test ) { try {
 
       // create a bad block that has the producer schedule change extension before the feature upgrade
       auto bad_block = std::make_shared<signed_block>(last_legacy_block->clone());
-      bad_block->header_extensions.emplace_back(
+      emplace_extension(
+              bad_block->header_extensions,
               producer_schedule_change_extension::extension_id(),
               fc::raw::pack(std::make_pair(hbs->active_schedule.version + 1, std::vector<char>{}))
       );
@@ -1635,7 +1636,8 @@ BOOST_AUTO_TEST_CASE( producer_schedule_change_extension_test ) { try {
 
       // create a bad block that has the producer schedule change extension that is valid but not warranted by actions in the block
       auto bad_block = std::make_shared<signed_block>(first_new_block->clone());
-      bad_block->header_extensions.emplace_back(
+      emplace_extension(
+              bad_block->header_extensions,
               producer_schedule_change_extension::extension_id(),
               fc::raw::pack(std::make_pair(hbs->active_schedule.version + 1, std::vector<char>{}))
       );
@@ -1698,7 +1700,7 @@ BOOST_AUTO_TEST_CASE( wtmsig_block_signing_inflight_legacy_test ) { try {
    c.produce_block();
 
    // ensure that the next block is updated to the new schedule
-   BOOST_REQUIRE_EXCEPTION( c.produce_block(), wrong_signing_key, fc_exception_message_is( "block signed by unexpected key" ));
+   BOOST_REQUIRE_EXCEPTION( c.produce_block(), no_block_signatures, fc_exception_message_is( "Signer returned no signatures" ));
    c.control->abort_block();
 
    c.block_signing_private_keys.emplace(get_public_key(N(eosio), "bsk"), get_private_key(N(eosio), "bsk"));
@@ -1734,7 +1736,7 @@ BOOST_AUTO_TEST_CASE( wtmsig_block_signing_inflight_extension_test ) { try {
    c.produce_block();
 
    // ensure that the next block is updated to the new schedule
-   BOOST_REQUIRE_EXCEPTION( c.produce_block(), wrong_signing_key, fc_exception_message_is( "block signed by unexpected key" ));
+   BOOST_REQUIRE_EXCEPTION( c.produce_block(), no_block_signatures, fc_exception_message_is( "Signer returned no signatures" ));
    c.control->abort_block();
 
    c.block_signing_private_keys.emplace(get_public_key(N(eosio), "bsk"), get_private_key(N(eosio), "bsk"));

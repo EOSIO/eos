@@ -21,12 +21,7 @@ namespace eosio { namespace chain {
       {
          auto exts = b->validate_and_extract_extensions();
 
-         if ( pfa && exts.count(additional_sigs_eid) > 0 ) {
-            bool wtmsig_enabled = detail::is_builtin_activated(pfa, pfs, builtin_protocol_feature_t::wtmsig_block_signatures);
-
-            EOS_ASSERT(wtmsig_enabled, block_validate_exception,
-                       "Block contained additional_block_signatures_extension before activation of WTMsig Block Signatures");
-
+         if ( exts.count(additional_sigs_eid) > 0 ) {
             auto& additional_sigs = exts.lower_bound(additional_sigs_eid)->second.get<additional_block_signatures_extension>();
 
             return std::move(additional_sigs.signatures);
@@ -57,12 +52,12 @@ namespace eosio { namespace chain {
                                                        const protocol_feature_set& pfs,
                                                        Extras&& ... extras )
       {
-         const auto& pfa = cur.prev_activated_protocol_features;
-         bool wtmsig_enabled = pfa && detail::is_builtin_activated(pfa, pfs, builtin_protocol_feature_t::wtmsig_block_signatures);
-
+         auto pfa = cur.prev_activated_protocol_features;
          block_header_state result = std::move(cur).finish_next(b, pfs, std::forward<Extras>(extras)...);
 
          if (!result.additional_signatures.empty()) {
+            bool wtmsig_enabled = detail::is_builtin_activated(pfa, pfs, builtin_protocol_feature_t::wtmsig_block_signatures);
+
             EOS_ASSERT(wtmsig_enabled, block_validate_exception,
                        "Block has multiple signatures before activation of WTMsig Block Signatures");
 
@@ -71,10 +66,7 @@ namespace eosio { namespace chain {
             static_assert(fc::reflector<additional_block_signatures_extension>::total_member_count == 1);
             static_assert(std::is_same_v<decltype(additional_block_signatures_extension::signatures), std::vector<signature_type>>);
 
-            b.block_extensions.emplace_back(
-                  additional_sigs_eid,
-                  fc::raw::pack( result.additional_signatures )
-            );
+            emplace_extension(b.block_extensions, additional_sigs_eid, fc::raw::pack( result.additional_signatures ));
          }
 
          return result;

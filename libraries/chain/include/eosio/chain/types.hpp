@@ -275,6 +275,18 @@ namespace eosio { namespace chain {
     */
    typedef vector<std::pair<uint16_t,vector<char>>> extensions_type;
 
+   /**
+    * emplace an extension into the extensions type such that it is properly ordered by extension id
+    * this assumes exts is already sorted by extension id
+    */
+   inline auto emplace_extension( extensions_type& exts, uint16_t eid, vector<char>&& data) {
+      auto insert_itr = std::lower_bound(exts.begin(), exts.end(), eid, [](const auto& ext, uint16_t id){
+         return ext.first < id;
+      });
+
+      return exts.emplace(insert_itr, eid, std::move(data));
+   }
+
 
    template<typename Container>
    class end_insert_iterator : public std::iterator< std::output_iterator_tag, void, void, void, void >

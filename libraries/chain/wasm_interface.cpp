@@ -183,16 +183,18 @@ class privileged_api : public context_aware_api {
                      "Producer schedule cannot be empty"
          );
 
+         const auto num_supported_key_types = context.db.get<protocol_state_object>().num_supported_key_types;
+
          // check that producers are unique
          std::set<account_name> unique_producers;
          for (const auto& p: producers) {
             EOS_ASSERT( context.is_account(p.producer_name), wasm_execution_error, "producer schedule includes a nonexisting account" );
 
-            p.authority.visit([this, &p](const auto& a) {
+            p.authority.visit([&p, num_supported_key_types](const auto& a) {
                uint32_t sum_weights = 0;
                std::set<public_key_type> unique_keys;
                for (const auto& kw: a.keys ) {
-                  EOS_ASSERT( kw.key.which() < context.db.get<protocol_state_object>().num_supported_key_types, unactivated_key_type,
+                  EOS_ASSERT( kw.key.which() < num_supported_key_types, unactivated_key_type,
                               "Unactivated key type used in proposed producer schedule");
 
                   EOS_ASSERT( kw.key.valid(), wasm_execution_error, "producer schedule includes an invalid key" );

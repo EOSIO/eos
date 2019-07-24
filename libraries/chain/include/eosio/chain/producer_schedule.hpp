@@ -98,27 +98,33 @@ namespace eosio { namespace chain {
     * this authority allows for a weighted threshold multi-sig per-producer
     */
    struct block_signing_authority_v0 {
+      static constexpr std::string_view abi_type_name() { return "block_signing_authority_v0"; }
+
       uint32_t                    threshold = 0;
       vector<key_weight>          keys;
 
-      bool key_is_relevant( const public_key_type& key ) const {
-         return std::find_if(keys.begin(), keys.end(), [&key](const auto& kw){
-            return kw.key == key;
-         }) != keys.end();
+      template<typename Op>
+      void for_each_key( Op op ) const {
+         for (const auto& kw : keys ) {
+            op(kw.key);
+         }
       }
 
-      bool keys_satisfy( const flat_set<public_key_type>& presented_keys ) const {
+      std::pair<bool, size_t> keys_satisfy_and_relevant( const std::set<public_key_type>& presented_keys ) const {
+         size_t num_relevant_keys = 0;
          uint32_t total_weight = 0;
-         for (const auto& kw : keys) {
+         for (const auto& kw : keys ) {
             const auto& iter = presented_keys.find(kw.key);
             if (iter != presented_keys.end()) {
-               total_weight += kw.weight;
-            }
+               ++num_relevant_keys;
 
-            if (total_weight >= threshold)
-               return true;
+               if( total_weight < threshold ) {
+                  total_weight += std::min<uint32_t>(std::numeric_limits<uint32_t>::max() - total_weight, kw.weight);
+               }
+            }
          }
-         return false;
+
+         return {total_weight >= threshold, num_relevant_keys};
       }
 
       auto to_shared(chainbase::allocator<char> alloc) const {
@@ -158,24 +164,26 @@ namespace eosio { namespace chain {
       name                    producer_name;
       block_signing_authority authority;
 
-      static bool key_is_relevant( const public_key_type& key, const block_signing_authority& authority ) {
-         return authority.visit([&key](const auto &a){
-            return a.key_is_relevant(key);
+      template<typename Op>
+      static void for_each_key( const block_signing_authority& authority, Op op ) {
+         authority.visit([&op](const auto &a){
+            a.for_each_key(op);
          });
       }
 
-      bool key_is_relevant( const public_key_type& key ) const {
-         return key_is_relevant(key, authority);
+      template<typename Op>
+      void for_each_key( Op op ) const {
+         for_each_key(authority, op);
       }
 
-      static bool keys_satisfy( const flat_set<public_key_type>& keys, const block_signing_authority& authority ) {
+      static std::pair<bool, size_t> keys_satisfy_and_relevant( const std::set<public_key_type>& keys, const block_signing_authority& authority ) {
          return authority.visit([&keys](const auto &a){
-            return a.keys_satisfy(keys);
+            return a.keys_satisfy_and_relevant(keys);
          });
       }
 
-      bool keys_satisfy( const flat_set<public_key_type>& keys ) const {
-         return keys_satisfy(keys, authority);
+      std::pair<bool, size_t> keys_satisfy_and_relevant( const std::set<public_key_type>& presented_keys ) const {
+         return keys_satisfy_and_relevant(presented_keys, authority);
       }
 
       auto to_shared(chainbase::allocator<char> alloc) const {

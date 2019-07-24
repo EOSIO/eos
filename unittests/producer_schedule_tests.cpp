@@ -681,4 +681,46 @@ BOOST_FIXTURE_TEST_CASE( duplicate_keys_test, TESTER ) try {
    BOOST_REQUIRE_EQUAL( true, control->proposed_producers().valid() );
 } FC_LOG_AND_RETHROW()
 
+BOOST_AUTO_TEST_CASE( large_authority_overflow_test ) try {
+
+   block_signing_authority_v0 auth;
+   { // create a large authority that should overflow
+      const size_t pre_overflow_count = 65'537UL; // enough for weights of 0xFFFF to add up to 0xFFFFFFFF
+      auth.keys.reserve(pre_overflow_count + 1);
+
+      for (int i = 0; i < pre_overflow_count; i++) {
+         auto key_str = std::to_string(i) + "_bsk";
+         auth.keys.emplace_back(key_weight{get_public_key(N(alice), key_str), 0xFFFFU});
+      }
+
+      // reduce the last weight by 1 so that its unsatisfiable
+      auth.keys.back().weight = 0xFFFEU;
+
+      // add one last key with a weight of 2 so that its only satisfiable with values that sum to an overflow of 32bit uint
+      auth.keys.emplace_back(key_weight{get_public_key(N(alice), std::to_string(pre_overflow_count) + "_bsk"), 0x0002U});
+
+      auth.threshold = 0xFFFFFFFFUL;
+   }
+
+   std::set<public_key_type> provided_keys;
+   { // construct a set of all keys to provide
+      for( const auto& kw: auth.keys) {
+         provided_keys.emplace(kw.key);
+      }
+   }
+
+   { // prove the naive accumulation overflows
+      uint32_t total = 0;
+      for( const auto& kw: auth.keys) {
+         total += kw.weight;
+      }
+      BOOST_REQUIRE_EQUAL(total, 0x0UL);
+   }
+
+   auto res = auth.keys_satisfy_and_relevant(provided_keys);
+
+   BOOST_REQUIRE_EQUAL(res.first, true);
+   BOOST_REQUIRE_EQUAL(res.second, provided_keys.size());
+} FC_LOG_AND_RETHROW()
+
 BOOST_AUTO_TEST_SUITE_END()

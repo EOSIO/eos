@@ -337,16 +337,15 @@ namespace eosio { namespace testing {
       auto producer = control->head_block_state()->get_scheduled_producer( control->pending_block_time() );
       vector<private_key_type> signing_keys;
 
-      for ( const auto& bsk : block_signing_private_keys ) {
-         if (producer.key_is_relevant(bsk.first)) {
-            signing_keys.push_back( bsk.second );
+      auto default_active_key = get_public_key( producer.producer_name, "active");
+      producer.for_each_key([&](const public_key_type& key){
+         const auto& iter = block_signing_private_keys.find(key);
+         if(iter != block_signing_private_keys.end()) {
+            signing_keys.push_back(iter->second);
+         } else if (key == default_active_key) {
+            signing_keys.emplace_back( get_private_key( producer.producer_name, "active") );
          }
-      }
-
-      // if the "active" key is relevant or no other keys were found, add the "active" private key
-      if( signing_keys.empty() || producer.key_is_relevant(get_public_key( producer.producer_name, "active") ) ) {
-         signing_keys.emplace_back( get_private_key( producer.producer_name, "active") );
-      }
+      });
 
       control->finalize_block( [&]( digest_type d ) {
          std::vector<signature_type> result;

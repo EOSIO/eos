@@ -15,10 +15,6 @@ namespace eosio { namespace chain {
       }
    }
 
-   bool block_header_state::is_active_producer( account_name n )const {
-      return producer_to_last_produced.find(n) != producer_to_last_produced.end();
-   }
-
    producer_authority block_header_state::get_scheduled_producer( block_timestamp_type t )const {
       auto index = t.slot % (active_schedule.producers.size() * config::producer_repetitions);
       index /= config::producer_repetitions;
@@ -193,7 +189,8 @@ namespace eosio { namespace chain {
       h.schedule_version  = active_schedule_version;
 
       if( new_protocol_feature_activations.size() > 0 ) {
-         h.header_extensions.emplace_back(
+         emplace_extension(
+               h.header_extensions,
                protocol_feature_activation::extension_id(),
                fc::raw::pack( protocol_feature_activation{ std::move(new_protocol_feature_activations) } )
          );
@@ -202,7 +199,8 @@ namespace eosio { namespace chain {
       if (new_producers) {
          if ( detail::is_builtin_activated(prev_activated_protocol_features, pfs, builtin_protocol_feature_t::wtmsig_block_signatures) ) {
             // add the header extension to update the block schedule
-            h.header_extensions.emplace_back(
+            emplace_extension(
+                  h.header_extensions,
                   producer_schedule_change_extension::extension_id(),
                   fc::raw::pack( producer_schedule_change_extension( *new_producers ) )
             );
@@ -357,13 +355,14 @@ namespace eosio { namespace chain {
                                  const signer_callback_type& signer
    )&&
    {
-      bool wtmsig_enabled = detail::is_builtin_activated(prev_activated_protocol_features, pfs, builtin_protocol_feature_t::wtmsig_block_signatures);
+      auto pfa = prev_activated_protocol_features;
 
       auto result = std::move(*this)._finish_next( h, pfs, validator );
       result.sign( signer );
       h.producer_signature = result.header.producer_signature;
 
       if( !result.additional_signatures.empty() ) {
+         bool wtmsig_enabled = detail::is_builtin_activated(pfa, pfs, builtin_protocol_feature_t::wtmsig_block_signatures);
          EOS_ASSERT(wtmsig_enabled, producer_schedule_exception, "Block was signed with multiple signatures before WTMsig block signatures are enabled" );
       }
 
@@ -409,28 +408,27 @@ namespace eosio { namespace chain {
    }
 
    void block_header_state::verify_signee( )const {
-      flat_set<public_key_type> keys;
-      keys.reserve(1 + additional_signatures.size());
-      keys.emplace(fc::crypto::public_key( header.producer_signature, sig_digest(), true ));
+      std::set<public_key_type> keys;
+      auto digest = sig_digest();
+      keys.emplace(fc::crypto::public_key( header.producer_signature, digest, true ));
 
       for (const auto& s: additional_signatures) {
-         auto key = fc::crypto::public_key( s, sig_digest(), true );
-         EOS_ASSERT(keys.find(key) == keys.end(), wrong_signing_key,
-               "block signed by same key twice",
-               ("key", key));
-
-         keys.emplace(std::move(key));
+         auto res = keys.emplace(s, digest, true);
+         EOS_ASSERT(res.second, wrong_signing_key, "block signed by same key twice", ("key", *res.first));
       }
 
-      for (const auto& k: keys) {
-         EOS_ASSERT(producer_authority::key_is_relevant(k, valid_block_signing_authority), wrong_signing_key,
-                    "block signed by unexpected key",
-                    ("signing_key", k)("valid_keys", valid_block_signing_authority));
-      }
+      bool is_satisfied = false;
+      size_t relevant_sig_count = 0;
 
-      EOS_ASSERT(producer_authority::keys_satisfy(keys, valid_block_signing_authority), wrong_signing_key,
-            "block signatures do not satisfy the block signing authority",
-            ("keys", keys)("authority", valid_block_signing_authority));
+      std::tie(is_satisfied, relevant_sig_count) = producer_authority::keys_satisfy_and_relevant(keys, valid_block_signing_authority);
+
+      EOS_ASSERT(relevant_sig_count == keys.size(), wrong_signing_key,
+                 "block signed by unexpected key",
+                 ("signing_keys", keys)("valid_keys", valid_block_signing_authority));
+
+      EOS_ASSERT(is_satisfied, wrong_signing_key,
+                 "block signatures do not satisfy the block signing authority",
+                 ("keys", keys)("authority", valid_block_signing_authority));
    }
 
    /**

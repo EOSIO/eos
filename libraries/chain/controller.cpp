@@ -2844,15 +2844,9 @@ const producer_authority_schedule& controller::pending_producers()const {
       return my->pending->_block_stage.get<completed_block>()._block_state->pending_schedule.schedule;
 
    if( my->pending->_block_stage.contains<assembled_block>() ) {
-      if (is_builtin_activated(builtin_protocol_feature_t::wtmsig_block_signatures)) {
-         auto exts = my->pending->_block_stage.get<assembled_block>()._unsigned_block->validate_and_extract_header_extensions();
-         if (exts.count(producer_schedule_change_extension::extension_id()))
-            return exts.lower_bound(producer_schedule_change_extension::extension_id())->second.get<producer_schedule_change_extension>();
-      } else {
-         const auto& new_prods_cache = my->pending->_block_stage.get<assembled_block>()._new_producer_authority_cache;
-         if( new_prods_cache ) {
-            return *new_prods_cache;
-         }
+      const auto& new_prods_cache = my->pending->_block_stage.get<assembled_block>()._new_producer_authority_cache;
+      if( new_prods_cache ) {
+         return *new_prods_cache;
       }
    }
 

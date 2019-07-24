@@ -1304,8 +1304,12 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
    const auto& scheduled_producer = hbs->get_scheduled_producer(block_time);
    auto currrent_watermark_itr = _producer_watermarks.find(scheduled_producer.producer_name);
 
-   auto num_relevant_signatures = std::count_if(_signature_providers.begin(), _signature_providers.end(), [&scheduled_producer](const auto& p){
-      return scheduled_producer.key_is_relevant(p.first);
+   size_t num_relevant_signatures = 0;
+   scheduled_producer.for_each_key([&](const public_key_type& key){
+      const auto& iter = _signature_providers.find(key);
+      if(iter != _signature_providers.end()) {
+         num_relevant_signatures++;
+      }
    });
 
    auto irreversible_block_age = get_irreversible_block_age();
@@ -1818,11 +1822,12 @@ void producer_plugin_impl::produce_block() {
 
    relevant_providers.reserve(_signature_providers.size());
 
-   for (const auto& p : _signature_providers) {
-      if (producer_authority::key_is_relevant(p.first, auth)) {
-         relevant_providers.emplace_back(p.second);
+   producer_authority::for_each_key(auth, [&](const public_key_type& key){
+      const auto& iter = _signature_providers.find(key);
+      if (iter != _signature_providers.end()) {
+         relevant_providers.emplace_back(iter->second);
       }
-   }
+   });
 
    EOS_ASSERT(relevant_providers.size() > 0, producer_priv_key_not_found, "Attempting to produce a block for which we don't have any relevant private keys");
 

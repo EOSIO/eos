@@ -16,14 +16,13 @@ struct chain_snapshot_header {
     *         - Incompatible with version 1.
     *         - Adds new indices for: protocol_state_object and account_ram_correction_object
     *   3: Updated for v2.0.0 protocol features:
-    *         - WebAuthn keys
-    *   4: Updated chain snapshot for wtmsig block signing protocol feature:
     *         - forwards compatible with version 2
-    *         - the block header state changed to include producer authorities and additional signatures
+    *         - WebAuthn keys
+    *         - wtmsig block siganatures: the block header state changed to include producer authorities and additional signatures
     */
 
    static constexpr uint32_t minimum_compatible_version = 2;
-   static constexpr uint32_t current_version = 4;
+   static constexpr uint32_t current_version = 3;
 
    uint32_t version = current_version;
 
