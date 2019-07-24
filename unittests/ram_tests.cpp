@@ -50,13 +50,21 @@ BOOST_AUTO_TEST_SUITE(ram_tests)
          TESTER *tester = this;
          auto rlm = control->get_resource_limits_manager();
 
-         //testing min stake 99'9999 REM
-         BOOST_REQUIRE_EXCEPTION(
-               create_account_with_resources(N(testram33333), config::system_account_name, false,
-                                             core_from_string(std::to_string(min_account_stake / 10000 - 1) + ".9999")),
-               eosio_assert_message_exception,
-               fc_exception_message_starts_with("assertion failure with message: insufficient minimal account stake"));
-         produce_blocks(1);
+         //testing setminstake initially min stake 99'9999 REM should fail and after setting new min it should pass
+         {
+            BOOST_REQUIRE_EXCEPTION(
+                  create_account_with_resources(N(testram44444), config::system_account_name, false,
+                                                core_from_string(std::to_string(min_account_stake / 10000 - 1) + ".9999")),
+                  eosio_assert_message_exception,
+                  fc_exception_message_starts_with("assertion failure with message: insufficient minimal account stake"));
+            produce_blocks(1);
+
+            tester->push_action(config::system_account_name, N(setminstake), config::system_account_name, mvo()
+                  ("min_account_stake", 999999));
+            create_account_with_resources(N(testram44444), config::system_account_name, false,
+                                          core_from_string(std::to_string(min_account_stake / 10000 - 1) + ".9999"));
+            produce_blocks(10);
+         }
 
          BOOST_REQUIRE_EXCEPTION(
                create_account_with_resources(N(testram33333), config::system_account_name, false,
