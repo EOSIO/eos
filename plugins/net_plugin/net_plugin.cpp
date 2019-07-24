@@ -695,12 +695,6 @@ namespace eosio {
       time_message                   last_time_recv; //!< a clone of the last time message received
       time_message                   last_time_sent; //!< a clone of the last time message sent
       tstamp                         rec{0}; //!< receive timestamp
-
-#if 0
-      tstamp                         org{0}; //!< originate timestamp
-      tstamp                         dst{0}; //!< destination timestamp
-      tstamp                         xmt{0}; //!< transmit timestamp
-#endif
       /** @} */
 
       // data samples for the topology plugin
@@ -942,32 +936,6 @@ namespace eosio {
       }
    }
 
-#if 0
-   // for future use - when the topology manager is engaged in actively routing block/transaction
-   // messages the dynamic dipsatcher functionality will be key for replacing the default static
-   // dispatcher.
-   class dynamic_dispatch_manager : public dispatch_manager {
-   public:
-      virtual void bcast_transaction (const packed_transaction& msg);
-      virtual void bcast_block (const block_state_ptr& bs);
-      virtual void recv_block (const connection_ptr& conn, const block_id_type& msg, uint32_t bnum);
-      virtual void recv_transaction (const connection_ptr& conn, const transaction_id_type& id);
-   };
-
-   void dynamic_dispatch_manager::bcast_transaction( const packed_transaction& msg) {
-   }
-
-   void dynamic_dispatch_manager::bcast_block( const block_state_ptr& msg) {
-   }
-
-   void dynamic_dispatch_manager::recv_block( const connection_ptr& conn, const block_id_type& msg, uint32_t bnum) {
-   }
-
-   void dynamic_dispatch_manager::recv_transaction( const connection_ptr& conn, const transaction_id_type& id) {
-   }
-#endif
-
-
    //---------------------------------------------------------------------------
 
    connection::connection( string endpoint )
@@ -982,7 +950,6 @@ namespace eosio {
         last_handshake_sent()
    {
       fc_ilog( logger, "creating connection to ${n}", ("n", endpoint) );
-      node_id.data()[0] = 0;
    }
 
    connection::connection()
@@ -3642,9 +3609,6 @@ namespace eosio {
       my->producer_plug = app().find_plugin<producer_plugin>();
       my->topology_plug = app().find_plugin<topology_plugin>();
       if( my->topology_plug != nullptr ) {
-#if 0 // for future use
-         my->dispatcher.reset( new dynamic_dispatch_manager );
-#endif
          my->topology_plug->topo_update.connect([my = my]( const topology_message & t) {
                                                     my->on_topology_update ( t );
                                                  });
