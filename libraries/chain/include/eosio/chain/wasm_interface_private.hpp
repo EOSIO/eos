@@ -125,8 +125,9 @@ namespace eosio { namespace chain {
             });
             trx_context.pause_billing_timer();
             IR::Module module;
+	    std::vector<U8> bytes = codeobject->code;
             try {
-               Serialization::MemoryInputStream stream((const U8*)codeobject->code.data(), codeobject->code.size());
+               Serialization::MemoryInputStream stream((const U8*)bytes.data(), bytes.size());
                WASM::serialize(stream, module);
                module.userSections.clear();
             } catch(const Serialization::FatalSerializationException& e) {
@@ -135,19 +136,21 @@ namespace eosio { namespace chain {
                EOS_ASSERT(false, wasm_serialization_error, e.message.c_str());
             }
 
-            wasm_injections::wasm_binary_injection injector(module);
-            injector.inject();
+            if(vm_type != wasm_interface::vm_type::eos_vm) {
+               wasm_injections::wasm_binary_injection injector(module);
+               injector.inject();
 
-            std::vector<U8> bytes;
-            try {
-               Serialization::ArrayOutputStream outstream;
-               WASM::serialize(outstream, module);
-               bytes = outstream.getBytes();
-            } catch(const Serialization::FatalSerializationException& e) {
-               EOS_ASSERT(false, wasm_serialization_error, e.message.c_str());
-            } catch(const IR::ValidationException& e) {
-               EOS_ASSERT(false, wasm_serialization_error, e.message.c_str());
-            }
+               std::vector<U8> bytes;
+               try {
+                  Serialization::ArrayOutputStream outstream;
+                  WASM::serialize(outstream, module);
+                  bytes = outstream.getBytes();
+               } catch(const Serialization::FatalSerializationException& e) {
+                  EOS_ASSERT(false, wasm_serialization_error, e.message.c_str());
+               } catch(const IR::ValidationException& e) {
+                  EOS_ASSERT(false, wasm_serialization_error, e.message.c_str());
+               }
+	    }
 
             wasm_instantiation_cache.modify(it, [&](auto& c) {
                c.module = runtime_interface->instantiate_module((const char*)bytes.data(), bytes.size(), parse_initial_memory(module));
