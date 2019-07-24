@@ -561,6 +561,23 @@ BOOST_FIXTURE_TEST_CASE( check_entry_behavior_2, TESTER ) try {
    BOOST_CHECK_EQUAL(transaction_receipt::executed, receipt.status);
 } FC_LOG_AND_RETHROW()
 
+BOOST_FIXTURE_TEST_CASE( entry_import, TESTER ) try {
+   create_accounts( {N(enterimport)} );
+   produce_block();
+
+   set_code(N(enterimport), entry_import_wast);
+
+   signed_transaction trx;
+   action act;
+   act.account = N(enterimport);
+   act.name = N();
+   act.authorization = vector<permission_level>{{N(enterimport),config::active_name}};
+   trx.actions.push_back(act);
+
+   set_transaction_headers(trx);
+   trx.sign(get_private_key( N(enterimport), "active" ), control->get_chain_id());
+   BOOST_CHECK_THROW(push_transaction(trx), abort_called);
+} FC_LOG_AND_RETHROW()
 
 /**
  * Ensure we can load a wasm w/o memory

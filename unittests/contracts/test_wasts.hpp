@@ -179,6 +179,15 @@ static const char entry_wast_2[] = R"=====(
 )
 )=====";
 
+static const char entry_import_wast[] = R"=====(
+(module
+ (import "env" "abort" (func $abort))
+ (export "apply" (func $apply))
+ (start $abort)
+ (func $apply (param $0 i64) (param $1 i64) (param $2 i64))
+)
+)=====";
+
 static const char simple_no_memory_wast[] = R"=====(
 (module
  (import "env" "require_auth" (func $require_auth (param i64)))
