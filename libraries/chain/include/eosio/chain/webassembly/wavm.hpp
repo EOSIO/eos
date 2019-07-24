@@ -61,9 +61,9 @@ inline array_ptr<T> array_ptr_impl (running_instance_context& ctx, U32 ptr, size
    RODEOS_MEMORY_PTR_cb_ptr;
    volatile GS_PTR char* p = 0;
    char check;
-   if(length)
+   if(length || cb_ptr->current_linear_memory_pages < 0)
       check = p[ptr];
-   check = p[ptr+length-1];
+   check = p[ptr+length*sizeof(T)-1];
 
    return array_ptr<T>((T*)((char*)(cb_ptr->full_linear_memory_start) + ptr));
 }
@@ -168,8 +168,11 @@ inline auto convert_native_to_wasm(const running_instance_context& ctx, const fc
 
 inline auto convert_native_to_wasm(running_instance_context& ctx, char* ptr) {
    RODEOS_MEMORY_PTR_cb_ptr;
-   ///XXX do we need to validate this like previously? probably due to off-by-one issue maybe
+   ///XXX this validation isn't as strict
    U64 delta = (U64)(ptr - cb_ptr->full_linear_memory_start);
+   volatile GS_PTR char* p = 0;
+   char temp;
+   temp = p[delta];
    return (U32)delta;
 }
 

@@ -74,7 +74,7 @@ class wavm_instantiated_module : public wasm_instantiated_module_interface {
          //The memory instance is reused across all wavm_instantiated_modules, but for wasm instances
          // that didn't declare "memory", getDefaultMemory() won't see it. It would also be possible
          // to say something like if(module->memories.size()) here I believe
-         cd.starting_memory_pages = 0;
+         cd.starting_memory_pages = -1;
          if(module->memories.size())
             cd.starting_memory_pages = module->memories.defs.at(0).type.size.min;
          cd.initdata = _initial_memory;

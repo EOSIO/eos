@@ -41,7 +41,7 @@ struct code_descriptor {
    size_t code_offset;
    unsigned start_offset;  //these are relative to code_offset
    unsigned apply_offset;
-   unsigned starting_memory_pages;
+   int starting_memory_pages;
    std::vector<uint8_t> initdata;
    unsigned initdata_pre_memory_size;
    std::vector<int> table_mappings; // <0 is negative value of intrinsic offset, otherwise wasm func with offset from code_offset
