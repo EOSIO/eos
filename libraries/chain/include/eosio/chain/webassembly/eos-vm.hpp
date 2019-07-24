@@ -7,11 +7,13 @@
 #include <softfloat_types.h>
 
 //eos-vm includes
+/*
 #include <eosio/vm/host_function.hpp>
 namespace eosio { namespace vm {
    template <>
    struct registered_host_functions<eosio::chain::apply_context>;
 } }
+*/
 #include <eosio/vm/backend.hpp>
 
 // eosio specific specializations
@@ -67,6 +69,7 @@ namespace eosio { namespace vm {
 
 }} // ns eosio::vm
 
+#if 0
 namespace eosio { namespace vm {
    template <typename WAlloc, typename Cls, typename Cls2, auto F, typename R, typename Args, size_t... Is>
    auto create_logging_function(std::index_sequence<Is...>) {
@@ -163,6 +166,7 @@ namespace eosio { namespace vm {
       }
    };
 } } // eosio::vm
+#endif
 
 namespace eosio { namespace chain { namespace webassembly { namespace eos_vm_runtime {
 

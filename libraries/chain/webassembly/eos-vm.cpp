@@ -22,42 +22,14 @@ class eos_vm_instantiated_module : public wasm_instantiated_module_interface {
 
       void apply(apply_context& context) override {
          auto* alloc = wasm_interface::get_wasm_allocator();
-         alloc->reset();
          _instantiated_module->set_wasm_allocator( alloc );
-         //if (!(const auto& res = _instantiated_module->run_start()))
-         //   EOS_ASSERT(false, wasm_execution_error, "eos-vm start function failure (${s})", ("s", res.to_string()));
-
          _runtime->_bkend = _instantiated_module.get();
-
-         Platform::HardwareTrapType trapType;
-         Platform::CallStack trapCallStack;
-         Uptr trapOperand;
-         trapType = Platform::catchHardwareTraps(trapCallStack,trapOperand, [&]{
-            const auto& res = _instantiated_module->call(&context, "env", "apply",
-                                             context.get_receiver().to_uint64_t(),
-                                             context.get_action().account.to_uint64_t(),
-                                             context.get_action().name.to_uint64_t());
-            //EOS_ASSERT(res, wasm_execution_error, "eos-vm execution failure (${s})", ("s", res.to_string()));
-         });
+	 _runtime->_bkend->initialize(&context);
+	 const auto& res = _runtime->_bkend->call(&context, "env", "apply",
+					     context.get_receiver().to_uint64_t(),
+					     context.get_action().account.to_uint64_t(),
+					     context.get_action().name.to_uint64_t());
          _runtime->_bkend = nullptr;
-	 /* TODO clean this up
-         switch(trapType)
-         {
-         case Platform::HardwareTrapType::none: break;
-         case Platform::HardwareTrapType::accessViolation:
-         {
-            if (alloc->is_in_region(reinterpret_cast<char*>(trapOperand))) { 
-               throw wasm_execution_error();
-            } else {
-               elog("Access violation outside of memory reserved addresses");
-               abort();
-            }
-         }
-         case Platform::HardwareTrapType::stackOverflow: throw wasm_execution_error();
-         case Platform::HardwareTrapType::intDivideByZeroOrOverflow: throw wasm_execution_error();
-         default: Errors::unreachable();
-         };
-	 */
       }
 
    private:
