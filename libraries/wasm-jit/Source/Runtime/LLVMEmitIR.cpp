@@ -1064,7 +1064,7 @@ namespace LLVMJIT
 				llvmI8PtrType
 				});
 			defaultTablePointer = emitLiteralPointer(moduleInstance->defaultTable->baseAddress,tableElementType->getPointerTo());
-			defaultTableMaxElementIndex = emitLiteral(((Uptr)moduleInstance->defaultTable->endOffset)/sizeof(TableInstance::FunctionElement));
+			defaultTableMaxElementIndex = emitLiteral((U64)module.tables.defs[0].type.size.min);
 		}
 		else
 		{
