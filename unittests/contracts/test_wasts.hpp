@@ -182,7 +182,6 @@ static const char entry_wast_2[] = R"=====(
 static const char entry_import_wast[] = R"=====(
 (module
  (import "env" "abort" (func $abort))
- (import "env" "eosio_assert" (func $eosio_assert (param i32 i32)))
  (export "apply" (func $apply))
  (start $abort)
  (func $apply (param $0 i64) (param $1 i64) (param $2 i64))
