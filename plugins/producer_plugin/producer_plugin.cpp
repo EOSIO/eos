@@ -509,6 +509,10 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
             }
 
             auto trace = chain.push_transaction( trx, deadline );
+
+            // introduce core dump for testings
+            trace.reset();
+            // core dump coming...
             if( trace->except ) {
                if( failure_is_subjective( *trace->except, deadline_is_subjective )) {
                   _pending_incoming_transactions.add( trx, persist_until_expired, next );
