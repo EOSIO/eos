@@ -190,7 +190,7 @@ namespace eosio {
       explicit dispatch_manager(boost::asio::io_context& io_context)
       : strand( io_context ) {}
 
-      void bcast_topology_message (const topology_message_ptr& tm);
+      void bcast_topology_message (const topology_message& tm);
 
       void bcast_transaction(const transaction_metadata_ptr& trx);
       void rejected_transaction(const transaction_id_type& msg, uint32_t head_blk_num);
@@ -916,7 +916,6 @@ namespace eosio {
          fc_dlog( logger, "handle sync_request_message" );
          c->handle_message( msg );
       }
-
    };
 
    template<typename Function>
@@ -944,8 +943,8 @@ namespace eosio {
         socket( new tcp::socket( my_impl->thread_pool->get_executor() ) ),
         connection_id( ++my_impl->current_connection_id ),
         response_expected_timer( my_impl->thread_pool->get_executor() ),
-        read_delay_timer( my_impl->thread_pool->get_executor() ),
         node_id(),
+        read_delay_timer( my_impl->thread_pool->get_executor() ),
         last_handshake_recv(),
         last_handshake_sent()
    {
@@ -958,8 +957,8 @@ namespace eosio {
         socket( new tcp::socket( my_impl->thread_pool->get_executor() ) ),
         connection_id( ++my_impl->current_connection_id ),
         response_expected_timer( my_impl->thread_pool->get_executor() ),
-        read_delay_timer( my_impl->thread_pool->get_executor() ),
         node_id(),
+        read_delay_timer( my_impl->thread_pool->get_executor() ),
         last_handshake_recv(),
         last_handshake_sent()
    {
@@ -2179,7 +2178,7 @@ namespace eosio {
 
    void dispatch_manager::bcast_topology_message (const topology_message& tm) {
       std::shared_ptr<std::vector<char>> send_buffer;
-      my_impl->for_each_connection
+      for_each_connection
          ( [tm, &send_buffer]( auto &cp )
            {
               if( !cp->current() ) {
@@ -3216,7 +3215,7 @@ namespace eosio {
                fc_wlog( logger, "Peer sample strobed sooner than expected: ${m}", ("m", ec.message()) );
             }
 
-            my->for_each_connection( []( auto& c ) {
+            for_each_connection( []( auto& c ) {
                if( c->socket_is_open() ) {
                   c->strand.post( [c]() {
                      c->collect_samples();
