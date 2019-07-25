@@ -1962,7 +1962,9 @@ struct controller_impl {
             } // end if exception
          } /// end for each block in branch
 
-         unapplied_branch = std::move( branches.second );
+         if ( read_mode == db_read_mode::SPECULATIVE ) {
+            unapplied_branch = std::move( branches.second );
+         }
 
          ilog("successfully switched fork to new head ${new_head_id}", ("new_head_id", new_head->id));
       } else {
