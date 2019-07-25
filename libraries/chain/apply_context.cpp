@@ -34,7 +34,7 @@ apply_context::apply_context(controller& con, transaction_context& trx_ctx, uint
 :control(con)
 ,db(con.mutable_db())
 ,trx_context(trx_ctx)
-,intrinsic_log(con.get_intrinsic_debug_log())
+/*,intrinsic_log(con.get_intrinsic_debug_log())*/
 ,recurse_depth(depth)
 ,first_receiver_action_ordinal(action_ordinal)
 ,action_ordinal(action_ordinal)
@@ -53,11 +53,12 @@ apply_context::apply_context(controller& con, transaction_context& trx_ctx, uint
 void apply_context::exec_one()
 {
    auto start = fc::time_point::now();
-
+   /*
    if( intrinsic_log ) {
       intrinsic_log->start_action( control.get_dynamic_global_properties().global_action_sequence + 1,
                                    receiver, act->account, act->name );
    }
+   */
 
    action_receipt r;
    r.receiver         = receiver;

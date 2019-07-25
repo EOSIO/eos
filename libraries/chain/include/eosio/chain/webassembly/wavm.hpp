@@ -645,10 +645,11 @@ struct intrinsic_function_invoker {
    template<MethodSig Method>
    static Ret wrapper(running_instance_context& ctx, Params... params) {
       class_from_wasm<Cls>::value(*ctx.apply_ctx).checktime();
-      auto& intrinsic_log = ctx.apply_ctx->control.get_intrinsic_debug_log();
+      /*auto& intrinsic_log = ctx.apply_ctx->control.get_intrinsic_debug_log();
       if( intrinsic_log ) {
          intrinsic_log->record_intrinsic( calc_arguments_hash( params... ), calc_memory_hash( ctx.memory ) );
       }
+      */
       return (class_from_wasm<Cls>::value(*ctx.apply_ctx).*Method)(params...);
    }
 
@@ -668,10 +669,11 @@ struct intrinsic_function_invoker<WasmSig, void, MethodSig, Cls, Params...> {
    template<MethodSig Method>
    static void_type wrapper(running_instance_context& ctx, Params... params) {
       class_from_wasm<Cls>::value(*ctx.apply_ctx).checktime();
-      auto& intrinsic_log = ctx.apply_ctx->control.get_intrinsic_debug_log();
+      /*auto& intrinsic_log = ctx.apply_ctx->control.get_intrinsic_debug_log();
       if( intrinsic_log ) {
          intrinsic_log->record_intrinsic( calc_arguments_hash( params... ), calc_memory_hash( ctx.memory ) );
       }
+      */
       (class_from_wasm<Cls>::value(*ctx.apply_ctx).*Method)(params...);
       return void_type();
    }

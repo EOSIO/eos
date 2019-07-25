@@ -562,7 +562,7 @@ class apply_context {
       controller&                     control;
       chainbase::database&            db;  ///< database where state is stored
       transaction_context&            trx_context; ///< transaction context in which the action is running
-      optional<intrinsic_debug_log>&  intrinsic_log;
+      /*optional<intrinsic_debug_log>&  intrinsic_log;*/
 
    private:
       const action*                 act = nullptr; ///< action being applied
