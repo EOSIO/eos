@@ -78,6 +78,7 @@ BOOST_AUTO_TEST_CASE( unapplied_transaction_queue_test ) try {
 
    // fifo aborted
    q.add_aborted( { trx1, trx2, trx3 } );
+   q.add_aborted( { trx1, trx2, trx3 } ); // duplicates ignored
    BOOST_CHECK( q.size() == 3 );
    BOOST_REQUIRE( next( q ) == trx1 );
    BOOST_CHECK( q.size() == 2 );
@@ -118,7 +119,7 @@ BOOST_AUTO_TEST_CASE( unapplied_transaction_queue_test ) try {
    bs2->trxs = { trx3, trx4, trx5 };
    auto bs3 = std::make_shared<block_state>();
    bs3->trxs = { trx6 };
-   q.add_forked( { bs3, bs2, bs1 } );
+   q.add_forked( { bs3, bs2, bs1, bs1 } ); // bs1 duplicate ignored
    BOOST_CHECK( q.size() == 6 );
    BOOST_REQUIRE( next( q ) == trx1 );
    BOOST_CHECK( q.size() == 5 );
