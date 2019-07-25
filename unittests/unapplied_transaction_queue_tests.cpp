@@ -89,6 +89,15 @@ BOOST_AUTO_TEST_CASE( unapplied_transaction_queue_test ) try {
    BOOST_REQUIRE( next( q ) == nullptr );
    BOOST_CHECK( q.empty() );
 
+   // clear applied
+   q.add_aborted( { trx1, trx2, trx3 } );
+   q.clear_applied( { trx1, trx3, trx4 } );
+   BOOST_CHECK( q.size() == 1 );
+   BOOST_REQUIRE( next( q ) == trx2 );
+   BOOST_CHECK( q.size() == 0 );
+   BOOST_REQUIRE( next( q ) == nullptr );
+   BOOST_CHECK( q.empty() );
+
    // order: persisted, aborted
    q.add_persisted( trx6 );
    q.add_aborted( { trx1, trx2, trx3 } );

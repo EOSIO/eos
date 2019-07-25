@@ -111,6 +111,13 @@ public:
       return true;
    }
 
+   void clear_applied( const std::vector<transaction_metadata_ptr>& applied_trxs ) {
+      auto& idx = queue.get<by_trx_id>();
+      for( const auto& trx : applied_trxs ) {
+         idx.erase( trx->id() );
+      }
+   }
+
    void add_forked( const branch_type& forked_branch ) {
       if( only_track_persisted ) return;
       // forked_branch is in reverse order
