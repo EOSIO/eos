@@ -587,10 +587,11 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          else
             my->blocks_dir = bld;
       }
-
+      /*
       if( options.at( "debug-log-intrinsics" ).as<bool>() ) {
          my->chain_config->intrinsic_debug_log_path = app().data_dir() / "intrinsics.log";
       }
+      */
 
       protocol_feature_set pfs;
       {
