@@ -424,11 +424,11 @@ namespace eosio { namespace chain {
 
       EOS_ASSERT(relevant_sig_count == keys.size(), wrong_signing_key,
                  "block signed by unexpected key",
-                 ("signing_keys", keys)("valid_keys", valid_block_signing_authority));
+                 ("signing_keys", keys)("authority", valid_block_signing_authority));
 
       EOS_ASSERT(is_satisfied, wrong_signing_key,
                  "block signatures do not satisfy the block signing authority",
-                 ("keys", keys)("authority", valid_block_signing_authority));
+                 ("signing_keys", keys)("authority", valid_block_signing_authority));
    }
 
    /**

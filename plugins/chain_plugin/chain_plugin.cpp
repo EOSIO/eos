@@ -1689,11 +1689,19 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
    read_only::get_producers_result result;
 
    for (auto p : db.active_producers().producers) {
-      fc::variant row = fc::mutable_variant_object()
+      auto row = fc::mutable_variant_object()
          ("owner", p.producer_name)
          ("producer_authority", p.authority)
          ("url", "")
          ("total_votes", 0.0f);
+
+      // detect a legacy key and maintain API compatibility for those entries
+      if (p.authority.contains<block_signing_authority_v0>()) {
+         const auto& auth = p.authority.get<block_signing_authority_v0>();
+         if (auth.keys.size() == 1 && auth.keys.back().weight == auth.threshold) {
+            row("producer_key", auth.keys.back().key);
+         }
+      }
 
       result.rows.push_back(row);
    }

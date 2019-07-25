@@ -104,7 +104,7 @@ namespace eosio { namespace chain {
       vector<key_weight>          keys;
 
       template<typename Op>
-      void for_each_key( Op op ) const {
+      void for_each_key( Op&& op ) const {
          for (const auto& kw : keys ) {
             op(kw.key);
          }
@@ -165,15 +165,15 @@ namespace eosio { namespace chain {
       block_signing_authority authority;
 
       template<typename Op>
-      static void for_each_key( const block_signing_authority& authority, Op op ) {
+      static void for_each_key( const block_signing_authority& authority, Op&& op ) {
          authority.visit([&op](const auto &a){
-            a.for_each_key(op);
+            a.for_each_key(std::forward<Op>(op));
          });
       }
 
       template<typename Op>
-      void for_each_key( Op op ) const {
-         for_each_key(authority, op);
+      void for_each_key( Op&& op ) const {
+         for_each_key(authority, std::forward<Op>(op));
       }
 
       static std::pair<bool, size_t> keys_satisfy_and_relevant( const std::set<public_key_type>& keys, const block_signing_authority& authority ) {

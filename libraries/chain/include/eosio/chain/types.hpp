@@ -280,8 +280,8 @@ namespace eosio { namespace chain {
     * this assumes exts is already sorted by extension id
     */
    inline auto emplace_extension( extensions_type& exts, uint16_t eid, vector<char>&& data) {
-      auto insert_itr = std::lower_bound(exts.begin(), exts.end(), eid, [](const auto& ext, uint16_t id){
-         return ext.first < id;
+      auto insert_itr = std::upper_bound(exts.begin(), exts.end(), eid, [](uint16_t id, const auto& ext){
+         return id < ext.first;
       });
 
       return exts.emplace(insert_itr, eid, std::move(data));

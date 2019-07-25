@@ -189,9 +189,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       std::vector<chain::digest_type>                           _protocol_features_to_activate;
       bool                                                      _protocol_features_signaled = false; // to mark whether it has been signaled in start_block
 
-      time_point _last_signed_block_time;
       time_point _start_time = fc::time_point::now();
-      uint32_t   _last_signed_block_num = 0;
 
       producer_plugin* _self = nullptr;
       chain_plugin* chain_plug = nullptr;
@@ -231,17 +229,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 
 
       void on_block( const block_state_ptr& bsp ) {
-         if( bsp->header.timestamp <= _last_signed_block_time ) return;
          if( bsp->header.timestamp <= _start_time ) return;
-         if( bsp->block_num <= _last_signed_block_num ) return;
-
-         const auto& active_producer_to_signing_key = bsp->active_schedule.producers;
-
-         flat_set<account_name> active_producers;
-         active_producers.reserve(bsp->active_schedule.producers.size());
-         for (const auto& p: bsp->active_schedule.producers) {
-            active_producers.insert(p.producer_name);
-         }
 
          // simplify handling of watermark in on_block
          auto block_producer = bsp->header.producer;
@@ -1412,11 +1400,11 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
 
    if( chain.is_building_block() ) {
       auto pending_block_time = chain.pending_block_time();
-      auto pending_block_signing_authority = chain.pending_block_signing_authority();
+      const auto& pending_block_signing_authority = chain.pending_block_signing_authority();
       const fc::time_point preprocess_deadline = calculate_block_deadline(block_time);
 
       if (_pending_block_mode == pending_block_mode::producing && pending_block_signing_authority != scheduled_producer.authority) {
-         elog("Block Signing Key is not expected value, reverting to speculative mode! [expected: \"${expected}\", actual: \"${actual\"", ("expected", scheduled_producer.authority)("actual", pending_block_signing_authority));
+         elog("Unexpected block signing authority, reverting to speculative mode! [expected: \"${expected}\", actual: \"${actual\"", ("expected", scheduled_producer.authority)("actual", pending_block_signing_authority));
          _pending_block_mode = pending_block_mode::speculating;
       }
 
