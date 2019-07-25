@@ -1068,44 +1068,45 @@ bool chain_plugin::recover_reversible_blocks( const fc::path& db_dir, uint32_t c
    ilog( "Reconstructing '${reversible_dir}' from backed up reversible directory", ("reversible_dir", reversible_dir) );
 
    optional<chainbase::database> old_reversible; 
+
    try {
-	   old_reversible = chainbase::database( backup_dir, database::read_only, 0, true );
+      old_reversible = chainbase::database( backup_dir, database::read_only, 0, true );
    } catch (const std::runtime_error &) {
-	// since we are allowing for dirty, it must be incompatible
-   	ilog( "Did not recover any reversible blocks since reversible database incompatible");
-	return true;
+      // since we are allowing for dirty, it must be incompatible
+      ilog( "Did not recover any reversible blocks since reversible database incompatible");
+      return true;
    }
-   	chainbase::database  new_reversible( reversible_dir, database::read_write, cache_size );
-   	std::fstream         reversible_blocks;
-   	reversible_blocks.open( (reversible_dir.parent_path() / std::string("portable-reversible-blocks-").append( now ) ).generic_string().c_str(),
+
+   chainbase::database  new_reversible( reversible_dir, database::read_write, cache_size );
+   std::fstream         reversible_blocks;
+   reversible_blocks.open( (reversible_dir.parent_path() / std::string("portable-reversible-blocks-").append( now ) ).generic_string().c_str(),
                            std::ios::out | std::ios::binary );
 
-   	uint32_t num = 0;
-   	uint32_t start = 0;
-   	uint32_t end = 0;
-   	old_reversible->add_index<reversible_block_index>();
-   	new_reversible.add_index<reversible_block_index>();
-   	const auto& ubi = old_reversible->get_index<reversible_block_index,by_num>();
-   	auto itr = ubi.begin();
-   	if( itr != ubi.end() ) {
-      		start = itr->blocknum;
-      		end = start - 1;
-   	}
-   	if( truncate_at_block > 0 && start > truncate_at_block ) {
-      		ilog( "Did not recover any reversible blocks since the specified block number to stop at (${stop}) is less than first block in the reversible database (${start}).", ("stop", truncate_at_block)("start", start) );
-      		return true;
-   	}
-
-    try {
-      	for( ; itr != ubi.end(); ++itr ) {
-         	EOS_ASSERT( itr->blocknum == end + 1, gap_in_reversible_blocks_db,
+   uint32_t num = 0;
+   uint32_t start = 0;
+   uint32_t end = 0;
+   old_reversible->add_index<reversible_block_index>();
+   new_reversible.add_index<reversible_block_index>();
+   const auto& ubi = old_reversible->get_index<reversible_block_index,by_num>();
+   auto itr = ubi.begin();
+   if( itr != ubi.end() ) {
+      start = itr->blocknum;
+      end = start - 1;
+   }
+   if( truncate_at_block > 0 && start > truncate_at_block ) {
+      ilog( "Did not recover any reversible blocks since the specified block number to stop at (${stop}) is less than first block in the reversible database (${start}).", ("stop", truncate_at_block)("start", start) );
+      return true;
+   }
+   try {
+      for( ; itr != ubi.end(); ++itr ) {
+         EOS_ASSERT( itr->blocknum == end + 1, gap_in_reversible_blocks_db,
                      "gap in reversible block database between ${end} and ${blocknum}",
                      ("end", end)("blocknum", itr->blocknum)
                    );
-         	reversible_blocks.write( itr->packedblock.data(), itr->packedblock.size() );
-         	new_reversible.create<reversible_block_object>( [&]( auto& ubo ) {
-            	ubo.blocknum = itr->blocknum;
-            	ubo.set_block( itr->get_block() ); // get_block and set_block rather than copying the packed data acts as additional validation
+         reversible_blocks.write( itr->packedblock.data(), itr->packedblock.size() );
+         new_reversible.create<reversible_block_object>( [&]( auto& ubo ) {
+            ubo.blocknum = itr->blocknum;
+            ubo.set_block( itr->get_block() ); // get_block and set_block rather than copying the packed data acts as additional validation
          });
          end = itr->blocknum;
          ++num;
@@ -1114,19 +1115,18 @@ bool chain_plugin::recover_reversible_blocks( const fc::path& db_dir, uint32_t c
       }
    } catch( const gap_in_reversible_blocks_db& e ) {
       wlog( "${details}", ("details", e.to_detail_string()) );
-   } catch(const std::runtime_error&) {
    } catch( ... ) {}
 
    if( end == truncate_at_block )
       ilog( "Stopped recovery of reversible blocks early at specified block number: ${stop}", ("stop", truncate_at_block) );
 
    if( num == 0 )
-      	ilog( "There were no recoverable blocks in the reversible block database" );
-   	else if( num == 1 )
-      		ilog( "Recovered 1 block from reversible block database: block ${start}", ("start", start) );
-   	else
-      		ilog( "Recovered ${num} blocks from reversible block database: blocks ${start} to ${end}",
-            		("num", num)("start", start)("end", end) );
+      ilog( "There were no recoverable blocks in the reversible block database" );
+   else if( num == 1 )
+      ilog( "Recovered 1 block from reversible block database: block ${start}", ("start", start) );
+   else
+      ilog( "Recovered ${num} blocks from reversible block database: blocks ${start} to ${end}",
+            ("num", num)("start", start)("end", end) );
 
    return true;
 }
