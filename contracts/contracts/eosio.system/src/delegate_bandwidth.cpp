@@ -300,11 +300,8 @@ namespace eosiosystem {
       if(is_block_producer(from))
       {
           del_bandwidth_table     del_tbl( _self, from.value );
-          auto itr = del_tbl.find( from.value );
-
-          check( itr != del_tbl.end(), "user has no resources" ); // not sure if this the case
-
-          check( current_time_point() > itr->staked_time + stake_lock_period, "producer cannot undelegate bandwidth during 180 days");
+          const auto& del = del_tbl.get( from.value, "user has no resources" );
+          check( current_time_point() > del.staked_time + stake_lock_period, "producer cannot undelegate bandwidth during 180 days");
       }
 
       changebw( from, receiver, -unstake_quantity, false);
