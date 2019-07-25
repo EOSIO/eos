@@ -357,7 +357,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          _unapplied_transactions.add_aborted( chain.abort_block() );
 
          // exceptions throw out, make sure we restart our loop
-         auto ensure = fc::make_scoped_exit([this, &aborted_trxs](){
+         auto ensure = fc::make_scoped_exit([this](){
             schedule_production_loop();
          });
 
