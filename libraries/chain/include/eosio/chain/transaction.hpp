@@ -138,7 +138,7 @@ namespace eosio { namespace chain {
    };
 
    struct packed_transaction : fc::reflect_init {
-      enum compression_type {
+      enum class compression_type {
          none = 0,
          zlib = 1,
       };
@@ -149,14 +149,14 @@ namespace eosio { namespace chain {
       packed_transaction& operator=(const packed_transaction&) = delete;
       packed_transaction& operator=(packed_transaction&&) = default;
 
-      explicit packed_transaction(const signed_transaction& t, compression_type _compression = none)
+      explicit packed_transaction(const signed_transaction& t, compression_type _compression = compression_type::none)
       :signatures(t.signatures), compression(_compression), unpacked_trx(t)
       {
          local_pack_transaction();
          local_pack_context_free_data();
       }
 
-      explicit packed_transaction(signed_transaction&& t, compression_type _compression = none)
+      explicit packed_transaction(signed_transaction&& t, compression_type _compression = compression_type::none)
       :signatures(t.signatures), compression(_compression), unpacked_trx(std::move(t))
       {
          local_pack_transaction();

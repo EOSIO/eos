@@ -223,17 +223,16 @@ namespace eosio { namespace testing {
       });
    }
 
-   signed_block_ptr base_tester::push_block(signed_block_ptr b) {
+   void base_tester::push_block(signed_block_ptr b) {
       auto bs = control->create_block_state_future(b);
-      control->abort_block();
-      control->push_block(bs);
+      vector<transaction_metadata_ptr> aborted_trxs = control->abort_block();
+      unapplied_transactions.add_forked( control->push_block( bs ) );
+      unapplied_transactions.add_aborted( std::move( aborted_trxs ) );
 
       auto itr = last_produced_block.find(b->producer);
       if (itr == last_produced_block.end() || block_header::num_from_id(b->id()) > block_header::num_from_id(itr->second)) {
          last_produced_block[b->producer] = b->id();
       }
-
-      return b;
    }
 
    signed_block_ptr base_tester::_produce_block( fc::microseconds skip_time, bool skip_pending_trxs) {
@@ -246,19 +245,19 @@ namespace eosio { namespace testing {
       }
 
       if( !skip_pending_trxs ) {
-         unapplied_transactions_type unapplied_trxs = control->get_unapplied_transactions(); // make copy of map
-         for (const auto& entry : unapplied_trxs ) {
-            auto trace = control->push_transaction(entry.second, fc::time_point::maximum());
+         for( auto itr = unapplied_transactions.begin(); itr != unapplied_transactions.end();  ) {
+            auto trace = control->push_transaction( itr->trx_meta, fc::time_point::maximum(), DEFAULT_BILLED_CPU_TIME_US );
             if(trace->except) {
                trace->except->dynamic_rethrow_exception();
             }
+            itr = unapplied_transactions.erase( itr );
          }
 
          vector<transaction_id_type> scheduled_trxs;
-         while( (scheduled_trxs = get_scheduled_transactions() ).size() > 0 ) {
-            for (const auto& trx : scheduled_trxs ) {
-               auto trace = control->push_scheduled_transaction(trx, fc::time_point::maximum());
-               if(trace->except) {
+         while ((scheduled_trxs = get_scheduled_transactions()).size() > 0 ) {
+            for( const auto& trx : scheduled_trxs ) {
+               auto trace = control->push_scheduled_transaction( trx, fc::time_point::maximum(), DEFAULT_BILLED_CPU_TIME_US );
+               if( trace->except ) {
                   trace->except->dynamic_rethrow_exception();
                }
             }
@@ -281,7 +280,7 @@ namespace eosio { namespace testing {
          last_produced_block_num = std::max(control->last_irreversible_block_num(), block_header::num_from_id(itr->second));
       }
 
-      control->abort_block();
+      unapplied_transactions.add_aborted( control->abort_block() );
 
       vector<digest_type> feature_to_be_activated;
       // First add protocol features to be activated WITHOUT preactivation
@@ -466,16 +465,16 @@ namespace eosio { namespace testing {
    { try {
       if( !control->is_building_block() )
          _start_block(control->head_block_time() + fc::microseconds(config::block_interval_us));
-      auto c = packed_transaction::none;
+      auto c = packed_transaction::compression_type::none;
 
       if( fc::raw::pack_size(trx) > 1000 ) {
-         c = packed_transaction::zlib;
+         c = packed_transaction::compression_type::zlib;
       }
 
       auto time_limit = deadline == fc::time_point::maximum() ?
             fc::microseconds::maximum() :
             fc::microseconds( deadline - fc::time_point::now() );
-      auto mtrx = std::make_shared<transaction_metadata>(trx, c);
+      auto mtrx = std::make_shared<transaction_metadata>(trx, UINT32_MAX, c);
       transaction_metadata::start_recover_keys( mtrx, control->get_thread_pool(), control->get_chain_id(), time_limit );
       auto r = control->push_transaction( mtrx, deadline, billed_cpu_time_us );
       if (no_throw) return r;

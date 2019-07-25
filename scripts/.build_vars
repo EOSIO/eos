@@ -1,3 +1,4 @@
+# See install-directory-prompt for logic that sets EOSIO_INSTALL_DIR
 export SRC_DIR=${EOSIO_INSTALL_DIR}/src
 export OPT_DIR=${EOSIO_INSTALL_DIR}/opt
 export VAR_DIR=${EOSIO_INSTALL_DIR}/var
