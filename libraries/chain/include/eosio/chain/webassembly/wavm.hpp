@@ -299,7 +299,7 @@ struct wasm_function_type_provider<Ret(Args...)> {
  * @tparam NativeParameters - a std::tuple of the remaining native parameters to transcribe
  * @tparam WasmParameters - a std::tuple of the transribed parameters
  */
-template<typename Ret, typename NativeParameters, typename WasmParameters>
+template<bool is_injected, typename Ret, typename NativeParameters, typename WasmParameters>
 struct intrinsic_invoker_impl;
 
 /**
@@ -307,17 +307,19 @@ struct intrinsic_invoker_impl;
  * @tparam Ret - the return type of the native function
  * @tparam Translated - the arguments to the wasm function
  */
-template<typename Ret, typename ...Translated>
-struct intrinsic_invoker_impl<Ret, std::tuple<>, std::tuple<Translated...>> {
+template<bool is_injected, typename Ret, typename ...Translated>
+struct intrinsic_invoker_impl<is_injected, Ret, std::tuple<>, std::tuple<Translated...>> {
    using next_method_type        = Ret (*)(running_instance_context &, Translated...);
 
    template<next_method_type Method>
    static native_to_wasm_t<Ret> invoke(Translated... translated) {
+      RODEOS_MEMORY_PTR_cb_ptr;
       try {
+         if constexpr(!is_injected)
+            EOS_ASSERT(cb_ptr->current_call_depth_remaining != 1, wasm_execution_error, "Exceeded call depth maximum");
          return convert_native_to_wasm(the_running_instance_context, Method(the_running_instance_context, translated...));
       }
       catch(...) {
-         RODEOS_MEMORY_PTR_cb_ptr;
          *cb_ptr->eptr = std::current_exception();
          siglongjmp(*cb_ptr->jmp, 4); ///XXX 4 means due to exception
          __builtin_unreachable();
@@ -334,17 +336,19 @@ struct intrinsic_invoker_impl<Ret, std::tuple<>, std::tuple<Translated...>> {
  * specialization of the fully transcribed signature for void return values
  * @tparam Translated - the arguments to the wasm function
  */
-template<typename ...Translated>
-struct intrinsic_invoker_impl<void_type, std::tuple<>, std::tuple<Translated...>> {
+template<bool is_injected, typename ...Translated>
+struct intrinsic_invoker_impl<is_injected, void_type, std::tuple<>, std::tuple<Translated...>> {
    using next_method_type        = void_type (*)(running_instance_context &, Translated...);
 
    template<next_method_type Method>
    static void invoke(Translated... translated) {
+      RODEOS_MEMORY_PTR_cb_ptr;
       try {
+         if constexpr(!is_injected)
+            EOS_ASSERT(cb_ptr->current_call_depth_remaining != 1, wasm_execution_error, "Exceeded call depth maximum");
          Method(the_running_instance_context, translated...);
       }
       catch(...) {
-         RODEOS_MEMORY_PTR_cb_ptr;
          *cb_ptr->eptr = std::current_exception();
          siglongjmp(*cb_ptr->jmp, 4); ///XXX 4 means due to exception
          __builtin_unreachable();
@@ -364,10 +368,10 @@ struct intrinsic_invoker_impl<void_type, std::tuple<>, std::tuple<Translated...>
  * @tparam Inputs - the remaining native parameters to transcribe
  * @tparam Translated - the list of transcribed wasm parameters
  */
-template<typename Ret, typename Input, typename... Inputs, typename... Translated>
-struct intrinsic_invoker_impl<Ret, std::tuple<Input, Inputs...>, std::tuple<Translated...>> {
+template<bool is_injected, typename Ret, typename Input, typename... Inputs, typename... Translated>
+struct intrinsic_invoker_impl<is_injected, Ret, std::tuple<Input, Inputs...>, std::tuple<Translated...>> {
    using translated_type = native_to_wasm_t<Input>;
-   using next_step = intrinsic_invoker_impl<Ret, std::tuple<Inputs...>, std::tuple<Translated..., translated_type>>;
+   using next_step = intrinsic_invoker_impl<is_injected, Ret, std::tuple<Inputs...>, std::tuple<Translated..., translated_type>>;
    using then_type = Ret (*)(running_instance_context &, Input, Inputs..., Translated...);
 
    template<then_type Then>
@@ -391,9 +395,9 @@ struct intrinsic_invoker_impl<Ret, std::tuple<Input, Inputs...>, std::tuple<Tran
  * @tparam Inputs - the remaining native parameters to transcribe
  * @tparam Translated - the list of transcribed wasm parameters
  */
-template<typename T, typename Ret, typename... Inputs, typename ...Translated>
-struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, size_t, Inputs...>, std::tuple<Translated...>> {
-   using next_step = intrinsic_invoker_impl<Ret, std::tuple<Inputs...>, std::tuple<Translated..., I32, I32>>;
+template<bool is_injected, typename T, typename Ret, typename... Inputs, typename ...Translated>
+struct intrinsic_invoker_impl<is_injected, Ret, std::tuple<array_ptr<T>, size_t, Inputs...>, std::tuple<Translated...>> {
+   using next_step = intrinsic_invoker_impl<is_injected, Ret, std::tuple<Inputs...>, std::tuple<Translated..., I32, I32>>;
    using then_type = Ret(*)(running_instance_context&, array_ptr<T>, size_t, Inputs..., Translated...);
 
    template<then_type Then, typename U=T>
@@ -445,9 +449,9 @@ struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, size_t, Inputs...>, 
  * @tparam Inputs - the remaining native parameters to transcribe
  * @tparam Translated - the list of transcribed wasm parameters
  */
-template<typename Ret, typename... Inputs, typename ...Translated>
-struct intrinsic_invoker_impl<Ret, std::tuple<null_terminated_ptr, Inputs...>, std::tuple<Translated...>> {
-   using next_step = intrinsic_invoker_impl<Ret, std::tuple<Inputs...>, std::tuple<Translated..., I32>>;
+template<bool is_injected, typename Ret, typename... Inputs, typename ...Translated>
+struct intrinsic_invoker_impl<is_injected, Ret, std::tuple<null_terminated_ptr, Inputs...>, std::tuple<Translated...>> {
+   using next_step = intrinsic_invoker_impl<is_injected, Ret, std::tuple<Inputs...>, std::tuple<Translated..., I32>>;
    using then_type = Ret(*)(running_instance_context&, null_terminated_ptr, Inputs..., Translated...);
 
    template<then_type Then>
@@ -470,9 +474,9 @@ struct intrinsic_invoker_impl<Ret, std::tuple<null_terminated_ptr, Inputs...>, s
  * @tparam Inputs - the remaining native parameters to transcribe
  * @tparam Translated - the list of transcribed wasm parameters
  */
-template<typename T, typename U, typename Ret, typename... Inputs, typename ...Translated>
-struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, array_ptr<U>, size_t, Inputs...>, std::tuple<Translated...>> {
-   using next_step = intrinsic_invoker_impl<Ret, std::tuple<Inputs...>, std::tuple<Translated..., I32, I32, I32>>;
+template<bool is_injected, typename T, typename U, typename Ret, typename... Inputs, typename ...Translated>
+struct intrinsic_invoker_impl<is_injected, Ret, std::tuple<array_ptr<T>, array_ptr<U>, size_t, Inputs...>, std::tuple<Translated...>> {
+   using next_step = intrinsic_invoker_impl<is_injected, Ret, std::tuple<Inputs...>, std::tuple<Translated..., I32, I32, I32>>;
    using then_type = Ret(*)(running_instance_context&, array_ptr<T>, array_ptr<U>, size_t, Inputs..., Translated...);
 
    template<then_type Then>
@@ -495,9 +499,9 @@ struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, array_ptr<U>, size_t
  * @tparam Inputs - the remaining native parameters to transcribe
  * @tparam Translated - the list of transcribed wasm parameters
  */
-template<typename Ret>
-struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<char>, int, size_t>, std::tuple<>> {
-   using next_step = intrinsic_invoker_impl<Ret, std::tuple<>, std::tuple<I32, I32, I32>>;
+template<bool is_injected, typename Ret>
+struct intrinsic_invoker_impl<is_injected, Ret, std::tuple<array_ptr<char>, int, size_t>, std::tuple<>> {
+   using next_step = intrinsic_invoker_impl<is_injected, Ret, std::tuple<>, std::tuple<I32, I32, I32>>;
    using then_type = Ret(*)(running_instance_context&, array_ptr<char>, int, size_t);
 
    template<then_type Then>
@@ -521,9 +525,9 @@ struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<char>, int, size_t>, std
  * @tparam Inputs - the remaining native parameters to transcribe
  * @tparam Translated - the list of transcribed wasm parameters
  */
-template<typename T, typename Ret, typename... Inputs, typename ...Translated>
-struct intrinsic_invoker_impl<Ret, std::tuple<T *, Inputs...>, std::tuple<Translated...>> {
-   using next_step = intrinsic_invoker_impl<Ret, std::tuple<Inputs...>, std::tuple<Translated..., I32>>;
+template<bool is_injected, typename T, typename Ret, typename... Inputs, typename ...Translated>
+struct intrinsic_invoker_impl<is_injected, Ret, std::tuple<T *, Inputs...>, std::tuple<Translated...>> {
+   using next_step = intrinsic_invoker_impl<is_injected, Ret, std::tuple<Inputs...>, std::tuple<Translated..., I32>>;
    using then_type = Ret (*)(running_instance_context&, T *, Inputs..., Translated...);
 
    template<then_type Then, typename U=T>
@@ -571,9 +575,9 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T *, Inputs...>, std::tuple<Transl
  * @tparam Inputs - the remaining native parameters to transcribe
  * @tparam Translated - the list of transcribed wasm parameters
  */
-template<typename Ret, typename... Inputs, typename ...Translated>
-struct intrinsic_invoker_impl<Ret, std::tuple<const name&, Inputs...>, std::tuple<Translated...>> {
-   using next_step = intrinsic_invoker_impl<Ret, std::tuple<Inputs...>, std::tuple<Translated..., native_to_wasm_t<const name&> >>;
+template<bool is_injected, typename Ret, typename... Inputs, typename ...Translated>
+struct intrinsic_invoker_impl<is_injected, Ret, std::tuple<const name&, Inputs...>, std::tuple<Translated...>> {
+   using next_step = intrinsic_invoker_impl<is_injected, Ret, std::tuple<Inputs...>, std::tuple<Translated..., native_to_wasm_t<const name&> >>;
    using then_type = Ret (*)(running_instance_context&, const name&, Inputs..., Translated...);
 
    template<then_type Then>
@@ -597,9 +601,9 @@ struct intrinsic_invoker_impl<Ret, std::tuple<const name&, Inputs...>, std::tupl
  * @tparam Inputs - the remaining native parameters to transcribe
  * @tparam Translated - the list of transcribed wasm parameters
  */
-template<typename T, typename Ret, typename... Inputs, typename ...Translated>
-struct intrinsic_invoker_impl<Ret, std::tuple<T &, Inputs...>, std::tuple<Translated...>> {
-   using next_step = intrinsic_invoker_impl<Ret, std::tuple<Inputs...>, std::tuple<Translated..., I32>>;
+template<bool is_injected, typename T, typename Ret, typename... Inputs, typename ...Translated>
+struct intrinsic_invoker_impl<is_injected, Ret, std::tuple<T &, Inputs...>, std::tuple<Translated...>> {
+   using next_step = intrinsic_invoker_impl<is_injected, Ret, std::tuple<Inputs...>, std::tuple<Translated..., I32>>;
    using then_type = Ret (*)(running_instance_context &, T &, Inputs..., Translated...);
 
    template<then_type Then, typename U=T>
@@ -657,9 +661,9 @@ struct intrinsic_invoker_impl<Ret, std::tuple<T &, Inputs...>, std::tuple<Transl
 /**
  * forward declaration of a wrapper class to call methods of the class
  */
-template<typename WasmSig, typename Ret, typename MethodSig, typename Cls, typename... Params>
+template<bool is_injected, typename WasmSig, typename Ret, typename MethodSig, typename Cls, typename... Params>
 struct intrinsic_function_invoker {
-   using impl = intrinsic_invoker_impl<Ret, std::tuple<Params...>, std::tuple<>>;
+   using impl = intrinsic_invoker_impl<is_injected, Ret, std::tuple<Params...>, std::tuple<>>;
 
    template<MethodSig Method>
    static Ret wrapper(running_instance_context& ctx, Params... params) {
@@ -676,9 +680,9 @@ struct intrinsic_function_invoker {
    }
 };
 
-template<typename WasmSig, typename MethodSig, typename Cls, typename... Params>
-struct intrinsic_function_invoker<WasmSig, void, MethodSig, Cls, Params...> {
-   using impl = intrinsic_invoker_impl<void_type, std::tuple<Params...>, std::tuple<>>;
+template<bool is_injected, typename WasmSig, typename MethodSig, typename Cls, typename... Params>
+struct intrinsic_function_invoker<is_injected, WasmSig, void, MethodSig, Cls, Params...> {
+   using impl = intrinsic_invoker_impl<is_injected, void_type, std::tuple<Params...>, std::tuple<>>;
 
    template<MethodSig Method>
    static void_type wrapper(running_instance_context& ctx, Params... params) {
@@ -696,27 +700,27 @@ struct intrinsic_function_invoker<WasmSig, void, MethodSig, Cls, Params...> {
    }
 };
 
-template<typename, typename>
+template<bool, typename, typename>
 struct intrinsic_function_invoker_wrapper;
 
-template<typename WasmSig, typename Cls, typename Ret, typename... Params>
-struct intrinsic_function_invoker_wrapper<WasmSig, Ret (Cls::*)(Params...)> {
-   using type = intrinsic_function_invoker<WasmSig, Ret, Ret (Cls::*)(Params...), Cls, Params...>;
+template<bool is_injected, typename WasmSig, typename Cls, typename Ret, typename... Params>
+struct intrinsic_function_invoker_wrapper<is_injected, WasmSig, Ret (Cls::*)(Params...)> {
+   using type = intrinsic_function_invoker<is_injected, WasmSig, Ret, Ret (Cls::*)(Params...), Cls, Params...>;
 };
 
-template<typename WasmSig, typename Cls, typename Ret, typename... Params>
-struct intrinsic_function_invoker_wrapper<WasmSig, Ret (Cls::*)(Params...) const> {
-   using type = intrinsic_function_invoker<WasmSig, Ret, Ret (Cls::*)(Params...) const, Cls, Params...>;
+template<bool is_injected, typename WasmSig, typename Cls, typename Ret, typename... Params>
+struct intrinsic_function_invoker_wrapper<is_injected, WasmSig, Ret (Cls::*)(Params...) const> {
+   using type = intrinsic_function_invoker<is_injected, WasmSig, Ret, Ret (Cls::*)(Params...) const, Cls, Params...>;
 };
 
-template<typename WasmSig, typename Cls, typename Ret, typename... Params>
-struct intrinsic_function_invoker_wrapper<WasmSig, Ret (Cls::*)(Params...) volatile> {
-   using type = intrinsic_function_invoker<WasmSig, Ret, Ret (Cls::*)(Params...) volatile, Cls, Params...>;
+template<bool is_injected, typename WasmSig, typename Cls, typename Ret, typename... Params>
+struct intrinsic_function_invoker_wrapper<is_injected, WasmSig, Ret (Cls::*)(Params...) volatile> {
+   using type = intrinsic_function_invoker<is_injected, WasmSig, Ret, Ret (Cls::*)(Params...) volatile, Cls, Params...>;
 };
 
-template<typename WasmSig, typename Cls, typename Ret, typename... Params>
-struct intrinsic_function_invoker_wrapper<WasmSig, Ret (Cls::*)(Params...) const volatile> {
-   using type = intrinsic_function_invoker<WasmSig, Ret, Ret (Cls::*)(Params...) const volatile, Cls, Params...>;
+template<bool is_injected, typename WasmSig, typename Cls, typename Ret, typename... Params>
+struct intrinsic_function_invoker_wrapper<is_injected, WasmSig, Ret (Cls::*)(Params...) const volatile> {
+   using type = intrinsic_function_invoker<is_injected, WasmSig, Ret, Ret (Cls::*)(Params...) const volatile, Cls, Params...>;
 };
 
 #define _ADD_PAREN_1(...) ((__VA_ARGS__)) _ADD_PAREN_2
@@ -732,7 +736,7 @@ struct intrinsic_function_invoker_wrapper<WasmSig, Ret (Cls::*)(Params...) const
    static Intrinsics::Function _INTRINSIC_NAME(__intrinsic_fn, __COUNTER__) (\
       MOD "." NAME,\
       eosio::chain::webassembly::wavm::wasm_function_type_provider<WASM_SIG>::type(),\
-      (void *)eosio::chain::webassembly::wavm::intrinsic_function_invoker_wrapper<WASM_SIG, SIG>::type::fn<&CLS::METHOD>()\
+      (void *)eosio::chain::webassembly::wavm::intrinsic_function_invoker_wrapper<std::string_view(MOD) != "env", WASM_SIG, SIG>::type::fn<&CLS::METHOD>()\
    );\
 
 

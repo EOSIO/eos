@@ -22,10 +22,11 @@ namespace LLVMJIT
 		llvm::Module* llvmModule;
 		std::vector<llvm::Function*> functionDefs;
 		std::vector<llvm::Constant*> importedFunctionPointers;
-		std::vector<llvm::Constant*> globalPointers;
+		std::vector<llvm::Constant*> globals;
 		llvm::Constant* defaultTablePointer;
 		llvm::Constant* defaultTableMaxElementIndex;
 		llvm::Constant* defaultMemoryBase;
+      llvm::Constant* depthCounter;
 
 		llvm::MDNode* likelyFalseBranchWeights;
 		llvm::MDNode* likelyTrueBranchWeights;
@@ -682,14 +683,17 @@ namespace LLVMJIT
 		
 		void get_global(GetOrSetVariableImm<true> imm)
 		{
-			WAVM_ASSERT_THROW(imm.variableIndex < moduleContext.globalPointers.size());
-			push(irBuilder.CreateLoad(moduleContext.globalPointers[imm.variableIndex]));
+			WAVM_ASSERT_THROW(imm.variableIndex < moduleContext.globals.size());
+         if(moduleContext.globals[imm.variableIndex]->getType()->isPointerTy())
+			   push(irBuilder.CreateLoad(moduleContext.globals[imm.variableIndex]));
+         else
+            push(moduleContext.globals[imm.variableIndex]);
 		}
 		void set_global(GetOrSetVariableImm<true> imm)
 		{
-			WAVM_ASSERT_THROW(imm.variableIndex < moduleContext.globalPointers.size());
-			auto value = irBuilder.CreateBitCast(pop(),moduleContext.globalPointers[imm.variableIndex]->getType()->getPointerElementType());
-			irBuilder.CreateStore(value,moduleContext.globalPointers[imm.variableIndex]);
+			WAVM_ASSERT_THROW(imm.variableIndex < moduleContext.globals.size());
+			auto value = irBuilder.CreateBitCast(pop(),moduleContext.globals[imm.variableIndex]->getType()->getPointerElementType());
+			irBuilder.CreateStore(value,moduleContext.globals[imm.variableIndex]);
 		}
 
 		//
@@ -1019,6 +1023,15 @@ namespace LLVMJIT
 			}
 		}
 
+      llvm::LoadInst* depth_loadinst;
+      llvm::StoreInst* depth_storeinst;
+      llvm::Value* depth = depth_loadinst = irBuilder.CreateLoad(moduleContext.depthCounter);
+      depth = irBuilder.CreateSub(depth, emitLiteral((I32)1));
+      depth_storeinst = irBuilder.CreateStore(depth, moduleContext.depthCounter);
+      emitConditionalTrapIntrinsic(irBuilder.CreateICmpEQ(depth, emitLiteral((I32)0)), "rodeos_internal.depth_assert", FunctionType::get(), {});
+      depth_loadinst->setVolatile(true);
+      depth_storeinst->setVolatile(true);
+
 		// Decode the WebAssembly opcodes and emit LLVM IR for them.
 		OperatorDecoderStream decoder(functionDef.code);
 		UnreachableOpVisitor unreachableOpVisitor(*this);
@@ -1045,6 +1058,12 @@ namespace LLVMJIT
 				);
 		}
 
+      depth = depth_loadinst = irBuilder.CreateLoad(moduleContext.depthCounter);
+      depth = irBuilder.CreateAdd(depth, emitLiteral((I32)1));
+      depth_storeinst = irBuilder.CreateStore(depth, moduleContext.depthCounter);
+      depth_loadinst->setVolatile(true);
+      depth_storeinst->setVolatile(true);
+
 		// Emit the function return.
 		if(functionType->ret == ResultType::none) { irBuilder.CreateRetVoid(); }
 		else { irBuilder.CreateRet(pop()); }
@@ -1055,6 +1074,8 @@ namespace LLVMJIT
 		Timing::Timer emitTimer;
 
 		defaultMemoryBase = emitLiteralPointer(0,llvmI8Type->getPointerTo(256));
+
+      depthCounter = emitLiteralPointer((void*)-25032, llvmI32Type->getPointerTo(256)); ///XXX literal
 
 		// Set up the LLVM values used to access the global table.
 		if(moduleInstance->defaultTable)
@@ -1078,9 +1099,23 @@ namespace LLVMJIT
 			importedFunctionPointers.push_back(emitLiteralPointer(functionInstance->nativeFunction,asLLVMType(functionInstance->type)->getPointerTo()));
 		}
 
+      int current_prolouge = -8;
+
 		// Create LLVM pointer constants for the module's globals.
-		for(auto global : moduleInstance->globals)
-		{ globalPointers.push_back(emitLiteralPointer(&global->value,asLLVMType(global->type.valueType)->getPointerTo())); }
+		for(auto global : moduleInstance->globals) {
+         if(global->type.isMutable) {
+            globals.push_back(emitLiteralPointer((void*)current_prolouge,asLLVMType(global->type.valueType)->getPointerTo(256)));
+            current_prolouge -= 8;
+         }
+         else {
+            switch(global->type.valueType) {
+               case ValueType::i32: globals.push_back(emitLiteral(global->value.i32)); break;
+               case ValueType::i64: globals.push_back(emitLiteral(global->value.i64)); break;
+               case ValueType::f32: globals.push_back(emitLiteral(global->value.f32)); break;
+               case ValueType::f64: globals.push_back(emitLiteral(global->value.f64)); break;
+            }
+         }
+      }
 		
 		// Create the LLVM functions.
 		functionDefs.resize(module.functions.defs.size());
