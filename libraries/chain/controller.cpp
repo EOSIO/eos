@@ -214,7 +214,9 @@ struct controller_impl {
    chainbase::database            db;
    chainbase::database            reversible_blocks; ///< a special database to persist blocks that have successfully been applied but are still reversible
    block_log                      blog;
+   /*
    optional<intrinsic_debug_log>  intrinsic_log;
+   */
    optional<pending_state>        pending;
    block_state_ptr                head;
    fork_database                  fork_db;
@@ -288,7 +290,7 @@ struct controller_impl {
         cfg.read_only ? database::read_only : database::read_write,
         cfg.reversible_cache_size, false, cfg.db_map_mode, cfg.db_hugepage_paths ),
     blog( cfg.blocks_dir ),
-    intrinsic_log( cfg.intrinsic_debug_log_path ? *cfg.intrinsic_debug_log_path : optional<intrinsic_debug_log>() ),
+    /*intrinsic_log( cfg.intrinsic_debug_log_path ? *cfg.intrinsic_debug_log_path : optional<intrinsic_debug_log>() ),*/
     fork_db( cfg.state_dir ),
     wasmif( cfg.wasm_runtime, db ),
     resource_limits( db ),
@@ -305,10 +307,11 @@ struct controller_impl {
                             const vector<digest_type>& new_features )
                            { check_protocol_features( timestamp, cur_features, new_features ); }
       );
-
+      /*
       if( intrinsic_log ) {
          intrinsic_log->open();
       }
+      */
 
       set_activation_handler<builtin_protocol_feature_t::preactivate_feature>();
       set_activation_handler<builtin_protocol_feature_t::replace_deferred>();
@@ -613,7 +616,7 @@ struct controller_impl {
       while( db.revision() > head->block_num ) {
          db.undo();
       }
-
+      /*
       if( intrinsic_log && intrinsic_log->last_committed_block_num() > 0
              && head->block_num != intrinsic_log->last_committed_block_num() )
       {
@@ -624,6 +627,7 @@ struct controller_impl {
          fc::remove( intrinsic_log->get_path() );
          intrinsic_log->open();
       }
+      */
 
       protocol_features.init( db );
 
@@ -693,11 +697,10 @@ struct controller_impl {
       if( last_block_num > head->block_num ) {
          replay( shutdown ); // replay any irreversible and reversible blocks ahead of current head
       }
-
+      /*
       if( intrinsic_log ) {
          intrinsic_log->close();
 
-         /*
          // Print intrinsic_log in JSON form
          intrinsic_log->open( intrinsic_debug_log::open_mode::read_only );
          const auto end_itr = intrinsic_log->end_block();
@@ -705,10 +708,10 @@ struct controller_impl {
             dlog( "\n${json}", ("json", fc::json::to_pretty_string(*itr)) );
          }
          intrinsic_log->close();
-         */
 
          intrinsic_log.reset();
       }
+      */
 
       if( shutdown() ) return;
 
@@ -1150,9 +1153,11 @@ struct controller_impl {
 
       transaction_trace_ptr trace;
       if( gtrx.expiration < self.pending_block_time() ) {
+	 /*
          if( intrinsic_log ) {
             intrinsic_log->start_transaction( gtrx.trx_id );
          }
+	 */
          trace = std::make_shared<transaction_trace>();
          trace->id = gtrx.trx_id;
          trace->block_num = self.head_block_num() + 1;
@@ -1173,7 +1178,7 @@ struct controller_impl {
       in_trx_requiring_checks = true;
 
       uint32_t cpu_time_to_bill_us = billed_cpu_time_us;
-
+      /*
       auto abort_transaction_in_intrinsic_log_on_exit = fc::make_scoped_exit(
       [abort_transaction=static_cast<bool>(intrinsic_log), this] {
          if( abort_transaction ) {
@@ -1184,6 +1189,7 @@ struct controller_impl {
       if( intrinsic_log ) {
          intrinsic_log->start_transaction( gtrx.trx_id );
       }
+      */
 
       transaction_context trx_context( self, dtrx, gtrx.trx_id, timer );
       trx_context.leeway =  fc::microseconds(0); // avoid stealing cpu resource
@@ -1226,7 +1232,9 @@ struct controller_impl {
          undo_session.squash();
 
          restore.cancel();
+	 /*
          abort_transaction_in_intrinsic_log_on_exit.cancel();
+	 */
 
          return trace;
       } catch( const disallowed_transaction_extensions_bad_block_exception& ) {
@@ -1257,7 +1265,9 @@ struct controller_impl {
             emit( self.accepted_transaction, trx );
             emit( self.applied_transaction, std::tie(trace, dtrx) );
             undo_session.squash();
+	    /*
             abort_transaction_in_intrinsic_log_on_exit.cancel();
+	    */
             return trace;
          }
          trace->elapsed = fc::time_point::now() - trx_context.start;
@@ -1297,7 +1307,9 @@ struct controller_impl {
          emit( self.applied_transaction, std::tie(trace, dtrx) );
 
          undo_session.squash();
+	 /*
          abort_transaction_in_intrinsic_log_on_exit.cancel();
+	 */
       } else {
          emit( self.accepted_transaction, trx );
          emit( self.applied_transaction, std::tie(trace, dtrx) );
@@ -1423,7 +1435,7 @@ struct controller_impl {
                trx_context.undo();
             } else {
                restore.cancel();
-               abort_transaction_in_intrinsic_log_on_exit.cancel();
+               //abort_transaction_in_intrinsic_log_on_exit.cancel();
                trx_context.squash();
             }
 
@@ -1466,10 +1478,11 @@ struct controller_impl {
       } else {
          pending.emplace( maybe_session(), *head, when, confirm_block_count, new_protocol_feature_activations );
       }
-
+      /*
       if( intrinsic_log ) {
          intrinsic_log->start_block( head->block_num + 1 );
       }
+      */
 
       pending->_block_status = s;
       pending->_producer_block_id = producer_block_id;
@@ -1601,10 +1614,11 @@ struct controller_impl {
       EOS_ASSERT( pending->_block_stage.contains<building_block>(), block_validate_exception, "already called finalize_block");
 
       try {
-
+      /*
       if( intrinsic_log ) {
          intrinsic_log->finish_block();
       }
+      */
 
       auto& pbhs = pending->get_pending_block_header_state();
 
@@ -2050,9 +2064,11 @@ struct controller_impl {
          // in case we want to adapt the intrinsic_log to working during regular operation.
          // In that case, we would also need to add support for popping committed blocks from the intrinsic log
          // and call the appropriate function from controller_impl::pop_block().
+	 /*
          if( intrinsic_log ) {
             intrinsic_log->abort_block();
          }
+	 */
       }
       return applied_trxs;
    }
@@ -2326,11 +2342,12 @@ const protocol_feature_manager& controller::get_protocol_feature_manager()const
 {
    return my->protocol_features;
 }
-
+/*
 optional<intrinsic_debug_log>&  controller::get_intrinsic_debug_log()
 {
    return my->intrinsic_log;
 }
+*/
 
 controller::controller( const controller::config& cfg )
 :my( new controller_impl( cfg, *this, protocol_feature_set{} ) )

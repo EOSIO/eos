@@ -125,7 +125,7 @@ namespace eosio { namespace chain {
             });
             trx_context.pause_billing_timer();
             IR::Module module;
-	    std::vector<U8> bytes = codeobject->code;
+	    std::vector<U8> bytes = {(const U8*)codeobject->code.data(), (const U8*)codeobject->code.data() + codeobject->code.size()};
             try {
                Serialization::MemoryInputStream stream((const U8*)bytes.data(), bytes.size());
                WASM::serialize(stream, module);
@@ -136,11 +136,10 @@ namespace eosio { namespace chain {
                EOS_ASSERT(false, wasm_serialization_error, e.message.c_str());
             }
 
-            if(vm_type != wasm_interface::vm_type::eos_vm) {
+            if(vm_type != static_cast<uint8_t>(wasm_interface::vm_type::eos_vm)) {
                wasm_injections::wasm_binary_injection injector(module);
                injector.inject();
 
-               std::vector<U8> bytes;
                try {
                   Serialization::ArrayOutputStream outstream;
                   WASM::serialize(outstream, module);
