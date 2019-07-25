@@ -77,8 +77,36 @@ class wavm_instantiated_module : public wasm_instantiated_module_interface {
          cd.starting_memory_pages = -1;
          if(module->memories.size())
             cd.starting_memory_pages = module->memories.defs.at(0).type.size.min;
-         cd.initdata = _initial_memory;
-         cd.initdata_pre_memory_size = 0;
+
+         std::vector<uint8_t> prolouge(memory::cb_offset); ///XXX not the best use of variable
+         std::vector<uint8_t>::iterator prolouge_it = prolouge.end();
+
+         //set up mutable globals
+         union global_union {
+            int64_t i64;
+            int32_t i32;
+            float f32;
+            double f64;
+         };
+
+         for(const GlobalDef& global : module->globals.defs) {
+            if(!global.type.isMutable)
+               continue;
+            prolouge_it -= 8;
+            global_union* const u = (global_union* const)&*prolouge_it;
+
+            switch(global.initializer.type) {
+               case InitializerExpression::Type::i32_const: u->i32 = global.initializer.i32; break;
+               case InitializerExpression::Type::i64_const: u->i64 = global.initializer.i64; break;
+               case InitializerExpression::Type::f32_const: u->f32 = global.initializer.f32; break;
+               case InitializerExpression::Type::f64_const: u->f64 = global.initializer.f64; break;
+            }
+         }
+
+         cd.initdata_pre_memory_size = prolouge.end() - prolouge_it;
+         std::move(prolouge_it, prolouge.end(), std::back_inserter(cd.initdata));
+         std::move(_initial_memory.begin(), _initial_memory.end(), std::back_inserter(cd.initdata));
+
          cd.mi = _instance; //XXX
       }
 

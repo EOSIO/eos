@@ -4,6 +4,7 @@
 #include <eosio/chain/wasm_eosio_constraints.hpp>
 #include <eosio/chain/apply_context.hpp>
 #include <eosio/chain/transaction_context.hpp>
+#include <eosio/chain/exceptions.hpp>
 
 #include <fc/scoped_exit.hpp>
 
@@ -91,6 +92,19 @@ DEFINE_INTRINSIC_FUNCTION2(rodeos_internal,_grow_memory,grow_memory,i32,i32,grow
    return (I32)previous_page_count;
 }
 
+///XXX put this somewhere else cozy
+template<typename T>
+static void causeIntrensicException(const T& e) {
+   RODEOS_MEMORY_PTR_cb_ptr;
+   *cb_ptr->eptr = std::make_exception_ptr(e);
+   siglongjmp(*cb_ptr->jmp, 4); ///XXX 4 means due to exception
+   __builtin_unreachable();
+}
+
+DEFINE_INTRINSIC_FUNCTION0(rodeos_internal,_depth_assert,depth_assert,none) {
+   causeIntrensicException(wasm_execution_error(FC_LOG_MESSAGE(error, "Exceeded call depth maximum")));
+}
+
 executor::executor(const code_cache& cc) {
    //XXX
    static bool once_is_enough;
@@ -98,6 +112,7 @@ executor::executor(const code_cache& cc) {
       printf("current_linear_memory_pages %li\n", -memory::cb_offset + offsetof(eosio::chain::rodeos::control_block, current_linear_memory_pages));
       printf("full_linear_memory_start %li\n", -memory::cb_offset + offsetof(eosio::chain::rodeos::control_block, full_linear_memory_start));
       printf("cb_offset %lu\n", memory::cb_offset);
+      printf("remaining call depth: %li\n", -memory::cb_offset + offsetof(eosio::chain::rodeos::control_block, current_call_depth_remaining));
       once_is_enough = true;
    }
 
@@ -133,10 +148,10 @@ void executor::execute(const code_descriptor& code, const memory& mem, apply_con
    if(code.starting_memory_pages > 0 ) {
       arch_prctl(ARCH_SET_GS, (unsigned long*)(mem.zero_page_memory_base()+code.starting_memory_pages*memory::stride));
       memset(mem.full_page_memory_base(), 0, 64u*1024u*code.starting_memory_pages);
-      memcpy(mem.full_page_memory_base() - code.initdata_pre_memory_size, code.initdata.data(), code.initdata.size());
    }
    else
       arch_prctl(ARCH_SET_GS, (unsigned long*)mem.zero_page_memory_base());
+   memcpy(mem.full_page_memory_base() - code.initdata_pre_memory_size, code.initdata.data(), code.initdata.size());
 
    control_block* const cb = mem.get_control_block();
    cb->magic = 0x43543543; //XXX
@@ -147,7 +162,7 @@ void executor::execute(const code_descriptor& code, const memory& mem, apply_con
    cb->ctx = &context;
    executors_exception_ptr = nullptr;
    cb->eptr = &executors_exception_ptr;
-   cb->current_call_depth_remaining = eosio::chain::wasm_constraints::maximum_call_depth;
+   cb->current_call_depth_remaining = eosio::chain::wasm_constraints::maximum_call_depth+2;
    cb->bouce_buffer_ptr = 0;
    cb->current_linear_memory_pages = code.starting_memory_pages;
    cb->full_linear_memory_start = (uintptr_t)mem.full_page_memory_base();
@@ -156,7 +171,6 @@ void executor::execute(const code_descriptor& code, const memory& mem, apply_con
 
    auto reset_is_running = fc::make_scoped_exit([cb](){cb->is_running = false;});
 
-   resetGlobalInstances(code.mi); ///XXX
    vector<Value> args = {Value(context.get_receiver().to_uint64_t()),
                            Value(context.get_action().account.to_uint64_t()),
                            Value(context.get_action().name.to_uint64_t())};

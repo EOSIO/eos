@@ -16,6 +16,7 @@ constexpr auto intrinsic_table = boost::hana::make_tuple(
    "rodeos_internal.indirect_call_mismatch"_s,
    "rodeos_internal.indirect_call_oob"_s,
    "rodeos_internal.unreachable"_s,
+   "rodeos_internal.depth_assert"_s,
    "env.__ashlti3"_s,
    "env.__ashrti3"_s,
    "env.__lshlti3"_s,
