@@ -13,6 +13,16 @@ import decimal
 import math
 import re
 
+###############################################################
+# nodeos_under_min_avail_ram
+#
+# Sets up 4 producing nodes using --chain-state-db-guard-size-mb and --chain-state-db-size-mb to verify that nodeos will
+# shutdown safely when --chain-state-db-guard-size-mb is reached and restarts the shutdown nodes, with a higher
+# --chain-state-db-size-mb size, to verify that the node can restart and continue till the guard is reached again. The
+# test both verifies all nodes going down and 1 node at a time.
+#
+###############################################################
+
 Print=Utils.Print
 errorExit=Utils.errorExit
 
@@ -48,12 +58,6 @@ class NamedAccounts:
         Print("NamedAccounts Name for %d is %s" % (temp, retStr))
         return retStr
 
-
-###############################################################
-# nodeos_voting_test
-# --dump-error-details <Upon error print etc/eosio/node_*/config.ini and var/lib/node_*/stderr.log to stdout>
-# --keep-logs <Don't delete var/lib/node_* folders upon test completion>
-###############################################################
 
 args = TestHelper.parse_args({"--dump-error-details","--keep-logs","-v","--leave-running","--clean-run","--wallet-port"})
 Utils.Debug=args.v
@@ -167,9 +171,8 @@ try:
                 if trans is None or not trans[0]:
                     timeOutCount+=1
                     if timeOutCount>=3:
-                       Print("Failed to push create action to eosio contract for %d consecutive times, looks like nodeos already exited." % (timeOutCount))
-                       keepProcessing=False
-                       break
+                       Utils.errorExit("Failed to push create action to eosio contract for %d consecutive times, looks like nodeos already exited." % (timeOutCount))
+
                     Print("Failed to push create action to eosio contract. sleep for 5 seconds")
                     time.sleep(5)
                 else:

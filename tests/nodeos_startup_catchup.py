@@ -17,6 +17,7 @@ import re
 
 ###############################################################
 # nodeos_startup_catchup
+#
 #  Test configures a producing node and <--txn-plugins count> non-producing nodes with the
 #  txn_test_gen_plugin.  Each non-producing node starts generating transactions and sending them
 #  to the producing node.
@@ -26,6 +27,7 @@ import re
 #  4) restart the node
 #  5) the node is allowed to catch up to the producing node
 #  3) Repeat steps 2-5, <--catchup-count - 1> more times
+#
 ###############################################################
 
 Print=Utils.Print

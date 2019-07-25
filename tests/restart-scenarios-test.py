@@ -8,18 +8,12 @@ from TestHelper import TestHelper
 import random
 
 ###############################################################
-# Test for different nodes restart scenarios.
-# Nodes can be producing or non-producing.
-# -p <producing nodes count>
-# -c <chain strategy[replay|resync|none]>
-# -s <topology>
-# -d <delay between nodes startup>
-# -v <verbose logging>
-# --kill-sig <kill signal [term|kill]>
-# --kill-count <nodeos instances to kill>
-# --dont-kill <Leave cluster running after test finishes>
-# --dump-error-details <Upon error print etc/eosio/node_*/config.ini and var/lib/node_*/stderr.log to stdout>
-# --keep-logs <Don't delete var/lib/node_* folders upon test completion>
+# restart-scenarios-test
+#
+# Tests restart scenarios for nodeos.  Uses "-c" flag to indicate "replay" (--replay-blockchain), "resync"
+# (--delete-all-blocks), "hardReplay"(--hard-replay-blockchain), and "none" to indicate what kind of restart flag should
+# be used. This is one of the only test that actually verify that nodeos terminates with a good exit status.
+#
 ###############################################################
 
 

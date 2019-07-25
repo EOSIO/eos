@@ -11,6 +11,13 @@ import json
 from os.path import join
 from datetime import datetime
 
+###############################################################
+# nodeos_protocol_feature_test
+#
+# Many smaller tests centered around irreversible mode
+#
+###############################################################
+
 # Parse command line arguments
 args = TestHelper.parse_args({"-v","--clean-run","--dump-error-details","--leave-running","--keep-logs"})
 Utils.Debug = args.v
