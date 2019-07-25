@@ -354,11 +354,10 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          auto bsf = chain.create_block_state_future( block );
 
          // abort the pending block
-         vector<transaction_metadata_ptr> aborted_trxs = chain.abort_block();
+         _unapplied_transactions.add_aborted( chain.abort_block() );
 
          // exceptions throw out, make sure we restart our loop
          auto ensure = fc::make_scoped_exit([this, &aborted_trxs](){
-            _unapplied_transactions.add_aborted( std::move( aborted_trxs ) );
             schedule_production_loop();
          });
 
