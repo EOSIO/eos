@@ -41,8 +41,8 @@ std::string test_func2(std::string s) {
    return "OK";
 }
 
-std::string get_info(std::string url) {
-   return "OK";
+fc::variant get_info(std::string url) {
+   return app().get_plugin<launcher_service_plugin>().get_info(url);
 }
 
 int run_command(std::string cmd) {

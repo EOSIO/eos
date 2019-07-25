@@ -4,6 +4,7 @@
  */
 #pragma once
 #include <appbase/application.hpp>
+#include <eosio/launcher_service_plugin/httpc.hpp>
 
 namespace eosio {
 
@@ -23,6 +24,8 @@ public:
    void plugin_initialize(const variables_map& options);
    void plugin_startup();
    void plugin_shutdown();
+
+   fc::variant get_info(std::string url);
 
 private:
    std::unique_ptr<class launcher_service_plugin_impl> my;

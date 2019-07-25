@@ -49,4 +49,19 @@ void launcher_service_plugin::plugin_shutdown() {
    std::cout << "launcher_service_plugin::plugin_shutdown()" << std::endl;
 }
 
+fc::variant launcher_service_plugin::get_info(std::string url)
+{
+   bool print_request = true;
+   bool print_response = true;
+   try {
+      client::http::http_context context = client::http::create_http_context();
+      std::vector<std::string> headers;
+      auto sp = std::make_unique<client::http::connection_param>(context, client::http::parse_url(url) + "/v1/chain/get_info", false, headers);
+      auto r = client::http::do_http_call(*sp, fc::variant(), print_request, print_response );
+      return r;
+   } catch (boost::system::system_error& e) {
+      return fc::mutable_variant_object("exception", e.what())("url", url);
+   }
+}
+
 }
