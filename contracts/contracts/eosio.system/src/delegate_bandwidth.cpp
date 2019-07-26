@@ -255,13 +255,19 @@ namespace eosiosystem {
          voter_itr = _voters.emplace( voter, [&]( auto& v ) {
             v.owner            = voter;
             v.staked           = total_update.amount;
-            v.vote_mature_time = current_time_point() + eosio::days( vote_mature_period );
+            v.vote_mature_time = current_time_point() + vote_mature_period;
          });
       } else {
          _voters.modify( voter_itr, same_payer, [&]( auto& v ) {
             v.staked += total_update.amount;
             if ( total_update.amount >= 0 ) {
-               v.vote_mature_time = std::max( v.vote_mature_time, current_time_point() ) + eosio::days( std::max( double( vote_mature_period ) * total_update.amount / v.staked, 0.0 ) );
+               const auto restake_rate = double(total_update.amount) / v.staked;
+               const auto prevstake_rate = 1 - restake_rate;
+               const auto time_to_mature = std::max( v.vote_mature_time - current_time_point(), microseconds{} );
+
+               v.vote_mature_time = current_time_point()
+                     + microseconds{ static_cast< int64_t >( prevstake_rate * time_to_mature.count() ) }
+                     + microseconds{ static_cast< int64_t >( restake_rate * vote_mature_period.count() ) };
             }
          });
       }

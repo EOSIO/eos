@@ -524,7 +524,7 @@ namespace eosiosystem {
 
          static constexpr uint8_t max_block_producers      = 21;
          static constexpr int64_t producer_stake_threshold = 250'000'0000LL;
-         static constexpr int64_t vote_mature_period       = 180;
+         static const microseconds vote_mature_period;
 
 
          /**

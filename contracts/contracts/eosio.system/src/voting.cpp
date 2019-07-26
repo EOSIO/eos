@@ -119,8 +119,8 @@ namespace eosiosystem {
    double stake2vote( int64_t staked, time_point vote_mature_time ) {
       check(vote_mature_time != time_point(), "vote should have mature time");
 
-      const auto seconds_to_mature = std::max( (vote_mature_time - current_time_point()).to_seconds(), 0LL );
-      const auto rem_weight = 1.0 - seconds_to_mature / eosio::days( system_contract::vote_mature_period ).to_seconds();
+      const auto seconds_to_mature = fmax( (vote_mature_time - current_time_point()).to_seconds(), 0.0 );
+      const auto rem_weight = 1.0 - seconds_to_mature / system_contract::vote_mature_period.to_seconds();
       /// TODO subtract 2080 brings the large numbers closer to this decade
       const double weight = int64_t((current_time_point().sec_since_epoch() - (block_timestamp::block_timestamp_epoch / 1000)) / (seconds_per_day * 7)) / double(52);
       const auto vote_weight = double(staked) * std::pow(2, weight) * rem_weight;
@@ -391,6 +391,7 @@ namespace eosiosystem {
             update_total_votepay_share( ct, -total_inactive_vpay_share, delta_change_rate );
          }
       }
+
       _voters.modify( voter, same_payer, [&]( auto& v ) {
             v.last_vote_weight = new_weight;
          }

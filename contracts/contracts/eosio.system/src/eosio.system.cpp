@@ -19,10 +19,12 @@ namespace eosiosystem {
    const int64_t  default_annual_rate           = 500;     // 5% annual rate
    const int64_t  default_inflation_pay_factor  = 5;       // 20% of the inflation
    const int64_t  default_votepay_factor        = 4;       // 25% of the producer pay
+   const microseconds system_contract::vote_mature_period = eosio::days( 180 );
 
    double get_continuous_rate(int64_t annual_rate) {
       return std::log(double(1)+double(annual_rate)/double(100*inflation_precision));
    }
+   
 
    system_contract::system_contract( name s, name code, datastream<const char*> ds )
    :native(s,code,ds),
