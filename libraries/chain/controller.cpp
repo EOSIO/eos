@@ -690,7 +690,7 @@ struct controller_impl {
               pending_head = fork_db.pending_head()
          ) {
             wlog( "applying branch from fork database ending with block: ${id}", ("id", pending_head->id) );
-            maybe_switch_forks( pending_head, controller::block_status::complete );
+            maybe_switch_forks( pending_head, controller::block_status::complete, forked_trxs_callback() );
          }
       }
 
@@ -1820,7 +1820,7 @@ struct controller_impl {
       } );
    }
 
-   branch_type push_block( std::future<block_state_ptr>& block_state_future ) {
+   void push_block( std::future<block_state_ptr>& block_state_future, const forked_trxs_callback& forked_trxs_cb ) {
       controller::block_status s = controller::block_status::complete;
       EOS_ASSERT(!pending, block_validate_exception, "it is not valid to push a block when there is a pending block");
 
@@ -1842,10 +1842,9 @@ struct controller_impl {
          emit( self.accepted_block_header, bsp );
 
          if( read_mode != db_read_mode::IRREVERSIBLE ) {
-            return maybe_switch_forks( fork_db.pending_head(), s );
+            maybe_switch_forks( fork_db.pending_head(), s, forked_trxs_cb );
          } else {
             log_irreversible();
-            return {};
          }
 
       } FC_LOG_AND_RETHROW( )
@@ -1895,15 +1894,14 @@ struct controller_impl {
          } else {
             EOS_ASSERT( read_mode != db_read_mode::IRREVERSIBLE, block_validate_exception,
                         "invariant failure: cannot replay reversible blocks while in irreversible mode" );
-            maybe_switch_forks( bsp, s );
+            maybe_switch_forks( bsp, s, forked_trxs_callback() );
          }
 
       } FC_LOG_AND_RETHROW( )
    }
 
-   branch_type maybe_switch_forks( const block_state_ptr& new_head, controller::block_status s ) {
+   void maybe_switch_forks( const block_state_ptr& new_head, controller::block_status s, const forked_trxs_callback& forked_trxs_cb ) {
       bool head_changed = true;
-      branch_type unapplied_branch;
       if( new_head->header.previous == head->id ) {
          try {
             apply_block( new_head, s );
@@ -1920,8 +1918,11 @@ struct controller_impl {
          auto branches = fork_db.fetch_branch_from( new_head->id, head->id );
 
          if( branches.second.size() > 0 ) {
-            for( auto itr = branches.second.begin(); itr != branches.second.end(); ++itr ) {
+            // forked branches are in reverse order of how they were applied, signal callback in the order applied
+            for( auto ritr = branches.second.rbegin(), rend = branches.second.rend(); ritr != rend; ++ritr ) {
+               const block_state_ptr& bsptr = *ritr;
                pop_block();
+               forked_trxs_cb( bsptr->trxs );
             }
             EOS_ASSERT( self.head_block_id() == branches.second.back()->header.previous, fork_database_exception,
                      "loss of sync between fork_db and chainbase during fork switch" ); // _should_ never fail
@@ -1944,7 +1945,7 @@ struct controller_impl {
                // Remove the block that threw and all forks built off it.
                fork_db.remove( (*ritr)->id );
 
-               // pop all blocks from the bad fork
+               // pop all blocks from the bad fork, discarding their transactions
                // ritr base is a forward itr to the last block successfully applied
                auto applied_itr = ritr.base();
                for( auto itr = applied_itr; itr != branches.first.end(); ++itr ) {
@@ -1962,10 +1963,6 @@ struct controller_impl {
             } // end if exception
          } /// end for each block in branch
 
-         if ( read_mode == db_read_mode::SPECULATIVE ) {
-            unapplied_branch = std::move( branches.second );
-         }
-
          ilog("successfully switched fork to new head ${new_head_id}", ("new_head_id", new_head->id));
       } else {
          head_changed = false;
@@ -1974,7 +1971,6 @@ struct controller_impl {
       if( head_changed )
          log_irreversible();
 
-      return unapplied_branch;
    } /// push_block
 
    vector<transaction_metadata_ptr> abort_block() {
@@ -2503,10 +2499,10 @@ std::future<block_state_ptr> controller::create_block_state_future( const signed
    return my->create_block_state_future( b );
 }
 
-branch_type controller::push_block( std::future<block_state_ptr>& block_state_future ) {
+void controller::push_block( std::future<block_state_ptr>& block_state_future, const forked_trxs_callback& forked_trxs_cb ) {
    validate_db_available_size();
    validate_reversible_available_size();
-   return my->push_block( block_state_future );
+   my->push_block( block_state_future, forked_trxs_cb );
 }
 
 transaction_trace_ptr controller::push_transaction( const transaction_metadata_ptr& trx, fc::time_point deadline, uint32_t billed_cpu_time_us ) {
