@@ -61,9 +61,9 @@ namespace eosio { namespace chain {
                });
       }
 
-      static wasm_allocator* get_wasm_allocator() {
-         static wasm_allocator walloc;
-         return &walloc;
+      static buffered_allocator* get_buffered_allocator() {
+         static buffered_allocator buf_alloc;
+         return &buf_alloc;
       }
 
       std::vector<uint8_t> parse_initial_memory(const Module& module) {
@@ -135,7 +135,6 @@ namespace eosio { namespace chain {
             } catch(const IR::ValidationException& e) {
                EOS_ASSERT(false, wasm_serialization_error, e.message.c_str());
             }
-
             if(vm_type != static_cast<uint8_t>(wasm_interface::vm_type::eos_vm)) {
                wasm_injections::wasm_binary_injection injector(module);
                injector.inject();

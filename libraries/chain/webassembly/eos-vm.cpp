@@ -21,15 +21,17 @@ class eos_vm_instantiated_module : public wasm_instantiated_module_interface {
          _instantiated_module(std::move(mod)) {}
 
       void apply(apply_context& context) override {
-         auto* alloc = wasm_interface::get_wasm_allocator();
-         _instantiated_module->set_wasm_allocator( alloc );
+         auto* alloc = wasm_interface::get_buffered_allocator();
+         auto& walloc = alloc->get_clean_allocator();
+         _instantiated_module->set_wasm_allocator( &walloc );
          _runtime->_bkend = _instantiated_module.get();
-	 _runtime->_bkend->initialize(&context);
-	 const auto& res = _runtime->_bkend->call(&context, "env", "apply",
+         _runtime->_bkend->initialize(&context);
+         const auto& res = _runtime->_bkend->call(&context, "env", "apply",
 					     context.get_receiver().to_uint64_t(),
 					     context.get_action().account.to_uint64_t(),
 					     context.get_action().name.to_uint64_t());
          _runtime->_bkend = nullptr;
+         alloc->release_allocator( walloc );
       }
 
    private:

@@ -32,12 +32,12 @@ namespace eosio { namespace chain {
    using namespace webassembly::common;
 
    wasm_interface::wasm_interface(vm_type vm, const chainbase::database& d) : my( new wasm_interface_impl(vm, d) ) {
-      (void)get_wasm_allocator();
+      (void)get_buffered_allocator();
    }
 
    wasm_interface::~wasm_interface() {}
 
-   wasm_allocator* wasm_interface::get_wasm_allocator() { return wasm_interface_impl::get_wasm_allocator(); }
+   buffered_allocator* wasm_interface::get_buffered_allocator() { return wasm_interface_impl::get_buffered_allocator(); }
 
    void wasm_interface::validate(const controller& control, const bytes& code) {
       Module module;
