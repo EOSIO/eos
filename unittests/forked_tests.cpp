@@ -49,7 +49,7 @@ BOOST_AUTO_TEST_CASE( fork_with_bad_block ) try {
    auto res = bios.set_producers( {N(a),N(b),N(c),N(d),N(e)} );
 
    // run until the producers are installed and its the start of "a's" round
-   BOOST_REQUIRE( produce_empty_blocks_until( bios, N(e), N(a) ) );
+   BOOST_REQUIRE( produce_until_transition( bios, N(e), N(a) ) );
 
    // sync remote node
    tester remote(setup_policy::none);
@@ -420,14 +420,14 @@ BOOST_AUTO_TEST_CASE( irreversible_mode ) try {
    main.produce_block();
    main.set_producers( {N(producer1), N(producer2)} );
    main.produce_block();
-   BOOST_REQUIRE( produce_empty_blocks_until( main, N(producer1), N(producer2), 26) );
+   BOOST_REQUIRE( produce_until_transition( main, N(producer1), N(producer2), 26) );
 
    main.create_accounts( {N(alice)} );
    main.produce_block();
    auto hbn1 = main.control->head_block_num();
    auto lib1 = main.control->last_irreversible_block_num();
 
-   BOOST_REQUIRE( produce_empty_blocks_until( main, N(producer2), N(producer1), 11) );
+   BOOST_REQUIRE( produce_until_transition( main, N(producer2), N(producer1), 11) );
 
    auto hbn2 = main.control->head_block_num();
    auto lib2 = main.control->last_irreversible_block_num();
@@ -439,8 +439,8 @@ BOOST_AUTO_TEST_CASE( irreversible_mode ) try {
    push_blocks( main, other );
    BOOST_CHECK_EQUAL( other.control->head_block_num(), hbn2 );
 
-   BOOST_REQUIRE( produce_empty_blocks_until( main, N(producer1), N(producer2), 12) );
-   BOOST_REQUIRE( produce_empty_blocks_until( main, N(producer2), N(producer1), 12) );
+   BOOST_REQUIRE( produce_until_transition( main, N(producer1), N(producer2), 12) );
+   BOOST_REQUIRE( produce_until_transition( main, N(producer2), N(producer1), 12) );
 
    auto hbn3 = main.control->head_block_num();
    auto lib3 = main.control->last_irreversible_block_num();
@@ -457,15 +457,15 @@ BOOST_AUTO_TEST_CASE( irreversible_mode ) try {
    auto fork_first_block_id = other.control->head_block_id();
    wlog( "{w}", ("w", fork_first_block_id));
 
-   BOOST_REQUIRE( produce_empty_blocks_until( other, N(producer2), N(producer1), 11) ); // finish producer2's round
+   BOOST_REQUIRE( produce_until_transition( other, N(producer2), N(producer1), 11) ); // finish producer2's round
    BOOST_REQUIRE_EQUAL( other.control->pending_block_producer().to_string(), "producer1" );
 
    // Repeat two more times to ensure other has a longer chain than main
    other.produce_block( fc::milliseconds( 13 * config::block_interval_ms ) ); // skip over producer1's round
-   BOOST_REQUIRE( produce_empty_blocks_until( other, N(producer2), N(producer1), 11) ); // finish producer2's round
+   BOOST_REQUIRE( produce_until_transition( other, N(producer2), N(producer1), 11) ); // finish producer2's round
 
    other.produce_block( fc::milliseconds( 13 * config::block_interval_ms ) ); // skip over producer1's round
-   BOOST_REQUIRE( produce_empty_blocks_until( other, N(producer2), N(producer1), 11) ); // finish producer2's round
+   BOOST_REQUIRE( produce_until_transition( other, N(producer2), N(producer1), 11) ); // finish producer2's round
 
    auto hbn4 = other.control->head_block_num();
    auto lib4 = other.control->last_irreversible_block_num();
@@ -529,9 +529,9 @@ BOOST_AUTO_TEST_CASE( reopen_forkdb ) try {
 
    BOOST_REQUIRE_EQUAL( c1.control->active_producers().version, 1u );
 
-   produce_empty_blocks_until( c1, N(carol), N(alice) );
+   produce_until_transition( c1, N(carol), N(alice) );
    c1.produce_block();
-   produce_empty_blocks_until( c1, N(carol), N(alice) );
+   produce_until_transition( c1, N(carol), N(alice) );
 
    tester c2(setup_policy::none);
 

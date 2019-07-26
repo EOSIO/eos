@@ -53,8 +53,7 @@ BOOST_AUTO_TEST_CASE( activate_preactivate_feature ) try {
    c.produce_block();
 
    // Now the latest bios contract can be set.
-   c.set_code( config::system_account_name, contracts::before_producer_authority_eosio_bios_wasm() );
-   c.set_abi( config::system_account_name, contracts::before_producer_authority_eosio_bios_abi().data() );
+   c.set_before_producer_authority_bios_contract();
 
    c.produce_block();
 
@@ -769,7 +768,7 @@ BOOST_AUTO_TEST_CASE( disallow_empty_producer_schedule_test ) { try {
    // After activation, it should not be allowed
    c.preactivate_protocol_features( {*d} );
    c.produce_block();
-   BOOST_REQUIRE_EXCEPTION( c.set_producers( {} ),
+   BOOST_REQUIRE_EXCEPTION( c.set_producers_legacy( {} ),
                             wasm_execution_error,
                             fc_exception_message_is( "Producer schedule cannot be empty" ) );
 
@@ -1666,7 +1665,7 @@ BOOST_AUTO_TEST_CASE( producer_schedule_change_extension_test ) { try {
       auto sig_digest = digest_type::hash( std::make_pair(header_bmroot, remote.control->head_block_state()->pending_schedule.schedule_hash) );
       bad_block->producer_signature = remote.get_private_key(N(eosio), "active").sign(sig_digest);
 
-      // ensure it is accepted (but rejected because it doesn't match expected state)
+      // ensure it is rejected because the new_producers field is not null
       BOOST_REQUIRE_EXCEPTION(
          remote.push_block(bad_block), producer_schedule_exception,
          fc_exception_message_is( "Block header contains legacy producer schedule outdated by activation of WTMsig Block Signatures" )
