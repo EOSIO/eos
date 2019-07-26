@@ -444,14 +444,14 @@ public:
                                                ("producers", vector<account_name>(1, N(producer1111)))
                                              )
                                  );
-         trx.actions.emplace_back( get_action( config::system_account_name, N(undelegatebw),
-                                               vector<permission_level>{{N(producer1111), config::active_name}},
-                                               mvo()
-                                               ("from", "producer1111")
-                                               ("receiver", "producer1111")
-                                               ("unstake_quantity", core_from_string("150000000.0000") )
-                                             )
-                                 );
+//         trx.actions.emplace_back( get_action( config::system_account_name, N(undelegatebw),
+//                                               vector<permission_level>{{N(producer1111), config::active_name}},
+//                                               mvo()
+//                                               ("from", "producer1111")
+//                                               ("receiver", "producer1111")
+//                                               ("unstake_quantity", core_from_string("150000000.0000") )
+//                                             )
+//                                 );
 
          set_transaction_headers(trx);
          trx.sign( get_private_key( config::system_account_name, "active" ), control->get_chain_id()  );
