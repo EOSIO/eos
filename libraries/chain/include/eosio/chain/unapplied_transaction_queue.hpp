@@ -127,11 +127,16 @@ public:
       }
    }
 
-   void add_forked( const std::vector<transaction_metadata_ptr>& forked_trxs ) {
+   void add_forked( const branch_type& forked_branch ) {
       if( only_track_persisted || read_mode != db_read_mode::SPECULATIVE ) return;
-      for( const auto& trx : forked_trxs ) {
-         fc::time_point expiry = trx->packed_trx()->expiration();
-         queue.insert( { trx, expiry, trx_enum_type::forked } );
+      // forked_branch is in reverse order
+      for( auto ritr = forked_branch.rbegin(), rend = forked_branch.rend(); ritr != rend; ++ritr ) {
+         const block_state_ptr& bsptr = *ritr;
+         for( auto itr = bsptr->trxs.begin(), end = bsptr->trxs.end(); itr != end; ++itr ) {
+            const auto& trx = *itr;
+            fc::time_point expiry = trx->packed_trx()->expiration();
+            queue.insert( { trx, expiry, trx_enum_type::forked } );
+         }
       }
    }
 

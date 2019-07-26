@@ -36,7 +36,7 @@ namespace eosio { namespace chain {
    class account_object;
    using resource_limits::resource_limits_manager;
    using apply_handler = std::function<void(apply_context&)>;
-   using forked_trxs_callback = std::function<void(const std::vector<transaction_metadata_ptr>&)>;
+   using forked_branch_callback = std::function<void(const branch_type&)>;
 
    class fork_database;
 
@@ -154,7 +154,7 @@ namespace eosio { namespace chain {
           * @param block_state_future provide from call to create_block_state_future
           * @param cb calls cb with forked applied transactions for each forked block
           */
-         void push_block( std::future<block_state_ptr>& block_state_future, const forked_trxs_callback& cb );
+         void push_block( std::future<block_state_ptr>& block_state_future, const forked_branch_callback& cb );
 
          boost::asio::io_context& get_thread_pool();
 

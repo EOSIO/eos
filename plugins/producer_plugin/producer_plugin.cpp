@@ -365,8 +365,8 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          // push the new block
          bool except = false;
          try {
-            chain.push_block( bsf, [this]( const std::vector<transaction_metadata_ptr>& forked_trxs ) {
-               _unapplied_transactions.add_forked( forked_trxs );
+            chain.push_block( bsf, [this]( const branch_type& forked_branch ) {
+               _unapplied_transactions.add_forked( forked_branch );
             } );
          } catch ( const guard_exception& e ) {
             chain_plug->handle_guard_exception(e);

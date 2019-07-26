@@ -128,10 +128,7 @@ BOOST_AUTO_TEST_CASE( unapplied_transaction_queue_test ) try {
    bs2->trxs = { trx3, trx4, trx5 };
    auto bs3 = std::make_shared<block_state>();
    bs3->trxs = { trx6 };
-   q.add_forked( bs1->trxs );
-   q.add_forked( bs1->trxs );  // bs1 duplicate ignored
-   q.add_forked( bs2->trxs );
-   q.add_forked( bs3->trxs );
+   q.add_forked( { bs3, bs2, bs1, bs1 } ); // bs1 duplicate ignored
    BOOST_CHECK( q.size() == 6 );
    BOOST_REQUIRE( next( q ) == trx1 );
    BOOST_CHECK( q.size() == 5 );
@@ -151,10 +148,9 @@ BOOST_AUTO_TEST_CASE( unapplied_transaction_queue_test ) try {
    // fifo forked
    auto bs4 = std::make_shared<block_state>();
    bs4->trxs = { trx7 };
-   q.add_forked( bs1->trxs );
-   q.add_forked( bs2->trxs );
-   q.add_forked( bs3->trxs );
-   q.add_forked( bs4->trxs );
+   q.add_forked( { bs1 } );
+   q.add_forked( { bs3, bs2 } );
+   q.add_forked( { bs4 } );
    BOOST_CHECK( q.size() == 7 );
    BOOST_REQUIRE( next( q ) == trx1 );
    BOOST_CHECK( q.size() == 6 );
@@ -188,14 +184,10 @@ BOOST_AUTO_TEST_CASE( unapplied_transaction_queue_test ) try {
    auto bs6 = std::make_shared<block_state>();
    bs5->trxs = { trx11, trx12, trx13 };
    bs6->trxs = { trx11, trx15 };
-   q.add_forked( bs1->trxs );
-   q.add_forked( bs2->trxs );
-   q.add_forked( bs3->trxs );
-   q.add_forked( bs4->trxs );
-   q.add_forked( bs3->trxs ); // dups not added
-   q.add_forked( bs2->trxs ); // dups not added
-   q.add_forked( bs5->trxs );
-   q.add_forked( bs6->trxs );
+   q.add_forked( { bs3, bs2, bs1 } );
+   q.add_forked( { bs4 } );
+   q.add_forked( { bs3, bs2 } ); // dups ignored
+   q.add_forked( { bs6, bs5 } );
    BOOST_CHECK_EQUAL( q.size(), 11 );
    BOOST_REQUIRE( next( q ) == trx1 );
    BOOST_CHECK( q.size() == 10 );
@@ -223,16 +215,12 @@ BOOST_AUTO_TEST_CASE( unapplied_transaction_queue_test ) try {
    BOOST_CHECK( q.empty() );
 
    // altogether, order fifo: persisted, forked, aborted
-   q.add_forked( bs1->trxs );
-   q.add_forked( bs2->trxs );
-   q.add_forked( bs3->trxs );
+   q.add_forked( { bs3, bs2, bs1 } );
    q.add_persisted( trx16 );
    q.add_aborted( { trx9, trx14 } );
    q.add_persisted( trx8 );
    q.add_aborted( { trx18, trx19 } );
-   q.add_forked( bs4->trxs);
-   q.add_forked( bs5->trxs );
-   q.add_forked( bs6->trxs );
+   q.add_forked( { bs6, bs5, bs4 } );
    BOOST_CHECK( q.size() == 17 );
    BOOST_REQUIRE( next( q ) == trx16 );
    BOOST_CHECK( q.size() == 16 );
@@ -271,9 +259,7 @@ BOOST_AUTO_TEST_CASE( unapplied_transaction_queue_test ) try {
    BOOST_REQUIRE( next( q ) == nullptr );
    BOOST_CHECK( q.empty() );
 
-   q.add_forked( bs1->trxs );
-   q.add_forked( bs2->trxs );
-   q.add_forked( bs3->trxs );
+   q.add_forked( { bs3, bs2, bs1 } );
    q.add_aborted( { trx9, trx11 } );
    q.add_persisted( trx8 );
    q.clear();
