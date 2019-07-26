@@ -425,8 +425,8 @@ namespace eosio { namespace testing {
 
       signed_block_ptr produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms) )override {
          auto sb = _produce_block(skip_time, false);
-         auto bs = validating_node->create_block_state_future( sb );
-         validating_node->push_block( bs );
+         auto bsf = validating_node->create_block_state_future( sb );
+         validating_node->push_block( bsf, forked_trxs_callback() );
 
          return sb;
       }
@@ -437,14 +437,14 @@ namespace eosio { namespace testing {
 
       void validate_push_block(const signed_block_ptr& sb) {
          auto bs = validating_node->create_block_state_future( sb );
-         validating_node->push_block( bs );
+         validating_node->push_block( bs, forked_trxs_callback() );
       }
 
       signed_block_ptr produce_empty_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms) )override {
          unapplied_transactions.add_aborted( control->abort_block() );
          auto sb = _produce_block(skip_time, true);
-         auto bs = validating_node->create_block_state_future( sb );
-         validating_node->push_block( bs );
+         auto bsf = validating_node->create_block_state_future( sb );
+         validating_node->push_block( bsf, forked_trxs_callback() );
 
          return sb;
       }

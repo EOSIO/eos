@@ -224,10 +224,11 @@ namespace eosio { namespace testing {
    }
 
    void base_tester::push_block(signed_block_ptr b) {
-      auto bs = control->create_block_state_future(b);
-      vector<transaction_metadata_ptr> aborted_trxs = control->abort_block();
-      unapplied_transactions.add_forked( control->push_block( bs ) );
-      unapplied_transactions.add_aborted( std::move( aborted_trxs ) );
+      auto bsf = control->create_block_state_future(b);
+      unapplied_transactions.add_aborted( control->abort_block() );
+      control->push_block( bsf, [this]( const std::vector<transaction_metadata_ptr>& forked_trxs ) {
+         unapplied_transactions.add_forked( forked_trxs );
+      } );
 
       auto itr = last_produced_block.find(b->producer);
       if (itr == last_produced_block.end() || block_header::num_from_id(b->id()) > block_header::num_from_id(itr->second)) {
@@ -928,9 +929,9 @@ namespace eosio { namespace testing {
 
             auto block = a.control->fetch_block_by_number(i);
             if( block ) { //&& !b.control->is_known_block(block->id()) ) {
-               auto bs = b.control->create_block_state_future( block );
+               auto bsf = b.control->create_block_state_future( block );
                b.control->abort_block();
-               b.control->push_block(bs); //, eosio::chain::validation_steps::created_block);
+               b.control->push_block(bsf, forked_trxs_callback()); //, eosio::chain::validation_steps::created_block);
             }
          }
       };
