@@ -228,7 +228,7 @@ namespace LLVMJIT
 		{
 			emitConditionalTrapIntrinsic(
 				irBuilder.CreateICmpEQ(divisor,typedZeroConstants[(Uptr)type]),
-				"wavmIntrinsics.divideByZeroOrIntegerOverflowTrap",FunctionType::get(),{});
+				"rodeos_internal.div0_or_overflow",FunctionType::get(),{});
 		}
 
 		// Traps on (x / 0) or (INT_MIN / -1).
@@ -242,7 +242,7 @@ namespace LLVMJIT
 						),
 					irBuilder.CreateICmpEQ(right,typedZeroConstants[(Uptr)type])
 					),
-				"wavmIntrinsics.divideByZeroOrIntegerOverflowTrap",FunctionType::get(),{});
+				"rodeos_internal.div0_or_overflow",FunctionType::get(),{});
 		}
 
 		llvm::Value* getLLVMIntrinsic(const std::initializer_list<llvm::Type*>& argTypes,llvm::Intrinsic::ID id)
@@ -560,7 +560,7 @@ namespace LLVMJIT
 		void unreachable(NoImm)
 		{
 			// Call an intrinsic that causes a trap, and insert the LLVM unreachable terminator.
-			emitRuntimeIntrinsic("wavmIntrinsics.unreachableTrap",FunctionType::get(),{});
+			emitRuntimeIntrinsic("rodeos_internal.unreachable",FunctionType::get(),{});
 			irBuilder.CreateUnreachable();
 
 			enterUnreachable();
@@ -633,7 +633,7 @@ namespace LLVMJIT
 			// If the function index is larger than the function table size, trap.
 			emitConditionalTrapIntrinsic(
 				irBuilder.CreateICmpUGE(functionIndexZExt,moduleContext.defaultTableMaxElementIndex),
-				"wavmIntrinsics.indirectCallIndexOutOfBounds",FunctionType::get(),{});
+				"rodeos_internal.indirect_call_oob",FunctionType::get(),{});
 
 			// Load the type for this table entry.
 			auto functionTypePointerPointer = irBuilder.CreateInBoundsGEP(moduleContext.defaultTablePointer,{functionIndexZExt,emitLiteral((U32)0)});
@@ -643,11 +643,8 @@ namespace LLVMJIT
 			// If the function type doesn't match, trap.
 			emitConditionalTrapIntrinsic(
 				irBuilder.CreateICmpNE(llvmCalleeType,functionTypePointer),
-				"wavmIntrinsics.indirectCallSignatureMismatch",
-				FunctionType::get(ResultType::none,{ValueType::i32,ValueType::i64,ValueType::i64}),
-				{	tableElementIndex,
-					irBuilder.CreatePtrToInt(llvmCalleeType,llvmI64Type),
-					emitLiteral(reinterpret_cast<U64>(moduleContext.moduleInstance->defaultTable))	}
+				"rodeos_internal.indirect_call_mismatch",
+				FunctionType::get(),{}
 				);
 
 			// Call the function loaded from the table.
@@ -934,16 +931,16 @@ namespace LLVMJIT
 		EMIT_UNARY_OP(i64,reinterpret_f64,irBuilder.CreateBitCast(operand,llvmI64Type))
 
 		// These operations don't match LLVM's semantics exactly, so just call out to C++ implementations.
-		EMIT_FP_BINARY_OP(min,emitRuntimeIntrinsic("wavmIntrinsics.floatMin",FunctionType::get(asResultType(type),{type,type}),{left,right}))
-		EMIT_FP_BINARY_OP(max,emitRuntimeIntrinsic("wavmIntrinsics.floatMax",FunctionType::get(asResultType(type),{type,type}),{left,right}))
-		EMIT_FP_UNARY_OP(ceil,emitRuntimeIntrinsic("wavmIntrinsics.floatCeil",FunctionType::get(asResultType(type),{type}),{operand}))
-		EMIT_FP_UNARY_OP(floor,emitRuntimeIntrinsic("wavmIntrinsics.floatFloor",FunctionType::get(asResultType(type),{type}),{operand}))
-		EMIT_FP_UNARY_OP(trunc,emitRuntimeIntrinsic("wavmIntrinsics.floatTrunc",FunctionType::get(asResultType(type),{type}),{operand}))
-		EMIT_FP_UNARY_OP(nearest,emitRuntimeIntrinsic("wavmIntrinsics.floatNearest",FunctionType::get(asResultType(type),{type}),{operand}))
-		EMIT_INT_UNARY_OP(trunc_s_f32,emitRuntimeIntrinsic("wavmIntrinsics.floatToSignedInt",FunctionType::get(asResultType(type),{ValueType::f32}),{operand}))
-		EMIT_INT_UNARY_OP(trunc_s_f64,emitRuntimeIntrinsic("wavmIntrinsics.floatToSignedInt",FunctionType::get(asResultType(type),{ValueType::f64}),{operand}))
-		EMIT_INT_UNARY_OP(trunc_u_f32,emitRuntimeIntrinsic("wavmIntrinsics.floatToUnsignedInt",FunctionType::get(asResultType(type),{ValueType::f32}),{operand}))
-		EMIT_INT_UNARY_OP(trunc_u_f64,emitRuntimeIntrinsic("wavmIntrinsics.floatToUnsignedInt",FunctionType::get(asResultType(type),{ValueType::f64}),{operand}))
+		EMIT_FP_BINARY_OP(min,emitRuntimeIntrinsic("rodeos_internal.unreachable",FunctionType::get(asResultType(type),{type,type}),{left,right}))
+		EMIT_FP_BINARY_OP(max,emitRuntimeIntrinsic("rodeos_internal.unreachable",FunctionType::get(asResultType(type),{type,type}),{left,right}))
+		EMIT_FP_UNARY_OP(ceil,emitRuntimeIntrinsic("rodeos_internal.unreachable",FunctionType::get(asResultType(type),{type}),{operand}))
+		EMIT_FP_UNARY_OP(floor,emitRuntimeIntrinsic("rodeos_internal.unreachable",FunctionType::get(asResultType(type),{type}),{operand}))
+		EMIT_FP_UNARY_OP(trunc,emitRuntimeIntrinsic("rodeos_internal.unreachable",FunctionType::get(asResultType(type),{type}),{operand}))
+		EMIT_FP_UNARY_OP(nearest,emitRuntimeIntrinsic("rodeos_internal.unreachable",FunctionType::get(asResultType(type),{type}),{operand}))
+		EMIT_INT_UNARY_OP(trunc_s_f32,emitRuntimeIntrinsic("rodeos_internal.unreachable",FunctionType::get(asResultType(type),{ValueType::f32}),{operand}))
+		EMIT_INT_UNARY_OP(trunc_s_f64,emitRuntimeIntrinsic("rodeos_internal.unreachable",FunctionType::get(asResultType(type),{ValueType::f64}),{operand}))
+		EMIT_INT_UNARY_OP(trunc_u_f32,emitRuntimeIntrinsic("rodeos_internal.unreachable",FunctionType::get(asResultType(type),{ValueType::f32}),{operand}))
+		EMIT_INT_UNARY_OP(trunc_u_f64,emitRuntimeIntrinsic("rodeos_internal.unreachable",FunctionType::get(asResultType(type),{ValueType::f64}),{operand}))
 	};
 	
 	// A do-nothing visitor used to decode past unreachable operators (but supporting logging, and passing the end operator through).
@@ -989,16 +986,6 @@ namespace LLVMJIT
 		// Create an initial basic block for the function.
 		auto entryBasicBlock = llvm::BasicBlock::Create(context,"entry",llvmFunction);
 		irBuilder.SetInsertPoint(entryBasicBlock);
-
-		// If enabled, emit a call to the WAVM function enter hook (for debugging).
-		if(ENABLE_FUNCTION_ENTER_EXIT_HOOKS)
-		{
-			emitRuntimeIntrinsic(
-				"wavmIntrinsics.debugEnterFunction",
-				FunctionType::get(ResultType::none,{ValueType::i64}),
-				{emitLiteral(reinterpret_cast<U64>(functionInstance))}
-				);
-		}
 
 		// Create and initialize allocas for all the locals and parameters.
 		auto llvmArgIt = llvmFunction->arg_begin();
@@ -1047,16 +1034,6 @@ namespace LLVMJIT
 			else { decoder.decodeOp(unreachableOpVisitor); }
 		};
 		WAVM_ASSERT_THROW(irBuilder.GetInsertBlock() == returnBlock);
-		
-		// If enabled, emit a call to the WAVM function enter hook (for debugging).
-		if(ENABLE_FUNCTION_ENTER_EXIT_HOOKS)
-		{
-			emitRuntimeIntrinsic(
-				"wavmIntrinsics.debugExitFunction",
-				FunctionType::get(ResultType::none,{ValueType::i64}),
-				{emitLiteral(reinterpret_cast<U64>(functionInstance))}
-				);
-		}
 
       depth = depth_loadinst = irBuilder.CreateLoad(moduleContext.depthCounter);
       depth = irBuilder.CreateAdd(depth, emitLiteral((I32)1));

@@ -142,9 +142,6 @@ namespace Runtime
 		~ModuleInstance() override;
 	};
 
-	// Initializes global state used by the WAVM intrinsics.
-	void initWAVMIntrinsics();
-
 	// Checks whether an address is owned by a table or memory.
 	bool isAddressOwnedByTable(U8* address);
 	bool isAddressOwnedByMemory(U8* address);

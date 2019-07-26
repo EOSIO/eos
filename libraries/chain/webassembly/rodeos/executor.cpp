@@ -41,7 +41,6 @@ static void(*chained_handler)(int,siginfo_t*,void*);
    if(current_gs == 0)
       goto notus;
 
-   //we can't pass a GS pointer to siglongjmp() so get us back over to the main segment now
    cb_in_main_segment = reinterpret_cast<control_block*>(current_gs - memory::cb_offset);
 
    //as a double check that the control block pointer is what we expect, look for the magic
@@ -93,16 +92,31 @@ DEFINE_INTRINSIC_FUNCTION2(rodeos_internal,_grow_memory,grow_memory,i32,i32,grow
 }
 
 ///XXX put this somewhere else cozy
-template<typename T>
-static void causeIntrensicException(const T& e) {
+static void throw_internal_exception(const std::string& s) {
    RODEOS_MEMORY_PTR_cb_ptr;
-   *cb_ptr->eptr = std::make_exception_ptr(e);
+   *cb_ptr->eptr = std::make_exception_ptr(wasm_execution_error(FC_LOG_MESSAGE(error, s)));
    siglongjmp(*cb_ptr->jmp, 4); ///XXX 4 means due to exception
    __builtin_unreachable();
 }
 
 DEFINE_INTRINSIC_FUNCTION0(rodeos_internal,_depth_assert,depth_assert,none) {
-   causeIntrensicException(wasm_execution_error(FC_LOG_MESSAGE(error, "Exceeded call depth maximum")));
+   throw_internal_exception("Exceeded call depth maximum");
+}
+
+DEFINE_INTRINSIC_FUNCTION0(rodeos_internal,_div0_or_overflow,div0_or_overflow,none) {
+   throw_internal_exception("Division by 0 or integer overflow trapped");
+}
+
+DEFINE_INTRINSIC_FUNCTION0(rodeos_internal,_indirect_call_mismatch,indirect_call_mismatch,none) {
+   throw_internal_exception("Indirect call function type mismatch");
+}
+
+DEFINE_INTRINSIC_FUNCTION0(rodeos_internal,_indirect_call_oob,indirect_call_oob,none) {
+   throw_internal_exception("Indirect call index out of bounds");
+}
+
+DEFINE_INTRINSIC_FUNCTION0(rodeos_internal,_unreachable,unreachable,none) {
+   throw_internal_exception("Unreachable reached");
 }
 
 executor::executor(const code_cache& cc) {
@@ -190,14 +204,7 @@ void executor::execute(const code_descriptor& code, const memory& mem, apply_con
          EOS_ASSERT(false, wasm_execution_error, "access violation");
          break;
       case 4: //exception
-         try {
-            std::rethrow_exception(*cb->eptr);
-         } catch(const Runtime::Exception& e ) {  //XXX not required forever; just need until internal Runtime Exceptions converted over
-             FC_THROW_EXCEPTION(wasm_execution_error,
-                         "cause: ${cause}\n${callstack}",
-                         ("cause", string(describeExceptionCause(e.cause)))
-                         ("callstack", e.callStack));
-         } FC_CAPTURE_AND_RETHROW();
+         std::rethrow_exception(*cb->eptr);
          break;
    }
 #if 0
