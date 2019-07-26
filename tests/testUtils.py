@@ -119,8 +119,10 @@ class Utils:
 
     @staticmethod
     def checkOutput(cmd, ignoreError=False):
-        assert(isinstance(cmd, list))
-        popen=subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if (isinstance(cmd, list)):
+            popen=subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        else:
+            popen=subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
         (output,error)=popen.communicate()
         Utils.CheckOutputDeque.append((output,error,cmd))
         if popen.returncode != 0 and not ignoreError:

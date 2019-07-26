@@ -808,6 +808,7 @@ namespace eosio {
       }
       reset();
       sent_handshake_count = 0;
+      node_id = fc::sha256();
       last_handshake_recv = handshake_message();
       last_handshake_sent = handshake_message();
       my_impl->sync_master->reset_lib_num(shared_from_this());
@@ -880,7 +881,13 @@ namespace eosio {
          uint32_t end   = std::max( peer_requested->end_block, block_header::num_from_id(head_id) );
          peer_requested = sync_state( start, end, start - 1 );
       }
-      enqueue_sync_block();
+
+      if( peer_requested->start_block <= peer_requested->end_block ) {
+         fc_dlog( logger, "enqueue ${s} - ${e}", ("s", peer_requested->start_block)( "e", peer_requested->end_block ) );
+         enqueue_sync_block();
+      } else {
+         peer_requested.reset();
+      }
 
       // still want to send transactions along during blk branch sync
       syncing = false;
@@ -2588,7 +2595,6 @@ namespace eosio {
       } catch( const fc::exception &ex) {
          peer_elog(c, "bad signed_block : ${m}", ("m",ex.what()));
          fc_elog( logger, "accept_block threw a non-assert exception ${x} from ${p}",( "x",ex.to_string())("p",c->peer_name()));
-         reason = no_reason;
       } catch( ...) {
          peer_elog(c, "bad signed_block : unknown exception");
          fc_elog( logger, "handle sync block caught something else from ${p}",("num",blk_num)("p",c->peer_name()));
