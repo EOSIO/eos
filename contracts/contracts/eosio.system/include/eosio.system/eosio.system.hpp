@@ -136,23 +136,33 @@ namespace eosiosystem {
       uint64_t             total_ram_bytes_reserved = 0;
       int64_t              total_ram_stake = 0;
 
+      //producer name and pervote factor
+      std::vector<std::pair<eosio::name, double>> last_schedule;
+      uint32_t last_schedule_version = 0;
+      block_timestamp current_round_start_time;
+
       block_timestamp      last_producer_schedule_update;
       time_point           last_pervote_bucket_fill;
+      int64_t              perstake_bucket = 0;
       int64_t              pervote_bucket = 0;
       int64_t              perblock_bucket = 0;
       uint32_t             total_unpaid_blocks = 0; /// all blocks which have been produced but not paid
+      int64_t              total_producer_stake = 0;
       int64_t              total_activated_stake = 0;
       time_point           thresh_activated_stake_time;
       uint16_t             last_producer_schedule_size = 0;
       double               total_producer_vote_weight = 0; /// the sum of all producer votes
+      double               total_active_producer_vote_weight = 0; /// the sum of top 21 producer votes
       block_timestamp      last_name_close;
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
       EOSLIB_SERIALIZE_DERIVED( eosio_global_state, eosio::blockchain_parameters,
                                 (max_ram_size)(min_account_stake)(total_ram_bytes_reserved)(total_ram_stake)
+                                (last_schedule)(last_schedule_version)(current_round_start_time)
                                 (last_producer_schedule_update)(last_pervote_bucket_fill)
-                                (pervote_bucket)(perblock_bucket)(total_unpaid_blocks)(total_activated_stake)(thresh_activated_stake_time)
-                                (last_producer_schedule_size)(total_producer_vote_weight)(last_name_close) )
+                                (perstake_bucket)(pervote_bucket)(perblock_bucket)(total_unpaid_blocks)(total_producer_stake)
+                                (total_activated_stake)(thresh_activated_stake_time)
+                                (last_producer_schedule_size)(total_producer_vote_weight)(total_active_producer_vote_weight)(last_name_close) )
    };
 
    /**
@@ -203,7 +213,12 @@ namespace eosiosystem {
       eosio::public_key     producer_key; /// a packed public key object
       bool                  is_active = true;
       std::string           url;
-      uint32_t              unpaid_blocks = 0;
+      uint32_t              current_round_unpaid_blocks = 0;
+      uint32_t              unpaid_blocks = 0; //count blocks only from finished rounds
+      uint32_t              expected_produced_blocks = 0;
+      block_timestamp       last_expected_produced_blocks_update;
+      int64_t               pending_perstake_reward = 0;
+      int64_t               pending_pervote_reward = 0;
       time_point            last_claim_time;
       uint16_t              location = 0;
 
@@ -214,7 +229,8 @@ namespace eosiosystem {
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
       EOSLIB_SERIALIZE( producer_info, (owner)(total_votes)(producer_key)(is_active)(url)
-                        (unpaid_blocks)(last_claim_time)(location) )
+                        (current_round_unpaid_blocks)(unpaid_blocks)(expected_produced_blocks)(last_expected_produced_blocks_update)
+                        (pending_perstake_reward)(pending_pervote_reward)(last_claim_time)(location) )
    };
 
    /**
@@ -278,6 +294,24 @@ namespace eosiosystem {
       // explicit serialization macro is not necessary, used here only to improve compilation time
       EOSLIB_SERIALIZE( voter_info, (owner)(proxy)(producers)(staked)(last_vote_weight)(vote_mature_time)(proxied_vote_weight)(is_proxy)(flags1)(reserved2)(reserved3) )
    };
+
+   struct [[eosio::table, eosio::contract("eosio.system")]] user_resources {
+      name          owner;
+      asset         net_weight;
+      asset         cpu_weight;
+      int64_t       own_stake_amount = 0; //controlled by delegatebw and undelegatebw only
+
+      uint64_t primary_key()const { return owner.value; }
+
+      // explicit serialization macro is not necessary, used here only to improve compilation time
+      EOSLIB_SERIALIZE( user_resources, (owner)(net_weight)(cpu_weight)(own_stake_amount) )
+   };
+
+   /**
+    *  These table is designed to be constructed in the scope of the relevant user, this
+    *  facilitates simpler API for per-user queries
+    */
+   typedef eosio::multi_index< "userres"_n, user_resources >      user_resources_table;
 
    /**
     * Voters table
@@ -512,6 +546,7 @@ namespace eosiosystem {
          static constexpr eosio::name ramfee_account{"eosio.ramfee"_n};
          static constexpr eosio::name stake_account{"eosio.stake"_n};
          static constexpr eosio::name bpay_account{"eosio.bpay"_n};
+         static constexpr eosio::name spay_account{"eosio.spay"_n};
          static constexpr eosio::name vpay_account{"eosio.vpay"_n};
          static constexpr eosio::name names_account{"eosio.names"_n};
          static constexpr eosio::name saving_account{"eosio.saving"_n};
@@ -1301,6 +1336,9 @@ namespace eosiosystem {
          bool does_satisfy_stake_requirement( const name& producer ) const;
          bool is_block_producer( const name& producer ) const;
          
+
+         // defined in producer_pay.cpp
+         int64_t share_pervote_reward_between_producers(int64_t amount);
 
          template <auto system_contract::*...Ptrs>
          class registration {

@@ -28,18 +28,6 @@ namespace eosiosystem {
 
    static constexpr uint32_t refund_delay_sec = 3*24*3600;
 
-   struct [[eosio::table, eosio::contract("eosio.system")]] user_resources {
-      name          owner;
-      asset         net_weight;
-      asset         cpu_weight;
-      int64_t       own_stake_amount = 0; //controlled by delegatebw and undelegatebw only
-
-      uint64_t primary_key()const { return owner.value; }
-
-      // explicit serialization macro is not necessary, used here only to improve compilation time
-      EOSLIB_SERIALIZE( user_resources, (owner)(net_weight)(cpu_weight)(own_stake_amount) )
-   };
-
 
    /**
     *  Every user 'from' has a scope/table that uses every receipient 'to' as the primary key.
@@ -74,7 +62,6 @@ namespace eosiosystem {
     *  These tables are designed to be constructed in the scope of the relevant user, this
     *  facilitates simpler API for per-user queries
     */
-   typedef eosio::multi_index< "userres"_n, user_resources >      user_resources_table;
    typedef eosio::multi_index< "delband"_n, delegated_bandwidth > del_bandwidth_table;
    typedef eosio::multi_index< "refunds"_n, refund_request >      refunds_table;
 
@@ -147,6 +134,11 @@ namespace eosiosystem {
          check( 0 <= tot_itr->net_weight.amount, "insufficient staked total net bandwidth" );
          check( 0 <= tot_itr->cpu_weight.amount, "insufficient staked total cpu bandwidth" );
          check( _gstate.min_account_stake <= tot_itr->own_stake_amount, "insufficient minimal account stake for " + receiver.to_string() );
+
+         auto prod = _producers.find( receiver.value );
+         if (prod != _producers.end() && prod->active() && from == receiver) {
+            _gstate.total_producer_stake += stake_delta.amount;
+         }
 
          {
             bool ram_managed = false;

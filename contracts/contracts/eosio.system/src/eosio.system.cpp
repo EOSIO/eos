@@ -16,7 +16,7 @@
 namespace eosiosystem {
 
    const int64_t  inflation_precision           = 100;     // 2 decimals
-   const int64_t  default_annual_rate           = 500;     // 5% annual rate
+   const int64_t  default_annual_rate           = 0;       // 0% annual rate
    const int64_t  default_inflation_pay_factor  = 5;       // 20% of the inflation
    const int64_t  default_votepay_factor        = 4;       // 25% of the producer pay
    const microseconds system_contract::vote_mature_period = eosio::days( 180 );
@@ -164,6 +164,11 @@ namespace eosiosystem {
       require_auth( _self );
       auto prod = _producers.find( producer.value );
       check( prod != _producers.end(), "producer not found" );
+      if (prod->active()) {
+         user_resources_table totals_tbl( _self, producer.value );
+         const auto& tot = totals_tbl.get(producer.value, "producer must have resources");
+         _gstate.total_producer_stake -= tot.own_stake_amount;
+      }
       _producers.modify( prod, same_payer, [&](auto& p) {
             p.deactivate();
          });

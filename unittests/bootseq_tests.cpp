@@ -167,6 +167,30 @@ public:
          return get_currency_balance(N(eosio.token), symbol(CORE_SYMBOL), act);
     }
 
+    int64_t get_pending_pervote_reward( const account_name& prod ) {
+       auto data = get_row_by_account(config::system_account_name, config::system_account_name, N(producers), prod);
+       if (data.empty()) {
+          return 0;
+       }
+
+       fc::variant v = abi_ser.binary_to_variant( "producer_info", data, abi_serializer_max_time );
+       int64_t pending_pervote_reward = 0;
+       fc::from_variant(v["pending_pervote_reward"], pending_pervote_reward);
+       return pending_pervote_reward;
+    }
+
+    uint32_t get_expected_produced_blocks( const account_name& prod ) {
+        auto data = get_row_by_account(config::system_account_name, config::system_account_name, N(producers), prod);
+        if (data.empty()) {
+            return 0;
+        }
+
+        fc::variant v = abi_ser.binary_to_variant( "producer_info", data, abi_serializer_max_time );
+        uint32_t expected_produced_blocks = 0;
+        fc::from_variant(v["expected_produced_blocks"], expected_produced_blocks);
+        return expected_produced_blocks;
+    }
+
     void set_code_abi(const account_name& account, const vector<uint8_t>& wasm, const char* abi, const private_key_type* signer = nullptr) {
        wdump((account));
         set_code(account, wasm, signer);
@@ -180,6 +204,16 @@ public:
         produce_blocks();
     }
 
+    uint32_t produce_blocks_until_schedule_is_changed(const uint32_t max_blocks) {
+        const auto current_version = control->active_producers().version;
+        uint32_t blocks_produced = 0;
+        while (control->active_producers().version == current_version && blocks_produced < max_blocks) {
+            produce_block();
+            blocks_produced++;
+        }
+        return blocks_produced;
+    }
+
 
     abi_serializer abi_ser;
 };
@@ -190,7 +224,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
     try {
 
         // Create eosio.msig and eosio.token
-        create_accounts({N(eosio.msig), N(eosio.token), N(eosio.ram), N(eosio.ramfee), N(eosio.stake), N(eosio.vpay), N(eosio.bpay), N(eosio.saving) });
+        create_accounts({N(eosio.msig), N(eosio.token), N(eosio.ram), N(eosio.ramfee), N(eosio.stake), N(eosio.vpay), N(eosio.spay), N(eosio.saving) });
         // Set code for the following accounts:
         //  - eosio (code: eosio.bios) (already set by tester constructor)
         //  - eosio.msig (code: eosio.msig)
@@ -286,8 +320,8 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         BOOST_TEST(active_schedule.producers.size() == 1u);
         BOOST_TEST(active_schedule.producers.front().producer_name == "eosio");
 
-        // Spend some time so the producer pay pool is filled by the inflation rate
-        produce_min_num_of_blocks_to_spend_time_wo_inactive_prod(fc::seconds(30 * 24 * 3600)); // 30 days
+        // Spend 1 day so we can use claimrewards
+        produce_min_num_of_blocks_to_spend_time_wo_inactive_prod(fc::seconds(1 * 24 * 3600)); // 1 day
         // Since the total activated stake is less than 150,000,000, it shouldn't be possible to claim rewards
         BOOST_REQUIRE_THROW(claim_rewards(N(runnerup1)), eosio_assert_message_exception);
 
@@ -320,18 +354,106 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         BOOST_TEST(active_schedule.producers.at(18).producer_name == "prods");
         BOOST_TEST(active_schedule.producers.at(19).producer_name == "prodt");
         BOOST_TEST(active_schedule.producers.at(20).producer_name == "produ");
+        //Rounds in this schedule are started by prodp
+        //Counters of expected_produced_blocks
+        //proda-prodd - 12
+        //prode       - 7
+        //prodf-prodo - 0
+        //prodp       - 9
+        //prodq-produ - 12
 
-        // Spend some time so the producer pay pool is filled by the inflation rate
-        produce_min_num_of_blocks_to_spend_time_wo_inactive_prod(fc::seconds(30 * 24 * 3600)); // 30 days
+        BOOST_REQUIRE_THROW(torewards(N(b1), config::system_account_name, core_from_string("20000.0000")), missing_auth_exception);
+        torewards(config::system_account_name, config::system_account_name, core_from_string("20000.0000"));
+        //Counters of expected_produced_blocks
+        //prode - 8
+        const auto saving_balance = get_balance(N(eosio.saving)).get_amount();
+        const auto spay_balance = get_balance(N(eosio.spay)).get_amount();
+        const auto vpay_balance = get_balance(N(eosio.vpay)).get_amount();
+        BOOST_REQUIRE(saving_balance >= 2000'0000);
+        BOOST_REQUIRE_EQUAL(spay_balance, 14000'0000);
+        BOOST_REQUIRE(vpay_balance <= 4000'0000);
+        BOOST_REQUIRE_EQUAL(saving_balance + spay_balance + vpay_balance, 20000'0000);
 
-        BOOST_REQUIRE_THROW(torewards(N(b1), config::system_account_name, core_from_string("100.0000")), missing_auth_exception);
-        torewards(config::system_account_name, config::system_account_name, core_from_string("100.0000"));
-        BOOST_REQUIRE_EQUAL(get_balance(N(eosio.saving)).get_amount(), 10'0000);
-        BOOST_REQUIRE_EQUAL(get_balance(N(eosio.bpay)).get_amount(), 20'0000);
-        BOOST_REQUIRE_EQUAL(get_balance(N(eosio.vpay)).get_amount(), 70'0000);
+        for (auto prod: active_schedule.producers) {
+           BOOST_TEST(get_pending_pervote_reward(prod.producer_name) > 0);
+        }
 
-        // Since the total activated stake is larger than 150,000,000, pool should be filled reward should be bigger than zero
+        // make changes to top 21 producer list
+        votepro( N(b1), { N(proda), N(prodb), N(prodc), N(prodd), N(prode), N(prodf), N(prodg),
+                           N(prodh), N(prodi), N(prodj), N(prodk), N(prodl), N(prodm), N(prodn),
+                           N(prodo), N(prodp), N(prodq), N(prodr), N(prods), N(prodt), N(produ),
+                           N(runnerup1)} );
+        produce_blocks_until_schedule_is_changed(2000);
+        produce_blocks(2);
+        //Counters of expected_produced_blocks
+        //proda-prodf - 60
+        //prodg       - 49
+        //prodh-prodo - 48
+        //prodp       - 57
+        //prodq-produ - 60
+        for (auto prod: { N(proda), N(prodb), N(prodc) }) {
+           BOOST_TEST(get_expected_produced_blocks(prod) == 60);
+        }
+        BOOST_TEST(get_expected_produced_blocks(N(prodd)) == 49); //last producer in round
+        for (auto prod: { N(prode), N(prodf), N(prodg), N(prodh), N(prodi), N(prodj), N(prodk), N(prodl) }) {
+           BOOST_TEST(get_expected_produced_blocks(prod) == 48);
+        }
+        BOOST_TEST(get_expected_produced_blocks(N(prodm)) == 57); //first producer in round
+        for (auto prod: { N(prodn), N(prodo), N(prodp), N(prodq), N(prodr), N(prods), N(prodt), N(produ) }) {
+           BOOST_TEST(get_expected_produced_blocks(prod) == 60);
+        }
+
+        //update active schedule so we can check pending rewards after next schedule becomes active
+        active_schedule = control->head_block_state()->active_schedule;
+        BOOST_REQUIRE(active_schedule.producers.size() == 21);
+        BOOST_TEST(active_schedule.producers.at(0).producer_name == "proda");
+        BOOST_TEST(active_schedule.producers.at(1).producer_name == "prodb");
+        BOOST_TEST(active_schedule.producers.at(2).producer_name == "prodc");
+        BOOST_TEST(active_schedule.producers.at(3).producer_name == "prodd");
+        BOOST_TEST(active_schedule.producers.at(4).producer_name == "prode");
+        BOOST_TEST(active_schedule.producers.at(5).producer_name == "prodf");
+        BOOST_TEST(active_schedule.producers.at(6).producer_name == "prodg");
+        BOOST_TEST(active_schedule.producers.at(7).producer_name == "prodh");
+        BOOST_TEST(active_schedule.producers.at(8).producer_name == "prodi");
+        BOOST_TEST(active_schedule.producers.at(9).producer_name == "prodj");
+        BOOST_TEST(active_schedule.producers.at(10).producer_name == "prodk");
+        BOOST_TEST(active_schedule.producers.at(11).producer_name == "prodl");
+        BOOST_TEST(active_schedule.producers.at(12).producer_name == "prodm");
+        BOOST_TEST(active_schedule.producers.at(13).producer_name == "prodn");
+        BOOST_TEST(active_schedule.producers.at(14).producer_name == "prodo");
+        BOOST_TEST(active_schedule.producers.at(15).producer_name == "prodq");
+        BOOST_TEST(active_schedule.producers.at(16).producer_name == "prodr");
+        BOOST_TEST(active_schedule.producers.at(17).producer_name == "prods");
+        BOOST_TEST(active_schedule.producers.at(18).producer_name == "prodt");
+        BOOST_TEST(active_schedule.producers.at(19).producer_name == "produ");
+        BOOST_TEST(active_schedule.producers.at(20).producer_name == "runnerup1");
+        BOOST_TEST(get_pending_pervote_reward(N(runnerup1)) == 0);
+        // make changes to top 21 producer list
+        votepro( N(b1), { N(proda), N(prodb), N(prodc), N(prodd), N(prode), N(prodf), N(prodg),
+                           N(prodh), N(prodi), N(prodj), N(prodk), N(prodl), N(prodm), N(prodn),
+                           N(prodo), N(prodp), N(prodq), N(prodr), N(prods), N(prodt), N(produ),
+                           N(runnerup1), N(runnerup2)} );
+        produce_blocks_until_schedule_is_changed(2000);
+        produce_blocks(2);
+
+        BOOST_TEST(get_expected_produced_blocks(N(prodp)) == 60); //wasn`t in second schedule, so expected_produced_blocks haven`t changed
+        BOOST_TEST(get_expected_produced_blocks(N(proda)) == 85); //last producer in round
+        for (auto prod: { N(prodb), N(prodc), N(prodd), N(prode), N(prodf), N(prodg), N(prodh), N(prodi), N(prodj), N(prodk), N(prodl) }) {
+           BOOST_TEST(get_expected_produced_blocks(prod) == 84);
+        }
+        BOOST_TEST(get_expected_produced_blocks(N(prodm)) == 93);
+        for (auto prod: { N(prodn), N(prodo), N(prodq), N(prodr), N(prods), N(prodt), N(produ) }) {
+           BOOST_TEST(get_expected_produced_blocks(prod) == 96);
+        }
+        BOOST_TEST(get_expected_produced_blocks(N(runnerup1)) == 36);
+
+        BOOST_TEST(get_balance(N(runnerup1)).get_amount() == 0);
+        BOOST_TEST(get_balance(N(proda)).get_amount() == 0);
+        claim_rewards(N(runnerup1));
+        //runnerup should not get any pervote rewards because he wasn`t on schedule when torewards was called
+        BOOST_REQUIRE_EQUAL(get_balance(N(eosio.vpay)).get_amount(), vpay_balance);
         claim_rewards(N(proda));
+        BOOST_TEST(get_balance(N(runnerup1)).get_amount() > 0);
         BOOST_TEST(get_balance(N(proda)).get_amount() > 0);
 
         const auto first_june_2018 = fc::seconds(1527811200); // 2018-06-01
