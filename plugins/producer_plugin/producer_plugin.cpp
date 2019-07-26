@@ -21,7 +21,6 @@
 
 #include <iostream>
 #include <algorithm>
-#include <functional>
 #include <boost/algorithm/string.hpp>
 #include <boost/range/adaptor/map.hpp>
 #include <boost/function_output_iterator.hpp>
