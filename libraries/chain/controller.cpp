@@ -1980,9 +1980,7 @@ struct controller_impl {
    vector<transaction_metadata_ptr> abort_block() {
       vector<transaction_metadata_ptr> applied_trxs;
       if( pending ) {
-         if ( read_mode == db_read_mode::SPECULATIVE ) {
-            applied_trxs = pending->extract_trx_metas();
-         }
+         applied_trxs = pending->extract_trx_metas();
          pending.reset();
          protocol_features.popped_blocks_to( head->block_num );
       }
