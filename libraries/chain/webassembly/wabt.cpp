@@ -88,8 +88,8 @@ std::unique_ptr<wasm_instantiated_module_interface> wabt_runtime::instantiate_mo
       for(auto itf = it->second.begin(); itf != it->second.end(); ++itf) {
          host_module->AppendFuncExport(itf->first, itf->second.sig, host_func_adaptor,
                                        reinterpret_cast<void*>(itf->second.func));
-         // reintrepret is needed here since C++ doesn't allow the implicit cast of a function
-         // pointer as void*, however it is guaranteed to work by POSIX (for example, dlsym)
+         // reinterpret is needed here since C++ doesn't allow the implicit cast of a function
+         // pointer to void*, however it is guaranteed to work by POSIX (for example, dlsym)
       }
    }
 
