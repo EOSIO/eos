@@ -171,7 +171,9 @@ try:
                 if trans is None or not trans[0]:
                     timeOutCount+=1
                     if timeOutCount>=3:
-                       Utils.errorExit("Failed to push create action to eosio contract for %d consecutive times, looks like nodeos already exited." % (timeOutCount))
+                        Print("Failed to push create action to eosio contract for %d consecutive times, looks like nodeos already exited." % (timeOutCount))
+                        keepProcessing=False
+                        break
 
                     Print("Failed to push create action to eosio contract. sleep for 5 seconds")
                     time.sleep(5)
