@@ -11,7 +11,7 @@ set(Sources
 	RuntimePrivate.h
 	Table.cpp
 	Threads.cpp
-	WAVMIntrinsics.cpp
+#	WAVMIntrinsics.cpp
   )
 set(PublicHeaders
 	${WAVM_INCLUDE_DIR}/Runtime/Intrinsics.h

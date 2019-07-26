@@ -11,12 +11,14 @@ using namespace boost::hana::literals;
 //NEVER reorder or remove indexes; the PIC uses the indexes in this table as an offset in to a jump
 // table. Adding on the bottom is fine and requires no other updates elsewhere
 constexpr auto intrinsic_table = boost::hana::make_tuple(
+   "rodeos_internal.unreachable"_s,
    "rodeos_internal.grow_memory"_s,
    "rodeos_internal.div0_or_overflow"_s,
    "rodeos_internal.indirect_call_mismatch"_s,
    "rodeos_internal.indirect_call_oob"_s,
-   "rodeos_internal.unreachable"_s,
    "rodeos_internal.depth_assert"_s,
+   "eosio_injection.call_depth_assert"_s,  //these two are never used by rodeos but all intrinsics
+   "eosio_injection.checktime"_s,          //must be mapped
    "env.__ashlti3"_s,
    "env.__ashrti3"_s,
    "env.__lshlti3"_s,

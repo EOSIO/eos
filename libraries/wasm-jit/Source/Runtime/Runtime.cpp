@@ -11,7 +11,6 @@ namespace Runtime
 	void init()
 	{
 		LLVMJIT::init();
-		initWAVMIntrinsics();
 	}
 	
 	// Returns a vector of strings, each element describing a frame of the call stack.
