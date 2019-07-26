@@ -21,6 +21,7 @@
 
 #include <iostream>
 #include <algorithm>
+#include <functional>
 #include <boost/algorithm/string.hpp>
 #include <boost/range/adaptor/map.hpp>
 #include <boost/function_output_iterator.hpp>
@@ -364,7 +365,9 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          // push the new block
          bool except = false;
          try {
-            _unapplied_transactions.add_forked( chain.push_block( bsf ) );
+            chain.push_block( bsf, [this]( const std::vector<transaction_metadata_ptr>& forked_trxs ) {
+               _unapplied_transactions.add_forked( forked_trxs );
+            } );
          } catch ( const guard_exception& e ) {
             chain_plug->handle_guard_exception(e);
             return;
