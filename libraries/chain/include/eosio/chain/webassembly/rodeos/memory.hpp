@@ -17,10 +17,10 @@ namespace eosio { namespace chain { namespace rodeos {
 
 class memory {
       static constexpr uint64_t wasm_memory_size                  = eosio::chain::wasm_constraints::maximum_linear_memory;
-      //warning: changing the following 4 params will invalidate existing PIC
-      static constexpr uint64_t mutable_global_size               = 8u  * eosio::chain::wasm_constraints::maximum_mutable_globals;
-      static constexpr uint64_t table_size                        = 16u * eosio::chain::wasm_constraints::maximum_table_elements;
       static constexpr uint64_t intrinsic_count                   = boost::hana::length(intrinsic_table);
+      //warning: changing the following 3 params will invalidate existing PIC
+      static constexpr uint64_t mutable_global_size               = 8u  * eosio::chain::wasm_constraints::maximum_mutable_globals/4u;
+      static constexpr uint64_t table_size                        = 16u * eosio::chain::wasm_constraints::maximum_table_elements;
       static constexpr size_t   wcb_allowance                     = 512u;
       static_assert(sizeof(control_block) <= wcb_allowance, "rodeos memory doesn't set aside enough memory for control block");
 
