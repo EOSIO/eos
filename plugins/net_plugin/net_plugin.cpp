@@ -2833,11 +2833,12 @@ namespace eosio {
 
    void
    handshake_initializer::populate( handshake_message &hello) {
+      namespace sc = std::chrono;
       hello.network_version = net_version_base + net_version;
       hello.chain_id = my_impl->chain_id;
       hello.node_id = my_impl->node_id;
       hello.key = my_impl->get_authentication_key();
-      hello.time = std::chrono::system_clock::now().time_since_epoch().count();
+      hello.time = sc::duration_cast<sc::nanoseconds>(sc::system_clock::now().time_since_epoch()).count();
       hello.token = fc::sha256::hash(hello.time);
       hello.sig = my_impl->sign_compact(hello.key, hello.token);
       // If we couldn't sign, don't send a token.
