@@ -419,11 +419,7 @@ struct controller_impl {
       }
    }
 
-   /**
-    *  Sets fork database head to the genesis state.
-    */
-   void initialize_blockchain_state() {
-      wlog( "Initializing new blockchain with genesis state" );
+   block_state_ptr genesis_block_state() {
       producer_schedule_type initial_schedule{ 0, {{config::system_account_name, conf.genesis.initial_key}} };
 
       block_header_state genheader;
@@ -435,10 +431,19 @@ struct controller_impl {
       genheader.id                             = genheader.header.id();
       genheader.block_num                      = genheader.header.block_num();
 
-      head = std::make_shared<block_state>();
-      static_cast<block_header_state&>(*head) = genheader;
-      head->activated_protocol_features = std::make_shared<protocol_feature_activation_set>();
-      head->block = std::make_shared<signed_block>(genheader.header);
+      auto genesis = std::make_shared<block_state>();
+      static_cast<block_header_state&>(*genesis) = genheader;
+      genesis->activated_protocol_features = std::make_shared<protocol_feature_activation_set>();
+      genesis->block = std::make_shared<signed_block>(genheader.header);
+      return genesis;
+   }
+
+   /**
+    *  Sets fork database head to the genesis state.
+    */
+   void initialize_blockchain_state() {
+      wlog( "Initializing new blockchain with genesis state" );
+      head = genesis_block_state();
       db.set_revision( head->block_num );
       initialize_database();
    }
@@ -2562,6 +2567,10 @@ void controller::set_action_blacklist( const flat_set< pair<account_name, action
 }
 void controller::set_key_blacklist( const flat_set<public_key_type>& new_key_blacklist ) {
    my->conf.key_blacklist = new_key_blacklist;
+}
+
+block_state_ptr controller::genesis_block_state()const {
+   return my->genesis_block_state();
 }
 
 uint32_t controller::head_block_num()const {

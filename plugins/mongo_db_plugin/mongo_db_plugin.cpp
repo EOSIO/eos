@@ -117,6 +117,7 @@ public:
    void init();
    void wipe_database();
    void create_expiration_index(mongocxx::collection& collection, uint32_t expire_after_seconds);
+   void insert_irreversible_block( const chain::block_state_ptr&, bool force = false );
 
    template<typename Queue, typename Entry> void queue(Queue& queue, const Entry& e);
 
@@ -1480,6 +1481,14 @@ void mongo_db_plugin_impl::init() {
    startup = false;
 }
 
+void mongo_db_plugin_impl::insert_irreversible_block( const chain::block_state_ptr& bs, bool force ) {
+   if( force || (store_blocks && !find_block( _blocks, bs->id.str() )) ||
+      (store_block_states && !find_block( _block_states, bs->id.str() )) ) {
+      accepted_block( bs ); // to set start_block_reached
+      applied_irreversible_block( bs );
+   }
+}
+
 ////////////
 // mongo_db_plugin
 ////////////
@@ -1662,6 +1671,13 @@ void mongo_db_plugin::plugin_initialize(const variables_map& options)
 
 void mongo_db_plugin::plugin_startup()
 {
+   chain_plugin* chain_plug = app().find_plugin<chain_plugin>();
+   EOS_ASSERT( chain_plug, chain::missing_chain_plugin_exception, ""  );
+   auto& chain = chain_plug->chain();
+
+   auto bs = chain.genesis_block_state();
+   bs->validated = true; // consider genesis block validated
+   my->insert_irreversible_block( bs );
 }
 
 void mongo_db_plugin::plugin_shutdown()
