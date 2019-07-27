@@ -406,13 +406,22 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
             return trx->packed_trx()->get_unprunable_size() + trx->packed_trx()->get_prunable_size() + sizeof( *trx );
          }
 
+         void add_size( const transaction_metadata_ptr& trx ) {
+            auto size = calc_size( trx );
+            EOS_ASSERT( size_in_bytes + size < max_incoming_transaction_queue_size, tx_resource_exhaustion, "Transaction exceeded producer resource limit" );
+            size_in_bytes += size;
+         }
+
       public:
          void set_max_incoming_transaction_queue_size( uint64_t v ) { max_incoming_transaction_queue_size = v; }
 
          void add( const transaction_metadata_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next ) {
-            auto size = calc_size( trx );
-            EOS_ASSERT( size_in_bytes + size < max_incoming_transaction_queue_size, tx_resource_exhaustion, "Transaction exceeded producer resource limit" );
-            size_in_bytes += size;
+            add_size( trx );
+            _incoming_transactions.emplace_back( trx, persist_until_expired, std::move( next ) );
+         }
+
+         void add_front( const transaction_metadata_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next ) {
+            add_size( trx );
             _incoming_transactions.emplace_back( trx, persist_until_expired, std::move( next ) );
          }
 
@@ -514,7 +523,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
             auto trace = chain.push_transaction( trx, deadline );
             if( trace->except ) {
                if( failure_is_subjective( *trace->except, deadline_is_subjective )) {
-                  _pending_incoming_transactions.add( trx, persist_until_expired, next );
+                  _pending_incoming_transactions.add_front( trx, persist_until_expired, next );
                   if( _pending_block_mode == pending_block_mode::producing ) {
                      fc_dlog( _trx_trace_log, "[TRX_TRACE] Block ${block_num} for producer ${prod} COULD NOT FIT, tx: ${txid} RETRYING ",
                               ("block_num", chain.head_block_num() + 1)
