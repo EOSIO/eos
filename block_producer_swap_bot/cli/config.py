@@ -18,11 +18,11 @@ class ConfigFile:
         self.config = configparser.ConfigParser()
         self.config.read(name)
 
-    def get_nodeos_url(self):
+    def get_cleos(self):
         """
-        Get nodeos-url from config file.
+        Get cleos from config file.
         """
-        return self.config.get('NODES', 'nodeos-url')
+        return self.config.get('NODES', 'cleos')
 
     def get_eth_provider(self):
         """

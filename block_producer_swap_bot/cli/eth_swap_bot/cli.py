@@ -14,12 +14,12 @@ from cli.eth_swap_bot.service import EthSwapBot
 from cli.generic.help import (
     AMOUNT_TO_SWAP_ARGUMENT_HELP_MESSAGE,
     ETH_PROVIDER_ARGUMENT_HELP_MESSAGE,
-    NODEOS_URL_ARGUMENT_HELP_MESSAGE,
+    CLEOS_ARGUMENT_HELP_MESSAGE,
 )
 from cli.utils import (
     get_block_producer_permission,
     get_default_eth_provider,
-    get_default_nodeos_url,
+    get_default_cleos,
 )
 
 
@@ -34,17 +34,17 @@ def eth_swap_bot_commands():
 @eth_swap_bot_commands.command('process-swaps')
 @click.option('--eth-provider', type=str, required=True, help=ETH_PROVIDER_ARGUMENT_HELP_MESSAGE,
               default=get_default_eth_provider())
-@click.option('--nodeos-url', type=str, required=True, help=NODEOS_URL_ARGUMENT_HELP_MESSAGE,
-              default=get_default_nodeos_url())
+@click.option('--cleos', type=str, required=True, help=CLEOS_ARGUMENT_HELP_MESSAGE,
+              default=get_default_cleos())
 @click.option('--permission', type=str, required=True, help=PERMISSION_ARGUMENT_HELP_MESSAGE,
               default=get_block_producer_permission())
-def process_swaps(eth_provider, nodeos_url, permission):
+def process_swaps(eth_provider, cleos, permission):
     """
     Process swap requests.
     """
     eth_swap_bot = EthSwapBot(
         eth_provider,
-        nodeos_url,
+        cleos,
         permission,
     )
 
@@ -59,8 +59,8 @@ def process_swaps(eth_provider, nodeos_url, permission):
 @click.option('--timestamp', type=str, required=True, help=ETH_TIMESTAMP_ARGUMENT_HELP_MESSAGE)
 @click.option('--eth-provider', type=str, required=True, help=ETH_PROVIDER_ARGUMENT_HELP_MESSAGE,
               default=get_default_eth_provider())
-@click.option('--nodeos-url', type=str, required=True, help=NODEOS_URL_ARGUMENT_HELP_MESSAGE,
-              default=get_default_nodeos_url())
+@click.option('--cleos', type=str, required=True, help=CLEOS_ARGUMENT_HELP_MESSAGE,
+              default=get_default_cleos())
 @click.option('--permission', type=str, required=True, help=PERMISSION_ARGUMENT_HELP_MESSAGE,
               default=get_block_producer_permission())
 def manual_process_swap(**kwargs):
@@ -69,7 +69,7 @@ def manual_process_swap(**kwargs):
     """
     eth_swap_bot = EthSwapBot(
         eth_provider=kwargs.get('eth_provider'),
-        nodeos_url=kwargs.get('nodeos_url'),
+        cleos=kwargs.get('cleos'),
         permission=kwargs.get('permission'),
     )
 

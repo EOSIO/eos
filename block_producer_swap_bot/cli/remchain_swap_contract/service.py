@@ -15,15 +15,15 @@ class RemchainSwapContract:
     Implements remchain_swap_contract.
     """
 
-    def __init__(self, nodeos_url, permission):
+    def __init__(self, cleos, permission):
         """
         Constructor.
 
         Arguments:
-            nodeos_url (string, required): an address of nodeos url
+            cleos (string, required): cleos script path with options
             permission (string, required): a permission to sign process swap transactions
         """
-        self.nodeos_url = nodeos_url
+        self.cleos = cleos
         self.permission = permission
 
     def process_swap(self, **kwargs):
@@ -47,9 +47,15 @@ class RemchainSwapContract:
         amount = kwargs.get('amount')
         timestamp = kwargs.get('timestamp')
 
-        command = f'cleos --url {self.nodeos_url} push action {REMME_SWAP_ACCOUNT} {PROCESS_SWAP_ACTION} ' \
-            f'\'[ "{initiator}", "{txid}", "{chain_id}", "{swap_pubkey}", "{amount}", "{timestamp}" ]\' ' \
-            f'-p {self.permission} -j'
+        # command = f'{self.cleos} push action {REMME_SWAP_ACCOUNT} {PROCESS_SWAP_ACTION} ' \
+        #     f'\'[ "{initiator}", "{txid}", "{chain_id}", "{swap_pubkey}", "{amount}", "{timestamp}" ]\' ' \
+        #     f'-p {self.permission} -j'
+
+        command = 'cleos -u http://206.189.139.101:8000 --wallet-url=http://206.189.139.101:6666 push action ' \
+                  'eosiodetroit initswap ' \
+                  '\'["producer1111", "0xdced2e877a660b8509de876a26c8c1ac5be61e4b9f768505c141a19a66e7c53",' \
+                  '"25.0000 REM","EOS5mPzi83VbqWJ45HuSviXuJJesak8ZLiVqcqvCxUcGnZSp6a6ru",' \
+                  '"2019-07-19T07:08:39"]\' -p producer1111@active'
 
         res = subprocess.call(command, shell=True)
 
@@ -80,9 +86,9 @@ class RemchainSwapContract:
         amount = kwargs.get('amount')
         timestamp = kwargs.get('timestamp')
 
-        command = f'cleos --url {self.nodeos_url} push action {REMME_SWAP_ACCOUNT} {FINISH_SWAP_ACTION} ' \
+        command = f'{self.cleos} push action {REMME_SWAP_ACCOUNT} {FINISH_SWAP_ACTION} ' \
             f'\'[ "{receiver}", "{account_name_to_create}", "{txid}", "{chain_id}", "{swap_pubkey}",' \
-            f'"{signature}", "{amount}", "{timestamp}" ]\' ' \
+            f'"{signature}", "{amount*20}", "{timestamp}" ]\' ' \
             f'-p {self.permission}'
 
         subprocess.call(command, shell=True)

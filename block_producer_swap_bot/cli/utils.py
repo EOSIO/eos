@@ -34,11 +34,11 @@ def print_errors(errors):
     click.secho(dict_to_pretty_json({'errors': errors}), blink=True, bold=True, fg='red')
 
 
-def get_default_nodeos_url():
+def get_default_cleos():
     """
-    Get default nodeos-url from config file.
+    Get default cleos from config file.
     """
-    return config_file.get_nodeos_url()
+    return config_file.get_cleos()
 
 
 def get_default_eth_provider():

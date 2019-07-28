@@ -27,17 +27,17 @@ class EthSwapBot:
     Implements eth_swap_bot.
     """
 
-    def __init__(self, eth_provider, nodeos_url, permission):
+    def __init__(self, eth_provider, cleos, permission):
         """
         Constructor.
 
         Arguments:
             eth_provider (string, required): a link to ethereum node.
-            nodeos_url (string, required): an address of nodeos url.
+            cleos (string, required): cleos script path with some options.
             permission (string, required): a permission to sign process swap transactions
         """
         self.eth_provider = eth_provider
-        self.nodeos_url = nodeos_url
+        self.cleos = cleos
         self.permission = permission
 
         self.web3 = Web3(Web3.WebsocketProvider(eth_provider))
@@ -48,7 +48,7 @@ class EthSwapBot:
         )
 
         self.remchain_swap_contract = RemchainSwapContract(
-            nodeos_url=self.nodeos_url,
+            cleos=self.cleos,
             permission=self.permission,
         )
 

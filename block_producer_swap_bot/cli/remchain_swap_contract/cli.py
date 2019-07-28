@@ -6,7 +6,7 @@ import click
 from cli.eth_swap_bot.help import PERMISSION_ARGUMENT_HELP_MESSAGE
 from cli.generic.help import (
     ETH_PROVIDER_ARGUMENT_HELP_MESSAGE,
-    NODEOS_URL_ARGUMENT_HELP_MESSAGE,
+    CLEOS_ARGUMENT_HELP_MESSAGE,
 )
 from cli.remchain_swap_contract.help import (
     ACCOUNT_NAME_TO_CREATE_ARGUMENT_HELP_MESSAGE,
@@ -22,7 +22,7 @@ from cli.remchain_swap_contract.service import RemchainSwapContract
 from cli.utils import (
     get_block_producer_permission,
     get_default_eth_provider,
-    get_default_nodeos_url,
+    get_default_cleos,
 )
 
 
@@ -43,8 +43,8 @@ def remchain_swap_contract_commands():
 @click.option('--signature', type=str, required=True, help=SWAP_SIGNATURE_ARGUMENT_HELP_MESSAGE)
 @click.option('--amount', type=int, required=True, help=SWAP_AMOUNT_ARGUMENT_HELP_MESSAGE)
 @click.option('--timestamp', type=str, required=True, help=TIMESTAMP_ARGUMENT_HELP_MESSAGE)
-@click.option('--nodeos-url', type=str, required=True, help=NODEOS_URL_ARGUMENT_HELP_MESSAGE,
-              default=get_default_nodeos_url())
+@click.option('--cleos', type=str, required=True, help=CLEOS_ARGUMENT_HELP_MESSAGE,
+              default=get_default_cleos())
 @click.option('--eth-provider', type=str, required=True, help=ETH_PROVIDER_ARGUMENT_HELP_MESSAGE,
               default=get_default_eth_provider())
 @click.option('--permission', type=str, required=True, help=PERMISSION_ARGUMENT_HELP_MESSAGE,
@@ -54,7 +54,7 @@ def finish_swap(**kwargs):
     Finish swap on Remchain.
     """
     rem_swap_contract = RemchainSwapContract(
-        nodeos_url=kwargs.get('nodeos_url'),
+        cleos=kwargs.get('cleos'),
         permission=kwargs.get('permission'),
     )
 
