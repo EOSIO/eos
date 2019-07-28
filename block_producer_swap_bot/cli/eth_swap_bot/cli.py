@@ -55,7 +55,7 @@ def process_swaps(eth_provider, cleos, permission):
 @click.option('--txid', type=str, required=True, help=TXID_ARGUMENT_HELP_MESSAGE)
 @click.option('--chain-id', type=str, required=True, help=CHAIN_ID_ARGUMENT_HELP_MESSAGE)
 @click.option('--swap-pubkey', type=str, required=True, help=SWAP_PUBLIC_KEY_ARGUMENT_HELP_MESSAGE)
-@click.option('--amount', type=int, required=True, help=AMOUNT_TO_SWAP_ARGUMENT_HELP_MESSAGE)
+@click.option('--amount', type=str, required=True, help=AMOUNT_TO_SWAP_ARGUMENT_HELP_MESSAGE)
 @click.option('--timestamp', type=str, required=True, help=ETH_TIMESTAMP_ARGUMENT_HELP_MESSAGE)
 @click.option('--eth-provider', type=str, required=True, help=ETH_PROVIDER_ARGUMENT_HELP_MESSAGE,
               default=get_default_eth_provider())

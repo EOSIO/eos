@@ -1,6 +1,7 @@
 """
 Provide implementation of the eth_swap_bot.
 """
+import codecs
 import time
 from datetime import datetime
 from threading import Thread
@@ -16,7 +17,7 @@ from cli.constants import (
     ETH_SWAP_CONTRACT_ADDRESS,
     SHORT_POLLING_CONFIRMATION_INTERVAL,
     SHORT_POLLING_EVENTS_INTERVAL,
-)
+    REMCHAIN_TOKEN_DECIMALS, REMCHAIN_TOKEN_ID)
 from cli.eth_swap_bot.interfaces import EthSwapBotInterface
 from cli.remchain_swap_contract.service import RemchainSwapContract
 
@@ -62,16 +63,19 @@ class EthSwapBot:
         """
         event_args = event['args']
         transaction_id = str(event['transactionHash'].hex())
-        chain_id = str(event_args['chainId'])
-        user_public_key = str(event_args['userPublicKey'])
-        amount_to_swap = int(event_args['amountToSwap'])
+        chain_id = event_args['chainId'].hex()
+        swap_public_key = str(event_args['swapPubkey'])
+        amount_to_swap_int = int(event_args['amountToSwap'])
         timestamp = int(event_args['timestamp'])
+
+        amount = str(amount_to_swap_int)[:-REMCHAIN_TOKEN_DECIMALS] + '.' + \
+            str(amount_to_swap_int)[-REMCHAIN_TOKEN_DECIMALS:] + ' ' + REMCHAIN_TOKEN_ID
 
         result = {
             'txid': transaction_id,
             'chain_id': chain_id,
-            'swap_pubkey': user_public_key,
-            'amount': amount_to_swap,
+            'swap_pubkey': swap_public_key,
+            'amount': amount,
             'timestamp': timestamp,
         }
 
@@ -95,7 +99,7 @@ class EthSwapBot:
 
         txid = result.get('txid')
         timestamp = result.get('timestamp')
-        result['timestamp'] = datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d")
+        result['timestamp'] = datetime.fromtimestamp(timestamp).strftime("%Y-%m-%dT%H:%M:%S")
 
         if self.web3.eth.getTransaction(txid):
             self.remchain_swap_contract.process_swap(**result)

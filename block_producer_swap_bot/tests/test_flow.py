@@ -11,7 +11,7 @@ producers = [
     # 'producer111c@active',
     'useraaaaaaaa@active',
 ]
-txid = 'b194c53ac3df12704faf4247059d903ef5e9bd4f80dc393fba248114a86a7dd9'
+txid = 'b194c53ac3df12704faf4247059d903ef5e9bd4f80dc393fba248114a86a7dd4'
 chain_id = '0000000000000000000000000000000000000000000000000000000000000000'
 swap_pubkey = 'EOS7oNmmxo8yh8gmYLUGNCwNAFfLmrMxtmrzmFPG29CpGm5Bq4FGC'
 swap_privkey = '5JGzrjkwagH3MXvMvBdfWPzUrPEwSqrtNCXKdzzbtzjkhcbSjLc'
@@ -22,8 +22,8 @@ print(block_timestamp)
 cleos = 'cleos --url http://127.0.0.1:8001'
 
 sender_auth = 'useraaaaaaab@active'
-receiver = 'mynewaccout2'
-account_to_create = 'mynewaccout2'
+receiver = 'mynewaccout3'
+account_to_create = 'mynewaccout3'
 active_pubkey = 'EOS7oNmmxo8yh8gmYLUGNCwNAFfLmrMxtmrzmFPG29CpGm5Bq4FGC'
 owner_pubkey = 'EOS7oNmmxo8yh8gmYLUGNCwNAFfLmrMxtmrzmFPG29CpGm5Bq4FGC'
 

@@ -47,19 +47,11 @@ class RemchainSwapContract:
         amount = kwargs.get('amount')
         timestamp = kwargs.get('timestamp')
 
-        # command = f'{self.cleos} push action {REMME_SWAP_ACCOUNT} {PROCESS_SWAP_ACTION} ' \
-        #     f'\'[ "{initiator}", "{txid}", "{chain_id}", "{swap_pubkey}", "{amount}", "{timestamp}" ]\' ' \
-        #     f'-p {self.permission} -j'
-
-        command = 'cleos -u http://206.189.139.101:8000 --wallet-url=http://206.189.139.101:6666 push action ' \
-                  'eosiodetroit initswap ' \
-                  '\'["producer1111", "0xdced2e877a660b8509de876a26c8c1ac5be61e4b9f768505c141a19a66e7c53",' \
-                  '"25.0000 REM","EOS5mPzi83VbqWJ45HuSviXuJJesak8ZLiVqcqvCxUcGnZSp6a6ru",' \
-                  '"2019-07-19T07:08:39"]\' -p producer1111@active'
-
-        res = subprocess.call(command, shell=True)
-
-        return res
+        command = f'{self.cleos} push action {REMME_SWAP_ACCOUNT} {PROCESS_SWAP_ACTION} ' \
+            f'\'[ "{initiator}", "{txid}", "{chain_id}", "{swap_pubkey}", "{amount}", "{timestamp}" ]\' ' \
+            f'-p {self.permission} -j'
+        print(command)
+        #return subprocess.call(command, shell=True)
 
     def finish_swap(self, **kwargs):
         """
@@ -67,28 +59,31 @@ class RemchainSwapContract:
 
         Arguments:
             receiver (string, required): receiver of swapped tokens on Remchain
-            account_name_to_create (string, required): an account name to create on Remchain
             txid (string, required): an identifier of swap request transaction on the source blockchain
             chain_id (string, required): an identifier of destination blockchain
             swap_pubkey (string, required): a public key to verify signature with receiver and account name to create
-            signature (string, required): a signature of receiver and account name to create
             amount (int, required): amount of tokens to swap
-            timestamp (string, required): timestamp of request swap transaction on the source blockchain (yyyy-mm-dd)
-
+            timestamp (string, required): timestamp of request swap transaction on the source blockchain (yyyy-mm-ddThh:mm:ss)
+            signature (string, required): a signature of receiver and account name to create
+            account_name_to_create (string, required): an account name to create on Remchain
+            active (string, required): a public key to authorize active permission
+            owner (string, required): a public key to authorize owner permission
         """
 
         receiver = kwargs.get('receiver')
-        account_name_to_create = kwargs.get('account_name_to_create')
         txid = kwargs.get('txid')
         chain_id = kwargs.get('chain-id')
         swap_pubkey = kwargs.get('swap-pubkey')
-        signature = kwargs.get('signature')
         amount = kwargs.get('amount')
         timestamp = kwargs.get('timestamp')
+        signature = kwargs.get('signature')
+        account_name_to_create = kwargs.get('account_name_to_create')
+        active = kwargs.get('active')
+        owner = kwargs.get('owner')
 
         command = f'{self.cleos} push action {REMME_SWAP_ACCOUNT} {FINISH_SWAP_ACTION} ' \
-            f'\'[ "{receiver}", "{account_name_to_create}", "{txid}", "{chain_id}", "{swap_pubkey}",' \
-            f'"{signature}", "{amount*20}", "{timestamp}" ]\' ' \
+            f'\'[ "{receiver}", "{txid}", "{chain_id}", "{swap_pubkey}",' \
+            f'"{amount}", "{timestamp}", "{signature}", "{account_name_to_create}", "{active}", "{owner}" ]\' ' \
             f'-p {self.permission}'
-
-        subprocess.call(command, shell=True)
+        print(command)
+        #return subprocess.call(command, shell=True)
