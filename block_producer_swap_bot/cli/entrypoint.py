@@ -4,7 +4,6 @@ Provide implementation of the command line interface to interact with token swap
 import click
 
 from cli.eth_swap_bot.cli import eth_swap_bot_commands
-from cli.remchain_swap_contract.cli import remchain_swap_contract_commands
 
 
 @click.group()
@@ -18,4 +17,3 @@ def cli():
 
 
 cli.add_command(eth_swap_bot_commands)
-cli.add_command(remchain_swap_contract_commands)

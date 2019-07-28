@@ -1,7 +1,6 @@
 """
 Provide implementation of the eth_swap_bot.
 """
-import codecs
 import time
 from datetime import datetime
 from threading import Thread
@@ -99,7 +98,7 @@ class EthSwapBot:
 
         txid = result.get('txid')
         timestamp = result.get('timestamp')
-        result['timestamp'] = datetime.fromtimestamp(timestamp).strftime("%Y-%m-%dT%H:%M:%S")
+        result['timestamp'] = datetime.utcfromtimestamp(timestamp).strftime("%Y-%m-%dT%H:%M:%S")
 
         if self.web3.eth.getTransaction(txid):
             self.remchain_swap_contract.process_swap(**result)

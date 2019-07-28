@@ -11,12 +11,12 @@ producers = [
     # 'producer111c@active',
     'useraaaaaaaa@active',
 ]
-txid = 'b194c53ac3df12704faf4247059d903ef5e9bd4f80dc393fba248114a86a7dd4'
-chain_id = '0000000000000000000000000000000000000000000000000000000000000000'
+txid = '0x83e1b763e14d267c2249c1a8d18bf2b486acb8082a79a358e1d5d539d99a77b8'
+chain_id = '1c6ae7719a2a3b4ecb19584a30ff510ba1b6ded86e1fd8b8fc22f1179c622a32'
 swap_pubkey = 'EOS7oNmmxo8yh8gmYLUGNCwNAFfLmrMxtmrzmFPG29CpGm5Bq4FGC'
 swap_privkey = '5JGzrjkwagH3MXvMvBdfWPzUrPEwSqrtNCXKdzzbtzjkhcbSjLc'
-amount = '2.0000 REM'
-block_timestamp = '2019-07-28T03:38:39'
+amount = '20.0000 REM'
+block_timestamp = '2019-07-28T20:51:47'
 # block_timestamp = datetime.now().strftime('%Y-%m-%dT%H:%M:%S')
 print(block_timestamp)
 cleos = 'cleos --url http://127.0.0.1:8001'
@@ -91,8 +91,8 @@ def check_swap_result():
 
 
 if __name__ == '__main__':
-    step_set_contract()
-    step_update_auth()
-    step_process_swap()
+    #step_set_contract()
+    #step_update_auth()
+    #step_process_swap()
     step_finish_swap()
     check_swap_result()

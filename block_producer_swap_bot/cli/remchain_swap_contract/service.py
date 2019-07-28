@@ -49,9 +49,9 @@ class RemchainSwapContract:
 
         command = f'{self.cleos} push action {REMME_SWAP_ACCOUNT} {PROCESS_SWAP_ACTION} ' \
             f'\'[ "{initiator}", "{txid}", "{chain_id}", "{swap_pubkey}", "{amount}", "{timestamp}" ]\' ' \
-            f'-p {self.permission} -j'
+            f'-p {self.permission}'
         print(command)
-        #return subprocess.call(command, shell=True)
+        return subprocess.call(command, shell=True)
 
     def finish_swap(self, **kwargs):
         """
@@ -86,4 +86,4 @@ class RemchainSwapContract:
             f'"{amount}", "{timestamp}", "{signature}", "{account_name_to_create}", "{active}", "{owner}" ]\' ' \
             f'-p {self.permission}'
         print(command)
-        #return subprocess.call(command, shell=True)
+        return subprocess.call(command, shell=True)
