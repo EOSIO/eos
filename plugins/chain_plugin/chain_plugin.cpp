@@ -536,6 +536,27 @@ protocol_feature_set initialize_protocol_features( const fc::path& p, bool popul
    return pfs;
 }
 
+void
+chain_plugin::do_hard_replay(const variables_map& options) {
+         ilog( "Hard replay requested: deleting state database" );
+         clear_directory_contents( my->chain_config->state_dir );
+         auto backup_dir = block_log::repair_log( my->blocks_dir, options.at( "truncate-at-block" ).as<uint32_t>());
+         if( fc::exists( backup_dir / config::reversible_blocks_dir_name ) ||
+             options.at( "fix-reversible-blocks" ).as<bool>()) {
+            // Do not try to recover reversible blocks if the directory does not exist, unless the option was explicitly provided.
+            if( !recover_reversible_blocks( backup_dir / config::reversible_blocks_dir_name,
+                                            my->chain_config->reversible_cache_size,
+                                            my->chain_config->blocks_dir / config::reversible_blocks_dir_name,
+                                            options.at( "truncate-at-block" ).as<uint32_t>())) {
+               ilog( "Reversible blocks database was not corrupted. Copying from backup to blocks directory." );
+               fc::copy( backup_dir / config::reversible_blocks_dir_name,
+                         my->chain_config->blocks_dir / config::reversible_blocks_dir_name );
+               fc::copy( backup_dir / config::reversible_blocks_dir_name / "shared_memory.bin",
+                         my->chain_config->blocks_dir / config::reversible_blocks_dir_name / "shared_memory.bin" );
+            }
+         }
+}
+
 void chain_plugin::plugin_initialize(const variables_map& options) {
    ilog("initializing chain plugin");
 
@@ -714,23 +735,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          clear_directory_contents( my->chain_config->state_dir );
          clear_directory_contents( my->blocks_dir );
       } else if( options.at( "hard-replay-blockchain" ).as<bool>()) {
-         ilog( "Hard replay requested: deleting state database" );
-         clear_directory_contents( my->chain_config->state_dir );
-         auto backup_dir = block_log::repair_log( my->blocks_dir, options.at( "truncate-at-block" ).as<uint32_t>());
-         if( fc::exists( backup_dir / config::reversible_blocks_dir_name ) ||
-             options.at( "fix-reversible-blocks" ).as<bool>()) {
-            // Do not try to recover reversible blocks if the directory does not exist, unless the option was explicitly provided.
-            if( !recover_reversible_blocks( backup_dir / config::reversible_blocks_dir_name,
-                                            my->chain_config->reversible_cache_size,
-                                            my->chain_config->blocks_dir / config::reversible_blocks_dir_name,
-                                            options.at( "truncate-at-block" ).as<uint32_t>())) {
-               ilog( "Reversible blocks database was not corrupted. Copying from backup to blocks directory." );
-               fc::copy( backup_dir / config::reversible_blocks_dir_name,
-                         my->chain_config->blocks_dir / config::reversible_blocks_dir_name );
-               fc::copy( backup_dir / config::reversible_blocks_dir_name / "shared_memory.bin",
-                         my->chain_config->blocks_dir / config::reversible_blocks_dir_name / "shared_memory.bin" );
-            }
-         }
+	do_hard_replay(options);
       } else if( options.at( "replay-blockchain" ).as<bool>()) {
          ilog( "Replay requested: deleting state database" );
          if( options.at( "truncate-at-block" ).as<uint32_t>() > 0 )
@@ -1031,7 +1036,7 @@ bool chain_plugin::recover_reversible_blocks( const fc::path& db_dir, uint32_t c
    } catch( ... ) {
       throw;
    }
-   // Reversible block database is dirty. So back it up (unless already moved) and then create a new one.
+   // Reversible block database is dirty (or incompatible). So back it up (unless already moved) and then create a new one.
 
    auto reversible_dir = fc::canonical( db_dir );
    if( reversible_dir.filename().generic_string() == "." ) {
@@ -1062,7 +1067,16 @@ bool chain_plugin::recover_reversible_blocks( const fc::path& db_dir, uint32_t c
 
    ilog( "Reconstructing '${reversible_dir}' from backed up reversible directory", ("reversible_dir", reversible_dir) );
 
-   chainbase::database  old_reversible( backup_dir, database::read_only, 0, true );
+   optional<chainbase::database> old_reversible; 
+
+   try {
+      old_reversible = chainbase::database( backup_dir, database::read_only, 0, true );
+   } catch (const std::runtime_error &) {
+      // since we are allowing for dirty, it must be incompatible
+      ilog( "Did not recover any reversible blocks since reversible database incompatible");
+      return true;
+   }
+
    chainbase::database  new_reversible( reversible_dir, database::read_write, cache_size );
    std::fstream         reversible_blocks;
    reversible_blocks.open( (reversible_dir.parent_path() / std::string("portable-reversible-blocks-").append( now ) ).generic_string().c_str(),
@@ -1071,9 +1085,9 @@ bool chain_plugin::recover_reversible_blocks( const fc::path& db_dir, uint32_t c
    uint32_t num = 0;
    uint32_t start = 0;
    uint32_t end = 0;
-   old_reversible.add_index<reversible_block_index>();
+   old_reversible->add_index<reversible_block_index>();
    new_reversible.add_index<reversible_block_index>();
-   const auto& ubi = old_reversible.get_index<reversible_block_index,by_num>();
+   const auto& ubi = old_reversible->get_index<reversible_block_index,by_num>();
    auto itr = ubi.begin();
    if( itr != ubi.end() ) {
       start = itr->blocknum;
@@ -1689,11 +1703,19 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
    read_only::get_producers_result result;
 
    for (auto p : db.active_producers().producers) {
-      fc::variant row = fc::mutable_variant_object()
+      auto row = fc::mutable_variant_object()
          ("owner", p.producer_name)
-         ("producer_key", p.block_signing_key)
+         ("producer_authority", p.authority)
          ("url", "")
          ("total_votes", 0.0f);
+
+      // detect a legacy key and maintain API compatibility for those entries
+      if (p.authority.contains<block_signing_authority_v0>()) {
+         const auto& auth = p.authority.get<block_signing_authority_v0>();
+         if (auth.keys.size() == 1 && auth.keys.back().weight == auth.threshold) {
+            row("producer_key", auth.keys.back().key);
+         }
+      }
 
       result.rows.push_back(row);
    }

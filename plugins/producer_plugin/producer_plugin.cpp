@@ -189,9 +189,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       std::vector<chain::digest_type>                           _protocol_features_to_activate;
       bool                                                      _protocol_features_signaled = false; // to mark whether it has been signaled in start_block
 
-      time_point _last_signed_block_time;
       time_point _start_time = fc::time_point::now();
-      uint32_t   _last_signed_block_num = 0;
 
       producer_plugin* _self = nullptr;
       chain_plugin* chain_plug = nullptr;
@@ -233,39 +231,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       void on_block( const block_state_ptr& bsp ) {
          _unapplied_transactions.clear_applied( bsp->trxs );
 
-         if( bsp->header.timestamp <= _last_signed_block_time ) return;
          if( bsp->header.timestamp <= _start_time ) return;
-         if( bsp->block_num <= _last_signed_block_num ) return;
-
-         const auto& active_producer_to_signing_key = bsp->active_schedule.producers;
-
-         flat_set<account_name> active_producers;
-         active_producers.reserve(bsp->active_schedule.producers.size());
-         for (const auto& p: bsp->active_schedule.producers) {
-            active_producers.insert(p.producer_name);
-         }
-
-         std::set_intersection( _producers.begin(), _producers.end(),
-                                active_producers.begin(), active_producers.end(),
-                                boost::make_function_output_iterator( [&]( const chain::account_name& producer )
-         {
-            if( producer != bsp->header.producer ) {
-               auto itr = std::find_if( active_producer_to_signing_key.begin(), active_producer_to_signing_key.end(),
-                                        [&](const producer_key& k){ return k.producer_name == producer; } );
-               if( itr != active_producer_to_signing_key.end() ) {
-                  auto private_key_itr = _signature_providers.find( itr->block_signing_key );
-                  if( private_key_itr != _signature_providers.end() ) {
-                     auto d = bsp->sig_digest();
-                     auto sig = private_key_itr->second( d );
-                     _last_signed_block_time = bsp->header.timestamp;
-                     _last_signed_block_num  = bsp->block_num;
-
-   //                  ilog( "${n} confirmed", ("n",name(producer)) );
-                     _self->confirmed_block( { bsp->id, d, producer, sig } );
-                  }
-               }
-            }
-         } ) );
 
          // simplify handling of watermark in on_block
          auto block_producer = bsp->header.producer;
@@ -1341,7 +1307,15 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
    // Not our turn
    const auto& scheduled_producer = hbs->get_scheduled_producer(block_time);
    auto currrent_watermark_itr = _producer_watermarks.find(scheduled_producer.producer_name);
-   auto signature_provider_itr = _signature_providers.find(scheduled_producer.block_signing_key);
+
+   size_t num_relevant_signatures = 0;
+   scheduled_producer.for_each_key([&](const public_key_type& key){
+      const auto& iter = _signature_providers.find(key);
+      if(iter != _signature_providers.end()) {
+         num_relevant_signatures++;
+      }
+   });
+
    auto irreversible_block_age = get_irreversible_block_age();
 
    // If the next block production opportunity is in the present or future, we're synced.
@@ -1349,8 +1323,8 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
       _pending_block_mode = pending_block_mode::speculating;
    } else if( _producers.find(scheduled_producer.producer_name) == _producers.end()) {
       _pending_block_mode = pending_block_mode::speculating;
-   } else if (signature_provider_itr == _signature_providers.end()) {
-      elog("Not producing block because I don't have the private key for ${scheduled_key}", ("scheduled_key", scheduled_producer.block_signing_key));
+   } else if (num_relevant_signatures == 0) {
+      elog("Not producing block because I don't have any private keys relevant to authority: ${authority}", ("authority", scheduled_producer.authority));
       _pending_block_mode = pending_block_mode::speculating;
    } else if ( _pause_production ) {
       elog("Not producing block because production is explicitly paused");
@@ -1442,11 +1416,11 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
 
    if( chain.is_building_block() ) {
       auto pending_block_time = chain.pending_block_time();
-      auto pending_block_signing_key = chain.pending_block_signing_key();
+      const auto& pending_block_signing_authority = chain.pending_block_signing_authority();
       const fc::time_point preprocess_deadline = calculate_block_deadline(block_time);
 
-      if (_pending_block_mode == pending_block_mode::producing && pending_block_signing_key != scheduled_producer.block_signing_key) {
-         elog("Block Signing Key is not expected value, reverting to speculative mode! [expected: \"${expected}\", actual: \"${actual\"", ("expected", scheduled_producer.block_signing_key)("actual", pending_block_signing_key));
+      if (_pending_block_mode == pending_block_mode::producing && pending_block_signing_authority != scheduled_producer.authority) {
+         elog("Unexpected block signing authority, reverting to speculative mode! [expected: \"${expected}\", actual: \"${actual\"", ("expected", scheduled_producer.authority)("actual", pending_block_signing_authority));
          _pending_block_mode = pending_block_mode::speculating;
       }
 
@@ -1845,9 +1819,21 @@ void producer_plugin_impl::produce_block() {
    chain::controller& chain = chain_plug->chain();
    const auto& hbs = chain.head_block_state();
    EOS_ASSERT(chain.is_building_block(), missing_pending_block_state, "pending_block_state does not exist but it should, another plugin may have corrupted it");
-   auto signature_provider_itr = _signature_providers.find( chain.pending_block_signing_key() );
 
-   EOS_ASSERT(signature_provider_itr != _signature_providers.end(), producer_priv_key_not_found, "Attempting to produce a block for which we don't have the private key");
+
+   const auto& auth = chain.pending_block_signing_authority();
+   std::vector<std::reference_wrapper<const signature_provider_type>> relevant_providers;
+
+   relevant_providers.reserve(_signature_providers.size());
+
+   producer_authority::for_each_key(auth, [&](const public_key_type& key){
+      const auto& iter = _signature_providers.find(key);
+      if (iter != _signature_providers.end()) {
+         relevant_providers.emplace_back(iter->second);
+      }
+   });
+
+   EOS_ASSERT(relevant_providers.size() > 0, producer_priv_key_not_found, "Attempting to produce a block for which we don't have any relevant private keys");
 
    if (_protocol_features_signaled) {
       _protocol_features_to_activate.clear(); // clear _protocol_features_to_activate as it is already set in pending_block
@@ -1857,7 +1843,14 @@ void producer_plugin_impl::produce_block() {
    //idump( (fc::time_point::now() - chain.pending_block_time()) );
    chain.finalize_block( [&]( const digest_type& d ) {
       auto debug_logger = maybe_make_debug_time_logger();
-      return signature_provider_itr->second(d);
+      vector<signature_type> sigs;
+      sigs.reserve(relevant_providers.size());
+
+      // sign with all relevant public keys
+      for (const auto& p : relevant_providers) {
+         sigs.emplace_back(p.get()(d));
+      }
+      return sigs;
    } );
 
    chain.commit_block();

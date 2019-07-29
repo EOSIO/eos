@@ -14,7 +14,9 @@ fi
 
 bioscontractpath=$BIOS_CONTRACT_PATH
 if [ -z "$bioscontractpath" ]; then
-    bioscontractpath="unittests/contracts/eosio.bios"
+    # this is defaulted to the version of bios that only requires the preactivate_feature
+    # newer versions may require 
+    bioscontractpath="unittests/contracts/old_versions/v1.7.0-develop-preactivate_feature/eosio.bios"
 fi
 
 bioscurrencysymbol=$BIOS_CURRENCY_SYMBOL
@@ -86,7 +88,8 @@ wcmd create --to-console -n ignition
 # where $BIOSKEY is replaced by the private key for the bios node
 # ------ DO NOT ALTER THE NEXT LINE -------
 ###INSERT prodkeys
-
+echo "Activated Features Check:" >> $logfile
+curl http://$bioshost:$biosport/v1/chain/get_activated_protocol_features >> $logfile
 ecmd set contract eosio $bioscontractpath eosio.bios.wasm eosio.bios.abi
 
 # Preactivate all digests

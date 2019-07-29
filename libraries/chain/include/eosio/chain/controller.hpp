@@ -144,8 +144,8 @@ namespace eosio { namespace chain {
           */
          transaction_trace_ptr push_scheduled_transaction( const transaction_id_type& scheduled, fc::time_point deadline, uint32_t billed_cpu_time_us = 0 );
 
-         block_state_ptr finalize_block( const std::function<signature_type( const digest_type& )>& signer_callback );
-         void sign_block( const std::function<signature_type( const digest_type& )>& signer_callback );
+         block_state_ptr finalize_block( const signer_callback_type& signer_callback );
+         void sign_block( const signer_callback_type& signer_callback );
          void commit_block();
 
          std::future<block_state_ptr> create_block_state_future( const signed_block_ptr& b );
@@ -202,16 +202,16 @@ namespace eosio { namespace chain {
          time_point           fork_db_pending_head_block_time()const;
          account_name         fork_db_pending_head_block_producer()const;
 
-         time_point              pending_block_time()const;
-         account_name            pending_block_producer()const;
-         public_key_type         pending_block_signing_key()const;
-         optional<block_id_type> pending_producer_block_id()const;
+         time_point                     pending_block_time()const;
+         account_name                   pending_block_producer()const;
+         const block_signing_authority& pending_block_signing_authority()const;
+         optional<block_id_type>        pending_producer_block_id()const;
 
          const vector<transaction_receipt>& get_pending_trx_receipts()const;
 
-         const producer_schedule_type&    active_producers()const;
-         const producer_schedule_type&    pending_producers()const;
-         optional<producer_schedule_type> proposed_producers()const;
+         const producer_authority_schedule&    active_producers()const;
+         const producer_authority_schedule&    pending_producers()const;
+         optional<producer_authority_schedule> proposed_producers()const;
 
          uint32_t last_irreversible_block_num() const;
          block_id_type last_irreversible_block_id() const;
@@ -257,7 +257,7 @@ namespace eosio { namespace chain {
 
          bool is_known_unexpired_transaction( const transaction_id_type& id) const;
 
-         int64_t set_proposed_producers( vector<producer_key> producers );
+         int64_t set_proposed_producers( vector<producer_authority> producers );
 
          bool light_validation_allowed(bool replay_opts_disabled_by_policy) const;
          bool skip_auth_check()const;

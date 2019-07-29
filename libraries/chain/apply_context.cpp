@@ -372,8 +372,8 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
                      ("expected", trx_context.id)("actual", context.sender_trx_id)
          );
       } else {
-         FC_ASSERT( trx.transaction_extensions.size() == 0, "invariant failure" );
-         trx.transaction_extensions.emplace_back(
+         emplace_extension(
+            trx.transaction_extensions,
             deferred_transaction_generation_context::extension_id(),
             fc::raw::pack( deferred_transaction_generation_context( trx_context.id, sender_id, receiver ) )
          );

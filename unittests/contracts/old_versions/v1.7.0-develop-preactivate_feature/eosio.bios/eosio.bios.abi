@@ -1,12 +1,7 @@
 {
     "____comment": "This file was generated with eosio-abigen. DO NOT EDIT ",
     "version": "eosio::abi/1.1",
-    "types": [
-        {
-            "new_type_name": "block_signing_authority",
-            "type": "variant_block_signing_authority_v0"
-        }
-    ],
+    "types": [],
     "structs": [
         {
             "name": "abi_hash",
@@ -51,20 +46,6 @@
                 {
                     "name": "waits",
                     "type": "wait_weight[]"
-                }
-            ]
-        },
-        {
-            "name": "block_signing_authority_v0",
-            "base": "",
-            "fields": [
-                {
-                    "name": "threshold",
-                    "type": "uint32"
-                },
-                {
-                    "name": "keys",
-                    "type": "key_weight[]"
                 }
             ]
         },
@@ -271,7 +252,7 @@
             ]
         },
         {
-            "name": "producer_authority",
+            "name": "producer_key",
             "base": "",
             "fields": [
                 {
@@ -279,8 +260,8 @@
                     "type": "name"
                 },
                 {
-                    "name": "authority",
-                    "type": "block_signing_authority"
+                    "name": "block_signing_key",
+                    "type": "public_key"
                 }
             ]
         },
@@ -410,7 +391,7 @@
             "fields": [
                 {
                     "name": "schedule",
-                    "type": "producer_authority[]"
+                    "type": "producer_key[]"
                 }
             ]
         },
@@ -473,87 +454,87 @@
         {
             "name": "activate",
             "type": "activate",
-            "ricardian_contract": "---\ntitle: TITLE\nsummary: SUMMARY\nicon: ICON\n---\n\nBODY"
+            "ricardian_contract": ""
         },
         {
             "name": "canceldelay",
             "type": "canceldelay",
-            "ricardian_contract": "---\ntitle: TITLE\nsummary: SUMMARY\nicon: ICON\n---\n\nBODY"
+            "ricardian_contract": ""
         },
         {
             "name": "deleteauth",
             "type": "deleteauth",
-            "ricardian_contract": "---\ntitle: TITLE\nsummary: SUMMARY\nicon: ICON\n---\n\nBODY"
+            "ricardian_contract": ""
         },
         {
             "name": "linkauth",
             "type": "linkauth",
-            "ricardian_contract": "---\ntitle: TITLE\nsummary: SUMMARY\nicon: ICON\n---\n\nBODY"
+            "ricardian_contract": ""
         },
         {
             "name": "newaccount",
             "type": "newaccount",
-            "ricardian_contract": "---\ntitle: TITLE\nsummary: SUMMARY\nicon: ICON\n---\n\nBODY"
+            "ricardian_contract": ""
         },
         {
             "name": "onerror",
             "type": "onerror",
-            "ricardian_contract": "---\ntitle: TITLE\nsummary: SUMMARY\nicon: ICON\n---\n\nBODY"
+            "ricardian_contract": ""
         },
         {
             "name": "reqactivated",
             "type": "reqactivated",
-            "ricardian_contract": "---\ntitle: TITLE\nsummary: SUMMARY\nicon: ICON\n---\n\nBODY"
+            "ricardian_contract": ""
         },
         {
             "name": "reqauth",
             "type": "reqauth",
-            "ricardian_contract": "---\ntitle: TITLE\nsummary: SUMMARY\nicon: ICON\n---\n\nBODY"
+            "ricardian_contract": ""
         },
         {
             "name": "setabi",
             "type": "setabi",
-            "ricardian_contract": "---\ntitle: TITLE\nsummary: SUMMARY\nicon: ICON\n---\n\nBODY"
+            "ricardian_contract": ""
         },
         {
             "name": "setalimits",
             "type": "setalimits",
-            "ricardian_contract": "---\ntitle: TITLE\nsummary: SUMMARY\nicon: ICON\n---\n\nBODY"
+            "ricardian_contract": ""
         },
         {
             "name": "setcode",
             "type": "setcode",
-            "ricardian_contract": "---\ntitle: TITLE\nsummary: SUMMARY\nicon: ICON\n---\n\nBODY"
+            "ricardian_contract": ""
         },
         {
             "name": "setglimits",
             "type": "setglimits",
-            "ricardian_contract": "---\ntitle: TITLE\nsummary: SUMMARY\nicon: ICON\n---\n\nBODY"
+            "ricardian_contract": ""
         },
         {
             "name": "setparams",
             "type": "setparams",
-            "ricardian_contract": "---\ntitle: TITLE\nsummary: SUMMARY\nicon: ICON\n---\n\nBODY"
+            "ricardian_contract": ""
         },
         {
             "name": "setpriv",
             "type": "setpriv",
-            "ricardian_contract": "---\ntitle: TITLE\nsummary: SUMMARY\nicon: ICON\n---\n\nBODY"
+            "ricardian_contract": ""
         },
         {
             "name": "setprods",
             "type": "setprods",
-            "ricardian_contract": "---\ntitle: TITLE\nsummary: SUMMARY\nicon: ICON\n---\n\nBODY"
+            "ricardian_contract": ""
         },
         {
             "name": "unlinkauth",
             "type": "unlinkauth",
-            "ricardian_contract": "---\ntitle: TITLE\nsummary: SUMMARY\nicon: ICON\n---\n\nBODY"
+            "ricardian_contract": ""
         },
         {
             "name": "updateauth",
             "type": "updateauth",
-            "ricardian_contract": "---\ntitle: TITLE\nsummary: SUMMARY\nicon: ICON\n---\n\nBODY"
+            "ricardian_contract": ""
         }
     ],
     "tables": [
@@ -566,10 +547,5 @@
         }
     ],
     "ricardian_clauses": [],
-    "variants": [
-        {
-            "name": "variant_block_signing_authority_v0",
-            "types": ["block_signing_authority_v0"]
-        }
-    ]
+    "variants": []
 }
