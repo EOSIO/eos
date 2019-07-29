@@ -422,7 +422,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 
          void add_front( const transaction_metadata_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next ) {
             add_size( trx );
-            _incoming_transactions.emplace_back( trx, persist_until_expired, std::move( next ) );
+            _incoming_transactions.emplace_front( trx, persist_until_expired, std::move( next ) );
          }
 
          auto pop_front() {
