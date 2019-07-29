@@ -449,11 +449,11 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
 
         BOOST_TEST(get_balance(N(runnerup1)).get_amount() == 0);
         BOOST_TEST(get_balance(N(proda)).get_amount() == 0);
-        claim_rewards(N(runnerup1));
         //runnerup should not get any pervote rewards because he wasn`t on schedule when torewards was called
         BOOST_REQUIRE_EQUAL(get_balance(N(eosio.vpay)).get_amount(), vpay_balance);
-        claim_rewards(N(proda));
+        claim_rewards(N(runnerup1));
         BOOST_TEST(get_balance(N(runnerup1)).get_amount() > 0);
+        claim_rewards(N(proda));
         BOOST_TEST(get_balance(N(proda)).get_amount() > 0);
 
         const auto first_june_2018 = fc::seconds(1527811200); // 2018-06-01

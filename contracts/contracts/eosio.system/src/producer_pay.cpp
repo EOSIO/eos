@@ -135,9 +135,14 @@ namespace eosiosystem {
       auto prod = _producers.find( producer.value );
       if ( prod != _producers.end() ) {
          _gstate.total_unpaid_blocks++;
-         _producers.modify( prod, same_payer, [&](auto& p ) {
-               p.current_round_unpaid_blocks++;
-         });
+
+         const auto& voter = _voters.get( producer.value );
+         // TODO fix coupling in voter-producer entities
+         if ( voter.vote_is_reasserted() ) {
+            _producers.modify( prod, same_payer, [&](auto& p ) {
+                  p.current_round_unpaid_blocks++;
+            });
+         }
       }
 
       /// only update block producers once every minute, block_timestamp is in half seconds

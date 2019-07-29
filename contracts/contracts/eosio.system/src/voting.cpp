@@ -257,6 +257,7 @@ namespace eosiosystem {
          av.last_vote_weight = new_vote_weight;
          av.producers = producers;
          av.proxy     = proxy;
+         av.last_reassertion_time = current_time_point();
       });
    }
 
@@ -332,6 +333,10 @@ namespace eosiosystem {
 
    bool system_contract::is_block_producer( const name& producer ) const {
       return _producers.find( producer.value ) != _producers.end();
+   }
+   
+   bool voter_info::vote_is_reasserted() const {
+         return (current_time_point() - last_reassertion_time) < voter_info::reassertion_period;
    }
 
 } /// namespace eosiosystem

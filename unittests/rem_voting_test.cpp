@@ -326,8 +326,178 @@ BOOST_FIXTURE_TEST_CASE( rem_voting_test, voting_tester ) {
         BOOST_TEST(active_schedule.producers.at(18).producer_name == "prods");
         BOOST_TEST(active_schedule.producers.at(19).producer_name == "prodt");
         BOOST_TEST(active_schedule.producers.at(20).producer_name == "produ");
-        return;
     } FC_LOG_AND_RETHROW()
+}
+
+BOOST_FIXTURE_TEST_CASE( rem_vote_reassertion_test, voting_tester ) {
+   try {
+      // Create eosio.msig and eosio.token
+      create_accounts({N(eosio.msig), N(eosio.token), N(eosio.ram), N(eosio.ramfee), N(eosio.stake), N(eosio.vpay), N(eosio.bpay), N(eosio.saving) });
+
+      // Set code for the following accounts:
+      //  - eosio (code: eosio.bios) (already set by tester constructor)
+      //  - eosio.msig (code: eosio.msig)
+      //  - eosio.token (code: eosio.token)
+      set_code_abi(N(eosio.msig),
+                  contracts::eosio_msig_wasm(),
+                  contracts::eosio_msig_abi().data());//, &eosio_active_pk);
+      set_code_abi(N(eosio.token),
+                  contracts::eosio_token_wasm(),
+                  contracts::eosio_token_abi().data()); //, &eosio_active_pk);
+
+      // Set privileged for eosio.msig and eosio.token
+      set_privileged(N(eosio.msig));
+      set_privileged(N(eosio.token));
+
+      // Verify eosio.msig and eosio.token is privileged
+      const auto& eosio_msig_acc = get<account_metadata_object, by_name>(N(eosio.msig));
+      BOOST_TEST(eosio_msig_acc.is_privileged() == true);
+      const auto& eosio_token_acc = get<account_metadata_object, by_name>(N(eosio.token));
+      BOOST_TEST(eosio_token_acc.is_privileged() == true);
+
+
+      // Create SYS tokens in eosio.token, set its manager as eosio
+      const auto max_supply     = core_from_string("1000000000.0000"); /// 10x larger than 1B initial tokens
+      const auto initial_supply = core_from_string("100000000.0000");  /// 10x larger than 1B initial tokens
+
+      create_currency(N(eosio.token), config::system_account_name, max_supply);
+      // Issue the genesis supply of 1 billion SYS tokens to eosio.system
+      issue(N(eosio.token), config::system_account_name, config::system_account_name, initial_supply);
+
+      auto actual = get_balance(config::system_account_name);
+      BOOST_REQUIRE_EQUAL(initial_supply, actual);
+
+      // Create genesis accounts
+      for( const auto& a : rem_test_genesis ) {
+         create_account( a.name, config::system_account_name );
+      }
+
+      deploy_contract();
+
+      // Buy ram and stake cpu and net for each genesis accounts
+      for( const auto& acc : rem_test_genesis ) {
+         const auto ib = acc.initial_balance;
+         const auto ram = 1000;
+         const auto stake = ib - ram;
+
+         auto r = delegate_bandwidth(N(eosio.stake), acc.name, asset(stake));
+         BOOST_REQUIRE( !r->except_ptr );
+      }
+
+      // Register producers
+      const auto producer_candidates = {
+               N(proda), N(prodb), N(prodc), N(prodd), N(prode), N(prodf), N(prodg),
+               N(prodh), N(prodi), N(prodj), N(prodk), N(prodl), N(prodm), N(prodn),
+               N(prodo), N(prodp), N(prodq), N(prodr), N(prods), N(prodt), N(produ)
+      };
+      for( const auto& producer : producer_candidates ) {
+         register_producer(producer);
+      }
+
+      // register whales as producers
+      const auto whales_as_producers = { N(b1), N(whale1), N(whale2), N(whale3) };
+      for( const auto& producer : whales_as_producers ) {
+         register_producer(producer);
+      }
+
+      // This will increase the total vote stake by (1'000'000'000'000 - 1,000)
+      votepro( N(b1), {N(proda), N(prodb), N(prodc), N(prodd), N(prode), N(prodf), N(prodg),
+                       N(prodh), N(prodi), N(prodj), N(prodk), N(prodl), N(prodm), N(prodn),
+                       N(prodo), N(prodp), N(prodq), N(prodr), N(prods), N(prodt), N(produ)} );
+      
+      votepro( N(whale1), {N(proda), N(prodb), N(prodc), N(prodd), N(prode), N(prodf), N(prodg),
+                           N(prodh), N(prodi), N(prodj), N(prodk), N(prodl), N(prodm), N(prodn),
+                           N(prodo), N(prodp), N(prodq), N(prodr), N(prods), N(prodt), N(produ)} );
+
+      votepro( N(whale2), {N(proda), N(prodb), N(prodc), N(prodd), N(prode), N(prodf), N(prodg),
+                           N(prodh), N(prodi), N(prodj), N(prodk), N(prodl), N(prodm), N(prodn),
+                           N(prodo), N(prodp), N(prodq), N(prodr), N(prods), N(prodt), N(produ)} );
+
+      votepro( N(whale3), {N(proda), N(prodb), N(prodc), N(prodd), N(prode), N(prodf), N(prodg),
+                           N(prodh), N(prodi), N(prodj), N(prodk), N(prodl), N(prodm), N(prodn),
+                           N(prodo), N(prodp), N(prodq), N(prodr), N(prods), N(prodt), N(produ)} );
+
+      votepro( N(proda), {N(proda)} );
+
+      BOOST_TEST(get_global_state()["total_activated_stake"].as<int64_t>() == 1904999995000);
+
+      // Since the total vote stake is more than 150,000,000, the new producer set will be set
+      produce_blocks_for_n_rounds(2); // 2 rounds since new producer schedule is set when the first block of next round is irreversible
+      const auto active_schedule = control->head_block_state()->active_schedule;
+      BOOST_REQUIRE(active_schedule.producers.size() == 21);
+      BOOST_TEST(active_schedule.producers.at(0).producer_name == "proda");
+      BOOST_TEST(active_schedule.producers.at(1).producer_name == "prodb");
+      BOOST_TEST(active_schedule.producers.at(2).producer_name == "prodc");
+      BOOST_TEST(active_schedule.producers.at(3).producer_name == "prodd");
+      BOOST_TEST(active_schedule.producers.at(4).producer_name == "prode");
+      BOOST_TEST(active_schedule.producers.at(5).producer_name == "prodf");
+      BOOST_TEST(active_schedule.producers.at(6).producer_name == "prodg");
+      BOOST_TEST(active_schedule.producers.at(7).producer_name == "prodh");
+      BOOST_TEST(active_schedule.producers.at(8).producer_name == "prodi");
+      BOOST_TEST(active_schedule.producers.at(9).producer_name == "prodj");
+      BOOST_TEST(active_schedule.producers.at(10).producer_name == "prodk");
+      BOOST_TEST(active_schedule.producers.at(11).producer_name == "prodl");
+      BOOST_TEST(active_schedule.producers.at(12).producer_name == "prodm");
+      BOOST_TEST(active_schedule.producers.at(13).producer_name == "prodn");
+      BOOST_TEST(active_schedule.producers.at(14).producer_name == "prodo");
+      BOOST_TEST(active_schedule.producers.at(15).producer_name == "prodp");
+      BOOST_TEST(active_schedule.producers.at(16).producer_name == "prodq");
+      BOOST_TEST(active_schedule.producers.at(17).producer_name == "prodr");
+      BOOST_TEST(active_schedule.producers.at(18).producer_name == "prods");
+      BOOST_TEST(active_schedule.producers.at(19).producer_name == "prodt");
+      BOOST_TEST(active_schedule.producers.at(20).producer_name == "produ");
+
+      // Skip 180 Days so vote gain 100% power
+      produce_min_num_of_blocks_to_spend_time_wo_inactive_prod(fc::seconds(180 * 24 * 3600)); 
+
+      votepro( N(proda), {N(proda)} );
+      produce_blocks_for_n_rounds(2);
+      claim_rewards(N(proda));
+
+      // Day 0
+      // We just claimed rewards so unpaid blocks == 0
+      {
+         const auto prod = get_producer_info( "proda" );
+         BOOST_TEST( 0 == prod["unpaid_blocks"].as_int64() );
+      }
+
+      // Day 3
+      {
+         produce_min_num_of_blocks_to_spend_time_wo_inactive_prod(fc::seconds(3 * 24 * 3600)); // +3 days
+         const auto prod = get_producer_info( "proda" );
+         BOOST_TEST( 0 <= prod["unpaid_blocks"].as_int64() );
+      }
+
+      // Day 7
+      // Vote was not re-asserted for 7 days so we will not get paid anymore
+      {
+         produce_min_num_of_blocks_to_spend_time_wo_inactive_prod(fc::seconds(4 * 24 * 3600)); // +4 days
+         const auto prod = get_producer_info( "proda" );
+         BOOST_TEST( 0 <= prod["unpaid_blocks"].as_int64() );
+
+         claim_rewards(N(proda));
+      }
+
+      // Day 10
+      // We claimed rewards and vote was not re-asserted, so unpaid_blocks == 0
+      {
+         produce_min_num_of_blocks_to_spend_time_wo_inactive_prod(fc::seconds(3 * 24 * 3600)); // +3 days
+         const auto prod = get_producer_info( "proda" );
+         BOOST_TEST( 0 == prod["unpaid_blocks"].as_int64() );
+      }
+
+      // Day 11
+      // Vote is re-asserted so we should have unpaid blocks again
+      {
+         votepro( N(proda), {N(proda)} );
+         produce_blocks_for_n_rounds(2);
+
+         produce_min_num_of_blocks_to_spend_time_wo_inactive_prod(fc::seconds(1 * 24 * 3600)); // +1 days
+         const auto prod = get_producer_info( "proda" );
+         BOOST_TEST( 0 <= prod["unpaid_blocks"].as_int64() );
+      }
+   }
+   FC_LOG_AND_RETHROW()
 }
 
 BOOST_FIXTURE_TEST_CASE( rem_vote_weight_test, voting_tester ) {

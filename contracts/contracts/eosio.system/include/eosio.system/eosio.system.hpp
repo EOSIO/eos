@@ -257,6 +257,10 @@ namespace eosiosystem {
     * - `staked` the amount staked
     */
    struct [[eosio::table, eosio::contract("eosio.system")]] voter_info {
+   public:
+      static const microseconds reassertion_period;
+   
+   public:
       name                owner;     /// the voter
       name                proxy;     /// the proxy set by the voter, if any
       std::vector<name>   producers; /// the producers approved by this voter if no proxy set
@@ -291,8 +295,13 @@ namespace eosiosystem {
          cpu_managed = 4
       };
 
+      time_point          last_reassertion_time;
+
+      // Block producer should reassert its status (via voting) every voter_info::reassertion_period days
+      bool vote_is_reasserted() const;
+
       // explicit serialization macro is not necessary, used here only to improve compilation time
-      EOSLIB_SERIALIZE( voter_info, (owner)(proxy)(producers)(staked)(last_vote_weight)(vote_mature_time)(proxied_vote_weight)(is_proxy)(flags1)(reserved2)(reserved3) )
+      EOSLIB_SERIALIZE( voter_info, (owner)(proxy)(producers)(staked)(last_vote_weight)(vote_mature_time)(proxied_vote_weight)(is_proxy)(flags1)(reserved2)(reserved3)(last_reassertion_time) )
    };
 
    struct [[eosio::table, eosio::contract("eosio.system")]] user_resources {

@@ -351,6 +351,8 @@ namespace eosiosystem {
       open_act.send( rex_account, core, _self );
    }
 
+   const microseconds voter_info::reassertion_period = eosio::days( 7 );
+
 } /// eosio.system
 
 
