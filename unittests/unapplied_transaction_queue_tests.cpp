@@ -78,12 +78,22 @@ BOOST_AUTO_TEST_CASE( unapplied_transaction_queue_test ) try {
 
    // fifo aborted
    q.add_aborted( { trx1, trx2, trx3 } );
+   q.add_aborted( { trx1, trx2, trx3 } ); // duplicates ignored
    BOOST_CHECK( q.size() == 3 );
    BOOST_REQUIRE( next( q ) == trx1 );
    BOOST_CHECK( q.size() == 2 );
    BOOST_REQUIRE( next( q ) == trx2 );
    BOOST_CHECK( q.size() == 1 );
    BOOST_REQUIRE( next( q ) == trx3 );
+   BOOST_CHECK( q.size() == 0 );
+   BOOST_REQUIRE( next( q ) == nullptr );
+   BOOST_CHECK( q.empty() );
+
+   // clear applied
+   q.add_aborted( { trx1, trx2, trx3 } );
+   q.clear_applied( { trx1, trx3, trx4 } );
+   BOOST_CHECK( q.size() == 1 );
+   BOOST_REQUIRE( next( q ) == trx2 );
    BOOST_CHECK( q.size() == 0 );
    BOOST_REQUIRE( next( q ) == nullptr );
    BOOST_CHECK( q.empty() );
@@ -118,7 +128,7 @@ BOOST_AUTO_TEST_CASE( unapplied_transaction_queue_test ) try {
    bs2->trxs = { trx3, trx4, trx5 };
    auto bs3 = std::make_shared<block_state>();
    bs3->trxs = { trx6 };
-   q.add_forked( { bs3, bs2, bs1 } );
+   q.add_forked( { bs3, bs2, bs1, bs1 } ); // bs1 duplicate ignored
    BOOST_CHECK( q.size() == 6 );
    BOOST_REQUIRE( next( q ) == trx1 );
    BOOST_CHECK( q.size() == 5 );
@@ -176,7 +186,7 @@ BOOST_AUTO_TEST_CASE( unapplied_transaction_queue_test ) try {
    bs6->trxs = { trx11, trx15 };
    q.add_forked( { bs3, bs2, bs1 } );
    q.add_forked( { bs4 } );
-   q.add_forked( { bs3, bs2 } ); // dups removed
+   q.add_forked( { bs3, bs2 } ); // dups ignored
    q.add_forked( { bs6, bs5 } );
    BOOST_CHECK_EQUAL( q.size(), 11 );
    BOOST_REQUIRE( next( q ) == trx1 );

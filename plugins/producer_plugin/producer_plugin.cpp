@@ -229,6 +229,8 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 
 
       void on_block( const block_state_ptr& bsp ) {
+         _unapplied_transactions.clear_applied( bsp->trxs );
+
          if( bsp->header.timestamp <= _start_time ) return;
 
          // simplify handling of watermark in on_block
@@ -318,18 +320,19 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          auto bsf = chain.create_block_state_future( block );
 
          // abort the pending block
-         vector<transaction_metadata_ptr> aborted_trxs = chain.abort_block();
+         _unapplied_transactions.add_aborted( chain.abort_block() );
 
          // exceptions throw out, make sure we restart our loop
-         auto ensure = fc::make_scoped_exit([this, &aborted_trxs](){
-            _unapplied_transactions.add_aborted( std::move( aborted_trxs ) );
+         auto ensure = fc::make_scoped_exit([this](){
             schedule_production_loop();
          });
 
          // push the new block
          bool except = false;
          try {
-            _unapplied_transactions.add_forked( chain.push_block( bsf ) );
+            chain.push_block( bsf, [this]( const branch_type& forked_branch ) {
+               _unapplied_transactions.add_forked( forked_branch );
+            } );
          } catch ( const guard_exception& e ) {
             chain_plug->handle_guard_exception(e);
             return;
@@ -369,14 +372,23 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
             return trx->packed_trx()->get_unprunable_size() + trx->packed_trx()->get_prunable_size() + sizeof( *trx );
          }
 
+         void add_size( const transaction_metadata_ptr& trx ) {
+            auto size = calc_size( trx );
+            EOS_ASSERT( size_in_bytes + size < max_incoming_transaction_queue_size, tx_resource_exhaustion, "Transaction exceeded producer resource limit" );
+            size_in_bytes += size;
+         }
+
       public:
          void set_max_incoming_transaction_queue_size( uint64_t v ) { max_incoming_transaction_queue_size = v; }
 
          void add( const transaction_metadata_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next ) {
-            auto size = calc_size( trx );
-            EOS_ASSERT( size_in_bytes + size < max_incoming_transaction_queue_size, tx_resource_exhaustion, "Transaction exceeded producer resource limit" );
-            size_in_bytes += size;
+            add_size( trx );
             _incoming_transactions.emplace_back( trx, persist_until_expired, std::move( next ) );
+         }
+
+         void add_front( const transaction_metadata_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next ) {
+            add_size( trx );
+            _incoming_transactions.emplace_front( trx, persist_until_expired, std::move( next ) );
          }
 
          auto pop_front() {
@@ -477,7 +489,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
             auto trace = chain.push_transaction( trx, deadline );
             if( trace->except ) {
                if( failure_is_subjective( *trace->except, deadline_is_subjective )) {
-                  _pending_incoming_transactions.add( trx, persist_until_expired, next );
+                  _pending_incoming_transactions.add_front( trx, persist_until_expired, next );
                   if( _pending_block_mode == pending_block_mode::producing ) {
                      fc_dlog( _trx_trace_log, "[TRX_TRACE] Block ${block_num} for producer ${prod} COULD NOT FIT, tx: ${txid} RETRYING ",
                               ("block_num", chain.head_block_num() + 1)
@@ -686,7 +698,12 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
    my->_options = &options;
    LOAD_VALUE_SET(options, "producer-name", my->_producers)
 
-   my->_unapplied_transactions.set_only_track_persisted( my->_producers.empty() );
+   chain::controller& chain = my->chain_plug->chain();
+   unapplied_transaction_queue::process_mode unapplied_mode =
+      (chain.get_read_mode() != chain::db_read_mode::SPECULATIVE) ? unapplied_transaction_queue::process_mode::non_speculative :
+         my->_producers.empty() ? unapplied_transaction_queue::process_mode::speculative_non_producer :
+            unapplied_transaction_queue::process_mode::speculative_producer;
+   my->_unapplied_transactions.set_mode( unapplied_mode );
 
    if( options.count("private-key") )
    {
@@ -816,7 +833,6 @@ void producer_plugin::plugin_startup()
 
    EOS_ASSERT( my->_producers.empty() || chain.get_validation_mode() == chain::validation_mode::FULL, plugin_config_exception,
               "node cannot have any producer-name configured because block production is not safe when validation_mode is not \"full\"" );
-
 
    my->_accepted_block_connection.emplace(chain.accepted_block.connect( [this]( const auto& bsp ){ my->on_block( bsp ); } ));
    my->_irreversible_block_connection.emplace(chain.irreversible_block.connect( [this]( const auto& bsp ){ my->on_irreversible_block( bsp->block ); } ));
