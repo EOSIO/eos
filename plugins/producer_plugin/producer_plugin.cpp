@@ -1865,8 +1865,6 @@ void producer_plugin_impl::produce_block() {
 
    block_state_ptr new_bs = chain.head_block_state();
 
-   consider_new_watermark( new_bs->header.producer, new_bs->block_num );
-
    ilog("Produced block ${id}... #${n} @ ${t} signed by ${p} [trxs: ${count}, lib: ${lib}, confirmed: ${confs}]",
         ("p",new_bs->header.producer)("id",fc::variant(new_bs->id).as_string().substr(0,16))
         ("n",new_bs->block_num)("t",new_bs->header.timestamp)
