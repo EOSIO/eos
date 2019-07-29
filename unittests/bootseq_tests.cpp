@@ -481,4 +481,98 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
     } FC_LOG_AND_RETHROW()
 }
 
+BOOST_FIXTURE_TEST_CASE( stake_lock_test, bootseq_tester ) {
+    try{
+        // Create eosio.msig and eosio.token
+        create_accounts({N(eosio.msig), N(eosio.token), N(eosio.ram), N(eosio.ramfee), N(eosio.stake), N(eosio.vpay), N(eosio.bpay), N(eosio.saving) });
+
+        set_code_abi(N(eosio.msig),
+                     contracts::eosio_msig_wasm(),
+                     contracts::eosio_msig_abi().data());//, &eosio_active_pk);
+        set_code_abi(N(eosio.token),
+                     contracts::eosio_token_wasm(),
+                     contracts::eosio_token_abi().data()); //, &eosio_active_pk);
+
+        // Set privileged for eosio.msig and eosio.token
+        set_privileged(N(eosio.msig));
+        set_privileged(N(eosio.token));
+
+        // Verify eosio.msig and eosio.token is privileged
+        const auto& eosio_msig_acc = get<account_metadata_object, by_name>(N(eosio.msig));
+        BOOST_TEST(eosio_msig_acc.is_privileged() == true);
+        const auto& eosio_token_acc = get<account_metadata_object, by_name>(N(eosio.token));
+        BOOST_TEST(eosio_token_acc.is_privileged() == true);
+
+        // Create SYS tokens in eosio.token, set its manager as eosio
+        auto max_supply = core_from_string("100.0000");
+        auto initial_supply = core_from_string("100.0000");
+        create_currency(N(eosio.token), config::system_account_name, max_supply);
+        // Issue the genesis supply of 1 billion SYS tokenbs to eosio.system
+        issue(N(eosio.token), config::system_account_name, config::system_account_name, initial_supply);
+
+        auto actual = get_balance(config::system_account_name);
+        BOOST_REQUIRE_EQUAL(initial_supply, actual);
+
+         // Create genesis accounts
+        for( const auto& a : test_genesis ) {
+            create_account( a.aname, config::system_account_name );
+        }
+
+        deploy_contract();
+
+        // Buy ram and stake cpu and net for each genesis accounts
+        for( const auto& a : test_genesis ) {
+            auto stake_quantity = a.initial_balance - 1000;
+
+
+            auto r = delegate_bandwidth(N(eosio.stake), a.aname, asset(stake_quantity));
+            BOOST_REQUIRE( !r->except_ptr );
+        }
+
+        const auto whales_as_producers = { N(b1), N(whale4), N(whale3), N(whale2) };
+        for( const auto& producer : whales_as_producers ) {
+            register_producer(producer);
+        }
+
+        auto producer_candidates = {N(proda)};
+
+        register_producer( N(proda));
+
+        // Vote for producers
+        auto votepro = [&]( account_name voter, vector<account_name> producers ) {
+            std::sort( producers.begin(), producers.end() );
+            base_tester::push_action(config::system_account_name, N(voteproducer), voter, mvo()
+                    ("voter",  name(voter))
+                    ("proxy", name(0) )
+                    ("producers", producers)
+            );
+        };
+
+        votepro( N(b1), { N(proda)} );
+        votepro( N(whale2), {N(proda)} );
+        votepro( N(whale3), {N(proda)} );
+        votepro( N(whale4), {N(proda)} );
+
+        // Spend some time so the producer pay pool is filled by the inflation rate
+        produce_min_num_of_blocks_to_spend_time_wo_inactive_prod(fc::seconds(30 * 24 * 3600)); // 30 days
+
+        // Spend some time so the producer pay pool is filled by the inflation rate
+        produce_min_num_of_blocks_to_spend_time_wo_inactive_prod(fc::seconds(30 * 24 * 3600)); // 30 days
+
+        const auto second_july_2020 = fc::seconds(1593648000); // 2020-07-02
+        // Ensure that now is yet 6 month after 2020-01-01 yet
+        BOOST_REQUIRE(control->head_block_time().time_since_epoch() < second_july_2020);
+
+        //Try to unstake tokens from produceir should throw error, because unstaked condition does not met ( producer can unstake only after two month )
+        BOOST_REQUIRE_THROW(undelegate_bandwidth(N(proda), N(proda), core_from_string("1.0000")), eosio_assert_message_exception);
+
+        // Skip 6 month
+        produce_block(second_july_2020 - control->head_block_time().time_since_epoch());
+
+        // Block one should be able to unstake all his stake now
+        BOOST_REQUIRE(undelegate_bandwidth(N(proda), N(proda), core_from_string("1.0000")));
+
+    } FC_LOG_AND_RETHROW()
+}
+
 BOOST_AUTO_TEST_SUITE_END()

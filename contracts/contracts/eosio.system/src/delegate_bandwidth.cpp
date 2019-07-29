@@ -16,7 +16,7 @@
 #include <map>
 
 namespace eosiosystem {
-   
+
    using eosio::asset;
    using eosio::const_mem_fun;
    using eosio::indexed_by;
@@ -27,6 +27,7 @@ namespace eosiosystem {
    using std::pair;
 
    static constexpr uint32_t refund_delay_sec = 3*24*3600;
+   static const eosio::time_point stake_lock_period = eosio::time_point(eosio::days(180)); // two month
 
 
    /**
@@ -37,12 +38,13 @@ namespace eosiosystem {
       name          to;
       asset         net_weight;
       asset         cpu_weight;
+      eosio::time_point staked_time = current_time_point();
 
       bool is_empty()const { return net_weight.amount == 0 && cpu_weight.amount == 0; }
       uint64_t  primary_key()const { return to.value; }
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
-      EOSLIB_SERIALIZE( delegated_bandwidth, (from)(to)(net_weight)(cpu_weight) )
+      EOSLIB_SERIALIZE( delegated_bandwidth, (from)(to)(net_weight)(cpu_weight)(staked_time))
 
    };
 
@@ -292,6 +294,13 @@ namespace eosiosystem {
       check( unstake_quantity >= zero_asset, "must unstake a positive amount" );
       check( _gstate.total_activated_stake >= min_activated_stake,
              "cannot undelegate bandwidth until the chain is activated (at least 15% of all tokens participate in voting)" );
+
+      if(is_block_producer(from))
+      {
+          del_bandwidth_table     del_tbl( _self, from.value );
+          const auto& del = del_tbl.get( from.value, "user has no resources" );
+          check( current_time_point() > del.staked_time + stake_lock_period, "producer cannot undelegate bandwidth during 180 days");
+      }
 
       changebw( from, receiver, -unstake_quantity, false);
    } // undelegatebw

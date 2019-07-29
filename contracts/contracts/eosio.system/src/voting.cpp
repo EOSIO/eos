@@ -146,7 +146,7 @@ namespace eosiosystem {
       require_auth( voter_name );
 
       check( is_block_producer( voter_name ), "only block producers are allowed to vote" );
-      
+
       vote_stake_updater( voter_name );
       update_votes( voter_name, proxy, producers, true );
       auto rex_itr = _rexbalance.find( voter_name.value );

@@ -270,7 +270,7 @@ namespace eosiosystem {
        */
       double              last_vote_weight = 0; /// the vote weight cast the last time the vote was updated
       time_point          vote_mature_time;
-      
+
 
       /**
        * Total vote weight delegated to this voter.
@@ -1335,7 +1335,7 @@ namespace eosiosystem {
                                             double additional_shares_delta = 0.0, double shares_rate_delta = 0.0 );
          bool does_satisfy_stake_requirement( const name& producer ) const;
          bool is_block_producer( const name& producer ) const;
-         
+
 
          // defined in producer_pay.cpp
          int64_t share_pervote_reward_between_producers(int64_t amount);
