@@ -5,10 +5,11 @@ env:
   VERBOSE: true
 
 steps:
+  - wait
 
   - label: ":webhook: Trigger Travis CI Build"
-    command:
-      - "./.cicd/travis-trigger.sh"
+    command: |
+      . ./.cicd/trigger-travis.sh
     agents:
       queue: "automation-eos-builder-fleet"
 
@@ -20,7 +21,7 @@ steps:
 
   - wait
 
-  - label: ":aws: [Amazon] 2 Build"
+  - label: ":aws: Amazon_Linux 2 - Build"
     agents:
       queue: "automation-eos-builder-fleet"
     plugins:
@@ -30,7 +31,7 @@ steps:
     timeout: $BUILD_TIMEOUT
     skip: $SKIP_AMAZON_LINUX_2
 
-  - label: ":centos: [CentOS] 7 Build"
+  - label: ":centos: CentOS 7.6 - Build"
     command:
       - ""
     agents:
@@ -42,7 +43,7 @@ steps:
     timeout: $BUILD_TIMEOUT
     skip: $SKIP_CENTOS_7
 
-  - label: ":ubuntu: [Ubuntu] 16.04 Build"
+  - label: ":ubuntu: Ubuntu 16.04 - Build"
     agents:
       queue: "automation-eos-builder-fleet"
     plugins:
@@ -52,7 +53,7 @@ steps:
     timeout: $BUILD_TIMEOUT
     skip: $SKIP_UBUNTU_16
 
-  - label: ":ubuntu: [Ubuntu] 18.04 Build"
+  - label: ":ubuntu: Ubuntu 18.04 - Build"
     agents:
       queue: "automation-eos-builder-fleet"
     plugins:
@@ -62,7 +63,7 @@ steps:
     timeout: $BUILD_TIMEOUT
     skip: $SKIP_UBUNTU_18
 
-  - label: ":darwin: [Darwin] 10.14 Build"
+  - label: ":darwin: macOS 10.14 - Build"
     command:
       - "brew install git graphviz libtool gmp llvm@4 pkgconfig python python@2 doxygen libusb openssl boost@1.70 cmake"
       - "git clone $BUILDKITE_REPO eos && cd eos && git checkout $BUILDKITE_COMMIT && git submodule update --init --recursive"

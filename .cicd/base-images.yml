@@ -5,7 +5,7 @@ env:
 
 steps:
 
-  - label: ":aws: [Amazon] 2 Ensure Docker Image"
+  - label: ":aws: Amazon_Linux 2 - Build"
     command:
       - ".cicd/generate-base-images.sh amazonlinux-2"
     agents:
@@ -13,7 +13,7 @@ steps:
     timeout: $BUILD_TIMEOUT
     skip: $SKIP_AMAZON_LINUX_2
 
-  - label: ":centos: [CentOS] 7 Build"
+  - label: ":centos: CentOS 7.6 - Build"
     command:
       - ".cicd/generate-base-images.sh centos-7"
     agents:
@@ -21,7 +21,7 @@ steps:
     timeout: $BUILD_TIMEOUT
     skip: $SKIP_CENTOS_7
 
-  - label: ":ubuntu: [Ubuntu] 16.04 Build"
+  - label: ":ubuntu: Ubuntu 16.04 - Build"
     command:
       - ".cicd/generate-base-images.sh ubuntu-16.04"
     agents:
@@ -29,7 +29,7 @@ steps:
     timeout: $BUILD_TIMEOUT
     skip: $SKIP_UBUNTU_16
 
-  - label: ":ubuntu: [Ubuntu] 18.04 Build"
+  - label: ":ubuntu: Ubuntu 18.04 - Build"
     command:
       - ".cicd/generate-base-images.sh ubuntu-18.04"
     agents:
