@@ -710,8 +710,7 @@ namespace LLVMJIT
 		}
 		void current_memory(MemoryImm)
 		{
-         //auto offset = emitLiteral((I32)-memory::cb_offset + offsetof(eosio::chain::rodeos::control_block, current_linear_memory_pages));
-         auto offset = emitLiteral((I32)-25024);
+         auto offset = emitLiteral((I32)-18880); ///XXX literal
          auto bytePointer = irBuilder.CreateInBoundsGEP(moduleContext.defaultMemoryBase,offset);
 			auto ptrTo = irBuilder.CreatePointerCast(bytePointer,llvmI32Type->getPointerTo(256));
 			auto load = irBuilder.CreateLoad(ptrTo);
