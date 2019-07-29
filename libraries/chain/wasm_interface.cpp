@@ -76,7 +76,7 @@ namespace eosio { namespace chain {
    }
 
    void wasm_interface::apply( const digest_type& code_hash, const uint8_t& vm_type, const uint8_t& vm_version, apply_context& context ) {
-      my->get_instantiated_module(code_hash, vm_type, vm_version, context.trx_context)->apply(context);
+      my->get_instantiated_module(code_hash, vm_type, vm_version, context.trx_context, my->runtime != wasm_interface::vm_type::eos_vm)->apply(context);
    }
 
    void wasm_interface::exit() {
