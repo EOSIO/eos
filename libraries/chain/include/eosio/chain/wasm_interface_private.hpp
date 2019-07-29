@@ -136,10 +136,10 @@ namespace eosio { namespace chain {
             } catch(const IR::ValidationException& e) {
                EOS_ASSERT(false, wasm_serialization_error, e.message.c_str());
             }
-            if(inject) {
+            if(false && inject) {
                wasm_injections::wasm_binary_injection injector(module);
                injector.inject();
-
+               std::cout << "INJECTING!!!!!!!!!!!!\n";
                try {
                   Serialization::ArrayOutputStream outstream;
                   WASM::serialize(outstream, module);
