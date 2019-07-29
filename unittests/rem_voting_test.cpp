@@ -585,11 +585,11 @@ BOOST_FIXTURE_TEST_CASE( rem_vote_weight_test, voting_tester ) {
          // voteproducer was done at:     1577836844500000
          // 180 days in microseconds is:  15552000000000
 
-         // eos weight: ~1091357.477572;
+         // eos weight: ~20.057692;
          // rem weight: ~0.000002;
          // staked:     399999999000
          const auto prod = get_producer_info( "proda" );
-         BOOST_TEST_REQUIRE( 729817241388.52246 == prod["total_votes"].as_double() );
+         BOOST_TEST_REQUIRE( 13413065.809731236 == prod["total_votes"].as_double() );
       }
 
       // Day 30
@@ -597,11 +597,11 @@ BOOST_FIXTURE_TEST_CASE( rem_vote_weight_test, voting_tester ) {
          produce_min_num_of_blocks_to_spend_time_wo_inactive_prod(fc::seconds(30 * 24 * 3600)); // +30 days
          votepro( N(whale1), { N(proda) } );
 
-         // eos weight: ~1151126.844658;
+         // eos weight: ~20.134615;
          // rem weight: ~0.170384;
          // staked:     399999999000
          const auto prod = get_producer_info( "proda" );
-         BOOST_TEST_REQUIRE( 78453646521572864 == prod["total_votes"].as_double() );
+         BOOST_TEST_REQUIRE( 1372250161277.3516 == prod["total_votes"].as_double() );
       }
 
       // Day 180
@@ -609,11 +609,11 @@ BOOST_FIXTURE_TEST_CASE( rem_vote_weight_test, voting_tester ) {
          produce_min_num_of_blocks_to_spend_time_wo_inactive_prod(fc::seconds(150 * 24 * 3600)); // +150 days
          votepro( N(whale1), { N(proda) } );
 
-         // eos weight: 1543412.546180;
+         // eos weight: 20.557692;
          // rem weight: 1.000000;
          // staked:     399999999000
          const auto prod = get_producer_info( "proda" );
-         BOOST_TEST_REQUIRE( 6.1736501692861286e+17 == prod["total_votes"].as_double() );
+         BOOST_TEST_REQUIRE( 8223076902519.2305 == prod["total_votes"].as_double() );
       }
 
       // Day 180 (0)
@@ -627,11 +627,11 @@ BOOST_FIXTURE_TEST_CASE( rem_vote_weight_test, voting_tester ) {
          votepro( N(whale1), { N(proda) } );
 
          // adjusted:   now + 0 Days * 40 / 60 + 180 Days * 20 / 60 => 60 Days
-         // eos weight: 1543412.546180;
+         // eos weight: 20.557692;
          // rem weight: 0.666667;
          // staked:     599999999000
          const auto prod = get_producer_info( "proda" );
-         BOOST_TEST_REQUIRE( 6.1736507698832077e+17 == prod["total_votes"].as_double() );
+         BOOST_TEST_REQUIRE( 8223077702492.6377 == prod["total_votes"].as_double() );
       }
 
       // Day 210 (30)
@@ -647,11 +647,11 @@ BOOST_FIXTURE_TEST_CASE( rem_vote_weight_test, voting_tester ) {
          votepro( N(whale1), { N(proda) } );
 
          // adjusted:   now + 30 Days * 60 / 80 + 180 Days * 20 / 80 => 67.5 Days
-         // eos weight: 1627939.195727;
+         // eos weight: 20.634615;
          // rem weight: 0.625;
          // staked:     799999999000
          const auto prod = get_producer_info( "proda" );
-         BOOST_TEST_REQUIRE( 8.1759946579093197e+17 == prod["total_votes"].as_double() );
+         BOOST_TEST_REQUIRE( 10363317352113.912 == prod["total_votes"].as_double() );
       }
    } FC_LOG_AND_RETHROW()
 }
