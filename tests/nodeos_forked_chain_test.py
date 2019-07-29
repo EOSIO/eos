@@ -16,9 +16,26 @@ import signal
 
 ###############################################################
 # nodeos_forked_chain_test
-# --dump-error-details <Upon error print etc/eosio/node_*/config.ini and var/lib/node_*/stderr.log to stdout>
-# --keep-logs <Don't delete var/lib/node_* folders upon test completion>
+# 
+# This test sets up 2 producing nodes and one "bridge" node using test_control_api_plugin.
+#   One producing node has 11 of the elected producers and the other has 10 of the elected producers.
+#   All the producers are named in alphabetical order, so that the 11 producers, in the one production node, are
+#       scheduled first, followed by the 10 producers in the other producer node. Each producing node is only connected
+#       to the other producing node via the "bridge" node.
+#   The bridge node has the test_control_api_plugin, which exposes a restful interface that the test script uses to kill
+#       the "bridge" node at a specific producer in the production cycle. This is used to fork the producer network
+#       precisely when the 11 producer node has finished producing and the other producing node is about to produce.
+#   The fork in the producer network results in one fork of the block chain that advances with 10 producers with a LIB
+#      that has advanced, since all of the previous blocks were confirmed and the producer that was scheduled for that
+#      slot produced it, and one with 11 producers with a LIB that has not advanced.  This situation is validated by
+#      the test script.
+#   After both chains are allowed to produce, the "bridge" node is turned back on.
+#   Time is allowed to progress so that the "bridge" node can catchup and both producer nodes to come to consensus
+#   The block log is then checked for both producer nodes to verify that the 10 producer fork is selected and that
+#       both nodes are in agreement on the block log.
+#
 ###############################################################
+
 Print=Utils.Print
 
 from core_symbol import CORE_SYMBOL
@@ -249,7 +266,7 @@ try:
         blockProducer=node.getBlockProducerByNum(blockNum)
 
 
-    # ***   Identify what the production cycel is   ***
+    # ***   Identify what the production cycle is   ***
 
     productionCycle=[]
     producerToSlot={}
