@@ -182,9 +182,11 @@ void executor::execute(const code_descriptor& code, const memory& mem, apply_con
    cb->current_linear_memory_pages = code.starting_memory_pages;
    cb->full_linear_memory_start = (uintptr_t)mem.full_page_memory_base();
    cb->jmp = &executors_sigjmp_buf;
+   cb->bounce_buffers = &executors_bounce_buffers;
    cb->is_running = true;
 
    auto reset_is_running = fc::make_scoped_exit([cb](){cb->is_running = false;});
+   auto reset_bounce_buffers = fc::make_scoped_exit([cb](){cb->bounce_buffers->clear();});
 
    vector<Value> args = {Value(context.get_receiver().to_uint64_t()),
                            Value(context.get_action().account.to_uint64_t()),

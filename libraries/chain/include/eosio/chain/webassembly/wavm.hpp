@@ -408,11 +408,12 @@ struct intrinsic_invoker_impl<is_injected, Ret, std::tuple<array_ptr<T>, size_t,
       const auto length = size_t((U32)size);
       T* base = array_ptr_impl<T>(ctx, (U32)ptr, length);
       if ( reinterpret_cast<uintptr_t>(base) % alignof(T) != 0 ) {
+         RODEOS_MEMORY_PTR_cb_ptr;
          if(ctx.apply_ctx->control.contracts_console())
             wlog( "misaligned array of const values" );
-         std::vector<std::remove_const_t<T> > copy(length > 0 ? length : 1);
-         T* copy_ptr = &copy[0];
-         memcpy( (void*)copy_ptr, (void*)base, length * sizeof(T) );
+         std::vector<uint8_t>& copy = cb_ptr->bounce_buffers->emplace_back(length > 0 ? length*sizeof(T) : 1);
+         T* copy_ptr = (T*)&copy[0];
+         memcpy( (void*)copy.data(), (void*)base, length * sizeof(T) );
          return Then(ctx, static_cast<array_ptr<T>>(copy_ptr), length, rest..., translated...);
       }
       return Then(ctx, static_cast<array_ptr<T>>(base), length, rest..., translated...);
@@ -424,13 +425,14 @@ struct intrinsic_invoker_impl<is_injected, Ret, std::tuple<array_ptr<T>, size_t,
       const auto length = size_t((U32)size);
       T* base = array_ptr_impl<T>(ctx, (U32)ptr, length);
       if ( reinterpret_cast<uintptr_t>(base) % alignof(T) != 0 ) {
+         RODEOS_MEMORY_PTR_cb_ptr;
          if(ctx.apply_ctx->control.contracts_console())
             wlog( "misaligned array of values" );
-         std::vector<std::remove_const_t<T> > copy(length > 0 ? length : 1);
-         T* copy_ptr = &copy[0];
-         memcpy( (void*)copy_ptr, (void*)base, length * sizeof(T) );
+         std::vector<uint8_t>& copy = cb_ptr->bounce_buffers->emplace_back(length > 0 ? length*sizeof(T) : 1);
+         T* copy_ptr = (T*)&copy[0];
+         memcpy( (void*)copy.data(), (void*)base, length * sizeof(T) );
          Ret ret = Then(ctx, static_cast<array_ptr<T>>(copy_ptr), length, rest..., translated...);  
-         memcpy( (void*)base, (void*)copy_ptr, length * sizeof(T) );
+         memcpy( (void*)base, (void*)copy.data(), length * sizeof(T) );
          return ret;
       }
       return Then(ctx, static_cast<array_ptr<T>>(base), length, rest..., translated...);

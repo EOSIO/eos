@@ -5,6 +5,9 @@
 #include <exception>
 #include <setjmp.h>
 
+#include <list>
+#include <vector>
+
 namespace eosio { namespace chain {
 
 class apply_context;
@@ -28,6 +31,7 @@ class executor {
 
       std::exception_ptr executors_exception_ptr;
       sigjmp_buf executors_sigjmp_buf;
+      std::list<std::vector<uint8_t>> executors_bounce_buffers;
 };
 
 }}}
