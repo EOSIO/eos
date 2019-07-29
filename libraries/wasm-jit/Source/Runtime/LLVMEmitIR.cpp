@@ -21,7 +21,7 @@ namespace LLVMJIT
 
 		llvm::Module* llvmModule;
 		std::vector<llvm::Function*> functionDefs;
-		std::vector<llvm::Constant*> importedFunctionPointers;
+		std::vector<size_t> importedFunctionOffsets;
 		std::vector<llvm::Constant*> globals;
 		llvm::Constant* defaultTablePointer;
 		llvm::Constant* defaultTableMaxElementIndex;
@@ -257,8 +257,9 @@ namespace LLVMJIT
 			WAVM_ASSERT_THROW(intrinsicObject);
 			FunctionInstance* intrinsicFunction = asFunction(intrinsicObject);
 			WAVM_ASSERT_THROW(intrinsicFunction->type == intrinsicType);
-			auto intrinsicFunctionPointer = emitLiteralPointer(intrinsicFunction->nativeFunction,asLLVMType(intrinsicType)->getPointerTo());
-			return irBuilder.CreateCall(intrinsicFunctionPointer,llvm::ArrayRef<llvm::Value*>(args.begin(),args.end()));
+         llvm::Value* ic = irBuilder.CreateLoad( emitLiteralPointer((void*)(-18952-intrinsicFunction->offset*8), llvmI64Type->getPointerTo(256)) );  ///XXX literal
+         llvm::Value* itp = irBuilder.CreateIntToPtr(ic, asLLVMType(intrinsicType)->getPointerTo());
+			return irBuilder.CreateCall(itp,llvm::ArrayRef<llvm::Value*>(args.begin(),args.end()));
 		}
 
 		// A helper function to emit a conditional call to a non-returning intrinsic function.
@@ -589,15 +590,16 @@ namespace LLVMJIT
 			// Map the callee function index to either an imported function pointer or a function in this module.
 			llvm::Value* callee;
 			const FunctionType* calleeType;
-			if(imm.functionIndex < moduleContext.importedFunctionPointers.size())
+			if(imm.functionIndex < moduleContext.importedFunctionOffsets.size())
 			{
 				WAVM_ASSERT_THROW(imm.functionIndex < moduleContext.moduleInstance->functions.size());
-				callee = moduleContext.importedFunctionPointers[imm.functionIndex];
-				calleeType = moduleContext.moduleInstance->functions[imm.functionIndex]->type;
+            calleeType = moduleContext.moduleInstance->functions[imm.functionIndex]->type;
+            llvm::Value* ic = irBuilder.CreateLoad( emitLiteralPointer((void*)(-18952-moduleContext.importedFunctionOffsets[imm.functionIndex]*8), llvmI64Type->getPointerTo(256)) );  ///XXX literal
+            callee = irBuilder.CreateIntToPtr(ic, asLLVMType(calleeType)->getPointerTo());
 			}
 			else
 			{
-				const Uptr calleeIndex = imm.functionIndex - moduleContext.importedFunctionPointers.size();
+				const Uptr calleeIndex = imm.functionIndex - moduleContext.importedFunctionOffsets.size();
 				WAVM_ASSERT_THROW(calleeIndex < moduleContext.functionDefs.size());
 				callee = moduleContext.functionDefs[calleeIndex];
 				calleeType = module.types[module.functions.defs[calleeIndex].type.index];
@@ -1051,7 +1053,7 @@ namespace LLVMJIT
 
 		defaultMemoryBase = emitLiteralPointer(0,llvmI8Type->getPointerTo(256));
 
-      depthCounter = emitLiteralPointer((void*)-25032, llvmI32Type->getPointerTo(256)); ///XXX literal
+      depthCounter = emitLiteralPointer((void*)-18888, llvmI32Type->getPointerTo(256)); ///XXX literal
 
 		// Set up the LLVM values used to access the global table.
 		if(moduleInstance->defaultTable)
@@ -1072,7 +1074,7 @@ namespace LLVMJIT
 		for(Uptr functionIndex = 0;functionIndex < module.functions.imports.size();++functionIndex)
 		{
 			const FunctionInstance* functionInstance = moduleInstance->functions[functionIndex];
-			importedFunctionPointers.push_back(emitLiteralPointer(functionInstance->nativeFunction,asLLVMType(functionInstance->type)->getPointerTo()));
+			importedFunctionOffsets.push_back(functionInstance->offset);
 		}
 
       int current_prolouge = -8;

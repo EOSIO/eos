@@ -34,13 +34,21 @@ namespace Intrinsics
 		return decoratedName;
 	}
 
-	Function::Function(const char* inName,const IR::FunctionType* type,void* nativeFunction)
+	Function::Function(const char* inName,const IR::FunctionType* type,void* nativeFunction, size_t offset)
 	:	name(inName)
 	{
-		function = new Runtime::FunctionInstance(nullptr,type,nativeFunction);
+		function = new Runtime::FunctionInstance(nullptr,offset,type,nativeFunction);
 		Platform::Lock lock(Singleton::get().mutex);
 		Singleton::get().functionMap[getDecoratedName(inName,type)] = this;
 	}
+
+   void* const Function::getNativeFunc() const {
+      return function->nativeFunction;
+   }
+
+   size_t Function::getOffset() const {
+      return function->offset;
+   }
 
 	Function::~Function()
 	{
@@ -163,4 +171,6 @@ namespace Intrinsics
 		for(auto mapIt : Singleton::get().variableMap) { result.push_back(mapIt.second->global); }
 		return result;
 	}
+
+   const std::map<std::string,Intrinsics::Function*>& getIntrinsicFunctions() { return Singleton::get().functionMap; }
 }

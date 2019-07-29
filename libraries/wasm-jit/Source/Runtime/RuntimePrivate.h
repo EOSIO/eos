@@ -44,12 +44,13 @@ namespace Runtime
 	struct FunctionInstance : GCObject
 	{
 		ModuleInstance* moduleInstance;
+      size_t offset;
 		const FunctionType* type;
 		void* nativeFunction;
 		std::string debugName;
 
-		FunctionInstance(ModuleInstance* inModuleInstance,const FunctionType* inType,void* inNativeFunction = nullptr,const char* inDebugName = "<unidentified FunctionInstance>")
-		: GCObject(ObjectKind::function), moduleInstance(inModuleInstance), type(inType), nativeFunction(inNativeFunction), debugName(inDebugName) {}
+		FunctionInstance(ModuleInstance* inModuleInstance,size_t Offset, const FunctionType* inType,void* inNativeFunction = nullptr,const char* inDebugName = "<unidentified FunctionInstance>")
+		: GCObject(ObjectKind::function), moduleInstance(inModuleInstance), offset(Offset), type(inType), nativeFunction(inNativeFunction), debugName(inDebugName) {}
 	};
 
 	// An instance of a WebAssembly Table.

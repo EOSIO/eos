@@ -13,6 +13,8 @@
 #include <eosio/chain/webassembly/rodeos/executor.hpp>
 #include <eosio/chain/webassembly/rodeos/code_cache.hpp>
 
+#include <boost/hana/equal.hpp>
+
 #include <asm/prctl.h>
 #include <sys/prctl.h>
 extern "C" int arch_prctl(int code, unsigned long* addr);
@@ -736,7 +738,8 @@ struct intrinsic_function_invoker_wrapper<is_injected, WasmSig, Ret (Cls::*)(Par
    static Intrinsics::Function _INTRINSIC_NAME(__intrinsic_fn, __COUNTER__) (\
       MOD "." NAME,\
       eosio::chain::webassembly::wavm::wasm_function_type_provider<WASM_SIG>::type(),\
-      (void *)eosio::chain::webassembly::wavm::intrinsic_function_invoker_wrapper<std::string_view(MOD) != "env", WASM_SIG, SIG>::type::fn<&CLS::METHOD>()\
+      (void *)eosio::chain::webassembly::wavm::intrinsic_function_invoker_wrapper<std::string_view(MOD) != "env", WASM_SIG, SIG>::type::fn<&CLS::METHOD>(),\
+      ::boost::hana::index_if(eosio::chain::rodeos::intrinsic_table, ::boost::hana::equal.to(BOOST_HANA_STRING(MOD "." NAME))).value()\
    );\
 
 

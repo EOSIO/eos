@@ -5,6 +5,8 @@
 #include <sys/mman.h>
 #include <linux/memfd.h>
 
+#include <Runtime/Intrinsics.h>
+
 namespace eosio { namespace chain { namespace rodeos {
 
 memory::memory() {
@@ -26,23 +28,16 @@ memory::memory() {
    fullpage_base = last + memory_prologue_size;
 
    close(fd);
+
+   //layout the intrinsic jump table
+   uintptr_t* const intrinsic_jump_table = reinterpret_cast<uintptr_t* const>(zeropage_base - first_intrinsic_offset);
+   const std::map<std::string,Intrinsics::Function*>& intrinsics = Intrinsics::getIntrinsicFunctions();
+   for(const auto& func : intrinsics)
+      intrinsic_jump_table[-func.second->getOffset()] = (uintptr_t)func.second->getNativeFunc();
 }
 
 memory::~memory() {
    munmap(mapbase, mapsize);
-#if 0
-   RODEOS_MEMORY_PTR_cb_ptr;
-   cb_ptr->magic = 0xdeadbeefcafebebeULL;
-   cb_ptr->current_call_depth_remaining = 250;
-
-   RODEOS_MEMORY_PTR_first_reserved_intrinsic_ptr;
-   RODEOS_MEMORY_PTR_first_intrinsic_ptr;
-   first_reserved_intrinsic_ptr[0] = 0xaaaa;
-   first_reserved_intrinsic_ptr[-1] = 0xbbbb;
-   first_reserved_intrinsic_ptr[-2] = 0xcccc;
-   first_reserved_intrinsic_ptr[-3] = 0xdddd;
-   first_intrinsic_ptr[0] = 0x1010101;
-#endif
 }
 
 }}}
