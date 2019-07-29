@@ -28,14 +28,14 @@ namespace eosio { namespace chain {
       return result;
    }
 
-   vector<block_header_extensions> block_header::validate_and_extract_header_extensions()const {
+   flat_multimap<uint16_t, block_header_extensions> block_header::validate_and_extract_header_extensions()const {
       using block_header_extensions_t = block_header_extension_types::block_header_extensions_t;
       using decompose_t = block_header_extension_types::decompose_t;
 
       static_assert( std::is_same<block_header_extensions_t, block_header_extensions>::value,
                      "block_header_extensions is not setup as expected" );
 
-      vector<block_header_extensions_t> results;
+      flat_multimap<uint16_t, block_header_extensions> results;
 
       uint16_t id_type_lower_bound = 0;
 
@@ -47,9 +47,12 @@ namespace eosio { namespace chain {
                      "Block header extensions are not in the correct order (ascending id types required)"
          );
 
-         results.emplace_back();
+         auto iter = results.emplace(std::piecewise_construct,
+            std::forward_as_tuple(id),
+            std::forward_as_tuple()
+         );
 
-         auto match = decompose_t::extract<block_header_extensions_t>( id, e.second, results.back() );
+         auto match = decompose_t::extract<block_header_extensions_t>( id, e.second, iter->second );
          EOS_ASSERT( match, invalid_block_header_extension,
                      "Block header extension with id type ${id} is not supported",
                      ("id", id)
@@ -61,6 +64,7 @@ namespace eosio { namespace chain {
                         ("id", id)
             );
          }
+
 
          id_type_lower_bound = id;
       }

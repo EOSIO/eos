@@ -57,7 +57,7 @@ namespace boost { namespace test_tools { namespace tt_detail {
 } } }
 
 namespace eosio { namespace testing {
-  enum class setup_policy {
+   enum class setup_policy {
       none,
       old_bios_only,
       preactivate_feature_only,
@@ -68,6 +68,10 @@ namespace eosio { namespace testing {
    std::vector<uint8_t> read_wasm( const char* fn );
    std::vector<char>    read_abi( const char* fn );
    std::string          read_wast( const char* fn );
+
+   std::string          read_binary_snapshot( const char* fn );
+   fc::variant          read_json_snapshot( const char* fn );
+
    using namespace eosio::chain;
 
    fc::variant_object filter_fields(const fc::variant_object& filter, const fc::variant_object& value);
@@ -172,9 +176,13 @@ namespace eosio { namespace testing {
          }
 
          void                  set_before_preactivate_bios_contract();
+         void                  set_before_producer_authority_bios_contract();
          void                  set_bios_contract();
-         vector<producer_key>  get_producer_keys( const vector<account_name>& producer_names )const;
-         transaction_trace_ptr set_producers(const vector<account_name>& producer_names);
+
+         vector<producer_authority>  get_producer_authorities( const vector<account_name>& producer_names )const;
+         transaction_trace_ptr       set_producers(const vector<account_name>& producer_names);
+         transaction_trace_ptr       set_producer_schedule(const vector<producer_authority>& schedule);
+         transaction_trace_ptr       set_producers_legacy(const vector<account_name>& producer_names);
 
          void link_authority( account_name account, account_name code,  permission_name req, action_name type = {} );
          void unlink_authority( account_name account, account_name code, action_name type = {} );
