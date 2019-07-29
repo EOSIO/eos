@@ -4,6 +4,8 @@
 #include "IR/IR.h"
 #include "Runtime.h"
 
+#include <map>
+
 namespace Intrinsics
 {
 	// An intrinsic function.
@@ -11,8 +13,11 @@ namespace Intrinsics
 	{
 		Runtime::FunctionInstance* function;
 
-		RUNTIME_API Function(const char* inName,const IR::FunctionType* type,void* nativeFunction);
+		RUNTIME_API Function(const char* inName,const IR::FunctionType* type,void* nativeFunction, size_t offset);
 		RUNTIME_API ~Function();
+
+      void* const getNativeFunc() const;
+      size_t getOffset() const;
 
 	private:
 		const char* name;
@@ -95,6 +100,9 @@ namespace Intrinsics
 
 	// Returns an array of all intrinsic runtime Objects; used as roots for garbage collection.
 	RUNTIME_API std::vector<Runtime::ObjectInstance*> getAllIntrinsicObjects();
+
+   ///XXX
+   const std::map<std::string,Intrinsics::Function*>& getIntrinsicFunctions();
 }
 
 namespace NativeTypes
@@ -114,9 +122,9 @@ namespace NativeTypes
 };
 
 // Macros for defining intrinsic functions of various arities.
-#define DEFINE_INTRINSIC_FUNCTION0(module,cName,name,returnType) \
+#define DEFINE_INTRINSIC_FUNCTION0(module,Offset,cName,name,returnType) \
 	NativeTypes::returnType cName##returnType(); \
-	static Intrinsics::Function cName##returnType##Function(#module "." #name,IR::FunctionType::get(IR::ResultType::returnType),(void*)&cName##returnType); \
+	static Intrinsics::Function cName##returnType##Function(#module "." #name,IR::FunctionType::get(IR::ResultType::returnType),(void*)&cName##returnType,Offset); \
 	NativeTypes::returnType cName##returnType()
 
 #define DEFINE_INTRINSIC_FUNCTION1(module,cName,name,returnType,arg0Type,arg0Name) \
@@ -124,9 +132,9 @@ namespace NativeTypes
 	static Intrinsics::Function cName##returnType##arg0Type##Function(#module "." #name,IR::FunctionType::get(IR::ResultType::returnType,{IR::ValueType::arg0Type}),(void*)&cName##returnType##arg0Type); \
 	NativeTypes::returnType cName##returnType##arg0Type(NativeTypes::arg0Type arg0Name)
 
-#define DEFINE_INTRINSIC_FUNCTION2(module,cName,name,returnType,arg0Type,arg0Name,arg1Type,arg1Name) \
+#define DEFINE_INTRINSIC_FUNCTION2(module,Offset,cName,name,returnType,arg0Type,arg0Name,arg1Type,arg1Name) \
 	NativeTypes::returnType cName##returnType##arg0Type##arg1Type(NativeTypes::arg0Type,NativeTypes::arg1Type); \
-	static Intrinsics::Function cName##returnType##arg0Type##arg1Type##Function(#module "." #name,IR::FunctionType::get(IR::ResultType::returnType,{IR::ValueType::arg0Type,IR::ValueType::arg1Type}),(void*)&cName##returnType##arg0Type##arg1Type); \
+	static Intrinsics::Function cName##returnType##arg0Type##arg1Type##Function(#module "." #name,IR::FunctionType::get(IR::ResultType::returnType,{IR::ValueType::arg0Type,IR::ValueType::arg1Type}),(void*)&cName##returnType##arg0Type##arg1Type,Offset); \
 	NativeTypes::returnType cName##returnType##arg0Type##arg1Type(NativeTypes::arg0Type arg0Name,NativeTypes::arg1Type arg1Name)
 
 #define DEFINE_INTRINSIC_FUNCTION3(module,cName,name,returnType,arg0Type,arg0Name,arg1Type,arg1Name,arg2Type,arg2Name) \

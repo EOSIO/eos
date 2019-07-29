@@ -69,7 +69,7 @@ notus:
    __builtin_unreachable();
 }
 
-DEFINE_INTRINSIC_FUNCTION2(rodeos_internal,_grow_memory,grow_memory,i32,i32,grow,i32,max) {
+DEFINE_INTRINSIC_FUNCTION2(rodeos_internal,1,_grow_memory,grow_memory,i32,i32,grow,i32,max) {
    RODEOS_MEMORY_PTR_cb_ptr;
    U32 previous_page_count = cb_ptr->current_linear_memory_pages;
    U32 grow_amount = grow;
@@ -99,23 +99,23 @@ static void throw_internal_exception(const std::string& s) {
    __builtin_unreachable();
 }
 
-DEFINE_INTRINSIC_FUNCTION0(rodeos_internal,_depth_assert,depth_assert,none) {
+DEFINE_INTRINSIC_FUNCTION0(rodeos_internal,5,_depth_assert,depth_assert,none) {
    throw_internal_exception("Exceeded call depth maximum");
 }
 
-DEFINE_INTRINSIC_FUNCTION0(rodeos_internal,_div0_or_overflow,div0_or_overflow,none) {
+DEFINE_INTRINSIC_FUNCTION0(rodeos_internal,2,_div0_or_overflow,div0_or_overflow,none) {
    throw_internal_exception("Division by 0 or integer overflow trapped");
 }
 
-DEFINE_INTRINSIC_FUNCTION0(rodeos_internal,_indirect_call_mismatch,indirect_call_mismatch,none) {
+DEFINE_INTRINSIC_FUNCTION0(rodeos_internal,3,_indirect_call_mismatch,indirect_call_mismatch,none) {
    throw_internal_exception("Indirect call function type mismatch");
 }
 
-DEFINE_INTRINSIC_FUNCTION0(rodeos_internal,_indirect_call_oob,indirect_call_oob,none) {
+DEFINE_INTRINSIC_FUNCTION0(rodeos_internal,4,_indirect_call_oob,indirect_call_oob,none) {
    throw_internal_exception("Indirect call index out of bounds");
 }
 
-DEFINE_INTRINSIC_FUNCTION0(rodeos_internal,_unreachable,unreachable,none) {
+DEFINE_INTRINSIC_FUNCTION0(rodeos_internal,0,_unreachable,unreachable,none) {
    throw_internal_exception("Unreachable reached");
 }
 
@@ -127,6 +127,7 @@ executor::executor(const code_cache& cc) {
       printf("full_linear_memory_start %li\n", -memory::cb_offset + offsetof(eosio::chain::rodeos::control_block, full_linear_memory_start));
       printf("cb_offset %lu\n", memory::cb_offset);
       printf("remaining call depth: %li\n", -memory::cb_offset + offsetof(eosio::chain::rodeos::control_block, current_call_depth_remaining));
+      printf("first intrinsic: %lu\n", memory::first_intrinsic_offset);
       once_is_enough = true;
    }
 
