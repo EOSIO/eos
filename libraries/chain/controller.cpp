@@ -1311,8 +1311,9 @@ struct controller_impl {
          // call recover keys so that trx->sig_cpu_usage is set correctly
          const fc::microseconds sig_cpu_usage =
                check_auth ? std::get<0>( trx->recover_keys( chain_id ) ) : fc::microseconds();
-         const std::shared_ptr<flat_set<public_key_type>> recovered_keys =
-               check_auth ? std::get<1>( trx->recover_keys( chain_id ) ) : nullptr;
+         const flat_set<public_key_type>& recovered_keys =
+               check_auth ? std::get<1>( trx->recover_keys( chain_id ) ) : flat_set<public_key_type>();
+
          if( !explicit_billed_cpu_time ) {
             fc::microseconds already_consumed_time( EOS_PERCENT(sig_cpu_usage.count(), conf.sig_cpu_bill_pct) );
 
@@ -1346,10 +1347,9 @@ struct controller_impl {
             trx_context.delay = fc::seconds(trn.delay_sec);
 
             if( check_auth ) {
-               EOS_ASSERT( recovered_keys, missing_auth_exception, "recovered_keys should never be null" );
                authorization.check_authorization(
                        trn.actions,
-                       *recovered_keys,
+                       recovered_keys,
                        {},
                        trx_context.delay,
                        [&trx_context](){ trx_context.checktime(); },
