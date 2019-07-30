@@ -10,7 +10,7 @@ namespace eosio { namespace chain {
    namespace detail {
       template<typename... Ts>
       struct block_header_extension_types {
-         using block_header_extensions_t = fc::static_variant< Ts... >;
+         using block_header_extension_t = fc::static_variant< Ts... >;
          using decompose_t = decompose< Ts... >;
       };
    }
@@ -20,7 +20,7 @@ namespace eosio { namespace chain {
       producer_schedule_change_extension
    >;
 
-   using block_header_extensions = block_header_extension_types::block_header_extensions_t;
+   using block_header_extension = block_header_extension_types::block_header_extension_t;
 
    struct block_header
    {
@@ -67,7 +67,7 @@ namespace eosio { namespace chain {
       uint32_t          block_num() const { return num_from_id(previous) + 1; }
       static uint32_t   num_from_id(const block_id_type& id);
 
-      flat_multimap<uint16_t, block_header_extensions> validate_and_extract_header_extensions()const;
+      flat_multimap<uint16_t, block_header_extension> validate_and_extract_header_extensions()const;
    };
 
 
