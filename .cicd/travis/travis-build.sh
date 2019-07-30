@@ -6,7 +6,7 @@ cd $( dirname "${BASH_SOURCE[0]}" )/.. # Ensure we're in the .cicd dir
 cd $ROOT_DIR
 CPU_CORES=$(getconf _NPROCESSORS_ONLN)
 if [[ "$(uname)" == Darwin ]]; then
-    . ./.cicd/docker/.helpers-v33
+    . ./.cicd/docker/.logging-helpers
     fold-execute ccache -s
     mkdir -p build && cd build && fold-execute cmake ..
     fold-execute make -j$(getconf _NPROCESSORS_ONLN)

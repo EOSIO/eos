@@ -82,7 +82,7 @@ ENV PRE_COMMANDS="export PATH=/usr/lib64/ccache:\$PATH"
 ENV CMAKE_EXTRAS="-DCMAKE_CXX_COMPILER='clang++' -DCMAKE_C_COMPILER='clang'"
 
 # Bring in helpers that provides execute function so we can get better logging in BK and TRAV
-COPY ./docker/.helpers-v33 /tmp/.helpers
+COPY ./docker/.logging-helpers /tmp/.helpers
 
 CMD bash -c ". /tmp/.helpers && $PRE_COMMANDS && \
     fold-execute ccache -s && \

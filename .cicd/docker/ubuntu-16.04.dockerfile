@@ -92,7 +92,7 @@ ENV PRE_COMMANDS="export PATH=/usr/lib/ccache:\$PATH"
 ENV CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_TOOLCHAIN_FILE='/tmp/pinned_toolchain.cmake' -DCMAKE_CXX_COMPILER_LAUNCHER=ccache"
 
 # Bring in helpers that provides execute function so we can get better logging in BK and TRAV
-COPY ./docker/.helpers-v33 /tmp/.helpers
+COPY ./docker/.logging-helpers /tmp/.helpers
 
 CMD bash -c ". /tmp/.helpers && $PRE_COMMANDS && \
     fold-execute ccache -s && \

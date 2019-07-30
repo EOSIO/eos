@@ -97,7 +97,7 @@ RUN echo -e "[buildkite-agent]\nname = Buildkite Pty Ltd\nbaseurl = https://yum.
 ENV PRE_COMMANDS="source /opt/rh/devtoolset-8/enable && source /opt/rh/rh-python36/enable && export PATH=/usr/lib64/ccache:\$PATH"
 
 # Bring in helpers that provides execute function so we can get better logging in BK and TRAV
-COPY ./docker/.helpers-v33 /tmp/.helpers
+COPY ./docker/.logging-helpers /tmp/.helpers
 
 CMD bash -c ". /tmp/.helpers && $PRE_COMMANDS && \
     fold-execute ccache -s && \
