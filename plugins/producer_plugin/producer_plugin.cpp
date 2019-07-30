@@ -880,6 +880,10 @@ void producer_plugin::handle_sighup() {
    fc::logger::update( trx_trace_logger_name, _trx_trace_log );
 }
 
+void producer_plugin::push_transaction(const chain::transaction_metadata_ptr& trx, bool persist_until_expired, next_function<chain::transaction_trace_ptr> next) {
+   my->on_incoming_transaction_async( trx, persist_until_expired, std::move(next) );
+}
+
 void producer_plugin::pause() {
    my->_pause_production = true;
 }

@@ -2813,9 +2813,8 @@ namespace eosio {
       }
 
       trx_in_progress_size += calc_trx_size( ptrx->packed_trx() );
-      app().post( priority::low, [ptrx{std::move(ptrx)}, weak = weak_from_this()]() {
-        my_impl->chain_plug->accept_transaction( ptrx,
-            [weak, ptrx](const static_variant<fc::exception_ptr, transaction_trace_ptr>& result) {
+      my_impl->producer_plug->push_transaction( ptrx, false,
+            [ptrx, weak = weak_from_this()](const static_variant<fc::exception_ptr, transaction_trace_ptr>& result) {
          // next (this lambda) called from application thread
          bool accepted = false;
          if (result.contains<fc::exception_ptr>()) {
@@ -2845,7 +2844,6 @@ namespace eosio {
                conn->trx_in_progress_size -= calc_trx_size( ptrx->packed_trx() );
             }
          });
-        });
       });
    }
 

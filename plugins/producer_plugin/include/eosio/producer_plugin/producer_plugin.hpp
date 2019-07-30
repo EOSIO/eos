@@ -91,6 +91,8 @@ public:
    virtual void plugin_shutdown();
    void handle_sighup() override;
 
+   void push_transaction(const chain::transaction_metadata_ptr& trx, bool persist_until_expired, next_function<chain::transaction_trace_ptr> next);
+
    void pause();
    void resume();
    bool paused() const;

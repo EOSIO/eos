@@ -5,6 +5,7 @@
 #pragma once
 #include <appbase/application.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
+#include <eosio/producer_plugin/producer_plugin.hpp>
 #include <eosio/net_plugin/protocol.hpp>
 
 namespace eosio {
@@ -23,7 +24,7 @@ namespace eosio {
         net_plugin();
         virtual ~net_plugin();
 
-        APPBASE_PLUGIN_REQUIRES((chain_plugin))
+        APPBASE_PLUGIN_REQUIRES((chain_plugin)(producer_plugin))
         virtual void set_program_options(options_description& cli, options_description& cfg) override;
         void handle_sighup() override;
 
