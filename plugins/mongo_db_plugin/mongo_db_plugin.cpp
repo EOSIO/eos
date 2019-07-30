@@ -1676,7 +1676,6 @@ void mongo_db_plugin::plugin_startup()
    auto& chain = chain_plug->chain();
 
    auto bs = chain.genesis_block_state();
-   bs->validated = true; // consider genesis block validated
    my->insert_irreversible_block( bs );
 }
 

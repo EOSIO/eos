@@ -435,6 +435,7 @@ struct controller_impl {
       static_cast<block_header_state&>(*genesis) = genheader;
       genesis->activated_protocol_features = std::make_shared<protocol_feature_activation_set>();
       genesis->block = std::make_shared<signed_block>(genheader.header);
+      genesis->validated = true; // consider genesis block validated
       return genesis;
    }
 
