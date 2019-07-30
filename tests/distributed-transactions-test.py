@@ -53,7 +53,7 @@ try:
         walletMgr.cleanup()
         print("Stand up walletd")
         if walletMgr.launch() is False:
-            errorExit("Failed to stand up keosd.")
+            errorExit("Failed to stand up remvault.")
     else:
         cluster.killall(allInstances=killAll)
         cluster.cleanup()

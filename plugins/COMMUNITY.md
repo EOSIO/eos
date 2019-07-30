@@ -1,6 +1,6 @@
 # Community Plugin List
 
-This file contains a list of community authored plugins for `nodeos` and APIs/tools that are associated with plugins, acting as a directory of the community authored plugins that are available.
+This file contains a list of community authored plugins for `remnode` and APIs/tools that are associated with plugins, acting as a directory of the community authored plugins that are available.
 
 Third parties are encouraged to make pull requests to this file (`develop` branch please) in order to list new related projects.
 

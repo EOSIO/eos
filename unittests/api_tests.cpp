@@ -391,10 +391,10 @@ BOOST_FIXTURE_TEST_CASE(action_receipt_tests, TESTER) { try {
       BOOST_CHECK_EQUAL( m.begin()->second, base_test_auth_seq_num + 4 );
    } );
 
-   set_code( config::system_account_name, contracts::eosio_bios_wasm() );
+   set_code( config::system_account_name, contracts::rem_bios_wasm() );
 
-   set_code( N(test), contracts::eosio_bios_wasm() );
-   set_abi( N(test), contracts::eosio_bios_abi().data() );
+   set_code( N(test), contracts::rem_bios_wasm() );
+   set_abi( N(test), contracts::rem_bios_abi().data() );
 	set_code( N(test), contracts::payloadless_wasm() );
 
    call_doit_and_check( N(test), N(test), [&]( const transaction_trace_ptr& res ) {
@@ -1269,7 +1269,7 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
       dtt_act2.delay_sec = 5;
 
       auto auth = authority(get_public_key("testapi", name(dtt_act2.permission_name).to_string()), 10);
-      auth.accounts.push_back( permission_level_weight{{N(testapi), config::eosio_code_name}, 1} );
+      auth.accounts.push_back( permission_level_weight{{N(testapi), config::rem_code_name}, 1} );
 
       push_action(config::system_account_name, updateauth::get_name(), "testapi", fc::mutable_variant_object()
               ("account", "testapi")
@@ -1290,7 +1290,7 @@ BOOST_FIXTURE_TEST_CASE(deferred_transaction_tests, TESTER) { try {
 
       // If the deferred tx receiver == this tx receiver, the authorization checking would originally be bypassed.
       // But not anymore. With the RESTRICT_ACTION_TO_SELF protocol feature activated, it should now objectively
-      // fail because testapi@additional permission is not unilaterally satisfied by testapi@eosio.code.
+      // fail because testapi@additional permission is not unilaterally satisfied by testapi@rem.code.
       dtt_action dtt_act3;
       dtt_act3.deferred_account = N(testapi);
       dtt_act3.permission_name = N(additional);
@@ -2139,7 +2139,7 @@ BOOST_FIXTURE_TEST_CASE(permission_usage_tests, TESTER) { try {
 
    push_action(config::system_account_name, linkauth::get_name(), N(bob), fc::mutable_variant_object()
            ("account", "bob")
-           ("code", "eosio")
+           ("code", "rem")
            ("type", "reqauth")
            ("requirement", "perm1")
    );

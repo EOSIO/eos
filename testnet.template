@@ -17,7 +17,7 @@ fi
 
 bioscontractpath=$BIOS_CONTRACT_PATH
 if [ -z "$bioscontractpath" ]; then
-    bioscontractpath="contracts/contracts/eosio.bios"
+    bioscontractpath="contracts/contracts/rem.bios"
 fi
 
 wddir=eosio-ignition-wd
@@ -29,7 +29,7 @@ wdurl=http://$wdaddr
 #    cnt_dir=$CONTRACT_DIR
 #    sys=$SYS_CONTRACT
 # where $BIOS_HOSTNAME is replaced by the hostname portion of the http-server-address configured
-# for the nodeos instance running to bios producer
+# for the remnode instance running to bios producer
 # ------ DO NOT ALTER THE NEXT LINE -------
 ###INSERT envars
 
@@ -47,16 +47,16 @@ echo "FEATURE_DIGESTS: $FEATURE_DIGESTS" >> $logfile
 
 echo "http-server-address = $wdaddr" > $wddir/config.ini
 
-programs/keosd/keosd --config-dir $wddir --data-dir $wddir 2> $wddir/wdlog.txt &
+programs/remvault/remvault --config-dir $wddir --data-dir $wddir 2> $wddir/wdlog.txt &
 echo $$ > ignition_wallet.pid
-echo keosd log in $wddir/wdlog.txt >> $logfile
+echo remvault log in $wddir/wdlog.txt >> $logfile
 sleep 1
 
 ecmd () {
     echo ===== Start: $step ============ >> $logfile
-    echo executing: cleos --wallet-url $wdurl --url http://$bioshost:$biosport $* | tee -a $logfile
+    echo executing: remcli --wallet-url $wdurl --url http://$bioshost:$biosport $* | tee -a $logfile
     echo ----------------------- >> $logfile
-    programs/cleos/cleos --wallet-url $wdurl --url http://$bioshost:$biosport $* 2>&1 | tee -a $logfile
+    programs/remcli/remcli --wallet-url $wdurl --url http://$bioshost:$biosport $* 2>&1 | tee -a $logfile
     RES=${PIPESTATUS[0]}
     echo ==== End: $step - res=$RES ============== >> $logfile
     if [[ $RES -ne 0 ]];then exit 1;fi
@@ -68,7 +68,7 @@ wcmd () {
 }
 
 cacmd () {
-    programs/cleos/cleos -v --wallet-url $wdurl --url http://$bioshost:$biosport system newaccount --transfer --stake "10000000.0000 SYS" eosio $* 2>&1 | tee -a $logfile
+    programs/remcli/remcli -v --wallet-url $wdurl --url http://$bioshost:$biosport system newaccount --transfer --stake "10000000.0000 SYS" rem $* 2>&1 | tee -a $logfile
     ecmd system regproducer $1 $2
     ecmd system voteproducer prods $1 $1
 }
@@ -87,46 +87,46 @@ wcmd create --to-console -n ignition
 # ------ DO NOT ALTER THE NEXT LINE -------
 ###INSERT prodkeys
 
-ecmd set contract eosio $bioscontractpath eosio.bios.wasm eosio.bios.abi
+ecmd set contract rem $bioscontractpath rem.bios.wasm rem.bios.abi
 
 # Preactivate all digests
 for digest in $FEATURE_DIGESTS;
 do
-ecmd push action eosio activate "{\"feature_digest\":\"$digest\"}" -p eosio
+ecmd push action rem activate "{\"feature_digest\":\"$digest\"}" -p rem
 done
 
 # Create required system accounts
 ecmd create key --to-console
 pubsyskey=`grep "^Public key:" $logfile | tail -1 | sed "s/^Public key://"`
 prisyskey=`grep "^Private key:" $logfile | tail -1 | sed "s/^Private key://"`
-echo eosio.* keys: $prisyskey $pubsyskey >> $logfile
+echo rem.* keys: $prisyskey $pubsyskey >> $logfile
 wcmd import -n ignition --private-key $prisyskey
-ecmd create account eosio eosio.bpay $pubsyskey $pubsyskey
-ecmd create account eosio eosio.msig $pubsyskey $pubsyskey
-ecmd create account eosio eosio.names $pubsyskey $pubsyskey
-ecmd create account eosio eosio.ram $pubsyskey $pubsyskey
-ecmd create account eosio eosio.ramfee $pubsyskey $pubsyskey
-ecmd create account eosio eosio.saving $pubsyskey $pubsyskey
-ecmd create account eosio eosio.stake $pubsyskey $pubsyskey
-ecmd create account eosio eosio.token $pubsyskey $pubsyskey
-ecmd create account eosio eosio.vpay $pubsyskey $pubsyskey
-ecmd create account eosio eosio.wrap $pubsyskey $pubsyskey
+ecmd create account rem rem.bpay $pubsyskey $pubsyskey
+ecmd create account rem rem.msig $pubsyskey $pubsyskey
+ecmd create account rem rem.names $pubsyskey $pubsyskey
+ecmd create account rem rem.ram $pubsyskey $pubsyskey
+ecmd create account rem rem.ramfee $pubsyskey $pubsyskey
+ecmd create account rem rem.saving $pubsyskey $pubsyskey
+ecmd create account rem rem.stake $pubsyskey $pubsyskey
+ecmd create account rem rem.token $pubsyskey $pubsyskey
+ecmd create account rem rem.vpay $pubsyskey $pubsyskey
+ecmd create account rem rem.wrap $pubsyskey $pubsyskey
 
-ecmd set contract eosio.token contracts/contracts/eosio.token eosio.token.wasm eosio.token.abi
-ecmd set contract eosio.msig contracts/contracts/eosio.msig eosio.msig.wasm eosio.msig.abi
-ecmd set contract eosio.wrap contracts/contracts/eosio.wrap eosio.wrap.wasm eosio.wrap.abi
+ecmd set contract rem.token contracts/contracts/rem.token rem.token.wasm rem.token.abi
+ecmd set contract rem.msig contracts/contracts/rem.msig rem.msig.wasm rem.msig.abi
+ecmd set contract rem.wrap contracts/contracts/rem.wrap rem.wrap.wasm rem.wrap.abi
 
 echo ===== Start: $step ============ >> $logfile
-echo executing: cleos --wallet-url $wdurl --url http://$bioshost:$biosport push action eosio.token create '[ "eosio", "1000000000.0000 SYS" ]' -p eosio.token | tee -a $logfile
-echo executing: cleos --wallet-url $wdurl --url http://$bioshost:$biosport push action eosio.token issue '[ "eosio", "900000000.0000 SYS", "memo" ]' -p eosio | tee -a $logfile
+echo executing: remcli --wallet-url $wdurl --url http://$bioshost:$biosport push action rem.token create '[ "rem", "1000000000.0000 SYS" ]' -p rem.token | tee -a $logfile
+echo executing: remcli --wallet-url $wdurl --url http://$bioshost:$biosport push action rem.token issue '[ "rem", "900000000.0000 SYS", "memo" ]' -p rem | tee -a $logfile
 echo ----------------------- >> $logfile
-programs/cleos/cleos --wallet-url $wdurl --url http://$bioshost:$biosport push action eosio.token create '[ "eosio", "1000000000.0000 SYS" ]' -p eosio.token >> $logfile 2>&1
-programs/cleos/cleos --wallet-url $wdurl --url http://$bioshost:$biosport push action eosio.token issue '[ "eosio", "900000000.0000 SYS", "memo" ]' -p eosio >> $logfile 2>&1
+programs/remcli/remcli --wallet-url $wdurl --url http://$bioshost:$biosport push action rem.token create '[ "rem", "1000000000.0000 SYS" ]' -p rem.token >> $logfile 2>&1
+programs/remcli/remcli --wallet-url $wdurl --url http://$bioshost:$biosport push action rem.token issue '[ "rem", "900000000.0000 SYS", "memo" ]' -p rem >> $logfile 2>&1
 echo ==== End: $step ============== >> $logfile
 step=$(($step + 1))
 
-ecmd set contract eosio contracts/contracts/eosio.system eosio.system.wasm eosio.system.abi
-programs/cleos/cleos --wallet-url $wdurl --url http://$bioshost:$biosport push action eosio init '[0, "4,SYS"]' -p eosio >> $logfile 2>&1
+ecmd set contract rem contracts/contracts/rem.system rem.system.wasm rem.system.abi
+programs/remcli/remcli --wallet-url $wdurl --url http://$bioshost:$biosport push action rem init '[0, "4,SYS"]' -p rem >> $logfile 2>&1
 
 # Manual deployers, add a series of lines below this block that looks like:
 #    cacmd $PRODNAME[0] $OWNERKEY[0] $ACTIVEKEY[0]
@@ -138,4 +138,4 @@ programs/cleos/cleos --wallet-url $wdurl --url http://$bioshost:$biosport push a
 # ------ DO NOT ALTER THE NEXT LINE -------
 ###INSERT cacmd
 
-pkill -15 keosd
+pkill -15 remvault

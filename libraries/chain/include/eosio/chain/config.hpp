@@ -23,9 +23,9 @@ const static auto default_state_size            = 1*1024*1024*1024ll;
 const static auto default_state_guard_size      =    128*1024*1024ll;
 
 
-const static uint64_t system_account_name    = N(eosio);
-const static uint64_t null_account_name      = N(eosio.null);
-const static uint64_t producers_account_name = N(eosio.prods);
+const static uint64_t system_account_name    = N(rem);
+const static uint64_t null_account_name      = N(rem.null);
+const static uint64_t producers_account_name = N(rem.prods);
 
 // Active permission of producers account requires greater than 2/3 of the producers to authorize
 const static uint64_t majority_producers_permission_name = N(prod.major); // greater than 1/2 of producers needed to authorize
@@ -36,8 +36,8 @@ const static uint64_t eosio_all_scope        = N(eosio.all);
 
 const static uint64_t active_name = N(active);
 const static uint64_t owner_name  = N(owner);
-const static uint64_t eosio_any_name = N(eosio.any);
-const static uint64_t eosio_code_name = N(eosio.code);
+const static uint64_t rem_any_name = N(rem.any);
+const static uint64_t rem_code_name = N(rem.code);
 
 const static int      block_interval_ms = 500;
 const static int      block_interval_us = block_interval_ms*1000;

@@ -66,8 +66,8 @@ std::vector<rem_genesis_account> rem_test_genesis( {
 class voting_tester : public TESTER {
 public:
    void deploy_contract( bool call_init = true ) {
-      set_code( config::system_account_name, contracts::eosio_system_wasm() );
-      set_abi( config::system_account_name, contracts::eosio_system_abi().data() );
+      set_code( config::system_account_name, contracts::rem_system_wasm() );
+      set_abi( config::system_account_name, contracts::rem_system_abi().data() );
       if( call_init ) {
          base_tester::push_action(config::system_account_name, N(init),
                                   config::system_account_name,  mutable_variant_object()
@@ -140,7 +140,7 @@ public:
     }
 
     asset get_balance( const account_name& act ) {
-         return get_currency_balance(N(eosio.token), symbol(CORE_SYMBOL), act);
+         return get_currency_balance(N(rem.token), symbol(CORE_SYMBOL), act);
     }
 
     void set_code_abi(const account_name& account, const vector<uint8_t>& wasm, const char* abi, const private_key_type* signer = nullptr) {
@@ -183,38 +183,38 @@ public:
 BOOST_AUTO_TEST_SUITE(rem_voting_tests)
 BOOST_FIXTURE_TEST_CASE( rem_voting_test, voting_tester ) {
     try {
-        // Create eosio.msig and eosio.token
-        create_accounts({N(eosio.msig), N(eosio.token), N(eosio.ram), N(eosio.ramfee), N(eosio.stake), N(eosio.vpay), N(eosio.bpay), N(eosio.saving) });
+        // Create rem.msig and rem.token
+        create_accounts({N(rem.msig), N(rem.token), N(rem.ram), N(rem.ramfee), N(rem.stake), N(rem.vpay), N(rem.bpay), N(rem.saving) });
 
         // Set code for the following accounts:
-        //  - eosio (code: eosio.bios) (already set by tester constructor)
-        //  - eosio.msig (code: eosio.msig)
-        //  - eosio.token (code: eosio.token)
-        set_code_abi(N(eosio.msig),
-                     contracts::eosio_msig_wasm(),
-                     contracts::eosio_msig_abi().data());//, &eosio_active_pk);
-        set_code_abi(N(eosio.token),
-                     contracts::eosio_token_wasm(),
-                     contracts::eosio_token_abi().data()); //, &eosio_active_pk);
+        //  - rem (code: rem.bios) (already set by tester constructor)
+        //  - rem.msig (code: rem.msig)
+        //  - rem.token (code: rem.token)
+        set_code_abi(N(rem.msig),
+                     contracts::rem_msig_wasm(),
+                     contracts::rem_msig_abi().data());//, &rem_active_pk);
+        set_code_abi(N(rem.token),
+                     contracts::rem_token_wasm(),
+                     contracts::rem_token_abi().data()); //, &rem_active_pk);
 
-        // Set privileged for eosio.msig and eosio.token
-        set_privileged(N(eosio.msig));
-        set_privileged(N(eosio.token));
+        // Set privileged for rem.msig and rem.token
+        set_privileged(N(rem.msig));
+        set_privileged(N(rem.token));
 
-        // Verify eosio.msig and eosio.token is privileged
-        const auto& eosio_msig_acc = get<account_metadata_object, by_name>(N(eosio.msig));
-        BOOST_TEST(eosio_msig_acc.is_privileged() == true);
-        const auto& eosio_token_acc = get<account_metadata_object, by_name>(N(eosio.token));
-        BOOST_TEST(eosio_token_acc.is_privileged() == true);
+        // Verify rem.msig and rem.token is privileged
+        const auto& rem_msig_acc = get<account_metadata_object, by_name>(N(rem.msig));
+        BOOST_TEST(rem_msig_acc.is_privileged() == true);
+        const auto& rem_token_acc = get<account_metadata_object, by_name>(N(rem.token));
+        BOOST_TEST(rem_token_acc.is_privileged() == true);
 
 
-        // Create SYS tokens in eosio.token, set its manager as eosio
+        // Create SYS tokens in rem.token, set its manager as rem
         const auto max_supply     = core_from_string("1000000000.0000"); /// 10x larger than 1B initial tokens
         const auto initial_supply = core_from_string("100000000.0000");  /// 10x larger than 1B initial tokens
 
-        create_currency(N(eosio.token), config::system_account_name, max_supply);
-        // Issue the genesis supply of 1 billion SYS tokens to eosio.system
-        issue(N(eosio.token), config::system_account_name, config::system_account_name, initial_supply);
+        create_currency(N(rem.token), config::system_account_name, max_supply);
+        // Issue the genesis supply of 1 billion SYS tokens to rem.system
+        issue(N(rem.token), config::system_account_name, config::system_account_name, initial_supply);
 
         auto actual = get_balance(config::system_account_name);
         BOOST_REQUIRE_EQUAL(initial_supply, actual);
@@ -232,7 +232,7 @@ BOOST_FIXTURE_TEST_CASE( rem_voting_test, voting_tester ) {
            const auto ram = 1000;
            const auto stake = ib - ram;
 
-           auto r = delegate_bandwidth(N(eosio.stake), acc.name, asset(stake));
+           auto r = delegate_bandwidth(N(rem.stake), acc.name, asset(stake));
            BOOST_REQUIRE( !r->except_ptr );
         }
 
@@ -260,7 +260,7 @@ BOOST_FIXTURE_TEST_CASE( rem_voting_test, voting_tester ) {
         for( const auto& producer : producer_runnerups ) {
            const auto stake = 200'000'0000ll;
 
-           const auto r = delegate_bandwidth(N(eosio.stake), producer, asset(stake));
+           const auto r = delegate_bandwidth(N(rem.stake), producer, asset(stake));
            BOOST_REQUIRE( !r->except_ptr );
         }
 
@@ -292,7 +292,7 @@ BOOST_FIXTURE_TEST_CASE( rem_voting_test, voting_tester ) {
         produce_blocks_for_n_rounds(2); // 2 rounds since new producer schedule is set when the first block of next round is irreversible
         auto active_schedule = control->head_block_state()->active_schedule;
         BOOST_TEST(active_schedule.producers.size() == 1u);
-        BOOST_TEST(active_schedule.producers.front().producer_name == "eosio");
+        BOOST_TEST(active_schedule.producers.front().producer_name == "rem");
 
         // This will increase the total vote stake by (1'000'000'000'000 - 1,000)
         votepro( N(b1), {N(proda), N(prodb), N(prodc), N(prodd), N(prode), N(prodf), N(prodg),
@@ -331,38 +331,38 @@ BOOST_FIXTURE_TEST_CASE( rem_voting_test, voting_tester ) {
 
 BOOST_FIXTURE_TEST_CASE( rem_vote_reassertion_test, voting_tester ) {
    try {
-      // Create eosio.msig and eosio.token
-      create_accounts({N(eosio.msig), N(eosio.token), N(eosio.ram), N(eosio.ramfee), N(eosio.stake), N(eosio.vpay), N(eosio.bpay), N(eosio.saving) });
+      // Create rem.msig and rem.token
+      create_accounts({N(rem.msig), N(rem.token), N(rem.ram), N(rem.ramfee), N(rem.stake), N(rem.vpay), N(rem.bpay), N(rem.saving) });
 
       // Set code for the following accounts:
-      //  - eosio (code: eosio.bios) (already set by tester constructor)
-      //  - eosio.msig (code: eosio.msig)
-      //  - eosio.token (code: eosio.token)
-      set_code_abi(N(eosio.msig),
-                  contracts::eosio_msig_wasm(),
-                  contracts::eosio_msig_abi().data());//, &eosio_active_pk);
-      set_code_abi(N(eosio.token),
-                  contracts::eosio_token_wasm(),
-                  contracts::eosio_token_abi().data()); //, &eosio_active_pk);
+      //  - rem (code: rem.bios) (already set by tester constructor)
+      //  - rem.msig (code: rem.msig)
+      //  - rem.token (code: rem.token)
+      set_code_abi(N(rem.msig),
+                  contracts::rem_msig_wasm(),
+                  contracts::rem_msig_abi().data());//, &rem_active_pk);
+      set_code_abi(N(rem.token),
+                  contracts::rem_token_wasm(),
+                  contracts::rem_token_abi().data()); //, &rem_active_pk);
 
-      // Set privileged for eosio.msig and eosio.token
-      set_privileged(N(eosio.msig));
-      set_privileged(N(eosio.token));
+      // Set privileged for rem.msig and rem.token
+      set_privileged(N(rem.msig));
+      set_privileged(N(rem.token));
 
-      // Verify eosio.msig and eosio.token is privileged
-      const auto& eosio_msig_acc = get<account_metadata_object, by_name>(N(eosio.msig));
-      BOOST_TEST(eosio_msig_acc.is_privileged() == true);
-      const auto& eosio_token_acc = get<account_metadata_object, by_name>(N(eosio.token));
-      BOOST_TEST(eosio_token_acc.is_privileged() == true);
+      // Verify rem.msig and rem.token is privileged
+      const auto& rem_msig_acc = get<account_metadata_object, by_name>(N(rem.msig));
+      BOOST_TEST(rem_msig_acc.is_privileged() == true);
+      const auto& rem_token_acc = get<account_metadata_object, by_name>(N(rem.token));
+      BOOST_TEST(rem_token_acc.is_privileged() == true);
 
 
-      // Create SYS tokens in eosio.token, set its manager as eosio
+      // Create SYS tokens in rem.token, set its manager as rem
       const auto max_supply     = core_from_string("1000000000.0000"); /// 10x larger than 1B initial tokens
       const auto initial_supply = core_from_string("100000000.0000");  /// 10x larger than 1B initial tokens
 
-      create_currency(N(eosio.token), config::system_account_name, max_supply);
-      // Issue the genesis supply of 1 billion SYS tokens to eosio.system
-      issue(N(eosio.token), config::system_account_name, config::system_account_name, initial_supply);
+      create_currency(N(rem.token), config::system_account_name, max_supply);
+      // Issue the genesis supply of 1 billion SYS tokens to rem.system
+      issue(N(rem.token), config::system_account_name, config::system_account_name, initial_supply);
 
       auto actual = get_balance(config::system_account_name);
       BOOST_REQUIRE_EQUAL(initial_supply, actual);
@@ -380,7 +380,7 @@ BOOST_FIXTURE_TEST_CASE( rem_vote_reassertion_test, voting_tester ) {
          const auto ram = 1000;
          const auto stake = ib - ram;
 
-         auto r = delegate_bandwidth(N(eosio.stake), acc.name, asset(stake));
+         auto r = delegate_bandwidth(N(rem.stake), acc.name, asset(stake));
          BOOST_REQUIRE( !r->except_ptr );
       }
 
@@ -404,7 +404,7 @@ BOOST_FIXTURE_TEST_CASE( rem_vote_reassertion_test, voting_tester ) {
       votepro( N(b1), {N(proda), N(prodb), N(prodc), N(prodd), N(prode), N(prodf), N(prodg),
                        N(prodh), N(prodi), N(prodj), N(prodk), N(prodl), N(prodm), N(prodn),
                        N(prodo), N(prodp), N(prodq), N(prodr), N(prods), N(prodt), N(produ)} );
-      
+
       votepro( N(whale1), {N(proda), N(prodb), N(prodc), N(prodd), N(prode), N(prodf), N(prodg),
                            N(prodh), N(prodi), N(prodj), N(prodk), N(prodl), N(prodm), N(prodn),
                            N(prodo), N(prodp), N(prodq), N(prodr), N(prods), N(prodt), N(produ)} );
@@ -448,7 +448,7 @@ BOOST_FIXTURE_TEST_CASE( rem_vote_reassertion_test, voting_tester ) {
       BOOST_TEST(active_schedule.producers.at(20).producer_name == "produ");
 
       // Skip 180 Days so vote gain 100% power
-      produce_min_num_of_blocks_to_spend_time_wo_inactive_prod(fc::seconds(180 * 24 * 3600)); 
+      produce_min_num_of_blocks_to_spend_time_wo_inactive_prod(fc::seconds(180 * 24 * 3600));
 
       votepro( N(proda), {N(proda)} );
       produce_blocks_for_n_rounds(2);
@@ -502,38 +502,38 @@ BOOST_FIXTURE_TEST_CASE( rem_vote_reassertion_test, voting_tester ) {
 
 BOOST_FIXTURE_TEST_CASE( rem_vote_weight_test, voting_tester ) {
    try {
-      // Create eosio.msig and eosio.token
-      create_accounts({N(eosio.msig), N(eosio.token), N(eosio.ram), N(eosio.ramfee), N(eosio.stake), N(eosio.vpay), N(eosio.bpay), N(eosio.saving) });
+      // Create rem.msig and rem.token
+      create_accounts({N(rem.msig), N(rem.token), N(rem.ram), N(rem.ramfee), N(rem.stake), N(rem.vpay), N(rem.bpay), N(rem.saving) });
 
       // Set code for the following accounts:
-      //  - eosio (code: eosio.bios) (already set by tester constructor)
-      //  - eosio.msig (code: eosio.msig)
-      //  - eosio.token (code: eosio.token)
-      set_code_abi(N(eosio.msig),
-                  contracts::eosio_msig_wasm(),
-                  contracts::eosio_msig_abi().data());//, &eosio_active_pk);
-      set_code_abi(N(eosio.token),
-                  contracts::eosio_token_wasm(),
-                  contracts::eosio_token_abi().data()); //, &eosio_active_pk);
+      //  - rem (code: rem.bios) (already set by tester constructor)
+      //  - rem.msig (code: rem.msig)
+      //  - rem.token (code: rem.token)
+      set_code_abi(N(rem.msig),
+                  contracts::rem_msig_wasm(),
+                  contracts::rem_msig_abi().data());//, &rem_active_pk);
+      set_code_abi(N(rem.token),
+                  contracts::rem_token_wasm(),
+                  contracts::rem_token_abi().data()); //, &rem_active_pk);
 
-      // Set privileged for eosio.msig and eosio.token
-      set_privileged(N(eosio.msig));
-      set_privileged(N(eosio.token));
+      // Set privileged for rem.msig and rem.token
+      set_privileged(N(rem.msig));
+      set_privileged(N(rem.token));
 
-      // Verify eosio.msig and eosio.token is privileged
-      const auto& eosio_msig_acc = get<account_metadata_object, by_name>(N(eosio.msig));
-      BOOST_TEST(eosio_msig_acc.is_privileged() == true);
-      const auto& eosio_token_acc = get<account_metadata_object, by_name>(N(eosio.token));
-      BOOST_TEST(eosio_token_acc.is_privileged() == true);
+      // Verify rem.msig and rem.token is privileged
+      const auto& rem_msig_acc = get<account_metadata_object, by_name>(N(rem.msig));
+      BOOST_TEST(rem_msig_acc.is_privileged() == true);
+      const auto& rem_token_acc = get<account_metadata_object, by_name>(N(rem.token));
+      BOOST_TEST(rem_token_acc.is_privileged() == true);
 
 
-      // Create SYS tokens in eosio.token, set its manager as eosio
+      // Create SYS tokens in rem.token, set its manager as rem
       const auto max_supply     = core_from_string("1000000000.0000"); /// 10x larger than 1B initial tokens
       const auto initial_supply = core_from_string("100000000.0000");  /// 10x larger than 1B initial tokens
 
-      create_currency(N(eosio.token), config::system_account_name, max_supply);
-      // Issue the genesis supply of 1 billion SYS tokens to eosio.system
-      issue(N(eosio.token), config::system_account_name, config::system_account_name, initial_supply);
+      create_currency(N(rem.token), config::system_account_name, max_supply);
+      // Issue the genesis supply of 1 billion SYS tokens to rem.system
+      issue(N(rem.token), config::system_account_name, config::system_account_name, initial_supply);
 
       auto actual = get_balance(config::system_account_name);
       BOOST_REQUIRE_EQUAL(initial_supply, actual);
@@ -550,7 +550,7 @@ BOOST_FIXTURE_TEST_CASE( rem_vote_weight_test, voting_tester ) {
          const auto ib = acc.initial_balance;
          const auto ram = 1000;
          const auto stake = ib - ram;
-         auto r = delegate_bandwidth(N(eosio.stake), acc.name, asset(stake));
+         auto r = delegate_bandwidth(N(rem.stake), acc.name, asset(stake));
          BOOST_REQUIRE( !r->except_ptr );
       }
 
@@ -621,7 +621,7 @@ BOOST_FIXTURE_TEST_CASE( rem_vote_weight_test, voting_tester ) {
       // staked 40KK 
       // re-staked 20KK 
       {
-         const auto r = delegate_bandwidth(N(eosio.stake), N(whale1), asset(20'000'000'0000LL));
+         const auto r = delegate_bandwidth(N(rem.stake), N(whale1), asset(20'000'000'0000LL));
          BOOST_REQUIRE( !r->except_ptr );
 
          votepro( N(whale1), { N(proda) } );
@@ -641,7 +641,7 @@ BOOST_FIXTURE_TEST_CASE( rem_vote_weight_test, voting_tester ) {
       {
          produce_min_num_of_blocks_to_spend_time_wo_inactive_prod(fc::seconds(30 * 24 * 3600)); // +30 days
          
-         const auto r = delegate_bandwidth(N(eosio.stake), N(whale1), asset(20'000'000'0000LL));
+         const auto r = delegate_bandwidth(N(rem.stake), N(whale1), asset(20'000'000'0000LL));
          BOOST_REQUIRE( !r->except_ptr );
 
          votepro( N(whale1), { N(proda) } );

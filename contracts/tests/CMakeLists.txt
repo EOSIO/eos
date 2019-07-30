@@ -33,7 +33,7 @@ include(EosioTester)
 #   message(FATAL_ERROR "Found eosio version ${EOSIO_VERSION} but it does not satisfy version requirements: ${VERSION_MATCH_ERROR_MSG}\nPlease use eosio version ${EOSIO_VERSION_SOFT_MAX}.x")
 #endif(VERSION_OUTPUT STREQUAL "MATCH")
 
-configure_file(${CMAKE_SOURCE_DIR}/remme.contracts/tests/contracts.hpp.in ${CMAKE_BINARY_DIR}/remme.contracts/tests/contracts.hpp)
+configure_file(${CMAKE_SOURCE_DIR}/rem.contracts/tests/contracts.hpp.in ${CMAKE_BINARY_DIR}/rem.contracts/tests/contracts.hpp)
 
 include_directories(${CMAKE_BINARY_DIR})
 ### UNIT TESTING ###

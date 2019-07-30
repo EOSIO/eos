@@ -1,5 +1,5 @@
-add_subdirectory( nodeos )
-add_subdirectory( cleos )
-add_subdirectory( keosd )
+add_subdirectory( remnode )
+add_subdirectory( remcli )
+add_subdirectory( remvault )
 add_subdirectory( eosio-launcher )
 add_subdirectory( eosio-blocklog )

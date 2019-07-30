@@ -1,6 +1,6 @@
 #! /bin/bash
 set -e # exit on failure of any "simple" command (excludes &&, ||, or | chains)
-printf "\t=========== Building eosio.contracts ===========\n\n"
+printf "\t=========== Building rem.contracts ===========\n\n"
 RED='\033[0;31m'
 NC='\033[0m'
 CPU_CORES=$(getconf _NPROCESSORS_ONLN)

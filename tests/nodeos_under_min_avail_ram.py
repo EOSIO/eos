@@ -71,7 +71,7 @@ killEosInstances=not dontKill
 killWallet=not dontKill
 
 WalletdName=Utils.EosWalletName
-ClientName="cleos"
+ClientName="remcli"
 
 try:
     TestHelper.printSystemInfo("BEGIN")
@@ -167,10 +167,10 @@ try:
                 if trans is None or not trans[0]:
                     timeOutCount+=1
                     if timeOutCount>=3:
-                       Print("Failed to push create action to eosio contract for %d consecutive times, looks like nodeos already exited." % (timeOutCount))
+                       Print("Failed to push create action to eosio contract for %d consecutive times, looks like remnode already exited." % (timeOutCount))
                        keepProcessing=False
                        break
-                    Print("Failed to push create action to eosio contract. sleep for 60 seconds")
+                    Print("Failed to push create action to rem contract. sleep for 60 seconds")
                     time.sleep(60)
                 else:
                     timeOutCount=0
