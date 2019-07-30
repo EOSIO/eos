@@ -418,7 +418,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                   });
                };
 
-         transaction_metadata::start_recover_keys( trx, chain.get_thread_pool(), chain.get_chain_id(),
+         transaction_metadata::start_recover_keys( trx, _thread_pool->get_executor(), chain.get_chain_id(),
                   max_trx_cpu_usage, std::move( after_sig_recovery ) );
       }
 
