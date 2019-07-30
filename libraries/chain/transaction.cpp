@@ -144,10 +144,10 @@ fc::microseconds transaction::get_signature_keys( const vector<signature_type>& 
    return sig_cpu_usage;
 } FC_CAPTURE_AND_RETHROW() }
 
-flat_multimap<uint16_t, transaction_extensions> transaction::validate_and_extract_extensions()const {
+flat_multimap<uint16_t, transaction_extension> transaction::validate_and_extract_extensions()const {
    using decompose_t = transaction_extension_types::decompose_t;
 
-   flat_multimap<uint16_t, eosio::chain::transaction_extensions> results;
+   flat_multimap<uint16_t, transaction_extension> results;
 
    uint16_t id_type_lower_bound = 0;
 
@@ -164,7 +164,7 @@ flat_multimap<uint16_t, transaction_extensions> transaction::validate_and_extrac
          std::forward_as_tuple()
       );
 
-      auto match = decompose_t::extract<eosio::chain::transaction_extensions>( id, e.second, iter->second );
+      auto match = decompose_t::extract<transaction_extension>( id, e.second, iter->second );
       EOS_ASSERT( match, invalid_transaction_extension,
                   "Transaction extension with id type ${id} is not supported",
                   ("id", id)

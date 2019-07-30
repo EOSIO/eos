@@ -31,7 +31,7 @@ namespace eosio { namespace chain {
    namespace detail {
       template<typename... Ts>
       struct transaction_extension_types {
-         using transaction_extensions_t = fc::static_variant< Ts... >;
+         using transaction_extension_t = fc::static_variant< Ts... >;
          using decompose_t = decompose< Ts... >;
       };
    }
@@ -40,7 +40,7 @@ namespace eosio { namespace chain {
       deferred_transaction_generation_context
    >;
 
-   using transaction_extensions = transaction_extension_types::transaction_extensions_t;
+   using transaction_extension = transaction_extension_types::transaction_extension_t;
 
    /**
     *  The transaction header contains the fixed-sized data
@@ -108,7 +108,7 @@ namespace eosio { namespace chain {
          return account_name();
       }
 
-      flat_multimap<uint16_t, eosio::chain::transaction_extensions> validate_and_extract_extensions()const;
+      flat_multimap<uint16_t, transaction_extension> validate_and_extract_extensions()const;
    };
 
    struct signed_transaction : public transaction

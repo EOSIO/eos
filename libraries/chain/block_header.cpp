@@ -28,10 +28,10 @@ namespace eosio { namespace chain {
       return result;
    }
 
-   flat_multimap<uint16_t, block_header_extensions> block_header::validate_and_extract_header_extensions()const {
+   flat_multimap<uint16_t, block_header_extension> block_header::validate_and_extract_header_extensions()const {
       using decompose_t = block_header_extension_types::decompose_t;
 
-      flat_multimap<uint16_t, block_header_extensions> results;
+      flat_multimap<uint16_t, block_header_extension> results;
 
       uint16_t id_type_lower_bound = 0;
 
@@ -48,7 +48,7 @@ namespace eosio { namespace chain {
             std::forward_as_tuple()
          );
 
-         auto match = decompose_t::extract<block_header_extensions>( id, e.second, iter->second );
+         auto match = decompose_t::extract<block_header_extension>( id, e.second, iter->second );
          EOS_ASSERT( match, invalid_block_header_extension,
                      "Block header extension with id type ${id} is not supported",
                      ("id", id)
