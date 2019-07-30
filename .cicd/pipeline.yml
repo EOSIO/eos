@@ -29,7 +29,7 @@ steps:
           mount-buildkite-agent: false # Mounting bk-agent doesn't work, so disable it
           propagate-environment: true # Need for buildkite-agent upload/download (JOB_ID, etc)
 
-  - label: ":centos: CentOS 7 - Build & Test"
+  - label: ":centos: CentOS 7.6 - Build & Test"
     command:
       - ""
     agents:
@@ -94,9 +94,9 @@ steps:
 
   - wait
 
-  - label: ":centos: Centos 7 - PB"
+  - label: ":centos: Centos 7.6 - PB"
     command:
-      - "cd /workdir && buildkite-agent artifact download build.tar.gz . --step ':centos: CentOS 7 - Build & Test' --agent-access-token $$BUILDKITE_AGENT_ACCESS_TOKEN && tar -xzf build.tar.gz"
+      - "cd /workdir && buildkite-agent artifact download build.tar.gz . --step ':centos: CentOS 7.6 - Build & Test' --agent-access-token $$BUILDKITE_AGENT_ACCESS_TOKEN && tar -xzf build.tar.gz"
       - "./.cicd/package-builder.sh"
     plugins:
       - docker#v3.2.0:
