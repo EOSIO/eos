@@ -1,13 +1,11 @@
-DRYRUN=${DRYRUN:-false}
-VERBOSE=${VERBOSE:-true}
 export PROJECT_NAME="eosio"
 
 # Set IMAGE_TAG using arg (generate-base-images.sh) or env (travis.yml)
 export IMAGE_TAG=${IMAGE_TAG:-$1}
 
 function execute() {
-  ${VERBOSE:-true} && echo "--- Executing: $@"
-  ${DRYRUN:-false} || "$@"
+  echo "--- Executing: $@"
+  "$@"
 }
 
 function determine-hash() {
@@ -39,7 +37,6 @@ function docker_tag_exists() {
     ( [[ $EXISTS =~ '404 page not found' ]] || [[ $EXISTS =~ 'manifest unknown' ]] ) && return 1 || return 0
 }
 
-# If you're on mac and you want to generate the image, use "force" as $2
 if [[ ! -z $IMAGE_TAG ]]; then # Darwin doesn't need hash (yet)
     determine-hash "docker/${IMAGE_TAG}.dockerfile"
     [[ -z $DETERMINED_HASH ]] && echo "DETERMINED_HASH empty! (check determine-hash function)" && exit 1
