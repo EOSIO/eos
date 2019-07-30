@@ -355,10 +355,14 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
    if( control.is_builtin_activated( builtin_protocol_feature_t::no_duplicate_deferred_id ) ) {
       auto exts = trx.validate_and_extract_extensions();
       if( exts.size() > 0 ) {
-         EOS_ASSERT( exts.size() == 1, invalid_transaction_extension,
-                     "only one extension is currently supported for deferred transactions"
+         auto itr = exts.lower_bound( deferred_transaction_generation_context::extension_id() );
+
+         EOS_ASSERT( exts.size() == 1 && itr != exts.end(), invalid_transaction_extension,
+                     "only the deferred_transaction_generation_context extension is currently supported for deferred transactions"
          );
-         const auto& context = exts.front().get<deferred_transaction_generation_context>();
+
+         const auto& context = itr->second.get<deferred_transaction_generation_context>();
+
          EOS_ASSERT( context.sender == receiver, ill_formed_deferred_transaction_generation_context,
                      "deferred transaction generaction context contains mismatching sender",
                      ("expected", receiver)("actual", context.sender)

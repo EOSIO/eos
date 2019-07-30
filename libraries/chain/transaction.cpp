@@ -144,14 +144,10 @@ fc::microseconds transaction::get_signature_keys( const vector<signature_type>& 
    return sig_cpu_usage;
 } FC_CAPTURE_AND_RETHROW() }
 
-vector<transaction_extensions> transaction::validate_and_extract_extensions()const {
-   using transaction_extensions_t = transaction_extension_types::transaction_extensions_t;
+flat_multimap<uint16_t, transaction_extensions> transaction::validate_and_extract_extensions()const {
    using decompose_t = transaction_extension_types::decompose_t;
 
-   static_assert( std::is_same<transaction_extensions_t, eosio::chain::transaction_extensions>::value,
-                  "transaction_extensions is not setup as expected" );
-
-   vector<transaction_extensions_t> results;
+   flat_multimap<uint16_t, eosio::chain::transaction_extensions> results;
 
    uint16_t id_type_lower_bound = 0;
 
@@ -163,9 +159,12 @@ vector<transaction_extensions> transaction::validate_and_extract_extensions()con
                   "Transaction extensions are not in the correct order (ascending id types required)"
       );
 
-      results.emplace_back();
+      auto iter = results.emplace(std::piecewise_construct,
+         std::forward_as_tuple(id),
+         std::forward_as_tuple()
+      );
 
-      auto match = decompose_t::extract<transaction_extensions_t>( id, e.second, results.back() );
+      auto match = decompose_t::extract<eosio::chain::transaction_extensions>( id, e.second, iter->second );
       EOS_ASSERT( match, invalid_transaction_extension,
                   "Transaction extension with id type ${id} is not supported",
                   ("id", id)

@@ -99,7 +99,7 @@ namespace eosio { namespace chain {
                                                      bool allow_duplicate_keys = false) const;
 
       uint32_t total_actions()const { return context_free_actions.size() + actions.size(); }
-      
+
       account_name first_authorizer()const {
          for( const auto& a : actions ) {
             for( const auto& u : a.authorization )
@@ -108,7 +108,7 @@ namespace eosio { namespace chain {
          return account_name();
       }
 
-      vector<eosio::chain::transaction_extensions> validate_and_extract_extensions()const;
+      flat_multimap<uint16_t, eosio::chain::transaction_extensions> validate_and_extract_extensions()const;
    };
 
    struct signed_transaction : public transaction
