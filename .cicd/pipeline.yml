@@ -17,7 +17,7 @@ steps:
       
   - wait
 
-  - label: ":aws: Amazon_Linux 2 - Build & Test"
+  - label: ":aws: Amazon_Linux 2.0 - Build & Test"
     agents:
       queue: "automation-eos-builder-fleet"
     plugins:
