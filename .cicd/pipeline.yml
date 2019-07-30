@@ -1,18 +1,20 @@
 steps:
   - wait
 
-  - label: ":webhook: Trigger Travis CI Build"
-    command:
-      - "./.cicd/travis/travis-trigger.sh"
-    agents:
-      queue: "automation-basic-builder-fleet"
-
   - trigger: "eosio-base-images-beta"
     label: ":docker: Ensure Base Images"
     build:
       commit: "${BUILDKITE_COMMIT}"
       branch: "${BUILDKITE_BRANCH}"
 
+  - wait
+
+  - label: ":webhook: Trigger Travis CI Build"
+    command:
+      - "./.cicd/travis/travis-trigger.sh"
+    agents:
+      queue: "automation-basic-builder-fleet"
+      
   - wait
 
   - label: ":aws: Amazon_Linux 2 - Build & Test"
