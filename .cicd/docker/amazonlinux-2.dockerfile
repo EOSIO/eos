@@ -1,4 +1,4 @@
-FROM amazonlinux:2
+FROM amazonlinux:2.0.20190508
 
 # YUM dependencies.
 RUN yum update -y \
