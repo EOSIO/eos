@@ -6,10 +6,16 @@ env:
   DEBUG: true
 
 steps:
+  - wait
 
   - label: ":webhook: Trigger Travis CI Build"
+<<<<<<< HEAD
     command:
       - "./.cicd/travis/travis-trigger.sh"
+=======
+    command: |
+      . ./.cicd/trigger-travis.sh
+>>>>>>> 20fd8b428... Fix build message passed to Travis API during trigger step
     agents:
       queue: "automation-basic-builder-fleet"
 
