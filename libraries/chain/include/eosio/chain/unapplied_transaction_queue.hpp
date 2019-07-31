@@ -46,10 +46,17 @@ struct unapplied_transaction {
 
 /**
  * Track unapplied transactions for persisted, forked blocks, and aborted blocks.
- * Persisted to first so that they can be applied in each block until expired.
+ * Persisted are first so that they can be applied in each block until expired.
  */
 class unapplied_transaction_queue {
+public:
+   enum class process_mode {
+      non_speculative,           // HEAD, READ_ONLY, IRREVERSIBLE
+      speculative_non_producer,  // will never produce
+      speculative_producer       // can produce
+   };
 
+private:
    struct by_trx_id;
    struct by_type;
    struct by_expiry;
@@ -65,15 +72,15 @@ class unapplied_transaction_queue {
    > unapplied_trx_queue_type;
 
    unapplied_trx_queue_type queue;
-   bool only_track_persisted = false;
+   process_mode mode = process_mode::speculative_producer;
 
 public:
 
-   void set_only_track_persisted( bool v ) {
-      if( v ) {
-         FC_ASSERT( empty(), "set_only_track_persisted queue required to be empty" );
+   void set_mode( process_mode new_mode ) {
+      if( new_mode != mode ) {
+         FC_ASSERT( empty(), "set_mode, queue required to be empty" );
       }
-      only_track_persisted = v;
+      mode = new_mode;
    }
 
    bool empty() const {
@@ -111,8 +118,15 @@ public:
       return true;
    }
 
+   void clear_applied( const std::vector<transaction_metadata_ptr>& applied_trxs ) {
+      auto& idx = queue.get<by_trx_id>();
+      for( const auto& trx : applied_trxs ) {
+         idx.erase( trx->id() );
+      }
+   }
+
    void add_forked( const branch_type& forked_branch ) {
-      if( only_track_persisted ) return;
+      if( mode == process_mode::non_speculative || mode == process_mode::speculative_non_producer ) return;
       // forked_branch is in reverse order
       for( auto ritr = forked_branch.rbegin(), rend = forked_branch.rend(); ritr != rend; ++ritr ) {
          const block_state_ptr& bsptr = *ritr;
@@ -125,7 +139,7 @@ public:
    }
 
    void add_aborted( std::vector<transaction_metadata_ptr> aborted_trxs ) {
-      if( aborted_trxs.empty() || only_track_persisted ) return;
+      if( mode == process_mode::non_speculative || mode == process_mode::speculative_non_producer ) return;
       for( auto& trx : aborted_trxs ) {
          fc::time_point expiry = trx->packed_trx()->expiration();
          queue.insert( { std::move( trx ), expiry, trx_enum_type::aborted } );
@@ -133,6 +147,7 @@ public:
    }
 
    void add_persisted( const transaction_metadata_ptr& trx ) {
+      if( mode == process_mode::non_speculative ) return;
       auto itr = queue.get<by_trx_id>().find( trx->id() );
       if( itr == queue.get<by_trx_id>().end() ) {
          fc::time_point expiry = trx->packed_trx()->expiration();
