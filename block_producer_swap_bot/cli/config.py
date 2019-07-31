@@ -34,4 +34,4 @@ class ConfigFile:
         """
         Get block producer permission to sign process-swap transactions.
         """
-        return self.config.get('REMIO', 'block-producer-permission')
+        return self.config.get('REM', 'block-producer-permission')

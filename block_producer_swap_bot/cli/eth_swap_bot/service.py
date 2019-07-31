@@ -14,9 +14,11 @@ from cli.constants import (
     ETH_EVENTS_WINDOW_LENGTH,
     ETH_SWAP_CONTRACT_ABI,
     ETH_SWAP_CONTRACT_ADDRESS,
+    REMCHAIN_TOKEN_DECIMALS,
+    REMCHAIN_TOKEN_ID,
     SHORT_POLLING_CONFIRMATION_INTERVAL,
     SHORT_POLLING_EVENTS_INTERVAL,
-    REMCHAIN_TOKEN_DECIMALS, REMCHAIN_TOKEN_ID)
+)
 from cli.eth_swap_bot.interfaces import EthSwapBotInterface
 from cli.remchain_swap_contract.service import RemchainSwapContract
 

@@ -5,13 +5,14 @@ import click
 
 from cli.eth_swap_bot.service import EthSwapBot
 from cli.generic.help import (
-    ETH_PROVIDER_ARGUMENT_HELP_MESSAGE,
     CLEOS_ARGUMENT_HELP_MESSAGE,
-    PERMISSION_ARGUMENT_HELP_MESSAGE)
+    ETH_PROVIDER_ARGUMENT_HELP_MESSAGE,
+    PERMISSION_ARGUMENT_HELP_MESSAGE,
+)
 from cli.utils import (
     get_block_producer_permission,
-    get_default_eth_provider,
     get_default_cleos,
+    get_default_eth_provider,
 )
 
 
