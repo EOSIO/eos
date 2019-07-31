@@ -12,6 +12,7 @@ steps:
       . ./.cicd/trigger-travis.sh
     agents:
       queue: "automation-eos-builder-fleet"
+    skip: $SKIP_TRAVIS_TRIGGER
 
   - trigger: "eosio-base-images-beta"
     label: ":docker: Ensure base images exist"
