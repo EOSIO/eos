@@ -92,6 +92,20 @@ steps:
     agents:
       - "queue=mac-anka-large-node-fleet"
 
+  - wait:
+    continue_on_failure: true
+
+  - command: |
+      echo '+++ :compression: Extracting Test Metrics Code'
+      tar -zxf .cicd/metrics/test-metrics.tar.gz
+      echo '+++ :javascript: Running test-metrics.js'
+      node --max-old-space-size=32768 test-metrics.js
+    label: ":bar_chart: Test Metrics"
+    agents:
+      queue: "automation-eos-builder-fleet"
+    timeout: 10
+    soft_fail: true
+
   - wait
 
   - label: ":centos: Centos 7.6 - PB"
