@@ -20,6 +20,8 @@
 
 #include <eosio/vm/allocator.hpp>
 
+#include <fstream>
+
 using namespace fc;
 using namespace eosio::chain::webassembly;
 using namespace eosio::vm;
@@ -126,35 +128,49 @@ namespace eosio { namespace chain {
             });
             trx_context.pause_billing_timer();
             IR::Module module;
-	    std::vector<U8> bytes = {(const U8*)codeobject->code.data(), (const U8*)codeobject->code.data() + codeobject->code.size()};
+            std::vector<U8> bytes = {
+                (const U8*)codeobject->code.data(),
+                (const U8*)codeobject->code.data() + codeobject->code.size()};
             try {
-               Serialization::MemoryInputStream stream((const U8*)bytes.data(), bytes.size());
+               Serialization::MemoryInputStream stream((const U8*)bytes.data(),
+                                                       bytes.size());
                WASM::serialize(stream, module);
                module.userSections.clear();
-            } catch(const Serialization::FatalSerializationException& e) {
+            } catch (const Serialization::FatalSerializationException& e) {
                EOS_ASSERT(false, wasm_serialization_error, e.message.c_str());
-            } catch(const IR::ValidationException& e) {
+            } catch (const IR::ValidationException& e) {
                EOS_ASSERT(false, wasm_serialization_error, e.message.c_str());
             }
-            if(false && inject) {
+            if (false && inject) {
                wasm_injections::wasm_binary_injection injector(module);
                injector.inject();
-               std::cout << "INJECTING!!!!!!!!!!!!\n";
                try {
                   Serialization::ArrayOutputStream outstream;
                   WASM::serialize(outstream, module);
                   bytes = outstream.getBytes();
-               } catch(const Serialization::FatalSerializationException& e) {
-                  EOS_ASSERT(false, wasm_serialization_error, e.message.c_str());
-               } catch(const IR::ValidationException& e) {
-                  EOS_ASSERT(false, wasm_serialization_error, e.message.c_str());
+               } catch (const Serialization::FatalSerializationException& e) {
+                  EOS_ASSERT(false, wasm_serialization_error,
+                             e.message.c_str());
+               } catch (const IR::ValidationException& e) {
+                  EOS_ASSERT(false, wasm_serialization_error,
+                             e.message.c_str());
                }
-	    }
+            }
 
             wasm_instantiation_cache.modify(it, [&](auto& c) {
                c.module = runtime_interface->instantiate_module((const char*)bytes.data(), bytes.size(), parse_initial_memory(module));
             });
+            std::ofstream outfile("out2.wasm");
+            if (codeobject) {
+               outfile.write(codeobject->code.data(), codeobject->code.size());
+            }
+
          }
+         std::ofstream outfile("out.wasm");
+         if (codeobject) {
+            outfile.write(codeobject->code.data(), codeobject->code.size());
+         }
+         outfile.close();
          return it->module;
       }
 
