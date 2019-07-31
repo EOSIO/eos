@@ -1,0 +1,1 @@
+How to transfer a token is created by EOSIO token
