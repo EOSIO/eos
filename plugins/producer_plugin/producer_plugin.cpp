@@ -881,7 +881,9 @@ void producer_plugin::handle_sighup() {
 }
 
 void producer_plugin::push_transaction(const chain::transaction_metadata_ptr& trx, bool persist_until_expired, next_function<chain::transaction_trace_ptr> next) {
-   my->on_incoming_transaction_async( trx, persist_until_expired, std::move(next) );
+   boost::asio::post( my->_thread_pool->get_executor(), [this, trx, persist_until_expired, next{std::move(next)}]() {
+      my->on_incoming_transaction_async( trx, persist_until_expired, std::move( next ) );
+   } );
 }
 
 void producer_plugin::pause() {
