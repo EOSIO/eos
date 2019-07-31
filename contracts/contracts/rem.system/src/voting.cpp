@@ -86,6 +86,8 @@ namespace eosiosystem {
    void system_contract::unregprod( const name& producer ) {
       require_auth( producer );
 
+      claimrewards(producer);
+
       const auto& prod = _producers.get( producer.value, "producer not found" );
       if (prod.active()) {
          user_resources_table totals_tbl( _self, producer.value );

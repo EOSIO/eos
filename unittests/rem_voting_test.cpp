@@ -177,6 +177,17 @@ public:
        produce_blocks();
     };
 
+   auto unregister_producer(name producer) {
+       auto r = base_tester::push_action(config::system_account_name, N(unregprod), producer, mvo()
+               ("producer",  name(producer))
+               ("producer_key", get_public_key( producer, "active" ) )
+               ("url", "" )
+               ("location", 0 )
+       );
+       produce_block();
+       return r;
+   }
+
     abi_serializer abi_ser;
 };
 
@@ -654,6 +665,80 @@ BOOST_FIXTURE_TEST_CASE( rem_vote_weight_test, voting_tester ) {
          BOOST_TEST_REQUIRE( 10363317352113.912 == prod["total_votes"].as_double() );
       }
    } FC_LOG_AND_RETHROW()
+}
+
+BOOST_FIXTURE_TEST_CASE( resignation_test_case, voting_tester ) {
+    try {
+        // Create rem.msig and rem.token
+        create_accounts({N(rem.msig), N(rem.token), N(rem.ram), N(rem.ramfee), N(rem.stake), N(rem.vpay), N(rem.bpay), N(rem.saving) });
+
+        // Set code for the following accounts:
+        //  - rem (code: rem.bios) (already set by tester constructor)
+        //  - rem.msig (code: rem.msig)
+        //  - rem.token (code: rem.token)
+        set_code_abi(N(rem.msig),
+                     contracts::rem_msig_wasm(),
+                     contracts::rem_msig_abi().data());//, &rem_active_pk);
+        set_code_abi(N(rem.token),
+                     contracts::rem_token_wasm(),
+                     contracts::rem_token_abi().data()); //, &rem_active_pk);
+
+        // Set privileged for rem.msig and rem.token
+        set_privileged(N(rem.msig));
+        set_privileged(N(rem.token));
+
+        // Verify rem.msig and rem.token is privileged
+        const auto& rem_msig_acc = get<account_metadata_object, by_name>(N(rem.msig));
+        BOOST_TEST(rem_msig_acc.is_privileged() == true);
+        const auto& rem_token_acc = get<account_metadata_object, by_name>(N(rem.token));
+        BOOST_TEST(rem_token_acc.is_privileged() == true);
+
+        // Create SYS tokens in rem.token, set its manager as rem
+        const auto max_supply     = core_from_string("1000000000.0000"); /// 10x larger than 1B initial tokens
+        const auto initial_supply = core_from_string("100000000.0000");  /// 10x larger than 1B initial tokens
+
+        create_currency(N(rem.token), config::system_account_name, max_supply);
+        // Issue the genesis supply of 1 billion SYS tokens to rem.system
+        issue(N(rem.token), config::system_account_name, config::system_account_name, initial_supply);
+
+        auto actual = get_balance(config::system_account_name);
+        BOOST_REQUIRE_EQUAL(initial_supply, actual);
+
+        // Create genesis accounts
+        for( const auto& a : rem_test_genesis ) {
+            create_account( a.name, config::system_account_name );
+        }
+
+        deploy_contract();
+
+        // Buy ram and stake cpu and net for each genesis accounts
+        for( const auto& acc : rem_test_genesis ) {
+            auto stake_quantity = acc.initial_balance - 1000;
+            
+            auto r = delegate_bandwidth(N(rem.stake), acc.name, asset(stake_quantity));
+            BOOST_REQUIRE( !r->except_ptr );
+        }
+
+        const auto producers = { N(b1), N(proda), N(whale1), N(whale2), N(whale3) };
+        for( const auto& producer : producers ) {
+            register_producer(producer);
+        }
+
+        for( const auto& producer : producers ) {
+            votepro( producer, { N(proda) } );
+        }
+
+        produce_min_num_of_blocks_to_spend_time_wo_inactive_prod(fc::seconds(30 * 24 * 3600)); // 30 days
+
+        const auto balance_before_unreg = get_balance(N(proda)).get_amount();
+
+        unregister_producer( N(proda) );
+        BOOST_TEST( balance_before_unreg <= get_balance(N(proda)).get_amount() );
+
+        const auto prod = get_producer_info( "proda" );
+        BOOST_TEST( 0 == prod["unpaid_blocks"].as_int64() );
+
+    } FC_LOG_AND_RETHROW()
 }
 
 BOOST_AUTO_TEST_SUITE_END()
