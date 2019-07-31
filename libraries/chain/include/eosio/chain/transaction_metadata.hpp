@@ -27,7 +27,6 @@ using recovery_keys_type = std::pair<fc::microseconds, const flat_set<public_key
 class transaction_metadata {
    private:
       const packed_transaction_ptr                               _packed_trx;
-      const transaction_id_type                                  _id;
       signing_keys_future_type                                   _signing_keys_future;
 
    public:
@@ -42,14 +41,12 @@ class transaction_metadata {
       transaction_metadata operator=(transaction_metadata&&) = delete;
 
       explicit transaction_metadata( const signed_transaction& t, uint32_t max_variable_sig_size = UINT32_MAX, packed_transaction::compression_type c = packed_transaction::compression_type::none )
-            : _packed_trx( std::make_shared<packed_transaction>( t, c ) )
-            , _id( t.id() ) {
+            : _packed_trx( std::make_shared<packed_transaction>( t, c ) ) {
          check_variable_sig_size(max_variable_sig_size);
       }
 
       explicit transaction_metadata( const packed_transaction_ptr& ptrx, uint32_t max_variable_sig_size = UINT32_MAX )
-            : _packed_trx( ptrx )
-            , _id( ptrx->id() ) {
+            : _packed_trx( ptrx ) {
          check_variable_sig_size(max_variable_sig_size);
       }
 
@@ -59,7 +56,7 @@ class transaction_metadata {
       }
 
       const packed_transaction_ptr& packed_trx()const { return _packed_trx; }
-      const transaction_id_type& id()const { return _id; }
+      const transaction_id_type& id()const { return _packed_trx->id(); }
 
       // must be called from main application thread
       static signing_keys_future_type
