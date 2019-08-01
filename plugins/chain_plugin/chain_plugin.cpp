@@ -1480,7 +1480,7 @@ string convert_to_string(const chain::key256_t& source, const string& key_type, 
          memcpy(val._hash, byte_array.data(), byte_array.size() );
          return std::string(val);
       }
-      EOS_ASSERT( false, chain_type_exception, "Incompatible key_type and encode_type for key256_t more2" );
+      EOS_ASSERT( false, chain_type_exception, "Incompatible key_type and encode_type for key256_t next_key" );
      
    } FC_RETHROW_EXCEPTIONS(warn, "Could not convert ${desc} source '${source}' to string.", ("desc", desc)("source",source) )
 }

@@ -493,7 +493,7 @@ BOOST_FIXTURE_TEST_CASE( get_table_more2_test, TESTER ) try {
    //       "secldouble": "0x00000000000000000000000000c00140"
    //     }
    //   "more": false,
-   //   "more2": ""
+   //   "next_key": ""
    // }
    // For hashobjs table (secondary index is on sec256 and sec160):
    // {
@@ -515,7 +515,7 @@ BOOST_FIXTURE_TEST_CASE( get_table_more2_test, TESTER ) try {
    //     }
    //   ],
    //   "more": false,
-   //   "more2": ""
+   //   "next_key": ""
    // }
 
 
@@ -536,8 +536,8 @@ BOOST_FIXTURE_TEST_CASE( get_table_more2_test, TESTER ) try {
 
    auto res_1 = plugin.get_table_rows(params);
    BOOST_TEST(res_1.rows[0].get_object()["key"].as<uint64_t>() == 0);
-   BOOST_TEST(res_1.more2 == "1");
-   params.lower_bound = res_1.more2;
+   BOOST_TEST(res_1.next_key == "1");
+   params.lower_bound = res_1.next_key;
    auto more2_res_1 = plugin.get_table_rows(params);
    BOOST_TEST(more2_res_1.rows[0].get_object()["key"].as<uint64_t>() == 1);
    
@@ -549,8 +549,8 @@ BOOST_FIXTURE_TEST_CASE( get_table_more2_test, TESTER ) try {
 
    auto res_2 = plugin.get_table_rows(params);
    BOOST_TEST(res_2.rows[0].get_object()["sec64"].as<uint64_t>() == 5);
-   BOOST_TEST(res_2.more2 == "7");
-   params.lower_bound = res_2.more2;
+   BOOST_TEST(res_2.next_key == "7");
+   params.lower_bound = res_2.next_key;
    auto more2_res_2 = plugin.get_table_rows(params);
    BOOST_TEST(more2_res_2.rows[0].get_object()["sec64"].as<uint64_t>() == 7);
 
@@ -562,8 +562,8 @@ BOOST_FIXTURE_TEST_CASE( get_table_more2_test, TESTER ) try {
    auto res_3 = plugin.get_table_rows(params);
    chain::uint128_t sec128_expected_value = 5;
    BOOST_CHECK(res_3.rows[0].get_object()["sec128"].as<chain::uint128_t>() == sec128_expected_value);
-   BOOST_TEST(res_3.more2 == "0x07000000000000000000000000000000");
-   params.lower_bound = res_3.more2;
+   BOOST_TEST(res_3.next_key == "0x07000000000000000000000000000000");
+   params.lower_bound = res_3.next_key;
    auto more2_res_3 = plugin.get_table_rows(params);
    chain::uint128_t more2_sec128_expected_value = 7;
    BOOST_CHECK(more2_res_3.rows[0].get_object()["sec128"].as<chain::uint128_t>() == more2_sec128_expected_value);
@@ -577,8 +577,8 @@ BOOST_FIXTURE_TEST_CASE( get_table_more2_test, TESTER ) try {
    float64_t secdouble_expected_value = ui64_to_f64(5);
    double secdouble_res_value = res_4.rows[0].get_object()["secdouble"].as<double>();
    BOOST_CHECK(*reinterpret_cast<float64_t*>(&secdouble_res_value) == secdouble_expected_value);
-   BOOST_TEST(res_4.more2 == "7.00000000000000000");
-   params.lower_bound = res_4.more2;
+   BOOST_TEST(res_4.next_key == "7.00000000000000000");
+   params.lower_bound = res_4.next_key;
    auto more2_res_4 = plugin.get_table_rows(params);
    float64_t more2_secdouble_expected_value = ui64_to_f64(7);
    double more2_secdouble_res_value = more2_res_4.rows[0].get_object()["secdouble"].as<double>();
@@ -593,8 +593,8 @@ BOOST_FIXTURE_TEST_CASE( get_table_more2_test, TESTER ) try {
    float128_t secldouble_expected_value = ui64_to_f128(5);
    chain::uint128_t secldouble_res_value =  res_5.rows[0].get_object()["secldouble"].as<chain::uint128_t>();
    BOOST_TEST(*reinterpret_cast<float128_t*>(&secldouble_res_value) == secldouble_expected_value);
-   BOOST_TEST(res_5.more2 == "0x00000000000000000000000000c00140");
-   params.lower_bound = res_5.more2;
+   BOOST_TEST(res_5.next_key == "0x00000000000000000000000000c00140");
+   params.lower_bound = res_5.next_key;
    auto more2_res_5 = plugin.get_table_rows(params);
    float128_t more2_secldouble_expected_value = ui64_to_f128(7);
    chain::uint128_t more2_secldouble_res_value =  more2_res_5.rows[0].get_object()["secldouble"].as<chain::uint128_t>();
@@ -612,8 +612,8 @@ BOOST_FIXTURE_TEST_CASE( get_table_more2_test, TESTER ) try {
    checksum256_type sec256_res_value = res_6.rows[0].get_object()["sec256"].as<checksum256_type>();
    BOOST_TEST(sec256_res_value == sec256_expected_value);
    BOOST_TEST(res_6.rows[0].get_object()["hash_input"].as<string>() == std::string("thirdinput"));
-   BOOST_TEST(res_6.more2 == "3cb93a80b47b9d70c5296be3817d34b48568893b31468e3a76337bb7d3d0c264");
-   params.lower_bound = res_6.more2;
+   BOOST_TEST(res_6.next_key == "3cb93a80b47b9d70c5296be3817d34b48568893b31468e3a76337bb7d3d0c264");
+   params.lower_bound = res_6.next_key;
    auto more2_res_6 = plugin.get_table_rows(params);
    checksum256_type more2_sec256_expected_value = checksum256_type::hash(std::string("secondinput"));
    checksum256_type more2_sec256_res_value = more2_res_6.rows[0].get_object()["sec256"].as<checksum256_type>();
@@ -630,8 +630,8 @@ BOOST_FIXTURE_TEST_CASE( get_table_more2_test, TESTER ) try {
    checksum256_type i256_res_value = res_7.rows[0].get_object()["sec256"].as<checksum256_type>();
    BOOST_TEST(i256_res_value == i256_expected_value);
    BOOST_TEST(res_7.rows[0].get_object()["hash_input"].as<string>() == "thirdinput");
-   BOOST_TEST(res_7.more2 == "0x3cb93a80b47b9d70c5296be3817d34b48568893b31468e3a76337bb7d3d0c264");
-   params.lower_bound = res_7.more2;
+   BOOST_TEST(res_7.next_key == "0x3cb93a80b47b9d70c5296be3817d34b48568893b31468e3a76337bb7d3d0c264");
+   params.lower_bound = res_7.next_key;
    auto more2_res_7 = plugin.get_table_rows(params);
    checksum256_type more2_i256_expected_value = checksum256_type::hash(std::string("secondinput"));
    checksum256_type more2_i256_res_value = more2_res_7.rows[0].get_object()["sec256"].as<checksum256_type>();
@@ -648,8 +648,8 @@ BOOST_FIXTURE_TEST_CASE( get_table_more2_test, TESTER ) try {
    ripemd160 sec160_res_value = res_8.rows[0].get_object()["sec160"].as<ripemd160>();
    BOOST_TEST(sec160_res_value == sec160_expected_value);
    BOOST_TEST(res_8.rows[0].get_object()["hash_input"].as<string>() == "thirdinput");
-   BOOST_TEST(res_8.more2 == "fb9d03d3012dc2a6c7b319f914542e3423550c2a");
-   params.lower_bound = res_8.more2;
+   BOOST_TEST(res_8.next_key == "fb9d03d3012dc2a6c7b319f914542e3423550c2a");
+   params.lower_bound = res_8.next_key;
    auto more2_res_8 = plugin.get_table_rows(params);
    ripemd160 more2_sec160_expected_value = ripemd160::hash(std::string("secondinput"));
    ripemd160 more2_sec160_res_value = more2_res_8.rows[0].get_object()["sec160"].as<ripemd160>();

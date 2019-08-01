@@ -308,7 +308,7 @@ public:
    struct get_table_rows_result {
       vector<fc::variant> rows; ///< one row per item, either encoded as hex String or JSON object
       bool                more = false; ///< true if last element in data is not the end and sizeof data() < limit
-      string              more2; ///< fill lower_bound with this value to fetch more rows
+      string              next_key; ///< fill lower_bound with this value to fetch more rows
    };
 
    get_table_rows_result get_table_rows( const get_table_rows_params& params )const;
@@ -497,7 +497,7 @@ public:
             }
             if( itr != end_itr ) {
                result.more = true;
-               result.more2 = convert_to_string(itr->secondary_key, p.key_type, p.encode_type, "more2 - next lower bound");
+               result.next_key = convert_to_string(itr->secondary_key, p.key_type, p.encode_type, "next_key - next lower bound");
             }
          };
 
@@ -572,7 +572,7 @@ public:
             }
             if( itr != end_itr ) {
                result.more = true;
-               result.more2 = convert_to_string(itr->primary_key, p.key_type, p.encode_type, "more2 - next lower bound");
+               result.next_key = convert_to_string(itr->primary_key, p.key_type, p.encode_type, "next_key - next lower bound");
             }
          };
 
@@ -756,7 +756,7 @@ FC_REFLECT(eosio::chain_apis::read_only::get_block_header_state_params, (block_n
 FC_REFLECT( eosio::chain_apis::read_write::push_transaction_results, (transaction_id)(processed) )
 
 FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_params, (json)(code)(scope)(table)(table_key)(lower_bound)(upper_bound)(limit)(key_type)(index_position)(encode_type)(reverse)(show_payer) )
-FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_result, (rows)(more)(more2) );
+FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_result, (rows)(more)(next_key) );
 
 FC_REFLECT( eosio::chain_apis::read_only::get_table_by_scope_params, (code)(table)(lower_bound)(upper_bound)(limit)(reverse) )
 FC_REFLECT( eosio::chain_apis::read_only::get_table_by_scope_result_row, (code)(scope)(table)(payer)(count));
