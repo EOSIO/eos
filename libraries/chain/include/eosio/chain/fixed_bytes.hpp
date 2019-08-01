@@ -6,8 +6,6 @@
 
 #include <eosio/chain/types.hpp>
 
-// #include <fc/exception/exception.hpp>
-
 #include <array>
 #include <algorithm>
 #include <functional>

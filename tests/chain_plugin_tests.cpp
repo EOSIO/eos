@@ -16,7 +16,6 @@
 #include <contracts.hpp>
 
 #include <fc/io/fstream.hpp>
-#include <fc/io/fstream.hpp>
 
 #include <Runtime/Runtime.h>
 
