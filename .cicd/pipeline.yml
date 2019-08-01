@@ -26,6 +26,7 @@ steps:
           image: "eosio/producer:eosio-amazonlinux-2-fe993ae1ac74c46f8d97e49ad8e390289e550cb8"
           environment:
             - "BUILDKITE_AGENT_ACCESS_TOKEN" # Needed for buildkite-agent upload/download
+            - "JOBS" # Number for -j make/ctest args.
           mount-buildkite-agent: false # Mounting bk-agent doesn't work, so disable it
           propagate-environment: true # Need for buildkite-agent upload/download (JOB_ID, etc)
 
@@ -41,6 +42,7 @@ steps:
           environment:
             # - "ENABLE_LR_TESTS=true"
             - "BUILDKITE_AGENT_ACCESS_TOKEN" # Needed for buildkite-agent upload/download
+            - "JOBS" # Number for -j make/ctest args.
           mount-buildkite-agent: false # Mounting bk-agent doesn't work, so disable it
           propagate-environment: true # Need for buildkite-agent upload/download (JOB_ID, etc)
 
@@ -53,6 +55,7 @@ steps:
           image: "eosio/producer:eosio-ubuntu-16.04-a1aa07ffa321d67ea0d7b37313f3ff8690123d2e"
           environment:
             - "BUILDKITE_AGENT_ACCESS_TOKEN" # Needed for buildkite-agent upload/download
+            - "JOBS" # Number for -j make/ctest args.
           mount-buildkite-agent: false # Mounting bk-agent doesn't work, so disable it
           propagate-environment: true # Need for buildkite-agent upload/download (JOB_ID, etc)
 
@@ -65,6 +68,7 @@ steps:
           image: "eosio/producer:eosio-ubuntu-18.04-4a0a7504956fa835cae09221ede97f61fa01d75c"
           environment:
             - "BUILDKITE_AGENT_ACCESS_TOKEN" # Needed for buildkite-agent upload/download
+            - "JOBS" # Number for -j make/ctest args.
           mount-buildkite-agent: false # Mounting bk-agent doesn't work, so disable it
           propagate-environment: true # Need for buildkite-agent upload/download (JOB_ID, etc)
 

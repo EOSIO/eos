@@ -5,6 +5,9 @@ cache:
   ccache: true
   directories:
     - $HOME/Library/Caches/Homebrew
+env:
+  global:
+    - JOBS='2'
 matrix:
   include:
     - os: linux
