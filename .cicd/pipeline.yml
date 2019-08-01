@@ -117,7 +117,6 @@ steps:
           debug: true
           image: "eosio/producer:eosio-centos-7-1d592f4b1fc27aae8a4740b95525e7b495467bc8"
           environment:
-            # - "ENABLE_LR_TESTS=true"
             - "BUILDKITE_AGENT_ACCESS_TOKEN" # Needed for buildkite-agent upload/download
           mount-buildkite-agent: false # Mounting bk-agent doesn't work, so disable it
           propagate-environment: true # Need for buildkite-agent upload/download (JOB_ID, etc)
