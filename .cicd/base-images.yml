@@ -15,7 +15,7 @@ steps:
 
   - label: ":centos: CentOS 7.6 - Build"
     command:
-      - ".cicd/generate-base-images.sh centos-7"
+      - ".cicd/generate-base-images.sh centos-7.6"
     agents:
       queue: "automation-eos-dockerhub-image-builder-fleet"
     timeout: $BUILD_TIMEOUT

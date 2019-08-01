@@ -39,7 +39,7 @@ steps:
     plugins:
       - docker#v3.2.0:
           debug: $DEBUG
-          image: "eosio/producer:eosio-centos-7-d45789dfb1a5b830a62381afd205b34d3d7c2d63"
+          image: "eosio/producer:eosio-centos-7.6-d45789dfb1a5b830a62381afd205b34d3d7c2d63"
     timeout: $BUILD_TIMEOUT
     skip: $SKIP_CENTOS_7
 

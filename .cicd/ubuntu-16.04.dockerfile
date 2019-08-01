@@ -18,8 +18,17 @@ RUN curl -LO https://cmake.org/files/v3.13/cmake-3.13.2.tar.gz \
   && rm -f cmake-3.13.2.tar.gz
 
 # Build appropriate version of Clang.
-RUN mkdir -p /root/tmp && cd /root/tmp && git clone --single-branch --branch release_80 https://git.llvm.org/git/llvm.git clang8             && cd clang8 && git checkout 18e41dc             && cd tools             && git clone --single-branch --branch release_80 https://git.llvm.org/git/lld.git             && cd lld && git checkout d60a035 && cd ../             && git clone --single-branch --branch release_80 https://git.llvm.org/git/polly.git             && cd polly && git checkout 1bc06e5 && cd ../             && git clone --single-branch --branch release_80 https://git.llvm.org/git/clang.git clang && cd clang             && git checkout a03da8b             && cd tools && mkdir extra && cd extra             && git clone --single-branch --branch release_80 https://git.llvm.org/git/clang-tools-extra.git             && cd clang-tools-extra && git checkout 6b34834 && cd ..             && cd ../../../../projects             && git clone --single-branch --branch release_80 https://git.llvm.org/git/libcxx.git             && cd libcxx && git checkout 1853712 && cd ../             && git clone --single-branch --branch release_80 https://git.llvm.org/git/libcxxabi.git             && cd libcxxabi && git checkout d7338a4 && cd ../             && git clone --single-branch --branch release_80 https://git.llvm.org/git/libunwind.git             && cd libunwind && git checkout 57f6739 && cd ../             && git clone --single-branch --branch release_80 https://git.llvm.org/git/compiler-rt.git             && cd compiler-rt && git checkout 5bc7979 && cd ../             && cd /root/tmp/clang8             && mkdir build && cd build             && cmake -G 'Unix Makefiles' -DCMAKE_INSTALL_PREFIX='/usr/local' -DLLVM_BUILD_EXTERNAL_COMPILER_RT=ON -DLLVM_BUILD_LLVM_DYLIB=ON -DLLVM_ENABLE_LIBCXX=ON -DLLVM_ENABLE_RTTI=ON -DLLVM_INCLUDE_DOCS=OFF -DLLVM_OPTIMIZED_TABLEGEN=ON -DLLVM_TARGETS_TO_BUILD=all -DCMAKE_BUILD_TYPE=Release ..             && make -j$(nproc)             && make install \
-  && cd / && rm -rf /root/tmp/clang8
+RUN mkdir -p /root/tmp && cd /root/tmp && git clone --single-branch --branch release_80 https://git.llvm.org/git/llvm.git clang8 \
+  && cd clang8 && git checkout 18e41dc && cd tools && git clone --single-branch --branch release_80 https://git.llvm.org/git/lld.git \
+  && cd lld && git checkout d60a035 && cd ../ && git clone --single-branch --branch release_80 https://git.llvm.org/git/polly.git \
+  && cd polly && git checkout 1bc06e5 && cd ../ && git clone --single-branch --branch release_80 https://git.llvm.org/git/clang.git clang \
+  && cd clang && git checkout a03da8b && cd tools && mkdir extra && cd extra && git clone --single-branch --branch release_80 https://git.llvm.org/git/clang-tools-extra.git \
+  && cd clang-tools-extra && git checkout 6b34834 && cd .. && cd ../../../../projects && git clone --single-branch --branch release_80 https://git.llvm.org/git/libcxx.git \
+  && cd libcxx && git checkout 1853712 && cd ../ && git clone --single-branch --branch release_80 https://git.llvm.org/git/libcxxabi.git && cd libcxxabi \
+  && git checkout d7338a4 && cd ../ && git clone --single-branch --branch release_80 https://git.llvm.org/git/libunwind.git && cd libunwind && git checkout 57f6739 \
+  && cd ../ && git clone --single-branch --branch release_80 https://git.llvm.org/git/compiler-rt.git && cd compiler-rt && git checkout 5bc7979 && cd ../ && cd /root/tmp/clang8 \
+  && mkdir build && cd build && cmake -G 'Unix Makefiles' -DCMAKE_INSTALL_PREFIX='/usr/local' -DLLVM_BUILD_EXTERNAL_COMPILER_RT=ON -DLLVM_BUILD_LLVM_DYLIB=ON -DLLVM_ENABLE_LIBCXX=ON -DLLVM_ENABLE_RTTI=ON -DLLVM_INCLUDE_DOCS=OFF -DLLVM_OPTIMIZED_TABLEGEN=ON -DLLVM_TARGETS_TO_BUILD=all -DCMAKE_BUILD_TYPE=Release .. \
+  && make -j$(nproc) && make install && cd / && rm -rf /root/tmp/clang8
 
 COPY ./pinned_toolchain.cmake /tmp/pinned_toolchain.cmake
 
@@ -89,5 +98,6 @@ ENV PRE_COMMANDS="export PATH=/usr/lib/ccache:$PATH &&"
 ENV CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_TOOLCHAIN_FILE='/tmp/pinned_toolchain.cmake' -DCMAKE_CXX_COMPILER_LAUNCHER=ccache"
 
 CMD bash -c "$PRE_COMMANDS ccache -s && \
-    mkdir /workdir/build && cd /workdir/build && cmake -DCMAKE_BUILD_TYPE='Release' -DCORE_SYMBOL_NAME='SYS' -DOPENSSL_ROOT_DIR='/usr/include/openssl' -DBUILD_MONGO_DB_PLUGIN=true $CMAKE_EXTRAS /workdir && make -j $(getconf _NPROCESSORS_ONLN) && \
-    ctest -j$(getconf _NPROCESSORS_ONLN) -LE _tests --output-on-failure -T Test"
+    echo Building with -j$JOBS && \
+    mkdir /workdir/build && cd /workdir/build && cmake -DCMAKE_BUILD_TYPE='Release' -DCORE_SYMBOL_NAME='SYS' -DOPENSSL_ROOT_DIR='/usr/include/openssl' -DBUILD_MONGO_DB_PLUGIN=true $CMAKE_EXTRAS /workdir && make -j$JOBS && \
+    ctest -j$JOBS -LE _tests --output-on-failure -T Test"

@@ -5,6 +5,9 @@ cache:
   ccache: true
   directories:
     - $HOME/Library/Caches/Homebrew
+env:
+  global:
+    - JOBS='2'
 matrix:
   include:
     - os: linux
@@ -26,7 +29,7 @@ matrix:
       dist: xenial
       services: docker
       env: 
-        - IMAGE_TAG='centos-7'
+        - IMAGE_TAG='centos-7.6'
     - os: osx
       osx_image: xcode10.2
       addons:
