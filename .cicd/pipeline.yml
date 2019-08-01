@@ -28,6 +28,8 @@ steps:
       - docker#v3.3.0:
           debug: $DEBUG
           image: "eosio/producer:eosio-amazonlinux-2-5e20c60cfce1471deb7d970bd55a35240c583252"
+          environment:
+            - "JOBS"
     timeout: $BUILD_TIMEOUT
     skip: $SKIP_AMAZON_LINUX_2
 
@@ -40,6 +42,8 @@ steps:
       - docker#v3.3.0:
           debug: $DEBUG
           image: "eosio/producer:eosio-centos-7.6-6d1d8821e92fc3e6ebfb61a40d6778b8934d008e"
+          environment:
+            - "JOBS"
     timeout: $BUILD_TIMEOUT
     skip: $SKIP_CENTOS_7
 
@@ -50,6 +54,8 @@ steps:
       - docker#v3.3.0:
           debug: $DEBUG
           image: "eosio/producer:eosio-ubuntu-16.04-b59dcc9c547a0e17ea1dfcc5ba2bbfc74ed5df11"
+          environment:
+            - "JOBS"
     timeout: $BUILD_TIMEOUT
     skip: $SKIP_UBUNTU_16
 
@@ -60,6 +66,8 @@ steps:
       - docker#v3.3.0:
           debug: $DEBUG
           image: "eosio/producer:eosio-ubuntu-18.04-a269bf2e944de92084f25b95a2309bce3828a9f9"
+          environment:
+            - "JOBS"
     timeout: $BUILD_TIMEOUT
     skip: $SKIP_UBUNTU_18
 
