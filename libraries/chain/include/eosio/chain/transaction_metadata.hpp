@@ -16,9 +16,8 @@ namespace eosio { namespace chain {
 
 class transaction_metadata;
 using transaction_metadata_ptr = std::shared_ptr<transaction_metadata>;
-using signing_keys_future_value_type = std::tuple<chain_id_type, fc::microseconds, flat_set<public_key_type>>;
-using signing_keys_future_type = std::shared_future<signing_keys_future_value_type>;
-using recovery_keys_type = std::pair<fc::microseconds, const flat_set<public_key_type>&>;
+using recover_keys_next = std::function<void(std::tuple<transaction_metadata_ptr, std::exception_ptr>)>;
+using recover_keys_future = std::shared_future<transaction_metadata_ptr>;
 
 /**
  *  This data structure should store context-free cached data about a transaction such as
@@ -27,12 +26,16 @@ using recovery_keys_type = std::pair<fc::microseconds, const flat_set<public_key
 class transaction_metadata {
    private:
       const packed_transaction_ptr                               _packed_trx;
-      signing_keys_future_type                                   _signing_keys_future;
+      const fc::microseconds                                     _sig_cpu_usage;
+      const flat_set<public_key_type>                            _recovered_pub_keys;
 
    public:
       bool                                                       accepted = false;  // not thread safe
       bool                                                       implicit = false;  // not thread safe
       bool                                                       scheduled = false; // not thread safe
+
+   private:
+      struct private_type{};
 
       transaction_metadata() = delete;
       transaction_metadata(const transaction_metadata&) = delete;
@@ -40,32 +43,38 @@ class transaction_metadata {
       transaction_metadata operator=(transaction_metadata&) = delete;
       transaction_metadata operator=(transaction_metadata&&) = delete;
 
-      explicit transaction_metadata( const signed_transaction& t, uint32_t max_variable_sig_size = UINT32_MAX, packed_transaction::compression_type c = packed_transaction::compression_type::none )
-            : _packed_trx( std::make_shared<packed_transaction>( t, c ) ) {
-         check_variable_sig_size(max_variable_sig_size);
+      static void check_variable_sig_size(const packed_transaction_ptr& trx, uint32_t max) {
+         for(const signature_type& sig : trx->get_signed_transaction().signatures)
+            EOS_ASSERT(sig.variable_size() <= max, sig_variable_size_limit_exception,
+                  "signature variable length component size (${s}) greater than subjective maximum (${m})", ("s", sig.variable_size())("m", max));
       }
 
-      explicit transaction_metadata( const packed_transaction_ptr& ptrx, uint32_t max_variable_sig_size = UINT32_MAX )
-            : _packed_trx( ptrx ) {
-         check_variable_sig_size(max_variable_sig_size);
-      }
-
-      void check_variable_sig_size(uint32_t max) {
-         for(const signature_type& sig : _packed_trx->get_signed_transaction().signatures)
-            EOS_ASSERT(sig.variable_size() <= max, sig_variable_size_limit_exception, "signature variable length component size (${s}) greater than subjective maximum (${m})", ("s", sig.variable_size())("m", max));
-      }
-
+   public:
       const packed_transaction_ptr& packed_trx()const { return _packed_trx; }
       const transaction_id_type& id()const { return _packed_trx->id(); }
+      fc::microseconds signature_cpu_usage()const { return _sig_cpu_usage; }
+      const flat_set<public_key_type>& recovered_keys()const { return _recovered_pub_keys; }
 
       // must be called from main application thread
-      static signing_keys_future_type
-      start_recover_keys( const transaction_metadata_ptr& mtrx, boost::asio::io_context& thread_pool,
+      static recover_keys_future
+      start_recover_keys( const packed_transaction_ptr& trx, boost::asio::io_context& thread_pool,
                           const chain_id_type& chain_id, fc::microseconds time_limit,
-                          std::function<void()> next = std::function<void()>() );
+                          uint32_t max_variable_sig_size = UINT32_MAX,
+                          recover_keys_next = recover_keys_next() );
 
-      // start_recover_keys must be called first
-      recovery_keys_type recover_keys( const chain_id_type& chain_id );
+      static transaction_metadata_ptr
+      create_no_recover_keys( const packed_transaction& trx ) {
+         return std::make_shared<transaction_metadata>(
+               private_type(), std::make_shared<packed_transaction>( trx ), fc::microseconds(), flat_set<public_key_type>() );
+      }
+
+      explicit transaction_metadata( const private_type& pt, const packed_transaction_ptr& ptrx,
+            fc::microseconds sig_cpu_usage, flat_set<public_key_type> recovered_pub_keys )
+         : _packed_trx( ptrx )
+         , _sig_cpu_usage( sig_cpu_usage )
+         , _recovered_pub_keys( std::move( recovered_pub_keys ) ) {
+      }
+
 };
 
 } } // eosio::chain

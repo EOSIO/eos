@@ -2830,7 +2830,7 @@ namespace eosio {
             }
          }
 
-         boost::asio::post( my_impl->thread_pool->get_executor(), [accepted, weak{std::move(weak)}, trx]() {
+         boost::asio::post( my_impl->thread_pool->get_executor(), [accepted, weak{std::move(weak)}, trx{std::move(trx)}]() mutable {
             if( accepted ) {
                my_impl->dispatcher->bcast_transaction( *trx );
             } else {
