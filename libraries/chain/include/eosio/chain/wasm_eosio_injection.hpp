@@ -799,7 +799,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
                injector_utils::add_import<ResultType::none>( *_module, u8"checktime", checktime_injection::chktm_idx );
 
             for ( auto& fd : _module->functions.defs ) {
-               wasm_ops::EOSIO_OperatorDecoderStream<typename std::conditional<full_injection, pre_op_full_injectors, pre_op_injectors>::type> pre_decoder(fd.code);
+               wasm_ops::EOSIO_OperatorDecoderStream<std::conditional_t<full_injection, pre_op_full_injectors, pre_op_injectors>> pre_decoder(fd.code);
                wasm_ops::instruction_stream pre_code(fd.code.size()*2);
 
                while ( pre_decoder ) {
@@ -817,7 +817,7 @@ namespace eosio { namespace chain { namespace wasm_injections {
                fd.code = pre_code.get();
             }
             for ( auto& fd : _module->functions.defs ) {
-               wasm_ops::EOSIO_OperatorDecoderStream<typename std::conditional<full_injection, post_op_full_injectors, post_op_injectors>::type> post_decoder(fd.code);
+               wasm_ops::EOSIO_OperatorDecoderStream<std::conditional_t<full_injection, post_op_full_injectors, post_op_injectors>> post_decoder(fd.code);
                wasm_ops::instruction_stream post_code(fd.code.size()*2);
 
                if constexpr (full_injection) {
