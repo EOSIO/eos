@@ -411,18 +411,19 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          const auto max_trx_time_ms = _max_transaction_time_ms.load();
          fc::microseconds max_trx_cpu_usage = max_trx_time_ms < 0 ? fc::microseconds::maximum() : fc::milliseconds( max_trx_time_ms );
 
-         auto future = transaction_metadata::start_recover_keys( trx, _thread_pool->get_executor(),
-                chain.get_chain_id(), fc::microseconds( max_trx_cpu_usage ), chain.configured_subjective_signature_length_limit() );
-         boost::asio::post( _thread_pool->get_executor(), [self = this, future, persist_until_expired, next{std::move(next)}]() mutable {
-            if( future.valid() ) {
-               future.wait();
-               app().post( priority::low, [self, future{std::move(future)}, persist_until_expired, next{std::move( next )}]() {
+         transaction_metadata::start_recover_keys( trx, _thread_pool->get_executor(),
+                chain.get_chain_id(), fc::microseconds( max_trx_cpu_usage ), chain.configured_subjective_signature_length_limit(),
+           [self = this, persist_until_expired, next{std::move(next)}](std::tuple<transaction_metadata_ptr, std::exception_ptr> trx_tuple) mutable {
+               app().post( priority::low, [self, trx_tuple{std::move(trx_tuple)}, persist_until_expired, next{std::move( next )}]() {
                   try {
-                     self->process_incoming_transaction_async( future.get(), persist_until_expired, std::move( next ) );
+                     if( std::get<1>( trx_tuple ) ) {
+                        std::rethrow_exception( std::get<1>( trx_tuple ) );
+                     } else {
+                        self->process_incoming_transaction_async( std::get<0>( trx_tuple ), persist_until_expired, std::move( next ) );
+                     }
                   } CATCH_AND_CALL(next);
                } );
-            }
-         });
+           } );
       }
 
       void process_incoming_transaction_async(const transaction_metadata_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next) {
