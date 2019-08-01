@@ -2,13 +2,17 @@
 
 ## Goal
 
+Deploy an EOSIO contract
+
 ## Before you begin
 
-* Install the current supported version of cleos
+* Install the currently supported version of cleos
 
 * Understand the following:
   * What is a public and private key pair
 
 ## Steps
 
-Steps
+```shell
+cleos set contract contract_account contract_directory_path
+```

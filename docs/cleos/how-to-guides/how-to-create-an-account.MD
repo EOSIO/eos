@@ -4,7 +4,7 @@
 
 ## Before you begin
 
-* Install the current supported version of cleos
+* Install the currently supported version of cleos
 
 * Understand the following:
   * What is an account
@@ -12,4 +12,9 @@
 
 ## Steps
 
-Steps
+```shell
+cleos create account creator name OwnerKey [ActiveKey]
+```
+
+[[info]]
+| ActiveKey is optional but recommanded to have.

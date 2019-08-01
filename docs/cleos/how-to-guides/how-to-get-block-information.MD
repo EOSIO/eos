@@ -2,13 +2,17 @@
 
 ## Goal
 
+Query infomation of a block
+
 ## Before you begin
 
-* Install the current supported version of cleos
+* Install the currently supported version of cleos
 
 * Understand the following:
-  * What is a transaction
+  * What is a block
 
 ## Steps
 
-Steps
+```shell
+cleos get block BLOCK_NUMBER
+```
