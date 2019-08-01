@@ -2811,9 +2811,8 @@ namespace eosio {
       }
 
       trx_in_progress_size += calc_trx_size( trx );
-      auto ptrx = std::make_shared<transaction_metadata>( trx, my_impl->chain_plug->chain().configured_subjective_signature_length_limit() );
-      app().post( priority::low, [trx, ptrx{std::move(ptrx)}, weak = weak_from_this()]() {
-         my_impl->chain_plug->accept_transaction( ptrx,
+      app().post( priority::low, [trx, weak = weak_from_this()]() {
+         my_impl->chain_plug->accept_transaction( trx,
             [weak, trx](const static_variant<fc::exception_ptr, transaction_trace_ptr>& result) {
          // next (this lambda) called from application thread
          bool accepted = false;
