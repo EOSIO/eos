@@ -863,7 +863,7 @@ struct controller_impl {
          snapshot_head_block = head->block_num;
       }
 
-      controller_index_set::walk_indices([this, &snapshot]( auto utils ){
+      controller_index_set::walk_indices([this, &snapshot, &header]( auto utils ){
          using value_t = typename decltype(utils)::index_t::value_type;
 
          // skip the table_id_object as its inlined with contract tables section
@@ -876,6 +876,23 @@ struct controller_impl {
             return;
          }
 
+         // special case for in-place upgrade of global_property_object
+         if (std::is_same<value_t, global_property_object>::value) {
+            using v2 = legacy::snapshot_global_property_object_v2;
+
+            if (std::clamp(header.version, v2::minimum_version, v2::maximum_version) == header.version ) {
+               snapshot->read_section<global_property_object>([this]( auto &section ) {
+                  v2 legacy_global_properties;
+                  section.read_row(legacy_global_properties, db);
+
+                  db.create<global_property_object>([&](auto& gpo ){
+                     gpo.initalize_from(legacy_global_properties);
+                  });
+               });
+               return; // early out to avoid default processing
+            }
+         }
+
          snapshot->read_section<value_t>([this]( auto& section ) {
             bool more = !section.empty();
             while(more) {
@@ -884,6 +901,7 @@ struct controller_impl {
                });
             }
          });
+
       });
 
       read_contract_tables_from_snapshot(snapshot);
