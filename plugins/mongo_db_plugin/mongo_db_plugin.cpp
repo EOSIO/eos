@@ -771,10 +771,15 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
    }
 
    fc::variant signing_keys;
-   flat_set<public_key_type> keys;
-   std::tie( std::ignore, keys ) = t->recover_keys( *chain_id );
+   const flat_set<public_key_type>& keys = t->recovered_keys();
    if( !keys.empty() ) {
       signing_keys = keys;
+   } else {
+      flat_set<public_key_type> pub_keys;
+      trx.get_signature_keys( *chain_id, fc::time_point::maximum(), pub_keys, false );
+      if( !pub_keys.empty() ) {
+         signing_keys = pub_keys;
+      }
    }
 
    if( signing_keys.get_type() == fc::variant::array_type && signing_keys.get_array().size() > 0) {
