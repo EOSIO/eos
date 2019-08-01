@@ -45,10 +45,23 @@ fc::variant get_info(std::string url) {
    return app().get_plugin<launcher_service_plugin>().get_info(url);
 }
 
+fc::variant launch_cluster(launcher_service::cluster_def def) {
+   ilog("enter launch_cluster...");
+   return app().get_plugin<launcher_service_plugin>().launch_cluster(def);
+}
+
 int run_command(std::string cmd) {
    ilog("ready to execute \"${s}\"", ("s", cmd));
    int r = ::system(cmd.c_str());
    return r;
+}
+
+fc::variant get_cluster_info(int cluster_id) {
+   return app().get_plugin<launcher_service_plugin>().get_cluster_info(cluster_id);
+}
+
+fc::variant stop_all_clusters() {
+   return app().get_plugin<launcher_service_plugin>().stop_all_clusters();
 }
 
 #define CALL(api_name, call_name, INVOKE, http_response_code) \
@@ -66,18 +79,24 @@ int run_command(std::string cmd) {
 #define INVOKE_R_R(call_name, in_param) \
      auto result = call_name(fc::json::from_string(body).as<in_param>());
 
+#define INVOKE_R(call_name) \
+     auto result = call_name();
+
 #define INVOKE_V_R(api_handle, call_name, in_param) \
      call_name(fc::json::from_string(body).as<in_param>()); \
      eosio::detail::wallet_api_plugin_empty result;
 
 void launcher_service_api_plugin::plugin_startup() {
    // Make the magic happen
-   ilog("launcher_service_api_plugin::plugin_startup()");
+   ilog("launcher_service_api_plugin::plugin_startup() 7");
 
    app().get_plugin<http_plugin>().add_api({
       CALL(launcher, test, INVOKE_R_R(test_func, std::string), 200),
       CALL(launcher, test2, INVOKE_R_R(test_func2, std::string), 200),
       CALL(launcher, get_info, INVOKE_R_R(get_info, std::string), 200),
+      CALL(launcher, get_cluster_info, INVOKE_R_R(get_cluster_info, int), 200),
+      CALL(launcher, launch_cluster, INVOKE_R_R(launch_cluster, launcher_service::cluster_def), 200),
+      CALL(launcher, stop_all_clusters, INVOKE_R(stop_all_clusters), 200),
       CALL(launcher, run_command, INVOKE_R_R(run_command, std::string), 200)
    });
 }
