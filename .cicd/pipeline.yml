@@ -1,80 +1,89 @@
-env:
-  BUILD_TIMEOUT: 120
-  TEST_TIMEOUT: 60
-  TIMEOUT: 120
-  VERBOSE: true
-
 steps:
   - wait
 
-  - label: ":webhook: Trigger Travis CI Build"
-    command: |
-      . ./.cicd/trigger-travis.sh
-    agents:
-      queue: "automation-eos-builder-fleet"
-
   - trigger: "eosio-base-images-beta"
-    label: ":docker: Ensure base images exist"
+    label: ":docker: Ensure Base Images"
     build:
       commit: "${BUILDKITE_COMMIT}"
       branch: "${BUILDKITE_BRANCH}"
 
   - wait
 
-  - label: ":aws: Amazon_Linux 2 - Build"
+  - label: ":webhook: Trigger Travis CI Build"
+    command:
+      - "./.cicd/travis/trigger-travis.sh"
+    agents:
+      queue: "automation-basic-builder-fleet"
+      
+  - wait
+
+  - label: ":aws: Amazon_Linux 2.0 - Build & Test"
     agents:
       queue: "automation-eos-builder-fleet"
     plugins:
       - docker#v3.2.0:
           debug: $DEBUG
-          image: "eosio/producer:eosio-amazonlinux-2-1c266e25276ad1f1147a4df5c12921968079c49b"
-    timeout: $BUILD_TIMEOUT
-    skip: $SKIP_AMAZON_LINUX_2
+          image: "eosio/producer:eosio-amazonlinux-2-fe993ae1ac74c46f8d97e49ad8e390289e550cb8"
+          environment:
+            - "BUILDKITE_AGENT_ACCESS_TOKEN" # Needed for buildkite-agent upload/download
+          mount-buildkite-agent: false # Mounting bk-agent doesn't work, so disable it
+          propagate-environment: true # Need for buildkite-agent upload/download (JOB_ID, etc)
 
-  - label: ":centos: CentOS 7.6 - Build"
+  - label: ":centos: CentOS 7.6 - Build & Test"
     command:
       - ""
     agents:
       queue: "automation-eos-builder-fleet"
     plugins:
       - docker#v3.2.0:
-          debug: $DEBUG
-          image: "eosio/producer:eosio-centos-7-d45789dfb1a5b830a62381afd205b34d3d7c2d63"
-    timeout: $BUILD_TIMEOUT
-    skip: $SKIP_CENTOS_7
+          debug: true
+          image: "eosio/producer:eosio-centos-7.6-1d72db966ca334266e0e7a432909d4fb6c188cc1"
+          environment:
+            # - "ENABLE_LR_TESTS=true"
+            - "BUILDKITE_AGENT_ACCESS_TOKEN" # Needed for buildkite-agent upload/download
+          mount-buildkite-agent: false # Mounting bk-agent doesn't work, so disable it
+          propagate-environment: true # Need for buildkite-agent upload/download (JOB_ID, etc)
 
-  - label: ":ubuntu: Ubuntu 16.04 - Build"
+  - label: ":ubuntu: Ubuntu 16.04 - Build & Test"
     agents:
       queue: "automation-eos-builder-fleet"
     plugins:
       - docker#v3.2.0:
           debug: $DEBUG
-          image: "eosio/producer:eosio-ubuntu-16.04-4f430ef21e359ef2581c25255c99e5411adfaed9"
-    timeout: $BUILD_TIMEOUT
-    skip: $SKIP_UBUNTU_16
+          image: "eosio/producer:eosio-ubuntu-16.04-a1aa07ffa321d67ea0d7b37313f3ff8690123d2e"
+          environment:
+            - "BUILDKITE_AGENT_ACCESS_TOKEN" # Needed for buildkite-agent upload/download
+          mount-buildkite-agent: false # Mounting bk-agent doesn't work, so disable it
+          propagate-environment: true # Need for buildkite-agent upload/download (JOB_ID, etc)
 
-  - label: ":ubuntu: Ubuntu 18.04 - Build"
+  - label: ":ubuntu: Ubuntu 18.04 - Build & Test"
     agents:
       queue: "automation-eos-builder-fleet"
     plugins:
       - docker#v3.2.0:
           debug: $DEBUG
-          image: "eosio/producer:eosio-ubuntu-18.04-14091ac0e5618b0ea5ce026cd75b648efbde4be7"
-    timeout: $BUILD_TIMEOUT
-    skip: $SKIP_UBUNTU_18
+          image: "eosio/producer:eosio-ubuntu-18.04-4a0a7504956fa835cae09221ede97f61fa01d75c"
+          environment:
+            - "BUILDKITE_AGENT_ACCESS_TOKEN" # Needed for buildkite-agent upload/download
+          mount-buildkite-agent: false # Mounting bk-agent doesn't work, so disable it
+          propagate-environment: true # Need for buildkite-agent upload/download (JOB_ID, etc)
 
-  - label: ":darwin: macOS 10.14 - Build"
+  - label: ":darwin: macOS 10.14 - Build & Test"
     command:
-      - "brew install git graphviz libtool gmp llvm@4 pkgconfig python python@2 doxygen libusb openssl boost@1.70 cmake"
+      - "brew install git graphviz libtool gmp llvm@4 pkgconfig python python@2 doxygen libusb openssl boost@1.70 cmake mongodb"
       - "git clone $BUILDKITE_REPO eos && cd eos && git checkout $BUILDKITE_COMMIT && git submodule update --init --recursive"
-      - "cd eos && mkdir build && cd build && cmake .. && make -j$(getconf _NPROCESSORS_ONLN)"
-      - "cd eos/build && ctest -j$(getconf _NPROCESSORS_ONLN) -LE _tests --output-on-failure -T Test"
+      - "cd eos && mkdir -p build && cd build && cmake .."
+      - "cd eos/build && make -j$(getconf _NPROCESSORS_ONLN)"
+      - "if ${ENABLE_PARALLEL_TESTS:-true}; then cd eos/build && ctest -j$(getconf _NPROCESSORS_ONLN) -LE _tests --output-on-failure -T Test; fi"
+      - "if ${ENABLE_SERIAL_TESTS:-true}; then cd eos/build && mkdir -p ./mongodb && mongod --dbpath ./mongodb --fork --logpath mongod.log && ctest -L nonparallelizable_tests --output-on-failure -T Test; fi"
+      - "if ${ENABLE_LR_TESTS:-false}; then cd eos/build && ctest -L long_running_tests --output-on-failure -T Test; fi"
+      - "cd eos && tar -pczf build.tar.gz build && buildkite-agent artifact upload build.tar.gz"
     plugins:
       - chef/anka#v0.5.1:
           no-volume: true
           inherit-environment-vars: true
           vm-name: 10.14.4_6C_14G_40G
-          vm-registry-tag: "clean::cicd::git-ssh::nas::brew"
+          vm-registry-tag: "clean::cicd::git-ssh::nas::brew::buildkite-agent"
           modify-cpu: 12
           modify-ram: 24
           always-pull: true
@@ -82,6 +91,92 @@ steps:
           wait-network: true
     agents:
       - "queue=mac-anka-large-node-fleet"
-    timeout: $BUILD_TIMEOUT
-    skip: $SKIP_MOJAVE
-    
+
+  - wait:
+    continue_on_failure: true
+
+  - command: |
+      echo '+++ :compression: Extracting Test Metrics Code'
+      tar -zxf .cicd/metrics/test-metrics.tar.gz
+      echo '+++ :javascript: Running test-metrics.js'
+      node --max-old-space-size=32768 test-metrics.js
+    label: ":bar_chart: Test Metrics"
+    agents:
+      queue: "automation-eos-builder-fleet"
+    timeout: 10
+    soft_fail: true
+
+  - wait
+
+  - label: ":centos: Centos 7.6 - Package Builder"
+    command:
+      - "cd /workdir && buildkite-agent artifact download build.tar.gz . --step ':centos: CentOS 7.6 - Build & Test' --agent-access-token $$BUILDKITE_AGENT_ACCESS_TOKEN && tar -xzf build.tar.gz"
+      - "./.cicd/package-builder.sh"
+    plugins:
+      - docker#v3.2.0:
+          debug: true
+          image: "eosio/producer:eosio-centos-7.6-1d72db966ca334266e0e7a432909d4fb6c188cc1"
+          environment:
+            - "BUILDKITE_AGENT_ACCESS_TOKEN" # Needed for buildkite-agent upload/download
+          mount-buildkite-agent: false # Mounting bk-agent doesn't work, so disable it
+          propagate-environment: true # Need for buildkite-agent upload/download (JOB_ID, etc)
+    agents:
+      queue: "automation-eos-builder-fleet"
+    timeout: 10
+
+  - label: ":ubuntu: Ubuntu 16.04 - Package Builder"
+    command:
+      - "cd /workdir && buildkite-agent artifact download build.tar.gz . --step ':ubuntu: Ubuntu 16.04 - Build & Test' --agent-access-token $$BUILDKITE_AGENT_ACCESS_TOKEN && tar -xzf build.tar.gz"
+      - "./.cicd/package-builder.sh"
+    plugins:
+      - docker#v3.2.0:
+          debug: $DEBUG
+          image: "eosio/producer:eosio-ubuntu-16.04-a1aa07ffa321d67ea0d7b37313f3ff8690123d2e"
+          environment:
+            - "BUILDKITE_AGENT_ACCESS_TOKEN" # Needed for buildkite-agent upload/download
+          mount-buildkite-agent: false # Mounting bk-agent doesn't work, so disable it
+          propagate-environment: true # Need for buildkite-agent upload/download (JOB_ID, etc)
+    agents:
+      queue: "automation-eos-builder-fleet"
+    timeout: 10
+
+  - label: ":ubuntu: Ubuntu 18.04 - Package Builder"
+    command:
+      - "cd /workdir && buildkite-agent artifact download build.tar.gz . --step ':ubuntu: Ubuntu 18.04 - Build & Test' --agent-access-token $$BUILDKITE_AGENT_ACCESS_TOKEN && tar -xzf build.tar.gz"
+      - "./.cicd/package-builder.sh"
+    plugins:
+      - docker#v3.2.0:
+          debug: $DEBUG
+          image: "eosio/producer:eosio-ubuntu-18.04-4a0a7504956fa835cae09221ede97f61fa01d75c"
+          environment:
+            - "BUILDKITE_AGENT_ACCESS_TOKEN" # Needed for buildkite-agent upload/download
+          mount-buildkite-agent: false # Mounting bk-agent doesn't work, so disable it
+          propagate-environment: true # Need for buildkite-agent upload/download (JOB_ID, etc)
+    agents:
+      queue: "automation-eos-builder-fleet"
+    timeout: 10
+
+  - label: ":darwin: Mojave - Package Builder"
+    command:
+      - "git clone $BUILDKITE_REPO eos && cd eos && git checkout $BUILDKITE_COMMIT"
+      - "cd eos && buildkite-agent artifact download build.tar.gz . --step ':darwin: macOS 10.14 - Build & Test' && tar -xzf build.tar.gz"
+      - "cd eos && ./.cicd/package-builder.sh"
+    plugins:
+      - chef/anka#v0.5.1:
+          no-volume: true
+          inherit-environment-vars: true
+          vm-name: 10.14.4_6C_14G_40G
+          vm-registry-tag: "clean::cicd::git-ssh::nas::brew::buildkite-agent"
+          always-pull: true
+          debug: true
+          wait-network: true
+    agents:
+      - "queue=mac-anka-node-fleet"
+    timeout: 10
+
+  - label: ":git: Git Submodule Regression Check"
+    command:
+      - "./.cicd/submodule-regression-checker.sh"
+    agents:
+      queue: "automation-basic-builder-fleet"
+    timeout: 5

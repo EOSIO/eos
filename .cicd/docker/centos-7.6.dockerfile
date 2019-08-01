@@ -1,4 +1,4 @@
-FROM centos:7
+FROM centos:7.6.1810
 
 # YUM dependencies.
 RUN yum update -y \
@@ -7,7 +7,7 @@ RUN yum update -y \
   && yum --enablerepo=extras install -y which git autoconf automake libtool make bzip2 doxygen \
   graphviz bzip2-devel openssl-devel gmp-devel ocaml libicu-devel \
   python python-devel rh-python36 gettext-devel file libusbx-devel \
-  libcurl-devel patch 
+  libcurl-devel patch
 
 # Build appropriate version of CMake.
 RUN curl -LO https://cmake.org/files/v3.13/cmake-3.13.2.tar.gz \
@@ -88,10 +88,22 @@ RUN cd /usr/lib64/ccache && ln -s ../../bin/ccache c++
 ## We need to tell ccache to actually use devtoolset-8 instead of the default system one (ccache resets anything set in PATH when it launches)
 ENV CCACHE_PATH="/opt/rh/devtoolset-8/root/usr/bin"
 
+# Install Buildkite Agent
+RUN echo -e "[buildkite-agent]\nname = Buildkite Pty Ltd\nbaseurl = https://yum.buildkite.com/buildkite-agent/stable/x86_64/\nenabled=1\ngpgcheck=0\npriority=1" > /etc/yum.repos.d/buildkite-agent.repo && \
+  yum -y install buildkite-agent
+
 # PRE_COMMANDS: Executed pre-cmake
 # CMAKE_EXTRAS: Executed right before the cmake path (on the end)
-ENV PRE_COMMANDS="source /opt/rh/devtoolset-8/enable && source /opt/rh/rh-python36/enable && export PATH=/usr/lib64/ccache:$PATH &&"
+ENV PRE_COMMANDS="source /opt/rh/devtoolset-8/enable && source /opt/rh/rh-python36/enable && export PATH=/usr/lib64/ccache:\$PATH"
 
-CMD bash -c "$PRE_COMMANDS ccache -s && \
-    mkdir /workdir/build && cd /workdir/build && cmake -DCMAKE_BUILD_TYPE='Release' -DCORE_SYMBOL_NAME='SYS' -DOPENSSL_ROOT_DIR='/usr/include/openssl' -DBUILD_MONGO_DB_PLUGIN=true $CMAKE_EXTRAS /workdir && make -j $(getconf _NPROCESSORS_ONLN) && \
-    ctest -j$(getconf _NPROCESSORS_ONLN) -LE _tests --output-on-failure -T Test"
+# Bring in helpers that provides execute function so we can get better logging in BK and TRAV
+COPY ./docker/.logging-helpers /tmp/.helpers
+
+CMD bash -c ". /tmp/.helpers && $PRE_COMMANDS && \
+    fold-execute ccache -s && \
+    mkdir /workdir/build && cd /workdir/build && fold-execute cmake -DCMAKE_BUILD_TYPE='Release' -DCORE_SYMBOL_NAME='SYS' -DOPENSSL_ROOT_DIR='/usr/include/openssl' -DBUILD_MONGO_DB_PLUGIN=true $CMAKE_EXTRAS /workdir && \
+    fold-execute make -j $(getconf _NPROCESSORS_ONLN) && \
+    if ${ENABLE_PARALLEL_TESTS:-true}; then fold-execute ctest -j$(getconf _NPROCESSORS_ONLN) -LE _tests --output-on-failure -T Test; fi && \
+    if ${ENABLE_SERIAL_TESTS:-true}; then mkdir -p ./mongodb && fold-execute mongod --dbpath ./mongodb --fork --logpath mongod.log && fold-execute ctest -L nonparallelizable_tests --output-on-failure -T Test; fi && \
+    if ${ENABLE_LR_TESTS:-false}; then fold-execute ctest -L long_running_tests --output-on-failure -T Test; fi && \
+    if ! ${TRAVIS:-false}; then cd .. && tar -pczf build.tar.gz build && buildkite-agent artifact upload build.tar.gz --agent-access-token $BUILDKITE_AGENT_ACCESS_TOKEN; fi"
