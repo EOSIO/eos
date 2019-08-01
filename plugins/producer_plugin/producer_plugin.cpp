@@ -412,8 +412,11 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          fc::microseconds max_trx_cpu_usage = max_trx_time_ms < 0 ? fc::microseconds::maximum() : fc::milliseconds( max_trx_time_ms );
 
          signing_keys_future_type future = transaction_metadata::start_recover_keys( trx, _thread_pool->get_executor(),
-                chain.get_chain_id(), fc::microseconds( max_trx_cpu_usage ), [self = this, trx, persist_until_expired, next{std::move(next)}]() {
-            app().post(priority::low, [self, trx, persist_until_expired, next{std::move(next)}]() mutable {
+                chain.get_chain_id(), fc::microseconds( max_trx_cpu_usage ) );
+         boost::asio::post( _thread_pool->get_executor(), [self = this, future, trx, persist_until_expired, next{std::move(next)}]() mutable {
+            if( future.valid() )
+               future.wait();
+            app().post(priority::low, [self, trx, persist_until_expired, next{std::move(next)}]() {
                self->process_incoming_transaction_async( trx, persist_until_expired, std::move(next) );
             });
          });
