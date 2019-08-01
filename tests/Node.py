@@ -44,6 +44,7 @@ class Node(object):
         self.infoValid=None
         self.lastRetrievedHeadBlockNum=None
         self.lastRetrievedLIB=None
+        self.lastRetrievedHeadBlockProducer=""
         self.transCache={}
         self.walletMgr=walletMgr
         self.missingTransaction=False
@@ -324,8 +325,8 @@ class Node(object):
         present = True if blockNum <= node_block_num else False
         if Utils.Debug and blockType==BlockType.lib:
             decorator=""
-            if present:
-                decorator="is not "
+            if not present:
+                decorator="not "
             Utils.Print("Block %d is %sfinalized." % (blockNum, decorator))
 
         return present
@@ -1169,6 +1170,7 @@ class Node(object):
             self.infoValid=True
             self.lastRetrievedHeadBlockNum=int(info["head_block_num"])
             self.lastRetrievedLIB=int(info["last_irreversible_block_num"])
+            self.lastRetrievedHeadBlockProducer=info["head_block_producer"]
         return info
 
     def getBlockFromDb(self, idx):
@@ -1201,6 +1203,7 @@ class Node(object):
                 return info[headBlockNumTag]
         else:
             # Either this implementation or the one in getIrreversibleBlockNum are likely wrong.
+            time.sleep(1)
             block=self.getBlockFromDb(-1)
             if block is not None:
                 blockNum=block["block_num"]
@@ -1313,9 +1316,12 @@ class Node(object):
         return blockProducer
 
     def getNextCleanProductionCycle(self, trans):
-        transId=Node.getTransId(trans)
         rounds=21*12*2  # max time to ensure that at least 2/3+1 of producers x blocks per producer x at least 2 times
-        self.waitForTransFinalization(transId, timeout=rounds/2)
+        if trans is not None:
+            transId=Node.getTransId(trans)
+            self.waitForTransFinalization(transId, timeout=rounds/2)
+        else:
+            transId="Null"
         irreversibleBlockNum=self.getIrreversibleBlockNum()
 
         # The voted schedule should be promoted now, then need to wait for that to become irreversible
@@ -1516,7 +1522,7 @@ class Node(object):
         self.scheduleProtocolFeatureActivations([preactivateFeatureDigest])
 
         # Wait for the next block to be produced so the scheduled protocol feature is activated
-        self.waitForHeadToAdvance()
+        assert self.waitForHeadToAdvance(), print("ERROR: TIMEOUT WAITING FOR PREACTIVATE")
 
     # Return an array of feature digests to be preactivated in a correct order respecting dependencies
     # Require producer_api_plugin

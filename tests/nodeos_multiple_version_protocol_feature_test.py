@@ -13,6 +13,13 @@ import os
 from os.path import join, exists
 from datetime import datetime
 
+###############################################################
+# nodeos_multiple_version_protocol_feature_test
+#
+# Test for verifying that older versions of nodeos can work with newer versions of nodeos.
+#
+###############################################################
+
 # Parse command line arguments
 args = TestHelper.parse_args({"-v","--clean-run","--dump-error-details","--leave-running",
                               "--keep-logs", "--alternate-version-labels-file"})

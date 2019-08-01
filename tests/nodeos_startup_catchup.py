@@ -17,6 +17,7 @@ import re
 
 ###############################################################
 # nodeos_startup_catchup
+#
 #  Test configures a producing node and <--txn-plugins count> non-producing nodes with the
 #  txn_test_gen_plugin.  Each non-producing node starts generating transactions and sending them
 #  to the producing node.
@@ -26,6 +27,7 @@ import re
 #  4) restart the node
 #  5) the node is allowed to catch up to the producing node
 #  3) Repeat steps 2-5, <--catchup-count - 1> more times
+#
 ###############################################################
 
 Print=Utils.Print
@@ -141,12 +143,13 @@ try:
 
     Print("Cycle through catchup scenarios")
     twoRounds=21*2*12
+    twoRoundsTimeout=(twoRounds/2 + 10)  #2 rounds in seconds + some leeway
     for catchup_num in range(0, catchupCount):
         Print("Start catchup node")
         cluster.launchUnstarted(cachePopen=True)
         lastLibNum=lib(node0)
         # verify producer lib is still advancing
-        waitForBlock(node0, lastLibNum+1, timeout=twoRounds/2, blockType=BlockType.lib)
+        waitForBlock(node0, lastLibNum+1, timeout=twoRoundsTimeout, blockType=BlockType.lib)
 
         catchupNode=cluster.getNodes()[-1]
         catchupNodeNum=cluster.getNodes().index(catchupNode)
@@ -155,11 +158,11 @@ try:
 
         Print("Verify catchup node %s's LIB is advancing" % (catchupNodeNum))
         # verify lib is advancing (before we wait for it to have to catchup with producer)
-        waitForBlock(catchupNode, lastCatchupLibNum+1, timeout=twoRounds/2, blockType=BlockType.lib)
+        waitForBlock(catchupNode, lastCatchupLibNum+1, timeout=twoRoundsTimeout, blockType=BlockType.lib)
 
         Print("Verify catchup node is advancing to producer")
         numBlocksToCatchup=(lastLibNum-lastCatchupLibNum-1)+twoRounds
-        waitForBlock(catchupNode, lastLibNum, timeout=(numBlocksToCatchup)/2, blockType=BlockType.lib)
+        waitForBlock(catchupNode, lastLibNum, timeout=twoRoundsTimeout, blockType=BlockType.lib)
 
         Print("Shutdown catchup node and validate exit code")
         catchupNode.interruptAndVerifyExitStatus(60)
@@ -171,16 +174,16 @@ try:
 
         Print("Verify catchup node is advancing")
         # verify catchup node is advancing to producer
-        waitForBlock(catchupNode, lastCatchupLibNum+1, timeout=twoRounds/2, blockType=BlockType.lib)
+        waitForBlock(catchupNode, lastCatchupLibNum+1, timeout=twoRoundsTimeout, blockType=BlockType.lib)
 
         Print("Verify producer is still advancing LIB")
         lastLibNum=lib(node0)
         # verify producer lib is still advancing
-        node0.waitForBlock(lastLibNum+1, timeout=twoRounds/2, blockType=BlockType.lib)
+        node0.waitForBlock(lastLibNum+1, timeout=twoRoundsTimeout, blockType=BlockType.lib)
 
         Print("Verify catchup node is advancing to producer")
         # verify catchup node is advancing to producer
-        waitForBlock(catchupNode, lastLibNum, timeout=(numBlocksToCatchup)/2, blockType=BlockType.lib)
+        waitForBlock(catchupNode, lastLibNum, timeout=(numBlocksToCatchup/2 + 60), blockType=BlockType.lib)
         catchupNode.interruptAndVerifyExitStatus(60)
         catchupNode.popenProc=None
 

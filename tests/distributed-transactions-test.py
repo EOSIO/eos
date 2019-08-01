@@ -7,6 +7,18 @@ from TestHelper import TestHelper
 
 import random
 
+###############################################################
+# distributed-transactions-test
+#
+# Performs currency transfers between N accounts sent to http endpoints of
+# N nodes and verifies, after a steady state is reached, that the accounts
+# balances are correct
+# if called with --nodes-file it will will load a json description of nodes
+# that are already running and run distributed test against them (not
+# currently testing this feature)
+#
+###############################################################
+
 Print=Utils.Print
 errorExit=Utils.errorExit
 

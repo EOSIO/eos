@@ -12,6 +12,13 @@ import time
 import os
 import filecmp
 
+###############################################################
+# nodeos_chainbase_allocation_test
+#
+# Test snapshot creation and restarting from snapshot
+#
+###############################################################
+
 # Parse command line arguments
 args = TestHelper.parse_args({"-v","--clean-run","--dump-error-details","--leave-running","--keep-logs"})
 Utils.Debug = args.v

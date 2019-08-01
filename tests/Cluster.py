@@ -144,7 +144,7 @@ class Cluster(object):
     # pylint: disable=too-many-branches
     # pylint: disable=too-many-statements
     def launch(self, pnodes=1, unstartedNodes=0, totalNodes=1, prodCount=1, topo="mesh", delay=1, onlyBios=False, dontBootstrap=False,
-               totalProducers=None, extraNodeosArgs=None, useBiosBootFile=True, specificExtraNodeosArgs=None, onlySetProds=False,
+               totalProducers=None, sharedProducers=0, extraNodeosArgs=None, useBiosBootFile=True, specificExtraNodeosArgs=None, onlySetProds=False,
                pfSetupPolicy=PFSetupPolicy.FULL, alternateVersionLabelsFile=None, associatedNodeLabels=None, loadSystemContract=True):
         """Launch cluster.
         pnodes: producer nodes count
@@ -199,6 +199,9 @@ class Cluster(object):
         if totalProducers:
             assert(isinstance(totalProducers, (str,int)))
             producerFlag="--producers %s" % (totalProducers)
+
+        if sharedProducers > 0:
+            producerFlag += (" --shared-producers %d" % (sharedProducers))
 
         self.setAlternateVersionLabels(alternateVersionLabelsFile)
 
@@ -431,7 +434,7 @@ class Cluster(object):
         if not loadSystemContract:
             useBiosBootFile=False  #ensure we use Cluster.bootstrap
         if onlyBios or not useBiosBootFile:
-            self.biosNode=self.bootstrap(biosNode, startedNodes, prodCount, totalProducers, pfSetupPolicy, onlyBios, onlySetProds, loadSystemContract)
+            self.biosNode=self.bootstrap(biosNode, startedNodes, prodCount + sharedProducers, totalProducers, pfSetupPolicy, onlyBios, onlySetProds, loadSystemContract)
             if self.biosNode is None:
                 Utils.Print("ERROR: Bootstrap failed.")
                 return False
@@ -951,7 +954,7 @@ class Cluster(object):
             "FEATURE_DIGESTS": ""
         }
         if PFSetupPolicy.hasPreactivateFeature(pfSetupPolicy):
-            env["BIOS_CONTRACT_PATH"] = "unittests/contracts/eosio.bios"
+            env["BIOS_CONTRACT_PATH"] = "unittests/contracts/old_versions/v1.7.0-develop-preactivate_feature/eosio.bios"
 
         if pfSetupPolicy == PFSetupPolicy.FULL:
             allBuiltinProtocolFeatureDigests = biosNode.getAllBuiltinFeatureDigestsToPreactivate()
@@ -1069,7 +1072,7 @@ class Cluster(object):
         contract="eosio.bios"
         contractDir="unittests/contracts/%s" % (contract)
         if PFSetupPolicy.hasPreactivateFeature(pfSetupPolicy):
-            contractDir="unittests/contracts/%s" % (contract)
+            contractDir="unittests/contracts/old_versions/v1.7.0-develop-preactivate_feature/%s" % (contract)
         else:
             contractDir="unittests/contracts/old_versions/v1.6.0-rc3/%s" % (contract)
         wasmFile="%s.wasm" % (contract)
