@@ -8,7 +8,7 @@ MEM_MEG=$( free -m | sed -n 2p | tr -s ' ' | cut -d\  -f2 || cut -d' ' -f2 )
 CPU_SPEED=$( lscpu | grep -m1 "MHz" | tr -s ' ' | cut -d\  -f3 || cut -d' ' -f3 | cut -d'.' -f1 )
 CPU_CORE=$( nproc )
 MEM_GIG=$(( ((MEM_MEG / 1000) / 2) ))
-export JOBS=$(( MEM_GIG > CPU_CORE ? CPU_CORE : MEM_GIG ))
+export JOBS=${JOBS:-$(( MEM_GIG > CPU_CORE ? CPU_CORE : MEM_GIG ))}
 
 DISK_INSTALL=$(df -h . | tail -1 | tr -s ' ' | cut -d\  -f1 || cut -d' ' -f1)
 DISK_TOTAL_KB=$(df . | tail -1 | awk '{print $2}')
