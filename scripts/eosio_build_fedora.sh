@@ -19,7 +19,7 @@ if [ "${MEM_MEG}" -lt 7000 ]; then
 	exit 1;
 fi
 MEM_GIG=$(( ((MEM_MEG / 1000) / 2) ))
-export JOBS=$(( MEM_GIG > CPU_CORE ? CPU_CORE : MEM_GIG ))
+export JOBS=${JOBS:-$(( MEM_GIG > CPU_CORE ? CPU_CORE : MEM_GIG ))}
 
 DISK_INSTALL=$( df -h . | tail -1 | tr -s ' ' | cut -d\\ -f1 )
 DISK_TOTAL_KB=$( df . | tail -1 | awk '{print $2}' )

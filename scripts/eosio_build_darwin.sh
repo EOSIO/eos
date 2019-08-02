@@ -7,7 +7,7 @@ OS_PATCH=$(echo "${OS_VER}" | cut -d'.' -f3)
 MEM_GIG=$(bc <<< "($(sysctl -in hw.memsize) / 1024000000)")
 CPU_SPEED=$(bc <<< "scale=2; ($(sysctl -in hw.cpufrequency) / 10^8) / 10")
 CPU_CORE=$( sysctl -in machdep.cpu.core_count )
-export JOBS=$(( MEM_GIG > CPU_CORE ? CPU_CORE : MEM_GIG ))
+export JOBS=${JOBS:-$(( MEM_GIG > CPU_CORE ? CPU_CORE : MEM_GIG ))}
 
 DISK_INSTALL=$(df -h . | tail -1 | tr -s ' ' | cut -d\  -f1 || cut -d' ' -f1)
 blksize=$(df . | head -1 | awk '{print $2}' | cut -d- -f1)
@@ -174,7 +174,7 @@ if [ "${BOOSTVERSION}" != "${BOOST_VERSION_MAJOR}0${BOOST_VERSION_MINOR}0${BOOST
 	&& tar -xjf boost_$BOOST_VERSION.tar.bz2 \
 	&& cd $BOOST_ROOT \
 	&& ./bootstrap.sh --prefix=$BOOST_ROOT \
-	&& ./b2 -q -j$(sysctl -in machdep.cpu.core_count) --with-iostreams --with-date_time --with-filesystem \
+	&& ./b2 -q -j"${JOBS}" --with-iostreams --with-date_time --with-filesystem \
 	                                                  --with-system --with-program_options --with-chrono --with-test install \
 	&& cd .. \
 	&& rm -f boost_$BOOST_VERSION.tar.bz2 \
