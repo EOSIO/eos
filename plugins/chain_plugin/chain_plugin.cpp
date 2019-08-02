@@ -1444,6 +1444,16 @@ uint64_t convert_to_type(const string& str, const string& desc) {
 }
 
 template<>
+uint128_t convert_to_type(const string& str, const string& desc) {
+   uint128_t val;
+   try {
+      auto bmp = boost::multiprecision::uint128_t(str);
+      val = *reinterpret_cast<uint128_t*>(&bmp);
+   } FC_RETHROW_EXCEPTIONS(warn, "Could not convert ${desc} string '${str}' to uint128_t type.", ("desc", desc)("str",str) )
+   return val;
+}
+
+template<>
 double convert_to_type(const string& str, const string& desc) {
    double val{};
    try {
@@ -1552,8 +1562,16 @@ read_only::get_table_rows_result read_only::get_table_rows( const read_only::get
          });
       }
       else if (p.key_type == chain_apis::float128) {
-         return get_table_rows_by_seckey<index_long_double_index, uint128_t>(p, abi, [](uint128_t v)->float128_t{
-            return *reinterpret_cast<float128_t *>(&v);
+         if ( p.encode_type == chain_apis::hex) {
+            return get_table_rows_by_seckey<index_long_double_index, uint128_t>(p, abi, [](uint128_t v)->float128_t{
+               return *reinterpret_cast<float128_t *>(&v);
+            });
+         }
+         return get_table_rows_by_seckey<index_long_double_index, double>(p, abi, [](double v)->float128_t{
+            float64_t f = *(float64_t *)&v;
+            float128_t f128;
+            f64_to_f128M(f, &f128);
+            return f128;
          });
       }
       else if (p.key_type == chain_apis::sha256) {

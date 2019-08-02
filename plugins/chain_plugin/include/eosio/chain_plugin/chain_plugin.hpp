@@ -56,7 +56,7 @@ struct permission {
 template<typename>
 struct resolver_factory;
 
-// see specializations for uint64_t and double in source file
+// see specializations for uint64_t, uint128_t and double in source file
 template<typename Type>
 Type convert_to_type(const string& str, const string& desc) {
    try {
@@ -66,6 +66,9 @@ Type convert_to_type(const string& str, const string& desc) {
 
 template<>
 uint64_t convert_to_type(const string& str, const string& desc);
+
+template<>
+uint128_t convert_to_type(const string& str, const string& desc);
 
 template<>
 double convert_to_type(const string& str, const string& desc);
