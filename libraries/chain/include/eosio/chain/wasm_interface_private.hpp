@@ -37,7 +37,7 @@ namespace eosio { namespace chain {
       struct by_first_block_num;
       struct by_last_block_num;
 
-      wasm_interface_impl(wasm_interface::vm_type vm, const chainbase::database& d) : db(d) {
+      wasm_interface_impl(wasm_interface::vm_type vm, const chainbase::database& d) : db(d), wasm_runtime_time(vm) {
          if(vm == wasm_interface::vm_type::wavm)
             runtime_interface = std::make_unique<webassembly::wavm::wavm_runtime>();
          else if(vm == wasm_interface::vm_type::wabt)
@@ -123,8 +123,14 @@ namespace eosio { namespace chain {
                EOS_ASSERT(false, wasm_serialization_error, e.message.c_str());
             }
 
-            wasm_injections::wasm_binary_injection<true> injector(module);
-            injector.inject();
+            if(wasm_runtime_time == wasm_interface::vm_type::wabt) {
+               wasm_injections::wasm_binary_injection<true> injector(module);
+               injector.inject();
+            }
+            else {
+               wasm_injections::wasm_binary_injection<false> injector(module);
+               injector.inject();
+            }
 
             std::vector<U8> bytes;
             try {
@@ -164,6 +170,7 @@ namespace eosio { namespace chain {
       wasm_cache_index wasm_instantiation_cache;
 
       const chainbase::database& db;
+      const wasm_interface::vm_type wasm_runtime_time;
    };
 
 #define _REGISTER_INTRINSIC_EXPLICIT(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)\
