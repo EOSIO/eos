@@ -8,7 +8,7 @@ cache:
 env:
   global:
     - JOBS='$(getconf _NPROCESSORS_ONLN)'
-# if: fork = true
+if: fork = true
 matrix:
   include:
     - os: linux
