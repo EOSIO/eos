@@ -621,7 +621,7 @@ void producer_plugin::set_program_options(
           "ratio between incoming transations and deferred transactions when both are exhausted")
          ("incoming-transaction-queue-size-mb", bpo::value<uint16_t>()->default_value( 1024 ),
           "Maximum size (in MiB) of the incoming transaction queue. Exceeding this value will subjectively drop transaction with resource exhaustion.")
-         ("producer-threads", bpo::value<uint16_t>()->default_value(config::default_controller_thread_pool_size+2),
+         ("producer-threads", bpo::value<uint16_t>()->default_value(config::default_controller_thread_pool_size),
           "Number of worker threads in producer thread pool")
          ("snapshots-dir", bpo::value<bfs::path>()->default_value("snapshots"),
           "the location of the snapshots directory (absolute path or relative to application data dir)")
