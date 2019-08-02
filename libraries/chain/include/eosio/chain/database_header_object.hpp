@@ -27,6 +27,7 @@ namespace eosio { namespace chain {
           *   - 1 : initial version, prior to this no `database_header_object` existed in the shared memory file but
           *         no changes to its format were made so it can be safely added to existing databases
           *   - 2 : shared_authority now holds shared_key_weights & shared_public_keys
+          *         change from producer_key to producer_authority for many in-memory structures
           */
 
          static constexpr uint32_t current_version            = 2;

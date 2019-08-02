@@ -2771,4 +2771,24 @@ BOOST_AUTO_TEST_CASE(abi_deserialize_detailed_error_messages)
    } FC_LOG_AND_RETHROW()
 }
 
+BOOST_AUTO_TEST_CASE(serialize_optional_struct_type)
+{
+   auto abi = R"({
+      "version": "eosio::abi/1.0",
+      "structs": [
+         {"name": "s", "base": "", "fields": [
+            {"name": "i0", "type": "int8"}
+         ]},
+      ],
+   })";
+
+   try {
+      abi_serializer abis( fc::json::from_string(abi).as<abi_def>(), max_serialization_time );
+
+      verify_round_trip_conversion(abis, "s?", R"({"i0":5})", "0105");
+      verify_round_trip_conversion(abis, "s?", R"(null)", "00");
+
+   } FC_LOG_AND_RETHROW()
+}
+
 BOOST_AUTO_TEST_SUITE_END()

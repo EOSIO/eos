@@ -14,6 +14,7 @@ namespace eosio { namespace chain {
    struct block_state : public block_header_state {
       block_state( const block_header_state& prev,
                    signed_block_ptr b,
+                   const protocol_feature_set& pfs,
                    const std::function<void( block_timestamp_type,
                                              const flat_set<digest_type>&,
                                              const vector<digest_type>& )>& validator,
@@ -23,15 +24,17 @@ namespace eosio { namespace chain {
       block_state( pending_block_header_state&& cur,
                    signed_block_ptr&& b, // unsigned block
                    vector<transaction_metadata_ptr>&& trx_metas,
+                   const protocol_feature_set& pfs,
                    const std::function<void( block_timestamp_type,
                                              const flat_set<digest_type>&,
                                              const vector<digest_type>& )>& validator,
-                   const std::function<signature_type(const digest_type&)>& signer
+                   const signer_callback_type& signer
                 );
 
       block_state( pending_block_header_state&& cur,
                    const signed_block_ptr& b, // signed block
                    vector<transaction_metadata_ptr>&& trx_metas,
+                   const protocol_feature_set& pfs,
                    const std::function<void( block_timestamp_type,
                                              const flat_set<digest_type>&,
                                              const vector<digest_type>& )>& validator,

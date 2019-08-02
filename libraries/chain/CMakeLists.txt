@@ -21,6 +21,7 @@ add_library( eosio_chain
              merkle.cpp
              name.cpp
              transaction.cpp
+             block.cpp
              block_header.cpp
              block_header_state.cpp
              block_state.cpp
@@ -61,6 +62,7 @@ add_library( eosio_chain
              protocol_state_object.cpp
              protocol_feature_activation.cpp
              protocol_feature_manager.cpp
+             producer_schedule.cpp
              genesis_intrinsics.cpp
              whitelisted_intrinsics.cpp
              thread_utils.cpp
