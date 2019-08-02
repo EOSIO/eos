@@ -23,9 +23,10 @@ steps:
     plugins:
       - docker#v3.2.0:
           debug: $DEBUG
-          image: "eosio/producer:eosio-amazonlinux-2-fe993ae1ac74c46f8d97e49ad8e390289e550cb8"
+          image: "eosio/producer:eosio-amazonlinux-2-2f50b90dc0587a1bb96f8001891fc54efc81b11e"
           environment:
             - "BUILDKITE_AGENT_ACCESS_TOKEN" # Needed for buildkite-agent upload/download
+            - "JOBS" # Number for -j make/ctest args.
           mount-buildkite-agent: false # Mounting bk-agent doesn't work, so disable it
           propagate-environment: true # Need for buildkite-agent upload/download (JOB_ID, etc)
 
@@ -37,10 +38,11 @@ steps:
     plugins:
       - docker#v3.2.0:
           debug: true
-          image: "eosio/producer:eosio-centos-7.6-1d72db966ca334266e0e7a432909d4fb6c188cc1"
+          image: "eosio/producer:eosio-centos-7.6-3d1cc1fb9f1681a5d8dc0b2e6425407c37d8fff6"
           environment:
             # - "ENABLE_LR_TESTS=true"
             - "BUILDKITE_AGENT_ACCESS_TOKEN" # Needed for buildkite-agent upload/download
+            - "JOBS" # Number for -j make/ctest args.
           mount-buildkite-agent: false # Mounting bk-agent doesn't work, so disable it
           propagate-environment: true # Need for buildkite-agent upload/download (JOB_ID, etc)
 
@@ -50,9 +52,10 @@ steps:
     plugins:
       - docker#v3.2.0:
           debug: $DEBUG
-          image: "eosio/producer:eosio-ubuntu-16.04-a1aa07ffa321d67ea0d7b37313f3ff8690123d2e"
+          image: "eosio/producer:eosio-ubuntu-16.04-1837c2968d507ca2d73ab0ae8963c9dbb4275048"
           environment:
             - "BUILDKITE_AGENT_ACCESS_TOKEN" # Needed for buildkite-agent upload/download
+            - "JOBS" # Number for -j make/ctest args.
           mount-buildkite-agent: false # Mounting bk-agent doesn't work, so disable it
           propagate-environment: true # Need for buildkite-agent upload/download (JOB_ID, etc)
 
@@ -62,9 +65,10 @@ steps:
     plugins:
       - docker#v3.2.0:
           debug: $DEBUG
-          image: "eosio/producer:eosio-ubuntu-18.04-4a0a7504956fa835cae09221ede97f61fa01d75c"
+          image: "eosio/producer:eosio-ubuntu-18.04-ccb89fe03979636296d4999e09ce8a49a23e3059"
           environment:
             - "BUILDKITE_AGENT_ACCESS_TOKEN" # Needed for buildkite-agent upload/download
+            - "JOBS" # Number for -j make/ctest args.
           mount-buildkite-agent: false # Mounting bk-agent doesn't work, so disable it
           propagate-environment: true # Need for buildkite-agent upload/download (JOB_ID, etc)
 
@@ -115,7 +119,7 @@ steps:
     plugins:
       - docker#v3.2.0:
           debug: true
-          image: "eosio/producer:eosio-centos-7.6-1d72db966ca334266e0e7a432909d4fb6c188cc1"
+          image: "eosio/producer:eosio-centos-7.6-3d1cc1fb9f1681a5d8dc0b2e6425407c37d8fff6"
           environment:
             - "BUILDKITE_AGENT_ACCESS_TOKEN" # Needed for buildkite-agent upload/download
           mount-buildkite-agent: false # Mounting bk-agent doesn't work, so disable it
@@ -131,7 +135,7 @@ steps:
     plugins:
       - docker#v3.2.0:
           debug: $DEBUG
-          image: "eosio/producer:eosio-ubuntu-16.04-a1aa07ffa321d67ea0d7b37313f3ff8690123d2e"
+          image: "eosio/producer:eosio-ubuntu-16.04-1837c2968d507ca2d73ab0ae8963c9dbb4275048"
           environment:
             - "BUILDKITE_AGENT_ACCESS_TOKEN" # Needed for buildkite-agent upload/download
           mount-buildkite-agent: false # Mounting bk-agent doesn't work, so disable it
@@ -147,7 +151,7 @@ steps:
     plugins:
       - docker#v3.2.0:
           debug: $DEBUG
-          image: "eosio/producer:eosio-ubuntu-18.04-4a0a7504956fa835cae09221ede97f61fa01d75c"
+          image: "eosio/producer:eosio-ubuntu-18.04-ccb89fe03979636296d4999e09ce8a49a23e3059"
           environment:
             - "BUILDKITE_AGENT_ACCESS_TOKEN" # Needed for buildkite-agent upload/download
           mount-buildkite-agent: false # Mounting bk-agent doesn't work, so disable it

@@ -5,6 +5,10 @@ cache:
   ccache: true
   directories:
     - $HOME/Library/Caches/Homebrew
+env:
+  global:
+    - JOBS='$(getconf _NPROCESSORS_ONLN)'
+if: fork = true OR type = api
 matrix:
   include:
     - os: linux

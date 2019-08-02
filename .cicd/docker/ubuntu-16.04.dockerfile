@@ -97,8 +97,8 @@ COPY ./docker/.logging-helpers /tmp/.helpers
 CMD bash -c ". /tmp/.helpers && $PRE_COMMANDS && \
     fold-execute ccache -s && \
     mkdir /workdir/build && cd /workdir/build && fold-execute cmake -DCMAKE_BUILD_TYPE='Release' -DCORE_SYMBOL_NAME='SYS' -DOPENSSL_ROOT_DIR='/usr/include/openssl' -DBUILD_MONGO_DB_PLUGIN=true $CMAKE_EXTRAS /workdir && \
-    fold-execute make -j $(getconf _NPROCESSORS_ONLN) && \
-    if ${ENABLE_PARALLEL_TESTS:-true}; then fold-execute ctest -j$(getconf _NPROCESSORS_ONLN) -LE _tests --output-on-failure -T Test; fi && \
+    fold-execute make -j$JOBS && \
+    if ${ENABLE_PARALLEL_TESTS:-true}; then fold-execute ctest -j$JOBS -LE _tests --output-on-failure -T Test; fi && \
     if ${ENABLE_SERIAL_TESTS:-true}; then mkdir -p ./mongodb && fold-execute mongod --dbpath ./mongodb --fork --logpath mongod.log && fold-execute ctest -L nonparallelizable_tests --output-on-failure -T Test; fi && \
     if ${ENABLE_LR_TESTS:-false}; then fold-execute ctest -L long_running_tests --output-on-failure -T Test; fi && \
     if ! ${TRAVIS:-false}; then cd .. && tar -pczf build.tar.gz build && buildkite-agent artifact upload build.tar.gz --agent-access-token $BUILDKITE_AGENT_ACCESS_TOKEN; fi"
