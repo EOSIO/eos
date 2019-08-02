@@ -45,6 +45,7 @@ public:
       struct cluster_state {
          cluster_def                   def;
          std::map<int, node_state>     nodes; // node id => node_state
+         std::map<public_key_type, private_key_type> imported_keys;
       };
 
       launcher_config                _config;
@@ -86,8 +87,8 @@ public:
             node_def node_config = def.get_node_def(i);
             node_state state;
             state.id = i;
-            state.http_port = node_config.http_port();
-            state.p2p_port = node_config.p2p_port();
+            state.http_port = node_config.http_port(def.cluster_id);
+            state.p2p_port = node_config.p2p_port(def.cluster_id);
             state.is_bios = node_config.is_bios();
 
             bfs::path node_path = bfs::path(_config.data_dir) / cluster_to_string(def.cluster_id) / node_to_string(i);
@@ -97,14 +98,14 @@ public:
             create_path(bfs::path(block_path));
 
             bfs::ofstream cfg(node_path / "config.ini");
-            cfg << "http-server-address = " << _config.host_name << ":" << node_config.http_port() << "\n";
+            cfg << "http-server-address = " << _config.host_name << ":" << state.http_port << "\n";
             cfg << "http-validate-host = false\n";
-            cfg << "p2p-listen-endpoint = " << _config.listen_addr << ":" << node_config.p2p_port() << "\n";
+            cfg << "p2p-listen-endpoint = " << _config.listen_addr << ":" << state.p2p_port << "\n";
             cfg << "agent-name = " << cluster_to_string(def.cluster_id) << "_" << node_to_string(i) << "\n";
 
             if (def.shape == "mesh") {
                for (int peer = 0; peer < i; ++peer) {
-                  cfg << "p2p-peer-address = " << _config.host_name << ":" << def.get_node_def(peer).http_port() << "\n";
+                  cfg << "p2p-peer-address = " << _config.host_name << ":" << def.get_node_def(peer).p2p_port(def.cluster_id) << "\n";
                }
             }
 
@@ -223,6 +224,7 @@ public:
                }
                state.pid = 0;
                state.child.reset();
+               _running_clusters[cluster_id].nodes.erase(node_id);
             }
          }
       }
@@ -231,6 +233,7 @@ public:
             for (const auto &itr : _running_clusters[cluster_id].nodes) {
                stop_node(cluster_id, itr.first);
             }
+            _running_clusters.erase(cluster_id);
          }
       }
       void stop_all_clusters() {

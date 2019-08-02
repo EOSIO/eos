@@ -28,18 +28,17 @@ namespace launcher_service {
       static const int max_nodes_per_cluster = 100;
       static const int max_clusters = 30;
 
-      int cluster_id = 0;
       int node_id = 0;
       std::vector<string> producers;
       std::vector<private_key_type> producing_keys;
       std::vector<string> extra_configs;
       bool dont_start = false;
 
-      int http_port() const {
+      int http_port(int cluster_id) const {
          return base_port + cluster_id * cluster_span + node_id * node_span;
       }
-      int p2p_port() const {
-         return http_port() + 1;
+      int p2p_port(int cluster_id) const {
+         return http_port(cluster_id) + 1;
       }
       bool is_bios() const {
          for (auto &p: producers) {
@@ -63,7 +62,6 @@ namespace launcher_service {
          }
          node_def n;
          n.node_id = id;
-         n.cluster_id = cluster_id;
          return n;
       }
    };
@@ -100,6 +98,9 @@ public:
    fc::variant get_cluster_info(int cluster_id);
    fc::variant launch_cluster(launcher_service::cluster_def cluster_def);
    fc::variant stop_all_clusters();
+   fc::variant stop_cluster(int cluster_id);
+   fc::variant start_node(int cluster_id, int node_id);
+   fc::variant stop_node(int cluster_id, int node_id);
 
 private:
    std::unique_ptr<class launcher_service_plugin_impl>  _my;
@@ -107,5 +108,5 @@ private:
 
 }
 
-FC_REFLECT(eosio::launcher_service::node_def, (cluster_id)(node_id)(producers)(producing_keys)(extra_configs)(dont_start) )
+FC_REFLECT(eosio::launcher_service::node_def, (node_id)(producers)(producing_keys)(extra_configs)(dont_start) )
 FC_REFLECT(eosio::launcher_service::cluster_def, (shape)(cluster_id)(node_count)(nodes)(extra_configs)(extra_args) )
