@@ -86,7 +86,10 @@ namespace eosiosystem {
    void system_contract::unregprod( const name& producer ) {
       require_auth( producer );
 
-      claimrewards(producer);
+      const auto& voter = _voters.get( producer.value, "producer is not found in voter table" );
+      check( voter.vote_mature_time <= current_time_point(), "producers are not allowed to unregister during stake lock period" );
+
+      claimrewards( producer );
 
       const auto& prod = _producers.get( producer.value, "producer not found" );
       if (prod.active()) {
