@@ -1851,8 +1851,6 @@ struct controller_impl {
                         ("block", *b)("expected_receipt", receipt)
                       );
             const transaction_receipt_header& r = trx_receipts.back();
-            if (!(r == static_cast<const transaction_receipt_header&>(receipt)))
-               wdump((b));
             EOS_ASSERT( r == static_cast<const transaction_receipt_header&>(receipt),
                         block_validate_exception, "receipt does not match",
                         ("producer_receipt", receipt)("validator_receipt", trx_receipts.back()) );

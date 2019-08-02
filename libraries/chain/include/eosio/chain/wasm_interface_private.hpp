@@ -101,7 +101,7 @@ namespace eosio { namespace chain {
       }
 
       const std::unique_ptr<wasm_instantiated_module_interface>& get_instantiated_module( const digest_type& code_hash, const uint8_t& vm_type,
-                                                                                 const uint8_t& vm_version, transaction_context& trx_context, bool inject )
+                                                                                 const uint8_t& vm_version, transaction_context& trx_context )
       {
          wasm_cache_index::iterator it = wasm_instantiation_cache.find(
                                              boost::make_tuple(code_hash, vm_type, vm_version) );
@@ -141,7 +141,7 @@ namespace eosio { namespace chain {
             } catch (const IR::ValidationException& e) {
                EOS_ASSERT(false, wasm_serialization_error, e.message.c_str());
             }
-            if (false && inject) {
+            if (false) {
                wasm_injections::wasm_binary_injection injector(module);
                injector.inject();
                try {
@@ -160,23 +160,12 @@ namespace eosio { namespace chain {
             wasm_instantiation_cache.modify(it, [&](auto& c) {
                c.module = runtime_interface->instantiate_module((const char*)bytes.data(), bytes.size(), parse_initial_memory(module));
             });
-            std::ofstream outfile("out2.wasm");
-            if (codeobject) {
-               outfile.write(codeobject->code.data(), codeobject->code.size());
-            }
-
          }
-         std::ofstream outfile("out.wasm");
-         if (codeobject) {
-            outfile.write(codeobject->code.data(), codeobject->code.size());
-         }
-         outfile.close();
          return it->module;
       }
 
       bool is_shutting_down = false;
       std::unique_ptr<wasm_runtime_interface> runtime_interface;
-      wasm_interface::vm_type runtime;
 
       typedef boost::multi_index_container<
          wasm_cache_entry,

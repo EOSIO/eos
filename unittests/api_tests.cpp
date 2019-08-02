@@ -116,7 +116,6 @@ FC_REFLECT( u128_action, (values) )
 FC_REFLECT( cf_action, (payload)(cfd_idx) )
 FC_REFLECT( dtt_action, (payer)(deferred_account)(deferred_action)(permission_name)(delay_sec) )
 FC_REFLECT( invalid_access_action, (code)(val)(index)(store) )
-#define NON_VALIDATING_TEST 1
 
 #ifdef NON_VALIDATING_TEST
 #define TESTER tester
