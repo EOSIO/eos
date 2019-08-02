@@ -7,8 +7,8 @@ cache:
     - $HOME/Library/Caches/Homebrew
 env:
   global:
-    - JOBS='2'
-if: fork = true
+    - JOBS='$(getconf _NPROCESSORS_ONLN)'
+# if: fork = true
 matrix:
   include:
     - os: linux
