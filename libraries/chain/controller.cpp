@@ -1129,9 +1129,8 @@ struct controller_impl {
 
       signed_transaction dtrx;
       fc::raw::unpack(ds,static_cast<transaction&>(dtrx) );
-      transaction_metadata_ptr trx = transaction_metadata::create_no_recover_keys( packed_transaction( dtrx ) );
+      transaction_metadata_ptr trx = transaction_metadata::create_no_recover_keys( packed_transaction( dtrx ), transaction_metadata::trx_type::scheduled );
       trx->accepted = true;
-      trx->scheduled = true;
 
       transaction_trace_ptr trace;
       if( gtrx.expiration < self.pending_block_time() ) {
@@ -1532,8 +1531,8 @@ struct controller_impl {
          }
 
          try {
-            transaction_metadata_ptr onbtrx = transaction_metadata::create_no_recover_keys( packed_transaction( get_on_block_transaction() ) );
-            onbtrx->implicit = true;
+            transaction_metadata_ptr onbtrx =
+                  transaction_metadata::create_no_recover_keys( packed_transaction( get_on_block_transaction() ), transaction_metadata::trx_type::implicit );
             auto reset_in_trx_requiring_checks = fc::make_scoped_exit([old_value=in_trx_requiring_checks,this](){
                   in_trx_requiring_checks = old_value;
                });
@@ -1739,7 +1738,7 @@ struct controller_impl {
             for( const auto& receipt : b->transactions ) {
                if( receipt.trx.contains<packed_transaction>()) {
                   auto& pt = receipt.trx.get<packed_transaction>();
-                  trx_metas.emplace_back( transaction_metadata::create_no_recover_keys( pt ) );
+                  trx_metas.emplace_back( transaction_metadata::create_no_recover_keys( pt, transaction_metadata::trx_type::input ) );
                }
             }
          } else {

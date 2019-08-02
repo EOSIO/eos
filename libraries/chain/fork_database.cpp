@@ -128,7 +128,7 @@ namespace eosio { namespace chain {
                for( const auto& receipt : s.block->transactions ) {
                   if( receipt.trx.contains<packed_transaction>() ) {
                      const auto& pt = receipt.trx.get<packed_transaction>();
-                     s.trxs.push_back( transaction_metadata::create_no_recover_keys( pt ) );
+                     s.trxs.push_back( transaction_metadata::create_no_recover_keys( pt, transaction_metadata::trx_type::input ) );
                   }
                }
                s.header_exts = s.block->validate_and_extract_header_extensions();

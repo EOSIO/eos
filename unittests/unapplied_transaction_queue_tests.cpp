@@ -20,7 +20,7 @@ auto unique_trx_meta_data() {
    account_name creator = config::system_account_name;
    trx.actions.emplace_back( vector<permission_level>{{creator,config::active_name}},
                              onerror{ nextid, "test", 4 });
-   return transaction_metadata::create_no_recover_keys( packed_transaction( trx ) );
+   return transaction_metadata::create_no_recover_keys( packed_transaction( trx ), transaction_metadata::trx_type::input );
 }
 
 auto next( unapplied_transaction_queue& q ) {
