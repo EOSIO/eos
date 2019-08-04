@@ -4,6 +4,7 @@ ROOT_DIR=$(pwd)
 cd $( dirname "${BASH_SOURCE[0]}" )/.. # Ensure we're in the .cicd dir
 . ./.helpers
 cd $ROOT_DIR
+export JOBS="$(getconf _NPROCESSORS_ONLN)"
 if [[ "$(uname)" == Darwin ]]; then
     . ./.cicd/docker/.logging-helpers
     fold-execute ccache -s
