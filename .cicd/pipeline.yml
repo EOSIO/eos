@@ -6,14 +6,6 @@ steps:
     build:
       commit: "${BUILDKITE_COMMIT}"
       branch: "${BUILDKITE_BRANCH}"
-
-  - wait
-
-  - label: ":webhook: Trigger Travis CI Build"
-    command:
-      - "./.cicd/travis/trigger-travis.sh"
-    agents:
-      queue: "automation-basic-builder-fleet"
       
   - wait
 
