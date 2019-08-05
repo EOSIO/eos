@@ -1,0 +1,9 @@
+steps:
+
+  - label: ":ubuntu: Ubuntu 18.04 - Build"
+    command:
+      - echo "Got Here."
+    agents:
+      queue: "automation-eos-builder-fleet"
+    timeout: $BUILD_TIMEOUT
+    skip: $SKIP_UBUNTU_18
