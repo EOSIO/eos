@@ -24,11 +24,26 @@
 namespace eosio {
    static appbase::abstract_plugin& _launcher_service_plugin = app().register_plugin<launcher_service_plugin>();
 
-   using namespace launcher_service;
    namespace bfs = boost::filesystem;
    namespace bp = boost::process;
    namespace bpo = boost::program_options;
+   using namespace chain;
 
+   namespace launcher_service {
+      action create_newaccount(const name& creator, const name& accname, public_key_type owner, public_key_type active) {
+         return action {
+            vector<chain::permission_level>{{creator, N(active)}},
+            newaccount {
+               .creator      = creator,
+               .name         = accname,
+               .owner        = authority(owner),
+               .active       = authority(active)
+            }
+         };
+      }
+   }
+
+   using namespace launcher_service;
    class launcher_service_plugin_impl {
 
 public:
@@ -241,6 +256,80 @@ public:
             stop_cluster(itr.first);
          }
       }
+
+      fc::variant get_info(int cluster_id, int node_id) {
+         int port = _running_clusters[cluster_id].nodes[node_id].http_port;
+         if (port) {
+            std::string url;
+            url = "http://" + _config.host_name + ":" + itoa(port);
+            client::http::http_context context = client::http::create_http_context();
+            std::vector<std::string> headers;
+            auto sp = std::make_unique<client::http::connection_param>(context, client::http::parse_url(url) + "/v1/chain/get_info", false, headers);
+            return client::http::do_http_call(*sp, fc::variant(), true, true );      
+         }
+         throw std::string("failed to get_info, nodeos is not running");
+      }
+
+      fc::variant get_account(launcher_service::get_account_param param) {
+         int port = _running_clusters[param.cluster_id].nodes[param.node_id].http_port;
+         if (port) {
+            std::string url;
+            url = "http://" + _config.host_name + ":" + itoa(port);
+            client::http::http_context context = client::http::create_http_context();
+            std::vector<std::string> headers;
+            auto sp = std::make_unique<client::http::connection_param>(context, client::http::parse_url(url) + "/v1/chain/get_account", false, headers);
+            return client::http::do_http_call(*sp, fc::mutable_variant_object("account_name", param.name), true, true );      
+         }
+         throw std::string("failed to get_account, nodeos is not running");
+      }
+
+      fc::variant push_transaction(int cluster_id, int node_id, signed_transaction& trx, 
+                                   packed_transaction::compression_type compression = packed_transaction::compression_type::none ) {
+         int port = _running_clusters[cluster_id].nodes[node_id].http_port;
+         std::string url = "http://" + _config.host_name + ":" + itoa(port);
+         fc::variant info_ = get_info(cluster_id, node_id);
+         eosio::chain_apis::read_only::get_info_results info = info_.as<eosio::chain_apis::read_only::get_info_results>();
+
+         if (trx.signatures.size() == 0) { 
+            trx.expiration = info.head_block_time + fc::seconds(30);
+
+            // Set tapos, default to last irreversible block if it's not specified by the user
+            block_id_type ref_block_id = info.last_irreversible_block_id;
+            trx.set_reference_block(ref_block_id);
+
+           // if (tx_force_unique) {
+           //    trx.context_free_actions.emplace_back( generate_nonce_action() );
+           // }
+
+            trx.max_cpu_usage_ms = 30;
+            trx.max_net_usage_words = 50000;
+            trx.delay_sec = 0;
+         }
+         //auto required_keys = determine_required_keys(trx);
+         //sign_transaction(trx, required_keys, info.chain_id);
+         trx.sign(_config.default_key, info.chain_id);
+
+         client::http::http_context context = client::http::create_http_context();
+         std::vector<std::string> headers;
+         auto sp = std::make_unique<client::http::connection_param>(context, client::http::parse_url(url) + "/v1/chain/push_transaction", false, headers);
+         return client::http::do_http_call(*sp, fc::variant(packed_transaction(trx, compression)), true, true );     
+      }
+
+      fc::variant push_actions(int cluster_id, int node_id, std::vector<chain::action>&& actions, packed_transaction::compression_type compression = packed_transaction::compression_type::none ) {
+         signed_transaction trx;
+         trx.actions = std::forward<decltype(actions)>(actions);
+
+         return push_transaction(cluster_id, node_id, trx, compression);
+      }
+
+      fc::variant create_bios_accounts(create_bios_accounts_param param) {
+         std::vector<eosio::chain::action> actlist;
+         for (auto &a : param.accounts) {
+            actlist.push_back(create_newaccount(param.creator, a.name, a.owner, a.active));
+         }
+         return push_actions(param.cluster_id, param.node_id, std::move(actlist));
+      }
+
    };
 
 launcher_service_plugin::launcher_service_plugin():_my(new launcher_service_plugin_impl()){}
@@ -332,6 +421,26 @@ fc::variant launcher_service_plugin::stop_all_clusters() {
    try {
       _my->stop_all_clusters();
       return fc::mutable_variant_object("result", "OK");
+   } catch (boost::system::system_error& e) {
+      return fc::mutable_variant_object("exception", e.what());
+   } catch (boost::system::error_code& e) {
+      return fc::mutable_variant_object("error", e.message());
+   }
+}
+
+fc::variant launcher_service_plugin::create_bios_accounts(launcher_service::create_bios_accounts_param param) {
+   try {
+      return _my->create_bios_accounts(param);
+   } catch (boost::system::system_error& e) {
+      return fc::mutable_variant_object("exception", e.what());
+   } catch (boost::system::error_code& e) {
+      return fc::mutable_variant_object("error", e.message());
+   }
+}
+
+fc::variant launcher_service_plugin::get_account(launcher_service::get_account_param param) {
+   try {
+      return _my->get_account(param);
    } catch (boost::system::system_error& e) {
       return fc::mutable_variant_object("exception", e.what());
    } catch (boost::system::error_code& e) {

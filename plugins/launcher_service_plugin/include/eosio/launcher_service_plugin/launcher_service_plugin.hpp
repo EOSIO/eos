@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 #include <appbase/application.hpp>
+#include <eosio/chain/contract_types.hpp>
 #include <eosio/launcher_service_plugin/httpc.hpp>
 
 #include <fc/static_variant.hpp>
@@ -77,6 +78,23 @@ namespace launcher_service {
       launcher_config() : default_key(std::string("5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3")) { }
    };
 
+   struct new_account_param {
+      chain::name                    name;
+      public_key_type                owner;
+      public_key_type                active;
+   };
+   struct create_bios_accounts_param {
+      int                            cluster_id;
+      int                            node_id;
+      chain::name                    creator;
+      std::vector<new_account_param> accounts;
+   };
+
+   struct get_account_param {
+      int                            cluster_id;
+      int                            node_id;
+      chain::name                    name;
+   };
 }
 
 /**
@@ -95,12 +113,15 @@ public:
    void plugin_shutdown();
 
    fc::variant get_info(std::string url);
+   fc::variant get_account(launcher_service::get_account_param);
    fc::variant get_cluster_info(int cluster_id);
    fc::variant launch_cluster(launcher_service::cluster_def cluster_def);
    fc::variant stop_all_clusters();
    fc::variant stop_cluster(int cluster_id);
    fc::variant start_node(int cluster_id, int node_id);
    fc::variant stop_node(int cluster_id, int node_id);
+
+   fc::variant create_bios_accounts(launcher_service::create_bios_accounts_param param);
 
 private:
    std::unique_ptr<class launcher_service_plugin_impl>  _my;
@@ -110,3 +131,6 @@ private:
 
 FC_REFLECT(eosio::launcher_service::node_def, (node_id)(producers)(producing_keys)(extra_configs)(dont_start) )
 FC_REFLECT(eosio::launcher_service::cluster_def, (shape)(cluster_id)(node_count)(nodes)(extra_configs)(extra_args) )
+FC_REFLECT(eosio::launcher_service::new_account_param, (name)(owner)(active))
+FC_REFLECT(eosio::launcher_service::create_bios_accounts_param, (cluster_id)(node_id)(creator)(accounts))
+FC_REFLECT(eosio::launcher_service::get_account_param, (cluster_id)(node_id)(name))
