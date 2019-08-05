@@ -192,7 +192,6 @@ namespace eosio {
 
       void recv_block(const connection_ptr& conn, const block_id_type& msg, uint32_t bnum);
       void expire_blocks( uint32_t bnum );
-      void recv_transaction(const connection_ptr& conn, const packed_transaction_ptr& txn);
       void recv_notice(const connection_ptr& conn, const notice_message& msg, bool generated);
 
       void retry_fetch(const connection_ptr& conn);
@@ -2027,11 +2026,6 @@ namespace eosio {
       } );
    }
 
-   void dispatch_manager::recv_transaction(const connection_ptr& c, const packed_transaction_ptr& txn) {
-      node_transaction_state nts = {txn->id(), txn->expiration(), 0, c->connection_id};
-      add_peer_txn( nts );
-   }
-
    void dispatch_manager::rejected_transaction(const transaction_id_type& id, uint32_t head_blk_num) {
       fc_dlog( logger, "not sending rejected transaction ${tid}", ("tid", id) );
       // keep rejected transaction around for awhile so we don't broadcast it
@@ -2806,7 +2800,9 @@ namespace eosio {
       peer_dlog( this, "received packed_transaction ${id}", ("id", tid) );
 
       bool have_trx = my_impl->dispatcher->have_txn( tid );
-      my_impl->dispatcher->recv_transaction( shared_from_this(), trx );
+      node_transaction_state nts = {tid, trx->expiration(), 0, connection_id};
+      my_impl->dispatcher->add_peer_txn( nts );
+
       if( have_trx ) {
          fc_dlog( logger, "got a duplicate transaction - dropping ${id}", ("id", tid) );
          return;
