@@ -15,7 +15,7 @@ SHORT_POLLING_CONFIRMATION_INTERVAL = 60
 
 SHORT_POLLING_EVENTS_INTERVAL = 5  # secs
 
-REM_SWAP_ACCOUNT = 'rem.swap'  # 'rem.swap'
+REM_SWAP_ACCOUNT = 'remio.swap'  # 'rem.swap'
 PROCESS_SWAP_ACTION = 'processswap'
 FINISH_SWAP_ACTION = 'finishswap'
 
