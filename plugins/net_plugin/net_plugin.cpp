@@ -728,11 +728,11 @@ namespace eosio {
       void handle_message( const request_message& msg );
       void handle_message( const sync_request_message& msg );
       void handle_message( const signed_block& msg ) = delete; // signed_block_ptr overload used instead
-      void handle_message( const signed_block_ptr& msg );
+      void handle_message( const block_id_type& id, signed_block_ptr msg );
       void handle_message( const packed_transaction& msg ) = delete; // packed_transaction_ptr overload used instead
-      void handle_message( const packed_transaction_ptr& msg );
+      void handle_message( packed_transaction_ptr msg );
 
-      void process_signed_block( const signed_block_ptr& msg );
+      void process_signed_block( const block_id_type& id, signed_block_ptr msg );
 
       fc::optional<fc::variant_object> _logger_variant;
       const fc::variant_object& get_logger_variant()  {
@@ -772,16 +772,11 @@ namespace eosio {
       }
 
       void operator()( signed_block&& msg ) const {
-         // continue call to handle_message on connection strand
-         shared_ptr<signed_block> ptr = std::make_shared<signed_block>( std::move( msg ) );
-         c->handle_message( ptr );
+         EOS_ASSERT( false, plugin_config_exception, "operator()(signed_block&&) should call handle_message" );
       }
 
       void operator()( packed_transaction&& msg ) const {
-         // continue call to handle_message on connection strand
-         fc_dlog( logger, "handle packed_transaction" );
-         shared_ptr<packed_transaction> ptr = std::make_shared<packed_transaction>( std::move( msg ) );
-         c->handle_message( ptr );
+         EOS_ASSERT( false, plugin_config_exception, "operator()(packed_transaction&&) should call handle_message" );
       }
 
       void operator()( const handshake_message& msg ) const {
@@ -2409,6 +2404,7 @@ namespace eosio {
    bool connection::process_next_message( uint32_t message_length ) {
       try {
          // if next message is a block we already have, exit early
+         auto ds = pending_message_buffer.create_datastream();
          auto peek_ds = pending_message_buffer.create_peek_datastream();
          unsigned_int which{};
          fc::raw::unpack( peek_ds, which );
@@ -2427,19 +2423,25 @@ namespace eosio {
                pending_message_buffer.advance_read_ptr( message_length );
                return true;
             }
-         }
 
-         auto ds = pending_message_buffer.create_datastream();
-         net_message msg;
-         fc::raw::unpack( ds, msg );
-         msg_handler m( shared_from_this() );
-         if( msg.contains<signed_block>() ) {
-            m( std::move( msg.get<signed_block>() ) );
-         } else if( msg.contains<packed_transaction>() ) {
-            m( std::move( msg.get<packed_transaction>() ) );
+            fc::raw::unpack( ds, which ); // throw away
+            shared_ptr<signed_block> ptr = std::make_shared<signed_block>();
+            fc::raw::unpack( ds, *ptr );
+            handle_message( blk_id, std::move( ptr ) );
+
+         } else if( which == packed_transaction_which ) {
+            fc::raw::unpack( ds, which ); // throw away
+            shared_ptr<packed_transaction> ptr = std::make_shared<packed_transaction>();
+            fc::raw::unpack( ds, *ptr );
+            handle_message( std::move( ptr ) );
+
          } else {
+            net_message msg;
+            fc::raw::unpack( ds, msg );
+            msg_handler m( shared_from_this() );
             msg.visit( m );
          }
+
       } catch( const fc::exception& e ) {
          fc_elog( logger, "Exception in handling message from ${p}: ${s}",
                   ("p", peer_name())("s", e.to_detail_string()) );
@@ -2794,7 +2796,7 @@ namespace eosio {
              trx->get_signatures().size() * sizeof(signature_type);
    }
 
-   void connection::handle_message( const packed_transaction_ptr& trx ) {
+   void connection::handle_message( packed_transaction_ptr trx ) {
       if( my_impl->db_read_mode == eosio::db_read_mode::READ_ONLY ) {
          fc_dlog( logger, "got a txn in read-only mode - dropping" );
          return;
@@ -2811,9 +2813,9 @@ namespace eosio {
       }
 
       trx_in_progress_size += calc_trx_size( trx );
-      app().post( priority::low, [trx, weak = weak_from_this()]() {
+      app().post( priority::low, [trx{std::move(trx)}, weak = weak_from_this()]() {
          my_impl->chain_plug->accept_transaction( trx,
-            [weak, trx](const static_variant<fc::exception_ptr, transaction_trace_ptr>& result) {
+            [weak, trx](const static_variant<fc::exception_ptr, transaction_trace_ptr>& result) mutable {
          // next (this lambda) called from application thread
          bool accepted = false;
          if (result.contains<fc::exception_ptr>()) {
@@ -2848,18 +2850,17 @@ namespace eosio {
    }
 
    // called from connection strand
-   void connection::handle_message( const signed_block_ptr& ptr ) {
-      app().post(priority::high, [ptr, weak = weak_from_this()] {
+   void connection::handle_message( const block_id_type& id, signed_block_ptr ptr ) {
+      app().post(priority::high, [ptr{std::move(ptr)}, id, weak = weak_from_this()] {
          connection_ptr c = weak.lock();
-         if( c ) c->process_signed_block( ptr );
+         if( c ) c->process_signed_block( id, std::move( ptr ) );
       });
-      my_impl->dispatcher->bcast_notice( ptr->id() );
+      my_impl->dispatcher->bcast_notice( id );
    }
 
    // called from application thread
-   void connection::process_signed_block( const signed_block_ptr& msg ) {
+   void connection::process_signed_block( const block_id_type& blk_id, signed_block_ptr msg ) {
       controller& cc = my_impl->chain_plug->chain();
-      block_id_type blk_id = msg->id();
       uint32_t blk_num = msg->block_num();
       // use c in this method instead of this to highlight that all methods called on c-> must be thread safe
       connection_ptr c = shared_from_this();
