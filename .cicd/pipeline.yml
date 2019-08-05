@@ -103,6 +103,15 @@ steps:
     soft_fail: true
 
   - wait
+  
+  - trigger: "eosio-installation-images"
+    label: ":docker: Start EOS Installation Pipeline"
+    build:
+      commit: "${BUILDKITE_COMMIT}"
+      branch: "${BUILDKITE_BRANCH}"
+    async: true
+
+  - wait
 
   - label: ":centos: Centos 7.6 - Package Builder"
     command:
