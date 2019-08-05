@@ -149,6 +149,8 @@ namespace eosio { namespace testing {
      return control->head_block_id() == other.control->head_block_id();
    }
 
+   fc::optional<chain::wasm_interface::vm_type> base_tester::tester_runtime;
+
    void base_tester::init(const setup_policy policy, db_read_mode read_mode) {
       cfg.blocks_dir      = tempdir.path() / config::default_blocks_dir_name;
       cfg.state_dir  = tempdir.path() / config::default_state_dir_name;
@@ -162,12 +164,8 @@ namespace eosio { namespace testing {
       cfg.genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
       cfg.genesis.initial_key = get_public_key( config::system_account_name, "active" );
 
-      for(int i = 0; i < boost::unit_test::framework::master_test_suite().argc; ++i) {
-         if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--wavm"))
-            cfg.wasm_runtime = chain::wasm_interface::vm_type::wavm;
-         else if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--wabt"))
-            cfg.wasm_runtime = chain::wasm_interface::vm_type::wabt;
-      }
+      if(tester_runtime)
+         cfg.wasm_runtime = *tester_runtime;
 
       open(nullptr);
       execute_setup_policy(policy);

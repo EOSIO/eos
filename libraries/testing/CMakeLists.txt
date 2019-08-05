@@ -4,6 +4,7 @@ file(GLOB HEADERS "include/eosio/testing/*.hpp")
 add_library( eosio_testing
              tester.cpp
              tester_network.cpp
+             boost_test_init.cpp
              ${HEADERS}
         )
 

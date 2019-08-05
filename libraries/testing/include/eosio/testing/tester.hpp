@@ -97,6 +97,9 @@ namespace eosio { namespace testing {
          static const uint32_t DEFAULT_BILLED_CPU_TIME_US = 2000;
          static const fc::microseconds abi_serializer_max_time;
 
+         //set before constructing a tester to override default wasm runtime to use
+         static fc::optional<chain::wasm_interface::vm_type> tester_runtime;
+
          virtual ~base_tester() {};
 
          void              init(const setup_policy policy = setup_policy::full, db_read_mode read_mode = db_read_mode::SPECULATIVE);
@@ -395,12 +398,9 @@ namespace eosio { namespace testing {
          vcfg.genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
          vcfg.genesis.initial_key = get_public_key( config::system_account_name, "active" );
 
-         for(int i = 0; i < boost::unit_test::framework::master_test_suite().argc; ++i) {
-            if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--wavm"))
-               vcfg.wasm_runtime = chain::wasm_interface::vm_type::wavm;
-            else if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--wabt"))
-               vcfg.wasm_runtime = chain::wasm_interface::vm_type::wabt;
-         }
+         if(tester_runtime)
+            vcfg.wasm_runtime = *tester_runtime;
+
          return vcfg;
       }
 
