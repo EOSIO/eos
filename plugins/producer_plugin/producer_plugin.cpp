@@ -44,6 +44,28 @@ using std::vector;
 using std::deque;
 using boost::signals2::scoped_connection;
 
+#undef FC_LOG_AND_DROP
+#define LOG_AND_DROP()  \
+   catch ( const guard_exception& e ) { \
+      chain_plugin::handle_guard_exception(e); \
+   } catch ( boost::interprocess::bad_alloc& ) { \
+      chain_plugin::handle_db_exhaustion(); \
+   } catch( fc::exception& er ) { \
+      wlog( "${details}", ("details",er.to_detail_string()) ); \
+   } catch( const std::exception& e ) {  \
+      fc::exception fce( \
+                FC_LOG_MESSAGE( warn, "std::exception: ${what}: ",("what",e.what()) ), \
+                fc::std_exception_code,\
+                BOOST_CORE_TYPEID(e).name(), \
+                e.what() ) ; \
+      wlog( "${details}", ("details",fce.to_detail_string()) ); \
+   } catch( ... ) {  \
+      fc::unhandled_exception e( \
+                FC_LOG_MESSAGE( warn, "unknown: ",  ), \
+                std::current_exception() ); \
+      wlog( "${details}", ("details",e.to_detail_string()) ); \
+   }
+
 const fc::string logger_name("producer_plugin");
 fc::logger _log;
 
@@ -342,7 +364,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                _unapplied_transactions.add_forked( forked_branch );
             } );
          } catch ( const guard_exception& e ) {
-            chain_plug->handle_guard_exception(e);
+            chain_plugin::handle_guard_exception(e);
             return;
          } catch( const fc::exception& e ) {
             elog((e.to_detail_string()));
@@ -521,7 +543,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
             }
 
          } catch ( const guard_exception& e ) {
-            chain_plug->handle_guard_exception(e);
+            chain_plugin::handle_guard_exception(e);
          } catch ( boost::interprocess::bad_alloc& ) {
             chain_plugin::handle_db_exhaustion();
          } CATCH_AND_CALL(send_response);
@@ -703,6 +725,7 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
 { try {
    my->chain_plug = app().find_plugin<chain_plugin>();
    EOS_ASSERT( my->chain_plug, plugin_config_exception, "chain_plugin not found" );
+   chain_plugin* chain_plug = my->chain_plug;
    my->_options = &options;
    LOAD_VALUE_SET(options, "producer-name", my->_producers)
 
@@ -801,13 +824,13 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
    my->_incoming_block_subscription = app().get_channel<incoming::channels::block>().subscribe([this](const signed_block_ptr& block){
       try {
          my->on_incoming_block(block);
-      } FC_LOG_AND_DROP();
+      } LOG_AND_DROP();
    });
 
    my->_incoming_transaction_subscription = app().get_channel<incoming::channels::transaction>().subscribe([this](const transaction_metadata_ptr& trx){
       try {
          my->on_incoming_transaction_async(trx, false, [](const auto&){});
-      } FC_LOG_AND_DROP();
+      } LOG_AND_DROP();
    });
 
    my->_incoming_block_sync_provider = app().get_method<incoming::methods::block_sync>().register_provider([this](const signed_block_ptr& block){
@@ -1420,7 +1443,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
       }
 
       chain.start_block( block_time, blocks_to_confirm, features_to_activate );
-   } FC_LOG_AND_DROP();
+   } LOG_AND_DROP();
 
    if( chain.is_building_block() ) {
       auto pending_block_time = chain.pending_block_time();
@@ -1516,10 +1539,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
                      itr = _unapplied_transactions.erase( itr );
                      continue;
                   }
-               } catch( const guard_exception& e ) {
-                  chain_plug->handle_guard_exception( e );
-                  return start_block_result::failed;
-               } FC_LOG_AND_DROP();
+               } LOG_AND_DROP();
                ++itr;
             }
 
@@ -1623,10 +1643,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
                   } else {
                      num_applied++;
                   }
-               } catch ( const guard_exception& e ) {
-                  chain_plug->handle_guard_exception(e);
-                  return start_block_result::failed;
-               } FC_LOG_AND_DROP();
+               } LOG_AND_DROP();
 
                _incoming_trx_weight += _incoming_defer_ratio;
                if (!orig_pending_txn_size) _incoming_trx_weight = 0.0;
@@ -1664,6 +1681,9 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
             return start_block_result::succeeded;
          }
 
+      } catch ( const guard_exception& e ) {
+         chain_plugin::handle_guard_exception(e);
+         return start_block_result::failed;
       } catch ( boost::interprocess::bad_alloc& ) {
          chain_plugin::handle_db_exhaustion();
          return start_block_result::failed;
@@ -1788,17 +1808,9 @@ bool producer_plugin_impl::maybe_produce_block() {
    });
 
    try {
-      try {
-         produce_block();
-         return true;
-      } catch ( const guard_exception& e ) {
-         chain_plug->handle_guard_exception(e);
-         return false;
-      } FC_LOG_AND_DROP();
-   } catch ( boost::interprocess::bad_alloc&) {
-      chain_plugin::handle_db_exhaustion();
-      return false;
-   }
+      produce_block();
+      return true;
+   } LOG_AND_DROP();
 
    fc_dlog(_log, "Aborting block due to produce_block error");
    chain::controller& chain = chain_plug->chain();
