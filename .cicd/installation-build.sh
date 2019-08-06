@@ -11,6 +11,7 @@ docker login -u $DOCKERHUB_USERNAME -p $DOCKERHUB_PASSWORD
 docker run --name eos-binaries-$BUILDKITE_COMMIT -v $(pwd):/workdir -e JOBS -e ENABLE_INSTALL=true -e ENABLE_PARALLEL_TESTS=false -e ENABLE_SERIAL_TESTS=false -e TRAVIS=true $FULL_TAG
 
 docker commit eos-binaries-$BUILDKITE_COMMIT $EOS_BINARIES_TAG
+docker commit eos-binaries-$BUILDKITE_COMMIT $EOS_BINARIES_TAG-$BUILDKITE_COMMIT
 docker push $EOS_BINARIES_TAG
 docker push $EOS_BINARIES_TAG-$BUILDKITE_COMMIT
 
