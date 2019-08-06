@@ -51,18 +51,18 @@ steps:
   #         mount-buildkite-agent: false # Mounting bk-agent doesn't work, so disable it
   #         propagate-environment: true # Need for buildkite-agent upload/download (JOB_ID, etc)
 
-  - label: ":ubuntu: Ubuntu 18.04 - Build & Test"
-    agents:
-      queue: "automation-eos-builder-fleet"
-    plugins:
-      - docker#v3.2.0:
-          debug: $DEBUG
-          image: "eosio/producer:eosio-ubuntu-18.04-95fbfd396e289938076c9182f208f83c0ed5cbc5"
-          environment:
-            - "BUILDKITE_AGENT_ACCESS_TOKEN" # Needed for buildkite-agent upload/download
-            - "JOBS" # Number for -j make/ctest args.
-          mount-buildkite-agent: false # Mounting bk-agent doesn't work, so disable it
-          propagate-environment: true # Need for buildkite-agent upload/download (JOB_ID, etc)
+  # - label: ":ubuntu: Ubuntu 18.04 - Build & Test"
+  #   agents:
+  #     queue: "automation-eos-builder-fleet"
+  #   plugins:
+  #     - docker#v3.2.0:
+  #         debug: $DEBUG
+  #         image: "eosio/producer:eosio-ubuntu-18.04-95fbfd396e289938076c9182f208f83c0ed5cbc5"
+  #         environment:
+  #           - "BUILDKITE_AGENT_ACCESS_TOKEN" # Needed for buildkite-agent upload/download
+  #           - "JOBS" # Number for -j make/ctest args.
+  #         mount-buildkite-agent: false # Mounting bk-agent doesn't work, so disable it
+  #         propagate-environment: true # Need for buildkite-agent upload/download (JOB_ID, etc)
 
   # - label: ":darwin: macOS 10.14 - Build & Test"
   #   command:
@@ -88,19 +88,19 @@ steps:
   #   agents:
   #     - "queue=mac-anka-large-node-fleet"
 
-  - wait:
-    continue_on_failure: true
+  # - wait:
+  #   continue_on_failure: true
 
-  - command: |
-      echo '+++ :compression: Extracting Test Metrics Code'
-      tar -zxf .cicd/metrics/test-metrics.tar.gz
-      echo '+++ :javascript: Running test-metrics.js'
-      node --max-old-space-size=32768 test-metrics.js
-    label: ":bar_chart: Test Metrics"
-    agents:
-      queue: "automation-eos-builder-fleet"
-    timeout: 10
-    soft_fail: true
+  # - command: |
+  #     echo '+++ :compression: Extracting Test Metrics Code'
+  #     tar -zxf .cicd/metrics/test-metrics.tar.gz
+  #     echo '+++ :javascript: Running test-metrics.js'
+  #     node --max-old-space-size=32768 test-metrics.js
+  #   label: ":bar_chart: Test Metrics"
+  #   agents:
+  #     queue: "automation-eos-builder-fleet"
+  #   timeout: 10
+  #   soft_fail: true
 
   - wait
   
