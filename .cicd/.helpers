@@ -37,6 +37,13 @@ function docker_tag_exists() {
     ( [[ $EXISTS =~ '404 page not found' ]] || [[ $EXISTS =~ 'manifest unknown' ]] ) && return 1 || return 0
 }
 
+function determine_eos_version() {
+    export EOSIO_VERSION_MAJOR=$(cat /workdir/CMakeLists.txt | grep -E "^[[:blank:]]*set[[:blank:]]*\([[:blank:]]*VERSION_MAJOR" | tail -1 | sed 's/.*VERSION_MAJOR //g' | sed 's/ //g' | sed 's/"//g' | cut -d\) -f1)
+    export EOSIO_VERSION_MINOR=$(cat /workdir/CMakeLists.txt | grep -E "^[[:blank:]]*set[[:blank:]]*\([[:blank:]]*VERSION_MINOR" | tail -1 | sed 's/.*VERSION_MINOR //g' | sed 's/ //g' | sed 's/"//g' | cut -d\) -f1)
+    export EOSIO_VERSION_PATCH=$(cat /workdir/CMakeLists.txt | grep -E "^[[:blank:]]*set[[:blank:]]*\([[:blank:]]*VERSION_PATCH" | tail -1 | sed 's/.*VERSION_PATCH //g' | sed 's/ //g' | sed 's/"//g' | cut -d\) -f1)
+    export EOSIO_VERSION_SUFFIX=$(cat /workdir/CMakeLists.txt | grep -E "^[[:blank:]]*set[[:blank:]]*\([[:blank:]]*VERSION_SUFFIX" | tail -1 | sed 's/.*VERSION_SUFFIX //g' | sed 's/ //g' | sed 's/"//g' | cut -d\) -f1)
+}
+
 if [[ ! -z $IMAGE_TAG ]]; then # Darwin doesn't need hash (yet)
     determine-hash "docker/${IMAGE_TAG}.dockerfile"
     [[ -z $DETERMINED_HASH ]] && echo "DETERMINED_HASH empty! (check determine-hash function)" && exit 1
