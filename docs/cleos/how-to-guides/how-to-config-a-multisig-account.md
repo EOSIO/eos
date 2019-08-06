@@ -17,7 +17,6 @@ Setup an account that require multiple signatures for signning a transaction
   * What is a transaction
 
 
-
 ## Steps
 
 ```shell

@@ -18,5 +18,3 @@ Query infomation of a table
 ```shell
 cleos get table ACCOUNT SCOPE TABLE
 ```
-
-## Further Reading

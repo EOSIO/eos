@@ -11,7 +11,7 @@
 
 ## Steps
 
-To print the key pair to the console
+To output the key pair to the console
 
 ```shell
 cleos create key --to-console

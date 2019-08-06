@@ -13,17 +13,16 @@ List all key pairs
 
 ## Steps
 
-List all public keys:
-
-
-```bash
-cleos wallet keys
-```
-
 Unlock your wallet
 
 ```bash
 cleos wallet unlock
+```
+
+List all public keys:
+
+```bash
+cleos wallet keys
 ```
 
 List all private keys:

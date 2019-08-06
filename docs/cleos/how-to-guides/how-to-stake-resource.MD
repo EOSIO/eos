@@ -2,7 +2,7 @@
 
 ## Goal
 
-Stake resource for an account or application
+Stake resource for your account
 
 ## Before you begin
 
@@ -15,6 +15,14 @@ Stake resource for an account or application
 
 ## Steps
 
+Stake 0.01 SYS network bandwidth for `alice`
+
 ```shell
-cleos system delegatebw from_account receiving_account AMOUT_token_stake_for_net AMOUT_token_stake_cpu_quantity
+cleos system delegatebw alice alice "0 SYS" "0.01 SYS"
+```
+
+Stake 0.01 SYS CPU bandwidth for `alice`:
+
+```shell
+cleos system delegatebw alice alice "0.01 SYS" "0 SYS"
 ```
