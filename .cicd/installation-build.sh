@@ -9,7 +9,7 @@ execute docker run --name eos-binaries-$BUILDKITE_COMMIT -v $(pwd):/workdir -e J
 
 export EOS_BINARIES_TAG="eosio/producer:eos-binaries-$BUILDKITE_BRANCH-$EOSIO_VERSION_MAJOR.$EOSIO_VERSION_MINOR.$EOSIO_VERSION_PATCH"
 docker login -u $DOCKERHUB_USERNAME -p $DOCKERHUB_PASSWORD
-docker tag eos-binaries $EOS_BINARIES_TAG
+docker tag eos-binaries-$BUILDKITE_COMMIT $EOS_BINARIES_TAG
 docker push $EOS_BINARIES_TAG
 docker push $EOS_BINARIES_TAG-$BUILDKITE_COMMIT
 
