@@ -149,8 +149,6 @@ namespace eosio {
       connection_ptr sync_source;
       std::atomic<stages> sync_state;
 
-      chain_plugin* chain_plug = nullptr;
-
    private:
       constexpr static auto stage_str( stages s );
       void set_state( stages s );
@@ -1360,8 +1358,6 @@ namespace eosio {
       ,sync_source()
       ,sync_state(in_sync)
    {
-      chain_plug = app().find_plugin<chain_plugin>();
-      EOS_ASSERT( chain_plug, chain::missing_chain_plugin_exception, ""  );
    }
 
    constexpr auto sync_manager::stage_str(stages s) {
