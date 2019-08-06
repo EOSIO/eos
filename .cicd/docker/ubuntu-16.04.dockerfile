@@ -27,15 +27,6 @@ RUN git clone --single-branch --branch release_80 https://git.llvm.org/git/llvm.
     make install && \
     rm -rf /clang8
 COPY ./docker/pinned_toolchain.cmake /tmp/pinned_toolchain.cmake
-# Build appropriate version of LLVM.
-RUN git clone --depth 1 --single-branch --branch release_40 https://github.com/llvm-mirror/llvm.git llvm && \
-    cd llvm && \
-    mkdir build && \
-    cd build && \
-    cmake -DLLVM_TARGETS_TO_BUILD=host -DLLVM_BUILD_TOOLS=false -DLLVM_ENABLE_RTTI=1 -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_TOOLCHAIN_FILE='/tmp/pinned_toolchain.cmake' .. && \
-    make -j$(nproc) && \
-    make install && \
-    cd /
 # Build appropriate version of Boost.
 RUN curl -LO https://dl.bintray.com/boostorg/release/1.70.0/source/boost_1_70_0.tar.bz2 && \
     tar -xjf boost_1_70_0.tar.bz2 && \
