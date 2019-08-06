@@ -2,6 +2,4 @@
 set -eo pipefail
 . ./.helpers
 
-./.cicd/generate-base-images.sh
-
-docker run -v $(pwd):/workdir -e JOBS -e $FULL_TAG
+execute docker run -v $(pwd):/workdir -e JOBS -e ENABLE_INSTALL=true -e $FULL_TAG
