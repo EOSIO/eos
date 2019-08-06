@@ -2,7 +2,7 @@ steps:
 
   - label: ":ubuntu: Ubuntu 18.04 - Build"
     command:
-      - cd ./.cicd && bash ./.cicd/installation-build.sh
+      - cd ./.cicd && bash ./installation-build.sh
     env:
       IMAGE_TAG: "ubuntu-18.04"
     agents:
