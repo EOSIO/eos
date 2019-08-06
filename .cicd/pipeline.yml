@@ -109,6 +109,8 @@ steps:
     build:
       commit: "${BUILDKITE_COMMIT}"
       branch: "${BUILDKITE_BRANCH}"
+      env:
+        FORCE_BINARIES_BUILD: "${FORCE_BINARIES_BUILD}"
     async: true
 
   # - wait
