@@ -57,7 +57,7 @@ steps:
     plugins:
       - docker#v3.2.0:
           debug: $DEBUG
-          image: "eosio/producer:eosio-ubuntu-18.04-ccb89fe03979636296d4999e09ce8a49a23e3059"
+          image: "eosio/producer:eosio-ubuntu-18.04-95fbfd396e289938076c9182f208f83c0ed5cbc5"
           environment:
             - "BUILDKITE_AGENT_ACCESS_TOKEN" # Needed for buildkite-agent upload/download
             - "JOBS" # Number for -j make/ctest args.
