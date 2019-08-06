@@ -78,4 +78,5 @@ CMD bash -c ". /tmp/.helpers && $PRE_COMMANDS && \
     if ${ENABLE_PARALLEL_TESTS:-true}; then fold-execute ctest -j$JOBS -LE _tests --output-on-failure -T Test; fi && \
     if ${ENABLE_SERIAL_TESTS:-true}; then mkdir -p ./mongodb && fold-execute mongod --dbpath ./mongodb --fork --logpath mongod.log && fold-execute ctest -L nonparallelizable_tests --output-on-failure -T Test; fi && \
     if ${ENABLE_LR_TESTS:-false}; then fold-execute ctest -L long_running_tests --output-on-failure -T Test; fi && \
-    if ! ${TRAVIS:-false}; then cd .. && tar -pczf build.tar.gz build && buildkite-agent artifact upload build.tar.gz --agent-access-token $BUILDKITE_AGENT_ACCESS_TOKEN; fi"
+    if ! ${TRAVIS:-false}; then cd .. && tar -pczf build.tar.gz build && buildkite-agent artifact upload build.tar.gz --agent-access-token $BUILDKITE_AGENT_ACCESS_TOKEN; fi && \
+    if ${ENABLE_INSTALL:-false}; then fold-execute make install && nodeos --version; fi"
