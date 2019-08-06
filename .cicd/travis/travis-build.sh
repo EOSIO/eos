@@ -15,5 +15,5 @@ if [[ "$(uname)" == Darwin ]]; then
     if ${ENABLE_LR_TESTS:-false}; then fold-execute ctest -L long_running_tests --output-on-failure -T Test; fi
 else # linux
     DOCKER_RUN_EXTRAS="-e ENABLE_PACKAGE_BUILDER=false" # Travis doesn't need to test or push packages
-    execute eval docker run --rm -v $(pwd):/workdir -v /usr/lib/ccache -v $HOME/.ccache:/opt/.ccache -e JOBS -e CCACHE_DIR=/opt/.ccache -e TRAVIS $DOCKER_RUN_EXTRAS $FULL_TAG
+    execute eval docker run --rm -v $(pwd):/workdir -v $HOME/.ccache:/opt/.ccache -e JOBS -e CCACHE_DIR=/opt/.ccache -e TRAVIS $DOCKER_RUN_EXTRAS $FULL_TAG
 fi
