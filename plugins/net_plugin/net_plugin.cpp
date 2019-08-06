@@ -2408,11 +2408,10 @@ namespace eosio {
 
             block_id_type blk_id = bh.id();
             if( my_impl->dispatcher->have_block( blk_id ) ) {
-               connection_ptr c = shared_from_this();
                fc_dlog( logger, "canceling wait on ${p}, already received block ${num}",
-                        ("p", c->peer_name())("num", block_header::num_from_id( blk_id )) );
-               c->consecutive_rejected_blocks = 0;
-               c->cancel_wait();
+                        ("p", peer_name())("num", block_header::num_from_id( blk_id )) );
+               consecutive_rejected_blocks = 0;
+               cancel_wait();
 
                pending_message_buffer.advance_read_ptr( message_length );
                return true;
