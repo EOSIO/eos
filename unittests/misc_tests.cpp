@@ -845,16 +845,16 @@ BOOST_AUTO_TEST_CASE(transaction_metadata_test) { try {
       auto fut = transaction_metadata::start_recover_keys( ptrx, thread_pool.get_executor(), test.control->get_chain_id(), fc::microseconds::maximum() );
       auto fut2 = transaction_metadata::start_recover_keys( ptrx2, thread_pool.get_executor(), test.control->get_chain_id(), fc::microseconds::maximum() );
 
-      // no-op
+      // start another key reovery on same packed_transaction, creates a new future with transaction_metadata, should not interfere with above
       transaction_metadata::start_recover_keys( ptrx, thread_pool.get_executor(), test.control->get_chain_id(), fc::microseconds::maximum() );
       transaction_metadata::start_recover_keys( ptrx2, thread_pool.get_executor(), test.control->get_chain_id(), fc::microseconds::maximum() );
 
       auto mtrx = fut.get();
-      const auto& keys = mtrx->recovered_keys( );
+      const auto& keys = mtrx->recovered_keys();
       BOOST_CHECK_EQUAL(1u, keys.size());
       BOOST_CHECK_EQUAL(public_key, *keys.begin());
 
-      // again
+      // again, can be called multiple times, current implementation it is just an attribute of transaction_metadata
       const auto& keys2 = mtrx->recovered_keys();
       BOOST_CHECK_EQUAL(1u, keys2.size());
       BOOST_CHECK_EQUAL(public_key, *keys2.begin());
