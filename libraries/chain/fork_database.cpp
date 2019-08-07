@@ -125,12 +125,8 @@ namespace eosio { namespace chain {
             for( uint32_t i = 0, n = size.value; i < n; ++i ) {
                block_state s;
                fc::raw::unpack( ds, s );
-               for( const auto& receipt : s.block->transactions ) {
-                  if( receipt.trx.contains<packed_transaction>() ) {
-                     const auto& pt = receipt.trx.get<packed_transaction>();
-                     s.trxs.push_back( transaction_metadata::create_no_recover_keys( pt, transaction_metadata::trx_type::input ) );
-                  }
-               }
+               // do not populate transaction_metadatas, they will be created as needed in apply_block with appropriate key recovery
+               s.trxs.clear(); // not part of fc_reflect, so should be empty here
                s.header_exts = s.block->validate_and_extract_header_extensions();
                my->add( std::make_shared<block_state>( move( s ) ), false, true, validator );
             }
