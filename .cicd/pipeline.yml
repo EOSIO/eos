@@ -73,7 +73,7 @@ steps:
       - "if ${ENABLE_PARALLEL_TESTS:-true}; then cd eos/build && ctest -j$(getconf _NPROCESSORS_ONLN) -LE _tests --output-on-failure -T Test; fi"
       - "if ${ENABLE_SERIAL_TESTS:-true}; then cd eos/build && mkdir -p ./mongodb && mongod --dbpath ./mongodb --fork --logpath mongod.log && ctest -L nonparallelizable_tests --output-on-failure -T Test; fi"
       - "if ${ENABLE_LR_TESTS:-false}; then cd eos/build && ctest -L long_running_tests --output-on-failure -T Test; fi"
-      - "cd eos && tar -pczf build.tar.gz build && buildkite-agent artifact upload build.tar.gz"
+      - "cd eos && echo $(pkill mongod || :) && tar -pczf build.tar.gz build && buildkite-agent artifact upload build.tar.gz"
     plugins:
       - chef/anka#v0.5.1:
           no-volume: true
