@@ -226,7 +226,7 @@ class privileged_api : public context_aware_api {
          return context.control.set_proposed_producers( std::move(producers) );
       }
 
-      int64_t set_proposed_producers( array_ptr<char> packed_producer_schedule, size_t datalen) {
+      int64_t set_proposed_producers( array_ptr<char> packed_producer_schedule, uint32_t datalen) {
          datastream<const char*> ds( packed_producer_schedule, datalen );
          vector<producer_authority> producers;
 
@@ -243,7 +243,7 @@ class privileged_api : public context_aware_api {
          return set_proposed_producers_common(std::move(producers));
       }
 
-      int64_t set_proposed_producers_ex( uint64_t packed_producer_format, array_ptr<char> packed_producer_schedule, size_t datalen) {
+      int64_t set_proposed_producers_ex( uint64_t packed_producer_format, array_ptr<char> packed_producer_schedule, uint32_t datalen) {
          if (packed_producer_format == 0) {
             return set_proposed_producers(packed_producer_schedule, datalen);
          } else if (packed_producer_format == 1) {
@@ -257,7 +257,7 @@ class privileged_api : public context_aware_api {
          }
       }
 
-      uint32_t get_blockchain_parameters_packed( array_ptr<char> packed_blockchain_parameters, size_t buffer_size) {
+      uint32_t get_blockchain_parameters_packed( array_ptr<char> packed_blockchain_parameters, uint32_t buffer_size) {
          auto& gpo = context.control.get_global_properties();
 
          auto s = fc::raw::pack_size( gpo.configuration );
