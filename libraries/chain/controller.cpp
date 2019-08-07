@@ -365,6 +365,7 @@ struct controller_impl {
    }
 
    void log_irreversible() {
+      elog( "start log_irreversible" );
       EOS_ASSERT( fork_db.root(), fork_database_exception, "fork database not properly initialized" );
 
       const auto& log_head = blog.head();
@@ -421,6 +422,7 @@ struct controller_impl {
       if( root_id != fork_db.root()->id ) {
          fork_db.advance_root( root_id );
       }
+      elog( "stop log_irreversible" );
    }
 
    /**
