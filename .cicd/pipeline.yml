@@ -57,7 +57,7 @@ steps:
     plugins:
       - docker#v3.2.0:
           debug: $DEBUG
-          image: "eosio/producer:eosio-ubuntu-18.04-ccb89fe03979636296d4999e09ce8a49a23e3059"
+          image: "eosio/producer:eosio-ubuntu-18.04-b6f49042288158f36dfa668ac15300f6ed9750fb"
           environment:
             - "BUILDKITE_AGENT_ACCESS_TOKEN" # Needed for buildkite-agent upload/download
             - "JOBS" # Number for -j make/ctest args.
@@ -101,6 +101,17 @@ steps:
       queue: "automation-eos-builder-fleet"
     timeout: 10
     soft_fail: true
+
+  - wait
+  
+  - trigger: "eosio-installation-images"
+    label: ":docker: Start EOS Installation Pipeline"
+    build:
+      commit: "${BUILDKITE_COMMIT}"
+      branch: "${BUILDKITE_BRANCH}"
+      env:
+        FORCE_BINARIES_BUILD: "${FORCE_BINARIES_BUILD}"
+    async: true
 
   - wait
 
