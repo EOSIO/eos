@@ -47,6 +47,9 @@ using boost::signals2::scoped_connection;
 #define LOG_AND_DROP()  \
    catch ( const guard_exception& e ) { \
       chain_plugin::handle_guard_exception(e); \
+   } catch ( const std::bad_alloc& ) { \
+      elog( "std::bad_alloc" ); \
+      throw; \
    } catch ( boost::interprocess::bad_alloc& ) { \
       chain_plugin::handle_db_exhaustion(); \
    } catch( fc::exception& er ) { \
