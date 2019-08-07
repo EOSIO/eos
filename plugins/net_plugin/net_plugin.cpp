@@ -2811,9 +2811,9 @@ namespace eosio {
       }
 
       trx_in_progress_size += calc_trx_size( trx );
-//      app().post( priority::low, [trx, weak = weak_from_this()]() {
+      app().post( priority::low, [trx, weak = weak_from_this()]() {
          my_impl->chain_plug->accept_transaction( trx,
-            [weak = weak_from_this(), trx](const static_variant<fc::exception_ptr, transaction_trace_ptr>& result) {
+            [weak, trx](const static_variant<fc::exception_ptr, transaction_trace_ptr>& result) {
          // next (this lambda) called from application thread
          bool accepted = false;
          if (result.contains<fc::exception_ptr>()) {
@@ -2843,7 +2843,7 @@ namespace eosio {
                conn->trx_in_progress_size -= calc_trx_size( trx );
             }
          });
-//        });
+        });
       });
    }
 
