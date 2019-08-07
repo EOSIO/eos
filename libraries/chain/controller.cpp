@@ -1730,10 +1730,13 @@ struct controller_impl {
          auto producer_block_id = b->id();
          start_block( b->timestamp, b->confirmed, new_protocol_feature_activations, s, producer_block_id);
 
+         const bool existing_trxs_metas = !bsp->trxs.empty();
          std::vector<recover_keys_future> trx_futures;
          std::vector<transaction_metadata_ptr> trx_metas;
          const bool skip_auth_checks = self.skip_auth_check();
-         if( skip_auth_checks ) {
+         if( existing_trxs_metas ) {
+            trx_metas = std::move( bsp->trxs );
+         } else if( skip_auth_checks ) {
             trx_metas.reserve( b->transactions.size() );
             for( const auto& receipt : b->transactions ) {
                if( receipt.trx.contains<packed_transaction>()) {
@@ -1759,7 +1762,7 @@ struct controller_impl {
             const auto& trx_receipts = pending->_block_stage.get<building_block>()._pending_trx_receipts;
             auto num_pending_receipts = trx_receipts.size();
             if( receipt.trx.contains<packed_transaction>() ) {
-               if( skip_auth_checks ) {
+               if( skip_auth_checks || existing_trxs_metas ) {
                   trace = push_transaction( trx_metas.at( packed_idx++ ), fc::time_point::maximum(), receipt.cpu_usage_us, true );
                } else {
                   trace = push_transaction( trx_futures.at( packed_idx++ ).get(), fc::time_point::maximum(), receipt.cpu_usage_us, true );
@@ -1799,18 +1802,9 @@ struct controller_impl {
          EOS_ASSERT( producer_block_id == ab._id, block_validate_exception, "Block ID does not match",
                      ("producer_block_id",producer_block_id)("validator_block_id",ab._id) );
 
-         auto bsp = std::make_shared<block_state>(
-                        std::move( ab._pending_block_header_state ),
-                        b,
-                        std::move( ab._trx_metas ),
-                        protocol_features.get_protocol_feature_set(),
-                        []( block_timestamp_type timestamp,
-                            const flat_set<digest_type>& cur_features,
-                            const vector<digest_type>& new_features )
-                        {}, // validation of any new protocol features should have already occurred prior to apply_block
-                        true // signature should have already been verified (assuming untrusted) prior to apply_block
-                    );
-
+         // create completed block with existing block_state along with newly created transaction_metadata as
+         // the newly created may contain recovered keys
+         bsp->trxs = std::move( ab._trx_metas );
          pending->_block_stage = completed_block{ bsp };
 
          commit_block(false);
