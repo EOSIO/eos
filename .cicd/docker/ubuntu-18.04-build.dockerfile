@@ -1,7 +1,7 @@
 FROM eosio/producer:eosio-ubuntu-18.04-d1248048f40158965ff9876c0c21ac728bb82da6
 COPY . /eos
 ENV CCACHE_DIR=/opt/.ccache
-ENV EOSIO_ROOT='/eos'
+ENV EOSIO_ROOT='/usr/local'
 ENV ENABLE_PARALLEL_TESTS=false
 ENV ENABLE_SERIAL_TESTS=false
 ENV ENABLE_INSTALL=true

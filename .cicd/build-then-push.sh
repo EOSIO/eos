@@ -1,6 +1,6 @@
 #!/bin/bash
 set -e
-. ./.helpers
+. ./.cicd/.helpers
 # build
 execute docker build -f ./.cicd/ubuntu-18.04-build.dockerfile -t eosio/ci-contracts-builder:base-ubuntu-18.04-$(git log | head -n 1 | awk '{print $2}') .
 # push
