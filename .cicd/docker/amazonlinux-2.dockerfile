@@ -75,21 +75,3 @@ RUN curl -LO http://download-ib01.fedoraproject.org/pub/epel/7/x86_64/Packages/c
 # Install Buildkite Agent
 RUN echo -e "[buildkite-agent]\nname = Buildkite Pty Ltd\nbaseurl = https://yum.buildkite.com/buildkite-agent/stable/x86_64/\nenabled=1\ngpgcheck=0\npriority=1" > /etc/yum.repos.d/buildkite-agent.repo && \
   yum -y install buildkite-agent
-
-# PRE_COMMANDS: Executed pre-cmake
-# CMAKE_EXTRAS: Executed right before the cmake path (on the end)
-ENV PRE_COMMANDS="export PATH=/usr/lib64/ccache:\$PATH"
-ENV CMAKE_EXTRAS="-DCMAKE_CXX_COMPILER='clang++' -DCMAKE_C_COMPILER='clang'"
-
-# Bring in helpers that provides execute function so we can get better logging in BK and TRAV
-COPY ./docker/.logging-helpers /tmp/.helpers
-
-CMD bash -c ". /tmp/.helpers && $PRE_COMMANDS && \
-    fold-execute ccache -s && \
-    mkdir /workdir/build && cd /workdir/build && fold-execute cmake -DCMAKE_BUILD_TYPE='Release' -DCORE_SYMBOL_NAME='SYS' -DOPENSSL_ROOT_DIR='/usr/include/openssl' -DBUILD_MONGO_DB_PLUGIN=true $CMAKE_EXTRAS /workdir && \
-    fold-execute make -j $JOBS && \
-    if ${ENABLE_PARALLEL_TESTS:-true}; then fold-execute ctest -j$JOBS -LE _tests --output-on-failure -T Test; fi && \
-    if ${ENABLE_SERIAL_TESTS:-true}; then mkdir -p ./mongodb && fold-execute mongod --dbpath ./mongodb --fork --logpath mongod.log && fold-execute ctest -L nonparallelizable_tests --output-on-failure -T Test; fi && \
-    if ${ENABLE_LR_TESTS:-false}; then fold-execute ctest -L long_running_tests --output-on-failure -T Test; fi && \
-    if ! ${TRAVIS:-false}; then cd .. && echo $(pkill mongod || :) && tar -pczf build.tar.gz build && buildkite-agent artifact upload build.tar.gz --agent-access-token $BUILDKITE_AGENT_ACCESS_TOKEN; fi && \
-    if ${ENABLE_INSTALL:-false}; then fold-execute make install; fi"

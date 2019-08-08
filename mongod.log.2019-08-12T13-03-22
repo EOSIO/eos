@@ -1,0 +1,14 @@
+2019-08-12T13:03:00.430+0000 I CONTROL  [initandlisten] MongoDB starting : pid=16 port=27017 dbpath=/workdir/./mongodb 64-bit host=322e0a8c3eed
+2019-08-12T13:03:00.431+0000 I CONTROL  [initandlisten] db version v3.6.3
+2019-08-12T13:03:00.432+0000 I CONTROL  [initandlisten] git version: 9586e557d54ef70f9ca4b43c26892cd55257e1a5
+2019-08-12T13:03:00.433+0000 I CONTROL  [initandlisten] OpenSSL version: OpenSSL 1.0.0-fips 29 Mar 2010
+2019-08-12T13:03:00.434+0000 I CONTROL  [initandlisten] allocator: tcmalloc
+2019-08-12T13:03:00.435+0000 I CONTROL  [initandlisten] modules: none
+2019-08-12T13:03:00.436+0000 I CONTROL  [initandlisten] build environment:
+2019-08-12T13:03:00.438+0000 I CONTROL  [initandlisten]     distmod: amazon
+2019-08-12T13:03:00.439+0000 I CONTROL  [initandlisten]     distarch: x86_64
+2019-08-12T13:03:00.440+0000 I CONTROL  [initandlisten]     target_arch: x86_64
+2019-08-12T13:03:00.441+0000 I CONTROL  [initandlisten] options: { processManagement: { fork: true }, storage: { dbPath: "./mongodb" }, systemLog: { destination: "file", path: "mongod.log" } }
+2019-08-12T13:03:00.443+0000 I STORAGE  [initandlisten] exception in initAndListen: NonExistentPath: Data directory /workdir/./mongodb not found., terminating
+2019-08-12T13:03:00.444+0000 I CONTROL  [initandlisten] now exiting
+2019-08-12T13:03:00.445+0000 I CONTROL  [initandlisten] shutting down with code:100
