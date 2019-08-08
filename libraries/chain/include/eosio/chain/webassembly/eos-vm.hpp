@@ -20,16 +20,17 @@ namespace eosio { namespace vm {
 namespace eosio { namespace vm {
    template <>
    struct wasm_type_converter<chain::name> {
-      template <typename T>
-      static chain::name from_wasm(uint64_t val, T&& wasm_mod) { return chain::name{(uint64_t)val}; }
-      template <typename T>
-      static uint64_t    to_wasm(chain::name val, T&& wasm_mod) { return val.to_uint64_t(); }
+      template <typename Walloc>
+      static chain::name from_wasm(uint64_t val, Walloc) { return chain::name{(uint64_t)val}; }
+      template <typename Walloc>
+      static uint64_t    to_wasm(chain::name val, Walloc) { return val.to_uint64_t(); }
    };
-   
    template <typename T>
    struct wasm_type_converter<eosio::chain::array_ptr<T>> {
-      //template <typename T>
-      //static eosio::chain::array_ptr<T> from_wasm(
+      template <typename Walloc>
+      static T* from_wasm(uint32_t val, Walloc&& walloc) { return (T*)(walloc.get_base_ptr() + val); }
+      template <typename Walloc>
+      static uint32_t to_wasm(eosio::chain::array_ptr<T> val) { return walloc.get_base_ptr() - val.value; }
    };
    /*
    // we can clean these up if we go with custom vms
