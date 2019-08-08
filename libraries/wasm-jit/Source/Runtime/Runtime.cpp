@@ -40,20 +40,6 @@ namespace Runtime
 		throw Exception {cause,describeCallStack(callStack)};
 	}
 
-	bool isA(ObjectInstance* object,const ObjectType& type)
-	{
-		if(type.kind != object->kind) { return false; }
-
-		switch(type.kind)
-		{
-		case ObjectKind::function: return asFunctionType(type) == asFunction(object)->type;
-		case ObjectKind::global: return asGlobalType(type) == asGlobal(object)->type;
-		case ObjectKind::table: return isSubset(asTableType(type),asTable(object)->type);
-		case ObjectKind::memory: return isSubset(asMemoryType(type),asMemory(object)->type);
-		default: Errors::unreachable();
-		}
-	}
-
 	[[noreturn]] void handleHardwareTrap(Platform::HardwareTrapType trapType,Platform::CallStack&& trapCallStack,Uptr trapOperand)
 	{
       std::cerr << "handle hardware trap\n";
