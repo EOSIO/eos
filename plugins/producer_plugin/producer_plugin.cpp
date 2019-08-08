@@ -48,8 +48,7 @@ using boost::signals2::scoped_connection;
    catch ( const guard_exception& e ) { \
       chain_plugin::handle_guard_exception(e); \
    } catch ( const std::bad_alloc& ) { \
-      elog( "std::bad_alloc" ); \
-      throw; \
+      chain_plugin::handle_bad_alloc(); \
    } catch ( boost::interprocess::bad_alloc& ) { \
       chain_plugin::handle_db_exhaustion(); \
    } catch( fc::exception& er ) { \
@@ -384,9 +383,10 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          } catch( const fc::exception& e ) {
             elog((e.to_detail_string()));
             except = true;
+         } catch ( const std::bad_alloc& ) {
+            chain_plugin::handle_bad_alloc();
          } catch ( boost::interprocess::bad_alloc& ) {
             chain_plugin::handle_db_exhaustion();
-            return;
          }
 
          if( except ) {
@@ -511,6 +511,8 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
             chain_plugin::handle_guard_exception(e);
          } catch ( boost::interprocess::bad_alloc& ) {
             chain_plugin::handle_db_exhaustion();
+         } catch ( std::bad_alloc& ) {
+            chain_plugin::handle_bad_alloc();
          } CATCH_AND_CALL(send_response);
       }
 
@@ -1643,6 +1645,8 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
 
          }
 
+         if( app().is_quiting() ) // db guard exception above in LOG_AND_DROP could have called app().quit()
+            return start_block_result::failed;
          if (exhausted || preprocess_deadline <= fc::time_point::now()) {
             return start_block_result::exhausted;
          } else {
@@ -1665,9 +1669,10 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
       } catch ( const guard_exception& e ) {
          chain_plugin::handle_guard_exception(e);
          return start_block_result::failed;
+      } catch ( std::bad_alloc& ) {
+         chain_plugin::handle_bad_alloc();
       } catch ( boost::interprocess::bad_alloc& ) {
          chain_plugin::handle_db_exhaustion();
-         return start_block_result::failed;
       }
 
    }
