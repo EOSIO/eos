@@ -377,6 +377,7 @@ namespace eosio { namespace chain {
 
    uint64_t block_log::append(const signed_block_ptr& b) {
       try {
+         elog( "start append" );
          EOS_ASSERT( my->genesis_written_to_block_log, block_log_append_fail, "Cannot append to block log until the genesis is first written" );
 
          my->check_open_files();
@@ -389,15 +390,20 @@ namespace eosio { namespace chain {
                    "Append to index file occuring at wrong position.",
                    ("position", (uint64_t) my->index_file.tellp())
                    ("expected", (b->block_num() - my->first_block_num) * sizeof(uint64_t)));
+         elog( "before pack" );
          auto data = fc::raw::pack(*b);
+         elog( "after pack, before write" );
          my->block_file.write(data.data(), data.size());
          my->block_file.write((char*)&pos, sizeof(pos));
          my->index_file.write((char*)&pos, sizeof(pos));
          my->head = b;
          my->head_id = b->id();
 
+         elog( "after write, before flush" );
          flush();
+         elog( "after flush" );
 
+         elog( "end append" );
          return pos;
       }
       FC_LOG_AND_RETHROW()
