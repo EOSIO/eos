@@ -702,9 +702,7 @@ BOOST_FIXTURE_TEST_CASE( table_init_oob, TESTER ) try {
       
       //the unspecified_exception_code comes from WAVM, which manages to throw a WAVM specific exception
       // up to where exec_one captures it and doesn't understand it
-      BOOST_CHECK_EXCEPTION(push_transaction(trx), fc::exception, [](auto& e) {
-         return e.code() == unspecified_exception_code || e.code() == wasm_execution_error::code_value;
-      });
+      BOOST_CHECK_THROW(push_transaction(trx), eosio::chain::wasm_execution_error);
    };
 
    set_code(N(tableinitoob), table_init_oob_wast);
