@@ -248,7 +248,9 @@ namespace eosio { namespace chain {
                    "Append to index file occuring at wrong position.",
                    ("position", (uint64_t) my->index_stream.tellp())
                    ("expected", (b->block_num() - my->first_block_num) * sizeof(uint64_t)));
+         elog( "before sb pack" );
          auto data = fc::raw::pack(*b);
+         elog( "after sb pack" );
          my->block_stream.write(data.data(), data.size());
          my->block_stream.write((char*)&pos, sizeof(pos));
          my->index_stream.write((char*)&pos, sizeof(pos));
