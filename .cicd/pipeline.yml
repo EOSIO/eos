@@ -23,8 +23,6 @@ steps:
           propagate-environment: true # Need for buildkite-agent upload/download (JOB_ID, etc)
 
   - label: ":centos: CentOS 7.6 - Build & Test"
-    command:
-      - ""
     agents:
       queue: "automation-eos-builder-fleet"
     plugins:
