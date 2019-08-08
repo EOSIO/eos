@@ -386,7 +386,9 @@ struct controller_impl {
       if( fork_head->dpos_irreversible_blocknum <= lib_num )
          return;
 
+      elog( "before fetch_branch" );
       const auto branch = fork_db.fetch_branch( fork_head->id, fork_head->dpos_irreversible_blocknum );
+      elog( "after fetch branch ");
       try {
          const auto& rbi = reversible_blocks.get_index<reversible_block_index,by_num>();
 
@@ -402,7 +404,9 @@ struct controller_impl {
             db.commit( (*bitr)->block_num );
             root_id = (*bitr)->id;
 
+            elog( "before blog.append" );
             blog.append( (*bitr)->block );
+            elog( "after blog.append" );
 
             auto rbitr = rbi.begin();
             while( rbitr != rbi.end() && rbitr->blocknum <= (*bitr)->block_num ) {
