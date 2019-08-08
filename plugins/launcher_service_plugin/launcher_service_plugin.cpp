@@ -90,7 +90,7 @@ public:
 
       launcher_config                _config;
       std::map<int, cluster_state>   _running_clusters;
-      
+
    public:
       static std::string cluster_to_string(int id) {
          char str[32];
@@ -112,7 +112,7 @@ public:
             bfs::remove_all(path);
             if (!bfs::create_directories (path, ec)) {
                throw ec;
-            } 
+            }
          }
       }
       static std::string itoa(int v) {
@@ -158,7 +158,7 @@ public:
                cfg << "private-key = [\"" << std::string(priKey.get_public_key()) << "\",\""
                   << std::string(priKey) << "\"]\n";
             }
-            
+
             if (node_config.producers.size()) {
                cfg << "private-key = [\"" << std::string(_config.default_key.get_public_key()) << "\",\""
                   << std::string(_config.default_key) << "\"]\n";
@@ -218,7 +218,7 @@ public:
 
             bfs::path pid_file_path = node_path / "pid.txt";
             bfs::ofstream pidout(pid_file_path);
-            
+
             std::string cmd = _config.nodeos_cmd;
             cmd += " --config-dir=" + node_path.string();
             cmd += " --data-dir=" + node_path.string() + "/data";
@@ -289,7 +289,7 @@ public:
             client::http::http_context context = client::http::create_http_context();
             std::vector<std::string> headers;
             auto sp = std::make_unique<client::http::connection_param>(context, client::http::parse_url(url) + "/v1/chain/get_info", false, headers);
-            return client::http::do_http_call(*sp, fc::variant(), true, true );      
+            return client::http::do_http_call(*sp, fc::variant(), true, true );
          }
          throw std::string("failed to get_info, nodeos is not running");
       }
@@ -302,7 +302,7 @@ public:
             client::http::http_context context = client::http::create_http_context();
             std::vector<std::string> headers;
             auto sp = std::make_unique<client::http::connection_param>(context, client::http::parse_url(url) + "/v1/chain/get_account", false, headers);
-            return client::http::do_http_call(*sp, fc::mutable_variant_object("account_name", param.name), true, true );      
+            return client::http::do_http_call(*sp, fc::mutable_variant_object("account_name", param.name), true, true );
          }
          throw std::string("failed to get_account, nodeos is not running");
       }
@@ -315,19 +315,19 @@ public:
             client::http::http_context context = client::http::create_http_context();
             std::vector<std::string> headers;
             auto sp = std::make_unique<client::http::connection_param>(context, client::http::parse_url(url) + "/v1/chain/get_block", false, headers);
-            return client::http::do_http_call(*sp, fc::mutable_variant_object("block_num_or_id", block_num_or_id), true, true );      
+            return client::http::do_http_call(*sp, fc::mutable_variant_object("block_num_or_id", block_num_or_id), true, true );
          }
          throw std::string("failed to get_block, nodeos is not running");
       }
 
-      fc::variant push_transaction(int cluster_id, int node_id, signed_transaction& trx, 
+      fc::variant push_transaction(int cluster_id, int node_id, signed_transaction& trx,
                                    packed_transaction::compression_type compression = packed_transaction::compression_type::none ) {
          int port = _running_clusters[cluster_id].nodes[node_id].http_port;
          std::string url = "http://" + _config.host_name + ":" + itoa(port);
          fc::variant info_ = get_info(cluster_id, node_id);
          eosio::chain_apis::read_only::get_info_results info = info_.as<eosio::chain_apis::read_only::get_info_results>();
 
-         if (trx.signatures.size() == 0) { 
+         if (trx.signatures.size() == 0) {
             trx.expiration = info.head_block_time + fc::seconds(3);
 
             // Set tapos, default to last irreversible block if it's not specified by the user
@@ -353,7 +353,7 @@ public:
          client::http::http_context context = client::http::create_http_context();
          std::vector<std::string> headers;
          auto sp = std::make_unique<client::http::connection_param>(context, client::http::parse_url(url) + "/v1/chain/push_transaction", false, headers);
-         return client::http::do_http_call(*sp, fc::variant(packed_transaction(trx, compression)), true, true );     
+         return client::http::do_http_call(*sp, fc::variant(packed_transaction(trx, compression)), true, true );
       }
 
       fc::variant push_actions(int cluster_id, int node_id, std::vector<chain::action>&& actions, packed_transaction::compression_type compression = packed_transaction::compression_type::none ) {
@@ -403,7 +403,7 @@ public:
          uint32_t lib_num = info.last_irreversible_block_num;
          uint32_t contained_blocknum = 0;
          std::string txn_id = std::string(param.transaction_id);
-         for (uint32_t x = txn_block_num; 
+         for (uint32_t x = txn_block_num;
             contained_blocknum == 0 && x <= head_block_num && x < txn_block_num + param.max_search_blocks; ++x) {
             fc::variant block_ = get_block(param.cluster_id, param.node_id, itoa(x));
             if (block_.is_object()) {
@@ -516,7 +516,7 @@ fc::variant launcher_service_plugin::get_cluster_info(int cluster_id)
       return fc::mutable_variant_object("exception", s);\
    }
 
-fc::variant launcher_service_plugin::launch_cluster(launcher_service::cluster_def def) 
+fc::variant launcher_service_plugin::launch_cluster(launcher_service::cluster_def def)
 {
    try {
       _my->launch_cluster(def);
