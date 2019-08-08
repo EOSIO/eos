@@ -72,11 +72,12 @@ namespace eosio { namespace chain {
          }
 
          long tellg() const {
-            fpos_t pos;
-            if( 0 != ::fgetpos( _file.get(), &pos ) ) {
-               throw std::runtime_error( "cfile: " + _file_path.generic_string() + " unable to fgetpos" );
-            }
-            return pos;
+            return tellp();
+//            fpos_t pos;
+//            if( 0 != ::fgetpos( _file.get(), &pos ) ) {
+//               throw std::runtime_error( "cfile: " + _file_path.generic_string() + " unable to fgetpos" );
+//            }
+//            return pos;
          }
 
          void seek( long loc ) {
