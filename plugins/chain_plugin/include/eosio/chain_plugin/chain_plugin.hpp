@@ -720,6 +720,7 @@ public:
    void do_hard_replay(const variables_map& options);
 
    static void handle_db_exhaustion();
+   static void handle_bad_alloc();
 private:
    static void log_guard_exception(const chain::guard_exception& e);
 
