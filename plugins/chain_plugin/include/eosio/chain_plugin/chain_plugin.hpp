@@ -696,6 +696,7 @@ public:
 
    static void handle_guard_exception(const chain::guard_exception& e);
    static void handle_db_exhaustion();
+   static void handle_bad_alloc();
 private:
    static void log_guard_exception(const chain::guard_exception& e);
 
