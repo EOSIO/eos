@@ -95,6 +95,22 @@ namespace launcher_service {
       int                            node_id;
       chain::name                    name;
    };
+
+   struct set_contract_param {
+      int                            cluster_id;
+      int                            node_id;
+      chain::name                    account;
+      std::string                    contract_file; // file path
+      std::string                    abi_file; // file path
+   };
+
+   struct verify_transaction_param {
+      int                            cluster_id;
+      int                            node_id;
+      chain::transaction_id_type     transaction_id;
+      int                            max_search_blocks = 7; // default expiration = 3s
+      uint32_t                       block_num_hint = 0; // required if transaction was not pushed by launcher_service
+   };
 }
 
 /**
@@ -121,7 +137,11 @@ public:
    fc::variant start_node(int cluster_id, int node_id);
    fc::variant stop_node(int cluster_id, int node_id);
 
-   fc::variant create_bios_accounts(launcher_service::create_bios_accounts_param param);
+   fc::variant create_bios_accounts(launcher_service::create_bios_accounts_param);
+   fc::variant set_contract(launcher_service::set_contract_param);
+
+   // check if transaction is included in some block
+   fc::variant verify_transaction(launcher_service::verify_transaction_param);
 
 private:
    std::unique_ptr<class launcher_service_plugin_impl>  _my;
@@ -134,3 +154,5 @@ FC_REFLECT(eosio::launcher_service::cluster_def, (shape)(cluster_id)(node_count)
 FC_REFLECT(eosio::launcher_service::new_account_param, (name)(owner)(active))
 FC_REFLECT(eosio::launcher_service::create_bios_accounts_param, (cluster_id)(node_id)(creator)(accounts))
 FC_REFLECT(eosio::launcher_service::get_account_param, (cluster_id)(node_id)(name))
+FC_REFLECT(eosio::launcher_service::set_contract_param, (cluster_id)(node_id)(account)(contract_file)(abi_file))
+FC_REFLECT(eosio::launcher_service::verify_transaction_param, (cluster_id)(node_id)(transaction_id)(max_search_blocks)(block_num_hint))

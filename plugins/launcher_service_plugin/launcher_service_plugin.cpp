@@ -14,6 +14,8 @@
 #include <boost/process/io.hpp>
 #include <boost/process/child.hpp>
 #include <fc/io/json.hpp>
+#include <fc/io/fstream.hpp>
+#include <fc/variant.hpp>
 
 #include <eosio/launcher_service_plugin/launcher_service_plugin.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
@@ -41,6 +43,26 @@ namespace eosio {
             }
          };
       }
+      action create_setabi(const name& account, const bytes& abi) {
+         return action {
+            vector<chain::permission_level>{{account, N(active)}},
+            setabi{
+               .account   = account,
+               .abi       = abi
+            }
+         };
+      }
+      action create_setcode(const name& account, const bytes& code) {
+         return action {
+            vector<chain::permission_level>{{account, N(active)}},
+            setcode{
+               .account   = account,
+               .vmtype    = 0,
+               .vmversion = 0,
+               .code      = code
+            }
+         };
+      }
    }
 
    using namespace launcher_service;
@@ -58,9 +80,12 @@ public:
          std::shared_ptr<bp::child> child;
       };
       struct cluster_state {
-         cluster_def                   def;
-         std::map<int, node_state>     nodes; // node id => node_state
+         cluster_def                                 def;
+         std::map<int, node_state>                   nodes; // node id => node_state
          std::map<public_key_type, private_key_type> imported_keys;
+
+         // possible transaction block-number for query purpose
+         std::map<transaction_id_type, uint32_t>     transaction_blocknum;
       };
 
       launcher_config                _config;
@@ -233,7 +258,6 @@ public:
             if (_running_clusters[cluster_id].nodes.find(node_id) != _running_clusters[cluster_id].nodes.end()) {
                node_state &state = _running_clusters[cluster_id].nodes[node_id];
                if (state.child && state.child->running()) {
-                  // fc_log may have been deconstructed...
                   ilog("killing pid ${p}", ("p", state.child->id()));
                   ::kill(state.child->id(), SIGKILL);
                }
@@ -245,15 +269,15 @@ public:
       }
       void stop_cluster(int cluster_id) {
          if (_running_clusters.find(cluster_id) != _running_clusters.end()) {
-            for (const auto &itr : _running_clusters[cluster_id].nodes) {
-               stop_node(cluster_id, itr.first);
+            while (_running_clusters[cluster_id].nodes.size()) { // don't use ranged for loop
+               stop_node(cluster_id, _running_clusters[cluster_id].nodes.begin()->first);
             }
             _running_clusters.erase(cluster_id);
          }
       }
       void stop_all_clusters() {
-         for (const auto &itr : _running_clusters) {
-            stop_cluster(itr.first);
+         while (_running_clusters.size()) { // don't use ranged for loop
+            stop_cluster(_running_clusters.begin()->first);
          }
       }
 
@@ -283,6 +307,19 @@ public:
          throw std::string("failed to get_account, nodeos is not running");
       }
 
+      fc::variant get_block(int cluster_id, int node_id, std::string block_num_or_id) {
+         int port = _running_clusters[cluster_id].nodes[node_id].http_port;
+         if (port) {
+            std::string url;
+            url = "http://" + _config.host_name + ":" + itoa(port);
+            client::http::http_context context = client::http::create_http_context();
+            std::vector<std::string> headers;
+            auto sp = std::make_unique<client::http::connection_param>(context, client::http::parse_url(url) + "/v1/chain/get_block", false, headers);
+            return client::http::do_http_call(*sp, fc::mutable_variant_object("block_num_or_id", block_num_or_id), true, true );      
+         }
+         throw std::string("failed to get_block, nodeos is not running");
+      }
+
       fc::variant push_transaction(int cluster_id, int node_id, signed_transaction& trx, 
                                    packed_transaction::compression_type compression = packed_transaction::compression_type::none ) {
          int port = _running_clusters[cluster_id].nodes[node_id].http_port;
@@ -291,7 +328,7 @@ public:
          eosio::chain_apis::read_only::get_info_results info = info_.as<eosio::chain_apis::read_only::get_info_results>();
 
          if (trx.signatures.size() == 0) { 
-            trx.expiration = info.head_block_time + fc::seconds(30);
+            trx.expiration = info.head_block_time + fc::seconds(3);
 
             // Set tapos, default to last irreversible block if it's not specified by the user
             block_id_type ref_block_id = info.last_irreversible_block_id;
@@ -305,9 +342,13 @@ public:
             trx.max_net_usage_words = 50000;
             trx.delay_sec = 0;
          }
+
+         // TODO
          //auto required_keys = determine_required_keys(trx);
          //sign_transaction(trx, required_keys, info.chain_id);
          trx.sign(_config.default_key, info.chain_id);
+
+         _running_clusters[cluster_id].transaction_blocknum[trx.id()] = info.head_block_num + 1;
 
          client::http::http_context context = client::http::create_http_context();
          std::vector<std::string> headers;
@@ -330,6 +371,65 @@ public:
          return push_actions(param.cluster_id, param.node_id, std::move(actlist));
       }
 
+      fc::variant set_contract(set_contract_param param) {
+         std::vector<eosio::chain::action> actlist;
+         if (param.contract_file.length()) {
+            std::string wasm;
+            fc::read_file_contents(param.contract_file, wasm);
+            actlist.push_back(create_setcode(param.account, bytes(wasm.begin(), wasm.end())));
+         }
+         if (param.abi_file.length()) {
+            bytes abi_bytes = fc::raw::pack(fc::json::from_file(param.abi_file).as<abi_def>());
+            actlist.push_back(create_setabi(param.account, abi_bytes));
+         }
+         if (actlist.size() == 0) {
+            throw std::string("contract_file and abi_file are both empty");
+         }
+         return push_actions(param.cluster_id, param.node_id, std::move(actlist));
+      }
+
+      fc::variant verify_transaction(launcher_service::verify_transaction_param param) {
+         uint32_t txn_block_num = param.block_num_hint;
+         if (!txn_block_num) {
+            auto itr = _running_clusters[param.cluster_id].transaction_blocknum.find(param.transaction_id);
+            if (itr == _running_clusters[param.cluster_id].transaction_blocknum.end()) {
+               return fc::mutable_variant_object("result", "transaction not found but block_num_hint was not given");
+            }
+            txn_block_num = itr->second;
+         }
+         fc::variant info_ = get_info(param.cluster_id, param.node_id);
+         eosio::chain_apis::read_only::get_info_results info = info_.as<eosio::chain_apis::read_only::get_info_results>();
+         uint32_t head_block_num = info.head_block_num;
+         uint32_t lib_num = info.last_irreversible_block_num;
+         uint32_t contained_blocknum = 0;
+         std::string txn_id = std::string(param.transaction_id);
+         for (uint32_t x = txn_block_num; 
+            contained_blocknum == 0 && x <= head_block_num && x < txn_block_num + param.max_search_blocks; ++x) {
+            fc::variant block_ = get_block(param.cluster_id, param.node_id, itoa(x));
+            if (block_.is_object()) {
+               const fc::variant_object& block = block_.get_object();
+               if (block.find("transactions") != block.end()) {
+                  const fc::variant &txns_ = block["transactions"];
+                  if (txns_.is_array()) {
+                     const variants &txns = txns_.get_array();
+                     for (const variant &txn : txns) {
+                        const variant &trx = txn["trx"];
+                        if (trx["id"] == txn_id) {
+                           contained_blocknum = x;
+                           break;
+                        }
+                     }
+                  }
+               }
+            }
+         }
+         return fc::mutable_variant_object("contained", contained_blocknum ? true : false)
+                                          ("irreversible", (contained_blocknum && contained_blocknum <= lib_num) ? true : false)
+                                          ("contained_block_num", contained_blocknum)
+                                          ("block_num_hint", txn_block_num)
+                                          ("head_block_num", head_block_num)
+                                          ("last_irreversible_block_num", lib_num);
+      }
    };
 
 launcher_service_plugin::launcher_service_plugin():_my(new launcher_service_plugin_impl()){}
@@ -405,48 +505,57 @@ fc::variant launcher_service_plugin::get_cluster_info(int cluster_id)
    return res.size() ? fc::mutable_variant_object("result", res) : fc::mutable_variant_object("error", "cluster is not running");
 }
 
+#define CATCH_LAUCHER_EXCEPTIONS \
+   catch (boost::system::system_error& e) { \
+      return fc::mutable_variant_object("exception", e.what());\
+   } catch (boost::system::error_code& e) {\
+      return fc::mutable_variant_object("exception", e.message());\
+   } catch (const std::string &s) {\
+      return fc::mutable_variant_object("exception", s);\
+   } catch (const char *s) {\
+      return fc::mutable_variant_object("exception", s);\
+   }
+
 fc::variant launcher_service_plugin::launch_cluster(launcher_service::cluster_def def) 
 {
    try {
       _my->launch_cluster(def);
       return fc::mutable_variant_object("result", _my->_running_clusters[def.cluster_id]);
-   } catch (boost::system::system_error& e) {
-      return fc::mutable_variant_object("exception", e.what());
-   } catch (boost::system::error_code& e) {
-      return fc::mutable_variant_object("error", e.message());
-   }
+   } CATCH_LAUCHER_EXCEPTIONS
 }
 
 fc::variant launcher_service_plugin::stop_all_clusters() {
    try {
       _my->stop_all_clusters();
       return fc::mutable_variant_object("result", "OK");
-   } catch (boost::system::system_error& e) {
-      return fc::mutable_variant_object("exception", e.what());
-   } catch (boost::system::error_code& e) {
-      return fc::mutable_variant_object("error", e.message());
-   }
+   } CATCH_LAUCHER_EXCEPTIONS
 }
 
 fc::variant launcher_service_plugin::create_bios_accounts(launcher_service::create_bios_accounts_param param) {
    try {
       return _my->create_bios_accounts(param);
-   } catch (boost::system::system_error& e) {
-      return fc::mutable_variant_object("exception", e.what());
-   } catch (boost::system::error_code& e) {
-      return fc::mutable_variant_object("error", e.message());
-   }
+   } CATCH_LAUCHER_EXCEPTIONS
 }
 
 fc::variant launcher_service_plugin::get_account(launcher_service::get_account_param param) {
    try {
       return _my->get_account(param);
-   } catch (boost::system::system_error& e) {
-      return fc::mutable_variant_object("exception", e.what());
-   } catch (boost::system::error_code& e) {
-      return fc::mutable_variant_object("error", e.message());
-   }
+   } CATCH_LAUCHER_EXCEPTIONS
 }
+
+fc::variant launcher_service_plugin::verify_transaction(launcher_service::verify_transaction_param param) {
+   try {
+      return _my->verify_transaction(param);
+   } CATCH_LAUCHER_EXCEPTIONS
+}
+
+fc::variant launcher_service_plugin::set_contract(launcher_service::set_contract_param param) {
+   try {
+      return _my->set_contract(param);
+   } CATCH_LAUCHER_EXCEPTIONS
+}
+
+#undef CATCH_LAUCHER_EXCEPTIONS
 
 }
 
