@@ -10,4 +10,8 @@ RUN bash -c "[[ -d /eos/build ]] || mkdir /eos/build ; \
     cd /eos/build && \
     cmake -DCMAKE_BUILD_TYPE='Release' -DCORE_SYMBOL_NAME='SYS' -DOPENSSL_ROOT_DIR='/usr/include/openssl' -DBUILD_MONGO_DB_PLUGIN=true .. && \
     make -j $(nproc) && \
-    make install"
+    make install && \
+    cd .. && \
+    echo $(pkill mongod || :) && \
+    tar -pczf build.tar.gz build"
+COPY /eos/build.tar.gz .
