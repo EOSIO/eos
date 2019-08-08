@@ -1264,6 +1264,12 @@ void chain_plugin::handle_db_exhaustion() {
    std::_Exit(1);
 }
 
+void chain_plugin::handle_bad_alloc() {
+   elog("std::bad_alloc - memory exhausted");
+   //return -2 -- it's what programs/nodeos/main.cpp reports for std::exception
+   std::_Exit(-2);
+}
+
 namespace chain_apis {
 
 const string read_only::KEYi64 = "i64";
@@ -1885,6 +1891,8 @@ void read_write::push_block(read_write::push_block_params&& params, next_functio
       next(read_write::push_block_results{});
    } catch ( boost::interprocess::bad_alloc& ) {
       chain_plugin::handle_db_exhaustion();
+   } catch ( const std::bad_alloc& ) {
+      chain_plugin::handle_bad_alloc();
    } CATCH_AND_CALL(next);
 }
 
@@ -1966,6 +1974,8 @@ void read_write::push_transaction(const read_write::push_transaction_params& par
       });
    } catch ( boost::interprocess::bad_alloc& ) {
       chain_plugin::handle_db_exhaustion();
+   } catch ( const std::bad_alloc& ) {
+      chain_plugin::handle_bad_alloc();
    } CATCH_AND_CALL(next);
 }
 
@@ -2000,6 +2010,8 @@ void read_write::push_transactions(const read_write::push_transactions_params& p
       push_recurse(this, 0, params_copy, result, next);
    } catch ( boost::interprocess::bad_alloc& ) {
       chain_plugin::handle_db_exhaustion();
+   } catch ( const std::bad_alloc& ) {
+      chain_plugin::handle_bad_alloc();
    } CATCH_AND_CALL(next);
 }
 
@@ -2035,6 +2047,8 @@ void read_write::send_transaction(const read_write::send_transaction_params& par
       });
    } catch ( boost::interprocess::bad_alloc& ) {
       chain_plugin::handle_db_exhaustion();
+   } catch ( const std::bad_alloc& ) {
+      chain_plugin::handle_bad_alloc();
    } CATCH_AND_CALL(next);
 }
 
