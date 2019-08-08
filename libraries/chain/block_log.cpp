@@ -257,7 +257,9 @@ namespace eosio { namespace chain {
          my->head = b;
          my->head_id = b->id();
 
+         elog( "before flush" );
          flush();
+         elog( "after flush" );
 
          return pos;
       }
