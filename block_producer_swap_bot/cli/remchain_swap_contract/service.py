@@ -30,6 +30,10 @@ class RemchainSwapContract:
         self.permission = permission
         self.private_key = private_key
 
+        host, port = self.remnode.split(':')
+        eosio_config.url = 'http://' + host
+        eosio_config.port = port
+
     def init(self, **kwargs):
         """
         Initialize swap on Remchain.
