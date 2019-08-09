@@ -71,15 +71,6 @@ namespace eosio { namespace chain {
             return ftell( _file.get() );
          }
 
-         long tellg() const {
-            return tellp();
-//            fpos_t pos;
-//            if( 0 != ::fgetpos( _file.get(), &pos ) ) {
-//               throw std::runtime_error( "cfile: " + _file_path.generic_string() + " unable to fgetpos" );
-//            }
-//            return pos;
-         }
-
          void seek( long loc ) {
             if( 0 != fseek( _file.get(), loc, SEEK_SET ) ) {
                throw std::runtime_error( "cfile: " + _file_path.generic_string() +
@@ -447,15 +438,13 @@ namespace eosio { namespace chain {
       flush();
    }
 
-   std::pair<signed_block_ptr, uint64_t> block_log::read_block(uint64_t pos)const {
+   signed_block_ptr block_log::read_block(uint64_t pos)const {
       my->check_open_files();
 
       my->block_file.seek(pos);
-      std::pair<signed_block_ptr,uint64_t> result;
-      result.first = std::make_shared<signed_block>();
+      signed_block_ptr result = std::make_shared<signed_block>();
       auto ds = my->block_file.create_datastream();
-      fc::raw::unpack(ds, *result.first);
-      result.second = uint64_t(my->block_file.tellg()) + 8;
+      fc::raw::unpack(ds, *result);
       return result;
    }
 
@@ -464,7 +453,7 @@ namespace eosio { namespace chain {
          signed_block_ptr b;
          uint64_t pos = get_block_pos(block_num);
          if (pos != npos) {
-            b = read_block(pos).first;
+            b = read_block(pos);
             EOS_ASSERT(b->block_num() == block_num, reversible_blocks_exception,
                       "Wrong block was read from block log.", ("returned", b->block_num())("expected", block_num));
          }
@@ -489,13 +478,13 @@ namespace eosio { namespace chain {
 
       // Check that the file is not empty
       my->block_file.seek_end(0);
-      if (my->block_file.tellg() <= sizeof(pos))
+      if (my->block_file.tellp() <= sizeof(pos))
          return {};
 
       my->block_file.seek_end(-sizeof(pos));
       my->block_file.read((char*)&pos, sizeof(pos));
       if (pos != npos) {
-         return read_block(pos).first;
+         return read_block(pos);
       } else {
          return {};
       }
