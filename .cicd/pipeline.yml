@@ -101,15 +101,11 @@ steps:
     timeout: 10
     soft_fail: true
 
-  - wait
-  
-  - trigger: "eosio-installation-images"
-    label: ":docker: Start EOS Installation Pipeline"
+  - trigger: "eosio-dot-contracts-base-images-beta"
+    label: ":docker: Create eosio.contracts Base Images Pipeline"
     build:
       commit: "${BUILDKITE_COMMIT}"
       branch: "${BUILDKITE_BRANCH}"
-      env:
-        FORCE_BINARIES_BUILD: "${FORCE_BINARIES_BUILD}"
     async: true
 
   - wait
