@@ -34,11 +34,11 @@ def print_errors(errors):
     click.secho(dict_to_pretty_json({'errors': errors}), blink=True, bold=True, fg='red')
 
 
-def get_default_cleos():
+def get_default_remnode():
     """
-    Get default cleos from config file.
+    Get default remnode from config file.
     """
-    return config_file.get_cleos()
+    return config_file.get_remnode()
 
 
 def get_default_eth_provider():
@@ -53,3 +53,10 @@ def get_block_producer_permission():
     Get block producer permission to sign process-swap transactions.
     """
     return config_file.get_block_producer_permission()
+
+
+def get_block_producer_private_key():
+    """
+    Get block producer private key to sign process-swap transactions.
+    """
+    return config_file.get_block_producer_private_key()

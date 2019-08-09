@@ -1,13 +1,15 @@
 """
 Provide implementation of the remchain_swap_contract.
 """
-import subprocess
-
 from cli.constants import (
-    FINISH_SWAP_ACTION,
-    PROCESS_SWAP_ACTION,
+    INIT_SWAP_ACTION,
     REM_SWAP_ACCOUNT,
 )
+
+from eosiopy.eosioparams import EosioParams
+from eosiopy.nodenetwork import NodeNetwork
+from eosiopy.rawinputparams import RawinputParams
+from eosiopy import eosio_config
 
 
 class RemchainSwapContract:
@@ -15,75 +17,51 @@ class RemchainSwapContract:
     Implements remchain_swap_contract.
     """
 
-    def __init__(self, cleos, permission):
+    def __init__(self, remnode, permission, private_key):
         """
         Constructor.
 
         Arguments:
-            cleos (string, required): cleos script path with options
+            remnode (string, required): remnode script path with options
             permission (string, required): a permission to sign process swap transactions
+            private_key (string, required): a block producer's private key
         """
-        self.cleos = cleos
+        self.remnode = remnode
         self.permission = permission
+        self.private_key = private_key
 
-    def process_swap(self, **kwargs):
+    def init(self, **kwargs):
         """
         Initialize swap on Remchain.
 
         Arguments:
-            initiator (string, required): sender of initialize swap action
+            rampayer (string, required): sender of initialize swap action
             txid (string, required): an identifier of swap request transaction on the source blockchain
-            chain_id (string, required): an identifier of destination blockchain
             swap_pubkey (string, required): a public key to verify signature with receiver and active, owner public keys
             amount (int, required): amount of tokens to swap
+            return_address (string, required): return address on which tokens should be sent in case of cancellation
+            return_chain_id (string, required): blockchain identifier on which tokens should be sent in case of cancellation
             timestamp (string, required): timestamp in UTC format of request swap transaction
                                           on the source blockchain (yyyy-mm-ddThh:mm:ss)
 
         """
-
-        initiator = self.permission.split('@')[0]
+        rampayer = self.permission.split('@')[0]
         txid = kwargs.get('txid')
-        chain_id = kwargs.get('chain_id')
         swap_pubkey = kwargs.get('swap_pubkey')
+        return_address = kwargs.get('return_address')
+        return_chain_id = kwargs.get('return_chain_id')
         amount = kwargs.get('amount')
         timestamp = kwargs.get('timestamp')
 
-        command = f'{self.cleos} push action {REM_SWAP_ACCOUNT} {PROCESS_SWAP_ACTION} ' \
-            f'\'[ "{initiator}", "{txid}", "{chain_id}", "{swap_pubkey}", "{amount}", "{timestamp}" ]\' ' \
-            f'-p {self.permission}'
-        print(command)
-        return subprocess.call(command, shell=True)
-
-    def finish_swap(self, **kwargs):
-        """
-        Finish swap on Remchain.
-
-        Arguments:
-            receiver (string, required): receiver of swapped tokens on Remchain
-            txid (string, required): an identifier of swap request transaction on the source blockchain
-            chain_id (string, required): an identifier of destination blockchain
-            swap_pubkey (string, required): a public key to verify signature with receiver and account name to create
-            amount (int, required): amount of tokens to swap
-            timestamp (string, required): timestamp of request swap transaction
-                                          on the source blockchain (yyyy-mm-ddThh:mm:ss)
-            signature (string, required): a signature of receiver and active and owner keys
-            active (string, required): a public key to authorize active permission
-            owner (string, required): a public key to authorize owner permission
-        """
-
-        receiver = kwargs.get('receiver')
-        txid = kwargs.get('txid')
-        chain_id = kwargs.get('chain-id')
-        swap_pubkey = kwargs.get('swap-pubkey')
-        amount = kwargs.get('amount')
-        timestamp = kwargs.get('timestamp')
-        signature = kwargs.get('signature')
-        active = kwargs.get('active')
-        owner = kwargs.get('owner')
-
-        command = f'{self.cleos} push action {REM_SWAP_ACCOUNT} {FINISH_SWAP_ACTION} ' \
-            f'\'[ "{receiver}", "{txid}", "{chain_id}", "{swap_pubkey}",' \
-            f'"{amount}", "{timestamp}", "{signature}", "{active}", "{owner}" ]\' ' \
-            f'-p {self.permission}'
-        print(command)
-        return subprocess.call(command, shell=True)
+        raw = RawinputParams(INIT_SWAP_ACTION, {
+                "rampayer": rampayer,
+                "txid": txid,
+                "swap_pubkey": swap_pubkey,
+                "amount": amount,
+                "return_address": return_address,
+                "return_chain_id": return_chain_id,
+                "timestamp": timestamp,
+            }, REM_SWAP_ACCOUNT, self.permission)
+        eosiop_arams = EosioParams(raw.params_actions_list, self.private_key)
+        net = NodeNetwork.push_transaction(eosiop_arams.trx_json)
+        print(net)

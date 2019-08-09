@@ -18,7 +18,7 @@ from cli.constants import (
     REMCHAIN_TOKEN_ID,
     SHORT_POLLING_CONFIRMATION_INTERVAL,
     SHORT_POLLING_EVENTS_INTERVAL,
-)
+    ETH_ID, REMCHAIN_ID)
 from cli.eth_swap_bot.interfaces import EthSwapBotInterface
 from cli.remchain_swap_contract.service import RemchainSwapContract
 
@@ -29,17 +29,17 @@ class EthSwapBot:
     Implements eth_swap_bot.
     """
 
-    def __init__(self, eth_provider, cleos, permission):
+    def __init__(self, eth_provider, remnode, permission, private_key):
         """
         Constructor.
 
         Arguments:
             eth_provider (string, required): a link to ethereum node.
-            cleos (string, required): cleos script path with some options.
+            remnode (string, required): remnode script path with some options.
             permission (string, required): a permission to sign process swap transactions
         """
         self.eth_provider = eth_provider
-        self.cleos = cleos
+        self.remnode = remnode
         self.permission = permission
 
         self.web3 = Web3(Web3.WebsocketProvider(eth_provider))
@@ -50,8 +50,9 @@ class EthSwapBot:
         )
 
         self.remchain_swap_contract = RemchainSwapContract(
-            cleos=self.cleos,
+            remnode=self.remnode,
             permission=self.permission,
+            private_key=private_key,
         )
 
     @staticmethod
@@ -63,12 +64,12 @@ class EthSwapBot:
             event (object, required): an object of event on Ethereum.
         """
         event_args = event['args']
-        transaction_id = str(event['transactionHash'].hex())
+        transaction_id = str(event['transactionHash'].hex())[2:]
         chain_id = event_args['chainId'].hex()
         swap_public_key = str(event_args['swapPubkey'])
         amount_to_swap_int = int(event_args['amountToSwap'])
+        return_address = event_args['returnAddress'][2:].lower()
         timestamp = int(event_args['timestamp'])
-
         amount = str(amount_to_swap_int)[:-REMCHAIN_TOKEN_DECIMALS] + '.' + \
             str(amount_to_swap_int)[-REMCHAIN_TOKEN_DECIMALS:] + ' ' + REMCHAIN_TOKEN_ID
 
@@ -77,6 +78,7 @@ class EthSwapBot:
             'chain_id': chain_id,
             'swap_pubkey': swap_public_key,
             'amount': amount,
+            'return_address': return_address,
             'timestamp': timestamp,
         }
 
@@ -101,14 +103,17 @@ class EthSwapBot:
         txid = result.get('txid')
         timestamp = result.get('timestamp')
         result['timestamp'] = datetime.utcfromtimestamp(timestamp).strftime("%Y-%m-%dT%H:%M:%S")
+        result['return_chain_id'] = ETH_ID
 
         if self.web3.eth.getTransaction(txid):
-            self.remchain_swap_contract.process_swap(**result)
+            if result['chain_id'] == REMCHAIN_ID:
+                self.remchain_swap_contract.init(**result)
 
     def new_swaps_loop(self, event_filter, poll_interval):
         while True:
             for event in event_filter.get_new_entries():
                 self.wait_for_event_confirmation(event)
+                print(event)
                 self.handle_swap_request_event(event)
             time.sleep(poll_interval)
 
@@ -141,4 +146,4 @@ class EthSwapBot:
         """
         Process swap request manually.
         """
-        self.remchain_swap_contract.process_swap(**kwargs)
+        self.remchain_swap_contract.init(**kwargs)

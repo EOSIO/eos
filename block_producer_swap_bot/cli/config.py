@@ -18,11 +18,11 @@ class ConfigFile:
         self.config = configparser.ConfigParser()
         self.config.read(name)
 
-    def get_cleos(self):
+    def get_remnode(self):
         """
-        Get cleos from config file.
+        Get remnode from config file.
         """
-        return self.config.get('NODES', 'cleos')
+        return self.config.get('NODES', 'remnode')
 
     def get_eth_provider(self):
         """
@@ -35,3 +35,9 @@ class ConfigFile:
         Get block producer permission to sign process-swap transactions.
         """
         return self.config.get('REM', 'block-producer-permission')
+
+    def get_block_producer_private_key(self):
+        """
+        Get block producer private key to sign process-swap transactions.
+        """
+        return self.config.get('REM', 'block-producer-private-key')

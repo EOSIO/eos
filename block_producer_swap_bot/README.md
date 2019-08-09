@@ -40,13 +40,14 @@ Paste into the config file following content:
 
 ```
 [NODES]
-cleos=cleos --url http://127.0.0.1:8888
-eth-provider=wss://rinkeby.infura.io/ws/v3/<your infura id>
-[REMIO]
+remnode=127.0.0.1:8888
+eth-provider=wss://ropsten.infura.io/ws/v3/<your infura id>
+[REM]
 block-producer-permission=<your account name>@active
+block-producer-private-key=<your private key for signing blocks>
 ```
 
-Replace cleos, eth-provider, block-producer-permission with your cleos path and options, link to Ethereum node with websocket connection and your block producer's account for signing .
+Replace remnode, eth-provider, block-producer-permission, block-producer-private-key with your remnode host and port, a link to Ethereum node with websocket connection, your block producer's account and private key for signing blocks.
 
 
 ### Usage
@@ -59,12 +60,7 @@ $ python3 block_producer_swap_bot.py eth-swap-bot process-swaps
 
 ## Development
 
-Manually process particular swap transaction
+Manually init particular swap transaction
 ```bash
-$ cleos --url http://127.0.0.1:8000 --wallet-url http://127.0.0.1:6666 push action remio.swap processswap '[ "producer111a", "0x30a9479fc792d3219aba23440235a4a7e4ab32e7ff86a08d878778c5076d206b", "1c6ae7719a2a3b4ecb19584a30ff510ba1b6ded86e1fd8b8fc22f1179c622a32", "EOS7oNmmxo8yh8gmYLUGNCwNAFfLmrMxtmrzmFPG29CpGm5Bq4FGC", "20.0000 REM", "2019-07-25T17:51:47" ]' -p producer111a@active
+$ remcli --url http://127.0.0.1:8888 push action rem.swap init '[ "producer111a", "30a9479fc792d3219aba23440235a4a7e4ab32e7ff86a08d878778c5076d206b", "EOS7oNmmxo8yh8gmYLUGNCwNAFfLmrMxtmrzmFPG29CpGm5Bq4FGC", "20.0000 REM", "9fb8a18ff402680b47387ae0f4e38229ec64f098", "eth", "2019-07-25T17:51:47" ]' -p producer111a@active
 ```
-
-Manually finish swap
-```bash
-cleos --url http://127.0.0.1:8000 --wallet-url http://127.0.0.1:6666 push action remio.swap finishswap '[ "receiver", "0x30a9479fc792d3219aba23440235a4a7e4ab32e7ff86a08d878778c5076d206b", "1c6ae7719a2a3b4ecb19584a30ff510ba1b6ded86e1fd8b8fc22f1179c622a32", "EOS7oNmmxo8yh8gmYLUGNCwNAFfLmrMxtmrzmFPG29CpGm5Bq4FGC","20.0000 REM", "2019-07-25T17:51:47", "SIG_K1_AnEQt8cs8Uscfg3FhRM3za3WxzzP8VHcUCAhfwoQYUb8EFbEujrTswAeiCaNWKzSfADWzVBoBv3mxV7qb4ymo4QHXFfTCLQWd6kH45WL2KggUP4aTpvH", "EOS7oNmmxo8yh8gmYLUGNCwNAFfLmrMxtmrzmFPG29CpGm5Bq4FGC", "EOS7oNmmxo8yh8gmYLUGNCwNAFfLmrMxtmrzmFPG29CpGm5Bq4FGC" ]' -p producer111a@active
-```bash

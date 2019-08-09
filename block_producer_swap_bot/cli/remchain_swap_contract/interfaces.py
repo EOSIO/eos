@@ -8,14 +8,8 @@ class RemchainSwapContractInterface:
     Implements remchain_swap_contract interface.
     """
 
-    def init_swap(self, **kwargs):
+    def init(self, **kwargs):
         """
-        Push initswap action to rem.swap account.
-        """
-        pass
-
-    def finish_swap(self, **kwargs):
-        """
-        Push finishswap action to rem.swap account.
+        Push init action to rem.swap account.
         """
         pass
