@@ -981,7 +981,7 @@ fc::microseconds chain_plugin::get_abi_serializer_max_time() const {
    return my->abi_serializer_max_time_ms;
 }
 
-void chain_plugin::log_guard_exception(const chain::guard_exception&e ) const {
+void chain_plugin::log_guard_exception(const chain::guard_exception&e ) {
    if (e.code() == chain::database_guard_exception::code_value) {
       elog("Database has reached an unsafe level of usage, shutting down to avoid corrupting the database.  "
            "Please increase the value set for \"chain-state-db-size-mb\" and restart the process!");
@@ -993,7 +993,7 @@ void chain_plugin::log_guard_exception(const chain::guard_exception&e ) const {
    dlog("Details: ${details}", ("details", e.to_detail_string()));
 }
 
-void chain_plugin::handle_guard_exception(const chain::guard_exception& e) const {
+void chain_plugin::handle_guard_exception(const chain::guard_exception& e) {
    log_guard_exception(e);
 
    // quit the app
@@ -1004,6 +1004,12 @@ void chain_plugin::handle_db_exhaustion() {
    elog("database memory exhausted: increase chain-state-db-size-mb and/or reversible-blocks-db-size-mb");
    //return 1 -- it's what programs/nodeos/main.cpp considers "BAD_ALLOC"
    std::_Exit(1);
+}
+
+void chain_plugin::handle_bad_alloc() {
+   elog("std::bad_alloc - memory exhausted");
+   //return -2 -- it's what programs/nodeos/main.cpp reports for std::exception
+   std::_Exit(-2);
 }
 
 namespace chain_apis {
@@ -1547,6 +1553,8 @@ void read_write::push_block(read_write::push_block_params&& params, next_functio
       next(read_write::push_block_results{});
    } catch ( boost::interprocess::bad_alloc& ) {
       chain_plugin::handle_db_exhaustion();
+   } catch ( const std::bad_alloc& ) {
+      chain_plugin::handle_bad_alloc();
    } CATCH_AND_CALL(next);
 }
 
@@ -1584,6 +1592,8 @@ void read_write::push_transaction(const read_write::push_transaction_params& par
 
    } catch ( boost::interprocess::bad_alloc& ) {
       chain_plugin::handle_db_exhaustion();
+   } catch ( const std::bad_alloc& ) {
+      chain_plugin::handle_bad_alloc();
    } CATCH_AND_CALL(next);
 }
 
@@ -1616,7 +1626,10 @@ void read_write::push_transactions(const read_write::push_transactions_params& p
       result->reserve(params.size());
 
       push_recurse(this, 0, params_copy, result, next);
-
+   } catch ( boost::interprocess::bad_alloc& ) {
+      chain_plugin::handle_db_exhaustion();
+   } catch ( const std::bad_alloc& ) {
+      chain_plugin::handle_bad_alloc();
    } CATCH_AND_CALL(next);
 }
 

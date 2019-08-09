@@ -42,6 +42,30 @@ using std::vector;
 using std::deque;
 using boost::signals2::scoped_connection;
 
+#undef FC_LOG_AND_DROP
+#define LOG_AND_DROP()  \
+   catch ( const guard_exception& e ) { \
+      chain_plugin::handle_guard_exception(e); \
+   } catch ( const std::bad_alloc& ) { \
+      chain_plugin::handle_bad_alloc(); \
+   } catch ( boost::interprocess::bad_alloc& ) { \
+      chain_plugin::handle_db_exhaustion(); \
+   } catch( fc::exception& er ) { \
+      wlog( "${details}", ("details",er.to_detail_string()) ); \
+   } catch( const std::exception& e ) {  \
+      fc::exception fce( \
+                FC_LOG_MESSAGE( warn, "std::exception: ${what}: ",("what",e.what()) ), \
+                fc::std_exception_code,\
+                BOOST_CORE_TYPEID(e).name(), \
+                e.what() ) ; \
+      wlog( "${details}", ("details",fce.to_detail_string()) ); \
+   } catch( ... ) {  \
+      fc::unhandled_exception e( \
+                FC_LOG_MESSAGE( warn, "unknown: ",  ), \
+                std::current_exception() ); \
+      wlog( "${details}", ("details",e.to_detail_string()) ); \
+   }
+
 const fc::string logger_name("producer_plugin");
 fc::logger _log;
 
@@ -312,14 +336,15 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          try {
             chain.push_block( bsf );
          } catch ( const guard_exception& e ) {
-            chain_plug->handle_guard_exception(e);
+            chain_plugin::handle_guard_exception(e);
             return;
          } catch( const fc::exception& e ) {
             elog((e.to_detail_string()));
             except = true;
+         } catch ( const std::bad_alloc& ) {
+            chain_plugin::handle_bad_alloc();
          } catch ( boost::interprocess::bad_alloc& ) {
             chain_plugin::handle_db_exhaustion();
-            return;
          }
 
          if( except ) {
@@ -441,9 +466,11 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
             }
 
          } catch ( const guard_exception& e ) {
-            chain_plug->handle_guard_exception(e);
+            chain_plugin::handle_guard_exception(e);
          } catch ( boost::interprocess::bad_alloc& ) {
             chain_plugin::handle_db_exhaustion();
+         } catch ( std::bad_alloc& ) {
+            chain_plugin::handle_bad_alloc();
          } CATCH_AND_CALL(send_response);
       }
 
@@ -703,13 +730,13 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
    my->_incoming_block_subscription = app().get_channel<incoming::channels::block>().subscribe([this](const signed_block_ptr& block){
       try {
          my->on_incoming_block(block);
-      } FC_LOG_AND_DROP();
+      } LOG_AND_DROP();
    });
 
    my->_incoming_transaction_subscription = app().get_channel<incoming::channels::transaction>().subscribe([this](const transaction_metadata_ptr& trx){
       try {
          my->on_incoming_transaction_async(trx, false, [](const auto&){});
-      } FC_LOG_AND_DROP();
+      } LOG_AND_DROP();
    });
 
    my->_incoming_block_sync_provider = app().get_method<incoming::methods::block_sync>().register_provider([this](const signed_block_ptr& block){
@@ -1117,7 +1144,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
 
       chain.abort_block();
       chain.start_block(block_time, blocks_to_confirm);
-   } FC_LOG_AND_DROP();
+   } LOG_AND_DROP();
 
    const auto& pbs = chain.pending_block_state();
    if (pbs) {
@@ -1241,10 +1268,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
                         } else {
                            ++num_applied;
                         }
-                     } catch ( const guard_exception& e ) {
-                        chain_plug->handle_guard_exception(e);
-                        return start_block_result::failed;
-                     } FC_LOG_AND_DROP();
+                     } LOG_AND_DROP();
                   }
 
                   itr = itr_next;
@@ -1355,10 +1379,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
                   } else {
                      num_applied++;
                   }
-               } catch ( const guard_exception& e ) {
-                  chain_plug->handle_guard_exception(e);
-                  return start_block_result::failed;
-               } FC_LOG_AND_DROP();
+               } LOG_AND_DROP();
 
                _incoming_trx_weight += _incoming_defer_ratio;
                if (!orig_pending_txn_size) _incoming_trx_weight = 0.0;
@@ -1378,6 +1399,8 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
 
          }
 
+         if( app().is_quiting() ) // db guard exception above in LOG_AND_DROP could have called app().quit()
+            return start_block_result::failed;
          if (exhausted || preprocess_deadline <= fc::time_point::now()) {
             return start_block_result::exhausted;
          } else {
@@ -1397,9 +1420,13 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
             return start_block_result::succeeded;
          }
 
+      } catch ( const guard_exception& e ) {
+         chain_plugin::handle_guard_exception(e);
+         return start_block_result::failed;
+      } catch ( std::bad_alloc& ) {
+         chain_plugin::handle_bad_alloc();
       } catch ( boost::interprocess::bad_alloc& ) {
          chain_plugin::handle_db_exhaustion();
-         return start_block_result::failed;
       }
 
    }
@@ -1522,17 +1549,9 @@ bool producer_plugin_impl::maybe_produce_block() {
    });
 
    try {
-      try {
-         produce_block();
-         return true;
-      } catch ( const guard_exception& e ) {
-         chain_plug->handle_guard_exception(e);
-         return false;
-      } FC_LOG_AND_DROP();
-   } catch ( boost::interprocess::bad_alloc&) {
-      raise(SIGUSR1);
-      return false;
-   }
+      produce_block();
+      return true;
+   } LOG_AND_DROP();
 
    fc_dlog(_log, "Aborting block due to produce_block error");
    chain::controller& chain = chain_plug->chain();
