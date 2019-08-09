@@ -13,4 +13,4 @@ RUN bash -c 'cd /eos/build && \
     make install'
 RUN bash -c 'cd /eos && \
     tar -pczf build.tar.gz build && \
-    ls -la'
+    buildkite-agent artifact upload build.tar.gz'
