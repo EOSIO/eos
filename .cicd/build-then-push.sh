@@ -6,7 +6,8 @@ export COMMIT="$(git log | head -n 1 | awk '{print $2}')"
 export SANITIZED_BRANCH="$(git branch --show-current | tr '/' '_')" # '/' messes with URLs
 [[ "$BUILDKITE" != 'true' ]] && export SANITIZED_TAG="$(echo $BUILDKITE_TAG | tr '/' '_')"
 # build
-execute docker build -f ./.cicd/docker/ubuntu-18.04-build.dockerfile -t eosio/ci-contracts-builder:base-ubuntu-18.04-latest .
+cat ./.cicd/docker/ubuntu-18.04-build.dockerfile | envsubst > ubuntu-18.04-build.dockerfile
+execute docker build -f ubuntu-18.04-build.dockerfile -t eosio/ci-contracts-builder:base-ubuntu-18.04-latest .
 # tag
 execute docker tag eosio/ci-contracts-builder:base-ubuntu-18.04-latest eosio/ci-contracts-builder:base-ubuntu-18.04-$COMMIT
 execute docker tag eosio/ci-contracts-builder:base-ubuntu-18.04-latest eosio/ci-contracts-builder:base-ubuntu-18.04-$SANITIZED_BRANCH
