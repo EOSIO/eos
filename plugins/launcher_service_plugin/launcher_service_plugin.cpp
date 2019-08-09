@@ -179,6 +179,7 @@ public:
             _running_clusters[def.cluster_id].nodes[i] = state;
          }
          _running_clusters[def.cluster_id].def = def;
+         _running_clusters[def.cluster_id].imported_keys[_config.default_key.get_public_key()] = _config.default_key;
       }
       void launch_nodes(const cluster_def &def, int node_id, bool restart = false) {
          for (int i = 0; i < def.node_count; ++i) {
@@ -281,43 +282,77 @@ public:
          }
       }
 
-      fc::variant get_info(int cluster_id, int node_id) {
+      fc::variant call(int cluster_id, int node_id, std::string func, fc::variant args = fc::variant()) {
+         if (_running_clusters.find(cluster_id) == _running_clusters.end()) {
+            throw std::string("cluster is not running");
+         }
+         if (_running_clusters[cluster_id].nodes.find(node_id) == _running_clusters[cluster_id].nodes.end()) {
+            throw std::string("nodeos is not running");
+         }
          int port = _running_clusters[cluster_id].nodes[node_id].http_port;
          if (port) {
             std::string url;
             url = "http://" + _config.host_name + ":" + itoa(port);
             client::http::http_context context = client::http::create_http_context();
             std::vector<std::string> headers;
-            auto sp = std::make_unique<client::http::connection_param>(context, client::http::parse_url(url) + "/v1/chain/get_info", false, headers);
-            return client::http::do_http_call(*sp, fc::variant(), true, true );
+            auto sp = std::make_unique<client::http::connection_param>(context, client::http::parse_url(url) + func, false, headers);
+            return client::http::do_http_call(*sp, args, true, true );
          }
-         throw std::string("failed to get_info, nodeos is not running");
+         std::string err = "failed to " + func + ", nodeos is not running";
+         throw err;
+      }
+
+      fc::variant get_info(int cluster_id, int node_id) {
+         return call(cluster_id, node_id, "/v1/chain/get_info");
       }
 
       fc::variant get_account(launcher_service::get_account_param param) {
-         int port = _running_clusters[param.cluster_id].nodes[param.node_id].http_port;
-         if (port) {
-            std::string url;
-            url = "http://" + _config.host_name + ":" + itoa(port);
-            client::http::http_context context = client::http::create_http_context();
-            std::vector<std::string> headers;
-            auto sp = std::make_unique<client::http::connection_param>(context, client::http::parse_url(url) + "/v1/chain/get_account", false, headers);
-            return client::http::do_http_call(*sp, fc::mutable_variant_object("account_name", param.name), true, true );
-         }
-         throw std::string("failed to get_account, nodeos is not running");
+         return call(param.cluster_id, param.node_id, "/v1/chain/get_account", fc::mutable_variant_object("account_name", param.name));
       }
 
       fc::variant get_block(int cluster_id, int node_id, std::string block_num_or_id) {
-         int port = _running_clusters[cluster_id].nodes[node_id].http_port;
-         if (port) {
-            std::string url;
-            url = "http://" + _config.host_name + ":" + itoa(port);
-            client::http::http_context context = client::http::create_http_context();
-            std::vector<std::string> headers;
-            auto sp = std::make_unique<client::http::connection_param>(context, client::http::parse_url(url) + "/v1/chain/get_block", false, headers);
-            return client::http::do_http_call(*sp, fc::mutable_variant_object("block_num_or_id", block_num_or_id), true, true );
+         return call(cluster_id, node_id, "/v1/chain/get_block", fc::mutable_variant_object("block_num_or_id", block_num_or_id));
+      }
+
+      fc::variant determine_required_keys(int cluster_id, int node_id, const signed_transaction& trx) {
+         if (_running_clusters.find(cluster_id) == _running_clusters.end()) {
+            throw std::string("cluster is not running");
          }
-         throw std::string("failed to get_block, nodeos is not running");
+         std::vector<public_key_type> pub_keys;
+         for (auto &key : _running_clusters[cluster_id].imported_keys) {
+            pub_keys.push_back(key.first);
+         }
+         auto get_arg = fc::mutable_variant_object
+               ("transaction", (chain::transaction)trx)
+               ("available_keys", pub_keys);
+         return call(cluster_id, node_id, "/v1/chain/get_required_keys", get_arg);
+      }
+
+      fc::optional<abi_serializer> abi_serializer_resolver(int cluster_id, int node_id, const name& account,
+                                                           std::map<name, fc::optional<abi_serializer> > &abi_cache) {
+         auto it = abi_cache.find( account );
+         if ( it == abi_cache.end() ) {
+            auto result = call(cluster_id, node_id, "/v1/chain/get_abi", fc::mutable_variant_object("account_name", account));
+            auto abi_results = result.as<eosio::chain_apis::read_only::get_abi_results>();
+            fc::optional<abi_serializer> abis;
+            if( abi_results.abi.valid() ) {
+               abis.emplace( *abi_results.abi, _config.abi_serializer_max_time );
+            }
+            abi_cache.emplace( account, abis );
+            return abis;
+         }
+         return it->second;
+      };
+
+      bytes action_variant_to_bin(int cluster_id, int node_id, const name& account, const name& action,
+                                  const fc::variant& action_args_var,
+                                  std::map<name, fc::optional<abi_serializer> > &abi_cache) {
+         auto abis = abi_serializer_resolver(cluster_id, node_id, account, abi_cache);
+         FC_ASSERT( abis.valid(), "No ABI found for ${contract}", ("contract", account));
+
+         auto action_type = abis->get_action_type( action );
+         FC_ASSERT( !action_type.empty(), "Unknown action ${action} in contract ${contract}", ("action", action)( "contract", account ));
+         return abis->variant_to_binary( action_type, action_args_var, _config.abi_serializer_max_time );
       }
 
       fc::variant push_transaction(int cluster_id, int node_id, signed_transaction& trx,
@@ -343,10 +378,19 @@ public:
             trx.delay_sec = 0;
          }
 
-         // TODO
-         //auto required_keys = determine_required_keys(trx);
-         //sign_transaction(trx, required_keys, info.chain_id);
-         trx.sign(_config.default_key, info.chain_id);
+         bool has_key = false;
+         fc::variant required_keys = determine_required_keys(cluster_id, node_id, trx);
+         const fc::variant &keys = required_keys["required_keys"];
+         for (const fc::variant &k : keys.get_array()) {
+            public_key_type pub_key = public_key_type(k.as_string());
+            private_key_type pri_key = _running_clusters[cluster_id].imported_keys[pub_key];
+            trx.sign(pri_key, info.chain_id);
+            has_key = true;
+         }
+         if (!has_key) {
+            throw std::string("private keys are not impoorted");
+         }
+         //trx.sign(_config.default_key, info.chain_id);
 
          _running_clusters[cluster_id].transaction_blocknum[trx.id()] = info.head_block_num + 1;
 
@@ -356,11 +400,23 @@ public:
          return client::http::do_http_call(*sp, fc::variant(packed_transaction(trx, compression)), true, true );
       }
 
-      fc::variant push_actions(int cluster_id, int node_id, std::vector<chain::action>&& actions, packed_transaction::compression_type compression = packed_transaction::compression_type::none ) {
+      fc::variant push_actions(int cluster_id, int node_id, std::vector<chain::action>&& actions,
+                               packed_transaction::compression_type compression = packed_transaction::compression_type::none ) {
          signed_transaction trx;
          trx.actions = std::forward<decltype(actions)>(actions);
 
          return push_transaction(cluster_id, node_id, trx, compression);
+      }
+
+      fc::variant push_actions(launcher_service::push_actions_param param) {
+         std::map<name, fc::optional<abi_serializer> > cache;
+         std::vector<chain::action> actlist;
+         actlist.reserve(param.actions.size());
+         for (const action_param &p : param.actions) {
+            bytes data = action_variant_to_bin(param.cluster_id, param.node_id, p.account, p.action, p.data, cache);
+            actlist.emplace_back(p.permissions, p.account, p.action, data);
+         }
+         return push_actions(param.cluster_id, param.node_id, std::move(actlist));
       }
 
       fc::variant create_bios_accounts(create_bios_accounts_param param) {
@@ -385,7 +441,21 @@ public:
          if (actlist.size() == 0) {
             throw std::string("contract_file and abi_file are both empty");
          }
-         return push_actions(param.cluster_id, param.node_id, std::move(actlist));
+         return push_actions(param.cluster_id, param.node_id, std::move(actlist), packed_transaction::compression_type::zlib);
+      }
+
+      fc::variant import_keys(import_keys_param param) {
+         if (_running_clusters.find(param.cluster_id) == _running_clusters.end()) {
+            throw std::string("cluster is not running");
+         }
+         auto &cluster_state = _running_clusters[param.cluster_id];
+         std::vector<std::string> pub_keys;
+         for (auto &key : param.keys) {
+            auto pkey = key.get_public_key();
+            pub_keys.push_back(std::string(pkey));
+            cluster_state.imported_keys[pkey] = key;
+         }
+         return fc::mutable_variant_object("imported_keys", pub_keys);
       }
 
       fc::variant verify_transaction(launcher_service::verify_transaction_param param) {
@@ -552,6 +622,18 @@ fc::variant launcher_service_plugin::verify_transaction(launcher_service::verify
 fc::variant launcher_service_plugin::set_contract(launcher_service::set_contract_param param) {
    try {
       return _my->set_contract(param);
+   } CATCH_LAUCHER_EXCEPTIONS
+}
+
+fc::variant launcher_service_plugin::import_keys(launcher_service::import_keys_param param) {
+   try {
+      return _my->import_keys(param);
+   } CATCH_LAUCHER_EXCEPTIONS
+}
+
+fc::variant launcher_service_plugin::push_actions(launcher_service::push_actions_param param) {
+   try {
+      return _my->push_actions(param);
    } CATCH_LAUCHER_EXCEPTIONS
 }
 

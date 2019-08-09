@@ -73,6 +73,7 @@ namespace launcher_service {
       std::string listen_addr = "0.0.0.0";
       std::string nodeos_cmd = "./programs/nodeos/nodeos";
       int         log_file_rotate_max = 8;
+      fc::microseconds abi_serializer_max_time = fc::microseconds(1000000);
       private_key_type default_key;
 
       launcher_config() : default_key(std::string("5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3")) { }
@@ -104,6 +105,24 @@ namespace launcher_service {
       std::string                    abi_file; // file path
    };
 
+   struct import_keys_param {
+      int                            cluster_id;
+      std::vector<private_key_type>  keys;
+   };
+
+   struct action_param {
+      chain::name                     account;
+      chain::name                     action;
+      vector<chain::permission_level> permissions;
+      std::string                     data;
+   };
+
+   struct push_actions_param {
+      int                            cluster_id;
+      int                            node_id;
+      std::vector<action_param>      actions;
+   };
+
    struct verify_transaction_param {
       int                            cluster_id;
       int                            node_id;
@@ -120,10 +139,10 @@ class launcher_service_plugin : public appbase::plugin<launcher_service_plugin> 
 public:
    launcher_service_plugin();
    virtual ~launcher_service_plugin();
- 
+
    APPBASE_PLUGIN_REQUIRES()
    virtual void set_program_options(options_description&, options_description& cfg) override;
- 
+
    void plugin_initialize(const variables_map& options);
    void plugin_startup();
    void plugin_shutdown();
@@ -139,6 +158,8 @@ public:
 
    fc::variant create_bios_accounts(launcher_service::create_bios_accounts_param);
    fc::variant set_contract(launcher_service::set_contract_param);
+   fc::variant import_keys(launcher_service::import_keys_param);
+   fc::variant push_actions(launcher_service::push_actions_param);
 
    // check if transaction is included in some block
    fc::variant verify_transaction(launcher_service::verify_transaction_param);
@@ -155,4 +176,7 @@ FC_REFLECT(eosio::launcher_service::new_account_param, (name)(owner)(active))
 FC_REFLECT(eosio::launcher_service::create_bios_accounts_param, (cluster_id)(node_id)(creator)(accounts))
 FC_REFLECT(eosio::launcher_service::get_account_param, (cluster_id)(node_id)(name))
 FC_REFLECT(eosio::launcher_service::set_contract_param, (cluster_id)(node_id)(account)(contract_file)(abi_file))
+FC_REFLECT(eosio::launcher_service::import_keys_param, (cluster_id)(keys))
+FC_REFLECT(eosio::launcher_service::action_param, (account)(action)(permissions)(data))
+FC_REFLECT(eosio::launcher_service::push_actions_param, (cluster_id)(node_id)(actions))
 FC_REFLECT(eosio::launcher_service::verify_transaction_param, (cluster_id)(node_id)(transaction_id)(max_search_blocks)(block_num_hint))

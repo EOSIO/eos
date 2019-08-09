@@ -65,6 +65,8 @@ void launcher_service_api_plugin::plugin_startup() {
       CALL(launcher, stop_all_clusters, INVOKE_R(stop_all_clusters), 200),
       CALL(launcher, create_bios_accounts, INVOKE_R_R(create_bios_accounts, launcher_service::create_bios_accounts_param), 200),
       CALL(launcher, set_contract, INVOKE_R_R(set_contract, launcher_service::set_contract_param), 200),
+      CALL(launcher, import_keys, INVOKE_R_R(import_keys, launcher_service::import_keys_param), 200),
+      CALL(launcher, push_actions, INVOKE_R_R(push_actions, launcher_service::push_actions_param), 200),
       CALL(launcher, verify_transaction, INVOKE_R_R(verify_transaction, launcher_service::verify_transaction_param), 200)
    });
 }
