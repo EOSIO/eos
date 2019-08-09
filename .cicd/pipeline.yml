@@ -92,13 +92,6 @@ steps:
     timeout: 10
     soft_fail: true
 
-  - trigger: "eosio-dot-contracts-base-images-beta"
-    label: ":docker: Create eosio.contracts Base Image"
-    build:
-      commit: "${BUILDKITE_COMMIT}"
-      branch: "${BUILDKITE_BRANCH}"
-    async: true
-
   - wait
 
   - label: ":centos: Centos 7.6 - Package Builder"
