@@ -93,7 +93,7 @@ steps:
     soft_fail: true
 
   - trigger: "eosio-dot-contracts-base-images-beta"
-    label: ":docker: Create eosio.contracts Base Images Pipeline"
+    label: ":docker: Create eosio.contracts Base Image"
     build:
       commit: "${BUILDKITE_COMMIT}"
       branch: "${BUILDKITE_BRANCH}"
