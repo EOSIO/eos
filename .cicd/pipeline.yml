@@ -53,15 +53,6 @@ steps:
     command: ".cicd/build-then-push.sh"
     agents:
       queue: "automation-eos-builder-fleet"
-    plugins:
-      - docker#v3.2.0:
-          debug: $DEBUG
-          image: "eosio/producer:eosio-ubuntu-18.04-d1248048f40158965ff9876c0c21ac728bb82da6"
-          environment:
-            - "BUILDKITE_AGENT_ACCESS_TOKEN" # Needed for buildkite-agent upload/download
-            - "JOBS" # Number for -j make/ctest args.
-          mount-buildkite-agent: false # Mounting bk-agent doesn't work, so disable it
-          propagate-environment: true # Need for buildkite-agent upload/download (JOB_ID, etc)
 
   - label: ":darwin: macOS 10.14 - Build & Test"
     command:
