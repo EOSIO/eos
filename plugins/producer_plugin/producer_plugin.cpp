@@ -1511,9 +1511,6 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
                         } else {
                            ++num_applied;
                         }
-                     } catch ( const guard_exception& e ) {
-                        chain_plug->handle_guard_exception(e);
-                        return start_block_result::failed;
                      } LOG_AND_DROP();
                   }
 
