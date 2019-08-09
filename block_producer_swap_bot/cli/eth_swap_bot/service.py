@@ -18,7 +18,7 @@ from cli.constants import (
     REMCHAIN_TOKEN_ID,
     SHORT_POLLING_CONFIRMATION_INTERVAL,
     SHORT_POLLING_EVENTS_INTERVAL,
-    ETH_ID, REMCHAIN_ID)
+    ETH_ID, REMCHAIN_ID, MAX_TX_QUERIES)
 from cli.eth_swap_bot.interfaces import EthSwapBotInterface
 from cli.remchain_swap_contract.service import RemchainSwapContract
 
@@ -105,9 +105,14 @@ class EthSwapBot:
         result['timestamp'] = datetime.utcfromtimestamp(timestamp).strftime("%Y-%m-%dT%H:%M:%S")
         result['return_chain_id'] = ETH_ID
 
-        if self.web3.eth.getTransaction(txid):
-            if result['chain_id'] == REMCHAIN_ID:
-                self.remchain_swap_contract.init(**result)
+        for i in range(0, MAX_TX_QUERIES):
+            tx = self.web3.eth.getTransaction(txid)
+            if tx and (self.web3.eth.blockNumber - tx.get('blockNumber') > ETH_CONFIRMATION_BLOCKS):
+                if result['chain_id'] == REMCHAIN_ID:
+                    self.remchain_swap_contract.init(**result)
+                break
+            else:
+                sleep(SHORT_POLLING_CONFIRMATION_INTERVAL)
 
     def new_swaps_loop(self, event_filter, poll_interval):
         while True:
