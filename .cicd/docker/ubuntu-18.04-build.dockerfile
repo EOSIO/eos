@@ -1,4 +1,4 @@
-FROM eosio/producer:eosio-ubuntu-18.04-d1248048f40158965ff9876c0c21ac728bb82da6
+FROM eosio/producer:eosio-ubuntu-18.04-2049ab48a02aee3a7c8964291408259eed4bbc8b
 COPY . /eos
 ENV CCACHE_DIR=/opt/.ccache
 ENV CMAKE_FRAMEWORK_PATH='/usr/local'
