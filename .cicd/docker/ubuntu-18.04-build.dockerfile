@@ -5,7 +5,6 @@ ENV CMAKE_FRAMEWORK_PATH='/usr/local'
 ENV ENABLE_PARALLEL_TESTS=false
 ENV ENABLE_SERIAL_TESTS=false
 ENV ENABLE_INSTALL=true
-ENV TRAVIS=false
 RUN bash -c "[[ -d /eos/build ]] || mkdir /eos/build ; \
     cd /eos/build && \
     cmake -DCMAKE_BUILD_TYPE='Release' -DCORE_SYMBOL_NAME='SYS' -DOPENSSL_ROOT_DIR='/usr/include/openssl' -DBUILD_MONGO_DB_PLUGIN=true .. && \
