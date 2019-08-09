@@ -1301,9 +1301,9 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
    if( chain.get_read_mode() == chain::db_read_mode::READ_ONLY )
       return start_block_result::waiting;
 
-   fc_dlog(_log, "Starting block ${n} at ${time}", ("n", chain.head_block_num())("time", fc::time_point::now()));
-
    const auto& hbs = chain.head_block_state();
+
+   fc_dlog(_log, "Starting block ${n} at ${time}", ("n", hbs->block_num + 1)("time", fc::time_point::now()));
 
    //Schedule for the next second's tick regardless of chain state
    // If we would wait less than 50ms (1/10 of block_interval), wait for the whole block interval.
