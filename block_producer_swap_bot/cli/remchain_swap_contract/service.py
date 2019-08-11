@@ -66,10 +66,10 @@ class RemchainSwapContract:
                     "rampayer": rampayer,
                     "txid": txid,
                     "swap_pubkey": swap_pubkey,
-                    "amount": amount,
+                    "quantity": amount,
                     "return_address": return_address,
                     "return_chain_id": return_chain_id,
-                    "timestamp": timestamp,
+                    "swap_timestamp": timestamp,
                 }, REM_SWAP_ACCOUNT, self.permission)
                 eosiop_arams = EosioParams(raw.params_actions_list, self.private_key)
                 net = NodeNetwork.push_transaction(eosiop_arams.trx_json)
