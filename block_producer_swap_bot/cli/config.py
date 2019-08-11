@@ -30,14 +30,14 @@ class ConfigFile:
         """
         return self.config.get('NODES', 'eth-provider')
 
-    def get_block_producer_permission(self):
+    def get_swap_permission(self):
         """
-        Get block producer permission to sign process-swap transactions.
+        Get permission to authorize init swap actions.
         """
-        return self.config.get('REM', 'block-producer-permission')
+        return self.config.get('REM', 'swap-permission')
 
-    def get_block_producer_private_key(self):
+    def get_swap_private_key(self):
         """
-        Get block producer private key to sign process-swap transactions.
+        Get private key to sign init swap actions.
         """
-        return self.config.get('REM', 'block-producer-private-key')
+        return self.config.get('REM', 'swap-private-key')

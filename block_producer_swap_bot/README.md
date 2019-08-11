@@ -43,11 +43,11 @@ Paste into the config file following content:
 remnode=127.0.0.1:8888
 eth-provider=wss://ropsten.infura.io/ws/v3/<your infura id>
 [REM]
-block-producer-permission=<your account name>@active
-block-producer-private-key=<your private key for signing blocks>
+swap-permission=<your account name>@active
+swap-private-key=<your private key for signing blocks>
 ```
 
-Replace remnode, eth-provider, block-producer-permission, block-producer-private-key with your remnode host and port, a link to Ethereum node with websocket connection, your block producer's account and private key for signing blocks.
+Replace remnode, eth-provider, swap-permission, swap-private-key with your remnode host and port, a link to Ethereum node with websocket connection, your account and private key to authorize init swap actions.
 
 
 ### Usage

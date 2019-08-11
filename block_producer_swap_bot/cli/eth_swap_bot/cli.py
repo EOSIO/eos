@@ -11,10 +11,11 @@ from cli.generic.help import (
     PRIVATE_KEY_ARGUMENT_HELP_MESSAGE,
 )
 from cli.utils import (
-    get_block_producer_permission,
+    get_swap_permission,
     get_default_remnode,
     get_default_eth_provider,
-    get_block_producer_private_key)
+    get_swap_private_key
+)
 
 
 @click.group('eth-swap-bot', chain=True)
@@ -31,9 +32,9 @@ def eth_swap_bot_commands():
 @click.option('--remnode', type=str, required=True, help=REMNODE_ARGUMENT_HELP_MESSAGE,
               default=get_default_remnode())
 @click.option('--permission', type=str, required=True, help=PERMISSION_ARGUMENT_HELP_MESSAGE,
-              default=get_block_producer_permission())
+              default=get_swap_permission())
 @click.option('--private-key', type=str, required=True, help=PRIVATE_KEY_ARGUMENT_HELP_MESSAGE,
-              default=get_block_producer_private_key())
+              default=get_swap_private_key())
 def process_swaps(eth_provider, remnode, permission, private_key):
     """
     Process swap requests.

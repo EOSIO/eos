@@ -36,7 +36,7 @@ class EthSwapBot:
         Arguments:
             eth_provider (string, required): a link to ethereum node.
             remnode (string, required): remnode script path with some options.
-            permission (string, required): a permission to sign process swap transactions
+            permission (string, required): a permission to authorize init swap actions
         """
         self.eth_provider = eth_provider
         self.remnode = remnode

@@ -1,9 +1,12 @@
 """
 Provide implementation of the remchain_swap_contract.
 """
+from time import sleep
+
 from cli.constants import (
     INIT_SWAP_ACTION,
     REM_SWAP_ACCOUNT,
+    WAIT_FOR_REM_NODE_TIME
 )
 
 from eosiopy.eosioparams import EosioParams
@@ -57,15 +60,21 @@ class RemchainSwapContract:
         amount = kwargs.get('amount')
         timestamp = kwargs.get('timestamp')
 
-        raw = RawinputParams(INIT_SWAP_ACTION, {
-                "rampayer": rampayer,
-                "txid": txid,
-                "swap_pubkey": swap_pubkey,
-                "amount": amount,
-                "return_address": return_address,
-                "return_chain_id": return_chain_id,
-                "timestamp": timestamp,
-            }, REM_SWAP_ACCOUNT, self.permission)
-        eosiop_arams = EosioParams(raw.params_actions_list, self.private_key)
-        net = NodeNetwork.push_transaction(eosiop_arams.trx_json)
-        print(net)
+        while True:
+            try:
+                raw = RawinputParams(INIT_SWAP_ACTION, {
+                    "rampayer": rampayer,
+                    "txid": txid,
+                    "swap_pubkey": swap_pubkey,
+                    "amount": amount,
+                    "return_address": return_address,
+                    "return_chain_id": return_chain_id,
+                    "timestamp": timestamp,
+                }, REM_SWAP_ACCOUNT, self.permission)
+                eosiop_arams = EosioParams(raw.params_actions_list, self.private_key)
+                net = NodeNetwork.push_transaction(eosiop_arams.trx_json)
+                print(net)
+            except Exception as e:
+                print(str(e))
+                sleep(WAIT_FOR_REM_NODE_TIME)
+            break

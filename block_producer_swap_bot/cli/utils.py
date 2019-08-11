@@ -48,15 +48,15 @@ def get_default_eth_provider():
     return config_file.get_eth_provider()
 
 
-def get_block_producer_permission():
+def get_swap_permission():
     """
-    Get block producer permission to sign process-swap transactions.
+    Get permission to authorize init swap actions.
     """
-    return config_file.get_block_producer_permission()
+    return config_file.get_swap_permission()
 
 
-def get_block_producer_private_key():
+def get_swap_private_key():
     """
-    Get block producer private key to sign process-swap transactions.
+    Get private key to sign init swap actions.
     """
-    return config_file.get_block_producer_private_key()
+    return config_file.get_swap_private_key()
