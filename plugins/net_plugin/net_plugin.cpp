@@ -157,8 +157,8 @@ namespace eosio {
       optional<io_work_t>                       server_ioc_work;
 
 
-      void connect(const connection_ptr& c);
-      void connect(const connection_ptr& c, tcp::resolver::iterator endpoint_itr);
+      void connect( const connection_ptr& c );
+      void connect( const connection_ptr& c, const std::shared_ptr<tcp::resolver>& resolver, tcp::resolver::results_type endpoints );
       bool start_session(const connection_ptr& c);
       void start_listen_loop();
       void start_read_message(const connection_ptr& c);
@@ -799,6 +799,7 @@ namespace eosio {
    void connection::close() {
       if(socket) {
          socket->close();
+         socket.reset( new tcp::socket( std::ref( *my_impl->server_ioc ) ) );
       }
       else {
          fc_wlog( logger, "no socket to close!" );
@@ -950,7 +951,7 @@ namespace eosio {
       buffer_queue.fill_out_buffer( bufs );
 
       boost::asio::async_write(*socket, bufs,
-            boost::asio::bind_executor(strand, [c, priority]( boost::system::error_code ec, std::size_t w ) {
+            boost::asio::bind_executor(strand, [c, socket=socket, priority]( boost::system::error_code ec, std::size_t w ) {
          app().post(priority, [c, priority, ec, w]() {
             try {
                auto conn = c.lock();
@@ -1826,12 +1827,12 @@ namespace eosio {
          tcp::resolver::query query( tcp::v4(), host.c_str(), port.c_str() );
          connection_wptr weak_conn = c;
          resolver->async_resolve( query, boost::asio::bind_executor( c->strand,
-                [weak_conn, this, resolver]( const boost::system::error_code& err, tcp::resolver::iterator endpoint_itr ) {
-                   app().post( priority::low, [err, endpoint_itr, weak_conn, this]() {
+                [weak_conn, this, resolver]( const boost::system::error_code& err, tcp::resolver::results_type endpoints ) {
+                   app().post( priority::low, [err, resolver, endpoints, weak_conn, this]() {
                       auto c = weak_conn.lock();
                       if( !c ) return;
                       if( !err ) {
-                         connect( c, endpoint_itr );
+                         connect( c, resolver, endpoints );
                       } else {
                          fc_elog( logger, "Unable to resolve ${peer_addr}: ${error}",
                                   ("peer_addr", c->peer_name())( "error", err.message()) );
@@ -1841,19 +1842,18 @@ namespace eosio {
       } );
    }
 
-   void net_plugin_impl::connect(const connection_ptr& c, tcp::resolver::iterator endpoint_itr) {
+   void net_plugin_impl::connect( const connection_ptr& c, const std::shared_ptr<tcp::resolver>& resolver, tcp::resolver::results_type endpoints ) {
       if( c->no_retry != go_away_reason::no_reason) {
          string rsn = reason_str(c->no_retry);
          return;
       }
-      auto current_endpoint = *endpoint_itr;
-      ++endpoint_itr;
       c->connecting = true;
       c->pending_message_buffer.reset();
       connection_wptr weak_conn = c;
-      c->socket->async_connect( current_endpoint, boost::asio::bind_executor( c->strand,
-            [weak_conn, endpoint_itr, this]( const boost::system::error_code& err ) {
-         app().post( priority::low, [weak_conn, endpoint_itr, this, err]() {
+      boost::asio::async_connect( *c->socket, endpoints,
+         boost::asio::bind_executor( c->strand,
+            [weak_conn, resolver, socket=c->socket, this]( const boost::system::error_code& err, const tcp::endpoint& endpoint ) {
+         app().post( priority::low, [weak_conn, this, err]() {
             auto c = weak_conn.lock();
             if( !c ) return;
             if( !err && c->socket->is_open()) {
@@ -1861,14 +1861,9 @@ namespace eosio {
                   c->send_handshake();
                }
             } else {
-               if( endpoint_itr != tcp::resolver::iterator()) {
-                  close( c );
-                  connect( c, endpoint_itr );
-               } else {
-                  fc_elog( logger, "connection failed to ${peer}: ${error}", ("peer", c->peer_name())( "error", err.message()));
-                  c->connecting = false;
-                  my_impl->close( c );
-               }
+               elog( "connection failed to ${peer}: ${error}", ("peer", c->peer_name())( "error", err.message()) );
+               c->connecting = false;
+               my_impl->close( c );
             }
          } );
       } ) );
