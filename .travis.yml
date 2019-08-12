@@ -5,7 +5,7 @@ cache:
   ccache: true
   directories:
     - $HOME/Library/Caches/Homebrew
-if: fork = true OR type = api
+if: fork = true OR type = api OR type = cron
 matrix:
   include:
     - os: linux
