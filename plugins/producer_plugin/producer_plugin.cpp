@@ -44,6 +44,30 @@ using std::vector;
 using std::deque;
 using boost::signals2::scoped_connection;
 
+#undef FC_LOG_AND_DROP
+#define LOG_AND_DROP()  \
+   catch ( const guard_exception& e ) { \
+      chain_plugin::handle_guard_exception(e); \
+   } catch ( const std::bad_alloc& ) { \
+      chain_plugin::handle_bad_alloc(); \
+   } catch ( boost::interprocess::bad_alloc& ) { \
+      chain_plugin::handle_db_exhaustion(); \
+   } catch( fc::exception& er ) { \
+      wlog( "${details}", ("details",er.to_detail_string()) ); \
+   } catch( const std::exception& e ) {  \
+      fc::exception fce( \
+                FC_LOG_MESSAGE( warn, "std::exception: ${what}: ",("what",e.what()) ), \
+                fc::std_exception_code,\
+                BOOST_CORE_TYPEID(e).name(), \
+                e.what() ) ; \
+      wlog( "${details}", ("details",fce.to_detail_string()) ); \
+   } catch( ... ) {  \
+      fc::unhandled_exception e( \
+                FC_LOG_MESSAGE( warn, "unknown: ",  ), \
+                std::current_exception() ); \
+      wlog( "${details}", ("details",e.to_detail_string()) ); \
+   }
+
 const fc::string logger_name("producer_plugin");
 fc::logger _log;
 
@@ -189,8 +213,6 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       std::vector<chain::digest_type>                           _protocol_features_to_activate;
       bool                                                      _protocol_features_signaled = false; // to mark whether it has been signaled in start_block
 
-      time_point _start_time = fc::time_point::now();
-
       producer_plugin* _self = nullptr;
       chain_plugin* chain_plug = nullptr;
 
@@ -206,6 +228,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       pending_snapshot_index                                   _pending_snapshot_index;
 
       fc::optional<scoped_connection>                          _accepted_block_connection;
+      fc::optional<scoped_connection>                          _accepted_block_header_connection;
       fc::optional<scoped_connection>                          _irreversible_block_connection;
 
       /*
@@ -227,20 +250,29 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       // path to write the snapshots to
       bfs::path _snapshots_dir;
 
+      void consider_new_watermark( account_name producer, uint32_t block_num ) {
+         auto itr = _producer_watermarks.find( producer );
+         if( itr != _producer_watermarks.end() ) {
+            itr->second = std::max( itr->second, block_num );
+         } else if( _producers.count( producer ) > 0 ) {
+            _producer_watermarks.emplace( producer, block_num );
+         }
+      }
+
+      std::optional<uint32_t> get_watermark( account_name producer ) const {
+         auto itr = _producer_watermarks.find( producer );
+
+         if( itr == _producer_watermarks.end() ) return {};
+
+         return itr->second;
+      }
 
       void on_block( const block_state_ptr& bsp ) {
          _unapplied_transactions.clear_applied( bsp->trxs );
+      }
 
-         if( bsp->header.timestamp <= _start_time ) return;
-
-         // simplify handling of watermark in on_block
-         auto block_producer = bsp->header.producer;
-         auto watermark_itr = _producer_watermarks.find( block_producer );
-         if( watermark_itr != _producer_watermarks.end() ) {
-            watermark_itr->second = bsp->block_num;
-         } else if( _producers.count( block_producer ) > 0 ) {
-            _producer_watermarks.emplace( block_producer, bsp->block_num );
-         }
+      void on_block_header( const block_state_ptr& bsp ) {
+         consider_new_watermark( bsp->header.producer, bsp->block_num );
       }
 
       void on_irreversible_block( const signed_block_ptr& lib ) {
@@ -335,14 +367,15 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                _unapplied_transactions.add_forked( forked_branch );
             } );
          } catch ( const guard_exception& e ) {
-            chain_plug->handle_guard_exception(e);
+            chain_plugin::handle_guard_exception(e);
             return;
          } catch( const fc::exception& e ) {
             elog((e.to_detail_string()));
             except = true;
+         } catch ( const std::bad_alloc& ) {
+            chain_plugin::handle_bad_alloc();
          } catch ( boost::interprocess::bad_alloc& ) {
             chain_plugin::handle_db_exhaustion();
-            return;
          }
 
          if( except ) {
@@ -517,9 +550,11 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
             }
 
          } catch ( const guard_exception& e ) {
-            chain_plug->handle_guard_exception(e);
+            chain_plugin::handle_guard_exception(e);
          } catch ( boost::interprocess::bad_alloc& ) {
             chain_plugin::handle_db_exhaustion();
+         } catch ( std::bad_alloc& ) {
+            chain_plugin::handle_bad_alloc();
          } CATCH_AND_CALL(send_response);
       }
 
@@ -699,6 +734,7 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
 { try {
    my->chain_plug = app().find_plugin<chain_plugin>();
    EOS_ASSERT( my->chain_plug, plugin_config_exception, "chain_plugin not found" );
+   chain_plugin* chain_plug = my->chain_plug;
    my->_options = &options;
    LOAD_VALUE_SET(options, "producer-name", my->_producers)
 
@@ -798,14 +834,14 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
          [this](const signed_block_ptr& block) {
       try {
          my->on_incoming_block(block);
-      } FC_LOG_AND_DROP();
+      } LOG_AND_DROP();
    });
 
    my->_incoming_transaction_subscription = app().get_channel<incoming::channels::transaction>().subscribe(
          [this](const packed_transaction_ptr& trx) {
       try {
          my->on_incoming_transaction_async(trx, false, [](const auto&){});
-      } FC_LOG_AND_DROP();
+      } LOG_AND_DROP();
    });
 
    my->_incoming_block_sync_provider = app().get_method<incoming::methods::block_sync>().register_provider(
@@ -843,6 +879,7 @@ void producer_plugin::plugin_startup()
               "node cannot have any producer-name configured because block production is not safe when validation_mode is not \"full\"" );
 
    my->_accepted_block_connection.emplace(chain.accepted_block.connect( [this]( const auto& bsp ){ my->on_block( bsp ); } ));
+   my->_accepted_block_header_connection.emplace(chain.accepted_block_header.connect( [this]( const auto& bsp ){ my->on_block_header( bsp ); } ));
    my->_irreversible_block_connection.emplace(chain.irreversible_block.connect( [this]( const auto& bsp ){ my->on_irreversible_block( bsp->block ); } ));
 
    const auto lib_num = chain.last_irreversible_block_num();
@@ -880,6 +917,7 @@ void producer_plugin::plugin_shutdown() {
       my->_thread_pool->stop();
    }
    my->_accepted_block_connection.reset();
+   my->_accepted_block_header_connection.reset();
    my->_irreversible_block_connection.reset();
 }
 
@@ -1234,9 +1272,9 @@ optional<fc::time_point> producer_plugin_impl::calculate_next_block_time(const a
    // disqualify this producer for longer but it is assumed they will wake up, determine that they
    // are disqualified for longer due to skipped blocks and re-caculate their next block with better
    // information then
-   auto current_watermark_itr = _producer_watermarks.find(producer_name);
-   if (current_watermark_itr != _producer_watermarks.end()) {
-      auto watermark = current_watermark_itr->second;
+   auto current_watermark = get_watermark(producer_name);
+   if (current_watermark) {
+      auto watermark = *current_watermark;
       auto block_num = chain.head_block_state()->block_num;
       if (chain.is_building_block()) {
          ++block_num;
@@ -1314,7 +1352,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
 
    // Not our turn
    const auto& scheduled_producer = hbs->get_scheduled_producer(block_time);
-   auto currrent_watermark_itr = _producer_watermarks.find(scheduled_producer.producer_name);
+   auto current_watermark = get_watermark(scheduled_producer.producer_name);
 
    size_t num_relevant_signatures = 0;
    scheduled_producer.for_each_key([&](const public_key_type& key){
@@ -1344,14 +1382,12 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
 
    if (_pending_block_mode == pending_block_mode::producing) {
       // determine if our watermark excludes us from producing at this point
-      if (currrent_watermark_itr != _producer_watermarks.end()) {
-         if (currrent_watermark_itr->second >= hbs->block_num + 1) {
-            elog("Not producing block because \"${producer}\" signed a BFT confirmation OR block at a higher block number (${watermark}) than the current fork's head (${head_block_num})",
-                ("producer", scheduled_producer.producer_name)
-                ("watermark", currrent_watermark_itr->second)
-                ("head_block_num", hbs->block_num));
-            _pending_block_mode = pending_block_mode::speculating;
-         }
+      if (current_watermark && *current_watermark >= hbs->block_num + 1) {
+         elog("Not producing block because \"${producer}\" signed a block at a higher block number (${watermark}) than the current fork's head (${head_block_num})",
+             ("producer", scheduled_producer.producer_name)
+             ("watermark", *current_watermark)
+             ("head_block_num", hbs->block_num));
+         _pending_block_mode = pending_block_mode::speculating;
       }
    }
 
@@ -1371,8 +1407,8 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
          //    confirmations to make sure we don't double sign after a crash TODO: make these watermarks durable?
          // 3) if it is a producer on this node where this node knows the last block it produced, safely set it -UNLESS-
          // 4) the producer on this node's last watermark is higher (meaning on a different fork)
-         if (currrent_watermark_itr != _producer_watermarks.end()) {
-            auto watermark = currrent_watermark_itr->second;
+         if (current_watermark) {
+            auto watermark = *current_watermark;
             if (watermark < hbs->block_num) {
                blocks_to_confirm = (uint16_t)(std::min<uint32_t>(std::numeric_limits<uint16_t>::max(), (uint32_t)(hbs->block_num - watermark)));
             }
@@ -1420,7 +1456,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
       }
 
       chain.start_block( block_time, blocks_to_confirm, features_to_activate );
-   } FC_LOG_AND_DROP();
+   } LOG_AND_DROP();
 
    if( chain.is_building_block() ) {
       auto pending_block_time = chain.pending_block_time();
@@ -1516,10 +1552,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
                      itr = _unapplied_transactions.erase( itr );
                      continue;
                   }
-               } catch( const guard_exception& e ) {
-                  chain_plug->handle_guard_exception( e );
-                  return start_block_result::failed;
-               } FC_LOG_AND_DROP();
+               } LOG_AND_DROP();
                ++itr;
             }
 
@@ -1623,10 +1656,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
                   } else {
                      num_applied++;
                   }
-               } catch ( const guard_exception& e ) {
-                  chain_plug->handle_guard_exception(e);
-                  return start_block_result::failed;
-               } FC_LOG_AND_DROP();
+               } LOG_AND_DROP();
 
                _incoming_trx_weight += _incoming_defer_ratio;
                if (!orig_pending_txn_size) _incoming_trx_weight = 0.0;
@@ -1646,6 +1676,8 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
 
          }
 
+         if( app().is_quiting() ) // db guard exception above in LOG_AND_DROP could have called app().quit()
+            return start_block_result::failed;
          if (exhausted || preprocess_deadline <= fc::time_point::now()) {
             return start_block_result::exhausted;
          } else {
@@ -1664,9 +1696,13 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
             return start_block_result::succeeded;
          }
 
+      } catch ( const guard_exception& e ) {
+         chain_plugin::handle_guard_exception(e);
+         return start_block_result::failed;
+      } catch ( std::bad_alloc& ) {
+         chain_plugin::handle_bad_alloc();
       } catch ( boost::interprocess::bad_alloc& ) {
          chain_plugin::handle_db_exhaustion();
-         return start_block_result::failed;
       }
 
    }
@@ -1788,17 +1824,9 @@ bool producer_plugin_impl::maybe_produce_block() {
    });
 
    try {
-      try {
-         produce_block();
-         return true;
-      } catch ( const guard_exception& e ) {
-         chain_plug->handle_guard_exception(e);
-         return false;
-      } FC_LOG_AND_DROP();
-   } catch ( boost::interprocess::bad_alloc&) {
-      chain_plugin::handle_db_exhaustion();
-      return false;
-   }
+      produce_block();
+      return true;
+   } LOG_AND_DROP();
 
    fc_dlog(_log, "Aborting block due to produce_block error");
    chain::controller& chain = chain_plug->chain();
@@ -1864,7 +1892,6 @@ void producer_plugin_impl::produce_block() {
    chain.commit_block();
 
    block_state_ptr new_bs = chain.head_block_state();
-   _producer_watermarks[new_bs->header.producer] = chain.head_block_num();
 
    ilog("Produced block ${id}... #${n} @ ${t} signed by ${p} [trxs: ${count}, lib: ${lib}, confirmed: ${confs}]",
         ("p",new_bs->header.producer)("id",new_bs->id.str().substr(0,16))

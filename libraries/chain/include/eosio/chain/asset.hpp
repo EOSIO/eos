@@ -114,5 +114,19 @@ inline void from_variant(const fc::variant& var, eosio::chain::asset& vo) {
 }
 }
 
+namespace fc {
+inline void from_variant(const fc::variant& var, eosio::chain::extended_asset& vo) {
+   if( var.is_array() ) {
+      const auto& va = var.get_array();
+      from_variant(va.at(0), vo.quantity);
+      from_variant(va.at(1), vo.contract);
+   } else {
+      const auto& vars = var.get_object();
+      from_variant(vars["quantity"], vo.quantity);
+      from_variant(vars["contract"], vo.contract);
+   }
+}
+}
+
 FC_REFLECT(eosio::chain::asset, (amount)(sym))
 FC_REFLECT(eosio::chain::extended_asset, (quantity)(contract) )

@@ -686,6 +686,42 @@ BOOST_FIXTURE_TEST_CASE( table_init_tests, TESTER ) try {
 
 } FC_LOG_AND_RETHROW()
 
+BOOST_FIXTURE_TEST_CASE( table_init_oob, TESTER ) try {
+   create_accounts( {N(tableinitoob)} );
+   produce_block();
+
+   signed_transaction trx;
+   trx.actions.emplace_back(vector<permission_level>{{N(tableinitoob),config::active_name}}, N(tableinitoob), N(), bytes{});
+   trx.actions[0].authorization = vector<permission_level>{{N(tableinitoob),config::active_name}};
+
+    auto pushit_and_expect_fail = [&]() {
+      produce_block();
+      trx.signatures.clear();
+      set_transaction_headers(trx);
+      trx.sign(get_private_key(N(tableinitoob), "active"), control->get_chain_id());
+      
+      //the unspecified_exception_code comes from WAVM, which manages to throw a WAVM specific exception
+      // up to where exec_one captures it and doesn't understand it
+      BOOST_CHECK_THROW(push_transaction(trx), eosio::chain::wasm_execution_error);
+   };
+
+   set_code(N(tableinitoob), table_init_oob_wast);
+   produce_block();
+
+   pushit_and_expect_fail();
+   //make sure doing it again didn't lodge something funky in to a cache
+   pushit_and_expect_fail();
+
+   set_code(N(tableinitoob), table_init_oob_smaller_wast);
+   produce_block();
+   pushit_and_expect_fail();
+   pushit_and_expect_fail();
+
+   //an elem w/o a table is a setcode fail though
+   BOOST_CHECK_THROW(set_code(N(tableinitoob), table_init_oob_no_table_wast), eosio::chain::wasm_exception);
+
+} FC_LOG_AND_RETHROW()
+
 BOOST_FIXTURE_TEST_CASE( memory_init_border, TESTER ) try {
    produce_blocks(2);
 
