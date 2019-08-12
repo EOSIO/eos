@@ -2,6 +2,7 @@
 sudo apt upgrade
 sudo apt update
 sudo apt install python3
+sudo apt install python3-dev
 sudo apt install virtualenv
 
 virtualenv -p python3.6 swap_env
