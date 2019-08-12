@@ -163,6 +163,9 @@ namespace eosio { namespace chain {
       my->block_file.set_file_path( data_dir / "blocks.log" );
       my->index_file.set_file_path( data_dir / "blocks.index" );
 
+      auto log_size = fc::file_size( my->block_file.get_file_path() );
+      auto index_size = fc::file_size( my->index_file.get_file_path() );
+
       my->reopen();
 
       /* On startup of the block log, there are several states the log file and the index file can be
@@ -183,8 +186,6 @@ namespace eosio { namespace chain {
        *  - If the index file head is not in the log file, delete the index and replay.
        *  - If the index file head is in the log, but not up to date, replay from index head.
        */
-      auto log_size = my->block_file.file_size();
-      auto index_size = my->index_file.file_size();
 
       if (log_size) {
          ilog("Log is nonempty");
@@ -237,7 +238,7 @@ namespace eosio { namespace chain {
       } else if (index_size) {
          ilog("Index is nonempty, remove and recreate it");
          my->close();
-         my->index_file.remove();
+         fc::remove_all( my->index_file.get_file_path() );
          my->reopen();
       }
    }
@@ -278,8 +279,8 @@ namespace eosio { namespace chain {
    void block_log::reset( const genesis_state& gs, const signed_block_ptr& first_block, uint32_t first_block_num ) {
       my->close();
 
-      my->block_file.remove();
-      my->index_file.remove();
+      fc::remove_all( my->block_file.get_file_path() );
+      fc::remove_all( my->index_file.get_file_path() );
 
       my->reopen();
 
@@ -377,7 +378,7 @@ namespace eosio { namespace chain {
       ilog("Reconstructing Block Log Index...");
       my->close();
 
-      my->index_file.remove();
+      fc::remove_all( my->index_file.get_file_path() );
 
       my->reopen();
 
