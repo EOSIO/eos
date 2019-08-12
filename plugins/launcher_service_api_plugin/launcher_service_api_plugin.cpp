@@ -54,14 +54,14 @@ void launcher_service_api_plugin::plugin_initialize(const variables_map& options
      eosio::detail::wallet_api_plugin_empty result;
 
 void launcher_service_api_plugin::plugin_startup() {
-   // Make the magic happen
-   ilog("launcher_service_api_plugin::plugin_startup() 5");
-
    app().get_plugin<http_plugin>().add_api({
       CALL(launcher, get_info, INVOKE_R_R(get_info, std::string), 200),
+      CALL(launcher, get_block, INVOKE_R_R(get_block, launcher_service::get_block_param), 200),
+      CALL(launcher, get_block_header_state, INVOKE_R_R(get_block_header_state, launcher_service::get_block_param), 200),
       CALL(launcher, get_account, INVOKE_R_R(get_account, launcher_service::get_account_param), 200),
       CALL(launcher, get_cluster_info, INVOKE_R_R(get_cluster_info, int), 200),
       CALL(launcher, launch_cluster, INVOKE_R_R(launch_cluster, launcher_service::cluster_def), 200),
+      CALL(launcher, stop_cluster, INVOKE_R_R(stop_cluster, int), 200),
       CALL(launcher, stop_all_clusters, INVOKE_R(stop_all_clusters), 200),
       CALL(launcher, create_bios_accounts, INVOKE_R_R(create_bios_accounts, launcher_service::create_bios_accounts_param), 200),
       CALL(launcher, set_contract, INVOKE_R_R(set_contract, launcher_service::set_contract_param), 200),

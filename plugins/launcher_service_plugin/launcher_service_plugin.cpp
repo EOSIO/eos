@@ -224,7 +224,7 @@ public:
             cmd += " --config-dir=" + node_path.string();
             cmd += " --data-dir=" + node_path.string() + "/data";
             if (!restart) {
-               cmd += " --genesis-json=genesis.json";
+               cmd += " --genesis-json=" + _config.genesis_file;
                cmd += " --delete-all-blocks";
             }
             if (def.extra_args.length()) {
@@ -296,7 +296,7 @@ public:
             client::http::http_context context = client::http::create_http_context();
             std::vector<std::string> headers;
             auto sp = std::make_unique<client::http::connection_param>(context, client::http::parse_url(url) + func, false, headers);
-            return client::http::do_http_call(*sp, args, true, true );
+            return client::http::do_http_call(*sp, args, _config.print_http_request, _config.print_http_response );
          }
          std::string err = "failed to " + func + ", nodeos is not running";
          throw err;
@@ -312,6 +312,10 @@ public:
 
       fc::variant get_block(int cluster_id, int node_id, std::string block_num_or_id) {
          return call(cluster_id, node_id, "/v1/chain/get_block", fc::mutable_variant_object("block_num_or_id", block_num_or_id));
+      }
+
+      fc::variant get_block_header_state(int cluster_id, int node_id, std::string block_num_or_id) {
+         return call(cluster_id, node_id, "/v1/chain/get_block_header_state", fc::mutable_variant_object("block_num_or_id", block_num_or_id));
       }
 
       fc::variant determine_required_keys(int cluster_id, int node_id, const signed_transaction& trx) {
@@ -397,7 +401,7 @@ public:
          client::http::http_context context = client::http::create_http_context();
          std::vector<std::string> headers;
          auto sp = std::make_unique<client::http::connection_param>(context, client::http::parse_url(url) + "/v1/chain/push_transaction", false, headers);
-         return client::http::do_http_call(*sp, fc::variant(packed_transaction(trx, compression)), true, true );
+         return client::http::do_http_call(*sp, fc::variant(packed_transaction(trx, compression)),  _config.print_http_request, _config.print_http_response );
       }
 
       fc::variant push_actions(int cluster_id, int node_id, std::vector<chain::action>&& actions,
@@ -421,7 +425,14 @@ public:
 
       fc::variant create_bios_accounts(create_bios_accounts_param param) {
          std::vector<eosio::chain::action> actlist;
+         public_key_type def_key = _config.default_key.get_public_key();
          for (auto &a : param.accounts) {
+            if (a.owner == public_key_type()) {
+               a.owner = def_key;
+            }
+            if (a.active == public_key_type()) {
+               a.active = def_key;
+            }
             actlist.push_back(create_newaccount(param.creator, a.name, a.owner, a.active));
          }
          return push_actions(param.cluster_id, param.node_id, std::move(actlist));
@@ -538,13 +549,11 @@ void launcher_service_plugin::plugin_shutdown() {
 
 fc::variant launcher_service_plugin::get_info(std::string url)
 {
-   bool print_request = false;
-   bool print_response = false;
    try {
       client::http::http_context context = client::http::create_http_context();
       std::vector<std::string> headers;
       auto sp = std::make_unique<client::http::connection_param>(context, client::http::parse_url(url) + "/v1/chain/get_info", false, headers);
-      auto r = client::http::do_http_call(*sp, fc::variant(), print_request, print_response );
+      auto r = client::http::do_http_call(*sp, fc::variant(),  _my->_config.print_http_request, _my->_config.print_http_response );
       return r;
    } catch (boost::system::system_error& e) {
       return fc::mutable_variant_object("exception", e.what())("url", url);
@@ -566,7 +575,7 @@ fc::variant launcher_service_plugin::get_cluster_info(int cluster_id)
             client::http::http_context context = client::http::create_http_context();
             std::vector<std::string> headers;
             auto sp = std::make_unique<client::http::connection_param>(context, client::http::parse_url(url) + "/v1/chain/get_info", false, headers);
-            res[id] = client::http::do_http_call(*sp, fc::variant(), print_request, print_response );
+            res[id] = client::http::do_http_call(*sp, fc::variant(), _my->_config.print_http_request, _my->_config.print_http_response );
          } catch (boost::system::system_error& e) {
             res[id] = fc::mutable_variant_object("exception", e.what())("url", url);
          }
@@ -601,9 +610,28 @@ fc::variant launcher_service_plugin::stop_all_clusters() {
    } CATCH_LAUCHER_EXCEPTIONS
 }
 
+fc::variant launcher_service_plugin::stop_cluster(int cluster_id) {
+   try {
+      _my->stop_cluster(cluster_id);
+      return fc::mutable_variant_object("result", "OK");
+   } CATCH_LAUCHER_EXCEPTIONS
+}
+
 fc::variant launcher_service_plugin::create_bios_accounts(launcher_service::create_bios_accounts_param param) {
    try {
       return _my->create_bios_accounts(param);
+   } CATCH_LAUCHER_EXCEPTIONS
+}
+
+fc::variant launcher_service_plugin::get_block(launcher_service::get_block_param param) {
+   try {
+      return _my->get_block(param.cluster_id, param.node_id, param.block_num_or_id);
+   } CATCH_LAUCHER_EXCEPTIONS
+}
+
+fc::variant launcher_service_plugin::get_block_header_state(launcher_service::get_block_param param) {
+   try {
+      return _my->get_block_header_state(param.cluster_id, param.node_id, param.block_num_or_id);
    } CATCH_LAUCHER_EXCEPTIONS
 }
 

@@ -72,8 +72,11 @@ namespace launcher_service {
       std::string host_name = "127.0.0.1";
       std::string listen_addr = "0.0.0.0";
       std::string nodeos_cmd = "./programs/nodeos/nodeos";
+      std::string genesis_file = "genesis.json";
       int         log_file_rotate_max = 8;
       fc::microseconds abi_serializer_max_time = fc::microseconds(1000000);
+      bool        print_http_request = false;
+      bool        print_http_response = false;
       private_key_type default_key;
 
       launcher_config() : default_key(std::string("5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3")) { }
@@ -89,6 +92,12 @@ namespace launcher_service {
       int                            node_id;
       chain::name                    creator;
       std::vector<new_account_param> accounts;
+   };
+
+   struct get_block_param {
+      int                            cluster_id;
+      int                            node_id;
+      std::string                    block_num_or_id;
    };
 
    struct get_account_param {
@@ -114,7 +123,7 @@ namespace launcher_service {
       chain::name                     account;
       chain::name                     action;
       vector<chain::permission_level> permissions;
-      std::string                     data;
+      fc::variant                     data;
    };
 
    struct push_actions_param {
@@ -147,22 +156,28 @@ public:
    void plugin_startup();
    void plugin_shutdown();
 
-   fc::variant get_info(std::string url);
-   fc::variant get_account(launcher_service::get_account_param);
-   fc::variant get_cluster_info(int cluster_id);
+   // cluster related calls
    fc::variant launch_cluster(launcher_service::cluster_def cluster_def);
    fc::variant stop_all_clusters();
    fc::variant stop_cluster(int cluster_id);
    fc::variant start_node(int cluster_id, int node_id);
    fc::variant stop_node(int cluster_id, int node_id);
 
+   // wallet related calls
+   fc::variant import_keys(launcher_service::import_keys_param);
+
+   // querys
+   fc::variant get_info(std::string url);
+   fc::variant get_block(launcher_service::get_block_param);
+   fc::variant get_block_header_state(launcher_service::get_block_param);
+   fc::variant get_account(launcher_service::get_account_param);
+   fc::variant get_cluster_info(int cluster_id);
+   fc::variant verify_transaction(launcher_service::verify_transaction_param);
+
+   // transactions
    fc::variant create_bios_accounts(launcher_service::create_bios_accounts_param);
    fc::variant set_contract(launcher_service::set_contract_param);
-   fc::variant import_keys(launcher_service::import_keys_param);
    fc::variant push_actions(launcher_service::push_actions_param);
-
-   // check if transaction is included in some block
-   fc::variant verify_transaction(launcher_service::verify_transaction_param);
 
 private:
    std::unique_ptr<class launcher_service_plugin_impl>  _my;
@@ -174,6 +189,7 @@ FC_REFLECT(eosio::launcher_service::node_def, (node_id)(producers)(producing_key
 FC_REFLECT(eosio::launcher_service::cluster_def, (shape)(cluster_id)(node_count)(nodes)(extra_configs)(extra_args) )
 FC_REFLECT(eosio::launcher_service::new_account_param, (name)(owner)(active))
 FC_REFLECT(eosio::launcher_service::create_bios_accounts_param, (cluster_id)(node_id)(creator)(accounts))
+FC_REFLECT(eosio::launcher_service::get_block_param, (cluster_id)(node_id)(block_num_or_id))
 FC_REFLECT(eosio::launcher_service::get_account_param, (cluster_id)(node_id)(name))
 FC_REFLECT(eosio::launcher_service::set_contract_param, (cluster_id)(node_id)(account)(contract_file)(abi_file))
 FC_REFLECT(eosio::launcher_service::import_keys_param, (cluster_id)(keys))
