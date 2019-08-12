@@ -136,6 +136,7 @@ steps:
           wait-network: true
     agents:
       - "queue=mac-anka-large-node-fleet"
+    skip: "[[ $SKIP_MOJAVE == true ]] || [[ $SKIP_UNIT_TESTS == true ]]"
 
 
   - label: ":aws: Amazon_Linux 2.0 - Long-Running Tests"
@@ -148,7 +149,7 @@ steps:
     agents:
       queue: "automation-eos-builder-fleet"
     timeout: ${TIMEOUT:-10}
-    skip: "[[ $SKIP_AMAZON_LINUX_2 == true ]] || [[ $SKIP_LONG_RUNNING_TESTS == true ]]"
+    skip: "[[ $SKIP_AMAZON_LINUX_2 == true ]] || [[ ${SKIP_LONG_RUNNING_TESTS:-true} == true ]]"
 
   - label: ":centos: CentOS 7.6 - Long-Running Tests"
     command:
@@ -160,7 +161,7 @@ steps:
     agents:
       queue: "automation-eos-builder-fleet"
     timeout: ${TIMEOUT:-10}
-    skip: "[[ $SKIP_CENTOS_7 == true ]] || [[ $SKIP_LONG_RUNNING_TESTS == true ]]"
+    skip: "[[ $SKIP_CENTOS_7 == true ]] || [[ ${SKIP_LONG_RUNNING_TESTS:-true} == true ]]"
 
   - label: ":ubuntu: Ubuntu 16.04 - Long-Running Tests"
     command:
@@ -172,7 +173,7 @@ steps:
     agents:
       queue: "automation-eos-builder-fleet"
     timeout: ${TIMEOUT:-10}
-    skip: "[[ $SKIP_UBUNTU_16 == true ]] || [[ $SKIP_LONG_RUNNING_TESTS == true ]]"
+    skip: "[[ $SKIP_UBUNTU_16 == true ]] || [[ ${SKIP_LONG_RUNNING_TESTS:-true} == true ]]"
 
   - label: ":ubuntu: Ubuntu 18.04 - Long-Running Tests"
     command:
@@ -184,7 +185,7 @@ steps:
     agents:
       queue: "automation-eos-builder-fleet"
     timeout: ${TIMEOUT:-10}
-    skip: "[[ $SKIP_UBUNTU_18 == true ]] || [[ $SKIP_LONG_RUNNING_TESTS == true ]]"
+    skip: "[[ $SKIP_UBUNTU_18 == true ]] || [[ ${SKIP_LONG_RUNNING_TESTS:-true} == true ]]"
 
   - label: ":darwin: macOS 10.14 - Long-Running Tests"
     command:
@@ -205,6 +206,7 @@ steps:
           wait-network: true
     agents:
       - "queue=mac-anka-large-node-fleet"
+    skip: "[[ $SKIP_MOJAVE == true ]] || [[ ${SKIP_LONG_RUNNING_TESTS:-true} == true ]]"
 
   - wait:
     continue_on_failure: true
