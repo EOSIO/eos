@@ -19,7 +19,7 @@ else # Linux
 
     . $HELPERS_DIR/docker-hash.sh
 
-    PRE_COMMANDS=". $MOUNTED_DIR/.cicd/helpers/logging.sh && ccache -s && cd $MOUNTED_DIR/build"
+    PRE_COMMANDS="ccache -s && cd $MOUNTED_DIR/build"
     # PRE_COMMANDS: Executed pre-cmake
     # CMAKE_EXTRAS: Executed within and right before the cmake path (cmake CMAKE_EXTRAS ..)
     if [[ $IMAGE_TAG == 'ubuntu-18.04' ]]; then
