@@ -6,13 +6,15 @@
 #include <eosio/chain/exceptions.hpp>
 #include <fstream>
 #include <fc/bitutil.hpp>
+#include <fc/io/cfile.hpp>
 #include <fc/io/raw.hpp>
-#include <cstdio>
-#include <stdio.h>
+
 
 #define LOG_READ  (std::ios::in | std::ios::binary)
 #define LOG_WRITE (std::ios::out | std::ios::binary | std::ios::app)
 #define LOG_RW ( std::ios::in | std::ios::out | std::ios::binary )
+#define LOG_WRITE_C "ab+"
+#define LOG_RW_C "rb+"
 
 namespace eosio { namespace chain {
 
@@ -29,147 +31,12 @@ namespace eosio { namespace chain {
    namespace detail {
       using unique_file = std::unique_ptr<FILE, decltype(&fclose)>;
 
-      class cfile_datastream;
-
-      class cfile {
-      public:
-         explicit cfile()
-         : _file(nullptr, &fclose)
-         {}
-
-         void set_file_path( fc::path file_path ) {
-            _file_path = std::move( file_path );
-         }
-
-         fc::path get_file_path() const {
-            return _file_path;
-         }
-
-         bool is_open() const { return _open; }
-
-         size_t file_size() const {
-            return fc::file_size( _file_path );
-         }
-
-         void open_for_append() {
-            _file.reset( fopen( _file_path.generic_string().c_str(), "ab+" ) );
-            if( !_file ) {
-               throw std::runtime_error( "cfile unable to open: " +  _file_path.generic_string() );
-            }
-            _open = true;
-         }
-
-         void open_for_rw() {
-            _file.reset( fopen( _file_path.generic_string().c_str(), "rb+" ) );
-            if( !_file ) {
-               throw std::runtime_error( "cfile unable to open: " +  _file_path.generic_string() );
-            }
-            _open = true;
-         }
-
-         long tellp() const {
-            return ftell( _file.get() );
-         }
-
-         void seek( long loc ) {
-            if( 0 != fseek( _file.get(), loc, SEEK_SET ) ) {
-               throw std::runtime_error( "cfile: " + _file_path.generic_string() +
-                  " unable to SEEK_SET to: " + std::to_string(loc) );
-            }
-         }
-
-         void seek_end( long loc ) {
-            if( 0 != fseek( _file.get(), loc, SEEK_END ) ) {
-               throw std::runtime_error( "cfile: " + _file_path.generic_string() +
-                  " unable to SEEK_END to: " + std::to_string(loc) );
-            }
-         }
-
-         void read( char* d, size_t n ) {
-            size_t result = fread( d, 1, n, _file.get() );
-            if( result != n ) {
-               throw std::runtime_error( "cfile: " + _file_path.generic_string() +
-                  " unable to read " + std::to_string( n ) + " only read " + std::to_string( result ) );
-            }
-         }
-
-         void write( const char* d, size_t n ) {
-            size_t result = fwrite( d, 1, n, _file.get() );
-            if( result != n ) {
-               throw std::runtime_error( "cfile: " + _file_path.generic_string() +
-                  " unable to write " + std::to_string( n ) + " only wrote " + std::to_string( result ) );
-            }
-         }
-
-         void flush() {
-            if( 0 != fflush( _file.get() ) ) {
-               throw std::runtime_error( "cfile: " + _file_path.generic_string() + " unable to flush file." );
-            }
-         }
-
-         void close() {
-            _file.reset();
-            _open = false;
-         }
-
-         void remove() {
-            if( _open ) {
-               throw std::runtime_error( "cfile: " + _file_path.generic_string() + " Unable to remove as file is open" );
-            }
-            fc::remove_all( _file_path );
-         }
-
-         cfile_datastream create_datastream();
-
-      private:
-         bool          _open = false;
-         fc::path      _file_path;
-         unique_file   _file;
-      };
-
-      /*
-       *  @brief datastream adapter that adapts cfile for use with fc unpack
-       *
-       *  This class supports unpack functionality but not pack.
-       */
-      class cfile_datastream {
-      public:
-         explicit cfile_datastream( cfile& cf ) : cf(cf) {}
-
-         void skip( size_t s ) {
-            std::vector<char> d( s );
-            read( &d[0], s );
-         }
-
-         bool read( char* d, size_t s ) {
-            cf.read( d, s );
-            return true;
-         }
-
-         bool get( unsigned char& c ) {
-            char cc;
-            cf.read(&cc, 1);
-            c = cc;
-            return true;
-         }
-
-         bool get( char& c ) { return read(&c, 1); }
-
-      private:
-         cfile& cf;
-      };
-
-      inline cfile_datastream cfile::create_datastream() {
-         return cfile_datastream(*this);
-      }
-
-
       class block_log_impl {
          public:
             signed_block_ptr         head;
             block_id_type            head_id;
-            cfile                    block_file;
-            cfile                    index_file;
+            fc::cfile                block_file;
+            fc::cfile                index_file;
             bool                     open_files = false;
             bool                     genesis_written_to_block_log = false;
             uint32_t                 version = 0;
@@ -196,13 +63,13 @@ namespace eosio { namespace chain {
 
          // open to create files if they don't exist
          //ilog("Opening block log at ${path}", ("path", my->block_file.generic_string()));
-         block_file.open_for_append();
-         index_file.open_for_append();
+         block_file.open( LOG_WRITE_C );
+         index_file.open( LOG_WRITE_C );
 
          close();
 
-         block_file.open_for_rw();
-         index_file.open_for_rw();
+         block_file.open( LOG_RW_C );
+         index_file.open( LOG_RW_C );
 
          open_files = true;
       }
