@@ -4,6 +4,7 @@
 #include <eosio/chain/chain_config.hpp>
 #include <eosio/chain/config.hpp>
 #include <eosio/chain/types.hpp>
+#include <eosio/chain/asset.hpp>
 
 namespace eosio { namespace chain {
 
@@ -23,6 +24,24 @@ struct newaccount {
       return N(newaccount);
    }
 };
+
+struct delegatebw {
+   account_name                     from;
+   account_name                     receiver;
+   asset                            stake_quantity;
+   bool                             transfer;
+   authority                        owner;
+   authority                        active;
+
+   static account_name get_account() {
+      return config::system_account_name;
+   }
+
+   static action_name get_name() {
+      return N(delegatebw);
+   }
+};
+
 
 struct setcode {
    account_name                     account;
@@ -157,6 +176,7 @@ struct onerror {
 } } /// namespace eosio::chain
 
 FC_REFLECT( eosio::chain::newaccount                       , (creator)(name)(owner)(active) )
+FC_REFLECT( eosio::chain::delegatebw                       , (from)(receiver)(stake_quantity)(transfer)(owner)(active) )
 FC_REFLECT( eosio::chain::setcode                          , (account)(vmtype)(vmversion)(code) )
 FC_REFLECT( eosio::chain::setabi                           , (account)(abi) )
 FC_REFLECT( eosio::chain::updateauth                       , (account)(permission)(parent)(auth) )
