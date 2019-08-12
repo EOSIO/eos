@@ -39,7 +39,7 @@ $ sudo ./scripts/ubuntu16.04_install.sh
 Open configuration file.
 
 ```bash
-$ nano cli/config.ini
+$ nano ./config.ini
 ```
 
 Paste into the config file following content:
@@ -53,18 +53,19 @@ swap-permission=<permission to authorize init swap actions>@active
 swap-private-key=<private key to sign init swap actions>
 ```
 
-Replace remnode, eth-provider, swap-permission, swap-private-key with your remnode host and port, a link to Ethereum node with websocket connection, your account and private key to authorize init swap actions.
+Replace remnode, eth-provider, swap-permission, swap-private-key with your remnode host and port, a link to Ethereum node with websocket connection, your account and private key to authorize init swap actions (for example your block producer account name and private key for signing blocks).
 [Tutorial for creating Infura API key](https://ethereumico.io/knowledge-base/infura-api-key-guide/)
 
-Save config file with Ctrl+O for Ubuntu or Cmd+O for MacOS
-Close config file with Ctrl+X for Ubuntu or Cmd+X for MacOS
+Save config file with Ctrl+O.
+Press Enter.
+Close config file with Ctrl+X.
 
 ### Usage
 
 To start approving swaps run the following command
 
 ```bash
-$ sudo ./scripts/run.sh
+$ sudo ./scripts/run.sh >> swap.log 2>&1 &
 ```
 
 ## Development
