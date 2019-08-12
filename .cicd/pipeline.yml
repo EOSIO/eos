@@ -57,7 +57,7 @@ steps:
     plugins:
       - docker#v3.2.0:
           debug: $DEBUG
-          image: "eosio/producer:eosio-ubuntu-18.04-d1248048f40158965ff9876c0c21ac728bb82da6"
+          image: "eosio/producer:eosio-ubuntu-18.04-a66010b58e22ecd0b9f670f7c1e6278c3d6e19c5"
           environment:
             - "BUILDKITE_AGENT_ACCESS_TOKEN" # Needed for buildkite-agent upload/download
             - "JOBS" # Number for -j make/ctest args.
@@ -154,7 +154,7 @@ steps:
     plugins:
       - docker#v3.2.0:
           debug: $DEBUG
-          image: "eosio/producer:eosio-ubuntu-18.04-d1248048f40158965ff9876c0c21ac728bb82da6"
+          image: "eosio/producer:eosio-ubuntu-18.04-a66010b58e22ecd0b9f670f7c1e6278c3d6e19c5"
           environment:
             - "BUILDKITE_AGENT_ACCESS_TOKEN" # Needed for buildkite-agent upload/download
           mount-buildkite-agent: false # Mounting bk-agent doesn't work, so disable it
