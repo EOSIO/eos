@@ -17,9 +17,7 @@ else # Linux
 
     . $HELPERS_DIR/docker-hash.sh
 
-    PRE_COMMANDS=". $MOUNTED_DIR/.cicd/helpers/logging.sh && cd $MOUNTED_DIR/build"
-
-    COMMANDS="$PRE_COMMANDS && $TEST"
+    COMMANDS="cd $MOUNTED_DIR/build && $TEST"
 
     # Load BUILDKITE Environment Variables for use in docker run
     if [[ -f $BUILDKITE_ENV_FILE ]]; then
