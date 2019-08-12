@@ -16,6 +16,14 @@
 #define LOG_WRITE_C "ab+"
 #define LOG_RW_C "rb+"
 
+#ifndef _WIN32
+#define FC_FOPEN(p, m) fopen(p, m)
+#else
+#define FC_CAT(s1, s2) s1 ## s2
+#define FC_PREL(s) FC_CAT(L, s)
+#define FC_FOPEN(p, m) _wfopen(p, FC_PREL(m))
+#endif
+
 namespace eosio { namespace chain {
 
    const uint32_t block_log::min_supported_version = 1;
@@ -600,7 +608,7 @@ namespace eosio { namespace chain {
 
    uint32_t detail::reverse_iterator::open(const fc::path& block_file_name) {
       _block_file_name = block_file_name.generic_string();
-      _file.reset(fopen(_block_file_name.c_str(), "r"));
+      _file.reset( FC_FOPEN(_block_file_name.c_str(), "r"));
       EOS_ASSERT( _file, block_log_exception, "Could not open Block log file at '${blocks_log}'", ("blocks_log", _block_file_name) );
       _end_of_buffer_position = _unset_position;
 
@@ -728,7 +736,7 @@ namespace eosio { namespace chain {
 
    void detail::index_writer::prepare_buffer() {
       if (_file == nullptr) {
-         _file.reset(fopen(_block_index_name.c_str(), "w"));
+         _file.reset(FC_FOPEN(_block_index_name.c_str(), "w"));
          EOS_ASSERT( _file, block_log_exception, "Could not open Block index file at '${blocks_index}'", ("blocks_index", _block_index_name) );
          // allocate 8 bytes for each block position to store
          const auto full_file_size = buffer_location_to_file_location(_blocks_expected);
