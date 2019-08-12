@@ -14,9 +14,17 @@
 
 #### Ubuntu 16.04 & 18.04
 
-Go to swap-bot-directory:
+Download remprotocol_0.1.0-swap-bot.tar.gz
 
 ```bash
+$ sudo wget https://github.com/Remmeauth/remprotocol/releases/download/0.1.0/remprotocol_0.1.0-swap-bot.tar.gz
+```
+
+Unpack to block_producer_swap_bot directory
+
+```bash
+$ mkdir block_producer_swap_bot
+$ tar -C ./block_producer_swap_bot -xvf remprotocol_0.1.0-swap-bot.tar.gz
 $ cd block-producer-swap-bot
 ```
 
