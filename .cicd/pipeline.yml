@@ -79,7 +79,7 @@ steps:
     agents:
       queue: "automation-eos-builder-fleet"
     timeout: ${TIMEOUT:-10}
-    skip: $SKIP_AMAZON_LINUX_2
+    skip: "[[ $SKIP_AMAZON_LINUX_2 == true ]] || [[ $SKIP_UNIT_TESTS == true ]]"
 
   - label: ":centos: CentOS 7.6 - Test"
     command:
@@ -91,7 +91,7 @@ steps:
     agents:
       queue: "automation-eos-builder-fleet"
     timeout: ${TIMEOUT:-10}
-    skip: $SKIP_CENTOS_7
+    skip: "[[ $SKIP_CENTOS_7 == true ]] || [[ $SKIP_UNIT_TESTS == true ]]"
 
   - label: ":ubuntu: Ubuntu 16.04 - Unit Test"
     command:
@@ -103,7 +103,7 @@ steps:
     agents:
       queue: "automation-eos-builder-fleet"
     timeout: ${TIMEOUT:-10}
-    skip: $SKIP_UBUNTU_16
+    skip: "[[ $SKIP_UBUNTU_16 == true ]] || [[ $SKIP_UNIT_TESTS == true ]]"
 
   - label: ":ubuntu: Ubuntu 18.04 - Unit Test"
     command:
@@ -115,7 +115,7 @@ steps:
     agents:
       queue: "automation-eos-builder-fleet"
     timeout: ${TIMEOUT:-10}
-    skip: $SKIP_UBUNTU_18
+    skip: "[[ $SKIP_UBUNTU_18 == true ]] || [[ $SKIP_UNIT_TESTS == true ]]"
 
   - label: ":darwin: macOS 10.14 - Unit Test"
     command:
@@ -160,7 +160,7 @@ steps:
     agents:
       queue: "automation-eos-builder-fleet"
     timeout: ${TIMEOUT:-10}
-    skip: $SKIP_CENTOS_7
+    skip: "[[ $SKIP_CENTOS_7 == true ]] || [[ $SKIP_LRT == true ]]"
 
   - label: ":ubuntu: Ubuntu 16.04 - Long-Running Tests"
     command:
@@ -172,7 +172,7 @@ steps:
     agents:
       queue: "automation-eos-builder-fleet"
     timeout: ${TIMEOUT:-10}
-    skip: $SKIP_UBUNTU_16
+    skip: "[[ $SKIP_UBUNTU_16 == true ]] || [[ $SKIP_LRT == true ]]"
 
   - label: ":ubuntu: Ubuntu 18.04 - Long-Running Tests"
     command:
@@ -184,7 +184,7 @@ steps:
     agents:
       queue: "automation-eos-builder-fleet"
     timeout: ${TIMEOUT:-10}
-    skip: $SKIP_UBUNTU_18
+    skip: "[[ $SKIP_UBUNTU_18 == true ]] || [[ $SKIP_LRT == true ]]"
 
   - label: ":darwin: macOS 10.14 - Long-Running Tests"
     command:
