@@ -29,6 +29,6 @@ else # Linux
         done < "$BUILDKITE_ENV_FILE"
     fi
 
-    fold-execute eval docker run $ARGS $evars $FULL_TAG bash -c \"$COMMANDS\"
+    [[ $SKIP_LRT == true ]] || fold-execute eval docker run $ARGS $evars $FULL_TAG bash -c \"$COMMANDS\"
 
 fi
