@@ -20,10 +20,16 @@ Go to swap-bot-directory:
 $ cd block-producer-swap-bot
 ```
 
-Install dependencies
+Install dependencies for Ubuntu18.04 with the following command:
 
 ```bash
-$ sudo ./install.sh
+$ sudo ./scripts/ubuntu18.04_install.sh
+```
+
+Install dependencies for Ubuntu16.04 with the following command
+
+```bash
+$ sudo ./scripts/ubuntu16.04_install.sh
 ```
 
 ## Block producers
@@ -55,7 +61,7 @@ Replace remnode, eth-provider, swap-permission, swap-private-key with your remno
 To start approving swaps run the following command
 
 ```bash
-$ sudo ./run.sh
+$ sudo ./scripts/run.sh
 ```
 
 ## Development
