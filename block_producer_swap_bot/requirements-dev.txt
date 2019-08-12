@@ -4,6 +4,7 @@ certifi==2019.6.16
 chardet==3.0.4
 Click==7.0
 cytoolz==0.10.0
+eosiopy==0.1.4
 entrypoints==0.3
 eth-abi==1.3.0
 eth-account==0.3.0

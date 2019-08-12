@@ -20,10 +20,10 @@ Go to swap-bot-directory:
 $ cd block-producer-swap-bot
 ```
 
-Install requirements with following commands:
+Install dependencies
 
 ```bash
-$ pip3 install requirements.txt
+$ sudo ./install.sh
 ```
 
 ## Block producers
@@ -43,8 +43,8 @@ Paste into the config file following content:
 remnode=127.0.0.1:8888
 eth-provider=wss://ropsten.infura.io/ws/v3/<your infura id>
 [REM]
-swap-permission=<your account name>@active
-swap-private-key=<your private key for signing blocks>
+swap-permission=<permission to authorize init swap actions>@active
+swap-private-key=<private key to sign init swap actions>
 ```
 
 Replace remnode, eth-provider, swap-permission, swap-private-key with your remnode host and port, a link to Ethereum node with websocket connection, your account and private key to authorize init swap actions.
@@ -55,7 +55,7 @@ Replace remnode, eth-provider, swap-permission, swap-private-key with your remno
 To start approving swaps run the following command
 
 ```bash
-$ python3 block_producer_swap_bot.py eth-swap-bot process-swaps
+$ sudo ./run.sh
 ```
 
 ## Development
