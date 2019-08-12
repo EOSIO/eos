@@ -32,7 +32,7 @@ namespace eosiosystem {
       require_auth( producer );
 
       // TODO implement as constexpr string
-      static const auto stake_err = "user should stake at least "s + std::to_string( producer_stake_threshold ) + " REM to become a producer"s;
+      static const auto stake_err = "user should stake at least "s + asset(producer_stake_threshold, core_symbol()).to_string() + " to become a producer"s;
       check( does_satisfy_stake_requirement( producer ), stake_err );
 
       auto prod = _producers.find( producer.value );
