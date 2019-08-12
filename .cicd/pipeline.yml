@@ -79,7 +79,7 @@ steps:
     agents:
       queue: "automation-eos-builder-fleet"
     timeout: ${TIMEOUT:-10}
-    skip: "[[ $SKIP_AMAZON_LINUX_2 == true ]] || [[ $SKIP_UNIT_TESTS == true ]]"
+    skip: "[[ ${SKIP_AMAZON_LINUX_2:-false} == true ]] || [[ ${SKIP_UNIT_TESTS:-false} == true ]]"
 
   - label: ":centos: CentOS 7.6 - Test"
     command:
@@ -91,7 +91,7 @@ steps:
     agents:
       queue: "automation-eos-builder-fleet"
     timeout: ${TIMEOUT:-10}
-    skip: "[[ $SKIP_CENTOS_7 == true ]] || [[ $SKIP_UNIT_TESTS == true ]]"
+    skip: "[[ ${SKIP_CENTOS_7:-false} == true ]] || [[ ${SKIP_UNIT_TESTS:-false} == true ]]"
 
   - label: ":ubuntu: Ubuntu 16.04 - Unit Test"
     command:
@@ -103,7 +103,7 @@ steps:
     agents:
       queue: "automation-eos-builder-fleet"
     timeout: ${TIMEOUT:-10}
-    skip: "[[ $SKIP_UBUNTU_16 == true ]] || [[ $SKIP_UNIT_TESTS == true ]]"
+    skip: "[[ ${SKIP_UBUNTU_16:-false} == true ]] || [[ ${SKIP_UNIT_TESTS:-false} == true ]]"
 
   - label: ":ubuntu: Ubuntu 18.04 - Unit Test"
     command:
@@ -136,7 +136,7 @@ steps:
           wait-network: true
     agents:
       - "queue=mac-anka-large-node-fleet"
-    skip: "[[ $SKIP_MOJAVE == true ]] || [[ $SKIP_UNIT_TESTS == true ]]"
+    skip: "([[ ${SKIP_MOJAVE:-false} == true ]] || [[ ${SKIP_UNIT_TESTS:-false} == true ]])"
 
 
   - label: ":aws: Amazon_Linux 2.0 - Long-Running Tests"
