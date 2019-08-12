@@ -148,7 +148,7 @@ steps:
     agents:
       queue: "automation-eos-builder-fleet"
     timeout: ${TIMEOUT:-10}
-    skip: $SKIP_AMAZON_LINUX_2
+    skip: "[[ $SKIP_AMAZON_LINUX_2 == true ]] || [[ $SKIP_LRT == true ]]"
 
   - label: ":centos: CentOS 7.6 - Long-Running Tests"
     command:
