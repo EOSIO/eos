@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 set -eo pipefail
 . ./.cicd/helpers/general.sh
-. ./$HELPERS_DIR/execute.sh
-. ./$HELPERS_DIR/docker-hash.sh
+. $HELPERS_DIR/docker-hash.sh
 # look for Docker image
 echo "+++ :mag_right: Looking for $FULL_TAG"
 ORG_REPO=$(echo $FULL_TAG | cut -d: -f1)
