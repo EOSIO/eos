@@ -6,7 +6,7 @@ apt-get update \
 && apt-get update \
 && apt-get install -y python3.6 python3.6-venv
 
-sudo apt-get install python3.6-dev
+sudo apt-get install build-essential python3.6-dev
 
 sudo apt-get install virtualenv
 

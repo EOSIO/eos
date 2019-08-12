@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 sudo apt upgrade
 sudo apt update
-sudo apt install python3
+sudo apt install build-essential
 sudo apt install python3-dev
 sudo apt install virtualenv
 
