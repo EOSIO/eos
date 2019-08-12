@@ -10,8 +10,8 @@ EXISTS=$(curl -s -H "Authorization: Bearer $(curl -sSL "https://auth.docker.io/t
 # build, if neccessary
 if [[ $EXISTS =~ '404 page not found' || $EXISTS =~ 'manifest unknown' ]]; then # if we cannot pull the image, we build and push it first
     docker login -u $DOCKERHUB_USERNAME -p $DOCKERHUB_PASSWORD
-    execute docker build -t $FULL_TAG -f $CICD_DIR/docker/${IMAGE_TAG}.dockerfile .
-    execute docker push $FULL_TAG
+    fold-execute docker build -t $FULL_TAG -f $CICD_DIR/docker/${IMAGE_TAG}.dockerfile .
+    fold-execute docker push $FULL_TAG
 else
     echo "$FULL_TAG already exists."
 fi
