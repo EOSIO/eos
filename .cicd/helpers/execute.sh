@@ -1,4 +1,0 @@
-function execute() {
-  echo "--- Executing: $@"
-  "$@"
-}

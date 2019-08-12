@@ -5,8 +5,6 @@ steps:
       - bash ./.cicd/installation-build.sh
     env:
       IMAGE_TAG: "ubuntu-18.04"
-      ENABLE_INSTALL: true
-      ENABLE_BUILD: true
     agents:
       queue: "automation-eos-builder-fleet"
     timeout: $BUILD_TIMEOUT

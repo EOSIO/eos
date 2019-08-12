@@ -1,8 +1,10 @@
 export ROOT_DIR=$( dirname "${BASH_SOURCE[0]}" )/../..
-export BUILD_DIR=$( dirname "${BASH_SOURCE[0]}" )/../../build
-export CICD_DIR=$( dirname "${BASH_SOURCE[0]}" )/..
-export HELPERS_DIR=$( dirname "${BASH_SOURCE[0]}" )
+export BUILD_DIR=$ROOT_DIR/build
+export CICD_DIR=$ROOT_DIR/.cicd
+export HELPERS_DIR=$CICD_DIR/helpers
 export JOBS=${JOBS:-"$(getconf _NPROCESSORS_ONLN)"}
+
+. $HELPERS_DIR/logging.sh
 
 function determine_eos_version() {
     export EOSIO_VERSION_MAJOR=$(cat ./CMakeLists.txt | grep -E "^[[:blank:]]*set[[:blank:]]*\([[:blank:]]*VERSION_MAJOR" | tail -1 | sed 's/.*VERSION_MAJOR //g' | sed 's/ //g' | sed 's/"//g' | cut -d\) -f1)
