@@ -17,7 +17,10 @@ else # Linux
 
     . $HELPERS_DIR/docker-hash.sh
 
-    COMMANDS="cd $MOUNTED_DIR/build && $TEST"
+    PRE_COMMANDS="cd $MOUNTED_DIR/build"
+    [[ $IMAGE_TAG == 'centos-7.6' ]] && PRE_COMMANDS="$PRE_COMMANDS && source /opt/rh/devtoolset-8/enable && source /opt/rh/rh-python36/enable && export PATH=/usr/lib64/ccache:\\\$PATH"
+
+    COMMANDS="$PRE_COMMANDS && $TEST"
 
     # Load BUILDKITE Environment Variables for use in docker run
     if [[ -f $BUILDKITE_ENV_FILE ]]; then
