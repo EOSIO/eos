@@ -2,13 +2,13 @@
 set -eo pipefail
 . ./.cicd/helpers/general.sh
 
-TEST="mkdir -p ./mongodb && fold-execute mongod --dbpath ./mongodb --fork --logpath mongod.log && fold-execute ctest -L nonparallelizable_tests --output-on-failure -T Test"
+TEST="mkdir -p ./mongodb && mongod --dbpath ./mongodb --fork --logpath mongod.log && ctest -L nonparallelizable_tests --output-on-failure -T Test"
 
 if [[ $(uname) == 'Darwin' ]]; then
 
     # You can't use chained commands in execute
-    fold-execute cd $BUILD_DIR
-    fold-execute $TEST
+    cd $BUILD_DIR
+    $TEST
 
 else # Linux
 
@@ -29,6 +29,6 @@ else # Linux
         done < "$BUILDKITE_ENV_FILE"
     fi
 
-    fold-execute eval docker run $ARGS $evars $FULL_TAG bash -c \"$COMMANDS\"
+    eval docker run $ARGS $evars $FULL_TAG bash -c \"$COMMANDS\"
 
 fi

@@ -2,15 +2,15 @@
 set -eo pipefail
 . ./.cicd/helpers/general.sh
 
-fold-execute mkdir -p $BUILD_DIR
+mkdir -p $BUILD_DIR
 
 if [[ $(uname) == 'Darwin' ]]; then
 
     # You can't use chained commands in execute
-    fold-execute cd $BUILD_DIR
-    [[ $TRAVIS == true ]] && fold-execute ccache -s
-    fold-execute cmake ..
-    fold-execute make -j$JOBS
+    cd $BUILD_DIR
+    [[ $TRAVIS == true ]] && ccache -s
+    cmake ..
+    make -j$JOBS
 
 else # Linux
 
@@ -19,7 +19,7 @@ else # Linux
 
     . $HELPERS_DIR/docker-hash.sh
 
-    PRE_COMMANDS=". $MOUNTED_DIR/.cicd/helpers/logging.sh && fold-execute ccache -s && cd $MOUNTED_DIR/build"
+    PRE_COMMANDS=". $MOUNTED_DIR/.cicd/helpers/logging.sh && ccache -s && cd $MOUNTED_DIR/build"
     # PRE_COMMANDS: Executed pre-cmake
     # CMAKE_EXTRAS: Executed within and right before the cmake path (cmake CMAKE_EXTRAS ..)
     if [[ $IMAGE_TAG == 'ubuntu-18.04' ]]; then
@@ -35,15 +35,15 @@ else # Linux
         CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_CXX_COMPILER='clang++' -DCMAKE_C_COMPILER='clang'"
     fi
 
-    BUILD_COMMANDS="fold-execute cmake $CMAKE_EXTRAS .. && fold-execute make -j$JOBS"
+    BUILD_COMMANDS="cmake $CMAKE_EXTRAS .. && make -j$JOBS"
 
     # Docker Commands
     if [[ $BUILDKITE == true ]]; then
         # Generate Base Images
-        fold-execute $CICD_DIR/generate-base-images.sh
-        [[ $ENABLE_INSTALL == true ]] && COMMANDS="fold-execute cp -r $MOUNTED_DIR ~/eosio && fold-execute cd ~/eosio/build &&"
+        $CICD_DIR/generate-base-images.sh
+        [[ $ENABLE_INSTALL == true ]] && COMMANDS="cp -r $MOUNTED_DIR ~/eosio && cd ~/eosio/build &&"
         COMMANDS="$COMMANDS $BUILD_COMMANDS"
-        [[ $ENABLE_INSTALL == true ]] && COMMAND="$COMMAND && fold-execute make install"
+        [[ $ENABLE_INSTALL == true ]] && COMMAND="$COMMAND && make install"
     elif [[ $TRAVIS == true ]]; then
         ARGS="$ARGS -v /usr/lib/ccache -v $HOME/.ccache:/opt/.ccache -e JOBS -e TRAVIS -e CCACHE_DIR=/opt/.ccache"
         COMMANDS="$BUILD_COMMANDS"
@@ -59,6 +59,6 @@ else # Linux
         done < "$BUILDKITE_ENV_FILE"
     fi
 
-    fold-execute eval docker run $ARGS $evars $FULL_TAG bash -c \"$COMMANDS\"
+    eval docker run $ARGS $evars $FULL_TAG bash -c \"$COMMANDS\"
 
 fi
