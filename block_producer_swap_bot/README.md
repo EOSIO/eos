@@ -54,7 +54,7 @@ swap-private-key=<private key to sign init swap actions>
 ```
 
 Replace remnode, eth-provider, swap-permission, swap-private-key with your remnode host and port, a link to Ethereum node with websocket connection, your account and private key to authorize init swap actions.
-
+[Tutorial for creating Infura API key](https://ethereumico.io/knowledge-base/infura-api-key-guide/)
 
 ### Usage
 
