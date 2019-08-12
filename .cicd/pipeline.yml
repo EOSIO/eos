@@ -1,6 +1,6 @@
 steps:
 
-  - label: ":aws: Amazon_Linux 2.0 - Build"
+  - label: ":aws: Amazon_Linux 2 - Build"
     command:
       - "bash ./.cicd/build.sh"
       - "tar -pczf build.tar.gz build && buildkite-agent artifact upload build.tar.gz"
@@ -69,9 +69,9 @@ steps:
 
   - wait
 
-  - label: ":aws: Amazon_Linux 2.0 - Unit Test"
+  - label: ":aws: Amazon_Linux 2 - Unit Test"
     command:
-      - "buildkite-agent artifact download build.tar.gz . --step ':aws: Amazon_Linux 2.0 - Build' && tar -xzf build.tar.gz"
+      - "buildkite-agent artifact download build.tar.gz . --step ':aws: Amazon_Linux 2 - Build' && tar -xzf build.tar.gz"
       - "bash ./.cicd/parallel-tests.sh"
     env:
       IMAGE_TAG: "amazonlinux-2"
@@ -129,19 +129,17 @@ steps:
           inherit-environment-vars: true
           vm-name: 10.14.4_6C_14G_40G
           vm-registry-tag: "clean::cicd::git-ssh::nas::brew::buildkite-agent"
-          modify-cpu: 12
-          modify-ram: 24
           always-pull: true
           debug: true
           wait-network: true
     agents:
-      - "queue=mac-anka-large-node-fleet"
+      - "queue=mac-anka-node-fleet"
     skip: $SKIP_MOJAVE
 
   
-  - label: ":aws: Amazon_Linux 2.0 - Serial Test"
+  - label: ":aws: Amazon_Linux 2 - Serial Test"
     command:
-      - "buildkite-agent artifact download build.tar.gz . --step ':aws: Amazon_Linux 2.0 - Build' && tar -xzf build.tar.gz"
+      - "buildkite-agent artifact download build.tar.gz . --step ':aws: Amazon_Linux 2 - Build' && tar -xzf build.tar.gz"
       - "bash ./.cicd/serial-tests.sh"
     env:
       IMAGE_TAG: "amazonlinux-2"
@@ -199,19 +197,17 @@ steps:
           inherit-environment-vars: true
           vm-name: 10.14.4_6C_14G_40G
           vm-registry-tag: "clean::cicd::git-ssh::nas::brew::buildkite-agent"
-          modify-cpu: 12
-          modify-ram: 24
           always-pull: true
           debug: true
           wait-network: true
     agents:
-      - "queue=mac-anka-large-node-fleet"
+      - "queue=mac-anka-node-fleet"
     skip: $SKIP_MOJAVE
 
 
-  # - label: ":aws: Amazon_Linux 2.0 - Long-Running Tests"
+  # - label: ":aws: Amazon_Linux 2 - Long-Running Tests"
   #   command:
-  #     - "buildkite-agent artifact download build.tar.gz . --step ':aws: Amazon_Linux 2.0 - Build' && tar -xzf build.tar.gz"
+  #     - "buildkite-agent artifact download build.tar.gz . --step ':aws: Amazon_Linux 2 - Build' && tar -xzf build.tar.gz"
   #     - "bash ./.cicd/long-running-tests.sh"
   #   env:
   #     IMAGE_TAG: "amazonlinux-2"
@@ -269,13 +265,11 @@ steps:
   #         inherit-environment-vars: true
   #         vm-name: 10.14.4_6C_14G_40G
   #         vm-registry-tag: "clean::cicd::git-ssh::nas::brew::buildkite-agent"
-  #         modify-cpu: 12
-  #         modify-ram: 24
   #         always-pull: true
   #         debug: true
   #         wait-network: true
   #   agents:
-  #     - "queue=mac-anka-large-node-fleet"
+  #     - "queue=mac-anka-node-fleet"
 
   - wait:
     continue_on_failure: true

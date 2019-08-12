@@ -19,7 +19,7 @@ else # Linux
 
     . $HELPERS_DIR/docker-hash.sh
 
-    PRE_COMMANDS="ccache -s && cd $MOUNTED_DIR/build"
+    PRE_COMMANDS="cd $MOUNTED_DIR/build"
     # PRE_COMMANDS: Executed pre-cmake
     # CMAKE_EXTRAS: Executed within and right before the cmake path (cmake CMAKE_EXTRAS ..)
     if [[ $IMAGE_TAG == 'ubuntu-18.04' ]]; then
@@ -46,7 +46,7 @@ else # Linux
         [[ $ENABLE_INSTALL == true ]] && COMMAND="$COMMAND && make install"
     elif [[ $TRAVIS == true ]]; then
         ARGS="$ARGS -v /usr/lib/ccache -v $HOME/.ccache:/opt/.ccache -e JOBS -e TRAVIS -e CCACHE_DIR=/opt/.ccache"
-        COMMANDS="$BUILD_COMMANDS"
+        COMMANDS="ccache -s && $BUILD_COMMANDS"
     fi
 
     COMMANDS="$PRE_COMMANDS && $COMMANDS"
