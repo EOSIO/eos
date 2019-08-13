@@ -50,7 +50,9 @@ namespace eosio { namespace chain {
 
       vector<transaction_metadata_ptr> extract_trxs_metas() {
          _pub_keys_recovered = false;
-         return std::move( _cached_trxs );
+         auto result = std::move( _cached_trxs );
+         _cached_trxs.clear();
+         return result;
       }
       void set_trxs_metas( vector<transaction_metadata_ptr>&& trxs_metas, bool keys_recovered ) {
          _pub_keys_recovered = keys_recovered;
