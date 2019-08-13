@@ -64,6 +64,14 @@ if(APPLE AND UNIX AND "${OPENSSL_ROOT_DIR}" STREQUAL "")
    set(OPENSSL_ROOT_DIR "/usr/local/opt/openssl")
 endif()
 
+# WASM runtimes to build
+list(APPEND EOSIO_WASM_RUNTIMES wabt)   #wabt is always enabled; it works everywhere
+if(NOT WIN32)
+   list(APPEND EOSIO_WASM_RUNTIMES wavm)
+   # try and find LLVM now so that package variables get populated in global scope
+   find_package(LLVM REQUIRED CONFIG)
+endif()
+
 if(UNIX)
   if(APPLE)
     set(whole_archive_flag "-force_load")

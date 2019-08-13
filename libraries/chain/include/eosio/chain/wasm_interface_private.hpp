@@ -38,12 +38,14 @@ namespace eosio { namespace chain {
       struct by_last_block_num;
 
       wasm_interface_impl(wasm_interface::vm_type vm, const chainbase::database& d) : db(d) {
+#ifdef WAVM_RUNTIME_ENABLED
          if(vm == wasm_interface::vm_type::wavm)
             runtime_interface = std::make_unique<webassembly::wavm::wavm_runtime>();
-         else if(vm == wasm_interface::vm_type::wabt)
+#endif
+         if(vm == wasm_interface::vm_type::wabt)
             runtime_interface = std::make_unique<webassembly::wabt_runtime::wabt_runtime>();
-         else
-            EOS_THROW(wasm_exception, "wasm_interface_impl fall through");
+         if(!runtime_interface)
+            EOS_THROW(wasm_exception, "${r} wasm runtime not supported on this platform and/or configuration", ("r", vm));
       }
 
       ~wasm_interface_impl() {
@@ -165,6 +167,12 @@ namespace eosio { namespace chain {
 
       const chainbase::database& db;
    };
+
+#define _ADD_PAREN_1(...) ((__VA_ARGS__)) _ADD_PAREN_2
+#define _ADD_PAREN_2(...) ((__VA_ARGS__)) _ADD_PAREN_1
+#define _ADD_PAREN_1_END
+#define _ADD_PAREN_2_END
+#define _WRAPPED_SEQ(SEQ) BOOST_PP_CAT(_ADD_PAREN_1 SEQ, _END)
 
 #define _REGISTER_INTRINSIC_EXPLICIT(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)\
    _REGISTER_WAVM_INTRINSIC(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)\

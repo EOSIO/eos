@@ -16,6 +16,11 @@ else()
    endif()
 endif()
 
+if("wavm" IN_LIST EOSIO_WASM_RUNTIMES)
+   set(CHAIN_WAVM_SOURCES "webassembly/wavm.cpp")
+   add_definitions(-DWAVM_RUNTIME_ENABLED)
+endif()
+
 ## SORT .cpp by most likely to change / break compile
 add_library( eosio_chain
              merkle.cpp
@@ -49,7 +54,7 @@ add_library( eosio_chain
               asset.cpp
               snapshot.cpp
 
-             webassembly/wavm.cpp
+             ${CHAIN_WAVM_SOURCES}
              webassembly/wabt.cpp
 
 #             get_config.cpp
