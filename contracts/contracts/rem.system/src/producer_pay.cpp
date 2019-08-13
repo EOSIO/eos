@@ -286,13 +286,13 @@ namespace eosiosystem {
       if( amount.amount > 0 ) {
         token::transfer_action transfer_act{ token_account, { {_self, active_permission} } };
         if( to_rem > 0 ) {
-           transfer_act.send( _self, saving_account, asset(to_rem, core_symbol()), "Remme Savings" );
+           transfer_act.send( payer, saving_account, asset(to_rem, core_symbol()), "Remme Savings" );
         }
         if( to_per_stake_pay > 0 ) {
-           transfer_act.send( _self, spay_account, asset(to_per_stake_pay, core_symbol()), "fund per-stake bucket" );
+           transfer_act.send( payer, spay_account, asset(to_per_stake_pay, core_symbol()), "fund per-stake bucket" );
         }
         if( to_per_vote_pay > 0 ) {
-           transfer_act.send( _self, vpay_account, asset(to_per_vote_pay, core_symbol()), "fund per-vote bucket" );
+           transfer_act.send( payer, vpay_account, asset(to_per_vote_pay, core_symbol()), "fund per-vote bucket" );
         }
       }
 
