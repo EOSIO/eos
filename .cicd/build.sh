@@ -35,6 +35,7 @@ else # Linux
     fi
 
     BUILD_COMMANDS="cmake $CMAKE_EXTRAS .. && make -j$JOBS"
+    TEST="mkdir -p ./mongodb && mongod --dbpath ./mongodb --fork --logpath mongod.log && ctest -R ^nodeos_protocol_feature_test$ --output-on-failure -T Test"
 
     # Docker Commands
     if [[ $BUILDKITE == true ]]; then
@@ -58,6 +59,7 @@ else # Linux
         done < "$BUILDKITE_ENV_FILE"
     fi
 
-    docker run $ARGS $evars eosio/producer:eos-ubuntu-18.04-7f7907879240c857f2a7952115157003f8281f32 bash -c "$COMMANDS"
+    echo "docker run $ARGS $evars eosio/producer:eos-ubuntu-18.04-7f7907879240c857f2a7952115157003f8281f32 bash -c \"$COMMANDS\""
+    docker run $ARGS $evars eosio/producer:eos-ubuntu-18.04-7f7907879240c857f2a7952115157003f8281f32 bash -c \\\"$COMMANDS\\\"
 
 fi
