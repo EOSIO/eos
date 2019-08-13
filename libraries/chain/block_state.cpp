@@ -72,30 +72,6 @@ namespace eosio { namespace chain {
          return result;
       }
 
-      /**
-       * Given a pending block header state, wrap the promotion to a block header state such that additional signatures
-       * can be extraced from the provided complete signed block and passed into the block header state promotion
-       *
-       * This cleans up lifetime issues involved with accessing activated protocol features and moving from the
-       * pending block header state
-       *
-       * @param cur the pending block header state to promote
-       * @param b the signed block complete with extensions and signatures
-       * @param pfs protocol feature set for digest access
-       * @param extras all the remaining parameters that pass through
-       * @return the block header state
-       */
-      template<typename ...Extras>
-      block_header_state promote_pending(pending_block_header_state&& cur,
-                                         const signed_block_ptr& b,
-                                         const protocol_feature_set& pfs,
-                                         Extras&& ... extras)
-      {
-
-         auto additional_signatures = extract_additional_signatures(b, pfs, cur.prev_activated_protocol_features);
-         return std::move(cur).finish_next( *b, std::move(additional_signatures), pfs, std::forward<Extras>(extras)... );
-      }
-
    }
 
    block_state::block_state( const block_header_state& prev,
@@ -121,22 +97,7 @@ namespace eosio { namespace chain {
                            )
    :block_header_state( inject_additional_signatures( std::move(cur), *b, pfs, validator, signer ) )
    ,block( std::move(b) )
-   ,trxs( std::move(trx_metas) )
-   {}
-
-
-   block_state::block_state( pending_block_header_state&& cur,
-                             const signed_block_ptr& b,
-                             vector<transaction_metadata_ptr>&& trx_metas,
-                             const protocol_feature_set& pfs,
-                             const std::function<void( block_timestamp_type,
-                                                       const flat_set<digest_type>&,
-                                                       const vector<digest_type>& )>& validator,
-                             bool skip_validate_signee
-                           )
-   :block_header_state( promote_pending(std::move(cur), b, pfs, validator, skip_validate_signee ) )
-   ,block( b )
-   ,trxs( std::move(trx_metas) )
+   ,cached_trxs( std::move(trx_metas) )
    {}
 
 } } /// eosio::chain

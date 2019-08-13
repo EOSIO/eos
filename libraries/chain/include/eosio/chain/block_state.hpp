@@ -31,27 +31,28 @@ namespace eosio { namespace chain {
                    const signer_callback_type& signer
                 );
 
-      block_state( pending_block_header_state&& cur,
-                   const signed_block_ptr& b, // signed block
-                   vector<transaction_metadata_ptr>&& trx_metas,
-                   const protocol_feature_set& pfs,
-                   const std::function<void( block_timestamp_type,
-                                             const flat_set<digest_type>&,
-                                             const vector<digest_type>& )>& validator,
-                   bool skip_validate_signee
-                 );
-
       block_state() = default;
+
+
+      signed_block_ptr                                    block;
+
+   private: // internal use only, not thread safe
+      friend struct fc::reflector<block_state>;
+      friend bool block_state_is_valid( const block_state& ); // work-around for multi-index access
+      friend struct controller_impl;
+      friend class  fork_database;
+      friend struct fork_database_impl;
+      friend class  unapplied_transaction_queue;
+      friend struct pending_state;
 
       bool is_valid()const { return validated; }
 
 
-      signed_block_ptr                                    block;
       bool                                                validated = false;
 
       /// this data is redundant with the data stored in block, but facilitates
       /// recapturing transactions when we pop a block
-      vector<transaction_metadata_ptr>                    trxs;
+      vector<transaction_metadata_ptr>                    cached_trxs;
    };
 
    using block_state_ptr = std::shared_ptr<block_state>;
