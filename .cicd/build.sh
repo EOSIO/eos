@@ -14,7 +14,6 @@ if [[ $(uname) == 'Darwin' ]]; then
 
 else # Linux
 
-    MOUNTED_DIR='/workdir'
     ARGS=${ARGS:-"--rm -v $(pwd):$MOUNTED_DIR"}
 
     . $HELPERS_DIR/docker-hash.sh
