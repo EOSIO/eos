@@ -134,7 +134,7 @@ public:
       // forked_branch is in reverse order
       for( auto ritr = forked_branch.rbegin(), rend = forked_branch.rend(); ritr != rend; ++ritr ) {
          const block_state_ptr& bsptr = *ritr;
-         for( auto itr = bsptr->cached_trxs.begin(), end = bsptr->cached_trxs.end(); itr != end; ++itr ) {
+         for( auto itr = bsptr->trxs_metas().begin(), end = bsptr->trxs_metas().end(); itr != end; ++itr ) {
             const auto& trx = *itr;
             fc::time_point expiry = trx->packed_trx()->expiration();
             queue.insert( { trx, expiry, trx_enum_type::forked } );

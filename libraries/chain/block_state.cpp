@@ -97,7 +97,8 @@ namespace eosio { namespace chain {
                            )
    :block_header_state( inject_additional_signatures( std::move(cur), *b, pfs, validator, signer ) )
    ,block( std::move(b) )
-   ,cached_trxs( std::move(trx_metas) )
+   ,_pub_keys_recovered( true ) // called by produce_block so signature recovery of trxs must have been done
+   ,_cached_trxs( std::move(trx_metas) )
    {}
 
 } } /// eosio::chain

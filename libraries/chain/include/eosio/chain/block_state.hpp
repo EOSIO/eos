@@ -46,13 +46,24 @@ namespace eosio { namespace chain {
       friend struct pending_state;
 
       bool is_valid()const { return validated; }
+      bool is_pub_keys_recovered()const { return _pub_keys_recovered; }
 
+      vector<transaction_metadata_ptr> extract_trxs_metas() {
+         _pub_keys_recovered = false;
+         return std::move( _cached_trxs );
+      }
+      void set_trxs_metas( vector<transaction_metadata_ptr>&& trxs_metas, bool keys_recovered ) {
+         _pub_keys_recovered = keys_recovered;
+         _cached_trxs = std::move( trxs_metas );
+      }
+      const vector<transaction_metadata_ptr>& trxs_metas()const { return _cached_trxs; }
 
       bool                                                validated = false;
 
+      bool                                                _pub_keys_recovered = false;
       /// this data is redundant with the data stored in block, but facilitates
       /// recapturing transactions when we pop a block
-      vector<transaction_metadata_ptr>                    cached_trxs;
+      vector<transaction_metadata_ptr>                    _cached_trxs;
    };
 
    using block_state_ptr = std::shared_ptr<block_state>;
