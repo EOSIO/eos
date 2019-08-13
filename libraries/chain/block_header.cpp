@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
 #include <eosio/chain/block.hpp>
 #include <eosio/chain/merkle.hpp>
 #include <fc/io/raw.hpp>

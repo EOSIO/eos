@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE.txt
- */
 #include <eosio/chain/generated_transaction_object.hpp>
 #include <eosio/chain/global_property_object.hpp>
 #include <eosio/testing/tester_network.hpp>

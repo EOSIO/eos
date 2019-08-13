@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE.txt
- */
 #include <eosio/chain/abi_serializer.hpp>
 #include <eosio/chain/abi_serializer.hpp>
 #include <eosio/testing/tester.hpp>

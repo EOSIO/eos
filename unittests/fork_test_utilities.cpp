@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
 #include "fork_test_utilities.hpp"
 
 private_key_type get_private_key( name keyname, string role ) {

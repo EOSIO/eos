@@ -1,7 +1,3 @@
-/**
- * @file action_test.cpp
- * @copyright defined in eos/LICENSE
- */
 #include <eosiolib/action.hpp>
 #include <eosiolib/chain.h>
 #include <eosiolib/crypto.h>

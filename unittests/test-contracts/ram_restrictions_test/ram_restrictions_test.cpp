@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
 #include "ram_restrictions_test.hpp"
 #include <eosio/transaction.hpp>
 

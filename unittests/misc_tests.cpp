@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
 #include <eosio/chain/asset.hpp>
 #include <eosio/chain/authority.hpp>
 #include <eosio/chain/authority_checker.hpp>

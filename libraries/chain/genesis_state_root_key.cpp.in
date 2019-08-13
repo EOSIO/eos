@@ -1,8 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
-
 #include <eosio/chain/genesis_state.hpp>
 
 namespace eosio { namespace chain {
