@@ -178,7 +178,7 @@ struct pending_state {
       if( _block_stage.contains<assembled_block>() )
          return std::move( _block_stage.get<assembled_block>()._trx_metas );
 
-      return std::move( _block_stage.get<completed_block>()._block_state->trxs );
+      return _block_stage.get<completed_block>()._block_state->extract_trxs_metas();
    }
 
    bool is_protocol_feature_activated( const digest_type& feature_digest )const {
@@ -1737,13 +1737,16 @@ struct controller_impl {
          auto producer_block_id = b->id();
          start_block( b->timestamp, b->confirmed, new_protocol_feature_activations, s, producer_block_id);
 
-         const bool existing_trxs_metas = !bsp->trxs.empty();
+         const bool existing_trxs_metas = !bsp->trxs_metas().empty();
+         const bool pub_keys_recovered = bsp->is_pub_keys_recovered();
+         const bool skip_auth_checks = self.skip_auth_check();
          std::vector<recover_keys_future> trx_futures;
          std::vector<transaction_metadata_ptr> trx_metas;
-         const bool skip_auth_checks = self.skip_auth_check();
-         if( existing_trxs_metas ) {
-            trx_metas = std::move( bsp->trxs );
+         bool use_bsp_cached = false, use_trx_metas = false;
+         if( pub_keys_recovered || (skip_auth_checks && existing_trxs_metas) ) {
+            use_bsp_cached = true;
          } else if( skip_auth_checks ) {
+            use_trx_metas = true;
             trx_metas.reserve( b->transactions.size() );
             for( const auto& receipt : b->transactions ) {
                if( receipt.trx.contains<packed_transaction>()) {
@@ -1769,11 +1772,10 @@ struct controller_impl {
             const auto& trx_receipts = pending->_block_stage.get<building_block>()._pending_trx_receipts;
             auto num_pending_receipts = trx_receipts.size();
             if( receipt.trx.contains<packed_transaction>() ) {
-               if( skip_auth_checks || existing_trxs_metas ) {
-                  trace = push_transaction( trx_metas.at( packed_idx++ ), fc::time_point::maximum(), receipt.cpu_usage_us, true );
-               } else {
-                  trace = push_transaction( trx_futures.at( packed_idx++ ).get(), fc::time_point::maximum(), receipt.cpu_usage_us, true );
-               }
+               const auto& trx_meta = ( use_bsp_cached ? bsp->trxs_metas().at( packed_idx++ )
+                                                       : ( use_trx_metas ? trx_metas.at( packed_idx++ )
+                                                                         : trx_futures.at( packed_idx++ ).get() ) );
+               trace = push_transaction( trx_meta, fc::time_point::maximum(), receipt.cpu_usage_us, true );
             } else if( receipt.trx.contains<transaction_id_type>() ) {
                trace = push_scheduled_transaction( receipt.trx.get<transaction_id_type>(), fc::time_point::maximum(), receipt.cpu_usage_us, true );
             } else {
@@ -1809,9 +1811,10 @@ struct controller_impl {
          EOS_ASSERT( producer_block_id == ab._id, block_validate_exception, "Block ID does not match",
                      ("producer_block_id",producer_block_id)("validator_block_id",ab._id) );
 
-         // create completed block with existing block_state along with newly created transaction_metadata as
-         // the newly created may contain recovered keys
-         bsp->trxs = std::move( ab._trx_metas );
+         if( !use_bsp_cached ) {
+            bsp->set_trxs_metas( std::move( ab._trx_metas ), !skip_auth_checks );
+         }
+         // create completed_block with the existing block_state as we just verified it is the same as assembled_block
          pending->_block_stage = completed_block{ bsp };
 
          commit_block(false);

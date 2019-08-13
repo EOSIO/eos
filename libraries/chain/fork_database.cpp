@@ -5,6 +5,7 @@
 #include <boost/multi_index/ordered_index.hpp>
 #include <boost/multi_index/hashed_index.hpp>
 #include <boost/multi_index/mem_fun.hpp>
+#include <boost/multi_index/global_fun.hpp>
 #include <boost/multi_index/composite_key.hpp>
 #include <fc/io/fstream.hpp>
 #include <fstream>
@@ -18,13 +19,17 @@ namespace eosio { namespace chain {
    const uint32_t fork_database::min_supported_version = 1;
    const uint32_t fork_database::max_supported_version = 1;
 
+   // work around block_state::is_valid being private
+   inline bool block_state_is_valid( const block_state& bs ) {
+      return bs.is_valid();
+   }
+
    /**
     * History:
     * Version 1: initial version of the new refactored fork database portable format
     */
 
    struct by_block_id;
-   struct by_block_num;
    struct by_lib_block_num;
    struct by_prev;
    typedef multi_index_container<
@@ -34,7 +39,7 @@ namespace eosio { namespace chain {
          ordered_non_unique< tag<by_prev>, const_mem_fun<block_header_state, const block_id_type&, &block_header_state::prev> >,
          ordered_unique< tag<by_lib_block_num>,
             composite_key< block_state,
-               member<block_state,                        bool,          &block_state::validated>,
+               global_fun<const block_state&,            bool,          &block_state_is_valid>,
                member<detail::block_header_state_common, uint32_t,      &detail::block_header_state_common::dpos_irreversible_blocknum>,
                member<detail::block_header_state_common, uint32_t,      &detail::block_header_state_common::block_num>,
                member<block_header_state,                block_id_type, &block_header_state::id>
@@ -126,7 +131,6 @@ namespace eosio { namespace chain {
                block_state s;
                fc::raw::unpack( ds, s );
                // do not populate transaction_metadatas, they will be created as needed in apply_block with appropriate key recovery
-               s.trxs.clear(); // not part of fc_reflect, so should be empty here
                s.header_exts = s.block->validate_and_extract_header_extensions();
                my->add( std::make_shared<block_state>( move( s ) ), false, true, validator );
             }

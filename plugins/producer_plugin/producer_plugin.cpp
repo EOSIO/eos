@@ -268,7 +268,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       }
 
       void on_block( const block_state_ptr& bsp ) {
-         _unapplied_transactions.clear_applied( bsp->trxs );
+         _unapplied_transactions.clear_applied( bsp );
       }
 
       void on_block_header( const block_state_ptr& bsp ) {
