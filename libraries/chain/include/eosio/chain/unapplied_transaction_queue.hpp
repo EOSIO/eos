@@ -118,10 +118,14 @@ public:
       return true;
    }
 
-   void clear_applied( const std::vector<transaction_metadata_ptr>& applied_trxs ) {
+   void clear_applied( const block_state_ptr& bs ) {
+      if( empty() ) return;
       auto& idx = queue.get<by_trx_id>();
-      for( const auto& trx : applied_trxs ) {
-         idx.erase( trx->id() );
+      for( const auto& receipt : bs->block->transactions ) {
+         if( receipt.trx.contains<packed_transaction>() ) {
+            const auto& pt = receipt.trx.get<packed_transaction>();
+            idx.erase( pt.id() );
+         }
       }
    }
 
@@ -130,7 +134,7 @@ public:
       // forked_branch is in reverse order
       for( auto ritr = forked_branch.rbegin(), rend = forked_branch.rend(); ritr != rend; ++ritr ) {
          const block_state_ptr& bsptr = *ritr;
-         for( auto itr = bsptr->trxs.begin(), end = bsptr->trxs.end(); itr != end; ++itr ) {
+         for( auto itr = bsptr->cached_trxs.begin(), end = bsptr->cached_trxs.end(); itr != end; ++itr ) {
             const auto& trx = *itr;
             fc::time_point expiry = trx->packed_trx()->expiration();
             queue.insert( { trx, expiry, trx_enum_type::forked } );
