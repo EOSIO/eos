@@ -285,6 +285,8 @@ steps:
   #   timeout: 10
   #   soft_fail: true
 
+  # - wait
+
   - label: ":ubuntu: Ubuntu 18.04 - Contract Builder"
     command:
       - "bash ./.cicd/helpers/installation-build.sh"
@@ -295,15 +297,6 @@ steps:
       queue: "automation-eos-builder-fleet"
     timeout: ${TIMEOUT:-10}
     skip: $SKIP_UBUNTU_18
-
-  # - wait
-  
-  # - trigger: "eosio-dot-contracts-base-images-beta"
-  #   label: ":docker: Ensure EOSIO Installation Base Image"
-  #   build:
-  #     commit: "${BUILDKITE_COMMIT}"
-  #     branch: "${BUILDKITE_BRANCH}"
-  #   async: true
 
   # - wait
 
