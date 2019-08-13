@@ -79,7 +79,7 @@ function set_system_vars() {
         export DISK_TOTAL=$(( DISK_TOTAL_KB / 1048576 ))
         export DISK_AVAIL=$(( DISK_AVAIL_KB / 1048576 ))
     fi
-    export JOBS=$(( MEM_GIG > CPU_CORES ? CPU_CORES : MEM_GIG ))
+    export JOBS=${JOBS:-$(( MEM_GIG > CPU_CORES ? CPU_CORES : MEM_GIG ))}
 }
 
 function install-package() {

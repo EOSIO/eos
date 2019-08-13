@@ -123,7 +123,7 @@ struct block_header_state : public detail::block_header_state_common {
 
    /// this data is redundant with the data stored in header, but it acts as a cache that avoids
    /// duplication of work
-   flat_multimap<uint16_t, block_header_extensions> header_exts;
+   flat_multimap<uint16_t, block_header_extension> header_exts;
 
    block_header_state() = default;
 
