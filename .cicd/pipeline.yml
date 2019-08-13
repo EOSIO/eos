@@ -274,25 +274,36 @@ steps:
   - wait:
     continue_on_failure: true
 
-  - command: |
+  - label: ":bar_chart: Test Metrics"
+    command: |
       echo '+++ :compression: Extracting Test Metrics Code'
       tar -zxf .cicd/metrics/test-metrics.tar.gz
       echo '+++ :javascript: Running test-metrics.js'
       node --max-old-space-size=32768 test-metrics.js
-    label: ":bar_chart: Test Metrics"
     agents:
       queue: "automation-eos-builder-fleet"
     timeout: 10
     soft_fail: true
 
-  - wait
+  - label: ":ubuntu: Ubuntu 18.04 - Contract Builder"
+    command:
+      - "bash ./.cicd/helpers/installation-build.sh"
+    env:
+      IMAGE_TAG: "ubuntu-18.04"
+      BUILDKITE_AGENT_ACCESS_TOKEN:
+    agents:
+      queue: "automation-eos-builder-fleet"
+    timeout: ${TIMEOUT:-10}
+    skip: $SKIP_UBUNTU_18
+
+  # - wait
   
-  - trigger: "eosio-dot-contracts-base-images-beta"
-    label: ":docker: Ensure EOSIO Installation Base Image"
-    build:
-      commit: "${BUILDKITE_COMMIT}"
-      branch: "${BUILDKITE_BRANCH}"
-    async: true
+  # - trigger: "eosio-dot-contracts-base-images-beta"
+  #   label: ":docker: Ensure EOSIO Installation Base Image"
+  #   build:
+  #     commit: "${BUILDKITE_COMMIT}"
+  #     branch: "${BUILDKITE_BRANCH}"
+  #   async: true
 
   - wait
 
