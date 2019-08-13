@@ -184,7 +184,7 @@ namespace eosio {
       explicit dispatch_manager(boost::asio::io_context& io_context)
       : strand( io_context ) {}
 
-      void bcast_transaction(const transaction_metadata_ptr& trx);
+      void bcast_transaction(const packed_transaction& trx);
       void rejected_transaction(const transaction_id_type& msg, uint32_t head_blk_num);
       void bcast_block(const block_state_ptr& bs);
       void bcast_notice( const block_id_type& id );
@@ -192,7 +192,7 @@ namespace eosio {
 
       void recv_block(const connection_ptr& conn, const block_id_type& msg, uint32_t bnum);
       void expire_blocks( uint32_t bnum );
-      void recv_transaction(const connection_ptr& conn, const transaction_metadata_ptr& txn);
+      void recv_transaction(const connection_ptr& conn, const packed_transaction_ptr& txn);
       void recv_notice(const connection_ptr& conn, const notice_message& msg, bool generated);
 
       void retry_fetch(const connection_ptr& conn);
@@ -2006,9 +2006,8 @@ namespace eosio {
       fc_dlog( logger, "rejected block ${id}", ("id", id) );
    }
 
-   void dispatch_manager::bcast_transaction(const transaction_metadata_ptr& ptrx) {
-      const auto& id = ptrx->id();
-      const packed_transaction& trx = *ptrx->packed_trx();
+   void dispatch_manager::bcast_transaction(const packed_transaction& trx) {
+      const auto& id = trx.id();
       time_point_sec trx_expiration = trx.expiration();
       node_transaction_state nts = {id, trx_expiration, 0, 0};
 
@@ -2033,8 +2032,8 @@ namespace eosio {
       } );
    }
 
-   void dispatch_manager::recv_transaction(const connection_ptr& c, const transaction_metadata_ptr& txn) {
-      node_transaction_state nts = {txn->id(), txn->packed_trx()->expiration(), 0, c->connection_id};
+   void dispatch_manager::recv_transaction(const connection_ptr& c, const packed_transaction_ptr& txn) {
+      node_transaction_state nts = {txn->id(), txn->expiration(), 0, c->connection_id};
       add_peer_txn( nts );
    }
 
@@ -2801,20 +2800,20 @@ namespace eosio {
          return;
       }
 
-      auto ptrx = std::make_shared<transaction_metadata>( trx, my_impl->chain_plug->chain().configured_subjective_signature_length_limit() );
-      const auto& tid = ptrx->id();
+      const auto& tid = trx->id();
       peer_dlog( this, "received packed_transaction ${id}", ("id", tid) );
 
       bool have_trx = my_impl->dispatcher->have_txn( tid );
-      my_impl->dispatcher->recv_transaction( shared_from_this(), ptrx );
+      my_impl->dispatcher->recv_transaction( shared_from_this(), trx );
       if( have_trx ) {
          fc_dlog( logger, "got a duplicate transaction - dropping ${id}", ("id", tid) );
          return;
       }
 
-      trx_in_progress_size += calc_trx_size( ptrx->packed_trx() );
-      my_impl->chain_plug->accept_transaction( ptrx,
-            [weak = weak_from_this(), ptrx](const static_variant<fc::exception_ptr, transaction_trace_ptr>& result) {
+      trx_in_progress_size += calc_trx_size( trx );
+      app().post( priority::low, [trx, weak = weak_from_this()]() {
+         my_impl->chain_plug->accept_transaction( trx,
+            [weak, trx](const static_variant<fc::exception_ptr, transaction_trace_ptr>& result) {
          // next (this lambda) called from application thread
          bool accepted = false;
          if (result.contains<fc::exception_ptr>()) {
@@ -2831,19 +2830,20 @@ namespace eosio {
             }
          }
 
-         boost::asio::post( my_impl->thread_pool->get_executor(), [accepted, weak{std::move(weak)}, ptrx{std::move(ptrx)}]() {
+         boost::asio::post( my_impl->thread_pool->get_executor(), [accepted, weak{std::move(weak)}, trx{std::move(trx)}]() mutable {
             if( accepted ) {
-               my_impl->dispatcher->bcast_transaction( ptrx );
+               my_impl->dispatcher->bcast_transaction( *trx );
             } else {
                uint32_t head_blk_num = 0;
                std::tie( std::ignore, head_blk_num, std::ignore, std::ignore, std::ignore, std::ignore ) = my_impl->get_chain_info();
-               my_impl->dispatcher->rejected_transaction( ptrx->id(), head_blk_num );
+               my_impl->dispatcher->rejected_transaction( trx->id(), head_blk_num );
             }
             connection_ptr conn = weak.lock();
             if( conn ) {
-               conn->trx_in_progress_size -= calc_trx_size( ptrx->packed_trx() );
+               conn->trx_in_progress_size -= calc_trx_size( trx );
             }
          });
+        });
       });
    }
 
@@ -3079,7 +3079,7 @@ namespace eosio {
             dispatcher->rejected_transaction(id, head_blk_num);
          } else {
             fc_dlog( logger, "signaled ACK, trx-id = ${id}", ("id", id) );
-            dispatcher->bcast_transaction(results.second);
+            dispatcher->bcast_transaction(*results.second->packed_trx());
          }
       });
    }

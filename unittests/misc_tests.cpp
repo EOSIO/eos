@@ -832,47 +832,37 @@ BOOST_AUTO_TEST_CASE(transaction_metadata_test) { try {
       packed_transaction pkt(trx, packed_transaction::compression_type::none);
       packed_transaction pkt2(trx, packed_transaction::compression_type::zlib);
 
-      transaction_metadata_ptr mtrx = std::make_shared<transaction_metadata>( std::make_shared<packed_transaction>( trx, packed_transaction::compression_type::none) );
-      transaction_metadata_ptr mtrx2 = std::make_shared<transaction_metadata>( std::make_shared<packed_transaction>( trx, packed_transaction::compression_type::zlib) );
+      packed_transaction_ptr ptrx = std::make_shared<packed_transaction>( trx, packed_transaction::compression_type::none);
+      packed_transaction_ptr ptrx2 = std::make_shared<packed_transaction>( trx, packed_transaction::compression_type::zlib);
 
       BOOST_CHECK_EQUAL(trx.id(), pkt.id());
       BOOST_CHECK_EQUAL(trx.id(), pkt2.id());
-      BOOST_CHECK_EQUAL(trx.id(), mtrx->id());
-      BOOST_CHECK_EQUAL(trx.id(), mtrx2->id());
+      BOOST_CHECK_EQUAL(trx.id(), ptrx->id());
+      BOOST_CHECK_EQUAL(trx.id(), ptrx2->id());
 
       named_thread_pool thread_pool( "misc", 5 );
 
-      transaction_metadata::start_recover_keys( mtrx, thread_pool.get_executor(), test.control->get_chain_id(), fc::microseconds::maximum() );
-      transaction_metadata::start_recover_keys( mtrx2, thread_pool.get_executor(), test.control->get_chain_id(), fc::microseconds::maximum() );
+      auto fut = transaction_metadata::start_recover_keys( ptrx, thread_pool.get_executor(), test.control->get_chain_id(), fc::microseconds::maximum() );
+      auto fut2 = transaction_metadata::start_recover_keys( ptrx2, thread_pool.get_executor(), test.control->get_chain_id(), fc::microseconds::maximum() );
 
-      // no-op
-      transaction_metadata::start_recover_keys( mtrx, thread_pool.get_executor(), test.control->get_chain_id(), fc::microseconds::maximum() );
-      transaction_metadata::start_recover_keys( mtrx2, thread_pool.get_executor(), test.control->get_chain_id(), fc::microseconds::maximum() );
+      // start another key reovery on same packed_transaction, creates a new future with transaction_metadata, should not interfere with above
+      transaction_metadata::start_recover_keys( ptrx, thread_pool.get_executor(), test.control->get_chain_id(), fc::microseconds::maximum() );
+      transaction_metadata::start_recover_keys( ptrx2, thread_pool.get_executor(), test.control->get_chain_id(), fc::microseconds::maximum() );
 
-      auto keys = mtrx->recover_keys( test.control->get_chain_id() );
-      BOOST_CHECK_EQUAL(1u, keys.second->size());
-      BOOST_CHECK_EQUAL(public_key, *keys.second->begin());
+      auto mtrx = fut.get();
+      const auto& keys = mtrx->recovered_keys();
+      BOOST_CHECK_EQUAL(1u, keys.size());
+      BOOST_CHECK_EQUAL(public_key, *keys.begin());
 
-      // again
-      auto keys2 = mtrx->recover_keys( test.control->get_chain_id() );
-      BOOST_CHECK_EQUAL(1u, keys2.second->size());
-      BOOST_CHECK_EQUAL(public_key, *keys2.second->begin());
+      // again, can be called multiple times, current implementation it is just an attribute of transaction_metadata
+      const auto& keys2 = mtrx->recovered_keys();
+      BOOST_CHECK_EQUAL(1u, keys2.size());
+      BOOST_CHECK_EQUAL(public_key, *keys2.begin());
 
-      auto keys3 = mtrx2->recover_keys( test.control->get_chain_id() );
-      BOOST_CHECK_EQUAL(1u, keys3.second->size());
-      BOOST_CHECK_EQUAL(public_key, *keys3.second->begin());
-
-      // recover keys without first calling start_recover_keys
-      transaction_metadata_ptr mtrx4 = std::make_shared<transaction_metadata>( std::make_shared<packed_transaction>( trx, packed_transaction::compression_type::none) );
-      transaction_metadata_ptr mtrx5 = std::make_shared<transaction_metadata>( std::make_shared<packed_transaction>( trx, packed_transaction::compression_type::zlib) );
-
-      auto keys4 = mtrx4->recover_keys( test.control->get_chain_id() );
-      BOOST_CHECK_EQUAL(1u, keys4.second->size());
-      BOOST_CHECK_EQUAL(public_key, *keys4.second->begin());
-
-      auto keys5 = mtrx5->recover_keys( test.control->get_chain_id() );
-      BOOST_CHECK_EQUAL(1u, keys5.second->size());
-      BOOST_CHECK_EQUAL(public_key, *keys5.second->begin());
+      auto mtrx2 = fut2.get();
+      const auto& keys3 = mtrx2->recovered_keys();
+      BOOST_CHECK_EQUAL(1u, keys3.size());
+      BOOST_CHECK_EQUAL(public_key, *keys3.begin());
 
       thread_pool.stop();
 

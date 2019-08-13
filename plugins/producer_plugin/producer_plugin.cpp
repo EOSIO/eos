@@ -268,7 +268,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       }
 
       void on_block( const block_state_ptr& bsp ) {
-         _unapplied_transactions.clear_applied( bsp->trxs );
+         _unapplied_transactions.clear_applied( bsp );
       }
 
       void on_block_header( const block_state_ptr& bsp ) {
@@ -439,20 +439,23 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 
       incoming_transaction_queue _pending_incoming_transactions;
 
-      void on_incoming_transaction_async(const transaction_metadata_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next) {
+      void on_incoming_transaction_async(const packed_transaction_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next) {
          chain::controller& chain = chain_plug->chain();
          const auto max_trx_time_ms = _max_transaction_time_ms.load();
          fc::microseconds max_trx_cpu_usage = max_trx_time_ms < 0 ? fc::microseconds::maximum() : fc::milliseconds( max_trx_time_ms );
 
-         auto after_sig_recovery =
-               [self = this, trx, persist_until_expired, next{std::move(next)}]() mutable {
-                  app().post(priority::low, [self, trx{std::move(trx)}, persist_until_expired, next{std::move(next)}]() {
-                     self->process_incoming_transaction_async( trx, persist_until_expired, next );
-                  });
-               };
-
-         transaction_metadata::start_recover_keys( trx, chain.get_thread_pool(), chain.get_chain_id(),
-                  max_trx_cpu_usage, std::move( after_sig_recovery ) );
+         auto future = transaction_metadata::start_recover_keys( trx, _thread_pool->get_executor(),
+                chain.get_chain_id(), fc::microseconds( max_trx_cpu_usage ), chain.configured_subjective_signature_length_limit() );
+         boost::asio::post( _thread_pool->get_executor(), [self = this, future{std::move(future)}, persist_until_expired, next{std::move(next)}]() mutable {
+            if( future.valid() ) {
+               future.wait();
+               app().post( priority::low, [self, future{std::move(future)}, persist_until_expired, next{std::move( next )}]() mutable {
+                  try {
+                     self->process_incoming_transaction_async( future.get(), persist_until_expired, std::move( next ) );
+                  } CATCH_AND_CALL(next);
+               } );
+            }
+         });
       }
 
       void process_incoming_transaction_async(const transaction_metadata_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next) {
@@ -826,23 +829,27 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
                   "No such directory '${dir}'", ("dir", my->_snapshots_dir.generic_string()) );
    }
 
-   my->_incoming_block_subscription = app().get_channel<incoming::channels::block>().subscribe([this](const signed_block_ptr& block){
+   my->_incoming_block_subscription = app().get_channel<incoming::channels::block>().subscribe(
+         [this](const signed_block_ptr& block) {
       try {
          my->on_incoming_block(block);
       } LOG_AND_DROP();
    });
 
-   my->_incoming_transaction_subscription = app().get_channel<incoming::channels::transaction>().subscribe([this](const transaction_metadata_ptr& trx){
+   my->_incoming_transaction_subscription = app().get_channel<incoming::channels::transaction>().subscribe(
+         [this](const packed_transaction_ptr& trx) {
       try {
          my->on_incoming_transaction_async(trx, false, [](const auto&){});
       } LOG_AND_DROP();
    });
 
-   my->_incoming_block_sync_provider = app().get_method<incoming::methods::block_sync>().register_provider([this](const signed_block_ptr& block){
+   my->_incoming_block_sync_provider = app().get_method<incoming::methods::block_sync>().register_provider(
+         [this](const signed_block_ptr& block) {
       my->on_incoming_block(block);
    });
 
-   my->_incoming_transaction_async_provider = app().get_method<incoming::methods::transaction_async>().register_provider([this](const transaction_metadata_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next) -> void {
+   my->_incoming_transaction_async_provider = app().get_method<incoming::methods::transaction_async>().register_provider(
+         [this](const packed_transaction_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next) -> void {
       return my->on_incoming_transaction_async(trx, persist_until_expired, next );
    });
 

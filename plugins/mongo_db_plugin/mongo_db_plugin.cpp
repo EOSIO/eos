@@ -771,10 +771,15 @@ void mongo_db_plugin_impl::_process_accepted_transaction( const chain::transacti
    }
 
    fc::variant signing_keys;
-   std::shared_ptr<flat_set<public_key_type>> keys;
-   std::tie( std::ignore, keys ) = t->recover_keys( *chain_id );
-   if( !keys->empty() ) {
-      signing_keys = *keys;
+   const flat_set<public_key_type>& keys = t->recovered_keys();
+   if( !keys.empty() ) {
+      signing_keys = keys;
+   } else {
+      flat_set<public_key_type> pub_keys;
+      trx.get_signature_keys( *chain_id, fc::time_point::maximum(), pub_keys, false );
+      if( !pub_keys.empty() ) {
+         signing_keys = pub_keys;
+      }
    }
 
    if( signing_keys.get_type() == fc::variant::array_type && signing_keys.get_array().size() > 0) {
@@ -937,7 +942,7 @@ void mongo_db_plugin_impl::_process_accepted_block( const chain::block_state_ptr
       auto block_state_doc = bsoncxx::builder::basic::document{};
       block_state_doc.append( kvp( "block_num", b_int32{static_cast<int32_t>(block_num)} ),
                               kvp( "block_id", block_id_str ),
-                              kvp( "validated", b_bool{bs->validated} ) );
+                              kvp( "validated", b_bool{true} ) );
 
       const chain::block_header_state& bhs = *bs;
 
@@ -1021,7 +1026,6 @@ void mongo_db_plugin_impl::_process_irreversible_block(const chain::block_state_
       }
 
       auto update_doc = make_document( kvp( "$set", make_document( kvp( "irreversible", b_bool{true} ),
-                                                                   kvp( "validated", b_bool{bs->validated} ),
                                                                    kvp( "updatedAt", b_date{now} ) ) ) );
 
       _blocks.update_one( make_document( kvp( "_id", ir_block->view()["_id"].get_oid() ) ), update_doc.view() );
@@ -1036,7 +1040,6 @@ void mongo_db_plugin_impl::_process_irreversible_block(const chain::block_state_
       }
 
       auto update_doc = make_document( kvp( "$set", make_document( kvp( "irreversible", b_bool{true} ),
-                                                                   kvp( "validated", b_bool{bs->validated} ),
                                                                    kvp( "updatedAt", b_date{now} ) ) ) );
 
       _block_states.update_one( make_document( kvp( "_id", ir_block->view()["_id"].get_oid() ) ), update_doc.view() );

@@ -365,6 +365,7 @@ packed_transaction::packed_transaction( transaction&& t, vector<signature_type>&
 ,compression(_compression)
 ,packed_context_free_data(std::move(packed_cfd))
 ,unpacked_trx(std::move(t), signatures, {})
+,trx_id(unpacked_trx.id())
 {
    local_pack_transaction();
    if( !packed_context_free_data.empty() ) {
@@ -395,6 +396,7 @@ void packed_transaction::local_unpack_transaction(vector<bytes>&& context_free_d
          default:
             EOS_THROW( unknown_transaction_compression, "Unknown transaction compression algorithm" );
       }
+      trx_id = unpacked_trx.id();
    } FC_CAPTURE_AND_RETHROW( (compression) )
 }
 
