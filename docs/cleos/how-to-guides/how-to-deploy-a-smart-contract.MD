@@ -1,5 +1,3 @@
-# How to deploy a smart contract
-
 ## Goal
 
 Deploy an EOSIO contract

@@ -1,5 +1,3 @@
-# How to create an account
-
 ## Goal
 
 ## Before you begin

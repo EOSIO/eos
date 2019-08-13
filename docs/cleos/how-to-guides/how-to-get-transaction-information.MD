@@ -1,5 +1,3 @@
-# How to get information about a transaction
-
 ## Goal
 
 Query infomation of a transaction

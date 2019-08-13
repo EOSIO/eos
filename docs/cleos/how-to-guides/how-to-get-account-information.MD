@@ -1,5 +1,3 @@
-# How to get infomation of an eosio account
-
 ## Goal
 
 Query infomation of an EOSIO account

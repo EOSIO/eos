@@ -1,5 +1,3 @@
-# How to sign a muti-sign transaction
-
 ## Goal
 
 ## Before you begin
@@ -12,5 +10,3 @@
   * What is signing a transaction
 
 ## Steps
-
-Steps

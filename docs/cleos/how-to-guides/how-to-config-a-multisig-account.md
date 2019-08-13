@@ -1,5 +1,3 @@
-# How to configure a multi-sig account with cleos
-
 ## Goal
 
 Setup an account that require multiple signatures for signning a transaction

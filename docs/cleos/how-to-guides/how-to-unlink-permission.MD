@@ -1,5 +1,3 @@
-# How to un-link a permission
-
 ## Goal
 
 Unlink a linked permission level

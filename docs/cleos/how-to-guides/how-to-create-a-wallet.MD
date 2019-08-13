@@ -1,5 +1,3 @@
-# How to create a wallet
-
 ## Goal
 
 Create a keosd wallet

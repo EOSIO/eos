@@ -1,5 +1,3 @@
-# How to submit a transaction
-
 ## Goal
 
 Push a transaction

@@ -1,5 +1,3 @@
-# How to transfer a eosio.token-based token
-
 ## Goal
 
 Transfer token created by eosio.token contract

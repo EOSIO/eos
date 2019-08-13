@@ -1,5 +1,3 @@
-# How to get a information about a block
-
 ## Goal
 
 Query infomation of a block

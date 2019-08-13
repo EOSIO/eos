@@ -1,5 +1,3 @@
-# How to unstake resource
-
 ## Goal
 
 Unstake resource from your account

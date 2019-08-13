@@ -1,5 +1,3 @@
-# How to connect cleos to alternative Host & Port
-
 ## Goal
 
 Connect to an alternative `nodeos` or `keosd` host

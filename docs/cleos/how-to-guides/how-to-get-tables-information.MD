@@ -1,5 +1,3 @@
-# How to get table information
-
 ## Goal
 
 Query infomation of a table

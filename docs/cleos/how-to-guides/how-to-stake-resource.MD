@@ -1,5 +1,3 @@
-# How to stake resource
-
 ## Goal
 
 Stake resource for your account

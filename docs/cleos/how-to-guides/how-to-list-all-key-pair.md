@@ -1,5 +1,3 @@
-# How to list all key pairs
-
 ## Goal
 
 List all key pairs

@@ -1,5 +1,3 @@
-# How to undelegate resource
-
 ## Goal
 
 Undelegate resource for an account or application

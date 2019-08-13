@@ -1,5 +1,3 @@
-# How to vote for a block producer
-
 ## Goal
 
 Vote for a block producer

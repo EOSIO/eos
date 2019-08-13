@@ -1,5 +1,3 @@
-# How to link a permission
-
 ## Goal
 
 Link a permission to an action of a contract

@@ -1,5 +1,3 @@
-# How to import a key pair
-
 ## Goal
 
 Import an key pair

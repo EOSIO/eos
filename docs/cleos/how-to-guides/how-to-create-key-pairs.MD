@@ -1,5 +1,3 @@
-# How to create a key pair
-
 ## Goal
 
 ## Before you begin

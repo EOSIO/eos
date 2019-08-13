@@ -1,5 +1,3 @@
-# How to delegate resource
-
 ## Goal
 
 Delegate resource for an account or application
