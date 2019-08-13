@@ -22,7 +22,7 @@ else # Linux
     # PRE_COMMANDS: Executed pre-cmake
     # CMAKE_EXTRAS: Executed within and right before the cmake path (cmake CMAKE_EXTRAS ..)
     if [[ $IMAGE_TAG == 'ubuntu-18.04' ]]; then
-        PRE_COMMANDS="$PRE_COMMANDS"
+        PRE_COMMANDS="$PRE_COMMANDS && export PATH=/usr/lib/ccache:\\\$PATH"
         CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_CXX_COMPILER='clang++' -DCMAKE_C_COMPILER='clang'"
     elif [[ $IMAGE_TAG == 'ubuntu-16.04' ]]; then
         PRE_COMMANDS="$PRE_COMMANDS && export PATH=/usr/lib/ccache:\\\$PATH"
@@ -58,6 +58,6 @@ else # Linux
         done < "$BUILDKITE_ENV_FILE"
     fi
 
-    eval docker run $ARGS $evars $FULL_TAG bash -c \"$COMMANDS\"
+    eval docker run $ARGS $evars eosio/producer:eos-ubuntu-18.04-7f7907879240c857f2a7952115157003f8281f32 bash -c \"$COMMANDS\"
 
 fi
