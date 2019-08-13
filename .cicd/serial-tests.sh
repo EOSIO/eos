@@ -29,6 +29,6 @@ else # Linux
         done < "$BUILDKITE_ENV_FILE"
     fi
 
-    docker run $ARGS $evars eosio/producer:eos-ubuntu-18.04-7f7907879240c857f2a7952115157003f8281f32 bash -c \"$COMMANDS\"
+    eval docker run $ARGS $evars eosio/producer:eos-ubuntu-18.04-7f7907879240c857f2a7952115157003f8281f32 bash -c \"$COMMANDS\"
 
 fi
