@@ -43,31 +43,45 @@ void launcher_service_api_plugin::plugin_initialize(const variables_map& options
           } \
        }}
 
-#define INVOKE_R_R(call_name, in_param) \
-     auto result = app().get_plugin<launcher_service_plugin>().call_name(fc::json::from_string(body).as<in_param>());
-
 #define INVOKE_R(call_name) \
      auto result = app().get_plugin<launcher_service_plugin>().call_name();
 
-#define INVOKE_V_R(api_handle, call_name, in_param) \
+#define INVOKE_R_R(call_name, in_param) \
+     auto result = app().get_plugin<launcher_service_plugin>().call_name(fc::json::from_string(body).as<in_param>());
+
+#define INVOKE_R_R_R(call_name, in_param0, in_param1) \
+     const auto& vs = fc::json::json::from_string(body).as<fc::variants>(); \
+     auto result = app().get_plugin<launcher_service_plugin>().call_name(vs.at(0).as<in_param0>(), vs.at(1).as<in_param1>());
+
+#define INVOKE_R_R_R_R(call_name, in_param0, in_param1, in_param2) \
+     const auto& vs = fc::json::json::from_string(body).as<fc::variants>(); \
+     auto result = app().get_plugin<launcher_service_plugin>().call_name(vs.at(0).as<in_param0>(), vs.at(1).as<in_param1>(), vs.at(2).as<in_param2>());
+
+#define INVOKE_V_R(call_name, in_param) \
      app().get_plugin<launcher_service_plugin>().call_name(fc::json::from_string(body).as<in_param>()); \
      eosio::detail::wallet_api_plugin_empty result;
 
 void launcher_service_api_plugin::plugin_startup() {
    app().get_plugin<http_plugin>().add_api({
+      CALL(launcher, launch_cluster, INVOKE_R_R(launch_cluster, launcher_service::cluster_def), 200),
+      CALL(launcher, stop_cluster, INVOKE_R_R(stop_cluster, int), 200),
+      CALL(launcher, stop_all_clusters, INVOKE_R(stop_all_clusters), 200),
+      CALL(launcher, stop_node, INVOKE_R_R_R_R(stop_node, int, int, int), 200),
+      CALL(launcher, start_node, INVOKE_R_R_R_R(start_node, int, int, std::string), 200),
+
       CALL(launcher, get_info, INVOKE_R_R(get_info, std::string), 200),
       CALL(launcher, get_block, INVOKE_R_R(get_block, launcher_service::get_block_param), 200),
       CALL(launcher, get_block_header_state, INVOKE_R_R(get_block_header_state, launcher_service::get_block_param), 200),
       CALL(launcher, get_account, INVOKE_R_R(get_account, launcher_service::get_account_param), 200),
       CALL(launcher, get_cluster_info, INVOKE_R_R(get_cluster_info, int), 200),
-      CALL(launcher, launch_cluster, INVOKE_R_R(launch_cluster, launcher_service::cluster_def), 200),
-      CALL(launcher, stop_cluster, INVOKE_R_R(stop_cluster, int), 200),
-      CALL(launcher, stop_all_clusters, INVOKE_R(stop_all_clusters), 200),
+      CALL(launcher, get_protocol_features, INVOKE_R_R_R(get_protocol_features, int, int), 200),
+
       CALL(launcher, create_bios_accounts, INVOKE_R_R(create_bios_accounts, launcher_service::create_bios_accounts_param), 200),
       CALL(launcher, set_contract, INVOKE_R_R(set_contract, launcher_service::set_contract_param), 200),
       CALL(launcher, import_keys, INVOKE_R_R(import_keys, launcher_service::import_keys_param), 200),
       CALL(launcher, push_actions, INVOKE_R_R(push_actions, launcher_service::push_actions_param), 200),
-      CALL(launcher, verify_transaction, INVOKE_R_R(verify_transaction, launcher_service::verify_transaction_param), 200)
+      CALL(launcher, verify_transaction, INVOKE_R_R(verify_transaction, launcher_service::verify_transaction_param), 200),
+      CALL(launcher, schedule_protocol_feature_activations, INVOKE_R_R(schedule_protocol_feature_activations, launcher_service::schedule_protocol_feature_activations_param), 200)
    });
 }
 

@@ -139,6 +139,12 @@ namespace launcher_service {
       int                            max_search_blocks = 7; // default expiration = 3s
       uint32_t                       block_num_hint = 0; // required if transaction was not pushed by launcher_service
    };
+
+   struct schedule_protocol_feature_activations_param {
+      int                             cluster_id;
+      int                             node_id;
+      std::vector<chain::digest_type> protocol_features_to_activate;
+   };
 }
 
 /**
@@ -160,8 +166,8 @@ public:
    fc::variant launch_cluster(launcher_service::cluster_def cluster_def);
    fc::variant stop_all_clusters();
    fc::variant stop_cluster(int cluster_id);
-   fc::variant start_node(int cluster_id, int node_id);
-   fc::variant stop_node(int cluster_id, int node_id);
+   fc::variant start_node(int cluster_id, int node_id, std::string extra_args);
+   fc::variant stop_node(int cluster_id, int node_id, int killsig);
 
    // wallet related calls
    fc::variant import_keys(launcher_service::import_keys_param);
@@ -172,12 +178,14 @@ public:
    fc::variant get_block_header_state(launcher_service::get_block_param);
    fc::variant get_account(launcher_service::get_account_param);
    fc::variant get_cluster_info(int cluster_id);
+   fc::variant get_protocol_features(int cluster_id, int node_id);
    fc::variant verify_transaction(launcher_service::verify_transaction_param);
 
    // transactions
    fc::variant create_bios_accounts(launcher_service::create_bios_accounts_param);
    fc::variant set_contract(launcher_service::set_contract_param);
    fc::variant push_actions(launcher_service::push_actions_param);
+   fc::variant schedule_protocol_feature_activations(launcher_service::schedule_protocol_feature_activations_param);
 
 private:
    std::unique_ptr<class launcher_service_plugin_impl>  _my;
@@ -196,3 +204,4 @@ FC_REFLECT(eosio::launcher_service::import_keys_param, (cluster_id)(keys))
 FC_REFLECT(eosio::launcher_service::action_param, (account)(action)(permissions)(data))
 FC_REFLECT(eosio::launcher_service::push_actions_param, (cluster_id)(node_id)(actions))
 FC_REFLECT(eosio::launcher_service::verify_transaction_param, (cluster_id)(node_id)(transaction_id)(max_search_blocks)(block_num_hint))
+FC_REFLECT(eosio::launcher_service::schedule_protocol_feature_activations_param, (cluster_id)(node_id)(protocol_features_to_activate))

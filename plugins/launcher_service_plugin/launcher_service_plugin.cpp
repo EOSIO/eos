@@ -168,6 +168,7 @@ public:
             }
             cfg << "plugin = eosio::net_plugin\n";
             cfg << "plugin = eosio::chain_api_plugin\n";
+            cfg << "plugin = eosio::producer_api_plugin\n";
 
             for (const std::string &s : def.extra_configs) {
                cfg << s << "\n";
@@ -181,7 +182,7 @@ public:
          _running_clusters[def.cluster_id].def = def;
          _running_clusters[def.cluster_id].imported_keys[_config.default_key.get_public_key()] = _config.default_key;
       }
-      void launch_nodes(const cluster_def &def, int node_id, bool restart = false) {
+      void launch_nodes(const cluster_def &def, int node_id, bool restart = false, std::string extra_args = "") {
          for (int i = 0; i < def.node_count; ++i) {
             node_state &state = _running_clusters[def.cluster_id].nodes[i];
             node_def node_config = def.get_node_def(i);
@@ -231,6 +232,10 @@ public:
                cmd += " ";
                cmd += def.extra_args;
             }
+            if (extra_args.length()) {
+               cmd += " ";
+               cmd += extra_args;
+            }
 
             state.pid = 0;
             state.child.reset();
@@ -252,15 +257,21 @@ public:
       void launch_cluster(const cluster_def &def) {
          stop_cluster(def.cluster_id);
          setup_cluster(def);
-         launch_nodes(def, -1);
+         launch_nodes(def, -1, true);
       }
-      void stop_node(int cluster_id, int node_id) {
+      void start_node(int cluster_id, int node_id, std::string extra_args) {
+         if (_running_clusters.find(cluster_id) == _running_clusters.end()) {
+            throw std::string("cluster is not running");
+         }
+         launch_nodes(_running_clusters[cluster_id].def, node_id, false, extra_args);
+      }
+      void stop_node(int cluster_id, int node_id, int killsig) {
          if (_running_clusters.find(cluster_id) != _running_clusters.end()) {
             if (_running_clusters[cluster_id].nodes.find(node_id) != _running_clusters[cluster_id].nodes.end()) {
                node_state &state = _running_clusters[cluster_id].nodes[node_id];
                if (state.child && state.child->running()) {
                   ilog("killing pid ${p}", ("p", state.child->id()));
-                  ::kill(state.child->id(), SIGKILL);
+                  ::kill(state.child->id(), killsig);
                }
                state.pid = 0;
                state.child.reset();
@@ -271,7 +282,7 @@ public:
       void stop_cluster(int cluster_id) {
          if (_running_clusters.find(cluster_id) != _running_clusters.end()) {
             while (_running_clusters[cluster_id].nodes.size()) { // don't use ranged for loop
-               stop_node(cluster_id, _running_clusters[cluster_id].nodes.begin()->first);
+               stop_node(cluster_id, _running_clusters[cluster_id].nodes.begin()->first, SIGKILL);
             }
             _running_clusters.erase(cluster_id);
          }
@@ -316,6 +327,10 @@ public:
 
       fc::variant get_block_header_state(int cluster_id, int node_id, std::string block_num_or_id) {
          return call(cluster_id, node_id, "/v1/chain/get_block_header_state", fc::mutable_variant_object("block_num_or_id", block_num_or_id));
+      }
+
+      fc::variant get_protocol_features(int cluster_id, int node_id) {
+         return call(cluster_id, node_id, "/v1/producer/get_protocol_features");
       }
 
       fc::variant determine_required_keys(int cluster_id, int node_id, const signed_transaction& trx) {
@@ -511,6 +526,11 @@ public:
                                           ("head_block_num", head_block_num)
                                           ("last_irreversible_block_num", lib_num);
       }
+
+      fc::variant schedule_protocol_feature_activations(launcher_service::schedule_protocol_feature_activations_param param) {
+         return call(param.cluster_id, param.node_id, "/v1/producer/schedule_protocol_feature_activations",
+                     fc::mutable_variant_object("protocol_features_to_activate", param.protocol_features_to_activate));
+      }
    };
 
 launcher_service_plugin::launcher_service_plugin():_my(new launcher_service_plugin_impl()){}
@@ -617,9 +637,35 @@ fc::variant launcher_service_plugin::stop_cluster(int cluster_id) {
    } CATCH_LAUCHER_EXCEPTIONS
 }
 
+fc::variant launcher_service_plugin::start_node(int cluster_id, int node_id, std::string args) {
+   try {
+      _my->start_node(cluster_id, node_id, args);
+      return fc::mutable_variant_object("result", "OK");
+   } CATCH_LAUCHER_EXCEPTIONS
+}
+
+fc::variant launcher_service_plugin::stop_node(int cluster_id, int node_id, int killsig) {
+   try {
+      _my->stop_node(cluster_id, node_id, killsig);
+      return fc::mutable_variant_object("result", "OK");
+   } CATCH_LAUCHER_EXCEPTIONS
+}
+
 fc::variant launcher_service_plugin::create_bios_accounts(launcher_service::create_bios_accounts_param param) {
    try {
       return _my->create_bios_accounts(param);
+   } CATCH_LAUCHER_EXCEPTIONS
+}
+
+fc::variant launcher_service_plugin::get_protocol_features(int cluster_id, int node_id) {
+   try {
+      return _my->get_protocol_features(cluster_id, node_id);
+   } CATCH_LAUCHER_EXCEPTIONS
+}
+
+fc::variant launcher_service_plugin::schedule_protocol_feature_activations(launcher_service::schedule_protocol_feature_activations_param param) {
+   try {
+      return _my->schedule_protocol_feature_activations(param);
    } CATCH_LAUCHER_EXCEPTIONS
 }
 
