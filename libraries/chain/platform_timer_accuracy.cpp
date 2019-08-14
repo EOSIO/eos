@@ -1,5 +1,5 @@
-#include <eosio/chain/checktime_timer_accuracy.hpp>
-#include <eosio/chain/checktime_timer.hpp>
+#include <eosio/chain/platform_timer_accuracy.hpp>
+#include <eosio/chain/platform_timer.hpp>
 
 #include <fc/time.hpp>
 #include <fc/log/logger.hpp>
@@ -18,7 +18,7 @@ namespace eosio { namespace chain {
 
 namespace bacc = boost::accumulators;
 
-void compute_and_print_timer_accuracy(checktime_timer& timer) {
+void compute_and_print_timer_accuracy(platform_timer& timer) {
    static std::mutex m;
    static bool once_is_enough;
 

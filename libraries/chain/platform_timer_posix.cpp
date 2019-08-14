@@ -1,5 +1,5 @@
-#include <eosio/chain/checktime_timer.hpp>
-#include <eosio/chain/checktime_timer_accuracy.hpp>
+#include <eosio/chain/platform_timer.hpp>
+#include <eosio/chain/platform_timer_accuracy.hpp>
 
 #include <fc/time.hpp>
 #include <fc/fwd_impl.hpp>
@@ -12,7 +12,7 @@
 
 namespace eosio { namespace chain {
 
-struct checktime_timer::impl {
+struct platform_timer::impl {
    timer_t timerid;
 
    static void sig_handler(int, siginfo_t* si, void*) {
@@ -20,7 +20,7 @@ struct checktime_timer::impl {
    }
 };
 
-checktime_timer::checktime_timer() {
+platform_timer::platform_timer() {
    static_assert(sizeof(impl) <= fwd_size);
 
    static bool initialized;
@@ -45,11 +45,11 @@ checktime_timer::checktime_timer() {
    compute_and_print_timer_accuracy(*this);
 }
 
-checktime_timer::~checktime_timer() {
+platform_timer::~platform_timer() {
    timer_delete(my->timerid);
 }
 
-void checktime_timer::start(fc::time_point tp) {
+void platform_timer::start(fc::time_point tp) {
    if(tp == fc::time_point::maximum()) {
       expired = 0;
       return;
@@ -65,7 +65,7 @@ void checktime_timer::start(fc::time_point tp) {
    }
 }
 
-void checktime_timer::stop() {
+void platform_timer::stop() {
    if(expired)
       return;
    struct itimerspec disable = {{0, 0}, {0, 0}};

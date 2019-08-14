@@ -6,9 +6,9 @@
 
 namespace eosio { namespace chain {
 
-struct checktime_timer {
-   checktime_timer();
-   ~checktime_timer();
+struct platform_timer {
+   platform_timer();
+   ~platform_timer();
 
    void start(fc::time_point tp);
    void stop();
@@ -21,13 +21,13 @@ private:
    fc::fwd<impl,fwd_size> my;
 };
 
-struct checktime_timer_scoped_stop {
-   checktime_timer_scoped_stop(checktime_timer& t) : _timer(t) {}
-   ~checktime_timer_scoped_stop() {
+struct platform_timer_scoped_stop {
+   platform_timer_scoped_stop(platform_timer& t) : _timer(t) {}
+   ~platform_timer_scoped_stop() {
       _timer.stop();
    }
 private:
-   checktime_timer& _timer;
+   platform_timer& _timer;
 };
 
 }}

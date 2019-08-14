@@ -24,7 +24,7 @@
 #include <eosio/chain/resource_limits.hpp>
 #include <eosio/chain/chain_snapshot.hpp>
 #include <eosio/chain/thread_utils.hpp>
-#include <eosio/chain/checktime_timer.hpp>
+#include <eosio/chain/platform_timer.hpp>
 
 #include <chainbase/chainbase.hpp>
 #include <fc/io/json.hpp>
@@ -230,7 +230,7 @@ struct controller_impl {
    bool                           trusted_producer_light_validation = false;
    uint32_t                       snapshot_head_block = 0;
    named_thread_pool              thread_pool;
-   checktime_timer                timer;
+   platform_timer                timer;
 
    typedef pair<scope_name,action_name>                   handler_key;
    map< account_name, map<handler_key, apply_handler> >   apply_handlers;

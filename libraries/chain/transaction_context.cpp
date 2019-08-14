@@ -24,7 +24,7 @@ namespace eosio { namespace chain {
    transaction_context::transaction_context( controller& c,
                                              const signed_transaction& t,
                                              const transaction_id_type& trx_id,
-                                             checktime_timer& tmr,
+                                             platform_timer& tmr,
                                              fc::time_point s )
    :control(c)
    ,trx(t)
