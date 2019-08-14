@@ -172,12 +172,12 @@ namespace eosio { namespace chain {
       if( initial_net_usage > 0 )
          add_net_usage( initial_net_usage );  // Fail early if current net usage is already greater than the calculated limit
 
+      checktime(); // Fail early if deadline has already been exceeded
+
       if(control.skip_trx_checks())
          transaction_timer.start(fc::time_point::maximum());
       else
          transaction_timer.start(_deadline);
-
-      checktime(); // Fail early if deadline has already been exceeded
 
       is_initialized = true;
    }
