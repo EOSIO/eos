@@ -1,5 +1,7 @@
 steps:
 
+  - wait
+
   - label: ":aws: Amazon_Linux 2 - Build"
     command:
       - "bash ./.cicd/build.sh"
@@ -298,8 +300,6 @@ steps:
       queue: "automation-eos-builder-fleet"
     timeout: ${TIMEOUT:-10}
     skip: ${SKIP_UBUNTU_18}${SKIP_CONTRACT_BUILDER}
-
-  - wait
 
   - label: ":centos: Centos 7.6 - Package Builder"
     command:
