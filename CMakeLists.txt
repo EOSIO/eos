@@ -64,6 +64,7 @@ endif()
 set(CMAKE_EXPORT_COMPILE_COMMANDS "ON")
 set(BUILD_DOXYGEN FALSE CACHE BOOL "Build doxygen documentation on every make")
 set(BUILD_MONGO_DB_PLUGIN FALSE CACHE BOOL "Build mongo database plugin")
+set(BUILD_UOS_BLOCKS_EXPORTER TRUE CACHE BOOL "Build UOS blocks exporter")
 
 # add defaults for openssl
 if ("${OPENSSL_ROOT_DIR}" STREQUAL "")
@@ -109,7 +110,8 @@ find_package(Boost 1.67 REQUIRED COMPONENTS
     program_options
     chrono
     unit_test_framework
-    iostreams)
+    iostreams
+    thread)
 
 add_definitions(-DBOOST_ASIO_DISABLE_STD_EXPERIMENTAL_STRING_VIEW)
 
