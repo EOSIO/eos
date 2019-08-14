@@ -1684,13 +1684,16 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
             _incoming_trx_weight = 0.0;
 
             if (!_pending_incoming_transactions.empty()) {
-               fc_dlog(_log, "Processing ${n} pending transactions", ("n", _pending_incoming_transactions.size()));
+               size_t processed = 0;
+               fc_dlog(_log, "Processing ${n} pending transactions", ("n", orig_pending_txn_size));
                while (orig_pending_txn_size && _pending_incoming_transactions.size()) {
                   if (preprocess_deadline <= fc::time_point::now()) return start_block_result::exhausted;
                   auto e = _pending_incoming_transactions.pop_front();
                   --orig_pending_txn_size;
                   process_incoming_transaction_async(std::get<0>(e), std::get<1>(e), std::get<2>(e));
+                  ++processed;
                }
+               fc_dlog(_log, "Processed ${n} pending transactions, S{p} left", ("n", processed)("p", _pending_incoming_transactions.size()));
             }
             return start_block_result::succeeded;
          }
