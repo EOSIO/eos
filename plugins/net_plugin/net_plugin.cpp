@@ -755,22 +755,8 @@ namespace eosio {
       connection_ptr c;
       explicit msg_handler( const connection_ptr& conn) : c(conn) {}
 
-      void operator()( const signed_block& msg ) const {
-         EOS_ASSERT( false, plugin_config_exception, "Not implemented, call handle_message directly instead" );
-      }
-      void operator()( signed_block& msg ) const {
-         EOS_ASSERT( false, plugin_config_exception, "Not implemented, call handle_message directly instead" );
-      }
-      void operator()( const packed_transaction& msg ) const {
-         EOS_ASSERT( false, plugin_config_exception, "Not implemented, call handle_message directly instead" );
-      }
-      void operator()( packed_transaction& msg ) const {
-         EOS_ASSERT( false, plugin_config_exception, "Not implemented, call handle_message directly instead" );
-      }
-      void operator()( signed_block&& msg ) const {
-         EOS_ASSERT( false, plugin_config_exception, "Not implemented, call handle_message directly instead" );
-      }
-      void operator()( packed_transaction&& msg ) const {
+      template<typename T>
+      void operator()( const T& ) const {
          EOS_ASSERT( false, plugin_config_exception, "Not implemented, call handle_message directly instead" );
       }
 
