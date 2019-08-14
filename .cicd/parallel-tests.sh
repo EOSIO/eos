@@ -12,7 +12,7 @@ if [[ $(uname) == 'Darwin' ]]; then
 
 else # Linux
 
-    ARGS=${ARGS:-"--rm -v $(pwd):$MOUNTED_DIR"}
+    ARGS=${ARGS:-"--rm --init -v $(pwd):$MOUNTED_DIR"}
 
     . $HELPERS_DIR/docker-hash.sh
 

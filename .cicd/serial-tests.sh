@@ -12,7 +12,7 @@ if [[ $(uname) == 'Darwin' ]]; then
 
 else # Linux
 
-    ARGS=${ARGS:-"--rm -v $(pwd):$MOUNTED_DIR"}
+    ARGS=${ARGS:-"--rm --init -v $(pwd):$MOUNTED_DIR"}
 
     . $HELPERS_DIR/docker-hash.sh
 
@@ -28,7 +28,7 @@ else # Linux
             evars="$evars --env ${var%%=*}"
         done < "$BUILDKITE_ENV_FILE"
     fi
-    echo "docker run $ARGS $evars $FULL_TAG sh -c \"$COMMANDS\""
-    eval docker run $ARGS $evars $FULL_TAG sh -c \"$COMMANDS\"
+    echo "docker run $ARGS $evars $FULL_TAG bash -c \"$COMMANDS\""
+    eval docker run $ARGS $evars $FULL_TAG bash -c \"$COMMANDS\"
 
 fi
