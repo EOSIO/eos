@@ -21,10 +21,27 @@
 
 namespace eosio { namespace chain {
 
+   transaction_checktime_timer::transaction_checktime_timer(platform_timer& timer)
+         : expired(timer.expired), _timer(timer) {
+      expired = 0;
+   }
+
+   void transaction_checktime_timer::start(fc::time_point tp) {
+      _timer.start(tp);
+   }
+
+   void transaction_checktime_timer::stop() {
+      _timer.stop();
+   }
+
+   transaction_checktime_timer::~transaction_checktime_timer() {
+      stop();
+   }
+
    transaction_context::transaction_context( controller& c,
                                              const signed_transaction& t,
                                              const transaction_id_type& trx_id,
-                                             platform_timer& tmr,
+                                             transaction_checktime_timer&& tmr,
                                              fc::time_point s )
    :control(c)
    ,trx(t)
@@ -34,8 +51,7 @@ namespace eosio { namespace chain {
    ,start(s)
    ,net_usage(trace->net_usage)
    ,pseudo_start(s)
-   ,deadline_timer(tmr)
-   ,timer_stopper(tmr)
+   ,transaction_timer(std::move(tmr))
    {
       if (!c.skip_db_sessions()) {
          undo_session = c.mutable_db().start_undo_session(true);
@@ -157,9 +173,9 @@ namespace eosio { namespace chain {
          add_net_usage( initial_net_usage );  // Fail early if current net usage is already greater than the calculated limit
 
       if(control.skip_trx_checks())
-         deadline_timer.start(fc::time_point::maximum());
+         transaction_timer.start(fc::time_point::maximum());
       else
-         deadline_timer.start(_deadline);
+         transaction_timer.start(_deadline);
 
       checktime(); // Fail early if deadline has already been exceeded
 
@@ -344,7 +360,7 @@ namespace eosio { namespace chain {
    }
 
    void transaction_context::checktime()const {
-      if(BOOST_LIKELY(deadline_timer.expired == false))
+      if(BOOST_LIKELY(transaction_timer.expired == false))
          return;
 
       auto now = fc::time_point::now();
@@ -381,7 +397,7 @@ namespace eosio { namespace chain {
       billed_time = now - pseudo_start;
       deadline_exception_code = deadline_exception::code_value; // Other timeout exceptions cannot be thrown while billable timer is paused.
       pseudo_start = fc::time_point();
-      deadline_timer.stop();
+      transaction_timer.stop();
    }
 
    void transaction_context::resume_billing_timer() {
@@ -396,7 +412,7 @@ namespace eosio { namespace chain {
          _deadline = deadline;
          deadline_exception_code = deadline_exception::code_value;
       }
-      deadline_timer.start(_deadline);
+      transaction_timer.start(_deadline);
    }
 
    void transaction_context::validate_cpu_usage_to_bill( int64_t billed_us, bool check_minimum )const {

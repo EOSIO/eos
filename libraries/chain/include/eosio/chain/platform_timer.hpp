@@ -21,13 +21,4 @@ private:
    fc::fwd<impl,fwd_size> my;
 };
 
-struct platform_timer_scoped_stop {
-   platform_timer_scoped_stop(platform_timer& t) : _timer(t) {}
-   ~platform_timer_scoped_stop() {
-      _timer.stop();
-   }
-private:
-   platform_timer& _timer;
-};
-
 }}
