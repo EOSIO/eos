@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
 #include <eosio/chain/types.hpp>
 
 #include <eosio/net_plugin/net_plugin.hpp>
