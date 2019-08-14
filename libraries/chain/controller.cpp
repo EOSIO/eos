@@ -1651,11 +1651,11 @@ struct controller_impl {
             });
          }
 
+         emit( self.accepted_block, bsp );
+
          if( add_to_fork_db ) {
             log_irreversible();
          }
-
-         emit( self.accepted_block, bsp );
       } catch (...) {
          // dont bother resetting pending, instead abort the block
          reset_pending_on_exit.cancel();
