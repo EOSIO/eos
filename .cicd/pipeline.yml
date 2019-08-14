@@ -1,5 +1,7 @@
 steps:
 
+  - wait
+
   - label: ":aws: Amazon_Linux 2 - Build"
     command:
       - "bash ./.cicd/build.sh"
