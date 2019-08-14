@@ -756,24 +756,22 @@ namespace eosio {
       explicit msg_handler( const connection_ptr& conn) : c(conn) {}
 
       void operator()( const signed_block& msg ) const {
-         EOS_ASSERT( false, plugin_config_exception, "operator()(signed_block&&) should be called" );
+         EOS_ASSERT( false, plugin_config_exception, "Not implemented, call handle_message directly instead" );
       }
       void operator()( signed_block& msg ) const {
-         EOS_ASSERT( false, plugin_config_exception, "operator()(signed_block&&) should be called" );
+         EOS_ASSERT( false, plugin_config_exception, "Not implemented, call handle_message directly instead" );
       }
       void operator()( const packed_transaction& msg ) const {
-         EOS_ASSERT( false, plugin_config_exception, "operator()(packed_transaction&&) should be called" );
+         EOS_ASSERT( false, plugin_config_exception, "Not implemented, call handle_message directly instead" );
       }
       void operator()( packed_transaction& msg ) const {
-         EOS_ASSERT( false, plugin_config_exception, "operator()(packed_transaction&&) should be called" );
+         EOS_ASSERT( false, plugin_config_exception, "Not implemented, call handle_message directly instead" );
       }
-
       void operator()( signed_block&& msg ) const {
-         EOS_ASSERT( false, plugin_config_exception, "operator()(signed_block&&) should call handle_message" );
+         EOS_ASSERT( false, plugin_config_exception, "Not implemented, call handle_message directly instead" );
       }
-
       void operator()( packed_transaction&& msg ) const {
-         EOS_ASSERT( false, plugin_config_exception, "operator()(packed_transaction&&) should call handle_message" );
+         EOS_ASSERT( false, plugin_config_exception, "Not implemented, call handle_message directly instead" );
       }
 
       void operator()( const handshake_message& msg ) const {
@@ -2394,7 +2392,6 @@ namespace eosio {
    bool connection::process_next_message( uint32_t message_length ) {
       try {
          // if next message is a block we already have, exit early
-         auto ds = pending_message_buffer.create_datastream();
          auto peek_ds = pending_message_buffer.create_peek_datastream();
          unsigned_int which{};
          fc::raw::unpack( peek_ds, which );
@@ -2413,18 +2410,21 @@ namespace eosio {
                return true;
             }
 
+            auto ds = pending_message_buffer.create_datastream();
             fc::raw::unpack( ds, which ); // throw away
             shared_ptr<signed_block> ptr = std::make_shared<signed_block>();
             fc::raw::unpack( ds, *ptr );
             handle_message( blk_id, std::move( ptr ) );
 
          } else if( which == packed_transaction_which ) {
+            auto ds = pending_message_buffer.create_datastream();
             fc::raw::unpack( ds, which ); // throw away
             shared_ptr<packed_transaction> ptr = std::make_shared<packed_transaction>();
             fc::raw::unpack( ds, *ptr );
             handle_message( std::move( ptr ) );
 
          } else {
+            auto ds = pending_message_buffer.create_datastream();
             net_message msg;
             fc::raw::unpack( ds, msg );
             msg_handler m( shared_from_this() );
