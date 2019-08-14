@@ -35,7 +35,6 @@ else # Linux
     fi
 
     BUILD_COMMANDS="cmake $CMAKE_EXTRAS .. && make -j$JOBS"
-    TEST="mkdir -p ./mongodb && mongod --dbpath ./mongodb --fork --logpath mongod.log && ctest -R ^nodeos_protocol_feature_test$ --output-on-failure -T Test"
 
     # Docker Commands
     if [[ $BUILDKITE == true ]]; then
