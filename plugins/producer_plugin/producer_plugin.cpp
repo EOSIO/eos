@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
 #include <eosio/producer_plugin/producer_plugin.hpp>
 #include <eosio/chain/plugin_interface.hpp>
 #include <eosio/chain/global_property_object.hpp>

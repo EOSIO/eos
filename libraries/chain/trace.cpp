@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
 #include <eosio/chain/trace.hpp>
 
 namespace eosio { namespace chain {

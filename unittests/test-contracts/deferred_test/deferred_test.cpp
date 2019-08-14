@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
 #include "deferred_test.hpp"
 #include <eosio/transaction.hpp>
 #include <eosio/datastream.hpp>

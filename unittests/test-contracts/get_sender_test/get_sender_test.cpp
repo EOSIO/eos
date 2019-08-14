@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
 #include "get_sender_test.hpp"
 #include <eosio/transaction.hpp>
 
