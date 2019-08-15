@@ -413,6 +413,8 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_pending_schedule_snapshot, SNAPSHOT_SUITE, sn
    auto v2 = SNAPSHOT_SUITE::template load_from_file<snapshots::snap_v2_prod_sched>();
    snapshotted_tester v2_tester(chain.get_config(), SNAPSHOT_SUITE::get_reader(v2), 0);
    auto v2_integrity_value = v2_tester.control->calculate_integrity_hash();
+
+   // take advantage of variant compare to possibly identify where snapshot disparities come from
    if (std::is_same_v<SNAPSHOT_SUITE, variant_snapshot_suite> && v2_integrity_value.str() != base_integrity_value.str()) {
       // create a latest snapshot
       auto latest_writer = SNAPSHOT_SUITE::get_writer();
@@ -422,8 +424,9 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_pending_schedule_snapshot, SNAPSHOT_SUITE, sn
       v2_tester.control->write_snapshot(latest_writer2);
       auto v2_tester_latest = SNAPSHOT_SUITE::finalize(latest_writer2);
       print_variant_diff(chain_latest, v2_tester_latest);
-      BOOST_REQUIRE_EQUAL(v2_integrity_value.str(), base_integrity_value.str());
    }
+   BOOST_REQUIRE_EQUAL(v2_integrity_value.str(), base_integrity_value.str());
+
    const auto& v2_gpo = v2_tester.control->get_global_properties();
    BOOST_REQUIRE_EQUAL(v2_gpo.proposed_schedule.version, 1);
    BOOST_REQUIRE_EQUAL(v2_gpo.proposed_schedule.producers.size(), 1);
