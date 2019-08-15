@@ -22,7 +22,7 @@ matrix:
       dist: xenial
       services: docker
       env:
-        - IMAGE_TAG='amazonlinux-2'
+        - IMAGE_TAG='amazon_linux-2'
     - os: linux
       dist: xenial
       services: docker

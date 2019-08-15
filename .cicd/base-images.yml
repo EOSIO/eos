@@ -7,7 +7,7 @@ steps:
 
   - label: ":aws: Amazon_Linux 2 - Build"
     command:
-      - ".cicd/generate-base-images.sh amazonlinux-2"
+      - ".cicd/generate-base-images.sh amazon_linux-2"
     agents:
       queue: "automation-eos-dockerhub-image-builder-fleet"
     timeout: $BUILD_TIMEOUT
