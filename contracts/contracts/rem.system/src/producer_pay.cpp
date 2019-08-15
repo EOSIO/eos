@@ -5,6 +5,8 @@
 #include <rem.system/rem.system.hpp>
 #include <rem.token/rem.token.hpp>
 
+#include <cmath>
+
 namespace eosiosystem {
 
    const int64_t  min_pervote_daily_pay = 100'0000;
@@ -23,23 +25,32 @@ namespace eosiosystem {
 
    int64_t system_contract::share_pervote_reward_between_producers(int64_t amount)
    {
-      int64_t amount_remained = amount;
       int64_t total_reward_distributed = 0;
       for (const auto& p: _gstate.last_schedule) {
-         const auto reward = std::min(int64_t(amount * p.second), amount_remained);
-         amount_remained -= reward;
+         const auto reward = int64_t(amount * p.second);
          total_reward_distributed += reward;
          const auto& prod = _producers.get(p.first.value);
          _producers.modify(prod, eosio::same_payer, [&](auto& p) {
             p.pending_pervote_reward += reward;
          });
-         if (amount_remained == 0) {
-            break;
-         }
       }
       check(total_reward_distributed <= amount, "distributed reward above the given amount");
       return total_reward_distributed;
    }
+
+   void system_contract::update_pervote_shares()
+   {
+      std::for_each(std::begin(_gstate.last_schedule), std::end(_gstate.last_schedule),
+         [this](auto& p)
+         {
+            const auto& prod_name = p.first;
+            const auto& prod = _producers.get(prod_name.value);
+            const double share = prod.total_votes / _gstate.total_active_producer_vote_weight;
+            // need to cut precision because sum of all shares can be greater that 1 due to floating point arithmetics
+            p.second = std::floor(share * 100000.0) / 100000.0;
+         });
+   }
+
 
    void system_contract::onblock( ignore<block_header> ) {
       using namespace eosio;
@@ -110,23 +121,20 @@ namespace eosiosystem {
          _gstate.current_round_start_time = timestamp;
          _gstate.last_schedule_version = schedule_version;
          std::vector<name> active_producers = eosio::get_active_producers();
-         _gstate.total_active_producer_vote_weight = 0.0;
-         for (const auto prod_name: active_producers) {
-            const auto& prod = _producers.get(prod_name.value);
-            _gstate.total_active_producer_vote_weight += prod.total_votes;
-         }
-
          if (active_producers.size() != _gstate.last_schedule.size()) {
             _gstate.last_schedule.resize(active_producers.size());
          }
+         _gstate.total_active_producer_vote_weight = 0.0;
          for (size_t i = 0; i < active_producers.size(); i++) {
             const auto& prod_name = active_producers[i];
             const auto& prod = _producers.get(prod_name.value);
+            _gstate.last_schedule[i] = std::make_pair(prod_name, 0.0);
+            _gstate.total_active_producer_vote_weight += prod.total_votes;
             _producers.modify(prod, same_payer, [&](auto& p) {
                p.last_expected_produced_blocks_update = timestamp;
             });
-            _gstate.last_schedule[i] = std::make_pair(prod_name, prod.total_votes / _gstate.total_active_producer_vote_weight);
          }
+         update_pervote_shares();
       }
 
       if( _gstate.last_pervote_bucket_fill == time_point() )  /// start the presses
@@ -284,7 +292,7 @@ namespace eosiosystem {
       const auto to_per_vote_pay  = share_pervote_reward_between_producers(amount.amount * 0.2); //TODO: move to constants section
       const auto to_rem           = amount.amount - (to_per_stake_pay + to_per_vote_pay);
       if( amount.amount > 0 ) {
-        token::transfer_action transfer_act{ token_account, { {_self, active_permission} } };
+        token::transfer_action transfer_act{ token_account, { {payer, active_permission} } };
         if( to_rem > 0 ) {
            transfer_act.send( payer, saving_account, asset(to_rem, core_symbol()), "Remme Savings" );
         }

@@ -1348,6 +1348,7 @@ namespace eosiosystem {
 
          // defined in producer_pay.cpp
          int64_t share_pervote_reward_between_producers(int64_t amount);
+         void update_pervote_shares();
 
          template <auto system_contract::*...Ptrs>
          class registration {

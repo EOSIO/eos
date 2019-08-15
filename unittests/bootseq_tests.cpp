@@ -64,6 +64,7 @@ std::vector<genesis_account> test_genesis( {
   {N(minow1),         1'100'0000ll},
   {N(minow2),         1'050'0000ll},
   {N(minow3),         1'050'0000ll},
+  {N(user1),          1'050'0000ll},
   {N(masses),   500'000'000'0000ll}
 });
 
@@ -215,6 +216,17 @@ public:
     }
 
 
+    double get_total_votepay_shares() {
+        double total = 0.0;
+        auto state = get_global_state();
+        auto arr = state["last_schedule"].get_array();
+        for (auto& elem: arr) {
+           total += elem["second"].as_double();
+        }
+        return total;
+    }
+
+
     abi_serializer abi_ser;
 };
 
@@ -274,6 +286,14 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
            auto r = delegate_bandwidth(N(rem.stake), a.aname, asset(stake_quantity));
            BOOST_REQUIRE( !r->except_ptr );
         }
+
+         push_action(N(rem.token), N(transfer), config::system_account_name, mutable_variant_object()
+            ("from", name(config::system_account_name))
+            ("to",   name(N(user1)))
+            ("quantity", core_from_string("1050.0000"))
+            ("memo", "")
+         );
+         produce_block();
 
 
         // register whales as producers
@@ -354,6 +374,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         BOOST_TEST(active_schedule.producers.at(18).producer_name == "prods");
         BOOST_TEST(active_schedule.producers.at(19).producer_name == "prodt");
         BOOST_TEST(active_schedule.producers.at(20).producer_name == "produ");
+        BOOST_REQUIRE(get_total_votepay_shares() > 0.999 && get_total_votepay_shares() <= 1.0);
         //Rounds in this schedule are started by prodp
         //Counters of expected_produced_blocks
         //proda-prodd - 12
@@ -383,6 +404,8 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
                            N(prodh), N(prodi), N(prodj), N(prodk), N(prodl), N(prodm), N(prodn),
                            N(prodo), N(prodp), N(prodq), N(prodr), N(prods), N(prodt), N(produ),
                            N(runnerup1)} );
+        produce_block();
+        BOOST_REQUIRE(get_total_votepay_shares() > 0.999 && get_total_votepay_shares() <= 1.0);
         produce_blocks_until_schedule_is_changed(2000);
         produce_blocks(2);
         //Counters of expected_produced_blocks
@@ -428,13 +451,17 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         BOOST_TEST(active_schedule.producers.at(19).producer_name == "produ");
         BOOST_TEST(active_schedule.producers.at(20).producer_name == "runnerup1");
         BOOST_TEST(get_pending_pervote_reward(N(runnerup1)) == 0);
+        BOOST_REQUIRE(get_total_votepay_shares() > 0.999 && get_total_votepay_shares() <= 1.0);
         // make changes to top 21 producer list
         votepro( N(b1), { N(proda), N(prodb), N(prodc), N(prodd), N(prode), N(prodf), N(prodg),
                            N(prodh), N(prodi), N(prodj), N(prodk), N(prodl), N(prodm), N(prodn),
                            N(prodo), N(prodp), N(prodq), N(prodr), N(prods), N(prodt), N(produ),
                            N(runnerup1), N(runnerup2)} );
+        produce_block();
+        BOOST_REQUIRE(get_total_votepay_shares() > 0.999 && get_total_votepay_shares() <= 1.0);
         produce_blocks_until_schedule_is_changed(2000);
         produce_blocks(2);
+        BOOST_REQUIRE(get_total_votepay_shares() > 0.999 && get_total_votepay_shares() <= 1.0);
 
         BOOST_TEST(get_expected_produced_blocks(N(prodp)) == 60); //wasn`t in second schedule, so expected_produced_blocks haven`t changed
         BOOST_TEST(get_expected_produced_blocks(N(proda)) == 85); //last producer in round
@@ -451,6 +478,17 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         BOOST_TEST(get_balance(N(proda)).get_amount() == 0);
         //runnerup should not get any pervote rewards because he wasn`t on schedule when torewards was called
         BOOST_REQUIRE_EQUAL(get_balance(N(rem.vpay)).get_amount(), vpay_balance);
+        {
+            const auto user1_balance = get_balance(N(user1)).get_amount();
+            torewards(N(user1), N(user1), core_from_string("0.2000"));
+            torewards(N(user1), N(user1), core_from_string("2.0000"));
+            torewards(N(user1), N(user1), core_from_string("1.0000"));
+            torewards(N(user1), N(user1), core_from_string("0.3000"));
+            torewards(N(user1), N(user1), core_from_string("2.1000"));
+            torewards(N(user1), N(user1), core_from_string("0.1000"));
+            torewards(N(user1), N(user1), core_from_string("0.0300"));
+            BOOST_REQUIRE(get_balance(N(user1)).get_amount() < user1_balance);
+        }
         claim_rewards(N(runnerup1));
         BOOST_TEST(get_balance(N(runnerup1)).get_amount() > 0);
         claim_rewards(N(proda));
@@ -552,13 +590,13 @@ BOOST_FIXTURE_TEST_CASE( stake_lock_test, bootseq_tester ) {
         votepro( N(whale2), {N(proda)} );
         votepro( N(whale3), {N(proda)} );
         votepro( N(whale4), {N(proda)} );
+        produce_block();
 
         // Spend some time so the producer pay pool is filled by the inflation rate
         produce_min_num_of_blocks_to_spend_time_wo_inactive_prod(fc::seconds(30 * 24 * 3600)); // 30 days
 
         // Spend some time so the producer pay pool is filled by the inflation rate
         produce_min_num_of_blocks_to_spend_time_wo_inactive_prod(fc::seconds(30 * 24 * 3600)); // 30 days
-
         const auto second_july_2020 = fc::seconds(1593648000); // 2020-07-02
         // Ensure that now is yet 6 month after 2020-01-01 yet
         BOOST_REQUIRE(control->head_block_time().time_since_epoch() < second_july_2020);

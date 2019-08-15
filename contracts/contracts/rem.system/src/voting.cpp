@@ -238,6 +238,7 @@ namespace eosiosystem {
             if( voting && !pitr->active() && pd.second.second /* from new set */ ) {
                check( false, ( "producer " + pitr->owner.to_string() + " is not currently registered" ).data() );
             }
+            const auto total_votes_before = pitr->total_votes;
             _producers.modify( pitr, same_payer, [&]( auto& p ) {
                p.total_votes += pd.second.first;
                if ( p.total_votes < 0 ) { // floating point arithmetics can give small negative numbers
@@ -248,8 +249,7 @@ namespace eosiosystem {
             const auto active_prod = std::find_if(std::begin(_gstate.last_schedule), std::end(_gstate.last_schedule),
                [target = pd.first](const auto& prod){ return prod.first.value == target.value; });
             if (active_prod != std::end(_gstate.last_schedule)) {
-               _gstate.total_active_producer_vote_weight += pd.second.first;
-               active_prod->second = pitr->total_votes / _gstate.total_active_producer_vote_weight;
+               _gstate.total_active_producer_vote_weight += pitr->total_votes - total_votes_before;
             }
          } else {
             if( pd.second.second ) {
@@ -257,6 +257,7 @@ namespace eosiosystem {
             }
          }
       }
+      update_pervote_shares();
 
       _voters.modify( voter, same_payer, [&]( auto& av ) {
          av.last_vote_weight = new_vote_weight;
@@ -314,9 +315,9 @@ namespace eosiosystem {
                   [&](const auto& prod){ return prod.first.value == acnt.value; });
                if (active_prod != std::end(_gstate.last_schedule)) {
                   _gstate.total_active_producer_vote_weight += delta;
-                  active_prod->second = prod.total_votes / _gstate.total_active_producer_vote_weight;
                }
             }
+            update_pervote_shares();
          }
       }
 
