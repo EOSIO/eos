@@ -1689,7 +1689,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
                   process_incoming_transaction_async(std::get<0>(e), std::get<1>(e), std::get<2>(e));
                   ++processed;
                }
-               fc_dlog(_log, "Processed ${n} pending transactions, S{p} left", ("n", processed)("p", _pending_incoming_transactions.size()));
+               fc_dlog(_log, "Processed ${n} pending transactions, ${p} left", ("n", processed)("p", _pending_incoming_transactions.size()));
             }
             return start_block_result::succeeded;
          }
