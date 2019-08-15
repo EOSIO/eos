@@ -2,10 +2,7 @@
 set -eo pipefail
 . ./.cicd/helpers/general.sh
 
-rm -f /tmp/serial_tests
-
 # Use dockerfiles as source of truth for what platforms to use
-echo "/# SERIAL TESTS/ {\n "
 for DOCKERFILE in $(ls $CICD_DIR/docker); do
 
     DOCKERFILE_NAME=$(echo $DOCKERFILE | cut -d. -f1)
