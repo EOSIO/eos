@@ -88,34 +88,34 @@ namespace launcher_service {
       public_key_type                active;
    };
    struct create_bios_accounts_param {
-      int                            cluster_id;
-      int                            node_id;
+      int                            cluster_id = 0;
+      int                            node_id = 0;
       chain::name                    creator;
       std::vector<new_account_param> accounts;
    };
 
    struct get_block_param {
-      int                            cluster_id;
-      int                            node_id;
+      int                            cluster_id = 0;
+      int                            node_id = 0;
       std::string                    block_num_or_id;
    };
 
    struct get_account_param {
-      int                            cluster_id;
-      int                            node_id;
+      int                            cluster_id = 0;
+      int                            node_id = 0;
       chain::name                    name;
    };
 
    struct set_contract_param {
-      int                            cluster_id;
-      int                            node_id;
+      int                            cluster_id = 0;
+      int                            node_id = 0;
       chain::name                    account;
       std::string                    contract_file; // file path
       std::string                    abi_file; // file path
    };
 
    struct import_keys_param {
-      int                            cluster_id;
+      int                            cluster_id = 0;
       std::vector<private_key_type>  keys;
    };
 
@@ -127,24 +127,41 @@ namespace launcher_service {
    };
 
    struct push_actions_param {
-      int                            cluster_id;
-      int                            node_id;
+      int                            cluster_id = 0;
+      int                            node_id = 0;
       std::vector<action_param>      actions;
    };
 
    struct verify_transaction_param {
-      int                            cluster_id;
-      int                            node_id;
+      int                            cluster_id = 0;
+      int                            node_id = 0;
       chain::transaction_id_type     transaction_id;
       int                            max_search_blocks = 7; // default expiration = 3s
       uint32_t                       block_num_hint = 0; // required if transaction was not pushed by launcher_service
    };
 
    struct schedule_protocol_feature_activations_param {
-      int                             cluster_id;
-      int                             node_id;
+      int                             cluster_id = 0 ;
+      int                             node_id = 0;
       std::vector<chain::digest_type> protocol_features_to_activate;
    };
+
+   struct get_table_rows_param {
+      int              cluster_id = 0;
+      int              node_id = 0;
+      bool             json = true;
+      chain::name      code;
+      std::string      scope;
+      chain::name      table;
+      std::string      lower_bound;
+      std::string      upper_bound;
+      uint32_t         limit = 10;
+      std::string      key_type;  // type of key specified by index_position
+      std::string      index_position; // 1 - primary (first), 2 - secondary index (in order defined by multi_index), 3 - third index, etc
+      std::string      encode_type{"dec"}; //dec, hex , default=dec
+      bool             reverse = false;
+      bool             show_payer = false; // show RAM pyer
+    };
 }
 
 /**
@@ -180,6 +197,7 @@ public:
    fc::variant get_cluster_info(int cluster_id);
    fc::variant get_protocol_features(int cluster_id, int node_id);
    fc::variant verify_transaction(launcher_service::verify_transaction_param);
+   fc::variant get_table_rows(launcher_service::get_table_rows_param);
 
    // transactions
    fc::variant create_bios_accounts(launcher_service::create_bios_accounts_param);
@@ -205,3 +223,4 @@ FC_REFLECT(eosio::launcher_service::action_param, (account)(action)(permissions)
 FC_REFLECT(eosio::launcher_service::push_actions_param, (cluster_id)(node_id)(actions))
 FC_REFLECT(eosio::launcher_service::verify_transaction_param, (cluster_id)(node_id)(transaction_id)(max_search_blocks)(block_num_hint))
 FC_REFLECT(eosio::launcher_service::schedule_protocol_feature_activations_param, (cluster_id)(node_id)(protocol_features_to_activate))
+FC_REFLECT(eosio::launcher_service::get_table_rows_param, (cluster_id)(node_id)(json)(code)(scope)(table)(lower_bound)(upper_bound)(limit)(key_type)(index_position)(encode_type)(reverse)(show_payer))
