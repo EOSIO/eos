@@ -5,6 +5,14 @@
 #include "RuntimePrivate.h"
 #include "IR/Validate.h"
 
+#if LLVM_VERSION_MAJOR == 7
+namespace llvm { namespace orc {
+   using LegacyRTDyldObjectLinkingLayer = RTDyldObjectLinkingLayer;
+   template<typename A, typename B>
+   using LegacyIRCompileLayer = IRCompileLayer<A, B>;
+}}
+#endif
+
 #ifdef _DEBUG
 	// This needs to be 1 to allow debuggers such as Visual Studio to place breakpoints and step through the JITed code.
 	#define USE_WRITEABLE_JIT_CODE_PAGES 1
