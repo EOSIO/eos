@@ -4,3 +4,8 @@ export CICD_DIR=$ROOT_DIR/.cicd
 export HELPERS_DIR=$CICD_DIR/helpers
 export JOBS=${JOBS:-"$(getconf _NPROCESSORS_ONLN)"}
 export MOUNTED_DIR='/workdir'
+
+
+function capitalize() {
+    echo $1 | awk '{$1=toupper(substr($1,0,1))substr($1,2)}1'
+}
