@@ -1,7 +1,3 @@
-/**
- *  @file api_tests.cpp
- *  @copyright defined in eos/LICENSE.txt
- */
 #include <algorithm>
 
 #include <eosio/chain/config.hpp>

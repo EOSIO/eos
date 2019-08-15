@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
 #pragma once
 #include <fc/filesystem.hpp>
 #include <eosio/chain/block.hpp>

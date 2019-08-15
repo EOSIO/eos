@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
 #pragma once
 #include <fc/uint128.hpp>
 #include <fc/array.hpp>
