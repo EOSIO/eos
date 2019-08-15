@@ -234,7 +234,7 @@ steps:
   - label: ":ubuntu: Ubuntu 16.04 - Long-Running Tests"
     command:
       - "buildkite-agent artifact download build.tar.gz . --step ':ubuntu: Ubuntu 16.04 - Build' && tar -xzf build.tar.gz"
-      - "bash ./.cicd/parallel-tests.sh"
+      - "bash ./.cicd/long-running-tests.sh"
     env: 
       IMAGE_TAG: "ubuntu-16.04"
       BUILDKITE_AGENT_ACCESS_TOKEN:
@@ -246,7 +246,7 @@ steps:
   - label: ":ubuntu: Ubuntu 18.04 - Long-Running Tests"
     command:
       - "buildkite-agent artifact download build.tar.gz . --step ':ubuntu: Ubuntu 18.04 - Build' && tar -xzf build.tar.gz"
-      - "bash ./.cicd/parallel-tests.sh"
+      - "bash ./.cicd/long-running-tests.sh"
     env:
       IMAGE_TAG: "ubuntu-18.04"
       BUILDKITE_AGENT_ACCESS_TOKEN:
@@ -260,7 +260,7 @@ steps:
       - "brew install git graphviz libtool gmp llvm@4 pkgconfig python python@2 doxygen libusb openssl boost@1.70 cmake mongodb ccache"
       - "git clone $BUILDKITE_REPO eos && cd eos && git checkout $BUILDKITE_COMMIT && git submodule update --init --recursive"
       - "cd eos && buildkite-agent artifact download build.tar.gz . --step ':darwin: macOS 10.14 - Build' && tar -xzf build.tar.gz"
-      - "cd eos && bash ./.cicd/parallel-tests.sh"
+      - "cd eos && bash ./.cicd/long-running-tests.sh"
     plugins:
       - chef/anka#v0.5.1:
           no-volume: true
