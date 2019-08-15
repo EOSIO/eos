@@ -267,11 +267,13 @@ steps:
           inherit-environment-vars: true
           vm-name: 10.14.4_6C_14G_40G
           vm-registry-tag: "clean::cicd::git-ssh::nas::brew::buildkite-agent"
+          modify-cpu: 12
+          modify-ram: 24
           always-pull: true
           debug: true
           wait-network: true
     agents:
-      - "queue=mac-anka-node-fleet"
+      - "queue=mac-anka-large-node-fleet"
     skip: ${SKIP_MOJAVE}${SKIP_LONG_RUNNING_TESTS:-true}
 
   - wait:
