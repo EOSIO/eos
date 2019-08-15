@@ -30,9 +30,5 @@ cat <<EOF
   timeout: ${TIMEOUT:-10}
   skip: \${SKIP_${PLATFORM_NAME_UPCASE}_${VERSION}}\${SKIP_SERIAL_TESTS}
 EOF
-        # replace "# SERIAL TESTS" in pipeline.yml with what we've generated
     done
 done
-
-
-#buildkite-agent pipeline upload .cicd/pipeline.yml
