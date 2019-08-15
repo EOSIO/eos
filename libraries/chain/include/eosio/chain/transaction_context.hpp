@@ -1,10 +1,28 @@
 #pragma once
 #include <eosio/chain/controller.hpp>
 #include <eosio/chain/trace.hpp>
-#include <eosio/chain/checktime_timer.hpp>
+#include <eosio/chain/platform_timer.hpp>
 #include <signal.h>
 
 namespace eosio { namespace chain {
+
+   struct transaction_checktime_timer {
+      public:
+         transaction_checktime_timer() = delete;
+         transaction_checktime_timer(const transaction_checktime_timer&) = delete;
+         transaction_checktime_timer(transaction_checktime_timer&&) = default;
+         ~transaction_checktime_timer();
+
+         void start(fc::time_point tp);
+         void stop();
+
+         volatile sig_atomic_t& expired;
+      private:
+         platform_timer& _timer;
+
+         transaction_checktime_timer(platform_timer& timer);
+         friend controller_impl;
+   };
 
    class transaction_context {
       private:
@@ -15,7 +33,7 @@ namespace eosio { namespace chain {
          transaction_context( controller& c,
                               const signed_transaction& t,
                               const transaction_id_type& trx_id,
-                              checktime_timer& timer,
+                              transaction_checktime_timer&& timer,
                               fc::time_point start = fc::time_point::now() );
 
          void init_for_implicit_trx( uint64_t initial_net_usage = 0 );
@@ -128,8 +146,7 @@ namespace eosio { namespace chain {
          fc::microseconds              billed_time;
          fc::microseconds              billing_timer_duration_limit;
 
-         checktime_timer&              deadline_timer;
-         checktime_timer_scoped_stop   timer_stopper;
+         transaction_checktime_timer   transaction_timer;
    };
 
 } }

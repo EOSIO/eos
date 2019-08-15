@@ -6,13 +6,13 @@ file(GLOB HEADERS "include/eosio/chain/*.hpp"
                   "${CMAKE_CURRENT_BINARY_DIR}/include/eosio/chain/core_symbol.hpp" )
 
 if(APPLE AND UNIX)
-   set(CHECKTIME_TIMER_IMPL checktime_timer_macos.cpp)
+   set(PLATFORM_TIMER_IMPL platform_timer_macos.cpp)
 else()
-   try_run(POSIX_TIMER_TEST_RUN_RESULT POSIX_TIMER_TEST_COMPILE_RESULT ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/checktime_timer_posix_test.c)
+   try_run(POSIX_TIMER_TEST_RUN_RESULT POSIX_TIMER_TEST_COMPILE_RESULT ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/platform_timer_posix_test.c)
    if(POSIX_TIMER_TEST_RUN_RESULT EQUAL 0)
-      set(CHECKTIME_TIMER_IMPL checktime_timer_posix.cpp)
+      set(PLATFORM_TIMER_IMPL platform_timer_posix.cpp)
    else()
-      set(CHECKTIME_TIMER_IMPL checktime_timer_dummy.cpp)
+      set(PLATFORM_TIMER_IMPL platform_timer_asio_fallback.cpp)
    endif()
 endif()
 
@@ -65,8 +65,8 @@ add_library( eosio_chain
              genesis_intrinsics.cpp
              whitelisted_intrinsics.cpp
              thread_utils.cpp
-             checktime_timer_calibrate.cpp
-             ${CHECKTIME_TIMER_IMPL}
+             platform_timer_accuracy.cpp
+             ${PLATFORM_TIMER_IMPL}
              ${HEADERS}
              )
 
