@@ -206,6 +206,7 @@ namespace eosio {
 
    class net_plugin_impl : public std::enable_shared_from_this<net_plugin_impl> {
    public:
+      std::mutex                       acceptor_mtx;
       unique_ptr<tcp::acceptor>        acceptor;
       std::atomic<uint32_t>            current_connection_id{0};
 
@@ -2167,6 +2168,7 @@ namespace eosio {
       connection_ptr new_connection = std::make_shared<connection>();
       new_connection->connecting = true;
       new_connection->strand.post( [this, new_connection = std::move( new_connection )](){
+         std::lock_guard<std::mutex> g( acceptor_mtx );
          acceptor->async_accept( *new_connection->socket,
             boost::asio::bind_executor( new_connection->strand, [new_connection, socket=new_connection->socket, this]( boost::system::error_code ec ) {
             if( !ec ) {
@@ -3410,6 +3412,7 @@ namespace eosio {
 
          if( my->acceptor ) {
             boost::system::error_code ec;
+            std::lock_guard<std::mutex> g( my->acceptor_mtx );
             my->acceptor->cancel( ec );
             my->acceptor->close( ec );
          }
