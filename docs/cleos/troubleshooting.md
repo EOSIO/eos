@@ -4,7 +4,7 @@ Check if your local nodeos is running by visiting the following URL in your brow
 
 ```shell
 
-http://localhost:8888/v1/chain/get_info
+curl http://localhost:8888/v1/chain/get_info
 
 ```
 

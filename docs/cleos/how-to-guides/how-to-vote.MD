@@ -6,6 +6,8 @@ Vote for a block producer
 
 * Install the current supported version of cleos
 
+* Ensure the reference system contracts from `eosio.contracts` repository is deployed and used to manage system resources
+
 * Understand the following:
   * What is a block producer
   * How does voting works

@@ -6,7 +6,7 @@ Setup an account that require multiple signatures for signning a transaction
 
 * You have an account
 
-* You have some token allocated to your account
+* You have enough resoruces allocated to execute the transaction
 
 * Install the currently supported version of cleos
 

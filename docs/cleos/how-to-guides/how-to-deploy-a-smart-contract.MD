@@ -6,11 +6,14 @@ Deploy an EOSIO contract
 
 * Install the currently supported version of cleos
 
-* Understand the following:
-  * What is a public and private key pair
+* Have access to the wallet which contains the private key of the contract account
 
 ## Steps
+
+Execute:
 
 ```shell
 cleos set contract contract_account contract_directory_path
 ```
+
+Replace the `contract_directory_path` with the path of directory which contains your contract code

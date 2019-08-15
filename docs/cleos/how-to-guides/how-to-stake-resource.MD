@@ -6,6 +6,8 @@ Stake resource for your account
 
 * Install the currently supported version of cleos
 
+* Ensure the reference system contracts from `eosio.contracts` repository is deployed and used to manage system resources
+
 * Understand the following:
   * What is an account
   * What is network bandwidth
