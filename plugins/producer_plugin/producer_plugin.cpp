@@ -332,8 +332,9 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 
       void on_incoming_block(const signed_block_ptr& block) {
          auto id = block->id();
+         auto blk_num = block->block_num();
 
-         fc_dlog(_log, "received incoming block ${id}", ("id", id));
+         fc_dlog(_log, "received incoming block ${n} ${id}", ("n", blk_num)("id", id));
 
          EOS_ASSERT( block->timestamp < (fc::time_point::now() + fc::seconds( 7 )), block_from_the_future,
                      "received a block from the future, ignoring it: ${id}", ("id", id) );
@@ -383,11 +384,11 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          }
 
 
-         if( fc::time_point::now() - block->timestamp < fc::minutes(5) || (block->block_num() % 1000 == 0) ) {
+         if( fc::time_point::now() - block->timestamp < fc::minutes(5) || (blk_num % 1000 == 0) ) {
             ilog("Received block ${id}... #${n} @ ${t} signed by ${p} [trxs: ${count}, lib: ${lib}, conf: ${confs}, latency: ${latency} ms]",
-                 ("p",block->producer)("id",fc::variant(block->id()).as_string().substr(8,16))
-                 ("n",block_header::num_from_id(block->id()))("t",block->timestamp)
-                 ("count",block->transactions.size())("lib",chain.last_irreversible_block_num())("confs", block->confirmed)("latency", (fc::time_point::now() - block->timestamp).count()/1000 ) );
+                 ("p",block->producer)("id",id.str().substr(8,16))("n",blk_num)("t",block->timestamp)
+                 ("count",block->transactions.size())("lib",chain.last_irreversible_block_num())
+                 ("confs", block->confirmed)("latency", (fc::time_point::now() - block->timestamp).count()/1000 ) );
          }
       }
 
@@ -729,7 +730,6 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
 { try {
    my->chain_plug = app().find_plugin<chain_plugin>();
    EOS_ASSERT( my->chain_plug, plugin_config_exception, "chain_plugin not found" );
-   chain_plugin* chain_plug = my->chain_plug;
    my->_options = &options;
    LOAD_VALUE_SET(options, "producer-name", my->_producers)
 
@@ -1334,9 +1334,9 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
    if( chain.get_read_mode() == chain::db_read_mode::READ_ONLY )
       return start_block_result::waiting;
 
-   fc_dlog(_log, "Starting block at ${time}", ("time", fc::time_point::now()));
-
    const auto& hbs = chain.head_block_state();
+
+   fc_dlog(_log, "Starting block ${n} at ${time}", ("n", hbs->block_num + 1)("time", fc::time_point::now()));
 
    //Schedule for the next second's tick regardless of chain state
    // If we would wait less than 50ms (1/10 of block_interval), wait for the whole block interval.
@@ -1764,9 +1764,9 @@ void producer_plugin_impl::schedule_production_loop() {
             [&chain,weak_this,cid=++_timer_corelation_id](const boost::system::error_code& ec) {
                auto self = weak_this.lock();
                if( self && ec != boost::asio::error::operation_aborted && cid == self->_timer_corelation_id ) {
-                  fc_dlog( _log, "Produce block timer running at ${time}", ("time", fc::time_point::now()) );
                   // pending_block_state expected, but can't assert inside async_wait
                   auto block_num = chain.is_building_block() ? chain.head_block_num() + 1 : 0;
+                  fc_dlog( _log, "Produce block timer for ${num} running at ${time}", ("num", block_num)("time", fc::time_point::now()) );
                   auto res = self->maybe_produce_block();
                   fc_dlog( _log, "Producing Block #${num} returned: ${res}", ("num", block_num)( "res", res ) );
                }
@@ -1889,7 +1889,7 @@ void producer_plugin_impl::produce_block() {
    block_state_ptr new_bs = chain.head_block_state();
 
    ilog("Produced block ${id}... #${n} @ ${t} signed by ${p} [trxs: ${count}, lib: ${lib}, confirmed: ${confs}]",
-        ("p",new_bs->header.producer)("id",fc::variant(new_bs->id).as_string().substr(0,16))
+        ("p",new_bs->header.producer)("id",new_bs->id.str().substr(0,16))
         ("n",new_bs->block_num)("t",new_bs->header.timestamp)
         ("count",new_bs->block->transactions.size())("lib",chain.last_irreversible_block_num())("confs", new_bs->header.confirmed));
 

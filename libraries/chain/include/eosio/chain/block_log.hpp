@@ -42,7 +42,7 @@ namespace eosio { namespace chain {
          void flush();
          void reset( const genesis_state& gs, const signed_block_ptr& genesis_block, uint32_t first_block_num = 1 );
 
-         std::pair<signed_block_ptr, uint64_t> read_block(uint64_t file_pos)const;
+         signed_block_ptr read_block(uint64_t file_pos)const;
          signed_block_ptr read_block_by_num(uint32_t block_num)const;
          signed_block_ptr read_block_by_id(const block_id_type& id)const {
             return read_block_by_num(block_header::num_from_id(id));

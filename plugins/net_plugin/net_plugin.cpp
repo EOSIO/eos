@@ -145,8 +145,6 @@ namespace eosio {
       connection_ptr sync_source;
       std::atomic<stages> sync_state;
 
-      chain_plugin* chain_plug = nullptr;
-
    private:
       constexpr static auto stage_str( stages s );
       void set_state( stages s );
@@ -188,7 +186,6 @@ namespace eosio {
 
       void recv_block(const connection_ptr& conn, const block_id_type& msg, uint32_t bnum);
       void expire_blocks( uint32_t bnum );
-      void recv_transaction(const connection_ptr& conn, const packed_transaction_ptr& txn);
       void recv_notice(const connection_ptr& conn, const notice_message& msg, bool generated);
 
       void retry_fetch(const connection_ptr& conn);
@@ -724,11 +721,11 @@ namespace eosio {
       void handle_message( const request_message& msg );
       void handle_message( const sync_request_message& msg );
       void handle_message( const signed_block& msg ) = delete; // signed_block_ptr overload used instead
-      void handle_message( const signed_block_ptr& msg );
+      void handle_message( const block_id_type& id, signed_block_ptr msg );
       void handle_message( const packed_transaction& msg ) = delete; // packed_transaction_ptr overload used instead
-      void handle_message( const packed_transaction_ptr& msg );
+      void handle_message( packed_transaction_ptr msg );
 
-      void process_signed_block( const signed_block_ptr& msg );
+      void process_signed_block( const block_id_type& id, signed_block_ptr msg );
 
       fc::optional<fc::variant_object> _logger_variant;
       const fc::variant_object& get_logger_variant()  {
@@ -754,30 +751,9 @@ namespace eosio {
       connection_ptr c;
       explicit msg_handler( const connection_ptr& conn) : c(conn) {}
 
-      void operator()( const signed_block& msg ) const {
-         EOS_ASSERT( false, plugin_config_exception, "operator()(signed_block&&) should be called" );
-      }
-      void operator()( signed_block& msg ) const {
-         EOS_ASSERT( false, plugin_config_exception, "operator()(signed_block&&) should be called" );
-      }
-      void operator()( const packed_transaction& msg ) const {
-         EOS_ASSERT( false, plugin_config_exception, "operator()(packed_transaction&&) should be called" );
-      }
-      void operator()( packed_transaction& msg ) const {
-         EOS_ASSERT( false, plugin_config_exception, "operator()(packed_transaction&&) should be called" );
-      }
-
-      void operator()( signed_block&& msg ) const {
-         // continue call to handle_message on connection strand
-         shared_ptr<signed_block> ptr = std::make_shared<signed_block>( std::move( msg ) );
-         c->handle_message( ptr );
-      }
-
-      void operator()( packed_transaction&& msg ) const {
-         // continue call to handle_message on connection strand
-         fc_dlog( logger, "handle packed_transaction" );
-         shared_ptr<packed_transaction> ptr = std::make_shared<packed_transaction>( std::move( msg ) );
-         c->handle_message( ptr );
+      template<typename T>
+      void operator()( const T& ) const {
+         EOS_ASSERT( false, plugin_config_exception, "Not implemented, call handle_message directly instead" );
       }
 
       void operator()( const handshake_message& msg ) const {
@@ -1362,8 +1338,6 @@ namespace eosio {
       ,sync_source()
       ,sync_state(in_sync)
    {
-      chain_plug = app().find_plugin<chain_plugin>();
-      EOS_ASSERT( chain_plug, chain::missing_chain_plugin_exception, ""  );
    }
 
    constexpr auto sync_manager::stage_str(stages s) {
@@ -2028,11 +2002,6 @@ namespace eosio {
       } );
    }
 
-   void dispatch_manager::recv_transaction(const connection_ptr& c, const packed_transaction_ptr& txn) {
-      node_transaction_state nts = {txn->id(), txn->expiration(), 0, c->connection_id};
-      add_peer_txn( nts );
-   }
-
    void dispatch_manager::rejected_transaction(const transaction_id_type& id, uint32_t head_blk_num) {
       fc_dlog( logger, "not sending rejected transaction ${tid}", ("tid", id) );
       // keep rejected transaction around for awhile so we don't broadcast it
@@ -2414,28 +2383,36 @@ namespace eosio {
 
             block_id_type blk_id = bh.id();
             if( my_impl->dispatcher->have_block( blk_id ) ) {
-               connection_ptr c = shared_from_this();
                fc_dlog( logger, "canceling wait on ${p}, already received block ${num}",
-                        ("p", c->peer_name())("num", block_header::num_from_id( blk_id )) );
-               c->consecutive_rejected_blocks = 0;
-               c->cancel_wait();
+                        ("p", peer_name())("num", block_header::num_from_id( blk_id )) );
+               consecutive_rejected_blocks = 0;
+               cancel_wait();
 
                pending_message_buffer.advance_read_ptr( message_length );
                return true;
             }
-         }
 
-         auto ds = pending_message_buffer.create_datastream();
-         net_message msg;
-         fc::raw::unpack( ds, msg );
-         msg_handler m( shared_from_this() );
-         if( msg.contains<signed_block>() ) {
-            m( std::move( msg.get<signed_block>() ) );
-         } else if( msg.contains<packed_transaction>() ) {
-            m( std::move( msg.get<packed_transaction>() ) );
+            auto ds = pending_message_buffer.create_datastream();
+            fc::raw::unpack( ds, which ); // throw away
+            shared_ptr<signed_block> ptr = std::make_shared<signed_block>();
+            fc::raw::unpack( ds, *ptr );
+            handle_message( blk_id, std::move( ptr ) );
+
+         } else if( which == packed_transaction_which ) {
+            auto ds = pending_message_buffer.create_datastream();
+            fc::raw::unpack( ds, which ); // throw away
+            shared_ptr<packed_transaction> ptr = std::make_shared<packed_transaction>();
+            fc::raw::unpack( ds, *ptr );
+            handle_message( std::move( ptr ) );
+
          } else {
+            auto ds = pending_message_buffer.create_datastream();
+            net_message msg;
+            fc::raw::unpack( ds, msg );
+            msg_handler m( shared_from_this() );
             msg.visit( m );
          }
+
       } catch( const fc::exception& e ) {
          fc_elog( logger, "Exception in handling message from ${p}: ${s}",
                   ("p", peer_name())("s", e.to_detail_string()) );
@@ -2790,7 +2767,7 @@ namespace eosio {
              trx->get_signatures().size() * sizeof(signature_type);
    }
 
-   void connection::handle_message( const packed_transaction_ptr& trx ) {
+   void connection::handle_message( packed_transaction_ptr trx ) {
       if( my_impl->db_read_mode == eosio::db_read_mode::READ_ONLY ) {
          fc_dlog( logger, "got a txn in read-only mode - dropping" );
          return;
@@ -2800,16 +2777,18 @@ namespace eosio {
       peer_dlog( this, "received packed_transaction ${id}", ("id", tid) );
 
       bool have_trx = my_impl->dispatcher->have_txn( tid );
-      my_impl->dispatcher->recv_transaction( shared_from_this(), trx );
+      node_transaction_state nts = {tid, trx->expiration(), 0, connection_id};
+      my_impl->dispatcher->add_peer_txn( nts );
+
       if( have_trx ) {
          fc_dlog( logger, "got a duplicate transaction - dropping ${id}", ("id", tid) );
          return;
       }
 
       trx_in_progress_size += calc_trx_size( trx );
-      app().post( priority::low, [trx, weak = weak_from_this()]() {
+      app().post( priority::low, [trx{std::move(trx)}, weak = weak_from_this()]() {
          my_impl->chain_plug->accept_transaction( trx,
-            [weak, trx](const static_variant<fc::exception_ptr, transaction_trace_ptr>& result) {
+            [weak, trx](const static_variant<fc::exception_ptr, transaction_trace_ptr>& result) mutable {
          // next (this lambda) called from application thread
          bool accepted = false;
          if (result.contains<fc::exception_ptr>()) {
@@ -2844,18 +2823,17 @@ namespace eosio {
    }
 
    // called from connection strand
-   void connection::handle_message( const signed_block_ptr& ptr ) {
-      app().post(priority::high, [ptr, weak = weak_from_this()] {
+   void connection::handle_message( const block_id_type& id, signed_block_ptr ptr ) {
+      app().post(priority::high, [ptr{std::move(ptr)}, id, weak = weak_from_this()] {
          connection_ptr c = weak.lock();
-         if( c ) c->process_signed_block( ptr );
+         if( c ) c->process_signed_block( id, std::move( ptr ) );
       });
-      my_impl->dispatcher->bcast_notice( ptr->id() );
+      my_impl->dispatcher->bcast_notice( id );
    }
 
    // called from application thread
-   void connection::process_signed_block( const signed_block_ptr& msg ) {
+   void connection::process_signed_block( const block_id_type& blk_id, signed_block_ptr msg ) {
       controller& cc = my_impl->chain_plug->chain();
-      block_id_type blk_id = msg->id();
       uint32_t blk_num = msg->block_num();
       // use c in this method instead of this to highlight that all methods called on c-> must be thread safe
       connection_ptr c = shared_from_this();
@@ -2909,8 +2887,8 @@ namespace eosio {
       }
 
       if( reason == no_reason ) {
-         boost::asio::post( my_impl->thread_pool->get_executor(), [dispatcher = my_impl->dispatcher.get(), c, msg]() {
-            dispatcher->add_peer_block( msg->id(), c->connection_id );
+         boost::asio::post( my_impl->thread_pool->get_executor(), [dispatcher = my_impl->dispatcher.get(), cid=c->connection_id, blk_id, msg]() {
+            dispatcher->add_peer_block( blk_id, cid );
             dispatcher->update_txns_block_num( msg );
          });
          c->strand.post( [sync_master = my_impl->sync_master.get(), dispatcher = my_impl->dispatcher.get(), c, blk_id, blk_num]() {
