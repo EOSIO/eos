@@ -69,7 +69,7 @@ RUN curl -L https://github.com/mongodb/mongo-cxx-driver/archive/r3.4.0.tar.gz -o
     make -j$(nproc) && \
     make install && \
     cd / && \
-    rm -f mongo-cxx-driver-r3.4.0.tar.gz\
+    rm -f mongo-cxx-driver-r3.4.0.tar.gz
 # add mongodb to path
 ENV PATH=${PATH}:/mongodb-linux-x86_64-amazon-3.6.3/bin
 # install ccache
@@ -78,6 +78,3 @@ RUN curl -LO http://download-ib01.fedoraproject.org/pub/epel/7/x86_64/Packages/c
 # fix ccache for centos
 RUN cd /usr/lib64/ccache && ln -s ../../bin/ccache c++
 ENV CCACHE_PATH="/opt/rh/devtoolset-8/root/usr/bin"
-# install buildkite agent
-RUN echo -e "[buildkite-agent]\nname = Buildkite Pty Ltd\nbaseurl = https://yum.buildkite.com/buildkite-agent/stable/x86_64/\nenabled=1\ngpgcheck=0\npriority=1" > /etc/yum.repos.d/buildkite-agent.repo && \
-    yum -y install buildkite-agent

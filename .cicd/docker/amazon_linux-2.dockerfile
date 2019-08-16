@@ -63,6 +63,3 @@ ENV PATH=${PATH}:/mongodb-linux-x86_64-amazon-3.6.3/bin
 # install ccache
 RUN curl -LO http://download-ib01.fedoraproject.org/pub/epel/7/x86_64/Packages/c/ccache-3.3.4-1.el7.x86_64.rpm && \
     yum install -y ccache-3.3.4-1.el7.x86_64.rpm
-# install buildkite agent
-RUN echo -e "[buildkite-agent]\nname = Buildkite Pty Ltd\nbaseurl = https://yum.buildkite.com/buildkite-agent/stable/x86_64/\nenabled=1\ngpgcheck=0\npriority=1" > /etc/yum.repos.d/buildkite-agent.repo && \
-    yum -y install buildkite-agent

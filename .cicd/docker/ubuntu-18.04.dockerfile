@@ -52,7 +52,3 @@ RUN curl -L https://github.com/mongodb/mongo-cxx-driver/archive/r3.4.0.tar.gz -o
     rm -f mongo-cxx-driver-r3.4.0.tar.gz
 # add mongodb to path
 ENV PATH=${PATH}:/mongodb-linux-x86_64-ubuntu1804-4.1.1/bin
-# install buildkite agent
-RUN echo "deb https://apt.buildkite.com/buildkite-agent stable main" > /etc/apt/sources.list.d/buildkite-agent.list && \
-    apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 32A37959C2FA5C3C99EFBC32A79206696452D198 && \
-    apt-get update && apt-get install -y apt-transport-https && apt-get install -y buildkite-agent
