@@ -72,7 +72,7 @@ steps:
 
   - wait
 
-  # - label: ":aws: Amazon_Linux 2 - Unit Test"
+  # - label: ":aws: Amazon_Linux 2 - Unit Tests"
   #   command:
   #     - "buildkite-agent artifact download build.tar.gz . --step ':aws: Amazon_Linux 2 - Build' && tar -xzf build.tar.gz"
   #     - "./.cicd/parallel-tests.sh"
@@ -84,7 +84,7 @@ steps:
   #   timeout: ${TIMEOUT:-10}
   #   skip: ${SKIP_AMAZON_LINUX_2}${SKIP_UNIT_TESTS}
 
-  - label: ":centos: CentOS 7.6 - Unit Test"
+  - label: ":centos: CentOS 7.6 - Unit Tests"
     command:
       - "buildkite-agent artifact download build.tar.gz . --step ':centos: CentOS 7.6 - Build' && tar -xzf build.tar.gz"
       - "./.cicd/parallel-tests.sh"
@@ -96,7 +96,7 @@ steps:
     timeout: ${TIMEOUT:-10}
     skip: ${SKIP_CENTOS_7}${SKIP_UNIT_TESTS}
 
-  # - label: ":ubuntu: Ubuntu 16.04 - Unit Test"
+  # - label: ":ubuntu: Ubuntu 16.04 - Unit Tests"
   #   command:
   #     - "buildkite-agent artifact download build.tar.gz . --step ':ubuntu: Ubuntu 16.04 - Build' && tar -xzf build.tar.gz"
   #     - "./.cicd/parallel-tests.sh"
@@ -108,7 +108,7 @@ steps:
   #   timeout: ${TIMEOUT:-10}
   #   skip: ${SKIP_UBUNTU_16}${SKIP_UNIT_TESTS}
 
-  # - label: ":ubuntu: Ubuntu 18.04 - Unit Test"
+  # - label: ":ubuntu: Ubuntu 18.04 - Unit Tests"
   #   command:
   #     - "buildkite-agent artifact download build.tar.gz . --step ':ubuntu: Ubuntu 18.04 - Build' && tar -xzf build.tar.gz"
   #     - "./.cicd/parallel-tests.sh"
@@ -120,7 +120,7 @@ steps:
   #   timeout: ${TIMEOUT:-10}
   #   skip: ${SKIP_UBUNTU_18}${SKIP_UNIT_TESTS}
 
-  # - label: ":darwin: macOS 10.14 - Unit Test"
+  # - label: ":darwin: macOS 10.14 - Unit Tests"
   #   command:
   #     - "brew install git graphviz libtool gmp llvm@4 pkgconfig python python@2 doxygen libusb openssl boost@1.70 cmake mongodb"
   #     - "git clone $BUILDKITE_REPO eos && cd eos && git checkout $BUILDKITE_COMMIT && git submodule update --init --recursive"
