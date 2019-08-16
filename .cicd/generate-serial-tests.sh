@@ -2,19 +2,21 @@
 set -eo pipefail
 . ./.cicd/helpers/general.sh
 
-# Use dockerfiles as source of truth for what platforms to use
-for DOCKERFILE in $(ls $CICD_DIR/docker); do
+SERIAL_TESTS=$(cat tests/CMakeLists.txt | grep nonparallelizable_tests | awk -F" " '{ print $2 }')
 
-    DOCKERFILE_NAME=$(echo $DOCKERFILE | cut -d. -f1)
+# Use dockerfiles as source of truth for what platforms to use
+## Linux
+for DOCKERFILE in $(ls $CICD_DIR/docker); do
+    DOCKERFILE_NAME=$(echo $DOCKERFILE | awk -F'.dockerfile' '{ print $1 }')
     PLATFORM_NAME=$(echo $DOCKERFILE_NAME | cut -d- -f1)
     PLATFORM_NAME_UPCASE=$(echo $PLATFORM_NAME | tr a-z A-Z)
-    VERSION=$(echo $DOCKERFILE_NAME | cut -d- -f2)
+    VERSION=$(echo $DOCKERFILE_NAME | cut -d- -f2 | cut -d. -f1)
     OLDIFS=$IFS;IFS="_";set $PLATFORM_NAME;IFS=$OLDIFS
     PLATFORM_NAME_FULL="$(capitalize $1)$( [[ ! -z $2 ]] && echo "_$(capitalize $2)" || true ) $VERSION"
     [[ $PLATFORM_NAME =~ 'amazon' ]] && ICON=':aws:'
     [[ $PLATFORM_NAME =~ 'ubuntu' ]] && ICON=':ubuntu:'
     [[ $PLATFORM_NAME =~ 'centos' ]] && ICON=':centos:'
-    for TEST_NAME in $(cat tests/CMakeLists.txt | grep nonparallelizable_tests | awk -F" " '{ print $2 }'); do
+    for TEST_NAME in $SERIAL_TESTS; do
 cat <<EOF
 - label: "$ICON $PLATFORM_NAME_FULL - $TEST_NAME"
   command:
@@ -30,3 +32,28 @@ cat <<EOF
 EOF
     done
 done
+## Darwin
+for TEST_NAME in $SERIAL_TESTS; do
+cat <<EOF
+- label: ":darwin: macOS 10.14 - $TEST_NAME"
+  command:
+    - "brew install git python python@2 cmake mongodb"
+    - "git clone \$BUILDKITE_REPO eos && cd eos && git checkout \$BUILDKITE_COMMIT && git submodule update --init --recursive"
+    - "cd eos && buildkite-agent artifact download build.tar.gz . --step ':darwin: macOS 10.14 - Build' && tar -xzf build.tar.gz"
+    - "cd eos && bash ./.cicd/serial-tests.sh $TEST_NAME"
+  plugins:
+    - chef/anka#v0.5.1:
+        no-volume: true
+        inherit-environment-vars: true
+        vm-name: 10.14.4_6C_14G_40G
+        vm-registry-tag: "clean::cicd::git-ssh::nas::brew::buildkite-agent"
+        always-pull: true
+        debug: true
+        wait-network: true
+  agents:
+    - "queue=mac-anka-node-fleet"
+  skip: \${SKIP_MOJAVE}\${SKIP_SERIAL_TESTS}
+EOF
+
+done
+
