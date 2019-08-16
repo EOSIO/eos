@@ -39,7 +39,7 @@ for TEST_NAME in $SERIAL_TESTS; do
 cat <<EOF
 - label: ":darwin: macOS 10.14 - $TEST_NAME"
   command:
-    - "brew install git python python@2 libusb cmake mongodb"
+    - "brew install git graphviz libtool gmp llvm@4 pkgconfig python python@2 doxygen libusb openssl boost@1.70 cmake mongodb"
     - "git clone \$BUILDKITE_REPO eos && cd eos && git checkout \$BUILDKITE_COMMIT && git submodule update --init --recursive"
     - "cd eos && buildkite-agent artifact download build.tar.gz . --step ':darwin: macOS 10.14 - Build' && tar -xzf build.tar.gz"
     - "cd eos && bash ./.cicd/serial-tests.sh $TEST_NAME"
