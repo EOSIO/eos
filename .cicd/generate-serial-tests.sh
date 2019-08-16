@@ -23,7 +23,7 @@ cat <<EOF
   command:
     - "buildkite-agent artifact download build.tar.gz . --step '$ICON $PLATFORM_NAME_FULL - Build' && tar -xzf build.tar.gz"
     - "bash ./.cicd/serial-tests.sh $TEST_NAME"
-    - "mv build/Testing/$(ls build/Testing/ | grep '20' | tail -n 1)/Test.xml test-results.xml && buildkite-agent artifact upload test-results.xml"
+    - "mv build/Testing/\$(ls build/Testing/ | grep '20' | tail -n 1)/Test.xml test-results.xml && buildkite-agent artifact upload test-results.xml"
   env:
     IMAGE_TAG: "$DOCKERFILE_NAME"
     BUILDKITE_AGENT_ACCESS_TOKEN:
@@ -43,7 +43,7 @@ cat <<EOF
     - "git clone \$BUILDKITE_REPO eos && cd eos && git checkout \$BUILDKITE_COMMIT && git submodule update --init --recursive"
     - "cd eos && buildkite-agent artifact download build.tar.gz . --step ':darwin: macOS 10.14 - Build' && tar -xzf build.tar.gz"
     - "cd eos && bash ./.cicd/serial-tests.sh $TEST_NAME"
-    - "cd eos && mv build/Testing/$(ls build/Testing/ | grep '20' | tail -n 1)/Test.xml test-results.xml && buildkite-agent artifact upload test-results.xml"
+    - "cd eos && mv build/Testing/\$(ls build/Testing/ | grep '20' | tail -n 1)/Test.xml test-results.xml && buildkite-agent artifact upload test-results.xml"
   plugins:
     - chef/anka#v0.5.1:
         no-volume: true
