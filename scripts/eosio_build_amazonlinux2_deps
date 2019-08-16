@@ -21,3 +21,5 @@ doxygen,rpm -qa
 graphviz,rpm -qa
 clang,rpm -qa
 patch,rpm -qa
+llvm-devel,rpm -qa
+llvm-static,rpm -qa
