@@ -129,8 +129,12 @@ namespace LLVMJIT
 		virtual bool needsToReserveAllocationSpace() override { return true; }
 		virtual void reserveAllocationSpace(uintptr_t numCodeBytes,U32 codeAlignment,uintptr_t numReadOnlyBytes,U32 readOnlyAlignment,uintptr_t numReadWriteBytes,U32 readWriteAlignment) override
 		{
+			//in llvm7+ it's signaling unwinding frames as being R/W on macos. This appears to be due to Mach-O not supporting read-only data sections?
+			//Let's only clutch in this safety guard for Linux
+#ifndef __APPLE__
 			if(numReadWriteBytes)
 				 Runtime::causeException(Exception::Cause::outOfMemory);
+#endif
 			// Calculate the number of pages to be used by each section.
 			codeSection.numPages = shrAndRoundUp(numCodeBytes,Platform::getPageSizeLog2());
 			readOnlySection.numPages = shrAndRoundUp(numReadOnlyBytes,Platform::getPageSizeLog2());
