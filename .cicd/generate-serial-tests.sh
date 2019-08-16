@@ -8,7 +8,7 @@ SERIAL_TESTS=$(cat tests/CMakeLists.txt | grep nonparallelizable_tests | awk -F"
 ## Linux
 for DOCKERFILE in $(ls $CICD_DIR/docker); do
     DOCKERFILE_NAME=$(echo $DOCKERFILE | awk -F'.dockerfile' '{ print $1 }')
-    PLATFORM_NAME=$(echo $DOCKERFILE_NAME | cut -d- -f1)
+    PLATFORM_NAME=$(echo $DOCKERFILE_NAME | cut -d- -f1 | sed 's/os/OS/g')
     PLATFORM_NAME_UPCASE=$(echo $PLATFORM_NAME | tr a-z A-Z)
     VERSION_MAJOR=$(echo $DOCKERFILE_NAME | cut -d- -f2 | cut -d. -f1)
     VERSION_FULL=$(echo $DOCKERFILE_NAME | cut -d- -f2)
