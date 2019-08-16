@@ -351,9 +351,9 @@ namespace LLVMJIT
 		// Pass the module to the JIT compiler.
 		Timing::Timer machineCodeTimer;
       llvm::orc::VModuleKey K = ES.allocateVModule();
-      std::unique_ptr<llvm::Module> xxx(llvmModule);
-		auto zzz = compileLayer->addModule(K, std::move(xxx));
-		auto xxxx = compileLayer->emitAndFinalize(K);
+      std::unique_ptr<llvm::Module> mod(llvmModule);
+		WAVM_ASSERT_THROW(!compileLayer->addModule(K, std::move(mod)));
+		WAVM_ASSERT_THROW(!compileLayer->emitAndFinalize(K));
 	}
 
 	void instantiateModule(const IR::Module& module,ModuleInstance* moduleInstance)
