@@ -957,7 +957,8 @@ namespace eosio {
       self->sent_handshake_count = 0;
       self->node_id = fc::sha256();
       my_impl->sync_master->sync_reset_lib_num( self->shared_from_this() );
-      fc_dlog( logger, "closed, canceling wait on ${p}", ("p", self->peer_name()) ); // peer_name(), do not hold conn_mtx
+      fc_ilog( logger, "closing '${a}', ${p}", ("a", self->peer_address())("p", self->peer_name()) );
+      fc_dlog( logger, "canceling wait on ${p}", ("p", self->peer_name()) ); // peer_name(), do not hold conn_mtx
       self->cancel_wait();
       {
          std::lock_guard<std::mutex> g( self->read_delay_timer_mtx );
