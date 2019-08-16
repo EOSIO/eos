@@ -4,10 +4,7 @@ set -eo pipefail
 
 [[ -z $1 ]] && TEST_NAME="-L nonparallelizable_tests" || TEST_NAME="-R ^$1$"
 
-TEST="mkdir -p ./mongodb && mongod --dbpath ./mongodb --fork --logpath mongod.log && \
-    ctest $TEST_NAME --output-on-failure -T Test && \
-    mv $(pwd)/Testing/$(ls $(pwd)/Testing/ | sort | tail -n 1)/Test.xml test-results.xml && \
-    buildkite-agent artifact upload test-results.xml"
+TEST="mkdir -p ./mongodb && mongod --dbpath ./mongodb --fork --logpath mongod.log && ctest $TEST_NAME --output-on-failure -T Test"
 
 if [[ $(uname) == 'Darwin' ]]; then
 
