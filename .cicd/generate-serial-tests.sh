@@ -14,9 +14,9 @@ for DOCKERFILE in $(ls $CICD_DIR/docker); do
     VERSION_FULL=$(echo $DOCKERFILE_NAME | cut -d- -f2)
     OLDIFS=$IFS;IFS="_";set $PLATFORM_NAME;IFS=$OLDIFS
     PLATFORM_NAME_FULL="$(capitalize $1)$( [[ ! -z $2 ]] && echo "_$(capitalize $2)" || true ) $VERSION_FULL"
-    [[ $PLATFORM_NAME =~ 'amazon' ]] && ICON=':aws:'
-    [[ $PLATFORM_NAME =~ 'ubuntu' ]] && ICON=':ubuntu:'
-    [[ $PLATFORM_NAME =~ 'centos' ]] && ICON=':centos:'
+    [[ $DOCKERFILE_NAME =~ 'amazon' ]] && ICON=':aws:'
+    [[ $DOCKERFILE_NAME =~ 'ubuntu' ]] && ICON=':ubuntu:'
+    [[ $DOCKERFILE_NAME =~ 'centos' ]] && ICON=':centos:'
     for TEST_NAME in $SERIAL_TESTS; do
 cat <<EOF
 - label: "$ICON $PLATFORM_NAME_FULL - $TEST_NAME"
