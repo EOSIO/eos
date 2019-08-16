@@ -1597,7 +1597,6 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
                   continue; // do not allow schedule and execute in same block
                }
                if( scheduled_trx_deadline <= fc::time_point::now() ) {
-                  exhausted = true;
                   break;
                }
 
@@ -1625,7 +1624,6 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
                }
 
                if (scheduled_trx_deadline <= fc::time_point::now()) {
-                  exhausted = true;
                   break;
                }
 
