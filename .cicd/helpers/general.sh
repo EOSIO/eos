@@ -7,5 +7,5 @@ export MOUNTED_DIR='/workdir'
 
 
 function capitalize() {
-    echo $1 | awk '{$1=toupper(substr($1,0,1))substr($1,2)}1'
+    echo $1 | awk '{$1=toupper(substr($1,1,1))substr($1,2)}1'
 }

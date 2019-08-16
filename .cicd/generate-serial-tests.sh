@@ -14,9 +14,7 @@ for DOCKERFILE in $(ls $CICD_DIR/docker); do
     [[ $PLATFORM_NAME =~ 'amazon' ]] && ICON=':aws:'
     [[ $PLATFORM_NAME =~ 'ubuntu' ]] && ICON=':ubuntu:'
     [[ $PLATFORM_NAME =~ 'centos' ]] && ICON=':centos:'
-
     for TEST_NAME in $(cat tests/CMakeLists.txt | grep nonparallelizable_tests | awk -F" " '{ print $2 }'); do
-    
 cat <<EOF
 - label: "$ICON $PLATFORM_NAME_FULL - $TEST_NAME"
   command:
