@@ -69,6 +69,9 @@ void launcher_service_api_plugin::plugin_startup() {
       CALL(launcher, stop_node, INVOKE_R_R_R_R(stop_node, int, int, int), 200),
       CALL(launcher, start_node, INVOKE_R_R_R_R(start_node, int, int, std::string), 200),
 
+      CALL(launcher, import_keys, INVOKE_R_R(import_keys, launcher_service::import_keys_param), 200),
+      CALL(launcher, generate_key, INVOKE_R_R(generate_key, launcher_service::generate_key_param), 200),
+
       CALL(launcher, get_info, INVOKE_R_R(get_info, std::string), 200),
       CALL(launcher, get_block, INVOKE_R_R(get_block, launcher_service::get_block_param), 200),
       CALL(launcher, get_block_header_state, INVOKE_R_R(get_block_header_state, launcher_service::get_block_param), 200),
@@ -79,7 +82,6 @@ void launcher_service_api_plugin::plugin_startup() {
 
       CALL(launcher, create_bios_accounts, INVOKE_R_R(create_bios_accounts, launcher_service::create_bios_accounts_param), 200),
       CALL(launcher, set_contract, INVOKE_R_R(set_contract, launcher_service::set_contract_param), 200),
-      CALL(launcher, import_keys, INVOKE_R_R(import_keys, launcher_service::import_keys_param), 200),
       CALL(launcher, push_actions, INVOKE_R_R(push_actions, launcher_service::push_actions_param), 200),
       CALL(launcher, verify_transaction, INVOKE_R_R(verify_transaction, launcher_service::verify_transaction_param), 200),
       CALL(launcher, schedule_protocol_feature_activations, INVOKE_R_R(schedule_protocol_feature_activations, launcher_service::schedule_protocol_feature_activations_param), 200)

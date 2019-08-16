@@ -119,6 +119,11 @@ namespace launcher_service {
       std::vector<private_key_type>  keys;
    };
 
+   struct generate_key_param {
+      int                            cluster_id = 0;
+      std::string                    seed;
+   };
+
    struct action_param {
       chain::name                     account;
       chain::name                     action;
@@ -187,6 +192,7 @@ public:
    fc::variant stop_node(int cluster_id, int node_id, int killsig);
 
    // wallet related calls
+   fc::variant generate_key(launcher_service::generate_key_param param);
    fc::variant import_keys(launcher_service::import_keys_param);
 
    // querys
@@ -219,6 +225,7 @@ FC_REFLECT(eosio::launcher_service::get_block_param, (cluster_id)(node_id)(block
 FC_REFLECT(eosio::launcher_service::get_account_param, (cluster_id)(node_id)(name))
 FC_REFLECT(eosio::launcher_service::set_contract_param, (cluster_id)(node_id)(account)(contract_file)(abi_file))
 FC_REFLECT(eosio::launcher_service::import_keys_param, (cluster_id)(keys))
+FC_REFLECT(eosio::launcher_service::generate_key_param, (cluster_id)(seed))
 FC_REFLECT(eosio::launcher_service::action_param, (account)(action)(permissions)(data))
 FC_REFLECT(eosio::launcher_service::push_actions_param, (cluster_id)(node_id)(actions))
 FC_REFLECT(eosio::launcher_service::verify_transaction_param, (cluster_id)(node_id)(transaction_id)(max_search_blocks)(block_num_hint))

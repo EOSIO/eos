@@ -493,6 +493,17 @@ public:
          return fc::mutable_variant_object("imported_keys", pub_keys);
       }
 
+      fc::variant generate_key(generate_key_param param) {
+         if (_running_clusters.find(param.cluster_id) == _running_clusters.end()) {
+            throw std::string("cluster is not running");
+         }
+         fc::sha256 digest(param.seed);
+         private_key_type pri_key = private_key_type::regenerate(fc::ecc::private_key::generate_from_seed(digest).get_secret());
+         public_key_type pub_key = pri_key.get_public_key();
+         _running_clusters[param.cluster_id].imported_keys[pub_key] = pri_key;
+         return fc::mutable_variant_object("generated_key", std::string(pub_key));
+      }
+
       fc::variant verify_transaction(launcher_service::verify_transaction_param param) {
          uint32_t txn_block_num = param.block_num_hint;
          if (!txn_block_num) {
@@ -733,6 +744,12 @@ fc::variant launcher_service_plugin::set_contract(launcher_service::set_contract
 fc::variant launcher_service_plugin::import_keys(launcher_service::import_keys_param param) {
    try {
       return _my->import_keys(param);
+   } CATCH_LAUCHER_EXCEPTIONS
+}
+
+fc::variant launcher_service_plugin::generate_key(launcher_service::generate_key_param param) {
+   try {
+      return _my->generate_key(param);
    } CATCH_LAUCHER_EXCEPTIONS
 }
 
