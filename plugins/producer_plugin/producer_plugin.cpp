@@ -1322,12 +1322,6 @@ fc::time_point producer_plugin_impl::calculate_block_deadline( const fc::time_po
    return block_time + fc::microseconds(last_block ? _last_block_time_offset_us : _produce_time_offset_us);
 }
 
-enum class tx_category {
-   PERSISTED,
-   UNEXPIRED_UNPERSISTED
-};
-
-
 producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
    chain::controller& chain = chain_plug->chain();
 
@@ -1787,9 +1781,8 @@ void producer_plugin_impl::schedule_delayed_production_loop(const std::weak_ptr<
    for (const auto&p: _producers) {
       auto next_producer_block_time = calculate_next_block_time(p, current_block_time);
       if (next_producer_block_time) {
-         auto producer_wake_up_time = *next_producer_block_time - fc::microseconds(config::block_interval_us);
+         auto producer_wake_up_time = *next_producer_block_time;
          if (wake_up_time) {
-            // wake up with a full block interval to the deadline
             wake_up_time = std::min<fc::time_point>(*wake_up_time, producer_wake_up_time);
          } else {
             wake_up_time = producer_wake_up_time;
