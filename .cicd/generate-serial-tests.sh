@@ -23,7 +23,7 @@ cat <<EOF
   command:
     - "buildkite-agent artifact download build.tar.gz . --step '$ICON $PLATFORM_NAME_FULL - Build' && tar -xzf build.tar.gz"
     - "bash ./.cicd/serial-tests.sh $TEST_NAME"
-    - "mv build/Testing/$(ls build/Testing/ | sort | tail -n 1)/Test.xml test-results.xml && buildkite-agent artifact upload test-results.xml"
+    - "mv build/Testing/\$(ls build/Testing/ | sort | tail -n 1)/Test.xml test-results.xml && buildkite-agent artifact upload test-results.xml"
   env:
     IMAGE_TAG: "$DOCKERFILE_NAME"
     BUILDKITE_AGENT_ACCESS_TOKEN:
