@@ -85,4 +85,4 @@ RUN curl -LO https://github.com/ccache/ccache/releases/download/v3.4.1/ccache-3.
     make && \
     make install && \
     cd / && \
-  rm -rf ccache-3.4.1/
+    rm -rf ccache-3.4.1/
