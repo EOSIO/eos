@@ -10,9 +10,10 @@ for DOCKERFILE in $(ls $CICD_DIR/docker); do
     DOCKERFILE_NAME=$(echo $DOCKERFILE | awk -F'.dockerfile' '{ print $1 }')
     PLATFORM_NAME=$(echo $DOCKERFILE_NAME | cut -d- -f1)
     PLATFORM_NAME_UPCASE=$(echo $PLATFORM_NAME | tr a-z A-Z)
-    VERSION=$(echo $DOCKERFILE_NAME | cut -d- -f2 | cut -d. -f1)
+    VERSION_MAJOR=$(echo $DOCKERFILE_NAME | cut -d- -f2 | cut -d. -f1)
+    VERSION_FULL=$(echo $DOCKERFILE_NAME | cut -d- -f2)
     OLDIFS=$IFS;IFS="_";set $PLATFORM_NAME;IFS=$OLDIFS
-    PLATFORM_NAME_FULL="$(capitalize $1)$( [[ ! -z $2 ]] && echo "_$(capitalize $2)" || true ) $VERSION"
+    PLATFORM_NAME_FULL="$(capitalize $1)$( [[ ! -z $2 ]] && echo "_$(capitalize $2)" || true ) $VERSION_FULL"
     [[ $PLATFORM_NAME =~ 'amazon' ]] && ICON=':aws:'
     [[ $PLATFORM_NAME =~ 'ubuntu' ]] && ICON=':ubuntu:'
     [[ $PLATFORM_NAME =~ 'centos' ]] && ICON=':centos:'
@@ -28,7 +29,7 @@ cat <<EOF
   agents:
     queue: "automation-eos-builder-fleet"
   timeout: ${TIMEOUT:-10}
-  skip: \${SKIP_${PLATFORM_NAME_UPCASE}_${VERSION}}\${SKIP_SERIAL_TESTS}
+  skip: \${SKIP_${PLATFORM_NAME_UPCASE}_${VERSION_MAJOR}}\${SKIP_SERIAL_TESTS}
 EOF
     done
 done
