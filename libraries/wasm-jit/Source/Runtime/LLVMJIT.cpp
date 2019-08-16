@@ -299,7 +299,12 @@ namespace LLVMJIT
 
 		void notifySymbolLoaded(const char* name,Uptr baseAddress,Uptr numBytes,std::map<U32,U32>&& offsetToOpIndexMap) override
 		{
-			WAVM_ASSERT_THROW(!strcmp(name,"invokeThunk"));
+#ifndef __APPLE__
+			const char thunkPrefix[] = "invokeThunk";
+#else
+			const char thunkPrefix[] = "_invokeThunk";
+#endif
+			WAVM_ASSERT_THROW(!strcmp(name,thunkPrefix));
 			symbol = new JITSymbol(functionType,baseAddress,numBytes,std::move(offsetToOpIndexMap));
 		}
 	};
@@ -378,7 +383,11 @@ namespace LLVMJIT
 
 	bool getFunctionIndexFromExternalName(const char* externalName,Uptr& outFunctionDefIndex)
 	{
+#ifndef __APPLE__
 		const char wasmFuncPrefix[] = "wasmFunc";
+#else
+		const char wasmFuncPrefix[] = "_wasmFunc";
+#endif
 		const Uptr numPrefixChars = sizeof(wasmFuncPrefix) - 1;
 		if(!strncmp(externalName,wasmFuncPrefix,numPrefixChars))
 		{
