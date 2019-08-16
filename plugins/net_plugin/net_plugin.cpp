@@ -1667,7 +1667,13 @@ namespace eosio {
          if (msg.known_blocks.ids.size() == 0) {
             fc_elog( logger,"got a catch up with ids size = 0" );
          } else {
-            verify_catchup(c, msg.known_blocks.pending, msg.known_blocks.ids.back());
+            const block_id_type& id = msg.known_blocks.ids.back();
+            if( !my_impl->dispatcher->have_block( id ) ) {
+               verify_catchup( c, msg.known_blocks.pending, id );
+            } else {
+               // we already have the block, so update peer with our view of the world
+               c->send_handshake();
+            }
          }
       } else if (msg.known_blocks.mode == last_irr_catch_up) {
          {
