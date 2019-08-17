@@ -289,7 +289,6 @@ namespace eosio {
    constexpr auto     def_send_buffer_size = 1024*1024*def_send_buffer_size_mb;
    constexpr auto     def_max_write_queue_size = def_send_buffer_size*10;
    constexpr boost::asio::chrono::milliseconds def_read_delay_for_full_write_queue{100};
-   constexpr auto     def_max_reads_in_flight = 1000;
    constexpr auto     def_max_trx_in_progress_size = 100*1024*1024; // 100 MB
    constexpr auto     def_max_clients = 25; // 0 for unlimited clients
    constexpr auto     def_max_nodes_per_host = 1;
@@ -492,7 +491,6 @@ namespace eosio {
 
       queued_buffer           buffer_queue;
 
-      uint32_t                reads_in_flight = 0;
       uint32_t                trx_in_progress_size = 0;
       fc::sha256              node_id;
       handshake_message       last_handshake_recv;
@@ -807,6 +805,7 @@ namespace eosio {
       }
       reset();
       sent_handshake_count = 0;
+      trx_in_progress_size = 0;
       node_id = fc::sha256();
       last_handshake_recv = handshake_message();
       last_handshake_sent = handshake_message();
@@ -1892,6 +1891,7 @@ namespace eosio {
       }
       c->connecting = true;
       c->pending_message_buffer.reset();
+      c->buffer_queue.clear_out_queue();
       connection_wptr weak_conn = c;
       boost::asio::async_connect( *c->socket, endpoints,
          boost::asio::bind_executor( c->strand,
@@ -2026,22 +2026,20 @@ namespace eosio {
          };
 
          if( conn->buffer_queue.write_queue_size() > def_max_write_queue_size ||
-             conn->reads_in_flight > def_max_reads_in_flight   ||
              conn->trx_in_progress_size > def_max_trx_in_progress_size )
          {
             // too much queued up, reschedule
             if( conn->buffer_queue.write_queue_size() > def_max_write_queue_size ) {
                peer_wlog( conn, "write_queue full ${s} bytes", ("s", conn->buffer_queue.write_queue_size()) );
-            } else if( conn->reads_in_flight > def_max_reads_in_flight ) {
-               peer_wlog( conn, "max reads in flight ${s}", ("s", conn->reads_in_flight) );
             } else {
                peer_wlog( conn, "max trx in progress ${s} bytes", ("s", conn->trx_in_progress_size) );
             }
             if( conn->buffer_queue.write_queue_size() > 2*def_max_write_queue_size ||
-                conn->reads_in_flight > 2*def_max_reads_in_flight   ||
                 conn->trx_in_progress_size > 2*def_max_trx_in_progress_size )
             {
-               fc_wlog( logger, "queues over full, giving up on connection ${p}", ("p", conn->peer_name()) );
+               fc_elog( logger, "queues over full, giving up on connection ${p}", ("p", conn->peer_name()) );
+               fc_elog( logger, "  write_queue ${s} bytes", ("s", conn->buffer_queue.write_queue_size()) );
+               fc_elog( logger, "  max trx in progress ${s} bytes", ("s", conn->trx_in_progress_size) );
                my_impl->close( conn );
                return;
             }
@@ -2057,7 +2055,6 @@ namespace eosio {
             return;
          }
 
-         ++conn->reads_in_flight;
          boost::asio::async_read(*conn->socket,
             conn->pending_message_buffer.get_buffer_sequence_for_boost_async_read(), completion_handler,
             boost::asio::bind_executor( conn->strand,
@@ -2068,7 +2065,6 @@ namespace eosio {
                   return;
                }
 
-               --conn->reads_in_flight;
                conn->outstanding_read_bytes.reset();
 
                try {
