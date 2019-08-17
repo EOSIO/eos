@@ -941,6 +941,7 @@ namespace eosio {
       self->connecting = false;
       self->syncing = false;
       self->consecutive_rejected_blocks = 0;
+      self->trx_in_progress_size = 0;
       ++self->consecutive_immediate_connection_close;
       bool has_last_req = false;
       {
@@ -2274,6 +2275,8 @@ namespace eosio {
             {
                fc_elog( logger, "queues over full, giving up on connection, closing connection to: ${p}",
                         ("p", peer_name()) );
+               fc_elog( logger, "  write_queue ${s} bytes", ("s", write_queue_size) );
+               fc_elog( logger, "  max trx in progress ${s} bytes", ("s", trx_in_progress_size) );
                close( false );
                return;
             }
