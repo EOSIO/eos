@@ -1,3 +1,13 @@
+# Find an installed build of LLVM
+find_package(LLVM REQUIRED CONFIG)
+
+if(LLVM_VERSION VERSION_LESS 7.1 AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+	enable_language(ASM-LLVMWAR)
+	set(LLVM_SHIM_FILE llvmWARshim.llvmwar)
+else()
+	set(LLVM_SHIM_FILE llvmWARshim.cpp)
+endif()
+
 set(Sources
 	Intrinsics.cpp
 	Linker.cpp
@@ -12,6 +22,7 @@ set(Sources
 	Table.cpp
 	Threads.cpp
 	WAVMIntrinsics.cpp
+	${LLVM_SHIM_FILE}
   )
 set(PublicHeaders
 	${WAVM_INCLUDE_DIR}/Runtime/Intrinsics.h
@@ -21,9 +32,6 @@ set(PublicHeaders
 include_directories(${WAVM_INCLUDE_DIR}/Runtime)
 
 add_library(Runtime STATIC ${Sources} ${PublicHeaders})
-
-# Find an installed build of LLVM
-find_package(LLVM REQUIRED CONFIG)
 
 # Include the LLVM headers
 include_directories(${LLVM_INCLUDE_DIRS})

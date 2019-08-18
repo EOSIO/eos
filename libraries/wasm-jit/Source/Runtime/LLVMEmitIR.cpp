@@ -3,6 +3,7 @@
 #include "Inline/Timing.h"
 #include "IR/Operators.h"
 #include "IR/OperatorPrinter.h"
+#include "Runtime/llvmWARshim.h"
 #include "Logging/Logging.h"
 #include "llvm/Support/raw_ostream.h"
 
@@ -218,7 +219,7 @@ namespace LLVMJIT
       
 
 			// Cast the pointer to the appropriate type.
-			auto bytePointer = irBuilder.CreateInBoundsGEP(moduleContext.defaultMemoryBase,byteIndex);
+			auto bytePointer = CreateInBoundsGEPWAR(irBuilder, moduleContext.defaultMemoryBase, byteIndex);
             
 			return irBuilder.CreatePointerCast(bytePointer,memoryType->getPointerTo());
 		}
@@ -636,7 +637,7 @@ namespace LLVMJIT
 				"wavmIntrinsics.indirectCallIndexOutOfBounds",FunctionType::get(),{});
 
 			// Load the type for this table entry.
-			auto functionTypePointerPointer = irBuilder.CreateInBoundsGEP(moduleContext.defaultTablePointer,{functionIndexZExt,emitLiteral((U32)0)});
+			auto functionTypePointerPointer = CreateInBoundsGEPWAR(irBuilder, moduleContext.defaultTablePointer, functionIndexZExt, emitLiteral((U32)0));
 			auto functionTypePointer = irBuilder.CreateLoad(functionTypePointerPointer);
 			auto llvmCalleeType = emitLiteralPointer(calleeType,llvmI8PtrType);
 			
@@ -651,7 +652,7 @@ namespace LLVMJIT
 				);
 
 			// Call the function loaded from the table.
-			auto functionPointerPointer = irBuilder.CreateInBoundsGEP(moduleContext.defaultTablePointer,{functionIndexZExt,emitLiteral((U32)1)});
+			auto functionPointerPointer = CreateInBoundsGEPWAR(irBuilder, moduleContext.defaultTablePointer, functionIndexZExt, emitLiteral((U32)1));
 			auto functionPointer = irBuilder.CreateLoad(irBuilder.CreatePointerCast(functionPointerPointer,functionPointerType));
 			auto result = irBuilder.CreateCall(functionPointer,llvm::ArrayRef<llvm::Value*>(llvmArgs,calleeType->parameters.size()));
 
