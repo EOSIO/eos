@@ -143,7 +143,7 @@ class Cluster(object):
     # pylint: disable=too-many-branches
     # pylint: disable=too-many-statements
     def launch(self, pnodes=1, unstartedNodes=0, totalNodes=1, prodCount=1, topo="mesh", delay=1, onlyBios=False, dontBootstrap=False,
-               totalProducers=None, extraNodeosArgs=None, useBiosBootFile=True, specificExtraNodeosArgs=None, onlySetProds=False,
+               totalProducers=None, sharedProducers=0, extraNodeosArgs=None, useBiosBootFile=True, specificExtraNodeosArgs=None, onlySetProds=False,
                pfSetupPolicy=PFSetupPolicy.FULL, alternateVersionLabelsFile=None, associatedNodeLabels=None, loadSystemContract=True):
         """Launch cluster.
         pnodes: producer nodes count
@@ -198,6 +198,9 @@ class Cluster(object):
         if totalProducers:
             assert(isinstance(totalProducers, (str,int)))
             producerFlag="--producers %s" % (totalProducers)
+
+        if sharedProducers > 0:
+            producerFlag += (" --shared-producers %d" % (sharedProducers))
 
         self.setAlternateVersionLabels(alternateVersionLabelsFile)
 
@@ -384,7 +387,7 @@ class Cluster(object):
         Cluster.__LauncherCmdArr = cmdArr.copy()
 
         s=" ".join(cmdArr)
-        if Utils.Debug: Utils.Print("cmd: %s" % (s))
+        Utils.Print("cmd: %s" % (s))
         if 0 != subprocess.call(cmdArr):
             Utils.Print("ERROR: Launcher failed to launch. failed cmd: %s" % (s))
             return False
@@ -430,7 +433,7 @@ class Cluster(object):
         if not loadSystemContract:
             useBiosBootFile=False  #ensure we use Cluster.bootstrap
         if onlyBios or not useBiosBootFile:
-            self.biosNode=self.bootstrap(biosNode, startedNodes, prodCount, totalProducers, pfSetupPolicy, onlyBios, onlySetProds, loadSystemContract)
+            self.biosNode=self.bootstrap(biosNode, startedNodes, prodCount + sharedProducers, totalProducers, pfSetupPolicy, onlyBios, onlySetProds, loadSystemContract)
             if self.biosNode is None:
                 Utils.Print("ERROR: Bootstrap failed.")
                 return False

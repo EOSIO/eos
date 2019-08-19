@@ -60,7 +60,7 @@ void blocklog::read_log() {
          reversible_blocks.reset();
       }
    } catch( const std::runtime_error& e ) {
-      if( std::string(e.what()) == "database dirty flag set" ) {
+      if( std::string(e.what()).find("database dirty flag set") != std::string::npos ) {
          elog( "database dirty flag set (likely due to unclean shutdown): only block_log blocks are available" );
       } else if( std::string(e.what()) == "database metadata dirty flag set" ) {
          elog( "database metadata dirty flag set (likely due to unclean shutdown): only block_log blocks are available" );
