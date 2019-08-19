@@ -1,6 +1,10 @@
 # Find an installed build of LLVM
 find_package(LLVM REQUIRED CONFIG)
 
+if(LLVM_VERSION_MAJOR VERSION_LESS 7 OR LLVM_VERSION_MAJOR VERSION_GREATER 9)
+	message(FATAL_ERROR "WAVM requires an LLVM version 7.0 to 9.0")
+endif()
+
 if(LLVM_VERSION VERSION_LESS 7.1 AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
 	enable_language(ASM-LLVMWAR)
 	set(LLVM_SHIM_FILE llvmWARshim.llvmwar)
