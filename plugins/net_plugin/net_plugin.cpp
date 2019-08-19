@@ -941,6 +941,7 @@ namespace eosio {
       self->connecting = false;
       self->syncing = false;
       self->consecutive_rejected_blocks = 0;
+      self->trx_in_progress_size = 0;
       ++self->consecutive_immediate_connection_close;
       bool has_last_req = false;
       {
@@ -957,7 +958,8 @@ namespace eosio {
       self->sent_handshake_count = 0;
       self->node_id = fc::sha256();
       my_impl->sync_master->sync_reset_lib_num( self->shared_from_this() );
-      fc_dlog( logger, "closed, canceling wait on ${p}", ("p", self->peer_name()) ); // peer_name(), do not hold conn_mtx
+      fc_ilog( logger, "closing '${a}', ${p}", ("a", self->peer_address())("p", self->peer_name()) );
+      fc_dlog( logger, "canceling wait on ${p}", ("p", self->peer_name()) ); // peer_name(), do not hold conn_mtx
       self->cancel_wait();
       {
          std::lock_guard<std::mutex> g( self->read_delay_timer_mtx );
@@ -1667,7 +1669,13 @@ namespace eosio {
          if (msg.known_blocks.ids.size() == 0) {
             fc_elog( logger,"got a catch up with ids size = 0" );
          } else {
-            verify_catchup(c, msg.known_blocks.pending, msg.known_blocks.ids.back());
+            const block_id_type& id = msg.known_blocks.ids.back();
+            if( !my_impl->dispatcher->have_block( id ) ) {
+               verify_catchup( c, msg.known_blocks.pending, id );
+            } else {
+               // we already have the block, so update peer with our view of the world
+               c->send_handshake();
+            }
          }
       } else if (msg.known_blocks.mode == last_irr_catch_up) {
          {
@@ -2270,6 +2278,8 @@ namespace eosio {
             {
                fc_elog( logger, "queues over full, giving up on connection, closing connection to: ${p}",
                         ("p", peer_name()) );
+               fc_elog( logger, "  write_queue ${s} bytes", ("s", write_queue_size) );
+               fc_elog( logger, "  max trx in progress ${s} bytes", ("s", trx_in_progress_size) );
                close( false );
                return;
             }
@@ -2281,7 +2291,13 @@ namespace eosio {
                if( ec == boost::asio::error::operation_aborted ) return;
                auto conn = weak_conn.lock();
                if( !conn ) return;
-               conn->start_read_message();
+               if( !ec ) {
+                  conn->start_read_message();
+               } else {
+                  fc_elog( logger, "Read delay timer error: ${e}, closing connection: ${p}",
+                           ("e", ec.message())("p",conn->peer_name()) );
+                  conn->close();
+               }
             } ) );
             return;
          }
@@ -3412,12 +3428,6 @@ namespace eosio {
                my->keepalive_timer->cancel();
          }
 
-         if( my->acceptor ) {
-            boost::system::error_code ec;
-            my->acceptor->cancel( ec );
-            my->acceptor->close( ec );
-         }
-
          {
             fc_ilog( logger, "close ${s} connections", ("s", my->connections.size()) );
             std::lock_guard<std::shared_mutex> g( my->connections_mtx );
@@ -3431,6 +3441,13 @@ namespace eosio {
          if( my->thread_pool ) {
             my->thread_pool->stop();
          }
+
+         if( my->acceptor ) {
+            boost::system::error_code ec;
+            my->acceptor->cancel( ec );
+            my->acceptor->close( ec );
+         }
+
          app().post( 0, [me = my](){} ); // keep my pointer alive until queue is drained
          fc_ilog( logger, "exit shutdown" );
       }
