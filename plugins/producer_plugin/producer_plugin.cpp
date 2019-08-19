@@ -1330,8 +1330,6 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
 
    const auto& hbs = chain.head_block_state();
 
-   fc_dlog(_log, "Starting block ${n} at ${time}", ("n", hbs->block_num + 1)("time", fc::time_point::now()));
-
    //Schedule for the next second's tick regardless of chain state
    // If we would wait less than 50ms (1/10 of block_interval), wait for the whole block interval.
    const fc::time_point now = fc::time_point::now();
@@ -1339,8 +1337,11 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
 
    _pending_block_mode = pending_block_mode::producing;
 
-   // Not our turn
    const auto& scheduled_producer = hbs->get_scheduled_producer(block_time);
+
+   fc_dlog(_log, "Starting block ${n} at ${time} producer ${p}",
+           ("n", hbs->block_num + 1)("time", now)("p", scheduled_producer.producer_name));
+
    auto current_watermark = get_watermark(scheduled_producer.producer_name);
 
    size_t num_relevant_signatures = 0;
