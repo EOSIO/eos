@@ -2288,7 +2288,13 @@ namespace eosio {
                if( ec == boost::asio::error::operation_aborted ) return;
                auto conn = weak_conn.lock();
                if( !conn ) return;
-               conn->start_read_message();
+               if( !ec ) {
+                  conn->start_read_message();
+               } else {
+                  fc_elog( logger, "Read delay timer error: ${e}, closing connection: ${p}",
+                           ("e", ec.message())("p",conn->peer_name()) );
+                  close( conn );
+               }
             } ) );
             return;
          }
