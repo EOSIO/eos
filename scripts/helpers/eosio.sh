@@ -157,7 +157,7 @@ function ensure-compiler() {
     fi
     export CXX=${CXX:-'clang++'}
     export CC=${CC:-'clang'}
-    if $PIN_COMPILER || [[ -f $CLANG_ROOT/bin/clang++ ]]; then
+    if $PIN_COMPILER; then
         export PIN_COMPILER=true
         export BUILD_CLANG=true
         export CPP_COMP=$CLANG_ROOT/bin/clang++
