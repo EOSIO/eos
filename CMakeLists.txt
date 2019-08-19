@@ -82,6 +82,13 @@ set( Boost_USE_STATIC_LIBS ON CACHE STRING "ON or OFF" )
 # the pthread dependency through fc.
 find_package(Boost 1.67 REQUIRED COMPONENTS program_options unit_test_framework)
 
+# WAVM requires LLVM, but move the check up here to a central location so that the EosioTester.cmakes
+# can be created with the exact version found
+find_package(LLVM REQUIRED CONFIG)
+if(LLVM_VERSION_MAJOR VERSION_LESS 7 OR LLVM_VERSION_MAJOR VERSION_GREATER 9)
+	message(FATAL_ERROR "EOSIO requires an LLVM version 7.0 to 9.0")
+endif()
+
 if( APPLE AND UNIX )
 # Apple Specific Options Here
     message( STATUS "Configuring EOSIO on macOS" )
