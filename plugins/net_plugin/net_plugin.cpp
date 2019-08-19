@@ -2293,7 +2293,7 @@ namespace eosio {
                } else {
                   fc_elog( logger, "Read delay timer error: ${e}, closing connection: ${p}",
                            ("e", ec.message())("p",conn->peer_name()) );
-                  close( conn );
+                  conn->close();
                }
             } ) );
             return;
