@@ -462,6 +462,41 @@ public:
          return push_actions(param.cluster_id, param.node_id, std::move(actlist));
       }
 
+      fc::variant create_account(new_account_param_ex param) {
+         std::map<name, fc::optional<abi_serializer> > cache;
+
+         // new account
+         std::vector<eosio::chain::action> actlist;
+         public_key_type def_key = _config.default_key.get_public_key();
+         if (param.owner == public_key_type()) {
+            param.owner = def_key;
+         }
+         if (param.active == public_key_type()) {
+            param.active = def_key;
+         }
+         actlist.push_back(create_newaccount(param.creator, param.name, param.owner, param.active));
+
+         // delegatebw
+         fc::variant delegate_act = fc::mutable_variant_object()
+                                    ("from", param.creator.to_string())
+                                    ("receiver", param.name.to_string())
+                                    ("stake_net_quantity", param.stake_net)
+                                    ("stake_cpu_quantity", param.stake_cpu)
+                                    ("transfer", param.transfer);
+         actlist.emplace_back(vector<chain::permission_level>{{param.creator, N(active)}}, N(eosio), N(delegatebw),
+            action_variant_to_bin(param.cluster_id, param.node_id, N(eosio), N(delegatebw), delegate_act, cache));
+
+         // buyram
+         fc::variant buyram_act = fc::mutable_variant_object()
+               ("payer", param.creator.to_string())
+               ("receiver", param.name.to_string())
+               ("bytes", param.buy_ram_bytes);
+         actlist.emplace_back(vector<chain::permission_level>{{param.creator, N(active)}}, N(eosio), N(buyrambytes),
+            action_variant_to_bin(param.cluster_id, param.node_id, N(eosio), N(buyrambytes), buyram_act, cache));
+
+         return push_actions(param.cluster_id, param.node_id, std::move(actlist));
+      }
+
       fc::variant set_contract(set_contract_param param) {
          std::vector<eosio::chain::action> actlist;
          if (param.contract_file.length()) {
@@ -690,6 +725,12 @@ fc::variant launcher_service_plugin::stop_node(int cluster_id, int node_id, int 
 fc::variant launcher_service_plugin::create_bios_accounts(launcher_service::create_bios_accounts_param param) {
    try {
       return _my->create_bios_accounts(param);
+   } CATCH_LAUCHER_EXCEPTIONS
+}
+
+fc::variant launcher_service_plugin::create_account(launcher_service::new_account_param_ex param) {
+   try {
+      return _my->create_account(param);
    } CATCH_LAUCHER_EXCEPTIONS
 }
 

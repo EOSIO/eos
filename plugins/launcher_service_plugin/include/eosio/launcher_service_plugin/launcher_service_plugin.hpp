@@ -94,6 +94,19 @@ namespace launcher_service {
       std::vector<new_account_param> accounts;
    };
 
+   struct new_account_param_ex { // newaccount in system contract
+      int                            cluster_id = 0;
+      int                            node_id = 0;
+      chain::name                    creator;
+      chain::name                    name;
+      public_key_type                owner;
+      public_key_type                active;
+      std::string                    stake_cpu;
+      std::string                    stake_net;
+      uint32_t                       buy_ram_bytes = 8192;
+      bool                           transfer = false;
+   };
+
    struct get_block_param {
       int                            cluster_id = 0;
       int                            node_id = 0;
@@ -162,7 +175,7 @@ namespace launcher_service {
       std::string      upper_bound;
       uint32_t         limit = 10;
       std::string      key_type;  // type of key specified by index_position
-      std::string      index_position; // 1 - primary (first), 2 - secondary index (in order defined by multi_index), 3 - third index, etc
+      std::string      index_position = "1"; // 1 - primary (first), 2 - secondary index (in order defined by multi_index), 3 - third index, etc
       std::string      encode_type{"dec"}; //dec, hex , default=dec
       bool             reverse = false;
       bool             show_payer = false; // show RAM pyer
@@ -207,6 +220,7 @@ public:
 
    // transactions
    fc::variant create_bios_accounts(launcher_service::create_bios_accounts_param);
+   fc::variant create_account(launcher_service::new_account_param_ex);
    fc::variant set_contract(launcher_service::set_contract_param);
    fc::variant push_actions(launcher_service::push_actions_param);
    fc::variant schedule_protocol_feature_activations(launcher_service::schedule_protocol_feature_activations_param);
@@ -221,6 +235,7 @@ FC_REFLECT(eosio::launcher_service::node_def, (node_id)(producers)(producing_key
 FC_REFLECT(eosio::launcher_service::cluster_def, (shape)(cluster_id)(node_count)(nodes)(extra_configs)(extra_args) )
 FC_REFLECT(eosio::launcher_service::new_account_param, (name)(owner)(active))
 FC_REFLECT(eosio::launcher_service::create_bios_accounts_param, (cluster_id)(node_id)(creator)(accounts))
+FC_REFLECT(eosio::launcher_service::new_account_param_ex, (cluster_id)(node_id)(creator)(name)(owner)(active)(stake_cpu)(stake_net)(buy_ram_bytes))
 FC_REFLECT(eosio::launcher_service::get_block_param, (cluster_id)(node_id)(block_num_or_id))
 FC_REFLECT(eosio::launcher_service::get_account_param, (cluster_id)(node_id)(name))
 FC_REFLECT(eosio::launcher_service::set_contract_param, (cluster_id)(node_id)(account)(contract_file)(abi_file))
