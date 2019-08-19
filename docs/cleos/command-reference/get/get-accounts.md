@@ -8,7 +8,7 @@ excerpt: "Retrieves all accounts associated with a defined public key."
 ## Positional Parameters
 `public_key` _TEXT_  - The public key to retrieve accounts for
 ## Options
-There are no options for this command 
+- `-j,--json` - Output in JSON format
 ## Example
 
 

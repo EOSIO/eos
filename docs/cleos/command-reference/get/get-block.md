@@ -5,7 +5,7 @@ excerpt: "Retrieves a full block from the blockchain."
 ## Positional Parameters
 - `block` _TEXT_ - The number **or** ID of the block to retrieve
 ## Options
-This command has no options
+- `--header-state` - Get block header state from fork database instead
 ## Example
 
 

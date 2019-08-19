@@ -4,6 +4,7 @@ excerpt: "Retrieves an account from the blockchain."
 ---
 ## Positional Parameters
 - `name` _TEXT_ - The name of the account to retrieve
+- `core-symbol` _TEXT_ - The expected core symbol of the chain you are querying
 ## Options
 - `-j,--json` - Output in JSON format
 ## Example
@@ -24,7 +25,7 @@ net bandwidth: (averaged over 3 days)
      limit:               -1 bytes
 
 cpu bandwidth: (averaged over 3 days)
-     used:                -1 us   
+     used:                -1 ucore-symbols   
      available:           -1 us   
      limit:               -1 us   
 

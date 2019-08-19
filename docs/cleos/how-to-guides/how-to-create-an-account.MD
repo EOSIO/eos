@@ -8,6 +8,8 @@
   * What is an account
   * What is a public and private key pair
 
+* Created the Owner and Active key pairs
+
 ## Steps
 
 ```shell

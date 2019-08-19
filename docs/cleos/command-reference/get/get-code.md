@@ -7,6 +7,7 @@ excerpt: "Retrieves the code and ABI for an account."
 ## Options
 - `-c,--code` _TEXT_ - The name of the file to save the contract _.wast_ to
 - `-a,--abi` _TEXT_ - The name of the file to save the contract _.abi_ to
+- `--wasm` Save contract as wasm
 ## Examples
 Simply output the hash of eosio.token contract 
 

@@ -24,3 +24,18 @@ Save password to use in the future to unlock this wallet.
 Without password imported keys will not be retrievable.
 saving password to password.pwd
 ```
+
+Alternatively, you can also name a new wallet with `-n` option:
+
+```shell
+cleos wallet create -n named_wallet -f passwd
+```
+
+You will see something like below:
+
+```shell
+Creating wallet: named_wallet
+Save password to use in the future to unlock this wallet.
+Without password imported keys will not be retrievable.
+saving password to passwd
+```
