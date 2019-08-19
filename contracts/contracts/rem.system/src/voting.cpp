@@ -81,15 +81,20 @@ namespace eosiosystem {
          _gstate.total_producer_stake += tot.own_stake_amount;
       }
 
+      const auto &voter = _voters.get(producer.value, "user has no resources");
+      _voters.modify(voter, producer, [&](auto &v) {
+         v.stake_lock_time = current_time_point() + _gstate.stake_lock_period;
+         v.locked_stake = tot.own_stake_amount;
+      });
    }
 
    void system_contract::unregprod( const name& producer ) {
       require_auth( producer );
 
-      const auto& voter = _voters.get( producer.value, "producer is not found in voter table" );
-      check( voter.vote_mature_time <= current_time_point(), "producers are not allowed to unregister during stake lock period" );
+      const auto &voter = _voters.get(producer.value, "user has no resources");
+      check( voter.stake_lock_time <= current_time_point(), "producers are not allowed to unregister during stake lock period" );
 
-      claimrewards( producer );
+      claimrewards(producer);
 
       const auto& prod = _producers.get( producer.value, "producer not found" );
       if (prod.active()) {
@@ -97,8 +102,12 @@ namespace eosiosystem {
          const auto& tot = totals_tbl.get(producer.value, "producer must have resources");
          _gstate.total_producer_stake -= tot.own_stake_amount;
       }
+
       _producers.modify( prod, same_payer, [&]( producer_info& info ){
          info.deactivate();
+      });
+      _voters.modify(voter, producer, [&](auto &v) {
+         v.stake_lock_time = current_time_point() + _gstate.stake_unlock_period;
       });
    }
 
@@ -134,11 +143,11 @@ namespace eosiosystem {
       }
    }
 
-   double stake2vote( int64_t staked, time_point vote_mature_time ) {
-      check(vote_mature_time != time_point(), "vote should have mature time");
+   double system_contract::stake2vote( int64_t staked, time_point locked_stake_period ) const {
+      check(locked_stake_period != time_point(), "vote should have mature time");
 
-      const auto seconds_to_mature = fmax( (vote_mature_time - current_time_point()).to_seconds(), 0.0 );
-      const auto rem_weight = 1.0 - seconds_to_mature / system_contract::vote_mature_period.to_seconds();
+      const auto seconds_to_mature = fmax( (locked_stake_period - current_time_point()).to_seconds(), 0.0 );
+      const auto rem_weight = 1.0 - seconds_to_mature / _gstate.stake_lock_period.to_seconds();
       const double weight = int64_t((current_time_point().sec_since_epoch() - (block_timestamp::block_timestamp_epoch / 1000)) / (seconds_per_day * 7)) / double(52);
 
       const auto vote_weight = double(staked) * weight * rem_weight;
@@ -189,7 +198,7 @@ namespace eosiosystem {
          }
       }
 
-      auto new_vote_weight = stake2vote( voter->staked, voter->vote_mature_time );
+      auto new_vote_weight = stake2vote( voter->staked, voter->stake_lock_time );
       if( voter->is_proxy ) {
          new_vote_weight += voter->proxied_vote_weight;
       }
@@ -288,7 +297,7 @@ namespace eosiosystem {
 
    void system_contract::propagate_weight_change( const voter_info& voter ) {
       check( !voter.proxy || !voter.is_proxy, "account registered as a proxy is not allowed to use a proxy" );
-      double new_weight = stake2vote( voter.staked, voter.vote_mature_time );
+      double new_weight = stake2vote( voter.staked, voter.stake_lock_time );
       if ( voter.is_proxy ) {
          new_weight += voter.proxied_vote_weight;
       }

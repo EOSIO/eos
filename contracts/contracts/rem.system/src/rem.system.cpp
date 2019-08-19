@@ -19,7 +19,6 @@ namespace eosiosystem {
    const int64_t  default_annual_rate           = 0;       // 0% annual rate
    const int64_t  default_inflation_pay_factor  = 5;       // 20% of the inflation
    const int64_t  default_votepay_factor        = 4;       // 25% of the producer pay
-   const microseconds system_contract::vote_mature_period = eosio::days( 180 );
 
    double get_continuous_rate(int64_t annual_rate) {
       return std::log(double(1)+double(annual_rate)/double(100*inflation_precision));
@@ -72,6 +71,18 @@ namespace eosiosystem {
       _global2.set( _gstate2, _self );
       _global3.set( _gstate3, _self );
       _global4.set( _gstate4, _self );
+   }
+
+   void system_contract::setlockperiod( uint64_t period_in_days) {
+      require_auth(_self);
+
+      _gstate.stake_lock_period = eosio::days(period_in_days);
+   }
+
+   void system_contract::setunloperiod( uint64_t period_in_days) {
+      require_auth(_self);
+
+      _gstate.stake_unlock_period = eosio::days(period_in_days);
    }
 
    void system_contract::setminstake( uint64_t min_account_stake ) {
@@ -360,7 +371,7 @@ EOSIO_DISPATCH( eosiosystem::system_contract,
      // native.hpp (newaccount definition is actually in rem.system.cpp)
      (newaccount)(updateauth)(deleteauth)(linkauth)(unlinkauth)(canceldelay)(onerror)(setabi)
      // rem.system.cpp
-     (init)(setram)(setminstake)(setramrate)(setparams)(setpriv)(setalimits)(activate)
+     (init)(setram)(setminstake)(setramrate)(setparams)(setpriv)(setalimits)(setlockperiod)(setunloperiod)(activate)
      (rmvproducer)(updtrevision)(bidname)(bidrefund)(setinflation)
      // rex.cpp
      (deposit)(withdraw)(buyrex)(unstaketorex)(sellrex)(cnclrexorder)(rentcpu)(rentnet)(fundcpuloan)(fundnetloan)

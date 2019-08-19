@@ -40,8 +40,8 @@ BOOST_AUTO_TEST_SUITE(ram_tests)
    BOOST_FIXTURE_TEST_CASE(ram_tests, rem_system::eosio_system_tester) {
       try {
 
-         const uint64_t min_account_stake = get_global_state()["min_account_stake"].as<int64_t>();
-         BOOST_TEST(min_account_stake == 1000000);
+         const auto min_account_stake = get_global_state()["min_account_stake"].as<uint64_t>();
+         BOOST_REQUIRE_EQUAL(min_account_stake, 1000000u);
          PRINT_USAGE(rem)
          PRINT_USAGE(rem.stake)
 

@@ -135,7 +135,8 @@ namespace eosiosystem {
       uint64_t             min_account_stake = 1000000; //minimum stake for new created account 100'0000 REM
       uint64_t             total_ram_bytes_reserved = 0;
       int64_t              total_ram_stake = 0;
-
+      microseconds         stake_lock_period = eosio::days(180);
+      microseconds         stake_unlock_period = eosio::days(180);
       //producer name and pervote factor
       std::vector<std::pair<eosio::name, double>> last_schedule;
       uint32_t last_schedule_version = 0;
@@ -156,8 +157,8 @@ namespace eosiosystem {
       block_timestamp      last_name_close;
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
-      EOSLIB_SERIALIZE_DERIVED( eosio_global_state, eosio::blockchain_parameters,
-                                (max_ram_size)(min_account_stake)(total_ram_bytes_reserved)(total_ram_stake)
+      EOSLIB_SERIALIZE_DERIVED( eosio_global_state, eosio::blockchain_parameters, (max_ram_size)(min_account_stake)
+                                (total_ram_bytes_reserved)(total_ram_stake)(stake_lock_period)(stake_unlock_period)
                                 (last_schedule)(last_schedule_version)(current_round_start_time)
                                 (last_producer_schedule_update)(last_pervote_bucket_fill)
                                 (perstake_bucket)(pervote_bucket)(perblock_bucket)(total_unpaid_blocks)(total_producer_stake)
@@ -265,6 +266,7 @@ namespace eosiosystem {
       name                proxy;     /// the proxy set by the voter, if any
       std::vector<name>   producers; /// the producers approved by this voter if no proxy set
       int64_t             staked = 0;
+      int64_t             locked_stake = 0;
 
       /**
        *  Every time a vote is cast we must first "undo" the last vote weight, before casting the
@@ -273,8 +275,8 @@ namespace eosiosystem {
        *  stated.amount * 2 ^ (weeks_since_launch/weeks_per_year) * (time_to_mature / mature_period)
        */
       double              last_vote_weight = 0; /// the vote weight cast the last time the vote was updated
-      time_point          vote_mature_time;
-
+      time_point          stake_lock_time;
+      time_point          last_claim_time;
 
       /**
        * Total vote weight delegated to this voter.
@@ -301,7 +303,7 @@ namespace eosiosystem {
       bool vote_is_reasserted() const;
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
-      EOSLIB_SERIALIZE( voter_info, (owner)(proxy)(producers)(staked)(last_vote_weight)(vote_mature_time)(proxied_vote_weight)(is_proxy)(flags1)(reserved2)(reserved3)(last_reassertion_time) )
+      EOSLIB_SERIALIZE( voter_info, (owner)(proxy)(producers)(staked)(locked_stake)(last_vote_weight)(stake_lock_time)(last_claim_time)(proxied_vote_weight)(is_proxy)(flags1)(reserved2)(reserved3)(last_reassertion_time) )
    };
 
    struct [[eosio::table, eosio::contract("rem.system")]] user_resources {
@@ -568,7 +570,6 @@ namespace eosiosystem {
 
          static constexpr uint8_t max_block_producers      = 21;
          static constexpr int64_t producer_stake_threshold = 250'000'0000LL;
-         static const microseconds vote_mature_period;
 
 
          /**
@@ -593,6 +594,12 @@ namespace eosiosystem {
             const static auto sym = get_core_symbol( rm );
             return sym;
          }
+
+       [[eosio::action]]
+       void setlockperiod( uint64_t period_in_days);
+
+       [[eosio::action]]
+       void setunloperiod( uint64_t period_in_days);
 
          // Actions:
          /**
@@ -637,7 +644,6 @@ namespace eosiosystem {
           */
          [[eosio::action]]
          void setalimits( const name& account, int64_t ram_bytes, int64_t net_weight, int64_t cpu_weight );
-
 
          /**
           * Activates a protocol feature.
@@ -1277,6 +1283,8 @@ namespace eosiosystem {
          using setpriv_action = eosio::action_wrapper<"setpriv"_n, &system_contract::setpriv>;
          using setalimits_action = eosio::action_wrapper<"setalimits"_n, &system_contract::setalimits>;
          using setparams_action = eosio::action_wrapper<"setparams"_n, &system_contract::setparams>;
+         using setlockperiod_action = eosio::action_wrapper<"setlockperiod"_n, &system_contract::setlockperiod>;
+         using setunloperiod_action = eosio::action_wrapper<"setunloperiod"_n, &system_contract::setunloperiod>;
 
       private:
          // Implementation details:
@@ -1331,6 +1339,7 @@ namespace eosiosystem {
          // defined in delegate_bandwidth.cpp
          void changebw( name from, const name& receiver,
                         const asset& stake_quantity, bool transfer );
+         double stake2vote( int64_t staked, time_point locked_stake_period ) const;
          void update_voting_power( const name& voter, const asset& total_update );
 
          // defined in voting.hpp
