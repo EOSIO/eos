@@ -40,7 +40,7 @@ else # Linux
     if [[ $BUILDKITE == true ]]; then
         # Generate Base Images
         $CICD_DIR/generate-base-images.sh
-        [[ $ENABLE_INSTALL == true ]] && COMMANDS="cp -r $MOUNTED_DIR ~/eosio && cd ~/eosio/build &&"
+        [[ $ENABLE_INSTALL == true ]] && COMMANDS="cp -r $MOUNTED_DIR /root/eosio && cd /root/eosio/build &&"
         COMMANDS="$COMMANDS $BUILD_COMMANDS"
         [[ $ENABLE_INSTALL == true ]] && COMMAND="$COMMAND && make install"
     elif [[ $TRAVIS == true ]]; then
