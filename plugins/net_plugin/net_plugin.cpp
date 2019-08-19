@@ -2823,21 +2823,6 @@ namespace eosio {
                fc_elog( logger, "bad packed_transaction : ${m}", ("m", trace->except->what()));
             }
          }
-/* this comes through the transaction_ack channel
-         boost::asio::post( my_impl->thread_pool->get_executor(), [accepted, weak{std::move(weak)}, trx{std::move(trx)}]() mutable {
-            if( accepted ) {
-               my_impl->dispatcher->bcast_transaction( *trx );
-            } else {
-               uint32_t head_blk_num = 0;
-               std::tie( std::ignore, head_blk_num, std::ignore, std::ignore, std::ignore, std::ignore ) = my_impl->get_chain_info();
-               my_impl->dispatcher->rejected_transaction( trx, head_blk_num );
-            }
-            connection_ptr conn = weak.lock();
-            if( conn ) {
-               conn->trx_in_progress_size -= calc_trx_size( trx );
-            }
-         });
-         */
         });
       });
    }
