@@ -2809,19 +2809,19 @@ namespace eosio {
          my_impl->chain_plug->accept_transaction( trx,
             [weak, trx](const static_variant<fc::exception_ptr, transaction_trace_ptr>& result) mutable {
          // next (this lambda) called from application thread
-         bool accepted = false;
          if (result.contains<fc::exception_ptr>()) {
             fc_dlog( logger, "bad packed_transaction : ${m}", ("m", result.get<fc::exception_ptr>()->what()) );
          } else {
             const transaction_trace_ptr& trace = result.get<transaction_trace_ptr>();
-            if (!trace->except) {
+            if( !trace->except ) {
                fc_dlog( logger, "chain accepted transaction, bcast ${id}", ("id", trace->id) );
-               accepted = true;
-            }
-
-            if( !accepted ) {
+            } else {
                fc_elog( logger, "bad packed_transaction : ${m}", ("m", trace->except->what()));
             }
+         }
+         connection_ptr conn = weak.lock();
+         if( conn ) {
+            conn->trx_in_progress_size -= calc_trx_size( trx );
          }
         });
       });
