@@ -4,6 +4,8 @@ project( EOSIO )
 include(CTest) # suppresses DartConfiguration.tcl error
 enable_testing()
 
+option(WASM_SPEC_TESTS "Build WASM Spec Tests" OFF)
+
 if ("${CMAKE_INSTALL_PREFIX}" STREQUAL "/usr/local")
    message(WARNING "CMAKE_INSTALL_PREFIX is set to /usr/local. This is not recommended.")
 endif()
@@ -141,6 +143,10 @@ add_subdirectory( scripts )
 add_subdirectory( unittests )
 add_subdirectory( tests )
 add_subdirectory( tools )
+
+if(WASM_SPEC_TESTS)
+    add_subdirectory( wasm_spec_tests )
+endif()
 
 install_directory_permissions(DIRECTORY ${CMAKE_INSTALL_FULL_SYSCONFDIR}/eosio)
 
