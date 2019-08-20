@@ -5,7 +5,7 @@ set -eo pipefail
 mkdir -p $BUILD_DIR
 
 PRE_COMMANDS="cd $MOUNTED_DIR"
-PACKAGE_COMMANDS=".cicd/package-builder.sh"
+PACKAGE_COMMANDS="./.cicd/package-builder.sh"
 COMMANDS="$PRE_COMMANDS && $PACKAGE_COMMNADS"
 
 if [[ $(uname) == 'Darwin' ]]; then
@@ -26,7 +26,7 @@ else # Linux
             evars="$evars --env ${var%%=*}"
         done < "$BUILDKITE_ENV_FILE"
     fi
-
+    echo "docker run $ARGS $evars $FULL_TAG bash -c \\\"$COMMANDS\\\""
     eval docker run $ARGS $evars $FULL_TAG bash -c \"$COMMANDS\"
 
 fi
