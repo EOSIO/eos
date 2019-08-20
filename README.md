@@ -1,4 +1,4 @@
-# <a name="introduction"></a> Remme Protocol - Distributed Public Key Infrastructure protocol
+# <a name="introduction"></a> Remme Protocol - Next-gen Public Key Infrastructure protocol
 [Introduction](#introduction) | [Overview](#overview) | [Local Testnet](#localtest) | [Public Testnet](#publictest) | [Misc](#misc)
 
 
