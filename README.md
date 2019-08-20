@@ -42,7 +42,7 @@ If you are a developer, depending on your context, you would probably need an in
 # <a name="publictest"></a>Getting started with a Public Testnet
 
 ## Testnet token faucet bot
-The faucet bot helps you with getting set up and creating an account with some tokens on it. With the help of this bot you will get the following data about your testnet account:
+[The faucet bot](https://t.me/RemmeProtocolTestnetFaucetBot) helps you with getting set up and creating an account with some tokens on it. With the help of this bot you will get the following data about your testnet account:
 
 - Account name
 - Public and private keys to be able to create transactions
