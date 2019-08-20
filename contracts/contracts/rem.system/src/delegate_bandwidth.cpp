@@ -292,7 +292,7 @@ namespace eosiosystem {
       check( _gstate.total_activated_stake >= min_activated_stake,
              "cannot undelegate bandwidth until the chain is activated (at least 15% of all tokens participate in voting)" );
 
-      if(is_block_producer(from))
+      if( is_block_producer(from) && from == receiver )
       {
           const auto &vot = _voters.get(from.value, "user has no resources");
           check(vot.locked_stake >= unstake_quantity.amount, "cannot undelegate more than was staked");
