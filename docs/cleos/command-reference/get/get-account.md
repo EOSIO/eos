@@ -25,7 +25,7 @@ net bandwidth: (averaged over 3 days)
      limit:               -1 bytes
 
 cpu bandwidth: (averaged over 3 days)
-     used:                -1 ucore-symbols   
+     used:                -1 us
      available:           -1 us   
      limit:               -1 us   
 
