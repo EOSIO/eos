@@ -23,29 +23,15 @@ namespace eosio { namespace vm {
       static chain::name from_wasm(uint64_t val) { return chain::name{(uint64_t)val}; }
       static uint64_t    to_wasm(chain::name val) { return val.to_uint64_t(); }
    };
+
    template <typename T>
    struct wasm_type_converter<eosio::chain::array_ptr<T>> {
-      template <typename Walloc>
-      static T* from_wasm(uint32_t val, Walloc&& walloc) { return (T*)(walloc.get_base_ptr() + val); }
-      template <typename Walloc>
-      static uint32_t to_wasm(eosio::chain::array_ptr<T> val, Walloc&& walloc) { return walloc.get_base_ptr() - val.value; }
+      static eosio::chain::array_ptr<T> from_wasm(T* ptr2, uint32_t len) { 
+         return eosio::chain::array_ptr<T>(ptr2); 
+      }
+      static eosio::chain::array_ptr<T> from_wasm(uint32_t ptr1, uint32_t ptr2, uint32_t len) {}
+      //static uint32_t to_wasm(eosio::chain::array_ptr<T> val) { return wasm_type_converter<T*>::to_wasm(val.value); }
    };
-   /*
-   // we can clean these up if we go with custom vms
-   template <typename T>
-   struct reduce_type<eosio::chain::array_ptr<T>> {
-      typedef uint32_t type;
-   };
-   */
-   
-   template <typename S, typename Args, typename T, typename WAlloc>
-   constexpr auto get_value(WAlloc* walloc, T&& val) 
-         -> std::enable_if_t<std::is_same_v<i32_const_t, T> && 
-         std::is_same_v< eosio::chain::array_ptr<typename S::type>, S> &&
-         !std::is_lvalue_reference_v<S> && !std::is_pointer_v<S>, S> {
-      using ptr_ty = typename S::type;
-      return eosio::chain::array_ptr<ptr_ty>((ptr_ty*)((walloc->template get_base_ptr<char>())+val.data.ui));
-   }
 
    template <typename Ctx>
    struct construct_derived<eosio::chain::transaction_context, Ctx> {
