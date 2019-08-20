@@ -330,6 +330,10 @@ public:
          return call(param.cluster_id, param.node_id, "/v1/chain/get_account", fc::mutable_variant_object("account_name", param.name));
       }
 
+      fc::variant get_code_hash(launcher_service::get_account_param param) {
+         return call(param.cluster_id, param.node_id, "/v1/chain/get_code_hash", fc::mutable_variant_object("account_name", param.name));
+      }
+
       fc::variant get_block(int cluster_id, int node_id, std::string block_num_or_id) {
          return call(cluster_id, node_id, "/v1/chain/get_block", fc::mutable_variant_object("block_num_or_id", block_num_or_id));
       }
@@ -761,6 +765,12 @@ fc::variant launcher_service_plugin::get_block_header_state(launcher_service::ge
 fc::variant launcher_service_plugin::get_account(launcher_service::get_account_param param) {
    try {
       return _my->get_account(param);
+   } CATCH_LAUCHER_EXCEPTIONS
+}
+
+fc::variant launcher_service_plugin::get_code_hash(launcher_service::get_account_param param) {
+   try {
+      return _my->get_code_hash(param);
    } CATCH_LAUCHER_EXCEPTIONS
 }
 

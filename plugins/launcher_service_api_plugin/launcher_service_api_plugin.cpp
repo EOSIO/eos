@@ -76,6 +76,7 @@ void launcher_service_api_plugin::plugin_startup() {
       CALL(launcher, get_block, INVOKE_R_R(get_block, launcher_service::get_block_param), 200),
       CALL(launcher, get_block_header_state, INVOKE_R_R(get_block_header_state, launcher_service::get_block_param), 200),
       CALL(launcher, get_account, INVOKE_R_R(get_account, launcher_service::get_account_param), 200),
+      CALL(launcher, get_code_hash, INVOKE_R_R(get_code_hash, launcher_service::get_account_param), 200),
       CALL(launcher, get_cluster_info, INVOKE_R_R(get_cluster_info, int), 200),
       CALL(launcher, get_protocol_features, INVOKE_R_R_R(get_protocol_features, int, int), 200),
       CALL(launcher, get_table_rows, INVOKE_R_R(get_table_rows, launcher_service::get_table_rows_param), 200),

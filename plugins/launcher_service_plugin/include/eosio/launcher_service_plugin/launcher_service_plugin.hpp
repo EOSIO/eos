@@ -213,6 +213,7 @@ public:
    fc::variant get_block(launcher_service::get_block_param);
    fc::variant get_block_header_state(launcher_service::get_block_param);
    fc::variant get_account(launcher_service::get_account_param);
+   fc::variant get_code_hash(launcher_service::get_account_param);
    fc::variant get_cluster_info(int cluster_id);
    fc::variant get_protocol_features(int cluster_id, int node_id);
    fc::variant verify_transaction(launcher_service::verify_transaction_param);
