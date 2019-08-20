@@ -342,13 +342,12 @@ namespace eosio { namespace chain {
 
    block_id_type block_log::read_block_id_by_num(uint32_t block_num)const {
       try {
-         signed_block_ptr b;
          uint64_t pos = get_block_pos(block_num);
          if (pos != npos) {
             block_header bh;
             read_block_header(bh, pos);
-            EOS_ASSERT(b->block_num() == block_num, reversible_blocks_exception,
-                       "Wrong block header was read from block log.", ("returned", b->block_num())("expected", block_num));
+            EOS_ASSERT(bh.block_num() == block_num, reversible_blocks_exception,
+                       "Wrong block header was read from block log.", ("returned", bh.block_num())("expected", block_num));
             return bh.id();
          }
          return {};
