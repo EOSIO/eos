@@ -319,6 +319,14 @@ namespace eosio { namespace chain {
       return result;
    }
 
+   void block_log::read_block_header(block_header& bh, uint64_t pos)const {
+      my->check_open_files();
+
+      my->block_file.seek(pos);
+      auto ds = my->block_file.create_datastream();
+      fc::raw::unpack(ds, bh);
+   }
+
    signed_block_ptr block_log::read_block_by_num(uint32_t block_num)const {
       try {
          signed_block_ptr b;
@@ -329,6 +337,21 @@ namespace eosio { namespace chain {
                       "Wrong block was read from block log.", ("returned", b->block_num())("expected", block_num));
          }
          return b;
+      } FC_LOG_AND_RETHROW()
+   }
+
+   block_id_type block_log::read_block_id_by_num(uint32_t block_num)const {
+      try {
+         signed_block_ptr b;
+         uint64_t pos = get_block_pos(block_num);
+         if (pos != npos) {
+            block_header bh;
+            read_block_header(bh, pos);
+            EOS_ASSERT(b->block_num() == block_num, reversible_blocks_exception,
+                       "Wrong block header was read from block log.", ("returned", b->block_num())("expected", block_num));
+            return bh.id();
+         }
+         return {};
       } FC_LOG_AND_RETHROW()
    }
 
@@ -363,6 +386,10 @@ namespace eosio { namespace chain {
 
    const signed_block_ptr& block_log::head()const {
       return my->head;
+   }
+
+   const block_id_type&    block_log::head_id()const {
+      return my->head_id;
    }
 
    uint32_t block_log::first_block_num() const {

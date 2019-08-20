@@ -377,7 +377,7 @@ struct controller_impl {
       auto root_id = fork_db.root()->id;
 
       if( log_head ) {
-         EOS_ASSERT( root_id == log_head->id(), fork_database_exception, "fork database root does not match block log head" );
+         EOS_ASSERT( root_id == blog.head_id(), fork_database_exception, "fork database root does not match block log head" );
       } else {
          EOS_ASSERT( fork_db.root()->block_num == lib_num, fork_database_exception,
                      "empty block log expects the first appended block to build off a block that is not the fork database root" );
@@ -2697,12 +2697,12 @@ block_id_type controller::last_irreversible_block_id() const {
    if( block_header::num_from_id(tapos_block_summary.block_id) == lib_num )
       return tapos_block_summary.block_id;
 
-   auto signed_blk = my->blog.read_block_by_num( lib_num );
+   auto id = my->blog.read_block_id_by_num( lib_num );
 
-   EOS_ASSERT( BOOST_LIKELY( signed_blk != nullptr ), unknown_block_exception,
+   EOS_ASSERT( BOOST_LIKELY( id != block_id_type() ), unknown_block_exception,
                "Could not find block: ${block}", ("block", lib_num) );
 
-   return signed_blk->id();
+   return id;
 }
 
 const dynamic_global_property_object& controller::get_dynamic_global_properties()const {
@@ -2768,12 +2768,12 @@ block_id_type controller::get_block_id_for_num( uint32_t block_num )const { try 
       }
    }
 
-   auto signed_blk = my->blog.read_block_by_num(block_num);
+   auto id = my->blog.read_block_id_by_num(block_num);
 
-   EOS_ASSERT( BOOST_LIKELY( signed_blk != nullptr ), unknown_block_exception,
+   EOS_ASSERT( BOOST_LIKELY( id != block_id_type() ), unknown_block_exception,
                "Could not find block: ${block}", ("block", block_num) );
 
-   return signed_blk->id();
+   return id;
 } FC_CAPTURE_AND_RETHROW( (block_num) ) }
 
 sha256 controller::calculate_integrity_hash()const { try {
