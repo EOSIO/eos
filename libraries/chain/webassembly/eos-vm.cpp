@@ -11,12 +11,12 @@ using namespace eosio::vm;
 
 namespace wasm_constraints = eosio::chain::wasm_constraints;
 
-using backend_t = backend<apply_context>;
-
+template<typename Impl>
 class eos_vm_instantiated_module : public wasm_instantiated_module_interface {
+      using backend_t = backend<apply_context, Impl>;
    public:
       
-      eos_vm_instantiated_module(eos_vm_runtime* runtime, std::unique_ptr<backend_t> mod) :
+      eos_vm_instantiated_module(eos_vm_runtime<Impl>* runtime, std::unique_ptr<backend_t> mod) :
          _runtime(runtime),
          _instantiated_module(std::move(mod)) {}
 
@@ -41,20 +41,26 @@ class eos_vm_instantiated_module : public wasm_instantiated_module_interface {
       }
 
    private:
-      eos_vm_runtime*            _runtime;
+      eos_vm_runtime<Impl>*            _runtime;
       std::unique_ptr<backend_t> _instantiated_module;
 };
 
-eos_vm_runtime::eos_vm_runtime() {}
+template<typename Impl>
+eos_vm_runtime<Impl>::eos_vm_runtime() {}
 
-std::unique_ptr<wasm_instantiated_module_interface> eos_vm_runtime::instantiate_module(const char* code_bytes, size_t code_size, std::vector<uint8_t>) {
+template<typename Impl>
+std::unique_ptr<wasm_instantiated_module_interface> eos_vm_runtime<Impl>::instantiate_module(const char* code_bytes, size_t code_size, std::vector<uint8_t>) {
+   using backend_t = backend<apply_context, Impl>;
    std::ofstream mf("temp.wasm");
    mf.write((char*)code_bytes, code_size);
    mf.close();
    wasm_code_ptr code((uint8_t*)code_bytes, 0);
    std::unique_ptr<backend_t> bkend = std::make_unique<backend_t>(code, code_size);
    registered_host_functions<apply_context>::resolve(bkend->get_module());
-   return std::make_unique<eos_vm_instantiated_module>(this, std::move(bkend));
+   return std::make_unique<eos_vm_instantiated_module<Impl>>(this, std::move(bkend));
 }
+
+template class eos_vm_runtime<eosio::vm::interpreter>;
+template class eos_vm_runtime<eosio::vm::jit>;
 
 }}}}

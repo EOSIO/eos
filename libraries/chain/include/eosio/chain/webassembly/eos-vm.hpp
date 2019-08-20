@@ -174,6 +174,7 @@ using namespace fc;
 using namespace eosio::vm;
 using namespace eosio::chain::webassembly::common;
 
+template<typename Backend>
 class eos_vm_runtime : public eosio::chain::wasm_runtime_interface {
    public:
       eos_vm_runtime();
@@ -188,8 +189,9 @@ class eos_vm_runtime : public eosio::chain::wasm_runtime_interface {
       // todo: managing this will get more complicated with sync calls;
       //       immediately_exit_currently_running_module() should probably
       //       move from wasm_runtime_interface to wasm_instantiated_module_interface.
-      backend<apply_context>* _bkend = nullptr;  // non owning pointer to allow for immediate exit
+      backend<apply_context, Backend>* _bkend = nullptr;  // non owning pointer to allow for immediate exit
 
+   template<typename Impl>
    friend class eos_vm_instantiated_module;
 };
 

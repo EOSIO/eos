@@ -75,7 +75,8 @@ namespace eosio { namespace chain {
          enum class vm_type {
             wavm,
             wabt,
-            eos_vm
+            eos_vm,
+            eos_vm_jit
          };
 
          wasm_interface(vm_type vm, const chainbase::database& db);
@@ -113,4 +114,4 @@ namespace eosio{ namespace chain {
    std::istream& operator>>(std::istream& in, wasm_interface::vm_type& runtime);
 }}
 
-FC_REFLECT_ENUM( eosio::chain::wasm_interface::vm_type, (wavm)(wabt)(eos_vm) )
+FC_REFLECT_ENUM( eosio::chain::wasm_interface::vm_type, (wavm)(wabt)(eos_vm)(eos_vm_jit) )

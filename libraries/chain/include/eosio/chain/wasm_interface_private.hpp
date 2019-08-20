@@ -51,7 +51,9 @@ namespace eosio { namespace chain {
          else if(vm == wasm_interface::vm_type::wabt)
             runtime_interface = std::make_unique<webassembly::wabt_runtime::wabt_runtime>();
          else if(vm == wasm_interface::vm_type::eos_vm)
-            runtime_interface = std::make_unique<webassembly::eos_vm_runtime::eos_vm_runtime>();
+            runtime_interface = std::make_unique<webassembly::eos_vm_runtime::eos_vm_runtime<eosio::vm::interpreter>>();
+         else if(vm == wasm_interface::vm_type::eos_vm_jit)
+            runtime_interface = std::make_unique<webassembly::eos_vm_runtime::eos_vm_runtime<eosio::vm::jit>>();
          else
             EOS_THROW(wasm_exception, "wasm_interface_impl fall through");
       }
