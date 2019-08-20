@@ -47,8 +47,11 @@ platform_timer::platform_timer() {
             struct kevent64_s anEvent;
             int c = kevent64(kqueue_fd, NULL, 0, &anEvent, 1, 0, NULL);
 
-            if(c == 1 && anEvent.filter == EVFILT_TIMER)
-               *(sig_atomic_t*)(anEvent.udata) = 1;
+            if(c == 1 && anEvent.filter == EVFILT_TIMER) {
+               platform_timer* self = (platform_timer*)anEvent.udata;
+               self->expired = 1;
+               self->call_expiration_callback();
+            }
             else if(c == 1 && anEvent.filter == EVFILT_USER)
                return;
             else if(c == -1 && errno == EINTR)
@@ -86,7 +89,7 @@ void platform_timer::start(fc::time_point tp) {
       expired = 1;
    else {
       struct kevent64_s aTimerEvent;
-      EV_SET64(&aTimerEvent, my->timerid, EVFILT_TIMER, EV_ADD|EV_ENABLE|EV_ONESHOT, NOTE_USECONDS|NOTE_CRITICAL, (int)x.count(), (uint64_t)&expired, 0, 0);
+      EV_SET64(&aTimerEvent, my->timerid, EVFILT_TIMER, EV_ADD|EV_ENABLE|EV_ONESHOT, NOTE_USECONDS|NOTE_CRITICAL, (int)x.count(), (uint64_t)this, 0, 0);
 
       expired = 0;
       if(kevent64(kqueue_fd, &aTimerEvent, 1, NULL, 0, KEVENT_FLAG_IMMEDIATE, NULL) != 0)
