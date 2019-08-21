@@ -209,6 +209,10 @@ public:
        return r;
    }
 
+    uint64_t microseconds_since_epoch_of_iso_string( const fc::variant& v ) {
+        return static_cast<uint64_t>( time_point::from_iso_string( v.as_string() ).time_since_epoch().count() );
+    }
+
     abi_serializer abi_ser;
 };
 
@@ -651,7 +655,6 @@ BOOST_FIXTURE_TEST_CASE( stake_lock_period_test, voting_tester ) {
 
       delegate_bandwidth(N(rem.stake), N(proda), asset(2'000'000'000));
 
-
       set_lock_period(90);
       produce_min_num_of_blocks_to_spend_time_wo_inactive_prod(fc::seconds(90 * 24 * 3600));
 
@@ -662,4 +665,35 @@ BOOST_FIXTURE_TEST_CASE( stake_lock_period_test, voting_tester ) {
       unregister_producer( N(proda) );
    } FC_LOG_AND_RETHROW()
 }
+
+BOOST_FIXTURE_TEST_CASE( stake_lock_unlock_period_test, voting_tester ) {
+   try {
+      auto voter = get_voter_info( "proda" );
+      const auto producers = { N(b1), N(proda), N(whale1), N(whale2), N(whale3) };
+      for( const auto& producer : producers ) {
+         register_producer(producer);
+      }
+      for( const auto& producer : producers ) {
+         votepro( producer, { N(proda) } );
+      }
+      //Check if stake_locke_time have initial date after producer registration
+       BOOST_CHECK( 0 != microseconds_since_epoch_of_iso_string(voter["stake_lock_time"]));
+
+       //Skip 150 days to call unregistration
+       produce_min_num_of_blocks_to_spend_time_wo_inactive_prod(fc::seconds(180 * 24 * 3600)); // +150 days
+
+       //Making producer inactive
+       unregister_producer( N(proda) );
+
+       //Try to reg same producer again, if stake >= 250'000.0000, stake_lock_period should be 0
+       register_producer(N(proda));
+
+       voter = get_voter_info( "proda" );
+
+       //Check if stake_lock_period is 0 after registration
+       BOOST_REQUIRE_EQUAL(0,microseconds_since_epoch_of_iso_string(voter["stake_lock_time"]));
+
+   } FC_LOG_AND_RETHROW()
+}
+
 BOOST_AUTO_TEST_SUITE_END()

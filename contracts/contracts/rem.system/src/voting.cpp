@@ -40,8 +40,16 @@ namespace eosiosystem {
 
       user_resources_table totals_tbl( _self, producer.value );
       const auto& tot = totals_tbl.get(producer.value, "producer must have resources");
+      const auto &voter = _voters.get(producer.value, "user has no resources");
+
       if ( prod != _producers.end() ) {
          if (!prod->active()) {
+             if(voter.locked_stake >= 250'000'0000ll){
+                 _voters.modify(voter, producer, [&](auto &v) {
+                 v.stake_lock_time = eosio::time_point(eosio::days(0));
+                 v.locked_stake = tot.own_stake_amount;
+                });
+             }
             _gstate.total_producer_stake += tot.own_stake_amount;
          }
 
@@ -79,13 +87,13 @@ namespace eosiosystem {
             info.last_votepay_share_update = ct;
          });
          _gstate.total_producer_stake += tot.own_stake_amount;
-      }
 
-      const auto &voter = _voters.get(producer.value, "user has no resources");
-      _voters.modify(voter, producer, [&](auto &v) {
-         v.stake_lock_time = current_time_point() + _gstate.stake_lock_period;
-         v.locked_stake = tot.own_stake_amount;
-      });
+         _voters.modify(voter, producer, [&](auto &v) {
+             v.stake_lock_time = current_time_point() + _gstate.stake_lock_period;
+             v.locked_stake = tot.own_stake_amount;
+         });
+
+      }
    }
 
    void system_contract::unregprod( const name& producer ) {
