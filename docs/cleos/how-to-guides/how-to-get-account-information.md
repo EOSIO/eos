@@ -38,3 +38,6 @@ cpu bandwidth:
      available:          unlimited
      limit:              unlimited
 ```
+
+[[info]]
+| Depends on the EOSIO network you are connected, you might see different fields associated with an account. That depends on which system contract has been deployed tp the network.
