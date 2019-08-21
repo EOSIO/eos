@@ -17,7 +17,6 @@ add_subdirectory(wasms)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/wasm_spec_tests.hpp.in ${CMAKE_CURRENT_BINARY_DIR}/include/wasm_spec_tests.hpp ESCAPE_QUOTES)
 
 ### BUILD UNIT TEST EXECUTABLE ###
-#file(GLOB UNIT_TESTS "*.cpp" "./wasm_spec_tests/*.cpp") # find all unit test suites
 file(GLOB WASM_TESTS "*.cpp") # find all unit test suites
 add_executable( wasm_spec_test ${WASM_TESTS}) # build unit tests as one executable
 
