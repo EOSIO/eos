@@ -39,13 +39,3 @@ echo "Found build against $BASE_COMMIT."
 cd build/packages
 chmod 755 ./*.sh
 ./generate_package.sh $PACKAGE_TYPE
-[[ -d x86_64 ]] && cd 'x86_64' # backwards-compatibility with release/1.6.x
-buildkite-agent artifact upload "./$ARTIFACT" --agent-access-token $BUILDKITE_AGENT_ACCESS_TOKEN
-for A in $(echo $ARTIFACT | tr ';' ' '); do
-    if [[ $(ls $A | grep -c '') == 0 ]]; then
-        echo "+++ :no_entry: ERROR: Expected artifact \"$A\" not found!"
-        pwd
-        ls -la
-        exit 1
-    fi
-done
