@@ -26,10 +26,15 @@ namespace eosio { namespace vm {
 
    template <typename T>
    struct wasm_type_converter<eosio::chain::array_ptr<T>> {
-      static eosio::chain::array_ptr<T> from_wasm(T* ptr2, uint32_t len) { 
-         return eosio::chain::array_ptr<T>(ptr2); 
+      static eosio::chain::array_ptr<T> from_wasm(T* ptr) {
+         return eosio::chain::array_ptr<T>(ptr); 
       }
-      static eosio::chain::array_ptr<T> from_wasm(uint32_t ptr1, uint32_t ptr2, uint32_t len) {}
+      // overload for validating pointer is in valid memory
+      static eosio::chain::array_ptr<T> from_wasm(T* ptr, uint32_t len) {
+         volatile T _ignore = *(ptr + (len ? len-1 : 0)); //segfault if the pointer is not in a valid page of memory
+         return eosio::chain::array_ptr<T>(ptr);
+      }
+      //static eosio::chain::array_ptr<T> from_wasm(uint32_t ptr1, uint32_t ptr2, uint32_t len) {}
       //static uint32_t to_wasm(eosio::chain::array_ptr<T> val) { return wasm_type_converter<T*>::to_wasm(val.value); }
    };
 
@@ -42,20 +47,6 @@ namespace eosio { namespace vm {
    struct construct_derived<eosio::chain::apply_context, eosio::chain::apply_context> {
       static auto &value(eosio::chain::apply_context& ctx) { return ctx; }
    };
-   /*
-   template <>
-   struct reduce_type<eosio::chain::null_terminated_ptr> {
-      typedef uint32_t type;
-   };
-   */
-   
-   template <typename S, typename Args, typename T, typename WAlloc>
-   constexpr auto get_value(WAlloc* walloc, T&& val) 
-         -> std::enable_if_t<std::is_same_v<i32_const_t, T> && 
-         std::is_same_v< eosio::chain::null_terminated_ptr, S> &&
-         !std::is_lvalue_reference_v<S> && !std::is_pointer_v<S>, S> {
-      return eosio::chain::null_terminated_ptr((char*)(walloc->template get_base_ptr<uint8_t>()+val.data.ui));
-   }
 
 }} // ns eosio::vm
 
