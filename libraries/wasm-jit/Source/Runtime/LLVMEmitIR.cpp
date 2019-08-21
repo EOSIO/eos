@@ -877,17 +877,51 @@ namespace LLVMJIT
 		EMIT_INT_BINARY_OP(shl,irBuilder.CreateShl(left,emitShiftCountMask(type,right)))
 		EMIT_INT_BINARY_OP(shr_s,irBuilder.CreateAShr(left,emitShiftCountMask(type,right)))
 		EMIT_INT_BINARY_OP(shr_u,irBuilder.CreateLShr(left,emitShiftCountMask(type,right)))
-		
-		EMIT_INT_BINARY_OP(eq,coerceBoolToI32(irBuilder.CreateICmpEQ(left,right)))
-		EMIT_INT_BINARY_OP(ne,coerceBoolToI32(irBuilder.CreateICmpNE(left,right)))
-		EMIT_INT_BINARY_OP(lt_s,coerceBoolToI32(irBuilder.CreateICmpSLT(left,right)))
-		EMIT_INT_BINARY_OP(lt_u,coerceBoolToI32(irBuilder.CreateICmpULT(left,right)))
-		EMIT_INT_BINARY_OP(le_s,coerceBoolToI32(irBuilder.CreateICmpSLE(left,right)))
-		EMIT_INT_BINARY_OP(le_u,coerceBoolToI32(irBuilder.CreateICmpULE(left,right)))
-		EMIT_INT_BINARY_OP(gt_s,coerceBoolToI32(irBuilder.CreateICmpSGT(left,right)))
-		EMIT_INT_BINARY_OP(gt_u,coerceBoolToI32(irBuilder.CreateICmpUGT(left,right)))
-		EMIT_INT_BINARY_OP(ge_s,coerceBoolToI32(irBuilder.CreateICmpSGE(left,right)))
-		EMIT_INT_BINARY_OP(ge_u,coerceBoolToI32(irBuilder.CreateICmpUGE(left,right)))
+
+		static llvm::Value* getNonConstantZero(llvm::IRBuilder<>& irBuilder, llvm::Constant* zero) {
+			llvm::Value* zeroAlloca = irBuilder.CreateAlloca(zero->getType(), nullptr, "nonConstantZero");
+			irBuilder.CreateStore(zero, zeroAlloca);
+			return irBuilder.CreateLoad(zeroAlloca);
+		}
+
+		#define EMIT_INT_COMPARE_OP(name, llvmSourceType, llvmDestType, valueType, emitCode)                  \
+			void name(NoImm) {                                                        \
+				auto right = irBuilder.CreateOr(                                                                \
+				irBuilder.CreateBitCast(pop(), llvmSourceType),                                                 \
+				irBuilder.CreateBitCast(                                                                        \
+					getNonConstantZero(irBuilder, typedZeroConstants[Uptr(valueType)]),                          \
+					llvmSourceType));                                                                            \
+				auto left = irBuilder.CreateBitCast(pop(), llvmSourceType);                                     \
+				push(coerceBoolToI32(emitCode));                                                                \
+			}
+
+		#define EMIT_INT_COMPARE(name, emitCode)                                                           \
+			EMIT_INT_COMPARE_OP(i32_##name, llvmI32Type, llvmI32Type, ValueType::i32, emitCode)             \
+			EMIT_INT_COMPARE_OP(i64_##name, llvmI64Type, llvmI32Type, ValueType::i64, emitCode)
+
+#if LLVM_VERSION_MAJOR < 9
+		EMIT_INT_COMPARE(eq, irBuilder.CreateICmpEQ(left, right))
+		EMIT_INT_COMPARE(ne, irBuilder.CreateICmpNE(left, right))
+		EMIT_INT_COMPARE(lt_s, irBuilder.CreateICmpSLT(left, right))
+		EMIT_INT_COMPARE(lt_u, irBuilder.CreateICmpULT(left, right))
+		EMIT_INT_COMPARE(le_s, irBuilder.CreateICmpSLE(left, right))
+		EMIT_INT_COMPARE(le_u, irBuilder.CreateICmpULE(left, right))
+		EMIT_INT_COMPARE(gt_s, irBuilder.CreateICmpSGT(left, right))
+		EMIT_INT_COMPARE(gt_u, irBuilder.CreateICmpUGT(left, right))
+		EMIT_INT_COMPARE(ge_s, irBuilder.CreateICmpSGE(left, right))
+		EMIT_INT_COMPARE(ge_u, irBuilder.CreateICmpUGE(left, right))
+#else
+		EMIT_INT_BINARY_OP(eq, coerceBoolToI32(irBuilder.CreateICmpEQ(left, right)))	
+		EMIT_INT_BINARY_OP(ne, coerceBoolToI32(irBuilder.CreateICmpNE(left, right)))	
+		EMIT_INT_BINARY_OP(lt_s, coerceBoolToI32(irBuilder.CreateICmpSLT(left, right)))	
+		EMIT_INT_BINARY_OP(lt_u, coerceBoolToI32(irBuilder.CreateICmpULT(left, right)))	
+		EMIT_INT_BINARY_OP(le_s, coerceBoolToI32(irBuilder.CreateICmpSLE(left, right)))	
+		EMIT_INT_BINARY_OP(le_u, coerceBoolToI32(irBuilder.CreateICmpULE(left, right)))	
+		EMIT_INT_BINARY_OP(gt_s, coerceBoolToI32(irBuilder.CreateICmpSGT(left, right)))	
+		EMIT_INT_BINARY_OP(gt_u, coerceBoolToI32(irBuilder.CreateICmpUGT(left, right)))	
+		EMIT_INT_BINARY_OP(ge_s, coerceBoolToI32(irBuilder.CreateICmpSGE(left, right)))	
+		EMIT_INT_BINARY_OP(ge_u, coerceBoolToI32(irBuilder.CreateICmpUGE(left, right)))
+#endif
 
 		EMIT_INT_UNARY_OP(clz,irBuilder.CreateCall(getLLVMIntrinsic({operand->getType()},llvm::Intrinsic::ctlz),llvm::ArrayRef<llvm::Value*>({operand,emitLiteral(false)})))
 		EMIT_INT_UNARY_OP(ctz,irBuilder.CreateCall(getLLVMIntrinsic({operand->getType()},llvm::Intrinsic::cttz),llvm::ArrayRef<llvm::Value*>({operand,emitLiteral(false)})))
