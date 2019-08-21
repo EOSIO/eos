@@ -157,8 +157,8 @@ namespace eosio {
       optional<io_work_t>                       server_ioc_work;
 
 
-      void connect(const connection_ptr& c);
-      void connect(const connection_ptr& c, tcp::resolver::iterator endpoint_itr);
+      void connect( const connection_ptr& c );
+      void connect( const connection_ptr& c, const std::shared_ptr<tcp::resolver>& resolver, tcp::resolver::results_type endpoints );
       bool start_session(const connection_ptr& c);
       void start_listen_loop();
       void start_read_message(const connection_ptr& c);
@@ -297,7 +297,6 @@ namespace eosio {
    constexpr auto     def_send_buffer_size = 1024*1024*def_send_buffer_size_mb;
    constexpr auto     def_max_write_queue_size = def_send_buffer_size*10;
    constexpr boost::asio::chrono::milliseconds def_read_delay_for_full_write_queue{100};
-   constexpr auto     def_max_reads_in_flight = 1000;
    constexpr auto     def_max_trx_in_progress_size = 100*1024*1024; // 100 MB
    constexpr auto     def_max_clients = 25; // 0 for unlimited clients
    constexpr auto     def_max_nodes_per_host = 1;
@@ -500,7 +499,6 @@ namespace eosio {
 
       queued_buffer           buffer_queue;
 
-      uint32_t                reads_in_flight = 0;
       uint32_t                trx_in_progress_size = 0;
       fc::sha256              node_id;
       handshake_message       last_handshake_recv;
@@ -799,6 +797,7 @@ namespace eosio {
    void connection::close() {
       if(socket) {
          socket->close();
+         socket.reset( new tcp::socket( std::ref( *my_impl->server_ioc ) ) );
       }
       else {
          fc_wlog( logger, "no socket to close!" );
@@ -811,6 +810,8 @@ namespace eosio {
       }
       reset();
       sent_handshake_count = 0;
+      trx_in_progress_size = 0;
+      node_id = fc::sha256();
       last_handshake_recv = handshake_message();
       last_handshake_sent = handshake_message();
       my_impl->sync_master->reset_lib_num(shared_from_this());
@@ -950,7 +951,7 @@ namespace eosio {
       buffer_queue.fill_out_buffer( bufs );
 
       boost::asio::async_write(*socket, bufs,
-            boost::asio::bind_executor(strand, [c, priority]( boost::system::error_code ec, std::size_t w ) {
+            boost::asio::bind_executor(strand, [c, socket=socket, priority]( boost::system::error_code ec, std::size_t w ) {
          app().post(priority, [c, priority, ec, w]() {
             try {
                auto conn = c.lock();
@@ -1826,12 +1827,12 @@ namespace eosio {
          tcp::resolver::query query( tcp::v4(), host.c_str(), port.c_str() );
          connection_wptr weak_conn = c;
          resolver->async_resolve( query, boost::asio::bind_executor( c->strand,
-                [weak_conn, this, resolver]( const boost::system::error_code& err, tcp::resolver::iterator endpoint_itr ) {
-                   app().post( priority::low, [err, endpoint_itr, weak_conn, this]() {
+                [weak_conn, this, resolver]( const boost::system::error_code& err, tcp::resolver::results_type endpoints ) {
+                   app().post( priority::low, [err, resolver, endpoints, weak_conn, this]() {
                       auto c = weak_conn.lock();
                       if( !c ) return;
                       if( !err ) {
-                         connect( c, endpoint_itr );
+                         connect( c, resolver, endpoints );
                       } else {
                          fc_elog( logger, "Unable to resolve ${peer_addr}: ${error}",
                                   ("peer_addr", c->peer_name())( "error", err.message()) );
@@ -1841,19 +1842,19 @@ namespace eosio {
       } );
    }
 
-   void net_plugin_impl::connect(const connection_ptr& c, tcp::resolver::iterator endpoint_itr) {
+   void net_plugin_impl::connect( const connection_ptr& c, const std::shared_ptr<tcp::resolver>& resolver, tcp::resolver::results_type endpoints ) {
       if( c->no_retry != go_away_reason::no_reason) {
          string rsn = reason_str(c->no_retry);
          return;
       }
-      auto current_endpoint = *endpoint_itr;
-      ++endpoint_itr;
       c->connecting = true;
       c->pending_message_buffer.reset();
+      c->buffer_queue.clear_out_queue();
       connection_wptr weak_conn = c;
-      c->socket->async_connect( current_endpoint, boost::asio::bind_executor( c->strand,
-            [weak_conn, endpoint_itr, this]( const boost::system::error_code& err ) {
-         app().post( priority::low, [weak_conn, endpoint_itr, this, err]() {
+      boost::asio::async_connect( *c->socket, endpoints,
+         boost::asio::bind_executor( c->strand,
+            [weak_conn, resolver, socket=c->socket, this]( const boost::system::error_code& err, const tcp::endpoint& endpoint ) {
+         app().post( priority::low, [weak_conn, this, err]() {
             auto c = weak_conn.lock();
             if( !c ) return;
             if( !err && c->socket->is_open()) {
@@ -1861,14 +1862,9 @@ namespace eosio {
                   c->send_handshake();
                }
             } else {
-               if( endpoint_itr != tcp::resolver::iterator()) {
-                  close( c );
-                  connect( c, endpoint_itr );
-               } else {
-                  fc_elog( logger, "connection failed to ${peer}: ${error}", ("peer", c->peer_name())( "error", err.message()));
-                  c->connecting = false;
-                  my_impl->close( c );
-               }
+               elog( "connection failed to ${peer}: ${error}", ("peer", c->peer_name())( "error", err.message()) );
+               c->connecting = false;
+               my_impl->close( c );
             }
          } );
       } ) );
@@ -1988,38 +1984,41 @@ namespace eosio {
          };
 
          if( conn->buffer_queue.write_queue_size() > def_max_write_queue_size ||
-             conn->reads_in_flight > def_max_reads_in_flight   ||
              conn->trx_in_progress_size > def_max_trx_in_progress_size )
          {
             // too much queued up, reschedule
             if( conn->buffer_queue.write_queue_size() > def_max_write_queue_size ) {
                peer_wlog( conn, "write_queue full ${s} bytes", ("s", conn->buffer_queue.write_queue_size()) );
-            } else if( conn->reads_in_flight > def_max_reads_in_flight ) {
-               peer_wlog( conn, "max reads in flight ${s}", ("s", conn->reads_in_flight) );
             } else {
                peer_wlog( conn, "max trx in progress ${s} bytes", ("s", conn->trx_in_progress_size) );
             }
             if( conn->buffer_queue.write_queue_size() > 2*def_max_write_queue_size ||
-                conn->reads_in_flight > 2*def_max_reads_in_flight   ||
                 conn->trx_in_progress_size > 2*def_max_trx_in_progress_size )
             {
-               fc_wlog( logger, "queues over full, giving up on connection ${p}", ("p", conn->peer_name()) );
+               fc_elog( logger, "queues over full, giving up on connection ${p}", ("p", conn->peer_name()) );
+               fc_elog( logger, "  write_queue ${s} bytes", ("s", conn->buffer_queue.write_queue_size()) );
+               fc_elog( logger, "  max trx in progress ${s} bytes", ("s", conn->trx_in_progress_size) );
                my_impl->close( conn );
                return;
             }
             if( !conn->read_delay_timer ) return;
             conn->read_delay_timer->expires_from_now( def_read_delay_for_full_write_queue );
             conn->read_delay_timer->async_wait( [this, weak_conn]( boost::system::error_code ec ) {
-               app().post( priority::low, [this, weak_conn]() {
+               app().post( priority::low, [this, weak_conn, ec]() {
                   auto conn = weak_conn.lock();
                   if( !conn ) return;
-                  start_read_message( conn );
+                  if( !ec ) {
+                     start_read_message( conn );
+                  } else {
+                     fc_elog( logger, "Read delay timer error: ${e}, closing connection: ${p}",
+                              ("e", ec.message())("p",conn->peer_name()) );
+                     close( conn );
+                  }
                } );
             } );
             return;
          }
 
-         ++conn->reads_in_flight;
          boost::asio::async_read(*conn->socket,
             conn->pending_message_buffer.get_buffer_sequence_for_boost_async_read(), completion_handler,
             boost::asio::bind_executor( conn->strand,
@@ -2030,7 +2029,6 @@ namespace eosio {
                   return;
                }
 
-               --conn->reads_in_flight;
                conn->outstanding_read_bytes.reset();
 
                try {
