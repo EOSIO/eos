@@ -229,7 +229,7 @@ steps:
   #   timeout: 10
   #   soft_fail: true
 
-  # - wait
+  - wait
 
   # - label: ":ubuntu: Ubuntu 18.04 - Contract Builder"
   #   command:

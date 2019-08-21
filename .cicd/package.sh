@@ -29,15 +29,15 @@ else # Linux
 
     . $HELPERS_DIR/docker-hash.sh
 
-    PACKAGE_COMMANDS="./generate_package.sh $PACKAGE_TYPE"
 
     if [[ "$IMAGE_TAG" =~ "ubuntu" ]]; then
         ARTIFACT='*.deb'
         PACKAGE_TYPE='deb'
+        PACKAGE_COMMANDS="./generate_package.sh $PACKAGE_TYPE"
     elif [[ "$IMAGE_TAG" =~ "centos" ]]; then
         ARTIFACT='*.rpm'
         PACKAGE_TYPE='rpm'
-        PACKAGE_COMMANDS="mkdir -p ~/rpmbuild/BUILD && mkdir -p ~/rpmbuild/BUILDROOT && mkdir -p ~/rpmbuild/RPMS && mkdir -p ~/rpmbuild/SOURCES && mkdir -p ~/rpmbuild/SPECS && mkdir -p ~/rpmbuild/SRPMS && yum install -y rpm-build && $PACKAGE_COMMANDS"
+        PACKAGE_COMMANDS="mkdir -p ~/rpmbuild/BUILD && mkdir -p ~/rpmbuild/BUILDROOT && mkdir -p ~/rpmbuild/RPMS && mkdir -p ~/rpmbuild/SOURCES && mkdir -p ~/rpmbuild/SPECS && mkdir -p ~/rpmbuild/SRPMS && yum install -y rpm-build && ./generate_package.sh $PACKAGE_TYPE"
     fi
 
     COMMANDS="$PRE_COMMANDS && $PACKAGE_COMMANDS"
