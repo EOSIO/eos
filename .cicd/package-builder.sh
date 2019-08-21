@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -eo pipefail
-echo "Entered package-builder.sh"
+
 if [[ $(uname) == 'Darwin' ]]; then
     echo 'Darwin family detected, building for brew.'
     [[ -z $ARTIFACT ]] && ARTIFACT='*.rb;*.tar.gz'
