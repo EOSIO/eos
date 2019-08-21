@@ -601,7 +601,7 @@ BOOST_FIXTURE_TEST_CASE( stake_lock_test, bootseq_tester ) {
         // Ensure that now is yet 6 month after 2020-01-01 yet
         BOOST_REQUIRE(control->head_block_time().time_since_epoch() < second_july_2020);
 
-        //Try to unstake tokens from produceir should throw error, because unstaked condition does not met ( producer can unstake only after two month )
+        //Try to unstake tokens from produceir should throw error, because unstaked condition does not met ( producer can unstake only after six month )
         BOOST_REQUIRE_THROW(undelegate_bandwidth(N(proda), N(proda), core_from_string("1.0000")), eosio_assert_message_exception);
 
         // Skip 6 month
