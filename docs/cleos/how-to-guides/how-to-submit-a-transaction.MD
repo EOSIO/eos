@@ -39,9 +39,40 @@ Push a transaction
 }
 ```
 
-<!---
-Link to push action
--->
+* You can also create a JSON snippet that uses clear text JSON for `data` field.
+
+[[info]]
+| Be aware that if a clear text `data` field is used, cleos need to fetch copies of required ABIs using `nodeos` API. That operation has a performance overhead on `nodeos`
+
+```JSON
+{
+  "expiration": "2019-08-01T07:15:49",
+  "ref_block_num": 34881,
+  "ref_block_prefix": 2972818865,
+  "max_net_usage_words": 0,
+  "max_cpu_usage_ms": 0,
+  "delay_sec": 0,
+  "context_free_actions": [],
+  "actions": [{
+      "account": "eosio.token",
+      "name": "transfer",
+      "authorization": [{
+          "actor": "han",
+          "permission": "active"
+        }
+      ],
+      "data": {
+        "from": "han",
+        "to": "eosio",
+        "quantity": "0.0001 SYS",
+        "memo": "m"
+      }
+    }
+  ],
+  "transaction_extensions": [],
+  "context_free_data": []
+}
+```
 
 * Execute the following command:
 
@@ -49,8 +80,12 @@ Link to push action
 cleos push transaction TRX_FILE.json
 ```
 
-* To submit a transction from a JSON:
+* Submit a transction from a JSON:
 
 ```shell
-cleos push transaction JSON_STRUCTURE
+cleos push transaction JSON
 ```
+
+<!---
+Link to Push Action API
+-->
