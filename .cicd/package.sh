@@ -4,14 +4,11 @@ set -eo pipefail
 
 mkdir -p $BUILD_DIR
 
-PRE_COMMANDS="cd $MOUNTED_DIR"
-PACKAGE_COMMANDS="./.cicd/package-builder.sh"
-COMMANDS="$PRE_COMMANDS && $PACKAGE_COMMANDS"
+PRE_COMMANDS="cd $MOUNTED_DIR/build/packages && chmod 755 ./*.sh"
 
 if [[ $(uname) == 'Darwin' ]]; then
 
-    # You can't use chained commands in execute
-    bash -c "$PACKAGE_COMMANDS"
+    bash -c "$PRE_COMMANDS && ./generate_package.sh brew"
 
     ARTIFACT='*.rb;*.tar.gz'
     cd build/packages
@@ -32,6 +29,19 @@ else # Linux
 
     . $HELPERS_DIR/docker-hash.sh
 
+    PACKAGE_COMMANDS="./generate_package.sh $PACKAGE_TYPE"
+
+    if [[ "$IMAGE_TAG" =~ "ubuntu" ]]; then
+        ARTIFACT='*.deb'
+        PACKAGE_TYPE='deb'
+    elif [[ "$IMAGE_TAG" =~ "centos" ]]; then
+        ARTIFACT='*.rpm'
+        PACKAGE_TYPE='rpm'
+        PACKAGE_COMMANDS="mkdir -p ~/rpmbuild/BUILD && mkdir -p ~/rpmbuild/BUILDROOT && mkdir -p ~/rpmbuild/RPMS && mkdir -p ~/rpmbuild/SOURCES && mkdir -p ~/rpmbuild/SPECS && mkdir -p ~/rpmbuild/SRPMS && yum install -y rpm-build && $PACKAGE_COMMANDS"
+    fi
+
+    COMMANDS="$PRE_COMMANDS && $PACKAGE_COMMANDS"
+
     # Load BUILDKITE Environment Variables for use in docker run
     if [[ -f $BUILDKITE_ENV_FILE ]]; then
         evars=""
@@ -42,13 +52,6 @@ else # Linux
 
     eval docker run $ARGS $evars $FULL_TAG bash -c \"$COMMANDS\"
 
-    if [[ "$IMAGE_TAG" =~ "ubuntu" ]]; then
-        echo 'Uploading DEB.'
-        ARTIFACT='*.deb'
-    elif [[ "$IMAGE_TAG" =~ "centos" ]]; then
-        echo 'Uploading RPM'
-        ARTIFACT='*.rpm'
-    fi
     cd build/packages
     [[ -d x86_64 ]] && cd 'x86_64' # backwards-compatibility with release/1.6.x
     buildkite-agent artifact upload "./$ARTIFACT" --agent-access-token $BUILDKITE_AGENT_ACCESS_TOKEN
