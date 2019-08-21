@@ -1339,7 +1339,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
 
    const auto& scheduled_producer = hbs->get_scheduled_producer(block_time);
 
-   fc_dlog(_log, "Starting block ${n} at ${time} producer ${p}",
+   fc_dlog(_log, "Starting block #${n} at ${time} producer ${p}",
            ("n", hbs->block_num + 1)("time", now)("p", scheduled_producer.producer_name));
 
    auto current_watermark = get_watermark(scheduled_producer.producer_name);
