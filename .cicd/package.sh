@@ -4,11 +4,9 @@ set -eo pipefail
 
 mkdir -p $BUILD_DIR
 
-PRE_COMMANDS="cd $MOUNTED_DIR/build/packages && chmod 755 ./*.sh"
-
 if [[ $(uname) == 'Darwin' ]]; then
 
-    bash -c "$PRE_COMMANDS && ./generate_package.sh brew"
+    bash -c "cd build/packages && chmod 755 ./*.sh && ./generate_package.sh brew"
 
     ARTIFACT='*.rb;*.tar.gz'
     cd build/packages
@@ -29,6 +27,7 @@ else # Linux
 
     . $HELPERS_DIR/docker-hash.sh
 
+    PRE_COMMANDS="cd $MOUNTED_DIR/build/packages && chmod 755 ./*.sh"
 
     if [[ "$IMAGE_TAG" =~ "ubuntu" ]]; then
         ARTIFACT='*.deb'
