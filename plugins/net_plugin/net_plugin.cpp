@@ -2201,7 +2201,7 @@ namespace eosio {
                      return true;
                   } );
                   if( from_addr < max_nodes_per_host && (max_client_count == 0 || visitors < max_client_count)) {
-                     fc_dlog( logger, "Accepted new connection: " + paddr_str );
+                     fc_ilog( logger, "Accepted new connection: " + paddr_str );
                      if( new_connection->start_session()) {
                         std::lock_guard<std::shared_mutex> g_unique( connections_mtx );
                         connections.insert( new_connection );
