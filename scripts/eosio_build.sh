@@ -126,7 +126,7 @@ echo "User: ${CURRENT_USER}"
 # echo "git head id: %s" "$( cat .git/refs/heads/master )"
 echo "Current branch: $( execute git rev-parse --abbrev-ref HEAD 2>/dev/null )"
 
-#( [[ ! $NAME == "Ubuntu" ]] && [[ ! $ARCH == "Darwin" ]] ) && set -i # Ubuntu doesn't support interactive mode since it uses dash + Some folks are having this issue on Darwin; colors aren't supported yet anyway
+( [[ ! $NAME == "Ubuntu" ]] && [[ ! $NAME == "Linux Mint" ]] && [[ ! $ARCH == "Darwin" ]] ) && set -i # Ubuntu doesn't support interactive mode since it uses dash + Some folks are having this issue on Darwin; colors aren't supported yet anyway
 
 # Ensure sudo is available (only if not using the root user)
 ensure-sudo
@@ -174,6 +174,9 @@ if [[ $ARCH == "Linux" ]]; then
       ;;
       "CentOS Linux")
          FILE="${REPO_ROOT}/scripts/eosio_build_centos.sh"
+      ;;
+      "Ubuntu")
+         FILE="${REPO_ROOT}/scripts/eosio_build_ubuntu.sh"
       ;;
       "Linux Mint")
          FILE="${REPO_ROOT}/scripts/eosio_build_ubuntu.sh"
