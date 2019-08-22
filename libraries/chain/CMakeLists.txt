@@ -33,6 +33,7 @@ add_library( eosio_chain
              transaction_context.cpp
              eosio_contract.cpp
              eosio_contract_abi.cpp
+             eosio_contract_abi_bin.cpp
              chain_config.cpp
              chain_id_type.cpp
              genesis_state.cpp
