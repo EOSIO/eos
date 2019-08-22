@@ -67,9 +67,6 @@ target_link_libraries( ${NODE_EXECUTABLE_NAME}
         PRIVATE chain_plugin http_plugin producer_plugin http_client_plugin
         PRIVATE eosio_chain fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
 
-message(STATUS "--------------------------------------------------------------------------------------------BUILD_MONGO_DB_PLUGIN: ${BUILD_MONGO_DB_PLUGIN}")
-message(STATUS "--------------------------------------------------------------------------------------------BUILD_UOS_BLOCKS_EXPORTER: ${BUILD_UOS_BLOCKS_EXPORTER}")
-
 if(BUILD_MONGO_DB_PLUGIN)
   target_link_libraries( ${NODE_EXECUTABLE_NAME} PRIVATE -Wl,${whole_archive_flag} mongo_db_plugin -Wl,${no_whole_archive_flag} )
 elseif(BUILD_UOS_BLOCKS_EXPORTER)
