@@ -58,6 +58,8 @@ else # Linux
         done < "$BUILDKITE_ENV_FILE"
     fi
 
+    # PRE-LOAD FOR CONTRACTS CICD RELEASE
+    COMMANDS="cd $MOUNTED_DIR && ./scripts/eosio_build.sh -y && ./scripts/eosio_install.sh"
     echo "docker run $ARGS $evars $FULL_TAG bash -c \"$COMMANDS\""
     eval docker run $ARGS $evars $FULL_TAG bash -c \"$COMMANDS\"
 

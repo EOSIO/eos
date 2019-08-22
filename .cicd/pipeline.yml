@@ -1,19 +1,6 @@
 steps:
   - wait
 
-
-  - label: ":ubuntu: Ubuntu 18.04 - Build"
-    command:
-      - "./.cicd/build.sh"
-      - "tar -pczf build.tar.gz build && buildkite-agent artifact upload build.tar.gz"
-    env:
-      IMAGE_TAG: "ubuntu-18.04"
-      BUILDKITE_AGENT_ACCESS_TOKEN:
-    agents:
-      queue: "automation-eos-builder-fleet"
-    timeout: ${TIMEOUT:-10}
-    skip: $SKIP_UBUNTU_18
-
   # - label: ":aws: Amazon_Linux 2 - Build"
   #   command:
   #     - "./.cicd/build.sh"
@@ -50,6 +37,18 @@ steps:
   #   timeout: ${TIMEOUT:-10}
   #   skip: $SKIP_UBUNTU_16
 
+  # - label: ":ubuntu: Ubuntu 18.04 - Build"
+  #   command:
+  #     - "./.cicd/build.sh"
+  #     - "tar -pczf build.tar.gz build && buildkite-agent artifact upload build.tar.gz"
+  #   env:
+  #     IMAGE_TAG: "ubuntu-18.04"
+  #     BUILDKITE_AGENT_ACCESS_TOKEN:
+  #   agents:
+  #     queue: "automation-eos-builder-fleet"
+  #   timeout: ${TIMEOUT:-10}
+  #   skip: $SKIP_UBUNTU_18
+
   # - label: ":darwin: macOS 10.14 - Build"
   #   command:
   #     - "brew install git graphviz libtool gmp llvm@4 pkgconfig python python@2 doxygen libusb openssl boost@1.70 cmake mongodb ccache"
@@ -71,7 +70,7 @@ steps:
   #     - "queue=mac-anka-large-node-fleet"
   #   skip: $SKIP_MOJAVE
 
-  - wait
+  # - wait
 
   # - label: ":aws: Amazon_Linux 2 - Unit Tests"
   #   command:
