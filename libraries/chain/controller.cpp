@@ -933,7 +933,10 @@ struct controller_impl {
          a.creation_date = conf.genesis.initial_timestamp;
 
          if( name == config::system_account_name ) {
-            a.set_abi(eosio_contract_abi(abi_def()));
+            // The initial eosio ABI value affects consensus; see  https://github.com/EOSIO/eos/issues/7794
+            // TODO: This doesn't charge RAM; a fix requires a consensus upgrade.
+            a.abi.resize(sizeof(eosio_abi_bin));
+            memcpy(a.abi.data(), eosio_abi_bin, sizeof(eosio_abi_bin));
          }
       });
       db.create<account_metadata_object>([&](auto & a) {
