@@ -18,4 +18,4 @@ cleos create account creator name OwnerKey [ActiveKey]
 ```
 
 [[info]]
-| ActiveKey is optional but recommanded to have.
+| ActiveKey is optional but recommanded to provide.
