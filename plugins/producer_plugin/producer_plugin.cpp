@@ -1337,6 +1337,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
 
    _pending_block_mode = pending_block_mode::producing;
 
+   // Not our turn
    const auto& scheduled_producer = hbs->get_scheduled_producer(block_time);
 
    fc_dlog(_log, "Starting block #${n} at ${time} producer ${p}",
@@ -1746,13 +1747,9 @@ void producer_plugin_impl::schedule_production_loop() {
          auto expect_time = chain.pending_block_time() - fc::microseconds(config::block_interval_us);
          // ship this block off up to 1 block time earlier or immediately
          if (fc::time_point::now() >= expect_time) {
-            // produce block immediately
-            fc_dlog(_log, "Completing Block Production on Exhausted Block #${num} immediately",
+            _timer.expires_from_now( boost::posix_time::microseconds( 0 ));
+            fc_dlog(_log, "Scheduling Block Production on Exhausted Block #${num} immediately",
                           ("num", chain.head_block_num()+1));
-            fc_dlog( _log, "Produce block for ${num} running at ${time}", ("num", chain.head_block_num()+1)("time", fc::time_point::now()) );
-            auto res = maybe_produce_block();
-            fc_dlog( _log, "Producing Block #${num} returned: ${res}", ("num", chain.head_block_num()+1)( "res", res ) );
-            return;
          } else {
             _timer.expires_at(epoch + boost::posix_time::microseconds(expect_time.time_since_epoch().count()));
             fc_dlog(_log, "Scheduling Block Production on Exhausted Block #${num} at ${time}",
