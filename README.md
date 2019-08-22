@@ -3,12 +3,9 @@
 
 CAN is a merit-based identity network, powered by CryptoBadge, a blockchain-based certificate system. CryptoBadgelets users identify themselves through expertise, achievements, and contributions. It captures a variety of certifiable values and lets you build your personal brands. CryptoBadge is a universal, eternal, and verifiable acknowledgement system shared across communities. CryptoBadge divides badge winner’s merits into tokenizable assets and provides the users with diverse opportunities to gain reputation, power, and economic benefit
 
-
 ---
 
-**If you used our build scripts to install eosio, [please be sure to uninstall](#build-script-uninstall) before using our packages.**
-
----
+# Installation
 
 #### Mac OS X Brew Install
 ```sh
