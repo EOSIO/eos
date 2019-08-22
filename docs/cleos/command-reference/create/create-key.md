@@ -5,15 +5,13 @@ excerpt: "Creates a new keypair and prints the public and private keys."
 ## Usage
 
 ```shell
-Usage: cleos get account [OPTIONS] name [core-symbol]
-
-Positionals:
-  name TEXT                   The name of the account to retrieve (required)
-  core-symbol TEXT            The expected core symbol of the chain you are querying
+Usage: cleos create key [OPTIONS]
 
 Options:
-  -j,--json                   Output in JSON format
-
+  -h,--help                   Print this help message and exit
+  --r1                        Generate a key using the R1 curve (iPhone), instead of the K1 curve (Bitcoin)
+  -f,--file TEXT              Name of file to write private/public key output to. (Must be set, unless "--to-console" is passed
+  --to-console                Print private/public keys to console.
 ```
 
 ## Command
