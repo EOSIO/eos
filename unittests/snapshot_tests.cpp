@@ -413,19 +413,27 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_pending_schedule_snapshot, SNAPSHOT_SUITE, sn
    auto v2 = SNAPSHOT_SUITE::template load_from_file<snapshots::snap_v2_prod_sched>();
    snapshotted_tester v2_tester(chain.get_config(), SNAPSHOT_SUITE::get_reader(v2), 0);
    auto v2_integrity_value = v2_tester.control->calculate_integrity_hash();
+   BOOST_REQUIRE_EQUAL(v2_integrity_value.str(), base_integrity_value.str());
+
+   // create a latest version snapshot from the loaded v2 snapthos
+   auto latest_from_v2_writer = SNAPSHOT_SUITE::get_writer();
+   v2_tester.control->write_snapshot(latest_from_v2_writer);
+   auto latest_from_v2 = SNAPSHOT_SUITE::finalize(latest_from_v2_writer);
+
+   // load the latest snapshot in a new tester and compare integrity
+   snapshotted_tester latest_from_v2_tester(chain.get_config(), SNAPSHOT_SUITE::get_reader(latest_from_v2), 1);
+   auto latest_from_v2_integrity_value = latest_from_v2_tester.control->calculate_integrity_hash();
+   BOOST_REQUIRE_EQUAL(v2_integrity_value.str(), latest_from_v2_integrity_value.str());
+
 
    // take advantage of variant compare to possibly identify where snapshot disparities come from
-   if (std::is_same_v<SNAPSHOT_SUITE, variant_snapshot_suite> && v2_integrity_value.str() != base_integrity_value.str()) {
+   if (std::is_same_v<SNAPSHOT_SUITE, variant_snapshot_suite> && latest_from_v2_integrity_value.str() != base_integrity_value.str()) {
       // create a latest snapshot
       auto latest_writer = SNAPSHOT_SUITE::get_writer();
       chain.control->write_snapshot(latest_writer);
       auto chain_latest = SNAPSHOT_SUITE::finalize(latest_writer);
-      auto latest_writer2 = SNAPSHOT_SUITE::get_writer();
-      v2_tester.control->write_snapshot(latest_writer2);
-      auto v2_tester_latest = SNAPSHOT_SUITE::finalize(latest_writer2);
-      print_variant_diff(chain_latest, v2_tester_latest);
+      print_variant_diff(chain_latest, latest_from_v2);
    }
-   BOOST_REQUIRE_EQUAL(v2_integrity_value.str(), base_integrity_value.str());
 
    const auto& v2_gpo = v2_tester.control->get_global_properties();
    BOOST_REQUIRE_EQUAL(v2_gpo.proposed_schedule.version, 1);
@@ -442,6 +450,9 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_pending_schedule_snapshot, SNAPSHOT_SUITE, sn
    // push that block to all sub testers and validate the integrity of the database after it.
    v2_tester.push_block(new_block);
    BOOST_REQUIRE_EQUAL(integrity_value.str(), v2_tester.control->calculate_integrity_hash().str());
+
+   latest_from_v2_tester.push_block(new_block);
+   BOOST_REQUIRE_EQUAL(integrity_value.str(), latest_from_v2_tester.control->calculate_integrity_hash().str());
 }
 
 BOOST_AUTO_TEST_SUITE_END()
