@@ -8,7 +8,8 @@
   * What is an account
   * What is a public and private key pair
 
-* Created the Owner and Active key pairs
+* Created an Owner and an Active key pair
+* Imported a key pair which can authorize on behalf of a creator account
 
 ## Steps
 

@@ -23,16 +23,10 @@ Unstake 0.01 SYS network bandwidth from account `alice`:
 cleos system undelegatebw alice alice "0 SYS" "0.01 SYS"
 ```
 
-Unstake 0.01 SYS CPU bandwidth form account `alice`:
-
-```shell
-cleos system undelegatebw alice alice "0.01 SYS" "0 SYS"
-```
-
 You should see something below:
 
 ```shell
 executed transaction: e7e7edb6c5556de933f9d663fea8b4a9cd56ece6ff2cebf056ddd0835efa6606  184 bytes  452 us
-#         eosio <= eosio::undelegatebw          {"from":"alice","receiver":"alice","unstake_net_quantity":"0.0001 EOS","unstake_cpu_qu...
+#         eosio <= eosio::undelegatebw          {"from":"alice","receiver":"alice","unstake_net_quantity":"0.01 EOS","unstake_cpu_qu...
 warning: transaction executed locally, but may not be confirmed by the network yet         ]
 ```

@@ -16,7 +16,7 @@ Vote for a block producer
 
 ## Steps
 
-Vote for blockproducer1 and blockproducer2 from an account called `eosiotestts2`
+Assume you are going to vote for blockproducer1 and blockproducer2 from an account called `eosiotestts2`, execute the following:
 
 ```bash
 cleos system voteproducer prods eosiotestts2 blockproducer1 blockproducer2
