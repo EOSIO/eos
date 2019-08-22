@@ -11,3 +11,5 @@ RUN git clone https://github.com/EOSIO/eos.git -b release/1.7.x \
     && cd .. && rm -rf eos
 
 RUN mkdir -p ~/.ssh && chmod 700 ~/.ssh && ssh-keyscan -H github.com >> ~/.ssh/known_hosts
+
+ENV PATH=\$HOME/bin:${PATH}:\$HOME/opt/mongodb/bin
