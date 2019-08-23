@@ -10,6 +10,8 @@ import time
 
 from printer import print_in_blue, print_in_green, print_in_red, print_response, pad
 
+VERBOSITY = 0
+
 class LauncherCaller:
     def __init__(self):
         self.directory = os.path.dirname(os.path.realpath(__file__))
@@ -70,16 +72,29 @@ class Tester:
     def start(description, sleep=0):
         print_in_blue(pad(description))
         if sleep:
-            time.sleep(1)
+            time.sleep(sleep)
 
-    @staticmethod
-    def print(response: requests.Response):
-        print_response(response)
+    def load(self, response: requests.Response):
+        self.response = response
+
+    def print(self, timeout=1):
+        print_response(self.response, timeout, verbosity=VERBOSITY)
+
+    def get_transaction_id(self):
+        try:
+            return json.loads(self.response.text)['transaction_id']
+        except KeyError:
+            return
 
 def parse():
     parser = argparse.ArgumentParser(description="Description Here", add_help=True, formatter_class=lambda prog: argparse.HelpFormatter(prog,max_help_position=50))
-    parser.add_argument('-v', '--verbose', metavar='LEVEL', type=int, help="verbosity level")
-    return parser.parse_args()
+    parser.add_argument('-v', '--verbosity', metavar='LEVEL', type=int, default=1, help="verbosity level")
+
+    result = parser.parse_args()
+    global VERBOSITY
+    VERBOSITY = result.verbosity
+
+    return result
 
 def main():
     args = parse()
@@ -89,22 +104,47 @@ def main():
 
     tester.start("launching a cluster of nodes")
     cluster = Cluster(caller, '{"node_count":4,"cluster_id":2,"nodes":[{"node_id":0,"producers":["eosio","inita"]}, {"node_id":1,"producers":["initb"]}]}')
-    tester.print(cluster.launch())
+    tester.load(cluster.launch())
+    tester.print()
 
     tester.start("getting cluster information", sleep=1)
-    tester.print(cluster.get_info('2'))
+    tester.load(cluster.get_info('2'))
+    tester.print()
 
     tester.start("creating system account", sleep=1)
-    tester.print(cluster.create_bios_accounts('{"cluster_id":2,"node_id":0,"creator":"eosio","accounts":[{"name":"inita","owner":"EOS8kE63z4NcZatvVWY4jxYdtLg6UEA123raMGwS6QDKwpQ69eGcP","active":"EOS8kE63z4NcZatvVWY4jxYdtLg6UEA123raMGwS6QDKwpQ69eGcP"}]}'))
+    tester.load(cluster.create_bios_accounts('{"cluster_id":2,"node_id":0,"creator":"eosio","accounts":[{"name":"inita","owner":"EOS8kE63z4NcZatvVWY4jxYdtLg6UEA123raMGwS6QDKwpQ69eGcP","active":"EOS8kE63z4NcZatvVWY4jxYdtLg6UEA123raMGwS6QDKwpQ69eGcP"}]}'))
+    tester.print()
 
     tester.start("getting account information", sleep=1)
-    tester.print(cluster.get_account('{"cluster_id":2,"node_id":0,"name":"inita"}'))
+    tester.load(cluster.get_account('{"cluster_id":2,"node_id":0,"name":"inita"}'))
+    tester.print()
 
-    tester.start("setting contract", sleep=1)
-    tester.print(cluster.set_contract('{"cluster_id":2,"node_id":0,"account":"eosio","contract_file":"../../contracts/build/contracts/eosio.system/eosio.system.wasm","abi_file":"../../contracts/build/contracts/eosio.system/eosio.system.abi"}'))
+    tester.start("setting system contract", sleep=1)
+    tester.load(cluster.set_contract('{"cluster_id":2,"node_id":0,"account":"eosio","contract_file":"../../contracts/build/contracts/eosio.system/eosio.system.wasm","abi_file":"../../contracts/build/contracts/eosio.system/eosio.system.abi"}'))
+    tester.print()
 
-    tester.start("setting contract", sleep=1)
-    tester.print(cluster.set_contract('{"cluster_id":2,"node_id":0,"account":"eosio","contract_file":"../../contracts/build/contracts/eosio.system/eosio.system.wasm","abi_file":"../../contracts/build/contracts/eosio.system/eosio.system.abi"}'))
+    tid = tester.get_transaction_id()
+    if tid:
+        print("Getting transaction ID {}".format(tid))
+        tester.start("verifying transaction", sleep=1)
+        tester.load(cluster.verify_transaction('{{"cluster_id":2,"node_id":0,"transaction_id":"{}"}}'.format(tid)))
+        tester.print()
+    else:
+        print("No transaction ID returned.")
+
+    if not tid:
+        tester.start("setting system contract", sleep=1)
+        tester.load(cluster.set_contract('{"cluster_id":2,"node_id":0,"account":"eosio","contract_file":"../../contracts/build/contracts/eosio.system/eosio.system.wasm","abi_file":"../../contracts/build/contracts/eosio.system/eosio.system.abi"}'))
+        tester.print()
+
+        tid = tester.get_transaction_id()
+        if tid:
+            print("Getting transaction ID {}".format(tid))
+            tester.start("verifying transaction", sleep=1)
+            tester.load(cluster.verify_transaction('{{"cluster_id":2,"node_id":0,"transaction_id":"{}"}}'.format(tid)))
+            tester.print()
+        else:
+            print("No transaction ID returned.")
 
 if __name__ == '__main__':
     main()
