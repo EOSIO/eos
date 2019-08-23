@@ -110,6 +110,8 @@ namespace eosiosystem {
          info.deactivate();
       });
       _voters.modify(voter, producer, [&](auto &v) {
+          printf("%lld\n", current_time_point());
+          printf("%lld",v.stake_lock_time );
          v.stake_lock_time = current_time_point() + _gstate.stake_unlock_period;
       });
    }
