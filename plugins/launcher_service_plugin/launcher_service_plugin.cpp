@@ -70,13 +70,13 @@ namespace eosio {
 
 public:
       struct node_state {
-         int id = 0;
-         int pid = 0;
-         int http_port = 0;
-         int p2p_port = 0;
-         int is_bios = false;
-         std::string stdout_path;
-         std::string stderr_path;
+         int                        id = 0;
+         int                        pid = 0;
+         uint16_t                   http_port = 0;
+         uint16_t                   p2p_port = 0;
+         bool                       is_bios = false;
+         std::string                stdout_path;
+         std::string                stderr_path;
          std::shared_ptr<bp::child> child;
       };
       struct cluster_state {
@@ -657,6 +657,9 @@ fc::variant launcher_service_plugin::get_info(std::string url)
 
 fc::variant launcher_service_plugin::get_cluster_info(int cluster_id)
 {
+   if (_my->_running_clusters.find(cluster_id) == _my->_running_clusters.end()) {
+      return fc::mutable_variant_object("error", "cluster is not running");
+   }
    bool print_request = false;
    bool print_response = false;
    std::map<int, fc::variant> res;
@@ -677,6 +680,21 @@ fc::variant launcher_service_plugin::get_cluster_info(int cluster_id)
       }
    }
    return res.size() ? fc::mutable_variant_object("result", res) : fc::mutable_variant_object("error", "cluster is not running");
+}
+
+fc::variant launcher_service_plugin::get_cluster_running_state(int cluster_id)
+{
+   if (_my->_running_clusters.find(cluster_id) == _my->_running_clusters.end()) {
+      return fc::mutable_variant_object("error", "cluster is not running");
+   }
+   for (auto &itr : _my->_running_clusters[cluster_id].nodes) {
+      launcher_service_plugin_impl::node_state &state = itr.second;
+      if (state.child && !state.child->running()) {
+         state.pid = 0;
+         state.child.reset();
+      }
+   }
+   return fc::mutable_variant_object("result", _my->_running_clusters[cluster_id]);
 }
 
 #define CATCH_LAUCHER_EXCEPTIONS \

@@ -67,7 +67,15 @@ namespace launcher_service {
       }
    };
 
+   // TODO
+   struct remote_launcher_node {
+      std::string launcher_service_id;
+      std::string launcher_service_url;
+   };
+
    struct launcher_config {
+      std::string launcher_service_id;   // need to be set if it is a remote launcher_service
+
       std::string data_dir = "data-dir";
       std::string host_name = "127.0.0.1";
       std::string listen_addr = "0.0.0.0";
@@ -215,6 +223,7 @@ public:
    fc::variant get_account(launcher_service::get_account_param);
    fc::variant get_code_hash(launcher_service::get_account_param);
    fc::variant get_cluster_info(int cluster_id);
+   fc::variant get_cluster_running_state(int cluster_id);
    fc::variant get_protocol_features(int cluster_id, int node_id);
    fc::variant verify_transaction(launcher_service::verify_transaction_param);
    fc::variant get_table_rows(launcher_service::get_table_rows_param);
