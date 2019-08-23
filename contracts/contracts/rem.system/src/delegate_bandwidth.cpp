@@ -256,9 +256,30 @@ namespace eosiosystem {
                const auto prevstake_rate = 1 - restake_rate;
                const auto time_to_stake_unlock = std::max( v.stake_lock_time - current_time_point(), microseconds{} );
 
+
+                printf("==========================\n");
+                printf("%lld\n",total_update.amount);
+                printf("%lld\n",  v.staked);
+                printf("%f\n",  restake_rate);
+                printf("%f\n",  prevstake_rate);
+               printf("%lld\n",current_time_point());
+               printf("%lld\n", v.stake_lock_time);
+                printf("%lld\n", time_to_stake_unlock.count());
+                printf("%lld\n", microseconds{ static_cast< int64_t >( prevstake_rate * time_to_stake_unlock.count() ) });
+               printf("==========================\n");
+
+
+                printf("%lld\n",current_time_point());
+                printf("%lld\n",current_time_point());
+                printf("%lld\n",current_time_point());
+                printf("%lld\n", _gstate.stake_lock_period.count() );
                v.stake_lock_time = current_time_point()
                      + microseconds{ static_cast< int64_t >( prevstake_rate * time_to_stake_unlock.count() ) }
                      + microseconds{ static_cast< int64_t >( restake_rate * _gstate.stake_lock_period.count() ) };
+
+                printf("========A===============\n");
+                printf("%lld\n", v.stake_lock_time);
+                printf("========A=================\n");
             }
          });
       }
