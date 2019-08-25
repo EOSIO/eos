@@ -33,7 +33,7 @@ VERSION=2.1
 ##########################################################################
 
 # Ensure we're in the repo root and not inside of scripts
-cd $( dirname "${BASH_SOURCE[0]}" )/..
+cd $(dirname "${BASH_SOURCE[0]}")/..
 
 # Load eosio specific helper functions
 . ./scripts/helpers/eosio.sh
@@ -64,4 +64,3 @@ printf "${COLOR_GREEN}EOSIO has been installed into ${CACHED_INSTALL_PATH}/bin${
 printf "\\n${COLOR_YELLOW}Uninstall with: ${SCRIPT_DIR}/eosio_uninstall.sh${COLOR_NC}\\n"
 printf "==============================================================================================\\n\\n"
 resources
-
