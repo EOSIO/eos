@@ -21,17 +21,17 @@ else # Linux
     PRE_COMMANDS="cd $MOUNTED_DIR/build"
     # PRE_COMMANDS: Executed pre-cmake
     # CMAKE_EXTRAS: Executed within and right before the cmake path (cmake CMAKE_EXTRAS ..)
-    if [[ $IMAGE_TAG == 'ubuntu-18.04' ]]; then
-        PRE_COMMANDS="$PRE_COMMANDS && export PATH=/usr/lib/ccache:\\\$PATH"
-        CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_CXX_COMPILER='clang++' -DCMAKE_C_COMPILER='clang' -DCMAKE_BUILD_TYPE='Release'"
-    elif [[ $IMAGE_TAG == 'ubuntu-16.04' ]]; then
+    if [[ $IMAGE_TAG == 'ubuntu-16.04' ]]; then
         PRE_COMMANDS="$PRE_COMMANDS && export PATH=/usr/lib/ccache:\\\$PATH"
         CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_TOOLCHAIN_FILE=$MOUNTED_DIR/.cicd/helpers/clang.make -DCMAKE_CXX_COMPILER_LAUNCHER=ccache"
-    elif [[ $IMAGE_TAG == 'centos-7.6' ]]; then
-        PRE_COMMANDS="$PRE_COMMANDS && source /opt/rh/devtoolset-8/enable && source /opt/rh/rh-python36/enable && export PATH=/usr/lib64/ccache:\\\$PATH"
-    elif [[ $IMAGE_TAG == 'amazon_linux-2' ]]; then
+    elif [[ $IMAGE_TAG == 'amazon_linux-2-unpinned' ]]; then
         PRE_COMMANDS="$PRE_COMMANDS && export PATH=/usr/lib64/ccache:\\\$PATH"
         CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_CXX_COMPILER='clang++' -DCMAKE_C_COMPILER='clang'"
+    elif [[ $IMAGE_TAG == 'centos-7.6-unpinned' ]]; then
+        PRE_COMMANDS="$PRE_COMMANDS && source /opt/rh/devtoolset-8/enable && source /opt/rh/rh-python36/enable && export PATH=/usr/lib64/ccache:\\\$PATH"
+    elif [[ $IMAGE_TAG == 'ubuntu-18.04-unpinned' ]]; then
+        PRE_COMMANDS="$PRE_COMMANDS && export PATH=/usr/lib/ccache:\\\$PATH"
+        CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_CXX_COMPILER='clang++' -DCMAKE_C_COMPILER='clang' -DCMAKE_BUILD_TYPE='Release'"
     fi
 
     BUILD_COMMANDS="cmake $CMAKE_EXTRAS -DBUILD_MONGO_DB_PLUGIN=true .. && make -j$JOBS"
