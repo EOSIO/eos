@@ -1,6 +1,6 @@
 ### How does keosd store key pair
 
-Underneath `keosd` encrypts key pairs before storing them in a wallet file. Depends on implementation of different wallet medium such as Secure Clave, HSM, different cryptography algorithms might be used. When a standard file system of OS is used, `keosd` encrypt key pairs using AES.
+`keosd` encrypts key pairs underneath before storing them to a wallet file. Depends on implementation of wallet medium such as Secure Clave or YubiHSM, a specific cryptography algorithms will be used. When a standard file system of OS is used, `keosd` encrypt key pairs using 256bit AES in CBC mode.
 
 ### How to enable Secure Enclave
 
