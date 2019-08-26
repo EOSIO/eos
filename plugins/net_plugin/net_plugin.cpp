@@ -3021,11 +3021,7 @@ namespace eosio {
       // currently thread_pool only used for server_ioc
       my->thread_pool.emplace( "net", my->thread_pool_size );
 
-<<<<<<< HEAD
-      auto resolver = std::make_shared<tcp::resolver>( my_impl->thread_pool->get_executor() );
-=======
-      shared_ptr<tcp::resolver> resolver = std::make_shared<tcp::resolver>( std::ref( *my->server_ioc ));
->>>>>>> e69068958... Call resolve on connection strand
+      shared_ptr<tcp::resolver> resolver = std::make_shared<tcp::resolver>( my_impl->thread_pool->get_executor() );
       if( my->p2p_address.size() > 0 ) {
          auto host = my->p2p_address.substr( 0, my->p2p_address.find( ':' ));
          auto port = my->p2p_address.substr( host.size() + 1, my->p2p_address.size());
