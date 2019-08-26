@@ -13,17 +13,17 @@ steps:
     timeout: ${TIMEOUT:-10}
     skip: $SKIP_CENTOS_7
 
-  - label: ":ubuntu: Ubuntu 18.04 - Build"
-    command:
-      - "./.cicd/build.sh"
-      - "tar -pczf build.tar.gz build && buildkite-agent artifact upload build.tar.gz"
-    env:
-      IMAGE_TAG: "ubuntu-18.04-pinned"
-      BUILDKITE_AGENT_ACCESS_TOKEN:
-    agents:
-      queue: "automation-eos-builder-fleet"
-    timeout: ${TIMEOUT:-10}
-    skip: $SKIP_UBUNTU_18
+  # - label: ":ubuntu: Ubuntu 18.04 - Build"
+  #   command:
+  #     - "./.cicd/build.sh"
+  #     - "tar -pczf build.tar.gz build && buildkite-agent artifact upload build.tar.gz"
+  #   env:
+  #     IMAGE_TAG: "ubuntu-18.04-pinned"
+  #     BUILDKITE_AGENT_ACCESS_TOKEN:
+  #   agents:
+  #     queue: "automation-eos-builder-fleet"
+  #   timeout: ${TIMEOUT:-10}
+  #   skip: $SKIP_UBUNTU_18
 
 #   - label: ":aws: Amazon_Linux 2 - Build"
 #     command:
