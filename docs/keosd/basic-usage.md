@@ -14,7 +14,9 @@ The location of the wallet data folder can be specified on the command line usin
 
 ## Auto locking
 
-By default `keosd` is set to auto lock your wallets after 15 minutes of inactivity. This is configurable in the `config.ini` by setting the timeout seconds in `unlock-timeout`. Be aware if you need to disable this feature you will have to set an enormous number -- setting it to 0 will cause keosd to always lock your wallet.
+By default, `keosd` is set to lock your wallets after 15 minutes of inactivity. This is configurable in the `config.ini` by setting the timeout seconds in `unlock-timeout`. 
+
+Be aware if you need to disable this feature you will have to set an enormous number -- setting it to 0 will cause keosd to always lock your wallet.
 
 ## Stopping keosd
 
@@ -29,7 +31,6 @@ keosd --help
 Application Options:
 
 Config Options for eosio::http_plugin:
-
   --unix-socket-path arg (=keosd.sock)  The filename (relative to data-dir) to
                                         create a unix socket for HTTP RPC; set
                                         blank to disable.
