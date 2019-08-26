@@ -1871,8 +1871,8 @@ namespace eosio {
          tcp::resolver::query query( tcp::v4(), host.c_str(), port.c_str() );
          connection_wptr weak_conn = c;
          resolver->async_resolve( query, boost::asio::bind_executor( c->strand,
-                [weak_conn, this, resolver]( const boost::system::error_code& err, tcp::resolver::iterator endpoint_itr ) {
-                   app().post( priority::low, [err, endpoint_itr, weak_conn, this]() {
+                [weak_conn, resolver, this]( const boost::system::error_code& err, tcp::resolver::results_type endpoints ) {
+                   app().post( priority::low, [err, resolver, endpoints, weak_conn, this]() {
                       auto c = weak_conn.lock();
                       if( !c ) return;
                       if( !err ) {
