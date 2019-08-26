@@ -60,6 +60,9 @@ class Cluster:
     def get_account(self, data):
         return requests.post(self.caller.rpc('get_account'), data=data)
 
+    def get_cluster_running_state(self, data):
+        return requests.post(self.caller.rpc('get_cluster_running_state'), data=data)
+
     def set_contract(self, data):
         return requests.post(self.caller.rpc('set_contract'), data=data)
 
@@ -109,6 +112,10 @@ def main():
 
     tester.start("getting cluster information", sleep=1)
     tester.load(cluster.get_info('2'))
+    tester.print()
+
+    tester.start("getting cluster running state", sleep=1)
+    tester.load(cluster.get_cluster_running_state('2'))
     tester.print()
 
     tester.start("creating system account", sleep=1)
