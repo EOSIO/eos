@@ -11,4 +11,5 @@ RUN git clone https://github.com/EOSIO/eos.git -b release/1.7.x \
 RUN mkdir -p ~/.ssh && chmod 700 ~/.ssh && ssh-keyscan -H github.com >> ~/.ssh/known_hosts
 
 ENV PATH=/root/bin:${PATH}:/root/opt/mongodb/bin
+ENV LLVM_DIR=/root/opt/llvm/lib/cmake/llvm
 ENV BOOST_ROOT=/root/opt/boost
