@@ -31,7 +31,6 @@ RUN git clone --single-branch --branch release_80 https://git.llvm.org/git/llvm.
     make install && \
     cd / && \
     rm -rf /clang8
-RUN apt autoremove -y gcc g++
 COPY ./.cicd/helpers/clang.make /tmp/clang.cmake
 # build llvm
 RUN git clone --depth 1 --single-branch --branch release_40 https://github.com/llvm-mirror/llvm.git llvm && \
