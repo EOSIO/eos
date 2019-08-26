@@ -1766,27 +1766,28 @@ struct controller_impl {
          const bool existing_trxs_metas = !bsp->trxs_metas().empty();
          const bool pub_keys_recovered = bsp->is_pub_keys_recovered();
          const bool skip_auth_checks = self.skip_auth_check();
-         std::vector<recover_keys_future> trx_futures;
-         std::vector<transaction_metadata_ptr> trx_metas;
+         std::vector<std::tuple<transaction_metadata_ptr, recover_keys_future>> trx_metas;
          bool use_bsp_cached = false, use_trx_metas = false;
          if( pub_keys_recovered || (skip_auth_checks && existing_trxs_metas) ) {
             use_bsp_cached = true;
-         } else if( skip_auth_checks ) {
+         } else {
             use_trx_metas = true;
             trx_metas.reserve( b->transactions.size() );
             for( const auto& receipt : b->transactions ) {
                if( receipt.trx.contains<packed_transaction>()) {
                   auto& pt = receipt.trx.get<packed_transaction>();
-                  trx_metas.emplace_back( transaction_metadata::create_no_recover_keys( pt, transaction_metadata::trx_type::input ) );
-               }
-            }
-         } else {
-            trx_futures.reserve( b->transactions.size() );
-            for( const auto& receipt : b->transactions ) {
-               if( receipt.trx.contains<packed_transaction>()) {
-                  auto ptrx = std::make_shared<packed_transaction>( receipt.trx.get<packed_transaction>() );
-                  auto fut = transaction_metadata::start_recover_keys( ptrx, thread_pool.get_executor(), chain_id, microseconds::maximum() );
-                  trx_futures.emplace_back( std::move( fut ) );
+                  const transaction_metadata_ptr& trx_meta_ptr = unapplied_transactions.get_trx( pt.id() );
+                  if( trx_meta_ptr ) {
+                     trx_metas.emplace_back( trx_meta_ptr, recover_keys_future{} );
+                  } else if ( skip_auth_checks ) {
+                     trx_metas.emplace_back(
+                           transaction_metadata::create_no_recover_keys( pt, transaction_metadata::trx_type::input ),
+                           recover_keys_future{} );
+                  } else {
+                     auto ptrx = std::make_shared<packed_transaction>( pt );
+                     auto fut = transaction_metadata::start_recover_keys( ptrx, thread_pool.get_executor(), chain_id, microseconds::maximum() );
+                     trx_metas.emplace_back( transaction_metadata_ptr{}, std::move( fut ) );
+                  }
                }
             }
          }
@@ -1798,10 +1799,12 @@ struct controller_impl {
             const auto& trx_receipts = pending->_block_stage.get<building_block>()._pending_trx_receipts;
             auto num_pending_receipts = trx_receipts.size();
             if( receipt.trx.contains<packed_transaction>() ) {
-               const auto& trx_meta = ( use_bsp_cached ? bsp->trxs_metas().at( packed_idx++ )
-                                                       : ( use_trx_metas ? trx_metas.at( packed_idx++ )
-                                                                         : trx_futures.at( packed_idx++ ).get() ) );
+               const auto& trx_meta = ( use_bsp_cached ? bsp->trxs_metas().at( packed_idx )
+                                                       : ( !!std::get<0>( trx_metas.at( packed_idx ) ) ?
+                                                             std::get<0>( trx_metas.at( packed_idx ) )
+                                                             : std::get<1>( trx_metas.at( packed_idx ) ).get() ) );
                trace = push_transaction( trx_meta, fc::time_point::maximum(), receipt.cpu_usage_us, true );
+               ++packed_idx;
             } else if( receipt.trx.contains<transaction_id_type>() ) {
                trace = push_scheduled_transaction( receipt.trx.get<transaction_id_type>(), fc::time_point::maximum(), receipt.cpu_usage_us, true );
             } else {
