@@ -2116,6 +2116,26 @@ BOOST_FIXTURE_TEST_CASE( zero_memory_pages, TESTER ) try {
 
 } FC_LOG_AND_RETHROW()
 
+BOOST_FIXTURE_TEST_CASE( eosio_exit_in_start, TESTER ) try {
+   produce_blocks(2);
+   create_accounts( {"startexit"_n} );
+   produce_block();
+
+   set_code("startexit"_n, exit_in_start_wast);
+   produce_blocks(1);
+
+   signed_transaction trx;
+   action act;
+   act.account = "startexit"_n;
+   act.name = name();
+   act.authorization = vector<permission_level>{{"startexit"_n,config::active_name}};
+   trx.actions.push_back(act);
+   set_transaction_headers(trx);
+   trx.sign(get_private_key( "startexit"_n, "active" ), control->get_chain_id());
+   push_transaction(trx);
+   produce_blocks(1);
+} FC_LOG_AND_RETHROW()
+
 // TODO: restore net_usage_tests
 #if 0
 BOOST_FIXTURE_TEST_CASE(net_usage_tests, tester ) try {

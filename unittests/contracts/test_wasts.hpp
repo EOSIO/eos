@@ -928,3 +928,18 @@ static const char zero_memory_grow_hi[] = R"=====(
  )
 )
 )=====";
+
+static const char exit_in_start_wast[] = R"=====(
+(module
+ (import "env" "abort" (func $abort))
+ (import "env" "eosio_exit" (func $eosio_exit (param i32)))
+ (export "apply" (func $apply))
+ (start $dothedew)
+ (func $dothedew
+   (call $eosio_exit (i32.const 0))
+ )
+ (func $apply (param $0 i64) (param $1 i64) (param $2 i64)
+   (call $abort)
+ )
+)
+)=====";
