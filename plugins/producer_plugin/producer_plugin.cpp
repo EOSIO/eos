@@ -1321,12 +1321,6 @@ fc::time_point producer_plugin_impl::calculate_block_deadline( const fc::time_po
    return block_time + fc::microseconds(last_block ? _last_block_time_offset_us : _produce_time_offset_us);
 }
 
-enum class tx_category {
-   PERSISTED,
-   UNEXPIRED_UNPERSISTED
-};
-
-
 producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
    chain::controller& chain = chain_plug->chain();
 
@@ -1334,8 +1328,6 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
       return start_block_result::waiting;
 
    const auto& hbs = chain.head_block_state();
-
-   fc_dlog(_log, "Starting block ${n} at ${time}", ("n", hbs->block_num + 1)("time", fc::time_point::now()));
 
    //Schedule for the next second's tick regardless of chain state
    // If we would wait less than 50ms (1/10 of block_interval), wait for the whole block interval.
@@ -1346,6 +1338,10 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
 
    // Not our turn
    const auto& scheduled_producer = hbs->get_scheduled_producer(block_time);
+
+   fc_dlog(_log, "Starting block #${n} at ${time} producer ${p}",
+           ("n", hbs->block_num + 1)("time", now)("p", scheduled_producer.producer_name));
+
    auto current_watermark = get_watermark(scheduled_producer.producer_name);
 
    size_t num_relevant_signatures = 0;
@@ -1596,7 +1592,6 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
                   continue; // do not allow schedule and execute in same block
                }
                if( scheduled_trx_deadline <= fc::time_point::now() ) {
-                  exhausted = true;
                   break;
                }
 
@@ -1624,7 +1619,6 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
                }
 
                if (scheduled_trx_deadline <= fc::time_point::now()) {
-                  exhausted = true;
                   break;
                }
 
@@ -1679,13 +1673,16 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
             _incoming_trx_weight = 0.0;
 
             if (!_pending_incoming_transactions.empty()) {
-               fc_dlog(_log, "Processing ${n} pending transactions", ("n", _pending_incoming_transactions.size()));
+               size_t processed = 0;
+               fc_dlog(_log, "Processing ${n} pending transactions", ("n", orig_pending_txn_size));
                while (orig_pending_txn_size && _pending_incoming_transactions.size()) {
                   if (preprocess_deadline <= fc::time_point::now()) return start_block_result::exhausted;
                   auto e = _pending_incoming_transactions.pop_front();
                   --orig_pending_txn_size;
                   process_incoming_transaction_async(std::get<0>(e), std::get<1>(e), std::get<2>(e));
+                  ++processed;
                }
+               fc_dlog(_log, "Processed ${n} pending transactions, ${p} left", ("n", processed)("p", _pending_incoming_transactions.size()));
             }
             return start_block_result::succeeded;
          }
@@ -1785,9 +1782,8 @@ void producer_plugin_impl::schedule_delayed_production_loop(const std::weak_ptr<
    for (const auto&p: _producers) {
       auto next_producer_block_time = calculate_next_block_time(p, current_block_time);
       if (next_producer_block_time) {
-         auto producer_wake_up_time = *next_producer_block_time - fc::microseconds(config::block_interval_us);
+         auto producer_wake_up_time = *next_producer_block_time;
          if (wake_up_time) {
-            // wake up with a full block interval to the deadline
             wake_up_time = std::min<fc::time_point>(*wake_up_time, producer_wake_up_time);
          } else {
             wake_up_time = producer_wake_up_time;
