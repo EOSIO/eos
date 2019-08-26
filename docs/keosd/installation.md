@@ -8,6 +8,8 @@ Installation via binaries is recommended as it will save your time and avoid enc
 
 ### Mac OS X Brew Install:
 
+<!--- links to be update for the release version --->
+
 ```bash
 brew tap eosio/eosio
 brew install eosio

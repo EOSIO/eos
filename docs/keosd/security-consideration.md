@@ -8,4 +8,4 @@ In the case of the domain socket is used for access `keosd`, any UNIX user/group
 
 In the case of a TCP socket bound to localhost, any local process (regardless of owner or permission) can do the same things mentioned above. That includes a snippet of JavaScript code in a web page running in a local browser (though some browsers may have some mitigations for this)
 
-In the case of a TCP socket bound to a LAN/WAN address, this means any remote actor that can send packets to your machine may do the same and that (even if its HTTPS and encrypted) presents a huge security risk.
+In the case of a TCP socket bound to a LAN/WAN address, this means any remote actor that can send packets to your machine may do the same and that (even if it is HTTPS and encrypted) presents a huge security risk.
