@@ -31,6 +31,7 @@ RUN git clone --single-branch --branch release_80 https://git.llvm.org/git/llvm.
     cd / && \
     rm -rf /clang8
 RUN yum autoremove -y clang
+COPY ./.cicd/helpers/clang.make /tmp/clang.cmake
 # build llvm
 RUN git clone --depth 1 --single-branch --branch release_40 https://github.com/llvm-mirror/llvm.git llvm && \
     cd llvm && \
@@ -44,8 +45,8 @@ RUN git clone --depth 1 --single-branch --branch release_40 https://github.com/l
 RUN curl -LO https://dl.bintray.com/boostorg/release/1.70.0/source/boost_1_70_0.tar.bz2 && \
     tar -xjf boost_1_70_0.tar.bz2 && \
     cd boost_1_70_0 && \
-    ./bootstrap.sh --prefix=/usr/local && \
-    ./b2 --with-iostreams --with-date_time --with-filesystem --with-system --with-program_options --with-chrono --with-test -q -j$(nproc) install && \
+    ./bootstrap.sh --with-toolset=clang --prefix=/usr/local && \
+    ./b2 toolset=clang cxxflags='-stdlib=libc++ -D__STRICT_ANSI__ -nostdinc++ -I/usr/local/include/c++/v1' linkflags='-stdlib=libc++' link=static threading=multi --with-iostreams --with-date_time --with-filesystem --with-system --with-program_options --with-chrono --with-test -q -j$(nproc) install && \
     cd .. && \
     rm -f boost_1_70_0.tar.bz2    
 # build mongodb
