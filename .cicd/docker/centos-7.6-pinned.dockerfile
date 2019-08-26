@@ -18,10 +18,10 @@ RUN curl -LO https://cmake.org/files/v3.13/cmake-3.13.2.tar.gz && \
     make install && \
     cd .. && \
     rm -f cmake-3.13.2.tar.gz
+# build clang8
+RUN cd /tmp             && rm -rf clang8             && git clone --single-branch --branch release_80 https://git.llvm.org/git/llvm.git clang8             && cd clang8 && git checkout 18e41dc             && cd tools             && git clone --single-branch --branch release_80 https://git.llvm.org/git/lld.git             && cd lld && git checkout d60a035 && cd ../             && git clone --single-branch --branch release_80 https://git.llvm.org/git/polly.git             && cd polly && git checkout 1bc06e5 && cd ../             && git clone --single-branch --branch release_80 https://git.llvm.org/git/clang.git clang && cd clang             && git checkout a03da8b             && cd tools && mkdir extra && cd extra             && git clone --single-branch --branch release_80 https://git.llvm.org/git/clang-tools-extra.git             && cd clang-tools-extra && git checkout 6b34834 && cd ..             && cd ../../../../projects             && git clone --single-branch --branch release_80 https://git.llvm.org/git/libcxx.git             && cd libcxx && git checkout 1853712 && cd ../             && git clone --single-branch --branch release_80 https://git.llvm.org/git/libcxxabi.git             && cd libcxxabi && git checkout d7338a4 && cd ../             && git clone --single-branch --branch release_80 https://git.llvm.org/git/libunwind.git             && cd libunwind && git checkout 57f6739 && cd ../             && git clone --single-branch --branch release_80 https://git.llvm.org/git/compiler-rt.git             && cd compiler-rt && git checkout 5bc7979 && cd ../             && cd /tmp/clang8             && mkdir build && cd build             && cmake -G 'Unix Makefiles' -DCMAKE_INSTALL_PREFIX='/usr/local' -DLLVM_BUILD_EXTERNAL_COMPILER_RT=ON -DLLVM_BUILD_LLVM_DYLIB=ON -DLLVM_ENABLE_LIBCXX=ON -DLLVM_ENABLE_RTTI=ON -DLLVM_INCLUDE_DOCS=OFF -DLLVM_OPTIMIZED_TABLEGEN=ON -DLLVM_TARGETS_TO_BUILD=all -DCMAKE_BUILD_TYPE=Release ..             && make -j8             && make install             && rm -rf /tmp/clang8
 # build llvm
 RUN git clone --depth 1 --single-branch --branch release_40 https://github.com/llvm-mirror/llvm.git llvm && \
-    source /opt/rh/devtoolset-8/enable && \
-    source /opt/rh/rh-python36/enable && \
     cd llvm && \
     mkdir build && \
     cd build && \
@@ -31,8 +31,6 @@ RUN git clone --depth 1 --single-branch --branch release_40 https://github.com/l
     cd /
 # build boost
 RUN curl -LO https://dl.bintray.com/boostorg/release/1.70.0/source/boost_1_70_0.tar.bz2 && \
-    source /opt/rh/devtoolset-8/enable && \
-    source /opt/rh/rh-python36/enable && \
     tar -xjf boost_1_70_0.tar.bz2 && \
     cd boost_1_70_0 && \
     ./bootstrap.sh --prefix=/usr/local && \
@@ -45,8 +43,6 @@ RUN curl -LO https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-amazon-3.6.3.
     rm -f mongodb-linux-x86_64-amazon-3.6.3.tgz
 # build mongodb c driver
 RUN curl -LO https://github.com/mongodb/mongo-c-driver/releases/download/1.13.0/mongo-c-driver-1.13.0.tar.gz && \
-    source /opt/rh/devtoolset-8/enable && \
-    source /opt/rh/rh-python36/enable && \
     tar -xzf mongo-c-driver-1.13.0.tar.gz && \
     cd mongo-c-driver-1.13.0 && \
     mkdir -p build && \
@@ -58,8 +54,6 @@ RUN curl -LO https://github.com/mongodb/mongo-c-driver/releases/download/1.13.0/
     rm -rf mongo-c-driver-1.13.0.tar.gz
 # build mongodb cxx driver
 RUN curl -L https://github.com/mongodb/mongo-cxx-driver/archive/r3.4.0.tar.gz -o mongo-cxx-driver-r3.4.0.tar.gz && \
-    source /opt/rh/devtoolset-8/enable && \
-    source /opt/rh/rh-python36/enable && \
     tar -xzf mongo-cxx-driver-r3.4.0.tar.gz && \
     cd mongo-cxx-driver-r3.4.0 && \
     sed -i 's/\"maxAwaitTimeMS\", ount/\"maxAwaitTimeMS\", static_cast<int64_t>(count)/' src/mongocxx/options/change_stream.cpp && \
