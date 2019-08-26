@@ -69,25 +69,22 @@ namespace launcher_service {
 
    // TODO
    struct remote_launcher_node {
-      std::string launcher_service_id;
-      std::string launcher_service_url;
+      std::string                    launcher_service_id;
+      std::string                    launcher_service_url;
    };
 
    struct launcher_config {
-      std::string launcher_service_id;   // need to be set if it is a remote launcher_service
-
-      std::string data_dir = "data-dir";
-      std::string host_name = "127.0.0.1";
-      std::string listen_addr = "0.0.0.0";
-      std::string nodeos_cmd = "./programs/nodeos/nodeos";
-      std::string genesis_file = "genesis.json";
-      int         log_file_rotate_max = 8;
-      fc::microseconds abi_serializer_max_time = fc::microseconds(1000000);
-      bool        print_http_request = false;
-      bool        print_http_response = false;
-      private_key_type default_key;
-
-      launcher_config() : default_key(std::string("5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3")) { }
+      std::string                    launcher_service_id;   // TODO: later
+      std::string                    data_dir;
+      std::string                    host_name;
+      std::string                    p2p_listen_addr;
+      std::string                    nodeos_cmd;
+      std::string                    genesis_file;
+      fc::microseconds               abi_serializer_max_time;
+      uint16_t                       log_file_rotate_max = 8;
+      bool                           print_http_request = false;
+      bool                           print_http_response = false;
+      private_key_type               default_key;
    };
 
    struct new_account_param {
@@ -167,7 +164,7 @@ namespace launcher_service {
    };
 
    struct schedule_protocol_feature_activations_param {
-      int                             cluster_id = 0 ;
+      int                             cluster_id = 0;
       int                             node_id = 0;
       std::vector<chain::digest_type> protocol_features_to_activate;
    };

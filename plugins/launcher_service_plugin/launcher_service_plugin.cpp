@@ -140,7 +140,7 @@ public:
             bfs::ofstream cfg(node_path / "config.ini");
             cfg << "http-server-address = " << _config.host_name << ":" << state.http_port << "\n";
             cfg << "http-validate-host = false\n";
-            cfg << "p2p-listen-endpoint = " << _config.listen_addr << ":" << state.p2p_port << "\n";
+            cfg << "p2p-listen-endpoint = " << _config.p2p_listen_addr << ":" << state.p2p_port << "\n";
             cfg << "agent-name = " << cluster_to_string(def.cluster_id) << "_" << node_to_string(i) << "\n";
 
             if (def.shape == "mesh") {
@@ -343,7 +343,7 @@ public:
       }
 
       fc::variant get_protocol_features(int cluster_id, int node_id) {
-         return call(cluster_id, node_id, "/v1/producer/get_protocol_features");
+         return call(cluster_id, node_id, "/v1/producer/get_supported_protocol_features");
       }
 
       fc::variant determine_required_keys(int cluster_id, int node_id, const signed_transaction& trx) {
@@ -614,17 +614,38 @@ launcher_service_plugin::~launcher_service_plugin(){}
 void launcher_service_plugin::set_program_options(options_description&, options_description& cfg) {
    std::cout << "launcher_service_plugin::set_program_options()" << std::endl;
    cfg.add_options()
-         ("option-name", bpo::value<string>()->default_value("default value"),
-          "Option Description")
+         ("data-dir", bpo::value<string>()->default_value("data-dir"),
+         "data directory of clusters")
+         ("host-name", bpo::value<string>()->default_value("127.0.0.1"),
+         "name or ip address of host")
+         ("p2p-listen-address", bpo::value<string>()->default_value("0.0.0.0"),
+         "listen address of incoming p2p connection of nodeos")
+         ("nodeos-cmd", bpo::value<string>()->default_value("./programs/nodeos/nodeos"),
+         "nodeos executable command")
+         ("genesis-file", bpo::value<string>()->default_value("genesis.json"),
+         "path of genesis file")
+         ("abi-serializer-max-time", bpo::value<uint32_t>()->default_value(1000000),
+         "abi serializer max time(in us)")
+         ("log-file-max", bpo::value<uint16_t>()->default_value(8),
+         "max number of stdout/stderr files per node")
+         ("print-http", boost::program_options::bool_switch()->notifier([this](bool e){_my->_config.print_http_request = _my->_config.print_http_response = e;}),
+         "print http request and response")
+         ("default-key", bpo::value<string>()->default_value("5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3"),
+         "default private key for cluster accounts")
          ;
 }
 
 void launcher_service_plugin::plugin_initialize(const variables_map& options) {
    std::cout << "launcher_service_plugin::plugin_initialize()" << std::endl;
    try {
-      if( options.count( "option-name" )) {
-         // Handle the option
-      }
+      _my->_config.data_dir = options.at("data-dir").as<std::string>();
+      _my->_config.host_name = options.at("host-name").as<std::string>();
+      _my->_config.p2p_listen_addr = options.at("p2p-listen-address").as<std::string>();
+      _my->_config.nodeos_cmd = options.at("nodeos-cmd").as<std::string>();
+      _my->_config.genesis_file = options.at("genesis-file").as<std::string>();
+      _my->_config.abi_serializer_max_time = fc::microseconds(options.at("abi-serializer-max-time").as<uint32_t>());
+      _my->_config.log_file_rotate_max = options.at("log-file-max").as<uint16_t>();
+      _my->_config.default_key = private_key_type(options.at("default-key").as<std::string>());
    }
    FC_LOG_AND_RETHROW()
 }
