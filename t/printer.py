@@ -31,10 +31,27 @@ def print_in_color(printable, red=None, green=None, blue=None):
     else:
         print_in_red(printable)
 
-def print_json(text):
-    obj = json.loads(text)
-    # TODO: remove too long strings
-    print('\n', json.dumps(obj, indent=4, sort_keys=True))
+def trim_json(d, maxlen=100):
+    if isinstance(d, dict):
+        for key in d:
+            if not isinstance(d[key], (list, dict)):
+                if isinstance(d[key], str) and len(d[key]) > maxlen:
+                    d[key] = "..."
+            else:
+                trim_json(d[key])
+    elif isinstance(d, list):
+        for item in d:
+            if not isinstance(item, (list, dict)):
+                if isinstance(item, str) and len(item) > maxlen:
+                    item = "..."
+            else:
+                trim_json(item)
+
+def print_json(text, maxlen=100):
+    d = json.loads(text)
+    if maxlen:
+        trim_json(d, maxlen=100)
+    print(json.dumps(d, indent=4, sort_keys=True))
 
 def print_response(response: requests.Response, timeout=1, verbosity=1) -> None:
     if response.ok:
