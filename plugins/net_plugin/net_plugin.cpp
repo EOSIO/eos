@@ -179,7 +179,7 @@ namespace eosio {
       : strand( io_context ) {}
 
       void bcast_transaction(const packed_transaction& trx);
-      void rejected_transaction(const transaction_id_type& msg, uint32_t head_blk_num);
+      void rejected_transaction(const packed_transaction_ptr& trx, uint32_t head_blk_num);
       void bcast_block(const block_state_ptr& bs);
       void bcast_notice( const block_id_type& id );
       void rejected_block(const block_id_type& id);
@@ -2010,11 +2010,13 @@ namespace eosio {
       } );
    }
 
-   void dispatch_manager::rejected_transaction(const transaction_id_type& id, uint32_t head_blk_num) {
-      fc_dlog( logger, "not sending rejected transaction ${tid}", ("tid", id) );
+   void dispatch_manager::rejected_transaction(const packed_transaction_ptr& trx, uint32_t head_blk_num) {
+      fc_dlog( logger, "not sending rejected transaction ${tid}", ("tid", trx->id()) );
       // keep rejected transaction around for awhile so we don't broadcast it
       // update its block number so it will be purged when current block number is lib
-      update_txns_block_num( id, head_blk_num );
+      if( trx->expiration() > fc::time_point::now() ) { // no need to update blk_num if already expired
+         update_txns_block_num( trx->id(), head_blk_num );
+      }
    }
 
    // called from connection strand
@@ -2199,6 +2201,7 @@ namespace eosio {
                      return true;
                   } );
                   if( from_addr < max_nodes_per_host && (max_client_count == 0 || visitors < max_client_count)) {
+                     fc_ilog( logger, "Accepted new connection: " + paddr_str );
                      if( new_connection->start_session()) {
                         std::lock_guard<std::shared_mutex> g_unique( connections_mtx );
                         connections.insert( new_connection );
@@ -2487,11 +2490,11 @@ namespace eosio {
    }
 
    void connection::handle_message( const chain_size_message& msg ) {
-      peer_ilog(this, "received chain_size_message");
+      peer_dlog(this, "received chain_size_message");
    }
 
    void connection::handle_message( const handshake_message& msg ) {
-      peer_ilog( this, "received handshake_message" );
+      peer_dlog( this, "received handshake_message" );
       if( !is_valid( msg ) ) {
          peer_elog( this, "bad handshake message");
          enqueue( go_away_message( fatal_other ) );
@@ -2630,11 +2633,11 @@ namespace eosio {
          node_id = msg.node_id;
       }
       flush_queues();
-      close();
+      close( false );
    }
 
    void connection::handle_message( const time_message& msg ) {
-      peer_ilog( this, "received time_message" );
+      peer_dlog( this, "received time_message" );
       /* We've already lost however many microseconds it took to dispatch
        * the message, but it can't be helped.
        */
@@ -2670,7 +2673,7 @@ namespace eosio {
       // peer tells us about one or more blocks or txns. When done syncing, forward on
       // notices of previously unknown blocks or txns,
       //
-      peer_ilog( this, "received notice_message" );
+      peer_dlog( this, "received notice_message" );
       connecting = false;
       if( msg.known_blocks.ids.size() > 1 ) {
          fc_elog( logger, "Invalid notice_message, known_blocks.ids.size ${s}, closing connection: ${p}",
@@ -2733,11 +2736,11 @@ namespace eosio {
 
       switch (msg.req_blocks.mode) {
       case catch_up :
-         peer_ilog( this, "received request_message:catch_up" );
+         peer_dlog( this, "received request_message:catch_up" );
          blk_send_branch();
          break;
       case normal :
-         peer_ilog( this, "received request_message:normal" );
+         peer_dlog( this, "received request_message:normal" );
          if( !msg.req_blocks.ids.empty() ) {
             blk_send( msg.req_blocks.ids.back() );
          }
@@ -2806,34 +2809,20 @@ namespace eosio {
          my_impl->chain_plug->accept_transaction( trx,
             [weak, trx](const static_variant<fc::exception_ptr, transaction_trace_ptr>& result) mutable {
          // next (this lambda) called from application thread
-         bool accepted = false;
          if (result.contains<fc::exception_ptr>()) {
             fc_dlog( logger, "bad packed_transaction : ${m}", ("m", result.get<fc::exception_ptr>()->what()) );
          } else {
             const transaction_trace_ptr& trace = result.get<transaction_trace_ptr>();
-            if (!trace->except) {
+            if( !trace->except ) {
                fc_dlog( logger, "chain accepted transaction, bcast ${id}", ("id", trace->id) );
-               accepted = true;
-            }
-
-            if( !accepted ) {
+            } else {
                fc_elog( logger, "bad packed_transaction : ${m}", ("m", trace->except->what()));
             }
          }
-
-         boost::asio::post( my_impl->thread_pool->get_executor(), [accepted, weak{std::move(weak)}, trx{std::move(trx)}]() mutable {
-            if( accepted ) {
-               my_impl->dispatcher->bcast_transaction( *trx );
-            } else {
-               uint32_t head_blk_num = 0;
-               std::tie( std::ignore, head_blk_num, std::ignore, std::ignore, std::ignore, std::ignore ) = my_impl->get_chain_info();
-               my_impl->dispatcher->rejected_transaction( trx->id(), head_blk_num );
-            }
-            connection_ptr conn = weak.lock();
-            if( conn ) {
-               conn->trx_in_progress_size -= calc_trx_size( trx );
-            }
-         });
+         connection_ptr conn = weak.lock();
+         if( conn ) {
+            conn->trx_in_progress_size -= calc_trx_size( trx );
+         }
         });
       });
    }
@@ -2876,7 +2865,7 @@ namespace eosio {
       }
 
       fc::microseconds age( fc::time_point::now() - msg->timestamp);
-      peer_ilog( c, "received signed_block : #${n} block age in secs = ${age}",
+      peer_dlog( c, "received signed_block : #${n} block age in secs = ${age}",
                  ("n", blk_num)( "age", age.to_seconds() ) );
 
       go_away_reason reason = fatal_other;
@@ -3066,7 +3055,7 @@ namespace eosio {
 
             uint32_t head_blk_num = 0;
             std::tie( std::ignore, head_blk_num, std::ignore, std::ignore, std::ignore, std::ignore ) = get_chain_info();
-            dispatcher->rejected_transaction(id, head_blk_num);
+            dispatcher->rejected_transaction(results.second->packed_trx(), head_blk_num);
          } else {
             fc_dlog( logger, "signaled ACK, trx-id = ${id}", ("id", id) );
             dispatcher->bcast_transaction(*results.second->packed_trx());
