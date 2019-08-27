@@ -126,7 +126,7 @@ steps:
     command:
       - "brew install git cmake automake libtool openssl wget gmp llvm@4 python python@2 doxygen graphviz mongodb"
       - "git clone $BUILDKITE_REPO eos && cd eos && git checkout $BUILDKITE_COMMIT && git submodule update --init --recursive"
-      - "cd eos && buildkite-agent artifact download build.tar.gz . --step ':darwin:  10.14 - Build' && tar -xzf build.tar.gz"
+      - "cd eos && buildkite-agent artifact download build.tar.gz . --step ':darwin: macOS 10.14 - Build' && tar -xzf build.tar.gz"
       - "cd eos && ./.cicd/parallel-tests.sh"
     plugins:
       - chef/anka#v0.5.1:
