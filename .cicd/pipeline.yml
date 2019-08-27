@@ -399,7 +399,7 @@ steps:
       - chef/anka#v0.5.1:
           no-volume: true
           inherit-environment-vars: true
-          vm-name: 10.14.4_6C_14G_40G
+          vm-name: 10.13.6_6C_14G_40G
           vm-registry-tag: "clean::cicd::git-ssh::nas::brew::buildkite-agent::eosio_1.7-v2"
           always-pull: true
           debug: true
