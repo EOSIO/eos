@@ -2713,17 +2713,8 @@ uint32_t controller::last_irreversible_block_num() const {
 
 block_id_type controller::last_irreversible_block_id() const {
    auto lib_num = last_irreversible_block_num();
-   const auto& tapos_block_summary = db().get<block_summary_object>((uint16_t)lib_num);
 
-   if( block_header::num_from_id(tapos_block_summary.block_id) == lib_num )
-      return tapos_block_summary.block_id;
-
-   auto id = my->blog.read_block_id_by_num( lib_num );
-
-   EOS_ASSERT( BOOST_LIKELY( id != block_id_type() ), unknown_block_exception,
-               "Could not find block: ${block}", ("block", lib_num) );
-
-   return id;
+   return get_block_id_for_num( lib_num );
 }
 
 const dynamic_global_property_object& controller::get_dynamic_global_properties()const {
@@ -2771,6 +2762,11 @@ block_state_ptr controller::fetch_block_state_by_number( uint32_t block_num )con
 } FC_CAPTURE_AND_RETHROW( (block_num) ) }
 
 block_id_type controller::get_block_id_for_num( uint32_t block_num )const { try {
+   const auto& tapos_block_summary = db().get<block_summary_object>((uint16_t)block_num);
+
+   if( block_header::num_from_id(tapos_block_summary.block_id) == block_num )
+      return tapos_block_summary.block_id;
+
    const auto& blog_head = my->blog.head();
 
    bool find_in_blog = (blog_head && block_num <= blog_head->block_num());
