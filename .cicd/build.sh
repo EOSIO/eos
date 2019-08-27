@@ -35,6 +35,8 @@ else # Linux
     elif [[ $IMAGE_TAG == 'amazon_linux-2' ]]; then
         PRE_COMMANDS="$PRE_COMMANDS && export PATH=/usr/lib64/ccache:\\\$PATH"
         CMAKE_EXTRAS="$CMAKE_EXTRAS"
+    elif [[ $IMAGE_TAG == 'fedora-27' ]]; then
+        PRE_COMMANDS="$PRE_COMMANDS && export CPATH=/usr/include/llvm4.0"
     fi
 
     BUILD_COMMANDS="cmake $CMAKE_EXTRAS -DBUILD_MONGO_DB_PLUGIN=true .. && make -j$JOBS"
