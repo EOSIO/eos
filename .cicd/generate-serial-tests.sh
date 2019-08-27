@@ -30,7 +30,7 @@ cat <<EOF
     IMAGE_TAG: "$DOCKERFILE_NAME"
     BUILDKITE_AGENT_ACCESS_TOKEN:
   agents:
-    queue: "automation-eos-beta-builder-fleet"
+    queue: "automation-eos-builder-fleet"
   timeout: ${TIMEOUT:-10}
   skip: \${SKIP_${PLATFORM_NAME_UPCASE}_${VERSION_MAJOR}}\${SKIP_SERIAL_TESTS}
 EOF
