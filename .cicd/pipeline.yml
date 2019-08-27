@@ -49,6 +49,18 @@ steps:
     timeout: ${TIMEOUT:-10}
     skip: $SKIP_UBUNTU_18
 
+  - label: ":fedora: Fedora 27 - Build"
+    command:
+      - "./.cicd/build.sh"
+      - "tar -pczf build.tar.gz build && buildkite-agent artifact upload build.tar.gz"
+    env:
+      IMAGE_TAG: "fedora-27"
+      BUILDKITE_AGENT_ACCESS_TOKEN:
+    agents:
+      queue: "automation-eos-builder-fleet"
+    timeout: ${TIMEOUT:-10}
+    skip: $SKIP_FEDORA_27
+
   - label: ":darwin: macOS 10.14 - Build"
     command:
       - "git clone $BUILDKITE_REPO eos && cd eos && git checkout $BUILDKITE_COMMIT && git submodule update --init --recursive"
@@ -138,6 +150,18 @@ steps:
       queue: "automation-eos-builder-fleet"
     timeout: ${TIMEOUT:-10}
     skip: ${SKIP_UBUNTU_18}${SKIP_UNIT_TESTS}
+
+  - label: ":fedora: Fedora 27 - Unit Tests"
+    command:
+      - "buildkite-agent artifact download build.tar.gz . --step ':fedora: Fedora 27 - Build' && tar -xzf build.tar.gz"
+      - "./.cicd/parallel-tests.sh"
+    env:
+      IMAGE_TAG: "ubuntu-18.04"
+      BUILDKITE_AGENT_ACCESS_TOKEN:
+    agents:
+      queue: "automation-eos-builder-fleet"
+    timeout: ${TIMEOUT:-10}
+    skip: ${SKIP_FEDORA_27}${SKIP_UNIT_TESTS}
 
   - label: ":darwin: macOS 10.14 - Unit Tests"
     command:
@@ -231,6 +255,18 @@ steps:
       queue: "automation-eos-builder-fleet"
     timeout: ${TIMEOUT:-10}
     skip: ${SKIP_UBUNTU_18}${SKIP_LONG_RUNNING_TESTS:-true}
+
+  - label: ":fedora: Fedora 27 - Long-Running Tests"
+    command:
+      - "buildkite-agent artifact download build.tar.gz . --step ':fedora: Fedora 27 - Build' && tar -xzf build.tar.gz"
+      - "./.cicd/long-running-tests.sh"
+    env:
+      IMAGE_TAG: "fedora-27"
+      BUILDKITE_AGENT_ACCESS_TOKEN:
+    agents:
+      queue: "automation-eos-builder-fleet"
+    timeout: ${TIMEOUT:-10}
+    skip: ${SKIP_FEDORA_27}${SKIP_LONG_RUNNING_TESTS:-true}
 
   - label: ":darwin: macOS 10.14 - Long-Running Tests"
     command:
