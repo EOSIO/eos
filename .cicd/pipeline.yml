@@ -51,7 +51,7 @@ steps:
 
 #   - label: ":darwin: macOS 10.14 - Build"
 #     command:
-#        "brew install git graphviz libtool gmp llvm@4 pkgconfig python python@2 doxygen libusb openssl boost@1.70 cmake mongodb ccache"
+#       - "brew install git graphviz libtool gmp llvm@4 pkgconfig python python@2 doxygen libusb openssl boost@1.70 cmake mongodb ccache"
 #       - "git clone $BUILDKITE_REPO eos && cd eos && git checkout $BUILDKITE_COMMIT && git submodule update --init --recursive"
 #       - "cd eos && ./.cicd/build.sh"
 #       - "cd eos && tar -pczf build.tar.gz build && buildkite-agent artifact upload build.tar.gz"
@@ -110,7 +110,7 @@ steps:
 
   - label: ":darwin: macOS 10.14 - Build Unpinned"
     command:
-       "brew install git graphviz libtool gmp llvm@4 pkgconfig python python@2 doxygen libusb openssl boost@1.70 cmake mongodb ccache"
+      - "brew install git graphviz libtool gmp llvm@4 pkgconfig python python@2 doxygen libusb openssl boost@1.70 cmake mongodb ccache"
       - "git clone $BUILDKITE_REPO eos && cd eos && git checkout $BUILDKITE_COMMIT && git submodule update --init --recursive"
       - "cd eos && ./.cicd/build.sh"
       - "cd eos && tar -pczf build.tar.gz build && buildkite-agent artifact upload build.tar.gz"
