@@ -10,6 +10,7 @@ class Colors:
     UNDERLINE = '\033[4m'
     RED = '\033[31m'
     GREEN = '\033[32m'
+    YELLOW = '\033[33m'
     BLUE = '\033[34m'
 
 def print_in_red(printable):
@@ -57,7 +58,7 @@ def print_response(response: requests.Response, timeout=1, verbosity=1) -> None:
     if response.ok:
         print_in_green(response)
         if verbosity == 2:
-            print_json(response.text)
+            print_json(response.text, maxlen=0)
         if verbosity == 1:
             print("Press [Enter] to view more ...", end='\r')
             if select.select([sys.stdin], [], [], timeout)[0]:
@@ -67,14 +68,20 @@ def print_response(response: requests.Response, timeout=1, verbosity=1) -> None:
         print_in_red(response)
         print_json(response.text)
 
-def str_in_red(string: str):
+def red_str(string: str):
     return Colors.RED + string + Colors.RESET
 
-def str_in_green(string: str):
+def green_str(string: str):
     return Colors.GREEN + string + Colors.RESET
 
-def str_in_blue(string: str):
+def yellow_str(string: str):
+    return Colors.YELLOW + string + Colors.RESET
+
+def blue_str(string: str):
     return Colors.BLUE + string + Colors.RESET
+
+def underlined_str(string: str):
+    return Colors.UNDERLINE + string + Colors.RESET
 
 def pad(s:str, left=10, total=None, char='-', sep=' ')-> str:
     if total is None:
