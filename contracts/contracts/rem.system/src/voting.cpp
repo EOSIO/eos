@@ -33,7 +33,6 @@ namespace eosiosystem {
 
       // TODO implement as constexpr string
       static const auto stake_err = "user should stake at least "s + asset(producer_stake_threshold, core_symbol()).to_string() + " to become a producer"s;
-      check( does_satisfy_stake_requirement( producer ), stake_err );
 
       auto prod = _producers.find( producer.value );
       const auto ct = current_time_point();
@@ -41,6 +40,7 @@ namespace eosiosystem {
       user_resources_table totals_tbl( _self, producer.value );
       const auto& tot = totals_tbl.get(producer.value, "producer must have resources");
       const auto &voter = _voters.get(producer.value, "user has no resources");
+      check( voter.staked >= producer_stake_threshold, stake_err );
 
       if ( prod != _producers.end() ) {
          if (!prod->active()) {
@@ -109,9 +109,8 @@ namespace eosiosystem {
       _producers.modify( prod, same_payer, [&]( producer_info& info ){
          info.deactivate();
       });
+
       _voters.modify(voter, producer, [&](auto &v) {
-          printf("%lld\n", current_time_point());
-          printf("%lld",v.stake_lock_time );
          v.stake_lock_time = current_time_point() + _gstate.stake_unlock_period;
       });
    }

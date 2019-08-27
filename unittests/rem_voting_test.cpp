@@ -187,10 +187,6 @@ public:
        return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "voter_info", data, abi_serializer_max_time );
     }
 
-    fc::variant get_total_stake( const account_name& act ) {
-        vector<char> data = get_row_by_account( config::system_account_name, act, N(userres), act );
-        return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "user_resources", data, abi_serializer_max_time );
-    }
  
     // Vote for producers
     void votepro( account_name voter, vector<account_name> producers ) {
@@ -214,8 +210,8 @@ public:
        return r;
    }
 
-    uint64_t microseconds_since_epoch_of_iso_string( const fc::variant& v ) {
-        return static_cast<uint64_t>( time_point::from_iso_string( v.as_string() ).time_since_epoch().count() );
+    fc::microseconds microseconds_since_epoch_of_iso_string( const fc::variant& v ) {
+        return static_cast<fc::microseconds>( time_point::from_iso_string( v.as_string() ).time_since_epoch().count() );
     }
 
     abi_serializer abi_ser;
@@ -612,7 +608,7 @@ BOOST_FIXTURE_TEST_CASE( resignation_test, voting_tester ) {
 
       // Day 180 so stake is unlocked
       {
-         produce_min_num_of_blocks_to_spend_time_wo_inactive_prod(fc::seconds(180 * 24 * 3600)); // +150 days
+         produce_min_num_of_blocks_to_spend_time_wo_inactive_prod(fc::seconds(180 * 24 * 3600)); // +180 days
 
          const auto prod = get_producer_info( "proda" );
          BOOST_TEST( 0 < prod["unpaid_blocks"].as_int64() );
@@ -646,19 +642,18 @@ BOOST_FIXTURE_TEST_CASE( resignation_test, voting_tester ) {
 BOOST_FIXTURE_TEST_CASE( stake_lock_period_test, voting_tester ) {
    try {
 
-      auto voter = get_voter_info( "proda" );
-      const auto first_test_amount = asset(2'000'000'000);
-      const auto second_test_amount = asset(1'000'000'000);
       const auto producers = { N(b1), N(proda), N(whale1), N(whale2), N(whale3) };
       for( const auto& producer : producers ) {
          register_producer(producer);
       }
 
       //Stake lock time before change of stake_lock_period should be over 180 days after registration
-      const auto initial_time = 1577836806000000;
-      const auto initial_lock_period = 15552000000000; // amount of microseconds equal to 180 days
+      const auto initial_time = fc::microseconds(1577836818500000);
+      const auto initial_lock_period = fc::days(180);
 
-      BOOST_CHECK(initial_time + initial_lock_period == microseconds_since_epoch_of_iso_string(voter["stake_lock_time"]));
+      auto voter = get_voter_info( "proda" );
+
+      BOOST_CHECK( initial_time + initial_lock_period == microseconds_since_epoch_of_iso_string(voter["stake_lock_time"]));
 
       for( const auto& producer : producers ) {
          votepro( producer, { N(proda) } );
@@ -667,52 +662,33 @@ BOOST_FIXTURE_TEST_CASE( stake_lock_period_test, voting_tester ) {
       // Should throw because producer stake is locked for 180 days
       BOOST_REQUIRE_THROW( unregister_producer( N(proda) ), eosio_assert_message_exception );
       voter = get_voter_info( "proda" );
+
+      const auto first_test_amount = asset(2'000'000'000);
       delegate_bandwidth(N(rem.stake), N(proda), first_test_amount );
 
       set_lock_period(90);
 
       {
-         auto tot_stake = get_total_stake(N(proda));
-         auto restake_rate = double(first_test_amount.get_amount()) / tot_stake["own_stake_amount"].as_uint64();
-         auto prev_rate = 1 - restake_rate;
-         auto current_time = 1577836823000000;
-         auto current_stake_lock_time = microseconds_since_epoch_of_iso_string(voter["stake_lock_time"]);
-         auto time_to_unlock = std::max(fc::microseconds(current_stake_lock_time) - fc::microseconds(current_time), microseconds{});
-         auto new_stake_lock_time = current_time + fc::microseconds(static_cast<int64_t>(prev_rate * (time_to_unlock.count()))).count() +
-                    fc::microseconds(static_cast<int64_t>((restake_rate * initial_lock_period))).count();
-         auto new_stake_lock_time_microseconds = microseconds_since_epoch_of_iso_string(fc::variant(fc::time_point(fc::microseconds(new_stake_lock_time))));
+
+         auto new_stake_lock_time_microseconds = fc::microseconds(1593388819785000);
+
          voter = get_voter_info("proda");
 
-         BOOST_REQUIRE_EQUAL(new_stake_lock_time_microseconds, microseconds_since_epoch_of_iso_string(voter["stake_lock_time"]));
+         BOOST_CHECK(new_stake_lock_time_microseconds == microseconds_since_epoch_of_iso_string(voter["stake_lock_time"]));
       }
 
       produce_min_num_of_blocks_to_spend_time_wo_inactive_prod(fc::seconds(90 * 24 * 3600));
 
-      voter = get_voter_info( "proda" );
+      const auto second_test_amount = asset(1'000'000'000);
       delegate_bandwidth(N(rem.stake), N(proda), second_test_amount);
 
        {
-          auto tot_stake = get_total_stake(N(proda));
-          auto restake_rate = double(second_test_amount.get_amount()) / tot_stake["own_stake_amount"].as_uint64();
-          auto prev_rate = 1 - restake_rate;
-          auto current_time = 1585620588000000;
-          auto half_lock_period = 7776000000000;
 
-          //Because of converting types there are losses of last 3 digits
-          //If equal failed than restaiking time calculated wrong
-          auto derived_stake_lock = 1593388819785000;
-          BOOST_REQUIRE_EQUAL(derived_stake_lock, microseconds_since_epoch_of_iso_string(voter["stake_lock_time"]));
+          auto new_stake_lock_time_microseconds = fc::microseconds(1593389790812000);
 
-          //Time without loss of 3 last digits
-          auto current_time_lock = 1593388819785714;
-
-          auto time_to_unlock = std::max(fc::microseconds(current_time_lock) - fc::microseconds(current_time), microseconds{});
-          auto new_stake_lock_time = current_time + fc::microseconds(static_cast<int64_t>(prev_rate * (time_to_unlock.count()))).count() +
-                     fc::microseconds(static_cast<int64_t>((restake_rate * (half_lock_period)))).count();
-          auto new_stake_lock_time_microseconds = microseconds_since_epoch_of_iso_string(fc::variant(fc::time_point(fc::microseconds(new_stake_lock_time))));
           voter = get_voter_info("proda");
 
-          BOOST_REQUIRE_EQUAL(new_stake_lock_time_microseconds, microseconds_since_epoch_of_iso_string(voter["stake_lock_time"]));
+          BOOST_CHECK(new_stake_lock_time_microseconds == microseconds_since_epoch_of_iso_string(voter["stake_lock_time"]));
        }
 
        produce_min_num_of_blocks_to_spend_time_wo_inactive_prod(fc::seconds(90 * 24 * 3600));
@@ -720,14 +696,14 @@ BOOST_FIXTURE_TEST_CASE( stake_lock_period_test, voting_tester ) {
        BOOST_REQUIRE(unregister_producer( N(proda) ));
 
        voter = get_voter_info( "proda" );
-       const auto time_after_six_month = 1593404352500000;
+       const auto time_after_six_month = fc::microseconds(1593404352500000);
 
        BOOST_CHECK(time_after_six_month + initial_lock_period == microseconds_since_epoch_of_iso_string(voter["stake_lock_time"]));
 
    } FC_LOG_AND_RETHROW()
 }
 
-BOOST_FIXTURE_TEST_CASE( stake_lock_unlock_period_test, voting_tester ) {
+BOOST_FIXTURE_TEST_CASE( regprod_during_unlock_period_test, voting_tester ) {
    try {
 
       auto voter = get_voter_info( "proda" );
@@ -738,11 +714,12 @@ BOOST_FIXTURE_TEST_CASE( stake_lock_unlock_period_test, voting_tester ) {
       for( const auto& producer : producers ) {
          votepro( producer, { N(proda) } );
       }
-      //Check if stake_locke_time have initial date after producer registration
-       BOOST_CHECK( 0 != microseconds_since_epoch_of_iso_string(voter["stake_lock_time"]));
 
-       //Skip 150 days to call unregistration
-       produce_min_num_of_blocks_to_spend_time_wo_inactive_prod(fc::seconds(180 * 24 * 3600)); // +150 days
+       //Check if stake_locke_time have initial date after producer registration
+       BOOST_CHECK( fc::microseconds(0) != microseconds_since_epoch_of_iso_string(voter["stake_lock_time"]));
+
+       //Skip 180 days to call unregistration
+       produce_min_num_of_blocks_to_spend_time_wo_inactive_prod(fc::seconds(180 * 24 * 3600)); // +180 days
 
        //Making producer inactive
        unregister_producer( N(proda) );
@@ -752,11 +729,14 @@ BOOST_FIXTURE_TEST_CASE( stake_lock_unlock_period_test, voting_tester ) {
 
        voter = get_voter_info( "proda" );
 
-       //Time point after 150 days that should be
-       const auto current_time = 1593404351500000;
+       //Time point after 180 days that should be
+       const auto current_time = fc::microseconds(1593404351500000);
 
        //Check if stake_lock_period is 0 after registration
-       BOOST_REQUIRE_EQUAL(current_time, microseconds_since_epoch_of_iso_string(voter["stake_lock_time"]));
+       BOOST_CHECK( current_time == microseconds_since_epoch_of_iso_string(voter["stake_lock_time"]));
+
+       // Stake proda = 500'000'0000 - 1000 = 4999999000
+       BOOST_CHECK(voter["locked_stake"].as<int64_t>() == 4999999000 );
 
    } FC_LOG_AND_RETHROW()
 }
