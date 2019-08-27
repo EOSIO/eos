@@ -1,11 +1,13 @@
----
+<!---
+
 title: "get info"
 excerpt: "Gets current blockchain information."
----
+-->
+
 ## Position Parameters
 This command does not accept any parameters. 
 ## Options
-This command has no options
+- `-h` - --help                   Print this help message and exit
 ## Example
 
 
