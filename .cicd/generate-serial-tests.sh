@@ -18,7 +18,6 @@ for DOCKERFILE in $(ls $CICD_DIR/docker); do
     [[ $DOCKERFILE_NAME =~ 'amazon' ]] && ICON=':aws:'
     [[ $DOCKERFILE_NAME =~ 'ubuntu' ]] && ICON=':ubuntu:'
     [[ $DOCKERFILE_NAME =~ 'centos' ]] && ICON=':centos:'
-    continue
     for TEST_NAME in $SERIAL_TESTS; do
 cat <<EOF
 - label: "$ICON $PLATFORM_NAME_FULL - $TEST_NAME"
