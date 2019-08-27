@@ -120,7 +120,7 @@ fc::microseconds transaction::get_signature_keys( const vector<signature_type>& 
       if( it == recovery_cache.get<by_sig>().end() || it->trx_id != tid ) {
          lock.unlock();
          recov = public_key_type( sig, digest );
-         fc::microseconds cpu_usage = fc::time_point::now() - start;
+         fc::microseconds cpu_usage = fc::time_point::now() - start - sig_cpu_usage;
          lock.lock();
          recovery_cache.emplace_back( cached_pub_key{tid, recov, sig, cpu_usage} ); //could fail on dup signatures; not a problem
          sig_cpu_usage += cpu_usage;
