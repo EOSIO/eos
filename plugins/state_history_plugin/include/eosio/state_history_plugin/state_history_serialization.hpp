@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
 #pragma once
 
 #include <eosio/chain/account_object.hpp>
@@ -269,18 +265,27 @@ datastream<ST>& operator<<(
 }
 
 template <typename ST>
-datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosio::chain::producer_key>& obj) {
+datastream<ST>& operator<<(datastream<ST>& ds,
+                           const history_serial_wrapper<eosio::chain::shared_block_signing_authority_v0>& obj) {
+   fc::raw::pack(ds, as_type<uint32_t>(obj.obj.threshold));
+   history_serialize_container(ds, obj.db,
+                               as_type<eosio::chain::shared_vector<eosio::chain::shared_key_weight>>(obj.obj.keys));
+
+}
+
+template <typename ST>
+datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosio::chain::shared_producer_authority>& obj) {
    fc::raw::pack(ds, as_type<uint64_t>(obj.obj.producer_name.to_uint64_t()));
-   fc::raw::pack(ds, as_type<eosio::chain::public_key_type>(obj.obj.block_signing_key));
+   fc::raw::pack(ds, as_type<eosio::chain::shared_block_signing_authority>(obj.obj.authority));
    return ds;
 }
 
 template <typename ST>
 datastream<ST>& operator<<(datastream<ST>&                                                            ds,
-                           const history_serial_wrapper<eosio::chain::shared_producer_schedule_type>& obj) {
+                           const history_serial_wrapper<eosio::chain::shared_producer_authority_schedule>& obj) {
    fc::raw::pack(ds, as_type<uint32_t>(obj.obj.version));
    history_serialize_container(ds, obj.db,
-                               as_type<eosio::chain::shared_vector<eosio::chain::producer_key>>(obj.obj.producers));
+                               as_type<eosio::chain::shared_vector<eosio::chain::shared_producer_authority>>(obj.obj.producers));
    return ds;
 }
 
@@ -310,10 +315,10 @@ datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosi
 template <typename ST>
 datastream<ST>& operator<<(datastream<ST>&                                                     ds,
                            const history_serial_wrapper<eosio::chain::global_property_object>& obj) {
-   fc::raw::pack(ds, fc::unsigned_int(0));
+   fc::raw::pack(ds, fc::unsigned_int(1));
    fc::raw::pack(ds, as_type<optional<eosio::chain::block_num_type>>(obj.obj.proposed_schedule_block_num));
    fc::raw::pack(ds, make_history_serial_wrapper(
-                         obj.db, as_type<eosio::chain::shared_producer_schedule_type>(obj.obj.proposed_schedule)));
+                         obj.db, as_type<eosio::chain::shared_producer_authority_schedule>(obj.obj.proposed_schedule)));
    fc::raw::pack(ds, make_history_serial_wrapper(obj.db, as_type<eosio::chain::chain_config>(obj.obj.configuration)));
 
    return ds;

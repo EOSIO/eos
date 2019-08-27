@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE.txt
- */
 #include <eosio/chain/abi_serializer.hpp>
 #include <eosio/testing/tester.hpp>
 
@@ -301,16 +297,16 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         produce_blocks_for_n_rounds(2); // 2 rounds since new producer schedule is set when the first block of next round is irreversible
         active_schedule = control->head_block_state()->active_schedule;
         BOOST_REQUIRE(active_schedule.producers.size() == 21);
-        BOOST_TEST(active_schedule.producers.at(0).producer_name == name("proda"));
-        BOOST_TEST(active_schedule.producers.at(1).producer_name == name("prodb"));
-        BOOST_TEST(active_schedule.producers.at(2).producer_name == name("prodc"));
-        BOOST_TEST(active_schedule.producers.at(3).producer_name == name("prodd"));
-        BOOST_TEST(active_schedule.producers.at(4).producer_name == name("prode"));
-        BOOST_TEST(active_schedule.producers.at(5).producer_name == name("prodf"));
-        BOOST_TEST(active_schedule.producers.at(6).producer_name == name("prodg"));
-        BOOST_TEST(active_schedule.producers.at(7).producer_name == name("prodh"));
-        BOOST_TEST(active_schedule.producers.at(8).producer_name == name("prodi"));
-        BOOST_TEST(active_schedule.producers.at(9).producer_name == name("prodj"));
+        BOOST_TEST(active_schedule.producers.at( 0).producer_name == name("proda"));
+        BOOST_TEST(active_schedule.producers.at( 1).producer_name == name("prodb"));
+        BOOST_TEST(active_schedule.producers.at( 2).producer_name == name("prodc"));
+        BOOST_TEST(active_schedule.producers.at( 3).producer_name == name("prodd"));
+        BOOST_TEST(active_schedule.producers.at( 4).producer_name == name("prode"));
+        BOOST_TEST(active_schedule.producers.at( 5).producer_name == name("prodf"));
+        BOOST_TEST(active_schedule.producers.at( 6).producer_name == name("prodg"));
+        BOOST_TEST(active_schedule.producers.at( 7).producer_name == name("prodh"));
+        BOOST_TEST(active_schedule.producers.at( 8).producer_name == name("prodi"));
+        BOOST_TEST(active_schedule.producers.at( 9).producer_name == name("prodj"));
         BOOST_TEST(active_schedule.producers.at(10).producer_name == name("prodk"));
         BOOST_TEST(active_schedule.producers.at(11).producer_name == name("prodl"));
         BOOST_TEST(active_schedule.producers.at(12).producer_name == name("prodm"));

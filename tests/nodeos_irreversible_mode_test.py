@@ -15,12 +15,11 @@ import signal
 import subprocess
 import shutil
 
-
 ###############################################################
 # nodeos_irreversible_mode_test
-# --dump-error-details <Upon error print etc/eosio/node_*/config.ini and var/lib/node_*/stderr.log to stdout>
-# --keep-logs <Don't delete var/lib/node_* folders upon test completion>
-# -v --leave-running --clean-run
+#
+# Many smaller tests centered around irreversible mode
+#
 ###############################################################
 
 Print = Utils.Print

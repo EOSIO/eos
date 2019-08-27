@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
 #include <eosiolib/action.hpp>
 #include <eosiolib/crypto.h>
 #include <eosiolib/transaction.hpp>

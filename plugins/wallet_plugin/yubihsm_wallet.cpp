@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
 #include <appbase/application.hpp>
 
 #include <eosio/wallet_plugin/yubihsm_wallet.hpp>

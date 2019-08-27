@@ -1,9 +1,6 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
 #include <sstream>
 
+#include <eosio/chain/global_property_object.hpp>
 #include <eosio/chain/snapshot.hpp>
 #include <eosio/testing/tester.hpp>
 
@@ -11,6 +8,7 @@
 #include <boost/test/unit_test.hpp>
 
 #include <contracts.hpp>
+#include <snapshots.hpp>
 
 using namespace eosio;
 using namespace testing;
@@ -102,6 +100,10 @@ struct variant_snapshot_suite {
       return std::make_shared<reader>(buffer);
    }
 
+   template<typename Snapshot>
+   static snapshot_t load_from_file() {
+      return Snapshot::json();
+   }
 };
 
 struct buffered_snapshot_suite {
@@ -145,6 +147,10 @@ struct buffered_snapshot_suite {
       return std::make_shared<reader>(std::make_shared<read_storage_t>(buffer));
    }
 
+   template<typename Snapshot>
+   static snapshot_t load_from_file() {
+      return Snapshot::bin();
+   }
 };
 
 BOOST_AUTO_TEST_SUITE(snapshot_tests)
@@ -250,6 +256,199 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_replay_over_snapshot, SNAPSHOT_SUITE, snapsho
    // replay the block log from the snapshot child, from the snapshot
    snapshotted_tester replay_chain(chain.get_config(), SNAPSHOT_SUITE::get_reader(snapshot), 2, 1);
    BOOST_REQUIRE_EQUAL(expected_post_integrity_hash.str(), snap_chain.control->calculate_integrity_hash().str());
+}
+
+namespace {
+   void variant_diff_helper(const fc::variant& lhs, const fc::variant& rhs, std::function<void(const std::string&, const fc::variant&, const fc::variant&)>&& out){
+      if (lhs.get_type() != rhs.get_type()) {
+         out("", lhs, rhs);
+      } else if (lhs.is_object() ) {
+         const auto& l_obj = lhs.get_object();
+         const auto& r_obj = rhs.get_object();
+         static const std::string sep = ".";
+
+         // test keys from LHS
+         std::set<std::string_view> keys;
+         for (const auto& entry: l_obj) {
+            const auto& l_val = entry.value();
+            const auto& r_iter = r_obj.find(entry.key());
+            if (r_iter == r_obj.end()) {
+               out(sep + entry.key(), l_val, fc::variant());
+            } else {
+               const auto& r_val = r_iter->value();
+               variant_diff_helper(l_val, r_val, [&out, &entry](const std::string& path, const fc::variant& lhs, const fc::variant& rhs){
+                  out(sep + entry.key() + path, lhs, rhs);
+               });
+            }
+
+            keys.insert(entry.key());
+         }
+
+         // print keys in RHS that were not tested
+         for (const auto& entry: r_obj) {
+            if (keys.find(entry.key()) != keys.end()) {
+               continue;
+            }
+            const auto& r_val = entry.value();
+            out(sep + entry.key(), fc::variant(), r_val);
+         }
+      } else if (lhs.is_array()) {
+         const auto& l_arr = lhs.get_array();
+         const auto& r_arr = rhs.get_array();
+
+         // diff common
+         auto common_count = std::min(l_arr.size(), r_arr.size());
+         for (size_t idx = 0; idx < common_count; idx++) {
+            const auto& l_val = l_arr.at(idx);
+            const auto& r_val = r_arr.at(idx);
+            variant_diff_helper(l_val, r_val, [&](const std::string& path, const fc::variant& lhs, const fc::variant& rhs){
+               out( std::string("[") + std::to_string(idx) + std::string("]") + path, lhs, rhs);
+            });
+         }
+
+         // print lhs additions
+         for (size_t idx = common_count; idx < lhs.size(); idx++) {
+            const auto& l_val = l_arr.at(idx);
+            out( std::string("[") + std::to_string(idx) + std::string("]"), l_val, fc::variant());
+         }
+
+         // print rhs additions
+         for (size_t idx = common_count; idx < rhs.size(); idx++) {
+            const auto& r_val = r_arr.at(idx);
+            out( std::string("[") + std::to_string(idx) + std::string("]"), fc::variant(), r_val);
+         }
+
+      } else if (!(lhs == rhs)) {
+         out("", lhs, rhs);
+      }
+   }
+
+   void print_variant_diff(const fc::variant& lhs, const fc::variant& rhs) {
+      variant_diff_helper(lhs, rhs, [](const std::string& path, const fc::variant& lhs, const fc::variant& rhs){
+         std::cout << path << std::endl;
+         if (!lhs.is_null()) {
+            std::cout << " < " << fc::json::to_pretty_string(lhs) << std::endl;
+         }
+
+         if (!rhs.is_null()) {
+            std::cout << " > " << fc::json::to_pretty_string(rhs) << std::endl;
+         }
+      });
+   }
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(test_compatible_versions, SNAPSHOT_SUITE, snapshot_suites)
+{
+   tester chain(setup_policy::preactivate_feature_and_new_bios);
+
+   ///< Begin deterministic code to generate blockchain for comparison
+   // TODO: create a utility that will write new bin/json gzipped files based on this
+   chain.create_account(N(snapshot));
+   chain.produce_blocks(1);
+   chain.set_code(N(snapshot), contracts::snapshot_test_wasm());
+   chain.set_abi(N(snapshot), contracts::snapshot_test_abi().data());
+   chain.produce_blocks(1);
+   chain.control->abort_block();
+   ///< End deterministic code to generate blockchain for comparison
+   auto base_integrity_value = chain.control->calculate_integrity_hash();
+
+   // create a latest snapshot
+   auto base_writer = SNAPSHOT_SUITE::get_writer();
+   chain.control->write_snapshot(base_writer);
+   auto base = SNAPSHOT_SUITE::finalize(base_writer);
+
+   {
+      static_assert(chain_snapshot_header::minimum_compatible_version <= 2, "version 2 unit test is no longer needed.  Please clean up data files");
+      auto v2 = SNAPSHOT_SUITE::template load_from_file<snapshots::snap_v2>();
+      snapshotted_tester v2_tester(chain.get_config(), SNAPSHOT_SUITE::get_reader(v2), 0);
+      auto v2_integrity_value = v2_tester.control->calculate_integrity_hash();
+      BOOST_CHECK_EQUAL(v2_integrity_value.str(), base_integrity_value.str());
+
+      // create a latest snapshot
+      auto latest_writer = SNAPSHOT_SUITE::get_writer();
+      v2_tester.control->write_snapshot(latest_writer);
+      auto latest = SNAPSHOT_SUITE::finalize(latest_writer);
+
+      if (std::is_same_v<SNAPSHOT_SUITE, variant_snapshot_suite> && v2_integrity_value.str() != base_integrity_value.str()) {
+         print_variant_diff(base, latest);
+      }
+
+      // load the latest snapshot
+      snapshotted_tester latest_tester(chain.get_config(), SNAPSHOT_SUITE::get_reader(latest), 1);
+      auto latest_integrity_value = latest_tester.control->calculate_integrity_hash();
+
+      BOOST_REQUIRE_EQUAL(v2_integrity_value.str(), latest_integrity_value.str());
+   }
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(test_pending_schedule_snapshot, SNAPSHOT_SUITE, snapshot_suites)
+{
+   tester chain(setup_policy::preactivate_feature_and_new_bios);
+   auto block = chain.produce_block();
+   BOOST_REQUIRE_EQUAL(block->block_num(), 3); // ensure that test setup stays consistent with original snapshot setup
+   chain.create_account(N(snapshot));
+   block = chain.produce_block();
+   BOOST_REQUIRE_EQUAL(block->block_num(), 4);
+
+   const auto& gpo = chain.control->get_global_properties();
+   BOOST_REQUIRE_EQUAL(gpo.proposed_schedule.version, 0);
+   BOOST_REQUIRE_EQUAL(gpo.proposed_schedule.producers.size(), 0);
+
+   auto res = chain.set_producers_legacy( {N(snapshot)} );
+   block = chain.produce_block();
+   BOOST_REQUIRE_EQUAL(block->block_num(), 5);
+   chain.control->abort_block();
+   ///< End deterministic code to generate blockchain for comparison
+   auto base_integrity_value = chain.control->calculate_integrity_hash();
+
+   BOOST_REQUIRE_EQUAL(gpo.proposed_schedule.version, 1);
+   BOOST_REQUIRE_EQUAL(gpo.proposed_schedule.producers.size(), 1);
+   BOOST_REQUIRE_EQUAL(gpo.proposed_schedule.producers[0].producer_name.to_string(), "snapshot");
+
+   static_assert(chain_snapshot_header::minimum_compatible_version <= 2, "version 2 unit test is no longer needed.  Please clean up data files");
+   auto v2 = SNAPSHOT_SUITE::template load_from_file<snapshots::snap_v2_prod_sched>();
+   snapshotted_tester v2_tester(chain.get_config(), SNAPSHOT_SUITE::get_reader(v2), 0);
+   auto v2_integrity_value = v2_tester.control->calculate_integrity_hash();
+   BOOST_REQUIRE_EQUAL(v2_integrity_value.str(), base_integrity_value.str());
+
+   // create a latest version snapshot from the loaded v2 snapthos
+   auto latest_from_v2_writer = SNAPSHOT_SUITE::get_writer();
+   v2_tester.control->write_snapshot(latest_from_v2_writer);
+   auto latest_from_v2 = SNAPSHOT_SUITE::finalize(latest_from_v2_writer);
+
+   // load the latest snapshot in a new tester and compare integrity
+   snapshotted_tester latest_from_v2_tester(chain.get_config(), SNAPSHOT_SUITE::get_reader(latest_from_v2), 1);
+   auto latest_from_v2_integrity_value = latest_from_v2_tester.control->calculate_integrity_hash();
+   BOOST_REQUIRE_EQUAL(v2_integrity_value.str(), latest_from_v2_integrity_value.str());
+
+
+   // take advantage of variant compare to possibly identify where snapshot disparities come from
+   if (std::is_same_v<SNAPSHOT_SUITE, variant_snapshot_suite> && latest_from_v2_integrity_value.str() != base_integrity_value.str()) {
+      // create a latest snapshot
+      auto latest_writer = SNAPSHOT_SUITE::get_writer();
+      chain.control->write_snapshot(latest_writer);
+      auto chain_latest = SNAPSHOT_SUITE::finalize(latest_writer);
+      print_variant_diff(chain_latest, latest_from_v2);
+   }
+
+   const auto& v2_gpo = v2_tester.control->get_global_properties();
+   BOOST_REQUIRE_EQUAL(v2_gpo.proposed_schedule.version, 1);
+   BOOST_REQUIRE_EQUAL(v2_gpo.proposed_schedule.producers.size(), 1);
+   BOOST_REQUIRE_EQUAL(v2_gpo.proposed_schedule.producers[0].producer_name.to_string(), "snapshot");
+
+   // produce block
+   auto new_block = chain.produce_block();
+   // undo the auto-pending from tester
+   chain.control->abort_block();
+
+   auto integrity_value = chain.control->calculate_integrity_hash();
+
+   // push that block to all sub testers and validate the integrity of the database after it.
+   v2_tester.push_block(new_block);
+   BOOST_REQUIRE_EQUAL(integrity_value.str(), v2_tester.control->calculate_integrity_hash().str());
+
+   latest_from_v2_tester.push_block(new_block);
+   BOOST_REQUIRE_EQUAL(integrity_value.str(), latest_from_v2_tester.control->calculate_integrity_hash().str());
 }
 
 BOOST_AUTO_TEST_SUITE_END()

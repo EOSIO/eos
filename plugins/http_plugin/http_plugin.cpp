@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
 #include <eosio/http_plugin/http_plugin.hpp>
 #ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
 #include <eosio/http_plugin/local_endpoint.hpp>

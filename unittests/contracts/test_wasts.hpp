@@ -179,6 +179,15 @@ static const char entry_wast_2[] = R"=====(
 )
 )=====";
 
+static const char entry_import_wast[] = R"=====(
+(module
+ (import "env" "abort" (func $abort))
+ (export "apply" (func $apply))
+ (start $abort)
+ (func $apply (param $0 i64) (param $1 i64) (param $2 i64))
+)
+)=====";
+
 static const char simple_no_memory_wast[] = R"=====(
 (module
  (import "env" "require_auth" (func $require_auth (param i64)))
@@ -427,6 +436,38 @@ static const char table_checker_small_wast[] = R"=====(
    )
  )
  (elem (i32.const 0) $apple)
+)
+)=====";
+
+static const char table_init_oob_wast[] = R"=====(
+(module
+ (type $mahsig (func (param i64) (param i64) (param i64)))
+ (table 1024 anyfunc)
+ (export "apply" (func $apply))
+ (func $apply (param $0 i64) (param $1 i64) (param $2 i64)
+ )
+ (elem (i32.const 1024) $apply)
+)
+)=====";
+
+static const char table_init_oob_smaller_wast[] = R"=====(
+(module
+ (type $mahsig (func (param i64) (param i64) (param i64)))
+ (table 620 anyfunc)
+ (export "apply" (func $apply))
+ (func $apply (param $0 i64) (param $1 i64) (param $2 i64)
+ )
+ (elem (i32.const 700) $apply)
+)
+)=====";
+
+static const char table_init_oob_no_table_wast[] = R"=====(
+(module
+ (type $mahsig (func (param i64) (param i64) (param i64)))
+ (export "apply" (func $apply))
+ (func $apply (param $0 i64) (param $1 i64) (param $2 i64)
+ )
+ (elem (i32.const 0) $apply)
 )
 )=====";
 

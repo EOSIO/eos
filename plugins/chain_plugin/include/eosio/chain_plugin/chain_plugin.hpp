@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
 #pragma once
 #include <appbase/application.hpp>
 #include <eosio/chain/asset.hpp>
@@ -688,8 +684,7 @@ public:
    chain_apis::read_write get_read_write_api() { return chain_apis::read_write(chain(), get_abi_serializer_max_time()); }
 
    void accept_block( const chain::signed_block_ptr& block );
-   void accept_transaction(const chain::packed_transaction& trx, chain::plugin_interface::next_function<chain::transaction_trace_ptr> next);
-   void accept_transaction(const chain::transaction_metadata_ptr& trx, chain::plugin_interface::next_function<chain::transaction_trace_ptr> next);
+   void accept_transaction(const chain::packed_transaction_ptr& trx, chain::plugin_interface::next_function<chain::transaction_trace_ptr> next);
 
    bool block_is_on_preferred_chain(const chain::block_id_type& block_id);
 
@@ -716,11 +711,13 @@ public:
    chain::chain_id_type get_chain_id() const;
    fc::microseconds get_abi_serializer_max_time() const;
 
-   void handle_guard_exception(const chain::guard_exception& e) const;
+   static void handle_guard_exception(const chain::guard_exception& e);
+   void do_hard_replay(const variables_map& options);
 
    static void handle_db_exhaustion();
+   static void handle_bad_alloc();
 private:
-   void log_guard_exception(const chain::guard_exception& e) const;
+   static void log_guard_exception(const chain::guard_exception& e);
 
    unique_ptr<class chain_plugin_impl> my;
 };

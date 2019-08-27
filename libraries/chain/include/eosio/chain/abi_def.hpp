@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
 #pragma once
 
 #include <eosio/chain/types.hpp>
@@ -128,6 +124,8 @@ struct abi_def {
 
 abi_def eosio_contract_abi(const abi_def& eosio_system_abi);
 vector<type_def> common_type_defs();
+
+extern unsigned char eosio_abi_bin[2132];
 
 } } /// namespace eosio::chain
 

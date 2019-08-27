@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
 #include <eosio/test_control_plugin/test_control_plugin.hpp>
 #include <fc/optional.hpp>
 #include <atomic>
@@ -64,7 +60,8 @@ void test_control_plugin_impl::accepted_block(const chain::block_state_ptr& bsp)
 
 void test_control_plugin_impl::process_next_block_state(const chain::block_state_ptr& bsp) {
    const auto block_time = _chain.head_block_time() + fc::microseconds(chain::config::block_interval_us);
-   const auto producer_name = bsp->get_scheduled_producer(block_time).producer_name;
+   const auto& producer_authority = bsp->get_scheduled_producer(block_time);
+   const auto producer_name = producer_authority.producer_name;
    if (_producer != account_name())
       ilog("producer ${cprod}, looking for ${lprod}", ("cprod", producer_name.to_string())("lprod", _producer.to_string()));
 

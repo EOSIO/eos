@@ -4,10 +4,15 @@
 #include <eosio/chain/wast_to_wasm.hpp>
 #include <eosio/chain/eosio_contract.hpp>
 #include <eosio/chain/generated_transaction_object.hpp>
+#include <boost/iostreams/filtering_stream.hpp>
+#include <boost/iostreams/copy.hpp>
+#include <boost/iostreams/filter/gzip.hpp>
 
 #include <fstream>
 
 #include <contracts.hpp>
+
+namespace bio = boost::iostreams;
 
 eosio::chain::asset core_from_string(const std::string& s) {
   return eosio::chain::asset::from_string(s + " " CORE_SYMBOL_NAME);
@@ -56,6 +61,28 @@ namespace eosio { namespace testing {
       abi[abi.size()-1] = '\0';
       abi_file.close();
       return abi;
+   }
+
+   namespace {
+      std::string read_gzipped_snapshot( const char* fn ) {
+         std::ifstream file(fn, std::ios_base::in | std::ios_base::binary);
+         bio::filtering_streambuf<bio::input> in;
+
+         in.push(bio::gzip_decompressor());
+         in.push(file);
+
+         std::stringstream decompressed;
+         bio::copy(in, decompressed);
+         return decompressed.str();
+      }
+   }
+
+   std::string read_binary_snapshot( const char* fn ) {
+      return read_gzipped_snapshot(fn);
+   }
+
+   fc::variant read_json_snapshot( const char* fn ) {
+      return fc::json::from_string( read_gzipped_snapshot(fn) );
    }
 
    const fc::microseconds base_tester::abi_serializer_max_time{1000*1000}; // 1s for slow test machines
@@ -178,15 +205,16 @@ namespace eosio { namespace testing {
          case setup_policy::preactivate_feature_and_new_bios: {
             schedule_preactivate_protocol_feature();
             produce_block();
-            set_bios_contract();
+            set_before_producer_authority_bios_contract();
             break;
          }
          case setup_policy::full: {
             schedule_preactivate_protocol_feature();
             produce_block();
-            set_bios_contract();
+            set_before_producer_authority_bios_contract();
             preactivate_all_builtin_protocol_features();
             produce_block();
+            set_bios_contract();
             break;
          }
          case setup_policy::none:
@@ -224,10 +252,11 @@ namespace eosio { namespace testing {
    }
 
    void base_tester::push_block(signed_block_ptr b) {
-      auto bs = control->create_block_state_future(b);
-      vector<transaction_metadata_ptr> aborted_trxs = control->abort_block();
-      unapplied_transactions.add_forked( control->push_block( bs ) );
-      unapplied_transactions.add_aborted( std::move( aborted_trxs ) );
+      auto bsf = control->create_block_state_future(b);
+      unapplied_transactions.add_aborted( control->abort_block() );
+      control->push_block( bsf, [this]( const branch_type& forked_branch ) {
+         unapplied_transactions.add_forked( forked_branch );
+      } );
 
       auto itr = last_produced_block.find(b->producer);
       if (itr == last_produced_block.end() || block_header::num_from_id(b->id()) > block_header::num_from_id(itr->second)) {
@@ -307,18 +336,25 @@ namespace eosio { namespace testing {
       FC_ASSERT( control->is_building_block(), "must first start a block before it can be finished" );
 
       auto producer = control->head_block_state()->get_scheduled_producer( control->pending_block_time() );
-      private_key_type priv_key;
-      // Check if signing private key exist in the list
-      auto private_key_itr = block_signing_private_keys.find( producer.block_signing_key );
-      if( private_key_itr == block_signing_private_keys.end() ) {
-         // If it's not found, default to active k1 key
-         priv_key = get_private_key( producer.producer_name, "active" );
-      } else {
-         priv_key = private_key_itr->second;
-      }
+      vector<private_key_type> signing_keys;
+
+      auto default_active_key = get_public_key( producer.producer_name, "active");
+      producer.for_each_key([&](const public_key_type& key){
+         const auto& iter = block_signing_private_keys.find(key);
+         if(iter != block_signing_private_keys.end()) {
+            signing_keys.push_back(iter->second);
+         } else if (key == default_active_key) {
+            signing_keys.emplace_back( get_private_key( producer.producer_name, "active") );
+         }
+      });
 
       control->finalize_block( [&]( digest_type d ) {
-                    return priv_key.sign(d);
+         std::vector<signature_type> result;
+         result.reserve(signing_keys.size());
+         for (const auto& k: signing_keys)
+             result.emplace_back(k.sign(d));
+
+         return result;
       } );
 
       control->commit_block();
@@ -446,12 +482,12 @@ namespace eosio { namespace testing {
       if( !control->is_building_block() )
          _start_block(control->head_block_time() + fc::microseconds(config::block_interval_us));
 
-      auto mtrx = std::make_shared<transaction_metadata>( std::make_shared<packed_transaction>(trx) );
+      auto ptrx = std::make_shared<packed_transaction>(trx);
       auto time_limit = deadline == fc::time_point::maximum() ?
             fc::microseconds::maximum() :
             fc::microseconds( deadline - fc::time_point::now() );
-      transaction_metadata::start_recover_keys( mtrx, control->get_thread_pool(), control->get_chain_id(), time_limit );
-      auto r = control->push_transaction( mtrx, deadline, billed_cpu_time_us );
+      auto fut = transaction_metadata::start_recover_keys( ptrx, control->get_thread_pool(), control->get_chain_id(), time_limit );
+      auto r = control->push_transaction( fut.get(), deadline, billed_cpu_time_us );
       if( r->except_ptr ) std::rethrow_exception( r->except_ptr );
       if( r->except ) throw *r->except;
       return r;
@@ -474,9 +510,9 @@ namespace eosio { namespace testing {
       auto time_limit = deadline == fc::time_point::maximum() ?
             fc::microseconds::maximum() :
             fc::microseconds( deadline - fc::time_point::now() );
-      auto mtrx = std::make_shared<transaction_metadata>(trx, UINT32_MAX, c);
-      transaction_metadata::start_recover_keys( mtrx, control->get_thread_pool(), control->get_chain_id(), time_limit );
-      auto r = control->push_transaction( mtrx, deadline, billed_cpu_time_us );
+      auto ptrx = std::make_shared<packed_transaction>( trx, c );
+      auto fut = transaction_metadata::start_recover_keys( ptrx, control->get_thread_pool(), control->get_chain_id(), time_limit );
+      auto r = control->push_transaction( fut.get(), deadline, billed_cpu_time_us );
       if (no_throw) return r;
       if( r->except_ptr ) std::rethrow_exception( r->except_ptr );
       if( r->except)  throw *r->except;
@@ -928,9 +964,9 @@ namespace eosio { namespace testing {
 
             auto block = a.control->fetch_block_by_number(i);
             if( block ) { //&& !b.control->is_known_block(block->id()) ) {
-               auto bs = b.control->create_block_state_future( block );
+               auto bsf = b.control->create_block_state_future( block );
                b.control->abort_block();
-               b.control->push_block(bs); //, eosio::chain::validation_steps::created_block);
+               b.control->push_block(bsf, forked_branch_callback()); //, eosio::chain::validation_steps::created_block);
             }
          }
       };
@@ -944,28 +980,62 @@ namespace eosio { namespace testing {
       set_abi(config::system_account_name, contracts::before_preactivate_eosio_bios_abi().data());
    }
 
+   void base_tester::set_before_producer_authority_bios_contract() {
+      set_code(config::system_account_name, contracts::before_producer_authority_eosio_bios_wasm());
+      set_abi(config::system_account_name, contracts::before_producer_authority_eosio_bios_abi().data());
+   }
+
    void base_tester::set_bios_contract() {
       set_code(config::system_account_name, contracts::eosio_bios_wasm());
       set_abi(config::system_account_name, contracts::eosio_bios_abi().data());
    }
 
 
-   vector<producer_key> base_tester::get_producer_keys( const vector<account_name>& producer_names )const {
+   vector<producer_authority> base_tester::get_producer_authorities( const vector<account_name>& producer_names )const {
        // Create producer schedule
-       vector<producer_key> schedule;
+       vector<producer_authority> schedule;
        for (auto& producer_name: producer_names) {
-           producer_key pk = { producer_name, get_public_key( producer_name, "active" )};
-           schedule.emplace_back(pk);
+          schedule.emplace_back(producer_authority{ producer_name, block_signing_authority_v0{1, {{ get_public_key( producer_name, "active" ), 1}} } });
        }
        return schedule;
    }
 
    transaction_trace_ptr base_tester::set_producers(const vector<account_name>& producer_names) {
-      auto schedule = get_producer_keys( producer_names );
+      auto schedule = get_producer_authorities( producer_names );
+
+      return set_producer_schedule(schedule);
+   }
+
+   transaction_trace_ptr base_tester::set_producer_schedule(const vector<producer_authority>& schedule ) {
+      // FC reflection does not create variants that are compatible with ABI 1.1 so we manually translate.
+      fc::variants schedule_variant;
+      schedule_variant.reserve(schedule.size());
+      for( const auto& e: schedule ) {
+         schedule_variant.emplace_back(e.get_abi_variant());
+      }
 
       return push_action( config::system_account_name, N(setprods), config::system_account_name,
-                          fc::mutable_variant_object()("schedule", schedule));
+                          fc::mutable_variant_object()("schedule", schedule_variant));
+
    }
+
+   transaction_trace_ptr base_tester::set_producers_legacy(const vector<account_name>& producer_names) {
+      auto schedule = get_producer_authorities( producer_names );
+      // down-rank to old version
+
+      vector<legacy::producer_key> legacy_keys;
+      legacy_keys.reserve(schedule.size());
+      for (const auto &p : schedule) {
+         p.authority.visit([&legacy_keys, &p](const auto& auth){
+            legacy_keys.emplace_back(legacy::producer_key{p.producer_name, auth.keys.front().key});
+         });
+      }
+
+      return push_action( config::system_account_name, N(setprods), config::system_account_name,
+                          fc::mutable_variant_object()("schedule", legacy_keys));
+
+   }
+
 
    const table_id_object* base_tester::find_table( name code, name scope, name table ) {
       auto tid = control->db().find<table_id_object, by_code_scope_table>(boost::make_tuple(code, scope, table));

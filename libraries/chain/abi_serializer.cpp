@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
 #include <eosio/chain/abi_serializer.hpp>
 #include <eosio/chain/contract_types.hpp>
 #include <eosio/chain/authority.hpp>
@@ -419,6 +415,12 @@ namespace eosio { namespace chain {
             ctx.set_array_index_of_path_back(i);
            _variant_to_binary(fundamental_type(rtype), var, ds, ctx);
            ++i;
+         }
+      } else if( is_optional(rtype) ) {
+         char flag = !var.is_null();
+         fc::raw::pack(ds, flag);
+         if( flag ) {
+            _variant_to_binary(fundamental_type(rtype), var, ds, ctx);
          }
       } else if( (v_itr = variants.find(rtype)) != variants.end() ) {
          ctx.hint_variant_type_if_in_array( v_itr );
