@@ -1,5 +1,5 @@
 FROM fedora:27
-RUN apt-get update && apt-get upgrade -y && apt install -y git sudo jq
+RUN yum update -y && yum install -y which git sudo
 ENV VERSION 1
 ENV VERBOSE true
 RUN git clone https://github.com/EOSIO/eos.git -b release/1.7.x \
