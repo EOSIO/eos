@@ -176,6 +176,7 @@ namespace Platform
 	THREAD_LOCAL Uptr* signalOperand = nullptr;
 	THREAD_LOCAL bool isReentrantSignal = false;
 	THREAD_LOCAL bool isCatchingSignals = false;
+	thread_local std::exception_ptr thrown_exception;
 
 	void signalHandler(int signalNumber,siginfo_t* signalInfo,void*)
 	{
@@ -252,6 +253,7 @@ namespace Platform
 		jmp_buf oldSignalReturnEnv;
 		memcpy(&oldSignalReturnEnv,&signalReturnEnv,sizeof(jmp_buf));
 		const bool oldIsCatchingSignals = isCatchingSignals;
+		thrown_exception = nullptr;
 
 		// Use setjmp to allow signals to jump back to this point.
 		bool isReturningFromSignalHandler = sigsetjmp(signalReturnEnv,1);
@@ -273,10 +275,14 @@ namespace Platform
 		signalCallStack = nullptr;
 		signalOperand = nullptr;
 
+		if(thrown_exception)
+			std::rethrow_exception(thrown_exception);
+
 		return signalType;
 	}
 
-	void immediately_exit() {
+	void immediately_exit(std::exception_ptr except) {
+		thrown_exception = except;
 		siglongjmp(signalReturnEnv,1);
 	}
 

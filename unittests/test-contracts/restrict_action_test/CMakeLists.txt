@@ -1,0 +1,6 @@
+if( EOSIO_COMPILE_TEST_CONTRACTS )
+   add_contract( restrict_action_test restrict_action_test restrict_action_test.cpp )
+else()
+   configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/restrict_action_test.wasm ${CMAKE_CURRENT_BINARY_DIR}/restrict_action_test.wasm COPYONLY )
+   configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/restrict_action_test.abi  ${CMAKE_CURRENT_BINARY_DIR}/restrict_action_test.abi  COPYONLY )
+endif()

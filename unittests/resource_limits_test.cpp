@@ -14,7 +14,7 @@ using namespace eosio::chain::resource_limits;
 using namespace eosio::testing;
 using namespace eosio::chain;
 
-class resource_limits_fixture: private chainbase_fixture<512*1024>, public resource_limits_manager
+class resource_limits_fixture: private chainbase_fixture<1024*1024>, public resource_limits_manager
 {
    public:
       resource_limits_fixture()

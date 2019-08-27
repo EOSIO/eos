@@ -248,7 +248,6 @@ namespace impl {
              std::is_same<T, packed_transaction>::value ||
              std::is_same<T, transaction_trace>::value ||
              std::is_same<T, transaction_receipt>::value ||
-             std::is_same<T, base_action_trace>::value ||
              std::is_same<T, action_trace>::value ||
              std::is_same<T, signed_transaction>::value ||
              std::is_same<T, signed_block>::value ||
@@ -688,7 +687,7 @@ void abi_serializer::to_variant( const T& o, variant& vo, Resolver resolver, con
    impl::abi_traverse_context ctx(max_serialization_time);
    impl::abi_to_variant::add(mvo, "_", o, resolver, ctx);
    vo = std::move(mvo["_"]);
-} FC_RETHROW_EXCEPTIONS(error, "Failed to serialize type", ("object",o))
+} FC_RETHROW_EXCEPTIONS(error, "Failed to serialize: ${type}", ("type", boost::core::demangle( typeid(o).name() ) ))
 
 template<typename T, typename Resolver>
 void abi_serializer::from_variant( const variant& v, T& o, Resolver resolver, const fc::microseconds& max_serialization_time ) try {

@@ -1,0 +1,23 @@
+export SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+export REPO_ROOT="${SCRIPT_DIR}/.."
+export BUILD_DIR="${REPO_ROOT}/build"
+
+export EOSIO_VERSION_MAJOR=$(cat $REPO_ROOT/CMakeLists.txt | grep -E "^[[:blank:]]*set[[:blank:]]*\([[:blank:]]*VERSION_MAJOR" | tail -1 | sed 's/.*VERSION_MAJOR //g' | sed 's/ //g' | sed 's/"//g' | cut -d\) -f1)
+export EOSIO_VERSION_MINOR=$(cat $REPO_ROOT/CMakeLists.txt | grep -E "^[[:blank:]]*set[[:blank:]]*\([[:blank:]]*VERSION_MINOR" | tail -1 | sed 's/.*VERSION_MINOR //g' | sed 's/ //g' | sed 's/"//g' | cut -d\) -f1)
+export EOSIO_VERSION_PATCH=$(cat $REPO_ROOT/CMakeLists.txt | grep -E "^[[:blank:]]*set[[:blank:]]*\([[:blank:]]*VERSION_PATCH" | tail -1 | sed 's/.*VERSION_PATCH //g' | sed 's/ //g' | sed 's/"//g' | cut -d\) -f1)
+export EOSIO_VERSION_SUFFIX=$(cat $REPO_ROOT/CMakeLists.txt | grep -E "^[[:blank:]]*set[[:blank:]]*\([[:blank:]]*VERSION_SUFFIX" | tail -1 | sed 's/.*VERSION_SUFFIX //g' | sed 's/ //g' | sed 's/"//g' | cut -d\) -f1)
+export EOSIO_VERSION="${EOSIO_VERSION_MAJOR}.${EOSIO_VERSION_MINOR}"
+if [[ -z $EOSIO_VERSION_SUFFIX ]]; then
+    export EOSIO_VERSION_FULL="${EOSIO_VERSION_MAJOR}.${EOSIO_VERSION_MINOR}.${EOSIO_VERSION_PATCH}"
+else
+    export EOSIO_VERSION_FULL="${EOSIO_VERSION_MAJOR}.${EOSIO_VERSION_MINOR}.${EOSIO_VERSION_PATCH}-${EOSIO_VERSION_SUFFIX}"
+fi
+
+export CMAKE_REQUIRED_VERSION=$(cat $REPO_ROOT/CMakeLists.txt | grep -E "^[[:blank:]]*cmake_minimum_required[[:blank:]]*\([[:blank:]]*VERSION" | tail -1 | sed 's/.*VERSION //g' | sed 's/ //g' | sed 's/"//g' | cut -d\) -f1)
+
+export EOSIO_INSTALL_DIR="${HOME}/eosio/${EOSIO_VERSION}"
+export TEMP_DIR="${TEMP_DIR:-${HOME}/tmp}"
+
+[[ -f ${BUILD_DIR}/CMakeCache.txt ]] && export CACHED_INSTALL_PATH=$(grep "CMAKE_INSTALL_PREFIX:PATH" ${BUILD_DIR}/CMakeCache.txt | cut -d= -f2)
+
+. ./scripts/.build_vars

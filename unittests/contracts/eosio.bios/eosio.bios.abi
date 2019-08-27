@@ -1,6 +1,7 @@
 {
-    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT Mon Dec  3 17:06:17 2018",
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT ",
     "version": "eosio::abi/1.1",
+    "types": [],
     "structs": [
         {
             "name": "abi_hash",
@@ -12,6 +13,16 @@
                 },
                 {
                     "name": "hash",
+                    "type": "checksum256"
+                }
+            ]
+        },
+        {
+            "name": "activate",
+            "base": "",
+            "fields": [
+                {
+                    "name": "feature_digest",
                     "type": "checksum256"
                 }
             ]
@@ -255,6 +266,16 @@
             ]
         },
         {
+            "name": "reqactivated",
+            "base": "",
+            "fields": [
+                {
+                    "name": "feature_digest",
+                    "type": "checksum256"
+                }
+            ]
+        },
+        {
             "name": "reqauth",
             "base": "",
             "fields": [
@@ -429,8 +450,12 @@
             ]
         }
     ],
-    "types": [],
     "actions": [
+        {
+            "name": "activate",
+            "type": "activate",
+            "ricardian_contract": ""
+        },
         {
             "name": "canceldelay",
             "type": "canceldelay",
@@ -454,6 +479,11 @@
         {
             "name": "onerror",
             "type": "onerror",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "reqactivated",
+            "type": "reqactivated",
             "ricardian_contract": ""
         },
         {
@@ -517,6 +547,5 @@
         }
     ],
     "ricardian_clauses": [],
-    "variants": [],
-    "abi_extensions": []
+    "variants": []
 }

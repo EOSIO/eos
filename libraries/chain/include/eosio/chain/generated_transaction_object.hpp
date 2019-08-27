@@ -28,9 +28,9 @@ namespace eosio { namespace chain {
          OBJECT_CTOR(generated_transaction_object, (packed_trx) )
 
          id_type                       id;
-         transaction_id_type           trx_id;
-         account_name                  sender;
-         uint128_t                     sender_id = 0; /// ID given this transaction by the sender
+         transaction_id_type           trx_id; //< trx_id should not be changed within a chainbase modifier lambda
+         account_name                  sender; //< sender should not be changed within a chainbase modifier lambda
+         uint128_t                     sender_id = 0; /// ID given this transaction by the sender (should not be changed within a chainbase modifier lambda)
          account_name                  payer;
          time_point                    delay_until; /// this generated transaction will not be applied until the specified time
          time_point                    expiration; /// this generated transaction will not be applied after this time
