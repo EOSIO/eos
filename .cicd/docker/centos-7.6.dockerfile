@@ -56,38 +56,38 @@ RUN curl -LO https://dl.bintray.com/boostorg/release/1.70.0/source/boost_1_70_0.
     ./b2 toolset=clang cxxflags='-stdlib=libc++ -D__STRICT_ANSI__ -nostdinc++ -I/usr/local/include/c++/v1' linkflags='-stdlib=libc++' link=static threading=multi --with-iostreams --with-date_time --with-filesystem --with-system --with-program_options --with-chrono --with-test -q -j$(nproc) install && \
     cd .. && \
     rm -f boost_1_70_0.tar.bz2    
-# build mongodb
-RUN curl -LO https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-amazon-3.6.3.tgz && \
-    tar -xzf mongodb-linux-x86_64-amazon-3.6.3.tgz && \
-    rm -f mongodb-linux-x86_64-amazon-3.6.3.tgz
-# build mongodb c driver
-RUN curl -LO https://github.com/mongodb/mongo-c-driver/releases/download/1.13.0/mongo-c-driver-1.13.0.tar.gz && \
-    tar -xzf mongo-c-driver-1.13.0.tar.gz && \
-    cd mongo-c-driver-1.13.0 && \
-    mkdir -p build && \
-    cd build && \
-    cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local -DENABLE_BSON=ON -DENABLE_SSL=OPENSSL -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF -DENABLE_STATIC=ON -DENABLE_ICU=OFF -DENABLE_SNAPPY=OFF -DCMAKE_TOOLCHAIN_FILE='/tmp/clang.cmake' .. && \
-    make -j$(nproc) && \
-    make install && \
-    cd / && \
-    rm -rf mongo-c-driver-1.13.0.tar.gz
-# build mongodb cxx driver
-RUN curl -L https://github.com/mongodb/mongo-cxx-driver/archive/r3.4.0.tar.gz -o mongo-cxx-driver-r3.4.0.tar.gz && \
-    tar -xzf mongo-cxx-driver-r3.4.0.tar.gz && \
-    cd mongo-cxx-driver-r3.4.0 && \
-    sed -i 's/\"maxAwaitTimeMS\", ount/\"maxAwaitTimeMS\", static_cast<int64_t>(count)/' src/mongocxx/options/change_stream.cpp && \
-    sed -i 's/add_subdirectory(test)//' src/mongocxx/CMakeLists.txt src/bsoncxx/CMakeLists.txt && \
-    cd build && \
-    cmake -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_TOOLCHAIN_FILE='/tmp/clang.cmake' .. && \
-    make -j$(nproc) && \
-    make install && \
-    cd / && \
-    rm -f mongo-cxx-driver-r3.4.0.tar.gz
-# add mongodb to path
-ENV PATH=${PATH}:/mongodb-linux-x86_64-amazon-3.6.3/bin
-# install ccache
-RUN curl -LO http://download-ib01.fedoraproject.org/pub/epel/7/x86_64/Packages/c/ccache-3.3.4-1.el7.x86_64.rpm && \
-    yum install -y ccache-3.3.4-1.el7.x86_64.rpm
-# fix ccache for centos
-RUN cd /usr/lib64/ccache && ln -s ../../bin/ccache c++
-ENV CCACHE_PATH="/opt/rh/devtoolset-8/root/usr/bin"
+# # build mongodb
+# RUN curl -LO https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-amazon-3.6.3.tgz && \
+#     tar -xzf mongodb-linux-x86_64-amazon-3.6.3.tgz && \
+#     rm -f mongodb-linux-x86_64-amazon-3.6.3.tgz
+# # build mongodb c driver
+# RUN curl -LO https://github.com/mongodb/mongo-c-driver/releases/download/1.13.0/mongo-c-driver-1.13.0.tar.gz && \
+#     tar -xzf mongo-c-driver-1.13.0.tar.gz && \
+#     cd mongo-c-driver-1.13.0 && \
+#     mkdir -p build && \
+#     cd build && \
+#     cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local -DENABLE_BSON=ON -DENABLE_SSL=OPENSSL -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF -DENABLE_STATIC=ON -DENABLE_ICU=OFF -DENABLE_SNAPPY=OFF -DCMAKE_TOOLCHAIN_FILE='/tmp/clang.cmake' .. && \
+#     make -j$(nproc) && \
+#     make install && \
+#     cd / && \
+#     rm -rf mongo-c-driver-1.13.0.tar.gz
+# # build mongodb cxx driver
+# RUN curl -L https://github.com/mongodb/mongo-cxx-driver/archive/r3.4.0.tar.gz -o mongo-cxx-driver-r3.4.0.tar.gz && \
+#     tar -xzf mongo-cxx-driver-r3.4.0.tar.gz && \
+#     cd mongo-cxx-driver-r3.4.0 && \
+#     sed -i 's/\"maxAwaitTimeMS\", ount/\"maxAwaitTimeMS\", static_cast<int64_t>(count)/' src/mongocxx/options/change_stream.cpp && \
+#     sed -i 's/add_subdirectory(test)//' src/mongocxx/CMakeLists.txt src/bsoncxx/CMakeLists.txt && \
+#     cd build && \
+#     cmake -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_TOOLCHAIN_FILE='/tmp/clang.cmake' .. && \
+#     make -j$(nproc) && \
+#     make install && \
+#     cd / && \
+#     rm -f mongo-cxx-driver-r3.4.0.tar.gz
+# # add mongodb to path
+# ENV PATH=${PATH}:/mongodb-linux-x86_64-amazon-3.6.3/bin
+# # install ccache
+# RUN curl -LO http://download-ib01.fedoraproject.org/pub/epel/7/x86_64/Packages/c/ccache-3.3.4-1.el7.x86_64.rpm && \
+#     yum install -y ccache-3.3.4-1.el7.x86_64.rpm
+# # fix ccache for centos
+# RUN cd /usr/lib64/ccache && ln -s ../../bin/ccache c++
+# ENV CCACHE_PATH="/opt/rh/devtoolset-8/root/usr/bin"
