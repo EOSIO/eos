@@ -19,7 +19,7 @@ else # Linux
     . $HELPERS_DIR/docker-hash.sh
 
     PRE_COMMANDS="cd $MOUNTED_DIR/build"
-    [[ $IMAGE_TAG == 'centos-7.6' ]] && PRE_COMMANDS="$PRE_COMMANDS && source /opt/rh/devtoolset-7/enable && source /opt/rh/rh-python33/enable && export PATH=/usr/lib64/ccache:\\\$PATH"
+    [[ $IMAGE_TAG == 'centos-7.6' ]] && PRE_COMMANDS="$PRE_COMMANDS && source /opt/rh/devtoolset-7/enable && source /opt/rh/python33/enable && export PATH=/usr/lib64/ccache:\\\$PATH"
 
     COMMANDS="$PRE_COMMANDS && $TEST"
 
