@@ -9,6 +9,9 @@ if [[ $(uname) == 'Darwin' ]]; then
     # You can't use chained commands in execute
     cd $BUILD_DIR
     [[ $TRAVIS == true ]] && ccache -s
+    export BOOST_ROOT=$HOME/opt/boost
+    export LLVM_DIR=$HOME/opt/llvm/lib/cmake/llvm
+    export PATH=$HOME/bin:${PATH}:$HOME/opt/mongodb/bin
     cmake ..
     make -j$JOBS
 
