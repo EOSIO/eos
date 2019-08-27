@@ -124,6 +124,14 @@ namespace launcher_service {
       chain::name                    name;
    };
 
+   struct get_log_data_param {
+      int                            cluster_id = 0;
+      int                            node_id = 0;
+      int64_t                        offset = 0; // negative -> offset from the end.
+      int64_t                        len = 0;
+      std::string                    filename;
+   };
+
    struct set_contract_param {
       int                            cluster_id = 0;
       int                            node_id = 0;
@@ -224,6 +232,7 @@ public:
    fc::variant get_protocol_features(int cluster_id, int node_id);
    fc::variant verify_transaction(launcher_service::verify_transaction_param);
    fc::variant get_table_rows(launcher_service::get_table_rows_param);
+   fc::variant get_log_data(launcher_service::get_log_data_param);
 
    // transactions
    fc::variant create_bios_accounts(launcher_service::create_bios_accounts_param);
@@ -253,3 +262,4 @@ FC_REFLECT(eosio::launcher_service::push_actions_param, (cluster_id)(node_id)(ac
 FC_REFLECT(eosio::launcher_service::verify_transaction_param, (cluster_id)(node_id)(transaction_id)(max_search_blocks)(block_num_hint))
 FC_REFLECT(eosio::launcher_service::schedule_protocol_feature_activations_param, (cluster_id)(node_id)(protocol_features_to_activate))
 FC_REFLECT(eosio::launcher_service::get_table_rows_param, (cluster_id)(node_id)(json)(code)(scope)(table)(lower_bound)(upper_bound)(limit)(key_type)(index_position)(encode_type)(reverse)(show_payer))
+FC_REFLECT(eosio::launcher_service::get_log_data_param, (cluster_id)(node_id)(offset)(len)(filename))

@@ -16,6 +16,7 @@
 #include <fc/io/json.hpp>
 #include <fc/io/fstream.hpp>
 #include <fc/variant.hpp>
+#include <fc/crypto/base64.hpp>
 
 #include <eosio/launcher_service_plugin/launcher_service_plugin.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
@@ -606,6 +607,31 @@ public:
                                                 ("reverse", param.reverse)
                                                 ("show_payer", param.show_payer));
       }
+
+      fc::variant get_log_data(get_log_data_param param) {
+         bfs::path path = bfs::path(_config.data_dir) / cluster_to_string(param.cluster_id) / node_to_string(param.node_id) / param.filename;
+         size_t size = bfs::file_size(path);
+         std::vector<char> data;
+         size_t offset = 0;
+         if (param.offset < 0) {
+            if (-param.offset < size) offset = size + param.offset;
+         } else {
+            offset = param.offset;
+         }
+         size_t datasize = offset >= size ? 0 : std::min(size - offset, (size_t)param.len);
+         data.resize(datasize);
+         bfs::ifstream fs(path);
+         fs.seekg(offset, fs.beg);
+         if (datasize) {
+            fs.read(&(data[0]), datasize);
+            data.resize(fs.gcount());
+         }
+         fs.close();
+         std::string base64str;
+         if (data.size())
+            base64str = base64_encode(&(data[0]), data.size());
+         return fc::mutable_variant_object("filesize", size)("offset", offset)("data", std::move(base64str));
+      }
    };
 
 launcher_service_plugin::launcher_service_plugin():_my(new launcher_service_plugin_impl()){}
@@ -727,6 +753,8 @@ fc::variant launcher_service_plugin::get_cluster_running_state(int cluster_id)
       return fc::mutable_variant_object("exception", s);\
    } catch (const char *s) {\
       return fc::mutable_variant_object("exception", s);\
+   } catch (...) { \
+      return fc::mutable_variant_object("exception", "unknown");\
    }
 
 fc::variant launcher_service_plugin::launch_cluster(launcher_service::cluster_def def)
@@ -846,6 +874,12 @@ fc::variant launcher_service_plugin::generate_key(launcher_service::generate_key
 fc::variant launcher_service_plugin::push_actions(launcher_service::push_actions_param param) {
    try {
       return _my->push_actions(param);
+   } CATCH_LAUCHER_EXCEPTIONS
+}
+
+fc::variant launcher_service_plugin::get_log_data(launcher_service::get_log_data_param param) {
+   try {
+      return _my->get_log_data(param);
    } CATCH_LAUCHER_EXCEPTIONS
 }
 
