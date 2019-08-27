@@ -95,15 +95,15 @@ fc::microseconds transaction::get_signature_keys( const vector<signature_type>& 
 { try {
    using boost::adaptors::transformed;
 
-   constexpr size_t recovery_cache_size = 10000;
-   static recovery_cache_type recovery_cache;
-   static std::mutex cache_mtx;
+//   constexpr size_t recovery_cache_size = 10000;
+//   static recovery_cache_type recovery_cache;
+//   static std::mutex cache_mtx;
 
    auto start = fc::time_point::now();
    recovered_pub_keys.clear();
    const digest_type digest = sig_digest(chain_id, cfd);
 
-   std::unique_lock<std::mutex> lock(cache_mtx, std::defer_lock);
+//   std::unique_lock<std::mutex> lock(cache_mtx, std::defer_lock);
    fc::microseconds sig_cpu_usage;
    for(const signature_type& sig : signatures) {
       auto now = fc::time_point::now();
@@ -111,20 +111,20 @@ fc::microseconds transaction::get_signature_keys( const vector<signature_type>& 
                   ("time", now - start)("now", now)("deadline", deadline)("start", start) );
       public_key_type recov;
       const auto& tid = id();
-      lock.lock();
-      recovery_cache_type::index<by_sig>::type::iterator it = recovery_cache.get<by_sig>().find( sig );
-      if( it == recovery_cache.get<by_sig>().end() || it->trx_id != tid ) {
-         lock.unlock();
+//      lock.lock();
+//      recovery_cache_type::index<by_sig>::type::iterator it = recovery_cache.get<by_sig>().find( sig );
+//      if( it == recovery_cache.get<by_sig>().end() || it->trx_id != tid ) {
+//         lock.unlock();
          recov = public_key_type( sig, digest );
          fc::microseconds cpu_usage = fc::time_point::now() - start;
-         lock.lock();
-         recovery_cache.emplace_back( cached_pub_key{tid, recov, sig, cpu_usage} ); //could fail on dup signatures; not a problem
+//         lock.lock();
+//         recovery_cache.emplace_back( cached_pub_key{tid, recov, sig, cpu_usage} ); //could fail on dup signatures; not a problem
          sig_cpu_usage += cpu_usage;
-      } else {
-         recov = it->pub_key;
-         sig_cpu_usage += it->cpu_usage;
-      }
-      lock.unlock();
+//      } else {
+//         recov = it->pub_key;
+//         sig_cpu_usage += it->cpu_usage;
+//      }
+//      lock.unlock();
       bool successful_insertion = false;
       std::tie(std::ignore, successful_insertion) = recovered_pub_keys.insert(recov);
       EOS_ASSERT( allow_duplicate_keys || successful_insertion, tx_duplicate_sig,
@@ -132,10 +132,10 @@ fc::microseconds transaction::get_signature_keys( const vector<signature_type>& 
                   ("key", recov) );
    }
 
-   lock.lock();
-   while ( recovery_cache.size() > recovery_cache_size )
-      recovery_cache.erase( recovery_cache.begin());
-   lock.unlock();
+//   lock.lock();
+//   while ( recovery_cache.size() > recovery_cache_size )
+//      recovery_cache.erase( recovery_cache.begin());
+//   lock.unlock();
 
    return sig_cpu_usage;
 } FC_CAPTURE_AND_RETHROW() }
