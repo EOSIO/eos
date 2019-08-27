@@ -9,7 +9,8 @@ if [[ $(uname) == 'Darwin' ]]; then
     # You can't use chained commands in execute
     cd $BUILD_DIR
     [[ $TRAVIS == true ]] && ccache -s
-    cmake ..
+    [[ $PINNED == true ]] && CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_TOOLCHAIN_FILE=./.cicd/helpers/clang.make"
+    cmake $CMAKE_EXTRAS ..
     make -j$JOBS
 
 else # Linux

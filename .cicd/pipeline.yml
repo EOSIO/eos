@@ -55,6 +55,8 @@ steps:
 #       - "git clone $BUILDKITE_REPO eos && cd eos && git checkout $BUILDKITE_COMMIT && git submodule update --init --recursive"
 #       - "cd eos && ./.cicd/build.sh"
 #       - "cd eos && tar -pczf build.tar.gz build && buildkite-agent artifact upload build.tar.gz"
+#     env:
+#       PINNED: "true"
 #     plugins:
 #       - chef/anka#v0.5.1:
 #           no-volume: true
@@ -68,7 +70,7 @@ steps:
 #           wait-network: true
 #     agents:
 #       - "queue=mac-anka-large-node-fleet"
-#     skip: $SKIP_MOJAVE
+#     skip: ${SKIP_MOJAVE}
 
   - label: ":aws: Amazon_Linux 2 - Build Unpinned"
     command:
@@ -80,7 +82,7 @@ steps:
     agents:
       queue: "automation-eos-builder-fleet"
     timeout: ${TIMEOUT:-10}
-    skip: $SKIP_AMAZON_LINUX_2
+    skip: ${SKIP_AMAZON_LINUX_2}${SKIP_UNPINNED_BUILDS:-true}
 
   - label: ":centos: CentOS 7.6 - Build Unpinned"
     command:
@@ -92,7 +94,7 @@ steps:
     agents:
       queue: "automation-eos-builder-fleet"
     timeout: ${TIMEOUT:-10}
-    skip: $SKIP_CENTOS_7
+    skip: ${SKIP_CENTOS_7}${SKIP_UNPINNED_BUILDS:-true}
 
   - label: ":ubuntu: Ubuntu 18.04 - Build Unpinned"
     command:
@@ -104,7 +106,28 @@ steps:
     agents:
       queue: "automation-eos-builder-fleet"
     timeout: ${TIMEOUT:-10}
-    skip: $SKIP_UBUNTU_18
+    skip: ${SKIP_UBUNTU_18}${SKIP_UNPINNED_BUILDS:-true}
+
+#   - label: ":darwin: macOS 10.14 - Build Unpinned"
+#     command:
+#        "brew install git graphviz libtool gmp llvm@4 pkgconfig python python@2 doxygen libusb openssl boost@1.70 cmake mongodb ccache"
+#       - "git clone $BUILDKITE_REPO eos && cd eos && git checkout $BUILDKITE_COMMIT && git submodule update --init --recursive"
+#       - "cd eos && ./.cicd/build.sh"
+#       - "cd eos && tar -pczf build.tar.gz build && buildkite-agent artifact upload build.tar.gz"
+#     plugins:
+#       - chef/anka#v0.5.1:
+#           no-volume: true
+#           inherit-environment-vars: true
+#           vm-name: 10.14.4_6C_14G_40G
+#           vm-registry-tag: "clean::cicd::git-ssh::nas::brew::buildkite-agent"
+#           modify-cpu: 12
+#           modify-ram: 24
+#           always-pull: true
+#           debug: true
+#           wait-network: true
+#     agents:
+#       - "queue=mac-anka-large-node-fleet"
+#     skip: ${SKIP_MOJAVE}${SKIP_UNPINNED_BUILDS:-true}
 
 #   - wait
 
