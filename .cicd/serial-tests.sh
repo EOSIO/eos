@@ -10,6 +10,7 @@ if [[ $(uname) == 'Darwin' ]]; then
 
     # You can't use chained commands in execute
     cd $BUILD_DIR
+    export PATH=$HOME/bin:${PATH}:$HOME/opt/mongodb/bin
     bash -c "$TEST"
 
 else # Linux
