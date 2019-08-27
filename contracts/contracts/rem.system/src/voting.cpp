@@ -33,13 +33,15 @@ namespace eosiosystem {
 
       // TODO implement as constexpr string
       static const auto stake_err = "user should stake at least "s + asset(producer_stake_threshold, core_symbol()).to_string() + " to become a producer"s;
-      check( does_satisfy_stake_requirement( producer ), stake_err );
 
       auto prod = _producers.find( producer.value );
       const auto ct = current_time_point();
 
       user_resources_table totals_tbl( _self, producer.value );
       const auto& tot = totals_tbl.get(producer.value, "producer must have resources");
+      const auto &voter = _voters.get(producer.value, "user has no resources");
+      check( voter.staked >= producer_stake_threshold, stake_err );
+
       if ( prod != _producers.end() ) {
          if (!prod->active()) {
             _gstate.total_producer_stake += tot.own_stake_amount;
@@ -81,11 +83,12 @@ namespace eosiosystem {
          _gstate.total_producer_stake += tot.own_stake_amount;
       }
 
-      const auto &voter = _voters.get(producer.value, "user has no resources");
-      _voters.modify(voter, producer, [&](auto &v) {
-         v.stake_lock_time = current_time_point() + _gstate.stake_lock_period;
-         v.locked_stake = tot.own_stake_amount;
-      });
+       const auto lock_time = voter.locked_stake >= system_contract::producer_stake_threshold ? current_time_point()
+                                                                                              : current_time_point() + _gstate.stake_lock_period;
+       _voters.modify(voter, producer, [&](auto &v) {
+           v.stake_lock_time = lock_time;
+           v.locked_stake = tot.own_stake_amount;
+       });
    }
 
    void system_contract::unregprod( const name& producer ) {
@@ -106,6 +109,7 @@ namespace eosiosystem {
       _producers.modify( prod, same_payer, [&]( producer_info& info ){
          info.deactivate();
       });
+
       _voters.modify(voter, producer, [&](auto &v) {
          v.stake_lock_time = current_time_point() + _gstate.stake_unlock_period;
       });
