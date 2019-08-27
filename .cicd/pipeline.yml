@@ -69,6 +69,26 @@ steps:
       - "queue=mac-anka-large-node-fleet"
     skip: $SKIP_MOJAVE
 
+  - label: ":darwin: macOS 10.13 - Build"
+    command:
+      - "git clone $BUILDKITE_REPO eos && cd eos && git checkout $BUILDKITE_COMMIT && git submodule update --init --recursive"
+      - "cd eos && ./.cicd/build.sh"
+      - "cd eos && tar -pczf build.tar.gz build && buildkite-agent artifact upload build.tar.gz"
+    plugins:
+      - chef/anka#v0.5.1:
+          no-volume: true
+          inherit-environment-vars: true
+          vm-name: 10.13.6_6C_14G_40G
+          vm-registry-tag: "clean::cicd::git-ssh::nas::brew::buildkite-agent::eosio_1.7-v2"
+          modify-cpu: 12
+          modify-ram: 24
+          always-pull: true
+          debug: true
+          wait-network: true
+    agents:
+      - "queue=mac-anka-large-node-fleet"
+    skip: $SKIP_HIGH_SIERRA
+
   - wait
 
   - label: ":aws: Amazon_Linux 2 - Unit Tests"
@@ -136,6 +156,26 @@ steps:
     agents:
       - "queue=mac-anka-node-fleet"
     skip: ${SKIP_MOJAVE}${SKIP_UNIT_TESTS}
+
+  - label: ":darwin: macOS 10.13 - Unit Tests"
+    command:
+      - "git clone $BUILDKITE_REPO eos && cd eos && git checkout $BUILDKITE_COMMIT && git submodule update --init --recursive"
+      - "cd eos && buildkite-agent artifact download build.tar.gz . --step ':darwin: macOS 10.13 - Build' && tar -xzf build.tar.gz"
+      - "cd eos && ./.cicd/parallel-tests.sh"
+    plugins:
+      - chef/anka#v0.5.1:
+          no-volume: true
+          inherit-environment-vars: true
+          vm-name: 10.13.6_6C_14G_40G
+          vm-registry-tag: "clean::cicd::git-ssh::nas::brew::buildkite-agent::eosio_1.7-v2"
+          modify-cpu: 12
+          modify-ram: 24
+          always-pull: true
+          debug: true
+          wait-network: true
+    agents:
+      - "queue=mac-anka-large-node-fleet"
+    skip: ${SKIP_HIGH_SIERRA}${SKIP_UNIT_TESTS}
 
   - label: ":pipeline: Generate Serial Test Steps"  
     command: "./.cicd/generate-serial-tests.sh | buildkite-agent pipeline upload"
@@ -212,6 +252,26 @@ steps:
       - "queue=mac-anka-large-node-fleet"
     skip: ${SKIP_MOJAVE}${SKIP_LONG_RUNNING_TESTS:-true}
 
+  - label: ":darwin: macOS 10.13 - Long-Running Tests"
+    command:
+      - "git clone $BUILDKITE_REPO eos && cd eos && git checkout $BUILDKITE_COMMIT && git submodule update --init --recursive"
+      - "cd eos && buildkite-agent artifact download build.tar.gz . --step ':darwin: macOS 10.13 - Build' && tar -xzf build.tar.gz"
+      - "cd eos && ./.cicd/parallel-tests.sh"
+    plugins:
+      - chef/anka#v0.5.1:
+          no-volume: true
+          inherit-environment-vars: true
+          vm-name: 10.13.6_6C_14G_40G
+          vm-registry-tag: "clean::cicd::git-ssh::nas::brew::buildkite-agent::eosio_1.7-v2"
+          modify-cpu: 12
+          modify-ram: 24
+          always-pull: true
+          debug: true
+          wait-network: true
+    agents:
+      - "queue=mac-anka-large-node-fleet"
+    skip: ${SKIP_HIGH_SIERRA}${SKIP_LONG_RUNNING_TESTS:-true}
+
   - wait:
     continue_on_failure: true
 
@@ -279,6 +339,25 @@ steps:
     command:
       - "git clone $BUILDKITE_REPO eos && cd eos && git checkout $BUILDKITE_COMMIT"
       - "cd eos && buildkite-agent artifact download build.tar.gz . --step ':darwin: macOS 10.14 - Build' && tar -xzf build.tar.gz"
+      - "cd eos && ./.cicd/package.sh"
+    plugins:
+      - chef/anka#v0.5.1:
+          no-volume: true
+          inherit-environment-vars: true
+          vm-name: 10.14.4_6C_14G_40G
+          vm-registry-tag: "clean::cicd::git-ssh::nas::brew::buildkite-agent::eosio_1.7-v2"
+          always-pull: true
+          debug: true
+          wait-network: true
+    agents:
+      - "queue=mac-anka-node-fleet"
+    timeout: 10
+    skip: ${SKIP_MOJAVE}${SKIP_PACKAGE_BUILDER}
+
+  - label: ":darwin: High Sierra - Package Builder"
+    command:
+      - "git clone $BUILDKITE_REPO eos && cd eos && git checkout $BUILDKITE_COMMIT"
+      - "cd eos && buildkite-agent artifact download build.tar.gz . --step ':darwin: macOS 10.13 - Build' && tar -xzf build.tar.gz"
       - "cd eos && ./.cicd/package.sh"
     plugins:
       - chef/anka#v0.5.1:
