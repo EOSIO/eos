@@ -16,7 +16,7 @@ RUN curl -LO https://cmake.org/files/v3.13/cmake-3.13.2.tar.gz && \
     ./bootstrap --prefix=/usr/local && \
     make -j$(nproc) && \
     make install && \
-    cd .. && \
+    cd / && \
     rm -rf cmake-3.13.2.tar.gz /cmake-3.13.2
 COPY ./.cicd/helpers/clang-devtoolset8-support.patch /tmp/clang-devtoolset8-support.patch
 # build clang8
