@@ -16,7 +16,7 @@ steps:
       queue: "mac-anka-templater-fleet"
     timeout: ${TIMEOUT:-320}
 
-  # - wait
+  - wait
 
   - label: ":aws: Amazon_Linux 2 - Build"
     command:
