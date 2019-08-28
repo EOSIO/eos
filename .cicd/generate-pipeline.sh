@@ -32,7 +32,7 @@ for FILE in $(ls $CICD_DIR/platforms); do
   [[ $FILE_NAME =~ 'centos' ]] && ICON=':centos:'
   [[ $FILE_NAME =~ 'macos' ]] && ICON=':darwin:'
 
-  $HELPERS_DIR/file-hash.sh $CICD_DIR/platforms/$FILE # returns HASHED_IMAGE_TAG, etc
+  . $HELPERS_DIR/file-hash.sh $CICD_DIR/platforms/$FILE # returns HASHED_IMAGE_TAG, etc
 
   PLATFORMS_JSON_ARRAY+=("{
     \"FILE_NAME\": \"$FILE_NAME\",
@@ -54,7 +54,6 @@ oIFS="$IFS"; IFS=$''; nIFS=$IFS # Needed to fix array splitting (\n won't work)
 ###################
 # Anka Ensure Tag #
 for PLATFORM_JSON in ${PLATFORMS_JSON_ARRAY[*]}; do
-  HASHED_IMAGE_TAG=$(echo "$PLATFORM_JSON" | jq -r .HASHED_IMAGE_TAG)
   if [[ $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME) =~ 'macos' ]]; then
   cat <<EOF
   - label: ":darwin: Anka - Ensure Mojave Template Dependency Tag/Layer Exists"
@@ -70,7 +69,7 @@ for PLATFORM_JSON in ${PLATFORMS_JSON_ARRAY[*]}; do
       TEMPLATE: $MOJAVE_ANKA_TEMPLATE_NAME
       TEMPLATE_TAG: $MOJAVE_ANKA_TAG_BASE
       TAG_COMMANDS: "git clone https://github.com/EOSIO/eos.git eos && cd eos && git checkout $BUILDKITE_COMMIT && git submodule update --init --recursive && ./.cicd/platforms/macos-10.14${UNPINNED_APPEND}.sh && ./.cicd/build.sh && cd .. && rm -rf eos"
-      PROJECT_TAG: ${HASHED_IMAGE_TAG}
+      PROJECT_TAG: $(echo "$PLATFORM_JSON" | jq -r .HASHED_IMAGE_TAG)
     timeout: ${TIMEOUT:-320}
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}\${SKIP_ENSURE_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}
 
