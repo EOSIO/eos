@@ -10,11 +10,12 @@ steps:
     env:
       REPO: ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO}
       REPO_COMMIT: $BUILDKITE_COMMIT
-      TEMPLATE: 10.14.4_6C_14G_40G
+      TEMPLATE: "10.14.4_6C_14G_40G"
       TEMPLATE_TAG: "clean::cicd::git-ssh::nas::brew::buildkite-agent"
-      TAG_COMMANDS: "git clone https://github.com$(echo ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO} | awk -F'github.com' '{print $2}') eos && cd eos && git checkout $BUILDKITE_COMMIT && git submodule update --init --recursive && ./.cicd/anka/macos-10.14.sh && cd .. && rm -rf eos"
+      TAG_COMMANDS: "git clone https://github.com/$(echo ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO} | awk -F'github.com:' '{print $2}') eos && cd eos && git checkout $BUILDKITE_COMMIT && git submodule update --init --recursive && ./.cicd/anka/macos-10.14.sh && cd .. && rm -rf eos"
       PROJECT_TAG: "eos-macos-10.14-cf94bae63f2ceab7ef0e99a48a6f4c6ba464b38a"
     timeout: ${TIMEOUT:-320}
+
   - wait
 
   - label: ":aws: Amazon_Linux 2 - Build"
