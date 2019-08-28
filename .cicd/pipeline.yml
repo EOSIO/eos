@@ -247,7 +247,7 @@ steps:
   - label: ":centos: CentOS 7.6 - Package Builder"
     command:
       - "buildkite-agent artifact download build.tar.gz . --step ':centos: CentOS 7.6 - Build' --agent-access-token $$BUILDKITE_AGENT_ACCESS_TOKEN && tar -xzf build.tar.gz"
-      - "./.cicd/package-builder.sh"
+      - "./.cicd/package.sh"
     env:
       BUILDKITE_AGENT_ACCESS_TOKEN:
       OS: "el7" # OS and PKGTYPE required for lambdas
@@ -260,7 +260,7 @@ steps:
   - label: ":ubuntu: Ubuntu 16.04 - Package Builder"
     command:
       - "buildkite-agent artifact download build.tar.gz . --step ':ubuntu: Ubuntu 16.04 - Build' --agent-access-token $$BUILDKITE_AGENT_ACCESS_TOKEN && tar -xzf build.tar.gz"
-      - "./.cicd/package-builder.sh"
+      - "./.cicd/package.sh"
     env:
       BUILDKITE_AGENT_ACCESS_TOKEN:
       OS: "ubuntu-16.04" # OS and PKGTYPE required for lambdas
@@ -273,7 +273,7 @@ steps:
   - label: ":ubuntu: Ubuntu 18.04 - Package Builder"
     command:
       - "buildkite-agent artifact download build.tar.gz . --step ':ubuntu: Ubuntu 18.04 - Build' --agent-access-token $$BUILDKITE_AGENT_ACCESS_TOKEN && tar -xzf build.tar.gz"
-      - "./.cicd/package-builder.sh"
+      - "./.cicd/package.sh"
     env:
       BUILDKITE_AGENT_ACCESS_TOKEN:
       OS: "ubuntu-18.04" # OS and PKGTYPE required for lambdas
