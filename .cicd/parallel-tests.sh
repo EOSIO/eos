@@ -14,7 +14,7 @@ else # Linux
 
     ARGS=${ARGS:-"--rm --init -v $(pwd):$MOUNTED_DIR"}
 
-    . $HELPERS_DIR/docker-hash.sh
+    . $HELPERS_DIR/hash.sh $CICD_DIR/platforms/$IMAGE_TAG.dockerfile
 
     COMMANDS="cd $MOUNTED_DIR/build && $TEST"
 

@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 set -eo pipefail
 . ./.cicd/helpers/general.sh
-. ./.cicd/helpers/hash.sh
+. $HELPERS_DIR/hash.sh
+
+export MOJAVE_ANKA_TAG_BASE='clean::cicd::git-ssh::nas::brew::buildkite-agent'
+export MOJAVE_ANKA_TEMPLATE_NAME='10.14.4_6C_14G_40G'
 
 export PLATFORMS_JSON_ARRAY=()
 
