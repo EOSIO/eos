@@ -2,6 +2,7 @@
 #include <eosio/chain/block.hpp>
 #include <eosio/chain/types.hpp>
 #include <chrono>
+#include <eosio/topology_plugin/messages.hpp>
 
 namespace eosio {
    using namespace chain;
@@ -48,7 +49,7 @@ namespace eosio {
     validation, ///< the peer sent a block that failed validation
     benign_other, ///< reasons such as a timeout. not fatal but warrant resetting
     fatal_other, ///< a catch-all for errors we don't have discriminated
-    authentication ///< peer failed authenicatio
+    authentication ///< peer failed authenication
   };
 
   constexpr auto reason_str( go_away_reason rsn ) {
@@ -136,7 +137,8 @@ namespace eosio {
                                       request_message,
                                       sync_request_message,
                                       signed_block,         // which = 7
-                                      packed_transaction>;  // which = 8
+                                      packed_transaction,   // which = 8
+                                      topology_message>;
 
 } // namespace eosio
 

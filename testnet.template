@@ -15,7 +15,7 @@ fi
 bioscontractpath=$BIOS_CONTRACT_PATH
 if [ -z "$bioscontractpath" ]; then
     # this is defaulted to the version of bios that only requires the preactivate_feature
-    # newer versions may require 
+    # newer versions may require
     bioscontractpath="unittests/contracts/old_versions/v1.7.0-develop-preactivate_feature/eosio.bios"
 fi
 
@@ -70,7 +70,7 @@ wcmd () {
 }
 
 cacmd () {
-    programs/cleos/cleos  --wallet-url $wdurl --url http://$bioshost:$biosport system newaccount --transfer --stake-net "10000000.0000 "$bioscurrencysymbol --stake-cpu "10000000.0000 "$bioscurrencysymbol  --buy-ram "10000000.0000 "$bioscurrencysymbol eosio $* >> $logfile 2>&1
+    programs/cleos/cleos  --wallet-url $wdurl --url http://$bioshost:$biosport system newaccount --transfer --stake-net "40000000.0000 "$bioscurrencysymbol --stake-cpu "40000000.0000 "$bioscurrencysymbol  --buy-ram "10000000.0000 "$bioscurrencysymbol eosio $* >> $logfile 2>&1
     ecmd system regproducer $1 $2
     ecmd system voteproducer prods $1 $1
 }
@@ -128,7 +128,19 @@ programs/cleos/cleos --wallet-url $wdurl --url http://$bioshost:$biosport push a
 echo ==== End: $step ============== >> $logfile
 step=$(($step + 1))
 
-ecmd set contract eosio unittests/contracts/eosio.system eosio.system.wasm eosio.system.abi
+ecmd set contract eosio unittests/contracts/eosio.system
+sleep 1
+programs/cleos/cleos  --wallet-url $wdurl --url http://$bioshost:$biosport get abi eosio | grep '"init"'
+if [ $? == 1 ]; then
+    ecmd set contract eosio unittests/contracts/eosio.system
+    sleep 1
+    programs/cleos/cleos  --wallet-url $wdurl --url http://$bioshost:$biosport get abi eosio | grep '"init"'
+    if [ $? == 1 ]; then
+        echo failed to init system contract
+        exit
+    fi
+fi
+
 programs/cleos/cleos --wallet-url $wdurl --url http://$bioshost:$biosport push action eosio init '[0, "4,'$bioscurrencysymbol'"]' -p eosio >> $logfile 2>&1
 
 # Manual deployers, add a series of lines below this block that looks like:
