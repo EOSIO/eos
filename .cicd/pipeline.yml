@@ -287,7 +287,7 @@ steps:
     command:
       - "git clone $BUILDKITE_REPO eos && cd eos && git checkout $BUILDKITE_COMMIT"
       - "cd eos && buildkite-agent artifact download build.tar.gz . --step ':darwin: macOS 10.14 - Build' && tar -xzf build.tar.gz"
-      - "cd eos && ./.cicd/package-builder.sh"
+      - "cd eos && ./.cicd/package.sh"
     plugins:
       - chef/anka#v0.5.1:
           no-volume: true
