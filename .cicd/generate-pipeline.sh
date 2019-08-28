@@ -7,6 +7,8 @@ export MOJAVE_ANKA_TEMPLATE_NAME='10.14.4_6C_14G_40G'
 
 export PLATFORMS_JSON_ARRAY=()
 
+( [[ $PINNED == false ]] || [[ $UNPINNED == true ]] ) && UNPINNED_APPEND='-unpinned'
+
 # Use files in platforms dir as source of truth for what platforms we need to generate steps for
 for FILE in $(ls $CICD_DIR/platforms); do
 
@@ -49,6 +51,32 @@ done
 
 oIFS="$IFS"; IFS=$''; nIFS=$IFS # Needed to fix array splitting (\n won't work)
 
+###################
+# Anka Ensure Tag #
+for PLATFORM_JSON in ${PLATFORMS_JSON_ARRAY[*]}; do
+  # echo "$PLATFORM_JSON" | jq
+  if [[ $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME) =~ 'macos' ]]; then
+  cat <<EOF
+  - label: ":darwin: Anka - Ensure Mojave Template Dependency Tag/Layer Exists"
+    command:
+      - "git clone git@github.com:EOSIO/mac-anka-fleet.git -b support-for-new-cicd"
+      - "cd mac-anka-fleet && . ./ensure_tag.bash -u 12 -r 25G -a '-n'"
+    agents:
+      - "queue=mac-anka-templater-fleet"
+    env:
+      REPO: \${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO}
+      REPO_COMMIT: \$BUILDKITE_COMMIT
+      TEMPLATE: $MOJAVE_ANKA_TEMPLATE_NAME
+      TEMPLATE_TAG: $MOJAVE_ANKA_TAG_BASE
+      TAG_COMMANDS: "git clone \$BUILDKITE_HTTPS_REPO_URL eos && cd eos && git checkout \$BUILDKITE_COMMIT && git submodule update --init --recursive && ./.cicd/platforms/macos-10.14${UNPINNED_APPEND}.sh && ./.cicd/build.sh && cd .. && rm -rf eos"
+      PROJECT_TAG: $(echo "$PLATFORM_JSON" | jq -r .HASHED_IMAGE_TAG)
+    timeout: ${TIMEOUT:-320}
+    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}\${SKIP_ENSURE_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}
+
+EOF
+  fi
+done
+
 ###############
 # BUILD STEPS #
 for PLATFORM_JSON in ${PLATFORMS_JSON_ARRAY[*]}; do
@@ -65,7 +93,7 @@ for PLATFORM_JSON in ${PLATFORMS_JSON_ARRAY[*]}; do
       BUILDKITE_AGENT_ACCESS_TOKEN:
     agents:
       queue: "automation-eos-builder-fleet"
-    timeout: ${TIMEOUT:-10}
+    timeout: ${TIMEOUT:-60}
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}\${SKIP_BUILD}
 
 EOF
