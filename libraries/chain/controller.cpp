@@ -1778,9 +1778,9 @@ struct controller_impl {
                if( receipt.trx.contains<packed_transaction>()) {
                   auto& pt = receipt.trx.get<packed_transaction>();
                   const transaction_metadata_ptr& trx_meta_ptr = unapplied_transactions.get_trx( pt.id() );
-                  if( trx_meta_ptr ) {
+                  if( trx_meta_ptr && ( skip_auth_checks || !trx_meta_ptr->recovered_keys().empty() ) ) {
                      trx_metas.emplace_back( trx_meta_ptr, recover_keys_future{} );
-                  } else if ( skip_auth_checks ) {
+                  } else if( skip_auth_checks ) {
                      trx_metas.emplace_back(
                            transaction_metadata::create_no_recover_keys( pt, transaction_metadata::trx_type::input ),
                            recover_keys_future{} );
