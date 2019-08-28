@@ -250,6 +250,8 @@ steps:
       - "./.cicd/package-builder.sh"
     env:
       BUILDKITE_AGENT_ACCESS_TOKEN:
+      OS: "el7" # OS and PKGTYPE required for lambdas
+      PKGTYPE: "rpm"
     agents:
       queue: "automation-eos-builder-fleet"
     timeout: ${TIMEOUT:-10}
@@ -261,6 +263,8 @@ steps:
       - "./.cicd/package-builder.sh"
     env:
       BUILDKITE_AGENT_ACCESS_TOKEN:
+      OS: "ubuntu-16.04" # OS and PKGTYPE required for lambdas
+      PKGTYPE: "deb"
     agents:
       queue: "automation-eos-builder-fleet"
     timeout: ${TIMEOUT:-10}
@@ -272,6 +276,8 @@ steps:
       - "./.cicd/package-builder.sh"
     env:
       BUILDKITE_AGENT_ACCESS_TOKEN:
+      OS: "ubuntu-18.04" # OS and PKGTYPE required for lambdas
+      PKGTYPE: "deb"
     agents:
       queue: "automation-eos-builder-fleet"
     timeout: ${TIMEOUT:-10}
