@@ -33,9 +33,6 @@ for FILE in $(ls $CICD_DIR/platforms); do
   [[ $FILE_NAME =~ 'macos' ]] && ICON=':darwin:'
 
   $HELPERS_DIR/file-hash.sh $CICD_DIR/platforms/$FILE # returns HASHED_IMAGE_TAG, etc
-  
-  echo "# ------------------"
-  echo "# $HASHED_IMAGE_TAG"
 
   PLATFORMS_JSON_ARRAY+=("{
     \"FILE_NAME\": \"$FILE_NAME\",
@@ -62,6 +59,7 @@ for PLATFORM_JSON in ${PLATFORMS_JSON_ARRAY[*]}; do
   cat <<EOF
   - label: ":darwin: Anka - Ensure Mojave Template Dependency Tag/Layer Exists"
     command:
+      - "${HASHED_IMAGE_TAG}"
       - "git clone git@github.com:EOSIO/mac-anka-fleet.git -b support-for-new-cicd"
       - "cd mac-anka-fleet && . ./ensure_tag.bash -u 12 -r 25G -a '-n'"
     agents:
@@ -71,8 +69,8 @@ for PLATFORM_JSON in ${PLATFORMS_JSON_ARRAY[*]}; do
       REPO_COMMIT: $BUILDKITE_COMMIT
       TEMPLATE: $MOJAVE_ANKA_TEMPLATE_NAME
       TEMPLATE_TAG: $MOJAVE_ANKA_TAG_BASE
-      TAG_COMMANDS: "git clone $BUILDKITE_HTTPS_REPO_URL eos && cd eos && git checkout $BUILDKITE_COMMIT && git submodule update --init --recursive && ./.cicd/platforms/macos-10.14${UNPINNED_APPEND}.sh && ./.cicd/build.sh && cd .. && rm -rf eos"
-      PROJECT_TAG: $HASHED_IMAGE_TAG
+      TAG_COMMANDS: "git clone https://github.com/EOSIO/eos.git eos && cd eos && git checkout $BUILDKITE_COMMIT && git submodule update --init --recursive && ./.cicd/platforms/macos-10.14${UNPINNED_APPEND}.sh && ./.cicd/build.sh && cd .. && rm -rf eos"
+      PROJECT_TAG: ${HASHED_IMAGE_TAG}
     timeout: ${TIMEOUT:-320}
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}\${SKIP_ENSURE_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}
 
