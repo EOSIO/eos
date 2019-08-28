@@ -1768,11 +1768,10 @@ struct controller_impl {
          const bool pub_keys_recovered = bsp->is_pub_keys_recovered();
          const bool skip_auth_checks = self.skip_auth_check();
          std::vector<std::tuple<transaction_metadata_ptr, recover_keys_future>> trx_metas;
-         bool use_bsp_cached = false, use_trx_metas = false;
+         bool use_bsp_cached = false;
          if( pub_keys_recovered || (skip_auth_checks && existing_trxs_metas) ) {
             use_bsp_cached = true;
          } else {
-            use_trx_metas = true;
             trx_metas.reserve( b->transactions.size() );
             for( const auto& receipt : b->transactions ) {
                if( receipt.trx.contains<packed_transaction>()) {
