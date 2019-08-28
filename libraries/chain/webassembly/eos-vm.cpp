@@ -54,7 +54,7 @@ std::unique_ptr<wasm_instantiated_module_interface> eos_vm_runtime<Impl>::instan
    std::ofstream mf("temp.wasm");
    mf.write((char*)code_bytes, code_size);
    mf.close();
-   wasm_code_ptr code((uint8_t*)code_bytes, 0);
+   wasm_code_ptr code((uint8_t*)code_bytes, code_size);
    std::unique_ptr<backend_t> bkend = std::make_unique<backend_t>(code, code_size);
    registered_host_functions<apply_context>::resolve(bkend->get_module());
    return std::make_unique<eos_vm_instantiated_module<Impl>>(this, std::move(bkend));
