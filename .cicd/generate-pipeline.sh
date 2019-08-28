@@ -77,6 +77,8 @@ EOF
   fi
 done
 
+echo "  - wait"; echo ""
+
 ###############
 # BUILD STEPS #
 for PLATFORM_JSON in ${PLATFORMS_JSON_ARRAY[*]}; do
@@ -126,8 +128,7 @@ EOF
   fi
 done
 
-echo "  - wait"
-echo ""
+echo "  - wait"; echo ""
 
 ##############
 # UNIT TESTS #
