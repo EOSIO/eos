@@ -4,7 +4,6 @@ set -eo pipefail
 
 export MOJAVE_ANKA_TAG_BASE='clean::cicd::git-ssh::nas::brew::buildkite-agent'
 export MOJAVE_ANKA_TEMPLATE_NAME='10.14.4_6C_14G_40G'
-export $(echo ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO} | awk -F'github.com:' '{print $2}')
 
 export PLATFORMS_JSON_ARRAY=()
 
@@ -55,12 +54,10 @@ oIFS="$IFS"; IFS=$''; nIFS=$IFS # Needed to fix array splitting (\n won't work)
 ###################
 # Anka Ensure Tag #
 for PLATFORM_JSON in ${PLATFORMS_JSON_ARRAY[*]}; do
-  echo "PLATFORM_JSON: $PLATFORM_JSON"
   if [[ $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME) =~ 'macos' ]]; then
   cat <<EOF
   - label: ":darwin: Anka - Ensure Mojave Template Dependency Tag/Layer Exists"
     command:
-      - "echo ${PLATFORM_JSON}"
       - "git clone git@github.com:EOSIO/mac-anka-fleet.git -b support-for-new-cicd"
       - "cd mac-anka-fleet && . ./ensure_tag.bash -u 12 -r 25G -a '-n'"
     agents:
@@ -71,7 +68,7 @@ for PLATFORM_JSON in ${PLATFORMS_JSON_ARRAY[*]}; do
       TEMPLATE: $MOJAVE_ANKA_TEMPLATE_NAME
       TEMPLATE_TAG: $MOJAVE_ANKA_TAG_BASE
       TAG_COMMANDS: "git clone $BUILDKITE_HTTPS_REPO_URL eos && cd eos && git checkout $BUILDKITE_COMMIT && git submodule update --init --recursive && ./.cicd/platforms/macos-10.14${UNPINNED_APPEND}.sh && ./.cicd/build.sh && cd .. && rm -rf eos"
-      PROJECT_TAG: 
+      PROJECT_TAG: $(echo "$PLATFORM_JSON" | jq -r .HASHED_IMAGE_TAG)
     timeout: ${TIMEOUT:-320}
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}\${SKIP_ENSURE_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}
 
