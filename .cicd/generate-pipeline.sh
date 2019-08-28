@@ -30,7 +30,7 @@ for FILE in $(ls $CICD_DIR/platforms); do
   [[ $FILE_NAME =~ 'centos' ]] && ICON=':centos:'
   [[ $FILE_NAME =~ 'macos' ]] && ICON=':darwin:'
 
-  $HELPERS_DIR/hash.sh $CICD_DIR/platforms/$FILE # returns HASHED_IMAGE_TAG, etc
+  $HELPERS_DIR/file-hash.sh $CICD_DIR/platforms/$FILE # returns HASHED_IMAGE_TAG, etc
 
   PLATFORMS_JSON_ARRAY+=("{
     \"FILE_NAME\": \"$FILE_NAME\",

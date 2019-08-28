@@ -14,7 +14,7 @@ else # Linux
 
     ARGS=${ARGS:-"--rm --init -v $(pwd):$MOUNTED_DIR"}
 
-    . $HELPERS_DIR/hash.sh $CICD_DIR/platforms/$IMAGE_TAG.dockerfile
+    . $HELPERS_DIR/file-hash.sh $CICD_DIR/platforms/$IMAGE_TAG.dockerfile
 
     PRE_COMMANDS="cd $MOUNTED_DIR/build"
     [[ $IMAGE_TAG == 'centos-7.6' ]] && PRE_COMMANDS="$PRE_COMMANDS && source /opt/rh/devtoolset-8/enable && source /opt/rh/rh-python36/enable && export PATH=/usr/lib64/ccache:\\\$PATH"
