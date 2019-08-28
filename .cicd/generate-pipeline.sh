@@ -58,6 +58,7 @@ for PLATFORM_JSON in ${PLATFORMS_JSON_ARRAY[*]}; do
   cat <<EOF
   - label: ":darwin: Anka - Ensure Mojave Template Dependency Tag/Layer Exists"
     command:
+      - "echo ${PLATFORM_JSON}"
       - "git clone git@github.com:EOSIO/mac-anka-fleet.git -b support-for-new-cicd"
       - "cd mac-anka-fleet && . ./ensure_tag.bash -u 12 -r 25G -a '-n'"
     agents:
@@ -68,7 +69,7 @@ for PLATFORM_JSON in ${PLATFORMS_JSON_ARRAY[*]}; do
       TEMPLATE: $MOJAVE_ANKA_TEMPLATE_NAME
       TEMPLATE_TAG: $MOJAVE_ANKA_TAG_BASE
       TAG_COMMANDS: "git clone https://github.com/$(echo ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO} | awk -F'github.com:' '{print $2}') eos && cd eos && git checkout $BUILDKITE_COMMIT && git submodule update --init --recursive && ./.cicd/platforms/macos-10.14${UNPINNED_APPEND}.sh && ./.cicd/build.sh && cd .. && rm -rf eos"
-      PROJECT_TAG: $(echo "$PLATFORM_JSON")
+      PROJECT_TAG: 
     timeout: ${TIMEOUT:-320}
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}\${SKIP_ENSURE_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}
 
