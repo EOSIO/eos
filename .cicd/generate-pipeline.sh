@@ -58,7 +58,6 @@ for PLATFORM_JSON in ${PLATFORMS_JSON_ARRAY[*]}; do
   cat <<EOF
   - label: ":darwin: Anka - Ensure Mojave Template Dependency Tag/Layer Exists"
     command:
-      - "${HASHED_IMAGE_TAG}"
       - "git clone git@github.com:EOSIO/mac-anka-fleet.git -b support-for-new-cicd"
       - "cd mac-anka-fleet && . ./ensure_tag.bash -u 12 -r 25G -a '-n'"
     agents:
