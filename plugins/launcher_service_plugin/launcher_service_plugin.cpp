@@ -79,6 +79,12 @@ public:
          std::string                stdout_path;
          std::string                stderr_path;
          std::shared_ptr<bp::child> child;
+
+         std::map<name, fc::optional<abi_serializer> >  abi_cache;
+         fc::time_point                                 abi_cache_time;
+
+         eosio::chain_apis::read_only::get_info_results get_info_cache;
+         fc::time_point                                 get_info_cache_time;
       };
       struct cluster_state {
          cluster_def                                 def;
@@ -352,17 +358,21 @@ public:
             throw std::string("cluster is not running");
          }
          std::vector<public_key_type> pub_keys;
+         pub_keys.reserve(_running_clusters[cluster_id].imported_keys.size());
          for (auto &key : _running_clusters[cluster_id].imported_keys) {
             pub_keys.push_back(key.first);
          }
-         auto get_arg = fc::mutable_variant_object
-               ("transaction", (chain::transaction)trx)
-               ("available_keys", pub_keys);
+         auto get_arg = fc::mutable_variant_object("transaction", (chain::transaction)trx)
+                        ("available_keys", std::move(pub_keys));
          return call(cluster_id, node_id, "/v1/chain/get_required_keys", get_arg);
       }
 
-      fc::optional<abi_serializer> abi_serializer_resolver(int cluster_id, int node_id, const name& account,
-                                                           std::map<name, fc::optional<abi_serializer> > &abi_cache) {
+      fc::optional<abi_serializer> abi_serializer_resolver(int cluster_id, int node_id, const name& account) {
+         auto &abi_cache = _running_clusters[cluster_id].nodes[node_id].abi_cache;
+         if (fc::time_point::now() >= _running_clusters[cluster_id].nodes[node_id].abi_cache_time + fc::milliseconds(500)) {
+            _running_clusters[cluster_id].nodes[node_id].abi_cache_time = fc::time_point::now();
+            abi_cache.clear();
+         }
          auto it = abi_cache.find( account );
          if ( it == abi_cache.end() ) {
             auto result = call(cluster_id, node_id, "/v1/chain/get_abi", fc::mutable_variant_object("account_name", account));
@@ -378,9 +388,8 @@ public:
       };
 
       bytes action_variant_to_bin(int cluster_id, int node_id, const name& account, const name& action,
-                                  const fc::variant& action_args_var,
-                                  std::map<name, fc::optional<abi_serializer> > &abi_cache) {
-         auto abis = abi_serializer_resolver(cluster_id, node_id, account, abi_cache);
+                                  const fc::variant& action_args_var) {
+         auto abis = abi_serializer_resolver(cluster_id, node_id, account);
          FC_ASSERT( abis.valid(), "No ABI found for ${contract}", ("contract", account));
 
          auto action_type = abis->get_action_type( action );
@@ -392,8 +401,13 @@ public:
                                    packed_transaction::compression_type compression = packed_transaction::compression_type::none ) {
          int port = _running_clusters[cluster_id].nodes[node_id].http_port;
          std::string url = "http://" + _config.host_name + ":" + itoa(port);
-         fc::variant info_ = get_info(cluster_id, node_id);
-         eosio::chain_apis::read_only::get_info_results info = info_.as<eosio::chain_apis::read_only::get_info_results>();
+
+         auto &info = _running_clusters[cluster_id].nodes[node_id].get_info_cache;
+         if (fc::time_point::now() >= _running_clusters[cluster_id].nodes[node_id].get_info_cache_time + fc::milliseconds(500)) {
+            fc::variant info_ = get_info(cluster_id, node_id);
+            info = info_.as<eosio::chain_apis::read_only::get_info_results>();
+            _running_clusters[cluster_id].nodes[node_id].get_info_cache_time = fc::time_point::now();
+         }
 
          if (trx.signatures.size() == 0) {
             trx.expiration = info.head_block_time + fc::seconds(3);
@@ -442,11 +456,10 @@ public:
       }
 
       fc::variant push_actions(launcher_service::push_actions_param param) {
-         std::map<name, fc::optional<abi_serializer> > cache;
          std::vector<chain::action> actlist;
          actlist.reserve(param.actions.size());
          for (const action_param &p : param.actions) {
-            bytes data = action_variant_to_bin(param.cluster_id, param.node_id, p.account, p.action, p.data, cache);
+            bytes data = action_variant_to_bin(param.cluster_id, param.node_id, p.account, p.action, p.data);
             actlist.emplace_back(p.permissions, p.account, p.action, data);
          }
          return push_actions(param.cluster_id, param.node_id, std::move(actlist));
@@ -468,7 +481,6 @@ public:
       }
 
       fc::variant create_account(new_account_param_ex param) {
-         std::map<name, fc::optional<abi_serializer> > cache;
 
          // new account
          std::vector<eosio::chain::action> actlist;
@@ -489,7 +501,7 @@ public:
                                     ("stake_cpu_quantity", param.stake_cpu)
                                     ("transfer", param.transfer);
          actlist.emplace_back(vector<chain::permission_level>{{param.creator, N(active)}}, N(eosio), N(delegatebw),
-            action_variant_to_bin(param.cluster_id, param.node_id, N(eosio), N(delegatebw), delegate_act, cache));
+            action_variant_to_bin(param.cluster_id, param.node_id, N(eosio), N(delegatebw), delegate_act));
 
          // buyram
          fc::variant buyram_act = fc::mutable_variant_object()
@@ -497,7 +509,7 @@ public:
                ("receiver", param.name.to_string())
                ("bytes", param.buy_ram_bytes);
          actlist.emplace_back(vector<chain::permission_level>{{param.creator, N(active)}}, N(eosio), N(buyrambytes),
-            action_variant_to_bin(param.cluster_id, param.node_id, N(eosio), N(buyrambytes), buyram_act, cache));
+            action_variant_to_bin(param.cluster_id, param.node_id, N(eosio), N(buyrambytes), buyram_act));
 
          return push_actions(param.cluster_id, param.node_id, std::move(actlist));
       }
