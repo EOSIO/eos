@@ -1,8 +1,5 @@
----
-title: "multisig propose"
-excerpt: ""
----
 ## Positional Arguments
+
 `proposal_name` _TEXT_ - Proposal name (string)
 `requested_permissions` _TEXT_  - The JSON string or filename defining requested permissions
 `trx_permissions` _TEXT_ - The JSON string or filename defining transaction permissions
@@ -11,7 +8,9 @@ excerpt: ""
 `data` _TEXT_ - The JSON string or filename defining the action to propose
 `proposer` _TEXT_ - Account proposing the transaction
 `proposal_expiration` _UINT_ - Proposal expiration interval in hours
+
 ## Options
+
 - `-h,--help` Print this help message and exit
 - `-x,--expiration` _TEXT_ - set the time in seconds before a transaction expires, defaults to 30s
 - `-f,--force-unique` - force the transaction to be unique. this will consume extra bandwidth and remove any protections against accidently issuing the same transaction multiple times

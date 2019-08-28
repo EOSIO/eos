@@ -7,5 +7,7 @@ excerpt: ""
 - [multisig review](ref:multisig-review) - Review transaction
 - [multisig approve](ref:multisig-approve) - Approve proposed transaction
 - [multisig unapprove](ref:multisig-unapprove) - Unapprove proposed transaction
+
+- [multisig invalidate](ref:) - Invalidate all multisig approvals of an account
 - [multisig cancel](ref:multisig-cancel) - Cancel proposed transaction
 - [multisig exec](ref:multisig-exec) - Execute proposed transaction
