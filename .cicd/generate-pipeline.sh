@@ -34,8 +34,8 @@ for FILE in $(ls $CICD_DIR/platforms); do
 
   $HELPERS_DIR/file-hash.sh $CICD_DIR/platforms/$FILE # returns HASHED_IMAGE_TAG, etc
   
-  echo "------------------"
-  echo $HASHED_IMAGE_TAG
+  echo "# ------------------"
+  echo "# $HASHED_IMAGE_TAG"
 
   PLATFORMS_JSON_ARRAY+=("{
     \"FILE_NAME\": \"$FILE_NAME\",
