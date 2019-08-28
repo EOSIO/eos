@@ -11,7 +11,6 @@ import time
 
 from printer import print_in_blue, print_in_green, print_in_red, print_response, pad, underlined_str, green_str, yellow_str
 
-
 class LauncherCaller:
     DEFAULT_SERVER = "localhost"
     DEFAULT_PORT = 1234
@@ -31,7 +30,7 @@ class LauncherCaller:
         print("HTTP port to listen to: {}.".format(self.listen))
         self.link = 'http://127.0.0.1:1234/v1/launcher'
         self.option = '--http-server-address=0.0.0.0:1234'
-        if pgrep.pgrep('eosio-launcher-service'):
+        if self.pgrep('eosio-launcher-service'):
             print("Killing existing launcher service ...")
             subprocess.run(['pkill', 'eosio-launcher-service'])
         subprocess.Popen([self.path, self.option])
@@ -46,12 +45,11 @@ class LauncherCaller:
         return parser.parse_args()
 
     def check_status(self):
-        pid = pgrep.pgrep('eosio-launcher-service')
+        pid = self.pgrep('eosio-launcher-service')
         if pid is None:
             print_in_red("Launcher service is not running!")
         else:
-            print_in_green(
-                "Launcher service is running with process ID {}".format(pid))
+            print_in_green("Launcher service is running with process ID {}".format(pid))
 
     def rpc(self, procedure: str) -> str:
         return self.link + '/' + procedure
@@ -117,6 +115,10 @@ class LauncherCaller:
             return json.loads(self.response.text)['transaction_id']
         except KeyError:
             return
+
+    def pgrep(self, pattern: str) -> str:
+        out = subprocess.Popen(['pgrep', pattern], stdout=subprocess.PIPE).stdout.read()
+        return [int(x) for x in out.splitlines()]
 
 def main():
     caller = LauncherCaller()
