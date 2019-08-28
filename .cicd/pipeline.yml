@@ -1,6 +1,22 @@
 steps:
   - wait
 
+  - label: ":darwin: Anka - Ensure Mojave Template Dependency Tag/Layer Exists"
+    command:
+      - "git clone git@github.com:EOSIO/mac-anka-fleet.git -b support-for-new-cicd"
+      - "cd mac-anka-fleet && . ./ensure_tag.bash -u 12 -r 25G -a '-n'"
+    agents:
+      - "queue=mac-anka-templater-fleet"
+    env:
+      REPO: ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO}
+      REPO_COMMIT: $BUILDKITE_COMMIT
+      TEMPLATE: 10.14.4_6C_14G_40G
+      TEMPLATE_TAG: "clean::cicd::git-ssh::nas::brew::buildkite-agent"
+      TAG_COMMANDS: "git clone https://github.com$(echo ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO} | awk -F'github.com' '{print $2}') eos && cd eos && git checkout $BUILDKITE_COMMIT && git submodule update --init --recursive && ./.cicd/anka/macos-10.14.sh && cd .. && rm -rf eos"
+      PROJECT_TAG: "eos-macos-10.14-cf94bae63f2ceab7ef0e99a48a6f4c6ba464b38a"
+    timeout: ${TIMEOUT:-320}
+  - wait
+
   - label: ":aws: Amazon_Linux 2 - Build"
     command:
       - "./.cicd/build.sh"
@@ -52,7 +68,6 @@ steps:
   - label: ":darwin: macOS 10.14 - Build"
     command:
       - "git clone $BUILDKITE_REPO eos && cd eos && git checkout $BUILDKITE_COMMIT && git submodule update --init --recursive"
-      - "cd eos && ./.cicd/anka/macos-10.14.sh"
       - "cd eos && ./.cicd/build.sh"
       - "cd eos && tar -pczf build.tar.gz build && buildkite-agent artifact upload build.tar.gz"
     env:
@@ -62,7 +77,7 @@ steps:
           no-volume: true
           inherit-environment-vars: true
           vm-name: 10.14.4_6C_14G_40G
-          vm-registry-tag: "clean::cicd::git-ssh::nas::brew::buildkite-agent"
+          vm-registry-tag: "clean::cicd::git-ssh::nas::brew::buildkite-agent::eos-macos-10.14-cf94bae63f2ceab7ef0e99a48a6f4c6ba464b38a"
           modify-cpu: 12
           modify-ram: 24
           always-pull: true
@@ -124,7 +139,6 @@ steps:
 
   - label: ":darwin: macOS 10.14 - Unit Tests"
     command:
-      - "brew install git cmake automake libtool openssl wget gmp llvm@4 python python@2 doxygen graphviz mongodb libusb"
       - "git clone $BUILDKITE_REPO eos && cd eos && git checkout $BUILDKITE_COMMIT && git submodule update --init --recursive"
       - "cd eos && buildkite-agent artifact download build.tar.gz . --step ':darwin: macOS 10.14 - Build' && tar -xzf build.tar.gz"
       - "cd eos && ./.cicd/parallel-tests.sh"
@@ -133,7 +147,7 @@ steps:
           no-volume: true
           inherit-environment-vars: true
           vm-name: 10.14.4_6C_14G_40G
-          vm-registry-tag: "clean::cicd::git-ssh::nas::brew::buildkite-agent"
+          vm-registry-tag: "clean::cicd::git-ssh::nas::brew::buildkite-agent::eos-macos-10.14-cf94bae63f2ceab7ef0e99a48a6f4c6ba464b38a"
           always-pull: true
           debug: true
           wait-network: true
@@ -198,7 +212,6 @@ steps:
 
   - label: ":darwin: macOS 10.14 - Long-Running Tests"
     command:
-      - "brew install git cmake automake libtool openssl wget gmp llvm@4 python python@2 doxygen graphviz mongodb libusb"
       - "git clone $BUILDKITE_REPO eos && cd eos && git checkout $BUILDKITE_COMMIT && git submodule update --init --recursive"
       - "cd eos && buildkite-agent artifact download build.tar.gz . --step ':darwin: macOS 10.14 - Build' && tar -xzf build.tar.gz"
       - "cd eos && ./.cicd/long-running-tests.sh"
@@ -207,7 +220,7 @@ steps:
           no-volume: true
           inherit-environment-vars: true
           vm-name: 10.14.4_6C_14G_40G
-          vm-registry-tag: "clean::cicd::git-ssh::nas::brew::buildkite-agent"
+          vm-registry-tag: "clean::cicd::git-ssh::nas::brew::buildkite-agent::eos-macos-10.14-cf94bae63f2ceab7ef0e99a48a6f4c6ba464b38a"
           modify-cpu: 12
           modify-ram: 24
           always-pull: true
@@ -296,7 +309,7 @@ steps:
           no-volume: true
           inherit-environment-vars: true
           vm-name: 10.14.4_6C_14G_40G
-          vm-registry-tag: "clean::cicd::git-ssh::nas::brew::buildkite-agent"
+          vm-registry-tag: "clean::cicd::git-ssh::nas::brew::buildkite-agent::eos-macos-10.14-cf94bae63f2ceab7ef0e99a48a6f4c6ba464b38a"
           always-pull: true
           debug: true
           wait-network: true

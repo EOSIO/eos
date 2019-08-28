@@ -40,7 +40,6 @@ for TEST_NAME in $SERIAL_TESTS; do
 cat <<EOF
 - label: ":darwin: macOS 10.14 - $TEST_NAME"
   command:
-    - "brew install git graphviz libtool gmp llvm@4 pkgconfig python python@2 doxygen libusb openssl boost@1.70 cmake mongodb"
     - "git clone \$BUILDKITE_REPO eos && cd eos && git checkout \$BUILDKITE_COMMIT && git submodule update --init --recursive"
     - "cd eos && buildkite-agent artifact download build.tar.gz . --step ':darwin: macOS 10.14 - Build' && tar -xzf build.tar.gz"
     - "cd eos && ./.cicd/serial-tests.sh $TEST_NAME"
@@ -50,7 +49,7 @@ cat <<EOF
         no-volume: true
         inherit-environment-vars: true
         vm-name: 10.14.4_6C_14G_40G
-        vm-registry-tag: "clean::cicd::git-ssh::nas::brew::buildkite-agent"
+        vm-registry-tag: "clean::cicd::git-ssh::nas::brew::buildkite-agent::eos-macos-10.14-cf94bae63f2ceab7ef0e99a48a6f4c6ba464b38a"
         always-pull: true
         debug: true
         wait-network: true
