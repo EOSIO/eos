@@ -5,11 +5,10 @@ set -eo pipefail
 export MOJAVE_ANKA_TAG_BASE='clean::cicd::git-ssh::nas::brew::buildkite-agent'
 export MOJAVE_ANKA_TEMPLATE_NAME='10.14.4_6C_14G_40G'
 
-export PLATFORMS_JSON_ARRAY=()
-
 ( [[ $PINNED == false ]] || [[ $UNPINNED == true ]] ) && UNPINNED_APPEND='-unpinned'
 
 # Use files in platforms dir as source of truth for what platforms we need to generate steps for
+export PLATFORMS_JSON_ARRAY=()
 for FILE in $(ls $CICD_DIR/platforms); do
 
   # Support if users want to run unpinned
@@ -56,7 +55,7 @@ oIFS="$IFS"; IFS=$''; nIFS=$IFS # Needed to fix array splitting (\n won't work)
 for PLATFORM_JSON in ${PLATFORMS_JSON_ARRAY[*]}; do
   if [[ $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME) =~ 'macos' ]]; then
   cat <<EOF
-  - label: ":darwin: Anka - Ensure Mojave Template Dependency Tag/Layer Exists"
+  - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) Anka - Ensure $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) Template Dependency Tag"
     command:
       - "git clone git@github.com:EOSIO/mac-anka-fleet.git -b support-for-new-cicd"
       - "cd mac-anka-fleet && . ./ensure_tag.bash -u 12 -r 25G -a '-n'"
