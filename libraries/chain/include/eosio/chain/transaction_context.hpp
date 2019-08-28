@@ -18,8 +18,8 @@ namespace eosio { namespace chain {
 
          /* Sets a callback for when timer expires. Be aware this could might fire from a signal handling context and/or
             on any particular thread. Only a single callback can be registered at once; trying to register more will
-            result in an exception. */
-         void set_expiry_callback(void(*func)(void*), void* user);
+            result in an exception. Use nullptr to disable a previously set callback. */
+         void set_expiration_callback(void(*func)(void*), void* user);
 
          volatile sig_atomic_t& expired;
       private:

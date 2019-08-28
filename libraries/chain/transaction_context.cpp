@@ -34,13 +34,13 @@ namespace eosio { namespace chain {
       _timer.stop();
    }
 
-   void transaction_checktime_timer::set_expiry_callback(void(*func)(void*), void* user) {
-      _timer.set_expiry_callback(func, user);
+   void transaction_checktime_timer::set_expiration_callback(void(*func)(void*), void* user) {
+      _timer.set_expiration_callback(func, user);
    }
 
    transaction_checktime_timer::~transaction_checktime_timer() {
       stop();
-      _timer.set_expiry_callback(nullptr, nullptr);
+      _timer.set_expiration_callback(nullptr, nullptr);
    }
 
    transaction_context::transaction_context( controller& c,
