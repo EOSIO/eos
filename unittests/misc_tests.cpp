@@ -706,10 +706,6 @@ BOOST_AUTO_TEST_CASE(transaction_test) { try {
    BOOST_CHECK(cpu_time1 > fc::microseconds(0));
    BOOST_CHECK(cpu_time2 > fc::microseconds(0));
 
-   // verify that hitting cache still indicates same billable time
-   // if we remove cache so that the second is a real time calculation then remove this check
-   BOOST_CHECK(cpu_time1 == cpu_time2);
-
    // pack
    uint32_t pack_size = fc::raw::pack_size( pkt );
    vector<char> buf(pack_size);
