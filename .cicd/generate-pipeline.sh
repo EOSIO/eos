@@ -11,7 +11,7 @@ export MOJAVE_ANKA_TEMPLATE_NAME='10.14.4_6C_14G_40G'
 export PLATFORMS_JSON_ARRAY=()
 for FILE in $(ls $CICD_DIR/platforms); do
 
-  # Support if users want to run unpinned
+  # Prevent using both platform files (only use unpinned or pinned)
   if ( [[ $PINNED == false ]] || [[ $UNPINNED == true ]] ); then
     [[ ! $FILE =~ 'unpinned' ]] && continue
   else
