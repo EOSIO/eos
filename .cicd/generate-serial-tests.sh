@@ -7,6 +7,7 @@ SERIAL_TESTS=$(cat tests/CMakeLists.txt | grep nonparallelizable_tests | awk -F"
 # Use dockerfiles as source of truth for what platforms to use
 ## Linux
 for DOCKERFILE in $(ls $CICD_DIR/docker); do
+    [[ $DOCKERFILE =~ 'unpinned' ]] && continue
     DOCKERFILE_NAME=$(echo $DOCKERFILE | awk -F'.dockerfile' '{ print $1 }')
     PLATFORM_NAME=$(echo $DOCKERFILE_NAME | cut -d- -f1 | sed 's/os/OS/g')
     PLATFORM_NAME_UPCASE=$(echo $PLATFORM_NAME | tr a-z A-Z)
@@ -34,7 +35,7 @@ cat <<EOF
 EOF
     done
 done
-## Darwin
+# Darwin
 for TEST_NAME in $SERIAL_TESTS; do
 cat <<EOF
 - label: ":darwin: macOS 10.14 - $TEST_NAME"
