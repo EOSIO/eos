@@ -51,6 +51,7 @@ namespace launcher_service {
 
    struct cluster_def {
       std::string shape = "mesh";
+      int star_center_node_id = 0;
       int cluster_id = 0;
       int node_count = 0;
       std::vector<node_def> nodes;
@@ -161,6 +162,7 @@ namespace launcher_service {
       int                            cluster_id = 0;
       int                            node_id = 0;
       std::vector<action_param>      actions;
+      std::vector<public_key_type>   sign_keys; // skip get_required_keys and use corresponding private keys to sign
    };
 
    struct verify_transaction_param {
@@ -248,7 +250,7 @@ private:
 }
 
 FC_REFLECT(eosio::launcher_service::node_def, (node_id)(producers)(producing_keys)(extra_configs)(dont_start) )
-FC_REFLECT(eosio::launcher_service::cluster_def, (shape)(cluster_id)(node_count)(nodes)(extra_configs)(extra_args) )
+FC_REFLECT(eosio::launcher_service::cluster_def, (shape)(star_center_node_id)(cluster_id)(node_count)(nodes)(extra_configs)(extra_args) )
 FC_REFLECT(eosio::launcher_service::new_account_param, (name)(owner)(active))
 FC_REFLECT(eosio::launcher_service::create_bios_accounts_param, (cluster_id)(node_id)(creator)(accounts))
 FC_REFLECT(eosio::launcher_service::new_account_param_ex, (cluster_id)(node_id)(creator)(name)(owner)(active)(stake_cpu)(stake_net)(buy_ram_bytes))
@@ -258,7 +260,7 @@ FC_REFLECT(eosio::launcher_service::set_contract_param, (cluster_id)(node_id)(ac
 FC_REFLECT(eosio::launcher_service::import_keys_param, (cluster_id)(keys))
 FC_REFLECT(eosio::launcher_service::generate_key_param, (cluster_id)(seed))
 FC_REFLECT(eosio::launcher_service::action_param, (account)(action)(permissions)(data))
-FC_REFLECT(eosio::launcher_service::push_actions_param, (cluster_id)(node_id)(actions))
+FC_REFLECT(eosio::launcher_service::push_actions_param, (cluster_id)(node_id)(actions)(sign_keys))
 FC_REFLECT(eosio::launcher_service::verify_transaction_param, (cluster_id)(node_id)(transaction_id)(max_search_blocks)(block_num_hint))
 FC_REFLECT(eosio::launcher_service::schedule_protocol_feature_activations_param, (cluster_id)(node_id)(protocol_features_to_activate))
 FC_REFLECT(eosio::launcher_service::get_table_rows_param, (cluster_id)(node_id)(json)(code)(scope)(table)(lower_bound)(upper_bound)(limit)(key_type)(index_position)(encode_type)(reverse)(show_payer))

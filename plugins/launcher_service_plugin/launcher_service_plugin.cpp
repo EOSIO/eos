@@ -318,11 +318,14 @@ public:
          }
          int port = _running_clusters[cluster_id].nodes[node_id].http_port;
          if (port) {
-            std::string url;
-            url = "http://" + _config.host_name + ":" + itoa(port);
+            client::http::parsed_url purl;
+            purl.scheme = "http";
+            purl.server = _config.host_name;
+            purl.port = itoa(port);
+            purl.path = func;
             client::http::http_context context = client::http::create_http_context();
             std::vector<std::string> headers;
-            auto sp = std::make_unique<client::http::connection_param>(context, client::http::parse_url(url) + func, false, headers);
+            auto sp = std::make_unique<client::http::connection_param>(context, purl, false, headers);
             return client::http::do_http_call(*sp, args, _config.print_http_request, _config.print_http_response );
          }
          std::string err = "failed to " + func + ", nodeos is not running";
@@ -398,10 +401,9 @@ public:
       }
 
       fc::variant push_transaction(int cluster_id, int node_id, signed_transaction& trx,
-                                   packed_transaction::compression_type compression = packed_transaction::compression_type::none ) {
+                                   const std::vector<public_key_type> &sign_keys = std::vector<public_key_type>(),
+                                   packed_transaction::compression_type compression = packed_transaction::compression_type::none) {
          int port = _running_clusters[cluster_id].nodes[node_id].http_port;
-         std::string url = "http://" + _config.host_name + ":" + itoa(port);
-
          auto &info = _running_clusters[cluster_id].nodes[node_id].get_info_cache;
          if (fc::time_point::now() >= _running_clusters[cluster_id].nodes[node_id].get_info_cache_time + fc::milliseconds(500)) {
             fc::variant info_ = get_info(cluster_id, node_id);
@@ -426,33 +428,40 @@ public:
          }
 
          bool has_key = false;
-         fc::variant required_keys = determine_required_keys(cluster_id, node_id, trx);
-         const fc::variant &keys = required_keys["required_keys"];
-         for (const fc::variant &k : keys.get_array()) {
-            public_key_type pub_key = public_key_type(k.as_string());
-            private_key_type pri_key = _running_clusters[cluster_id].imported_keys[pub_key];
-            trx.sign(pri_key, info.chain_id);
-            has_key = true;
+         if (sign_keys.size()) {
+            for (const public_key_type &pub_key : sign_keys) {
+               if (_running_clusters[cluster_id].imported_keys.find(pub_key) != _running_clusters[cluster_id].imported_keys.end()) {
+                  private_key_type pri_key = _running_clusters[cluster_id].imported_keys[pub_key];
+                  trx.sign(pri_key, info.chain_id);
+                  has_key = true;
+               }
+            }
+         } else {
+            fc::variant required_keys = determine_required_keys(cluster_id, node_id, trx);
+            const fc::variant &keys = required_keys["required_keys"];
+            for (const fc::variant &k : keys.get_array()) {
+               public_key_type pub_key = public_key_type(k.as_string());
+               private_key_type pri_key = _running_clusters[cluster_id].imported_keys[pub_key];
+               trx.sign(pri_key, info.chain_id);
+               has_key = true;
+            }
          }
          if (!has_key) {
             throw std::string("private keys are not imported");
          }
-         //trx.sign(_config.default_key, info.chain_id);
 
          _running_clusters[cluster_id].transaction_blocknum[trx.id()] = info.head_block_num + 1;
 
-         client::http::http_context context = client::http::create_http_context();
-         std::vector<std::string> headers;
-         auto sp = std::make_unique<client::http::connection_param>(context, client::http::parse_url(url) + "/v1/chain/push_transaction", false, headers);
-         return client::http::do_http_call(*sp, fc::variant(packed_transaction(trx, compression)),  _config.print_http_request, _config.print_http_response );
+         return call(cluster_id, node_id, "/v1/chain/push_transaction", fc::variant(packed_transaction(trx, compression)));
       }
 
       fc::variant push_actions(int cluster_id, int node_id, std::vector<chain::action>&& actions,
+                               const std::vector<public_key_type> &sign_keys = std::vector<public_key_type>(),
                                packed_transaction::compression_type compression = packed_transaction::compression_type::none ) {
          signed_transaction trx;
          trx.actions = std::forward<decltype(actions)>(actions);
 
-         return push_transaction(cluster_id, node_id, trx, compression);
+         return push_transaction(cluster_id, node_id, trx, sign_keys, compression);
       }
 
       fc::variant push_actions(launcher_service::push_actions_param param) {
@@ -462,7 +471,7 @@ public:
             bytes data = action_variant_to_bin(param.cluster_id, param.node_id, p.account, p.action, p.data);
             actlist.emplace_back(p.permissions, p.account, p.action, data);
          }
-         return push_actions(param.cluster_id, param.node_id, std::move(actlist));
+         return push_actions(param.cluster_id, param.node_id, std::move(actlist), param.sign_keys);
       }
 
       fc::variant create_bios_accounts(create_bios_accounts_param param) {
@@ -528,7 +537,7 @@ public:
          if (actlist.size() == 0) {
             throw std::string("contract_file and abi_file are both empty");
          }
-         return push_actions(param.cluster_id, param.node_id, std::move(actlist), packed_transaction::compression_type::zlib);
+         return push_actions(param.cluster_id, param.node_id, std::move(actlist), std::vector<public_key_type>(), packed_transaction::compression_type::zlib);
       }
 
       fc::variant import_keys(import_keys_param param) {
@@ -726,14 +735,10 @@ fc::variant launcher_service_plugin::get_cluster_info(int cluster_id)
       int id = itr.second.id;
       int port = itr.second.http_port;
       if (port) {
-         std::string url;
          try {
-            url = "http://" + _my->_config.host_name + ":" + _my->itoa(port);
-            client::http::http_context context = client::http::create_http_context();
-            std::vector<std::string> headers;
-            auto sp = std::make_unique<client::http::connection_param>(context, client::http::parse_url(url) + "/v1/chain/get_info", false, headers);
-            res[id] = client::http::do_http_call(*sp, fc::variant(), _my->_config.print_http_request, _my->_config.print_http_response );
+            res[id] = _my->get_info(cluster_id, id);
          } catch (boost::system::system_error& e) {
+            std::string url = "http://" + _my->_config.host_name + ":" + _my->itoa(port);
             res[id] = fc::mutable_variant_object("exception", e.what())("url", url);
          }
       }
@@ -765,8 +770,6 @@ fc::variant launcher_service_plugin::get_cluster_running_state(int cluster_id)
       return fc::mutable_variant_object("exception", s);\
    } catch (const char *s) {\
       return fc::mutable_variant_object("exception", s);\
-   } catch (...) { \
-      return fc::mutable_variant_object("exception", "unknown");\
    }
 
 fc::variant launcher_service_plugin::launch_cluster(launcher_service::cluster_def def)
