@@ -5,7 +5,7 @@ set -eo pipefail
 
 export PLATFORMS_JSON_ARRAY=()
 
-# Use FILEs as source of truth for what platforms to use
+# Use files in platforms dir as source of truth for what platforms we need to generate steps for
 for FILE in $(ls $CICD_DIR/platforms); do
 
   # Support if users want to run unpinned
@@ -219,7 +219,7 @@ for PLATFORM_JSON in ${PLATFORMS_JSON_ARRAY[*]}; do
     agents:
       queue: "automation-eos-builder-fleet"
     timeout: ${TIMEOUT:-10}
-    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}\${SKIP_LONG_RUNNING_TESTS}
+    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}\${SKIP_LONG_RUNNING_TESTS:-true}
 
 EOF
 
@@ -245,7 +245,7 @@ EOF
           wait-network: true
     agents:
       - "queue=mac-anka-large-node-fleet"
-    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}\${SKIP_LONG_RUNNING_TESTS}
+    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}\${SKIP_LONG_RUNNING_TESTS:-true}
 
 EOF
 
@@ -253,6 +253,3 @@ EOF
 done
 
 IFS=$oIFS
-
-echo "  - wait"
-echo ""
