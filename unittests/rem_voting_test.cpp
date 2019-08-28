@@ -100,6 +100,17 @@ public:
        return r;
     }
 
+   auto undelegate_bandwidth( name from, name receiver, asset unstake_quantity ) {
+       auto r = base_tester::push_action(config::system_account_name, N(undelegatebw), from, mvo()
+                    ("from", from )
+                    ("receiver", receiver)
+                    ("unstake_quantity", unstake_quantity)
+                    );
+       produce_block();
+       return r;
+    }
+
+
     void create_currency( name contract, name manager, asset maxsupply, const private_key_type* signer = nullptr ) {
         auto act =  mutable_variant_object()
                 ("issuer",       manager )
@@ -116,6 +127,19 @@ public:
         );
         produce_block();
         return r;
+    }
+
+    auto transfer( name from, name to, asset quantity ) {
+       auto r = push_action( N(rem.token), N(transfer), config::system_account_name, 
+                             mutable_variant_object()
+                             ("from", from)
+                             ("to", to)
+                             ("quantity", quantity)
+                             ("memo", "")
+       );
+       produce_block();
+
+       return r;
     }
 
     auto torewards( name caller, name payer, asset amount ) {
@@ -585,6 +609,31 @@ BOOST_FIXTURE_TEST_CASE( rem_vote_weight_test, voting_tester ) {
          const auto prod = get_producer_info( "proda" );
          BOOST_TEST_REQUIRE( 10363317352113.912 == prod["total_votes"].as_double() );
       }
+   } FC_LOG_AND_RETHROW()
+}
+
+BOOST_FIXTURE_TEST_CASE( undelegate_after_resignation_test, voting_tester ) {
+   try {
+      const auto producers = { N(b1), N(whale1), N(whale2), N(whale3) };
+      for( const auto& producer : producers ) {
+         register_producer(producer);
+         votepro( producer, { N(b1) } );
+      }
+
+      transfer( name(config::system_account_name), name(N(proda)), core_from_string("10000.0000") );
+      delegate_bandwidth( N(proda), N(runnerup1), core_from_string("1000.0000"), 0 );
+
+      register_producer( N(proda) );
+
+      BOOST_REQUIRE_THROW( undelegate_bandwidth( N(proda), N(proda), core_from_string("1.0000") ), eosio_assert_message_exception );
+      BOOST_REQUIRE( undelegate_bandwidth( N(proda), N(runnerup1), core_from_string("500.0000") ) );
+      BOOST_REQUIRE( delegate_bandwidth( N(proda), N(runnerup1), core_from_string("500.0000"), 0 ) );
+
+      produce_min_num_of_blocks_to_spend_time_wo_inactive_prod( fc::seconds(180 * 24 * 3600) );
+      unregister_producer( N(proda) );
+
+      BOOST_REQUIRE_THROW( undelegate_bandwidth( N(proda), N(proda), core_from_string("1.0000") ), eosio_assert_message_exception );
+      BOOST_REQUIRE( undelegate_bandwidth( N(proda), N(runnerup1), core_from_string("1000.0000") ) );
    } FC_LOG_AND_RETHROW()
 }
 
