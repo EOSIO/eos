@@ -3,7 +3,6 @@
 import argparse
 import json
 import os
-import pgrep
 import platform
 import requests
 import subprocess
