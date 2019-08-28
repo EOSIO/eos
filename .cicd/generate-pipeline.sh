@@ -5,7 +5,7 @@ set -eo pipefail
 export MOJAVE_ANKA_TAG_BASE='clean::cicd::git-ssh::nas::brew::buildkite-agent'
 export MOJAVE_ANKA_TEMPLATE_NAME='10.14.4_6C_14G_40G'
 
-( [[ $PINNED == false ]] || [[ $UNPINNED == true ]] ) && UNPINNED_APPEND='-unpinned'
+( [[ $PINNED == false ]] || [[ $UNPINNED == true ]] ) && UNPINNED_APPEND='-unpinned' # Used for ensure step
 
 # Use files in platforms dir as source of truth for what platforms we need to generate steps for
 export PLATFORMS_JSON_ARRAY=()
