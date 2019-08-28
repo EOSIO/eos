@@ -253,10 +253,8 @@ namespace eosio { namespace testing {
 
    void base_tester::push_block(signed_block_ptr b) {
       auto bsf = control->create_block_state_future(b);
-      unapplied_transactions.add_aborted( control->abort_block() );
-      control->push_block( bsf, [this]( const branch_type& forked_branch ) {
-         unapplied_transactions.add_forked( forked_branch );
-      } );
+      control->abort_block();
+      control->push_block( bsf );
 
       auto itr = last_produced_block.find(b->producer);
       if (itr == last_produced_block.end() || block_header::num_from_id(b->id()) > block_header::num_from_id(itr->second)) {
@@ -268,6 +266,7 @@ namespace eosio { namespace testing {
       auto head = control->head_block_state();
       auto head_time = control->head_block_time();
       auto next_time = head_time + skip_time;
+      auto& unapplied_transactions = control->unapplied_transaction_queue();
 
       if( !control->is_building_block() || control->pending_block_time() != next_time ) {
          _start_block( next_time );
@@ -309,7 +308,7 @@ namespace eosio { namespace testing {
          last_produced_block_num = std::max(control->last_irreversible_block_num(), block_header::num_from_id(itr->second));
       }
 
-      unapplied_transactions.add_aborted( control->abort_block() );
+      control->abort_block();
 
       vector<digest_type> feature_to_be_activated;
       // First add protocol features to be activated WITHOUT preactivation
@@ -966,7 +965,7 @@ namespace eosio { namespace testing {
             if( block ) { //&& !b.control->is_known_block(block->id()) ) {
                auto bsf = b.control->create_block_state_future( block );
                b.control->abort_block();
-               b.control->push_block(bsf, forked_branch_callback()); //, eosio::chain::validation_steps::created_block);
+               b.control->push_block(bsf); //, eosio::chain::validation_steps::created_block);
             }
          }
       };

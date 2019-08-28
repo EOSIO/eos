@@ -268,7 +268,7 @@ BOOST_AUTO_TEST_CASE( forking ) try {
    bad_block.transaction_mroot = bad_block.previous;
    auto bad_block_bs = c.control->create_block_state_future( std::make_shared<signed_block>(std::move(bad_block)) );
    c.control->abort_block();
-   BOOST_REQUIRE_EXCEPTION(c.control->push_block( bad_block_bs, forked_branch_callback() ), fc::exception,
+   BOOST_REQUIRE_EXCEPTION(c.control->push_block( bad_block_bs ), fc::exception,
       [] (const fc::exception &ex)->bool {
          return ex.to_detail_string().find("block signed by unexpected key") != std::string::npos;
       });
@@ -638,12 +638,12 @@ BOOST_AUTO_TEST_CASE( push_block_returns_forked_transactions ) try {
    }
 
    // verify transaction on fork is reported by push_block in order
-   BOOST_REQUIRE_EQUAL( 3, c.get_unapplied_transaction_queue().size() );
-   BOOST_REQUIRE_EQUAL( trace1->id, c.get_unapplied_transaction_queue().begin()->id() );
-   c.get_unapplied_transaction_queue().erase( c.get_unapplied_transaction_queue().begin() );
-   BOOST_REQUIRE_EQUAL( trace2->id, c.get_unapplied_transaction_queue().begin()->id() );
-   c.get_unapplied_transaction_queue().erase( c.get_unapplied_transaction_queue().begin() );
-   BOOST_REQUIRE_EQUAL( trace3->id, c.get_unapplied_transaction_queue().begin()->id() );
+   BOOST_REQUIRE_EQUAL( 3, c.control->unapplied_transaction_queue().size() );
+   BOOST_REQUIRE_EQUAL( trace1->id, c.control->unapplied_transaction_queue().begin()->id() );
+   c.control->unapplied_transaction_queue().erase( c.control->unapplied_transaction_queue().begin() );
+   BOOST_REQUIRE_EQUAL( trace2->id, c.control->unapplied_transaction_queue().begin()->id() );
+   c.control->unapplied_transaction_queue().erase( c.control->unapplied_transaction_queue().begin() );
+   BOOST_REQUIRE_EQUAL( trace3->id, c.control->unapplied_transaction_queue().begin()->id() );
 
 } FC_LOG_AND_RETHROW()
 

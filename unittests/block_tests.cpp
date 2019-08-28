@@ -39,7 +39,7 @@ BOOST_AUTO_TEST_CASE(block_with_invalid_tx_test)
    tester validator;
    auto bs = validator.control->create_block_state_future( copy_b );
    validator.control->abort_block();
-   BOOST_REQUIRE_EXCEPTION(validator.control->push_block( bs, forked_branch_callback() ), fc::exception ,
+   BOOST_REQUIRE_EXCEPTION(validator.control->push_block( bs ), fc::exception ,
    [] (const fc::exception &e)->bool {
       return e.code() == account_name_exists_exception::code_value ;
    }) ;
@@ -217,11 +217,11 @@ BOOST_FIXTURE_TEST_CASE( abort_block_transactions, validating_tester) { try {
 
       control->get_account( a ); // throws if it does not exist
 
-      vector<transaction_metadata_ptr> unapplied_trxs = control->abort_block();
+      control->abort_block();
 
-      // verify transaction returned from abort_block()
-      BOOST_REQUIRE_EQUAL( 1,  unapplied_trxs.size() );
-      BOOST_REQUIRE_EQUAL( trx.id(), unapplied_trxs.at(0)->id() );
+      // verify transaction added to unapplied in abort_block()
+      BOOST_REQUIRE_EQUAL( 1,  control->unapplied_transaction_queue().size() );
+      BOOST_REQUIRE( control->unapplied_transaction_queue().get_trx( trx.id() ) != nullptr );
 
       // account does not exist block was aborted which had transaction
       BOOST_REQUIRE_EXCEPTION(control->get_account( a ), fc::exception,
@@ -268,9 +268,9 @@ BOOST_FIXTURE_TEST_CASE( abort_block_transactions_tester, validating_tester) { t
 
       control->get_account( a ); // throws if it does not exist
 
-      vector<transaction_metadata_ptr> unapplied_trxs = control->abort_block(); // should be empty now
+      control->abort_block();
 
-      BOOST_REQUIRE_EQUAL( 0,  unapplied_trxs.size() );
+      BOOST_REQUIRE_EQUAL( 0,  control->unapplied_transaction_queue().size() ); // should be empty now
 
    } FC_LOG_AND_RETHROW() }
 
