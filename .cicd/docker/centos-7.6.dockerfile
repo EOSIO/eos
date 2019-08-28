@@ -18,7 +18,7 @@ RUN curl -LO https://cmake.org/files/v3.13/cmake-3.13.2.tar.gz && \
     make install && \
     cd / && \
     rm -rf cmake-3.13.2.tar.gz /cmake-3.13.2
-COPY ./.cicd/helpers/clang-devtoolset8-support.patch /tmp/clang-devtoolset8-support.patch
+COPY ./scripts/clang-devtoolset8-support.patch /tmp/clang-devtoolset8-support.patch
 # build clang8
 RUN git clone --single-branch --branch release_80 https://git.llvm.org/git/llvm.git clang8 && cd clang8 && git checkout 18e41dc && \
     cd tools && git clone --single-branch --branch release_80 https://git.llvm.org/git/lld.git && cd lld && git checkout d60a035 && \
