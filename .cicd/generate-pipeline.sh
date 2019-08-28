@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 set -eo pipefail
 . ./.cicd/helpers/general.sh
-. $HELPERS_DIR/hash.sh
 
 export MOJAVE_ANKA_TAG_BASE='clean::cicd::git-ssh::nas::brew::buildkite-agent'
 export MOJAVE_ANKA_TEMPLATE_NAME='10.14.4_6C_14G_40G'
@@ -31,7 +30,7 @@ for FILE in $(ls $CICD_DIR/platforms); do
   [[ $FILE_NAME =~ 'centos' ]] && ICON=':centos:'
   [[ $FILE_NAME =~ 'macos' ]] && ICON=':darwin:'
 
-  determine-hash $CICD_DIR/platforms/$FILE # returns HASHED_IMAGE_TAG, etc
+  $HELPERS_DIR/hash.sh $CICD_DIR/platforms/$FILE # returns HASHED_IMAGE_TAG, etc
 
   PLATFORMS_JSON_ARRAY+=("{
     \"FILE_NAME\": \"$FILE_NAME\",
