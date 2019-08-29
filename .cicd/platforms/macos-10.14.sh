@@ -57,7 +57,7 @@ mkdir -p ~/mongodb
 touch ~/mongodb/mongod.log
 rm -f mongodb-osx-ssl-x86_64-3.6.3.tgz
 mkdir -p ~/mongodb
-ln -s ~/mongodb-osx-x86_64-3.6.3 ~/mongodb
+ln -s /tmp/mongodb-osx-x86_64-3.6.3 ~/mongodb
 ln -s ~/mongodb/bin/mongod /usr/local/bin/mongod
 
 cd /tmp
