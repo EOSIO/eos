@@ -47,7 +47,6 @@ for FILE in $(ls $CICD_DIR/platforms); do
     "ICON": env.ICON
     }]')
 
-
 done
 
 oIFS="$IFS"
