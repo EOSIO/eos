@@ -1,6 +1,6 @@
 #!/bin/bash
 brew update
-brew install git boost@1.70 cmake python@2 python libtool libusb graphviz automake wget gmp llvm@4 pkgconfig doxygen openssl mongodb
+brew install git boost@1.70 cmake python@2 python libtool libusb graphviz automake wget gmp llvm@4 pkgconfig doxygen openssl
 
 if [[ $PINNED != false || $UNPINNED != true ]]; then
     git clone --single-branch --branch release_80 https://git.llvm.org/git/llvm.git clang8
@@ -49,6 +49,15 @@ if [[ $PINNED != false || $UNPINNED != true ]]; then
     rm -rf clang8
 fi
 
+cd /tmp
+curl -OL https://fastdl.mongodb.org/osx/mongodb-osx-ssl-x86_64-3.6.3.tgz
+tar -xzf mongodb-osx-ssl-x86_64-3.6.3.tgz
+mkdir -p /tmp/mongodb
+touch /tmp/mongodb/mongod.log
+rm -f mongodb-osx-ssl-x86_64-3.6.3.tgz
+mkdir -p /tmp/mongodb
+ln -s /tmp/mongodb-osx-x86_64-3.6.3 /tmp/mongodb
+ln -s /tmp/mongodb/bin/mongod /usr/local/bin/mongod
 
 cd /tmp
 curl -LO https://github.com/mongodb/mongo-c-driver/releases/download/1.13.0/mongo-c-driver-1.13.0.tar.gz
