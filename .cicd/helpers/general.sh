@@ -20,5 +20,5 @@ function buildkite-intrinsics()
             BK_ENV="$BK_ENV --env ${var%%=*}"
         done < "$BUILDKITE_ENV_FILE"
     fi
-    return "$BK_ENV"
+    echo "$BK_ENV"
 }
