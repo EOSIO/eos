@@ -32,7 +32,7 @@ steps:
     agents:
       queue: "automation-eos-builder-fleet"
     timeout: ${TIMEOUT:-10}
-    skip: ${SKIP_UBUNTU_18}${SKIP_CONTRACT_BUILDER}
+    skip: ${SKIP_UBUNTU_18}${SKIP_CONTRACT_BUILDER}${SKIP_LINUX}
 
   - label: ":centos: CentOS 7.6 - Package Builder"
     command:
@@ -46,7 +46,7 @@ steps:
     agents:
       queue: "automation-eos-builder-fleet"
     timeout: ${TIMEOUT:-10}
-    skip: ${SKIP_CENTOS_7}${SKIP_PACKAGE_BUILDER}
+    skip: ${SKIP_CENTOS_7}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
 
   - label: ":ubuntu: Ubuntu 16.04 - Package Builder"
     command:
@@ -60,7 +60,7 @@ steps:
     agents:
       queue: "automation-eos-builder-fleet"
     timeout: ${TIMEOUT:-10}
-    skip: ${SKIP_UBUNTU_16}${SKIP_PACKAGE_BUILDER}
+    skip: ${SKIP_UBUNTU_16}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
 
   - label: ":ubuntu: Ubuntu 18.04 - Package Builder"
     command:
@@ -74,7 +74,7 @@ steps:
     agents:
       queue: "automation-eos-builder-fleet"
     timeout: ${TIMEOUT:-10}
-    skip: ${SKIP_UBUNTU_18}${SKIP_PACKAGE_BUILDER}
+    skip: ${SKIP_UBUNTU_18}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
 
   - label: ":darwin: Mojave - Package Builder"
     command:
@@ -93,7 +93,7 @@ steps:
     agents:
       - "queue=mac-anka-node-fleet"
     timeout: 10
-    skip: ${SKIP_MOJAVE}${SKIP_PACKAGE_BUILDER}
+    skip: ${SKIP_MOJAVE}${SKIP_PACKAGE_BUILDER}${SKIP_MAC}
 
   - label: ":git: Git Submodule Regression Check"
     command:
