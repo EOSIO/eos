@@ -64,7 +64,7 @@ echo $PLATFORMS_JSON_ARRAY | jq -cr ".[]" | while read -r PLATFORM_JSON; do
   cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) Anka - Ensure $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) Template Dependency Tag"
     command:
-      - "git clone git@github.com:EOSIO/mac-anka-fleet.git -b support-for-new-cicd"
+      - "git clone git@github.com:EOSIO/mac-anka-fleet.git"
       - "cd mac-anka-fleet && . ./ensure_tag.bash -u 12 -r 25G -a '-n'"
     agents:
       - "queue=mac-anka-templater-fleet"
