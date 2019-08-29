@@ -34,6 +34,17 @@ matrix:
         homebrew:
           update: true
           packages:
+            - graphviz
+            - libtool
+            - gmp
+            - llvm@4
+            - pkgconfig
+            - python
+            - python@2
+            - doxygen
+            - libusb
+            - openssl
+            - boost@1.70
             - ccache
       env: 
         - PATH="/usr/local/opt/ccache/libexec:$PATH"
