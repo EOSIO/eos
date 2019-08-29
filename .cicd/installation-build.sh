@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 set -eo pipefail
 . ./.cicd/helpers/general.sh
 export ENABLE_INSTALL=true

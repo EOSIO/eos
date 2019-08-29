@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 set -eo pipefail
 . ./.cicd/helpers/general.sh
 SERIAL_TESTS=$(cat tests/CMakeLists.txt | grep nonparallelizable_tests | awk -F" " '{ print $2 }')

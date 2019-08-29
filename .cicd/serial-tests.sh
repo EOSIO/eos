@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 set -eo pipefail
 . ./.cicd/helpers/general.sh
 [[ -z $1 ]] && TEST_NAME="-L nonparallelizable_tests" || TEST_NAME="-R ^$1$"

@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 set -eo pipefail
 . ./.cicd/helpers/general.sh
 TEST="ctest -L long_running_tests --output-on-failure -T Test"
