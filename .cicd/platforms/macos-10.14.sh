@@ -52,12 +52,12 @@ fi
 cd /tmp
 curl -OL https://fastdl.mongodb.org/osx/mongodb-osx-ssl-x86_64-3.6.3.tgz
 tar -xzf mongodb-osx-ssl-x86_64-3.6.3.tgz
-mkdir -p /tmp/mongodb
-touch /tmp/mongodb/mongod.log
+mkdir -p ~/mongodb
+touch ~/mongodb/mongod.log
 rm -f mongodb-osx-ssl-x86_64-3.6.3.tgz
-mkdir -p /tmp/mongodb
-ln -s /tmp/mongodb-osx-x86_64-3.6.3 /tmp/mongodb
-ln -s /tmp/mongodb/bin/mongod /usr/local/bin/mongod
+mkdir -p ~/mongodb
+ln -s ~/mongodb-osx-x86_64-3.6.3 ~/mongodb
+ln -s ~/mongodb/bin/mongod /usr/local/bin/mongod
 
 cd /tmp
 curl -LO https://github.com/mongodb/mongo-c-driver/releases/download/1.13.0/mongo-c-driver-1.13.0.tar.gz
