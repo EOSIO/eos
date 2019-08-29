@@ -18,7 +18,7 @@ steps:
       node --max-old-space-size=32768 test-metrics.js
     agents:
       queue: "automation-eos-builder-fleet"
-    timeout: 10
+    timeout: ${TIMEOUT:-10}
     soft_fail: true
 
   - wait
@@ -92,7 +92,7 @@ steps:
           wait-network: true
     agents:
       - "queue=mac-anka-node-fleet"
-    timeout: 10
+    timeout: ${TIMEOUT:-10}
     skip: ${SKIP_MOJAVE}${SKIP_PACKAGE_BUILDER}${SKIP_MAC}
 
   - label: ":git: Git Submodule Regression Check"
@@ -100,4 +100,4 @@ steps:
       - "./.cicd/submodule-regression-checker.sh"
     agents:
       queue: "automation-basic-builder-fleet"
-    timeout: 5
+    timeout: ${TIMEOUT:-5}
