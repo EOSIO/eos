@@ -17,7 +17,7 @@ if [[ ! -z "$(pgrep mongod)" ]]; then
     $(pgrep mongod | xargs kill -9) || :
 fi
 echo "+++ $([[ "$BUILDKITE" == 'true' ]] && echo ':leaves: ')Starting new MongoDB"
-echo "mongod --fork --logpath $(pwd)/mongod.log $([[ -d ~/data/mongodb ]] && echo '--dbpath ~/data/mongodb') $([[ -f ~/etc/mongod.conf ]] && echo '-f ~/etc/mongod.conf')"
+echo "$ mongod --fork --logpath $(pwd)/mongod.log $([[ -d ~/data/mongodb ]] && echo '--dbpath ~/data/mongodb') $([[ -f ~/etc/mongod.conf ]] && echo '-f ~/etc/mongod.conf')"
 eval mongod --fork --logpath $(pwd)/mongod.log $([[ -d ~/data/mongodb ]] && echo '--dbpath ~/data/mongodb') $([[ -f ~/etc/mongod.conf ]] && echo '-f ~/etc/mongod.conf')
 # tests
 if [[ -z "$TEST" ]]; then # run all serial tests
