@@ -46,7 +46,6 @@ matrix:
             - openssl
             - boost@1.70
             - ccache
-            - mongodb
       env: 
         - PATH="/usr/local/opt/ccache/libexec:$PATH"
 script: "ccache --max-size=1G && ./.cicd/build.sh && ./.cicd/parallel-tests.sh && ./.cicd/serial-tests.sh"
