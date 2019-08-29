@@ -30,6 +30,11 @@ matrix:
         - IMAGE_TAG='centos-7.6'
     - os: osx
       osx_image: xcode10.2
+      addons:
+        homebrew:
+          update: true
+          packages:
+            - ccache
       env: 
         - PATH="/usr/local/opt/ccache/libexec:$PATH"
 script: "ccache --max-size=1G && ./.cicd/build.sh && ./.cicd/parallel-tests.sh && ./.cicd/serial-tests.sh"
