@@ -53,7 +53,6 @@ fi
 cd ~
 curl -OL https://fastdl.mongodb.org/osx/mongodb-osx-ssl-x86_64-3.6.3.tgz
 tar -xzf mongodb-osx-ssl-x86_64-3.6.3.tgz
-mkdir -p ~/mongodb
 rm -f mongodb-osx-ssl-x86_64-3.6.3.tgz
 ln -s ~/mongodb-osx-x86_64-3.6.3 ~/mongodb
 
