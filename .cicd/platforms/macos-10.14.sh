@@ -50,15 +50,12 @@ if [[ ! $PINNED == false || $UNPINNED == true ]]; then
     rm -rf clang8
 fi
 
-cd /tmp
+cd ~
 curl -OL https://fastdl.mongodb.org/osx/mongodb-osx-ssl-x86_64-3.6.3.tgz
 tar -xzf mongodb-osx-ssl-x86_64-3.6.3.tgz
 mkdir -p ~/mongodb
-touch ~/mongodb/mongod.log
 rm -f mongodb-osx-ssl-x86_64-3.6.3.tgz
-mkdir -p ~/mongodb
-ln -s /tmp/mongodb-osx-x86_64-3.6.3 ~/mongodb
-ln -s ~/mongodb/bin/mongod /usr/local/bin/mongod
+ln -s ~/mongodb-osx-x86_64-3.6.3 ~/mongodb
 
 cd /tmp
 curl -LO https://github.com/mongodb/mongo-c-driver/releases/download/1.13.0/mongo-c-driver-1.13.0.tar.gz
