@@ -10,7 +10,7 @@ export PLATFORMS_JSON_ARRAY='[]'
 for FILE in $(ls $CICD_DIR/platforms); do
 
   # Prevent using both platform files (only use unpinned or pinned)
-  if [[ $PINNED == false || $UNPINNED == true ]]; then
+  if [[ $PINNED == false || $UNPINNED == true ]] && [[ ! $FILE =~ 'macos' ]]; then
     [[ ! $FILE =~ 'unpinned' ]] && continue
   else
     [[ $FILE =~ 'unpinned' ]] && continue
@@ -78,6 +78,7 @@ echo $PLATFORMS_JSON_ARRAY | jq -cr ".[]" | while read -r PLATFORM_JSON; do
 EOF
   fi
 done
+
 
 echo "  - wait"; echo ""
 
