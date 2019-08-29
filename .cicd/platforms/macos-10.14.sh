@@ -2,7 +2,7 @@
 brew update
 brew install git boost@1.70 cmake python@2 python libtool libusb graphviz automake wget gmp llvm@4 pkgconfig doxygen openssl
 
-if [[ ! $PINNED == false || $UNPINNED == true ]]; then
+if [[ ! $PINNED == false ]] || [[ $UNPINNED == true ]]; then
     git clone --single-branch --branch release_80 https://git.llvm.org/git/llvm.git clang8
     cd clang8
     git checkout 18e41dc
