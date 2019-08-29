@@ -1,6 +1,8 @@
 #!/bin/bash
 set -eo pipefail
+# variables
 . ./.cicd/helpers/general.sh
+# tests
 if [[ $(uname) == 'Darwin' ]]; then # macOS
     ./"$@"
 else # Linux
