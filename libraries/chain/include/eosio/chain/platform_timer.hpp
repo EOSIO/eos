@@ -1,6 +1,7 @@
 #pragma once
 #include <fc/time.hpp>
 #include <fc/fwd.hpp>
+#include <fc/scoped_exit.hpp>
 
 #include <eosio/chain/exceptions.hpp>
 
@@ -21,21 +22,16 @@ struct platform_timer {
       on any particular thread. Only a single callback can be registered at once; trying to register more will
       result in an exception. Setting to nullptr disables any current set callback */
    void set_expiration_callback(void(*func)(void*), void* user) {
-      callback_state current_state;
-      while((current_state = _callback_state.load(std::memory_order_acquire)) == READING) {} //wait for call_expiration_callback() to be done with it
-      if(func)
-         EOS_ASSERT(current_state == UNSET, misc_exception, "Setting a platform_timer callback when one already exists");
-      if(!func && current_state == UNSET)
-         return;
+      bool expect_false = false;
+      while(!atomic_compare_exchange_strong(&_callback_variables_busy, &expect_false, true))
+         expect_false = false;
+      auto reset_busy = fc::make_scoped_exit([this]() {
+         _callback_variables_busy.store(false, std::memory_order_release);
+      });
+      EOS_ASSERT(!(func && _expiration_callback), misc_exception, "Setting a platform_timer callback when one already exists");
 
-      //prepare for loading in new values by moving from UNSET->WRITING
-      while(!atomic_compare_exchange_strong(&_callback_state, &current_state, WRITING))
-         current_state = UNSET;
       _expiration_callback = func;
       _expiration_callback_data = user;
-
-      //finally go WRITING->SET
-      _callback_state.store(func ? SET : UNSET, std::memory_order_release);
    }
 
    volatile sig_atomic_t expired = 1;
@@ -45,25 +41,19 @@ private:
    constexpr static size_t fwd_size = 8;
    fc::fwd<impl,fwd_size> my;
 
-   enum callback_state {
-      UNSET,
-      READING,
-      WRITING,
-      SET
-   };
-
    void call_expiration_callback() {
-      callback_state state_is_SET = SET;
-      if(atomic_compare_exchange_strong(&_callback_state, &state_is_SET, READING)) {
+      bool expect_false = false;
+      if(atomic_compare_exchange_strong(&_callback_variables_busy, &expect_false, true)) {
          void(*cb)(void*) = _expiration_callback;
          void* cb_data = _expiration_callback_data;
-         _callback_state.store(SET, std::memory_order_release);
-         cb(cb_data);
+         _callback_variables_busy.store(false, std::memory_order_release);
+         if(cb)
+            cb(cb_data);
       }
    }
 
-   std::atomic<callback_state> _callback_state = UNSET;
-   void(*_expiration_callback)(void*);
+   std::atomic_bool _callback_variables_busy = false;
+   void(*_expiration_callback)(void*) = nullptr;
    void* _expiration_callback_data;
 };
 
