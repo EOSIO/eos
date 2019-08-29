@@ -7,7 +7,7 @@ mkdir -p $BUILD_DIR
 if [[ $(uname) == 'Darwin' ]]; then
 
     # You can't use chained commands in execute
-    [[ $TRAVIS == true ]] && ccache -s && ./$CICD_DIR/anka/macos-10.14.sh
+    [[ $TRAVIS == true ]] && export UNPINNED=true && ccache -s && ./$CICD_DIR/anka/macos-10.14.sh
     [[ $PINNED == true ]] && CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_TOOLCHAIN_FILE=$HELPERS_DIR/clang.make"
     cd $BUILD_DIR
     cmake $CMAKE_EXTRAS ..
