@@ -60,6 +60,7 @@ nIFS=$IFS # Needed to fix array splitting (\n won't work)
 # Anka Ensure Tag #
 for PLATFORM_JSON in $(echo $PLATFORMS_JSON_ARRAY | jq .[]); do
 echo "$PLATFORM_JSON" | jq -r .FILE_NAME
+echo HERE
 
 #   if [[ $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME) =~ 'macos' ]]; then
 #   cat <<EOF
