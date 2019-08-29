@@ -1,9 +1,7 @@
 #!/usr/bin/env bash
 set -eo pipefail
 . ./.cicd/helpers/general.sh
-
 SERIAL_TESTS=$(cat tests/CMakeLists.txt | grep nonparallelizable_tests | awk -F" " '{ print $2 }')
-
 # Use dockerfiles as source of truth for what platforms to use
 ## Linux
 for DOCKERFILE in $(ls $CICD_DIR/docker); do
@@ -58,6 +56,4 @@ cat <<EOF
     - "queue=mac-anka-node-fleet"
   skip: \${SKIP_MOJAVE}\${SKIP_SERIAL_TESTS}
 EOF
-
 done
-
