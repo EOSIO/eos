@@ -4,7 +4,7 @@ set -eo pipefail
 
 [[ -z $1 ]] && TEST_NAME="-L nonparallelizable_tests" || TEST_NAME="-R ^$1$"
 
-TEST="mkdir -p ./mongodb && mongod --dbpath ./mongodb --fork --logpath mongod.log && ctest $TEST_NAME --output-on-failure -T Test"
+TEST="mongod --dbpath /tmp/mongodb --fork --logpath /tmp/mongod.log && ctest $TEST_NAME --output-on-failure -T Test"
 
 if [[ $(uname) == 'Darwin' ]]; then
 
