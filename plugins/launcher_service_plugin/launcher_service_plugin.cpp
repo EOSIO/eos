@@ -397,7 +397,13 @@ public:
 
          auto action_type = abis->get_action_type( action );
          FC_ASSERT( !action_type.empty(), "Unknown action ${action} in contract ${contract}", ("action", action)( "contract", account ));
-         return abis->variant_to_binary( action_type, action_args_var, _config.abi_serializer_max_time );
+
+         char temp[512 * 1024];
+         fc::datastream<char*> ds(temp, sizeof(temp)-1 );
+         abis->variant_to_binary( action_type, action_args_var, ds, _config.abi_serializer_max_time );
+         std::vector<char> r;
+         r.assign(temp, temp + ds.tellp());
+         return r;
       }
 
       fc::variant push_transaction(int cluster_id, int node_id, signed_transaction& trx,
@@ -459,8 +465,7 @@ public:
                                const std::vector<public_key_type> &sign_keys = std::vector<public_key_type>(),
                                packed_transaction::compression_type compression = packed_transaction::compression_type::none ) {
          signed_transaction trx;
-         trx.actions = std::forward<decltype(actions)>(actions);
-
+         trx.actions = std::move(actions);
          return push_transaction(cluster_id, node_id, trx, sign_keys, compression);
       }
 
@@ -469,7 +474,7 @@ public:
          actlist.reserve(param.actions.size());
          for (const action_param &p : param.actions) {
             bytes data = action_variant_to_bin(param.cluster_id, param.node_id, p.account, p.action, p.data);
-            actlist.emplace_back(p.permissions, p.account, p.action, data);
+            actlist.emplace_back(p.permissions, p.account, p.action, std::move(data));
          }
          return push_actions(param.cluster_id, param.node_id, std::move(actlist), param.sign_keys);
       }
