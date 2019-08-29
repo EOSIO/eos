@@ -1058,12 +1058,13 @@ namespace LLVMJIT
 		OperatorDecoderStream decoder(functionDef.code);
 		UnreachableOpVisitor unreachableOpVisitor(*this);
 		OperatorPrinter operatorPrinter(module,functionDef);
-		while(decoder && controlStack.size())
+		while(decoder)
 		{
 			if(ENABLE_LOGGING)
 			{
 				logOperator(decoder.decodeOpWithoutConsume(operatorPrinter));
 			}
+			WAVM_ASSERT_THROW(!controlStack.empty());
 
 			if(controlStack.back().isReachable) { decoder.decodeOp(*this); }
 			else { decoder.decodeOp(unreachableOpVisitor); }

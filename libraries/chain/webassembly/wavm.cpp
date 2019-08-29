@@ -165,6 +165,9 @@ std::unique_ptr<wasm_instantiated_module_interface> wavm_runtime::instantiate_mo
    catch(const Runtime::Exception& e) {
       EOS_THROW(wasm_execution_error, "Failed to stand up WAVM instance: ${m}", ("m", describeExceptionCause(e.cause)));
    }
+   catch(const std::runtime_error& e) { ///XXX here to catch WAVM_ASSERTS
+      EOS_THROW(wasm_execution_error, "Failed to stand up WAVM instance");
+   }
 }
 
 void wavm_runtime::immediately_exit_currently_running_module() {
