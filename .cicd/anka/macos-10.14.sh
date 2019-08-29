@@ -67,7 +67,7 @@ mkdir -p cmake-build
 cd cmake-build
 cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX='/usr/local' -DENABLE_BSON=ON -DENABLE_SSL=DARWIN -DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF -DENABLE_STATIC=ON -DENABLE_ICU=OFF -DENABLE_SASL=OFF -DENABLE_SNAPPY=OFF ..
 make -j12
-make install
+sudo make install
 cd ../..
 rm mongo-c-driver-1.13.0.tar.gz
 
@@ -77,6 +77,6 @@ tar -xzf mongo-cxx-driver-r3.4.0.tar.gz
 cd mongo-cxx-driver-r3.4.0/build
 cmake -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX='/usr/local' ..
 make -j12 VERBOSE=1
-make install
+sudo make install
 cd ../..
 rm -f mongo-cxx-driver-r3.4.0.tar.gz
