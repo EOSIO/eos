@@ -3608,7 +3608,7 @@ namespace eosio {
       if( my->topology_plug != nullptr ) {
          appbase::abstract_plugin::state tpstate = my->topology_plug->get_state();
          my->use_topology_plug = (tpstate == initialized || tpstate == started);
-         if ( my->use_topolgy_plug ) {
+         if ( my->use_topology_plug ) {
             my->topology_plug->topo_update.connect([my = my]( const topology_message & t) {
                                                       my->on_topology_update ( t );
                                                    });
