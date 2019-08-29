@@ -7,9 +7,7 @@ GIT_ROOT="$(dirname $BASH_SOURCE[0])/.."
 if [[ "$(uname)" == 'Linux' ]]; then
     . /etc/os-release
     if [[ "$ID" == 'centos' ]]; then
-        [[ -f /opt/rh/devtoolset-8/enable ]] && source /opt/rh/devtoolset-8/enable
         [[ -f /opt/rh/rh-python36/enable ]] && source /opt/rh/rh-python36/enable
-        [[ -z "$(which ccache)" && -f /usr/lib64/ccache ]] && export "PATH=/usr/lib64/ccache:$PATH"
     fi
 fi
 cd $GIT_ROOT/build
