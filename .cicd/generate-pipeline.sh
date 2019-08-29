@@ -9,6 +9,10 @@ export MOJAVE_ANKA_TEMPLATE_NAME='10.14.4_6C_14G_40G'
 export PLATFORMS_JSON_ARRAY='[]'
 for FILE in $(ls $CICD_DIR/platforms); do
 
+  # Ability to skip mac or linux by not even creating the json block
+  ( [[ $SKIP_MAC == true ]] && [[ $FILE =~ 'macos' ]] ) && continue
+  ( [[ $SKIP_LINUX == true ]] &&  [[ ! $FILE =~ 'macos' ]] ) && continue
+  
   # Prevent using both platform files (only use unpinned or pinned)
   if [[ $PINNED == false || $UNPINNED == true ]] && [[ ! $FILE =~ 'macos' ]]; then
     [[ ! $FILE =~ 'unpinned' ]] && continue
@@ -20,7 +24,7 @@ for FILE in $(ls $CICD_DIR/platforms); do
   export PLATFORM_NAME=$(echo $FILE_NAME | cut -d- -f1 | sed 's/os/OS/g')
   export PLATFORM_NAME_UPCASE=$(echo $PLATFORM_NAME | tr a-z A-Z)
   export VERSION_MAJOR=$(echo $FILE_NAME | cut -d- -f2 | cut -d. -f1)
-  [[ $(echo $FILE_NAME | cut -d- -f2) =~ '.' ]] && export VERSION_MINOR="_$(echo $FILE_NAME | cut -d- -f2 | cut -d. -f2)"
+  [[ $(echo $FILE_NAME | cut -d- -f2) =~ '.' ]] && export VERSION_MINOR="_$(echo $FILE_NAME | cut -d- -f2 | cut -d. -f2)" || export VERSION_MINOR=''
   export VERSION_FULL=$(echo $FILE_NAME | cut -d- -f2)
   OLDIFS=$IFS
   IFS="_"
