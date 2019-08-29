@@ -58,7 +58,7 @@ nIFS=$IFS # Needed to fix array splitting (\n won't work)
 
 ###################
 # Anka Ensure Tag #
-for PLATFORM_JSON in $(echo $PLATFORMS_JSON_ARRAY | jq .[]); do
+echo $PLATFORMS_JSON_ARRAY | jq .[] | while read -r PLATFORM_JSON; do
 echo "$PLATFORM_JSON" | jq -r .FILE_NAME
 echo HERE
 
