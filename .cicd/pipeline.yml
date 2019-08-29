@@ -6,7 +6,6 @@ steps:
     agents:
       queue: "automation-eos-builder-fleet"
     timeout: ${TIMEOUT:-10}
-    skip: $SKIP_GENERATE_PIPELINE
 
   - wait:
     continue_on_failure: true
