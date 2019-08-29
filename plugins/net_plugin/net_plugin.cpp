@@ -3608,11 +3608,11 @@ namespace eosio {
       if( my->topology_plug != nullptr ) {
          appbase::abstract_plugin::state tpstate = my->topology_plug->get_state();
          my->use_topology_plug = (tpstate == initialized || tpstate == started);
-         string tps = tpstate == registered ? "registered" : tpstate == initialized ? "initialized" : tpstate == started ? "started" : "stopped";
-         fc_ilog( logger, "topology plugin detected, state = ${s} use = ${use}",("s",tps)("use",my->use_topology_plug));
-         my->topology_plug->topo_update.connect([my = my]( const topology_message & t) {
-                                                    my->on_topology_update ( t );
-                                                 });
+         if ( my->use_topolgy_plug ) {
+            my->topology_plug->topo_update.connect([my = my]( const topology_message & t) {
+                                                      my->on_topology_update ( t );
+                                                   });
+         }
       }
       my->chain_plug = app().find_plugin<chain_plugin>();
       EOS_ASSERT( my->chain_plug, chain::missing_chain_plugin_exception, ""  );
