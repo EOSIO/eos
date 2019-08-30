@@ -15,8 +15,8 @@ for FILE in $(ls $CICD_DIR/platforms); do
   
   # Prevent using both platform files (only use unpinned or pinned)
   if [[ $PINNED == false || $UNPINNED == true ]] && [[ ! $FILE =~ 'macos' ]]; then
-    export SKIP_CONTRACT_BUILDER=true
-    export SKIP_PACKAGE_BUILDER=true
+    export SKIP_CONTRACT_BUILDER=${SKIP_CONTRACT_BUILDER:-true}
+    export SKIP_PACKAGE_BUILDER=${SKIP_PACKAGE_BUILDER:-true}
     [[ ! $FILE =~ 'unpinned' ]] && continue
   else
     [[ $FILE =~ 'unpinned' ]] && continue
