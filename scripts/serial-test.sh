@@ -21,6 +21,7 @@ echo "+++ $([[ "$BUILDKITE" == 'true' ]] && echo ':leaves: ')Starting new MongoD
 echo "$ mongod --fork --logpath $(pwd)/mongod.log $([[ -d ~/data/mongodb ]] && echo '--dbpath ~/data/mongodb' || echo "--dbpath $(pwd)/mongodata") $(if [[ -f ~/etc/mongod.conf ]]; then echo '-f ~/etc/mongod.conf'; elif [[ -f /usr/local/etc/mongod.conf ]]; then echo '-f /usr/local/etc/mongod.conf'; fi)"
 eval mongod --fork --logpath $(pwd)/mongod.log $([[ -d ~/data/mongodb ]] && echo '--dbpath ~/data/mongodb' || echo "--dbpath $(pwd)/mongodata") $(if [[ -f ~/etc/mongod.conf ]]; then echo '-f ~/etc/mongod.conf'; elif [[ -f /usr/local/etc/mongod.conf ]]; then echo '-f /usr/local/etc/mongod.conf'; fi)
 # tests
+echo "TEST: $TEST"
 if [[ -z "$TEST" ]]; then # run all serial tests
     # count tests
     echo "+++ $([[ "$BUILDKITE" == 'true' ]] && echo ':microscope: ')Running Non-Parallelizable Tests"
