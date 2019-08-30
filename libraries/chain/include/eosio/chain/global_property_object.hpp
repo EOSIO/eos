@@ -45,11 +45,13 @@ namespace eosio { namespace chain {
       optional<block_num_type>            proposed_schedule_block_num;
       shared_producer_authority_schedule  proposed_schedule;
       chain_config                        configuration;
+      chain_id_type                       chain_id;
 
-      void initalize_from( const legacy::snapshot_global_property_object_v2& legacy ) {
+      void initalize_from( const legacy::snapshot_global_property_object_v2& legacy, const chain_id_type& chain_id_val ) {
          proposed_schedule_block_num = legacy.proposed_schedule_block_num;
          proposed_schedule = producer_authority_schedule(legacy.proposed_schedule).to_shared(proposed_schedule.producers.get_allocator());
          configuration = legacy.configuration;
+         chain_id = chain_id_val;
       }
    };
 
@@ -67,6 +69,7 @@ namespace eosio { namespace chain {
       optional<block_num_type>            proposed_schedule_block_num;
       producer_authority_schedule         proposed_schedule;
       chain_config                        configuration;
+      chain_id_type                       chain_id;
    };
 
    namespace detail {
@@ -76,13 +79,14 @@ namespace eosio { namespace chain {
          using snapshot_type = snapshot_global_property_object;
 
          static snapshot_global_property_object to_snapshot_row( const global_property_object& value, const chainbase::database& ) {
-            return {value.proposed_schedule_block_num, producer_authority_schedule::from_shared(value.proposed_schedule), value.configuration};
+            return {value.proposed_schedule_block_num, producer_authority_schedule::from_shared(value.proposed_schedule), value.configuration, value.chain_id};
          }
 
          static void from_snapshot_row( snapshot_global_property_object&& row, global_property_object& value, chainbase::database& ) {
             value.proposed_schedule_block_num = row.proposed_schedule_block_num;
             value.proposed_schedule = row.proposed_schedule.to_shared(value.proposed_schedule.producers.get_allocator());
             value.configuration = row.configuration;
+            value.chain_id = row.chain_id;
          }
       };
    }

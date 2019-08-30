@@ -530,7 +530,15 @@ struct controller_impl {
          } else {
             read_from_snapshot( snapshot, 0, std::numeric_limits<uint32_t>::max() );
             lib_num = head->block_num;
-            blog.reset( conf.genesis, signed_block_ptr(), lib_num + 1 );
+            if (lib_num == 0) {
+               EOS_ASSERT( conf.genesis, plugin_config_exception,
+                           "Snapshot controller head at block number 0, but genesis state was not provided."
+                           " Must pass \"--genesis-json\" to provide the genesis state." );
+               blog.reset( *conf.genesis, signed_block_ptr() );
+            }
+            else {
+               blog.reset( chain_id, signed_block_ptr(), lib_num + 1 );
+            }
          }
       } else {
          if( db.revision() < 1 || !fork_db.head() ) {
@@ -573,7 +581,7 @@ struct controller_impl {
             } else {
                lib_num = fork_db.root()->block_num;
                if( first_block_num != (lib_num + 1) ) {
-                  blog.reset( conf.genesis, signed_block_ptr(), lib_num + 1 );
+                  blog.reset( chain_id, signed_block_ptr(), lib_num + 1 );
                }
             }
 
@@ -794,10 +802,6 @@ struct controller_impl {
          section.add_row(chain_snapshot_header(), db);
       });
 
-      snapshot->write_section<genesis_state>([this]( auto &section ){
-         section.add_row(conf.genesis, db);
-      });
-
       snapshot->write_section<block_state>([this]( auto &section ){
          section.template add_row<block_header_state>(*fork_db.head(), db);
       });
@@ -889,7 +893,7 @@ struct controller_impl {
                   section.read_row(legacy_global_properties, db);
 
                   db.create<global_property_object>([&](auto& gpo ){
-                     gpo.initalize_from(legacy_global_properties);
+                     gpo.initalize_from(legacy_global_properties, chain_id);
                   });
                });
                return; // early out to avoid default processing
@@ -904,7 +908,6 @@ struct controller_impl {
                });
             }
          });
-
       });
 
       read_contract_tables_from_snapshot(snapshot);
@@ -916,6 +919,10 @@ struct controller_impl {
       db.create<database_header_object>([](const auto& header){
          // nothing to do
       });
+
+      const auto& gpo = db.get<global_property_object>();
+      // ensure chain_id is populated from global_property_object's chain_id
+      chain_id = gpo.chain_id;
    }
 
    sha256 calculate_integrity_hash() const {
@@ -978,6 +985,7 @@ struct controller_impl {
       conf.genesis.initial_configuration.validate();
       db.create<global_property_object>([&](auto& gpo ){
          gpo.configuration = conf.genesis.initial_configuration;
+         gpo.chain_id = chain_id;
       });
 
       db.create<protocol_state_object>([&](auto& pso ){

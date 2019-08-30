@@ -680,7 +680,13 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          genesis_state gs;
 
          if( fc::exists( my->blocks_dir / "blocks.log" )) {
-            gs = block_log::extract_genesis_state( my->blocks_dir );
+            const auto extracted_genesis_state = block_log::extract_genesis_state( my->blocks_dir );
+            if( extracted_genesis_state ) {
+               gs = *extracted_genesis_state;
+            } else {
+               wlog( "No genesis state was in blocks.log found at '${p}'. Using default genesis state.",
+                     ("p", (my->blocks_dir / "blocks.log").generic_string()));
+            }
          } else {
             wlog( "No blocks.log found at '${p}'. Using default genesis state.",
                   ("p", (my->blocks_dir / "blocks.log").generic_string()));
@@ -779,9 +785,24 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          auto infile = std::ifstream(my->snapshot_path->generic_string(), (std::ios::in | std::ios::binary));
          auto reader = std::make_shared<istream_snapshot_reader>(infile);
          reader->validate();
-         reader->read_section<genesis_state>([this]( auto &section ){
-            section.read_row(my->chain_config->genesis);
+         chain_snapshot_header header;
+         reader->read_section<chain_snapshot_header>([&header]( auto& section ){
+            section.read_row(header);
+            header.validate();
          });
+
+         const auto version = header.version;
+
+         using v2 = legacy::snapshot_global_property_object_v2;
+         if (std::clamp(version, v2::minimum_version, v2::maximum_version) == version ) {
+            my->chain_config->genesis.emplace();
+            reader->read_section<genesis_state>([this]( auto &section ){
+               section.read_row(*my->chain_config->genesis);
+            });
+            my->chain_id = my->chain_config->genesis->compute_chain_id();
+            my->chain_id_source = "snapshot";
+         }
+
          infile.close();
 
          EOS_ASSERT( options.count( "genesis-timestamp" ) == 0,

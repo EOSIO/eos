@@ -15,6 +15,7 @@ struct chain_snapshot_header {
     *         - forwards compatible with version 2
     *         - WebAuthn keys
     *         - wtmsig block siganatures: the block header state changed to include producer authorities and additional signatures
+    *         - removed genesis_state
     */
 
    static constexpr uint32_t minimum_compatible_version = 2;
