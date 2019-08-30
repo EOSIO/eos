@@ -361,6 +361,8 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          try {
             chain.push_block( bsf, [this]( const branch_type& forked_branch ) {
                _unapplied_transactions.add_forked( forked_branch );
+            }, [this]( const transaction_id_type& id ) {
+               return _unapplied_transactions.get_trx( id );
             } );
          } catch ( const guard_exception& e ) {
             chain_plugin::handle_guard_exception(e);

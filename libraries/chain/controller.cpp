@@ -394,7 +394,7 @@ struct controller_impl {
 
          for( auto bitr = branch.rbegin(); bitr != branch.rend(); ++bitr ) {
             if( read_mode == db_read_mode::IRREVERSIBLE ) {
-               apply_block( *bitr, controller::block_status::complete );
+               apply_block( *bitr, controller::block_status::complete, trx_meta_cache_lookup{} );
                head = (*bitr);
                fork_db.mark_valid( head );
             }
@@ -699,7 +699,7 @@ struct controller_impl {
               pending_head = fork_db.pending_head()
          ) {
             wlog( "applying branch from fork database ending with block: ${id}", ("id", pending_head->id) );
-            maybe_switch_forks( pending_head, controller::block_status::complete, forked_branch_callback() );
+            maybe_switch_forks( pending_head, controller::block_status::complete, forked_branch_callback{}, trx_meta_cache_lookup{} );
          }
       }
 
@@ -1752,7 +1752,7 @@ struct controller_impl {
       }
    }
 
-   void apply_block( const block_state_ptr& bsp, controller::block_status s )
+   void apply_block( const block_state_ptr& bsp, controller::block_status s, const trx_meta_cache_lookup& trx_lookup )
    { try {
       try {
          const signed_block_ptr& b = bsp->block;
@@ -1773,7 +1773,7 @@ struct controller_impl {
             for( const auto& receipt : b->transactions ) {
                if( receipt.trx.contains<packed_transaction>()) {
                   auto& pt = receipt.trx.get<packed_transaction>();
-                  const transaction_metadata_ptr& trx_meta_ptr = unapplied_transactions.get_trx( pt.id() );
+                  const transaction_metadata_ptr& trx_meta_ptr = trx_lookup( pt.id() );
                   if( trx_meta_ptr && ( skip_auth_checks || !trx_meta_ptr->recovered_keys().empty() ) ) {
                      trx_metas.emplace_back( trx_meta_ptr, recover_keys_future{} );
                   } else if( skip_auth_checks ) {
@@ -1881,7 +1881,9 @@ struct controller_impl {
       } );
    }
 
-   void push_block( std::future<block_state_ptr>& block_state_future, const forked_branch_callback& forked_branch_cb ) {
+   void push_block( std::future<block_state_ptr>& block_state_future,
+                    const forked_branch_callback& forked_branch_cb, const trx_meta_cache_lookup& trx_lookup )
+   {
       controller::block_status s = controller::block_status::complete;
       EOS_ASSERT(!pending, block_validate_exception, "it is not valid to push a block when there is a pending block");
 
@@ -1903,7 +1905,7 @@ struct controller_impl {
          emit( self.accepted_block_header, bsp );
 
          if( read_mode != db_read_mode::IRREVERSIBLE ) {
-            maybe_switch_forks( fork_db.pending_head(), s, forked_branch_cb );
+            maybe_switch_forks( fork_db.pending_head(), s, forked_branch_cb, trx_lookup );
          } else {
             log_irreversible();
          }
@@ -1942,7 +1944,7 @@ struct controller_impl {
          emit( self.accepted_block_header, bsp );
 
          if( s == controller::block_status::irreversible ) {
-            apply_block( bsp, s );
+            apply_block( bsp, s, trx_meta_cache_lookup{} );
             head = bsp;
 
             // On replay, log_irreversible is not called and so no irreversible_block signal is emittted.
@@ -1956,17 +1958,19 @@ struct controller_impl {
          } else {
             EOS_ASSERT( read_mode != db_read_mode::IRREVERSIBLE, block_validate_exception,
                         "invariant failure: cannot replay reversible blocks while in irreversible mode" );
-            maybe_switch_forks( bsp, s, forked_branch_callback() );
+            maybe_switch_forks( bsp, s, forked_branch_callback{}, trx_meta_cache_lookup{} );
          }
 
       } FC_LOG_AND_RETHROW( )
    }
 
-   void maybe_switch_forks( const block_state_ptr& new_head, controller::block_status s, const forked_branch_callback& forked_branch_cb ) {
+   void maybe_switch_forks( const block_state_ptr& new_head, controller::block_status s,
+                            const forked_branch_callback& forked_branch_cb, const trx_meta_cache_lookup& trx_lookup )
+   {
       bool head_changed = true;
       if( new_head->header.previous == head->id ) {
          try {
-            apply_block( new_head, s );
+            apply_block( new_head, s, trx_lookup );
             fork_db.mark_valid( new_head );
             head = new_head;
          } catch ( const fc::exception& e ) {
@@ -1993,7 +1997,7 @@ struct controller_impl {
             optional<fc::exception> except;
             try {
                apply_block( *ritr, (*ritr)->is_valid() ? controller::block_status::validated
-                                                       : controller::block_status::complete );
+                                                       : controller::block_status::complete, trx_lookup );
                fork_db.mark_valid( *ritr );
                head = *ritr;
             } catch (const fc::exception& e) {
@@ -2017,7 +2021,7 @@ struct controller_impl {
 
                // re-apply good blocks
                for( auto ritr = branches.second.rbegin(); ritr != branches.second.rend(); ++ritr ) {
-                  apply_block( *ritr, controller::block_status::validated /* we previously validated these blocks*/ );
+                  apply_block( *ritr, controller::block_status::validated /* we previously validated these blocks*/, trx_lookup );
                   head = *ritr;
                }
                throw *except;
@@ -2561,10 +2565,12 @@ std::future<block_state_ptr> controller::create_block_state_future( const signed
    return my->create_block_state_future( b );
 }
 
-void controller::push_block( std::future<block_state_ptr>& block_state_future, const forked_branch_callback& forked_branch_cb ) {
+void controller::push_block( std::future<block_state_ptr>& block_state_future,
+                             const forked_branch_callback& forked_branch_cb, const trx_meta_cache_lookup& trx_lookup )
+{
    validate_db_available_size();
    validate_reversible_available_size();
-   my->push_block( block_state_future, forked_branch_cb );
+   my->push_block( block_state_future, forked_branch_cb, trx_lookup );
 }
 
 transaction_trace_ptr controller::push_transaction( const transaction_metadata_ptr& trx, fc::time_point deadline, uint32_t billed_cpu_time_us ) {
