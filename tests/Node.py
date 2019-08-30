@@ -1346,7 +1346,7 @@ class Node(object):
     # TBD: make nodeId an internal property
     # pylint: disable=too-many-locals
     # If nodeosPath is equal to None, it will use the existing nodeos path
-    def relaunch(self, nodeId, chainArg=None, newChain=False, timeout=Utils.systemWaitTimeout, addOrSwapFlags=None, cachePopen=False, nodeosPath=None):
+    def relaunch(self, nodeId, chainArg=None, newChain=False, timeout=Utils.systemWaitTimeout, addSwapRemoveFlags=None, cachePopen=False, nodeosPath=None):
 
         assert(self.pid is None)
         assert(self.killed)
@@ -1358,7 +1358,7 @@ class Node(object):
         splittedCmd=self.cmd.split()
         if nodeosPath: splittedCmd[0] = nodeosPath
         myCmd=" ".join(splittedCmd)
-        toAddOrSwap=copy.deepcopy(addOrSwapFlags) if addOrSwapFlags is not None else {}
+        toAddOrSwap=copy.deepcopy(addSwapRemoveFlags) if addSwapRemoveFlags is not None else {}
         if not newChain:
             skip=False
             swapValue=None

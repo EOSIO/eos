@@ -30,10 +30,10 @@ keepLogs=args.keep_logs
 
 # The following test case will test the Protocol Feature JSON reader of the blockchain
 
-def restartNode(node: Node, nodeId, chainArg=None, addOrSwapFlags=None):
+def restartNode(node: Node, nodeId, chainArg=None, addSwapRemoveFlags=None):
     if not node.killed:
         node.kill(signal.SIGTERM)
-    isRelaunchSuccess = node.relaunch(nodeId, chainArg, addOrSwapFlags=addOrSwapFlags, timeout=5, cachePopen=True)
+    isRelaunchSuccess = node.relaunch(nodeId, chainArg, addSwapRemoveFlags=addSwapRemoveFlags, timeout=5, cachePopen=True)
     assert isRelaunchSuccess, "Fail to relaunch"
 
 walletMgr=WalletMgr(True)
