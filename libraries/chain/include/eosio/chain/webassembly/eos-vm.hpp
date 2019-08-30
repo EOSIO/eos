@@ -18,31 +18,23 @@ namespace eosio { namespace vm {
 
 // eosio specific specializations
 namespace eosio { namespace vm {
-   template <>
-   struct reduce_type<chain::name> {
-      typedef uint64_t type;
+
+   template<>
+   struct wasm_type_converter<eosio::chain::name> {
+      static auto from_wasm(uint64_t val) {
+         return eosio::chain::name{val};
+      }
+      static auto to_wasm(eosio::chain::name val) {
+         return val.to_uint64_t();
+      }
    };
 
-   template <typename S, typename Args, typename T, typename WAlloc>
-   constexpr auto get_value(WAlloc*, T&& val) 
-         -> std::enable_if_t<std::is_same_v<i64_const_t, T> && std::is_same_v<chain::name, std::decay_t<S>>, S> {
-      return std::move(chain::name{(uint64_t)val.data.ui});
-   } 
-
-   // we can clean these up if we go with custom vms
-   template <typename T>
-   struct reduce_type<eosio::chain::array_ptr<T>> {
-      typedef uint32_t type;
+   template<typename T>
+   struct wasm_type_converter<eosio::chain::array_ptr<T>> {
+      static auto from_wasm(T* ptr) {
+         return eosio::chain::array_ptr<T>(ptr);
+      }
    };
-   
-   template <typename S, typename Args, typename T, typename WAlloc>
-   constexpr auto get_value(WAlloc* walloc, T&& val) 
-         -> std::enable_if_t<std::is_same_v<i32_const_t, T> && 
-         std::is_same_v< eosio::chain::array_ptr<typename S::type>, S> &&
-         !std::is_lvalue_reference_v<S> && !std::is_pointer_v<S>, S> {
-      using ptr_ty = typename S::type;
-      return eosio::chain::array_ptr<ptr_ty>((ptr_ty*)((walloc->template get_base_ptr<char>())+val.data.ui));
-   }
 
    template <typename Ctx>
    struct construct_derived<eosio::chain::transaction_context, Ctx> {
@@ -54,18 +46,12 @@ namespace eosio { namespace vm {
       static auto &value(eosio::chain::apply_context& ctx) { return ctx; }
    };
 
-   template <>
-   struct reduce_type<eosio::chain::null_terminated_ptr> {
-      typedef uint32_t type;
+   template<>
+   struct wasm_type_converter<eosio::chain::null_terminated_ptr> {
+      static auto from_wasm(char* ptr) {
+         return eosio::chain::null_terminated_ptr{ ptr };
+      }
    };
-   
-   template <typename S, typename Args, typename T, typename WAlloc>
-   constexpr auto get_value(WAlloc* walloc, T&& val) 
-         -> std::enable_if_t<std::is_same_v<i32_const_t, T> && 
-         std::is_same_v< eosio::chain::null_terminated_ptr, S> &&
-         !std::is_lvalue_reference_v<S> && !std::is_pointer_v<S>, S> {
-      return eosio::chain::null_terminated_ptr((char*)(walloc->template get_base_ptr<uint8_t>()+val.data.ui));
-   }
 
 }} // ns eosio::vm
 
