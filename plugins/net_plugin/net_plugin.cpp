@@ -1473,10 +1473,12 @@ namespace eosio {
             c->enqueue( note );
          }
          c->syncing = true;
-         request_message req;
-         req.req_blocks.mode = catch_up;
-         req.req_trx.mode = none;
-         c->enqueue( req );
+         if( cc.get_block_id_for_num( msg.head_num ) != msg.head_id ) {
+            request_message req;
+            req.req_blocks.mode = catch_up;
+            req.req_trx.mode = none;
+            c->enqueue( req );
+         }
          return;
       }
       fc_elog( logger, "sync check failed to resolve status" );
