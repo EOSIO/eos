@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 set -eo pipefail
 . ./.cicd/helpers/general.sh
 
@@ -149,7 +149,7 @@ echo $PLATFORMS_JSON_ARRAY | jq -cr ".[]" | while read -r PLATFORM_JSON; do
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Unit Tests"
     command:
       - "buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz"
-      - "./.cicd/parallel-tests.sh"
+      - "./.cicd/test.sh scripts/parallel-test.sh"
     env:
       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
       BUILDKITE_AGENT_ACCESS_TOKEN:
@@ -167,7 +167,7 @@ EOF
     command:
       - "git clone \$BUILDKITE_REPO eos && cd eos && git checkout \$BUILDKITE_COMMIT && git submodule update --init --recursive"
       - "cd eos && buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz"
-      - "cd eos && ./.cicd/parallel-tests.sh"
+      - "cd eos && ./.cicd/test.sh scripts/parallel-test.sh"
     plugins:
       - chef/anka#v0.5.1:
           no-volume: true
@@ -201,7 +201,7 @@ echo $PLATFORMS_JSON_ARRAY | jq -cr ".[]" | while read -r PLATFORM_JSON; do
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
     command:
       - "buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz"
-      - "./.cicd/serial-tests.sh $TEST_NAME"
+      - "./.cicd/test.sh scripts/serial-test.sh $TEST_NAME"
     env:
       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
       BUILDKITE_AGENT_ACCESS_TOKEN:
@@ -219,8 +219,7 @@ EOF
     command:
       - "git clone \$BUILDKITE_REPO eos && cd eos && git checkout \$BUILDKITE_COMMIT && git submodule update --init --recursive"
       - "cd eos && buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz"
-      - "cd eos && ./.cicd/serial-tests.sh $TEST_NAME"
-      - "cd eos && mv build/Testing/\$(ls build/Testing/ | grep '20' | tail -n 1)/Test.xml test-results.xml && buildkite-agent artifact upload test-results.xml"
+      - "cd eos && ./.cicd/test.sh scripts/serial-test.sh $TEST_NAME"
     plugins:
       - chef/anka#v0.5.1:
           no-volume: true
@@ -249,7 +248,7 @@ done
 echo $PLATFORMS_JSON_ARRAY | jq -cr ".[]" | while read -r PLATFORM_JSON; do
 
   IFS=$oIFS
-  LR_TESTS=$(cat tests/CMakeLists.txt | grep long_running_tests | awk -F" " '{ print $2 }')
+  LR_TESTS=$(cat tests/CMakeLists.txt | grep long_running_tests | grep -v "^#" | awk -F" " '{ print $2 }')
 
   for TEST_NAME in $LR_TESTS; do
     if [[ ! $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME) =~ 'macos' ]]; then
@@ -258,7 +257,7 @@ echo $PLATFORMS_JSON_ARRAY | jq -cr ".[]" | while read -r PLATFORM_JSON; do
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
     command:
       - "buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz"
-      - "./.cicd/long-running-tests.sh $TEST_NAME"
+      - "./.cicd/test.sh scripts/long-running-test.sh $TEST_NAME"
     env:
       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
       BUILDKITE_AGENT_ACCESS_TOKEN:
@@ -276,8 +275,7 @@ EOF
     command:
       - "git clone \$BUILDKITE_REPO eos && cd eos && git checkout \$BUILDKITE_COMMIT && git submodule update --init --recursive"
       - "cd eos && buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz"
-      - "cd eos && ./.cicd/long-running-tests.sh $TEST_NAME"
-      - "cd eos && mv build/Testing/\$(ls build/Testing/ | grep '20' | tail -n 1)/Test.xml test-results.xml && buildkite-agent artifact upload test-results.xml"
+      - "cd eos && ./.cicd/test.sh scripts/long-running-test.sh $TEST_NAME"
     plugins:
       - chef/anka#v0.5.1:
           no-volume: true

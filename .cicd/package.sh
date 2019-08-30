@@ -18,13 +18,9 @@ if [[ $(uname) == 'Darwin' ]]; then
     done
 else # Linux
     ARGS=${ARGS:-"--rm --init -v $(pwd):$MOUNTED_DIR"}
-<<<<<<< HEAD
 
     . $HELPERS_DIR/file-hash.sh $CICD_DIR/platforms/$IMAGE_TAG.dockerfile
 
-=======
-    . $HELPERS_DIR/docker-hash.sh
->>>>>>> zach-test-scripts
     PRE_COMMANDS="cd $MOUNTED_DIR/build/packages && chmod 755 ./*.sh"
     if [[ "$IMAGE_TAG" =~ "ubuntu" ]]; then
         ARTIFACT='*.deb'

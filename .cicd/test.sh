@@ -4,6 +4,7 @@ set -eo pipefail
 . ./.cicd/helpers/general.sh
 # tests
 if [[ $(uname) == 'Darwin' ]]; then # macOS
+    export PATH=$PATH:~/mongodb/bin
     ./"$@"
     EXIT_STATUS=$?
 else # Linux
