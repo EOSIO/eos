@@ -219,7 +219,7 @@ struct trim_data {            //used by trim_blocklog_front(), trim_blocklog_end
    }
    void find_block_pos(uint32_t n);
    bfs::path block_file_name, index_file_name;        //full pathname for blocks.log and blocks.index
-   uint32_t version = 0;                              //blocklog version (1 or 2)
+   uint32_t version = 0;                              //blocklog version
    uint32_t first_block = 0;                          //first block in blocks.log
    uint32_t last_block = 0;                          //last block in blocks.log
    FILE* blk_in = nullptr;                            //C style files for reading blocks.log and blocks.index
@@ -243,7 +243,7 @@ trim_data::trim_data(bfs::path block_dir) {
    auto size = fread((void*)&version,sizeof(version), 1, blk_in);
    EOS_ASSERT( size == 1, block_log_unsupported_version, "invalid format for file ${file}", ("file",block_file_name.string()));
    cout << "block log version= " << version << '\n';
-   EOS_ASSERT( version == 1 || version == 2, block_log_unsupported_version, "block log version ${v} is not supported", ("v",version));
+   EOS_ASSERT( block_log::is_supported_version(version), block_log_unsupported_version, "block log version ${v} is not supported", ("v",version));
    if (version == 1) {
       first_block = 1;
    }

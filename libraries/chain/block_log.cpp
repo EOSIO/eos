@@ -29,8 +29,10 @@ namespace eosio { namespace chain {
     * Version 1: complete block log from genesis
     * Version 2: adds optional partial block log, cannot be used for replay without snapshot
     *            this is in the form of an first_block_num that is written immediately after the version
+    * Version 3: improvement on version 2 to not require the genesis state be provided when not starting
+    *            from block 1
     */
-   const uint32_t block_log::max_supported_version = 2;
+   const uint32_t block_log::max_supported_version = 3;
 
    namespace detail {
       using unique_file = std::unique_ptr<FILE, decltype(&fclose)>;
@@ -60,9 +62,23 @@ namespace eosio { namespace chain {
                   index_file.close();
                open_files = false;
             }
+
+            template<typename T>
+            void reset( const T& t, const signed_block_ptr& genesis_block, uint32_t first_block_num );
+
+            void write( const genesis_state& gs );
+
+            void write( const chain_id_type& chain_id );
+
+            void flush();
+
+            uint64_t append(const signed_block_ptr& b);
+
+            template <typename ChainContext, typename Lambda>
+            static fc::optional<ChainContext> extract_chain_context( const fc::path& data_dir, Lambda&& lambda );
       };
 
-      void block_log_impl::reopen() {
+      void detail::block_log_impl::reopen() {
          close();
 
          // open to create files if they don't exist
@@ -104,7 +120,7 @@ namespace eosio { namespace chain {
          constexpr static int64_t       _unset_position                   = -1;
          constexpr static uint32_t      _buf_len                          = 1U << 24;
          constexpr static uint64_t      _position_size                    = sizeof(_current_position_in_file);
-         constexpr static int           _blknum_offset_from_pos           = 14; //offset from start of block to 4 byte block number, valid for the only allowed versions (1 & 2)
+         constexpr static int           _blknum_offset_from_pos           = 14; //offset from start of block to 4 byte block number, valid for the only allowed versions
       };
 
       constexpr uint64_t buffer_location_to_file_location(uint32_t buffer_location) { return buffer_location << 3; }
@@ -188,9 +204,9 @@ namespace eosio { namespace chain {
          my->version = 0;
          my->block_file.read( (char*)&my->version, sizeof(my->version) );
          EOS_ASSERT( my->version > 0, block_log_exception, "Block log was not setup properly" );
-         EOS_ASSERT( my->version >= min_supported_version && my->version <= max_supported_version, block_log_unsupported_version,
-                 "Unsupported version of block log. Block log version is ${version} while code supports version(s) [${min},${max}]",
-                 ("version", my->version)("min", block_log::min_supported_version)("max", block_log::max_supported_version) );
+         EOS_ASSERT( is_supported_version(my->version), block_log_unsupported_version,
+                     "Unsupported version of block log. Block log version is ${version} while code supports version(s) [${min},${max}]",
+                     ("version", my->version)("min", block_log::min_supported_version)("max", block_log::max_supported_version) );
 
 
          my->genesis_written_to_block_log = true; // Assume it was constructed properly.
@@ -220,7 +236,7 @@ namespace eosio { namespace chain {
             my->index_file.read((char*)&index_pos, sizeof(index_pos));
 
             if (block_pos < index_pos) {
-               ilog("block_pos < index_pos, close and reopen index_stream");
+               ilog("block_pos < index_pos, close and reopen index_file");
                construct_index();
             } else if (block_pos > index_pos) {
                ilog("Index is incomplete");
@@ -239,25 +255,29 @@ namespace eosio { namespace chain {
    }
 
    uint64_t block_log::append(const signed_block_ptr& b) {
+      return my->append(b);
+   }
+
+   uint64_t detail::block_log_impl::append(const signed_block_ptr& b) {
       try {
-         EOS_ASSERT( my->genesis_written_to_block_log, block_log_append_fail, "Cannot append to block log until the genesis is first written" );
+         EOS_ASSERT( genesis_written_to_block_log, block_log_append_fail, "Cannot append to block log until the genesis is first written" );
 
-         my->check_open_files();
+         check_open_files();
 
-         my->block_file.seek_end(0);
-         my->index_file.seek_end(0);
-         uint64_t pos = my->block_file.tellp();
-         EOS_ASSERT(my->index_file.tellp() == sizeof(uint64_t) * (b->block_num() - my->first_block_num),
+         block_file.seek_end(0);
+         index_file.seek_end(0);
+         uint64_t pos = block_file.tellp();
+         EOS_ASSERT(index_file.tellp() == sizeof(uint64_t) * (b->block_num() - first_block_num),
                    block_log_append_fail,
                    "Append to index file occuring at wrong position.",
-                   ("position", (uint64_t) my->index_file.tellp())
-                   ("expected", (b->block_num() - my->first_block_num) * sizeof(uint64_t)));
+                   ("position", (uint64_t) index_file.tellp())
+                   ("expected", (b->block_num() - first_block_num) * sizeof(uint64_t)));
          auto data = fc::raw::pack(*b);
-         my->block_file.write(data.data(), data.size());
-         my->block_file.write((char*)&pos, sizeof(pos));
-         my->index_file.write((char*)&pos, sizeof(pos));
-         my->head = b;
-         my->head_id = b->id();
+         block_file.write(data.data(), data.size());
+         block_file.write((char*)&pos, sizeof(pos));
+         index_file.write((char*)&pos, sizeof(pos));
+         head = b;
+         head_id = b->id();
 
          flush();
 
@@ -267,46 +287,71 @@ namespace eosio { namespace chain {
    }
 
    void block_log::flush() {
-      my->block_file.flush();
-      my->index_file.flush();
+      my->flush();
    }
 
-   void block_log::reset( const genesis_state& gs, const signed_block_ptr& first_block, uint32_t first_block_num ) {
-      my->close();
+   void detail::block_log_impl::flush() {
+      block_file.flush();
+      index_file.flush();
+   }
 
-      fc::remove_all( my->block_file.get_file_path() );
-      fc::remove_all( my->index_file.get_file_path() );
+   template<typename T>
+   void detail::block_log_impl::reset( const T& t, const signed_block_ptr& first_block, uint32_t first_bnum ) {
+      close();
 
-      my->reopen();
+      fc::remove_all( block_file.get_file_path() );
+      fc::remove_all( index_file.get_file_path() );
 
-      auto data = fc::raw::pack(gs);
-      my->version = 0; // version of 0 is invalid; it indicates that the genesis was not properly written to the block log
-      my->first_block_num = first_block_num;
-      my->block_file.seek_end(0);
-      my->block_file.write((char*)&my->version, sizeof(my->version));
-      my->block_file.write((char*)&my->first_block_num, sizeof(my->first_block_num));
-      my->block_file.write(data.data(), data.size());
-      my->genesis_written_to_block_log = true;
+      reopen();
+
+      version = 0; // version of 0 is invalid; it indicates that subsequent data was not properly written to the block log
+      first_block_num = first_bnum;
+
+      block_file.seek_end(0);
+      block_file.write((char*)&version, sizeof(version));
+      block_file.write((char*)&first_block_num, sizeof(first_block_num));
+
+      write(t);
+      genesis_written_to_block_log = true;
 
       // append a totem to indicate the division between blocks and header
-      auto totem = npos;
-      my->block_file.write((char*)&totem, sizeof(totem));
+      auto totem = block_log::npos;
+      block_file.write((char*)&totem, sizeof(totem));
 
       if (first_block) {
          append(first_block);
       } else {
-         my->head.reset();
-         my->head_id = {};
+         head.reset();
+         head_id = {};
       }
 
-      auto pos = my->block_file.tellp();
+      auto pos = block_file.tellp();
 
       static_assert( block_log::max_supported_version > 0, "a version number of zero is not supported" );
-      my->version = block_log::max_supported_version;
-      my->block_file.seek( 0 );
-      my->block_file.write( (char*)&my->version, sizeof(my->version) );
-      my->block_file.seek( pos );
+
+      // going back to write correct version to indicate that all block log header data writes completed successfully
+      version = block_log::max_supported_version;
+      block_file.seek( 0 );
+      block_file.write( (char*)&version, sizeof(version) );
+      block_file.seek( pos );
       flush();
+   }
+
+   void block_log::reset( const genesis_state& gs, const signed_block_ptr& first_block ) {
+      my->reset(gs, first_block, 1);
+   }
+
+   void block_log::reset( const chain_id_type& chain_id, const signed_block_ptr& first_block, uint32_t first_block_num ) {
+      my->reset(chain_id, first_block, first_block_num);
+   }
+
+   void detail::block_log_impl::write( const genesis_state& gs ) {
+      auto data = fc::raw::pack(gs);
+      block_file.write(data.data(), data.size());
+   }
+
+   void detail::block_log_impl::write( const chain_id_type& chain_id ) {
+      block_file << chain_id;
    }
 
    signed_block_ptr block_log::read_block(uint64_t pos)const {
@@ -477,7 +522,7 @@ namespace eosio { namespace chain {
       uint32_t version = 0;
       old_block_stream.read( (char*)&version, sizeof(version) );
       EOS_ASSERT( version > 0, block_log_exception, "Block log was not setup properly" );
-      EOS_ASSERT( version >= min_supported_version && version <= max_supported_version, block_log_unsupported_version,
+      EOS_ASSERT( is_supported_version(version), block_log_unsupported_version,
                  "Unsupported version of block log. Block log version is ${version} while code supports version(s) [${min},${max}]",
                  ("version", version)("min", block_log::min_supported_version)("max", block_log::max_supported_version) );
 
@@ -489,11 +534,19 @@ namespace eosio { namespace chain {
          new_block_stream.write( (char*)&first_block_num, sizeof(first_block_num) );
       }
 
-      genesis_state gs;
-      fc::raw::unpack(old_block_stream, gs);
+      if (contains_genesis_state(version, first_block_num)) {
+         genesis_state gs;
+         fc::raw::unpack(old_block_stream, gs);
 
-      auto data = fc::raw::pack( gs );
-      new_block_stream.write( data.data(), data.size() );
+         auto data = fc::raw::pack( gs );
+         new_block_stream.write( data.data(), data.size() );
+      }
+      else if (contains_chain_id(version, first_block_num)) {
+         chain_id_type chain_id;
+         old_block_stream >> chain_id;
+
+         new_block_stream << chain_id;
+      }
 
       if (version != 1) {
          auto expected_totem = npos;
@@ -599,28 +652,53 @@ namespace eosio { namespace chain {
       return backup_dir;
    }
 
-   genesis_state block_log::extract_genesis_state( const fc::path& data_dir ) {
+   template <typename ChainContext, typename Lambda>
+   fc::optional<ChainContext> detail::block_log_impl::extract_chain_context( const fc::path& data_dir, Lambda&& lambda ) {
       EOS_ASSERT( fc::is_directory(data_dir) && fc::is_regular_file(data_dir / "blocks.log"), block_log_not_found,
-                 "Block log not found in '${blocks_dir}'", ("blocks_dir", data_dir)          );
+                  "Block log not found in '${blocks_dir}'", ("blocks_dir", data_dir)          );
 
       std::fstream  block_stream;
       block_stream.open( (data_dir / "blocks.log").generic_string().c_str(), LOG_READ );
 
       uint32_t version = 0;
       block_stream.read( (char*)&version, sizeof(version) );
-      EOS_ASSERT( version > 0, block_log_exception, "Block log was not setup properly." );
-      EOS_ASSERT( version >= min_supported_version && version <= max_supported_version, block_log_unsupported_version,
-                 "Unsupported version of block log. Block log version is ${version} while code supports version(s) [${min},${max}]",
-                 ("version", version)("min", block_log::min_supported_version)("max", block_log::max_supported_version) );
+      EOS_ASSERT( version >= block_log::min_supported_version && version <= block_log::max_supported_version, block_log_unsupported_version,
+                  "Unsupported version of block log. Block log version is ${version} while code supports version(s) [${min},${max}]",
+                  ("version", version)("min", block_log::min_supported_version)("max", block_log::max_supported_version) );
 
       uint32_t first_block_num = 1;
       if (version != 1) {
          block_stream.read ( (char*)&first_block_num, sizeof(first_block_num) );
       }
 
-      genesis_state gs;
-      fc::raw::unpack(block_stream, gs);
-      return gs;
+      return lambda(block_stream, version, first_block_num);
+   }
+
+   fc::optional<genesis_state> block_log::extract_genesis_state( const fc::path& data_dir ) {
+      return detail::block_log_impl::extract_chain_context<genesis_state>(data_dir, [](std::fstream& block_stream, uint32_t version, uint32_t first_block_num ) -> fc::optional<genesis_state> {
+         if (contains_genesis_state(version, first_block_num)) {
+            genesis_state gs;
+            fc::raw::unpack(block_stream, gs);
+            return gs;
+         }
+
+         // current versions only have a genesis state if they start with block number 1
+         return fc::optional<genesis_state>();
+      });
+   }
+
+   chain_id_type block_log::extract_chain_id( const fc::path& data_dir ) {
+      return *(detail::block_log_impl::extract_chain_context<chain_id_type>(data_dir, [](std::fstream& block_stream, uint32_t version, uint32_t first_block_num ) -> fc::optional<chain_id_type> {
+         // supported versions either contain a genesis state, or else the chain id only
+         if (contains_genesis_state(version, first_block_num)) {
+            genesis_state gs;
+            fc::raw::unpack(block_stream, gs);
+            return gs.compute_chain_id();
+         }
+         chain_id_type chain_id;
+         fc::raw::unpack(block_stream, chain_id);
+         return chain_id;
+      }));
    }
 
    detail::reverse_iterator::reverse_iterator()
@@ -638,7 +716,8 @@ namespace eosio { namespace chain {
       _version = 0;
       auto size = fread((char*)&_version, sizeof(_version), 1, _file.get());
       EOS_ASSERT( size == 1, block_log_exception, "Block log file at '${blocks_log}' could not be read.", ("file", _block_file_name) );
-      EOS_ASSERT( _version == 1 || _version == 2, block_log_unsupported_version, "block log version ${v} is not supported", ("v", _version));
+      EOS_ASSERT( block_log::is_supported_version(_version), block_log_unsupported_version,
+                  "block log version ${v} is not supported", ("v", _version));
       if (_version == 1) {
          _first_block_num = 1;
       }
@@ -808,5 +887,17 @@ namespace eosio { namespace chain {
       else {
          _start_of_buffer_position = _end_of_buffer_position - _max_buffer_length;
       }
+   }
+
+   bool block_log::contains_genesis_state(uint32_t version, uint32_t first_block_num) {
+      return version <= 2 || first_block_num == 1;
+   }
+
+   bool block_log::contains_chain_id(uint32_t version, uint32_t first_block_num) {
+      return version >= 3 && first_block_num > 1;
+   }
+
+   bool block_log::is_supported_version(uint32_t version) {
+      return std::clamp(version, min_supported_version, max_supported_version) == version;
    }
 } } /// eosio::chain
