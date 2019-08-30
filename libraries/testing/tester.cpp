@@ -159,8 +159,9 @@ namespace eosio { namespace testing {
       cfg.contracts_console = true;
       cfg.read_mode = read_mode;
 
-      cfg.genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
-      cfg.genesis.initial_key = get_public_key( config::system_account_name, "active" );
+      cfg.genesis.emplace();
+      cfg.genesis->initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
+      cfg.genesis->initial_key = get_public_key( config::system_account_name, "active" );
 
       for(int i = 0; i < boost::unit_test::framework::master_test_suite().argc; ++i) {
          if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--wavm"))
@@ -233,7 +234,7 @@ namespace eosio { namespace testing {
    }
 
    void base_tester::open( protocol_feature_set&& pfs, const snapshot_reader_ptr& snapshot ) {
-      control.reset( new controller(cfg, std::move(pfs)) );
+      control.reset( new controller(cfg, fc::optional<chain_id_type>(cfg.genesis->compute_chain_id()), std::move(pfs)) );
       control->add_indices();
       control->startup( []() { return false; }, snapshot);
       chain_transactions.clear();

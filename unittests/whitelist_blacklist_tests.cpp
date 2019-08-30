@@ -35,8 +35,9 @@ class whitelist_blacklist_tester {
          cfg.reversible_guard_size = 0;
          cfg.contracts_console = true;
 
-         cfg.genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
-         cfg.genesis.initial_key = base_tester::get_public_key( config::system_account_name, "active" );
+         cfg.genesis.emplace();
+         cfg.genesis->initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
+         cfg.genesis->initial_key = base_tester::get_public_key( config::system_account_name, "active" );
 
          for(int i = 0; i < boost::unit_test::framework::master_test_suite().argc; ++i) {
             if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--wavm"))

@@ -392,8 +392,9 @@ namespace eosio { namespace testing {
          vcfg.reversible_guard_size = 0;
          vcfg.contracts_console = false;
 
-         vcfg.genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
-         vcfg.genesis.initial_key = get_public_key( config::system_account_name, "active" );
+         vcfg.genesis.emplace();
+         vcfg.genesis->initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
+         vcfg.genesis->initial_key = get_public_key( config::system_account_name, "active" );
 
          for(int i = 0; i < boost::unit_test::framework::master_test_suite().argc; ++i) {
             if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--wavm"))
@@ -409,7 +410,7 @@ namespace eosio { namespace testing {
 
          vcfg.trusted_producers = trusted_producers;
 
-         validating_node = std::make_unique<controller>(vcfg, make_protocol_feature_set());
+         validating_node = std::make_unique<controller>(vcfg, fc::optional<chain_id_type>(vcfg.genesis->compute_chain_id()), make_protocol_feature_set());
          validating_node->add_indices();
          validating_node->startup( []() { return false; } );
 
@@ -424,7 +425,7 @@ namespace eosio { namespace testing {
          vcfg.blocks_dir = vcfg.blocks_dir.parent_path() / std::string("v_").append( vcfg.blocks_dir.filename().generic_string() );
          vcfg.state_dir  = vcfg.state_dir.parent_path() / std::string("v_").append( vcfg.state_dir.filename().generic_string() );
 
-         validating_node = std::make_unique<controller>(vcfg, make_protocol_feature_set());
+         validating_node = std::make_unique<controller>(vcfg, fc::optional<chain_id_type>(vcfg.genesis->compute_chain_id()), make_protocol_feature_set());
          validating_node->add_indices();
          validating_node->startup( []() { return false; } );
 
@@ -474,7 +475,7 @@ namespace eosio { namespace testing {
                hbh.producer == vn_hbh.producer;
 
         validating_node.reset();
-        validating_node = std::make_unique<controller>(vcfg, make_protocol_feature_set());
+        validating_node = std::make_unique<controller>(vcfg, fc::optional<chain_id_type>(vcfg.genesis->compute_chain_id()), make_protocol_feature_set());
         validating_node->add_indices();
         validating_node->startup( []() { return false; } );
 
