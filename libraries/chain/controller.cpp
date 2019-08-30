@@ -701,7 +701,7 @@ struct controller_impl {
               pending_head = fork_db.pending_head()
          ) {
             wlog( "applying branch from fork database ending with block: ${id}", ("id", pending_head->id) );
-            maybe_switch_forks( pending_head, controller::block_status::complete );
+            maybe_switch_forks( pending_head, controller::block_status::complete, forked_branch_callback() );
          }
       }
 
@@ -1677,7 +1677,6 @@ struct controller_impl {
             });
          }
 
-         unapplied_transactions.clear_applied( bsp );
          emit( self.accepted_block, bsp );
 
          if( add_to_fork_db ) {
@@ -1884,7 +1883,7 @@ struct controller_impl {
       } );
    }
 
-   void push_block( std::future<block_state_ptr>& block_state_future ) {
+   void push_block( std::future<block_state_ptr>& block_state_future, const forked_branch_callback& forked_branch_cb ) {
       controller::block_status s = controller::block_status::complete;
       EOS_ASSERT(!pending, block_validate_exception, "it is not valid to push a block when there is a pending block");
 
@@ -1906,7 +1905,7 @@ struct controller_impl {
          emit( self.accepted_block_header, bsp );
 
          if( read_mode != db_read_mode::IRREVERSIBLE ) {
-            maybe_switch_forks( fork_db.pending_head(), s );
+            maybe_switch_forks( fork_db.pending_head(), s, forked_branch_cb );
          } else {
             log_irreversible();
          }
@@ -1959,13 +1958,13 @@ struct controller_impl {
          } else {
             EOS_ASSERT( read_mode != db_read_mode::IRREVERSIBLE, block_validate_exception,
                         "invariant failure: cannot replay reversible blocks while in irreversible mode" );
-            maybe_switch_forks( bsp, s );
+            maybe_switch_forks( bsp, s, forked_branch_callback() );
          }
 
       } FC_LOG_AND_RETHROW( )
    }
 
-   void maybe_switch_forks( const block_state_ptr& new_head, controller::block_status s ) {
+   void maybe_switch_forks( const block_state_ptr& new_head, controller::block_status s, const forked_branch_callback& forked_branch_cb ) {
       bool head_changed = true;
       if( new_head->header.previous == head->id ) {
          try {
@@ -1987,9 +1986,9 @@ struct controller_impl {
                pop_block();
             }
             EOS_ASSERT( self.head_block_id() == branches.second.back()->header.previous, fork_database_exception,
-                        "loss of sync between fork_db and chainbase during fork switch" ); // _should_ never fail
+                     "loss of sync between fork_db and chainbase during fork switch" ); // _should_ never fail
 
-            unapplied_transactions.add_forked( branches.second );
+            if( forked_branch_cb ) forked_branch_cb( branches.second );
          }
 
          for( auto ritr = branches.first.rbegin(); ritr != branches.first.rend(); ++ritr ) {
@@ -2037,12 +2036,14 @@ struct controller_impl {
 
    } /// push_block
 
-   void abort_block() {
+   vector<transaction_metadata_ptr> abort_block() {
+      vector<transaction_metadata_ptr> applied_trxs;
       if( pending ) {
-         unapplied_transactions.add_aborted( pending->extract_trx_metas() );
+         applied_trxs = pending->extract_trx_metas();
          pending.reset();
          protocol_features.popped_blocks_to( head->block_num );
       }
+      return applied_trxs;
    }
 
    checksum256_type calculate_action_merkle() {
@@ -2550,8 +2551,8 @@ void controller::commit_block() {
    my->commit_block(true);
 }
 
-void controller::abort_block() {
-   my->abort_block();
+vector<transaction_metadata_ptr> controller::abort_block() {
+   return my->abort_block();
 }
 
 boost::asio::io_context& controller::get_thread_pool() {
@@ -2567,10 +2568,10 @@ std::future<block_state_ptr> controller::create_block_state_future( const signed
    return my->create_block_state_future( b );
 }
 
-void controller::push_block( std::future<block_state_ptr>& block_state_future ) {
+void controller::push_block( std::future<block_state_ptr>& block_state_future, const forked_branch_callback& forked_branch_cb ) {
    validate_db_available_size();
    validate_reversible_available_size();
-   my->push_block( block_state_future );
+   my->push_block( block_state_future, forked_branch_cb );
 }
 
 transaction_trace_ptr controller::push_transaction( const transaction_metadata_ptr& trx, fc::time_point deadline, uint32_t billed_cpu_time_us ) {

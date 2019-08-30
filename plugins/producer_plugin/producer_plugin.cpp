@@ -221,6 +221,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       transaction_id_with_expiry_index                         _blacklisted_transactions;
       pending_snapshot_index                                   _pending_snapshot_index;
 
+      fc::optional<scoped_connection>                          _accepted_block_connection;
       fc::optional<scoped_connection>                          _accepted_block_header_connection;
       fc::optional<scoped_connection>                          _irreversible_block_connection;
 
@@ -258,6 +259,11 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          if( itr == _producer_watermarks.end() ) return {};
 
          return itr->second;
+      }
+
+      void on_block( const block_state_ptr& bsp ) {
+         chain::controller& chain = chain_plug->chain();
+         chain.unapplied_transaction_queue().clear_applied( bsp );
       }
 
       void on_block_header( const block_state_ptr& bsp ) {
@@ -342,7 +348,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          auto bsf = chain.create_block_state_future( block );
 
          // abort the pending block
-         chain.abort_block();
+         chain.unapplied_transaction_queue().add_aborted( chain.abort_block() );
 
          // exceptions throw out, make sure we restart our loop
          auto ensure = fc::make_scoped_exit([this](){
@@ -352,7 +358,9 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          // push the new block
          bool except = false;
          try {
-            chain.push_block( bsf );
+            chain.push_block( bsf, [&chain]( const branch_type& forked_branch ) {
+               chain.unapplied_transaction_queue().add_forked( forked_branch );
+            } );
          } catch ( const guard_exception& e ) {
             chain_plugin::handle_guard_exception(e);
             return;
@@ -864,6 +872,7 @@ void producer_plugin::plugin_startup()
    EOS_ASSERT( my->_producers.empty() || chain.get_validation_mode() == chain::validation_mode::FULL, plugin_config_exception,
               "node cannot have any producer-name configured because block production is not safe when validation_mode is not \"full\"" );
 
+   my->_accepted_block_connection.emplace(chain.accepted_block.connect( [this]( const auto& bsp ){ my->on_block( bsp ); } ));
    my->_accepted_block_header_connection.emplace(chain.accepted_block_header.connect( [this]( const auto& bsp ){ my->on_block_header( bsp ); } ));
    my->_irreversible_block_connection.emplace(chain.irreversible_block.connect( [this]( const auto& bsp ){ my->on_irreversible_block( bsp->block ); } ));
 
@@ -901,6 +910,7 @@ void producer_plugin::plugin_shutdown() {
    if( my->_thread_pool ) {
       my->_thread_pool->stop();
    }
+   my->_accepted_block_connection.reset();
    my->_accepted_block_header_connection.reset();
    my->_irreversible_block_connection.reset();
 }
@@ -921,7 +931,7 @@ void producer_plugin::resume() {
    //
    if (my->_pending_block_mode == pending_block_mode::speculating) {
       chain::controller& chain = my->chain_plug->chain();
-      chain.abort_block();
+      chain.unapplied_transaction_queue().add_aborted( chain.abort_block() );
       my->schedule_production_loop();
    }
 }
@@ -960,7 +970,7 @@ void producer_plugin::update_runtime_options(const runtime_options& options) {
 
    if (check_speculating && my->_pending_block_mode == pending_block_mode::speculating) {
       chain::controller& chain = my->chain_plug->chain();
-      chain.abort_block();
+      chain.unapplied_transaction_queue().add_aborted( chain.abort_block() );
       my->schedule_production_loop();
    }
 
@@ -1036,7 +1046,7 @@ producer_plugin::integrity_hash_information producer_plugin::get_integrity_hash(
 
    if (chain.is_building_block()) {
       // abort the pending block
-      chain.abort_block();
+      chain.unapplied_transaction_queue().add_aborted( chain.abort_block() );
    } else {
       reschedule.cancel();
    }
@@ -1065,7 +1075,7 @@ void producer_plugin::create_snapshot(producer_plugin::next_function<producer_pl
 
       if (chain.is_building_block()) {
          // abort the pending block
-         chain.abort_block();
+         chain.unapplied_transaction_queue().add_aborted( chain.abort_block() );
       } else {
          reschedule.cancel();
       }
@@ -1398,7 +1408,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
          blocks_to_confirm = (uint16_t)(std::min<uint32_t>(blocks_to_confirm, (uint32_t)(hbs->block_num - hbs->dpos_irreversible_blocknum)));
       }
 
-      chain.abort_block();
+      chain.unapplied_transaction_queue().add_aborted( chain.abort_block() );
 
       auto features_to_activate = chain.get_preactivated_protocol_features();
       if( _pending_block_mode == pending_block_mode::producing && _protocol_features_to_activate.size() > 0 ) {
@@ -1491,16 +1501,15 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
 
       try {
          size_t orig_pending_txn_size = _pending_incoming_transactions.size();
-         unapplied_transaction_queue& unapplied = chain.unapplied_transaction_queue();
 
          // Processing unapplied transactions...
-         if( !unapplied.empty() ) {
+         if( !chain.unapplied_transaction_queue().empty() ) {
             int num_applied = 0, num_failed = 0, num_processed = 0;
-            auto unapplied_trxs_size = unapplied.size();
+            auto unapplied_trxs_size = chain.unapplied_transaction_queue().size();
             auto itr     = (_pending_block_mode == pending_block_mode::producing) ?
-                           unapplied.begin() : unapplied.persisted_begin();
+                           chain.unapplied_transaction_queue().begin() : chain.unapplied_transaction_queue().persisted_begin();
             auto end_itr = (_pending_block_mode == pending_block_mode::producing) ?
-                           unapplied.end()   : unapplied.persisted_end();
+                           chain.unapplied_transaction_queue().end()   : chain.unapplied_transaction_queue().persisted_end();
             while( itr != end_itr ) {
                if( preprocess_deadline <= fc::time_point::now() ) exhausted = true;
                if( exhausted ) break;
@@ -1525,12 +1534,12 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
                      } else {
                         // this failed our configured maximum transaction time, we don't want to replay it
                         ++num_failed;
-                        itr = unapplied.erase( itr );
+                        itr = chain.unapplied_transaction_queue().erase( itr );
                         continue;
                      }
                   } else {
                      ++num_applied;
-                     itr = unapplied.erase( itr );
+                     itr = chain.unapplied_transaction_queue().erase( itr );
                      continue;
                   }
                } LOG_AND_DROP();
@@ -1811,7 +1820,7 @@ bool producer_plugin_impl::maybe_produce_block() {
 
    fc_dlog(_log, "Aborting block due to produce_block error");
    chain::controller& chain = chain_plug->chain();
-   chain.abort_block();
+   chain.unapplied_transaction_queue().add_aborted( chain.abort_block() );
    return false;
 }
 
