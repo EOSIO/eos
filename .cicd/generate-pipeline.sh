@@ -2,8 +2,8 @@
 set -eo pipefail
 . ./.cicd/helpers/general.sh
 
-export MOJAVE_ANKA_TAG_BASE='clean::cicd::git-ssh::nas::brew::buildkite-agent'
-export MOJAVE_ANKA_TEMPLATE_NAME='10.14.4_6C_14G_40G'
+export MOJAVE_ANKA_TAG_BASE=${MOJAVE_ANKA_TAG_BASE:-'clean::cicd::git-ssh::nas::brew::buildkite-agent'}
+export MOJAVE_ANKA_TEMPLATE_NAME=${MOJAVE_ANKA_TEMPLATE_NAME:-'10.14.4_6C_14G_40G'}
 
 # Use files in platforms dir as source of truth for what platforms we need to generate steps for
 export PLATFORMS_JSON_ARRAY='[]'
