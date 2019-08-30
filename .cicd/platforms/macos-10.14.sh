@@ -2,7 +2,7 @@
 set -eo pipefail
 brew update
 brew install git boost@1.70 cmake python@2 python libtool libusb graphviz automake wget gmp llvm@4 pkgconfig doxygen openssl || true
-
+# install clang from source
 if [[ ! $PINNED == false || $UNPINNED == true ]]; then
     git clone --single-branch --branch release_80 https://git.llvm.org/git/llvm.git clang8
     cd clang8
@@ -49,13 +49,13 @@ if [[ ! $PINNED == false || $UNPINNED == true ]]; then
     cd ../..
     rm -rf clang8
 fi
-
+# install mongoDB
 cd ~
 curl -OL https://fastdl.mongodb.org/osx/mongodb-osx-ssl-x86_64-3.6.3.tgz
 tar -xzf mongodb-osx-ssl-x86_64-3.6.3.tgz
 rm -f mongodb-osx-ssl-x86_64-3.6.3.tgz
 ln -s ~/mongodb-osx-x86_64-3.6.3 ~/mongodb
-
+# install mongo-c-driver from source
 cd /tmp
 curl -LO https://github.com/mongodb/mongo-c-driver/releases/download/1.13.0/mongo-c-driver-1.13.0.tar.gz
 tar -xzf mongo-c-driver-1.13.0.tar.gz
@@ -67,7 +67,7 @@ make -j $(getconf _NPROCESSORS_ONLN)
 sudo make install
 cd ../..
 rm mongo-c-driver-1.13.0.tar.gz
-
+# install mongo-cxx-driver from source
 cd /tmp
 curl -L https://github.com/mongodb/mongo-cxx-driver/archive/r3.4.0.tar.gz -o mongo-cxx-driver-r3.4.0.tar.gz
 tar -xzf mongo-cxx-driver-r3.4.0.tar.gz
