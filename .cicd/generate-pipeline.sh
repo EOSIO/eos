@@ -193,7 +193,7 @@ done
 # SERIAL TESTS #
 echo $PLATFORMS_JSON_ARRAY | jq -cr ".[]" | while read -r PLATFORM_JSON; do
   IFS=$oIFS
-  SERIAL_TESTS=$(cat tests/CMakeLists.txt | grep nonparallelizable_tests | awk -F" " '{ print $2 }')
+  SERIAL_TESTS=$(cat tests/CMakeLists.txt | grep nonparallelizable_tests | grep -v "^#" | awk -F" " '{ print $2 }')
 
   for TEST_NAME in $SERIAL_TESTS; do
 

@@ -3,7 +3,7 @@ set -eo pipefail
 # variables
 echo "+++ $([[ "$BUILDKITE" == 'true' ]] && echo ':evergreen_tree: ')Configuring Environment"
 GIT_ROOT="$(dirname $BASH_SOURCE[0])/.."
-[[ -z "$TEST" ]] && export TEST=$1
+export TEST=${TEST:-$1}
 if [[ "$(uname)" == 'Linux' ]]; then
     . /etc/os-release
     if [[ "$ID" == 'centos' ]]; then
