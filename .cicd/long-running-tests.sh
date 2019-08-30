@@ -2,7 +2,9 @@
 set -eo pipefail
 . ./.cicd/helpers/general.sh
 
-TEST="ctest -L long_running_tests --output-on-failure -T Test"
+[[ -z $1 ]] && TEST_NAME="-L long_running_tests" || TEST_NAME="-R ^$1$"
+
+TEST="ctest $TEST_NAME --output-on-failure -T Test"
 
 if [[ $(uname) == 'Darwin' ]]; then
 
