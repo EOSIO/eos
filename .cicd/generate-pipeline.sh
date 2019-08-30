@@ -9,6 +9,8 @@ export MOJAVE_ANKA_TEMPLATE_NAME=${MOJAVE_ANKA_TEMPLATE_NAME:-'10.14.4_6C_14G_40
 export PLATFORMS_JSON_ARRAY='[]'
 for FILE in $(ls $CICD_DIR/platforms); do
 
+  [[ ! $FILE =~ 'amazon' ]] && continue
+
   # Ability to skip mac or linux by not even creating the json block
   ( [[ $SKIP_MAC == true ]] && [[ $FILE =~ 'macos' ]] ) && continue
   ( [[ $SKIP_LINUX == true ]] &&  [[ ! $FILE =~ 'macos' ]] ) && continue
