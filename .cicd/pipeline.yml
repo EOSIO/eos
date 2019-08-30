@@ -1,9 +1,6 @@
 steps:
   - wait
 
-  - wait
-
-
   - label: ":pipeline: Generate Pipeline Steps"  
     command: "./.cicd/generate-pipeline.sh | buildkite-agent pipeline upload"
     agents:
