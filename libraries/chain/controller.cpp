@@ -25,7 +25,6 @@
 #include <eosio/chain/chain_snapshot.hpp>
 #include <eosio/chain/thread_utils.hpp>
 #include <eosio/chain/platform_timer.hpp>
-#include <eosio/chain/unapplied_transaction_queue.hpp>
 
 #include <chainbase/chainbase.hpp>
 #include <fc/io/json.hpp>
@@ -218,7 +217,6 @@ struct controller_impl {
    chainbase::database            db;
    chainbase::database            reversible_blocks; ///< a special database to persist blocks that have successfully been applied but are still reversible
    block_log                      blog;
-   unapplied_transaction_queue    unapplied_transactions;
    optional<pending_state>        pending;
    block_state_ptr                head;
    fork_database                  fork_db;
@@ -2558,11 +2556,6 @@ vector<transaction_metadata_ptr> controller::abort_block() {
 boost::asio::io_context& controller::get_thread_pool() {
    return my->thread_pool.get_executor();
 }
-
-unapplied_transaction_queue& controller::unapplied_transaction_queue() {
-   return my->unapplied_transactions;
-}
-
 
 std::future<block_state_ptr> controller::create_block_state_future( const signed_block_ptr& b ) {
    return my->create_block_state_future( b );

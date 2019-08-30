@@ -20,7 +20,6 @@ namespace boost { namespace asio {
 namespace eosio { namespace chain {
 
    class authorization_manager;
-   class unapplied_transaction_queue;
 
    namespace resource_limits {
       class resource_limits_manager;
@@ -158,8 +157,6 @@ namespace eosio { namespace chain {
          void push_block( std::future<block_state_ptr>& block_state_future, const forked_branch_callback& cb );
 
          boost::asio::io_context& get_thread_pool();
-
-         unapplied_transaction_queue& unapplied_transaction_queue();
 
          const chainbase::database& db()const;
 
