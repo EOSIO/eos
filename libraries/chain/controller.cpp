@@ -225,7 +225,7 @@ struct controller_impl {
    authorization_manager          authorization;
    protocol_feature_manager       protocol_features;
    controller::config             conf;
-   const chain_id_type            chain_id; // read by thread_pool threads
+   chain_id_type                  chain_id; // read by thread_pool threads, value will not be changed after initialization/snapshot
    optional<fc::time_point>       replay_head_time;
    db_read_mode                   read_mode = db_read_mode::SPECULATIVE;
    bool                           in_trx_requiring_checks = false; ///< if true, checks that are normally skipped on replay (e.g. auth checks) cannot be skipped
@@ -281,7 +281,7 @@ struct controller_impl {
       apply_handlers[receiver][make_pair(contract,action)] = v;
    }
 
-   controller_impl( const controller::config& cfg, controller& s, protocol_feature_set&& pfs  )
+   controller_impl( const controller::config& cfg, const fc::optional<chain_id_type>& cfg_chain_id, controller& s, protocol_feature_set&& pfs  )
    :self(s),
     db( cfg.state_dir,
         cfg.read_only ? database::read_only : database::read_write,
@@ -296,10 +296,12 @@ struct controller_impl {
     authorization( s, db ),
     protocol_features( std::move(pfs) ),
     conf( cfg ),
-    chain_id( cfg.genesis.compute_chain_id() ),
     read_mode( cfg.read_mode ),
     thread_pool( "chain", cfg.thread_pool_size )
    {
+      if (cfg_chain_id) {
+         chain_id = *cfg_chain_id;
+      }
 
       fork_db.open( [this]( block_timestamp_type timestamp,
                             const flat_set<digest_type>& cur_features,
@@ -431,16 +433,18 @@ struct controller_impl {
     */
    void initialize_blockchain_state() {
       wlog( "Initializing new blockchain with genesis state" );
-      producer_authority_schedule initial_schedule = { 0, { producer_authority{config::system_account_name, block_signing_authority_v0{ 1, {{conf.genesis.initial_key, 1}} } } } };
-      legacy::producer_schedule_type initial_legacy_schedule{ 0, {{config::system_account_name, conf.genesis.initial_key}} };
+      EOS_ASSERT( conf.genesis, plugin_config_exception,
+                  "unexpected error: should not be initializing blockchain state without a valid genesis state." );
+      producer_authority_schedule initial_schedule = { 0, { producer_authority{config::system_account_name, block_signing_authority_v0{ 1, {{conf.genesis->initial_key, 1}} } } } };
+      legacy::producer_schedule_type initial_legacy_schedule{ 0, {{config::system_account_name, conf.genesis->initial_key}} };
 
       block_header_state genheader;
       genheader.active_schedule                = initial_schedule;
       genheader.pending_schedule.schedule      = initial_schedule;
       // NOTE: if wtmsig block signatures are enabled at genesis time this should be the hash of a producer authority schedule
       genheader.pending_schedule.schedule_hash = fc::sha256::hash(initial_legacy_schedule);
-      genheader.header.timestamp               = conf.genesis.initial_timestamp;
-      genheader.header.action_mroot            = conf.genesis.compute_chain_id();
+      genheader.header.timestamp               = conf.genesis->initial_timestamp;
+      genheader.header.action_mroot            = conf.genesis->compute_chain_id();
       genheader.id                             = genheader.header.id();
       genheader.block_num                      = genheader.header.block_num();
 
@@ -564,7 +568,7 @@ struct controller_impl {
                );
                lib_num = blog.head()->block_num();
             } else {
-               blog.reset( conf.genesis, head->block );
+               blog.reset( *conf.genesis, head->block );
             }
          } else {
             lib_num = fork_db.root()->block_num;
@@ -839,8 +843,7 @@ struct controller_impl {
          header.validate();
       });
 
-
-      { /// load an upgrade the block header state
+      { /// load and upgrade the block header state
          block_header_state head_header_state;
          using v2 = legacy::snapshot_block_header_state_v2;
 
@@ -868,6 +871,7 @@ struct controller_impl {
          fork_db.reset( head_header_state );
          head = fork_db.head();
          snapshot_head_block = head->block_num;
+
       }
 
       controller_index_set::walk_indices([this, &snapshot, &header]( auto utils ){
@@ -937,7 +941,7 @@ struct controller_impl {
    void create_native_account( account_name name, const authority& owner, const authority& active, bool is_privileged = false ) {
       db.create<account_object>([&](auto& a) {
          a.name = name;
-         a.creation_date = conf.genesis.initial_timestamp;
+         a.creation_date = conf.genesis->initial_timestamp;
 
          if( name == config::system_account_name ) {
             // The initial eosio ABI value affects consensus; see  https://github.com/EOSIO/eos/issues/7794
@@ -952,9 +956,9 @@ struct controller_impl {
       });
 
       const auto& owner_permission  = authorization.create_permission(name, config::owner_name, 0,
-                                                                      owner, conf.genesis.initial_timestamp );
+                                                                      owner, conf.genesis->initial_timestamp );
       const auto& active_permission = authorization.create_permission(name, config::active_name, owner_permission.id,
-                                                                      active, conf.genesis.initial_timestamp );
+                                                                      active, conf.genesis->initial_timestamp );
 
       resource_limits.initialize_account(name);
 
@@ -982,9 +986,9 @@ struct controller_impl {
          bs.block_id = head->id;
       });
 
-      conf.genesis.initial_configuration.validate();
+      conf.genesis->initial_configuration.validate();
       db.create<global_property_object>([&](auto& gpo ){
-         gpo.configuration = conf.genesis.initial_configuration;
+         gpo.configuration = conf.genesis->initial_configuration;
          gpo.chain_id = chain_id;
       });
 
@@ -1000,7 +1004,7 @@ struct controller_impl {
       authorization.initialize_database();
       resource_limits.initialize_database();
 
-      authority system_auth(conf.genesis.initial_key);
+      authority system_auth(conf.genesis->initial_key);
       create_native_account( config::system_account_name, system_auth, system_auth, true );
 
       auto empty_authority = authority(1, {}, {});
@@ -1014,12 +1018,12 @@ struct controller_impl {
                                                                              config::majority_producers_permission_name,
                                                                              active_permission.id,
                                                                              active_producers_authority,
-                                                                             conf.genesis.initial_timestamp );
+                                                                             conf.genesis->initial_timestamp );
       const auto& minority_permission     = authorization.create_permission( config::producers_account_name,
                                                                              config::minority_producers_permission_name,
                                                                              majority_permission.id,
                                                                              active_producers_authority,
-                                                                             conf.genesis.initial_timestamp );
+                                                                             conf.genesis->initial_timestamp );
    }
 
    // The returned scoped_exit should not exceed the lifetime of the pending which existed when make_block_restore_point was called.
@@ -2320,12 +2324,12 @@ const protocol_feature_manager& controller::get_protocol_feature_manager()const
 }
 
 controller::controller( const controller::config& cfg )
-:my( new controller_impl( cfg, *this, protocol_feature_set{} ) )
+:my( new controller_impl( cfg, fc::optional<chain_id_type>(), *this, protocol_feature_set{} ) )
 {
 }
 
-controller::controller( const config& cfg, protocol_feature_set&& pfs )
-:my( new controller_impl( cfg, *this, std::move(pfs) ) )
+controller::controller( const config& cfg, const fc::optional<chain_id_type>& chain_id, protocol_feature_set&& pfs )
+:my( new controller_impl( cfg, chain_id, *this, std::move(pfs) ) )
 {
 }
 

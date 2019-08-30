@@ -79,7 +79,7 @@ namespace eosio { namespace chain {
             uint32_t                 maximum_variable_signature_length = chain::config::default_max_variable_signature_length;
             bool                     disable_all_subjective_mitigations = false; //< for testing purposes only
 
-            genesis_state            genesis;
+            optional<genesis_state>  genesis;
             wasm_interface::vm_type  wasm_runtime = chain::config::default_wasm_runtime;
 
             db_read_mode             read_mode              = db_read_mode::SPECULATIVE;
@@ -100,7 +100,7 @@ namespace eosio { namespace chain {
          };
 
          explicit controller( const config& cfg );
-         controller( const config& cfg, protocol_feature_set&& pfs );
+         controller( const config& cfg, const fc::optional<chain_id_type>& chain_id, protocol_feature_set&& pfs );
          ~controller();
 
          void add_indices();
