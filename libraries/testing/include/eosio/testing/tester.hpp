@@ -402,6 +402,8 @@ namespace eosio { namespace testing {
                vcfg.wasm_runtime = chain::wasm_interface::vm_type::wabt;
             else if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--eos-vm"))
                vcfg.wasm_runtime = chain::wasm_interface::vm_type::eos_vm;
+            else if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--eos-vm-jit"))
+               vcfg.wasm_runtime = chain::wasm_interface::vm_type::eos_vm_jit;
          }
          return vcfg;
       }

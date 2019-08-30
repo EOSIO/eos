@@ -1,5 +1,6 @@
 #include <eosio/chain/webassembly/eos-vm.hpp>
 #include <eosio/chain/apply_context.hpp>
+#include <eosio/chain/transaction_context.hpp>
 #include <eosio/chain/wasm_eosio_constraints.hpp>
 #include <fstream>
 //eos-vm includes
@@ -33,10 +34,28 @@ class eos_vm_instantiated_module : public wasm_instantiated_module_interface {
             module.memories.at(0).limits.flags = true;
             module.memories.at(0).limits.maximum = wasm_constraints::maximum_linear_memory / wasm_constraints::wasm_page_size;
          }
-         const auto& res = _runtime->_bkend->call(
-             &context, "env", "apply", context.get_receiver().to_uint64_t(),
-             context.get_action().account.to_uint64_t(),
-             context.get_action().name.to_uint64_t());
+         auto fn = [&]() {
+            const auto& res = _runtime->_bkend->call(
+                &context, "env", "apply", context.get_receiver().to_uint64_t(),
+                context.get_action().account.to_uint64_t(),
+                context.get_action().name.to_uint64_t());
+         };
+         try {
+            if (context.trx_context._deadline == fc::time_point::maximum())
+               fn();
+            else {
+               watchdog wd(std::chrono::microseconds((context.trx_context._deadline - fc::time_point::now()).count()));
+               _runtime->_bkend->timed_run(wd, fn);
+            }
+         } catch(eosio::vm::timeout_exception&) {
+            // FIXME: just loop until checktime triggers, in case we got here first
+            while(true) context.trx_context.checktime();
+         } catch(eosio::vm::wasm_memory_exception& e) {
+            FC_THROW_EXCEPTION(wasm_execution_error, "access violation");
+         } catch(eosio::vm::exception& e) {
+            // FIXME: Do better translation
+            FC_THROW_EXCEPTION(wasm_execution_error, "something went wrong...");
+         }
          _runtime->_bkend = nullptr;
       }
 

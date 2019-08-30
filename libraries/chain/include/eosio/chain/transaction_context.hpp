@@ -121,7 +121,9 @@ namespace eosio { namespace chain {
 
          fc::microseconds              initial_objective_duration_limit;
          fc::microseconds              objective_duration_limit;
+   public: // <-- HACK for eos-vm
          fc::time_point                _deadline = fc::time_point::maximum();
+   private:
          int64_t                       deadline_exception_code = block_cpu_usage_exceeded::code_value;
          int64_t                       billing_timer_exception_code = block_cpu_usage_exceeded::code_value;
          fc::time_point                pseudo_start;
