@@ -12,6 +12,7 @@ function capitalize() {
     else
         echo $1
     fi
+}
 # load buildkite intrinsic environment variables for use in docker run
 function buildkite-intrinsics()
 {
