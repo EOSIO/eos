@@ -18,6 +18,7 @@ class LauncherCaller:
     DEFAULT_ADDR = "127.0.0.1"
     DEFAULT_PORT = 1234
     DEFAULT_FILE = "./programs/eosio-launcher-service/eosio-launcher-service"
+    DEFAULT_CLUSTER_ID = 0
 
     def parse_args(self):
         parser = argparse.ArgumentParser(description=underlined_str(green_str("Launcher Service for EOS Testing Framework")), add_help=False, formatter_class=lambda prog: argparse.HelpFormatter(prog, max_help_position=50))
@@ -28,6 +29,7 @@ class LauncherCaller:
         parser.add_argument('-s', '--start', action="store_true", help="Always start a new launcher service")
         parser.add_argument('-k', '--kill', action="store_true", help="Kill existing launcher services (if any)")
         parser.add_argument("-f", "--file", type=str, help="Path to launcher service file")
+        parser.add_argument("-i", "--cluster-id", dest="cluster_id", metavar="ID", type=int, help="Cluster ID to launch with")
         return parser.parse_args()
 
     def connect_to_remote_service(self):
@@ -49,6 +51,7 @@ class LauncherCaller:
         self.address = self.override(self.args.address, self.DEFAULT_ADDR)
         self.port = self.override(self.args.port, self.DEFAULT_PORT)
         self.file = self.override(self.args.file, self.DEFAULT_FILE)
+        self.cluster_id = self.override(self.args.cluster_id, self.DEFAULT_CLUSTER_ID)
 
         print("{:50s}{:}".format("Verbosity level", self.args.verbose))
         print("{:50s}{}".format("Address of launcher service", self.args.address))
@@ -56,6 +59,7 @@ class LauncherCaller:
         print("{:50s}{}".format("Path to launcher service file", self.args.file))
         print("{:50s}{}".format("Always start a new launcher service", self.args.start))
         print("{:50s}{}".format("Kill existing launcher services (if any)", self.args.kill))
+        print("{:50s}{}".format("Cluster ID to launch with", self.args.cluster_id))
 
         if self.args.address is not None:
             self.connect_to_remote_service()
@@ -152,7 +156,7 @@ class LauncherCaller:
         print("{:20s}{}".format("Port", self.port))
 
     def launch(self,
-               cluster_id=0,
+               cluster_id=None,
                total_nodes=1,
                producer_nodes=1,
                unstarted_nodes=0,
@@ -171,6 +175,8 @@ class LauncherCaller:
         total_nodes         total number of nodes
         ...
         """
+        cluster_id = self.override(cluster_id, self.cluster_id)
+
         total_producers = total_producers if total_producers else per_node_producers * producer_nodes
 
         assert cluster_id >= 0, \
@@ -260,7 +266,7 @@ def main():
     caller = LauncherCaller()
 
     caller.describe("launching a cluster of nodes")
-    caller.launch(cluster_id=828, producer_nodes=3, unstarted_nodes=2, total_nodes=6, total_producers=5, per_node_producers=2)
+    caller.launch(producer_nodes=3, unstarted_nodes=2, total_nodes=6, total_producers=5, per_node_producers=2)
     caller.print_response()
 
     caller.describe("getting cluster information", sleep=1)
