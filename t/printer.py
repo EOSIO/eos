@@ -19,6 +19,9 @@ def print_in_red(printable):
 def print_in_green(printable):
     print(Colors.GREEN, printable, Colors.RESET, sep='')
 
+def print_in_yellow(printable):
+    print(Colors.YELLOW, printable, Colors.RESET, sep='')
+
 def print_in_blue(printable):
     print(Colors.BLUE, printable, Colors.RESET, sep='')
 
