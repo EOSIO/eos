@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 set -eo pipefail
 . ./.cicd/helpers/general.sh
 . $HELPERS_DIR/file-hash.sh $CICD_DIR/platforms/${IMAGE_TAG}.dockerfile
