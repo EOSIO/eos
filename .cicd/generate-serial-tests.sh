@@ -27,7 +27,7 @@ cat <<EOF
     BUILDKITE_AGENT_ACCESS_TOKEN:
   agents:
     queue: "automation-eos-builder-fleet"
-  timeout: ${TIMEOUT:-10}
+  timeout: ${TIMEOUT:-20}
   skip: \${SKIP_${PLATFORM_NAME_UPCASE}_${VERSION_MAJOR}}\${SKIP_SERIAL_TESTS}
 EOF
     done
