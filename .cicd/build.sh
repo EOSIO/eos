@@ -2,9 +2,7 @@
 set -eo pipefail
 . ./.cicd/helpers/general.sh
 mkdir -p $BUILD_DIR
-
 CMAKE_EXTRAS="-DBUILD_MONGO_DB_PLUGIN=true"
-
 if [[ $(uname) == 'Darwin' ]]; then
     # You can't use chained commands in execute
     [[ $TRAVIS == true ]] && export PINNED=false && ccache -s && ./$CICD_DIR/platforms/macos-10.14.sh
@@ -14,9 +12,7 @@ if [[ $(uname) == 'Darwin' ]]; then
     make -j$JOBS
 else # Linux
     ARGS=${ARGS:-"--rm --init -v $(pwd):$MOUNTED_DIR"}
-
     . $HELPERS_DIR/file-hash.sh $CICD_DIR/platforms/$IMAGE_TAG.dockerfile
-
     PRE_COMMANDS="cd $MOUNTED_DIR/build"
     # PRE_COMMANDS: Executed pre-cmake
     # CMAKE_EXTRAS: Executed within and right before the cmake path (cmake CMAKE_EXTRAS ..)
@@ -38,9 +34,7 @@ else # Linux
         PRE_COMMANDS="$PRE_COMMANDS && export PATH=/usr/lib/ccache:\\\$PATH"
         CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_CXX_COMPILER='clang++' -DCMAKE_C_COMPILER='clang'"
     fi
-
     BUILD_COMMANDS="cmake $CMAKE_EXTRAS -DCMAKE_BUILD_TYPE='Release' .. && make -j$JOBS"
-
     # Docker Commands
     if [[ $BUILDKITE == true ]]; then
         # Generate Base Images

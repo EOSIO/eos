@@ -2,7 +2,6 @@
 set -eo pipefail
 . ./.cicd/helpers/general.sh
 . $HELPERS_DIR/file-hash.sh $CICD_DIR/platforms/${IMAGE_TAG}.dockerfile
-
 # look for Docker image
 echo "+++ :mag_right: Looking for $FULL_TAG"
 ORG_REPO=$(echo $FULL_TAG | cut -d: -f1)
