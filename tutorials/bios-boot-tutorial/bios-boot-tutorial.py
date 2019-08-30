@@ -9,6 +9,7 @@ import re
 import subprocess
 import sys
 import time
+import requests
 
 args = None
 logFile = None
@@ -27,6 +28,8 @@ systemAccounts = [
     'rem.token',
     'rem.vpay',
     'rem.rex',
+    'rem.swap',
+    'remio.swap',
 ]
 
 def jsonArg(a):
@@ -70,7 +73,7 @@ def sleep(t):
 def startWallet():
     run('rm -rf ' + os.path.abspath(args.wallet_dir))
     run('mkdir -p ' + os.path.abspath(args.wallet_dir))
-    background(args.remvault + ' --unlock-timeout %d --http-server-address 127.0.0.1:6666 --wallet-dir %s' % (unlockTimeout, os.path.abspath(args.wallet_dir)))
+    background(args.remvault + ' --unlock-timeout %d --http-server-address 0.0.0.0:6666 --wallet-dir %s' % (unlockTimeout, os.path.abspath(args.wallet_dir)))
     sleep(.4)
     run(args.remcli + 'wallet create --to-console')
 
@@ -109,20 +112,28 @@ def startNode(nodeIndex, account):
         '    --config-dir ' + os.path.abspath(dir) +
         '    --data-dir ' + os.path.abspath(dir) +
         '    --chain-state-db-size-mb 1024'
-        '    --http-server-address 127.0.0.1:' + str(8000 + nodeIndex) +
-        '    --p2p-listen-endpoint 127.0.0.1:' + str(9000 + nodeIndex) +
+        '    --http-server-address 0.0.0.0:' + str(8888 + nodeIndex) +
+        '    --p2p-listen-endpoint 0.0.0.0:' + str(9000 + nodeIndex) +
         '    --max-clients ' + str(maxClients) +
         '    --p2p-max-nodes-per-host ' + str(maxClients) +
         '    --enable-stale-production'
         '    --producer-name ' + account['name'] +
         '    --private-key \'["' + account['pub'] + '","' + account['pvt'] + '"]\''
+        '    --access-control-allow-origin=\'*\''
         '    --plugin eosio::http_plugin'
         '    --plugin eosio::chain_api_plugin'
-        '    --plugin eosio::producer_plugin' +
+        '    --plugin eosio::producer_api_plugin'
+        '    --plugin eosio::producer_plugin'
+        '    --plugin eosio::swap_plugin'
+        '    --swap-signing-key 5K463ynhZoCDDa4RDcr63cUwWLTnKqmdcoTKTHBjqoKfv4u5V7p'
+        '    --swap-authority rem@active'
+        '    --eth-wss-provider wss://ropsten.infura.io/ws/v3/3f98ae6029094659ac8f57f66e673129' +
         otherOpts)
     with open(dir + 'stderr', mode='w') as f:
         f.write(cmd + '\n\n')
     background(cmd + '    2>>' + dir + 'stderr')
+    sleep(2)
+    run(f'curl -X POST http://127.0.0.1:{8888+nodeIndex}/v1/producer/schedule_protocol_feature_activations -d \'{{"protocol_features_to_activate": ["0ec7e080177b2c02b278d5088611686b49d739925a92d9bfcacd7fc6b74053bd"]}}\'')
 
 def startProducers(b, e):
     for i in range(b, e):
@@ -139,7 +150,7 @@ def allocateFunds(b, e):
     dist = numpy.random.pareto(1.161, e - b).tolist() # 1.161 = 80/20 rule
     dist.sort()
     dist.reverse()
-    factor = 1_000_000_000 / sum(dist)
+    factor = 100_000_000 / sum(dist)
     total = 0
     for i in range(b, e):
         funds = round(factor * dist[i - b] * 10000)
@@ -169,8 +180,9 @@ def createStakedAccounts(b, e):
         stakeCpu = stake - stakeNet
         print('%s: total funds=%s, ram=%s, net=%s, cpu=%s, unstaked=%s' % (a['name'], intToCurrency(a['funds']), intToCurrency(ramFunds), intToCurrency(stakeNet), intToCurrency(stakeCpu), intToCurrency(unstaked)))
         assert(funds == ramFunds + stakeNet + stakeCpu + unstaked)
+        print(a['name'], a['pub'])
         retry(args.remcli + 'system newaccount --transfer rem %s %s --stake "%s"   ' %
-            (a['name'], a['pub'], intToCurrency(stakeNet), intToCurrency(stakeCpu)))
+            (a['name'], a['pub'], intToCurrency(stakeNet+stakeCpu)))
         if unstaked:
             retry(args.remcli + 'transfer rem %s "%s"' % (a['name'], intToCurrency(unstaked)))
 
@@ -183,14 +195,8 @@ def listProducers():
     run(args.remcli + 'system listproducers')
 
 def vote(b, e):
-    for i in range(b, e):
-        voter = accounts[i]['name']
-        k = args.num_producers_vote
-        if k > numProducers:
-            k = numProducers - 1
-        prods = random.sample(range(firstProducer, firstProducer + numProducers), k)
-        prods = ' '.join(map(lambda x: accounts[x]['name'], prods))
-        retry(args.remcli + 'system voteproducer prods ' + voter + ' ' + prods)
+    for i in range(firstProducer, firstProducer + numProducers):
+        retry(args.remcli + 'system voteproducer prods ' + accounts[i]['name'] + ' ' + accounts[i]['name'])
 
 def claimRewards():
     table = getJsonOutput(args.remcli + 'get table rem rem producers -l 100')
@@ -205,7 +211,7 @@ def proxyVotes(b, e):
     proxy = accounts[firstProducer]['name']
     retry(args.remcli + 'system regproxy ' + proxy)
     sleep(1.0)
-    for i in range(b, e):
+    for i in range(firstProducer + 1, firstProducer + numProducers):
         voter = accounts[i]['name']
         retry(args.remcli + 'system voteproducer proxy ' + voter + ' ' + proxy)
 
@@ -286,11 +292,23 @@ def stepInstallSystemContracts():
     run(args.remcli + 'set contract rem.token ' + args.contracts_dir + '/rem.token/')
     run(args.remcli + 'set contract rem.msig ' + args.contracts_dir + '/rem.msig/')
 def stepCreateTokens():
-    run(args.remcli + 'push action rem.token create \'["rem", "100000000.0000 %s"]\' -p rem.token' % (args.symbol))
+    run(args.remcli + 'push action rem.token create \'["rem", "1000000000.0000 %s"]\' -p rem.token' % (args.symbol))
     totalAllocation = allocateFunds(0, len(accounts))
     run(args.remcli + 'push action rem.token issue \'["rem", "%s", "memo"]\' -p rem' % intToCurrency(totalAllocation))
     sleep(1)
 def stepSetSystemContract():
+    run(args.remcli + 'set contract rem ' + args.contracts_dir + '/rem.bios/ -p rem')
+    retry(args.remcli + 'push action rem activate \'["f0af56d2c5a48d60a4a5b5c903edfb7db3a736a94ed589d0b797df33ff9d3e1d"]\' -p rem')
+    retry(args.remcli + 'push action rem activate \'["2652f5f96006294109b3dd0bbde63693f55324af452b799ee137a81a905eed25"]\' -p rem')
+    retry(args.remcli + 'push action rem activate \'["8ba52fe7a3956c5cd3a656a3174b931d3bb2abb45578befc59f283ecd816a405"]\' -p rem')
+    retry(args.remcli + 'push action rem activate \'["ad9e3d8f650687709fd68f4b90b41f7d825a365b02c23a636cef88ac2ac00c43"]\' -p rem')
+    retry(args.remcli + 'push action rem activate \'["68dcaa34c0517d19666e6b33add67351d8c5f69e999ca1e37931bc410a297428"]\' -p rem')
+    retry(args.remcli + 'push action rem activate \'["e0fb64b1085cc5538970158d05a009c24e276fb94e1a0bf6a528b48fbc4ff526"]\' -p rem')
+    retry(args.remcli + 'push action rem activate \'["ef43112c6543b88db2283a2e077278c315ae2c84719a8b25f25cc88565fbea99"]\' -p rem')
+    retry(args.remcli + 'push action rem activate \'["4a90c00d55454dc5b059055ca213579c6ea856967712a56017487886a4d4cc0f"]\' -p rem')
+    retry(args.remcli + 'push action rem activate \'["1a99a59d87e06e09ec5b028a9cbb7749b4a5ad8819004365d02dc4379a8b7241"]\' -p rem')
+    retry(args.remcli + 'push action rem activate \'["4e7bf348da00a945489b2a681749eb56f5de00b900014e137ddae39f48f69d67"]\' -p rem')
+
     retry(args.remcli + 'set contract rem ' + args.contracts_dir + '/rem.system/')
     sleep(1)
     run(args.remcli + 'push action rem setpriv' + jsonArg(['rem.msig', 1]) + '-p rem@active')
@@ -321,7 +339,7 @@ def stepTransfer():
     while True:
         randomTransfer(0, args.num_senders)
 def stepLog():
-    run('tail -n 60 ' + args.nodes_dir + '00-eosio/stderr')
+    run('tail -n 60 ' + args.nodes_dir + '00-rem/stderr')
 
 # Command Line Arguments
 
@@ -362,16 +380,16 @@ parser.add_argument('--symbol', metavar='', help="The rem.system symbol", defaul
 parser.add_argument('--user-limit', metavar='', help="Max number of users. (0 = no limit)", type=int, default=3000)
 parser.add_argument('--max-user-keys', metavar='', help="Maximum user keys to import into wallet", type=int, default=10)
 parser.add_argument('--ram-funds', metavar='', help="How much funds for each user to spend on ram", type=float, default=0.1)
-parser.add_argument('--min-stake', metavar='', help="Minimum stake before allocating unstaked funds", type=float, default=0.9)
-parser.add_argument('--max-unstaked', metavar='', help="Maximum unstaked funds", type=float, default=10)
+parser.add_argument('--min-stake', metavar='', help="Minimum stake before allocating unstaked funds", type=float, default=90)
+parser.add_argument('--max-unstaked', metavar='', help="Maximum unstaked funds", type=float, default=5000)
 parser.add_argument('--producer-limit', metavar='', help="Maximum number of producers. (0 = no limit)", type=int, default=0)
-parser.add_argument('--min-producer-funds', metavar='', help="Minimum producer funds", type=float, default=1000.0000)
+parser.add_argument('--min-producer-funds', metavar='', help="Minimum producer funds", type=float, default=1000000.0000)
 parser.add_argument('--num-producers-vote', metavar='', help="Number of producers for which each user votes", type=int, default=20)
 parser.add_argument('--num-voters', metavar='', help="Number of voters", type=int, default=10)
 parser.add_argument('--num-senders', metavar='', help="Number of users to transfer funds randomly", type=int, default=10)
-parser.add_argument('--producer-sync-delay', metavar='', help="Time (s) to sleep to allow producers to sync", type=int, default=80)
+parser.add_argument('--producer-sync-delay', metavar='', help="Time (s) to sleep to allow producers to sync", type=int, default=15)
 parser.add_argument('-a', '--all', action='store_true', help="Do everything marked with (*)")
-parser.add_argument('-H', '--http-port', type=int, default=8000, metavar='', help='HTTP port for remcli')
+parser.add_argument('-H', '--http-port', type=int, default=8888, metavar='', help='HTTP port for remcli')
 
 for (flag, command, function, inAll, help) in commands:
     prefix = ''
@@ -381,7 +399,7 @@ for (flag, command, function, inAll, help) in commands:
         parser.add_argument('-' + flag, '--' + command, action='store_true', help=help, dest=command)
     else:
         parser.add_argument('--' + command, action='store_true', help=help, dest=command)
-        
+
 args = parser.parse_args()
 
 args.remcli += '--url http://127.0.0.1:%d ' % args.http_port
