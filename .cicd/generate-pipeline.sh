@@ -247,12 +247,12 @@ done
 #############
 # LRT TESTS #
 echo $PLATFORMS_JSON_ARRAY | jq -cr ".[]" | while read -r PLATFORM_JSON; do
-  if [[ ! $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME) =~ 'macos' ]]; then
 
   IFS=$oIFS
   LR_TESTS=$(cat tests/CMakeLists.txt | grep long_running_tests | awk -F" " '{ print $2 }')
 
   for TEST_NAME in $LR_TESTS; do
+    if [[ ! $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME) =~ 'macos' ]]; then
 
   cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
