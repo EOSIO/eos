@@ -100,13 +100,13 @@ namespace eosio { namespace testing {
          virtual ~base_tester() {};
 
          void              init(const setup_policy policy = setup_policy::full, db_read_mode read_mode = db_read_mode::SPECULATIVE);
-         void              init(controller::config config, const snapshot_reader_ptr& snapshot = nullptr);
-         void              init(controller::config config, protocol_feature_set&& pfs, const snapshot_reader_ptr& snapshot = nullptr);
+         void              init(controller::config config, const snapshot_reader_ptr& snapshot = nullptr, const fc::optional<chain_id_type>& chain_id = fc::optional<chain_id_type>());
+         void              init(controller::config config, protocol_feature_set&& pfs, const snapshot_reader_ptr& snapshot = nullptr, const fc::optional<chain_id_type>& chain_id = fc::optional<chain_id_type>());
          void              execute_setup_policy(const setup_policy policy);
 
          void              close();
-         void              open( protocol_feature_set&& pfs, const snapshot_reader_ptr& snapshot);
-         void              open( const snapshot_reader_ptr& snapshot);
+         void              open( protocol_feature_set&& pfs, const snapshot_reader_ptr& snapshot, const fc::optional<chain_id_type>& chain_id = fc::optional<chain_id_type>());
+         void              open( const snapshot_reader_ptr& snapshot, const fc::optional<chain_id_type>& chain_id = fc::optional<chain_id_type>());
          bool              is_same_chain( base_tester& other );
 
          virtual signed_block_ptr produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms) ) = 0;

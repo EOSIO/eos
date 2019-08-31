@@ -174,14 +174,14 @@ namespace eosio { namespace testing {
       execute_setup_policy(policy);
    }
 
-   void base_tester::init(controller::config config, const snapshot_reader_ptr& snapshot) {
+   void base_tester::init(controller::config config, const snapshot_reader_ptr& snapshot, const fc::optional<chain_id_type>& chain_id) {
       cfg = config;
-      open(snapshot);
+      open(snapshot, chain_id);
    }
 
-   void base_tester::init(controller::config config, protocol_feature_set&& pfs, const snapshot_reader_ptr& snapshot) {
+   void base_tester::init(controller::config config, protocol_feature_set&& pfs, const snapshot_reader_ptr& snapshot, const fc::optional<chain_id_type>& chain_id) {
       cfg = config;
-      open(std::move(pfs), snapshot);
+      open(std::move(pfs), snapshot, chain_id);
    }
 
    void base_tester::execute_setup_policy(const setup_policy policy) {
@@ -229,12 +229,20 @@ namespace eosio { namespace testing {
       chain_transactions.clear();
    }
 
-   void base_tester::open( const snapshot_reader_ptr& snapshot ) {
-      open( make_protocol_feature_set(), snapshot );
+   void base_tester::open( const snapshot_reader_ptr& snapshot, const fc::optional<chain_id_type>& chain_id ) {
+      open( make_protocol_feature_set(), snapshot, chain_id );
    }
 
-   void base_tester::open( protocol_feature_set&& pfs, const snapshot_reader_ptr& snapshot ) {
-      control.reset( new controller(cfg, fc::optional<chain_id_type>(cfg.genesis->compute_chain_id()), std::move(pfs)) );
+   void base_tester::open( protocol_feature_set&& pfs, const snapshot_reader_ptr& snapshot, const fc::optional<chain_id_type>& chain_id ) {
+      fc::optional<chain_id_type> control_chain_id;
+      if (chain_id)  {
+         cfg.genesis = fc::optional<genesis_state>();
+         control_chain_id = chain_id;
+      }
+      else if (cfg.genesis) {
+         control_chain_id = cfg.genesis->compute_chain_id();
+      }
+      control.reset( new controller(cfg, control_chain_id, std::move(pfs)) );
       control->add_indices();
       control->startup( []() { return false; }, snapshot);
       chain_transactions.clear();
