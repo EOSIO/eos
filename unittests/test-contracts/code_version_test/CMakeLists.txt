@@ -1,0 +1,6 @@
+if( EOSIO_COMPILE_TEST_CONTRACTS )
+   add_contract( code_version_test code_version_test code_version_test.cpp )
+else()
+   configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/code_version_test.wasm ${CMAKE_CURRENT_BINARY_DIR}/code_version_test.wasm COPYONLY )
+   configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/code_version_test.abi  ${CMAKE_CURRENT_BINARY_DIR}/code_version_test.abi  COPYONLY )
+endif()

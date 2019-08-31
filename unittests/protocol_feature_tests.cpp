@@ -1739,4 +1739,69 @@ BOOST_AUTO_TEST_CASE( wtmsig_block_signing_inflight_extension_test ) { try {
 
 } FC_LOG_AND_RETHROW() }
 
+BOOST_AUTO_TEST_CASE( code_version_test ) { try {
+   tester c( setup_policy::preactivate_feature_and_new_bios );
+
+   const auto& tester1_account = account_name("tester1");
+   const auto& tester2_account = account_name("tester2");
+   c.create_accounts( {tester1_account, tester2_account} );
+   c.produce_block();
+
+   BOOST_CHECK_EXCEPTION(  c.set_code( tester1_account, contracts::code_version_test_wasm() ),
+                           wasm_exception,
+                           fc_exception_message_is( "env.get_code_version unresolveable" ) );
+
+   const auto& pfm = c.control->get_protocol_feature_manager();
+   const auto& d = pfm.get_builtin_digest( builtin_protocol_feature_t::code_version );
+   BOOST_REQUIRE( d );
+
+   c.preactivate_protocol_features( {*d} );
+   c.produce_block();
+
+   auto code = contracts::code_version_test_wasm();
+   auto code_version = sha256::hash(reinterpret_cast<char*>(code.data()), code.size());
+   auto empty_version = sha256();
+
+   c.set_code( tester1_account, contracts::code_version_test_wasm() );
+   c.set_abi( tester1_account, contracts::code_version_test_abi().data() );
+   c.produce_block();
+
+   BOOST_CHECK_EXCEPTION(  c.push_action( tester1_account, N(reqversion), tester1_account, mutable_variant_object()
+                                             ("name", tester1_account)
+                                             ("version", empty_version.str()) ),
+                           eosio_assert_message_exception,
+                           eosio_assert_message_is( "code version not match" ) );
+
+   BOOST_CHECK_EXCEPTION(  c.push_action( tester1_account, N(reqversion), tester1_account, mutable_variant_object()
+                                             ("name", N(nonexisting).to_string())
+                                             ("version", empty_version.str()) ),
+                           action_validate_exception,
+                           fc_exception_message_is( "account 'nonexisting' does not exist" ) );
+
+   c.push_action( tester1_account, N(reqversion), tester1_account, mutable_variant_object()
+      ("name", tester1_account)
+      ("version", code_version.str())
+   );
+
+   c.push_action( tester1_account, N(reqversion), tester1_account, mutable_variant_object()
+      ("name", tester2_account.to_string())
+      ("version", empty_version.str())
+   );
+
+   BOOST_CHECK_EXCEPTION(  c.push_action( tester1_account, N(reqtime), tester1_account, mutable_variant_object()
+                                             ("name", tester1_account)
+                                             ("last_code_update", time_point()) ),
+                           eosio_assert_message_exception,
+                           eosio_assert_message_is( "last update time not match" ) );
+
+   auto acct = c.control->db().get<account_metadata_object,by_name>(tester1_account);
+   c.push_action( tester1_account, N(reqtime), tester1_account, mutable_variant_object()
+      ("name", tester1_account)
+      ("last_code_update", acct.last_code_update)
+   );
+
+   c.produce_block();
+
+} FC_LOG_AND_RETHROW() }
+
 BOOST_AUTO_TEST_SUITE_END()
