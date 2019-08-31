@@ -121,7 +121,7 @@ CHAINBASE_SET_INDEX_TYPE(eosio::chain::dynamic_global_property_object,
                          eosio::chain::dynamic_global_property_multi_index)
 
 FC_REFLECT(eosio::chain::global_property_object,
-            (proposed_schedule_block_num)(proposed_schedule)(configuration)
+            (proposed_schedule_block_num)(proposed_schedule)(configuration)(chain_id)
           )
 
 FC_REFLECT(eosio::chain::legacy::snapshot_global_property_object_v2,
@@ -129,7 +129,7 @@ FC_REFLECT(eosio::chain::legacy::snapshot_global_property_object_v2,
           )
 
 FC_REFLECT(eosio::chain::snapshot_global_property_object,
-            (proposed_schedule_block_num)(proposed_schedule)(configuration)
+            (proposed_schedule_block_num)(proposed_schedule)(configuration)(chain_id)
           )
 
 FC_REFLECT(eosio::chain::dynamic_global_property_object,
