@@ -150,12 +150,18 @@ namespace eosiosystem {
    double system_contract::stake2vote( int64_t staked, time_point locked_stake_period ) const {
       check(locked_stake_period != time_point(), "vote should have mature time");
 
-      const auto seconds_to_mature = fmax( (locked_stake_period - current_time_point()).to_seconds(), 0.0 );
-      const auto rem_weight = 1.0 - seconds_to_mature / _gstate.stake_lock_period.to_seconds();
-      const double weight = int64_t((current_time_point().sec_since_epoch() - (block_timestamp::block_timestamp_epoch / 1000)) / (seconds_per_day * 7)) / double(52);
+      const auto weeks_to_mature = fmax( ((locked_stake_period - current_time_point()) - eosio::days(7)).count() / eosio::days(7).count(), 0.0 );
+      const auto rem_weight = 1.0 - (weeks_to_mature) / (_gstate.stake_lock_period.count() / eosio::days(7).count());
+      const double eos_weight = std::pow( 2, int64_t((current_time_point().sec_since_epoch() - (block_timestamp::block_timestamp_epoch / 1000)) / (seconds_per_day * 7)) / double(52) );
 
-      const auto vote_weight = double(staked) * weight * rem_weight;
-      
+      const auto vote_weight = double(staked) * eos_weight * rem_weight;
+      print(
+          "weeks_to_mature: ", weeks_to_mature,
+          "\nrem_weight: ", rem_weight,
+          "\neos_weight: ", eos_weight,
+          "\nvote_weight: ", vote_weight
+      );
+
       check( vote_weight >= 0.0, "vote weight cannot be negative" );
       return vote_weight;
    }
