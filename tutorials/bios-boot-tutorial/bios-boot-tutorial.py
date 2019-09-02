@@ -124,8 +124,8 @@ def startNode(nodeIndex, account):
         '    --plugin eosio::producer_api_plugin'
         '    --plugin eosio::producer_plugin'
         '    --plugin eosio::swap_plugin'
-        '    --swap-signing-key 5K463ynhZoCDDa4RDcr63cUwWLTnKqmdcoTKTHBjqoKfv4u5V7p'
-        '    --swap-authority rem@active'
+        '    --swap-signing-key 5KLGj1HGRWbk5xNmoKfrcrQHXvcVJBPdAckoiJgFftXSJjLPp7b'
+        '    --swap-authority producer111a@active'
         '    --eth-wss-provider wss://ropsten.infura.io/ws/v3/3f98ae6029094659ac8f57f66e673129' +
         otherOpts)
     with open(dir + 'stderr', mode='w') as f:
@@ -145,43 +145,21 @@ def createSystemAccounts():
 def intToCurrency(i):
     return '%d.%04d %s' % (i // 10000, i % 10000, args.symbol)
 
-def allocateFunds(b, e):
-    dist = numpy.random.pareto(1.161, e - b).tolist() # 1.161 = 80/20 rule
-    dist.sort()
-    dist.reverse()
-    factor = 100_000_000 / sum(dist)
-    total = 0
+def allocateFunds(b, e, total):
+    funds = total // (e - b)
     for i in range(b, e):
-        funds = round(factor * dist[i - b] * 10000)
-        if i >= firstProducer and i < firstProducer + numProducers:
-            funds = max(funds, round(args.min_producer_funds * 10000))
-        total += funds
         accounts[i]['funds'] = funds
     return total
 
 def createStakedAccounts(b, e):
-    ramFunds = round(args.ram_funds * 10000)
-    configuredMinStake = round(args.min_stake * 10000)
-    maxUnstaked = round(args.max_unstaked * 10000)
+    stakePercent = args.stake_percent
     for i in range(b, e):
         a = accounts[i]
         funds = a['funds']
-        print('#' * 80)
-        print('# %d/%d %s %s' % (i, e, a['name'], intToCurrency(funds)))
-        print('#' * 80)
-        if funds < ramFunds:
-            print('skipping %s: not enough funds to cover ram' % a['name'])
-            continue
-        minStake = min(funds - ramFunds, configuredMinStake)
-        unstaked = min(funds - ramFunds - minStake, maxUnstaked)
-        stake = funds - ramFunds - unstaked
-        stakeNet = round(stake / 2)
-        stakeCpu = stake - stakeNet
-        print('%s: total funds=%s, ram=%s, net=%s, cpu=%s, unstaked=%s' % (a['name'], intToCurrency(a['funds']), intToCurrency(ramFunds), intToCurrency(stakeNet), intToCurrency(stakeCpu), intToCurrency(unstaked)))
-        assert(funds == ramFunds + stakeNet + stakeCpu + unstaked)
-        print(a['name'], a['pub'])
+        stake = funds*stakePercent
+        unstaked = funds - stake
         retry(args.remcli + 'system newaccount --transfer rem %s %s --stake "%s"   ' %
-            (a['name'], a['pub'], intToCurrency(stakeNet+stakeCpu)))
+            (a['name'], a['pub'], intToCurrency(stake)))
         if unstaked:
             retry(args.remcli + 'transfer rem %s "%s"' % (a['name'], intToCurrency(unstaked)))
 
@@ -292,8 +270,9 @@ def stepInstallSystemContracts():
     run(args.remcli + 'set contract rem.msig ' + args.contracts_dir + '/rem.msig/')
     run(args.remcli + 'set contract rem.swap ' + args.contracts_dir + '/rem.swap/')
 def stepCreateTokens():
-    run(args.remcli + 'push action rem.token create \'["rem", "1000000000.0000 %s"]\' -p rem.token' % (args.symbol))
-    totalAllocation = allocateFunds(0, len(accounts))
+    totalAllocation = 1_000_000_000_0000
+    run(args.remcli + 'push action rem.token create \'["rem", "%s"]\' -p rem.token' % intToCurrency(totalAllocation))
+    allocateFunds(0, len(accounts), totalAllocation)
     run(args.remcli + 'push action rem.token issue \'["rem", "%s", "memo"]\' -p rem' % intToCurrency(totalAllocation))
     sleep(1)
 def stepSetSystemContract():
@@ -379,11 +358,11 @@ parser.add_argument('--log-path', metavar='', help="Path to log file", default='
 parser.add_argument('--symbol', metavar='', help="The rem.system symbol", default='SYS')
 parser.add_argument('--user-limit', metavar='', help="Max number of users. (0 = no limit)", type=int, default=3000)
 parser.add_argument('--max-user-keys', metavar='', help="Maximum user keys to import into wallet", type=int, default=10)
+parser.add_argument('--stake-percent', metavar='', help="Stake percent for each account", type=float, default=0.5)
 parser.add_argument('--ram-funds', metavar='', help="How much funds for each user to spend on ram", type=float, default=0.1)
 parser.add_argument('--min-stake', metavar='', help="Minimum stake before allocating unstaked funds", type=float, default=90)
 parser.add_argument('--max-unstaked', metavar='', help="Maximum unstaked funds", type=float, default=5000)
 parser.add_argument('--producer-limit', metavar='', help="Maximum number of producers. (0 = no limit)", type=int, default=0)
-parser.add_argument('--min-producer-funds', metavar='', help="Minimum producer funds", type=float, default=1000000.0000)
 parser.add_argument('--num-producers-vote', metavar='', help="Number of producers for which each user votes", type=int, default=20)
 parser.add_argument('--num-voters', metavar='', help="Number of voters", type=int, default=10)
 parser.add_argument('--num-senders', metavar='', help="Number of users to transfer funds randomly", type=int, default=10)
