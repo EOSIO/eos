@@ -76,6 +76,7 @@ namespace eosiosystem {
    void system_contract::setlockperiod( uint64_t period_in_days) {
       require_auth(_self);
 
+      check(period_in_days != 0, "period cannot be zero");
       _gstate.stake_lock_period = eosio::days(period_in_days);
    }
 
