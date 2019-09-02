@@ -29,7 +29,6 @@ systemAccounts = [
     'rem.vpay',
     'rem.rex',
     'rem.swap',
-    'remio.swap',
 ]
 
 def jsonArg(a):
@@ -291,6 +290,7 @@ def stepStartBoot():
 def stepInstallSystemContracts():
     run(args.remcli + 'set contract rem.token ' + args.contracts_dir + '/rem.token/')
     run(args.remcli + 'set contract rem.msig ' + args.contracts_dir + '/rem.msig/')
+    run(args.remcli + 'set contract rem.swap ' + args.contracts_dir + '/rem.swap/')
 def stepCreateTokens():
     run(args.remcli + 'push action rem.token create \'["rem", "1000000000.0000 %s"]\' -p rem.token' % (args.symbol))
     totalAllocation = allocateFunds(0, len(accounts))

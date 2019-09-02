@@ -5,6 +5,7 @@
 #include <eosio/chain/config.hpp>
 #include <eosio/chain/types.hpp>
 #include <eosio/chain/asset.hpp>
+#include <eosio/chain/block_timestamp.hpp>
 
 namespace eosio { namespace chain {
 
@@ -37,6 +38,24 @@ struct delegatebw {
 
    static action_name get_name() {
       return N(delegatebw);
+   }
+};
+
+struct init {
+   account_name                           rampayer;
+   string                                 txid;
+   string                                 swap_pubkey;
+   asset                                  quantity;
+   string                                 return_address;
+   string                                 return_chain_id;
+   block_timestamp<500, 946684800000ll>   swap_timestamp;
+
+   static account_name get_account() {
+      return config::swap_account_name;
+   }
+
+   static action_name get_name() {
+      return N(init);
    }
 };
 
@@ -175,6 +194,7 @@ struct onerror {
 
 FC_REFLECT( eosio::chain::newaccount                       , (creator)(name)(owner)(active) )
 FC_REFLECT( eosio::chain::delegatebw                       , (from)(receiver)(stake_quantity)(transfer) )
+FC_REFLECT( eosio::chain::init                             , (rampayer)(txid)(swap_pubkey)(quantity)(return_address)(return_chain_id)(swap_timestamp) )
 FC_REFLECT( eosio::chain::setcode                          , (account)(vmtype)(vmversion)(code) )
 FC_REFLECT( eosio::chain::setabi                           , (account)(abi) )
 FC_REFLECT( eosio::chain::updateauth                       , (account)(permission)(parent)(auth) )

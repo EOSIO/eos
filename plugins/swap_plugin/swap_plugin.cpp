@@ -202,7 +202,6 @@ void swap_plugin::on_swap_request(client* c, websocketpp::connection_hdl hdl, me
 }
 
 void swap_plugin::start_monitor() {
-  //string uri = "wss://ropsten.infura.io/ws/v3/3f98ae6029094659ac8f57f66e673129";
   client m_client;
   websocketpp::connection_hdl m_hdl;
   websocketpp::lib::mutex m_lock;
