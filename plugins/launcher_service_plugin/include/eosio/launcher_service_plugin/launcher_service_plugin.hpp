@@ -253,7 +253,7 @@ FC_REFLECT(eosio::launcher_service::node_def, (node_id)(producers)(producing_key
 FC_REFLECT(eosio::launcher_service::cluster_def, (shape)(star_center_node_id)(cluster_id)(node_count)(nodes)(extra_configs)(extra_args) )
 FC_REFLECT(eosio::launcher_service::new_account_param, (name)(owner)(active))
 FC_REFLECT(eosio::launcher_service::create_bios_accounts_param, (cluster_id)(node_id)(creator)(accounts))
-FC_REFLECT(eosio::launcher_service::new_account_param_ex, (cluster_id)(node_id)(creator)(name)(owner)(active)(stake_cpu)(stake_net)(buy_ram_bytes))
+FC_REFLECT(eosio::launcher_service::new_account_param_ex, (cluster_id)(node_id)(creator)(name)(owner)(active)(stake_cpu)(stake_net)(buy_ram_bytes)(transfer))
 FC_REFLECT(eosio::launcher_service::get_block_param, (cluster_id)(node_id)(block_num_or_id))
 FC_REFLECT(eosio::launcher_service::get_account_param, (cluster_id)(node_id)(name))
 FC_REFLECT(eosio::launcher_service::set_contract_param, (cluster_id)(node_id)(account)(contract_file)(abi_file))
