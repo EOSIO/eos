@@ -1,7 +1,7 @@
 FROM ubuntu:18.04
 RUN apt-get update && \
     apt-get upgrade -y && \
-    apt install -y git sudo jq
+    apt install -y git sudo jq nano
 ENV VERSION 1
 ENV VERBOSE true
 RUN git clone https://github.com/EOSIO/eos.git -b release/1.7.x && \

@@ -1,6 +1,6 @@
 FROM centos:7.6.1810
 RUN yum update -y && \
-    yum install -y which git sudo epel-release && \
+    yum install -y which git sudo epel-release nano && \
     yum install -y jq
 ENV VERSION 1
 ENV VERBOSE true
