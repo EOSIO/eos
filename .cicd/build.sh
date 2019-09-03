@@ -5,7 +5,7 @@ mkdir -p $BUILD_DIR
 CMAKE_EXTRAS="-DBUILD_MONGO_DB_PLUGIN=true"
 if [[ $(uname) == 'Darwin' ]]; then
     # You can't use chained commands in execute
-    [[ $TRAVIS == true ]] && export PINNED=false && ccache -s && ./$CICD_DIR/platforms/macos-10.14.sh
+    [[ $TRAVIS == true ]] && export PINNED=false && ccache -s && CMAKE_EXTRAS="-DCMAKE_CXX_COMPILER_LAUNCHER=ccache"
     ( [[ ! $PINNED == false || $UNPINNED == true ]] ) && CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_TOOLCHAIN_FILE=$HELPERS_DIR/clang.make"
     cd $BUILD_DIR
     cmake $CMAKE_EXTRAS ..
