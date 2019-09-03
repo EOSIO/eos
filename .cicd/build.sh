@@ -1,11 +1,8 @@
 #!/usr/bin/env bash
 set -eo pipefail
 . ./.cicd/helpers/general.sh
-
 mkdir -p $BUILD_DIR
-
 if [[ $(uname) == 'Darwin' ]]; then
-
     # You can't use chained commands in execute
     cd $BUILD_DIR
     [[ $TRAVIS == true ]] && ccache -s
@@ -14,13 +11,9 @@ if [[ $(uname) == 'Darwin' ]]; then
     export PATH=$HOME/bin:${PATH}:$HOME/opt/mongodb/bin
     cmake ..
     make -j$JOBS
-
 else # Linux
-
     ARGS=${ARGS:-"--rm --init -v $(pwd):$MOUNTED_DIR"}
-
     . $HELPERS_DIR/docker-hash.sh
-
     PRE_COMMANDS="cd $MOUNTED_DIR/build"
     # PRE_COMMANDS: Executed pre-cmake
     # CMAKE_EXTRAS: Executed within and right before the cmake path (cmake CMAKE_EXTRAS ..)
@@ -38,9 +31,7 @@ else # Linux
     elif [[ $IMAGE_TAG == 'fedora-27' ]]; then
         PRE_COMMANDS="$PRE_COMMANDS && export CPATH=/usr/include/llvm4.0"
     fi
-
     BUILD_COMMANDS="cmake $CMAKE_EXTRAS -DBUILD_MONGO_DB_PLUGIN=true .. && make -j$JOBS"
-
     # Docker Commands
     if [[ $BUILDKITE == true ]]; then
         # Generate Base Images
@@ -52,9 +43,7 @@ else # Linux
         ARGS="$ARGS -v /usr/lib/ccache -v $HOME/.ccache:/opt/.ccache -e JOBS -e TRAVIS -e CCACHE_DIR=/opt/.ccache"
         COMMANDS="ccache -s && $BUILD_COMMANDS"
     fi
-
     COMMANDS="$PRE_COMMANDS && $COMMANDS"
-
     # Load BUILDKITE Environment Variables for use in docker run
     if [[ -f $BUILDKITE_ENV_FILE ]]; then
         evars=""
@@ -62,10 +51,8 @@ else # Linux
             evars="$evars --env ${var%%=*}"
         done < "$BUILDKITE_ENV_FILE"
     fi
-
     # PRE-LOAD FOR CONTRACTS CICD RELEASE
     COMMANDS="cd $MOUNTED_DIR && ./scripts/eosio_build.sh -y && ./scripts/eosio_install.sh"
     echo "docker run $ARGS $evars eosio/producer:eos-ubuntu-18.04-09daefea0d2ccf6b6dcbfd0ca0cf8897fc34b0e8 bash -c \"$COMMANDS\""
     eval docker run $ARGS $evars eosio/producer:eos-ubuntu-18.04-09daefea0d2ccf6b6dcbfd0ca0cf8897fc34b0e8 bash -c \"$COMMANDS\"
-
 fi

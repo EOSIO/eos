@@ -1,9 +1,7 @@
 #!/usr/bin/env bash
 set -eo pipefail
 . ./.cicd/helpers/general.sh
-
 SERIAL_TESTS=$(cat tests/CMakeLists.txt | grep nonparallelizable_tests | awk -F" " '{ print $2 }')
-
 # Use dockerfiles as source of truth for what platforms to use
 ## Linux
 for DOCKERFILE in $(ls $CICD_DIR/docker); do
@@ -18,9 +16,8 @@ for DOCKERFILE in $(ls $CICD_DIR/docker); do
     [[ $DOCKERFILE_NAME =~ 'ubuntu' ]] && ICON=':ubuntu:'
     [[ $DOCKERFILE_NAME =~ 'centos' ]] && ICON=':centos:'
     [[ $DOCKERFILE_NAME =~ 'fedora' ]] && ICON=':fedora:'
-
     for TEST_NAME in $SERIAL_TESTS; do
-cat <<EOF
+        cat <<EOF
 - label: "$ICON $PLATFORM_NAME_FULL - $TEST_NAME"
   command:
     - "buildkite-agent artifact download build.tar.gz . --step '$ICON $PLATFORM_NAME_FULL - Build' && tar -xzf build.tar.gz"
@@ -38,7 +35,7 @@ EOF
 done
 ## Darwin
 for TEST_NAME in $SERIAL_TESTS; do
-cat <<EOF
+        cat <<EOF
 - label: ":darwin: macOS 10.14 - $TEST_NAME"
   command:
     - "git clone \$BUILDKITE_REPO eos && cd eos && git checkout \$BUILDKITE_COMMIT && git submodule update --init --recursive"
@@ -77,6 +74,4 @@ cat <<EOF
     - "queue=mac-anka-node-fleet"
   skip: \${SKIP_HIGH_SIERRA}\${SKIP_SERIAL_TESTS}
 EOF
-
 done
-
