@@ -1,6 +1,7 @@
 FROM centos:7.6.1810
 RUN yum update -y && \
-    yum install -y which git sudo
+    yum install -y which git sudo epel-release && \
+    yum install -y jq
 ENV VERSION 1
 ENV VERBOSE true
 RUN git clone https://github.com/EOSIO/eos.git -b release/1.7.x && \
