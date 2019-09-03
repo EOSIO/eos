@@ -10,7 +10,7 @@ steps:
       BUILDKITE_AGENT_ACCESS_TOKEN:
     agents:
       queue: "automation-eos-builder-fleet"
-    timeout: ${TIMEOUT:-10}
+    timeout: ${TIMEOUT:-150}
     skip: $SKIP_AMAZON_LINUX_2
 
   - label: ":centos: CentOS 7.6 - Build"
@@ -22,7 +22,7 @@ steps:
       BUILDKITE_AGENT_ACCESS_TOKEN:
     agents:
       queue: "automation-eos-builder-fleet"
-    timeout: ${TIMEOUT:-10}
+    timeout: ${TIMEOUT:-150}
     skip: $SKIP_CENTOS_7
 
   - label: ":ubuntu: Ubuntu 16.04 - Build"
@@ -34,7 +34,7 @@ steps:
       BUILDKITE_AGENT_ACCESS_TOKEN:
     agents:
       queue: "automation-eos-builder-fleet"
-    timeout: ${TIMEOUT:-10}
+    timeout: ${TIMEOUT:-150}
     skip: $SKIP_UBUNTU_16
 
   - label: ":ubuntu: Ubuntu 18.04 - Build"
@@ -46,7 +46,7 @@ steps:
       BUILDKITE_AGENT_ACCESS_TOKEN:
     agents:
       queue: "automation-eos-builder-fleet"
-    timeout: ${TIMEOUT:-10}
+    timeout: ${TIMEOUT:-150}
     skip: $SKIP_UBUNTU_18
 
   - label: ":fedora: Fedora 27 - Build"
@@ -58,7 +58,7 @@ steps:
       BUILDKITE_AGENT_ACCESS_TOKEN:
     agents:
       queue: "automation-eos-builder-fleet"
-    timeout: ${TIMEOUT:-10}
+    timeout: ${TIMEOUT:-150}
     skip: $SKIP_FEDORA_27
 
   - label: ":darwin: macOS 10.14 - Build"
@@ -79,6 +79,7 @@ steps:
           wait-network: true
     agents:
       - "queue=mac-anka-large-node-fleet"
+    timeout: ${TIMEOUT:-60}
     skip: $SKIP_MOJAVE
 
   - label: ":darwin: macOS 10.13 - Build"
@@ -99,6 +100,7 @@ steps:
           wait-network: true
     agents:
       - "queue=mac-anka-large-node-fleet"
+    timeout: ${TIMEOUT:-60}
     skip: $SKIP_HIGH_SIERRA
 
   - wait
@@ -112,7 +114,7 @@ steps:
       BUILDKITE_AGENT_ACCESS_TOKEN:
     agents:
       queue: "automation-eos-builder-fleet"
-    timeout: ${TIMEOUT:-10}
+    timeout: ${TIMEOUT:-60}
     skip: ${SKIP_AMAZON_LINUX_2}${SKIP_UNIT_TESTS}
 
   - label: ":centos: CentOS 7.6 - Unit Tests"
@@ -124,7 +126,7 @@ steps:
       BUILDKITE_AGENT_ACCESS_TOKEN:
     agents:
       queue: "automation-eos-builder-fleet"
-    timeout: ${TIMEOUT:-10}
+    timeout: ${TIMEOUT:-60}
     skip: ${SKIP_CENTOS_7}${SKIP_UNIT_TESTS}
 
   - label: ":ubuntu: Ubuntu 16.04 - Unit Tests"
@@ -136,7 +138,7 @@ steps:
       BUILDKITE_AGENT_ACCESS_TOKEN:
     agents:
       queue: "automation-eos-builder-fleet"
-    timeout: ${TIMEOUT:-10}
+    timeout: ${TIMEOUT:-60}
     skip: ${SKIP_UBUNTU_16}${SKIP_UNIT_TESTS}
 
   - label: ":ubuntu: Ubuntu 18.04 - Unit Tests"
@@ -148,7 +150,7 @@ steps:
       BUILDKITE_AGENT_ACCESS_TOKEN:
     agents:
       queue: "automation-eos-builder-fleet"
-    timeout: ${TIMEOUT:-10}
+    timeout: ${TIMEOUT:-60}
     skip: ${SKIP_UBUNTU_18}${SKIP_UNIT_TESTS}
 
   - label: ":fedora: Fedora 27 - Unit Tests"
@@ -160,7 +162,7 @@ steps:
       BUILDKITE_AGENT_ACCESS_TOKEN:
     agents:
       queue: "automation-eos-builder-fleet"
-    timeout: ${TIMEOUT:-10}
+    timeout: ${TIMEOUT:-60}
     skip: ${SKIP_FEDORA_27}${SKIP_UNIT_TESTS}
 
   - label: ":darwin: macOS 10.14 - Unit Tests"
@@ -179,6 +181,7 @@ steps:
           wait-network: true
     agents:
       - "queue=mac-anka-node-fleet"
+    timeout: ${TIMEOUT:-60}
     skip: ${SKIP_MOJAVE}${SKIP_UNIT_TESTS}
 
   - label: ":darwin: macOS 10.13 - Unit Tests"
@@ -199,6 +202,7 @@ steps:
           wait-network: true
     agents:
       - "queue=mac-anka-large-node-fleet"
+    timeout: ${TIMEOUT:-60}
     skip: ${SKIP_HIGH_SIERRA}${SKIP_UNIT_TESTS}
 
   - label: ":pipeline: Generate Serial Test Steps"  
@@ -217,7 +221,7 @@ steps:
       BUILDKITE_AGENT_ACCESS_TOKEN:
     agents:
       queue: "automation-eos-builder-fleet"
-    timeout: ${TIMEOUT:-10}
+    timeout: ${TIMEOUT:-90}
     skip: ${SKIP_AMAZON_LINUX_2}${SKIP_LONG_RUNNING_TESTS:-true}
 
   - label: ":centos: CentOS 7.6 - Long-Running Tests"
@@ -229,7 +233,7 @@ steps:
       BUILDKITE_AGENT_ACCESS_TOKEN:
     agents:
       queue: "automation-eos-builder-fleet"
-    timeout: ${TIMEOUT:-10}
+    timeout: ${TIMEOUT:-90}
     skip: ${SKIP_CENTOS_7}${SKIP_LONG_RUNNING_TESTS:-true}
 
   - label: ":ubuntu: Ubuntu 16.04 - Long-Running Tests"
@@ -241,7 +245,7 @@ steps:
       BUILDKITE_AGENT_ACCESS_TOKEN:
     agents:
       queue: "automation-eos-builder-fleet"
-    timeout: ${TIMEOUT:-10}
+    timeout: ${TIMEOUT:-90}
     skip: ${SKIP_UBUNTU_16}${SKIP_LONG_RUNNING_TESTS:-true}
 
   - label: ":ubuntu: Ubuntu 18.04 - Long-Running Tests"
@@ -253,7 +257,7 @@ steps:
       BUILDKITE_AGENT_ACCESS_TOKEN:
     agents:
       queue: "automation-eos-builder-fleet"
-    timeout: ${TIMEOUT:-10}
+    timeout: ${TIMEOUT:-90}
     skip: ${SKIP_UBUNTU_18}${SKIP_LONG_RUNNING_TESTS:-true}
 
   - label: ":fedora: Fedora 27 - Long-Running Tests"
@@ -265,7 +269,7 @@ steps:
       BUILDKITE_AGENT_ACCESS_TOKEN:
     agents:
       queue: "automation-eos-builder-fleet"
-    timeout: ${TIMEOUT:-10}
+    timeout: ${TIMEOUT:-90}
     skip: ${SKIP_FEDORA_27}${SKIP_LONG_RUNNING_TESTS:-true}
 
   - label: ":darwin: macOS 10.14 - Long-Running Tests"
@@ -286,6 +290,7 @@ steps:
           wait-network: true
     agents:
       - "queue=mac-anka-large-node-fleet"
+    timeout: ${TIMEOUT:-90}
     skip: ${SKIP_MOJAVE}${SKIP_LONG_RUNNING_TESTS:-true}
 
   - label: ":darwin: macOS 10.13 - Long-Running Tests"
@@ -306,6 +311,7 @@ steps:
           wait-network: true
     agents:
       - "queue=mac-anka-large-node-fleet"
+    timeout: ${TIMEOUT:-90}
     skip: ${SKIP_HIGH_SIERRA}${SKIP_LONG_RUNNING_TESTS:-true}
 
   - wait:
@@ -387,7 +393,7 @@ steps:
           wait-network: true
     agents:
       - "queue=mac-anka-node-fleet"
-    timeout: 10
+    timeout: ${TIMEOUT:-10}
     skip: ${SKIP_MOJAVE}${SKIP_PACKAGE_BUILDER}
 
   - label: ":darwin: High Sierra - Package Builder"
@@ -406,7 +412,7 @@ steps:
           wait-network: true
     agents:
       - "queue=mac-anka-node-fleet"
-    timeout: 10
+    timeout: ${TIMEOUT:-10}
     skip: ${SKIP_MOJAVE}${SKIP_PACKAGE_BUILDER}
 
   - label: ":git: Git Submodule Regression Check"
