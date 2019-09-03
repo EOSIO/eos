@@ -1,4 +1,4 @@
-# Autobuild Script
+# EOSIO Autobuild Script
 
 An automated build script is provided to install all dependencies and build EOSIO. The script supports the following operating systems:
 

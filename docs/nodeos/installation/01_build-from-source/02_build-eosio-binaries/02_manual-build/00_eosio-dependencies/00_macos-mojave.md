@@ -78,4 +78,4 @@ make -j$( sysctl -in machdep.cpu.core_count )
 make install
 ```
 
-Your environment is set up. Now you can [build EOSIO from source](../01_build-from-source/index.md).
+Your environment is set up. Now you can [build EOSIO from source](../../../index.md).

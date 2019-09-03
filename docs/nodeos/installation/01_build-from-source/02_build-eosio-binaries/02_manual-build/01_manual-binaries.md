@@ -1,7 +1,16 @@
-# Manual Build
+# Manual Build of EOSIO Binaries
 
-To build `eos` manually, use the following steps to create a `build` folder within your `eos` folder and then perform the build. The steps below assume the `eos` repository was cloned into your home eosio folder (i.e., `~/eosio`). It is also assumed that the necessary dependencies have been installed. See [EOSIO Software Dependencies](../../dependencies/index.md).
+[[info]]
+| These manual instructions are intended for advanced developers. The [Autobuild Script](../00_autobuild-script.md) should be the preferred method to build EOSIO from source. If the script fails or your platform is not supported, please continue with the instructions below.
 
+The following instructions will build the EOSIO binaries manually by invoking commands on the shell. The following prerequisites must be met before building the EOSIO binaries:
+
+1. [Download EOSIO Source](../../01_download-eosio-source.md).
+2. Install the [EOSIO dependencies](00_eosio-dependencies/index.md).
+
+After completing the steps above, perform the instructions below to build the EOSIO software manually:
+
+Create the `build` folder under the `~eosio/eos` repo folder:
 ```sh
 $ mkdir -p ~/eosio/eos/build && cd ~/eosio/eos/build
 ```

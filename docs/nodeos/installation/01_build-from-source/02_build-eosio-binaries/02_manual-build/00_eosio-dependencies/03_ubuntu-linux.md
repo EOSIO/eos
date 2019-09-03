@@ -42,4 +42,4 @@ cmake -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=
 sudo make -j$( nproc )
 ```
 
-Your environment is set up. Now you can [build EOSIO from source](../01_build-from-source/index.md).
+Your environment is set up. Now you can [build EOSIO from source](../../../index.md).

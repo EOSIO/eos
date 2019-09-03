@@ -11,4 +11,4 @@ To install the EOSIO prebuilt binaries, please follow the instructions below:
 [[info]]
 | It is recommended that you install or extract the package or archive contents directly to your home folder. The `eosio/x.y.z` folder will be created automatically, where x.y.z is the major.minor.patch version of the release.
 
-The EOSIO binaries will be installed under the `eosio/x.y.z/bin` folder.
+After installing or extracting, the EOSIO binaries will be located under the `eosio/x.y.z/bin` folder.

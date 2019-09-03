@@ -1,8 +1,10 @@
-# Docker Quickstart
+# Docker Quickstart Guide
 
-[[warning | The Docker image is no longer maintained and has been deprecated. The eosio/eos image from Dockerhub will be available until its sunset on June 29 2018]]
+[[warning]]
+| The Docker image is no longer maintained and has been deprecated. The eosio/eos image from Dockerhub will be available until its sunset on June 29 2018.
 
-[[warning | This guide is intended for development environments, if you intend to run EOSIO in a production environment, consider [building EOSIO](doc:autobuild-script) or using the provided [binaries](https://developers.eos.io/eosio-home/docs/setting-up-your-environment).]]
+[[warning]]
+| This guide is intended for development environments, if you intend to run EOSIO in a production environment, consider [building EOSIO from source](01_build-from-source/index.md), or just [installing the prebuilt binaries](00_install-prebuilt-binaries.md).
 
 If you don't already have docker installed, you can download it here: https://www.docker.com/community-edition
 
