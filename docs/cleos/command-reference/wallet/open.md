@@ -1,10 +1,12 @@
 ---
 title: "open"
-excerpt: ""
+excerpt: "Opens an existing wallet."
 ---
-## Description
-Opens an existing wallet.
-## Commands
+## Positionals
+None
+## Options
+- `-n, --name` _TEXT_ - The name of the wallet to open.
+## Usage
 
 
 ```shell
@@ -17,12 +19,5 @@ $ ./cleos wallet open -n second-wallet
 
 
 ```shell
-Wallets: [
-  "default"
-]
-or
-Wallets: [
-  "default",
-  "second-wallet"
-]
+Opened: default
 ```

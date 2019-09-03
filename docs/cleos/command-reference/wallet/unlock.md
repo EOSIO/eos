@@ -1,17 +1,20 @@
 ---
 title: "unlock"
-excerpt: ""
+excerpt: "Unlocks a wallet."
 ---
-## Description
-Unlocks a wallet.
-## Command
+## Positionals
+None
+## Options
+- `-n, --name` _TEXT_ - The name of the wallet to unlock.
+- `--password` _TEXT_ - The password returned by wallet create.
+## Usage
 To unlock a wallet, specify the password provided when it was created.
 
 ```shell
 $ ./cleos wallet unlock -n second-wallet --password PW5Ji6JUrLjhKAVn68nmacLxwhvtqUAV18J7iycZppsPKeoGGgBEw
 ```
 
-## Output
+## Outputs
 
 
 ```shell

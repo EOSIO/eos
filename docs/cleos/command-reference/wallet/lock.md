@@ -1,10 +1,12 @@
 ---
 title: "lock"
-excerpt: ""
+excerpt: "Locks a wallet."
 ---
-## Description
-Locks a wallet.
-## Commands
+## Positionals
+None
+## Options
+- `-n, --name` _TEXT_ - The name of the wallet to lock
+## Usage
 
 
 ```shell

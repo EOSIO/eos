@@ -1,17 +1,21 @@
----
-title: "list"
-excerpt: ""
----
 ## Description
-Lists opened wallets, * = unlocked.
-## Command
+
+Lists opened wallets, * = unlocked."
+
+## Positionals
+None
+
+## Options
+None
+
+## Usage
 
 
 ```shell
 $ ./cleos wallet list
 ```
 
-## Output
+## Outputs
 
 
 ```shell
@@ -20,4 +24,10 @@ Wallets:
   "default *",
   "second-wallet *"
 ]
+
+or when there are no wallets
+Wallets:
+[
+]
+
 ```
