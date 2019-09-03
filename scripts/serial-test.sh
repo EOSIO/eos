@@ -30,7 +30,7 @@ if [[ -z "$TEST" ]]; then # run all serial tests
         # run tests
         set +e # defer ctest error handling to end
         echo '$ ctest -L nonparallelizable_tests --output-on-failure -T Test'
-        ctest -L nonparallelizable_tests -V --output-on-failure -T Test
+        ctest -L nonparallelizable_tests --output-on-failure -T Test
         EXIT_STATUS=$?
         echo 'Done running non-parallelizable tests.'
     else
