@@ -52,6 +52,6 @@ else # linux
     fi
     # install eosio for contracts CICD release
     COMMANDS="cd $MOUNTED_DIR && ./scripts/eosio_build.sh -y && ./scripts/eosio_install.sh"
-    echo "docker run $ARGS $evars eosio/producer:eos-ubuntu-18.04-09daefea0d2ccf6b6dcbfd0ca0cf8897fc34b0e8 bash -c \"$COMMANDS\""
-    eval docker run $ARGS $evars eosio/producer:eos-ubuntu-18.04-09daefea0d2ccf6b6dcbfd0ca0cf8897fc34b0e8 bash -c \"$COMMANDS\"
+    echo "docker run $ARGS $evars $FULL_TAG bash -c \"$COMMANDS\""
+    eval docker run $ARGS $evars $FULL_TAG bash -c \"$COMMANDS\"
 fi
