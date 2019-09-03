@@ -1,8 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
-
 #include <eosio/chain/protocol_feature_activation.hpp>
 #include <eosio/chain/exceptions.hpp>
 

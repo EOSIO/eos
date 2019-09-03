@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eosio/LICENSE.txt
- */
 #include <memory>
 #include <eosio/chain/abi_serializer.hpp>
 #include <eosio/chain/block_log.hpp>

@@ -482,12 +482,12 @@ namespace eosio { namespace testing {
       if( !control->is_building_block() )
          _start_block(control->head_block_time() + fc::microseconds(config::block_interval_us));
 
-      auto mtrx = std::make_shared<transaction_metadata>( std::make_shared<packed_transaction>(trx) );
+      auto ptrx = std::make_shared<packed_transaction>(trx);
       auto time_limit = deadline == fc::time_point::maximum() ?
             fc::microseconds::maximum() :
             fc::microseconds( deadline - fc::time_point::now() );
-      transaction_metadata::start_recover_keys( mtrx, control->get_thread_pool(), control->get_chain_id(), time_limit );
-      auto r = control->push_transaction( mtrx, deadline, billed_cpu_time_us );
+      auto fut = transaction_metadata::start_recover_keys( ptrx, control->get_thread_pool(), control->get_chain_id(), time_limit );
+      auto r = control->push_transaction( fut.get(), deadline, billed_cpu_time_us );
       if( r->except_ptr ) std::rethrow_exception( r->except_ptr );
       if( r->except ) throw *r->except;
       return r;
@@ -510,9 +510,9 @@ namespace eosio { namespace testing {
       auto time_limit = deadline == fc::time_point::maximum() ?
             fc::microseconds::maximum() :
             fc::microseconds( deadline - fc::time_point::now() );
-      auto mtrx = std::make_shared<transaction_metadata>(trx, UINT32_MAX, c);
-      transaction_metadata::start_recover_keys( mtrx, control->get_thread_pool(), control->get_chain_id(), time_limit );
-      auto r = control->push_transaction( mtrx, deadline, billed_cpu_time_us );
+      auto ptrx = std::make_shared<packed_transaction>( trx, c );
+      auto fut = transaction_metadata::start_recover_keys( ptrx, control->get_thread_pool(), control->get_chain_id(), time_limit );
+      auto r = control->push_transaction( fut.get(), deadline, billed_cpu_time_us );
       if (no_throw) return r;
       if( r->except_ptr ) std::rethrow_exception( r->except_ptr );
       if( r->except)  throw *r->except;

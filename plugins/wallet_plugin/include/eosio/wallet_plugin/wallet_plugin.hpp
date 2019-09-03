@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
 #pragma once
 #include <appbase/application.hpp>
 #include <fc/variant.hpp>

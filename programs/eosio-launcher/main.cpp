@@ -1,8 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- *  @brief launch testnet nodes
- **/
 #include <string>
 #include <vector>
 #include <math.h>

@@ -1,5 +1,5 @@
-#include <eosio/chain/checktime_timer_calibrate.hpp>
-#include <eosio/chain/checktime_timer.hpp>
+#include <eosio/chain/platform_timer_accuracy.hpp>
+#include <eosio/chain/platform_timer.hpp>
 
 #include <fc/time.hpp>
 #include <fc/log/logger.hpp>
@@ -18,10 +18,7 @@ namespace eosio { namespace chain {
 
 namespace bacc = boost::accumulators;
 
-checktime_timer_calibrate::checktime_timer_calibrate() = default;
-checktime_timer_calibrate::~checktime_timer_calibrate() = default;
-
-void checktime_timer_calibrate::do_calibrate(checktime_timer& timer) {
+void compute_and_print_timer_accuracy(platform_timer& timer) {
    static std::mutex m;
    static bool once_is_enough;
 
@@ -33,7 +30,7 @@ void checktime_timer_calibrate::do_calibrate(checktime_timer& timer) {
    bacc::accumulator_set<int, bacc::stats<bacc::tag::mean, bacc::tag::min, bacc::tag::max, bacc::tag::variance>, float> samples;
 
    //keep longest first in list. You're effectively going to take test_intervals[0]*sizeof(test_intervals[0])
-   //time to do the the "calibration"
+   //time to do the the test
    int test_intervals[] = {50000, 10000, 5000, 1000, 500, 100, 50, 10};
 
    for(int& interval : test_intervals) {
@@ -56,19 +53,15 @@ void checktime_timer_calibrate::do_calibrate(checktime_timer& timer) {
          samples(timer_slop, bacc::weight = interval/(float)test_intervals[0]);
       }
    }
-   _timer_overhead = bacc::mean(samples) + sqrt(bacc::variance(samples))*2; //target 95% of expirations before deadline
-   _use_timer = _timer_overhead < 1000;
 
    #define TIMER_STATS_FORMAT "min:${min}us max:${max}us mean:${mean}us stddev:${stddev}us"
    #define TIMER_STATS \
       ("min", bacc::min(samples))("max", bacc::max(samples)) \
-      ("mean", (int)bacc::mean(samples))("stddev", (int)sqrt(bacc::variance(samples))) \
-      ("t", _timer_overhead)
+      ("mean", (int)bacc::mean(samples))("stddev", (int)sqrt(bacc::variance(samples)))
 
-   if(_use_timer)
-      ilog("Using ${t}us deadline timer for checktime: " TIMER_STATS_FORMAT, TIMER_STATS);
-   else
-      wlog("Using polled checktime; deadline timer too inaccurate: " TIMER_STATS_FORMAT, TIMER_STATS);
+   ilog("Checktime timer accuracy: " TIMER_STATS_FORMAT, TIMER_STATS);
+   if(bacc::mean(samples) + sqrt(bacc::variance(samples))*2 > 250)
+      wlog("Checktime timer accuracy on this platform and hardware combination is poor; accuracy of subjective transaction deadline enforcement will suffer");
 
    once_is_enough = true;
 }

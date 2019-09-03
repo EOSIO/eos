@@ -1,16 +1,24 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
 #include <eosio/chain/block_log.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <fstream>
 #include <fc/bitutil.hpp>
+#include <fc/io/cfile.hpp>
 #include <fc/io/raw.hpp>
+
 
 #define LOG_READ  (std::ios::in | std::ios::binary)
 #define LOG_WRITE (std::ios::out | std::ios::binary | std::ios::app)
 #define LOG_RW ( std::ios::in | std::ios::out | std::ios::binary )
+#define LOG_WRITE_C "ab+"
+#define LOG_RW_C "rb+"
+
+#ifndef _WIN32
+#define FC_FOPEN(p, m) fopen(p, m)
+#else
+#define FC_CAT(s1, s2) s1 ## s2
+#define FC_PREL(s) FC_CAT(L, s)
+#define FC_FOPEN(p, m) _wfopen(p, FC_PREL(m))
+#endif
 
 namespace eosio { namespace chain {
 
@@ -31,10 +39,8 @@ namespace eosio { namespace chain {
          public:
             signed_block_ptr         head;
             block_id_type            head_id;
-            std::fstream             block_stream;
-            std::fstream             index_stream;
-            fc::path                 block_file;
-            fc::path                 index_file;
+            fc::cfile                block_file;
+            fc::cfile                index_file;
             bool                     open_files = false;
             bool                     genesis_written_to_block_log = false;
             uint32_t                 version = 0;
@@ -48,10 +54,10 @@ namespace eosio { namespace chain {
             void reopen();
 
             void close() {
-               if( block_stream.is_open() )
-                  block_stream.close();
-               if( index_stream.is_open() )
-                  index_stream.close();
+               if( block_file.is_open() )
+                  block_file.close();
+               if( index_file.is_open() )
+                  index_file.close();
                open_files = false;
             }
       };
@@ -61,13 +67,13 @@ namespace eosio { namespace chain {
 
          // open to create files if they don't exist
          //ilog("Opening block log at ${path}", ("path", my->block_file.generic_string()));
-         block_stream.open(block_file.generic_string().c_str(), LOG_WRITE);
-         index_stream.open(index_file.generic_string().c_str(), LOG_WRITE);
+         block_file.open( LOG_WRITE_C );
+         index_file.open( LOG_WRITE_C );
 
          close();
 
-         block_stream.open(block_file.generic_string().c_str(), LOG_RW);
-         index_stream.open(index_file.generic_string().c_str(), LOG_RW);
+         block_file.open( LOG_RW_C );
+         index_file.open( LOG_RW_C );
 
          open_files = true;
       }
@@ -129,8 +135,6 @@ namespace eosio { namespace chain {
 
    block_log::block_log(const fc::path& data_dir)
    :my(new detail::block_log_impl()) {
-      my->block_stream.exceptions(std::fstream::failbit | std::fstream::badbit);
-      my->index_stream.exceptions(std::fstream::failbit | std::fstream::badbit);
       open(data_dir);
    }
 
@@ -152,8 +156,8 @@ namespace eosio { namespace chain {
       if (!fc::is_directory(data_dir))
          fc::create_directories(data_dir);
 
-      my->block_file = data_dir / "blocks.log";
-      my->index_file = data_dir / "blocks.index";
+      my->block_file.set_file_path( data_dir / "blocks.log" );
+      my->index_file.set_file_path( data_dir / "blocks.index" );
 
       my->reopen();
 
@@ -175,14 +179,14 @@ namespace eosio { namespace chain {
        *  - If the index file head is not in the log file, delete the index and replay.
        *  - If the index file head is in the log, but not up to date, replay from index head.
        */
-      auto log_size = fc::file_size(my->block_file);
-      auto index_size = fc::file_size(my->index_file);
+      auto log_size = fc::file_size( my->block_file.get_file_path() );
+      auto index_size = fc::file_size( my->index_file.get_file_path() );
 
       if (log_size) {
          ilog("Log is nonempty");
-         my->block_stream.seekg( 0 );
+         my->block_file.seek( 0 );
          my->version = 0;
-         my->block_stream.read( (char*)&my->version, sizeof(my->version) );
+         my->block_file.read( (char*)&my->version, sizeof(my->version) );
          EOS_ASSERT( my->version > 0, block_log_exception, "Block log was not setup properly" );
          EOS_ASSERT( my->version >= min_supported_version && my->version <= max_supported_version, block_log_unsupported_version,
                  "Unsupported version of block log. Block log version is ${version} while code supports version(s) [${min},${max}]",
@@ -192,7 +196,7 @@ namespace eosio { namespace chain {
          my->genesis_written_to_block_log = true; // Assume it was constructed properly.
          if (my->version > 1){
             my->first_block_num = 0;
-            my->block_stream.read( (char*)&my->first_block_num, sizeof(my->first_block_num) );
+            my->block_file.read( (char*)&my->first_block_num, sizeof(my->first_block_num) );
             EOS_ASSERT(my->first_block_num > 0, block_log_exception, "Block log is malformed, first recorded block number is 0 but must be greater than or equal to 1");
          } else {
             my->first_block_num = 1;
@@ -208,12 +212,12 @@ namespace eosio { namespace chain {
          if (index_size) {
             ilog("Index is nonempty");
             uint64_t block_pos;
-            my->block_stream.seekg(-sizeof(uint64_t), std::ios::end);
-            my->block_stream.read((char*)&block_pos, sizeof(block_pos));
+            my->block_file.seek_end(-sizeof(uint64_t));
+            my->block_file.read((char*)&block_pos, sizeof(block_pos));
 
             uint64_t index_pos;
-            my->index_stream.seekg(-sizeof(uint64_t), std::ios::end);
-            my->index_stream.read((char*)&index_pos, sizeof(index_pos));
+            my->index_file.seek_end(-sizeof(uint64_t));
+            my->index_file.read((char*)&index_pos, sizeof(index_pos));
 
             if (block_pos < index_pos) {
                ilog("block_pos < index_pos, close and reopen index_stream");
@@ -229,7 +233,7 @@ namespace eosio { namespace chain {
       } else if (index_size) {
          ilog("Index is nonempty, remove and recreate it");
          my->close();
-         fc::remove_all(my->index_file);
+         fc::remove_all( my->index_file.get_file_path() );
          my->reopen();
       }
    }
@@ -240,18 +244,18 @@ namespace eosio { namespace chain {
 
          my->check_open_files();
 
-         my->block_stream.seekp(0, std::ios::end);
-         my->index_stream.seekp(0, std::ios::end);
-         uint64_t pos = my->block_stream.tellp();
-         EOS_ASSERT(my->index_stream.tellp() == sizeof(uint64_t) * (b->block_num() - my->first_block_num),
+         my->block_file.seek_end(0);
+         my->index_file.seek_end(0);
+         uint64_t pos = my->block_file.tellp();
+         EOS_ASSERT(my->index_file.tellp() == sizeof(uint64_t) * (b->block_num() - my->first_block_num),
                    block_log_append_fail,
                    "Append to index file occuring at wrong position.",
-                   ("position", (uint64_t) my->index_stream.tellp())
+                   ("position", (uint64_t) my->index_file.tellp())
                    ("expected", (b->block_num() - my->first_block_num) * sizeof(uint64_t)));
          auto data = fc::raw::pack(*b);
-         my->block_stream.write(data.data(), data.size());
-         my->block_stream.write((char*)&pos, sizeof(pos));
-         my->index_stream.write((char*)&pos, sizeof(pos));
+         my->block_file.write(data.data(), data.size());
+         my->block_file.write((char*)&pos, sizeof(pos));
+         my->index_file.write((char*)&pos, sizeof(pos));
          my->head = b;
          my->head_id = b->id();
 
@@ -263,30 +267,30 @@ namespace eosio { namespace chain {
    }
 
    void block_log::flush() {
-      my->block_stream.flush();
-      my->index_stream.flush();
+      my->block_file.flush();
+      my->index_file.flush();
    }
 
    void block_log::reset( const genesis_state& gs, const signed_block_ptr& first_block, uint32_t first_block_num ) {
       my->close();
 
-      fc::remove_all(my->block_file);
-      fc::remove_all(my->index_file);
+      fc::remove_all( my->block_file.get_file_path() );
+      fc::remove_all( my->index_file.get_file_path() );
 
       my->reopen();
 
       auto data = fc::raw::pack(gs);
       my->version = 0; // version of 0 is invalid; it indicates that the genesis was not properly written to the block log
       my->first_block_num = first_block_num;
-      my->block_stream.seekp(0, std::ios::end);
-      my->block_stream.write((char*)&my->version, sizeof(my->version));
-      my->block_stream.write((char*)&my->first_block_num, sizeof(my->first_block_num));
-      my->block_stream.write(data.data(), data.size());
+      my->block_file.seek_end(0);
+      my->block_file.write((char*)&my->version, sizeof(my->version));
+      my->block_file.write((char*)&my->first_block_num, sizeof(my->first_block_num));
+      my->block_file.write(data.data(), data.size());
       my->genesis_written_to_block_log = true;
 
       // append a totem to indicate the division between blocks and header
       auto totem = npos;
-      my->block_stream.write((char*)&totem, sizeof(totem));
+      my->block_file.write((char*)&totem, sizeof(totem));
 
       if (first_block) {
          append(first_block);
@@ -295,25 +299,32 @@ namespace eosio { namespace chain {
          my->head_id = {};
       }
 
-      auto pos = my->block_stream.tellp();
+      auto pos = my->block_file.tellp();
 
       static_assert( block_log::max_supported_version > 0, "a version number of zero is not supported" );
       my->version = block_log::max_supported_version;
-      my->block_stream.seekp( 0 );
-      my->block_stream.write( (char*)&my->version, sizeof(my->version) );
-      my->block_stream.seekp( pos );
+      my->block_file.seek( 0 );
+      my->block_file.write( (char*)&my->version, sizeof(my->version) );
+      my->block_file.seek( pos );
       flush();
    }
 
-   std::pair<signed_block_ptr, uint64_t> block_log::read_block(uint64_t pos)const {
+   signed_block_ptr block_log::read_block(uint64_t pos)const {
       my->check_open_files();
 
-      my->block_stream.seekg(pos);
-      std::pair<signed_block_ptr,uint64_t> result;
-      result.first = std::make_shared<signed_block>();
-      fc::raw::unpack(my->block_stream, *result.first);
-      result.second = uint64_t(my->block_stream.tellg()) + 8;
+      my->block_file.seek(pos);
+      signed_block_ptr result = std::make_shared<signed_block>();
+      auto ds = my->block_file.create_datastream();
+      fc::raw::unpack(ds, *result);
       return result;
+   }
+
+   void block_log::read_block_header(block_header& bh, uint64_t pos)const {
+      my->check_open_files();
+
+      my->block_file.seek(pos);
+      auto ds = my->block_file.create_datastream();
+      fc::raw::unpack(ds, bh);
    }
 
    signed_block_ptr block_log::read_block_by_num(uint32_t block_num)const {
@@ -321,7 +332,7 @@ namespace eosio { namespace chain {
          signed_block_ptr b;
          uint64_t pos = get_block_pos(block_num);
          if (pos != npos) {
-            b = read_block(pos).first;
+            b = read_block(pos);
             EOS_ASSERT(b->block_num() == block_num, reversible_blocks_exception,
                       "Wrong block was read from block log.", ("returned", b->block_num())("expected", block_num));
          }
@@ -329,13 +340,27 @@ namespace eosio { namespace chain {
       } FC_LOG_AND_RETHROW()
    }
 
+   block_id_type block_log::read_block_id_by_num(uint32_t block_num)const {
+      try {
+         uint64_t pos = get_block_pos(block_num);
+         if (pos != npos) {
+            block_header bh;
+            read_block_header(bh, pos);
+            EOS_ASSERT(bh.block_num() == block_num, reversible_blocks_exception,
+                       "Wrong block header was read from block log.", ("returned", bh.block_num())("expected", block_num));
+            return bh.id();
+         }
+         return {};
+      } FC_LOG_AND_RETHROW()
+   }
+
    uint64_t block_log::get_block_pos(uint32_t block_num) const {
       my->check_open_files();
       if (!(my->head && block_num <= block_header::num_from_id(my->head_id) && block_num >= my->first_block_num))
          return npos;
-      my->index_stream.seekg(sizeof(uint64_t) * (block_num - my->first_block_num));
+      my->index_file.seek(sizeof(uint64_t) * (block_num - my->first_block_num));
       uint64_t pos;
-      my->index_stream.read((char*)&pos, sizeof(pos));
+      my->index_file.read((char*)&pos, sizeof(pos));
       return pos;
    }
 
@@ -345,14 +370,14 @@ namespace eosio { namespace chain {
       uint64_t pos;
 
       // Check that the file is not empty
-      my->block_stream.seekg(0, std::ios::end);
-      if (my->block_stream.tellg() <= sizeof(pos))
+      my->block_file.seek_end(0);
+      if (my->block_file.tellp() <= sizeof(pos))
          return {};
 
-      my->block_stream.seekg(-sizeof(pos), std::ios::end);
-      my->block_stream.read((char*)&pos, sizeof(pos));
+      my->block_file.seek_end(-sizeof(pos));
+      my->block_file.read((char*)&pos, sizeof(pos));
       if (pos != npos) {
-         return read_block(pos).first;
+         return read_block(pos);
       } else {
          return {};
       }
@@ -360,6 +385,10 @@ namespace eosio { namespace chain {
 
    const signed_block_ptr& block_log::head()const {
       return my->head;
+   }
+
+   const block_id_type&    block_log::head_id()const {
+      return my->head_id;
    }
 
    uint32_t block_log::first_block_num() const {
@@ -370,14 +399,14 @@ namespace eosio { namespace chain {
       ilog("Reconstructing Block Log Index...");
       my->close();
 
-      fc::remove_all(my->index_file);
+      fc::remove_all( my->index_file.get_file_path() );
 
       my->reopen();
 
 
       my->close();
 
-      block_log::construct_index(my->block_file, my->index_file);
+      block_log::construct_index(my->block_file.get_file_path(), my->index_file.get_file_path());
 
       my->reopen();
    } // construct_index
@@ -601,7 +630,7 @@ namespace eosio { namespace chain {
 
    uint32_t detail::reverse_iterator::open(const fc::path& block_file_name) {
       _block_file_name = block_file_name.generic_string();
-      _file.reset(fopen(_block_file_name.c_str(), "r"));
+      _file.reset( FC_FOPEN(_block_file_name.c_str(), "r"));
       EOS_ASSERT( _file, block_log_exception, "Could not open Block log file at '${blocks_log}'", ("blocks_log", _block_file_name) );
       _end_of_buffer_position = _unset_position;
 
@@ -729,7 +758,7 @@ namespace eosio { namespace chain {
 
    void detail::index_writer::prepare_buffer() {
       if (_file == nullptr) {
-         _file.reset(fopen(_block_index_name.c_str(), "w"));
+         _file.reset(FC_FOPEN(_block_index_name.c_str(), "w"));
          EOS_ASSERT( _file, block_log_exception, "Could not open Block index file at '${blocks_index}'", ("blocks_index", _block_index_name) );
          // allocate 8 bytes for each block position to store
          const auto full_file_size = buffer_location_to_file_location(_blocks_expected);

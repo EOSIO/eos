@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
 #pragma once
 #include <eosio/chain/name.hpp>
 #include <eosio/chain/chain_id_type.hpp>

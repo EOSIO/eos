@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
 #include <fc/io/raw.hpp>
 #include <fc/bitutil.hpp>
 #include <fc/smart_ref_impl.hpp>
@@ -109,10 +105,11 @@ fc::microseconds transaction::get_signature_keys( const vector<signature_type>& 
 
    std::unique_lock<std::mutex> lock(cache_mtx, std::defer_lock);
    fc::microseconds sig_cpu_usage;
+   const auto digest_time = fc::time_point::now() - start;
    for(const signature_type& sig : signatures) {
-      auto now = fc::time_point::now();
-      EOS_ASSERT( now < deadline, tx_cpu_usage_exceeded, "transaction signature verification executed for too long ${time}us",
-                  ("time", now - start)("now", now)("deadline", deadline)("start", start) );
+      auto sig_start = fc::time_point::now();
+      EOS_ASSERT( sig_start < deadline, tx_cpu_usage_exceeded, "transaction signature verification executed for too long ${time}us",
+                  ("time", sig_start - start)("now", sig_start)("deadline", deadline)("start", start) );
       public_key_type recov;
       const auto& tid = id();
       lock.lock();
@@ -120,7 +117,7 @@ fc::microseconds transaction::get_signature_keys( const vector<signature_type>& 
       if( it == recovery_cache.get<by_sig>().end() || it->trx_id != tid ) {
          lock.unlock();
          recov = public_key_type( sig, digest );
-         fc::microseconds cpu_usage = fc::time_point::now() - start;
+         fc::microseconds cpu_usage = fc::time_point::now() - sig_start;
          lock.lock();
          recovery_cache.emplace_back( cached_pub_key{tid, recov, sig, cpu_usage} ); //could fail on dup signatures; not a problem
          sig_cpu_usage += cpu_usage;
@@ -141,17 +138,13 @@ fc::microseconds transaction::get_signature_keys( const vector<signature_type>& 
       recovery_cache.erase( recovery_cache.begin());
    lock.unlock();
 
-   return sig_cpu_usage;
+   return sig_cpu_usage + digest_time;
 } FC_CAPTURE_AND_RETHROW() }
 
-vector<transaction_extensions> transaction::validate_and_extract_extensions()const {
-   using transaction_extensions_t = transaction_extension_types::transaction_extensions_t;
+flat_multimap<uint16_t, transaction_extension> transaction::validate_and_extract_extensions()const {
    using decompose_t = transaction_extension_types::decompose_t;
 
-   static_assert( std::is_same<transaction_extensions_t, eosio::chain::transaction_extensions>::value,
-                  "transaction_extensions is not setup as expected" );
-
-   vector<transaction_extensions_t> results;
+   flat_multimap<uint16_t, transaction_extension> results;
 
    uint16_t id_type_lower_bound = 0;
 
@@ -163,9 +156,12 @@ vector<transaction_extensions> transaction::validate_and_extract_extensions()con
                   "Transaction extensions are not in the correct order (ascending id types required)"
       );
 
-      results.emplace_back();
+      auto iter = results.emplace(std::piecewise_construct,
+         std::forward_as_tuple(id),
+         std::forward_as_tuple()
+      );
 
-      auto match = decompose_t::extract<transaction_extensions_t>( id, e.second, results.back() );
+      auto match = decompose_t::extract<transaction_extension>( id, e.second, iter->second );
       EOS_ASSERT( match, invalid_transaction_extension,
                   "Transaction extension with id type ${id} is not supported",
                   ("id", id)
@@ -366,6 +362,7 @@ packed_transaction::packed_transaction( transaction&& t, vector<signature_type>&
 ,compression(_compression)
 ,packed_context_free_data(std::move(packed_cfd))
 ,unpacked_trx(std::move(t), signatures, {})
+,trx_id(unpacked_trx.id())
 {
    local_pack_transaction();
    if( !packed_context_free_data.empty() ) {
@@ -396,6 +393,7 @@ void packed_transaction::local_unpack_transaction(vector<bytes>&& context_free_d
          default:
             EOS_THROW( unknown_transaction_compression, "Unknown transaction compression algorithm" );
       }
+      trx_id = unpacked_trx.id();
    } FC_CAPTURE_AND_RETHROW( (compression) )
 }
 

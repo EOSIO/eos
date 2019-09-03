@@ -1,7 +1,3 @@
-/**
- *  @file api_tests.cpp
- *  @copyright defined in eos/LICENSE
- */
 #include <algorithm>
 #include <random>
 #include <iostream>

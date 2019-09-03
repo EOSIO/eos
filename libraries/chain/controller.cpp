@@ -24,7 +24,7 @@
 #include <eosio/chain/resource_limits.hpp>
 #include <eosio/chain/chain_snapshot.hpp>
 #include <eosio/chain/thread_utils.hpp>
-#include <eosio/chain/checktime_timer.hpp>
+#include <eosio/chain/platform_timer.hpp>
 
 #include <chainbase/chainbase.hpp>
 #include <fc/io/json.hpp>
@@ -178,7 +178,7 @@ struct pending_state {
       if( _block_stage.contains<assembled_block>() )
          return std::move( _block_stage.get<assembled_block>()._trx_metas );
 
-      return std::move( _block_stage.get<completed_block>()._block_state->trxs );
+      return _block_stage.get<completed_block>()._block_state->extract_trxs_metas();
    }
 
    bool is_protocol_feature_activated( const digest_type& feature_digest )const {
@@ -233,7 +233,7 @@ struct controller_impl {
    bool                           trusted_producer_light_validation = false;
    uint32_t                       snapshot_head_block = 0;
    named_thread_pool              thread_pool;
-   checktime_timer                timer;
+   platform_timer                 timer;
 
    typedef pair<scope_name,action_name>                   handler_key;
    map< account_name, map<handler_key, apply_handler> >   apply_handlers;
@@ -350,7 +350,10 @@ struct controller_impl {
    template<typename Signal, typename Arg>
    void emit( const Signal& s, Arg&& a ) {
       try {
-        s(std::forward<Arg>(a));
+         s( std::forward<Arg>( a ));
+      } catch (std::bad_alloc& e) {
+         wlog( "std::bad_alloc" );
+         throw e;
       } catch (boost::interprocess::bad_alloc& e) {
          wlog( "bad alloc" );
          throw e;
@@ -374,7 +377,7 @@ struct controller_impl {
       auto root_id = fork_db.root()->id;
 
       if( log_head ) {
-         EOS_ASSERT( root_id == log_head->id(), fork_database_exception, "fork database root does not match block log head" );
+         EOS_ASSERT( root_id == blog.head_id(), fork_database_exception, "fork database root does not match block log head" );
       } else {
          EOS_ASSERT( fork_db.root()->block_num == lib_num, fork_database_exception,
                      "empty block log expects the first appended block to build off a block that is not the fork database root" );
@@ -863,7 +866,7 @@ struct controller_impl {
          snapshot_head_block = head->block_num;
       }
 
-      controller_index_set::walk_indices([this, &snapshot]( auto utils ){
+      controller_index_set::walk_indices([this, &snapshot, &header]( auto utils ){
          using value_t = typename decltype(utils)::index_t::value_type;
 
          // skip the table_id_object as its inlined with contract tables section
@@ -876,6 +879,23 @@ struct controller_impl {
             return;
          }
 
+         // special case for in-place upgrade of global_property_object
+         if (std::is_same<value_t, global_property_object>::value) {
+            using v2 = legacy::snapshot_global_property_object_v2;
+
+            if (std::clamp(header.version, v2::minimum_version, v2::maximum_version) == header.version ) {
+               snapshot->read_section<global_property_object>([this]( auto &section ) {
+                  v2 legacy_global_properties;
+                  section.read_row(legacy_global_properties, db);
+
+                  db.create<global_property_object>([&](auto& gpo ){
+                     gpo.initalize_from(legacy_global_properties);
+                  });
+               });
+               return; // early out to avoid default processing
+            }
+         }
+
          snapshot->read_section<value_t>([this]( auto& section ) {
             bool more = !section.empty();
             while(more) {
@@ -884,6 +904,7 @@ struct controller_impl {
                });
             }
          });
+
       });
 
       read_contract_tables_from_snapshot(snapshot);
@@ -912,7 +933,10 @@ struct controller_impl {
          a.creation_date = conf.genesis.initial_timestamp;
 
          if( name == config::system_account_name ) {
-            a.set_abi(eosio_contract_abi(abi_def()));
+            // The initial eosio ABI value affects consensus; see  https://github.com/EOSIO/eos/issues/7794
+            // TODO: This doesn't charge RAM; a fix requires a consensus upgrade.
+            a.abi.resize(sizeof(eosio_abi_bin));
+            memcpy(a.abi.data(), eosio_abi_bin, sizeof(eosio_abi_bin));
          }
       });
       db.create<account_metadata_object>([&](auto & a) {
@@ -1033,7 +1057,8 @@ struct controller_impl {
          etrx.set_reference_block( self.head_block_id() );
       }
 
-      transaction_context trx_context( self, etrx, etrx.id(), timer, start );
+      transaction_checktime_timer trx_timer(timer);
+      transaction_context trx_context( self, etrx, etrx.id(), std::move(trx_timer), start );
       trx_context.deadline = deadline;
       trx_context.explicit_billed_cpu_time = explicit_billed_cpu_time;
       trx_context.billed_cpu_time_us = billed_cpu_time_us;
@@ -1129,9 +1154,8 @@ struct controller_impl {
 
       signed_transaction dtrx;
       fc::raw::unpack(ds,static_cast<transaction&>(dtrx) );
-      transaction_metadata_ptr trx = std::make_shared<transaction_metadata>( dtrx );
+      transaction_metadata_ptr trx = transaction_metadata::create_no_recover_keys( packed_transaction( dtrx ), transaction_metadata::trx_type::scheduled );
       trx->accepted = true;
-      trx->scheduled = true;
 
       transaction_trace_ptr trace;
       if( gtrx.expiration < self.pending_block_time() ) {
@@ -1156,7 +1180,8 @@ struct controller_impl {
 
       uint32_t cpu_time_to_bill_us = billed_cpu_time_us;
 
-      transaction_context trx_context( self, dtrx, gtrx.trx_id, timer );
+      transaction_checktime_timer trx_timer(timer);
+      transaction_context trx_context( self, dtrx, gtrx.trx_id, std::move(trx_timer) );
       trx_context.leeway =  fc::microseconds(0); // avoid stealing cpu resource
       trx_context.deadline = deadline;
       trx_context.explicit_billed_cpu_time = explicit_billed_cpu_time;
@@ -1308,11 +1333,8 @@ struct controller_impl {
       try {
          auto start = fc::time_point::now();
          const bool check_auth = !self.skip_auth_check() && !trx->implicit;
-         // call recover keys so that trx->sig_cpu_usage is set correctly
-         const fc::microseconds sig_cpu_usage =
-               check_auth ? std::get<0>( trx->recover_keys( chain_id ) ) : fc::microseconds();
-         const std::shared_ptr<flat_set<public_key_type>> recovered_keys =
-               check_auth ? std::get<1>( trx->recover_keys( chain_id ) ) : nullptr;
+         const fc::microseconds sig_cpu_usage = trx->signature_cpu_usage();
+
          if( !explicit_billed_cpu_time ) {
             fc::microseconds already_consumed_time( EOS_PERCENT(sig_cpu_usage.count(), conf.sig_cpu_bill_pct) );
 
@@ -1324,7 +1346,8 @@ struct controller_impl {
          }
 
          const signed_transaction& trn = trx->packed_trx()->get_signed_transaction();
-         transaction_context trx_context(self, trn, trx->id(), timer, start);
+         transaction_checktime_timer trx_timer(timer);
+         transaction_context trx_context(self, trn, trx->id(), std::move(trx_timer), start);
          if ((bool)subjective_cpu_leeway && pending->_block_status == controller::block_status::incomplete) {
             trx_context.leeway = *subjective_cpu_leeway;
          }
@@ -1346,10 +1369,9 @@ struct controller_impl {
             trx_context.delay = fc::seconds(trn.delay_sec);
 
             if( check_auth ) {
-               EOS_ASSERT( recovered_keys, missing_auth_exception, "recovered_keys should never be null" );
                authorization.check_authorization(
                        trn.actions,
-                       *recovered_keys,
+                       trx->recovered_keys(),
                        {},
                        trx_context.delay,
                        [&trx_context](){ trx_context.checktime(); },
@@ -1536,20 +1558,24 @@ struct controller_impl {
          }
 
          try {
-            auto onbtrx = std::make_shared<transaction_metadata>( get_on_block_transaction() );
-            onbtrx->implicit = true;
+            transaction_metadata_ptr onbtrx =
+                  transaction_metadata::create_no_recover_keys( packed_transaction( get_on_block_transaction() ), transaction_metadata::trx_type::implicit );
             auto reset_in_trx_requiring_checks = fc::make_scoped_exit([old_value=in_trx_requiring_checks,this](){
                   in_trx_requiring_checks = old_value;
                });
             in_trx_requiring_checks = true;
             push_transaction( onbtrx, fc::time_point::maximum(), self.get_global_properties().configuration.min_transaction_cpu_usage, true );
-         } catch( const boost::interprocess::bad_alloc& e  ) {
+         } catch( const std::bad_alloc& e ) {
+            elog( "on block transaction failed due to a std::bad_alloc" );
+            throw;
+         } catch( const boost::interprocess::bad_alloc& e ) {
             elog( "on block transaction failed due to a bad allocation" );
             throw;
          } catch( const fc::exception& e ) {
             wlog( "on block transaction failed, but shouldn't impact block generation, system contract needs update" );
             edump((e.to_detail_string()));
          } catch( ... ) {
+            elog( "on block transaction failed due to unknown exception" );
          }
 
          clear_expired_input_transactions();
@@ -1649,11 +1675,11 @@ struct controller_impl {
             });
          }
 
+         emit( self.accepted_block, bsp );
+
          if( add_to_fork_db ) {
             log_irreversible();
          }
-
-         emit( self.accepted_block, bsp );
       } catch (...) {
          // dont bother resetting pending, instead abort the block
          reset_pending_on_exit.cancel();
@@ -1735,16 +1761,31 @@ struct controller_impl {
          auto producer_block_id = b->id();
          start_block( b->timestamp, b->confirmed, new_protocol_feature_activations, s, producer_block_id);
 
-         std::vector<transaction_metadata_ptr> packed_transactions;
-         packed_transactions.reserve( b->transactions.size() );
-         for( const auto& receipt : b->transactions ) {
-            if( receipt.trx.contains<packed_transaction>()) {
-               auto& pt = receipt.trx.get<packed_transaction>();
-               auto mtrx = std::make_shared<transaction_metadata>( std::make_shared<packed_transaction>( pt ) );
-               if( !self.skip_auth_check() ) {
-                  transaction_metadata::start_recover_keys( mtrx, thread_pool.get_executor(), chain_id, microseconds::maximum() );
+         const bool existing_trxs_metas = !bsp->trxs_metas().empty();
+         const bool pub_keys_recovered = bsp->is_pub_keys_recovered();
+         const bool skip_auth_checks = self.skip_auth_check();
+         std::vector<recover_keys_future> trx_futures;
+         std::vector<transaction_metadata_ptr> trx_metas;
+         bool use_bsp_cached = false, use_trx_metas = false;
+         if( pub_keys_recovered || (skip_auth_checks && existing_trxs_metas) ) {
+            use_bsp_cached = true;
+         } else if( skip_auth_checks ) {
+            use_trx_metas = true;
+            trx_metas.reserve( b->transactions.size() );
+            for( const auto& receipt : b->transactions ) {
+               if( receipt.trx.contains<packed_transaction>()) {
+                  auto& pt = receipt.trx.get<packed_transaction>();
+                  trx_metas.emplace_back( transaction_metadata::create_no_recover_keys( pt, transaction_metadata::trx_type::input ) );
                }
-               packed_transactions.emplace_back( std::move( mtrx ) );
+            }
+         } else {
+            trx_futures.reserve( b->transactions.size() );
+            for( const auto& receipt : b->transactions ) {
+               if( receipt.trx.contains<packed_transaction>()) {
+                  auto ptrx = std::make_shared<packed_transaction>( receipt.trx.get<packed_transaction>() );
+                  auto fut = transaction_metadata::start_recover_keys( ptrx, thread_pool.get_executor(), chain_id, microseconds::maximum() );
+                  trx_futures.emplace_back( std::move( fut ) );
+               }
             }
          }
 
@@ -1755,7 +1796,10 @@ struct controller_impl {
             const auto& trx_receipts = pending->_block_stage.get<building_block>()._pending_trx_receipts;
             auto num_pending_receipts = trx_receipts.size();
             if( receipt.trx.contains<packed_transaction>() ) {
-               trace = push_transaction( packed_transactions.at(packed_idx++), fc::time_point::maximum(), receipt.cpu_usage_us, true );
+               const auto& trx_meta = ( use_bsp_cached ? bsp->trxs_metas().at( packed_idx++ )
+                                                       : ( use_trx_metas ? trx_metas.at( packed_idx++ )
+                                                                         : trx_futures.at( packed_idx++ ).get() ) );
+               trace = push_transaction( trx_meta, fc::time_point::maximum(), receipt.cpu_usage_us, true );
             } else if( receipt.trx.contains<transaction_id_type>() ) {
                trace = push_scheduled_transaction( receipt.trx.get<transaction_id_type>(), fc::time_point::maximum(), receipt.cpu_usage_us, true );
             } else {
@@ -1791,18 +1835,10 @@ struct controller_impl {
          EOS_ASSERT( producer_block_id == ab._id, block_validate_exception, "Block ID does not match",
                      ("producer_block_id",producer_block_id)("validator_block_id",ab._id) );
 
-         auto bsp = std::make_shared<block_state>(
-                        std::move( ab._pending_block_header_state ),
-                        b,
-                        std::move( ab._trx_metas ),
-                        protocol_features.get_protocol_feature_set(),
-                        []( block_timestamp_type timestamp,
-                            const flat_set<digest_type>& cur_features,
-                            const vector<digest_type>& new_features )
-                        {}, // validation of any new protocol features should have already occurred prior to apply_block
-                        true // signature should have already been verified (assuming untrusted) prior to apply_block
-                    );
-
+         if( !use_bsp_cached ) {
+            bsp->set_trxs_metas( std::move( ab._trx_metas ), !skip_auth_checks );
+         }
+         // create completed_block with the existing block_state as we just verified it is the same as assembled_block
          pending->_block_stage = completed_block{ bsp };
 
          commit_block(false);
@@ -2677,17 +2713,8 @@ uint32_t controller::last_irreversible_block_num() const {
 
 block_id_type controller::last_irreversible_block_id() const {
    auto lib_num = last_irreversible_block_num();
-   const auto& tapos_block_summary = db().get<block_summary_object>((uint16_t)lib_num);
 
-   if( block_header::num_from_id(tapos_block_summary.block_id) == lib_num )
-      return tapos_block_summary.block_id;
-
-   auto signed_blk = my->blog.read_block_by_num( lib_num );
-
-   EOS_ASSERT( BOOST_LIKELY( signed_blk != nullptr ), unknown_block_exception,
-               "Could not find block: ${block}", ("block", lib_num) );
-
-   return signed_blk->id();
+   return get_block_id_for_num( lib_num );
 }
 
 const dynamic_global_property_object& controller::get_dynamic_global_properties()const {
@@ -2735,6 +2762,11 @@ block_state_ptr controller::fetch_block_state_by_number( uint32_t block_num )con
 } FC_CAPTURE_AND_RETHROW( (block_num) ) }
 
 block_id_type controller::get_block_id_for_num( uint32_t block_num )const { try {
+   const auto& tapos_block_summary = db().get<block_summary_object>((uint16_t)block_num);
+
+   if( block_header::num_from_id(tapos_block_summary.block_id) == block_num )
+      return tapos_block_summary.block_id;
+
    const auto& blog_head = my->blog.head();
 
    bool find_in_blog = (blog_head && block_num <= blog_head->block_num());
@@ -2753,12 +2785,12 @@ block_id_type controller::get_block_id_for_num( uint32_t block_num )const { try 
       }
    }
 
-   auto signed_blk = my->blog.read_block_by_num(block_num);
+   auto id = my->blog.read_block_id_by_num(block_num);
 
-   EOS_ASSERT( BOOST_LIKELY( signed_blk != nullptr ), unknown_block_exception,
+   EOS_ASSERT( BOOST_LIKELY( id != block_id_type() ), unknown_block_exception,
                "Could not find block: ${block}", ("block", block_num) );
 
-   return signed_blk->id();
+   return id;
 } FC_CAPTURE_AND_RETHROW( (block_num) ) }
 
 sha256 controller::calculate_integrity_hash()const { try {

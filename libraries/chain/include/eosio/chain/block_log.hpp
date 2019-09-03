@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
 #pragma once
 #include <fc/filesystem.hpp>
 #include <eosio/chain/block.hpp>
@@ -46,8 +42,10 @@ namespace eosio { namespace chain {
          void flush();
          void reset( const genesis_state& gs, const signed_block_ptr& genesis_block, uint32_t first_block_num = 1 );
 
-         std::pair<signed_block_ptr, uint64_t> read_block(uint64_t file_pos)const;
+         signed_block_ptr read_block(uint64_t file_pos)const;
+         void             read_block_header(block_header& bh, uint64_t file_pos)const;
          signed_block_ptr read_block_by_num(uint32_t block_num)const;
+         block_id_type    read_block_id_by_num(uint32_t block_num)const;
          signed_block_ptr read_block_by_id(const block_id_type& id)const {
             return read_block_by_num(block_header::num_from_id(id));
          }
@@ -58,6 +56,7 @@ namespace eosio { namespace chain {
          uint64_t get_block_pos(uint32_t block_num) const;
          signed_block_ptr        read_head()const;
          const signed_block_ptr& head()const;
+         const block_id_type&    head_id()const;
          uint32_t                first_block_num() const;
 
          static const uint64_t npos = std::numeric_limits<uint64_t>::max();
