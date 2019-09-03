@@ -411,7 +411,7 @@ steps:
 
   - label: ":git: Git Submodule Regression Check"
     command:
-      - "./.cicd/submodule-regression-checker.sh"
+      - "./.cicd/submodule-regression-check.sh"
     agents:
       queue: "automation-basic-builder-fleet"
     timeout: 5
