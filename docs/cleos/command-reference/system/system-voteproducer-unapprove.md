@@ -1,9 +1,10 @@
 ---
-title: "system claimrewards"
-excerpt: "Claim producer rewards"
+title: "system voteproducer unapprove"
+excerpt: "Remove one producer from list of voted producers"
 ---
 ## Positional Arguments
-- `owner` _TEXT_ - The account to claim rewards for
+- `voter` _TEXT_ - The voting account
+- `producer` _TEXT_  - The account to remove from voted producers
 ## Options
 - `-h,--help` Print this help message and exit
 - `-x,--expiration` _TEXT_ - set the time in seconds before a transaction expires, defaults to 30s
@@ -14,4 +15,7 @@ excerpt: "Claim producer rewards"
 - `-p,--permission`  _TEXT_ - An account and permission level to authorize, as in 'account@permission' (defaults to 'account@active')
 - `--max-cpu-usage-ms` _UINT_ - set an upper limit on the milliseconds of cpu usage budget, for the execution of the transaction (defaults to 0 which means no limit)
 - `--max-net-usage` _UINT_ - set an upper limit on the net usage budget, in bytes, for the transaction (defaults to 0 which means no limit)
+- `--delay-sec` _UINT_            set the delay_sec seconds, defaults to 0s
+- `-j,--json` print result as json
+
 ## Examples

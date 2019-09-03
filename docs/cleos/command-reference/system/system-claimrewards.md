@@ -1,11 +1,9 @@
 ---
-title: "system canceldelay"
-excerpt: "Cancel a delayed transaction"
+title: "system claimrewards"
+excerpt: "Claim producer rewards"
 ---
 ## Positional Arguments
-- `canceling_account` _TEXT_ - Account  from authorization on the original delayed transaction
-- `canceling_permission` _TEXT_ - Permission from authorization on the original delayed transaction
-- `trx_id` _TEXT_ - The transaction id of the original delayed transaction
+- `owner` _TEXT_ - The account to claim rewards for
 ## Options
 - `-h,--help` Print this help message and exit
 - `-x,--expiration` _TEXT_ - set the time in seconds before a transaction expires, defaults to 30s
@@ -16,4 +14,7 @@ excerpt: "Cancel a delayed transaction"
 - `-p,--permission`  _TEXT_ - An account and permission level to authorize, as in 'account@permission' (defaults to 'account@active')
 - `--max-cpu-usage-ms` _UINT_ - set an upper limit on the milliseconds of cpu usage budget, for the execution of the transaction (defaults to 0 which means no limit)
 - `--max-net-usage` _UINT_ - set an upper limit on the net usage budget, in bytes, for the transaction (defaults to 0 which means no limit)
+- `--delay-sec` _UINT_            set the delay_sec seconds, defaults to 0s
+- `-j,--json` print result as json
+
 ## Examples

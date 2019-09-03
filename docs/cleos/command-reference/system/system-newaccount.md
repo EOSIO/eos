@@ -1,7 +1,7 @@
----
-title: "system newaccount"
-excerpt: "Create an account, buy ram, stake for bandwidth for the account"
----
+## Description
+
+Create an account, buy ram, stake for bandwidth for the account
+
 ## Positional Arguments
 - `creator` _TEXT_  - The name of the account creating the new account
 - `name` _TEXT_  - The name of the new account
@@ -22,4 +22,7 @@ excerpt: "Create an account, buy ram, stake for bandwidth for the account"
 - `-p,--permission`  _TEXT_ - An account and permission level to authorize, as in 'account@permission' (defaults to 'account@active')
 - `--max-cpu-usage-ms` _UINT_ - set an upper limit on the milliseconds of cpu usage budget, for the execution of the transaction (defaults to 0 which means no limit)
 - `--max-net-usage` _UINT_ - set an upper limit on the net usage budget, in bytes, for the transaction (defaults to 0 which means no limit)
+- `--delay-sec` _UINT_            set the delay_sec seconds, defaults to 0s
+- `-j,--json` print result as json
+
 ## Examples
