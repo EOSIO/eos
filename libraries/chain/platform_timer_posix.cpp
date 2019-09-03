@@ -16,7 +16,9 @@ struct platform_timer::impl {
    timer_t timerid;
 
    static void sig_handler(int, siginfo_t* si, void*) {
-      *(sig_atomic_t*)(si->si_value.sival_ptr) = 1;
+      platform_timer* self = (platform_timer*)si->si_value.sival_ptr;
+      self->expired = 1;
+      self->call_expiration_callback();
    }
 };
 
@@ -38,7 +40,7 @@ platform_timer::platform_timer() {
    struct sigevent se;
    se.sigev_notify = SIGEV_SIGNAL;
    se.sigev_signo = SIGRTMIN;
-   se.sigev_value.sival_ptr = (void*)&expired;
+   se.sigev_value.sival_ptr = (void*)this;
 
    FC_ASSERT(timer_create(CLOCK_REALTIME, &se, &my->timerid) == 0, "failed to create timer");
 
