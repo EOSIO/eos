@@ -1017,7 +1017,7 @@ namespace eosio {
 
    void connection::blk_send( const block_id_type& blkid ) {
       connection_wptr weak = shared_from_this();
-      app().post( priority::low, [blkid, weak{std::move(weak)}]() {
+      app().post( priority::medium, [blkid, weak{std::move(weak)}]() {
          connection_ptr c = weak.lock();
          if( !c ) return;
          try {
@@ -1238,7 +1238,7 @@ namespace eosio {
    void connection::enqueue_block( const signed_block_ptr& sb, bool trigger_send, bool to_sync_queue) {
       fc_dlog( logger, "enqueue block ${num}", ("num", sb->block_num()) );
       verify_strand_in_this_thread( strand, __func__, __LINE__ );
-      enqueue_buffer( create_send_buffer( sb ), trigger_send, priority::low, no_reason, to_sync_queue);
+      enqueue_buffer( create_send_buffer( sb ), trigger_send, priority::medium, no_reason, to_sync_queue);
    }
 
    void connection::enqueue_buffer( const std::shared_ptr<std::vector<char>>& send_buffer,
@@ -1616,12 +1616,18 @@ namespace eosio {
             c->enqueue( note );
          }
          c->syncing = true;
-         if( cc.get_block_id_for_num( msg.head_num ) != msg.head_id ) {
-            request_message req;
-            req.req_blocks.mode = catch_up;
-            req.req_trx.mode = none;
-            c->enqueue( req );
-         }
+         app().post( priority::medium, [chain_plug = my_impl->chain_plug, c,
+                                        msg_head_num = msg.head_num, msg_head_id = msg.head_id]() {
+            controller& cc = chain_plug->chain();
+            if( cc.get_block_id_for_num( msg_head_num ) != msg_head_id ) {
+               c->strand.post( [c]() {
+                  request_message req;
+                  req.req_blocks.mode = catch_up;
+                  req.req_trx.mode = none;
+                  c->enqueue( req );
+               } );
+            }
+         } );
          return;
       }
       c->syncing = false;
