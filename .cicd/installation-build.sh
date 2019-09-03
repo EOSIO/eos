@@ -6,7 +6,6 @@ if [[ $BUILDKITE_BRANCH =~ ^release/[0-9].[0-9]+.x$ || $BUILDKITE_BRANCH =~ ^mas
     export BRANCH=$(echo "release/1.7.x" | sed 's/\//\_/')
     export CONTRACTS_BUILDER_TAG="eosio/ci-contracts-builder:base-ubuntu-18.04"
     export ARGS="--name ci-contracts-builder-$BUILDKITE_COMMIT --init -v $(pwd):$MOUNTED_DIR"
-    docker login -u $DOCKERHUB_USERNAME -p $DOCKERHUB_PASSWORD
     $CICD_DIR/build.sh
     docker commit ci-contracts-builder-$BUILDKITE_COMMIT $CONTRACTS_BUILDER_TAG-latest
     docker commit ci-contracts-builder-$BUILDKITE_COMMIT $CONTRACTS_BUILDER_TAG-$BUILDKITE_COMMIT
