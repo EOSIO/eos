@@ -327,7 +327,7 @@ cat <<EOF
     timeout: ${TIMEOUT:-10}
     skip: ${SKIP_UBUNTU_18_04}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
 
-  - label: ":darwin: Mojave - Package Builder"
+  - label: ":darwin: macOS 10.14 - Package Builder"
     command:
       - "git clone \$BUILDKITE_REPO eos && cd eos && git checkout \$BUILDKITE_COMMIT"
       - "cd eos && buildkite-agent artifact download build.tar.gz . --step ':darwin: macOS 10.14 - Build' && tar -xzf build.tar.gz"
@@ -346,6 +346,25 @@ cat <<EOF
     timeout: ${TIMEOUT:-10}
     skip: ${SKIP_MACOS_10_14}${SKIP_PACKAGE_BUILDER}${SKIP_MAC}
 
+  - wait
+
+  - label: ":git: Git Submodule Regression Check"
+    command:
+      - "./.cicd/submodule-regression-check.sh"
+    agents:
+      queue: "automation-basic-builder-fleet"
+    timeout: ${TIMEOUT:-5}
+
+  - label: ":beer: Brew Updater"
+    command: |
+      if [[ ${SKIP_MOJAVE:-false} != true ]]; then
+        buildkite-agent artifact download eosio.rb . --step ':darwin: macOS 10.14 - Package Builder'
+        buildkite-agent artifact upload eosio.rb
+      fi
+    agents:
+      queue: "automation-basic-builder-fleet"
+    timeout: "${TIMEOUT:-5}"
+    skip: ${SKIP_MOJAVE}${SKIP_PACKAGE_BUILDER}
 
 EOF
 IFS=$oIFS
