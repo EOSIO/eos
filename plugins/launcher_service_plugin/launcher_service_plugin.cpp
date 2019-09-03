@@ -440,6 +440,8 @@ public:
                   private_key_type pri_key = _running_clusters[cluster_id].imported_keys[pub_key];
                   trx.sign(pri_key, info.chain_id);
                   has_key = true;
+               } else {
+                  throw std::string("private key of \"" + (std::string)pub_key + "\" not imported");
                }
             }
          } else {
@@ -451,11 +453,10 @@ public:
                trx.sign(pri_key, info.chain_id);
                has_key = true;
             }
+            if (!has_key) {
+               throw std::string("failed to determine required keys");
+            }
          }
-         if (!has_key) {
-            throw std::string("private keys are not imported");
-         }
-
          _running_clusters[cluster_id].transaction_blocknum[trx.id()] = info.head_block_num + 1;
 
          return call(cluster_id, node_id, "/v1/chain/push_transaction", fc::variant(packed_transaction(trx, compression)));
