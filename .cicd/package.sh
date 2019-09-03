@@ -18,7 +18,7 @@ if [[ $(uname) == 'Darwin' ]]; then # macOS
     done
 else # linux
     ARGS=${ARGS:-"--rm --init -v $(pwd):$MOUNTED_DIR"}
-    . $HELPERS_DIR/docker-hash.sh
+    . $HELPERS_DIR/file-hash.sh $CICD_DIR/docker/$IMAGE_TAG.dockerfile
     PRE_COMMANDS="cd $MOUNTED_DIR/build/packages && chmod 755 ./*.sh"
     if [[ "$IMAGE_TAG" =~ "ubuntu" ]]; then
         ARTIFACT='*.deb'

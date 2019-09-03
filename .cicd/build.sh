@@ -12,7 +12,7 @@ if [[ $(uname) == 'Darwin' ]]; then # macOS
     make -j$JOBS
 else # linux
     ARGS=${ARGS:-"--rm --init -v $(pwd):$MOUNTED_DIR"}
-    . $HELPERS_DIR/docker-hash.sh
+    . $HELPERS_DIR/file-hash.sh $CICD_DIR/docker/$IMAGE_TAG.dockerfile
     PRE_COMMANDS="cd $MOUNTED_DIR/build"
     # PRE_COMMANDS: Executed pre-cmake
     # CMAKE_EXTRAS: Executed within and right before the cmake path (cmake CMAKE_EXTRAS ..)
