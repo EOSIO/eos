@@ -206,7 +206,7 @@ steps:
     skip: ${SKIP_MOJAVE}${SKIP_UNIT_TESTS}
 
   - label: ":pipeline: Generate Serial Test Steps"  
-    command: "./.cicd/generate-serial-test.sh | buildkite-agent pipeline upload"
+    command: "./.cicd/generate-serial-tests.sh | buildkite-agent pipeline upload"
     agents:
       queue: "automation-eos-builder-fleet"
     timeout: ${TIMEOUT:-10}
