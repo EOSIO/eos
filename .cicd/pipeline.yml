@@ -25,6 +25,18 @@ steps:
     timeout: ${TIMEOUT:-150}
     skip: $SKIP_CENTOS_7
 
+  - label: ":fedora: Fedora 27 - Build"
+    command:
+      - "./.cicd/build.sh"
+      - "tar -pczf build.tar.gz build && buildkite-agent artifact upload build.tar.gz"
+    env:
+      IMAGE_TAG: "fedora-27"
+      BUILDKITE_AGENT_ACCESS_TOKEN:
+    agents:
+      queue: "automation-eos-builder-fleet"
+    timeout: ${TIMEOUT:-150}
+    skip: $SKIP_FEDORA_27
+
   - label: ":ubuntu: Ubuntu 16.04 - Build"
     command:
       - "./.cicd/build.sh"
@@ -49,17 +61,26 @@ steps:
     timeout: ${TIMEOUT:-150}
     skip: $SKIP_UBUNTU_18
 
-  - label: ":fedora: Fedora 27 - Build"
+  - label: ":darwin: macOS 10.13 - Build"
     command:
-      - "./.cicd/build.sh"
-      - "tar -pczf build.tar.gz build && buildkite-agent artifact upload build.tar.gz"
-    env:
-      IMAGE_TAG: "fedora-27"
-      BUILDKITE_AGENT_ACCESS_TOKEN:
+      - "git clone $BUILDKITE_REPO eos && cd eos && git checkout $BUILDKITE_COMMIT && git submodule update --init --recursive"
+      - "cd eos && ./.cicd/build.sh"
+      - "cd eos && tar -pczf build.tar.gz build && buildkite-agent artifact upload build.tar.gz"
+    plugins:
+      - chef/anka#v0.5.1:
+          no-volume: true
+          inherit-environment-vars: true
+          vm-name: 10.13.6_6C_14G_40G
+          vm-registry-tag: "clean::cicd::git-ssh::nas::brew::buildkite-agent::eosio_1.7-v2"
+          modify-cpu: 12
+          modify-ram: 24
+          always-pull: true
+          debug: true
+          wait-network: true
     agents:
-      queue: "automation-eos-builder-fleet"
-    timeout: ${TIMEOUT:-150}
-    skip: $SKIP_FEDORA_27
+      - "queue=mac-anka-large-node-fleet"
+    timeout: ${TIMEOUT:-60}
+    skip: $SKIP_HIGH_SIERRA
 
   - label: ":darwin: macOS 10.14 - Build"
     command:
@@ -81,27 +102,6 @@ steps:
       - "queue=mac-anka-large-node-fleet"
     timeout: ${TIMEOUT:-60}
     skip: $SKIP_MOJAVE
-
-  - label: ":darwin: macOS 10.13 - Build"
-    command:
-      - "git clone $BUILDKITE_REPO eos && cd eos && git checkout $BUILDKITE_COMMIT && git submodule update --init --recursive"
-      - "cd eos && ./.cicd/build.sh"
-      - "cd eos && tar -pczf build.tar.gz build && buildkite-agent artifact upload build.tar.gz"
-    plugins:
-      - chef/anka#v0.5.1:
-          no-volume: true
-          inherit-environment-vars: true
-          vm-name: 10.13.6_6C_14G_40G
-          vm-registry-tag: "clean::cicd::git-ssh::nas::brew::buildkite-agent::eosio_1.7-v2"
-          modify-cpu: 12
-          modify-ram: 24
-          always-pull: true
-          debug: true
-          wait-network: true
-    agents:
-      - "queue=mac-anka-large-node-fleet"
-    timeout: ${TIMEOUT:-60}
-    skip: $SKIP_HIGH_SIERRA
 
   - wait
 
@@ -129,6 +129,18 @@ steps:
     timeout: ${TIMEOUT:-60}
     skip: ${SKIP_CENTOS_7}${SKIP_UNIT_TESTS}
 
+  - label: ":fedora: Fedora 27 - Unit Tests"
+    command:
+      - "buildkite-agent artifact download build.tar.gz . --step ':fedora: Fedora 27 - Build' && tar -xzf build.tar.gz"
+      - "./.cicd/test.sh ./scripts/parallel-test.sh"
+    env:
+      IMAGE_TAG: "fedora-27"
+      BUILDKITE_AGENT_ACCESS_TOKEN:
+    agents:
+      queue: "automation-eos-builder-fleet"
+    timeout: ${TIMEOUT:-60}
+    skip: ${SKIP_FEDORA_27}${SKIP_UNIT_TESTS}
+
   - label: ":ubuntu: Ubuntu 16.04 - Unit Tests"
     command:
       - "buildkite-agent artifact download build.tar.gz . --step ':ubuntu: Ubuntu 16.04 - Build' && tar -xzf build.tar.gz"
@@ -153,37 +165,6 @@ steps:
     timeout: ${TIMEOUT:-60}
     skip: ${SKIP_UBUNTU_18}${SKIP_UNIT_TESTS}
 
-  - label: ":fedora: Fedora 27 - Unit Tests"
-    command:
-      - "buildkite-agent artifact download build.tar.gz . --step ':fedora: Fedora 27 - Build' && tar -xzf build.tar.gz"
-      - "./.cicd/test.sh ./scripts/parallel-test.sh"
-    env:
-      IMAGE_TAG: "fedora-27"
-      BUILDKITE_AGENT_ACCESS_TOKEN:
-    agents:
-      queue: "automation-eos-builder-fleet"
-    timeout: ${TIMEOUT:-60}
-    skip: ${SKIP_FEDORA_27}${SKIP_UNIT_TESTS}
-
-  - label: ":darwin: macOS 10.14 - Unit Tests"
-    command:
-      - "git clone $BUILDKITE_REPO eos && cd eos && git checkout $BUILDKITE_COMMIT && git submodule update --init --recursive"
-      - "cd eos && buildkite-agent artifact download build.tar.gz . --step ':darwin: macOS 10.14 - Build' && tar -xzf build.tar.gz"
-      - "cd eos && ./.cicd/test.sh ./scripts/parallel-test.sh"
-    plugins:
-      - chef/anka#v0.5.1:
-          no-volume: true
-          inherit-environment-vars: true
-          vm-name: 10.14.4_6C_14G_40G
-          vm-registry-tag: "clean::cicd::git-ssh::nas::brew::buildkite-agent::eosio_1.7-v2"
-          always-pull: true
-          debug: true
-          wait-network: true
-    agents:
-      - "queue=mac-anka-node-fleet"
-    timeout: ${TIMEOUT:-60}
-    skip: ${SKIP_MOJAVE}${SKIP_UNIT_TESTS}
-
   - label: ":darwin: macOS 10.13 - Unit Tests"
     command:
       - "git clone $BUILDKITE_REPO eos && cd eos && git checkout $BUILDKITE_COMMIT && git submodule update --init --recursive"
@@ -204,6 +185,25 @@ steps:
       - "queue=mac-anka-large-node-fleet"
     timeout: ${TIMEOUT:-60}
     skip: ${SKIP_HIGH_SIERRA}${SKIP_UNIT_TESTS}
+
+  - label: ":darwin: macOS 10.14 - Unit Tests"
+    command:
+      - "git clone $BUILDKITE_REPO eos && cd eos && git checkout $BUILDKITE_COMMIT && git submodule update --init --recursive"
+      - "cd eos && buildkite-agent artifact download build.tar.gz . --step ':darwin: macOS 10.14 - Build' && tar -xzf build.tar.gz"
+      - "cd eos && ./.cicd/test.sh ./scripts/parallel-test.sh"
+    plugins:
+      - chef/anka#v0.5.1:
+          no-volume: true
+          inherit-environment-vars: true
+          vm-name: 10.14.4_6C_14G_40G
+          vm-registry-tag: "clean::cicd::git-ssh::nas::brew::buildkite-agent::eosio_1.7-v2"
+          always-pull: true
+          debug: true
+          wait-network: true
+    agents:
+      - "queue=mac-anka-node-fleet"
+    timeout: ${TIMEOUT:-60}
+    skip: ${SKIP_MOJAVE}${SKIP_UNIT_TESTS}
 
   - label: ":pipeline: Generate Serial Test Steps"  
     command: "./.cicd/generate-serial-test.sh | buildkite-agent pipeline upload"
@@ -236,6 +236,18 @@ steps:
     timeout: ${TIMEOUT:-90}
     skip: ${SKIP_CENTOS_7}${SKIP_LONG_RUNNING_TESTS:-true}
 
+  - label: ":fedora: Fedora 27 - Long-Running Tests"
+    command:
+      - "buildkite-agent artifact download build.tar.gz . --step ':fedora: Fedora 27 - Build' && tar -xzf build.tar.gz"
+      - "./.cicd/test.sh ./scripts/long-running-test.sh"
+    env:
+      IMAGE_TAG: "fedora-27"
+      BUILDKITE_AGENT_ACCESS_TOKEN:
+    agents:
+      queue: "automation-eos-builder-fleet"
+    timeout: ${TIMEOUT:-90}
+    skip: ${SKIP_FEDORA_27}${SKIP_LONG_RUNNING_TESTS:-true}
+
   - label: ":ubuntu: Ubuntu 16.04 - Long-Running Tests"
     command:
       - "buildkite-agent artifact download build.tar.gz . --step ':ubuntu: Ubuntu 16.04 - Build' && tar -xzf build.tar.gz"
@@ -260,17 +272,26 @@ steps:
     timeout: ${TIMEOUT:-90}
     skip: ${SKIP_UBUNTU_18}${SKIP_LONG_RUNNING_TESTS:-true}
 
-  - label: ":fedora: Fedora 27 - Long-Running Tests"
+  - label: ":darwin: macOS 10.13 - Long-Running Tests"
     command:
-      - "buildkite-agent artifact download build.tar.gz . --step ':fedora: Fedora 27 - Build' && tar -xzf build.tar.gz"
-      - "./.cicd/test.sh ./scripts/long-running-test.sh"
-    env:
-      IMAGE_TAG: "fedora-27"
-      BUILDKITE_AGENT_ACCESS_TOKEN:
+      - "git clone $BUILDKITE_REPO eos && cd eos && git checkout $BUILDKITE_COMMIT && git submodule update --init --recursive"
+      - "cd eos && buildkite-agent artifact download build.tar.gz . --step ':darwin: macOS 10.13 - Build' && tar -xzf build.tar.gz"
+      - "cd eos && ./.cicd/test.sh ./scripts/long-running-test.sh"
+    plugins:
+      - chef/anka#v0.5.1:
+          no-volume: true
+          inherit-environment-vars: true
+          vm-name: 10.13.6_6C_14G_40G
+          vm-registry-tag: "clean::cicd::git-ssh::nas::brew::buildkite-agent::eosio_1.7-v2"
+          modify-cpu: 12
+          modify-ram: 24
+          always-pull: true
+          debug: true
+          wait-network: true
     agents:
-      queue: "automation-eos-builder-fleet"
+      - "queue=mac-anka-large-node-fleet"
     timeout: ${TIMEOUT:-90}
-    skip: ${SKIP_FEDORA_27}${SKIP_LONG_RUNNING_TESTS:-true}
+    skip: ${SKIP_HIGH_SIERRA}${SKIP_LONG_RUNNING_TESTS:-true}
 
   - label: ":darwin: macOS 10.14 - Long-Running Tests"
     command:
@@ -293,27 +314,6 @@ steps:
     timeout: ${TIMEOUT:-90}
     skip: ${SKIP_MOJAVE}${SKIP_LONG_RUNNING_TESTS:-true}
 
-  - label: ":darwin: macOS 10.13 - Long-Running Tests"
-    command:
-      - "git clone $BUILDKITE_REPO eos && cd eos && git checkout $BUILDKITE_COMMIT && git submodule update --init --recursive"
-      - "cd eos && buildkite-agent artifact download build.tar.gz . --step ':darwin: macOS 10.13 - Build' && tar -xzf build.tar.gz"
-      - "cd eos && ./.cicd/test.sh ./scripts/long-running-test.sh"
-    plugins:
-      - chef/anka#v0.5.1:
-          no-volume: true
-          inherit-environment-vars: true
-          vm-name: 10.13.6_6C_14G_40G
-          vm-registry-tag: "clean::cicd::git-ssh::nas::brew::buildkite-agent::eosio_1.7-v2"
-          modify-cpu: 12
-          modify-ram: 24
-          always-pull: true
-          debug: true
-          wait-network: true
-    agents:
-      - "queue=mac-anka-large-node-fleet"
-    timeout: ${TIMEOUT:-90}
-    skip: ${SKIP_HIGH_SIERRA}${SKIP_LONG_RUNNING_TESTS:-true}
-
   - wait:
     continue_on_failure: true
 
@@ -329,17 +329,6 @@ steps:
     soft_fail: true
 
   - wait
-
-  - label: ":ubuntu: Ubuntu 18.04 - Contract Builder"
-    command:
-      - "./.cicd/installation-build.sh"
-    env:
-      IMAGE_TAG: "ubuntu-18.04"
-      BUILDKITE_AGENT_ACCESS_TOKEN:
-    agents:
-      queue: "automation-eos-builder-fleet"
-    timeout: ${TIMEOUT:-10}
-    skip: ${SKIP_UBUNTU_18}${SKIP_CONTRACT_BUILDER}
 
   - label: ":centos: CentOS 7.6 - Package Builder"
     command:
@@ -377,6 +366,25 @@ steps:
     timeout: ${TIMEOUT:-10}
     skip: ${SKIP_UBUNTU_18}${SKIP_PACKAGE_BUILDER}
 
+  - label: ":darwin: High Sierra - Package Builder"
+    command:
+      - "git clone $BUILDKITE_REPO eos && cd eos && git checkout $BUILDKITE_COMMIT"
+      - "cd eos && buildkite-agent artifact download build.tar.gz . --step ':darwin: macOS 10.13 - Build' && tar -xzf build.tar.gz"
+      - "cd eos && ./.cicd/package.sh"
+    plugins:
+      - chef/anka#v0.5.1:
+          no-volume: true
+          inherit-environment-vars: true
+          vm-name: 10.13.6_6C_14G_40G
+          vm-registry-tag: "clean::cicd::git-ssh::nas::brew::buildkite-agent::eosio_1.7-v2"
+          always-pull: true
+          debug: true
+          wait-network: true
+    agents:
+      - "queue=mac-anka-node-fleet"
+    timeout: ${TIMEOUT:-10}
+    skip: ${SKIP_MOJAVE}${SKIP_PACKAGE_BUILDER}
+
   - label: ":darwin: Mojave - Package Builder"
     command:
       - "git clone $BUILDKITE_REPO eos && cd eos && git checkout $BUILDKITE_COMMIT"
@@ -396,24 +404,16 @@ steps:
     timeout: ${TIMEOUT:-10}
     skip: ${SKIP_MOJAVE}${SKIP_PACKAGE_BUILDER}
 
-  - label: ":darwin: High Sierra - Package Builder"
+  - label: ":ubuntu: Ubuntu 18.04 - Contract Builder"
     command:
-      - "git clone $BUILDKITE_REPO eos && cd eos && git checkout $BUILDKITE_COMMIT"
-      - "cd eos && buildkite-agent artifact download build.tar.gz . --step ':darwin: macOS 10.13 - Build' && tar -xzf build.tar.gz"
-      - "cd eos && ./.cicd/package.sh"
-    plugins:
-      - chef/anka#v0.5.1:
-          no-volume: true
-          inherit-environment-vars: true
-          vm-name: 10.13.6_6C_14G_40G
-          vm-registry-tag: "clean::cicd::git-ssh::nas::brew::buildkite-agent::eosio_1.7-v2"
-          always-pull: true
-          debug: true
-          wait-network: true
+      - "./.cicd/installation-build.sh"
+    env:
+      IMAGE_TAG: "ubuntu-18.04"
+      BUILDKITE_AGENT_ACCESS_TOKEN:
     agents:
-      - "queue=mac-anka-node-fleet"
+      queue: "automation-eos-builder-fleet"
     timeout: ${TIMEOUT:-10}
-    skip: ${SKIP_MOJAVE}${SKIP_PACKAGE_BUILDER}
+    skip: ${SKIP_UBUNTU_18}${SKIP_CONTRACT_BUILDER}
 
   - label: ":git: Git Submodule Regression Check"
     command:
