@@ -271,9 +271,9 @@ function ensure-boost() {
 function ensure-llvm() {
     if $PIN_COMPILER || $BUILD_CLANG || [[ $NAME == "CentOS Linux" ]]; then
         LLVM_TEMP_DIR=$(mktemp -d)
-	if $PIN_COMPILER || $BUILD_CLANG; then
-		local LLVM_PINNED_CMAKE_ARGS="-DCMAKE_TOOLCHAIN_FILE='${BUILD_DIR}/pinned_toolchain.cmake' -DCMAKE_EXE_LINKER_FLAGS=-pthread -DCMAKE_SHARED_LINKER_FLAGS=-pthread"
-	fi
+        if $PIN_COMPILER || $BUILD_CLANG; then
+            local LLVM_PINNED_CMAKE_ARGS="-DCMAKE_TOOLCHAIN_FILE='${BUILD_DIR}/pinned_toolchain.cmake' -DCMAKE_EXE_LINKER_FLAGS=-pthread -DCMAKE_SHARED_LINKER_FLAGS=-pthread"
+        fi
         trap "rm -rf '$LLVM_TEMP_DIR'" EXIT
         execute bash -c "cd '$LLVM_TEMP_DIR' \
         && git clone --depth 1 --single-branch --branch $LLVM_VERSION https://github.com/llvm-mirror/llvm.git llvm && cd llvm \
