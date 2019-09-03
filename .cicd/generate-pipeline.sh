@@ -274,17 +274,6 @@ cat <<EOF
 
   - wait
 
-  - label: ":ubuntu: Ubuntu 18.04 - Contract Builder"
-    command:
-      - "./.cicd/installation-build.sh"
-    env:
-      IMAGE_TAG: "ubuntu-18.04"
-      BUILDKITE_AGENT_ACCESS_TOKEN:
-    agents:
-      queue: "automation-eos-builder-fleet"
-    timeout: ${TIMEOUT:-10}
-    skip: ${SKIP_CONTRACT_BUILDER}${SKIP_LINUX}
-
   - label: ":centos: CentOS 7.6 - Package Builder"
     command:
       - "buildkite-agent artifact download build.tar.gz . --step ':centos: CentOS 7.6 - Build' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN && tar -xzf build.tar.gz"
@@ -327,7 +316,7 @@ cat <<EOF
     timeout: ${TIMEOUT:-10}
     skip: ${SKIP_UBUNTU_18_04}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
 
-  - label: ":darwin: Mojave - Package Builder"
+  - label: ":darwin: macOS 10.14 - Package Builder"
     command:
       - "git clone \$BUILDKITE_REPO eos && cd eos && git checkout \$BUILDKITE_COMMIT"
       - "cd eos && buildkite-agent artifact download build.tar.gz . --step ':darwin: macOS 10.14 - Build' && tar -xzf build.tar.gz"
@@ -346,6 +335,32 @@ cat <<EOF
     timeout: ${TIMEOUT:-10}
     skip: ${SKIP_MACOS_10_14}${SKIP_PACKAGE_BUILDER}${SKIP_MAC}
 
+  - label: ":ubuntu: Ubuntu 18.04 - Contract Builder"
+    command: "./.cicd/installation-build.sh"
+    env:
+      IMAGE_TAG: "ubuntu-18.04"
+      BUILDKITE_AGENT_ACCESS_TOKEN:
+    agents:
+      queue: "automation-eos-builder-fleet"
+    timeout: ${TIMEOUT:-10}
+    skip: ${SKIP_CONTRACT_BUILDER}${SKIP_LINUX}
+
+  - wait
+
+  - label: ":git: Git Submodule Regression Check"
+    command: "./.cicd/submodule-regression-check.sh"
+    agents:
+      queue: "automation-basic-builder-fleet"
+    timeout: ${TIMEOUT:-5}
+
+  - label: ":beer: Brew Updater"
+    command: |
+      buildkite-agent artifact download eosio.rb . --step ':darwin: macOS 10.14 - Package Builder'
+      buildkite-agent artifact upload eosio.rb
+    agents:
+      queue: "automation-basic-builder-fleet"
+    timeout: "${TIMEOUT:-5}"
+    skip: ${SKIP_MOJAVE}${SKIP_PACKAGE_BUILDER}
 
 EOF
 IFS=$oIFS
