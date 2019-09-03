@@ -244,24 +244,25 @@ namespace eosio { namespace chain {
 
          my->check_open_files();
 
-         my->block_file.seek_end(0);
-         my->index_file.seek_end(0);
-         uint64_t pos = my->block_file.tellp();
-         EOS_ASSERT(my->index_file.tellp() == sizeof(uint64_t) * (b->block_num() - my->first_block_num),
-                   block_log_append_fail,
-                   "Append to index file occuring at wrong position.",
-                   ("position", (uint64_t) my->index_file.tellp())
-                   ("expected", (b->block_num() - my->first_block_num) * sizeof(uint64_t)));
-         auto data = fc::raw::pack(*b);
-         my->block_file.write(data.data(), data.size());
-         my->block_file.write((char*)&pos, sizeof(pos));
-         my->index_file.write((char*)&pos, sizeof(pos));
+//         my->block_file.seek_end(0);
+//         my->index_file.seek_end(0);
+//         uint64_t pos = my->block_file.tellp();
+//         EOS_ASSERT(my->index_file.tellp() == sizeof(uint64_t) * (b->block_num() - my->first_block_num),
+//                   block_log_append_fail,
+//                   "Append to index file occuring at wrong position.",
+//                   ("position", (uint64_t) my->index_file.tellp())
+//                   ("expected", (b->block_num() - my->first_block_num) * sizeof(uint64_t)));
+//         auto data = fc::raw::pack(*b);
+//         my->block_file.write(data.data(), data.size());
+//         my->block_file.write((char*)&pos, sizeof(pos));
+//         my->index_file.write((char*)&pos, sizeof(pos));
          my->head = b;
          my->head_id = b->id();
 
          flush();
 
-         return pos;
+         return 0;
+//         return pos;
       }
       FC_LOG_AND_RETHROW()
    }
