@@ -1,8 +1,8 @@
-#!/usr/bin/env bash
+#!/bin/bash
 set -eo pipefail
 . ./.cicd/helpers/general.sh
 mkdir -p $BUILD_DIR
-if [[ $(uname) == 'Darwin' ]]; then
+if [[ $(uname) == 'Darwin' ]]; then # macOS
     bash -c "cd build/packages && chmod 755 ./*.sh && ./generate_package.sh brew"
     ARTIFACT='*.rb;*.tar.gz'
     cd build/packages
@@ -16,7 +16,7 @@ if [[ $(uname) == 'Darwin' ]]; then
             exit 1
         fi
     done
-else # Linux
+else # linux
     ARGS=${ARGS:-"--rm --init -v $(pwd):$MOUNTED_DIR"}
     . $HELPERS_DIR/docker-hash.sh
     PRE_COMMANDS="cd $MOUNTED_DIR/build/packages && chmod 755 ./*.sh"
@@ -30,7 +30,7 @@ else # Linux
         PACKAGE_COMMANDS="mkdir -p ~/rpmbuild/BUILD && mkdir -p ~/rpmbuild/BUILDROOT && mkdir -p ~/rpmbuild/RPMS && mkdir -p ~/rpmbuild/SOURCES && mkdir -p ~/rpmbuild/SPECS && mkdir -p ~/rpmbuild/SRPMS && yum install -y rpm-build && ./generate_package.sh $PACKAGE_TYPE"
     fi
     COMMANDS="$PRE_COMMANDS && $PACKAGE_COMMANDS"
-    # Load BUILDKITE Environment Variables for use in docker run
+    # load buildkite environment variables for use in docker run
     if [[ -f $BUILDKITE_ENV_FILE ]]; then
         evars=""
         while read -r var; do

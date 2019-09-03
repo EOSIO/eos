@@ -1,7 +1,8 @@
 export IMAGE_TAG=${IMAGE_TAG:-$1}
 
-function determine-hash() {
-    # determine the sha1 hash of all dockerfiles in the .cicd directory
+# determine the sha1 hash of all dockerfiles in the .cicd directory
+function determine-hash()
+{
     [[ -z $1 ]] && echo "Please provide the files to be hashed (wildcards supported)" && exit 1
     echo "Obtaining Hash of files from $1..."
     # collect all files, hash them, then hash those

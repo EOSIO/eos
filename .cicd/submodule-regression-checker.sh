@@ -1,8 +1,8 @@
-#!/usr/bin/env bash
+#!/bin/bash
 set -eo pipefail
 declare -A PR_MAP
 declare -A BASE_MAP
-# Support Travis and BK
+# support travis and buildkite
 if ${TRAVIS:-false}; then
     BASE_BRANCH=$TRAVIS_BRANCH
     CURRENT_BRANCH=${TRAVIS_PULL_REQUEST_BRANCH:-$TRAVIS_BRANCH} # We default to TRAVIS_BRANCH if it's not a PR so it passes on non PR runs
