@@ -20,7 +20,7 @@ for DOCKERFILE in $(ls $CICD_DIR/docker); do # linux
 - label: "$ICON $PLATFORM_NAME_FULL - $TEST_NAME"
   command:
     - "buildkite-agent artifact download build.tar.gz . --step '$ICON $PLATFORM_NAME_FULL - Build' && tar -xzf build.tar.gz"
-    - "./.cicd/serial-tests.sh $TEST_NAME"
+    - "./.cicd/test.sh ./scripts/serial-test.sh $TEST_NAME"
     - "mv build/Testing/\$(ls build/Testing/ | grep '20' | tail -n 1)/Test.xml test-results.xml && buildkite-agent artifact upload test-results.xml"
   env:
     IMAGE_TAG: "$DOCKERFILE_NAME"
@@ -38,7 +38,7 @@ for TEST_NAME in $SERIAL_TESTS; do # macOS
   command:
     - "git clone \$BUILDKITE_REPO eos && cd eos && git checkout \$BUILDKITE_COMMIT && git submodule update --init --recursive"
     - "cd eos && buildkite-agent artifact download build.tar.gz . --step ':darwin: macOS 10.14 - Build' && tar -xzf build.tar.gz"
-    - "cd eos && ./.cicd/serial-tests.sh $TEST_NAME"
+    - "cd eos && ./.cicd/test.sh ./scripts/serial-test.sh $TEST_NAME"
     - "cd eos && mv build/Testing/\$(ls build/Testing/ | grep '20' | tail -n 1)/Test.xml test-results.xml && buildkite-agent artifact upload test-results.xml"
   plugins:
     - chef/anka#v0.5.1:
@@ -57,7 +57,7 @@ for TEST_NAME in $SERIAL_TESTS; do # macOS
   command:
     - "git clone \$BUILDKITE_REPO eos && cd eos && git checkout \$BUILDKITE_COMMIT && git submodule update --init --recursive"
     - "cd eos && buildkite-agent artifact download build.tar.gz . --step ':darwin: macOS 10.13 - Build' && tar -xzf build.tar.gz"
-    - "cd eos && ./.cicd/serial-tests.sh $TEST_NAME"
+    - "cd eos && ./.cicd/test.sh ./scripts/serial-test.sh $TEST_NAME"
     - "cd eos && mv build/Testing/\$(ls build/Testing/ | grep '20' | tail -n 1)/Test.xml test-results.xml && buildkite-agent artifact upload test-results.xml"
   plugins:
     - chef/anka#v0.5.1:
