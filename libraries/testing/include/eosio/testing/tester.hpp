@@ -410,6 +410,7 @@ namespace eosio { namespace testing {
 
          vcfg.trusted_producers = trusted_producers;
 
+         FC_ASSERT(vcfg.genesis, "Should have a valid genesis_state");
          validating_node = std::make_unique<controller>(vcfg, fc::optional<chain_id_type>(vcfg.genesis->compute_chain_id()), make_protocol_feature_set());
          validating_node->add_indices();
          validating_node->startup( []() { return false; } );
@@ -425,6 +426,7 @@ namespace eosio { namespace testing {
          vcfg.blocks_dir = vcfg.blocks_dir.parent_path() / std::string("v_").append( vcfg.blocks_dir.filename().generic_string() );
          vcfg.state_dir  = vcfg.state_dir.parent_path() / std::string("v_").append( vcfg.state_dir.filename().generic_string() );
 
+         FC_ASSERT(vcfg.genesis, "Should have a valid genesis_state");
          validating_node = std::make_unique<controller>(vcfg, fc::optional<chain_id_type>(vcfg.genesis->compute_chain_id()), make_protocol_feature_set());
          validating_node->add_indices();
          validating_node->startup( []() { return false; } );
@@ -475,6 +477,7 @@ namespace eosio { namespace testing {
                hbh.producer == vn_hbh.producer;
 
         validating_node.reset();
+        FC_ASSERT(vcfg.genesis, "Should have a valid genesis_state");
         validating_node = std::make_unique<controller>(vcfg, fc::optional<chain_id_type>(vcfg.genesis->compute_chain_id()), make_protocol_feature_set());
         validating_node->add_indices();
         validating_node->startup( []() { return false; } );
