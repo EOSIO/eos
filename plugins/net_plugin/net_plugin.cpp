@@ -2841,7 +2841,7 @@ namespace eosio {
 
    // called from connection strand
    void connection::handle_message( const block_id_type& id, signed_block_ptr ptr ) {
-      peer_dlog( this, "received signed_block ${id}", ("id", id) );
+      peer_dlog( this, "received signed_block ${id}", ("id", ptr->block_num() ) );
       app().post(priority::high, [ptr{std::move(ptr)}, id, c = shared_from_this()]() mutable {
          c->process_signed_block( id, std::move( ptr ) );
       });
@@ -2857,9 +2857,6 @@ namespace eosio {
 
       // if we have closed connection then stop processing
       if( !c->socket_is_open() )
-         return;
-
-      if( my_impl->sync_master->block_while_syncing_with_other_peer(c) )
          return;
 
       try {
