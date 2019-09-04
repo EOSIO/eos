@@ -23,6 +23,7 @@ namespace eosio { namespace vm {
    struct aligned_array_wrapper {
       static_assert(Align % alignof(T) == 0, "Must align to at least the alignment of T");
       aligned_array_wrapper(void* ptr, uint32_t size) : ptr(ptr), size(size) {
+         validate_ptr<T>(ptr, size);
          if (reinterpret_cast<std::uintptr_t>(ptr) % Align != 0) {
             copy.reset(new std::remove_cv_t<T>[size]);
             memcpy( copy.get(), ptr, sizeof(T) * size );
@@ -81,26 +82,31 @@ namespace eosio { namespace vm {
 
    template<>
    struct wasm_type_converter<eosio::chain::array_ptr<char>> {
-      static auto from_wasm(void* ptr, uint32_t /*size*/) {
+      static auto from_wasm(void* ptr, uint32_t size) {
+         validate_ptr<char>(ptr, size);
          return eosio::chain::array_ptr<char>((char*)ptr);
       }
       // memcpy/memmove
-      static auto from_wasm(void* ptr, eosio::chain::array_ptr<const char> /*src*/, uint32_t /*size*/) {
+      static auto from_wasm(void* ptr, eosio::chain::array_ptr<const char> /*src*/, uint32_t size) {
+         validate_ptr<char>(ptr, size);
          return eosio::chain::array_ptr<char>((char*)ptr);
       }
       // memset
-      static auto from_wasm(void* ptr, int /*val*/, uint32_t /*size*/) {
+      static auto from_wasm(void* ptr, int /*val*/, uint32_t size) {
+         validate_ptr<char>(ptr, size);
          return eosio::chain::array_ptr<char>((char*)ptr);
       }
    };
 
    template<>
    struct wasm_type_converter<eosio::chain::array_ptr<const char>> {
-      static auto from_wasm(void* ptr, uint32_t /*size*/) {
+      static auto from_wasm(void* ptr, uint32_t size) {
+         validate_ptr<char>(ptr, size);
          return eosio::chain::array_ptr<const char>((char*)ptr);
       }
       // memcmp
-      static auto from_wasm(void* ptr, eosio::chain::array_ptr<const char> /*src*/, uint32_t /*size*/) {
+      static auto from_wasm(void* ptr, eosio::chain::array_ptr<const char> /*src*/, uint32_t size) {
+         validate_ptr<char>(ptr, size);
          return eosio::chain::array_ptr<const char>((char*)ptr);
       }
    };
@@ -117,8 +123,9 @@ namespace eosio { namespace vm {
 
    template<>
    struct wasm_type_converter<eosio::chain::null_terminated_ptr> {
-      static auto from_wasm(char* ptr) {
-         return eosio::chain::null_terminated_ptr{ ptr };
+      static auto from_wasm(void* ptr) {
+         validate_c_str(ptr);
+         return eosio::chain::null_terminated_ptr{ static_cast<char*>(ptr) };
       }
    };
 
