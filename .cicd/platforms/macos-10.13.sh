@@ -7,7 +7,7 @@ cd ~
 curl -LO https://dl.bintray.com/boostorg/release/1.67.0/source/boost_1_67_0.tar.bz2
 tar -xjf boost_1_67_0.tar.bz2
 cd boost_1_67_0
-./bootstrap.sh --prefix=~/boost_1_67_0
+./bootstrap.sh --prefix=/Users/anka/boost_1_67_0
 ./b2 -q -j $(getconf _NPROCESSORS_ONLN) --with-iostreams --with-date_time --with-filesystem --with-system --with-program_options --with-chrono --with-test install
 cd ..
 rm -f boost_1_67_0.tar.bz2
