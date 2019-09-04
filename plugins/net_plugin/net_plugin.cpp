@@ -3239,6 +3239,8 @@ namespace eosio {
          peer_log_format = options.at( "peer-log-format" ).as<string>();
 
          my->network_version_match = options.at( "network-version-match" ).as<bool>();
+         if( my->network_version_match )
+            wlog( "network-version-match is DEPRECATED as it is a needless restriction" );
 
          my->sync_master.reset( new sync_manager( options.at( "sync-fetch-span" ).as<uint32_t>()));
 
