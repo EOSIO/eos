@@ -2130,8 +2130,7 @@ void get_account( const string& accountName, const string& coresym, bool json_fo
 
          if( res.self_delegated_bandwidth.is_object() ) {
             asset cpu_own = asset::from_string( res.self_delegated_bandwidth.get_object()["cpu_weight"].as_string() );
-            staked += cpu_own;
-
+            EOS_ASSERT( cpu_own == staked, contract_table_query_exception, "CPU and NET weights must be equal!");
             auto cpu_others = cpu_total - cpu_own;
 
             std::cout << indent << "staked:" << std::setw(20) << cpu_own
@@ -2157,9 +2156,7 @@ void get_account( const string& accountName, const string& coresym, bool json_fo
          auto request_time = fc::time_point_sec::from_iso_string( obj["request_time"].as_string() );
          fc::time_point refund_time = request_time + fc::days(3);
          auto now = res.head_block_time;
-         asset net = asset::from_string( obj["net_amount"].as_string() );
-         asset cpu = asset::from_string( obj["cpu_amount"].as_string() );
-         unstaking = net + cpu;
+         unstaking = asset::from_string( obj["resource_amount"].as_string() );
 
          if( unstaking > asset( 0, unstaking.get_symbol() ) ) {
             std::cout << std::fixed << setprecision(3);
@@ -2170,8 +2167,6 @@ void get_account( const string& accountName, const string& coresym, bool json_fo
             } else {
                std::cout << " (funds will be available in " << to_pretty_time( (refund_time - now).count(), 0 ) << ")\n";
             }
-            std::cout << indent << std::left << std::setw(25) << "from net bandwidth:" << std::right << std::setw(18) << net << std::endl;
-            std::cout << indent << std::left << std::setw(25) << "from cpu bandwidth:" << std::right << std::setw(18) << cpu << std::endl;
             std::cout << indent << std::left << std::setw(25) << "total:" << std::right << std::setw(18) << unstaking << std::endl;
             std::cout << std::endl;
          }
