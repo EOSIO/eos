@@ -1761,19 +1761,15 @@ namespace eosio {
          } );
 
          if( set_state_to_head_catchup ) {
-            g_sync.lock();
             set_state( head_catchup );
-            g_sync.unlock();
          } else {
-            g_sync.lock();
             set_state( in_sync );
-            g_sync.unlock();
             send_handshakes();
          }
       } else if( state == lib_catchup ) {
          if( blk_num == sync_known_lib_num ) {
             fc_dlog( logger, "All caught up with last known last irreversible block resending handshake" );
-            set_state( head_catchup );
+            set_state( in_sync );
             g_sync.unlock();
             send_handshakes();
          } else if( blk_num == sync_last_requested_num ) {
