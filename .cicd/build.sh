@@ -44,15 +44,8 @@ else # linux
         COMMANDS="ccache -s && $BUILD_COMMANDS"
     fi
     COMMANDS="$PRE_COMMANDS && $COMMANDS"
-    # load buildkite environment variables for use in docker run
-    if [[ -f $BUILDKITE_ENV_FILE ]]; then
-        evars=""
-        while read -r var; do
-            evars="$evars --env ${var%%=*}"
-        done < "$BUILDKITE_ENV_FILE"
-    fi
     # install eosio for contracts CICD release
     COMMANDS="cd $MOUNTED_DIR && ./scripts/eosio_build.sh -y && ./scripts/eosio_install.sh"
-    echo "docker run $ARGS $evars $FULL_TAG bash -c \"$COMMANDS\""
-    eval docker run $ARGS $evars $FULL_TAG bash -c \"$COMMANDS\"
+    echo "docker run $ARGS $(buildkite-intrinsics) $FULL_TAG bash -c \"$COMMANDS\""
+    eval docker run $ARGS $(buildkite-intrinsics) $FULL_TAG bash -c \"$COMMANDS\"
 fi

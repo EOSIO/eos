@@ -30,14 +30,8 @@ else # linux
         PACKAGE_COMMANDS="mkdir -p ~/rpmbuild/BUILD && mkdir -p ~/rpmbuild/BUILDROOT && mkdir -p ~/rpmbuild/RPMS && mkdir -p ~/rpmbuild/SOURCES && mkdir -p ~/rpmbuild/SPECS && mkdir -p ~/rpmbuild/SRPMS && yum install -y rpm-build && ./generate_package.sh $PACKAGE_TYPE"
     fi
     COMMANDS="$PRE_COMMANDS && $PACKAGE_COMMANDS"
-    # load buildkite environment variables for use in docker run
-    if [[ -f $BUILDKITE_ENV_FILE ]]; then
-        evars=""
-        while read -r var; do
-            evars="$evars --env ${var%%=*}"
-        done < "$BUILDKITE_ENV_FILE"
-    fi
-    eval docker run $ARGS $evars $FULL_TAG bash -c \"$COMMANDS\"
+    echo "docker run $ARGS $(buildkite-intrinsics) $FULL_TAG bash -c \"$COMMANDS\""
+    eval docker run $ARGS $(buildkite-intrinsics) $FULL_TAG bash -c \"$COMMANDS\"
     cd build/packages
     [[ -d x86_64 ]] && cd 'x86_64' # backwards-compatibility with release/1.6.x
     buildkite-agent artifact upload "./$ARTIFACT" --agent-access-token $BUILDKITE_AGENT_ACCESS_TOKEN
