@@ -3,7 +3,7 @@ set -eo pipefail
 . ./.cicd/helpers/general.sh
 export ENABLE_INSTALL=true
 if [[ $BUILDKITE_BRANCH =~ ^release/[0-9].[0-9]+.x$ || $BUILDKITE_BRANCH =~ ^master$ || $BUILDKITE_BRANCH =~ ^develop$ || $FORCE_BINARIES_BUILD == true ]]; then
-    export BRANCH=$(echo "release/1.7.x" | sed 's/\//\_/')
+    export BRANCH=$(echo $BUILDKITE_BRANCH | sed 's/\//\_/')
     export CONTRACTS_BUILDER_TAG="eosio/ci-contracts-builder:base-ubuntu-18.04"
     export ARGS="--name ci-contracts-builder-$BUILDKITE_COMMIT --init -v $(pwd):$MOUNTED_DIR"
     $CICD_DIR/build.sh
