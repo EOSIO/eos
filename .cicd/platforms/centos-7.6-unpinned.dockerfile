@@ -1,4 +1,5 @@
 FROM centos:7.6.1810
+ENV VERSION 1
 # install dependencies.
 RUN yum update -y && \
     yum --enablerepo=extras install -y centos-release-scl && \
