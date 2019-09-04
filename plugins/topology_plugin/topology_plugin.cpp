@@ -426,7 +426,7 @@ namespace eosio {
       cfg.add_options()
          ( "bp-name", bpo::value<string>(), "\"block producer name\" but really any identifier that localizes a set of nodeos hosts" )
          ( "sample-interval-seconds", bpo::value<uint16_t>()->default_value(def_sample_interval), "delay between samples")
-         ( "max-hops", bpo::value<uint16_t>()->default_value(def_max_hops), "maximum number of hops for distributing topology messages" )
+         ( "max-hops", bpo::value<uint16_t>()->default_value(def_max_hops), "maximum number of times a given message is repeated when distributing" )
          ;
    }
 

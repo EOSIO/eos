@@ -121,10 +121,10 @@ ecmd set contract eosio.wrap unittests/contracts/eosio.wrap eosio.wrap.wasm eosi
 
 echo ===== Start: $step ============ >> $logfile
 echo executing: cleos --wallet-url $wdurl --url http://$bioshost:$biosport push action eosio.token create '[ "eosio", "10000000000.0000 '$bioscurrencysymbol'" ]' -p eosio.token | tee -a $logfile
-echo executing: cleos --wallet-url $wdurl --url http://$bioshost:$biosport push action eosio.token issue '[ "eosio", "1000000000.0000 '$bioscurrencysymbol'", "memo" ]' -p eosio | tee -a $logfile
+echo executing: cleos --wallet-url $wdurl --url http://$bioshost:$biosport push action eosio.token issue '[ "eosio", "10000000000.0000 '$bioscurrencysymbol'", "memo" ]' -p eosio | tee -a $logfile
 echo ----------------------- >> $logfile
 programs/cleos/cleos --wallet-url $wdurl --url http://$bioshost:$biosport push action eosio.token create '[ "eosio", "10000000000.0000 '$bioscurrencysymbol'" ]' -p eosio.token >> $logfile 2>&1
-programs/cleos/cleos --wallet-url $wdurl --url http://$bioshost:$biosport push action eosio.token issue '[ "eosio", "1000000000.0000 '$bioscurrencysymbol'", "memo" ]' -p eosio >> $logfile 2>&1
+programs/cleos/cleos --wallet-url $wdurl --url http://$bioshost:$biosport push action eosio.token issue '[ "eosio", "10000000000.0000 '$bioscurrencysymbol'", "memo" ]' -p eosio >> $logfile 2>&1
 echo ==== End: $step ============== >> $logfile
 step=$(($step + 1))
 
