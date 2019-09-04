@@ -1,22 +1,21 @@
 ## Goal
 
-Setup an account that require multiple signatures for signning a transaction
+Buy RAM for an account
 
 ## Before you begin
 
 * You have an account
 
-* You have some token allocated to your account
+* You have sufficient token allocated to your account
 
 * Install the currently supported version of cleos
 
-* Understand the following:
-  * What is an account
-  * What is a transaction
-
+* Unlock your wallet
 
 ## Steps
 
-```shell
+Buys RAM in value of 0.1 SYS tokens for account alice:
 
+```shell
+cleos system buyram alice alice "0.1 SYS" -p alice@active
 ```
