@@ -3,9 +3,10 @@ set -eo pipefail
 brew update
 brew install git cmake python@2 python libtool libusb graphviz automake wget gmp llvm@4 pkgconfig doxygen openssl || true
 # install boost
+cd ~
 curl -LO https://dl.bintray.com/boostorg/release/1.67.0/source/boost_1_67_0.tar.bz2
 tar -xjf boost_1_67_0.tar.bz2
-mkdir -p ~/boost_1_67_0
+cd boost_1_67_0
 ./bootstrap.sh --prefix=~/boost_1_67_0
 ./b2 -q -j $(getconf _NPROCESSORS_ONLN) --with-iostreams --with-date_time --with-filesystem --with-system --with-program_options --with-chrono --with-test install
 cd ..
