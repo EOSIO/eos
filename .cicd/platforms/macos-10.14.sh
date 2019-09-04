@@ -1,5 +1,6 @@
 #!/bin/bash
 set -eo pipefail
+VERSION=1
 brew update
 brew install git boost@1.70 cmake python@2 python libtool libusb graphviz automake wget gmp llvm@4 pkgconfig doxygen openssl || true
 # install clang from source
