@@ -1,7 +1,6 @@
----
-title: "create account"
-excerpt: "Creates a new account on the blockchain."
----
+## Description
+Creates a new account on the blockchain
+
 ## Usage
 
 

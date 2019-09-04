@@ -1,7 +1,7 @@
----
-title: "get table"
-excerpt: "Retrieves the contents of a database table."
----
+## Description
+
+Retrieves the contents of a database table
+
 ## Positional Parameters
 `contract` _TEXT_ - The contract who owns the table
 

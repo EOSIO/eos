@@ -1,7 +1,6 @@
-<!---
-title: "get currency"
-excerpt: "Exposes subcommands for accessing standard currencies."
--->
+## Description
+
+Exposes subcommands for accessing standard currencies
 
 ## Subcommands
 [currency balance](:currency-balance) - Retrieve the balance of an account for a given currency

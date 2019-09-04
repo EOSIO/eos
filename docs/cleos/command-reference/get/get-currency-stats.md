@@ -1,7 +1,6 @@
----
-title: "get currency stats"
-excerpt: "Retrieve the stats of for a given currency"
----
+## Description
+Retrieve the stats of for a given currency
+
 ## Positional Parameters
 `contract` _TEXT_  - The contract that operates the currency
 

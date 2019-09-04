@@ -1,12 +1,12 @@
----
-title: "transaction"
-excerpt: "Retrieves a transaction from the blockchain."
----
+## Description
+Retrieves a transaction from the blockchain
+
 ## Positional Parameters
 `id`` _TEXT_ - ID of the transaction to retrieve
+
 ## Options
 ` -b,--block-hint` UINT        the block number this transaction may be in
-## Info
+
 **Command**
 
 ```shell

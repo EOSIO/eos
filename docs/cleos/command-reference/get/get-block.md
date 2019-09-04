@@ -1,7 +1,6 @@
----
-title: "get block"
-excerpt: "Retrieves a full block from the blockchain."
----
+## Description
+Retrieves a full block from the blockchain
+
 ## Positional Parameters
 - `block` _TEXT_ - The number **or** ID of the block to retrieve
 ## Options

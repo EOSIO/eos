@@ -1,7 +1,3 @@
----
-title: "servants"
-excerpt: ""
----
 ## Description
 Retrieve accounts which are servants of a given account 
 

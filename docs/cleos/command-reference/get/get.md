@@ -1,7 +1,7 @@
-<!---
-title: "get"
-excerpt: "Retrieves various items and information from the blockchain."
---->
+## Description
+
+Retrieves various items and information from the blockchain
+
 ## Subcommands
 - [info](ref:info)  Get current blockchain information
 - [block](ref:block)  Retrieve a full block from the blockchain

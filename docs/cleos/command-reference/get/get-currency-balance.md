@@ -1,7 +1,7 @@
----
-title: "get currency balance"
-excerpt: "Retrieve the balance of an account for a given currency"
----
+## Description
+
+Retrieve the balance of an account for a given currency
+
 ## Positional Parameters
 `contract` _TEXT_ - The contract that operates the currency
 

@@ -1,8 +1,6 @@
-<!---
+## Description
 
-title: "get info"
-excerpt: "Gets current blockchain information."
--->
+Gets current blockchain information
 
 ## Position Parameters
 This command does not accept any parameters. 

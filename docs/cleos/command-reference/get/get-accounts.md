@@ -1,7 +1,6 @@
----
-title: "get accounts"
-excerpt: "Retrieves all accounts associated with a defined public key."
----
+## Description
+Retrieves all accounts associated with a defined public key
+
 [[info]]
 |This command will not return privileged accounts.
 
