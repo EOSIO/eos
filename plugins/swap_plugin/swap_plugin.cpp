@@ -185,7 +185,7 @@ swap_event_data* get_swap_event_data(const string& event_str, swap_event_data* d
     string hex_data = hex_data_opt.get();
     parse_event_hex(hex_data.substr(2), data);
 
-    data->return_chain_id = "ethropsten";
+    data->return_chain_id = return_chain_id;
     data->txid = txid.get().substr(2);
 
     return data;
@@ -235,24 +235,30 @@ void swap_plugin::on_swap_request(client* c, websocketpp::connection_hdl hdl, me
   //     "9fb8a18ff402680b47387ae0f4e38229ec64f098",
   //     "ethropsten",
   //     block_timestamp<500, 946684800000ll>(fc::time_point::now())});
-  if (get_swap_event_data(payload, &data)) {
-      uint32_t slot = (data.timestamp * 1000 - block_timestamp_epoch) / block_interval_ms;
 
-      string amount_dec_rem(to_string(data.amount));
-      amount_dec_rem.insert (amount_dec_rem.end()-4,'.');
-      amount_dec_rem += " ";
-      amount_dec_rem += rem_token_id;
-      asset quantity = asset::from_string(amount_dec_rem);
+  if( !get_swap_event_data(payload, &data) )
+      return;
 
-      trx.actions.emplace_back(vector<chain::permission_level>{{my->_swap_signing_account,my->_swap_signing_permission}},
-        init{my->_swap_signing_account,
-          data.txid,
-          data.swap_pubkey,
-          quantity,
-          data.return_address,
-          data.return_chain_id,
-          epoch_block_timestamp(slot)});
-  }
+  if( data.chain_id != chain_id )
+      return;
+
+  uint32_t slot = (data.timestamp * 1000 - block_timestamp_epoch) / block_interval_ms;
+
+  string amount_dec_rem(to_string(data.amount));
+  amount_dec_rem.insert (amount_dec_rem.end()-4,'.');
+  amount_dec_rem += " ";
+  amount_dec_rem += rem_token_id;
+  asset quantity = asset::from_string(amount_dec_rem);
+
+  trx.actions.emplace_back(vector<chain::permission_level>{{my->_swap_signing_account,my->_swap_signing_permission}},
+    init{my->_swap_signing_account,
+      data.txid,
+      data.swap_pubkey,
+      quantity,
+      data.return_address,
+      data.return_chain_id,
+      epoch_block_timestamp(slot)});
+
 
   trx.expiration = cc.head_block_time() + fc::seconds(30);
   trx.set_reference_block(cc.head_block_id());
@@ -344,13 +350,15 @@ void swap_plugin::start_monitor() {
   // Create a thread to run the ASIO io_service event loop
   websocketpp::lib::thread asio_thread(&client::run, &m_client);
 
-  std::stringstream val;
   wait_a_bit();
-  //val.str("{\"jsonrpc\":\"2.0\",\"method\":\"eth_getTransactionCount\",\"params\": [\"0xc94770007dda54cF92009BFF0dE90c06F603a09f\",\"0x5bad55\"],\"id\":1}");
-  val.str("{\"id\": 1, \"method\": \"eth_subscribe\", \"params\": [\"logs\", {\"address\": \"0x9fB8A18fF402680b47387AE0F4e38229EC64f098\", \"topics\": [\"0x0e918020302bf93eb479360905c1535ba1dbc8aeb6d20eff433206bf4c514e13\"]}]}");
 
-  m_client.get_alog().write(websocketpp::log::alevel::app, val.str());
-  m_client.send(m_hdl,val.str(),websocketpp::frame::opcode::text,ec);
+  string infura_request = "{\"id\": 1," \
+                          "\"method\": \"eth_subscribe\"," \
+                          "\"params\": [\"logs\", {\"address\": \""+string(eth_swap_contract_address)+"\"," \
+                                                    "\"topics\": [\""+string(eth_swap_request_event)+"\"]}]}";
+
+  m_client.get_alog().write(websocketpp::log::alevel::app, infura_request);
+  m_client.send(m_hdl,infura_request,websocketpp::frame::opcode::text,ec);
 
   // The most likely error that we will get is that the connection is
   // not in the right state. Usually this means we tried to send a
@@ -361,7 +369,6 @@ void swap_plugin::start_monitor() {
       m_client.get_alog().write(websocketpp::log::alevel::app,
           "Send Error: "+ec.message());
   }
-  sleep(1);
   asio_thread.join();
 }
 
