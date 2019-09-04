@@ -28,9 +28,6 @@
 #include <websocketpp/config/asio_client.hpp>
 #include <websocketpp/client.hpp>
 
-// This header pulls in the WebSocket++ abstracted thread support that will
-// select between boost::thread and std::thread based on how the build system
-// is configured.
 #include <websocketpp/common/thread.hpp>
 
 #include <boost/optional/optional.hpp>
@@ -56,14 +53,15 @@ namespace eosio {
    static appbase::abstract_plugin& _swap_plugin = app().register_plugin<swap_plugin>();
 
    using namespace eosio::chain;
+   using namespace fc::crypto;
    using namespace std;
 
 class swap_plugin_impl {
   public:
-    fc::crypto::private_key _swap_signing_key;
-    name                    _swap_signing_account;
-    string                  _swap_signing_permission;
-    string                  _eth_wss_provider;
+    private_key    _swap_signing_key;
+    name           _swap_signing_account;
+    string         _swap_signing_permission;
+    string         _eth_wss_provider;
 };
 
 swap_plugin::swap_plugin():my(new swap_plugin_impl()){}
@@ -82,7 +80,7 @@ void swap_plugin::set_program_options(options_description&, options_description&
 
 void swap_plugin::plugin_initialize(const variables_map& options) {
     try {
-      string swap_auth = options.at( "swap-authority" ).as<std::string>();
+      string swap_auth = options.at( "swap-authority" ).as<string>();
 
       auto space_pos = swap_auth.find('@');
       EOS_ASSERT( (space_pos != string::npos), chain::plugin_config_exception,
@@ -92,18 +90,18 @@ void swap_plugin::plugin_initialize(const variables_map& options) {
       string account = swap_auth.substr( 0, space_pos );
       struct name swap_signing_account(account);
 
-      my->_swap_signing_key = fc::crypto::private_key(options.at( "swap-signing-key" ).as<std::string>());
+      my->_swap_signing_key = private_key(options.at( "swap-signing-key" ).as<string>());
       my->_swap_signing_account = swap_signing_account;
       my->_swap_signing_permission = permission;
 
-      my->_eth_wss_provider = options.at( "eth-wss-provider" ).as<std::string>();
+      my->_eth_wss_provider = options.at( "eth-wss-provider" ).as<string>();
     } FC_LOG_AND_RETHROW()
 }
 
 void swap_plugin::plugin_startup() {
     ilog("swap plugin started");
     using websocketpp::lib::bind;
-    std::thread t1(bind(&swap_plugin::start_monitor,this));
+    thread t1(bind(&swap_plugin::start_monitor,this));
     t1.detach();
 }
 
