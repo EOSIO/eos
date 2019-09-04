@@ -2841,9 +2841,9 @@ namespace eosio {
 
    // called from connection strand
    void connection::handle_message( const block_id_type& id, signed_block_ptr ptr ) {
-      app().post(priority::high, [ptr{std::move(ptr)}, id, weak = weak_from_this()] {
-         connection_ptr c = weak.lock();
-         if( c ) c->process_signed_block( id, std::move( ptr ) );
+      peer_dlog( this, "received signed_block ${id}", ("id", id) );
+      app().post(priority::high, [ptr{std::move(ptr)}, id, c = shared_from_this()]() mutable {
+         c->process_signed_block( id, std::move( ptr ) );
       });
       my_impl->dispatcher->bcast_notice( id );
    }
