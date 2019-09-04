@@ -1,4 +1,5 @@
 FROM ubuntu:18.04
+ENV VERSION 1
 # install dependencies.
 RUN apt-get update && apt-get upgrade -y && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y git make \

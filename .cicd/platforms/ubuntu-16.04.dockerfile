@@ -1,4 +1,5 @@
 FROM ubuntu:16.04
+ENV VERSION 1
 # install dependencies.
 RUN apt-get update && apt-get upgrade -y && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential git automake \
