@@ -2,13 +2,14 @@
 set -eo pipefail
 . ./.cicd/helpers/general.sh
 mkdir -p $BUILD_DIR
+CMAKE_EXTRAS="-DBUILD_MONGO_DB_PLUGIN=true"
 if [[ $(uname) == 'Darwin' ]]; then # macOS
     cd $BUILD_DIR
     [[ $TRAVIS == true ]] && ccache -s
     export BOOST_ROOT=$HOME/opt/boost
     export LLVM_DIR=$HOME/opt/llvm/lib/cmake/llvm
     export PATH=$HOME/bin:${PATH}:$HOME/opt/mongodb/bin
-    cmake ..
+    cmake $CMAKE_EXTRAS ..
     make -j$JOBS
 else # linux
     ARGS=${ARGS:-"--rm --init -v $(pwd):$MOUNTED_DIR"}
@@ -30,7 +31,7 @@ else # linux
     elif [[ $IMAGE_TAG == 'fedora-27' ]]; then
         PRE_COMMANDS="$PRE_COMMANDS && export CPATH=/usr/include/llvm4.0"
     fi
-    BUILD_COMMANDS="cmake $CMAKE_EXTRAS -DBUILD_MONGO_DB_PLUGIN=true .. && make -j$JOBS"
+    BUILD_COMMANDS="cmake $CMAKE_EXTRAS .. && make -j$JOBS"
     # docker commands
     if [[ $BUILDKITE == true ]]; then
         # generate base images
