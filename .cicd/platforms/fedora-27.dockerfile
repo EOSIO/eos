@@ -1,7 +1,7 @@
 FROM fedora:27
+ENV VERSION 1
 RUN yum update -y && \
     yum install -y which git sudo jq nano
-ENV VERSION 1
 ENV VERBOSE true
 RUN git clone https://github.com/EOSIO/eos.git -b release/1.7.x && \
     cd eos && \
