@@ -891,6 +891,9 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          if (my->chain_id) {
             ilog("chain id set to: ${ci} by ${source}", ("ci", my->chain_id)("source", my->chain_id_source));
          }
+         if (my->chain_config->genesis) {
+            ilog("genesis set to: ${ci}", ("ci", *my->chain_config->genesis));
+         }
       } else {
          bfs::path genesis_file;
          bool genesis_timestamp_specified = false;
@@ -908,7 +911,8 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
             my->chain_id_source = "block log";
          }
 
-         if( options.count( "genesis-json" )) {
+         const bool genesis_provided = options.count( "genesis-json" );
+         if( genesis_provided ) {
             genesis_file = options.at( "genesis-json" ).as<bfs::path>();
             if( genesis_file.is_relative()) {
                genesis_file = bfs::current_path() / genesis_file;
@@ -920,11 +924,6 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
                        ("genesis", genesis_file.generic_string()));
 
             my->chain_config->genesis = fc::json::from_file( genesis_file ).as<genesis_state>();
-            const auto chain_id_from_gs = my->chain_config->genesis->compute_chain_id();
-            if ( !my->chain_id ) {
-               my->chain_id = chain_id_from_gs;
-               my->chain_id_source = "genesis-json";
-            }
          }
          else if( !my->chain_id ) {
             my->chain_config->genesis.emplace();
@@ -934,6 +933,13 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          if( options.count( "genesis-timestamp" ) ) {
             my->chain_config->genesis->initial_timestamp = calculate_genesis_timestamp( options.at( "genesis-timestamp" ).as<string>() );
             genesis_timestamp_specified = true;
+         }
+
+         if ( (genesis_provided || genesis_timestamp_specified) &&
+              !my->chain_id ) {
+            const auto chain_id_from_gs = my->chain_config->genesis->compute_chain_id();
+            my->chain_id = chain_id_from_gs;
+            my->chain_id_source = "genesis-json";
          }
 
          if( options.count( "chain-id" )) {
@@ -994,6 +1000,9 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          }
 
          ilog("chain id set to: ${ci} by ${source}", ("ci", my->chain_id)("source", my->chain_id_source));
+         if (my->chain_config->genesis) {
+            ilog("genesis set to: ${ci}", ("ci", *my->chain_config->genesis));
+         }
       }
 
       if ( options.count("read-mode") ) {
