@@ -1,7 +1,6 @@
----
-title: "multisig propose"
-excerpt: ""
----
+## Description
+Propose action
+
 ## Positional Arguments
 `proposal_name` _TEXT_ - Proposal name (string)
 `requested_permissions` _TEXT_  - The JSON string or filename defining requested permissions

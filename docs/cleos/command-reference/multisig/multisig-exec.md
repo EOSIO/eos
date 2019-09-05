@@ -1,7 +1,7 @@
----
-title: "multisig exec"
-excerpt: ""
----
+## Description
+
+Execute proposed transaction
+
 ## Positional Arguments
 - `proposer` _TEXT_ - Proposer name (string)
 - `proposal_name` _TEXT_ - Proposal name (string)

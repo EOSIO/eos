@@ -1,6 +1,6 @@
----
-title: "multisig unapprove"
-excerpt: ""
+## Description
+Unapprove proposed transaction
+
 ---
 ## Positional Arguments
 - `proposer` _TEXT_ - Proposer name (string)

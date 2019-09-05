@@ -1,4 +1,6 @@
+## Description
 Invalidate all multisig approvals of an account
+
 ## Positionals:
   invalidator TEXT            invalidator name (string) (required)
 

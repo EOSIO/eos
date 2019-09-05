@@ -1,7 +1,6 @@
----
-title: "multisig"
-excerpt: ""
----
+## Description
+Multisig contract commands
+
 ## Subcommands
 - [multisig propose](ref:multisig-propose) - Propose transaction
 - [multisig review](ref:multisig-review) - Review transaction

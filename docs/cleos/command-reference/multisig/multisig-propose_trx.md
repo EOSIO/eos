@@ -1,3 +1,6 @@
+##Description
+Propose transaction
+
 ## Positional Arguments
 
 `proposal_name` _TEXT_ - Proposal name (string)

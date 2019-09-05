@@ -1,7 +1,6 @@
----
-title: "multisig approve"
-excerpt: ""
----
+## Description
+Approve proposed transaction
+
 ## Positional Arguments
 - `proposer` _TEXT_ - Proposer name (string)
 - `proposal_name` _TEXT_ - Proposal name (string)
