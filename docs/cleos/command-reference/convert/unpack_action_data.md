@@ -7,6 +7,8 @@ From packed to json action data form
 - `packed_action_data` _TEXT_ - The action data expressed as packed hex string 
 ## Options
 
+- `-h,--help` - Print this help message and exit
+
 ## Usage
 
 
@@ -17,7 +19,7 @@ From packed to json action data form
 ## Output
 
 
-```text
+```json
 {
   "account": "test1",
   "code": "test2",

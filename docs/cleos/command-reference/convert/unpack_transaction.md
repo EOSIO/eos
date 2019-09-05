@@ -3,11 +3,15 @@
 From packed to plain signed json form
 
 ## Positionals
-- `transaction` _TEXT_ - The packed transaction json (string containing packed_trx and optionally compression fields.)
-## Options
-- `--unpack-action-data` - Unpack all action data within transaction, needs interaction with nodeos
-## Usage
 
+- `transaction` _TEXT_ - The packed transaction json (string containing packed_trx and optionally compression fields.)
+
+## Options
+
+- `-h,--help` - Print this help message and exit
+- `--unpack-action-data` - Unpack all action data within transaction, needs interaction with nodeos
+
+## Usage
 
 ```text
 cleos convert unpack_transaction '{
