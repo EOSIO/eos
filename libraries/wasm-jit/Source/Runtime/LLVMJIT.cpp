@@ -7,9 +7,9 @@
 
 #if LLVM_VERSION_MAJOR == 7
 namespace llvm { namespace orc {
-   using LegacyRTDyldObjectLinkingLayer = RTDyldObjectLinkingLayer;
-   template<typename A, typename B>
-   using LegacyIRCompileLayer = IRCompileLayer<A, B>;
+	using LegacyRTDyldObjectLinkingLayer = RTDyldObjectLinkingLayer;
+	template<typename A, typename B>
+	using LegacyIRCompileLayer = IRCompileLayer<A, B>;
 }}
 #endif
 
@@ -32,30 +32,30 @@ namespace llvm { namespace orc {
 #include "llvm-c/Disassembler.h"
 void disassembleFunction(U8* bytes,Uptr numBytes)
 {
-   LLVMDisasmContextRef disasmRef = LLVMCreateDisasm(llvm::sys::getProcessTriple().c_str(),nullptr,0,nullptr,nullptr);
+	LLVMDisasmContextRef disasmRef = LLVMCreateDisasm(llvm::sys::getProcessTriple().c_str(),nullptr,0,nullptr,nullptr);
 
-   U8* nextByte = bytes;
-   Uptr numBytesRemaining = numBytes;
-   while(numBytesRemaining)
-   {
-      char instructionBuffer[256];
-      const Uptr numInstructionBytes = LLVMDisasmInstruction(
-         disasmRef,
-         nextByte,
-         numBytesRemaining,
-         reinterpret_cast<Uptr>(nextByte),
-         instructionBuffer,
-         sizeof(instructionBuffer)
-         );
-      WAVM_ASSERT_THROW(numInstructionBytes > 0);
-      WAVM_ASSERT_THROW(numInstructionBytes <= numBytesRemaining);
-      numBytesRemaining -= numInstructionBytes;
-      nextByte += numInstructionBytes;
+	U8* nextByte = bytes;
+	Uptr numBytesRemaining = numBytes;
+	while(numBytesRemaining)
+	{
+		char instructionBuffer[256];
+		const Uptr numInstructionBytes = LLVMDisasmInstruction(
+			disasmRef,
+			nextByte,
+			numBytesRemaining,
+			reinterpret_cast<Uptr>(nextByte),
+			instructionBuffer,
+			sizeof(instructionBuffer)
+			);
+		WAVM_ASSERT_THROW(numInstructionBytes > 0);
+		WAVM_ASSERT_THROW(numInstructionBytes <= numBytesRemaining);
+		numBytesRemaining -= numInstructionBytes;
+		nextByte += numInstructionBytes;
 
-      printf("\t\t%s\n",instructionBuffer);
-   };
+		printf("\t\t%s\n",instructionBuffer);
+	};
 
-   LLVMDisasmDispose(disasmRef);
+	LLVMDisasmDispose(disasmRef);
 }
 
 namespace LLVMJIT
@@ -220,31 +220,31 @@ namespace LLVMJIT
 		: shouldLogMetrics(inShouldLogMetrics)
 		{
 			objectLayer = llvm::make_unique<llvm::orc::LegacyRTDyldObjectLinkingLayer>(ES,[](llvm::orc::VModuleKey K) {
-                           return llvm::orc::LegacyRTDyldObjectLinkingLayer::Resources{
-                              std::make_shared<UnitMemoryManager>(), std::make_shared<llvm::orc::NullResolver>()
-                              };
-                       },
-                       [](llvm::orc::VModuleKey, const llvm::object::ObjectFile &Obj, const llvm::RuntimeDyld::LoadedObjectInfo &o) {
-                          //nothing to do
-                       },
-                       [this](llvm::orc::VModuleKey, const llvm::object::ObjectFile &Obj, const llvm::RuntimeDyld::LoadedObjectInfo &o) {
-                           for(auto symbolSizePair : llvm::object::computeSymbolSizes(Obj)) {
-                              auto symbol = symbolSizePair.first;
-                              auto name = symbol.getName();
-                              auto address = symbol.getAddress();
-                              if(symbol.getType() && symbol.getType().get() == llvm::object::SymbolRef::ST_Function && name && address) {
-                                 Uptr loadedAddress = Uptr(*address);
-                                 auto symbolSection = symbol.getSection();
-                                 if(symbolSection)
-                                    loadedAddress += (Uptr)o.getSectionLoadAddress(*symbolSection.get());
-                                 //printf(">>> %s 0x%lX\n", symbolSizePair.first.getName()->data(), loadedAddress);
-                                 std::map<U32,U32> offsetToOpIndexMap;
-                                 notifySymbolLoaded(name->data(), loadedAddress, 0, std::move(offsetToOpIndexMap));
-                                 //disassembleFunction((U8*)loadedAddress, symbolSizePair.second);
-                              }
-                           }
-                       }
-                       );
+									return llvm::orc::LegacyRTDyldObjectLinkingLayer::Resources{
+										std::make_shared<UnitMemoryManager>(), std::make_shared<llvm::orc::NullResolver>()
+									};
+							  },
+							  [](llvm::orc::VModuleKey, const llvm::object::ObjectFile &Obj, const llvm::RuntimeDyld::LoadedObjectInfo &o) {
+									//nothing to do
+							  },
+							  [this](llvm::orc::VModuleKey, const llvm::object::ObjectFile &Obj, const llvm::RuntimeDyld::LoadedObjectInfo &o) {
+									for(auto symbolSizePair : llvm::object::computeSymbolSizes(Obj)) {
+										auto symbol = symbolSizePair.first;
+										auto name = symbol.getName();
+										auto address = symbol.getAddress();
+										if(symbol.getType() && symbol.getType().get() == llvm::object::SymbolRef::ST_Function && name && address) {
+											Uptr loadedAddress = Uptr(*address);
+											auto symbolSection = symbol.getSection();
+											if(symbolSection)
+												loadedAddress += (Uptr)o.getSectionLoadAddress(*symbolSection.get());
+											//printf(">>> %s 0x%lX\n", symbolSizePair.first.getName()->data(), loadedAddress);
+											std::map<U32,U32> offsetToOpIndexMap;
+											notifySymbolLoaded(name->data(), loadedAddress, 0, std::move(offsetToOpIndexMap));
+											//disassembleFunction((U8*)loadedAddress, symbolSizePair.second);
+										}
+									}
+							  }
+							  );
 			objectLayer->setProcessAllSections(true);
 			compileLayer = llvm::make_unique<CompileLayer>(*objectLayer,llvm::orc::SimpleCompiler(*targetMachine));
 		}
@@ -256,7 +256,7 @@ namespace LLVMJIT
 	private:
 		typedef llvm::orc::LegacyIRCompileLayer<llvm::orc::LegacyRTDyldObjectLinkingLayer, llvm::orc::SimpleCompiler> CompileLayer;
 
-      llvm::orc::ExecutionSession ES;
+		llvm::orc::ExecutionSession ES;
 		std::unique_ptr<llvm::orc::LegacyRTDyldObjectLinkingLayer> objectLayer;
 		std::unique_ptr<CompileLayer> compileLayer;
 		bool shouldLogMetrics;
@@ -355,8 +355,8 @@ namespace LLVMJIT
 
 		// Pass the module to the JIT compiler.
 		Timing::Timer machineCodeTimer;
-      llvm::orc::VModuleKey K = ES.allocateVModule();
-      std::unique_ptr<llvm::Module> mod(llvmModule);
+		llvm::orc::VModuleKey K = ES.allocateVModule();
+		std::unique_ptr<llvm::Module> mod(llvmModule);
 		WAVM_ASSERT_THROW(!compileLayer->addModule(K, std::move(mod)));
 		WAVM_ASSERT_THROW(!compileLayer->emitAndFinalize(K));
 	}

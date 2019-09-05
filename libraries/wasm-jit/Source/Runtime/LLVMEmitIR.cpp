@@ -201,26 +201,26 @@ namespace LLVMJIT
 		llvm::Value* coerceByteIndexToPointer(llvm::Value* byteIndex,U32 offset,llvm::Type* memoryType)
 		{
 
-         // On a 64 bit runtime, if the address is 32-bits, zext it to 64-bits.
-         // This is crucial for security, as LLVM will otherwise implicitly sign extend it to 64-bits in the GEP below,
-         // interpreting it as a signed offset and allowing access to memory outside the sandboxed memory range.
-         // There are no 'far addresses' in a 32 bit runtime.
-         byteIndex = irBuilder.CreateZExt(byteIndex,llvmI64Type);
+			// On a 64 bit runtime, if the address is 32-bits, zext it to 64-bits.
+			// This is crucial for security, as LLVM will otherwise implicitly sign extend it to 64-bits in the GEP below,
+			// interpreting it as a signed offset and allowing access to memory outside the sandboxed memory range.
+			// There are no 'far addresses' in a 32 bit runtime.
+			byteIndex = irBuilder.CreateZExt(byteIndex,llvmI64Type);
 
-         // Add the offset to the byte index.
-         if(offset)
-         {
-            byteIndex = irBuilder.CreateAdd(byteIndex,irBuilder.CreateZExt(emitLiteral(offset),llvmI64Type));
-         }
+			// Add the offset to the byte index.
+			if(offset)
+			{
+				byteIndex = irBuilder.CreateAdd(byteIndex,irBuilder.CreateZExt(emitLiteral(offset),llvmI64Type));
+			}
 
-         // If HAS_64BIT_ADDRESS_SPACE, the memory has enough virtual address space allocated to
-         // ensure that any 32-bit byte index + 32-bit offset will fall within the virtual address sandbox,
-         // so no explicit bounds check is necessary.
-      
+			// If HAS_64BIT_ADDRESS_SPACE, the memory has enough virtual address space allocated to
+			// ensure that any 32-bit byte index + 32-bit offset will fall within the virtual address sandbox,
+			// so no explicit bounds check is necessary.
+		
 
 			// Cast the pointer to the appropriate type.
 			auto bytePointer = CreateInBoundsGEPWAR(irBuilder, moduleContext.defaultMemoryBase, byteIndex);
-            
+
 			return irBuilder.CreatePointerCast(bytePointer,memoryType->getPointerTo());
 		}
 
