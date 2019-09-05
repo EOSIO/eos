@@ -1497,13 +1497,13 @@ namespace eosio {
          }
       }
       if( req.req_blocks.mode == catch_up ) {
-         c->fork_head = id;
-         c->fork_head_num = num;
          fc_ilog( logger, "got a catch_up notice while in ${s}, fork head num = ${fhn} target LIB = ${lib} next_expected = ${ne}",
                   ("s",stage_str(state))("fhn",num)("lib",sync_known_lib_num)("ne", sync_next_expected_num) );
          if (state == lib_catchup)
             return false;
          set_state(head_catchup);
+         c->fork_head = id;
+         c->fork_head_num = num;
       }
       else {
          c->fork_head = block_id_type();
