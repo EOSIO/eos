@@ -360,7 +360,7 @@ cat <<EOF
     agents:
       queue: "automation-basic-builder-fleet"
     timeout: "${TIMEOUT:-5}"
-    skip: ${SKIP_MOJAVE}${SKIP_PACKAGE_BUILDER}
+    skip: ${SKIP_MOJAVE}${SKIP_PACKAGE_BUILDER}${SKIP_MAC}
 
 EOF
 IFS=$oIFS
