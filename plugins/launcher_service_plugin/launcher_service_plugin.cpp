@@ -130,12 +130,36 @@ public:
       void setup_cluster(const cluster_def &def) {
          create_path(bfs::path(_config.data_dir));
          create_path(bfs::path(_config.data_dir) / cluster_to_string(def.cluster_id), true);
+         if (def.node_count <= 0 || def.node_count > _config.max_nodes_per_cluster) {
+            throw std::string("invalid node_count");
+         }
+
+         std::string logging_json;
+         if (def.log_level != fc::log_level::off) {
+            fc::logging_config log_config;
+
+            log_config.appenders.emplace_back("stderr", "console", fc::mutable_variant_object("stream", "std_error"));
+            log_config.appenders.emplace_back("stdout", "console", fc::mutable_variant_object("stream", "std_out"));
+
+            fc::logger_config def_logger("default");
+            def_logger.level = def.log_level;
+            def_logger.appenders.push_back("stderr");
+            log_config.loggers.push_back(def_logger);
+
+            fc::logger_config net_logger("net_plugin_impl");
+            net_logger.level = def.log_level;
+            net_logger.appenders.push_back("stderr");
+            log_config.loggers.push_back(net_logger);
+
+            logging_json = json::to_pretty_string(log_config);
+         }
+
          for (int i = 0; i < def.node_count; ++i) {
             node_def node_config = def.get_node_def(i);
             node_state state;
             state.id = i;
-            state.http_port = node_config.http_port(def.cluster_id);
-            state.p2p_port = node_config.p2p_port(def.cluster_id);
+            state.http_port = node_config.http_port(_config, def.cluster_id);
+            state.p2p_port = node_config.p2p_port(_config, def.cluster_id);
             state.is_bios = node_config.is_bios();
 
             bfs::path node_path = bfs::path(_config.data_dir) / cluster_to_string(def.cluster_id) / node_to_string(i);
@@ -144,16 +168,60 @@ public:
             bfs::path block_path = node_path / "blocks";
             create_path(bfs::path(block_path));
 
+            if (logging_json.length()) {
+               bfs::ofstream logging_json_os(node_path / "logging.json");
+               logging_json_os << logging_json;
+               logging_json_os.close();
+            }
+
             bfs::ofstream cfg(node_path / "config.ini");
             cfg << "http-server-address = " << _config.host_name << ":" << state.http_port << "\n";
             cfg << "http-validate-host = false\n";
             cfg << "p2p-listen-endpoint = " << _config.p2p_listen_addr << ":" << state.p2p_port << "\n";
+            cfg << "p2p-max-nodes-per-host = " << def.node_count << "\n";
             cfg << "agent-name = " << cluster_to_string(def.cluster_id) << "_" << node_to_string(i) << "\n";
 
             if (def.shape == "mesh") {
                for (int peer = 0; peer < i; ++peer) {
-                  cfg << "p2p-peer-address = " << _config.host_name << ":" << def.get_node_def(peer).p2p_port(def.cluster_id) << "\n";
+                  cfg << "p2p-peer-address = " << _config.host_name << ":" << def.get_node_def(peer).p2p_port(_config, def.cluster_id) << "\n";
                }
+            } else if (def.shape == "star") {
+               int peer = def.center_node_id;
+               if (peer < 0 || peer >= def.node_count) {
+                  throw std::string("invalid center_node_id for star topology");
+               }
+               if (i != peer) {
+                  cfg << "p2p-peer-address = " << _config.host_name << ":" << def.get_node_def(peer).p2p_port(_config, def.cluster_id) << "\n";
+               }
+            } else if (def.shape == "bridge") {
+               if (def.center_node_id <= 0 || def.center_node_id >= def.node_count - 1) {
+                  throw std::string("invalid center_node_id for bridge topology");
+               }
+               if (i < def.center_node_id) {
+                  for (int peer = 0; peer < i; ++peer) {
+                     cfg << "p2p-peer-address = " << _config.host_name << ":" << def.get_node_def(peer).p2p_port(_config, def.cluster_id) << "\n";
+                  }
+               } else if (i > def.center_node_id) {
+                  for (int peer = def.center_node_id + 1; peer < i; ++peer) {
+                     cfg << "p2p-peer-address = " << _config.host_name << ":" << def.get_node_def(peer).p2p_port(_config, def.cluster_id) << "\n";
+                  }
+               } else {
+                  cfg << "p2p-peer-address = " << _config.host_name << ":" << def.get_node_def(i - 1).p2p_port(_config, def.cluster_id) << "\n";
+                  cfg << "p2p-peer-address = " << _config.host_name << ":" << def.get_node_def(i + 1).p2p_port(_config, def.cluster_id) << "\n";
+               }
+            } else if (def.shape == "line") {
+               if (i) {
+                  cfg << "p2p-peer-address = " << _config.host_name << ":" << def.get_node_def(i - 1).p2p_port(_config, def.cluster_id) << "\n";
+               }
+            } else if (def.shape == "ring") {
+               cfg << "p2p-peer-address = " << _config.host_name << ":"
+                   << def.get_node_def((i - 1 + def.node_count) % def.node_count).p2p_port(_config, def.cluster_id) << "\n";
+            } else if (def.shape == "tree") {
+               if (i) {
+                  cfg << "p2p-peer-address = " << _config.host_name << ":" << def.get_node_def((i + 1) / 2 - 1).p2p_port(_config, def.cluster_id) << "\n";
+               }
+            } else {
+               throw std::string("invalid shape");
             }
 
             if (node_config.is_bios()) {
@@ -262,6 +330,9 @@ public:
          }
       }
       void launch_cluster(const cluster_def &def) {
+         if (def.cluster_id < 0 || def.cluster_id >= _config.max_clusters) {
+            throw std::string("invalid cluster id");
+         }
          stop_cluster(def.cluster_id);
          setup_cluster(def);
          launch_nodes(def, -1, true);
@@ -572,6 +643,9 @@ public:
       }
 
       fc::variant verify_transaction(launcher_service::verify_transaction_param param) {
+         if (_running_clusters.find(param.cluster_id) == _running_clusters.end()) {
+            throw std::string("cluster is not running");
+         }
          uint32_t txn_block_num = param.block_num_hint;
          if (!txn_block_num) {
             auto itr = _running_clusters[param.cluster_id].transaction_blocknum.find(param.transaction_id);
@@ -636,6 +710,9 @@ public:
       }
 
       fc::variant get_log_data(get_log_data_param param) {
+         if (param.cluster_id < 0 || param.cluster_id >= _config.max_clusters) {
+            throw std::string("invalid cluster id");
+         }
          bfs::path path = bfs::path(_config.data_dir) / cluster_to_string(param.cluster_id) / node_to_string(param.node_id) / param.filename;
          size_t size = bfs::file_size(path);
          std::vector<char> data;
@@ -685,6 +762,17 @@ void launcher_service_plugin::set_program_options(options_description&, options_
          "print http request and response")
          ("default-key", bpo::value<string>()->default_value("5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3"),
          "default private key for cluster accounts")
+
+         ("base-port", bpo::value<uint16_t>()->default_value(1600),
+         "base port number of clusters")
+         ("cluster-port-span", bpo::value<uint16_t>()->default_value(1000),
+         "length of port range reserved per cluster")
+         ("node-port-span", bpo::value<uint16_t>()->default_value(10),
+         "length of port range reserved per node in a cluster")
+         ("max-nodes-per-cluster", bpo::value<uint16_t>()->default_value(100),
+         "max nodes per cluster")
+         ("max-clusters", bpo::value<uint16_t>()->default_value(30),
+         "max number of clusters")
          ;
 }
 
@@ -699,6 +787,11 @@ void launcher_service_plugin::plugin_initialize(const variables_map& options) {
       _my->_config.abi_serializer_max_time = fc::microseconds(options.at("abi-serializer-max-time").as<uint32_t>());
       _my->_config.log_file_rotate_max = options.at("log-file-max").as<uint16_t>();
       _my->_config.default_key = private_key_type(options.at("default-key").as<std::string>());
+      _my->_config.base_port = options.at("base-port").as<uint16_t>();
+      _my->_config.cluster_span = options.at("cluster-port-span").as<uint16_t>();
+      _my->_config.node_span = options.at("node-port-span").as<uint16_t>();
+      _my->_config.max_nodes_per_cluster = options.at("max-nodes-per-cluster").as<uint16_t>();
+      _my->_config.max_clusters = options.at("max-clusters").as<uint16_t>();
    }
    FC_LOG_AND_RETHROW()
 }

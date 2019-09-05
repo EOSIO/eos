@@ -12,6 +12,7 @@
 #include <fc/static_variant.hpp>
 #include <fc/crypto/private_key.hpp>
 #include <fc/crypto/public_key.hpp>
+#include <fc/log/logger_config.hpp>
 
 using public_key_type = fc::crypto::public_key;
 using private_key_type = fc::crypto::private_key;
@@ -22,52 +23,6 @@ using namespace appbase;
 
 namespace launcher_service {
 
-   struct node_def {
-      static const int base_port = 1600;
-      static const int cluster_span = 1000;
-      static const int node_span = 10;
-      static const int max_nodes_per_cluster = 100;
-      static const int max_clusters = 30;
-
-      int node_id = 0;
-      std::vector<string> producers;
-      std::vector<private_key_type> producing_keys;
-      std::vector<string> extra_configs;
-      bool dont_start = false;
-
-      int http_port(int cluster_id) const {
-         return base_port + cluster_id * cluster_span + node_id * node_span;
-      }
-      int p2p_port(int cluster_id) const {
-         return http_port(cluster_id) + 1;
-      }
-      bool is_bios() const {
-         for (auto &p: producers) {
-            if (p == "eosio") return true;
-         }
-         return false;
-      }
-   };
-
-   struct cluster_def {
-      std::string shape = "mesh";
-      int star_center_node_id = 0;
-      int cluster_id = 0;
-      int node_count = 0;
-      std::vector<node_def> nodes;
-      std::vector<string> extra_configs;
-      std::string extra_args;
-
-      node_def get_node_def(int id) const {
-         for (auto &n: nodes) {
-            if (n.node_id == id) return n;
-         }
-         node_def n;
-         n.node_id = id;
-         return n;
-      }
-   };
-
    // TODO
    struct remote_launcher_node {
       std::string                    launcher_service_id;
@@ -76,6 +31,13 @@ namespace launcher_service {
 
    struct launcher_config {
       std::string                    launcher_service_id;   // TODO: later
+
+      uint16_t                       base_port;
+      uint16_t                       cluster_span;
+      uint16_t                       node_span;
+      uint16_t                       max_nodes_per_cluster;
+      uint16_t                       max_clusters;
+
       std::string                    data_dir;
       std::string                    host_name;
       std::string                    p2p_listen_addr;
@@ -86,6 +48,49 @@ namespace launcher_service {
       bool                           print_http_request = false;
       bool                           print_http_response = false;
       private_key_type               default_key;
+   };
+
+   struct node_def {
+
+      int node_id = 0;
+      bool dont_start = false;
+
+      std::vector<string> producers;
+      std::vector<private_key_type> producing_keys;
+      std::vector<string> extra_configs;
+
+      uint16_t http_port(const launcher_config &config, int cluster_id) const {
+         return config.base_port + cluster_id * config.cluster_span + node_id * config.node_span;
+      }
+      uint16_t p2p_port(const launcher_config &config, int cluster_id) const {
+         return http_port(config, cluster_id) + 1;
+      }
+      bool is_bios() const {
+         for (auto &p: producers) {
+            if (p == "eosio") return true;
+         }
+         return false;
+      }
+   };
+
+   struct cluster_def {
+      std::string                    shape = "mesh"; // "mesh" / "star" / "bridge" / "line" / "ring" / "tree"
+      int                            center_node_id = -1; // required if shape is "start" or "bridge"
+      int                            cluster_id = 0;
+      int                            node_count = 0;
+      std::vector<node_def>          nodes;
+      std::vector<string>            extra_configs;
+      std::string                    extra_args;
+      fc::log_level                  log_level = fc::log_level::info;
+
+      node_def get_node_def(int id) const {
+         for (auto &n: nodes) {
+            if (n.node_id == id) return n;
+         }
+         node_def n;
+         n.node_id = id;
+         return n;
+      }
    };
 
    struct new_account_param {
@@ -250,7 +255,7 @@ private:
 }
 
 FC_REFLECT(eosio::launcher_service::node_def, (node_id)(producers)(producing_keys)(extra_configs)(dont_start) )
-FC_REFLECT(eosio::launcher_service::cluster_def, (shape)(star_center_node_id)(cluster_id)(node_count)(nodes)(extra_configs)(extra_args) )
+FC_REFLECT(eosio::launcher_service::cluster_def, (shape)(center_node_id)(cluster_id)(node_count)(nodes)(extra_configs)(extra_args)(log_level) )
 FC_REFLECT(eosio::launcher_service::new_account_param, (name)(owner)(active))
 FC_REFLECT(eosio::launcher_service::create_bios_accounts_param, (cluster_id)(node_id)(creator)(accounts))
 FC_REFLECT(eosio::launcher_service::new_account_param_ex, (cluster_id)(node_id)(creator)(name)(owner)(active)(stake_cpu)(stake_net)(buy_ram_bytes)(transfer))
