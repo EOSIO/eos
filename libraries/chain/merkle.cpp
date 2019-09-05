@@ -49,4 +49,47 @@ digest_type merkle(vector<digest_type> ids) {
    return ids.front();
 }
 
+vector<digest_type> generate_merkle_proof(size_t index, vector<digest_type> ids) {
+   vector<digest_type> proof = { ids[index] };
+
+   FC_ASSERT(index < ids.size(), "out of bound access in merkle tree");
+
+   while( ids.size() > 1 ) {
+      if( ids.size() % 2 )
+         ids.push_back(ids.back());
+
+      for (size_t i = 0; i < ids.size() / 2; i++) {
+         if( (index / 2) == i ) {
+            if( index % 2 )
+               proof.push_back(make_canonical_left(ids[2 * i]));
+            else
+               proof.push_back(make_canonical_right(ids[2 * i + 1]));
+            index /= 2;
+         }
+         ids[i] = digest_type::hash(make_canonical_pair(ids[2 * i], ids[(2 * i) + 1]));
+      }
+      ids.resize(ids.size() / 2);
+   }
+   proof.push_back(ids.front());
+   return proof;
+}
+
+vector<digest_type> generate_merkle_proof(digest_type id, vector<digest_type> ids) {
+   auto it = std::find(ids.begin(), ids.end(), id);
+   FC_ASSERT(it != ids.end(), "id is not found in merkle tree");
+   return generate_merkle_proof(std::distance(ids.begin(), it), ids);
+}
+
+bool verify_merkle_proof(vector<digest_type> proof) {
+   auto node = proof.front();
+   for (auto i = 1; i < proof.size() - 1; i++) {
+      if( proof[i]._hash[0] & 0x80ULL ) {
+         node = digest_type::hash(make_canonical_pair(node, proof[i]));
+      } else {
+         node = digest_type::hash(make_canonical_pair(proof[i], node));
+      }
+   }
+   return node == proof.back();
+}
+
 } } // eosio::chain

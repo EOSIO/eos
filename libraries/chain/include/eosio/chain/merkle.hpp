@@ -19,4 +19,14 @@ namespace eosio { namespace chain {
     */
    digest_type merkle( vector<digest_type> ids );
 
+   /**
+    * Generates a merkle proof, a set of digests from leaf to root
+    */
+   vector<digest_type> generate_merkle_proof( digest_type id, vector<digest_type> ids );
+
+   /**
+    * Verifies a merkle proof
+    */
+   bool verify_merkle_proof( vector<digest_type> proof );
+
 } } /// eosio::chain
