@@ -11,6 +11,7 @@
 #include <eosio/chain/controller.hpp>
 #include <eosio/chain/generated_transaction_object.hpp>
 #include <eosio/chain/snapshot.hpp>
+#include <eosio/chain/merkle.hpp>
 
 #include <eosio/chain/eosio_contract.hpp>
 
@@ -2318,6 +2319,48 @@ read_only::get_required_keys_result read_only::get_required_keys( const get_requ
 
 read_only::get_transaction_id_result read_only::get_transaction_id( const read_only::get_transaction_id_params& params)const {
    return params.id();
+}
+
+vector<digest_type> read_only::get_transaction_merkle_proof( const read_only::get_transaction_merkle_proof_params& params ) const {
+   signed_block_ptr block;
+   optional<uint64_t> block_num;
+
+   EOS_ASSERT( !params.block_num_or_id.empty() && params.block_num_or_id.size() <= 64,
+               chain::block_id_type_exception,
+               "Invalid Block number or ID, must be greater than 0 and less than 64 characters"
+   );
+
+   try {
+      block_num = fc::to_uint64(params.block_num_or_id);
+   } catch( ... ) {}
+
+   if( block_num.valid() ) {
+      block = db.fetch_block_by_number( *block_num );
+   } else {
+      try {
+         block = db.fetch_block_by_id( fc::variant(params.block_num_or_id).as<block_id_type>() );
+      } EOS_RETHROW_EXCEPTIONS(chain::block_id_type_exception, "Invalid block ID: ${block_num_or_id}", ("block_num_or_id", params.block_num_or_id))
+   }
+
+   EOS_ASSERT( block, unknown_block_exception, "Could not find block: ${block}", ("block", params.block_num_or_id));
+
+   auto it = std::find_if(block->transactions.begin(), block->transactions.end(), [&](const auto& a) {
+      if( a.trx.template contains<transaction_id_type>() ) {
+         return params.transaction_id == a.trx.template get<transaction_id_type>();
+      } else {
+         return params.transaction_id == a.trx.template get<packed_transaction>().id();
+      }
+   });
+   EOS_ASSERT( it != block->transactions.end(), tx_not_found, "Transaction ${id} not found in block ${n}",
+      ("id", params.transaction_id)("n", params.block_num_or_id));
+
+   vector<digest_type> trx_digests;
+   trx_digests.reserve( block->transactions.size() );
+   for( auto& a: block->transactions ) {
+      trx_digests.emplace_back( a.digest() );
+   }
+
+   return chain::generate_merkle_proof(it->digest(), trx_digests);
 }
 
 namespace detail {

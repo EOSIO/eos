@@ -379,6 +379,13 @@ public:
 
    get_scheduled_transactions_result get_scheduled_transactions( const get_scheduled_transactions_params& params ) const;
 
+   struct get_transaction_merkle_proof_params {
+      chain::transaction_id_type  transaction_id;
+      string                      block_num_or_id;
+   };
+
+   vector<chain::digest_type> get_transaction_merkle_proof( const get_transaction_merkle_proof_params& params ) const;
+
    static void copy_inline_row(const chain::key_value_object& obj, vector<char>& data) {
       data.resize( obj.value.size() );
       memcpy( data.data(), obj.value.data(), obj.value.size() );
@@ -778,3 +785,4 @@ FC_REFLECT( eosio::chain_apis::read_only::abi_bin_to_json_params, (code)(action)
 FC_REFLECT( eosio::chain_apis::read_only::abi_bin_to_json_result, (args) )
 FC_REFLECT( eosio::chain_apis::read_only::get_required_keys_params, (transaction)(available_keys) )
 FC_REFLECT( eosio::chain_apis::read_only::get_required_keys_result, (required_keys) )
+FC_REFLECT( eosio::chain_apis::read_only::get_transaction_merkle_proof_params, (transaction_id)(block_num_or_id) )
