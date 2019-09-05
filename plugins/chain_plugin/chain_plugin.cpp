@@ -838,6 +838,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
                   );
                }
                else {
+                  my->chain_config->genesis.emplace(genesis_file);
                   my->chain_id = genesis_file.compute_chain_id();
                   my->chain_id_source = "genesis json";
                }
@@ -876,9 +877,33 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
                  "Snapshot can only be used to initialize an empty database." );
 
          if( fc::is_regular_file( my->blocks_dir / "blocks.log" )) {
-            const auto log_chain_id = block_log::extract_chain_id(my->blocks_dir);
+            fc::optional<chain_id_type> log_chain_id;
+            auto log_genesis = block_log::extract_genesis_state(my->blocks_dir);
+            if (log_genesis) {
+               if (my->chain_config->genesis) {
+                  // using chain_id_source to distinguish if the snapshot provided the genesis state we are comparing to
+                  // or if it was a passed in command line parameter
+                  EOS_ASSERT( log_genesis == *my->chain_config->genesis, plugin_config_exception,
+                              "Genesis state provided via block log does not match the existing genesis state in the "
+                              "${source}. ${extra}", ("source", my->chain_id_source)
+                                      ("extra", (my->chain_id_source == "snapshot" ?
+                                                 "Block log and snapshot genesis state are inconsistent." :
+                                                 "It is not necessary to provide genesis state argument when providing a block log."))
+                  );
+               }
+               else {
+                  my->chain_config->genesis = log_genesis;
+               }
+               log_chain_id.emplace(my->chain_config->genesis->compute_chain_id());
+            }
+
+            // if the genesis state did not exist in the
+            if (!log_chain_id) {
+               log_chain_id.emplace(block_log::extract_chain_id(my->blocks_dir));
+            }
+
             if( my->chain_id ) {
-               EOS_ASSERT( log_chain_id == *my->chain_id,
+               EOS_ASSERT( *log_chain_id == *my->chain_id,
                            plugin_config_exception,
                            "Chain id in blocks.log does not match chain id in the snapshot");
             }
