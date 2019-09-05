@@ -118,7 +118,7 @@ swap_event_data* parse_swap_event_hex(const std::string& hex_data, swap_event_da
     std::string amount_hex = hex_data.substr(64*2, 64);
     std::string return_address = hex_data.substr(64*3 + 24, 40);
     std::string timestamp = hex_data.substr(64*4, 64);
-    std::string swap_pubkey = hex_to_string(hex_data.substr(64*6, 64));
+    std::string swap_pubkey = hex_to_string(hex_data.substr(64*6, 106));
 
     std::stringstream ss;
 
@@ -263,14 +263,14 @@ void ethropsten_swap_plugin::start_monitor() {
           if (ec) {
               m_client.get_alog().write(websocketpp::log::alevel::app,
                       "Get Connection Error: "+ec.message());
-              return;
+              throw ec.message();
           }
 
           m_hdl = con->get_handle();
           m_client.connect(con);
 
           websocketpp::lib::thread asio_thread(&client::run, &m_client);
-          sleep(1);
+          sleep(2);
 
           string infura_request = "{\"id\": 1," \
                                   "\"method\": \"eth_subscribe\"," \
@@ -283,6 +283,7 @@ void ethropsten_swap_plugin::start_monitor() {
           if (ec) {
               m_client.get_alog().write(websocketpp::log::alevel::app,
                   "Send Error: "+ec.message());
+              throw ec.message();
           }
           asio_thread.join();
       } FC_LOG_WAIT_AND_CONTINUE()
