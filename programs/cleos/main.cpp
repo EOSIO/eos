@@ -2796,6 +2796,16 @@ int main( int argc, char** argv ) {
       std::cout << fc::json::to_pretty_string(call(get_transaction_func, arg)) << std::endl;
    });
 
+   // get transaction merkle proof
+   string block_num_or_id;
+   auto getProof = get->add_subcommand("proof", localized("Retrieve merkle proof of a given transaction"), false);
+   getProof->add_option("id", transaction_id_str, localized("ID of the transaction to generate merkle proof"))->required();
+   getProof->add_option("block", block_num_or_id, localized("The number or ID of the block which contains the transaction"))->required();
+   getProof->set_callback([&] {
+      auto arg = fc::mutable_variant_object("transaction_id", transaction_id_str)("block_num_or_id", block_num_or_id);
+      std::cout << fc::json::to_pretty_string(call(get_proof_func, arg)) << std::endl;
+   });
+
    // get actions
    string account_name;
    string skip_seq_str;
