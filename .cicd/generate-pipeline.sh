@@ -370,7 +370,7 @@ cat <<EOF
       BUILDKITE_AGENT_ACCESS_TOKEN:
     agents:
       queue: "automation-eos-builder-fleet"
-    timeout: ${TIMEOUT:-10}
+    timeout: ${TIMEOUT:-30}
     skip: ${SKIP_CONTRACT_BUILDER}${SKIP_LINUX}
 
   - wait
@@ -395,7 +395,7 @@ cat <<EOF
     agents:
       queue: "automation-basic-builder-fleet"
     timeout: "${TIMEOUT:-5}"
-    skip: ${SKIP_HIGH_SIERRA}${SKIP_MOJAVE}${SKIP_PACKAGE_BUILDER}
+    skip: ${SKIP_HIGH_SIERRA}${SKIP_MOJAVE}${SKIP_PACKAGE_BUILDER}${SKIP_MAC}
 
 EOF
 IFS=$oIFS
