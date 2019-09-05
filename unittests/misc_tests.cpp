@@ -4,6 +4,7 @@
 #include <eosio/chain/chain_config.hpp>
 #include <eosio/chain/types.hpp>
 #include <eosio/chain/thread_utils.hpp>
+#include <eosio/chain/merkle.hpp>
 #include <eosio/testing/tester.hpp>
 
 #include <fc/io/json.hpp>
@@ -1108,6 +1109,30 @@ BOOST_AUTO_TEST_CASE(stable_priority_queue_test) {
      }
 
   } FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE(merkle_proof_test) {
+   try {
+      auto tx_digest = digest_type("42285b74bf7dbf5f2f98c06c8dfb73a4cb0f5bc3ecf869ebf45975728720cdb7");
+
+      vector<digest_type> ids;
+      ids.emplace_back("1389f82e38b40d73cd2f055aef2802b259e44622bf7f6689cb766d867ac542ea");
+      ids.push_back(tx_digest);
+      ids.emplace_back("c10aaf3ff64068a55ddddc277ff054879d63834161cc0dfebbb4b682915e8c48");
+
+      vector<digest_type> proof;
+      proof.push_back(tx_digest);
+      proof.emplace_back("1389f82e38b40d73cd2f055aef2802b259e44622bf7f6689cb766d867ac542ea");
+      proof.emplace_back("81b59aca8c63a42976a782bfe45e3e0d7aff28785aad25dd68643c835ce8925b");
+      proof.emplace_back("3737f95d45171a1830637a3878594b9bd52b9b6316149ee0773a3487add0a166");
+
+      auto gen_proof = generate_merkle_proof(tx_digest, ids);
+
+      BOOST_CHECK(std::equal(gen_proof.begin(), gen_proof.end(), proof.begin(), proof.end()));
+
+      BOOST_CHECK(verify_merkle_proof(gen_proof));
+
+   } FC_LOG_AND_RETHROW()
 }
 
 
