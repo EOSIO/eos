@@ -1648,11 +1648,6 @@ namespace eosio {
          return true;
       } );
       if( req.req_blocks.mode == catch_up ) {
-         {
-            std::lock_guard<std::mutex> g_conn( c->conn_mtx );
-            c->fork_head = id;
-            c->fork_head_num = num;
-         }
          std::lock_guard<std::mutex> g( sync_mtx );
          fc_ilog( logger, "got a catch_up notice while in ${s}, fork head num = ${fhn} "
                           "target LIB = ${lib} next_expected = ${ne}",
@@ -1661,6 +1656,11 @@ namespace eosio {
          if( sync_state == lib_catchup )
             return false;
          set_state( head_catchup );
+         {
+            std::lock_guard<std::mutex> g_conn( c->conn_mtx );
+            c->fork_head = id;
+            c->fork_head_num = num;
+         }
       } else {
          std::lock_guard<std::mutex> g_conn( c->conn_mtx );
          c->fork_head = block_id_type();
@@ -1768,9 +1768,9 @@ namespace eosio {
          }
       } else if( state == lib_catchup ) {
          if( blk_num == sync_known_lib_num ) {
-            g_sync.unlock();
             fc_dlog( logger, "All caught up with last known last irreversible block resending handshake" );
-            // stay in lib_catchup           set_state( in_sync );
+            set_state( in_sync );
+            g_sync.unlock();
             send_handshakes();
          } else if( blk_num == sync_last_requested_num ) {
             request_next_chunk( std::move( g_sync) );
