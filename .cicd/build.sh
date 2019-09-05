@@ -44,8 +44,6 @@ else # linux
         COMMANDS="ccache -s && $BUILD_COMMANDS"
     fi
     COMMANDS="$PRE_COMMANDS && $COMMANDS"
-    # install eosio for contracts CICD release
-    COMMANDS="cd $MOUNTED_DIR && ./scripts/eosio_build.sh -y && ./scripts/eosio_install.sh"
     echo "docker run $ARGS $(buildkite-intrinsics) $FULL_TAG bash -c \"$COMMANDS\""
     eval docker run $ARGS $(buildkite-intrinsics) $FULL_TAG bash -c \"$COMMANDS\"
 fi
