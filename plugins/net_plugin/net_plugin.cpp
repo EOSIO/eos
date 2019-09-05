@@ -157,7 +157,6 @@ namespace eosio {
       explicit sync_manager( uint32_t span );
       static void send_handshakes();
       bool syncing_with_peer() const { return sync_state == lib_catchup; }
-      bool block_while_syncing_with_other_peer( const connection_ptr& c ) const;
       void sync_reset_lib_num( const connection_ptr& conn );
       void sync_reassign_fetch( const connection_ptr& c, go_away_reason reason );
       void rejected_block( const connection_ptr& c, uint32_t blk_num );
@@ -1357,14 +1356,6 @@ namespace eosio {
       }
       fc_dlog( logger, "old state ${os} becoming ${ns}", ("os", stage_str( sync_state ))( "ns", stage_str( newstate ) ) );
       sync_state = newstate;
-   }
-
-   bool sync_manager::block_while_syncing_with_other_peer( const connection_ptr& c ) const {
-      if( syncing_with_peer() ) {
-         std::lock_guard<std::mutex> g( sync_mtx );
-         return c != sync_source;
-      }
-      return false;
    }
 
    void sync_manager::sync_reset_lib_num(const connection_ptr& c) {
