@@ -1768,9 +1768,9 @@ namespace eosio {
          }
       } else if( state == lib_catchup ) {
          if( blk_num == sync_known_lib_num ) {
-            fc_dlog( logger, "All caught up with last known last irreversible block resending handshake" );
-            set_state( in_sync );
             g_sync.unlock();
+            fc_dlog( logger, "All caught up with last known last irreversible block resending handshake" );
+            // stay in lib_catchup           set_state( in_sync );
             send_handshakes();
          } else if( blk_num == sync_last_requested_num ) {
             request_next_chunk( std::move( g_sync) );
