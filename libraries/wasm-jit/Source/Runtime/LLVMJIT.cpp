@@ -47,8 +47,8 @@ void disassembleFunction(U8* bytes,Uptr numBytes)
 			instructionBuffer,
 			sizeof(instructionBuffer)
 			);
-		WAVM_ASSERT_THROW(numInstructionBytes > 0);
-		WAVM_ASSERT_THROW(numInstructionBytes <= numBytesRemaining);
+		if(numInstructionBytes == 0 || numInstructionBytes > numBytesRemaining);
+			break;
 		numBytesRemaining -= numInstructionBytes;
 		nextByte += numInstructionBytes;
 
