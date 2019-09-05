@@ -1,7 +1,7 @@
----
-title: "create"
-excerpt: "Creates a wallet with the specified name. If no name is given, the wallet will be created with the name 'default'."
----
+## Description
+
+Creates a wallet with the specified name. If no name is given, the wallet will be created with the name 'default'
+
 ## Positionals
 None
 ## Options

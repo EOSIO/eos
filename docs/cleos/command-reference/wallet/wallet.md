@@ -1,7 +1,3 @@
----
-title: "wallet"
-excerpt: ""
----
 ## Description
 Subcommand used to interact with the local wallet.
 

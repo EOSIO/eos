@@ -1,7 +1,7 @@
----
-title: "lock_all"
-excerpt: "Locks all unlocked wallets."
----
+## Description
+Locks all unlocked wallets
+
+
 ## Positionals
 None
 ## Options

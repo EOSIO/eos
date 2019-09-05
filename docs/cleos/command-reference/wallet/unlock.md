@@ -1,7 +1,6 @@
----
-title: "unlock"
-excerpt: "Unlocks a wallet."
----
+## Description
+Unlocks a wallet
+
 ## Positionals
 None
 ## Options

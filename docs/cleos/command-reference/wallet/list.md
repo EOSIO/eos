@@ -1,6 +1,6 @@
 ## Description
 
-Lists opened wallets, * = unlocked."
+Lists opened wallets, * = unlocked
 
 ## Positionals
 None

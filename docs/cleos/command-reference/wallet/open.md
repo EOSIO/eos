@@ -1,7 +1,7 @@
----
-title: "open"
-excerpt: "Opens an existing wallet."
----
+## Description
+
+Opens an existing wallet
+
 ## Positionals
 None
 ## Options
@@ -10,9 +10,9 @@ None
 
 
 ```shell
-$ ./cleos wallet open
+$ cleos wallet open
 or
-$ ./cleos wallet open -n second-wallet
+$ cleos wallet open -n second-wallet
 ```
 
 ## Outputs
