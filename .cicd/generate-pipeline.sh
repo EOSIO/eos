@@ -342,7 +342,7 @@ cat <<EOF
       BUILDKITE_AGENT_ACCESS_TOKEN:
     agents:
       queue: "automation-eos-builder-fleet"
-    timeout: ${TIMEOUT:-10}
+    timeout: ${TIMEOUT:-30}
     skip: ${SKIP_CONTRACT_BUILDER}${SKIP_LINUX}
 
   - wait
