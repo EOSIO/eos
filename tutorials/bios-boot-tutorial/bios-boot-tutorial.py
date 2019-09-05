@@ -123,7 +123,7 @@ def startNode(nodeIndex, account):
         '    --plugin eosio::chain_api_plugin'
         '    --plugin eosio::producer_api_plugin'
         '    --plugin eosio::producer_plugin'
-        '    --plugin eosio::swap_plugin'
+        '    --plugin eosio::ethropsten_swap_plugin'
         '    --swap-signing-key 5KLGj1HGRWbk5xNmoKfrcrQHXvcVJBPdAckoiJgFftXSJjLPp7b'
         '    --swap-authority producer111a@active'
         '    --eth-wss-provider wss://ropsten.infura.io/ws/v3/3f98ae6029094659ac8f57f66e673129' +
