@@ -1,7 +1,6 @@
----
-title: "push action"
-excerpt: "Push a transaction with a single action"
----
+## Description
+Push a transaction with a single action
+
 ## Positionals
   `contract` _Type: Text_ - The account providing the contract to execute
  

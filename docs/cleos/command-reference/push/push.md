@@ -1,8 +1,3 @@
-<!---
-title: "push"
-excerpt: ""
---->
-
 ## Description
 Pushes arbitrary transactions to the blockchain.
 
