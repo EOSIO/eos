@@ -76,6 +76,7 @@ void platform_timer::start(fc::time_point tp) {
          if(ec)
             return;
          expired = 1;
+         call_expiration_callback();
       });
    }
 }

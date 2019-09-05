@@ -34,8 +34,13 @@ namespace eosio { namespace chain {
       _timer.stop();
    }
 
+   void transaction_checktime_timer::set_expiration_callback(void(*func)(void*), void* user) {
+      _timer.set_expiration_callback(func, user);
+   }
+
    transaction_checktime_timer::~transaction_checktime_timer() {
       stop();
+      _timer.set_expiration_callback(nullptr, nullptr);
    }
 
    transaction_context::transaction_context( controller& c,
@@ -49,9 +54,9 @@ namespace eosio { namespace chain {
    ,undo_session()
    ,trace(std::make_shared<transaction_trace>())
    ,start(s)
+   ,transaction_timer(std::move(tmr))
    ,net_usage(trace->net_usage)
    ,pseudo_start(s)
-   ,transaction_timer(std::move(tmr))
    {
       if (!c.skip_db_sessions()) {
          undo_session = c.mutable_db().start_undo_session(true);

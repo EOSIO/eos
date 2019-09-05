@@ -377,7 +377,7 @@ struct controller_impl {
       auto root_id = fork_db.root()->id;
 
       if( log_head ) {
-         EOS_ASSERT( root_id == log_head->id(), fork_database_exception, "fork database root does not match block log head" );
+         EOS_ASSERT( root_id == blog.head_id(), fork_database_exception, "fork database root does not match block log head" );
       } else {
          EOS_ASSERT( fork_db.root()->block_num == lib_num, fork_database_exception,
                      "empty block log expects the first appended block to build off a block that is not the fork database root" );
@@ -394,7 +394,7 @@ struct controller_impl {
 
          for( auto bitr = branch.rbegin(); bitr != branch.rend(); ++bitr ) {
             if( read_mode == db_read_mode::IRREVERSIBLE ) {
-               apply_block( *bitr, controller::block_status::complete );
+               apply_block( *bitr, controller::block_status::complete, trx_meta_cache_lookup{} );
                head = (*bitr);
                fork_db.mark_valid( head );
             }
@@ -699,7 +699,7 @@ struct controller_impl {
               pending_head = fork_db.pending_head()
          ) {
             wlog( "applying branch from fork database ending with block: ${id}", ("id", pending_head->id) );
-            maybe_switch_forks( pending_head, controller::block_status::complete, forked_branch_callback() );
+            maybe_switch_forks( pending_head, controller::block_status::complete, forked_branch_callback{}, trx_meta_cache_lookup{} );
          }
       }
 
@@ -866,7 +866,7 @@ struct controller_impl {
          snapshot_head_block = head->block_num;
       }
 
-      controller_index_set::walk_indices([this, &snapshot]( auto utils ){
+      controller_index_set::walk_indices([this, &snapshot, &header]( auto utils ){
          using value_t = typename decltype(utils)::index_t::value_type;
 
          // skip the table_id_object as its inlined with contract tables section
@@ -879,6 +879,23 @@ struct controller_impl {
             return;
          }
 
+         // special case for in-place upgrade of global_property_object
+         if (std::is_same<value_t, global_property_object>::value) {
+            using v2 = legacy::snapshot_global_property_object_v2;
+
+            if (std::clamp(header.version, v2::minimum_version, v2::maximum_version) == header.version ) {
+               snapshot->read_section<global_property_object>([this]( auto &section ) {
+                  v2 legacy_global_properties;
+                  section.read_row(legacy_global_properties, db);
+
+                  db.create<global_property_object>([&](auto& gpo ){
+                     gpo.initalize_from(legacy_global_properties);
+                  });
+               });
+               return; // early out to avoid default processing
+            }
+         }
+
          snapshot->read_section<value_t>([this]( auto& section ) {
             bool more = !section.empty();
             while(more) {
@@ -887,6 +904,7 @@ struct controller_impl {
                });
             }
          });
+
       });
 
       read_contract_tables_from_snapshot(snapshot);
@@ -915,7 +933,10 @@ struct controller_impl {
          a.creation_date = conf.genesis.initial_timestamp;
 
          if( name == config::system_account_name ) {
-            a.set_abi(eosio_contract_abi(abi_def()));
+            // The initial eosio ABI value affects consensus; see  https://github.com/EOSIO/eos/issues/7794
+            // TODO: This doesn't charge RAM; a fix requires a consensus upgrade.
+            a.abi.resize(sizeof(eosio_abi_bin));
+            memcpy(a.abi.data(), eosio_abi_bin, sizeof(eosio_abi_bin));
          }
       });
       db.create<account_metadata_object>([&](auto & a) {
@@ -1654,11 +1675,11 @@ struct controller_impl {
             });
          }
 
+         emit( self.accepted_block, bsp );
+
          if( add_to_fork_db ) {
             log_irreversible();
          }
-
-         emit( self.accepted_block, bsp );
       } catch (...) {
          // dont bother resetting pending, instead abort the block
          reset_pending_on_exit.cancel();
@@ -1731,7 +1752,7 @@ struct controller_impl {
       }
    }
 
-   void apply_block( const block_state_ptr& bsp, controller::block_status s )
+   void apply_block( const block_state_ptr& bsp, controller::block_status s, const trx_meta_cache_lookup& trx_lookup )
    { try {
       try {
          const signed_block_ptr& b = bsp->block;
@@ -1743,27 +1764,28 @@ struct controller_impl {
          const bool existing_trxs_metas = !bsp->trxs_metas().empty();
          const bool pub_keys_recovered = bsp->is_pub_keys_recovered();
          const bool skip_auth_checks = self.skip_auth_check();
-         std::vector<recover_keys_future> trx_futures;
-         std::vector<transaction_metadata_ptr> trx_metas;
-         bool use_bsp_cached = false, use_trx_metas = false;
+         std::vector<std::tuple<transaction_metadata_ptr, recover_keys_future>> trx_metas;
+         bool use_bsp_cached = false;
          if( pub_keys_recovered || (skip_auth_checks && existing_trxs_metas) ) {
             use_bsp_cached = true;
-         } else if( skip_auth_checks ) {
-            use_trx_metas = true;
+         } else {
             trx_metas.reserve( b->transactions.size() );
             for( const auto& receipt : b->transactions ) {
                if( receipt.trx.contains<packed_transaction>()) {
-                  auto& pt = receipt.trx.get<packed_transaction>();
-                  trx_metas.emplace_back( transaction_metadata::create_no_recover_keys( pt, transaction_metadata::trx_type::input ) );
-               }
-            }
-         } else {
-            trx_futures.reserve( b->transactions.size() );
-            for( const auto& receipt : b->transactions ) {
-               if( receipt.trx.contains<packed_transaction>()) {
-                  auto ptrx = std::make_shared<packed_transaction>( receipt.trx.get<packed_transaction>() );
-                  auto fut = transaction_metadata::start_recover_keys( ptrx, thread_pool.get_executor(), chain_id, microseconds::maximum() );
-                  trx_futures.emplace_back( std::move( fut ) );
+                  const auto& pt = receipt.trx.get<packed_transaction>();
+                  transaction_metadata_ptr trx_meta_ptr = trx_lookup ? trx_lookup( pt.id() ) : transaction_metadata_ptr{};
+                  if( trx_meta_ptr && ( skip_auth_checks || !trx_meta_ptr->recovered_keys().empty() ) ) {
+                     trx_metas.emplace_back( std::move( trx_meta_ptr ), recover_keys_future{} );
+                  } else if( skip_auth_checks ) {
+                     trx_metas.emplace_back(
+                           transaction_metadata::create_no_recover_keys( pt, transaction_metadata::trx_type::input ),
+                           recover_keys_future{} );
+                  } else {
+                     auto ptrx = std::make_shared<packed_transaction>( pt );
+                     auto fut = transaction_metadata::start_recover_keys(
+                           std::move( ptrx ), thread_pool.get_executor(), chain_id, microseconds::maximum() );
+                     trx_metas.emplace_back( transaction_metadata_ptr{}, std::move( fut ) );
+                  }
                }
             }
          }
@@ -1775,10 +1797,12 @@ struct controller_impl {
             const auto& trx_receipts = pending->_block_stage.get<building_block>()._pending_trx_receipts;
             auto num_pending_receipts = trx_receipts.size();
             if( receipt.trx.contains<packed_transaction>() ) {
-               const auto& trx_meta = ( use_bsp_cached ? bsp->trxs_metas().at( packed_idx++ )
-                                                       : ( use_trx_metas ? trx_metas.at( packed_idx++ )
-                                                                         : trx_futures.at( packed_idx++ ).get() ) );
+               const auto& trx_meta = ( use_bsp_cached ? bsp->trxs_metas().at( packed_idx )
+                                                       : ( !!std::get<0>( trx_metas.at( packed_idx ) ) ?
+                                                             std::get<0>( trx_metas.at( packed_idx ) )
+                                                             : std::get<1>( trx_metas.at( packed_idx ) ).get() ) );
                trace = push_transaction( trx_meta, fc::time_point::maximum(), receipt.cpu_usage_us, true );
+               ++packed_idx;
             } else if( receipt.trx.contains<transaction_id_type>() ) {
                trace = push_scheduled_transaction( receipt.trx.get<transaction_id_type>(), fc::time_point::maximum(), receipt.cpu_usage_us, true );
             } else {
@@ -1857,7 +1881,9 @@ struct controller_impl {
       } );
    }
 
-   void push_block( std::future<block_state_ptr>& block_state_future, const forked_branch_callback& forked_branch_cb ) {
+   void push_block( std::future<block_state_ptr>& block_state_future,
+                    const forked_branch_callback& forked_branch_cb, const trx_meta_cache_lookup& trx_lookup )
+   {
       controller::block_status s = controller::block_status::complete;
       EOS_ASSERT(!pending, block_validate_exception, "it is not valid to push a block when there is a pending block");
 
@@ -1879,7 +1905,7 @@ struct controller_impl {
          emit( self.accepted_block_header, bsp );
 
          if( read_mode != db_read_mode::IRREVERSIBLE ) {
-            maybe_switch_forks( fork_db.pending_head(), s, forked_branch_cb );
+            maybe_switch_forks( fork_db.pending_head(), s, forked_branch_cb, trx_lookup );
          } else {
             log_irreversible();
          }
@@ -1918,7 +1944,7 @@ struct controller_impl {
          emit( self.accepted_block_header, bsp );
 
          if( s == controller::block_status::irreversible ) {
-            apply_block( bsp, s );
+            apply_block( bsp, s, trx_meta_cache_lookup{} );
             head = bsp;
 
             // On replay, log_irreversible is not called and so no irreversible_block signal is emittted.
@@ -1932,17 +1958,19 @@ struct controller_impl {
          } else {
             EOS_ASSERT( read_mode != db_read_mode::IRREVERSIBLE, block_validate_exception,
                         "invariant failure: cannot replay reversible blocks while in irreversible mode" );
-            maybe_switch_forks( bsp, s, forked_branch_callback() );
+            maybe_switch_forks( bsp, s, forked_branch_callback{}, trx_meta_cache_lookup{} );
          }
 
       } FC_LOG_AND_RETHROW( )
    }
 
-   void maybe_switch_forks( const block_state_ptr& new_head, controller::block_status s, const forked_branch_callback& forked_branch_cb ) {
+   void maybe_switch_forks( const block_state_ptr& new_head, controller::block_status s,
+                            const forked_branch_callback& forked_branch_cb, const trx_meta_cache_lookup& trx_lookup )
+   {
       bool head_changed = true;
       if( new_head->header.previous == head->id ) {
          try {
-            apply_block( new_head, s );
+            apply_block( new_head, s, trx_lookup );
             fork_db.mark_valid( new_head );
             head = new_head;
          } catch ( const fc::exception& e ) {
@@ -1969,7 +1997,7 @@ struct controller_impl {
             optional<fc::exception> except;
             try {
                apply_block( *ritr, (*ritr)->is_valid() ? controller::block_status::validated
-                                                       : controller::block_status::complete );
+                                                       : controller::block_status::complete, trx_lookup );
                fork_db.mark_valid( *ritr );
                head = *ritr;
             } catch (const fc::exception& e) {
@@ -1993,7 +2021,7 @@ struct controller_impl {
 
                // re-apply good blocks
                for( auto ritr = branches.second.rbegin(); ritr != branches.second.rend(); ++ritr ) {
-                  apply_block( *ritr, controller::block_status::validated /* we previously validated these blocks*/ );
+                  apply_block( *ritr, controller::block_status::validated /* we previously validated these blocks*/, trx_lookup );
                   head = *ritr;
                }
                throw *except;
@@ -2537,10 +2565,12 @@ std::future<block_state_ptr> controller::create_block_state_future( const signed
    return my->create_block_state_future( b );
 }
 
-void controller::push_block( std::future<block_state_ptr>& block_state_future, const forked_branch_callback& forked_branch_cb ) {
+void controller::push_block( std::future<block_state_ptr>& block_state_future,
+                             const forked_branch_callback& forked_branch_cb, const trx_meta_cache_lookup& trx_lookup )
+{
    validate_db_available_size();
    validate_reversible_available_size();
-   my->push_block( block_state_future, forked_branch_cb );
+   my->push_block( block_state_future, forked_branch_cb, trx_lookup );
 }
 
 transaction_trace_ptr controller::push_transaction( const transaction_metadata_ptr& trx, fc::time_point deadline, uint32_t billed_cpu_time_us ) {
@@ -2692,17 +2722,8 @@ uint32_t controller::last_irreversible_block_num() const {
 
 block_id_type controller::last_irreversible_block_id() const {
    auto lib_num = last_irreversible_block_num();
-   const auto& tapos_block_summary = db().get<block_summary_object>((uint16_t)lib_num);
 
-   if( block_header::num_from_id(tapos_block_summary.block_id) == lib_num )
-      return tapos_block_summary.block_id;
-
-   auto signed_blk = my->blog.read_block_by_num( lib_num );
-
-   EOS_ASSERT( BOOST_LIKELY( signed_blk != nullptr ), unknown_block_exception,
-               "Could not find block: ${block}", ("block", lib_num) );
-
-   return signed_blk->id();
+   return get_block_id_for_num( lib_num );
 }
 
 const dynamic_global_property_object& controller::get_dynamic_global_properties()const {
@@ -2750,6 +2771,11 @@ block_state_ptr controller::fetch_block_state_by_number( uint32_t block_num )con
 } FC_CAPTURE_AND_RETHROW( (block_num) ) }
 
 block_id_type controller::get_block_id_for_num( uint32_t block_num )const { try {
+   const auto& tapos_block_summary = db().get<block_summary_object>((uint16_t)block_num);
+
+   if( block_header::num_from_id(tapos_block_summary.block_id) == block_num )
+      return tapos_block_summary.block_id;
+
    const auto& blog_head = my->blog.head();
 
    bool find_in_blog = (blog_head && block_num <= blog_head->block_num());
@@ -2768,12 +2794,12 @@ block_id_type controller::get_block_id_for_num( uint32_t block_num )const { try 
       }
    }
 
-   auto signed_blk = my->blog.read_block_by_num(block_num);
+   auto id = my->blog.read_block_id_by_num(block_num);
 
-   EOS_ASSERT( BOOST_LIKELY( signed_blk != nullptr ), unknown_block_exception,
+   EOS_ASSERT( BOOST_LIKELY( id != block_id_type() ), unknown_block_exception,
                "Could not find block: ${block}", ("block", block_num) );
 
-   return signed_blk->id();
+   return id;
 } FC_CAPTURE_AND_RETHROW( (block_num) ) }
 
 sha256 controller::calculate_integrity_hash()const { try {
