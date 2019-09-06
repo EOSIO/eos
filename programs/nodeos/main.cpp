@@ -5,6 +5,8 @@
 #include <eosio/net_plugin/net_plugin.hpp>
 #include <eosio/producer_plugin/producer_plugin.hpp>
 
+#include <chainbase/environment.hpp>
+
 #include <fc/log/logger_config.hpp>
 #include <fc/log/appender.hpp>
 #include <fc/exception/exception.hpp>
@@ -82,6 +84,8 @@ int main(int argc, char** argv)
 {
    try {
       app().set_version(eosio::nodeos::config::version);
+      std::stringstream ss_env;
+      ss_env << chainbase::environment();
 
       auto root = fc::app_path();
       app().set_default_data_dir(root / "eosio" / nodeos::config::node_executable_name / "data" );
@@ -100,6 +104,7 @@ int main(int argc, char** argv)
       ilog("${name} version ${ver}", ("name", nodeos::config::node_executable_name)("ver", app().version_string()));
       ilog("${name} using configuration file ${c}", ("name", nodeos::config::node_executable_name)("c", app().full_config_file_path().string()));
       ilog("${name} data directory is ${d}", ("name", nodeos::config::node_executable_name)("d", app().data_dir().string()));
+      ilog("${name} build:\n${e}", ("name", nodeos::config::node_executable_name)("e", ss_env.str()));
       app().startup();
       app().set_thread_priority_max();
       app().exec();
