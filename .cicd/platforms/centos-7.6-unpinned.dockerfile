@@ -19,8 +19,8 @@ RUN curl -LO https://cmake.org/files/v3.13/cmake-3.13.2.tar.gz && \
     make install && \
     cd / && \
     rm -rf cmake-3.13.2.tar.gz /cmake-3.13.2
-# build llvm
-RUN git clone --depth 1 --single-branch --branch release_40 https://github.com/llvm-mirror/llvm.git llvm && \
+# build llvm8
+RUN git clone --depth 1 --single-branch --branch release_80 https://github.com/llvm-mirror/llvm.git llvm && \
     source /opt/rh/devtoolset-8/enable && \
     source /opt/rh/rh-python36/enable && \
     cd llvm && \
