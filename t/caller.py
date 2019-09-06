@@ -357,6 +357,7 @@ class LauncherCaller:
                                      "proxy": "",
                                      "producers": producers_list}}]
         self.push_actions(self.fetch(info, ["cluster_id", "node_id", "actions"]), "vote for producers")
+        print(' ' * 100)
 
 
     def call(self, endpoint: str, data: dict, text: str, pause=0, retry=2):
@@ -374,6 +375,11 @@ class LauncherCaller:
             self.response = self.rpc(self.request_url, self.request_data)
             retry -= 1
         self.print.response()
+        tid = self.get_transaction_id()
+        if tid:
+            self.print.green("{:100}".format("<Transaction ID> {}".format(tid)))
+        else:
+            self.print.yellow("{:100}".format("Warning: No transaction ID returned."))
 
     def launch_cluster(self, data: dict):
         self.call("launch_cluster", data, "launch cluster")
