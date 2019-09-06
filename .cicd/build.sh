@@ -2,7 +2,7 @@
 set -eo pipefail
 . ./.cicd/helpers/general.sh
 mkdir -p $BUILD_DIR
-CMAKE_EXTRAS="-DBUILD_MONGO_DB_PLUGIN=true"
+CMAKE_EXTRAS="-DBUILD_MONGO_DB_PLUGIN=true -DCMAKE_BUILD_TYPE='Release'"
 if [[ $(uname) == 'Darwin' ]]; then # macOS
     cd $BUILD_DIR
     [[ $TRAVIS == true ]] && ccache -s
