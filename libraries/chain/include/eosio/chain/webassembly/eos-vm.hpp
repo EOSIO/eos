@@ -7,47 +7,10 @@
 #include <softfloat_types.h>
 
 //eos-vm includes
-/*
-#include <eosio/vm/host_function.hpp>
-namespace eosio { namespace vm {
-   template <>
-   struct registered_host_functions<eosio::chain::apply_context>;
-} }
-*/
 #include <eosio/vm/backend.hpp>
 
 // eosio specific specializations
 namespace eosio { namespace vm {
-
-   template <typename T, std::size_t Align>
-   struct aligned_array_wrapper {
-      static_assert(Align % alignof(T) == 0, "Must align to at least the alignment of T");
-      aligned_array_wrapper(void* ptr, uint32_t size) : ptr(ptr), size(size) {
-         validate_ptr<T>(ptr, size);
-         if (reinterpret_cast<std::uintptr_t>(ptr) % Align != 0) {
-            copy.reset(new std::remove_cv_t<T>[size]);
-            memcpy( copy.get(), ptr, sizeof(T) * size );
-         }
-      }
-      ~aligned_array_wrapper() {
-         if constexpr (!std::is_const_v<T>)
-            if (copy)
-               memcpy( ptr, copy.get(), sizeof(T) * size);
-      }
-      constexpr operator T*() const {
-         if (copy)
-            return copy.get();
-         else
-            return static_cast<T*>(ptr);
-      }
-      constexpr operator eosio::chain::array_ptr<T>() const {
-        return eosio::chain::array_ptr<T>{static_cast<T*>(*this)};
-      }
-
-      void* ptr;
-      std::unique_ptr<std::remove_cv_t<T>[]> copy = nullptr;
-      std::size_t size;
-   };
 
    template<>
    struct wasm_type_converter<eosio::chain::name> {
@@ -60,52 +23,65 @@ namespace eosio { namespace vm {
    };
 
    template<typename T>
-   struct wasm_type_converter<T*> {
-      static auto from_wasm(void* val) {
+   struct wasm_type_converter<T*> : linear_memory_access {
+      auto from_wasm(void* val) {
+         validate_ptr<T>(val, 1);
          return eosio::vm::aligned_ptr_wrapper<T, alignof(T)>{val};
       }
    };
 
-   template<typename T>
-   struct wasm_type_converter<T&> {
-      static auto from_wasm(void* val) {
-         return eosio::vm::aligned_ref_wrapper<T, alignof(T)>{val};
+   template<>
+   struct wasm_type_converter<char*> : linear_memory_access {
+      void* to_wasm(char* val) {
+         validate_ptr<char>(val, 1);
+         return val;
       }
    };
 
    template<typename T>
-   struct wasm_type_converter<eosio::chain::array_ptr<T>> {
-      static auto from_wasm(void* ptr, uint32_t size) {
-        return aligned_array_wrapper<T, alignof(T)>(ptr, size);
+   struct wasm_type_converter<T&> : linear_memory_access {
+      auto from_wasm(uint32_t val) {
+         EOS_VM_ASSERT( val != 0, wasm_memory_exception, "references cannot be created for null pointers" );
+         void* ptr = get_ptr(val);
+         validate_ptr<T>(ptr, 1);
+         return eosio::vm::aligned_ref_wrapper<T, alignof(T)>{ptr};
+      }
+   };
+
+   template<typename T>
+   struct wasm_type_converter<eosio::chain::array_ptr<T>> : linear_memory_access {
+      auto from_wasm(void* ptr, uint32_t size) {
+         validate_ptr<T>(ptr, size);
+         return aligned_array_wrapper<T, alignof(T)>(ptr, size);
       }
    };
 
    template<>
-   struct wasm_type_converter<eosio::chain::array_ptr<char>> {
-      static auto from_wasm(void* ptr, uint32_t size) {
+   struct wasm_type_converter<eosio::chain::array_ptr<char>> : linear_memory_access {
+      auto from_wasm(void* ptr, uint32_t size) {
          validate_ptr<char>(ptr, size);
          return eosio::chain::array_ptr<char>((char*)ptr);
       }
       // memcpy/memmove
-      static auto from_wasm(void* ptr, eosio::chain::array_ptr<const char> /*src*/, uint32_t size) {
+      auto from_wasm(void* ptr, eosio::chain::array_ptr<const char> /*src*/, uint32_t size) {
          validate_ptr<char>(ptr, size);
          return eosio::chain::array_ptr<char>((char*)ptr);
       }
       // memset
-      static auto from_wasm(void* ptr, int /*val*/, uint32_t size) {
+      auto from_wasm(void* ptr, int /*val*/, uint32_t size) {
          validate_ptr<char>(ptr, size);
          return eosio::chain::array_ptr<char>((char*)ptr);
       }
    };
 
    template<>
-   struct wasm_type_converter<eosio::chain::array_ptr<const char>> {
-      static auto from_wasm(void* ptr, uint32_t size) {
+   struct wasm_type_converter<eosio::chain::array_ptr<const char>> : linear_memory_access {
+      auto from_wasm(void* ptr, uint32_t size) {
          validate_ptr<char>(ptr, size);
          return eosio::chain::array_ptr<const char>((char*)ptr);
       }
       // memcmp
-      static auto from_wasm(void* ptr, eosio::chain::array_ptr<const char> /*src*/, uint32_t size) {
+      auto from_wasm(void* ptr, eosio::chain::array_ptr<const char> /*src*/, uint32_t size) {
          validate_ptr<char>(ptr, size);
          return eosio::chain::array_ptr<const char>((char*)ptr);
       }
@@ -122,113 +98,14 @@ namespace eosio { namespace vm {
    };
 
    template<>
-   struct wasm_type_converter<eosio::chain::null_terminated_ptr> {
-      static auto from_wasm(void* ptr) {
+   struct wasm_type_converter<eosio::chain::null_terminated_ptr> : linear_memory_access {
+      auto from_wasm(void* ptr) {
          validate_c_str(ptr);
          return eosio::chain::null_terminated_ptr{ static_cast<char*>(ptr) };
       }
    };
 
 }} // ns eosio::vm
-
-#if 0
-namespace eosio { namespace vm {
-   template <typename WAlloc, typename Cls, typename Cls2, auto F, typename R, typename Args, size_t... Is>
-   auto create_logging_function(std::index_sequence<Is...>) {
-      return std::function<void(Cls*, WAlloc*, operand_stack&)>{ [](Cls* self, WAlloc* walloc, operand_stack& os) {
-         size_t i = sizeof...(Is) - 1;
-         auto& intrinsic_log = self->control.get_intrinsic_debug_log();
-	 /*
-         if (intrinsic_log) {
-            eosio::chain::digest_type::encoder enc;
-            enc.write(walloc->template get_base_ptr<char>(), walloc->get_current_page() * 64 * 1024);
-            intrinsic_log->record_intrinsic(
-               eosio::chain::calc_arguments_hash(
-                  get_value<typename std::tuple_element<Is, Args>::type, Args>(
-                        walloc, get_value<to_wasm_t<typename std::tuple_element<Is, Args>::type>>()))...);
-                                       os.get_back(i - Is)))...),
-               enc.result());
-         }
-	 */
-         if constexpr (!std::is_same_v<R, void>) {
-            if constexpr (std::is_same_v<Cls2, std::nullptr_t>) {
-               R res = std::invoke(F, get_value<typename std::tuple_element<Is, Args>::type, Args>(
-                                            walloc, std::move(os.get_back(i - Is).get<to_wasm_t<typename std::tuple_element<Is, Args>::type>>()))...);
-               os.trim(sizeof...(Is));
-               os.push(resolve_result<R>(std::move(res), walloc));
-            } else {
-               R res = std::invoke(F, construct_derived<Cls2, Cls>::value(*self),
-                                   get_value<typename std::tuple_element<Is, Args>::type, Args>(
-                                         walloc, std::move(os.get_back(i - Is).get<to_wasm_t<typename std::tuple_element<Is, Args>::type>>()))...);
-               os.trim(sizeof...(Is));
-               os.push(resolve_result<R>(std::move(res), walloc));
-            }
-         } else {
-            if constexpr (std::is_same_v<Cls2, std::nullptr_t>) {
-               std::invoke(F, get_value<typename std::tuple_element<Is, Args>::type, Args>(
-                                    walloc, std::move(os.get_back(i - Is).get<to_wasm_t<typename std::tuple_element<Is, Args>::type>>()))...);
-            } else {
-               std::invoke(F, construct_derived<Cls2, Cls>::value(*self),
-                           get_value<typename std::tuple_element<Is, Args>::type, Args>(
-                                 walloc, std::move(os.get_back(i - Is).get<to_wasm_t<typename std::tuple_element<Is, Args>::type>>()))...);
-            }
-            os.trim(sizeof...(Is));
-         }
-      } };
-   }
-
-   template <>
-   struct registered_host_functions<eosio::chain::apply_context> {
-      using Cls = eosio::chain::apply_context;
-
-      template <typename WAlloc>
-      struct mappings {
-         std::unordered_map<std::pair<std::string, std::string>, uint32_t, host_func_pair_hash> named_mapping;
-         std::vector<host_function>                                                             host_functions;
-         std::vector<std::function<void(Cls*, WAlloc*, operand_stack&)>>                        functions;
-         size_t                                                                                 current_index = 0;
-      };
-
-      template <typename WAlloc>
-      static mappings<WAlloc>& get_mappings() {
-         static mappings<WAlloc> _mappings;
-         return _mappings;
-      }
-
-      template <typename Cls2, auto Func, typename WAlloc>
-      static void add(const std::string& mod, const std::string& name) {
-         using deduced_full_ts                         = decltype(get_args_full(Func));
-         using deduced_ts                              = decltype(get_args(Func));
-         using res_t                                   = typename decltype(get_return_t(Func))::type;
-         static constexpr auto is                      = std::make_index_sequence<std::tuple_size<deduced_ts>::value>();
-         auto&                 current_mappings        = get_mappings<WAlloc>();
-         current_mappings.named_mapping[{ mod, name }] = current_mappings.current_index++;
-         current_mappings.functions.push_back(create_logging_function<WAlloc, Cls, Cls2, Func, res_t, deduced_full_ts>(is));
-      }
-
-      template <typename Module>
-      static void resolve(Module& mod) {
-         decltype(mod.import_functions) imports          = { mod.allocator, mod.get_imported_functions_size() };
-         auto&                          current_mappings = get_mappings<wasm_allocator>();
-         for (int i = 0; i < mod.imports.size(); i++) {
-            std::string mod_name =
-                  std::string((char*)mod.imports[i].module_str.raw(), mod.imports[i].module_str.size());
-            std::string fn_name = std::string((char*)mod.imports[i].field_str.raw(), mod.imports[i].field_str.size());
-            EOS_WB_ASSERT(current_mappings.named_mapping.count({ mod_name, fn_name }), wasm_link_exception,
-                          "no mapping for imported function");
-            imports[i] = current_mappings.named_mapping[{ mod_name, fn_name }];
-         }
-         mod.import_functions = std::move(imports);
-      }
-
-      template <typename Execution_Context>
-      void operator()(Cls* host, Execution_Context& ctx, uint32_t index) {
-         const auto& _func = get_mappings<wasm_allocator>().functions[index];
-         std::invoke(_func, host, ctx.get_wasm_allocator(), ctx.get_operand_stack());
-      }
-   };
-} } // eosio::vm
-#endif
 
 namespace eosio { namespace chain { namespace webassembly { namespace eos_vm_runtime {
 
@@ -242,10 +119,7 @@ class eos_vm_runtime : public eosio::chain::wasm_runtime_interface {
       eos_vm_runtime();
       std::unique_ptr<wasm_instantiated_module_interface> instantiate_module(const char* code_bytes, size_t code_size, std::vector<uint8_t>) override;
 
-      void immediately_exit_currently_running_module() override {
-         if (_bkend)
-            _bkend->exit({});
-      }
+      void immediately_exit_currently_running_module() override;
 
    private:
       // todo: managing this will get more complicated with sync calls;
