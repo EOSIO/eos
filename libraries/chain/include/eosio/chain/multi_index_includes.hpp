@@ -1,8 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
-
 #pragma once
 
 #include <boost/multi_index_container.hpp>

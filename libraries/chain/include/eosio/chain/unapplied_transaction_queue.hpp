@@ -1,8 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
-
 #pragma once
 
 #include <eosio/chain/transaction_metadata.hpp>
@@ -105,6 +100,12 @@ public:
       return itr->trx_type == trx_enum_type::persisted;
    }
 
+   transaction_metadata_ptr get_trx( const transaction_id_type& id ) const {
+      auto itr = queue.get<by_trx_id>().find( id );
+      if( itr == queue.get<by_trx_id>().end() ) return {};
+      return itr->trx_meta;
+   }
+
    template <typename Func>
    bool clear_expired( const time_point& pending_block_time, const time_point& deadline, Func&& callback ) {
       auto& persisted_by_expiry = queue.get<by_expiry>();
@@ -118,10 +119,14 @@ public:
       return true;
    }
 
-   void clear_applied( const std::vector<transaction_metadata_ptr>& applied_trxs ) {
+   void clear_applied( const block_state_ptr& bs ) {
+      if( empty() ) return;
       auto& idx = queue.get<by_trx_id>();
-      for( const auto& trx : applied_trxs ) {
-         idx.erase( trx->id() );
+      for( const auto& receipt : bs->block->transactions ) {
+         if( receipt.trx.contains<packed_transaction>() ) {
+            const auto& pt = receipt.trx.get<packed_transaction>();
+            idx.erase( pt.id() );
+         }
       }
    }
 
@@ -130,7 +135,7 @@ public:
       // forked_branch is in reverse order
       for( auto ritr = forked_branch.rbegin(), rend = forked_branch.rend(); ritr != rend; ++ritr ) {
          const block_state_ptr& bsptr = *ritr;
-         for( auto itr = bsptr->trxs.begin(), end = bsptr->trxs.end(); itr != end; ++itr ) {
+         for( auto itr = bsptr->trxs_metas().begin(), end = bsptr->trxs_metas().end(); itr != end; ++itr ) {
             const auto& trx = *itr;
             fc::time_point expiry = trx->packed_trx()->expiration();
             queue.insert( { trx, expiry, trx_enum_type::forked } );

@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
 #pragma once
 #include <eosio/chain/transaction.hpp>
 #include <eosio/wallet_plugin/wallet_api.hpp>

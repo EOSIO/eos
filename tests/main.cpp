@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
 #include <cstdlib>
 #include <iostream>
 #include <boost/test/included/unit_test.hpp>

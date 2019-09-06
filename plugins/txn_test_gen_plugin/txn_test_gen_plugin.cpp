@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
 #include <eosio/txn_test_gen_plugin/txn_test_gen_plugin.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
 #include <eosio/chain/wast_to_wasm.hpp>
@@ -111,7 +107,7 @@ struct txn_test_gen_plugin_impl {
       chain_plugin& cp = app().get_plugin<chain_plugin>();
 
       for (size_t i = 0; i < trxs->size(); ++i) {
-         cp.accept_transaction( packed_transaction(trxs->at(i)), [=](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result){
+         cp.accept_transaction( std::make_shared<packed_transaction>(trxs->at(i)), [=](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result){
             if (result.contains<fc::exception_ptr>()) {
                next(result.get<fc::exception_ptr>());
             } else {

@@ -21,10 +21,32 @@
 
 namespace eosio { namespace chain {
 
+   transaction_checktime_timer::transaction_checktime_timer(platform_timer& timer)
+         : expired(timer.expired), _timer(timer) {
+      expired = 0;
+   }
+
+   void transaction_checktime_timer::start(fc::time_point tp) {
+      _timer.start(tp);
+   }
+
+   void transaction_checktime_timer::stop() {
+      _timer.stop();
+   }
+
+   void transaction_checktime_timer::set_expiration_callback(void(*func)(void*), void* user) {
+      _timer.set_expiration_callback(func, user);
+   }
+
+   transaction_checktime_timer::~transaction_checktime_timer() {
+      stop();
+      _timer.set_expiration_callback(nullptr, nullptr);
+   }
+
    transaction_context::transaction_context( controller& c,
                                              const signed_transaction& t,
                                              const transaction_id_type& trx_id,
-                                             checktime_timer& tmr,
+                                             transaction_checktime_timer&& tmr,
                                              fc::time_point s )
    :control(c)
    ,trx(t)
@@ -32,10 +54,9 @@ namespace eosio { namespace chain {
    ,undo_session()
    ,trace(std::make_shared<transaction_trace>())
    ,start(s)
+   ,transaction_timer(std::move(tmr))
    ,net_usage(trace->net_usage)
    ,pseudo_start(s)
-   ,deadline_timer(tmr)
-   ,timer_stopper(tmr)
    {
       if (!c.skip_db_sessions()) {
          undo_session = c.mutable_db().start_undo_session(true);
@@ -159,9 +180,9 @@ namespace eosio { namespace chain {
       checktime(); // Fail early if deadline has already been exceeded
 
       if(control.skip_trx_checks())
-         deadline_timer.start(fc::time_point::maximum());
+         transaction_timer.start(fc::time_point::maximum());
       else
-         deadline_timer.start(_deadline);
+         transaction_timer.start(_deadline);
 
       is_initialized = true;
    }
@@ -344,36 +365,34 @@ namespace eosio { namespace chain {
    }
 
    void transaction_context::checktime()const {
-      if(BOOST_LIKELY(deadline_timer.expired == false))
+      if(BOOST_LIKELY(transaction_timer.expired == false))
          return;
+
       auto now = fc::time_point::now();
-      if( BOOST_UNLIKELY( now > _deadline ) ) {
-         // edump((now-start)(now-pseudo_start));
-         if( explicit_billed_cpu_time || deadline_exception_code == deadline_exception::code_value ) {
-            EOS_THROW( deadline_exception, "deadline exceeded ${billing_timer}us",
-                       ("billing_timer", now - pseudo_start)("now", now)("deadline", _deadline)("start", start) );
-         } else if( deadline_exception_code == block_cpu_usage_exceeded::code_value ) {
-            EOS_THROW( block_cpu_usage_exceeded,
-                        "not enough time left in block to complete executing transaction ${billing_timer}us",
-                        ("now", now)("deadline", _deadline)("start", start)("billing_timer", now - pseudo_start) );
-         } else if( deadline_exception_code == tx_cpu_usage_exceeded::code_value ) {
-            if (cpu_limit_due_to_greylist) {
-               EOS_THROW( greylist_cpu_usage_exceeded,
-                        "greylisted transaction was executing for too long ${billing_timer}us",
-                        ("now", now)("deadline", _deadline)("start", start)("billing_timer", now - pseudo_start) );
-            } else {
-               EOS_THROW( tx_cpu_usage_exceeded,
-                        "transaction was executing for too long ${billing_timer}us",
-                        ("now", now)("deadline", _deadline)("start", start)("billing_timer", now - pseudo_start) );
-            }
-         } else if( deadline_exception_code == leeway_deadline_exception::code_value ) {
-            EOS_THROW( leeway_deadline_exception,
-                        "the transaction was unable to complete by deadline, "
-                        "but it is possible it could have succeeded if it were allowed to run to completion ${billing_timer}",
-                        ("now", now)("deadline", _deadline)("start", start)("billing_timer", now - pseudo_start) );
+      if( explicit_billed_cpu_time || deadline_exception_code == deadline_exception::code_value ) {
+         EOS_THROW( deadline_exception, "deadline exceeded ${billing_timer}us",
+                     ("billing_timer", now - pseudo_start)("now", now)("deadline", _deadline)("start", start) );
+      } else if( deadline_exception_code == block_cpu_usage_exceeded::code_value ) {
+         EOS_THROW( block_cpu_usage_exceeded,
+                     "not enough time left in block to complete executing transaction ${billing_timer}us",
+                     ("now", now)("deadline", _deadline)("start", start)("billing_timer", now - pseudo_start) );
+      } else if( deadline_exception_code == tx_cpu_usage_exceeded::code_value ) {
+         if (cpu_limit_due_to_greylist) {
+            EOS_THROW( greylist_cpu_usage_exceeded,
+                     "greylisted transaction was executing for too long ${billing_timer}us",
+                     ("now", now)("deadline", _deadline)("start", start)("billing_timer", now - pseudo_start) );
+         } else {
+            EOS_THROW( tx_cpu_usage_exceeded,
+                     "transaction was executing for too long ${billing_timer}us",
+                     ("now", now)("deadline", _deadline)("start", start)("billing_timer", now - pseudo_start) );
          }
-         EOS_ASSERT( false,  transaction_exception, "unexpected deadline exception code ${code}", ("code", deadline_exception_code) );
+      } else if( deadline_exception_code == leeway_deadline_exception::code_value ) {
+         EOS_THROW( leeway_deadline_exception,
+                     "the transaction was unable to complete by deadline, "
+                     "but it is possible it could have succeeded if it were allowed to run to completion ${billing_timer}",
+                     ("now", now)("deadline", _deadline)("start", start)("billing_timer", now - pseudo_start) );
       }
+      EOS_ASSERT( false,  transaction_exception, "unexpected deadline exception code ${code}", ("code", deadline_exception_code) );
    }
 
    void transaction_context::pause_billing_timer() {
@@ -383,7 +402,7 @@ namespace eosio { namespace chain {
       billed_time = now - pseudo_start;
       deadline_exception_code = deadline_exception::code_value; // Other timeout exceptions cannot be thrown while billable timer is paused.
       pseudo_start = fc::time_point();
-      deadline_timer.stop();
+      transaction_timer.stop();
    }
 
    void transaction_context::resume_billing_timer() {
@@ -398,7 +417,7 @@ namespace eosio { namespace chain {
          _deadline = deadline;
          deadline_exception_code = deadline_exception::code_value;
       }
-      deadline_timer.start(_deadline);
+      transaction_timer.start(_deadline);
    }
 
    void transaction_context::validate_cpu_usage_to_bill( int64_t billed_us, bool check_minimum )const {

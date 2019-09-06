@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
 #include <eosio/producer_plugin/producer_plugin.hpp>
 #include <eosio/chain/plugin_interface.hpp>
 #include <eosio/chain/global_property_object.hpp>
@@ -43,6 +39,30 @@ using std::string;
 using std::vector;
 using std::deque;
 using boost::signals2::scoped_connection;
+
+#undef FC_LOG_AND_DROP
+#define LOG_AND_DROP()  \
+   catch ( const guard_exception& e ) { \
+      chain_plugin::handle_guard_exception(e); \
+   } catch ( const std::bad_alloc& ) { \
+      chain_plugin::handle_bad_alloc(); \
+   } catch ( boost::interprocess::bad_alloc& ) { \
+      chain_plugin::handle_db_exhaustion(); \
+   } catch( fc::exception& er ) { \
+      wlog( "${details}", ("details",er.to_detail_string()) ); \
+   } catch( const std::exception& e ) {  \
+      fc::exception fce( \
+                FC_LOG_MESSAGE( warn, "std::exception: ${what}: ",("what",e.what()) ), \
+                fc::std_exception_code,\
+                BOOST_CORE_TYPEID(e).name(), \
+                e.what() ) ; \
+      wlog( "${details}", ("details",fce.to_detail_string()) ); \
+   } catch( ... ) {  \
+      fc::unhandled_exception e( \
+                FC_LOG_MESSAGE( warn, "unknown: ",  ), \
+                std::current_exception() ); \
+      wlog( "${details}", ("details",e.to_detail_string()) ); \
+   }
 
 const fc::string logger_name("producer_plugin");
 fc::logger _log;
@@ -244,7 +264,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       }
 
       void on_block( const block_state_ptr& bsp ) {
-         _unapplied_transactions.clear_applied( bsp->trxs );
+         _unapplied_transactions.clear_applied( bsp );
       }
 
       void on_block_header( const block_state_ptr& bsp ) {
@@ -312,8 +332,9 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 
       void on_incoming_block(const signed_block_ptr& block) {
          auto id = block->id();
+         auto blk_num = block->block_num();
 
-         fc_dlog(_log, "received incoming block ${id}", ("id", id));
+         fc_dlog(_log, "received incoming block ${n} ${id}", ("n", blk_num)("id", id));
 
          EOS_ASSERT( block->timestamp < (fc::time_point::now() + fc::seconds( 7 )), block_from_the_future,
                      "received a block from the future, ignoring it: ${id}", ("id", id) );
@@ -340,16 +361,19 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          try {
             chain.push_block( bsf, [this]( const branch_type& forked_branch ) {
                _unapplied_transactions.add_forked( forked_branch );
+            }, [this]( const transaction_id_type& id ) {
+               return _unapplied_transactions.get_trx( id );
             } );
          } catch ( const guard_exception& e ) {
-            chain_plug->handle_guard_exception(e);
+            chain_plugin::handle_guard_exception(e);
             return;
          } catch( const fc::exception& e ) {
             elog((e.to_detail_string()));
             except = true;
+         } catch ( const std::bad_alloc& ) {
+            chain_plugin::handle_bad_alloc();
          } catch ( boost::interprocess::bad_alloc& ) {
             chain_plugin::handle_db_exhaustion();
-            return;
          }
 
          if( except ) {
@@ -362,11 +386,11 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          }
 
 
-         if( fc::time_point::now() - block->timestamp < fc::minutes(5) || (block->block_num() % 1000 == 0) ) {
+         if( fc::time_point::now() - block->timestamp < fc::minutes(5) || (blk_num % 1000 == 0) ) {
             ilog("Received block ${id}... #${n} @ ${t} signed by ${p} [trxs: ${count}, lib: ${lib}, conf: ${confs}, latency: ${latency} ms]",
-                 ("p",block->producer)("id",fc::variant(block->id()).as_string().substr(8,16))
-                 ("n",block_header::num_from_id(block->id()))("t",block->timestamp)
-                 ("count",block->transactions.size())("lib",chain.last_irreversible_block_num())("confs", block->confirmed)("latency", (fc::time_point::now() - block->timestamp).count()/1000 ) );
+                 ("p",block->producer)("id",id.str().substr(8,16))("n",blk_num)("t",block->timestamp)
+                 ("count",block->transactions.size())("lib",chain.last_irreversible_block_num())
+                 ("confs", block->confirmed)("latency", (fc::time_point::now() - block->timestamp).count()/1000 ) );
          }
       }
 
@@ -414,20 +438,23 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 
       incoming_transaction_queue _pending_incoming_transactions;
 
-      void on_incoming_transaction_async(const transaction_metadata_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next) {
+      void on_incoming_transaction_async(const packed_transaction_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next) {
          chain::controller& chain = chain_plug->chain();
          const auto max_trx_time_ms = _max_transaction_time_ms.load();
          fc::microseconds max_trx_cpu_usage = max_trx_time_ms < 0 ? fc::microseconds::maximum() : fc::milliseconds( max_trx_time_ms );
 
-         auto after_sig_recovery =
-               [self = this, trx, persist_until_expired, next{std::move(next)}]() mutable {
-                  app().post(priority::low, [self, trx{std::move(trx)}, persist_until_expired, next{std::move(next)}]() {
-                     self->process_incoming_transaction_async( trx, persist_until_expired, next );
-                  });
-               };
-
-         transaction_metadata::start_recover_keys( trx, chain.get_thread_pool(), chain.get_chain_id(),
-                  max_trx_cpu_usage, std::move( after_sig_recovery ) );
+         auto future = transaction_metadata::start_recover_keys( trx, _thread_pool->get_executor(),
+                chain.get_chain_id(), fc::microseconds( max_trx_cpu_usage ), chain.configured_subjective_signature_length_limit() );
+         boost::asio::post( _thread_pool->get_executor(), [self = this, future{std::move(future)}, persist_until_expired, next{std::move(next)}]() mutable {
+            if( future.valid() ) {
+               future.wait();
+               app().post( priority::low, [self, future{std::move(future)}, persist_until_expired, next{std::move( next )}]() mutable {
+                  try {
+                     self->process_incoming_transaction_async( future.get(), persist_until_expired, std::move( next ) );
+                  } CATCH_AND_CALL(next);
+               } );
+            }
+         });
       }
 
       void process_incoming_transaction_async(const transaction_metadata_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next) {
@@ -521,9 +548,11 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
             }
 
          } catch ( const guard_exception& e ) {
-            chain_plug->handle_guard_exception(e);
+            chain_plugin::handle_guard_exception(e);
          } catch ( boost::interprocess::bad_alloc& ) {
             chain_plugin::handle_db_exhaustion();
+         } catch ( std::bad_alloc& ) {
+            chain_plugin::handle_bad_alloc();
          } CATCH_AND_CALL(send_response);
       }
 
@@ -798,23 +827,27 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
                   "No such directory '${dir}'", ("dir", my->_snapshots_dir.generic_string()) );
    }
 
-   my->_incoming_block_subscription = app().get_channel<incoming::channels::block>().subscribe([this](const signed_block_ptr& block){
+   my->_incoming_block_subscription = app().get_channel<incoming::channels::block>().subscribe(
+         [this](const signed_block_ptr& block) {
       try {
          my->on_incoming_block(block);
-      } FC_LOG_AND_DROP();
+      } LOG_AND_DROP();
    });
 
-   my->_incoming_transaction_subscription = app().get_channel<incoming::channels::transaction>().subscribe([this](const transaction_metadata_ptr& trx){
+   my->_incoming_transaction_subscription = app().get_channel<incoming::channels::transaction>().subscribe(
+         [this](const packed_transaction_ptr& trx) {
       try {
          my->on_incoming_transaction_async(trx, false, [](const auto&){});
-      } FC_LOG_AND_DROP();
+      } LOG_AND_DROP();
    });
 
-   my->_incoming_block_sync_provider = app().get_method<incoming::methods::block_sync>().register_provider([this](const signed_block_ptr& block){
+   my->_incoming_block_sync_provider = app().get_method<incoming::methods::block_sync>().register_provider(
+         [this](const signed_block_ptr& block) {
       my->on_incoming_block(block);
    });
 
-   my->_incoming_transaction_async_provider = app().get_method<incoming::methods::transaction_async>().register_provider([this](const transaction_metadata_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next) -> void {
+   my->_incoming_transaction_async_provider = app().get_method<incoming::methods::transaction_async>().register_provider(
+         [this](const packed_transaction_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next) -> void {
       return my->on_incoming_transaction_async(trx, persist_until_expired, next );
    });
 
@@ -1291,19 +1324,11 @@ fc::time_point producer_plugin_impl::calculate_block_deadline( const fc::time_po
    return block_time + fc::microseconds(last_block ? _last_block_time_offset_us : _produce_time_offset_us);
 }
 
-enum class tx_category {
-   PERSISTED,
-   UNEXPIRED_UNPERSISTED
-};
-
-
 producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
    chain::controller& chain = chain_plug->chain();
 
    if( chain.get_read_mode() == chain::db_read_mode::READ_ONLY )
       return start_block_result::waiting;
-
-   fc_dlog(_log, "Starting block at ${time}", ("time", fc::time_point::now()));
 
    const auto& hbs = chain.head_block_state();
 
@@ -1316,6 +1341,10 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
 
    // Not our turn
    const auto& scheduled_producer = hbs->get_scheduled_producer(block_time);
+
+   fc_dlog(_log, "Starting block #${n} at ${time} producer ${p}",
+           ("n", hbs->block_num + 1)("time", now)("p", scheduled_producer.producer_name));
+
    auto current_watermark = get_watermark(scheduled_producer.producer_name);
 
    size_t num_relevant_signatures = 0;
@@ -1420,7 +1449,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
       }
 
       chain.start_block( block_time, blocks_to_confirm, features_to_activate );
-   } FC_LOG_AND_DROP();
+   } LOG_AND_DROP();
 
    if( chain.is_building_block() ) {
       auto pending_block_time = chain.pending_block_time();
@@ -1516,10 +1545,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
                      itr = _unapplied_transactions.erase( itr );
                      continue;
                   }
-               } catch( const guard_exception& e ) {
-                  chain_plug->handle_guard_exception( e );
-                  return start_block_result::failed;
-               } FC_LOG_AND_DROP();
+               } LOG_AND_DROP();
                ++itr;
             }
 
@@ -1569,7 +1595,6 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
                   continue; // do not allow schedule and execute in same block
                }
                if( scheduled_trx_deadline <= fc::time_point::now() ) {
-                  exhausted = true;
                   break;
                }
 
@@ -1597,7 +1622,6 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
                }
 
                if (scheduled_trx_deadline <= fc::time_point::now()) {
-                  exhausted = true;
                   break;
                }
 
@@ -1623,10 +1647,7 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
                   } else {
                      num_applied++;
                   }
-               } catch ( const guard_exception& e ) {
-                  chain_plug->handle_guard_exception(e);
-                  return start_block_result::failed;
-               } FC_LOG_AND_DROP();
+               } LOG_AND_DROP();
 
                _incoming_trx_weight += _incoming_defer_ratio;
                if (!orig_pending_txn_size) _incoming_trx_weight = 0.0;
@@ -1646,6 +1667,8 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
 
          }
 
+         if( app().is_quiting() ) // db guard exception above in LOG_AND_DROP could have called app().quit()
+            return start_block_result::failed;
          if (exhausted || preprocess_deadline <= fc::time_point::now()) {
             return start_block_result::exhausted;
          } else {
@@ -1653,20 +1676,27 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
             _incoming_trx_weight = 0.0;
 
             if (!_pending_incoming_transactions.empty()) {
-               fc_dlog(_log, "Processing ${n} pending transactions", ("n", _pending_incoming_transactions.size()));
+               size_t processed = 0;
+               fc_dlog(_log, "Processing ${n} pending transactions", ("n", orig_pending_txn_size));
                while (orig_pending_txn_size && _pending_incoming_transactions.size()) {
                   if (preprocess_deadline <= fc::time_point::now()) return start_block_result::exhausted;
                   auto e = _pending_incoming_transactions.pop_front();
                   --orig_pending_txn_size;
                   process_incoming_transaction_async(std::get<0>(e), std::get<1>(e), std::get<2>(e));
+                  ++processed;
                }
+               fc_dlog(_log, "Processed ${n} pending transactions, ${p} left", ("n", processed)("p", _pending_incoming_transactions.size()));
             }
             return start_block_result::succeeded;
          }
 
+      } catch ( const guard_exception& e ) {
+         chain_plugin::handle_guard_exception(e);
+         return start_block_result::failed;
+      } catch ( std::bad_alloc& ) {
+         chain_plugin::handle_bad_alloc();
       } catch ( boost::interprocess::bad_alloc& ) {
          chain_plugin::handle_db_exhaustion();
-         return start_block_result::failed;
       }
 
    }
@@ -1733,9 +1763,9 @@ void producer_plugin_impl::schedule_production_loop() {
             [&chain,weak_this,cid=++_timer_corelation_id](const boost::system::error_code& ec) {
                auto self = weak_this.lock();
                if( self && ec != boost::asio::error::operation_aborted && cid == self->_timer_corelation_id ) {
-                  fc_dlog( _log, "Produce block timer running at ${time}", ("time", fc::time_point::now()) );
                   // pending_block_state expected, but can't assert inside async_wait
                   auto block_num = chain.is_building_block() ? chain.head_block_num() + 1 : 0;
+                  fc_dlog( _log, "Produce block timer for ${num} running at ${time}", ("num", block_num)("time", fc::time_point::now()) );
                   auto res = self->maybe_produce_block();
                   fc_dlog( _log, "Producing Block #${num} returned: ${res}", ("num", block_num)( "res", res ) );
                }
@@ -1755,9 +1785,8 @@ void producer_plugin_impl::schedule_delayed_production_loop(const std::weak_ptr<
    for (const auto&p: _producers) {
       auto next_producer_block_time = calculate_next_block_time(p, current_block_time);
       if (next_producer_block_time) {
-         auto producer_wake_up_time = *next_producer_block_time - fc::microseconds(config::block_interval_us);
+         auto producer_wake_up_time = *next_producer_block_time;
          if (wake_up_time) {
-            // wake up with a full block interval to the deadline
             wake_up_time = std::min<fc::time_point>(*wake_up_time, producer_wake_up_time);
          } else {
             wake_up_time = producer_wake_up_time;
@@ -1788,17 +1817,9 @@ bool producer_plugin_impl::maybe_produce_block() {
    });
 
    try {
-      try {
-         produce_block();
-         return true;
-      } catch ( const guard_exception& e ) {
-         chain_plug->handle_guard_exception(e);
-         return false;
-      } FC_LOG_AND_DROP();
-   } catch ( boost::interprocess::bad_alloc&) {
-      chain_plugin::handle_db_exhaustion();
-      return false;
-   }
+      produce_block();
+      return true;
+   } LOG_AND_DROP();
 
    fc_dlog(_log, "Aborting block due to produce_block error");
    chain::controller& chain = chain_plug->chain();
@@ -1866,7 +1887,7 @@ void producer_plugin_impl::produce_block() {
    block_state_ptr new_bs = chain.head_block_state();
 
    ilog("Produced block ${id}... #${n} @ ${t} signed by ${p} [trxs: ${count}, lib: ${lib}, confirmed: ${confs}]",
-        ("p",new_bs->header.producer)("id",fc::variant(new_bs->id).as_string().substr(0,16))
+        ("p",new_bs->header.producer)("id",new_bs->id.str().substr(0,16))
         ("n",new_bs->block_num)("t",new_bs->header.timestamp)
         ("count",new_bs->block->transactions.size())("lib",chain.last_irreversible_block_num())("confs", new_bs->header.confirmed));
 

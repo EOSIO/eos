@@ -144,7 +144,7 @@ namespace eosio { namespace chain {
                EOS_ASSERT(false, wasm_serialization_error, e.message.c_str());
             }
             if (false) {
-               wasm_injections::wasm_binary_injection injector(module);
+               wasm_injections::wasm_binary_injection<false> injector(module);
                injector.inject();
                try {
                   Serialization::ArrayOutputStream outstream;
