@@ -383,19 +383,19 @@ cat <<EOF
 
   - label: ":beer: Brew Updater"
     command: |
-      if [[ ${SKIP_HIGH_SIERRA:-false} != true ]]; then
+      if [[ ${SKIP_MACOS_10_13:-false} != true ]]; then
           buildkite-agent artifact download eosio.rb . --step ':darwin: macOS 10.13 - Package Builder'
           mv eosio.rb eosio_highsierra.rb
           buildkite-agent artifact upload eosio_highsierra.rb
       fi
-      if [[ ${SKIP_MOJAVE:-false} != true ]]; then
+      if [[ ${SKIP_MACOS_10_14:-false} != true ]]; then
         buildkite-agent artifact download eosio.rb . --step ':darwin: macOS 10.14 - Package Builder'
         buildkite-agent artifact upload eosio.rb
       fi
     agents:
       queue: "automation-basic-builder-fleet"
     timeout: "${TIMEOUT:-5}"
-    skip: ${SKIP_HIGH_SIERRA}${SKIP_MOJAVE}${SKIP_PACKAGE_BUILDER}${SKIP_MAC}
+    skip: ${SKIP_MACOS_10_13}${SKIP_MACOS_10_14}${SKIP_PACKAGE_BUILDER}${SKIP_MAC}
 
 EOF
 IFS=$oIFS
