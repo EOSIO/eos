@@ -1,6 +1,6 @@
-# nodeos plugins
+# Nodeos plugins
 
-## What are `nodeos` plugins?
+## Overview
 
 Plugins extend the core functionality implemented in `nodeos`. Some plugins are mandatory, such as `chain_plugin`, `net_plugin`, and `producer_plugin`, which reflect the early modular design of `nodeos`. The other plugins are optional as they provide nice to have features, but non-essential for the nodes operation.
 
