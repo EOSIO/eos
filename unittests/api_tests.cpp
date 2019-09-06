@@ -5,6 +5,7 @@
 #include <iterator>
 #include <sstream>
 #include <numeric>
+#include <string>
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wsign-compare"
@@ -1738,11 +1739,16 @@ BOOST_FIXTURE_TEST_CASE(crypto_tests, TESTER) { try {
 
 		produce_block();
 
-      auto payload   = fc::raw::pack( trx.sig_digest( control->get_chain_id() ) );
+      vector<char> payload(8192);
+      datastream<char*> payload_ds(payload.data(), payload.size());
+
+      auto hash   = trx.sig_digest( control->get_chain_id() );
       auto pk     = fc::raw::pack( get_public_key( N(testapi), "active" ) );
       auto sigs   = fc::raw::pack( signatures );
-      payload.insert( payload.end(), pk.begin(), pk.end() );
-      payload.insert( payload.end(), sigs.begin(), sigs.end() );
+      fc::raw::pack(payload_ds,  hash, (uint32_t)pk.size(), (uint32_t)sigs.size() );
+      payload_ds.write(pk.data(), pk.size() );
+      payload_ds.write(sigs.data(), sigs.size());
+      payload.resize(payload_ds.tellp());
 
       //No Error Here
       CALL_TEST_FUNCTION( *this, "test_crypto", "test_recover_key", payload );
@@ -1754,6 +1760,52 @@ BOOST_FIXTURE_TEST_CASE(crypto_tests, TESTER) { try {
                              crypto_api_exception, fc_exception_message_is("Error expected key different than recovered key") );
 	}
 
+	{
+		signed_transaction trx;
+
+      auto pl = vector<permission_level>{{N(testapi), config::active_name}};
+
+      action act(pl, test_api_action<TEST_METHOD("test_crypto", "test_recover_key_partial")>{});
+
+      // construct a mock WebAuthN pubkey and signature, as it is the only type that would be variable-sized
+		using namespace fc::crypto;
+		const auto priv_r1 = r1::private_key::generate();
+      const auto pub_r1 = priv_r1.get_public_key();
+      const auto origin_hash = fc::sha256::hash(std::string("fctesting.invalid"));
+      auto hash   = trx.sig_digest( control->get_chain_id() );
+
+      auto pubkey = public_key_type(webauthn::public_key(pub_r1.serialize(), webauthn::public_key::user_presence_t::USER_PRESENCE_NONE, "fctesting.invalid"));
+      std::string json = "{\"origin\":\"https://fctesting.invalid\",\"type\":\"webauthn.get\",\"challenge\":\"" + fc::base64url_encode(hash.data(), hash.data_size()) + "\"}";
+      std::vector<uint8_t> auth_data(37);
+      memcpy(auth_data.data(), origin_hash.data(), sizeof(origin_hash));
+
+      //webauthn signature is sha256(auth_data || client_data_hash)
+      auto client_data_hash = fc::sha256::hash(json);
+      fc::sha256::encoder e;
+      e.write((char*)auth_data.data(), auth_data.size());
+      e.write(client_data_hash.data(), client_data_hash.data_size());
+      auto sig = priv_r1.sign_compact(e.result());
+
+      char serialized_sig[4096];
+      datastream<char*> sig_ds(serialized_sig, sizeof(serialized_sig));
+      fc::raw::pack(sig_ds, sig);
+      fc::raw::pack(sig_ds, auth_data);
+      fc::raw::pack(sig_ds, json);
+      auto serialized_sig_size = sig_ds.tellp();
+
+      vector<char> payload(8192);
+      datastream<char*> payload_ds(payload.data(), payload.size());
+      auto pk     = fc::raw::pack( pubkey );
+      fc::raw::pack(payload_ds,  hash, (uint32_t)pk.size(), (uint32_t)serialized_sig_size-1 );
+      payload_ds.write(pk.data(), pk.size() );
+      payload_ds.write(serialized_sig, serialized_sig_size-1);
+      payload.resize(payload_ds.tellp());
+
+      //No Error Here
+      produce_block();
+      CALL_TEST_FUNCTION( *this, "test_crypto", "test_recover_key_partial", payload );
+      return;
+	}
 
 
    CALL_TEST_FUNCTION( *this, "test_crypto", "test_sha1", {} );

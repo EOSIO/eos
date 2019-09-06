@@ -182,32 +182,60 @@ extern "C" {
 
 }
 
-struct sig_hash_key {
+struct sig_hash_key_header {
    capi_checksum256 hash;
-   capi_public_key pk;
-   capi_signature sig;
+   uint32_t         pk_len;
+   uint32_t         sig_len;
+
+   auto pk_base() const {
+      return ((const char *)this) + 40;
+   }
+
+   auto sig_base() const {
+      return ((const char *)this) + 40 + pk_len;
+   }
 };
 
 void test_crypto::test_recover_key_assert_true() {
-   sig_hash_key sh;
-   read_action_data( (char*)&sh, sizeof(sh) );
-   assert_recover_key( &sh.hash, (const char*)&sh.sig, sizeof(sh.sig), (const char*)&sh.pk, sizeof(sh.pk) );
+   char buffer[action_data_size()];
+   read_action_data( buffer, action_data_size() );
+   auto sh = (const sig_hash_key_header*)buffer;
+
+   assert_recover_key( &sh->hash, sh->sig_base(), sh->sig_len, sh->pk_base(), sh->pk_len );
 }
 
 void test_crypto::test_recover_key_assert_false() {
-   sig_hash_key sh;
-   read_action_data( (char*)&sh, sizeof(sh) );
-   assert_recover_key( &sh.hash, (const char*)&sh.sig, sizeof(sh.sig), (const char*)&sh.pk, sizeof(sh.pk) );
+   char buffer[action_data_size()];
+   read_action_data( buffer, action_data_size() );
+   auto sh = (const sig_hash_key_header*)buffer;
+
+   assert_recover_key( &sh->hash, sh->sig_base(), sh->sig_len, sh->pk_base(), sh->pk_len );
    eosio_assert( false, "should have thrown an error" );
 }
 
 void test_crypto::test_recover_key() {
-   sig_hash_key sh;
-   read_action_data( (char*)&sh, sizeof(sh) );
-   capi_public_key pk;
-   recover_key( &sh.hash, (const char*)&sh.sig, sizeof(sh.sig), pk.data, sizeof(pk) );
-   for ( uint32_t i=0; i < sizeof(pk); i++ )
-      if ( pk.data[i] != sh.pk.data[i] )
+   char buffer[action_data_size()];
+   read_action_data( buffer, action_data_size() );
+   auto sh = (const sig_hash_key_header*)buffer;
+
+   char recovered[sh->pk_len];
+   auto result = recover_key( &sh->hash, sh->sig_base(), sh->sig_len, recovered, sh->pk_len );
+   eosio_assert(result == sh->pk_len, "public key does not match");
+   for ( uint32_t i=0; i < sh->pk_len; i++ )
+      if ( recovered[i] != sh->pk_base()[i] )
+         eosio_assert( false, "public key does not match" );
+}
+
+void test_crypto::test_recover_key_partial() {
+   char buffer[action_data_size()];
+   read_action_data( buffer, action_data_size() );
+   auto sh = (const sig_hash_key_header*)buffer;
+
+   char recovered[sh->pk_len];
+   auto result = recover_key( &sh->hash, sh->sig_base(), sh->sig_len, recovered, sh->pk_len );
+   eosio_assert(result > sh->pk_len, "recovered key is not longer than provided key");
+   for ( uint32_t i=0; i < sh->pk_len; i++ )
+      if ( recovered[i] != sh->pk_base()[i] )
          eosio_assert( false, "public key does not match" );
 }
 

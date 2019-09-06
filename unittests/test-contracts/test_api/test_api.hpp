@@ -128,6 +128,7 @@ struct test_multi_index {
 
 struct test_crypto {
    static void test_recover_key();
+   static void test_recover_key_partial();
    static void test_recover_key_assert_true();
    static void test_recover_key_assert_false();
    static void test_sha1();

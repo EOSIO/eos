@@ -21,7 +21,7 @@ void deferred_test::defercall( name payer, uint64_t sender_id, name contract, ui
       read_transaction( buffer, tx_size );
       auto tx_id = sha256( buffer, tx_size );
       char context_buffer[56];
-      emplace_extension(trx.transaction_extensions, (uint16_t)0, std::vector<char>() );
+      trx.transaction_extensions.emplace_back( (uint16_t)0, std::vector<char>() );
       auto& context_vector = std::get<1>( trx.transaction_extensions.back() );
       context_vector.resize(56);
       datastream ds( context_vector.data(), 56 );
