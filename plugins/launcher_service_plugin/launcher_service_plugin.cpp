@@ -861,14 +861,10 @@ fc::variant launcher_service_plugin::get_cluster_running_state(launcher_service:
 }
 
 #define CATCH_LAUCHER_EXCEPTIONS \
-   catch (boost::system::system_error& e) { \
-      return fc::mutable_variant_object("exception", e.what());\
-   } catch (boost::system::error_code& e) {\
-      return fc::mutable_variant_object("exception", e.message());\
-   } catch (const std::string &s) {\
-      return fc::mutable_variant_object("exception", s);\
-   } catch (const char *s) {\
-      return fc::mutable_variant_object("exception", s);\
+   catch (const std::string &s) {\
+      throw std::runtime_error(s.c_str());\
+   } catch (const char *s) { \
+      throw std::runtime_error(s); \
    }
 
 fc::variant launcher_service_plugin::launch_cluster(launcher_service::cluster_def def)
