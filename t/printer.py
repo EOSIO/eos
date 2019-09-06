@@ -18,7 +18,8 @@ CODES = {"reset":       "\033[0m",
          "yellow":      "\033[33m",
          "blue":        "\033[34m",
          "purple":      "\033[35m",
-         "cyan":        "\033[36m"}
+         "cyan":        "\033[36m",
+         "white":       "\033[37m"}
 
 
 class String():
@@ -63,6 +64,9 @@ class String():
 
     def cyan(self, text):
         return self.decorate(text, "cyan")
+
+    def white(self, text):
+        return self.decorate(text, "white")
 
     @staticmethod
     def pad(text: str, left=10, right=None, total=None, char='-', sep=' ') -> str:
@@ -139,13 +143,16 @@ class Print():
     def cyan(self, *text, **kwargs):
         return self.decorate(*text, style="cyan", **kwargs)
 
+    def white(self, *text, **kwargs):
+        return self.decorate(*text, style="white", **kwargs)
+
     def json(self, text, maxlen=100, func=None) -> None:
         if func is None:
             func = self.vanilla
         data = json.loads(text)
         if maxlen:
             self.trim(data, maxlen=100)
-        func(json.dumps(data, indent=4, sort_keys=True))
+        func(json.dumps(data, indent=4, sort_keys=False))
 
     def response_in_short(self, response: requests.Response, timeout=1) -> None:
         if response.ok:
@@ -159,7 +166,7 @@ class Print():
             self.red(response)
             self.json(response.text)
 
-    def response_in_full(self, response: requests.Response, timeout=1) -> None:
+    def response_in_full(self, response: requests.Response) -> None:
         self.green(response) if response.ok else self.red(response)
         self.json(response.text)
 
