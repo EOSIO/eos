@@ -131,7 +131,7 @@ public:
          create_path(bfs::path(_config.data_dir));
          create_path(bfs::path(_config.data_dir) / cluster_to_string(def.cluster_id), true);
          if (def.node_count <= 0 || def.node_count > _config.max_nodes_per_cluster) {
-            throw std::string("invalid node_count");
+            throw std::runtime_error("invalid node_count");
          }
 
          std::string logging_json;
@@ -331,7 +331,7 @@ public:
       }
       void launch_cluster(const cluster_def &def) {
          if (def.cluster_id < 0 || def.cluster_id >= _config.max_clusters) {
-            throw std::string("invalid cluster id");
+            throw std::runtime_error("invalid cluster id");
          }
          stop_cluster(def.cluster_id);
          setup_cluster(def);
@@ -339,12 +339,12 @@ public:
       }
       void start_node(int cluster_id, int node_id, std::string extra_args) {
          if (_running_clusters.find(cluster_id) == _running_clusters.end()) {
-            throw std::string("cluster is not running");
+            throw std::runtime_error("cluster is not running");
          }
          if (_running_clusters[cluster_id].nodes.find(node_id) != _running_clusters[cluster_id].nodes.end()) {
             node_state &state = _running_clusters[cluster_id].nodes[node_id];
             if (state.child && state.child->running()) {
-               throw std::string("node already running");
+               throw std::runtime_error("node already running");
             }
          }
          launch_nodes(_running_clusters[cluster_id].def, node_id, false, extra_args);
@@ -382,10 +382,10 @@ public:
 
       fc::variant call(int cluster_id, int node_id, std::string func, fc::variant args = fc::variant()) {
          if (_running_clusters.find(cluster_id) == _running_clusters.end()) {
-            throw std::string("cluster is not running");
+            throw std::runtime_error("cluster is not running");
          }
          if (_running_clusters[cluster_id].nodes.find(node_id) == _running_clusters[cluster_id].nodes.end()) {
-            throw std::string("nodeos is not running");
+            throw std::runtime_error("nodeos is not running");
          }
          int port = _running_clusters[cluster_id].nodes[node_id].http_port;
          if (port) {
@@ -400,7 +400,7 @@ public:
             return client::http::do_http_call(*sp, args, _config.print_http_request, _config.print_http_response );
          }
          std::string err = "failed to " + func + ", nodeos is not running";
-         throw err;
+         throw std::runtime_error(err.c_str());
       }
 
       fc::variant get_info(int cluster_id, int node_id) {
@@ -429,7 +429,7 @@ public:
 
       fc::variant determine_required_keys(int cluster_id, int node_id, const signed_transaction& trx) {
          if (_running_clusters.find(cluster_id) == _running_clusters.end()) {
-            throw std::string("cluster is not running");
+            throw std::runtime_error("cluster is not running");
          }
          std::vector<public_key_type> pub_keys;
          pub_keys.reserve(_running_clusters[cluster_id].imported_keys.size());
@@ -512,7 +512,7 @@ public:
                   trx.sign(pri_key, info.chain_id);
                   has_key = true;
                } else {
-                  throw std::string("private key of \"" + (std::string)pub_key + "\" not imported");
+                  throw std::runtime_error("private key of \"" + (std::string)pub_key + "\" not imported");
                }
             }
          } else {
@@ -525,7 +525,7 @@ public:
                has_key = true;
             }
             if (!has_key) {
-               throw std::string("failed to determine required keys");
+               throw std::runtime_error("failed to determine required keys");
             }
          }
          _running_clusters[cluster_id].transaction_blocknum[trx.id()] = info.head_block_num + 1;
@@ -612,14 +612,14 @@ public:
             actlist.push_back(create_setabi(param.account, abi_bytes));
          }
          if (actlist.size() == 0) {
-            throw std::string("contract_file and abi_file are both empty");
+            throw std::runtime_error("contract_file and abi_file are both empty");
          }
          return push_actions(param.cluster_id, param.node_id, std::move(actlist), std::vector<public_key_type>(), packed_transaction::compression_type::zlib);
       }
 
       fc::variant import_keys(import_keys_param param) {
          if (_running_clusters.find(param.cluster_id) == _running_clusters.end()) {
-            throw std::string("cluster is not running");
+            throw std::runtime_error("cluster is not running");
          }
          auto &cluster_state = _running_clusters[param.cluster_id];
          std::vector<std::string> pub_keys;
@@ -633,7 +633,7 @@ public:
 
       fc::variant generate_key(generate_key_param param) {
          if (_running_clusters.find(param.cluster_id) == _running_clusters.end()) {
-            throw std::string("cluster is not running");
+            throw std::runtime_error("cluster is not running");
          }
          fc::sha256 digest(param.seed);
          private_key_type pri_key = private_key_type::regenerate(fc::ecc::private_key::generate_from_seed(digest).get_secret());
@@ -644,7 +644,7 @@ public:
 
       fc::variant verify_transaction(launcher_service::verify_transaction_param param) {
          if (_running_clusters.find(param.cluster_id) == _running_clusters.end()) {
-            throw std::string("cluster is not running");
+            throw std::runtime_error("cluster is not running");
          }
          uint32_t txn_block_num = param.block_num_hint;
          if (!txn_block_num) {
@@ -711,7 +711,7 @@ public:
 
       fc::variant get_log_data(get_log_data_param param) {
          if (param.cluster_id < 0 || param.cluster_id >= _config.max_clusters) {
-            throw std::string("invalid cluster id");
+            throw std::runtime_error("invalid cluster id");
          }
          bfs::path path = bfs::path(_config.data_dir) / cluster_to_string(param.cluster_id) / node_to_string(param.node_id) / param.filename;
          size_t size = bfs::file_size(path);
@@ -822,42 +822,42 @@ fc::variant launcher_service_plugin::get_info(std::string url)
    }
 }
 
-fc::variant launcher_service_plugin::get_cluster_info(int cluster_id)
+fc::variant launcher_service_plugin::get_cluster_info(launcher_service::cluster_id_param param)
 {
-   if (_my->_running_clusters.find(cluster_id) == _my->_running_clusters.end()) {
-      return fc::mutable_variant_object("error", "cluster is not running");
+   if (_my->_running_clusters.find(param.cluster_id) == _my->_running_clusters.end()) {
+      throw std::runtime_error("cluster is not running");
    }
    bool print_request = false;
    bool print_response = false;
    std::map<int, fc::variant> res;
-   for (auto &itr : _my->_running_clusters[cluster_id].nodes) {
+   for (auto &itr : _my->_running_clusters[param.cluster_id].nodes) {
       int id = itr.second.id;
       int port = itr.second.http_port;
       if (port) {
          try {
-            res[id] = _my->get_info(cluster_id, id);
+            res[id] = _my->get_info(param.cluster_id, id);
          } catch (boost::system::system_error& e) {
             std::string url = "http://" + _my->_config.host_name + ":" + _my->itoa(port);
             res[id] = fc::mutable_variant_object("exception", e.what())("url", url);
          }
       }
    }
-   return res.size() ? fc::mutable_variant_object("result", res) : fc::mutable_variant_object("error", "cluster is not running");
+   return fc::mutable_variant_object("result", res);
 }
 
-fc::variant launcher_service_plugin::get_cluster_running_state(int cluster_id)
+fc::variant launcher_service_plugin::get_cluster_running_state(launcher_service::cluster_id_param param)
 {
-   if (_my->_running_clusters.find(cluster_id) == _my->_running_clusters.end()) {
-      return fc::mutable_variant_object("error", "cluster is not running");
+   if (_my->_running_clusters.find(param.cluster_id) == _my->_running_clusters.end()) {
+      throw std::runtime_error("cluster is not running");
    }
-   for (auto &itr : _my->_running_clusters[cluster_id].nodes) {
+   for (auto &itr : _my->_running_clusters[param.cluster_id].nodes) {
       launcher_service_plugin_impl::node_state &state = itr.second;
       if (state.child && !state.child->running()) {
          state.pid = 0;
          state.child.reset();
       }
    }
-   return fc::mutable_variant_object("result", _my->_running_clusters[cluster_id]);
+   return fc::mutable_variant_object("result", _my->_running_clusters[param.cluster_id]);
 }
 
 #define CATCH_LAUCHER_EXCEPTIONS \
@@ -886,23 +886,23 @@ fc::variant launcher_service_plugin::stop_all_clusters() {
    } CATCH_LAUCHER_EXCEPTIONS
 }
 
-fc::variant launcher_service_plugin::stop_cluster(int cluster_id) {
+fc::variant launcher_service_plugin::stop_cluster(launcher_service::cluster_id_param param) {
    try {
-      _my->stop_cluster(cluster_id);
+      _my->stop_cluster(param.cluster_id);
       return fc::mutable_variant_object("result", "OK");
    } CATCH_LAUCHER_EXCEPTIONS
 }
 
-fc::variant launcher_service_plugin::start_node(int cluster_id, int node_id, std::string args) {
+fc::variant launcher_service_plugin::start_node(launcher_service::start_node_param param) {
    try {
-      _my->start_node(cluster_id, node_id, args);
+      _my->start_node(param.cluster_id, param.node_id, param.extra_args);
       return fc::mutable_variant_object("result", "OK");
    } CATCH_LAUCHER_EXCEPTIONS
 }
 
-fc::variant launcher_service_plugin::stop_node(int cluster_id, int node_id, int killsig) {
+fc::variant launcher_service_plugin::stop_node(launcher_service::stop_node_param param) {
    try {
-      _my->stop_node(cluster_id, node_id, killsig);
+      _my->stop_node(param.cluster_id, param.node_id, param.kill_sig);
       return fc::mutable_variant_object("result", "OK");
    } CATCH_LAUCHER_EXCEPTIONS
 }
@@ -919,9 +919,9 @@ fc::variant launcher_service_plugin::create_account(launcher_service::new_accoun
    } CATCH_LAUCHER_EXCEPTIONS
 }
 
-fc::variant launcher_service_plugin::get_protocol_features(int cluster_id, int node_id) {
+fc::variant launcher_service_plugin::get_protocol_features(launcher_service::node_id_param param) {
    try {
-      return _my->get_protocol_features(cluster_id, node_id);
+      return _my->get_protocol_features(param.cluster_id, param.node_id);
    } CATCH_LAUCHER_EXCEPTIONS
 }
 

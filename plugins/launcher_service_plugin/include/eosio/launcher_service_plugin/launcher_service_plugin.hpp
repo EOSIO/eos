@@ -200,6 +200,25 @@ namespace launcher_service {
       bool             reverse = false;
       bool             show_payer = false; // show RAM pyer
     };
+
+   struct cluster_id_param {
+      int              cluster_id = 0;
+   };
+   struct node_id_param {
+      int              cluster_id = 0;
+      int              node_id = 0;
+   };
+
+   struct start_node_param {
+      int              cluster_id = 0;
+      int              node_id = 0;
+      std::string      extra_args;
+   };
+   struct stop_node_param {
+      int              cluster_id = 0;
+      int              node_id = 0;
+      int              kill_sig = 15;
+   };
 }
 
 /**
@@ -220,12 +239,12 @@ public:
    // cluster related calls
    fc::variant launch_cluster(launcher_service::cluster_def cluster_def);
    fc::variant stop_all_clusters();
-   fc::variant stop_cluster(int cluster_id);
-   fc::variant start_node(int cluster_id, int node_id, std::string extra_args);
-   fc::variant stop_node(int cluster_id, int node_id, int killsig);
+   fc::variant stop_cluster(launcher_service::cluster_id_param);
+   fc::variant start_node(launcher_service::start_node_param);
+   fc::variant stop_node(launcher_service::stop_node_param);
 
    // wallet related calls
-   fc::variant generate_key(launcher_service::generate_key_param param);
+   fc::variant generate_key(launcher_service::generate_key_param);
    fc::variant import_keys(launcher_service::import_keys_param);
 
    // querys
@@ -234,9 +253,9 @@ public:
    fc::variant get_block_header_state(launcher_service::get_block_param);
    fc::variant get_account(launcher_service::get_account_param);
    fc::variant get_code_hash(launcher_service::get_account_param);
-   fc::variant get_cluster_info(int cluster_id);
-   fc::variant get_cluster_running_state(int cluster_id);
-   fc::variant get_protocol_features(int cluster_id, int node_id);
+   fc::variant get_cluster_info(launcher_service::cluster_id_param);
+   fc::variant get_cluster_running_state(launcher_service::cluster_id_param);
+   fc::variant get_protocol_features(launcher_service::node_id_param);
    fc::variant verify_transaction(launcher_service::verify_transaction_param);
    fc::variant get_table_rows(launcher_service::get_table_rows_param);
    fc::variant get_log_data(launcher_service::get_log_data_param);
@@ -270,3 +289,7 @@ FC_REFLECT(eosio::launcher_service::verify_transaction_param, (cluster_id)(node_
 FC_REFLECT(eosio::launcher_service::schedule_protocol_feature_activations_param, (cluster_id)(node_id)(protocol_features_to_activate))
 FC_REFLECT(eosio::launcher_service::get_table_rows_param, (cluster_id)(node_id)(json)(code)(scope)(table)(lower_bound)(upper_bound)(limit)(key_type)(index_position)(encode_type)(reverse)(show_payer))
 FC_REFLECT(eosio::launcher_service::get_log_data_param, (cluster_id)(node_id)(offset)(len)(filename))
+FC_REFLECT(eosio::launcher_service::cluster_id_param, (cluster_id))
+FC_REFLECT(eosio::launcher_service::node_id_param, (cluster_id)(node_id))
+FC_REFLECT(eosio::launcher_service::start_node_param, (cluster_id)(node_id)(extra_args))
+FC_REFLECT(eosio::launcher_service::stop_node_param, (cluster_id)(node_id)(kill_sig))
