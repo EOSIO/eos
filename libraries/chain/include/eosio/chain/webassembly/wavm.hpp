@@ -12,6 +12,7 @@
 #include <eosio/chain/webassembly/rodeos/memory.hpp>
 #include <eosio/chain/webassembly/rodeos/executor.hpp>
 #include <eosio/chain/webassembly/rodeos/code_cache.hpp>
+#include <eosio/chain/webassembly/rodeos/config.hpp>
 
 #include <boost/hana/equal.hpp>
 
@@ -32,7 +33,7 @@ class wavm_instantiated_module;
 
 class wavm_runtime : public eosio::chain::wasm_runtime_interface {
    public:
-      wavm_runtime();
+      wavm_runtime(const boost::filesystem::path data_dir, const rodeos::config& rodeos_config);
       ~wavm_runtime();
       std::unique_ptr<wasm_instantiated_module_interface> instantiate_module(const char* code_bytes, size_t code_size, std::vector<uint8_t> initial_memory) override;
 

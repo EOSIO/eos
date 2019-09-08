@@ -24,6 +24,8 @@ using boost::multi_index_container;
 
 namespace eosio { namespace chain {
 
+   namespace rodeos { struct config; }
+
    struct wasm_interface_impl {
       struct wasm_cache_entry {
          digest_type                                          code_hash;
@@ -37,9 +39,9 @@ namespace eosio { namespace chain {
       struct by_first_block_num;
       struct by_last_block_num;
 
-      wasm_interface_impl(wasm_interface::vm_type vm, const chainbase::database& d) : db(d), wasm_runtime_time(vm) {
+      wasm_interface_impl(wasm_interface::vm_type vm, const chainbase::database& d, const boost::filesystem::path data_dir, const rodeos::config& rodeos_config) : db(d), wasm_runtime_time(vm) {
          if(vm == wasm_interface::vm_type::wavm)
-            runtime_interface = std::make_unique<webassembly::wavm::wavm_runtime>();
+            runtime_interface = std::make_unique<webassembly::wavm::wavm_runtime>(data_dir, rodeos_config);
          else if(vm == wasm_interface::vm_type::wabt)
             runtime_interface = std::make_unique<webassembly::wabt_runtime::wabt_runtime>();
          else

@@ -136,7 +136,7 @@ class wavm_instantiated_module : public wasm_instantiated_module_interface {
       rodeos::code_descriptor cd;
 };
 
-wavm_runtime::wavm_runtime() : exec(cc) {
+wavm_runtime::wavm_runtime(const boost::filesystem::path data_dir, const rodeos::config& rodeos_config) : cc(data_dir, rodeos_config), exec(cc) {
    static detail::wavm_runtime_initializer the_wavm_runtime_initializer;
 }
 

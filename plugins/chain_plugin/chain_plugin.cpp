@@ -176,6 +176,7 @@ chain_plugin::chain_plugin()
    app().register_config_type<eosio::chain::db_read_mode>();
    app().register_config_type<eosio::chain::validation_mode>();
    app().register_config_type<chainbase::pinnable_mapped_file::map_mode>();
+   app().register_config_type<rodeos::map_mode>();
 }
 
 chain_plugin::~chain_plugin(){}
@@ -243,6 +244,12 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          )
 #ifdef __linux__
          ("database-hugepage-path", bpo::value<vector<string>>()->composing(), "Optional path for database hugepages when in \"locked\" mode (may specify multiple times)")
+#endif
+
+#ifdef __linux__
+         ("rodeos-cache-size-mb", bpo::value<uint64_t>()->default_value(rodeos::config().cache_size / (1024u*1024u)), "Maximum size (in MiB) of the rodeos code cache")
+         ("rodeos-map-mode", bpo::value<rodeos::map_mode>()->default_value(rodeos::config().cache_map_mode), "rodeos code cache mode (\"mapped\", \"heap\", or \"locked\")")
+         ("rodeos-hugepage-path", bpo::value<vector<string>>()->composing(), "Optional path for rodeos code hugepages when in \"locked\" mode")
 #endif
          ;
 
@@ -878,6 +885,15 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 #ifdef __linux__
       if( options.count("database-hugepage-path") )
          my->chain_config->db_hugepage_paths = options.at("database-hugepage-path").as<std::vector<std::string>>();
+#endif
+
+#ifdef __linux__
+      if( options.count("rodeos-cache-size-mb") )
+         my->chain_config->rodeos_config.cache_size = options.at( "rodeos-cache-size-mb" ).as<uint64_t>() * 1024u * 1024u;
+      if( options.count("rodeos-map-mode") )
+         my->chain_config->rodeos_config.cache_map_mode = options.at( "rodeos-map-mode" ).as<rodeos::map_mode>();
+      if( options.count("rodeos-hugepage-path") )
+         my->chain_config->rodeos_config.cache_hugepage_paths = options.at("rodeos-hugepage-path").as<std::vector<std::string>>();
 #endif
 
       my->chain.emplace( *my->chain_config, std::move(pfs) );

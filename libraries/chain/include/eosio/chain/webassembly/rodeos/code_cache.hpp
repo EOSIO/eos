@@ -15,11 +15,13 @@ namespace eosio { namespace chain { namespace rodeos {
 using namespace boost::multi_index;
 
 namespace bip = boost::interprocess;
+namespace bfs = boost::filesystem;
+
+struct config;
 
 class code_cache {
    public:
-      ///XXX in future this must take path, size, mapping type etc
-      code_cache();
+      code_cache(const bfs::path data_dir, const rodeos::config& rodeos_config);
       ~code_cache();
 
       const int& fd() const { return _cache_fd; }
@@ -46,14 +48,17 @@ class code_cache {
       > code_cache_index;
       code_cache_index _cache_index;
 
+      bfs::path _cache_file_path;
       int _cache_fd;
+      char* _code_mapping;
 
-      //XXX a bunch of junk below here just for phase 1. ultimately this stuff gets moved out to the sandbox
-      typedef typename bip::segment_manager<char, bip::rbtree_best_fit<bip::null_mutex_family>, bip::iset_index> segment_manager;
-      uint8_t* _code_mapping;
-      size_t _code_mapping_size;
-      segment_manager* _segment_manager;
+      using allocator_t = bip::rbtree_best_fit<bip::null_mutex_family, bip::offset_ptr<void>, 16>;
+      allocator_t* allocator;
 
+      void set_on_disk_region_dirty(bool);
+
+      template <typename T>
+      void serialize_cache_index(fc::datastream<T>& ds);
 };
 
 }}}
