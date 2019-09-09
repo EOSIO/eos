@@ -26,4 +26,7 @@ if [[ "$DEBUG_BYTE" == '00' ]]; then
 fi
 echo 'FAIL: Debug byte is set!'
 echo "Debug Byte = 0x$DEBUG_BYTE"
+echo 'First kilobyte of shared_memory.bin:'
+echo '$ xxd -l 1024 shared_memory.bin'
+xxd -l 1024 data/state/shared_memory.bin
 exit 1
