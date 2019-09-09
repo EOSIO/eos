@@ -13,3 +13,11 @@ This is the go-to option for Smart Contract developers, aspiring Block Producers
 While this option can technically be used for smart contract development, it may be overkill. This is most beneficial for those who are working on aspects of Core Development, such as benchmarking, optimization and experimentation. It's also a good option for the curious and tinkerers amongst you. 
 
 * [Configure Nodeos as a Local Multi-Node Testnet](01_local-multi-node-testnet.md)
+
+## Third-Party Testnets
+
+The following third-party testnets are available testing EOSIO DApps:
+
+* Jungle Testnet [monitor](https://monitor.jungletestnet.io/), [website](https://jungletestnet.io/)
+* [CryptoKylin Testnet](https://www.cryptokylin.io/)
+* [Telos Testnet](https://mon-test.telosfoundation.io/)
