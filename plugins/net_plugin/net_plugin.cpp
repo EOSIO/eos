@@ -157,7 +157,6 @@ namespace eosio {
       explicit sync_manager( uint32_t span );
       static void send_handshakes();
       bool syncing_with_peer() const { return sync_state == lib_catchup; }
-      bool block_while_syncing_with_other_peer( const connection_ptr& c ) const;
       void sync_reset_lib_num( const connection_ptr& conn );
       void sync_reassign_fetch( const connection_ptr& c, go_away_reason reason );
       void rejected_block( const connection_ptr& c, uint32_t blk_num );
@@ -1359,14 +1358,6 @@ namespace eosio {
       sync_state = newstate;
    }
 
-   bool sync_manager::block_while_syncing_with_other_peer( const connection_ptr& c ) const {
-      if( syncing_with_peer() ) {
-         std::lock_guard<std::mutex> g( sync_mtx );
-         return c != sync_source;
-      }
-      return false;
-   }
-
    void sync_manager::sync_reset_lib_num(const connection_ptr& c) {
       std::unique_lock<std::mutex> g( sync_mtx );
       if( sync_state == in_sync ) {
@@ -1648,11 +1639,6 @@ namespace eosio {
          return true;
       } );
       if( req.req_blocks.mode == catch_up ) {
-         {
-            std::lock_guard<std::mutex> g_conn( c->conn_mtx );
-            c->fork_head = id;
-            c->fork_head_num = num;
-         }
          std::lock_guard<std::mutex> g( sync_mtx );
          fc_ilog( logger, "got a catch_up notice while in ${s}, fork head num = ${fhn} "
                           "target LIB = ${lib} next_expected = ${ne}",
@@ -1661,6 +1647,11 @@ namespace eosio {
          if( sync_state == lib_catchup )
             return false;
          set_state( head_catchup );
+         {
+            std::lock_guard<std::mutex> g_conn( c->conn_mtx );
+            c->fork_head = id;
+            c->fork_head_num = num;
+         }
       } else {
          std::lock_guard<std::mutex> g_conn( c->conn_mtx );
          c->fork_head = block_id_type();
@@ -1738,7 +1729,6 @@ namespace eosio {
       }
       if( state == head_catchup ) {
          fc_dlog( logger, "sync_manager in head_catchup state" );
-         set_state( in_sync );
          sync_source.reset();
          g_sync.unlock();
 
@@ -1762,10 +1752,9 @@ namespace eosio {
          } );
 
          if( set_state_to_head_catchup ) {
-            g_sync.lock();
             set_state( head_catchup );
-            g_sync.unlock();
          } else {
+            set_state( in_sync );
             send_handshakes();
          }
       } else if( state == lib_catchup ) {
@@ -2839,9 +2828,9 @@ namespace eosio {
 
    // called from connection strand
    void connection::handle_message( const block_id_type& id, signed_block_ptr ptr ) {
-      app().post(priority::high, [ptr{std::move(ptr)}, id, weak = weak_from_this()] {
-         connection_ptr c = weak.lock();
-         if( c ) c->process_signed_block( id, std::move( ptr ) );
+      peer_dlog( this, "received signed_block ${id}", ("id", ptr->block_num() ) );
+      app().post(priority::high, [ptr{std::move(ptr)}, id, c = shared_from_this()]() mutable {
+         c->process_signed_block( id, std::move( ptr ) );
       });
       my_impl->dispatcher->bcast_notice( id );
    }
@@ -2855,9 +2844,6 @@ namespace eosio {
 
       // if we have closed connection then stop processing
       if( !c->socket_is_open() )
-         return;
-
-      if( my_impl->sync_master->block_while_syncing_with_other_peer(c) )
          return;
 
       try {
