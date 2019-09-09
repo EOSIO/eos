@@ -14,6 +14,8 @@
 
 #include <eosio/chain/eosio_contract.hpp>
 
+#include <chainbase/environment.hpp>
+
 #include <boost/signals2/connection.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/lexical_cast.hpp>
@@ -22,6 +24,13 @@
 #include <fc/variant.hpp>
 #include <signal.h>
 #include <cstdlib>
+
+// reflect chainbase::environment for --print-build-info option
+FC_REFLECT_ENUM( chainbase::environment::os_t,
+                 (OS_LINUX)(OS_MACOS)(OS_WINDOWS)(OS_OTHER) )
+FC_REFLECT_ENUM( chainbase::environment::arch_t,
+                 (ARCH_X86_64)(ARCH_ARM)(ARCH_RISCV)(ARCH_OTHER) )
+FC_REFLECT(chainbase::environment, (debug)(os)(arch)(boost_version)(compiler) )
 
 namespace eosio {
 
@@ -263,6 +272,8 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "extract genesis_state from blocks.log as JSON, print to console, and exit")
          ("extract-genesis-json", bpo::value<bfs::path>(),
           "extract genesis_state from blocks.log as JSON, write into specified file, and exit")
+         ("print-build-info", bpo::bool_switch()->default_value(false),
+          "print build environment information to console as JSON and exit")
          ("fix-reversible-blocks", bpo::bool_switch()->default_value(false),
           "recovers reversible block database if that database is in a bad state")
          ("force-all-checks", bpo::bool_switch()->default_value(false),
@@ -566,6 +577,11 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       }
 
       my->chain_config = controller::config();
+
+      if( options.at( "print-build-info" ).as<bool>() ) {
+         ilog( "Build environment JSON:\n${e}", ("e", json::to_pretty_string( chainbase::environment() )) );
+         EOS_THROW( node_management_success, "reported build environment information" );
+      }
 
       LOAD_VALUE_SET( options, "sender-bypass-whiteblacklist", my->chain_config->sender_bypass_whiteblacklist );
       LOAD_VALUE_SET( options, "actor-whitelist", my->chain_config->actor_whitelist );
