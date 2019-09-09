@@ -19,9 +19,11 @@ echo ''
 ./nodeos --config-dir $(pwd)/config --data-dir $(pwd)/data & # run nodeos in background
 sleep 10
 kill $! # kill nodeos gracefully, by PID
-if [[ "$(xxd -seek 9 -l 1 data/state/shared_memory.bin | awk '{print $2}')" == '00' ]]; then
+export DEBUG_BYTE="$(xxd -seek 9 -l 1 data/state/shared_memory.bin | awk '{print $2}')"
+if [[ "$DEBUG_BYTE" == '00' ]]; then
     echo 'PASS: Debug byte not set.'
     exit 0
 fi
 echo 'FAIL: Debug byte is set!'
+echo "Debug Byte = 0x$DEBUG_BYTE"
 exit 1
