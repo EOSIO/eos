@@ -11,9 +11,6 @@ for FILE in $(ls $CICD_DIR/platforms); do
     if [[ $PINNED == false || $UNPINNED == true ]] && [[ ! $FILE =~ 'macos' ]]; then
         export SKIP_CONTRACT_BUILDER=${SKIP_CONTRACT_BUILDER:-true}
         export SKIP_PACKAGE_BUILDER=${SKIP_PACKAGE_BUILDER:-true}
-        [[ ! $FILE =~ 'unpinned' ]] && continue
-    else
-        [[ $FILE =~ 'unpinned' ]] && continue
     fi
     export FILE_NAME=$(echo $FILE | awk '{split($0,a,/\.(d|s)/); print a[1] }')
     export PLATFORM_NAME=$(echo $FILE_NAME | cut -d- -f1 | sed 's/os/OS/g')
@@ -383,19 +380,19 @@ cat <<EOF
 
   - label: ":beer: Brew Updater"
     command: |
-      if [[ ${SKIP_HIGH_SIERRA:-false} != true ]]; then
+      if [[ ${SKIP_MACOS_10_13:-false} != true ]]; then
           buildkite-agent artifact download eosio.rb . --step ':darwin: macOS 10.13 - Package Builder'
           mv eosio.rb eosio_highsierra.rb
           buildkite-agent artifact upload eosio_highsierra.rb
       fi
-      if [[ ${SKIP_MOJAVE:-false} != true ]]; then
+      if [[ ${SKIP_MACOS_10_14:-false} != true ]]; then
         buildkite-agent artifact download eosio.rb . --step ':darwin: macOS 10.14 - Package Builder'
         buildkite-agent artifact upload eosio.rb
       fi
     agents:
       queue: "automation-basic-builder-fleet"
     timeout: "${TIMEOUT:-5}"
-    skip: ${SKIP_HIGH_SIERRA}${SKIP_MOJAVE}${SKIP_PACKAGE_BUILDER}${SKIP_MAC}
+    skip: ${SKIP_PACKAGE_BUILDER}${SKIP_MAC}
 
 EOF
 IFS=$oIFS
