@@ -1,8 +1,15 @@
 #!/bin/bash
 set -e
-# test name
+# test name and purpose
 echo ''
-echo '                         ##### Release Build Test #####'
+echo '                        ##### Release Build Test #####'
+echo ''
+echo 'The purpose of this test is to ensure that nodeos was built without debugging'
+echo 'symbols. Debugging symbols enable software engineers to inspect and control a'
+echo 'running program with a debugging tool, but they significantly slow down'
+echo 'performance-critical applications like nodeos. Anyone intending to build and'
+echo 'install nodeos from source should perform a "release build," which excludes'
+echo 'debugging symbols to generate faster and lighter binaries.'
 echo ''
 # environment
 [[ -z "$EOSIO_ROOT" && $(git --version) ]] && export EOSIO_ROOT="$(git rev-parse --show-toplevel)"
