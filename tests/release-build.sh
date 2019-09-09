@@ -14,6 +14,16 @@ echo ''
 # environment
 [[ -z "$EOSIO_ROOT" && $(git --version) ]] && export EOSIO_ROOT="$(git rev-parse --show-toplevel)"
 [[ -z "$EOSIO_ROOT" ]] && export EOSIO_ROOT="$(echo $(pwd)/ | grep -ioe '.*/eos/' -e '.*/eosio/' -e '.*/build/' | sed 's,/build/,/,')"
+if [[ ! -f "$EOSIO_ROOT/build/bin/nodeos" && ! -f "$EOSIO_ROOT/build/programs/nodeos/nodeos" ]]; then
+    echo 'ERROR: nodeos binary not found!'
+    echo 'Looked in the following places:'
+    echo "$ ls -la $EOSIO_ROOT/build/bin"
+    ls -la $EOSIO_ROOT/build/bin
+    echo "$ ls -la $EOSIO_ROOT/build/programs/nodeos"
+    ls -la $EOSIO_ROOT/build/programs/nodeos
+    echo "Release Build Test not run because test conditions were not met."
+    exit 1
+fi
 [[ -f "$EOSIO_ROOT/build/bin/nodeos" ]] && cd "$EOSIO_ROOT/build/bin" || cd "$EOSIO_ROOT/build/programs/nodeos"
 # test
 ./nodeos --config-dir $(pwd)/config --data-dir $(pwd)/data & # run nodeos in background
@@ -29,4 +39,4 @@ echo "Debug Byte = 0x$DEBUG_BYTE"
 echo 'First kilobyte of shared_memory.bin:'
 echo '$ xxd -l 1024 shared_memory.bin'
 xxd -l 1024 data/state/shared_memory.bin
-exit 1
+exit 2
