@@ -135,7 +135,7 @@ class LauncherCaller:
         self.file = self.get_service_file(pid)
         self.print.green("Connecting to existing launcher service with process ID [{}].".format(pid))
         self.print.vanilla("Configuration of existing launcher service:")
-        self.print.vanilla("--- Listening port: [{}]".format(self.string.cyan(str(self.port))))
+        self.print.vanilla("--- Listening port: [{}]".format(self.string.yellow(str(self.port))))
         self.print.vanilla("--- Path to file: {}".format(self.string.vanilla(self.file)))
         if self.args.port and self.args.port != self.port:
             self.print.yellow("Warning: Command-line argument -p/--port {} is ignored.".format(self.args.port))
@@ -364,8 +364,8 @@ class LauncherCaller:
         self.describe(text, pause=pause)
         self.request_url = self.get_endpoint_url(endpoint)
         self.request_data = json.dumps(data)
-        self.print.cyan(self.request_url)
-        self.print.json(self.request_data, func=self.print.yellow)
+        self.print.vanilla(self.request_url)
+        self.print.json(self.request_data, func=self.print.vanilla)
         self.response = self.rpc(self.request_url, self.request_data)
         # TODO: smarter check, looking into response
         while not self.response.ok and retry > 0:
@@ -374,15 +374,16 @@ class LauncherCaller:
             time.sleep(1)
             self.response = self.rpc(self.request_url, self.request_data)
             retry -= 1
-        self.print.response()
         tid = self.get_transaction_id()
         if tid:
             self.print.green("{:100}".format("<Transaction ID> {}".format(tid)))
         else:
             self.print.yellow("{:100}".format("Warning: No transaction ID returned."))
+        self.print.response()
 
     def launch_cluster(self, data: dict):
         self.call("launch_cluster", data, "launch cluster")
+        # TODO: sleep until get info is successful
 
     def get_cluster_info(self, data: dict):
         self.call("get_cluster_info", data, "get cluster info")
@@ -463,7 +464,7 @@ class LauncherCaller:
         return [int(x) for x in out.splitlines()]
 
     def describe(self, text, pause=0):
-        self.print.blue(self.string.pad(text))
+        self.print.vanilla(self.string.pad(self.string.reverse(self.string.blue(text))))
         time.sleep(pause)
 
 

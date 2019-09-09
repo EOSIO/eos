@@ -45,7 +45,7 @@ class String():
         return self.decorate(text, "underline")
 
     def reverse(self, text):
-        return self.decorate(text, "underline")
+        return self.decorate(text, "reverse")
 
     def red(self, text):
         return self.decorate(text, "red")
