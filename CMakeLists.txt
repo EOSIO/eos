@@ -11,7 +11,7 @@ endif()
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules")
 
 if (UNIX AND APPLE)
-   list(APPEND CMAKE_PREFIX_PATH "/usr/local/opt/llvm@4" "/usr/local/opt/gettext")
+   list(APPEND CMAKE_PREFIX_PATH "/usr/local/opt/llvm@7" "/usr/local/opt/gettext")
 endif()
 
 include( GNUInstallDirs )
@@ -81,6 +81,13 @@ set( Boost_USE_STATIC_LIBS ON CACHE STRING "ON or OFF" )
 # Most boost deps get implictly picked up via fc, as just about everything links to fc. In addition we pick up
 # the pthread dependency through fc.
 find_package(Boost 1.67 REQUIRED COMPONENTS program_options unit_test_framework)
+
+# WAVM requires LLVM, but move the check up here to a central location so that the EosioTester.cmakes
+# can be created with the exact version found
+find_package(LLVM REQUIRED CONFIG)
+if(LLVM_VERSION_MAJOR VERSION_LESS 7 OR LLVM_VERSION_MAJOR VERSION_GREATER 9)
+	message(FATAL_ERROR "EOSIO requires an LLVM version 7.0 to 9.0")
+endif()
 
 if( APPLE AND UNIX )
 # Apple Specific Options Here
