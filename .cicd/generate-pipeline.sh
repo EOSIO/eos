@@ -11,9 +11,6 @@ for FILE in $(ls $CICD_DIR/platforms); do
     if [[ $PINNED == false || $UNPINNED == true ]] && [[ ! $FILE =~ 'macos' ]]; then
         export SKIP_CONTRACT_BUILDER=${SKIP_CONTRACT_BUILDER:-true}
         export SKIP_PACKAGE_BUILDER=${SKIP_PACKAGE_BUILDER:-true}
-        [[ ! $FILE =~ 'unpinned' ]] && continue
-    else
-        [[ $FILE =~ 'unpinned' ]] && continue
     fi
     export FILE_NAME=$(echo $FILE | awk '{split($0,a,/\.(d|s)/); print a[1] }')
     export PLATFORM_NAME=$(echo $FILE_NAME | cut -d- -f1 | sed 's/os/OS/g')
