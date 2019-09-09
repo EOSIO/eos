@@ -347,9 +347,9 @@ class LauncherCaller:
                                         "permissions": [{"actor": "{}".format(p),
                                                         "permission": "active"}],
                                         "data": {"producer": "{}".format(p),
-                                                "producer_key": "EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
-                                                "url": "www.test.com",
-                                                "location": 0}}]
+                                                 "producer_key": "EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+                                                 "url": "www.test.com",
+                                                 "location": 0}}]
                     self.push_actions(self.fetch(info, ["cluster_id", "node_id", "actions"]), "register \"{}\" account".format(p))
 
         # vote for producers
@@ -408,6 +408,20 @@ class LauncherCaller:
     def create_account(self, data: dict, name: str):
         self.call("create_account", data, "create \"{}\" account".format(name))
 
+    def stop_node(self, data: dict, text: str):
+        self.call("stop_node", data, text)
+
+    def terminate_node(self, data: dict):
+        data.update(signal_id=15)
+        self.stop_node(data, "terminate node #{}".format(data["node_id"]))
+
+    def kill_node(self, data: dict):
+        data.update(signal_id=9)
+        self.stop_node(data, "kill node #{}".format(data["node_id"]))
+
+    def stop_all_clusters(self):
+        self.call("stop_all_clusters", dict(), "stop all clusters")
+
     # -------------------------------------------------------------------------
 
     def get_account(self, data):
@@ -422,31 +436,14 @@ class LauncherCaller:
     def get_cluster_running_state(self, data):
         self.response = self.rpc("get_cluster_running_state", data)
 
-    def rpc_stop_node(self, data):
-        self.print.json(data, func=self.print.yellow)
-        self.response = self.rpc("stop_node", data)
-
-    def stop_all_clusters(self):
-        self.response = self.rpc("stop_all_clusters", "")
-
-    def verify_transaction(self, data):
-        self.response = self.rpc("verify_transaction", data)
-
     def get_transaction_id(self):
         try:
             return json.loads(self.response.text)['transaction_id']
         except KeyError:
             return
 
-    def kill_node(self, node_id):
-        self.stop_node(node_id, 9)
-
-    def terminate_node(self, node_id):
-        self.stop_node(node_id, 15)
-
-    def stop_node(self, node_id, signal_id):
-        json_str = json.dumps([self.cluster_id, node_id, signal_id])
-        self.rpc_stop_node(json_str)
+    def verify_transaction(self, data):
+        self.response = self.rpc("verify_transaction", data)
 
     # ---------- Utilities ------------------------------------------------------------------------
 
