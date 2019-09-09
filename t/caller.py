@@ -405,14 +405,6 @@ class LauncherCaller:
 
     # -------------------------------------------------------------------------
 
-    def rpc_create_bios_accounts(self, data):
-        self.print.json(data, func=self.print.yellow)
-        self.response = self.rpc("create_bios_accounts", data)
-
-    def rpc_create_account(self, data):
-        self.print.json(data, func=self.print.yellow)
-        self.response = self.rpc("create_account", data)
-
     def get_account(self, data):
         self.response = self.rpc("get_account", data)
 
@@ -455,7 +447,6 @@ class LauncherCaller:
 
     @staticmethod
     def override(default_value, value):
-        # return value if value is not None else default_value
         return default_value if value is None else value
 
     @staticmethod
