@@ -26,7 +26,7 @@ class LauncherCaller:
     DEFAULT_CLUSTER_ID = 0
     DEFAULT_TOPOLOGY = "mesh"
     DEFAULT_VERBOSITY = 1
-    DEFAULT_MONOCHROME = False
+    DEFAULT_MONOCHROME = True
     PROGRAM = "eosio-launcher-service"
 
     def __init__(self):
@@ -54,10 +54,12 @@ class LauncherCaller:
         self.print = Print(invisible=not self.verbosity, monochrome=self.monochrome)
         self.string = String(invisible=not self.verbosity, monochrome=self.monochrome)
         self.alert = String(monochrome=self.monochrome)
-        if self.verbosity > 1:
+        if self.verbosity >= 3:
             self.print.response = lambda: self.print.response_in_full(self.response)
+        elif self.verbosity == 2:
+            self.print.response = lambda: self.print.response_in_interaction(self.response, timeout=1)
         elif self.verbosity == 1:
-            self.print.response = lambda: self.print.response_in_short(self.response, timeout=1)
+            self.print.response = lambda: self.print.response_in_short(self.response)
         else:
             self.print.response = lambda: None
 
@@ -104,9 +106,9 @@ class LauncherCaller:
         parser.add_argument("-k", "--kill", action="store_true", default=None, help=helper("Kill existing launcher services (if any)", self.DEFAULT_KILL))
         parser.add_argument("-i", "--cluster-id", dest="cluster_id", metavar="ID", type=int, help=helper("Cluster ID to launch with", self.DEFAULT_CLUSTER_ID))
         parser.add_argument("-t", "--topology", type=str, metavar="SHAPE", help=helper("Cluster topology to launch with", self.DEFAULT_TOPOLOGY), choices={"mesh", "star", "bridge", "line", "ring", "tree"})
-        couple.add_argument("-v", "--verbose", dest="verbosity", action="count", default=None, help=helper("Verbosity level (-v for 1, -vv for 2)", self.DEFAULT_VERBOSITY))
+        couple.add_argument("-v", "--verbose", dest="verbosity", action="count", default=None, help=helper("Verbosity level (-v for 1, -vv for 2, ...)", self.DEFAULT_VERBOSITY))
         couple.add_argument("-x", "--silent", dest="verbosity", action="store_false", default=None, help=helper("Set verbosity level at 0 (keep silent)", "False"))
-        parser.add_argument("-m", "--monochrome", action="store_true", default=None, help=helper("Print in black and white instead of colors", self.DEFAULT_MONOCHROME))
+        parser.add_argument("-c", "--color", dest="monochrome", action="store_false", default=None, help=helper("Print in colors", self.DEFAULT_MONOCHROME))
         parser.add_argument("-h", "--help", action="help", help=' ' * offset + "Show this message and exit")
         return parser.parse_args()
 
@@ -128,7 +130,7 @@ class LauncherCaller:
         self.print.vanilla("{:50s}{}".format("Cluster ID to launch with", helper(self.args.cluster_id, self.cluster_id)))
         self.print.vanilla("{:50s}{}".format("Cluster topology to launch with", helper(self.args.topology, self.topology)))
         self.print.vanilla("{:50s}{}".format("Verbosity level", helper(self.args.verbosity, self.verbosity)))
-        self.print.vanilla("{:50s}{}".format("Print in black and white instead of colors", helper(self.args.monochrome, self.monochrome)))
+        self.print.vanilla("{:50s}{}".format("Print in colors", helper(self.args.monochrome, self.monochrome)))
 
     # TODO
     def connect_to_remote_service(self):
@@ -379,12 +381,12 @@ class LauncherCaller:
             time.sleep(1)
             self.response = self.rpc(self.request_url, self.request_data)
             retry -= 1
+        self.print.response()
         tid = self.get_transaction_id()
         if tid:
             self.print.green("{:100}".format("<Transaction ID> {}".format(tid)))
         else:
             self.print.yellow("{:100}".format("Warning: No transaction ID returned."))
-        self.print.response()
 
     def launch_cluster(self, data: dict):
         self.call("launch_cluster", data, "launch cluster")

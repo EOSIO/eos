@@ -154,7 +154,18 @@ class Print():
             self.trim(data, maxlen=100)
         func(json.dumps(data, indent=4, sort_keys=False))
 
-    def response_in_short(self, response: requests.Response, timeout=1) -> None:
+    def response_in_short(self, response: requests.Response) -> None:
+        if response.ok:
+            self.green(response, ' ' * 100)
+        else:
+            self.red(response)
+            self.json(response.text)
+
+    def response_in_full(self, response: requests.Response) -> None:
+        self.green(response) if response.ok else self.red(response)
+        self.json(response.text)
+
+    def response_in_interaction(self, response: requests.Response, timeout=1) -> None:
         if response.ok:
             self.green(response, ' ' * 100)
             lines = json.dumps(json.loads(response.text), indent=4, sort_keys=False).count('\n') + 1
@@ -166,10 +177,6 @@ class Print():
         else:
             self.red(response)
             self.json(response.text)
-
-    def response_in_full(self, response: requests.Response) -> None:
-        self.green(response) if response.ok else self.red(response)
-        self.json(response.text)
 
     @staticmethod
     def trim(data, maxlen=100):
