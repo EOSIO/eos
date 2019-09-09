@@ -53,8 +53,8 @@ if [[ ! $PINNED == false || $UNPINNED == true ]]; then
     curl -LO https://dl.bintray.com/boostorg/release/1.70.0/source/boost_1_70_0.tar.bz2
     tar -xjf boost_1_70_0.tar.bz2
     cd boost_1_70_0
-    ./bootstrap.sh --with-toolset=clang --prefix=/usr/local
-    sudo ./b2 toolset=clang cxxflags='-stdlib=libc++ -D__STRICT_ANSI__ -nostdinc++ -I/usr/local/include/c++/v1' linkflags='-stdlib=libc++' link=static threading=multi --with-iostreams --with-date_time --with-filesystem --with-system --with-program_options --with-chrono --with-test -q -j$(getconf _NPROCESSORS_ONLN) install
+    ./bootstrap.sh --prefix=/usr/local
+    sudo ./b2 --with-iostreams --with-date_time --with-filesystem --with-system --with-program_options --with-chrono --with-test -q -j$(getconf _NPROCESSORS_ONLN) install
     cd ..
     sudo rm -rf boost_1_70_0.tar.bz2 boost_1_70_0  
 else
