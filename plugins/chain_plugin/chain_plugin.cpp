@@ -274,6 +274,8 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "extract genesis_state from blocks.log as JSON, write into specified file, and exit")
          ("print-build-info", bpo::bool_switch()->default_value(false),
           "print build environment information to console as JSON and exit")
+         ("extract-build-info", bpo::value<bfs::path>(),
+          "extract build environment information as JSON, write into specified file, and exit")
          ("fix-reversible-blocks", bpo::bool_switch()->default_value(false),
           "recovers reversible block database if that database is in a bad state")
          ("force-all-checks", bpo::bool_switch()->default_value(false),
@@ -578,8 +580,25 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
       my->chain_config = controller::config();
 
-      if( options.at( "print-build-info" ).as<bool>() ) {
-         ilog( "Build environment JSON:\n${e}", ("e", json::to_pretty_string( chainbase::environment() )) );
+      if( options.at( "print-build-info" ).as<bool>() || options.count( "extract-build-info") ) {
+         if( options.at( "print-build-info" ).as<bool>() ) {
+            ilog( "Build environment JSON:\n${e}", ("e", json::to_pretty_string( chainbase::environment() )) );
+         }
+         if( options.count( "extract-build-info") ) {
+            auto p = options.at( "extract-build-info" ).as<bfs::path>();
+
+            if( p.is_relative()) {
+               p = bfs::current_path() / p;
+            }
+
+            EOS_ASSERT( fc::json::save_to_file( chainbase::environment(), p, true ), misc_exception,
+                        "Error occurred while writing build info JSON to '${path}'",
+                        ("path", p.generic_string())
+            );
+
+            ilog( "Saved build info JSON to '${path}'", ("path", p.generic_string()) );
+         }
+
          EOS_THROW( node_management_success, "reported build environment information" );
       }
 
