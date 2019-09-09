@@ -21,9 +21,10 @@ class LauncherCaller:
     DEFAULT_PORT = 1234
     DEFAULT_DIR = "../build"
     DEFAULT_FILE = "./programs/eosio-launcher-service/eosio-launcher-service"
-    DEFAULT_CLUSTER_ID = 0
     DEFAULT_START = False
     DEFAULT_KILL = False
+    DEFAULT_CLUSTER_ID = 0
+    DEFAULT_TOPOLOGY = "mesh"
     DEFAULT_VERBOSITY = 1
     DEFAULT_MONOCHROME = False
     PROGRAM = "eosio-launcher-service"
@@ -38,6 +39,7 @@ class LauncherCaller:
         self.start = self.override(self.DEFAULT_START, self.args.start)
         self.kill = self.override(self.DEFAULT_KILL, self.args.kill)
         self.cluster_id = self.override(self.DEFAULT_CLUSTER_ID, self.args.cluster_id)
+        self.topology = self.override(self.DEFAULT_TOPOLOGY, self.args.topology)
         self.verbosity = self.override(self.DEFAULT_VERBOSITY, self.args.verbosity)
         self.monochrome = self.override(self.DEFAULT_MONOCHROME, self.args.monochrome)
 
@@ -101,6 +103,7 @@ class LauncherCaller:
         parser.add_argument("-s", "--start", action="store_true", default=None, help=helper("Always start a new launcher service", self.DEFAULT_START))
         parser.add_argument("-k", "--kill", action="store_true", default=None, help=helper("Kill existing launcher services (if any)", self.DEFAULT_KILL))
         parser.add_argument("-i", "--cluster-id", dest="cluster_id", metavar="ID", type=int, help=helper("Cluster ID to launch with", self.DEFAULT_CLUSTER_ID))
+        parser.add_argument("-t", "--topology", type=str, metavar="SHAPE", help=helper("Cluster topology to launch with", self.DEFAULT_TOPOLOGY), choices={"mesh", "star", "bridge", "line", "ring", "tree"})
         couple.add_argument("-v", "--verbose", dest="verbosity", action="count", default=None, help=helper("Verbosity level (-v for 1, -vv for 2)", self.DEFAULT_VERBOSITY))
         couple.add_argument("-x", "--silent", dest="verbosity", action="store_false", default=None, help=helper("Set verbosity level at 0 (keep silent)", "False"))
         parser.add_argument("-m", "--monochrome", action="store_true", default=None, help=helper("Print in black and white instead of colors", self.DEFAULT_MONOCHROME))
@@ -123,6 +126,7 @@ class LauncherCaller:
         self.print.vanilla("{:50s}{}".format("Always start a new launcher service", helper(self.args.start, self.start)))
         self.print.vanilla("{:50s}{}".format("Kill existing launcher services (if any)", helper(self.args.kill, self.kill)))
         self.print.vanilla("{:50s}{}".format("Cluster ID to launch with", helper(self.args.cluster_id, self.cluster_id)))
+        self.print.vanilla("{:50s}{}".format("Cluster topology to launch with", helper(self.args.topology, self.topology)))
         self.print.vanilla("{:50s}{}".format("Verbosity level", helper(self.args.verbosity, self.verbosity)))
         self.print.vanilla("{:50s}{}".format("Print in black and white instead of colors", helper(self.args.monochrome, self.monochrome)))
 
@@ -196,7 +200,7 @@ class LauncherCaller:
                  unstarted_nodes=0,
                  per_node_producers=1,
                  total_producers=None,
-                 topology="mesh",
+                 topology=None,
                  dont_boostrap=False,
                  only_bios=False,
                  only_set_producers=False,
@@ -226,6 +230,7 @@ class LauncherCaller:
         13. verify head producer
         """
         cluster_id = self.override(self.cluster_id, cluster_id)
+        topology = self.override(self.topology, topology)
 
         total_producers = total_producers if total_producers else per_node_producers * producer_nodes
 
@@ -257,7 +262,7 @@ class LauncherCaller:
                 info["nodes"][i]["producers"] = names
 
         # launch a cluster
-        self.launch_cluster(self.fetch(info, ["cluster_id", "node_count", "nodes"]))
+        self.launch_cluster(self.fetch(info, ["cluster_id", "node_count", "shape", "nodes"]))
 
         # get cluster info: assert success
         self.get_cluster_info(self.fetch(info, ["cluster_id"]))
