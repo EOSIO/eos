@@ -231,12 +231,13 @@ void test_crypto::test_recover_key_partial() {
    read_action_data( buffer, action_data_size() );
    auto sh = (const sig_hash_key_header*)buffer;
 
-   char recovered[sh->pk_len];
-   auto result = recover_key( &sh->hash, sh->sig_base(), sh->sig_len, recovered, sh->pk_len );
-   eosio_assert(result > sh->pk_len, "recovered key is not longer than provided key");
-   for ( uint32_t i=0; i < sh->pk_len; i++ )
+   auto recover_size = std::max<uint32_t>(sh->pk_len / 2, 33);
+   char recovered[recover_size];
+   auto result = recover_key( &sh->hash, sh->sig_base(), sh->sig_len, recovered, recover_size );
+   eosio_assert(result == sh->pk_len, "recoverable key is not as long as provided key");
+   for ( uint32_t i=0; i < recover_size; i++ )
       if ( recovered[i] != sh->pk_base()[i] )
-         eosio_assert( false, "public key does not match" );
+         eosio_assert( false, "partial public key does not match" );
 }
 
 void test_crypto::test_sha1() {
