@@ -1,4 +1,4 @@
-# Nodeos plugins
+# Nodeos Plugins
 
 ## Overview
 
