@@ -72,7 +72,7 @@ void launcher_service_api_plugin::plugin_startup() {
       CALL(launcher, import_keys, INVOKE_R_R(import_keys, launcher_service::import_keys_param), 200),
       CALL(launcher, generate_key, INVOKE_R_R(generate_key, launcher_service::generate_key_param), 200),
 
-      CALL(launcher, get_info, INVOKE_R_R(get_info, std::string), 200),
+      CALL(launcher, get_info, INVOKE_R_R(get_info, launcher_service::node_id_param), 200),
       CALL(launcher, get_block, INVOKE_R_R(get_block, launcher_service::get_block_param), 200),
       CALL(launcher, get_block_header_state, INVOKE_R_R(get_block_header_state, launcher_service::get_block_param), 200),
       CALL(launcher, get_account, INVOKE_R_R(get_account, launcher_service::get_account_param), 200),

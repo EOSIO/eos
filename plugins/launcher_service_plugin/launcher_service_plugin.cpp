@@ -347,7 +347,7 @@ public:
                throw std::runtime_error("node already running");
             }
          }
-         launch_nodes(_running_clusters[cluster_id].def, node_id, false, extra_args);
+         launch_nodes(_running_clusters[cluster_id].def, node_id, true, extra_args);
       }
       void stop_node(int cluster_id, int node_id, int killsig) {
          if (_running_clusters.find(cluster_id) != _running_clusters.end()) {
@@ -809,19 +809,6 @@ void launcher_service_plugin::plugin_shutdown() {
    _my->stop_all_clusters();
 }
 
-fc::variant launcher_service_plugin::get_info(std::string url)
-{
-   try {
-      client::http::http_context context = client::http::create_http_context();
-      std::vector<std::string> headers;
-      auto sp = std::make_unique<client::http::connection_param>(context, client::http::parse_url(url) + "/v1/chain/get_info", false, headers);
-      auto r = client::http::do_http_call(*sp, fc::variant(),  _my->_config.print_http_request, _my->_config.print_http_response );
-      return r;
-   } catch (boost::system::system_error& e) {
-      return fc::mutable_variant_object("exception", e.what())("url", url);
-   }
-}
-
 fc::variant launcher_service_plugin::get_cluster_info(launcher_service::cluster_id_param param)
 {
    if (_my->_running_clusters.find(param.cluster_id) == _my->_running_clusters.end()) {
@@ -830,17 +817,28 @@ fc::variant launcher_service_plugin::get_cluster_info(launcher_service::cluster_
    bool print_request = false;
    bool print_response = false;
    std::map<int, fc::variant> res;
+   std::string errstr;
+   bool haserror = false;
+   int okcount = 0;
    for (auto &itr : _my->_running_clusters[param.cluster_id].nodes) {
       int id = itr.second.id;
       int port = itr.second.http_port;
       if (port) {
          try {
             res[id] = _my->get_info(param.cluster_id, id);
+            ++okcount;
          } catch (boost::system::system_error& e) {
+            if (!haserror) {
+               haserror = true;
+               errstr = e.what();
+            }
             std::string url = "http://" + _my->_config.host_name + ":" + _my->itoa(port);
-            res[id] = fc::mutable_variant_object("exception", e.what())("url", url);
+            res[id] = fc::mutable_variant_object("error", e.what())("url", url);
          }
       }
+   }
+   if (!okcount && haserror) {
+      throw std::runtime_error(errstr);
    }
    return fc::mutable_variant_object("result", res);
 }
@@ -866,6 +864,12 @@ fc::variant launcher_service_plugin::get_cluster_running_state(launcher_service:
    } catch (const char *s) { \
       throw std::runtime_error(s); \
    }
+
+fc::variant launcher_service_plugin::get_info(launcher_service::node_id_param param) {
+   try {
+      return _my->get_info(param.cluster_id, param.node_id);
+   } CATCH_LAUCHER_EXCEPTIONS
+}
 
 fc::variant launcher_service_plugin::launch_cluster(launcher_service::cluster_def def)
 {

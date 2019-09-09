@@ -248,7 +248,7 @@ public:
    fc::variant import_keys(launcher_service::import_keys_param);
 
    // querys
-   fc::variant get_info(std::string url);
+   fc::variant get_info(launcher_service::node_id_param);
    fc::variant get_block(launcher_service::get_block_param);
    fc::variant get_block_header_state(launcher_service::get_block_param);
    fc::variant get_account(launcher_service::get_account_param);
