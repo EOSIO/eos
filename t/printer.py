@@ -157,7 +157,8 @@ class Print():
     def response_in_short(self, response: requests.Response, timeout=1) -> None:
         if response.ok:
             self.green(response, ' ' * 100)
-            self.reverse("--- Press [Enter] to view more ---", end='\r')
+            lines = json.dumps(json.loads(response.text), indent=4, sort_keys=False).count('\n') + 1
+            self.reverse("--- Press [Enter] to view response details ({} lines) ---".format(lines), end='\r')
             # if stdin is not empty within timeout, then print json in detail
             if select.select([sys.stdin], [], [], timeout)[0]:
                 self.json(response.text)
