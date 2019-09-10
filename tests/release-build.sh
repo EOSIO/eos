@@ -25,7 +25,7 @@ if [[ ! -f "$EOSIO_ROOT/build/bin/nodeos" && ! -f "$EOSIO_ROOT/build/programs/no
 fi
 [[ -f "$EOSIO_ROOT/build/bin/nodeos" ]] && cd "$EOSIO_ROOT/build/bin" || cd "$EOSIO_ROOT/build/programs/nodeos"
 # run nodeos to generate state files
-./nodeos --config-dir "$(pwd)/config" --data-dir "$(pwd)/data" &
+./nodeos --config-dir "$(pwd)/config" --data-dir "$(pwd)/data" 1>/dev/null 2>/dev/null &
 sleep 10
 kill $! # kill nodeos gracefully, by PID
 if [[ ! -f data/state/shared_memory.bin ]]; then
