@@ -33,8 +33,8 @@ for FILE in $(ls $CICD_DIR/platforms); do
     [[ $FILE_NAME =~ 'centos' ]] && export ICON=':centos:'
     [[ $FILE_NAME =~ 'macos' ]] && export ICON=':darwin:'
     . $HELPERS_DIR/file-hash.sh $CICD_DIR/platforms/$FILE # returns HASHED_IMAGE_TAG, etc
-    export PLATFORMS_JSON_ARRAY=$(echo $PLATFORMS_JSON_ARRAY | jq -c '. += [{ 
-        "FILE_NAME": env.FILE_NAME, 
+    export PLATFORMS_JSON_ARRAY=$(echo $PLATFORMS_JSON_ARRAY | jq -c '. += [{
+        "FILE_NAME": env.FILE_NAME,
         "PLATFORM_NAME": env.PLATFORM_NAME,
         "PLATFORM_NAME_UPCASE": env.PLATFORM_NAME_UPCASE,
         "VERSION_MAJOR": env.VERSION_MAJOR,
@@ -47,7 +47,7 @@ for FILE in $(ls $CICD_DIR/platforms); do
         }]')
 done
 oIFS="$IFS"
-IFS=$'' 
+IFS=$''
 nIFS=$IFS # Needed to fix array splitting (\n won't work)
 ###################
 # Anka Ensure Tag #
@@ -88,7 +88,7 @@ echo $PLATFORMS_JSON_ARRAY | jq -cr ".[]" | while read -r PLATFORM_JSON; do
             cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
     command:
-      - "buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' --build 'af9e43be-a344-497e-8def-0528846f4b47' && tar -xzf build.tar.gz"
+      - "buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' --build '95babcbf-869a-4a2b-a4e9-36aff807823d' && tar -xzf build.tar.gz"
       - "./.cicd/test.sh scripts/serial-test.sh $TEST_NAME"
     env:
       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
