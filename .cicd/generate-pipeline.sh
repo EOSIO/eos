@@ -5,6 +5,7 @@ set -eo pipefail
 export MOJAVE_ANKA_TAG_BASE=${MOJAVE_ANKA_TAG_BASE:-'clean::cicd::git-ssh::nas::brew::buildkite-agent'}
 export MOJAVE_ANKA_TEMPLATE_NAME=${MOJAVE_ANKA_TEMPLATE_NAME:-'10.14.4_6C_14G_40G'}
 export PLATFORMS_JSON_ARRAY='[]'
+[[ -z "$RUNS" ]] && export RUNS='1'
 # read .cicd/platforms
 for FILE in $(ls $CICD_DIR/platforms); do
     # skip mac or linux by not even creating the json block
@@ -120,137 +121,140 @@ EOF
     fi
 done
 echo "  - wait"; echo ""
-# parallel tests
-echo $PLATFORMS_JSON_ARRAY | jq -cr ".[]" | while read -r PLATFORM_JSON; do
-    if [[ ! $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME) =~ 'macos' ]]; then
-        cat <<EOF
-  - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Unit Tests"
-    command:
-      - "buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz"
-      - "./.cicd/test.sh scripts/parallel-test.sh"
-    env:
-      IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
-      BUILDKITE_AGENT_ACCESS_TOKEN:
-    agents:
-      queue: "automation-eos-builder-fleet"
-    timeout: ${TIMEOUT:-10}
-    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}\${SKIP_UNIT_TESTS}
-
-EOF
-    else
-        cat <<EOF
-  - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Unit Tests"
-    command:
-      - "git clone \$BUILDKITE_REPO eos && cd eos && git checkout \$BUILDKITE_COMMIT && git submodule update --init --recursive"
-      - "cd eos && buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz"
-      - "cd eos && ./.cicd/test.sh scripts/parallel-test.sh"
-    plugins:
-      - chef/anka#v0.5.1:
-          no-volume: true
-          inherit-environment-vars: true
-          vm-name: ${MOJAVE_ANKA_TEMPLATE_NAME}
-          vm-registry-tag: "${MOJAVE_ANKA_TAG_BASE}::$(echo "$PLATFORM_JSON" | jq -r .HASHED_IMAGE_TAG)"
-          always-pull: true
-          debug: true
-          wait-network: true
-    timeout: ${TIMEOUT:-20}
-    agents:
-      - "queue=mac-anka-node-fleet"
-    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}\${SKIP_UNIT_TESTS}
-
-EOF
-    fi
-done
-# serial tests
-echo $PLATFORMS_JSON_ARRAY | jq -cr ".[]" | while read -r PLATFORM_JSON; do
-    IFS=$oIFS
-    SERIAL_TESTS=$(cat tests/CMakeLists.txt | grep nonparallelizable_tests | grep -v "^#" | awk -F" " '{ print $2 }')
-    for TEST_NAME in $SERIAL_TESTS; do
+# tests
+for RUN in $(seq 1 $RUNS); do
+    # parallel tests
+    echo $PLATFORMS_JSON_ARRAY | jq -cr ".[]" | while read -r PLATFORM_JSON; do
         if [[ ! $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME) =~ 'macos' ]]; then
             cat <<EOF
-  - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
-    command:
-      - "buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz"
-      - "./.cicd/test.sh scripts/serial-test.sh $TEST_NAME"
-    env:
-      IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
-      BUILDKITE_AGENT_ACCESS_TOKEN:
-    agents:
-      queue: "automation-eos-builder-fleet"
-    timeout: ${TIMEOUT:-20}
-    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}\${SKIP_SERIAL_TESTS}
+    - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Unit Tests"
+        command:
+        - "buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz"
+        - "./.cicd/test.sh scripts/parallel-test.sh"
+        env:
+        IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
+        BUILDKITE_AGENT_ACCESS_TOKEN:
+        agents:
+        queue: "automation-eos-builder-fleet"
+        timeout: ${TIMEOUT:-10}
+        skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}\${SKIP_UNIT_TESTS}
 
 EOF
         else
             cat <<EOF
-  - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
-    command:
-      - "git clone \$BUILDKITE_REPO eos && cd eos && git checkout \$BUILDKITE_COMMIT && git submodule update --init --recursive"
-      - "cd eos && buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz"
-      - "cd eos && ./.cicd/test.sh scripts/serial-test.sh $TEST_NAME"
-    plugins:
-      - chef/anka#v0.5.1:
-          no-volume: true
-          inherit-environment-vars: true
-          vm-name: ${MOJAVE_ANKA_TEMPLATE_NAME}
-          vm-registry-tag: "${MOJAVE_ANKA_TAG_BASE}::$(echo "$PLATFORM_JSON" | jq -r .HASHED_IMAGE_TAG)"
-          always-pull: true
-          debug: true
-          wait-network: true
-    timeout: ${TIMEOUT:-20}
-    agents:
-      - "queue=mac-anka-node-fleet"
-    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}\${SKIP_SERIAL_TESTS}
-EOF
-        fi
-    done
-    IFS=$nIFS
-done
-# long-running tests
-echo $PLATFORMS_JSON_ARRAY | jq -cr ".[]" | while read -r PLATFORM_JSON; do
-    IFS=$oIFS
-    LR_TESTS=$(cat tests/CMakeLists.txt | grep long_running_tests | grep -v "^#" | awk -F" " '{ print $2 }')
-    for TEST_NAME in $LR_TESTS; do
-        if [[ ! $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME) =~ 'macos' ]]; then
-            cat <<EOF
-  - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
-    command:
-      - "buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz"
-      - "./.cicd/test.sh scripts/long-running-test.sh $TEST_NAME"
-    env:
-      IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
-      BUILDKITE_AGENT_ACCESS_TOKEN:
-    agents:
-      queue: "automation-eos-builder-fleet"
-    timeout: ${TIMEOUT:-180}
-    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}\${SKIP_LONG_RUNNING_TESTS:-true}
-
-EOF
-        else
-            cat <<EOF
-  - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
-    command:
-      - "git clone \$BUILDKITE_REPO eos && cd eos && git checkout \$BUILDKITE_COMMIT && git submodule update --init --recursive"
-      - "cd eos && buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz"
-      - "cd eos && ./.cicd/test.sh scripts/long-running-test.sh $TEST_NAME"
-    plugins:
-      - chef/anka#v0.5.1:
-          no-volume: true
-          inherit-environment-vars: true
-          vm-name: ${MOJAVE_ANKA_TEMPLATE_NAME}
-          vm-registry-tag: "${MOJAVE_ANKA_TAG_BASE}::$(echo "$PLATFORM_JSON" | jq -r .HASHED_IMAGE_TAG)"
-          always-pull: true
-          debug: true
-          wait-network: true
-    timeout: ${TIMEOUT:-180}
-    agents:
-      - "queue=mac-anka-node-fleet"
-    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}\${SKIP_LONG_RUNNING_TESTS:-true}
+    - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Unit Tests"
+        command:
+        - "git clone \$BUILDKITE_REPO eos && cd eos && git checkout \$BUILDKITE_COMMIT && git submodule update --init --recursive"
+        - "cd eos && buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz"
+        - "cd eos && ./.cicd/test.sh scripts/parallel-test.sh"
+        plugins:
+        - chef/anka#v0.5.1:
+            no-volume: true
+            inherit-environment-vars: true
+            vm-name: ${MOJAVE_ANKA_TEMPLATE_NAME}
+            vm-registry-tag: "${MOJAVE_ANKA_TAG_BASE}::$(echo "$PLATFORM_JSON" | jq -r .HASHED_IMAGE_TAG)"
+            always-pull: true
+            debug: true
+            wait-network: true
+        timeout: ${TIMEOUT:-20}
+        agents:
+        - "queue=mac-anka-node-fleet"
+        skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}\${SKIP_UNIT_TESTS}
 
 EOF
         fi
     done
-    IFS=$nIFS
+    # serial tests
+    echo $PLATFORMS_JSON_ARRAY | jq -cr ".[]" | while read -r PLATFORM_JSON; do
+        IFS=$oIFS
+        SERIAL_TESTS=$(cat tests/CMakeLists.txt | grep nonparallelizable_tests | grep -v "^#" | awk -F" " '{ print $2 }')
+        for TEST_NAME in $SERIAL_TESTS; do
+            if [[ ! $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME) =~ 'macos' ]]; then
+                cat <<EOF
+    - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
+        command:
+        - "buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz"
+        - "./.cicd/test.sh scripts/serial-test.sh $TEST_NAME"
+        env:
+        IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
+        BUILDKITE_AGENT_ACCESS_TOKEN:
+        agents:
+        queue: "automation-eos-builder-fleet"
+        timeout: ${TIMEOUT:-20}
+        skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}\${SKIP_SERIAL_TESTS}
+
+EOF
+            else
+                cat <<EOF
+    - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
+        command:
+        - "git clone \$BUILDKITE_REPO eos && cd eos && git checkout \$BUILDKITE_COMMIT && git submodule update --init --recursive"
+        - "cd eos && buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz"
+        - "cd eos && ./.cicd/test.sh scripts/serial-test.sh $TEST_NAME"
+        plugins:
+        - chef/anka#v0.5.1:
+            no-volume: true
+            inherit-environment-vars: true
+            vm-name: ${MOJAVE_ANKA_TEMPLATE_NAME}
+            vm-registry-tag: "${MOJAVE_ANKA_TAG_BASE}::$(echo "$PLATFORM_JSON" | jq -r .HASHED_IMAGE_TAG)"
+            always-pull: true
+            debug: true
+            wait-network: true
+        timeout: ${TIMEOUT:-20}
+        agents:
+        - "queue=mac-anka-node-fleet"
+        skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}\${SKIP_SERIAL_TESTS}
+EOF
+            fi
+        done
+        IFS=$nIFS
+    done
+    # long-running tests
+    echo $PLATFORMS_JSON_ARRAY | jq -cr ".[]" | while read -r PLATFORM_JSON; do
+        IFS=$oIFS
+        LR_TESTS=$(cat tests/CMakeLists.txt | grep long_running_tests | grep -v "^#" | awk -F" " '{ print $2 }')
+        for TEST_NAME in $LR_TESTS; do
+            if [[ ! $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME) =~ 'macos' ]]; then
+                cat <<EOF
+    - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
+        command:
+        - "buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz"
+        - "./.cicd/test.sh scripts/long-running-test.sh $TEST_NAME"
+        env:
+        IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
+        BUILDKITE_AGENT_ACCESS_TOKEN:
+        agents:
+        queue: "automation-eos-builder-fleet"
+        timeout: ${TIMEOUT:-180}
+        skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}\${SKIP_LONG_RUNNING_TESTS:-true}
+
+EOF
+            else
+                cat <<EOF
+    - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
+        command:
+        - "git clone \$BUILDKITE_REPO eos && cd eos && git checkout \$BUILDKITE_COMMIT && git submodule update --init --recursive"
+        - "cd eos && buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz"
+        - "cd eos && ./.cicd/test.sh scripts/long-running-test.sh $TEST_NAME"
+        plugins:
+        - chef/anka#v0.5.1:
+            no-volume: true
+            inherit-environment-vars: true
+            vm-name: ${MOJAVE_ANKA_TEMPLATE_NAME}
+            vm-registry-tag: "${MOJAVE_ANKA_TAG_BASE}::$(echo "$PLATFORM_JSON" | jq -r .HASHED_IMAGE_TAG)"
+            always-pull: true
+            debug: true
+            wait-network: true
+        timeout: ${TIMEOUT:-180}
+        agents:
+        - "queue=mac-anka-node-fleet"
+        skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}\${SKIP_LONG_RUNNING_TESTS:-true}
+
+EOF
+            fi
+        done
+        IFS=$nIFS
+    done
 done
 # pipeline tail
 cat <<EOF
