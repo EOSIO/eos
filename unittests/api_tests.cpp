@@ -1782,7 +1782,6 @@ BOOST_FIXTURE_TEST_CASE(crypto_tests, TESTER) { try {
 
       //No Error Here
       CALL_TEST_FUNCTION( *this, "test_crypto", "test_recover_key_partial", payload );
-      return;
    }
 
 
