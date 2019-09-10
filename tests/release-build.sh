@@ -25,10 +25,11 @@ if [[ ! -f "$EOSIO_ROOT/build/bin/nodeos" && ! -f "$EOSIO_ROOT/build/programs/no
     exit 1
 fi
 [[ -f "$EOSIO_ROOT/build/bin/nodeos" ]] && cd "$EOSIO_ROOT/build/bin" || cd "$EOSIO_ROOT/build/programs/nodeos"
-# test
+# setup
 ./nodeos --config-dir $(pwd)/config --data-dir $(pwd)/data & # run nodeos in background
 sleep 10
 kill $! # kill nodeos gracefully, by PID
+# test
 export DEBUG_BYTE="$(xxd -seek 9 -l 1 data/state/shared_memory.bin | awk '{print $2}')"
 if [[ "$DEBUG_BYTE" == '00' ]]; then
     echo 'PASS: Debug byte not set.'
