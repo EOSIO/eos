@@ -457,7 +457,7 @@ class LauncherCaller:
         return [int(x) for x in out.splitlines()]
 
     def describe(self, text, pause=0):
-        self.print.vanilla(self.string.pad(self.string.reverse(self.string.blue(text))))
+        self.print.vanilla(self.string.pad(self.string.decorate(text, fcolor="black", bcolor="cyan")))
         time.sleep(pause)
 
 

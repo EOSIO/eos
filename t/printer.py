@@ -51,7 +51,7 @@ class String():
         self.invisible = invisible
         self.monochrome = monochrome
 
-    def using(self, text, style: Optional[Union[str, List[str]]] =None, fcolor: Optional[str] =None, bcolor: Optional[str] =None):
+    def decorate(self, text, style: Optional[Union[str, List[str]]] =None, fcolor: Optional[str] =None, bcolor: Optional[str] =None):
         attr = parse(style, fcolor, bcolor)
         return "" if self.invisible else text if self.monochrome else "\033[{}m{}\033[0m".format(attr, text) if attr else text
 
@@ -59,34 +59,34 @@ class String():
         return "" if self.invisible else text
 
     def bold(self, text):
-        return self.using(text, style="bold")
+        return self.decorate(text, style="bold")
 
     def underline(self, text):
-        return self.using(text, style="underline")
+        return self.decorate(text, style="underline")
 
     def reverse(self, text):
-        return self.using(text, style="reverse")
+        return self.decorate(text, style="reverse")
 
     def red(self, text):
-        return self.using(text, fcolor="red")
+        return self.decorate(text, fcolor="red")
 
     def green(self, text):
-        return self.using(text, fcolor="green")
+        return self.decorate(text, fcolor="green")
 
     def yellow(self, text):
-        return self.using(text, fcolor="yellow")
+        return self.decorate(text, fcolor="yellow")
 
     def blue(self, text):
-        return self.using(text, fcolor="blue")
+        return self.decorate(text, fcolor="blue")
 
     def magenta(self, text):
-        return self.using(text, fcolor="magenta")
+        return self.decorate(text, fcolor="magenta")
 
     def cyan(self, text):
-        return self.using(text, fcolor="cyan")
+        return self.decorate(text, fcolor="cyan")
 
     def white(self, text):
-        return self.using(text, fcolor="white")
+        return self.decorate(text, fcolor="white")
 
     @staticmethod
     def pad(text: str, left=10, right=None, total=None, char='-', sep=' ') -> str:
@@ -119,7 +119,7 @@ class Print():
         self.invisible = invisible
         self.monochrome = monochrome
 
-    def using(self, *text, style=None, fcolor=None, bcolor=None, **kwargs):
+    def decorate(self, *text, style: Optional[Union[str, List[str]]] =None, fcolor: Optional[str] =None, bcolor: Optional[str] =None, **kwargs):
         if self.invisible:
             return
         elif self.monochrome:
@@ -137,34 +137,34 @@ class Print():
             print(*text, **kwargs)
 
     def bold(self, *text, **kwargs):
-        return self.using(*text, style="bold", **kwargs)
+        return self.decorate(*text, style="bold", **kwargs)
 
     def underline(self, *text, **kwargs):
-        return self.using(*text, style="underline", **kwargs)
+        return self.decorate(*text, style="underline", **kwargs)
 
     def reverse(self, *text, **kwargs):
-        return self.using(*text, style="reverse", **kwargs)
+        return self.decorate(*text, style="reverse", **kwargs)
 
     def red(self, *text, **kwargs):
-        return self.using(*text, fcolor="red", **kwargs)
+        return self.decorate(*text, fcolor="red", **kwargs)
 
     def green(self, *text, **kwargs):
-        return self.using(*text, fcolor="green", **kwargs)
+        return self.decorate(*text, fcolor="green", **kwargs)
 
     def yellow(self, *text, **kwargs):
-        return self.using(*text, fcolor="yellow", **kwargs)
+        return self.decorate(*text, fcolor="yellow", **kwargs)
 
     def blue(self, *text, **kwargs):
-        return self.using(*text, fcolor="blue", **kwargs)
+        return self.decorate(*text, fcolor="blue", **kwargs)
 
     def magenta(self, *text, **kwargs):
-        return self.using(*text, fcolor="magenta", **kwargs)
+        return self.decorate(*text, fcolor="magenta", **kwargs)
 
     def cyan(self, *text, **kwargs):
-        return self.using(*text, fcolor="cyan", **kwargs)
+        return self.decorate(*text, fcolor="cyan", **kwargs)
 
     def white(self, *text, **kwargs):
-        return self.using(*text, fcolor="white", **kwargs)
+        return self.decorate(*text, fcolor="white", **kwargs)
 
     def json(self, text, maxlen=100, func=None) -> None:
         if func is None:
