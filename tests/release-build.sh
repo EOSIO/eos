@@ -10,7 +10,7 @@ echo 'performance-critical applications like nodeos. Anyone intending to build a
 echo 'install nodeos from source should perform a "release build," which excludes'
 echo 'debugging symbols to generate faster and lighter binaries.'
 echo ''
-# environment
+# find nodeos
 [[ -z "$EOSIO_ROOT" && $(git --version) ]] && export EOSIO_ROOT="$(git rev-parse --show-toplevel)"
 [[ -z "$EOSIO_ROOT" ]] && export EOSIO_ROOT="$(echo $(pwd)/ | grep -ioe '.*/eos/' -e '.*/eosio/' -e '.*/build/' | sed 's,/build/,/,')"
 if [[ ! -f "$EOSIO_ROOT/build/bin/nodeos" && ! -f "$EOSIO_ROOT/build/programs/nodeos/nodeos" ]]; then
@@ -24,8 +24,8 @@ if [[ ! -f "$EOSIO_ROOT/build/bin/nodeos" && ! -f "$EOSIO_ROOT/build/programs/no
     exit 1
 fi
 [[ -f "$EOSIO_ROOT/build/bin/nodeos" ]] && cd "$EOSIO_ROOT/build/bin" || cd "$EOSIO_ROOT/build/programs/nodeos"
-# setup
-./nodeos --config-dir "$(pwd)/config" --data-dir "$(pwd)/data" & # run nodeos in background
+# run nodeos to generate state files
+./nodeos --config-dir "$(pwd)/config" --data-dir "$(pwd)/data" &
 sleep 10
 kill $! # kill nodeos gracefully, by PID
 if [[ ! -f data/state/shared_memory.bin ]]; then
@@ -36,7 +36,7 @@ if [[ ! -f data/state/shared_memory.bin ]]; then
     echo 'Release build test not run.'
     exit 2
 fi
-# test
+# test state files for debug flag
 export DEBUG_BYTE="$(xxd -seek 9 -l 1 data/state/shared_memory.bin | awk '{print $2}')"
 if [[ "$DEBUG_BYTE" == '00' ]]; then
     echo 'PASS: Debug byte not set.'
