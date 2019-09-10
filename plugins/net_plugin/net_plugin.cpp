@@ -880,7 +880,7 @@ namespace eosio {
          peer_requested = sync_state( start, end, start - 1 );
       }
 
-      if( peer_requested->start_block <= peer_requested->end_block ) {
+      if( (peer_requested->start_block + 1) <= peer_requested->end_block ) {
          fc_dlog( logger, "enqueue ${s} - ${e}", ("s", peer_requested->start_block)( "e", peer_requested->end_block ) );
          enqueue_sync_block();
       } else {
