@@ -255,6 +255,10 @@ EOF
         done
         IFS=$nIFS
     done
+    if [[ "$RUN" != "$RUNS" ]]; then
+        echo '  - wait'
+        echo ''
+    fi
 done
 # pipeline tail
 cat <<EOF
