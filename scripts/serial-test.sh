@@ -28,7 +28,6 @@ if [[ -z "$TEST" ]]; then # run all serial tests
     if [[ $TEST_COUNT > 0 ]]; then
         echo "$TEST_COUNT tests found."
         # run tests
-        ls -lah
         set +e # defer ctest error handling to end
         echo '$ ctest -L nonparallelizable_tests --output-on-failure -T Test'
         ctest -L nonparallelizable_tests --output-on-failure -T Test
