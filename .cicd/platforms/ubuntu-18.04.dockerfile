@@ -1,7 +1,8 @@
 FROM ubuntu:18.04
 ENV VERSION 1
 # install dependencies.
-RUN apt-get update && apt-get upgrade -y && \
+RUN apt-get update && \
+    apt-get upgrade -y && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y git make \
     bzip2 automake libbz2-dev libssl-dev doxygen graphviz libgmp3-dev \
     autotools-dev libicu-dev python2.7 python2.7-dev python3 python3-dev \
