@@ -29,6 +29,14 @@ fi
 ./nodeos --config-dir $(pwd)/config --data-dir $(pwd)/data & # run nodeos in background
 sleep 10
 kill $! # kill nodeos gracefully, by PID
+if [[ ! -f data/state/shared_memory.bin ]]; then
+    echo 'ERROR: nodeos state not found!'
+    echo 'Looked for shared_memory.bin in the following places:'
+    echo "$ ls -la $(pwd)/data/state"
+    ls -la $(pwd)/data/state
+    echo "Release Build Test not run because test setup failed."
+    exit 2
+fi
 # test
 export DEBUG_BYTE="$(xxd -seek 9 -l 1 data/state/shared_memory.bin | awk '{print $2}')"
 if [[ "$DEBUG_BYTE" == '00' ]]; then
@@ -40,4 +48,4 @@ echo "Debug Byte = 0x$DEBUG_BYTE"
 echo 'First kilobyte of shared_memory.bin:'
 echo '$ xxd -l 1024 shared_memory.bin'
 xxd -l 1024 data/state/shared_memory.bin
-exit 2
+exit 3
