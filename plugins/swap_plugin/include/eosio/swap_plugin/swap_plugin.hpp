@@ -35,8 +35,9 @@ const char* return_chain_id           = "ethropsten";
 const char* chain_id                  = "93ece941df27a5787a405383a66a7c26d04e80182adf504365710331ac0625a7";
 
 const size_t request_swap_hex_data_length = 512;
-
 const uint32_t wait_for_eth_node = 20;
+
+const uint64_t eth_events_window_length = 1000000;
 
 struct swap_event_data {
     std::string   txid;

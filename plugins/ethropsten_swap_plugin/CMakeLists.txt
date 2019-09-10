@@ -1,5 +1,6 @@
 file(GLOB HEADERS "include/eosio/ethropsten_swap_plugin/*.hpp")
 add_library( ethropsten_swap_plugin
+             my_web3.cpp
              ethropsten_swap_plugin.cpp
              ${HEADERS} )
 

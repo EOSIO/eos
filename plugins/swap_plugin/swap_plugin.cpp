@@ -3,6 +3,7 @@
  *  @copyright defined in eos/LICENSE
  */
 #include <eosio/swap_plugin/swap_plugin.hpp>
+#include <eosio/swap_plugin/my_web3.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
 #include <eosio/chain/wast_to_wasm.hpp>
 
@@ -82,6 +83,8 @@ void swap_plugin::plugin_initialize(const variables_map& options) {
 }
 
 void swap_plugin::plugin_startup() {
+    my_web3 my_w3(my->_eth_wss_provider);
+    ilog("last eth block: " + to_string(my_w3.get_last_block_num()));
     ilog("swap plugin started");
     using websocketpp::lib::bind;
     std::thread t1(bind(&swap_plugin::start_monitor,this));
@@ -179,7 +182,7 @@ void swap_plugin::on_swap_request(client* c, websocketpp::connection_hdl hdl, me
   std::vector<signed_transaction> trxs;
   trxs.reserve(2);
   payload = "{\"jsonrpc\":\"2.0\",\"method\":\"eth_subscription\",\"params\":{\"subscription\":\"0x1feed3403f747b73a04d4cacd4221281\",\"result\":{\"removed\":false,\"logIndex\":\"0x3\",\"transactionIndex\":\"0x1\",\"transactionHash\":\"0xd9f4f600e0556e0d2fa284db40fc01d7e44c3f3c58c9966f5691e2ab6694806d\",\"blockHash\":\"0xa595c247384dab461d1ab2b9739acb58d9acb23b1149deb7bdd13d8b71037e18\",\"blockNumber\":\"0x606bf8\",\"address\":\"0x9fB8A18fF402680b47387AE0F4e38229EC64f098\",\"data\":\"0x93ece941df27a5787a405383a66a7c26d04e80182adf504365710331ac0625a700000000000000000000000000000000000000000000000000000000000000a0000000000000000000000000000000000000000000000000000000000025b0700000000000000000000000009f21f19180c8692ebaa061fd231cd1b029ff2326000000000000000000000000000000000000000000000000000000005d6e40a70000000000000000000000000000000000000000000000000000000000000035454f53376f4e6d6d786f38796838676d594c55474e43774e4146664c6d724d78746d727a6d46504732394370476d354271344647430000000000000000000000\",\"topics\":[\"0x0e918020302bf93eb479360905c1535ba1dbc8aeb6d20eff433206bf4c514e13\"]}}}";
-  payload = "invalid payload";
+  //payload = "invalid payload";
   swap_event_data data;
   try {
       if( !get_swap_event_data(payload, &data) ) {
