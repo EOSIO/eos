@@ -2,7 +2,7 @@
 set -eo pipefail
 VERSION=1
 brew update
-brew install git cmake python@2 python libtool libusb graphviz automake wget gmp llvm@4 pkgconfig doxygen openssl || true
+brew install git cmake python@2 python libtool libusb graphviz automake wget gmp llvm@4 pkgconfig doxygen openssl jq || :
 if [[ ! $PINNED == false || $UNPINNED == true ]]; then
     # install clang from source
     git clone --single-branch --branch release_80 https://git.llvm.org/git/llvm.git clang8
