@@ -88,16 +88,28 @@ echo $PLATFORMS_JSON_ARRAY | jq -cr ".[]" | while read -r PLATFORM_JSON; do
             cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
     command:
+      - docker --version
       - "buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' --build 'd58c0892-d35e-4513-907c-d385bbe18ead' && tar -xzf build.tar.gz"
       - "./.cicd/test.sh scripts/serial-test.sh $TEST_NAME"
     env:
       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
       BUILDKITE_AGENT_ACCESS_TOKEN:
     agents:
-      queue: "$BUILDKITE_AGENT_QUEUE"
+      queue: "automation-eks-eos-builder-fleet"
     timeout: ${TIMEOUT:-20}
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}\${SKIP_SERIAL_TESTS}
-
+  - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
+    command:
+      - docker --version
+      - "buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' --build 'd58c0892-d35e-4513-907c-d385bbe18ead' && tar -xzf build.tar.gz"
+      - "./.cicd/test.sh scripts/serial-test.sh $TEST_NAME"
+    env:
+      IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
+      BUILDKITE_AGENT_ACCESS_TOKEN:
+    agents:
+      queue: "automation-eos-builder-fleet"
+    timeout: ${TIMEOUT:-20}
+    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}\${SKIP_SERIAL_TESTS}
 EOF
         else
             cat <<EOF
