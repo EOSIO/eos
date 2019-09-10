@@ -15,6 +15,7 @@ echo ''
 [[ -z "$EOSIO_ROOT" ]] && export EOSIO_ROOT="$(echo $(pwd)/ | grep -ioe '.*/eos/' -e '.*/eosio/' -e '.*/build/' | sed 's,/build/,/,')"
 if [[ ! -f "$EOSIO_ROOT/build/bin/nodeos" && ! -f "$EOSIO_ROOT/build/programs/nodeos/nodeos" ]]; then
     echo 'ERROR: nodeos binary not found!'
+    echo ''
     echo 'Looked in the following places:'
     echo "$ ls -la \"$EOSIO_ROOT/build/bin\""
     ls -la "$EOSIO_ROOT/build/bin"
@@ -30,6 +31,7 @@ sleep 10
 kill $! # kill nodeos gracefully, by PID
 if [[ ! -f data/state/shared_memory.bin ]]; then
     echo 'ERROR: nodeos state not found!'
+    echo ''
     echo 'Looked for shared_memory.bin in the following places:'
     echo "$ ls -la \"$(pwd)/data/state\""
     ls -la "$(pwd)/data/state"
@@ -41,11 +43,13 @@ fi
 export DEBUG_BYTE="$(xxd -seek 9 -l 1 data/state/shared_memory.bin | awk '{print $2}')"
 if [[ "$DEBUG_BYTE" == '00' ]]; then
     echo 'PASS: Debug byte not set.'
+    echo ''
     rm -rf config data
     exit 0
 fi
 echo 'FAIL: Debug byte is set!'
 echo "Debug Byte = 0x$DEBUG_BYTE"
+echo ''
 echo 'First kilobyte of shared_memory.bin:'
 echo '$ xxd -l 1024 shared_memory.bin'
 xxd -l 1024 data/state/shared_memory.bin
