@@ -10,8 +10,8 @@ import string
 import subprocess
 import time
 
+from printer import Print, String, pad
 from typing import List, Optional, Union
-from printer import Print, String
 
 class LauncherCaller:
 
@@ -93,13 +93,12 @@ class LauncherCaller:
             self.start_service()
 
     def parse_args(self):
-        string = String()
-        header = lambda text: string.underline(string.green(text))
+        header = lambda text: String().decorate(text, style="underline", fcolor="green")
         parser = argparse.ArgumentParser(description=header("Launcher Service for EOS Testing Framework"), add_help=False,
                                          formatter_class=lambda prog: argparse.RawTextHelpFormatter(prog, max_help_position=50))
         couple = parser.add_mutually_exclusive_group()
         offset = 5
-        helper = lambda text, value: "{} ({})".format(string.pad(text, left=offset, total=50, char=' ', sep=""), value)
+        helper = lambda text, value: "{} ({})".format(pad(text, left=offset, total=50, char=' ', sep=""), value)
         parser.add_argument("-h", "--help", action="help", help=' ' * offset + "Show this message and exit")
         parser.add_argument("-a", "--address", type=str, metavar="IP", help=helper("Address of launcher service", self.DEFAULT_ADDRESS))
         parser.add_argument("-p", "--port", type=int, help=helper("Listening port of launcher service", self.DEFAULT_PORT))
@@ -436,12 +435,6 @@ class LauncherCaller:
     def get_cluster_running_state(self, data):
         self.response = self.rpc("get_cluster_running_state", data)
 
-    def get_transaction_id(self):
-        try:
-            return json.loads(self.response.text)["transaction_id"]
-        except KeyError:
-            return
-
     def verify_transaction(self, data):
         self.response = self.rpc("verify_transaction", data)
 
@@ -457,7 +450,7 @@ class LauncherCaller:
         return [int(x) for x in out.splitlines()]
 
     def describe(self, text, pause=0):
-        self.print.vanilla(self.string.pad(self.string.decorate(text, fcolor="black", bcolor="cyan")))
+        self.print.vanilla(pad(self.string.decorate(text, fcolor="black", bcolor="cyan")))
         time.sleep(pause)
 
 

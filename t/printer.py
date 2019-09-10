@@ -6,9 +6,10 @@ import select
 import shutil
 import sys
 
+from helper import get_transaction_id
 from typing import List, Optional, Union
 
-__all__ = ["String", "Print"]
+__all__ = ["String", "Print", "pad"]
 
 
 COLORS = {"black":          0,
@@ -30,15 +31,6 @@ STYLES = {"reset":          0,
           "reverse":        7,
           "hide":           8,
           "strikethrough":  9}
-
-
-def parse(style, fcolor, bcolor):
-    attr = [] if style is None else [STYLES[style]] if isinstance(style, str) else [STYLES[x] for x in style]
-    if isinstance(fcolor, str):
-        attr.append(30 + COLORS[fcolor])
-    if isinstance(bcolor, str):
-        attr.append(40 + COLORS[bcolor])
-    return ";".join([str(x) for x in attr])
 
 
 class String():
@@ -87,26 +79,6 @@ class String():
 
     def white(self, text):
         return self.decorate(text, fcolor="white")
-
-    @staticmethod
-    def pad(text: str, left=10, right=None, total=None, char='-', sep=' ') -> str:
-        """
-        Summary
-        -------
-        This function provides padding for a string.
-
-        Example
-        -------
-        >>> # implied_total (24) < total (25), so total becomes 24.
-        >>> String().pad("hello, world", left=3, right=3, total=25, char=":", sep=' ~ ')
-        '::: ~ hello, world ~ :::'
-        """
-        if total is None:
-            total = shutil.get_terminal_size(fallback=(100, 20)).columns
-        if right is not None:
-            implied_total = len(char) * (left + right) + len(sep) * 2 + len(text)
-            total = min(total, implied_total)
-        return (char * left + sep + text + sep).ljust(total, char)
 
 
 class Print():
@@ -175,7 +147,7 @@ class Print():
         func(json.dumps(data, indent=4, sort_keys=False))
 
     def transaction_id(self, response: requests.Response) -> None:
-        tid = self.get_transaction_id(response)
+        tid = get_transaction_id(response)
         if tid:
             self.green("{:100}".format("<Transaction ID> {}".format(tid)))
         else:
@@ -232,12 +204,34 @@ class Print():
                     if isinstance(item, str) and len(item) > maxlen:
                         item = "..."
 
-    @staticmethod
-    def get_transaction_id(response: requests.Response) -> Optional[str]:
-        try:
-            return json.loads(response.text)["transaction_id"]
-        except KeyError:
-            return
+
+def pad(text: str, left=10, right=None, total=None, char='-', sep=' ') -> str:
+    """
+    Summary
+    -------
+    This function provides padding for a string.
+
+    Example
+    -------
+    >>> # implied_total (24) < total (25), so total becomes 24.
+    >>> String().pad("hello, world", left=3, right=3, total=25, char=":", sep=' ~ ')
+    '::: ~ hello, world ~ :::'
+    """
+    if total is None:
+        total = shutil.get_terminal_size(fallback=(100, 20)).columns
+    if right is not None:
+        implied_total = len(char) * (left + right) + len(sep) * 2 + len(text)
+        total = min(total, implied_total)
+    return (char * left + sep + text + sep).ljust(total, char)
+
+
+def parse(style, fcolor, bcolor):
+    attr = [] if style is None else [STYLES[style]] if isinstance(style, str) else [STYLES[x] for x in style]
+    if isinstance(fcolor, str):
+        attr.append(30 + COLORS[fcolor])
+    if isinstance(bcolor, str):
+        attr.append(40 + COLORS[bcolor])
+    return ";".join([str(x) for x in attr])
 
 
 def test():
