@@ -75,7 +75,7 @@ echo $PLATFORMS_JSON_ARRAY | jq -cr ".[]" | while read -r PLATFORM_JSON; do
 EOF
     fi
 done
-BUILDKITE_AGENT_QUEUE="automation-eos-builder-fleet"
+BUILDKITE_AGENT_QUEUE="automation-eks-eos-builder-fleet"
 echo "  - wait"; echo ""
 
 ################
