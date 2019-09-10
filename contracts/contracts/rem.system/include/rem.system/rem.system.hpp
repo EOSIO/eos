@@ -206,6 +206,17 @@ namespace eosiosystem {
    };
 
    /**
+    * Defines new global state parameters to store torewards distribution
+    */
+   struct [[eosio::table("globalrem"), eosio::contract("rem.system")]] eosio_global_rem_state {
+      eosio_global_rem_state() { }
+      double  per_stake_share;
+      double  per_vote_share;
+
+      EOSLIB_SERIALIZE( eosio_global_rem_state, (per_stake_share)(per_vote_share) )
+   };
+
+   /**
     * Defines `producer_info` structure to be stored in `producer_info` table, added after version 1.0
     */
    struct [[eosio::table, eosio::contract("rem.system")]] producer_info {
@@ -359,6 +370,8 @@ namespace eosiosystem {
     * Global state singleton added in version 1.6.x
     */
    typedef eosio::singleton< "global4"_n, eosio_global_state4 > global_state4_singleton;
+
+   typedef eosio::singleton< "globalrem"_n, eosio_global_rem_state > global_rem_state_singleton;
 
    //   static constexpr uint32_t     max_inflation_rate = 5;  // 5% annual inflation
    static constexpr uint32_t     seconds_per_day = 24 * 3600;
@@ -540,10 +553,12 @@ namespace eosiosystem {
          global_state2_singleton _global2;
          global_state3_singleton _global3;
          global_state4_singleton _global4;
+         global_rem_state_singleton _globalrem;
          eosio_global_state      _gstate;
          eosio_global_state2     _gstate2;
          eosio_global_state3     _gstate3;
          eosio_global_state4     _gstate4;
+         eosio_global_rem_state  _gremstate;
          rammarket               _rammarket;
          rex_pool_table          _rexpool;
          rex_fund_table          _rexfunds;
@@ -594,6 +609,9 @@ namespace eosiosystem {
             const static auto sym = get_core_symbol( rm );
             return sym;
          }
+
+       [[eosio::action]]
+       void setrwrdratio( double stake_share, double vote_share );
 
        [[eosio::action]]
        void setlockperiod( uint64_t period_in_days);
@@ -1283,6 +1301,7 @@ namespace eosiosystem {
          using setpriv_action = eosio::action_wrapper<"setpriv"_n, &system_contract::setpriv>;
          using setalimits_action = eosio::action_wrapper<"setalimits"_n, &system_contract::setalimits>;
          using setparams_action = eosio::action_wrapper<"setparams"_n, &system_contract::setparams>;
+         using setrwrdratio_action = eosio::action_wrapper<"setrwrdratio"_n, &system_contract::setrwrdratio>;
          using setlockperiod_action = eosio::action_wrapper<"setlockperiod"_n, &system_contract::setlockperiod>;
          using setunloperiod_action = eosio::action_wrapper<"setunloperiod"_n, &system_contract::setunloperiod>;
 
@@ -1298,6 +1317,7 @@ namespace eosiosystem {
          //defined in rem.system.cpp
          static eosio_global_state get_default_parameters();
          static eosio_global_state4 get_default_inflation_parameters();
+         static eosio_global_rem_state get_default_rem_parameters();
          symbol core_symbol()const;
          void update_ram_supply();
 

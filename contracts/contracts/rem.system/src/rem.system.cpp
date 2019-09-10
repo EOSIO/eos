@@ -34,6 +34,7 @@ namespace eosiosystem {
     _global2(_self, _self.value),
     _global3(_self, _self.value),
     _global4(_self, _self.value),
+    _globalrem(_self, _self.value),
     _rammarket(_self, _self.value),
     _rexpool(_self, _self.value),
     _rexfunds(_self, _self.value),
@@ -45,6 +46,7 @@ namespace eosiosystem {
       _gstate2 = _global2.exists() ? _global2.get() : eosio_global_state2{};
       _gstate3 = _global3.exists() ? _global3.get() : eosio_global_state3{};
       _gstate4 = _global4.exists() ? _global4.get() : get_default_inflation_parameters();
+      _gremstate = _globalrem.exists() ? _globalrem.get() : get_default_rem_parameters();
    }
 
    eosio_global_state system_contract::get_default_parameters() {
@@ -61,6 +63,13 @@ namespace eosiosystem {
       return gs4;
    }
 
+   eosio_global_rem_state system_contract::get_default_rem_parameters() {
+      eosio_global_rem_state gs;
+      gs.per_stake_share = 0.6;
+      gs.per_vote_share = 0.3;
+      return gs;
+   }
+
    symbol system_contract::core_symbol()const {
       const static auto sym = get_core_symbol( _rammarket );
       return sym;
@@ -71,6 +80,17 @@ namespace eosiosystem {
       _global2.set( _gstate2, _self );
       _global3.set( _gstate3, _self );
       _global4.set( _gstate4, _self );
+      _globalrem.set( _gremstate, _self );
+   }
+
+   void system_contract::setrwrdratio( double stake_share, double vote_share ) {
+      require_auth(_self);
+
+      check(stake_share > 0, "share must be positive");
+      check(vote_share > 0, "share must be positive");
+      check(stake_share + vote_share < 1.0, "perstake and pervote shares together must be less than 1.0");
+      _gremstate.per_stake_share = stake_share;
+      _gremstate.per_vote_share = vote_share;
    }
 
    void system_contract::setlockperiod( uint64_t period_in_days ) {
@@ -373,8 +393,8 @@ EOSIO_DISPATCH( eosiosystem::system_contract,
      // native.hpp (newaccount definition is actually in rem.system.cpp)
      (newaccount)(updateauth)(deleteauth)(linkauth)(unlinkauth)(canceldelay)(onerror)(setabi)
      // rem.system.cpp
-     (init)(setram)(setminstake)(setramrate)(setparams)(setpriv)(setalimits)(setlockperiod)(setunloperiod)(activate)
-     (rmvproducer)(updtrevision)(bidname)(bidrefund)(setinflation)
+     (init)(setram)(setminstake)(setramrate)(setparams)(setpriv)(setalimits)(setrwrdratio)
+     (setlockperiod)(setunloperiod)(activate)(rmvproducer)(updtrevision)(bidname)(bidrefund)(setinflation)
      // rex.cpp
      (deposit)(withdraw)(buyrex)(unstaketorex)(sellrex)(cnclrexorder)(rentcpu)(rentnet)(fundcpuloan)(fundnetloan)
      (defcpuloan)(defnetloan)(updaterex)(consolidate)(mvtosavings)(mvfrsavings)(setrex)(rexexec)(closerex)

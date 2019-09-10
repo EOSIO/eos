@@ -92,6 +92,12 @@ public:
       return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "eosio_global_state", data, abi_serializer_max_time );
    }
 
+   fc::variant get_global_rem_state() {
+      vector<char> data = get_row_by_account( config::system_account_name, config::system_account_name, N(globalrem), N(globalrem) );
+      if (data.empty()) std::cout << "\nData is empty\n" << std::endl;
+      return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "eosio_global_rem_state", data, abi_serializer_max_time );
+   }
+
     auto delegate_bandwidth( name from, name receiver, asset stake_quantity, uint8_t transfer = 1) {
        auto r = base_tester::push_action(config::system_account_name, N(delegatebw), from, mvo()
                     ("from", from )
@@ -160,6 +166,15 @@ public:
                     ("receiver", receiver)
                     ("unstake_quantity", unstake_quantity)
                     );
+       produce_block();
+       return r;
+    }
+
+    auto set_reward_ratio( double stake_share, double vote_share ) {
+       auto r = base_tester::push_action(config::system_account_name, N(setrwrdratio), config::system_account_name, mvo()
+          ("stake_share",  stake_share)
+          ("vote_share", vote_share)
+          );
        produce_block();
        return r;
     }
@@ -383,17 +398,38 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         //prodp       - 9
         //prodq-produ - 12
 
+        BOOST_REQUIRE_THROW(base_tester::push_action(config::system_account_name, N(setrwrdratio),
+                                                     config::system_account_name, mvo()("stake_share",  0.5)("vote_share", 0.5)),
+                            eosio_assert_message_exception);
+        BOOST_REQUIRE_THROW(base_tester::push_action(config::system_account_name, N(setrwrdratio),
+                                                     config::system_account_name, mvo()("stake_share",  0.0)("vote_share", 0.5)),
+                            eosio_assert_message_exception);
+        set_reward_ratio(0.7, 0.2);
+        BOOST_REQUIRE(get_global_rem_state()["per_vote_share"].as_double() == 0.2);
+        BOOST_REQUIRE(get_global_rem_state()["per_stake_share"].as_double() == 0.7);
+
         BOOST_REQUIRE_THROW(torewards(N(b1), config::system_account_name, core_from_string("20000.0000")), missing_auth_exception);
         torewards(config::system_account_name, config::system_account_name, core_from_string("20000.0000"));
-        //Counters of expected_produced_blocks
-        //prode - 8
-        const auto saving_balance = get_balance(N(rem.saving)).get_amount();
-        const auto spay_balance = get_balance(N(rem.spay)).get_amount();
-        const auto vpay_balance = get_balance(N(rem.vpay)).get_amount();
+        auto saving_balance = get_balance(N(rem.saving)).get_amount();
+        auto spay_balance = get_balance(N(rem.spay)).get_amount();
+        auto vpay_balance = get_balance(N(rem.vpay)).get_amount();
         BOOST_REQUIRE(saving_balance >= 2000'0000);
         BOOST_REQUIRE_EQUAL(spay_balance, 14000'0000);
         BOOST_REQUIRE(vpay_balance <= 4000'0000);
         BOOST_REQUIRE_EQUAL(saving_balance + spay_balance + vpay_balance, 20000'0000);
+
+        set_reward_ratio(0.6, 0.3);
+        BOOST_REQUIRE(get_global_rem_state()["per_vote_share"].as_double() == 0.3);
+        BOOST_REQUIRE(get_global_rem_state()["per_stake_share"].as_double() == 0.6);
+
+        torewards(config::system_account_name, config::system_account_name, core_from_string("1.0000"));
+        saving_balance = get_balance(N(rem.saving)).get_amount();
+        spay_balance = get_balance(N(rem.spay)).get_amount();
+        vpay_balance = get_balance(N(rem.vpay)).get_amount();
+        BOOST_REQUIRE(saving_balance >= 2000'0000 + 1000);
+        BOOST_REQUIRE_EQUAL(spay_balance, 14000'0000 + 6000);
+        BOOST_REQUIRE(vpay_balance <= 4000'0000 + 3000);
+        BOOST_REQUIRE_EQUAL(saving_balance + spay_balance + vpay_balance, 20001'0000);
 
         for (auto prod: active_schedule.producers) {
            BOOST_TEST(get_pending_pervote_reward(prod.producer_name) > 0);
