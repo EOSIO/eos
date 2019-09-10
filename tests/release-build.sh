@@ -17,23 +17,23 @@ echo ''
 if [[ ! -f "$EOSIO_ROOT/build/bin/nodeos" && ! -f "$EOSIO_ROOT/build/programs/nodeos/nodeos" ]]; then
     echo 'ERROR: nodeos binary not found!'
     echo 'Looked in the following places:'
-    echo "$ ls -la $EOSIO_ROOT/build/bin"
-    ls -la $EOSIO_ROOT/build/bin
-    echo "$ ls -la $EOSIO_ROOT/build/programs/nodeos"
-    ls -la $EOSIO_ROOT/build/programs/nodeos
+    echo "$ ls -la \"$EOSIO_ROOT/build/bin\""
+    ls -la "$EOSIO_ROOT/build/bin"
+    echo "$ ls -la \"$EOSIO_ROOT/build/programs/nodeos\""
+    ls -la "$EOSIO_ROOT/build/programs/nodeos"
     echo "Release Build Test not run because test conditions were not met."
     exit 1
 fi
 [[ -f "$EOSIO_ROOT/build/bin/nodeos" ]] && cd "$EOSIO_ROOT/build/bin" || cd "$EOSIO_ROOT/build/programs/nodeos"
 # setup
-./nodeos --config-dir $(pwd)/config --data-dir $(pwd)/data & # run nodeos in background
+./nodeos --config-dir "$(pwd)/config" --data-dir "$(pwd)/data" & # run nodeos in background
 sleep 10
 kill $! # kill nodeos gracefully, by PID
 if [[ ! -f data/state/shared_memory.bin ]]; then
     echo 'ERROR: nodeos state not found!'
     echo 'Looked for shared_memory.bin in the following places:'
-    echo "$ ls -la $(pwd)/data/state"
-    ls -la $(pwd)/data/state
+    echo "$ ls -la \"$(pwd)/data/state\""
+    ls -la "$(pwd)/data/state"
     echo "Release Build Test not run because test setup failed."
     exit 2
 fi
