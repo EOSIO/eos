@@ -1,15 +1,16 @@
 #!/bin/bash
 set -eo pipefail
+# environment
 . ./.cicd/helpers/general.sh
 export MOJAVE_ANKA_TAG_BASE=${MOJAVE_ANKA_TAG_BASE:-'clean::cicd::git-ssh::nas::brew::buildkite-agent'}
 export MOJAVE_ANKA_TEMPLATE_NAME=${MOJAVE_ANKA_TEMPLATE_NAME:-'10.14.4_6C_14G_40G'}
-# Use files in platforms dir as source of truth for what platforms we need to generate steps for
 export PLATFORMS_JSON_ARRAY='[]'
+# read .cicd/platforms
 for FILE in $(ls $CICD_DIR/platforms); do
-    # Ability to skip mac or linux by not even creating the json block
+    # skip mac or linux by not even creating the json block
     ( [[ $SKIP_MAC == true ]] && [[ $FILE =~ 'macos' ]] ) && continue
     ( [[ $SKIP_LINUX == true ]] &&    [[ ! $FILE =~ 'macos' ]] ) && continue
-    # Prevent using both platform files (only use unpinned or pinned)
+    # use pinned or unpinned, not both sets of platform files
     if [[ $PINNED == false || $UNPINNED == true ]] && [[ ! $FILE =~ 'macos' ]]; then
         export SKIP_CONTRACT_BUILDER=${SKIP_CONTRACT_BUILDER:-true}
         export SKIP_PACKAGE_BUILDER=${SKIP_PACKAGE_BUILDER:-true}
@@ -48,9 +49,8 @@ for FILE in $(ls $CICD_DIR/platforms); do
 done
 oIFS="$IFS"
 IFS=$'' 
-nIFS=$IFS # Needed to fix array splitting (\n won't work)
-###################
-# Anka Ensure Tag #
+nIFS=$IFS # fix array splitting (\n won't work)
+# base-image steps
 echo $PLATFORMS_JSON_ARRAY | jq -cr ".[]" | while read -r PLATFORM_JSON; do
     if [[ $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME) =~ 'macos' ]]; then
     cat <<EOF
@@ -76,8 +76,7 @@ EOF
     fi
 done
 echo "  - wait"; echo ""
-###############
-# BUILD STEPS #
+# build steps
 echo $PLATFORMS_JSON_ARRAY | jq -cr ".[]" | while read -r PLATFORM_JSON; do
     if [[ ! $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME) =~ 'macos' ]]; then
         cat <<EOF
@@ -121,8 +120,7 @@ EOF
     fi
 done
 echo "  - wait"; echo ""
-##############
-# UNIT TESTS #
+# parallel tests
 echo $PLATFORMS_JSON_ARRAY | jq -cr ".[]" | while read -r PLATFORM_JSON; do
     if [[ ! $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME) =~ 'macos' ]]; then
         cat <<EOF
@@ -163,8 +161,7 @@ EOF
 EOF
     fi
 done
-################
-# SERIAL TESTS #
+# serial tests
 echo $PLATFORMS_JSON_ARRAY | jq -cr ".[]" | while read -r PLATFORM_JSON; do
     IFS=$oIFS
     SERIAL_TESTS=$(cat tests/CMakeLists.txt | grep nonparallelizable_tests | grep -v "^#" | awk -F" " '{ print $2 }')
@@ -209,8 +206,7 @@ EOF
     done
     IFS=$nIFS
 done
-#############
-# LRT TESTS #
+# long-running tests
 echo $PLATFORMS_JSON_ARRAY | jq -cr ".[]" | while read -r PLATFORM_JSON; do
     IFS=$oIFS
     LR_TESTS=$(cat tests/CMakeLists.txt | grep long_running_tests | grep -v "^#" | awk -F" " '{ print $2 }')
@@ -256,6 +252,7 @@ EOF
     done
     IFS=$nIFS
 done
+# pipeline tail
 cat <<EOF
 
   - wait:
