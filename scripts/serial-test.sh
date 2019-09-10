@@ -39,7 +39,6 @@ if [[ -z "$TEST" ]]; then # run all serial tests
     fi
 else # run specific serial test
     # ensure test exists
-    ls -lahR /workdir/build
     echo "+++ $([[ "$BUILDKITE" == 'true' ]] && echo ':microscope: ')Running $TEST"
     TEST_COUNT=$(ctest -N -R ^$TEST$ | grep -i 'Total Tests: ' | cut -d ':' -f 2 | awk '{print $1}')
     if [[ $TEST_COUNT > 0 ]]; then
@@ -50,6 +49,7 @@ else # run specific serial test
         ctest -R ^$TEST$ --output-on-failure -T Test
         EXIT_STATUS=$?
         echo "Done running $TEST."
+        sleep 900
     else
         echo "+++ $([[ "$BUILDKITE" == 'true' ]] && echo ':no_entry: ')ERROR: No tests matching \"$TEST\" registered with ctest! Exiting..."
         EXIT_STATUS='1'
