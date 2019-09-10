@@ -5,6 +5,10 @@ export MOJAVE_ANKA_TAG_BASE=${MOJAVE_ANKA_TAG_BASE:-'clean::cicd::git-ssh::nas::
 export MOJAVE_ANKA_TEMPLATE_NAME=${MOJAVE_ANKA_TEMPLATE_NAME:-'10.14.4_6C_14G_40G'}
 # Use files in platforms dir as source of truth for what platforms we need to generate steps for
 export PLATFORMS_JSON_ARRAY='[]'
+LINUX_CONCURRENCY=8
+MAC_CONCURRENCY=2
+LINUX_CONCURRENCY_GROUP='eos-scheduled-build'
+MAC_CONCURRENCY_GROUP='eos-scheduled-build-mac'
 for FILE in $(ls $CICD_DIR/platforms); do
     # Ability to skip mac or linux by not even creating the json block
     ( [[ $SKIP_MAC == true ]] && [[ $FILE =~ 'macos' ]] ) && continue
@@ -81,6 +85,8 @@ echo "  - wait"; echo ""
 # BUILD STEPS #
 echo $PLATFORMS_JSON_ARRAY | jq -cr ".[]" | while read -r PLATFORM_JSON; do
     if [[ ! $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME) =~ 'macos' ]]; then
+        CONCURRENCY=$LINUX_CONCURRENCY
+        CONCURRENCY_GROUP=$LINUX_CONCURRENCY_GROUP
         cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build"
     command:
@@ -93,15 +99,18 @@ echo $PLATFORMS_JSON_ARRAY | jq -cr ".[]" | while read -r PLATFORM_JSON; do
       queue: "$BUILDKITE_AGENT_QUEUE"
     timeout: ${TIMEOUT:-180}
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}\${SKIP_BUILD}
-
 EOF
     else
+        CONCURRENCY=$MAC_CONCURRENCY
+        CONCURRENCY_GROUP=$MAC_CONCURRENCY_GROUP
         cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build"
     command:
       - "git clone \$BUILDKITE_REPO eos && cd eos && git checkout \$BUILDKITE_COMMIT && git submodule update --init --recursive"
       - "cd eos && ./.cicd/build.sh"
       - "cd eos && tar -pczf build.tar.gz build && buildkite-agent artifact upload build.tar.gz"
+    concurrency: ${CONCURRENCY}
+    concurrency_group: eos-scheduled-build
     plugins:
       - chef/anka#v0.5.1:
           no-volume: true
@@ -117,15 +126,23 @@ EOF
     agents:
       - "queue=mac-anka-large-node-fleet"
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}\${SKIP_BUILD}
-
+EOF
+    fi
+    if [ "$BUILDKITE_SOURCE" = "schedule" ]; then
+        cat <<EOF
+    concurrency: ${CONCURRENCY}
+    concurrency_group: ${CONCURRENCY_GROUP}
 EOF
     fi
 done
+echo
 echo "  - wait"; echo ""
 ##############
 # UNIT TESTS #
 echo $PLATFORMS_JSON_ARRAY | jq -cr ".[]" | while read -r PLATFORM_JSON; do
     if [[ ! $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME) =~ 'macos' ]]; then
+        CONCURRENCY=$LINUX_CONCURRENCY
+        CONCURRENCY_GROUP=$LINUX_CONCURRENCY_GROUP
         cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Unit Tests"
     command:
@@ -141,6 +158,8 @@ echo $PLATFORMS_JSON_ARRAY | jq -cr ".[]" | while read -r PLATFORM_JSON; do
 
 EOF
     else
+        CONCURRENCY=$MAC_CONCURRENCY
+        CONCURRENCY_GROUP=$MAC_CONCURRENCY_GROUP
         cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Unit Tests"
     command:
@@ -163,6 +182,12 @@ EOF
 
 EOF
     fi
+    if [ "$BUILDKITE_SOURCE" = "schedule" ]; then
+        cat <<EOF
+    concurrency: ${CONCURRENCY}
+    concurrency_group: ${CONCURRENCY_GROUP}
+EOF
+    fi
 done
 ################
 # SERIAL TESTS #
@@ -171,6 +196,8 @@ echo $PLATFORMS_JSON_ARRAY | jq -cr ".[]" | while read -r PLATFORM_JSON; do
     SERIAL_TESTS=$(cat tests/CMakeLists.txt | grep nonparallelizable_tests | grep -v "^#" | awk -F" " '{ print $2 }')
     for TEST_NAME in $SERIAL_TESTS; do
         if [[ ! $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME) =~ 'macos' ]]; then
+            CONCURRENCY=$LINUX_CONCURRENCY
+            CONCURRENCY_GROUP=$LINUX_CONCURRENCY_GROUP
             cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
     command:
@@ -186,6 +213,8 @@ echo $PLATFORMS_JSON_ARRAY | jq -cr ".[]" | while read -r PLATFORM_JSON; do
 
 EOF
         else
+            CONCURRENCY=$MAC_CONCURRENCY
+            CONCURRENCY_GROUP=$MAC_CONCURRENCY_GROUP
             cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
     command:
@@ -208,6 +237,12 @@ EOF
 EOF
         fi
     done
+    if [ "$BUILDKITE_SOURCE" = "schedule" ]; then
+        cat <<EOF
+    concurrency: ${CONCURRENCY}
+    concurrency_group: ${CONCURRENCY_GROUP}
+EOF
+    fi
     IFS=$nIFS
 done
 #############
@@ -217,6 +252,8 @@ echo $PLATFORMS_JSON_ARRAY | jq -cr ".[]" | while read -r PLATFORM_JSON; do
     LR_TESTS=$(cat tests/CMakeLists.txt | grep long_running_tests | grep -v "^#" | awk -F" " '{ print $2 }')
     for TEST_NAME in $LR_TESTS; do
         if [[ ! $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME) =~ 'macos' ]]; then
+            CONCURRENCY=$LINUX_CONCURRENCY
+            CONCURRENCY_GROUP=$LINUX_CONCURRENCY_GROUP
             cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
     command:
@@ -232,6 +269,8 @@ echo $PLATFORMS_JSON_ARRAY | jq -cr ".[]" | while read -r PLATFORM_JSON; do
 
 EOF
         else
+            CONCURRENCY=$MAC_CONCURRENCY
+            CONCURRENCY_GROUP=$MAC_CONCURRENCY_GROUP
             cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
     command:
@@ -255,6 +294,12 @@ EOF
 EOF
         fi
     done
+    if [ "$BUILDKITE_SOURCE" = "schedule" ]; then
+        cat <<EOF
+    concurrency: ${CONCURRENCY}
+    concurrency_group: ${CONCURRENCY_GROUP}
+EOF
+    fi
     IFS=$nIFS
 done
 cat <<EOF
