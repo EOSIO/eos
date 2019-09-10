@@ -6,6 +6,8 @@ import select
 import shutil
 import sys
 
+from typing import List, Optional, Union
+
 __all__ = ["String", "Print"]
 
 
@@ -154,18 +156,28 @@ class Print():
             self.trim(data, maxlen=100)
         func(json.dumps(data, indent=4, sort_keys=False))
 
+    def transaction_id(self, response: requests.Response) -> None:
+        tid = self.get_transaction_id(response)
+        if tid:
+            self.green("{:100}".format("<Transaction ID> {}".format(tid)))
+        else:
+            self.yellow("{:100}".format("Warning: No transaction ID returned."))
+
     def response_in_short(self, response: requests.Response) -> None:
         if response.ok:
             self.green(response, ' ' * 100)
         else:
             self.red(response)
             self.json(response.text)
+        self.transaction_id(response)
 
     def response_in_full(self, response: requests.Response) -> None:
         self.green(response) if response.ok else self.red(response)
         self.json(response.text)
+        self.transaction_id(response)
 
     def response_in_interaction(self, response: requests.Response, timeout=1) -> None:
+        self.transaction_id(response)
         if response.ok:
             self.green(response, ' ' * 100)
             lines = json.dumps(json.loads(response.text), indent=4, sort_keys=False).count('\n') + 1
@@ -201,6 +213,13 @@ class Print():
                 else:
                     if isinstance(item, str) and len(item) > maxlen:
                         item = "..."
+
+    @staticmethod
+    def get_transaction_id(response: requests.Response) -> Optional[str]:
+        try:
+            return json.loads(response.text)["transaction_id"]
+        except KeyError:
+            return
 
 
 def test():

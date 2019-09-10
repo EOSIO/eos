@@ -26,6 +26,7 @@ class LauncherCaller:
     DEFAULT_CLUSTER_ID = 0
     DEFAULT_TOPOLOGY = "mesh"
     DEFAULT_VERBOSITY = 1
+    DEFAULT_TIMEOUT = 1
     DEFAULT_MONOCHROME = True
     PROGRAM = "eosio-launcher-service"
 
@@ -42,6 +43,7 @@ class LauncherCaller:
         self.topology = self.override(self.DEFAULT_TOPOLOGY, self.args.topology)
         self.verbosity = self.override(self.DEFAULT_VERBOSITY, self.args.verbosity)
         self.monochrome = self.override(self.DEFAULT_MONOCHROME, self.args.monochrome)
+        self.timeout = self.override(self.DEFAULT_TIMEOUT, self.args.timeout)
 
         # decide whether to connect to a remote or local launcher service
         if self.address in ("127.0.0.1", "localhost"):
@@ -57,7 +59,7 @@ class LauncherCaller:
         if self.verbosity >= 3:
             self.print.response = lambda: self.print.response_in_full(self.response)
         elif self.verbosity == 2:
-            self.print.response = lambda: self.print.response_in_interaction(self.response, timeout=1)
+            self.print.response = lambda: self.print.response_in_interaction(self.response, timeout=self.timeout)
         elif self.verbosity == 1:
             self.print.response = lambda: self.print.response_in_short(self.response)
         else:
@@ -98,6 +100,7 @@ class LauncherCaller:
         couple = parser.add_mutually_exclusive_group()
         offset = 5
         helper = lambda text, value: "{} ({})".format(string.pad(text, left=offset, total=50, char=' ', sep=""), value)
+        parser.add_argument("-h", "--help", action="help", help=' ' * offset + "Show this message and exit")
         parser.add_argument("-a", "--address", type=str, metavar="IP", help=helper("Address of launcher service", self.DEFAULT_ADDRESS))
         parser.add_argument("-p", "--port", type=int, help=helper("Listening port of launcher service", self.DEFAULT_PORT))
         parser.add_argument("-d", "--dir", type=str, help=helper("Working directory", self.DEFAULT_DIR))
@@ -108,8 +111,8 @@ class LauncherCaller:
         parser.add_argument("-t", "--topology", type=str, metavar="SHAPE", help=helper("Cluster topology to launch with", self.DEFAULT_TOPOLOGY), choices={"mesh", "star", "bridge", "line", "ring", "tree"})
         couple.add_argument("-v", "--verbose", dest="verbosity", action="count", default=None, help=helper("Verbosity level (-v for 1, -vv for 2, ...)", self.DEFAULT_VERBOSITY))
         couple.add_argument("-x", "--silent", dest="verbosity", action="store_false", default=None, help=helper("Set verbosity level at 0 (keep silent)", "False"))
-        parser.add_argument("-c", "--color", dest="monochrome", action="store_false", default=None, help=helper("Print in colors", self.DEFAULT_MONOCHROME))
-        parser.add_argument("-h", "--help", action="help", help=' ' * offset + "Show this message and exit")
+        parser.add_argument("-c", "--color", dest="monochrome", action="store_false", default=None, help=helper("Print in colors", not self.DEFAULT_MONOCHROME))
+        parser.add_argument("--timeout", type=float, metavar="TIME", default=None, help=helper("Pause time for interactive printing", self.DEFAULT_TIMEOUT))
         return parser.parse_args()
 
     def print_system_info(self):
@@ -131,6 +134,7 @@ class LauncherCaller:
         self.print.vanilla("{:50s}{}".format("Cluster topology to launch with", helper(self.args.topology, self.topology)))
         self.print.vanilla("{:50s}{}".format("Verbosity level", helper(self.args.verbosity, self.verbosity)))
         self.print.vanilla("{:50s}{}".format("Print in colors", helper(self.args.monochrome, self.monochrome)))
+        self.print.vanilla("{:50s}{}".format("Pause time for interactive printing", helper(self.args.timeout, self.timeout)))
 
     # TODO
     def connect_to_remote_service(self):
@@ -374,7 +378,6 @@ class LauncherCaller:
         self.print.vanilla(self.request_url)
         self.print.json(self.request_data, func=self.print.vanilla)
         self.response = self.rpc(self.request_url, self.request_data)
-        # TODO: smarter check, looking into response
         while not self.response.ok and retry > 0:
             self.print.red(self.response)
             self.print.vanilla("Retrying ...")
@@ -382,11 +385,6 @@ class LauncherCaller:
             self.response = self.rpc(self.request_url, self.request_data)
             retry -= 1
         self.print.response()
-        tid = self.get_transaction_id()
-        if tid:
-            self.print.green("{:100}".format("<Transaction ID> {}".format(tid)))
-        else:
-            self.print.yellow("{:100}".format("Warning: No transaction ID returned."))
 
     def launch_cluster(self, data: dict):
         self.call("launch_cluster", data, "launch cluster")
@@ -440,7 +438,7 @@ class LauncherCaller:
 
     def get_transaction_id(self):
         try:
-            return json.loads(self.response.text)['transaction_id']
+            return json.loads(self.response.text)["transaction_id"]
         except KeyError:
             return
 
