@@ -40,6 +40,7 @@ fi
 export DEBUG_BYTE="$(xxd -seek 9 -l 1 data/state/shared_memory.bin | awk '{print $2}')"
 if [[ "$DEBUG_BYTE" == '00' ]]; then
     echo 'PASS: Debug byte not set.'
+    rm -rf config data
     exit 0
 fi
 echo 'FAIL: Debug byte is set!'
