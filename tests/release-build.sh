@@ -10,6 +10,12 @@ echo 'performance-critical applications like nodeos. Anyone intending to build a
 echo 'install nodeos from source should perform a "release build," which excludes'
 echo 'debugging symbols to generate faster and lighter binaries.'
 echo ''
+# check for jq
+if ! $(jq --version 1>/dev/null); then
+    echo 'ERROR: Test requires jq, but jq was not found in your PATH!'
+    echo ''
+    exit 1
+fi
 # find nodeos
 [[ -z "$EOSIO_ROOT" && $(git --version) ]] && export EOSIO_ROOT="$(git rev-parse --show-toplevel)"
 [[ -z "$EOSIO_ROOT" ]] && export EOSIO_ROOT="$(echo $(pwd)/ | grep -ioe '.*/eos/' -e '.*/eosio/' -e '.*/build/' | sed 's,/build/,/,')"
