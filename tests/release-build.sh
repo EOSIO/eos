@@ -34,6 +34,7 @@ if [[ ! -f data/state/shared_memory.bin ]]; then
     echo "$ ls -la \"$(pwd)/data/state\""
     ls -la "$(pwd)/data/state"
     echo 'Release build test not run.'
+    rm -rf config data
     exit 2
 fi
 # test state files for debug flag
@@ -48,4 +49,5 @@ echo "Debug Byte = 0x$DEBUG_BYTE"
 echo 'First kilobyte of shared_memory.bin:'
 echo '$ xxd -l 1024 shared_memory.bin'
 xxd -l 1024 data/state/shared_memory.bin
+rm -rf config data
 exit 3
