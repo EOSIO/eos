@@ -39,7 +39,7 @@ if [[ -z "$TEST" ]]; then # run all serial tests
     fi
 else # run specific serial test
     # ensure test exists
-    echo $(pwd)
+    ls -lahR /workdir/build
     echo "+++ $([[ "$BUILDKITE" == 'true' ]] && echo ':microscope: ')Running $TEST"
     TEST_COUNT=$(ctest -N -R ^$TEST$ | grep -i 'Total Tests: ' | cut -d ':' -f 2 | awk '{print $1}')
     if [[ $TEST_COUNT > 0 ]]; then
