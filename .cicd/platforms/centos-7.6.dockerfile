@@ -7,7 +7,7 @@ RUN yum update -y && \
     yum --enablerepo=extras install -y which git autoconf automake libtool make bzip2 doxygen \
     graphviz bzip2-devel openssl-devel gmp-devel ocaml libicu-devel \
     python python-devel rh-python36 gettext-devel file libusbx-devel \
-    libcurl-devel patch
+    libcurl-devel patch vim-common
 # build cmake.
 RUN curl -LO https://cmake.org/files/v3.13/cmake-3.13.2.tar.gz && \
     source /opt/rh/devtoolset-8/enable && \
