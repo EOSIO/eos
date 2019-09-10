@@ -88,6 +88,7 @@ echo $PLATFORMS_JSON_ARRAY | jq -cr ".[]" | while read -r PLATFORM_JSON; do
             cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
     command:
+      - python --version
       - "buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' --build 'af9e43be-a344-497e-8def-0528846f4b47' && tar -xzf build.tar.gz"
       - "./.cicd/test.sh scripts/serial-test.sh $TEST_NAME"
     env:
