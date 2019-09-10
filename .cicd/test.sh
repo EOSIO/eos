@@ -5,11 +5,13 @@ set -eo pipefail
 # tests
 if [[ $(uname) == 'Darwin' ]]; then # macOS
     export PATH=$PATH:~/mongodb/bin
+    set +e # defer error handling to end
     ./"$@"
     EXIT_STATUS=$?
 else # Linux
     . $HELPERS_DIR/file-hash.sh $CICD_DIR/platforms/$IMAGE_TAG.dockerfile
     echo "$ docker run --rm --init -v $(pwd):$MOUNTED_DIR $(buildkite-intrinsics) $FULL_TAG bash -c \"$MOUNTED_DIR/$@\""
+    set +e # defer error handling to end
     eval docker run --rm --init -v $(pwd):$MOUNTED_DIR $(buildkite-intrinsics) $FULL_TAG bash -c \"$MOUNTED_DIR/$@\"
     EXIT_STATUS=$?
 fi
