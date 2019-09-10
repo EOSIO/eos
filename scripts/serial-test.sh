@@ -44,6 +44,8 @@ else # run specific serial test
     if [[ $TEST_COUNT > 0 ]]; then
         echo "$TEST found."
         # run tests
+        echo "$(pwd)"
+        ls -lah
         set +e # defer ctest error handling to end
         echo "$ ctest -R ^$TEST$ --output-on-failure -T Test"
         ctest -R ^$TEST$ --output-on-failure -T Test
