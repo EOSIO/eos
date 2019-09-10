@@ -1,0 +1,8 @@
+steps:
+  - wait
+
+  - label: ":pipeline: Generate Pipeline Steps"  
+    command: "./.cicd/generate-pipeline.sh | buildkite-agent pipeline upload"
+    agents:
+      queue: "automation-basic-builder-fleet"
+    timeout: ${TIMEOUT:-10}

@@ -47,10 +47,10 @@ class transaction_metadata {
 
    public:
       // creation of tranaction_metadata restricted to start_recover_keys and create_no_recover_keys below, public for make_shared
-      explicit transaction_metadata( const private_type& pt, const packed_transaction_ptr& ptrx,
+      explicit transaction_metadata( const private_type& pt, packed_transaction_ptr ptrx,
                                      fc::microseconds sig_cpu_usage, flat_set<public_key_type> recovered_pub_keys,
                                      bool _implicit = false, bool _scheduled = false)
-         : _packed_trx( ptrx )
+         : _packed_trx( std::move( ptrx ) )
          , _sig_cpu_usage( sig_cpu_usage )
          , _recovered_pub_keys( std::move( recovered_pub_keys ) )
          , implicit( _implicit )
@@ -72,7 +72,7 @@ class transaction_metadata {
       /// Thread safe.
       /// @returns transaction_metadata_ptr or exception via future
       static recover_keys_future
-      start_recover_keys( const packed_transaction_ptr& trx, boost::asio::io_context& thread_pool,
+      start_recover_keys( packed_transaction_ptr trx, boost::asio::io_context& thread_pool,
                           const chain_id_type& chain_id, fc::microseconds time_limit,
                           uint32_t max_variable_sig_size = UINT32_MAX );
 

@@ -37,7 +37,7 @@ export BOOST_ROOT=${BOOST_LOCATION:-${SRC_DIR}/boost_${BOOST_VERSION}}
 export BOOST_LINK_LOCATION=${OPT_DIR}/boost
 
 # LLVM
-export LLVM_VERSION=release_40
+export LLVM_VERSION=release_80
 export LLVM_ROOT=${OPT_DIR}/llvm
 export LLVM_DIR=${LLVM_ROOT}/lib/cmake/llvm
 
