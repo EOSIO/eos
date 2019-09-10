@@ -33,8 +33,8 @@ for FILE in $(ls $CICD_DIR/platforms); do
     [[ $FILE_NAME =~ 'centos' ]] && export ICON=':centos:'
     [[ $FILE_NAME =~ 'macos' ]] && export ICON=':darwin:'
     . $HELPERS_DIR/file-hash.sh $CICD_DIR/platforms/$FILE # returns HASHED_IMAGE_TAG, etc
-    export PLATFORMS_JSON_ARRAY=$(echo $PLATFORMS_JSON_ARRAY | jq -c '. += [{ 
-        "FILE_NAME": env.FILE_NAME, 
+    export PLATFORMS_JSON_ARRAY=$(echo $PLATFORMS_JSON_ARRAY | jq -c '. += [{
+        "FILE_NAME": env.FILE_NAME,
         "PLATFORM_NAME": env.PLATFORM_NAME,
         "PLATFORM_NAME_UPCASE": env.PLATFORM_NAME_UPCASE,
         "VERSION_MAJOR": env.VERSION_MAJOR,
@@ -47,7 +47,7 @@ for FILE in $(ls $CICD_DIR/platforms); do
         }]')
 done
 oIFS="$IFS"
-IFS=$'' 
+IFS=$''
 nIFS=$IFS # Needed to fix array splitting (\n won't work)
 ###################
 # Anka Ensure Tag #
@@ -89,7 +89,7 @@ echo $PLATFORMS_JSON_ARRAY | jq -cr ".[]" | while read -r PLATFORM_JSON; do
       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
       BUILDKITE_AGENT_ACCESS_TOKEN:
     agents:
-      queue: "automation-eos-builder-fleet"
+      queue: "automation-large-builder-fleet"
     timeout: ${TIMEOUT:-180}
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}\${SKIP_BUILD}
 
@@ -134,7 +134,7 @@ echo $PLATFORMS_JSON_ARRAY | jq -cr ".[]" | while read -r PLATFORM_JSON; do
       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
       BUILDKITE_AGENT_ACCESS_TOKEN:
     agents:
-      queue: "automation-eos-builder-fleet"
+      queue: "automation-large-builder-fleet"
     timeout: ${TIMEOUT:-10}
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}\${SKIP_UNIT_TESTS}
 
@@ -179,7 +179,7 @@ echo $PLATFORMS_JSON_ARRAY | jq -cr ".[]" | while read -r PLATFORM_JSON; do
       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
       BUILDKITE_AGENT_ACCESS_TOKEN:
     agents:
-      queue: "automation-eos-builder-fleet"
+      queue: "automation-large-builder-fleet"
     timeout: ${TIMEOUT:-20}
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}\${SKIP_SERIAL_TESTS}
 
@@ -225,7 +225,7 @@ echo $PLATFORMS_JSON_ARRAY | jq -cr ".[]" | while read -r PLATFORM_JSON; do
       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
       BUILDKITE_AGENT_ACCESS_TOKEN:
     agents:
-      queue: "automation-eos-builder-fleet"
+      queue: "automation-large-builder-fleet"
     timeout: ${TIMEOUT:-180}
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}\${SKIP_LONG_RUNNING_TESTS:-true}
 
@@ -268,7 +268,7 @@ cat <<EOF
       echo '+++ :javascript: Running test-metrics.js'
       node --max-old-space-size=32768 test-metrics.js
     agents:
-      queue: "automation-eos-builder-fleet"
+      queue: "automation-large-builder-fleet"
     timeout: ${TIMEOUT:-10}
     soft_fail: true
 
@@ -284,7 +284,7 @@ cat <<EOF
       OS: "el7" # OS and PKGTYPE required for lambdas
       PKGTYPE: "rpm"
     agents:
-      queue: "automation-eos-builder-fleet"
+      queue: "automation-large-builder-fleet"
     timeout: ${TIMEOUT:-10}
     skip: ${SKIP_CENTOS_7_6}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
 
@@ -298,7 +298,7 @@ cat <<EOF
       OS: "ubuntu-16.04" # OS and PKGTYPE required for lambdas
       PKGTYPE: "deb"
     agents:
-      queue: "automation-eos-builder-fleet"
+      queue: "automation-large-builder-fleet"
     timeout: ${TIMEOUT:-10}
     skip: ${SKIP_UBUNTU_16_04}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
 
@@ -312,7 +312,7 @@ cat <<EOF
       OS: "ubuntu-18.04" # OS and PKGTYPE required for lambdas
       PKGTYPE: "deb"
     agents:
-      queue: "automation-eos-builder-fleet"
+      queue: "automation-large-builder-fleet"
     timeout: ${TIMEOUT:-10}
     skip: ${SKIP_UBUNTU_18_04}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
 
@@ -341,7 +341,7 @@ cat <<EOF
       IMAGE_TAG: "ubuntu-18.04-unpinned"
       BUILDKITE_AGENT_ACCESS_TOKEN:
     agents:
-      queue: "automation-eos-builder-fleet"
+      queue: "automation-large-builder-fleet"
     timeout: ${TIMEOUT:-30}
     skip: ${SKIP_CONTRACT_BUILDER}${SKIP_LINUX}
 
