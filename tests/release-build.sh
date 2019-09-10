@@ -10,6 +10,13 @@ echo 'performance-critical applications like nodeos. Anyone intending to build a
 echo 'install nodeos from source should perform a "release build," which excludes'
 echo 'debugging symbols to generate faster and lighter binaries.'
 echo ''
+# check for xxd
+if ! $(xxd --version 2>/dev/null); then
+    echo 'ERROR: Test requires xxd, but xxd was not found in your PATH!'
+    echo ''
+    echo 'The xxd hex dump tool can be installed as part of the vim-common package on most operating systems.'
+    exit 1
+fi
 # find nodeos
 [[ -z "$EOSIO_ROOT" && $(git --version) ]] && export EOSIO_ROOT="$(git rev-parse --show-toplevel)"
 [[ -z "$EOSIO_ROOT" ]] && export EOSIO_ROOT="$(echo $(pwd)/ | grep -ioe '.*/eos/' -e '.*/eosio/' -e '.*/build/' | sed 's,/build/,/,')"
@@ -22,7 +29,7 @@ if [[ ! -f "$EOSIO_ROOT/build/bin/nodeos" && ! -f "$EOSIO_ROOT/build/programs/no
     echo "$ ls -la \"$EOSIO_ROOT/build/programs/nodeos\""
     ls -la "$EOSIO_ROOT/build/programs/nodeos"
     echo 'Release build test not run.'
-    exit 1
+    exit 2
 fi
 [[ -f "$EOSIO_ROOT/build/bin/nodeos" ]] && cd "$EOSIO_ROOT/build/bin" || cd "$EOSIO_ROOT/build/programs/nodeos"
 # run nodeos to generate state files
@@ -37,7 +44,7 @@ if [[ ! -f data/state/shared_memory.bin ]]; then
     ls -la "$(pwd)/data/state"
     echo 'Release build test not run.'
     rm -rf config data
-    exit 2
+    exit 3
 fi
 # test state files for debug flag
 export DEBUG_BYTE="$(xxd -seek 9 -l 1 data/state/shared_memory.bin | awk '{print $2}')"
@@ -54,4 +61,4 @@ echo 'First kilobyte of shared_memory.bin:'
 echo '$ xxd -l 1024 shared_memory.bin'
 xxd -l 1024 data/state/shared_memory.bin
 rm -rf config data
-exit 3
+exit 4
