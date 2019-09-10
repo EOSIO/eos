@@ -44,7 +44,6 @@ else # run specific serial test
     if [[ $TEST_COUNT > 0 ]]; then
         echo "$TEST found."
         # run tests
-        programs/nodeos/nodeos --max-transaction-time -1 --abi-serializer-max-time-ms 990000 --filter-on "*" --p2p-max-nodes-per-host 1 --contracts-console --plugin eosio::producer_api_plugin  --config-dir etc/eosio/node_bios --data-dir var/lib/node_bios --genesis-json etc/eosio/node_bios/genesis.json --genesis-timestamp 2019-09-10T11:06:05.502
         set +e # defer ctest error handling to end
         echo "$ ctest -R ^$TEST$ --output-on-failure -T Test"
         ctest -R ^$TEST$ --output-on-failure -T Test
