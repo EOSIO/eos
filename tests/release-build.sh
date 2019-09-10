@@ -21,7 +21,7 @@ if [[ ! -f "$EOSIO_ROOT/build/bin/nodeos" && ! -f "$EOSIO_ROOT/build/programs/no
     ls -la "$EOSIO_ROOT/build/bin"
     echo "$ ls -la \"$EOSIO_ROOT/build/programs/nodeos\""
     ls -la "$EOSIO_ROOT/build/programs/nodeos"
-    echo "Release Build Test not run because test conditions were not met."
+    echo 'Release build test not run.'
     exit 1
 fi
 [[ -f "$EOSIO_ROOT/build/bin/nodeos" ]] && cd "$EOSIO_ROOT/build/bin" || cd "$EOSIO_ROOT/build/programs/nodeos"
@@ -34,7 +34,7 @@ if [[ ! -f data/state/shared_memory.bin ]]; then
     echo 'Looked for shared_memory.bin in the following places:'
     echo "$ ls -la \"$(pwd)/data/state\""
     ls -la "$(pwd)/data/state"
-    echo "Release Build Test not run because test setup failed."
+    echo 'Release build test not run.'
     exit 2
 fi
 # test
