@@ -1,5 +1,4 @@
 #!/bin/bash
-set -e
 # test name and purpose
 echo ''
 echo '                        ##### Release Build Test #####'
