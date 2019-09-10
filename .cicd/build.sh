@@ -1,10 +1,7 @@
 #!/bin/bash
 set -eo pipefail
 . ./.cicd/helpers/general.sh
-echo $(pwd)
-ls -lah
 mkdir -p $BUILD_DIR
-ls -lah $BUILD_DIR
 CMAKE_EXTRAS="-DBUILD_MONGO_DB_PLUGIN=true -DCMAKE_BUILD_TYPE='Release'"
 if [[ $(uname) == 'Darwin' ]]; then
     # You can't use chained commands in execute
