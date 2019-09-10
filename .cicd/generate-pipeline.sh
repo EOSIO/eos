@@ -10,7 +10,7 @@ export PLATFORMS_JSON_ARRAY='[]'
 for FILE in $(ls $CICD_DIR/platforms); do
     # skip mac or linux by not even creating the json block
     ( [[ $SKIP_MAC == true ]] && [[ $FILE =~ 'macos' ]] ) && continue
-    ( [[ $SKIP_LINUX == true ]] &&    [[ ! $FILE =~ 'macos' ]] ) && continue
+    ( [[ $SKIP_LINUX == true ]] && [[ ! $FILE =~ 'macos' ]] ) && continue
     # use pinned or unpinned, not both sets of platform files
     if [[ $PINNED == false || $UNPINNED == true ]] && [[ ! $FILE =~ 'macos' ]]; then
         export SKIP_CONTRACT_BUILDER=${SKIP_CONTRACT_BUILDER:-true}
