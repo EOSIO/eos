@@ -7,7 +7,7 @@ import subprocess
 from typing import List, Optional, Union
 
 
-def extract_from_response(resp: requests.Response, key: str, fallback):
+def extract(resp: requests.Response, key: str, fallback):
     try:
         return json.loads(resp.text)[key]
     except KeyError:
