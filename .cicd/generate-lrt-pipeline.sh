@@ -57,8 +57,8 @@ if [[ ${BUILDKITE_PIPELINE_SLUG} == "eosio-lrt" ]]; then
     export SKIP_SERIAL_TESTS=${SKIP_SERIAL_TESTS:-true}
     export SKIP_LONG_RUNNING_TESTS=${SKIP_LONG_RUNNING_TESTS:-false}
     export BUILD_SOURCE=${BUILD_SOURCE:---build \$BUILDKITE_TRIGGERED_FROM_BUILD_ID}
-    # export SKIP_CONTRACT_BUILDER=true
-    # export SKIP_PACKAGE_BUILDER=true
+    export SKIP_CONTRACT_BUILDER=true
+    export SKIP_PACKAGE_BUILDER=true
 fi
 oIFS="$IFS"
 IFS=$'' 
@@ -269,8 +269,10 @@ EOF
     done
     IFS=$nIFS
 done
-cat <<EOF
-
+#############
+# LRT TESTS #
+if [[ ! -z $BUILDKITE_TRIGGERED_FROM_BUILD_ID || $SKIP_LONG_RUNNING_TESTS == false ]]; then
+    cat <<EOF
   - label: ":pipeline: Trigger LRTs"
     trigger: "eosio-lrt"
     build:
@@ -283,6 +285,9 @@ cat <<EOF
         BUILDKITE_PULL_REQUEST_REPO: "${BUILDKITE_PULL_REQUEST_REPO}"
         SKIP_BUILD: "true"
 
+EOF
+fi
+cat <<EOF
   - wait:
     continue_on_failure: true
 

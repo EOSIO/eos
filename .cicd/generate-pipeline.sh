@@ -57,12 +57,13 @@ if [[ ${BUILDKITE_PIPELINE_SLUG} == "eosio-lrt" ]]; then
         export SKIP_BUILD=false
         export BUILD_SOURCE="--build \$BUILDKITE_BUILD_ID"
     fi
-    export SKIP_BUILD=true
-    export SKIP_UNIT_TESTS=true
-    export SKIP_SERIAL_TESTS=true
-    export SKIP_LONG_RUNNING_TESTS=false
+    export SKIP_BUILD=${SKIP_BUILD:-true}
+    export SKIP_UNIT_TESTS=${SKIP_UNIT_TESTS:-true}
+    export SKIP_SERIAL_TESTS=${SKIP_SERIAL_TESTS:-true}
+    export SKIP_LONG_RUNNING_TESTS=${SKIP_LONG_RUNNING_TESTS:-false}
     export BUILD_SOURCE=${BUILD_SOURCE:---build \$BUILDKITE_TRIGGERED_FROM_BUILD_ID}
     export SKIP_CONTRACT_BUILDER=true
+    export SKIP_PACKAGE_BUILDER=true
 fi
 oIFS="$IFS"
 IFS=$''
@@ -115,7 +116,7 @@ echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
     agents:
       queue: "$BUILDKITE_AGENT_QUEUE"
     timeout: ${TIMEOUT:-180}
-    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}\${SKIP_BUILD}
+    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_BUILD}
 
 EOF
     else
@@ -139,8 +140,10 @@ EOF
           debug: true
           wait-network: true
     timeout: ${TIMEOUT:-180}
-    agents: "queue=mac-anka-large-node-fleet"
-    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}\${SKIP_BUILD}
+    agents:
+      - "queue=mac-anka-large-node-fleet"
+    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_BUILD}
+
 EOF
     fi
     if [ "$BUILDKITE_SOURCE" = 'schedule' ]; then
@@ -175,7 +178,7 @@ for ROUND in $(seq 1 $ROUNDS); do
     agents:
       queue: "$BUILDKITE_AGENT_QUEUE"
     timeout: ${TIMEOUT:-10}
-    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}\${SKIP_UNIT_TESTS}
+    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_UNIT_TESTS}
 
 EOF
         else
@@ -197,8 +200,10 @@ EOF
           debug: true
           wait-network: true
     timeout: ${TIMEOUT:-20}
-    agents: "queue=mac-anka-node-fleet"
-    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}\${SKIP_UNIT_TESTS}
+    agents:
+      - "queue=mac-anka-node-fleet"
+    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_UNIT_TESTS}
+
 EOF
         fi
         if [ "$BUILDKITE_SOURCE" = "schedule" ]; then
@@ -229,7 +234,7 @@ EOF
     agents:
       queue: "$BUILDKITE_AGENT_QUEUE"
     timeout: ${TIMEOUT:-20}
-    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}\${SKIP_SERIAL_TESTS}
+    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_SERIAL_TESTS}
 
 EOF
             else
@@ -251,9 +256,9 @@ EOF
           debug: true
           wait-network: true
     timeout: ${TIMEOUT:-20}
-    agents: "queue=mac-anka-node-fleet"
-    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}\${SKIP_SERIAL_TESTS}
-
+    agents:
+      - "queue=mac-anka-node-fleet"
+    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_SERIAL_TESTS}
 EOF
             fi
             if [ "$BUILDKITE_SOURCE" = "schedule" ]; then
@@ -286,7 +291,7 @@ EOF
     agents:
       queue: "$BUILDKITE_AGENT_QUEUE"
     timeout: ${TIMEOUT:-180}
-    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}\${SKIP_LONG_RUNNING_TESTS:-true}
+    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_LONG_RUNNING_TESTS:-true}
 
 EOF
             else
@@ -308,8 +313,9 @@ EOF
           debug: true
           wait-network: true
     timeout: ${TIMEOUT:-180}
-    agents: "queue=mac-anka-node-fleet"
-    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}\${SKIP_LONG_RUNNING_TESTS:-true}
+    agents:
+      - "queue=mac-anka-node-fleet"
+    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_LONG_RUNNING_TESTS:-true}
 EOF
             fi
             if [ "$BUILDKITE_SOURCE" = "schedule" ]; then
@@ -328,9 +334,10 @@ EOF
         echo ''
     fi
 done
-# pipeline tail
-cat <<EOF
-
+#############
+# LRT TESTS #
+if [[ ! -z $BUILDKITE_TRIGGERED_FROM_BUILD_ID || $SKIP_LONG_RUNNING_TESTS == false ]]; then
+    cat <<EOF
   - label: ":pipeline: Trigger LRTs"
     trigger: "eosio-lrt"
     build:
@@ -343,6 +350,9 @@ cat <<EOF
         BUILDKITE_PULL_REQUEST_REPO: "${BUILDKITE_PULL_REQUEST_REPO}"
         SKIP_BUILD: "true"
 
+EOF
+fi
+cat <<EOF
   - wait:
     continue_on_failure: true
 
