@@ -10,7 +10,7 @@ import string
 import subprocess
 import time
 
-from helper import fetch, get_transaction_id
+from helper import extract, fetch, override, pgrep
 from printer import Print, String, pad
 from typing import List, Optional, Union
 
@@ -28,23 +28,23 @@ class LauncherCaller:
     DEFAULT_TOPOLOGY = "mesh"
     DEFAULT_VERBOSITY = 1
     DEFAULT_TIMEOUT = 1
-    DEFAULT_MONOCHROME = True
+    DEFAULT_MONOCHROME = False
     PROGRAM = "eosio-launcher-service"
 
     def __init__(self):
         # parse command-line arguments and set attributes
         self.args = self.parse_args()
-        self.address = self.override(self.DEFAULT_ADDRESS, self.args.address)
-        self.port = self.override(self.DEFAULT_PORT, self.args.port)
-        self.dir = self.override(self.DEFAULT_DIR, self.args.dir)
-        self.file = self.override(self.DEFAULT_FILE, self.args.file)
-        self.start = self.override(self.DEFAULT_START, self.args.start)
-        self.kill = self.override(self.DEFAULT_KILL, self.args.kill)
-        self.cluster_id = self.override(self.DEFAULT_CLUSTER_ID, self.args.cluster_id)
-        self.topology = self.override(self.DEFAULT_TOPOLOGY, self.args.topology)
-        self.verbosity = self.override(self.DEFAULT_VERBOSITY, self.args.verbosity)
-        self.monochrome = self.override(self.DEFAULT_MONOCHROME, self.args.monochrome)
-        self.timeout = self.override(self.DEFAULT_TIMEOUT, self.args.timeout)
+        self.address = override(self.DEFAULT_ADDRESS, self.args.address)
+        self.port = override(self.DEFAULT_PORT, self.args.port)
+        self.dir = override(self.DEFAULT_DIR, self.args.dir)
+        self.file = override(self.DEFAULT_FILE, self.args.file)
+        self.start = override(self.DEFAULT_START, self.args.start)
+        self.kill = override(self.DEFAULT_KILL, self.args.kill)
+        self.cluster_id = override(self.DEFAULT_CLUSTER_ID, self.args.cluster_id)
+        self.topology = override(self.DEFAULT_TOPOLOGY, self.args.topology)
+        self.verbosity = override(self.DEFAULT_VERBOSITY, self.args.verbosity)
+        self.monochrome = override(self.DEFAULT_MONOCHROME, self.args.monochrome)
+        self.timeout = override(self.DEFAULT_TIMEOUT, self.args.timeout)
 
         # decide whether to connect to a remote or local launcher service
         if self.address in ("127.0.0.1", "localhost"):
@@ -111,7 +111,7 @@ class LauncherCaller:
         parser.add_argument("-t", "--topology", type=str, metavar="SHAPE", help=helper("Cluster topology to launch with", self.DEFAULT_TOPOLOGY), choices={"mesh", "star", "bridge", "line", "ring", "tree"})
         couple.add_argument("-v", "--verbose", dest="verbosity", action="count", default=None, help=helper("Verbosity level (-v for 1, -vv for 2, ...)", self.DEFAULT_VERBOSITY))
         couple.add_argument("-x", "--silent", dest="verbosity", action="store_false", default=None, help=helper("Set verbosity level at 0 (keep silent)", "False"))
-        parser.add_argument("-c", "--color", dest="monochrome", action="store_false", default=None, help=helper("Print in colors", not self.DEFAULT_MONOCHROME))
+        parser.add_argument("-m", "--monochrome", action="store_true", default=None, help=helper("Print in black and white instead of colors", self.DEFAULT_MONOCHROME))
         parser.add_argument("--timeout", type=float, metavar="TIME", default=None, help=helper("Pause time for interactive printing", self.DEFAULT_TIMEOUT))
         return parser.parse_args()
 
@@ -133,7 +133,7 @@ class LauncherCaller:
         self.print.vanilla("{:50s}{}".format("Cluster ID to launch with", helper(self.args.cluster_id, self.cluster_id)))
         self.print.vanilla("{:50s}{}".format("Cluster topology to launch with", helper(self.args.topology, self.topology)))
         self.print.vanilla("{:50s}{}".format("Verbosity level", helper(self.args.verbosity, self.verbosity)))
-        self.print.vanilla("{:50s}{}".format("Print in colors", helper(self.args.monochrome, self.monochrome)))
+        self.print.vanilla("{:50s}{}".format("Print in black and white instead of colors", helper(self.args.monochrome, self.monochrome)))
         self.print.vanilla("{:50s}{}".format("Pause time for interactive printing", helper(self.args.timeout, self.timeout)))
 
     # TODO
@@ -167,7 +167,7 @@ class LauncherCaller:
 
     def get_service_pid(self) -> List[int]:
         """Returns a list of 0, 1, or more process IDs"""
-        spid = self.pgrep(self.PROGRAM)
+        spid = pgrep(self.PROGRAM)
         if len(spid) == 0:
             self.print.yellow("No launcher is running currently.")
         elif len(spid) == 1:
@@ -214,7 +214,7 @@ class LauncherCaller:
         self.print.response(resp)
         # assert resp.ok
         # TODO: return both resp and tid
-        return resp, get_transaction_id(resp)
+        return resp, extract(resp, "transaction_id", None)
 
     def verify(self, tid: str, retry=2, wait=0.5) -> bool:
         verified = False
@@ -292,10 +292,8 @@ class LauncherCaller:
         self.request_url = self.get_endpoint_url("verify_transaction")
         self.request_data = json.dumps(data)
         resp = self.rpc(self.request_url, self.request_data)
-        try:
-            return json.loads(resp.text)["irreversible"]
-        except KeyError:
-            return False
+        return extract(resp, "irreversible", False)
+
 
     # ----- Bootstrap ---------------------------------------------------------
 
@@ -335,8 +333,8 @@ class LauncherCaller:
         12. vote for producers
         13. verify head producer
         """
-        cluster_id = self.override(self.cluster_id, cluster_id)
-        topology = self.override(self.topology, topology)
+        cluster_id = override(self.cluster_id, cluster_id)
+        topology = override(self.topology, topology)
 
         total_producers = total_producers if total_producers else per_node_producers * producer_nodes
 
@@ -481,11 +479,6 @@ class LauncherCaller:
     @staticmethod
     def override(default_value, value):
         return default_value if value is None else value
-
-    @staticmethod
-    def pgrep(pattern: str) -> List[int]:
-        out = subprocess.Popen(['pgrep', pattern], stdout=subprocess.PIPE).stdout.read()
-        return [int(x) for x in out.splitlines()]
 
     def describe(self, text, pause=0):
         self.print.vanilla(pad(self.string.decorate(text, fcolor="black", bcolor="cyan")))

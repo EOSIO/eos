@@ -2,8 +2,16 @@
 
 import json
 import requests
+import subprocess
 
 from typing import List, Optional, Union
+
+
+def extract_from_response(resp: requests.Response, key: str, fallback):
+    try:
+        return json.loads(resp.text)[key]
+    except KeyError:
+        return fallback
 
 
 def fetch(data: dict, keys: List[str]) -> dict:
@@ -15,6 +23,15 @@ def get_transaction_id(response: requests.Response) -> Optional[str]:
         return json.loads(response.text)["transaction_id"]
     except KeyError:
         return
+
+
+def override(default_value, value):
+    return default_value if value is None else value
+
+
+def pgrep(pattern: str) -> List[int]:
+    out = subprocess.Popen(['pgrep', pattern], stdout=subprocess.PIPE).stdout.read()
+    return [int(x) for x in out.splitlines()]
 
 
 def main():
