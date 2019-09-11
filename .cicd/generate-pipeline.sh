@@ -271,7 +271,7 @@ EOF
 done
 #############
 # LRT TESTS #
-if [[ ! -z $BUILDKITE_TRIGGERED_FROM_BUILD_ID ]]; then
+if [[ -z $BUILDKITE_TRIGGERED_FROM_BUILD_ID ]]; then
     cat <<EOF
   - label: ":pipeline: Trigger LRTs"
     trigger: "eosio-lrt"
