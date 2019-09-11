@@ -32,6 +32,10 @@ if [[ -z "$TEST" ]]; then # run all serial tests
         echo '$ ctest -L long_running_tests --output-on-failure -T Test'
         ctest -L long_running_tests --output-on-failure -T Test
         EXIT_STATUS=$?
+        if [[ $EXIT_STATUS != 0 ]]; then
+          echo "sleeping for one hour for test debugging"
+          sleep 3600
+        fi
         echo 'Done running long-running tests.'
     else
         echo "+++ $([[ "$BUILDKITE" == 'true' ]] && echo ':no_entry: ')ERROR: No tests registered with ctest! Exiting..."
