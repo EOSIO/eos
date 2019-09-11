@@ -272,7 +272,6 @@ EOF
 done
 # pipeline tail
 cat <<EOF
-
   - wait:
     continue_on_failure: true
 
