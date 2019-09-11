@@ -35,5 +35,7 @@ fi
 # re-throw
 if [[ "$EXIT_STATUS" != 0 ]]; then
     echo "Failing due to non-zero exit status from ctest: $EXIT_STATUS"
+    echo "sleeping for one hour for test debugging"
+    sleep 3600
     exit $EXIT_STATUS
 fi
