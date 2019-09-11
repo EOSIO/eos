@@ -166,12 +166,12 @@ class Print():
         self.json(response.text)
         self.transaction_id(response)
 
-    def response_in_interaction(self, response: requests.Response, timeout=1) -> None:
-        self.transaction_id(response)
+    def response_with_prompt(self, response: requests.Response, timeout=1) -> None:
         if response.ok:
             self.green(response, ' ' * 100)
+            self.transaction_id(response)
             lines = json.dumps(json.loads(response.text), indent=4, sort_keys=False).count('\n') + 1
-            self.reverse("--- Press [Enter] to view response details ({} lines) ---".format(lines), end='\r')
+            self.reverse("--- Press [Enter] to view more ({} lines) ---".format(lines), end='\r')
             # if stdin is not empty within timeout, then print json in detail
             if select.select([sys.stdin], [], [], timeout)[0]:
                 self.json(response.text)

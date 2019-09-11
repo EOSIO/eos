@@ -60,7 +60,7 @@ class LauncherCaller:
         if self.verbosity >= 3:
             self.print.response = lambda resp: self.print.response_in_full(resp)
         elif self.verbosity == 2:
-            self.print.response = lambda resp: self.print.response_in_interaction(resp, timeout=self.timeout)
+            self.print.response = lambda resp: self.print.response_with_prompt(resp, timeout=self.timeout)
         elif self.verbosity == 1:
             self.print.response = lambda resp: self.print.response_in_short(resp)
         else:
@@ -210,10 +210,24 @@ class LauncherCaller:
             time.sleep(1)
             resp = self.rpc(self.request_url, self.request_data)
             retry -= 1
-            if retry == 0:
-                break
         self.print.response(resp)
+        # assert resp.ok
+        # TODO: return both resp and tid
+        return resp
 
+    def verify(self, tid: str, retry=2, wait=0.5) -> bool:
+        verified = False
+        while not verified and retry >= 0:
+            self.print.vanilla("{:100}".format("Verifying ..."))
+            verified = self.verify_transaction({"cluster_id": self.cluster_id, "node_id": 0, "transaction_id": tid})
+            retry -= 1
+            time.sleep(wait)
+        if verified:
+            self.print.decorate("Success!", fcolor="black", bcolor="green")
+        else:
+            self.print.decorate("Fail!", fcolor="black", bcolor="red")
+        return verified
+        # assert verified, self.alert.red("Failed to verify transaction ID {}".format(tid))
 
     def launch_cluster(self, data: dict):
         self.call("launch_cluster", data, "launch cluster")
@@ -223,19 +237,27 @@ class LauncherCaller:
         self.call("get_cluster_info", data, "get cluster info")
 
     def create_bios_accounts(self, data: dict):
-        self.call("create_bios_accounts", data, "create bios accounts")
+        resp = self.call("create_bios_accounts", data, "create bios accounts")
+        tid = get_transaction_id(resp)
+        assert self.verify(tid)
 
     def schedule_protocol_feature_activations(self, data: dict):
         self.call("schedule_protocol_feature_activations", data, "schedule protocol feature activations")
 
     def set_contract(self, data: dict, name: str):
-        self.call("set_contract", data, "set <{}> contract".format(name))
+        resp = self.call("set_contract", data, "set <{}> contract".format(name))
+        tid = get_transaction_id(resp)
+        assert self.verify(tid)
 
     def push_actions(self, data: dict, text: str):
-        self.call("push_actions", data, text)
+        resp = self.call("push_actions", data, text)
+        tid = get_transaction_id(resp)
+        assert self.verify(tid)
 
     def create_account(self, data: dict, name: str):
-        self.call("create_account", data, "create \"{}\" account".format(name))
+        resp = self.call("create_account", data, "create \"{}\" account".format(name))
+        tid = get_transaction_id(resp)
+        assert self.verify(tid)
 
     def stop_node(self, data: dict, text: str):
         self.call("stop_node", data, text)
@@ -265,8 +287,14 @@ class LauncherCaller:
     # def get_cluster_running_state(self, data):
     #     self.response = self.rpc("get_cluster_running_state", data)
 
-    # def verify_transaction(self, data: str):
-    #     self.call("verify_transaction", data, "verify transaction id <{}>".format(data["transaction_id"]))
+    def verify_transaction(self, data: dict):
+        self.request_url = self.get_endpoint_url("verify_transaction")
+        self.request_data = json.dumps(data)
+        resp = self.rpc(self.request_url, self.request_data)
+        try:
+            return json.loads(resp.text)["irreversible"]
+        except KeyError:
+            return False
 
     # ----- Bootstrap ---------------------------------------------------------
 
