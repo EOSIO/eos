@@ -48,6 +48,7 @@ for FILE in $(ls $CICD_DIR/platforms); do
 done
 # Triggered LRT
 if [[ ${BUILDKITE_PIPELINE_SLUG} == "eosio-lrt" ]]; then
+    echo "slug matched"
     if [[ -z ${BUILDKITE_TRIGGERED_FROM_BUILD_ID} ]]; then
         export SKIP_BUILD=false
         export BUILD_SOURCE="--build \$BUILDKITE_BUILD_ID"
@@ -268,6 +269,7 @@ EOF
     done
     IFS=$nIFS
 done
+
 cat <<EOF
 
   - label: ":pipeline: Trigger LRTs"
