@@ -128,6 +128,7 @@ echo '  - wait'
 echo ''
 # tests
 for RUN in $(seq 1 $RUNS); do
+    echo "    # run group $RUN of $RUNS"
     # parallel tests
     echo '    # parallel tests'
     echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
