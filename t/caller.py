@@ -197,29 +197,31 @@ class LauncherCaller:
     def get_endpoint_url(self, func: str) -> str:
         return "http://{}:{}/v1/launcher/{}".format(self.address, self.port, func)
 
-    def call(self, endpoint: str, data: dict, text: str, pause=0, retry=2):
+    def call(self, endpoint: str, text: str =None, pause=0, retry=2, **data: dict):
+        text = endpoint.replace("_", " ") if text is None else text
         self.describe(text, pause=pause)
         self.request_url = self.get_endpoint_url(endpoint)
         self.request_data = json.dumps(data)
         self.print.vanilla(self.request_url)
-        self.print.json(self.request_data, func=self.print.vanilla)
+        self.print.json(self.request_data)
         resp = self.rpc(self.request_url, self.request_data)
         while not resp.ok and retry > 0:
             self.print.red(resp)
             self.print.vanilla("Retrying ...")
-            time.sleep(1)
+            time.sleep(0.5)
             resp = self.rpc(self.request_url, self.request_data)
             retry -= 1
         self.print.response(resp)
         # assert resp.ok
         # TODO: return both resp and tid
-        return resp
+        return resp, get_transaction_id(resp)
 
     def verify(self, tid: str, retry=2, wait=0.5) -> bool:
         verified = False
         while not verified and retry >= 0:
             self.print.vanilla("{:100}".format("Verifying ..."))
-            verified = self.verify_transaction({"cluster_id": self.cluster_id, "node_id": 0, "transaction_id": tid})
+            verified = self.verify_transaction(cluster_id=self.cluster_id, node_id=0, transaction_id=tid)
+            # verified = self.verify_transaction(**dict(cluster_id=self.cluster_id, node_id=0, transaction_id=tid))
             retry -= 1
             time.sleep(wait)
         if verified:
@@ -229,38 +231,37 @@ class LauncherCaller:
         return verified
         # assert verified, self.alert.red("Failed to verify transaction ID {}".format(tid))
 
-    def launch_cluster(self, data: dict):
-        self.call("launch_cluster", data, "launch cluster")
+    def launch_cluster(self, **data):
+        resp, tid = self.call("launch_cluster", **data)
+        assert resp.ok
         # TODO: sleep until get info is successful
 
-    def get_cluster_info(self, data: dict):
-        self.call("get_cluster_info", data, "get cluster info")
+    def get_cluster_info(self, **data):
+        resp, tid = self.call("get_cluster_info", **data)
+        assert resp.ok
 
-    def create_bios_accounts(self, data: dict):
-        resp = self.call("create_bios_accounts", data, "create bios accounts")
-        tid = get_transaction_id(resp)
+    def create_bios_accounts(self, **data):
+        resp, tid = self.call("create_bios_accounts", **data)
         assert self.verify(tid)
 
     def schedule_protocol_feature_activations(self, data: dict):
-        self.call("schedule_protocol_feature_activations", data, "schedule protocol feature activations")
+        resp, tid = self.call("schedule_protocol_feature_activations", **data)
+        assert resp.ok
 
     def set_contract(self, data: dict, name: str):
-        resp = self.call("set_contract", data, "set <{}> contract".format(name))
-        tid = get_transaction_id(resp)
+        resp, tid = self.call("set_contract", text="set <{}> contract".format(name), **data)
         assert self.verify(tid)
 
     def push_actions(self, data: dict, text: str):
-        resp = self.call("push_actions", data, text)
-        tid = get_transaction_id(resp)
+        resp, tid = self.call("push_actions", text=text, **data)
         assert self.verify(tid)
 
     def create_account(self, data: dict, name: str):
-        resp = self.call("create_account", data, "create \"{}\" account".format(name))
-        tid = get_transaction_id(resp)
+        resp, tid = self.call("create_account", text="create \"{}\" account".format(name), **data)
         assert self.verify(tid)
 
     def stop_node(self, data: dict, text: str):
-        self.call("stop_node", data, text)
+        self.call("stop_node", text=text, **data)
 
     def terminate_node(self, data: dict):
         data.update(signal_id=15)
@@ -271,7 +272,7 @@ class LauncherCaller:
         self.stop_node(data, "kill node #{}".format(data["node_id"]))
 
     def stop_all_clusters(self):
-        self.call("stop_all_clusters", dict(), "stop all clusters")
+        self.call("stop_all_clusters", dict())
 
     # ----- Misc --------------------------------------------------------------
 
@@ -287,7 +288,7 @@ class LauncherCaller:
     # def get_cluster_running_state(self, data):
     #     self.response = self.rpc("get_cluster_running_state", data)
 
-    def verify_transaction(self, data: dict):
+    def verify_transaction(self, **data):
         self.request_url = self.get_endpoint_url("verify_transaction")
         self.request_data = json.dumps(data)
         resp = self.rpc(self.request_url, self.request_data)
@@ -366,13 +367,15 @@ class LauncherCaller:
                     names += ["defproducer" + string.ascii_lowercase[j]]
                 info["nodes"][i]["producers"] = names
 
-        # launch a cluster
-        self.launch_cluster(fetch(info, ["cluster_id", "node_count", "shape", "nodes"]))
+        # 1. launch a cluster
+        # self.launch_cluster(**fetch(info, ["cluster_id", "node_count", "shape", "nodes"]))
+        self.launch_cluster(cluster_id=cluster_id, node_count=total_nodes, shape=topology, nodes=info["nodes"])
 
-        # get cluster info: assert success
-        self.get_cluster_info(fetch(info, ["cluster_id"]))
+        # 2. get cluster info: assert success
+        # self.get_cluster_info(fetch(info, ["cluster_id"]))
+        self.get_cluster_info(cluster_id=cluster_id)
 
-        # # create system accounts
+        # 3. create system accounts
         info["creator"] = "eosio"
         info["accounts"] = [{"name":"eosio.bpay"},
                             {"name":"eosio.msig"},
@@ -384,22 +387,21 @@ class LauncherCaller:
                             {"name":"eosio.stake"},
                             {"name":"eosio.token"},
                             {"name":"eosio.upay"}]
-        self.create_bios_accounts(fetch(info, ["cluster_id", "creator", "accounts"]))
+        # self.create_bios_accounts(fetch(info, ["cluster_id", "creator", "accounts"]))
+        self.create_bios_accounts(cluster_id=cluster_id, creator="eosio", accounts=info["accounts"])
 
-        # verify transaction
-
-        # schedule protocol feature activations
+        # 4. schedule protocol feature activations
         info["protocol_features_to_activate"] = ["0ec7e080177b2c02b278d5088611686b49d739925a92d9bfcacd7fc6b74053bd"]
         info["node_id"] = 0
         self.schedule_protocol_feature_activations(fetch(info, ["cluster_id", "node_id", "protocol_features_to_activate"]))
 
-        # # set eosio.token
+        # 5. set eosio.token
         info["account"] = "eosio.token"
         info["contract_file"] = "../../contracts/build/contracts/eosio.token/eosio.token.wasm"  # hardcoded, to be changed later
         info["abi_file"] = "../../contracts/build/contracts/eosio.token/eosio.token.abi"        # hardcoded, to be changed later
         self.set_contract(fetch(info, ["cluster_id", "node_id", "account", "contract_file", "abi_file"]), "eosio.token")
 
-        # create tokens
+        # 6. create tokens
         info["actions"] = [{"account": "eosio.token",
                             "action": "create",
                             "permissions": [{"actor": "eosio.token",
@@ -411,6 +413,7 @@ class LauncherCaller:
                                     "can_whitelist":0}}]
         self.push_actions(fetch(info, ["cluster_id", "node_id", "actions"]), "create tokens")
 
+        # 7. issue tokens
         info["actions"] = [{"account": "eosio.token",
                             "action": "issue",
                             "permissions": [{"actor": "eosio",
@@ -420,11 +423,13 @@ class LauncherCaller:
                                      "memo": "hi"}}]
         self.push_actions(fetch(info, ["cluster_id", "node_id", "actions"]), "issue tokens")
 
+        # 8. set system contract
         info["account"] = "eosio"
         info["contract_file"] = "../../contracts/build/contracts/eosio.system/eosio.system.wasm"  # hardcoded, to be changed later
         info["abi_file"] = "../../contracts/build/contracts/eosio.system/eosio.system.abi"        # hardcoded, to be changed later
         self.set_contract(fetch(info, ["cluster_id", "node_id", "account", "contract_file", "abi_file"]), "eosio.system")
 
+        # 9. init system contract
         info["actions"] = [{"account": "eosio",
                             "action": "init",
                             "permissions": [{"actor": "eosio",
@@ -433,7 +438,8 @@ class LauncherCaller:
                                      "core": "4,SYS"}}]
         self.push_actions(fetch(info, ["cluster_id", "node_id", "actions"]), "init system contract")
 
-        # create producer accounts
+        # 10. create producer accounts
+        # 11. register producers
         # TODO: make iteration through producers more efficient
         info["stake_cpu"] = "75000000.0000 SYS"
         info["stake_net"] = "75000000.0000 SYS"
@@ -457,6 +463,7 @@ class LauncherCaller:
                                                  "location": 0}}]
                     self.push_actions(fetch(info, ["cluster_id", "node_id", "actions"]), "register \"{}\" account".format(p))
 
+        # 12. vote for producers
         # vote for producers
         info["node_id"] = 0
         info["actions"] = [{"account": "eosio",
