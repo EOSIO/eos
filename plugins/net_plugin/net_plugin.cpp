@@ -3311,6 +3311,13 @@ namespace eosio {
 
       my->dispatcher.reset( new dispatch_manager( my_impl->thread_pool->get_executor() ) );
 
+      chain::controller&cc = my->chain_plug->chain();
+      my->db_read_mode = cc.get_read_mode();
+      if( my->db_read_mode == chain::db_read_mode::READ_ONLY && my->p2p_address.size() ) {
+         my->p2p_address.clear();
+         fc_wlog( logger, "node in read-only mode disabling incoming p2p connections" );
+      }
+
       tcp::endpoint listen_endpoint;
       if( my->p2p_address.size() > 0 ) {
          auto host = my->p2p_address.substr( 0, my->p2p_address.find( ':' ));
@@ -3361,7 +3368,6 @@ namespace eosio {
          fc_ilog( logger, "starting listener, max clients is ${mc}",("mc",my->max_client_count) );
          my->start_listen_loop();
       }
-      chain::controller&cc = my->chain_plug->chain();
       {
          cc.accepted_block.connect( [my = my]( const block_state_ptr& s ) {
             my->on_accepted_block( s );
@@ -3373,12 +3379,6 @@ namespace eosio {
 
       my->incoming_transaction_ack_subscription = app().get_channel<compat::channels::transaction_ack>().subscribe(
             boost::bind(&net_plugin_impl::transaction_ack, my.get(), _1));
-
-      my->db_read_mode = cc.get_read_mode();
-      if( my->db_read_mode == chain::db_read_mode::READ_ONLY ) {
-         my->max_nodes_per_host = 0;
-         fc_ilog( logger, "node in read-only mode setting max_nodes_per_host to 0 to prevent connections" );
-      }
 
       my->start_monitors();
 
