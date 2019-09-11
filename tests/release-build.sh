@@ -1,14 +1,14 @@
 #!/bin/bash
 # test name and purpose
 echo ''
-echo '                        ##### Release Build Test #####'
+echo '                         ##### Release Build Test #####'
 echo ''
-echo 'The purpose of this test is to ensure that nodeos was built without debugging'
-echo 'symbols. Debugging symbols enable software engineers to inspect and control a'
-echo 'running program with a debugging tool, but they significantly slow down'
-echo 'performance-critical applications like nodeos. Anyone intending to build and'
-echo 'install nodeos from source should perform a "release build," which excludes'
-echo 'debugging symbols to generate faster and lighter binaries.'
+echo '    The purpose of this test is to ensure that nodeos was built with compiler'
+echo 'optimizations enabled. While there is no way to programmatically determine that'
+echo 'given one binary, we do set a debug flag in nodeos when it is built with'
+echo 'asserts. This test checks that debug flag. Anyone intending to build and install'
+echo 'nodeos from source should perform a "release build" which excludes asserts and'
+echo 'debugging symbols, and performs compiler optimizations.'
 echo ''
 # check for jq
 if ! $(jq --version 1>/dev/null); then
