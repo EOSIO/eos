@@ -54,7 +54,7 @@ nIFS=$IFS # fix array splitting (\n won't work)
 # base-image steps
 echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
     if [[ "$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)" =~ 'macos' ]]; then
-    cat <<EOF
+        cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) Anka - Ensure $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) Template Dependency Tag"
     command:
       - "git clone git@github.com:EOSIO/mac-anka-fleet.git"
