@@ -132,8 +132,8 @@ for RUN in $(seq 1 $RUNS); do
       - "buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz"
       - "./.cicd/test.sh scripts/parallel-test.sh"
     env:
-    IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
-    BUILDKITE_AGENT_ACCESS_TOKEN:
+      IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
+      BUILDKITE_AGENT_ACCESS_TOKEN:
     agents:
       queue: "automation-eos-builder-fleet"
     timeout: ${TIMEOUT:-10}
@@ -175,8 +175,8 @@ EOF
       - "buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz"
       - "./.cicd/test.sh scripts/serial-test.sh $TEST_NAME"
     env:
-    IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
-    BUILDKITE_AGENT_ACCESS_TOKEN:
+      IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
+      BUILDKITE_AGENT_ACCESS_TOKEN:
     agents:
       queue: "automation-eos-builder-fleet"
     timeout: ${TIMEOUT:-20}
@@ -219,8 +219,8 @@ EOF
       - "buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz"
       - "./.cicd/test.sh scripts/long-running-test.sh $TEST_NAME"
     env:
-    IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
-    BUILDKITE_AGENT_ACCESS_TOKEN:
+      IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
+      BUILDKITE_AGENT_ACCESS_TOKEN:
     agents:
       queue: "automation-eos-builder-fleet"
     timeout: ${TIMEOUT:-180}
