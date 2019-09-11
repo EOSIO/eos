@@ -1,14 +1,14 @@
 #!/bin/bash
 # test name and purpose
 echo ''
-echo '                        ##### Release Build Test #####'
+echo '                         ##### Release Build Test #####'
 echo ''
-echo 'The purpose of this test is to ensure that nodeos was built without debugging'
-echo 'symbols. Debugging symbols enable software engineers to inspect and control a'
-echo 'running program with a debugging tool, but they significantly slow down'
-echo 'performance-critical applications like nodeos. Anyone intending to build and'
-echo 'install nodeos from source should perform a "release build," which excludes'
-echo 'debugging symbols to generate faster and lighter binaries.'
+echo '    The purpose of this test is to ensure that nodeos was built with compiler'
+echo 'optimizations enabled. While there is no way to programmatically determine that'
+echo 'given one binary, we do set a debug flag in nodeos when it is built with'
+echo 'asserts. This test checks that debug flag. Anyone intending to build and install'
+echo 'nodeos from source should perform a "release build" which excludes asserts and'
+echo 'debugging symbols, and performs compiler optimizations.'
 echo ''
 # check for xxd
 if ! $(xxd --version 2>/dev/null); then
@@ -49,12 +49,12 @@ fi
 # test state files for debug flag
 export DEBUG_BYTE="$(xxd -seek 9 -l 1 data/state/shared_memory.bin | awk '{print $2}')"
 if [[ "$DEBUG_BYTE" == '00' ]]; then
-    echo 'PASS: Debug byte not set.'
+    echo 'PASS: Debug flag is not set.'
     echo ''
     rm -rf config data
     exit 0
 fi
-echo 'FAIL: Debug byte is set!'
+echo 'FAIL: Debug flag is set!'
 echo "Debug Byte = 0x$DEBUG_BYTE"
 echo ''
 echo 'First kilobyte of shared_memory.bin:'
