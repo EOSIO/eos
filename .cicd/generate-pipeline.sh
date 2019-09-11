@@ -55,6 +55,7 @@ nIFS=$IFS # fix array splitting (\n won't work)
 echo '  - wait'
 echo ''
 # base-image steps
+echo '    # base-images'
 echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
     if [[ "$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)" =~ 'macos' ]]; then
         cat <<EOF
@@ -81,6 +82,7 @@ EOF
     fi
 done
 # build steps
+echo '    # builds'
 echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
     if [[ ! "$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)" =~ 'macos' ]]; then
         cat <<EOF
@@ -127,6 +129,7 @@ echo ''
 # tests
 for RUN in $(seq 1 $RUNS); do
     # parallel tests
+    echo '    # parallel tests'
     echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
         if [[ ! "$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)" =~ 'macos' ]]; then
             cat <<EOF
@@ -167,6 +170,7 @@ EOF
         fi
     done
     # serial tests
+    echo '    # serial tests'
     echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
         IFS=$oIFS
         SERIAL_TESTS="$(cat tests/CMakeLists.txt | grep nonparallelizable_tests | grep -v "^#" | awk -F" " '{ print $2 }')"
@@ -212,6 +216,7 @@ EOF
         IFS=$nIFS
     done
     # long-running tests
+    echo '    # long-running tests'
     echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
         IFS=$oIFS
         LR_TESTS="$(cat tests/CMakeLists.txt | grep long_running_tests | grep -v "^#" | awk -F" " '{ print $2 }')"
@@ -280,6 +285,7 @@ cat <<EOF
 
   - wait
 
+    # packaging
   - label: ":centos: CentOS 7.6 - Package Builder"
     command:
       - "buildkite-agent artifact download build.tar.gz . --step ':centos: CentOS 7.6 - Build' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN && tar -xzf build.tar.gz"
