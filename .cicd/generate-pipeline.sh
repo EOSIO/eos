@@ -109,8 +109,6 @@ EOF
       - "git clone \$BUILDKITE_REPO eos && cd eos && git checkout \$BUILDKITE_COMMIT && git submodule update --init --recursive"
       - "cd eos && ./.cicd/build.sh"
       - "cd eos && tar -pczf build.tar.gz build && buildkite-agent artifact upload build.tar.gz"
-    concurrency: ${CONCURRENCY}
-    concurrency_group: eos-scheduled-build
     plugins:
       - chef/anka#v0.5.1:
           no-volume: true
