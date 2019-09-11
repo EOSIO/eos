@@ -10,6 +10,7 @@ import string
 import subprocess
 import time
 
+from helper import fetch
 from printer import Print, String, pad
 from typing import List, Optional, Union
 
@@ -267,10 +268,10 @@ class LauncherCaller:
                 info["nodes"][i]["producers"] = names
 
         # launch a cluster
-        self.launch_cluster(self.fetch(info, ["cluster_id", "node_count", "shape", "nodes"]))
+        self.launch_cluster(fetch(info, ["cluster_id", "node_count", "shape", "nodes"]))
 
         # get cluster info: assert success
-        self.get_cluster_info(self.fetch(info, ["cluster_id"]))
+        self.get_cluster_info(fetch(info, ["cluster_id"]))
 
         # # create system accounts
         info["creator"] = "eosio"
@@ -284,20 +285,20 @@ class LauncherCaller:
                             {"name":"eosio.stake"},
                             {"name":"eosio.token"},
                             {"name":"eosio.upay"}]
-        self.create_bios_accounts(self.fetch(info, ["cluster_id", "creator", "accounts"]))
+        self.create_bios_accounts(fetch(info, ["cluster_id", "creator", "accounts"]))
 
         # verify transaction
 
         # schedule protocol feature activations
         info["protocol_features_to_activate"] = ["0ec7e080177b2c02b278d5088611686b49d739925a92d9bfcacd7fc6b74053bd"]
         info["node_id"] = 0
-        self.schedule_protocol_feature_activations(self.fetch(info, ["cluster_id", "node_id", "protocol_features_to_activate"]))
+        self.schedule_protocol_feature_activations(fetch(info, ["cluster_id", "node_id", "protocol_features_to_activate"]))
 
         # # set eosio.token
         info["account"] = "eosio.token"
         info["contract_file"] = "../../contracts/build/contracts/eosio.token/eosio.token.wasm"  # hardcoded, to be changed later
         info["abi_file"] = "../../contracts/build/contracts/eosio.token/eosio.token.abi"        # hardcoded, to be changed later
-        self.set_contract(self.fetch(info, ["cluster_id", "node_id", "account", "contract_file", "abi_file"]), "eosio.token")
+        self.set_contract(fetch(info, ["cluster_id", "node_id", "account", "contract_file", "abi_file"]), "eosio.token")
 
         # create tokens
         info["actions"] = [{"account": "eosio.token",
@@ -309,7 +310,7 @@ class LauncherCaller:
                                     "can_freeze": 0,
                                     "can_recall": 0,
                                     "can_whitelist":0}}]
-        self.push_actions(self.fetch(info, ["cluster_id", "node_id", "actions"]), "create tokens")
+        self.push_actions(fetch(info, ["cluster_id", "node_id", "actions"]), "create tokens")
 
         info["actions"] = [{"account": "eosio.token",
                             "action": "issue",
@@ -318,12 +319,12 @@ class LauncherCaller:
                             "data": {"to": "eosio",
                                      "quantity": "1000000000.0000 SYS",
                                      "memo": "hi"}}]
-        self.push_actions(self.fetch(info, ["cluster_id", "node_id", "actions"]), "issue tokens")
+        self.push_actions(fetch(info, ["cluster_id", "node_id", "actions"]), "issue tokens")
 
         info["account"] = "eosio"
         info["contract_file"] = "../../contracts/build/contracts/eosio.system/eosio.system.wasm"  # hardcoded, to be changed later
         info["abi_file"] = "../../contracts/build/contracts/eosio.system/eosio.system.abi"        # hardcoded, to be changed later
-        self.set_contract(self.fetch(info, ["cluster_id", "node_id", "account", "contract_file", "abi_file"]), "eosio.system")
+        self.set_contract(fetch(info, ["cluster_id", "node_id", "account", "contract_file", "abi_file"]), "eosio.system")
 
         info["actions"] = [{"account": "eosio",
                             "action": "init",
@@ -331,7 +332,7 @@ class LauncherCaller:
                                              "permission": "active"}],
                             "data": {"version": 0,
                                      "core": "4,SYS"}}]
-        self.push_actions(self.fetch(info, ["cluster_id", "node_id", "actions"]), "init system contract")
+        self.push_actions(fetch(info, ["cluster_id", "node_id", "actions"]), "init system contract")
 
         # create producer accounts
         # TODO: make iteration through producers more efficient
@@ -346,7 +347,7 @@ class LauncherCaller:
                     producers_list.append(p)
                     info["node_id"] = i
                     info["name"] = p
-                    self.create_account(self.fetch(info, ["cluster_id", "node_id", "creator", "name", "stake_cpu", "stake_net", "buy_ram_bytes", "transfer"]), p)
+                    self.create_account(fetch(info, ["cluster_id", "node_id", "creator", "name", "stake_cpu", "stake_net", "buy_ram_bytes", "transfer"]), p)
                     info["actions"] = [{"account": "eosio",
                                         "action": "regproducer",
                                         "permissions": [{"actor": "{}".format(p),
@@ -355,7 +356,7 @@ class LauncherCaller:
                                                  "producer_key": "EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
                                                  "url": "www.test.com",
                                                  "location": 0}}]
-                    self.push_actions(self.fetch(info, ["cluster_id", "node_id", "actions"]), "register \"{}\" account".format(p))
+                    self.push_actions(fetch(info, ["cluster_id", "node_id", "actions"]), "register \"{}\" account".format(p))
 
         # vote for producers
         info["node_id"] = 0
@@ -366,7 +367,7 @@ class LauncherCaller:
                             "data": {"voter": "defproducera",
                                      "proxy": "",
                                      "producers": producers_list}}]
-        self.push_actions(self.fetch(info, ["cluster_id", "node_id", "actions"]), "vote for producers")
+        self.push_actions(fetch(info, ["cluster_id", "node_id", "actions"]), "vote for producers")
         print(' ' * 100)
 
 
