@@ -197,23 +197,25 @@ class LauncherCaller:
     def get_endpoint_url(self, func: str) -> str:
         return "http://{}:{}/v1/launcher/{}".format(self.address, self.port, func)
 
-    def call(self, endpoint: str, text: str =None, pause=0, retry=2, **data: dict):
-        text = endpoint.replace("_", " ") if text is None else text
-        self.describe(text, pause=pause)
+    def call(self, endpoint: str, text: str =None, pause=0, retry=2, mute=False, **data: dict):
+        if not mute:
+            text = endpoint.replace("_", " ") if text is None else text
+            self.describe(text, pause=pause)
         self.request_url = self.get_endpoint_url(endpoint)
         self.request_data = json.dumps(data)
-        self.print.vanilla(self.request_url)
-        self.print.json(self.request_data)
+        if not mute:
+            self.print.vanilla(self.request_url)
+            self.print.json(self.request_data)
         resp = self.rpc(self.request_url, self.request_data)
         while not resp.ok and retry > 0:
-            self.print.red(resp)
-            self.print.vanilla("Retrying ...")
+            if not mute:
+                self.print.red(resp)
+                self.print.vanilla("Retrying ...")
             time.sleep(0.5)
             resp = self.rpc(self.request_url, self.request_data)
             retry -= 1
-        self.print.response(resp)
-        # assert resp.ok
-        # TODO: return both resp and tid
+        if not mute:
+            self.print.response(resp)
         return resp, extract(resp, "transaction_id", None)
 
     def verify(self, tid: str, retry=2, wait=0.5) -> bool:
@@ -227,7 +229,7 @@ class LauncherCaller:
         if verified:
             self.print.decorate("Success!", fcolor="black", bcolor="green")
         else:
-            self.print.decorate("Fail!", fcolor="black", bcolor="red")
+            self.print.decorate("Failure!", fcolor="black", bcolor="red")
         return verified
         # assert verified, self.alert.red("Failed to verify transaction ID {}".format(tid))
 
@@ -236,9 +238,10 @@ class LauncherCaller:
         assert resp.ok
         # TODO: sleep until get info is successful
 
-    def get_cluster_info(self, **data):
-        resp, tid = self.call("get_cluster_info", **data)
+    def get_cluster_info(self, mute=False, **data):
+        resp, tid = self.call("get_cluster_info", mute=mute, **data)
         assert resp.ok
+        return resp.text
 
     def create_bios_accounts(self, **data):
         resp, tid = self.call("create_bios_accounts", **data)
@@ -472,7 +475,23 @@ class LauncherCaller:
                                      "proxy": "",
                                      "producers": producers_list}}]
         self.push_actions(fetch(info, ["cluster_id", "node_id", "actions"]), "vote for producers")
-        print(' ' * 100)
+
+
+        # 13. verify head block producer is no longer eosio
+        retry = 5
+        while retry >= 0:
+            self.describe("get head block producer")
+            head_block_producer = json.loads(self.get_cluster_info(mute=True, cluster_id=cluster_id))["result"][0][1]["head_block_producer"]
+            if head_block_producer == "eosio":
+                self.print.yellow("Warning: Head block producer is still \"eosio\". Please wait for a while.")
+            if head_block_producer != "eosio":
+                self.print.green("Head block producer is \"{}\", no longer eosio.".format(head_block_producer))
+                break
+            time.sleep(0.5)
+            retry -= 1
+        assert head_block_producer != "eosio"
+        self.print.decorate(">>> Bootstrap succeeded.".format(head_block_producer), fcolor="white", bcolor="black")
+
 
     # ---------- Utilities ----------------------------------------------------
 
