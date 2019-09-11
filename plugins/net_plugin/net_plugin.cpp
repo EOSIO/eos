@@ -3100,6 +3100,9 @@ namespace eosio {
             my->thread_pool->join();
             my->thread_pool->stop();
          }
+
+         app().post( 0, [me = my](){} ); // keep my pointer alive until queue is drained
+
          fc_ilog( logger, "exit shutdown" );
       }
       FC_CAPTURE_AND_RETHROW()

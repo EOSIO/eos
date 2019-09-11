@@ -810,8 +810,8 @@ void producer_plugin::plugin_shutdown() {
       my->_thread_pool->join();
       my->_thread_pool->stop();
    }
-   my->_accepted_block_connection.reset();
-   my->_irreversible_block_connection.reset();
+
+   app().post( 0, [me = my](){} ); // keep my pointer alive until queue is drained
 }
 
 void producer_plugin::handle_sighup() {
