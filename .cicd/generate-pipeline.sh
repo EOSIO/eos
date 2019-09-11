@@ -283,7 +283,7 @@ EOF
                 cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
     command:
-      - "buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' ${BUILD_SOURCE} && tar -xzf build.tar.gz"
+      - "buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' /${BUILD_SOURCE} && tar -xzf build.tar.gz"
       - "./.cicd/test.sh scripts/long-running-test.sh $TEST_NAME"
     env:
       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
@@ -334,9 +334,9 @@ EOF
         echo ''
     fi
 done
-#############
-# LRT TESTS #
-if [[ -z $BUILDKITE_TRIGGERED_FROM_BUILD_ID ]]; then
+###############
+# TRIGGER LRT #
+if [[ -z $BUILDKITE_TRIGGERED_FROM_BUILD_ID || $SKIP_LONG_RUNNING_TESTS == false ]]; then
     cat <<EOF
   - label: ":pipeline: Trigger LRTs"
     trigger: "eosio-lrt"
