@@ -49,6 +49,9 @@ else # run specific serial test
         ctest -R ^$TEST$ --output-on-failure -T Test
         EXIT_STATUS=$?
         echo "Done running $TEST."
+        if [[ "$EXIT_STATUS" != 0 ]]; then
+          sleep 3600
+        fi
     else
         echo "+++ $([[ "$BUILDKITE" == 'true' ]] && echo ':no_entry: ')ERROR: No tests matching \"$TEST\" registered with ctest! Exiting..."
         EXIT_STATUS='1'
