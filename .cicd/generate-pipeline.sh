@@ -57,10 +57,10 @@ if [[ ${BUILDKITE_PIPELINE_SLUG} == "eosio-lrt" ]]; then
         export SKIP_BUILD=false
         export BUILD_SOURCE="--build \$BUILDKITE_BUILD_ID"
     fi
-    export SKIP_BUILD=${SKIP_BUILD:-true}
-    export SKIP_UNIT_TESTS=${SKIP_UNIT_TESTS:-true}
-    export SKIP_SERIAL_TESTS=${SKIP_SERIAL_TESTS:-true}
-    export SKIP_LONG_RUNNING_TESTS=${SKIP_LONG_RUNNING_TESTS:-false}
+    export SKIP_BUILD=true
+    export SKIP_UNIT_TESTS=true
+    export SKIP_SERIAL_TESTS=true
+    export SKIP_LONG_RUNNING_TESTS=false
     export BUILD_SOURCE=${BUILD_SOURCE:---build \$BUILDKITE_TRIGGERED_FROM_BUILD_ID}
     export SKIP_CONTRACT_BUILDER=true
 fi
