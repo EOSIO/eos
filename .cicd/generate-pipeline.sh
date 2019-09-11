@@ -94,7 +94,7 @@ echo $PLATFORMS_JSON_ARRAY | jq -cr ".[]" | while read -r PLATFORM_JSON; do
     agents:
       queue: "automation-eos-builder-fleet"
     timeout: ${TIMEOUT:-180}
-    parallelism: 1
+    parallelism: 5
 
 EOF
         else
