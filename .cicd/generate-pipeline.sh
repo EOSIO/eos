@@ -49,7 +49,7 @@ for FILE in $(ls $CICD_DIR/platforms); do
         }]')
 done
 oIFS="$IFS"
-IFS=$'' 
+IFS=$''
 nIFS=$IFS # fix array splitting (\n won't work)
 # start with a wait step
 echo '  - wait'
@@ -127,7 +127,9 @@ done
 echo '  - wait'
 echo ''
 # tests
+IFS=$oIFS
 for RUN in $(seq 1 $RUNS); do
+    IFS=$''
     echo "    # run group $RUN of $RUNS"
     # parallel tests
     echo '    # parallel tests'
@@ -262,6 +264,7 @@ EOF
         done
         IFS=$nIFS
     done
+    IFS=$oIFS
     if [[ "$RUN" != "$RUNS" ]]; then
         echo '  - wait'
         echo ''
