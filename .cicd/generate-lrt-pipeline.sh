@@ -57,7 +57,7 @@ if [[ ${BUILDKITE_PIPELINE_SLUG} == "eosio-lrt" ]]; then
     export SKIP_SERIAL_TESTS=true
     export SKIP_LONG_RUNNING_TESTS=false
     export BUILD_SOURCE=${BUILD_SOURCE:---build \$BUILDKITE_TRIGGERED_FROM_BUILD_ID}
-    export SKIP_CONTRACT_BUILDER=true
+    # export SKIP_CONTRACT_BUILDER=true
 fi
 oIFS="$IFS"
 IFS=$'' 
