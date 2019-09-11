@@ -5,6 +5,7 @@ import requests
 
 from typing import List, Optional, Union
 
+
 def fetch(data: dict, keys: List[str]) -> dict:
     return dict((k, data[k]) for k in keys)
 

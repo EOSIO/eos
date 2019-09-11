@@ -10,13 +10,13 @@ import string
 import subprocess
 import time
 
-from helper import fetch
+from helper import fetch, get_transaction_id
 from printer import Print, String, pad
 from typing import List, Optional, Union
 
 class LauncherCaller:
 
-    # ----- initialization --------------------------------------------------------------------------------------------
+    # ----- initialize --------------------------------------------------------
 
     DEFAULT_ADDRESS = "127.0.0.1"
     DEFAULT_PORT = 1234
@@ -58,13 +58,13 @@ class LauncherCaller:
         self.string = String(invisible=not self.verbosity, monochrome=self.monochrome)
         self.alert = String(monochrome=self.monochrome)
         if self.verbosity >= 3:
-            self.print.response = lambda: self.print.response_in_full(self.response)
+            self.print.response = lambda resp: self.print.response_in_full(resp)
         elif self.verbosity == 2:
-            self.print.response = lambda: self.print.response_in_interaction(self.response, timeout=self.timeout)
+            self.print.response = lambda resp: self.print.response_in_interaction(resp, timeout=self.timeout)
         elif self.verbosity == 1:
-            self.print.response = lambda: self.print.response_in_short(self.response)
+            self.print.response = lambda resp: self.print.response_in_short(resp)
         else:
-            self.print.response = lambda: None
+            self.print.response = lambda resp: None
 
         # print system info
         self.print_system_info()
@@ -187,7 +187,8 @@ class LauncherCaller:
     def get_service_file(self, pid):
         return subprocess.Popen(["ps", "-p", str(pid), "-o", "comm="], stdout=subprocess.PIPE).stdout.read().rstrip().decode("ascii")
 
-    # ----- launch ----------------------------------------------------------------------------------------------------
+
+    # ----- RPC ---------------------------------------------------------------
 
 
     def rpc(self, url: str, data: str):
@@ -196,22 +197,92 @@ class LauncherCaller:
     def get_endpoint_url(self, func: str) -> str:
         return "http://{}:{}/v1/launcher/{}".format(self.address, self.port, func)
 
-    def fetch(self, data: dict, keys: List[str]) -> dict:
-        return dict((k, data[k]) for k in keys)
+    def call(self, endpoint: str, data: dict, text: str, pause=0, retry=2):
+        self.describe(text, pause=pause)
+        self.request_url = self.get_endpoint_url(endpoint)
+        self.request_data = json.dumps(data)
+        self.print.vanilla(self.request_url)
+        self.print.json(self.request_data, func=self.print.vanilla)
+        resp = self.rpc(self.request_url, self.request_data)
+        while not resp.ok and retry > 0:
+            self.print.red(resp)
+            self.print.vanilla("Retrying ...")
+            time.sleep(1)
+            resp = self.rpc(self.request_url, self.request_data)
+            retry -= 1
+            if retry == 0:
+                break
+        self.print.response(resp)
+
+
+    def launch_cluster(self, data: dict):
+        self.call("launch_cluster", data, "launch cluster")
+        # TODO: sleep until get info is successful
+
+    def get_cluster_info(self, data: dict):
+        self.call("get_cluster_info", data, "get cluster info")
+
+    def create_bios_accounts(self, data: dict):
+        self.call("create_bios_accounts", data, "create bios accounts")
+
+    def schedule_protocol_feature_activations(self, data: dict):
+        self.call("schedule_protocol_feature_activations", data, "schedule protocol feature activations")
+
+    def set_contract(self, data: dict, name: str):
+        self.call("set_contract", data, "set <{}> contract".format(name))
+
+    def push_actions(self, data: dict, text: str):
+        self.call("push_actions", data, text)
+
+    def create_account(self, data: dict, name: str):
+        self.call("create_account", data, "create \"{}\" account".format(name))
+
+    def stop_node(self, data: dict, text: str):
+        self.call("stop_node", data, text)
+
+    def terminate_node(self, data: dict):
+        data.update(signal_id=15)
+        self.stop_node(data, "terminate node #{}".format(data["node_id"]))
+
+    def kill_node(self, data: dict):
+        data.update(signal_id=9)
+        self.stop_node(data, "kill node #{}".format(data["node_id"]))
+
+    def stop_all_clusters(self):
+        self.call("stop_all_clusters", dict(), "stop all clusters")
+
+    # ----- Misc --------------------------------------------------------------
+
+    # def get_account(self, data):
+    #     self.response = self.rpc("get_account", data)
+
+    # def get_log_data(self, data):
+    #     self.response = self.rpc("get_log_data", data)
+
+    # def get_protocol_features(self, data):
+    #     self.response = self.rpc("get_protocol_features", data)
+
+    # def get_cluster_running_state(self, data):
+    #     self.response = self.rpc("get_cluster_running_state", data)
+
+    # def verify_transaction(self, data: str):
+    #     self.call("verify_transaction", data, "verify transaction id <{}>".format(data["transaction_id"]))
+
+    # ----- Bootstrap ---------------------------------------------------------
 
     def boostrap(self,
-                 cluster_id=None,
-                 total_nodes=1,
-                 producer_nodes=1,
-                 unstarted_nodes=0,
-                 per_node_producers=1,
-                 total_producers=None,
-                 topology=None,
-                 dont_boostrap=False,
-                 only_bios=False,
-                 only_set_producers=False,
-                 common_extra_args=None,
-                 specific_extra_args=None):
+             cluster_id=None,
+             total_nodes=1,
+             producer_nodes=1,
+             unstarted_nodes=0,
+             per_node_producers=1,
+             total_producers=None,
+             topology=None,
+             dont_boostrap=False,
+             only_bios=False,
+             only_set_producers=False,
+             common_extra_args=None,
+             specific_extra_args=None):
         """
         Parameters
         ----------
@@ -370,76 +441,7 @@ class LauncherCaller:
         self.push_actions(fetch(info, ["cluster_id", "node_id", "actions"]), "vote for producers")
         print(' ' * 100)
 
-
-    def call(self, endpoint: str, data: dict, text: str, pause=0, retry=2):
-        self.describe(text, pause=pause)
-        self.request_url = self.get_endpoint_url(endpoint)
-        self.request_data = json.dumps(data)
-        self.print.vanilla(self.request_url)
-        self.print.json(self.request_data, func=self.print.vanilla)
-        self.response = self.rpc(self.request_url, self.request_data)
-        while not self.response.ok and retry > 0:
-            self.print.red(self.response)
-            self.print.vanilla("Retrying ...")
-            time.sleep(1)
-            self.response = self.rpc(self.request_url, self.request_data)
-            retry -= 1
-        self.print.response()
-
-    def launch_cluster(self, data: dict):
-        self.call("launch_cluster", data, "launch cluster")
-        # TODO: sleep until get info is successful
-
-    def get_cluster_info(self, data: dict):
-        self.call("get_cluster_info", data, "get cluster info")
-
-    def create_bios_accounts(self, data: dict):
-        self.call("create_bios_accounts", data, "create bios accounts")
-
-    def schedule_protocol_feature_activations(self, data: dict):
-        self.call("schedule_protocol_feature_activations", data, "schedule protocol feature activations")
-
-    def set_contract(self, data: dict, name: str):
-        self.call("set_contract", data, "set <{}> contract".format(name))
-
-    def push_actions(self, data: dict, text: str):
-        self.call("push_actions", data, text)
-
-    def create_account(self, data: dict, name: str):
-        self.call("create_account", data, "create \"{}\" account".format(name))
-
-    def stop_node(self, data: dict, text: str):
-        self.call("stop_node", data, text)
-
-    def terminate_node(self, data: dict):
-        data.update(signal_id=15)
-        self.stop_node(data, "terminate node #{}".format(data["node_id"]))
-
-    def kill_node(self, data: dict):
-        data.update(signal_id=9)
-        self.stop_node(data, "kill node #{}".format(data["node_id"]))
-
-    def stop_all_clusters(self):
-        self.call("stop_all_clusters", dict(), "stop all clusters")
-
-    # -------------------------------------------------------------------------
-
-    def get_account(self, data):
-        self.response = self.rpc("get_account", data)
-
-    def get_log_data(self, data):
-        self.response = self.rpc("get_log_data", data)
-
-    def get_protocol_features(self, data):
-        self.response = self.rpc("get_protocol_features", data)
-
-    def get_cluster_running_state(self, data):
-        self.response = self.rpc("get_cluster_running_state", data)
-
-    def verify_transaction(self, data):
-        self.response = self.rpc("verify_transaction", data)
-
-    # ---------- Utilities ------------------------------------------------------------------------
+    # ---------- Utilities ----------------------------------------------------
 
     @staticmethod
     def override(default_value, value):
