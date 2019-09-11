@@ -213,7 +213,7 @@ done
 cat <<EOF
 
   - label: ":pipeline: Trigger LRTs"
-    trigger: "eosio-lrts"
+    trigger: "eosio-lrt"
     build:
       message: "${BUILDKITE_MESSAGE}"
       commit: "${BUILDKITE_COMMIT}"
