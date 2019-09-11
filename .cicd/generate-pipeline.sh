@@ -209,54 +209,19 @@ EOF
     done
     IFS=$nIFS
 done
-#############
-# LRT TESTS #
-echo $PLATFORMS_JSON_ARRAY | jq -cr ".[]" | while read -r PLATFORM_JSON; do
-    IFS=$oIFS
-    LR_TESTS=$(cat tests/CMakeLists.txt | grep long_running_tests | grep -v "^#" | awk -F" " '{ print $2 }')
-    for TEST_NAME in $LR_TESTS; do
-        if [[ ! $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME) =~ 'macos' ]]; then
-            cat <<EOF
-  - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
-    command:
-      - "buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz"
-      - "./.cicd/test.sh scripts/long-running-test.sh $TEST_NAME"
-    env:
-      IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
-      BUILDKITE_AGENT_ACCESS_TOKEN:
-    agents:
-      queue: "automation-eos-builder-fleet"
-    timeout: ${TIMEOUT:-180}
-    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}\${SKIP_LONG_RUNNING_TESTS:-true}
 
-EOF
-        else
-            cat <<EOF
-  - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
-    command:
-      - "git clone \$BUILDKITE_REPO eos && cd eos && git checkout \$BUILDKITE_COMMIT && git submodule update --init --recursive"
-      - "cd eos && buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz"
-      - "cd eos && ./.cicd/test.sh scripts/long-running-test.sh $TEST_NAME"
-    plugins:
-      - chef/anka#v0.5.1:
-          no-volume: true
-          inherit-environment-vars: true
-          vm-name: ${MOJAVE_ANKA_TEMPLATE_NAME}
-          vm-registry-tag: "${MOJAVE_ANKA_TAG_BASE}::$(echo "$PLATFORM_JSON" | jq -r .HASHED_IMAGE_TAG)"
-          always-pull: true
-          debug: true
-          wait-network: true
-    timeout: ${TIMEOUT:-180}
-    agents:
-      - "queue=mac-anka-node-fleet"
-    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}\${SKIP_LONG_RUNNING_TESTS:-true}
-
-EOF
-        fi
-    done
-    IFS=$nIFS
-done
 cat <<EOF
+
+  - label: ":pipeline: Trigger LRTs"
+    trigger: "eosio-lrts"
+    build:
+      message: "${BUILDKITE_MESSAGE}"
+      commit: "${BUILDKITE_COMMIT}"
+      branch: "${BUILDKITE_BRANCH}"
+      env:
+        BUILDKITE_PULL_REQUEST: "${BUILDKITE_PULL_REQUEST}"
+        BUILDKITE_PULL_REQUEST_BASE_BRANCH: "${BUILDKITE_PULL_REQUEST_BASE_BRANCH}"
+        BUILDKITE_PULL_REQUEST_REPO: "${BUILDKITE_PULL_REQUEST_REPO}"
 
   - wait:
     continue_on_failure: true
