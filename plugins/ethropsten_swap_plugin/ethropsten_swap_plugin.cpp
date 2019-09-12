@@ -48,51 +48,12 @@ class ethropsten_swap_plugin_impl {
     std::string                _eth_wss_provider;
 
     void start_monitor() {
-      while (true) {
-          try {
-              client m_client;
-              websocketpp::connection_hdl m_hdl;
-              websocketpp::lib::mutex m_lock;
-              m_client.clear_access_channels(websocketpp::log::alevel::all);
-              m_client.set_access_channels(websocketpp::log::alevel::connect);
-              m_client.set_access_channels(websocketpp::log::alevel::disconnect);
-              m_client.set_access_channels(websocketpp::log::alevel::app);
-              m_client.init_asio();
-              using websocketpp::lib::placeholders::_1;
-              using websocketpp::lib::placeholders::_2;
-              using websocketpp::lib::bind;
-              m_client.set_message_handler(bind(&ethropsten_swap_plugin_impl::on_swap_request,this,&m_client,_1,_2));
-              m_client.set_tls_init_handler([](websocketpp::connection_hdl){
-                  return websocketpp::lib::make_shared<boost::asio::ssl::context>(boost::asio::ssl::context::sslv23);
-              });
-              websocketpp::lib::error_code ec;
-              client::connection_ptr con = m_client.get_connection(this->_eth_wss_provider, ec);
-              if (ec) {
-                  m_client.get_alog().write(websocketpp::log::alevel::app,
-                          "Get Connection Error: "+ec.message());
-                  throw ec.message();
-              }
-
-              m_hdl = con->get_handle();
-              m_client.connect(con);
-
-              websocketpp::lib::thread asio_thread(&client::run, &m_client);
-              sleep(2);
-
-              string infura_request = "{\"id\": 1," \
-                                      "\"method\": \"eth_subscribe\"," \
-                                      "\"params\": [\"logs\", {\"address\": \""+string(eth_swap_contract_address)+"\"," \
-                                                                "\"topics\": [\""+string(eth_swap_request_event)+"\"]}]}";
-              m_client.get_alog().write(websocketpp::log::alevel::app, infura_request);
-              m_client.send(m_hdl,infura_request,websocketpp::frame::opcode::text,ec);
-              if (ec) {
-                  m_client.get_alog().write(websocketpp::log::alevel::app,
-                      "Send Error: "+ec.message());
-                  throw ec.message();
-              }
-              asio_thread.join();
-          } FC_LOG_WAIT_AND_CONTINUE()
-        }
+        my_web3 my_w3(this->_eth_wss_provider);
+        my_w3.subscribe(eth_swap_contract_address,
+          eth_swap_request_event,
+          [this](client* c, websocketpp::connection_hdl hdl, message_ptr msg){
+              on_swap_request(c, hdl, msg);
+          });
     }
 
     void on_swap_request(client* c, websocketpp::connection_hdl hdl, message_ptr msg) {
@@ -221,11 +182,11 @@ void ethropsten_swap_plugin::plugin_startup() {
   my_web3 my_w3(my->_eth_wss_provider);
   ilog("last eth block: " + to_string(my_w3.get_last_block_num()));
 
-  std::thread t([=](){
+  /*std::thread t([=](){
     sleep(40);
     my->init_confirmed_swap_requests();
   });
-  t.detach();
+  t.detach();*/
 
   std::thread t2([=](){
       sleep(30);
