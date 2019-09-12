@@ -130,6 +130,9 @@ struct test_crypto {
    static void test_recover_key();
    static void test_recover_key_assert_true();
    static void test_recover_key_assert_false();
+   static void test_recover_key_cpp();
+   static void test_recover_key_cpp_assert_true();
+   static void test_recover_key_cpp_assert_false();
    static void test_sha1();
    static void test_sha256();
    static void test_sha512();
@@ -138,13 +141,16 @@ struct test_crypto {
    static void sha256_no_data();
    static void sha512_no_data();
    static void ripemd160_no_data();
+   static void sha1_null();
    static void sha256_null();
-   static void assert_sha256_false();
+   static void sha512_null();
+   static void ripemd160_null();
    static void assert_sha1_false();
+   static void assert_sha256_false();
    static void assert_sha512_false();
    static void assert_ripemd160_false();
-   static void assert_sha256_true();
    static void assert_sha1_true();
+   static void assert_sha256_true();
    static void assert_sha512_true();
    static void assert_ripemd160_true();
 };

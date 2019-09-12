@@ -1723,67 +1723,66 @@ BOOST_FIXTURE_TEST_CASE(multi_index_tests, TESTER) { try {
  * crypto_tests test cases
  *************************************************************************************/
 BOOST_FIXTURE_TEST_CASE(crypto_tests, TESTER) { try {
-   produce_blocks(1000);
+   produce_blocks(1);
    create_account(N(testapi) );
-   produce_blocks(1000);
+   produce_blocks(1);
    set_code(N(testapi), contracts::test_api_wasm() );
-   produce_blocks(1000);
-	{
-		signed_transaction trx;
+   produce_blocks(1);
+   
+   signed_transaction trx;
 
-      auto pl = vector<permission_level>{{N(testapi), config::active_name}};
+   auto pl = vector<permission_level>{{N(testapi), config::active_name}};
 
-      action act(pl, test_api_action<TEST_METHOD("test_crypto", "test_recover_key")>{});
-		auto signatures = trx.sign(get_private_key(N(testapi), "active"), control->get_chain_id());
+   action act(pl, test_api_action<TEST_METHOD("test_crypto", "test_recover_key")>{});
+   auto signatures = trx.sign(get_private_key(N(testapi), "active"), control->get_chain_id());
 
-		produce_block();
+   produce_block();
 
-      auto payload   = fc::raw::pack( trx.sig_digest( control->get_chain_id() ) );
-      auto pk     = fc::raw::pack( get_public_key( N(testapi), "active" ) );
-      auto sigs   = fc::raw::pack( signatures );
-      payload.insert( payload.end(), pk.begin(), pk.end() );
-      payload.insert( payload.end(), sigs.begin(), sigs.end() );
+   auto payload = fc::raw::pack( trx.sig_digest( control->get_chain_id() ) );
+   auto pk      = fc::raw::pack( get_public_key( N(testapi), "active" ) );
+   auto sigs    = fc::raw::pack( signatures );
+   payload.insert( payload.end(), pk.begin(), pk.end() );
+   payload.insert( payload.end(), sigs.begin(), sigs.end() );
 
-      //No Error Here
-      CALL_TEST_FUNCTION( *this, "test_crypto", "test_recover_key", payload );
-      return;
-      // Error Here
-      CALL_TEST_FUNCTION( *this, "test_crypto", "test_recover_key_assert_true", payload );
-      payload[payload.size()-1] = 0;
-      BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( *this, "test_crypto", "test_recover_key_assert_false", payload ),
-                             crypto_api_exception, fc_exception_message_is("Error expected key different than recovered key") );
-	}
-
-
+   CALL_TEST_FUNCTION( *this, "test_crypto", "test_recover_key", payload );
+   CALL_TEST_FUNCTION( *this, "test_crypto", "test_recover_key_assert_true", payload );
+   
+   CALL_TEST_FUNCTION( *this, "test_crypto", "test_recover_key_cpp", payload );
+   CALL_TEST_FUNCTION( *this, "test_crypto", "test_recover_key_cpp_assert_true", payload );
+   
+   payload[payload.size()-1] = 0;
+   
+   BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( *this, "test_crypto", "test_recover_key_assert_false", payload ),
+                          crypto_api_exception, fc_exception_message_is("Error expected key different than recovered key") );
+   BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( *this, "test_crypto", "test_recover_key_cpp_assert_false", payload ),
+                          crypto_api_exception, fc_exception_message_is("Error expected key different than recovered key") );
 
    CALL_TEST_FUNCTION( *this, "test_crypto", "test_sha1", {} );
    CALL_TEST_FUNCTION( *this, "test_crypto", "test_sha256", {} );
    CALL_TEST_FUNCTION( *this, "test_crypto", "test_sha512", {} );
    CALL_TEST_FUNCTION( *this, "test_crypto", "test_ripemd160", {} );
+   
    CALL_TEST_FUNCTION( *this, "test_crypto", "sha1_no_data", {} );
    CALL_TEST_FUNCTION( *this, "test_crypto", "sha256_no_data", {} );
    CALL_TEST_FUNCTION( *this, "test_crypto", "sha512_no_data", {} );
    CALL_TEST_FUNCTION( *this, "test_crypto", "ripemd160_no_data", {} );
 
+   CALL_TEST_FUNCTION( *this, "test_crypto", "assert_sha1_true", {} );
+   CALL_TEST_FUNCTION( *this, "test_crypto", "assert_sha256_true", {} );
+   CALL_TEST_FUNCTION( *this, "test_crypto", "assert_sha512_true", {} );
+   CALL_TEST_FUNCTION( *this, "test_crypto", "assert_ripemd160_true", {} );
+
    CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_crypto", "assert_sha256_false", {},
                                            crypto_api_exception, "hash mismatch" );
-
-   CALL_TEST_FUNCTION( *this, "test_crypto", "assert_sha256_true", {} );
 
    CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_crypto", "assert_sha1_false", {},
                                            crypto_api_exception, "hash mismatch" );
 
-   CALL_TEST_FUNCTION( *this, "test_crypto", "assert_sha1_true", {} );
-
    CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_crypto", "assert_sha512_false", {},
                                            crypto_api_exception, "hash mismatch" );
 
-   CALL_TEST_FUNCTION( *this, "test_crypto", "assert_sha512_true", {} );
-
    CALL_TEST_FUNCTION_AND_CHECK_EXCEPTION( *this, "test_crypto", "assert_ripemd160_false", {},
                                            crypto_api_exception, "hash mismatch" );
-
-   CALL_TEST_FUNCTION( *this, "test_crypto", "assert_ripemd160_true", {} );
 
    BOOST_REQUIRE_EQUAL( validate(), true );
 } FC_LOG_AND_RETHROW() }
