@@ -1,8 +1,10 @@
 # Nodeos Implementation
 
-The EOSIO platform stores blockchain information in various data structures at various stages of a transaction's lifecycle. Some of these are described below. In the descriptions below, the producing node is the nodeos instance run by the block producer who is currently creating blocks for the blockchain (which changes every 6 seconds, producing 12 blocks per producing node.)
+The EOSIO platform stores blockchain information in various data structures at various stages of a transaction's lifecycle. Some of these are described below. The producing node is the nodeos instance run by the block producer who is currently creating blocks for the blockchain (which changes every 6 seconds, producing 12 blocks in sequence before switching to another producer.)
 
 ## Blockchain State and Storage
+
+Every `nodeos` instance creates some internal files to housekeep the blockchain state. These files reside in the `~/eosio/nodeos/data` installation directory and their purpose is described below:
 
 * The `block.log` is an append only log of blocks written to disk and contains all the irreversible blocks.
 * `Reversible_blocks` is a memory mapped file and contains blocks that have been written to the blockchain but have not yet become irreversible.

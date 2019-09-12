@@ -1,10 +1,13 @@
-# Nodeos
+# Nodeos Overview
 
-1. [Overview](00_overview.md)
-2. [Concepts](01_concepts/index.md)
-3. [Installation](02_install/index.md)
-4. [Usage](03_usage/index.md)
-5. [Plugins](04_plugins/index.md)
-6. [Replays](05_replays/index.md)
+EOSIO comes with a number of programs.  The primary ones that you will use, and the ones that are covered here, are:
 
-[TODO: add full index above, including sub-sections?]
+* `nodeos` (node + eos = nodeos)  - the core EOSIO node daemon that can be configured with plugins to run a node. Example uses are block production, dedicated API endpoints, and local development. 
+* `cleos` (cli + eos = cleos) - command line interface to interact with the blockchain and to manage wallets.
+* `keosd` (key + eos = keosd) - component that securely stores EOSIO keys in wallets. 
+
+The basic relationship between these components is illustrated in the following diagram.
+
+![EOSIO components](eosio_components.png)
+
+In the sections that follow, you will build the EOSIO components, and deploy them in a single host, single node test network (testnet) configuration.

@@ -90,4 +90,4 @@ Config Options for eosio::txn_test_gen_plugin:
                                         Irreversible Block)
 ```
 
-For more information on each plugin-specific option, please visit the [Plugins](../04_plugins/index.md) section.
+For more information on each plugin-specific option, please visit the [Plugins](../03_plugins/index.md) section.
