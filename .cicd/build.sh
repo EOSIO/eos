@@ -44,7 +44,7 @@ else # Linux
         [[ $ENABLE_INSTALL == true ]] && COMMANDS="$COMMANDS && make install"
     elif [[ $TRAVIS == true ]]; then
         ARGS="$ARGS -v /usr/lib/ccache -v $HOME/.ccache:/opt/.ccache -e JOBS -e TRAVIS -e CCACHE_DIR=/opt/.ccache"
-        COMMANDS="ccache -s && $BUILD_COMMANDS"
+        COMMANDS="llvm-config --prefix --version && ccache -s && $BUILD_COMMANDS"
     fi
     COMMANDS="$PRE_COMMANDS && $COMMANDS"
     echo "$ docker run $ARGS $(buildkite-intrinsics) $FULL_TAG bash -c \"$COMMANDS\""
