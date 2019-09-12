@@ -116,15 +116,13 @@ class ethropsten_swap_plugin_impl {
         my_web3 my_w3(this->_eth_wss_provider);
         std::string txid = data.txid;
         for(int i = 0; i < check_tx_confirmations_times; i++)
-            if(my_w3.get_transaction_confirmations("0x"+data.txid) >= min_tx_confirmations) {
+            if(my_w3.get_transaction_confirmations("0x"+data.txid) >= min_tx_confirmations)
               push_init_swap_transaction(data);
-              break;
-            }
             else
               sleep(wait_for_tx_confirmation);
     }
 
-    void init_prev_swap_requests() {
+    void init_confirmed_swap_requests() {
         my_web3 my_w3(this->_eth_wss_provider);
         uint64_t last_block_num = my_w3.get_last_block_num();
 
@@ -142,54 +140,66 @@ class ethropsten_swap_plugin_impl {
     }
 
     void push_init_swap_transaction(const swap_event_data& data) {
-        std::vector<signed_transaction> trxs;
-        trxs.reserve(2);
+        bool is_tx_sent = false;
+        uint32_t push_tx_attempt = 0;
+        while(!is_tx_sent) {
+            if(push_tx_attempt)
+              wlog("Retrying to push init swap transaction: ${id}", ( "id", data.txid ));
+            std::vector<signed_transaction> trxs;
+            trxs.reserve(2);
 
-        controller& cc = app().get_plugin<chain_plugin>().chain();
-        auto chainid = app().get_plugin<chain_plugin>().get_chain_id();
+            controller& cc = app().get_plugin<chain_plugin>().chain();
+            auto chainid = app().get_plugin<chain_plugin>().get_chain_id();
 
-        if( data.chain_id != chain_id ) {
-            elog("Invalid chain identifier ${c}", ("c", data.chain_id));
-            return;
+            if( data.chain_id != chain_id ) {
+                elog("Invalid chain identifier ${c}", ("c", data.chain_id));
+                return;
+            }
+            signed_transaction trx;
+
+            uint32_t slot = (data.timestamp * 1000 - block_timestamp_epoch) / block_interval_ms;
+
+            trx.actions.emplace_back(vector<chain::permission_level>{{this->_swap_signing_account,this->_swap_signing_permission}},
+              init{this->_swap_signing_account,
+                data.txid,
+                data.swap_pubkey,
+                uint64_to_rem_asset(data.amount),
+                data.return_address,
+                data.return_chain_id,
+                epoch_block_timestamp(slot)});
+
+            trx.expiration = cc.head_block_time() + fc::seconds(30);
+            trx.set_reference_block(cc.head_block_id());
+            trx.max_net_usage_words = 5000;
+            trx.sign(this->_swap_signing_key, chainid);
+            trxs.emplace_back(std::move(trx));
+
+            try {
+               auto trxs_copy = std::make_shared<std::decay_t<decltype(trxs)>>(std::move(trxs));
+               app().post(priority::low, [trxs_copy, &is_tx_sent]() {
+                 for (size_t i = 0; i < trxs_copy->size(); ++i) {
+
+                     app().get_plugin<chain_plugin>().accept_transaction( packed_transaction(trxs_copy->at(i)),
+                     [&is_tx_sent](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result){
+                       is_tx_sent = true;
+                       if (result.contains<fc::exception_ptr>()) {
+                          elog("Failed to push init swap transaction: ${res}", ( "res", result.get<fc::exception_ptr>()->to_string() ));
+                       } else {
+                          if (result.contains<transaction_trace_ptr>() && result.get<transaction_trace_ptr>()->receipt) {
+                              auto trx_id = result.get<transaction_trace_ptr>()->id;
+                              ilog("Pushed init swap transaction: ${id}", ( "id", trx_id ));
+                          }
+                       }
+                    });
+                 }
+               });
+            } FC_LOG_AND_DROP()
+            sleep(wait_for_accept_tx);
+            if(!is_tx_sent) {
+              sleep(retry_push_tx_time);
+            }
+            push_tx_attempt++;
         }
-        signed_transaction trx;
-
-        uint32_t slot = (data.timestamp * 1000 - block_timestamp_epoch) / block_interval_ms;
-
-        trx.actions.emplace_back(vector<chain::permission_level>{{this->_swap_signing_account,this->_swap_signing_permission}},
-          init{this->_swap_signing_account,
-            data.txid,
-            data.swap_pubkey,
-            uint64_to_rem_asset(data.amount),
-            data.return_address,
-            data.return_chain_id,
-            epoch_block_timestamp(slot)});
-
-        trx.expiration = cc.head_block_time() + fc::seconds(30);
-        trx.set_reference_block(cc.head_block_id());
-        trx.max_net_usage_words = 5000;
-        trx.sign(this->_swap_signing_key, chainid);
-        trxs.emplace_back(std::move(trx));
-
-        try {
-           auto trxs_copy = std::make_shared<std::decay_t<decltype(trxs)>>(std::move(trxs));
-           app().post(priority::low, [trxs_copy]() {
-             for (size_t i = 0; i < trxs_copy->size(); ++i) {
-
-                 app().get_plugin<chain_plugin>().accept_transaction( packed_transaction(trxs_copy->at(i)),
-                 [=](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result){
-                   if (result.contains<fc::exception_ptr>()) {
-                      elog("Failed to push init swap transaction: ${res}", ( "res", result.get<fc::exception_ptr>()->to_string() ));
-                   } else {
-                      if (result.contains<transaction_trace_ptr>() && result.get<transaction_trace_ptr>()->receipt) {
-                          auto trx_id = result.get<transaction_trace_ptr>()->id;
-                          ilog("Pushed init swap transaction: ${id}", ( "id", trx_id ));
-                      }
-                   }
-                });
-             }
-           });
-        } FC_LOG_AND_DROP()
     }
 };
 
@@ -234,7 +244,7 @@ void ethropsten_swap_plugin::plugin_startup() {
 
   /*std::thread t([=](){
     sleep(40);
-    my->init_prev_swap_requests();
+    my->init_confirmed_swap_requests();
   });
   t.detach();*/
 
