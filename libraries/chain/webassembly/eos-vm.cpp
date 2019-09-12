@@ -12,6 +12,37 @@ using namespace eosio::vm;
 
 namespace wasm_constraints = eosio::chain::wasm_constraints;
 
+namespace {
+
+  struct checktime_watchdog {
+     checktime_watchdog(transaction_checktime_timer& timer) : _timer(timer) {}
+     template<typename F>
+     struct guard {
+        guard(transaction_checktime_timer& timer, F&& func)
+           : _timer(timer), _func(static_cast<F&&>(func)) {
+           _timer.set_expiration_callback(&callback, this);
+        }
+        ~guard() {
+           // FIXME: This works correctly only if the callback is invoked by a signal
+           // handler in the current thread.
+           _timer.set_expiration_callback(nullptr, nullptr);
+        }
+        static void callback(void* data) {
+           guard* self = static_cast<guard*>(data);
+           self->_func();
+        }
+        transaction_checktime_timer& _timer;
+        F _func;
+     };
+     template<typename F>
+     guard<F> scoped_run(F&& func) {
+        return guard{_timer, static_cast<F&&>(func)};
+     }
+     transaction_checktime_timer& _timer;
+  };
+
+}
+
 template<typename Impl>
 class eos_vm_instantiated_module : public wasm_instantiated_module_interface {
       using backend_t = backend<apply_context, Impl>;
@@ -41,15 +72,10 @@ class eos_vm_instantiated_module : public wasm_instantiated_module_interface {
                 context.get_action().name.to_uint64_t());
          };
          try {
-            if (context.trx_context._deadline == fc::time_point::maximum())
-               fn();
-            else {
-               watchdog wd(std::chrono::microseconds((context.trx_context._deadline - fc::time_point::now()).count()));
-               _runtime->_bkend->timed_run(wd, fn);
-            }
+            checktime_watchdog wd(context.trx_context.transaction_timer);
+            _runtime->_bkend->timed_run(wd, fn);
          } catch(eosio::vm::timeout_exception&) {
-            // FIXME: just loop until checktime triggers, in case we got here first
-            while(true) context.trx_context.checktime();
+            context.trx_context.checktime();
          } catch(eosio::vm::wasm_memory_exception& e) {
             FC_THROW_EXCEPTION(wasm_execution_error, "access violation");
          } catch(eosio::vm::exception& e) {
