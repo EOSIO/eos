@@ -275,6 +275,8 @@ if [[ -z $BUILDKITE_TRIGGERED_FROM_BUILD_ID && $BUILDKITE_PULL_REQUEST != "false
         BUILDKITE_PULL_REQUEST_BASE_BRANCH: "${BUILDKITE_PULL_REQUEST_BASE_BRANCH}"
         BUILDKITE_PULL_REQUEST_REPO: "${BUILDKITE_PULL_REQUEST_REPO}"
         SKIP_BUILD: "true"
+        PINNED: "${PINNED}"
+        UNPINNED: "${UNPINNED}"
 
   - label: ":pipeline: Trigger Multiversion"
     trigger: "eos-multiversion-tests"
