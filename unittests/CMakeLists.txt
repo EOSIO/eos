@@ -62,6 +62,8 @@ foreach(TEST_SUITE ${UNIT_TESTS}) # create an independent target for each test s
     # to run unit_test with all log from blockchain displayed, put "--verbose" after "--", i.e. "unit_test -- --verbose"
     add_test(NAME ${TRIMMED_SUITE_NAME}_unit_test_wavm COMMAND unit_test --run_test=${SUITE_NAME} --report_level=detailed --color_output --catch_system_errors=no -- --wavm)
     add_test(NAME ${TRIMMED_SUITE_NAME}_unit_test_wabt COMMAND unit_test --run_test=${SUITE_NAME} --report_level=detailed --color_output -- --wabt)
+    add_test(NAME ${TRIMMED_SUITE_NAME}_unit_test_eos_vm COMMAND unit_test --run_test=${SUITE_NAME} --report_level=detailed --color_output --catch_system_errors=no -- --eos-vm)
+    add_test(NAME ${TRIMMED_SUITE_NAME}_unit_test_eos_vm_jit COMMAND unit_test --run_test=${SUITE_NAME} --report_level=detailed --color_output --catch_system_errors=no -- --eos-vm-jit)
     # build list of tests to run during coverage testing
     if(NOT "" STREQUAL "${ctest_tests}")
       set(ctest_tests "${ctest_tests}|${TRIMMED_SUITE_NAME}_unit_test_wavm|${TRIMMED_SUITE_NAME}_unit_test_wabt")
