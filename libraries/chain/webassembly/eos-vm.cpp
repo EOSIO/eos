@@ -99,6 +99,11 @@ void eos_vm_runtime<Impl>::immediately_exit_currently_running_module() {
 }
 
 template<typename Impl>
+bool eos_vm_runtime<Impl>::inject_module(IR::Module& module) {
+   return false;
+}
+
+template<typename Impl>
 std::unique_ptr<wasm_instantiated_module_interface> eos_vm_runtime<Impl>::instantiate_module(const char* code_bytes, size_t code_size, std::vector<uint8_t>) {
    using backend_t = backend<apply_context, Impl>;
    std::ofstream mf("temp.wasm");

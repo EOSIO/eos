@@ -50,6 +50,7 @@ struct intrinsic_registrator {
 class wabt_runtime : public eosio::chain::wasm_runtime_interface {
    public:
       wabt_runtime();
+      bool inject_module(IR::Module&) override;
       std::unique_ptr<wasm_instantiated_module_interface> instantiate_module(const char* code_bytes, size_t code_size, std::vector<uint8_t> initial_memory) override;
 
       void immediately_exit_currently_running_module() override;
