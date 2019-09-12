@@ -47,10 +47,12 @@ fi
 if [[ "$(cat build-info.json | jq .debug)" == 'false' ]]; then
     echo 'PASS: Debug flag is not set.'
     echo ''
+    rm build-info.json
     exit 0
 fi
 echo 'FAIL: Debug flag is set!'
 echo ''
 echo '$ cat build-info.json | jq .'
 cat build-info.json | jq .
+rm build-info.json
 exit 3
