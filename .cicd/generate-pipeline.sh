@@ -260,8 +260,8 @@ EOF
     done
     IFS=$nIFS
 done
-##################
-# TRIGGERS ON PR #
+#############
+# LRT ON PR #
 if [[ -z $BUILDKITE_TRIGGERED_FROM_BUILD_ID && $BUILDKITE_PULL_REQUEST != "false" ]]; then
     cat <<EOF
   - label: ":pipeline: Trigger LRTs"
@@ -278,6 +278,13 @@ if [[ -z $BUILDKITE_TRIGGERED_FROM_BUILD_ID && $BUILDKITE_PULL_REQUEST != "false
         PINNED: "${PINNED}"
         UNPINNED: "${UNPINNED}"
 
+EOF
+fi
+######################
+# MULTIVERSION ON PR #
+if [[ -z $BUILDKITE_TRIGGERED_FROM_BUILD_ID && $BUILDKITE_PULL_REQUEST != "false" ]]; then
+    if ( [[ ! $PINNED == false || $UNPINNED == true ]] ); then
+    cat <<EOF
   - label: ":pipeline: Trigger Multiversion"
     trigger: "eos-multiversion-tests"
     build:
@@ -290,6 +297,7 @@ if [[ -z $BUILDKITE_TRIGGERED_FROM_BUILD_ID && $BUILDKITE_PULL_REQUEST != "false
         BUILDKITE_PULL_REQUEST_REPO: "${BUILDKITE_PULL_REQUEST_REPO}"
 
 EOF
+    fi
 fi
 cat <<EOF
   - wait:
