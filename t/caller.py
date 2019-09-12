@@ -10,12 +10,13 @@ import string
 import subprocess
 import time
 
+from helper import extract, fetch, override, pgrep
+from printer import Print, String, pad
 from typing import List, Optional, Union
-from printer import Print, String
 
 class LauncherCaller:
 
-    # ----- initialization --------------------------------------------------------------------------------------------
+    # ----- initialize --------------------------------------------------------
 
     DEFAULT_ADDRESS = "127.0.0.1"
     DEFAULT_PORT = 1234
@@ -27,23 +28,23 @@ class LauncherCaller:
     DEFAULT_TOPOLOGY = "mesh"
     DEFAULT_VERBOSITY = 1
     DEFAULT_TIMEOUT = 1
-    DEFAULT_MONOCHROME = True
+    DEFAULT_MONOCHROME = False
     PROGRAM = "eosio-launcher-service"
 
     def __init__(self):
         # parse command-line arguments and set attributes
         self.args = self.parse_args()
-        self.address = self.override(self.DEFAULT_ADDRESS, self.args.address)
-        self.port = self.override(self.DEFAULT_PORT, self.args.port)
-        self.dir = self.override(self.DEFAULT_DIR, self.args.dir)
-        self.file = self.override(self.DEFAULT_FILE, self.args.file)
-        self.start = self.override(self.DEFAULT_START, self.args.start)
-        self.kill = self.override(self.DEFAULT_KILL, self.args.kill)
-        self.cluster_id = self.override(self.DEFAULT_CLUSTER_ID, self.args.cluster_id)
-        self.topology = self.override(self.DEFAULT_TOPOLOGY, self.args.topology)
-        self.verbosity = self.override(self.DEFAULT_VERBOSITY, self.args.verbosity)
-        self.monochrome = self.override(self.DEFAULT_MONOCHROME, self.args.monochrome)
-        self.timeout = self.override(self.DEFAULT_TIMEOUT, self.args.timeout)
+        self.address = override(self.DEFAULT_ADDRESS, self.args.address)
+        self.port = override(self.DEFAULT_PORT, self.args.port)
+        self.dir = override(self.DEFAULT_DIR, self.args.dir)
+        self.file = override(self.DEFAULT_FILE, self.args.file)
+        self.start = override(self.DEFAULT_START, self.args.start)
+        self.kill = override(self.DEFAULT_KILL, self.args.kill)
+        self.cluster_id = override(self.DEFAULT_CLUSTER_ID, self.args.cluster_id)
+        self.topology = override(self.DEFAULT_TOPOLOGY, self.args.topology)
+        self.verbosity = override(self.DEFAULT_VERBOSITY, self.args.verbosity)
+        self.monochrome = override(self.DEFAULT_MONOCHROME, self.args.monochrome)
+        self.timeout = override(self.DEFAULT_TIMEOUT, self.args.timeout)
 
         # decide whether to connect to a remote or local launcher service
         if self.address in ("127.0.0.1", "localhost"):
@@ -57,13 +58,13 @@ class LauncherCaller:
         self.string = String(invisible=not self.verbosity, monochrome=self.monochrome)
         self.alert = String(monochrome=self.monochrome)
         if self.verbosity >= 3:
-            self.print.response = lambda: self.print.response_in_full(self.response)
+            self.print.response = lambda resp: self.print.response_in_full(resp)
         elif self.verbosity == 2:
-            self.print.response = lambda: self.print.response_in_interaction(self.response, timeout=self.timeout)
+            self.print.response = lambda resp: self.print.response_with_prompt(resp, timeout=self.timeout)
         elif self.verbosity == 1:
-            self.print.response = lambda: self.print.response_in_short(self.response)
+            self.print.response = lambda resp: self.print.response_in_short(resp)
         else:
-            self.print.response = lambda: None
+            self.print.response = lambda resp: None
 
         # print system info
         self.print_system_info()
@@ -93,13 +94,12 @@ class LauncherCaller:
             self.start_service()
 
     def parse_args(self):
-        string = String()
-        header = lambda text: string.underline(string.green(text))
+        header = lambda text: String().decorate(text, style="underline", fcolor="green")
         parser = argparse.ArgumentParser(description=header("Launcher Service for EOS Testing Framework"), add_help=False,
                                          formatter_class=lambda prog: argparse.RawTextHelpFormatter(prog, max_help_position=50))
         couple = parser.add_mutually_exclusive_group()
         offset = 5
-        helper = lambda text, value: "{} ({})".format(string.pad(text, left=offset, total=50, char=' ', sep=""), value)
+        helper = lambda text, value: "{} ({})".format(pad(text, left=offset, total=50, char=' ', sep=""), value)
         parser.add_argument("-h", "--help", action="help", help=' ' * offset + "Show this message and exit")
         parser.add_argument("-a", "--address", type=str, metavar="IP", help=helper("Address of launcher service", self.DEFAULT_ADDRESS))
         parser.add_argument("-p", "--port", type=int, help=helper("Listening port of launcher service", self.DEFAULT_PORT))
@@ -111,7 +111,7 @@ class LauncherCaller:
         parser.add_argument("-t", "--topology", type=str, metavar="SHAPE", help=helper("Cluster topology to launch with", self.DEFAULT_TOPOLOGY), choices={"mesh", "star", "bridge", "line", "ring", "tree"})
         couple.add_argument("-v", "--verbose", dest="verbosity", action="count", default=None, help=helper("Verbosity level (-v for 1, -vv for 2, ...)", self.DEFAULT_VERBOSITY))
         couple.add_argument("-x", "--silent", dest="verbosity", action="store_false", default=None, help=helper("Set verbosity level at 0 (keep silent)", "False"))
-        parser.add_argument("-c", "--color", dest="monochrome", action="store_false", default=None, help=helper("Print in colors", not self.DEFAULT_MONOCHROME))
+        parser.add_argument("-m", "--monochrome", action="store_true", default=None, help=helper("Print in black and white instead of colors", self.DEFAULT_MONOCHROME))
         parser.add_argument("--timeout", type=float, metavar="TIME", default=None, help=helper("Pause time for interactive printing", self.DEFAULT_TIMEOUT))
         return parser.parse_args()
 
@@ -133,7 +133,7 @@ class LauncherCaller:
         self.print.vanilla("{:50s}{}".format("Cluster ID to launch with", helper(self.args.cluster_id, self.cluster_id)))
         self.print.vanilla("{:50s}{}".format("Cluster topology to launch with", helper(self.args.topology, self.topology)))
         self.print.vanilla("{:50s}{}".format("Verbosity level", helper(self.args.verbosity, self.verbosity)))
-        self.print.vanilla("{:50s}{}".format("Print in colors", helper(self.args.monochrome, self.monochrome)))
+        self.print.vanilla("{:50s}{}".format("Print in black and white instead of colors", helper(self.args.monochrome, self.monochrome)))
         self.print.vanilla("{:50s}{}".format("Pause time for interactive printing", helper(self.args.timeout, self.timeout)))
 
     # TODO
@@ -167,7 +167,7 @@ class LauncherCaller:
 
     def get_service_pid(self) -> List[int]:
         """Returns a list of 0, 1, or more process IDs"""
-        spid = self.pgrep(self.PROGRAM)
+        spid = pgrep(self.PROGRAM)
         if len(spid) == 0:
             self.print.yellow("No launcher is running currently.")
         elif len(spid) == 1:
@@ -187,7 +187,8 @@ class LauncherCaller:
     def get_service_file(self, pid):
         return subprocess.Popen(["ps", "-p", str(pid), "-o", "comm="], stdout=subprocess.PIPE).stdout.read().rstrip().decode("ascii")
 
-    # ----- launch ----------------------------------------------------------------------------------------------------
+
+    # ----- RPC ---------------------------------------------------------------
 
 
     def rpc(self, url: str, data: str):
@@ -196,22 +197,122 @@ class LauncherCaller:
     def get_endpoint_url(self, func: str) -> str:
         return "http://{}:{}/v1/launcher/{}".format(self.address, self.port, func)
 
-    def fetch(self, data: dict, keys: List[str]) -> dict:
-        return dict((k, data[k]) for k in keys)
+    def call(self, endpoint: str, text: str =None, pause=0, retry=2, mute=False, **data: dict):
+        if not mute:
+            text = endpoint.replace("_", " ") if text is None else text
+            self.describe(text, pause=pause)
+        self.request_url = self.get_endpoint_url(endpoint)
+        self.request_data = json.dumps(data)
+        if not mute:
+            self.print.vanilla(self.request_url)
+            self.print.json(self.request_data)
+        resp = self.rpc(self.request_url, self.request_data)
+        while not resp.ok and retry > 0:
+            if not mute:
+                self.print.red(resp)
+                self.print.vanilla("Retrying ...")
+            time.sleep(0.5)
+            resp = self.rpc(self.request_url, self.request_data)
+            retry -= 1
+        if not mute:
+            self.print.response(resp)
+        return resp, extract(resp, "transaction_id", None)
+
+    def verify(self, tid: str, retry=2, wait=0.5) -> bool:
+        verified = False
+        while not verified and retry >= 0:
+            self.print.vanilla("{:100}".format("Verifying ..."))
+            verified = self.verify_transaction(cluster_id=self.cluster_id, node_id=0, transaction_id=tid)
+            # verified = self.verify_transaction(**dict(cluster_id=self.cluster_id, node_id=0, transaction_id=tid))
+            retry -= 1
+            time.sleep(wait)
+        if verified:
+            self.print.decorate("Success!", fcolor="black", bcolor="green")
+        else:
+            self.print.decorate("Failure!", fcolor="black", bcolor="red")
+        return verified
+        # assert verified, self.alert.red("Failed to verify transaction ID {}".format(tid))
+
+    def launch_cluster(self, **data):
+        resp, tid = self.call("launch_cluster", **data)
+        assert resp.ok
+        # TODO: sleep until get info is successful
+
+    def get_cluster_info(self, mute=False, **data):
+        resp, tid = self.call("get_cluster_info", mute=mute, **data)
+        assert resp.ok
+        return resp.text
+
+    def create_bios_accounts(self, **data):
+        resp, tid = self.call("create_bios_accounts", **data)
+        assert self.verify(tid)
+
+    def schedule_protocol_feature_activations(self, data: dict):
+        resp, tid = self.call("schedule_protocol_feature_activations", **data)
+        assert resp.ok
+
+    def set_contract(self, data: dict, name: str):
+        resp, tid = self.call("set_contract", text="set <{}> contract".format(name), **data)
+        assert self.verify(tid)
+
+    def push_actions(self, data: dict, text: str):
+        resp, tid = self.call("push_actions", text=text, **data)
+        assert self.verify(tid)
+
+    def create_account(self, data: dict, name: str):
+        resp, tid = self.call("create_account", text="create \"{}\" account".format(name), **data)
+        assert self.verify(tid)
+
+    def stop_node(self, data: dict, text: str):
+        self.call("stop_node", text=text, **data)
+
+    def terminate_node(self, data: dict):
+        data.update(signal_id=15)
+        self.stop_node(data, "terminate node #{}".format(data["node_id"]))
+
+    def kill_node(self, data: dict):
+        data.update(signal_id=9)
+        self.stop_node(data, "kill node #{}".format(data["node_id"]))
+
+    def stop_all_clusters(self):
+        self.call("stop_all_clusters", dict())
+
+    # ----- Misc --------------------------------------------------------------
+
+    # def get_account(self, data):
+    #     self.response = self.rpc("get_account", data)
+
+    # def get_log_data(self, data):
+    #     self.response = self.rpc("get_log_data", data)
+
+    # def get_protocol_features(self, data):
+    #     self.response = self.rpc("get_protocol_features", data)
+
+    # def get_cluster_running_state(self, data):
+    #     self.response = self.rpc("get_cluster_running_state", data)
+
+    def verify_transaction(self, **data):
+        self.request_url = self.get_endpoint_url("verify_transaction")
+        self.request_data = json.dumps(data)
+        resp = self.rpc(self.request_url, self.request_data)
+        return extract(resp, "irreversible", False)
+
+
+    # ----- Bootstrap ---------------------------------------------------------
 
     def boostrap(self,
-                 cluster_id=None,
-                 total_nodes=1,
-                 producer_nodes=1,
-                 unstarted_nodes=0,
-                 per_node_producers=1,
-                 total_producers=None,
-                 topology=None,
-                 dont_boostrap=False,
-                 only_bios=False,
-                 only_set_producers=False,
-                 common_extra_args=None,
-                 specific_extra_args=None):
+             cluster_id=None,
+             total_nodes=1,
+             producer_nodes=1,
+             unstarted_nodes=0,
+             per_node_producers=1,
+             total_producers=None,
+             topology=None,
+             dont_boostrap=False,
+             only_bios=False,
+             only_set_producers=False,
+             common_extra_args=None,
+             specific_extra_args=None):
         """
         Parameters
         ----------
@@ -235,8 +336,8 @@ class LauncherCaller:
         12. vote for producers
         13. verify head producer
         """
-        cluster_id = self.override(self.cluster_id, cluster_id)
-        topology = self.override(self.topology, topology)
+        cluster_id = override(self.cluster_id, cluster_id)
+        topology = override(self.topology, topology)
 
         total_producers = total_producers if total_producers else per_node_producers * producer_nodes
 
@@ -267,13 +368,15 @@ class LauncherCaller:
                     names += ["defproducer" + string.ascii_lowercase[j]]
                 info["nodes"][i]["producers"] = names
 
-        # launch a cluster
-        self.launch_cluster(self.fetch(info, ["cluster_id", "node_count", "shape", "nodes"]))
+        # 1. launch a cluster
+        # self.launch_cluster(**fetch(info, ["cluster_id", "node_count", "shape", "nodes"]))
+        self.launch_cluster(cluster_id=cluster_id, node_count=total_nodes, shape=topology, nodes=info["nodes"])
 
-        # get cluster info: assert success
-        self.get_cluster_info(self.fetch(info, ["cluster_id"]))
+        # 2. get cluster info: assert success
+        # self.get_cluster_info(fetch(info, ["cluster_id"]))
+        self.get_cluster_info(cluster_id=cluster_id)
 
-        # # create system accounts
+        # 3. create system accounts
         info["creator"] = "eosio"
         info["accounts"] = [{"name":"eosio.bpay"},
                             {"name":"eosio.msig"},
@@ -285,22 +388,21 @@ class LauncherCaller:
                             {"name":"eosio.stake"},
                             {"name":"eosio.token"},
                             {"name":"eosio.upay"}]
-        self.create_bios_accounts(self.fetch(info, ["cluster_id", "creator", "accounts"]))
+        # self.create_bios_accounts(fetch(info, ["cluster_id", "creator", "accounts"]))
+        self.create_bios_accounts(cluster_id=cluster_id, creator="eosio", accounts=info["accounts"])
 
-        # verify transaction
-
-        # schedule protocol feature activations
+        # 4. schedule protocol feature activations
         info["protocol_features_to_activate"] = ["0ec7e080177b2c02b278d5088611686b49d739925a92d9bfcacd7fc6b74053bd"]
         info["node_id"] = 0
-        self.schedule_protocol_feature_activations(self.fetch(info, ["cluster_id", "node_id", "protocol_features_to_activate"]))
+        self.schedule_protocol_feature_activations(fetch(info, ["cluster_id", "node_id", "protocol_features_to_activate"]))
 
-        # # set eosio.token
+        # 5. set eosio.token
         info["account"] = "eosio.token"
         info["contract_file"] = "../../contracts/build/contracts/eosio.token/eosio.token.wasm"  # hardcoded, to be changed later
         info["abi_file"] = "../../contracts/build/contracts/eosio.token/eosio.token.abi"        # hardcoded, to be changed later
-        self.set_contract(self.fetch(info, ["cluster_id", "node_id", "account", "contract_file", "abi_file"]), "eosio.token")
+        self.set_contract(fetch(info, ["cluster_id", "node_id", "account", "contract_file", "abi_file"]), "eosio.token")
 
-        # create tokens
+        # 6. create tokens
         info["actions"] = [{"account": "eosio.token",
                             "action": "create",
                             "permissions": [{"actor": "eosio.token",
@@ -310,8 +412,9 @@ class LauncherCaller:
                                     "can_freeze": 0,
                                     "can_recall": 0,
                                     "can_whitelist":0}}]
-        self.push_actions(self.fetch(info, ["cluster_id", "node_id", "actions"]), "create tokens")
+        self.push_actions(fetch(info, ["cluster_id", "node_id", "actions"]), "create tokens")
 
+        # 7. issue tokens
         info["actions"] = [{"account": "eosio.token",
                             "action": "issue",
                             "permissions": [{"actor": "eosio",
@@ -319,22 +422,25 @@ class LauncherCaller:
                             "data": {"to": "eosio",
                                      "quantity": "1000000000.0000 SYS",
                                      "memo": "hi"}}]
-        self.push_actions(self.fetch(info, ["cluster_id", "node_id", "actions"]), "issue tokens")
+        self.push_actions(fetch(info, ["cluster_id", "node_id", "actions"]), "issue tokens")
 
+        # 8. set system contract
         info["account"] = "eosio"
         info["contract_file"] = "../../contracts/build/contracts/eosio.system/eosio.system.wasm"  # hardcoded, to be changed later
         info["abi_file"] = "../../contracts/build/contracts/eosio.system/eosio.system.abi"        # hardcoded, to be changed later
-        self.set_contract(self.fetch(info, ["cluster_id", "node_id", "account", "contract_file", "abi_file"]), "eosio.system")
+        self.set_contract(fetch(info, ["cluster_id", "node_id", "account", "contract_file", "abi_file"]), "eosio.system")
 
+        # 9. init system contract
         info["actions"] = [{"account": "eosio",
                             "action": "init",
                             "permissions": [{"actor": "eosio",
                                              "permission": "active"}],
                             "data": {"version": 0,
                                      "core": "4,SYS"}}]
-        self.push_actions(self.fetch(info, ["cluster_id", "node_id", "actions"]), "init system contract")
+        self.push_actions(fetch(info, ["cluster_id", "node_id", "actions"]), "init system contract")
 
-        # create producer accounts
+        # 10. create producer accounts
+        # 11. register producers
         # TODO: make iteration through producers more efficient
         info["stake_cpu"] = "75000000.0000 SYS"
         info["stake_net"] = "75000000.0000 SYS"
@@ -347,7 +453,7 @@ class LauncherCaller:
                     producers_list.append(p)
                     info["node_id"] = i
                     info["name"] = p
-                    self.create_account(self.fetch(info, ["cluster_id", "node_id", "creator", "name", "stake_cpu", "stake_net", "buy_ram_bytes", "transfer"]), p)
+                    self.create_account(fetch(info, ["cluster_id", "node_id", "creator", "name", "stake_cpu", "stake_net", "buy_ram_bytes", "transfer"]), p)
                     info["actions"] = [{"account": "eosio",
                                         "action": "regproducer",
                                         "permissions": [{"actor": "{}".format(p),
@@ -356,8 +462,9 @@ class LauncherCaller:
                                                  "producer_key": "EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
                                                  "url": "www.test.com",
                                                  "location": 0}}]
-                    self.push_actions(self.fetch(info, ["cluster_id", "node_id", "actions"]), "register \"{}\" account".format(p))
+                    self.push_actions(fetch(info, ["cluster_id", "node_id", "actions"]), "register \"{}\" account".format(p))
 
+        # 12. vote for producers
         # vote for producers
         info["node_id"] = 0
         info["actions"] = [{"account": "eosio",
@@ -367,97 +474,33 @@ class LauncherCaller:
                             "data": {"voter": "defproducera",
                                      "proxy": "",
                                      "producers": producers_list}}]
-        self.push_actions(self.fetch(info, ["cluster_id", "node_id", "actions"]), "vote for producers")
-        print(' ' * 100)
+        self.push_actions(fetch(info, ["cluster_id", "node_id", "actions"]), "vote for producers")
 
 
-    def call(self, endpoint: str, data: dict, text: str, pause=0, retry=2):
-        self.describe(text, pause=pause)
-        self.request_url = self.get_endpoint_url(endpoint)
-        self.request_data = json.dumps(data)
-        self.print.vanilla(self.request_url)
-        self.print.json(self.request_data, func=self.print.vanilla)
-        self.response = self.rpc(self.request_url, self.request_data)
-        while not self.response.ok and retry > 0:
-            self.print.red(self.response)
-            self.print.vanilla("Retrying ...")
-            time.sleep(1)
-            self.response = self.rpc(self.request_url, self.request_data)
+        # 13. verify head block producer is no longer eosio
+        retry = 5
+        while retry >= 0:
+            self.describe("get head block producer")
+            head_block_producer = json.loads(self.get_cluster_info(mute=True, cluster_id=cluster_id))["result"][0][1]["head_block_producer"]
+            if head_block_producer == "eosio":
+                self.print.yellow("Warning: Head block producer is still \"eosio\". Please wait for a while.")
+            if head_block_producer != "eosio":
+                self.print.green("Head block producer is \"{}\", no longer eosio.".format(head_block_producer))
+                break
+            time.sleep(0.5)
             retry -= 1
-        self.print.response()
+        assert head_block_producer != "eosio"
+        self.print.decorate(">>> Bootstrap succeeded.".format(head_block_producer), fcolor="white", bcolor="black")
 
-    def launch_cluster(self, data: dict):
-        self.call("launch_cluster", data, "launch cluster")
-        # TODO: sleep until get info is successful
 
-    def get_cluster_info(self, data: dict):
-        self.call("get_cluster_info", data, "get cluster info")
-
-    def create_bios_accounts(self, data: dict):
-        self.call("create_bios_accounts", data, "create bios accounts")
-
-    def schedule_protocol_feature_activations(self, data: dict):
-        self.call("schedule_protocol_feature_activations", data, "schedule protocol feature activations")
-
-    def set_contract(self, data: dict, name: str):
-        self.call("set_contract", data, "set <{}> contract".format(name))
-
-    def push_actions(self, data: dict, text: str):
-        self.call("push_actions", data, text)
-
-    def create_account(self, data: dict, name: str):
-        self.call("create_account", data, "create \"{}\" account".format(name))
-
-    def stop_node(self, data: dict, text: str):
-        self.call("stop_node", data, text)
-
-    def terminate_node(self, data: dict):
-        data.update(signal_id=15)
-        self.stop_node(data, "terminate node #{}".format(data["node_id"]))
-
-    def kill_node(self, data: dict):
-        data.update(signal_id=9)
-        self.stop_node(data, "kill node #{}".format(data["node_id"]))
-
-    def stop_all_clusters(self):
-        self.call("stop_all_clusters", dict(), "stop all clusters")
-
-    # -------------------------------------------------------------------------
-
-    def get_account(self, data):
-        self.response = self.rpc("get_account", data)
-
-    def get_log_data(self, data):
-        self.response = self.rpc("get_log_data", data)
-
-    def get_protocol_features(self, data):
-        self.response = self.rpc("get_protocol_features", data)
-
-    def get_cluster_running_state(self, data):
-        self.response = self.rpc("get_cluster_running_state", data)
-
-    def get_transaction_id(self):
-        try:
-            return json.loads(self.response.text)["transaction_id"]
-        except KeyError:
-            return
-
-    def verify_transaction(self, data):
-        self.response = self.rpc("verify_transaction", data)
-
-    # ---------- Utilities ------------------------------------------------------------------------
+    # ---------- Utilities ----------------------------------------------------
 
     @staticmethod
     def override(default_value, value):
         return default_value if value is None else value
 
-    @staticmethod
-    def pgrep(pattern: str) -> List[int]:
-        out = subprocess.Popen(['pgrep', pattern], stdout=subprocess.PIPE).stdout.read()
-        return [int(x) for x in out.splitlines()]
-
     def describe(self, text, pause=0):
-        self.print.vanilla(self.string.pad(self.string.reverse(self.string.blue(text))))
+        self.print.vanilla(pad(self.string.decorate(text, fcolor="black", bcolor="cyan")))
         time.sleep(pause)
 
 
