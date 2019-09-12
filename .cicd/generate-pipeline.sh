@@ -5,7 +5,7 @@ set -eo pipefail
 export MOJAVE_ANKA_TAG_BASE=${MOJAVE_ANKA_TAG_BASE:-'clean::cicd::git-ssh::nas::brew::buildkite-agent'}
 export MOJAVE_ANKA_TEMPLATE_NAME=${MOJAVE_ANKA_TEMPLATE_NAME:-'10.14.4_6C_14G_40G'}
 export PLATFORMS_JSON_ARRAY='[]'
-[[ -z "$RUNS" ]] && export RUNS='1'
+[[ -z "$ROUNDS" ]] && export ROUNDS='1'
 # read .cicd/platforms
 for FILE in $(ls $CICD_DIR/platforms); do
     # skip mac or linux by not even creating the json block
@@ -128,9 +128,9 @@ echo '  - wait'
 echo ''
 # tests
 IFS=$oIFS
-for RUN in $(seq 1 $RUNS); do
+for ROUND in $(seq 1 $ROUNDS); do
     IFS=$''
-    echo "    # run group $RUN of $RUNS"
+    echo "    # round $ROUND of $ROUNDS"
     # parallel tests
     echo '    # parallel tests'
     echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
@@ -265,7 +265,7 @@ EOF
         IFS=$nIFS
     done
     IFS=$oIFS
-    if [[ "$RUN" != "$RUNS" ]]; then
+    if [[ "$ROUND" != "$ROUNDS" ]]; then
         echo '  - wait'
         echo ''
     fi
