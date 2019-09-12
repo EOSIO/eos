@@ -328,6 +328,7 @@ done
 #############
 # LRT ON PR #
 if [[ -z $BUILDKITE_TRIGGERED_FROM_BUILD_ID && $BUILDKITE_PULL_REQUEST != "false" ]]; then
+    if ( [[ ! $PINNED == false || $UNPINNED == true ]] ); then
     cat <<EOF
   - label: ":pipeline: Trigger LRTs"
     trigger: "eosio-lrt"
