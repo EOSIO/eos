@@ -46,6 +46,57 @@ class ethropsten_swap_plugin_impl {
     name                       _swap_signing_account;
     std::string                _swap_signing_permission;
     std::string                _eth_wss_provider;
+
+    void push_init_swap_transaction(const swap_event_data& data) {
+        std::vector<signed_transaction> trxs;
+        trxs.reserve(2);
+
+        controller& cc = app().get_plugin<chain_plugin>().chain();
+        auto chainid = app().get_plugin<chain_plugin>().get_chain_id();
+
+        if( data.chain_id != chain_id ) {
+            elog("Invalid chain identifier ${c}", ("c", data.chain_id));
+            return;
+        }
+        signed_transaction trx;
+
+        uint32_t slot = (data.timestamp * 1000 - block_timestamp_epoch) / block_interval_ms;
+
+        trx.actions.emplace_back(vector<chain::permission_level>{{this->_swap_signing_account,this->_swap_signing_permission}},
+          init{this->_swap_signing_account,
+            data.txid,
+            data.swap_pubkey,
+            uint64_to_rem_asset(data.amount),
+            data.return_address,
+            data.return_chain_id,
+            epoch_block_timestamp(slot)});
+
+        trx.expiration = cc.head_block_time() + fc::seconds(30);
+        trx.set_reference_block(cc.head_block_id());
+        trx.max_net_usage_words = 5000;
+        trx.sign(this->_swap_signing_key, chainid);
+        trxs.emplace_back(std::move(trx));
+
+        try {
+           auto trxs_copy = std::make_shared<std::decay_t<decltype(trxs)>>(std::move(trxs));
+           app().post(priority::low, [trxs_copy]() {
+             for (size_t i = 0; i < trxs_copy->size(); ++i) {
+
+                 app().get_plugin<chain_plugin>().accept_transaction( packed_transaction(trxs_copy->at(i)),
+                 [=](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result){
+                   if (result.contains<fc::exception_ptr>()) {
+                      elog("Failed to push init swap transaction: ${res}", ( "res", result.get<fc::exception_ptr>()->to_string() ));
+                   } else {
+                      if (result.contains<transaction_trace_ptr>() && result.get<transaction_trace_ptr>()->receipt) {
+                          auto trx_id = result.get<transaction_trace_ptr>()->id;
+                          ilog("Pushed init swap transaction: ${id}", ( "id", trx_id ));
+                      }
+                   }
+                });
+             }
+           });
+        } FC_LOG_AND_DROP()
+    }
 };
 
 ethropsten_swap_plugin::ethropsten_swap_plugin():my(new ethropsten_swap_plugin_impl()){}
@@ -251,69 +302,40 @@ void ethropsten_swap_plugin::start_monitor() {
     }
 }
 
+void ethropsten_swap_plugin::init_confirmed_swap_requests() {
+    my_web3 my_w3(my->_eth_wss_provider);
+    uint64_t last_block_num = my_w3.get_last_block_num();
+
+    std::stringstream stream;
+    stream << std::hex << (last_block_num-eth_events_window_length);
+    std::string from_block( stream.str() );
+
+    std::string request_swap_filter_id = my_w3.new_filter(eth_swap_contract_address, "0x"+from_block, "latest", "[\""+string(eth_swap_request_event)+"\"]");
+    std::string filter_logs = my_w3.get_filter_logs(request_swap_filter_id);
+    std::vector<swap_event_data> prev_swap_requests = get_prev_swap_events(filter_logs);
+
+    for (std::vector<swap_event_data>::iterator it = prev_swap_requests.begin() ; it != prev_swap_requests.end(); ++it) {
+        swap_event_data data = *it;
+        std::string txid = data.txid;
+   }
+}
+
 void ethropsten_swap_plugin::on_swap_request(client* c, websocketpp::connection_hdl hdl, message_ptr msg) {
-  ilog("On Swap payload called");
-  std::string payload = msg->get_payload();
-  payload = "{\"jsonrpc\":\"2.0\",\"method\":\"eth_subscription\",\"params\":{\"subscription\":\"0x1feed3403f747b73a04d4cacd4221281\",\"result\":{\"removed\":false,\"logIndex\":\"0x3\",\"transactionIndex\":\"0x1\",\"transactionHash\":\"0xd9f4f600e0556e0d2fa284db40fc01d7e44c3f3c58c9966f5691e2ab6694806d\",\"blockHash\":\"0xa595c247384dab461d1ab2b9739acb58d9acb23b1149deb7bdd13d8b71037e18\",\"blockNumber\":\"0x606bf8\",\"address\":\"0x9fB8A18fF402680b47387AE0F4e38229EC64f098\",\"data\":\"0x93ece941df27a5787a405383a66a7c26d04e80182adf504365710331ac0625a700000000000000000000000000000000000000000000000000000000000000a0000000000000000000000000000000000000000000000000000000000026e8f00000000000000000000000009f21f19180c8692ebaa061fd231cd1b029ff2326000000000000000000000000000000000000000000000000000000005d71540f0000000000000000000000000000000000000000000000000000000000000035454f53376f4e6d6d786f38796838676d594c55474e43774e4146664c6d724d78746d727a6d46504732394370476d354271344647430000000000000000000000\",\"topics\":[\"0x0e918020302bf93eb479360905c1535ba1dbc8aeb6d20eff433206bf4c514e13\"]}}}";
+    ilog("On Swap payload called");
+    std::string payload = msg->get_payload();
+    payload = "{\"jsonrpc\":\"2.0\",\"method\":\"eth_subscription\",\"params\":{\"subscription\":\"0x1feed3403f747b73a04d4cacd4221281\",\"result\":{\"removed\":false,\"logIndex\":\"0x3\",\"transactionIndex\":\"0x1\",\"transactionHash\":\"0xd9f4f600e0556e0d2fa284db40fc01d7e44c3f3c58c9966f5691e2ab6694806d\",\"blockHash\":\"0xa595c247384dab461d1ab2b9739acb58d9acb23b1149deb7bdd13d8b71037e18\",\"blockNumber\":\"0x606bf8\",\"address\":\"0x9fB8A18fF402680b47387AE0F4e38229EC64f098\",\"data\":\"0x93ece941df27a5787a405383a66a7c26d04e80182adf504365710331ac0625a700000000000000000000000000000000000000000000000000000000000000a0000000000000000000000000000000000000000000000000000000000026e8f00000000000000000000000009f21f19180c8692ebaa061fd231cd1b029ff2326000000000000000000000000000000000000000000000000000000005d71540f0000000000000000000000000000000000000000000000000000000000000035454f53376f4e6d6d786f38796838676d594c55474e43774e4146664c6d724d78746d727a6d46504732394370476d354271344647430000000000000000000000\",\"topics\":[\"0x0e918020302bf93eb479360905c1535ba1dbc8aeb6d20eff433206bf4c514e13\"]}}}";
 
-  ilog("Received swap request ${p}", ("p", payload));
+    ilog("Received swap request ${p}", ("p", payload));
 
-  std::vector<signed_transaction> trxs;
-  trxs.reserve(2);
+    swap_event_data data;
+    try {
+        if( !get_swap_event_data(payload, &data, "params.result.data", "params.result.transactionHash") ) {
+            elog("Invalid swap request payload ${p}", ("p", payload));
+            return;
+        }
+    } FC_LOG_AND_RETURN()
 
-  swap_event_data data;
-  try {
-      if( !get_swap_event_data(payload, &data, "params.result.data", "params.result.transactionHash") ) {
-          elog("Invalid swap request payload ${p}", ("p", payload));
-          return;
-      }
-  } FC_LOG_AND_RETURN()
-
-  controller& cc = app().get_plugin<chain_plugin>().chain();
-  auto chainid = app().get_plugin<chain_plugin>().get_chain_id();
-
-  if( data.chain_id != chain_id ) {
-      elog("Invalid chain identifier ${c}", ("c", data.chain_id));
-      return;
-  }
-  signed_transaction trx;
-
-  uint32_t slot = (data.timestamp * 1000 - block_timestamp_epoch) / block_interval_ms;
-
-  trx.actions.emplace_back(vector<chain::permission_level>{{my->_swap_signing_account,my->_swap_signing_permission}},
-    init{my->_swap_signing_account,
-      data.txid,
-      data.swap_pubkey,
-      uint64_to_rem_asset(data.amount),
-      data.return_address,
-      data.return_chain_id,
-      epoch_block_timestamp(slot)});
-
-  trx.expiration = cc.head_block_time() + fc::seconds(30);
-  trx.set_reference_block(cc.head_block_id());
-  trx.max_net_usage_words = 5000;
-  trx.sign(my->_swap_signing_key, chainid);
-  trxs.emplace_back(std::move(trx));
-
-  try {
-     auto trxs_copy = std::make_shared<std::decay_t<decltype(trxs)>>(std::move(trxs));
-     app().post(priority::low, [trxs_copy]() {
-       for (size_t i = 0; i < trxs_copy->size(); ++i) {
-
-           app().get_plugin<chain_plugin>().accept_transaction( packed_transaction(trxs_copy->at(i)),
-           [=](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result){
-             if (result.contains<fc::exception_ptr>()) {
-                elog("Failed to push init swap transaction: ${res}", ( "res", result.get<fc::exception_ptr>()->to_string() ));
-             } else {
-                if (result.contains<transaction_trace_ptr>() && result.get<transaction_trace_ptr>()->receipt) {
-                    auto trx_id = result.get<transaction_trace_ptr>()->id;
-                    ilog("Pushed init swap transaction: ${id}", ( "id", trx_id ));
-                }
-             }
-          });
-       }
-     });
-  } FC_LOG_AND_DROP()
+    my->push_init_swap_transaction(data);
 }
 
 }

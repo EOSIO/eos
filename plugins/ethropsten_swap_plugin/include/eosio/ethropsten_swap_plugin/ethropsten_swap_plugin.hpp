@@ -76,6 +76,8 @@ const size_t request_swap_hex_data_length = 512;
 
 const uint32_t wait_for_eth_node = 20;
 
+const uint64_t eth_events_window_length = 1000000;
+
 struct swap_event_data {
     std::string   txid;
     std::string   chain_id;
@@ -107,6 +109,7 @@ public:
    void plugin_shutdown();
 
    void on_swap_request(client* c, websocketpp::connection_hdl hdl, message_ptr msg);
+   void init_confirmed_swap_requests();
    void start_monitor();
 
 private:
