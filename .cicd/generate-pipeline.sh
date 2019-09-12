@@ -352,6 +352,7 @@ if [[ -z $BUILDKITE_TRIGGERED_FROM_BUILD_ID && $BUILDKITE_PULL_REQUEST != "false
     cat <<EOF
   - label: ":pipeline: Trigger Multiversion"
     trigger: "eos-multiversion-tests"
+    async: true
     build:
       message: "${BUILDKITE_MESSAGE}"
       commit: "${BUILDKITE_COMMIT}"
