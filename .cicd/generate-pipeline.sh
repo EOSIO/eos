@@ -348,8 +348,7 @@ cat <<EOF
   - wait
 
   - label: ":git: Git Submodule Regression Check"
-    command:
-      - "./.cicd/submodule-regression-check.sh"
+    command: "./.cicd/submodule-regression-check.sh"
     agents:
       queue: "automation-basic-builder-fleet"
     timeout: ${TIMEOUT:-5}
