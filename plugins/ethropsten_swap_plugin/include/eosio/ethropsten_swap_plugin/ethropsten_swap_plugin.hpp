@@ -84,6 +84,13 @@ const uint32_t wait_for_eth_node = 20;
 
 const uint64_t eth_events_window_length = 1000000;
 
+const size_t   wait_for_tx_confirmation = 30;
+const size_t   check_tx_confirmations_times = 5;
+const uint64_t min_tx_confirmations = 3;
+
+const size_t retry_push_tx_time = 120;
+const size_t wait_for_accept_tx = 1;
+
 struct swap_event_data {
     std::string   txid;
     std::string   chain_id;
