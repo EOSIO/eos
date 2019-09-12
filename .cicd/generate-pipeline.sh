@@ -346,6 +346,7 @@ if [[ -z $BUILDKITE_TRIGGERED_FROM_BUILD_ID && $BUILDKITE_PULL_REQUEST != "false
         UNPINNED: "${UNPINNED}"
 
 EOF
+    fi
 fi
 ######################
 # MULTIVERSION ON PR #
