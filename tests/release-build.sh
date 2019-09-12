@@ -21,11 +21,14 @@ fi
 if [[ ! -f nodeos ]]; then
     echo 'ERROR: nodeos binary not found!'
     echo ''
-    echo 'Looked in the following places:'
-    echo '$ ls -la "$(git rev-parse --show-toplevel)/build/programs/nodeos"'
-    ls -la "$(git rev-parse --show-toplevel)/build/programs/nodeos"
-    echo '$ ls -la "$(dirname "${BASH_SOURCE[0]}")/../programs/nodeos"'
-    ls -la "$(dirname "${BASH_SOURCE[0]}")/../programs/nodeos"
+    echo 'I looked here...'
+    echo "$ ls -la \"$(pwd)/programs/nodeos\""
+    ls -la "$(pwd)/programs/nodeos"
+    echo '...which I derived from one of these paths:'
+    echo '$ echo "$(git rev-parse --show-toplevel)/build"'
+    echo "$(git rev-parse --show-toplevel)/build"
+    echo '$ echo "$(dirname "${BASH_SOURCE[0]}")/.."'
+    echo "$(dirname "${BASH_SOURCE[0]}")/.."
     echo 'Release build test not run.'
     exit 1
 fi
