@@ -65,6 +65,7 @@ void launcher_service_api_plugin::plugin_startup() {
    app().get_plugin<http_plugin>().add_api({
       CALL(launcher, launch_cluster, INVOKE_R_R(launch_cluster, launcher_service::cluster_def), 200),
       CALL(launcher, stop_cluster, INVOKE_R_R(stop_cluster, launcher_service::cluster_id_param), 200),
+      CALL(launcher, clean_cluster, INVOKE_R_R(clean_cluster, launcher_service::cluster_id_param), 200),
       CALL(launcher, stop_all_clusters, INVOKE_R(stop_all_clusters), 200),
       CALL(launcher, stop_node, INVOKE_R_R(stop_node, launcher_service::stop_node_param), 200),
       CALL(launcher, start_node, INVOKE_R_R(start_node, launcher_service::start_node_param), 200),

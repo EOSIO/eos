@@ -52,18 +52,28 @@ namespace launcher_service {
 
    struct node_def {
 
-      int node_id = 0;
-      bool dont_start = false;
+      int                            node_id = 0;
+      bool                           dont_start = false;
+      std::vector<string>            producers;
+      std::vector<private_key_type>  producing_keys;
+      std::vector<string>            extra_configs;
 
-      std::vector<string> producers;
-      std::vector<private_key_type> producing_keys;
-      std::vector<string> extra_configs;
+      uint16_t                       assigned_http_port = 0;
+      uint16_t                       assigned_p2p_port = 0;
 
       uint16_t http_port(const launcher_config &config, int cluster_id) const {
-         return config.base_port + cluster_id * config.cluster_span + node_id * config.node_span;
+         if (assigned_http_port) {
+            return assigned_http_port;
+         } else {
+            return config.base_port + cluster_id * config.cluster_span + node_id * config.node_span;
+         }
       }
       uint16_t p2p_port(const launcher_config &config, int cluster_id) const {
-         return http_port(config, cluster_id) + 1;
+         if (assigned_p2p_port) {
+            return assigned_p2p_port;
+         } else {
+            return http_port(config, cluster_id) + 1;
+         }
       }
       bool is_bios() const {
          for (auto &p: producers) {
@@ -78,18 +88,35 @@ namespace launcher_service {
       int                            center_node_id = -1; // required if shape is "start" or "bridge"
       int                            cluster_id = 0;
       int                            node_count = 0;
+      bool                           auto_port = true; // auto port assignment
       std::vector<node_def>          nodes;
       std::vector<string>            extra_configs;
       std::string                    extra_args;
       fc::log_level                  log_level = fc::log_level::info;
 
-      node_def get_node_def(int id) const {
+      bool                           _normalized = false;
+
+      node_def &get_node_def(int id) {
+         if (!_normalized) {
+            for (int i = 0; i < node_count; ++i) { // normalize
+               bool found = false;
+               for (auto &n: nodes) {
+                  if (n.node_id == i) {
+                     found = true;
+                     break;
+                  }
+               }
+               if (found) continue;
+               node_def n;
+               n.node_id = i;
+               nodes.push_back(n);
+            }
+            _normalized = true;
+         }
          for (auto &n: nodes) {
             if (n.node_id == id) return n;
          }
-         node_def n;
-         n.node_id = id;
-         return n;
+         throw std::runtime_error("node config not found");
       }
    };
 
@@ -240,6 +267,7 @@ public:
    fc::variant launch_cluster(launcher_service::cluster_def cluster_def);
    fc::variant stop_all_clusters();
    fc::variant stop_cluster(launcher_service::cluster_id_param);
+   fc::variant clean_cluster(launcher_service::cluster_id_param);
    fc::variant start_node(launcher_service::start_node_param);
    fc::variant stop_node(launcher_service::stop_node_param);
 
@@ -274,7 +302,7 @@ private:
 }
 
 FC_REFLECT(eosio::launcher_service::node_def, (node_id)(producers)(producing_keys)(extra_configs)(dont_start) )
-FC_REFLECT(eosio::launcher_service::cluster_def, (shape)(center_node_id)(cluster_id)(node_count)(nodes)(extra_configs)(extra_args)(log_level) )
+FC_REFLECT(eosio::launcher_service::cluster_def, (shape)(center_node_id)(cluster_id)(node_count)(auto_port)(nodes)(extra_configs)(extra_args)(log_level) )
 FC_REFLECT(eosio::launcher_service::new_account_param, (name)(owner)(active))
 FC_REFLECT(eosio::launcher_service::create_bios_accounts_param, (cluster_id)(node_id)(creator)(accounts))
 FC_REFLECT(eosio::launcher_service::new_account_param_ex, (cluster_id)(node_id)(creator)(name)(owner)(active)(stake_cpu)(stake_net)(buy_ram_bytes)(transfer))

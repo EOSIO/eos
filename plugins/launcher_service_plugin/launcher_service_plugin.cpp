@@ -127,7 +127,23 @@ public:
          sprintf(str, "%d", v);
          return str;
       }
-      void setup_cluster(const cluster_def &def) {
+
+      uint16_t next_avail_port(uint16_t startport, uint16_t maxport) {
+         boost::asio::io_service ios;
+         while (startport < maxport) {
+            boost::asio::ip::tcp::socket socket(ios);
+            boost::system::error_code ec;
+            socket.open(boost::asio::ip::tcp::v4());
+            socket.bind(boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), startport), ec);
+            socket.close();
+            if (!ec) return startport;
+            socket.close();
+            ++startport;
+         }
+         throw std::runtime_error("failed to assign available ports");
+      }
+
+      void setup_cluster(cluster_def &def) {
          create_path(bfs::path(_config.data_dir));
          create_path(bfs::path(_config.data_dir) / cluster_to_string(def.cluster_id), true);
          if (def.node_count <= 0 || def.node_count > _config.max_nodes_per_cluster) {
@@ -154,8 +170,23 @@ public:
             logging_json = json::to_pretty_string(log_config);
          }
 
+         // port assignment
+         if (def.auto_port) {
+            uint16_t begin_port = _config.base_port + def.cluster_id * _config.cluster_span;
+            uint16_t max_port = begin_port + _config.cluster_span;
+            for (int i = 0; i < def.node_count; ++i) {
+               node_def &node_config = def.get_node_def(i);
+               begin_port = next_avail_port(begin_port, max_port);
+               node_config.assigned_http_port = begin_port;
+               ++begin_port;
+               begin_port = next_avail_port(begin_port, max_port);
+               node_config.assigned_p2p_port = begin_port;
+               ++begin_port;
+            }
+         }
+
          for (int i = 0; i < def.node_count; ++i) {
-            node_def node_config = def.get_node_def(i);
+            node_def &node_config = def.get_node_def(i);
             node_state state;
             state.id = i;
             state.http_port = node_config.http_port(_config, def.cluster_id);
@@ -257,7 +288,7 @@ public:
          _running_clusters[def.cluster_id].def = def;
          _running_clusters[def.cluster_id].imported_keys[_config.default_key.get_public_key()] = _config.default_key;
       }
-      void launch_nodes(const cluster_def &def, int node_id, bool restart = false, std::string extra_args = "") {
+      void launch_nodes(cluster_def &def, int node_id, bool restart = false, std::string extra_args = "") {
          for (int i = 0; i < def.node_count; ++i) {
             if (i != node_id && node_id != -1) {
                continue;
@@ -329,7 +360,7 @@ public:
             state.child->detach();
          }
       }
-      void launch_cluster(const cluster_def &def) {
+      void launch_cluster(cluster_def &def) {
          if (def.cluster_id < 0 || def.cluster_id >= _config.max_clusters) {
             throw std::runtime_error("invalid cluster id");
          }
@@ -366,6 +397,7 @@ public:
             }
          }
       }
+
       void stop_cluster(int cluster_id) {
          if (_running_clusters.find(cluster_id) != _running_clusters.end()) {
             for (auto &itr : _running_clusters[cluster_id].nodes) {
@@ -374,10 +406,18 @@ public:
             _running_clusters.erase(cluster_id);
          }
       }
+
       void stop_all_clusters() {
          while (_running_clusters.size()) { // don't use ranged for loop as _running_clusters is modified
             stop_cluster(_running_clusters.begin()->first);
          }
+      }
+
+      void clean_cluster(int cluster_id) {
+         if (_running_clusters.find(cluster_id) != _running_clusters.end()) {
+            throw std::runtime_error("cluster is still running");
+         }
+         bfs::remove_all(bfs::path(_config.data_dir) / cluster_to_string(cluster_id));
       }
 
       fc::variant call(int cluster_id, int node_id, std::string func, fc::variant args = fc::variant()) {
@@ -889,6 +929,13 @@ fc::variant launcher_service_plugin::stop_all_clusters() {
 fc::variant launcher_service_plugin::stop_cluster(launcher_service::cluster_id_param param) {
    try {
       _my->stop_cluster(param.cluster_id);
+      return fc::mutable_variant_object("result", "OK");
+   } CATCH_LAUCHER_EXCEPTIONS
+}
+
+fc::variant launcher_service_plugin::clean_cluster(launcher_service::cluster_id_param param) {
+   try {
+      _my->clean_cluster(param.cluster_id);
       return fc::mutable_variant_object("result", "OK");
    } CATCH_LAUCHER_EXCEPTIONS
 }
