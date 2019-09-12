@@ -327,9 +327,10 @@ EOF
         echo ''
     fi
 done
-###############
-# TRIGGER LRT #
+#####################
+# TRIGGERS ON PR #
 if [[ -z $BUILDKITE_TRIGGERED_FROM_BUILD_ID && $BUILDKITE_PIPELINE_SLUG != "eosio-lrt" ]]; then
+# if [[ $BUILDKITE_PULL_REQUEST ]]; then
     cat <<EOF
   - label: ":pipeline: Trigger LRTs"
     trigger: "eosio-lrt"
@@ -342,6 +343,17 @@ if [[ -z $BUILDKITE_TRIGGERED_FROM_BUILD_ID && $BUILDKITE_PIPELINE_SLUG != "eosi
         BUILDKITE_PULL_REQUEST_BASE_BRANCH: "${BUILDKITE_PULL_REQUEST_BASE_BRANCH}"
         BUILDKITE_PULL_REQUEST_REPO: "${BUILDKITE_PULL_REQUEST_REPO}"
         SKIP_BUILD: "true"
+
+  - label: ":pipeline: Trigger LRTs"
+    trigger: "eos-multiversion-tests"
+    build:
+      message: "${BUILDKITE_MESSAGE}"
+      commit: "${BUILDKITE_COMMIT}"
+      branch: "${BUILDKITE_BRANCH}"
+      env:
+        BUILDKITE_PULL_REQUEST: "${BUILDKITE_PULL_REQUEST}"
+        BUILDKITE_PULL_REQUEST_BASE_BRANCH: "${BUILDKITE_PULL_REQUEST_BASE_BRANCH}"
+        BUILDKITE_PULL_REQUEST_REPO: "${BUILDKITE_PULL_REQUEST_REPO}"
 
 EOF
 fi
