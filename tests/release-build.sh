@@ -17,20 +17,18 @@ if ! $(jq --version 1>/dev/null); then
     exit 1
 fi
 # find nodeos
-[[ -z "$EOSIO_ROOT" && $(git --version) ]] && export EOSIO_ROOT="$(git rev-parse --show-toplevel)"
-[[ -z "$EOSIO_ROOT" ]] && export EOSIO_ROOT="$(echo $(pwd)/ | grep -ioe '.*/eos/' -e '.*/eosio/' -e '.*/build/' | sed 's,/build/,/,')"
-if [[ ! -f "$EOSIO_ROOT/build/bin/nodeos" && ! -f "$EOSIO_ROOT/build/programs/nodeos/nodeos" ]]; then
+[[ $(git --version) ]] && cd "$(git rev-parse --show-toplevel)/build/programs/nodeos" || cd "$(dirname "${BASH_SOURCE[0]}")/../programs/nodeos"
+if [[ ! -f nodeos ]]; then
     echo 'ERROR: nodeos binary not found!'
     echo ''
     echo 'Looked in the following places:'
-    echo "$ ls -la \"$EOSIO_ROOT/build/bin\""
-    ls -la "$EOSIO_ROOT/build/bin"
-    echo "$ ls -la \"$EOSIO_ROOT/build/programs/nodeos\""
-    ls -la "$EOSIO_ROOT/build/programs/nodeos"
+    echo '$ ls -la "$(git rev-parse --show-toplevel)/build/programs/nodeos"'
+    ls -la "$(git rev-parse --show-toplevel)/build/programs/nodeos"
+    echo '$ ls -la "$(dirname "${BASH_SOURCE[0]}")/../programs/nodeos"'
+    ls -la "$(dirname "${BASH_SOURCE[0]}")/../programs/nodeos"
     echo 'Release build test not run.'
     exit 1
 fi
-[[ -f "$EOSIO_ROOT/build/bin/nodeos" ]] && cd "$EOSIO_ROOT/build/bin" || cd "$EOSIO_ROOT/build/programs/nodeos"
 # run nodeos to generate state files
 ./nodeos --extract-build-info build-info.json 1>/dev/null 2>/dev/null
 if [[ ! -f build-info.json ]]; then
