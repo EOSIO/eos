@@ -7,6 +7,9 @@
  #include <eosio/http_plugin/http_plugin.hpp>
  #include <eosio/chain_plugin/chain_plugin.hpp>
 
+ #include <boost/property_tree/ptree.hpp>
+ #include <boost/property_tree/json_parser.hpp>
+
 #include <websocketpp/config/asio_client.hpp>
 #include <websocketpp/client.hpp>
 #include <websocketpp/common/thread.hpp>
@@ -61,6 +64,9 @@
 typedef websocketpp::client<websocketpp::config::asio_tls_client> client;
 typedef websocketpp::lib::lock_guard<websocketpp::lib::mutex> scoped_lock;
 typedef websocketpp::config::asio_client::message_type::ptr message_ptr;
+namespace eosio {
+
+using namespace appbase;
 
 constexpr int32_t block_interval_ms = 500;
 constexpr int64_t block_timestamp_epoch = 946684800000ll;  // epoch is year 2000
@@ -89,9 +95,12 @@ struct swap_event_data {
 
 };
 
-namespace eosio {
-
-using namespace appbase;
+std::string hex_to_string(const std::string& input);
+swap_event_data* parse_swap_event_hex(const std::string& hex_data, swap_event_data* data);
+swap_event_data* get_swap_event_data(boost::property_tree::ptree root, swap_event_data* data, const char* data_key, const char* txid_key);
+swap_event_data* get_swap_event_data(const std::string& event_str, swap_event_data* data, const char* data_key, const char* txid_key);
+eosio::asset uint64_to_rem_asset(unsigned long long amount);
+std::vector<swap_event_data> get_prev_swap_events(const std::string& logs);
 
 /**
  *  This is a template plugin, intended to serve as a starting point for making new plugins
@@ -109,7 +118,6 @@ public:
    void plugin_shutdown();
 
    void on_swap_request(client* c, websocketpp::connection_hdl hdl, message_ptr msg);
-   void init_confirmed_swap_requests();
    void start_monitor();
 
 private:
