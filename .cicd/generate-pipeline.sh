@@ -47,12 +47,10 @@ for FILE in $(ls $CICD_DIR/platforms); do
         }]')
 done
 # Triggered LRT
-if [[ ${BUILDKITE_PIPELINE_SLUG} == "eosio-lrt" ]]; then
-    if [[ -z ${BUILDKITE_TRIGGERED_FROM_BUILD_ID} ]]; then
-        export BUILD_SOURCE="--build \$BUILDKITE_BUILD_ID"
-    fi
-    export BUILD_SOURCE=${BUILD_SOURCE:---build \$BUILDKITE_TRIGGERED_FROM_BUILD_ID}
+if [[ -z ${BUILDKITE_TRIGGERED_FROM_BUILD_ID} ]]; then
+    export BUILD_SOURCE="--build \$BUILDKITE_BUILD_ID"
 fi
+export BUILD_SOURCE=${BUILD_SOURCE:---build \$BUILDKITE_TRIGGERED_FROM_BUILD_ID}
 oIFS="$IFS"
 IFS=$'' 
 nIFS=$IFS # Needed to fix array splitting (\n won't work)
