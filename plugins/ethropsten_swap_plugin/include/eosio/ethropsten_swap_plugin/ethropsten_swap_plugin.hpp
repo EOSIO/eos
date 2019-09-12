@@ -117,9 +117,6 @@ public:
    void plugin_startup();
    void plugin_shutdown();
 
-   void on_swap_request(client* c, websocketpp::connection_hdl hdl, message_ptr msg);
-   void start_monitor();
-
 private:
    std::unique_ptr<class ethropsten_swap_plugin_impl> my;
 };

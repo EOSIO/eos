@@ -47,6 +47,72 @@ class ethropsten_swap_plugin_impl {
     std::string                _swap_signing_permission;
     std::string                _eth_wss_provider;
 
+    void start_monitor() {
+      while (true) {
+          try {
+              client m_client;
+              websocketpp::connection_hdl m_hdl;
+              websocketpp::lib::mutex m_lock;
+              m_client.clear_access_channels(websocketpp::log::alevel::all);
+              m_client.set_access_channels(websocketpp::log::alevel::connect);
+              m_client.set_access_channels(websocketpp::log::alevel::disconnect);
+              m_client.set_access_channels(websocketpp::log::alevel::app);
+              m_client.init_asio();
+              using websocketpp::lib::placeholders::_1;
+              using websocketpp::lib::placeholders::_2;
+              using websocketpp::lib::bind;
+              m_client.set_message_handler(bind(&ethropsten_swap_plugin_impl::on_swap_request,this,&m_client,_1,_2));
+              m_client.set_tls_init_handler([](websocketpp::connection_hdl){
+                  return websocketpp::lib::make_shared<boost::asio::ssl::context>(boost::asio::ssl::context::sslv23);
+              });
+              websocketpp::lib::error_code ec;
+              client::connection_ptr con = m_client.get_connection(this->_eth_wss_provider, ec);
+              if (ec) {
+                  m_client.get_alog().write(websocketpp::log::alevel::app,
+                          "Get Connection Error: "+ec.message());
+                  throw ec.message();
+              }
+
+              m_hdl = con->get_handle();
+              m_client.connect(con);
+
+              websocketpp::lib::thread asio_thread(&client::run, &m_client);
+              sleep(2);
+
+              string infura_request = "{\"id\": 1," \
+                                      "\"method\": \"eth_subscribe\"," \
+                                      "\"params\": [\"logs\", {\"address\": \""+string(eth_swap_contract_address)+"\"," \
+                                                                "\"topics\": [\""+string(eth_swap_request_event)+"\"]}]}";
+              m_client.get_alog().write(websocketpp::log::alevel::app, infura_request);
+              m_client.send(m_hdl,infura_request,websocketpp::frame::opcode::text,ec);
+              if (ec) {
+                  m_client.get_alog().write(websocketpp::log::alevel::app,
+                      "Send Error: "+ec.message());
+                  throw ec.message();
+              }
+              asio_thread.join();
+          } FC_LOG_WAIT_AND_CONTINUE()
+        }
+    }
+
+    void on_swap_request(client* c, websocketpp::connection_hdl hdl, message_ptr msg) {
+        ilog("On Swap payload called");
+        std::string payload = msg->get_payload();
+        payload = "{\"jsonrpc\":\"2.0\",\"method\":\"eth_subscription\",\"params\":{\"subscription\":\"0x1feed3403f747b73a04d4cacd4221281\",\"result\":{\"removed\":false,\"logIndex\":\"0x3\",\"transactionIndex\":\"0x1\",\"transactionHash\":\"0xd9f4f600e0556e0d2fa284db40fc01d7e44c3f3c58c9966f5691e2ab6694806d\",\"blockHash\":\"0xa595c247384dab461d1ab2b9739acb58d9acb23b1149deb7bdd13d8b71037e18\",\"blockNumber\":\"0x606bf8\",\"address\":\"0x9fB8A18fF402680b47387AE0F4e38229EC64f098\",\"data\":\"0x93ece941df27a5787a405383a66a7c26d04e80182adf504365710331ac0625a700000000000000000000000000000000000000000000000000000000000000a0000000000000000000000000000000000000000000000000000000000026e8f00000000000000000000000009f21f19180c8692ebaa061fd231cd1b029ff2326000000000000000000000000000000000000000000000000000000005d71540f0000000000000000000000000000000000000000000000000000000000000035454f53376f4e6d6d786f38796838676d594c55474e43774e4146664c6d724d78746d727a6d46504732394370476d354271344647430000000000000000000000\",\"topics\":[\"0x0e918020302bf93eb479360905c1535ba1dbc8aeb6d20eff433206bf4c514e13\"]}}}";
+
+        ilog("Received swap request ${p}", ("p", payload));
+
+        swap_event_data data;
+        try {
+            if( !get_swap_event_data(payload, &data, "params.result.data", "params.result.transactionHash") ) {
+                elog("Invalid swap request payload ${p}", ("p", payload));
+                return;
+            }
+        } FC_LOG_AND_RETURN()
+
+        push_init_swap_transaction(data);
+    }
+
     void init_confirmed_swap_requests() {
         my_web3 my_w3(this->_eth_wss_provider);
         uint64_t last_block_num = my_w3.get_last_block_num();
@@ -154,81 +220,18 @@ void ethropsten_swap_plugin::plugin_startup() {
   ilog("Ethropsten swap plugin started");
   my_web3 my_w3(my->_eth_wss_provider);
   ilog("last eth block: " + to_string(my_w3.get_last_block_num()));
+
   std::thread t([=](){
     sleep(40);
     my->init_confirmed_swap_requests();
   });
   t.detach();
-  using websocketpp::lib::bind;
-  std::thread t1(bind(&ethropsten_swap_plugin::start_monitor,this));
-  t1.detach();
-}
 
-void ethropsten_swap_plugin::start_monitor() {
-  sleep(30);
-  while (true) {
-      try {
-          client m_client;
-          websocketpp::connection_hdl m_hdl;
-          websocketpp::lib::mutex m_lock;
-          m_client.clear_access_channels(websocketpp::log::alevel::all);
-          m_client.set_access_channels(websocketpp::log::alevel::connect);
-          m_client.set_access_channels(websocketpp::log::alevel::disconnect);
-          m_client.set_access_channels(websocketpp::log::alevel::app);
-          m_client.init_asio();
-          using websocketpp::lib::placeholders::_1;
-          using websocketpp::lib::placeholders::_2;
-          using websocketpp::lib::bind;
-          m_client.set_message_handler(bind(&ethropsten_swap_plugin::on_swap_request,this,&m_client,_1,_2));
-          m_client.set_tls_init_handler([](websocketpp::connection_hdl){
-              return websocketpp::lib::make_shared<boost::asio::ssl::context>(boost::asio::ssl::context::sslv23);
-          });
-          websocketpp::lib::error_code ec;
-          client::connection_ptr con = m_client.get_connection(my->_eth_wss_provider, ec);
-          if (ec) {
-              m_client.get_alog().write(websocketpp::log::alevel::app,
-                      "Get Connection Error: "+ec.message());
-              throw ec.message();
-          }
-
-          m_hdl = con->get_handle();
-          m_client.connect(con);
-
-          websocketpp::lib::thread asio_thread(&client::run, &m_client);
-          sleep(2);
-
-          string infura_request = "{\"id\": 1," \
-                                  "\"method\": \"eth_subscribe\"," \
-                                  "\"params\": [\"logs\", {\"address\": \""+string(eth_swap_contract_address)+"\"," \
-                                                            "\"topics\": [\""+string(eth_swap_request_event)+"\"]}]}";
-          m_client.get_alog().write(websocketpp::log::alevel::app, infura_request);
-          m_client.send(m_hdl,infura_request,websocketpp::frame::opcode::text,ec);
-          if (ec) {
-              m_client.get_alog().write(websocketpp::log::alevel::app,
-                  "Send Error: "+ec.message());
-              throw ec.message();
-          }
-          asio_thread.join();
-      } FC_LOG_WAIT_AND_CONTINUE()
-    }
-}
-
-void ethropsten_swap_plugin::on_swap_request(client* c, websocketpp::connection_hdl hdl, message_ptr msg) {
-    ilog("On Swap payload called");
-    std::string payload = msg->get_payload();
-    payload = "{\"jsonrpc\":\"2.0\",\"method\":\"eth_subscription\",\"params\":{\"subscription\":\"0x1feed3403f747b73a04d4cacd4221281\",\"result\":{\"removed\":false,\"logIndex\":\"0x3\",\"transactionIndex\":\"0x1\",\"transactionHash\":\"0xd9f4f600e0556e0d2fa284db40fc01d7e44c3f3c58c9966f5691e2ab6694806d\",\"blockHash\":\"0xa595c247384dab461d1ab2b9739acb58d9acb23b1149deb7bdd13d8b71037e18\",\"blockNumber\":\"0x606bf8\",\"address\":\"0x9fB8A18fF402680b47387AE0F4e38229EC64f098\",\"data\":\"0x93ece941df27a5787a405383a66a7c26d04e80182adf504365710331ac0625a700000000000000000000000000000000000000000000000000000000000000a0000000000000000000000000000000000000000000000000000000000026e8f00000000000000000000000009f21f19180c8692ebaa061fd231cd1b029ff2326000000000000000000000000000000000000000000000000000000005d71540f0000000000000000000000000000000000000000000000000000000000000035454f53376f4e6d6d786f38796838676d594c55474e43774e4146664c6d724d78746d727a6d46504732394370476d354271344647430000000000000000000000\",\"topics\":[\"0x0e918020302bf93eb479360905c1535ba1dbc8aeb6d20eff433206bf4c514e13\"]}}}";
-
-    ilog("Received swap request ${p}", ("p", payload));
-
-    swap_event_data data;
-    try {
-        if( !get_swap_event_data(payload, &data, "params.result.data", "params.result.transactionHash") ) {
-            elog("Invalid swap request payload ${p}", ("p", payload));
-            return;
-        }
-    } FC_LOG_AND_RETURN()
-
-    my->push_init_swap_transaction(data);
+  std::thread t2([=](){
+      sleep(30);
+      my->start_monitor();
+  });
+  t2.detach();
 }
 
 void ethropsten_swap_plugin::plugin_shutdown() {
