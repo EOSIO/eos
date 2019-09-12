@@ -18,38 +18,42 @@ if ! $(xxd --version 2>/dev/null); then
     exit 1
 fi
 # find nodeos
-[[ $(git --version) ]] && cd "$(git rev-parse --show-toplevel)/build/programs/nodeos" || cd "$(dirname "${BASH_SOURCE[0]}")/../programs/nodeos"
-if [[ ! -f nodeos ]]; then
+[[ $(git --version) ]] && cd "$(git rev-parse --show-toplevel)/build" || cd "$(dirname "${BASH_SOURCE[0]}")/.."
+if [[ ! -f programs/nodeos/nodeos ]]; then
     echo 'ERROR: nodeos binary not found!'
     echo ''
-    echo 'Looked in the following places:'
-    echo '$ ls -la "$(git rev-parse --show-toplevel)/build/programs/nodeos"'
-    ls -la "$(git rev-parse --show-toplevel)/build/programs/nodeos"
-    echo '$ ls -la "$(dirname "${BASH_SOURCE[0]}")/../programs/nodeos"'
-    ls -la "$(dirname "${BASH_SOURCE[0]}")/../programs/nodeos"
+    echo 'I looked here...'
+    echo "$ ls -la \"$(pwd)/programs/nodeos\""
+    ls -la "$(pwd)/programs/nodeos"
+    echo '...which I derived from one of these paths:'
+    echo '$ echo "$(git rev-parse --show-toplevel)/build"'
+    echo "$(git rev-parse --show-toplevel)/build"
+    echo '$ echo "$(dirname "${BASH_SOURCE[0]}")/.."'
+    echo "$(dirname "${BASH_SOURCE[0]}")/.."
     echo 'Release build test not run.'
     exit 2
 fi
 # run nodeos to generate state files
-./nodeos --config-dir "$(pwd)/config" --data-dir "$(pwd)/data" 1>/dev/null 2>/dev/null &
+mkdir release-build-test
+programs/nodeos/nodeos --config-dir "$(pwd)/release-build-test/config" --data-dir "$(pwd)/release-build-test/data" 1>/dev/null 2>/dev/null &
 sleep 10
 kill $! # kill nodeos gracefully, by PID
-if [[ ! -f data/state/shared_memory.bin ]]; then
+if [[ ! -f release-build-test/data/state/shared_memory.bin ]]; then
     echo 'ERROR: nodeos state not found!'
     echo ''
     echo 'Looked for shared_memory.bin in the following places:'
-    echo "$ ls -la \"$(pwd)/data/state\""
-    ls -la "$(pwd)/data/state"
+    echo "$ ls -la \"$(pwd)/release-build-test/data/state\""
+    ls -la "$(pwd)/release-build-test/data/state"
     echo 'Release build test not run.'
-    rm -rf config data
+    rm -rf release-build-test
     exit 3
 fi
 # test state files for debug flag
-export DEBUG_BYTE="$(xxd -seek 9 -l 1 data/state/shared_memory.bin | awk '{print $2}')"
+export DEBUG_BYTE="$(xxd -seek 9 -l 1 release-build-test/data/state/shared_memory.bin | awk '{print $2}')"
 if [[ "$DEBUG_BYTE" == '00' ]]; then
     echo 'PASS: Debug flag is not set.'
     echo ''
-    rm -rf config data
+    rm -rf release-build-test
     exit 0
 fi
 echo 'FAIL: Debug flag is set!'
@@ -57,6 +61,6 @@ echo "Debug Byte = 0x$DEBUG_BYTE"
 echo ''
 echo 'First kilobyte of shared_memory.bin:'
 echo '$ xxd -l 1024 shared_memory.bin'
-xxd -l 1024 data/state/shared_memory.bin
-rm -rf config data
+xxd -l 1024 release-build-test/data/state/shared_memory.bin
+rm -rf release-build-test
 exit 4
