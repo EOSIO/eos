@@ -260,9 +260,8 @@ EOF
     done
     IFS=$nIFS
 done
-#####################
+##################
 # TRIGGERS ON PR #
-# if [[ -z $BUILDKITE_TRIGGERED_FROM_BUILD_ID && $BUILDKITE_PIPELINE_SLUG != "eosio-lrt" ]]; then
 if [[ -z $BUILDKITE_TRIGGERED_FROM_BUILD_ID && $BUILDKITE_PULL_REQUEST != "false" ]]; then
     cat <<EOF
   - label: ":pipeline: Trigger LRTs"
