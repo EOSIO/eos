@@ -331,6 +331,7 @@ if [[ -z $BUILDKITE_TRIGGERED_FROM_BUILD_ID && $BUILDKITE_PULL_REQUEST != "false
     cat <<EOF
   - label: ":pipeline: Trigger LRTs"
     trigger: "eosio-lrt"
+    async: true
     build:
       message: "${BUILDKITE_MESSAGE}"
       commit: "${BUILDKITE_COMMIT}"
