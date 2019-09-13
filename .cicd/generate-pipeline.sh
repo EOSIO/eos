@@ -12,7 +12,7 @@ LINUX_CONCURRENCY_GROUP='eos-scheduled-build'
 MAC_CONCURRENCY_GROUP='eos-scheduled-build-mac'
 
 # Determine if it's a forked PR and make sure to add git fetch so we don't have to git clone the forked repo's url
-if [[ $BUILDKITE_BRANCH =~ '^pull/[0-9]+/head:' ]]; then
+if [[ $BUILDKITE_BRANCH =~ ^pull/[0-9]+/head: ]]; then
   PR_ID=$(echo $BUILDKITE_BRANCH | cut -d/ -f2)
   export GIT_FETCH="git fetch -v --prune origin refs/pull/$PR_ID/head &&"
 fi
