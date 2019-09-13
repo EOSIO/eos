@@ -11,6 +11,18 @@ typedef websocketpp::client<websocketpp::config::asio_tls_client> client;
 typedef websocketpp::lib::lock_guard<websocketpp::lib::mutex> scoped_lock;
 typedef websocketpp::config::asio_client::message_type::ptr message_ptr;
 
+class NoConnectionException : public std::exception
+{
+  public:
+    explicit NoConnectionException(const std::string& message) : message_(message) {}
+  	const char * what () const throw ()
+      {
+      	return message_.c_str();
+      }
+  private:
+    std::string message_;
+};
+
 class my_web3 {
     public:
         my_web3(const std::string& eth_address);
@@ -21,7 +33,6 @@ class my_web3 {
         std::string new_filter(const std::string& contract_address, const std::string& fromBlock, const std::string& toBlock, const std::string& topics);
         std::string get_filter_logs(const std::string& filter_id);
     private:
-        std::string _eth_address;
         client m_client;
         websocketpp::connection_hdl m_hdl;
         uint32_t id = 0;
@@ -30,6 +41,10 @@ class my_web3 {
         std::string created_filter;
         std::string filter_logs;
         std::string tx;
+
+        bool is_connection_closed;
+        std::string _eth_address;
+        std::thread wss_thread;
 
         boost::mutex mutex;
 

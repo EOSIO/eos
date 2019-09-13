@@ -114,33 +114,37 @@ class ethropsten_swap_plugin_impl {
     }
 
     void wait_for_tx_confirmation_and_push(const std::vector<swap_event_data>& swap_requests) {
-        my_web3 my_w3(this->_eth_wss_provider);
-        for (std::vector<swap_event_data>::const_iterator it = swap_requests.begin() ; it != swap_requests.end(); ++it) {
-            swap_event_data data = *it;
-            std::string txid = data.txid;
-            for(int i = 0; i < check_tx_confirmations_times; i++)
-                if(my_w3.get_transaction_confirmations("0x"+data.txid) >= min_tx_confirmations) {
-                  push_init_swap_transaction(data);
-                  break;
-                }
-                else
-                  sleep(wait_for_tx_confirmation);
-        }
+        try {
+          my_web3 my_w3(this->_eth_wss_provider);
+          for (std::vector<swap_event_data>::const_iterator it = swap_requests.begin() ; it != swap_requests.end(); ++it) {
+              swap_event_data data = *it;
+              std::string txid = data.txid;
+              for(int i = 0; i < check_tx_confirmations_times; i++)
+                  if(my_w3.get_transaction_confirmations("0x"+data.txid) >= min_tx_confirmations) {
+                    push_init_swap_transaction(data);
+                    break;
+                  }
+                  else
+                    sleep(wait_for_tx_confirmation);
+          }
+        } FC_LOG_AND_RETHROW()
     }
 
     void init_prev_swap_requests() {
-        my_web3 my_w3(this->_eth_wss_provider);
-        uint64_t last_block_num = my_w3.get_last_block_num();
+        try {
+          my_web3 my_w3(this->_eth_wss_provider);
+          uint64_t last_block_num = my_w3.get_last_block_num();
 
-        std::stringstream stream;
-        stream << std::hex << (last_block_num-eth_events_window_length);
-        std::string from_block( stream.str() );
+          std::stringstream stream;
+          stream << std::hex << (last_block_num-eth_events_window_length);
+          std::string from_block( stream.str() );
 
-        std::string request_swap_filter_id = my_w3.new_filter(eth_swap_contract_address, "0x"+from_block, "latest", "[\""+string(eth_swap_request_event)+"\"]");
-        std::string filter_logs = my_w3.get_filter_logs(request_swap_filter_id);
-        std::vector<swap_event_data> prev_swap_requests = get_prev_swap_events(filter_logs);
+          std::string request_swap_filter_id = my_w3.new_filter(eth_swap_contract_address, "0x"+from_block, "latest", "[\""+string(eth_swap_request_event)+"\"]");
+          std::string filter_logs = my_w3.get_filter_logs(request_swap_filter_id);
+          std::vector<swap_event_data> prev_swap_requests = get_prev_swap_events(filter_logs);
 
-        wait_for_tx_confirmation_and_push(prev_swap_requests);
+          wait_for_tx_confirmation_and_push(prev_swap_requests);
+        } FC_LOG_AND_RETHROW()
     }
 
     void push_init_swap_transaction(const swap_event_data& data) {
@@ -243,8 +247,10 @@ void ethropsten_swap_plugin::plugin_initialize(const variables_map& options) {
 
 void ethropsten_swap_plugin::plugin_startup() {
   ilog("Ethropsten swap plugin started");
-  my_web3 my_w3(my->_eth_wss_provider);
-  ilog("last eth block: " + to_string(my_w3.get_last_block_num()));
+  try {
+    my_web3 my_w3(my->_eth_wss_provider);
+    ilog("last eth block: " + to_string(my_w3.get_last_block_num()));
+  } FC_LOG_AND_RETHROW()
 
   /*std::thread t([=](){
     sleep(40);

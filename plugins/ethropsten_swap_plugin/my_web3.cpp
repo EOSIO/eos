@@ -1,12 +1,16 @@
 #include <eosio/ethropsten_swap_plugin/my_web3.hpp>
 
 
-my_web3::my_web3(const std::string& eth_address) {
-    _eth_address = eth_address;
-    using websocketpp::lib::bind;
-    std::thread t1(bind(&my_web3::wss_connect,this));
+my_web3::my_web3(const std::string& eth_address) :
+    is_connection_closed(false),
+    _eth_address(eth_address),
+    wss_thread(websocketpp::lib::bind(&my_web3::wss_connect,this))
+{
     wait_for_wss_connection();
-    t1.detach();
+    wait_for_wss_connection();
+    wss_thread.detach();
+    if(is_connection_closed)
+      throw NoConnectionException("Failed to establish connection. The link is invalid or Ethereum node is down.");
 }
 
 my_web3::~my_web3() {
@@ -52,6 +56,7 @@ void my_web3::wss_connect() {
   wait_for_wss_connection();
 
   asio_thread.join();
+  is_connection_closed = true;
 }
 
 void my_web3::message_handler(client* c, websocketpp::connection_hdl hdl, message_ptr msg) {
