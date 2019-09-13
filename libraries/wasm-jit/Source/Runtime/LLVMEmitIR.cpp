@@ -1141,18 +1141,17 @@ namespace LLVMJIT
 
       int current_prolouge = -8;
 
-		// Create LLVM pointer constants for the module's globals.
-		for(auto global : moduleInstance->globals) {
-         if(global->type.isMutable) {
-            globals.push_back(emitLiteralPointer((void*)current_prolouge,asLLVMType(global->type.valueType)->getPointerTo(256)));
+      for(const GlobalDef& global : module.globals.defs) {
+         if(global.type.isMutable) {
+            globals.push_back(emitLiteralPointer((void*)current_prolouge,asLLVMType(global.type.valueType)->getPointerTo(256)));
             current_prolouge -= 8;
          }
          else {
-            switch(global->type.valueType) {
-               case ValueType::i32: globals.push_back(emitLiteral(global->value.i32)); break;
-               case ValueType::i64: globals.push_back(emitLiteral(global->value.i64)); break;
-               case ValueType::f32: globals.push_back(emitLiteral(global->value.f32)); break;
-               case ValueType::f64: globals.push_back(emitLiteral(global->value.f64)); break;
+            switch(global.type.valueType) {
+               case ValueType::i32: globals.push_back(emitLiteral(global.initializer.i32)); break;
+               case ValueType::i64: globals.push_back(emitLiteral(global.initializer.i64)); break;
+               case ValueType::f32: globals.push_back(emitLiteral(global.initializer.f32)); break;
+               case ValueType::f64: globals.push_back(emitLiteral(global.initializer.f64)); break;
             }
          }
       }

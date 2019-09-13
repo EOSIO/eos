@@ -88,14 +88,6 @@ namespace Runtime
 			moduleInstance->defaultMemory = moduleInstance->memories[0];
 		}
 		
-		// Instantiate the module's global definitions.
-		for(const GlobalDef& globalDef : module.globals.defs)
-		{
-			const Value initialValue = evaluateInitializer(moduleInstance,globalDef.initializer);
-			errorUnless(initialValue.type == globalDef.type.valueType);
-			moduleInstance->globals.push_back(new GlobalInstance(globalDef.type,initialValue));
-		}
-		
 		// Create the FunctionInstance objects for the module's function definitions.
 		for(Uptr functionDefIndex = 0;functionDefIndex < module.functions.defs.size();++functionDefIndex)
 		{
