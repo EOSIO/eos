@@ -51,7 +51,7 @@ for FILE in $(ls $CICD_DIR/platforms); do
         "ICON": env.ICON
         }]')
 done
-# Triggered LRT
+# set build source whether triggered or not
 if [[ -z ${BUILDKITE_TRIGGERED_FROM_BUILD_ID} ]]; then
     export BUILD_SOURCE="--build \$BUILDKITE_BUILD_ID"
 fi
@@ -137,7 +137,7 @@ EOF
 
 EOF
     fi
-    if [ "$BUILDKITE_SOURCE" = 'schedule' ]; then
+    if [[ "$BUILDKITE_SOURCE" == 'schedule' | "$BUILDKITE_SOURCE" == 'trigger_job' ]]; then
         cat <<EOF
     concurrency: ${CONCURRENCY}
     concurrency_group: ${CONCURRENCY_GROUP}
@@ -197,7 +197,7 @@ EOF
 
 EOF
         fi
-        if [ "$BUILDKITE_SOURCE" = "schedule" ]; then
+        if [[ "$BUILDKITE_SOURCE" == 'schedule' | "$BUILDKITE_SOURCE" == 'trigger_job' ]]; then
             cat <<EOF
     concurrency: ${CONCURRENCY}
     concurrency_group: ${CONCURRENCY_GROUP}
@@ -252,7 +252,7 @@ EOF
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_SERIAL_TESTS}
 EOF
             fi
-            if [ "$BUILDKITE_SOURCE" = "schedule" ]; then
+            if [[ "$BUILDKITE_SOURCE" == 'schedule' | "$BUILDKITE_SOURCE" == 'trigger_job' ]]; then
                 cat <<EOF
     concurrency: ${CONCURRENCY}
     concurrency_group: ${CONCURRENCY_GROUP}
@@ -309,7 +309,7 @@ EOF
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_LONG_RUNNING_TESTS:-true}
 EOF
             fi
-            if [ "$BUILDKITE_SOURCE" = "schedule" ]; then
+            if [[ "$BUILDKITE_SOURCE" == 'schedule' | "$BUILDKITE_SOURCE" == 'trigger_job' ]]; then
                 cat <<EOF
     concurrency: ${CONCURRENCY}
     concurrency_group: ${CONCURRENCY_GROUP}
@@ -330,7 +330,7 @@ done
 if [[ -z $BUILDKITE_TRIGGERED_FROM_BUILD_ID && $BUILDKITE_PULL_REQUEST != "false" ]]; then
     if ( [[ ! $PINNED == false || $UNPINNED == true ]] ); then
     cat <<EOF
-  - label: ":pipeline: Trigger LRTs"
+  - label: ":pipeline: Trigger Long Running Tests"
     trigger: "eosio-lrt"
     async: true
     build:
@@ -353,7 +353,7 @@ fi
 if [[ -z $BUILDKITE_TRIGGERED_FROM_BUILD_ID && $BUILDKITE_PULL_REQUEST != "false" ]]; then
     if ( [[ ! $PINNED == false || $UNPINNED == true ]] ); then
     cat <<EOF
-  - label: ":pipeline: Trigger Multiversion"
+  - label: ":pipeline: Trigger Multiversion Test"
     trigger: "eos-multiversion-tests"
     async: true
     build:
