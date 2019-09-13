@@ -140,9 +140,6 @@ echo
 echo '  - wait'
 echo ''
 # tests
-IFS=$oIFS
-IFS=$''
-echo "    # round $ROUND of $ROUNDS"
 # parallel tests
 echo '    # parallel tests'
 echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
@@ -422,4 +419,3 @@ cat <<EOF
     skip: ${SKIP_PACKAGE_BUILDER}${SKIP_MAC}${SKIP_MACOS_10_14}
 
 EOF
-IFS=$oIFS
