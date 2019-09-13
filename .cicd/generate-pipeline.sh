@@ -157,6 +157,7 @@ echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
       queue: "$BUILDKITE_AGENT_QUEUE"
     timeout: ${TIMEOUT:-10}
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}\${SKIP_UNIT_TESTS}
+    parallelism: \${ROUNDS:-1}
 
 EOF
     else
@@ -180,6 +181,7 @@ EOF
     timeout: ${TIMEOUT:-20}
     agents: "queue=mac-anka-node-fleet"
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}\${SKIP_UNIT_TESTS}
+    parallelism: \${ROUNDS:-1}
 EOF
     fi
     if [[ "$BUILDKITE_SOURCE" = 'schedule' || "$BUILDKITE_PIPELINE_SLUG" == 'eosio-test-stability' ]]; then
@@ -211,6 +213,7 @@ echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
       queue: "$BUILDKITE_AGENT_QUEUE"
     timeout: ${TIMEOUT:-20}
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}\${SKIP_SERIAL_TESTS}
+    parallelism: \${ROUNDS:-1}
 EOF
         else
             CONCURRENCY=$MAC_CONCURRENCY
@@ -233,7 +236,7 @@ EOF
     timeout: ${TIMEOUT:-20}
     agents: "queue=mac-anka-node-fleet"
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}\${SKIP_SERIAL_TESTS}
-
+    parallelism: \${ROUNDS:-1}
 EOF
         fi
         if [[ "$BUILDKITE_SOURCE" = 'schedule' || "$BUILDKITE_PIPELINE_SLUG" == 'eosio-test-stability' ]]; then
@@ -267,7 +270,7 @@ echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
       queue: "$BUILDKITE_AGENT_QUEUE"
     timeout: ${TIMEOUT:-180}
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}\${SKIP_LONG_RUNNING_TESTS:-true}
-
+    parallelism: \${ROUNDS:-1}
 EOF
         else
             CONCURRENCY=$MAC_CONCURRENCY
@@ -290,6 +293,7 @@ EOF
     timeout: ${TIMEOUT:-180}
     agents: "queue=mac-anka-node-fleet"
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}\${SKIP_LONG_RUNNING_TESTS:-true}
+    parallelism: \${ROUNDS:-1}
 EOF
         fi
         if [[ "$BUILDKITE_SOURCE" = 'schedule' || "$BUILDKITE_PIPELINE_SLUG" == 'eosio-test-stability' ]]; then
