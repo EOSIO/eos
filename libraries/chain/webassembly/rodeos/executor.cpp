@@ -5,6 +5,7 @@
 #include <eosio/chain/apply_context.hpp>
 #include <eosio/chain/transaction_context.hpp>
 #include <eosio/chain/exceptions.hpp>
+#include <eosio/chain/types.hpp>
 
 #include <fc/scoped_exit.hpp>
 
@@ -128,6 +129,7 @@ executor::executor(const code_cache& cc) {
       printf("cb_offset %lu\n", memory::cb_offset);
       printf("remaining call depth: %li\n", -memory::cb_offset + offsetof(eosio::chain::rodeos::control_block, current_call_depth_remaining));
       printf("first intrinsic: %lu\n", memory::first_intrinsic_offset);
+      printf("current code offset: %li\n", -memory::cb_offset + offsetof(eosio::chain::rodeos::control_block, running_code_base));
       once_is_enough = true;
    }
 
@@ -155,7 +157,7 @@ executor::executor(const code_cache& cc) {
 
 void executor::execute(const code_descriptor& code, const memory& mem, apply_context& context) {
    if(mapping_is_executable == false) {
-      mprotect(code_mapping, code_mapping_size, PROT_EXEC);
+      mprotect(code_mapping, code_mapping_size, PROT_EXEC|PROT_READ);
       mapping_is_executable = true;
    }
 
@@ -183,20 +185,40 @@ void executor::execute(const code_descriptor& code, const memory& mem, apply_con
    cb->full_linear_memory_start = (uintptr_t)mem.full_page_memory_base();
    cb->jmp = &executors_sigjmp_buf;
    cb->bounce_buffers = &executors_bounce_buffers;
+   cb->running_code_base = (uintptr_t)(code_mapping + code.code_begin);
    cb->is_running = true;
+
+#if 0
+   context.trx_context.transaction_timer.set_expiry_callback([](void* user) {
+      executor* self = (executor*)user;
+      mprotect(code_mapping, code_mapping_size, PROT_NONE);
+      mapping_is_executable = false;
+   }, this);
+   context.trx_context.checktime(); //catch any expiration that might have occurred before setting up callback
+#endif
 
    auto reset_is_running = fc::make_scoped_exit([cb](){cb->is_running = false;});
    auto reset_bounce_buffers = fc::make_scoped_exit([cb](){cb->bounce_buffers->clear();});
+#if 0
+   auto reset_expiry_cb = fc::make_scoped_exit([&tt=context.trx_context.transaction_timer](){tt.set_expiry_callback(nullptr, nullptr);});
+#endif
 
-   vector<Value> args = {Value(context.get_receiver().to_uint64_t()),
-                           Value(context.get_action().account.to_uint64_t()),
-                           Value(context.get_action().name.to_uint64_t())};
-   FunctionInstance* call = asFunctionNullable(getInstanceExport(code.mi,"apply"));
+   void(*apply_func)(uint64_t, uint64_t, uint64_t) = (void(*)(uint64_t, uint64_t, uint64_t))(cb->running_code_base + code.apply_offset);
 
    switch(sigsetjmp(*cb->jmp, 0)) {
       case 0:
-         runInstanceStartFunc(code.mi); ///XXX
-         Runtime::invokeFunction(call,args); //XXX
+         code.start.visit(overloaded {
+            [&](const no_offset&) {},
+            [&](const intrinsic_ordinal& i) {
+               void(*start_func)() = (void(*)())(*(uintptr_t*)((uintptr_t)mem.zero_page_memory_base() - memory::first_intrinsic_offset - i.ordinal*8));
+               start_func();
+            },
+            [&](const code_offset& offs) {
+               void(*start_func)() = (void(*)())(cb->running_code_base + offs.offset);
+               start_func();
+            }
+         });
+         apply_func(context.get_receiver().to_uint64_t(), context.get_action().account.to_uint64_t(), context.get_action().name.to_uint64_t());
          break;
       //case 1: clean eosio_exit
       case 2: //checktime violation
@@ -210,14 +232,10 @@ void executor::execute(const code_descriptor& code, const memory& mem, apply_con
          std::rethrow_exception(*cb->eptr);
          break;
    }
-#if 0
-      if(code.start_offset >= 0) {
-         void(*start_func)() = (void(*)())(code_mapping + code.start_offset);
-         start_func();
-      }
-      void(*apply_func)(uint64_t, uint64_t, uint64_t) = (void(*)(uint64_t, uint64_t, uint64_t))(code_mapping + code.apply_offset);
-      apply_func(context.get_receiver().to_uint64_t(), context.get_action().account.to_uint64_t(), context.get_action().name.to_uint64_t());
-#endif
+}
+
+executor::~executor() {
+   arch_prctl(ARCH_SET_GS, nullptr);
 }
 
 }}}

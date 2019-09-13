@@ -17,16 +17,13 @@ namespace LLVMJIT
 	struct JITModuleBase
 	{
 		virtual ~JITModuleBase() {}
+
+      std::map<unsigned, uintptr_t> function_to_offsets;
+      std::vector<uint8_t> final_pic_code;
 	};
 
 	void init();
 	void instantiateModule(const IR::Module& module,Runtime::ModuleInstance* moduleInstance);
-	bool describeInstructionPointer(Uptr ip,std::string& outDescription);
-	
-	typedef void (*InvokeFunctionPointer)(void*,U64*);
-
-	// Generates an invoke thunk for a specific function type.
-	InvokeFunctionPointer getInvokeThunk(const IR::FunctionType* functionType);
 }
 
 namespace Runtime

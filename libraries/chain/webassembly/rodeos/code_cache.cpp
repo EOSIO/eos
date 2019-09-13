@@ -1,11 +1,25 @@
 #include <eosio/chain/webassembly/rodeos/code_cache.hpp>
 #include <eosio/chain/webassembly/rodeos/config.hpp>
+#include <eosio/chain/webassembly/common.hpp>
 #include <eosio/chain/exceptions.hpp>
+#include <eosio/chain/webassembly/rodeos/memory.hpp>
+#include <eosio/chain/webassembly/rodeos/rodeos.hpp>
 
 #include <unistd.h>
 #include <sys/syscall.h>
 #include <sys/mman.h>
 #include <linux/memfd.h>
+
+#include "IR/Module.h"
+#include "Platform/Platform.h"
+#include "WAST/WAST.h"
+#include "IR/Operators.h"
+#include "IR/Validate.h"
+#include "Runtime/Linker.h"
+#include "Runtime/Intrinsics.h"
+
+using namespace IR;
+using namespace Runtime;
 
 namespace eosio { namespace chain { namespace rodeos {
 
@@ -33,6 +47,7 @@ code_cache::code_cache(const boost::filesystem::path data_dir, const rodeos::con
 
    if(!bfs::exists(_cache_file_path)) {
       std::ofstream ofs(_cache_file_path.generic_string(), std::ofstream::trunc);
+      EOS_ASSERT(ofs.good(), database_exception, "unable to create EOS-VM Optimized Compiler code cache");
       bfs::resize_file(_cache_file_path, rodeos_config.cache_size);
       bip::file_mapping creation_mapping(_cache_file_path.generic_string().c_str(), bip::read_write);
       bip::mapped_region creation_region(creation_mapping, bip::read_write);
@@ -120,14 +135,121 @@ code_cache::~code_cache() {
    set_on_disk_region_dirty(false);
 }
 
-const code_descriptor* const code_cache::get_descriptor_for_code(const digest_type& code_id, const uint8_t& vm_version) {
+const code_descriptor* const code_cache::get_descriptor_for_code(const digest_type& code_id, const uint8_t& vm_version, const std::vector<uint8_t>& wasm, const std::vector<uint8_t>& initial_mem) {
    code_cache_index::index<by_hash>::type::iterator it = _cache_index.get<by_hash>().find(boost::make_tuple(code_id, vm_version));
    if(it != _cache_index.get<by_hash>().end()) {
       _cache_index.relocate(_cache_index.begin(), _cache_index.project<0>(it));
       return &*it;
    }
    
-   return nullptr;
+   Module module;
+   try {
+      Serialization::MemoryInputStream stream(wasm.data(), wasm.size());
+      WASM::serialize(stream, module);
+   } catch(const Serialization::FatalSerializationException& e) {
+      EOS_ASSERT(false, wasm_serialization_error, e.message.c_str());
+   } catch(const IR::ValidationException& e) {
+      EOS_ASSERT(false, wasm_serialization_error, e.message.c_str());
+   }
+
+   ModuleInstance* instance;
+   try {
+      eosio::chain::webassembly::common::root_resolver resolver;
+      LinkResult link_result = linkModule(module, resolver);
+      instance = instantiateModule(module, std::move(link_result.resolvedImports));
+      EOS_ASSERT(instance != nullptr, wasm_exception, "Fail to Instantiate WAVM Module");
+   }
+   catch(const Runtime::Exception& e) {
+      EOS_THROW(wasm_execution_error, "Failed to stand up WAVM instance: ${m}", ("m", describeExceptionCause(e.cause)));
+   }
+   catch(const std::runtime_error& e) { ///XXX here to catch WAVM_ASSERTS
+      EOS_THROW(wasm_execution_error, "Failed to stand up WAVM instance");
+   }
+
+   code_descriptor cd;
+   cd.code_hash = code_id;
+   cd.vm_version = vm_version;
+   cd.codegen_version = 0;
+
+   const std::map<unsigned, uintptr_t>& function_to_offsets = getFunctionOffsets(instance);
+   const std::vector<uint8_t>& pic = getPICCode(instance);
+
+   void* allocated_code = allocator->allocate(pic.size());
+   memcpy(allocated_code, pic.data(), pic.size());
+   uintptr_t placed_code_in = (char*)allocated_code-_code_mapping;
+   cd.code_begin = placed_code_in;
+
+   if(module.startFunctionIndex == UINTPTR_MAX)
+      cd.start = no_offset{};
+   else if(module.startFunctionIndex < module.functions.imports.size())
+      cd.start = intrinsic_ordinal{getOffsetOfIntrinsicFunction(instance, module.startFunctionIndex)};
+   else
+      cd.start = code_offset{function_to_offsets.at(module.startFunctionIndex-module.functions.imports.size())};
+
+   for(const Export& exprt : module.exports) {
+      if(exprt.name == "apply")
+         cd.apply_offset = function_to_offsets.at(exprt.index-module.functions.imports.size());
+   }
+
+   cd.starting_memory_pages = -1;
+   if(module.memories.size())
+      cd.starting_memory_pages = module.memories.defs.at(0).type.size.min;
+
+   std::vector<uint8_t> prolouge(memory::cb_offset); ///XXX not the best use of variable
+   std::vector<uint8_t>::iterator prolouge_it = prolouge.end();
+
+   //set up mutable globals
+   union global_union {
+      int64_t i64;
+      int32_t i32;
+      float f32;
+      double f64;
+   };
+
+   for(const GlobalDef& global : module.globals.defs) {
+      if(!global.type.isMutable)
+         continue;
+      prolouge_it -= 8;
+      global_union* const u = (global_union* const)&*prolouge_it;
+
+      switch(global.initializer.type) {
+         case InitializerExpression::Type::i32_const: u->i32 = global.initializer.i32; break;
+         case InitializerExpression::Type::i64_const: u->i64 = global.initializer.i64; break;
+         case InitializerExpression::Type::f32_const: u->f32 = global.initializer.f32; break;
+         case InitializerExpression::Type::f64_const: u->f64 = global.initializer.f64; break;
+      }
+   }
+
+   struct table_entry {
+      uintptr_t type;
+      int64_t func;    //>= 0 means offset to code in wasm; < 0 means intrinsic call at offset address
+   };
+
+   if(module.tables.size())
+      prolouge_it -= sizeof(table_entry) * module.tables.defs[0].type.size.min;
+
+   for(const TableSegment& table_segment : module.tableSegments) {
+      struct table_entry* table_index_0 = (struct table_entry*)&*prolouge_it;
+
+      for(Uptr i = 0; i < table_segment.indices.size(); ++i) {
+         const Uptr function_index = table_segment.indices[i];
+         const long int effective_table_index = table_segment.baseOffset.i32 + i;
+         EOS_ASSERT(effective_table_index < module.tables.defs[0].type.size.min, wasm_execution_error, "table init out of bounds");
+
+         table_index_0[effective_table_index].type = getFunctionTypePtr(instance, function_index);
+
+         if(function_index < module.functions.imports.size())
+            table_index_0[effective_table_index].func = getOffsetOfIntrinsicFunction(instance, function_index)*-8;
+         else
+            table_index_0[effective_table_index].func = function_to_offsets.at(function_index - module.functions.imports.size());
+      }
+   }
+
+   cd.initdata_pre_memory_size = prolouge.end() - prolouge_it;
+   std::move(prolouge_it, prolouge.end(), std::back_inserter(cd.initdata));
+   std::move(initial_mem.begin(), initial_mem.end(), std::back_inserter(cd.initdata));
+
+   return &*_cache_index.push_front(std::move(cd)).first;
 }
 
 }}}

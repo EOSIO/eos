@@ -18,8 +18,8 @@ namespace wasm_constraints = eosio::chain::wasm_constraints;
 
 class wabt_instantiated_module : public wasm_instantiated_module_interface {
    public:
-      wabt_instantiated_module(std::unique_ptr<interp::Environment> e, std::vector<uint8_t> initial_mem, interp::DefinedModule* mod) :
-         _env(move(e)), _instatiated_module(mod), _initial_memory(initial_mem),
+      wabt_instantiated_module(std::unique_ptr<interp::Environment> e, std::vector<uint8_t>&& initial_mem, interp::DefinedModule* mod) :
+         _env(move(e)), _instatiated_module(mod), _initial_memory(std::move(initial_mem)),
          _executor(_env.get(), nullptr, Thread::Options(64*1024,
                                                         wasm_constraints::maximum_call_depth+2))
       {
@@ -73,7 +73,8 @@ class wabt_instantiated_module : public wasm_instantiated_module_interface {
 
 wabt_runtime::wabt_runtime() {}
 
-std::unique_ptr<wasm_instantiated_module_interface> wabt_runtime::instantiate_module(const char* code_bytes, size_t code_size, std::vector<uint8_t> initial_memory) {
+std::unique_ptr<wasm_instantiated_module_interface> wabt_runtime::instantiate_module(std::vector<uint8_t>&& wasm, std::vector<uint8_t>&& initial_memory,
+                                                                                     const digest_type& code_hash, const uint8_t& vm_type, const uint8_t& vm_version) {
    std::unique_ptr<interp::Environment> env = std::make_unique<interp::Environment>();
    for(auto it = intrinsic_registrator::get_map().begin() ; it != intrinsic_registrator::get_map().end(); ++it) {
       interp::HostModule* host_module = env->AppendHostModule(it->first);
@@ -90,10 +91,10 @@ std::unique_ptr<wasm_instantiated_module_interface> wabt_runtime::instantiate_mo
    interp::DefinedModule* instantiated_module = nullptr;
    wabt::Errors errors;
 
-   wabt::Result res = ReadBinaryInterp(env.get(), code_bytes, code_size, read_binary_options, &errors, &instantiated_module);
+   wabt::Result res = ReadBinaryInterp(env.get(), wasm.data(), wasm.size(), read_binary_options, &errors, &instantiated_module);
    EOS_ASSERT( Succeeded(res), wasm_execution_error, "Error building wabt interp: ${e}", ("e", wabt::FormatErrorsToString(errors, Location::Type::Binary)) );
 
-   return std::make_unique<wabt_instantiated_module>(std::move(env), initial_memory, instantiated_module);
+   return std::make_unique<wabt_instantiated_module>(std::move(env), std::move(initial_memory), instantiated_module);
 }
 
 void wabt_runtime::immediately_exit_currently_running_module() {

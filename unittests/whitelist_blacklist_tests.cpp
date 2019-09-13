@@ -34,6 +34,7 @@ class whitelist_blacklist_tester {
          cfg.reversible_cache_size = 1024*1024*8;
          cfg.reversible_guard_size = 0;
          cfg.contracts_console = true;
+         cfg.rodeos_config.cache_size = 1024*1024*8;
 
          cfg.genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
          cfg.genesis.initial_key = base_tester::get_public_key( config::system_account_name, "active" );
