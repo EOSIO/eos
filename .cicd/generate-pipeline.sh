@@ -52,10 +52,12 @@ for FILE in $(ls $CICD_DIR/platforms); do
         }]')
 done
 # set build source whether triggered or not
-if [[ -z ${BUILDKITE_TRIGGERED_FROM_BUILD_ID} ]]; then
-    export BUILD_SOURCE="--build \$BUILDKITE_BUILD_ID"
+if [[ ! -z ${BUILDKITE_TRIGGERED_FROM_BUILD_ID} ]]; then
+    export BUILD_SOURCE="--build \$BUILDKITE_TRIGGERED_FROM_BUILD_ID}"
+    LINUX_CONCURRENCY_GROUP="eos-trigger-linux-${BUILDKITE_BUILD_NUMBER}"
+    MAC_CONCURRENCY_GROUP="eos-trigger-mac"
 fi
-export BUILD_SOURCE=${BUILD_SOURCE:---build \$BUILDKITE_TRIGGERED_FROM_BUILD_ID}
+export BUILD_SOURCE=${BUILD_SOURCE:---build \$BUILDKITE_BUILD_ID}
 oIFS="$IFS"
 IFS=$''
 nIFS=$IFS # fix array splitting (\n won't work)
