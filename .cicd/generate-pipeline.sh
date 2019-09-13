@@ -135,8 +135,7 @@ EOF
           debug: true
           wait-network: true
     timeout: ${TIMEOUT:-180}
-    agents:
-      - "queue=mac-anka-large-node-fleet"
+    agents: "queue=mac-anka-large-node-fleet"
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_BUILD}
 
 EOF
@@ -195,8 +194,7 @@ EOF
           debug: true
           wait-network: true
     timeout: ${TIMEOUT:-20}
-    agents:
-      - "queue=mac-anka-node-fleet"
+    agents: "queue=mac-anka-node-fleet"
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_UNIT_TESTS}
 
 EOF
@@ -251,8 +249,7 @@ EOF
           debug: true
           wait-network: true
     timeout: ${TIMEOUT:-20}
-    agents:
-      - "queue=mac-anka-node-fleet"
+    agents: "queue=mac-anka-node-fleet"
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_SERIAL_TESTS}
 EOF
             fi
@@ -308,8 +305,7 @@ EOF
           debug: true
           wait-network: true
     timeout: ${TIMEOUT:-180}
-    agents:
-      - "queue=mac-anka-node-fleet"
+    agents: "queue=mac-anka-node-fleet"
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_LONG_RUNNING_TESTS:-true}
 EOF
             fi
