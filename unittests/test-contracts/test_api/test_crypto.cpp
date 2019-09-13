@@ -177,6 +177,7 @@ extern "C" {
             return false;
          }
       }
+      return true;
    }
 }
 
