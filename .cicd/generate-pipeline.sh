@@ -97,7 +97,6 @@ EOF
 done
 echo '  - wait'
 echo ''
-exit
 # build steps
 echo '    # builds'
 echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
