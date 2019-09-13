@@ -54,7 +54,7 @@ done
 # set build source whether triggered or not
 if [[ ! -z ${BUILDKITE_TRIGGERED_FROM_BUILD_ID} ]]; then
     export BUILD_SOURCE="--build \$BUILDKITE_TRIGGERED_FROM_BUILD_ID"
-    LINUX_CONCURRENCY_GROUP="eos-trigger-linux-${BUILDKITE_BUILD_NUMBER}"
+    LINUX_CONCURRENCY_GROUP="eos-trigger-linux"
     MAC_CONCURRENCY_GROUP="eos-trigger-mac"
 fi
 export BUILD_SOURCE=${BUILD_SOURCE:---build \$BUILDKITE_BUILD_ID}
