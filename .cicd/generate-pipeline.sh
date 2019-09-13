@@ -48,6 +48,15 @@ for FILE in $(ls $CICD_DIR/platforms); do
         "ICON": env.ICON
         }]')
 done
+# set build_source whether triggered or not
+if [[ ! -z ${BUILDKITE_TRIGGERED_FROM_BUILD_ID} ]]; then
+    export BUILD_SOURCE="--build \$BUILDKITE_TRIGGERED_FROM_BUILD_ID"
+fi
+export BUILD_SOURCE=${BUILD_SOURCE:---build \$BUILDKITE_BUILD_ID}
+# set trigger_job if master/release/develop branch and webhook
+if [[ $BUILDKITE_BRANCH =~ ^release/[0-9]+\.[0-9]+\.x$ || $BUILDKITE_BRANCH =~ ^master$ || $BUILDKITE_BRANCH =~ ^develop$ ]]; then
+    [[ $BUILDKITE_SOURCE == 'webhook' ]] && export TRIGGER_JOB=true
+fi
 oIFS="$IFS"
 IFS=$''
 nIFS=$IFS # fix array splitting (\n won't work)
@@ -96,7 +105,7 @@ echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
     agents:
       queue: "automation-eos-builder-fleet"
     timeout: ${TIMEOUT:-180}
-    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}\${SKIP_BUILD}
+    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_BUILD}
 
 EOF
     else
@@ -119,7 +128,7 @@ EOF
           wait-network: true
     timeout: ${TIMEOUT:-180}
     agents: "queue=mac-anka-large-node-fleet"
-    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}\${SKIP_BUILD}
+    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_BUILD}
 
 EOF
     fi
@@ -146,7 +155,7 @@ for ROUND in $(seq 1 $ROUNDS); do
     agents:
       queue: "automation-eos-builder-fleet"
     timeout: ${TIMEOUT:-10}
-    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}\${SKIP_UNIT_TESTS}
+    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_UNIT_TESTS}
 
 EOF
         else
@@ -167,7 +176,7 @@ EOF
           wait-network: true
     timeout: ${TIMEOUT:-20}
     agents: "queue=mac-anka-node-fleet"
-    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}\${SKIP_UNIT_TESTS}
+    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_UNIT_TESTS}
 
 EOF
         fi
@@ -190,7 +199,7 @@ EOF
     agents:
       queue: "automation-eos-builder-fleet"
     timeout: ${TIMEOUT:-20}
-    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}\${SKIP_SERIAL_TESTS}
+    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_SERIAL_TESTS}
 
 EOF
             else
@@ -211,7 +220,7 @@ EOF
           wait-network: true
     timeout: ${TIMEOUT:-20}
     agents: "queue=mac-anka-node-fleet"
-    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}\${SKIP_SERIAL_TESTS}
+    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_SERIAL_TESTS}
 
 EOF
             fi
@@ -228,7 +237,7 @@ EOF
                 cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
     command:
-      - "buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz"
+      - "buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' ${BUILD_SOURCE} && tar -xzf build.tar.gz"
       - "./.cicd/test.sh scripts/long-running-test.sh $TEST_NAME"
     env:
       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
@@ -236,7 +245,7 @@ EOF
     agents:
       queue: "automation-eos-builder-fleet"
     timeout: ${TIMEOUT:-180}
-    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}\${SKIP_LONG_RUNNING_TESTS:-true}
+    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_LONG_RUNNING_TESTS:-true}
 
 EOF
             else
@@ -244,7 +253,7 @@ EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - $TEST_NAME"
     command:
       - "git clone \$BUILDKITE_REPO eos && cd eos && git checkout \$BUILDKITE_COMMIT && git submodule update --init --recursive"
-      - "cd eos && buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz"
+      - "cd eos && buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' ${BUILD_SOURCE} && tar -xzf build.tar.gz"
       - "cd eos && ./.cicd/test.sh scripts/long-running-test.sh $TEST_NAME"
     plugins:
       - chef/anka#v0.5.1:
@@ -257,7 +266,7 @@ EOF
           wait-network: true
     timeout: ${TIMEOUT:-180}
     agents: "queue=mac-anka-node-fleet"
-    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}\${SKIP_LONG_RUNNING_TESTS:-true}
+    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_LONG_RUNNING_TESTS:-true}
 
 EOF
             fi
@@ -270,6 +279,47 @@ EOF
         echo ''
     fi
 done
+# trigger eosio-lrt post pr
+if [[ -z $BUILDKITE_TRIGGERED_FROM_BUILD_ID && $TRIGGER_JOB == "true" ]]; then
+    if ( [[ ! $PINNED == false || $UNPINNED == true ]] ); then
+    cat <<EOF
+  - label: ":pipeline: Trigger Long Running Tests"
+    trigger: "eosio-lrt"
+    async: true
+    build:
+      message: "${BUILDKITE_MESSAGE}"
+      commit: "${BUILDKITE_COMMIT}"
+      branch: "${BUILDKITE_BRANCH}"
+      env:
+        BUILDKITE_PULL_REQUEST: "${BUILDKITE_PULL_REQUEST}"
+        BUILDKITE_PULL_REQUEST_BASE_BRANCH: "${BUILDKITE_PULL_REQUEST_BASE_BRANCH}"
+        BUILDKITE_PULL_REQUEST_REPO: "${BUILDKITE_PULL_REQUEST_REPO}"
+        SKIP_BUILD: "true"
+        PINNED: "${PINNED}"
+        UNPINNED: "${UNPINNED}"
+
+EOF
+    fi
+fi
+# trigger multiversion post pr
+if [[ -z $BUILDKITE_TRIGGERED_FROM_BUILD_ID && $TRIGGER_JOB = "true" ]]; then
+    if ( [[ ! $PINNED == false || $UNPINNED == true ]] ); then
+    cat <<EOF
+  - label: ":pipeline: Trigger Multiversion Test"
+    trigger: "eos-multiversion-tests"
+    async: true
+    build:
+      message: "${BUILDKITE_MESSAGE}"
+      commit: "${BUILDKITE_COMMIT}"
+      branch: "${BUILDKITE_BRANCH}"
+      env:
+        BUILDKITE_PULL_REQUEST: "${BUILDKITE_PULL_REQUEST}"
+        BUILDKITE_PULL_REQUEST_BASE_BRANCH: "${BUILDKITE_PULL_REQUEST_BASE_BRANCH}"
+        BUILDKITE_PULL_REQUEST_REPO: "${BUILDKITE_PULL_REQUEST_REPO}"
+
+EOF
+    fi
+fi
 # pipeline tail
 cat <<EOF
   - wait:
