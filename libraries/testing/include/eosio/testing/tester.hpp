@@ -84,6 +84,59 @@ namespace eosio { namespace testing {
 
    protocol_feature_set make_protocol_feature_set(const subjective_restriction_map& custom_subjective_restrictions = {});
 
+   namespace mock {
+      using namespace fc::crypto;
+      struct webauthn_private_key {
+         explicit webauthn_private_key(r1::private_key&& priv_key)
+         :priv_key(std::move(priv_key))
+         {
+         }
+
+         webauthn_private_key(webauthn_private_key&&) = default;
+         webauthn_private_key(const webauthn_private_key&) = default;
+
+         static auto regenerate(const fc::sha256& secret) {
+            return webauthn_private_key(r1::private_key::regenerate(secret));
+         }
+
+         public_key get_public_key(webauthn::public_key::user_presence_t presence = webauthn::public_key::user_presence_t::USER_PRESENCE_NONE) const {
+            return public_key_type(webauthn::public_key(priv_key.get_public_key().serialize(), presence, _origin));
+         }
+
+         signature sign( const sha256& digest, bool = true) const {
+            auto json = std::string("{\"origin\":\"https://") +
+                        _origin +
+                        "\",\"type\":\"webauthn.get\",\"challenge\":\"" +
+                        fc::base64url_encode(digest.data(), digest.data_size()) +
+                        "\"}";
+            std::vector<uint8_t> auth_data(37);
+            memcpy(auth_data.data(), _origin_hash.data(), sizeof(_origin_hash));
+
+            auto client_data_hash = fc::sha256::hash(json);
+            fc::sha256::encoder e;
+            e.write((char*)auth_data.data(), auth_data.size());
+            e.write(client_data_hash.data(), client_data_hash.data_size());
+            auto sig = priv_key.sign_compact(e.result());
+
+            char serialized_sig[4096];
+            datastream<char*> sig_ds(serialized_sig, sizeof(serialized_sig));
+            fc::raw::pack(sig_ds, (uint8_t)signature::storage_type::position<webauthn::signature>());
+            fc::raw::pack(sig_ds, sig);
+            fc::raw::pack(sig_ds, auth_data);
+            fc::raw::pack(sig_ds, json);
+            sig_ds.seekp(0);
+
+            signature ret;
+            fc::raw::unpack(sig_ds, ret);
+            return ret;
+         }
+
+         r1::private_key priv_key;
+         static const std::string _origin;
+         static const fc::sha256 _origin_hash;
+      };
+   }
+
    /**
     *  @class tester
     *  @brief provides utility function to simplify the creation of unit tests
@@ -223,12 +276,17 @@ namespace eosio { namespace testing {
          }
 
          template< typename KeyType = fc::ecc::private_key_shim >
-         static private_key_type get_private_key( name keyname, string role = "owner" ) {
-            return private_key_type::regenerate<KeyType>(fc::sha256::hash(keyname.to_string()+role));
+         static auto get_private_key( name keyname, string role = "owner" ) {
+            auto secret = fc::sha256::hash(keyname.to_string() + role);
+            if constexpr (std::is_same_v<KeyType, mock::webauthn_private_key>) {
+               return mock::webauthn_private_key::regenerate(secret);
+            } else {
+               return private_key_type::regenerate<KeyType>(secret);
+            }
          }
 
          template< typename KeyType = fc::ecc::private_key_shim >
-         static public_key_type get_public_key( name keyname, string role = "owner" ) {
+         static auto get_public_key( name keyname, string role = "owner" ) {
             return get_private_key<KeyType>( keyname, role ).get_public_key();
          }
 

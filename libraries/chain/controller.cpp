@@ -981,7 +981,7 @@ struct controller_impl {
       });
 
       db.create<protocol_state_object>([&](auto& pso ){
-         pso.num_supported_key_types = 2;
+         pso.num_supported_key_types = config::genesis_num_supported_key_types;
          for( const auto& i : genesis_intrinsics ) {
             add_intrinsic_to_whitelist( pso.whitelisted_intrinsics, i );
          }
