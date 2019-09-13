@@ -188,20 +188,16 @@ void executor::execute(const code_descriptor& code, const memory& mem, apply_con
    cb->running_code_base = (uintptr_t)(code_mapping + code.code_begin);
    cb->is_running = true;
 
-#if 0
-   context.trx_context.transaction_timer.set_expiry_callback([](void* user) {
+   context.trx_context.transaction_timer.set_expiration_callback([](void* user) {
       executor* self = (executor*)user;
-      mprotect(code_mapping, code_mapping_size, PROT_NONE);
-      mapping_is_executable = false;
+      mprotect(self->code_mapping, self->code_mapping_size, PROT_NONE);
+      self->mapping_is_executable = false;
    }, this);
    context.trx_context.checktime(); //catch any expiration that might have occurred before setting up callback
-#endif
 
    auto reset_is_running = fc::make_scoped_exit([cb](){cb->is_running = false;});
    auto reset_bounce_buffers = fc::make_scoped_exit([cb](){cb->bounce_buffers->clear();});
-#if 0
-   auto reset_expiry_cb = fc::make_scoped_exit([&tt=context.trx_context.transaction_timer](){tt.set_expiry_callback(nullptr, nullptr);});
-#endif
+   auto reset_expiry_cb = fc::make_scoped_exit([&tt=context.trx_context.transaction_timer](){tt.set_expiration_callback(nullptr, nullptr);});
 
    void(*apply_func)(uint64_t, uint64_t, uint64_t) = (void(*)(uint64_t, uint64_t, uint64_t))(cb->running_code_base + code.apply_offset);
 
