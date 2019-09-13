@@ -47,6 +47,7 @@ namespace chain {
          friend class eosio::net_plugin_impl;
          friend struct eosio::handshake_message;
          friend class block_log;
+         friend class controller;
          friend struct controller_impl;
          friend class global_property_object;
          friend struct snapshot_global_property_object;

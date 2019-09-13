@@ -678,17 +678,23 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       my->chain_config->maximum_variable_signature_length = options.at( "maximum-variable-signature-length" ).as<uint32_t>();
 
       if( options.count( "extract-genesis-json" ) || options.at( "print-genesis-json" ).as<bool>()) {
-         genesis_state gs;
+         fc::optional<genesis_state> gs;
 
          if( fc::exists( my->blocks_dir / "blocks.log" )) {
             gs = block_log::extract_genesis_state( my->blocks_dir );
+            EOS_ASSERT( gs,
+                        plugin_config_exception,
+                        "Block log at '${path}' does not contain a genesis state, it only has the chain-id.",
+                        ("path", (my->blocks_dir / "blocks.log").generic_string())
+            );
          } else {
             wlog( "No blocks.log found at '${p}'. Using default genesis state.",
                   ("p", (my->blocks_dir / "blocks.log").generic_string()));
+            gs.emplace();
          }
 
          if( options.at( "print-genesis-json" ).as<bool>()) {
-            ilog( "Genesis JSON:\n${genesis}", ("genesis", json::to_pretty_string( gs )));
+            ilog( "Genesis JSON:\n${genesis}", ("genesis", json::to_pretty_string( *gs )));
          }
 
          if( options.count( "extract-genesis-json" )) {
@@ -698,7 +704,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
                p = bfs::current_path() / p;
             }
 
-            EOS_ASSERT( fc::json::save_to_file( gs, p, true ),
+            EOS_ASSERT( fc::json::save_to_file( *gs, p, true ),
                         misc_exception,
                         "Error occurred while writing genesis JSON to '${path}'",
                         ("path", p.generic_string())
@@ -781,6 +787,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          auto infile = std::ifstream(my->snapshot_path->generic_string(), (std::ios::in | std::ios::binary));
          auto reader = std::make_shared<istream_snapshot_reader>(infile);
          reader->validate();
+         my->chain_id = controller::extract_chain_id(reader);
          infile.close();
 
          EOS_ASSERT( options.count( "genesis-timestamp" ) == 0,
@@ -798,16 +805,17 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          if( fc::is_regular_file( my->blocks_dir / "blocks.log" )) {
             auto log_genesis = block_log::extract_genesis_state(my->blocks_dir);
             if (log_genesis) {
-               if ()
-
+               my->genesis = log_genesis;
+               EOS_ASSERT( my->genesis->compute_chain_id() == *my->chain_id,
+                           plugin_config_exception,
+                           "snapshot chain id does not match the chain id from the genesis state in the block log.");
             }
             else {
-
+               auto block_log_chain_id = block_log::extract_chain_id(my->blocks_dir);
+               EOS_ASSERT( block_log_chain_id == *my->chain_id,
+                           plugin_config_exception,
+                           "snapshot chain id does not match the chain id in the block log.");
             }
-            FIX
-            EOS_ASSERT( log_genesis.compute_chain_id() == my->chain_config->genesis.compute_chain_id(),
-                    plugin_config_exception,
-                    "Genesis information in blocks.log does not match genesis information in the snapshot");
          }
 
       } else {
@@ -816,8 +824,14 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          fc::optional<genesis_state> existing_genesis;
 
          if( fc::exists( my->blocks_dir / "blocks.log" ) ) {
-            my->chain_config->genesis = block_log::extract_genesis_state( my->blocks_dir );
-            existing_genesis = my->chain_config->genesis;
+            my->genesis = block_log::extract_genesis_state( my->blocks_dir );
+            existing_genesis = my->genesis;
+            if (my->genesis) {
+               my->chain_id = my->genesis->compute_chain_id();
+            }
+            else {
+               my->chain_id = block_log::extract_chain_id( my->blocks_dir );
+            }
          }
 
          if( options.count( "genesis-json" )) {
@@ -831,10 +845,10 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
                        "Specified genesis file '${genesis}' does not exist.",
                        ("genesis", genesis_file.generic_string()));
 
-            my->chain_config->genesis = fc::json::from_file( genesis_file ).as<genesis_state>();
+            my->genesis = fc::json::from_file( genesis_file ).as<genesis_state>();
 
             if( options.count( "genesis-timestamp" ) ) {
-               my->chain_config->genesis.initial_timestamp = calculate_genesis_timestamp( options.at( "genesis-timestamp" ).as<string>() );
+               my->genesis->initial_timestamp = calculate_genesis_timestamp( options.at( "genesis-timestamp" ).as<string>() );
                genesis_timestamp_specified = true;
             }
          }
@@ -844,7 +858,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
                         "--genesis-timestamp is only valid if also passed in with --genesis-json");
          }
 
-         if( !existing_genesis ) {
+         if( !existing_genesis && !my->chain_id ) {
             if( !genesis_file.empty() ) {
                if( genesis_timestamp_specified ) {
                   ilog( "Using genesis state provided in '${genesis}' but with adjusted genesis timestamp",
@@ -853,16 +867,26 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
                   ilog( "Using genesis state provided in '${genesis}'", ("genesis", genesis_file.generic_string()));
                }
                wlog( "Starting up fresh blockchain with provided genesis state." );
-            } else if( genesis_timestamp_specified ) {
-               wlog( "Starting up fresh blockchain with default genesis state but with adjusted genesis timestamp." );
             } else {
                wlog( "Starting up fresh blockchain with default genesis state." );
+               my->genesis.emplace();
             }
+            my->chain_id = my->genesis->compute_chain_id();
          } else {
-            EOS_ASSERT( my->chain_config->genesis == *existing_genesis, plugin_config_exception,
-                        "Genesis state provided via command line arguments does not match the existing genesis state in blocks.log. "
-                        "It is not necessary to provide genesis state arguments when a blocks.log file already exists."
-                      );
+            if (existing_genesis) {
+               EOS_ASSERT( *my->genesis == *existing_genesis, plugin_config_exception,
+                           "Genesis state provided via command line arguments does not match the existing genesis state"
+                           " in blocks.log. It is not necessary to provide genesis state arguments when a blocks.log "
+                           "file already exists."
+               );
+            }
+            else if (my->genesis) {
+               EOS_ASSERT( my->genesis->compute_chain_id() == *my->chain_id, plugin_config_exception,
+                           "Genesis state, provided via command line arguments, has a chain_id that does not match the "
+                           "existing chain id in blocks.log. It is not necessary to provide genesis state arguments "
+                           "when a blocks.log file already exists."
+               );
+            }
          }
       }
 
@@ -881,7 +905,6 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 #endif
 
       my->chain.emplace( *my->chain_config, std::move(pfs) );
-      my->chain_id.emplace( my->chain->get_chain_id());
 
       // set up method providers
       my->get_block_by_number_provider = app().get_method<methods::get_block_by_number>().register_provider(
@@ -954,9 +977,13 @@ void chain_plugin::plugin_startup()
          auto reader = std::make_shared<istream_snapshot_reader>(infile);
          my->chain->startup(shutdown, reader);
          infile.close();
+      } else if (my->chain->db().revision() < 1) {
+         my->chain->startup(shutdown, *my->genesis);
       } else {
          my->chain->startup(shutdown);
       }
+      // ensure that our cached id is set to the chain's actual id
+      my->chain_id = my->chain->get_chain_id();
    } catch (const database_guard_exception& e) {
       log_guard_exception(e);
       // make sure to properly close the db
@@ -968,8 +995,13 @@ void chain_plugin::plugin_startup()
       ilog("starting chain in read/write mode");
    }
 
-   ilog("Blockchain started; head block is #${num}, genesis timestamp is ${ts}",
-        ("num", my->chain->head_block_num())("ts", (std::string)my->chain_config->genesis.initial_timestamp));
+   if (my->genesis) {
+      ilog("Blockchain started; head block is #${num}, genesis timestamp is ${ts}",
+           ("num", my->chain->head_block_num())("ts", (std::string)my->genesis->initial_timestamp));
+   }
+   else {
+      ilog("Blockchain started; head block is #${num}", ("num", my->chain->head_block_num()));
+   }
 
    my->chain_config.reset();
 } FC_CAPTURE_AND_RETHROW() }
