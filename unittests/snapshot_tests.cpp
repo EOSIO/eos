@@ -1,5 +1,6 @@
 #include <sstream>
 
+#include <eosio/chain/block_log.hpp>
 #include <eosio/chain/global_property_object.hpp>
 #include <eosio/chain/snapshot.hpp>
 #include <eosio/testing/tester.hpp>
@@ -51,27 +52,13 @@ public:
    enum config_file_handling { dont_copy_config_files, copy_config_files };
    snapshotted_tester(controller::config config, const snapshot_reader_ptr& snapshot, int ordinal,
            config_file_handling copy_files_from_config = config_file_handling::dont_copy_config_files) {
-      FC_ASSERT(config.genesis, "Must pass in chain_id if config does not have genesis");
-      _init(config, snapshot, ordinal, fc::optional<chain_id_type>(config.genesis->compute_chain_id()), copy_files_from_config);
-   }
-
-   snapshotted_tester(controller::config config, const snapshot_reader_ptr& snapshot, int ordinal,
-                      const fc::optional<chain_id_type>& chain_id,
-                      config_file_handling copy_files_from_config = config_file_handling::dont_copy_config_files) {
-      _init(config, snapshot, ordinal, chain_id, copy_files_from_config);
-   }
-
-   void _init(controller::config config, const snapshot_reader_ptr& snapshot, int ordinal,
-             const fc::optional<chain_id_type>& chain_id,
-             config_file_handling copy_files_from_config = config_file_handling::dont_copy_config_files) {
       FC_ASSERT(config.blocks_dir.filename().generic_string() != "."
                 && config.state_dir.filename().generic_string() != ".", "invalid path names in controller::config");
 
       controller::config copied_config = (copy_files_from_config == copy_config_files)
                                          ? copy_config_and_files(config, ordinal) : copy_config(config, ordinal);
 
-      copied_config.genesis = fc::optional<genesis_state>();
-      init(copied_config, snapshot, chain_id);
+      init(copied_config, snapshot);
    }
 
    signed_block_ptr produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms) )override {
@@ -379,8 +366,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_replay_over_snapshot, SNAPSHOT_SUITE, snapsho
 
    // replay the block log from the snapshot child, from the snapshot
    using config_file_handling = snapshotted_tester::config_file_handling;
-   chain_id_type chain_id = chain.control->get_chain_id();
-   snapshotted_tester replay_chain(snap_chain.get_config(), SNAPSHOT_SUITE::get_reader(snapshot), ordinal++, chain_id, config_file_handling::copy_config_files);
+   snapshotted_tester replay_chain(snap_chain.get_config(), SNAPSHOT_SUITE::get_reader(snapshot), ordinal++, config_file_handling::copy_config_files);
    const auto replay_head = replay_chain.control->head_block_num();
    auto snap_head = snap_chain.control->head_block_num();
    BOOST_REQUIRE_EQUAL(replay_head, snap_chain.control->last_irreversible_block_num());
@@ -397,7 +383,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_replay_over_snapshot, SNAPSHOT_SUITE, snapsho
    verify_integrity_hash<SNAPSHOT_SUITE>(*chain.control, *snap_chain.control);
    verify_integrity_hash<SNAPSHOT_SUITE>(*chain.control, *replay_chain.control);
 
-   snapshotted_tester replay2_chain(snap_chain.get_config(), SNAPSHOT_SUITE::get_reader(snapshot), ordinal++, chain_id, config_file_handling::copy_config_files);
+   snapshotted_tester replay2_chain(snap_chain.get_config(), SNAPSHOT_SUITE::get_reader(snapshot), ordinal++, config_file_handling::copy_config_files);
    const auto replay2_head = replay2_chain.control->head_block_num();
    snap_head = snap_chain.control->head_block_num();
    BOOST_REQUIRE_EQUAL(replay2_head, snap_chain.control->last_irreversible_block_num());
@@ -409,7 +395,9 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_replay_over_snapshot, SNAPSHOT_SUITE, snapsho
 
    // verifies that chain's block_log has a genesis_state (and blocks starting at 1)
    controller::config copied_config = copy_config_and_files(chain.get_config(), ordinal++);
-   tester from_block_log_chain(copied_config);
+   auto genesis = chain::block_log::extract_genesis_state(chain.get_config().blocks_dir);
+   BOOST_REQUIRE(genesis);
+   tester from_block_log_chain(copied_config, *genesis);
    const auto from_block_log_head = from_block_log_chain.control->head_block_num();
    BOOST_REQUIRE_EQUAL(from_block_log_head, snap_chain.control->last_irreversible_block_num());
    for (auto block_num = from_block_log_head + 1; block_num <= snap_head; ++block_num) {
@@ -420,14 +408,13 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_replay_over_snapshot, SNAPSHOT_SUITE, snapsho
 
    // verifies that snap_chain's block_log does not have a genesis_state
    copied_config = copy_config_and_files(snap_chain.get_config(), ordinal++);
-   copied_config.genesis.emplace(*chain.get_config().genesis);
    try {
       tester from_chain_id_block_log_chain(copied_config);
       BOOST_FAIL("Should not be able to create new tester chain with block_log that does not start at block 1 "
                  "(and thus does not have a genesis state)");
    }
-   catch(const block_log_exception& ble) {
-      BOOST_REQUIRE_EQUAL("block log does not start with genesis block", ble.top_message());
+   catch(const database_exception& ble) {
+      BOOST_REQUIRE_EQUAL("This version of controller::startup does not work with a fresh state database.", ble.top_message());
    }
 
 }
@@ -449,7 +436,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_chain_id_in_snapshot, SNAPSHOT_SUITE, snapsho
    chain.control->write_snapshot(writer);
    auto snapshot = SNAPSHOT_SUITE::finalize(writer);
 
-   snapshotted_tester snap_chain(chain.get_config(), SNAPSHOT_SUITE::get_reader(snapshot), 0, fc::optional<chain_id_type>());
+   snapshotted_tester snap_chain(chain.get_config(), SNAPSHOT_SUITE::get_reader(snapshot), 0);
    BOOST_REQUIRE_EQUAL(chain.control->get_chain_id(), snap_chain.control->get_chain_id());
    verify_integrity_hash<SNAPSHOT_SUITE>(*chain.control, *snap_chain.control);
 }
@@ -488,7 +475,9 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_compatible_versions, SNAPSHOT_SUITE, snapshot
 BOOST_AUTO_TEST_CASE_TEMPLATE(test_pending_schedule_snapshot, SNAPSHOT_SUITE, snapshot_suites)
 {
    tester chain(setup_policy::preactivate_feature_and_new_bios);
-   BOOST_REQUIRE_EQUAL(chain.get_config().genesis->compute_chain_id(), chain.control->get_chain_id());
+   auto genesis = chain::block_log::extract_genesis_state(chain.get_config().blocks_dir);
+   BOOST_REQUIRE(genesis);
+   BOOST_REQUIRE_EQUAL(genesis->compute_chain_id(), chain.control->get_chain_id());
    const auto& gpo = chain.control->get_global_properties();
    BOOST_REQUIRE_EQUAL(gpo.chain_id, chain.control->get_chain_id());
    auto block = chain.produce_block();
@@ -515,12 +504,13 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_pending_schedule_snapshot, SNAPSHOT_SUITE, sn
    int ordinal = 0;
 
    ////////////////////////////////////////////////////////////////////////
-   // Verify that the controller doesn't get the chain_id from the snapshot
+   // Verify that the controller gets its chain_id from the snapshot
    ////////////////////////////////////////////////////////////////////////
 
-   fc::optional<chain_id_type> chain_id = chain.control->get_chain_id();
-   snapshotted_tester v2_tester(chain.get_config(), SNAPSHOT_SUITE::get_reader(v2), ordinal++, chain_id);
-   BOOST_REQUIRE_EQUAL(*chain_id, v2_tester.control->get_chain_id());
+   auto reader = SNAPSHOT_SUITE::get_reader(v2);
+   snapshotted_tester v2_tester(chain.get_config(), reader, ordinal++);
+   auto chain_id = chain::controller::extract_chain_id(reader);
+   BOOST_REQUIRE_EQUAL(chain_id, v2_tester.control->get_chain_id());
    BOOST_REQUIRE_EQUAL(chain.control->get_chain_id(), v2_tester.control->get_chain_id());
    verify_integrity_hash<SNAPSHOT_SUITE>(*chain.control, *v2_tester.control);
 
@@ -551,11 +541,6 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_pending_schedule_snapshot, SNAPSHOT_SUITE, sn
 
    latest_from_v2_tester.push_block(new_block);
    verify_integrity_hash<SNAPSHOT_SUITE>(*chain.control, *latest_from_v2_tester.control);
-
-   // test passing in an invalid chain_id
-   snapshotted_tester v2_tester2(chain.get_config(), SNAPSHOT_SUITE::get_reader(v2), ordinal++, fc::optional<chain_id_type>());
-   BOOST_REQUIRE(chain.control->get_chain_id() != v2_tester2.control->get_chain_id());
-   BOOST_REQUIRE(chain.control->calculate_integrity_hash().str() != v2_tester2.control->calculate_integrity_hash().str());
 }
 
 BOOST_AUTO_TEST_SUITE_END()

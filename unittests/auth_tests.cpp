@@ -373,7 +373,7 @@ BOOST_AUTO_TEST_CASE( any_auth ) { try {
 BOOST_AUTO_TEST_CASE(no_double_billing) {
 try {
    fc::temp_directory tempdir;
-   validating_tester chain( validating_tester::default_config(tempdir) );
+   validating_tester chain( tempdir, true );
    chain.execute_setup_policy( setup_policy::preactivate_feature_and_new_bios );
 
    chain.produce_block();
