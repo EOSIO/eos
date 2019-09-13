@@ -16,6 +16,7 @@ else
     LINUX_CONCURRENCY_GROUP='eos-scheduled-build'
     MAC_CONCURRENCY_GROUP='eos-scheduled-build-mac'
 fi
+# read .cicd/platforms
 for FILE in $(ls $CICD_DIR/platforms); do
     # skip mac or linux by not even creating the json block
     ( [[ $SKIP_MAC == true ]] && [[ $FILE =~ 'macos' ]] ) && continue
