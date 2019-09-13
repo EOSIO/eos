@@ -1,11 +1,31 @@
 steps:
   - wait
 
-  - label: ":pipeline: Generate Pipeline Steps"
+  # - label: ":pipeline: Generate Pipeline Steps"
+  #   command:
+  #     - "./.cicd/generate-pipeline.sh > generated-pipeline.yml"
+  #     - "buildkite-agent pipeline upload < generated-pipeline.yml"
+  #     - "buildkite-agent artifact upload generated-pipeline.yml"
+  #   agents:
+  #     queue: "automation-basic-builder-fleet"
+  #   timeout: ${TIMEOUT:-10}
+
+
+  - label: ":darwin: macOS 10.14 - Build"
+    agents: "queue=mac-anka-test"
     command:
-      - "./.cicd/generate-pipeline.sh > generated-pipeline.yml"
-      - "buildkite-agent pipeline upload < generated-pipeline.yml"
-      - "buildkite-agent artifact upload generated-pipeline.yml"
-    agents:
-      queue: "automation-basic-builder-fleet"
-    timeout: ${TIMEOUT:-10}
+    - "git clone git@github.com:EOSIO/eos.git eos && cd eos && git checkout 49204ecb47e8b6ecd4417cb027a96c273a16117d && git submodule update --init --recursive"
+    - "cd eos && ./.cicd/build.sh"
+    - "cd eos && tar -pczf build.tar.gz build && buildkite-agent artifact upload build.tar.gz"
+    plugins:
+    - chef/anka#v0.5.4:
+        debug: true
+        vm-name: "10.14.4_6C_14G_40G"
+        no-volume: true
+        modify-cpu: 12
+        modify-ram: 24
+        always-pull: true
+        wait-network: true
+        vm-registry-tag: "clean::cicd::git-ssh::nas::brew::buildkite-agent::eos-macos-10.14-f16c2a08db94b90527341f9ed2311077cdb1504c"
+        inherit-environment-vars: true
+    timeout: 180
