@@ -82,7 +82,7 @@ const size_t request_swap_hex_data_length = 512;
 
 const uint32_t wait_for_eth_node = 20;
 
-const uint64_t eth_events_window_length = 1000000;
+const uint64_t eth_events_window_length = 200000;
 
 const size_t   wait_for_tx_confirmation = 30;
 const size_t   check_tx_confirmations_times = 5;
@@ -102,13 +102,13 @@ struct swap_event_data {
     std::string   return_address;
     std::string   return_chain_id;
     uint64_t timestamp;
-
+    uint64_t block_number;
 };
 
 std::string hex_to_string(const std::string& input);
 swap_event_data* parse_swap_event_hex(const std::string& hex_data, swap_event_data* data);
-swap_event_data* get_swap_event_data(boost::property_tree::ptree root, swap_event_data* data, const char* data_key, const char* txid_key);
-swap_event_data* get_swap_event_data(const std::string& event_str, swap_event_data* data, const char* data_key, const char* txid_key);
+swap_event_data* get_swap_event_data(boost::property_tree::ptree root, swap_event_data* data, const char* data_key, const char* txid_key, const char* block_number_key);
+swap_event_data* get_swap_event_data(const std::string& event_str, swap_event_data* data, const char* data_key, const char* txid_key, const char* block_number_key);
 eosio::asset uint64_to_rem_asset(unsigned long long amount);
 std::vector<swap_event_data> get_prev_swap_events(const std::string& logs);
 
@@ -123,6 +123,19 @@ class InvalidWssLinkException : public std::exception
   private:
     std::string message_;
 };
+
+class ConnectionClosedException : public std::exception
+{
+  public:
+    explicit ConnectionClosedException(const std::string& message) : message_(message) {}
+  	const char * what () const throw ()
+      {
+      	return message_.c_str();
+      }
+  private:
+    std::string message_;
+};
+
 
 /**
  *  This is a template plugin, intended to serve as a starting point for making new plugins

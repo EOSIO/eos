@@ -34,6 +34,9 @@
 #include <websocketpp/client.hpp>
 #include <websocketpp/common/thread.hpp>
 
+#include <iostream>
+#include <fstream>
+
 
 namespace eosio {
    static appbase::abstract_plugin& _ethropsten_swap_plugin = app().register_plugin<ethropsten_swap_plugin>();
@@ -46,10 +49,14 @@ class ethropsten_swap_plugin_impl {
     name                       _swap_signing_account;
     std::string                _swap_signing_permission;
     std::string                _eth_wss_provider;
+    uint64_t                   _last_processed_block;
 
     void start_monitor() {
       while (true) {
           try {
+              ilog("Establishing connection with ${address}...", ("address", this->_eth_wss_provider));
+              uint64_t from_block = this->_last_processed_block;
+
               client m_client;
               websocketpp::connection_hdl m_hdl;
               websocketpp::lib::mutex m_lock;
@@ -90,7 +97,11 @@ class ethropsten_swap_plugin_impl {
                       "Send Error: "+ec.message());
                   throw ec.message();
               }
+
+              init_prev_swap_requests(from_block);
+
               asio_thread.join();
+              throw ConnectionClosedException("Connection with " + _eth_wss_provider + " closed");
           } FC_LOG_WAIT_AND_CONTINUE()
         }
     }
@@ -103,7 +114,7 @@ class ethropsten_swap_plugin_impl {
 
         swap_event_data data;
         try {
-            if( !get_swap_event_data(payload, &data, "params.result.data", "params.result.transactionHash") ) {
+            if( !get_swap_event_data(payload, &data, "params.result.data", "params.result.transactionHash", "params.result.blockNumber") ) {
                 elog("Invalid swap request payload ${p}", ("p", payload));
                 return;
             }
@@ -122,6 +133,7 @@ class ethropsten_swap_plugin_impl {
               for(int i = 0; i < check_tx_confirmations_times; i++)
                   if(my_w3.get_transaction_confirmations("0x"+data.txid) >= min_tx_confirmations) {
                     push_init_swap_transaction(data);
+                    this->_last_processed_block = data.block_number;
                     break;
                   }
                   else
@@ -130,16 +142,19 @@ class ethropsten_swap_plugin_impl {
         } FC_LOG_AND_RETHROW()
     }
 
-    void init_prev_swap_requests() {
+    void init_prev_swap_requests(uint64_t from_block_dec = 0) {
         try {
           my_web3 my_w3(this->_eth_wss_provider);
-          uint64_t last_block_num = my_w3.get_last_block_num();
+          if(from_block_dec == 0) {
+            uint64_t last_block_num = my_w3.get_last_block_num();
+            from_block_dec = last_block_num - eth_events_window_length;
+          }
 
           std::stringstream stream;
-          stream << std::hex << (last_block_num-eth_events_window_length);
+          stream << std::hex << from_block_dec;
           std::string from_block( stream.str() );
 
-          std::string request_swap_filter_id = my_w3.new_filter(eth_swap_contract_address, "0x"+from_block, "latest", "[\""+string(eth_swap_request_event)+"\"]");
+          std::string request_swap_filter_id = my_w3.new_filter(eth_swap_contract_address, "0x" + from_block, "latest", "[\""+string(eth_swap_request_event)+"\"]");
           std::string filter_logs = my_w3.get_filter_logs(request_swap_filter_id);
           std::vector<swap_event_data> prev_swap_requests = get_prev_swap_events(filter_logs);
 
@@ -240,6 +255,7 @@ void ethropsten_swap_plugin::plugin_initialize(const variables_map& options) {
       my->_swap_signing_key = fc::crypto::private_key(options.at( "swap-signing-key" ).as<std::string>());
       my->_swap_signing_account = swap_signing_account;
       my->_swap_signing_permission = permission;
+      my->_last_processed_block = 0;
 
       std::string prefix = "wss://";
       my->_eth_wss_provider = options.at( "eth-wss-provider" ).as<std::string>();
@@ -254,14 +270,6 @@ void ethropsten_swap_plugin::plugin_startup() {
     my_web3 my_w3(my->_eth_wss_provider);
     ilog("last eth block: " + to_string(my_w3.get_last_block_num()));
   } FC_LOG_AND_RETHROW()
-
-  /*std::thread t([=](){
-    sleep(init_prev_swaps_delay);
-    try {
-      my->init_prev_swap_requests();
-    } FC_LOG_AND_RETHROW()
-  });
-  t.detach();*/
 
   std::thread t2([=](){
       sleep(start_monitor_delay);
@@ -326,9 +334,14 @@ swap_event_data* parse_swap_event_hex(const std::string& hex_data, swap_event_da
     return data;
 }
 
-swap_event_data* get_swap_event_data(boost::property_tree::ptree root, swap_event_data* data, const char* data_key, const char* txid_key) {
+swap_event_data* get_swap_event_data( boost::property_tree::ptree root,
+                                      swap_event_data* data,
+                                      const char* data_key,
+                                      const char* txid_key,
+                                      const char* block_number_key ) {
     boost::optional<string> hex_data_opt = root.get_optional<string>(data_key);
     boost::optional<string> txid = root.get_optional<string>(txid_key);
+    boost::optional<string> block_number = root.get_optional<string>(block_number_key);
     if( !hex_data_opt )
         return nullptr;
     string hex_data = hex_data_opt.get();
@@ -337,15 +350,25 @@ swap_event_data* get_swap_event_data(boost::property_tree::ptree root, swap_even
     data->return_chain_id = "ethropsten";
     data->txid = txid.get().substr(2);
 
+    std::stringstream ss;
+    ss << std::hex << block_number.get().substr(2);
+    uint64_t block_number_dec;
+    ss >> block_number_dec;
+    data->block_number = block_number_dec;
+
     return data;
 }
 
-swap_event_data* get_swap_event_data(const std::string& event_str, swap_event_data* data, const char* data_key, const char* txid_key) {
+swap_event_data* get_swap_event_data( const std::string& event_str,
+                                      swap_event_data* data,
+                                      const char* data_key,
+                                      const char* txid_key,
+                                      const char* block_number_key ) {
     boost::iostreams::stream<boost::iostreams::array_source> stream(event_str.c_str(), event_str.size());
     namespace pt = boost::property_tree;
     pt::ptree root;
     pt::read_json(stream, root);
-    return get_swap_event_data(root, data, data_key, txid_key);
+    return get_swap_event_data(root, data, data_key, txid_key, block_number_key);
 }
 
 asset uint64_to_rem_asset(unsigned long long amount) {
@@ -373,7 +396,7 @@ std::vector<swap_event_data> get_prev_swap_events(const std::string& logs) {
 
         if(data_opt && txid_opt) {
             swap_event_data event_data;
-            get_swap_event_data(subtree, &event_data, "data", "transactionHash");
+            get_swap_event_data(subtree, &event_data, "data", "transactionHash", "blockNumber");
             swap_events.push_back(event_data);
         }
         else

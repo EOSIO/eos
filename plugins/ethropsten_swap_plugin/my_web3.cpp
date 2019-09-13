@@ -212,7 +212,6 @@ std::string my_web3::get_filter_logs(const std::string& filter_id) {
 
     auto on_filter_logs = [this, &response_mutex](client* c, websocketpp::connection_hdl hdl, message_ptr msg) {
         this->filter_logs = msg->get_payload();
-
         response_mutex.unlock();
     };
     register_callback(on_filter_logs);
