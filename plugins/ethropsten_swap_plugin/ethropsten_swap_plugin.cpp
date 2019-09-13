@@ -108,21 +108,27 @@ class ethropsten_swap_plugin_impl {
                 return;
             }
         } FC_LOG_AND_RETURN()
-
-        wait_for_tx_confirmation_and_push(data);
+        std::vector<swap_event_data> swap_requests;
+        swap_requests.push_back(data);
+        wait_for_tx_confirmation_and_push(swap_requests);
     }
 
-    void wait_for_tx_confirmation_and_push(const swap_event_data& data) {
+    void wait_for_tx_confirmation_and_push(const std::vector<swap_event_data>& swap_requests) {
         my_web3 my_w3(this->_eth_wss_provider);
-        std::string txid = data.txid;
-        for(int i = 0; i < check_tx_confirmations_times; i++)
-            if(my_w3.get_transaction_confirmations("0x"+data.txid) >= min_tx_confirmations)
-              push_init_swap_transaction(data);
-            else
-              sleep(wait_for_tx_confirmation);
+        for (std::vector<swap_event_data>::const_iterator it = swap_requests.begin() ; it != swap_requests.end(); ++it) {
+            swap_event_data data = *it;
+            std::string txid = data.txid;
+            for(int i = 0; i < check_tx_confirmations_times; i++)
+                if(my_w3.get_transaction_confirmations("0x"+data.txid) >= min_tx_confirmations) {
+                  push_init_swap_transaction(data);
+                  break;
+                }
+                else
+                  sleep(wait_for_tx_confirmation);
+        }
     }
 
-    void init_confirmed_swap_requests() {
+    void init_prev_swap_requests() {
         my_web3 my_w3(this->_eth_wss_provider);
         uint64_t last_block_num = my_w3.get_last_block_num();
 
@@ -134,9 +140,7 @@ class ethropsten_swap_plugin_impl {
         std::string filter_logs = my_w3.get_filter_logs(request_swap_filter_id);
         std::vector<swap_event_data> prev_swap_requests = get_prev_swap_events(filter_logs);
 
-        for (std::vector<swap_event_data>::iterator it = prev_swap_requests.begin() ; it != prev_swap_requests.end(); ++it) {
-            wait_for_tx_confirmation_and_push(*it);
-       }
+        wait_for_tx_confirmation_and_push(prev_swap_requests);
     }
 
     void push_init_swap_transaction(const swap_event_data& data) {
@@ -244,7 +248,7 @@ void ethropsten_swap_plugin::plugin_startup() {
 
   /*std::thread t([=](){
     sleep(40);
-    my->init_confirmed_swap_requests();
+    my->init_prev_swap_requests();
   });
   t.detach();*/
 
@@ -353,7 +357,6 @@ std::vector<swap_event_data> get_prev_swap_events(const std::string& logs) {
 
         boost::optional<std::string> data_opt = subtree.get_optional<std::string>("data");
         boost::optional<std::string> txid_opt = subtree.get_optional<std::string>("transactionHash");
-        //cout << "t2: " << data_opt.get() << endl;
 
         if(data_opt && txid_opt) {
             swap_event_data event_data;

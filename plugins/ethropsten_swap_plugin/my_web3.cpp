@@ -9,6 +9,12 @@ my_web3::my_web3(const std::string& eth_address) {
     t1.detach();
 }
 
+my_web3::~my_web3() {
+    websocketpp::lib::error_code ec;
+    m_client.close(m_hdl, websocketpp::close::status::normal, "Connection closed by client.", ec);
+    wait_for_wss_connection();
+}
+
 void my_web3::wait_for_wss_connection() {
     sleep(2);
 }

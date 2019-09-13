@@ -14,6 +14,7 @@ typedef websocketpp::config::asio_client::message_type::ptr message_ptr;
 class my_web3 {
     public:
         my_web3(const std::string& eth_address);
+        ~my_web3();
         void subscribe(const std::string& contract_address, const std::string& topic, std::function<void(client*,websocketpp::connection_hdl,message_ptr)> callback);
         uint64_t get_last_block_num();
         uint64_t get_transaction_confirmations(const std::string& txid);
