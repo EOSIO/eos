@@ -51,13 +51,15 @@ for FILE in $(ls $CICD_DIR/platforms); do
         "ICON": env.ICON
         }]')
 done
-# set build source whether triggered or not
+# set build_source whether triggered or not
 if [[ ! -z ${BUILDKITE_TRIGGERED_FROM_BUILD_ID} ]]; then
     export BUILD_SOURCE="--build \$BUILDKITE_TRIGGERED_FROM_BUILD_ID"
-    LINUX_CONCURRENCY_GROUP="eos-trigger-linux"
-    MAC_CONCURRENCY_GROUP="eos-trigger-mac"
 fi
 export BUILD_SOURCE=${BUILD_SOURCE:---build \$BUILDKITE_BUILD_ID}
+# set trigger_job if master/release/develop branch and webhook
+if [[ $BUILDKITE_BRANCH =~ ^release/[0-9].[0-9]+.x$ || $BUILDKITE_BRANCH =~ ^master$ || $BUILDKITE_BRANCH =~ ^develop$ ]]; then
+    [[ $BUILDKITE_SOURCE == 'webhook' ]] && export TRIGGER_JOB=true
+fi
 oIFS="$IFS"
 IFS=$''
 nIFS=$IFS # fix array splitting (\n won't work)
@@ -139,7 +141,7 @@ EOF
 
 EOF
     fi
-    if [[ "$BUILDKITE_SOURCE" == 'schedule' || "$BUILDKITE_SOURCE" == 'trigger_job' ]]; then
+    if [[ "$BUILDKITE_SOURCE" == 'schedule' ]]; then
         cat <<EOF
     concurrency: ${CONCURRENCY}
     concurrency_group: ${CONCURRENCY_GROUP}
@@ -199,7 +201,7 @@ EOF
 
 EOF
         fi
-        if [[ "$BUILDKITE_SOURCE" == 'schedule' || "$BUILDKITE_SOURCE" == 'trigger_job' ]]; then
+        if [[ "$BUILDKITE_SOURCE" == 'schedule' ]]; then
             cat <<EOF
     concurrency: ${CONCURRENCY}
     concurrency_group: ${CONCURRENCY_GROUP}
@@ -254,7 +256,7 @@ EOF
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_SERIAL_TESTS}
 EOF
             fi
-            if [[ "$BUILDKITE_SOURCE" == 'schedule' || "$BUILDKITE_SOURCE" == 'trigger_job' ]]; then
+            if [[ "$BUILDKITE_SOURCE" == 'schedule' ]]; then
                 cat <<EOF
     concurrency: ${CONCURRENCY}
     concurrency_group: ${CONCURRENCY_GROUP}
@@ -311,7 +313,7 @@ EOF
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_LONG_RUNNING_TESTS:-true}
 EOF
             fi
-            if [[ "$BUILDKITE_SOURCE" == 'schedule' || "$BUILDKITE_SOURCE" == 'trigger_job' ]]; then
+            if [[ "$BUILDKITE_SOURCE" == 'schedule' ]]; then
                 cat <<EOF
     concurrency: ${CONCURRENCY}
     concurrency_group: ${CONCURRENCY_GROUP}
@@ -327,9 +329,8 @@ EOF
         echo ''
     fi
 done
-#############
-# LRT ON PR #
-if [[ -z $BUILDKITE_TRIGGERED_FROM_BUILD_ID && $BUILDKITE_PULL_REQUEST != "false" ]]; then
+# trigger eosio-lrt post pr
+if [[ -z $BUILDKITE_TRIGGERED_FROM_BUILD_ID && $TRIGGER_JOB == "true" ]]; then
     if ( [[ ! $PINNED == false || $UNPINNED == true ]] ); then
     cat <<EOF
   - label: ":pipeline: Trigger Long Running Tests"
@@ -350,9 +351,8 @@ if [[ -z $BUILDKITE_TRIGGERED_FROM_BUILD_ID && $BUILDKITE_PULL_REQUEST != "false
 EOF
     fi
 fi
-######################
-# MULTIVERSION ON PR #
-if [[ -z $BUILDKITE_TRIGGERED_FROM_BUILD_ID && $BUILDKITE_PULL_REQUEST != "false" ]]; then
+# trigger multiversion post pr
+if [[ -z $BUILDKITE_TRIGGERED_FROM_BUILD_ID && $TRIGGER_JOB = "true" ]]; then
     if ( [[ ! $PINNED == false || $UNPINNED == true ]] ); then
     cat <<EOF
   - label: ":pipeline: Trigger Multiversion Test"
