@@ -4,6 +4,9 @@
 #include "TaggedValue.h"
 #include "IR/Types.h"
 
+#include <map>
+#include <vector>
+
 #ifndef RUNTIME_API
 	#define RUNTIME_API DLL_IMPORT
 #endif
@@ -213,6 +216,11 @@ namespace Runtime
 	RUNTIME_API void runInstanceStartFunc(ModuleInstance* moduleInstance);
 	RUNTIME_API void resetGlobalInstances(ModuleInstance* moduleInstance);
 	RUNTIME_API void resetMemory(MemoryInstance* memory, IR::MemoryType& newMemoryType);
+
+	RUNTIME_API const std::vector<uint8_t>& getPICCode(ModuleInstance* moduleInstance);
+	RUNTIME_API const std::map<unsigned, uintptr_t>& getFunctionOffsets(ModuleInstance* moduleInstance);
+	RUNTIME_API uintptr_t getFunctionTypePtr(ModuleInstance* moduleInstance, Uptr functionIndex);
+	RUNTIME_API size_t getOffsetOfIntrinsicFunction(ModuleInstance* moduleInstance, Uptr functionIndex);
 
 	// Gets an object exported by a ModuleInstance by name.
 	RUNTIME_API ObjectInstance* getInstanceExport(ModuleInstance* moduleInstance,const std::string& name);

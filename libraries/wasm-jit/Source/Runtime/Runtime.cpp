@@ -20,16 +20,7 @@ namespace Runtime
 	std::vector<std::string> describeCallStack(const Platform::CallStack& callStack)
 	{
 		std::vector<std::string> frameDescriptions;
-		for(auto frame : callStack.stackFrames)
-		{
-			std::string frameDescription;
-			if(	LLVMJIT::describeInstructionPointer(frame.ip,frameDescription)
-			||	Platform::describeInstructionPointer(frame.ip,frameDescription))
-			{
-				frameDescriptions.push_back(frameDescription);
-			}
-			else { frameDescriptions.push_back("<unknown function>"); }
-		}
+
 		return frameDescriptions;
 	}
 
@@ -84,6 +75,7 @@ namespace Runtime
 
 	Result invokeFunction(FunctionInstance* function,const std::vector<Value>& parameters)
 	{
+#if 0
 		const FunctionType* functionType = function->type;
 		
 		// Check that the parameter types match the function, and copy them into a memory block that stores each as a 64-bit value.
@@ -128,6 +120,8 @@ namespace Runtime
 		// If there was no hardware trap, just return the result.
 		if(trapType == Platform::HardwareTrapType::none) { return result; }
 		//else { handleHardwareTrap(trapType,std::move(trapCallStack),trapOperand); }
+#endif
+      return Result();
 	}
 
 	const FunctionType* getFunctionType(FunctionInstance* function)

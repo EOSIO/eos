@@ -87,27 +87,6 @@ namespace Runtime
 			WAVM_ASSERT_THROW(moduleInstance->memories.size() == 1);
 			moduleInstance->defaultMemory = moduleInstance->memories[0];
 		}
-		if(moduleInstance->tables.size() != 0)
-		{
-			WAVM_ASSERT_THROW(moduleInstance->tables.size() == 1);
-			moduleInstance->defaultTable = moduleInstance->tables[0];
-		}
-
-		// If any memory or table segment doesn't fit, throw an exception before mutating any memory/table.
-		for(auto& tableSegment : module.tableSegments)
-		{
-			TableInstance* table = moduleInstance->tables[tableSegment.tableIndex];
-			const Value baseOffsetValue = evaluateInitializer(moduleInstance,tableSegment.baseOffset);
-			errorUnless(baseOffsetValue.type == ValueType::i32);
-			const U32 baseOffset = baseOffsetValue.i32;
-			if(baseOffset > table->elements.size()
-			|| table->elements.size() - baseOffset < tableSegment.indices.size())
-			{ causeException(Exception::Cause::invalidSegmentOffset); }
-		}
-
-		//Previously, the module instantiation would write in to the memoryInstance here. Don't do that
-      //since the memoryInstance is shared across all moduleInstances and we could be compiling
-      //a new instance while another instance is running
 		
 		// Instantiate the module's global definitions.
 		for(const GlobalDef& globalDef : module.globals.defs)
@@ -131,46 +110,6 @@ namespace Runtime
 
 		// Generate machine code for the module.
 		LLVMJIT::instantiateModule(module,moduleInstance);
-
-		// Set up the instance's exports.
-		for(const Export& exportIt : module.exports)
-		{
-			ObjectInstance* exportedObject = nullptr;
-			switch(exportIt.kind)
-			{
-			case ObjectKind::function: exportedObject = moduleInstance->functions[exportIt.index]; break;
-			case ObjectKind::table: exportedObject = moduleInstance->tables[exportIt.index]; break;
-			case ObjectKind::memory: exportedObject = moduleInstance->memories[exportIt.index]; break;
-			case ObjectKind::global: exportedObject = moduleInstance->globals[exportIt.index]; break;
-			default: Errors::unreachable();
-			}
-			moduleInstance->exportMap[exportIt.name] = exportedObject;
-		}
-		
-		// Copy the module's table segments into the module's default table.
-		for(const TableSegment& tableSegment : module.tableSegments)
-		{
-			TableInstance* table = moduleInstance->tables[tableSegment.tableIndex];
-			
-			const Value baseOffsetValue = evaluateInitializer(moduleInstance,tableSegment.baseOffset);
-			errorUnless(baseOffsetValue.type == ValueType::i32);
-			const U32 baseOffset = baseOffsetValue.i32;
-			WAVM_ASSERT_THROW(baseOffset + tableSegment.indices.size() <= table->elements.size());
-
-			for(Uptr index = 0;index < tableSegment.indices.size();++index)
-			{
-				const Uptr functionIndex = tableSegment.indices[index];
-				WAVM_ASSERT_THROW(functionIndex < moduleInstance->functions.size());
-				setTableElement(table,baseOffset + index,moduleInstance->functions[functionIndex]);
-			}
-		}
-
-		// Call the module's start function.
-		if(module.startFunctionIndex != UINTPTR_MAX)
-		{
-			WAVM_ASSERT_THROW(moduleInstance->functions[module.startFunctionIndex]->type == IR::FunctionType::get());
-			moduleInstance->startFunctionIndex = module.startFunctionIndex;
-		}
 
 		moduleInstances.push_back(moduleInstance);
 		return moduleInstance;
@@ -200,4 +139,19 @@ namespace Runtime
 		auto mapIt = moduleInstance->exportMap.find(name);
 		return mapIt == moduleInstance->exportMap.end() ? nullptr : mapIt->second;
 	}
+
+	const std::vector<uint8_t>& getPICCode(ModuleInstance* moduleInstance) {
+      return moduleInstance->jitModule->final_pic_code;
+   }
+	const std::map<unsigned, uintptr_t>& getFunctionOffsets(ModuleInstance* moduleInstance) {
+      return moduleInstance->jitModule->function_to_offsets;
+   }
+
+   uintptr_t getFunctionTypePtr(ModuleInstance* moduleInstance, Uptr functionIndex) {
+      return (uintptr_t)moduleInstance->functions.at(functionIndex)->type;
+   }
+
+   size_t getOffsetOfIntrinsicFunction(ModuleInstance* moduleInstance, Uptr functionIndex) {
+      return moduleInstance->functions.at(functionIndex)->offset;
+   }
 }

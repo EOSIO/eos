@@ -65,75 +65,37 @@ static wavm_live_modules the_wavm_live_modules;
 
 class wavm_instantiated_module : public wasm_instantiated_module_interface {
    public:
-      wavm_instantiated_module(ModuleInstance* instance, std::unique_ptr<Module> module, std::vector<uint8_t> initial_mem, wavm_runtime& wr) :
-         _initial_memory(initial_mem),
-         _instance(instance),
-         _module_ref(detail::the_wavm_live_modules.add_live_module(instance)),
+      wavm_instantiated_module(std::vector<uint8_t>&& initial_mem, std::vector<uint8_t>&& wasm, 
+                               const digest_type& code_hash, const uint8_t& vm_version, wavm_runtime& wr) :
+         _initial_memory(std::move(initial_mem)),
+         _wasm(std::move(wasm)),
+         _code_hash(code_hash),
+         _vm_version(vm_version),
          _wavm_runtime(wr)
       {
-         //The memory instance is reused across all wavm_instantiated_modules, but for wasm instances
-         // that didn't declare "memory", getDefaultMemory() won't see it. It would also be possible
-         // to say something like if(module->memories.size()) here I believe
-         cd.starting_memory_pages = -1;
-         if(module->memories.size())
-            cd.starting_memory_pages = module->memories.defs.at(0).type.size.min;
 
-         std::vector<uint8_t> prolouge(memory::cb_offset); ///XXX not the best use of variable
-         std::vector<uint8_t>::iterator prolouge_it = prolouge.end();
-
-         //set up mutable globals
-         union global_union {
-            int64_t i64;
-            int32_t i32;
-            float f32;
-            double f64;
-         };
-
-         for(const GlobalDef& global : module->globals.defs) {
-            if(!global.type.isMutable)
-               continue;
-            prolouge_it -= 8;
-            global_union* const u = (global_union* const)&*prolouge_it;
-
-            switch(global.initializer.type) {
-               case InitializerExpression::Type::i32_const: u->i32 = global.initializer.i32; break;
-               case InitializerExpression::Type::i64_const: u->i64 = global.initializer.i64; break;
-               case InitializerExpression::Type::f32_const: u->f32 = global.initializer.f32; break;
-               case InitializerExpression::Type::f64_const: u->f64 = global.initializer.f64; break;
-            }
-         }
-
-         cd.initdata_pre_memory_size = prolouge.end() - prolouge_it;
-         std::move(prolouge_it, prolouge.end(), std::back_inserter(cd.initdata));
-         std::move(_initial_memory.begin(), _initial_memory.end(), std::back_inserter(cd.initdata));
-
-         cd.mi = _instance; //XXX
       }
 
-      ~wavm_instantiated_module() {
-         detail::the_wavm_live_modules.remove_live_module(_module_ref);
-      }
+      ~wavm_instantiated_module() {}
 
       void apply(apply_context& context) override {
          the_running_instance_context.apply_ctx = &context;
+
+         const code_descriptor* const cd = _wavm_runtime.cc.get_descriptor_for_code(_code_hash, _vm_version, _wasm, _initial_memory);
 
          unsigned long long start = __builtin_readcyclecounter();
          auto count_it = fc::make_scoped_exit([&start](){
             the_counter.count += __builtin_readcyclecounter() - start;
          });
 
-         _wavm_runtime.exec.execute(cd, _wavm_runtime.mem, context);
+         _wavm_runtime.exec.execute(*cd, _wavm_runtime.mem, context);
       }
 
-      std::vector<uint8_t>     _initial_memory;
-      //naked pointer because ModuleInstance is opaque
-      //_instance is deleted via WAVM's object garbage collection when wavm_rutime is deleted
-      ModuleInstance*          _instance;
-      detail::live_module_ref  _module_ref;
-      MemoryType               _initial_memory_config;
+      const std::vector<uint8_t>     _initial_memory;
+      const std::vector<uint8_t>     _wasm;
+      const digest_type              _code_hash;
+      const uint8_t                  _vm_version;
       wavm_runtime&            _wavm_runtime;
-
-      rodeos::code_descriptor cd;
 };
 
 wavm_runtime::wavm_runtime(const boost::filesystem::path data_dir, const rodeos::config& rodeos_config) : cc(data_dir, rodeos_config), exec(cc) {
@@ -143,31 +105,10 @@ wavm_runtime::wavm_runtime(const boost::filesystem::path data_dir, const rodeos:
 wavm_runtime::~wavm_runtime() {
 }
 
-std::unique_ptr<wasm_instantiated_module_interface> wavm_runtime::instantiate_module(const char* code_bytes, size_t code_size, std::vector<uint8_t> initial_memory) {
-   std::unique_ptr<Module> module = std::make_unique<Module>();
-   try {
-      Serialization::MemoryInputStream stream((const U8*)code_bytes, code_size);
-      WASM::serialize(stream, *module);
-   } catch(const Serialization::FatalSerializationException& e) {
-      EOS_ASSERT(false, wasm_serialization_error, e.message.c_str());
-   } catch(const IR::ValidationException& e) {
-      EOS_ASSERT(false, wasm_serialization_error, e.message.c_str());
-   }
+std::unique_ptr<wasm_instantiated_module_interface> wavm_runtime::instantiate_module(std::vector<uint8_t>&& wasm, std::vector<uint8_t>&& initial_memory,
+                                                                                     const digest_type& code_hash, const uint8_t& vm_type, const uint8_t& vm_version) {
 
-   try {
-      eosio::chain::webassembly::common::root_resolver resolver;
-      LinkResult link_result = linkModule(*module, resolver);
-      ModuleInstance *instance = instantiateModule(*module, std::move(link_result.resolvedImports));
-      EOS_ASSERT(instance != nullptr, wasm_exception, "Fail to Instantiate WAVM Module");
-
-      return std::make_unique<wavm_instantiated_module>(instance, std::move(module), initial_memory, *this);
-   }
-   catch(const Runtime::Exception& e) {
-      EOS_THROW(wasm_execution_error, "Failed to stand up WAVM instance: ${m}", ("m", describeExceptionCause(e.cause)));
-   }
-   catch(const std::runtime_error& e) { ///XXX here to catch WAVM_ASSERTS
-      EOS_THROW(wasm_execution_error, "Failed to stand up WAVM instance");
-   }
+   return std::make_unique<wavm_instantiated_module>(std::move(initial_memory), std::move(wasm), code_hash, vm_type, *this);
 }
 
 void wavm_runtime::immediately_exit_currently_running_module() {
