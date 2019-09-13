@@ -91,6 +91,9 @@ const uint64_t min_tx_confirmations = 3;
 const size_t retry_push_tx_time = 120;
 const size_t wait_for_accept_tx = 1;
 
+const uint32_t start_monitor_delay = 15;
+const uint32_t init_prev_swaps_delay = 30;
+
 struct swap_event_data {
     std::string   txid;
     std::string   chain_id;
@@ -108,6 +111,18 @@ swap_event_data* get_swap_event_data(boost::property_tree::ptree root, swap_even
 swap_event_data* get_swap_event_data(const std::string& event_str, swap_event_data* data, const char* data_key, const char* txid_key);
 eosio::asset uint64_to_rem_asset(unsigned long long amount);
 std::vector<swap_event_data> get_prev_swap_events(const std::string& logs);
+
+class InvalidWssLinkException : public std::exception
+{
+  public:
+    explicit InvalidWssLinkException(const std::string& message) : message_(message) {}
+  	const char * what () const throw ()
+      {
+      	return message_.c_str();
+      }
+  private:
+    std::string message_;
+};
 
 /**
  *  This is a template plugin, intended to serve as a starting point for making new plugins

@@ -241,7 +241,10 @@ void ethropsten_swap_plugin::plugin_initialize(const variables_map& options) {
       my->_swap_signing_account = swap_signing_account;
       my->_swap_signing_permission = permission;
 
+      std::string prefix = "wss://";
       my->_eth_wss_provider = options.at( "eth-wss-provider" ).as<std::string>();
+      if(my->_eth_wss_provider.substr(0, prefix.size()) != prefix)
+        throw InvalidWssLinkException("Invalid ethereum node connection link. Should start with " + prefix);
     } FC_LOG_AND_RETHROW()
 }
 
@@ -253,14 +256,18 @@ void ethropsten_swap_plugin::plugin_startup() {
   } FC_LOG_AND_RETHROW()
 
   /*std::thread t([=](){
-    sleep(40);
-    my->init_prev_swap_requests();
+    sleep(init_prev_swaps_delay);
+    try {
+      my->init_prev_swap_requests();
+    } FC_LOG_AND_RETHROW()
   });
   t.detach();*/
 
   std::thread t2([=](){
-      sleep(30);
-      my->start_monitor();
+      sleep(start_monitor_delay);
+      try {
+        my->start_monitor();
+      } FC_LOG_AND_RETHROW()
   });
   t2.detach();
 }
