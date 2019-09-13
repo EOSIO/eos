@@ -5,7 +5,7 @@ RUN yum update -y && \
     yum install -y which git sudo procps-ng util-linux autoconf automake \
     libtool make bzip2 bzip2-devel openssl-devel gmp-devel libstdc++ libcurl-devel \
     libusbx-devel python3 python3-devel python-devel libedit-devel doxygen \
-    graphviz clang patch
+    graphviz clang patch llvm-devel llvm-static
 # build cmake.
 RUN curl -LO https://cmake.org/files/v3.13/cmake-3.13.2.tar.gz && \
     tar -xzf cmake-3.13.2.tar.gz && \
@@ -15,16 +15,6 @@ RUN curl -LO https://cmake.org/files/v3.13/cmake-3.13.2.tar.gz && \
     make install && \
     cd / && \
     rm -rf cmake-3.13.2.tar.gz /cmake-3.13.2
-# build llvm
-RUN git clone --depth 1 --single-branch --branch release_40 https://github.com/llvm-mirror/llvm.git llvm && \
-    cd llvm && \
-    mkdir build && \
-    cd build && \
-    cmake -G 'Unix Makefiles' -DLLVM_TARGETS_TO_BUILD=host -DLLVM_BUILD_TOOLS=false -DLLVM_ENABLE_RTTI=1 -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local .. && \
-    make -j$(nproc) && \
-    make install && \
-    cd / && \
-    rm -rf /llvm
 # build boost
 RUN curl -LO https://dl.bintray.com/boostorg/release/1.70.0/source/boost_1_70_0.tar.bz2 && \
     tar -xjf boost_1_70_0.tar.bz2 && \
