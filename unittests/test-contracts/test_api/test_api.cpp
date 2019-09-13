@@ -88,6 +88,7 @@ extern "C" {
 
       //test crypto
       WASM_TEST_HANDLER( test_crypto, test_recover_key              );
+      WASM_TEST_HANDLER( test_crypto, test_recover_key_partial      );
       WASM_TEST_HANDLER( test_crypto, test_recover_key_assert_true  );
       WASM_TEST_HANDLER( test_crypto, test_recover_key_assert_false );
       WASM_TEST_HANDLER( test_crypto, test_sha1                     );

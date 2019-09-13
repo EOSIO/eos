@@ -1,14 +1,8 @@
 #include <fc/io/raw.hpp>
 #include <fc/bitutil.hpp>
-#include <fc/smart_ref_impl.hpp>
 #include <algorithm>
-#include <mutex>
 
 #include <boost/range/adaptor/transformed.hpp>
-#include <boost/multi_index_container.hpp>
-#include <boost/multi_index/sequenced_index.hpp>
-#include <boost/multi_index/hashed_index.hpp>
-#include <boost/multi_index/member.hpp>
 #include <boost/iostreams/filtering_stream.hpp>
 #include <boost/iostreams/device/back_inserter.hpp>
 #include <boost/iostreams/filter/zlib.hpp>
@@ -18,33 +12,6 @@
 #include <eosio/chain/transaction.hpp>
 
 namespace eosio { namespace chain {
-
-using namespace boost::multi_index;
-
-struct cached_pub_key {
-   transaction_id_type trx_id;
-   public_key_type pub_key;
-   signature_type sig;
-   fc::microseconds cpu_usage;
-   cached_pub_key(const cached_pub_key&) = delete;
-   cached_pub_key() = delete;
-   cached_pub_key& operator=(const cached_pub_key&) = delete;
-   cached_pub_key(cached_pub_key&&) = default;
-};
-struct by_sig{};
-
-typedef multi_index_container<
-   cached_pub_key,
-   indexed_by<
-      sequenced<>,
-      hashed_unique<
-         tag<by_sig>,
-         member<cached_pub_key,
-                signature_type,
-                &cached_pub_key::sig>
-      >
-   >
-> recovery_cache_type;
 
 void deferred_transaction_generation_context::reflector_init() {
       static_assert( fc::raw::has_feature_reflector_init_on_unpacked_reflected_types,
@@ -93,52 +60,21 @@ fc::microseconds transaction::get_signature_keys( const vector<signature_type>& 
       const chain_id_type& chain_id, fc::time_point deadline, const vector<bytes>& cfd,
       flat_set<public_key_type>& recovered_pub_keys, bool allow_duplicate_keys)const
 { try {
-   using boost::adaptors::transformed;
-
-   constexpr size_t recovery_cache_size = 10000;
-   static recovery_cache_type recovery_cache;
-   static std::mutex cache_mtx;
-
    auto start = fc::time_point::now();
    recovered_pub_keys.clear();
    const digest_type digest = sig_digest(chain_id, cfd);
 
-   std::unique_lock<std::mutex> lock(cache_mtx, std::defer_lock);
-   fc::microseconds sig_cpu_usage;
-   const auto digest_time = fc::time_point::now() - start;
    for(const signature_type& sig : signatures) {
-      auto sig_start = fc::time_point::now();
-      EOS_ASSERT( sig_start < deadline, tx_cpu_usage_exceeded, "transaction signature verification executed for too long ${time}us",
-                  ("time", sig_start - start)("now", sig_start)("deadline", deadline)("start", start) );
-      public_key_type recov;
-      const auto& tid = id();
-      lock.lock();
-      recovery_cache_type::index<by_sig>::type::iterator it = recovery_cache.get<by_sig>().find( sig );
-      if( it == recovery_cache.get<by_sig>().end() || it->trx_id != tid ) {
-         lock.unlock();
-         recov = public_key_type( sig, digest );
-         fc::microseconds cpu_usage = fc::time_point::now() - sig_start;
-         lock.lock();
-         recovery_cache.emplace_back( cached_pub_key{tid, recov, sig, cpu_usage} ); //could fail on dup signatures; not a problem
-         sig_cpu_usage += cpu_usage;
-      } else {
-         recov = it->pub_key;
-         sig_cpu_usage += it->cpu_usage;
-      }
-      lock.unlock();
-      bool successful_insertion = false;
-      std::tie(std::ignore, successful_insertion) = recovered_pub_keys.insert(recov);
+      auto now = fc::time_point::now();
+      EOS_ASSERT( now < deadline, tx_cpu_usage_exceeded, "transaction signature verification executed for too long ${time}us",
+                  ("time", now - start)("now", now)("deadline", deadline)("start", start) );
+      auto[ itr, successful_insertion ] = recovered_pub_keys.emplace( sig, digest );
       EOS_ASSERT( allow_duplicate_keys || successful_insertion, tx_duplicate_sig,
                   "transaction includes more than one signature signed using the same key associated with public key: ${key}",
-                  ("key", recov) );
+                  ("key", *itr ) );
    }
 
-   lock.lock();
-   while ( recovery_cache.size() > recovery_cache_size )
-      recovery_cache.erase( recovery_cache.begin());
-   lock.unlock();
-
-   return sig_cpu_usage + digest_time;
+   return fc::time_point::now() - start;
 } FC_CAPTURE_AND_RETHROW() }
 
 flat_multimap<uint16_t, transaction_extension> transaction::validate_and_extract_extensions()const {

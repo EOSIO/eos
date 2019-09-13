@@ -100,6 +100,12 @@ public:
       return itr->trx_type == trx_enum_type::persisted;
    }
 
+   transaction_metadata_ptr get_trx( const transaction_id_type& id ) const {
+      auto itr = queue.get<by_trx_id>().find( id );
+      if( itr == queue.get<by_trx_id>().end() ) return {};
+      return itr->trx_meta;
+   }
+
    template <typename Func>
    bool clear_expired( const time_point& pending_block_time, const time_point& deadline, Func&& callback ) {
       auto& persisted_by_expiry = queue.get<by_expiry>();

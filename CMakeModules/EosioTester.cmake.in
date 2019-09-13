@@ -20,8 +20,8 @@ if( GPERFTOOLS_FOUND )
     list( APPEND PLATFORM_SPECIFIC_LIBS tcmalloc )
 endif()
 
-find_package(LLVM 4.0 REQUIRED CONFIG)
-
+find_package(LLVM @LLVM_VERSION@ EXACT REQUIRED CONFIG)
+llvm_map_components_to_libnames(LLVM_LIBS support core passes mcjit native DebugInfoDWARF orcjit)
 link_directories(${LLVM_LIBRARY_DIR})
 
 set( CMAKE_CXX_STANDARD 17 )
@@ -77,7 +77,7 @@ find_library(GMP_LIBRARIES NAMES libgmp.a gmp.lib gmp libgmp-10 mpir
 macro(add_eosio_test_executable test_name)
    add_executable( ${test_name} ${ARGN} )
    target_link_libraries( ${test_name}
-       ${LLVM}
+       ${LLVM_LIBS}
        ${libtester}
        ${libchain}
        ${libfc}
@@ -96,31 +96,6 @@ macro(add_eosio_test_executable test_name)
        ${libsecp256k1}
        ${GMP_LIBRARIES}
 
-       LLVMX86Disassembler
-       LLVMX86AsmParser
-       LLVMX86AsmPrinter
-       LLVMX86CodeGen
-
-       LLVMSelectionDAG
-
-       LLVMDebugInfoDWARF
-       LLVMAsmPrinter
-       LLVMMCParser
-       LLVMX86Info
-
-       LLVMOrcJIT
-       LLVMExecutionEngine
-
-       LLVMCodeGen
-       LLVMScalarOpts
-       LLVMTransformUtils
-
-       LLVMipo
-       LLVMAnalysis
-       LLVMTarget
-       LLVMMC
-       LLVMCore
-       LLVMSupport
        ${Boost_FILESYSTEM_LIBRARY}
        ${Boost_SYSTEM_LIBRARY}
        ${Boost_CHRONO_LIBRARY}
