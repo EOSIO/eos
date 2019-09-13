@@ -7,9 +7,9 @@ Plugins extend the core functionality implemented in `nodeos`. Some plugins are 
 For information on specific plugins, please select from the list below:
 
 * [`chain_plugin`](chain_plugin/index.md)
-* [`net_plugin`](net_plugin/index.md)
-* [`producer_plugin`](producer_plugin/index.md)
 * [`db_size_api_plugin`](db_size_api_plugin/index.md)
 * [`http_plugin`](http_plugin/index.md)
 * [`net_api_plugin`](net_api_plugin/index.md)
+* [`net_plugin`](net_plugin/index.md)
+* [`producer_plugin`](producer_plugin/index.md)
 * [`state_history_plugin`](state_history_plugin/index.md)
