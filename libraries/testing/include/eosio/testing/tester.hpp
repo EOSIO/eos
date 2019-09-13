@@ -100,13 +100,23 @@ namespace eosio { namespace testing {
          virtual ~base_tester() {};
 
          void              init(const setup_policy policy = setup_policy::full, db_read_mode read_mode = db_read_mode::SPECULATIVE);
-         void              init(controller::config config, const snapshot_reader_ptr& snapshot = nullptr, const fc::optional<chain_id_type>& chain_id = fc::optional<chain_id_type>());
-         void              init(controller::config config, protocol_feature_set&& pfs, const snapshot_reader_ptr& snapshot = nullptr, const fc::optional<chain_id_type>& chain_id = fc::optional<chain_id_type>());
+         void              init(controller::config config, const snapshot_reader_ptr& snapshot);
+         void              init(controller::config config, const genesis_state& genesis);
+         void              init(controller::config config);
+         void              init(controller::config config, protocol_feature_set&& pfs, const snapshot_reader_ptr& snapshot);
+         void              init(controller::config config, protocol_feature_set&& pfs, const genesis_state& genesis);
+         void              init(controller::config config, protocol_feature_set&& pfs);
          void              execute_setup_policy(const setup_policy policy);
 
          void              close();
-         void              open( protocol_feature_set&& pfs, const snapshot_reader_ptr& snapshot, const fc::optional<chain_id_type>& chain_id = fc::optional<chain_id_type>());
-         void              open( const snapshot_reader_ptr& snapshot, const fc::optional<chain_id_type>& chain_id = fc::optional<chain_id_type>());
+         template <typename Lambda>
+         void              open( protocol_feature_set&& pfs, Lambda lambda );
+         void              open( protocol_feature_set&& pfs, const snapshot_reader_ptr& snapshot );
+         void              open( protocol_feature_set&& pfs, const genesis_state& genesis );
+         void              open( protocol_feature_set&& pfs );
+         void              open( const snapshot_reader_ptr& snapshot );
+         void              open( const genesis_state& genesis );
+         void              open();
          bool              is_same_chain( base_tester& other );
 
          virtual signed_block_ptr produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms) ) = 0;
@@ -308,6 +318,10 @@ namespace eosio { namespace testing {
             return cfg;
          }
 
+         fc::optional<genesis_state> get_genesis() const {
+            return genesis;
+         }
+
          void schedule_protocol_features_wo_preactivation(const vector<digest_type> feature_digests);
          void preactivate_protocol_features(const vector<digest_type> feature_digests);
          void preactivate_all_builtin_protocol_features();
@@ -326,6 +340,7 @@ namespace eosio { namespace testing {
          std::map<chain::public_key_type, chain::private_key_type> block_signing_private_keys;
       protected:
          controller::config                            cfg;
+         fc::optional<genesis_state>                   genesis;
          map<transaction_id_type, transaction_receipt> chain_transactions;
          map<account_name, block_id_type>              last_produced_block;
          unapplied_transaction_queue                   unapplied_transactions;
@@ -340,12 +355,42 @@ namespace eosio { namespace testing {
          init(policy, read_mode);
       }
 
+      tester(controller::config config, const genesis_state& genesis) {
+         init(config, genesis);
+      }
+
       tester(controller::config config) {
          init(config);
       }
 
-      tester(controller::config config, protocol_feature_set&& pfs) {
-         init(config, std::move(pfs));
+      tester(controller::config config, protocol_feature_set&& pfs, const genesis_state& genesis) {
+         init(config, std::move(pfs), genesis);
+      }
+
+      tester(const fc::temp_directory& tempdir, bool use_genesis) {
+         auto def_conf = default_config(tempdir);
+         cfg = def_conf.first;
+
+         if (use_genesis) {
+            init(cfg, def_conf.second);
+         }
+         else {
+            init(cfg);
+         }
+      }
+
+      template <typename Lambda>
+      tester(const fc::temp_directory& tempdir, Lambda conf_edit, bool use_genesis) {
+         auto def_conf = default_config(tempdir);
+         cfg = def_conf.first;
+         conf_edit(cfg);
+
+         if (use_genesis) {
+            init(cfg, def_conf.second);
+         }
+         else {
+            init(cfg);
+         }
       }
 
       signed_block_ptr produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms) )override {
@@ -362,6 +407,30 @@ namespace eosio { namespace testing {
       }
 
       bool validate() { return true; }
+
+
+      static std::pair<controller::config, genesis_state> default_config(const fc::temp_directory& tempdir) {
+         controller::config cfg;
+         cfg.blocks_dir      = tempdir.path() / config::default_blocks_dir_name;
+         cfg.state_dir  = tempdir.path() / config::default_state_dir_name;
+         cfg.state_size = 1024*1024*8;
+         cfg.state_guard_size = 0;
+         cfg.reversible_cache_size = 1024*1024*8;
+         cfg.reversible_guard_size = 0;
+         cfg.contracts_console = false;
+
+         genesis_state genesis;
+         genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
+         genesis.initial_key = get_public_key( config::system_account_name, "active" );
+
+         for(int i = 0; i < boost::unit_test::framework::master_test_suite().argc; ++i) {
+            if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--wavm"))
+               cfg.wasm_runtime = chain::wasm_interface::vm_type::wavm;
+            else if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--wabt"))
+               cfg.wasm_runtime = chain::wasm_interface::vm_type::wabt;
+         }
+         return {cfg, genesis};
+      }
    };
 
    class validating_tester : public base_tester {
@@ -382,7 +451,7 @@ namespace eosio { namespace testing {
       }
       controller::config vcfg;
 
-      static controller::config default_config(fc::temp_directory& tempdir) {
+      static std::pair<controller::config, genesis_state> default_config(const fc::temp_directory& tempdir) {
          controller::config vcfg;
          vcfg.blocks_dir      = tempdir.path() / std::string("v_").append(config::default_blocks_dir_name);
          vcfg.state_dir  = tempdir.path() /  std::string("v_").append(config::default_state_dir_name);
@@ -392,9 +461,9 @@ namespace eosio { namespace testing {
          vcfg.reversible_guard_size = 0;
          vcfg.contracts_console = false;
 
-         vcfg.genesis.emplace();
-         vcfg.genesis->initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
-         vcfg.genesis->initial_key = get_public_key( config::system_account_name, "active" );
+         genesis_state genesis;
+         genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
+         genesis.initial_key = get_public_key( config::system_account_name, "active" );
 
          for(int i = 0; i < boost::unit_test::framework::master_test_suite().argc; ++i) {
             if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--wavm"))
@@ -402,36 +471,68 @@ namespace eosio { namespace testing {
             else if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--wabt"))
                vcfg.wasm_runtime = chain::wasm_interface::vm_type::wabt;
          }
-         return vcfg;
+         return {vcfg, genesis};
       }
 
       validating_tester(const flat_set<account_name>& trusted_producers = flat_set<account_name>()) {
-         vcfg = default_config(tempdir);
+         auto def_conf = default_config(tempdir);
 
+         vcfg = def_conf.first;
          vcfg.trusted_producers = trusted_producers;
 
-         FC_ASSERT(vcfg.genesis, "Should have a valid genesis_state");
-         validating_node = std::make_unique<controller>(vcfg, fc::optional<chain_id_type>(vcfg.genesis->compute_chain_id()), make_protocol_feature_set());
-         validating_node->add_indices();
-         validating_node->startup( []() { return false; } );
+         validating_node = create_validating_node(vcfg, def_conf.second, true);
 
          init();
       }
 
-      validating_tester(controller::config config) {
-         FC_ASSERT( config.blocks_dir.filename().generic_string() != "."
-                    && config.state_dir.filename().generic_string() != ".", "invalid path names in controller::config" );
+      static void config_validator(controller::config& vcfg) {
+         FC_ASSERT( vcfg.blocks_dir.filename().generic_string() != "."
+                    && vcfg.state_dir.filename().generic_string() != ".", "invalid path names in controller::config" );
 
-         vcfg = config;
          vcfg.blocks_dir = vcfg.blocks_dir.parent_path() / std::string("v_").append( vcfg.blocks_dir.filename().generic_string() );
          vcfg.state_dir  = vcfg.state_dir.parent_path() / std::string("v_").append( vcfg.state_dir.filename().generic_string() );
+      }
 
-         FC_ASSERT(vcfg.genesis, "Should have a valid genesis_state");
-         validating_node = std::make_unique<controller>(vcfg, fc::optional<chain_id_type>(vcfg.genesis->compute_chain_id()), make_protocol_feature_set());
+      static unique_ptr<controller> create_validating_node(controller::config vcfg, const genesis_state& genesis, bool use_genesis) {
+         unique_ptr<controller> validating_node = std::make_unique<controller>(vcfg, make_protocol_feature_set());
          validating_node->add_indices();
-         validating_node->startup( []() { return false; } );
+         if (use_genesis) {
+            validating_node->startup( []() { return false; }, genesis );
+         }
+         else {
+            validating_node->startup( []() { return false; } );
+         }
+         return validating_node;
+      }
 
-         init(config);
+      validating_tester(const fc::temp_directory& tempdir, bool use_genesis) {
+         auto def_conf = default_config(tempdir);
+         vcfg = def_conf.first;
+         config_validator(vcfg);
+         validating_node = create_validating_node(vcfg, def_conf.second, use_genesis);
+
+         if (use_genesis) {
+            init(def_conf.first, def_conf.second);
+         }
+         else {
+            init(def_conf.first);
+         }
+      }
+
+      template <typename Lambda>
+      validating_tester(const fc::temp_directory& tempdir, Lambda conf_edit, bool use_genesis) {
+         auto def_conf = default_config(tempdir);
+         conf_edit(def_conf.first);
+         vcfg = def_conf.first;
+         config_validator(vcfg);
+         validating_node = create_validating_node(vcfg, def_conf.second, use_genesis);
+
+         if (use_genesis) {
+            init(def_conf.first, def_conf.second);
+         }
+         else {
+            init(def_conf.first);
+         }
       }
 
       signed_block_ptr produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms) )override {
@@ -477,8 +578,7 @@ namespace eosio { namespace testing {
                hbh.producer == vn_hbh.producer;
 
         validating_node.reset();
-        FC_ASSERT(vcfg.genesis, "Should have a valid genesis_state");
-        validating_node = std::make_unique<controller>(vcfg, fc::optional<chain_id_type>(vcfg.genesis->compute_chain_id()), make_protocol_feature_set());
+        validating_node = std::make_unique<controller>(vcfg, make_protocol_feature_set());
         validating_node->add_indices();
         validating_node->startup( []() { return false; } );
 
