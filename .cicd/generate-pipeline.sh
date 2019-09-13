@@ -5,10 +5,17 @@ set -eo pipefail
 export MOJAVE_ANKA_TAG_BASE=${MOJAVE_ANKA_TAG_BASE:-'clean::cicd::git-ssh::nas::brew::buildkite-agent'}
 export MOJAVE_ANKA_TEMPLATE_NAME=${MOJAVE_ANKA_TEMPLATE_NAME:-'10.14.4_6C_14G_40G'}
 export PLATFORMS_JSON_ARRAY='[]'
-LINUX_CONCURRENCY='8'
-MAC_CONCURRENCY='2'
-LINUX_CONCURRENCY_GROUP='eos-scheduled-build'
-MAC_CONCURRENCY_GROUP='eos-scheduled-build-mac'
+if [[ "$BUILDKITE_PIPELINE_SLUG" == 'eosio-test-stability' ]]; then
+    LINUX_CONCURRENCY='50'
+    MAC_CONCURRENCY='2'
+    LINUX_CONCURRENCY_GROUP="$BUILDKITE_PIPELINE_SLUG-build-$BUILDKITE_BUILD_NUMBER"
+    MAC_CONCURRENCY_GROUP="$BUILDKITE_PIPELINE_SLUG-build-$BUILDKITE_BUILD_NUMBER-mac"
+else
+    LINUX_CONCURRENCY='8'
+    MAC_CONCURRENCY='2'
+    LINUX_CONCURRENCY_GROUP='eos-scheduled-build'
+    MAC_CONCURRENCY_GROUP='eos-scheduled-build-mac'
+fi
 for FILE in $(ls $CICD_DIR/platforms); do
     # skip mac or linux by not even creating the json block
     ( [[ $SKIP_MAC == true ]] && [[ $FILE =~ 'macos' ]] ) && continue
