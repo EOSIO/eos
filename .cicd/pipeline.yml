@@ -21,7 +21,9 @@ steps:
     - chef/anka#v0.5.4:
         debug: true
         vm-name: "10.14.4_6C_14G_40G"
-        registry-fallback: 'registry_2'
+        failover-registries:
+          - 'registry_1'
+          - 'registry_2'
         pre-execute-sleep: 5
         no-volume: true
         modify-cpu: 12
