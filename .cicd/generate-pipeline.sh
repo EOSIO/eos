@@ -366,6 +366,7 @@ if [[ -z $BUILDKITE_TRIGGERED_FROM_BUILD_ID && $TRIGGER_JOB = "true" ]]; then
 EOF
     fi
 fi
+# pipeline tail
 cat <<EOF
   - wait:
     continue_on_failure: true
