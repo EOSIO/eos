@@ -7,7 +7,7 @@ export MOJAVE_ANKA_TEMPLATE_NAME=${MOJAVE_ANKA_TEMPLATE_NAME:-'10.14.4_6C_14G_40
 export PLATFORMS_JSON_ARRAY='[]'
 
 # Determine if it's a forked PR and make sure to add git fetch so we don't have to git clone the forked repo's url
-if [[ $BUILDKITE_BRANCH =~ 'pull/' ]]; then
+if [[ $BUILDKITE_BRANCH =~ '^pull/[0-9]+/head:' ]]; then
   PR_ID=$(echo $BUILDKITE_BRANCH | cut -d/ -f2)
   export GIT_FETCH="git fetch -v --prune origin refs/pull/$PR_ID/head &&"
 fi
