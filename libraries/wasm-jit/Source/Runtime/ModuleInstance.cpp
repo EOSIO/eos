@@ -64,29 +64,6 @@ namespace Runtime
 		{
 			errorUnless(isA(moduleInstance->globals[importIndex],module.globals.imports[importIndex].type));
 		}
-
-		// Instantiate the module's memory and table definitions.
-		for(const TableDef& tableDef : module.tables.defs)
-		{
-			auto table = createTable(tableDef.type);
-			if(!table) { causeException(Exception::Cause::outOfMemory); }
-			moduleInstance->tables.push_back(table);
-		}
-		for(const MemoryDef& memoryDef : module.memories.defs)
-		{
-			if(!MemoryInstance::theMemoryInstance) {
-				MemoryInstance::theMemoryInstance = createMemory(memoryDef.type);
-				if(!MemoryInstance::theMemoryInstance) { causeException(Exception::Cause::outOfMemory); }
-			}
-			moduleInstance->memories.push_back(MemoryInstance::theMemoryInstance);
-		}
-
-		// Find the default memory and table for the module.
-		if(moduleInstance->memories.size() != 0)
-		{
-			WAVM_ASSERT_THROW(moduleInstance->memories.size() == 1);
-			moduleInstance->defaultMemory = moduleInstance->memories[0];
-		}
 		
 		// Create the FunctionInstance objects for the module's function definitions.
 		for(Uptr functionDefIndex = 0;functionDefIndex < module.functions.defs.size();++functionDefIndex)
@@ -110,26 +87,6 @@ namespace Runtime
 	ModuleInstance::~ModuleInstance()
 	{
 		delete jitModule;
-	}
-
-	MemoryInstance* getDefaultMemory(ModuleInstance* moduleInstance) { return moduleInstance->defaultMemory; }
-	uint64_t getDefaultMemorySize(ModuleInstance* moduleInstance) { return moduleInstance->defaultMemory->numPages << IR::numBytesPerPageLog2; }
-	TableInstance* getDefaultTable(ModuleInstance* moduleInstance) { return moduleInstance->defaultTable; }
-
-	void runInstanceStartFunc(ModuleInstance* moduleInstance) {
-		if(moduleInstance->startFunctionIndex != UINTPTR_MAX)
-			invokeFunction(moduleInstance->functions[moduleInstance->startFunctionIndex],{});
-	}
-
-	void resetGlobalInstances(ModuleInstance* moduleInstance) {
-		for(GlobalInstance*& gi : moduleInstance->globals)
-			memcpy(&gi->value, &gi->initialValue, sizeof(gi->value));
-	}
-	
-	ObjectInstance* getInstanceExport(ModuleInstance* moduleInstance,const std::string& name)
-	{
-		auto mapIt = moduleInstance->exportMap.find(name);
-		return mapIt == moduleInstance->exportMap.end() ? nullptr : mapIt->second;
 	}
 
 	const std::vector<uint8_t>& getPICCode(ModuleInstance* moduleInstance) {

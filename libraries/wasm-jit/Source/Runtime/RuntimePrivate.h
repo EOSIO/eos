@@ -114,9 +114,6 @@ namespace Runtime
 		std::vector<MemoryInstance*> memories;
 		std::vector<GlobalInstance*> globals;
 
-		MemoryInstance* defaultMemory;
-		TableInstance* defaultTable;
-
 		LLVMJIT::JITModuleBase* jitModule;
 
 		Uptr startFunctionIndex = UINTPTR_MAX;
@@ -132,8 +129,6 @@ namespace Runtime
 		, tables(inTableImports)
 		, memories(inMemoryImports)
 		, globals(inGlobalImports)
-		, defaultMemory(nullptr)
-		, defaultTable(nullptr)
 		, jitModule(nullptr)
 		{}
 

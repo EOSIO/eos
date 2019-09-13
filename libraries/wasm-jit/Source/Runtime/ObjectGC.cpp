@@ -87,8 +87,6 @@ namespace Runtime
 				childReferences.insert(childReferences.begin(),moduleInstance->tables.begin(),moduleInstance->tables.end());
 				childReferences.insert(childReferences.begin(),moduleInstance->memories.begin(),moduleInstance->memories.end());
 				childReferences.insert(childReferences.begin(),moduleInstance->globals.begin(),moduleInstance->globals.end());
-				childReferences.push_back(moduleInstance->defaultMemory);
-				childReferences.push_back(moduleInstance->defaultTable);
 				break;
 			}
 			case ObjectKind::table:
