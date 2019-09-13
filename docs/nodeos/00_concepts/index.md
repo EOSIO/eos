@@ -10,4 +10,4 @@ This section contains fundamental concepts about the EOSIO blockchain and the va
 6. [Nodeos Implementation](05_nodeos-implementation.md). Blockchain state and internal storage; Nodeos read modes.
 
 [[info]]
-| The information contained in the above documents contains low-level implementations that might change from one EOSIO version to another.
+| The information contained in the above documents includes low-level implementations that might change from one EOSIO version to another.
