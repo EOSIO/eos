@@ -37,30 +37,6 @@ struct wavm_runtime_initializer {
    }
 };
 
-using live_module_ref = std::list<ObjectInstance*>::iterator;
-
-struct wavm_live_modules {
-   live_module_ref add_live_module(ModuleInstance* module_instance) {
-      return live_modules.insert(live_modules.begin(), asObject(module_instance));
-   }
-
-   void remove_live_module(live_module_ref it) {
-      live_modules.erase(it);
-      run_wavm_garbage_collection();
-   }
-
-   void run_wavm_garbage_collection() {
-      //need to pass in a mutable list of root objects we want the garbage collector to retain
-      std::vector<ObjectInstance*> root;
-      std::copy(live_modules.begin(), live_modules.end(), std::back_inserter(root));
-      Runtime::freeUnreferencedObjects(std::move(root));
-   }
-
-   std::list<ObjectInstance*> live_modules;
-};
-
-static wavm_live_modules the_wavm_live_modules;
-
 }
 
 class wavm_instantiated_module : public wasm_instantiated_module_interface {
@@ -76,7 +52,9 @@ class wavm_instantiated_module : public wasm_instantiated_module_interface {
 
       }
 
-      ~wavm_instantiated_module() {}
+      ~wavm_instantiated_module() {
+         _wavm_runtime.cc.free_code(_code_hash, _vm_version);
+      }
 
       void apply(apply_context& context) override {
          the_running_instance_context.apply_ctx = &context;

@@ -98,6 +98,8 @@ code_cache::code_cache(const boost::filesystem::path data_dir, const rodeos::con
       }
       allocator->deallocate(_code_mapping + cache_header->serialized_descriptor_index);
    }
+
+   _free_bytes_eviction_threshold = rodeos_config.cache_size * .1;
 }
 
 void code_cache::set_on_disk_region_dirty(bool dirty) {
@@ -133,6 +135,22 @@ code_cache::~code_cache() {
    munmap(_code_mapping, allocator->get_size());
    close(_cache_fd);
    set_on_disk_region_dirty(false);
+}
+
+void code_cache::free_code(const digest_type& code_id, const uint8_t& vm_version) {
+   code_cache_index::index<by_hash>::type::iterator it = _cache_index.get<by_hash>().find(boost::make_tuple(code_id, vm_version));
+   if(it != _cache_index.get<by_hash>().end()) {
+      allocator->deallocate(_code_mapping + it->code_begin);
+      _cache_index.get<by_hash>().erase(it);
+   }
+}
+
+void code_cache::check_eviction_threshold() {
+   while(allocator->get_free_memory() < _free_bytes_eviction_threshold && _cache_index.size() > 1) {
+      const code_descriptor& cd = _cache_index.back();
+      allocator->deallocate(_code_mapping + cd.code_begin);
+      _cache_index.pop_back();
+   }
 }
 
 const code_descriptor* const code_cache::get_descriptor_for_code(const digest_type& code_id, const uint8_t& vm_version, const std::vector<uint8_t>& wasm, const std::vector<uint8_t>& initial_mem) {
@@ -178,6 +196,7 @@ const code_descriptor* const code_cache::get_descriptor_for_code(const digest_ty
    memcpy(allocated_code, pic.data(), pic.size());
    uintptr_t placed_code_in = (char*)allocated_code-_code_mapping;
    cd.code_begin = placed_code_in;
+   check_eviction_threshold();
 
    if(module.startFunctionIndex == UINTPTR_MAX)
       cd.start = no_offset{};
@@ -248,6 +267,9 @@ const code_descriptor* const code_cache::get_descriptor_for_code(const digest_ty
    cd.initdata_pre_memory_size = prolouge.end() - prolouge_it;
    std::move(prolouge_it, prolouge.end(), std::back_inserter(cd.initdata));
    std::move(initial_mem.begin(), initial_mem.end(), std::back_inserter(cd.initdata));
+
+   std::vector<ObjectInstance*> rootObjects;
+   Runtime::freeUnreferencedObjects(std::move(rootObjects));
 
    return &*_cache_index.push_front(std::move(cd)).first;
 }

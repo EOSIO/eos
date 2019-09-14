@@ -31,6 +31,8 @@ class code_cache {
       //otherwise: return nullptr
       const code_descriptor* const get_descriptor_for_code(const digest_type& code_id, const uint8_t& vm_version, const std::vector<uint8_t>& wasm, const std::vector<uint8_t>& initial_mem);
 
+      void free_code(const digest_type& code_id, const uint8_t& vm_version);
+
    private:
       struct by_hash;
 
@@ -54,6 +56,9 @@ class code_cache {
 
       using allocator_t = bip::rbtree_best_fit<bip::null_mutex_family, bip::offset_ptr<void>, 16>;
       allocator_t* allocator;
+
+      size_t _free_bytes_eviction_threshold;
+      void check_eviction_threshold();
 
       void set_on_disk_region_dirty(bool);
 
