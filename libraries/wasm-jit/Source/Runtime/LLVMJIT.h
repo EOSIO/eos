@@ -99,7 +99,7 @@ namespace LLVMJIT
 	}
 
 	// Functions that map between the symbols used for externally visible functions and the function
-	std::string getExternalFunctionName(ModuleInstance* moduleInstance,Uptr functionDefIndex);
+	std::string getExternalFunctionName(Uptr functionDefIndex);
 	bool getFunctionIndexFromExternalName(const char* externalName,Uptr& outFunctionDefIndex);
 
 	// Emits LLVM IR for a module.

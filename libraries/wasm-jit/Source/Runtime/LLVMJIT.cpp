@@ -99,7 +99,6 @@ namespace LLVMJIT
 		}
 		virtual U8* allocateDataSection(uintptr_t numBytes,U32 alignment,U32 sectionID,llvm::StringRef SectionName,bool isReadOnly) override
 		{
-         //printf("DATA sz:%lu a:%u sec:%s\n", numBytes, alignment, SectionName.data());
          if(SectionName == ".eh_frame") {
             dumpster.resize(numBytes);
             return dumpster.data();
@@ -248,11 +247,9 @@ namespace LLVMJIT
 		jitModule->compile(llvmModule);
 	}
 
-	std::string getExternalFunctionName(ModuleInstance* moduleInstance,Uptr functionDefIndex)
+	std::string getExternalFunctionName(Uptr functionDefIndex)
 	{
-		WAVM_ASSERT_THROW(functionDefIndex < moduleInstance->functionDefs.size());
-		return "wasmFunc" + std::to_string(functionDefIndex)
-			+ "_" + moduleInstance->functionDefs[functionDefIndex]->debugName;
+		return "wasmFunc" + std::to_string(functionDefIndex);
 	}
 
 	bool getFunctionIndexFromExternalName(const char* externalName,Uptr& outFunctionDefIndex)

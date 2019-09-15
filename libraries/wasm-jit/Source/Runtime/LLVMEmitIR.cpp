@@ -54,7 +54,6 @@ namespace LLVMJIT
 		const Module& module;
 		const FunctionDef& functionDef;
 		const FunctionType* functionType;
-		FunctionInstance* functionInstance;
 		llvm::Function* llvmFunction;
 		llvm::IRBuilder<> irBuilder;
 
@@ -96,12 +95,11 @@ namespace LLVMJIT
 		std::vector<BranchTarget> branchTargetStack;
 		std::vector<llvm::Value*> stack;
 
-		EmitFunctionContext(EmitModuleContext& inEmitModuleContext,const Module& inModule,const FunctionDef& inFunctionDef,FunctionInstance* inFunctionInstance,llvm::Function* inLLVMFunction)
+		EmitFunctionContext(EmitModuleContext& inEmitModuleContext,const Module& inModule,const FunctionDef& inFunctionDef,llvm::Function* inLLVMFunction)
 		: moduleContext(inEmitModuleContext)
 		, module(inModule)
 		, functionDef(inFunctionDef)
 		, functionType(inModule.types[inFunctionDef.type.index])
-		, functionInstance(inFunctionInstance)
 		, llvmFunction(inLLVMFunction)
 		, irBuilder(context)
 		{}
@@ -592,15 +590,13 @@ namespace LLVMJIT
 			const FunctionType* calleeType;
 			if(imm.functionIndex < moduleContext.importedFunctionOffsets.size())
 			{
-				WAVM_ASSERT_THROW(imm.functionIndex < moduleContext.moduleInstance->functions.size());
-            calleeType = moduleContext.moduleInstance->functions[imm.functionIndex]->type;
+            calleeType = module.types[module.functions.imports[imm.functionIndex].type.index];
             llvm::Value* ic = irBuilder.CreateLoad( emitLiteralPointer((void*)(-18952-moduleContext.importedFunctionOffsets[imm.functionIndex]*8), llvmI64Type->getPointerTo(256)) );  ///XXX literal
             callee = irBuilder.CreateIntToPtr(ic, asLLVMType(calleeType)->getPointerTo());
 			}
 			else
 			{
 				const Uptr calleeIndex = imm.functionIndex - moduleContext.importedFunctionOffsets.size();
-				WAVM_ASSERT_THROW(calleeIndex < moduleContext.functionDefs.size());
 				callee = moduleContext.functionDefs[calleeIndex];
 				calleeType = module.types[module.functions.defs[calleeIndex].type.index];
 			}
@@ -1169,13 +1165,13 @@ namespace LLVMJIT
 		for(Uptr functionDefIndex = 0;functionDefIndex < module.functions.defs.size();++functionDefIndex)
 		{
 			auto llvmFunctionType = asLLVMType(module.types[module.functions.defs[functionDefIndex].type.index]);
-			auto externalName = getExternalFunctionName(moduleInstance,functionDefIndex);
+			auto externalName = getExternalFunctionName(functionDefIndex);
 			functionDefs[functionDefIndex] = llvm::Function::Create(llvmFunctionType,llvm::Function::ExternalLinkage,externalName,llvmModule);
 		}
 
 		// Compile each function in the module.
 		for(Uptr functionDefIndex = 0;functionDefIndex < module.functions.defs.size();++functionDefIndex)
-		{ EmitFunctionContext(*this,module,module.functions.defs[functionDefIndex],moduleInstance->functionDefs[functionDefIndex],functionDefs[functionDefIndex]).emit(); }
+		{ EmitFunctionContext(*this,module,module.functions.defs[functionDefIndex],functionDefs[functionDefIndex]).emit(); }
 
 		Timing::logRatePerSecond("Emitted LLVM IR",emitTimer,(F64)llvmModule->size(),"functions");
 
