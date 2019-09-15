@@ -13,19 +13,19 @@ set(Sources
 	RuntimePrivate.h
 	Threads.cpp
 	WAVMIntrinsics.cpp
-	${LLVM_SHIM_FILE}
   )
 
 if("wavm" IN_LIST EOSIO_WASM_RUNTIMES)
-  list(APPEND Sources
-     LLVMEmitIR.cpp
-     LLVMJIT.cpp
-     Memory.cpp
-     ModuleInstance.cpp
-     Runtime.cpp
-     Table.cpp
-  )
-  llvm_map_components_to_libnames(LLVM_LIBS support core passes mcjit native DebugInfoDWARF orcjit)
+	list(APPEND Sources
+		LLVMEmitIR.cpp
+		LLVMJIT.cpp
+		Memory.cpp
+		ModuleInstance.cpp
+		Runtime.cpp
+		Table.cpp
+		${LLVM_SHIM_FILE}
+	)
+	llvm_map_components_to_libnames(LLVM_LIBS support core passes mcjit native DebugInfoDWARF orcjit)
 endif()
 
 set(PublicHeaders

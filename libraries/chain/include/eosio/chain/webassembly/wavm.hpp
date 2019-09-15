@@ -143,7 +143,7 @@ struct wasm_function_type_provider<Ret(Args...)> {
 #define __INTRINSIC_NAME(LABEL, SUFFIX) LABEL##SUFFIX
 #define _INTRINSIC_NAME(LABEL, SUFFIX) __INTRINSIC_NAME(LABEL,SUFFIX)
 
-#ifdef WAVM_RUNTIME_ENABLED
+#ifdef EOSIO_WAVM_RUNTIME_ENABLED
 
 /**
  * class to represent an in-wasm-memory array
