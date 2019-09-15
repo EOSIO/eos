@@ -28,8 +28,6 @@ static counter the_counter;
 
 namespace eosio { namespace chain { namespace webassembly { namespace wavm {
 
-running_instance_context the_running_instance_context;
-
 namespace detail {
 struct wavm_runtime_initializer {
    wavm_runtime_initializer() {
@@ -57,8 +55,6 @@ class wavm_instantiated_module : public wasm_instantiated_module_interface {
       }
 
       void apply(apply_context& context) override {
-         the_running_instance_context.apply_ctx = &context;
-
          const code_descriptor* const cd = _wavm_runtime.cc.get_descriptor_for_code(_code_hash, _vm_version, _wasm, _initial_memory);
 
          unsigned long long start = __builtin_readcyclecounter();
