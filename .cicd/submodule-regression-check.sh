@@ -12,7 +12,7 @@ else
     BASE_BRANCH=${BUILDKITE_PULL_REQUEST_BASE_BRANCH:-$BUILDKITE_BRANCH}
     CURRENT_BRANCH=$BUILDKITE_BRANCH
 fi
-[[ $BASE_BRANCH == $CURRENT_BRANCH ]] && echo 'BASE_BRANCH and CURRENT_BRANCH are the same' exit 0
+[[ $BASE_BRANCH == $CURRENT_BRANCH ]] && echo 'BASE_BRANCH and CURRENT_BRANCH are the same' && exit 0
 
 echo "getting submodule info for $CURRENT_BRANCH"
 while read -r a b; do
