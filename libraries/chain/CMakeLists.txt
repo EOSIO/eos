@@ -57,6 +57,7 @@ add_library( eosio_chain
              webassembly/rodeos/executor.cpp
              webassembly/rodeos/memory.cpp
              webassembly/rodeos/config.cpp
+             webassembly/rodeos/intrinsic.cpp
 
 #             get_config.cpp
 #

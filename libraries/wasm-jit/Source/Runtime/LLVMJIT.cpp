@@ -237,7 +237,7 @@ namespace LLVMJIT
 	void instantiateModule(const IR::Module& module,ModuleInstance* moduleInstance)
 	{
 		// Emit LLVM IR for the module.
-		auto llvmModule = emitModule(module,moduleInstance);
+		auto llvmModule = emitModule(module);
 
 		// Construct the JIT compilation pipeline for this module.
 		auto jitModule = new JITModule(moduleInstance);

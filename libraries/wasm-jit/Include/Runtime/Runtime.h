@@ -206,7 +206,7 @@ namespace Runtime
 	};
 
 	// Instantiates a module, bindings its imports to the specified objects. May throw InstantiationException.
-	RUNTIME_API ModuleInstance* instantiateModule(const IR::Module& module,ImportBindings&& imports);
+	RUNTIME_API ModuleInstance* instantiateModule(const IR::Module& module);
 
 	// Gets the default table/memory for a ModuleInstance.
 	RUNTIME_API MemoryInstance* getDefaultMemory(ModuleInstance* moduleInstance);
@@ -219,8 +219,6 @@ namespace Runtime
 
 	RUNTIME_API const std::vector<uint8_t>& getPICCode(ModuleInstance* moduleInstance);
 	RUNTIME_API const std::map<unsigned, uintptr_t>& getFunctionOffsets(ModuleInstance* moduleInstance);
-	RUNTIME_API uintptr_t getFunctionTypePtr(ModuleInstance* moduleInstance, Uptr functionIndex);
-	RUNTIME_API size_t getOffsetOfIntrinsicFunction(ModuleInstance* moduleInstance, Uptr functionIndex);
 
 	// Gets an object exported by a ModuleInstance by name.
 	RUNTIME_API ObjectInstance* getInstanceExport(ModuleInstance* moduleInstance,const std::string& name);

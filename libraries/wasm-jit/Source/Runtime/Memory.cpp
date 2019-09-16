@@ -65,8 +65,6 @@ namespace Runtime
 		{
 			if(memories[memoryIndex] == this) { memories.erase(memories.begin() + memoryIndex); break; }
 		}
-
-		theMemoryInstance = nullptr;
 	}
 	
 	bool isAddressOwnedByMemory(U8* address)

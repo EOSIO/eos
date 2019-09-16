@@ -103,5 +103,5 @@ namespace LLVMJIT
 	bool getFunctionIndexFromExternalName(const char* externalName,Uptr& outFunctionDefIndex);
 
 	// Emits LLVM IR for a module.
-	llvm::Module* emitModule(const IR::Module& module,ModuleInstance* moduleInstance);
+	llvm::Module* emitModule(const IR::Module& module);
 }

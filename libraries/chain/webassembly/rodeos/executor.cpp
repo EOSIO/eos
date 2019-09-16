@@ -1,6 +1,8 @@
 #include <eosio/chain/webassembly/rodeos/executor.hpp>
 #include <eosio/chain/webassembly/rodeos/code_cache.hpp>
 #include <eosio/chain/webassembly/rodeos/memory.hpp>
+#include <eosio/chain/webassembly/rodeos/intrinsic_mapping.hpp>
+#include <eosio/chain/webassembly/rodeos/intrinsic.hpp>
 #include <eosio/chain/wasm_eosio_constraints.hpp>
 #include <eosio/chain/apply_context.hpp>
 #include <eosio/chain/transaction_context.hpp>
@@ -8,6 +10,8 @@
 #include <eosio/chain/types.hpp>
 
 #include <fc/scoped_exit.hpp>
+
+#include <boost/hana/equal.hpp>
 
 #include <mutex>
 
@@ -70,15 +74,15 @@ notus:
    __builtin_unreachable();
 }
 
-DEFINE_INTRINSIC_FUNCTION2(rodeos_internal,1,_grow_memory,grow_memory,i32,i32,grow,i32,max) {
+static int32_t grow_memory(int32_t grow, int32_t max) {
    RODEOS_MEMORY_PTR_cb_ptr;
    U32 previous_page_count = cb_ptr->current_linear_memory_pages;
    U32 grow_amount = grow;
    U32 max_pages = max;
    if(grow == 0)
-      return (I32)cb_ptr->current_linear_memory_pages;
+      return (int32_t)cb_ptr->current_linear_memory_pages;
    if(previous_page_count + grow_amount > max_pages)
-      return (I32)-1;
+      return (int32_t)-1;
 
    uint64_t current_gs;
    arch_prctl(ARCH_GET_GS, &current_gs);
@@ -89,8 +93,11 @@ DEFINE_INTRINSIC_FUNCTION2(rodeos_internal,1,_grow_memory,grow_memory,i32,i32,gr
    //XXX probably should checktime during this
    memset((void*)(cb_ptr->full_linear_memory_start + previous_page_count*64u*1024u), 0, grow_amount*64u*1024u);
 
-   return (I32)previous_page_count;
+   return (int32_t)previous_page_count;
 }
+static intrinsic grow_memory_intrinsic("rodeos_internal.grow_memory", IR::FunctionType::get(IR::ResultType::i32,{IR::ValueType::i32,IR::ValueType::i32}), (void*)&grow_memory,
+  boost::hana::index_if(intrinsic_table, ::boost::hana::equal.to(BOOST_HANA_STRING("rodeos_internal.grow_memory"))).value()
+);
 
 ///XXX put this somewhere else cozy
 static void throw_internal_exception(const std::string& s) {
@@ -100,23 +107,30 @@ static void throw_internal_exception(const std::string& s) {
    __builtin_unreachable();
 }
 
-DEFINE_INTRINSIC_FUNCTION0(rodeos_internal,5,_depth_assert,depth_assert,none) {
+#define DEFINE_RODEOS_TRAP_INTRINSIC(module,name) \
+	void name(); \
+	static intrinsic name##Function(#module "." #name,IR::FunctionType::get(),(void*)&name, \
+     boost::hana::index_if(intrinsic_table, ::boost::hana::equal.to(BOOST_HANA_STRING(#module "." #name))).value() \
+   ); \
+	void name()
+
+DEFINE_RODEOS_TRAP_INTRINSIC(rodeos_internal,depth_assert) {
    throw_internal_exception("Exceeded call depth maximum");
 }
 
-DEFINE_INTRINSIC_FUNCTION0(rodeos_internal,2,_div0_or_overflow,div0_or_overflow,none) {
+DEFINE_RODEOS_TRAP_INTRINSIC(rodeos_internal,div0_or_overflow) {
    throw_internal_exception("Division by 0 or integer overflow trapped");
 }
 
-DEFINE_INTRINSIC_FUNCTION0(rodeos_internal,3,_indirect_call_mismatch,indirect_call_mismatch,none) {
+DEFINE_RODEOS_TRAP_INTRINSIC(rodeos_internal,indirect_call_mismatch) {
    throw_internal_exception("Indirect call function type mismatch");
 }
 
-DEFINE_INTRINSIC_FUNCTION0(rodeos_internal,4,_indirect_call_oob,indirect_call_oob,none) {
+DEFINE_RODEOS_TRAP_INTRINSIC(rodeos_internal,indirect_call_oob) {
    throw_internal_exception("Indirect call index out of bounds");
 }
 
-DEFINE_INTRINSIC_FUNCTION0(rodeos_internal,0,_unreachable,unreachable,none) {
+DEFINE_RODEOS_TRAP_INTRINSIC(rodeos_internal,unreachable) {
    throw_internal_exception("Unreachable reached");
 }
 
@@ -150,7 +164,7 @@ executor::executor(const code_cache& cc) {
 
    struct stat s;
    fstat(cc.fd(), &s);
-   code_mapping = (uint8_t*)mmap(nullptr, s.st_size, PROT_EXEC, MAP_SHARED, cc.fd(), 0);
+   code_mapping = (uint8_t*)mmap(nullptr, s.st_size, PROT_EXEC|PROT_READ, MAP_SHARED, cc.fd(), 0);
    code_mapping_size = s.st_size;
    mapping_is_executable = true;
 }

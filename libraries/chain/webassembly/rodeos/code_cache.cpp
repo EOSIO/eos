@@ -4,6 +4,7 @@
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/webassembly/rodeos/memory.hpp>
 #include <eosio/chain/webassembly/rodeos/rodeos.hpp>
+#include <eosio/chain/webassembly/rodeos/intrinsic.hpp>
 
 #include <unistd.h>
 #include <sys/syscall.h>
@@ -172,9 +173,7 @@ const code_descriptor* const code_cache::get_descriptor_for_code(const digest_ty
 
    ModuleInstance* instance;
    try {
-      eosio::chain::webassembly::common::root_resolver resolver;
-      LinkResult link_result = linkModule(module, resolver);
-      instance = instantiateModule(module, std::move(link_result.resolvedImports));
+      instance = instantiateModule(module);
       EOS_ASSERT(instance != nullptr, wasm_exception, "Fail to Instantiate WAVM Module");
    }
    catch(const Runtime::Exception& e) {
@@ -200,8 +199,11 @@ const code_descriptor* const code_cache::get_descriptor_for_code(const digest_ty
 
    if(module.startFunctionIndex == UINTPTR_MAX)
       cd.start = no_offset{};
-   else if(module.startFunctionIndex < module.functions.imports.size())
-      cd.start = intrinsic_ordinal{getOffsetOfIntrinsicFunction(instance, module.startFunctionIndex)};
+   else if(module.startFunctionIndex < module.functions.imports.size()) {
+      const auto& f = module.functions.imports[module.startFunctionIndex];
+      const eosio::chain::rodeos::intrinsic_entry& ie = eosio::chain::rodeos::get_intrinsic_map().at(f.moduleName + "." + f.exportName);
+      cd.start = intrinsic_ordinal{ie.ordinal};
+   }
    else
       cd.start = code_offset{function_to_offsets.at(module.startFunctionIndex-module.functions.imports.size())};
 
@@ -255,12 +257,16 @@ const code_descriptor* const code_cache::get_descriptor_for_code(const digest_ty
          const long int effective_table_index = table_segment.baseOffset.i32 + i;
          EOS_ASSERT(effective_table_index < module.tables.defs[0].type.size.min, wasm_execution_error, "table init out of bounds");
 
-         table_index_0[effective_table_index].type = getFunctionTypePtr(instance, function_index);
-
-         if(function_index < module.functions.imports.size())
-            table_index_0[effective_table_index].func = getOffsetOfIntrinsicFunction(instance, function_index)*-8;
-         else
+         if(function_index < module.functions.imports.size()) {
+            const auto& f = module.functions.imports[function_index];
+            const eosio::chain::rodeos::intrinsic_entry& ie = eosio::chain::rodeos::get_intrinsic_map().at(f.moduleName + "." + f.exportName);
+            table_index_0[effective_table_index].func = ie.ordinal*-8;
+            table_index_0[effective_table_index].type = (uintptr_t)module.types[module.functions.imports[function_index].type.index];
+         }
+         else {
             table_index_0[effective_table_index].func = function_to_offsets.at(function_index - module.functions.imports.size());
+            table_index_0[effective_table_index].type = (uintptr_t)module.types[module.functions.defs[function_index - module.functions.imports.size()].type.index];
+         }
       }
    }
 

@@ -6,6 +6,9 @@
 #include "Logging/Logging.h"
 #include "llvm/Support/raw_ostream.h"
 
+///XXX obviously not :)
+#include "../../chain/include/eosio/chain/webassembly/rodeos/intrinsic.hpp"
+
 #define ENABLE_LOGGING 0
 #define ENABLE_FUNCTION_ENTER_EXIT_HOOKS 0
 
@@ -17,7 +20,6 @@ namespace LLVMJIT
 	struct EmitModuleContext
 	{
 		const Module& module;
-		ModuleInstance* moduleInstance;
 
 		llvm::Module* llvmModule;
 		std::vector<llvm::Function*> functionDefs;
@@ -31,9 +33,8 @@ namespace LLVMJIT
 		llvm::MDNode* likelyFalseBranchWeights;
 		llvm::MDNode* likelyTrueBranchWeights;
 
-		EmitModuleContext(const Module& inModule,ModuleInstance* inModuleInstance)
+		EmitModuleContext(const Module& inModule)
 		: module(inModule)
-		, moduleInstance(inModuleInstance)
 		, llvmModule(new llvm::Module("",context))
 		{
 			auto zeroAsMetadata = llvm::ConstantAsMetadata::get(emitLiteral(I32(0)));
@@ -251,12 +252,9 @@ namespace LLVMJIT
 		// Emits a call to a WAVM intrinsic function.
 		llvm::Value* emitRuntimeIntrinsic(const char* intrinsicName,const FunctionType* intrinsicType,const std::initializer_list<llvm::Value*>& args)
 		{
-			ObjectInstance* intrinsicObject = Intrinsics::find(intrinsicName,intrinsicType);
-			WAVM_ASSERT_THROW(intrinsicObject);
-			FunctionInstance* intrinsicFunction = asFunction(intrinsicObject);
-			WAVM_ASSERT_THROW(intrinsicFunction->type == intrinsicType);
-         llvm::Value* ic = irBuilder.CreateLoad( emitLiteralPointer((void*)(-18952-intrinsicFunction->offset*8), llvmI64Type->getPointerTo(256)) );  ///XXX literal
-         llvm::Value* itp = irBuilder.CreateIntToPtr(ic, asLLVMType(intrinsicType)->getPointerTo());
+         const eosio::chain::rodeos::intrinsic_entry& ie = eosio::chain::rodeos::get_intrinsic_map().at(intrinsicName);
+         llvm::Value* ic = irBuilder.CreateLoad( emitLiteralPointer((void*)(-18952-ie.ordinal*8), llvmI64Type->getPointerTo(256)) );  ///XXX literal
+         llvm::Value* itp = irBuilder.CreateIntToPtr(ic, asLLVMType(ie.type)->getPointerTo());
 			return irBuilder.CreateCall(itp,llvm::ArrayRef<llvm::Value*>(args.begin(),args.end()));
 		}
 
@@ -588,11 +586,13 @@ namespace LLVMJIT
 			// Map the callee function index to either an imported function pointer or a function in this module.
 			llvm::Value* callee;
 			const FunctionType* calleeType;
+         bool isExit = false;
 			if(imm.functionIndex < moduleContext.importedFunctionOffsets.size())
 			{
             calleeType = module.types[module.functions.imports[imm.functionIndex].type.index];
             llvm::Value* ic = irBuilder.CreateLoad( emitLiteralPointer((void*)(-18952-moduleContext.importedFunctionOffsets[imm.functionIndex]*8), llvmI64Type->getPointerTo(256)) );  ///XXX literal
             callee = irBuilder.CreateIntToPtr(ic, asLLVMType(calleeType)->getPointerTo());
+            isExit = module.functions.imports[imm.functionIndex].moduleName == "env" && module.functions.imports[imm.functionIndex].exportName == "eosio_exit";
 			}
 			else
 			{
@@ -607,6 +607,10 @@ namespace LLVMJIT
 
 			// Call the function.
 			auto result = irBuilder.CreateCall(callee,llvm::ArrayRef<llvm::Value*>(llvmArgs,calleeType->parameters.size()));
+         if(isExit) {
+            irBuilder.CreateUnreachable();
+            enterUnreachable();
+         }
 
 			// Push the result on the operand stack.
 			if(calleeType->ret != ResultType::none) { push(result); }
@@ -1131,8 +1135,9 @@ namespace LLVMJIT
 		// Create LLVM pointer constants for the module's imported functions.
 		for(Uptr functionIndex = 0;functionIndex < module.functions.imports.size();++functionIndex)
 		{
-			const FunctionInstance* functionInstance = moduleInstance->functions[functionIndex];
-			importedFunctionOffsets.push_back(functionInstance->offset);
+         ///XXX namespace
+         const eosio::chain::rodeos::intrinsic_entry& ie = eosio::chain::rodeos::get_intrinsic_map().at(module.functions.imports[functionIndex].moduleName + "." + module.functions.imports[functionIndex].exportName);
+			importedFunctionOffsets.push_back(ie.ordinal);
 		}
 
       int current_prolouge = -8;
@@ -1178,8 +1183,8 @@ namespace LLVMJIT
 		return llvmModule;
 	}
 
-	llvm::Module* emitModule(const Module& module,ModuleInstance* moduleInstance)
+	llvm::Module* emitModule(const Module& module)
 	{
-		return EmitModuleContext(module,moduleInstance).emit();
+		return EmitModuleContext(module).emit();
 	}
 }

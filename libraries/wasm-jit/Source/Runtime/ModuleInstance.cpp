@@ -7,80 +7,18 @@
 
 namespace Runtime
 {
-	std::vector<ModuleInstance*> moduleInstances;
 	
-	Value evaluateInitializer(ModuleInstance* moduleInstance,InitializerExpression expression)
-	{
-		switch(expression.type)
-		{
-		case InitializerExpression::Type::i32_const: return expression.i32;
-		case InitializerExpression::Type::i64_const: return expression.i64;
-		case InitializerExpression::Type::f32_const: return expression.f32;
-		case InitializerExpression::Type::f64_const: return expression.f64;
-		case InitializerExpression::Type::get_global:
-		{
-			// Find the import this refers to.
-			errorUnless(expression.globalIndex < moduleInstance->globals.size());
-			GlobalInstance* globalInstance = moduleInstance->globals[expression.globalIndex];
-			return Runtime::Value(globalInstance->type.valueType,globalInstance->value);
-		}
-		default: Errors::unreachable();
-		};
-	}
 
-	MemoryInstance* MemoryInstance::theMemoryInstance = nullptr;
 
-	ModuleInstance* instantiateModule(const IR::Module& module,ImportBindings&& imports)
+	ModuleInstance* instantiateModule(const IR::Module& module)
 	{
 		ModuleInstance* moduleInstance = new ModuleInstance(
-			std::move(imports.functions),
-			std::move(imports.tables),
-			std::move(imports.memories),
-			std::move(imports.globals)
-			);
-		
-		// Get disassembly names for the module's objects.
-		DisassemblyNames disassemblyNames;
-		IR::getDisassemblyNames(module,disassemblyNames);
 
-		// Check the type of the ModuleInstance's imports.
-		errorUnless(moduleInstance->functions.size() == module.functions.imports.size());
-		for(Uptr importIndex = 0;importIndex < module.functions.imports.size();++importIndex)
-		{
-			errorUnless(isA(moduleInstance->functions[importIndex],module.types[module.functions.imports[importIndex].type.index]));
-		}
-		errorUnless(moduleInstance->tables.size() == module.tables.imports.size());
-		for(Uptr importIndex = 0;importIndex < module.tables.imports.size();++importIndex)
-		{
-			errorUnless(isA(moduleInstance->tables[importIndex],module.tables.imports[importIndex].type));
-		}
-		errorUnless(moduleInstance->memories.size() == module.memories.imports.size());
-		for(Uptr importIndex = 0;importIndex < module.memories.imports.size();++importIndex)
-		{
-			errorUnless(isA(moduleInstance->memories[importIndex],module.memories.imports[importIndex].type));
-		}
-		errorUnless(moduleInstance->globals.size() == module.globals.imports.size());
-		for(Uptr importIndex = 0;importIndex < module.globals.imports.size();++importIndex)
-		{
-			errorUnless(isA(moduleInstance->globals[importIndex],module.globals.imports[importIndex].type));
-		}
-		
-		// Create the FunctionInstance objects for the module's function definitions.
-		for(Uptr functionDefIndex = 0;functionDefIndex < module.functions.defs.size();++functionDefIndex)
-		{
-			const Uptr functionIndex = moduleInstance->functions.size();
-			const DisassemblyNames::Function& functionNames = disassemblyNames.functions[functionIndex];
-			std::string debugName = functionNames.name;
-			if(!debugName.size()) { debugName = "<function #" + std::to_string(functionDefIndex) + ">"; }
-			auto functionInstance = new FunctionInstance(moduleInstance,0xFFFFFFFFu,module.types[module.functions.defs[functionDefIndex].type.index],nullptr,debugName.c_str());
-			moduleInstance->functionDefs.push_back(functionInstance);
-			moduleInstance->functions.push_back(functionInstance);
-		}
+			);
 
 		// Generate machine code for the module.
 		LLVMJIT::instantiateModule(module,moduleInstance);
 
-		moduleInstances.push_back(moduleInstance);
 		return moduleInstance;
 	}
 
@@ -96,11 +34,4 @@ namespace Runtime
       return moduleInstance->jitModule->function_to_offsets;
    }
 
-   uintptr_t getFunctionTypePtr(ModuleInstance* moduleInstance, Uptr functionIndex) {
-      return (uintptr_t)moduleInstance->functions.at(functionIndex)->type;
-   }
-
-   size_t getOffsetOfIntrinsicFunction(ModuleInstance* moduleInstance, Uptr functionIndex) {
-      return moduleInstance->functions.at(functionIndex)->offset;
-   }
 }

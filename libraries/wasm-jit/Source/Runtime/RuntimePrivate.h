@@ -88,8 +88,6 @@ namespace Runtime
 
 		MemoryInstance(const MemoryType& inType): GCObject(ObjectKind::memory), type(inType), baseAddress(nullptr), numPages(0), endOffset(0), reservedBaseAddress(nullptr), reservedNumPlatformPages(0) {}
 		~MemoryInstance() override;
-
-      static MemoryInstance* theMemoryInstance;
 	};
 
 	// An instance of a WebAssembly global.
@@ -105,30 +103,15 @@ namespace Runtime
 	// An instance of a WebAssembly module.
 	struct ModuleInstance : GCObject
 	{
-		std::map<std::string,ObjectInstance*> exportMap;
 
-		std::vector<FunctionInstance*> functionDefs;
-
-		std::vector<FunctionInstance*> functions;
-		std::vector<TableInstance*> tables;
-		std::vector<MemoryInstance*> memories;
-		std::vector<GlobalInstance*> globals;
 
 		LLVMJIT::JITModuleBase* jitModule;
 
-		Uptr startFunctionIndex = UINTPTR_MAX;
-
 		ModuleInstance(
-			std::vector<FunctionInstance*>&& inFunctionImports,
-			std::vector<TableInstance*>&& inTableImports,
-			std::vector<MemoryInstance*>&& inMemoryImports,
-			std::vector<GlobalInstance*>&& inGlobalImports
+
 			)
 		: GCObject(ObjectKind::module)
-		, functions(inFunctionImports)
-		, tables(inTableImports)
-		, memories(inMemoryImports)
-		, globals(inGlobalImports)
+
 		, jitModule(nullptr)
 		{}
 

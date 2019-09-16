@@ -1,11 +1,10 @@
 #include <eosio/chain/webassembly/rodeos/memory.hpp>
+#include <eosio/chain/webassembly/rodeos/intrinsic.hpp>
 
 #include <unistd.h>
 #include <sys/syscall.h>
 #include <sys/mman.h>
 #include <linux/memfd.h>
-
-#include <Runtime/Intrinsics.h>
 
 namespace eosio { namespace chain { namespace rodeos {
 
@@ -31,9 +30,9 @@ memory::memory() {
 
    //layout the intrinsic jump table
    uintptr_t* const intrinsic_jump_table = reinterpret_cast<uintptr_t* const>(zeropage_base - first_intrinsic_offset);
-   const std::map<std::string,Intrinsics::Function*>& intrinsics = Intrinsics::getIntrinsicFunctions();
-   for(const auto& func : intrinsics)
-      intrinsic_jump_table[-func.second->getOffset()] = (uintptr_t)func.second->getNativeFunc();
+   const intrinsic_map_t& intrinsics = get_intrinsic_map();
+   for(const auto& intrinsic : intrinsics)
+      intrinsic_jump_table[-intrinsic.second.ordinal] = (uintptr_t)intrinsic.second.function_ptr;
 }
 
 memory::~memory() {
