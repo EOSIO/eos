@@ -87,6 +87,7 @@ target_include_directories( eosio_chain
 
 foreach(RUNTIME ${EOSIO_WASM_RUNTIMES})
    string(TOUPPER "${RUNTIME}" RUNTIMEUC)
+   string(REPLACE "-" "_" RUNTIMEUC ${RUNTIMEUC})
    target_compile_definitions(eosio_chain PUBLIC "EOSIO_${RUNTIMEUC}_RUNTIME_ENABLED")
 endforeach()
 
