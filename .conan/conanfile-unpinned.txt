@@ -19,7 +19,6 @@ libusb*:enable_udev=False
 gettext:shared=True
 gmp:shared=True
 libusb:shared=True
-boost:extra_b2_flags=cxxflags='-stdlib=libc++ -D__STRICT_ANSI__ -nostdinc++ -I/usr/local/include/c++/v1' linkflags='-stdlib=libc++' link=static threading=multi
 
 [imports]
 bin, *.dll -> ./lib

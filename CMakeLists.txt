@@ -46,13 +46,23 @@ conan_check(VERSION 1.0.0 REQUIRED)
 conan_add_remote(NAME bincrafters INDEX 1
     URL https://api.bintray.com/conan/bincrafters/public-conan)
 
-conan_cmake_run(CONANFILE .conan/conanfile.txt
-                BASIC_SETUP
-                CMAKE_TARGETS
-                TARGETS
-                NO_OUTPUT_DIRS
-                KEEP_RPATHS
-                BUILD missing)
+if ("${PINNED}" STREQUAL "false" OR "${UNPINNED}" STREQUAL "true")
+    conan_cmake_run(CONANFILE .conan/conanfile-unpinned.txt
+        BASIC_SETUP
+        CMAKE_TARGETS
+        TARGETS
+        NO_OUTPUT_DIRS
+        KEEP_RPATHS
+        BUILD missing)
+else()
+    conan_cmake_run(CONANFILE .conan/conanfile.txt
+        BASIC_SETUP
+        CMAKE_TARGETS
+        TARGETS
+        NO_OUTPUT_DIRS
+        KEEP_RPATHS
+        BUILD missing)
+endif()
 
 if(UNIX)
   if(APPLE)
