@@ -151,7 +151,7 @@ public:
          }
 
          std::string logging_json;
-         if (def.log_level != fc::log_level::off) {
+         if (def.log_level != fc::log_level::off || def.special_log_levels.size()) {
             fc::logging_config log_config;
 
             log_config.appenders.emplace_back("stderr", "console", fc::mutable_variant_object("stream", "std_error"));
@@ -162,11 +162,12 @@ public:
             def_logger.appenders.push_back("stderr");
             log_config.loggers.push_back(def_logger);
 
-            fc::logger_config net_logger("net_plugin_impl");
-            net_logger.level = def.log_level;
-            net_logger.appenders.push_back("stderr");
-            log_config.loggers.push_back(net_logger);
-
+            for (auto& itr : def.special_log_levels) {
+               fc::logger_config logger(itr.first);
+               logger.level = itr.second;
+               logger.appenders.push_back("stderr");
+               log_config.loggers.push_back(logger);
+            }
             logging_json = json::to_pretty_string(log_config);
          }
 
