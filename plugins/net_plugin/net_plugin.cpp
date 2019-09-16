@@ -3105,6 +3105,9 @@ namespace eosio {
       if( my_impl->sync_master->block_while_syncing_with_other_peer(c) )
          return;
 
+      if( my_impl->use_topology_plug ) {
+         my_impl->topology_plug->on_block_recv(c->topo_id, blk_id, msg);
+      }
       try {
          if( cc.fetch_block_by_id(blk_id) ) {
             c->strand.post( [sync_master = my_impl->sync_master.get(),

@@ -101,6 +101,20 @@ namespace eosio {
       }
    };
 
+   struct fork_descriptor {
+      link_id from_link;
+      block_id_type fork_base;
+      uint16_t depth;
+      uint16_t deficit;
+      uint16_t overage;
+   };
+
+   struct topo_producer {
+      account_name id;
+      fork_descriptor current;
+      vector<fork_descriptor> forks;
+   };
+
    constexpr auto link_role_str( link_role role ) {
       switch (role) {
       case blocks: return "blocks";
@@ -161,7 +175,7 @@ namespace eosio {
    public:
       flat_map<node_id, topo_node> nodes;
       flat_map<link_id, topo_link> links;
-
+      flat_map<account_name, topo_producer> producers;
       flat_map<metric_kind, std::string> units;
 
       fc::sha256 gen_long_id( const node_descriptor &desc );
@@ -180,14 +194,21 @@ namespace eosio {
       void    update_map( const map_update &mu );
       void    update_forks( const fork_info &fi );
       topo_node *find_node( const chain::name prod );
-      void    init_topology_message (topology_message &tm);
+      void    on_block_recv( link_id src, block_id_type blk_id, const signed_block_ptr sb );
+      void    init_topology_message( topology_message &tm );
 
       uint16_t sample_interval_sec;
       uint16_t max_hops;
+
+      uint16_t max_produced = 12;
+      uint16_t block_count = 0;
+      account_name prev_producer;
+
       string bp_name;
       node_id local_node_id;
       bool done = false;
       net_plugin * net_plug = nullptr;
+      chain_plugin * chain_plug = nullptr;
       set<chain::account_name> local_producers;
 
       std::mutex table_mtx;
@@ -409,6 +430,37 @@ namespace eosio {
       return nullptr;
    }
 
+   void topology_plugin_impl::on_block_recv(link_id src, block_id_type blk_id, const signed_block_ptr sb) {
+      controller &cc = chain_plug->chain();
+      block_id_type head = cc.head_block_id();
+      account_name head_prod = cc.head_block_producer();
+      account_name pend_prod = cc.pending_block_producer();
+      if( sb->producer == head_prod ){
+         ++block_count;
+         if (block_count > max_produced) {
+            uint16_t overage = block_count - max_produced;
+            elog( "found producer ${hp} overproduced ${d} blocks", ("hp", head_prod)("d", overage));
+         }
+      }
+      else if( sb->producer == pend_prod ) {
+         if (block_count < max_produced) {
+            uint16_t deficit = max_produced - block_count;
+            elog( "found producer switched to ${pp} from ${hp} ${d} blocks too soon", ("pp", pend_prod)("hp", head_prod)("d",deficit));
+            producers[head_prod].forks.emplace_back(fork_descriptor({src,blk_id,block_count,deficit,0}));
+            if (producers[prev_producer].current.from_link != 0) {
+               producers[prev_producer].forks.push_back(producers[prev_producer].current);
+               producers[prev_producer].current.from_link = 0;
+               producers[prev_producer].forks.empty();
+               prev_producer = head_prod;
+            }
+         }
+         block_count = 1;
+      }
+      else if( sb->producer == prev_producer ) {
+         elog( "got a block from the previous producer after the switch ", ("pp",prev_producer) );
+      }
+   }
+
    //----------------------------------------------------------------------------------------
 
    static topology_plugin_impl* my_impl;
@@ -458,6 +510,8 @@ namespace eosio {
    void topology_plugin::plugin_startup() {
       my->net_plug = app().find_plugin<net_plugin>();
       EOS_ASSERT( my->net_plug != nullptr, chain::plugin_config_exception, "No net plugin found.");
+      my->chain_plug = app().find_plugin<chain_plugin>();
+
    }
 
    void topology_plugin::plugin_shutdown() {
@@ -606,6 +660,10 @@ namespace eosio {
       }
    };
 
+   void topology_plugin::on_block_recv( link_id src, block_id_type blk_id, const signed_block_ptr msg ) {
+      my->on_block_recv( src, blk_id, msg );
+   }
+
    void topology_plugin::handle_message( const topology_message& msg )
    {
       dlog("handling a new topology message");
@@ -713,7 +771,7 @@ namespace eosio {
             df << lp << "\n";
          }
       }
-      controller &db = app().find_plugin<chain_plugin>()->chain();
+      controller &db = my->chain_plug->chain();
 
       df << "total nodes " << my->nodes.size() << " \n";
 
@@ -731,8 +789,8 @@ namespace eosio {
             df << "\n cannot resolve producer " << plist[pcount-1].producer_name << "\n";
          }
          else {
-            df << "\n| Producer Account | Location |     Id      | Hops | Forks Detected | Last Fork Length | Average Fork Length |\n";
-            df <<   "|------------------|----------|-------------|------|----------------|------------------|---------------------|\n";
+            df << "\n| Producer Account | Location |     Id      | Hops | Forks Detected |\n";
+            df <<   "|------------------|----------|-------------|------|----------------|\n";
             node_id prev_node_id = pnode->info.my_id;
             for( const auto &ap : plist) {
                pnode = my->find_node(ap.producer_name);
@@ -754,8 +812,38 @@ namespace eosio {
                if ( pnode->routes[prev_node_id].path == 0 ) {
                   len = my->find_route(prev_node_id, pnode->info.my_id);
                }
-               df << len << "\n";
+               df << len;
+               if( my->producers.find(ap.producer_name) == my->producers.cend()) {
+                  df << 0;
+               }
+               else {
+                  df << my->producers[ap.producer_name].forks.size();
+               }
+               df << "\n";
                prev_node_id = pnode->info.my_id;
+            }
+         }
+      }
+
+      df << "\nNumber of producers indicating microforks: " << my->producers.size() << "\n";
+      if ( my->producers.size() ) {
+         for (auto &tprod : my->producers) {
+            df << "\nProducer " << tprod.first << " has " << tprod.second.forks.size() << " episodes reported\n";
+            for (auto &fdes : tprod.second.forks) {
+               df << " from link " << fdes.from_link << " symptom ";
+               if (fdes.depth > 0) {
+                  df << " fork of " << fdes.depth << " blocks ";
+               }
+               else if (fdes.deficit > 0) {
+                  df << " production deficit of " << fdes.deficit << " blocks ";
+               }
+               else if (fdes.overage > 0) {
+                  df << " produced " << fdes.overage << " too many blocks ";
+               }
+               else {
+                  df << " reporting failure, no fork symptom recorded ";
+               }
+               df << "\n";
             }
          }
       }

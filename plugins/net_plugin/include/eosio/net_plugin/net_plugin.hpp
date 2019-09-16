@@ -2,6 +2,7 @@
 #include <appbase/application.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
 #include <eosio/net_plugin/protocol.hpp>
+#include <boost/signals2/signal.hpp>
 
 namespace eosio {
    using namespace appbase;

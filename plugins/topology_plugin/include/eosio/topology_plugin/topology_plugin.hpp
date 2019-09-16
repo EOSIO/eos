@@ -6,6 +6,7 @@
 #include <appbase/application.hpp>
 #include <fc/reflect/reflect.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
+#include <eosio/chain/block_header.hpp>
 #include <eosio/topology_plugin/net_metrics.hpp>
 #include <eosio/topology_plugin/node_descriptor.hpp>
 #include <eosio/topology_plugin/link_descriptor.hpp>
@@ -53,6 +54,7 @@ namespace eosio{
       void handle_message( const topology_message& msg );
       boost::signals2::signal<void(const topology_message& )>  topo_update;
       bool forward_topology_message(const topology_message&, link_id link );
+      void on_block_recv( link_id src, block_id_type blk_id, const signed_block_ptr msg );
 
       void init_node_descriptor( node_descriptor &nd,
                                  const fc::sha256& id,
@@ -86,7 +88,7 @@ namespace eosio{
       string report( );
 
    private:
-      std::unique_ptr<class topology_plugin_impl> my;
+      std::shared_ptr<class topology_plugin_impl> my;
    };
 
 }
