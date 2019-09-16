@@ -68,11 +68,11 @@ SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 include_directories(${CONAN_INCLUDE_DIRS_LIBCURL} ${CONAN_INCLUDE_DIRS_OPENSSL})
 link_directories(${CONAN_LIB_DIRS_OPENSSL} ${CONAN_LIB_DIRS_LIBCURL} ${CONAN_LIB_DIRS_ZLIB})
 
-#Copy .pc file for OpenSSL
-file(COPY ${CMAKE_SOURCE_DIR}/build/OpenSSL.pc
-     DESTINATION ${CONAN_LIB_DIRS_OPENSSL}/pkgconfig/libcrypto.pc)
-file(COPY ${CMAKE_SOURCE_DIR}/build/OpenSSL.pc
-     DESTINATION ${CONAN_LIB_DIRS_OPENSSL}/pkgconfig/libssl.pc)
+execute_process(
+    COMMAND mkdir -p ${CONAN_LIB_DIRS_OPENSSL}/pkgconfig
+    COMMAND cp ${CMAKE_SOURCE_DIR}/build/OpenSSL.pc ${CONAN_LIB_DIRS_OPENSSL}/pkgconfig/libcrypto.pc
+    COMMAND cp ${CMAKE_SOURCE_DIR}/build/OpenSSL.pc ${CONAN_LIB_DIRS_OPENSSL}/pkgconfig/libssl.pc
+)
 
 # End Conan
 
