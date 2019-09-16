@@ -29,8 +29,8 @@ namespace eosio { namespace chain {
    using namespace webassembly;
    using namespace webassembly::common;
 
-   wasm_interface::wasm_interface(vm_type vm, const chainbase::database& d, const boost::filesystem::path data_dir, const rodeos::config& rodeos_config)
-     : my( new wasm_interface_impl(vm, d, data_dir, rodeos_config) ) {}
+   wasm_interface::wasm_interface(vm_type vm, const chainbase::database& d, const boost::filesystem::path data_dir, const eosvmoc::config& eosvmoc_config)
+     : my( new wasm_interface_impl(vm, d, data_dir, eosvmoc_config) ) {}
 
    wasm_interface::~wasm_interface() {}
 

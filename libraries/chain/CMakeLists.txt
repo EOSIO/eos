@@ -53,11 +53,11 @@ add_library( eosio_chain
              webassembly/wavm.cpp
              webassembly/wabt.cpp
 
-             webassembly/rodeos/code_cache.cpp
-             webassembly/rodeos/executor.cpp
-             webassembly/rodeos/memory.cpp
-             webassembly/rodeos/config.cpp
-             webassembly/rodeos/intrinsic.cpp
+             webassembly/eos-vm-oc/code_cache.cpp
+             webassembly/eos-vm-oc/executor.cpp
+             webassembly/eos-vm-oc/memory.cpp
+             webassembly/eos-vm-oc/config.cpp
+             webassembly/eos-vm-oc/intrinsic.cpp
 
 #             get_config.cpp
 #

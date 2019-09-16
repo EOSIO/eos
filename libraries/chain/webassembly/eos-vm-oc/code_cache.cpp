@@ -1,10 +1,10 @@
-#include <eosio/chain/webassembly/rodeos/code_cache.hpp>
-#include <eosio/chain/webassembly/rodeos/config.hpp>
+#include <eosio/chain/webassembly/eos-vm-oc/code_cache.hpp>
+#include <eosio/chain/webassembly/eos-vm-oc/config.hpp>
 #include <eosio/chain/webassembly/common.hpp>
+#include <eosio/chain/webassembly/eos-vm-oc/memory.hpp>
+#include <eosio/chain/webassembly/eos-vm-oc/eos-vm-oc.hpp>
+#include <eosio/chain/webassembly/eos-vm-oc/intrinsic.hpp>
 #include <eosio/chain/exceptions.hpp>
-#include <eosio/chain/webassembly/rodeos/memory.hpp>
-#include <eosio/chain/webassembly/rodeos/rodeos.hpp>
-#include <eosio/chain/webassembly/rodeos/intrinsic.hpp>
 
 #include <unistd.h>
 #include <sys/syscall.h>
@@ -18,7 +18,7 @@
 using namespace IR;
 using namespace Runtime;
 
-namespace eosio { namespace chain { namespace rodeos {
+namespace eosio { namespace chain { namespace eosvmoc {
 
 static constexpr size_t header_offset = 512u;
 static constexpr size_t header_size = 512u;
@@ -35,7 +35,7 @@ static constexpr size_t descriptor_ptr_from_file_start = header_offset + offseto
 
 static_assert(sizeof(code_cache_header) <= header_size, "code_cache_header too big");
 
-code_cache::code_cache(const boost::filesystem::path data_dir, const rodeos::config& rodeos_config) :
+code_cache::code_cache(const boost::filesystem::path data_dir, const eosvmoc::config& eosvmoc_config) :
    _cache_file_path(data_dir/"code_cache.bin")
 {
    static_assert(sizeof(allocator_t) <= header_offset, "header offset intersects with allocator");
@@ -45,10 +45,10 @@ code_cache::code_cache(const boost::filesystem::path data_dir, const rodeos::con
    if(!bfs::exists(_cache_file_path)) {
       std::ofstream ofs(_cache_file_path.generic_string(), std::ofstream::trunc);
       EOS_ASSERT(ofs.good(), database_exception, "unable to create EOS-VM Optimized Compiler code cache");
-      bfs::resize_file(_cache_file_path, rodeos_config.cache_size);
+      bfs::resize_file(_cache_file_path, eosvmoc_config.cache_size);
       bip::file_mapping creation_mapping(_cache_file_path.generic_string().c_str(), bip::read_write);
       bip::mapped_region creation_region(creation_mapping, bip::read_write);
-      new (creation_region.get_address()) allocator_t(rodeos_config.cache_size, total_header_size);
+      new (creation_region.get_address()) allocator_t(eosvmoc_config.cache_size, total_header_size);
       new ((char*)creation_region.get_address() + header_offset) code_cache_header;
    }
 
@@ -67,25 +67,25 @@ code_cache::code_cache(const boost::filesystem::path data_dir, const rodeos::con
    set_on_disk_region_dirty(true);
 
    auto existing_file_size = bfs::file_size(_cache_file_path);
-   if(rodeos_config.cache_size > existing_file_size) {
-      bfs::resize_file(_cache_file_path, rodeos_config.cache_size);
+   if(eosvmoc_config.cache_size > existing_file_size) {
+      bfs::resize_file(_cache_file_path, eosvmoc_config.cache_size);
 
       bip::file_mapping resize_mapping(_cache_file_path.generic_string().c_str(), bip::read_write);
       bip::mapped_region resize_region(resize_mapping, bip::read_write);
 
       allocator_t* resize_allocator = reinterpret_cast<allocator_t*>(resize_region.get_address());
-      resize_allocator->grow(rodeos_config.cache_size - existing_file_size);
+      resize_allocator->grow(eosvmoc_config.cache_size - existing_file_size);
    }
 
    _cache_fd = ::open(_cache_file_path.generic_string().c_str(), O_RDWR | O_CLOEXEC);
    EOS_ASSERT(_cache_fd >= 0, database_exception, "failure to open code cache");
-   _code_mapping = (char*)mmap(nullptr, rodeos_config.cache_size, PROT_READ|PROT_WRITE, MAP_SHARED, _cache_fd, 0);
+   _code_mapping = (char*)mmap(nullptr, eosvmoc_config.cache_size, PROT_READ|PROT_WRITE, MAP_SHARED, _cache_fd, 0);
    EOS_ASSERT(_code_mapping != MAP_FAILED, database_exception, "failure to mmap code cache");
 
    allocator = reinterpret_cast<allocator_t*>(_code_mapping);
 
    if(cache_header->serialized_descriptor_index) {
-      fc::datastream<const char*> ds(_code_mapping + cache_header->serialized_descriptor_index, rodeos_config.cache_size - cache_header->serialized_descriptor_index);
+      fc::datastream<const char*> ds(_code_mapping + cache_header->serialized_descriptor_index, eosvmoc_config.cache_size - cache_header->serialized_descriptor_index);
       unsigned number_entries;
       fc::raw::unpack(ds, number_entries);
       for(unsigned i = 0; i < number_entries; ++i) {
@@ -96,7 +96,7 @@ code_cache::code_cache(const boost::filesystem::path data_dir, const rodeos::con
       allocator->deallocate(_code_mapping + cache_header->serialized_descriptor_index);
    }
 
-   _free_bytes_eviction_threshold = rodeos_config.cache_size * .1;
+   _free_bytes_eviction_threshold = eosvmoc_config.cache_size * .1;
 }
 
 void code_cache::set_on_disk_region_dirty(bool dirty) {
@@ -197,7 +197,7 @@ const code_descriptor* const code_cache::get_descriptor_for_code(const digest_ty
       cd.start = no_offset{};
    else if(module.startFunctionIndex < module.functions.imports.size()) {
       const auto& f = module.functions.imports[module.startFunctionIndex];
-      const eosio::chain::rodeos::intrinsic_entry& ie = eosio::chain::rodeos::get_intrinsic_map().at(f.moduleName + "." + f.exportName);
+      const intrinsic_entry& ie = get_intrinsic_map().at(f.moduleName + "." + f.exportName);
       cd.start = intrinsic_ordinal{ie.ordinal};
    }
    else
@@ -255,7 +255,7 @@ const code_descriptor* const code_cache::get_descriptor_for_code(const digest_ty
 
          if(function_index < module.functions.imports.size()) {
             const auto& f = module.functions.imports[function_index];
-            const eosio::chain::rodeos::intrinsic_entry& ie = eosio::chain::rodeos::get_intrinsic_map().at(f.moduleName + "." + f.exportName);
+            const intrinsic_entry& ie = get_intrinsic_map().at(f.moduleName + "." + f.exportName);
             table_index_0[effective_table_index].func = ie.ordinal*-8;
             table_index_0[effective_table_index].type = (uintptr_t)module.types[module.functions.imports[function_index].type.index];
          }

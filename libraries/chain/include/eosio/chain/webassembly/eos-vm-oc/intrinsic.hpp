@@ -1,6 +1,6 @@
 #pragma once
 
-#include <eosio/chain/webassembly/rodeos/intrinsic_mapping.hpp>
+#include <eosio/chain/webassembly/eos-vm-oc/intrinsic_mapping.hpp>
 
 #include <map>
 #include <string>
@@ -9,7 +9,7 @@ namespace IR {
    struct FunctionType;
 }
 
-namespace eosio { namespace chain { namespace rodeos {
+namespace eosio { namespace chain { namespace eosvmoc {
 
 struct intrinsic {
    intrinsic(const char* name, const IR::FunctionType* type, void* function_ptr, size_t ordinal);

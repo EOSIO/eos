@@ -5,7 +5,7 @@
 #include "llvm/Support/raw_ostream.h"
 
 ///XXX obviously not :)
-#include "../../chain/include/eosio/chain/webassembly/rodeos/intrinsic.hpp"
+#include "../../chain/include/eosio/chain/webassembly/eos-vm-oc/intrinsic.hpp"
 
 #define ENABLE_LOGGING 0
 #define ENABLE_FUNCTION_ENTER_EXIT_HOOKS 0
@@ -225,7 +225,7 @@ namespace LLVMJIT
 		{
 			emitConditionalTrapIntrinsic(
 				irBuilder.CreateICmpEQ(divisor,typedZeroConstants[(Uptr)type]),
-				"rodeos_internal.div0_or_overflow",FunctionType::get(),{});
+				"eosvmoc_internal.div0_or_overflow",FunctionType::get(),{});
 		}
 
 		// Traps on (x / 0) or (INT_MIN / -1).
@@ -239,7 +239,7 @@ namespace LLVMJIT
 						),
 					irBuilder.CreateICmpEQ(right,typedZeroConstants[(Uptr)type])
 					),
-				"rodeos_internal.div0_or_overflow",FunctionType::get(),{});
+				"eosvmoc_internal.div0_or_overflow",FunctionType::get(),{});
 		}
 
 		llvm::Value* getLLVMIntrinsic(const std::initializer_list<llvm::Type*>& argTypes,llvm::Intrinsic::ID id)
@@ -250,7 +250,7 @@ namespace LLVMJIT
 		// Emits a call to a WAVM intrinsic function.
 		llvm::Value* emitRuntimeIntrinsic(const char* intrinsicName,const FunctionType* intrinsicType,const std::initializer_list<llvm::Value*>& args)
 		{
-         const eosio::chain::rodeos::intrinsic_entry& ie = eosio::chain::rodeos::get_intrinsic_map().at(intrinsicName);
+         const eosio::chain::eosvmoc::intrinsic_entry& ie = eosio::chain::eosvmoc::get_intrinsic_map().at(intrinsicName);
          llvm::Value* ic = irBuilder.CreateLoad( emitLiteralPointer((void*)(-18952-ie.ordinal*8), llvmI64Type->getPointerTo(256)) );  ///XXX literal
          llvm::Value* itp = irBuilder.CreateIntToPtr(ic, asLLVMType(ie.type)->getPointerTo());
 			return irBuilder.CreateCall(itp,llvm::ArrayRef<llvm::Value*>(args.begin(),args.end()));
@@ -555,7 +555,7 @@ namespace LLVMJIT
 		void unreachable(NoImm)
 		{
 			// Call an intrinsic that causes a trap, and insert the LLVM unreachable terminator.
-			emitRuntimeIntrinsic("rodeos_internal.unreachable",FunctionType::get(),{});
+			emitRuntimeIntrinsic("eosvmoc_internal.unreachable",FunctionType::get(),{});
 			irBuilder.CreateUnreachable();
 
 			enterUnreachable();
@@ -633,7 +633,7 @@ namespace LLVMJIT
 			// If the function index is larger than the function table size, trap.
 			emitConditionalTrapIntrinsic(
 				irBuilder.CreateICmpUGE(functionIndexZExt,moduleContext.defaultTableMaxElementIndex),
-				"rodeos_internal.indirect_call_oob",FunctionType::get(),{});
+				"eosvmoc_internal.indirect_call_oob",FunctionType::get(),{});
 
 			// Load the type for this table entry.
 			auto functionTypePointerPointer = irBuilder.CreateInBoundsGEP(moduleContext.defaultTablePointer,{functionIndexZExt,emitLiteral((U32)0)});
@@ -643,7 +643,7 @@ namespace LLVMJIT
 			// If the function type doesn't match, trap.
 			emitConditionalTrapIntrinsic(
 				irBuilder.CreateICmpNE(llvmCalleeType,functionTypePointer),
-				"rodeos_internal.indirect_call_mismatch",
+				"eosvmoc_internal.indirect_call_mismatch",
 				FunctionType::get(),{}
 				);
 
@@ -745,7 +745,7 @@ namespace LLVMJIT
 			auto deltaNumPages = pop();
          auto maxMemoryPages = emitLiteral((U32)moduleContext.module.memories.defs[0].type.size.max);
 			auto previousNumPages = emitRuntimeIntrinsic(
-				"rodeos_internal.grow_memory",
+				"eosvmoc_internal.grow_memory",
 				FunctionType::get(ResultType::i32,{ValueType::i32,ValueType::i32}),
 				{deltaNumPages,maxMemoryPages});
 			push(previousNumPages);
@@ -1006,16 +1006,16 @@ namespace LLVMJIT
 		EMIT_UNARY_OP(i64,reinterpret_f64,irBuilder.CreateBitCast(operand,llvmI64Type))
 
 		// These operations don't match LLVM's semantics exactly, so just call out to C++ implementations.
-		EMIT_FP_BINARY_OP(min,emitRuntimeIntrinsic("rodeos_internal.unreachable",FunctionType::get(asResultType(type),{type,type}),{left,right}))
-		EMIT_FP_BINARY_OP(max,emitRuntimeIntrinsic("rodeos_internal.unreachable",FunctionType::get(asResultType(type),{type,type}),{left,right}))
-		EMIT_FP_UNARY_OP(ceil,emitRuntimeIntrinsic("rodeos_internal.unreachable",FunctionType::get(asResultType(type),{type}),{operand}))
-		EMIT_FP_UNARY_OP(floor,emitRuntimeIntrinsic("rodeos_internal.unreachable",FunctionType::get(asResultType(type),{type}),{operand}))
-		EMIT_FP_UNARY_OP(trunc,emitRuntimeIntrinsic("rodeos_internal.unreachable",FunctionType::get(asResultType(type),{type}),{operand}))
-		EMIT_FP_UNARY_OP(nearest,emitRuntimeIntrinsic("rodeos_internal.unreachable",FunctionType::get(asResultType(type),{type}),{operand}))
-		EMIT_INT_UNARY_OP(trunc_s_f32,emitRuntimeIntrinsic("rodeos_internal.unreachable",FunctionType::get(asResultType(type),{ValueType::f32}),{operand}))
-		EMIT_INT_UNARY_OP(trunc_s_f64,emitRuntimeIntrinsic("rodeos_internal.unreachable",FunctionType::get(asResultType(type),{ValueType::f64}),{operand}))
-		EMIT_INT_UNARY_OP(trunc_u_f32,emitRuntimeIntrinsic("rodeos_internal.unreachable",FunctionType::get(asResultType(type),{ValueType::f32}),{operand}))
-		EMIT_INT_UNARY_OP(trunc_u_f64,emitRuntimeIntrinsic("rodeos_internal.unreachable",FunctionType::get(asResultType(type),{ValueType::f64}),{operand}))
+		EMIT_FP_BINARY_OP(min,emitRuntimeIntrinsic("eosvmoc_internal.unreachable",FunctionType::get(asResultType(type),{type,type}),{left,right}))
+		EMIT_FP_BINARY_OP(max,emitRuntimeIntrinsic("eosvmoc_internal.unreachable",FunctionType::get(asResultType(type),{type,type}),{left,right}))
+		EMIT_FP_UNARY_OP(ceil,emitRuntimeIntrinsic("eosvmoc_internal.unreachable",FunctionType::get(asResultType(type),{type}),{operand}))
+		EMIT_FP_UNARY_OP(floor,emitRuntimeIntrinsic("eosvmoc_internal.unreachable",FunctionType::get(asResultType(type),{type}),{operand}))
+		EMIT_FP_UNARY_OP(trunc,emitRuntimeIntrinsic("eosvmoc_internal.unreachable",FunctionType::get(asResultType(type),{type}),{operand}))
+		EMIT_FP_UNARY_OP(nearest,emitRuntimeIntrinsic("eosvmoc_internal.unreachable",FunctionType::get(asResultType(type),{type}),{operand}))
+		EMIT_INT_UNARY_OP(trunc_s_f32,emitRuntimeIntrinsic("eosvmoc_internal.unreachable",FunctionType::get(asResultType(type),{ValueType::f32}),{operand}))
+		EMIT_INT_UNARY_OP(trunc_s_f64,emitRuntimeIntrinsic("eosvmoc_internal.unreachable",FunctionType::get(asResultType(type),{ValueType::f64}),{operand}))
+		EMIT_INT_UNARY_OP(trunc_u_f32,emitRuntimeIntrinsic("eosvmoc_internal.unreachable",FunctionType::get(asResultType(type),{ValueType::f32}),{operand}))
+		EMIT_INT_UNARY_OP(trunc_u_f64,emitRuntimeIntrinsic("eosvmoc_internal.unreachable",FunctionType::get(asResultType(type),{ValueType::f64}),{operand}))
 	};
 	
 	// A do-nothing visitor used to decode past unreachable operators (but supporting logging, and passing the end operator through).
@@ -1090,7 +1090,7 @@ namespace LLVMJIT
       llvm::Value* depth = depth_loadinst = irBuilder.CreateLoad(moduleContext.depthCounter);
       depth = irBuilder.CreateSub(depth, emitLiteral((I32)1));
       depth_storeinst = irBuilder.CreateStore(depth, moduleContext.depthCounter);
-      emitConditionalTrapIntrinsic(irBuilder.CreateICmpEQ(depth, emitLiteral((I32)0)), "rodeos_internal.depth_assert", FunctionType::get(), {});
+      emitConditionalTrapIntrinsic(irBuilder.CreateICmpEQ(depth, emitLiteral((I32)0)), "eosvmoc_internal.depth_assert", FunctionType::get(), {});
       depth_loadinst->setVolatile(true);
       depth_storeinst->setVolatile(true);
 
@@ -1132,7 +1132,7 @@ namespace LLVMJIT
 		for(Uptr functionIndex = 0;functionIndex < module.functions.imports.size();++functionIndex)
 		{
          ///XXX namespace
-         const eosio::chain::rodeos::intrinsic_entry& ie = eosio::chain::rodeos::get_intrinsic_map().at(module.functions.imports[functionIndex].moduleName + "." + module.functions.imports[functionIndex].exportName);
+         const eosio::chain::eosvmoc::intrinsic_entry& ie = eosio::chain::eosvmoc::get_intrinsic_map().at(module.functions.imports[functionIndex].moduleName + "." + module.functions.imports[functionIndex].exportName);
 			importedFunctionOffsets.push_back(ie.ordinal);
 		}
 

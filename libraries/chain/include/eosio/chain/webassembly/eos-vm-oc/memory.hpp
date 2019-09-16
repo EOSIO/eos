@@ -1,8 +1,8 @@
 #pragma once
 
 #include <eosio/chain/wasm_eosio_constraints.hpp>
-#include <eosio/chain/webassembly/rodeos/rodeos.hpp>
-#include <eosio/chain/webassembly/rodeos/intrinsic_mapping.hpp>
+#include <eosio/chain/webassembly/eos-vm-oc/eos-vm-oc.hpp>
+#include <eosio/chain/webassembly/eos-vm-oc/intrinsic_mapping.hpp>
 
 #include <stdint.h>
 #include <stddef.h>
@@ -13,7 +13,7 @@
    #define GS_PTR __seg_gs
 #endif
 
-namespace eosio { namespace chain { namespace rodeos {
+namespace eosio { namespace chain { namespace eosvmoc {
 
 class memory {
       static constexpr uint64_t wasm_memory_size                  = eosio::chain::wasm_constraints::maximum_linear_memory;
@@ -22,7 +22,7 @@ class memory {
       static constexpr uint64_t mutable_global_size               = 8u  * eosio::chain::wasm_constraints::maximum_mutable_globals/4u;
       static constexpr uint64_t table_size                        = 16u * eosio::chain::wasm_constraints::maximum_table_elements;
       static constexpr size_t   wcb_allowance                     = 512u;
-      static_assert(sizeof(control_block) <= wcb_allowance, "rodeos memory doesn't set aside enough memory for control block");
+      static_assert(sizeof(control_block) <= wcb_allowance, "EOS-VM OC memory doesn't set aside enough memory for control block");
 
       //round up the prologue to multiple of 4K page
       static constexpr uint64_t memory_prologue_size = ((memory::wcb_allowance + mutable_global_size + table_size + intrinsic_count*UINT64_C(8))+UINT64_C(4095))/UINT64_C(4096)*UINT64_C(4096);
@@ -52,9 +52,9 @@ class memory {
       static constexpr uintptr_t linear_memory = 0;
       static constexpr uintptr_t cb_offset = wcb_allowance + mutable_global_size + table_size;
       static constexpr uintptr_t first_intrinsic_offset = cb_offset + 8u;
-#define RODEOS_MEMORY_PTR_linear_memory_ptr            GS_PTR uint8_t* const linear_memory_ptr = reinterpret_cast<GS_PTR control_block* const>(memory::linear_memory);
-#define RODEOS_MEMORY_PTR_cb_ptr                       GS_PTR control_block* const cb_ptr = reinterpret_cast<GS_PTR control_block* const>(-memory::cb_offset);
-#define RODEOS_MEMORY_PTR_first_intrinsic_ptr          GS_PTR uintptr_t* const first_intrinsic_ptr = reinterpret_cast<GS_PTR uintptr_t* const>(-memory::first_intrinsic_offset);
+#define EOSVMOC_MEMORY_PTR_linear_memory_ptr            GS_PTR uint8_t* const linear_memory_ptr = reinterpret_cast<GS_PTR control_block* const>(memory::linear_memory);
+#define EOSVMOC_MEMORY_PTR_cb_ptr                       GS_PTR control_block* const cb_ptr = reinterpret_cast<GS_PTR control_block* const>(-memory::cb_offset);
+#define EOSVMOC_MEMORY_PTR_first_intrinsic_ptr          GS_PTR uintptr_t* const first_intrinsic_ptr = reinterpret_cast<GS_PTR uintptr_t* const>(-memory::first_intrinsic_offset);
 
    private:
       uint8_t* mapbase;

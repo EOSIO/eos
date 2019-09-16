@@ -7,7 +7,7 @@
 
 #include <boost/filesystem/path.hpp>
 
-namespace eosio { namespace chain { namespace rodeos {
+namespace eosio { namespace chain { namespace eosvmoc {
 
 enum map_mode {
    mapped,

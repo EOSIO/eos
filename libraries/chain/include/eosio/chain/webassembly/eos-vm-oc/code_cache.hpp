@@ -1,6 +1,6 @@
 #pragma once
 
-#include <eosio/chain/webassembly/rodeos/rodeos.hpp>
+#include <eosio/chain/webassembly/eos-vm-oc/eos-vm-oc.hpp>
 #include <boost/multi_index_container.hpp>
 #include <boost/multi_index/ordered_index.hpp>
 #include <boost/multi_index/sequenced_index.hpp>
@@ -10,7 +10,7 @@
 //phase1 headers:
 #include <boost/interprocess/segment_manager.hpp>
 
-namespace eosio { namespace chain { namespace rodeos {
+namespace eosio { namespace chain { namespace eosvmoc {
 
 using namespace boost::multi_index;
 
@@ -21,7 +21,7 @@ struct config;
 
 class code_cache {
    public:
-      code_cache(const bfs::path data_dir, const rodeos::config& rodeos_config);
+      code_cache(const bfs::path data_dir, const eosvmoc::config& eosvmoc_config);
       ~code_cache();
 
       const int& fd() const { return _cache_fd; }

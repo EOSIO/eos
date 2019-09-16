@@ -1,6 +1,6 @@
-#include <eosio/chain/webassembly/rodeos/intrinsic.hpp>
+#include <eosio/chain/webassembly/eos-vm-oc/intrinsic.hpp>
 
-namespace eosio { namespace chain { namespace rodeos {
+namespace eosio { namespace chain { namespace eosvmoc {
 
 static intrinsic_map_t& the_intrinsic_map() {
    static intrinsic_map_t intrinsic_map;

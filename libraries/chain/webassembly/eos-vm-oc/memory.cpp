@@ -1,15 +1,15 @@
-#include <eosio/chain/webassembly/rodeos/memory.hpp>
-#include <eosio/chain/webassembly/rodeos/intrinsic.hpp>
+#include <eosio/chain/webassembly/eos-vm-oc/memory.hpp>
+#include <eosio/chain/webassembly/eos-vm-oc/intrinsic.hpp>
 
 #include <unistd.h>
 #include <sys/syscall.h>
 #include <sys/mman.h>
 #include <linux/memfd.h>
 
-namespace eosio { namespace chain { namespace rodeos {
+namespace eosio { namespace chain { namespace eosvmoc {
 
 memory::memory() {
-   int fd = syscall(SYS_memfd_create, "rodeos_mem", MFD_CLOEXEC);
+   int fd = syscall(SYS_memfd_create, "eosvmoc_mem", MFD_CLOEXEC);
    ftruncate(fd, wasm_memory_size+memory_prologue_size);
 
    mapsize = total_memory_per_slice*number_slices;

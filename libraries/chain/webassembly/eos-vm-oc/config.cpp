@@ -1,6 +1,6 @@
-#include <eosio/chain/webassembly/rodeos/config.hpp>
+#include <eosio/chain/webassembly/eos-vm-oc/config.hpp>
 
-namespace eosio { namespace chain { namespace rodeos {
+namespace eosio { namespace chain { namespace eosvmoc {
 
 std::istream& operator>>(std::istream& in, map_mode& runtime) {
    std::string s;

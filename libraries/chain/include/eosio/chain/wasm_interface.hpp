@@ -11,7 +11,7 @@ namespace eosio { namespace chain {
    class apply_context;
    class wasm_runtime_interface;
    class controller;
-   namespace rodeos { struct config; }
+   namespace eosvmoc { struct config; }
 
    struct wasm_exit {
       int32_t code = 0;
@@ -77,7 +77,7 @@ namespace eosio { namespace chain {
             wabt
          };
 
-         wasm_interface(vm_type vm, const chainbase::database& d, const boost::filesystem::path data_dir, const rodeos::config& rodeos_config);
+         wasm_interface(vm_type vm, const chainbase::database& d, const boost::filesystem::path data_dir, const eosvmoc::config& eosvmoc_config);
          ~wasm_interface();
 
          //call before dtor to skip what can be minutes of dtor overhead with some runtimes; can cause leaks

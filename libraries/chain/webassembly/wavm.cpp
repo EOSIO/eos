@@ -52,7 +52,7 @@ class wavm_instantiated_module : public wasm_instantiated_module_interface {
       wavm_runtime&            _wavm_runtime;
 };
 
-wavm_runtime::wavm_runtime(const boost::filesystem::path data_dir, const rodeos::config& rodeos_config) : cc(data_dir, rodeos_config), exec(cc) {
+wavm_runtime::wavm_runtime(const boost::filesystem::path data_dir, const eosvmoc::config& eosvmoc_config) : cc(data_dir, eosvmoc_config), exec(cc) {
 }
 
 wavm_runtime::~wavm_runtime() {
@@ -65,7 +65,7 @@ std::unique_ptr<wasm_instantiated_module_interface> wavm_runtime::instantiate_mo
 }
 
 void wavm_runtime::immediately_exit_currently_running_module() {
-   RODEOS_MEMORY_PTR_cb_ptr;
+   EOSVMOC_MEMORY_PTR_cb_ptr;
    siglongjmp(*cb_ptr->jmp, 1); ///XXX 1 means clean exit
    __builtin_unreachable();
 }

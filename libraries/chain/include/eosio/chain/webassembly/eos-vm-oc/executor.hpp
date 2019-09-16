@@ -12,7 +12,7 @@ namespace eosio { namespace chain {
 
 class apply_context;
 
-namespace rodeos {
+namespace eosvmoc {
 
 class code_cache;
 class memory;

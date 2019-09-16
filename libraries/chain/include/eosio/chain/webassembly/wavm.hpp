@@ -7,12 +7,12 @@
 #include <softfloat.hpp>
 #include "IR/Types.h"
 
-#include <eosio/chain/webassembly/rodeos/rodeos.hpp>
-#include <eosio/chain/webassembly/rodeos/memory.hpp>
-#include <eosio/chain/webassembly/rodeos/executor.hpp>
-#include <eosio/chain/webassembly/rodeos/code_cache.hpp>
-#include <eosio/chain/webassembly/rodeos/config.hpp>
-#include <eosio/chain/webassembly/rodeos/intrinsic.hpp>
+#include <eosio/chain/webassembly/eos-vm-oc/eos-vm-oc.hpp>
+#include <eosio/chain/webassembly/eos-vm-oc/memory.hpp>
+#include <eosio/chain/webassembly/eos-vm-oc/executor.hpp>
+#include <eosio/chain/webassembly/eos-vm-oc/code_cache.hpp>
+#include <eosio/chain/webassembly/eos-vm-oc/config.hpp>
+#include <eosio/chain/webassembly/eos-vm-oc/intrinsic.hpp>
 
 #include <boost/hana/equal.hpp>
 
@@ -23,13 +23,13 @@ using namespace Runtime;
 using namespace fc;
 using namespace eosio::chain::webassembly::common;
 
-using namespace eosio::chain::rodeos;
+using namespace eosio::chain::eosvmoc;
 
 class wavm_instantiated_module;
 
 class wavm_runtime : public eosio::chain::wasm_runtime_interface {
    public:
-      wavm_runtime(const boost::filesystem::path data_dir, const rodeos::config& rodeos_config);
+      wavm_runtime(const boost::filesystem::path data_dir, const eosvmoc::config& eosvmoc_config);
       ~wavm_runtime();
       std::unique_ptr<wasm_instantiated_module_interface> instantiate_module(std::vector<uint8_t>&& wasm, std::vector<uint8_t>&& initial_memory,
                                                                              const digest_type& code_hash, const uint8_t& vm_type, const uint8_t& vm_version) override;
@@ -37,9 +37,9 @@ class wavm_runtime : public eosio::chain::wasm_runtime_interface {
       void immediately_exit_currently_running_module() override;
 
       friend wavm_instantiated_module;
-      rodeos::code_cache cc;
-      rodeos::executor exec;
-      rodeos::memory mem;
+      eosvmoc::code_cache cc;
+      eosvmoc::executor exec;
+      eosvmoc::memory mem;
 };
 
 /**
@@ -52,7 +52,7 @@ class wavm_runtime : public eosio::chain::wasm_runtime_interface {
 template<typename T>
 inline array_ptr<T> array_ptr_impl (U32 ptr, size_t length)
 {
-   RODEOS_MEMORY_PTR_cb_ptr;
+   EOSVMOC_MEMORY_PTR_cb_ptr;
    volatile GS_PTR char* p = 0;
    char check;
    if(length || cb_ptr->current_linear_memory_pages < 0)
@@ -69,7 +69,7 @@ inline array_ptr<T> array_ptr_impl (U32 ptr, size_t length)
  */
 inline null_terminated_ptr null_terminated_ptr_impl(U32 ptr)
 {
-   RODEOS_MEMORY_PTR_cb_ptr;
+   EOSVMOC_MEMORY_PTR_cb_ptr;
    GS_PTR char* p = (GS_PTR char*)ptr;
    do {
       if(*p == '\0')
@@ -163,7 +163,7 @@ inline auto convert_native_to_wasm(const fc::time_point_sec& val) {
 }
 
 inline auto convert_native_to_wasm(char* ptr) {
-   RODEOS_MEMORY_PTR_cb_ptr;
+   EOSVMOC_MEMORY_PTR_cb_ptr;
    ///XXX this validation isn't as strict
    U64 delta = (U64)(ptr - cb_ptr->full_linear_memory_start);
    volatile GS_PTR char* p = 0;
@@ -307,7 +307,7 @@ struct intrinsic_invoker_impl<is_injected, Ret, std::tuple<>, std::tuple<Transla
 
    template<next_method_type Method>
    static native_to_wasm_t<Ret> invoke(Translated... translated) {
-      RODEOS_MEMORY_PTR_cb_ptr;
+      EOSVMOC_MEMORY_PTR_cb_ptr;
       try {
          if constexpr(!is_injected)
             EOS_ASSERT(cb_ptr->current_call_depth_remaining != 1, wasm_execution_error, "Exceeded call depth maximum");
@@ -336,7 +336,7 @@ struct intrinsic_invoker_impl<is_injected, void_type, std::tuple<>, std::tuple<T
 
    template<next_method_type Method>
    static void invoke(Translated... translated) {
-      RODEOS_MEMORY_PTR_cb_ptr;
+      EOSVMOC_MEMORY_PTR_cb_ptr;
       try {
          if constexpr(!is_injected)
             EOS_ASSERT(cb_ptr->current_call_depth_remaining != 1, wasm_execution_error, "Exceeded call depth maximum");
@@ -400,7 +400,7 @@ struct intrinsic_invoker_impl<is_injected, Ret, std::tuple<array_ptr<T>, size_t,
       const auto length = size_t((U32)size);
       T* base = array_ptr_impl<T>((U32)ptr, length);
       if ( reinterpret_cast<uintptr_t>(base) % alignof(T) != 0 ) {
-         RODEOS_MEMORY_PTR_cb_ptr;
+         EOSVMOC_MEMORY_PTR_cb_ptr;
          if(cb_ptr->ctx->control.contracts_console())
             wlog( "misaligned array of const values" );
          std::vector<uint8_t>& copy = cb_ptr->bounce_buffers->emplace_back(length > 0 ? length*sizeof(T) : 1);
@@ -417,7 +417,7 @@ struct intrinsic_invoker_impl<is_injected, Ret, std::tuple<array_ptr<T>, size_t,
       const auto length = size_t((U32)size);
       T* base = array_ptr_impl<T>((U32)ptr, length);
       if ( reinterpret_cast<uintptr_t>(base) % alignof(T) != 0 ) {
-         RODEOS_MEMORY_PTR_cb_ptr;
+         EOSVMOC_MEMORY_PTR_cb_ptr;
          if(cb_ptr->ctx->control.contracts_console())
             wlog( "misaligned array of values" );
          std::vector<uint8_t>& copy = cb_ptr->bounce_buffers->emplace_back(length > 0 ? length*sizeof(T) : 1);
@@ -606,7 +606,7 @@ struct intrinsic_invoker_impl<is_injected, Ret, std::tuple<T &, Inputs...>, std:
 
    template<then_type Then, typename U=T>
    static auto translate_one(Inputs... rest, Translated... translated, I32 ptr) -> std::enable_if_t<std::is_const<U>::value, Ret> {
-      RODEOS_MEMORY_PTR_cb_ptr;
+      EOSVMOC_MEMORY_PTR_cb_ptr;
       // references cannot be created for null pointers
       EOS_ASSERT((U32)ptr != 0, wasm_exception, "references cannot be created for null pointers");
       volatile GS_PTR char* p = 0;
@@ -628,7 +628,7 @@ struct intrinsic_invoker_impl<is_injected, Ret, std::tuple<T &, Inputs...>, std:
 
    template<then_type Then, typename U=T>
    static auto translate_one(Inputs... rest, Translated... translated, I32 ptr) -> std::enable_if_t<!std::is_const<U>::value, Ret> {
-      RODEOS_MEMORY_PTR_cb_ptr;
+      EOSVMOC_MEMORY_PTR_cb_ptr;
       // references cannot be created for null pointers
       EOS_ASSERT((U32)ptr != 0, wasm_exception, "reference cannot be created for null pointers");
       volatile GS_PTR char* p = 0;
@@ -665,7 +665,7 @@ struct intrinsic_function_invoker {
 
    template<MethodSig Method>
    static Ret wrapper(Params... params) {
-      RODEOS_MEMORY_PTR_cb_ptr;
+      EOSVMOC_MEMORY_PTR_cb_ptr;
       return (class_from_wasm<Cls>::value(*cb_ptr->ctx).*Method)(params...);
    }
 
@@ -684,7 +684,7 @@ struct intrinsic_function_invoker<is_injected, WasmSig, void, MethodSig, Cls, Pa
 
    template<MethodSig Method>
    static void_type wrapper(Params... params) {
-      RODEOS_MEMORY_PTR_cb_ptr;
+      EOSVMOC_MEMORY_PTR_cb_ptr;
       (class_from_wasm<Cls>::value(*cb_ptr->ctx).*Method)(params...);
       return void_type();
    }
@@ -735,13 +735,13 @@ struct intrinsic_function_invoker_wrapper<is_injected, WasmSig, Ret (Cls::*)(Par
       MOD "." NAME,\
       eosio::chain::webassembly::wavm::wasm_function_type_provider<WASM_SIG>::type(),\
       (void *)eosio::chain::webassembly::wavm::intrinsic_function_invoker_wrapper<std::string_view(MOD) != "env", WASM_SIG, SIG>::type::fn<&CLS::METHOD>(),\
-      ::boost::hana::index_if(eosio::chain::rodeos::intrinsic_table, ::boost::hana::equal.to(BOOST_HANA_STRING(MOD "." NAME))).value()\
+      ::boost::hana::index_if(eosio::chain::eosvmoc::intrinsic_table, ::boost::hana::equal.to(BOOST_HANA_STRING(MOD "." NAME))).value()\
    );\
-   static eosio::chain::rodeos::intrinsic _INTRINSIC_NAME(__intrinsic_fn, __COUNTER__) (\
+   static eosio::chain::eosvmoc::intrinsic _INTRINSIC_NAME(__intrinsic_fn, __COUNTER__) (\
       MOD "." NAME,\
       eosio::chain::webassembly::wavm::wasm_function_type_provider<WASM_SIG>::type(),\
       (void *)eosio::chain::webassembly::wavm::intrinsic_function_invoker_wrapper<std::string_view(MOD) != "env", WASM_SIG, SIG>::type::fn<&CLS::METHOD>(),\
-      ::boost::hana::index_if(eosio::chain::rodeos::intrinsic_table, ::boost::hana::equal.to(BOOST_HANA_STRING(MOD "." NAME))).value()\
+      ::boost::hana::index_if(eosio::chain::eosvmoc::intrinsic_table, ::boost::hana::equal.to(BOOST_HANA_STRING(MOD "." NAME))).value()\
    );\
 
 

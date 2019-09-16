@@ -1,8 +1,8 @@
-#include <eosio/chain/webassembly/rodeos/executor.hpp>
-#include <eosio/chain/webassembly/rodeos/code_cache.hpp>
-#include <eosio/chain/webassembly/rodeos/memory.hpp>
-#include <eosio/chain/webassembly/rodeos/intrinsic_mapping.hpp>
-#include <eosio/chain/webassembly/rodeos/intrinsic.hpp>
+#include <eosio/chain/webassembly/eos-vm-oc/executor.hpp>
+#include <eosio/chain/webassembly/eos-vm-oc/code_cache.hpp>
+#include <eosio/chain/webassembly/eos-vm-oc/memory.hpp>
+#include <eosio/chain/webassembly/eos-vm-oc/intrinsic_mapping.hpp>
+#include <eosio/chain/webassembly/eos-vm-oc/intrinsic.hpp>
 #include <eosio/chain/wasm_eosio_constraints.hpp>
 #include <eosio/chain/apply_context.hpp>
 #include <eosio/chain/transaction_context.hpp>
@@ -20,7 +20,7 @@
 
 extern "C" int arch_prctl(int code, unsigned long* addr);
 
-namespace eosio { namespace chain { namespace rodeos {
+namespace eosio { namespace chain { namespace eosvmoc {
 
 static std::mutex inited_signal_mutex;
 static bool inited_signal;
@@ -65,7 +65,7 @@ notus:
 }
 
 static int32_t grow_memory(int32_t grow, int32_t max) {
-   RODEOS_MEMORY_PTR_cb_ptr;
+   EOSVMOC_MEMORY_PTR_cb_ptr;
    U32 previous_page_count = cb_ptr->current_linear_memory_pages;
    U32 grow_amount = grow;
    U32 max_pages = max;
@@ -85,42 +85,42 @@ static int32_t grow_memory(int32_t grow, int32_t max) {
 
    return (int32_t)previous_page_count;
 }
-static intrinsic grow_memory_intrinsic("rodeos_internal.grow_memory", IR::FunctionType::get(IR::ResultType::i32,{IR::ValueType::i32,IR::ValueType::i32}), (void*)&grow_memory,
-  boost::hana::index_if(intrinsic_table, ::boost::hana::equal.to(BOOST_HANA_STRING("rodeos_internal.grow_memory"))).value()
+static intrinsic grow_memory_intrinsic("eosvmoc_internal.grow_memory", IR::FunctionType::get(IR::ResultType::i32,{IR::ValueType::i32,IR::ValueType::i32}), (void*)&grow_memory,
+  boost::hana::index_if(intrinsic_table, ::boost::hana::equal.to(BOOST_HANA_STRING("eosvmoc_internal.grow_memory"))).value()
 );
 
 ///XXX put this somewhere else cozy
 static void throw_internal_exception(const std::string& s) {
-   RODEOS_MEMORY_PTR_cb_ptr;
+   EOSVMOC_MEMORY_PTR_cb_ptr;
    *cb_ptr->eptr = std::make_exception_ptr(wasm_execution_error(FC_LOG_MESSAGE(error, s)));
    siglongjmp(*cb_ptr->jmp, 4); ///XXX 4 means due to exception
    __builtin_unreachable();
 }
 
-#define DEFINE_RODEOS_TRAP_INTRINSIC(module,name) \
+#define DEFINE_EOSVMOC_TRAP_INTRINSIC(module,name) \
 	void name(); \
 	static intrinsic name##Function(#module "." #name,IR::FunctionType::get(),(void*)&name, \
      boost::hana::index_if(intrinsic_table, ::boost::hana::equal.to(BOOST_HANA_STRING(#module "." #name))).value() \
    ); \
 	void name()
 
-DEFINE_RODEOS_TRAP_INTRINSIC(rodeos_internal,depth_assert) {
+DEFINE_EOSVMOC_TRAP_INTRINSIC(eosvmoc_internal,depth_assert) {
    throw_internal_exception("Exceeded call depth maximum");
 }
 
-DEFINE_RODEOS_TRAP_INTRINSIC(rodeos_internal,div0_or_overflow) {
+DEFINE_EOSVMOC_TRAP_INTRINSIC(eosvmoc_internal,div0_or_overflow) {
    throw_internal_exception("Division by 0 or integer overflow trapped");
 }
 
-DEFINE_RODEOS_TRAP_INTRINSIC(rodeos_internal,indirect_call_mismatch) {
+DEFINE_EOSVMOC_TRAP_INTRINSIC(eosvmoc_internal,indirect_call_mismatch) {
    throw_internal_exception("Indirect call function type mismatch");
 }
 
-DEFINE_RODEOS_TRAP_INTRINSIC(rodeos_internal,indirect_call_oob) {
+DEFINE_EOSVMOC_TRAP_INTRINSIC(eosvmoc_internal,indirect_call_oob) {
    throw_internal_exception("Indirect call index out of bounds");
 }
 
-DEFINE_RODEOS_TRAP_INTRINSIC(rodeos_internal,unreachable) {
+DEFINE_EOSVMOC_TRAP_INTRINSIC(eosvmoc_internal,unreachable) {
    throw_internal_exception("Unreachable reached");
 }
 
@@ -128,12 +128,12 @@ executor::executor(const code_cache& cc) {
    //XXX
    static bool once_is_enough;
    if(!once_is_enough) {
-      printf("current_linear_memory_pages %li\n", -memory::cb_offset + offsetof(eosio::chain::rodeos::control_block, current_linear_memory_pages));
-      printf("full_linear_memory_start %li\n", -memory::cb_offset + offsetof(eosio::chain::rodeos::control_block, full_linear_memory_start));
+      printf("current_linear_memory_pages %li\n", -memory::cb_offset + offsetof(eosio::chain::eosvmoc::control_block, current_linear_memory_pages));
+      printf("full_linear_memory_start %li\n", -memory::cb_offset + offsetof(eosio::chain::eosvmoc::control_block, full_linear_memory_start));
       printf("cb_offset %lu\n", memory::cb_offset);
-      printf("remaining call depth: %li\n", -memory::cb_offset + offsetof(eosio::chain::rodeos::control_block, current_call_depth_remaining));
+      printf("remaining call depth: %li\n", -memory::cb_offset + offsetof(eosio::chain::eosvmoc::control_block, current_call_depth_remaining));
       printf("first intrinsic: %lu\n", memory::first_intrinsic_offset);
-      printf("current code offset: %li\n", -memory::cb_offset + offsetof(eosio::chain::rodeos::control_block, running_code_base));
+      printf("current code offset: %li\n", -memory::cb_offset + offsetof(eosio::chain::eosvmoc::control_block, running_code_base));
       once_is_enough = true;
    }
 
