@@ -7,6 +7,8 @@ declare -A BASE_MAP
 if ${TRAVIS:-false}; then
     BASE_BRANCH=$TRAVIS_BRANCH
     CURRENT_BRANCH=${TRAVIS_PULL_REQUEST_BRANCH:-$TRAVIS_BRANCH} # We default to TRAVIS_BRANCH if it's not a PR so it passes on non PR runs
+        echo " SLUG: $TRAVIS_PULL_REQUEST_SLUG "
+
     [[ $TRAVIS_PULL_REQUEST_SLUG != 'EOSIO/eos' ]] && CURRENT_BRANCH=$TRAVIS_COMMIT # Support git log & echo output
 else
     BASE_BRANCH=${BUILDKITE_PULL_REQUEST_BASE_BRANCH:-$BUILDKITE_BRANCH}
