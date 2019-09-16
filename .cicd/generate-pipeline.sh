@@ -123,7 +123,7 @@ EOF
       - "cd eos && ./.cicd/build.sh"
       - "cd eos && tar -pczf build.tar.gz build && buildkite-agent artifact upload build.tar.gz"
     plugins:
-      - chef/anka#v0.5.1:
+      - chef/anka#v0.5.4:
           no-volume: true
           inherit-environment-vars: true
           vm-name: ${MOJAVE_ANKA_TEMPLATE_NAME}
@@ -133,6 +133,10 @@ EOF
           always-pull: true
           debug: true
           wait-network: true
+          failover-registries:
+            - 'registry_1'
+            - 'registry_2'
+          pre-execute-sleep: 5
     timeout: ${TIMEOUT:-180}
     agents: "queue=mac-anka-large-node-fleet"
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_BUILD}
@@ -173,7 +177,7 @@ EOF
       - "cd eos && buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz"
       - "cd eos && ./.cicd/test.sh scripts/parallel-test.sh"
     plugins:
-      - chef/anka#v0.5.1:
+      - chef/anka#v0.5.4:
           no-volume: true
           inherit-environment-vars: true
           vm-name: ${MOJAVE_ANKA_TEMPLATE_NAME}
@@ -181,6 +185,10 @@ EOF
           always-pull: true
           debug: true
           wait-network: true
+          failover-registries:
+            - 'registry_1'
+            - 'registry_2'
+          pre-execute-sleep: 5
     timeout: ${TIMEOUT:-20}
     agents: "queue=mac-anka-node-fleet"
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_UNIT_TESTS}
@@ -217,7 +225,7 @@ EOF
       - "cd eos && buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' && tar -xzf build.tar.gz"
       - "cd eos && ./.cicd/test.sh scripts/serial-test.sh $TEST_NAME"
     plugins:
-      - chef/anka#v0.5.1:
+      - chef/anka#v0.5.4:
           no-volume: true
           inherit-environment-vars: true
           vm-name: ${MOJAVE_ANKA_TEMPLATE_NAME}
@@ -225,6 +233,10 @@ EOF
           always-pull: true
           debug: true
           wait-network: true
+          failover-registries:
+            - 'registry_1'
+            - 'registry_2'
+          pre-execute-sleep: 5
     timeout: ${TIMEOUT:-20}
     agents: "queue=mac-anka-node-fleet"
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_SERIAL_TESTS}
@@ -263,7 +275,7 @@ EOF
       - "cd eos && buildkite-agent artifact download build.tar.gz . --step '$(echo "$PLATFORM_JSON" | jq -r .ICON) $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) - Build' ${BUILD_SOURCE} && tar -xzf build.tar.gz"
       - "cd eos && ./.cicd/test.sh scripts/long-running-test.sh $TEST_NAME"
     plugins:
-      - chef/anka#v0.5.1:
+      - chef/anka#v0.5.4:
           no-volume: true
           inherit-environment-vars: true
           vm-name: ${MOJAVE_ANKA_TEMPLATE_NAME}
@@ -271,6 +283,10 @@ EOF
           always-pull: true
           debug: true
           wait-network: true
+          failover-registries:
+            - 'registry_1'
+            - 'registry_2'
+          pre-execute-sleep: 5
     timeout: ${TIMEOUT:-180}
     agents: "queue=mac-anka-node-fleet"
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_LONG_RUNNING_TESTS:-true}
@@ -394,7 +410,7 @@ cat <<EOF
       - "cd eos && buildkite-agent artifact download build.tar.gz . --step ':darwin: macOS 10.14 - Build' && tar -xzf build.tar.gz"
       - "cd eos && ./.cicd/package.sh"
     plugins:
-      - chef/anka#v0.5.1:
+      - chef/anka#v0.5.4:
           no-volume: true
           inherit-environment-vars: true
           vm-name: 10.14.4_6C_14G_40G
@@ -402,6 +418,10 @@ cat <<EOF
           always-pull: true
           debug: true
           wait-network: true
+          failover-registries:
+            - 'registry_1'
+            - 'registry_2'
+          pre-execute-sleep: 5
     agents:
       - "queue=mac-anka-node-fleet"
     timeout: ${TIMEOUT:-10}
