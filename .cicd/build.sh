@@ -11,7 +11,7 @@ if [[ $(uname) == 'Darwin' ]]; then
     cmake $CMAKE_EXTRAS ..
     make -j$JOBS
 else # Linux
-    ARGS=${ARGS:-"--rm --init -v $(pwd):$MOUNTED_DIR"}
+    ARGS=${ARGS:-"--rm --init -v $(pwd):$MOUNTED_DIR -e UNPINNED -e PINNED"}
     . $HELPERS_DIR/file-hash.sh $CICD_DIR/platforms/$IMAGE_TAG.dockerfile
     PRE_COMMANDS="cd $MOUNTED_DIR/build"
     # PRE_COMMANDS: Executed pre-cmake
