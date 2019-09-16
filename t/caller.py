@@ -1,6 +1,7 @@
 #! /usr/bin/env python3
 
 import argparse
+import base64
 import json
 import os
 import platform
@@ -275,7 +276,13 @@ class LauncherCaller:
         self.stop_node(data, "kill node #{}".format(data["node_id"]))
 
     def stop_all_clusters(self):
-        self.call("stop_all_clusters", dict())
+        self.call("stop_all_clusters", data=dict())
+
+    def clean_cluster(self, cluster_id):
+        self.call("clean_cluster", text="clean cluster #{}".format(cluster_id), cluster_id=cluster_id)
+
+    def get_log_data(self, **data):
+        return base64.b64decode(json.loads(self.call("get_log_data", **data)[0].text)["data"])
 
     # ----- Misc --------------------------------------------------------------
 
@@ -476,7 +483,6 @@ class LauncherCaller:
                                      "producers": producers_list}}]
         self.push_actions(fetch(info, ["cluster_id", "node_id", "actions"]), "vote for producers")
 
-
         # 13. verify head block producer is no longer eosio
         retry = 5
         while retry >= 0:
@@ -492,6 +498,11 @@ class LauncherCaller:
         assert head_block_producer != "eosio"
         self.print.decorate(">>> Bootstrap succeeded.".format(head_block_producer), fcolor="white", bcolor="black")
 
+        self.stop_all_clusters()
+
+        self.print.vanilla(self.get_log_data(cluster_id=0, node_id=0, offset=1000, len=10000, filename="stderr_0.txt"))
+
+        self.clean_cluster(0)
 
     # ---------- Utilities ----------------------------------------------------
 
@@ -507,7 +518,8 @@ class LauncherCaller:
 def main():
     caller = LauncherCaller()
     caller.print.white(">>> Bootstrapping ...")
-    caller.boostrap(producer_nodes=3, unstarted_nodes=2, total_nodes=6, total_producers=5, per_node_producers=2)
+    # caller.boostrap(producer_nodes=3, unstarted_nodes=2, total_nodes=6, total_producers=5, per_node_producers=2)
+    caller.boostrap(producer_nodes=1, unstarted_nodes=0, total_nodes=2, total_producers=1, per_node_producers=1)
 
 if __name__ == '__main__':
     main()

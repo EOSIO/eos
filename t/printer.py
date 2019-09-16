@@ -9,8 +9,6 @@ import sys
 from helper import get_transaction_id
 from typing import List, Optional, Union
 
-__all__ = ["String", "Print", "pad"]
-
 
 COLORS = {"black":          0,
           "red":            1,
@@ -33,6 +31,44 @@ STYLES = {"reset":          0,
           "strikethrough":  9}
 
 
+def decorate(text,
+             style:     Optional[Union[str, List[str]]] =None,
+             fcolor:    Optional[str]                   =None,
+             bcolor:    Optional[str]                   =None):
+    attr = concat(style, fcolor, bcolor)
+    return "\033[{}m{}\033[0m".format(attr, text) if attr else text
+
+def red(text):
+    return decorate(text, fcolor="red")
+
+def green(text):
+    return decorate(text, fcolor="green")
+
+def blue(text):
+    return decorate(text, fcolor="blue")
+
+def yellow(text):
+    return decorate(text, fcolor="yellow")
+
+def cyan(text):
+    return decorate(text, fcolor="cyan")
+
+
+def concat(style, fcolor, bcolor):
+    """
+    Doctest
+    -------
+    >>> concat("bold", "white", "red")
+    '1;37;41'
+    """
+    attr = [] if style is None else [STYLES[style]] if isinstance(style, str) else [STYLES[x] for x in style]
+    if isinstance(fcolor, str):
+        attr.append(30 + COLORS[fcolor])
+    if isinstance(bcolor, str):
+        attr.append(40 + COLORS[bcolor])
+    return ";".join([str(x) for x in attr])
+
+
 class String():
     """
     Summary
@@ -44,7 +80,7 @@ class String():
         self.monochrome = monochrome
 
     def decorate(self, text, style: Optional[Union[str, List[str]]] =None, fcolor: Optional[str] =None, bcolor: Optional[str] =None):
-        attr = parse(style, fcolor, bcolor)
+        attr = concat(style, fcolor, bcolor)
         return "" if self.invisible else text if self.monochrome else "\033[{}m{}\033[0m".format(attr, text) if attr else text
 
     def vanilla(self, text):
@@ -97,7 +133,7 @@ class Print():
         elif self.monochrome:
             print(*text, **kwargs)
         else:
-            print("\033[{}m".format(parse(style, fcolor, bcolor)), end="")
+            print("\033[{}m".format(concat(style, fcolor, bcolor)), end="")
             print(*text, end=(kwargs["end"] if "end" in kwargs else ""),
                   **(dict((k, kwargs[k]) for k in kwargs if k != "end")))
             print("\033[0m", end="" if "end" in kwargs else "\n")
@@ -211,10 +247,10 @@ def pad(text: str, left=10, right=None, total=None, char='-', sep=' ') -> str:
     -------
     This function provides padding for a string.
 
-    Example
+    Doctest
     -------
     >>> # implied_total (24) < total (25), so total becomes 24.
-    >>> String().pad("hello, world", left=3, right=3, total=25, char=":", sep=' ~ ')
+    >>> pad("hello, world", left=3, right=3, total=25, char=":", sep=' ~ ')
     '::: ~ hello, world ~ :::'
     """
     if total is None:
@@ -225,24 +261,14 @@ def pad(text: str, left=10, right=None, total=None, char='-', sep=' ') -> str:
     return (char * left + sep + text + sep).ljust(total, char)
 
 
-def parse(style, fcolor, bcolor):
-    attr = [] if style is None else [STYLES[style]] if isinstance(style, str) else [STYLES[x] for x in style]
-    if isinstance(fcolor, str):
-        attr.append(30 + COLORS[fcolor])
-    if isinstance(bcolor, str):
-        attr.append(40 + COLORS[bcolor])
-    return ";".join([str(x) for x in attr])
-
-
 def test():
     """
     Doctest
     -------
-    >>> Print().green("Hello", 3.14, ["a", "b", "c"], {"name": "Alice", "friends": ["Bob", "Charlie"]}, \
-                      sep=";\\n", end=".\\n")
+    >>> Print().green("Hello", 3.14, ["a", "b"], {"name": "Alice", "friends": ["Bob", "Charlie"]}, sep=";\\n", end=".\\n")
     \033[32mHello;
     3.14;
-    ['a', 'b', 'c'];
+    ['a', 'b'];
     {'name': 'Alice', 'friends': ['Bob', 'Charlie']}.
     \033[0m
     """

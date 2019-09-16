@@ -276,7 +276,7 @@ public:
    fc::variant generate_key(launcher_service::generate_key_param);
    fc::variant import_keys(launcher_service::import_keys_param);
 
-   // querys
+   // queries
    fc::variant get_info(launcher_service::node_id_param);
    fc::variant get_block(launcher_service::get_block_param);
    fc::variant get_block_header_state(launcher_service::get_block_param);
