@@ -11,9 +11,6 @@ namespace Intrinsics
 	struct Singleton
 	{
 		std::map<std::string,Intrinsics::Function*> functionMap;
-		std::map<std::string,Intrinsics::Global*> variableMap;
-		std::map<std::string,Intrinsics::Memory*> memoryMap;
-		std::map<std::string,Intrinsics::Table*> tableMap;
 		Platform::Mutex* mutex;
 
 		Singleton(): mutex(Platform::createMutex()) {}
@@ -51,71 +48,6 @@ namespace Intrinsics
       delete function;
 	}
 
-	Global::Global(const char* inName,IR::GlobalType inType)
-	:	name(inName)
-	,	globalType(inType)
-	{
-		global = Runtime::createGlobal(inType,Runtime::Value((I64)0));
-		value = &global->value;
-		{
-			Platform::Lock lock(Singleton::get().mutex);
-			Singleton::get().variableMap[getDecoratedName(inName,inType)] = this;
-		}
-	}
-
-	Global::~Global()
-	{
-		{
-			Platform::Lock Lock(Singleton::get().mutex);
-			Singleton::get().variableMap.erase(Singleton::get().variableMap.find(getDecoratedName(name,global->type)));
-		}
-		delete global;
-	}
-
-	void Global::reset()
-	{
-		global = Runtime::createGlobal(globalType,Runtime::Value((I64)0));
-		value = &global->value;
-	}
-
-	Table::Table(const char* inName,const IR::TableType& type)
-	: name(inName)
-	, table(Runtime::createTable(type))
-	{
-		if(!table) { Errors::fatal("failed to create intrinsic table"); }
-
-		Platform::Lock lock(Singleton::get().mutex);
-		Singleton::get().tableMap[getDecoratedName(inName,type)] = this;
-	}
-	
-	Table::~Table()
-	{
-		{
-			Platform::Lock Lock(Singleton::get().mutex);
-			Singleton::get().tableMap.erase(Singleton::get().tableMap.find(getDecoratedName(name,table->type)));
-		}
-		delete table;
-	}
-	
-	Memory::Memory(const char* inName,const IR::MemoryType& type)
-	: name(inName)
-	, memory(Runtime::createMemory(type))
-	{
-		if(!memory) { Errors::fatal("failed to create intrinsic memory"); }
-
-		Platform::Lock lock(Singleton::get().mutex);
-		Singleton::get().memoryMap[getDecoratedName(inName,type)] = this;
-	}
-	
-	Memory::~Memory()
-	{
-		{
-			Platform::Lock Lock(Singleton::get().mutex);
-			Singleton::get().memoryMap.erase(Singleton::get().memoryMap.find(getDecoratedName(name,memory->type)));
-		}
-		delete memory;
-	}
-
 	Runtime::ObjectInstance* find(const std::string& name,const IR::ObjectType& type)
 	{
 		std::string decoratedName = getDecoratedName(name,type);
@@ -131,20 +63,17 @@ namespace Intrinsics
 		}
 		case IR::ObjectKind::table:
 		{
-			auto keyValue = Singleton::get().tableMap.find(decoratedName);
-			result = keyValue == Singleton::get().tableMap.end() ? nullptr : asObject((Runtime::TableInstance*)*keyValue->second);
+			result = nullptr;
 			break;
 		}
 		case IR::ObjectKind::memory:
 		{
-			auto keyValue = Singleton::get().memoryMap.find(decoratedName);
-			result = keyValue == Singleton::get().memoryMap.end() ? nullptr : asObject((Runtime::MemoryInstance*)*keyValue->second);
+			result = nullptr;
 			break;
 		}
 		case IR::ObjectKind::global:
 		{
-			auto keyValue = Singleton::get().variableMap.find(decoratedName);
-			result = keyValue == Singleton::get().variableMap.end() ? nullptr : asObject(keyValue->second->global);
+			result = nullptr;
 			break;
 		}
 		default: Errors::unreachable();
@@ -158,9 +87,6 @@ namespace Intrinsics
 		Platform::Lock lock(Singleton::get().mutex);
 		std::vector<Runtime::ObjectInstance*> result;
 		for(auto mapIt : Singleton::get().functionMap) { result.push_back(mapIt.second->function); }
-		for(auto mapIt : Singleton::get().tableMap) { result.push_back((Runtime::TableInstance*)*mapIt.second); }
-		for(auto mapIt : Singleton::get().memoryMap) { result.push_back((Runtime::MemoryInstance*)*mapIt.second); }
-		for(auto mapIt : Singleton::get().variableMap) { result.push_back(mapIt.second->global); }
 		return result;
 	}
 }

@@ -64,6 +64,20 @@ if(APPLE AND UNIX AND "${OPENSSL_ROOT_DIR}" STREQUAL "")
    set(OPENSSL_ROOT_DIR "/usr/local/opt/openssl")
 endif()
 
+# WASM runtimes to enable. Each runtime in this list will have:
+#  * definition EOSIO_<RUNTIME>_RUNTIME_ENABLED defined in public libchain interface
+#  * ctest entries with --runtime
+list(APPEND EOSIO_WASM_RUNTIMES wabt)   #always enable wabt; it works everywhere and parts of eosio still assume it's always available
+if(CMAKE_SIZEOF_VOID_P EQUAL 8 AND NOT WIN32)
+   list(APPEND EOSIO_WASM_RUNTIMES wavm)
+   # WAVM requires LLVM, but move the check up here to a central location so that the EosioTester.cmakes
+   # can be created with the exact version found
+   find_package(LLVM REQUIRED CONFIG)
+   if(LLVM_VERSION_MAJOR VERSION_LESS 7 OR LLVM_VERSION_MAJOR VERSION_GREATER 9)
+	   message(FATAL_ERROR "EOSIO requires an LLVM version 7.0 to 9.0")
+   endif()
+endif()
+
 if(UNIX)
   if(APPLE)
     set(whole_archive_flag "-force_load")
@@ -81,13 +95,6 @@ set( Boost_USE_STATIC_LIBS ON CACHE STRING "ON or OFF" )
 # Most boost deps get implictly picked up via fc, as just about everything links to fc. In addition we pick up
 # the pthread dependency through fc.
 find_package(Boost 1.67 REQUIRED COMPONENTS program_options unit_test_framework)
-
-# WAVM requires LLVM, but move the check up here to a central location so that the EosioTester.cmakes
-# can be created with the exact version found
-find_package(LLVM REQUIRED CONFIG)
-if(LLVM_VERSION_MAJOR VERSION_LESS 7 OR LLVM_VERSION_MAJOR VERSION_GREATER 9)
-	message(FATAL_ERROR "EOSIO requires an LLVM version 7.0 to 9.0")
-endif()
 
 if( APPLE AND UNIX )
 # Apple Specific Options Here
