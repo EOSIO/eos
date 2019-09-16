@@ -4,19 +4,8 @@
 #include <eosio/chain/apply_context.hpp>
 #include <eosio/chain/exceptions.hpp>
 
-#include "IR/Module.h"
-#include "Platform/Platform.h"
-#include "WAST/WAST.h"
-#include "IR/Operators.h"
-#include "IR/Validate.h"
-#include "Runtime/Linker.h"
-#include "Runtime/Intrinsics.h"
-
 #include <vector>
 #include <iterator>
-
-using namespace IR;
-using namespace Runtime;
 
 struct counter {
    unsigned long long count;
@@ -27,15 +16,6 @@ struct counter {
 static counter the_counter;
 
 namespace eosio { namespace chain { namespace webassembly { namespace wavm {
-
-namespace detail {
-struct wavm_runtime_initializer {
-   wavm_runtime_initializer() {
-      Runtime::init();
-   }
-};
-
-}
 
 class wavm_instantiated_module : public wasm_instantiated_module_interface {
    public:
@@ -73,7 +53,6 @@ class wavm_instantiated_module : public wasm_instantiated_module_interface {
 };
 
 wavm_runtime::wavm_runtime(const boost::filesystem::path data_dir, const rodeos::config& rodeos_config) : cc(data_dir, rodeos_config), exec(cc) {
-   static detail::wavm_runtime_initializer the_wavm_runtime_initializer;
 }
 
 wavm_runtime::~wavm_runtime() {

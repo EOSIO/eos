@@ -18,16 +18,6 @@
 #include <asm/prctl.h>
 #include <sys/prctl.h>
 
-#include "IR/Module.h"
-#include "Platform/Platform.h"
-#include "WAST/WAST.h"
-#include "IR/Operators.h"
-#include "IR/Validate.h"
-#include "Runtime/Linker.h"
-#include "Runtime/Intrinsics.h"
-using namespace IR;
-using namespace Runtime;
-
 extern "C" int arch_prctl(int code, unsigned long* addr);
 
 namespace eosio { namespace chain { namespace rodeos {

@@ -5,7 +5,6 @@
 #include <eosio/chain/webassembly/runtime_interface.hpp>
 #include <eosio/chain/apply_context.hpp>
 #include <softfloat.hpp>
-#include "Runtime/Runtime.h"
 #include "IR/Types.h"
 
 #include <eosio/chain/webassembly/rodeos/rodeos.hpp>
@@ -16,10 +15,6 @@
 #include <eosio/chain/webassembly/rodeos/intrinsic.hpp>
 
 #include <boost/hana/equal.hpp>
-
-#include <asm/prctl.h>
-#include <sys/prctl.h>
-extern "C" int arch_prctl(int code, unsigned long* addr);
 
 namespace eosio { namespace chain { namespace webassembly { namespace wavm {
 

@@ -15,22 +15,12 @@ namespace llvm { namespace orc {
 }}
 #endif
 
-#ifdef _DEBUG
-	// This needs to be 1 to allow debuggers such as Visual Studio to place breakpoints and step through the JITed code.
-	#define USE_WRITEABLE_JIT_CODE_PAGES 1
+#define DUMP_UNOPTIMIZED_MODULE 0
+#define VERIFY_MODULE 0
+#define DUMP_OPTIMIZED_MODULE 0
+#define PRINT_DISASSEMBLY 0
 
-	#define DUMP_UNOPTIMIZED_MODULE 1
-	#define VERIFY_MODULE 1
-	#define DUMP_OPTIMIZED_MODULE 1
-	#define PRINT_DISASSEMBLY 0
-#else
-	#define USE_WRITEABLE_JIT_CODE_PAGES 0
-	#define DUMP_UNOPTIMIZED_MODULE 0
-	#define VERIFY_MODULE 0
-	#define DUMP_OPTIMIZED_MODULE 0
-	#define PRINT_DISASSEMBLY 0
-#endif
-
+#if PRINT_DISASSEMBLY
 #include "llvm-c/Disassembler.h"
 void disassembleFunction(U8* bytes,Uptr numBytes)
 {
@@ -49,8 +39,8 @@ void disassembleFunction(U8* bytes,Uptr numBytes)
          instructionBuffer,
          sizeof(instructionBuffer)
          );
-      WAVM_ASSERT_THROW(numInstructionBytes > 0);
-      WAVM_ASSERT_THROW(numInstructionBytes <= numBytesRemaining);
+      if(numInstructionBytes == 0 || numInstructionBytes > numBytesRemaining);
+         break;
       numBytesRemaining -= numInstructionBytes;
       nextByte += numInstructionBytes;
 
@@ -59,6 +49,7 @@ void disassembleFunction(U8* bytes,Uptr numBytes)
 
    LLVMDisasmDispose(disasmRef);
 }
+#endif
 
 namespace LLVMJIT
 {
@@ -157,11 +148,12 @@ namespace LLVMJIT
                                  auto symbolSection = symbol.getSection();
                                  if(symbolSection)
                                     loadedAddress += (Uptr)o.getSectionLoadAddress(*symbolSection.get());
-                                 //printf(">>> %s 0x%lX\n", symbolSizePair.first.getName()->data(), loadedAddress);
                                  Uptr functionDefIndex;
 			                        if(getFunctionIndexFromExternalName(name->data(),functionDefIndex))
                                     function_to_offsets[functionDefIndex] = loadedAddress-(uintptr_t)unitmemorymanager->code->data();
-                                 ///disassembleFunction((U8*)loadedAddress, symbolSizePair.second);
+#if PRINT_DISASSEMBLY
+                                 disassembleFunction((U8*)loadedAddress, symbolSizePair.second);
+#endif
                               }
                            }
                        }
@@ -227,15 +219,17 @@ namespace LLVMJIT
 		if(DUMP_OPTIMIZED_MODULE) { printModule(llvmModule,"llvmOptimizedDump"); }
 
       llvm::orc::VModuleKey K = ES.allocateVModule();
-      std::unique_ptr<llvm::Module> xxx(llvmModule);
-		auto zzz = compileLayer->addModule(K, std::move(xxx));
-		auto xxxx = compileLayer->emitAndFinalize(K);
+      std::unique_ptr<llvm::Module> mod(llvmModule);
+      WAVM_ASSERT_THROW(!compileLayer->addModule(K, std::move(mod)));
+		WAVM_ASSERT_THROW(!compileLayer->emitAndFinalize(K));
 
       final_pic_code = std::move(*unitmemorymanager->code);
 	}
 
 	void instantiateModule(const IR::Module& module,ModuleInstance* moduleInstance)
 	{
+      init();
+
 		// Emit LLVM IR for the module.
 		auto llvmModule = emitModule(module);
 
@@ -269,6 +263,10 @@ namespace LLVMJIT
 
 	void init()
 	{
+      static bool inited;
+      if(inited)
+         return;
+      inited = true;
 		llvm::InitializeNativeTarget();
 		llvm::InitializeNativeTargetAsmPrinter();
 		llvm::InitializeNativeTargetAsmParser();
