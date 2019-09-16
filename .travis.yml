@@ -49,9 +49,7 @@ matrix:
       env: 
         - PATH="/usr/local/opt/ccache/libexec:$PATH"
 script: "
-if [[ $(uname) != 'Darwin' ]]; then
-  ./.cicd/submodule-regression-check.sh
-fi
+[[ $(uname) != 'Darwin' ]] && ./.cicd/submodule-regression-check.sh
 ccache --max-size=1G && ./.cicd/build.sh && ./.cicd/test.sh scripts/parallel-test.sh && ./.cicd/test.sh scripts/serial-test.sh"
 notifications:
   webhooks:
