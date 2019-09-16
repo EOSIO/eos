@@ -34,7 +34,7 @@ struct platform_timer {
       _expiration_callback_data = user;
    }
 
-   volatile sig_atomic_t expired = 1;
+   std::atomic_bool expired = true;
 
 private:
    struct impl;
@@ -46,9 +46,10 @@ private:
       if(atomic_compare_exchange_strong(&_callback_variables_busy, &expect_false, true)) {
          void(*cb)(void*) = _expiration_callback;
          void* cb_data = _expiration_callback_data;
-         _callback_variables_busy.store(false, std::memory_order_release);
-         if(cb)
+         if(cb) {
             cb(cb_data);
+         }
+         _callback_variables_busy.store(false, std::memory_order_release);
       }
    }
 

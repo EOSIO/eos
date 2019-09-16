@@ -21,10 +21,11 @@ namespace {
         guard(transaction_checktime_timer& timer, F&& func)
            : _timer(timer), _func(static_cast<F&&>(func)) {
            _timer.set_expiration_callback(&callback, this);
+           if(_timer.expired) {
+              _func(); // it's harmless if _func is invoked twice
+           }
         }
         ~guard() {
-           // FIXME: This works correctly only if the callback is invoked by a signal
-           // handler in the current thread.
            _timer.set_expiration_callback(nullptr, nullptr);
         }
         static void callback(void* data) {
