@@ -33,19 +33,19 @@ matrix:
       addons:
         homebrew:
           update: true
-          packages:
-            - graphviz
-            - libtool
-            - gmp
-            - llvm@4
-            - pkgconfig
-            - python
-            - python@2
-            - doxygen
-            - libusb
-            - openssl
-            - boost@1.70
-            - ccache
+          # packages:
+          #   - graphviz
+          #   - libtool
+          #   - gmp
+          #   - llvm@4
+          #   - pkgconfig
+          #   - python
+          #   - python@2
+          #   - doxygen
+          #   - libusb
+          #   - openssl
+          #   - boost@1.70
+          #   - ccache
       env: 
         - PATH="/usr/local/opt/ccache/libexec:$PATH"
 # script: "ccache --max-size=1G && ./.cicd/build.sh && ./.cicd/test.sh scripts/parallel-test.sh && ./.cicd/test.sh scripts/serial-test.sh"
