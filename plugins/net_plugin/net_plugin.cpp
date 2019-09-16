@@ -3302,6 +3302,7 @@ namespace eosio {
 
    void net_plugin::plugin_startup() {
       handle_sighup();
+      try {
 
       fc_ilog( logger, "my node_id is ${id}", ("id", my->node_id ));
 
@@ -3348,20 +3349,13 @@ namespace eosio {
          }
       }
 
-      {
-         std::lock_guard<std::mutex> g( my->keepalive_timer_mtx );
-         my->keepalive_timer.reset( new boost::asio::steady_timer( my->thread_pool->get_executor() ) );
-      }
-      my->ticker();
-
       if( my->acceptor ) {
          my->acceptor->open(listen_endpoint.protocol());
          my->acceptor->set_option(tcp::acceptor::reuse_address(true));
          try {
            my->acceptor->bind(listen_endpoint);
          } catch (const std::exception& e) {
-           fc_elog( logger, "net_plugin::plugin_startup failed to bind to port ${port}",
-                    ("port", listen_endpoint.port()));
+           elog( "net_plugin::plugin_startup failed to bind to port ${port}", ("port", listen_endpoint.port()) );
            throw e;
          }
          my->acceptor->listen();
@@ -3377,6 +3371,12 @@ namespace eosio {
          } );
       }
 
+      {
+         std::lock_guard<std::mutex> g( my->keepalive_timer_mtx );
+         my->keepalive_timer.reset( new boost::asio::steady_timer( my->thread_pool->get_executor() ) );
+      }
+      my->ticker();
+
       my->incoming_transaction_ack_subscription = app().get_channel<compat::channels::transaction_ack>().subscribe(
             boost::bind(&net_plugin_impl::transaction_ack, my.get(), _1));
 
@@ -3386,6 +3386,12 @@ namespace eosio {
 
       for( const auto& seed_node : my->supplied_peers ) {
          connect( seed_node );
+      }
+
+      } catch( ... ) {
+         // always watn plugin_shutdown even on exception
+         plugin_shutdown();
+         throw;
       }
    }
 
