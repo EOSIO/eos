@@ -44,7 +44,6 @@ for k in "${!BASE_MAP[@]}"; do
             echo "switching back to $CURRENT_BRANCH"
             git checkout -f $CURRENT_BRANCH &> /dev/null
         fi
-        git --no-pager log $CURRENT_BRANCH ^$BASE_BRANCH --pretty=format:"%H"
         if [[ ! -z $(for c in $(git --no-pager log $CURRENT_BRANCH ^$BASE_BRANCH --pretty=format:"%H"); do git show --pretty="" --name-only $c; done | grep "^$k$") ]]; then
             echo "ERROR: $k has regressed"
             exit 1
