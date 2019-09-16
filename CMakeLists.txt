@@ -46,7 +46,9 @@ conan_check(VERSION 1.0.0 REQUIRED)
 conan_add_remote(NAME bincrafters INDEX 1
     URL https://api.bintray.com/conan/bincrafters/public-conan)
 
-if ("${PINNED}" STREQUAL "false" OR "${UNPINNED}" STREQUAL "true")
+message("$ENV{PINNED}")
+
+if("$ENV{PINNED}" STREQUAL "false" OR "$ENV{UNPINNED}" STREQUAL "true")
     conan_cmake_run(CONANFILE .conan/conanfile-unpinned.txt
         BASIC_SETUP
         CMAKE_TARGETS
