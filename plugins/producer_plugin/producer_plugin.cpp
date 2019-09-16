@@ -208,7 +208,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
       void process_scheduled_and_incoming_trxs( const fc::time_point& deadline, size_t& orig_pending_txn_size );
       void process_incoming_trxs( const fc::time_point& deadline, size_t& orig_pending_txn_size );
 
-   boost::program_options::variables_map _options;
+      boost::program_options::variables_map _options;
       bool     _production_enabled                 = false;
       bool     _pause_production                   = false;
       uint32_t _production_skip_flags              = 0; //eosio::chain::skip_nothing;
