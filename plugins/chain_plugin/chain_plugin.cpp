@@ -14,6 +14,8 @@
 
 #include <eosio/chain/eosio_contract.hpp>
 
+#include <chainbase/environment.hpp>
+
 #include <boost/signals2/connection.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/lexical_cast.hpp>
@@ -22,6 +24,13 @@
 #include <fc/variant.hpp>
 #include <signal.h>
 #include <cstdlib>
+
+// reflect chainbase::environment for --print-build-info option
+FC_REFLECT_ENUM( chainbase::environment::os_t,
+                 (OS_LINUX)(OS_MACOS)(OS_WINDOWS)(OS_OTHER) )
+FC_REFLECT_ENUM( chainbase::environment::arch_t,
+                 (ARCH_X86_64)(ARCH_ARM)(ARCH_RISCV)(ARCH_OTHER) )
+FC_REFLECT(chainbase::environment, (debug)(os)(arch)(boost_version)(compiler) )
 
 namespace eosio {
 
@@ -188,7 +197,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("protocol-features-dir", bpo::value<bfs::path>()->default_value("protocol_features"),
           "the location of the protocol_features directory (absolute path or relative to application config dir)")
          ("checkpoint", bpo::value<vector<string>>()->composing(), "Pairs of [BLOCK_NUM,BLOCK_ID] that should be enforced as checkpoints.")
-         ("wasm-runtime", bpo::value<eosio::chain::wasm_interface::vm_type>()->value_name("wavm/wabt/eos-vm/eos-vm"), "Override default WASM runtime")
+         ("wasm-runtime", bpo::value<eosio::chain::wasm_interface::vm_type>()->value_name("runtime"), "Override default WASM runtime")
          ("abi-serializer-max-time-ms", bpo::value<uint32_t>()->default_value(config::default_abi_serializer_max_time_ms),
           "Override default maximum ABI serialization time allowed in ms")
          ("chain-state-db-size-mb", bpo::value<uint64_t>()->default_value(config::default_state_size / (1024  * 1024)), "Maximum size (in MiB) of the chain state database")
@@ -265,6 +274,10 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "extract genesis_state from blocks.log as JSON, print to console, and exit")
          ("extract-genesis-json", bpo::value<bfs::path>(),
           "extract genesis_state from blocks.log as JSON, write into specified file, and exit")
+         ("print-build-info", bpo::bool_switch()->default_value(false),
+          "print build environment information to console as JSON and exit")
+         ("extract-build-info", bpo::value<bfs::path>(),
+          "extract build environment information as JSON, write into specified file, and exit")
          ("fix-reversible-blocks", bpo::bool_switch()->default_value(false),
           "recovers reversible block database if that database is in a bad state")
          ("force-all-checks", bpo::bool_switch()->default_value(false),
@@ -568,6 +581,28 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       }
 
       my->chain_config = controller::config();
+
+      if( options.at( "print-build-info" ).as<bool>() || options.count( "extract-build-info") ) {
+         if( options.at( "print-build-info" ).as<bool>() ) {
+            ilog( "Build environment JSON:\n${e}", ("e", json::to_pretty_string( chainbase::environment() )) );
+         }
+         if( options.count( "extract-build-info") ) {
+            auto p = options.at( "extract-build-info" ).as<bfs::path>();
+
+            if( p.is_relative()) {
+               p = bfs::current_path() / p;
+            }
+
+            EOS_ASSERT( fc::json::save_to_file( chainbase::environment(), p, true ), misc_exception,
+                        "Error occurred while writing build info JSON to '${path}'",
+                        ("path", p.generic_string())
+            );
+
+            ilog( "Saved build info JSON to '${path}'", ("path", p.generic_string()) );
+         }
+
+         EOS_THROW( node_management_success, "reported build environment information" );
+      }
 
       LOAD_VALUE_SET( options, "sender-bypass-whiteblacklist", my->chain_config->sender_bypass_whiteblacklist );
       LOAD_VALUE_SET( options, "actor-whitelist", my->chain_config->actor_whitelist );

@@ -1,11 +1,12 @@
 FROM ubuntu:16.04
 ENV VERSION 1
 # install dependencies.
-RUN apt-get update && apt-get upgrade -y && \
+RUN apt-get update && \
+    apt-get upgrade -y && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential git automake \
     libbz2-dev libssl-dev doxygen graphviz libgmp3-dev autotools-dev libicu-dev \
     python2.7 python2.7-dev python3 python3-dev autoconf libtool curl zlib1g-dev \
-    sudo ruby libusb-1.0-0-dev libcurl4-gnutls-dev pkg-config apt-transport-https
+    sudo ruby libusb-1.0-0-dev libcurl4-gnutls-dev pkg-config apt-transport-https vim-common jq
 # build cmake.
 RUN curl -LO https://cmake.org/files/v3.13/cmake-3.13.2.tar.gz && \
     tar -xzf cmake-3.13.2.tar.gz && \
@@ -32,12 +33,12 @@ RUN git clone --single-branch --branch release_80 https://git.llvm.org/git/llvm.
     cd / && \
     rm -rf /clang8
 COPY ./.cicd/helpers/clang.make /tmp/clang.cmake
-# build llvm
-RUN git clone --depth 1 --single-branch --branch release_40 https://github.com/llvm-mirror/llvm.git llvm && \
+# build llvm8
+RUN git clone --depth 1 --single-branch --branch release_80 https://github.com/llvm-mirror/llvm.git llvm && \
     cd llvm && \
     mkdir build && \
     cd build && \
-    cmake -DLLVM_TARGETS_TO_BUILD=host -DLLVM_BUILD_TOOLS=false -DLLVM_ENABLE_RTTI=1 -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_TOOLCHAIN_FILE='/tmp/clang.cmake' .. && \
+    cmake -DLLVM_TARGETS_TO_BUILD=host -DLLVM_BUILD_TOOLS=false -DLLVM_ENABLE_RTTI=1 -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_TOOLCHAIN_FILE='/tmp/clang.cmake' -DCMAKE_EXE_LINKER_FLAGS=-pthread -DCMAKE_SHARED_LINKER_FLAGS=-pthread .. && \
     make -j$(nproc) && \
     make install && \
     cd / && \

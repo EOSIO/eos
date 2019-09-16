@@ -11,7 +11,7 @@ endif()
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules")
 
 if (UNIX AND APPLE)
-   list(APPEND CMAKE_PREFIX_PATH "/usr/local/opt/llvm@4" "/usr/local/opt/gettext")
+   list(APPEND CMAKE_PREFIX_PATH "/usr/local/opt/llvm@7" "/usr/local/opt/gettext")
 endif()
 
 include( GNUInstallDirs )
@@ -62,6 +62,20 @@ set(BUILD_MONGO_DB_PLUGIN FALSE CACHE BOOL "Build mongo database plugin")
 # add defaults for openssl
 if(APPLE AND UNIX AND "${OPENSSL_ROOT_DIR}" STREQUAL "")
    set(OPENSSL_ROOT_DIR "/usr/local/opt/openssl")
+endif()
+
+# WASM runtimes to enable. Each runtime in this list will have:
+#  * definition EOSIO_<RUNTIME>_RUNTIME_ENABLED defined in public libchain interface
+#  * ctest entries with --runtime
+list(APPEND EOSIO_WASM_RUNTIMES wabt eos-vm eos-vm-jit)   #always enable wabt; it works everywhere and parts of eosio still assume it's always available
+if(CMAKE_SIZEOF_VOID_P EQUAL 8 AND NOT WIN32)
+   list(APPEND EOSIO_WASM_RUNTIMES wavm)
+   # WAVM requires LLVM, but move the check up here to a central location so that the EosioTester.cmakes
+   # can be created with the exact version found
+   find_package(LLVM REQUIRED CONFIG)
+   if(LLVM_VERSION_MAJOR VERSION_LESS 7 OR LLVM_VERSION_MAJOR VERSION_GREATER 9)
+	   message(FATAL_ERROR "EOSIO requires an LLVM version 7.0 to 9.0")
+   endif()
 endif()
 
 if(UNIX)
