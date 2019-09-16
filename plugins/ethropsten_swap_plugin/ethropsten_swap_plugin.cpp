@@ -347,7 +347,7 @@ swap_event_data* get_swap_event_data( boost::property_tree::ptree root,
     string hex_data = hex_data_opt.get();
     parse_swap_event_hex(hex_data.substr(2), data);
 
-    data->return_chain_id = "ethropsten";
+    data->return_chain_id = return_chain_id;
     data->txid = txid.get().substr(2);
 
     std::stringstream ss;
