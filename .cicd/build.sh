@@ -2,7 +2,7 @@
 set -eo pipefail
 . ./.cicd/helpers/general.sh
 mkdir -p $BUILD_DIR
-CMAKE_EXTRAS="-DBUILD_MONGO_DB_PLUGIN=true -DCMAKE_BUILD_TYPE='Release'"
+CMAKE_EXTRAS="-DBUILD_MONGO_DB_PLUGIN=false -DCMAKE_BUILD_TYPE='Release' -DCORE_SYMBOL_NAME='SYS' -DPKG_CONFIG_USE_CMAKE_PREFIX_PATH=ON"
 if [[ $(uname) == 'Darwin' ]]; then
     # You can't use chained commands in execute
     [[ $TRAVIS == true ]] && export PINNED=false && ccache -s && CMAKE_EXTRAS="-DCMAKE_CXX_COMPILER_LAUNCHER=ccache" && ./$CICD_DIR/platforms/macos-10.14.sh
