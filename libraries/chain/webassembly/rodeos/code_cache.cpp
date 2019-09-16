@@ -12,12 +12,8 @@
 #include <linux/memfd.h>
 
 #include "IR/Module.h"
-#include "Platform/Platform.h"
-#include "WAST/WAST.h"
-#include "IR/Operators.h"
 #include "IR/Validate.h"
-#include "Runtime/Linker.h"
-#include "Runtime/Intrinsics.h"
+#include "WASM/WASM.h"
 
 using namespace IR;
 using namespace Runtime;

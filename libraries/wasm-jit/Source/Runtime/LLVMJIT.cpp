@@ -1,9 +1,4 @@
 #include "LLVMJIT.h"
-#include "Inline/BasicTypes.h"
-#include "Inline/Timing.h"
-#include "Logging/Logging.h"
-#include "RuntimePrivate.h"
-#include "IR/Validate.h"
 
 #include <memory>
 
@@ -81,7 +76,7 @@ namespace LLVMJIT
 		
 		virtual bool needsToReserveAllocationSpace() override { return true; }
 		virtual void reserveAllocationSpace(uintptr_t numCodeBytes,U32 codeAlignment,uintptr_t numReadOnlyBytes,U32 readOnlyAlignment,uintptr_t numReadWriteBytes,U32 readWriteAlignment) override {
-         code.reset(new std::vector<uint8_t>(numCodeBytes + numReadOnlyBytes + numReadWriteBytes)); //XXX c++17 up
+         code = std::make_unique<std::vector<uint8_t>>(numCodeBytes + numReadOnlyBytes + numReadWriteBytes);
          ptr = code->data();
       }
 		virtual U8* allocateCodeSection(uintptr_t numBytes,U32 alignment,U32 sectionID,llvm::StringRef sectionName) override
@@ -185,7 +180,7 @@ namespace LLVMJIT
 		std::string augmentedFilename = std::string(filename) + std::to_string(printedModuleId++) + ".ll";
 		llvm::raw_fd_ostream dumpFileStream(augmentedFilename,errorCode,llvm::sys::fs::OpenFlags::F_Text);
 		llvmModule->print(dumpFileStream,nullptr);
-		Log::printf(Log::Category::debug,"Dumped LLVM module to: %s\n",augmentedFilename.c_str());
+		///Log::printf(Log::Category::debug,"Dumped LLVM module to: %s\n",augmentedFilename.c_str());
 	}
 
 	void JITModule::compile(llvm::Module* llvmModule)
@@ -201,7 +196,7 @@ namespace LLVMJIT
 			llvm::raw_string_ostream verifyOutputStream(verifyOutputString);
 			if(llvm::verifyModule(*llvmModule,&verifyOutputStream))
 			{ Errors::fatalf("LLVM verification errors:\n%s\n",verifyOutputString.c_str()); }
-			Log::printf(Log::Category::debug,"Verified LLVM module\n");
+			///Log::printf(Log::Category::debug,"Verified LLVM module\n");
 		}
 
 		auto fpm = new llvm::legacy::FunctionPassManager(llvmModule);

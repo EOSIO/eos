@@ -1,9 +1,7 @@
 #include "LLVMJIT.h"
 #include "llvm/ADT/SmallVector.h"
-#include "Inline/Timing.h"
 #include "IR/Operators.h"
 #include "IR/OperatorPrinter.h"
-#include "Logging/Logging.h"
 #include "llvm/Support/raw_ostream.h"
 
 ///XXX obviously not :)
@@ -181,7 +179,7 @@ namespace LLVMJIT
 				}
 				if(stack.size() == stackBase) { stackString += "|"; }
 
-				Log::printf(Log::Category::debug,"%-50s %-50s %-50s\n",controlStackString.c_str(),operatorDescription.c_str(),stackString.c_str());
+				//Log::printf(Log::Category::debug,"%-50s %-50s %-50s\n",controlStackString.c_str(),operatorDescription.c_str(),stackString.c_str());
 			}
 		}
 		
@@ -1126,8 +1124,6 @@ namespace LLVMJIT
 
 	llvm::Module* EmitModuleContext::emit()
 	{
-		Timing::Timer emitTimer;
-
 		defaultMemoryBase = emitLiteralPointer(0,llvmI8Type->getPointerTo(256));
 
       depthCounter = emitLiteralPointer((void*)-18888, llvmI32Type->getPointerTo(256)); ///XXX literal
@@ -1177,8 +1173,6 @@ namespace LLVMJIT
 		// Compile each function in the module.
 		for(Uptr functionDefIndex = 0;functionDefIndex < module.functions.defs.size();++functionDefIndex)
 		{ EmitFunctionContext(*this,module,module.functions.defs[functionDefIndex],functionDefs[functionDefIndex]).emit(); }
-
-		Timing::logRatePerSecond("Emitted LLVM IR",emitTimer,(F64)llvmModule->size(),"functions");
 
 		return llvmModule;
 	}
