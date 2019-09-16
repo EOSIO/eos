@@ -375,95 +375,95 @@ echo ''
 # fi
 # pipeline tail
 cat <<EOF
-  - wait:
-    continue_on_failure: true
+  # - wait:
+  #   continue_on_failure: true
 
-  - label: ":bar_chart: Test Metrics"
-    command: |
-      echo '+++ :compression: Extracting Test Metrics Code'
-      tar -zxf .cicd/metrics/test-metrics.tar.gz
-      echo '+++ :javascript: Running test-metrics.js'
-      node --max-old-space-size=32768 test-metrics.js
-    agents:
-      queue: "$BUILDKITE_AGENT_QUEUE"
-    timeout: ${TIMEOUT:-10}
-    soft_fail: true
+  # - label: ":bar_chart: Test Metrics"
+  #   command: |
+  #     echo '+++ :compression: Extracting Test Metrics Code'
+  #     tar -zxf .cicd/metrics/test-metrics.tar.gz
+  #     echo '+++ :javascript: Running test-metrics.js'
+  #     node --max-old-space-size=32768 test-metrics.js
+  #   agents:
+  #     queue: "$BUILDKITE_AGENT_QUEUE"
+  #   timeout: ${TIMEOUT:-10}
+  #   soft_fail: true
 
-  - wait
+  # - wait
 
-    # packaging
-  - label: ":centos: CentOS 7.6 - Package Builder"
-    command:
-      - "buildkite-agent artifact download build.tar.gz . --step ':centos: CentOS 7.6 - Build' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN && tar -xzf build.tar.gz"
-      - "./.cicd/package.sh"
-    env:
-      IMAGE_TAG: "centos-7.6"
-      BUILDKITE_AGENT_ACCESS_TOKEN:
-      OS: "el7" # OS and PKGTYPE required for lambdas
-      PKGTYPE: "rpm"
-    agents:
-      queue: "$BUILDKITE_AGENT_QUEUE"
-    timeout: ${TIMEOUT:-10}
-    skip: ${SKIP_CENTOS_7_6}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
+  #   # packaging
+  # - label: ":centos: CentOS 7.6 - Package Builder"
+  #   command:
+  #     - "buildkite-agent artifact download build.tar.gz . --step ':centos: CentOS 7.6 - Build' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN && tar -xzf build.tar.gz"
+  #     - "./.cicd/package.sh"
+  #   env:
+  #     IMAGE_TAG: "centos-7.6"
+  #     BUILDKITE_AGENT_ACCESS_TOKEN:
+  #     OS: "el7" # OS and PKGTYPE required for lambdas
+  #     PKGTYPE: "rpm"
+  #   agents:
+  #     queue: "$BUILDKITE_AGENT_QUEUE"
+  #   timeout: ${TIMEOUT:-10}
+  #   skip: ${SKIP_CENTOS_7_6}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
 
-  - label: ":ubuntu: Ubuntu 16.04 - Package Builder"
-    command:
-      - "buildkite-agent artifact download build.tar.gz . --step ':ubuntu: Ubuntu 16.04 - Build' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN && tar -xzf build.tar.gz"
-      - "./.cicd/package.sh"
-    env:
-      IMAGE_TAG: "ubuntu-16.04"
-      BUILDKITE_AGENT_ACCESS_TOKEN:
-      OS: "ubuntu-16.04" # OS and PKGTYPE required for lambdas
-      PKGTYPE: "deb"
-    agents:
-      queue: "$BUILDKITE_AGENT_QUEUE"
-    timeout: ${TIMEOUT:-10}
-    skip: ${SKIP_UBUNTU_16_04}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
+  # - label: ":ubuntu: Ubuntu 16.04 - Package Builder"
+  #   command:
+  #     - "buildkite-agent artifact download build.tar.gz . --step ':ubuntu: Ubuntu 16.04 - Build' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN && tar -xzf build.tar.gz"
+  #     - "./.cicd/package.sh"
+  #   env:
+  #     IMAGE_TAG: "ubuntu-16.04"
+  #     BUILDKITE_AGENT_ACCESS_TOKEN:
+  #     OS: "ubuntu-16.04" # OS and PKGTYPE required for lambdas
+  #     PKGTYPE: "deb"
+  #   agents:
+  #     queue: "$BUILDKITE_AGENT_QUEUE"
+  #   timeout: ${TIMEOUT:-10}
+  #   skip: ${SKIP_UBUNTU_16_04}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
 
-  - label: ":ubuntu: Ubuntu 18.04 - Package Builder"
-    command:
-      - "buildkite-agent artifact download build.tar.gz . --step ':ubuntu: Ubuntu 18.04 - Build' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN && tar -xzf build.tar.gz"
-      - "./.cicd/package.sh"
-    env:
-      IMAGE_TAG: "ubuntu-18.04"
-      BUILDKITE_AGENT_ACCESS_TOKEN:
-      OS: "ubuntu-18.04" # OS and PKGTYPE required for lambdas
-      PKGTYPE: "deb"
-    agents:
-      queue: "$BUILDKITE_AGENT_QUEUE"
-    timeout: ${TIMEOUT:-10}
-    skip: ${SKIP_UBUNTU_18_04}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
+  # - label: ":ubuntu: Ubuntu 18.04 - Package Builder"
+  #   command:
+  #     - "buildkite-agent artifact download build.tar.gz . --step ':ubuntu: Ubuntu 18.04 - Build' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN && tar -xzf build.tar.gz"
+  #     - "./.cicd/package.sh"
+  #   env:
+  #     IMAGE_TAG: "ubuntu-18.04"
+  #     BUILDKITE_AGENT_ACCESS_TOKEN:
+  #     OS: "ubuntu-18.04" # OS and PKGTYPE required for lambdas
+  #     PKGTYPE: "deb"
+  #   agents:
+  #     queue: "$BUILDKITE_AGENT_QUEUE"
+  #   timeout: ${TIMEOUT:-10}
+  #   skip: ${SKIP_UBUNTU_18_04}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
 
-  - label: ":darwin: macOS 10.14 - Package Builder"
-    command:
-      - "git clone \$BUILDKITE_REPO eos && cd eos && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT"
-      - "cd eos && buildkite-agent artifact download build.tar.gz . --step ':darwin: macOS 10.14 - Build' && tar -xzf build.tar.gz"
-      - "cd eos && ./.cicd/package.sh"
-    plugins:
-      - chef/anka#v0.5.1:
-          no-volume: true
-          inherit-environment-vars: true
-          vm-name: 10.14.4_6C_14G_40G
-          vm-registry-tag: "clean::cicd::git-ssh::nas::brew::buildkite-agent"
-          always-pull: true
-          debug: true
-          wait-network: true
-    agents:
-      - "queue=mac-anka-node-fleet"
-    timeout: ${TIMEOUT:-10}
-    skip: ${SKIP_MACOS_10_14}${SKIP_PACKAGE_BUILDER}${SKIP_MAC}
+  # - label: ":darwin: macOS 10.14 - Package Builder"
+  #   command:
+  #     - "git clone \$BUILDKITE_REPO eos && cd eos && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT"
+  #     - "cd eos && buildkite-agent artifact download build.tar.gz . --step ':darwin: macOS 10.14 - Build' && tar -xzf build.tar.gz"
+  #     - "cd eos && ./.cicd/package.sh"
+  #   plugins:
+  #     - chef/anka#v0.5.1:
+  #         no-volume: true
+  #         inherit-environment-vars: true
+  #         vm-name: 10.14.4_6C_14G_40G
+  #         vm-registry-tag: "clean::cicd::git-ssh::nas::brew::buildkite-agent"
+  #         always-pull: true
+  #         debug: true
+  #         wait-network: true
+  #   agents:
+  #     - "queue=mac-anka-node-fleet"
+  #   timeout: ${TIMEOUT:-10}
+  #   skip: ${SKIP_MACOS_10_14}${SKIP_PACKAGE_BUILDER}${SKIP_MAC}
 
-  - label: ":ubuntu: Ubuntu 18.04 - Contract Builder"
-    command: "./.cicd/installation-build.sh"
-    env:
-      IMAGE_TAG: "ubuntu-18.04-unpinned"
-      BUILDKITE_AGENT_ACCESS_TOKEN:
-    agents:
-      queue: "$BUILDKITE_AGENT_QUEUE"
-    timeout: ${TIMEOUT:-30}
-    skip: ${SKIP_CONTRACT_BUILDER}${SKIP_LINUX}
+  # - label: ":ubuntu: Ubuntu 18.04 - Contract Builder"
+  #   command: "./.cicd/installation-build.sh"
+  #   env:
+  #     IMAGE_TAG: "ubuntu-18.04-unpinned"
+  #     BUILDKITE_AGENT_ACCESS_TOKEN:
+  #   agents:
+  #     queue: "$BUILDKITE_AGENT_QUEUE"
+  #   timeout: ${TIMEOUT:-30}
+  #   skip: ${SKIP_CONTRACT_BUILDER}${SKIP_LINUX}
 
-  - wait
+  # - wait
 
   - label: ":git: Git Submodule Regression Check"
     command: "./.cicd/submodule-regression-check.sh"
@@ -471,14 +471,14 @@ cat <<EOF
       queue: "automation-basic-builder-fleet"
     timeout: ${TIMEOUT:-5}
 
-  - label: ":beer: Brew Updater"
-    command: |
-      buildkite-agent artifact download eosio.rb . --step ':darwin: macOS 10.14 - Package Builder'
-      buildkite-agent artifact upload eosio.rb
-    agents:
-      queue: "automation-basic-builder-fleet"
-    timeout: "${TIMEOUT:-5}"
-    skip: ${SKIP_PACKAGE_BUILDER}${SKIP_MAC}${SKIP_MACOS_10_14}
+  # - label: ":beer: Brew Updater"
+  #   command: |
+  #     buildkite-agent artifact download eosio.rb . --step ':darwin: macOS 10.14 - Package Builder'
+  #     buildkite-agent artifact upload eosio.rb
+  #   agents:
+  #     queue: "automation-basic-builder-fleet"
+  #   timeout: "${TIMEOUT:-5}"
+  #   skip: ${SKIP_PACKAGE_BUILDER}${SKIP_MAC}${SKIP_MACOS_10_14}
 
 EOF
 IFS=$oIFS
