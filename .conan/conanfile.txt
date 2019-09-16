@@ -1,6 +1,7 @@
 [generators]
 cmake
 virtualrunenv
+pkg_config
 
 [requires]
 pkg-config_installer/0.29.2@bincrafters/stable
