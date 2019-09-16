@@ -34,7 +34,7 @@ for k in "${!BASE_MAP[@]}"; do
     echo "  timestamp on $BASE_BRANCH: $base_ts"
     if (( $pr_ts < $base_ts)); then
         echo "$k is older on $CURRENT_BRANCH than $BASE_BRANCH; investigating..."
-        if [[ $TRAVIS_PULL_REQUEST_SLUG != 'EOSIO/eos' ]]; then # IF it's a forked PR, we need to switch back to the PR ref/head so we can git log properly
+        if [[ $TRAVIS == true && $TRAVIS_PULL_REQUEST_SLUG != 'EOSIO/eos' ]]; then # IF it's a forked PR, we need to switch back to the PR ref/head so we can git log properly
             echo "git fetch origin +refs/pull/$TRAVIS_PULL_REQUEST/merge:"
             git fetch origin +refs/pull/$TRAVIS_PULL_REQUEST/merge: &> /dev/null
             echo "switching back to $TRAVIS_PULL_REQUEST_SLUG:$TRAVIS_PULL_REQUEST_BRANCH ($TRAVIS_COMMIT)"
