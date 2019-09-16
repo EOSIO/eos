@@ -1,6 +1,6 @@
 #!/bin/bash
 set -eo pipefail
-
+[[ $(uname) == 'Darwin' ]] && echo "Submodule regression doesn't run on mac (declare: -A: invalid option).." && exit 0
 declare -A PR_MAP
 declare -A BASE_MAP
 # Support Travis and BK
