@@ -256,6 +256,8 @@ namespace eosio { namespace testing {
       unapplied_transactions.add_aborted( control->abort_block() );
       control->push_block( bsf, [this]( const branch_type& forked_branch ) {
          unapplied_transactions.add_forked( forked_branch );
+      }, [this]( const transaction_id_type& id ) {
+         return unapplied_transactions.get_trx( id );
       } );
 
       auto itr = last_produced_block.find(b->producer);
@@ -966,7 +968,7 @@ namespace eosio { namespace testing {
             if( block ) { //&& !b.control->is_known_block(block->id()) ) {
                auto bsf = b.control->create_block_state_future( block );
                b.control->abort_block();
-               b.control->push_block(bsf, forked_branch_callback()); //, eosio::chain::validation_steps::created_block);
+               b.control->push_block(bsf, forked_branch_callback{}, trx_meta_cache_lookup{}); //, eosio::chain::validation_steps::created_block);
             }
          }
       };
@@ -1167,6 +1169,8 @@ namespace eosio { namespace testing {
       return match;
    }
 
+   const std::string mock::webauthn_private_key::_origin = "mock.webauthn.invalid";
+   const sha256 mock::webauthn_private_key::_origin_hash = fc::sha256::hash(mock::webauthn_private_key::_origin);
 } }  /// eosio::testing
 
 std::ostream& operator<<( std::ostream& osm, const fc::variant& v ) {

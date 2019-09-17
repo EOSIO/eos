@@ -16,6 +16,11 @@ namespace eosio { namespace chain {
          void start(fc::time_point tp);
          void stop();
 
+         /* Sets a callback for when timer expires. Be aware this could might fire from a signal handling context and/or
+            on any particular thread. Only a single callback can be registered at once; trying to register more will
+            result in an exception. Use nullptr to disable a previously set callback. */
+         void set_expiration_callback(void(*func)(void*), void* user);
+
          volatile sig_atomic_t& expired;
       private:
          platform_timer& _timer;
@@ -125,6 +130,8 @@ namespace eosio { namespace chain {
          int64_t                       billed_cpu_time_us = 0;
          bool                          explicit_billed_cpu_time = false;
 
+         transaction_checktime_timer   transaction_timer;
+
       private:
          bool                          is_initialized = false;
 
@@ -145,8 +152,6 @@ namespace eosio { namespace chain {
          fc::time_point                pseudo_start;
          fc::microseconds              billed_time;
          fc::microseconds              billing_timer_duration_limit;
-
-         transaction_checktime_timer   transaction_timer;
    };
 
 } }

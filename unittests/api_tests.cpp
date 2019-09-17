@@ -5,6 +5,7 @@
 #include <iterator>
 #include <sstream>
 #include <numeric>
+#include <string>
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wsign-compare"
@@ -1723,37 +1724,65 @@ BOOST_FIXTURE_TEST_CASE(multi_index_tests, TESTER) { try {
  * crypto_tests test cases
  *************************************************************************************/
 BOOST_FIXTURE_TEST_CASE(crypto_tests, TESTER) { try {
-   produce_blocks(1000);
+   produce_block();
    create_account(N(testapi) );
-   produce_blocks(1000);
+   produce_block();
    set_code(N(testapi), contracts::test_api_wasm() );
-   produce_blocks(1000);
-	{
-		signed_transaction trx;
+   produce_block();
+   {
+      signed_transaction trx;
 
       auto pl = vector<permission_level>{{N(testapi), config::active_name}};
 
       action act(pl, test_api_action<TEST_METHOD("test_crypto", "test_recover_key")>{});
-		auto signatures = trx.sign(get_private_key(N(testapi), "active"), control->get_chain_id());
+      const auto priv_key = get_private_key(N(testapi), "active" );
+      const auto pub_key = priv_key.get_public_key();
+      auto hash = trx.sig_digest( control->get_chain_id() );
+      auto sig = priv_key.sign(hash);
 
-		produce_block();
-
-      auto payload   = fc::raw::pack( trx.sig_digest( control->get_chain_id() ) );
-      auto pk     = fc::raw::pack( get_public_key( N(testapi), "active" ) );
-      auto sigs   = fc::raw::pack( signatures );
-      payload.insert( payload.end(), pk.begin(), pk.end() );
-      payload.insert( payload.end(), sigs.begin(), sigs.end() );
+      auto pk     = fc::raw::pack( pub_key );
+      auto sigs   = fc::raw::pack( sig );
+      vector<char> payload(8192);
+      datastream<char*> payload_ds(payload.data(), payload.size());
+      fc::raw::pack(payload_ds,  hash, (uint32_t)pk.size(), (uint32_t)sigs.size() );
+      payload_ds.write(pk.data(), pk.size() );
+      payload_ds.write(sigs.data(), sigs.size());
+      payload.resize(payload_ds.tellp());
 
       //No Error Here
       CALL_TEST_FUNCTION( *this, "test_crypto", "test_recover_key", payload );
-      return;
       // Error Here
       CALL_TEST_FUNCTION( *this, "test_crypto", "test_recover_key_assert_true", payload );
       payload[payload.size()-1] = 0;
       BOOST_CHECK_EXCEPTION( CALL_TEST_FUNCTION( *this, "test_crypto", "test_recover_key_assert_false", payload ),
                              crypto_api_exception, fc_exception_message_is("Error expected key different than recovered key") );
-	}
+   }
 
+   {
+      signed_transaction trx;
+
+      auto pl = vector<permission_level>{{N(testapi), config::active_name}};
+
+      action act(pl, test_api_action<TEST_METHOD("test_crypto", "test_recover_key_partial")>{});
+
+      // construct a mock WebAuthN pubkey and signature, as it is the only type that would be variable-sized
+      const auto priv_key = get_private_key<mock::webauthn_private_key>(N(testapi), "active" );
+      const auto pub_key = priv_key.get_public_key();
+      auto hash  = trx.sig_digest( control->get_chain_id() );
+      auto sig = priv_key.sign(hash);
+
+      auto pk     = fc::raw::pack( pub_key );
+      auto sigs   = fc::raw::pack( sig );
+      vector<char> payload(8192);
+      datastream<char*> payload_ds(payload.data(), payload.size());
+      fc::raw::pack(payload_ds,  hash, (uint32_t)pk.size(), (uint32_t)sigs.size() );
+      payload_ds.write(pk.data(), pk.size() );
+      payload_ds.write(sigs.data(), sigs.size());
+      payload.resize(payload_ds.tellp());
+
+      //No Error Here
+      CALL_TEST_FUNCTION( *this, "test_crypto", "test_recover_key_partial", payload );
+   }
 
 
    CALL_TEST_FUNCTION( *this, "test_crypto", "test_sha1", {} );

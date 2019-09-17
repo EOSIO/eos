@@ -16,6 +16,10 @@ else()
    endif()
 endif()
 
+if("wavm" IN_LIST EOSIO_WASM_RUNTIMES)
+   set(CHAIN_WAVM_SOURCES "webassembly/wavm.cpp")
+endif()
+
 ## SORT .cpp by most likely to change / break compile
 add_library( eosio_chain
              merkle.cpp
@@ -50,7 +54,7 @@ add_library( eosio_chain
               asset.cpp
               snapshot.cpp
 
-             webassembly/wavm.cpp
+             ${CHAIN_WAVM_SOURCES}
              webassembly/wabt.cpp
 
 #             get_config.cpp
@@ -80,6 +84,12 @@ target_include_directories( eosio_chain
                                    "${CMAKE_SOURCE_DIR}/libraries/wabt"
                                    "${CMAKE_BINARY_DIR}/libraries/wabt"
                             )
+
+foreach(RUNTIME ${EOSIO_WASM_RUNTIMES})
+   string(TOUPPER "${RUNTIME}" RUNTIMEUC)
+   string(REPLACE "-" "_" RUNTIMEUC ${RUNTIMEUC})
+   target_compile_definitions(eosio_chain PUBLIC "EOSIO_${RUNTIMEUC}_RUNTIME_ENABLED")
+endforeach()
 
 install( TARGETS eosio_chain
    RUNTIME DESTINATION ${CMAKE_INSTALL_FULL_BINDIR}

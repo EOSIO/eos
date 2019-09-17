@@ -14,7 +14,7 @@
     {
         "environment":
         {
-            "BUILDER_TAG": "v1.8.0"
+            "BUILDER_TAG": "v2.0.0"
         }
     },
     "eosio-sync-tests":

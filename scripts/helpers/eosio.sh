@@ -269,35 +269,24 @@ function ensure-boost() {
 }
 
 function ensure-llvm() {
-    echo "${COLOR_CYAN}[Ensuring LLVM 4 support]${COLOR_NC}"
-    if [[ ! -d $LLVM_ROOT ]]; then
-        if [[ $ARCH == "Darwin" ]]; then # Handle brew installed llvm@4
-	        execute ln -s /usr/local/opt/llvm@4 $LLVM_ROOT
-	        echo " - LLVM successfully linked from /usr/local/opt/llvm@4 to ${LLVM_ROOT}"
-        else
-            if $PIN_COMPILER || $BUILD_CLANG; then
-                CMAKE_FLAGS="-DCMAKE_INSTALL_PREFIX='${LLVM_ROOT}' -DLLVM_TARGETS_TO_BUILD=host -DLLVM_BUILD_TOOLS=false -DLLVM_ENABLE_RTTI=1 -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE='${BUILD_DIR}/pinned_toolchain.cmake' .."
-            else
-                if [[ $NAME == "Ubuntu" ]]; then
-                    execute ln -s /usr/lib/llvm-4.0 $LLVM_ROOT
-                    echo " - LLVM successfully linked from /usr/lib/llvm-4.0 to ${LLVM_ROOT}"
-                    return 0
-                fi
-                CMAKE_FLAGS="-G 'Unix Makefiles' -DCMAKE_INSTALL_PREFIX=${LLVM_ROOT} -DLLVM_TARGETS_TO_BUILD='host' -DLLVM_BUILD_TOOLS=false -DLLVM_ENABLE_RTTI=1 -DCMAKE_BUILD_TYPE=Release .."
-            fi
-            execute bash -c "cd ${OPT_DIR} \
-            && git clone --depth 1 --single-branch --branch $LLVM_VERSION https://github.com/llvm-mirror/llvm.git llvm && cd llvm \
-            && mkdir build \
-            && cd build \
-            && ${CMAKE} ${CMAKE_FLAGS} \
-            && make -j${JOBS} \
-            && make install"
-            echo " - LLVM successfully installed @ ${LLVM_ROOT}"
-            echo ""
+    if $PIN_COMPILER || $BUILD_CLANG || [[ $NAME == "CentOS Linux" ]]; then
+        LLVM_TEMP_DIR=$(mktemp -d)
+        if $PIN_COMPILER || $BUILD_CLANG; then
+            local LLVM_PINNED_CMAKE_ARGS="-DCMAKE_TOOLCHAIN_FILE='${BUILD_DIR}/pinned_toolchain.cmake' -DCMAKE_EXE_LINKER_FLAGS=-pthread -DCMAKE_SHARED_LINKER_FLAGS=-pthread"
         fi
-    else
-        echo " - LLVM found @ ${LLVM_ROOT}."
-        echo ""
+        trap "rm -rf '$LLVM_TEMP_DIR'" EXIT
+        execute bash -c "cd '$LLVM_TEMP_DIR' \
+        && git clone --depth 1 --single-branch --branch $LLVM_VERSION https://github.com/llvm-mirror/llvm.git llvm && cd llvm \
+        && mkdir build && cd build \
+        && ${CMAKE} -DCMAKE_INSTALL_PREFIX='${LLVM_ROOT}' -DLLVM_TARGETS_TO_BUILD=host -DLLVM_BUILD_TOOLS=false -DLLVM_ENABLE_RTTI=1 -DCMAKE_BUILD_TYPE=Release $LLVM_PINNED_CMAKE_ARGS .. \
+        && make -j${JOBS} install"
+        echo " - LLVM successfully installed @ ${LLVM_ROOT}"
+    elif [[ $ARCH == "Darwin" ]]; then
+        execute ln -sf /usr/local/opt/llvm@7 $LLVM_ROOT
+    elif [[ $NAME == "Ubuntu" ]]; then
+        execute ln -sf /usr/lib/llvm-7 $LLVM_ROOT
+    elif [[ $NAME == "Amazon Linux" ]]; then
+        execute unlink $LLVM_ROOT || true
     fi
 }
 

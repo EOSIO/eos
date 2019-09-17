@@ -37,6 +37,8 @@ namespace eosio { namespace chain {
    using resource_limits::resource_limits_manager;
    using apply_handler = std::function<void(apply_context&)>;
    using forked_branch_callback = std::function<void(const branch_type&)>;
+   // lookup transaction_metadata via supplied function to avoid re-creation
+   using trx_meta_cache_lookup = std::function<transaction_metadata_ptr( const transaction_id_type&)>;
 
    class fork_database;
 
@@ -153,8 +155,11 @@ namespace eosio { namespace chain {
          /**
           * @param block_state_future provide from call to create_block_state_future
           * @param cb calls cb with forked applied transactions for each forked block
+          * @param trx_lookup user provided lookup function for externally cached transaction_metadata
           */
-         void push_block( std::future<block_state_ptr>& block_state_future, const forked_branch_callback& cb );
+         void push_block( std::future<block_state_ptr>& block_state_future,
+                          const forked_branch_callback& cb,
+                          const trx_meta_cache_lookup& trx_lookup );
 
          boost::asio::io_context& get_thread_pool();
 
