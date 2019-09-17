@@ -82,7 +82,8 @@ const size_t request_swap_hex_data_length = 512;
 
 const uint32_t wait_for_eth_node = 20;
 
-const uint64_t eth_events_window_length = 200000;
+const uint64_t eth_events_window_length = 1000000;
+const uint64_t blocks_per_filter = 200000;
 
 const size_t   wait_for_tx_confirmation = 30;
 const size_t   check_tx_confirmations_times = 5;

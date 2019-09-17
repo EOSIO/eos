@@ -149,20 +149,34 @@ class ethropsten_swap_plugin_impl {
     void init_prev_swap_requests(uint64_t from_block_dec = 0) {
         try {
           my_web3 my_w3(this->_eth_wss_provider);
+          uint64_t last_block_num = my_w3.get_last_block_num();
           if(from_block_dec == 0) {
-            uint64_t last_block_num = my_w3.get_last_block_num();
             from_block_dec = last_block_num - eth_events_window_length;
           }
 
-          std::stringstream stream;
-          stream << std::hex << from_block_dec;
-          std::string from_block( stream.str() );
+          while (from_block_dec < last_block_num) {
+            std::stringstream stream;
+            stream << std::hex << from_block_dec;
+            std::string from_block( "0x" + stream.str() );
+            stream.str("");
+            stream.clear();
 
-          std::string request_swap_filter_id = my_w3.new_filter(eth_swap_contract_address, "0x" + from_block, "latest", "[\""+string(eth_swap_request_event)+"\"]");
-          std::string filter_logs = my_w3.get_filter_logs(request_swap_filter_id);
-          std::vector<swap_event_data> prev_swap_requests = get_prev_swap_events(filter_logs);
+            uint64_t to_block_dec = from_block_dec + blocks_per_filter;
+            std::string to_block;
+            if(to_block_dec >= last_block_num)
+              to_block = "latest";
+            else {
+              stream << std::hex << to_block_dec;
+              to_block = "0x" + stream.str();
+            }
 
-          wait_for_tx_confirmation_and_push(prev_swap_requests);
+            std::string request_swap_filter_id = my_w3.new_filter(eth_swap_contract_address, from_block, to_block, "[\""+string(eth_swap_request_event)+"\"]");
+            std::string filter_logs = my_w3.get_filter_logs(request_swap_filter_id);
+            std::vector<swap_event_data> prev_swap_requests = get_prev_swap_events(filter_logs);
+
+            wait_for_tx_confirmation_and_push(prev_swap_requests);
+            from_block_dec += blocks_per_filter;
+          }
         } FC_LOG_AND_RETHROW()
     }
 
@@ -200,12 +214,10 @@ class ethropsten_swap_plugin_impl {
             trx.max_net_usage_words = 5000;
             trx.sign(this->_swap_signing_key, chainid);
             trxs.emplace_back(std::move(trx));
-
             try {
                auto trxs_copy = std::make_shared<std::decay_t<decltype(trxs)>>(std::move(trxs));
                app().post(priority::low, [trxs_copy, &is_tx_sent]() {
                  for (size_t i = 0; i < trxs_copy->size(); ++i) {
-
                      app().get_plugin<chain_plugin>().accept_transaction( packed_transaction(trxs_copy->at(i)),
                      [&is_tx_sent](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result){
                        is_tx_sent = true;
