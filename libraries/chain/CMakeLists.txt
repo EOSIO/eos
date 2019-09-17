@@ -6,14 +6,18 @@ file(GLOB HEADERS "include/eosio/chain/*.hpp"
                   "${CMAKE_CURRENT_BINARY_DIR}/include/eosio/chain/core_symbol.hpp" )
 
 if(APPLE AND UNIX)
-   set(CHECKTIME_TIMER_IMPL checktime_timer_macos.cpp)
+   set(PLATFORM_TIMER_IMPL platform_timer_macos.cpp)
 else()
-   try_run(POSIX_TIMER_TEST_RUN_RESULT POSIX_TIMER_TEST_COMPILE_RESULT ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/checktime_timer_posix_test.c)
+   try_run(POSIX_TIMER_TEST_RUN_RESULT POSIX_TIMER_TEST_COMPILE_RESULT ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/platform_timer_posix_test.c)
    if(POSIX_TIMER_TEST_RUN_RESULT EQUAL 0)
-      set(CHECKTIME_TIMER_IMPL checktime_timer_posix.cpp)
+      set(PLATFORM_TIMER_IMPL platform_timer_posix.cpp)
    else()
-      set(CHECKTIME_TIMER_IMPL checktime_timer_dummy.cpp)
+      set(PLATFORM_TIMER_IMPL platform_timer_asio_fallback.cpp)
    endif()
+endif()
+
+if("wavm" IN_LIST EOSIO_WASM_RUNTIMES)
+   set(CHAIN_WAVM_SOURCES "webassembly/wavm.cpp")
 endif()
 
 ## SORT .cpp by most likely to change / break compile
@@ -33,6 +37,7 @@ add_library( eosio_chain
              transaction_context.cpp
              eosio_contract.cpp
              eosio_contract_abi.cpp
+             eosio_contract_abi_bin.cpp
              chain_config.cpp
              chain_id_type.cpp
              genesis_state.cpp
@@ -49,7 +54,7 @@ add_library( eosio_chain
               asset.cpp
               snapshot.cpp
 
-             webassembly/wavm.cpp
+             ${CHAIN_WAVM_SOURCES}
              webassembly/wabt.cpp
 
 #             get_config.cpp
@@ -65,8 +70,8 @@ add_library( eosio_chain
              genesis_intrinsics.cpp
              whitelisted_intrinsics.cpp
              thread_utils.cpp
-             checktime_timer_calibrate.cpp
-             ${CHECKTIME_TIMER_IMPL}
+             platform_timer_accuracy.cpp
+             ${PLATFORM_TIMER_IMPL}
              ${HEADERS}
              )
 
@@ -79,6 +84,12 @@ target_include_directories( eosio_chain
                                    "${CMAKE_SOURCE_DIR}/libraries/wabt"
                                    "${CMAKE_BINARY_DIR}/libraries/wabt"
                             )
+
+foreach(RUNTIME ${EOSIO_WASM_RUNTIMES})
+   string(TOUPPER "${RUNTIME}" RUNTIMEUC)
+   string(REPLACE "-" "_" RUNTIMEUC ${RUNTIMEUC})
+   target_compile_definitions(eosio_chain PUBLIC "EOSIO_${RUNTIMEUC}_RUNTIME_ENABLED")
+endforeach()
 
 install( TARGETS eosio_chain
    RUNTIME DESTINATION ${CMAKE_INSTALL_FULL_BINDIR}

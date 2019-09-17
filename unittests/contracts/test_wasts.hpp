@@ -439,6 +439,38 @@ static const char table_checker_small_wast[] = R"=====(
 )
 )=====";
 
+static const char table_init_oob_wast[] = R"=====(
+(module
+ (type $mahsig (func (param i64) (param i64) (param i64)))
+ (table 1024 anyfunc)
+ (export "apply" (func $apply))
+ (func $apply (param $0 i64) (param $1 i64) (param $2 i64)
+ )
+ (elem (i32.const 1024) $apply)
+)
+)=====";
+
+static const char table_init_oob_smaller_wast[] = R"=====(
+(module
+ (type $mahsig (func (param i64) (param i64) (param i64)))
+ (table 620 anyfunc)
+ (export "apply" (func $apply))
+ (func $apply (param $0 i64) (param $1 i64) (param $2 i64)
+ )
+ (elem (i32.const 700) $apply)
+)
+)=====";
+
+static const char table_init_oob_no_table_wast[] = R"=====(
+(module
+ (type $mahsig (func (param i64) (param i64) (param i64)))
+ (export "apply" (func $apply))
+ (func $apply (param $0 i64) (param $1 i64) (param $2 i64)
+ )
+ (elem (i32.const 0) $apply)
+)
+)=====";
+
 static const char global_protection_none_get_wast[] = R"=====(
 (module
  (export "apply" (func $apply))

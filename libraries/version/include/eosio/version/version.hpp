@@ -1,8 +1,3 @@
-/**
- *  @file version.hpp
- *  @copyright defined in eos/LICENSE
- */
-
 #pragma once
 
 #include <string> // std::string

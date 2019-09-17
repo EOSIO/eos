@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
 #include <eosio/chain/global_property_object.hpp>
 #include <eosio/testing/tester.hpp>
 

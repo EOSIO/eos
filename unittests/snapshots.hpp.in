@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE.txt
- */
 #pragma once
 
 #define MAKE_READ_SNAPSHOT(NAME) \
@@ -15,6 +11,7 @@ namespace eosio {
       struct snapshots {
          // v2
          MAKE_READ_SNAPSHOT(snap_v2)
+         MAKE_READ_SNAPSHOT(snap_v2_prod_sched)
       };
    } /// eosio::testing
 }  /// eosio

@@ -1,8 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
-
 #include <eosio/chain/chain_config.hpp>
 #include <eosio/chain/exceptions.hpp>
 

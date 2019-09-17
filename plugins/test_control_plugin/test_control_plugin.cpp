@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
 #include <eosio/test_control_plugin/test_control_plugin.hpp>
 #include <fc/optional.hpp>
 #include <atomic>

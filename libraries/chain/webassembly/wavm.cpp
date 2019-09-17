@@ -144,12 +144,17 @@ std::unique_ptr<wasm_instantiated_module_interface> wavm_runtime::instantiate_mo
       EOS_ASSERT(false, wasm_serialization_error, e.message.c_str());
    }
 
-   eosio::chain::webassembly::common::root_resolver resolver;
-   LinkResult link_result = linkModule(*module, resolver);
-   ModuleInstance *instance = instantiateModule(*module, std::move(link_result.resolvedImports));
-   EOS_ASSERT(instance != nullptr, wasm_exception, "Fail to Instantiate WAVM Module");
+   try {
+      eosio::chain::webassembly::common::root_resolver resolver;
+      LinkResult link_result = linkModule(*module, resolver);
+      ModuleInstance *instance = instantiateModule(*module, std::move(link_result.resolvedImports));
+      EOS_ASSERT(instance != nullptr, wasm_exception, "Fail to Instantiate WAVM Module");
 
-   return std::make_unique<wavm_instantiated_module>(instance, std::move(module), initial_memory);
+      return std::make_unique<wavm_instantiated_module>(instance, std::move(module), initial_memory);
+   }
+   catch(const Runtime::Exception& e) {
+      EOS_THROW(wasm_execution_error, "Failed to stand up WAVM instance: ${m}", ("m", describeExceptionCause(e.cause)));
+   }
 }
 
 void wavm_runtime::immediately_exit_currently_running_module() {
