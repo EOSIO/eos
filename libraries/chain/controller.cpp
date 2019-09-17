@@ -532,14 +532,14 @@ struct controller_impl {
                         "Snapshot is invalid." );
             blog.reset( chain_id, signed_block_ptr(), lib_num + 1 );
          }
+         const auto hash = calculate_integrity_hash();
+         ilog( "database initialized with hash: ${hash}", ("hash", hash) );
+
          init(shutdown);
       } catch (boost::interprocess::bad_alloc& e) {
          elog( "db storage not configured to have enough storage for the provided snapshot, please increase and retry snapshot" );
          throw e;
       }
-
-      const auto hash = calculate_integrity_hash();
-      ilog( "database initialized with hash: ${hash}", ("hash", hash) );
 
       ilog( "Finished initialization from snapshot" );
    }
@@ -955,10 +955,10 @@ struct controller_impl {
       return enc.result();
    }
 
-   void create_native_account( const genesis_state& genesis, account_name name, const authority& owner, const authority& active, bool is_privileged = false ) {
+   void create_native_account( const fc::time_point& initial_timestamp, account_name name, const authority& owner, const authority& active, bool is_privileged = false ) {
       db.create<account_object>([&](auto& a) {
          a.name = name;
-         a.creation_date = genesis.initial_timestamp;
+         a.creation_date = initial_timestamp;
 
          if( name == config::system_account_name ) {
             // The initial eosio ABI value affects consensus; see  https://github.com/EOSIO/eos/issues/7794
@@ -973,9 +973,9 @@ struct controller_impl {
       });
 
       const auto& owner_permission  = authorization.create_permission(name, config::owner_name, 0,
-                                                                      owner, genesis.initial_timestamp );
+                                                                      owner, initial_timestamp );
       const auto& active_permission = authorization.create_permission(name, config::active_name, owner_permission.id,
-                                                                      active, genesis.initial_timestamp );
+                                                                      active, initial_timestamp );
 
       resource_limits.initialize_account(name);
 
@@ -1023,14 +1023,14 @@ struct controller_impl {
       resource_limits.initialize_database();
 
       authority system_auth(genesis.initial_key);
-      create_native_account( genesis, config::system_account_name, system_auth, system_auth, true );
+      create_native_account( genesis.initial_timestamp, config::system_account_name, system_auth, system_auth, true );
 
       auto empty_authority = authority(1, {}, {});
       auto active_producers_authority = authority(1, {}, {});
       active_producers_authority.accounts.push_back({{config::system_account_name, config::active_name}, 1});
 
-      create_native_account( genesis, config::null_account_name, empty_authority, empty_authority );
-      create_native_account( genesis, config::producers_account_name, empty_authority, active_producers_authority );
+      create_native_account( genesis.initial_timestamp, config::null_account_name, empty_authority, empty_authority );
+      create_native_account( genesis.initial_timestamp, config::producers_account_name, empty_authority, active_producers_authority );
       const auto& active_permission       = authorization.get_permission({config::producers_account_name, config::active_name});
       const auto& majority_permission     = authorization.create_permission( config::producers_account_name,
                                                                              config::majority_producers_permission_name,
