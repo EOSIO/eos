@@ -2,7 +2,7 @@ FROM amazonlinux:2.0.20190508
 ENV VERSION 1
 # install dependencies.
 RUN yum update -y && \
-    yum install -y which git procps-ng python3 python3-devel python python-devel clang tar make llvm-devel llvm-static graphviz vim-common jq
+    yum install -y which git procps-ng python3 python3-devel python python-devel clang tar make llvm-devel llvm-static doxygen graphviz vim-common jq
 # install conan
 RUN pip3 install conan
 # install ccache
