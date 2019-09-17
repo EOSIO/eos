@@ -3,6 +3,7 @@ set -eo pipefail
 VERSION=1
 brew update
 brew install git cmake python@2 python graphviz automake wget llvm@7 pkgconfig doxygen jq || :
+pip3 install conan
 if [[ ! $PINNED == false || $UNPINNED == true ]]; then
     # install clang from source
     git clone --single-branch --branch release_80 https://git.llvm.org/git/llvm.git clang8
