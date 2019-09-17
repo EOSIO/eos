@@ -1530,9 +1530,9 @@ string convert_to_string(const chain::key256_t& source, const string& key_type, 
 
 template<>
 string convert_to_string(const float128_t& source, const string& key_type, const string& encode_type, const string& desc) {
-      try {
-      const uint128_t val = *reinterpret_cast<const uint128_t *>(&source);
-      return fc::variant(val).as<string>();
+   try {
+      float64_t f = f128_to_f64(source);
+      return fc::variant(f).as<string>();
    } FC_RETHROW_EXCEPTIONS(warn, "Could not convert ${desc} from '${source}' to string.", ("desc", desc)("source",source) )
 }
 

@@ -449,7 +449,7 @@ BOOST_FIXTURE_TEST_CASE( get_table_by_seckey_test, TESTER ) try {
 } FC_LOG_AND_RETHROW()
 
 
-BOOST_FIXTURE_TEST_CASE( get_table_more2_test, TESTER ) try {
+BOOST_FIXTURE_TEST_CASE( get_table_next_key_test, TESTER ) try {
    create_account(N(test));
 
    // setup contract and abi
@@ -591,14 +591,14 @@ BOOST_FIXTURE_TEST_CASE( get_table_more2_test, TESTER ) try {
    // float128 secondary key type
    params.key_type = "float128";
    params.index_position = "5";
-   params.lower_bound = "0x00000000000000000000000000400140"; // This is 5.0 in uint128 representation
+   params.lower_bound = "5.0";
 
    auto res_5 = plugin.get_table_rows(params);
    float128_t secldouble_expected_value = ui64_to_f128(5);
    BOOST_REQUIRE(res_5.rows.size() > 0);
    chain::uint128_t secldouble_res_value =  res_5.rows[0].get_object()["secldouble"].as<chain::uint128_t>();
    BOOST_TEST(*reinterpret_cast<float128_t*>(&secldouble_res_value) == secldouble_expected_value);
-   BOOST_TEST(res_5.next_key == "0x00000000000000000000000000c00140");
+   BOOST_TEST(res_5.next_key == "7.00000000000000000");
    params.lower_bound = res_5.next_key;
    auto more2_res_5 = plugin.get_table_rows(params);
    float128_t more2_secldouble_expected_value = ui64_to_f128(7);
@@ -668,6 +668,6 @@ BOOST_FIXTURE_TEST_CASE( get_table_more2_test, TESTER ) try {
    BOOST_TEST(more2_sec160_res_value == more2_sec160_expected_value);
    BOOST_TEST(more2_res_8.rows[0].get_object()["hash_input"].as<string>() == "secondinput");
 
-} FC_LOG_AND_RETHROW() /// get_table_more2_test
+} FC_LOG_AND_RETHROW() /// get_table_next_key_test
 
 BOOST_AUTO_TEST_SUITE_END()
