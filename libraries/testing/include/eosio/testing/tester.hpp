@@ -376,13 +376,33 @@ namespace eosio { namespace testing {
             return cfg;
          }
 
-         fc::optional<genesis_state> get_genesis() const {
-            return genesis;
-         }
-
          void schedule_protocol_features_wo_preactivation(const vector<digest_type> feature_digests);
          void preactivate_protocol_features(const vector<digest_type> feature_digests);
          void preactivate_all_builtin_protocol_features();
+
+
+         static std::pair<controller::config, genesis_state> default_config(const fc::temp_directory& tempdir) {
+            controller::config cfg;
+            cfg.blocks_dir      = tempdir.path() / config::default_blocks_dir_name;
+            cfg.state_dir  = tempdir.path() / config::default_state_dir_name;
+            cfg.state_size = 1024*1024*8;
+            cfg.state_guard_size = 0;
+            cfg.reversible_cache_size = 1024*1024*8;
+            cfg.reversible_guard_size = 0;
+            cfg.contracts_console = true;
+
+            genesis_state genesis;
+            genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
+            genesis.initial_key = get_public_key( config::system_account_name, "active" );
+
+            for(int i = 0; i < boost::unit_test::framework::master_test_suite().argc; ++i) {
+               if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--wavm"))
+                  cfg.wasm_runtime = chain::wasm_interface::vm_type::wavm;
+               else if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--wabt"))
+                  cfg.wasm_runtime = chain::wasm_interface::vm_type::wabt;
+            }
+            return {cfg, genesis};
+         }
 
       protected:
          signed_block_ptr _produce_block( fc::microseconds skip_time, bool skip_pending_trxs = false );
@@ -465,30 +485,6 @@ namespace eosio { namespace testing {
       }
 
       bool validate() { return true; }
-
-
-      static std::pair<controller::config, genesis_state> default_config(const fc::temp_directory& tempdir) {
-         controller::config cfg;
-         cfg.blocks_dir      = tempdir.path() / config::default_blocks_dir_name;
-         cfg.state_dir  = tempdir.path() / config::default_state_dir_name;
-         cfg.state_size = 1024*1024*8;
-         cfg.state_guard_size = 0;
-         cfg.reversible_cache_size = 1024*1024*8;
-         cfg.reversible_guard_size = 0;
-         cfg.contracts_console = false;
-
-         genesis_state genesis;
-         genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
-         genesis.initial_key = get_public_key( config::system_account_name, "active" );
-
-         for(int i = 0; i < boost::unit_test::framework::master_test_suite().argc; ++i) {
-            if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--wavm"))
-               cfg.wasm_runtime = chain::wasm_interface::vm_type::wavm;
-            else if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--wabt"))
-               cfg.wasm_runtime = chain::wasm_interface::vm_type::wabt;
-         }
-         return {cfg, genesis};
-      }
    };
 
    class validating_tester : public base_tester {
@@ -509,38 +505,17 @@ namespace eosio { namespace testing {
       }
       controller::config vcfg;
 
-      static std::pair<controller::config, genesis_state> default_config(const fc::temp_directory& tempdir) {
-         controller::config vcfg;
-         vcfg.blocks_dir      = tempdir.path() / std::string("v_").append(config::default_blocks_dir_name);
-         vcfg.state_dir  = tempdir.path() /  std::string("v_").append(config::default_state_dir_name);
-         vcfg.state_size = 1024*1024*8;
-         vcfg.state_guard_size = 0;
-         vcfg.reversible_cache_size = 1024*1024*8;
-         vcfg.reversible_guard_size = 0;
-         vcfg.contracts_console = false;
-
-         genesis_state genesis;
-         genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
-         genesis.initial_key = get_public_key( config::system_account_name, "active" );
-
-         for(int i = 0; i < boost::unit_test::framework::master_test_suite().argc; ++i) {
-            if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--wavm"))
-               vcfg.wasm_runtime = chain::wasm_interface::vm_type::wavm;
-            else if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--wabt"))
-               vcfg.wasm_runtime = chain::wasm_interface::vm_type::wabt;
-         }
-         return {vcfg, genesis};
-      }
-
       validating_tester(const flat_set<account_name>& trusted_producers = flat_set<account_name>()) {
          auto def_conf = default_config(tempdir);
 
          vcfg = def_conf.first;
+         config_validator(vcfg);
          vcfg.trusted_producers = trusted_producers;
 
          validating_node = create_validating_node(vcfg, def_conf.second, true);
 
-         init();
+         init(def_conf.first, def_conf.second);
+         execute_setup_policy(setup_policy::full);
       }
 
       static void config_validator(controller::config& vcfg) {
@@ -549,6 +524,8 @@ namespace eosio { namespace testing {
 
          vcfg.blocks_dir = vcfg.blocks_dir.parent_path() / std::string("v_").append( vcfg.blocks_dir.filename().generic_string() );
          vcfg.state_dir  = vcfg.state_dir.parent_path() / std::string("v_").append( vcfg.state_dir.filename().generic_string() );
+
+         vcfg.contracts_console = false;
       }
 
       static unique_ptr<controller> create_validating_node(controller::config vcfg, const genesis_state& genesis, bool use_genesis) {

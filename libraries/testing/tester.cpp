@@ -150,27 +150,11 @@ namespace eosio { namespace testing {
    }
 
    void base_tester::init(const setup_policy policy, db_read_mode read_mode) {
-      cfg.blocks_dir      = tempdir.path() / config::default_blocks_dir_name;
-      cfg.state_dir  = tempdir.path() / config::default_state_dir_name;
-      cfg.state_size = 1024*1024*8;
-      cfg.state_guard_size = 0;
-      cfg.reversible_cache_size = 1024*1024*8;
-      cfg.reversible_guard_size = 0;
-      cfg.contracts_console = true;
-      cfg.read_mode = read_mode;
+      auto def_conf = default_config(tempdir);
+      def_conf.first.read_mode = read_mode;
+      cfg = def_conf.first;
 
-      genesis_state genesis;
-      genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
-      genesis.initial_key = get_public_key( config::system_account_name, "active" );
-
-      for(int i = 0; i < boost::unit_test::framework::master_test_suite().argc; ++i) {
-         if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--wavm"))
-            cfg.wasm_runtime = chain::wasm_interface::vm_type::wavm;
-         else if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--wabt"))
-            cfg.wasm_runtime = chain::wasm_interface::vm_type::wabt;
-      }
-
-      open(genesis);
+      open(def_conf.second);
       execute_setup_policy(policy);
    }
 
