@@ -3,7 +3,11 @@
 #include <eosio/chain/wasm_interface.hpp>
 #include <eosio/chain/webassembly/wavm.hpp>
 #include <eosio/chain/webassembly/wabt.hpp>
+#ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
 #include <eosio/chain/webassembly/eos-vm-oc.hpp>
+#else
+#define _REGISTER_EOSVMOC_INTRINSIC(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)
+#endif
 #include <eosio/chain/webassembly/runtime_interface.hpp>
 #include <eosio/chain/wasm_eosio_injection.hpp>
 #include <eosio/chain/transaction_context.hpp>
@@ -47,8 +51,10 @@ namespace eosio { namespace chain {
 #endif
          if(vm == wasm_interface::vm_type::wabt)
             runtime_interface = std::make_unique<webassembly::wabt_runtime::wabt_runtime>();
+#ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
          if(vm == wasm_interface::vm_type::eos_vm_oc)
             runtime_interface = std::make_unique<webassembly::eosvmoc::eosvmoc_runtime>(data_dir, eosvmoc_config);
+#endif
          if(!runtime_interface)
             EOS_THROW(wasm_exception, "${r} wasm runtime not supported on this platform and/or configuration", ("r", vm));
       }

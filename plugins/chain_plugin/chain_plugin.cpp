@@ -255,7 +255,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("database-hugepage-path", bpo::value<vector<string>>()->composing(), "Optional path for database hugepages when in \"locked\" mode (may specify multiple times)")
 #endif
 
-#ifdef __linux__
+#ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
          ("eos-vm-oc-cache-size-mb", bpo::value<uint64_t>()->default_value(eosvmoc::config().cache_size / (1024u*1024u)), "Maximum size (in MiB) of the EOS-VM OC code cache")
          ("eos-vm-oc-map-mode", bpo::value<eosvmoc::map_mode>()->default_value(eosvmoc::config().cache_map_mode), "EOS-VM OC code cache mode (\"mapped\", \"heap\", or \"locked\")")
          ("eos-vm-oc-hugepage-path", bpo::value<vector<string>>()->composing(), "Optional path for EOS-VM OC code hugepages when in \"locked\" mode")
@@ -922,7 +922,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          my->chain_config->db_hugepage_paths = options.at("database-hugepage-path").as<std::vector<std::string>>();
 #endif
 
-#ifdef __linux__
+#ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
       if( options.count("eos-vm-oc-cache-size-mb") )
          my->chain_config->eosvmoc_config.cache_size = options.at( "eos-vm-oc-cache-size-mb" ).as<uint64_t>() * 1024u * 1024u;
       if( options.count("eos-vm-oc-map-mode") )
