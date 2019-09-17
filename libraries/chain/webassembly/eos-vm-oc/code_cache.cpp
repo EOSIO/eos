@@ -167,10 +167,9 @@ const code_descriptor* const code_cache::get_descriptor_for_code(const digest_ty
       EOS_ASSERT(false, wasm_serialization_error, e.message.c_str());
    }
 
-   ModuleInstance* instance;
+   instantiated_code code;
    try {
-      instance = instantiateModule(module);
-      EOS_ASSERT(instance != nullptr, wasm_exception, "Fail to Instantiate WAVM Module");
+      code = LLVMJIT::instantiateModule(module);
    }
    catch(const Runtime::Exception& e) {
       EOS_THROW(wasm_execution_error, "Failed to stand up WAVM instance: ${m}", ("m", describeExceptionCause(e.cause)));
@@ -184,8 +183,8 @@ const code_descriptor* const code_cache::get_descriptor_for_code(const digest_ty
    cd.vm_version = vm_version;
    cd.codegen_version = 0;
 
-   const std::map<unsigned, uintptr_t>& function_to_offsets = getFunctionOffsets(instance);
-   const std::vector<uint8_t>& pic = getPICCode(instance);
+   const std::map<unsigned, uintptr_t>& function_to_offsets = code.function_offsets;
+   const std::vector<uint8_t>& pic = code.code;
 
    void* allocated_code = allocator->allocate(pic.size());
    memcpy(allocated_code, pic.data(), pic.size());
@@ -269,9 +268,6 @@ const code_descriptor* const code_cache::get_descriptor_for_code(const digest_ty
    cd.initdata_pre_memory_size = prolouge.end() - prolouge_it;
    std::move(prolouge_it, prolouge.end(), std::back_inserter(cd.initdata));
    std::move(initial_mem.begin(), initial_mem.end(), std::back_inserter(cd.initdata));
-
-   std::vector<ObjectInstance*> rootObjects;
-   Runtime::freeUnreferencedObjects(std::move(rootObjects));
 
    return &*_cache_index.push_front(std::move(cd)).first;
 }

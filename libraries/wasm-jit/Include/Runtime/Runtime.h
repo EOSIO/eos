@@ -14,6 +14,16 @@
 // Declare IR::Module to avoid including the definition.
 namespace IR { struct Module; }
 
+/////////////////
+struct instantiated_code {
+   std::vector<uint8_t> code;
+   std::map<unsigned, uintptr_t> function_offsets;
+};
+namespace LLVMJIT {
+instantiated_code instantiateModule(const IR::Module& module);
+}
+/////////////////
+
 namespace Runtime
 {
 	// Initializes the runtime. Should only be called once per process.
@@ -204,9 +214,6 @@ namespace Runtime
 		std::vector<MemoryInstance*> memories;
 		std::vector<GlobalInstance*> globals;
 	};
-
-	// Instantiates a module, bindings its imports to the specified objects. May throw InstantiationException.
-	RUNTIME_API ModuleInstance* instantiateModule(const IR::Module& module);
 
 	// Gets the default table/memory for a ModuleInstance.
 	RUNTIME_API MemoryInstance* getDefaultMemory(ModuleInstance* moduleInstance);

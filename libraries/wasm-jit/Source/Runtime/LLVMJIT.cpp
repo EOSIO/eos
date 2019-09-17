@@ -48,21 +48,11 @@ void disassembleFunction(U8* bytes,Uptr numBytes)
 
 namespace LLVMJIT
 {
-	llvm::LLVMContext context;
-	llvm::TargetMachine* targetMachine = nullptr;
-	llvm::Type* llvmResultTypes[(Uptr)ResultType::num];
+   llvm::TargetMachine* targetMachine = nullptr;
 
-	llvm::Type* llvmI8Type;
-	llvm::Type* llvmI16Type;
-	llvm::Type* llvmI32Type;
-	llvm::Type* llvmI64Type;
-	llvm::Type* llvmF32Type;
-	llvm::Type* llvmF64Type;
-	llvm::Type* llvmVoidType;
-	llvm::Type* llvmBoolType;
-	llvm::Type* llvmI8PtrType;
-
-	llvm::Constant* typedZeroConstants[(Uptr)ValueType::num];
+   ///XXX these are in LLVMEmitIR now
+   bool getFunctionIndexFromExternalName(const char* externalName,Uptr& outFunctionDefIndex);
+   llvm::Module* emitModule(const IR::Module& module);
 
 	// Allocates memory for the LLVM object loader.
 	struct UnitMemoryManager : llvm::RTDyldMemoryManager
@@ -120,11 +110,9 @@ namespace LLVMJIT
 	};
 
 	// The JIT compilation unit for a WebAssembly module instance.
-	struct JITModule : JITModuleBase
+	struct JITModule
 	{
-		ModuleInstance* moduleInstance;
-
-		JITModule(ModuleInstance* inModuleInstance): moduleInstance(inModuleInstance) {
+		JITModule() {
 			objectLayer = llvm::make_unique<llvm::orc::LegacyRTDyldObjectLinkingLayer>(ES,[this](llvm::orc::VModuleKey K) {
                            return llvm::orc::LegacyRTDyldObjectLinkingLayer::Resources{
                               unitmemorymanager, std::make_shared<llvm::orc::NullResolver>()
@@ -161,7 +149,10 @@ namespace LLVMJIT
 
       std::shared_ptr<UnitMemoryManager> unitmemorymanager = std::make_shared<UnitMemoryManager>();
 
-		~JITModule() override
+      std::map<unsigned, uintptr_t> function_to_offsets;
+      std::vector<uint8_t> final_pic_code;
+
+		~JITModule()
 		{
 		}
 	private:
@@ -221,80 +212,35 @@ namespace LLVMJIT
       final_pic_code = std::move(*unitmemorymanager->code);
 	}
 
-	void instantiateModule(const IR::Module& module,ModuleInstance* moduleInstance)
+	instantiated_code instantiateModule(const IR::Module& module)
 	{
-      init();
+      static bool inited;
+      if(!inited) {
+         inited = true;
+         llvm::InitializeNativeTarget();
+         llvm::InitializeNativeTargetAsmPrinter();
+         llvm::InitializeNativeTargetAsmParser();
+         llvm::InitializeNativeTargetDisassembler();
+         llvm::sys::DynamicLibrary::LoadLibraryPermanently(nullptr);
+
+         auto targetTriple = llvm::sys::getProcessTriple();
+
+         targetMachine = llvm::EngineBuilder().setRelocationModel(llvm::Reloc::PIC_).setCodeModel(llvm::CodeModel::Small).selectTarget(
+            llvm::Triple(targetTriple),"","",llvm::SmallVector<std::string,0>()
+            );
+      }
 
 		// Emit LLVM IR for the module.
 		auto llvmModule = emitModule(module);
 
 		// Construct the JIT compilation pipeline for this module.
-		auto jitModule = new JITModule(moduleInstance);
-		moduleInstance->jitModule = jitModule;
-
+		auto jitModule = new JITModule();
 		// Compile the module.
 		jitModule->compile(llvmModule);
-	}
 
-	std::string getExternalFunctionName(Uptr functionDefIndex)
-	{
-		return "wasmFunc" + std::to_string(functionDefIndex);
-	}
-
-	bool getFunctionIndexFromExternalName(const char* externalName,Uptr& outFunctionDefIndex)
-	{
-		const char wasmFuncPrefix[] = "wasmFunc";
-		const Uptr numPrefixChars = sizeof(wasmFuncPrefix) - 1;
-		if(!strncmp(externalName,wasmFuncPrefix,numPrefixChars))
-		{
-			char* numberEnd = nullptr;
-			U64 functionDefIndex64 = std::strtoull(externalName + numPrefixChars,&numberEnd,10);
-			if(functionDefIndex64 > UINTPTR_MAX) { return false; }
-			outFunctionDefIndex = Uptr(functionDefIndex64);
-			return true;
-		}
-		else { return false; }
-	}
-
-	void init()
-	{
-      static bool inited;
-      if(inited)
-         return;
-      inited = true;
-		llvm::InitializeNativeTarget();
-		llvm::InitializeNativeTargetAsmPrinter();
-		llvm::InitializeNativeTargetAsmParser();
-		llvm::InitializeNativeTargetDisassembler();
-		llvm::sys::DynamicLibrary::LoadLibraryPermanently(nullptr);
-
-		auto targetTriple = llvm::sys::getProcessTriple();
-
-		targetMachine = llvm::EngineBuilder().setRelocationModel(llvm::Reloc::PIC_).setCodeModel(llvm::CodeModel::Small).selectTarget(
-			llvm::Triple(targetTriple),"","",llvm::SmallVector<std::string,0>()
-			);
-
-		llvmI8Type = llvm::Type::getInt8Ty(context);
-		llvmI16Type = llvm::Type::getInt16Ty(context);
-		llvmI32Type = llvm::Type::getInt32Ty(context);
-		llvmI64Type = llvm::Type::getInt64Ty(context);
-		llvmF32Type = llvm::Type::getFloatTy(context);
-		llvmF64Type = llvm::Type::getDoubleTy(context);
-		llvmVoidType = llvm::Type::getVoidTy(context);
-		llvmBoolType = llvm::Type::getInt1Ty(context);
-		llvmI8PtrType = llvmI8Type->getPointerTo();
-
-		llvmResultTypes[(Uptr)ResultType::none] = llvm::Type::getVoidTy(context);
-		llvmResultTypes[(Uptr)ResultType::i32] = llvmI32Type;
-		llvmResultTypes[(Uptr)ResultType::i64] = llvmI64Type;
-		llvmResultTypes[(Uptr)ResultType::f32] = llvmF32Type;
-		llvmResultTypes[(Uptr)ResultType::f64] = llvmF64Type;
-
-		// Create zero constants of each type.
-		typedZeroConstants[(Uptr)ValueType::any] = nullptr;
-		typedZeroConstants[(Uptr)ValueType::i32] = emitLiteral((U32)0);
-		typedZeroConstants[(Uptr)ValueType::i64] = emitLiteral((U64)0);
-		typedZeroConstants[(Uptr)ValueType::f32] = emitLiteral((F32)0.0f);
-		typedZeroConstants[(Uptr)ValueType::f64] = emitLiteral((F64)0.0);
+      instantiated_code ret;
+      ret.code = jitModule->final_pic_code;
+      ret.function_offsets = jitModule->function_to_offsets;
+      return ret;
 	}
 }

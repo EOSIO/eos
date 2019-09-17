@@ -14,6 +14,72 @@ using namespace IR;
 
 namespace LLVMJIT
 {
+	static std::string getExternalFunctionName(Uptr functionDefIndex)
+	{
+		return "wasmFunc" + std::to_string(functionDefIndex);
+	}
+
+	bool getFunctionIndexFromExternalName(const char* externalName,Uptr& outFunctionDefIndex)
+	{
+		const char wasmFuncPrefix[] = "wasmFunc";
+		const Uptr numPrefixChars = sizeof(wasmFuncPrefix) - 1;
+		if(!strncmp(externalName,wasmFuncPrefix,numPrefixChars))
+		{
+			char* numberEnd = nullptr;
+			U64 functionDefIndex64 = std::strtoull(externalName + numPrefixChars,&numberEnd,10);
+			if(functionDefIndex64 > UINTPTR_MAX) { return false; }
+			outFunctionDefIndex = Uptr(functionDefIndex64);
+			return true;
+		}
+		else { return false; }
+	}
+
+
+	llvm::LLVMContext context;
+	llvm::Type* llvmResultTypes[(Uptr)ResultType::num];
+
+	llvm::Type* llvmI8Type;
+	llvm::Type* llvmI16Type;
+	llvm::Type* llvmI32Type;
+	llvm::Type* llvmI64Type;
+	llvm::Type* llvmF32Type;
+	llvm::Type* llvmF64Type;
+	llvm::Type* llvmVoidType;
+	llvm::Type* llvmBoolType;
+	llvm::Type* llvmI8PtrType;
+
+	llvm::Constant* typedZeroConstants[(Uptr)ValueType::num];
+
+	// Converts a WebAssembly type to a LLVM type.
+	inline llvm::Type* asLLVMType(ValueType type) { return llvmResultTypes[(Uptr)asResultType(type)]; }
+	inline llvm::Type* asLLVMType(ResultType type) { return llvmResultTypes[(Uptr)type]; }
+
+	// Converts a WebAssembly function type to a LLVM type.
+	inline llvm::FunctionType* asLLVMType(const FunctionType* functionType)
+	{
+		auto llvmArgTypes = (llvm::Type**)alloca(sizeof(llvm::Type*) * functionType->parameters.size());
+		for(Uptr argIndex = 0;argIndex < functionType->parameters.size();++argIndex)
+		{
+			llvmArgTypes[argIndex] = asLLVMType(functionType->parameters[argIndex]);
+		}
+		auto llvmResultType = asLLVMType(functionType->ret);
+		return llvm::FunctionType::get(llvmResultType,llvm::ArrayRef<llvm::Type*>(llvmArgTypes,functionType->parameters.size()),false);
+	}
+
+	// Overloaded functions that compile a literal value to a LLVM constant of the right type.
+	inline llvm::ConstantInt* emitLiteral(U32 value) { return (llvm::ConstantInt*)llvm::ConstantInt::get(llvmI32Type,llvm::APInt(32,(U64)value,false)); }
+	inline llvm::ConstantInt* emitLiteral(I32 value) { return (llvm::ConstantInt*)llvm::ConstantInt::get(llvmI32Type,llvm::APInt(32,(I64)value,false)); }
+	inline llvm::ConstantInt* emitLiteral(U64 value) { return (llvm::ConstantInt*)llvm::ConstantInt::get(llvmI64Type,llvm::APInt(64,value,false)); }
+	inline llvm::ConstantInt* emitLiteral(I64 value) { return (llvm::ConstantInt*)llvm::ConstantInt::get(llvmI64Type,llvm::APInt(64,value,false)); }
+	inline llvm::Constant* emitLiteral(F32 value) { return llvm::ConstantFP::get(context,llvm::APFloat(value)); }
+	inline llvm::Constant* emitLiteral(F64 value) { return llvm::ConstantFP::get(context,llvm::APFloat(value)); }
+	inline llvm::Constant* emitLiteral(bool value) { return llvm::ConstantInt::get(llvmBoolType,llvm::APInt(1,value ? 1 : 0,false)); }
+	inline llvm::Constant* emitLiteralPointer(const void* pointer,llvm::Type* type)
+	{
+		auto pointerInt = llvm::APInt(sizeof(Uptr) == 8 ? 64 : 32,reinterpret_cast<Uptr>(pointer));
+		return llvm::Constant::getIntegerValue(type,pointerInt);
+	}
+
 	// The LLVM IR for a module.
 	struct EmitModuleContext
 	{
@@ -1179,6 +1245,32 @@ namespace LLVMJIT
 
 	llvm::Module* emitModule(const Module& module)
 	{
+      static bool inited;
+      if(!inited) {
+         llvmI8Type = llvm::Type::getInt8Ty(context);
+         llvmI16Type = llvm::Type::getInt16Ty(context);
+         llvmI32Type = llvm::Type::getInt32Ty(context);
+         llvmI64Type = llvm::Type::getInt64Ty(context);
+         llvmF32Type = llvm::Type::getFloatTy(context);
+         llvmF64Type = llvm::Type::getDoubleTy(context);
+         llvmVoidType = llvm::Type::getVoidTy(context);
+         llvmBoolType = llvm::Type::getInt1Ty(context);
+         llvmI8PtrType = llvmI8Type->getPointerTo();
+
+         llvmResultTypes[(Uptr)ResultType::none] = llvm::Type::getVoidTy(context);
+         llvmResultTypes[(Uptr)ResultType::i32] = llvmI32Type;
+         llvmResultTypes[(Uptr)ResultType::i64] = llvmI64Type;
+         llvmResultTypes[(Uptr)ResultType::f32] = llvmF32Type;
+         llvmResultTypes[(Uptr)ResultType::f64] = llvmF64Type;
+
+         // Create zero constants of each type.
+         typedZeroConstants[(Uptr)ValueType::any] = nullptr;
+         typedZeroConstants[(Uptr)ValueType::i32] = emitLiteral((U32)0);
+         typedZeroConstants[(Uptr)ValueType::i64] = emitLiteral((U64)0);
+         typedZeroConstants[(Uptr)ValueType::f32] = emitLiteral((F32)0.0f);
+         typedZeroConstants[(Uptr)ValueType::f64] = emitLiteral((F64)0.0);
+      }
+
 		return EmitModuleContext(module).emit();
 	}
 }

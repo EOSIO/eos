@@ -27,11 +27,4 @@ namespace Runtime
 		delete jitModule;
 	}
 
-	const std::vector<uint8_t>& getPICCode(ModuleInstance* moduleInstance) {
-      return moduleInstance->jitModule->final_pic_code;
-   }
-	const std::map<unsigned, uintptr_t>& getFunctionOffsets(ModuleInstance* moduleInstance) {
-      return moduleInstance->jitModule->function_to_offsets;
-   }
-
 }

@@ -18,8 +18,6 @@ namespace LLVMJIT
 	{
 		virtual ~JITModuleBase() {}
 
-      std::map<unsigned, uintptr_t> function_to_offsets;
-      std::vector<uint8_t> final_pic_code;
 	};
 
 	void init();
