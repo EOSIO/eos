@@ -2,7 +2,6 @@
 
 import argparse
 import json
-import numpy
 import os
 import random
 import re

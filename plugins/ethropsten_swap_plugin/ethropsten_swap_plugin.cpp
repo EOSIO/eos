@@ -84,7 +84,7 @@ class ethropsten_swap_plugin_impl {
               m_client.connect(con);
 
               websocketpp::lib::thread asio_thread(&client::run, &m_client);
-              sleep(2);
+              sleep(wait_for_wss_connection_time);
 
               string infura_request = "{\"id\": 1," \
                                       "\"method\": \"eth_subscribe\"," \
@@ -97,8 +97,12 @@ class ethropsten_swap_plugin_impl {
                       "Send Error: "+ec.message());
                   throw ec.message();
               }
-
-              init_prev_swap_requests(from_block);
+              std::thread t([=](){
+                  try {
+                    init_prev_swap_requests();
+                  } FC_LOG_AND_RETHROW()
+              });
+              t.detach();
 
               asio_thread.join();
               throw ConnectionClosedException("Connection with " + _eth_wss_provider + " closed");
@@ -191,7 +195,7 @@ class ethropsten_swap_plugin_impl {
                 data.return_chain_id,
                 epoch_block_timestamp(slot)});
 
-            trx.expiration = cc.head_block_time() + fc::seconds(30);
+            trx.expiration = cc.head_block_time() + fc::seconds(init_swap_expiration_time);
             trx.set_reference_block(cc.head_block_id());
             trx.max_net_usage_words = 5000;
             trx.sign(this->_swap_signing_key, chainid);
