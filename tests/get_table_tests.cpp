@@ -557,13 +557,13 @@ BOOST_FIXTURE_TEST_CASE( get_table_more2_test, TESTER ) try {
    // i128 secondary key type
    params.key_type = "i128";
    params.index_position = "3";
-   params.lower_bound = "0x05000000000000000000000000000000"; // This is 5 in uint128 representation
+   params.lower_bound = "5"; 
 
    auto res_3 = plugin.get_table_rows(params);
    chain::uint128_t sec128_expected_value = 5;
    BOOST_REQUIRE(res_3.rows.size() > 0);
    BOOST_CHECK(res_3.rows[0].get_object()["sec128"].as<chain::uint128_t>() == sec128_expected_value);
-   BOOST_TEST(res_3.next_key == "0x07000000000000000000000000000000");
+   BOOST_TEST(res_3.next_key == "7");
    params.lower_bound = res_3.next_key;
    auto more2_res_3 = plugin.get_table_rows(params);
    chain::uint128_t more2_sec128_expected_value = 7;
