@@ -3,6 +3,7 @@
 #include <eosio/chain/wasm_interface.hpp>
 #include <eosio/chain/webassembly/wavm.hpp>
 #include <eosio/chain/webassembly/wabt.hpp>
+#include <eosio/chain/webassembly/eos-vm-oc.hpp>
 #include <eosio/chain/webassembly/runtime_interface.hpp>
 #include <eosio/chain/wasm_eosio_injection.hpp>
 #include <eosio/chain/transaction_context.hpp>
@@ -44,6 +45,8 @@ namespace eosio { namespace chain {
             runtime_interface = std::make_unique<webassembly::wavm::wavm_runtime>(data_dir, eosvmoc_config);
          else if(vm == wasm_interface::vm_type::wabt)
             runtime_interface = std::make_unique<webassembly::wabt_runtime::wabt_runtime>();
+         else if(vm == wasm_interface::vm_type::eos_vm_oc)
+            runtime_interface = std::make_unique<webassembly::eosvmoc::eosvmoc_runtime>(data_dir, eosvmoc_config);
          else
             EOS_THROW(wasm_exception, "wasm_interface_impl fall through");
       }
@@ -177,6 +180,7 @@ namespace eosio { namespace chain {
 
 #define _REGISTER_INTRINSIC_EXPLICIT(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)\
    _REGISTER_WAVM_INTRINSIC(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)\
+   _REGISTER_EOSVMOC_INTRINSIC(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)\
    _REGISTER_WABT_INTRINSIC(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)
 
 #define _REGISTER_INTRINSIC4(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)\

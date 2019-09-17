@@ -16,7 +16,7 @@
 
 #include <boost/hana/equal.hpp>
 
-namespace eosio { namespace chain { namespace webassembly { namespace wavm {
+namespace eosio { namespace chain { namespace webassembly { namespace eosvmoc {
 
 using namespace IR;
 using namespace Runtime;
@@ -25,18 +25,18 @@ using namespace eosio::chain::webassembly::common;
 
 using namespace eosio::chain::eosvmoc;
 
-class wavm_instantiated_module;
+class eosvmoc_instantiated_module;
 
-class wavm_runtime : public eosio::chain::wasm_runtime_interface {
+class eosvmoc_runtime : public eosio::chain::wasm_runtime_interface {
    public:
-      wavm_runtime(const boost::filesystem::path data_dir, const eosvmoc::config& eosvmoc_config);
-      ~wavm_runtime();
+      eosvmoc_runtime(const boost::filesystem::path data_dir, const eosvmoc::config& eosvmoc_config);
+      ~eosvmoc_runtime();
       std::unique_ptr<wasm_instantiated_module_interface> instantiate_module(std::vector<uint8_t>&& wasm, std::vector<uint8_t>&& initial_memory,
                                                                              const digest_type& code_hash, const uint8_t& vm_type, const uint8_t& vm_version) override;
 
       void immediately_exit_currently_running_module() override;
 
-      friend wavm_instantiated_module;
+      friend eosvmoc_instantiated_module;
       eosvmoc::code_cache cc;
       eosvmoc::executor exec;
       eosvmoc::memory mem;
@@ -730,13 +730,13 @@ struct intrinsic_function_invoker_wrapper<is_injected, WasmSig, Ret (Cls::*)(Par
 #define __INTRINSIC_NAME(LABEL, SUFFIX) LABEL##SUFFIX
 #define _INTRINSIC_NAME(LABEL, SUFFIX) __INTRINSIC_NAME(LABEL,SUFFIX)
 
-#define _REGISTER_WAVM_INTRINSIC(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)\
-   static Intrinsics::Function _INTRINSIC_NAME(__intrinsic_fn, __COUNTER__) (\
+#define _REGISTER_EOSVMOC_INTRINSIC(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)\
+   static eosio::chain::eosvmoc::intrinsic _INTRINSIC_NAME(__intrinsic_fn, __COUNTER__) (\
       MOD "." NAME,\
-      eosio::chain::webassembly::wavm::wasm_function_type_provider<WASM_SIG>::type(),\
-      (void *)eosio::chain::webassembly::wavm::intrinsic_function_invoker_wrapper<std::string_view(MOD) != "env", WASM_SIG, SIG>::type::fn<&CLS::METHOD>(),\
+      eosio::chain::webassembly::eosvmoc::wasm_function_type_provider<WASM_SIG>::type(),\
+      (void *)eosio::chain::webassembly::eosvmoc::intrinsic_function_invoker_wrapper<std::string_view(MOD) != "env", WASM_SIG, SIG>::type::fn<&CLS::METHOD>(),\
       ::boost::hana::index_if(eosio::chain::eosvmoc::intrinsic_table, ::boost::hana::equal.to(BOOST_HANA_STRING(MOD "." NAME))).value()\
-   );
+   );\
 
 
-} } } }// eosio::chain::webassembly::wavm
+} } } }// eosio::chain::webassembly::eosvmoc
