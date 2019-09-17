@@ -1,11 +1,17 @@
 steps:
   - wait
 
-  - label: ":pipeline: Generate Pipeline Steps"
-    command:
-      - "./.cicd/generate-pipeline.sh > generated-pipeline.yml"
-      - "buildkite-agent pipeline upload < generated-pipeline.yml"
-      - "buildkite-agent artifact upload generated-pipeline.yml"
+  # - label: ":pipeline: Generate Pipeline Steps"
+  #   command:
+  #     - "./.cicd/generate-pipeline.sh > generated-pipeline.yml"
+  #     - "buildkite-agent pipeline upload < generated-pipeline.yml"
+  #     - "buildkite-agent artifact upload generated-pipeline.yml"
+  #   agents:
+  #     queue: "automation-basic-builder-fleet"
+  #   timeout: ${TIMEOUT:-10}
+
+  - label: ":git: Git Submodule Regression Check"
+    command: "./.cicd/submodule-regression-check.sh"
     agents:
       queue: "automation-basic-builder-fleet"
-    timeout: ${TIMEOUT:-10}
+    timeout: ${TIMEOUT:-5}
