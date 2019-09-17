@@ -49,15 +49,20 @@ namespace eosio { namespace chain {
 #ifdef EOSIO_WAVM_RUNTIME_ENABLED
          if(vm == wasm_interface::vm_type::wavm)
             runtime_interface = std::make_unique<webassembly::wavm::wavm_runtime>();
+         else {
+#else    
+        {
 #endif
-         if(vm == wasm_interface::vm_type::wabt)
-            runtime_interface = std::make_unique<webassembly::wabt_runtime::wabt_runtime>();
-         else if(vm == wasm_interface::vm_type::eos_vm)
-            runtime_interface = std::make_unique<webassembly::eos_vm_runtime::eos_vm_runtime<eosio::vm::interpreter>>();
-         else if(vm == wasm_interface::vm_type::eos_vm_jit)
-            runtime_interface = std::make_unique<webassembly::eos_vm_runtime::eos_vm_runtime<eosio::vm::jit>>();
-         else
-            EOS_THROW(wasm_exception, "wasm_interface_impl fall through");
+            if(vm == wasm_interface::vm_type::wabt)
+               runtime_interface = std::make_unique<webassembly::wabt_runtime::wabt_runtime>();
+            else if(vm == wasm_interface::vm_type::eos_vm)
+               runtime_interface = std::make_unique<webassembly::eos_vm_runtime::eos_vm_runtime<eosio::vm::interpreter>>();
+            else if(vm == wasm_interface::vm_type::eos_vm_jit)
+               runtime_interface = std::make_unique<webassembly::eos_vm_runtime::eos_vm_runtime<eosio::vm::jit>>();
+            else
+               EOS_THROW(wasm_exception, "wasm_interface_impl fall through");
+         }
+
          if(!runtime_interface)
             EOS_THROW(wasm_exception, "${r} wasm runtime not supported on this platform and/or configuration", ("r", vm));
       }
