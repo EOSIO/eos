@@ -130,7 +130,7 @@ namespace eosio { namespace chain {
                EOS_ASSERT(false, wasm_serialization_error, e.message.c_str());
             }
 
-            if(wasm_runtime_time == wasm_interface::vm_type::wabt) {
+            if(wasm_runtime_time == wasm_interface::vm_type::wabt || wasm_runtime_time == wasm_interface::vm_type::wavm) {
                wasm_injections::wasm_binary_injection<true> injector(module);
                injector.inject();
             }
