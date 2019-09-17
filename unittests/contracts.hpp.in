@@ -30,6 +30,7 @@ namespace eosio {
    namespace testing {
       struct contracts {
          // Contracts in `eos/unittests/contracts' directory
+         MAKE_READ_WASM_ABI(rem_attr,   rem.attr,   ../contracts/contracts)
          MAKE_READ_WASM_ABI(rem_bios,   rem.bios, ../contracts/contracts)
          MAKE_READ_WASM_ABI(rem_msig,   rem.msig, ../contracts/contracts)
          MAKE_READ_WASM_ABI(rem_system, rem.system, ../contracts/contracts)
