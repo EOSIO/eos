@@ -943,3 +943,18 @@ static const char exit_in_start_wast[] = R"=====(
  )
 )
 )=====";
+
+static const char negative_memory_grow_wast[] = R"=====(
+(module
+ (memory 1)
+ (func (;0;) (param i64 i64 i64)
+  (drop (grow_memory (i32.const 1)))
+  (grow_memory (i32.const -1))
+  (i32.const -1)
+  (i32.ne)
+  (br_if 0)
+  (unreachable)
+ )
+ (export "apply" (func 0))
+)
+)=====";
