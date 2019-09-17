@@ -144,7 +144,6 @@ public:
    fc::optional<block_log>          block_logger;
    fc::optional<controller::config> chain_config;
    fc::optional<controller>         chain;
-   fc::optional<chain_id_type>      chain_id;
    fc::optional<genesis_state>      genesis;
    //txn_msg_rate_limits              rate_limits;
    fc::optional<vm_type>            wasm_runtime;
@@ -773,7 +772,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          clear_directory_contents( my->chain_config->state_dir );
          clear_directory_contents( my->blocks_dir );
       } else if( options.at( "hard-replay-blockchain" ).as<bool>()) {
-	do_hard_replay(options);
+         do_hard_replay(options);
       } else if( options.at( "replay-blockchain" ).as<bool>()) {
          ilog( "Replay requested: deleting state database" );
          if( options.at( "truncate-at-block" ).as<uint32_t>() > 0 )
@@ -822,7 +821,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          auto infile = std::ifstream(my->snapshot_path->generic_string(), (std::ios::in | std::ios::binary));
          auto reader = std::make_shared<istream_snapshot_reader>(infile);
          reader->validate();
-         my->chain_id = controller::extract_chain_id(reader);
+         chain_id_type chain_id = controller::extract_chain_id(reader);
          infile.close();
 
          EOS_ASSERT( options.count( "genesis-timestamp" ) == 0,
@@ -841,13 +840,13 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
             auto log_genesis = block_log::extract_genesis_state(my->blocks_dir);
             if (log_genesis) {
                my->genesis = log_genesis;
-               EOS_ASSERT( my->genesis->compute_chain_id() == *my->chain_id,
+               EOS_ASSERT( my->genesis->compute_chain_id() == chain_id,
                            plugin_config_exception,
                            "snapshot chain id does not match the chain id from the genesis state in the block log.");
             }
             else {
                auto block_log_chain_id = block_log::extract_chain_id(my->blocks_dir);
-               EOS_ASSERT( block_log_chain_id == *my->chain_id,
+               EOS_ASSERT( block_log_chain_id == chain_id,
                            plugin_config_exception,
                            "snapshot chain id does not match the chain id in the block log.");
             }
@@ -857,15 +856,16 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          bfs::path genesis_file;
          bool genesis_timestamp_specified = false;
          fc::optional<genesis_state> existing_genesis;
+         fc::optional<chain_id_type> chain_id;
 
          if( fc::exists( my->blocks_dir / "blocks.log" ) ) {
             my->genesis = block_log::extract_genesis_state( my->blocks_dir );
             existing_genesis = my->genesis;
             if (my->genesis) {
-               my->chain_id = my->genesis->compute_chain_id();
+               chain_id = my->genesis->compute_chain_id();
             }
             else {
-               my->chain_id = block_log::extract_chain_id( my->blocks_dir );
+               chain_id = block_log::extract_chain_id( my->blocks_dir );
             }
          }
 
@@ -893,7 +893,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
                         "--genesis-timestamp is only valid if also passed in with --genesis-json");
          }
 
-         if( !existing_genesis && !my->chain_id ) {
+         if( !existing_genesis && !chain_id ) {
             if( !genesis_file.empty() ) {
                if( genesis_timestamp_specified ) {
                   ilog( "Using genesis state provided in '${genesis}' but with adjusted genesis timestamp",
@@ -901,12 +901,9 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
                } else {
                   ilog( "Using genesis state provided in '${genesis}'", ("genesis", genesis_file.generic_string()));
                }
-               wlog( "Starting up fresh blockchain with provided genesis state." );
             } else {
-               wlog( "Starting up fresh blockchain with default genesis state." );
                my->genesis.emplace();
             }
-            my->chain_id = my->genesis->compute_chain_id();
          } else {
             if (existing_genesis) {
                EOS_ASSERT( *my->genesis == *existing_genesis, plugin_config_exception,
@@ -916,7 +913,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
                );
             }
             else if (my->genesis) {
-               EOS_ASSERT( my->genesis->compute_chain_id() == *my->chain_id, plugin_config_exception,
+               EOS_ASSERT( my->genesis->compute_chain_id() == chain_id, plugin_config_exception,
                            "Genesis state, provided via command line arguments, has a chain_id that does not match the "
                            "existing chain id in blocks.log. It is not necessary to provide genesis state arguments "
                            "when a blocks.log file already exists."
@@ -940,6 +937,14 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 #endif
 
       my->chain.emplace( *my->chain_config, std::move(pfs) );
+
+      if (!my->genesis && !options.count( "snapshot" )) {
+         EOS_ASSERT( my->chain->db().revision() < 1, plugin_config_exception,
+                     "Genesis state is necessary to initialize fresh blockchain state but genesis state could "
+                     "not be found in the block log. Please either load from snapshot or find a block log that "
+                     "starts from genesis."
+         );
+      }
 
       // set up method providers
       my->get_block_by_number_provider = app().get_method<methods::get_block_by_number>().register_provider(
@@ -1017,8 +1022,6 @@ void chain_plugin::plugin_startup()
       } else {
          my->chain->startup(shutdown);
       }
-      // ensure that our cached id is set to the chain's actual id
-      my->chain_id = my->chain->get_chain_id();
    } catch (const database_guard_exception& e) {
       log_guard_exception(e);
       // make sure to properly close the db
@@ -1289,8 +1292,7 @@ controller& chain_plugin::chain() { return *my->chain; }
 const controller& chain_plugin::chain() const { return *my->chain; }
 
 chain::chain_id_type chain_plugin::get_chain_id()const {
-   EOS_ASSERT( my->chain_id.valid(), chain_id_type_exception, "chain ID has not been initialized yet" );
-   return *my->chain_id;
+   return my->chain->get_chain_id();
 }
 
 fc::microseconds chain_plugin::get_abi_serializer_max_time() const {
