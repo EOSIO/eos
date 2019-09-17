@@ -30,7 +30,7 @@ done < <(git submodule --quiet foreach --recursive 'echo $path `git log -1 --for
 if [[ $TRAVIS == true && ! -z $TRAVIS_PULL_REQUEST_SLUG ]]; then
     echo "git fetch origin +refs/pull/$TRAVIS_PULL_REQUEST/merge:"
     git fetch origin +refs/pull/$TRAVIS_PULL_REQUEST/merge: &> /dev/null
-    echo "switching back to $TRAVIS_PULL_REQUEST_SLUG:$TRAVIS_PULL_REQUEST_BRANCH ($TRAVIS_COMMIT)"
+    echo "switching back to $TRAVIS_COMMIT"
     echo 'git checkout -qf FETCH_HEAD'
     git checkout -qf FETCH_HEAD &> /dev/null
 elif [[ $BUILDKITE == true ]]; then
