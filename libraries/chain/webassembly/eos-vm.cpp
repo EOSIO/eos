@@ -45,7 +45,7 @@ namespace {
 
 template<typename Impl>
 class eos_vm_instantiated_module : public wasm_instantiated_module_interface {
-      using backend_t = backend<apply_context, Impl>;
+   using backend_t = backend<apply_context, Impl>;
    public:
       
       eos_vm_instantiated_module(eos_vm_runtime<Impl>* runtime, std::unique_ptr<backend_t> mod) :
