@@ -810,6 +810,7 @@ namespace eosio {
       last_handshake_recv = handshake_message();
       last_handshake_sent = handshake_message();
       my_impl->sync_master->reset_lib_num(shared_from_this());
+      fc_ilog(logger, "closing ${a}, ${p}", ("a",peer_addr)("p",peer_name()));
       fc_dlog(logger, "canceling wait on ${p}", ("p",peer_name()));
       cancel_wait();
       if( read_delay_timer ) read_delay_timer->cancel();
