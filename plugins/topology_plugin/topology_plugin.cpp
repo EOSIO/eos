@@ -433,32 +433,39 @@ namespace eosio {
    void topology_plugin_impl::on_block_recv(link_id src, block_id_type blk_id, const signed_block_ptr sb) {
       controller &cc = chain_plug->chain();
       block_id_type head = cc.head_block_id();
-      account_name head_prod = cc.head_block_producer();
-      account_name pend_prod = cc.pending_block_producer();
-      if( sb->producer == head_prod ){
-         ++block_count;
-         if (block_count > max_produced) {
-            uint16_t overage = block_count - max_produced;
-            elog( "found producer ${hp} overproduced ${d} blocks", ("hp", head_prod)("d", overage));
-         }
-      }
-      else if( sb->producer == pend_prod ) {
-         if (block_count < max_produced) {
-            uint16_t deficit = max_produced - block_count;
-            elog( "found producer switched to ${pp} from ${hp} ${d} blocks too soon", ("pp", pend_prod)("hp", head_prod)("d",deficit));
-            producers[head_prod].forks.emplace_back(fork_descriptor({src,blk_id,block_count,deficit,0}));
-            if (producers[prev_producer].current.from_link != 0) {
-               producers[prev_producer].forks.push_back(producers[prev_producer].current);
-               producers[prev_producer].current.from_link = 0;
-               producers[prev_producer].forks.empty();
-               prev_producer = head_prod;
+      try {
+         account_name head_prod = cc.head_block_producer();
+         account_name pend_prod = cc.pending_block_producer();
+
+         if( sb->producer == head_prod ){
+            ++block_count;
+            if (block_count > max_produced) {
+               uint16_t overage = block_count - max_produced;
+               elog( "found producer ${hp} overproduced ${d} blocks", ("hp", head_prod)("d", overage));
             }
          }
-         block_count = 1;
+         else if( sb->producer == pend_prod ) {
+            if (block_count < max_produced) {
+               uint16_t deficit = max_produced - block_count;
+               elog( "found producer switched to ${pp} from ${hp} ${d} blocks too soon", ("pp", pend_prod)("hp", head_prod)("d",deficit));
+               producers[head_prod].forks.emplace_back(fork_descriptor({src,blk_id,block_count,deficit,0}));
+               if (producers[prev_producer].current.from_link != 0) {
+                  producers[prev_producer].forks.push_back(producers[prev_producer].current);
+                  producers[prev_producer].current.from_link = 0;
+                  producers[prev_producer].forks.empty();
+                  prev_producer = head_prod;
+               }
+            }
+            block_count = 1;
+         }
+         else if( sb->producer == prev_producer ) {
+            elog( "got a block from the previous producer after the switch ", ("pp",prev_producer) );
+         }
       }
-      else if( sb->producer == prev_producer ) {
-         elog( "got a block from the previous producer after the switch ", ("pp",prev_producer) );
+      catch (const fc::exception &ex) {
+         elog ("unable to process block : ${m}", ("m",ex.what()));
       }
+
    }
 
    //----------------------------------------------------------------------------------------
@@ -789,8 +796,8 @@ namespace eosio {
             df << "\n cannot resolve producer " << plist[pcount-1].producer_name << "\n";
          }
          else {
-            df << "\n| Producer Account | Location |     Id      | Hops | Forks Detected |\n";
-            df <<   "|------------------|----------|-------------|------|----------------|\n";
+            df << "\n| Producer Account | Location |     Id      | Hops |\n";
+            df <<   "|------------------|----------|-------------|------|\n";
             node_id prev_node_id = pnode->info.my_id;
             for( const auto &ap : plist) {
                pnode = my->find_node(ap.producer_name);
