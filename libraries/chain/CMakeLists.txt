@@ -58,6 +58,8 @@ add_library( eosio_chain
              webassembly/eos-vm-oc/memory.cpp
              webassembly/eos-vm-oc/config.cpp
              webassembly/eos-vm-oc/intrinsic.cpp
+             webassembly/eos-vm-oc/LLVMJIT.cpp
+             webassembly/eos-vm-oc/LLVMEmitIR.cpp
 
 #             get_config.cpp
 #
