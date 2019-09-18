@@ -20,8 +20,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-
-
 # This file comes from: https://github.com/conan-io/cmake-conan. Please refer
 # to this repository for issues and documentation.
 
