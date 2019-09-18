@@ -11,7 +11,9 @@ The `db_size_api_plugin` retrieves analytics about the blockchain.
 
 ## Usage
 
-[TODO]
+```console
+# Not available
+```
 
 ## Options
 
@@ -26,9 +28,12 @@ None
 
 ```sh
 # config.ini
-plugin = eosio::chain_plugin [functions] [options]
-plugin = eosio::http_plugin [options]
+plugin = eosio::chain_plugin
+[options]
+plugin = eosio::http_plugin
+[options]
 
-# nodeos startup params
-$ nodeos ... --plugin eosio::chain_plugin [functions] [options] --plugin eosio::http_plugin [options]
+# command-line
+$ nodeos ... --plugin eosio::chain_plugin [operations] [options]  \
+             --plugin eosio::http_plugin [options]
 ```

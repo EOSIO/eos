@@ -6,49 +6,44 @@ The `state_history_plugin` is useful for capturing historical data about the blo
 
 ## Usage
 
-The `state_history_plugin` options are specified on either `config.ini` or the command line:
-
 ```sh
 # config.ini
-plugin = eosio::state_history_plugin [options]
+plugin = eosio::state_history_plugin
+[options]
 
-# nodeos startup params
-$ nodeos ... --plugin eosio::state_history_plugin [options]
+# command-line
+$ nodeos ... --plugin eosio::state_history_plugin [operations] [options]
+```
+
+## Operations
+
+These can only be specified from the `nodeos` command-line:
+
+```console
+Command Line Options for eosio::state_history_plugin:
+
+  --delete-state-history                clear state history files
 ```
 
 ## Options
 
-[TODO: choose style: markdown table or nodeos output]
+These can be specified from both the `nodeos` command-line or the `config.ini` file:
 
-options                        | config.ini or command-line | description
--------------------------------|----------------------------|------------
-`--state-history-dir arg`      | both                       | optional; defaults to `"state-history"`
-`--trace-history`              | both                       | enable to collect transaction and action traces
-`--chain-state-history`        | both                       | enable to collect state deltas
-`--state-history-endpoint arg` | both                       | optional; defaults to `127.0.0.1:8080`<br>the endpoint upon which to listen for incoming connections.<br>Caution: only expose this port to your internal network.
-`--trace-history-debug-mode`   | both                       | enable debug mode for trace history
-`--delete-state-history`       | command-line only          | clear state history files
+```console
+Config Options for eosio::state_history_plugin:
 
-```sh
-# config options for eosio::state_history_plugin
-
-  --state-history-dir arg       (default="state-history")
-                                the location of the state-history 
-                                directory (absolute path or relative to
-                                application data dir)
-  --trace-history               enable trace history
-  --chain-state-history         enable chain state history
-  --state-history-endpoint arg  (default=127.0.0.1:8080)
-                                the endpoint upon which to listen for 
-                                incoming connections. Caution: only 
-                                expose this port to your internal 
-                                network.
-  --trace-history-debug-mode    enable debug mode for trace history
-
-# command line options for eosio::state_history_plugin
-
-  --delete-state-history        clear state history files
-
+  --state-history-dir arg (="state-history")
+                                        the location of the state-history 
+                                        directory (absolute path or relative to
+                                        application data dir)
+  --trace-history                       enable trace history
+  --chain-state-history                 enable chain state history
+  --state-history-endpoint arg (=127.0.0.1:8080)
+                                        the endpoint upon which to listen for 
+                                        incoming connections. Caution: only 
+                                        expose this port to your internal 
+                                        network.
+  --trace-history-debug-mode            enable debug mode for trace history
 ```
 
 ## Examples
