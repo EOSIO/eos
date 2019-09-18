@@ -1,12 +1,12 @@
 #! /usr/bin/env python3
 
+import helper
 import json
 import requests
 import select
 import shutil
 import sys
 
-from helper import get_transaction_id
 from typing import List, Optional, Union
 
 
@@ -183,12 +183,13 @@ class Print():
         func(json.dumps(data, indent=4, sort_keys=False))
 
     def transaction_id(self, response: requests.Response) -> None:
-        tid = get_transaction_id(response)
+        tid = helper.extract(response, key="response", fallback=None)
         if tid:
             self.green("{:100}".format("<Transaction ID> {}".format(tid)))
         else:
             self.yellow("{:100}".format("Warning: No transaction ID returned."))
 
+    # TODO: change API, pass tid
     def response_in_short(self, response: requests.Response) -> None:
         if response.ok:
             self.green(response, ' ' * 100)
@@ -197,11 +198,13 @@ class Print():
             self.json(response.text)
         self.transaction_id(response)
 
+    # TODO: change API, pass tid
     def response_in_full(self, response: requests.Response) -> None:
         self.green(response) if response.ok else self.red(response)
         self.json(response.text)
         self.transaction_id(response)
 
+    # TODO: change API, pass tid
     def response_with_prompt(self, response: requests.Response, timeout=1) -> None:
         if response.ok:
             self.green(response, ' ' * 100)

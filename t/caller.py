@@ -519,7 +519,7 @@ def main():
     caller = LauncherCaller()
     caller.print.white(">>> Bootstrapping ...")
     # caller.boostrap(producer_nodes=3, unstarted_nodes=2, total_nodes=6, total_producers=5, per_node_producers=2)
-    caller.boostrap(producer_nodes=1, unstarted_nodes=0, total_nodes=2, total_producers=1, per_node_producers=1)
+    caller.boostrap(producer_nodes=4, unstarted_nodes=0, total_nodes=4, total_producers=4, per_node_producers=1)
 
 if __name__ == '__main__':
     main()
