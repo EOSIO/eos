@@ -7,6 +7,7 @@
 #include <map>
 #include <string>
 #include <vector>
+#include <thread>
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/path.hpp>
 #include <boost/program_options.hpp>
@@ -421,7 +422,7 @@ public:
          bfs::remove_all(bfs::path(_config.data_dir) / cluster_to_string(cluster_id));
       }
 
-      fc::variant call(int cluster_id, int node_id, std::string func, fc::variant args = fc::variant()) {
+      fc::variant call(int cluster_id, int node_id, std::string func, fc::variant args = fc::variant(), bool silence = false) {
          if (_running_clusters.find(cluster_id) == _running_clusters.end()) {
             throw std::runtime_error("cluster is not running");
          }
@@ -438,14 +439,14 @@ public:
             client::http::http_context context = client::http::create_http_context();
             std::vector<std::string> headers;
             auto sp = std::make_unique<client::http::connection_param>(context, purl, false, headers);
-            return client::http::do_http_call(*sp, args, _config.print_http_request, _config.print_http_response );
+            return client::http::do_http_call(*sp, args, silence ? false : _config.print_http_request, silence ? false : _config.print_http_response );
          }
          std::string err = "failed to " + func + ", nodeos is not running";
          throw std::runtime_error(err.c_str());
       }
 
-      fc::variant get_info(int cluster_id, int node_id) {
-         return call(cluster_id, node_id, "/v1/chain/get_info");
+      fc::variant get_info(int cluster_id, int node_id, bool silence = false) {
+         return call(cluster_id, node_id, "/v1/chain/get_info", fc::variant(), silence);
       }
 
       fc::variant get_account(launcher_service::get_account_param param) {
@@ -855,33 +856,62 @@ fc::variant launcher_service_plugin::get_cluster_info(launcher_service::cluster_
    if (_my->_running_clusters.find(param.cluster_id) == _my->_running_clusters.end()) {
       throw std::runtime_error("cluster is not running");
    }
-   bool print_request = false;
-   bool print_response = false;
-   std::map<int, fc::variant> res;
-   std::string errstr;
-   bool haserror = false;
-   int okcount = 0;
+   std::map<int, fc::variant> result;
+   bool haserror = false, hasok = false;
+   size_t nodecount = _my->_running_clusters[param.cluster_id].nodes.size();
+   std::vector<std::thread> threads;
+   std::vector<std::pair<int, fc::variant> > thread_result;
+   std::vector<std::string> errstrs;
+   thread_result.resize(nodecount);
+   errstrs.resize(nodecount);
+   threads.reserve(nodecount);
+   int k = 0;
+   bool set_errstr = true;
    for (auto &itr : _my->_running_clusters[param.cluster_id].nodes) {
       int id = itr.second.id;
       int port = itr.second.http_port;
+      thread_result[k].first = -1;
       if (port) {
-         try {
-            res[id] = _my->get_info(param.cluster_id, id);
-            ++okcount;
-         } catch (boost::system::system_error& e) {
-            if (!haserror) {
+         threads.push_back(std::thread([this, k, cid = param.cluster_id, id, port, &thread_result, &hasok, &haserror, &errstrs]() {
+            thread_result[k].first = id;
+            try {
+               thread_result[k].second = _my->get_info(cid, id, true);
+               hasok = true;
+            } catch (boost::system::system_error& e) {
                haserror = true;
-               errstr = e.what();
+               errstrs[k] = e.what();
+               std::string url = "http://" + _my->_config.host_name + ":" + _my->itoa(port);
+               thread_result[k].second = fc::mutable_variant_object("error", e.what())("url", url);
+            } catch (fc::exception & e) {
+               haserror = true;
+               errstrs[k] = e.what();
+               std::string url = "http://" + _my->_config.host_name + ":" + _my->itoa(port);
+               thread_result[k].second = fc::mutable_variant_object("error", e.what())("url", url);
+            }  catch (...) {
+               haserror = true;
+               errstrs[k] = "unknown error";
+               std::string url = "http://" + _my->_config.host_name + ":" + _my->itoa(port);
+               thread_result[k].second = fc::mutable_variant_object("error", "unknown error")("url", url);
             }
-            std::string url = "http://" + _my->_config.host_name + ":" + _my->itoa(port);
-            res[id] = fc::mutable_variant_object("error", e.what())("url", url);
-         }
+         }));
+      }
+      ++k;
+   }
+   for (auto &t: threads) {
+      t.join();
+   }
+   for (int i = 0; i < k; ++i) {
+      if (thread_result[i].first > 0) {
+         result[thread_result[i].first] = std::move(thread_result[i].second);
       }
    }
-   if (!okcount && haserror) {
-      throw std::runtime_error(errstr);
+   if (!hasok && haserror) {
+      for (auto &err: errstrs) {
+         if (err.length())
+            throw std::runtime_error(err);
+      }
    }
-   return fc::mutable_variant_object("result", res);
+   return fc::mutable_variant_object("result", result);
 }
 
 fc::variant launcher_service_plugin::get_cluster_running_state(launcher_service::cluster_id_param param)
