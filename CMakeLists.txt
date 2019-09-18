@@ -69,10 +69,19 @@ endif()
 if(UNIX)
   if(APPLE)
     set(Intl_LIBRARY ${CONAN_LIB_DIRS_GETTEXT}/libgnuintl.dylib)
-    set(CMAKE_INSTALL_RPATH "@executable_path/../lib")
+    set(CMAKE_INSTALL_RPATH 
+      "@executable_path/../lib"
+      "@executable_path"
+      "${CMAKE_INSTALL_PREFIX}/lib"
+    )
   else()
     set(Intl_LIBRARY ${CONAN_LIB_DIRS_GETTEXT}/libgnuintl.so)
-    set(CMAKE_INSTALL_RPATH "$ORIGIN/../lib")
+    set(CMAKE_INSTALL_RPATH
+      "$ORIGIN/../lib"
+      "@executable_path/../lib"
+      "@executable_path"
+      "${CMAKE_INSTALL_PREFIX}/lib"
+    )
   endif()
 endif()
 set(CMAKE_BUILD_WITH_INSTALL_RPATH ON)
