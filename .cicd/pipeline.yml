@@ -4,6 +4,7 @@ steps:
   - label: ":pipeline: Generate Pipeline Steps"
     command:
       - "./.cicd/generate-pipeline.sh > generated-pipeline.yml"
+      - "cat generated-pipeline.yml"
       - "buildkite-agent pipeline upload < generated-pipeline.yml"
       - "buildkite-agent artifact upload generated-pipeline.yml"
     agents:
