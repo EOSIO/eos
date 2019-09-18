@@ -48,8 +48,10 @@ Config Options for eosio::state_history_plugin:
 
 ## Examples
 
-* [`js-example`](examples/js-example.md)
-* [`history-tools`](examples/history-tools/README.md)
+* [JavaScript Example](examples/js-example.md)
+  * [source code] (TODO: add)
+* [history-tools](https://eosio.github.io/history-tools/)
+  * [source code](https://github.com/EOSIO/history-tools/)
 
 ## Dependencies
 
