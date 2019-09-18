@@ -13,4 +13,3 @@ export DETERMINED_HASH=$(echo -n ${HASHES[@]} | sha1sum | awk '{ print $1 }')
 ( [[ $FILE_NAME =~ 'macos' ]] && [[ $PINNED == false || $UNPINNED == true ]] ) && FILE_NAME="${FILE_NAME}-unpinned"
 export HASHED_IMAGE_TAG="eos-${FILE_NAME}-${DETERMINED_HASH}"
 export FULL_TAG="eosio/producer:$HASHED_IMAGE_TAG"
-echo $FULL_TAG
