@@ -61,7 +61,7 @@ Config Options for eosio::state_history_plugin:
 # config.ini
 plugin = eosio::chain_plugin --disable-replay-opts
 
-# nodeos startup params
+# command-line
 $ nodeos ... --plugin eosio::chain_plugin --disable-replay-opts
 ```
 
