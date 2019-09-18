@@ -48,7 +48,7 @@ else # Linux
         COMMANDS="ccache -s && $BUILD_COMMANDS"
     fi
     COMMANDS="$PRE_COMMANDS && $COMMANDS"
-    if [[ $DOCKER == true ]]; then # Support Base Image Creation
+    if [[ $DOCKER == true ]]; then # Only run commands when we're already in docker (base image creation)
         "$COMMANDS"
     else
         echo "$ docker run $ARGS $(buildkite-intrinsics) $FULL_TAG bash -c \"$COMMANDS\""
