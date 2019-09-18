@@ -1,4 +1,4 @@
-#include <eosio/ethropsten_swap_plugin/my_web3.hpp>
+#include <eosio/eth_swap_plugin/my_web3.hpp>
 
 
 my_web3::my_web3(const std::string& eth_address) :

@@ -2,8 +2,8 @@
  *  @file
  *  @copyright defined in eos/LICENSE
  */
-#include <eosio/ethropsten_swap_plugin/ethropsten_swap_plugin.hpp>
-#include <eosio/ethropsten_swap_plugin/my_web3.hpp>
+#include <eosio/eth_swap_plugin/eth_swap_plugin.hpp>
+#include <eosio/eth_swap_plugin/my_web3.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
 #include <eosio/chain/wast_to_wasm.hpp>
 
@@ -39,11 +39,11 @@
 
 
 namespace eosio {
-   static appbase::abstract_plugin& _ethropsten_swap_plugin = app().register_plugin<ethropsten_swap_plugin>();
+   static appbase::abstract_plugin& _eth_swap_plugin = app().register_plugin<eth_swap_plugin>();
 
    using namespace eosio::chain;
 
-class ethropsten_swap_plugin_impl {
+class eth_swap_plugin_impl {
   public:
     fc::crypto::private_key    _swap_signing_key;
     name                       _swap_signing_account;
@@ -68,7 +68,7 @@ class ethropsten_swap_plugin_impl {
               using websocketpp::lib::placeholders::_1;
               using websocketpp::lib::placeholders::_2;
               using websocketpp::lib::bind;
-              m_client.set_message_handler(bind(&ethropsten_swap_plugin_impl::on_swap_request,this,&m_client,_1,_2));
+              m_client.set_message_handler(bind(&eth_swap_plugin_impl::on_swap_request,this,&m_client,_1,_2));
               m_client.set_tls_init_handler([](websocketpp::connection_hdl){
                   return websocketpp::lib::make_shared<boost::asio::ssl::context>(boost::asio::ssl::context::sslv23);
               });
@@ -242,10 +242,10 @@ class ethropsten_swap_plugin_impl {
     }
 };
 
-ethropsten_swap_plugin::ethropsten_swap_plugin():my(new ethropsten_swap_plugin_impl()){}
-ethropsten_swap_plugin::~ethropsten_swap_plugin(){}
+eth_swap_plugin::eth_swap_plugin():my(new eth_swap_plugin_impl()){}
+eth_swap_plugin::~eth_swap_plugin(){}
 
-void ethropsten_swap_plugin::set_program_options(options_description&, options_description& cfg) {
+void eth_swap_plugin::set_program_options(options_description&, options_description& cfg) {
   cfg.add_options()
         ("eth-wss-provider", bpo::value<std::string>(),
          "Ethereum websocket provider. For example wss://ropsten.infura.io/ws/v3/<infura_id>")
@@ -256,7 +256,7 @@ void ethropsten_swap_plugin::set_program_options(options_description&, options_d
         ;
 }
 
-void ethropsten_swap_plugin::plugin_initialize(const variables_map& options) {
+void eth_swap_plugin::plugin_initialize(const variables_map& options) {
     try {
       std::string swap_auth = options.at( "swap-authority" ).as<std::string>();
 
@@ -280,7 +280,7 @@ void ethropsten_swap_plugin::plugin_initialize(const variables_map& options) {
     } FC_LOG_AND_RETHROW()
 }
 
-void ethropsten_swap_plugin::plugin_startup() {
+void eth_swap_plugin::plugin_startup() {
   ilog("Ethropsten swap plugin started");
   try {
     my_web3 my_w3(my->_eth_wss_provider);
@@ -296,7 +296,7 @@ void ethropsten_swap_plugin::plugin_startup() {
   t2.detach();
 }
 
-void ethropsten_swap_plugin::plugin_shutdown() {
+void eth_swap_plugin::plugin_shutdown() {
 }
 
 std::string hex_to_string(const std::string& input) {

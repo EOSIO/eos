@@ -144,10 +144,10 @@ class ConnectionClosedException : public std::exception
 /**
  *  This is a template plugin, intended to serve as a starting point for making new plugins
  */
-class ethropsten_swap_plugin : public appbase::plugin<ethropsten_swap_plugin> {
+class eth_swap_plugin : public appbase::plugin<eth_swap_plugin> {
 public:
-   ethropsten_swap_plugin();
-   virtual ~ethropsten_swap_plugin();
+   eth_swap_plugin();
+   virtual ~eth_swap_plugin();
 
    APPBASE_PLUGIN_REQUIRES()
    virtual void set_program_options(options_description&, options_description& cfg) override;
@@ -157,7 +157,7 @@ public:
    void plugin_shutdown();
 
 private:
-   std::unique_ptr<class ethropsten_swap_plugin_impl> my;
+   std::unique_ptr<class eth_swap_plugin_impl> my;
 };
 
 }
