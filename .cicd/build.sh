@@ -8,6 +8,7 @@ if [[ $(uname) == 'Darwin' ]]; then
     [[ $TRAVIS == true ]] && export PINNED=false && ccache -s && CMAKE_EXTRAS="-DCMAKE_CXX_COMPILER_LAUNCHER=ccache" && ./$CICD_DIR/platforms/macos-10.14.sh
     ( [[ ! $PINNED == false || $UNPINNED == true ]] ) && CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_TOOLCHAIN_FILE=$HELPERS_DIR/clang.make"
     cd $BUILD_DIR
+    export SDKROOT=$(xcrun --show-sdk-path) # Fixes fatal error: 'string.h' file not found : https://github.com/conan-io/cmake-conan/issues/159#issuecomment-519486541
     cmake $CMAKE_EXTRAS ..
     make -j$JOBS
 else # Linux
