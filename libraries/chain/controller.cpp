@@ -3123,6 +3123,38 @@ fc::optional<uint64_t> controller::convert_exception_to_error_code( const fc::ex
    return e_ptr->error_code;
 }
 
+void controller::clear_proposed_and_pending_producer_schedule() {
+   ilog("Clear proposed and pending producer schedule");
+   mutable_db().modify( db().get<global_property_object>(), [&]( auto& gp ) {
+      gp.proposed_schedule_block_num = {};
+      gp.proposed_schedule.clear();
+   });
+   my->head->pending_schedule.schedule_lib_num = 0;
+   my->head->pending_schedule.schedule_hash = {};
+   my->head->pending_schedule.schedule = {};
+}
+
+void controller::replace_producer_keys( const public_key_type& key ) {
+   clear_proposed_and_pending_producer_schedule();
+   ilog("Replace producer keys with ${k}", ("k", key));
+   for (auto& prod: my->head->active_schedule.producers ) {
+      ilog("${n}", ("n", prod.producer_name));
+      prod.block_signing_key = key;
+      auto* owner = db().find<permission_object, by_owner>(boost::make_tuple(prod.producer_name, N(owner)));
+      if (owner) {
+         mutable_db().modify(*owner, [&](auto& p) {
+            p.auth = authority(key);
+         });
+      }
+      auto* active = db().find<permission_object, by_owner>(boost::make_tuple(prod.producer_name, N(active)));
+      if (active) {
+         mutable_db().modify(*active, [&](auto& p) {
+            p.auth = authority(key);
+         });
+      }
+   }
+}
+
 /// Protocol feature activation handlers:
 
 template<>

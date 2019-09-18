@@ -327,6 +327,9 @@ namespace eosio { namespace chain {
             return pretty_output;
          }
 
+         void clear_proposed_and_pending_producer_schedule();
+         void replace_producer_keys( const public_key_type& key );
+
       private:
          friend class apply_context;
          friend class transaction_context;
