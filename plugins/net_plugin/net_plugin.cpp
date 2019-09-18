@@ -1611,8 +1611,12 @@ namespace eosio {
          c->syncing = true;
          app().post( priority::medium, [chain_plug = my_impl->chain_plug, c,
                                         msg_head_num = msg.head_num, msg_head_id = msg.head_id]() {
-            controller& cc = chain_plug->chain();
-            if( cc.get_block_id_for_num( msg_head_num ) != msg_head_id ) {
+            bool on_fork = true;
+            try {
+               controller& cc = chain_plug->chain();
+               on_fork = cc.get_block_id_for_num( msg_head_num ) != msg_head_id;
+            } catch( ... ) {}
+            if( on_fork ) {
                c->strand.post( [c]() {
                   request_message req;
                   req.req_blocks.mode = catch_up;
