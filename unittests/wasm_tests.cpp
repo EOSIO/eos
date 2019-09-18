@@ -1868,7 +1868,6 @@ BOOST_FIXTURE_TEST_CASE( code_size, TESTER )  try {
       code_function_body.insert(code_function_body.end(), function_body.begin(), function_body.end());
    }
 
-
    std::vector<U8> code;
    code.insert(code.end(), code_start.begin(), code_start.end());
    code.insert(code.end(), code_function_body.begin(), code_function_body.end());
