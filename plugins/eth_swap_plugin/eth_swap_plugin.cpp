@@ -253,6 +253,20 @@ void eth_swap_plugin::set_program_options(options_description&, options_descript
          "Account name and permission to authorize init swap actions. For example blockproducer1@active")
         ("swap-signing-key", bpo::value<std::string>(),
          "A private key to sign init swap actions")
+
+         ("eth_swap_contract_address", bpo::value<std::string>()->default_value(eth_swap_contract_address), "")
+         ("eth_swap_request_event", bpo::value<std::string>()->default_value(eth_swap_request_event), "")
+         ("return_chain_id", bpo::value<std::string>()->default_value(return_chain_id), "")
+         ("chain_id", bpo::value<std::string>()->default_value(chain_id), "")
+
+         ("eth_events_window_length", bpo::value<uint32_t>()->default_value(eth_events_window_length), "")
+         ("blocks_per_filter", bpo::value<uint32_t>()->default_value(blocks_per_filter), "")
+         ("check_tx_confirmations_times", bpo::value<uint32_t>()->default_value(check_tx_confirmations_times), "")
+         ("min_tx_confirmations", bpo::value<uint32_t>()->default_value(min_tx_confirmations), "")
+
+         ("init_swap_expiration_time", bpo::value<uint32_t>()->default_value(init_swap_expiration_time), "")
+         ("retry_push_tx_time", bpo::value<uint32_t>()->default_value(retry_push_tx_time), "")
+         ("start_monitor_delay", bpo::value<uint32_t>()->default_value(start_monitor_delay), "")
         ;
 }
 
@@ -277,6 +291,22 @@ void eth_swap_plugin::plugin_initialize(const variables_map& options) {
       my->_eth_wss_provider = options.at( "eth-wss-provider" ).as<std::string>();
       if(my->_eth_wss_provider.substr(0, prefix.size()) != prefix)
         throw InvalidWssLinkException("Invalid ethereum node connection link. Should start with " + prefix);
+
+      eth_swap_contract_address = options.at( "eth_swap_contract_address" ).as<std::string>();
+      eth_swap_request_event    = options.at( "eth_swap_request_event" ).as<std::string>();
+      return_chain_id           = options.at( "return_chain_id" ).as<std::string>();
+      chain_id                  = options.at( "chain_id" ).as<std::string>();
+
+      eth_events_window_length = options.at( "eth_events_window_length" ).as<uint32_t>();
+      blocks_per_filter = options.at( "blocks_per_filter" ).as<uint32_t>();
+
+      check_tx_confirmations_times = options.at( "check_tx_confirmations_times" ).as<uint32_t>();
+      min_tx_confirmations = options.at( "min_tx_confirmations" ).as<uint32_t>();
+
+      init_swap_expiration_time = options.at( "init_swap_expiration_time" ).as<uint32_t>();
+      retry_push_tx_time = options.at( "retry_push_tx_time" ).as<uint32_t>();
+
+      start_monitor_delay = options.at( "start_monitor_delay" ).as<uint32_t>();
     } FC_LOG_AND_RETHROW()
 }
 
