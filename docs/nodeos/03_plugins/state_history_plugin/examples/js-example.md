@@ -5,10 +5,10 @@
 Install these dependencies:
 
 ```sh
-$ npm install node-fetch zlib commander ws eosjs@20.0.0-beta3
+$ npm install node-fetch zlib commander ws eosjs
 ```
 
-This connects to the plugin, receives the protocol ABI, sends a `get_status_request_v0`, and displays the result:
+The following code sample connects to the plugin, receives the protocol ABI, sends a `get_status_request_v0`, and displays the result:
 
 ```js
 const { TextDecoder, TextEncoder } = require('util');
