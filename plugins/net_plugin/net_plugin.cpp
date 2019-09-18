@@ -1502,7 +1502,11 @@ namespace eosio {
             c->enqueue( note );
          }
          c->syncing = true;
-         if( cc.get_block_id_for_num( msg.head_num ) != msg.head_id ) {
+         bool on_fork = true;
+         try {
+            on_fork = cc.get_block_id_for_num( msg.head_num ) != msg.head_id;
+         } catch( ... ) {}
+         if( on_fork ) {
             request_message req;
             req.req_blocks.mode = catch_up;
             req.req_trx.mode = none;
