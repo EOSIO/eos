@@ -68,35 +68,49 @@ namespace eosio {
 
 using namespace appbase;
 
-constexpr int32_t block_interval_ms = 500;
+constexpr int32_t block_interval_ms = 500;  // eosio block interval constant 0.5s
 constexpr int64_t block_timestamp_epoch = 946684800000ll;  // epoch is year 2000
 typedef eosio::chain::block_timestamp<block_interval_ms, block_timestamp_epoch> epoch_block_timestamp;
 
 const char* rem_token_id              = "REM";
 const char* eth_swap_contract_address = "0x9fB8A18fF402680b47387AE0F4e38229EC64f098";
-const char* eth_swap_request_event    = "0x0e918020302bf93eb479360905c1535ba1dbc8aeb6d20eff433206bf4c514e13";
-const char* return_chain_id           = "ethropsten";
+const char* eth_swap_request_event    = "0x0e918020302bf93eb479360905c1535ba1dbc8aeb6d20eff433206bf4c514e13";  // request swap event id in ethereum swap contract
+const char* return_chain_id           = "ethropsten";  // return chain identifier if case of swap cancellation
 const char* chain_id                  = "93ece941df27a5787a405383a66a7c26d04e80182adf504365710331ac0625a7";
 
-const size_t request_swap_hex_data_length = 512;
+const size_t request_swap_hex_data_length = 512;  // payload length of request swap event in hex symbols
 
-const uint32_t wait_for_eth_node = 20;
+const uint32_t wait_for_eth_node = 20;  // amount of seconds to sleep before reconnection if connection to ethereum node closes
 
+/*
+  amount of last blocks in ethereum to get request swap events
+  1_000_000 blocks in ethereum is roughly 0.5 years
+*/
 const uint64_t eth_events_window_length = 1000000;
+/*
+  amount of blocks per one filter
+  infura doesn't support long filters so need to split to several filters
+*/
 const uint64_t blocks_per_filter = 200000;
 
-const size_t   wait_for_tx_confirmation = 30;
+const size_t   wait_for_tx_confirmation = 30;  // check if request swap transaction on ethereum is confirmed every wait_for_tx_confirmation seconds
+/*
+  maximum amount of checks for transaction confirmations of ethereum
+  if transaction doesn't have min_tx_confirmations
+*/
 const size_t   check_tx_confirmations_times = 5;
-const uint64_t min_tx_confirmations = 3;
+const uint64_t min_tx_confirmations = 3;  // minimum required request swap transaction confirmations on ethereum to init swap on remprotocol
 
-const size_t init_swap_expiration_time = 300;
+const size_t init_swap_expiration_time = 300;  // init swap transaction expiration time
+/*
+  if transaction didn't make it to blockchain then retry to push it after <retry_push_tx_time> seconds
+*/
 const size_t retry_push_tx_time = init_swap_expiration_time + 60;
-const size_t wait_for_accept_tx = 1;
+const size_t wait_for_accept_tx = 1;  // amount of seconds to wait before checking if transaction is included to blockchain
 
-const uint32_t start_monitor_delay = 15;
-const uint32_t init_prev_swaps_delay = 30;
+const uint32_t start_monitor_delay = 15;  // amount of seconds to wait before running swap plugin functionality
 
-const uint32_t wait_for_wss_connection_time = 2;
+const uint32_t wait_for_wss_connection_time = 2;  // amount of seconds to wait for establishing websocket connection with ethereum node
 
 struct swap_event_data {
     std::string   txid;
