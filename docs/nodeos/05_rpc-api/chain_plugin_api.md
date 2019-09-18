@@ -1,1 +1,1 @@
-[shortcut to ../03_plugins/chain_plugin/api]
+[shortcut to plugins/chain_plugin/api]
