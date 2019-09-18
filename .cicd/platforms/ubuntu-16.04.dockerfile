@@ -60,8 +60,8 @@ RUN apt-get update && \
 #     cd / && \
 #     rm -rf /llvm
 # Install Conan Dependencies
-RUN git clone https://github.com/EOSIO/eos.git -b ${GITHUB_COMMIT_ID} \
-    && cd eos \
+RUN git clone https://github.com/EOSIO/eos.git -b ${GITHUB_COMMIT_ID} /workdir \
+    && cd /workdir \
     && git submodule update --init --recursive \
     && ./.cicd/build.sh \
     && cd .. && rm -rf eos
