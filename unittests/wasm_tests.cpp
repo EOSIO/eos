@@ -2147,6 +2147,7 @@ BOOST_FIXTURE_TEST_CASE( negative_memory_grow, TESTER ) try {
    set_code("negmemgrow"_n, negative_memory_grow_wast);
    produce_blocks(1);
 
+   {
    signed_transaction trx;
    action act;
    act.account = "negmemgrow"_n;
@@ -2158,6 +2159,22 @@ BOOST_FIXTURE_TEST_CASE( negative_memory_grow, TESTER ) try {
    trx.sign(get_private_key( "negmemgrow"_n, "active" ), control->get_chain_id());
    push_transaction(trx);
    produce_blocks(1);
+   }
+
+   set_code("negmemgrow"_n, negative_memory_grow_trap_wast);
+   produce_block();
+   {
+   signed_transaction trx;
+   action act;
+   act.account = "negmemgrow"_n;
+   act.name = name();
+   act.authorization = vector<permission_level>{{"negmemgrow"_n,config::active_name}};
+   trx.actions.push_back(act);
+
+   set_transaction_headers(trx);
+   trx.sign(get_private_key( "negmemgrow"_n, "active" ), control->get_chain_id());
+   BOOST_CHECK_THROW(push_transaction(trx), eosio::chain::wasm_execution_error);
+   }
 
 } FC_LOG_AND_RETHROW()
 

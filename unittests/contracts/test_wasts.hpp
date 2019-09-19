@@ -947,14 +947,47 @@ static const char exit_in_start_wast[] = R"=====(
 static const char negative_memory_grow_wast[] = R"=====(
 (module
  (memory 1)
- (func (;0;) (param i64 i64 i64)
-  (drop (grow_memory (i32.const 1)))
-  (grow_memory (i32.const -1))
-  (i32.const -1)
-  (i32.ne)
-  (br_if 0)
-  (unreachable)
+ (func (export "apply") (param i64 i64 i64)
+  (block
+   (drop (grow_memory (i32.const 1)))
+   (i32.eq (grow_memory (i32.const -1)) (i32.const 2))
+   (br_if 0)
+   (unreachable)
+  )
+  (block
+   (drop (grow_memory (i32.const 2)))
+   (i32.eq (grow_memory (i32.const -3)) (i32.const 3))
+   (br_if 0)
+   (unreachable)
+  )
+  (block
+   (drop (grow_memory (i32.const 1)))
+   (i32.store (i32.const 0) (i32.const -1))
+   (i32.store (i32.const 65532) (i32.const -1))
+   (grow_memory (i32.const -1))
+   (grow_memory (i32.const 1))
+   (i32.and (i32.eq (i32.load (i32.const 0)) (i32.const 0))
+            (i32.eq (i32.load (i32.const 65532)) (i32.const 0)))
+   (br_if 0)
+   (unreachable)
+  )
+  (block
+   (i32.eq (grow_memory (i32.const -2)) (i32.const -1))
+   (br_if 0)
+   (unreachable)
+  )
  )
- (export "apply" (func 0))
+)
+)=====";
+
+static const char negative_memory_grow_trap_wast[] = R"=====(
+(module
+ (memory 1)
+ (func (export "apply") (param i64 i64 i64)
+  (block
+   (drop (grow_memory (i32.const -1)))
+   (drop (i32.load (i32.const 0)))
+  )
+ )
 )
 )=====";
