@@ -15,7 +15,7 @@ if [[ "$(uname)" == 'Darwin' ]]; then
     fi
     [[ ! "$PINNED" == 'false' || "$UNPINNED" == 'true' ]] && CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_TOOLCHAIN_FILE=$HELPERS_DIR/clang.make"
     cd $BUILD_DIR
-    echo "cmake $CMAKE_EXTRAS"
+    echo "cmake $CMAKE_EXTRAS .."
     cmake $CMAKE_EXTRAS ..
     echo "make -j$JOBS"
     make -j$JOBS
