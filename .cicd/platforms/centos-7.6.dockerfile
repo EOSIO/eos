@@ -2,12 +2,13 @@ FROM centos:7.6.1810
 ENV VERSION 1
 # install dependencies.
 RUN yum update -y && \
+    yum install -y epel-release && \
     yum --enablerepo=extras install -y centos-release-scl && \
     yum --enablerepo=extras install -y devtoolset-8 && \
     yum --enablerepo=extras install -y which git autoconf automake libtool make bzip2 doxygen \
     graphviz bzip2-devel openssl-devel gmp-devel ocaml libicu-devel \
     python python-devel rh-python36 gettext-devel file libusbx-devel \
-    libcurl-devel patch
+    libcurl-devel patch vim-common jq
 # build cmake.
 RUN curl -LO https://cmake.org/files/v3.13/cmake-3.13.2.tar.gz && \
     source /opt/rh/devtoolset-8/enable && \
@@ -40,12 +41,12 @@ RUN git clone --single-branch --branch release_80 https://git.llvm.org/git/llvm.
     cd / && \
     rm -rf /clang8
 COPY ./.cicd/helpers/clang.make /tmp/clang.cmake
-# build llvm
-RUN git clone --depth 1 --single-branch --branch release_40 https://github.com/llvm-mirror/llvm.git llvm && \
+# build llvm8
+RUN git clone --depth 1 --single-branch --branch release_80 https://github.com/llvm-mirror/llvm.git llvm && \
     cd llvm && \
     mkdir build && \
     cd build && \
-    cmake -G 'Unix Makefiles' -DLLVM_TARGETS_TO_BUILD=host -DLLVM_BUILD_TOOLS=false -DLLVM_ENABLE_RTTI=1 -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_TOOLCHAIN_FILE='/tmp/clang.cmake' .. && \
+    cmake -G 'Unix Makefiles' -DLLVM_TARGETS_TO_BUILD=host -DLLVM_BUILD_TOOLS=false -DLLVM_ENABLE_RTTI=1 -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_TOOLCHAIN_FILE='/tmp/clang.cmake' -DCMAKE_EXE_LINKER_FLAGS=-pthread -DCMAKE_SHARED_LINKER_FLAGS=-pthread .. && \
     make -j$(nproc) && \
     make install && \
     cd / && \

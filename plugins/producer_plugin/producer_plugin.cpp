@@ -866,6 +866,7 @@ void producer_plugin::plugin_startup()
 { try {
    handle_sighup(); // Sets loggers
 
+   try {
    ilog("producer plugin:  plugin_startup() begin");
 
    chain::controller& chain = my->chain_plug->chain();
@@ -901,6 +902,11 @@ void producer_plugin::plugin_startup()
    my->schedule_production_loop();
 
    ilog("producer plugin:  plugin_startup() end");
+   } catch( ... ) {
+      // always call plugin_shutdown, even on exception
+      plugin_shutdown();
+      throw;
+   }
 } FC_CAPTURE_AND_RETHROW() }
 
 void producer_plugin::plugin_shutdown() {
@@ -913,9 +919,8 @@ void producer_plugin::plugin_shutdown() {
    if( my->_thread_pool ) {
       my->_thread_pool->stop();
    }
-   my->_accepted_block_connection.reset();
-   my->_accepted_block_header_connection.reset();
-   my->_irreversible_block_connection.reset();
+
+   app().post( 0, [me = my](){} ); // keep my pointer alive until queue is drained
 }
 
 void producer_plugin::handle_sighup() {

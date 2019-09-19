@@ -1611,8 +1611,12 @@ namespace eosio {
          c->syncing = true;
          app().post( priority::medium, [chain_plug = my_impl->chain_plug, c,
                                         msg_head_num = msg.head_num, msg_head_id = msg.head_id]() {
-            controller& cc = chain_plug->chain();
-            if( cc.get_block_id_for_num( msg_head_num ) != msg_head_id ) {
+            bool on_fork = true;
+            try {
+               controller& cc = chain_plug->chain();
+               on_fork = cc.get_block_id_for_num( msg_head_num ) != msg_head_id;
+            } catch( ... ) {}
+            if( on_fork ) {
                c->strand.post( [c]() {
                   request_message req;
                   req.req_blocks.mode = catch_up;
@@ -3302,6 +3306,7 @@ namespace eosio {
 
    void net_plugin::plugin_startup() {
       handle_sighup();
+      try {
 
       fc_ilog( logger, "my node_id is ${id}", ("id", my->node_id ));
 
@@ -3310,6 +3315,13 @@ namespace eosio {
       my->thread_pool.emplace( "net", my->thread_pool_size );
 
       my->dispatcher.reset( new dispatch_manager( my_impl->thread_pool->get_executor() ) );
+
+      chain::controller&cc = my->chain_plug->chain();
+      my->db_read_mode = cc.get_read_mode();
+      if( my->db_read_mode == chain::db_read_mode::READ_ONLY && my->p2p_address.size() ) {
+         my->p2p_address.clear();
+         fc_wlog( logger, "node in read-only mode disabling incoming p2p connections" );
+      }
 
       tcp::endpoint listen_endpoint;
       if( my->p2p_address.size() > 0 ) {
@@ -3341,27 +3353,19 @@ namespace eosio {
          }
       }
 
-      {
-         std::lock_guard<std::mutex> g( my->keepalive_timer_mtx );
-         my->keepalive_timer.reset( new boost::asio::steady_timer( my->thread_pool->get_executor() ) );
-      }
-      my->ticker();
-
       if( my->acceptor ) {
          my->acceptor->open(listen_endpoint.protocol());
          my->acceptor->set_option(tcp::acceptor::reuse_address(true));
          try {
            my->acceptor->bind(listen_endpoint);
          } catch (const std::exception& e) {
-           fc_elog( logger, "net_plugin::plugin_startup failed to bind to port ${port}",
-                    ("port", listen_endpoint.port()));
+           elog( "net_plugin::plugin_startup failed to bind to port ${port}", ("port", listen_endpoint.port()) );
            throw e;
          }
          my->acceptor->listen();
          fc_ilog( logger, "starting listener, max clients is ${mc}",("mc",my->max_client_count) );
          my->start_listen_loop();
       }
-      chain::controller&cc = my->chain_plug->chain();
       {
          cc.accepted_block.connect( [my = my]( const block_state_ptr& s ) {
             my->on_accepted_block( s );
@@ -3371,14 +3375,14 @@ namespace eosio {
          } );
       }
 
+      {
+         std::lock_guard<std::mutex> g( my->keepalive_timer_mtx );
+         my->keepalive_timer.reset( new boost::asio::steady_timer( my->thread_pool->get_executor() ) );
+      }
+      my->ticker();
+
       my->incoming_transaction_ack_subscription = app().get_channel<compat::channels::transaction_ack>().subscribe(
             boost::bind(&net_plugin_impl::transaction_ack, my.get(), _1));
-
-      my->db_read_mode = cc.get_read_mode();
-      if( my->db_read_mode == chain::db_read_mode::READ_ONLY ) {
-         my->max_nodes_per_host = 0;
-         fc_ilog( logger, "node in read-only mode setting max_nodes_per_host to 0 to prevent connections" );
-      }
 
       my->start_monitors();
 
@@ -3386,6 +3390,12 @@ namespace eosio {
 
       for( const auto& seed_node : my->supplied_peers ) {
          connect( seed_node );
+      }
+
+      } catch( ... ) {
+         // always watn plugin_shutdown even on exception
+         plugin_shutdown();
+         throw;
       }
    }
 
