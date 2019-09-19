@@ -217,21 +217,21 @@ try:
     Print("all nodes exited with expected reason database_guard_exception")
 
     Print("relaunch nodes with new capacity")
-    addSwapRemoveFlags={}
+    addSwapFlags={}
     maxRAMValue+=2
     currentMinimumMaxRAM=maxRAMValue
     enabledStaleProduction=False
     for i in range(numNodes):
-        addSwapRemoveFlags[maxRAMFlag]=str(maxRAMValue)
-        #addSwapRemoveFlags["--max-irreversible-block-age"]=str(-1)
+        addSwapFlags[maxRAMFlag]=str(maxRAMValue)
+        #addSwapFlags["--max-irreversible-block-age"]=str(-1)
         nodeIndex=numNodes-i-1
         if not enabledStaleProduction:
-            addSwapRemoveFlags["--enable-stale-production"]=""   # just enable stale production for the first node
+            addSwapFlags["--enable-stale-production"]=""   # just enable stale production for the first node
             enabledStaleProduction=True
-        if not nodes[nodeIndex].relaunch(nodeIndex, "", newChain=False, addSwapRemoveFlags=addSwapRemoveFlags):
+        if not nodes[nodeIndex].relaunch(nodeIndex, "", newChain=False, addSwapFlags=addSwapFlags):
             Utils.cmdError("Failed to restart node0 with new capacity %s" % (maxRAMValue))
             errorExit("Failure - Node should have restarted")
-        addSwapRemoveFlags={}
+        addSwapFlags={}
         maxRAMValue=currentMinimumMaxRAM+30
 
     time.sleep(20)
@@ -285,16 +285,16 @@ try:
             errorExit("Failure - Node should be alive")
 
     Print("relaunch node with even more capacity")
-    addSwapRemoveFlags={}
+    addSwapFlags={}
 
     time.sleep(10)
     maxRAMValue=currentMinimumMaxRAM+5
     currentMinimumMaxRAM=maxRAMValue
-    addSwapRemoveFlags[maxRAMFlag]=str(maxRAMValue)
-    if not nodes[len(nodes)-1].relaunch(nodeIndex, "", newChain=False, addSwapRemoveFlags=addSwapRemoveFlags):
+    addSwapFlags[maxRAMFlag]=str(maxRAMValue)
+    if not nodes[len(nodes)-1].relaunch(nodeIndex, "", newChain=False, addSwapFlags=addSwapFlags):
         Utils.cmdError("Failed to restart node %d with new capacity %s" % (numNodes-1, maxRAMValue))
         errorExit("Failure - Node should have restarted")
-    addSwapRemoveFlags={}
+    addSwapFlags={}
 
     time.sleep(10)
     allDone=True
