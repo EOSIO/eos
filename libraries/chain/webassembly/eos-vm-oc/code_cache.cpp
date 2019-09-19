@@ -147,6 +147,7 @@ void code_cache::check_eviction_threshold() {
    while(allocator->get_free_memory() < _free_bytes_eviction_threshold && _cache_index.size() > 1) {
       const code_descriptor& cd = _cache_index.back();
       allocator->deallocate(_code_mapping + cd.code_begin);
+      allocator->deallocate(_code_mapping + cd.initdata_begin);
       _cache_index.pop_back();
    }
 }
@@ -191,7 +192,6 @@ const code_descriptor* const code_cache::get_descriptor_for_code(const digest_ty
    memcpy(allocated_code, pic.data(), pic.size());
    uintptr_t placed_code_in = (char*)allocated_code-_code_mapping;
    cd.code_begin = placed_code_in;
-   check_eviction_threshold();
 
    if(module.startFunctionIndex == UINTPTR_MAX)
       cd.start = no_offset{};
@@ -266,9 +266,18 @@ const code_descriptor* const code_cache::get_descriptor_for_code(const digest_ty
       }
    }
 
-   cd.initdata_pre_memory_size = prolouge.end() - prolouge_it;
-   std::move(prolouge_it, prolouge.end(), std::back_inserter(cd.initdata));
-   std::move(initial_mem.begin(), initial_mem.end(), std::back_inserter(cd.initdata));
+   cd.initdata_prolouge_size = prolouge.end() - prolouge_it;
+   std::vector<uint8_t> initdata_prep;
+   std::move(prolouge_it, prolouge.end(), std::back_inserter(initdata_prep));
+   std::move(initial_mem.begin(), initial_mem.end(), std::back_inserter(initdata_prep));
+
+   void* allocated_initdata = allocator->allocate(initdata_prep.size());
+   memcpy(allocated_initdata, initdata_prep.data(), initdata_prep.size());
+   uintptr_t placed_initdata_offset = (char*)allocated_initdata-_code_mapping;
+   cd.initdata_begin = placed_initdata_offset;
+   cd.initdata_size = initdata_prep.size();
+
+   check_eviction_threshold();
 
    return &*_cache_index.push_front(std::move(cd)).first;
 }

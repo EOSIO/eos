@@ -173,7 +173,7 @@ void executor::execute(const code_descriptor& code, const memory& mem, apply_con
    }
    else
       arch_prctl(ARCH_SET_GS, (unsigned long*)mem.zero_page_memory_base());
-   memcpy(mem.full_page_memory_base() - code.initdata_pre_memory_size, code.initdata.data(), code.initdata.size());
+   memcpy(mem.full_page_memory_base() - code.initdata_prolouge_size, code_mapping + code.initdata_begin, code.initdata_size);
 
    control_block* const cb = mem.get_control_block();
    cb->magic = 0x43543543; //XXX
