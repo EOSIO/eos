@@ -66,9 +66,9 @@ notus:
 
 static int32_t grow_memory(int32_t grow, int32_t max) {
    EOSVMOC_MEMORY_PTR_cb_ptr;
-   U32 previous_page_count = cb_ptr->current_linear_memory_pages;
-   U32 grow_amount = grow;
-   U32 max_pages = max;
+   uint64_t previous_page_count = cb_ptr->current_linear_memory_pages;
+   int32_t grow_amount = grow;
+   uint64_t max_pages = max;
    if(grow == 0)
       return (int32_t)cb_ptr->current_linear_memory_pages;
    if(previous_page_count + grow_amount > max_pages)
@@ -81,7 +81,8 @@ static int32_t grow_memory(int32_t grow, int32_t max) {
    cb_ptr->current_linear_memory_pages += grow_amount;
 
    //XXX probably should checktime during this
-   memset((void*)(cb_ptr->full_linear_memory_start + previous_page_count*64u*1024u), 0, grow_amount*64u*1024u);
+   if(grow_amount > 0)
+      memset((void*)(cb_ptr->full_linear_memory_start + previous_page_count*64u*1024u), 0, grow_amount*64u*1024u);
 
    return (int32_t)previous_page_count;
 }
