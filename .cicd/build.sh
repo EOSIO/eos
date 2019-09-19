@@ -45,10 +45,10 @@ else # Linux
         ARGS="$ARGS -v /usr/lib/ccache -v $HOME/.ccache:/opt/.ccache -e JOBS -e TRAVIS -e CCACHE_DIR=/opt/.ccache"
         COMMANDS="ccache -s &&"
     fi
-    COMMANDS="$PRE_COMMANDS && echo \$PATH && $COMMANDS $BUILD_COMMANDS $INSTALL_COMMANDS"
+    COMMANDS="$PRE_COMMANDS && $COMMANDS $BUILD_COMMANDS $INSTALL_COMMANDS"
     if [[ $DOCKER == true ]]; then # Only run commands when we're already in docker (base image creation)
         echo $COMMANDS
-        bash -c "$COMMANDS"
+        eval bash -c "$COMMANDS"
     else
         echo "$ docker run $ARGS $(buildkite-intrinsics) $FULL_TAG bash -c \"$COMMANDS\""
         eval docker run $ARGS $(buildkite-intrinsics) $FULL_TAG bash -c \"$COMMANDS\"
