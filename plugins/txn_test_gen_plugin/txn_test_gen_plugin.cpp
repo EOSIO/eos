@@ -167,7 +167,7 @@ struct txn_test_gen_plugin_impl {
             auto active_auth  = eosio::chain::authority{1, {{txn_text_receiver_A_pub_key, 1}}, {}};
 
             trx.actions.emplace_back(vector<chain::permission_level>{{creator,"active"}}, newaccount{creator, newaccountA, owner_auth, active_auth});
-            trx.actions.emplace_back(vector<chain::permission_level>{{creator,"active"}}, delegatebw{creator, newaccountA, core_sym::from_string("100.0000"), true, owner_auth, active_auth});
+            trx.actions.emplace_back(vector<chain::permission_level>{{creator,"active"}}, delegatebw{creator, newaccountA, core_sym::from_string("100.0000"), true});
             }
             //create "B" account
             {
@@ -175,7 +175,7 @@ struct txn_test_gen_plugin_impl {
             auto active_auth  = eosio::chain::authority{1, {{txn_text_receiver_B_pub_key, 1}}, {}};
 
             trx.actions.emplace_back(vector<chain::permission_level>{{creator,"active"}}, newaccount{creator, newaccountB, owner_auth, active_auth});
-            trx.actions.emplace_back(vector<chain::permission_level>{{creator,"active"}}, delegatebw{creator, newaccountB, core_sym::from_string("100.0000"), true, owner_auth, active_auth});
+            trx.actions.emplace_back(vector<chain::permission_level>{{creator,"active"}}, delegatebw{creator, newaccountB, core_sym::from_string("100.0000"), true});
             }
             //create "T" account
             {
@@ -183,7 +183,7 @@ struct txn_test_gen_plugin_impl {
             auto active_auth  = eosio::chain::authority{1, {{txn_text_receiver_C_pub_key, 1}}, {}};
 
             trx.actions.emplace_back(vector<chain::permission_level>{{creator,"active"}}, newaccount{creator, newaccountT, owner_auth, active_auth});
-            trx.actions.emplace_back(vector<chain::permission_level>{{creator,"active"}}, delegatebw{creator, newaccountT, core_sym::from_string("10000.0000"), true, owner_auth, active_auth});
+            trx.actions.emplace_back(vector<chain::permission_level>{{creator,"active"}}, delegatebw{creator, newaccountT, core_sym::from_string("10000.0000"), true});
             }
 
             trx.expiration = cc.head_block_time() + fc::seconds(180);
