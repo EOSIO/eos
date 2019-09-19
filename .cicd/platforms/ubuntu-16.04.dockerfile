@@ -62,7 +62,5 @@ RUN curl -LO https://cmake.org/files/v3.13/cmake-3.13.2.tar.gz && \
 RUN git clone https://github.com/EOSIO/eos.git -b ${GITHUB_COMMIT_ID} /workdir \
     && cd /workdir \
     && git submodule update --init --recursive \
-    && ls -alht / \
-    && env \
     && ./.cicd/build.sh \
     && cd .. && rm -rf /workdir
