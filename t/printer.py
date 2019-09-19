@@ -183,7 +183,7 @@ class Print():
         func(json.dumps(data, indent=4, sort_keys=False))
 
     def transaction_id(self, response: requests.Response) -> None:
-        tid = helper.extract(response, key="response", fallback=None)
+        tid = helper.extract(response, key="transaction_id", fallback=None)
         if tid:
             self.green("{:100}".format("<Transaction ID> {}".format(tid)))
         else:

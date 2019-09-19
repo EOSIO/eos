@@ -368,6 +368,8 @@ class Cluster:
         13. verify head producer
         """
 
+        self.print.decorate(printer.pad(">>> Bootstrap starts.", left=0, char=' ', sep=""), fcolor="white", bcolor="black")
+
         # print configuration
         self.print_config()
 
@@ -379,6 +381,85 @@ class Cluster:
 
         # 3. create bios accounts
         self.create_bios_accounts()
+
+        # 4. schedule protocol feature activations
+        self.schedule_protocol_feature_activations()
+
+        # 5. set eosio.token
+        self.set_contract(node_id=0,
+                          contract_file="../../contracts/build/contracts/eosio.token/eosio.token.wasm",
+                          abi_file="../../contracts/build/contracts/eosio.token/eosio.token.abi",
+                          account="eosio.token", name="eosio.token")
+
+        # 6. create tokens
+        create_tokens = [{"account": "eosio.token",
+                          "action": "create",
+                          "permissions": [{"actor": "eosio.token",
+                                           "permission": "active"}],
+                          "data": {"issuer": "eosio",
+                                   "maximum_supply": "1000000000.0000 SYS",
+                                   "can_freeze": 0,
+                                   "can_recall": 0,
+                                   "can_whitelist":0}}]
+        self.push_actions(node_id=0, actions=create_tokens, name="create tokens")
+
+        # 7. issue tokens
+        issue_tokens = [{"account": "eosio.token",
+                          "action": "issue",
+                          "permissions": [{"actor": "eosio",
+                                           "permission": "active"}],
+                          "data": {"to": "eosio",
+                                   "quantity": "1000000000.0000 SYS",
+                                   "memo": "hi"}}]
+        self.push_actions(node_id=0, actions=issue_tokens, name="issue tokens")
+
+        # 8. set system contract
+        self.set_contract(node_id=0,
+                          contract_file="../../contracts/build/contracts/eosio.system/eosio.system.wasm",
+                          abi_file="../../contracts/build/contracts/eosio.system/eosio.system.abi",
+                          account="eosio", name="eosio.system")
+
+        # 9. init system contract
+        init_system_contract = [{"account": "eosio",
+                                 "action": "init",
+                                 "permissions": [{"actor": "eosio",
+                                                  "permission": "active"}],
+                                 "data": {"version": 0,
+                                          "core": "4,SYS"}}]
+        self.push_actions(node_id=0, actions=init_system_contract, name="init system contract")
+
+        # 10. create producer accounts
+        # 11. register producers
+        for p in self.producers:
+            self.create_account(node_id=self.producers[p], creator="eosio", name=p,
+                                stake_cpu="75000000.0000 SYS", stake_net = "75000000.0000 SYS", buy_ram_bytes=1048576,
+                                transfer=True)
+            regproducer = [{"account": "eosio",
+                            "action": "regproducer",
+                            "permissions": [{"actor": "{}".format(p),
+                                            "permission": "active"}],
+                            "data": {"producer": "{}".format(p),
+                                     "producer_key": "EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+                                     "url": "www.test.com",
+                                     "location": 0}}]
+            self.push_actions(node_id=self.producers[p], actions=regproducer, name="register \"{}\" account".format(p))
+
+
+        # 12. vote for producers
+        vote_for_producers = [{"account": "eosio",
+                               "action": "voteproducer",
+                               "permissions": [{"actor": "defproducera",
+                                                "permission": "active"}],
+                               "data": {"voter": "defproducera",
+                                        "proxy": "",
+                                        "producers": list(self.producers.keys())}}]
+        self.push_actions(node_id=0, actions=vote_for_producers, name="vote for producers")
+
+        # 13. verify head block producer is no longer eosio
+        self.verify_head_block_producer()
+
+        self.print.decorate(printer.pad(">>> Bootstrap finishes.", left=0, char=' ', sep=""), fcolor="white", bcolor="black")
+
 
 
     def print_config(self):
@@ -392,94 +473,116 @@ class Cluster:
 
 
     def launch_cluster(self, **kwargs):
-        resp, tid = self.rpc("launch_cluster", cluster_id=self.cluster_id, node_count=self.total_nodes, shape=self.topology, nodes=self.nodes, **kwargs)
-        return resp.text
+        return self.call("launch_cluster", cluster_id=self.cluster_id, node_count=self.total_nodes, shape=self.topology, nodes=self.nodes, verify=False, **kwargs)
 
 
     def get_cluster_info(self, **kwargs):
-        resp, tid = self.rpc("get_cluster_info", cluster_id=self.cluster_id, **kwargs)
-        return resp.text
+        return self.call("get_cluster_info", cluster_id=self.cluster_id, verify=False, **kwargs)
 
 
     def create_bios_accounts(self, **kwargs):
-        resp, tid = self.rpc("create_bios_accounts", cluster_id=self.cluster_id,
-                                                     creator="eosio",
-                                                     accounts=[{"name":"eosio.bpay"},
-                                                               {"name":"eosio.msig"},
-                                                               {"name":"eosio.names"},
-                                                               {"name":"eosio.ram"},
-                                                               {"name":"eosio.ramfee"},
-                                                               {"name":"eosio.rex"},
-                                                               {"name":"eosio.saving"},
-                                                               {"name":"eosio.stake"},
-                                                               {"name":"eosio.token"},
-                                                               {"name":"eosio.upay"}],
-                                                     **kwargs)
-        return resp.text
+        accounts = [{"name":"eosio.bpay"},
+                    {"name":"eosio.msig"},
+                    {"name":"eosio.names"},
+                    {"name":"eosio.ram"},
+                    {"name":"eosio.ramfee"},
+                    {"name":"eosio.rex"},
+                    {"name":"eosio.saving"},
+                    {"name":"eosio.stake"},
+                    {"name":"eosio.token"},
+                    {"name":"eosio.upay"}]
+        return self.call("create_bios_accounts", cluster_id=self.cluster_id, creator="eosio", accounts=accounts, **kwargs)
 
 
-    # def verify_transaction(self, transaction_id, node_id=0, quiet=False):
-    #     resp, tid = self.call("verify_transaction", cluster_id=self.cluster_id, node_id=node_id, transaction_id=transaction_id, quiet=quiet)
-    #     return helper.extract(resp, "irreversible", False)
+    def schedule_protocol_feature_activations(self, **kwargs):
+        return self.call("schedule_protocol_feature_activations",
+                         cluster_id=self.cluster_id, node_id=0,
+                         protocol_features_to_activate=["0ec7e080177b2c02b278d5088611686b49d739925a92d9bfcacd7fc6b74053bd"],
+                         verify=False, **kwargs)
 
 
-    def rpc(self, endpoint: str, header: str =None, retry=5, wait=1, quiet=False, **data):
-        if quiet:
-            return self.quiet_rpc(endpoint=endpoint, retry=retry, wait=wait, **data)
-        else:
-            return self.loud_rpc(endpoint=endpoint, header=header, retry=retry, wait=wait, **data)
+    def set_contract(self, contract_file: str, abi_file: str, account: str, node_id: int, name: str =None, **kwargs):
+        return self.call("set_contract",
+                         cluster_id=self.cluster_id, node_id=node_id, account = account,
+                         contract_file=contract_file, abi_file=abi_file,
+                         header=None if name is None else "set <{}> contract".format(name), **kwargs)
 
 
-    def loud_rpc(self, endpoint: str, header: str =None, retry=5, wait=1, validate=False, **data):
-        header = endpoint.replace("_", " ") if header is None else header
-        self.print_header(header)
+    def push_actions(self, node_id: int, actions: List[dict], name: str =None, **kwargs):
+        return self.call("push_actions",
+                         cluster_id=self.cluster_id, node_id=node_id, actions=actions,
+                         header=None if name is None else name, **kwargs)
+
+
+    def create_account(self, node_id, creator, name, stake_cpu, stake_net, buy_ram_bytes, transfer, **kwargs):
+        return self.call("create_account", cluster_id=self.cluster_id, node_id=node_id, creator=creator, name=name,
+                         stake_cpu=stake_cpu, stake_net=stake_net, buy_ram_bytes=buy_ram_bytes, transfer=transfer,
+                         header="create \"{}\" account".format(name), **kwargs)
+
+
+    def verify_head_block_producer(self, retry=5, wait=1):
+        self.print_header("get head block producer")
+        get_head_block_producer = lambda : self.get_cluster_info(loud=False)["result"][0][1]["head_block_producer"]
+        while retry >= 0:
+            head_block_producer = get_head_block_producer()
+            if head_block_producer == "eosio":
+                self.print.yellow("Warning: Head block producer is still \"eosio\". Please wait for a while.")
+            else:
+                self.print.green("Head block producer is \"{}\", no longer eosio.".format(head_block_producer))
+                break
+            time.sleep(wait)
+            retry -= 1
+        assert head_block_producer != "eosio"
+
+
+
+    def call(self, endpoint: str, retry=5, wait=1, verify=True, loud=True, header: str =None, **data):
+        if loud:
+            header = endpoint.replace("_", " ") if header is None else header
+            self.print_header(header)
         ix = Interaction(endpoint, self.service, data)
-        self.print_request(ix)
+        if loud:
+            self.print_request(ix)
         while not ix.response.ok and retry > 0:
-            self.print.red(ix.response)
-            self.print.vanilla("Retrying ...")
+            if loud:
+                self.print.red(ix.response)
+                self.print.vanilla("Retrying ...")
             time.sleep(wait)
             ix.attempt()
             retry -= 1
-        self.print.response(ix.response)
+        if loud:
+            # self.print.magenta(ix.transaction_id)
+            self.print.response(ix.response)
         assert ix.response.ok
-        if validate:
-            assert self.verify(ix.transaction_id)
-        return ix.response, ix.transaction_id
+        if verify:
+            assert self.verify_transaction(ix.transaction_id, loud=loud)
+        return json.loads(ix.response.text)
 
 
-    def quiet_rpc(self, endpoint: str, retry=5, wait=1, **data):
-        ix = Interaction(endpoint, self.service, data)
-        while not ix.response.ok and retry > 0:
-            self.print.red(ix.response)
-            self.print.vanilla("Retrying ...")
+    def verify_transaction(self, transaction_id, node_id=0, retry=10, wait=1, loud=True):
+        if loud:
+            self.print.vanilla("{:100}".format("Verifying ..."))
+        ix = Interaction("verify_transaction", self.service, dict(cluster_id=self.cluster_id, node_id=node_id, transaction_id=transaction_id))
+        verified = helper.extract(ix.response, key="irreversible", fallback=False)
+        while not verified and retry > 0:
             time.sleep(wait)
+            if loud:
+                self.print.vanilla("Verifying ...")
             ix.attempt()
+            verified = helper.extract(ix.response, key="irreversible", fallback=False)
             retry -= 1
         assert ix.response.ok
-        return ix.response, ix.transaction_id
+        if loud:
+            if verified:
+                self.print.decorate("Success!", fcolor="black", bcolor="green")
+            else:
+                self.print.decorate("Failure!", fcolor="black", bcolor="red")
+        return helper.extract(ix.response, key="irreversible", fallback=False)
 
 
     def print_request(self, ix):
         self.print.vanilla(ix.request.url)
         self.print.json(ix.request.data)
-
-
-    # def verify(self, transaction_id: str, retry=5, wait=0.5) -> bool:
-    #     verified = False
-    #     while not verified and retry >= 0:
-    #         self.print.vanilla("{:100}".format("Verifying ..."))
-    #         verified = self.verify_transaction(cluster_id=self.cluster_id, node_id=0, transaction_id=tid)
-    #         # verified = self.verify_transaction(**dict(cluster_id=self.cluster_id, node_id=0, transaction_id=tid))
-    #         retry -= 1
-    #         time.sleep(wait)
-    #     if verified:
-    #         self.print.decorate("Success!", fcolor="black", bcolor="green")
-    #     else:
-    #         self.print.decorate("Failure!", fcolor="black", bcolor="red")
-    #     return verified
-    #     # assert verified, self.alert.red("Failed to verify transaction ID {}".format(tid))
-
 
 
 
