@@ -1,5 +1,10 @@
 FROM ubuntu:18.04
 ENV VERSION 1
+ENV DOCKER=true
+ARG GITHUB_BRANCH
+ENV GITHUB_BRANCH=$GITHUB_BRANCH
+ARG IMAGE_TAG
+ENV IMAGE_TAG=$IMAGE_TAG
 # install dependencies.
 RUN apt-get update && \
     apt-get upgrade -y && \
@@ -42,3 +47,9 @@ RUN git clone --depth 1 --single-branch --branch release_80 https://github.com/l
     make install && \
     cd / && \
     rm -rf /llvm
+# Install Conan Dependencies
+RUN git clone https://github.com/EOSIO/eos.git -b ${GITHUB_BRANCH} /workdir \
+    && cd /workdir \
+    && git submodule update --init --recursive \
+    && ./.cicd/build.sh \
+    && cd .. && rm -rf /workdir
