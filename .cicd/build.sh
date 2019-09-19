@@ -48,6 +48,10 @@ else # Linux
     COMMANDS="$PRE_COMMANDS && $COMMANDS $BUILD_COMMANDS $INSTALL_COMMANDS"
     if [[ $DOCKER == true ]]; then # Only run commands when we're already in docker (base image creation)
         echo $COMMANDS
+        env
+        ls -laht /usr/local/bin/
+        command -v cmake
+        
         eval $COMMANDS
     else
         echo "$ docker run $ARGS $(buildkite-intrinsics) $FULL_TAG bash -c \"$COMMANDS\""
