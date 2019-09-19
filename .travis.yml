@@ -37,7 +37,7 @@ matrix:
             - graphviz
             - libtool
             - gmp
-            - llvm@4
+            - llvm@7
             - pkgconfig
             - python
             - python@2
