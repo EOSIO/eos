@@ -538,7 +538,7 @@ BOOST_FIXTURE_TEST_CASE( get_table_next_key_test, TESTER ) try {
    auto more2_res_1 = plugin.get_table_rows(params);
    BOOST_REQUIRE(more2_res_1.rows.size() > 0);
    BOOST_TEST(more2_res_1.rows[0].get_object()["key"].as<uint64_t>() == 1);
-   
+
 
    // i64 secondary key type
    params.key_type = "i64";
@@ -557,7 +557,7 @@ BOOST_FIXTURE_TEST_CASE( get_table_next_key_test, TESTER ) try {
    // i128 secondary key type
    params.key_type = "i128";
    params.index_position = "3";
-   params.lower_bound = "5"; 
+   params.lower_bound = "5";
 
    auto res_3 = plugin.get_table_rows(params);
    chain::uint128_t sec128_expected_value = 5;
@@ -596,15 +596,15 @@ BOOST_FIXTURE_TEST_CASE( get_table_next_key_test, TESTER ) try {
    auto res_5 = plugin.get_table_rows(params);
    float128_t secldouble_expected_value = ui64_to_f128(5);
    BOOST_REQUIRE(res_5.rows.size() > 0);
-   chain::uint128_t secldouble_res_value =  res_5.rows[0].get_object()["secldouble"].as<chain::uint128_t>();
-   BOOST_TEST(*reinterpret_cast<float128_t*>(&secldouble_res_value) == secldouble_expected_value);
+   float128_t secldouble_res_value =  res_5.rows[0].get_object()["secldouble"].as<float128_t>();
+   BOOST_TEST(secldouble_res_value == secldouble_expected_value);
    BOOST_TEST(res_5.next_key == "7.00000000000000000");
    params.lower_bound = res_5.next_key;
    auto more2_res_5 = plugin.get_table_rows(params);
    float128_t more2_secldouble_expected_value = ui64_to_f128(7);
    BOOST_REQUIRE(more2_res_5.rows.size() > 0);
-   chain::uint128_t more2_secldouble_res_value =  more2_res_5.rows[0].get_object()["secldouble"].as<chain::uint128_t>();
-   BOOST_TEST(*reinterpret_cast<float128_t*>(&more2_secldouble_res_value) == more2_secldouble_expected_value);
+   float128_t more2_secldouble_res_value =  more2_res_5.rows[0].get_object()["secldouble"].as<float128_t>();
+   BOOST_TEST(more2_secldouble_res_value == more2_secldouble_expected_value);
 
    params.table = N(hashobjs);
 
