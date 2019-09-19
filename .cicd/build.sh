@@ -2,7 +2,7 @@
 set -eo pipefail
 . ./.cicd/helpers/general.sh
 mkdir -p $BUILD_DIR
-CMAKE_EXTRAS="-DBUILD_MONGO_DB_PLUGIN=true -DCMAKE_BUILD_TYPE='Release'"
+CMAKE_EXTRAS="-DCMAKE_BUILD_TYPE='Release'"
 if [[ "$(uname)" == 'Darwin' ]]; then
     # You can't use chained commands in execute
     if [[ "$TRAVIS" == 'true' ]]; then
@@ -10,6 +10,8 @@ if [[ "$(uname)" == 'Darwin' ]]; then
         ccache -s
         CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_CXX_COMPILER_LAUNCHER=ccache"
         ./$CICD_DIR/platforms/macos-10.14.sh
+    else
+        CMAKE_EXTRAS="$CMAKE_EXTRAS -DBUILD_MONGO_DB_PLUGIN=true"
     fi
     [[ ! "$PINNED" == 'false' || "$UNPINNED" == 'true' ]] && CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_TOOLCHAIN_FILE=$HELPERS_DIR/clang.make"
     cd $BUILD_DIR
@@ -44,6 +46,7 @@ else # Linux
     if [[ "$BUILDKITE" == 'true' ]]; then
         # Generate Base Images
         $CICD_DIR/generate-base-images.sh
+        CMAKE_EXTRAS="$CMAKE_EXTRAS -DBUILD_MONGO_DB_PLUGIN=true"
         [[ "$ENABLE_INSTALL" == 'true' ]] && COMMANDS="cp -r $MOUNTED_DIR /root/eosio && cd /root/eosio/build &&"
         COMMANDS="$COMMANDS $BUILD_COMMANDS"
         [[ "$ENABLE_INSTALL" == 'true' ]] && COMMANDS="$COMMANDS && make install"
