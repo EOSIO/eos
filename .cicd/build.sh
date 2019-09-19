@@ -20,6 +20,7 @@ if [[ "$(uname)" == 'Darwin' ]]; then
     echo "make -j$JOBS"
     make -j$JOBS
 else # Linux
+    CMAKE_EXTRAS="$CMAKE_EXTRAS -DBUILD_MONGO_DB_PLUGIN=true"
     ARGS=${ARGS:-"--rm --init -v $(pwd):$MOUNTED_DIR"}
     . $HELPERS_DIR/file-hash.sh $CICD_DIR/platforms/$IMAGE_TAG.dockerfile
     PRE_COMMANDS="cd $MOUNTED_DIR/build"
@@ -48,7 +49,6 @@ else # Linux
     if [[ "$BUILDKITE" == 'true' ]]; then
         # Generate Base Images
         $CICD_DIR/generate-base-images.sh
-        CMAKE_EXTRAS="$CMAKE_EXTRAS -DBUILD_MONGO_DB_PLUGIN=true"
         [[ "$ENABLE_INSTALL" == 'true' ]] && COMMANDS="cp -r $MOUNTED_DIR /root/eosio && cd /root/eosio/build &&"
         COMMANDS="$COMMANDS $BUILD_COMMANDS"
         [[ "$ENABLE_INSTALL" == 'true' ]] && COMMANDS="$COMMANDS && make install"
