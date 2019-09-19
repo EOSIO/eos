@@ -341,8 +341,8 @@ namespace eosio { namespace chain {
       my->reset(gs, first_block, 1);
    }
 
-   void block_log::reset( const chain_id_type& chain_id, const signed_block_ptr& first_block, uint32_t first_block_num ) {
-      my->reset(chain_id, first_block, first_block_num);
+   void block_log::reset( const chain_id_type& chain_id, uint32_t first_block_num ) {
+      my->reset(chain_id, signed_block_ptr(), first_block_num);
    }
 
    void detail::block_log_impl::write( const genesis_state& gs ) {
@@ -695,6 +695,10 @@ namespace eosio { namespace chain {
             fc::raw::unpack(block_stream, gs);
             return gs.compute_chain_id();
          }
+         EOS_ASSERT( contains_chain_id(version, first_block_num), block_log_exception,
+                     "Block log error! version: ${version} with first_block_num: ${num} does not contain a "
+                     "chain id or genesis state, so the chain id cannot be determined.",
+                     ("version", version)("num", first_block_num) );
          chain_id_type chain_id;
          fc::raw::unpack(block_stream, chain_id);
          return chain_id;

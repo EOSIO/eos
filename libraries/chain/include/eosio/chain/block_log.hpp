@@ -41,7 +41,7 @@ namespace eosio { namespace chain {
          uint64_t append(const signed_block_ptr& b);
          void flush();
          void reset( const genesis_state& gs, const signed_block_ptr& genesis_block );
-         void reset( const chain_id_type& chain_id, const signed_block_ptr& genesis_block, uint32_t first_block_num );
+         void reset( const chain_id_type& chain_id, uint32_t first_block_num );
 
          signed_block_ptr read_block(uint64_t file_pos)const;
          void             read_block_header(block_header& bh, uint64_t file_pos)const;

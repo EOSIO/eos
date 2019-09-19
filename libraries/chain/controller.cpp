@@ -530,7 +530,7 @@ struct controller_impl {
             EOS_ASSERT( lib_num > 0, snapshot_exception,
                         "Snapshot indicates controller head at block number 0, but that is not allowed. "
                         "Snapshot is invalid." );
-            blog.reset( chain_id, signed_block_ptr(), lib_num + 1 );
+            blog.reset( chain_id, lib_num + 1 );
          }
          const auto hash = calculate_integrity_hash();
          ilog( "database initialized with hash: ${hash}", ("hash", hash) );
@@ -589,7 +589,7 @@ struct controller_impl {
          lib_num = blog.head()->block_num();
       } else {
          if( first_block_num != (lib_num + 1) ) {
-            blog.reset( chain_id, signed_block_ptr(), lib_num + 1 );
+            blog.reset( chain_id, lib_num + 1 );
          }
       }
 
