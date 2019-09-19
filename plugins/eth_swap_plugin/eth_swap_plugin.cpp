@@ -287,10 +287,10 @@ void eth_swap_plugin::plugin_initialize(const variables_map& options) {
       my->_swap_signing_permission = permission;
       my->_last_processed_block = 0;
 
-      std::string prefix = "wss://";
+      //std::string prefix = "wss://";
       my->_eth_wss_provider = options.at( "eth-wss-provider" ).as<std::string>();
-      if(my->_eth_wss_provider.substr(0, prefix.size()) != prefix)
-        throw InvalidWssLinkException("Invalid ethereum node connection link. Should start with " + prefix);
+      //if(my->_eth_wss_provider.substr(0, prefix.size()) != prefix)
+        //throw InvalidWssLinkException("Invalid ethereum node connection link. Should start with " + prefix);
 
       eth_swap_contract_address = options.at( "eth_swap_contract_address" ).as<std::string>();
       eth_swap_request_event    = options.at( "eth_swap_request_event" ).as<std::string>();
