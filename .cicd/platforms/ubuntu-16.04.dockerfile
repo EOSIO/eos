@@ -63,5 +63,6 @@ RUN apt-get update && \
 RUN git clone https://github.com/EOSIO/eos.git -b ${GITHUB_COMMIT_ID} /workdir \
     && cd /workdir \
     && git submodule update --init --recursive \
+    && ls -alht / \
     && ./.cicd/build.sh \
-    && cd .. && rm -rf eos
+    && cd .. && rm -rf /workdir
