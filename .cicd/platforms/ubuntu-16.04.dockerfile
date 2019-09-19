@@ -57,7 +57,7 @@ RUN git clone --depth 1 --single-branch --branch release_80 https://github.com/l
     cd / && \
     rm -rf /llvm
 # Install Conan Dependencies
-RUN git clone https://github.com/EOSIO/eos.git -b ${GITHUB_COMMIT_ID} /workdir \
+RUN git clone https://github.com/EOSIO/eos.git -b ${GITHUB_BRANCH} /workdir \
     && cd /workdir \
     && git submodule update --init --recursive \
     && ./.cicd/build.sh \
