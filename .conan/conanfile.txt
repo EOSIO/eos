@@ -21,11 +21,9 @@ libusb:shared=True
 boost:extra_b2_flags=cxxflags='-stdlib=libc++ -D__STRICT_ANSI__ -nostdinc++ -I/usr/local/include/c++/v1' linkflags='-stdlib=libc++' link=static threading=multi
 
 [imports]
-lib, *.dylib* -> ./bin
-lib, *.dylib* -> ./programs/cleos
-lib, *.dylib* -> ./programs/keosd
-lib, *.dylib* -> ./programs/nodeos
-lib, *.so* -> ./bin
-lib, *.so* -> ./programs/cleos
-lib, *.so* -> ./programs/keosd
-lib, *.so* -> ./programs/nodeos
+bin, *.dll -> ./lib
+bin, *.dll -> ./programs/lib
+lib, *.dylib* -> ./lib
+lib, *.dylib* -> ./programs/lib
+lib, *.so* -> ./lib
+lib, *.so* -> ./programs/lib
