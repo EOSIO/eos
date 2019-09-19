@@ -8,8 +8,7 @@ ENV IMAGE_TAG=$IMAGE_TAG
 # install dependencies.
 RUN apt-get update && \
     apt-get upgrade -y && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y git 
-    # python2.7 python2.7-dev python3 python3-dev python3-pip curl zlib1g-dev build-essential doxygen graphviz vim-common jq
+    DEBIAN_FRONTEND=noninteractive apt-get install -y git python2.7 python2.7-dev python3 python3-dev python3-pip curl zlib1g-dev build-essential doxygen graphviz vim-common jq
 # install conan
 RUN pip3 install conan
 # install ccache
