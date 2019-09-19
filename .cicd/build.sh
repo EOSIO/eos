@@ -43,9 +43,9 @@ else # Linux
         [[ $ENABLE_INSTALL == true ]] && INSTALL_COMMANDS="&& cp -r $MOUNTED_DIR /root/eosio && cd /root/eosio/build && make install" # cp into /root/eosio prevents make install from failing and also helps keep it in the container for contracts to use
     elif [[ $TRAVIS == true ]]; then
         ARGS="$ARGS -v /usr/lib/ccache -v $HOME/.ccache:/opt/.ccache -e JOBS -e TRAVIS -e CCACHE_DIR=/opt/.ccache"
-        COMMANDS="ccache -s"
+        COMMANDS="ccache -s &&"
     fi
-    COMMANDS="$PRE_COMMANDS && $COMMANDS && $BUILD_COMMANDS $INSTALL_COMMANDS"
+    COMMANDS="$PRE_COMMANDS && $COMMANDS $BUILD_COMMANDS $INSTALL_COMMANDS"
     if [[ $DOCKER == true ]]; then # Only run commands when we're already in docker (base image creation)
         echo $COMMANDS
         eval $COMMANDS
