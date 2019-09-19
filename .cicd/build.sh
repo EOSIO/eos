@@ -4,7 +4,6 @@ set -eo pipefail
 mkdir -p $BUILD_DIR
 CMAKE_EXTRAS="-DCMAKE_BUILD_TYPE='Release'"
 if [[ "$(uname)" == 'Darwin' ]]; then
-    # You can't use chained commands in execute
     if [[ "$TRAVIS" == 'true' ]]; then
         export PINNED=false
         ccache -s
@@ -43,20 +42,20 @@ else # Linux
         PRE_COMMANDS="$PRE_COMMANDS && export PATH=/usr/lib/ccache:\\\$PATH"
         CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_CXX_COMPILER='clang++' -DCMAKE_C_COMPILER='clang' -DLLVM_DIR='/usr/lib/llvm-7/lib/cmake/llvm'"
     fi
-    BUILD_COMMANDS="cmake $CMAKE_EXTRAS .. && make -j$JOBS"
     # Docker Commands
     if [[ "$BUILDKITE" == 'true' ]]; then
         # Generate Base Images
         $CICD_DIR/generate-base-images.sh
         CMAKE_EXTRAS="$CMAKE_EXTRAS -DBUILD_MONGO_DB_PLUGIN=true"
         [[ "$ENABLE_INSTALL" == 'true' ]] && COMMANDS="cp -r $MOUNTED_DIR /root/eosio && cd /root/eosio/build &&"
-        COMMANDS="$COMMANDS $BUILD_COMMANDS"
-        [[ "$ENABLE_INSTALL" == 'true' ]] && COMMANDS="$COMMANDS && make install"
+        [[ "$ENABLE_INSTALL" == 'true' ]] && POST_COMMANDS="make install"
     elif [[ "$TRAVIS" == 'true' ]]; then
         ARGS="$ARGS -v /usr/lib/ccache -v $HOME/.ccache:/opt/.ccache -e JOBS -e TRAVIS -e CCACHE_DIR=/opt/.ccache"
-        COMMANDS="ccache -s && $BUILD_COMMANDS"
+        COMMANDS="ccache -s"
     fi
-    COMMANDS="$PRE_COMMANDS && $COMMANDS"
+    BUILD_COMMANDS="cmake $CMAKE_EXTRAS .. && make -j$JOBS"
+    COMMANDS="$PRE_COMMANDS && $COMMANDS && $BUILD_COMMANDS && $POST_COMMANDS"
     echo "$ docker run $ARGS $(buildkite-intrinsics) $FULL_TAG bash -c \"$COMMANDS\""
+    exit
     eval docker run $ARGS $(buildkite-intrinsics) $FULL_TAG bash -c \"$COMMANDS\"
 fi
