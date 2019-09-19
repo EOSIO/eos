@@ -1846,7 +1846,7 @@ BOOST_FIXTURE_TEST_CASE( depth_tests, TESTER ) try {
 } FC_LOG_AND_RETHROW()
 
 // TODO: Update to use eos-vm once merged
-BOOST_FIXTURE_TEST_CASE( code_size, TESTER )  try {
+BOOST_AUTO_TEST_CASE( code_size )  try {
    using namespace IR;
    using namespace Runtime;
    using namespace Serialization;
@@ -1857,15 +1857,11 @@ BOOST_FIXTURE_TEST_CASE( code_size, TESTER )  try {
       0x0a, 0x01, 0x86, 0x80, 0x80, 0x0a, 0x00
    };
 
-   std::vector<U8> function_body = {
-      0x41, 0xff, 0xff, 0xff, 0xff, 0x07, 0x1a
-   };
-
    std::vector<U8> code_end = { 0x0b };
  
    std::vector<U8> code_function_body;
-   for(unsigned int i = 0; i < wasm_constraints::maximum_code_size; i+=7) {
-      code_function_body.insert(code_function_body.end(), function_body.begin(), function_body.end());
+   for(unsigned int i = 0; i < wasm_constraints::maximum_code_size; ++i) {
+      code_function_body.push_back(0x01);
    }
 
    std::vector<U8> code;
@@ -1878,6 +1874,7 @@ BOOST_FIXTURE_TEST_CASE( code_size, TESTER )  try {
    BOOST_CHECK_THROW(WASM::serialize(stream, module), FatalSerializationException);
 
 } FC_LOG_AND_RETHROW()
+
 // TODO: restore net_usage_tests
 #if 0
 BOOST_FIXTURE_TEST_CASE(net_usage_tests, tester ) try {
