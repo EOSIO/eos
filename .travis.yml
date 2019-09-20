@@ -34,18 +34,20 @@ matrix:
         homebrew:
           update: true
           packages:
-            - graphviz
+            - ccache
+            - boost
+            - python@2
+            - python
             - libtool
+            - libusb
+            - graphviz
+            - automake
+            - wget
             - gmp
             - llvm@7
             - pkgconfig
-            - python
-            - python@2
             - doxygen
-            - libusb
             - openssl
-            - boost
-            - ccache
       env: 
         - PATH="/usr/local/opt/ccache/libexec:$PATH"
 script: "ccache --max-size=1G && ./.cicd/build.sh && ./.cicd/test.sh scripts/parallel-test.sh && ./.cicd/test.sh scripts/serial-test.sh && if [[ $(uname) != 'Darwin' ]]; then ./.cicd/submodule-regression-check.sh; fi"

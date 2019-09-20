@@ -9,7 +9,6 @@ if [[ "$(uname)" == 'Darwin' ]]; then
         export PINNED=false
         ccache -s
         CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_CXX_COMPILER_LAUNCHER=ccache"
-        ./$CICD_DIR/platforms/macos-10.14.sh
     else
         CMAKE_EXTRAS="$CMAKE_EXTRAS -DBUILD_MONGO_DB_PLUGIN=true"
     fi
