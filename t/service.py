@@ -26,6 +26,8 @@ DEFAULT_START = False
 DEFAULT_KILL = False
 DEFAULT_VERBOSITY = 1
 DEFAULT_MONOCHROME = False
+DEFAULT_DEBUG = False
+DEFAULT_INFO = False
 
 DEFAULT_CLUSTER_ID = 0
 DEFAULT_CENTER_NODE_ID = None
@@ -45,6 +47,8 @@ HELP_KILL = "Kill existing launcher services (if any)"
 HELP_VERBOSE = "Verbosity level (-v for 1, -vv for 2, ...)"
 HELP_SILENT = "Set verbosity level at 0 (keep silent)"
 HELP_MONOCHROME = "Print in black and white instead of colors"
+HELP_DEBUG = "Enable debug_print() and info_print()"
+HELP_INFO = "Enable info_print()"
 
 HELP_CLUSTER_ID = "Cluster ID to launch with"
 HELP_CENTER_NODE_ID = "Center node ID for star or bridge"
@@ -69,6 +73,8 @@ class CommandLineArguments:
             self.kill = args.kill
             self.verbosity = args.verbosity
             self.monochrome = args.monochrome
+            self.debug = args.debug
+            self.info = args.info
 
         if "cluster" in templates:
             self.cluster_id = args.cluster_id
@@ -86,8 +92,10 @@ class CommandLineArguments:
         OFFSET = 5
 
         parser = argparse.ArgumentParser(description=HEADER, add_help=False, formatter_class=lambda prog: argparse.RawTextHelpFormatter(prog, max_help_position=50))
-        info = lambda text, value: "{} ({})".format(printer.pad(text, left=OFFSET, total=50, char=' ', sep=""), value)
 
+        parser.add_argument("-h", "--help", action="help", help=' ' * OFFSET + HELP_HELP)
+
+        info = lambda text, value: "{} ({})".format(printer.pad(text, left=OFFSET, total=50, char=' ', sep=""), value)
         if "service" in templates:
             parser.add_argument("-a", "--address", type=str, metavar="IP", help=info(HELP_ADDRESS, DEFAULT_ADDRESS))
             parser.add_argument("-p", "--port", type=int, help=info(HELP_PORT, DEFAULT_PORT))
@@ -110,8 +118,8 @@ class CommandLineArguments:
             verbosity.add_argument("-v", "--verbose", dest="verbosity", action="count", default=None, help=info(HELP_VERBOSE, DEFAULT_VERBOSITY))
             verbosity.add_argument("-x", "--silent", dest="verbosity", action="store_false", default=None, help=info(HELP_SILENT, not DEFAULT_VERBOSITY))
             parser.add_argument("-m", "--monochrome", action="store_true", default=None, help=info(HELP_MONOCHROME, DEFAULT_MONOCHROME))
-
-        parser.add_argument("-h", "--help", action="help", help=' ' * OFFSET + HELP_HELP)
+            parser.add_argument("--debug", action="store_true", default=None, help=info(HELP_DEBUG, DEFAULT_DEBUG))
+            parser.add_argument("--info", action="store_true", default=None, help=info(HELP_INFO, DEFAULT_INFO))
 
         return parser.parse_args()
 
@@ -119,7 +127,7 @@ class CommandLineArguments:
 
 
 class Service:
-    def __init__(self, address=None, port=None, dir=None, file=None, start=None, kill=None, verbosity=None, monochrome=None, args=None, dont_connect=False):
+    def __init__(self, address=None, port=None, dir=None, file=None, start=None, kill=None, verbosity=None, monochrome=None, debug=None, info=None, args=None, dont_connect=False):
         # configure service
         self.address    = helper.override(DEFAULT_ADDRESS,      address,    args.address    if args else None)
         self.port       = helper.override(DEFAULT_PORT,         port,       args.port       if args else None)
@@ -129,6 +137,8 @@ class Service:
         self.kill       = helper.override(DEFAULT_KILL,         kill,       args.kill       if args else None)
         self.verbosity  = helper.override(DEFAULT_VERBOSITY,    verbosity,  args.verbosity  if args else None)
         self.monochrome = helper.override(DEFAULT_MONOCHROME,   monochrome, args.monochrome if args else None)
+        self.debug      = helper.override(DEFAULT_DEBUG,        debug,      args.debug      if args else None)
+        self.info       = helper.override(DEFAULT_INFO,         info,       args.info       if args else None)
 
         # determine remote or local launcher service to connect to
         if self.address in ("127.0.0.1", "localhost"):
@@ -207,6 +217,8 @@ class Service:
         self.print_config_helper("-k: kill",        HELP_KILL,          self.kill,          DEFAULT_KILL)
         self.print_config_helper("-v: verbose",     HELP_VERBOSE,       self.verbosity,     DEFAULT_VERBOSITY)
         self.print_config_helper("-m: monochrome",  HELP_MONOCHROME,    self.monochrome,    DEFAULT_MONOCHROME)
+        self.print_config_helper("--debug",         HELP_DEBUG,         self.debug,         DEFAULT_DEBUG)
+        self.print_config_helper("--info",          HELP_INFO,          self.info,    DEFAULT_INFO)
 
 
     def print_config_helper(self, label, help, value, default_value, label_width=22, help_width=48):
@@ -275,6 +287,22 @@ class Service:
 
     def get_service_file(self, pid):
         return subprocess.Popen(["ps", "-p", str(pid), "-o", "comm="], stdout=subprocess.PIPE).stdout.read().rstrip().decode("ascii")
+
+
+    def debug_print(self, *args, prefix=True, color=True, fcolor="blue", **kwargs):
+        if self.debug:
+            if color:
+                printer.Print(invisible=False, monochrome=self.monochrome).decorate("[DEBUG]" if prefix else "", fcolor=fcolor, *args, **kwargs)
+            else:
+                printer.Print(invisible=False).vanilla("[DEBUG]" if prefix else "", *args, **kwargs)
+
+
+    def info_print(self, *args, prefix=True, color=True, fcolor="magenta", **kwargs):
+        if self.info or self.debug:
+            if color:
+                printer.Print(invisible=False, monochrome=self.monochrome).decorate("[INFO ]" if prefix else "", fcolor=fcolor, *args, **kwargs)
+            else:
+                printer.Print(invisible=False).vanilla("[INFO ]" if prefix else "", *args, **kwargs)
 
 
 
@@ -474,7 +502,6 @@ class Cluster:
         self.print.decorate(printer.pad(">>> Bootstrap finishes.", left=0, char=' ', sep=""), fcolor="white", bcolor="black")
 
 
-
     def print_config(self):
         self.print_header("cluster configuration")
         self.print_config_helper("-i: cluster_id",      HELP_CLUSTER_ID,        self.cluster_id,        DEFAULT_CLUSTER_ID)
@@ -655,6 +682,8 @@ def test():
     args = CommandLineArguments("service", "cluster")
     serv = Service(args=args)
     clus = Cluster(service=serv, args=args)
+    serv.debug_print("Only if \"--debug\" is provided shall this line show up.")
+    serv.info_print("Only if \"--info\" or \"--debug\" is provided shall this line show up.")
 
 
 if __name__ == "__main__":

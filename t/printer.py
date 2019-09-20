@@ -30,28 +30,27 @@ STYLES = {"reset":          0,
           "hide":           8,
           "strikethrough":  9}
 
+# def decorate(text,
+#              style:     Optional[Union[str, List[str]]] =None,
+#              fcolor:    Optional[str]                   =None,
+#              bcolor:    Optional[str]                   =None):
+#     attr = concat(style, fcolor, bcolor)
+#     return "\033[{}m{}\033[0m".format(attr, text) if attr else text
 
-def decorate(text,
-             style:     Optional[Union[str, List[str]]] =None,
-             fcolor:    Optional[str]                   =None,
-             bcolor:    Optional[str]                   =None):
-    attr = concat(style, fcolor, bcolor)
-    return "\033[{}m{}\033[0m".format(attr, text) if attr else text
+# def red(text):
+#     return decorate(text, fcolor="red")
 
-def red(text):
-    return decorate(text, fcolor="red")
+# def green(text):
+#     return decorate(text, fcolor="green")
 
-def green(text):
-    return decorate(text, fcolor="green")
+# def blue(text):
+#     return decorate(text, fcolor="blue")
 
-def blue(text):
-    return decorate(text, fcolor="blue")
+# def yellow(text):
+#     return decorate(text, fcolor="yellow")
 
-def yellow(text):
-    return decorate(text, fcolor="yellow")
-
-def cyan(text):
-    return decorate(text, fcolor="cyan")
+# def cyan(text):
+#     return decorate(text, fcolor="cyan")
 
 
 def concat(style, fcolor, bcolor):
