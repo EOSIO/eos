@@ -253,8 +253,6 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
 #ifdef __linux__
          ("database-hugepage-path", bpo::value<vector<string>>()->composing(), "Optional path for database hugepages when in \"locked\" mode (may specify multiple times)")
 #endif
-         ("debug-log-intrinsics", bpo::bool_switch()->default_value(false),
-          "enable logging of intrinsics for debugging purposes")
          ;
 
 // TODO: rate limiting
@@ -639,11 +637,6 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          else
             my->blocks_dir = bld;
       }
-      /*
-      if( options.at( "debug-log-intrinsics" ).as<bool>() ) {
-         my->chain_config->intrinsic_debug_log_path = app().data_dir() / "intrinsics.log";
-      }
-      */
 
       protocol_feature_set pfs;
       {
