@@ -742,6 +742,7 @@ namespace eosio {
          }
       }
       df << "}\n";
+
       return df.str();
 
    }

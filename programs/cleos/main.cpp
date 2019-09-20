@@ -33,6 +33,7 @@ Subcommands:
   sign                        Sign a transaction
   push                        Push arbitrary transactions to the blockchain
   multisig                    Multisig contract commands
+  topology                    Interact with topology plugin
 
 ```
 To get help with any particular subcommand, run it with no arguments as well:
@@ -3185,8 +3186,27 @@ int main( int argc, char** argv ) {
       const auto& v = call(url, net_connections, new_host);
       std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
+   // Topology subcommand
+   auto topology = app.add_subcommand( "topology", localized("Interact with topology plugin"), false);
+   topology->require_subcommand();
+   // get grid
+   auto getGrid = topology->add_subcommand( "grid", localized("Retrieve topology map in graphviz compatible format"), false);
+   getGrid->set_callback([&] {
+                             const auto& v = call(url, topology_grid);
+                             std::cout << v.as_string() << std::endl;
+                          });
 
+   auto getReport = topology->add_subcommand( "report", localized("Retrieve topology map in graphviz compatible format"), false);
+   getReport->set_callback([&] {
+                             const auto& v = call(url, topology_report);
+                             std::cout << v.as_string() << std::endl;
+                           });
 
+   auto getSample = topology->add_subcommand( "sample", localized("Retrieve topology map in graphviz compatible format"), false);
+   getSample->set_callback([&] {
+                             const auto& v = call(url, topology_sample);
+                             std::cout << fc::json::to_pretty_string(v) << std::endl;
+                           });
 
    // Wallet subcommand
    auto wallet = app.add_subcommand( "wallet", localized("Interact with local wallet"), false );
