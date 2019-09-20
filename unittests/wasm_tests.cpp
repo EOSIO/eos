@@ -1447,7 +1447,7 @@ BOOST_FIXTURE_TEST_CASE( lotso_stack_7, TESTER ) try {
       ss << "(param i32)";
    ss << "  )";
    ss << ")";
-   BOOST_CHECK_THROW(set_code(N(stackz), ss.str().c_str()), wasm_serialization_error);
+   BOOST_CHECK_THROW(set_code(N(stackz), ss.str().c_str()), wasm_execution_error);
    produce_blocks(1);
    }
 } FC_LOG_AND_RETHROW()
@@ -1488,7 +1488,7 @@ BOOST_FIXTURE_TEST_CASE( lotso_stack_9, TESTER ) try {
       ss << "(local f32)";
    ss << "  )";
    ss << ")";
-   BOOST_CHECK_THROW(set_code(N(stackz), ss.str().c_str()), wasm_serialization_error);
+   BOOST_CHECK_THROW(set_code(N(stackz), ss.str().c_str()), wasm_execution_error);
    produce_blocks(1);
    }
 } FC_LOG_AND_RETHROW()
@@ -1860,9 +1860,7 @@ BOOST_AUTO_TEST_CASE( code_size )  try {
    std::vector<U8> code_end = { 0x0b };
  
    std::vector<U8> code_function_body;
-   for(unsigned int i = 0; i < wasm_constraints::maximum_code_size; ++i) {
-      code_function_body.push_back(0x01);
-   }
+   code_function_body.insert(code_function_body.end(), wasm_constraints::maximum_code_size, 0x01);
 
    std::vector<U8> code;
    code.insert(code.end(), code_start.begin(), code_start.end());
