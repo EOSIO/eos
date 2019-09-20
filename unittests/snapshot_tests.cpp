@@ -405,18 +405,6 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_replay_over_snapshot, SNAPSHOT_SUITE, snapsho
       from_block_log_chain.push_block(block);
    }
    verify_integrity_hash<SNAPSHOT_SUITE>(*chain.control, *from_block_log_chain.control);
-
-   // verifies that snap_chain's block_log does not have a genesis_state
-   copied_config = copy_config_and_files(snap_chain.get_config(), ordinal++);
-   try {
-      tester from_chain_id_block_log_chain(copied_config);
-      BOOST_FAIL("Should not be able to create new tester chain with block_log that does not start at block 1 "
-                 "(and thus does not have a genesis state)");
-   }
-   catch(const database_exception& ble) {
-      BOOST_REQUIRE_EQUAL("This version of controller::startup does not work with a fresh state database.", ble.top_message());
-   }
-
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(test_chain_id_in_snapshot, SNAPSHOT_SUITE, snapshot_suites)
@@ -532,8 +520,6 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_pending_schedule_snapshot, SNAPSHOT_SUITE, sn
    auto new_block = chain.produce_block();
    // undo the auto-pending from tester
    chain.control->abort_block();
-
-   auto integrity_value = chain.control->calculate_integrity_hash();
 
    // push that block to all sub testers and validate the integrity of the database after it.
    v2_tester.push_block(new_block);
