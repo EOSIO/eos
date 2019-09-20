@@ -1466,7 +1466,16 @@ producer_plugin_impl::start_block_result producer_plugin_impl::start_block() {
       }
 
       try {
+         if( !remove_expired_persisted_trxs( preprocess_deadline ) )
+            return start_block_result::exhausted;
+         if( !remove_expired_blacklisted_trxs( preprocess_deadline ) )
+            return start_block_result::exhausted;
+
+         // limit execution of pending incoming to once per block
          size_t pending_incoming_process_limit = _pending_incoming_transactions.size();
+
+         if( !process_unapplied_trxs( preprocess_deadline ) )
+            return start_block_result::exhausted;
 
          if (_pending_block_mode == pending_block_mode::producing) {
             auto scheduled_trx_deadline = preprocess_deadline;
@@ -1628,7 +1637,7 @@ bool producer_plugin_impl::process_unapplied_trxs( const fc::time_point& deadlin
    return !exhausted;
 }
 
-bool producer_plugin_impl::process_scheduled_and_incoming_trxs( const fc::time_point& deadline, size_t& orig_pending_txn_size )
+bool producer_plugin_impl::process_scheduled_and_incoming_trxs( const fc::time_point& deadline, size_t& pending_incoming_process_limit )
 {
    // scheduled transactions
    int num_applied = 0;
@@ -1668,14 +1677,14 @@ bool producer_plugin_impl::process_scheduled_and_incoming_trxs( const fc::time_p
       num_processed++;
 
       // configurable ratio of incoming txns vs deferred txns
-      while (incoming_trx_weight >= 1.0 && orig_pending_txn_size && _pending_incoming_transactions.size()) {
+      while (incoming_trx_weight >= 1.0 && pending_incoming_process_limit && _pending_incoming_transactions.size()) {
          if (deadline <= fc::time_point::now()) {
             exhausted = true;
             break;
          }
 
          auto e = _pending_incoming_transactions.pop_front();
-         --orig_pending_txn_size;
+         --pending_incoming_process_limit;
          incoming_trx_weight -= 1.0;
          process_incoming_transaction_async(std::get<0>(e), std::get<1>(e), std::get<2>(e));
       }
@@ -1710,7 +1719,7 @@ bool producer_plugin_impl::process_scheduled_and_incoming_trxs( const fc::time_p
       } LOG_AND_DROP();
 
       incoming_trx_weight += _incoming_defer_ratio;
-      if (!orig_pending_txn_size) incoming_trx_weight = 0.0;
+      if (!pending_incoming_process_limit) incoming_trx_weight = 0.0;
 
       if( sch_itr_next == sch_idx.end() ) break;
       sch_itr = sch_idx.lower_bound( boost::make_tuple( next_delay_until, next_id ) );
@@ -1725,19 +1734,19 @@ bool producer_plugin_impl::process_scheduled_and_incoming_trxs( const fc::time_p
    return !exhausted;
 }
 
-bool producer_plugin_impl::process_incoming_trxs( const fc::time_point& deadline, size_t& orig_pending_txn_size )
+bool producer_plugin_impl::process_incoming_trxs( const fc::time_point& deadline, size_t& pending_incoming_process_limit )
 {
    bool exhausted = false;
    if (!_pending_incoming_transactions.empty()) {
       size_t processed = 0;
-      fc_dlog(_log, "Processing ${n} pending transactions", ("n", orig_pending_txn_size));
-      while (orig_pending_txn_size && _pending_incoming_transactions.size()) {
+      fc_dlog(_log, "Processing ${n} pending transactions", ("n", pending_incoming_process_limit));
+      while (pending_incoming_process_limit && _pending_incoming_transactions.size()) {
          if (deadline <= fc::time_point::now()) {
             exhausted = true;
             break;
          }
          auto e = _pending_incoming_transactions.pop_front();
-         --orig_pending_txn_size;
+         --pending_incoming_process_limit;
          process_incoming_transaction_async(std::get<0>(e), std::get<1>(e), std::get<2>(e));
          ++processed;
       }
