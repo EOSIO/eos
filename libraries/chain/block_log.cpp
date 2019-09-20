@@ -687,6 +687,11 @@ namespace eosio { namespace chain {
                   block_log_exception,
                   "Block log file at '${blocks_log}' first block already returned by former call to previous(), it is no longer valid to call this function.", ("blocks_log", _block_file_name) );
 
+      if (_version == 1 && _blocks_found == _blocks_expected) {
+         _current_position_in_file = block_log::npos;
+         return _current_position_in_file;
+      }
+	 
       if (_start_of_buffer_position > _current_position_in_file) {
          update_buffer();
       }
@@ -710,9 +715,6 @@ namespace eosio { namespace chain {
                      block_log_exception,
                      "Block log file at '${blocks_log}' formatting is incorrect, indicates position later location in file: ${pos}, which was retrieved at: ${orig_pos}.",
                      ("blocks_log", _block_file_name)("pos", _current_position_in_file)("orig_pos", previous_position_in_file) );
-         if (_version == 1 && _blocks_found != _blocks_expected) {
-            _current_position_in_file = block_location_in_file = block_log::npos;
-         }
       }
 
       return block_location_in_file;
