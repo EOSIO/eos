@@ -17,10 +17,13 @@
 
 #include <asm/prctl.h>
 #include <sys/prctl.h>
+#include <sys/syscall.h>
 
 extern "C" int arch_prctl(int code, unsigned long* addr);
 
 namespace eosio { namespace chain { namespace eosvmoc {
+
+static constexpr auto signal_sentinel = 0x4D56534F45534559ul;
 
 static std::mutex inited_signal_mutex;
 static bool inited_signal;
@@ -29,32 +32,31 @@ static void(*chained_handler)(int,siginfo_t*,void*);
 [[noreturn]] static void segv_handler(int sig, siginfo_t* info, void* ctx)  {
    control_block* cb_in_main_segment;
 
-   //check out the current GS value, if it's 0 we're on a thread
-   // that never had an executor running on it
+   //a 0 GS value is an indicator an executor hasn't been active on this thread recently
    uint64_t current_gs;
-   arch_prctl(ARCH_GET_GS, &current_gs);  //XXX this should probably be direct syscall
+   syscall(SYS_arch_prctl, ARCH_GET_GS, &current_gs);
    if(current_gs == 0)
       goto notus;
 
    cb_in_main_segment = reinterpret_cast<control_block*>(current_gs - memory::cb_offset);
 
    //as a double check that the control block pointer is what we expect, look for the magic
-   if(cb_in_main_segment->magic != 0x43543543)
+   if(cb_in_main_segment->magic != signal_sentinel)
       goto notus;
 
    //was wasm running? If not, this SEGV was not due to us
    if(cb_in_main_segment->is_running == false)
       goto notus;
 
-   //was the segfault within code? if so, bubble up "2" for now
+   //was the segfault within code?
    if((uintptr_t)info->si_addr >= cb_in_main_segment->execution_thread_code_start &&
       (uintptr_t)info->si_addr < cb_in_main_segment->execution_thread_code_start+cb_in_main_segment->execution_thread_code_length)
-         siglongjmp(*cb_in_main_segment->jmp, 2);
+         siglongjmp(*cb_in_main_segment->jmp, EOSVMOC_EXIT_CHECKTIME_FAIL);
 
-   //was the segfault within data? if so, bubble up "3" for now
+   //was the segfault within data?
    if((uintptr_t)info->si_addr >= cb_in_main_segment->execution_thread_memory_start &&
       (uintptr_t)info->si_addr < cb_in_main_segment->execution_thread_memory_start+cb_in_main_segment->execution_thread_memory_length)
-         siglongjmp(*cb_in_main_segment->jmp, 3);
+         siglongjmp(*cb_in_main_segment->jmp, EOSVMOC_EXIT_SEGV);
 
 notus:
    if(chained_handler)
@@ -80,7 +82,6 @@ static int32_t grow_memory(int32_t grow, int32_t max) {
    arch_prctl(ARCH_SET_GS, (unsigned long*)current_gs);
    cb_ptr->current_linear_memory_pages += grow_amount;
 
-   //XXX probably should checktime during this
    if(grow_amount > 0)
       memset((void*)(cb_ptr->full_linear_memory_start + previous_page_count*64u*1024u), 0, grow_amount*64u*1024u);
 
@@ -90,11 +91,10 @@ static intrinsic grow_memory_intrinsic("eosvmoc_internal.grow_memory", IR::Funct
   boost::hana::index_if(intrinsic_table, ::boost::hana::equal.to(BOOST_HANA_STRING("eosvmoc_internal.grow_memory"))).value()
 );
 
-///XXX put this somewhere else cozy
 static void throw_internal_exception(const std::string& s) {
    EOSVMOC_MEMORY_PTR_cb_ptr;
    *cb_ptr->eptr = std::make_exception_ptr(wasm_execution_error(FC_LOG_MESSAGE(error, s)));
-   siglongjmp(*cb_ptr->jmp, 4); ///XXX 4 means due to exception
+   siglongjmp(*cb_ptr->jmp, EOSVMOC_EXIT_EXCEPTION);
    __builtin_unreachable();
 }
 
@@ -176,7 +176,7 @@ void executor::execute(const code_descriptor& code, const memory& mem, apply_con
    memcpy(mem.full_page_memory_base() - code.initdata_prolouge_size, code_mapping + code.initdata_begin, code.initdata_size);
 
    control_block* const cb = mem.get_control_block();
-   cb->magic = 0x43543543; //XXX
+   cb->magic = signal_sentinel;
    cb->execution_thread_code_start = (uintptr_t)code_mapping;
    cb->execution_thread_code_length = code_mapping_size;
    cb->execution_thread_memory_start = (uintptr_t)mem.start_of_memory_slices();
@@ -195,7 +195,7 @@ void executor::execute(const code_descriptor& code, const memory& mem, apply_con
 
    context.trx_context.transaction_timer.set_expiration_callback([](void* user) {
       executor* self = (executor*)user;
-      mprotect(self->code_mapping, self->code_mapping_size, PROT_NONE);
+      syscall(SYS_mprotect, self->code_mapping, self->code_mapping_size, PROT_NONE);
       self->mapping_is_executable = false;
    }, this);
    context.trx_context.checktime(); //catch any expiration that might have occurred before setting up callback
@@ -222,14 +222,13 @@ void executor::execute(const code_descriptor& code, const memory& mem, apply_con
          apply_func(context.get_receiver().to_uint64_t(), context.get_action().account.to_uint64_t(), context.get_action().name.to_uint64_t());
          break;
       //case 1: clean eosio_exit
-      case 2: //checktime violation
+      case EOSVMOC_EXIT_CHECKTIME_FAIL:
          context.trx_context.checktime();
-         ///XXX consider another assert here
          break;
-      case 3: //data access violation
+      case EOSVMOC_EXIT_SEGV:
          EOS_ASSERT(false, wasm_execution_error, "access violation");
          break;
-      case 4: //exception
+      case EOSVMOC_EXIT_EXCEPTION: //exception
          std::rethrow_exception(*cb->eptr);
          break;
    }

@@ -1223,8 +1223,7 @@ namespace LLVMJIT
 		// Create LLVM pointer constants for the module's imported functions.
 		for(Uptr functionIndex = 0;functionIndex < module.functions.imports.size();++functionIndex)
 		{
-         ///XXX namespace
-         const eosio::chain::eosvmoc::intrinsic_entry& ie = eosio::chain::eosvmoc::get_intrinsic_map().at(module.functions.imports[functionIndex].moduleName + "." + module.functions.imports[functionIndex].exportName);
+         const intrinsic_entry& ie =get_intrinsic_map().at(module.functions.imports[functionIndex].moduleName + "." + module.functions.imports[functionIndex].exportName);
 			importedFunctionOffsets.push_back(ie.ordinal);
 		}
 

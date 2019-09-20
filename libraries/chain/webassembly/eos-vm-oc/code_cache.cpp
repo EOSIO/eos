@@ -212,7 +212,7 @@ const code_descriptor* const code_cache::get_descriptor_for_code(const digest_ty
    if(module.memories.size())
       cd.starting_memory_pages = module.memories.defs.at(0).type.size.min;
 
-   std::vector<uint8_t> prolouge(memory::cb_offset); ///XXX not the best use of variable
+   std::vector<uint8_t> prolouge(memory::cb_offset); //getting the control block offset gets us as large as table+globals as possible
    std::vector<uint8_t>::iterator prolouge_it = prolouge.end();
 
    //set up mutable globals

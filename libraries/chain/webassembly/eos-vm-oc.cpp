@@ -66,7 +66,7 @@ std::unique_ptr<wasm_instantiated_module_interface> eosvmoc_runtime::instantiate
 
 void eosvmoc_runtime::immediately_exit_currently_running_module() {
    EOSVMOC_MEMORY_PTR_cb_ptr;
-   siglongjmp(*cb_ptr->jmp, 1); ///XXX 1 means clean exit
+   siglongjmp(*cb_ptr->jmp, EOSVMOC_EXIT_CLEAN_EXIT);
    __builtin_unreachable();
 }
 

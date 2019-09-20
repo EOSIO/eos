@@ -315,7 +315,7 @@ struct intrinsic_invoker_impl<is_injected, Ret, std::tuple<>, std::tuple<Transla
       }
       catch(...) {
          *cb_ptr->eptr = std::current_exception();
-         siglongjmp(*cb_ptr->jmp, 4); ///XXX 4 means due to exception
+         siglongjmp(*cb_ptr->jmp, EOSVMOC_EXIT_EXCEPTION);
          __builtin_unreachable();
       }
    }
@@ -344,7 +344,7 @@ struct intrinsic_invoker_impl<is_injected, void_type, std::tuple<>, std::tuple<T
       }
       catch(...) {
          *cb_ptr->eptr = std::current_exception();
-         siglongjmp(*cb_ptr->jmp, 4); ///XXX 4 means due to exception
+         siglongjmp(*cb_ptr->jmp, EOSVMOC_EXIT_EXCEPTION);
          __builtin_unreachable();
       }
    }

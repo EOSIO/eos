@@ -11,10 +11,6 @@
 #include <vector>
 #include <list>
 
-namespace Runtime {
-struct ModuleInstance;
-}
-
 namespace eosio { namespace chain {
 
 class apply_context;
@@ -56,6 +52,13 @@ struct code_descriptor {
    size_t initdata_begin;
    unsigned initdata_size;
    unsigned initdata_prolouge_size;
+};
+
+enum eosvmoc_exitcode : int {
+   EOSVMOC_EXIT_CLEAN_EXIT = 1,
+   EOSVMOC_EXIT_CHECKTIME_FAIL,
+   EOSVMOC_EXIT_SEGV,
+   EOSVMOC_EXIT_EXCEPTION
 };
 
 }}}
