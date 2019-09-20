@@ -35,6 +35,7 @@ matrix:
           update: true
           packages:
             - ccache
+            - jq
             - boost
             - python@2
             - python
