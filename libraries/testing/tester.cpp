@@ -150,26 +150,11 @@ namespace eosio { namespace testing {
    }
 
    void base_tester::init(const setup_policy policy, db_read_mode read_mode) {
-      cfg.blocks_dir      = tempdir.path() / config::default_blocks_dir_name;
-      cfg.state_dir  = tempdir.path() / config::default_state_dir_name;
-      cfg.state_size = 1024*1024*8;
-      cfg.state_guard_size = 0;
-      cfg.reversible_cache_size = 1024*1024*8;
-      cfg.reversible_guard_size = 0;
-      cfg.contracts_console = true;
-      cfg.read_mode = read_mode;
+      auto def_conf = default_config(tempdir);
+      def_conf.first.read_mode = read_mode;
+      cfg = def_conf.first;
 
-      cfg.genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
-      cfg.genesis.initial_key = get_public_key( config::system_account_name, "active" );
-
-      for(int i = 0; i < boost::unit_test::framework::master_test_suite().argc; ++i) {
-         if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--wavm"))
-            cfg.wasm_runtime = chain::wasm_interface::vm_type::wavm;
-         else if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--wabt"))
-            cfg.wasm_runtime = chain::wasm_interface::vm_type::wabt;
-      }
-
-      open(nullptr);
+      open(def_conf.second);
       execute_setup_policy(policy);
    }
 
@@ -178,9 +163,29 @@ namespace eosio { namespace testing {
       open(snapshot);
    }
 
+   void base_tester::init(controller::config config, const genesis_state& genesis) {
+      cfg = config;
+      open(genesis);
+   }
+
+   void base_tester::init(controller::config config) {
+      cfg = config;
+      open();
+   }
+
    void base_tester::init(controller::config config, protocol_feature_set&& pfs, const snapshot_reader_ptr& snapshot) {
       cfg = config;
       open(std::move(pfs), snapshot);
+   }
+
+   void base_tester::init(controller::config config, protocol_feature_set&& pfs, const genesis_state& genesis) {
+      cfg = config;
+      open(std::move(pfs), genesis);
+   }
+
+   void base_tester::init(controller::config config, protocol_feature_set&& pfs) {
+      cfg = config;
+      open(std::move(pfs));
    }
 
    void base_tester::execute_setup_policy(const setup_policy policy) {
@@ -232,10 +237,19 @@ namespace eosio { namespace testing {
       open( make_protocol_feature_set(), snapshot );
    }
 
-   void base_tester::open( protocol_feature_set&& pfs, const snapshot_reader_ptr& snapshot ) {
+   void base_tester::open( const genesis_state& genesis ) {
+      open( make_protocol_feature_set(), genesis );
+   }
+
+   void base_tester::open() {
+      open( make_protocol_feature_set() );
+   }
+
+   template <typename Lambda>
+   void base_tester::open( protocol_feature_set&& pfs, Lambda lambda ) {
       control.reset( new controller(cfg, std::move(pfs)) );
       control->add_indices();
-      control->startup( []() { return false; }, snapshot);
+      lambda();
       chain_transactions.clear();
       control->accepted_block.connect([this]( const block_state_ptr& block_state ){
         FC_ASSERT( block_state->block );
@@ -248,6 +262,24 @@ namespace eosio { namespace testing {
                   chain_transactions[id] = receipt;
               }
           }
+      });
+   }
+
+   void base_tester::open( protocol_feature_set&& pfs, const snapshot_reader_ptr& snapshot ) {
+      open(std::move(pfs), [&snapshot,&control=this->control]() {
+         control->startup([]() { return false; }, snapshot );
+      });
+   }
+
+   void base_tester::open( protocol_feature_set&& pfs, const genesis_state& genesis ) {
+      open(std::move(pfs), [&genesis,&control=this->control]() {
+         control->startup( []() { return false; }, genesis );
+      });
+   }
+
+   void base_tester::open( protocol_feature_set&& pfs ) {
+      open(std::move(pfs), [&control=this->control]() {
+         control->startup( []() { return false; } );
       });
    }
 

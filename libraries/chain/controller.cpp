@@ -225,7 +225,7 @@ struct controller_impl {
    authorization_manager          authorization;
    protocol_feature_manager       protocol_features;
    controller::config             conf;
-   const chain_id_type            chain_id; // read by thread_pool threads
+   chain_id_type                  chain_id; // read by thread_pool threads, value will not be changed after initialization/snapshot
    optional<fc::time_point>       replay_head_time;
    db_read_mode                   read_mode = db_read_mode::SPECULATIVE;
    bool                           in_trx_requiring_checks = false; ///< if true, checks that are normally skipped on replay (e.g. auth checks) cannot be skipped
@@ -296,11 +296,9 @@ struct controller_impl {
     authorization( s, db ),
     protocol_features( std::move(pfs) ),
     conf( cfg ),
-    chain_id( cfg.genesis.compute_chain_id() ),
     read_mode( cfg.read_mode ),
     thread_pool( "chain", cfg.thread_pool_size )
    {
-
       fork_db.open( [this]( block_timestamp_type timestamp,
                             const flat_set<digest_type>& cur_features,
                             const vector<digest_type>& new_features )
@@ -429,18 +427,18 @@ struct controller_impl {
    /**
     *  Sets fork database head to the genesis state.
     */
-   void initialize_blockchain_state() {
+   void initialize_blockchain_state(const genesis_state& genesis) {
       wlog( "Initializing new blockchain with genesis state" );
-      producer_authority_schedule initial_schedule = { 0, { producer_authority{config::system_account_name, block_signing_authority_v0{ 1, {{conf.genesis.initial_key, 1}} } } } };
-      legacy::producer_schedule_type initial_legacy_schedule{ 0, {{config::system_account_name, conf.genesis.initial_key}} };
+      producer_authority_schedule initial_schedule = { 0, { producer_authority{config::system_account_name, block_signing_authority_v0{ 1, {{genesis.initial_key, 1}} } } } };
+      legacy::producer_schedule_type initial_legacy_schedule{ 0, {{config::system_account_name, genesis.initial_key}} };
 
       block_header_state genheader;
       genheader.active_schedule                = initial_schedule;
       genheader.pending_schedule.schedule      = initial_schedule;
       // NOTE: if wtmsig block signatures are enabled at genesis time this should be the hash of a producer authority schedule
       genheader.pending_schedule.schedule_hash = fc::sha256::hash(initial_legacy_schedule);
-      genheader.header.timestamp               = conf.genesis.initial_timestamp;
-      genheader.header.action_mroot            = conf.genesis.compute_chain_id();
+      genheader.header.timestamp               = genesis.initial_timestamp;
+      genheader.header.action_mroot            = genesis.compute_chain_id();
       genheader.id                             = genheader.header.id();
       genheader.block_num                      = genheader.header.block_num();
 
@@ -449,7 +447,7 @@ struct controller_impl {
       head->activated_protocol_features = std::make_shared<protocol_feature_activation_set>();
       head->block = std::make_shared<signed_block>(genheader.header);
       db.set_revision( head->block_num );
-      initialize_database();
+      initialize_database(genesis);
    }
 
    void replay(std::function<bool()> shutdown) {
@@ -519,71 +517,92 @@ struct controller_impl {
       }
    }
 
-   void init(std::function<bool()> shutdown, const snapshot_reader_ptr& snapshot) {
-      // Setup state if necessary (or in the default case stay with already loaded state):
-      uint32_t lib_num = 1u;
-      if( snapshot ) {
+   void startup(std::function<bool()> shutdown, const snapshot_reader_ptr& snapshot) {
+      EOS_ASSERT( snapshot, snapshot_exception, "No snapshot reader provided" );
+      ilog( "Starting initialization from snapshot, this may take a significant amount of time" );
+      try {
          snapshot->validate();
          if( blog.head() ) {
-            lib_num = blog.head()->block_num();
-            read_from_snapshot( snapshot, blog.first_block_num(), lib_num );
+            read_from_snapshot( snapshot, blog.first_block_num(), blog.head()->block_num() );
          } else {
             read_from_snapshot( snapshot, 0, std::numeric_limits<uint32_t>::max() );
-            lib_num = head->block_num;
-            blog.reset( conf.genesis, signed_block_ptr(), lib_num + 1 );
+            const uint32_t lib_num = head->block_num;
+            EOS_ASSERT( lib_num > 0, snapshot_exception,
+                        "Snapshot indicates controller head at block number 0, but that is not allowed. "
+                        "Snapshot is invalid." );
+            blog.reset( chain_id, lib_num + 1 );
          }
+         const auto hash = calculate_integrity_hash();
+         ilog( "database initialized with hash: ${hash}", ("hash", hash) );
+
+         init(shutdown);
+      } catch (boost::interprocess::bad_alloc& e) {
+         elog( "db storage not configured to have enough storage for the provided snapshot, please increase and retry snapshot" );
+         throw e;
+      }
+
+      ilog( "Finished initialization from snapshot" );
+   }
+
+   void startup(std::function<bool()> shutdown, const genesis_state& genesis) {
+      EOS_ASSERT( db.revision() < 1, database_exception, "This version of controller::startup only works with a fresh state database." );
+
+      if( fork_db.head() ) {
+         if( read_mode == db_read_mode::IRREVERSIBLE && fork_db.head()->id != fork_db.root()->id ) {
+            fork_db.rollback_head_to_root();
+         }
+         wlog( "No existing chain state. Initializing fresh blockchain state." );
       } else {
-         if( db.revision() < 1 || !fork_db.head() ) {
-            if( fork_db.head() ) {
-               if( read_mode == db_read_mode::IRREVERSIBLE && fork_db.head()->id != fork_db.root()->id ) {
-                  fork_db.rollback_head_to_root();
-               }
-               wlog( "No existing chain state. Initializing fresh blockchain state." );
-            } else {
-               EOS_ASSERT( db.revision() < 1, database_exception,
-                           "No existing fork database despite existing chain state. Replay required." );
-               wlog( "No existing chain state or fork database. Initializing fresh blockchain state and resetting fork database.");
-            }
-            initialize_blockchain_state(); // sets head to genesis state
+         wlog( "No existing chain state or fork database. Initializing fresh blockchain state and resetting fork database.");
+      }
+      initialize_blockchain_state(genesis); // sets head to genesis state
 
-            if( !fork_db.head() ) {
-               fork_db.reset( *head );
-            }
+      if( !fork_db.head() ) {
+         fork_db.reset( *head );
+      }
 
-            if( blog.head() ) {
-               EOS_ASSERT( blog.first_block_num() == 1, block_log_exception,
-                           "block log does not start with genesis block"
-               );
-               lib_num = blog.head()->block_num();
-            } else {
-               blog.reset( conf.genesis, head->block );
-            }
-         } else {
-            lib_num = fork_db.root()->block_num;
-            auto first_block_num = blog.first_block_num();
-            if( blog.head() ) {
-               EOS_ASSERT( first_block_num <= lib_num && lib_num <= blog.head()->block_num(),
-                           block_log_exception,
-                           "block log does not contain last irreversible block",
-                           ("block_log_first_num", first_block_num)
-                           ("block_log_last_num", blog.head()->block_num())
-                           ("fork_db_lib", lib_num)
-               );
-               lib_num = blog.head()->block_num();
-            } else {
-               lib_num = fork_db.root()->block_num;
-               if( first_block_num != (lib_num + 1) ) {
-                  blog.reset( conf.genesis, signed_block_ptr(), lib_num + 1 );
-               }
-            }
+      if( blog.head() ) {
+         EOS_ASSERT( blog.first_block_num() == 1, block_log_exception,
+                     "block log does not start with genesis block"
+         );
+      } else {
+         blog.reset( genesis, head->block );
+      }
+      init(shutdown);
+   }
 
-            if( read_mode == db_read_mode::IRREVERSIBLE && fork_db.head()->id != fork_db.root()->id ) {
-               fork_db.rollback_head_to_root();
-            }
-            head = fork_db.head();
+   void startup(std::function<bool()> shutdown) {
+      EOS_ASSERT( db.revision() >= 1, database_exception, "This version of controller::startup does not work with a fresh state database." );
+      EOS_ASSERT( fork_db.head(), fork_database_exception, "No existing fork database despite existing chain state. Replay required." );
+
+      chain_id = db.get<global_property_object>().chain_id;
+      uint32_t lib_num = fork_db.root()->block_num;
+      auto first_block_num = blog.first_block_num();
+      if( blog.head() ) {
+         EOS_ASSERT( first_block_num <= lib_num && lib_num <= blog.head()->block_num(),
+                     block_log_exception,
+                     "block log does not contain last irreversible block",
+                     ("block_log_first_num", first_block_num)
+                     ("block_log_last_num", blog.head()->block_num())
+                     ("fork_db_lib", lib_num)
+         );
+         lib_num = blog.head()->block_num();
+      } else {
+         if( first_block_num != (lib_num + 1) ) {
+            blog.reset( chain_id, lib_num + 1 );
          }
       }
 
+      if( read_mode == db_read_mode::IRREVERSIBLE && fork_db.head()->id != fork_db.root()->id ) {
+         fork_db.rollback_head_to_root();
+      }
+      head = fork_db.head();
+
+      init(shutdown);
+   }
+
+   void init(std::function<bool()> shutdown) {
+      uint32_t lib_num = (blog.head() ? blog.head()->block_num() : fork_db.root()->block_num);
       // check database version
       const auto& header_idx = db.get_index<database_header_multi_index>().indices().get<by_id>();
 
@@ -680,8 +699,6 @@ struct controller_impl {
          // else no checks needed since fork_db will be completely reset on replay anyway
       }
 
-      bool report_integrity_hash = !!snapshot || (lib_num > head->block_num);
-
       if( last_block_num > head->block_num ) {
          replay( shutdown ); // replay any irreversible and reversible blocks ahead of current head
       }
@@ -701,11 +718,6 @@ struct controller_impl {
             wlog( "applying branch from fork database ending with block: ${id}", ("id", pending_head->id) );
             maybe_switch_forks( pending_head, controller::block_status::complete, forked_branch_callback{}, trx_meta_cache_lookup{} );
          }
-      }
-
-      if( report_integrity_hash ) {
-         const auto hash = calculate_integrity_hash();
-         ilog( "database initialized with hash: ${hash}", ("hash", hash) );
       }
    }
 
@@ -794,10 +806,6 @@ struct controller_impl {
          section.add_row(chain_snapshot_header(), db);
       });
 
-      snapshot->write_section<genesis_state>([this]( auto &section ){
-         section.add_row(conf.genesis, db);
-      });
-
       snapshot->write_section<block_state>([this]( auto &section ){
          section.template add_row<block_header_state>(*fork_db.head(), db);
       });
@@ -828,6 +836,19 @@ struct controller_impl {
       resource_limits.add_to_snapshot(snapshot);
    }
 
+   static fc::optional<genesis_state> extract_legacy_genesis_state( const snapshot_reader_ptr& snapshot, uint32_t version ) {
+      fc::optional<genesis_state> genesis;
+      using v2 = legacy::snapshot_global_property_object_v2;
+
+      if (std::clamp(version, v2::minimum_version, v2::maximum_version) == version ) {
+         genesis.emplace();
+         snapshot->read_section<genesis_state>([&genesis=*genesis]( auto &section ){
+            section.read_row(genesis);
+         });
+      }
+      return genesis;
+   }
+
    void read_from_snapshot( const snapshot_reader_ptr& snapshot, uint32_t blog_start, uint32_t blog_end ) {
       chain_snapshot_header header;
       snapshot->read_section<chain_snapshot_header>([this, &header]( auto &section ){
@@ -835,8 +856,7 @@ struct controller_impl {
          header.validate();
       });
 
-
-      { /// load an upgrade the block header state
+      { /// load and upgrade the block header state
          block_header_state head_header_state;
          using v2 = legacy::snapshot_block_header_state_v2;
 
@@ -864,6 +884,7 @@ struct controller_impl {
          fork_db.reset( head_header_state );
          head = fork_db.head();
          snapshot_head_block = head->block_num;
+
       }
 
       controller_index_set::walk_indices([this, &snapshot, &header]( auto utils ){
@@ -884,12 +905,16 @@ struct controller_impl {
             using v2 = legacy::snapshot_global_property_object_v2;
 
             if (std::clamp(header.version, v2::minimum_version, v2::maximum_version) == header.version ) {
-               snapshot->read_section<global_property_object>([this]( auto &section ) {
+               fc::optional<genesis_state> genesis = extract_legacy_genesis_state(snapshot, header.version);
+               EOS_ASSERT( genesis, snapshot_exception,
+                           "Snapshot indicates chain_snapshot_header version 2, but does not contain a genesis_state. "
+                           "It must be corrupted.");
+               snapshot->read_section<global_property_object>([&db=this->db,gs_chain_id=genesis->compute_chain_id()]( auto &section ) {
                   v2 legacy_global_properties;
                   section.read_row(legacy_global_properties, db);
 
-                  db.create<global_property_object>([&](auto& gpo ){
-                     gpo.initalize_from(legacy_global_properties);
+                  db.create<global_property_object>([&legacy_global_properties,&gs_chain_id](auto& gpo ){
+                     gpo.initalize_from(legacy_global_properties, gs_chain_id);
                   });
                });
                return; // early out to avoid default processing
@@ -904,7 +929,6 @@ struct controller_impl {
                });
             }
          });
-
       });
 
       read_contract_tables_from_snapshot(snapshot);
@@ -916,6 +940,10 @@ struct controller_impl {
       db.create<database_header_object>([](const auto& header){
          // nothing to do
       });
+
+      const auto& gpo = db.get<global_property_object>();
+      // ensure chain_id is populated from global_property_object's chain_id
+      chain_id = gpo.chain_id;
    }
 
    sha256 calculate_integrity_hash() const {
@@ -927,10 +955,10 @@ struct controller_impl {
       return enc.result();
    }
 
-   void create_native_account( account_name name, const authority& owner, const authority& active, bool is_privileged = false ) {
+   void create_native_account( const fc::time_point& initial_timestamp, account_name name, const authority& owner, const authority& active, bool is_privileged = false ) {
       db.create<account_object>([&](auto& a) {
          a.name = name;
-         a.creation_date = conf.genesis.initial_timestamp;
+         a.creation_date = initial_timestamp;
 
          if( name == config::system_account_name ) {
             // The initial eosio ABI value affects consensus; see  https://github.com/EOSIO/eos/issues/7794
@@ -945,9 +973,9 @@ struct controller_impl {
       });
 
       const auto& owner_permission  = authorization.create_permission(name, config::owner_name, 0,
-                                                                      owner, conf.genesis.initial_timestamp );
+                                                                      owner, initial_timestamp );
       const auto& active_permission = authorization.create_permission(name, config::active_name, owner_permission.id,
-                                                                      active, conf.genesis.initial_timestamp );
+                                                                      active, initial_timestamp );
 
       resource_limits.initialize_account(name);
 
@@ -960,7 +988,7 @@ struct controller_impl {
       resource_limits.verify_account_ram_usage(name);
    }
 
-   void initialize_database() {
+   void initialize_database(const genesis_state& genesis) {
       // create the database header sigil
       db.create<database_header_object>([&]( auto& header ){
          // nothing to do for now
@@ -975,9 +1003,11 @@ struct controller_impl {
          bs.block_id = head->id;
       });
 
-      conf.genesis.initial_configuration.validate();
-      db.create<global_property_object>([&](auto& gpo ){
-         gpo.configuration = conf.genesis.initial_configuration;
+      genesis.initial_configuration.validate();
+      chain_id = genesis.compute_chain_id();
+      db.create<global_property_object>([&genesis,&chain_id=this->chain_id](auto& gpo ){
+         gpo.configuration = genesis.initial_configuration;
+         gpo.chain_id = chain_id;
       });
 
       db.create<protocol_state_object>([&](auto& pso ){
@@ -992,26 +1022,26 @@ struct controller_impl {
       authorization.initialize_database();
       resource_limits.initialize_database();
 
-      authority system_auth(conf.genesis.initial_key);
-      create_native_account( config::system_account_name, system_auth, system_auth, true );
+      authority system_auth(genesis.initial_key);
+      create_native_account( genesis.initial_timestamp, config::system_account_name, system_auth, system_auth, true );
 
       auto empty_authority = authority(1, {}, {});
       auto active_producers_authority = authority(1, {}, {});
       active_producers_authority.accounts.push_back({{config::system_account_name, config::active_name}, 1});
 
-      create_native_account( config::null_account_name, empty_authority, empty_authority );
-      create_native_account( config::producers_account_name, empty_authority, active_producers_authority );
+      create_native_account( genesis.initial_timestamp, config::null_account_name, empty_authority, empty_authority );
+      create_native_account( genesis.initial_timestamp, config::producers_account_name, empty_authority, active_producers_authority );
       const auto& active_permission       = authorization.get_permission({config::producers_account_name, config::active_name});
       const auto& majority_permission     = authorization.create_permission( config::producers_account_name,
                                                                              config::majority_producers_permission_name,
                                                                              active_permission.id,
                                                                              active_producers_authority,
-                                                                             conf.genesis.initial_timestamp );
+                                                                             genesis.initial_timestamp );
       const auto& minority_permission     = authorization.create_permission( config::producers_account_name,
                                                                              config::minority_producers_permission_name,
                                                                              majority_permission.id,
                                                                              active_producers_authority,
-                                                                             conf.genesis.initial_timestamp );
+                                                                             genesis.initial_timestamp );
    }
 
    // The returned scoped_exit should not exceed the lifetime of the pending which existed when make_block_restore_point was called.
@@ -2343,19 +2373,15 @@ void controller::add_indices() {
 }
 
 void controller::startup( std::function<bool()> shutdown, const snapshot_reader_ptr& snapshot ) {
-   if( snapshot ) {
-      ilog( "Starting initialization from snapshot, this may take a significant amount of time" );
-   }
-   try {
-      my->init(shutdown, snapshot);
-   } catch (boost::interprocess::bad_alloc& e) {
-      if ( snapshot )
-         elog( "db storage not configured to have enough storage for the provided snapshot, please increase and retry snapshot" );
-      throw e;
-   }
-   if( snapshot ) {
-      ilog( "Finished initialization from snapshot" );
-   }
+   my->startup(shutdown, snapshot);
+}
+
+void controller::startup( std::function<bool()> shutdown, const genesis_state& genesis ) {
+   my->startup(shutdown, genesis);
+}
+
+void controller::startup( std::function<bool()> shutdown ) {
+   my->startup(shutdown);
 }
 
 const chainbase::database& controller::db()const { return my->db; }
@@ -3121,6 +3147,28 @@ fc::optional<uint64_t> controller::convert_exception_to_error_code( const fc::ex
    if( !e_ptr->error_code ) return static_cast<uint64_t>(system_error_code::generic_system_error);
 
    return e_ptr->error_code;
+}
+
+chain_id_type controller::extract_chain_id(const snapshot_reader_ptr& snapshot) {
+   chain_snapshot_header header;
+   snapshot->read_section<chain_snapshot_header>([&header]( auto &section ){
+      section.read_row(header);
+      header.validate();
+   });
+
+   // check if this is a legacy version of the snapshot, which has a genesis state instead of chain id
+   fc::optional<genesis_state> genesis = controller_impl::extract_legacy_genesis_state(snapshot, header.version);
+   if (genesis) {
+      return genesis->compute_chain_id();
+   }
+
+   chain_id_type chain_id;
+   snapshot->read_section<global_property_object>([&chain_id]( auto &section ){
+      snapshot_global_property_object global_properties;
+      section.read_row(global_properties);
+      chain_id = global_properties.chain_id;
+   });
+   return chain_id;
 }
 
 /// Protocol feature activation handlers:

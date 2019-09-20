@@ -81,7 +81,6 @@ namespace eosio { namespace chain {
             uint32_t                 maximum_variable_signature_length = chain::config::default_max_variable_signature_length;
             bool                     disable_all_subjective_mitigations = false; //< for testing purposes only
 
-            genesis_state            genesis;
             wasm_interface::vm_type  wasm_runtime = chain::config::default_wasm_runtime;
 
             db_read_mode             read_mode              = db_read_mode::SPECULATIVE;
@@ -106,7 +105,9 @@ namespace eosio { namespace chain {
          ~controller();
 
          void add_indices();
-         void startup( std::function<bool()> shutdown, const snapshot_reader_ptr& snapshot = nullptr );
+         void startup( std::function<bool()> shutdown, const snapshot_reader_ptr& snapshot);
+         void startup( std::function<bool()> shutdown, const genesis_state& genesis);
+         void startup( std::function<bool()> shutdown);
 
          void preactivate_feature( const digest_type& feature_digest );
 
@@ -327,6 +328,8 @@ namespace eosio { namespace chain {
             return pretty_output;
          }
 
+      static chain_id_type extract_chain_id(const snapshot_reader_ptr& snapshot);
+
       private:
          friend class apply_context;
          friend class transaction_context;
@@ -352,7 +355,6 @@ FC_REFLECT( eosio::chain::controller::config,
             (force_all_checks)
             (disable_replay_opts)
             (contracts_console)
-            (genesis)
             (wasm_runtime)
             (resource_greylist)
             (trusted_producers)

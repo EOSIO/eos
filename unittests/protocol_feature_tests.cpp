@@ -92,7 +92,7 @@ BOOST_AUTO_TEST_CASE( activate_and_restart ) try {
    BOOST_CHECK( c.control->is_builtin_activated( builtin_protocol_feature_t::preactivate_feature ) );
 
    c.close();
-   c.open( std::move( pfs ), nullptr );
+   c.open( std::move( pfs ) );
 
    BOOST_CHECK_EQUAL( head_block_num, c.control->head_block_num() );
 
@@ -266,7 +266,7 @@ BOOST_AUTO_TEST_CASE( subjective_restrictions_test ) try {
 
    auto restart_with_new_pfs = [&c]( protocol_feature_set&& pfs ) {
       c.close();
-      c.open(std::move(pfs), nullptr);
+      c.open(std::move(pfs));
    };
 
    auto get_builtin_digest = [&pfm]( builtin_protocol_feature_t codename ) -> digest_type {
@@ -408,7 +408,7 @@ BOOST_AUTO_TEST_CASE( replace_deferred_test ) try {
    c.close();
    auto cfg = c.get_config();
    cfg.disable_all_subjective_mitigations = true;
-   c.init( cfg, nullptr );
+   c.init( cfg );
 
    BOOST_CHECK_EQUAL( c.control->get_resource_limits_manager().get_account_ram_usage( N(alice) ), alice_ram_usage0 );
 
@@ -451,7 +451,7 @@ BOOST_AUTO_TEST_CASE( replace_deferred_test ) try {
 
    c.close();
    cfg.disable_all_subjective_mitigations = false;
-   c.init( cfg, nullptr );
+   c.init( cfg );
 
    const auto& pfm = c.control->get_protocol_feature_manager();
 
@@ -1176,7 +1176,7 @@ BOOST_AUTO_TEST_CASE( ram_restrictions_test ) { try {
    c.close();
    auto cfg = c.get_config();
    cfg.disable_all_subjective_mitigations = true;
-   c.init( cfg, nullptr );
+   c.init( cfg );
 
    c.produce_block();
 
@@ -1201,7 +1201,7 @@ BOOST_AUTO_TEST_CASE( ram_restrictions_test ) { try {
    // Re-enable the subjective mitigation
    c.close();
    cfg.disable_all_subjective_mitigations = false;
-   c.init( cfg, nullptr );
+   c.init( cfg );
 
    c.produce_block();
 

@@ -563,7 +563,7 @@ BOOST_AUTO_TEST_CASE( reopen_forkdb ) try {
 
    c1.close();
 
-   c1.open( nullptr );
+   c1.open();
 
 } FC_LOG_AND_RETHROW()
 
