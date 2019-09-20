@@ -50,7 +50,7 @@ if [[ ! $PINNED == false || $UNPINNED == true ]]; then
     cd ../..
     rm -rf clang8
     # install boost from source
-    curl -LO https://dl.bintray.com/boostorg/release/1.70.0/source/boost_1_71_0.tar.bz2
+    curl -LO https://dl.bintray.com/boostorg/release/1.71.0/source/boost_1_71_0.tar.bz2
     tar -xjf boost_1_71_0.tar.bz2
     cd boost_1_71_0
     ./bootstrap.sh --prefix=/usr/local
