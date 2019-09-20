@@ -7,6 +7,7 @@ import os
 import platform
 import printer
 import requests
+import string
 import subprocess
 import shlex
 import time
@@ -298,6 +299,7 @@ class Cluster:
         self.service = service
         self.print = service.print
         self.string = service.string
+        self.alert = service.alert
         self.print_header = service.print_header
         self.print_config_helper = service.print_config_helper
 
@@ -319,13 +321,12 @@ class Cluster:
         self.nodes = []
         self.producers = {}
         q, r = divmod(self.total_producers, self.producer_nodes)
-        alphabet = "abcdefghijklmnopqrstuvwxyz"
         for i in range(self.total_nodes):
             self.nodes += [{"node_id": i}]
             if i < self.producer_nodes:
                 prod = [] if i else ["eosio"]
                 for j in range(i * q + r if i else 0, (i + 1) * q + r):
-                    name = "defproducer" + alphabet[j]
+                    name = self.get_defproducer_names(j)
                     prod.append(name)
                     self.producers[name] = i
                 self.nodes[i]["producers"] = prod
@@ -345,8 +346,7 @@ class Cluster:
 
     def check_config(self):
         assert self.cluster_id >= 0
-        assert self.total_nodes >= self.producer_nodes + self.unstarted_nodes
-        assert self.total_producers <= 26
+        assert self.total_nodes >= self.producer_nodes + self.unstarted_nodes, self.alert.red("Failed to assert: total_node ({}) >= producer_nodes ({}) + unstarted_nodes ({})".format(self.total_nodes, self.producer_nodes, self.unstarted_nodes))
 
 
     def bootstrap(self):
@@ -430,10 +430,13 @@ class Cluster:
 
         # 10. create producer accounts
         # 11. register producers
+        # first producer gets 75 million, rest get 1 million each so that the total 1 billion can be distributed to 100+ producers
+        stake_amount = "75000000.0000 SYS"
         for p in self.producers:
             self.create_account(node_id=self.producers[p], creator="eosio", name=p,
-                                stake_cpu="75000000.0000 SYS", stake_net = "75000000.0000 SYS", buy_ram_bytes=1048576,
+                                stake_cpu=stake_amount, stake_net=stake_amount, buy_ram_bytes=1048576,
                                 transfer=True)
+            stake_amount = "1000000.0000 SYS"
             regproducer = [{"account": "eosio",
                             "action": "regproducer",
                             "permissions": [{"actor": "{}".format(p),
@@ -452,7 +455,7 @@ class Cluster:
                                                 "permission": "active"}],
                                "data": {"voter": "defproducera",
                                         "proxy": "",
-                                        "producers": list(self.producers.keys())}}]
+                                        "producers": list(self.producers.keys())[:min(21, len(self.producers))]}}]
         self.push_actions(node_id=0, actions=vote_for_producers, name="vote for producers")
 
         # 13. verify head block producer is no longer eosio
@@ -583,6 +586,25 @@ class Cluster:
     def print_request(self, ix):
         self.print.vanilla(ix.request.url)
         self.print.json(ix.request.data)
+
+
+    @staticmethod
+    def get_defproducer_names(num):
+
+        def int_to_base26(x: int):
+            res = ""
+            while True:
+                q, r = divmod(x, 26)
+                res = chr(ord('a') + r) + res
+                x = q
+                if q == 0:
+                    break
+            return res
+
+        # 8031810176 = 26 ** 7 is integer for "baaaaaaa" in base26
+        assert 0 <= num < 8031810176
+        return "defproducer" + string.ascii_lowercase[num] if num < 26 else "defpr" + int_to_base26(8031810176 + num)[1:]
+
 
 
 
