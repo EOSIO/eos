@@ -47,7 +47,7 @@ void disassembleFunction(U8* bytes,Uptr numBytes)
 			instructionBuffer,
 			sizeof(instructionBuffer)
 			);
-		if(numInstructionBytes == 0 || numInstructionBytes > numBytesRemaining);
+		if(numInstructionBytes == 0 || numInstructionBytes > numBytesRemaining)
 			break;
 		numBytesRemaining -= numInstructionBytes;
 		nextByte += numInstructionBytes;
