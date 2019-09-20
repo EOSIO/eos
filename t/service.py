@@ -28,6 +28,7 @@ DEFAULT_VERBOSITY = 1
 DEFAULT_MONOCHROME = False
 
 DEFAULT_CLUSTER_ID = 0
+DEFAULT_CENTER_NODE_ID = None
 DEFAULT_TOPOLOGY = "mesh"
 DEFAULT_TOTAL_NODES = 4
 DEFAULT_TOTAL_PRODUCERS = 4
@@ -46,6 +47,7 @@ HELP_SILENT = "Set verbosity level at 0 (keep silent)"
 HELP_MONOCHROME = "Print in black and white instead of colors"
 
 HELP_CLUSTER_ID = "Cluster ID to launch with"
+HELP_CENTER_NODE_ID = "Center node ID for star or bridge"
 HELP_TOPOLOGY = "Cluster topology to launch with"
 HELP_TOTAL_NODES = "Number of total nodes"
 HELP_TOTAL_PRODUCERS = "Number of total producers"
@@ -71,6 +73,7 @@ class CommandLineArguments:
         if "cluster" in templates:
             self.cluster_id = args.cluster_id
             self.topology = args.topology
+            self.center_node_id = args.center_node_id
             self.total_nodes = args.total_nodes
             self.total_producers = args.total_producers
             self.producer_nodes = args.producer_nodes
@@ -95,7 +98,8 @@ class CommandLineArguments:
 
         if "cluster" in templates:
             parser.add_argument("-i", "--cluster-id", dest="cluster_id", type=int, metavar="ID", help=info(HELP_CLUSTER_ID, DEFAULT_CLUSTER_ID))
-            parser.add_argument("-t", "--topology", type=str, metavar="SHAPE", help=info(HELP_TOPOLOGY, DEFAULT_TOPOLOGY))
+            parser.add_argument("-t", "--topology", type=str, metavar="SHAPE", help=info(HELP_TOPOLOGY, DEFAULT_TOPOLOGY), choices={"mesh", "star", "bridge", "line", "ring", "tree"})
+            parser.add_argument("-c", "--center-node-id", dest="center_node_id", type=int, metavar="ID", help=info(HELP_CENTER_NODE_ID, DEFAULT_CENTER_NODE_ID))
             parser.add_argument("-n", "--total-nodes", dest="total_nodes", type=int, metavar="NUM", help=info(HELP_TOTAL_NODES, DEFAULT_TOTAL_NODES))
             parser.add_argument("-y", "--total-producers", dest="total_producers", type=int, metavar="NUM", help=info(HELP_TOTAL_PRODUCERS, DEFAULT_TOTAL_PRODUCERS))
             parser.add_argument("-z", "--producer-nodes", dest="producer_nodes", type=int, metavar="NUM", help=info(HELP_PRODUCER_NODES, DEFAULT_PRODUCER_NODES))
@@ -276,7 +280,7 @@ class Service:
 
 
 class Cluster:
-    def __init__(self, service, cluster_id=None, topology=None, total_nodes=None, total_producers=None, producer_nodes=None, unstarted_nodes=None, args=None, dont_bootstrap=False):
+    def __init__(self, service, cluster_id=None, topology=None, center_node_id=None, total_nodes=None, total_producers=None, producer_nodes=None, unstarted_nodes=None, args=None, dont_bootstrap=False):
         """
         Bootstrap
         ---------
@@ -306,6 +310,7 @@ class Cluster:
         # configure cluster
         self.cluster_id         = helper.override(DEFAULT_CLUSTER_ID,           cluster_id,         args.cluster_id         if args else None)
         self.topology           = helper.override(DEFAULT_TOPOLOGY,             topology,           args.topology           if args else None)
+        self.center_node_id     = helper.override(DEFAULT_CENTER_NODE_ID,       center_node_id,     args.center_node_id     if args else None)
         self.total_nodes        = helper.override(DEFAULT_TOTAL_NODES,          total_nodes,        args.total_nodes        if args else None)
         self.total_producers    = helper.override(DEFAULT_TOTAL_PRODUCERS,      total_producers,    args.total_producers    if args else None)
         self.producer_nodes     = helper.override(DEFAULT_PRODUCER_NODES,       producer_nodes,     args.producer_nodes     if args else None)
@@ -346,7 +351,12 @@ class Cluster:
 
     def check_config(self):
         assert self.cluster_id >= 0
-        assert self.total_nodes >= self.producer_nodes + self.unstarted_nodes, self.alert.red("Failed to assert: total_node ({}) >= producer_nodes ({}) + unstarted_nodes ({})".format(self.total_nodes, self.producer_nodes, self.unstarted_nodes))
+        assert self.total_nodes >= self.producer_nodes + self.unstarted_nodes, self.alert.red("Failed assertion: total_node ({}) >= producer_nodes ({}) + unstarted_nodes ({}).".format(self.total_nodes, self.producer_nodes, self.unstarted_nodes))
+        if self.topology in ("star", "bridge"):
+            assert self.center_node_id is not None, self.alert.red("Failed assertion: center_node_id is specified when topology is \"{}\".".format(self.topology))
+        if self.topology == "bridge":
+            assert self.center_node_id not in (0, self.total_nodes - 1), self.alert.red("Failed assertion: center_node_id ({}) is neither 0 nor last node ({}) when topology is \"bridge\".".format(self.center_node_id, self.total_nodes - 1))
+            assert self.total_nodes >= 3, self.alert.red("Failed assertion: total_node ({}) >= 3 when topology is \"bridge\".".format(self.total_nodes))
 
 
     def bootstrap(self):
@@ -469,6 +479,7 @@ class Cluster:
         self.print_header("cluster configuration")
         self.print_config_helper("-i: cluster_id",      HELP_CLUSTER_ID,        self.cluster_id,        DEFAULT_CLUSTER_ID)
         self.print_config_helper("-t: topology",        HELP_TOPOLOGY,          self.topology,          DEFAULT_TOPOLOGY)
+        self.print_config_helper("-c: center_node_id",  HELP_CENTER_NODE_ID,    self.center_node_id,    DEFAULT_CENTER_NODE_ID)
         self.print_config_helper("-n: total_nodes",     HELP_TOTAL_NODES,       self.total_nodes,       DEFAULT_TOTAL_NODES)
         self.print_config_helper("-y: total_producers", HELP_TOTAL_PRODUCERS,   self.total_producers,   DEFAULT_TOTAL_PRODUCERS)
         self.print_config_helper("-z: producer_nodes",  HELP_PRODUCER_NODES,    self.producer_nodes,    DEFAULT_PRODUCER_NODES)
@@ -476,7 +487,7 @@ class Cluster:
 
 
     def launch_cluster(self, **kwargs):
-        return self.call("launch_cluster", cluster_id=self.cluster_id, node_count=self.total_nodes, shape=self.topology, nodes=self.nodes, verify=False, **kwargs)
+        return self.call("launch_cluster", cluster_id=self.cluster_id, center_node_id=self.center_node_id, node_count=self.total_nodes, shape=self.topology, nodes=self.nodes, verify=False, **kwargs)
 
 
     def get_cluster_info(self, **kwargs):
