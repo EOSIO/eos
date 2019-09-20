@@ -834,7 +834,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
                      "--snapshot is incompatible with --genesis-json as the snapshot contains genesis information");
 
          auto shared_mem_path = my->chain_config->state_dir / "shared_memory.bin";
-         EOS_ASSERT( !fc::exists(shared_mem_path),
+         EOS_ASSERT( !fc::is_regular_file(shared_mem_path),
                  plugin_config_exception,
                  "Snapshot can only be used to initialize an empty database." );
 
@@ -883,7 +883,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
                         "--genesis-timestamp is only valid if also passed in with --genesis-json");
          }
 
-         if( fc::exists( my->blocks_dir / "blocks.log" ) ) {
+         if( fc::is_regular_file( my->blocks_dir / "blocks.log" ) ) {
             auto log_genesis = block_log::extract_genesis_state( my->blocks_dir );
             if (log_genesis) {
                if (my->genesis) {
