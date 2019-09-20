@@ -16,13 +16,13 @@ RUN curl -LO https://cmake.org/files/v3.13/cmake-3.13.2.tar.gz && \
     cd / && \
     rm -rf cmake-3.13.2.tar.gz /cmake-3.13.2
 # build boost
-RUN curl -LO https://dl.bintray.com/boostorg/release/1.70.0/source/boost_1_70_0.tar.bz2 && \
-    tar -xjf boost_1_70_0.tar.bz2 && \
-    cd boost_1_70_0 && \
+RUN curl -LO https://dl.bintray.com/boostorg/release/1.70.0/source/boost_1_71_0.tar.bz2 && \
+    tar -xjf boost_1_71_0.tar.bz2 && \
+    cd boost_1_71_0 && \
     ./bootstrap.sh --prefix=/usr/local && \
     ./b2 --with-iostreams --with-date_time --with-filesystem --with-system --with-program_options --with-chrono --with-test -q -j$(nproc) install && \
     cd / && \
-    rm -rf boost_1_70_0.tar.bz2 /boost_1_70_0
+    rm -rf boost_1_71_0.tar.bz2 /boost_1_71_0
 # build mongodb
 RUN curl -LO https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-amazon-3.6.3.tgz && \
     tar -xzf mongodb-linux-x86_64-amazon-3.6.3.tgz && \

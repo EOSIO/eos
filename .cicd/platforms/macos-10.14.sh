@@ -50,13 +50,13 @@ if [[ ! $PINNED == false || $UNPINNED == true ]]; then
     cd ../..
     rm -rf clang8
     # install boost from source
-    curl -LO https://dl.bintray.com/boostorg/release/1.70.0/source/boost_1_70_0.tar.bz2
-    tar -xjf boost_1_70_0.tar.bz2
-    cd boost_1_70_0
+    curl -LO https://dl.bintray.com/boostorg/release/1.70.0/source/boost_1_71_0.tar.bz2
+    tar -xjf boost_1_71_0.tar.bz2
+    cd boost_1_71_0
     ./bootstrap.sh --prefix=/usr/local
     sudo ./b2 --with-iostreams --with-date_time --with-filesystem --with-system --with-program_options --with-chrono --with-test -q -j$(getconf _NPROCESSORS_ONLN) install
     cd ..
-    sudo rm -rf boost_1_70_0.tar.bz2 boost_1_70_0  
+    sudo rm -rf boost_1_71_0.tar.bz2 boost_1_71_0
 else
     # install boost from brew
     brew install boost || true
