@@ -401,8 +401,6 @@ struct intrinsic_invoker_impl<is_injected, Ret, std::tuple<array_ptr<T>, size_t,
       T* base = array_ptr_impl<T>((U32)ptr, length);
       if ( reinterpret_cast<uintptr_t>(base) % alignof(T) != 0 ) {
          EOSVMOC_MEMORY_PTR_cb_ptr;
-         if(cb_ptr->ctx->control.contracts_console())
-            wlog( "misaligned array of const values" );
          std::vector<uint8_t>& copy = cb_ptr->bounce_buffers->emplace_back(length > 0 ? length*sizeof(T) : 1);
          T* copy_ptr = (T*)&copy[0];
          memcpy( (void*)copy.data(), (void*)base, length * sizeof(T) );
@@ -418,8 +416,6 @@ struct intrinsic_invoker_impl<is_injected, Ret, std::tuple<array_ptr<T>, size_t,
       T* base = array_ptr_impl<T>((U32)ptr, length);
       if ( reinterpret_cast<uintptr_t>(base) % alignof(T) != 0 ) {
          EOSVMOC_MEMORY_PTR_cb_ptr;
-         if(cb_ptr->ctx->control.contracts_console())
-            wlog( "misaligned array of values" );
          std::vector<uint8_t>& copy = cb_ptr->bounce_buffers->emplace_back(length > 0 ? length*sizeof(T) : 1);
          T* copy_ptr = (T*)&copy[0];
          memcpy( (void*)copy.data(), (void*)base, length * sizeof(T) );
@@ -530,9 +526,6 @@ struct intrinsic_invoker_impl<is_injected, Ret, std::tuple<T *, Inputs...>, std:
    static auto translate_one(Inputs... rest, Translated... translated, I32 ptr) -> std::enable_if_t<std::is_const<U>::value, Ret> {
       T* base = array_ptr_impl<T>((U32)ptr, 1);
       if ( reinterpret_cast<uintptr_t>(base) % alignof(T) != 0 ) {
-         //XXX
-         //if(ctx.apply_ctx->control.contracts_console())
-         //   wlog( "misaligned const pointer" );
          std::remove_const_t<T> copy;
          T* copy_ptr = &copy;
          memcpy( (void*)copy_ptr, (void*)base, sizeof(T) );
@@ -545,9 +538,6 @@ struct intrinsic_invoker_impl<is_injected, Ret, std::tuple<T *, Inputs...>, std:
    static auto translate_one(Inputs... rest, Translated... translated, I32 ptr) -> std::enable_if_t<!std::is_const<U>::value, Ret> {
       T* base = array_ptr_impl<T>((U32)ptr, 1);
       if ( reinterpret_cast<uintptr_t>(base) % alignof(T) != 0 ) {
-         //XXX
-         //if(ctx.apply_ctx->control.contracts_console())
-         //   wlog( "misaligned pointer" );
          std::remove_const_t<T> copy;
          T* copy_ptr = &copy;
          memcpy( (void*)copy_ptr, (void*)base, sizeof(T) );
@@ -616,8 +606,6 @@ struct intrinsic_invoker_impl<is_injected, Ret, std::tuple<T &, Inputs...>, std:
       T &base = *(T*)(((char*)(cb_ptr->full_linear_memory_start))+(U32)ptr);
 
       if ( reinterpret_cast<uintptr_t>(&base) % alignof(T) != 0 ) {
-         if(cb_ptr->ctx->control.contracts_console())
-            wlog( "misaligned const reference" );
          std::remove_const_t<T> copy;
          T* copy_ptr = &copy;
          memcpy( (void*)copy_ptr, (void*)&base, sizeof(T) );
@@ -638,8 +626,6 @@ struct intrinsic_invoker_impl<is_injected, Ret, std::tuple<T &, Inputs...>, std:
       T &base = *(T*)(((char*)(cb_ptr->full_linear_memory_start))+(U32)ptr);
 
       if ( reinterpret_cast<uintptr_t>(&base) % alignof(T) != 0 ) {
-         if(cb_ptr->ctx->control.contracts_console())
-            wlog( "misaligned reference" );
          std::remove_const_t<T> copy;
          T* copy_ptr = &copy;
          memcpy( (void*)copy_ptr, (void*)&base, sizeof(T) );
