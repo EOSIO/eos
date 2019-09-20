@@ -919,7 +919,7 @@ fc::variant launcher_service_plugin::get_cluster_info(launcher_service::cluster_
       t.join();
    }
    for (int i = 0; i < k; ++i) {
-      if (thread_result[i].first > 0) {
+      if (thread_result[i].first >= 0) {
          result[thread_result[i].first] = std::move(thread_result[i].second);
       }
    }
