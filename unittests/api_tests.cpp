@@ -1047,6 +1047,43 @@ BOOST_FIXTURE_TEST_CASE(checktime_intrinsic, TESTER) { try {
                                deadline_exception, is_deadline_exception );
 } FC_LOG_AND_RETHROW() }
 
+BOOST_FIXTURE_TEST_CASE(checktime_grow_memory, TESTER) { try {
+	produce_blocks(2);
+	create_account( N(testapi) );
+	produce_blocks(10);
+
+        std::stringstream ss;
+        ss << R"CONTRACT(
+(module
+  (memory 1)
+
+  (func (export "apply") (param i64 i64 i64)
+)CONTRACT";
+
+        for(unsigned int i = 0; i < 5000; ++i) {
+           ss << R"CONTRACT(
+    (drop (grow_memory (i32.const 527)))
+    (drop (grow_memory (i32.const -527)))
+
+)CONTRACT";
+        }
+        ss<< "))";
+	set_code( N(testapi), ss.str().c_str() );
+	produce_blocks(1);
+
+        //initialize cache
+        BOOST_CHECK_EXCEPTION( call_test( *this, test_api_action<TEST_METHOD("doesn't matter", "doesn't matter")>{},
+                                          5000, 10 ),
+                               deadline_exception, is_deadline_exception );
+
+#warning TODO validate that the contract was successfully cached
+
+        //it will always call
+        BOOST_CHECK_EXCEPTION( call_test( *this, test_api_action<TEST_METHOD("doesn't matter", "doesn't matter")>{},
+                                          5000, 10 ),
+                               deadline_exception, is_deadline_exception );
+} FC_LOG_AND_RETHROW() }
+
 BOOST_FIXTURE_TEST_CASE(checktime_hashing_fail, TESTER) { try {
 	produce_blocks(2);
 	create_account( "testapi"_n );
