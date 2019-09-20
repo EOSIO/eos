@@ -15,15 +15,4 @@ zlib/1.2.11@conan/stable
 
 [options]
 libusb*:enable_udev=False
-gettext:shared=True
-gmp:shared=True
-libusb:shared=True
 boost:extra_b2_flags=cxxflags='-stdlib=libc++ -D__STRICT_ANSI__ -nostdinc++ -I/usr/local/include/c++/v1' linkflags='-stdlib=libc++' link=static threading=multi
-
-[imports]
-bin, *.dll -> ./lib
-bin, *.dll -> ./programs/lib
-lib, *.dylib* -> ./lib
-lib, *.dylib* -> ./programs/lib
-lib, *.so* -> ./lib
-lib, *.so* -> ./programs/lib
