@@ -320,6 +320,7 @@ datastream<ST>& operator<<(datastream<ST>&                                      
    fc::raw::pack(ds, make_history_serial_wrapper(
                          obj.db, as_type<eosio::chain::shared_producer_authority_schedule>(obj.obj.proposed_schedule)));
    fc::raw::pack(ds, make_history_serial_wrapper(obj.db, as_type<eosio::chain::chain_config>(obj.obj.configuration)));
+   fc::raw::pack(ds, as_type<eosio::chain::chain_id_type>(obj.obj.chain_id));
 
    return ds;
 }

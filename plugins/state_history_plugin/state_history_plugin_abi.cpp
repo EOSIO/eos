@@ -362,6 +362,7 @@ extern const char* const state_history_plugin_abi = R"({
                 { "type": "uint32?", "name": "proposed_schedule_block_num" },
                 { "type": "producer_authority_schedule", "name": "proposed_schedule" },
                 { "type": "chain_config", "name": "configuration" }
+                { "type": "chain_id_type", "name": "chain_id" }
             ]
         },
         {
