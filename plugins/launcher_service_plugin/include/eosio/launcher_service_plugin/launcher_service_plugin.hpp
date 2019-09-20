@@ -296,6 +296,9 @@ public:
    fc::variant push_actions(launcher_service::push_actions_param);
    fc::variant schedule_protocol_feature_activations(launcher_service::schedule_protocol_feature_activations_param);
 
+   // for unit-test
+   static std::string generate_node_config(const launcher_service::launcher_config &_config, launcher_service::cluster_def &def, int node_id);
+
 private:
    std::unique_ptr<class launcher_service_plugin_impl>  _my;
 };

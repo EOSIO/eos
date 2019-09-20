@@ -6,6 +6,7 @@
 #include <signal.h> // kill()
 #include <map>
 #include <string>
+#include <sstream>
 #include <vector>
 #include <thread>
 #include <boost/filesystem.hpp>
@@ -144,6 +145,91 @@ public:
          throw std::runtime_error("failed to assign available ports");
       }
 
+      // separate config generation logic to make unitest possible
+      static std::string generate_node_config(const launcher_config &_config, cluster_def &def, int node_id) {
+         std::stringstream cfg;
+
+         const node_def &node_config = def.get_node_def(node_id);
+
+         cfg << "http-server-address = " << _config.host_name << ":" << node_config.http_port(_config, def.cluster_id) << "\n";
+         cfg << "http-validate-host = false\n";
+         cfg << "p2p-listen-endpoint = " << _config.p2p_listen_addr << ":" << node_config.p2p_port(_config, def.cluster_id) << "\n";
+         cfg << "p2p-max-nodes-per-host = " << def.node_count << "\n";
+         cfg << "agent-name = " << cluster_to_string(def.cluster_id) << "_" << node_to_string(node_id) << "\n";
+
+         if (def.shape == "mesh") {
+            for (int peer = 0; peer < node_id; ++peer) {
+               cfg << "p2p-peer-address = " << _config.host_name << ":" << def.get_node_def(peer).p2p_port(_config, def.cluster_id) << "\n";
+            }
+         } else if (def.shape == "star") {
+            int peer = def.center_node_id;
+            if (peer < 0 || peer >= def.node_count) {
+               throw std::runtime_error("invalid center_node_id for star topology");
+            }
+            if (node_id != peer) {
+               cfg << "p2p-peer-address = " << _config.host_name << ":" << def.get_node_def(peer).p2p_port(_config, def.cluster_id) << "\n";
+            }
+         } else if (def.shape == "bridge") {
+            if (def.center_node_id <= 0 || def.center_node_id >= def.node_count - 1) {
+               throw std::runtime_error("invalid center_node_id for bridge topology");
+            }
+            if (node_id < def.center_node_id) {
+               for (int peer = 0; peer < node_id; ++peer) {
+                  cfg << "p2p-peer-address = " << _config.host_name << ":" << def.get_node_def(peer).p2p_port(_config, def.cluster_id) << "\n";
+               }
+            } else if (node_id > def.center_node_id) {
+               for (int peer = def.center_node_id + 1; peer < node_id; ++peer) {
+                  cfg << "p2p-peer-address = " << _config.host_name << ":" << def.get_node_def(peer).p2p_port(_config, def.cluster_id) << "\n";
+               }
+            } else {
+               cfg << "p2p-peer-address = " << _config.host_name << ":" << def.get_node_def(node_id - 1).p2p_port(_config, def.cluster_id) << "\n";
+               cfg << "p2p-peer-address = " << _config.host_name << ":" << def.get_node_def(node_id + 1).p2p_port(_config, def.cluster_id) << "\n";
+            }
+         } else if (def.shape == "line") {
+            if (node_id) {
+               cfg << "p2p-peer-address = " << _config.host_name << ":" << def.get_node_def(node_id - 1).p2p_port(_config, def.cluster_id) << "\n";
+            }
+         } else if (def.shape == "ring") {
+            cfg << "p2p-peer-address = " << _config.host_name << ":"
+                  << def.get_node_def((node_id - 1 + def.node_count) % def.node_count).p2p_port(_config, def.cluster_id) << "\n";
+         } else if (def.shape == "tree") {
+            if (node_id) {
+               cfg << "p2p-peer-address = " << _config.host_name << ":" << def.get_node_def((node_id + 1) / 2 - 1).p2p_port(_config, def.cluster_id) << "\n";
+            }
+         } else {
+            throw std::runtime_error("invalid shape");
+         }
+
+         if (node_config.is_bios()) {
+            cfg << "enable-stale-production = true\n";
+         }
+         cfg << "allowed-connection = any\n";
+
+         for (const auto &priKey: node_config.producing_keys) {
+            cfg << "private-key = [\"" << std::string(priKey.get_public_key()) << "\",\""
+               << std::string(priKey) << "\"]\n";
+         }
+
+         if (node_config.producers.size()) {
+            cfg << "private-key = [\"" << std::string(_config.default_key.get_public_key()) << "\",\""
+               << std::string(_config.default_key) << "\"]\n";
+         }
+         for (auto &p : node_config.producers) {
+            cfg << "producer-name = " << p << "\n";
+         }
+         cfg << "plugin = eosio::net_plugin\n";
+         cfg << "plugin = eosio::chain_api_plugin\n";
+         cfg << "plugin = eosio::producer_api_plugin\n";
+
+         for (const std::string &s : def.extra_configs) {
+            cfg << s << "\n";
+         }
+         for (const std::string &s : node_config.extra_configs) {
+            cfg << s << "\n";
+         }
+         return cfg.str();
+      }
+
       void setup_cluster(cluster_def &def) {
          create_path(bfs::path(_config.data_dir));
          create_path(bfs::path(_config.data_dir) / cluster_to_string(def.cluster_id), true);
@@ -208,88 +294,14 @@ public:
             }
 
             bfs::ofstream cfg(node_path / "config.ini");
-            cfg << "http-server-address = " << _config.host_name << ":" << state.http_port << "\n";
-            cfg << "http-validate-host = false\n";
-            cfg << "p2p-listen-endpoint = " << _config.p2p_listen_addr << ":" << state.p2p_port << "\n";
-            cfg << "p2p-max-nodes-per-host = " << def.node_count << "\n";
-            cfg << "agent-name = " << cluster_to_string(def.cluster_id) << "_" << node_to_string(i) << "\n";
-
-            if (def.shape == "mesh") {
-               for (int peer = 0; peer < i; ++peer) {
-                  cfg << "p2p-peer-address = " << _config.host_name << ":" << def.get_node_def(peer).p2p_port(_config, def.cluster_id) << "\n";
-               }
-            } else if (def.shape == "star") {
-               int peer = def.center_node_id;
-               if (peer < 0 || peer >= def.node_count) {
-                  throw std::string("invalid center_node_id for star topology");
-               }
-               if (i != peer) {
-                  cfg << "p2p-peer-address = " << _config.host_name << ":" << def.get_node_def(peer).p2p_port(_config, def.cluster_id) << "\n";
-               }
-            } else if (def.shape == "bridge") {
-               if (def.center_node_id <= 0 || def.center_node_id >= def.node_count - 1) {
-                  throw std::string("invalid center_node_id for bridge topology");
-               }
-               if (i < def.center_node_id) {
-                  for (int peer = 0; peer < i; ++peer) {
-                     cfg << "p2p-peer-address = " << _config.host_name << ":" << def.get_node_def(peer).p2p_port(_config, def.cluster_id) << "\n";
-                  }
-               } else if (i > def.center_node_id) {
-                  for (int peer = def.center_node_id + 1; peer < i; ++peer) {
-                     cfg << "p2p-peer-address = " << _config.host_name << ":" << def.get_node_def(peer).p2p_port(_config, def.cluster_id) << "\n";
-                  }
-               } else {
-                  cfg << "p2p-peer-address = " << _config.host_name << ":" << def.get_node_def(i - 1).p2p_port(_config, def.cluster_id) << "\n";
-                  cfg << "p2p-peer-address = " << _config.host_name << ":" << def.get_node_def(i + 1).p2p_port(_config, def.cluster_id) << "\n";
-               }
-            } else if (def.shape == "line") {
-               if (i) {
-                  cfg << "p2p-peer-address = " << _config.host_name << ":" << def.get_node_def(i - 1).p2p_port(_config, def.cluster_id) << "\n";
-               }
-            } else if (def.shape == "ring") {
-               cfg << "p2p-peer-address = " << _config.host_name << ":"
-                   << def.get_node_def((i - 1 + def.node_count) % def.node_count).p2p_port(_config, def.cluster_id) << "\n";
-            } else if (def.shape == "tree") {
-               if (i) {
-                  cfg << "p2p-peer-address = " << _config.host_name << ":" << def.get_node_def((i + 1) / 2 - 1).p2p_port(_config, def.cluster_id) << "\n";
-               }
-            } else {
-               throw std::string("invalid shape");
-            }
-
-            if (node_config.is_bios()) {
-               cfg << "enable-stale-production = true\n";
-            }
-            cfg << "allowed-connection = any\n";
-
-            for (const auto &priKey: node_config.producing_keys) {
-               cfg << "private-key = [\"" << std::string(priKey.get_public_key()) << "\",\""
-                  << std::string(priKey) << "\"]\n";
-            }
-
-            if (node_config.producers.size()) {
-               cfg << "private-key = [\"" << std::string(_config.default_key.get_public_key()) << "\",\""
-                  << std::string(_config.default_key) << "\"]\n";
-            }
-            for (auto &p : node_config.producers) {
-               cfg << "producer-name = " << p << "\n";
-            }
-            cfg << "plugin = eosio::net_plugin\n";
-            cfg << "plugin = eosio::chain_api_plugin\n";
-            cfg << "plugin = eosio::producer_api_plugin\n";
-
-            for (const std::string &s : def.extra_configs) {
-               cfg << s << "\n";
-            }
-            for (const std::string &s : node_config.extra_configs) {
-               cfg << s << "\n";
-            }
+            cfg << generate_node_config(_config, def, i);
             cfg.close();
             _running_clusters[def.cluster_id].nodes[i] = state;
          }
          _running_clusters[def.cluster_id].def = def;
          _running_clusters[def.cluster_id].imported_keys[_config.default_key.get_public_key()] = _config.default_key;
       }
+
       void launch_nodes(cluster_def &def, int node_id, bool restart = false, std::string extra_args = "") {
          for (int i = 0; i < def.node_count; ++i) {
             if (i != node_id && node_id != -1) {
@@ -506,10 +518,16 @@ public:
       bytes action_variant_to_bin(int cluster_id, int node_id, const name& account, const name& action,
                                   const fc::variant& action_args_var) {
          auto abis = abi_serializer_resolver(cluster_id, node_id, account);
-         FC_ASSERT( abis.valid(), "No ABI found for ${contract}", ("contract", account));
+         if (!abis.valid()) {
+            _running_clusters[cluster_id].nodes[node_id].abi_cache.clear();
+            FC_ASSERT(false, "No ABI found for ${contract}", ("contract", account));
+         }
 
          auto action_type = abis->get_action_type( action );
-         FC_ASSERT( !action_type.empty(), "Unknown action ${action} in contract ${contract}", ("action", action)( "contract", account ));
+         if (action_type.empty()) {
+            _running_clusters[cluster_id].nodes[node_id].abi_cache.clear();
+            FC_ASSERT(false, "Unknown action ${action} in contract ${contract}", ("action", action)( "contract", account ));
+         }
 
          char temp[512 * 1024];
          fc::datastream<char*> ds(temp, sizeof(temp)-1 );
@@ -1073,6 +1091,10 @@ fc::variant launcher_service_plugin::get_log_data(launcher_service::get_log_data
    try {
       return _my->get_log_data(param);
    } CATCH_LAUCHER_EXCEPTIONS
+}
+
+std::string launcher_service_plugin::generate_node_config(const launcher_service::launcher_config &_config, launcher_service::cluster_def &def, int node_id) {
+   return launcher_service_plugin_impl::generate_node_config(_config, def, node_id);
 }
 
 #undef CATCH_LAUCHER_EXCEPTIONS
