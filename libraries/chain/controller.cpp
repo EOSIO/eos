@@ -559,8 +559,8 @@ struct controller_impl {
    void startup(std::function<bool()> shutdown, const genesis_state& genesis) {
       EOS_ASSERT( db.revision() < 1, database_exception, "This version of controller::startup only works with a fresh state database." );
       const auto& genesis_chain_id = genesis.compute_chain_id();
-      EOS_ASSERT( genesis_chain_id == chain_id, misc_exception,
-                  "genesis state provided to startup does not match the chain ID that controller was constructed with",
+      EOS_ASSERT( genesis_chain_id == chain_id, chain_id_type_exception,
+                  "genesis state provided to startup corresponds to a chain ID (${genesis_chain_id}) that does not match the chain ID that controller was constructed with (${controller_chain_id})",
                   ("genesis_chain_id", genesis_chain_id)("controller_chain_id", chain_id)
       );
 
@@ -597,7 +597,7 @@ struct controller_impl {
       if( blog.head() ) {
          EOS_ASSERT( first_block_num <= lib_num && lib_num <= blog.head()->block_num(),
                      block_log_exception,
-                     "block log does not contain last irreversible block",
+                     "block log (ranging from ${block_log_first_num} to ${block_log_last_num}) does not contain the last irreversible block (${fork_db_lib})",
                      ("block_log_first_num", first_block_num)
                      ("block_log_last_num", blog.head()->block_num())
                      ("fork_db_lib", lib_num)
@@ -640,7 +640,7 @@ struct controller_impl {
       // Also, even though blog.head() may still be nullptr, blog.first_block_num() is guaranteed to be lib_num + 1.
 
       EOS_ASSERT( db.revision() >= head->block_num, fork_database_exception,
-                  "fork database head is inconsistent with state",
+                  "fork database head (${head}) is inconsistent with state (${db})",
                   ("db",db.revision())("head",head->block_num) );
 
       if( db.revision() > head->block_num ) {
@@ -671,7 +671,7 @@ struct controller_impl {
             reversible_blocks.remove( *itr );
 
          EOS_ASSERT( itr == rbi.end() || itr->blocknum == lib_num + 1, reversible_blocks_exception,
-                     "gap exists between last irreversible block and first reversible block",
+                     "gap exists between last irreversible block (${lib}) and first reversible block (${first_reversible_block_num})",
                      ("lib", lib_num)("first_reversible_block_num", itr->blocknum)
          );
 
@@ -958,8 +958,8 @@ struct controller_impl {
       });
 
       const auto& gpo = db.get<global_property_object>();
-      EOS_ASSERT( gpo.chain_id == chain_id, misc_exception,
-                  "chain ID in snapshot does not match the chain ID that controller was constructed with",
+      EOS_ASSERT( gpo.chain_id == chain_id, chain_id_type_exception,
+                  "chain ID in snapshot (${snapshot_chain_id}) does not match the chain ID that controller was constructed with (${controller_chain_id})",
                   ("snapshot_chain_id", gpo.chain_id)("controller_chain_id", chain_id)
       );
    }

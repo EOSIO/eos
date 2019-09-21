@@ -845,7 +845,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
                const auto& block_log_chain_id = my->genesis->compute_chain_id();
                EOS_ASSERT( expected_chain_id == block_log_chain_id,
                            plugin_config_exception,
-                           "snapshot chain id does not match the chain id from the genesis state in the block log.",
+                           "snapshot chain ID (${snapshot_chain_id}) does not match the chain ID from the genesis state in the block log (${block_log_chain_id})",
                            ("snapshot_chain_id", expected_chain_id)
                            ("block_log_chain_id", block_log_chain_id)
                );
@@ -853,7 +853,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
                const auto& block_log_chain_id = block_log::extract_chain_id(my->blocks_dir);
                EOS_ASSERT( expected_chain_id == block_log_chain_id,
                            plugin_config_exception,
-                           "snapshot chain id does not match the chain id in the block log.",
+                           "snapshot chain ID (${snapshot_chain_id}) does not match the chain ID (${block_log_chain_id}) in the block log",
                            ("snapshot_chain_id", expected_chain_id)
                            ("block_log_chain_id", block_log_chain_id)
                );
