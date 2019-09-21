@@ -812,7 +812,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          wlog("The --import-reversible-blocks option should be used by itself.");
       }
 
-      fc::optional<chain_id_type> block_log_chain_id;
+      fc::optional<chain_id_type> expected_chain_id;
       if (options.count( "snapshot" )) {
          my->snapshot_path = options.at( "snapshot" ).as<bfs::path>();
          EOS_ASSERT( fc::exists(*my->snapshot_path), plugin_config_exception,
@@ -821,9 +821,9 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          // recover genesis information from the snapshot
          // used for validation code below
          auto infile = std::ifstream(my->snapshot_path->generic_string(), (std::ios::in | std::ios::binary));
-         auto reader = std::make_shared<istream_snapshot_reader>(infile);
-         reader->validate();
-         chain_id_type chain_id = controller::extract_chain_id(reader);
+         istream_snapshot_reader reader(infile);
+         reader.validate();
+         expected_chain_id = controller::extract_chain_id(reader);
          infile.close();
 
          EOS_ASSERT( options.count( "genesis-timestamp" ) == 0,
@@ -842,15 +842,21 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
             auto log_genesis = block_log::extract_genesis_state(my->blocks_dir);
             if (log_genesis) {
                my->genesis = log_genesis;
-               EOS_ASSERT( my->genesis->compute_chain_id() == chain_id,
+               const auto& block_log_chain_id = my->genesis->compute_chain_id();
+               EOS_ASSERT( expected_chain_id == block_log_chain_id,
                            plugin_config_exception,
-                           "snapshot chain id does not match the chain id from the genesis state in the block log.");
-            }
-            else {
-               block_log_chain_id = block_log::extract_chain_id(my->blocks_dir);
-               EOS_ASSERT( block_log_chain_id == chain_id,
+                           "snapshot chain id does not match the chain id from the genesis state in the block log.",
+                           ("snapshot_chain_id", expected_chain_id)
+                           ("block_log_chain_id", block_log_chain_id)
+               );
+            } else {
+               const auto& block_log_chain_id = block_log::extract_chain_id(my->blocks_dir);
+               EOS_ASSERT( expected_chain_id == block_log_chain_id,
                            plugin_config_exception,
-                           "snapshot chain id does not match the chain id in the block log.");
+                           "snapshot chain id does not match the chain id in the block log.",
+                           ("snapshot_chain_id", expected_chain_id)
+                           ("block_log_chain_id", block_log_chain_id)
+               );
             }
          }
 
@@ -876,8 +882,9 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
             } else {
                ilog( "Using genesis state provided in '${genesis}'", ("genesis", genesis_file.generic_string()));
             }
-         }
-         else {
+
+            expected_chain_id = my->genesis->compute_chain_id();
+         } else {
             EOS_ASSERT( options.count( "genesis-timestamp" ) == 0,
                         plugin_config_exception,
                         "--genesis-timestamp is only valid if also passed in with --genesis-json");
@@ -892,19 +899,20 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
                               " in blocks.log. It is not necessary to provide genesis state arguments when a blocks.log "
                               "file already exists."
                   );
-               }
-               else {
+               } else {
                   my->genesis = log_genesis;
+                  expected_chain_id = my->genesis->compute_chain_id();
                }
-            }
-            else {
-               block_log_chain_id = block_log::extract_chain_id( my->blocks_dir );
+            } else {
+               const auto& block_log_chain_id = block_log::extract_chain_id( my->blocks_dir );
                if (my->genesis) {
-                  EOS_ASSERT( my->genesis->compute_chain_id() == *block_log_chain_id, plugin_config_exception,
+                  EOS_ASSERT( expected_chain_id == block_log_chain_id, plugin_config_exception,
                               "Genesis state, provided via command line arguments, has a chain_id that does not match the "
                               "existing chain id in blocks.log. It is not necessary to provide genesis state arguments "
                               "when a blocks.log file already exists."
                   );
+               } else {
+                  expected_chain_id = block_log_chain_id;
                }
             }
          }
@@ -924,38 +932,20 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          my->chain_config->db_hugepage_paths = options.at("database-hugepage-path").as<std::vector<std::string>>();
 #endif
 
-      my->chain.emplace( *my->chain_config, std::move(pfs) );
+      my->chain.emplace( *my->chain_config, std::move(pfs), expected_chain_id );
 
-      if( !options.count( "snapshot" ) ) {
-         if( my->chain->db().revision() < 1 ) { // No existing blockchain state
-            EOS_ASSERT( my->genesis || !block_log_chain_id, plugin_config_exception,
-                        "Genesis state is necessary to initialize fresh blockchain state but genesis state could not be "
-                        "found in the blocks log. Please either load from snapshot or find a blocks log that starts "
-                        "from genesis."
-            );
-            if( my->genesis ) {
-               ilog( "Starting up fresh blockchain with provided genesis state." );
-            } else {
-               ilog( "Starting up fresh blockchain with default genesis state." );
-               my->genesis.emplace();
-            }
-         } else { // Existing blockchain state
-            const auto& state_chain_id = my->chain->get_global_properties().chain_id;
-            if( my->genesis ) {
-               auto provided_chain_id = my->genesis->compute_chain_id();
-               EOS_ASSERT( provided_chain_id == state_chain_id, plugin_config_exception,
-                           "Existing state is for a different chain than the one specified by the provided genesis "
-                           "state. Provided genesis state chain id: ${provided_chain_id}, existing state chain id: ${state_chain_id}",
-                           ("provided_chain_id", provided_chain_id)("state_chain_id", state_chain_id)
-               );
-            } else if( block_log_chain_id ) {
-               EOS_ASSERT( *block_log_chain_id == state_chain_id, block_log_exception,
-                           "Existing state is for a different chain than the one specified in the blocks log."
-                           " Block log chain id: ${block_log_chain_id}, existing state chain id: ${state_chain_id}",
-                           ("block_log_chain_id", *block_log_chain_id)("state_chain_id", state_chain_id)
-
-               );
-            }
+      if( !options.count( "snapshot" ) && my->chain->db().revision() < 1 ) {
+         // No snapshot and no existing blockchain state
+         EOS_ASSERT( my->genesis || !expected_chain_id, plugin_config_exception,
+                     "Genesis state is necessary to initialize fresh blockchain state but genesis state could not be "
+                     "found in the blocks log. Please either load from snapshot or find a blocks log that starts "
+                     "from genesis."
+         );
+         if( my->genesis ) {
+            ilog( "Starting up fresh blockchain with provided genesis state." );
+         } else {
+            ilog( "Starting up fresh blockchain with default genesis state." );
+            my->genesis.emplace();
          }
       }
 
@@ -1142,7 +1132,7 @@ bool chain_plugin::recover_reversible_blocks( const fc::path& db_dir, uint32_t c
 
    ilog( "Reconstructing '${reversible_dir}' from backed up reversible directory", ("reversible_dir", reversible_dir) );
 
-   optional<chainbase::database> old_reversible; 
+   optional<chainbase::database> old_reversible;
 
    try {
       old_reversible = chainbase::database( backup_dir, database::read_only, 0, true );
