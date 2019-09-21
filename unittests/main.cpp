@@ -10,12 +10,15 @@
 
 //extern uint32_t EOS_TESTING_GENESIS_TIMESTAMP;
 
+namespace eosio { namespace chain { namespace eosvmoc { void start_compile_monitor(); }}}
+
 void translate_fc_exception(const fc::exception &e) {
    std::cerr << "\033[33m" <<  e.to_detail_string() << "\033[0m" << std::endl;
    BOOST_TEST_FAIL("Caught Unexpected Exception");
 }
 
 boost::unit_test::test_suite* init_unit_test_suite(int argc, char* argv[]) {
+   eosio::chain::eosvmoc::start_compile_monitor();
    // Turn off blockchain logging if no --verbose parameter is not added
    // To have verbose enabled, call "tests/chain_test -- --verbose"
    bool is_verbose = false;

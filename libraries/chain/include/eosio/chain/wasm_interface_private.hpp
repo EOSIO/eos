@@ -44,6 +44,13 @@ namespace eosio { namespace chain {
       struct by_first_block_num;
       struct by_last_block_num;
 
+      struct eosvmoc_tier {
+         eosvmoc_tier(const boost::filesystem::path& d, const eosvmoc::config& c, const chainbase::database& db) : cc(d, c, db), exec(cc) {}
+         eosvmoc::code_cache cc;
+         eosvmoc::executor exec;
+         eosvmoc::memory mem;
+      };
+
       wasm_interface_impl(wasm_interface::vm_type vm, const chainbase::database& d, const boost::filesystem::path data_dir, const eosvmoc::config& eosvmoc_config) : db(d), wasm_runtime_time(vm) {
 #ifdef EOSIO_WAVM_RUNTIME_ENABLED
          if(vm == wasm_interface::vm_type::wavm)
@@ -53,10 +60,13 @@ namespace eosio { namespace chain {
             runtime_interface = std::make_unique<webassembly::wabt_runtime::wabt_runtime>();
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
          if(vm == wasm_interface::vm_type::eos_vm_oc)
-            runtime_interface = std::make_unique<webassembly::eosvmoc::eosvmoc_runtime>(data_dir, eosvmoc_config);
+            runtime_interface = std::make_unique<webassembly::eosvmoc::eosvmoc_runtime>(data_dir, eosvmoc_config, d);
 #endif
          if(!runtime_interface)
             EOS_THROW(wasm_exception, "${r} wasm runtime not supported on this platform and/or configuration", ("r", vm));
+
+         if(vm != wasm_interface::vm_type::eos_vm_oc)
+            eosvmoc = std::make_unique<eosvmoc_tier>(data_dir, eosvmoc_config, d);
       }
 
       ~wasm_interface_impl() {
@@ -184,6 +194,8 @@ namespace eosio { namespace chain {
 
       const chainbase::database& db;
       const wasm_interface::vm_type wasm_runtime_time;
+
+      std::unique_ptr<eosvmoc_tier> eosvmoc;
    };
 
 #define _ADD_PAREN_1(...) ((__VA_ARGS__)) _ADD_PAREN_2

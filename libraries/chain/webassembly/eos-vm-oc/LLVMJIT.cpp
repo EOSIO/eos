@@ -48,7 +48,7 @@ namespace llvm { namespace orc {
 
 #if PRINT_DISASSEMBLY
 #include "llvm-c/Disassembler.h"
-void disassembleFunction(U8* bytes,Uptr numBytes)
+static void disassembleFunction(U8* bytes,Uptr numBytes)
 {
    LLVMDisasmContextRef disasmRef = LLVMCreateDisasm(llvm::sys::getProcessTriple().c_str(),nullptr,0,nullptr,nullptr);
 
@@ -65,7 +65,7 @@ void disassembleFunction(U8* bytes,Uptr numBytes)
          instructionBuffer,
          sizeof(instructionBuffer)
          );
-      if(numInstructionBytes == 0 || numInstructionBytes > numBytesRemaining);
+      if(numInstructionBytes == 0 || numInstructionBytes > numBytesRemaining)
          break;
       numBytesRemaining -= numInstructionBytes;
       nextByte += numInstructionBytes;

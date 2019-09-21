@@ -839,7 +839,7 @@ namespace WASM
 	void serialize(Serialization::InputStream& stream,Module& module)
 	{
 		serializeModule(stream,module);
-		IR::validateDefinitions(module);
+		//IR::validateDefinitions(module);
 	}
 	void serialize(Serialization::OutputStream& stream,const Module& module)
 	{

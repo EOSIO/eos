@@ -4,6 +4,7 @@
 #include <eosio/chain/webassembly/eos-vm-oc/memory.hpp>
 #include <eosio/chain/webassembly/eos-vm-oc/eos-vm-oc.hpp>
 #include <eosio/chain/webassembly/eos-vm-oc/intrinsic.hpp>
+#include <eosio/chain/webassembly/eos-vm-oc/compile_monitor.hpp>
 #include <eosio/chain/exceptions.hpp>
 
 #include <unistd.h>
@@ -36,7 +37,8 @@ static constexpr size_t descriptor_ptr_from_file_start = header_offset + offseto
 
 static_assert(sizeof(code_cache_header) <= header_size, "code_cache_header too big");
 
-code_cache::code_cache(const boost::filesystem::path data_dir, const eosvmoc::config& eosvmoc_config) :
+code_cache::code_cache(const boost::filesystem::path data_dir, const eosvmoc::config& eosvmoc_config, const chainbase::database& db) :
+   _db(db),
    _cache_file_path(data_dir/"code_cache.bin")
 {
    static_assert(sizeof(allocator_t) <= header_offset, "header offset intersects with allocator");
@@ -80,24 +82,39 @@ code_cache::code_cache(const boost::filesystem::path data_dir, const eosvmoc::co
 
    _cache_fd = ::open(_cache_file_path.generic_string().c_str(), O_RDWR | O_CLOEXEC);
    EOS_ASSERT(_cache_fd >= 0, database_exception, "failure to open code cache");
-   _code_mapping = (char*)mmap(nullptr, eosvmoc_config.cache_size, PROT_READ|PROT_WRITE, MAP_SHARED, _cache_fd, 0);
-   EOS_ASSERT(_code_mapping != MAP_FAILED, database_exception, "failure to mmap code cache");
 
-   allocator = reinterpret_cast<allocator_t*>(_code_mapping);
+   //load up the previous cache index
+   char* code_mapping = (char*)mmap(nullptr, eosvmoc_config.cache_size, PROT_READ|PROT_WRITE, MAP_SHARED, _cache_fd, 0);
+   EOS_ASSERT(code_mapping != MAP_FAILED, database_exception, "failure to mmap code cache");
+
+   allocator_t* allocator = reinterpret_cast<allocator_t*>(code_mapping);
 
    if(cache_header->serialized_descriptor_index) {
-      fc::datastream<const char*> ds(_code_mapping + cache_header->serialized_descriptor_index, eosvmoc_config.cache_size - cache_header->serialized_descriptor_index);
+      fc::datastream<const char*> ds(code_mapping + cache_header->serialized_descriptor_index, eosvmoc_config.cache_size - cache_header->serialized_descriptor_index);
       unsigned number_entries;
       fc::raw::unpack(ds, number_entries);
       for(unsigned i = 0; i < number_entries; ++i) {
          code_descriptor cd;
          fc::raw::unpack(ds, cd);
+         if(cd.codegen_version != 0)
+            continue;
          _cache_index.push_back(std::move(cd));
       }
-      allocator->deallocate(_code_mapping + cache_header->serialized_descriptor_index);
+      allocator->deallocate(code_mapping + cache_header->serialized_descriptor_index);
+
+      ilog("EOS-VM Optimized Compiler code cache loaded with ${c} entries; ${f} of ${t} bytes free", ("c", number_entries)("f", allocator->get_free_memory())("t", allocator->get_size()));
    }
+   munmap(code_mapping, eosvmoc_config.cache_size);
 
    _free_bytes_eviction_threshold = eosvmoc_config.cache_size * .1;
+
+   wrapped_fd compile_monitor_conn = get_connection_to_compile_monitor(_cache_fd);
+
+   //okay, let's do this by the book: we're not allowed to write & read on different threads to the same asio socket. So create two fds
+   //representing the same socket. we'll read on one and write on the other. boom
+   int duped = dup(compile_monitor_conn);
+   _compile_monitor_write_socket.assign(local::datagram_protocol(), duped);
+   _compile_monitor_read_socket.assign(local::datagram_protocol(), compile_monitor_conn.release());
 }
 
 void code_cache::set_on_disk_region_dirty(bool dirty) {
@@ -118,6 +135,24 @@ void code_cache::serialize_cache_index(fc::datastream<T>& ds) {
 }
 
 code_cache::~code_cache() {
+   //it's exceedingly critical that we wait for the compile monitor to be done with all its work
+   //This is easy in the sync case
+   _compile_monitor_write_socket.shutdown(local::datagram_protocol::socket::shutdown_send);
+   auto [success, message, fds] = read_message_with_fds(_compile_monitor_read_socket);
+   if(success)
+      elog("unexpected response from EOS-VM OC compile monitor during shutdown");
+
+   //reopen the code cache in our process
+   struct stat st;
+   if(fstat(_cache_fd, &st))
+      return;
+   char* code_mapping = (char*)mmap(nullptr, st.st_size, PROT_READ|PROT_WRITE, MAP_SHARED, _cache_fd, 0);
+   if(code_mapping == MAP_FAILED)
+      return;
+
+   allocator_t* allocator = reinterpret_cast<allocator_t*>(code_mapping);
+
+   //serialize out the cache index
    fc::datastream<size_t> dssz;
    serialize_cache_index(dssz);
    size_t sz = dssz.tellp();
@@ -126,39 +161,63 @@ code_cache::~code_cache() {
    fc::datastream<char*> ds(p, sz);
    serialize_cache_index(ds);
 
-   uintptr_t ptr_offset = p-_code_mapping;
-   *((uintptr_t*)(_code_mapping+descriptor_ptr_from_file_start)) = ptr_offset;
+   uintptr_t ptr_offset = p-code_mapping;
+   *((uintptr_t*)(code_mapping+descriptor_ptr_from_file_start)) = ptr_offset;
 
-   msync(_code_mapping, allocator->get_size(), MS_SYNC);
-   munmap(_code_mapping, allocator->get_size());
+   msync(code_mapping, allocator->get_size(), MS_SYNC);
+   munmap(code_mapping, allocator->get_size());
    close(_cache_fd);
    set_on_disk_region_dirty(false);
+
 }
 
 void code_cache::free_code(const digest_type& code_id, const uint8_t& vm_version) {
    code_cache_index::index<by_hash>::type::iterator it = _cache_index.get<by_hash>().find(boost::make_tuple(code_id, vm_version));
    if(it != _cache_index.get<by_hash>().end()) {
-      allocator->deallocate(_code_mapping + it->code_begin);
+      write_message_with_fds(_compile_monitor_write_socket, evict_wasms_message{ {*it} });
       _cache_index.get<by_hash>().erase(it);
    }
 }
 
-void code_cache::check_eviction_threshold() {
-   while(allocator->get_free_memory() < _free_bytes_eviction_threshold && _cache_index.size() > 1) {
-      const code_descriptor& cd = _cache_index.back();
-      allocator->deallocate(_code_mapping + cd.code_begin);
-      allocator->deallocate(_code_mapping + cd.initdata_begin);
-      _cache_index.pop_back();
+void code_cache::check_eviction_threshold(size_t free_bytes) {
+   if(free_bytes < _free_bytes_eviction_threshold) {
+      evict_wasms_message evict_msg;
+      for(unsigned int i = 0; i < 25 && _cache_index.size() > 1; ++i) {
+         evict_msg.codes.emplace_back(_cache_index.back());
+         _cache_index.pop_back();
+      }
+      write_message_with_fds(_compile_monitor_write_socket, evict_msg);
    }
 }
 
-const code_descriptor* const code_cache::get_descriptor_for_code(const digest_type& code_id, const uint8_t& vm_version, const std::vector<uint8_t>& wasm, const std::vector<uint8_t>& initial_mem) {
+const code_descriptor* const code_cache::get_descriptor_for_code(const digest_type& code_id, const uint8_t& vm_version) {
    code_cache_index::index<by_hash>::type::iterator it = _cache_index.get<by_hash>().find(boost::make_tuple(code_id, vm_version));
    if(it != _cache_index.get<by_hash>().end()) {
       _cache_index.relocate(_cache_index.begin(), _cache_index.project<0>(it));
       return &*it;
    }
+
+   const code_object* const codeobject = _db.find<code_object,by_code_hash>(boost::make_tuple(code_id, 0, vm_version));
+   if(!codeobject)
+      return nullptr;
    
+   //synchronus case
+   std::vector<wrapped_fd> fds_to_pass;
+   fds_to_pass.emplace_back(memfd_for_blob(codeobject->code));
+
+   write_message_with_fds(_compile_monitor_write_socket, compile_wasm_message{ {code_id, vm_version} }, fds_to_pass);
+   auto [success, message, fds] = read_message_with_fds(_compile_monitor_read_socket);
+   EOS_ASSERT(success, wasm_execution_error, "failed to read response from monitor process");
+   EOS_ASSERT(message.contains<wasm_compilation_result_message>(), wasm_execution_error, "unexpected response from monitor process");
+
+   wasm_compilation_result_message result = message.get<wasm_compilation_result_message>();
+   EOS_ASSERT(result.result.contains<code_descriptor>(), wasm_execution_error, "failed to compile wasm");
+
+   check_eviction_threshold(result.cache_free_bytes);
+
+   return &*_cache_index.push_front(std::move(result.result.get<code_descriptor>())).first;
+
+#if 0
    Module module;
    try {
       Serialization::MemoryInputStream stream(wasm.data(), wasm.size());
@@ -280,6 +339,8 @@ const code_descriptor* const code_cache::get_descriptor_for_code(const digest_ty
    check_eviction_threshold();
 
    return &*_cache_index.push_front(std::move(cd)).first;
+#endif
+   return nullptr;
 }
 
 }}}

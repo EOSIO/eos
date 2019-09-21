@@ -28,6 +28,9 @@ if("eos-vm-oc" IN_LIST EOSIO_WASM_RUNTIMES)
                              webassembly/eos-vm-oc/intrinsic.cpp
                              webassembly/eos-vm-oc/LLVMJIT.cpp
                              webassembly/eos-vm-oc/LLVMEmitIR.cpp
+                             webassembly/eos-vm-oc/compile_monitor.cpp
+                             webassembly/eos-vm-oc/compile_trampoline.cpp
+                             webassembly/eos-vm-oc/ipc_helpers.cpp
                              webassembly/eos-vm-oc.cpp)
 
    if(LLVM_VERSION VERSION_LESS 7.1 AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
@@ -40,6 +43,8 @@ if("eos-vm-oc" IN_LIST EOSIO_WASM_RUNTIMES)
    llvm_map_components_to_libnames(LLVM_LIBS support core passes mcjit native orcjit)
    include_directories(${LLVM_INCLUDE_DIRS})
    add_definitions(${LLVM_DEFINITIONS})
+
+   option(EOSVMOC_ENABLE_DEVELOPER_OPTIONS "enable developer options for EOS-VM OC" OFF)
 endif()
 
 ## SORT .cpp by most likely to change / break compile
@@ -113,6 +118,11 @@ foreach(RUNTIME ${EOSIO_WASM_RUNTIMES})
    string(REPLACE "-" "_" RUNTIMEUC ${RUNTIMEUC})
    target_compile_definitions(eosio_chain PUBLIC "EOSIO_${RUNTIMEUC}_RUNTIME_ENABLED")
 endforeach()
+
+if(EOSVMOC_ENABLE_DEVELOPER_OPTIONS)
+   message(WARNING "EOS-VM OC Developer Options are enabled; these are NOT supported")
+   target_compile_definitions(eosio_chain PUBLIC EOSIO_EOS_VM_OC_DEVELOPER)
+endif()
 
 install( TARGETS eosio_chain
    RUNTIME DESTINATION ${CMAKE_INSTALL_FULL_BINDIR}

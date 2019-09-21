@@ -87,7 +87,7 @@ static int32_t grow_memory(int32_t grow, int32_t max) {
 
    return (int32_t)previous_page_count;
 }
-static intrinsic grow_memory_intrinsic("eosvmoc_internal.grow_memory", IR::FunctionType::get(IR::ResultType::i32,{IR::ValueType::i32,IR::ValueType::i32}), (void*)&grow_memory,
+static intrinsic grow_memory_intrinsic EOSVMOC_INTRINSIC_INIT_PRIORITY("eosvmoc_internal.grow_memory", IR::FunctionType::get(IR::ResultType::i32,{IR::ValueType::i32,IR::ValueType::i32}), (void*)&grow_memory,
   boost::hana::index_if(intrinsic_table, ::boost::hana::equal.to(BOOST_HANA_STRING("eosvmoc_internal.grow_memory"))).value()
 );
 
@@ -100,7 +100,7 @@ static void throw_internal_exception(const std::string& s) {
 
 #define DEFINE_EOSVMOC_TRAP_INTRINSIC(module,name) \
 	void name(); \
-	static intrinsic name##Function(#module "." #name,IR::FunctionType::get(),(void*)&name, \
+	static intrinsic name##Function EOSVMOC_INTRINSIC_INIT_PRIORITY(#module "." #name,IR::FunctionType::get(),(void*)&name, \
      boost::hana::index_if(intrinsic_table, ::boost::hana::equal.to(BOOST_HANA_STRING(#module "." #name))).value() \
    ); \
 	void name()

@@ -198,7 +198,15 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("protocol-features-dir", bpo::value<bfs::path>()->default_value("protocol_features"),
           "the location of the protocol_features directory (absolute path or relative to application config dir)")
          ("checkpoint", bpo::value<vector<string>>()->composing(), "Pairs of [BLOCK_NUM,BLOCK_ID] that should be enforced as checkpoints.")
-         ("wasm-runtime", bpo::value<eosio::chain::wasm_interface::vm_type>()->value_name("runtime"), "Override default WASM runtime")
+         ("wasm-runtime", bpo::value<eosio::chain::wasm_interface::vm_type>()->value_name("runtime")->notifier([](const auto& vm){
+#ifndef EOSIO_EOS_VM_OC_DEVELOPER
+            //throwing an exception here (like EOS_ASSERT) is just gobbled up with a "Failed to initialize" error :(
+            if(vm == wasm_interface::vm_type::eos_vm_oc) {
+               elog("EOS-VM OC is a tier-up compiler and works in conjunction with the configured base WASM runtime. Enable EOS-VM OC via 'eos-vm-oc-enable' option");
+               EOS_ASSERT(false, plugin_exception, "");
+            }
+#endif
+         }), "Override default WASM runtime")
          ("abi-serializer-max-time-ms", bpo::value<uint32_t>()->default_value(config::default_abi_serializer_max_time_ms),
           "Override default maximum ABI serialization time allowed in ms")
          ("chain-state-db-size-mb", bpo::value<uint64_t>()->default_value(config::default_state_size / (1024  * 1024)), "Maximum size (in MiB) of the chain state database")
@@ -259,6 +267,8 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("eos-vm-oc-cache-size-mb", bpo::value<uint64_t>()->default_value(eosvmoc::config().cache_size / (1024u*1024u)), "Maximum size (in MiB) of the EOS-VM OC code cache")
          ("eos-vm-oc-map-mode", bpo::value<eosvmoc::map_mode>()->default_value(eosvmoc::config().cache_map_mode), "EOS-VM OC code cache mode (\"mapped\", \"heap\", or \"locked\")")
          ("eos-vm-oc-hugepage-path", bpo::value<vector<string>>()->composing(), "Optional path for EOS-VM OC code hugepages when in \"locked\" mode")
+         ("eos-vm-oc-compile-threads", bpo::value<uint64_t>()->default_value(1u), "Number of threads to use for EOS-VM OC tier-up")
+         ("eos-vm-oc-enable", bpo::bool_switch(), "Enable EOS-VM OC tier-up runtime")
 #endif
          ;
 
@@ -929,6 +939,10 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          my->chain_config->eosvmoc_config.cache_map_mode = options.at( "eos-vm-oc-map-mode" ).as<eosvmoc::map_mode>();
       if( options.count("eos-vm-oc-hugepage-path") )
          my->chain_config->eosvmoc_config.cache_hugepage_paths = options.at("eos-vm-oc-hugepage-path").as<std::vector<std::string>>();
+      if( options.count("eos-vm-oc-compile-threads") )
+         my->chain_config->eosvmoc_config.threads = options.at("eos-vm-oc-compile-threads").as<uint64_t>();
+      if( options.count("eos-vm-oc-enable") )
+         my->chain_config->eosvmoc_tierup = true;
 #endif
 
       my->chain.emplace( *my->chain_config, std::move(pfs) );

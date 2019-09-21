@@ -72,7 +72,14 @@ namespace eosio { namespace chain {
    }
 
    void wasm_interface::apply( const digest_type& code_hash, const uint8_t& vm_type, const uint8_t& vm_version, apply_context& context ) {
-      my->get_instantiated_module(code_hash, vm_type, vm_version, context.trx_context)->apply(context);
+      if(my->eosvmoc) {
+         const chain::eosvmoc::code_descriptor* cd = my->eosvmoc->cc.get_descriptor_for_code(code_hash, vm_version);
+         if(cd) {
+            my->eosvmoc->exec.execute(*cd, my->eosvmoc->mem, context);
+            return;
+         }
+      }
+       my->get_instantiated_module(code_hash, vm_type, vm_version, context.trx_context)->apply(context);
    }
 
    void wasm_interface::exit() {

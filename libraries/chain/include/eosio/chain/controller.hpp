@@ -84,7 +84,8 @@ namespace eosio { namespace chain {
 
             genesis_state            genesis;
             wasm_interface::vm_type  wasm_runtime = chain::config::default_wasm_runtime;
-            eosvmoc::config        eosvmoc_config;
+            eosvmoc::config          eosvmoc_config;
+            bool                     eosvmoc_tierup         = false;
 
             db_read_mode             read_mode              = db_read_mode::SPECULATIVE;
             validation_mode          block_validation_mode  = validation_mode::FULL;

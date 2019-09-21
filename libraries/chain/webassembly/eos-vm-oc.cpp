@@ -21,8 +21,6 @@ class eosvmoc_instantiated_module : public wasm_instantiated_module_interface {
    public:
       eosvmoc_instantiated_module(std::vector<uint8_t>&& initial_mem, std::vector<uint8_t>&& wasm, 
                                const digest_type& code_hash, const uint8_t& vm_version, eosvmoc_runtime& wr) :
-         _initial_memory(std::move(initial_mem)),
-         _wasm(std::move(wasm)),
          _code_hash(code_hash),
          _vm_version(vm_version),
          _eosvmoc_runtime(wr)
@@ -35,7 +33,7 @@ class eosvmoc_instantiated_module : public wasm_instantiated_module_interface {
       }
 
       void apply(apply_context& context) override {
-         const code_descriptor* const cd = _eosvmoc_runtime.cc.get_descriptor_for_code(_code_hash, _vm_version, _wasm, _initial_memory);
+         const code_descriptor* const cd = _eosvmoc_runtime.cc.get_descriptor_for_code(_code_hash, _vm_version);
 
          unsigned long long start = __builtin_readcyclecounter();
          auto count_it = fc::make_scoped_exit([&start](){
@@ -45,14 +43,13 @@ class eosvmoc_instantiated_module : public wasm_instantiated_module_interface {
          _eosvmoc_runtime.exec.execute(*cd, _eosvmoc_runtime.mem, context);
       }
 
-      const std::vector<uint8_t>     _initial_memory;
-      const std::vector<uint8_t>     _wasm;
       const digest_type              _code_hash;
       const uint8_t                  _vm_version;
       eosvmoc_runtime&            _eosvmoc_runtime;
 };
 
-eosvmoc_runtime::eosvmoc_runtime(const boost::filesystem::path data_dir, const eosvmoc::config& eosvmoc_config) : cc(data_dir, eosvmoc_config), exec(cc) {
+eosvmoc_runtime::eosvmoc_runtime(const boost::filesystem::path data_dir, const eosvmoc::config& eosvmoc_config, const chainbase::database& db)
+   : cc(data_dir, eosvmoc_config, db), exec(cc) {
 }
 
 eosvmoc_runtime::~eosvmoc_runtime() {

@@ -29,7 +29,7 @@ class eosvmoc_instantiated_module;
 
 class eosvmoc_runtime : public eosio::chain::wasm_runtime_interface {
    public:
-      eosvmoc_runtime(const boost::filesystem::path data_dir, const eosvmoc::config& eosvmoc_config);
+      eosvmoc_runtime(const boost::filesystem::path data_dir, const eosvmoc::config& eosvmoc_config, const chainbase::database& db);
       ~eosvmoc_runtime();
       std::unique_ptr<wasm_instantiated_module_interface> instantiate_module(std::vector<uint8_t>&& wasm, std::vector<uint8_t>&& initial_memory,
                                                                              const digest_type& code_hash, const uint8_t& vm_type, const uint8_t& vm_version) override;
@@ -717,7 +717,7 @@ struct intrinsic_function_invoker_wrapper<is_injected, WasmSig, Ret (Cls::*)(Par
 #define _INTRINSIC_NAME(LABEL, SUFFIX) __INTRINSIC_NAME(LABEL,SUFFIX)
 
 #define _REGISTER_EOSVMOC_INTRINSIC(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)\
-   static eosio::chain::eosvmoc::intrinsic _INTRINSIC_NAME(__intrinsic_fn, __COUNTER__) (\
+   static eosio::chain::eosvmoc::intrinsic _INTRINSIC_NAME(__intrinsic_fn, __COUNTER__) EOSVMOC_INTRINSIC_INIT_PRIORITY (\
       MOD "." NAME,\
       eosio::chain::webassembly::eosvmoc::wasm_function_type_provider<WASM_SIG>::type(),\
       (void *)eosio::chain::webassembly::eosvmoc::intrinsic_function_invoker_wrapper<std::string_view(MOD) != "env", WASM_SIG, SIG>::type::fn<&CLS::METHOD>(),\
