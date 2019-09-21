@@ -30,6 +30,7 @@ void variant_snapshot_writer::finalize() {
 
 variant_snapshot_reader::variant_snapshot_reader(const fc::variant& snapshot)
 :snapshot(snapshot)
+,cur_section(nullptr)
 ,cur_row(0)
 {
 }
@@ -112,6 +113,10 @@ bool variant_snapshot_reader::empty ( ) {
 void variant_snapshot_reader::clear_section() {
    cur_section = nullptr;
    cur_row = 0;
+}
+
+void variant_snapshot_reader::return_to_header() {
+   clear_section();
 }
 
 ostream_snapshot_writer::ostream_snapshot_writer(std::ostream& snapshot)
@@ -334,6 +339,11 @@ bool istream_snapshot_reader::empty ( ) {
 void istream_snapshot_reader::clear_section() {
    num_rows = 0;
    cur_row = 0;
+}
+
+void istream_snapshot_reader::return_to_header() {
+   snapshot.seekg( header_pos );
+   clear_section();
 }
 
 integrity_hash_snapshot_writer::integrity_hash_snapshot_writer(fc::sha256::encoder& enc)

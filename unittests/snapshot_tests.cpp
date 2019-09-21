@@ -497,7 +497,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_pending_schedule_snapshot, SNAPSHOT_SUITE, sn
 
    auto reader = SNAPSHOT_SUITE::get_reader(v2);
    snapshotted_tester v2_tester(chain.get_config(), reader, ordinal++);
-   auto chain_id = chain::controller::extract_chain_id(reader);
+   auto chain_id = chain::controller::extract_chain_id(*reader);
    BOOST_REQUIRE_EQUAL(chain_id, v2_tester.control->get_chain_id());
    BOOST_REQUIRE_EQUAL(chain.control->get_chain_id(), v2_tester.control->get_chain_id());
    verify_integrity_hash<SNAPSHOT_SUITE>(*chain.control, *v2_tester.control);

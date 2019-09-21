@@ -225,7 +225,7 @@ struct controller_impl {
    authorization_manager          authorization;
    protocol_feature_manager       protocol_features;
    controller::config             conf;
-   chain_id_type                  chain_id; // read by thread_pool threads, value will not be changed after initialization/snapshot
+   const chain_id_type            chain_id; // read by thread_pool threads, value will not be changed
    optional<fc::time_point>       replay_head_time;
    db_read_mode                   read_mode = db_read_mode::SPECULATIVE;
    bool                           in_trx_requiring_checks = false; ///< if true, checks that are normally skipped on replay (e.g. auth checks) cannot be skipped
@@ -281,7 +281,7 @@ struct controller_impl {
       apply_handlers[receiver][make_pair(contract,action)] = v;
    }
 
-   controller_impl( const controller::config& cfg, controller& s, protocol_feature_set&& pfs  )
+   controller_impl( const controller::config& cfg, controller& s, protocol_feature_set&& pfs, const fc::optional<chain_id_type>& expected_chain_id )
    :self(s),
     db( cfg.state_dir,
         cfg.read_only ? database::read_only : database::read_write,
@@ -296,9 +296,21 @@ struct controller_impl {
     authorization( s, db ),
     protocol_features( std::move(pfs) ),
     conf( cfg ),
+    chain_id( (db.revision() >= 1) ? db.get<global_property_object>().chain_id
+                                   : ( expected_chain_id ? *expected_chain_id
+                                                         : genesis_state().compute_chain_id() ) ),
     read_mode( cfg.read_mode ),
     thread_pool( "chain", cfg.thread_pool_size )
    {
+      if( expected_chain_id && db.revision() >= 1 ) {
+         const auto& actual_chain_id = db.get<global_property_object>().chain_id;
+         EOS_ASSERT( *expected_chain_id == actual_chain_id,
+                     database_exception,
+                     "Unexpected chain ID in state. Expected: ${expected}. Actual: ${actual}.",
+                     ("expected", *expected_chain_id)("actual", actual_chain_id)
+         );
+      }
+
       fork_db.open( [this]( block_timestamp_type timestamp,
                             const flat_set<digest_type>& cur_features,
                             const vector<digest_type>& new_features )
@@ -546,6 +558,11 @@ struct controller_impl {
 
    void startup(std::function<bool()> shutdown, const genesis_state& genesis) {
       EOS_ASSERT( db.revision() < 1, database_exception, "This version of controller::startup only works with a fresh state database." );
+      const auto& genesis_chain_id = genesis.compute_chain_id();
+      EOS_ASSERT( genesis_chain_id == chain_id, chain_id_type_exception,
+                  "genesis state provided to startup corresponds to a chain ID (${genesis_chain_id}) that does not match the chain ID that controller was constructed with (${controller_chain_id})",
+                  ("genesis_chain_id", genesis_chain_id)("controller_chain_id", chain_id)
+      );
 
       if( fork_db.head() ) {
          if( read_mode == db_read_mode::IRREVERSIBLE && fork_db.head()->id != fork_db.root()->id ) {
@@ -575,13 +592,12 @@ struct controller_impl {
       EOS_ASSERT( db.revision() >= 1, database_exception, "This version of controller::startup does not work with a fresh state database." );
       EOS_ASSERT( fork_db.head(), fork_database_exception, "No existing fork database despite existing chain state. Replay required." );
 
-      chain_id = db.get<global_property_object>().chain_id;
       uint32_t lib_num = fork_db.root()->block_num;
       auto first_block_num = blog.first_block_num();
       if( blog.head() ) {
          EOS_ASSERT( first_block_num <= lib_num && lib_num <= blog.head()->block_num(),
                      block_log_exception,
-                     "block log does not contain last irreversible block",
+                     "block log (ranging from ${block_log_first_num} to ${block_log_last_num}) does not contain the last irreversible block (${fork_db_lib})",
                      ("block_log_first_num", first_block_num)
                      ("block_log_last_num", blog.head()->block_num())
                      ("fork_db_lib", lib_num)
@@ -624,7 +640,7 @@ struct controller_impl {
       // Also, even though blog.head() may still be nullptr, blog.first_block_num() is guaranteed to be lib_num + 1.
 
       EOS_ASSERT( db.revision() >= head->block_num, fork_database_exception,
-                  "fork database head is inconsistent with state",
+                  "fork database head (${head}) is inconsistent with state (${db})",
                   ("db",db.revision())("head",head->block_num) );
 
       if( db.revision() > head->block_num ) {
@@ -655,7 +671,7 @@ struct controller_impl {
             reversible_blocks.remove( *itr );
 
          EOS_ASSERT( itr == rbi.end() || itr->blocknum == lib_num + 1, reversible_blocks_exception,
-                     "gap exists between last irreversible block and first reversible block",
+                     "gap exists between last irreversible block (${lib}) and first reversible block (${first_reversible_block_num})",
                      ("lib", lib_num)("first_reversible_block_num", itr->blocknum)
          );
 
@@ -836,13 +852,13 @@ struct controller_impl {
       resource_limits.add_to_snapshot(snapshot);
    }
 
-   static fc::optional<genesis_state> extract_legacy_genesis_state( const snapshot_reader_ptr& snapshot, uint32_t version ) {
+   static fc::optional<genesis_state> extract_legacy_genesis_state( snapshot_reader& snapshot, uint32_t version ) {
       fc::optional<genesis_state> genesis;
       using v2 = legacy::snapshot_global_property_object_v2;
 
       if (std::clamp(version, v2::minimum_version, v2::maximum_version) == version ) {
          genesis.emplace();
-         snapshot->read_section<genesis_state>([&genesis=*genesis]( auto &section ){
+         snapshot.read_section<genesis_state>([&genesis=*genesis]( auto &section ){
             section.read_row(genesis);
          });
       }
@@ -905,7 +921,7 @@ struct controller_impl {
             using v2 = legacy::snapshot_global_property_object_v2;
 
             if (std::clamp(header.version, v2::minimum_version, v2::maximum_version) == header.version ) {
-               fc::optional<genesis_state> genesis = extract_legacy_genesis_state(snapshot, header.version);
+               fc::optional<genesis_state> genesis = extract_legacy_genesis_state(*snapshot, header.version);
                EOS_ASSERT( genesis, snapshot_exception,
                            "Snapshot indicates chain_snapshot_header version 2, but does not contain a genesis_state. "
                            "It must be corrupted.");
@@ -942,8 +958,10 @@ struct controller_impl {
       });
 
       const auto& gpo = db.get<global_property_object>();
-      // ensure chain_id is populated from global_property_object's chain_id
-      chain_id = gpo.chain_id;
+      EOS_ASSERT( gpo.chain_id == chain_id, chain_id_type_exception,
+                  "chain ID in snapshot (${snapshot_chain_id}) does not match the chain ID that controller was constructed with (${controller_chain_id})",
+                  ("snapshot_chain_id", gpo.chain_id)("controller_chain_id", chain_id)
+      );
    }
 
    sha256 calculate_integrity_hash() const {
@@ -1004,7 +1022,6 @@ struct controller_impl {
       });
 
       genesis.initial_configuration.validate();
-      chain_id = genesis.compute_chain_id();
       db.create<global_property_object>([&genesis,&chain_id=this->chain_id](auto& gpo ){
          gpo.configuration = genesis.initial_configuration;
          gpo.chain_id = chain_id;
@@ -2348,13 +2365,13 @@ const protocol_feature_manager& controller::get_protocol_feature_manager()const
    return my->protocol_features;
 }
 
-controller::controller( const controller::config& cfg )
-:my( new controller_impl( cfg, *this, protocol_feature_set{} ) )
+controller::controller( const controller::config& cfg, const fc::optional<chain_id_type>& expected_chain_id )
+:my( new controller_impl( cfg, *this, protocol_feature_set{}, expected_chain_id ) )
 {
 }
 
-controller::controller( const config& cfg, protocol_feature_set&& pfs )
-:my( new controller_impl( cfg, *this, std::move(pfs) ) )
+controller::controller( const config& cfg, protocol_feature_set&& pfs, const fc::optional<chain_id_type>& expected_chain_id )
+:my( new controller_impl( cfg, *this, std::move(pfs), expected_chain_id ) )
 {
 }
 
@@ -3149,9 +3166,9 @@ fc::optional<uint64_t> controller::convert_exception_to_error_code( const fc::ex
    return e_ptr->error_code;
 }
 
-chain_id_type controller::extract_chain_id(const snapshot_reader_ptr& snapshot) {
+chain_id_type controller::extract_chain_id(snapshot_reader& snapshot) {
    chain_snapshot_header header;
-   snapshot->read_section<chain_snapshot_header>([&header]( auto &section ){
+   snapshot.read_section<chain_snapshot_header>([&header]( auto &section ){
       section.read_row(header);
       header.validate();
    });
@@ -3163,7 +3180,7 @@ chain_id_type controller::extract_chain_id(const snapshot_reader_ptr& snapshot) 
    }
 
    chain_id_type chain_id;
-   snapshot->read_section<global_property_object>([&chain_id]( auto &section ){
+   snapshot.read_section<global_property_object>([&chain_id]( auto &section ){
       snapshot_global_property_object global_properties;
       section.read_row(global_properties);
       chain_id = global_properties.chain_id;

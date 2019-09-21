@@ -170,7 +170,7 @@ namespace eosio { namespace testing {
 
    void base_tester::init(controller::config config) {
       cfg = config;
-      open();
+      open(default_genesis().compute_chain_id());
    }
 
    void base_tester::init(controller::config config, protocol_feature_set&& pfs, const snapshot_reader_ptr& snapshot) {
@@ -185,7 +185,7 @@ namespace eosio { namespace testing {
 
    void base_tester::init(controller::config config, protocol_feature_set&& pfs) {
       cfg = config;
-      open(std::move(pfs));
+      open(std::move(pfs), default_genesis().compute_chain_id());
    }
 
    void base_tester::execute_setup_policy(const setup_policy policy) {
@@ -241,13 +241,13 @@ namespace eosio { namespace testing {
       open( make_protocol_feature_set(), genesis );
    }
 
-   void base_tester::open() {
-      open( make_protocol_feature_set() );
+   void base_tester::open( const fc::optional<chain_id_type>& expected_chain_id ) {
+      open( make_protocol_feature_set(), expected_chain_id );
    }
 
    template <typename Lambda>
-   void base_tester::open( protocol_feature_set&& pfs, Lambda lambda ) {
-      control.reset( new controller(cfg, std::move(pfs)) );
+   void base_tester::open( protocol_feature_set&& pfs, const fc::optional<chain_id_type>& expected_chain_id, Lambda lambda ) {
+      control.reset( new controller(cfg, std::move(pfs), expected_chain_id) );
       control->add_indices();
       lambda();
       chain_transactions.clear();
@@ -266,19 +266,21 @@ namespace eosio { namespace testing {
    }
 
    void base_tester::open( protocol_feature_set&& pfs, const snapshot_reader_ptr& snapshot ) {
-      open(std::move(pfs), [&snapshot,&control=this->control]() {
+      const auto& snapshot_chain_id = controller::extract_chain_id( *snapshot );
+      snapshot->return_to_header();
+      open(std::move(pfs), snapshot_chain_id, [&snapshot,&control=this->control]() {
          control->startup([]() { return false; }, snapshot );
       });
    }
 
    void base_tester::open( protocol_feature_set&& pfs, const genesis_state& genesis ) {
-      open(std::move(pfs), [&genesis,&control=this->control]() {
+      open(std::move(pfs), genesis.compute_chain_id(), [&genesis,&control=this->control]() {
          control->startup( []() { return false; }, genesis );
       });
    }
 
-   void base_tester::open( protocol_feature_set&& pfs ) {
-      open(std::move(pfs), [&control=this->control]() {
+   void base_tester::open( protocol_feature_set&& pfs, const fc::optional<chain_id_type>& expected_chain_id ) {
+      open(std::move(pfs), expected_chain_id, [&control=this->control]() {
          control->startup( []() { return false; } );
       });
    }

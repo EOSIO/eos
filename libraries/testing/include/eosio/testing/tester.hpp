@@ -163,13 +163,13 @@ namespace eosio { namespace testing {
 
          void              close();
          template <typename Lambda>
-         void              open( protocol_feature_set&& pfs, Lambda lambda );
+         void              open( protocol_feature_set&& pfs, const fc::optional<chain_id_type>& expected_chain_id, Lambda lambda );
          void              open( protocol_feature_set&& pfs, const snapshot_reader_ptr& snapshot );
          void              open( protocol_feature_set&& pfs, const genesis_state& genesis );
-         void              open( protocol_feature_set&& pfs );
+         void              open( protocol_feature_set&& pfs, const fc::optional<chain_id_type>& expected_chain_id = {} );
          void              open( const snapshot_reader_ptr& snapshot );
          void              open( const genesis_state& genesis );
-         void              open();
+         void              open( const fc::optional<chain_id_type>& expected_chain_id = {} );
          bool              is_same_chain( base_tester& other );
 
          virtual signed_block_ptr produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms) ) = 0;
@@ -380,6 +380,13 @@ namespace eosio { namespace testing {
          void preactivate_protocol_features(const vector<digest_type> feature_digests);
          void preactivate_all_builtin_protocol_features();
 
+         static genesis_state default_genesis() {
+            genesis_state genesis;
+            genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
+            genesis.initial_key = get_public_key( config::system_account_name, "active" );
+
+            return genesis;
+         }
 
          static std::pair<controller::config, genesis_state> default_config(const fc::temp_directory& tempdir) {
             controller::config cfg;
@@ -391,17 +398,13 @@ namespace eosio { namespace testing {
             cfg.reversible_guard_size = 0;
             cfg.contracts_console = true;
 
-            genesis_state genesis;
-            genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
-            genesis.initial_key = get_public_key( config::system_account_name, "active" );
-
             for(int i = 0; i < boost::unit_test::framework::master_test_suite().argc; ++i) {
                if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--wavm"))
                   cfg.wasm_runtime = chain::wasm_interface::vm_type::wavm;
                else if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--wabt"))
                   cfg.wasm_runtime = chain::wasm_interface::vm_type::wabt;
             }
-            return {cfg, genesis};
+            return {cfg, default_genesis()};
          }
 
       protected:
@@ -418,7 +421,6 @@ namespace eosio { namespace testing {
          std::map<chain::public_key_type, chain::private_key_type> block_signing_private_keys;
       protected:
          controller::config                            cfg;
-         fc::optional<genesis_state>                   genesis;
          map<transaction_id_type, transaction_receipt> chain_transactions;
          map<account_name, block_id_type>              last_produced_block;
          unapplied_transaction_queue                   unapplied_transactions;
@@ -529,7 +531,7 @@ namespace eosio { namespace testing {
       }
 
       static unique_ptr<controller> create_validating_node(controller::config vcfg, const genesis_state& genesis, bool use_genesis) {
-         unique_ptr<controller> validating_node = std::make_unique<controller>(vcfg, make_protocol_feature_set());
+         unique_ptr<controller> validating_node = std::make_unique<controller>(vcfg, make_protocol_feature_set(), genesis.compute_chain_id());
          validating_node->add_indices();
          if (use_genesis) {
             validating_node->startup( []() { return false; }, genesis );
@@ -613,7 +615,7 @@ namespace eosio { namespace testing {
                hbh.producer == vn_hbh.producer;
 
         validating_node.reset();
-        validating_node = std::make_unique<controller>(vcfg, make_protocol_feature_set());
+        validating_node = std::make_unique<controller>(vcfg, make_protocol_feature_set(), control->get_chain_id());
         validating_node->add_indices();
         validating_node->startup( []() { return false; } );
 
