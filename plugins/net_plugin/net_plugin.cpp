@@ -1718,9 +1718,8 @@ namespace eosio {
             if( ++c->consecutive_rejected_blocks > def_max_consecutive_rejected_blocks ) {
                auto sync_next_expected = sync_next_expected_num;
                g_sync.unlock();
-               fc_wlog( logger, "expected block ${ne} but got ${bn}, closing connection: ${p}",
+               fc_wlog( logger, "expected block ${ne} but got ${bn}, from connection: ${p}",
                         ("ne", sync_next_expected)( "bn", blk_num )( "p", c->peer_name() ) );
-               c->close();
             }
             return;
          }
