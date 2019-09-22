@@ -1396,8 +1396,8 @@ namespace eosio {
          sync_known_lib_num = target;
       }
 
-      if (!sync_required()) {
-         uint32_t bnum = chain_plug->chain().last_irreversible_block_num();
+      uint32_t bnum = chain_plug->chain().last_irreversible_block_num();
+      if (!sync_required() || target <= bnum) {
          uint32_t hnum = chain_plug->chain().fork_db_pending_head_block_num();
          fc_dlog( logger, "We are already caught up, my irr = ${b}, head = ${h}, target = ${t}",
                   ("b",bnum)("h",hnum)("t",target));
