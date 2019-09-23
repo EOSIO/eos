@@ -1396,8 +1396,8 @@ namespace eosio {
          sync_known_lib_num = target;
       }
 
-      if (!sync_required()) {
-         uint32_t bnum = chain_plug->chain().last_irreversible_block_num();
+      uint32_t bnum = chain_plug->chain().last_irreversible_block_num();
+      if (!sync_required() || target <= bnum) {
          uint32_t hnum = chain_plug->chain().fork_db_pending_head_block_num();
          fc_dlog( logger, "We are already caught up, my irr = ${b}, head = ${h}, target = ${t}",
                   ("b",bnum)("h",hnum)("t",target));
@@ -1483,12 +1483,7 @@ namespace eosio {
 
       if (head < msg.head_num ) {
          fc_dlog(logger, "sync check state 3");
-         if (!verify_catchup(c, msg.head_num, msg.head_id)) {
-            request_message req;
-            req.req_blocks.mode = catch_up;
-            req.req_trx.mode = none;
-            c->enqueue( req );
-         }
+         verify_catchup(c, msg.head_num, msg.head_id);
          return;
       }
       else {
@@ -1588,9 +1583,8 @@ namespace eosio {
       fc_dlog(logger, "got block ${bn} from ${p}",("bn",blk_num)("p",c->peer_name()));
       if (state == lib_catchup) {
          if (blk_num != sync_next_expected_num) {
-            fc_wlog( logger, "expected block ${ne} but got ${bn}, closing connection: ${p}",
+            fc_wlog( logger, "expected block ${ne} but got ${bn}, from connection: ${p}",
                      ("ne",sync_next_expected_num)("bn",blk_num)("p",c->peer_name()) );
-            my_impl->close(c);
             return;
          }
          sync_next_expected_num = blk_num + 1;
