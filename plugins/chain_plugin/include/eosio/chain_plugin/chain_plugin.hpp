@@ -64,9 +64,6 @@ template<>
 uint64_t convert_to_type(const string& str, const string& desc);
 
 template<>
-uint128_t convert_to_type(const string& str, const string& desc);
-
-template<>
 double convert_to_type(const string& str, const string& desc);
 
 template<typename Type>

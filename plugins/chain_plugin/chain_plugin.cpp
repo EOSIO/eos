@@ -1477,16 +1477,6 @@ uint64_t convert_to_type(const string& str, const string& desc) {
 }
 
 template<>
-uint128_t convert_to_type(const string& str, const string& desc) {
-   uint128_t val;
-   try {
-      auto bmp = boost::multiprecision::uint128_t(str);
-      val = *reinterpret_cast<uint128_t*>(&bmp);
-   } FC_RETHROW_EXCEPTIONS(warn, "Could not convert ${desc} string '${str}' to uint128_t type.", ("desc", desc)("str",str) )
-   return val;
-}
-
-template<>
 double convert_to_type(const string& str, const string& desc) {
    double val{};
    try {
