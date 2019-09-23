@@ -1860,7 +1860,7 @@ BOOST_AUTO_TEST_CASE( code_size )  try {
    std::vector<U8> code_end = { 0x0b };
  
    std::vector<U8> code_function_body;
-   code_function_body.insert(code_function_body.end(), wasm_constraints::maximum_code_size, 0x01);
+   code_function_body.insert(code_function_body.end(), wasm_constraints::maximum_code_size + 4, 0x01);
 
    std::vector<U8> code;
    code.insert(code.end(), code_start.begin(), code_start.end());
