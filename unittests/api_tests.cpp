@@ -587,7 +587,6 @@ BOOST_FIXTURE_TEST_CASE(require_notice_tests, TESTER) { try {
 
    } FC_LOG_AND_RETHROW() }
 
-/*
 BOOST_AUTO_TEST_CASE(ram_billing_in_notify_tests) { try {
    fc::temp_directory tempdir;
    validating_tester chain( tempdir, true );
@@ -615,7 +614,7 @@ BOOST_AUTO_TEST_CASE(ram_billing_in_notify_tests) { try {
 
    BOOST_REQUIRE_EQUAL( chain.validate(), true );
 } FC_LOG_AND_RETHROW() }
-*/
+
 /*************************************************************************************
  * context free action tests
  *************************************************************************************/
