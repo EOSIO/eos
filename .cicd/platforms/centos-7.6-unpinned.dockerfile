@@ -33,15 +33,15 @@ RUN git clone --depth 1 --single-branch --branch release_80 https://github.com/l
     cd / && \
     rm -rf /llvm
 # build boost
-RUN curl -LO https://dl.bintray.com/boostorg/release/1.70.0/source/boost_1_70_0.tar.bz2 && \
+RUN curl -LO https://dl.bintray.com/boostorg/release/1.71.0/source/boost_1_71_0.tar.bz2 && \
     source /opt/rh/devtoolset-8/enable && \
     source /opt/rh/rh-python36/enable && \
-    tar -xjf boost_1_70_0.tar.bz2 && \
-    cd boost_1_70_0 && \
+    tar -xjf boost_1_71_0.tar.bz2 && \
+    cd boost_1_71_0 && \
     ./bootstrap.sh --prefix=/usr/local && \
     ./b2 --with-iostreams --with-date_time --with-filesystem --with-system --with-program_options --with-chrono --with-test -q -j$(nproc) install && \
     cd / && \
-    rm -rf boost_1_70_0.tar.bz2 /boost_1_70_0 
+    rm -rf boost_1_71_0.tar.bz2 /boost_1_71_0
 # build mongodb
 RUN curl -LO https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-amazon-3.6.3.tgz && \
     tar -xzf mongodb-linux-x86_64-amazon-3.6.3.tgz && \
