@@ -318,6 +318,67 @@ void test_api_db::idx64_lowerbound()
       eosio_assert( lb_prim == 0 && lb_sec == "kevin"_n.value, err.c_str() );
       eosio_assert( lb < 0, "" );
    }
+   // Test write order
+   { // aligned
+      size_t prim_off = 0;
+      size_t sec_off = 0;
+      secondary_type lb_sec = "alice"_n.value;
+      uint64_t lb_prim = 0;
+      const uint64_t ssn = 265;
+      char buf[16];
+      secondary_type* lb_sec_ptr = reinterpret_cast<secondary_type*>(buf + sec_off);
+      uint64_t* lb_prim_ptr = reinterpret_cast<uint64_t*>(buf + prim_off);
+      memcpy(lb_sec_ptr, &lb_sec, sizeof(lb_sec));
+      int lb = db_idx64_lowerbound( receiver, receiver, table, lb_sec_ptr, lb_prim_ptr );
+      memcpy(&lb_sec, lb_sec_ptr, sizeof(lb_sec));
+      memcpy(&lb_prim, lb_prim_ptr, sizeof(lb_prim));
+      eosio_assert( lb_prim != ssn && lb_sec == "alice"_n.value, err.c_str() );
+   }
+   { // unaligned
+      size_t prim_off = 4;
+      size_t sec_off = 4;
+      secondary_type lb_sec = "alice"_n.value;
+      uint64_t lb_prim = 0;
+      const uint64_t ssn = 265;
+      char buf[16];
+      secondary_type* lb_sec_ptr = reinterpret_cast<secondary_type*>(buf + sec_off);
+      uint64_t* lb_prim_ptr = reinterpret_cast<uint64_t*>(buf + prim_off);
+      memcpy(lb_sec_ptr, &lb_sec, sizeof(lb_sec));
+      int lb = db_idx64_lowerbound( receiver, receiver, table, lb_sec_ptr, lb_prim_ptr );
+      memcpy(&lb_sec, lb_sec_ptr, sizeof(lb_sec));
+      memcpy(&lb_prim, lb_prim_ptr, sizeof(lb_prim));
+      eosio_assert( lb_prim == ssn && lb_sec != "alice"_n.value, err.c_str() );
+   }
+   { // primary aligned, secondary unaligned
+      size_t prim_off = 0;
+      size_t sec_off = 1;
+      secondary_type lb_sec = "alice"_n.value;
+      uint64_t lb_prim = 0;
+      const uint64_t ssn = 265;
+      char buf[16];
+      secondary_type* lb_sec_ptr = reinterpret_cast<secondary_type*>(buf + sec_off);
+      uint64_t* lb_prim_ptr = reinterpret_cast<uint64_t*>(buf + prim_off);
+      memcpy(lb_sec_ptr, &lb_sec, sizeof(lb_sec));
+      int lb = db_idx64_lowerbound( receiver, receiver, table, lb_sec_ptr, lb_prim_ptr );
+      memcpy(&lb_sec, lb_sec_ptr, sizeof(lb_sec));
+      memcpy(&lb_prim, lb_prim_ptr, sizeof(lb_prim));
+      eosio_assert( lb_prim != ssn && lb_sec == "alice"_n.value, err.c_str() );
+   }
+   { // primary unaligned, secondary aligned
+      size_t prim_off = 1;
+      size_t sec_off = 0;
+      secondary_type lb_sec = "alice"_n.value;
+      uint64_t lb_prim = 0;
+      const uint64_t ssn = 265;
+      char buf[16];
+      secondary_type* lb_sec_ptr = reinterpret_cast<secondary_type*>(buf + sec_off);
+      uint64_t* lb_prim_ptr = reinterpret_cast<uint64_t*>(buf + prim_off);
+      memcpy(lb_sec_ptr, &lb_sec, sizeof(lb_sec));
+      int lb = db_idx64_lowerbound( receiver, receiver, table, lb_sec_ptr, lb_prim_ptr );
+      memcpy(&lb_sec, lb_sec_ptr, sizeof(lb_sec));
+      memcpy(&lb_prim, lb_prim_ptr, sizeof(lb_prim));
+      eosio_assert( lb_prim == ssn && lb_sec != "alice"_n.value, err.c_str() );
+   }
 }
 
 void test_api_db::idx64_upperbound()
@@ -355,6 +416,66 @@ void test_api_db::idx64_upperbound()
       int ub = db_idx64_upperbound( receiver, receiver, table, &ub_sec, &ub_prim );
       eosio_assert( ub_prim == 0 && ub_sec == "kevin"_n.value, err.c_str() );
       eosio_assert( ub < 0, err.c_str() );
+   }
+   { // aligned
+      size_t prim_off = 0;
+      size_t sec_off = 0;
+      secondary_type ub_sec = "alice"_n.value;
+      uint64_t ub_prim = 0;
+      const uint64_t allyson_ssn = 650;
+      char buf[16];
+      secondary_type* ub_sec_ptr = reinterpret_cast<secondary_type*>(buf + sec_off);
+      uint64_t* ub_prim_ptr = reinterpret_cast<uint64_t*>(buf + prim_off);
+      memcpy(ub_sec_ptr, &ub_sec, sizeof(ub_sec));
+      int ub = db_idx64_upperbound( receiver, receiver, table, ub_sec_ptr, ub_prim_ptr );
+      memcpy(&ub_sec, ub_sec_ptr, sizeof(ub_sec));
+      memcpy(&ub_prim, ub_prim_ptr, sizeof(ub_prim));
+      eosio_assert( ub_prim != allyson_ssn && ub_sec == "allyson"_n.value, err.c_str() );
+   }
+   { // unaligned
+      size_t prim_off = 4;
+      size_t sec_off = 4;
+      secondary_type ub_sec = "alice"_n.value;
+      uint64_t ub_prim = 0;
+      const uint64_t allyson_ssn = 650;
+      char buf[16];
+      secondary_type* ub_sec_ptr = reinterpret_cast<secondary_type*>(buf + sec_off);
+      uint64_t* ub_prim_ptr = reinterpret_cast<uint64_t*>(buf + prim_off);
+      memcpy(ub_sec_ptr, &ub_sec, sizeof(ub_sec));
+      int ub = db_idx64_upperbound( receiver, receiver, table, ub_sec_ptr, ub_prim_ptr );
+      memcpy(&ub_sec, ub_sec_ptr, sizeof(ub_sec));
+      memcpy(&ub_prim, ub_prim_ptr, sizeof(ub_prim));
+      eosio_assert( ub_prim == allyson_ssn && ub_sec != "allyson"_n.value, err.c_str() );
+   }
+   { // primary aligned, secondary unaligned
+      size_t prim_off = 0;
+      size_t sec_off = 1;
+      secondary_type ub_sec = "alice"_n.value;
+      uint64_t ub_prim = 0;
+      const uint64_t allyson_ssn = 650;
+      char buf[16];
+      secondary_type* ub_sec_ptr = reinterpret_cast<secondary_type*>(buf + sec_off);
+      uint64_t* ub_prim_ptr = reinterpret_cast<uint64_t*>(buf + prim_off);
+      memcpy(ub_sec_ptr, &ub_sec, sizeof(ub_sec));
+      int ub = db_idx64_upperbound( receiver, receiver, table, ub_sec_ptr, ub_prim_ptr );
+      memcpy(&ub_sec, ub_sec_ptr, sizeof(ub_sec));
+      memcpy(&ub_prim, ub_prim_ptr, sizeof(ub_prim));
+      eosio_assert( ub_prim != allyson_ssn && ub_sec == "allyson"_n.value, err.c_str() );
+   }
+   { // primary unaligned, secondary aligned
+      size_t prim_off = 1;
+      size_t sec_off = 0;
+      secondary_type ub_sec = "alice"_n.value;
+      uint64_t ub_prim = 0;
+      const uint64_t allyson_ssn = 650;
+      char buf[16];
+      secondary_type* ub_sec_ptr = reinterpret_cast<secondary_type*>(buf + sec_off);
+      uint64_t* ub_prim_ptr = reinterpret_cast<uint64_t*>(buf + prim_off);
+      memcpy(ub_sec_ptr, &ub_sec, sizeof(ub_sec));
+      int ub = db_idx64_upperbound( receiver, receiver, table, ub_sec_ptr, ub_prim_ptr );
+      memcpy(&ub_sec, ub_sec_ptr, sizeof(ub_sec));
+      memcpy(&ub_prim, ub_prim_ptr, sizeof(ub_prim));
+      eosio_assert( ub_prim == allyson_ssn && ub_sec != "allyson"_n.value, err.c_str() );
    }
 }
 
