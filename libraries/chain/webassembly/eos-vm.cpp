@@ -2,7 +2,6 @@
 #include <eosio/chain/apply_context.hpp>
 #include <eosio/chain/transaction_context.hpp>
 #include <eosio/chain/wasm_eosio_constraints.hpp>
-#include <fstream>
 //eos-vm includes
 #include <eosio/vm/backend.hpp>
 
@@ -107,9 +106,6 @@ bool eos_vm_runtime<Impl>::inject_module(IR::Module& module) {
 template<typename Impl>
 std::unique_ptr<wasm_instantiated_module_interface> eos_vm_runtime<Impl>::instantiate_module(const char* code_bytes, size_t code_size, std::vector<uint8_t>) {
    using backend_t = backend<apply_context, Impl>;
-   std::ofstream mf("temp.wasm");
-   mf.write((char*)code_bytes, code_size);
-   mf.close();
    try {
       wasm_code_ptr code((uint8_t*)code_bytes, code_size);
       std::unique_ptr<backend_t> bkend = std::make_unique<backend_t>(code, code_size);

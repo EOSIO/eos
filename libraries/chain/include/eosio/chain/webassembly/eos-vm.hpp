@@ -91,7 +91,7 @@ namespace eosio { namespace vm {
    struct construct_derived<eosio::chain::transaction_context, Ctx> {
       static auto &value(Ctx& ctx) { return ctx.trx_context; }
    };
-   
+
    template <>
    struct construct_derived<eosio::chain::apply_context, eosio::chain::apply_context> {
       static auto &value(eosio::chain::apply_context& ctx) { return ctx; }

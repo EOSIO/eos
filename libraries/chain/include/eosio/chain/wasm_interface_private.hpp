@@ -15,12 +15,9 @@
 #include "Runtime/Intrinsics.h"
 #include "Platform/Platform.h"
 #include "WAST/WAST.h"
-
 #include "IR/Validate.h"
 
 #include <eosio/vm/allocator.hpp>
-
-#include <fstream>
 
 using namespace fc;
 using namespace eosio::chain::webassembly;
