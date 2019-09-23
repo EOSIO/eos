@@ -1498,7 +1498,7 @@ namespace eosio {
       std::tie( lib_num, std::ignore, fork_head_block_num,
                 std::ignore, std::ignore, std::ignore ) = my_impl->get_chain_info();
 
-      if( !is_sync_required( fork_head_block_num ) ) {
+      if( !is_sync_required( fork_head_block_num ) || target <= lib_num ) {
          fc_dlog( logger, "We are already caught up, my irr = ${b}, head = ${h}, target = ${t}",
                   ("b", lib_num)( "h", fork_head_block_num )( "t", target ) );
          return;
@@ -1591,12 +1591,7 @@ namespace eosio {
       if (head < msg.head_num ) {
          fc_dlog(logger, "sync check state 3");
          c->syncing = false;
-         if (!verify_catchup(c, msg.head_num, msg.head_id)) {
-            request_message req;
-            req.req_blocks.mode = catch_up;
-            req.req_trx.mode = none;
-            c->enqueue( req );
-         }
+         verify_catchup(c, msg.head_num, msg.head_id);
          return;
       } else {
          fc_dlog(logger, "sync check state 4");
@@ -1723,9 +1718,8 @@ namespace eosio {
             if( ++c->consecutive_rejected_blocks > def_max_consecutive_rejected_blocks ) {
                auto sync_next_expected = sync_next_expected_num;
                g_sync.unlock();
-               fc_wlog( logger, "expected block ${ne} but got ${bn}, closing connection: ${p}",
+               fc_wlog( logger, "expected block ${ne} but got ${bn}, from connection: ${p}",
                         ("ne", sync_next_expected)( "bn", blk_num )( "p", c->peer_name() ) );
-               c->close();
             }
             return;
          }
