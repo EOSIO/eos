@@ -642,7 +642,9 @@ public:
             // The input is in big endian, i.e. f58262c8005bb64b8f99ec6083faf050c502d099d9929ae37ffed2fe1bb954fb
             // fixed_bytes will convert the input to array of 2 uint128_t in little endian, i.e. 50f0fa8360ec998f4bb65b00c86282f5 fb54b91bfed2fe7fe39a92d999d002c5
             // which is the format used by secondary index
-            fixed_bytes<32> fb(*reinterpret_cast<const std::array<const uint8_t, 32>*>(v.data())); 
+            uint8_t buffer[32];
+            memcpy(buffer, v.data(), 32);
+            fixed_bytes<32> fb(buffer); 
             return chain::key256_t(fb.get_array());
         };
      }
@@ -658,7 +660,9 @@ public:
             // The input is in big endian, i.e. 83a83a3876c64c33f66f33c54f1869edef5b5d4a000000000000000000000000
             // fixed_bytes will convert the input to array of 2 uint128_t in little endian, i.e. ed69184fc5336ff6334cc676383aa883 0000000000000000000000004a5d5bef
             // which is the format used by secondary index
-            fixed_bytes<20> fb(*reinterpret_cast<const std::array<const uint8_t, 20>*>(v.data())); 
+            uint8_t buffer[20];
+            memcpy(buffer, v.data(), 20);
+            fixed_bytes<20> fb(buffer); 
             return chain::key256_t(fb.get_array());
         };
      }
@@ -671,11 +675,13 @@ public:
      static auto function() {
         return [](const input_type v) {
             // The input is in little endian of uint256_t, i.e. fb54b91bfed2fe7fe39a92d999d002c550f0fa8360ec998f4bb65b00c86282f5
-            // fixed_bytes will convert the input to array of 2 uint128_t in little endian, i.e. 50f0fa8360ec998f4bb65b00c86282f5 fb54b91bfed2fe7fe39a92d999d002c5
+            // the following will convert the input to array of 2 uint128_t in little endian, i.e. 50f0fa8360ec998f4bb65b00c86282f5 fb54b91bfed2fe7fe39a92d999d002c5
             // which is the format used by secondary index
             chain::key256_t k;
-            k[0] = ((uint128_t *)&v)[1]; //128-255
-            k[1] = ((uint128_t *)&v)[0]; //0-127
+            uint8_t buffer[32];
+            boost::multiprecision::export_bits(v, buffer, 8, false);
+            memcpy(&k[0], buffer + 16, 16);
+            memcpy(&k[1], buffer, 16);
             return k;
         };
      }
