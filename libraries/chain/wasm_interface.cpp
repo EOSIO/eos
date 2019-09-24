@@ -25,19 +25,25 @@
 #include <fstream>
 #include <string.h>
 
+#if defined(EOSIO_EOS_VM_RUNTIME_ENABLED) || defined(EOSIO_EOS_VM_JIT_RUNTIME_ENABLED)
 #include <eosio/vm/allocator.hpp>
+#endif
 
 namespace eosio { namespace chain {
    using namespace webassembly;
    using namespace webassembly::common;
 
    wasm_interface::wasm_interface(vm_type vm, const chainbase::database& d) : my( new wasm_interface_impl(vm, d) ) {
+#if defined(EOSIO_EOS_VM_RUNTIME_ENABLED) || defined(EOSIO_EOS_VM_JIT_RUNTIME_ENABLED)
       (void)get_wasm_allocator();
+#endif
    }
 
    wasm_interface::~wasm_interface() {}
 
-   wasm_allocator* wasm_interface::get_wasm_allocator() { return wasm_interface_impl::get_wasm_allocator(); }
+#if defined(EOSIO_EOS_VM_RUNTIME_ENABLED) || defined(EOSIO_EOS_VM_JIT_RUNTIME_ENABLED)
+   eosio::vm::wasm_allocator* wasm_interface::get_wasm_allocator() { return wasm_interface_impl::get_wasm_allocator(); }
+#endif
 
    void wasm_interface::validate(const controller& control, const bytes& code) {
       Module module;

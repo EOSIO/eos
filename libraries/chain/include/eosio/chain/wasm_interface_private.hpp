@@ -17,11 +17,12 @@
 #include "WAST/WAST.h"
 #include "IR/Validate.h"
 
+#if defined(EOSIO_EOS_VM_RUNTIME_ENABLED) || defined(EOSIO_EOS_VM_JIT_RUNTIME_ENABLED)
 #include <eosio/vm/allocator.hpp>
+#endif
 
 using namespace fc;
 using namespace eosio::chain::webassembly;
-using namespace eosio::vm;
 using namespace IR;
 using namespace Runtime;
 
@@ -69,10 +70,12 @@ namespace eosio { namespace chain {
                });
       }
 
-      static wasm_allocator* get_wasm_allocator() {
-         static wasm_allocator walloc;
+#if defined(EOSIO_EOS_VM_RUNTIME_ENABLED) || defined(EOSIO_EOS_VM_JIT_RUNTIME_ENABLED)
+      static eosio::vm::wasm_allocator* get_wasm_allocator() {
+         static eosio::vm::wasm_allocator walloc;
          return &walloc;
       }
+#endif
 
       std::vector<uint8_t> parse_initial_memory(const Module& module) {
          std::vector<uint8_t> mem_image;
