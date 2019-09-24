@@ -37,7 +37,7 @@ class eosvmoc_runtime : public eosio::chain::wasm_runtime_interface {
       void immediately_exit_currently_running_module() override;
 
       friend eosvmoc_instantiated_module;
-      eosvmoc::code_cache cc;
+      eosvmoc::code_cache_sync cc;
       eosvmoc::executor exec;
       eosvmoc::memory mem;
 };

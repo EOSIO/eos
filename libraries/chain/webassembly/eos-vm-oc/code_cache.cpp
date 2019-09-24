@@ -39,11 +39,170 @@ static constexpr size_t descriptor_ptr_from_file_start = header_offset + offseto
 
 static_assert(sizeof(code_cache_header) <= header_size, "code_cache_header too big");
 
-code_cache::code_cache(const boost::filesystem::path data_dir, const eosvmoc::config& eosvmoc_config, const chainbase::database& db) :
-   _db(db),
-   _cache_file_path(data_dir/"code_cache.bin"),
+code_cache_async::code_cache_async(const bfs::path data_dir, const eosvmoc::config& eosvmoc_config, const chainbase::database& db) :
+   code_cache_base(data_dir, eosvmoc_config, db),
    _result_queue(eosvmoc_config.threads * 2),
    _threads(eosvmoc_config.threads)
+{
+   wait_on_compile_monitor_message();
+
+   _monitor_reply_thread = std::thread([this]() {
+      fc::set_thread_name("oc-monitor");
+      _ctx.run();
+   });
+}
+
+code_cache_async::~code_cache_async() {
+   _compile_monitor_write_socket.shutdown(local::datagram_protocol::socket::shutdown_send);
+   _monitor_reply_thread.join();
+   consume_compile_thread_queue();
+}
+
+//remember again: wait_on_compile_monitor_message's callback is non-main thread!
+void code_cache_async::wait_on_compile_monitor_message() {
+   _compile_monitor_read_socket.async_wait(local::datagram_protocol::socket::wait_read, [this](auto ec) {
+      if(ec) {
+         _ctx.stop();
+         return;
+      }
+
+      auto [success, message, fds] = read_message_with_fds(_compile_monitor_read_socket);
+      if(!success || !message.contains<wasm_compilation_result_message>()) {
+         _ctx.stop();
+         return;
+      }
+
+      _result_queue.push(message.get<wasm_compilation_result_message>());
+
+      wait_on_compile_monitor_message();
+   });
+}
+
+
+//number processed, bytes available (only if number processed > 0)
+std::tuple<size_t, size_t> code_cache_async::consume_compile_thread_queue() {
+   size_t bytes_remaining = 0;
+   size_t gotsome = _result_queue.consume_all([&](const wasm_compilation_result_message& result) {
+      if(_outstanding_compiles_and_poison[result.code] == false) {
+         result.result.visit(overloaded {
+            [&](const code_descriptor& cd) {
+               _cache_index.push_front(cd);
+            },
+            [&](const compilation_result_unknownfailure&) {
+               wlog("code ${c} failed to tier-up with EOS-VM OC", ("c", result.code.code_id));
+               _blacklist.emplace(result.code);
+            },
+            [&](const compilation_result_toofull&) {
+               //we'll just let this one try and tier up again next time it's used
+            }
+         });
+      }
+      _outstanding_compiles_and_poison.erase(result.code);
+      bytes_remaining = result.cache_free_bytes;
+   });
+
+   return {gotsome, bytes_remaining};
+}
+
+const code_descriptor* const code_cache_async::get_descriptor_for_code(const digest_type& code_id, const uint8_t& vm_version) {
+   //if there are any outstanding compiles, process the result queue now
+   if(_outstanding_compiles_and_poison.size()) {
+      auto [count_processed, bytes_remaining] = consume_compile_thread_queue();
+
+      if(count_processed)
+         check_eviction_threshold(bytes_remaining);
+
+      while(count_processed && _queued_compiles.size()) {
+         auto nextup = _queued_compiles.begin();
+
+         //it's not clear this check is required: if apply() was called for code then it existed in the code_index; and then
+         // if we got notification of it no longer existing we would have removed it from queued_compiles
+         const code_object* const codeobject = _db.find<code_object,by_code_hash>(boost::make_tuple(nextup->code_id, 0, nextup->vm_version));
+         if(codeobject) {
+            _outstanding_compiles_and_poison.emplace(*nextup, false);
+            std::vector<wrapped_fd> fds_to_pass;
+            fds_to_pass.emplace_back(memfd_for_blob(codeobject->code));
+            write_message_with_fds(_compile_monitor_write_socket, compile_wasm_message{ *nextup }, fds_to_pass);
+            --count_processed;
+         }
+         _queued_compiles.erase(nextup);
+      }
+   }
+
+   //check for entry in cache
+   code_cache_index::index<by_hash>::type::iterator it = _cache_index.get<by_hash>().find(boost::make_tuple(code_id, vm_version));
+   if(it != _cache_index.get<by_hash>().end()) {
+      _cache_index.relocate(_cache_index.begin(), _cache_index.project<0>(it));
+      return &*it;
+   }
+
+   const code_tuple ct = code_tuple{code_id, vm_version};
+
+   if(_blacklist.find(ct) != _blacklist.end())
+      return nullptr;
+   if(auto it = _outstanding_compiles_and_poison.find(ct); it != _outstanding_compiles_and_poison.end()) {
+      it->second = false;
+      return nullptr;
+   }
+   if(_queued_compiles.find(ct) != _queued_compiles.end())
+      return nullptr;
+
+   if(_outstanding_compiles_and_poison.size() >= _threads) {
+      _queued_compiles.emplace(ct);
+      return nullptr;
+   }
+
+   const code_object* const codeobject = _db.find<code_object,by_code_hash>(boost::make_tuple(code_id, 0, vm_version));
+   if(!codeobject) //should be impossible right?
+      return nullptr;
+
+   _outstanding_compiles_and_poison.emplace(ct, false);
+   std::vector<wrapped_fd> fds_to_pass;
+   fds_to_pass.emplace_back(memfd_for_blob(codeobject->code));
+   write_message_with_fds(_compile_monitor_write_socket, compile_wasm_message{ ct }, fds_to_pass);
+   return nullptr;
+}
+
+code_cache_sync::~code_cache_sync() {
+   //it's exceedingly critical that we wait for the compile monitor to be done with all its work
+   //This is easy in the sync case
+   _compile_monitor_write_socket.shutdown(local::datagram_protocol::socket::shutdown_send);
+   auto [success, message, fds] = read_message_with_fds(_compile_monitor_read_socket);
+   if(success)
+      elog("unexpected response from EOS-VM OC compile monitor during shutdown");
+}
+
+const code_descriptor* const code_cache_sync::get_descriptor_for_code_sync(const digest_type& code_id, const uint8_t& vm_version) {
+   //check for entry in cache
+   code_cache_index::index<by_hash>::type::iterator it = _cache_index.get<by_hash>().find(boost::make_tuple(code_id, vm_version));
+   if(it != _cache_index.get<by_hash>().end()) {
+      _cache_index.relocate(_cache_index.begin(), _cache_index.project<0>(it));
+      return &*it;
+   }
+
+   const code_object* const codeobject = _db.find<code_object,by_code_hash>(boost::make_tuple(code_id, 0, vm_version));
+   if(!codeobject) //should be impossible right?
+      return nullptr;
+
+   std::vector<wrapped_fd> fds_to_pass;
+   fds_to_pass.emplace_back(memfd_for_blob(codeobject->code));
+
+   write_message_with_fds(_compile_monitor_write_socket, compile_wasm_message{ {code_id, vm_version} }, fds_to_pass);
+   auto [success, message, fds] = read_message_with_fds(_compile_monitor_read_socket);
+   EOS_ASSERT(success, wasm_execution_error, "failed to read response from monitor process");
+   EOS_ASSERT(message.contains<wasm_compilation_result_message>(), wasm_execution_error, "unexpected response from monitor process");
+
+   wasm_compilation_result_message result = message.get<wasm_compilation_result_message>();
+   EOS_ASSERT(result.result.contains<code_descriptor>(), wasm_execution_error, "failed to compile wasm");
+
+   check_eviction_threshold(result.cache_free_bytes);
+
+   return &*_cache_index.push_front(std::move(result.result.get<code_descriptor>())).first;
+}
+
+code_cache_base::code_cache_base(const boost::filesystem::path data_dir, const eosvmoc::config& eosvmoc_config, const chainbase::database& db) :
+   _db(db),
+   _cache_file_path(data_dir/"code_cache.bin")
 {
    static_assert(sizeof(allocator_t) <= header_offset, "header offset intersects with allocator");
 
@@ -115,40 +274,13 @@ code_cache::code_cache(const boost::filesystem::path data_dir, const eosvmoc::co
    wrapped_fd compile_monitor_conn = get_connection_to_compile_monitor(_cache_fd);
 
    //okay, let's do this by the book: we're not allowed to write & read on different threads to the same asio socket. So create two fds
-   //representing the same socket. we'll read on one and write on the other
+   //representing the same unix socket. we'll read on one and write on the other
    int duped = dup(compile_monitor_conn);
    _compile_monitor_write_socket.assign(local::datagram_protocol(), duped);
    _compile_monitor_read_socket.assign(local::datagram_protocol(), compile_monitor_conn.release());
-
-   wait_on_compile_monitor_message();
-
-   _monitor_reply_thread = std::thread([this]() {
-      fc::set_thread_name("oc-monitor");
-      _ctx.run();
-   });
 }
 
-//remember again: wait_on_compile_monitor_message's callback is non-main thread!
-void code_cache::wait_on_compile_monitor_message() {
-   _compile_monitor_read_socket.async_wait(local::datagram_protocol::socket::wait_read, [this](auto ec) {
-      if(ec) {
-         _ctx.stop();
-         return;
-      }
-
-      auto [success, message, fds] = read_message_with_fds(_compile_monitor_read_socket);
-      if(!success || !message.contains<wasm_compilation_result_message>()) {
-         _ctx.stop();
-         return;
-      }
-
-      _result_queue.push(message.get<wasm_compilation_result_message>());
-
-      wait_on_compile_monitor_message();
-   });
-}
-
-void code_cache::set_on_disk_region_dirty(bool dirty) {
+void code_cache_base::set_on_disk_region_dirty(bool dirty) {
    bip::file_mapping dirty_mapping(_cache_file_path.generic_string().c_str(), bip::read_write);
    bip::mapped_region dirty_region(dirty_mapping, bip::read_write);
 
@@ -158,26 +290,14 @@ void code_cache::set_on_disk_region_dirty(bool dirty) {
 }
 
 template <typename T>
-void code_cache::serialize_cache_index(fc::datastream<T>& ds) {
+void code_cache_base::serialize_cache_index(fc::datastream<T>& ds) {
    unsigned entries = _cache_index.size();
    fc::raw::pack(ds, entries);
    for(const code_descriptor& cd : _cache_index)
       fc::raw::pack(ds, cd);
 }
 
-code_cache::~code_cache() {
-   _compile_monitor_write_socket.shutdown(local::datagram_protocol::socket::shutdown_send);
-   _monitor_reply_thread.join();
-   consume_compile_thread_queue();
-#if 0
-   //it's exceedingly critical that we wait for the compile monitor to be done with all its work
-   //This is easy in the sync case
-   _compile_monitor_write_socket.shutdown(local::datagram_protocol::socket::shutdown_send);
-   auto [success, message, fds] = read_message_with_fds(_compile_monitor_read_socket);
-   if(success)
-      elog("unexpected response from EOS-VM OC compile monitor during shutdown");
-#endif
-
+code_cache_base::~code_cache_base() {
    //reopen the code cache in our process
    struct stat st;
    if(fstat(_cache_fd, &st))
@@ -224,7 +344,7 @@ code_cache::~code_cache() {
 
 }
 
-void code_cache::free_code(const digest_type& code_id, const uint8_t& vm_version) {
+void code_cache_base::free_code(const digest_type& code_id, const uint8_t& vm_version) {
    code_cache_index::index<by_hash>::type::iterator it = _cache_index.get<by_hash>().find(boost::make_tuple(code_id, vm_version));
    if(it != _cache_index.get<by_hash>().end()) {
       write_message_with_fds(_compile_monitor_write_socket, evict_wasms_message{ {*it} });
@@ -242,7 +362,7 @@ void code_cache::free_code(const digest_type& code_id, const uint8_t& vm_version
       compiling_it->second = true;
 }
 
-void code_cache::check_eviction_threshold(size_t free_bytes) {
+void code_cache_base::check_eviction_threshold(size_t free_bytes) {
    if(free_bytes < _free_bytes_eviction_threshold) {
       evict_wasms_message evict_msg;
       for(unsigned int i = 0; i < 25 && _cache_index.size() > 1; ++i) {
@@ -251,112 +371,6 @@ void code_cache::check_eviction_threshold(size_t free_bytes) {
       }
       write_message_with_fds(_compile_monitor_write_socket, evict_msg);
    }
-}
-
-//number processed, bytes available (only if number processed > 0)
-std::tuple<size_t, size_t> code_cache::consume_compile_thread_queue() {
-   size_t bytes_remaining = 0;
-   size_t gotsome = _result_queue.consume_all([&](const wasm_compilation_result_message& result) {
-      if(_outstanding_compiles_and_poison[result.code] == false) {
-         result.result.visit(overloaded {
-            [&](const code_descriptor& cd) {
-               _cache_index.push_front(cd);
-            },
-            [&](const compilation_result_unknownfailure&) {
-               wlog("code ${c} failed to tier-up with EOS-VM OC", ("c", result.code.code_id));
-               _blacklist.emplace(result.code);
-            },
-            [&](const compilation_result_toofull&) {
-               //we'll just let this one try and tier up again next time it's used
-            }
-         });
-      }
-      _outstanding_compiles_and_poison.erase(result.code);
-      bytes_remaining = result.cache_free_bytes;
-   });
-
-   return {gotsome, bytes_remaining};
-}
-
-const code_descriptor* const code_cache::get_descriptor_for_code(const digest_type& code_id, const uint8_t& vm_version) {
-   //if there are any outstanding compiles, process the result queue now
-   if(_outstanding_compiles_and_poison.size()) {
-      auto [count_processed, bytes_remaining] = consume_compile_thread_queue();
-
-      if(count_processed)
-         check_eviction_threshold(bytes_remaining);
-
-      while(count_processed && _queued_compiles.size()) {
-         auto nextup = _queued_compiles.begin();
-
-         //it's not clear this check is required: if apply() was called for code then it existed in the code_index; and then
-         // if we got notification of it no longer existing we would have removed it from queued_compiles
-         const code_object* const codeobject = _db.find<code_object,by_code_hash>(boost::make_tuple(nextup->code_id, 0, nextup->vm_version));
-         if(codeobject) {
-            _outstanding_compiles_and_poison.emplace(*nextup, false);
-            std::vector<wrapped_fd> fds_to_pass;
-            fds_to_pass.emplace_back(memfd_for_blob(codeobject->code));
-            printf("dispatching a compile from success, outstanding is now %lu, queued %lu\n", _outstanding_compiles_and_poison.size(), _queued_compiles.size());
-            write_message_with_fds(_compile_monitor_write_socket, compile_wasm_message{ *nextup }, fds_to_pass);
-            --count_processed;
-         }
-         _queued_compiles.erase(nextup);
-      }
-   }
-
-   //check for entry in cache
-   code_cache_index::index<by_hash>::type::iterator it = _cache_index.get<by_hash>().find(boost::make_tuple(code_id, vm_version));
-   if(it != _cache_index.get<by_hash>().end()) {
-      _cache_index.relocate(_cache_index.begin(), _cache_index.project<0>(it));
-      return &*it;
-   }
-
-   const code_tuple ct = code_tuple{code_id, vm_version};
-
-   if(_blacklist.find(ct) != _blacklist.end())
-      return nullptr;
-   if(auto it = _outstanding_compiles_and_poison.find(ct); it != _outstanding_compiles_and_poison.end()) {
-      it->second = false;
-      return nullptr;
-   }
-   if(_queued_compiles.find(ct) != _queued_compiles.end())
-      return nullptr;
-
-   if(_outstanding_compiles_and_poison.size() >= _threads) {
-      _queued_compiles.emplace(ct);
-      return nullptr;
-   }
-
-   const code_object* const codeobject = _db.find<code_object,by_code_hash>(boost::make_tuple(code_id, 0, vm_version));
-   if(!codeobject) //should be impossible right?
-      return nullptr;
-
-   _outstanding_compiles_and_poison.emplace(ct, false);
-   std::vector<wrapped_fd> fds_to_pass;
-   fds_to_pass.emplace_back(memfd_for_blob(codeobject->code));
-
-   printf("dispatching a compile, outstanding is now %lu\n", _outstanding_compiles_and_poison.size());
-
-   write_message_with_fds(_compile_monitor_write_socket, compile_wasm_message{ ct }, fds_to_pass);
-   return nullptr;
-   
-#if 0
-   //synchronus case
-   std::vector<wrapped_fd> fds_to_pass;
-   fds_to_pass.emplace_back(memfd_for_blob(codeobject->code));
-
-   write_message_with_fds(_compile_monitor_write_socket, compile_wasm_message{ {code_id, vm_version} }, fds_to_pass);
-   auto [success, message, fds] = read_message_with_fds(_compile_monitor_read_socket);
-   EOS_ASSERT(success, wasm_execution_error, "failed to read response from monitor process");
-   EOS_ASSERT(message.contains<wasm_compilation_result_message>(), wasm_execution_error, "unexpected response from monitor process");
-
-   wasm_compilation_result_message result = message.get<wasm_compilation_result_message>();
-   EOS_ASSERT(result.result.contains<code_descriptor>(), wasm_execution_error, "failed to compile wasm");
-
-   check_eviction_threshold(result.cache_free_bytes);
-
-   return &*_cache_index.push_front(std::move(result.result.get<code_descriptor>())).first;
-#endif
 }
 
 }}}

@@ -264,7 +264,12 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
 
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
          ("eos-vm-oc-cache-size-mb", bpo::value<uint64_t>()->default_value(eosvmoc::config().cache_size / (1024u*1024u)), "Maximum size (in MiB) of the EOS-VM OC code cache")
-         ("eos-vm-oc-compile-threads", bpo::value<uint64_t>()->default_value(1u), "Number of threads to use for EOS-VM OC tier-up")
+         ("eos-vm-oc-compile-threads", bpo::value<uint64_t>()->default_value(1u)->notifier([](const auto t) {
+               if(t == 0) {
+                  elog("eos-vm-oc-compile-threads must be set to a non-zero value");
+                  EOS_ASSERT(false, plugin_exception, "");
+               }
+         }), "Number of threads to use for EOS-VM OC tier-up")
          ("eos-vm-oc-enable", bpo::bool_switch(), "Enable EOS-VM OC tier-up runtime")
 #endif
          ;

@@ -135,7 +135,7 @@ DEFINE_EOSVMOC_TRAP_INTRINSIC(eosvmoc_internal,unreachable) {
    throw_internal_exception("Unreachable reached");
 }
 
-executor::executor(const code_cache& cc) {
+executor::executor(const code_cache_base& cc) {
    //XXX
    static bool once_is_enough;
    if(!once_is_enough) {
