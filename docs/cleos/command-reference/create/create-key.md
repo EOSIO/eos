@@ -1,6 +1,6 @@
----
-excerpt: "Creates a new keypair and prints the public and private keys."
----
+## Description
+
+Creates a new keypair and prints the public and private keys
 
 ## Usage
 

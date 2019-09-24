@@ -1,7 +1,6 @@
----
-title: "get code"
-excerpt: "Retrieves the code and ABI for an account."
----
+## Description
+Retrieves the code and ABI for an account
+
 ## Positional Parameters
 - `name` _TEXT_ - The name of the account whose code should be retrieved
 ## Options

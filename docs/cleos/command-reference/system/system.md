@@ -1,7 +1,3 @@
----
-title: "system"
-excerpt: ""
----
 - [system newaccount](ref:cleos-system-newaccount)   Create an account, buy ram, stake for bandwidth for the account
 - [system regproducer](ref:cleos-system-regproducer)  Register a new producer
 - [system unregprod](ref:cleos-system-unregprod)  Unregister an existing producer
@@ -16,3 +12,4 @@ excerpt: ""
 - [system regproxy](ref:cleos-system-regproxy)  Register an account as a proxy (for voting)
 - [system unregproxy](ref:cleos-system-unregproxy)  Unregister an account as a proxy (for voting)
 - [system canceldelay](ref:cleos-system-canceldelay)  Cancel a delayed transaction
+ - [system rex](rex) Actions related to REX (the resource exchange)
