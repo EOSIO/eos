@@ -69,4 +69,3 @@ FC_REFLECT(eosio::chain::eosvmoc::intrinsic_ordinal, (ordinal));
 FC_REFLECT(eosio::chain::eosvmoc::code_descriptor, (code_hash)(vm_version)(codegen_version)(code_begin)(start)(apply_offset)(starting_memory_pages)(initdata_begin)(initdata_size)(initdata_prolouge_size));
 
 #define EOSVMOC_INTRINSIC_INIT_PRIORITY __attribute__((init_priority(198)))
-#define EOSVMOC_FORK_INIT_PRIORITY __attribute__((init_priority(200)))

@@ -28,8 +28,8 @@
 namespace eosio { namespace chain {
    using namespace webassembly::common;
 
-   wasm_interface::wasm_interface(vm_type vm, const chainbase::database& d, const boost::filesystem::path data_dir, const eosvmoc::config& eosvmoc_config)
-     : my( new wasm_interface_impl(vm, d, data_dir, eosvmoc_config) ) {}
+   wasm_interface::wasm_interface(vm_type vm, bool eosvmoc_tierup, const chainbase::database& d, const boost::filesystem::path data_dir, const eosvmoc::config& eosvmoc_config)
+     : my( new wasm_interface_impl(vm, eosvmoc_tierup, d, data_dir, eosvmoc_config) ) {}
 
    using namespace webassembly;
 
@@ -72,6 +72,7 @@ namespace eosio { namespace chain {
    }
 
    void wasm_interface::apply( const digest_type& code_hash, const uint8_t& vm_type, const uint8_t& vm_version, apply_context& context ) {
+#ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
       if(my->eosvmoc) {
          const chain::eosvmoc::code_descriptor* cd = my->eosvmoc->cc.get_descriptor_for_code(code_hash, vm_version);
          if(cd) {
@@ -79,7 +80,8 @@ namespace eosio { namespace chain {
             return;
          }
       }
-       my->get_instantiated_module(code_hash, vm_type, vm_version, context.trx_context)->apply(context);
+#endif
+      my->get_instantiated_module(code_hash, vm_type, vm_version, context.trx_context)->apply(context);
    }
 
    void wasm_interface::exit() {

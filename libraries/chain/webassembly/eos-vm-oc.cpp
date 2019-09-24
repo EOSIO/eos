@@ -61,10 +61,6 @@ std::unique_ptr<wasm_instantiated_module_interface> eosvmoc_runtime::instantiate
    return std::make_unique<eosvmoc_instantiated_module>(std::move(initial_memory), std::move(wasm), code_hash, vm_type, *this);
 }
 
-void eosvmoc_runtime::immediately_exit_currently_running_module() {
-   EOSVMOC_MEMORY_PTR_cb_ptr;
-   siglongjmp(*cb_ptr->jmp, EOSVMOC_EXIT_CLEAN_EXIT);
-   __builtin_unreachable();
-}
+void eosvmoc_runtime::immediately_exit_currently_running_module() {}
 
 }}}}

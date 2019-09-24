@@ -185,7 +185,6 @@ chain_plugin::chain_plugin()
    app().register_config_type<eosio::chain::db_read_mode>();
    app().register_config_type<eosio::chain::validation_mode>();
    app().register_config_type<chainbase::pinnable_mapped_file::map_mode>();
-   app().register_config_type<eosvmoc::map_mode>();
 }
 
 chain_plugin::~chain_plugin(){}
@@ -265,8 +264,6 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
 
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
          ("eos-vm-oc-cache-size-mb", bpo::value<uint64_t>()->default_value(eosvmoc::config().cache_size / (1024u*1024u)), "Maximum size (in MiB) of the EOS-VM OC code cache")
-         ("eos-vm-oc-map-mode", bpo::value<eosvmoc::map_mode>()->default_value(eosvmoc::config().cache_map_mode), "EOS-VM OC code cache mode (\"mapped\", \"heap\", or \"locked\")")
-         ("eos-vm-oc-hugepage-path", bpo::value<vector<string>>()->composing(), "Optional path for EOS-VM OC code hugepages when in \"locked\" mode")
          ("eos-vm-oc-compile-threads", bpo::value<uint64_t>()->default_value(1u), "Number of threads to use for EOS-VM OC tier-up")
          ("eos-vm-oc-enable", bpo::bool_switch(), "Enable EOS-VM OC tier-up runtime")
 #endif
@@ -935,13 +932,9 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
       if( options.count("eos-vm-oc-cache-size-mb") )
          my->chain_config->eosvmoc_config.cache_size = options.at( "eos-vm-oc-cache-size-mb" ).as<uint64_t>() * 1024u * 1024u;
-      if( options.count("eos-vm-oc-map-mode") )
-         my->chain_config->eosvmoc_config.cache_map_mode = options.at( "eos-vm-oc-map-mode" ).as<eosvmoc::map_mode>();
-      if( options.count("eos-vm-oc-hugepage-path") )
-         my->chain_config->eosvmoc_config.cache_hugepage_paths = options.at("eos-vm-oc-hugepage-path").as<std::vector<std::string>>();
       if( options.count("eos-vm-oc-compile-threads") )
          my->chain_config->eosvmoc_config.threads = options.at("eos-vm-oc-compile-threads").as<uint64_t>();
-      if( options.count("eos-vm-oc-enable") )
+      if( options["eos-vm-oc-enable"].as<bool>() )
          my->chain_config->eosvmoc_tierup = true;
 #endif
 

@@ -119,6 +119,12 @@ struct compile_monitor_session {
                   ///XXX verify there are 2 fds
                   void* code_ptr = _allocator->allocate(get_size_of_fd(fds[0]));
                   void* mem_ptr = _allocator->allocate(get_size_of_fd(fds[1]));
+                  if(code_ptr == nullptr || mem_ptr == nullptr) {
+                     _allocator->deallocate(code_ptr);
+                     _allocator->deallocate(mem_ptr);
+                     reply = wasm_compilation_result_message{code, compilation_result_toofull{}, _allocator->get_free_memory()};
+                     return;
+                  }
                   ///XXX check if either is NULL and back out
                   copy_memfd_contents_to_pointer(code_ptr, fds[0]);
                   copy_memfd_contents_to_pointer(mem_ptr, fds[1]);
@@ -179,8 +185,10 @@ struct compile_monitor {
 
    void wait_for_new_incomming_session(boost::asio::io_context& ctx) {
       _nodeos_socket.async_wait(boost::asio::local::datagram_protocol::socket::wait_read, [this, &ctx](auto ec) {
-         if(ec)
-            printf("error\n");
+         if(ec) {
+            ctx.stop();
+            return;
+         }
          auto [success, message, fds] = read_message_with_fds(_nodeos_socket);
          if(!success) {
             ctx.stop();
@@ -271,7 +279,7 @@ struct compile_monitor_trampoline {
    int compile_manager_fd;
 };
 
-static compile_monitor_trampoline the_compile_monitor_trampoline EOSVMOC_FORK_INIT_PRIORITY;
+static compile_monitor_trampoline the_compile_monitor_trampoline;
 void start_compile_monitor() {
    the_compile_monitor_trampoline.start();
 }

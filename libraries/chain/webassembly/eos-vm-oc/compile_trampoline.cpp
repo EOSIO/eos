@@ -6,6 +6,7 @@
 
 #include <sys/prctl.h>
 #include <signal.h>
+#include <sys/resource.h>
 
 #include "IR/Module.h"
 #include "IR/Validate.h"
@@ -16,13 +17,10 @@ using namespace IR;
 
 namespace eosio { namespace chain { namespace eosvmoc {
 
-void run_compile(wrapped_fd&& response_sock, wrapped_fd&& wasm_code) {
-      struct stat st;
-   fstat(wasm_code, &st); //XXX
-
+void run_compile(wrapped_fd&& response_sock, wrapped_fd&& wasm_code) noexcept {
    std::vector<uint8_t> wasm = vector_for_memfd(wasm_code);
 
-   //XXX we should be catching exceptions to make it easier report upstream the problem
+   //ideally we catch exceptions and sent them upstream as strings for easier reporting
 
    Module module;
    Serialization::MemoryInputStream stream(wasm.data(), wasm.size());
@@ -78,6 +76,7 @@ void run_compile(wrapped_fd&& response_sock, wrapped_fd&& wasm_code) {
          case InitializerExpression::Type::i64_const: u->i64 = global.initializer.i64; break;
          case InitializerExpression::Type::f32_const: u->f32 = global.initializer.f32; break;
          case InitializerExpression::Type::f64_const: u->f64 = global.initializer.f64; break;
+         default: break; //impossible
       }
    }
 
@@ -95,9 +94,9 @@ void run_compile(wrapped_fd&& response_sock, wrapped_fd&& wasm_code) {
       for(Uptr i = 0; i < table_segment.indices.size(); ++i) {
          const Uptr function_index = table_segment.indices[i];
          const long int effective_table_index = table_segment.baseOffset.i32 + i;
-         if(effective_table_index >= module.tables.defs[0].type.size.min) //XXX
-            _exit(1); ///XXX
-         //EOS_ASSERT(effective_table_index < module.tables.defs[0].type.size.min, wasm_execution_error, "table init out of bounds");
+
+         if(effective_table_index >= module.tables.defs[0].type.size.min)
+            return;
 
          if(function_index < module.functions.imports.size()) {
             const auto& f = module.functions.imports[function_index];
@@ -131,8 +130,6 @@ void run_compile(wrapped_fd&& response_sock, wrapped_fd&& wasm_code) {
    fds_to_send.emplace_back(memfd_for_vector(code.code));
    fds_to_send.emplace_back(memfd_for_vector(initdata_prep));
    write_message_with_fds(response_sock, result_message, fds_to_send);
-
-///////////
 }
 
 void run_compile_trampoline(int fd) {
@@ -161,6 +158,16 @@ void run_compile_trampoline(int fd) {
             if(pid == 0) {
                prctl(PR_SET_NAME, "oc-compile");
                prctl(PR_SET_PDEATHSIG, SIGKILL);
+
+               struct rlimit cpu_limits = {20u, 20u};
+               setrlimit(RLIMIT_CPU, &cpu_limits);
+
+               struct rlimit vm_limits = {512u*1024u*1024u, 512u*1024u*1024u};
+               setrlimit(RLIMIT_AS, &vm_limits);
+
+               struct rlimit core_limits = {0u, 0u};
+               setrlimit(RLIMIT_CORE, &core_limits);
+
                run_compile(std::move(fds[0]), std::move(fds[1]));
                _exit(0);
             }

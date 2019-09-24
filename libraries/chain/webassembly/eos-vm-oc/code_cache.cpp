@@ -1,3 +1,5 @@
+#include <fc/log/logger_config.hpp> //set_thread_name
+
 #include <eosio/chain/webassembly/eos-vm-oc/code_cache.hpp>
 #include <eosio/chain/webassembly/eos-vm-oc/config.hpp>
 #include <eosio/chain/webassembly/common.hpp>
@@ -39,7 +41,9 @@ static_assert(sizeof(code_cache_header) <= header_size, "code_cache_header too b
 
 code_cache::code_cache(const boost::filesystem::path data_dir, const eosvmoc::config& eosvmoc_config, const chainbase::database& db) :
    _db(db),
-   _cache_file_path(data_dir/"code_cache.bin")
+   _cache_file_path(data_dir/"code_cache.bin"),
+   _result_queue(eosvmoc_config.threads * 2),
+   _threads(eosvmoc_config.threads)
 {
    static_assert(sizeof(allocator_t) <= header_offset, "header offset intersects with allocator");
 
@@ -111,10 +115,37 @@ code_cache::code_cache(const boost::filesystem::path data_dir, const eosvmoc::co
    wrapped_fd compile_monitor_conn = get_connection_to_compile_monitor(_cache_fd);
 
    //okay, let's do this by the book: we're not allowed to write & read on different threads to the same asio socket. So create two fds
-   //representing the same socket. we'll read on one and write on the other. boom
+   //representing the same socket. we'll read on one and write on the other
    int duped = dup(compile_monitor_conn);
    _compile_monitor_write_socket.assign(local::datagram_protocol(), duped);
    _compile_monitor_read_socket.assign(local::datagram_protocol(), compile_monitor_conn.release());
+
+   wait_on_compile_monitor_message();
+
+   _monitor_reply_thread = std::thread([this]() {
+      fc::set_thread_name("oc-monitor");
+      _ctx.run();
+   });
+}
+
+//remember again: wait_on_compile_monitor_message's callback is non-main thread!
+void code_cache::wait_on_compile_monitor_message() {
+   _compile_monitor_read_socket.async_wait(local::datagram_protocol::socket::wait_read, [this](auto ec) {
+      if(ec) {
+         _ctx.stop();
+         return;
+      }
+
+      auto [success, message, fds] = read_message_with_fds(_compile_monitor_read_socket);
+      if(!success || !message.contains<wasm_compilation_result_message>()) {
+         _ctx.stop();
+         return;
+      }
+
+      _result_queue.push(message.get<wasm_compilation_result_message>());
+
+      wait_on_compile_monitor_message();
+   });
 }
 
 void code_cache::set_on_disk_region_dirty(bool dirty) {
@@ -135,12 +166,17 @@ void code_cache::serialize_cache_index(fc::datastream<T>& ds) {
 }
 
 code_cache::~code_cache() {
+   _compile_monitor_write_socket.shutdown(local::datagram_protocol::socket::shutdown_send);
+   _monitor_reply_thread.join();
+   consume_compile_thread_queue();
+#if 0
    //it's exceedingly critical that we wait for the compile monitor to be done with all its work
    //This is easy in the sync case
    _compile_monitor_write_socket.shutdown(local::datagram_protocol::socket::shutdown_send);
    auto [success, message, fds] = read_message_with_fds(_compile_monitor_read_socket);
    if(success)
       elog("unexpected response from EOS-VM OC compile monitor during shutdown");
+#endif
 
    //reopen the code cache in our process
    struct stat st;
@@ -157,12 +193,29 @@ code_cache::~code_cache() {
    serialize_cache_index(dssz);
    size_t sz = dssz.tellp();
 
-   char* p = (char*)allocator->allocate(sz);
-   fc::datastream<char*> ds(p, sz);
-   serialize_cache_index(ds);
+   char* p = nullptr;
+   while(_cache_index.size()) {
+      p = (char*)allocator->allocate(sz);
+      if(p != nullptr)
+         break;
+      //in theory, there could be too little free space avaiable to store the cache index
+      //try to free up some space
+      for(unsigned int i = 0; i < 25 && _cache_index.size(); ++i) {
+         allocator->deallocate(code_mapping + _cache_index.back().code_begin);
+         allocator->deallocate(code_mapping + _cache_index.back().initdata_begin);
+         _cache_index.pop_back();
+      }
+   }
 
-   uintptr_t ptr_offset = p-code_mapping;
-   *((uintptr_t*)(code_mapping+descriptor_ptr_from_file_start)) = ptr_offset;
+   if(p) {
+      fc::datastream<char*> ds(p, sz);
+      serialize_cache_index(ds);
+
+      uintptr_t ptr_offset = p-code_mapping;
+      *((uintptr_t*)(code_mapping+descriptor_ptr_from_file_start)) = ptr_offset;
+   }
+   else
+      *((uintptr_t*)(code_mapping+descriptor_ptr_from_file_start)) = 0;
 
    msync(code_mapping, allocator->get_size(), MS_SYNC);
    munmap(code_mapping, allocator->get_size());
@@ -177,6 +230,16 @@ void code_cache::free_code(const digest_type& code_id, const uint8_t& vm_version
       write_message_with_fds(_compile_monitor_write_socket, evict_wasms_message{ {*it} });
       _cache_index.get<by_hash>().erase(it);
    }
+
+   //if it's in the queued list, erase it
+   _queued_compiles.erase({code_id, vm_version});
+
+   //however, if it's currently being compiled there is no way to cancel the compile,
+   //so instead set a poison boolean that indicates not to insert the code in to the cache
+   //once the compile is complete
+   const std::unordered_map<code_tuple, bool>::iterator compiling_it = _outstanding_compiles_and_poison.find({code_id, vm_version});
+   if(compiling_it != _outstanding_compiles_and_poison.end())
+      compiling_it->second = true;
 }
 
 void code_cache::check_eviction_threshold(size_t free_bytes) {
@@ -190,17 +253,94 @@ void code_cache::check_eviction_threshold(size_t free_bytes) {
    }
 }
 
+//number processed, bytes available (only if number processed > 0)
+std::tuple<size_t, size_t> code_cache::consume_compile_thread_queue() {
+   size_t bytes_remaining = 0;
+   size_t gotsome = _result_queue.consume_all([&](const wasm_compilation_result_message& result) {
+      if(_outstanding_compiles_and_poison[result.code] == false) {
+         result.result.visit(overloaded {
+            [&](const code_descriptor& cd) {
+               _cache_index.push_front(cd);
+            },
+            [&](const compilation_result_unknownfailure&) {
+               wlog("code ${c} failed to tier-up with EOS-VM OC", ("c", result.code.code_id));
+               _blacklist.emplace(result.code);
+            },
+            [&](const compilation_result_toofull&) {
+               //we'll just let this one try and tier up again next time it's used
+            }
+         });
+      }
+      _outstanding_compiles_and_poison.erase(result.code);
+      bytes_remaining = result.cache_free_bytes;
+   });
+
+   return {gotsome, bytes_remaining};
+}
+
 const code_descriptor* const code_cache::get_descriptor_for_code(const digest_type& code_id, const uint8_t& vm_version) {
+   //if there are any outstanding compiles, process the result queue now
+   if(_outstanding_compiles_and_poison.size()) {
+      auto [count_processed, bytes_remaining] = consume_compile_thread_queue();
+
+      if(count_processed)
+         check_eviction_threshold(bytes_remaining);
+
+      while(count_processed && _queued_compiles.size()) {
+         auto nextup = _queued_compiles.begin();
+
+         //it's not clear this check is required: if apply() was called for code then it existed in the code_index; and then
+         // if we got notification of it no longer existing we would have removed it from queued_compiles
+         const code_object* const codeobject = _db.find<code_object,by_code_hash>(boost::make_tuple(nextup->code_id, 0, nextup->vm_version));
+         if(codeobject) {
+            _outstanding_compiles_and_poison.emplace(*nextup, false);
+            std::vector<wrapped_fd> fds_to_pass;
+            fds_to_pass.emplace_back(memfd_for_blob(codeobject->code));
+            printf("dispatching a compile from success, outstanding is now %lu, queued %lu\n", _outstanding_compiles_and_poison.size(), _queued_compiles.size());
+            write_message_with_fds(_compile_monitor_write_socket, compile_wasm_message{ *nextup }, fds_to_pass);
+            --count_processed;
+         }
+         _queued_compiles.erase(nextup);
+      }
+   }
+
+   //check for entry in cache
    code_cache_index::index<by_hash>::type::iterator it = _cache_index.get<by_hash>().find(boost::make_tuple(code_id, vm_version));
    if(it != _cache_index.get<by_hash>().end()) {
       _cache_index.relocate(_cache_index.begin(), _cache_index.project<0>(it));
       return &*it;
    }
 
-   const code_object* const codeobject = _db.find<code_object,by_code_hash>(boost::make_tuple(code_id, 0, vm_version));
-   if(!codeobject)
+   const code_tuple ct = code_tuple{code_id, vm_version};
+
+   if(_blacklist.find(ct) != _blacklist.end())
       return nullptr;
+   if(auto it = _outstanding_compiles_and_poison.find(ct); it != _outstanding_compiles_and_poison.end()) {
+      it->second = false;
+      return nullptr;
+   }
+   if(_queued_compiles.find(ct) != _queued_compiles.end())
+      return nullptr;
+
+   if(_outstanding_compiles_and_poison.size() >= _threads) {
+      _queued_compiles.emplace(ct);
+      return nullptr;
+   }
+
+   const code_object* const codeobject = _db.find<code_object,by_code_hash>(boost::make_tuple(code_id, 0, vm_version));
+   if(!codeobject) //should be impossible right?
+      return nullptr;
+
+   _outstanding_compiles_and_poison.emplace(ct, false);
+   std::vector<wrapped_fd> fds_to_pass;
+   fds_to_pass.emplace_back(memfd_for_blob(codeobject->code));
+
+   printf("dispatching a compile, outstanding is now %lu\n", _outstanding_compiles_and_poison.size());
+
+   write_message_with_fds(_compile_monitor_write_socket, compile_wasm_message{ ct }, fds_to_pass);
+   return nullptr;
    
+#if 0
    //synchronus case
    std::vector<wrapped_fd> fds_to_pass;
    fds_to_pass.emplace_back(memfd_for_blob(codeobject->code));
@@ -216,131 +356,7 @@ const code_descriptor* const code_cache::get_descriptor_for_code(const digest_ty
    check_eviction_threshold(result.cache_free_bytes);
 
    return &*_cache_index.push_front(std::move(result.result.get<code_descriptor>())).first;
-
-#if 0
-   Module module;
-   try {
-      Serialization::MemoryInputStream stream(wasm.data(), wasm.size());
-      WASM::serialize(stream, module);
-   } catch(const Serialization::FatalSerializationException& e) {
-      EOS_ASSERT(false, wasm_serialization_error, e.message.c_str());
-   } catch(const IR::ValidationException& e) {
-      EOS_ASSERT(false, wasm_serialization_error, e.message.c_str());
-   }
-
-   instantiated_code code;
-   try {
-      code = LLVMJIT::instantiateModule(module);
-   }
-   catch(const Runtime::Exception& e) {
-      EOS_THROW(wasm_execution_error, "Failed to stand up WAVM instance: ${m}", ("m", describeExceptionCause(e.cause)));
-   }
-   catch(const std::runtime_error& e) { ///XXX here to catch WAVM_ASSERTS
-      EOS_THROW(wasm_execution_error, "Failed to stand up WAVM instance");
-   }
-
-   code_descriptor cd;
-   cd.code_hash = code_id;
-   cd.vm_version = vm_version;
-   cd.codegen_version = 0;
-
-   const std::map<unsigned, uintptr_t>& function_to_offsets = code.function_offsets;
-   const std::vector<uint8_t>& pic = code.code;
-
-   void* allocated_code = allocator->allocate(pic.size());
-   memcpy(allocated_code, pic.data(), pic.size());
-   uintptr_t placed_code_in = (char*)allocated_code-_code_mapping;
-   cd.code_begin = placed_code_in;
-
-   if(module.startFunctionIndex == UINTPTR_MAX)
-      cd.start = no_offset{};
-   else if(module.startFunctionIndex < module.functions.imports.size()) {
-      const auto& f = module.functions.imports[module.startFunctionIndex];
-      const intrinsic_entry& ie = get_intrinsic_map().at(f.moduleName + "." + f.exportName);
-      cd.start = intrinsic_ordinal{ie.ordinal};
-   }
-   else
-      cd.start = code_offset{function_to_offsets.at(module.startFunctionIndex-module.functions.imports.size())};
-
-   for(const Export& exprt : module.exports) {
-      if(exprt.name == "apply")
-         cd.apply_offset = function_to_offsets.at(exprt.index-module.functions.imports.size());
-   }
-
-   cd.starting_memory_pages = -1;
-   if(module.memories.size())
-      cd.starting_memory_pages = module.memories.defs.at(0).type.size.min;
-
-   std::vector<uint8_t> prolouge(memory::cb_offset); //getting the control block offset gets us as large as table+globals as possible
-   std::vector<uint8_t>::iterator prolouge_it = prolouge.end();
-
-   //set up mutable globals
-   union global_union {
-      int64_t i64;
-      int32_t i32;
-      float f32;
-      double f64;
-   };
-
-   for(const GlobalDef& global : module.globals.defs) {
-      if(!global.type.isMutable)
-         continue;
-      prolouge_it -= 8;
-      global_union* const u = (global_union* const)&*prolouge_it;
-
-      switch(global.initializer.type) {
-         case InitializerExpression::Type::i32_const: u->i32 = global.initializer.i32; break;
-         case InitializerExpression::Type::i64_const: u->i64 = global.initializer.i64; break;
-         case InitializerExpression::Type::f32_const: u->f32 = global.initializer.f32; break;
-         case InitializerExpression::Type::f64_const: u->f64 = global.initializer.f64; break;
-      }
-   }
-
-   struct table_entry {
-      uintptr_t type;
-      int64_t func;    //>= 0 means offset to code in wasm; < 0 means intrinsic call at offset address
-   };
-
-   if(module.tables.size())
-      prolouge_it -= sizeof(table_entry) * module.tables.defs[0].type.size.min;
-
-   for(const TableSegment& table_segment : module.tableSegments) {
-      struct table_entry* table_index_0 = (struct table_entry*)&*prolouge_it;
-
-      for(Uptr i = 0; i < table_segment.indices.size(); ++i) {
-         const Uptr function_index = table_segment.indices[i];
-         const long int effective_table_index = table_segment.baseOffset.i32 + i;
-         EOS_ASSERT(effective_table_index < module.tables.defs[0].type.size.min, wasm_execution_error, "table init out of bounds");
-
-         if(function_index < module.functions.imports.size()) {
-            const auto& f = module.functions.imports[function_index];
-            const intrinsic_entry& ie = get_intrinsic_map().at(f.moduleName + "." + f.exportName);
-            table_index_0[effective_table_index].func = ie.ordinal*-8;
-            table_index_0[effective_table_index].type = (uintptr_t)module.types[module.functions.imports[function_index].type.index];
-         }
-         else {
-            table_index_0[effective_table_index].func = function_to_offsets.at(function_index - module.functions.imports.size());
-            table_index_0[effective_table_index].type = (uintptr_t)module.types[module.functions.defs[function_index - module.functions.imports.size()].type.index];
-         }
-      }
-   }
-
-   cd.initdata_prolouge_size = prolouge.end() - prolouge_it;
-   std::vector<uint8_t> initdata_prep;
-   std::move(prolouge_it, prolouge.end(), std::back_inserter(initdata_prep));
-   std::move(initial_mem.begin(), initial_mem.end(), std::back_inserter(initdata_prep));
-
-   void* allocated_initdata = allocator->allocate(initdata_prep.size());
-   memcpy(allocated_initdata, initdata_prep.data(), initdata_prep.size());
-   uintptr_t placed_initdata_offset = (char*)allocated_initdata-_code_mapping;
-   cd.initdata_begin = placed_initdata_offset;
-   cd.initdata_size = initdata_prep.size();
-
-   check_eviction_threshold();
-
-   return &*_cache_index.push_front(std::move(cd)).first;
 #endif
-   return nullptr;
 }
 
 }}}

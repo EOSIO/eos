@@ -1,15 +1,18 @@
 #include <eosio/chain/webassembly/eos-vm-oc/ipc_helpers.hpp>
+#include <eosio/chain/exceptions.hpp>
 
 #include <sys/syscall.h>
 
 namespace eosio { namespace chain { namespace eosvmoc {
+
+static constexpr size_t max_message_size = 8192;
 
 std::tuple<bool, eosvmoc_message, std::vector<wrapped_fd>> read_message_with_fds(boost::asio::local::datagram_protocol::socket& s) {
    return read_message_with_fds(s.native_handle());
 }
 
 std::tuple<bool, eosvmoc_message, std::vector<wrapped_fd>> read_message_with_fds(int fd) {
-   char buff[8192]; //maybe too assumptious but should never see anything larger than that
+   char buff[max_message_size];
 
    struct msghdr msg = {};
    struct cmsghdr* cmsg;
@@ -32,7 +35,7 @@ std::tuple<bool, eosvmoc_message, std::vector<wrapped_fd>> read_message_with_fds
    do {
       red = recvmsg(fd, &msg, 0);
    } while(red == -1 && errno == EINTR);
-   if(red < 1)
+   if(red < 1 || red >= sizeof(buff))
       return {false, eosvmoc_message(), std::vector<wrapped_fd>()};
    fc::datastream<char*> ds(buff, red);
    eosvmoc_message message;
@@ -60,6 +63,7 @@ void write_message_with_fds(int fd_to_send_to, const eosvmoc_message& message, c
    struct cmsghdr* cmsg;
 
    size_t sz = fc::raw::pack_size(message);
+   EOS_ASSERT(sz < max_message_size, misc_exception, "trying to send too large of message");
    char buff[sz];
    fc::datastream<char*> ds(buff, sz);
    fc::raw::pack(ds, message);

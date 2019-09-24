@@ -33,6 +33,12 @@
 #include "llvm/Transforms/Utils.h"
 #include <memory>
 
+#include <fc/io/datastream.hpp>
+#include <fc/io/raw.hpp>
+#include <fc/reflect/typename.hpp>
+
+#include "llvm/Support/LEB128.h"
+
 #if LLVM_VERSION_MAJOR == 7
 namespace llvm { namespace orc {
    using LegacyRTDyldObjectLinkingLayer = RTDyldObjectLinkingLayer;
@@ -108,6 +114,9 @@ namespace LLVMJIT
             dumpster.resize(numBytes);
             return dumpster.data();
          }
+         if(SectionName == ".stack_sizes") {
+            return stack_sizes.emplace_back(numBytes).data();
+         }
          WAVM_ASSERT_THROW(isReadOnly);
 
          return get_next_code_ptr(numBytes, alignment);
@@ -122,6 +131,7 @@ namespace LLVMJIT
       uint8_t* ptr;
 
       std::vector<uint8_t> dumpster;
+      std::list<std::vector<uint8_t>> stack_sizes;
 
       U8* get_next_code_ptr(uintptr_t numBytes, U32 alignment) {
          //XXX we should probably assert if alignment is > 16 or std align because the std::vector is aligned that way
@@ -254,7 +264,10 @@ namespace LLVMJIT
 
          auto targetTriple = llvm::sys::getProcessTriple();
 
-         targetMachine = llvm::EngineBuilder().setRelocationModel(llvm::Reloc::PIC_).setCodeModel(llvm::CodeModel::Small).selectTarget(
+         llvm::TargetOptions to;
+         to.EmitStackSizeSection = 1;
+
+         targetMachine = llvm::EngineBuilder().setRelocationModel(llvm::Reloc::PIC_).setCodeModel(llvm::CodeModel::Small).setTargetOptions(to).selectTarget(
             llvm::Triple(targetTriple),"","",llvm::SmallVector<std::string,0>()
             );
       }
@@ -266,6 +279,25 @@ namespace LLVMJIT
 		auto jitModule = new JITModule();
 		// Compile the module.
 		jitModule->compile(llvmModule);
+
+      unsigned num_functions_stack_size_found = 0;
+      for(const auto& stacksizes : jitModule->unitmemorymanager->stack_sizes) {
+         fc::datastream<const unsigned char*> ds(stacksizes.data(), stacksizes.size());
+         while(ds.remaining()) {
+            uint64_t funcaddr;
+            fc::unsigned_int stack_size;
+            fc::raw::unpack(ds, funcaddr);
+            fc::raw::unpack(ds, stack_size);
+
+            ++num_functions_stack_size_found;
+            if(stack_size > 16u*1024u)
+               _exit(1);
+         }
+      }
+      if(num_functions_stack_size_found != module.functions.defs.size())
+         _exit(1);
+      if(jitModule->final_pic_code.size() >= 16u*1024u*1024u)
+         _exit(1);
 
       instantiated_code ret;
       ret.code = jitModule->final_pic_code;

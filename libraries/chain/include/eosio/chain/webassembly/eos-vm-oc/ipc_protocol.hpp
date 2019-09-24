@@ -17,6 +17,7 @@ struct initalize_response_message {
 struct code_tuple {
    eosio::chain::digest_type code_id;
    uint8_t vm_version;
+   bool operator==(const code_tuple& o) const {return o.code_id == code_id && o.vm_version == vm_version;}
 };
 
 struct compile_wasm_message {
@@ -36,24 +37,13 @@ struct code_compilation_result_message {
    //Two sent fds: 1) wasm code, 2) initial memory snapshot
 };
 
-//these first errors are blacklistable
-struct compilation_result_toomuchcpu {};
-struct compilation_result_toomuchram {};
-struct compilation_result_toomuchsize {};
-struct compilation_result_toomuchstack {};
+
 struct compilation_result_unknownfailure {};
-//but there are some other errors that are not
-struct compilation_result_toobusy {};
 struct compilation_result_toofull {};
 
 using wasm_compilation_result = fc::static_variant<code_descriptor,  //a successful compile
-compilation_result_toomuchcpu,
-compilation_result_toomuchram,
-compilation_result_toomuchsize,
-compilation_result_toomuchstack,
-compilation_result_unknownfailure,
-compilation_result_toobusy,
-compilation_result_toofull>;
+                                                  compilation_result_unknownfailure,
+                                                  compilation_result_toofull>;
 
 struct wasm_compilation_result_message {
    code_tuple code;
@@ -76,11 +66,6 @@ FC_REFLECT(eosio::chain::eosvmoc::code_tuple, (code_id)(vm_version))
 FC_REFLECT(eosio::chain::eosvmoc::compile_wasm_message, (code))
 FC_REFLECT(eosio::chain::eosvmoc::evict_wasms_message, (codes))
 FC_REFLECT(eosio::chain::eosvmoc::code_compilation_result_message, (start)(apply_offset)(starting_memory_pages)(initdata_prolouge_size))
-FC_REFLECT(eosio::chain::eosvmoc::compilation_result_toomuchcpu, )
-FC_REFLECT(eosio::chain::eosvmoc::compilation_result_toomuchram, )
-FC_REFLECT(eosio::chain::eosvmoc::compilation_result_toomuchsize, )
-FC_REFLECT(eosio::chain::eosvmoc::compilation_result_toomuchstack, )
 FC_REFLECT(eosio::chain::eosvmoc::compilation_result_unknownfailure, )
-FC_REFLECT(eosio::chain::eosvmoc::compilation_result_toobusy, )
 FC_REFLECT(eosio::chain::eosvmoc::compilation_result_toofull, )
 FC_REFLECT(eosio::chain::eosvmoc::wasm_compilation_result_message, (code)(result)(cache_free_bytes))

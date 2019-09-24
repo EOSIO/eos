@@ -1,5 +1,7 @@
 #pragma once
 
+#include <boost/lockfree/spsc_queue.hpp>
+
 #include <eosio/chain/webassembly/eos-vm-oc/eos-vm-oc.hpp>
 #include <eosio/chain/webassembly/eos-vm-oc/ipc_helpers.hpp>
 #include <boost/multi_index_container.hpp>
@@ -10,6 +12,17 @@
 
 #include <boost/interprocess/segment_manager.hpp> //XXX no we just want the rbtree thing
 #include <boost/asio/local/datagram_protocol.hpp>
+
+
+#include <thread>
+
+namespace std {
+    template<> struct hash<eosio::chain::eosvmoc::code_tuple> {
+        size_t operator()(const eosio::chain::eosvmoc::code_tuple& ct) const noexcept {
+            return ct.code_id._hash[0];
+        }
+    };
+}
 
 namespace eosio { namespace chain { namespace eosvmoc {
 
@@ -62,6 +75,16 @@ class code_cache {
       io_context _ctx;
       local::datagram_protocol::socket _compile_monitor_write_socket{_ctx};
       local::datagram_protocol::socket _compile_monitor_read_socket{_ctx};
+
+      //mutlithread
+      std::thread _monitor_reply_thread;
+      boost::lockfree::spsc_queue<wasm_compilation_result_message> _result_queue;
+      void wait_on_compile_monitor_message();
+      std::tuple<size_t, size_t> consume_compile_thread_queue();
+      std::unordered_set<code_tuple> _queued_compiles;
+      std::unordered_map<code_tuple, bool> _outstanding_compiles_and_poison;
+      std::unordered_set<code_tuple> _blacklist;
+      size_t _threads;
 
       size_t _free_bytes_eviction_threshold;
       void check_eviction_threshold(size_t free_bytes);

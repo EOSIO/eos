@@ -44,14 +44,16 @@ namespace eosio { namespace chain {
       struct by_first_block_num;
       struct by_last_block_num;
 
+#ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
       struct eosvmoc_tier {
          eosvmoc_tier(const boost::filesystem::path& d, const eosvmoc::config& c, const chainbase::database& db) : cc(d, c, db), exec(cc) {}
          eosvmoc::code_cache cc;
          eosvmoc::executor exec;
          eosvmoc::memory mem;
       };
+#endif
 
-      wasm_interface_impl(wasm_interface::vm_type vm, const chainbase::database& d, const boost::filesystem::path data_dir, const eosvmoc::config& eosvmoc_config) : db(d), wasm_runtime_time(vm) {
+      wasm_interface_impl(wasm_interface::vm_type vm, bool eosvmoc_tierup, const chainbase::database& d, const boost::filesystem::path data_dir, const eosvmoc::config& eosvmoc_config) : db(d), wasm_runtime_time(vm) {
 #ifdef EOSIO_WAVM_RUNTIME_ENABLED
          if(vm == wasm_interface::vm_type::wavm)
             runtime_interface = std::make_unique<webassembly::wavm::wavm_runtime>();
@@ -65,8 +67,12 @@ namespace eosio { namespace chain {
          if(!runtime_interface)
             EOS_THROW(wasm_exception, "${r} wasm runtime not supported on this platform and/or configuration", ("r", vm));
 
-         if(vm != wasm_interface::vm_type::eos_vm_oc)
-            eosvmoc = std::make_unique<eosvmoc_tier>(data_dir, eosvmoc_config, d);
+#ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
+         if(eosvmoc_tierup) {
+            EOS_ASSERT(vm != wasm_interface::vm_type::eos_vm_oc, wasm_exception, "You can't use EOS-VM OC as the base runtime when tier up is activated");
+            eosvmoc.emplace(data_dir, eosvmoc_config, d);
+         }
+#endif
       }
 
       ~wasm_interface_impl() {
@@ -105,7 +111,13 @@ namespace eosio { namespace chain {
 
       void current_lib(uint32_t lib) {
          //anything last used before or on the LIB can be evicted
-         wasm_instantiation_cache.get<by_last_block_num>().erase(wasm_instantiation_cache.get<by_last_block_num>().begin(), wasm_instantiation_cache.get<by_last_block_num>().upper_bound(lib));
+         const auto first_it = wasm_instantiation_cache.get<by_last_block_num>().begin();
+         const auto last_it  = wasm_instantiation_cache.get<by_last_block_num>().upper_bound(lib);
+#ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
+         if(eosvmoc) for(auto it = first_it; it != last_it; it++)
+            eosvmoc->cc.free_code(it->code_hash, it->vm_version);
+#endif
+         wasm_instantiation_cache.get<by_last_block_num>().erase(first_it, last_it);
       }
 
       const std::unique_ptr<wasm_instantiated_module_interface>& get_instantiated_module( const digest_type& code_hash, const uint8_t& vm_type,
@@ -195,7 +207,9 @@ namespace eosio { namespace chain {
       const chainbase::database& db;
       const wasm_interface::vm_type wasm_runtime_time;
 
-      std::unique_ptr<eosvmoc_tier> eosvmoc;
+#ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
+      fc::optional<eosvmoc_tier> eosvmoc;
+#endif
    };
 
 #define _ADD_PAREN_1(...) ((__VA_ARGS__)) _ADD_PAREN_2

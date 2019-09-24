@@ -91,6 +91,16 @@ static intrinsic grow_memory_intrinsic EOSVMOC_INTRINSIC_INIT_PRIORITY("eosvmoc_
   boost::hana::index_if(intrinsic_table, ::boost::hana::equal.to(BOOST_HANA_STRING("eosvmoc_internal.grow_memory"))).value()
 );
 
+//This is effectively overriding the eosio_exit intrinsic in wasm_interface
+static void eosio_exit(int32_t code) {
+   EOSVMOC_MEMORY_PTR_cb_ptr;
+   siglongjmp(*cb_ptr->jmp, EOSVMOC_EXIT_CLEAN_EXIT);
+   __builtin_unreachable();
+}
+static intrinsic eosio_exit_intrinsic("env.eosio_exit", IR::FunctionType::get(IR::ResultType::none,{IR::ValueType::i32}), (void*)&eosio_exit,
+  boost::hana::index_if(intrinsic_table, ::boost::hana::equal.to(BOOST_HANA_STRING("env.eosio_exit"))).value()
+);
+
 static void throw_internal_exception(const std::string& s) {
    EOSVMOC_MEMORY_PTR_cb_ptr;
    *cb_ptr->eptr = std::make_exception_ptr(wasm_execution_error(FC_LOG_MESSAGE(error, s)));
