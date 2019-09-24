@@ -210,7 +210,6 @@ file(WRITE "${CMAKE_BINARY_DIR}/CTestCustom.cmake" "SET(CTEST_CUSTOM_TESTS_IGNOR
 include(package)
 include(doxygen)
 
-
 if(CONAN)
   # Conan (https://conan.io/)
   include(${CMAKE_SOURCE_DIR}/.conan/conan.cmake)
