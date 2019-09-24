@@ -194,10 +194,8 @@ class Service:
             self.start_service()
 
 
-    # NOTE: may cancel sleep
-    def print_header(self, text, sleep=0):
+    def print_header(self, text):
         self.print.vanilla(printer.pad(self.string.decorate(text, fcolor="black", bcolor="cyan")))
-        time.sleep(sleep)
 
 
     def print_system_info(self):
