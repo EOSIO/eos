@@ -6,8 +6,6 @@ RUN yum update -y && \
     yum --enablerepo=extras install -y centos-release-scl && \
     yum --enablerepo=extras install -y devtoolset-8 && \
     yum --enablerepo=extras install -y which git python python-devel rh-python36 doxygen graphviz vim-common jq
-# install conan
-RUN source /opt/rh/rh-python36/enable && pip3 install conan
 # install ccache
 RUN curl -LO http://download-ib01.fedoraproject.org/pub/epel/7/x86_64/Packages/c/ccache-3.3.4-1.el7.x86_64.rpm && \
     yum install -y ccache-3.3.4-1.el7.x86_64.rpm && \

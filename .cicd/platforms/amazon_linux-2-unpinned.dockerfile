@@ -3,8 +3,6 @@ ENV VERSION 1
 # install dependencies.
 RUN yum update -y && \
     yum install -y which git procps-ng python3 python3-devel python python-devel clang tar make llvm-devel llvm-static doxygen graphviz vim-common jq
-# install conan
-RUN pip3 install conan
 # install ccache
 RUN curl -LO http://download-ib01.fedoraproject.org/pub/epel/7/x86_64/Packages/c/ccache-3.3.4-1.el7.x86_64.rpm && \
     yum install -y ccache-3.3.4-1.el7.x86_64.rpm && \

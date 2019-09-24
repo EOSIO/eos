@@ -4,8 +4,6 @@ ENV VERSION 1
 RUN apt-get update && \
     apt-get upgrade -y && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y git python2.7 python2.7-dev python3 python3-dev python3-pip gcc g++ ccache curl doxygen graphviz vim-common jq
-# install conan
-RUN pip3 install conan
 # build cmake.
 RUN curl -LO https://cmake.org/files/v3.13/cmake-3.13.2.tar.gz && \
     tar -xzf cmake-3.13.2.tar.gz && \
