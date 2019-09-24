@@ -210,6 +210,12 @@ file(WRITE "${CMAKE_BINARY_DIR}/CTestCustom.cmake" "SET(CTEST_CUSTOM_TESTS_IGNOR
 include(package)
 include(doxygen)
 
+CONFIGURE_FILE( 
+  "${CMAKE_CURRENT_SOURCE_DIR}/scripts/uninstall.cmake.in"
+  "${CMAKE_CURRENT_SOURCE_DIR}/scripts/uninstall.cmake"
+IMMEDIATE @ONLY )
+ADD_CUSTOM_TARGET(uninstall "${CMAKE_COMMAND}" -P "${CMAKE_CURRENT_SOURCE_DIR}/scripts/uninstall.cmake")
+
 if(CONAN)
   # Conan (https://conan.io/)
   include(${CMAKE_SOURCE_DIR}/.conan/conan.cmake)
