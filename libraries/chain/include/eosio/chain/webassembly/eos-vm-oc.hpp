@@ -315,9 +315,9 @@ struct intrinsic_invoker_impl<is_injected, Ret, std::tuple<>, std::tuple<Transla
       }
       catch(...) {
          *cb_ptr->eptr = std::current_exception();
-         siglongjmp(*cb_ptr->jmp, EOSVMOC_EXIT_EXCEPTION);
-         __builtin_unreachable();
       }
+      siglongjmp(*cb_ptr->jmp, EOSVMOC_EXIT_EXCEPTION);
+      __builtin_unreachable();
    }
 
    template<next_method_type Method>
@@ -341,12 +341,13 @@ struct intrinsic_invoker_impl<is_injected, void_type, std::tuple<>, std::tuple<T
          if constexpr(!is_injected)
             EOS_ASSERT(cb_ptr->current_call_depth_remaining != 1, wasm_execution_error, "Exceeded call depth maximum");
          Method(translated...);
+         return;
       }
       catch(...) {
          *cb_ptr->eptr = std::current_exception();
-         siglongjmp(*cb_ptr->jmp, EOSVMOC_EXIT_EXCEPTION);
-         __builtin_unreachable();
       }
+      siglongjmp(*cb_ptr->jmp, EOSVMOC_EXIT_EXCEPTION);
+      __builtin_unreachable();
    }
 
    template<next_method_type Method>

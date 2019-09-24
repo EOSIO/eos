@@ -101,7 +101,7 @@ static intrinsic eosio_exit_intrinsic("env.eosio_exit", IR::FunctionType::get(IR
   boost::hana::index_if(intrinsic_table, ::boost::hana::equal.to(BOOST_HANA_STRING("env.eosio_exit"))).value()
 );
 
-static void throw_internal_exception(const std::string& s) {
+static void throw_internal_exception(const char* const s) {
    EOSVMOC_MEMORY_PTR_cb_ptr;
    *cb_ptr->eptr = std::make_exception_ptr(wasm_execution_error(FC_LOG_MESSAGE(error, s)));
    siglongjmp(*cb_ptr->jmp, EOSVMOC_EXIT_EXCEPTION);
