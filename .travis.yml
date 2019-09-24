@@ -34,21 +34,24 @@ matrix:
         homebrew:
           update: true
           packages:
-            - graphviz
+            - ccache
+            - jq
+            - boost
+            - python@2
+            - python
             - libtool
+            - libusb
+            - graphviz
+            - automake
+            - wget
             - gmp
             - llvm@4
             - pkgconfig
-            - python
-            - python@2
             - doxygen
-            - libusb
             - openssl
-            - boost@1.70
-            - ccache
       env: 
         - PATH="/usr/local/opt/ccache/libexec:$PATH"
-script: "ccache --max-size=1G && ./.cicd/build.sh && ./.cicd/test.sh scripts/parallel-test.sh && ./.cicd/test.sh scripts/serial-test.sh"
+script: "ccache --max-size=1G && ./.cicd/build.sh && ./.cicd/test.sh scripts/parallel-test.sh && ./.cicd/test.sh scripts/serial-test.sh && if [[ $(uname) != 'Darwin' ]]; then ./.cicd/submodule-regression-check.sh; fi"
 notifications:
   webhooks:
     secure: gmqODqoFAil2cR7v++ibqRNECBOSD/VJX+2qPa7XptkVWmVMzbII5CNgBQAscjFsp9arHPMXCCzkBi847PCSiHdsnYFQ4T273FLRWr3cDbLjfmR+BJ7dGKvQnlpSi2Ze2TtAPJyRl+iv+cxDj7cWE5zw2c4xbgh1a/cNO+/ayUfFkyMEIfVWRsHkdkra4gOLywou0XRLHr4CX1V60uU7uuqATnIMMi7gQYwiKKtZqjkbf8wcBvZirDhjQ6lDPN5tnZo6L4QHmqjtzNJg/UrD4h+zES53dLVI4uxlXRAwwpw+mJOFA3QE/3FT+bMQjLCffUz4gZaWcdgebPYzrwSWUbJoFdWAOwcTqivQY0FIQzcz/r6uGWcwWTavzkPEbg68BVM2BZId/0110J6feeTkpJ3MPV+UsIoGTvbg50vi/I06icftuZ/cLqDj3+Emifm7Jlr1sRTSdqtYAJj/2ImUfsb46cwgjAVhFOTvc+KuPgJQgvOXV7bZkxEr5qDWo8Al2sV8BWb83j1rMlZ4LfERokImDVqxu2kkcunchzvhtYFTesSpmwegVpwceCtOtO0rEUgATnfTEHzk2rm8nuz4UtidsQnluUKqmKD0QCqHXFfn+3ZRJsDqr+iCYdxv1BAeAVc9q1L7bgrKDMGiJgkxuhZ2v3J2SflWLvjZjFDduuc=

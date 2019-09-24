@@ -810,6 +810,7 @@ namespace eosio {
       last_handshake_recv = handshake_message();
       last_handshake_sent = handshake_message();
       my_impl->sync_master->reset_lib_num(shared_from_this());
+      fc_ilog(logger, "closing ${a}, ${p}", ("a",peer_addr)("p",peer_name()));
       fc_dlog(logger, "canceling wait on ${p}", ("p",peer_name()));
       cancel_wait();
       if( read_delay_timer ) read_delay_timer->cancel();
@@ -1395,8 +1396,8 @@ namespace eosio {
          sync_known_lib_num = target;
       }
 
-      if (!sync_required()) {
-         uint32_t bnum = chain_plug->chain().last_irreversible_block_num();
+      uint32_t bnum = chain_plug->chain().last_irreversible_block_num();
+      if (!sync_required() || target <= bnum) {
          uint32_t hnum = chain_plug->chain().fork_db_pending_head_block_num();
          fc_dlog( logger, "We are already caught up, my irr = ${b}, head = ${h}, target = ${t}",
                   ("b",bnum)("h",hnum)("t",target));
@@ -1482,12 +1483,7 @@ namespace eosio {
 
       if (head < msg.head_num ) {
          fc_dlog(logger, "sync check state 3");
-         if (!verify_catchup(c, msg.head_num, msg.head_id)) {
-            request_message req;
-            req.req_blocks.mode = catch_up;
-            req.req_trx.mode = none;
-            c->enqueue( req );
-         }
+         verify_catchup(c, msg.head_num, msg.head_id);
          return;
       }
       else {
@@ -1501,7 +1497,11 @@ namespace eosio {
             c->enqueue( note );
          }
          c->syncing = true;
-         if( cc.get_block_id_for_num( msg.head_num ) != msg.head_id ) {
+         bool on_fork = true;
+         try {
+            on_fork = cc.get_block_id_for_num( msg.head_num ) != msg.head_id;
+         } catch( ... ) {}
+         if( on_fork ) {
             request_message req;
             req.req_blocks.mode = catch_up;
             req.req_trx.mode = none;
@@ -1552,7 +1552,14 @@ namespace eosio {
          if (msg.known_blocks.ids.size() == 0) {
             fc_elog( logger,"got a catch up with ids size = 0" );
          } else {
-            verify_catchup(c, msg.known_blocks.pending, msg.known_blocks.ids.back());
+            const block_id_type& id = msg.known_blocks.ids.back();
+            controller& cc = chain_plug->chain();
+            if( !cc.fetch_block_by_id( id ) ) {
+               verify_catchup( c, msg.known_blocks.pending, id );
+            } else {
+               // we already have the block, so update peer with our view of the world
+               c->send_handshake();
+            }
          }
       }
       else {
@@ -1576,9 +1583,8 @@ namespace eosio {
       fc_dlog(logger, "got block ${bn} from ${p}",("bn",blk_num)("p",c->peer_name()));
       if (state == lib_catchup) {
          if (blk_num != sync_next_expected_num) {
-            fc_wlog( logger, "expected block ${ne} but got ${bn}, closing connection: ${p}",
+            fc_wlog( logger, "expected block ${ne} but got ${bn}, from connection: ${p}",
                      ("ne",sync_next_expected_num)("bn",blk_num)("p",c->peer_name()) );
-            my_impl->close(c);
             return;
          }
          sync_next_expected_num = blk_num + 1;
@@ -3022,6 +3028,8 @@ namespace eosio {
    }
 
    void net_plugin::plugin_startup() {
+      handle_sighup();
+      try {
       my->producer_plug = app().find_plugin<producer_plugin>();
 
       // currently thread_pool only used for server_ioc
@@ -3056,17 +3064,13 @@ namespace eosio {
          }
       }
 
-      my->keepalive_timer.reset( new boost::asio::steady_timer( my->thread_pool->get_executor() ) );
-      my->ticker();
-
       if( my->acceptor ) {
          my->acceptor->open(my->listen_endpoint.protocol());
          my->acceptor->set_option(tcp::acceptor::reuse_address(true));
          try {
            my->acceptor->bind(my->listen_endpoint);
          } catch (const std::exception& e) {
-           fc_elog( logger, "net_plugin::plugin_startup failed to bind to port ${port}",
-                    ("port", my->listen_endpoint.port()));
+           elog( "net_plugin::plugin_startup failed to bind to port ${port}", ("port", my->listen_endpoint.port()));
            throw e;
          }
          my->acceptor->listen();
@@ -3077,6 +3081,9 @@ namespace eosio {
       {
          cc.accepted_block.connect(  boost::bind(&net_plugin_impl::accepted_block, my.get(), _1));
       }
+
+      my->keepalive_timer.reset( new boost::asio::steady_timer( my->thread_pool->get_executor() ) );
+      my->ticker();
 
       my->incoming_transaction_ack_subscription = app().get_channel<channels::transaction_ack>().subscribe(boost::bind(&net_plugin_impl::transaction_ack, my.get(), _1));
 
@@ -3090,7 +3097,12 @@ namespace eosio {
       for( auto seed_node : my->supplied_peers ) {
          connect( seed_node );
       }
-      handle_sighup();
+
+      } catch (...) {
+         // always want plugin_shutdown even on exception
+         plugin_shutdown();
+         throw;
+      }
    }
 
    void net_plugin::handle_sighup() {

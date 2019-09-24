@@ -1,11 +1,12 @@
 FROM ubuntu:16.04
 ENV VERSION 1
 # install dependencies.
-RUN apt-get update && apt-get upgrade -y && \
+RUN apt-get update && \
+    apt-get upgrade -y && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential git automake \
     libbz2-dev libssl-dev doxygen graphviz libgmp3-dev autotools-dev libicu-dev \
     python2.7 python2.7-dev python3 python3-dev autoconf libtool curl zlib1g-dev \
-    sudo ruby libusb-1.0-0-dev libcurl4-gnutls-dev pkg-config apt-transport-https
+    sudo ruby libusb-1.0-0-dev libcurl4-gnutls-dev pkg-config apt-transport-https vim-common jq
 # build cmake.
 RUN curl -LO https://cmake.org/files/v3.13/cmake-3.13.2.tar.gz && \
     tar -xzf cmake-3.13.2.tar.gz && \
