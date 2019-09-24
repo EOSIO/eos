@@ -56,7 +56,7 @@ add_library( eosio_chain
 
              ${CHAIN_WAVM_SOURCES}
              webassembly/wabt.cpp
-	     webassembly/eos-vm.cpp
+             webassembly/eos-vm.cpp
 
 #             get_config.cpp
 #
