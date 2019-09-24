@@ -41,9 +41,9 @@
 
 #if LLVM_VERSION_MAJOR == 7
 namespace llvm { namespace orc {
-   using LegacyRTDyldObjectLinkingLayer = RTDyldObjectLinkingLayer;
-   template<typename A, typename B>
-   using LegacyIRCompileLayer = IRCompileLayer<A, B>;
+	using LegacyRTDyldObjectLinkingLayer = RTDyldObjectLinkingLayer;
+	template<typename A, typename B>
+	using LegacyIRCompileLayer = IRCompileLayer<A, B>;
 }}
 #endif
 
@@ -56,30 +56,30 @@ namespace llvm { namespace orc {
 #include "llvm-c/Disassembler.h"
 static void disassembleFunction(U8* bytes,Uptr numBytes)
 {
-   LLVMDisasmContextRef disasmRef = LLVMCreateDisasm(llvm::sys::getProcessTriple().c_str(),nullptr,0,nullptr,nullptr);
+	LLVMDisasmContextRef disasmRef = LLVMCreateDisasm(llvm::sys::getProcessTriple().c_str(),nullptr,0,nullptr,nullptr);
 
-   U8* nextByte = bytes;
-   Uptr numBytesRemaining = numBytes;
-   while(numBytesRemaining)
-   {
-      char instructionBuffer[256];
-      const Uptr numInstructionBytes = LLVMDisasmInstruction(
-         disasmRef,
-         nextByte,
-         numBytesRemaining,
-         reinterpret_cast<Uptr>(nextByte),
-         instructionBuffer,
-         sizeof(instructionBuffer)
-         );
-      if(numInstructionBytes == 0 || numInstructionBytes > numBytesRemaining)
-         break;
-      numBytesRemaining -= numInstructionBytes;
-      nextByte += numInstructionBytes;
+	U8* nextByte = bytes;
+	Uptr numBytesRemaining = numBytes;
+	while(numBytesRemaining)
+	{
+		char instructionBuffer[256];
+		const Uptr numInstructionBytes = LLVMDisasmInstruction(
+			disasmRef,
+			nextByte,
+			numBytesRemaining,
+			reinterpret_cast<Uptr>(nextByte),
+			instructionBuffer,
+			sizeof(instructionBuffer)
+			);
+		if(numInstructionBytes == 0 || numInstructionBytes > numBytesRemaining)
+			break;
+		numBytesRemaining -= numInstructionBytes;
+		nextByte += numInstructionBytes;
 
-      printf("\t\t%s\n",instructionBuffer);
-   };
+		printf("\t\t%s\n",instructionBuffer);
+	};
 
-   LLVMDisasmDispose(disasmRef);
+	LLVMDisasmDispose(disasmRef);
 }
 #endif
 
@@ -87,7 +87,7 @@ namespace eosio { namespace chain { namespace eosvmoc {
 
 namespace LLVMJIT
 {
-   llvm::TargetMachine* targetMachine = nullptr;
+	llvm::TargetMachine* targetMachine = nullptr;
 
 	// Allocates memory for the LLVM object loader.
 	struct UnitMemoryManager : llvm::RTDyldMemoryManager
@@ -101,48 +101,48 @@ namespace LLVMJIT
 		
 		virtual bool needsToReserveAllocationSpace() override { return true; }
 		virtual void reserveAllocationSpace(uintptr_t numCodeBytes,U32 codeAlignment,uintptr_t numReadOnlyBytes,U32 readOnlyAlignment,uintptr_t numReadWriteBytes,U32 readWriteAlignment) override {
-         code = std::make_unique<std::vector<uint8_t>>(numCodeBytes + numReadOnlyBytes + numReadWriteBytes);
-         ptr = code->data();
-      }
+			code = std::make_unique<std::vector<uint8_t>>(numCodeBytes + numReadOnlyBytes + numReadWriteBytes);
+			ptr = code->data();
+		}
 		virtual U8* allocateCodeSection(uintptr_t numBytes,U32 alignment,U32 sectionID,llvm::StringRef sectionName) override
 		{
-         return get_next_code_ptr(numBytes, alignment);
+			return get_next_code_ptr(numBytes, alignment);
 		}
 		virtual U8* allocateDataSection(uintptr_t numBytes,U32 alignment,U32 sectionID,llvm::StringRef SectionName,bool isReadOnly) override
 		{
-         if(SectionName == ".eh_frame") {
-            dumpster.resize(numBytes);
-            return dumpster.data();
-         }
-         if(SectionName == ".stack_sizes") {
-            return stack_sizes.emplace_back(numBytes).data();
-         }
-         WAVM_ASSERT_THROW(isReadOnly);
+			if(SectionName == ".eh_frame") {
+				dumpster.resize(numBytes);
+				return dumpster.data();
+			}
+			if(SectionName == ".stack_sizes") {
+				return stack_sizes.emplace_back(numBytes).data();
+			}
+			WAVM_ASSERT_THROW(isReadOnly);
 
-         return get_next_code_ptr(numBytes, alignment);
+			return get_next_code_ptr(numBytes, alignment);
 		}
 
-      virtual bool finalizeMemory(std::string* ErrMsg = nullptr) override {
-         code->resize(ptr - code->data());
-         return true;
-      }
+		virtual bool finalizeMemory(std::string* ErrMsg = nullptr) override {
+			code->resize(ptr - code->data());
+			return true;
+		}
 
-      std::unique_ptr<std::vector<uint8_t>> code;
-      uint8_t* ptr;
+		std::unique_ptr<std::vector<uint8_t>> code;
+		uint8_t* ptr;
 
-      std::vector<uint8_t> dumpster;
-      std::list<std::vector<uint8_t>> stack_sizes;
+		std::vector<uint8_t> dumpster;
+		std::list<std::vector<uint8_t>> stack_sizes;
 
-      U8* get_next_code_ptr(uintptr_t numBytes, U32 alignment) {
-         //XXX we should probably assert if alignment is > 16 or std align because the std::vector is aligned that way
-         uintptr_t p = (uintptr_t)ptr;
-         p += alignment - 1LL;
-         p &= ~(alignment - 1LL);
-         uint8_t* this_section = (uint8_t*)p;
-         ptr = this_section + numBytes;
+		U8* get_next_code_ptr(uintptr_t numBytes, U32 alignment) {
+			//XXX we should probably assert if alignment is > 16 or std align because the std::vector is aligned that way
+			uintptr_t p = (uintptr_t)ptr;
+			p += alignment - 1LL;
+			p &= ~(alignment - 1LL);
+			uint8_t* this_section = (uint8_t*)p;
+			ptr = this_section + numBytes;
 
-         return this_section;
-      }
+			return this_section;
+		}
 
 		UnitMemoryManager(const UnitMemoryManager&) = delete;
 		void operator=(const UnitMemoryManager&) = delete;
@@ -153,43 +153,43 @@ namespace LLVMJIT
 	{
 		JITModule() {
 			objectLayer = llvm::make_unique<llvm::orc::LegacyRTDyldObjectLinkingLayer>(ES,[this](llvm::orc::VModuleKey K) {
-                           return llvm::orc::LegacyRTDyldObjectLinkingLayer::Resources{
-                              unitmemorymanager, std::make_shared<llvm::orc::NullResolver>()
-                              };
-                       },
-                       [](llvm::orc::VModuleKey, const llvm::object::ObjectFile &Obj, const llvm::RuntimeDyld::LoadedObjectInfo &o) {
-                          //nothing to do
-                       },
-                       [this](llvm::orc::VModuleKey, const llvm::object::ObjectFile &Obj, const llvm::RuntimeDyld::LoadedObjectInfo &o) {
-                           for(auto symbolSizePair : llvm::object::computeSymbolSizes(Obj)) {
-                              auto symbol = symbolSizePair.first;
-                              auto name = symbol.getName();
-                              auto address = symbol.getAddress();
-                              if(symbol.getType() && symbol.getType().get() == llvm::object::SymbolRef::ST_Function && name && address) {
-                                 Uptr loadedAddress = Uptr(*address);
-                                 auto symbolSection = symbol.getSection();
-                                 if(symbolSection)
-                                    loadedAddress += (Uptr)o.getSectionLoadAddress(*symbolSection.get());
-                                 Uptr functionDefIndex;
-			                        if(getFunctionIndexFromExternalName(name->data(),functionDefIndex))
-                                    function_to_offsets[functionDefIndex] = loadedAddress-(uintptr_t)unitmemorymanager->code->data();
+									return llvm::orc::LegacyRTDyldObjectLinkingLayer::Resources{
+										unitmemorymanager, std::make_shared<llvm::orc::NullResolver>()
+										};
+							  },
+							  [](llvm::orc::VModuleKey, const llvm::object::ObjectFile &Obj, const llvm::RuntimeDyld::LoadedObjectInfo &o) {
+								  //nothing to do
+							  },
+							  [this](llvm::orc::VModuleKey, const llvm::object::ObjectFile &Obj, const llvm::RuntimeDyld::LoadedObjectInfo &o) {
+									for(auto symbolSizePair : llvm::object::computeSymbolSizes(Obj)) {
+										auto symbol = symbolSizePair.first;
+										auto name = symbol.getName();
+										auto address = symbol.getAddress();
+										if(symbol.getType() && symbol.getType().get() == llvm::object::SymbolRef::ST_Function && name && address) {
+											Uptr loadedAddress = Uptr(*address);
+											auto symbolSection = symbol.getSection();
+											if(symbolSection)
+												loadedAddress += (Uptr)o.getSectionLoadAddress(*symbolSection.get());
+											Uptr functionDefIndex;
+											if(getFunctionIndexFromExternalName(name->data(),functionDefIndex))
+												function_to_offsets[functionDefIndex] = loadedAddress-(uintptr_t)unitmemorymanager->code->data();
 #if PRINT_DISASSEMBLY
-                                 disassembleFunction((U8*)loadedAddress, symbolSizePair.second);
+											disassembleFunction((U8*)loadedAddress, symbolSizePair.second);
 #endif
-                              }
-                           }
-                       }
-                       );
+										}
+									}
+							  }
+							  );
 			objectLayer->setProcessAllSections(true);
 			compileLayer = llvm::make_unique<CompileLayer>(*objectLayer,llvm::orc::SimpleCompiler(*targetMachine));
 		}
 
 		void compile(llvm::Module* llvmModule);
 
-      std::shared_ptr<UnitMemoryManager> unitmemorymanager = std::make_shared<UnitMemoryManager>();
+		std::shared_ptr<UnitMemoryManager> unitmemorymanager = std::make_shared<UnitMemoryManager>();
 
-      std::map<unsigned, uintptr_t> function_to_offsets;
-      std::vector<uint8_t> final_pic_code;
+		std::map<unsigned, uintptr_t> function_to_offsets;
+		std::vector<uint8_t> final_pic_code;
 
 		~JITModule()
 		{
@@ -197,7 +197,7 @@ namespace LLVMJIT
 	private:
 		typedef llvm::orc::LegacyIRCompileLayer<llvm::orc::LegacyRTDyldObjectLinkingLayer, llvm::orc::SimpleCompiler> CompileLayer;
 
-      llvm::orc::ExecutionSession ES;
+		llvm::orc::ExecutionSession ES;
 		std::unique_ptr<llvm::orc::LegacyRTDyldObjectLinkingLayer> objectLayer;
 		std::unique_ptr<CompileLayer> compileLayer;
 	};
@@ -243,34 +243,34 @@ namespace LLVMJIT
 
 		if(DUMP_OPTIMIZED_MODULE) { printModule(llvmModule,"llvmOptimizedDump"); }
 
-      llvm::orc::VModuleKey K = ES.allocateVModule();
-      std::unique_ptr<llvm::Module> mod(llvmModule);
-      WAVM_ASSERT_THROW(!compileLayer->addModule(K, std::move(mod)));
+		llvm::orc::VModuleKey K = ES.allocateVModule();
+		std::unique_ptr<llvm::Module> mod(llvmModule);
+		WAVM_ASSERT_THROW(!compileLayer->addModule(K, std::move(mod)));
 		WAVM_ASSERT_THROW(!compileLayer->emitAndFinalize(K));
 
-      final_pic_code = std::move(*unitmemorymanager->code);
+		final_pic_code = std::move(*unitmemorymanager->code);
 	}
 
 	instantiated_code instantiateModule(const IR::Module& module)
 	{
-      static bool inited;
-      if(!inited) {
-         inited = true;
-         llvm::InitializeNativeTarget();
-         llvm::InitializeNativeTargetAsmPrinter();
-         llvm::InitializeNativeTargetAsmParser();
-         llvm::InitializeNativeTargetDisassembler();
-         llvm::sys::DynamicLibrary::LoadLibraryPermanently(nullptr);
+		static bool inited;
+		if(!inited) {
+			inited = true;
+			llvm::InitializeNativeTarget();
+			llvm::InitializeNativeTargetAsmPrinter();
+			llvm::InitializeNativeTargetAsmParser();
+			llvm::InitializeNativeTargetDisassembler();
+			llvm::sys::DynamicLibrary::LoadLibraryPermanently(nullptr);
 
-         auto targetTriple = llvm::sys::getProcessTriple();
+			auto targetTriple = llvm::sys::getProcessTriple();
 
-         llvm::TargetOptions to;
-         to.EmitStackSizeSection = 1;
+			llvm::TargetOptions to;
+			to.EmitStackSizeSection = 1;
 
-         targetMachine = llvm::EngineBuilder().setRelocationModel(llvm::Reloc::PIC_).setCodeModel(llvm::CodeModel::Small).setTargetOptions(to).selectTarget(
-            llvm::Triple(targetTriple),"","",llvm::SmallVector<std::string,0>()
-            );
-      }
+			targetMachine = llvm::EngineBuilder().setRelocationModel(llvm::Reloc::PIC_).setCodeModel(llvm::CodeModel::Small).setTargetOptions(to).selectTarget(
+				llvm::Triple(targetTriple),"","",llvm::SmallVector<std::string,0>()
+				);
+		}
 
 		// Emit LLVM IR for the module.
 		auto llvmModule = emitModule(module);
@@ -280,29 +280,29 @@ namespace LLVMJIT
 		// Compile the module.
 		jitModule->compile(llvmModule);
 
-      unsigned num_functions_stack_size_found = 0;
-      for(const auto& stacksizes : jitModule->unitmemorymanager->stack_sizes) {
-         fc::datastream<const unsigned char*> ds(stacksizes.data(), stacksizes.size());
-         while(ds.remaining()) {
-            uint64_t funcaddr;
-            fc::unsigned_int stack_size;
-            fc::raw::unpack(ds, funcaddr);
-            fc::raw::unpack(ds, stack_size);
+		unsigned num_functions_stack_size_found = 0;
+		for(const auto& stacksizes : jitModule->unitmemorymanager->stack_sizes) {
+			fc::datastream<const unsigned char*> ds(stacksizes.data(), stacksizes.size());
+			while(ds.remaining()) {
+				uint64_t funcaddr;
+				fc::unsigned_int stack_size;
+				fc::raw::unpack(ds, funcaddr);
+				fc::raw::unpack(ds, stack_size);
 
-            ++num_functions_stack_size_found;
-            if(stack_size > 16u*1024u)
-               _exit(1);
-         }
-      }
-      if(num_functions_stack_size_found != module.functions.defs.size())
-         _exit(1);
-      if(jitModule->final_pic_code.size() >= 16u*1024u*1024u)
-         _exit(1);
+				++num_functions_stack_size_found;
+				if(stack_size > 16u*1024u)
+					_exit(1);
+			}
+		}
+		if(num_functions_stack_size_found != module.functions.defs.size())
+			_exit(1);
+		if(jitModule->final_pic_code.size() >= 16u*1024u*1024u)
+			_exit(1);
 
-      instantiated_code ret;
-      ret.code = jitModule->final_pic_code;
-      ret.function_offsets = jitModule->function_to_offsets;
-      return ret;
+		instantiated_code ret;
+		ret.code = jitModule->final_pic_code;
+		ret.function_offsets = jitModule->function_to_offsets;
+		return ret;
 	}
 }
 }}}
