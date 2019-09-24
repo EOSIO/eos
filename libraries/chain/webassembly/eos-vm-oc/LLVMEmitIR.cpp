@@ -864,7 +864,7 @@ namespace LLVMJIT
 				auto byteIndex = pop(); \
 				auto pointer = coerceByteIndexToPointer(byteIndex,imm.offset,llvmMemoryType); \
 				auto load = irBuilder.CreateLoad(pointer); \
-				load->setAlignment(1<<imm.alignmentLog2); \
+				load->setAlignment(1); \
 				load->setVolatile(true); \
 				push(conversionOp(load,asLLVMType(ValueType::valueTypeId))); \
 			}
@@ -877,7 +877,7 @@ namespace LLVMJIT
 				auto memoryValue = conversionOp(value,llvmMemoryType); \
 				auto store = irBuilder.CreateStore(memoryValue,pointer); \
 				store->setVolatile(true); \
-				store->setAlignment(1<<imm.alignmentLog2); \
+				store->setAlignment(1); \
 			}
 			
 		llvm::Value* identityConversion(llvm::Value* value,llvm::Type* type) { return value; }
