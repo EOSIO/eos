@@ -39,7 +39,7 @@ set( NODE_EXECUTABLE_NAME nodeos )
 set( KEY_STORE_EXECUTABLE_NAME keosd )
 
 # Conan (https://conan.io/)
-if("${USE_CONAN}" STREQUAL "TRUE" OR "$ENV{USE_CONAN}" STREQUAL "true")
+if("${USE_CONAN}" STREQUAL "true" OR "$ENV{USE_CONAN}" STREQUAL "true")
   include(${CMAKE_SOURCE_DIR}/.conan/conan.cmake)
 
   conan_check(VERSION 1.0.0 REQUIRED)
@@ -65,9 +65,6 @@ if("${USE_CONAN}" STREQUAL "TRUE" OR "$ENV{USE_CONAN}" STREQUAL "true")
   set(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
   if(UNIX)
     if(APPLE)
-      execute_process(
-        COMMAND install_name_tool -id "${CONAN_LIB_DIRS_GETTEXT}/libgnuintl.8.dylib" ${CONAN_LIB_DIRS_GETTEXT}/libgnuintl.8.dylib
-      )
       set(CMAKE_MACOSX_RPATH ON)
       set(Intl_LIBRARY ${CONAN_LIB_DIRS_GETTEXT}/libgnuintl.dylib)
     else()
@@ -265,48 +262,3 @@ CONFIGURE_FILE(
   "${CMAKE_CURRENT_SOURCE_DIR}/scripts/uninstall.cmake"
 IMMEDIATE @ONLY )
 ADD_CUSTOM_TARGET(uninstall "${CMAKE_COMMAND}" -P "${CMAKE_CURRENT_SOURCE_DIR}/scripts/uninstall.cmake")
-
-if(CONAN)
-  # Conan (https://conan.io/)
-  include(${CMAKE_SOURCE_DIR}/.conan/conan.cmake)
-  conan_check(VERSION 1.0.0 REQUIRED)
-  conan_add_remote(NAME bincrafters INDEX 1
-      URL https://api.bintray.com/conan/bincrafters/public-conan)
-  if("$ENV{PINNED}" STREQUAL "false" OR "$ENV{UNPINNED}" STREQUAL "true")
-      conan_cmake_run(CONANFILE .conan/conanfile-unpinned.txt
-          BASIC_SETUP
-          CMAKE_TARGETS
-          TARGETS
-          NO_OUTPUT_DIRS
-          KEEP_RPATHS
-          BUILD missing)
-  else()
-      conan_cmake_run(CONANFILE .conan/conanfile.txt
-          BASIC_SETUP
-          CMAKE_TARGETS
-          TARGETS
-          NO_OUTPUT_DIRS
-          KEEP_RPATHS
-          BUILD missing)
-  endif()
-  if(UNIX)
-    if(APPLE)
-      set(Intl_LIBRARY ${CONAN_LIB_DIRS_GETTEXT}/libgnuintl.a)
-      set(CMAKE_EXE_LINKER_FLAGS "-lobjc -framework IOKit -framework CoreFoundation")
-      # set(CMAKE_INSTALL_RPATH "@executable_path/../lib")
-    else()
-      set(Intl_LIBRARY ${CONAN_LIB_DIRS_GETTEXT}/libgnuintl.a)
-      # set(CMAKE_INSTALL_RPATH "$ORIGIN/../lib")
-    endif()
-  endif()
-  set(CMAKE_BUILD_WITH_INSTALL_RPATH ON)
-  SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
-  include_directories(${CONAN_INCLUDE_DIRS_LIBCURL} ${CONAN_INCLUDE_DIRS_OPENSSL})
-  link_directories(${CONAN_LIB_DIRS_OPENSSL} ${CONAN_LIB_DIRS_LIBCURL} ${CONAN_LIB_DIRS_ZLIB})
-  execute_process(
-      COMMAND mkdir -p ${CONAN_LIB_DIRS_OPENSSL}/pkgconfig
-      COMMAND cp ${CMAKE_SOURCE_DIR}/build/OpenSSL.pc ${CONAN_LIB_DIRS_OPENSSL}/pkgconfig/libcrypto.pc
-      COMMAND cp ${CMAKE_SOURCE_DIR}/build/OpenSSL.pc ${CONAN_LIB_DIRS_OPENSSL}/pkgconfig/libssl.pc
-  )
-  # End Conan
-endif()
