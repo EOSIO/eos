@@ -1,7 +1,5 @@
 #!/bin/bash
 set -eo pipefail
-. ./.cicd/helpers/general.sh
-mkdir -p $BUILD_DIR
 
 if [[ $IMAGE_TAG == 'amazon_linux-2-unpinned' ]]; then
     yum update -y
