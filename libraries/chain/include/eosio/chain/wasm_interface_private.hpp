@@ -3,6 +3,7 @@
 #include <eosio/chain/wasm_interface.hpp>
 #include <eosio/chain/webassembly/wavm.hpp>
 #include <eosio/chain/webassembly/wabt.hpp>
+#include <eosio/chain/webassembly/eos-vm.hpp>
 #include <eosio/chain/webassembly/runtime_interface.hpp>
 #include <eosio/chain/wasm_eosio_injection.hpp>
 #include <eosio/chain/transaction_context.hpp>
@@ -16,10 +17,15 @@
 #include "WAST/WAST.h"
 #include "IR/Validate.h"
 
+#if defined(EOSIO_EOS_VM_RUNTIME_ENABLED) || defined(EOSIO_EOS_VM_JIT_RUNTIME_ENABLED)
+#include <eosio/vm/allocator.hpp>
+#endif
+
 using namespace fc;
 using namespace eosio::chain::webassembly;
 using namespace IR;
 using namespace Runtime;
+
 using boost::multi_index_container;
 
 namespace eosio { namespace chain {
@@ -44,6 +50,14 @@ namespace eosio { namespace chain {
 #endif
          if(vm == wasm_interface::vm_type::wabt)
             runtime_interface = std::make_unique<webassembly::wabt_runtime::wabt_runtime>();
+#ifdef EOSIO_EOS_VM_RUNTIME_ENABLED
+         if(vm == wasm_interface::vm_type::eos_vm)
+            runtime_interface = std::make_unique<webassembly::eos_vm_runtime::eos_vm_runtime<eosio::vm::interpreter>>();
+#endif
+#ifdef EOSIO_EOS_VM_JIT_RUNTIME_ENABLED
+         if(vm == wasm_interface::vm_type::eos_vm_jit)
+            runtime_interface = std::make_unique<webassembly::eos_vm_runtime::eos_vm_runtime<eosio::vm::jit>>();
+#endif
          if(!runtime_interface)
             EOS_THROW(wasm_exception, "${r} wasm runtime not supported on this platform and/or configuration", ("r", vm));
       }
@@ -55,6 +69,13 @@ namespace eosio { namespace chain {
                   e.module.release();
                });
       }
+
+#if defined(EOSIO_EOS_VM_RUNTIME_ENABLED) || defined(EOSIO_EOS_VM_JIT_RUNTIME_ENABLED)
+      static eosio::vm::wasm_allocator* get_wasm_allocator() {
+         static eosio::vm::wasm_allocator walloc;
+         return &walloc;
+      }
+#endif
 
       std::vector<uint8_t> parse_initial_memory(const Module& module) {
          std::vector<uint8_t> mem_image;
@@ -115,28 +136,31 @@ namespace eosio { namespace chain {
             });
             trx_context.pause_billing_timer();
             IR::Module module;
+            std::vector<U8> bytes = {
+                (const U8*)codeobject->code.data(),
+                (const U8*)codeobject->code.data() + codeobject->code.size()};
             try {
-               Serialization::MemoryInputStream stream((const U8*)codeobject->code.data(), codeobject->code.size());
+               Serialization::MemoryInputStream stream((const U8*)bytes.data(),
+                                                       bytes.size());
                WASM::serialize(stream, module);
                module.userSections.clear();
-            } catch(const Serialization::FatalSerializationException& e) {
+            } catch (const Serialization::FatalSerializationException& e) {
                EOS_ASSERT(false, wasm_serialization_error, e.message.c_str());
-            } catch(const IR::ValidationException& e) {
+            } catch (const IR::ValidationException& e) {
                EOS_ASSERT(false, wasm_serialization_error, e.message.c_str());
             }
-
-            wasm_injections::wasm_binary_injection<true> injector(module);
-            injector.inject();
-
-            std::vector<U8> bytes;
-            try {
-               Serialization::ArrayOutputStream outstream;
-               WASM::serialize(outstream, module);
-               bytes = outstream.getBytes();
-            } catch(const Serialization::FatalSerializationException& e) {
-               EOS_ASSERT(false, wasm_serialization_error, e.message.c_str());
-            } catch(const IR::ValidationException& e) {
-               EOS_ASSERT(false, wasm_serialization_error, e.message.c_str());
+            if (runtime_interface->inject_module(module)) {
+               try {
+                  Serialization::ArrayOutputStream outstream;
+                  WASM::serialize(outstream, module);
+                  bytes = outstream.getBytes();
+               } catch (const Serialization::FatalSerializationException& e) {
+                  EOS_ASSERT(false, wasm_serialization_error,
+                             e.message.c_str());
+               } catch (const IR::ValidationException& e) {
+                  EOS_ASSERT(false, wasm_serialization_error,
+                             e.message.c_str());
+               }
             }
 
             wasm_instantiation_cache.modify(it, [&](auto& c) {
@@ -175,8 +199,9 @@ namespace eosio { namespace chain {
 #define _WRAPPED_SEQ(SEQ) BOOST_PP_CAT(_ADD_PAREN_1 SEQ, _END)
 
 #define _REGISTER_INTRINSIC_EXPLICIT(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)\
-   _REGISTER_WAVM_INTRINSIC(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)\
-   _REGISTER_WABT_INTRINSIC(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)
+   _REGISTER_WAVM_INTRINSIC(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)         \
+   _REGISTER_WABT_INTRINSIC(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)         \
+   _REGISTER_EOS_VM_INTRINSIC(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)
 
 #define _REGISTER_INTRINSIC4(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)\
    _REGISTER_INTRINSIC_EXPLICIT(CLS, MOD, METHOD, WASM_SIG, NAME, SIG )
