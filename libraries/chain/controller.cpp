@@ -625,6 +625,14 @@ struct controller_impl {
 
       auto header_itr = validate_db_version( db );
 
+      {
+         const auto& state_chain_id = db.get<global_property_object>().chain_id;
+         EOS_ASSERT( state_chain_id == chain_id, chain_id_type_exception,
+                     "chain ID in state (${state_chain_id}) does not match the chain ID that controller was constructed with (${controller_chain_id})",
+                     ("state_chain_id", state_chain_id)("controller_chain_id", chain_id)
+         );
+      }
+
       // upgrade to the latest compatible version
       if (header_itr->version != database_header_object::current_version) {
          db.modify(*header_itr, [](auto& header) {
