@@ -281,7 +281,7 @@ struct controller_impl {
       apply_handlers[receiver][make_pair(contract,action)] = v;
    }
 
-   controller_impl( const controller::config& cfg, controller& s, protocol_feature_set&& pfs, const fc::optional<chain_id_type>& expected_chain_id )
+   controller_impl( const controller::config& cfg, controller& s, protocol_feature_set&& pfs, const chain_id_type& chain_id )
    :self(s),
     db( cfg.state_dir,
         cfg.read_only ? database::read_only : database::read_write,
@@ -296,21 +296,10 @@ struct controller_impl {
     authorization( s, db ),
     protocol_features( std::move(pfs) ),
     conf( cfg ),
-    chain_id( (db.revision() >= 1) ? db.get<global_property_object>().chain_id
-                                   : ( expected_chain_id ? *expected_chain_id
-                                                         : genesis_state().compute_chain_id() ) ),
+    chain_id( chain_id ),
     read_mode( cfg.read_mode ),
     thread_pool( "chain", cfg.thread_pool_size )
    {
-      if( expected_chain_id && db.revision() >= 1 ) {
-         const auto& actual_chain_id = db.get<global_property_object>().chain_id;
-         EOS_ASSERT( *expected_chain_id == actual_chain_id,
-                     database_exception,
-                     "Unexpected chain ID in state. Expected: ${expected}. Actual: ${actual}.",
-                     ("expected", *expected_chain_id)("actual", actual_chain_id)
-         );
-      }
-
       fork_db.open( [this]( block_timestamp_type timestamp,
                             const flat_set<digest_type>& cur_features,
                             const vector<digest_type>& new_features )
@@ -617,16 +606,24 @@ struct controller_impl {
       init(shutdown);
    }
 
-   void init(std::function<bool()> shutdown) {
-      uint32_t lib_num = (blog.head() ? blog.head()->block_num() : fork_db.root()->block_num);
+
+   static auto validate_db_version( const chainbase::database& db ) {
       // check database version
       const auto& header_idx = db.get_index<database_header_multi_index>().indices().get<by_id>();
 
       EOS_ASSERT(header_idx.begin() != header_idx.end(), bad_database_version_exception,
                  "state database version pre-dates versioning, please restore from a compatible snapshot or replay!");
 
-      const auto& header_itr = header_idx.begin();
+      auto header_itr = header_idx.begin();
       header_itr->validate();
+
+      return header_itr;
+   }
+
+   void init(std::function<bool()> shutdown) {
+      uint32_t lib_num = (blog.head() ? blog.head()->block_num() : fork_db.root()->block_num);
+
+      auto header_itr = validate_db_version( db );
 
       // upgrade to the latest compatible version
       if (header_itr->version != database_header_object::current_version) {
@@ -2365,13 +2362,13 @@ const protocol_feature_manager& controller::get_protocol_feature_manager()const
    return my->protocol_features;
 }
 
-controller::controller( const controller::config& cfg, const fc::optional<chain_id_type>& expected_chain_id )
-:my( new controller_impl( cfg, *this, protocol_feature_set{}, expected_chain_id ) )
+controller::controller( const controller::config& cfg, const chain_id_type& chain_id )
+:my( new controller_impl( cfg, *this, protocol_feature_set{}, chain_id ) )
 {
 }
 
-controller::controller( const config& cfg, protocol_feature_set&& pfs, const fc::optional<chain_id_type>& expected_chain_id )
-:my( new controller_impl( cfg, *this, std::move(pfs), expected_chain_id ) )
+controller::controller( const config& cfg, protocol_feature_set&& pfs, const chain_id_type& chain_id )
+:my( new controller_impl( cfg, *this, std::move(pfs), chain_id ) )
 {
 }
 
@@ -3186,6 +3183,23 @@ chain_id_type controller::extract_chain_id(snapshot_reader& snapshot) {
       chain_id = global_properties.chain_id;
    });
    return chain_id;
+}
+
+fc::optional<chain_id_type> controller::extract_chain_id_from_db( const path& state_dir ) {
+   chainbase::database db( state_dir, chainbase::database::read_only );
+
+   try {
+      db.add_index<database_header_multi_index>();
+      db.add_index<global_property_multi_index>();
+   } catch( ... ) {
+      return {};
+   }
+
+   controller_impl::validate_db_version( db );
+
+   if( db.revision() < 1 ) return {};
+
+   return db.get<global_property_object>().chain_id;
 }
 
 /// Protocol feature activation handlers:
