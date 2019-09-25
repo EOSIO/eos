@@ -1107,7 +1107,6 @@ class action_api : public context_aware_api {
          if( buffer_size == 0 ) return s;
 
          auto copy_size = std::min( static_cast<size_t>(buffer_size), s );
-         const char* d = context.get_action().data.data();
          memcpy( (char*)memory.value, context.get_action().data.data(), copy_size );
 
          return copy_size;
