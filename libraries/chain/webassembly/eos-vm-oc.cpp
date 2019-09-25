@@ -48,6 +48,7 @@ std::unique_ptr<wasm_instantiated_module_interface> eosvmoc_runtime::instantiate
    return std::make_unique<eosvmoc_instantiated_module>(code_hash, vm_type, *this);
 }
 
+//never called. EOS-VM OC overrides eosio_exit to its own implementation
 void eosvmoc_runtime::immediately_exit_currently_running_module() {}
 
 }}}}

@@ -12,6 +12,7 @@ const intrinsic_map_t& get_intrinsic_map() {
 }
 
 intrinsic::intrinsic(const char* n, const IR::FunctionType* t, void* f, size_t o) {
+   the_intrinsic_map().erase(n);
    the_intrinsic_map().emplace(n, intrinsic_entry{t, f, o});
 }
 
