@@ -2100,7 +2100,7 @@ namespace eosio {
 
    // called from any thread
    bool connection::resolve_and_connect() {
-      if( no_retry != go_away_reason::no_reason) {
+      if( no_retry != go_away_reason::no_reason && no_retry != go_away_reason::wrong_version ) {
          fc_dlog( logger, "Skipping connect due to go_away reason ${r}",("r", reason_str( no_retry )));
          return false;
       }
@@ -2150,7 +2150,7 @@ namespace eosio {
 
    // called from connection strand
    void connection::connect( const std::shared_ptr<tcp::resolver>& resolver, tcp::resolver::results_type endpoints ) {
-      if( no_retry != go_away_reason::no_reason) {
+      if( no_retry != go_away_reason::no_reason && no_retry != go_away_reason::wrong_version ) {
          return;
       }
       connecting = true;
@@ -2617,12 +2617,18 @@ namespace eosio {
 
    void connection::handle_message( const go_away_message& msg ) {
       peer_wlog( this, "received go_away_message, reason = ${r}", ("r", reason_str( msg.reason )) );
+      bool retry = no_retry == no_reason; // if no previous go away message
       no_retry = msg.reason;
       if( msg.reason == duplicate ) {
          node_id = msg.node_id;
       }
+      if( msg.reason == wrong_version ) {
+         if( !retry ) no_retry = fatal_other; // only retry once on wrong version
+      } else {
+         retry = false;
+      }
       flush_queues();
-      close( false );
+      close( retry ); // reconnect if wrong_version
    }
 
    void connection::handle_message( const time_message& msg ) {
@@ -3126,7 +3132,11 @@ namespace eosio {
    // call from connection strand
    void connection::populate_handshake( handshake_message& hello ) {
       namespace sc = std::chrono;
-      hello.network_version = net_version_base + net_version;
+      if( no_retry == wrong_version ) {
+         hello.network_version = net_version_base + proto_explicit_sync; // try previous version
+      } else {
+         hello.network_version = net_version_base + net_version;
+      }
       hello.chain_id = my_impl->chain_id;
       hello.node_id = my_impl->node_id;
       hello.key = my_impl->get_authentication_key();
