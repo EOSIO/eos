@@ -339,7 +339,7 @@ class softfloat_api : public context_aware_api {
          if ( f32_sign_bit(a) != f32_sign_bit(b) ) {
             return f32_sign_bit(a) ? af : bf;
          }
-	 return ::f32_lt(a,b) ? af : bf;
+         return ::f32_lt(a,b) ? af : bf;
       }
       float _eosio_f32_max( float af, float bf ) {
          float32_t a = to_softfloat32(af);
@@ -353,7 +353,7 @@ class softfloat_api : public context_aware_api {
          if ( f32_sign_bit(a) != f32_sign_bit(b) ) {
             return f32_sign_bit(a) ? bf : af;
          }
-	 return ::f32_lt( a, b ) ? bf : af;
+         return ::f32_lt( a, b ) ? bf : af;
       }
       float _eosio_f32_copysign( float af, float bf ) {
          float32_t a = to_softfloat32(af);
@@ -504,7 +504,7 @@ class softfloat_api : public context_aware_api {
             return bf;
          if (f64_sign_bit(a) != f64_sign_bit(b))
             return f64_sign_bit(a) ? af : bf;
-	 return ::f64_lt( a, b ) ? af : bf;
+         return ::f64_lt( a, b ) ? af : bf;
       }
       double _eosio_f64_max( double af, double bf ) {
          float64_t a = to_softfloat64(af);
@@ -515,7 +515,7 @@ class softfloat_api : public context_aware_api {
             return bf;
          if (f64_sign_bit(a) != f64_sign_bit(b))
             return f64_sign_bit(a) ? bf : af;
-	 return ::f64_lt( a, b ) ? bf : af;
+         return ::f64_lt( a, b ) ? bf : af;
       }
       double _eosio_f64_copysign( double af, double bf ) {
          float64_t a = to_softfloat64(af);
@@ -1003,7 +1003,7 @@ class authorization_api : public context_aware_api {
    }
 
    void require_auth2( account_name account,
-			              permission_name permission) {
+                       permission_name permission) {
       context.require_authorization( account, permission );
    }
 
