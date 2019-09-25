@@ -517,10 +517,10 @@ BOOST_FIXTURE_TEST_CASE( get_table_next_key_test, TESTER ) try {
 
    chain_apis::read_only plugin(*(this->control), fc::microseconds::maximum());
    chain_apis::read_only::get_table_rows_params params{
+      .json=true,
       .code=N(test),
       .scope="test",
-      .limit=1,
-      .json=true
+      .limit=1
    };
 
    params.table = N(numobjs);
