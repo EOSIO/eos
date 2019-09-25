@@ -17,8 +17,6 @@
 using namespace appbase;
 using namespace eosio;
 
-namespace eosio { namespace chain { namespace eosvmoc { void start_compile_monitor(); }}}
-
 namespace detail {
 
 void configure_logging(const bfs::path& config_path)
@@ -82,7 +80,6 @@ enum return_codes {
 
 int main(int argc, char** argv)
 {
-   eosio::chain::eosvmoc::start_compile_monitor();
    try {
       app().set_version(eosio::nodeos::config::version);
 

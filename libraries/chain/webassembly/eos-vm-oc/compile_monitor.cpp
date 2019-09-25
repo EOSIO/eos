@@ -275,16 +275,20 @@ struct compile_monitor_trampoline {
       close(socks[1]);
    }
 
-   pid_t compile_manager_pid;
-   int compile_manager_fd;
+   pid_t compile_manager_pid = -1;
+   int compile_manager_fd = -1;
 };
 
 static compile_monitor_trampoline the_compile_monitor_trampoline;
-void start_compile_monitor() {
+extern "C" int __real_main(int, char*[]);
+extern "C" int __wrap_main(int argc, char* argv[]) {
    the_compile_monitor_trampoline.start();
+   return __real_main(argc, argv);
 }
 
 wrapped_fd get_connection_to_compile_monitor(int cache_fd) {
+   FC_ASSERT(the_compile_monitor_trampoline.compile_manager_fd >= 0, "EOS-VM oop connection doesn't look active");
+
    int socks[2]; //0: our socket to compile_manager_session, 1: socket we'll give to compile_maanger_session
    socketpair(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0, socks);
    wrapped_fd socket_to_monitor_session(socks[0]);
