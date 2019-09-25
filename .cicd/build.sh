@@ -3,6 +3,7 @@ set -eo pipefail
 . ./.cicd/helpers/general.sh
 mkdir -p $BUILD_DIR
 CMAKE_EXTRAS="-DCMAKE_BUILD_TYPE='Release' -DCORE_SYMBOL_NAME='SYS'"
+[[ "$USE_CONAN" == 'true' ]] && CMAKE_EXTRAS="$CMAKE_EXTRAS -DUSE_CONAN=true"
 if [[ $(uname) == 'Darwin' ]]; then
     # You can't use chained commands in execute
     [[ $TRAVIS == true ]] && export PINNED=false && ccache -s && CMAKE_EXTRAS="-DCMAKE_CXX_COMPILER_LAUNCHER=ccache" && ./$CICD_DIR/platforms/macos-10.14.sh
@@ -43,15 +44,11 @@ else # Linux
         [[ $ENABLE_INSTALL == true ]] && COMMANDS="cp -r $MOUNTED_DIR /root/eosio && cd /root/eosio/build &&"
         COMMANDS="$COMMANDS $BUILD_COMMANDS"
         [[ $ENABLE_INSTALL == true ]] && COMMANDS="$COMMANDS && make install"
-        # Conan Builds
-        if [[ "$USE_CONAN" == 'true' ]]; then
-            FULL_TAG='ubuntu:18.04'
-            COMMANDS="$MOUNTED_DIR/.cicd/conan-build.sh"
-        fi
     elif [[ $TRAVIS == true ]]; then
         ARGS="$ARGS -v /usr/lib/ccache -v $HOME/.ccache:/opt/.ccache -e JOBS -e TRAVIS -e CCACHE_DIR=/opt/.ccache"
         COMMANDS="ccache -s && $BUILD_COMMANDS"
     fi
+    [[ "$USE_CONAN" == 'true' ]] && COMMANDS="$COMMANDS && cp -r ~/.conan $MOUNTED_DIR/conan"
     COMMANDS="$PRE_COMMANDS && $COMMANDS"
     echo "$ docker run $ARGS $(buildkite-intrinsics) $FULL_TAG bash -c \"$COMMANDS\""
     eval docker run $ARGS $(buildkite-intrinsics) $FULL_TAG bash -c \"$COMMANDS\"
