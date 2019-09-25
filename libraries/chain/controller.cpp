@@ -3186,20 +3186,23 @@ chain_id_type controller::extract_chain_id(snapshot_reader& snapshot) {
 }
 
 fc::optional<chain_id_type> controller::extract_chain_id_from_db( const path& state_dir ) {
-   chainbase::database db( state_dir, chainbase::database::read_only );
-
    try {
+      chainbase::database db( state_dir, chainbase::database::read_only );
+
       db.add_index<database_header_multi_index>();
       db.add_index<global_property_multi_index>();
+
+      controller_impl::validate_db_version( db );
+
+      if( db.revision() < 1 ) return {};
+
+      return db.get<global_property_object>().chain_id;
+   } catch( const bad_database_version_exception& ) {
+      throw;
    } catch( ... ) {
-      return {};
    }
 
-   controller_impl::validate_db_version( db );
-
-   if( db.revision() < 1 ) return {};
-
-   return db.get<global_property_object>().chain_id;
+   return {};
 }
 
 /// Protocol feature activation handlers:
