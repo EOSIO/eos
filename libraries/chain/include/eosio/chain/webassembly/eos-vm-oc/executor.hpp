@@ -32,7 +32,7 @@ class executor {
 
       std::exception_ptr executors_exception_ptr;
       sigjmp_buf executors_sigjmp_buf;
-      std::list<std::vector<uint8_t>> executors_bounce_buffers;
+      std::list<std::vector<std::byte>> executors_bounce_buffers;
 };
 
 }}}

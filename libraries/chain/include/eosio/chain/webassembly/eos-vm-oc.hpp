@@ -61,7 +61,7 @@ inline array_ptr<T> array_ptr_impl (U32 ptr, size_t length)
       EOS_ASSERT(length < INT_MAX/(uint32_t)sizeof(T), wasm_execution_error, "access violation");
    check = p[ptr+length*sizeof(T)-1];
 
-   return array_ptr<T>((T*)((char*)(cb_ptr->full_linear_memory_start) + ptr));
+   return array_ptr<T>((T*)(cb_ptr->full_linear_memory_start + ptr));
 }
 
 /**
@@ -73,7 +73,7 @@ inline null_terminated_ptr null_terminated_ptr_impl(U32 ptr)
    GS_PTR char* p = (GS_PTR char*)ptr;
    do {
       if(*p == '\0')
-         return null_terminated_ptr((char*)(cb_ptr->full_linear_memory_start) + ptr);
+         return null_terminated_ptr(cb_ptr->full_linear_memory_start + ptr);
    } while(p++);
    __builtin_unreachable();
 }
@@ -402,7 +402,7 @@ struct intrinsic_invoker_impl<is_injected, Ret, std::tuple<array_ptr<T>, size_t,
       T* base = array_ptr_impl<T>((U32)ptr, length);
       if ( reinterpret_cast<uintptr_t>(base) % alignof(T) != 0 ) {
          EOSVMOC_MEMORY_PTR_cb_ptr;
-         std::vector<uint8_t>& copy = cb_ptr->bounce_buffers->emplace_back(length > 0 ? length*sizeof(T) : 1);
+         std::vector<std::byte>& copy = cb_ptr->bounce_buffers->emplace_back(length > 0 ? length*sizeof(T) : 1);
          T* copy_ptr = (T*)&copy[0];
          memcpy( (void*)copy.data(), (void*)base, length * sizeof(T) );
          return Then(static_cast<array_ptr<T>>(copy_ptr), length, rest..., translated...);
@@ -417,7 +417,7 @@ struct intrinsic_invoker_impl<is_injected, Ret, std::tuple<array_ptr<T>, size_t,
       T* base = array_ptr_impl<T>((U32)ptr, length);
       if ( reinterpret_cast<uintptr_t>(base) % alignof(T) != 0 ) {
          EOSVMOC_MEMORY_PTR_cb_ptr;
-         std::vector<uint8_t>& copy = cb_ptr->bounce_buffers->emplace_back(length > 0 ? length*sizeof(T) : 1);
+         std::vector<std::byte>& copy = cb_ptr->bounce_buffers->emplace_back(length > 0 ? length*sizeof(T) : 1);
          T* copy_ptr = (T*)&copy[0];
          memcpy( (void*)copy.data(), (void*)base, length * sizeof(T) );
          Ret ret = Then(static_cast<array_ptr<T>>(copy_ptr), length, rest..., translated...);
@@ -604,7 +604,7 @@ struct intrinsic_invoker_impl<is_injected, Ret, std::tuple<T &, Inputs...>, std:
       char check;
       check = p[(U32)ptr];
       check = p[(U32)(ptr)+sizeof(T)-1u];
-      T &base = *(T*)(((char*)(cb_ptr->full_linear_memory_start))+(U32)ptr);
+      T &base = *(T*)(cb_ptr->full_linear_memory_start+(U32)ptr);
 
       if ( reinterpret_cast<uintptr_t>(&base) % alignof(T) != 0 ) {
          std::remove_const_t<T> copy;
@@ -624,7 +624,7 @@ struct intrinsic_invoker_impl<is_injected, Ret, std::tuple<T &, Inputs...>, std:
       char check;
       check = p[(U32)ptr];
       check = p[(U32)(ptr)+sizeof(T)-1u];
-      T &base = *(T*)(((char*)(cb_ptr->full_linear_memory_start))+(U32)ptr);
+      T &base = *(T*)(cb_ptr->full_linear_memory_start+(U32)ptr);
 
       if ( reinterpret_cast<uintptr_t>(&base) % alignof(T) != 0 ) {
          std::remove_const_t<T> copy;

@@ -28,9 +28,9 @@ struct control_block {
    unsigned current_call_depth_remaining;
    unsigned bouce_buffer_ptr;  //XX remove me
    int64_t current_linear_memory_pages; //-1 if no memory
-   uintptr_t full_linear_memory_start;
+   char* full_linear_memory_start;
    sigjmp_buf* jmp;
-   std::list<std::vector<uint8_t>>* bounce_buffers;
+   std::list<std::vector<std::byte>>* bounce_buffers;
    uintptr_t running_code_base;
    bool is_running;
 };

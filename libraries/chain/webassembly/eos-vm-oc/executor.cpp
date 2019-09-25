@@ -83,7 +83,7 @@ static int32_t grow_memory(int32_t grow, int32_t max) {
    cb_ptr->current_linear_memory_pages += grow_amount;
 
    if(grow_amount > 0)
-      memset((void*)(cb_ptr->full_linear_memory_start + previous_page_count*64u*1024u), 0, grow_amount*64u*1024u);
+      memset(cb_ptr->full_linear_memory_start + previous_page_count*64u*1024u, 0, grow_amount*64u*1024u);
 
    return (int32_t)previous_page_count;
 }
@@ -197,7 +197,7 @@ void executor::execute(const code_descriptor& code, const memory& mem, apply_con
    cb->current_call_depth_remaining = eosio::chain::wasm_constraints::maximum_call_depth+2;
    cb->bouce_buffer_ptr = 0;
    cb->current_linear_memory_pages = code.starting_memory_pages;
-   cb->full_linear_memory_start = (uintptr_t)mem.full_page_memory_base();
+   cb->full_linear_memory_start = (char*)mem.full_page_memory_base();
    cb->jmp = &executors_sigjmp_buf;
    cb->bounce_buffers = &executors_bounce_buffers;
    cb->running_code_base = (uintptr_t)(code_mapping + code.code_begin);
