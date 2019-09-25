@@ -11,6 +11,7 @@
 #include <eosio/chain/abi_serializer.hpp>
 #include <eosio/chain/plugin_interface.hpp>
 #include <eosio/chain/types.hpp>
+#include <eosio/chain/fixed_bytes.hpp>
 
 #include <boost/container/flat_set.hpp>
 #include <boost/multiprecision/cpp_int.hpp>
@@ -51,7 +52,7 @@ struct permission {
 template<typename>
 struct resolver_factory;
 
-// see specializations for uint64_t and double in source file
+// see specializations for uint64_t, uint128_t and double in source file
 template<typename Type>
 Type convert_to_type(const string& str, const string& desc) {
    try {
@@ -64,6 +65,16 @@ uint64_t convert_to_type(const string& str, const string& desc);
 
 template<>
 double convert_to_type(const string& str, const string& desc);
+
+template<typename Type>
+string convert_to_string(const Type& source, const string& key_type, const string& encode_type, const string& desc);
+
+template<>
+string convert_to_string(const chain::key256_t& source, const string& key_type, const string& encode_type, const string& desc);
+
+template<>
+string convert_to_string(const float128_t& source, const string& key_type, const string& encode_type, const string& desc);
+
 
 class read_only {
    const controller& db;
@@ -293,6 +304,7 @@ public:
    struct get_table_rows_result {
       vector<fc::variant> rows; ///< one row per item, either encoded as hex String or JSON object
       bool                more = false; ///< true if last element in data is not the end and sizeof data() < limit
+      string              next_key; ///< fill lower_bound with this value to fetch more rows
    };
 
    get_table_rows_result get_table_rows( const get_table_rows_params& params )const;
@@ -481,6 +493,7 @@ public:
             }
             if( itr != end_itr ) {
                result.more = true;
+               result.next_key = convert_to_string(itr->secondary_key, p.key_type, p.encode_type, "next_key - next lower bound");
             }
          };
 
@@ -555,6 +568,7 @@ public:
             }
             if( itr != end_itr ) {
                result.more = true;
+               result.next_key = convert_to_string(itr->primary_key, p.key_type, p.encode_type, "next_key - next lower bound");
             }
          };
 
@@ -625,13 +639,13 @@ public:
      using index_type = chain::index256_index;
      static auto function() {
         return [](const input_type& v) {
-            chain::key256_t k;
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wstrict-aliasing"
-            k[0] = ((uint128_t *)&v._hash)[0]; //0-127
-            k[1] = ((uint128_t *)&v._hash)[1]; //127-256
-#pragma GCC diagnostic pop
-            return k;
+            // The input is in big endian, i.e. f58262c8005bb64b8f99ec6083faf050c502d099d9929ae37ffed2fe1bb954fb
+            // fixed_bytes will convert the input to array of 2 uint128_t in little endian, i.e. 50f0fa8360ec998f4bb65b00c86282f5 fb54b91bfed2fe7fe39a92d999d002c5
+            // which is the format used by secondary index
+            uint8_t buffer[32];
+            memcpy(buffer, v.data(), 32);
+            fixed_bytes<32> fb(buffer); 
+            return chain::key256_t(fb.get_array());
         };
      }
  };
@@ -643,10 +657,13 @@ public:
      using index_type = chain::index256_index;
      static auto function() {
         return [](const input_type& v) {
-            chain::key256_t k;
-            memset(k.data(), 0, sizeof(k));
-            memcpy(k.data(), v._hash, sizeof(v._hash));
-            return k;
+            // The input is in big endian, i.e. 83a83a3876c64c33f66f33c54f1869edef5b5d4a000000000000000000000000
+            // fixed_bytes will convert the input to array of 2 uint128_t in little endian, i.e. ed69184fc5336ff6334cc676383aa883 0000000000000000000000004a5d5bef
+            // which is the format used by secondary index
+            uint8_t buffer[20];
+            memcpy(buffer, v.data(), 20);
+            fixed_bytes<20> fb(buffer); 
+            return chain::key256_t(fb.get_array());
         };
      }
  };
@@ -657,9 +674,14 @@ public:
      using index_type = chain::index256_index;
      static auto function() {
         return [](const input_type v) {
+            // The input is in little endian of uint256_t, i.e. fb54b91bfed2fe7fe39a92d999d002c550f0fa8360ec998f4bb65b00c86282f5
+            // the following will convert the input to array of 2 uint128_t in little endian, i.e. 50f0fa8360ec998f4bb65b00c86282f5 fb54b91bfed2fe7fe39a92d999d002c5
+            // which is the format used by secondary index
             chain::key256_t k;
-            k[0] = ((uint128_t *)&v)[0]; //0-127
-            k[1] = ((uint128_t *)&v)[1]; //127-256
+            uint8_t buffer[32];
+            boost::multiprecision::export_bits(v, buffer, 8, false);
+            memcpy(&k[0], buffer + 16, 16);
+            memcpy(&k[1], buffer, 16);
             return k;
         };
      }
@@ -736,7 +758,7 @@ FC_REFLECT(eosio::chain_apis::read_only::get_block_header_state_params, (block_n
 FC_REFLECT( eosio::chain_apis::read_write::push_transaction_results, (transaction_id)(processed) )
 
 FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_params, (json)(code)(scope)(table)(table_key)(lower_bound)(upper_bound)(limit)(key_type)(index_position)(encode_type)(reverse)(show_payer) )
-FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_result, (rows)(more) );
+FC_REFLECT( eosio::chain_apis::read_only::get_table_rows_result, (rows)(more)(next_key) );
 
 FC_REFLECT( eosio::chain_apis::read_only::get_table_by_scope_params, (code)(table)(lower_bound)(upper_bound)(limit)(reverse) )
 FC_REFLECT( eosio::chain_apis::read_only::get_table_by_scope_result_row, (code)(scope)(table)(payer)(count));
