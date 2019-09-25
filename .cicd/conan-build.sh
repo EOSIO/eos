@@ -10,4 +10,5 @@ mkdir /cmake && ./cmake-3.15.3-Linux-x86_64.sh --skip-license --prefix=/cmake
 export PATH=$PATH:/cmake/bin
 cd /workdir/build
 cmake -DCMAKE_BUILD_TYPE='Release' -DCORE_SYMBOL_NAME='SYS' -DPKG_CONFIG_USE_CMAKE_PREFIX_PATH=ON -DCMAKE_CXX_COMPILER='clang++' -DCMAKE_C_COMPILER='clang' -DLLVM_DIR='/usr/lib/llvm-7/lib/cmake/llvm' -DUSE_CONAN=true ..
+make -j$(getconf _NPROCESSORS_ONLN)
 ctest -L nonparallelizable_tests --output-on-failure -T Test
