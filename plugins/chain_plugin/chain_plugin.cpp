@@ -884,6 +884,8 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
             } else if( block_log_genesis ) {
                ilog( "Starting fresh blockchain state using genesis state extracted from blocks.log." );
                my->genesis = block_log_genesis;
+               // Delay setting chain_id until later so that the code handling genesis-json below can know
+               // that chain_id still only represents a chain ID extracted from the state (assuming it exists).
             }
          }
 
@@ -948,17 +950,22 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          }
 
          if( !chain_id ) {
-            // Uninitialized state database and no genesis state provided
+            if( my->genesis ) {
+               // Uninitialized state database and genesis state extracted from block log
+               chain_id = my->genesis->compute_chain_id();
+            } else {
+               // Uninitialized state database and no genesis state provided
 
-            EOS_ASSERT( !block_log_chain_id, plugin_config_exception,
-                        "Genesis state is necessary to initialize fresh blockchain state but genesis state could not be "
-                        "found in the blocks log. Please either load from snapshot or find a blocks log that starts "
-                        "from genesis."
-            );
+               EOS_ASSERT( !block_log_chain_id, plugin_config_exception,
+                           "Genesis state is necessary to initialize fresh blockchain state but genesis state could not be "
+                           "found in the blocks log. Please either load from snapshot or find a blocks log that starts "
+                           "from genesis."
+               );
 
-            ilog( "Starting fresh blockchain state using default genesis state." );
-            my->genesis.emplace();
-            chain_id = my->genesis->compute_chain_id();
+               ilog( "Starting fresh blockchain state using default genesis state." );
+               my->genesis.emplace();
+               chain_id = my->genesis->compute_chain_id();
+            }
          }
       }
 
