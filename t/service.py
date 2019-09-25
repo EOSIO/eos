@@ -3,6 +3,7 @@
 import argparse
 import helper
 import json
+import math
 import os
 import platform
 import printer
@@ -10,6 +11,7 @@ import requests
 import string
 import subprocess
 import shlex
+import threading
 import time
 
 
@@ -306,7 +308,7 @@ class Service:
 
 
 class Cluster:
-    def __init__(self, service, cluster_id=None, topology=None, center_node_id=None, total_nodes=None, total_producers=None, producer_nodes=None, unstarted_nodes=None, args=None, dont_bootstrap=False):
+    def __init__(self, service, cluster_id=None, topology=None, center_node_id=None, total_nodes=None, total_producers=None, producer_nodes=None, unstarted_nodes=None, args=None, dont_vote=False, dont_bootstrap=False):
         """
         Bootstrap
         ---------
@@ -363,7 +365,7 @@ class Cluster:
                 self.nodes[i]["producers"] = prod
 
         if not dont_bootstrap:
-            self.bootstrap()
+            self.bootstrap(dont_vote=dont_vote)
 
 
     def reconcile_config(self):
@@ -385,7 +387,7 @@ class Cluster:
             assert self.total_nodes >= 3, self.alert.red("Failed assertion: total_node ({}) >= 3 when topology is \"bridge\".".format(self.total_nodes))
 
 
-    def bootstrap(self):
+    def bootstrap(self, dont_vote=False):
         """
         Bootstrap
         ---------
@@ -428,12 +430,15 @@ class Cluster:
                           account="eosio.token", name="eosio.token")
 
         # 6. create tokens
+        total_supply = 1e9
+        total_supply_formatted = "{:.4f} SYS".format(total_supply)
+
         create_tokens = [{"account": "eosio.token",
                           "action": "create",
                           "permissions": [{"actor": "eosio.token",
                                            "permission": "active"}],
                           "data": {"issuer": "eosio",
-                                   "maximum_supply": "1000000000.0000 SYS",
+                                   "maximum_supply": total_supply_formatted,
                                    "can_freeze": 0,
                                    "can_recall": 0,
                                    "can_whitelist":0}}]
@@ -445,7 +450,7 @@ class Cluster:
                           "permissions": [{"actor": "eosio",
                                            "permission": "active"}],
                           "data": {"to": "eosio",
-                                   "quantity": "1000000000.0000 SYS",
+                                   "quantity": total_supply_formatted,
                                    "memo": "hi"}}]
         self.push_actions(node_id=0, actions=issue_tokens, name="issue tokens")
 
@@ -466,36 +471,32 @@ class Cluster:
 
         # 10. create producer accounts
         # 11. register producers
-        # first producer gets 75 million, rest get 1 million each so that the total 1 billion can be distributed to 100+ producers
-        stake_amount = "75000000.0000 SYS"
+        stake_amount = total_supply * 0.15
+        create_account_threads = []
+
         for p in self.producers:
-            self.create_account(node_id=self.producers[p], creator="eosio", name=p,
-                                stake_cpu=stake_amount, stake_net=stake_amount, buy_ram_bytes=1048576,
-                                transfer=True)
-            stake_amount = "1000000.0000 SYS"
-            regproducer = [{"account": "eosio",
-                            "action": "regproducer",
-                            "permissions": [{"actor": "{}".format(p),
-                                            "permission": "active"}],
-                            "data": {"producer": "{}".format(p),
-                                     "producer_key": "EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
-                                     "url": "www.test.com",
-                                     "location": 0}}]
-            self.push_actions(node_id=self.producers[p], actions=regproducer, name="register \"{}\" account".format(p))
+            def create_and_register(stake_amount):
+                producer = p
+                node_id = self.producers[p]
+                stake_amount_formatted = "{:.4f} SYS".format(stake_amount)
+                self.create_account(node_id=node_id, creator="eosio", name=producer,
+                                    stake_cpu=stake_amount_formatted, stake_net=stake_amount_formatted, buy_ram_bytes=1048576,
+                                    transfer=True)
+                self.register_producer(node_id=node_id, producer=producer)
+            t = threading.Thread(target=create_and_register, args=(stake_amount,))
+            stake_amount = max(stake_amount / 2, 100)
+            create_account_threads.append(t)
+            t.start()
+
+        for t in create_account_threads:
+            t.join()
 
 
-        # 12. vote for producers
-        vote_for_producers = [{"account": "eosio",
-                               "action": "voteproducer",
-                               "permissions": [{"actor": "defproducera",
-                                                "permission": "active"}],
-                               "data": {"voter": "defproducera",
-                                        "proxy": "",
-                                        "producers": list(self.producers.keys())[:min(21, len(self.producers))]}}]
-        self.push_actions(node_id=0, actions=vote_for_producers, name="vote for producers")
-
-        # 13. verify head block producer is no longer eosio
-        self.verify_head_block_producer()
+        if not dont_vote:
+            # 12. vote for producers
+            self.vote_for_producers(node_id=0, voter="defproducera", voted_producers=list(self.producers.keys())[:min(21, len(self.producers))])
+            # 13. verify head block producer is no longer eosio
+            self.verify_head_block_producer(wait=1)
 
         self.print.decorate(printer.pad(">>> Bootstrap finishes.", left=0, char=' ', sep=""), fcolor="white", bcolor="black")
 
@@ -558,6 +559,29 @@ class Cluster:
                          stake_cpu=stake_cpu, stake_net=stake_net, buy_ram_bytes=buy_ram_bytes, transfer=transfer,
                          header="create \"{}\" account".format(name), **kwargs)
 
+    def register_producer(self, node_id, producer, **kwargs):
+            actions = [{"account": "eosio",
+                        "action": "regproducer",
+                        "permissions": [{"actor": "{}".format(producer),
+                                        "permission": "active"}],
+                        "data": {"producer": "{}".format(producer),
+                                 "producer_key": "EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+                                 "url": "www.test.com",
+                                 "location": 0}}]
+            self.push_actions(node_id=node_id, actions=actions, name="register \"{}\" producer".format(producer))
+
+
+    def vote_for_producers(self, node_id, voter, voted_producers: List[str], **kwargs):
+        assert len(voted_producers) <= 30, self.alert.red("Failed assertion: number of producers ({}) that account ({}) votes for <= 30 producers.".format(len(voted_producers), voter))
+        actions = [{"account": "eosio",
+                    "action": "voteproducer",
+                    "permissions": [{"actor": "{}".format(voter),
+                                     "permission": "active"}],
+                    "data": {"voter": "{}".format(voter),
+                             "proxy": "",
+                             "producers": voted_producers}}]
+        self.push_actions(node_id=node_id, actions=actions, name="votes for producers", **kwargs)
+
 
     def verify_head_block_producer(self, retry=5, wait=1):
         self.print_header("get head block producer")
@@ -574,7 +598,7 @@ class Cluster:
         assert head_block_producer != "eosio"
 
 
-
+    # TODO: set retry from command-line
     def call(self, endpoint: str, retry=5, wait=1, verify=True, loud=True, header: str =None, **data):
         if loud:
             header = endpoint.replace("_", " ") if header is None else header
@@ -626,6 +650,12 @@ class Cluster:
 
     @staticmethod
     def get_defproducer_names(num):
+        def base26_to_int(s: str):
+            res = 0
+            for c in s:
+                res *= 26
+                res += ord(c) - ord('a')
+            return res
 
         def int_to_base26(x: int):
             res = ""
