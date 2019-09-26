@@ -70,13 +70,6 @@ namespace eosio { namespace chain {
                });
       }
 
-#if defined(EOSIO_EOS_VM_RUNTIME_ENABLED) || defined(EOSIO_EOS_VM_JIT_RUNTIME_ENABLED)
-      static eosio::vm::wasm_allocator* get_wasm_allocator() {
-         static eosio::vm::wasm_allocator walloc;
-         return &walloc;
-      }
-#endif
-
       std::vector<uint8_t> parse_initial_memory(const Module& module) {
          std::vector<uint8_t> mem_image;
 
