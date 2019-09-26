@@ -1,7 +1,7 @@
 #!/bin/bash
 set -eo pipefail
 if [[ $(uname) == 'Darwin' ]]; then
-    brew install python llvm@7 git automake autoconf libtool cmake
+    brew install python llvm@7 git automake autoconf libtool cmake || :
     export SDKROOT=$(xcrun --show-sdk-path) # Fixes fatal error: 'string.h' file not found : https://github.com/conan-io/cmake-conan/issues/159#issuecomment-519486541
     CMAKE_EXTRAS="-DCMAKE_BUILD_TYPE='Release' -DCORE_SYMBOL_NAME='SYS' -DPKG_CONFIG_USE_CMAKE_PREFIX_PATH=ON -DUSE_CONAN=true"
 else # Linux

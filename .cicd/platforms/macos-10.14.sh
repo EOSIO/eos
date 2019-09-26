@@ -2,7 +2,6 @@
 set -eo pipefail
 VERSION=1
 brew update
-brew install git cmake python@2 python libtool libusb graphviz automake wget gmp llvm@7 pkgconfig doxygen openssl jq || :
 if ( [[ ! -z $PINNED ]] && [[ ! $PINNED == false ]] ) || ( [[ ! -z $UNPINNED ]] && [[ ! $UNPINNED == true ]] ) || ( [[ -z $PINNED ]] && [[ -z $UNPINNED ]] ); then
     # install clang from source
     git clone --single-branch --branch release_80 https://git.llvm.org/git/llvm.git clang8
@@ -57,9 +56,6 @@ if ( [[ ! -z $PINNED ]] && [[ ! $PINNED == false ]] ) || ( [[ ! -z $UNPINNED ]] 
     sudo ./b2 --with-iostreams --with-date_time --with-filesystem --with-system --with-program_options --with-chrono --with-test -q -j$(getconf _NPROCESSORS_ONLN) install
     cd ..
     sudo rm -rf boost_1_71_0.tar.bz2 boost_1_71_0
-else
-    # install boost from brew
-    brew install boost || true
 fi
 # install mongoDB
 cd ~
