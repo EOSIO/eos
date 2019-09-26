@@ -44,7 +44,8 @@ BOOST_AUTO_TEST_CASE(test_existing_state_without_block_log)
    auto cfg = other.get_config();
    remove_existing_blocks(cfg);
    // restarting chain with no block log and no genesis
-   other.init(cfg);
+   auto chain_id = controller::extract_chain_id_from_db( cfg.state_dir );
+   other.open(chain_id);
 
    blocks.push_back(chain.produce_block());
    blocks.push_back(chain.produce_block());
