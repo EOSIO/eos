@@ -218,17 +218,17 @@ code_cache_base::code_cache_base(const boost::filesystem::path data_dir, const e
       new ((char*)creation_region.get_address() + header_offset) code_cache_header;
    }
 
-   code_cache_header* cache_header = nullptr;
+   code_cache_header cache_header;
    {
-      char header[total_header_size];
+      char header_buff[total_header_size];
       std::ifstream hs(_cache_file_path.generic_string(), std::ifstream::binary);
-      hs.read(header, sizeof(header));
+      hs.read(header_buff, sizeof(header_buff));
       EOS_ASSERT(!hs.fail(), bad_database_version_exception, "failed to read code cache header");
-
-      cache_header = reinterpret_cast<code_cache_header*>(header+header_offset);
-      EOS_ASSERT(cache_header->id == header_id, bad_database_version_exception, "code cache header magic not as expected");
-      EOS_ASSERT(!cache_header->dirty, database_exception, "code cache is dirty");
+      memcpy((char*)&cache_header, header_buff + header_offset, sizeof(cache_header));
    }
+
+   EOS_ASSERT(cache_header.id == header_id, bad_database_version_exception, "code cache header magic not as expected");
+   EOS_ASSERT(!cache_header.dirty, database_exception, "code cache is dirty");
 
    set_on_disk_region_dirty(true);
 
@@ -252,8 +252,8 @@ code_cache_base::code_cache_base(const boost::filesystem::path data_dir, const e
 
    allocator_t* allocator = reinterpret_cast<allocator_t*>(code_mapping);
 
-   if(cache_header->serialized_descriptor_index) {
-      fc::datastream<const char*> ds(code_mapping + cache_header->serialized_descriptor_index, eosvmoc_config.cache_size - cache_header->serialized_descriptor_index);
+   if(cache_header.serialized_descriptor_index) {
+      fc::datastream<const char*> ds(code_mapping + cache_header.serialized_descriptor_index, eosvmoc_config.cache_size - cache_header.serialized_descriptor_index);
       unsigned number_entries;
       fc::raw::unpack(ds, number_entries);
       for(unsigned i = 0; i < number_entries; ++i) {
@@ -263,7 +263,7 @@ code_cache_base::code_cache_base(const boost::filesystem::path data_dir, const e
             continue;
          _cache_index.push_back(std::move(cd));
       }
-      allocator->deallocate(code_mapping + cache_header->serialized_descriptor_index);
+      allocator->deallocate(code_mapping + cache_header.serialized_descriptor_index);
 
       ilog("EOS-VM Optimized Compiler code cache loaded with ${c} entries; ${f} of ${t} bytes free", ("c", number_entries)("f", allocator->get_free_memory())("t", allocator->get_size()));
    }
