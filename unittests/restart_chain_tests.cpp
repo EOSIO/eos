@@ -28,7 +28,6 @@ BOOST_AUTO_TEST_CASE(test_existing_state_without_block_log)
 {
    tester chain;
 
-   chain.create_account(N(snapshot));
    std::vector<signed_block_ptr> blocks;
    blocks.push_back(chain.produce_block());
    blocks.push_back(chain.produce_block());
@@ -60,7 +59,6 @@ BOOST_AUTO_TEST_CASE(test_restart_with_different_chain_id)
 {
    tester chain;
 
-   chain.create_account(N(snapshot));
    std::vector<signed_block_ptr> blocks;
    blocks.push_back(chain.produce_block());
    blocks.push_back(chain.produce_block());
@@ -74,7 +72,7 @@ BOOST_AUTO_TEST_CASE(test_restart_with_different_chain_id)
 
    other.close();
    genesis_state genesis;
-   genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.999");
+   genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:01.000");
    genesis.initial_key = eosio::testing::base_tester::get_public_key( config::system_account_name, "active" );
    fc::optional<chain_id_type> chain_id = genesis.compute_chain_id();
    BOOST_REQUIRE_EXCEPTION(other.open(chain_id), chain_id_type_exception, fc_exception_message_starts_with("chain ID in state "));
