@@ -564,14 +564,18 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(test_restart_with_existing_state_and_truncated_blo
    int ordinal = 1;
    snapshotted_tester snap_chain(chain.get_config(), SNAPSHOT_SUITE::get_reader(snapshot), ordinal++);
    verify_integrity_hash<SNAPSHOT_SUITE>(*chain.control, *snap_chain.control);
+   auto block = chain.produce_block();
+   chain.control->abort_block();
+   snap_chain.push_block(block);
+   verify_integrity_hash<SNAPSHOT_SUITE>(*chain.control, *snap_chain.control);
 
    snap_chain.close();
    auto cfg = snap_chain.get_config();
    // restart chain with truncated block log and existing state, but no genesis state (chain_id)
-   auto chain_id = block_log::extract_chain_id( cfg.blocks_dir );
-   snap_chain.open(chain_id);
+   snap_chain.open();
+   verify_integrity_hash<SNAPSHOT_SUITE>(*chain.control, *snap_chain.control);
 
-   auto block = chain.produce_block();
+   block = chain.produce_block();
    chain.control->abort_block();
    snap_chain.push_block(block);
    verify_integrity_hash<SNAPSHOT_SUITE>(*chain.control, *snap_chain.control);
