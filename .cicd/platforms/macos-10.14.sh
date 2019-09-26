@@ -1,9 +1,9 @@
 #!/bin/bash
 set -eo pipefail
 VERSION=1
-if [[ "$USE_CONAN" == 'true' ]]; then
+if [[ "$USE_CONAN" == 'true' ]]; then # For Conan builds only.
     brew update
-else
+else # For pinned/unpinned builds.
     brew update
     brew install git cmake python@2 python libtool libusb graphviz automake wget gmp llvm@7 pkgconfig doxygen openssl jq || :
     if [[ ! $PINNED == false || $UNPINNED == true ]]; then
