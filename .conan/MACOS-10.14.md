@@ -1,6 +1,6 @@
 # Building via Conan | macOS-10.14
 
-The instructions below can be used to build and test EOS on macOS-10.14.
+The instructions below can be used to build and test EOSIO on macOS-10.14.
 
 ## Build Steps
 

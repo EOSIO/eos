@@ -1,13 +1,19 @@
-# Building via Conan | AmazonLinux-2
+# Building via Conan | CentOS-7.6
 
-The instructions below can be used to build and test EOS on AmazonLinux-2.
+The instructions below can be used to build and test EOSIO on CentOS-7.6.
 
 ## Build Steps
 
 **NOTE**: This requires the conan-poc-v2 branch.
 
 ```
-yum install -y python3 python3-devel clang llvm-devel llvm-static git curl tar gzip automake make
+yum install -y epel-release
+
+yum --enablerepo=extras install -y centos-release-scl && yum --enablerepo=extras install -y devtoolset-8
+
+yum install -y rh-python36 llvm7.0-devel llvm7.0-static git curl automake
+
+source /opt/rh/devtoolset-8/enable && source /opt/rh/rh-python36/enable
 
 pip3 install conan
 
@@ -25,7 +31,7 @@ git checkout conan-poc-v2
 
 git submodule update --init --recursive
 
-/usr/local/cmake-3.15.3-Linux-x86_64/bin/cmake -DCMAKE_BUILD_TYPE='Release' -DCORE_SYMBOL_NAME='SYS' -DPKG_CONFIG_USE_CMAKE_PREFIX_PATH=ON -DCMAKE_CXX_COMPILER='clang++' -DCMAKE_C_COMPILER='clang' -DUSE_CONAN=true -Bbuild
+/usr/local/cmake-3.15.3-Linux-x86_64/bin/cmake -DCMAKE_BUILD_TYPE='Release' -DCORE_SYMBOL_NAME='SYS' -DPKG_CONFIG_USE_CMAKE_PREFIX_PATH=ON -DLLVM_DIR='/usr/lib64/llvm7.0/lib/cmake/llvm' -DUSE_CONAN=true -Bbuild
 
 cd build/
 
@@ -34,7 +40,7 @@ make -j$(getconf _NPROCESSORS_ONLN)
 ## Test Steps
 
 ```
-yum install -y jq procps-ng python python-devel
+yum install -y jq python python-devel
 
 /usr/local/cmake-3.15.3-Linux-x86_64/bin/ctest -j$(getconf _NPROCESSORS_ONLN) -LE _tests --output-on-failure -T Test
 
