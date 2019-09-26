@@ -1,7 +1,9 @@
 #!/bin/bash
 set -eo pipefail
 if [[ $(uname) == 'Darwin' ]]; then
-    echo "Mac"
+    brew install python llvm@7 git automake autoconf libtool cmake
+    export SDKROOT=$(xcrun --show-sdk-path) # Fixes fatal error: 'string.h' file not found : https://github.com/conan-io/cmake-conan/issues/159#issuecomment-519486541
+    CMAKE_EXTRAS="-DCMAKE_BUILD_TYPE='Release' -DCORE_SYMBOL_NAME='SYS' -DPKG_CONFIG_USE_CMAKE_PREFIX_PATH=ON -DUSE_CONAN=true"
 else # Linux
     if [[ $IMAGE_TAG == 'amazon_linux-2-unpinned' ]]; then
         yum update -y
@@ -21,13 +23,13 @@ else # Linux
         apt-get install -y jq python2.7 python2.7-dev curl
         CMAKE_EXTRAS="-DCMAKE_BUILD_TYPE='Release' -DCORE_SYMBOL_NAME='SYS' -DPKG_CONFIG_USE_CMAKE_PREFIX_PATH=ON -DCMAKE_CXX_COMPILER='clang++' -DCMAKE_C_COMPILER='clang' -DLLVM_DIR='/usr/lib/llvm-7/lib/cmake/llvm' -DUSE_CONAN=true"
     fi
-    pip3 install conan
     curl -LO https://github.com/Kitware/CMake/releases/download/v3.15.3/cmake-3.15.3-Linux-x86_64.sh
     chmod +x cmake-3.15.3-Linux-x86_64.sh
     mkdir /cmake && ./cmake-3.15.3-Linux-x86_64.sh --skip-license --prefix=/cmake
     export PATH=$PATH:/cmake/bin
     cd /workdir/build
 fi
+pip3 install conan
 cmake $CMAKE_EXTRAS ..
 make -j$(getconf _NPROCESSORS_ONLN)
 ctest -j$(getconf _NPROCESSORS_ONLN) -LE _tests --output-on-failure -T Test

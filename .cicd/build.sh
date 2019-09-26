@@ -8,9 +8,12 @@ if [[ $(uname) == 'Darwin' ]]; then
     [[ $TRAVIS == true ]] && export PINNED=false && ccache -s && CMAKE_EXTRAS="-DCMAKE_CXX_COMPILER_LAUNCHER=ccache" && ./$CICD_DIR/platforms/macos-10.14.sh
     ( [[ ! $PINNED == false || $UNPINNED == true ]] ) && CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_TOOLCHAIN_FILE=$SCRIPTS_DIR/pinned_toolchain.cmake"
     cd $BUILD_DIR
-    export SDKROOT=$(xcrun --show-sdk-path) # Fixes fatal error: 'string.h' file not found : https://github.com/conan-io/cmake-conan/issues/159#issuecomment-519486541
-    cmake $CMAKE_EXTRAS ..
-    make -j$JOBS
+    if [[ "$USE_CONAN" == 'true' ]]; then
+        bash -c "../.conan/conan-build.sh"
+    else
+        cmake $CMAKE_EXTRAS ..
+        make -j$JOBS
+    fi
 else # Linux
     ARGS=${ARGS:-"--rm --init -v $(pwd):$MOUNTED_DIR -e UNPINNED -e PINNED -e IMAGE_TAG"}
     . $HELPERS_DIR/file-hash.sh $CICD_DIR/platforms/$IMAGE_TAG.dockerfile
