@@ -4,7 +4,7 @@ The instructions below can be used to build and test EOS on Ubuntu-18.04.
 
 ## Build Steps
 
-**NOTE**: This requires the develop branch.
+**NOTE**: This requires the conan-poc-v2 branch.
 
 ```
 apt-get install -y clang llvm-7-dev python3 python3-dev python3-pip git curl automake 
@@ -21,7 +21,7 @@ git clone https://github.com/EOSIO/eos.git
 
 cd eos/
 
-git checkout develop
+git checkout conan-poc-v2
 
 git submodule update --init --recursive
 
