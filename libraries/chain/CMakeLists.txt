@@ -20,6 +20,11 @@ if("wavm" IN_LIST EOSIO_WASM_RUNTIMES)
    set(CHAIN_WAVM_SOURCES "webassembly/wavm.cpp")
 endif()
 
+if("eos-vm" IN_LIST EOSIO_WASM_RUNTIMES OR "eos-vm-jit" IN_LIST EOSIO_WASM_RUNTIMES)
+   set(CHAIN_EOSVM_SOURCES "webassembly/eos-vm.cpp")
+   set(CHAIN_EOSVM_LIBRARIES eos-vm)
+endif()
+
 ## SORT .cpp by most likely to change / break compile
 add_library( eosio_chain
              merkle.cpp
@@ -56,6 +61,7 @@ add_library( eosio_chain
 
              ${CHAIN_WAVM_SOURCES}
              webassembly/wabt.cpp
+             ${CHAIN_EOSVM_SOURCES}
 
 #             get_config.cpp
 #
@@ -76,11 +82,12 @@ add_library( eosio_chain
              )
 
 target_link_libraries( eosio_chain fc chainbase Logging IR WAST WASM Runtime
-                       softfloat builtins wabt
+                       softfloat builtins wabt ${CHAIN_EOSVM_LIBRARIES}
                      )
 target_include_directories( eosio_chain
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_BINARY_DIR}/include"
                                    "${CMAKE_CURRENT_SOURCE_DIR}/../wasm-jit/Include"
+                                   "${CMAKE_CURRENT_SOURCE_DIR}/libraries/eos-vm/include"
                                    "${CMAKE_SOURCE_DIR}/libraries/wabt"
                                    "${CMAKE_BINARY_DIR}/libraries/wabt"
                             )

@@ -163,13 +163,13 @@ namespace eosio { namespace testing {
 
          void              close();
          template <typename Lambda>
-         void              open( protocol_feature_set&& pfs, const fc::optional<chain_id_type>& expected_chain_id, Lambda lambda );
+         void              open( protocol_feature_set&& pfs, fc::optional<chain_id_type> expected_chain_id, Lambda lambda );
          void              open( protocol_feature_set&& pfs, const snapshot_reader_ptr& snapshot );
          void              open( protocol_feature_set&& pfs, const genesis_state& genesis );
-         void              open( protocol_feature_set&& pfs, const fc::optional<chain_id_type>& expected_chain_id = {} );
+         void              open( protocol_feature_set&& pfs, fc::optional<chain_id_type> expected_chain_id = {} );
          void              open( const snapshot_reader_ptr& snapshot );
          void              open( const genesis_state& genesis );
-         void              open( const fc::optional<chain_id_type>& expected_chain_id = {} );
+         void              open( fc::optional<chain_id_type> expected_chain_id = {} );
          bool              is_same_chain( base_tester& other );
 
          virtual signed_block_ptr produce_block( fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms) ) = 0;
@@ -403,6 +403,10 @@ namespace eosio { namespace testing {
                   cfg.wasm_runtime = chain::wasm_interface::vm_type::wavm;
                else if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--wabt"))
                   cfg.wasm_runtime = chain::wasm_interface::vm_type::wabt;
+               else if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--eos-vm"))
+                  cfg.wasm_runtime = chain::wasm_interface::vm_type::eos_vm;
+               else if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--eos-vm-jit"))
+                  cfg.wasm_runtime = chain::wasm_interface::vm_type::eos_vm_jit;
             }
             return {cfg, default_genesis()};
          }

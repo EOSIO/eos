@@ -100,8 +100,8 @@ namespace eosio { namespace chain {
             incomplete  = 3, ///< this is an incomplete block (either being produced by a producer or speculatively produced by a node)
          };
 
-         controller( const config& cfg, const fc::optional<chain_id_type>& expected_chain_id );
-         controller( const config& cfg, protocol_feature_set&& pfs, const fc::optional<chain_id_type>& expected_chain_id );
+         controller( const config& cfg, const chain_id_type& chain_id );
+         controller( const config& cfg, protocol_feature_set&& pfs, const chain_id_type& chain_id );
          ~controller();
 
          void add_indices();
@@ -329,6 +329,8 @@ namespace eosio { namespace chain {
          }
 
       static chain_id_type extract_chain_id(snapshot_reader& snapshot);
+
+      static fc::optional<chain_id_type> extract_chain_id_from_db( const path& state_dir );
 
       private:
          friend class apply_context;

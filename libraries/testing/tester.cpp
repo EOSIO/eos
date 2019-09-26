@@ -1,6 +1,7 @@
 #include <boost/test/unit_test.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 #include <eosio/testing/tester.hpp>
+#include <eosio/chain/block_log.hpp>
 #include <eosio/chain/wast_to_wasm.hpp>
 #include <eosio/chain/eosio_contract.hpp>
 #include <eosio/chain/generated_transaction_object.hpp>
@@ -241,13 +242,24 @@ namespace eosio { namespace testing {
       open( make_protocol_feature_set(), genesis );
    }
 
-   void base_tester::open( const fc::optional<chain_id_type>& expected_chain_id ) {
+   void base_tester::open( fc::optional<chain_id_type> expected_chain_id ) {
       open( make_protocol_feature_set(), expected_chain_id );
    }
 
    template <typename Lambda>
-   void base_tester::open( protocol_feature_set&& pfs, const fc::optional<chain_id_type>& expected_chain_id, Lambda lambda ) {
-      control.reset( new controller(cfg, std::move(pfs), expected_chain_id) );
+   void base_tester::open( protocol_feature_set&& pfs, fc::optional<chain_id_type> expected_chain_id, Lambda lambda ) {
+      if( !expected_chain_id ) {
+         expected_chain_id = controller::extract_chain_id_from_db( cfg.state_dir );
+         if( !expected_chain_id ) {
+            if( fc::is_regular_file( cfg.blocks_dir / "blocks.log" ) ) {
+               expected_chain_id = block_log::extract_chain_id( cfg.blocks_dir );
+            } else {
+               expected_chain_id = genesis_state().compute_chain_id();
+            }
+         }
+      }
+
+      control.reset( new controller(cfg, std::move(pfs), *expected_chain_id) );
       control->add_indices();
       lambda();
       chain_transactions.clear();
@@ -279,7 +291,7 @@ namespace eosio { namespace testing {
       });
    }
 
-   void base_tester::open( protocol_feature_set&& pfs, const fc::optional<chain_id_type>& expected_chain_id ) {
+   void base_tester::open( protocol_feature_set&& pfs, fc::optional<chain_id_type> expected_chain_id ) {
       open(std::move(pfs), expected_chain_id, [&control=this->control]() {
          control->startup( []() { return false; } );
       });
