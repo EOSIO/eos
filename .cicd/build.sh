@@ -51,7 +51,7 @@ else # Linux
         COMMANDS="ccache -s && $BUILD_COMMANDS"
     fi
     COMMANDS="$PRE_COMMANDS && $COMMANDS"
-    [[ "$USE_CONAN" == 'true' ]] && COMMANDS="$MOUNTED_DIR/.cicd/conan-build.sh"
+    [[ "$USE_CONAN" == 'true' ]] && COMMANDS="$MOUNTED_DIR/.conan/conan-build.sh"
     echo "$ docker run $ARGS $(buildkite-intrinsics) $FULL_TAG bash -c \"$COMMANDS\""
     eval docker run $ARGS $(buildkite-intrinsics) $FULL_TAG bash -c \"$COMMANDS\"
 fi
