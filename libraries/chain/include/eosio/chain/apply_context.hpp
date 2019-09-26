@@ -533,6 +533,7 @@ class apply_context {
    /// Misc methods:
    public:
 
+
       int get_action( uint32_t type, uint32_t index, char* buffer, size_t buffer_size )const;
       int get_context_free_data( uint32_t index, char* buffer, size_t buffer_size )const;
       vector<account_name> get_active_producers() const;
