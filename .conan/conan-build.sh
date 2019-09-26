@@ -1,7 +1,7 @@
 #!/bin/bash
 set -eo pipefail
 if [[ $(uname) == 'Darwin' ]]; then
-
+    echo "Mac"
 else # Linux
     if [[ $IMAGE_TAG == 'amazon_linux-2-unpinned' ]]; then
         yum update -y
