@@ -76,6 +76,13 @@ if(CMAKE_SIZEOF_VOID_P EQUAL 8 AND NOT WIN32)
    endif()
 endif()
 
+if(CMAKE_SIZEOF_VOID_P EQUAL 8 AND NOT WIN32)
+   list(APPEND EOSIO_WASM_RUNTIMES eos-vm)
+   if(CMAKE_SYSTEM_PROCESSOR STREQUAL x86_64)
+      list(APPEND EOSIO_WASM_RUNTIMES eos-vm-jit)
+   endif()
+endif()
+
 if(UNIX)
   if(APPLE)
     set(whole_archive_flag "-force_load")

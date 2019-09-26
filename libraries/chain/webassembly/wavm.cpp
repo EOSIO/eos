@@ -133,6 +133,12 @@ wavm_runtime::wavm_runtime() {
 wavm_runtime::~wavm_runtime() {
 }
 
+bool wavm_runtime::inject_module(IR::Module& module) {
+   wasm_injections::wasm_binary_injection<true> injector(module);
+   injector.inject();
+   return true;
+}
+
 std::unique_ptr<wasm_instantiated_module_interface> wavm_runtime::instantiate_module(const char* code_bytes, size_t code_size, std::vector<uint8_t> initial_memory) {
    std::unique_ptr<Module> module = std::make_unique<Module>();
    try {
