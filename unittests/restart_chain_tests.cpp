@@ -77,7 +77,7 @@ BOOST_AUTO_TEST_CASE(test_restart_with_different_chain_id)
    genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.999");
    genesis.initial_key = eosio::testing::base_tester::get_public_key( config::system_account_name, "active" );
    fc::optional<chain_id_type> chain_id = genesis.compute_chain_id();
-   BOOST_REQUIRE_EXCEPTION(other.open(chain_id), block_log_exception, fc_exception_message_starts_with("Controller configured with: "));
+   BOOST_REQUIRE_EXCEPTION(other.open(chain_id), chain_id_type_exception, fc_exception_message_starts_with("chain ID in state "));
 }
 
 BOOST_AUTO_TEST_SUITE_END()
