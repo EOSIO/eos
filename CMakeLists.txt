@@ -220,6 +220,6 @@ include(doxygen)
 # Uninstall Target
 CONFIGURE_FILE( 
   "${CMAKE_CURRENT_SOURCE_DIR}/scripts/uninstall.cmake.in"
-  "${CMAKE_CURRENT_SOURCE_DIR}/scripts/uninstall.cmake"
+  "${CMAKE_CURRENT_SOURCE_DIR}/build/scripts/uninstall.cmake"
 IMMEDIATE @ONLY )
-ADD_CUSTOM_TARGET(uninstall "${CMAKE_COMMAND}" -P "${CMAKE_CURRENT_SOURCE_DIR}/scripts/uninstall.cmake")
+ADD_CUSTOM_TARGET(uninstall "${CMAKE_COMMAND}" -P "${CMAKE_CURRENT_SOURCE_DIR}/build/scripts/uninstall.cmake")
