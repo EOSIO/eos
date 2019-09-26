@@ -66,6 +66,9 @@ if("${USE_CONAN}" STREQUAL "true" OR "$ENV{USE_CONAN}" STREQUAL "true")
   if(UNIX)
     if(APPLE)
       set(CMAKE_MACOSX_RPATH ON)
+      execute_process(	
+        COMMAND install_name_tool -id "${CONAN_LIB_DIRS_GMP}/libgmp.10.dylib" ${CONAN_LIB_DIRS_GMP}/libgmp.10.dylib	
+      )
       set(Intl_LIBRARY ${CONAN_LIB_DIRS_GETTEXT}/libgnuintl.dylib)
     else()
       set(Intl_LIBRARY ${CONAN_LIB_DIRS_GETTEXT}/libgnuintl.so)
