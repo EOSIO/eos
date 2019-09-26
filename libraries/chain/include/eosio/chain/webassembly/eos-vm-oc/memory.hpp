@@ -3,15 +3,10 @@
 #include <eosio/chain/wasm_eosio_constraints.hpp>
 #include <eosio/chain/webassembly/eos-vm-oc/eos-vm-oc.hpp>
 #include <eosio/chain/webassembly/eos-vm-oc/intrinsic_mapping.hpp>
+#include <eosio/chain/webassembly/eos-vm-oc/gs_seg_helpers.h>
 
 #include <stdint.h>
 #include <stddef.h>
-
-#ifdef __clang__
-   #define GS_PTR __attribute__((address_space(256)))
-#else
-   #define GS_PTR __seg_gs
-#endif
 
 namespace eosio { namespace chain { namespace eosvmoc {
 
@@ -48,13 +43,13 @@ class memory {
       //   zero_page_memory_base()+stride*n
       static constexpr size_t stride = total_memory_per_slice;
 
-      //offsets to various interesting things in the memory and pointers to them via helper macros
+      //offsets to various interesting things in the memory
       static constexpr uintptr_t linear_memory = 0;
       static constexpr uintptr_t cb_offset = wcb_allowance + mutable_global_size + table_size;
       static constexpr uintptr_t first_intrinsic_offset = cb_offset + 8u;
-#define EOSVMOC_MEMORY_PTR_linear_memory_ptr            GS_PTR uint8_t* const linear_memory_ptr = reinterpret_cast<GS_PTR control_block* const>(memory::linear_memory);
-#define EOSVMOC_MEMORY_PTR_cb_ptr                       GS_PTR control_block* const cb_ptr = reinterpret_cast<GS_PTR control_block* const>(-memory::cb_offset);
-#define EOSVMOC_MEMORY_PTR_first_intrinsic_ptr          GS_PTR uintptr_t* const first_intrinsic_ptr = reinterpret_cast<GS_PTR uintptr_t* const>(-memory::first_intrinsic_offset);
+
+      static_assert(-cb_offset == EOS_VM_OC_CONTROL_BLOCK_OFFSET, "EOS-VM OC control block offset has slid out of place somehow");
+      static_assert(stride == EOS_VM_OC_MEMORY_STRIDE, "EOS-VM OC memory stride has slid out of place somehow");
 
    private:
       uint8_t* mapbase;
@@ -65,3 +60,6 @@ class memory {
 };
 
 }}}
+
+#define OFFSET_OF_CONTROL_BLOCK_MEMBER(M) (-(int)eosio::chain::eosvmoc::memory::cb_offset + (int)offsetof(eosio::chain::eosvmoc::control_block, M))
+#define OFFSET_OF_FIRST_INTRINSIC ((int)-eosio::chain::eosvmoc::memory::first_intrinsic_offset)

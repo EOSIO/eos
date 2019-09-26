@@ -3,6 +3,7 @@
 #include <eosio/chain/webassembly/eos-vm-oc/memory.hpp>
 #include <eosio/chain/webassembly/eos-vm-oc/intrinsic_mapping.hpp>
 #include <eosio/chain/webassembly/eos-vm-oc/intrinsic.hpp>
+#include <eosio/chain/webassembly/eos-vm-oc/eos-vm-oc.h>
 #include <eosio/chain/wasm_eosio_constraints.hpp>
 #include <eosio/chain/apply_context.hpp>
 #include <eosio/chain/transaction_context.hpp>
@@ -66,35 +67,14 @@ notus:
    __builtin_unreachable();
 }
 
-static int32_t grow_memory(int32_t grow, int32_t max) {
-   EOSVMOC_MEMORY_PTR_cb_ptr;
-   uint64_t previous_page_count = cb_ptr->current_linear_memory_pages;
-   int32_t grow_amount = grow;
-   uint64_t max_pages = max;
-   if(grow == 0)
-      return (int32_t)cb_ptr->current_linear_memory_pages;
-   if(previous_page_count + grow_amount > max_pages)
-      return (int32_t)-1;
-
-   uint64_t current_gs;
-   arch_prctl(ARCH_GET_GS, &current_gs);
-   current_gs += grow_amount * memory::stride;
-   arch_prctl(ARCH_SET_GS, (unsigned long*)current_gs);
-   cb_ptr->current_linear_memory_pages += grow_amount;
-
-   if(grow_amount > 0)
-      memset(cb_ptr->full_linear_memory_start + previous_page_count*64u*1024u, 0, grow_amount*64u*1024u);
-
-   return (int32_t)previous_page_count;
-}
-static intrinsic grow_memory_intrinsic EOSVMOC_INTRINSIC_INIT_PRIORITY("eosvmoc_internal.grow_memory", IR::FunctionType::get(IR::ResultType::i32,{IR::ValueType::i32,IR::ValueType::i32}), (void*)&grow_memory,
+static intrinsic grow_memory_intrinsic EOSVMOC_INTRINSIC_INIT_PRIORITY("eosvmoc_internal.grow_memory", IR::FunctionType::get(IR::ResultType::i32,{IR::ValueType::i32,IR::ValueType::i32}),
+  (void*)&eos_vm_oc_grow_memory,
   boost::hana::index_if(intrinsic_table, ::boost::hana::equal.to(BOOST_HANA_STRING("eosvmoc_internal.grow_memory"))).value()
 );
 
 //This is effectively overriding the eosio_exit intrinsic in wasm_interface
 static void eosio_exit(int32_t code) {
-   EOSVMOC_MEMORY_PTR_cb_ptr;
-   siglongjmp(*cb_ptr->jmp, EOSVMOC_EXIT_CLEAN_EXIT);
+   siglongjmp(*eos_vm_oc_get_jmp_buf(), EOSVMOC_EXIT_CLEAN_EXIT);
    __builtin_unreachable();
 }
 static intrinsic eosio_exit_intrinsic("env.eosio_exit", IR::FunctionType::get(IR::ResultType::none,{IR::ValueType::i32}), (void*)&eosio_exit,
@@ -102,9 +82,8 @@ static intrinsic eosio_exit_intrinsic("env.eosio_exit", IR::FunctionType::get(IR
 );
 
 static void throw_internal_exception(const char* const s) {
-   EOSVMOC_MEMORY_PTR_cb_ptr;
-   *cb_ptr->eptr = std::make_exception_ptr(wasm_execution_error(FC_LOG_MESSAGE(error, s)));
-   siglongjmp(*cb_ptr->jmp, EOSVMOC_EXIT_EXCEPTION);
+   *reinterpret_cast<std::exception_ptr*>(eos_vm_oc_get_exception_ptr()) = std::make_exception_ptr(wasm_execution_error(FC_LOG_MESSAGE(error, s)));
+   siglongjmp(*eos_vm_oc_get_jmp_buf(), EOSVMOC_EXIT_EXCEPTION);
    __builtin_unreachable();
 }
 
@@ -136,18 +115,6 @@ DEFINE_EOSVMOC_TRAP_INTRINSIC(eosvmoc_internal,unreachable) {
 }
 
 executor::executor(const code_cache_base& cc) {
-   //XXX
-   static bool once_is_enough;
-   if(!once_is_enough) {
-      printf("current_linear_memory_pages %li\n", -memory::cb_offset + offsetof(eosio::chain::eosvmoc::control_block, current_linear_memory_pages));
-      printf("full_linear_memory_start %li\n", -memory::cb_offset + offsetof(eosio::chain::eosvmoc::control_block, full_linear_memory_start));
-      printf("cb_offset %lu\n", memory::cb_offset);
-      printf("remaining call depth: %li\n", -memory::cb_offset + offsetof(eosio::chain::eosvmoc::control_block, current_call_depth_remaining));
-      printf("first intrinsic: %lu\n", memory::first_intrinsic_offset);
-      printf("current code offset: %li\n", -memory::cb_offset + offsetof(eosio::chain::eosvmoc::control_block, running_code_base));
-      once_is_enough = true;
-   }
-
    //if we're the first executor created, go setup the signal handling. For now we'll just leave this attached forever
    if(std::lock_guard g(inited_signal_mutex); inited_signal == false) {
       struct sigaction sig_action, old_sig_action;
@@ -195,8 +162,8 @@ void executor::execute(const code_descriptor& code, const memory& mem, apply_con
    executors_exception_ptr = nullptr;
    cb->eptr = &executors_exception_ptr;
    cb->current_call_depth_remaining = eosio::chain::wasm_constraints::maximum_call_depth+2;
-   cb->bouce_buffer_ptr = 0;
    cb->current_linear_memory_pages = code.starting_memory_pages;
+   cb->first_invalid_memory_address = code.starting_memory_pages*64*1024;
    cb->full_linear_memory_start = (char*)mem.full_page_memory_base();
    cb->jmp = &executors_sigjmp_buf;
    cb->bounce_buffers = &executors_bounce_buffers;

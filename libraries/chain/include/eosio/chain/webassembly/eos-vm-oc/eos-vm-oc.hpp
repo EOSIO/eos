@@ -1,6 +1,7 @@
 #pragma once
 
 #include <eosio/chain/types.hpp>
+#include <eosio/chain/webassembly/eos-vm-oc/eos-vm-oc.h>
 
 #include <exception>
 
@@ -17,23 +18,7 @@ class apply_context;
 
 namespace eosvmoc {
 
-struct control_block {
-   uint64_t magic;
-   uintptr_t execution_thread_code_start;
-   size_t execution_thread_code_length;
-   uintptr_t execution_thread_memory_start;
-   size_t execution_thread_memory_length;
-   apply_context* ctx;
-   std::exception_ptr* eptr;
-   unsigned current_call_depth_remaining;
-   unsigned bouce_buffer_ptr;  //XX remove me
-   int64_t current_linear_memory_pages; //-1 if no memory
-   char* full_linear_memory_start;
-   sigjmp_buf* jmp;
-   std::list<std::vector<std::byte>>* bounce_buffers;
-   uintptr_t running_code_base;
-   bool is_running;
-};
+using control_block = eos_vm_oc_control_block;
 
 struct no_offset{};
 struct code_offset{ size_t offset; };    //relative to code_begin
