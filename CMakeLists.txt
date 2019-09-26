@@ -66,8 +66,12 @@ if("${USE_CONAN}" STREQUAL "true" OR "$ENV{USE_CONAN}" STREQUAL "true")
   if(UNIX)
     if(APPLE)
       set(CMAKE_MACOSX_RPATH ON)
-      execute_process(	
-        COMMAND install_name_tool -id "${CONAN_LIB_DIRS_GMP}/libgmp.10.dylib" ${CONAN_LIB_DIRS_GMP}/libgmp.10.dylib	
+      link_directories(AFTER "/usr/local/opt/lib")
+      message( STATUS "Conan: Patching rpath for shared libraries.")
+      execute_process(
+        COMMAND install_name_tool -id "@rpath/libgmp.10.dylib" ${CONAN_LIB_DIRS_GMP}/libgmp.10.dylib
+        COMMAND install_name_tool -id "@rpath/libusb-1.0.0.dylib" ${CONAN_LIB_DIRS_LIBUSB}/libusb-1.0.0.dylib
+        COMMAND install_name_tool -id "@rpath/libgnuintl.8.dylib" ${CONAN_LIB_DIRS_GETTEXT}/libgnuintl.8.dylib
       )
       set(Intl_LIBRARY ${CONAN_LIB_DIRS_GETTEXT}/libgnuintl.dylib)
     else()
@@ -75,10 +79,10 @@ if("${USE_CONAN}" STREQUAL "true" OR "$ENV{USE_CONAN}" STREQUAL "true")
     endif()
   endif()
 
-  set(CMAKE_INSTALL_RPATH "")
+  set(CMAKE_INSTALL_RPATH "${CONAN_LIB_DIRS}")
   set(CMAKE_INSTALL_RPATH_USE_LINK_PATH ON)
   include_directories(${CONAN_INCLUDE_DIRS_LIBCURL} ${CONAN_INCLUDE_DIRS_OPENSSL})
-  link_directories(${CONAN_LIB_DIRS_OPENSSL} ${CONAN_LIB_DIRS_LIBCURL} ${CONAN_LIB_DIRS_ZLIB} ${CONAN_LIB_DIRS_LIBUSB} ${CONAN_LIB_DIRS_GETTEXT} ${CONAN_LIB_DIRS_GMP})
+  link_directories(AFTER ${CONAN_LIB_DIRS})
 
   execute_process(
       COMMAND mkdir -p ${CONAN_LIB_DIRS_OPENSSL}/pkgconfig
