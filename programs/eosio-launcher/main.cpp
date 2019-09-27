@@ -346,7 +346,7 @@ enum allowed_connection : char {
 
 class producer_names {
 public:
-   static string producer_name(unsigned int producer_number);
+   static string producer_name(unsigned int producer_number, bool shared_producer = false);
 private:
    static const int total_chars = 12;
    static const char slot_chars[];
@@ -358,8 +358,9 @@ const char producer_names::valid_char_range = sizeof(producer_names::slot_chars)
 
 // for 26 or fewer total producers create "defproducera" .. "defproducerz"
 // above 26 produce  "defproducera" .. "defproducerz",  "defproduceaa" .. "defproducerb", etc.
-string producer_names::producer_name(unsigned int producer_number) {
+string producer_names::producer_name(unsigned int producer_number, bool shared_producer) {
    // keeping legacy "defproducer[a-z]", but if greater than valid_char_range, will use "defpraaaaaaa"
+   // shared_producer will appear in all nodes' config
    char prod_name[] = "defproducera";
    if (producer_number > valid_char_range) {
       for (int current_char_loc = 5; current_char_loc < total_chars; ++current_char_loc) {
@@ -380,6 +381,12 @@ string producer_names::producer_name(unsigned int producer_number) {
    // make sure we haven't cycled back to the first 26 names (some time after 26^6)
    if (string(prod_name) == "defproducera" && producer_number != 0)
       throw std::runtime_error( "launcher not designed to handle numbers this large " );
+
+   if (shared_producer) {
+      prod_name[0] = 's';
+      prod_name[1] = 'h';
+      prod_name[2] = 'r';
+   }
    return prod_name;
 }
 
@@ -389,6 +396,7 @@ struct launcher_def {
    size_t unstarted_nodes;
    size_t prod_nodes;
    size_t producers;
+   size_t shared_producers;
    size_t next_node;
    string shape;
    allowed_connection allowed_connections = PC_NONE;
@@ -479,7 +487,8 @@ launcher_def::set_options (bpo::options_description &cfg) {
     ("nodes,n",bpo::value<size_t>(&total_nodes)->default_value(1),"total number of nodes to configure and launch")
     ("unstarted-nodes",bpo::value<size_t>(&unstarted_nodes)->default_value(0),"total number of nodes to configure, but not launch")
     ("pnodes,p",bpo::value<size_t>(&prod_nodes)->default_value(1),"number of nodes that contain one or more producers")
-    ("producers",bpo::value<size_t>(&producers)->default_value(21),"total number of non-bios producer instances in this network")
+    ("producers",bpo::value<size_t>(&producers)->default_value(21),"total number of non-bios and non-shared producer instances in this network")
+    ("shared-producers",bpo::value<size_t>(&shared_producers)->default_value(0),"total number of shared producers on each non-bios nodes")
     ("mode,m",bpo::value<vector<string>>()->multitoken()->default_value({"any"}, "any"),"connection mode, combination of \"any\", \"producers\", \"specified\", \"none\"")
     ("shape,s",bpo::value<string>(&shape)->default_value("star"),"network topology, use \"star\" \"mesh\" or give a filename for custom")
     ("genesis,g",bpo::value<string>()->default_value("./genesis.json"),"set the path to genesis.json")
@@ -900,6 +909,11 @@ launcher_def::bind_nodes () {
                  node.producers.push_back(prodname);
                  producer_set.schedule.push_back({prodname,pubkey});
                  ++producer_number;
+              }
+              for (unsigned j = 0; j < shared_producers; ++j) {
+                 const auto prodname = producer_names::producer_name(j, true);
+                 node.producers.push_back(prodname);
+                 producer_set.schedule.push_back({prodname,pubkey});                 
               }
            }
            node.dont_start = i >= to_not_start_node;

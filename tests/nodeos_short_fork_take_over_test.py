@@ -15,7 +15,7 @@ import re
 import signal
 
 ###############################################################
-# nodeos_forked_chain_test
+# nodeos_short_fork_take_over_test
 # --dump-error-details <Upon error print etc/eosio/node_*/config.ini and var/lib/node_*/stderr.log to stdout>
 # --keep-logs <Don't delete var/lib/node_* folders upon test completion>
 ###############################################################
@@ -119,13 +119,12 @@ Utils.Debug=args.v
 totalProducerNodes=2
 totalNonProducerNodes=1
 totalNodes=totalProducerNodes+totalNonProducerNodes
-maxActiveProducers=21
+maxActiveProducers=3
 totalProducers=maxActiveProducers
 cluster=Cluster(walletd=True)
 dumpErrorDetails=args.dump_error_details
 keepLogs=args.keep_logs
 dontKill=args.leave_running
-prodCount=args.prod_count
 killAll=args.clean_run
 walletPort=args.wallet_port
 
@@ -153,37 +152,13 @@ try:
 
     # "bridge" shape connects defprocera through defproducerk (in node0) to each other and defproducerl through defproduceru (in node01)
     # and the only connection between those 2 groups is through the bridge node
-
-    if cluster.launch(prodCount=prodCount, topo="bridge", pnodes=totalProducerNodes,
+    if cluster.launch(prodCount=2, topo="bridge", pnodes=totalProducerNodes,
                       totalNodes=totalNodes, totalProducers=totalProducers,
-                      useBiosBootFile=False, specificExtraNodeosArgs=specificExtraNodeosArgs) is False:
+                      useBiosBootFile=False, specificExtraNodeosArgs=specificExtraNodeosArgs, onlySetProds=True) is False:
         Utils.cmdError("launcher")
         Utils.errorExit("Failed to stand up eos cluster.")
     Print("Validating system accounts after bootstrap")
     cluster.validateAccounts(None)
-
-
-    # ***   create accounts to vote in desired producers   ***
-
-    accounts=cluster.createAccountKeys(5)
-    if accounts is None:
-        Utils.errorExit("FAILURE - create keys")
-    accounts[0].name="tester111111"
-    accounts[1].name="tester222222"
-    accounts[2].name="tester333333"
-    accounts[3].name="tester444444"
-    accounts[4].name="tester555555"
-
-    testWalletName="test"
-
-    Print("Creating wallet \"%s\"." % (testWalletName))
-    testWallet=walletMgr.create(testWalletName, [cluster.eosioAccount,accounts[0],accounts[1],accounts[2],accounts[3],accounts[4]])
-
-    for _, account in cluster.defProducerAccounts.items():
-        walletMgr.importKey(account, testWallet, ignoreDupKeyWarning=True)
-
-    Print("Wallet \"%s\" password=%s." % (testWalletName, testWallet.password.encode("utf-8")))
-
 
     # ***   identify each node (producers and non-producing node)   ***
 
@@ -202,104 +177,55 @@ try:
             else:
                 Utils.errorExit("More than one non-producing nodes")
         else:
-            for prod in node.producers:
-                trans=node.regproducer(cluster.defProducerAccounts[prod], "http::/mysite.com", 0, waitForTransBlock=False, exitOnError=True)
-
             prodNodes.append(node)
             producers.extend(node.producers)
 
 
-    # ***   delegate bandwidth to accounts   ***
-
     node=prodNodes[0]
-    # create accounts via eosio as otherwise a bid is needed
-    for account in accounts:
-        Print("Create new account %s via %s" % (account.name, cluster.eosioAccount.name))
-        trans=node.createInitializeAccount(account, cluster.eosioAccount, stakedDeposit=0, waitForTransBlock=True, stakeNet=1000, stakeCPU=1000, buyRAM=1000, exitOnError=True)
-        transferAmount="100000000.0000 {0}".format(CORE_SYMBOL)
-        Print("Transfer funds %s from account %s to %s" % (transferAmount, cluster.eosioAccount.name, account.name))
-        node.transferFunds(cluster.eosioAccount, account, transferAmount, "test transfer", waitForTransBlock=True)
-        trans=node.delegatebw(account, 20000000.0000, 20000000.0000, waitForTransBlock=True, exitOnError=True)
-
-
-    # ***   vote using accounts   ***
-
-    #verify nodes are in sync and advancing
-    cluster.waitOnClusterSync(blockAdvancing=5)
-    index=0
-    for account in accounts:
-        Print("Vote for producers=%s" % (producers))
-        trans=prodNodes[index % len(prodNodes)].vote(account, producers, waitForTransBlock=True)
-        index+=1
-
+    node1=prodNodes[1]
 
     # ***   Identify a block where production is stable   ***
 
     #verify nodes are in sync and advancing
     cluster.waitOnClusterSync(blockAdvancing=5)
-    blockNum=node.getNextCleanProductionCycle(trans)
-    blockProducer=node.getBlockProducerByNum(blockNum)
-    Print("Validating blockNum=%s, producer=%s" % (blockNum, blockProducer))
     cluster.biosNode.kill(signal.SIGTERM)
 
-    #advance to the next block of 12
-    lastBlockProducer=blockProducer
-    while blockProducer==lastBlockProducer:
+    Utils.Print("catching defproducera")
+    tries = 120
+    blockNum = node.getHeadBlockNum()
+    blockProducer=node.getBlockProducerByNum(blockNum)
+    while blockProducer != "defproducera" and tries > 0:
         blockNum+=1
         blockProducer=node.getBlockProducerByNum(blockNum)
+        tries = tries - 1
 
+    if tries == 0:
+        Utils.errorExit("failed to catch a block produced by defproducera")
 
-    # ***   Identify what the production cycel is   ***
+    Utils.Print("catching the start of defproducerb")
+    tries = 30
+    while blockProducer != "defproducerb" and tries > 0:
+        blockNum+=1
+        blockProducer=node.getBlockProducerByNum(blockNum)
+        tries = tries - 1
 
-    productionCycle=[]
-    producerToSlot={}
-    slot=-1
-    inRowCountPerProducer=12
-    while True:
-        if blockProducer not in producers:
-            Utils.errorExit("Producer %s was not one of the voted on producers" % blockProducer)
+    if tries == 0:
+        Utils.errorExit("failed to catch a block produced by defproducerb")
 
-        productionCycle.append(blockProducer)
-        slot+=1
-        if blockProducer in producerToSlot:
-            Utils.errorExit("Producer %s was first seen in slot %d, but is repeated in slot %d" % (blockProducer, producerToSlot[blockProducer], slot))
-
-        producerToSlot[blockProducer]={"slot":slot, "count":0}
-        lastBlockProducer=blockProducer
-        while blockProducer==lastBlockProducer:
-            producerToSlot[blockProducer]["count"]+=1
-            blockNum+=1
-            blockProducer=node.getBlockProducerByNum(blockNum)
-
-        if producerToSlot[lastBlockProducer]["count"]!=inRowCountPerProducer:
-            Utils.errorExit("Producer %s, in slot %d, expected to produce %d blocks but produced %d blocks" % (blockProducer, slot, inRowCountPerProducer, producerToSlot[lastBlockProducer]["count"]))
-
-        if blockProducer==productionCycle[0]:
-            break
-
-    output=None
-    for blockProducer in productionCycle:
-        if output is None:
-            output=""
-        else:
-            output+=", "
-        output+=blockProducer+":"+str(producerToSlot[blockProducer]["count"])
-    Print("ProductionCycle ->> {\n%s\n}" % output)
-
-    #retrieve the info for all the nodes to report the status for each
-    for node in cluster.getNodes():
-        node.getInfo()
-    cluster.reportStatus()
-
+    blockNum+=1
+    blockProducer=node.getBlockProducerByNum(blockNum)
+    blockProducer1=node1.getBlockProducerByNum(blockNum)
+    Utils.Print("block number %d is producer by %s in node0" % (blockNum, blockProducer))
+    Utils.Print("block number %d is producer by %s in node1" % (blockNum, blockProducer1))
 
     # ***   Killing the "bridge" node   ***
-
     Print("Sending command to kill \"bridge\" node to separate the 2 producer groups.")
     # block number to start expecting node killed after
     preKillBlockNum=nonProdNode.getBlockNum()
     preKillBlockProducer=nonProdNode.getBlockProducerByNum(preKillBlockNum)
     # kill at last block before defproducerl, since the block it is killed on will get propagated
-    killAtProducer="defproducerk"
+    killAtProducer="defproducerb"
+    inRowCountPerProducer=12
     nonProdNode.killNodeOnProducer(producer=killAtProducer, whereInSequence=(inRowCountPerProducer-1))
 
 
@@ -403,13 +329,23 @@ try:
         info=prodNode.getInfo()
         Print("node info: %s" % (info))
 
-    Print("Relaunching the non-producing bridge node to connect the producing nodes again")
+    Print("killing node1(defproducerc) so that bridge node will frist connect to node0 (defproducera, defproducerb)")
+    node1.kill(killSignal=15)
+    time.sleep(2)
+    if node1.verifyAlive():
+        Utils.errorExit("Expected the node 1 to have shutdown.")
 
+    Print("Relaunching the non-producing bridge node to connect the node 0 (defproducera, defproducerb)")
     if not nonProdNode.relaunch(nonProdNode.nodeNum, None):
         errorExit("Failure - (non-production) node %d should have restarted" % (nonProdNode.nodeNum))
 
+    Print("Relaunch node 1 (defproducerc) and let it connect to brigde node that already synced up with node 0")
+    time.sleep(10)
+    if not node1.relaunch(nodeId=1, chainArg=" --enable-stale-production "):
+        errorExit("Failure - (non-production) node 1 should have restarted")
 
     Print("Waiting to allow forks to resolve")
+    time.sleep(3)
 
     for prodNode in prodNodes:
         info=prodNode.getInfo()

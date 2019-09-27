@@ -45,7 +45,7 @@ run_nodeos() {
 run_expect_success() {
    run_nodeos "$@"
    local NODEOS_PID=$!
-   sleep 5
+   sleep 10
    kill $NODEOS_PID
    wait $NODEOS_PID
 }
@@ -53,7 +53,7 @@ run_expect_success() {
 run_and_kill() {
    run_nodeos "$@"
    local NODEOS_PID=$!
-   sleep 5
+   sleep 10
    kill -KILL $NODEOS_PID
    ! wait $NODEOS_PID
 }
@@ -62,9 +62,9 @@ run_expect_failure() {
    run_nodeos "$@"
    local NODEOS_PID=$!
    MYPID=$$
-   (sleep 10; kill -ALRM $MYPID) & local TIMER_PID=$!
+   (sleep 20; kill -ALRM $MYPID) & local TIMER_PID=$!
    trap "kill $NODEOS_PID; wait $NODEOS_PID; exit 1" ALRM
-   sleep 5
+   sleep 10
    if wait $NODEOS_PID; then exit 1; fi
    kill $TIMER_PID
    trap ALRM
