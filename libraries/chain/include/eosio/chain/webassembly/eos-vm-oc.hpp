@@ -56,37 +56,18 @@ inline array_ptr<T> array_ptr_impl (size_t ptr, size_t length)
    constexpr int cb_full_linear_memory_start_segment_offset = OFFSET_OF_CONTROL_BLOCK_MEMBER(full_linear_memory_start);
    constexpr int cb_first_invalid_memory_address_segment_offset = OFFSET_OF_CONTROL_BLOCK_MEMBER(first_invalid_memory_address);
 
-   static_assert(sizeof(T) == 64 || sizeof(T) == 32 || sizeof(T) == 20 || sizeof(T) == 16 || sizeof(T) == 8 ||
-                 sizeof(T) == 4 || sizeof(T) == 2 || sizeof(T) == 1, "array_ptr sizeof(T) only supports limited values");
+   size_t end = ptr + length*sizeof(T);
 
-   if constexpr(sizeof(T) == 20) {
-      asm("shl $2, %[Length]\n"
-          "lea (%[Length], %[Length], 4), %[Length]\n"
-          : [Length] "+r" (length)
-          :
-          : "cc");
-   }
-   else if constexpr(sizeof(T) > 1)
-      asm("shl %[shiftAmount], %[Length]\n"
-          : [Length] "+r" (length)
-          : [shiftAmount] "i" (sizeof(T) == 64 ? 6 :
-                               sizeof(T) == 32 ? 5 :
-                               sizeof(T) == 16 ? 4 :
-                               sizeof(T) == 8  ? 3 :
-                               sizeof(T) == 4  ? 2 :
-                                                 1)
-          : "cc");
-
-   asm volatile("add %[Ptr], %[Length]\n"
-                "cmp %%gs:%c[firstInvalidMemory], %[Length]\n"
+   asm volatile("cmp %%gs:%c[firstInvalidMemory], %[End]\n"
                 "jle 1f\n"
-                "mov %%gs:0x10000000, %[Ptr]\n"
+                "mov %%gs:%c[maximumEosioWasmMemory], %[Ptr]\n"      //always invalid address
                 "1:\n"
                 "add %%gs:%c[linearMemoryStart], %[Ptr]\n"
                 : [Ptr] "+r" (ptr),
-                  [Length] "+r" (length)
+                  [End] "+r" (end)
                 : [linearMemoryStart] "i" (cb_full_linear_memory_start_segment_offset),
-                  [firstInvalidMemory] "i" (cb_first_invalid_memory_address_segment_offset)
+                  [firstInvalidMemory] "i" (cb_first_invalid_memory_address_segment_offset),
+                  [maximumEosioWasmMemory] "i" (wasm_constraints::maximum_linear_memory)
                 : "cc"
                );
 
