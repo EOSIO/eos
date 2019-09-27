@@ -18,6 +18,12 @@
 #include <sys/prctl.h>
 #include <sys/syscall.h>
 
+#if defined(__has_feature)
+#if __has_feature(shadow_call_stack)
+#error EOS-VM OC is not compatible with Clang ShadowCallStack
+#endif
+#endif
+
 extern "C" int arch_prctl(int code, unsigned long* addr);
 
 namespace eosio { namespace chain { namespace eosvmoc {
@@ -128,6 +134,10 @@ struct executor_signal_init {
 executor::executor(const code_cache_base& cc) {
    //if we're the first executor created, go setup the signal handling. For now we'll just leave this attached forever
    static executor_signal_init the_executor_signal_init;
+
+   uint64_t current_gs;
+   if(arch_prctl(ARCH_GET_GS, &current_gs) || current_gs)
+      wlog("x86_64 GS register is not set as expected. EOS-VM OC may not run correctly on this platform");
 
    struct stat s;
    fstat(cc.fd(), &s);
