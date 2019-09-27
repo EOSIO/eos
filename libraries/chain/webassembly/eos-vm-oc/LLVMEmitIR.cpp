@@ -1237,12 +1237,12 @@ namespace LLVMJIT
 			importedFunctionOffsets.push_back(ie.ordinal);
 		}
 
-		int current_prolouge = -8;
+		int current_prologue = -8;
 
 		for(const GlobalDef& global : module.globals.defs) {
 			if(global.type.isMutable) {
-				globals.push_back(emitLiteralPointer((void*)current_prolouge,asLLVMType(global.type.valueType)->getPointerTo(256)));
-				current_prolouge -= 8;
+				globals.push_back(emitLiteralPointer((void*)current_prologue,asLLVMType(global.type.valueType)->getPointerTo(256)));
+				current_prologue -= 8;
 			}
 			else {
 				switch(global.type.valueType) {
@@ -1256,10 +1256,10 @@ namespace LLVMJIT
 		}
 
 		if(module.tables.size()) {
-			current_prolouge -= 8; //now pointing to LAST element
-			current_prolouge -= 16*(module.tables.defs[0].type.size.min-1); //now pointing to FIRST element
+			current_prologue -= 8; //now pointing to LAST element
+			current_prologue -= 16*(module.tables.defs[0].type.size.min-1); //now pointing to FIRST element
 			auto tableElementType = llvm::StructType::get(context,{llvmI8PtrType, llvmI64Type});
-			defaultTablePointer = emitLiteralPointer((void*)current_prolouge,tableElementType->getPointerTo(256));
+			defaultTablePointer = emitLiteralPointer((void*)current_prologue,tableElementType->getPointerTo(256));
 			defaultTableMaxElementIndex = emitLiteral((U64)module.tables.defs[0].type.size.min);
 
 			for(const TableSegment& table_segment : module.tableSegments)

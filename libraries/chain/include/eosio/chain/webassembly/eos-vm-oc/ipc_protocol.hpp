@@ -33,7 +33,7 @@ struct code_compilation_result_message {
    eosvmoc_optional_offset_or_import_t start;
    unsigned apply_offset;
    int starting_memory_pages;
-   unsigned initdata_prolouge_size;
+   unsigned initdata_prologue_size;
    //Two sent fds: 1) wasm code, 2) initial memory snapshot
 };
 
@@ -65,7 +65,7 @@ FC_REFLECT(eosio::chain::eosvmoc::initalize_response_message, (error_message))
 FC_REFLECT(eosio::chain::eosvmoc::code_tuple, (code_id)(vm_version))
 FC_REFLECT(eosio::chain::eosvmoc::compile_wasm_message, (code))
 FC_REFLECT(eosio::chain::eosvmoc::evict_wasms_message, (codes))
-FC_REFLECT(eosio::chain::eosvmoc::code_compilation_result_message, (start)(apply_offset)(starting_memory_pages)(initdata_prolouge_size))
+FC_REFLECT(eosio::chain::eosvmoc::code_compilation_result_message, (start)(apply_offset)(starting_memory_pages)(initdata_prologue_size))
 FC_REFLECT(eosio::chain::eosvmoc::compilation_result_unknownfailure, )
 FC_REFLECT(eosio::chain::eosvmoc::compilation_result_toofull, )
 FC_REFLECT(eosio::chain::eosvmoc::wasm_compilation_result_message, (code)(result)(cache_free_bytes))

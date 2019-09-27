@@ -139,7 +139,7 @@ struct compile_monitor_session {
                         result.starting_memory_pages,
                         (uintptr_t)mem_ptr - (uintptr_t)_code_mapping,
                         (unsigned)get_size_of_fd(fds[1]),
-                        result.initdata_prolouge_size
+                        result.initdata_prologue_size
                      },
                      _allocator->get_free_memory()
                   };

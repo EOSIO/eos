@@ -21,7 +21,7 @@ class memory {
 
       //round up the prologue to multiple of 4K page
       static constexpr uint64_t memory_prologue_size = ((memory::wcb_allowance + mutable_global_size + table_size + intrinsic_count*UINT64_C(8))+UINT64_C(4095))/UINT64_C(4096)*UINT64_C(4096);
-      //prolouge + 33MB + 4GB fault buffer + 4096 addtional buffer for safety
+      //prologue + 33MB + 4GB fault buffer + 4096 addtional buffer for safety
       static constexpr uint64_t total_memory_per_slice = memory_prologue_size + wasm_memory_size + UINT64_C(0x100000000) + UINT64_C(4096);
 
       static constexpr uint64_t number_slices = wasm_memory_size/(64u*1024u)+1u;

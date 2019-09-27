@@ -54,8 +54,8 @@ void run_compile(wrapped_fd&& response_sock, wrapped_fd&& wasm_code) noexcept {
    if(module.memories.size())
       result_message.starting_memory_pages = module.memories.defs.at(0).type.size.min;
 
-   std::vector<uint8_t> prolouge(memory::cb_offset); //getting the control block offset gets us as large as table+globals as possible
-   std::vector<uint8_t>::iterator prolouge_it = prolouge.end();
+   std::vector<uint8_t> prologue(memory::cb_offset); //getting the control block offset gets us as large as table+globals as possible
+   std::vector<uint8_t>::iterator prologue_it = prologue.end();
 
    //set up mutable globals
    union global_union {
@@ -68,8 +68,8 @@ void run_compile(wrapped_fd&& response_sock, wrapped_fd&& wasm_code) noexcept {
    for(const GlobalDef& global : module.globals.defs) {
       if(!global.type.isMutable)
          continue;
-      prolouge_it -= 8;
-      global_union* const u = (global_union* const)&*prolouge_it;
+      prologue_it -= 8;
+      global_union* const u = (global_union* const)&*prologue_it;
 
       switch(global.initializer.type) {
          case InitializerExpression::Type::i32_const: u->i32 = global.initializer.i32; break;
@@ -86,10 +86,10 @@ void run_compile(wrapped_fd&& response_sock, wrapped_fd&& wasm_code) noexcept {
    };
 
    if(module.tables.size())
-      prolouge_it -= sizeof(table_entry) * module.tables.defs[0].type.size.min;
+      prologue_it -= sizeof(table_entry) * module.tables.defs[0].type.size.min;
 
    for(const TableSegment& table_segment : module.tableSegments) {
-      struct table_entry* table_index_0 = (struct table_entry*)&*prolouge_it;
+      struct table_entry* table_index_0 = (struct table_entry*)&*prologue_it;
 
       for(Uptr i = 0; i < table_segment.indices.size(); ++i) {
          const Uptr function_index = table_segment.indices[i];
@@ -121,9 +121,9 @@ void run_compile(wrapped_fd&& response_sock, wrapped_fd&& wasm_code) noexcept {
       memcpy(initial_mem.data() + base_offset, data_segment.data.data(), data_segment.data.size());
    }
 
-   result_message.initdata_prolouge_size = prolouge.end() - prolouge_it;
+   result_message.initdata_prologue_size = prologue.end() - prologue_it;
    std::vector<uint8_t> initdata_prep;
-   std::move(prolouge_it, prolouge.end(), std::back_inserter(initdata_prep));
+   std::move(prologue_it, prologue.end(), std::back_inserter(initdata_prep));
    std::move(initial_mem.begin(), initial_mem.end(), std::back_inserter(initdata_prep));
 
    std::vector<wrapped_fd> fds_to_send;
