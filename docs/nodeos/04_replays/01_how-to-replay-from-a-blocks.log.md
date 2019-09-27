@@ -1,4 +1,4 @@
-# Hot To Replay from a Blocks Log
+# How To Replay from a Blocks Log
 
 Once you have obtained a copy of the blocks.log file which you wish to replay the blockchain from, copy it to your data/blocks directory, backing up any existing contents if you wish to keep them.
 
