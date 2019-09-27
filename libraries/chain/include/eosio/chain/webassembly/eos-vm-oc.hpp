@@ -31,6 +31,7 @@ class eosvmoc_runtime : public eosio::chain::wasm_runtime_interface {
    public:
       eosvmoc_runtime(const boost::filesystem::path data_dir, const eosvmoc::config& eosvmoc_config, const chainbase::database& db);
       ~eosvmoc_runtime();
+      bool inject_module(IR::Module&) override { return false; }
       std::unique_ptr<wasm_instantiated_module_interface> instantiate_module(const char* code_bytes, size_t code_size, std::vector<uint8_t> initial_memory,
                                                                              const digest_type& code_hash, const uint8_t& vm_type, const uint8_t& vm_version) override;
 
@@ -126,6 +127,18 @@ inline null_terminated_ptr null_terminated_ptr_impl(uint64_t ptr)
    return null_terminated_ptr((char*)ptr);
 }
 
+template<typename T>
+struct void_ret_wrapper {
+   using type = T;
+};
+
+template<>
+struct void_ret_wrapper<void> {
+   using type = char;
+};
+
+template<typename T>
+using void_ret_wrapper_t = typename void_ret_wrapper<T>::type;
 
 /**
  * template that maps native types to WASM VM types
@@ -459,9 +472,9 @@ struct intrinsic_invoker_impl<is_injected, Ret, std::tuple<Input, Inputs...>, st
  * @tparam Translated - the list of transcribed wasm parameters
  */
 template<bool is_injected, typename T, typename Ret, typename... Inputs, typename ...Translated>
-struct intrinsic_invoker_impl<is_injected, Ret, std::tuple<array_ptr<T>, size_t, Inputs...>, std::tuple<Translated...>> {
+struct intrinsic_invoker_impl<is_injected, Ret, std::tuple<array_ptr<T>, uint32_t, Inputs...>, std::tuple<Translated...>> {
    using next_step = intrinsic_invoker_impl<is_injected, Ret, std::tuple<Inputs...>, std::tuple<Translated..., I32, I32>>;
-   using then_type = Ret(*)(array_ptr<T>, size_t, Inputs..., Translated...);
+   using then_type = Ret(*)(array_ptr<T>, uint32_t, Inputs..., Translated...);
 
    template<then_type Then, typename U=T>
    static auto translate_one(Inputs... rest, Translated... translated, I32 ptr, I32 size) -> std::enable_if_t<std::is_const<U>::value, Ret> {
@@ -534,9 +547,9 @@ struct intrinsic_invoker_impl<is_injected, Ret, std::tuple<null_terminated_ptr, 
  * @tparam Translated - the list of transcribed wasm parameters
  */
 template<bool is_injected, typename T, typename U, typename Ret, typename... Inputs, typename ...Translated>
-struct intrinsic_invoker_impl<is_injected, Ret, std::tuple<array_ptr<T>, array_ptr<U>, size_t, Inputs...>, std::tuple<Translated...>> {
+struct intrinsic_invoker_impl<is_injected, Ret, std::tuple<array_ptr<T>, array_ptr<U>, uint32_t, Inputs...>, std::tuple<Translated...>> {
    using next_step = intrinsic_invoker_impl<is_injected, Ret, std::tuple<Inputs...>, std::tuple<Translated..., I32, I32, I32>>;
-   using then_type = Ret(*)(array_ptr<T>, array_ptr<U>, size_t, Inputs..., Translated...);
+   using then_type = Ret(*)(array_ptr<T>, array_ptr<U>, uint32_t, Inputs..., Translated...);
 
    template<then_type Then>
    static Ret translate_one(Inputs... rest, Translated... translated, I32 ptr_t, I32 ptr_u, I32 size) {
@@ -559,9 +572,9 @@ struct intrinsic_invoker_impl<is_injected, Ret, std::tuple<array_ptr<T>, array_p
  * @tparam Translated - the list of transcribed wasm parameters
  */
 template<bool is_injected, typename Ret>
-struct intrinsic_invoker_impl<is_injected, Ret, std::tuple<array_ptr<char>, int, size_t>, std::tuple<>> {
+struct intrinsic_invoker_impl<is_injected, Ret, std::tuple<array_ptr<char>, int, uint32_t>, std::tuple<>> {
    using next_step = intrinsic_invoker_impl<is_injected, Ret, std::tuple<>, std::tuple<I32, I32, I32>>;
-   using then_type = Ret(*)(array_ptr<char>, int, size_t);
+   using then_type = Ret(*)(array_ptr<char>, int, uint32_t);
 
    template<then_type Then>
    static Ret translate_one(I32 ptr, I32 value, I32 size) {
@@ -754,21 +767,33 @@ struct intrinsic_function_invoker_wrapper;
 
 template<bool is_injected, typename WasmSig, typename Cls, typename Ret, typename... Params>
 struct intrinsic_function_invoker_wrapper<is_injected, WasmSig, Ret (Cls::*)(Params...)> {
+   static_assert( !(std::is_pointer_v<Ret> && alignof(std::remove_pointer_t<void_ret_wrapper_t<Ret>>) != 1) &&
+                  !(std::is_lvalue_reference_v<Ret> && alignof(std::remove_reference_t<void_ret_wrapper_t<Ret>>) != 1),
+                  "intrinsics should only return a reference or pointer with single byte alignment");
    using type = intrinsic_function_invoker<is_injected, WasmSig, Ret, Ret (Cls::*)(Params...), Cls, Params...>;
 };
 
 template<bool is_injected, typename WasmSig, typename Cls, typename Ret, typename... Params>
 struct intrinsic_function_invoker_wrapper<is_injected, WasmSig, Ret (Cls::*)(Params...) const> {
+   static_assert( !(std::is_pointer_v<Ret> && alignof(std::remove_pointer_t<void_ret_wrapper_t<Ret>>) != 1) &&
+                  !(std::is_lvalue_reference_v<Ret> && alignof(std::remove_reference_t<void_ret_wrapper_t<Ret>>) != 1),
+                  "intrinsics should only return a reference or pointer with single byte alignment");
    using type = intrinsic_function_invoker<is_injected, WasmSig, Ret, Ret (Cls::*)(Params...) const, Cls, Params...>;
 };
 
 template<bool is_injected, typename WasmSig, typename Cls, typename Ret, typename... Params>
 struct intrinsic_function_invoker_wrapper<is_injected, WasmSig, Ret (Cls::*)(Params...) volatile> {
+   static_assert( !(std::is_pointer_v<Ret> && alignof(std::remove_pointer_t<void_ret_wrapper_t<Ret>>) != 1) &&
+                  !(std::is_lvalue_reference_v<Ret> && alignof(std::remove_reference_t<void_ret_wrapper_t<Ret>>) != 1),
+                  "intrinsics should only return a reference or pointer with single byte alignment");
    using type = intrinsic_function_invoker<is_injected, WasmSig, Ret, Ret (Cls::*)(Params...) volatile, Cls, Params...>;
 };
 
 template<bool is_injected, typename WasmSig, typename Cls, typename Ret, typename... Params>
 struct intrinsic_function_invoker_wrapper<is_injected, WasmSig, Ret (Cls::*)(Params...) const volatile> {
+   static_assert( !(std::is_pointer_v<Ret> && alignof(std::remove_pointer_t<void_ret_wrapper_t<Ret>>) != 1) &&
+                  !(std::is_lvalue_reference_v<Ret> && alignof(std::remove_reference_t<void_ret_wrapper_t<Ret>>) != 1),
+                  "intrinsics should only return a reference or pointer with single byte alignment");
    using type = intrinsic_function_invoker<is_injected, WasmSig, Ret, Ret (Cls::*)(Params...) const volatile, Cls, Params...>;
 };
 
