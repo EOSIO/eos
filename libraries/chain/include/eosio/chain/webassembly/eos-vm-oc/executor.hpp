@@ -7,6 +7,7 @@
 
 #include <list>
 #include <vector>
+#include <cstddef>
 
 namespace eosio { namespace chain {
 
