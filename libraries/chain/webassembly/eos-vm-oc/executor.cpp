@@ -14,8 +14,6 @@
 
 #include <boost/hana/equal.hpp>
 
-#include <mutex>
-
 #include <asm/prctl.h>
 #include <sys/prctl.h>
 #include <sys/syscall.h>
@@ -25,9 +23,6 @@ extern "C" int arch_prctl(int code, unsigned long* addr);
 namespace eosio { namespace chain { namespace eosvmoc {
 
 static constexpr auto signal_sentinel = 0x4D56534F45534559ul;
-
-static std::mutex inited_signal_mutex;
-static bool inited_signal;
 
 static void(*chained_handler)(int,siginfo_t*,void*);
 static void segv_handler(int sig, siginfo_t* info, void* ctx)  {
@@ -116,9 +111,8 @@ DEFINE_EOSVMOC_TRAP_INTRINSIC(eosvmoc_internal,unreachable) {
    throw_internal_exception("Unreachable reached");
 }
 
-executor::executor(const code_cache_base& cc) {
-   //if we're the first executor created, go setup the signal handling. For now we'll just leave this attached forever
-   if(std::lock_guard g(inited_signal_mutex); inited_signal == false) {
+struct executor_signal_init {
+   executor_signal_init() {
       struct sigaction sig_action, old_sig_action;
       sig_action.sa_sigaction = segv_handler;
       sigemptyset(&sig_action.sa_mask);
@@ -128,9 +122,12 @@ executor::executor(const code_cache_base& cc) {
          chained_handler = old_sig_action.sa_sigaction;
       else if(old_sig_action.sa_handler != SIG_IGN && old_sig_action.sa_handler != SIG_DFL)
          chained_handler = (void (*)(int,siginfo_t*,void*))old_sig_action.sa_handler;
-
-      inited_signal = true;
    }
+};
+
+executor::executor(const code_cache_base& cc) {
+   //if we're the first executor created, go setup the signal handling. For now we'll just leave this attached forever
+   static executor_signal_init the_executor_signal_init;
 
    struct stat s;
    fstat(cc.fd(), &s);
