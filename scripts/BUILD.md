@@ -2,9 +2,11 @@
 
 The instructions below can be used to build and test EOSIO.
 
-## AmazonLinux-2
+# AmazonLinux-2
 
 **NOTE**: You may utilize Conan to manage dependencies for EOSIO on AmazonLinux-2. Instructions for this are located [here](../.conan/AMAZONLINUX-2.md).
+
+## Build Steps
 
 ```
 yum install -y which git sudo procps-ng util-linux autoconf automake libtool make bzip2 bzip2-devel openssl-devel gmp-devel libstdc++ libcurl-devel libusbx-devel python3 python3-devel python-devel libedit-devel doxygen graphviz clang patch llvm-devel llvm-static vim-common jq
@@ -19,9 +21,9 @@ curl -LO https://dl.bintray.com/boostorg/release/1.71.0/source/boost_1_71_0.tar.
 
 tar -xjf boost_1_71_0.tar.bz2
 
-cd boost_1_71_0
+cd boost_1_71_0/
 
-./bootstrap.sh --prefix=/usr/local
+./bootstrap.sh --prefix=/usr/local/boost-1.71.0
 
 ./b2 --with-iostreams --with-date_time --with-filesystem --with-system --with-program_options --with-chrono --with-test -q -j$(getconf _NPROCESSORS_ONLN) install
 
@@ -33,16 +35,26 @@ cd eos/
 
 git submodule update --init --recursive
 
-/usr/local/cmake-3.15.3-Linux-x86_64/bin/cmake -DCMAKE_BUILD_TYPE='Release' -DCORE_SYMBOL_NAME='SYS' -DCMAKE_CXX_COMPILER='clang++' -DCMAKE_C_COMPILER='clang' -Bbuild
+/usr/local/cmake-3.15.3-Linux-x86_64/bin/cmake -DCMAKE_BUILD_TYPE='Release' -DCORE_SYMBOL_NAME='SYS' -DCMAKE_CXX_COMPILER='clang++' -DCMAKE_C_COMPILER='clang' -DCMAKE_INSTALL_PREFIX='/usr/local/eos' -Bbuild
 
 cd build/
 
 make -j$(getconf _NPROCESSORS_ONLN)
 ```
 
-## CentOS-7.6
+## Test Steps
+
+```
+/usr/local/cmake-3.15.3-Linux-x86_64/bin/ctest -j$(getconf _NPROCESSORS_ONLN) -LE _tests --output-on-failure -T Test
+
+/usr/local/cmake-3.15.3-Linux-x86_64/bin/ctest -L nonparallelizable_tests --output-on-failure -T Test
+```
+
+# CentOS-7.6
 
 **NOTE**: You may utilize Conan to manage dependencies for EOSIO on CentOS-7.6. Instructions for this are located [here](../.conan/CENTOS-7.6.md).
+
+## Build Steps
 
 ```
 yum install -y epel-release
@@ -63,9 +75,9 @@ curl -LO https://dl.bintray.com/boostorg/release/1.71.0/source/boost_1_71_0.tar.
 
 tar -xjf boost_1_71_0.tar.bz2
 
-cd boost_1_71_0
+cd boost_1_71_0/
 
-./bootstrap.sh --prefix=/usr/local
+./bootstrap.sh --prefix=/usr/local/boost-1.71.0
 
 ./b2 --with-iostreams --with-date_time --with-filesystem --with-system --with-program_options --with-chrono --with-test -q -j$(getconf _NPROCESSORS_ONLN) install
 
@@ -77,18 +89,27 @@ cd eos/
 
 git submodule update --init --recursive
 
-/usr/local/cmake-3.15.3-Linux-x86_64/bin/cmake -DCMAKE_BUILD_TYPE='Release' -DCORE_SYMBOL_NAME='SYS' -DLLVM_DIR='/usr/lib64/llvm7.0/lib/cmake/llvm' -Bbuild
+/usr/local/cmake-3.15.3-Linux-x86_64/bin/cmake -DCMAKE_BUILD_TYPE='Release' -DCORE_SYMBOL_NAME='SYS' -DLLVM_DIR='/usr/lib64/llvm7.0/lib/cmake/llvm' -DCMAKE_INSTALL_PREFIX='/usr/local/eos' -Bbuild
 
 cd build/
 
 make -j$(getconf _NPROCESSORS_ONLN)
 ```
 
-## macOS-10.14
+## Test Steps
+
+```
+/usr/local/cmake-3.15.3-Linux-x86_64/bin/ctest -j$(getconf _NPROCESSORS_ONLN) -LE _tests --output-on-failure -T Test
+
+/usr/local/cmake-3.15.3-Linux-x86_64/bin/ctest -L nonparallelizable_tests --output-on-failure -T Test
+```
+# macOS-10.14
 
 **NOTE**: You may utilize Conan to manage dependencies for EOSIO on macOS-10.14. Instructions for this are located [here](../.conan/MACOS-10.14.md).
 
-**NOTE**: This requires brew to be installed on your system.
+**NOTE**: This requires Homebrew to be installed on your system.
+
+## Build Steps
 
 ```
 brew install git cmake python@2 python libtool libusb graphviz automake wget gmp llvm@7 pkgconfig doxygen openssl jq boost
@@ -99,16 +120,25 @@ cd eos/
 
 git submodule update --init --recursive
 
-cmake -DCMAKE_BUILD_TYPE='Release' -DCORE_SYMBOL_NAME='SYS' -Bbuild
+cmake -DCMAKE_BUILD_TYPE='Release' -DCORE_SYMBOL_NAME='SYS' -DCMAKE_INSTALL_PREFIX='/usr/local/eos' -Bbuild
 
 cd build/
 
 make -j$(getconf _NPROCESSORS_ONLN)
 ```
 
-## Ubuntu-18.04
+## Test Steps
+
+```
+ctest -j$(getconf _NPROCESSORS_ONLN) -LE _tests --output-on-failure -T Test
+
+ctest -L nonparallelizable_tests --output-on-failure -T Test
+```
+# Ubuntu-18.04
 
 **NOTE**: You may utilize Conan to manage dependencies for EOSIO on Ubuntu-18.04. Instructions for this are located [here](../.conan/UBUNTU-18.04.md).
+
+## Build Steps
 
 ```
 apt-get install -y git make bzip2 automake libbz2-dev libssl-dev doxygen graphviz libgmp3-dev autotools-dev libicu-dev python2.7 python2.7-dev python3 python3-dev autoconf libtool g++ gcc curl zlib1g-dev sudo ruby libusb-1.0-0-dev libcurl4-gnutls-dev pkg-config patch llvm-7-dev clang ccache vim-common jq
@@ -123,9 +153,9 @@ curl -LO https://dl.bintray.com/boostorg/release/1.71.0/source/boost_1_71_0.tar.
 
 tar -xjf boost_1_71_0.tar.bz2
 
-cd boost_1_71_0
+cd boost_1_71_0/
 
-./bootstrap.sh --prefix=/usr/local
+./bootstrap.sh --prefix=/usr/local/boost-1.71.0
 
 ./b2 --with-iostreams --with-date_time --with-filesystem --with-system --with-program_options --with-chrono --with-test -q -j$(getconf _NPROCESSORS_ONLN) install
 
@@ -137,13 +167,20 @@ cd eos/
 
 git submodule update --init --recursive
 
-/usr/local/cmake-3.15.3-Linux-x86_64/bin/cmake -DCMAKE_BUILD_TYPE='Release' -DCORE_SYMBOL_NAME='SYS' -DCMAKE_CXX_COMPILER='clang++' -DCMAKE_C_COMPILER='clang' -DLLVM_DIR='/usr/lib/llvm-7/lib/cmake/llvm' -Bbuild
+/usr/local/cmake-3.15.3-Linux-x86_64/bin/cmake -DCMAKE_BUILD_TYPE='Release' -DCORE_SYMBOL_NAME='SYS' -DCMAKE_CXX_COMPILER='clang++' -DCMAKE_C_COMPILER='clang' -DLLVM_DIR='/usr/lib/llvm-7/lib/cmake/llvm' -DCMAKE_INSTALL_PREFIX='/usr/local/eos' -Bbuild
 
 cd build/
 
 make -j$(getconf _NPROCESSORS_ONLN)
 ```
 
+## Test Steps
+
+```
+/usr/local/cmake-3.15.3-Linux-x86_64/bin/ctest -j$(getconf _NPROCESSORS_ONLN) -LE _tests --output-on-failure -T Test
+
+/usr/local/cmake-3.15.3-Linux-x86_64/bin/ctest -L nonparallelizable_tests --output-on-failure -T Test
+```
 ## License
 
 [MIT](../LICENSE)

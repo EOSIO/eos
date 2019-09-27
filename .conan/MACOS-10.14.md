@@ -6,7 +6,7 @@ The instructions below can be used to build and test EOSIO on macOS-10.14.
 
 **NOTE**: This requires the conan-poc-v2 branch.
 
-**NOTE**: This requires brew to be installed on your system.
+**NOTE**: This requires Homebrew to be installed on your system.
 
 ```
 brew install git cmake python llvm@7 automake autoconf libtool
