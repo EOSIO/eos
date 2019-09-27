@@ -805,7 +805,6 @@ namespace eosio {
       }
       reset();
       sent_handshake_count = 0;
-      trx_in_progress_size = 0;
       node_id = fc::sha256();
       last_handshake_recv = handshake_message();
       last_handshake_sent = handshake_message();
