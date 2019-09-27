@@ -21,7 +21,7 @@ namespace eosio { namespace chain {
             result in an exception. Use nullptr to disable a previously set callback. */
          void set_expiration_callback(void(*func)(void*), void* user);
 
-         volatile sig_atomic_t& expired;
+         std::atomic_bool& expired;
       private:
          platform_timer& _timer;
 

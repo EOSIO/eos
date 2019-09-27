@@ -471,7 +471,29 @@ BOOST_AUTO_TEST_CASE( producer_watermark_test ) try {
    BOOST_CHECK_EQUAL( true, compare_schedules( sch1, *c.control->proposed_producers() ) );
 
    produce_until_transition( c, N(bob), N(alice) );
+
+   auto bob_last_produced_block_num = c.control->head_block_num();
+   wdump((bob_last_produced_block_num));
+
    produce_until_transition( c, N(alice), N(bob) );
+
+   auto alice_last_produced_block_num = c.control->head_block_num();
+   wdump((alice_last_produced_block_num));
+
+   {
+      wdump((c.control->head_block_state()->producer_to_last_produced));
+      const auto& last_produced = c.control->head_block_state()->producer_to_last_produced;
+      auto alice_itr = last_produced.find( N(alice) );
+      BOOST_REQUIRE( alice_itr != last_produced.end() );
+      BOOST_CHECK_EQUAL( alice_itr->second, alice_last_produced_block_num );
+      auto bob_itr = last_produced.find( N(bob) );
+      BOOST_REQUIRE( bob_itr != last_produced.end() );
+      BOOST_CHECK_EQUAL( bob_itr->second, bob_last_produced_block_num );
+      auto carol_itr = last_produced.find( N(carol) );
+      BOOST_REQUIRE( carol_itr != last_produced.end() );
+      BOOST_CHECK_EQUAL( carol_itr->second, carol_last_produced_block_num );
+   }
+
    BOOST_CHECK_EQUAL( c.control->pending_producers().version, 3u );
    BOOST_REQUIRE_EQUAL( c.control->active_producers().version, 2u );
 

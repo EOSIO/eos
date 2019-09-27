@@ -20,6 +20,7 @@ class wavm_runtime : public eosio::chain::wasm_runtime_interface {
    public:
       wavm_runtime();
       ~wavm_runtime();
+      bool inject_module(IR::Module&) override;
       std::unique_ptr<wasm_instantiated_module_interface> instantiate_module(const char* code_bytes, size_t code_size, std::vector<uint8_t> initial_memory,
                                                                              const digest_type& code_hash, const uint8_t& vm_type, const uint8_t& vm_version) override;
 
@@ -157,13 +158,13 @@ template<typename T>
 inline array_ptr<T> array_ptr_impl (running_instance_context& ctx, U32 ptr, size_t length)
 {
    MemoryInstance* mem = ctx.memory;
-   if (!mem) 
+   if (!mem)
       Runtime::causeException(Exception::Cause::accessViolation);
 
    size_t mem_total = IR::numBytesPerPage * Runtime::getMemoryNumPages(mem);
    if (ptr >= mem_total || length > (mem_total - ptr) / sizeof(T))
       Runtime::causeException(Exception::Cause::accessViolation);
-   
+
    T* ret_ptr = (T*)(getMemoryBaseAddress(mem) + ptr);
 
    return array_ptr<T>((T*)(getMemoryBaseAddress(mem) + ptr));
@@ -383,9 +384,9 @@ struct intrinsic_invoker_impl<Ret, std::tuple<Input, Inputs...>, std::tuple<Tran
  * @tparam Translated - the list of transcribed wasm parameters
  */
 template<typename T, typename Ret, typename... Inputs, typename ...Translated>
-struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, size_t, Inputs...>, std::tuple<Translated...>> {
+struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, uint32_t, Inputs...>, std::tuple<Translated...>> {
    using next_step = intrinsic_invoker_impl<Ret, std::tuple<Inputs...>, std::tuple<Translated..., I32, I32>>;
-   using then_type = Ret(*)(running_instance_context&, array_ptr<T>, size_t, Inputs..., Translated...);
+   using then_type = Ret(*)(running_instance_context&, array_ptr<T>, uint32_t, Inputs..., Translated...);
 
    template<then_type Then, typename U=T>
    static auto translate_one(running_instance_context& ctx, Inputs... rest, Translated... translated, I32 ptr, I32 size) -> std::enable_if_t<std::is_const<U>::value, Ret> {
@@ -414,7 +415,7 @@ struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, size_t, Inputs...>, 
          std::vector<std::remove_const_t<T> > copy(length > 0 ? length : 1);
          T* copy_ptr = &copy[0];
          memcpy( (void*)copy_ptr, (void*)base, length * sizeof(T) );
-         Ret ret = Then(ctx, static_cast<array_ptr<T>>(copy_ptr), length, rest..., translated...);  
+         Ret ret = Then(ctx, static_cast<array_ptr<T>>(copy_ptr), length, rest..., translated...);
          memcpy( (void*)base, (void*)copy_ptr, length * sizeof(T) );
          return ret;
       }
@@ -462,9 +463,9 @@ struct intrinsic_invoker_impl<Ret, std::tuple<null_terminated_ptr, Inputs...>, s
  * @tparam Translated - the list of transcribed wasm parameters
  */
 template<typename T, typename U, typename Ret, typename... Inputs, typename ...Translated>
-struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, array_ptr<U>, size_t, Inputs...>, std::tuple<Translated...>> {
+struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, array_ptr<U>, uint32_t, Inputs...>, std::tuple<Translated...>> {
    using next_step = intrinsic_invoker_impl<Ret, std::tuple<Inputs...>, std::tuple<Translated..., I32, I32, I32>>;
-   using then_type = Ret(*)(running_instance_context&, array_ptr<T>, array_ptr<U>, size_t, Inputs..., Translated...);
+   using then_type = Ret(*)(running_instance_context&, array_ptr<T>, array_ptr<U>, uint32_t, Inputs..., Translated...);
 
    template<then_type Then>
    static Ret translate_one(running_instance_context& ctx, Inputs... rest, Translated... translated, I32 ptr_t, I32 ptr_u, I32 size) {
@@ -487,9 +488,9 @@ struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, array_ptr<U>, size_t
  * @tparam Translated - the list of transcribed wasm parameters
  */
 template<typename Ret>
-struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<char>, int, size_t>, std::tuple<>> {
+struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<char>, int, uint32_t>, std::tuple<>> {
    using next_step = intrinsic_invoker_impl<Ret, std::tuple<>, std::tuple<I32, I32, I32>>;
-   using then_type = Ret(*)(running_instance_context&, array_ptr<char>, int, size_t);
+   using then_type = Ret(*)(running_instance_context&, array_ptr<char>, int, uint32_t);
 
    template<then_type Then>
    static Ret translate_one(running_instance_context& ctx, I32 ptr, I32 value, I32 size) {
@@ -681,26 +682,51 @@ struct intrinsic_function_invoker<WasmSig, void, MethodSig, Cls, Params...> {
    }
 };
 
+template<typename T>
+struct void_ret_wrapper {
+   using type = T;
+};
+
+template<>
+struct void_ret_wrapper<void> {
+   using type = char;
+};
+
+template<typename T>
+using void_ret_wrapper_t = typename void_ret_wrapper<T>::type;
+
 template<typename, typename>
 struct intrinsic_function_invoker_wrapper;
 
 template<typename WasmSig, typename Cls, typename Ret, typename... Params>
 struct intrinsic_function_invoker_wrapper<WasmSig, Ret (Cls::*)(Params...)> {
+   static_assert( !(std::is_pointer_v<Ret> && alignof(std::remove_pointer_t<void_ret_wrapper_t<Ret>>) != 1) &&
+                  !(std::is_lvalue_reference_v<Ret> && alignof(std::remove_reference_t<void_ret_wrapper_t<Ret>>) != 1),
+                  "intrinsics should only return a reference or pointer with single byte alignment");
    using type = intrinsic_function_invoker<WasmSig, Ret, Ret (Cls::*)(Params...), Cls, Params...>;
 };
 
 template<typename WasmSig, typename Cls, typename Ret, typename... Params>
 struct intrinsic_function_invoker_wrapper<WasmSig, Ret (Cls::*)(Params...) const> {
+   static_assert( !(std::is_pointer_v<Ret> && alignof(std::remove_pointer_t<void_ret_wrapper_t<Ret>>) != 1) &&
+                  !(std::is_lvalue_reference_v<Ret> && alignof(std::remove_reference_t<void_ret_wrapper_t<Ret>>) != 1),
+                  "intrinsics should only return a reference or pointer with single byte alignment");
    using type = intrinsic_function_invoker<WasmSig, Ret, Ret (Cls::*)(Params...) const, Cls, Params...>;
 };
 
 template<typename WasmSig, typename Cls, typename Ret, typename... Params>
 struct intrinsic_function_invoker_wrapper<WasmSig, Ret (Cls::*)(Params...) volatile> {
+   static_assert( !(std::is_pointer_v<Ret> && alignof(std::remove_pointer_t<void_ret_wrapper_t<Ret>>) != 1) &&
+                  !(std::is_lvalue_reference_v<Ret> && alignof(std::remove_reference_t<void_ret_wrapper_t<Ret>>) != 1),
+                  "intrinsics should only return a reference or pointer with single byte alignment");
    using type = intrinsic_function_invoker<WasmSig, Ret, Ret (Cls::*)(Params...) volatile, Cls, Params...>;
 };
 
 template<typename WasmSig, typename Cls, typename Ret, typename... Params>
 struct intrinsic_function_invoker_wrapper<WasmSig, Ret (Cls::*)(Params...) const volatile> {
+   static_assert( !(std::is_pointer_v<Ret> && alignof(std::remove_pointer_t<void_ret_wrapper_t<Ret>>) != 1) &&
+                  !(std::is_lvalue_reference_v<Ret> && alignof(std::remove_reference_t<void_ret_wrapper_t<Ret>>) != 1),
+                  "intrinsics should only return a reference or pointer with single byte alignment");
    using type = intrinsic_function_invoker<WasmSig, Ret, Ret (Cls::*)(Params...) const volatile, Cls, Params...>;
 };
 

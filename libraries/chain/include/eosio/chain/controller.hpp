@@ -103,8 +103,8 @@ namespace eosio { namespace chain {
             incomplete  = 3, ///< this is an incomplete block (either being produced by a producer or speculatively produced by a node)
          };
 
-         controller( const config& cfg, const fc::optional<chain_id_type>& expected_chain_id );
-         controller( const config& cfg, protocol_feature_set&& pfs, const fc::optional<chain_id_type>& expected_chain_id );
+         controller( const config& cfg, const chain_id_type& chain_id );
+         controller( const config& cfg, protocol_feature_set&& pfs, const chain_id_type& chain_id );
          ~controller();
 
          void add_indices();
@@ -286,6 +286,10 @@ namespace eosio { namespace chain {
          void add_to_ram_correction( account_name account, uint64_t ram_bytes );
          bool all_subjective_mitigations_disabled()const;
 
+#if defined(EOSIO_EOS_VM_RUNTIME_ENABLED) || defined(EOSIO_EOS_VM_JIT_RUNTIME_ENABLED)
+         vm::wasm_allocator&  get_wasm_allocator();
+#endif
+
          static fc::optional<uint64_t> convert_exception_to_error_code( const fc::exception& e );
 
          signal<void(const signed_block_ptr&)>         pre_accepted_block;
@@ -332,6 +336,8 @@ namespace eosio { namespace chain {
          }
 
       static chain_id_type extract_chain_id(snapshot_reader& snapshot);
+
+      static fc::optional<chain_id_type> extract_chain_id_from_db( const path& state_dir );
 
       private:
          friend class apply_context;

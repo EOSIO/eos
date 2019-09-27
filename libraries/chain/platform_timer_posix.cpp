@@ -12,6 +12,8 @@
 
 namespace eosio { namespace chain {
 
+static_assert(std::atomic_bool::is_always_lock_free, "Only lock-free atomics AS-safe.");
+
 struct platform_timer::impl {
    timer_t timerid;
 

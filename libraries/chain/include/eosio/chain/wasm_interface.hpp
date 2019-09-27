@@ -3,6 +3,9 @@
 #include <eosio/chain/types.hpp>
 #include <eosio/chain/whitelisted_intrinsics.hpp>
 #include <eosio/chain/exceptions.hpp>
+#if defined(EOSIO_EOS_VM_RUNTIME_ENABLED) || defined(EOSIO_EOS_VM_JIT_RUNTIME_ENABLED)
+#include <eosio/vm/allocator.hpp>
+#endif
 #include "Runtime/Linker.h"
 #include "Runtime/Runtime.h"
 
@@ -75,6 +78,8 @@ namespace eosio { namespace chain {
          enum class vm_type {
             wavm,
             wabt,
+            eos_vm,
+            eos_vm_jit,
             eos_vm_oc
          };
 
@@ -110,4 +115,4 @@ namespace eosio{ namespace chain {
    std::istream& operator>>(std::istream& in, wasm_interface::vm_type& runtime);
 }}
 
-FC_REFLECT_ENUM( eosio::chain::wasm_interface::vm_type, (wavm)(wabt)(eos_vm_oc) )
+FC_REFLECT_ENUM( eosio::chain::wasm_interface::vm_type, (wavm)(wabt)(eos_vm)(eos_vm_jit)(eos_vm_oc) )
