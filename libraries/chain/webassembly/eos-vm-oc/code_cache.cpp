@@ -209,6 +209,7 @@ code_cache_base::code_cache_base(const boost::filesystem::path data_dir, const e
    bfs::create_directories(data_dir);
 
    if(!bfs::exists(_cache_file_path)) {
+      EOS_ASSERT(eosvmoc_config.cache_size >= allocator_t::get_min_size(total_header_size), database_exception, "configured code cache size is too small");
       std::ofstream ofs(_cache_file_path.generic_string(), std::ofstream::trunc);
       EOS_ASSERT(ofs.good(), database_exception, "unable to create EOS-VM Optimized Compiler code cache");
       bfs::resize_file(_cache_file_path, eosvmoc_config.cache_size);

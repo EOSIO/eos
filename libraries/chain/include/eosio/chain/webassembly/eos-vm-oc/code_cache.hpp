@@ -10,7 +10,7 @@
 #include <boost/multi_index/composite_key.hpp>
 #include <boost/multi_index/key_extractors.hpp>
 
-#include <boost/interprocess/segment_manager.hpp> //XXX no we just want the rbtree thing
+#include <boost/interprocess/mem_algo/rbtree_best_fit.hpp>
 #include <boost/asio/local/datagram_protocol.hpp>
 
 
