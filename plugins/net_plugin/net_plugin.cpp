@@ -940,6 +940,7 @@ namespace eosio {
       self->connecting = false;
       self->syncing = false;
       self->consecutive_rejected_blocks = 0;
+      self->trx_in_progress_size = 0;
       ++self->consecutive_immediate_connection_close;
       bool has_last_req = false;
       {
