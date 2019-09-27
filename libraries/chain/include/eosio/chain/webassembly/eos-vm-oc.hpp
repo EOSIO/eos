@@ -107,7 +107,7 @@ inline null_terminated_ptr null_terminated_ptr_impl(uint64_t ptr)
    asm volatile("mov %%gs:(%[Ptr]), %[Dumpster]\n"                   //probe memory location at ptr to see if valid
                 "mov %%gs:%c[firstInvalidMemory], %[Scratch]\n"      //get first invalid memory address
                 "cmpb $0, %%gs:-1(%[Scratch])\n"                     //is last byte in valid linear memory 0?
-                "jle 2f\n"                                           //if so, this will be a null terminated string one way or another
+                "je 2f\n"                                            //if so, this will be a null terminated string one way or another
                 "mov %[Ptr],%[Scratch]\n"
                 "1:\n"                                               //start loop looking for either 0, or until we SEGV
                 "inc %[Scratch]\n"
@@ -124,7 +124,6 @@ inline null_terminated_ptr null_terminated_ptr_impl(uint64_t ptr)
                );
 
    return null_terminated_ptr((char*)ptr);
-   __builtin_unreachable();
 }
 
 
