@@ -30,7 +30,7 @@ static std::mutex inited_signal_mutex;
 static bool inited_signal;
 
 static void(*chained_handler)(int,siginfo_t*,void*);
-[[noreturn]] static void segv_handler(int sig, siginfo_t* info, void* ctx)  {
+static void segv_handler(int sig, siginfo_t* info, void* ctx)  {
    control_block* cb_in_main_segment;
 
    //a 0 GS value is an indicator an executor hasn't been active on this thread recently
@@ -60,8 +60,10 @@ static void(*chained_handler)(int,siginfo_t*,void*);
          siglongjmp(*cb_in_main_segment->jmp, EOSVMOC_EXIT_SEGV);
 
 notus:
-   if(chained_handler)
+   if(chained_handler) {
       chained_handler(sig, info, ctx);
+      return;
+   }
    ::signal(sig, SIG_DFL);
    ::raise(sig);
    __builtin_unreachable();
