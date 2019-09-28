@@ -242,7 +242,6 @@ namespace eosio {
       /// Peer clock may be no more than 1 second skewed from our clock, including network latency.
       const std::chrono::system_clock::duration peer_authentication_interval{std::chrono::seconds{1}};
 
-      bool                                  network_version_match = false;
       chain_id_type                         chain_id;
       fc::sha256                            node_id;
       string                                user_agent_name;
@@ -2100,7 +2099,7 @@ namespace eosio {
 
    // called from any thread
    bool connection::resolve_and_connect() {
-      if( no_retry != go_away_reason::no_reason) {
+      if( no_retry != go_away_reason::no_reason && no_retry != go_away_reason::wrong_version ) {
          fc_dlog( logger, "Skipping connect due to go_away reason ${r}",("r", reason_str( no_retry )));
          return false;
       }
@@ -2150,7 +2149,7 @@ namespace eosio {
 
    // called from connection strand
    void connection::connect( const std::shared_ptr<tcp::resolver>& resolver, tcp::resolver::results_type endpoints ) {
-      if( no_retry != go_away_reason::no_reason) {
+      if( no_retry != go_away_reason::no_reason && no_retry != go_away_reason::wrong_version ) {
          return;
       }
       connecting = true;
@@ -2557,15 +2556,8 @@ namespace eosio {
          }
          protocol_version = my_impl->to_protocol_version(msg.network_version);
          if( protocol_version != net_version ) {
-            if( my_impl->network_version_match ) {
-               fc_elog( logger, "Peer network version does not match expected ${nv} but got ${mnv}",
-                        ("nv", net_version)("mnv", protocol_version) );
-               enqueue( go_away_message( wrong_version ) );
-               return;
-            } else {
-               fc_ilog( logger, "Local network version: ${nv} Remote version: ${mnv}",
-                        ("nv", net_version)("mnv", protocol_version));
-            }
+            fc_ilog( logger, "Local network version: ${nv} Remote version: ${mnv}",
+                     ("nv", net_version)( "mnv", protocol_version ) );
          }
 
          if( node_id != msg.node_id ) {
@@ -2624,12 +2616,18 @@ namespace eosio {
 
    void connection::handle_message( const go_away_message& msg ) {
       peer_wlog( this, "received go_away_message, reason = ${r}", ("r", reason_str( msg.reason )) );
+      bool retry = no_retry == no_reason; // if no previous go away message
       no_retry = msg.reason;
       if( msg.reason == duplicate ) {
          node_id = msg.node_id;
       }
+      if( msg.reason == wrong_version ) {
+         if( !retry ) no_retry = fatal_other; // only retry once on wrong version
+      } else {
+         retry = false;
+      }
       flush_queues();
-      close( false );
+      close( retry ); // reconnect if wrong_version
    }
 
    void connection::handle_message( const time_message& msg ) {
@@ -3133,7 +3131,11 @@ namespace eosio {
    // call from connection strand
    void connection::populate_handshake( handshake_message& hello ) {
       namespace sc = std::chrono;
-      hello.network_version = net_version_base + net_version;
+      if( no_retry == wrong_version ) {
+         hello.network_version = net_version_base + proto_explicit_sync; // try previous version
+      } else {
+         hello.network_version = net_version_base + net_version;
+      }
       hello.chain_id = my_impl->chain_id;
       hello.node_id = my_impl->node_id;
       hello.key = my_impl->get_authentication_key();
@@ -3192,8 +3194,6 @@ namespace eosio {
          ( "max-clients", bpo::value<int>()->default_value(def_max_clients), "Maximum number of clients from which connections are accepted, use 0 for no limit")
          ( "connection-cleanup-period", bpo::value<int>()->default_value(def_conn_retry_wait), "number of seconds to wait before cleaning up dead connections")
          ( "max-cleanup-time-msec", bpo::value<int>()->default_value(10), "max connection cleanup time per cleanup call in millisec")
-         ( "network-version-match", bpo::value<bool>()->default_value(false),
-           "DEPRECATED, needless restriction. True to require exact match of peer network version.")
          ( "net-threads", bpo::value<uint16_t>()->default_value(my->thread_pool_size),
            "Number of worker threads in net_plugin thread pool" )
          ( "sync-fetch-span", bpo::value<uint32_t>()->default_value(def_sync_fetch_span), "number of blocks to retrieve in a chunk from any individual peer during synchronization")
@@ -3220,10 +3220,6 @@ namespace eosio {
       fc_ilog( logger, "Initialize net plugin" );
       try {
          peer_log_format = options.at( "peer-log-format" ).as<string>();
-
-         my->network_version_match = options.at( "network-version-match" ).as<bool>();
-         if( my->network_version_match )
-            wlog( "network-version-match is DEPRECATED as it is a needless restriction" );
 
          my->sync_master.reset( new sync_manager( options.at( "sync-fetch-span" ).as<uint32_t>()));
 
