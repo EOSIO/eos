@@ -32,7 +32,7 @@ using namespace boost::asio;
 namespace bip = boost::interprocess;
 namespace bfs = boost::filesystem;
 
-using allocator_t = bip::rbtree_best_fit<bip::null_mutex_family, bip::offset_ptr<void>, 16>;
+using allocator_t = bip::rbtree_best_fit<bip::null_mutex_family, bip::offset_ptr<void>, alignof(std::max_align_t)>;
 
 struct config;
 

@@ -148,7 +148,7 @@ namespace LLVMJIT
 		std::list<std::vector<uint8_t>> stack_sizes;
 
 		U8* get_next_code_ptr(uintptr_t numBytes, U32 alignment) {
-			//XXX we should probably assert if alignment is > 16 or std align because the std::vector is aligned that way
+			FC_ASSERT(alignment <= alignof(std::max_align_t), "alignment of section exceeds max_align_t");
 			uintptr_t p = (uintptr_t)ptr;
 			p += alignment - 1LL;
 			p &= ~(alignment - 1LL);
