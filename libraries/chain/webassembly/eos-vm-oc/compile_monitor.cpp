@@ -18,14 +18,17 @@ using namespace boost::asio;
 
 static size_t get_size_of_fd(int fd) {
    struct stat st;
-   fstat(fd, &st); //XXX
+   FC_ASSERT(fstat(fd, &st) == 0, "failed to get size of fd");
    return st.st_size;
 }
 
 static void copy_memfd_contents_to_pointer(void* dst, int fd) {
    struct stat st;
-   fstat(fd, &st); //XXX
-   void* contents = mmap(nullptr, st.st_size, PROT_READ, MAP_SHARED, fd, 0); //XXX
+   FC_ASSERT(fstat(fd, &st) == 0, "failed to get size of fd");
+   if(st.st_size == 0)
+      return;
+   void* contents = mmap(nullptr, st.st_size, PROT_READ, MAP_SHARED, fd, 0);
+   FC_ASSERT(contents != MAP_FAILED, "failed to map memfd file");
    memcpy(dst, contents, st.st_size);
    munmap(contents, st.st_size);
 }
@@ -37,12 +40,11 @@ struct compile_monitor_session {
       _cache_fd(std::move(c)),
       _trampoline_socket(t) {
 
-      ///XXX we should throw if any problems ctoring
-
       struct stat st;
-      fstat(_cache_fd, &st);
+      FC_ASSERT(fstat(_cache_fd, &st) == 0, "failed to stat cache fd");
       _code_size = st.st_size;
       _code_mapping = (char*)mmap(nullptr, _code_size, PROT_READ|PROT_WRITE, MAP_SHARED, _cache_fd, 0);
+      FC_ASSERT(_code_mapping != MAP_FAILED, "failed to mmap cache file");
       _allocator = reinterpret_cast<allocator_t*>(_code_mapping);
       
       read_message_from_nodeos();
@@ -66,13 +68,17 @@ struct compile_monitor_session {
 
          message.visit(overloaded {
             [&, &fds=fds](const compile_wasm_message& compile) {
-               ///XXX verify there is 1 fd
+               if(fds.size() != 1) {
+                  connection_dead_signal();
+                  return;
+               }
                kick_compile_off(compile.code, std::move(fds[0]));
             },
             [&](const evict_wasms_message& evict) {
-               ///XXX init mem later
-               for(const code_descriptor& cd : evict.codes)
+               for(const code_descriptor& cd : evict.codes) {
                   _allocator->deallocate(_code_mapping + cd.code_begin);
+                  _allocator->deallocate(_code_mapping + cd.initdata_begin);
+               }
             },
             [&](const auto&) {
                //anything else is an error
@@ -96,7 +102,11 @@ struct compile_monitor_session {
       fds_pass_to_trampoline.emplace_back(std::move(wasm_code));
 
       eosvmoc_message trampoline_compile_request = compile_wasm_message{code_id};
-      write_message_with_fds(_trampoline_socket, trampoline_compile_request, fds_pass_to_trampoline);
+      if(write_message_with_fds(_trampoline_socket, trampoline_compile_request, fds_pass_to_trampoline) == false) {
+         wasm_compilation_result_message reply{code_id, compilation_result_unknownfailure{}, _allocator->get_free_memory()};
+         write_message_with_fds(_nodeos_instance_socket, reply);
+         return;
+      }
 
       current_compiles.emplace_front(code_id, std::move(response_socket));
       read_message_from_compile_task(current_compiles.begin());
@@ -108,47 +118,44 @@ struct compile_monitor_session {
          //at this point we only expect 1 of 2 things to happen: we either get a reply (success), or we get no reply (failure)
          auto& [code, socket] = *current_compile_it;
          auto [success, message, fds] = read_message_with_fds(socket);
-         eosvmoc_message reply;
-         if(!success) {
-            reply = wasm_compilation_result_message{code, compilation_result_unknownfailure{}, _allocator->get_free_memory()};
-         }
-         else {
-            //XXX code_compilation_result_message, we should have 2 fds: code & initialmem
-            message.visit(overloaded {
-               [&, &fds=fds, &code=code](const code_compilation_result_message& result) {
-                  ///XXX verify there are 2 fds
-                  void* code_ptr = _allocator->allocate(get_size_of_fd(fds[0]));
-                  void* mem_ptr = _allocator->allocate(get_size_of_fd(fds[1]));
-                  if(code_ptr == nullptr || mem_ptr == nullptr) {
-                     _allocator->deallocate(code_ptr);
-                     _allocator->deallocate(mem_ptr);
-                     reply = wasm_compilation_result_message{code, compilation_result_toofull{}, _allocator->get_free_memory()};
-                     return;
-                  }
-                  ///XXX check if either is NULL and back out
+         
+         wasm_compilation_result_message reply{code, compilation_result_unknownfailure{}, _allocator->get_free_memory()};
+         
+         void* code_ptr = nullptr;
+         void* mem_ptr = nullptr;
+         try {
+            if(success && message.contains<code_compilation_result_message>() && fds.size() == 2) {
+               code_compilation_result_message& result = message.get<code_compilation_result_message>();
+               code_ptr = _allocator->allocate(get_size_of_fd(fds[0]));
+               mem_ptr = _allocator->allocate(get_size_of_fd(fds[1]));
+
+               if(code_ptr == nullptr || mem_ptr == nullptr) {
+                  _allocator->deallocate(code_ptr);
+                  _allocator->deallocate(mem_ptr);
+                  reply.result = compilation_result_toofull();
+               }
+               else {
                   copy_memfd_contents_to_pointer(code_ptr, fds[0]);
                   copy_memfd_contents_to_pointer(mem_ptr, fds[1]);
 
-                  reply = wasm_compilation_result_message{code, code_descriptor {
-                        code.code_id,
-                        code.vm_version,
-                        0,
-                        (uintptr_t)code_ptr - (uintptr_t)_code_mapping,
-                        result.start,
-                        result.apply_offset,
-                        result.starting_memory_pages,
-                        (uintptr_t)mem_ptr - (uintptr_t)_code_mapping,
-                        (unsigned)get_size_of_fd(fds[1]),
-                        result.initdata_prologue_size
-                     },
-                     _allocator->get_free_memory()
+                  reply.result = code_descriptor {
+                     code.code_id,
+                     code.vm_version,
+                     0,
+                     (uintptr_t)code_ptr - (uintptr_t)_code_mapping,
+                     result.start,
+                     result.apply_offset,
+                     result.starting_memory_pages,
+                     (uintptr_t)mem_ptr - (uintptr_t)_code_mapping,
+                     (unsigned)get_size_of_fd(fds[1]),
+                     result.initdata_prologue_size
                   };
-               },
-               [&, &code=code](const auto&) {
-                  //XXX anything else is an error
-                  reply = wasm_compilation_result_message{code, compilation_result_unknownfailure{}, _allocator->get_free_memory()};
                }
-            });
+            }
+         }
+         catch(...) {
+            _allocator->deallocate(code_ptr);
+            _allocator->deallocate(mem_ptr);
          }
 
          write_message_with_fds(_nodeos_instance_socket, reply);
@@ -190,27 +197,31 @@ struct compile_monitor {
             return;
          }
          auto [success, message, fds] = read_message_with_fds(_nodeos_socket);
-         if(!success) {
+         if(!success) {   //failure reading indicates that nodeos has shut down
             ctx.stop();
             return;
          }
-         message.visit(overloaded {
-            [&, &fds=fds](const initialize_message& init) {
-               ///XXX not 2 fds, error
-               local::datagram_protocol::socket _socket_for_comm(ctx);
-               _socket_for_comm.assign(local::datagram_protocol(), fds[0].release());
-               _compile_sessions.emplace_front(ctx, std::move(_socket_for_comm), std::move(fds[1]), _trampoline_socket);
-               _compile_sessions.front().connection_dead_signal.connect([&, it = _compile_sessions.begin()]() {
-                  ctx.post([&]() {
-                     _compile_sessions.erase(it);
-                  });
+         if(!message.contains<initialize_message>() || fds.size() != 2) {
+            ctx.stop();
+            return;
+         }
+         try {
+            local::datagram_protocol::socket _socket_for_comm(ctx);
+            _socket_for_comm.assign(local::datagram_protocol(), fds[0].release());
+            _compile_sessions.emplace_front(ctx, std::move(_socket_for_comm), std::move(fds[1]), _trampoline_socket);
+            _compile_sessions.front().connection_dead_signal.connect([&, it = _compile_sessions.begin()]() {
+               ctx.post([&]() {
+                  _compile_sessions.erase(it);
                });
-               write_message_with_fds(_nodeos_socket, initalize_response_message());
-            },
-            [&](const auto&) {
-               //anything else is an error
-            }
-         });
+            });
+            write_message_with_fds(_nodeos_socket, initalize_response_message());
+         }
+         catch(const fc::exception& e) {
+            write_message_with_fds(_nodeos_socket, initalize_response_message{e.what()});
+         }
+         catch(...) {
+            write_message_with_fds(_nodeos_socket, initalize_response_message{"Failed to create compile process"});
+         }
 
          wait_for_new_incomming_session(ctx);
       });
@@ -267,8 +278,8 @@ struct compile_monitor_trampoline {
       socketpair(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0, socks);
       compile_manager_fd = socks[0];
 
-      pid_t child = fork();
-      if(child == 0) {
+      compile_manager_pid = fork();
+      if(compile_manager_pid == 0) {
          close(socks[0]);
          launch_compile_monitor(socks[1]);
       }
@@ -287,17 +298,23 @@ extern "C" int __wrap_main(int argc, char* argv[]) {
 }
 
 wrapped_fd get_connection_to_compile_monitor(int cache_fd) {
-   FC_ASSERT(the_compile_monitor_trampoline.compile_manager_fd >= 0, "EOS-VM oop connection doesn't look active");
+   FC_ASSERT(the_compile_monitor_trampoline.compile_manager_pid >= 0, "EOS-VM oop connection doesn't look active");
 
    int socks[2]; //0: our socket to compile_manager_session, 1: socket we'll give to compile_maanger_session
    socketpair(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0, socks);
    wrapped_fd socket_to_monitor_session(socks[0]);
+   wrapped_fd socket_to_hand_to_monitor_session(socks[1]);
+
+   //we don't own cache_fd, so try to be extra careful not to accidentally close it: don't stick it in a wrapped_fd
+   // to hand off to write_message_with_fds even temporarily. make a copy of it.
+   int dup_of_cache_fd = dup(cache_fd);
+   FC_ASSERT(dup_of_cache_fd != -1, "failed to dup cache_fd");
+   wrapped_fd dup_cache_fd(dup_of_cache_fd);
 
    std::vector<wrapped_fd> fds_to_pass; 
-   fds_to_pass.emplace_back(socks[1]);
-   fds_to_pass.emplace_back(cache_fd);  //put cache_fd in to a wrapped_fd just temporarily, ick
+   fds_to_pass.emplace_back(std::move(socket_to_hand_to_monitor_session));
+   fds_to_pass.emplace_back(std::move(dup_cache_fd));
    write_message_with_fds(the_compile_monitor_trampoline.compile_manager_fd, initialize_message(), fds_to_pass);
-   fds_to_pass[1].release();
 
    auto [success, message, fds] = read_message_with_fds(the_compile_monitor_trampoline.compile_manager_fd);
    EOS_ASSERT(success, misc_exception, "failed to read response from monitor process");

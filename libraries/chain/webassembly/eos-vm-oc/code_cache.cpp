@@ -121,8 +121,8 @@ const code_descriptor* const code_cache_async::get_descriptor_for_code(const dig
          if(codeobject) {
             _outstanding_compiles_and_poison.emplace(*nextup, false);
             std::vector<wrapped_fd> fds_to_pass;
-            fds_to_pass.emplace_back(memfd_for_blob(codeobject->code));
-            write_message_with_fds(_compile_monitor_write_socket, compile_wasm_message{ *nextup }, fds_to_pass);
+            fds_to_pass.emplace_back(memfd_for_bytearray(codeobject->code));
+            FC_ASSERT(write_message_with_fds(_compile_monitor_write_socket, compile_wasm_message{ *nextup }, fds_to_pass), "EOS-VM failed to communicate to OOP manager");
             --count_processed;
          }
          _queued_compiles.erase(nextup);
@@ -158,7 +158,7 @@ const code_descriptor* const code_cache_async::get_descriptor_for_code(const dig
 
    _outstanding_compiles_and_poison.emplace(ct, false);
    std::vector<wrapped_fd> fds_to_pass;
-   fds_to_pass.emplace_back(memfd_for_blob(codeobject->code));
+   fds_to_pass.emplace_back(memfd_for_bytearray(codeobject->code));
    write_message_with_fds(_compile_monitor_write_socket, compile_wasm_message{ ct }, fds_to_pass);
    return nullptr;
 }
@@ -185,7 +185,7 @@ const code_descriptor* const code_cache_sync::get_descriptor_for_code_sync(const
       return nullptr;
 
    std::vector<wrapped_fd> fds_to_pass;
-   fds_to_pass.emplace_back(memfd_for_blob(codeobject->code));
+   fds_to_pass.emplace_back(memfd_for_bytearray(codeobject->code));
 
    write_message_with_fds(_compile_monitor_write_socket, compile_wasm_message{ {code_id, vm_version} }, fds_to_pass);
    auto [success, message, fds] = read_message_with_fds(_compile_monitor_read_socket);

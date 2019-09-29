@@ -76,7 +76,18 @@ namespace eosio { namespace chain {
    void wasm_interface::apply( const digest_type& code_hash, const uint8_t& vm_type, const uint8_t& vm_version, apply_context& context ) {
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
       if(my->eosvmoc) {
-         const chain::eosvmoc::code_descriptor* cd = my->eosvmoc->cc.get_descriptor_for_code(code_hash, vm_version);
+         const chain::eosvmoc::code_descriptor* cd = nullptr;
+         try {
+            cd = my->eosvmoc->cc.get_descriptor_for_code(code_hash, vm_version);
+         }
+         catch(...) {
+            //swallow errors here, if EOS-VM OC has gone in to the weeds we shouldn't bail: continue to try and run baseline
+            //In the future, consider moving bits of EOS-VM that can fire exceptions and such out of this call path
+            static bool once_is_enough;
+            if(!once_is_enough)
+               elog("EOS-VM OC has encountered an unexpected failure");
+            once_is_enough = true;
+         }
          if(cd) {
             my->eosvmoc->exec.execute(*cd, my->eosvmoc->mem, context);
             return;

@@ -17,7 +17,7 @@ using namespace IR;
 
 namespace eosio { namespace chain { namespace eosvmoc {
 
-void run_compile(wrapped_fd&& response_sock, wrapped_fd&& wasm_code) noexcept {
+void run_compile(wrapped_fd&& response_sock, wrapped_fd&& wasm_code) noexcept {  //noexcept; we'll just blow up if anything tries to cross this boundry
    std::vector<uint8_t> wasm = vector_for_memfd(wasm_code);
 
    //ideally we catch exceptions and sent them upstream as strings for easier reporting
@@ -127,8 +127,8 @@ void run_compile(wrapped_fd&& response_sock, wrapped_fd&& wasm_code) noexcept {
    std::move(initial_mem.begin(), initial_mem.end(), std::back_inserter(initdata_prep));
 
    std::vector<wrapped_fd> fds_to_send;
-   fds_to_send.emplace_back(memfd_for_vector(code.code));
-   fds_to_send.emplace_back(memfd_for_vector(initdata_prep));
+   fds_to_send.emplace_back(memfd_for_bytearray(code.code));
+   fds_to_send.emplace_back(memfd_for_bytearray(initdata_prep));
    write_message_with_fds(response_sock, result_message, fds_to_send);
 }
 
@@ -151,31 +151,30 @@ void run_compile_trampoline(int fd) {
       if(!success)
          break;
 
-      message.visit(overloaded {
-         [&, &fds=fds](const compile_wasm_message& compile) {
-            ///XXX verify there are 2 fds
-            pid_t pid = fork();
-            if(pid == 0) {
-               prctl(PR_SET_NAME, "oc-compile");
-               prctl(PR_SET_PDEATHSIG, SIGKILL);
+      if(!message.contains<compile_wasm_message>() || fds.size() != 2) {
+         std::cerr << "EOS-VM OC compile trampoline got unexpected message; ignoring" << std::endl;
+         continue;
+      }
 
-               struct rlimit cpu_limits = {20u, 20u};
-               setrlimit(RLIMIT_CPU, &cpu_limits);
+      pid_t pid = fork();
+      if(pid == 0) {
+         prctl(PR_SET_NAME, "oc-compile");
+         prctl(PR_SET_PDEATHSIG, SIGKILL);
 
-               struct rlimit vm_limits = {512u*1024u*1024u, 512u*1024u*1024u};
-               setrlimit(RLIMIT_AS, &vm_limits);
+         struct rlimit cpu_limits = {20u, 20u};
+         setrlimit(RLIMIT_CPU, &cpu_limits);
 
-               struct rlimit core_limits = {0u, 0u};
-               setrlimit(RLIMIT_CORE, &core_limits);
+         struct rlimit vm_limits = {512u*1024u*1024u, 512u*1024u*1024u};
+         setrlimit(RLIMIT_AS, &vm_limits);
 
-               run_compile(std::move(fds[0]), std::move(fds[1]));
-               _exit(0);
-            }
-         },
-         [&](const auto&) {
-            //XXX error
-         }
-      });
+         struct rlimit core_limits = {0u, 0u};
+         setrlimit(RLIMIT_CORE, &core_limits);
+
+         run_compile(std::move(fds[0]), std::move(fds[1]));
+         _exit(0);
+      }
+      else if(pid == -1)
+         std::cerr << "EOS-VM OC compile trampoline failed to spawn compile task" << std::endl;
    }
 
    _exit(0);
