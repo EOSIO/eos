@@ -1,6 +1,8 @@
 #include <eosio/chain/webassembly/eos-vm-oc/memory.hpp>
 #include <eosio/chain/webassembly/eos-vm-oc/intrinsic.hpp>
 
+#include <fc/scoped_exit.hpp>
+
 #include <unistd.h>
 #include <sys/syscall.h>
 #include <sys/mman.h>
@@ -11,6 +13,7 @@ namespace eosio { namespace chain { namespace eosvmoc {
 memory::memory() {
    int fd = syscall(SYS_memfd_create, "eosvmoc_mem", MFD_CLOEXEC);
    FC_ASSERT(fd >= 0, "Failed to create memory memfd");
+   auto cleanup_fd = fc::make_scoped_exit([&fd](){close(fd);});
    int ret = ftruncate(fd, wasm_memory_size+memory_prologue_size);
    FC_ASSERT(!ret, "Failed to grow memory memfd");
 
@@ -29,8 +32,6 @@ memory::memory() {
 
    zeropage_base = mapbase + memory_prologue_size;
    fullpage_base = last + memory_prologue_size;
-
-   close(fd);
 
    //layout the intrinsic jump table
    uintptr_t* const intrinsic_jump_table = reinterpret_cast<uintptr_t* const>(zeropage_base - first_intrinsic_offset);
