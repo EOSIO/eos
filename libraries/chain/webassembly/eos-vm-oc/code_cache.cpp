@@ -44,6 +44,8 @@ code_cache_async::code_cache_async(const bfs::path data_dir, const eosvmoc::conf
    _result_queue(eosvmoc_config.threads * 2),
    _threads(eosvmoc_config.threads)
 {
+   FC_ASSERT(_threads, "EOS-VM OC requires at least 1 compile thread");
+
    wait_on_compile_monitor_message();
 
    _monitor_reply_thread = std::thread([this]() {
