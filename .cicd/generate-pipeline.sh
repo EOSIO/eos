@@ -17,17 +17,23 @@ if [[ $BUILDKITE_BRANCH =~ ^pull/[0-9]+/head: ]]; then
   export GIT_FETCH="git fetch -v --prune origin refs/pull/$PR_ID/head &&"
 fi
 
-for FILE in $(ls $CICD_DIR/platforms); do
+# Determine which dockerfiles/scripts to use for the pipeline.
+if [[ $PINNED == false || $UNPINNED == true ]]; then
+    export BUILD_TYPE="unpinned"
+elif [[ $USE_CONAN == true ]]; then
+    export BUILD_TYPE="conan"
+else
+    export BUILD_TYPE="pinned"
+fi
+
+for FILE in $(ls $CICD_DIR/platforms/$BUILD_TYPE); do
     # skip mac or linux by not even creating the json block
     ( [[ $SKIP_MAC == true ]] && [[ $FILE =~ 'macos' ]] ) && continue
     ( [[ $SKIP_LINUX == true ]] && [[ ! $FILE =~ 'macos' ]] ) && continue
     # use pinned or unpinned, not both sets of platform files
-    if [[ $PINNED == false || $UNPINNED == true ]] && [[ ! $FILE =~ 'macos' ]]; then
+    if [[ $PINNED == false || $UNPINNED == true ]]; then
         export SKIP_CONTRACT_BUILDER=${SKIP_CONTRACT_BUILDER:-true}
         export SKIP_PACKAGE_BUILDER=${SKIP_PACKAGE_BUILDER:-true}
-        [[ ! $FILE =~ 'unpinned' ]] && continue
-    else
-        [[ $FILE =~ 'unpinned' ]] && continue
     fi
     export FILE_NAME="$(echo $FILE | awk '{split($0,a,/\.(d|s)/); print a[1] }')"
     export PLATFORM_NAME="$(echo $FILE_NAME | cut -d- -f1 | sed 's/os/OS/g')"
