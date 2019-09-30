@@ -115,6 +115,7 @@ try:
     nodes.append(cluster.getNode(1))
     nodes.append(cluster.getNode(2))
     nodes.append(cluster.getNode(3))
+    numNodes=len(nodes)
 
 
     for account in accounts:
@@ -167,7 +168,7 @@ try:
             data="{\"from\":\"%s\",\"to\":\"%s\",\"num\":%d}" % (fromAccount.name, toAccount.name, numAmount)
             opts="--permission %s@active --permission %s@active --expiration 90" % (contract, fromAccount.name)
             try:
-                trans=nodes[0].pushMessage(contract, action, data, opts)
+                trans=nodes[count % numNodes].pushMessage(contract, action, data, opts)
                 if trans is None or not trans[0]:
                     timeOutCount+=1
                     if timeOutCount>=3:
@@ -207,7 +208,6 @@ try:
             Utils.cmdError("All Nodes should have died")
             errorExit("Failure - All Nodes should have died")
 
-    numNodes=len(nodes)
     for i in range(numNodes):
         f = open(Utils.getNodeDataDir(i) + "/stderr.txt")
         contents = f.read()
@@ -262,7 +262,7 @@ try:
             data="{\"from\":\"%s\",\"to\":\"%s\",\"num\":%d}" % (fromAccount.name, toAccount.name, numAmount)
             opts="--permission %s@active --permission %s@active --expiration 90" % (contract, fromAccount.name)
             try:
-                trans=nodes[0].pushMessage(contract, action, data, opts)
+                trans=nodes[count % numNodes].pushMessage(contract, action, data, opts)
                 if trans is None or not trans[0]:
                     Print("Failed to push create action to eosio contract. sleep for 60 seconds")
                     time.sleep(60)
@@ -322,7 +322,7 @@ try:
         data="{\"from\":\"%s\",\"to\":\"%s\",\"num\":%d}" % (fromAccount.name, toAccount.name, numAmount)
         opts="--permission %s@active --permission %s@active --expiration 90" % (contract, fromAccount.name)
         try:
-            trans=nodes[0].pushMessage(contract, action, data, opts)
+            trans=node.pushMessage(contract, action, data, opts)
             if trans is None or not trans[0]:
                 Print("Failed to push create action to eosio contract. sleep for 60 seconds")
                 time.sleep(60)
