@@ -32,7 +32,7 @@ RUN git clone --single-branch --branch release_80 https://git.llvm.org/git/llvm.
     make install && \
     cd / && \
     rm -rf /clang8
-COPY ./.cicd/scripts/pinned_toolchain.cmake /tmp/pinned_toolchain.cmake
+COPY ./scripts/pinned_toolchain.cmake /tmp/pinned_toolchain.cmake
 # build llvm8
 RUN git clone --depth 1 --single-branch --branch release_80 https://github.com/llvm-mirror/llvm.git llvm && \
     cd llvm && \
