@@ -372,6 +372,8 @@ namespace eosio { namespace chain {
    }
 
    void block_log::reset( const chain_id_type& chain_id, uint32_t first_block_num ) {
+      EOS_ASSERT( first_block_num > 1, block_log_exception,
+                  "Block log version ${ver} needs to be created with a genesis state if starting from block number 1." );
       my->reset(chain_id, signed_block_ptr(), first_block_num);
    }
 
@@ -561,6 +563,15 @@ namespace eosio { namespace chain {
       uint32_t first_block_num = 1;
       if (version != 1) {
          old_block_stream.read ( (char*)&first_block_num, sizeof(first_block_num) );
+
+         // this assert is only here since repair_log is only used for --hard-replay-blockchain, which removes any
+         // existing state, if another API needs to use it, this can be removed and the check for the first block's
+         // previous block id will need to accommodate this.
+         EOS_ASSERT( first_block_num == 1, block_log_exception,
+                     "Block log ${file} must contain a genesis state and start at block number 1.  This block log "
+                     "starts at block number ${first_block_num}.",
+                     ("file", (backup_dir / "blocks.log").generic_string())("first_block_num", first_block_num));
+
          new_block_stream.write( (char*)&first_block_num, sizeof(first_block_num) );
       }
 
@@ -576,6 +587,12 @@ namespace eosio { namespace chain {
          old_block_stream >> chain_id;
 
          new_block_stream << chain_id;
+      }
+      else {
+         EOS_ASSERT( false, block_log_exception,
+                     "Block log ${file} is not supported. version: ${ver} and first_block_num: ${fbn} does not contain "
+                     "a genesis_state nor a chain_id.",
+                     ("file", (backup_dir / "blocks.log").generic_string())("ver", version)("fbn", first_block_num));
       }
 
       if (version != 1) {
