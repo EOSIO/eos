@@ -208,109 +208,12 @@ void blocklog::initialize(const variables_map& options) {
 
 }
 
-constexpr int blknum_offset{14};                      //offset from start of block to 4 byte block number
-//this offset is valid for version 1 and 2 blocklogs, version is checked before using blknum_offset
-
-//to derive blknum_offset==14 see block_header.hpp and note on disk struct is packed
-//   block_timestamp_type timestamp;                  //bytes 0:3
-//   account_name         producer;                   //bytes 4:11
-//   uint16_t             confirmed;                  //bytes 12:13
-//   block_id_type        previous;                   //bytes 14:45, low 4 bytes is big endian block number of previous block
-
-struct trim_data {            //used by trim_blocklog_front(), trim_blocklog_end(), and smoke_test()
-   trim_data(bfs::path block_dir);
-   ~trim_data() {
-      fclose(blk_in);
-      fclose(ind_in);
-   }
-   void find_block_pos(uint32_t n);
-   bfs::path block_file_name, index_file_name;        //full pathname for blocks.log and blocks.index
-   uint32_t version = 0;                              //blocklog version
-   uint32_t first_block = 0;                          //first block in blocks.log
-   uint32_t last_block = 0;                          //last block in blocks.log
-   FILE* blk_in = nullptr;                            //C style files for reading blocks.log and blocks.index
-   FILE* ind_in = nullptr;                            //C style files for reading blocks.log and blocks.index
-   //we use low level file IO because it is distinctly faster than C++ filebuf or iostream
-   uint64_t index_pos = 0;                            //filepos in blocks.index for block n, +8 for block n+1
-   uint64_t fpos0 = 0;                                //filepos in blocks.log for block n and block n+1
-   uint64_t fpos1 = 0;                                //filepos in blocks.log for block n and block n+1
-};
-
-
-trim_data::trim_data(bfs::path block_dir) {
-   report_time rt("trimming log");
-   using namespace std;
-   block_file_name = block_dir / "blocks.log";
-   index_file_name = block_dir / "blocks.index";
-   blk_in = FOPEN(block_file_name.c_str(), "rb");
-   EOS_ASSERT( blk_in != nullptr, block_log_not_found, "cannot read file ${file}", ("file",block_file_name.string()) );
-   ind_in = FOPEN(index_file_name.c_str(), "rb");
-   EOS_ASSERT( ind_in != nullptr, block_log_not_found, "cannot read file ${file}", ("file",index_file_name.string()) );
-   auto size = fread((void*)&version,sizeof(version), 1, blk_in);
-   EOS_ASSERT( size == 1, block_log_unsupported_version, "invalid format for file ${file}", ("file",block_file_name.string()));
-   cout << "block log version= " << version << '\n';
-   EOS_ASSERT( block_log::is_supported_version(version), block_log_unsupported_version, "block log version ${v} is not supported", ("v",version));
-   if (version == 1) {
-      first_block = 1;
-   }
-   else {
-      size = fread((void *) &first_block, sizeof(first_block), 1, blk_in);
-      EOS_ASSERT(size == 1, block_log_exception, "invalid format for file ${file}",
-                 ("file", block_file_name.string()));
-   }
-   cout << "first block= " << first_block << '\n';
-   const auto status = fseek(ind_in, 0, SEEK_END);                //get length of blocks.index (gives number of blocks)
-   EOS_ASSERT( status == 0, block_log_exception, "cannot seek to ${file} end", ("file", index_file_name.string()) );
-   const uint64_t file_end = ftell(ind_in);                //get length of blocks.index (gives number of blocks)
-   last_block = first_block + file_end/sizeof(uint64_t) - 1;
-   cout << "last block=  " << last_block << '\n';
-   rt.report();
-}
-
-void trim_data::find_block_pos(uint32_t n) {
-   //get file position of block n from blocks.index then confirm block n is found in blocks.log at that position
-   //sets fpos0 and fpos1, throws exception if block at fpos0 is not block n
-   report_time rt("finding block position");
-   using namespace std;
-   index_pos = sizeof(uint64_t) * (n - first_block);
-   auto status = fseek(ind_in, index_pos, SEEK_SET);
-   EOS_ASSERT( status == 0, block_log_exception, "cannot seek to ${file} ${pos} from beginning of file for block ${b}", ("file", index_file_name.string())("pos", index_pos)("b",n) );
-   const uint64_t pos = ftell(ind_in);
-   EOS_ASSERT( pos == index_pos, block_log_exception, "cannot seek to ${file} entry for block ${b}", ("file", index_file_name.string())("b",n) );
-   auto size = fread((void*)&fpos0, sizeof(fpos0), 1, ind_in);                   //filepos of block n
-   EOS_ASSERT( size == 1, block_log_exception, "cannot read ${file} entry for block ${b}", ("file", index_file_name.string())("b",n) );
-   size = fread((void*)&fpos1, sizeof(fpos1), 1, ind_in);                   //filepos of block n+1
-   if (n != last_block)
-      EOS_ASSERT( size == 1, block_log_exception, "cannot read ${file} entry for block ${b}, size=${size}", ("file", index_file_name.string())("b",n + 1)("size",size) );
-
-   cout << "According to blocks.index:\n";
-   cout << "    block " << n << " starts at position " << fpos0 << '\n';
-   cout << "    block " << n + 1;
-
-   if (n != last_block)
-      cout << " starts at position " << fpos1 << '\n';
-   else
-      cout << " is past end\n";
-
-   //read blocks.log and verify block number n is found at file position fpos0
-   status = fseek(blk_in, fpos0 + blknum_offset, SEEK_SET);
-   EOS_ASSERT( status == 0, block_log_exception, "cannot seek to ${file} ${pos} from beginning of file", ("file", block_file_name.string())("pos", fpos0 + blknum_offset) );
-   const uint64_t block_offset_pos = ftell(blk_in);
-   EOS_ASSERT( block_offset_pos == fpos0 + blknum_offset, block_log_exception, "cannot seek to ${file} ${pos} from beginning of file", ("file", block_file_name.string())("pos", fpos0 + blknum_offset) );
-   uint32_t prior_blknum;
-   size = fread((void*)&prior_blknum, sizeof(prior_blknum), 1, blk_in);     //read bigendian block number of prior block
-   EOS_ASSERT( size == 1, block_log_exception, "cannot read prior block");
-   const uint32_t bnum = endian_reverse_u32(prior_blknum) + 1;          //convert to little endian, add 1 since prior block
-   cout << "At position " << fpos0 << " in " << index_file_name << " find block " << bnum << (bnum == n ? " as expected\n": " - not good!\n");
-   EOS_ASSERT( bnum == n, block_log_exception, "${index} does not agree with ${blocks}", ("index", index_file_name.string())("blocks", block_file_name.string()) );
-   rt.report();
-}
-
 int trim_blocklog_end(bfs::path block_dir, uint32_t n) {       //n is last block to keep (remove later blocks)
    report_time rt("trimming blocklog end");
    using namespace std;
    trim_data td(block_dir);
-   cout << "\nIn directory " << block_dir << " will trim all blocks after block " << n << " from " << td.block_file_name << " and " << td.index_file_name << ".\n";
+   cout << "\nIn directory " << block_dir << " will trim all blocks after block " << n << " from "
+        << td.block_file_name.generic_string() << " and " << td.index_file_name.generic_string() << ".\n";
    if (n < td.first_block) {
       cerr << "All blocks are after block " << n << " so do nothing (trim_end would delete entire blocks.log)\n";
       return 1;
@@ -522,8 +425,8 @@ void smoke_test(bfs::path block_dir) {
    uint64_t file_pos;
    auto size = fread((void*)&file_pos, sizeof(uint64_t), 1, td.blk_in);
    EOS_ASSERT( size == 1, block_log_exception, "${file} read fails", ("file", td.block_file_name.string()) );
-   status = fseek(td.blk_in, file_pos + blknum_offset, SEEK_SET);
-   EOS_ASSERT( status == 0, block_log_exception, "cannot seek to ${file} ${pos} from beginning of file", ("file", td.block_file_name.string())("pos", file_pos + blknum_offset) );
+   status = fseek(td.blk_in, file_pos + trim_data::blknum_offset, SEEK_SET);
+   EOS_ASSERT( status == 0, block_log_exception, "cannot seek to ${file} ${pos} from beginning of file", ("file", td.block_file_name.string())("pos", file_pos + trim_data::blknum_offset) );
    uint32_t bnum;
    size = fread((void*)&bnum, sizeof(uint32_t), 1, td.blk_in);
    EOS_ASSERT( size == 1, block_log_exception, "${file} read fails", ("file", td.block_file_name.string()) );
@@ -570,7 +473,7 @@ int main(int argc, char** argv) {
                return -1;
          }
          if (blog.first_block != 0) {
-            if (trim_blocklog_front(vmap.at("blocks-dir").as<bfs::path>(), blog.first_block) != 0)
+            if (!trim_blocklog_front(vmap.at("blocks-dir").as<bfs::path>(), blog.first_block))
                return -1;
          }
          return 0;

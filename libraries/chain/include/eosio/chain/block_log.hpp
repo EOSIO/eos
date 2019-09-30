@@ -85,4 +85,30 @@ namespace eosio { namespace chain {
          std::unique_ptr<detail::block_log_impl> my;
    };
 
+//to derive blknum_offset==14 see block_header.hpp and note on disk struct is packed
+//   block_timestamp_type timestamp;                  //bytes 0:3
+//   account_name         producer;                   //bytes 4:11
+//   uint16_t             confirmed;                  //bytes 12:13
+//   block_id_type        previous;                   //bytes 14:45, low 4 bytes is big endian block number of previous block
+
+   struct trim_data {            //used by trim_blocklog_front(), trim_blocklog_end(), and smoke_test()
+      trim_data(fc::path block_dir);
+      ~trim_data();
+      void find_block_pos(uint32_t n);
+      uint64_t block_pos(uint32_t n);
+      fc::path block_file_name, index_file_name;        //full pathname for blocks.log and blocks.index
+      uint32_t version = 0;                              //blocklog version
+      uint32_t first_block = 0;                          //first block in blocks.log
+      uint32_t last_block = 0;                          //last block in blocks.log
+      FILE* blk_in = nullptr;                            //C style files for reading blocks.log and blocks.index
+      FILE* ind_in = nullptr;                            //C style files for reading blocks.log and blocks.index
+      //we use low level file IO because it is distinctly faster than C++ filebuf or iostream
+      uint64_t index_pos = 0;                            //filepos in blocks.index for block n, +8 for block n+1
+      uint64_t fpos0 = 0;                                //filepos in blocks.log for block n and block n+1
+      uint64_t fpos1 = 0;                                //filepos in blocks.log for block n and block n+1
+      uint64_t first_block_pos = 0;                      //file position in blocks.log for the first block in the log
+      fc::optional<chain_id_type> chain_id;
+
+      static constexpr int blknum_offset{14};            //offset from start of block to 4 byte block number, valid for the only allowed versions
+   };
 } }
