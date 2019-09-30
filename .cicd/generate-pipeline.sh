@@ -473,10 +473,10 @@ cat <<EOF
     timeout: ${TIMEOUT:-10}
     skip: ${SKIP_MACOS_10_14}${SKIP_PACKAGE_BUILDER}${SKIP_MAC}
 
-  - label: ":ubuntu: Ubuntu 18.04 - Contract Builder"
+  - label: ":aws: Amazon_Linux 2 - Contract Builder"
     command: "./.cicd/installation-build.sh"
     env:
-      IMAGE_TAG: "ubuntu-18.04-unpinned"
+      IMAGE_TAG: "amazon_linux-2-unpinned"
       BUILDKITE_AGENT_ACCESS_TOKEN:
     agents:
       queue: "$BUILDKITE_AGENT_QUEUE"
