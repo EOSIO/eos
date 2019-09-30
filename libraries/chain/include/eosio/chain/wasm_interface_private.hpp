@@ -83,6 +83,7 @@ namespace eosio { namespace chain {
 
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
          if(eosvmoc_tierup) {
+            EOS_ASSERT(vm != wasm_interface::vm_type::wavm, wasm_exception, "WAVM is incompatible with EOS-VM OC");
             EOS_ASSERT(vm != wasm_interface::vm_type::eos_vm_oc, wasm_exception, "You can't use EOS-VM OC as the base runtime when tier up is activated");
             eosvmoc.emplace(data_dir, eosvmoc_config, d);
          }
