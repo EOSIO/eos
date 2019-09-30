@@ -95,7 +95,7 @@ std::tuple<size_t, size_t> code_cache_async::consume_compile_thread_queue() {
                _blacklist.emplace(result.code);
             },
             [&](const compilation_result_toofull&) {
-               //we'll just let this one try and tier up again next time it's used
+               run_eviction_round();
             }
          });
       }
@@ -365,15 +365,18 @@ void code_cache_base::free_code(const digest_type& code_id, const uint8_t& vm_ve
       compiling_it->second = true;
 }
 
-void code_cache_base::check_eviction_threshold(size_t free_bytes) {
-   if(free_bytes < _free_bytes_eviction_threshold) {
-      evict_wasms_message evict_msg;
-      for(unsigned int i = 0; i < 25 && _cache_index.size() > 1; ++i) {
-         evict_msg.codes.emplace_back(_cache_index.back());
-         _cache_index.pop_back();
-      }
-      write_message_with_fds(_compile_monitor_write_socket, evict_msg);
+void code_cache_base::run_eviction_round() {
+   evict_wasms_message evict_msg;
+   for(unsigned int i = 0; i < 25 && _cache_index.size() > 1; ++i) {
+      evict_msg.codes.emplace_back(_cache_index.back());
+      _cache_index.pop_back();
    }
+   write_message_with_fds(_compile_monitor_write_socket, evict_msg);
+}
+
+void code_cache_base::check_eviction_threshold(size_t free_bytes) {
+   if(free_bytes < _free_bytes_eviction_threshold)
+      run_eviction_round();
 }
 
 }}}

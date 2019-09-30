@@ -78,6 +78,7 @@ class code_cache_base {
 
       size_t _free_bytes_eviction_threshold;
       void check_eviction_threshold(size_t free_bytes);
+      void run_eviction_round();
 
       void set_on_disk_region_dirty(bool);
 
