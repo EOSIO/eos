@@ -67,8 +67,7 @@ if("${USE_CONAN}" STREQUAL "true" OR "$ENV{USE_CONAN}" STREQUAL "true")
   if(UNIX)
     if(APPLE)
       set(CMAKE_MACOSX_RPATH ON)
-      link_directories(AFTER "/usr/local/opt/lib")
-      message( STATUS "Conan: Patching rpath for shared libraries.")
+      message( STATUS "Conan: Setting rpath for shared libraries.")
       execute_process(
         COMMAND install_name_tool -id "@rpath/libgmp.10.dylib" ${CONAN_LIB_DIRS_GMP}/libgmp.10.dylib
         COMMAND install_name_tool -id "@rpath/libusb-1.0.0.dylib" ${CONAN_LIB_DIRS_LIBUSB}/libusb-1.0.0.dylib
@@ -82,7 +81,7 @@ if("${USE_CONAN}" STREQUAL "true" OR "$ENV{USE_CONAN}" STREQUAL "true")
 
   set(CMAKE_INSTALL_RPATH "${CONAN_LIB_DIRS}")
   set(CMAKE_INSTALL_RPATH_USE_LINK_PATH ON)
-  include_directories(${CONAN_INCLUDE_DIRS_LIBCURL} ${CONAN_INCLUDE_DIRS_OPENSSL})
+  include_directories(${CONAN_INCLUDE_DIRS})
   link_directories(AFTER ${CONAN_LIB_DIRS})
 
   execute_process(
