@@ -1,6 +1,7 @@
 #pragma once
 
 #include <eosio/chain/transaction_metadata.hpp>
+#include <eosio/chain/trace.hpp>
 #include <eosio/chain/block_state.hpp>
 #include <eosio/chain/exceptions.hpp>
 
@@ -26,10 +27,13 @@ enum class trx_enum_type {
    aborted = 3
 };
 
+using next_func_t = std::function<void(const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>&)>;
+
 struct unapplied_transaction {
    const transaction_metadata_ptr trx_meta;
    const fc::time_point           expiry;
    trx_enum_type                  trx_type = trx_enum_type::unknown;
+   next_func_t                    next;
 
    const transaction_id_type& id()const { return trx_meta->id(); }
 
@@ -109,12 +113,24 @@ public:
    template <typename Func>
    bool clear_expired( const time_point& pending_block_time, const time_point& deadline, Func&& callback ) {
       auto& persisted_by_expiry = queue.get<by_expiry>();
-      while(!persisted_by_expiry.empty() && persisted_by_expiry.begin()->expiry <= pending_block_time) {
-         if (deadline <= fc::time_point::now()) {
+      while( !persisted_by_expiry.empty() ) {
+         const auto& itr = persisted_by_expiry.begin();
+         if( itr->expiry <= pending_block_time ) {
+            break;
+         }
+         if( deadline <= fc::time_point::now() ) {
             return false;
          }
-         callback( persisted_by_expiry.begin()->id(), persisted_by_expiry.begin()->trx_type );
-         persisted_by_expiry.erase( persisted_by_expiry.begin() );
+         callback( itr->id(), itr->trx_type );
+         if( itr->next ) {
+            itr->next( std::static_pointer_cast<fc::exception>(
+                  std::make_shared<expired_tx_exception>(
+                        FC_LOG_MESSAGE( error, "expired transaction ${id}, expiration ${e}, block time ${bt}",
+                                        ("id", itr->id())("e", itr->trx_meta->packed_trx()->expiration())
+                                        ("bt", pending_block_time) ) ) ) );
+         }
+
+         persisted_by_expiry.erase( itr );
       }
       return true;
    }
