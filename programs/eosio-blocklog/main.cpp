@@ -73,7 +73,11 @@ void blocklog::read_log() {
    EOS_ASSERT( end->block_num() > 1, block_log_exception, "Only one block found in block log" );
 
    //fix message below, first block might not be 1, first_block_num is not set yet
-   ilog( "existing block log contains block num 1 through block num ${n}", ("n",end->block_num()) );
+   ilog( "existing block log contains block num ${first} through block num ${n}",
+         ("first",block_logger.first_block_num())("n",end->block_num()) );
+   if (first_block < block_logger.first_block_num()) {
+      first_block = block_logger.first_block_num();
+   }
 
    optional<chainbase::database> reversible_blocks;
    try {
@@ -129,10 +133,10 @@ void blocklog::read_log() {
                  ("ref_block_prefix", ref_block_prefix)
                  (pretty_output.get_object());
       fc::variant v(std::move(enhanced_object));
-       if (no_pretty_print)
-          fc::json::to_stream(*out, v, fc::json::stringify_large_ints_and_doubles);
-       else
-          *out << fc::json::to_pretty_string(v) << "\n";
+      if (no_pretty_print)
+         fc::json::to_stream(*out, v, fc::json::stringify_large_ints_and_doubles);
+      else
+         *out << fc::json::to_pretty_string(v) << "\n";
    };
    bool contains_obj = false;
    while((block_num <= last_block) && (next = block_logger.read_block_by_num( block_num ))) {
@@ -142,6 +146,7 @@ void blocklog::read_log() {
       ++block_num;
       contains_obj = true;
    }
+
    if (reversible_blocks) {
       const reversible_block_object* obj = nullptr;
       while( (block_num <= last_block) && (obj = reversible_blocks->find<reversible_block_object,by_num>(block_num)) ) {
@@ -153,6 +158,7 @@ void blocklog::read_log() {
          contains_obj = true;
       }
    }
+
    if (as_json_array)
       *out << "]";
    rt.report();
