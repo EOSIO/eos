@@ -21,7 +21,8 @@ class wavm_runtime : public eosio::chain::wasm_runtime_interface {
       wavm_runtime();
       ~wavm_runtime();
       bool inject_module(IR::Module&) override;
-      std::unique_ptr<wasm_instantiated_module_interface> instantiate_module(const char* code_bytes, size_t code_size, std::vector<uint8_t> initial_memory) override;
+      std::unique_ptr<wasm_instantiated_module_interface> instantiate_module(const char* code_bytes, size_t code_size, std::vector<uint8_t> initial_memory,
+                                                                             const digest_type& code_hash, const uint8_t& vm_type, const uint8_t& vm_version) override;
 
       void immediately_exit_currently_running_module() override;
 };

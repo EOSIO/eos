@@ -9,6 +9,7 @@
 #include <eosio/chain/account_object.hpp>
 #include <eosio/chain/snapshot.hpp>
 #include <eosio/chain/protocol_feature_manager.hpp>
+#include <eosio/chain/webassembly/eos-vm-oc/config.hpp>
 
 namespace chainbase {
    class database;
@@ -82,6 +83,8 @@ namespace eosio { namespace chain {
             bool                     disable_all_subjective_mitigations = false; //< for testing purposes only
 
             wasm_interface::vm_type  wasm_runtime = chain::config::default_wasm_runtime;
+            eosvmoc::config          eosvmoc_config;
+            bool                     eosvmoc_tierup         = false;
 
             db_read_mode             read_mode              = db_read_mode::SPECULATIVE;
             validation_mode          block_validation_mode  = validation_mode::FULL;
