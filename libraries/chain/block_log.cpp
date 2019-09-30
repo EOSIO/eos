@@ -953,6 +953,94 @@ namespace eosio { namespace chain {
    bool block_log::is_supported_version(uint32_t version) {
       return std::clamp(version, min_supported_version, max_supported_version) == version;
    }
+
+   bool block_log::trim_blocklog_front(const fc::path& block_dir, uint32_t truncate_at_block) {
+      using namespace std;
+      ilog("In directory ${dir} will trim all blocks before block ${n} from blocks.log and blocks.index.",
+           ("dir", block_dir.generic_string())("n", truncate_at_block));
+      trim_data original_block_log(block_dir);
+      if (truncate_at_block <= original_block_log.first_block) {
+         ilog("There are no blocks before block ${n} so do nothing.", ("n", truncate_at_block));
+         return false;
+      }
+      if (truncate_at_block > original_block_log.last_block) {
+         ilog("All blocks are before block ${n} so do nothing (trim front would delete entire blocks.log).", ("n", truncate_at_block));
+         return false;
+      }
+      original_block_log.find_block_pos(truncate_at_block);
+
+      fc::path new_block_filename = block_dir / "blocks.out";
+      if (fc::remove(new_block_filename)) {
+         ilog("Removing old blocks.out file");
+      }
+      fc::cfile new_block_file;
+      new_block_file.set_file_path(new_block_filename);
+      new_block_file.open( LOG_WRITE_C );
+
+      static_assert( block_log::max_supported_version > 0, "a version number of zero is not supported" );
+      uint32_t version = block_log::max_supported_version;
+      new_block_file.seek(0);
+      new_block_file.write((char*)&version, sizeof(version));
+      new_block_file.write((char*)&truncate_at_block, sizeof(truncate_at_block));
+
+      new_block_file << *original_block_log.chain_id;
+
+      // append a totem to indicate the division between blocks and header
+      auto totem = block_log::npos;
+      new_block_file.write((char*)&totem, sizeof(totem));
+
+      const auto new_block_file_first_block_pos = new_block_file.tellp();
+
+      // copy over remainder of block log to new block log
+      auto buffer =  make_unique<char[]>(detail::reverse_iterator::_buf_len);                   //read big chunks of old blocks.log into this buffer
+      char* buf =  buffer.get();
+
+      const uint64_t pos_delta = original_block_log.fpos0 - new_block_file_first_block_pos;     // offset bytes to shift from old blocklog to new blocklog
+      auto status = fseek(original_block_log.blk_in, 0, SEEK_END);
+      EOS_ASSERT( status == 0, block_log_exception, "blocks.log seek failed" );
+      const uint64_t to_write = ftell(original_block_log.blk_in) - original_block_log.fpos0;
+      const auto pos_size = sizeof(uint64_t);
+      uint64_t original_pos = ftell(original_block_log.blk_in) - pos_size;
+
+      fc::path new_index_filename = block_dir / "index.out";
+      const auto num_blocks = original_block_log.last_block - truncate_at_block + 1;
+      detail::index_writer index(new_index_filename, num_blocks);
+      uint64_t read_size = 0;
+      for(uint64_t written = to_write; written > 0; written -= read_size) {
+         read_size = to_write;
+         if (read_size > detail::reverse_iterator::_buf_len) {
+            read_size = detail::reverse_iterator::_buf_len;
+         }
+         const auto start_of_blk_buffer_pos = original_block_log.fpos0 + to_write - read_size;
+         status = fseek(original_block_log.blk_in, start_of_blk_buffer_pos, SEEK_SET);
+         const auto num_read = fread(buf, read_size, 1, original_block_log.blk_in);
+         EOS_ASSERT( num_read == 1, block_log_exception, "blocks.log read failed" );
+         while(original_pos >= start_of_blk_buffer_pos) {
+            const auto buffer_index = original_pos - start_of_blk_buffer_pos;
+            uint64_t& pos_content = *(uint64_t*)(buf + buffer_index);
+            const auto start_of_this_block = pos_content;
+            pos_content = start_of_this_block - pos_delta;
+            index.write(pos_content);
+            original_pos = start_of_this_block - pos_size;
+         }
+         new_block_file.write(buf, read_size);
+      }
+      index.complete();
+      fclose(original_block_log.blk_in);
+      original_block_log.blk_in = nullptr;
+      new_block_file.flush();
+      new_block_file.close();
+
+      fc::path old_log = block_dir / "old.log";
+      rename(original_block_log.block_file_name, old_log);
+      rename(new_block_filename, original_block_log.block_file_name);
+      fc::path old_ind = block_dir / "old.index";
+      rename(original_block_log.index_file_name, old_ind);
+      rename(new_index_filename, original_block_log.index_file_name);
+
+      return true;
+   }
+
    trim_data::trim_data(fc::path block_dir) {
 
       // code should follow logic in block_log::repair_log

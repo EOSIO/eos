@@ -78,7 +78,10 @@ namespace eosio { namespace chain {
          static bool contains_chain_id(uint32_t version, uint32_t first_block_num);
 
          static bool is_supported_version(uint32_t version);
-      private:
+
+         static bool trim_blocklog_front(const fc::path& block_dir, uint32_t truncate_at_block);
+
+   private:
          void open(const fc::path& data_dir);
          void construct_index();
 
