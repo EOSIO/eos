@@ -836,7 +836,7 @@ namespace eosio { namespace chain {
       buffer[_current_position - _start_of_buffer_position] = pos;
       --_current_position;
       if ((_block_written & 0xfffff) == 0) {                            //periodically print a progress indicator
-         dlog("block: ${block_written}      position in file: ${pos}", ("block_written", _block_written)("pos",pos));
+         ilog("block: ${block_written}      position in file: ${pos}", ("block_written", _block_written)("pos",pos));
       }
       --_block_written;
    }
