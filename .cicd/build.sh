@@ -16,7 +16,7 @@ if [[ $(uname) == 'Darwin' ]]; then
     fi
 else # Linux
     ARGS=${ARGS:-"--rm --init -v $(pwd):$MOUNTED_DIR -e UNPINNED -e PINNED -e IMAGE_TAG"}
-    . $HELPERS_DIR/file-hash.sh $CICD_DIR/platforms/$IMAGE_TAG.dockerfile
+    . $HELPERS_DIR/file-hash.sh $CICD_DIR/platforms/$BUILD_TYPE/$IMAGE_TAG.dockerfile
     PRE_COMMANDS="cd $MOUNTED_DIR/build"
     # PRE_COMMANDS: Executed pre-cmake
     # CMAKE_EXTRAS: Executed within and right before the cmake path (cmake CMAKE_EXTRAS ..)
