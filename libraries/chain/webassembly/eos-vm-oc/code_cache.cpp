@@ -27,7 +27,7 @@ namespace eosio { namespace chain { namespace eosvmoc {
 static constexpr size_t header_offset = 512u;
 static constexpr size_t header_size = 512u;
 static constexpr size_t total_header_size = header_offset + header_size;
-static constexpr uint64_t header_id = 0x31434f4d56534f45ULL; //"EOSVMOC1" little endian
+static constexpr uint64_t header_id = 0x32434f4d56534f45ULL; //"EOSVMOC2" little endian
 
 struct code_cache_header {
    uint64_t id = header_id;
@@ -230,7 +230,7 @@ code_cache_base::code_cache_base(const boost::filesystem::path data_dir, const e
       memcpy((char*)&cache_header, header_buff + header_offset, sizeof(cache_header));
    }
 
-   EOS_ASSERT(cache_header.id == header_id, bad_database_version_exception, "code cache header magic not as expected");
+   EOS_ASSERT(cache_header.id == header_id, bad_database_version_exception, "existing EOS-VM OC code cache not compatible with this version");
    EOS_ASSERT(!cache_header.dirty, database_exception, "code cache is dirty");
 
    set_on_disk_region_dirty(true);
