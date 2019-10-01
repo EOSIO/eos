@@ -526,7 +526,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
             auto trace = chain.push_transaction( trx, deadline );
             if( trace->except ) {
                if( failure_is_subjective( *trace->except, deadline_is_subjective )) {
-                  _pending_incoming_transactions.add_front( trx, persist_until_expired, next );
+                  _pending_incoming_transactions.add( trx, persist_until_expired, next );
                   if( _pending_block_mode == pending_block_mode::producing ) {
                      fc_dlog( _trx_trace_log, "[TRX_TRACE] Block ${block_num} for producer ${prod} COULD NOT FIT, tx: ${txid} RETRYING ",
                               ("block_num", chain.head_block_num() + 1)
