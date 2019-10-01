@@ -9,8 +9,8 @@ if [[ $(uname) == 'Darwin' ]]; then
     ( [[ ! $PINNED == false || $UNPINNED == true ]] ) && CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_TOOLCHAIN_FILE=$SCRIPTS_DIR/pinned_toolchain.cmake"
     cd $BUILD_DIR
     if [[ "$USE_CONAN" == 'true' ]]; then
-        sed -n '/```/,/```/p' $MOUNTED_DIR/.conan/MACOS-10.14.md | grep -v '```' >> $MOUNTED_DIR/.conan/conan-build.sh
-        bash -c "$MOUNTED_DIR/.conan/conan-build.sh"
+        sed -n '/```/,/```/p' $CONAN_DIR/.conan/MACOS-10.14.md | grep -v '```' >> $CONAN_DIR/.conan/conan-build.sh
+        bash -c "$CONAN_DIR/.conan/conan-build.sh"
     else
         cmake $CMAKE_EXTRAS ..
         make -j$JOBS
@@ -40,11 +40,11 @@ else # Linux
         PRE_COMMANDS="$PRE_COMMANDS && export PATH=/usr/lib/ccache:\\\$PATH"
         CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_CXX_COMPILER='clang++' -DCMAKE_C_COMPILER='clang' -DLLVM_DIR='/usr/lib/llvm-7/lib/cmake/llvm'"
     elif [[ $IMAGE_TAG == 'amazon_linux-2-conan' ]]; then
-        sed -n '/```/,/```/p' $MOUNTED_DIR/.conan/AMAZON_LINUX-2.md | grep -v '```' >> $MOUNTED_DIR/.conan/conan-build.sh
+        sed -n '/```/,/```/p' $CONAN_DIR/.conan/AMAZON_LINUX-2.md | grep -v '```' >> $CONAN_DIR/.conan/conan-build.sh
     elif [[ $IMAGE_TAG == 'centos-7.6-conan' ]]; then
-        sed -n '/```/,/```/p' $MOUNTED_DIR/.conan/CENTOS-7.6.md | grep -v '```' >> $MOUNTED_DIR/.conan/conan-build.sh
+        sed -n '/```/,/```/p' $CONAN_DIR/.conan/CENTOS-7.6.md | grep -v '```' >> $CONAN_DIR/.conan/conan-build.sh
     elif [[ $IMAGE_TAG == 'ubuntu-18.04-conan' ]]; then
-        sed -n '/```/,/```/p' $MOUNTED_DIR/.conan/UBUNTU-18.04.md | grep -v '```' >> $MOUNTED_DIR/.conan/conan-build.sh
+        sed -n '/```/,/```/p' $CONAN_DIR/.conan/UBUNTU-18.04.md | grep -v '```' >> $CONAN_DIR/.conan/conan-build.sh
     fi
     BUILD_COMMANDS="cmake $CMAKE_EXTRAS .. && make -j$JOBS"
     # Docker Commands
