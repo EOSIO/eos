@@ -124,13 +124,15 @@ int main(int argc, char** argv)
    } catch( const boost::exception& e ) {
       elog("${e}", ("e",boost::diagnostic_information(e)));
       return OTHER_FAIL;
-   } catch( const std::runtime_error& e ) {
-      if( std::string(e.what()).find("database dirty flag set") != std::string::npos ) {
+   } catch (const chainbase::db_runtime_error& e) {
+      if (chainbase::db_runtime_error::error_code::dirty == e.what_code()) {
          elog( "database dirty flag set (likely due to unclean shutdown): replay required" );
          return DATABASE_DIRTY;
-      } else {
-         elog( "${e}", ("e",e.what()));
       }
+      elog( "${e}", ("e",e.what()));
+      return OTHER_FAIL;
+   } catch( const std::runtime_error& e ) {
+      elog( "${e}", ("e",e.what()));
       return OTHER_FAIL;
    } catch( const std::exception& e ) {
       elog("${e}", ("e",e.what()));
