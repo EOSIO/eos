@@ -34,7 +34,7 @@ make -j$(getconf _NPROCESSORS_ONLN)
 ## Test Steps
 
 ```
-apt-get install -y jq python2.7 python2.7-devel
+apt-get install -y jq python2.7 python2.7-dev
 
 /usr/local/cmake-3.15.3-Linux-x86_64/bin/ctest -j$(getconf _NPROCESSORS_ONLN) -LE _tests --output-on-failure -T Test
 
