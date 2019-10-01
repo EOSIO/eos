@@ -541,11 +541,6 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
                   send_response( e_ptr );
                }
             } else {
-               if( persist_until_expired ) {
-                  // if this trx didnt fail/soft-fail and the persist flag is set, store its ID so that we can
-                  // ensure its applied to all future speculative blocks as well.
-                  _unapplied_transactions.add_persisted( trx );
-               }
                send_response( trace );
             }
 
