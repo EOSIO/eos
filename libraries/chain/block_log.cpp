@@ -969,6 +969,7 @@ namespace eosio { namespace chain {
       }
       original_block_log.find_block_pos(truncate_at_block);
 
+      // ****** create the new block log file and write out the header for the file
       fc::path new_block_filename = block_dir / "blocks.out";
       if (fc::remove(new_block_filename)) {
          ilog("Removing old blocks.out file");
@@ -990,31 +991,45 @@ namespace eosio { namespace chain {
       new_block_file.write((char*)&totem, sizeof(totem));
 
       const auto new_block_file_first_block_pos = new_block_file.tellp();
+      // ****** end of new block log header
+
 
       // copy over remainder of block log to new block log
-      auto buffer =  make_unique<char[]>(detail::reverse_iterator::_buf_len);                   //read big chunks of old blocks.log into this buffer
+      auto buffer =  make_unique<char[]>(detail::reverse_iterator::_buf_len);
       char* buf =  buffer.get();
 
-      const uint64_t pos_delta = original_block_log.fpos0 - new_block_file_first_block_pos;     // offset bytes to shift from old blocklog to new blocklog
+      // offset bytes to shift from old blocklog position to new blocklog position
+      const uint64_t pos_delta = original_block_log.fpos0 - new_block_file_first_block_pos;
       auto status = fseek(original_block_log.blk_in, 0, SEEK_END);
       EOS_ASSERT( status == 0, block_log_exception, "blocks.log seek failed" );
+
+      // all blocks to copy to the new blocklog
       const uint64_t to_write = ftell(original_block_log.blk_in) - original_block_log.fpos0;
       const auto pos_size = sizeof(uint64_t);
+
+      // start with the last block's position stored at the end of the block
       uint64_t original_pos = ftell(original_block_log.blk_in) - pos_size;
 
-      fc::path new_index_filename = block_dir / "index.out";
       const auto num_blocks = original_block_log.last_block - truncate_at_block + 1;
+
+      fc::path new_index_filename = block_dir / "index.out";
       detail::index_writer index(new_index_filename, num_blocks);
+
       uint64_t read_size = 0;
       for(uint64_t written = to_write; written > 0; written -= read_size) {
          read_size = to_write;
          if (read_size > detail::reverse_iterator::_buf_len) {
             read_size = detail::reverse_iterator::_buf_len;
          }
+
+         // read in the previous contiguous memory into the read buffer
          const auto start_of_blk_buffer_pos = original_block_log.fpos0 + to_write - read_size;
          status = fseek(original_block_log.blk_in, start_of_blk_buffer_pos, SEEK_SET);
          const auto num_read = fread(buf, read_size, 1, original_block_log.blk_in);
          EOS_ASSERT( num_read == 1, block_log_exception, "blocks.log read failed" );
+
+         // walk this memory section to adjust block position to match the adjusted location
+         // of the block start and store in the new index file
          while(original_pos >= start_of_blk_buffer_pos) {
             const auto buffer_index = original_pos - start_of_blk_buffer_pos;
             uint64_t& pos_content = *(uint64_t*)(buf + buffer_index);
