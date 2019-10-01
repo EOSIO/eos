@@ -24,7 +24,8 @@ enum class trx_enum_type {
    unknown = 0,
    persisted = 1,
    forked = 2,
-   aborted = 3
+   aborted = 3,
+   incoming = 4
 };
 
 using next_func_t = std::function<void(const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>&)>;
@@ -185,6 +186,18 @@ public:
       }
    }
 
+   void add_incoming( const transaction_metadata_ptr& trx, bool persist_until_expired ) {
+      auto itr = queue.get<by_trx_id>().find( trx->id() );
+      if( itr == queue.get<by_trx_id>().end() ) {
+         fc::time_point expiry = trx->packed_trx()->expiration();
+         queue.insert( { trx, expiry, persist_until_expired ? trx_enum_type::persisted : trx_enum_type::incoming } );
+      } else if( persist_until_expired && itr->trx_type != trx_enum_type::persisted ) {
+         queue.get<by_trx_id>().modify( itr, [](auto& un){
+            un.trx_type = trx_enum_type::persisted;
+         } );
+      }
+   }
+
    using iterator = unapplied_trx_queue_type::index<by_type>::type::iterator;
 
    iterator begin() { return queue.get<by_type>().begin(); }
@@ -192,6 +205,9 @@ public:
 
    iterator persisted_begin() { return queue.get<by_type>().lower_bound( trx_enum_type::persisted ); }
    iterator persisted_end() { return queue.get<by_type>().upper_bound( trx_enum_type::persisted ); }
+
+   iterator incoming_begin() { return queue.get<by_type>().lower_bound( trx_enum_type::incoming ); }
+   iterator incoming_end() { return queue.get<by_type>().upper_bound( trx_enum_type::incoming ); }
 
    iterator erase( iterator itr ) { return queue.get<by_type>().erase( itr ); }
 
