@@ -2,8 +2,6 @@
 set -eo pipefail
 # environment
 . ./.cicd/helpers/general.sh
-export MOJAVE_ANKA_TAG_BASE=${MOJAVE_ANKA_TAG_BASE:-'clean::cicd::git-ssh::nas::brew::buildkite-agent'}
-export MOJAVE_ANKA_TEMPLATE_NAME=${MOJAVE_ANKA_TEMPLATE_NAME:-'10.14.4_6C_14G_40G'}
 export PLATFORMS_JSON_ARRAY='[]'
 [[ -z "$ROUNDS" ]] && export ROUNDS='1'
 LINUX_CONCURRENCY='8'
@@ -45,6 +43,17 @@ for FILE in $(ls $CICD_DIR/platforms); do
     [[ $FILE_NAME =~ 'centos' ]] && export ICON=':centos:'
     [[ $FILE_NAME =~ 'macos' ]] && export ICON=':darwin:'
     . $HELPERS_DIR/file-hash.sh $CICD_DIR/platforms/$FILE # returns HASHED_IMAGE_TAG, etc
+    # Anka Template and Tags
+    if [[ $FILE_NAME =~ 'macos-10.14' ]]; then
+      export ANKA_TAG_BASE=${ANKA_TAG_BASE:-'clean::cicd::git-ssh::nas::brew::buildkite-agent'}
+      export ANKA_TEMPLATE_NAME=${ANKA_TEMPLATE_NAME:-'10.14.4_6C_14G_40G'}
+    elif [[ $FILE_NAME =~ 'macos-10.15' ]]; then
+      export ANKA_TAG_BASE=${ANKA_TAG_BASE:-'clean::cicd::git-ssh::nas::brew::buildkite-agent'}
+      export ANKA_TEMPLATE_NAME=${ANKA_TEMPLATE_NAME:-'10.15_beta_6C_14G_40G'}
+    else # Linux
+      export ANKA_TAG_BASE=''
+      export ANKA_TEMPLATE_NAME=''
+    fi
     export PLATFORMS_JSON_ARRAY=$(echo $PLATFORMS_JSON_ARRAY | jq -c '. += [{ 
         "FILE_NAME": env.FILE_NAME, 
         "PLATFORM_NAME": env.PLATFORM_NAME,
@@ -55,7 +64,9 @@ for FILE in $(ls $CICD_DIR/platforms); do
         "PLATFORM_NAME_FULL": env.PLATFORM_NAME_FULL,
         "DOCKERHUB_FULL_TAG": env.FULL_TAG,
         "HASHED_IMAGE_TAG": env.HASHED_IMAGE_TAG,
-        "ICON": env.ICON
+        "ICON": env.ICON,
+        "ANKA_TAG_BASE": env.ANKA_TAG_BASE,
+        "ANKA_TEMPLATE_NAME": env.ANKA_TEMPLATE_NAME
         }]')
 done
 # set build_source whether triggered or not
@@ -76,7 +87,7 @@ echo ''
 # base-image steps
 echo '    # base-images'
 echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
-    if [[ "$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)" =~ 'macos' ]]; then
+    if [[ "$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)" =~ 'macos-10.14' ]]; then
         cat <<EOF
   - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) Anka - Ensure $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) Template Dependency Tag"
     command:
@@ -86,8 +97,8 @@ echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
     env:
       REPO: ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO}
       REPO_COMMIT: $BUILDKITE_COMMIT
-      TEMPLATE: $MOJAVE_ANKA_TEMPLATE_NAME
-      TEMPLATE_TAG: $MOJAVE_ANKA_TAG_BASE
+      TEMPLATE: $(echo "$PLATFORM_JSON" | jq -r .ANKA_TEMPLATE_NAME)
+      TEMPLATE_TAG: $(echo "$PLATFORM_JSON" | jq -r .ANKA_TAG_BASE)
       PINNED: $PINNED
       UNPINNED: $UNPINNED
       TAG_COMMANDS: "git clone ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO} eos && cd eos && $GIT_FETCH git checkout -f $BUILDKITE_COMMIT && git submodule update --init --recursive && export PINNED=$PINNED && export UNPINNED=$UNPINNED && . ./.cicd/platforms/macos-10.14.sh && cd ~/eos && cd .. && rm -rf eos"
@@ -134,8 +145,8 @@ EOF
       - chef/anka#v0.5.4:
           no-volume: true
           inherit-environment-vars: true
-          vm-name: ${MOJAVE_ANKA_TEMPLATE_NAME}
-          vm-registry-tag: "${MOJAVE_ANKA_TAG_BASE}::$(echo "$PLATFORM_JSON" | jq -r .HASHED_IMAGE_TAG)"
+          vm-name: $(echo "$PLATFORM_JSON" | jq -r .ANKA_TEMPLATE_NAME)
+          vm-registry-tag: "$(echo "$PLATFORM_JSON" | jq -r .ANKA_TAG_BASE)::$(echo "$PLATFORM_JSON" | jq -r .HASHED_IMAGE_TAG)"
           modify-cpu: 12
           modify-ram: 24
           always-pull: true
@@ -199,8 +210,8 @@ EOF
       - chef/anka#v0.5.4:
           no-volume: true
           inherit-environment-vars: true
-          vm-name: ${MOJAVE_ANKA_TEMPLATE_NAME}
-          vm-registry-tag: "${MOJAVE_ANKA_TAG_BASE}::$(echo "$PLATFORM_JSON" | jq -r .HASHED_IMAGE_TAG)"
+          vm-name: $(echo "$PLATFORM_JSON" | jq -r .ANKA_TEMPLATE_NAME)
+          vm-registry-tag: "$(echo "$PLATFORM_JSON" | jq -r .ANKA_TAG_BASE)::$(echo "$PLATFORM_JSON" | jq -r .HASHED_IMAGE_TAG)"
           always-pull: true
           debug: true
           wait-network: true
@@ -258,8 +269,8 @@ EOF
       - chef/anka#v0.5.4:
           no-volume: true
           inherit-environment-vars: true
-          vm-name: ${MOJAVE_ANKA_TEMPLATE_NAME}
-          vm-registry-tag: "${MOJAVE_ANKA_TAG_BASE}::$(echo "$PLATFORM_JSON" | jq -r .HASHED_IMAGE_TAG)"
+          vm-name: $(echo "$PLATFORM_JSON" | jq -r .ANKA_TEMPLATE_NAME)
+          vm-registry-tag: "$(echo "$PLATFORM_JSON" | jq -r .ANKA_TAG_BASE)::$(echo "$PLATFORM_JSON" | jq -r .HASHED_IMAGE_TAG)"
           always-pull: true
           debug: true
           wait-network: true
@@ -318,8 +329,8 @@ EOF
       - chef/anka#v0.5.4:
           no-volume: true
           inherit-environment-vars: true
-          vm-name: ${MOJAVE_ANKA_TEMPLATE_NAME}
-          vm-registry-tag: "${MOJAVE_ANKA_TAG_BASE}::$(echo "$PLATFORM_JSON" | jq -r .HASHED_IMAGE_TAG)"
+          vm-name: $(echo "$PLATFORM_JSON" | jq -r .ANKA_TEMPLATE_NAME)
+          vm-registry-tag: "$(echo "$PLATFORM_JSON" | jq -r .ANKA_TAG_BASE)::$(echo "$PLATFORM_JSON" | jq -r .HASHED_IMAGE_TAG)"
           always-pull: true
           debug: true
           wait-network: true
