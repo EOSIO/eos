@@ -86,6 +86,8 @@ void launcher_service_api_plugin::plugin_startup() {
 
       CALL(launcher, create_bios_accounts, INVOKE_R_R(create_bios_accounts, launcher_service::create_bios_accounts_param), 200),
       CALL(launcher, create_account, INVOKE_R_R(create_account, launcher_service::new_account_param_ex), 200),
+      CALL(launcher, link_auth, INVOKE_R_R(link_auth, launcher_service::link_auth_param), 200),
+      CALL(launcher, unlink_auth, INVOKE_R_R(unlink_auth, launcher_service::unlink_auth_param), 200),
       CALL(launcher, set_contract, INVOKE_R_R(set_contract, launcher_service::set_contract_param), 200),
       CALL(launcher, push_actions, INVOKE_R_R(push_actions, launcher_service::push_actions_param), 200),
       CALL(launcher, verify_transaction, INVOKE_R_R(verify_transaction, launcher_service::verify_transaction_param), 200),

@@ -132,7 +132,21 @@ namespace launcher_service {
       chain::name                    creator;
       std::vector<new_account_param> accounts;
    };
-
+   struct link_auth_param {
+      int                            cluster_id = 0;
+      int                            node_id = 0;
+      chain::name                    account;
+      chain::name                    code;
+      chain::name                    type;
+      chain::name                    requirement;
+   };
+   struct unlink_auth_param {
+      int                            cluster_id = 0;
+      int                            node_id = 0;
+      chain::name                    account;
+      chain::name                    code;
+      chain::name                    type;
+   };
    struct new_account_param_ex { // newaccount in system contract
       int                            cluster_id = 0;
       int                            node_id = 0;
@@ -292,6 +306,8 @@ public:
    // transactions
    fc::variant create_bios_accounts(launcher_service::create_bios_accounts_param);
    fc::variant create_account(launcher_service::new_account_param_ex);
+   fc::variant link_auth(launcher_service::link_auth_param);
+   fc::variant unlink_auth(launcher_service::unlink_auth_param);
    fc::variant set_contract(launcher_service::set_contract_param);
    fc::variant push_actions(launcher_service::push_actions_param);
    fc::variant schedule_protocol_feature_activations(launcher_service::schedule_protocol_feature_activations_param);
@@ -309,6 +325,8 @@ FC_REFLECT(eosio::launcher_service::node_def, (node_id)(producers)(producing_key
 FC_REFLECT(eosio::launcher_service::cluster_def, (shape)(center_node_id)(cluster_id)(node_count)(auto_port)(nodes)(extra_configs)(extra_args)(log_level)(special_log_levels) )
 FC_REFLECT(eosio::launcher_service::new_account_param, (name)(owner)(active))
 FC_REFLECT(eosio::launcher_service::create_bios_accounts_param, (cluster_id)(node_id)(creator)(accounts))
+FC_REFLECT(eosio::launcher_service::link_auth_param, (cluster_id)(node_id)(account)(code)(type)(requirement))
+FC_REFLECT(eosio::launcher_service::unlink_auth_param, (cluster_id)(node_id)(account)(code)(type))
 FC_REFLECT(eosio::launcher_service::new_account_param_ex, (cluster_id)(node_id)(creator)(name)(owner)(active)(stake_cpu)(stake_net)(buy_ram_bytes)(transfer))
 FC_REFLECT(eosio::launcher_service::get_block_param, (cluster_id)(node_id)(block_num_or_id))
 FC_REFLECT(eosio::launcher_service::get_account_param, (cluster_id)(node_id)(name))

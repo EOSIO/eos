@@ -611,6 +611,20 @@ public:
          return push_actions(param.cluster_id, param.node_id, std::move(actlist), param.sign_keys);
       }
 
+      fc::variant link_auth(link_auth_param param) {
+         std::vector<eosio::chain::action> actlist;
+         actlist.push_back(action{
+            vector<chain::permission_level>{{param.account, N(owner)}},linkauth(param.account, param.code, param.type, param.requirement)});
+         return push_actions(param.cluster_id, param.node_id, std::move(actlist));
+      }
+
+      fc::variant unlink_auth(unlink_auth_param param) {
+         std::vector<eosio::chain::action> actlist;
+         actlist.push_back(action{
+            vector<chain::permission_level>{{param.account, N(owner)}},unlinkauth(param.account, param.code, param.type)});
+         return push_actions(param.cluster_id, param.node_id, std::move(actlist));
+      }
+
       fc::variant create_bios_accounts(create_bios_accounts_param param) {
          std::vector<eosio::chain::action> actlist;
          public_key_type def_key = _config.default_key.get_public_key();
@@ -1000,6 +1014,18 @@ fc::variant launcher_service_plugin::stop_node(launcher_service::stop_node_param
    try {
       _my->stop_node(param.cluster_id, param.node_id, param.kill_sig);
       return fc::mutable_variant_object("result", "OK");
+   } CATCH_LAUCHER_EXCEPTIONS
+}
+
+fc::variant launcher_service_plugin::link_auth(launcher_service::link_auth_param param) {
+   try {
+      return _my->link_auth(param);
+   } CATCH_LAUCHER_EXCEPTIONS
+}
+
+fc::variant launcher_service_plugin::unlink_auth(launcher_service::unlink_auth_param param) {
+   try {
+      return _my->unlink_auth(param);
    } CATCH_LAUCHER_EXCEPTIONS
 }
 
