@@ -476,7 +476,7 @@ cat <<EOF
   - label: ":ubuntu: Ubuntu 18.04 - Contract Builder"
     command: "./.cicd/installation-build.sh"
     env:
-      IMAGE_TAG: "ubuntu-18.04"
+      IMAGE_TAG: "amazon_linux-2"
       BUILDKITE_AGENT_ACCESS_TOKEN:
     agents:
       queue: "$BUILDKITE_AGENT_QUEUE"
