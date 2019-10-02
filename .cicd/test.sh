@@ -4,15 +4,18 @@ set -eo pipefail
 . ./.cicd/helpers/general.sh
 # tests
 if [[ $(uname) == 'Darwin' ]]; then # macOS
+    [[ "$USE_CONAN" == 'true' ]] && cp -r $ROOT_DIR/conan ~/.conan
     export PATH=$PATH:~/mongodb/bin
     set +e # defer error handling to end
     ./"$@"
     EXIT_STATUS=$?
 else # Linux
     . $HELPERS_DIR/file-hash.sh $CICD_DIR/platforms/$BUILD_TYPE/$IMAGE_TAG.dockerfile
-    echo "$ docker run --rm --init -v $(pwd):$MOUNTED_DIR $(buildkite-intrinsics) $FULL_TAG bash -c \"$MOUNTED_DIR/$@\""
+    COMMANDS="$MOUNTED_DIR/$@"
+    [[ "$USE_CONAN" == 'true' ]] && COMANDS="cp -r $MOUNTED_DIR/conan ~/.conan && $COMMANDS"
+    echo "$ docker run --rm --init -v $(pwd):$MOUNTED_DIR $(buildkite-intrinsics) $FULL_TAG bash -c \"$COMMANDS\""
     set +e # defer error handling to end
-    eval docker run --rm --init -v $(pwd):$MOUNTED_DIR $(buildkite-intrinsics) $FULL_TAG bash -c \"$MOUNTED_DIR/$@\"
+    eval docker run --rm --init -v $(pwd):$MOUNTED_DIR $(buildkite-intrinsics) $FULL_TAG bash -c \"$COMMANDS\"
     EXIT_STATUS=$?
 fi
 # buildkite
