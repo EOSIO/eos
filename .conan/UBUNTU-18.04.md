@@ -7,7 +7,7 @@ The instructions below can be used to build and test EOSIO on Ubuntu-18.04.
 **NOTE**: This requires the conan-poc-v2 branch.
 
 ```
-apt-get install -y clang llvm-7-dev python3 python3-dev python3-pip git curl automake 
+apt-get install -y clang-7 llvm-7-dev python3 python3-dev python3-pip git curl automake 
 
 pip3 install conan
 
