@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE.txt
- */
 #include <eosio/chain/generated_transaction_object.hpp>
 #include <eosio/testing/tester.hpp>
 #include <eosio/testing/tester_network.hpp>
@@ -29,41 +25,17 @@ class whitelist_blacklist_tester {
    public:
       whitelist_blacklist_tester() {}
 
-      static controller::config get_default_chain_configuration( const fc::path& p ) {
-         controller::config cfg;
-         cfg.blocks_dir = p / config::default_blocks_dir_name;
-         cfg.state_dir  = p / config::default_state_dir_name;
-         cfg.state_size = 1024*1024*8;
-         cfg.state_guard_size = 0;
-         cfg.reversible_cache_size = 1024*1024*8;
-         cfg.reversible_guard_size = 0;
-         cfg.contracts_console = true;
-
-         cfg.genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
-         cfg.genesis.initial_key = base_tester::get_public_key( config::system_account_name, "active" );
-
-         for(int i = 0; i < boost::unit_test::framework::master_test_suite().argc; ++i) {
-            if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--wavm"))
-               cfg.wasm_runtime = chain::wasm_interface::vm_type::wavm;
-            else if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--wabt"))
-               cfg.wasm_runtime = chain::wasm_interface::vm_type::wabt;
-         }
-
-         return cfg;
-      }
-
       void init( bool bootstrap = true ) {
          FC_ASSERT( !chain, "chain is already up" );
 
-         auto cfg = get_default_chain_configuration( tempdir.path() );
-         cfg.sender_bypass_whiteblacklist = sender_bypass_whiteblacklist;
-         cfg.actor_whitelist = actor_whitelist;
-         cfg.actor_blacklist = actor_blacklist;
-         cfg.contract_whitelist = contract_whitelist;
-         cfg.contract_blacklist = contract_blacklist;
-         cfg.action_blacklist = action_blacklist;
-
-         chain.emplace(cfg);
+         chain.emplace(tempdir, [&](controller::config& cfg) {
+            cfg.sender_bypass_whiteblacklist = sender_bypass_whiteblacklist;
+            cfg.actor_whitelist = actor_whitelist;
+            cfg.actor_blacklist = actor_blacklist;
+            cfg.contract_whitelist = contract_whitelist;
+            cfg.contract_blacklist = contract_blacklist;
+            cfg.action_blacklist = action_blacklist;
+         }, !shutdown_called);
          wdump((last_produced_block));
          chain->set_last_produced_block_map( last_produced_block );
 
@@ -89,6 +61,7 @@ class whitelist_blacklist_tester {
          last_produced_block = chain->get_last_produced_block_map();
          wdump((last_produced_block));
          chain.reset();
+         shutdown_called = true;
       }
 
       transaction_trace_ptr transfer( account_name from, account_name to, string quantity = "1.00 TOK" ) {
@@ -100,7 +73,9 @@ class whitelist_blacklist_tester {
          );
       }
 
+   private:
       fc::temp_directory                tempdir; // Must come before chain
+   public:
       fc::optional<Tester>              chain;
       flat_set<account_name>            sender_bypass_whiteblacklist;
       flat_set<account_name>            actor_whitelist;
@@ -109,6 +84,7 @@ class whitelist_blacklist_tester {
       flat_set<account_name>            contract_blacklist;
       flat_set< pair<account_name, action_name> >  action_blacklist;
       map<account_name, block_id_type>  last_produced_block;
+      bool                              shutdown_called = false;
 };
 
 struct transfer_args {

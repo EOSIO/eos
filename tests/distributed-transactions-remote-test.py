@@ -10,8 +10,10 @@ import os
 
 ###############################################################
 # distributed-transactions-remote-test
+#
 #  Tests remote capability of the distributed-transactions-test. Test will setup cluster and pass nodes info to distributed-transactions-test. E.g.
 #  distributed-transactions-remote-test.py -v --clean-run --dump-error-detail
+#
 ###############################################################
 
 Print=Utils.Print

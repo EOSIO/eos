@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
 #include <eosiolib/action.h>
 #include <eosiolib/chain.h>
 #include <eosiolib/eosio.hpp>

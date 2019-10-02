@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
 #pragma once
 #include <eosio/chain/name.hpp>
 #include <eosio/chain/chain_id_type.hpp>
@@ -77,6 +73,7 @@ namespace eosio { namespace chain {
    using                               fc::time_point;
    using                               fc::safe;
    using                               fc::flat_map;
+   using                               fc::flat_multimap;
    using                               fc::flat_set;
    using                               fc::static_variant;
    using                               fc::ecc::range_proof_type;
@@ -274,6 +271,18 @@ namespace eosio { namespace chain {
     */
    typedef vector<std::pair<uint16_t,vector<char>>> extensions_type;
 
+   /**
+    * emplace an extension into the extensions type such that it is properly ordered by extension id
+    * this assumes exts is already sorted by extension id
+    */
+   inline auto emplace_extension( extensions_type& exts, uint16_t eid, vector<char>&& data) {
+      auto insert_itr = std::upper_bound(exts.begin(), exts.end(), eid, [](uint16_t id, const auto& ext){
+         return id < ext.first;
+      });
+
+      return exts.emplace(insert_itr, eid, std::move(data));
+   }
+
 
    template<typename Container>
    class end_insert_iterator : public std::iterator< std::output_iterator_tag, void, void, void, void >
@@ -381,6 +390,9 @@ namespace eosio { namespace chain {
          return ( flags & ~static_cast<F>(field) );
    }
 
+   template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
+   template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
+
 } }  // eosio::chain
 
-FC_REFLECT( eosio::chain::void_t, )
+FC_REFLECT_EMPTY( eosio::chain::void_t )

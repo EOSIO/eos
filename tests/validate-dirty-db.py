@@ -9,7 +9,10 @@ import subprocess
 import signal
 
 ###############################################################
+# validate-dirty-db
+#
 # Test for validating the dirty db flag sticks repeated nodeos restart attempts
+#
 ###############################################################
 
 

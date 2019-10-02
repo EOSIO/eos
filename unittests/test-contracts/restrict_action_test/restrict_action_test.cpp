@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
 #include "restrict_action_test.hpp"
 #include <eosio/transaction.hpp>
 

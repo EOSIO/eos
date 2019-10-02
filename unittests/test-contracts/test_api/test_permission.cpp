@@ -1,7 +1,3 @@
-/**
- * @file action_test.cpp
- * @copyright defined in eos/LICENSE
- */
 #include <limits>
 
 #include <eosiolib/action.hpp>

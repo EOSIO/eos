@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
 #include <eosio/chain_plugin/chain_plugin.hpp>
 #include <eosio/chain/fork_database.hpp>
 #include <eosio/chain/block_log.hpp>
@@ -14,9 +10,12 @@
 #include <eosio/chain/reversible_block_object.hpp>
 #include <eosio/chain/controller.hpp>
 #include <eosio/chain/generated_transaction_object.hpp>
+#include <eosio/chain/global_property_object.hpp>
 #include <eosio/chain/snapshot.hpp>
 
 #include <eosio/chain/eosio_contract.hpp>
+
+#include <chainbase/environment.hpp>
 
 #include <boost/signals2/connection.hpp>
 #include <boost/algorithm/string.hpp>
@@ -26,6 +25,13 @@
 #include <fc/variant.hpp>
 #include <signal.h>
 #include <cstdlib>
+
+// reflect chainbase::environment for --print-build-info option
+FC_REFLECT_ENUM( chainbase::environment::os_t,
+                 (OS_LINUX)(OS_MACOS)(OS_WINDOWS)(OS_OTHER) )
+FC_REFLECT_ENUM( chainbase::environment::arch_t,
+                 (ARCH_X86_64)(ARCH_ARM)(ARCH_RISCV)(ARCH_OTHER) )
+FC_REFLECT(chainbase::environment, (debug)(os)(arch)(boost_version)(compiler) )
 
 namespace eosio {
 
@@ -139,7 +145,7 @@ public:
    fc::optional<block_log>          block_logger;
    fc::optional<controller::config> chain_config;
    fc::optional<controller>         chain;
-   fc::optional<chain_id_type>      chain_id;
+   fc::optional<genesis_state>      genesis;
    //txn_msg_rate_limits              rate_limits;
    fc::optional<vm_type>            wasm_runtime;
    fc::microseconds                 abi_serializer_max_time_ms;
@@ -192,7 +198,15 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("protocol-features-dir", bpo::value<bfs::path>()->default_value("protocol_features"),
           "the location of the protocol_features directory (absolute path or relative to application config dir)")
          ("checkpoint", bpo::value<vector<string>>()->composing(), "Pairs of [BLOCK_NUM,BLOCK_ID] that should be enforced as checkpoints.")
-         ("wasm-runtime", bpo::value<eosio::chain::wasm_interface::vm_type>()->value_name("wavm/wabt"), "Override default WASM runtime")
+         ("wasm-runtime", bpo::value<eosio::chain::wasm_interface::vm_type>()->value_name("runtime")->notifier([](const auto& vm){
+#ifndef EOSIO_EOS_VM_OC_DEVELOPER
+            //throwing an exception here (like EOS_ASSERT) is just gobbled up with a "Failed to initialize" error :(
+            if(vm == wasm_interface::vm_type::eos_vm_oc) {
+               elog("EOS-VM OC is a tier-up compiler and works in conjunction with the configured base WASM runtime. Enable EOS-VM OC via 'eos-vm-oc-enable' option");
+               EOS_ASSERT(false, plugin_exception, "");
+            }
+#endif
+         }), "Override default WASM runtime")
          ("abi-serializer-max-time-ms", bpo::value<uint32_t>()->default_value(config::default_abi_serializer_max_time_ms),
           "Override default maximum ABI serialization time allowed in ms")
          ("chain-state-db-size-mb", bpo::value<uint64_t>()->default_value(config::default_state_size / (1024  * 1024)), "Maximum size (in MiB) of the chain state database")
@@ -248,6 +262,17 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
 #ifdef __linux__
          ("database-hugepage-path", bpo::value<vector<string>>()->composing(), "Optional path for database hugepages when in \"locked\" mode (may specify multiple times)")
 #endif
+
+#ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
+         ("eos-vm-oc-cache-size-mb", bpo::value<uint64_t>()->default_value(eosvmoc::config().cache_size / (1024u*1024u)), "Maximum size (in MiB) of the EOS-VM OC code cache")
+         ("eos-vm-oc-compile-threads", bpo::value<uint64_t>()->default_value(1u)->notifier([](const auto t) {
+               if(t == 0) {
+                  elog("eos-vm-oc-compile-threads must be set to a non-zero value");
+                  EOS_ASSERT(false, plugin_exception, "");
+               }
+         }), "Number of threads to use for EOS-VM OC tier-up")
+         ("eos-vm-oc-enable", bpo::bool_switch(), "Enable EOS-VM OC tier-up runtime")
+#endif
          ;
 
 // TODO: rate limiting
@@ -267,6 +292,10 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "extract genesis_state from blocks.log as JSON, print to console, and exit")
          ("extract-genesis-json", bpo::value<bfs::path>(),
           "extract genesis_state from blocks.log as JSON, write into specified file, and exit")
+         ("print-build-info", bpo::bool_switch()->default_value(false),
+          "print build environment information to console as JSON and exit")
+         ("extract-build-info", bpo::value<bfs::path>(),
+          "extract build environment information as JSON, write into specified file, and exit")
          ("fix-reversible-blocks", bpo::bool_switch()->default_value(false),
           "recovers reversible block database if that database is in a bad state")
          ("force-all-checks", bpo::bool_switch()->default_value(false),
@@ -536,6 +565,27 @@ protocol_feature_set initialize_protocol_features( const fc::path& p, bool popul
    return pfs;
 }
 
+void
+chain_plugin::do_hard_replay(const variables_map& options) {
+         ilog( "Hard replay requested: deleting state database" );
+         clear_directory_contents( my->chain_config->state_dir );
+         auto backup_dir = block_log::repair_log( my->blocks_dir, options.at( "truncate-at-block" ).as<uint32_t>());
+         if( fc::exists( backup_dir / config::reversible_blocks_dir_name ) ||
+             options.at( "fix-reversible-blocks" ).as<bool>()) {
+            // Do not try to recover reversible blocks if the directory does not exist, unless the option was explicitly provided.
+            if( !recover_reversible_blocks( backup_dir / config::reversible_blocks_dir_name,
+                                            my->chain_config->reversible_cache_size,
+                                            my->chain_config->blocks_dir / config::reversible_blocks_dir_name,
+                                            options.at( "truncate-at-block" ).as<uint32_t>())) {
+               ilog( "Reversible blocks database was not corrupted. Copying from backup to blocks directory." );
+               fc::copy( backup_dir / config::reversible_blocks_dir_name,
+                         my->chain_config->blocks_dir / config::reversible_blocks_dir_name );
+               fc::copy( backup_dir / config::reversible_blocks_dir_name / "shared_memory.bin",
+                         my->chain_config->blocks_dir / config::reversible_blocks_dir_name / "shared_memory.bin" );
+            }
+         }
+}
+
 void chain_plugin::plugin_initialize(const variables_map& options) {
    ilog("initializing chain plugin");
 
@@ -549,6 +599,28 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       }
 
       my->chain_config = controller::config();
+
+      if( options.at( "print-build-info" ).as<bool>() || options.count( "extract-build-info") ) {
+         if( options.at( "print-build-info" ).as<bool>() ) {
+            ilog( "Build environment JSON:\n${e}", ("e", json::to_pretty_string( chainbase::environment() )) );
+         }
+         if( options.count( "extract-build-info") ) {
+            auto p = options.at( "extract-build-info" ).as<bfs::path>();
+
+            if( p.is_relative()) {
+               p = bfs::current_path() / p;
+            }
+
+            EOS_ASSERT( fc::json::save_to_file( chainbase::environment(), p, true ), misc_exception,
+                        "Error occurred while writing build info JSON to '${path}'",
+                        ("path", p.generic_string())
+            );
+
+            ilog( "Saved build info JSON to '${path}'", ("path", p.generic_string()) );
+         }
+
+         EOS_THROW( node_management_success, "reported build environment information" );
+      }
 
       LOAD_VALUE_SET( options, "sender-bypass-whiteblacklist", my->chain_config->sender_bypass_whiteblacklist );
       LOAD_VALUE_SET( options, "actor-whitelist", my->chain_config->actor_whitelist );
@@ -660,17 +732,23 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       my->chain_config->maximum_variable_signature_length = options.at( "maximum-variable-signature-length" ).as<uint32_t>();
 
       if( options.count( "extract-genesis-json" ) || options.at( "print-genesis-json" ).as<bool>()) {
-         genesis_state gs;
+         fc::optional<genesis_state> gs;
 
          if( fc::exists( my->blocks_dir / "blocks.log" )) {
             gs = block_log::extract_genesis_state( my->blocks_dir );
+            EOS_ASSERT( gs,
+                        plugin_config_exception,
+                        "Block log at '${path}' does not contain a genesis state, it only has the chain-id.",
+                        ("path", (my->blocks_dir / "blocks.log").generic_string())
+            );
          } else {
             wlog( "No blocks.log found at '${p}'. Using default genesis state.",
                   ("p", (my->blocks_dir / "blocks.log").generic_string()));
+            gs.emplace();
          }
 
          if( options.at( "print-genesis-json" ).as<bool>()) {
-            ilog( "Genesis JSON:\n${genesis}", ("genesis", json::to_pretty_string( gs )));
+            ilog( "Genesis JSON:\n${genesis}", ("genesis", json::to_pretty_string( *gs )));
          }
 
          if( options.count( "extract-genesis-json" )) {
@@ -680,7 +758,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
                p = bfs::current_path() / p;
             }
 
-            EOS_ASSERT( fc::json::save_to_file( gs, p, true ),
+            EOS_ASSERT( fc::json::save_to_file( *gs, p, true ),
                         misc_exception,
                         "Error occurred while writing genesis JSON to '${path}'",
                         ("path", p.generic_string())
@@ -714,23 +792,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          clear_directory_contents( my->chain_config->state_dir );
          clear_directory_contents( my->blocks_dir );
       } else if( options.at( "hard-replay-blockchain" ).as<bool>()) {
-         ilog( "Hard replay requested: deleting state database" );
-         clear_directory_contents( my->chain_config->state_dir );
-         auto backup_dir = block_log::repair_log( my->blocks_dir, options.at( "truncate-at-block" ).as<uint32_t>());
-         if( fc::exists( backup_dir / config::reversible_blocks_dir_name ) ||
-             options.at( "fix-reversible-blocks" ).as<bool>()) {
-            // Do not try to recover reversible blocks if the directory does not exist, unless the option was explicitly provided.
-            if( !recover_reversible_blocks( backup_dir / config::reversible_blocks_dir_name,
-                                            my->chain_config->reversible_cache_size,
-                                            my->chain_config->blocks_dir / config::reversible_blocks_dir_name,
-                                            options.at( "truncate-at-block" ).as<uint32_t>())) {
-               ilog( "Reversible blocks database was not corrupted. Copying from backup to blocks directory." );
-               fc::copy( backup_dir / config::reversible_blocks_dir_name,
-                         my->chain_config->blocks_dir / config::reversible_blocks_dir_name );
-               fc::copy( backup_dir / config::reversible_blocks_dir_name / "shared_memory.bin",
-                         my->chain_config->blocks_dir / config::reversible_blocks_dir_name / "shared_memory.bin" );
-            }
-         }
+         do_hard_replay(options);
       } else if( options.at( "replay-blockchain" ).as<bool>()) {
          ilog( "Replay requested: deleting state database" );
          if( options.at( "truncate-at-block" ).as<uint32_t>() > 0 )
@@ -769,63 +831,85 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          wlog("The --import-reversible-blocks option should be used by itself.");
       }
 
+      fc::optional<chain_id_type> chain_id;
       if (options.count( "snapshot" )) {
          my->snapshot_path = options.at( "snapshot" ).as<bfs::path>();
          EOS_ASSERT( fc::exists(*my->snapshot_path), plugin_config_exception,
                      "Cannot load snapshot, ${name} does not exist", ("name", my->snapshot_path->generic_string()) );
 
          // recover genesis information from the snapshot
+         // used for validation code below
          auto infile = std::ifstream(my->snapshot_path->generic_string(), (std::ios::in | std::ios::binary));
-         auto reader = std::make_shared<istream_snapshot_reader>(infile);
-         reader->validate();
-         reader->read_section<genesis_state>([this]( auto &section ){
-            section.read_row(my->chain_config->genesis);
-         });
+         istream_snapshot_reader reader(infile);
+         reader.validate();
+         chain_id = controller::extract_chain_id(reader);
          infile.close();
 
          EOS_ASSERT( options.count( "genesis-timestamp" ) == 0,
                  plugin_config_exception,
                  "--snapshot is incompatible with --genesis-timestamp as the snapshot contains genesis information");
+         EOS_ASSERT( options.count( "genesis-json" ) == 0,
+                     plugin_config_exception,
+                     "--snapshot is incompatible with --genesis-json as the snapshot contains genesis information");
 
-         if( options.count( "genesis-json" )) {
-            auto genesis_path = options.at( "genesis-json" ).as<bfs::path>();
-            if( genesis_path.is_relative() ) {
-               genesis_path = bfs::current_path() / genesis_path;
-            }
-            EOS_ASSERT( fc::is_regular_file( genesis_path ),
-                        plugin_config_exception,
-                        "Specified genesis file '${genesis}' does not exist.",
-                        ("genesis", genesis_path.generic_string()));
-            auto genesis_file = fc::json::from_file( genesis_path ).as<genesis_state>();
-            EOS_ASSERT( my->chain_config->genesis == genesis_file, plugin_config_exception,
-                        "Genesis state provided via command line arguments does not match the existing genesis state in the snapshot. "
-                        "It is not necessary to provide a genesis state argument when loading a snapshot."
-                      );
-         }
          auto shared_mem_path = my->chain_config->state_dir / "shared_memory.bin";
-         EOS_ASSERT( !fc::exists(shared_mem_path),
+         EOS_ASSERT( !fc::is_regular_file(shared_mem_path),
                  plugin_config_exception,
                  "Snapshot can only be used to initialize an empty database." );
 
          if( fc::is_regular_file( my->blocks_dir / "blocks.log" )) {
-            auto log_genesis = block_log::extract_genesis_state(my->blocks_dir);
-            EOS_ASSERT( log_genesis.compute_chain_id() == my->chain_config->genesis.compute_chain_id(),
-                    plugin_config_exception,
-                    "Genesis information in blocks.log does not match genesis information in the snapshot");
+            auto block_log_genesis = block_log::extract_genesis_state(my->blocks_dir);
+            if( block_log_genesis ) {
+               const auto& block_log_chain_id = block_log_genesis->compute_chain_id();
+               EOS_ASSERT( *chain_id == block_log_chain_id,
+                           plugin_config_exception,
+                           "snapshot chain ID (${snapshot_chain_id}) does not match the chain ID from the genesis state in the block log (${block_log_chain_id})",
+                           ("snapshot_chain_id",  *chain_id)
+                           ("block_log_chain_id", block_log_chain_id)
+               );
+            } else {
+               const auto& block_log_chain_id = block_log::extract_chain_id(my->blocks_dir);
+               EOS_ASSERT( *chain_id == block_log_chain_id,
+                           plugin_config_exception,
+                           "snapshot chain ID (${snapshot_chain_id}) does not match the chain ID (${block_log_chain_id}) in the block log",
+                           ("snapshot_chain_id",  *chain_id)
+                           ("block_log_chain_id", block_log_chain_id)
+               );
+            }
          }
 
       } else {
-         bfs::path genesis_file;
-         bool genesis_timestamp_specified = false;
-         fc::optional<genesis_state> existing_genesis;
 
-         if( fc::exists( my->blocks_dir / "blocks.log" ) ) {
-            my->chain_config->genesis = block_log::extract_genesis_state( my->blocks_dir );
-            existing_genesis = my->chain_config->genesis;
+         chain_id = controller::extract_chain_id_from_db( my->chain_config->state_dir );
+
+         fc::optional<genesis_state> block_log_genesis;
+         fc::optional<chain_id_type> block_log_chain_id;
+
+         if( fc::is_regular_file( my->blocks_dir / "blocks.log" ) ) {
+            block_log_genesis = block_log::extract_genesis_state( my->blocks_dir );
+            if( block_log_genesis ) {
+               block_log_chain_id = block_log_genesis->compute_chain_id();
+            } else {
+               block_log_chain_id = block_log::extract_chain_id( my->blocks_dir );
+            }
+
+            if( chain_id ) {
+               EOS_ASSERT( *block_log_chain_id == *chain_id, block_log_exception,
+                           "Chain ID in blocks.log (${block_log_chain_id}) does not match the existing "
+                           " chain ID in state (${state_chain_id}).",
+                           ("block_log_chain_id", *block_log_chain_id)
+                           ("state_chain_id", *chain_id)
+               );
+            } else if( block_log_genesis ) {
+               ilog( "Starting fresh blockchain state using genesis state extracted from blocks.log." );
+               my->genesis = block_log_genesis;
+               // Delay setting chain_id until later so that the code handling genesis-json below can know
+               // that chain_id still only represents a chain ID extracted from the state (assuming it exists).
+            }
          }
 
-         if( options.count( "genesis-json" )) {
-            genesis_file = options.at( "genesis-json" ).as<bfs::path>();
+         if( options.count( "genesis-json" ) ) {
+            bfs::path genesis_file = options.at( "genesis-json" ).as<bfs::path>();
             if( genesis_file.is_relative()) {
                genesis_file = bfs::current_path() / genesis_file;
             }
@@ -835,33 +919,72 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
                        "Specified genesis file '${genesis}' does not exist.",
                        ("genesis", genesis_file.generic_string()));
 
-            my->chain_config->genesis = fc::json::from_file( genesis_file ).as<genesis_state>();
-         }
+            genesis_state provided_genesis = fc::json::from_file( genesis_file ).as<genesis_state>();
 
-         if( options.count( "genesis-timestamp" ) ) {
-            my->chain_config->genesis.initial_timestamp = calculate_genesis_timestamp( options.at( "genesis-timestamp" ).as<string>() );
-            genesis_timestamp_specified = true;
-         }
+            if( options.count( "genesis-timestamp" ) ) {
+               provided_genesis.initial_timestamp = calculate_genesis_timestamp( options.at( "genesis-timestamp" ).as<string>() );
 
-         if( !existing_genesis ) {
-            if( !genesis_file.empty() ) {
-               if( genesis_timestamp_specified ) {
-                  ilog( "Using genesis state provided in '${genesis}' but with adjusted genesis timestamp",
-                        ("genesis", genesis_file.generic_string()) );
-               } else {
-                  ilog( "Using genesis state provided in '${genesis}'", ("genesis", genesis_file.generic_string()));
-               }
-               wlog( "Starting up fresh blockchain with provided genesis state." );
-            } else if( genesis_timestamp_specified ) {
-               wlog( "Starting up fresh blockchain with default genesis state but with adjusted genesis timestamp." );
+               ilog( "Using genesis state provided in '${genesis}' but with adjusted genesis timestamp",
+                     ("genesis", genesis_file.generic_string()) );
             } else {
-               wlog( "Starting up fresh blockchain with default genesis state." );
+               ilog( "Using genesis state provided in '${genesis}'", ("genesis", genesis_file.generic_string()));
+            }
+
+            if( block_log_genesis ) {
+               EOS_ASSERT( *block_log_genesis == provided_genesis, plugin_config_exception,
+                           "Genesis state, provided via command line arguments, does not match the existing genesis state"
+                           " in blocks.log. It is not necessary to provide genesis state arguments when a full blocks.log "
+                           "file already exists."
+               );
+            } else {
+               const auto& provided_genesis_chain_id = provided_genesis.compute_chain_id();
+               if( chain_id ) {
+                  EOS_ASSERT( provided_genesis_chain_id == *chain_id, plugin_config_exception,
+                              "Genesis state, provided via command line arguments, has a chain ID (${provided_genesis_chain_id}) "
+                              "that does not match the existing chain ID in the database state (${state_chain_id}). "
+                              "It is not necessary to provide genesis state arguments when an initialized database state already exists.",
+                              ("provided_genesis_chain_id", provided_genesis_chain_id)
+                              ("state_chain_id", *chain_id)
+                  );
+               } else {
+                  if( block_log_chain_id ) {
+                     EOS_ASSERT( provided_genesis_chain_id == *block_log_chain_id, plugin_config_exception,
+                                 "Genesis state, provided via command line arguments, has a chain ID (${provided_genesis_chain_id}) "
+                                 "that does not match the existing chain ID in blocks.log (${block_log_chain_id}).",
+                                 ("provided_genesis_chain_id", provided_genesis_chain_id)
+                                 ("block_log_chain_id", *block_log_chain_id)
+                     );
+                  }
+
+                  chain_id = provided_genesis_chain_id;
+
+                  ilog( "Starting fresh blockchain state using provided genesis state." );
+                  my->genesis = std::move(provided_genesis);
+               }
             }
          } else {
-            EOS_ASSERT( my->chain_config->genesis == *existing_genesis, plugin_config_exception,
-                        "Genesis state provided via command line arguments does not match the existing genesis state in blocks.log. "
-                        "It is not necessary to provide genesis state arguments when a blocks.log file already exists."
-                      );
+            EOS_ASSERT( options.count( "genesis-timestamp" ) == 0,
+                        plugin_config_exception,
+                        "--genesis-timestamp is only valid if also passed in with --genesis-json");
+         }
+
+         if( !chain_id ) {
+            if( my->genesis ) {
+               // Uninitialized state database and genesis state extracted from block log
+               chain_id = my->genesis->compute_chain_id();
+            } else {
+               // Uninitialized state database and no genesis state provided
+
+               EOS_ASSERT( !block_log_chain_id, plugin_config_exception,
+                           "Genesis state is necessary to initialize fresh blockchain state but genesis state could not be "
+                           "found in the blocks log. Please either load from snapshot or find a blocks log that starts "
+                           "from genesis."
+               );
+
+               ilog( "Starting fresh blockchain state using default genesis state." );
+               my->genesis.emplace();
+               chain_id = my->genesis->compute_chain_id();
+            }
          }
       }
 
@@ -879,8 +1002,16 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          my->chain_config->db_hugepage_paths = options.at("database-hugepage-path").as<std::vector<std::string>>();
 #endif
 
-      my->chain.emplace( *my->chain_config, std::move(pfs) );
-      my->chain_id.emplace( my->chain->get_chain_id());
+#ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
+      if( options.count("eos-vm-oc-cache-size-mb") )
+         my->chain_config->eosvmoc_config.cache_size = options.at( "eos-vm-oc-cache-size-mb" ).as<uint64_t>() * 1024u * 1024u;
+      if( options.count("eos-vm-oc-compile-threads") )
+         my->chain_config->eosvmoc_config.threads = options.at("eos-vm-oc-compile-threads").as<uint64_t>();
+      if( options["eos-vm-oc-enable"].as<bool>() )
+         my->chain_config->eosvmoc_tierup = true;
+#endif
+
+      my->chain.emplace( *my->chain_config, std::move(pfs), *chain_id );
 
       // set up method providers
       my->get_block_by_number_provider = app().get_method<methods::get_block_by_number>().register_provider(
@@ -953,6 +1084,8 @@ void chain_plugin::plugin_startup()
          auto reader = std::make_shared<istream_snapshot_reader>(infile);
          my->chain->startup(shutdown, reader);
          infile.close();
+      } else if( my->genesis ) {
+         my->chain->startup(shutdown, *my->genesis);
       } else {
          my->chain->startup(shutdown);
       }
@@ -967,8 +1100,13 @@ void chain_plugin::plugin_startup()
       ilog("starting chain in read/write mode");
    }
 
-   ilog("Blockchain started; head block is #${num}, genesis timestamp is ${ts}",
-        ("num", my->chain->head_block_num())("ts", (std::string)my->chain_config->genesis.initial_timestamp));
+   if (my->genesis) {
+      ilog("Blockchain started; head block is #${num}, genesis timestamp is ${ts}",
+           ("num", my->chain->head_block_num())("ts", (std::string)my->genesis->initial_timestamp));
+   }
+   else {
+      ilog("Blockchain started; head block is #${num}", ("num", my->chain->head_block_num()));
+   }
 
    my->chain_config.reset();
 } FC_CAPTURE_AND_RETHROW() }
@@ -999,12 +1137,8 @@ void chain_plugin::accept_block(const signed_block_ptr& block ) {
    my->incoming_block_sync_method(block);
 }
 
-void chain_plugin::accept_transaction(const chain::packed_transaction& trx, next_function<chain::transaction_trace_ptr> next) {
-   my->incoming_transaction_async_method(std::make_shared<transaction_metadata>(std::make_shared<packed_transaction>(trx)), false, std::forward<decltype(next)>(next));
-}
-
-void chain_plugin::accept_transaction(const chain::transaction_metadata_ptr& trx, next_function<chain::transaction_trace_ptr> next) {
-   my->incoming_transaction_async_method(trx, false, std::forward<decltype(next)>(next));
+void chain_plugin::accept_transaction(const chain::packed_transaction_ptr& trx, next_function<chain::transaction_trace_ptr> next) {
+   my->incoming_transaction_async_method(trx, false, std::move(next));
 }
 
 bool chain_plugin::block_is_on_preferred_chain(const block_id_type& block_id) {
@@ -1031,7 +1165,7 @@ bool chain_plugin::recover_reversible_blocks( const fc::path& db_dir, uint32_t c
    } catch( ... ) {
       throw;
    }
-   // Reversible block database is dirty. So back it up (unless already moved) and then create a new one.
+   // Reversible block database is dirty (or incompatible). So back it up (unless already moved) and then create a new one.
 
    auto reversible_dir = fc::canonical( db_dir );
    if( reversible_dir.filename().generic_string() == "." ) {
@@ -1062,7 +1196,16 @@ bool chain_plugin::recover_reversible_blocks( const fc::path& db_dir, uint32_t c
 
    ilog( "Reconstructing '${reversible_dir}' from backed up reversible directory", ("reversible_dir", reversible_dir) );
 
-   chainbase::database  old_reversible( backup_dir, database::read_only, 0, true );
+   optional<chainbase::database> old_reversible;
+
+   try {
+      old_reversible = chainbase::database( backup_dir, database::read_only, 0, true );
+   } catch (const std::runtime_error &) {
+      // since we are allowing for dirty, it must be incompatible
+      ilog( "Did not recover any reversible blocks since reversible database incompatible");
+      return true;
+   }
+
    chainbase::database  new_reversible( reversible_dir, database::read_write, cache_size );
    std::fstream         reversible_blocks;
    reversible_blocks.open( (reversible_dir.parent_path() / std::string("portable-reversible-blocks-").append( now ) ).generic_string().c_str(),
@@ -1071,9 +1214,9 @@ bool chain_plugin::recover_reversible_blocks( const fc::path& db_dir, uint32_t c
    uint32_t num = 0;
    uint32_t start = 0;
    uint32_t end = 0;
-   old_reversible.add_index<reversible_block_index>();
+   old_reversible->add_index<reversible_block_index>();
    new_reversible.add_index<reversible_block_index>();
-   const auto& ubi = old_reversible.get_index<reversible_block_index,by_num>();
+   const auto& ubi = old_reversible->get_index<reversible_block_index,by_num>();
    auto itr = ubi.begin();
    if( itr != ubi.end() ) {
       start = itr->blocknum;
@@ -1216,15 +1359,14 @@ controller& chain_plugin::chain() { return *my->chain; }
 const controller& chain_plugin::chain() const { return *my->chain; }
 
 chain::chain_id_type chain_plugin::get_chain_id()const {
-   EOS_ASSERT( my->chain_id.valid(), chain_id_type_exception, "chain ID has not been initialized yet" );
-   return *my->chain_id;
+   return my->chain->get_chain_id();
 }
 
 fc::microseconds chain_plugin::get_abi_serializer_max_time() const {
    return my->abi_serializer_max_time_ms;
 }
 
-void chain_plugin::log_guard_exception(const chain::guard_exception&e ) const {
+void chain_plugin::log_guard_exception(const chain::guard_exception&e ) {
    if (e.code() == chain::database_guard_exception::code_value) {
       elog("Database has reached an unsafe level of usage, shutting down to avoid corrupting the database.  "
            "Please increase the value set for \"chain-state-db-size-mb\" and restart the process!");
@@ -1236,7 +1378,7 @@ void chain_plugin::log_guard_exception(const chain::guard_exception&e ) const {
    dlog("Details: ${details}", ("details", e.to_detail_string()));
 }
 
-void chain_plugin::handle_guard_exception(const chain::guard_exception& e) const {
+void chain_plugin::handle_guard_exception(const chain::guard_exception& e) {
    log_guard_exception(e);
 
    elog("database chain::guard_exception, quiting..."); // log string searched for in: tests/nodeos_under_min_avail_ram.py
@@ -1248,6 +1390,12 @@ void chain_plugin::handle_db_exhaustion() {
    elog("database memory exhausted: increase chain-state-db-size-mb and/or reversible-blocks-db-size-mb");
    //return 1 -- it's what programs/nodeos/main.cpp considers "BAD_ALLOC"
    std::_Exit(1);
+}
+
+void chain_plugin::handle_bad_alloc() {
+   elog("std::bad_alloc - memory exhausted");
+   //return -2 -- it's what programs/nodeos/main.cpp reports for std::exception
+   std::_Exit(-2);
 }
 
 namespace chain_apis {
@@ -1442,6 +1590,43 @@ double convert_to_type(const string& str, const string& desc) {
    return val;
 }
 
+template<typename Type>
+string convert_to_string(const Type& source, const string& key_type, const string& encode_type, const string& desc) {
+   try {
+      return fc::variant(source).as<string>();
+   } FC_RETHROW_EXCEPTIONS(warn, "Could not convert ${desc} from '${source}' to string.", ("desc", desc)("source",source) )
+}
+
+template<>
+string convert_to_string(const chain::key256_t& source, const string& key_type, const string& encode_type, const string& desc) {
+   try {
+      if (key_type == chain_apis::sha256 || (key_type == chain_apis::i256 && encode_type == chain_apis::hex)) {
+         auto byte_array = fixed_bytes<32>(source).extract_as_byte_array();
+         fc::sha256 val(reinterpret_cast<char *>(byte_array.data()), byte_array.size());
+         return std::string(val);
+      } else if (key_type == chain_apis::i256) {
+         auto byte_array = fixed_bytes<32>(source).extract_as_byte_array();
+         fc::sha256 val(reinterpret_cast<char *>(byte_array.data()), byte_array.size());
+         return std::string("0x") + std::string(val);
+      } else if (key_type == chain_apis::ripemd160) {
+         auto byte_array = fixed_bytes<20>(source).extract_as_byte_array();
+         fc::ripemd160 val;
+         memcpy(val._hash, byte_array.data(), byte_array.size() );
+         return std::string(val);
+      }
+      EOS_ASSERT( false, chain_type_exception, "Incompatible key_type and encode_type for key256_t next_key" );
+     
+   } FC_RETHROW_EXCEPTIONS(warn, "Could not convert ${desc} source '${source}' to string.", ("desc", desc)("source",source) )
+}
+
+template<>
+string convert_to_string(const float128_t& source, const string& key_type, const string& encode_type, const string& desc) {
+   try {
+      float64_t f = f128_to_f64(source);
+      return fc::variant(f).as<string>();
+   } FC_RETHROW_EXCEPTIONS(warn, "Could not convert ${desc} from '${source}' to string.", ("desc", desc)("source",source) )
+}
+
 abi_def get_abi( const controller& db, const name& account ) {
    const auto &d = db.db();
    const account_object *code_accnt = d.find<account_object, by_name>(account);
@@ -1501,6 +1686,11 @@ read_only::get_table_rows_result read_only::get_table_rows( const read_only::get
          });
       }
       else if (p.key_type == chain_apis::float128) {
+         if ( p.encode_type == chain_apis::hex) {
+            return get_table_rows_by_seckey<index_long_double_index, uint128_t>(p, abi, [](uint128_t v)->float128_t{
+               return *reinterpret_cast<float128_t *>(&v);
+            });
+         }
          return get_table_rows_by_seckey<index_long_double_index, double>(p, abi, [](double v)->float128_t{
             float64_t f = *(float64_t *)&v;
             float128_t f128;
@@ -1689,11 +1879,19 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
    read_only::get_producers_result result;
 
    for (auto p : db.active_producers().producers) {
-      fc::variant row = fc::mutable_variant_object()
+      auto row = fc::mutable_variant_object()
          ("owner", p.producer_name)
-         ("producer_key", p.block_signing_key)
+         ("producer_authority", p.authority)
          ("url", "")
          ("total_votes", 0.0f);
+
+      // detect a legacy key and maintain API compatibility for those entries
+      if (p.authority.contains<block_signing_authority_v0>()) {
+         const auto& auth = p.authority.get<block_signing_authority_v0>();
+         if (auth.keys.size() == 1 && auth.keys.back().weight == auth.threshold) {
+            row("producer_key", auth.keys.back().key);
+         }
+      }
 
       result.rows.push_back(row);
    }
@@ -1871,6 +2069,8 @@ void read_write::push_block(read_write::push_block_params&& params, next_functio
       next(read_write::push_block_results{});
    } catch ( boost::interprocess::bad_alloc& ) {
       chain_plugin::handle_db_exhaustion();
+   } catch ( const std::bad_alloc& ) {
+      chain_plugin::handle_bad_alloc();
    } CATCH_AND_CALL(next);
 }
 
@@ -1878,13 +2078,12 @@ void read_write::push_transaction(const read_write::push_transaction_params& par
    try {
       auto pretty_input = std::make_shared<packed_transaction>();
       auto resolver = make_resolver(this, abi_serializer_max_time);
-      transaction_metadata_ptr ptrx;
       try {
          abi_serializer::from_variant(params, *pretty_input, resolver, abi_serializer_max_time);
-         ptrx = std::make_shared<transaction_metadata>( pretty_input, db.configured_subjective_signature_length_limit() );
       } EOS_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid packed transaction")
 
-      app().get_method<incoming::methods::transaction_async>()(ptrx, true, [this, next](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void{
+      app().get_method<incoming::methods::transaction_async>()(pretty_input, true,
+            [this, next](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
          if (result.contains<fc::exception_ptr>()) {
             next(result.get<fc::exception_ptr>());
          } else {
@@ -1952,6 +2151,8 @@ void read_write::push_transaction(const read_write::push_transaction_params& par
       });
    } catch ( boost::interprocess::bad_alloc& ) {
       chain_plugin::handle_db_exhaustion();
+   } catch ( const std::bad_alloc& ) {
+      chain_plugin::handle_bad_alloc();
    } CATCH_AND_CALL(next);
 }
 
@@ -1986,6 +2187,8 @@ void read_write::push_transactions(const read_write::push_transactions_params& p
       push_recurse(this, 0, params_copy, result, next);
    } catch ( boost::interprocess::bad_alloc& ) {
       chain_plugin::handle_db_exhaustion();
+   } catch ( const std::bad_alloc& ) {
+      chain_plugin::handle_bad_alloc();
    } CATCH_AND_CALL(next);
 }
 
@@ -1994,13 +2197,12 @@ void read_write::send_transaction(const read_write::send_transaction_params& par
    try {
       auto pretty_input = std::make_shared<packed_transaction>();
       auto resolver = make_resolver(this, abi_serializer_max_time);
-      transaction_metadata_ptr ptrx;
       try {
          abi_serializer::from_variant(params, *pretty_input, resolver, abi_serializer_max_time);
-         ptrx = std::make_shared<transaction_metadata>( pretty_input, db.configured_subjective_signature_length_limit() );
       } EOS_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid packed transaction")
 
-      app().get_method<incoming::methods::transaction_async>()(ptrx, true, [this, next](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void{
+      app().get_method<incoming::methods::transaction_async>()(pretty_input, true,
+            [this, next](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
          if (result.contains<fc::exception_ptr>()) {
             next(result.get<fc::exception_ptr>());
          } else {
@@ -2021,6 +2223,8 @@ void read_write::send_transaction(const read_write::send_transaction_params& par
       });
    } catch ( boost::interprocess::bad_alloc& ) {
       chain_plugin::handle_db_exhaustion();
+   } catch ( const std::bad_alloc& ) {
+      chain_plugin::handle_bad_alloc();
    } CATCH_AND_CALL(next);
 }
 

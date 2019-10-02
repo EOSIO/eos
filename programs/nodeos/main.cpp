@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eosio/LICENSE.txt
- */
 #include <appbase/application.hpp>
 
 #include <eosio/chain_plugin/chain_plugin.hpp>
@@ -27,7 +23,11 @@ void configure_logging(const bfs::path& config_path)
 {
    try {
       try {
-         fc::configure_logging(config_path);
+         if( fc::exists( config_path ) ) {
+            fc::configure_logging( config_path );
+         } else {
+            fc::configure_logging( fc::logging_config::default_config() );
+         }
       } catch (...) {
          elog("Error reloading logging.json");
          throw;
@@ -48,9 +48,12 @@ void configure_logging(const bfs::path& config_path)
 void logging_conf_handler()
 {
    auto config_path = app().get_logging_conf();
-   ilog("Received HUP.  Reloading logging configuration from ${p}.", ("p", config_path.string()));
-   if(fc::exists(config_path))
-      ::detail::configure_logging(config_path);
+   if( fc::exists( config_path ) ) {
+      ilog( "Received HUP.  Reloading logging configuration from ${p}.", ("p", config_path.string()) );
+   } else {
+      ilog( "Received HUP.  No log config found at ${p}, setting to default.", ("p", config_path.string()) );
+   }
+   ::detail::configure_logging( config_path );
    fc::log_config::initialize_appenders( app().get_io_service() );
 }
 

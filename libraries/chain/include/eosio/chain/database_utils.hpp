@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
 #pragma once
 
 #include <eosio/chain/types.hpp>
@@ -122,12 +118,23 @@ namespace fc {
 
    inline
    void to_variant( const float128_t& f, variant& v ) {
-      v = variant(*reinterpret_cast<const uint128_t*>(&f));
+      // Assumes platform is little endian and hex representation of 128-bit integer is in little endian order.	
+      const eosio::chain::uint128_t as_bytes = *reinterpret_cast<const eosio::chain::uint128_t*>(&f);
+      std::string s = "0x";	
+      s.append( to_hex( reinterpret_cast<const char*>(&as_bytes), sizeof(as_bytes) ) );	
+      v = s;
    }
 
    inline
    void from_variant( const variant& v, float128_t& f ) {
-      from_variant(v, *reinterpret_cast<uint128_t*>(&f));
+      // Temporarily hold the binary in uint128_t before casting it to float128_t
+      eosio::chain::uint128_t temp = 0;	      
+      auto s = v.as_string();	
+      FC_ASSERT( s.size() == 2 + 2 * sizeof(temp) && s.find("0x") == 0,	"Failure in converting hex data into a float128_t");	
+      auto sz = from_hex( s.substr(2), reinterpret_cast<char*>(&temp), sizeof(temp) );	
+      // Assumes platform is little endian and hex representation of 128-bit integer is in little endian order.	
+      FC_ASSERT( sz == sizeof(temp), "Failure in converting hex data into a float128_t" );	
+      f = *reinterpret_cast<const float128_t*>(&temp);
    }
 
    inline

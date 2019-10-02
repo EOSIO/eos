@@ -9,6 +9,7 @@
 #include <eosio/chain/account_object.hpp>
 #include <eosio/chain/snapshot.hpp>
 #include <eosio/chain/protocol_feature_manager.hpp>
+#include <eosio/chain/webassembly/eos-vm-oc/config.hpp>
 
 namespace chainbase {
    class database;
@@ -36,6 +37,9 @@ namespace eosio { namespace chain {
    class account_object;
    using resource_limits::resource_limits_manager;
    using apply_handler = std::function<void(apply_context&)>;
+   using forked_branch_callback = std::function<void(const branch_type&)>;
+   // lookup transaction_metadata via supplied function to avoid re-creation
+   using trx_meta_cache_lookup = std::function<transaction_metadata_ptr( const transaction_id_type&)>;
 
    class fork_database;
 
@@ -78,8 +82,9 @@ namespace eosio { namespace chain {
             uint32_t                 maximum_variable_signature_length = chain::config::default_max_variable_signature_length;
             bool                     disable_all_subjective_mitigations = false; //< for testing purposes only
 
-            genesis_state            genesis;
             wasm_interface::vm_type  wasm_runtime = chain::config::default_wasm_runtime;
+            eosvmoc::config          eosvmoc_config;
+            bool                     eosvmoc_tierup         = false;
 
             db_read_mode             read_mode              = db_read_mode::SPECULATIVE;
             validation_mode          block_validation_mode  = validation_mode::FULL;
@@ -98,12 +103,14 @@ namespace eosio { namespace chain {
             incomplete  = 3, ///< this is an incomplete block (either being produced by a producer or speculatively produced by a node)
          };
 
-         explicit controller( const config& cfg );
-         controller( const config& cfg, protocol_feature_set&& pfs );
+         controller( const config& cfg, const chain_id_type& chain_id );
+         controller( const config& cfg, protocol_feature_set&& pfs, const chain_id_type& chain_id );
          ~controller();
 
          void add_indices();
-         void startup( std::function<bool()> shutdown, const snapshot_reader_ptr& snapshot = nullptr );
+         void startup( std::function<bool()> shutdown, const snapshot_reader_ptr& snapshot);
+         void startup( std::function<bool()> shutdown, const genesis_state& genesis);
+         void startup( std::function<bool()> shutdown);
 
          void preactivate_feature( const digest_type& feature_digest );
 
@@ -143,17 +150,20 @@ namespace eosio { namespace chain {
           */
          transaction_trace_ptr push_scheduled_transaction( const transaction_id_type& scheduled, fc::time_point deadline, uint32_t billed_cpu_time_us = 0 );
 
-         block_state_ptr finalize_block( const std::function<signature_type( const digest_type& )>& signer_callback );
-         void sign_block( const std::function<signature_type( const digest_type& )>& signer_callback );
+         block_state_ptr finalize_block( const signer_callback_type& signer_callback );
+         void sign_block( const signer_callback_type& signer_callback );
          void commit_block();
 
          std::future<block_state_ptr> create_block_state_future( const signed_block_ptr& b );
 
          /**
           * @param block_state_future provide from call to create_block_state_future
-          * @return branch of unapplied blocks from fork switch
+          * @param cb calls cb with forked applied transactions for each forked block
+          * @param trx_lookup user provided lookup function for externally cached transaction_metadata
           */
-         branch_type push_block( std::future<block_state_ptr>& block_state_future );
+         void push_block( std::future<block_state_ptr>& block_state_future,
+                          const forked_branch_callback& cb,
+                          const trx_meta_cache_lookup& trx_lookup );
 
          boost::asio::io_context& get_thread_pool();
 
@@ -201,16 +211,16 @@ namespace eosio { namespace chain {
          time_point           fork_db_pending_head_block_time()const;
          account_name         fork_db_pending_head_block_producer()const;
 
-         time_point              pending_block_time()const;
-         account_name            pending_block_producer()const;
-         public_key_type         pending_block_signing_key()const;
-         optional<block_id_type> pending_producer_block_id()const;
+         time_point                     pending_block_time()const;
+         account_name                   pending_block_producer()const;
+         const block_signing_authority& pending_block_signing_authority()const;
+         optional<block_id_type>        pending_producer_block_id()const;
 
          const vector<transaction_receipt>& get_pending_trx_receipts()const;
 
-         const producer_schedule_type&    active_producers()const;
-         const producer_schedule_type&    pending_producers()const;
-         optional<producer_schedule_type> proposed_producers()const;
+         const producer_authority_schedule&    active_producers()const;
+         const producer_authority_schedule&    pending_producers()const;
+         optional<producer_authority_schedule> proposed_producers()const;
 
          uint32_t last_irreversible_block_num() const;
          block_id_type last_irreversible_block_id() const;
@@ -256,7 +266,7 @@ namespace eosio { namespace chain {
 
          bool is_known_unexpired_transaction( const transaction_id_type& id) const;
 
-         int64_t set_proposed_producers( vector<producer_key> producers );
+         int64_t set_proposed_producers( vector<producer_authority> producers );
 
          bool light_validation_allowed(bool replay_opts_disabled_by_policy) const;
          bool skip_auth_check()const;
@@ -275,6 +285,10 @@ namespace eosio { namespace chain {
 
          void add_to_ram_correction( account_name account, uint64_t ram_bytes );
          bool all_subjective_mitigations_disabled()const;
+
+#if defined(EOSIO_EOS_VM_RUNTIME_ENABLED) || defined(EOSIO_EOS_VM_JIT_RUNTIME_ENABLED)
+         vm::wasm_allocator&  get_wasm_allocator();
+#endif
 
          static fc::optional<uint64_t> convert_exception_to_error_code( const fc::exception& e );
 
@@ -321,6 +335,10 @@ namespace eosio { namespace chain {
             return pretty_output;
          }
 
+      static chain_id_type extract_chain_id(snapshot_reader& snapshot);
+
+      static fc::optional<chain_id_type> extract_chain_id_from_db( const path& state_dir );
+
       private:
          friend class apply_context;
          friend class transaction_context;
@@ -346,7 +364,6 @@ FC_REFLECT( eosio::chain::controller::config,
             (force_all_checks)
             (disable_replay_opts)
             (contracts_console)
-            (genesis)
             (wasm_runtime)
             (resource_greylist)
             (trusted_producers)
