@@ -222,9 +222,9 @@ int trim_blocklog_end(bfs::path block_dir, uint32_t n) {       //n is last block
       cerr << "There are no blocks after block " << n << " so do nothing\n";
       return 2;
    }
-   td.find_block_pos(n);
-   bfs::resize_file(td.block_file_name, td.fpos1);
-   uint64_t index_end= td.index_pos + sizeof(uint64_t);             //advance past record for block n
+   const uint64_t end_of_new_file = td.block_pos(n + 1);
+   bfs::resize_file(td.block_file_name, end_of_new_file);
+   const uint64_t index_end= td.block_index(n) + sizeof(uint64_t);             //advance past record for block n
    bfs::resize_file(td.index_file_name, index_end);
    cout << "blocks.index has been trimmed to " << index_end << " bytes\n";
    rt.report();
@@ -262,7 +262,7 @@ void smoke_test(bfs::path block_dir) {
    for (uint32_t n = td.first_block; ; n += delta) {
       if (n > td.last_block)
          n = td.last_block;
-      td.find_block_pos(n);                                 //check block 'n' is where blocks.index says
+      td.block_pos(n);                                 //check block 'n' is where blocks.index says
       if (n == td.last_block)
          break;
    }
