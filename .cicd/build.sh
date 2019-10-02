@@ -17,7 +17,6 @@ if [[ $(uname) == 'Darwin' ]]; then
     fi
 else # Linux
     ARGS=${ARGS:-"--rm --init -v $(pwd):$MOUNTED_DIR -e UNPINNED -e PINNED -e IMAGE_TAG"}
-    . $HELPERS_DIR/file-hash.sh $CICD_DIR/platforms/$BUILD_TYPE/$IMAGE_TAG.dockerfile
     PRE_COMMANDS="cd $MOUNTED_DIR/build"
     # PRE_COMMANDS: Executed pre-cmake
     # CMAKE_EXTRAS: Executed within and right before the cmake path (cmake CMAKE_EXTRAS ..)
@@ -51,6 +50,7 @@ else # Linux
         COMMANDS="$COMMANDS $BUILD_COMMANDS"
         [[ $ENABLE_INSTALL == true ]] && COMMANDS="$COMMANDS && make install"
     elif [[ $TRAVIS == true ]]; then
+        . $HELPERS_DIR/file-hash.sh $CICD_DIR/platforms/$BUILD_TYPE/$IMAGE_TAG.dockerfile
         ARGS="$ARGS -v /usr/lib/ccache -v $HOME/.ccache:/opt/.ccache -e JOBS -e TRAVIS -e CCACHE_DIR=/opt/.ccache"
         COMMANDS="ccache -s && $BUILD_COMMANDS"
     fi
