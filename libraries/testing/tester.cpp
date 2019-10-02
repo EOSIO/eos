@@ -1,6 +1,7 @@
 #include <boost/test/unit_test.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 #include <eosio/testing/tester.hpp>
+#include <eosio/chain/block_log.hpp>
 #include <eosio/chain/wast_to_wasm.hpp>
 #include <eosio/chain/eosio_contract.hpp>
 #include <eosio/chain/generated_transaction_object.hpp>
@@ -150,26 +151,11 @@ namespace eosio { namespace testing {
    }
 
    void base_tester::init(const setup_policy policy, db_read_mode read_mode) {
-      cfg.blocks_dir      = tempdir.path() / config::default_blocks_dir_name;
-      cfg.state_dir  = tempdir.path() / config::default_state_dir_name;
-      cfg.state_size = 1024*1024*8;
-      cfg.state_guard_size = 0;
-      cfg.reversible_cache_size = 1024*1024*8;
-      cfg.reversible_guard_size = 0;
-      cfg.contracts_console = true;
-      cfg.read_mode = read_mode;
+      auto def_conf = default_config(tempdir);
+      def_conf.first.read_mode = read_mode;
+      cfg = def_conf.first;
 
-      cfg.genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
-      cfg.genesis.initial_key = get_public_key( config::system_account_name, "active" );
-
-      for(int i = 0; i < boost::unit_test::framework::master_test_suite().argc; ++i) {
-         if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--wavm"))
-            cfg.wasm_runtime = chain::wasm_interface::vm_type::wavm;
-         else if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--wabt"))
-            cfg.wasm_runtime = chain::wasm_interface::vm_type::wabt;
-      }
-
-      open(nullptr);
+      open(def_conf.second);
       execute_setup_policy(policy);
    }
 
@@ -178,9 +164,29 @@ namespace eosio { namespace testing {
       open(snapshot);
    }
 
+   void base_tester::init(controller::config config, const genesis_state& genesis) {
+      cfg = config;
+      open(genesis);
+   }
+
+   void base_tester::init(controller::config config) {
+      cfg = config;
+      open(default_genesis().compute_chain_id());
+   }
+
    void base_tester::init(controller::config config, protocol_feature_set&& pfs, const snapshot_reader_ptr& snapshot) {
       cfg = config;
       open(std::move(pfs), snapshot);
+   }
+
+   void base_tester::init(controller::config config, protocol_feature_set&& pfs, const genesis_state& genesis) {
+      cfg = config;
+      open(std::move(pfs), genesis);
+   }
+
+   void base_tester::init(controller::config config, protocol_feature_set&& pfs) {
+      cfg = config;
+      open(std::move(pfs), default_genesis().compute_chain_id());
    }
 
    void base_tester::execute_setup_policy(const setup_policy policy) {
@@ -232,10 +238,30 @@ namespace eosio { namespace testing {
       open( make_protocol_feature_set(), snapshot );
    }
 
-   void base_tester::open( protocol_feature_set&& pfs, const snapshot_reader_ptr& snapshot ) {
-      control.reset( new controller(cfg, std::move(pfs)) );
+   void base_tester::open( const genesis_state& genesis ) {
+      open( make_protocol_feature_set(), genesis );
+   }
+
+   void base_tester::open( fc::optional<chain_id_type> expected_chain_id ) {
+      open( make_protocol_feature_set(), expected_chain_id );
+   }
+
+   template <typename Lambda>
+   void base_tester::open( protocol_feature_set&& pfs, fc::optional<chain_id_type> expected_chain_id, Lambda lambda ) {
+      if( !expected_chain_id ) {
+         expected_chain_id = controller::extract_chain_id_from_db( cfg.state_dir );
+         if( !expected_chain_id ) {
+            if( fc::is_regular_file( cfg.blocks_dir / "blocks.log" ) ) {
+               expected_chain_id = block_log::extract_chain_id( cfg.blocks_dir );
+            } else {
+               expected_chain_id = genesis_state().compute_chain_id();
+            }
+         }
+      }
+
+      control.reset( new controller(cfg, std::move(pfs), *expected_chain_id) );
       control->add_indices();
-      control->startup( []() { return false; }, snapshot);
+      lambda();
       chain_transactions.clear();
       control->accepted_block.connect([this]( const block_state_ptr& block_state ){
         FC_ASSERT( block_state->block );
@@ -251,11 +277,33 @@ namespace eosio { namespace testing {
       });
    }
 
+   void base_tester::open( protocol_feature_set&& pfs, const snapshot_reader_ptr& snapshot ) {
+      const auto& snapshot_chain_id = controller::extract_chain_id( *snapshot );
+      snapshot->return_to_header();
+      open(std::move(pfs), snapshot_chain_id, [&snapshot,&control=this->control]() {
+         control->startup([]() { return false; }, snapshot );
+      });
+   }
+
+   void base_tester::open( protocol_feature_set&& pfs, const genesis_state& genesis ) {
+      open(std::move(pfs), genesis.compute_chain_id(), [&genesis,&control=this->control]() {
+         control->startup( []() { return false; }, genesis );
+      });
+   }
+
+   void base_tester::open( protocol_feature_set&& pfs, fc::optional<chain_id_type> expected_chain_id ) {
+      open(std::move(pfs), expected_chain_id, [&control=this->control]() {
+         control->startup( []() { return false; } );
+      });
+   }
+
    void base_tester::push_block(signed_block_ptr b) {
       auto bsf = control->create_block_state_future(b);
       unapplied_transactions.add_aborted( control->abort_block() );
       control->push_block( bsf, [this]( const branch_type& forked_branch ) {
          unapplied_transactions.add_forked( forked_branch );
+      }, [this]( const transaction_id_type& id ) {
+         return unapplied_transactions.get_trx( id );
       } );
 
       auto itr = last_produced_block.find(b->producer);
@@ -966,7 +1014,7 @@ namespace eosio { namespace testing {
             if( block ) { //&& !b.control->is_known_block(block->id()) ) {
                auto bsf = b.control->create_block_state_future( block );
                b.control->abort_block();
-               b.control->push_block(bsf, forked_branch_callback()); //, eosio::chain::validation_steps::created_block);
+               b.control->push_block(bsf, forked_branch_callback{}, trx_meta_cache_lookup{}); //, eosio::chain::validation_steps::created_block);
             }
          }
       };
@@ -1167,6 +1215,8 @@ namespace eosio { namespace testing {
       return match;
    }
 
+   const std::string mock::webauthn_private_key::_origin = "mock.webauthn.invalid";
+   const sha256 mock::webauthn_private_key::_origin_hash = fc::sha256::hash(mock::webauthn_private_key::_origin);
 } }  /// eosio::testing
 
 std::ostream& operator<<( std::ostream& osm, const fc::variant& v ) {
