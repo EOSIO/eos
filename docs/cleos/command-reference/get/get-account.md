@@ -1,7 +1,6 @@
----
-title: "get account"
-excerpt: "Retrieves an account from the blockchain."
----
+## Description
+Retrieves an account from the blockchain
+
 ## Positional Parameters
 - `name` _TEXT_ - The name of the account to retrieve
 - `core-symbol` _TEXT_ - The expected core symbol of the chain you are querying

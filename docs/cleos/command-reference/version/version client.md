@@ -1,10 +1,11 @@
----
-title: "version client"
-excerpt: ""
----
-## 
-`client` Retrieve version information of the client
+## Description
 
-```text
+Retrieve version information of the client
+
+## Positionals
+none
+## Usage
+
+```shell
 $ ./cleos version client
 ```

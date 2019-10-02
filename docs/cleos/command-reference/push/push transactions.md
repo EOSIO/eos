@@ -1,7 +1,6 @@
----
-title: "push transactions"
-excerpt: ""
----
+## Description
+Push an array of arbitrary JSON transactions
+
 ## Positional Arguments
 Pushes an array of arbitrary JSON transactions.
 ## Options
