@@ -61,35 +61,53 @@ HELP_PRODUCER_NODES = "Number of nodes that have producers"
 HELP_UNSTARTED_NODES = "Number of unstarted nodes"
 
 
+class ExceptionThread(threading.Thread):
+    id = 0
+
+    def __init__(self, channel, communicate, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.id = ExceptionThread.id
+        self.channel = channel
+        self.communicate = communicate
+        ExceptionThread.id = ExceptionThread.id + 1
+
+    def run(self):
+        try:
+            super().run()
+        except Exception:
+            self.communicate(self.channel, self.id)
 
 
 class CommandLineArguments:
-    def __init__(self, *templates):
-        args = self.parse(*templates)
-        if "service" in templates:
-            self.address = args.address
-            self.port = args.port
-            self.dir = args.dir
-            self.file = args.file
-            self.start = args.start
-            self.kill = args.kill
-            self.verbosity = args.verbosity
-            self.monochrome = args.monochrome
-            self.debug = args.debug
-            self.info = args.info
+    # def __init__(self, *templates):
+    def __init__(self):
+        # args = self.parse(*templates)
+        cla = self.parse()
+        # if "service" in templates:
+        self.address = cla.address
+        self.port = cla.port
+        self.dir = cla.dir
+        self.file = cla.file
+        self.start = cla.start
+        self.kill = cla.kill
+        self.verbosity = cla.verbosity
+        self.monochrome = cla.monochrome
+        self.debug = cla.debug
+        self.info = cla.info
 
-        if "cluster" in templates:
-            self.cluster_id = args.cluster_id
-            self.topology = args.topology
-            self.center_node_id = args.center_node_id
-            self.total_nodes = args.total_nodes
-            self.total_producers = args.total_producers
-            self.producer_nodes = args.producer_nodes
-            self.unstarted_nodes = args.unstarted_nodes
+        # if "cluster" in templates:
+        self.cluster_id = cla.cluster_id
+        self.topology = cla.topology
+        self.center_node_id = cla.center_node_id
+        self.total_nodes = cla.total_nodes
+        self.total_producers = cla.total_producers
+        self.producer_nodes = cla.producer_nodes
+        self.unstarted_nodes = cla.unstarted_nodes
 
 
     @staticmethod
-    def parse(*templates):
+    # def parse(*templates):
+    def parse():
         HEADER = printer.String().decorate("Launcher Service for EOS Testing Framework", style="underline", fcolor="green")
         OFFSET = 5
 
@@ -98,30 +116,30 @@ class CommandLineArguments:
         parser.add_argument("-h", "--help", action="help", help=' ' * OFFSET + HELP_HELP)
 
         info = lambda text, value: "{} ({})".format(printer.pad(text, left=OFFSET, total=50, char=' ', sep=""), value)
-        if "service" in templates:
-            parser.add_argument("-a", "--address", type=str, metavar="IP", help=info(HELP_ADDRESS, DEFAULT_ADDRESS))
-            parser.add_argument("-p", "--port", type=int, help=info(HELP_PORT, DEFAULT_PORT))
-            parser.add_argument("-d", "--dir", type=str, help=info(HELP_DIR, DEFAULT_DIR))
-            parser.add_argument("-f", "--file", type=str, help=info(HELP_FILE, DEFAULT_FILE))
-            parser.add_argument("-s", "--start", action="store_true", default=None, help=info(HELP_START, DEFAULT_START))
-            parser.add_argument("-k", "--kill", action="store_true", default=None, help=info(HELP_KILL, DEFAULT_KILL))
+        # if "service" in templates:
+        parser.add_argument("-a", "--address", type=str, metavar="IP", help=info(HELP_ADDRESS, DEFAULT_ADDRESS))
+        parser.add_argument("-p", "--port", type=int, help=info(HELP_PORT, DEFAULT_PORT))
+        parser.add_argument("-d", "--dir", type=str, help=info(HELP_DIR, DEFAULT_DIR))
+        parser.add_argument("-f", "--file", type=str, help=info(HELP_FILE, DEFAULT_FILE))
+        parser.add_argument("-s", "--start", action="store_true", default=None, help=info(HELP_START, DEFAULT_START))
+        parser.add_argument("-k", "--kill", action="store_true", default=None, help=info(HELP_KILL, DEFAULT_KILL))
 
-        if "cluster" in templates:
-            parser.add_argument("-i", "--cluster-id", dest="cluster_id", type=int, metavar="ID", help=info(HELP_CLUSTER_ID, DEFAULT_CLUSTER_ID))
-            parser.add_argument("-t", "--topology", type=str, metavar="SHAPE", help=info(HELP_TOPOLOGY, DEFAULT_TOPOLOGY), choices={"mesh", "star", "bridge", "line", "ring", "tree"})
-            parser.add_argument("-c", "--center-node-id", dest="center_node_id", type=int, metavar="ID", help=info(HELP_CENTER_NODE_ID, DEFAULT_CENTER_NODE_ID))
-            parser.add_argument("-n", "--total-nodes", dest="total_nodes", type=int, metavar="NUM", help=info(HELP_TOTAL_NODES, DEFAULT_TOTAL_NODES))
-            parser.add_argument("-y", "--total-producers", dest="total_producers", type=int, metavar="NUM", help=info(HELP_TOTAL_PRODUCERS, DEFAULT_TOTAL_PRODUCERS))
-            parser.add_argument("-z", "--producer-nodes", dest="producer_nodes", type=int, metavar="NUM", help=info(HELP_PRODUCER_NODES, DEFAULT_PRODUCER_NODES))
-            parser.add_argument("-u", "--unstarted-nodes", dest="unstarted_nodes", type=int, metavar="NUM", help=info(HELP_UNSTARTED_NODES, DEFAULT_UNSTARTED_NODES))
+        # if "cluster" in templates:
+        parser.add_argument("-i", "--cluster-id", dest="cluster_id", type=int, metavar="ID", help=info(HELP_CLUSTER_ID, DEFAULT_CLUSTER_ID))
+        parser.add_argument("-t", "--topology", type=str, metavar="SHAPE", help=info(HELP_TOPOLOGY, DEFAULT_TOPOLOGY), choices={"mesh", "star", "bridge", "line", "ring", "tree"})
+        parser.add_argument("-c", "--center-node-id", dest="center_node_id", type=int, metavar="ID", help=info(HELP_CENTER_NODE_ID, DEFAULT_CENTER_NODE_ID))
+        parser.add_argument("-n", "--total-nodes", dest="total_nodes", type=int, metavar="NUM", help=info(HELP_TOTAL_NODES, DEFAULT_TOTAL_NODES))
+        parser.add_argument("-y", "--total-producers", dest="total_producers", type=int, metavar="NUM", help=info(HELP_TOTAL_PRODUCERS, DEFAULT_TOTAL_PRODUCERS))
+        parser.add_argument("-z", "--producer-nodes", dest="producer_nodes", type=int, metavar="NUM", help=info(HELP_PRODUCER_NODES, DEFAULT_PRODUCER_NODES))
+        parser.add_argument("-u", "--unstarted-nodes", dest="unstarted_nodes", type=int, metavar="NUM", help=info(HELP_UNSTARTED_NODES, DEFAULT_UNSTARTED_NODES))
 
-        if "service" in templates:
-            verbosity = parser.add_mutually_exclusive_group()
-            verbosity.add_argument("-v", "--verbose", dest="verbosity", action="count", default=None, help=info(HELP_VERBOSE, DEFAULT_VERBOSITY))
-            verbosity.add_argument("-x", "--silent", dest="verbosity", action="store_false", default=None, help=info(HELP_SILENT, not DEFAULT_VERBOSITY))
-            parser.add_argument("-m", "--monochrome", action="store_true", default=None, help=info(HELP_MONOCHROME, DEFAULT_MONOCHROME))
-            parser.add_argument("--debug", action="store_true", default=None, help=info(HELP_DEBUG, DEFAULT_DEBUG))
-            parser.add_argument("--info", action="store_true", default=None, help=info(HELP_INFO, DEFAULT_INFO))
+        # if "service" in templates:
+        verbosity = parser.add_mutually_exclusive_group()
+        verbosity.add_argument("-v", "--verbose", dest="verbosity", action="count", default=None, help=info(HELP_VERBOSE, DEFAULT_VERBOSITY))
+        verbosity.add_argument("-x", "--silent", dest="verbosity", action="store_false", default=None, help=info(HELP_SILENT, not DEFAULT_VERBOSITY))
+        parser.add_argument("-m", "--monochrome", action="store_true", default=None, help=info(HELP_MONOCHROME, DEFAULT_MONOCHROME))
+        parser.add_argument("--debug", action="store_true", default=None, help=info(HELP_DEBUG, DEFAULT_DEBUG))
+        parser.add_argument("--info", action="store_true", default=None, help=info(HELP_INFO, DEFAULT_INFO))
 
         return parser.parse_args()
 
@@ -129,18 +147,20 @@ class CommandLineArguments:
 
 
 class Service:
-    def __init__(self, address=None, port=None, dir=None, file=None, start=None, kill=None, verbosity=None, monochrome=None, debug=None, info=None, args=None, dont_connect=False):
+    def __init__(self, address=None, port=None, dir=None, file=None, start=None, kill=None, verbosity=None, monochrome=None, debug=None, info=None, dont_connect=False):
+
         # configure service
-        self.address    = helper.override(DEFAULT_ADDRESS,      address,    args.address    if args else None)
-        self.port       = helper.override(DEFAULT_PORT,         port,       args.port       if args else None)
-        self.dir        = helper.override(DEFAULT_DIR,          dir,        args.dir        if args else None)
-        self.file       = helper.override(DEFAULT_FILE,         file,       args.file       if args else None)
-        self.start      = helper.override(DEFAULT_START,        start,      args.start      if args else None)
-        self.kill       = helper.override(DEFAULT_KILL,         kill,       args.kill       if args else None)
-        self.verbosity  = helper.override(DEFAULT_VERBOSITY,    verbosity,  args.verbosity  if args else None)
-        self.monochrome = helper.override(DEFAULT_MONOCHROME,   monochrome, args.monochrome if args else None)
-        self.debug      = helper.override(DEFAULT_DEBUG,        debug,      args.debug      if args else None)
-        self.info       = helper.override(DEFAULT_INFO,         info,       args.info       if args else None)
+        self.cla        = CommandLineArguments()
+        self.address    = helper.override(DEFAULT_ADDRESS,    address,    self.cla.address    if self.cla else None)
+        self.port       = helper.override(DEFAULT_PORT,       port,       self.cla.port       if self.cla else None)
+        self.dir        = helper.override(DEFAULT_DIR,        dir,        self.cla.dir        if self.cla else None)
+        self.file       = helper.override(DEFAULT_FILE,       file,       self.cla.file       if self.cla else None)
+        self.start      = helper.override(DEFAULT_START,      start,      self.cla.start      if self.cla else None)
+        self.kill       = helper.override(DEFAULT_KILL,       kill,       self.cla.kill       if self.cla else None)
+        self.verbosity  = helper.override(DEFAULT_VERBOSITY,  verbosity,  self.cla.verbosity  if self.cla else None)
+        self.monochrome = helper.override(DEFAULT_MONOCHROME, monochrome, self.cla.monochrome if self.cla else None)
+        self.debug      = helper.override(DEFAULT_DEBUG,      debug,      self.cla.debug      if self.cla else None)
+        self.info       = helper.override(DEFAULT_INFO,       info,       self.cla.info       if self.cla else None)
 
         # determine remote or local launcher service to connect to
         if self.address in ("127.0.0.1", "localhost"):
@@ -218,7 +238,7 @@ class Service:
         self.print_config_helper("-v: verbose",     HELP_VERBOSE,       self.verbosity,     DEFAULT_VERBOSITY)
         self.print_config_helper("-m: monochrome",  HELP_MONOCHROME,    self.monochrome,    DEFAULT_MONOCHROME)
         self.print_config_helper("--debug",         HELP_DEBUG,         self.debug,         DEFAULT_DEBUG)
-        self.print_config_helper("--info",          HELP_INFO,          self.info,    DEFAULT_INFO)
+        self.print_config_helper("--info",          HELP_INFO,          self.info,          DEFAULT_INFO)
 
 
     def print_config_helper(self, label, help, value, default_value, label_width=22, help_width=48):
@@ -308,7 +328,7 @@ class Service:
 
 
 class Cluster:
-    def __init__(self, service, cluster_id=None, topology=None, center_node_id=None, total_nodes=None, total_producers=None, producer_nodes=None, unstarted_nodes=None, args=None, dont_vote=False, dont_bootstrap=False):
+    def __init__(self, service, cluster_id=None, topology=None, center_node_id=None, total_nodes=None, total_producers=None, producer_nodes=None, unstarted_nodes=None, dont_vote=False, dont_bootstrap=False):
         """
         Bootstrap
         ---------
@@ -329,20 +349,22 @@ class Cluster:
 
         # register service
         self.service = service
+        self.cla = service.cla
         self.print = service.print
         self.string = service.string
         self.alert = service.alert
         self.print_header = service.print_header
         self.print_config_helper = service.print_config_helper
 
+
         # configure cluster
-        self.cluster_id         = helper.override(DEFAULT_CLUSTER_ID,           cluster_id,         args.cluster_id         if args else None)
-        self.topology           = helper.override(DEFAULT_TOPOLOGY,             topology,           args.topology           if args else None)
-        self.center_node_id     = helper.override(DEFAULT_CENTER_NODE_ID,       center_node_id,     args.center_node_id     if args else None)
-        self.total_nodes        = helper.override(DEFAULT_TOTAL_NODES,          total_nodes,        args.total_nodes        if args else None)
-        self.total_producers    = helper.override(DEFAULT_TOTAL_PRODUCERS,      total_producers,    args.total_producers    if args else None)
-        self.producer_nodes     = helper.override(DEFAULT_PRODUCER_NODES,       producer_nodes,     args.producer_nodes     if args else None)
-        self.unstarted_nodes    = helper.override(DEFAULT_UNSTARTED_NODES,      unstarted_nodes,    args.unstarted_nodes    if args else None)
+        self.cluster_id      = helper.override(DEFAULT_CLUSTER_ID,      cluster_id,      self.cla.cluster_id      if self.cla else None)
+        self.topology        = helper.override(DEFAULT_TOPOLOGY,        topology,        self.cla.topology        if self.cla else None)
+        self.center_node_id  = helper.override(DEFAULT_CENTER_NODE_ID,  center_node_id,  self.cla.center_node_id  if self.cla else None)
+        self.total_nodes     = helper.override(DEFAULT_TOTAL_NODES,     total_nodes,     self.cla.total_nodes     if self.cla else None)
+        self.total_producers = helper.override(DEFAULT_TOTAL_PRODUCERS, total_producers, self.cla.total_producers if self.cla else None)
+        self.producer_nodes  = helper.override(DEFAULT_PRODUCER_NODES,  producer_nodes,  self.cla.producer_nodes  if self.cla else None)
+        self.unstarted_nodes = helper.override(DEFAULT_UNSTARTED_NODES, unstarted_nodes, self.cla.unstarted_nodes if self.cla else None)
 
         # reconcile conflict in config
         self.reconcile_config()
@@ -471,8 +493,10 @@ class Cluster:
 
         # 10. create producer accounts
         # 11. register producers
-        stake_amount = total_supply * 0.15
+        stake_amount = total_supply * 0.075
         create_account_threads = []
+        channel = []
+        communicate = lambda channel, id: channel.append(id)
 
         for p in self.producers:
             def create_and_register(stake_amount):
@@ -483,7 +507,8 @@ class Cluster:
                                     stake_cpu=stake_amount_formatted, stake_net=stake_amount_formatted, buy_ram_bytes=1048576,
                                     transfer=True)
                 self.register_producer(node_id=node_id, producer=producer)
-            t = threading.Thread(target=create_and_register, args=(stake_amount,))
+            # t = threading.Thread(target=create_and_register, args=(stake_amount,))
+            t = ExceptionThread(channel, communicate, target=create_and_register, args=(stake_amount,))
             stake_amount = max(stake_amount / 2, 100)
             create_account_threads.append(t)
             t.start()
@@ -491,6 +516,7 @@ class Cluster:
         for t in create_account_threads:
             t.join()
 
+        assert len(channel) == 0, self.alert.red("{} exception(s) occurred in creating accounts / registering producers.".format(len(channel)))
 
         if not dont_vote:
             # 12. vote for producers
@@ -622,7 +648,7 @@ class Cluster:
         return json.loads(ix.response.text)
 
 
-    def verify_transaction(self, transaction_id, node_id=0, retry=10, wait=1, loud=True):
+    def verify_transaction(self, transaction_id, node_id=0, retry=600, wait=0.5, loud=True):
         if loud:
             self.print.vanilla("{:100}".format("Verifying ..."))
         ix = Interaction("verify_transaction", self.service, dict(cluster_id=self.cluster_id, node_id=node_id, transaction_id=transaction_id))
@@ -633,6 +659,9 @@ class Cluster:
                 self.print.vanilla("Verifying ...")
             ix.attempt()
             verified = helper.extract(ix.response, key="irreversible", fallback=False)
+            # debug temp
+            # if not verified:
+            #     self.print.response_in_full(ix.response)
             retry -= 1
         assert ix.response.ok
         if loud:
@@ -640,6 +669,8 @@ class Cluster:
                 self.print.decorate("Success!", fcolor="black", bcolor="green")
             else:
                 self.print.decorate("Failure!", fcolor="black", bcolor="red")
+                # debug temp
+                # self.print.response_in_full(ix.response)
         return helper.extract(ix.response, key="irreversible", fallback=False)
 
 
@@ -707,11 +738,10 @@ class Interaction:
 
 
 def test():
-    args = CommandLineArguments("service", "cluster")
-    serv = Service(args=args)
-    clus = Cluster(service=serv, args=args)
-    serv.debug_print("Only if \"--debug\" is provided shall this line show up.")
-    serv.info_print("Only if \"--info\" or \"--debug\" is provided shall this line show up.")
+    service = Service()
+    cluster = Cluster(service=service)
+    service.debug_print("Only if \"--debug\" is provided shall this line show up.")
+    service.info_print("Only if \"--info\" or \"--debug\" is provided shall this line show up.")
 
 
 if __name__ == "__main__":
