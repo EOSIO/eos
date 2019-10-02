@@ -105,6 +105,10 @@ public:
       return itr->trx_type == trx_enum_type::persisted;
    }
 
+   size_t incoming_size()const {
+      return queue.get<by_type>().count( trx_enum_type::incoming );
+   }
+
    transaction_metadata_ptr get_trx( const transaction_id_type& id ) const {
       auto itr = queue.get<by_trx_id>().find( id );
       if( itr == queue.get<by_trx_id>().end() ) return {};
@@ -186,14 +190,15 @@ public:
       }
    }
 
-   void add_incoming( const transaction_metadata_ptr& trx, bool persist_until_expired ) {
+   void add_incoming( const transaction_metadata_ptr& trx, bool persist_until_expired, next_func_t next ) {
       auto itr = queue.get<by_trx_id>().find( trx->id() );
       if( itr == queue.get<by_trx_id>().end() ) {
          fc::time_point expiry = trx->packed_trx()->expiration();
-         queue.insert( { trx, expiry, persist_until_expired ? trx_enum_type::persisted : trx_enum_type::incoming } );
-      } else if( persist_until_expired && itr->trx_type != trx_enum_type::persisted ) {
-         queue.get<by_trx_id>().modify( itr, [](auto& un){
+         queue.insert( { trx, expiry, persist_until_expired ? trx_enum_type::persisted : trx_enum_type::incoming, std::move( next ) } );
+      } else if( (persist_until_expired && itr->trx_type != trx_enum_type::persisted) || (next && !itr->next) ) {
+         queue.get<by_trx_id>().modify( itr, [next{std::move(next)}](auto& un) mutable {
             un.trx_type = trx_enum_type::persisted;
+            if( next ) un.next = std::move( next );
          } );
       }
    }
@@ -210,6 +215,7 @@ public:
    iterator incoming_end() { return queue.get<by_type>().upper_bound( trx_enum_type::incoming ); }
 
    iterator erase( iterator itr ) { return queue.get<by_type>().erase( itr ); }
+   iterator erase( iterator b, iterator e ) { return queue.get<by_type>().erase( b, e ); }
 
 };
 
