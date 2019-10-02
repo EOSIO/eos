@@ -483,6 +483,31 @@ cat <<EOF
     timeout: ${TIMEOUT:-10}
     skip: ${SKIP_MACOS_10_14}${SKIP_PACKAGE_BUILDER}${SKIP_MAC}
 
+
+  - label: ":darwin: macOS 10.15 - Package Builder"
+    command:
+      - "git clone \$BUILDKITE_REPO eos && cd eos && $GIT_FETCH git checkout -f \$BUILDKITE_COMMIT"
+      - "cd eos && buildkite-agent artifact download build.tar.gz . --step ':darwin: macOS 10.15 - Build' && tar -xzf build.tar.gz"
+      - "cd eos && ./.cicd/package.sh"
+    plugins:
+      - chef/anka#v0.5.4:
+          no-volume: true
+          inherit-environment-vars: true
+          vm-name: 10.15_beta_6C_14G_40G
+          vm-registry-tag: "clean::cicd::git-ssh::nas::brew::buildkite-agent"
+          always-pull: true
+          debug: true
+          wait-network: true
+          failover-registries:
+            - 'registry_1'
+            - 'registry_2'
+          pre-execute-sleep: 5
+    agents:
+      - "queue=mac-anka-node-fleet"
+    timeout: ${TIMEOUT:-10}
+    skip: ${SKIP_MACOS_10_15}${SKIP_PACKAGE_BUILDER}${SKIP_MAC}
+
+
   - label: ":ubuntu: Ubuntu 18.04 - Contract Builder"
     command: "./.cicd/installation-build.sh"
     env:
