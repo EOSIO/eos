@@ -1597,9 +1597,9 @@ bool producer_plugin_impl::process_unapplied_trxs( const fc::time_point& deadlin
       int num_applied = 0, num_failed = 0, num_processed = 0;
       auto unapplied_trxs_size = _unapplied_transactions.size();
       auto itr     = (_pending_block_mode == pending_block_mode::producing) ?
-                     _unapplied_transactions.begin() : _unapplied_transactions.persisted_begin();
+                     _unapplied_transactions.unapplied_begin() : _unapplied_transactions.persisted_begin();
       auto end_itr = (_pending_block_mode == pending_block_mode::producing) ?
-                     _unapplied_transactions.end()   : _unapplied_transactions.persisted_end();
+                     _unapplied_transactions.unapplied_end()   : _unapplied_transactions.persisted_end();
       while( itr != end_itr ) {
          if( deadline <= fc::time_point::now() ) {
             exhausted = true;
@@ -1626,11 +1626,13 @@ bool producer_plugin_impl::process_unapplied_trxs( const fc::time_point& deadlin
                } else {
                   // this failed our configured maximum transaction time, we don't want to replay it
                   ++num_failed;
+                  if( itr->next ) itr->next( trace->except->dynamic_copy_exception() );
                   itr = _unapplied_transactions.erase( itr );
                   continue;
                }
             } else {
                ++num_applied;
+               if( itr->next ) itr->next( trace );
                itr = _unapplied_transactions.erase( itr );
                continue;
             }
@@ -1695,7 +1697,6 @@ bool producer_plugin_impl::process_scheduled_and_incoming_trxs( const fc::time_p
 
          --pending_incoming_process_limit;
          incoming_trx_weight -= 1.0;
-         // should never be persisted since traversing incoming, but check for safety in case invariant changes
          process_incoming_transaction_async( itr->trx_meta, itr->trx_type == trx_enum_type::persisted, itr->next );
          ++itr;
       }
@@ -1761,7 +1762,6 @@ bool producer_plugin_impl::process_incoming_trxs( const fc::time_point& deadline
             break;
          }
          --pending_incoming_process_limit;
-         // should never be persisted since traversing incoming, but check for safety in case invariant changes
          process_incoming_transaction_async( itr->trx_meta, itr->trx_type == trx_enum_type::persisted, itr->next );
          ++processed;
          ++itr;
