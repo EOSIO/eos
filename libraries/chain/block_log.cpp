@@ -972,6 +972,7 @@ namespace eosio { namespace chain {
       }
 
       // ****** create the new block log file and write out the header for the file
+      fc::create_directories(temp_dir);
       fc::path new_block_filename = temp_dir / "blocks.log";
       if (fc::remove(new_block_filename)) {
          ilog("Removing old blocks.out file");
