@@ -9,7 +9,7 @@ if [[ $(uname) == 'Darwin' ]]; then
     ( [[ ! $PINNED == false || $UNPINNED == true ]] ) && CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_TOOLCHAIN_FILE=$SCRIPTS_DIR/pinned_toolchain.cmake"
     sed -n '/## Build Steps/,/make -j/p' $CONAN_DIR/MACOS-10.14.md | grep -v '```' | grep -v '\*\*' >> $CONAN_DIR/conan-build.sh
     if [[ "$USE_CONAN" == 'true' ]]; then
-        bash -c "$CONAN_DIR/conan-build.sh && cp -r ~/.conan $ROOT_DIR/conan"
+        bash -c "$CONAN_DIR/conan-build.sh && cp -r $ROOT_DIR/eos/build $ROOT_DIR/build && cp -r ~/.conan $ROOT_DIR/conan"
     else
         cd $BUILD_DIR
         cmake $CMAKE_EXTRAS ..
