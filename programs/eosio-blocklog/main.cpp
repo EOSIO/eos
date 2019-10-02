@@ -233,7 +233,7 @@ int trim_blocklog_end(bfs::path block_dir, uint32_t n) {       //n is last block
 
 bool trim_blocklog_front(bfs::path block_dir, uint32_t n) {        //n is first block to keep (remove prior blocks)
    report_time rt("trimming blocklog start");
-   const bool status = block_log::trim_blocklog_front(block_dir, n);
+   const bool status = block_log::trim_blocklog_front(block_dir, blocks_dir / "old", n);
    rt.report();
    return status;
 }

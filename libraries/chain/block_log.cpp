@@ -956,8 +956,9 @@ namespace eosio { namespace chain {
       return std::clamp(version, min_supported_version, max_supported_version) == version;
    }
 
-   bool block_log::trim_blocklog_front(const fc::path& block_dir, uint32_t truncate_at_block) {
+   bool block_log::trim_blocklog_front(const fc::path& block_dir, const fc::path& temp_dir, uint32_t truncate_at_block) {
       using namespace std;
+      EOS_ASSERT( block_dir != temp_dir, block_log_exception, "block_dir and temp_dir need to be different directories" );
       ilog("In directory ${dir} will trim all blocks before block ${n} from blocks.log and blocks.index.",
            ("dir", block_dir.generic_string())("n", truncate_at_block));
       trim_data original_block_log(block_dir);
@@ -971,7 +972,7 @@ namespace eosio { namespace chain {
       }
 
       // ****** create the new block log file and write out the header for the file
-      fc::path new_block_filename = block_dir / "blocks.out";
+      fc::path new_block_filename = temp_dir / "blocks.log";
       if (fc::remove(new_block_filename)) {
          ilog("Removing old blocks.out file");
       }
@@ -1015,7 +1016,7 @@ namespace eosio { namespace chain {
 
       const auto num_blocks = original_block_log.last_block - truncate_at_block + 1;
 
-      fc::path new_index_filename = block_dir / "index.out";
+      fc::path new_index_filename = temp_dir / "blocks.index";
       detail::index_writer index(new_index_filename, num_blocks);
 
       uint64_t read_size = 0;
