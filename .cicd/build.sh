@@ -7,7 +7,7 @@ if [[ $(uname) == 'Darwin' ]]; then
     # You can't use chained commands in execute
     [[ $TRAVIS == true ]] && export PINNED=false && ccache -s && CMAKE_EXTRAS="-DCMAKE_CXX_COMPILER_LAUNCHER=ccache" && ./$CICD_DIR/platforms/macos-10.14.sh
     ( [[ ! $PINNED == false || $UNPINNED == true ]] ) && CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_TOOLCHAIN_FILE=$SCRIPTS_DIR/pinned_toolchain.cmake"
-    sed -n '/## Build Steps/,/make -j/p' $CONAN_DIR/MACOS-10.14.md | grep -v '```' | grep -v '\*\*' >> $CONAN_DIR/conan-build.sh
+    sed -n '/## Build Steps/,/make -j/p' $CONAN_DIR/$IMAGE_TAG.md | grep -v -e '```' -e '^$' >> $CONAN_DIR/conan-build.sh
     if [[ "$USE_CONAN" == 'true' ]]; then
         bash -c "$CONAN_DIR/conan-build.sh && cp -r $ROOT_DIR/eos/build/* $ROOT_DIR/build && cp -r ~/.conan $ROOT_DIR/conan"
     else
@@ -40,11 +40,11 @@ else # Linux
         PRE_COMMANDS="$PRE_COMMANDS && export PATH=/usr/lib/ccache:\\\$PATH"
         CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_CXX_COMPILER='clang++-7' -DCMAKE_C_COMPILER='clang-7' -DLLVM_DIR='/usr/lib/llvm-7/lib/cmake/llvm'"
     elif [[ $IMAGE_TAG == 'amazon_linux-2-conan' ]]; then
-        sed -n '/## Build Steps/,/make -j/p' $CONAN_DIR/AMAZON_LINUX-2.md | grep -v '```' | grep -v '\*\*' >> $CONAN_DIR/conan-build.sh
+        sed -n '/## Build Steps/,/make -j/p' $CONAN_DIR/$IMAGE_TAG.md | grep -v -e '```' -e '^$' >> $CONAN_DIR/conan-build.sh
     elif [[ $IMAGE_TAG == 'centos-7.6-conan' ]]; then
-        sed -n '/## Build Steps/,/make -j/p' $CONAN_DIR/CENTOS-7.6.md | grep -v '```' | grep -v '\*\*' >> $CONAN_DIR/conan-build.sh
+        sed -n '/## Build Steps/,/make -j/p' $CONAN_DIR/$IMAGE_TAG.md | grep -v -e '```' -e '^$' >> $CONAN_DIR/conan-build.sh
     elif [[ $IMAGE_TAG == 'ubuntu-18.04-conan' ]]; then
-        sed -n '/## Build Steps/,/make -j/p' $CONAN_DIR/UBUNTU-18.04.md | grep -v '```' | grep -v '\*\*' >> $CONAN_DIR/conan-build.sh
+        sed -n '/## Build Steps/,/make -j/p' $CONAN_DIR/$IMAGE_TAG.md | grep -v -e '```' -e '^$' >> $CONAN_DIR/conan-build.sh
     fi
     BUILD_COMMANDS="cmake $CMAKE_EXTRAS .. && make -j$JOBS"
     # Docker Commands
