@@ -196,8 +196,8 @@ public:
          fc::time_point expiry = trx->packed_trx()->expiration();
          queue.insert( { trx, expiry, persist_until_expired ? trx_enum_type::persisted : trx_enum_type::incoming, std::move( next ) } );
       } else if( (persist_until_expired && itr->trx_type != trx_enum_type::persisted) || (next && !itr->next) ) {
-         queue.get<by_trx_id>().modify( itr, [next{std::move(next)}](auto& un) mutable {
-            un.trx_type = trx_enum_type::persisted;
+         queue.get<by_trx_id>().modify( itr, [persist_until_expired, next{std::move(next)}](auto& un) mutable {
+            if( persist_until_expired ) un.trx_type = trx_enum_type::persisted;
             if( next ) un.next = std::move( next );
          } );
       }
@@ -207,6 +207,10 @@ public:
 
    iterator begin() { return queue.get<by_type>().begin(); }
    iterator end() { return queue.get<by_type>().end(); }
+
+   // persisted, forked, aborted
+   iterator unapplied_begin() { return queue.get<by_type>().begin(); }
+   iterator unapplied_end() { return queue.get<by_type>().upper_bound( trx_enum_type::aborted ); }
 
    iterator persisted_begin() { return queue.get<by_type>().lower_bound( trx_enum_type::persisted ); }
    iterator persisted_end() { return queue.get<by_type>().upper_bound( trx_enum_type::persisted ); }
