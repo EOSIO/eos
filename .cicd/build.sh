@@ -7,7 +7,7 @@ if [[ $(uname) == 'Darwin' ]]; then
     # You can't use chained commands in execute
     [[ $TRAVIS == true ]] && export PINNED=false && ccache -s && CMAKE_EXTRAS="-DCMAKE_CXX_COMPILER_LAUNCHER=ccache" && ./$CICD_DIR/platforms/unpinned/macos-10.14-unpinned.sh
     ( [[ ! $PINNED == false || $UNPINNED == true ]] ) && CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_TOOLCHAIN_FILE=$SCRIPTS_DIR/pinned_toolchain.cmake"
-    sed -n '/## Build Steps/,/make -j/p' $CONAN_DIR/$IMAGE_TAG.md | grep -v -e '```' -e '^$' >> $CONAN_DIR/conan-build.sh
+    sed -n '/## Build Steps/,/make -j/p' $CONAN_DIR/macos-10.14-conan.md | grep -v -e '```' -e '^$' >> $CONAN_DIR/conan-build.sh
     if [[ "$USE_CONAN" == 'true' ]]; then
         bash -c "$CONAN_DIR/conan-build.sh && cp -r $ROOT_DIR/eos/build/* $ROOT_DIR/build && cp -r ~/.conan $ROOT_DIR/conan"
     else

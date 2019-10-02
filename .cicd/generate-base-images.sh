@@ -2,8 +2,8 @@
 set -eo pipefail
 . ./.cicd/helpers/general.sh
 if [[ $(uname) == 'Darwin' ]]; then # macOS
-    [[ "$USE_CONAN" == 'true' ]] && sed -n '/## Environment/,/## Build/p' $CONAN_DIR/$IMAGE_TAG.md | grep -v -e '```' -e '\#\#' -e '^$' >> $CICD_DIR/platforms/$BUILD_TYPE/$IMAGE_TAG.sh
-    . $CICD_DIR/platforms/$BUILD_TYPE/$IMAGE_TAG.sh
+    [[ "$USE_CONAN" == 'true' ]] && sed -n '/## Environment/,/## Build/p' $CONAN_DIR/macos-10.14-conan.md | grep -v -e '```' -e '\#\#' -e '^$' >> $CICD_DIR/platforms/$BUILD_TYPE/macos-10.14-conan.sh
+    . $CICD_DIR/platforms/$BUILD_TYPE/macos-10.14-$BUILD_TYPE.sh
 else # Linux
     [[ "$USE_CONAN" == 'true' ]] && sed -n '/## Environment/,/## Build/p' $CONAN_DIR/$IMAGE_TAG.md | grep -v -e '```' -e '\#\#' -e '^$' -e 'export' | sed -e 's/^/RUN /' >> $CICD_DIR/platforms/$BUILD_TYPE/$IMAGE_TAG.dockerfile
     . $HELPERS_DIR/file-hash.sh $CICD_DIR/platforms/$BUILD_TYPE/${IMAGE_TAG}.dockerfile
