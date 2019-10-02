@@ -20,8 +20,8 @@ while read -r a b; do
 done < <(git submodule --quiet foreach --recursive 'echo $path `git log -1 --format=%ct`')
 
 echo "getting submodule info for $BASE_BRANCH"
-git checkout $BASE_BRANCH &> /dev/null
-git submodule update --init &> /dev/null
+git checkout $BASE_BRANCH 1> /dev/null
+git submodule update --init 1> /dev/null
 while read -r a b; do
     BASE_MAP[$a]=$b
 done < <(git submodule --quiet foreach --recursive 'echo $path `git log -1 --format=%ct`')
@@ -29,13 +29,13 @@ done < <(git submodule --quiet foreach --recursive 'echo $path `git log -1 --for
 # We need to switch back to the PR ref/head so we can git log properly
 if [[ $TRAVIS == true && ! -z $TRAVIS_PULL_REQUEST_SLUG ]]; then
     echo "git fetch origin +refs/pull/$TRAVIS_PULL_REQUEST/merge:"
-    git fetch origin +refs/pull/$TRAVIS_PULL_REQUEST/merge: &> /dev/null
+    git fetch origin +refs/pull/$TRAVIS_PULL_REQUEST/merge: 1> /dev/null
     echo "switching back to $TRAVIS_COMMIT"
     echo 'git checkout -qf FETCH_HEAD'
-    git checkout -qf FETCH_HEAD &> /dev/null
+    git checkout -qf FETCH_HEAD 1> /dev/null
 elif [[ $BUILDKITE == true ]]; then
     echo "switching back to $CURRENT_BRANCH"
-    git checkout -f $CURRENT_BRANCH &> /dev/null
+    git checkout -f $CURRENT_BRANCH 1> /dev/null
 fi
 
 for k in "${!BASE_MAP[@]}"; do
