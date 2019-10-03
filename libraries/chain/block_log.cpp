@@ -979,7 +979,7 @@ namespace eosio { namespace chain {
       }
       fc::cfile new_block_file;
       new_block_file.set_file_path(new_block_filename);
-      // need to open as append in case the file doesn't already exist, then reopen without append to allow writing the
+      // need to open as append since the file doesn't already exist, then reopen without append to allow writing the
       // file in any order
       new_block_file.open( LOG_WRITE_C );
       new_block_file.close();
