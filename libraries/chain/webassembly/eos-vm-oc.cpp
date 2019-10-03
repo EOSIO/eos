@@ -25,7 +25,7 @@ class eosvmoc_instantiated_module : public wasm_instantiated_module_interface {
 
       void apply(apply_context& context) override {
          const code_descriptor* const cd = _eosvmoc_runtime.cc.get_descriptor_for_code_sync(_code_hash, _vm_version);
-         EOS_ASSERT(cd, wasm_execution_error, "EOS-VM OC instantiation failed");
+         EOS_ASSERT(cd, wasm_execution_error, "EOS VM OC instantiation failed");
 
          _eosvmoc_runtime.exec.execute(*cd, _eosvmoc_runtime.mem, context);
       }
@@ -48,7 +48,7 @@ std::unique_ptr<wasm_instantiated_module_interface> eosvmoc_runtime::instantiate
    return std::make_unique<eosvmoc_instantiated_module>(code_hash, vm_type, *this);
 }
 
-//never called. EOS-VM OC overrides eosio_exit to its own implementation
+//never called. EOS VM OC overrides eosio_exit to its own implementation
 void eosvmoc_runtime::immediately_exit_currently_running_module() {}
 
 }}}}
