@@ -120,7 +120,7 @@ public:
       auto& persisted_by_expiry = queue.get<by_expiry>();
       while( !persisted_by_expiry.empty() ) {
          const auto& itr = persisted_by_expiry.begin();
-         if( itr->expiry <= pending_block_time ) {
+         if( itr->expiry >= pending_block_time ) {
             break;
          }
          if( deadline <= fc::time_point::now() ) {

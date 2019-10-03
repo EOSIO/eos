@@ -8,13 +8,14 @@ using namespace eosio::chain;
 
 BOOST_AUTO_TEST_SUITE(unapplied_transaction_queue_tests)
 
-auto unique_trx_meta_data() {
+auto unique_trx_meta_data( fc::time_point expire = fc::time_point::now() + fc::seconds( 120 ) ) {
 
    static uint64_t nextid = 0;
    ++nextid;
 
    signed_transaction trx;
    account_name creator = config::system_account_name;
+   trx.expiration = expire;
    trx.actions.emplace_back( vector<permission_level>{{creator,config::active_name}},
                              onerror{ nextid, "test", 4 });
    return transaction_metadata::create_no_recover_keys( packed_transaction( trx ), transaction_metadata::trx_type::input );
@@ -294,6 +295,19 @@ BOOST_AUTO_TEST_CASE( unapplied_transaction_queue_test ) try {
    BOOST_REQUIRE( next( q ) == trx19 );
    BOOST_CHECK( q.size() == 0 );
    BOOST_REQUIRE( next( q ) == nullptr );
+   BOOST_CHECK( q.empty() );
+
+   auto trx20 = unique_trx_meta_data( fc::time_point::now() - fc::seconds( 1 ) );
+   auto trx21 = unique_trx_meta_data( fc::time_point::now() - fc::seconds( 1 ) );
+   auto trx22 = unique_trx_meta_data( fc::time_point::now() + fc::seconds( 120 ) );
+   auto trx23 = unique_trx_meta_data( fc::time_point::now() + fc::seconds( 120 ) );
+   q.add_aborted( { trx20, trx22 } );
+   q.add_persisted( trx21 );
+   q.add_persisted( trx23 );
+   q.clear_expired( fc::time_point::now(), fc::time_point::now() + fc::seconds( 300 ), [](auto, auto){} );
+   BOOST_CHECK( q.size() == 2 );
+   BOOST_REQUIRE( next( q ) == trx23 );
+   BOOST_REQUIRE( next( q ) == trx22 );
    BOOST_CHECK( q.empty() );
 
    q.add_forked( { bs3, bs2, bs1 } );
