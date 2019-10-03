@@ -4,7 +4,7 @@ set -eo pipefail
 . ./.cicd/helpers/general.sh
 # tests
 if [[ $(uname) == 'Darwin' ]]; then # macOS
-    [[ "$USE_CONAN" == 'true' ]] && ln -s $ROOT_DIR/conan ~/.conan
+    [[ "$USE_CONAN" == 'true' ]] && cp -r $ROOT_DIR/conan ~/.conan
     export PATH=$PATH:~/mongodb/bin
     set +e # defer error handling to end
     ./"$@"
