@@ -12,8 +12,6 @@ import random
 import threading
 import time
 
-from color import *
-
 
 def get_current_time(date=True, precision=3, time_zone=True):
     now = time.time()
@@ -51,33 +49,6 @@ class LoggingConfig:
     to_screen:          bool    = None
 
 
-class Writer(ABC):
-    def __init__(self, config: LoggingConfig = None):
-        self.config = config if config else LoggingConfig()
-
-    def prepend(self, msg, level=None):
-        prefix = str()
-        if self.config.show_clock_time:
-            prefix += "{} ".format(get_current_time())
-        if self.config.show_elapsed_time:
-            prefix += "({:8.2f} s) ".format(time.time() - self.config.start_time)
-        if self.config.show_thread:
-            prefix += "[{:8}] ".format((threading.current_thread().name))
-        if self.config.show_trace:
-            frame = inspect.stack()[4]
-            prefix += "{:<15}{:10} ".format(os.path.basename(frame.filename) + ":" + str(frame.lineno), frame.function + "()")
-        if self.config.show_log_level:
-            prefix += "{:5} ".format(level if self.config.show_log_level and level else "")
-        if prefix:
-            return prefix + " | " + msg
-        else:
-            return msg
-
-    @abstractmethod
-    def write(self, msg):
-        pass
-
-
 class MessageCenter:
     def __init__(self, writer: TypeVar("Writer")):
         self.center = dict()
@@ -102,34 +73,63 @@ class MessageCenter:
                 return
 
 
-class ScreenWriter(Writer):
+class Writer(ABC):
     def __init__(self, config: LoggingConfig = None):
-        super().__init__(config)
-        self.config.to_screen = True
-        self.output = print
+        self.config = config if config else LoggingConfig()
+        if self.config.buffered:
+            self._message_center = MessageCenter(self)
+            self._rlock = threading.RLock()
         if self.config.buffered:
             self._message_center = MessageCenter(self)
             self._rlock = threading.RLock()
 
+    def prepend(self, msg, level=None):
+        prefix = str()
+        if self.config.show_clock_time:
+            prefix += "{} ".format(get_current_time())
+        if self.config.show_elapsed_time:
+            prefix += "({:8.2f} s) ".format(time.time() - self.config.start_time)
+        if self.config.show_thread:
+            prefix += "[{:8}] ".format((threading.current_thread().name))
+        if self.config.show_trace:
+            frame = inspect.stack()[4]
+            prefix += "{:<15}{:10} ".format(os.path.basename(frame.filename) + ":" + str(frame.lineno), frame.function + "()")
+        if self.config.show_log_level:
+            prefix += "{:5} ".format(level if self.config.show_log_level and level else "")
+        if prefix:
+            return prefix + " | " + msg
+        else:
+            return msg
+
     def write(self, msg, level=None):
         if self.config.buffered:
-            self._buffered_write(msg, level)
+            self.buffered_write(msg, level)
         else:
-            self._unbuffered_write(msg, level)
+            self.unbuffered_write(msg, level)
+
+    @abstractmethod
+    def raw_write(self, msg):
+        pass
+
+    def unbuffered_write(self, msg, level=None):
+        raw_write(self.prepend(msg, level))
+
+    def buffered_write(self, msg, level=None):
+        self._message_center.store(self.prepend(msg, level))
 
     def flush(self):
         if self.config.buffered:
             with self._rlock:
                 self._message_center.flush()
 
+
+class ScreenWriter(Writer):
+    def __init__(self, config: LoggingConfig = None):
+        super().__init__(config)
+        self.config.to_screen = True
+
     def raw_write(self, msg):
         print(msg)
-
-    def _unbuffered_write(self, msg, level=None):
-        raw_write(super().prepend(msg, level))
-
-    def _buffered_write(self, msg, level=None):
-        self._message_center.store(super().prepend(msg, level))
 
 
 class FileWriter(Writer):
@@ -137,30 +137,10 @@ class FileWriter(Writer):
         super().__init__(config)
         self.config.to_screen = False
         self.filename = filename
-        if self.config.buffered:
-            self._message_center = MessageCenter(self)
-            self._rlock = threading.RLock()
-
-    def write(self, msg, level=None):
-        if self.config.buffered:
-            self._buffered_write(msg, level)
-        else:
-            self._unbuffered_write(msg, level)
-
-    def flush(self):
-        if self.config.buffered:
-            with self._rlock:
-                self._message_center.flush()
 
     def raw_write(self, msg):
         with open(self.filename, "a") as file:
             file.write(msg + "\n")
-
-    def _unbuffered_write(self, msg, level=None):
-        raw_write(super().prepend(msg, level))
-
-    def _buffered_write(self, msg, level=None):
-        self._message_center.store(super().prepend(msg, level))
 
 
 class Logger:
@@ -183,23 +163,23 @@ class Logger:
 # ----------------- test ------------------------------------------------------
 
 
-def pause(wait=None):
+def _pause(wait=None):
     if wait:
         time.sleep(wait)
     else:
         time.sleep(random.randint(0, 3))
 
 
-def alice(logger):
+def _alice(logger):
     logger.log("Hello")
-    pause()
+    _pause()
     logger.log("My name is Alice.", level="DEBUG")
     logger.flush()
 
 
-def bob(logger):
+def _bob(logger):
     logger.log("Hi, everyone")
-    pause()
+    _pause()
     logger.log("I'm Bob.", level="DEBUG")
     logger.flush()
 
@@ -208,8 +188,8 @@ def main():
     config = LoggingConfig(buffered=True)
     logger = Logger(ScreenWriter(config=config), FileWriter(config=config))
 
-    t_alice = Thread(target=alice, args=(logger,))
-    t_bob = Thread(target=bob, args=(logger,))
+    t_alice = Thread(target=_alice, args=(logger,))
+    t_bob = Thread(target=_bob, args=(logger,))
 
     for t in (t_alice, t_bob):
         t.start()
