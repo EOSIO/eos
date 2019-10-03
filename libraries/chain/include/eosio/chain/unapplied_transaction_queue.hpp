@@ -6,7 +6,6 @@
 #include <eosio/chain/exceptions.hpp>
 
 #include <boost/multi_index_container.hpp>
-#include <boost/multi_index/sequenced_index.hpp>
 #include <boost/multi_index/hashed_index.hpp>
 #include <boost/multi_index/member.hpp>
 
@@ -205,6 +204,16 @@ public:
 
    using iterator = unapplied_trx_queue_type::index<by_type>::type::iterator;
 
+   void call_next( iterator itr, const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& var ) {
+      if( itr->next ) {
+         itr->next( var );
+         // only call once
+         queue.get<by_type>().modify( itr, [](auto& un) {
+            un.next = nullptr;
+         } );
+      }
+   }
+
    iterator begin() { return queue.get<by_type>().begin(); }
    iterator end() { return queue.get<by_type>().end(); }
 
@@ -219,8 +228,6 @@ public:
    iterator incoming_end() { return queue.get<by_type>().upper_bound( trx_enum_type::incoming ); }
 
    iterator erase( iterator itr ) { return queue.get<by_type>().erase( itr ); }
-   iterator erase( iterator b, iterator e ) { return queue.get<by_type>().erase( b, e ); }
-
 };
 
 } } //eosio::chain
