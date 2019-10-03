@@ -648,21 +648,22 @@ class Cluster:
             self.print.response(ix.response)
         assert ix.response.ok
         if verify:
-            assert self.verify_transaction(ix.transaction_id, loud=loud)
+            assert self.verify_transaction(ix.transaction_id, key=verify, loud=loud)
         return json.loads(ix.response.text)
 
 
-    def verify_transaction(self, transaction_id, node_id=0, retry=600, wait=0.5, loud=True):
+    def verify_transaction(self, transaction_id, key=True, node_id=0, retry=600, wait=0.5, loud=True):
+        key = "irreversible" if key == True else key
         if loud:
             self.print.vanilla("{:100}".format("Verifying ..."))
         ix = Interaction("verify_transaction", self.service, dict(cluster_id=self.cluster_id, node_id=node_id, transaction_id=transaction_id))
-        verified = helper.extract(ix.response, key="irreversible", fallback=False)
+        verified = helper.extract(ix.response, key=key, fallback=False)
         while not verified and retry > 0:
             time.sleep(wait)
             if loud:
                 self.print.vanilla("Verifying ...")
             ix.attempt()
-            verified = helper.extract(ix.response, key="irreversible", fallback=False)
+            verified = helper.extract(ix.response, key=key, fallback=False)
             # debug temp
             # if not verified:
             #     self.print.response_in_full(ix.response)
@@ -675,7 +676,7 @@ class Cluster:
                 self.print.decorate("Failure!", fcolor="black", bcolor="red")
                 # debug temp
                 # self.print.response_in_full(ix.response)
-        return helper.extract(ix.response, key="irreversible", fallback=False)
+        return helper.extract(ix.response, key=key, fallback=False)
 
 
     def print_request(self, ix):
