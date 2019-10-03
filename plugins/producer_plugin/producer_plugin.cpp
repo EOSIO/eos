@@ -1626,13 +1626,13 @@ bool producer_plugin_impl::process_unapplied_trxs( const fc::time_point& deadlin
                } else {
                   // this failed our configured maximum transaction time, we don't want to replay it
                   ++num_failed;
-                  if( itr->next ) itr->next( trace->except->dynamic_copy_exception() );
+                  if( itr->next ) _unapplied_transactions.call_next( itr, trace->except->dynamic_copy_exception() );
                   itr = _unapplied_transactions.erase( itr );
                   continue;
                }
             } else {
                ++num_applied;
-               if( itr->next ) itr->next( trace );
+               if( itr->next ) _unapplied_transactions.call_next( itr,  trace );
                if( itr->trx_type != trx_enum_type::persisted ) {
                   itr = _unapplied_transactions.erase( itr );
                   continue;
@@ -1660,9 +1660,8 @@ bool producer_plugin_impl::process_scheduled_and_incoming_trxs( const fc::time_p
    auto& blacklist_by_id = _blacklisted_transactions.get<by_id>();
    chain::controller& chain = chain_plug->chain();
    time_point pending_block_time = chain.pending_block_time();
-   auto begin_itr = _unapplied_transactions.incoming_begin();
-   auto itr = begin_itr;
-   auto end_itr   = _unapplied_transactions.incoming_end();
+   auto itr     = _unapplied_transactions.incoming_begin();
+   auto end_itr = _unapplied_transactions.incoming_end();
    const auto& sch_idx = chain.db().get_index<generated_transaction_multi_index,by_delay>();
    const auto scheduled_trxs_size = sch_idx.size();
    auto sch_itr = sch_idx.begin();
@@ -1699,8 +1698,12 @@ bool producer_plugin_impl::process_scheduled_and_incoming_trxs( const fc::time_p
 
          --pending_incoming_process_limit;
          incoming_trx_weight -= 1.0;
-         process_incoming_transaction_async( itr->trx_meta, itr->trx_type == trx_enum_type::persisted, itr->next );
-         ++itr;
+
+         auto trx_meta = itr->trx_meta;
+         auto next = itr->next;
+         bool persist_until_expired = itr->trx_type == trx_enum_type::persisted;
+         itr = _unapplied_transactions.erase( itr );
+         process_incoming_transaction_async( trx_meta, persist_until_expired, next );
       }
 
       if (deadline <= fc::time_point::now()) {
@@ -1738,7 +1741,6 @@ bool producer_plugin_impl::process_scheduled_and_incoming_trxs( const fc::time_p
       if( sch_itr_next == sch_idx.end() ) break;
       sch_itr = sch_idx.lower_bound( boost::make_tuple( next_delay_until, next_id ) );
    }
-   _unapplied_transactions.erase( begin_itr, itr );
 
    if( scheduled_trxs_size > 0 ) {
       fc_dlog( _log,
@@ -1755,20 +1757,21 @@ bool producer_plugin_impl::process_incoming_trxs( const fc::time_point& deadline
    if( pending_incoming_process_limit ) {
       size_t processed = 0;
       fc_dlog( _log, "Processing ${n} pending transactions", ("n", pending_incoming_process_limit) );
-      auto begin_itr = _unapplied_transactions.incoming_begin();
-      auto itr = begin_itr;
-      auto end_itr   = _unapplied_transactions.incoming_end();
+      auto itr     = _unapplied_transactions.incoming_begin();
+      auto end_itr = _unapplied_transactions.incoming_end();
       while( pending_incoming_process_limit && itr != end_itr ) {
          if (deadline <= fc::time_point::now()) {
             exhausted = true;
             break;
          }
          --pending_incoming_process_limit;
-         process_incoming_transaction_async( itr->trx_meta, itr->trx_type == trx_enum_type::persisted, itr->next );
+         auto trx_meta = itr->trx_meta;
+         auto next = itr->next;
+         bool persist_until_expired = itr->trx_type == trx_enum_type::persisted;
+         itr = _unapplied_transactions.erase( itr );
+         process_incoming_transaction_async( trx_meta, persist_until_expired, next );
          ++processed;
-         ++itr;
       }
-      _unapplied_transactions.erase( begin_itr, itr );
       fc_dlog( _log, "Processed ${n} pending transactions, ${p} left", ("n", processed)("p", _unapplied_transactions.incoming_size()) );
    }
    return !exhausted;
