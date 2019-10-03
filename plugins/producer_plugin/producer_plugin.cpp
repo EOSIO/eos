@@ -1633,8 +1633,10 @@ bool producer_plugin_impl::process_unapplied_trxs( const fc::time_point& deadlin
             } else {
                ++num_applied;
                if( itr->next ) itr->next( trace );
-               itr = _unapplied_transactions.erase( itr );
-               continue;
+               if( itr->trx_type != trx_enum_type::persisted ) {
+                  itr = _unapplied_transactions.erase( itr );
+                  continue;
+               }
             }
          } LOG_AND_DROP();
          ++itr;
