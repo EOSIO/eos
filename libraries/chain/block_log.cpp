@@ -157,7 +157,7 @@ namespace eosio { namespace chain {
          explicit fileptr_datastream( FILE* file, const std::string& filename ) : _file(file), _filename(filename) {}
 
          void skip( size_t s ) {
-            auto status = fseek(_file, s, SEEK_SET);
+            auto status = fseek(_file, s, SEEK_CUR);
             EOS_ASSERT( status == 0, block_log_exception,
                         "Could not seek past ${bytes} bytes in Block log file at '${blocks_log}'. Returned status: ${status}",
                         ("bytes", s)("blocks_log", _filename)("status", status) );
@@ -1138,6 +1138,9 @@ namespace eosio { namespace chain {
 
    uint64_t trim_data::block_index(uint32_t n) const {
       using namespace std;
+      EOS_ASSERT( first_block <= n, block_log_exception,
+                  "cannot seek in ${file} to block number ${b}, block number ${first} is the first block",
+                  ("file", index_file_name.string())("b",n)("first",first_block) );
       EOS_ASSERT( n <= last_block, block_log_exception,
                   "cannot seek in ${file} to block number ${b}, block number ${last} is the last block",
                   ("file", index_file_name.string())("b",n)("last",last_block) );
@@ -1150,7 +1153,7 @@ namespace eosio { namespace chain {
       if (n == last_block + 1) {
          return ftell(blk_in);
       }
-      const uint64_t index_pos = sizeof(uint64_t) * (n - first_block);
+      const uint64_t index_pos = block_index(n);
       auto status = fseek(ind_in, index_pos, SEEK_SET);
       EOS_ASSERT( status == 0, block_log_exception, "cannot seek to ${file} ${pos} from beginning of file for block ${b}", ("file", index_file_name.string())("pos", index_pos)("b",n) );
       const uint64_t pos = ftell(ind_in);
