@@ -1021,14 +1021,14 @@ namespace eosio { namespace chain {
       detail::index_writer index(new_index_filename, num_blocks);
 
       uint64_t read_size = 0;
-      for(uint64_t written = to_write; written > 0; written -= read_size) {
-         read_size = to_write;
+      for(uint64_t to_write_remaining = to_write; to_write_remaining > 0; to_write_remaining -= read_size) {
+         read_size = to_write_remaining;
          if (read_size > detail::reverse_iterator::_buf_len) {
             read_size = detail::reverse_iterator::_buf_len;
          }
 
          // read in the previous contiguous memory into the read buffer
-         const auto start_of_blk_buffer_pos = original_file_block_pos + to_write - read_size;
+         const auto start_of_blk_buffer_pos = original_file_block_pos + to_write_remaining - read_size;
          status = fseek(original_block_log.blk_in, start_of_blk_buffer_pos, SEEK_SET);
          const auto num_read = fread(buf, read_size, 1, original_block_log.blk_in);
          EOS_ASSERT( num_read == 1, block_log_exception, "blocks.log read failed" );
