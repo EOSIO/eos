@@ -321,4 +321,77 @@ BOOST_AUTO_TEST_CASE( unapplied_transaction_queue_test ) try {
 } FC_LOG_AND_RETHROW() /// unapplied_transaction_queue_test
 
 
+BOOST_AUTO_TEST_CASE( unapplied_transaction_queue_erase_add ) try {
+
+   unapplied_transaction_queue q;
+   BOOST_CHECK( q.empty() );
+   BOOST_CHECK( q.size() == 0 );
+
+   auto trx1 = unique_trx_meta_data();
+   auto trx2 = unique_trx_meta_data();
+   auto trx3 = unique_trx_meta_data();
+   auto trx4 = unique_trx_meta_data();
+   auto trx5 = unique_trx_meta_data();
+   auto trx6 = unique_trx_meta_data();
+   auto trx7 = unique_trx_meta_data();
+   auto trx8 = unique_trx_meta_data();
+   auto trx9 = unique_trx_meta_data();
+
+   q.add_incoming( trx1, false, [](auto){} );
+   q.add_incoming( trx2, false, [](auto){} );
+   q.add_incoming( trx3, false, [](auto){} );
+   q.add_incoming( trx4, false, [](auto){} );
+   q.add_incoming( trx5, false, [](auto){} );
+   q.add_incoming( trx6, false, [](auto){} );
+
+   auto itr = q.incoming_begin();
+   auto end = q.incoming_end();
+
+   auto count = q.incoming_size();
+
+   while( count && itr != end ) {
+      auto trx_meta = itr->trx_meta;
+      if( count == 6 ) BOOST_CHECK( trx_meta == trx1 );
+      if( count == 5 ) BOOST_CHECK( trx_meta == trx2 );
+      if( count == 4 ) BOOST_CHECK( trx_meta == trx3 );
+      if( count == 3 ) BOOST_CHECK( trx_meta == trx4 );
+      if( count == 2 ) BOOST_CHECK( trx_meta == trx5 );
+      if( count == 1 ) BOOST_CHECK( trx_meta == trx6 );
+      itr = q.erase( itr );
+      q.add_incoming( trx_meta, false, [](auto){} );
+      --count;
+   }
+
+   BOOST_CHECK( q.size() == 6 );
+   BOOST_REQUIRE( next( q ) == trx1 );
+   BOOST_REQUIRE( next( q ) == trx2 );
+   BOOST_REQUIRE( next( q ) == trx3 );
+   BOOST_REQUIRE( next( q ) == trx4 );
+   BOOST_REQUIRE( next( q ) == trx5 );
+   BOOST_REQUIRE( next( q ) == trx6 );
+   BOOST_CHECK( q.empty() );
+
+   q.add_incoming( trx1, false, [](auto){} );
+   q.add_incoming( trx2, false, [](auto){} );
+   q.add_incoming( trx3, false, [](auto){} );
+   q.add_incoming( trx4, false, [](auto){} );
+   q.add_incoming( trx5, false, [](auto){} );
+   q.add_incoming( trx6, false, [](auto){} );
+
+   itr = q.incoming_begin();
+   end = q.incoming_end();
+
+   count = q.incoming_size();
+   while( itr != end ) {
+      if( count % 2 == 0) {
+         itr = q.erase( itr );
+      } else {
+         ++itr;
+      }
+      --count;
+   }
+
+} FC_LOG_AND_RETHROW() /// unapplied_transaction_queue_test
+
+
 BOOST_AUTO_TEST_SUITE_END()
