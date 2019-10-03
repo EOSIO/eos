@@ -282,13 +282,13 @@ function ensure-llvm() {
         && make -j${JOBS} install"
         echo " - LLVM successfully installed @ ${LLVM_ROOT}"
     elif [[ $ARCH == "Darwin" ]]; then
-        execute ln -sf /usr/local/opt/llvm@7 $LLVM_ROOT
+        execute ln -snf /usr/local/opt/llvm@7 $LLVM_ROOT
     elif [[ $NAME == "Ubuntu" ]]; then
-        execute ln -sf /usr/lib/llvm-7 $LLVM_ROOT
+        execute ln -snf /usr/lib/llvm-7 $LLVM_ROOT
     elif [[ $NAME == "Amazon Linux" ]]; then
         execute unlink $LLVM_ROOT || true
     elif [[ $NAME == "CentOS Linux" ]]; then
-        execute ln -sf /opt/rh/llvm-toolset-7.0/root $LLVM_ROOT
+        execute ln -snf /opt/rh/llvm-toolset-7.0/root $LLVM_ROOT
     fi
 }
 
