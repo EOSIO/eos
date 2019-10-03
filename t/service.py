@@ -609,6 +609,10 @@ class Cluster:
         self.push_actions(node_id=node_id, actions=actions, name="votes for producers", **kwargs)
 
 
+    def get_block(self, block_num_or_id, **kwargs):
+        return self.call("get_block", cluster_id=self.cluster_id, block_num_or_id=block_num_or_id, verify=False, **kwargs)
+
+
     def verify_head_block_producer(self, retry=5, wait=1):
         self.print_header("get head block producer")
         get_head_block_producer = lambda : self.get_cluster_info(loud=False)["result"][0][1]["head_block_producer"]
