@@ -76,16 +76,28 @@ BOOST_AUTO_TEST_SUITE(ram_tests)
          produce_blocks(10);
 
          create_account_with_resources(N(testram33333), config::system_account_name, false, core_from_string(
-               std::to_string(min_account_stake / 10000 + 1) + ".0000")); //stake 101
+               std::to_string(min_account_stake / 10000 + 2) + ".0000")); //stake 102
          auto t3total = get_total_stake(N(testram33333));
-         BOOST_REQUIRE_EQUAL(t3total["own_stake_amount"].as_uint64(), 1010000);
-
+         BOOST_REQUIRE_EQUAL(t3total["own_stake_amount"].as_uint64(), 102'0000);
          produce_blocks(10);
+
+         // wait until stake-lock period ends
+         produce_min_num_of_blocks_to_spend_time_wo_inactive_prod( fc::days( 180 ) );
+
+         // undelegate 0.0001 REM to initiate stake unlocking
+         tester->push_action(
+            config::system_account_name, N(undelegatebw), N(testram33333),
+            mvo()("from", "testram33333")("receiver", "testram33333")("unstake_quantity", core_from_string("0.0001"))
+         );
+         produce_blocks(10);
+
+         // wait until stake-unlock period ends
+         produce_min_num_of_blocks_to_spend_time_wo_inactive_prod( fc::days( 180 ) );
          BOOST_REQUIRE_EXCEPTION(
                tester->push_action(config::system_account_name, N(undelegatebw), N(testram33333), mvo()
                      ("from", "testram33333")
                      ("receiver", "testram33333")
-                     ("unstake_quantity", core_from_string("2.0000"))),
+                     ("unstake_quantity", core_from_string("2.9999"))),
                eosio_assert_message_exception,
                fc_exception_message_starts_with("assertion failure with message: insufficient minimal account stake"));
          produce_blocks(10);
@@ -95,7 +107,7 @@ BOOST_AUTO_TEST_SUITE(ram_tests)
          int64_t net_weight;
          int64_t cpu_weight;
          {//unstake own REM tokens
-            unstake(N(testram33333), core_from_string("1.0000"));
+            unstake(N(testram33333), core_from_string("1.9999"));
             produce_blocks(10);
             PRINT_USAGE(testram33333)
             const auto t3total = get_total_stake(N(testram33333));

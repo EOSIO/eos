@@ -31,16 +31,12 @@ namespace eosiosystem {
       check( producer_key != eosio::public_key(), "public key should not be the default value" );
       require_auth( producer );
 
-      // TODO implement as constexpr string
-      static const auto stake_err = "user should stake at least "s + asset(producer_stake_threshold, core_symbol()).to_string() + " to become a producer"s;
+      user_resources_table totals_tbl( _self, producer.value );
+      const auto& tot = totals_tbl.get(producer.value, "producer must have resources");
+      check( tot.own_stake_amount >= producer_stake_threshold, "user should stake at least "s + asset(producer_stake_threshold, core_symbol()).to_string() + " to become a producer"s );
 
       auto prod = _producers.find( producer.value );
       const auto ct = current_time_point();
-
-      user_resources_table totals_tbl( _self, producer.value );
-      const auto& tot = totals_tbl.get(producer.value, "producer must have resources");
-      const auto &voter = _voters.get(producer.value, "user has no resources");
-      check( voter.staked >= producer_stake_threshold, stake_err );
 
       if ( prod != _producers.end() ) {
          if (!prod->active()) {
@@ -82,22 +78,10 @@ namespace eosiosystem {
          });
          _gstate.total_producer_stake += tot.own_stake_amount;
       }
-
-       const auto lock_time = voter.locked_stake >= system_contract::producer_stake_threshold ? current_time_point()
-                                                                                              : current_time_point() + _gstate.stake_lock_period;
-       _voters.modify(voter, producer, [&](auto &v) {
-           v.stake_lock_time = lock_time;
-           v.locked_stake = tot.own_stake_amount;
-       });
    }
 
    void system_contract::unregprod( const name& producer ) {
       require_auth( producer );
-
-      const auto &voter = _voters.get(producer.value, "user has no resources");
-      check( voter.stake_lock_time <= current_time_point(), "producers are not allowed to unregister during stake lock period" );
-
-      claimrewards(producer);
 
       const auto& prod = _producers.get( producer.value, "producer not found" );
       if (prod.active()) {
@@ -108,10 +92,6 @@ namespace eosiosystem {
 
       _producers.modify( prod, same_payer, [&]( producer_info& info ){
          info.deactivate();
-      });
-
-      _voters.modify(voter, producer, [&](auto &v) {
-         v.stake_lock_time = current_time_point() + _gstate.stake_unlock_period;
       });
    }
 
@@ -163,7 +143,10 @@ namespace eosiosystem {
    void system_contract::voteproducer( const name& voter_name, const name& proxy, const std::vector<name>& producers ) {
       require_auth( voter_name );
 
-      check( is_block_producer( voter_name ), "only block producers are allowed to vote" );
+      user_resources_table totals_tbl( _self, voter_name.value );
+      const auto& tot = totals_tbl.get( voter_name.value, "producer must have resources" );
+      
+      check( tot.own_stake_amount > system_contract::producer_stake_threshold, "user should stake at least "s + asset(producer_stake_threshold, core_symbol()).to_string() + " to vote"s );
 
       vote_stake_updater( voter_name );
       update_votes( voter_name, proxy, producers, true );
@@ -338,16 +321,6 @@ namespace eosiosystem {
             v.last_vote_weight = new_weight;
          }
       );
-   }
-
-   bool system_contract::does_satisfy_stake_requirement( const name& producer ) const {
-      const auto voter = _voters.find( producer.value );
-
-      if ( voter == _voters.end() ) {
-         return false;
-      }
-
-      return voter->staked >= producer_stake_threshold;
    }
 
    bool system_contract::is_block_producer( const name& producer ) const {

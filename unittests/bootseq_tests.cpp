@@ -536,13 +536,17 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         BOOST_REQUIRE(control->head_block_time().time_since_epoch() < first_june_2028);
 
         // This should thrown an error, since block one can only unstake all his stake after 10 years
-
         BOOST_REQUIRE_THROW(undelegate_bandwidth(N(b1), N(b1), core_from_string("49999500.0000")), eosio_assert_message_exception);
 
         // Skip 10 years
         produce_block(first_june_2028 - control->head_block_time().time_since_epoch());
 
+        // initiate undelegation
+        undelegate_bandwidth(N(b1), N(b1), core_from_string("1.0000"));
+
+
         // Block one should be able to unstake all his stake now
+        produce_min_num_of_blocks_to_spend_time_wo_inactive_prod( fc::days( 180 ) );
         undelegate_bandwidth(N(b1), N(b1), core_from_string("49999500.0000"));
 
         return;
