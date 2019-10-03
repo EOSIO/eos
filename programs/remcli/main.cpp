@@ -72,6 +72,7 @@ Options:
 ```
 */
 
+#include <algorithm>
 #include <pwd.h>
 #include <string>
 #include <vector>
@@ -875,7 +876,7 @@ void ensure_remvault_running(CLI::App* app) {
     if (app->get_subcommand("create")->got_subcommand("key")) // create key does not require wallet
        return;
     if (auto* subapp = app->get_subcommand("system")) {
-       if (subapp->got_subcommand("listproducers") || subapp->got_subcommand("listbw") || subapp->got_subcommand("bidnameinfo")) // system list* do not require wallet
+       if (subapp->got_subcommand("listproducers") || subapp->got_subcommand("listvoters") || subapp->got_subcommand("listbw") || subapp->got_subcommand("bidnameinfo")) // system list* do not require wallet
          return;
     }
     if (wallet_url != default_wallet_url)
@@ -1229,6 +1230,56 @@ struct list_producers_subcommand {
                    row["producer_key"].as_string().c_str(),
                    row["url"].as_string().c_str(),
                    row["total_votes"].as_double() / weight);
+         if ( !result.more.empty() )
+            std::cout << "-L " << result.more << " for more" << std::endl;
+      });
+   }
+};
+
+struct list_voters_subcommand {
+   bool print_json = false;
+   uint32_t limit = 50;
+   std::string lower;
+
+   list_voters_subcommand(CLI::App* actionRoot) {
+      auto list_producers = actionRoot->add_subcommand("listvoters", localized("List voters"));
+      list_producers->add_flag("--json,-j", print_json, localized("Output in JSON format"));
+      list_producers->add_option("-l,--limit", limit, localized("The maximum number of rows to return"));
+      list_producers->add_option("-L,--lower", lower, localized("lower bound value of key, defaults to first"));
+      list_producers->set_callback([this] {
+         auto rawResult = call(get_voters_func, fc::mutable_variant_object
+            ("json", true)("lower_bound", lower)("limit", limit));
+         if ( print_json ) {
+            std::cout << fc::json::to_pretty_string(rawResult) << std::endl;
+            return;
+         }
+         auto result = rawResult.as<eosio::chain_apis::read_only::get_voters_result>();
+         if ( result.rows.empty() ) {
+            std::cout << "No voters found" << std::endl;
+            return;
+         }
+
+         printf("%-13s %-21.21s %-21.21s %-19s %-18s %s\n", "Voter", "Last vote weight", "Adjusted vote weight", "Guardian status", "Vote power maturity", "Staked");
+         for ( auto& row : result.rows ) {
+            const auto last_reassertion_time = fc::time_point_sec::from_iso_string( row["last_reassertion_time"].as_string() );
+            const auto vote_is_reasserted = (last_reassertion_time + fc::days(7)) > fc::time_point::now();
+
+            const auto stake_lock_time = fc::time_point_sec::from_iso_string( row["vote_mature_time"].as_string() );
+            const auto weeks_to_mature = std::max( (stake_lock_time - fc::time_point::now()).count() / fc::days(7).count(), int64_t{0} );
+            const auto eos_weight = std::pow( 2, int64_t((fc::time_point::now().sec_since_epoch() - (config::block_timestamp_epoch / 1000)) / fc::days(7).to_seconds()) / double(52) );
+            const auto rem_weight = 1.0 - weeks_to_mature / 25.0;
+            const auto real_votes = row["last_vote_weight"].as_double() / eos_weight / rem_weight;
+
+            printf(
+               "%-13s %-21.8f %-21.8f %-19s %15li/25 %li\n",
+               row["owner"].as_string().c_str(),
+               row["last_vote_weight"].as_double(),
+               real_votes,
+               (vote_is_reasserted ? "Yes" : "No"),
+               (25 - weeks_to_mature),
+               row["staked"].as_int64()
+            );
+         }
          if ( !result.more.empty() )
             std::cout << "-L " << result.more << " for more" << std::endl;
       });
@@ -2201,6 +2252,18 @@ void get_account( const string& accountName, const string& coresym, bool json_fo
             } else {
                std::cout << indent << "<not voted>" << std::endl;
             }
+
+            const auto last_reassertion_time = fc::time_point_sec::from_iso_string( obj["last_reassertion_time"].as_string() );
+            const auto vote_is_reasserted = (last_reassertion_time + fc::days(7)) > fc::time_point::now();
+
+            const auto stake_lock_time = fc::time_point_sec::from_iso_string( obj["stake_lock_time"].as_string() );
+            const auto weeks_to_mature = std::max( (stake_lock_time - fc::time_point::now()).count() / fc::days(7).count(), int64_t{0} );
+
+            std::cout << std::endl << "Staking info:" << std::endl
+                      << indent << "Guardian status: " << std::right << std::setw(24) << (vote_is_reasserted ? "yes" : "no") << std::endl
+                      << indent << "Stake locked until: " << std::right << std::setw(21) << string(stake_lock_time) << std::endl
+                      << indent << "Vote power maturity: " << std::setw(17) << std::right << (25-weeks_to_mature) << "/25" << std::endl
+                      << indent << "Current vote power: " << std::right << std::setw(21) << std::fixed << setprecision(3) << (1.0 -weeks_to_mature / 25.0) << std::endl;
          } else {
             std::cout << "proxy:" << indent << proxy << std::endl;
          }
@@ -3777,6 +3840,7 @@ int main( int argc, char** argv ) {
    auto unapproveProducer = unapprove_producer_subcommand(voteProducer);
 
    auto listProducers = list_producers_subcommand(system);
+   auto listVoters = list_voters_subcommand(system);
 
    auto delegateBandWidth = delegate_bandwidth_subcommand(system);
    auto undelegateBandWidth = undelegate_bandwidth_subcommand(system);

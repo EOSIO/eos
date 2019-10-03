@@ -358,6 +358,19 @@ public:
 
    get_producers_result get_producers( const get_producers_params& params )const;
 
+   struct get_voters_params {
+      bool        json = false;
+      string      lower_bound;
+      uint32_t    limit = 50;
+   };
+
+   struct get_voters_result {
+      vector<fc::variant> rows; ///< one row per item, either encoded as hex string or JSON object
+      string              more; ///< fill lower_bound with this value to fetch more rows
+   };
+
+   get_voters_result get_voters( const read_only::get_voters_params& p ) const;
+
    struct get_producer_schedule_params {
    };
 
@@ -750,6 +763,9 @@ FC_REFLECT( eosio::chain_apis::read_only::get_currency_stats_result, (supply)(ma
 
 FC_REFLECT( eosio::chain_apis::read_only::get_producers_params, (json)(lower_bound)(limit) )
 FC_REFLECT( eosio::chain_apis::read_only::get_producers_result, (rows)(total_producer_vote_weight)(more) );
+
+FC_REFLECT( eosio::chain_apis::read_only::get_voters_params,    (json)(lower_bound)(limit) )
+FC_REFLECT( eosio::chain_apis::read_only::get_voters_result,    (rows)(more) );
 
 FC_REFLECT_EMPTY( eosio::chain_apis::read_only::get_producer_schedule_params )
 FC_REFLECT( eosio::chain_apis::read_only::get_producer_schedule_result, (active)(pending)(proposed) );
