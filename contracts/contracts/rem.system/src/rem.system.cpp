@@ -2,10 +2,12 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 
+
 #include <eosio/crypto.hpp>
 #include <eosio/dispatcher.hpp>
 
 #include <rem.system/rem.system.hpp>
+#include <rem.attr/rem.attr.hpp>
 
 #include "producer_pay.cpp"
 #include "delegate_bandwidth.cpp"
@@ -67,6 +69,7 @@ namespace eosiosystem {
       eosio_global_rem_state gs;
       gs.per_stake_share = 0.6;
       gs.per_vote_share = 0.3;
+
       return gs;
    }
 
@@ -105,6 +108,24 @@ namespace eosiosystem {
 
       check(period_in_days != 0, "unlock period cannot be zero");
       _gstate.stake_unlock_period = eosio::days(period_in_days);
+   }
+
+   void system_contract::setgiftcontra( name value ) {
+      require_auth(_self);
+
+      _gremstate.gifter_attr_contract = value;
+   }
+
+   void system_contract::setgiftiss( name value ) {
+      require_auth(_self);
+
+      _gremstate.gifter_attr_issuer = value;
+   }
+
+   void system_contract::setgiftattr( name value ) {
+      require_auth(_self);
+
+      _gremstate.gifter_attr_name = value;
    }
 
    void system_contract::setminstake( uint64_t min_account_stake ) {
@@ -306,7 +327,7 @@ namespace eosiosystem {
     *  who can create accounts with the creator's name as a suffix.
     *
     */
-   void native::newaccount( const name&       creator,
+   void system_contract::newaccount( const name&       creator,
                             const name&       newact,
                             ignore<authority> owner,
                             ignore<authority> active ) {
@@ -336,13 +357,24 @@ namespace eosiosystem {
 
       user_resources_table  userres( _self, newact.value);
 
+      int64_t free_stake_amount = 0;
+      int64_t free_gift_bytes   = 0;
+
+      if ( eosio::attribute::has_attribute( _gremstate.gifter_attr_contract, _gremstate.gifter_attr_issuer, creator, _gremstate.gifter_attr_name ) ) {
+         const auto system_token_max_supply = eosio::token::get_max_supply(token_account, system_contract::get_core_symbol().code() );
+         const double bytes_per_token       = (double)_gstate.max_ram_size / (double)system_token_max_supply.amount;
+         free_stake_amount                  = _gstate.min_account_stake;
+         free_gift_bytes                    = bytes_per_token * free_stake_amount;
+      }
+
       userres.emplace( newact, [&]( auto& res ) {
         res.owner = newact;
         res.net_weight = asset( 0, system_contract::get_core_symbol() );
         res.cpu_weight = asset( 0, system_contract::get_core_symbol() );
+        res.free_stake_amount = free_stake_amount;
       });
 
-      set_resource_limits( newact, 0, 0, 0 );
+      set_resource_limits( newact, free_gift_bytes, 0, 0 );
    }
 
    void native::setabi( const name& acnt, const std::vector<char>& abi ) {

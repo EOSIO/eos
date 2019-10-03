@@ -171,31 +171,12 @@ namespace eosiosystem {
 
          /**
           * @{
-          * These actions map one-on-one with the ones defined in 
+          * These actions map one-on-one with the ones defined in
           * [Native Action Handlers](@ref native_action_handlers) section.
           * They are present here so they can show up in the abi file and thus user can send them
-          * to this contract, but they have no specific implementation at this contract level, 
+          * to this contract, but they have no specific implementation at this contract level,
           * they will execute the implementation at the core level and nothing else.
           */
-         /**
-          * New account action 
-          * 
-          * @details Called after a new account is created. This code enforces resource-limits rules
-          * for new accounts as well as new account naming conventions.
-          *
-          * 1. accounts cannot contain '.' symbols which forces all acccounts to be 12
-          * characters long without '.' until a future account auction process is implemented
-          * which prevents name squatting.
-          *
-          * 2. new accounts must stake a minimal number of tokens (as set in system parameters)
-          * therefore, this method will execute an inline buyram from receiver for newacnt in
-          * an amount equal to the current new account creation fee.
-          */
-         [[eosio::action]]
-         void newaccount( const name&       creator,
-                          const name&       name,
-                          ignore<authority> owner,
-                          ignore<authority> active);
 
          /**
           * Update authorization action.
@@ -310,7 +291,6 @@ namespace eosiosystem {
 
          /** @}*/
 
-         using newaccount_action = eosio::action_wrapper<"newaccount"_n, &native::newaccount>;
          using updateauth_action = eosio::action_wrapper<"updateauth"_n, &native::updateauth>;
          using deleteauth_action = eosio::action_wrapper<"deleteauth"_n, &native::deleteauth>;
          using linkauth_action = eosio::action_wrapper<"linkauth"_n, &native::linkauth>;

@@ -9,6 +9,8 @@ namespace eosio {
    public:
       using contract::contract;
 
+      static bool has_attribute( const name& attr_contract_account, const name& issuer, const name& receiver, const name& attribute_name );
+
       [[eosio::action]]
       void confirm( const name& owner, const name& issuer, const name& attribute_name );
 
@@ -84,4 +86,19 @@ namespace eosio {
       bool need_confirm(int32_t ptype) const;
    };
 
+   bool attribute::has_attribute( const name& attr_contract_account, const name& issuer, const name& receiver, const name& attribute_name )
+   {
+      attribute_info_table attributes_info{ attr_contract_account, attr_contract_account.value };
+      const auto it = attributes_info.find( attribute_name.value );
+
+      if ( it == attributes_info.end() ) {
+         return false;
+      }
+
+      attributes_table attributes( attr_contract_account, attribute_name.value );
+      auto idx = attributes.get_index<"reciss"_n>();
+      const auto attr_it = idx.find( attribute_data::combine_receiver_issuer(receiver, issuer) );
+
+      return attr_it != idx.end();
+   }
 } /// namespace eosio

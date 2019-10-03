@@ -3,7 +3,9 @@ add_contract(rem.system rem.system ${CMAKE_CURRENT_SOURCE_DIR}/src/rem.system.cp
 target_include_directories(rem.system
    PUBLIC
    ${CMAKE_CURRENT_SOURCE_DIR}/include
-   ${CMAKE_CURRENT_SOURCE_DIR}/../rem.token/include)
+   ${CMAKE_CURRENT_SOURCE_DIR}/../rem.token/include
+   ${CMAKE_CURRENT_SOURCE_DIR}/../rem.attr/include
+)
 
 set_target_properties(rem.system
    PROPERTIES

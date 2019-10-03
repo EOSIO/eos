@@ -153,7 +153,6 @@ namespace eosio {
       return static_cast<privacy_type>(ptype) == privacy_type::PublicConfirmedPointer ||
          static_cast<privacy_type>(ptype) == privacy_type::PrivateConfirmedPointer;
    }
-
 } /// namespace eosio
 
 EOSIO_DISPATCH( eosio::attribute, (confirm)(create)(invalidate)(remove)(setattr)(unsetattr) )
