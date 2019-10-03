@@ -1115,17 +1115,18 @@ namespace eosio { namespace chain {
       }
 
       const uint64_t start_of_blocks = ftell(blk_in);
+
+      const auto status = fseek(ind_in, 0, SEEK_END);                //get length of blocks.index (gives number of blocks)
+      EOS_ASSERT( status == 0, block_log_exception, "cannot seek to ${file} end", ("file", index_file_name.string()) );
+      const uint64_t file_end = ftell(ind_in);                //get length of blocks.index (gives number of blocks)
+      last_block = first_block + file_end/sizeof(uint64_t) - 1;
+
       first_block_pos = block_pos(first_block);
       EOS_ASSERT(start_of_blocks == first_block_pos, block_log_exception,
                  "Block log ${file} was determined to have its first block at ${determined}, but the block index "
                  "indicates the first block is at ${index}",
                  ("file", block_file_name.string())("determined", start_of_blocks)("index",first_block_pos));
-
       ilog("first block= ${first}",("first",first_block));
-      const auto status = fseek(ind_in, 0, SEEK_END);                //get length of blocks.index (gives number of blocks)
-      EOS_ASSERT( status == 0, block_log_exception, "cannot seek to ${file} end", ("file", index_file_name.string()) );
-      const uint64_t file_end = ftell(ind_in);                //get length of blocks.index (gives number of blocks)
-      last_block = first_block + file_end/sizeof(uint64_t) - 1;
       ilog("last block= ${first}",("first",first_block));
    }
 
