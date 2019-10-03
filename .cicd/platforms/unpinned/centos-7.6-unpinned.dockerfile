@@ -6,14 +6,13 @@ RUN yum update -y && \
     yum --enablerepo=extras install -y centos-release-scl && \
     yum --enablerepo=extras install -y devtoolset-8 && \
     yum --enablerepo=extras install -y which git autoconf automake libtool make bzip2 doxygen \
-    graphviz bzip2-devel openssl-devel gmp-devel ocaml libicu-devel llvm-toolset-7.0-llvm-devel llvm-toolset-7.0-llvm-static \
+    graphviz bzip2-devel openssl-devel gmp-devel ocaml libicu-devel llvm7.0-devel llvm7.0-static \
     python python-devel rh-python36 gettext-devel file libusbx-devel \
     libcurl-devel patch vim-common jq
 # build cmake.
 RUN curl -LO https://cmake.org/files/v3.13/cmake-3.13.2.tar.gz && \
     source /opt/rh/devtoolset-8/enable && \
     source /opt/rh/rh-python36/enable && \
-    source /opt/rh/llvm-toolset-7.0/enable && \
     tar -xzf cmake-3.13.2.tar.gz && \
     cd cmake-3.13.2 && \
     ./bootstrap --prefix=/usr/local && \
@@ -25,7 +24,6 @@ RUN curl -LO https://cmake.org/files/v3.13/cmake-3.13.2.tar.gz && \
 RUN curl -LO https://dl.bintray.com/boostorg/release/1.71.0/source/boost_1_71_0.tar.bz2 && \
     source /opt/rh/devtoolset-8/enable && \
     source /opt/rh/rh-python36/enable && \
-    source /opt/rh/llvm-toolset-7.0/enable && \
     tar -xjf boost_1_71_0.tar.bz2 && \
     cd boost_1_71_0 && \
     ./bootstrap.sh --prefix=/usr/local && \
@@ -40,7 +38,6 @@ RUN curl -LO https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-amazon-3.6.3.
 RUN curl -LO https://github.com/mongodb/mongo-c-driver/releases/download/1.13.0/mongo-c-driver-1.13.0.tar.gz && \
     source /opt/rh/devtoolset-8/enable && \
     source /opt/rh/rh-python36/enable && \
-    source /opt/rh/llvm-toolset-7.0/enable && \
     tar -xzf mongo-c-driver-1.13.0.tar.gz && \
     cd mongo-c-driver-1.13.0 && \
     mkdir -p build && \
@@ -54,7 +51,6 @@ RUN curl -LO https://github.com/mongodb/mongo-c-driver/releases/download/1.13.0/
 RUN curl -L https://github.com/mongodb/mongo-cxx-driver/archive/r3.4.0.tar.gz -o mongo-cxx-driver-r3.4.0.tar.gz && \
     source /opt/rh/devtoolset-8/enable && \
     source /opt/rh/rh-python36/enable && \
-    source /opt/rh/llvm-toolset-7.0/enable && \
     tar -xzf mongo-cxx-driver-r3.4.0.tar.gz && \
     cd mongo-cxx-driver-r3.4.0 && \
     sed -i 's/\"maxAwaitTimeMS\", ount/\"maxAwaitTimeMS\", static_cast<int64_t>(count)/' src/mongocxx/options/change_stream.cpp && \
