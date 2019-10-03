@@ -979,7 +979,11 @@ namespace eosio { namespace chain {
       }
       fc::cfile new_block_file;
       new_block_file.set_file_path(new_block_filename);
+      // need to open as append in case the file doesn't already exist, then reopen without append to allow writing the
+      // file in any order
       new_block_file.open( LOG_WRITE_C );
+      new_block_file.close();
+      new_block_file.open( LOG_RW_C );
 
       static_assert( block_log::max_supported_version == 3,
                      "Code was written to support version 3 format, need to update this code for latest format." );
@@ -996,7 +1000,6 @@ namespace eosio { namespace chain {
 
       const auto new_block_file_first_block_pos = new_block_file.tellp();
       // ****** end of new block log header
-
 
       // copy over remainder of block log to new block log
       auto buffer =  make_unique<char[]>(detail::reverse_iterator::_buf_len);
@@ -1043,6 +1046,7 @@ namespace eosio { namespace chain {
             index.write(pos_content);
             original_pos = start_of_this_block - pos_size;
          }
+         new_block_file.seek(new_block_file_first_block_pos + to_write_remaining - read_size);
          new_block_file.write(buf, read_size);
       }
       index.complete();
@@ -1051,10 +1055,10 @@ namespace eosio { namespace chain {
       new_block_file.flush();
       new_block_file.close();
 
-      fc::path old_log = block_dir / "old.log";
+      fc::path old_log = temp_dir / "old.log";
       rename(original_block_log.block_file_name, old_log);
       rename(new_block_filename, original_block_log.block_file_name);
-      fc::path old_ind = block_dir / "old.index";
+      fc::path old_ind = temp_dir / "old.index";
       rename(original_block_log.index_file_name, old_ind);
       rename(new_index_filename, original_block_log.index_file_name);
 
@@ -1127,7 +1131,7 @@ namespace eosio { namespace chain {
                  "indicates the first block is at ${index}",
                  ("file", block_file_name.string())("determined", start_of_blocks)("index",first_block_pos));
       ilog("first block= ${first}",("first",first_block));
-      ilog("last block= ${first}",("first",first_block));
+      ilog("last block= ${last}",("last",last_block));
    }
 
    trim_data::~trim_data() {
