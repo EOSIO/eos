@@ -591,10 +591,10 @@ namespace eosio { namespace chain {
          new_block_stream << chain_id;
       }
       else {
-         EOS_ASSERT( false, block_log_exception,
-                     "Block log ${file} is not supported. version: ${ver} and first_block_num: ${fbn} does not contain "
-                     "a genesis_state nor a chain_id.",
-                     ("file", (backup_dir / "blocks.log").generic_string())("ver", version)("fbn", first_block_num));
+         EOS_THROW( block_log_exception,
+                    "Block log ${file} is not supported. version: ${ver} and first_block_num: ${fbn} does not contain "
+                    "a genesis_state nor a chain_id.",
+                    ("file", (backup_dir / "blocks.log").generic_string())("ver", version)("fbn", first_block_num));
       }
 
       if (version != 1) {
