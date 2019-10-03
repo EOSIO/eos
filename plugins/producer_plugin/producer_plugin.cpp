@@ -652,6 +652,8 @@ void producer_plugin::set_program_options(
           "offset of last block producing time in microseconds. Negative number results in blocks to go out sooner, and positive number results in blocks to go out later")
          ("max-scheduled-transaction-time-per-block-ms", boost::program_options::value<int32_t>()->default_value(100),
           "Maximum wall-clock time, in milliseconds, spent retiring scheduled transactions in any block before returning to normal transaction processing.")
+         ("subjective-cpu-leeway-us", boost::program_options::value<int32_t>()->default_value( config::default_subjective_cpu_leeway_us ),
+          "Amount of cpu to allow transaction to consume when account has exhausted cpu.")
          ("incoming-defer-ratio", bpo::value<double>()->default_value(1.0),
           "ratio between incoming transations and deferred transactions when both are exhausted")
          ("incoming-transaction-queue-size-mb", bpo::value<uint16_t>()->default_value( 1024 ),
@@ -794,6 +796,10 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
    my->_last_block_time_offset_us = options.at("last-block-time-offset-us").as<int32_t>();
 
    my->_max_scheduled_transaction_time_per_block_ms = options.at("max-scheduled-transaction-time-per-block-ms").as<int32_t>();
+
+   if( options.at( "subjective-cpu-leeway-us" ).as<int32_t>() != config::default_subjective_cpu_leeway_us ) {
+      chain.set_subjective_cpu_leeway( fc::microseconds( options.at( "subjective-cpu-leeway-us" ).as<int32_t>() ) );
+   }
 
    my->_max_transaction_time_ms = options.at("max-transaction-time").as<int32_t>();
 
