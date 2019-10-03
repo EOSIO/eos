@@ -135,8 +135,6 @@ namespace eosiosystem {
       uint64_t             min_account_stake = 1000000; //minimum stake for new created account 100'0000 REM
       uint64_t             total_ram_bytes_reserved = 0;
       int64_t              total_ram_stake = 0;
-      microseconds         stake_lock_period = eosio::days(180);
-      microseconds         stake_unlock_period = eosio::days(180);
       //producer name and pervote factor
       std::vector<std::pair<eosio::name, double>> last_schedule;
       uint32_t last_schedule_version = 0;
@@ -158,12 +156,11 @@ namespace eosiosystem {
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
       EOSLIB_SERIALIZE_DERIVED( eosio_global_state, eosio::blockchain_parameters, (max_ram_size)(min_account_stake)
-                                (total_ram_bytes_reserved)(total_ram_stake)(stake_lock_period)(stake_unlock_period)
-                                (last_schedule)(last_schedule_version)(current_round_start_time)
-                                (last_producer_schedule_update)(last_pervote_bucket_fill)
+                                (total_ram_bytes_reserved)(total_ram_stake)(last_schedule)(last_schedule_version)
+                                (current_round_start_time) (last_producer_schedule_update)(last_pervote_bucket_fill)
                                 (perstake_bucket)(pervote_bucket)(perblock_bucket)(total_unpaid_blocks)(total_producer_stake)
-                                (total_activated_stake)(thresh_activated_stake_time)
-                                (last_producer_schedule_size)(total_producer_vote_weight)(total_active_producer_vote_weight)(last_name_close) )
+                                (total_activated_stake)(thresh_activated_stake_time)(last_producer_schedule_size)
+                                (total_producer_vote_weight)(total_active_producer_vote_weight)(last_name_close) )
    };
 
    /**
@@ -217,8 +214,17 @@ namespace eosiosystem {
       name gifter_attr_issuer   = name{"rem.attr"};
       name gifter_attr_name     = name{"accgifter"};
 
+      int64_t producer_stake_threshold = 250'000'0000LL;
 
-      EOSLIB_SERIALIZE( eosio_global_rem_state, (per_stake_share)(per_vote_share)(gifter_attr_contract)(gifter_attr_issuer)(gifter_attr_name) )
+      microseconds stake_lock_period = eosio::days(180);
+      microseconds stake_unlock_period = eosio::days(180);
+
+      microseconds reassertion_period = eosio::days( 7 );
+
+      EOSLIB_SERIALIZE( eosio_global_rem_state, (per_stake_share)(per_vote_share)
+                                                (gifter_attr_contract)(gifter_attr_issuer)(gifter_attr_name)
+                                                (producer_stake_threshold)(stake_lock_period)(stake_unlock_period)
+                                                (reassertion_period) )
    };
 
    /**
@@ -275,9 +281,6 @@ namespace eosiosystem {
     */
    struct [[eosio::table, eosio::contract("rem.system")]] voter_info {
    public:
-      static const microseconds reassertion_period;
-
-   public:
       name                owner;     /// the voter
       name                proxy;     /// the proxy set by the voter, if any
       std::vector<name>   producers; /// the producers approved by this voter if no proxy set
@@ -314,9 +317,6 @@ namespace eosiosystem {
       };
 
       time_point          last_reassertion_time;
-
-      // Block producer should reassert its status (via voting) every voter_info::reassertion_period days
-      bool vote_is_reasserted() const;
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
       EOSLIB_SERIALIZE( voter_info, (owner)(proxy)(producers)(staked)(locked_stake)(last_vote_weight)(stake_lock_time)(last_undelegate_time)(proxied_vote_weight)(is_proxy)(flags1)(reserved2)(reserved3)(last_reassertion_time) )
@@ -589,10 +589,8 @@ namespace eosiosystem {
          static constexpr symbol ram_symbol     = symbol(symbol_code("RAM"), 0);
          static constexpr symbol rex_symbol     = symbol(symbol_code("REX"), 4);
 
-
          static constexpr uint8_t max_block_producers      = 21;
-         static constexpr int64_t producer_stake_threshold = 250'000'0000LL;
-
+         
 
          /**
           * System contract constructor.
@@ -1425,6 +1423,9 @@ namespace eosiosystem {
          // defined in producer_pay.cpp
          int64_t share_pervote_reward_between_producers(int64_t amount);
          void update_pervote_shares();
+
+         // Block producer should reassert its status (via voting) every reassertion_period days
+         bool vote_is_reasserted( eosio::time_point last_reassertion_time ) const;
 
          template <auto system_contract::*...Ptrs>
          class registration {

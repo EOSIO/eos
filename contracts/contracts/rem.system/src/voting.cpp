@@ -33,7 +33,7 @@ namespace eosiosystem {
 
       user_resources_table totals_tbl( _self, producer.value );
       const auto& tot = totals_tbl.get(producer.value, "producer must have resources");
-      check( tot.own_stake_amount >= producer_stake_threshold, "user should stake at least "s + asset(producer_stake_threshold, core_symbol()).to_string() + " to become a producer"s );
+      check( tot.own_stake_amount >= _gremstate.producer_stake_threshold, "user should stake at least "s + asset(_gremstate.producer_stake_threshold, core_symbol()).to_string() + " to become a producer"s );
 
       auto prod = _producers.find( producer.value );
       const auto ct = current_time_point();
@@ -131,7 +131,7 @@ namespace eosiosystem {
       check(locked_stake_period != time_point(), "vote should have mature time");
 
       const auto weeks_to_mature = fmax( ((locked_stake_period - current_time_point()) - eosio::days(7)).count() / eosio::days(7).count(), 0.0 );
-      const auto rem_weight = 1.0 - (weeks_to_mature) / (_gstate.stake_lock_period.count() / eosio::days(7).count());
+      const auto rem_weight = 1.0 - (weeks_to_mature) / (_gremstate.stake_lock_period.count() / eosio::days(7).count());
       const double eos_weight = std::pow( 2, int64_t((current_time_point().sec_since_epoch() - (block_timestamp::block_timestamp_epoch / 1000)) / (seconds_per_day * 7)) / double(52) );
 
       const auto vote_weight = double(staked) * eos_weight * rem_weight;
@@ -142,11 +142,6 @@ namespace eosiosystem {
 
    void system_contract::voteproducer( const name& voter_name, const name& proxy, const std::vector<name>& producers ) {
       require_auth( voter_name );
-
-      user_resources_table totals_tbl( _self, voter_name.value );
-      const auto& tot = totals_tbl.get( voter_name.value, "producer must have resources" );
-      
-      check( tot.own_stake_amount > system_contract::producer_stake_threshold, "user should stake at least "s + asset(producer_stake_threshold, core_symbol()).to_string() + " to vote"s );
 
       vote_stake_updater( voter_name );
       update_votes( voter_name, proxy, producers, true );
@@ -326,9 +321,4 @@ namespace eosiosystem {
    bool system_contract::is_block_producer( const name& producer ) const {
       return _producers.find( producer.value ) != _producers.end();
    }
-   
-   bool voter_info::vote_is_reasserted() const {
-         return (current_time_point() - last_reassertion_time) < voter_info::reassertion_period;
-   }
-
 } /// namespace eosiosystem

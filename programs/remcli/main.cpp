@@ -1264,7 +1264,7 @@ struct list_voters_subcommand {
             const auto last_reassertion_time = fc::time_point_sec::from_iso_string( row["last_reassertion_time"].as_string() );
             const auto vote_is_reasserted = (last_reassertion_time + fc::days(7)) > fc::time_point::now();
 
-            const auto stake_lock_time = fc::time_point_sec::from_iso_string( row["vote_mature_time"].as_string() );
+            const auto stake_lock_time = fc::time_point_sec::from_iso_string( row["stake_lock_time"].as_string() );
             const auto weeks_to_mature = std::max( (stake_lock_time - fc::time_point::now()).count() / fc::days(7).count(), int64_t{0} );
             const auto eos_weight = std::pow( 2, int64_t((fc::time_point::now().sec_since_epoch() - (config::block_timestamp_epoch / 1000)) / fc::days(7).to_seconds()) / double(52) );
             const auto rem_weight = 1.0 - weeks_to_mature / 25.0;

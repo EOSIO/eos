@@ -100,14 +100,14 @@ namespace eosiosystem {
       require_auth(_self);
 
       check(period_in_days != 0, "lock period cannot be zero");
-      _gstate.stake_lock_period = eosio::days(period_in_days);
+      _gremstate.stake_lock_period = eosio::days(period_in_days);
    }
 
    void system_contract::setunloperiod( uint64_t period_in_days ) {
       require_auth(_self);
 
       check(period_in_days != 0, "unlock period cannot be zero");
-      _gstate.stake_unlock_period = eosio::days(period_in_days);
+      _gremstate.stake_unlock_period = eosio::days(period_in_days);
    }
 
    void system_contract::setgiftcontra( name value ) {
@@ -415,9 +415,10 @@ namespace eosiosystem {
       token::open_action open_act{ token_account, { {_self, active_permission} } };
       open_act.send( rex_account, core, _self );
    }
-
-   const microseconds voter_info::reassertion_period = eosio::days( 7 );
-
+         
+   bool system_contract::vote_is_reasserted( eosio::time_point last_reassertion_time ) const {
+         return (current_time_point() - last_reassertion_time) < _gremstate.reassertion_period;
+   }
 } /// rem.system
 
 

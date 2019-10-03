@@ -151,7 +151,7 @@ namespace eosiosystem {
 
          const auto& voter = _voters.get( producer.value );
          // TODO fix coupling in voter-producer entities
-         if ( voter.vote_is_reasserted() ) {
+         if ( vote_is_reasserted( voter.last_reassertion_time ) ) {
             _producers.modify( prod, same_payer, [&](auto& p ) {
                   p.current_round_unpaid_blocks++;
             });
