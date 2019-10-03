@@ -11,7 +11,7 @@ yum install -y epel-release
 
 yum --enablerepo=extras install -y centos-release-scl && yum --enablerepo=extras install -y devtoolset-8
 
-yum install -y rh-python36 llvm7.0-devel llvm7.0-static git curl automake jq python python-devel
+yum install -y rh-python36 llvm-toolset-7.0-llvm-devel llvm-toolset-7.0-llvm-static git curl automake jq python python-devel
 
 source /opt/rh/rh-python36/enable && pip3 install conan
 
@@ -28,7 +28,7 @@ export PATH=$PATH:/usr/local/cmake/bin
 
 ## Build Steps
 ```
-source /opt/rh/devtoolset-8/enable && source /opt/rh/rh-python36/enable
+source /opt/rh/devtoolset-8/enable && source /opt/rh/rh-python36/enable && source /opt/rh/llvm-toolset-7.0/enable
 
 git clone https://github.com/EOSIO/eos.git
 
@@ -38,7 +38,7 @@ git checkout conan-poc-v2
 
 git submodule update --init --recursive
 
-cmake -DCMAKE_BUILD_TYPE='Release' -DCORE_SYMBOL_NAME='SYS' -DPKG_CONFIG_USE_CMAKE_PREFIX_PATH=ON -DLLVM_DIR='/usr/lib64/llvm7.0/lib/cmake/llvm' -DUSE_CONAN=true -Bbuild
+cmake -DCMAKE_BUILD_TYPE='Release' -DCORE_SYMBOL_NAME='SYS' -DPKG_CONFIG_USE_CMAKE_PREFIX_PATH=ON -DLLVM_DIR='/opt/rh/llvm-toolset-7.0/root/lib64/cmake/llvm' -DUSE_CONAN=true -Bbuild
 
 cd build/
 
