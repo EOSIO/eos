@@ -7,7 +7,7 @@ if [[ $(uname) == 'Darwin' ]]; then
     # You can't use chained commands in execute
     [[ $TRAVIS == true ]] && export PINNED=false && ccache -s && CMAKE_EXTRAS="-DCMAKE_CXX_COMPILER_LAUNCHER=ccache" && ./$CICD_DIR/platforms/unpinned/macos-10.14-unpinned.sh
     ( [[ ! $PINNED == false || $UNPINNED == true ]] ) && CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_TOOLCHAIN_FILE=$SCRIPTS_DIR/pinned_toolchain.cmake"
-    if [[ "$USE_CONAN" == 'true' ]]; then
+    if [[ "$BUILD_TYPE" == 'conan' ]]; then
         sed -n '/## Build Steps/,/make -j/p' $CONAN_DIR/macos-10.14-conan.md | grep -v -e '```' -e '^$' -e 'git' -e 'cd eos' >> $CONAN_DIR/conan-build.sh
         bash -c "$CONAN_DIR/conan-build.sh && cp -r ~/.conan $BUILD_DIR/conan"
     else
@@ -55,7 +55,7 @@ else # Linux
     fi
     . $HELPERS_DIR/file-hash.sh $CICD_DIR/platforms/$BUILD_TYPE/$IMAGE_TAG.dockerfile
     COMMANDS="$PRE_COMMANDS && $COMMANDS"
-    [[ "$USE_CONAN" == 'true' ]] && COMMANDS="cd $MOUNTED_DIR && $MOUNTED_DIR/.conan/conan-build.sh && cp -r ~/.conan $MOUNTED_DIR/build/conan"
+    [[ "$BUILD_TYPE" == 'conan' ]] && COMMANDS="cd $MOUNTED_DIR && $MOUNTED_DIR/.conan/conan-build.sh && cp -r ~/.conan $MOUNTED_DIR/build/conan"
     echo "$ docker run $ARGS $(buildkite-intrinsics) $FULL_TAG bash -c \"$COMMANDS\""
     eval docker run $ARGS $(buildkite-intrinsics) $FULL_TAG bash -c \"$COMMANDS\"
 fi

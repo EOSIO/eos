@@ -4,14 +4,14 @@ set -eo pipefail
 . ./.cicd/helpers/general.sh
 # tests
 if [[ $(uname) == 'Darwin' ]]; then # macOS
-    [[ "$USE_CONAN" == 'true' ]] && cp -r $BUILD_DIR/conan ~/.conan
+    [[ "$BUILD_TYPE" == 'conan' ]] && cp -r $BUILD_DIR/conan ~/.conan
     export PATH=$PATH:~/mongodb/bin
     set +e # defer error handling to end
     ./"$@"
     EXIT_STATUS=$?
 else # Linux
     COMMANDS="$MOUNTED_DIR/$@"
-    if [[ $USE_CONAN == 'true' ]]; then
+    if [[ $BUILD_TYPE == 'conan' ]]; then
         sed -n '/## Environment/,/## Build/p' $CONAN_DIR/$IMAGE_TAG.md | grep -v -e '```' -e '\#\#' -e '^$' -e 'export' | sed -e 's/^/RUN /' >> $CICD_DIR/platforms/$BUILD_TYPE/$IMAGE_TAG.dockerfile
         COMMANDS="ln -s $MOUNTED_DIR/build/conan ~/.conan && $COMMANDS"    
     fi
