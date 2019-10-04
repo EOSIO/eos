@@ -14,6 +14,7 @@
 #include "voting.cpp"
 #include "exchange_state.cpp"
 #include "rex.cpp"
+#include "rotation.cpp"
 
 namespace eosiosystem {
 
@@ -38,6 +39,7 @@ namespace eosiosystem {
     _global4(_self, _self.value),
     _globalrem(_self, _self.value),
     _rammarket(_self, _self.value),
+    _rotation(_self, _self.value),
     _rexpool(_self, _self.value),
     _rexfunds(_self, _self.value),
     _rexbalance(_self, _self.value),
@@ -49,6 +51,12 @@ namespace eosiosystem {
       _gstate3 = _global3.exists() ? _global3.get() : eosio_global_state3{};
       _gstate4 = _global4.exists() ? _global4.get() : get_default_inflation_parameters();
       _gremstate = _globalrem.exists() ? _globalrem.get() : get_default_rem_parameters();
+
+      _grotation = _rotation.get_or_create(_self, rotation_state{
+         .last_rotation_time      = time_point{},
+         .rotation_period         = eosio::hours(4),
+         .standby_prods_to_rotate = 4
+      });
    }
 
    eosio_global_state system_contract::get_default_parameters() {
@@ -66,11 +74,23 @@ namespace eosiosystem {
    }
 
    eosio_global_rem_state system_contract::get_default_rem_parameters() {
-      eosio_global_rem_state gs;
-      gs.per_stake_share = 0.6;
-      gs.per_vote_share = 0.3;
+      const auto rem_state = eosio_global_rem_state{
+         .per_stake_share = 0.6,
+         .per_vote_share = 0.3,
 
-      return gs;
+         .gifter_attr_contract = name{"rem.attr"},
+         .gifter_attr_issuer   = name{"rem.attr"},
+         .gifter_attr_name     = name{"accgifter"},
+
+         .producer_stake_threshold = 250'000'0000LL,
+
+         .stake_lock_period = eosio::days(180),
+         .stake_unlock_period = eosio::days(180),
+
+         .reassertion_period = eosio::days( 7 )
+      };
+
+      return rem_state;
    }
 
    symbol system_contract::core_symbol()const {
@@ -84,6 +104,7 @@ namespace eosiosystem {
       _global3.set( _gstate3, _self );
       _global4.set( _gstate4, _self );
       _globalrem.set( _gremstate, _self );
+      _rotation.set( _grotation, _self );
    }
 
    void system_contract::setrwrdratio( double stake_share, double vote_share ) {

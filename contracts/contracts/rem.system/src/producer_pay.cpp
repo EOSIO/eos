@@ -18,9 +18,8 @@ namespace eosiosystem {
    const int64_t  useconds_per_day      = 24 * 3600 * int64_t(1000000);
    const int64_t  useconds_per_year     = seconds_per_year*1000000ll;
 
-   const static int producer_count = 21;
    const static int producer_repetitions = 12;
-   const static int blocks_per_round = producer_count * producer_repetitions;
+   const static int blocks_per_round = system_contract::max_block_producers * producer_repetitions;
 
 
    int64_t system_contract::share_pervote_reward_between_producers(int64_t amount)
