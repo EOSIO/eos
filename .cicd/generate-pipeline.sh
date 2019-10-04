@@ -493,6 +493,7 @@ cat <<EOF
     command: "./.cicd/installation-build.sh"
     env:
       IMAGE_TAG: "ubuntu-18.04-unpinned"
+      PLATFORM_TYPE: $PLATFORM_TYPE
       BUILDKITE_AGENT_ACCESS_TOKEN:
     agents:
       queue: "$BUILDKITE_AGENT_QUEUE"
