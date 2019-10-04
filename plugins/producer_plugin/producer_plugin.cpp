@@ -1660,7 +1660,7 @@ bool producer_plugin_impl::process_scheduled_and_incoming_trxs( const fc::time_p
    auto& blacklist_by_id = _blacklisted_transactions.get<by_id>();
    chain::controller& chain = chain_plug->chain();
    time_point pending_block_time = chain.pending_block_time();
-   auto itr     = _unapplied_transactions.incoming_begin();
+   auto itr = _unapplied_transactions.incoming_begin();
    const auto& sch_idx = chain.db().get_index<generated_transaction_multi_index,by_delay>();
    const auto scheduled_trxs_size = sch_idx.size();
    auto sch_itr = sch_idx.begin();
@@ -1701,8 +1701,9 @@ bool producer_plugin_impl::process_scheduled_and_incoming_trxs( const fc::time_p
          auto trx_meta = itr->trx_meta;
          auto next = itr->next;
          bool persist_until_expired = itr->trx_type == trx_enum_type::persisted;
-         itr = _unapplied_transactions.erase( itr );
+         _unapplied_transactions.erase( itr );
          process_incoming_transaction_async( trx_meta, persist_until_expired, next );
+         itr = _unapplied_transactions.incoming_begin();
       }
 
       if (deadline <= fc::time_point::now()) {
@@ -1756,7 +1757,7 @@ bool producer_plugin_impl::process_incoming_trxs( const fc::time_point& deadline
    if( pending_incoming_process_limit ) {
       size_t processed = 0;
       fc_dlog( _log, "Processing ${n} pending transactions", ("n", pending_incoming_process_limit) );
-      auto itr     = _unapplied_transactions.incoming_begin();
+      auto itr = _unapplied_transactions.incoming_begin();
       while( pending_incoming_process_limit && itr != _unapplied_transactions.incoming_end() ) {
          if (deadline <= fc::time_point::now()) {
             exhausted = true;
@@ -1766,8 +1767,9 @@ bool producer_plugin_impl::process_incoming_trxs( const fc::time_point& deadline
          auto trx_meta = itr->trx_meta;
          auto next = itr->next;
          bool persist_until_expired = itr->trx_type == trx_enum_type::persisted;
-         itr = _unapplied_transactions.erase( itr );
+         _unapplied_transactions.erase( itr );
          process_incoming_transaction_async( trx_meta, persist_until_expired, next );
+         itr = _unapplied_transactions.incoming_begin();
          ++processed;
       }
       fc_dlog( _log, "Processed ${n} pending transactions, ${p} left", ("n", processed)("p", _unapplied_transactions.incoming_size()) );
