@@ -646,6 +646,8 @@ void producer_plugin::set_program_options(
           "Limits the maximum time (in milliseconds) that is allowed for sending blocks to a keosd provider for signing")
          ("greylist-account", boost::program_options::value<vector<string>>()->composing()->multitoken(),
           "account that can not access to extended CPU/NET virtual resources")
+         ("global-greylist-limit", boost::program_options::value<uint32_t>()->default_value(1000),
+          "Limit (between 1 and 1000) on the multiple that CPU/NET virtual resources can extend during low congestion (only enforced subjectively; use 1000 to not enforce any limit)")
          ("produce-time-offset-us", boost::program_options::value<int32_t>()->default_value(0),
           "offset of non last block producing time in microseconds. Negative number results in blocks to go out sooner, and positive number results in blocks to go out later")
          ("last-block-time-offset-us", boost::program_options::value<int32_t>()->default_value(0),
@@ -865,6 +867,16 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
          param.accounts.push_back(account_name(a));
       }
       add_greylist_accounts(param);
+   }
+
+   {
+      uint32_t global_greylist_limit = options.at("global-greylist-limit").as<uint32_t>();
+      EOS_ASSERT( 0 < global_greylist_limit && global_greylist_limit <= config::maximum_elastic_resource_multiplier,
+                  plugin_config_exception,
+                  "global-greylist-limit must be between 1 and ${max}",
+                  ("max", config::maximum_elastic_resource_multiplier)
+      );
+      chain.set_global_greylist_limit( global_greylist_limit );
    }
 
 } FC_LOG_AND_RETHROW() }
