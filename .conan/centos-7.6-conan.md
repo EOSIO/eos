@@ -11,7 +11,7 @@ yum install -y epel-release
 
 yum --enablerepo=extras install -y centos-release-scl && yum --enablerepo=extras install -y devtoolset-8
 
-yum install -y rh-python36 llvm7.0-devel llvm7.0-static git curl automake jq python python-devel
+yum install -y rh-python36 llvm-toolset-7.0-llvm-devel llvm-toolset-7.0-llvm-static git curl automake jq python python-devel
 
 source /opt/rh/rh-python36/enable && pip3 install conan
 
