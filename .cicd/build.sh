@@ -21,13 +21,13 @@ else # Linux
     # PRE_COMMANDS: Executed pre-cmake
     # CMAKE_EXTRAS: Executed within and right before the cmake path (cmake CMAKE_EXTRAS ..)
     [[ ! $IMAGE_TAG =~ 'unpinned' && ! $IMAGE_TAG =~ 'conan' ]] && CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_TOOLCHAIN_FILE=$MOUNTED_DIR/scripts/pinned_toolchain.cmake -DCMAKE_CXX_COMPILER_LAUNCHER=ccache"
-    if [[ $IMAGE_TAG == 'amazon_linux-2' ]]; then
+    if [[ $IMAGE_TAG == 'amazon_linux-2-pinned' ]]; then
         PRE_COMMANDS="$PRE_COMMANDS && export PATH=/usr/lib64/ccache:\\\$PATH"
-    elif [[ $IMAGE_TAG == 'centos-7.6' ]]; then
+    elif [[ $IMAGE_TAG == 'centos-7.6-pinned' ]]; then
         PRE_COMMANDS="$PRE_COMMANDS && source /opt/rh/rh-python36/enable && export PATH=/usr/lib64/ccache:\\\$PATH"
-    elif [[ $IMAGE_TAG == 'ubuntu-16.04' ]]; then
+    elif [[ $IMAGE_TAG == 'ubuntu-16.04-pinned' ]]; then
         PRE_COMMANDS="$PRE_COMMANDS && export PATH=/usr/lib/ccache:\\\$PATH"
-    elif [[ $IMAGE_TAG == 'ubuntu-18.04' ]]; then
+    elif [[ $IMAGE_TAG == 'ubuntu-18.04-pinned' ]]; then
         PRE_COMMANDS="$PRE_COMMANDS && export PATH=/usr/lib/ccache:\\\$PATH"
     elif [[ $IMAGE_TAG == 'amazon_linux-2-unpinned' ]]; then
         PRE_COMMANDS="$PRE_COMMANDS && export PATH=/usr/lib64/ccache:\\\$PATH"
