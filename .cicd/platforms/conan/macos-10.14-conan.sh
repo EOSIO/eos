@@ -1,4 +1,4 @@
 #!/bin/bash
 set -eo pipefail
-VERSION=0
+VERSION=1
 brew update
