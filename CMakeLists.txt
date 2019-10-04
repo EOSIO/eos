@@ -50,7 +50,7 @@ if("${USE_CONAN}" STREQUAL "true" OR "$ENV{USE_CONAN}" STREQUAL "true")
   # Handle Pinned/Unpinned Builds
   set( CONANFILE "conanfile-unpinned.txt" )
   if("$ENV{PINNED}" STREQUAL "true" OR "$ENV{UNPINNED}" STREQUAL "false")
-    set( CONANFILE "conanfile.txt" )
+    set( CONANFILE "conanfile-pinned.txt" )
   endif()
 
   conan_cmake_run(CONANFILE .conan/${CONANFILE}
