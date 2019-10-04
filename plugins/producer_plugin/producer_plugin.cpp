@@ -1661,7 +1661,6 @@ bool producer_plugin_impl::process_scheduled_and_incoming_trxs( const fc::time_p
    chain::controller& chain = chain_plug->chain();
    time_point pending_block_time = chain.pending_block_time();
    auto itr     = _unapplied_transactions.incoming_begin();
-   auto end_itr = _unapplied_transactions.incoming_end();
    const auto& sch_idx = chain.db().get_index<generated_transaction_multi_index,by_delay>();
    const auto scheduled_trxs_size = sch_idx.size();
    auto sch_itr = sch_idx.begin();
@@ -1690,7 +1689,7 @@ bool producer_plugin_impl::process_scheduled_and_incoming_trxs( const fc::time_p
       num_processed++;
 
       // configurable ratio of incoming txns vs deferred txns
-      while (incoming_trx_weight >= 1.0 && pending_incoming_process_limit && itr != end_itr ) {
+      while (incoming_trx_weight >= 1.0 && pending_incoming_process_limit && itr != _unapplied_transactions.incoming_end() ) {
          if (deadline <= fc::time_point::now()) {
             exhausted = true;
             break;
@@ -1758,8 +1757,7 @@ bool producer_plugin_impl::process_incoming_trxs( const fc::time_point& deadline
       size_t processed = 0;
       fc_dlog( _log, "Processing ${n} pending transactions", ("n", pending_incoming_process_limit) );
       auto itr     = _unapplied_transactions.incoming_begin();
-      auto end_itr = _unapplied_transactions.incoming_end();
-      while( pending_incoming_process_limit && itr != end_itr ) {
+      while( pending_incoming_process_limit && itr != _unapplied_transactions.incoming_end() ) {
          if (deadline <= fc::time_point::now()) {
             exhausted = true;
             break;
