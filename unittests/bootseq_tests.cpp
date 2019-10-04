@@ -430,21 +430,29 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         BOOST_TEST(active_schedule.producers.at(20).producer_name == "produ");
         BOOST_REQUIRE(get_total_votepay_shares() > 0.999 && get_total_votepay_shares() <= 1.0);
 
+        //stake_share + vote_share must be less than 1 because otherwise remme savings will be equal to 0
         BOOST_REQUIRE_THROW(base_tester::push_action(config::system_account_name, N(setrwrdratio),
                                                      config::system_account_name, mvo()("stake_share",  0.5)("vote_share", 0.5)),
                             eosio_assert_message_exception);
+        //stake_share or vote_share cannot be equal to 0
         BOOST_REQUIRE_THROW(base_tester::push_action(config::system_account_name, N(setrwrdratio),
                                                      config::system_account_name, mvo()("stake_share",  0.0)("vote_share", 0.5)),
+                            eosio_assert_message_exception);
+        BOOST_REQUIRE_THROW(base_tester::push_action(config::system_account_name, N(setrwrdratio),
+                                                     config::system_account_name, mvo()("stake_share",  0.5)("vote_share", 0.0)),
                             eosio_assert_message_exception);
         set_reward_ratio(0.7, 0.2);
         BOOST_REQUIRE(get_global_rem_state()["per_vote_share"].as_double() == 0.2);
         BOOST_REQUIRE(get_global_rem_state()["per_stake_share"].as_double() == 0.7);
 
+        //torewards without authorization and with symbol != core_symbol() must fail
         BOOST_REQUIRE_THROW(torewards(N(b1), config::system_account_name, core_from_string("20000.0000")), missing_auth_exception);
+        BOOST_REQUIRE_THROW(torewards(config::system_account_name, config::system_account_name, eosio::chain::asset::from_string("20000.0000 FAIL")), eosio_assert_message_exception);
         torewards(config::system_account_name, config::system_account_name, core_from_string("20000.0000"));
         auto saving_balance = get_balance(N(rem.saving)).get_amount();
         auto spay_balance = get_balance(N(rem.spay)).get_amount();
         auto vpay_balance = get_balance(N(rem.vpay)).get_amount();
+        //check that rewards are distributed with right proportion
         BOOST_REQUIRE(saving_balance >= 2000'0000);
         BOOST_REQUIRE_EQUAL(spay_balance, 14000'0000);
         BOOST_REQUIRE(vpay_balance <= 4000'0000);
