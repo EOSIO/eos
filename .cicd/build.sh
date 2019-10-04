@@ -5,7 +5,7 @@ mkdir -p $BUILD_DIR
 CMAKE_EXTRAS="-DCMAKE_BUILD_TYPE='Release' -DCORE_SYMBOL_NAME='SYS'"
 if [[ $(uname) == 'Darwin' ]]; then
     # You can't use chained commands in execute
-    [[ $TRAVIS == true ]] && export PINNED=false && ccache -s && CMAKE_EXTRAS="-DCMAKE_CXX_COMPILER_LAUNCHER=ccache" && ./$CICD_DIR/platforms/unpinned/$IMAGE_TAG.sh
+    [[ $TRAVIS == true ]] && export PINNED=false && ccache -s && CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_CXX_COMPILER_LAUNCHER=ccache" && ./$CICD_DIR/platforms/unpinned/$IMAGE_TAG.sh
     ( [[ ! $PINNED == false || $UNPINNED == true ]] ) && CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_TOOLCHAIN_FILE=$SCRIPTS_DIR/pinned_toolchain.cmake"
     if [[ "$USE_CONAN" == 'true' ]]; then
         sed -n '/## Build Steps/,/make -j/p' $CONAN_DIR/$IMAGE_TAG.md | grep -v -e '```' -e '^$' -e 'git' -e 'cd eos' >> $CONAN_DIR/conan-build.sh
