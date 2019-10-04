@@ -108,7 +108,8 @@ public:
    }
 
    size_t incoming_size()const {
-      return queue.get<by_type>().count( trx_enum_type::incoming );
+      return queue.get<by_type>().count( trx_enum_type::incoming ) +
+             queue.get<by_type>().count( trx_enum_type::incoming_persisted );
    }
 
    transaction_metadata_ptr get_trx( const transaction_id_type& id ) const {
