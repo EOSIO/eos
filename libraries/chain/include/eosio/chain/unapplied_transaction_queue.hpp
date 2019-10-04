@@ -25,7 +25,7 @@ enum class trx_enum_type {
    persisted = 1,
    forked = 2,
    aborted = 3,
-   incoming = 4
+   incoming = 4 // incoming_end() needs to updated if this changes
 };
 
 using next_func_t = std::function<void(const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>&)>;
@@ -227,7 +227,7 @@ public:
    iterator persisted_end() { return queue.get<by_type>().upper_bound( trx_enum_type::persisted ); }
 
    iterator incoming_begin() { return queue.get<by_type>().lower_bound( trx_enum_type::incoming ); }
-   iterator incoming_end() { return queue.get<by_type>().upper_bound( trx_enum_type::incoming ); }
+   iterator incoming_end() { return queue.get<by_type>().end(); } // if changed to upper_bound, verify usage performance
 
    iterator erase( iterator itr ) { return queue.get<by_type>().erase( itr ); }
 };
