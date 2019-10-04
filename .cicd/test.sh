@@ -12,10 +12,10 @@ if [[ $(uname) == 'Darwin' ]]; then # macOS
 else # Linux
     COMMANDS="$MOUNTED_DIR/$@"
     if [[ $USE_CONAN == 'true' ]]; then
-        sed -n '/## Environment/,/## Build/p' $CONAN_DIR/$IMAGE_TAG.md | grep -v -e '```' -e '\#\#' -e '^$' -e 'export' | sed -e 's/^/RUN /' >> $CICD_DIR/platforms/$BUILD_TYPE/$IMAGE_TAG.dockerfile
+        sed -n '/## Environment/,/## Build/p' $CONAN_DIR/$IMAGE_TAG.md | grep -v -e '```' -e '\#\#' -e '^$' -e 'export' | sed -e 's/^/RUN /' >> $CICD_DIR/platforms/$PLATFORM_TYPE/$IMAGE_TAG.dockerfile
         COMMANDS="ln -s $MOUNTED_DIR/build/conan ~/.conan && $COMMANDS"    
     fi
-    . $HELPERS_DIR/file-hash.sh $CICD_DIR/platforms/$BUILD_TYPE/$IMAGE_TAG.dockerfile
+    . $HELPERS_DIR/file-hash.sh $CICD_DIR/platforms/$PLATFORM_TYPE/$IMAGE_TAG.dockerfile
     echo "$ docker run --rm --init -v $(pwd):$MOUNTED_DIR $(buildkite-intrinsics) $FULL_TAG bash -c \"$COMMANDS\""
     set +e # defer error handling to end
     eval docker run --rm --init -v $(pwd):$MOUNTED_DIR $(buildkite-intrinsics) $FULL_TAG bash -c \"$COMMANDS\"

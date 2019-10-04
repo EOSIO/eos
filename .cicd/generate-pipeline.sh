@@ -19,14 +19,14 @@ fi
 
 # Determine which dockerfiles/scripts to use for the pipeline.
 if [[ $PINNED == false || $UNPINNED == true ]]; then
-    export BUILD_TYPE="unpinned"
+    export PLATFORM_TYPE="unpinned"
 elif [[ $USE_CONAN == true ]]; then
-    export BUILD_TYPE="conan"
+    export PLATFORM_TYPE="conan"
 else
-    export BUILD_TYPE="pinned"
+    export PLATFORM_TYPE="pinned"
 fi
 
-for FILE in $(ls $CICD_DIR/platforms/$BUILD_TYPE); do
+for FILE in $(ls $CICD_DIR/platforms/$PLATFORM_TYPE); do
     # skip mac or linux by not even creating the json block
     ( [[ $SKIP_MAC == true ]] && [[ $FILE =~ 'macos' ]] ) && continue
     ( [[ $SKIP_LINUX == true ]] && [[ ! $FILE =~ 'macos' ]] ) && continue
@@ -50,7 +50,7 @@ for FILE in $(ls $CICD_DIR/platforms/$BUILD_TYPE); do
     [[ $FILE_NAME =~ 'ubuntu' ]] && export ICON=':ubuntu:'
     [[ $FILE_NAME =~ 'centos' ]] && export ICON=':centos:'
     [[ $FILE_NAME =~ 'macos' ]] && export ICON=':darwin:'
-    . $HELPERS_DIR/file-hash.sh $CICD_DIR/platforms/$BUILD_TYPE/$FILE # returns HASHED_IMAGE_TAG, etc
+    . $HELPERS_DIR/file-hash.sh $CICD_DIR/platforms/$PLATFORM_TYPE/$FILE # returns HASHED_IMAGE_TAG, etc
     export PLATFORMS_JSON_ARRAY=$(echo $PLATFORMS_JSON_ARRAY | jq -c '. += [{ 
         "FILE_NAME": env.FILE_NAME, 
         "PLATFORM_NAME": env.PLATFORM_NAME,
@@ -94,8 +94,8 @@ echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
       REPO_COMMIT: $BUILDKITE_COMMIT
       TEMPLATE: $MOJAVE_ANKA_TEMPLATE_NAME
       TEMPLATE_TAG: $MOJAVE_ANKA_TAG_BASE
-      BUILD_TYPE: $BUILD_TYPE
-      TAG_COMMANDS: "git clone ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO} eos && cd eos && $GIT_FETCH git checkout -f $BUILDKITE_COMMIT && git submodule update --init --recursive && export BUILD_TYPE=$BUILD_TYPE && ./.cicd/generate-base-images.sh && cd ~/eos && cd .. && rm -rf eos"
+      PLATFORM_TYPE: $PLATFORM_TYPE
+      TAG_COMMANDS: "git clone ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO} eos && cd eos && $GIT_FETCH git checkout -f $BUILDKITE_COMMIT && git submodule update --init --recursive && export PLATFORM_TYPE=$PLATFORM_TYPE && ./.cicd/generate-base-images.sh && cd ~/eos && cd .. && rm -rf eos"
       PROJECT_TAG: $(echo "$PLATFORM_JSON" | jq -r .HASHED_IMAGE_TAG)
     timeout: ${TIMEOUT:-320}
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}\${SKIP_ENSURE_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}
@@ -119,7 +119,7 @@ echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
       - "tar -pczf build.tar.gz build && buildkite-agent artifact upload build.tar.gz"
     env:
       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
-      BUILD_TYPE: $BUILD_TYPE
+      PLATFORM_TYPE: $PLATFORM_TYPE
       BUILDKITE_AGENT_ACCESS_TOKEN:
     agents:
       queue: "$BUILDKITE_AGENT_QUEUE"
@@ -185,7 +185,7 @@ for ROUND in $(seq 1 $ROUNDS); do
       - "./.cicd/test.sh scripts/parallel-test.sh"
     env:
       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
-      BUILD_TYPE: $BUILD_TYPE
+      PLATFORM_TYPE: $PLATFORM_TYPE
       BUILDKITE_AGENT_ACCESS_TOKEN:
     agents:
       queue: "$BUILDKITE_AGENT_QUEUE"
@@ -245,7 +245,7 @@ EOF
       - "./.cicd/test.sh scripts/serial-test.sh $TEST_NAME"
     env:
       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
-      BUILD_TYPE: $BUILD_TYPE
+      PLATFORM_TYPE: $PLATFORM_TYPE
       BUILDKITE_AGENT_ACCESS_TOKEN:
     agents:
       queue: "$BUILDKITE_AGENT_QUEUE"
@@ -306,7 +306,7 @@ EOF
       - "./.cicd/test.sh scripts/long-running-test.sh $TEST_NAME"
     env:
       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
-      BUILD_TYPE: $BUILD_TYPE
+      PLATFORM_TYPE: $PLATFORM_TYPE
       BUILDKITE_AGENT_ACCESS_TOKEN:
     agents:
       queue: "$BUILDKITE_AGENT_QUEUE"
@@ -424,7 +424,7 @@ cat <<EOF
     env:
       IMAGE_TAG: "centos-7.6"
       BUILDKITE_AGENT_ACCESS_TOKEN:
-      BUILD_TYPE: $BUILD_TYPE
+      PLATFORM_TYPE: $PLATFORM_TYPE
       OS: "el7" # OS and PKGTYPE required for lambdas
       PKGTYPE: "rpm"
     agents:
@@ -439,7 +439,7 @@ cat <<EOF
     env:
       IMAGE_TAG: "ubuntu-16.04"
       BUILDKITE_AGENT_ACCESS_TOKEN:
-      BUILD_TYPE: $BUILD_TYPE
+      PLATFORM_TYPE: $PLATFORM_TYPE
       OS: "ubuntu-16.04" # OS and PKGTYPE required for lambdas
       PKGTYPE: "deb"
     agents:
@@ -454,7 +454,7 @@ cat <<EOF
     env:
       IMAGE_TAG: "ubuntu-18.04"
       BUILDKITE_AGENT_ACCESS_TOKEN:
-      BUILD_TYPE: $BUILD_TYPE
+      PLATFORM_TYPE: $PLATFORM_TYPE
       OS: "ubuntu-18.04" # OS and PKGTYPE required for lambdas
       PKGTYPE: "deb"
     agents:

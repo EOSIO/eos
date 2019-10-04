@@ -53,7 +53,7 @@ else # Linux
         ARGS="$ARGS -v /usr/lib/ccache -v $HOME/.ccache:/opt/.ccache -e JOBS -e TRAVIS -e CCACHE_DIR=/opt/.ccache"
         COMMANDS="ccache -s && $BUILD_COMMANDS"
     fi
-    . $HELPERS_DIR/file-hash.sh $CICD_DIR/platforms/$BUILD_TYPE/$IMAGE_TAG.dockerfile
+    . $HELPERS_DIR/file-hash.sh $CICD_DIR/platforms/$PLATFORM_TYPE/$IMAGE_TAG.dockerfile
     COMMANDS="$PRE_COMMANDS && $COMMANDS"
     [[ "$USE_CONAN" == 'true' ]] && COMMANDS="cd $MOUNTED_DIR && $MOUNTED_DIR/.conan/conan-build.sh && cp -r ~/.conan $MOUNTED_DIR/build/conan"
     echo "$ docker run $ARGS $(buildkite-intrinsics) $FULL_TAG bash -c \"$COMMANDS\""
