@@ -10,12 +10,12 @@ The `blocks.log` file contains all irreversible transactions on the blockchain. 
 - From a **snapshot file**:  
 Snapshot files can be created from a running `nodeos` instance. The snapshot contains the chain state for the current head block. Snapshot files should only be used if the head block they represent is irreversible. Using a snapshot file to replay allows you to quickly start a `nodeos` instance which has a full and correct chain state at a specified block number, but not a full history of transactions up to that block number. From that point on the `nodeos` instance will operate in the configured manner.
 
-## Replay/Snapshot Guides
+## Replay/Snapshot How Tos
 
-* [How To Generate a Blocks Log](00_how-to-generate-a-blocks-log.md)
-* [How To Replay from a Blocks Log](01_how-to-replay-from-a-blocks.log.md)
-* [How To Generate a Snapshot](02_how-to-generate-a-snapshot.md)
-* [How to Replay from a Snapshot](03_how-to-replay-from-snapshot.md)
+* [How To Generate a Blocks Log](../04_how-to-guides/01_replays/00_how-to-generate-a-blocks-log.md)
+* [How To Replay from a Blocks Log](../04_how-to-guides/01_replays/01_how-to-replay-from-a-blocks.log.md)
+* [How To Generate a Snapshot](../04_how-to-guides/01_replays/02_how-to-generate-a-snapshot.md)
+* [How to Replay from a Snapshot](../04_how-to-guides/01_replays/03_how-to-replay-from-snapshot.md)
 
 ## Replay/Snapshot-specific Options
 
