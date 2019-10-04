@@ -26,7 +26,7 @@ enum class trx_enum_type {
    forked = 2,
    aborted = 3,
    incoming_persisted = 4,
-   incoming = 5 // incoming_end() needs to updated if this changes
+   incoming = 5 // incoming_end() needs to be updated if this changes
 };
 
 using next_func_t = std::function<void(const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>&)>;
@@ -97,16 +97,6 @@ public:
       queue.clear();
    }
 
-   bool contains_persisted()const {
-      return queue.get<by_type>().find( trx_enum_type::persisted ) != queue.get<by_type>().end();
-   }
-
-   bool is_persisted(const transaction_metadata_ptr& trx)const {
-      auto itr = queue.get<by_trx_id>().find( trx->id() );
-      if( itr == queue.get<by_trx_id>().end() ) return false;
-      return itr->trx_type == trx_enum_type::persisted;
-   }
-
    size_t incoming_size()const {
       return queue.get<by_type>().count( trx_enum_type::incoming ) +
              queue.get<by_type>().count( trx_enum_type::incoming_persisted );
@@ -151,7 +141,8 @@ public:
             const auto& pt = receipt.trx.get<packed_transaction>();
             auto itr = queue.get<by_trx_id>().find( pt.id() );
             if( itr != queue.get<by_trx_id>().end() ) {
-               if( itr->trx_type != trx_enum_type::persisted ) {
+               if( itr->trx_type != trx_enum_type::persisted &&
+                   itr->trx_type != trx_enum_type::incoming_persisted ) {
                   idx.erase( itr );
                }
             }
