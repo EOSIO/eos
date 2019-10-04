@@ -1700,7 +1700,7 @@ bool producer_plugin_impl::process_scheduled_and_incoming_trxs( const fc::time_p
 
          auto trx_meta = itr->trx_meta;
          auto next = itr->next;
-         bool persist_until_expired = itr->trx_type == trx_enum_type::persisted;
+         bool persist_until_expired = itr->trx_type == trx_enum_type::incoming_persisted;
          _unapplied_transactions.erase( itr );
          process_incoming_transaction_async( trx_meta, persist_until_expired, next );
          itr = _unapplied_transactions.incoming_begin();
@@ -1766,7 +1766,7 @@ bool producer_plugin_impl::process_incoming_trxs( const fc::time_point& deadline
          --pending_incoming_process_limit;
          auto trx_meta = itr->trx_meta;
          auto next = itr->next;
-         bool persist_until_expired = itr->trx_type == trx_enum_type::persisted;
+         bool persist_until_expired = itr->trx_type == trx_enum_type::incoming_persisted;
          _unapplied_transactions.erase( itr );
          process_incoming_transaction_async( trx_meta, persist_until_expired, next );
          itr = _unapplied_transactions.incoming_begin();

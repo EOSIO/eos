@@ -25,7 +25,8 @@ enum class trx_enum_type {
    persisted = 1,
    forked = 2,
    aborted = 3,
-   incoming = 4 // incoming_end() needs to updated if this changes
+   incoming_persisted = 4,
+   incoming = 5 // incoming_end() needs to updated if this changes
 };
 
 using next_func_t = std::function<void(const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>&)>;
@@ -195,10 +196,10 @@ public:
       auto itr = queue.get<by_trx_id>().find( trx->id() );
       if( itr == queue.get<by_trx_id>().end() ) {
          fc::time_point expiry = trx->packed_trx()->expiration();
-         queue.push_back( { trx, expiry, persist_until_expired ? trx_enum_type::persisted : trx_enum_type::incoming, std::move( next ) } );
-      } else if( (persist_until_expired && itr->trx_type != trx_enum_type::persisted) || (next && !itr->next) ) {
+         queue.push_back( { trx, expiry, persist_until_expired ? trx_enum_type::incoming_persisted : trx_enum_type::incoming, std::move( next ) } );
+      } else if( (persist_until_expired && itr->trx_type != trx_enum_type::incoming_persisted) || (next && !itr->next) ) {
          queue.get<by_trx_id>().modify( itr, [persist_until_expired, next{std::move(next)}](auto& un) mutable {
-            if( persist_until_expired ) un.trx_type = trx_enum_type::persisted;
+            if( persist_until_expired ) un.trx_type = trx_enum_type::incoming_persisted;
             if( next ) un.next = std::move( next );
          } );
       }
@@ -226,7 +227,7 @@ public:
    iterator persisted_begin() { return queue.get<by_type>().lower_bound( trx_enum_type::persisted ); }
    iterator persisted_end() { return queue.get<by_type>().upper_bound( trx_enum_type::persisted ); }
 
-   iterator incoming_begin() { return queue.get<by_type>().lower_bound( trx_enum_type::incoming ); }
+   iterator incoming_begin() { return queue.get<by_type>().lower_bound( trx_enum_type::incoming_persisted ); }
    iterator incoming_end() { return queue.get<by_type>().end(); } // if changed to upper_bound, verify usage performance
 
    iterator erase( iterator itr ) { return queue.get<by_type>().erase( itr ); }
