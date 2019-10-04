@@ -349,6 +349,7 @@ BOOST_AUTO_TEST_CASE( unapplied_transaction_queue_erase_add ) try {
 
    auto count = q.incoming_size();
 
+   // count required to avoid infinite loop
    while( count && itr != end ) {
       auto trx_meta = itr->trx_meta;
       if( count == 6 ) BOOST_CHECK( trx_meta == trx1 );
@@ -371,6 +372,7 @@ BOOST_AUTO_TEST_CASE( unapplied_transaction_queue_erase_add ) try {
    BOOST_REQUIRE( next( q ) == trx6 );
    BOOST_CHECK( q.empty() );
 
+   // incoming ++itr w/ erase
    q.add_incoming( trx1, false, [](auto){} );
    q.add_incoming( trx2, false, [](auto){} );
    q.add_incoming( trx3, false, [](auto){} );
@@ -390,6 +392,35 @@ BOOST_AUTO_TEST_CASE( unapplied_transaction_queue_erase_add ) try {
       }
       --count;
    }
+   BOOST_REQUIRE( count == 0 );
+   q.clear();
+
+   // persisted
+   q.add_persisted( trx1 );
+   q.add_persisted( trx2 );
+   q.add_persisted( trx3 );
+   q.add_persisted( trx4 );
+   q.add_persisted( trx5 );
+   q.add_persisted( trx6 );
+   q.add_incoming( trx7, false, [](auto){} );
+
+   itr = q.persisted_begin();
+   end = q.persisted_end();
+   count = q.size() - 1;
+
+   while( count > 0 && itr != end ) {
+      auto trx_meta = itr->trx_meta;
+      if( count == 6 ) BOOST_CHECK( trx_meta == trx1 );
+      if( count == 5 ) BOOST_CHECK( trx_meta == trx2 );
+      if( count == 4 ) BOOST_CHECK( trx_meta == trx3 );
+      if( count == 3 ) BOOST_CHECK( trx_meta == trx4 );
+      if( count == 2 ) BOOST_CHECK( trx_meta == trx5 );
+      if( count == 1 ) BOOST_CHECK( trx_meta == trx6 );
+      itr = q.erase( itr );
+      q.add_persisted( trx_meta );
+      --count;
+   }
+
 
 } FC_LOG_AND_RETHROW() /// unapplied_transaction_queue_test
 
