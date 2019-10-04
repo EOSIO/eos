@@ -443,7 +443,7 @@ cat <<EOF
     env:
       IMAGE_TAG: "ubuntu-16.04-pinned"
       BUILDKITE_AGENT_ACCESS_TOKEN:
-      PLATFORM_TYPE: $PLATFORM_TYPE
+      PLATFORM_TYPE: "unpinned"
       OS: "ubuntu-16.04" # OS and PKGTYPE required for lambdas
       PKGTYPE: "deb"
     agents:
