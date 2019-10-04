@@ -448,7 +448,8 @@ EOSIO_DISPATCH( eosiosystem::system_contract,
      (newaccount)(updateauth)(deleteauth)(linkauth)(unlinkauth)(canceldelay)(onerror)(setabi)
      // rem.system.cpp
      (init)(setram)(setminstake)(setramrate)(setparams)(setpriv)(setalimits)(setrwrdratio)
-     (setlockperiod)(setunloperiod)(activate)(rmvproducer)(updtrevision)(bidname)(bidrefund)(setinflation)
+     (setlockperiod)(setunloperiod)(setgiftcontra)(setgiftiss)(setgiftattr)
+     (activate)(rmvproducer)(updtrevision)(bidname)(bidrefund)(setinflation)
      // rex.cpp
      (deposit)(withdraw)(buyrex)(unstaketorex)(sellrex)(cnclrexorder)(rentcpu)(rentnet)(fundcpuloan)(fundnetloan)
      (defcpuloan)(defnetloan)(updaterex)(consolidate)(mvtosavings)(mvfrsavings)(setrex)(rexexec)(closerex)

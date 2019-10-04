@@ -301,8 +301,4 @@ namespace eosiosystem {
          }
       );
    }
-
-   bool system_contract::is_block_producer( const name& producer ) const {
-      return _producers.find( producer.value ) != _producers.end();
-   }
 } /// namespace eosiosystem

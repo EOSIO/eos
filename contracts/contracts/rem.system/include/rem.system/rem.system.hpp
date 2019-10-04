@@ -1437,7 +1437,6 @@ namespace eosiosystem {
                                                double shares_rate, bool reset_to_zero = false );
          double update_total_votepay_share( const time_point& ct,
                                             double additional_shares_delta = 0.0, double shares_rate_delta = 0.0 );
-         bool is_block_producer( const name& producer ) const;
 
 
          // defined in producer_pay.cpp
