@@ -420,7 +420,30 @@ BOOST_AUTO_TEST_CASE( unapplied_transaction_queue_erase_add ) try {
       q.add_persisted( trx_meta );
       --count;
    }
+   q.clear();
 
+   q.add_persisted( trx1 );
+   q.add_persisted( trx2 );
+   q.add_persisted( trx3 );
+   q.add_persisted( trx4 );
+   q.add_persisted( trx5 );
+   q.add_persisted( trx6 );
+   q.add_incoming( trx7, false, [](auto){} );
+
+   itr = q.unapplied_begin();
+   end = q.unapplied_end();
+
+   count = q.size() - 1;
+   while( itr != end ) {
+      if( count % 2 == 0) {
+         itr = q.erase( itr );
+      } else {
+         ++itr;
+      }
+      --count;
+   }
+   BOOST_REQUIRE( count == 0 );
+   q.clear();
 
 } FC_LOG_AND_RETHROW() /// unapplied_transaction_queue_test
 
