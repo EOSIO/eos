@@ -2,10 +2,10 @@
 set -eo pipefail
 . ./.cicd/helpers/general.sh
 if [[ $(uname) == 'Darwin' ]]; then # macOS
-    [[ "$USE_CONAN" == 'true' ]] && sed -n '/## Environment/,/## Build/p' $CONAN_DIR/$IMAGE_TAG.md | grep -v -e '```' -e '\#\#' -e '^$' >> $CICD_DIR/platforms/$PLATFORM_TYPE/$IMAGE_TAG.sh
+    [[ "$PLATFORM_TYPE" == 'conan' ]] && sed -n '/## Environment/,/## Build/p' $CONAN_DIR/$IMAGE_TAG.md | grep -v -e '```' -e '\#\#' -e '^$' >> $CICD_DIR/platforms/$PLATFORM_TYPE/$IMAGE_TAG.sh
     . $CICD_DIR/platforms/$PLATFORM_TYPE/$IMAGE_TAG.sh
 else # Linux
-    [[ "$USE_CONAN" == 'true' ]] && sed -n '/## Environment/,/## Build/p' $CONAN_DIR/$IMAGE_TAG.md | grep -v -e '```' -e '\#\#' -e '^$' -e 'export' | sed -e 's/^/RUN /' >> $CICD_DIR/platforms/$PLATFORM_TYPE/$IMAGE_TAG.dockerfile
+    [[ "$PLATFORM_TYPE" == 'conan' ]] && sed -n '/## Environment/,/## Build/p' $CONAN_DIR/$IMAGE_TAG.md | grep -v -e '```' -e '\#\#' -e '^$' -e 'export' | sed -e 's/^/RUN /' >> $CICD_DIR/platforms/$PLATFORM_TYPE/$IMAGE_TAG.dockerfile
     . $HELPERS_DIR/file-hash.sh $CICD_DIR/platforms/$PLATFORM_TYPE/$IMAGE_TAG.dockerfile
     # look for Docker image
     echo "+++ :mag_right: Looking for $FULL_TAG"
