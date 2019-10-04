@@ -2,17 +2,22 @@
 
 The instructions below can be used to build and test EOSIO on macOS-10.14.
 
-## Build Steps
-
 **NOTE**: This requires the conan-poc-v2 branch.
 
 **NOTE**: This requires Homebrew to be installed on your system.
 
+## Environment Steps
+
 ```
-brew install git cmake python llvm@7 automake autoconf libtool
+brew install git cmake python llvm@7 automake autoconf libtool jq python@2 curl
 
 pip3 install conan
+```
 
+## Build Steps
+
+
+```
 export SDKROOT=$(xcrun --show-sdk-path)
 
 git clone https://github.com/EOSIO/eos.git
@@ -32,8 +37,6 @@ make -j$(getconf _NPROCESSORS_ONLN)
 ## Test Steps
 
 ```
-brew install jq python@2 curl
-
 ctest -j$(getconf _NPROCESSORS_ONLN) -LE _tests --output-on-failure -T Test
 
 ctest -L nonparallelizable_tests --output-on-failure -T Test
