@@ -443,7 +443,7 @@ cat <<EOF
     env:
       IMAGE_TAG: "ubuntu-16.04-pinned"
       BUILDKITE_AGENT_ACCESS_TOKEN:
-      PLATFORM_TYPE: "unpinned"
+      PLATFORM_TYPE: $PLATFORM_TYPE
       OS: "ubuntu-16.04" # OS and PKGTYPE required for lambdas
       PKGTYPE: "deb"
     agents:
@@ -493,7 +493,7 @@ cat <<EOF
     command: "./.cicd/installation-build.sh"
     env:
       IMAGE_TAG: "ubuntu-18.04-unpinned"
-      PLATFORM_TYPE: $PLATFORM_TYPE
+      PLATFORM_TYPE: "unpinned"
       BUILDKITE_AGENT_ACCESS_TOKEN:
     agents:
       queue: "$BUILDKITE_AGENT_QUEUE"
