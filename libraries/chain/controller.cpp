@@ -3141,6 +3141,10 @@ void controller::set_global_greylist_limit( uint32_t limit ) {
    my->global_greylist_limit = limit;
 }
 
+uint32_t controller::get_global_greylist_limit()const {
+   return my->global_greylist_limit;
+}
+
 void controller::add_resource_greylist(const account_name &name) {
    my->conf.resource_greylist.insert(name);
 }
