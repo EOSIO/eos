@@ -234,6 +234,9 @@ struct controller_impl {
    uint32_t                       snapshot_head_block = 0;
    named_thread_pool              thread_pool;
    platform_timer                 timer;
+#if defined(EOSIO_EOS_VM_RUNTIME_ENABLED) || defined(EOSIO_EOS_VM_JIT_RUNTIME_ENABLED)
+   vm::wasm_allocator                 wasm_alloc;
+#endif
 
    typedef pair<scope_name,action_name>                   handler_key;
    map< account_name, map<handler_key, apply_handler> >   apply_handlers;
@@ -257,6 +260,7 @@ struct controller_impl {
       }
 
       head = prev;
+
       db.undo();
 
       protocol_features.popped_blocks_to( prev->block_num );
@@ -281,7 +285,7 @@ struct controller_impl {
       apply_handlers[receiver][make_pair(contract,action)] = v;
    }
 
-   controller_impl( const controller::config& cfg, controller& s, protocol_feature_set&& pfs, const fc::optional<chain_id_type>& expected_chain_id )
+   controller_impl( const controller::config& cfg, controller& s, protocol_feature_set&& pfs, const chain_id_type& chain_id )
    :self(s),
     db( cfg.state_dir,
         cfg.read_only ? database::read_only : database::read_write,
@@ -291,26 +295,15 @@ struct controller_impl {
         cfg.reversible_cache_size, false, cfg.db_map_mode, cfg.db_hugepage_paths ),
     blog( cfg.blocks_dir ),
     fork_db( cfg.state_dir ),
-    wasmif( cfg.wasm_runtime, db ),
+    wasmif( cfg.wasm_runtime, cfg.eosvmoc_tierup, db, cfg.state_dir, cfg.eosvmoc_config ),
     resource_limits( db ),
     authorization( s, db ),
     protocol_features( std::move(pfs) ),
     conf( cfg ),
-    chain_id( (db.revision() >= 1) ? db.get<global_property_object>().chain_id
-                                   : ( expected_chain_id ? *expected_chain_id
-                                                         : genesis_state().compute_chain_id() ) ),
+    chain_id( chain_id ),
     read_mode( cfg.read_mode ),
     thread_pool( "chain", cfg.thread_pool_size )
    {
-      if( expected_chain_id && db.revision() >= 1 ) {
-         const auto& actual_chain_id = db.get<global_property_object>().chain_id;
-         EOS_ASSERT( *expected_chain_id == actual_chain_id,
-                     database_exception,
-                     "Unexpected chain ID in state. Expected: ${expected}. Actual: ${actual}.",
-                     ("expected", *expected_chain_id)("actual", actual_chain_id)
-         );
-      }
-
       fork_db.open( [this]( block_timestamp_type timestamp,
                             const flat_set<digest_type>& cur_features,
                             const vector<digest_type>& new_features )
@@ -617,16 +610,32 @@ struct controller_impl {
       init(shutdown);
    }
 
-   void init(std::function<bool()> shutdown) {
-      uint32_t lib_num = (blog.head() ? blog.head()->block_num() : fork_db.root()->block_num);
+
+   static auto validate_db_version( const chainbase::database& db ) {
       // check database version
       const auto& header_idx = db.get_index<database_header_multi_index>().indices().get<by_id>();
 
       EOS_ASSERT(header_idx.begin() != header_idx.end(), bad_database_version_exception,
                  "state database version pre-dates versioning, please restore from a compatible snapshot or replay!");
 
-      const auto& header_itr = header_idx.begin();
+      auto header_itr = header_idx.begin();
       header_itr->validate();
+
+      return header_itr;
+   }
+
+   void init(std::function<bool()> shutdown) {
+      uint32_t lib_num = (blog.head() ? blog.head()->block_num() : fork_db.root()->block_num);
+
+      auto header_itr = validate_db_version( db );
+
+      {
+         const auto& state_chain_id = db.get<global_property_object>().chain_id;
+         EOS_ASSERT( state_chain_id == chain_id, chain_id_type_exception,
+                     "chain ID in state (${state_chain_id}) does not match the chain ID that controller was constructed with (${controller_chain_id})",
+                     ("state_chain_id", state_chain_id)("controller_chain_id", chain_id)
+         );
+      }
 
       // upgrade to the latest compatible version
       if (header_itr->version != database_header_object::current_version) {
@@ -2365,13 +2374,13 @@ const protocol_feature_manager& controller::get_protocol_feature_manager()const
    return my->protocol_features;
 }
 
-controller::controller( const controller::config& cfg, const fc::optional<chain_id_type>& expected_chain_id )
-:my( new controller_impl( cfg, *this, protocol_feature_set{}, expected_chain_id ) )
+controller::controller( const controller::config& cfg, const chain_id_type& chain_id )
+:my( new controller_impl( cfg, *this, protocol_feature_set{}, chain_id ) )
 {
 }
 
-controller::controller( const config& cfg, protocol_feature_set&& pfs, const fc::optional<chain_id_type>& expected_chain_id )
-:my( new controller_impl( cfg, *this, std::move(pfs), expected_chain_id ) )
+controller::controller( const config& cfg, protocol_feature_set&& pfs, const chain_id_type& chain_id )
+:my( new controller_impl( cfg, *this, std::move(pfs), chain_id ) )
 {
 }
 
@@ -3156,6 +3165,12 @@ bool controller::all_subjective_mitigations_disabled()const {
    return my->conf.disable_all_subjective_mitigations;
 }
 
+#if defined(EOSIO_EOS_VM_RUNTIME_ENABLED) || defined(EOSIO_EOS_VM_JIT_RUNTIME_ENABLED)
+vm::wasm_allocator& controller::get_wasm_allocator() {
+   return my->wasm_alloc;
+}
+#endif
+
 fc::optional<uint64_t> controller::convert_exception_to_error_code( const fc::exception& e ) {
    const chain_exception* e_ptr = dynamic_cast<const chain_exception*>( &e );
 
@@ -3186,6 +3201,26 @@ chain_id_type controller::extract_chain_id(snapshot_reader& snapshot) {
       chain_id = global_properties.chain_id;
    });
    return chain_id;
+}
+
+fc::optional<chain_id_type> controller::extract_chain_id_from_db( const path& state_dir ) {
+   try {
+      chainbase::database db( state_dir, chainbase::database::read_only );
+
+      db.add_index<database_header_multi_index>();
+      db.add_index<global_property_multi_index>();
+
+      controller_impl::validate_db_version( db );
+
+      if( db.revision() < 1 ) return {};
+
+      return db.get<global_property_object>().chain_id;
+   } catch( const bad_database_version_exception& ) {
+      throw;
+   } catch( ... ) {
+   }
+
+   return {};
 }
 
 /// Protocol feature activation handlers:
