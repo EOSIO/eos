@@ -209,11 +209,11 @@ void apply_eosio_setabi(apply_context& context) {
    int64_t new_size = abi_size;
 
    db.modify( account, [&]( auto& a ) {
-      if (abi_size > 0) {
+                         //      if (abi_size > 0) {
          a.abi.assign(act.abi.data(), abi_size);
-      } else {
-         a.abi.resize(0);
-      }
+         //      } else {
+         //        a.abi.resize(0);
+         //     }
    });
 
    const auto& account_metadata = db.get<account_metadata_object, by_name>(act.account);

@@ -259,7 +259,7 @@ namespace eosio {
                db.create<action_history_object>( [&]( auto& aho ) {
                   auto ps = fc::raw::pack_size( at );
                   aho.packed_action_trace.resize(ps);
-                  datastream<char*> ds( aho.packed_action_trace.data(), ps );
+                  datastream<char*> ds( const_cast<char*>(aho.packed_action_trace.data()), ps );
                   fc::raw::pack( ds, at );
                   aho.action_sequence_num = at.receipt->global_sequence;
                   aho.block_num = chain.head_block_num() + 1;

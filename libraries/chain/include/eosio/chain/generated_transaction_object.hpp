@@ -36,7 +36,7 @@ namespace eosio { namespace chain {
          uint32_t set( const transaction& trx ) {
             auto trxsize = fc::raw::pack_size( trx );
             packed_trx.resize( trxsize );
-            fc::datastream<char*> ds( packed_trx.data(), trxsize );
+            fc::datastream<char*> ds( const_cast<char*>(packed_trx.data()), trxsize );
             fc::raw::pack( ds, trx );
             return trxsize;
          }
