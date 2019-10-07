@@ -400,51 +400,6 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          }
       }
 
-      class incoming_transaction_queue {
-         uint64_t max_incoming_transaction_queue_size = 0;
-         uint64_t size_in_bytes = 0;
-         std::deque<std::tuple<transaction_metadata_ptr, bool, next_function<transaction_trace_ptr>>> _incoming_transactions;
-
-      private:
-         static uint64_t calc_size( const transaction_metadata_ptr& trx ) {
-            // packed_trx caches unpacked transaction so double
-            return (trx->packed_trx()->get_unprunable_size() + trx->packed_trx()->get_prunable_size()) * 2 + sizeof( *trx );
-         }
-
-         void add_size( const transaction_metadata_ptr& trx ) {
-            auto size = calc_size( trx );
-            EOS_ASSERT( size_in_bytes + size < max_incoming_transaction_queue_size, tx_resource_exhaustion, "Transaction exceeded producer resource limit" );
-            size_in_bytes += size;
-         }
-
-      public:
-         void set_max_incoming_transaction_queue_size( uint64_t v ) { max_incoming_transaction_queue_size = v; }
-
-         void add( const transaction_metadata_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next ) {
-            add_size( trx );
-            _incoming_transactions.emplace_back( trx, persist_until_expired, std::move( next ) );
-         }
-
-         void add_front( const transaction_metadata_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next ) {
-            add_size( trx );
-            _incoming_transactions.emplace_front( trx, persist_until_expired, std::move( next ) );
-         }
-
-         auto pop_front() {
-            EOS_ASSERT( !_incoming_transactions.empty(), producer_exception, "logic error, front() called on empty incoming_transactions" );
-            auto intrx = _incoming_transactions.front();
-            _incoming_transactions.pop_front();
-            const transaction_metadata_ptr& trx = std::get<0>( intrx );
-            size_in_bytes -= calc_size( trx );
-            return intrx;
-         }
-
-         bool empty()const { return _incoming_transactions.empty(); }
-         size_t size()const { return _incoming_transactions.size(); }
-      };
-
-      incoming_transaction_queue _pending_incoming_transactions;
-
       void on_incoming_transaction_async(const packed_transaction_ptr& trx, bool persist_until_expired, next_function<transaction_trace_ptr> next) {
          chain::controller& chain = chain_plug->chain();
          const auto max_trx_time_ms = _max_transaction_time_ms.load();
@@ -815,7 +770,7 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
    EOS_ASSERT( max_incoming_transaction_queue_size > 0, plugin_config_exception,
                "incoming-transaction-queue-size-mb ${mb} must be greater than 0", ("mb", max_incoming_transaction_queue_size) );
 
-   my->_pending_incoming_transactions.set_max_incoming_transaction_queue_size( max_incoming_transaction_queue_size );
+   my->_unapplied_transactions.set_max_transaction_queue_size( max_incoming_transaction_queue_size );
 
    my->_incoming_defer_ratio = options.at("incoming-defer-ratio").as<double>();
 
