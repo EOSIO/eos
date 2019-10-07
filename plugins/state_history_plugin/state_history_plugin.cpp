@@ -475,7 +475,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       const auto&                                table_id_index = db.get_index<table_id_multi_index>();
       std::map<uint64_t, const table_id_object*> removed_table_id;
       for (auto& rem : table_id_index.stack().back().removed_values)
-         removed_table_id[rem.first._id] = &rem.second;
+         removed_table_id[rem.id._id] = &rem;
 
       auto get_table_id = [&](uint64_t tid) -> const table_id_object& {
          auto obj = table_id_index.find(tid);
@@ -511,12 +511,12 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
             auto& delta = deltas.back();
             delta.name  = name;
             for (auto& old : undo.old_values) {
-               auto& row = index.get(old.first);
-               if (include_delta(old.second, row))
+               auto& row = index.get(old.id);
+               if (include_delta(old, row))
                   delta.rows.obj.emplace_back(true, pack_row(row));
             }
             for (auto& old : undo.removed_values)
-               delta.rows.obj.emplace_back(false, pack_row(old.second));
+               delta.rows.obj.emplace_back(false, pack_row(old));
             for (auto id : undo.new_ids) {
                auto& row = index.get(id);
                delta.rows.obj.emplace_back(true, pack_row(row));

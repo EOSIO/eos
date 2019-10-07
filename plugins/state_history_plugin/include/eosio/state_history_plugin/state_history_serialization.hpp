@@ -405,7 +405,7 @@ datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosi
          auto  it   = undo.removed_values.find(obj.obj.parent);
          EOS_ASSERT(it != undo.removed_values.end(), eosio::chain::plugin_exception,
                     "can not find parent of permission_object");
-         parent = &it->second;
+         parent = &*it;
       }
       fc::raw::pack(ds, as_type<uint64_t>(parent->name.to_uint64_t()));
    } else {
