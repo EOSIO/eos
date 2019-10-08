@@ -380,9 +380,7 @@ namespace eosio {
    constexpr auto     def_send_buffer_size_mb = 4;
    constexpr auto     def_send_buffer_size = 1024*1024*def_send_buffer_size_mb;
    constexpr auto     def_max_write_queue_size = def_send_buffer_size*10;
-   constexpr boost::asio::chrono::milliseconds def_read_delay_for_full_write_queue{100};
    constexpr auto     def_max_trx_in_progress_size = 100*1024*1024; // 100 MB
-   constexpr auto     def_max_read_delays = 100; // number of times read_delay_timer started without any reads
    constexpr auto     def_max_consecutive_rejected_blocks = 3; // num of rejected blocks before disconnect
    constexpr auto     def_max_consecutive_immediate_connection_close = 9; // back off if client keeps closing
    constexpr auto     def_max_peer_block_ids_per_connection = 100*1024; // if we reach this many then the connection is spaming us, disconnect
@@ -592,10 +590,6 @@ namespace eosio {
 
       std::mutex                            response_expected_timer_mtx;
       boost::asio::steady_timer             response_expected_timer;
-
-      uint16_t                              read_delay_count = 0; // only accessed from strand
-      std::mutex                            read_delay_timer_mtx;
-      boost::asio::steady_timer             read_delay_timer;
 
       std::atomic<go_away_reason>           no_retry{no_reason};
 
@@ -822,7 +816,6 @@ namespace eosio {
         socket( new tcp::socket( my_impl->thread_pool->get_executor() ) ),
         connection_id( ++my_impl->current_connection_id ),
         response_expected_timer( my_impl->thread_pool->get_executor() ),
-        read_delay_timer( my_impl->thread_pool->get_executor() ),
         last_handshake_recv(),
         last_handshake_sent()
    {
@@ -836,7 +829,6 @@ namespace eosio {
         socket( new tcp::socket( my_impl->thread_pool->get_executor() ) ),
         connection_id( ++my_impl->current_connection_id ),
         response_expected_timer( my_impl->thread_pool->get_executor() ),
-        read_delay_timer( my_impl->thread_pool->get_executor() ),
         last_handshake_recv(),
         last_handshake_sent()
    {
@@ -958,11 +950,6 @@ namespace eosio {
       fc_ilog( logger, "closing '${a}', ${p}", ("a", self->peer_address())("p", self->peer_name()) );
       fc_dlog( logger, "canceling wait on ${p}", ("p", self->peer_name()) ); // peer_name(), do not hold conn_mtx
       self->cancel_wait();
-      {
-         std::lock_guard<std::mutex> g( self->read_delay_timer_mtx );
-         self->read_delay_timer.cancel();
-         self->read_delay_count = 0;
-      }
 
       if( reconnect ) {
          my_impl->start_conn_timer( std::chrono::milliseconds( 100 ), connection_wptr() );
@@ -2266,47 +2253,13 @@ namespace eosio {
             }
          };
 
-         if( buffer_queue.write_queue_size() > def_max_write_queue_size ||
-             trx_in_progress_size > def_max_trx_in_progress_size )
-         {
-            // too much queued up, reschedule
-            uint32_t write_queue_size = buffer_queue.write_queue_size();
-            uint32_t trx_in_progress_size = this->trx_in_progress_size.load();
-            if( write_queue_size > def_max_write_queue_size ) {
-               peer_wlog( this, "write_queue full ${s} bytes", ("s", write_queue_size) );
-            } else {
-               peer_wlog( this, "max trx in progress ${s} bytes", ("s", trx_in_progress_size) );
-            }
-            if( write_queue_size > 2*def_max_write_queue_size ||
-                trx_in_progress_size > 2*def_max_trx_in_progress_size ||
-                ++read_delay_count > def_max_read_delays )
-            {
-               fc_elog( logger, "queues over full, giving up on connection, closing connection to: ${p}",
-                        ("p", peer_name()) );
-               fc_elog( logger, "  write_queue ${s} bytes", ("s", write_queue_size) );
-               fc_elog( logger, "  max trx in progress ${s} bytes", ("s", trx_in_progress_size) );
-               close( false );
-               return;
-            }
-            std::lock_guard<std::mutex> g( read_delay_timer_mtx );
-            read_delay_timer.cancel();
-            read_delay_timer.expires_from_now( def_read_delay_for_full_write_queue );
-            connection_wptr weak_conn = shared_from_this();
-            read_delay_timer.async_wait( boost::asio::bind_executor(strand, [weak_conn]( boost::system::error_code ec ) {
-               if( ec == boost::asio::error::operation_aborted ) return;
-               auto conn = weak_conn.lock();
-               if( !conn ) return;
-               if( !ec ) {
-                  conn->start_read_message();
-               } else {
-                  fc_elog( logger, "Read delay timer error: ${e}, closing connection: ${p}",
-                           ("e", ec.message())("p",conn->peer_name()) );
-                  conn->close();
-               }
-            } ) );
+         uint32_t write_queue_size = buffer_queue.write_queue_size();
+         if( write_queue_size > def_max_write_queue_size ) {
+            fc_elog( logger, "write queue full ${s} bytes, giving up on connection, closing connection to: ${p}",
+                     ("s", write_queue_size)("p", peer_name()) );
+            close( false );
             return;
          }
-         read_delay_count = 0;
 
          boost::asio::async_read( *socket,
             pending_message_buffer.get_buffer_sequence_for_boost_async_read(), completion_handler,
@@ -2804,6 +2757,13 @@ namespace eosio {
 
       const auto& tid = trx->id();
       peer_dlog( this, "received packed_transaction ${id}", ("id", tid) );
+
+      uint32_t trx_in_progress_size = this->trx_in_progress_size.load();
+      if( trx_in_progress_size > def_max_trx_in_progress_size ) {
+         fc_wlog( logger, "Dropping trx ${id}, too many trx in progress ${s} bytes",
+                  ("id", tid)("s", trx_in_progress_size) );
+         return;
+      }
 
       bool have_trx = my_impl->dispatcher->have_txn( tid );
       node_transaction_state nts = {tid, trx->expiration(), 0, connection_id};
