@@ -112,7 +112,7 @@ class Writer(ABC):
         pass
 
     def unbuffered_write(self, msg, level=None):
-        raw_write(self.prepend(msg, level))
+        self.raw_write(self.prepend(msg, level))
 
     def buffered_write(self, msg, level=None):
         self._message_center.store(self.prepend(msg, level))
