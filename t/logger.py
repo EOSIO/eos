@@ -98,7 +98,7 @@ class Writer(abc.ABC):
         if self.show_clock_time:
             prefix += "{} ".format(helper.get_current_time())
         if self.show_elapsed_time:
-            prefix += "({:8.2f} s) ".format(time.time() - self.start_time)
+            prefix += "({:9.3f}s) ".format(time.time() - self.start_time)
         if self.show_trace:
             frame = inspect.stack()[5]
             prefix += "{:10.10s}:{:4.4s} {:18.18s} ".format(

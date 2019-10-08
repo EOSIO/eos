@@ -26,7 +26,7 @@ def fetch(data: dict, keys: List[str]) -> dict:
     return dict((k, data[k]) for k in keys)
 
 
-def get_current_time(date=True, precision=2, local_time=False, time_zone=False):
+def get_current_time(date=True, precision=3, local_time=False, time_zone=False):
     now = time.time()
     form = "%H:%M:%S"
     if date:
