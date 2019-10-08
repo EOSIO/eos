@@ -1,21 +1,29 @@
 #! /usr/bin/env python3
 
+# standard libraries
+from typing import List, Optional, Union
 import argparse
 import helper
 import json
 import math
 import os
 import platform
-import printer
-import requests
+import shlex
 import string
 import subprocess
-import shlex
 import threading
 import time
 
+# third-party libraries
+import requests
 
-from typing import List, Optional, Union
+# user-defined modules
+from logger import WriterConfig, ScreenWriter, FileWriter, Logger
+from connector import Connection as Interaction
+import color
+
+# user-defined modules TO BE DEPRECATED
+import printer
 
 
 PROGRAM = "eosio-launcher-service"
@@ -79,11 +87,8 @@ class ExceptionThread(threading.Thread):
 
 
 class CommandLineArguments:
-    # def __init__(self, *templates):
     def __init__(self):
-        # args = self.parse(*templates)
         cla = self.parse()
-        # if "service" in templates:
         self.address = cla.address
         self.port = cla.port
         self.dir = cla.dir
@@ -95,7 +100,6 @@ class CommandLineArguments:
         self.debug = cla.debug
         self.info = cla.info
 
-        # if "cluster" in templates:
         self.cluster_id = cla.cluster_id
         self.topology = cla.topology
         self.center_node_id = cla.center_node_id
@@ -106,7 +110,6 @@ class CommandLineArguments:
 
 
     @staticmethod
-    # def parse(*templates):
     def parse():
         HEADER = printer.String().decorate("Launcher Service for EOS Testing Framework", style="underline", fcolor="green")
         OFFSET = 5
@@ -115,8 +118,7 @@ class CommandLineArguments:
 
         parser.add_argument("-h", "--help", action="help", help=' ' * OFFSET + HELP_HELP)
 
-        info = lambda text, value: "{} ({})".format(printer.pad(text, left=OFFSET, total=50, char=' ', sep=""), value)
-        # if "service" in templates:
+        info = lambda text, value: "{} ({})".format(helper.pad(text, left=OFFSET, total=50, char=' ', sep=""), value)
         parser.add_argument("-a", "--address", type=str, metavar="IP", help=info(HELP_ADDRESS, DEFAULT_ADDRESS))
         parser.add_argument("-p", "--port", type=int, help=info(HELP_PORT, DEFAULT_PORT))
         parser.add_argument("-d", "--dir", type=str, help=info(HELP_DIR, DEFAULT_DIR))
@@ -124,7 +126,6 @@ class CommandLineArguments:
         parser.add_argument("-s", "--start", action="store_true", default=None, help=info(HELP_START, DEFAULT_START))
         parser.add_argument("-k", "--kill", action="store_true", default=None, help=info(HELP_KILL, DEFAULT_KILL))
 
-        # if "cluster" in templates:
         parser.add_argument("-i", "--cluster-id", dest="cluster_id", type=int, metavar="ID", help=info(HELP_CLUSTER_ID, DEFAULT_CLUSTER_ID))
         parser.add_argument("-t", "--topology", type=str, metavar="SHAPE", help=info(HELP_TOPOLOGY, DEFAULT_TOPOLOGY), choices={"mesh", "star", "bridge", "line", "ring", "tree"})
         parser.add_argument("-c", "--center-node-id", dest="center_node_id", type=int, metavar="ID", help=info(HELP_CENTER_NODE_ID, DEFAULT_CENTER_NODE_ID))
@@ -133,7 +134,6 @@ class CommandLineArguments:
         parser.add_argument("-z", "--producer-nodes", dest="producer_nodes", type=int, metavar="NUM", help=info(HELP_PRODUCER_NODES, DEFAULT_PRODUCER_NODES))
         parser.add_argument("-u", "--unstarted-nodes", dest="unstarted_nodes", type=int, metavar="NUM", help=info(HELP_UNSTARTED_NODES, DEFAULT_UNSTARTED_NODES))
 
-        # if "service" in templates:
         verbosity = parser.add_mutually_exclusive_group()
         verbosity.add_argument("-v", "--verbose", dest="verbosity", action="count", default=None, help=info(HELP_VERBOSE, DEFAULT_VERBOSITY))
         verbosity.add_argument("-x", "--silent", dest="verbosity", action="store_false", default=None, help=info(HELP_SILENT, not DEFAULT_VERBOSITY))
@@ -147,7 +147,7 @@ class CommandLineArguments:
 
 
 class Service:
-    def __init__(self, address=None, port=None, dir=None, file=None, start=None, kill=None, verbosity=None, monochrome=None, debug=None, info=None, dont_connect=False):
+    def __init__(self, address=None, port=None, dir=None, file=None, start=None, kill=None, verbosity=None, monochrome=None, debug=None, info=None, dont_connect=False, logger=None):
 
         # configure service
         self.cla        = CommandLineArguments()
@@ -169,7 +169,20 @@ class Service:
             self.remote = True
             self.file = self.start = self.kill = None
 
+        # register logger
+        # TODO: set default behavior
+        self.logger = logger
+        self.log = logger.log
+        self.trace = logger.trace
+        self.debug = logger.debug
+        self.info = logger.info
+        self.warn = logger.warn
+        self.error = logger.error
+        self.fatal = logger.fatal
+
+
         # register printer
+        # TO BE DEPRECATED
         self.print = printer.Print(invisible=not self.verbosity, monochrome=self.monochrome)
         self.string = printer.String(invisible=not self.verbosity, monochrome=self.monochrome)
         self.alert = printer.String(monochrome=self.monochrome)
@@ -197,7 +210,8 @@ class Service:
         # change working directory
         self.print_header("change working directory")
         os.chdir(self.dir)
-        self.print.vanilla("{:70}{}".format("Current working directory", os.getcwd()))
+        self.logger.debug("{:70}{}".format("Current working directory", os.getcwd()))
+        self.logger.flush()
 
         # connect to remote service and return
         if self.remote:
@@ -214,17 +228,24 @@ class Service:
             self.connect_to_local_service(spid[0])
         else:
             self.start_service()
+        self.logger.flush()
 
 
     def print_header(self, text):
-        self.print.vanilla(printer.pad(self.string.decorate(text, fcolor="black", bcolor="cyan")))
+        # self.print.vanilla(helper.pad(self.string.decorate(text, fcolor="black", bcolor="cyan")))
+        # TODO: change hard coded 80
+        self.logger.debug(helper.header(text))
 
 
     def print_system_info(self):
         self.print_header("system info")
-        self.print.vanilla("{:70}{}".format("UTC Time", time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())))
-        self.print.vanilla("{:70}{}".format("Local Time", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
-        self.print.vanilla("{:70}{}".format("Platform", platform.platform()))
+        # self.print.vanilla("{:70}{}".format("UTC Time", time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())))
+        # self.print.vanilla("{:70}{}".format("Local Time", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
+        # self.print.vanilla("{:70}{}".format("Platform", platform.platform()))
+        self.logger.debug("{:22}{}".format("UTC Time", time.strftime("%Y-%m-%d %H:%M:%S %Z", time.gmtime())))
+        self.logger.debug("{:22}{}".format("Local Time", time.strftime("%Y-%m-%d %H:%M:%S %Z", time.localtime())))
+        self.logger.debug("{:22}{}".format("Platform", platform.platform()))
+        self.logger.flush()
 
 
     def print_config(self):
@@ -237,16 +258,14 @@ class Service:
         self.print_config_helper("-k: kill",        HELP_KILL,          self.kill,          DEFAULT_KILL)
         self.print_config_helper("-v: verbose",     HELP_VERBOSE,       self.verbosity,     DEFAULT_VERBOSITY)
         self.print_config_helper("-m: monochrome",  HELP_MONOCHROME,    self.monochrome,    DEFAULT_MONOCHROME)
-        self.print_config_helper("--debug",         HELP_DEBUG,         self.debug,         DEFAULT_DEBUG)
-        self.print_config_helper("--info",          HELP_INFO,          self.info,          DEFAULT_INFO)
+        self.logger.flush()
 
 
     def print_config_helper(self, label, help, value, default_value, label_width=22, help_width=48):
-        self.print.vanilla("{:{label_offset_width}}{:{help_width}}{}"
-                            .format(self.string.yellow(label), help,
-                                    self.string.blue(value) if value != default_value else self.string.vanilla(value),
-                                    label_offset_width=label_width+self.string.offset,
-                                    help_width=help_width))
+        # self.print.vanilla("{:{label_offset_width}}{:{help_width}}{}"
+        self.logger.debug("{:31}{:48}{}".format(color.yellow(label),
+                                    help,
+                                    helper.compress(str(value) if value == default_value else color.blue(value))))
 
     # TODO
     def connect_to_remote_service(self):
@@ -256,23 +275,23 @@ class Service:
     def connect_to_local_service(self, pid):
         current_port = self.get_service_port(pid)
         current_file = self.get_service_file(pid)
-        self.print.green("Connecting to existing launcher service with process ID [{}].".format(pid))
-        self.print.green("No new launcher service will be started.")
-        self.print.vanilla("Configuration of existing launcher service:")
-        self.print.vanilla("--- Listening port: [{}]".format(self.string.yellow(current_port)))
-        self.print.vanilla("--- Path to file: {}".format(self.string.vanilla(current_file)))
+        self.logger.debug(color.green("Connecting to existing launcher service with process ID [{}].".format(pid)))
+        self.logger.debug(color.green("No new launcher service will be started."))
+        self.logger.debug("Configuration of existing launcher service:")
+        self.logger.debug("--- Listening port: [{}]".format(self.string.yellow(current_port)))
+        self.logger.debug("--- Path to file: {}".format(self.string.vanilla(current_file)))
         if self.port != current_port:
-            self.print.yellow("Warning: port setting (port = {}) ignored.".format(self.port))
+            self.logger.debug(color.yellow("Warning: port setting (port = {}) ignored.".format(self.port)))
             self.port = current_port
         if self.file != current_file:
-            self.print.yellow("Warning: file setting (file = {}) ignored.".format(self.file))
+            self.logger.debug(color.yellow("Warning: file setting (file = {}) ignored.".format(self.file)))
             self.file = current_file
-        self.print.vanilla("To always start a new launcher service, pass {} or {}.".format(self.string.yellow("-s"), self.string.yellow("--start")))
-        self.print.vanilla("To kill existing launcher services, pass {} or {}.".format(self.string.yellow("-k"), self.string.yellow("--kill")))
-
+        self.logger.debug("To always start a new launcher service, pass {} or {}.".format(self.string.yellow("-s"), self.string.yellow("--start")))
+        self.logger.debug("To kill existing launcher services, pass {} or {}.".format(self.string.yellow("-k"), self.string.yellow("--kill")))
+        self.logger.flush()
 
     def start_service(self):
-        self.print.green("Starting a new launcher service.")
+        self.logger.debug(color.green("Starting a new launcher service."))
         subprocess.Popen([self.file, "--http-server-address=0.0.0.0:{}".format(self.port), "--http-threads=4"])
         assert self.get_service_pid(), self.alert.red("Launcher service is not started properly.")
 
@@ -280,7 +299,7 @@ class Service:
     def kill_service(self, spid=None):
         spid = self.get_service_pid() if spid is None else spid
         for x in spid:
-            self.print.yellow("Killing exisiting launcher service with process ID [{}].".format(x))
+            self.logger.debug(color.yellow("Killing exisiting launcher service with process ID [{}].".format(x)))
             subprocess.run(["kill", "-SIGTERM", str(x)])
 
 
@@ -288,11 +307,11 @@ class Service:
         """Returns a list of 0, 1, or more process IDs"""
         spid = helper.pgrep(PROGRAM)
         if len(spid) == 0:
-            self.print.yellow("No launcher is running currently.")
+            self.logger.debug(color.yellow("No launcher is running currently."))
         elif len(spid) == 1:
-            self.print.green("Launcher service is running with process ID [{}].".format(spid[0]))
+            self.logger.debug(color.green("Launcher service is running with process ID [{}].".format(spid[0])))
         else:
-            self.print.green("Multiple launcher services are running with process IDs {}".format(spid))
+            self.logger.debug(color.green("Multiple launcher services are running with process IDs {}".format(spid)))
         return spid
 
 
@@ -307,24 +326,6 @@ class Service:
 
     def get_service_file(self, pid):
         return subprocess.Popen(["ps", "-p", str(pid), "-o", "comm="], stdout=subprocess.PIPE).stdout.read().rstrip().decode("ascii")
-
-
-    def debug_print(self, *args, prefix=True, color=True, fcolor="blue", **kwargs):
-        if self.debug:
-            if color:
-                printer.Print(invisible=False, monochrome=self.monochrome).decorate("[DEBUG]" if prefix else "", fcolor=fcolor, *args, **kwargs)
-            else:
-                printer.Print(invisible=False).vanilla("[DEBUG]" if prefix else "", *args, **kwargs)
-
-
-    def info_print(self, *args, prefix=True, color=True, fcolor="magenta", **kwargs):
-        if self.info or self.debug:
-            if color:
-                printer.Print(invisible=False, monochrome=self.monochrome).decorate("[INFO ]" if prefix else "", fcolor=fcolor, *args, **kwargs)
-            else:
-                printer.Print(invisible=False).vanilla("[INFO ]" if prefix else "", *args, **kwargs)
-
-
 
 
 class Cluster:
@@ -350,9 +351,12 @@ class Cluster:
         # register service
         self.service = service
         self.cla = service.cla
+        self.logger = service.logger
         self.print = service.print
         self.string = service.string
         self.alert = service.alert
+
+        # TO BE DEPRECATED
         self.print_header = service.print_header
         self.print_config_helper = service.print_config_helper
 
@@ -395,7 +399,7 @@ class Cluster:
             self.print_header("resolve conflict in cluster configuration")
             self.print.vanilla("Conflict: total producers ({}) <= producer nodes ({}).".format(self.total_producers, self.producer_nodes))
             self.print.vanilla("Resolution: total_producers takes priority over producer_nodes.")
-            self.print.yellow("Warning: producer nodes setting (producer_nodes = {}) ignored.".format(self.producer_nodes))
+            self.logger.debug(color.yellow("Warning: producer nodes setting (producer_nodes = {}) ignored.".format(self.producer_nodes)))
             self.producer_nodes = self.total_producers
 
 
@@ -428,7 +432,7 @@ class Cluster:
         13. verify head producer
         """
 
-        self.print.decorate(printer.pad(">>> Bootstrap starts.", left=0, char=' ', sep=""), fcolor="white", bcolor="black")
+        self.logger.info(">>> Bootstrap starts.")
 
         # print configuration
         self.print_config()
@@ -524,7 +528,9 @@ class Cluster:
             # 13. verify head block producer is no longer eosio
             self.verify_head_block_producer(wait=1)
 
-        self.print.decorate(printer.pad(">>> Bootstrap finishes.", left=0, char=' ', sep=""), fcolor="white", bcolor="black")
+        # self.logger.debug(color.decorate(helper.pad(">>> Bootstrap finishes.", left=0, char=' ', sep="", total=80), fcolor="white", bcolor="black"))
+        self.logger.info(">>> Bootstrap finishes.")
+        self.logger.flush()
 
 
     def print_config(self):
@@ -619,9 +625,9 @@ class Cluster:
         while retry >= 0:
             head_block_producer = get_head_block_producer()
             if head_block_producer == "eosio":
-                self.print.yellow("Warning: Head block producer is still \"eosio\". Please wait for a while.")
+                self.logger.debug(color.yellow("Warning: Head block producer is still \"eosio\". Please wait for a while."))
             else:
-                self.print.green("Head block producer is \"{}\", no longer eosio.".format(head_block_producer))
+                self.logger.debug(color.green("Head block producer is \"{}\", no longer eosio.".format(head_block_producer)))
                 break
             time.sleep(wait)
             retry -= 1
@@ -629,39 +635,43 @@ class Cluster:
 
 
     # TODO: set retry from command-line
-    def call(self, endpoint: str, retry=5, wait=1, verify=True, loud=True, header: str =None, **data):
+    def call(self, endpoint: str, retry=5, wait=1, verify=True, loud=True, header: str = None, **data):
         if loud:
             header = endpoint.replace("_", " ") if header is None else header
             self.print_header(header)
         ix = Interaction(endpoint, self.service, data)
         if loud:
-            self.print_request(ix)
+            # self.print_request(ix)
+            self.logger.debug(ix.request.url)
+            self.logger.debug(helper.pretty_json(ix.request.data))
         while not ix.response.ok and retry > 0:
             if loud:
-                self.print.red(ix.response)
-                self.print.vanilla("Retrying ...")
+                self.logger.debug(color.red(ix.response))
+                self.logger.debug(color.vanilla("Retrying ..."))
             time.sleep(wait)
             ix.attempt()
             retry -= 1
         if loud:
             # self.print.magenta(ix.transaction_id)
-            self.print.response(ix.response)
+            self.logger.debug(self.string.response_in_short(ix.response))
         assert ix.response.ok
+        #  TODO: a better way to pass verify
         if verify:
             assert self.verify_transaction(ix.transaction_id, key=verify, loud=loud)
+        self.logger.flush()
         return json.loads(ix.response.text)
 
 
     def verify_transaction(self, transaction_id, key=True, node_id=0, retry=600, wait=0.5, loud=True):
         key = "irreversible" if key == True else key
         if loud:
-            self.print.vanilla("{:100}".format("Verifying ..."))
+            self.logger.debug("Verifying ...")
         ix = Interaction("verify_transaction", self.service, dict(cluster_id=self.cluster_id, node_id=node_id, transaction_id=transaction_id))
         verified = helper.extract(ix.response, key=key, fallback=False)
         while not verified and retry > 0:
             time.sleep(wait)
             if loud:
-                self.print.vanilla("Verifying ...")
+                self.logger.debug("Verifying ...")
             ix.attempt()
             verified = helper.extract(ix.response, key=key, fallback=False)
             # debug temp
@@ -671,17 +681,17 @@ class Cluster:
         assert ix.response.ok
         if loud:
             if verified:
-                self.print.decorate("Success!", fcolor="black", bcolor="green")
+                self.logger.debug(color.decorate("Success!", fcolor="black", bcolor="green"))
             else:
-                self.print.decorate("Failure!", fcolor="black", bcolor="red")
+                self.logger.debug(color.decorate("Failure!", fcolor="black", bcolor="red"))
                 # debug temp
                 # self.print.response_in_full(ix.response)
         return helper.extract(ix.response, key=key, fallback=False)
 
 
-    def print_request(self, ix):
-        self.print.vanilla(ix.request.url)
-        self.print.json(ix.request.data)
+    # def print_request(self, ix):
+    #     self.logger.debug(self.string.vanilla(ix.request.url))
+    #     self.logger.debug(self.string.json(ix.request.data))
 
 
     @staticmethod
@@ -708,45 +718,15 @@ class Cluster:
         return "defproducer" + string.ascii_lowercase[num] if num < 26 else "defpr" + int_to_base26(8031810176 + num)[1:]
 
 
-
-
-
-class Request:
-    def __init__(self, url: str, data: str):
-        self.url = url
-        self.data = data
-
-    def post(self):
-        return requests.post(self.url, data=self.data)
-
-
-
-
-class Interaction:
-    def __init__(self, endpoint, service, data: dict, dont_attempt=False):
-        self.request = Request(self.get_url(endpoint, service.address, service.port), json.dumps(data))
-        if not dont_attempt:
-            self.attempt()
-
-
-    def attempt(self):
-        self.response = self.request.post()
-        self.transaction_id = helper.extract(self.response, key="transaction_id", fallback=None)
-        return self.response, self.transaction_id
-
-
-    @staticmethod
-    def get_url(endpoint, address, port):
-        return "http://{}:{}/v1/launcher/{}".format(address, port, endpoint)
-
-
-
-
 def test():
-    service = Service()
+    buffered_color = WriterConfig(buffered=True, monochrome=False)
+    unbuffered_mono = WriterConfig(buffered=False, monochrome=True)
+    unbuffered_color = WriterConfig(buffered=False, monochrome=False)
+    logger = Logger(ScreenWriter(config=buffered_color),
+                    FileWriter(filename="mono.log", config=unbuffered_mono),
+                    FileWriter(filename="color.log", config=unbuffered_color))
+    service = Service(logger=logger)
     cluster = Cluster(service=service)
-    service.debug_print("Only if \"--debug\" is provided shall this line show up.")
-    service.info_print("Only if \"--info\" or \"--debug\" is provided shall this line show up.")
 
 
 if __name__ == "__main__":

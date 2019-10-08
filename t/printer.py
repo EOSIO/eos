@@ -9,6 +9,8 @@ import sys
 
 from typing import List, Optional, Union
 
+import color
+
 
 COLORS = {"black":          0,
           "red":            1,
@@ -29,29 +31,6 @@ STYLES = {"reset":          0,
           "reverse":        7,
           "hide":           8,
           "strikethrough":  9}
-
-# def decorate(text,
-#              style:     Optional[Union[str, List[str]]] =None,
-#              fcolor:    Optional[str]                   =None,
-#              bcolor:    Optional[str]                   =None):
-#     attr = concat(style, fcolor, bcolor)
-#     return "\033[{}m{}\033[0m".format(attr, text) if attr else text
-
-# def red(text):
-#     return decorate(text, fcolor="red")
-
-# def green(text):
-#     return decorate(text, fcolor="green")
-
-# def blue(text):
-#     return decorate(text, fcolor="blue")
-
-# def yellow(text):
-#     return decorate(text, fcolor="yellow")
-
-# def cyan(text):
-#     return decorate(text, fcolor="cyan")
-
 
 def concat(style, fcolor, bcolor):
     """
@@ -114,6 +93,56 @@ class String():
 
     def white(self, text):
         return self.decorate(text, fcolor="white")
+
+    def json(self, text: str, maxlen=100) -> str:
+        data = json.loads(text)
+        if maxlen:
+            self.trim(data, maxlen=100)
+        return json.dumps(data, indent=4, sort_keys=False)
+
+    def transaction_id(self, response: requests.Response) -> None:
+        tid = helper.extract(response, key="transaction_id", fallback=None)
+        if tid:
+            return color.green("<Transaction ID> {}".format(tid))
+        else:
+            return color.yellow("Warning: No transaction ID returned.")
+
+    # TODO: change API, pass tid
+    def response_in_short(self, response: requests.Response) -> None:
+        res = ""
+        if response.ok:
+            res += self.green(response) + "\n"
+        else:
+            res += self.red(response) + "\n"
+            res += self.json(response.text) + "\n"
+        # return self.transaction_id(response) + "\n"
+        res += self.transaction_id(response)
+        return res
+
+
+    @staticmethod
+    def trim(data, maxlen=100):
+        """
+        Summary
+        -------
+        A helper function for json printing. This function recursively look
+        into a nested dict or list that could be converted to a json string,
+        and replace str values that are too long with three dots (...).
+        """
+        if isinstance(data, dict):
+            for key in data:
+                if isinstance(data[key], (list, dict)):
+                    Print.trim(data[key])
+                else:
+                    if isinstance(data[key], str) and len(data[key]) > maxlen:
+                        data[key] = "..."
+        elif isinstance(data, list):
+            for item in data:
+                if isinstance(item, (list, dict)):
+                    Print.trim(item)
+                else:
+                    if isinstance(item, str) and len(item) > maxlen:
+                        item = "..."
 
 
 class Print():
