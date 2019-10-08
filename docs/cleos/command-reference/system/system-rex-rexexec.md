@@ -1,7 +1,3 @@
----
-title: "system rex rexexec"
-excerpt: "Perform REX maintenance by processing expired loans and unfilled sell orders"
----
 ## Positionals
 - `user` _TEXT_ - User executing the action (required)
 - `max` _TEXT_ - Maximum number of CPU loans, Network loans, and sell orders to be processed (required)

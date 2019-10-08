@@ -1,7 +1,3 @@
----
-title: "system unregproxy"
-excerpt: "Unregister an account as a proxy (for voting)"
----
 ## Positional Arguments
 - `proxy` _TEXT_ - The proxy account to unregister
 ## Options

@@ -1,7 +1,7 @@
----
-title: "bidnameinfo"
-excerpt: "Returns data about a particular name and it's bidding status"
----
+## Description
+
+Returns data about a particular name and it's bidding status
+
 ## Positionals
 * `name` _TEXT_  - The name to lookup
 

@@ -1,7 +1,3 @@
----
-title: "system voteproducer approve"
-excerpt: "Add one producer to list of voted producers"
----
 ## Positional Arguments
   - `voter` _TEXT_ - The voting account
   - `producer` _TEXT_ - The account to vote for

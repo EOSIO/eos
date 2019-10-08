@@ -1,9 +1,3 @@
----
-title: "version"
-excerpt: ""
----
-## Description
-
 ## Info
 **Command**
 
@@ -12,7 +6,7 @@ $ ./cleos version
 ```
 
 ## Subcommands
-[client](ref:client) - Retrieve version information of the client
+[client](client) - Retrieve version information of the client
 
 ```shell
 $ ./cleos version client
