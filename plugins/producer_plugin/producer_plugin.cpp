@@ -1555,6 +1555,7 @@ bool producer_plugin_impl::process_unapplied_trxs( const fc::time_point& deadlin
       chain::controller& chain = chain_plug->chain();
       int num_applied = 0, num_failed = 0, num_processed = 0;
       auto unapplied_trxs_size = _unapplied_transactions.size();
+      // unapplied and persisted do not have a next method to call
       auto itr     = (_pending_block_mode == pending_block_mode::producing) ?
                      _unapplied_transactions.unapplied_begin() : _unapplied_transactions.persisted_begin();
       auto end_itr = (_pending_block_mode == pending_block_mode::producing) ?
@@ -1585,13 +1586,11 @@ bool producer_plugin_impl::process_unapplied_trxs( const fc::time_point& deadlin
                } else {
                   // this failed our configured maximum transaction time, we don't want to replay it
                   ++num_failed;
-                  if( itr->next ) _unapplied_transactions.call_next( itr, trace->except->dynamic_copy_exception() );
                   itr = _unapplied_transactions.erase( itr );
                   continue;
                }
             } else {
                ++num_applied;
-               if( itr->next ) _unapplied_transactions.call_next( itr,  trace );
                if( itr->trx_type != trx_enum_type::persisted ) {
                   itr = _unapplied_transactions.erase( itr );
                   continue;

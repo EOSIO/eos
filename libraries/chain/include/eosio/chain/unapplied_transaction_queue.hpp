@@ -213,16 +213,6 @@ public:
 
    using iterator = unapplied_trx_queue_type::index<by_type>::type::iterator;
 
-   void call_next( iterator itr, const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& var ) {
-      if( itr->next ) {
-         itr->next( var );
-         // only call once
-         queue.get<by_type>().modify( itr, [](auto& un) {
-            un.next = nullptr;
-         } );
-      }
-   }
-
    iterator begin() { return queue.get<by_type>().begin(); }
    iterator end() { return queue.get<by_type>().end(); }
 
