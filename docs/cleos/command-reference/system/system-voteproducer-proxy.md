@@ -1,7 +1,3 @@
----
-title: "system voteproducer proxy"
-excerpt: "Vote your stake through a proxy"
----
 ## Positional Arguments
 - `voter` _TEXT_ - The voting account
 - `proxy` _TEXT_ - The proxy account

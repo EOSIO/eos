@@ -1,7 +1,3 @@
----
-title: "system unregprod"
-excerpt: "Unregister an existing producer"
----
 ## Positional Arguments
 `account` _TEXT_ - The account to unregister as a producer
 ## Options

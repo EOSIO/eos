@@ -1,7 +1,7 @@
----
-title: "system claimrewards"
-excerpt: "Claim producer rewards"
----
+## Description
+
+Claim producer rewards
+
 ## Positional Arguments
 - `owner` _TEXT_ - The account to claim rewards for
 ## Options

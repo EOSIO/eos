@@ -1,7 +1,3 @@
----
-title: "system voteproducer prods"
-excerpt: "Vote for one or more producers"
----
 ## Positional Arguments
 - `voter` _TEXT_ - The voting account
 - `producers` _TEXT ..._ - The account(s) to vote for. All options from this position and following will be treated as the producer list.

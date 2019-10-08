@@ -1,7 +1,3 @@
----
-title: "system rex withdraw"
-excerpt: "Withdraw from owner's REX fund by transfering to owner's liquid token balance"
----
 ## Positionals
 - `owner` _TEXT_ - Account which owns the REX fund (required)
 - `amount` _TEXT_ - Amount to be withdrawn from REX fund (required)

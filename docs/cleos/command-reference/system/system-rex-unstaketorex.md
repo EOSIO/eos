@@ -1,7 +1,3 @@
----
-title: "system rex unstaketorex"
-excerpt: "Buy REX using staked tokens"
----
 ## Positionals
 - `from` _TEXT_ - Account buying REX tokens (required)
 - `receiver` _TEXT_ - Account that tokens have been staked to (required)

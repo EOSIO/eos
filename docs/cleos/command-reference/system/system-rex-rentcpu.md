@@ -1,7 +1,3 @@
----
-title: "system rex rentcpu"
-excerpt: "Rent CPU bandwidth for 30 days"
----
 ## Positionals
 - `from` _TEXT_ - Account buying REX tokens (required)
 - `receiver` _TEXT_ - Account to whom rented CPU bandwidth is staked (required)

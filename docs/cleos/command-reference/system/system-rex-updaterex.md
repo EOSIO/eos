@@ -1,7 +1,3 @@
----
-title: "system rex updaterex"
-excerpt: "Update REX owner vote stake and vote weight"
----
 ## Positionals
 - `owner` _TEXT_ - Account which owns the REX fund (required)
 

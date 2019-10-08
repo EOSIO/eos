@@ -1,7 +1,3 @@
----
-title: "system voteproducer unapprove"
-excerpt: "Remove one producer from list of voted producers"
----
 ## Positional Arguments
 - `voter` _TEXT_ - The voting account
 - `producer` _TEXT_  - The account to remove from voted producers

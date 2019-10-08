@@ -1,7 +1,3 @@
----
-title: "system undelegatebw"
-excerpt: "Undelegate bandwidth"
----
 ## Positional Arguments
 - `from` _TEXT_ - The account undelegating bandwidth
 - `receiver` _TEXT_ - The account to undelegate bandwidth from
