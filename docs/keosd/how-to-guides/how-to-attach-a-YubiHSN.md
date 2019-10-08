@@ -4,7 +4,7 @@ Attach a YubiHSM as a hard wallet
 
 ## Before you begin
 
-* Install the currently supported version of kleos
+* Install the currently supported version of `keosd`
 
 * Install YubiHSM2 Software Tookit (YubiHSM2 SDK)
 
