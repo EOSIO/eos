@@ -1,7 +1,7 @@
 ## Description
 Interact with local p2p network connections.
 
-**Command**
+## Command
 
 ```shell
 Interact with local p2p network connections

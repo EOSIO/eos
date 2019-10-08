@@ -1,5 +1,8 @@
-## Info
-**Command**
+## Description
+
+Retrieve version information
+
+## Command
 
 ```shell
 $ ./cleos version
