@@ -14,23 +14,23 @@ steps:
 
   - label: ":ubuntu: Ubuntu 18.04 - Build"
     command:
-      - "./.cicd/build.sh"
-      - "tar -pczf build.tar.gz build && buildkite-agent artifact upload build.tar.gz"
-    env:
-      IMAGE_TAG: "ubuntu-18.04-pinned"
+      - "echo derp"
+      # - "tar -pczf build.tar.gz build && buildkite-agent artifact upload build.tar.gz"
+    # env:
+    #   IMAGE_TAG: "ubuntu-18.04-pinned"
     agents:
       queue: "automation-eks-eos-builder-fleet"
-    timeout: 180
-    id: "ubuntu-18.04-pinned-build"
+    # timeout: 180
+    # id: "ubuntu-18.04-pinned-build"
 
-  - label: ":ubuntu: Ubuntu 18.04 - Unit Tests"
-    command:
-      - "buildkite-agent artifact download build.tar.gz . --step ':ubuntu: Ubuntu 18.04 - Build' && tar -xzf build.tar.gz"
-      - "./.cicd/test.sh scripts/parallel-test.sh"
-    env:
-      IMAGE_TAG: "ubuntu-18.04-pinned"
-    agents:
-      queue: "automation-eks-eos-builder-fleet"
-    timeout: 30
-    id: "ubuntu-18.04-pinned-unit-tests"
-    depends_on: "ubuntu-18.04-pinned-build"
+  # - label: ":ubuntu: Ubuntu 18.04 - Unit Tests"
+  #   command:
+  #     - "buildkite-agent artifact download build.tar.gz . --step ':ubuntu: Ubuntu 18.04 - Build' && tar -xzf build.tar.gz"
+  #     - "./.cicd/test.sh scripts/parallel-test.sh"
+  #   env:
+  #     IMAGE_TAG: "ubuntu-18.04-pinned"
+  #   agents:
+  #     queue: "automation-eks-eos-builder-fleet"
+  #   timeout: 30
+  #   id: "ubuntu-18.04-pinned-unit-tests"
+  #   depends_on: "ubuntu-18.04-pinned-build"
