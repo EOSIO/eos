@@ -20,8 +20,7 @@ steps:
       IMAGE_TAG: "ubuntu-18.04-pinned"
     agents:
       queue: "automation-eks-eos-builder-fleet"
-    timeout: ${TIMEOUT:-180}
-    skip: ${SKIP_BUILD}
+    timeout: 180
     id: "ubuntu-18.04-pinned-build"
 
   - label: ":ubuntu: Ubuntu 18.04 - Unit Tests"
@@ -32,7 +31,6 @@ steps:
       IMAGE_TAG: "ubuntu-18.04-pinned"
     agents:
       queue: "automation-eks-eos-builder-fleet"
-    timeout: ${TIMEOUT:-30}
-    skip: ${SKIP_UNIT_TESTS}
+    timeout: 30
     id: "ubuntu-18.04-pinned-unit-tests"
     depends_on: "ubuntu-18.04-pinned-build"
