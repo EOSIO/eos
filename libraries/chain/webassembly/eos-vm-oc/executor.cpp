@@ -20,7 +20,7 @@
 
 #if defined(__has_feature)
 #if __has_feature(shadow_call_stack)
-#error EOS-VM OC is not compatible with Clang ShadowCallStack
+#error EOS VM OC is not compatible with Clang ShadowCallStack
 #endif
 #endif
 
@@ -137,7 +137,7 @@ executor::executor(const code_cache_base& cc) {
 
    uint64_t current_gs;
    if(arch_prctl(ARCH_GET_GS, &current_gs) || current_gs)
-      wlog("x86_64 GS register is not set as expected. EOS-VM OC may not run correctly on this platform");
+      wlog("x86_64 GS register is not set as expected. EOS VM OC may not run correctly on this platform");
 
    struct stat s;
    FC_ASSERT(fstat(cc.fd(), &s) == 0, "executor failed to get code cache size");

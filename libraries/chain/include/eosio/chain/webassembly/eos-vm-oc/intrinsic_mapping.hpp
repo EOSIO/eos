@@ -17,7 +17,7 @@ constexpr auto intrinsic_table = boost::hana::make_tuple(
    "eosvmoc_internal.indirect_call_mismatch"_s,
    "eosvmoc_internal.indirect_call_oob"_s,
    "eosvmoc_internal.depth_assert"_s,
-   "eosio_injection.call_depth_assert"_s,  //these two are never used by EOS-VM OC but all intrinsics
+   "eosio_injection.call_depth_assert"_s,  //these two are never used by EOS VM OC but all intrinsics
    "eosio_injection.checktime"_s,          //must be mapped
    "env.__ashlti3"_s,
    "env.__ashrti3"_s,

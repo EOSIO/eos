@@ -164,7 +164,10 @@ add_subdirectory( scripts )
 add_subdirectory( unittests )
 add_subdirectory( tests )
 add_subdirectory( tools )
+
+if (NOT DISABLE_WASM_SPEC_TESTS)
 add_subdirectory( eosio-wasm-spec-tests/generated-tests )
+endif()
 
 install_directory_permissions(DIRECTORY ${CMAKE_INSTALL_FULL_SYSCONFDIR}/eosio)
 
@@ -200,6 +203,8 @@ configure_file(${CMAKE_SOURCE_DIR}/libraries/fc/src/network/LICENSE.go
                ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE.go COPYONLY)
 configure_file(${CMAKE_SOURCE_DIR}/libraries/yubihsm/LICENSE
                ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE.yubihsm COPYONLY)
+configure_file(${CMAKE_SOURCE_DIR}/libraries/eos-vm/LICENSE
+               ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE.eos-vm COPYONLY)
 
 install(FILES LICENSE DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ COMPONENT base)
 install(FILES libraries/wabt/LICENSE DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ RENAME LICENSE.wabt COMPONENT base)
@@ -208,6 +213,7 @@ install(FILES libraries/wasm-jit/LICENSE DESTINATION ${CMAKE_INSTALL_FULL_DATARO
 install(FILES libraries/fc/secp256k1/upstream/COPYING DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ RENAME LICENSE.secp256k1 COMPONENT base)
 install(FILES libraries/fc/src/network/LICENSE.go DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ COMPONENT base)
 install(FILES libraries/yubihsm/LICENSE DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ RENAME LICENSE.yubihsm COMPONENT base)
+install(FILES libraries/eos-vm/LICENSE DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ RENAME LICENSE.eos-vm COMPONENT base)
 
 add_custom_target(base-install
   COMMAND "${CMAKE_COMMAND}" --build "${CMAKE_BINARY_DIR}"
