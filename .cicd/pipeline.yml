@@ -12,7 +12,7 @@ steps:
   #   timeout: ${TIMEOUT:-10}
 
   - label: ":ubuntu: Ubuntu 18.04 - Build"
-    key: ubuntu-18.04-build
+    key: "ubuntu-18.04-build"
     command:
       - "./.cicd/build.sh"
       - "tar -pczf build.tar.gz build && buildkite-agent artifact upload build.tar.gz"
