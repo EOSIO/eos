@@ -272,6 +272,7 @@ namespace eosio { namespace chain {
 
          void set_subjective_cpu_leeway(fc::microseconds leeway);
          void set_global_greylist_limit( uint32_t limit );
+         uint32_t get_global_greylist_limit()const;
 
          void add_to_ram_correction( account_name account, uint64_t ram_bytes );
          bool all_subjective_mitigations_disabled()const;
