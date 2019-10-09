@@ -22,8 +22,6 @@ mkdir -p /usr/local/cmake
 chmod +x cmake-3.15.3-Linux-x86_64.sh
 
 ./cmake-3.15.3-Linux-x86_64.sh --prefix=/usr/local/cmake --skip-license
-
-export PATH=$PATH:/usr/local/cmake/bin
 ```
 
 ## Build Steps
