@@ -2099,9 +2099,14 @@ namespace eosio {
 
    // called from any thread
    bool connection::resolve_and_connect() {
-      if( no_retry != go_away_reason::no_reason && no_retry != go_away_reason::wrong_version ) {
-         fc_dlog( logger, "Skipping connect due to go_away reason ${r}",("r", reason_str( no_retry )));
-         return false;
+      switch ( no_retry ) {
+         case no_reason:
+         case wrong_version:
+         case benign_other:
+            break;
+         default:
+            fc_dlog( logger, "Skipping connect due to go_away reason ${r}",("r", reason_str( no_retry )));
+            return false;
       }
 
       string::size_type colon = peer_address().find(':');
@@ -2149,8 +2154,13 @@ namespace eosio {
 
    // called from connection strand
    void connection::connect( const std::shared_ptr<tcp::resolver>& resolver, tcp::resolver::results_type endpoints ) {
-      if( no_retry != go_away_reason::no_reason && no_retry != go_away_reason::wrong_version ) {
-         return;
+      switch ( no_retry ) {
+         case no_reason:
+         case wrong_version:
+         case benign_other:
+            break;
+         default:
+            return;
       }
       connecting = true;
       pending_message_buffer.reset();
@@ -2583,20 +2593,26 @@ namespace eosio {
 
             if( peer_lib <= lib_num && peer_lib > 0 ) {
                bool on_fork = false;
+               bool unknown_block = false;
                try {
                   block_id_type peer_lib_id = cc.get_block_id_for_num( peer_lib );
                   on_fork = (msg_lib_id != peer_lib_id);
-               } catch( const unknown_block_exception& ex ) {
-                  fc_wlog( logger, "peer last irreversible block ${pl} is unknown", ("pl", peer_lib) );
-                  on_fork = true;
+               } catch( const unknown_block_exception& ) {
+                  peer_wlog( c, "peer last irreversible block ${pl} is unknown", ("pl", peer_lib) );
+                  unknown_block = true;
                } catch( ... ) {
-                  fc_wlog( logger, "caught an exception getting block id for ${pl}", ("pl", peer_lib) );
+                  peer_wlog( c, "caught an exception getting block id for ${pl}", ("pl", peer_lib) );
                   on_fork = true;
                }
-               if( on_fork ) {
-                  c->strand.post( [c]() {
-                     fc_elog( logger, "Peer chain is forked" );
-                     c->enqueue( go_away_message( forked ) );
+               if( on_fork || unknown_block ) {
+                  c->strand.post( [on_fork, unknown_block, c]() {
+                     if( on_fork ) {
+                        peer_elog( c, "Peer chain is forked" );
+                        c->enqueue( go_away_message( forked ) );
+                     } else if( unknown_block ) {
+                        peer_elog( c, "Peer asked for unknown block" );
+                        c->enqueue( go_away_message( benign_other ) );
+                     }
                   } );
                }
             }
