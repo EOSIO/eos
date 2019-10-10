@@ -23,7 +23,6 @@ fi
 # run tests
 set +e # defer ctest error handling to end
 echo "$ ctest -j $CPUS -LE _tests --output-on-failure -T Test"
-exit 1
 ctest -j $CPUS -LE _tests --output-on-failure -T Test
 EXIT_STATUS=$?
 echo 'Done running parallelizable tests.'

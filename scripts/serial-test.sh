@@ -46,7 +46,6 @@ else # run specific serial test
         # run tests
         set +e # defer ctest error handling to end
         echo "$ ctest -R ^$TEST$ --output-on-failure -T Test"
-        exit 1
         ctest -R ^$TEST$ --output-on-failure -T Test
         EXIT_STATUS=$?
         echo "Done running $TEST."
