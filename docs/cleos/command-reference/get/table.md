@@ -18,10 +18,21 @@ Retrieves the contents of a database table
 
 `-L,--lower` _TEXT_ - JSON representation of lower bound value of key, defaults to first
 
-`-U,--upper` _TEXT_ - JSON representation of upper bound value value of key, defaults to last
+`-U,--upper` _TEXT_ - JSON representation of upper bound value  of key, defaults to last
+
+`--index` _TEXT_ - Index number, 1 - primary (first), 2 - secondary index (in order defined by multi_index), 3 - third index, etc. Number or name of index can be specified, e.g. 'secondary' or '2'.
+
+`--key-type` _TEXT_ - The key type of --index, primary only supports (i64), all others support (i64, i128, i256, float64, float128, ripemd160, sha256). Special type 'name' indicates an account name.
+
+`--encode-type` _TEXT_ - The encoding type of key_type (i64 , i128 , float64, float128) only support decimal encoding e.g. 'dec'i256 - supports both 'dec' and 'hex', ripemd160 and sha256 is 'hex' only
+
+`-r,--reverse` - Iterate in reverse order
+
+`--show-payer` - show RAM payer
 
 ## Example
-Get the data from the accounts table for the eosio.token contract, for user eosio,
+
+Gets the data from the accounts table for the eosio.token contract, for user eosio,
 
 ```shell
 $ cleos get table eosio.token eosio accounts
