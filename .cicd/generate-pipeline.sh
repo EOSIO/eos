@@ -360,6 +360,7 @@ if [[ -z $BUILDKITE_TRIGGERED_FROM_BUILD_ID && $TRIGGER_JOB == "true" ]]; then
     cat <<EOF
   - label: ":pipeline: Trigger Long Running Tests"
     trigger: "eosio-lrt"
+    depends_on: "$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)_BUILD"
     async: true
     build:
       message: "${BUILDKITE_MESSAGE}"
@@ -382,6 +383,7 @@ if [[ -z $BUILDKITE_TRIGGERED_FROM_BUILD_ID && $TRIGGER_JOB = "true" ]]; then
     cat <<EOF
   - label: ":pipeline: Trigger Multiversion Test"
     trigger: "eos-multiversion-tests"
+    depends_on: "$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)_BUILD"
     async: true
     build:
       message: "${BUILDKITE_MESSAGE}"
@@ -397,22 +399,6 @@ EOF
 fi
 # pipeline tail
 cat <<EOF
-  - wait:
-    continue_on_failure: true
-
-  - label: ":bar_chart: Test Metrics"
-    command: |
-      echo '+++ :compression: Extracting Test Metrics Code'
-      tar -zxf .cicd/metrics/test-metrics.tar.gz
-      echo '+++ :javascript: Running test-metrics.js'
-      node --max-old-space-size=32768 test-metrics.js
-    agents:
-      queue: "$BUILDKITE_AGENT_QUEUE"
-    timeout: ${TIMEOUT:-10}
-    soft_fail: true
-
-  - wait
-
     # packaging
   - label: ":centos: CentOS 7.6 - Package Builder"
     command:
@@ -425,6 +411,7 @@ cat <<EOF
       PKGTYPE: "rpm"
     agents:
       queue: "$BUILDKITE_AGENT_QUEUE"
+    depends_on: "CENTOS_7_6_BUILD"
     timeout: ${TIMEOUT:-10}
     skip: ${SKIP_CENTOS_7_6}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
 
@@ -439,6 +426,7 @@ cat <<EOF
       PKGTYPE: "deb"
     agents:
       queue: "$BUILDKITE_AGENT_QUEUE"
+    depends_on: "UBUNTU_16_04_BUILD"
     timeout: ${TIMEOUT:-10}
     skip: ${SKIP_UBUNTU_16_04}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
 
@@ -453,6 +441,7 @@ cat <<EOF
       PKGTYPE: "deb"
     agents:
       queue: "$BUILDKITE_AGENT_QUEUE"
+    depends_on: "UBUNTU_18_04_BUILD"
     timeout: ${TIMEOUT:-10}
     skip: ${SKIP_UBUNTU_18_04}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
 
@@ -476,6 +465,7 @@ cat <<EOF
           pre-execute-sleep: 5
     agents:
       - "queue=mac-anka-node-fleet"
+    depends_on: "MACOS_10_14_BUILD"
     timeout: ${TIMEOUT:-10}
     skip: ${SKIP_MACOS_10_14}${SKIP_PACKAGE_BUILDER}${SKIP_MAC}
 
@@ -486,8 +476,23 @@ cat <<EOF
       BUILDKITE_AGENT_ACCESS_TOKEN:
     agents:
       queue: "$BUILDKITE_AGENT_QUEUE"
+    depends_on: "UBUNTU_18_04_BUILD"
     timeout: ${TIMEOUT:-30}
     skip: ${SKIP_CONTRACT_BUILDER}${SKIP_LINUX}
+
+  - wait:
+    continue_on_failure: true
+
+  - label: ":bar_chart: Test Metrics"
+    command: |
+      echo '+++ :compression: Extracting Test Metrics Code'
+      tar -zxf .cicd/metrics/test-metrics.tar.gz
+      echo '+++ :javascript: Running test-metrics.js'
+      node --max-old-space-size=32768 test-metrics.js
+    agents:
+      queue: "$BUILDKITE_AGENT_QUEUE"
+    timeout: ${TIMEOUT:-10}
+    soft_fail: true
 
   - wait
 
