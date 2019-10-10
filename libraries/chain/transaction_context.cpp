@@ -482,14 +482,14 @@ namespace eosio { namespace chain {
       bool greylisted_net = false;
       bool greylisted_cpu = false;
 
-      uint32_t global_greylist_limit = control.get_global_greylist_limit();
+      uint32_t specified_greylist_limit = control.get_greylist_limit();
       for( const auto& a : bill_to_accounts ) {
          uint32_t greylist_limit = config::maximum_elastic_resource_multiplier;
          if( !force_elastic_limits && control.is_producing_block() ) {
             if( control.is_resource_greylisted(a) ) {
                greylist_limit = 1;
             } else {
-               greylist_limit = global_greylist_limit;
+               greylist_limit = specified_greylist_limit;
             }
          }
          auto [net_limit, net_was_greylisted] = rl.get_account_net_limit(a, greylist_limit);

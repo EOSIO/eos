@@ -94,6 +94,7 @@ namespace eosio { namespace chain {
 
             flat_set<account_name>   resource_greylist;
             flat_set<account_name>   trusted_producers;
+            uint32_t                 greylist_limit         = chain::config::maximum_elastic_resource_multiplier;
          };
 
          enum class block_status {
@@ -282,8 +283,8 @@ namespace eosio { namespace chain {
          validation_mode get_validation_mode()const;
 
          void set_subjective_cpu_leeway(fc::microseconds leeway);
-         void set_global_greylist_limit( uint32_t limit );
-         uint32_t get_global_greylist_limit()const;
+         void set_greylist_limit( uint32_t limit );
+         uint32_t get_greylist_limit()const;
 
          void add_to_ram_correction( account_name account, uint64_t ram_bytes );
          bool all_subjective_mitigations_disabled()const;
