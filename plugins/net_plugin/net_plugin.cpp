@@ -1158,6 +1158,11 @@ namespace eosio {
             c->strand.post( [c, sb{std::move(sb)}, trigger_send]() {
                c->enqueue_block( sb, trigger_send, true );
             });
+         } else {
+            c->strand.post( [c, num]() {
+               peer_ilog( c, "enqueue sync, unable to fetch block ${num}, sending go away: benign_other", ("num", num) );
+               c->enqueue( go_away_message( benign_other ) );
+            });
          }
       });
 
@@ -1233,7 +1238,7 @@ namespace eosio {
       queue_write(send_buffer,trigger_send, priority,
                   [conn{std::move(self)}, close_after_send](boost::system::error_code ec, std::size_t ) {
                         if (close_after_send != no_reason) {
-                           fc_elog( logger, "sent a go away message: ${r}, closing connection to ${p}",
+                           fc_ilog( logger, "sent a go away message: ${r}, closing connection to ${p}",
                                     ("r", reason_str(close_after_send))("p", conn->peer_name()) );
                            conn->close();
                            return;
@@ -2551,7 +2556,7 @@ namespace eosio {
                   block_id_type peer_lib_id = cc.get_block_id_for_num( peer_lib );
                   on_fork = (msg_lib_id != peer_lib_id);
                } catch( const unknown_block_exception& ) {
-                  peer_wlog( c, "peer last irreversible block ${pl} is unknown", ("pl", peer_lib) );
+                  peer_ilog( c, "peer last irreversible block ${pl} is unknown", ("pl", peer_lib) );
                   unknown_block = true;
                } catch( ... ) {
                   peer_wlog( c, "caught an exception getting block id for ${pl}", ("pl", peer_lib) );
@@ -2560,10 +2565,10 @@ namespace eosio {
                if( on_fork || unknown_block ) {
                   c->strand.post( [on_fork, unknown_block, c]() {
                      if( on_fork ) {
-                        peer_elog( c, "Peer chain is forked" );
+                        peer_elog( c, "Peer chain is forked, sending: forked go away" );
                         c->enqueue( go_away_message( forked ) );
                      } else if( unknown_block ) {
-                        peer_elog( c, "Peer asked for unknown block" );
+                        peer_ilog( c, "Peer asked for unknown block, sending: benign_other go away" );
                         c->enqueue( go_away_message( benign_other ) );
                      }
                   } );
