@@ -280,6 +280,7 @@ namespace eosio { namespace chain {
 
          db_read_mode get_read_mode()const;
          validation_mode get_validation_mode()const;
+         bool in_immutable_mode()const;
 
          void set_subjective_cpu_leeway(fc::microseconds leeway);
          fc::optional<fc::microseconds> get_subjective_cpu_leeway() const;
