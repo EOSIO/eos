@@ -1,6 +1,5 @@
 FROM centos:7.6.1810
 ENV VERSION 1
-RUN derp
 # install dependencies.
 RUN yum update -y && \
     yum install -y epel-release && \
