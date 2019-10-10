@@ -36,8 +36,6 @@ ensure-brew-packages "${REPO_ROOT}/scripts/eosio_build_darwin_deps"
 [[ -z "${CMAKE}" ]] && export CMAKE="/usr/local/bin/cmake"
 # CLANG Installation
 build-clang
-# LLVM Installation
-ensure-llvm
 # BOOST Installation
 ensure-boost
 # MONGO Installation

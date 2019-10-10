@@ -2079,9 +2079,7 @@ REGISTER_INJECTED_INTRINSICS(softfloat_api,
 std::istream& operator>>(std::istream& in, wasm_interface::vm_type& runtime) {
    std::string s;
    in >> s;
-   if (s == "wavm")
-      runtime = eosio::chain::wasm_interface::vm_type::wavm;
-   else if (s == "wabt")
+   if (s == "wabt")
       runtime = eosio::chain::wasm_interface::vm_type::wabt;
    else if (s == "eos-vm")
       runtime = eosio::chain::wasm_interface::vm_type::eos_vm;
