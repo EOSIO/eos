@@ -151,12 +151,12 @@ EOF
 
 EOF
     fi
-    if [ "$BUILDKITE_SOURCE" = "schedule" ]; then
-        cat <<EOF
-    concurrency: ${CONCURRENCY}
-    concurrency_group: ${CONCURRENCY_GROUP}
-EOF
-    fi
+#     if [ "$BUILDKITE_SOURCE" = "schedule" ]; then
+#         cat <<EOF
+#     concurrency: ${CONCURRENCY}
+#     concurrency_group: ${CONCURRENCY_GROUP}
+# EOF
+#     fi
 done
 echo
 echo '  - wait'
@@ -214,12 +214,12 @@ EOF
 
 EOF
         fi
-        if [ "$BUILDKITE_SOURCE" = "schedule" ]; then
-            cat <<EOF
-    concurrency: ${CONCURRENCY}
-    concurrency_group: ${CONCURRENCY_GROUP}
-EOF
-        fi
+#         if [ "$BUILDKITE_SOURCE" = "schedule" ]; then
+#             cat <<EOF
+#     concurrency: ${CONCURRENCY}
+#     concurrency_group: ${CONCURRENCY_GROUP}
+# EOF
+#         fi
     echo
     done
     # serial tests
@@ -272,12 +272,12 @@ EOF
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_SERIAL_TESTS}
 EOF
             fi
-            if [ "$BUILDKITE_SOURCE" = "schedule" ]; then
-                cat <<EOF
-    concurrency: ${CONCURRENCY}
-    concurrency_group: ${CONCURRENCY_GROUP}
-EOF
-            fi
+#             if [ "$BUILDKITE_SOURCE" = "schedule" ]; then
+#                 cat <<EOF
+#     concurrency: ${CONCURRENCY}
+#     concurrency_group: ${CONCURRENCY_GROUP}
+# EOF
+#             fi
             echo
         done
         IFS=$nIFS
@@ -332,12 +332,12 @@ EOF
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_LONG_RUNNING_TESTS:-true}
 EOF
             fi
-            if [ "$BUILDKITE_SOURCE" = "schedule" ]; then
-                cat <<EOF
-    concurrency: ${CONCURRENCY}
-    concurrency_group: ${CONCURRENCY_GROUP}
-EOF
-            fi
+#             if [ "$BUILDKITE_SOURCE" = "schedule" ]; then
+#                 cat <<EOF
+#     concurrency: ${CONCURRENCY}
+#     concurrency_group: ${CONCURRENCY_GROUP}
+# EOF
+#             fi
             echo
         done
         IFS=$nIFS
