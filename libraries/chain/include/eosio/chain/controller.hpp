@@ -353,21 +353,3 @@ namespace eosio { namespace chain {
    };
 
 } }  /// eosio::chain
-
-FC_REFLECT( eosio::chain::controller::config,
-            (actor_whitelist)
-            (actor_blacklist)
-            (contract_whitelist)
-            (contract_blacklist)
-            (blocks_dir)
-            (state_dir)
-            (state_size)
-            (reversible_cache_size)
-            (read_only)
-            (force_all_checks)
-            (disable_replay_opts)
-            (contracts_console)
-            (wasm_runtime)
-            (resource_greylist)
-            (trusted_producers)
-          )
