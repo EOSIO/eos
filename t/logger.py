@@ -18,13 +18,15 @@ import color
 import helper
 
 
-class LoggingLevels(enum.IntEnum):
+class LoggingLevel(enum.IntEnum):
+    ALL   = 0
     TRACE = 10
     DEBUG = 20
     INFO  = 30
     WARN  = 40
     ERROR = 50
     FATAL = 60
+    OFF   = 100
 
 
 class MessageCenter:
@@ -53,19 +55,23 @@ class MessageCenter:
 
 @dataclasses.dataclass
 class WriterConfig:
-    buffered:           bool = None
-    monochrome:         bool = None
+    threshold:          typing.Union[int, str, LoggingLevel]
+    buffered:           bool
+    monochrome:         bool
     show_clock_time:    bool = True
     show_elapsed_time:  bool = True
     show_log_level:     bool = True
     show_thread:        bool = True
     show_trace:         bool = True
-    threshold: LoggingLevels = LoggingLevels.DEBUG
+
+    def __post_init__(self):
+        if isinstance(self.threshold, str):
+            self.threshold = LoggingLevel[self.threshold]
 
 
 class Writer(abc.ABC):
-    def __init__(self, config: WriterConfig = None):
-        self.config = config if config else WriterConfig()
+    def __init__(self, config: WriterConfig):
+        self.config = config
         self.buffered = config.buffered
         self.monochrome = config.monochrome
         self.show_clock_time = config.show_clock_time
@@ -81,15 +87,15 @@ class Writer(abc.ABC):
             self._message_center = MessageCenter(self)
             self._rlock = threading.RLock()
 
-    def prepend(self, msg, level=None):
+    def prepend(self, msg, level):
         def stylize(prefix, level):
-            if level <= LoggingLevels.DEBUG:
+            if level <= LoggingLevel.DEBUG:
                 prefix =color.faint(prefix)
-            elif level == LoggingLevels.WARN:
+            elif level == LoggingLevel.WARN:
                 prefix = color.yellow(prefix)
-            elif level == LoggingLevels.ERROR:
+            elif level == LoggingLevel.ERROR:
                 prefix = color.red(prefix)
-            elif level == LoggingLevels.FATAL:
+            elif level == LoggingLevel.FATAL:
                 prefix = color.bold(color.red(prefix))
             return prefix
         if self.monochrome:
@@ -108,7 +114,7 @@ class Writer(abc.ABC):
         if self.show_thread:
             prefix += "[{:10}] ".format((threading.current_thread().name))
         if self.show_log_level:
-            prefix += "{:5} ".format(level.name if self.show_log_level and level else "")
+            prefix += "{:5} ".format(level.name if hasattr(level, "name") else level)
         if prefix:
             prefix = prefix if self.monochrome else stylize(prefix, level)
             if "\n" in msg:
@@ -129,10 +135,10 @@ class Writer(abc.ABC):
     def raw_write(self, msg):
         pass
 
-    def unbuffered_write(self, msg, level=None):
+    def unbuffered_write(self, msg, level):
         self.raw_write(self.prepend(msg, level))
 
-    def buffered_write(self, msg, level=None):
+    def buffered_write(self, msg, level):
         self._message_center.store(self.prepend(msg, level))
 
     def flush(self):
@@ -150,13 +156,13 @@ class ScreenWriter(Writer):
 
 
 class FileWriter(Writer):
-    def __init__(self, filename="test.log", config: WriterConfig = None):
+    def __init__(self, config: WriterConfig, filename="test.log"):
         super().__init__(config)
         self.filename = filename
 
     def raw_write(self, msg):
-        with open(self.filename, "a") as file:
-            file.write(msg + "\n")
+        with open(self.filename, "a") as f:
+            print(msg, file=f)
 
 
 class Logger:
@@ -166,29 +172,39 @@ class Logger:
         for w in self.writers:
             w.config.start_time = start_time
 
-    def log(self, msg, level: typing.Union[str, LoggingLevels]):
+    def log(self, msg, level: typing.Union[int, str, LoggingLevel], flush=False):
         if isinstance(level, str):
-            level = LoggingLevels[level]
+            level = LoggingLevel[level]
         for w in self.writers:
             w.write(msg, level)
+        if flush:
+            self.flush()
 
-    def trace(self, msg):
-        self.log(msg, level=LoggingLevels.TRACE)
+    def trace(self, msg, flush=False):
+        self.log(msg, level=LoggingLevel.TRACE, flush=flush)
 
-    def debug(self, msg):
-        self.log(msg, level=LoggingLevels.DEBUG)
+    def debug(self, msg, flush=False):
+        self.log(msg, level=LoggingLevel.DEBUG, flush=flush)
 
-    def info(self, msg):
-        self.log(msg, level=LoggingLevels.INFO)
+    def info(self, msg, flush=False):
+        self.log(msg, level=LoggingLevel.INFO, flush=flush)
 
-    def warn(self, msg):
-        self.log(msg, level=LoggingLevels.WARN)
+    def warn(self, msg, colorize=True, flush=False):
+        self.log(color.yellow(msg) if colorize else msg, level=LoggingLevel.WARN, flush=flush)
 
-    def error(self, msg):
-        self.log(msg, level=LoggingLevels.ERROR)
+    def error(self, msg, colorize=True, flush=True, terminate=None):
+        # terminate implies flush
+        flush = helper.override(flush, terminate)
+        self.log(color.red(msg)if colorize else msg, level=LoggingLevel.ERROR, flush=flush)
+        if terminate:
+            assert False
 
-    def fatal(self, msg):
-        self.log(msg, level=LoggingLevels.FATAL)
+    def fatal(self, msg, colorize=True, flush=True, terminate=True):
+        # terminate implies flush
+        flush = helper.override(flush, terminate)
+        self.log(color.bold(color.red(msg)) if colorize else msg, level=LoggingLevel.FATAL, flush=flush)
+        if terminate:
+            assert False
 
     def flush(self):
         for w in self.writers:
@@ -213,16 +229,19 @@ def _alice(logger):
 
 
 def _bob(logger):
-    logger.debug(color.green("Bob:\tHi, everyone."))
+    logger.log(color.green("Bob:\tHi, everyone."), level=38)
     _pause()
     logger.debug("Bob:\tI'm {}.".format(color.blue("Bob")))
     logger.error("Bob:\tNice to meet you")
     logger.flush()
+    logger.trace("Bob:\tThis is a trace information.")
+    logger.flush()
 
 
 def test():
-    sconfig = WriterConfig(buffered=True, monochrome=False)
-    fconfig = WriterConfig(buffered=False, monochrome=True)
+    sconfig = WriterConfig(buffered=True, monochrome=False, threshold="DEBUG")
+    fconfig = WriterConfig(buffered=False, monochrome=True, threshold="TRACE")
+
     logger = Logger(ScreenWriter(config=sconfig), FileWriter(config=fconfig))
 
     t_alice = threading.Thread(target=_alice, args=(logger,))
@@ -233,6 +252,7 @@ def test():
 
     for t in (t_alice, t_bob):
         t.join()
+
 
 if __name__ == "__main__":
     test()

@@ -13,14 +13,16 @@ import string
 import subprocess
 import threading
 import time
+import typing
 
 # third-party libraries
 import requests
 
 # user-defined modules
-from logger import WriterConfig, ScreenWriter, FileWriter, Logger
-from connector import Connection as Interaction
+from logger import LoggingLevel, WriterConfig, ScreenWriter, FileWriter, Logger
+from connection import Interaction
 import color
+import thread
 
 # user-defined modules TO BE DEPRECATED
 import printer
@@ -34,10 +36,6 @@ DEFAULT_DIR = "../build"
 DEFAULT_FILE = os.path.join(".", "programs", PROGRAM, PROGRAM)
 DEFAULT_START = False
 DEFAULT_KILL = False
-DEFAULT_VERBOSITY = 1
-DEFAULT_MONOCHROME = False
-DEFAULT_DEBUG = False
-DEFAULT_INFO = False
 
 DEFAULT_CLUSTER_ID = 0
 DEFAULT_CENTER_NODE_ID = None
@@ -47,6 +45,9 @@ DEFAULT_TOTAL_PRODUCERS = 4
 DEFAULT_PRODUCER_NODES = 4
 DEFAULT_UNSTARTED_NODES = 0
 
+DEFAULT_BUFFERED = True
+DEFAULT_MONOCHROME = False
+
 HELP_HELP = "Show this message and exit"
 HELP_ADDRESS = "Address of launcher service"
 HELP_PORT = "Listening port of launcher service"
@@ -54,11 +55,6 @@ HELP_DIR = "Working directory"
 HELP_FILE = "Path to local launcher service file"
 HELP_START = "Always start a new launcher service"
 HELP_KILL = "Kill existing launcher services (if any)"
-HELP_VERBOSE = "Verbosity level (-v for 1, -vv for 2, ...)"
-HELP_SILENT = "Set verbosity level at 0 (keep silent)"
-HELP_MONOCHROME = "Print in black and white instead of colors"
-HELP_DEBUG = "Enable debug_print() and info_print()"
-HELP_INFO = "Enable info_print()"
 
 HELP_CLUSTER_ID = "Cluster ID to launch with"
 HELP_CENTER_NODE_ID = "Center node ID for star or bridge"
@@ -68,22 +64,19 @@ HELP_TOTAL_PRODUCERS = "Number of total producers"
 HELP_PRODUCER_NODES = "Number of nodes that have producers"
 HELP_UNSTARTED_NODES = "Number of unstarted nodes"
 
+HELP_LOG_LEVEL = "Stdout logging level (numeric)"
+HELP_MONOCHROME = "Print in black and white instead of colors"
+HELP_UNBUFFER = "Do not buffer for stdout logging"
 
-class ExceptionThread(threading.Thread):
-    id = 0
+HELP_LOG_ALL = "Set stdout logging level to ALL (0)"
+HELP_TRACE = "Set stdout logging level to TRACE (10)"
+HELP_DEBUG = "Set stdout logging level to DEBUG (20)"
+HELP_INFO = "Set stdout logging level to INFO (30)"
+HELP_WARN = "Set stdout logging level to WARN (40)"
+HELP_ERROR = "Set stdout logging level to ERROR (50)"
+HELP_FATAL = "Set stdout logging level to FATAL (60)"
+HELP_LOG_OFF = "Set stdout logging level to OFF (100)"
 
-    def __init__(self, channel, communicate, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.id = ExceptionThread.id
-        self.channel = channel
-        self.communicate = communicate
-        ExceptionThread.id = ExceptionThread.id + 1
-
-    def run(self):
-        try:
-            super().run()
-        except Exception:
-            self.communicate(self.channel, self.id)
 
 
 class CommandLineArguments:
@@ -95,10 +88,6 @@ class CommandLineArguments:
         self.file = cla.file
         self.start = cla.start
         self.kill = cla.kill
-        self.verbosity = cla.verbosity
-        self.monochrome = cla.monochrome
-        self.debug = cla.debug
-        self.info = cla.info
 
         self.cluster_id = cla.cluster_id
         self.topology = cla.topology
@@ -108,59 +97,61 @@ class CommandLineArguments:
         self.producer_nodes = cla.producer_nodes
         self.unstarted_nodes = cla.unstarted_nodes
 
+        self.threshold = cla.threshold
+        self.buffered = cla.buffered
+        self.monochrome = cla.monochrome
+
 
     @staticmethod
     def parse():
-        HEADER = printer.String().decorate("Launcher Service for EOS Testing Framework", style="underline", fcolor="green")
-        OFFSET = 5
+        desc = color.decorate("Launcher Service for EOS Testing Framework", style="underline", fcolor="green")
+        left = 5
+        form = lambda text, value=None: "{} ({})".format(helper.pad(text, left=left, total=50, char=" ", sep=""), value)
+        parser = argparse.ArgumentParser(description=desc, add_help=False, formatter_class=lambda prog: argparse.RawTextHelpFormatter(prog, max_help_position=50))
+        parser.add_argument("-h", "--help", action="help", help=' ' * left + HELP_HELP)
 
-        parser = argparse.ArgumentParser(description=HEADER, add_help=False, formatter_class=lambda prog: argparse.RawTextHelpFormatter(prog, max_help_position=50))
+        parser.add_argument("-a", "--address", type=str, metavar="IP", help=form(HELP_ADDRESS, DEFAULT_ADDRESS))
+        parser.add_argument("-p", "--port", type=int, help=form(HELP_PORT, DEFAULT_PORT))
+        parser.add_argument("-d", "--dir", type=str, metavar="PATH", help=form(HELP_DIR, DEFAULT_DIR))
+        parser.add_argument("-f", "--file", type=str, metavar="PATH", help=form(HELP_FILE, DEFAULT_FILE))
+        parser.add_argument("-s", "--start", action="store_true", default=None, help=form(HELP_START, DEFAULT_START))
+        parser.add_argument("-k", "--kill", action="store_true", default=None, help=form(HELP_KILL, DEFAULT_KILL))
 
-        parser.add_argument("-h", "--help", action="help", help=' ' * OFFSET + HELP_HELP)
+        parser.add_argument("-i", "--cluster-id", dest="cluster_id", type=int, metavar="ID", help=form(HELP_CLUSTER_ID, DEFAULT_CLUSTER_ID))
+        parser.add_argument("-t", "--topology", type=str, metavar="SHAPE", help=form(HELP_TOPOLOGY, DEFAULT_TOPOLOGY), choices={"mesh", "star", "bridge", "line", "ring", "tree"})
+        parser.add_argument("-c", "--center-node-id", dest="center_node_id", type=int, metavar="ID", help=form(HELP_CENTER_NODE_ID, DEFAULT_CENTER_NODE_ID))
+        parser.add_argument("-n", "--total-nodes", dest="total_nodes", type=int, metavar="NUM", help=form(HELP_TOTAL_NODES, DEFAULT_TOTAL_NODES))
+        parser.add_argument("-y", "--total-producers", dest="total_producers", type=int, metavar="NUM", help=form(HELP_TOTAL_PRODUCERS, DEFAULT_TOTAL_PRODUCERS))
+        parser.add_argument("-z", "--producer-nodes", dest="producer_nodes", type=int, metavar="NUM", help=form(HELP_PRODUCER_NODES, DEFAULT_PRODUCER_NODES))
+        parser.add_argument("-u", "--unstarted-nodes", dest="unstarted_nodes", type=int, metavar="NUM", help=form(HELP_UNSTARTED_NODES, DEFAULT_UNSTARTED_NODES))
 
-        info = lambda text, value: "{} ({})".format(helper.pad(text, left=OFFSET, total=50, char=' ', sep=""), value)
-        parser.add_argument("-a", "--address", type=str, metavar="IP", help=info(HELP_ADDRESS, DEFAULT_ADDRESS))
-        parser.add_argument("-p", "--port", type=int, help=info(HELP_PORT, DEFAULT_PORT))
-        parser.add_argument("-d", "--dir", type=str, help=info(HELP_DIR, DEFAULT_DIR))
-        parser.add_argument("-f", "--file", type=str, help=info(HELP_FILE, DEFAULT_FILE))
-        parser.add_argument("-s", "--start", action="store_true", default=None, help=info(HELP_START, DEFAULT_START))
-        parser.add_argument("-k", "--kill", action="store_true", default=None, help=info(HELP_KILL, DEFAULT_KILL))
-
-        parser.add_argument("-i", "--cluster-id", dest="cluster_id", type=int, metavar="ID", help=info(HELP_CLUSTER_ID, DEFAULT_CLUSTER_ID))
-        parser.add_argument("-t", "--topology", type=str, metavar="SHAPE", help=info(HELP_TOPOLOGY, DEFAULT_TOPOLOGY), choices={"mesh", "star", "bridge", "line", "ring", "tree"})
-        parser.add_argument("-c", "--center-node-id", dest="center_node_id", type=int, metavar="ID", help=info(HELP_CENTER_NODE_ID, DEFAULT_CENTER_NODE_ID))
-        parser.add_argument("-n", "--total-nodes", dest="total_nodes", type=int, metavar="NUM", help=info(HELP_TOTAL_NODES, DEFAULT_TOTAL_NODES))
-        parser.add_argument("-y", "--total-producers", dest="total_producers", type=int, metavar="NUM", help=info(HELP_TOTAL_PRODUCERS, DEFAULT_TOTAL_PRODUCERS))
-        parser.add_argument("-z", "--producer-nodes", dest="producer_nodes", type=int, metavar="NUM", help=info(HELP_PRODUCER_NODES, DEFAULT_PRODUCER_NODES))
-        parser.add_argument("-u", "--unstarted-nodes", dest="unstarted_nodes", type=int, metavar="NUM", help=info(HELP_UNSTARTED_NODES, DEFAULT_UNSTARTED_NODES))
-
-        verbosity = parser.add_mutually_exclusive_group()
-        verbosity.add_argument("-v", "--verbose", dest="verbosity", action="count", default=None, help=info(HELP_VERBOSE, DEFAULT_VERBOSITY))
-        verbosity.add_argument("-x", "--silent", dest="verbosity", action="store_false", default=None, help=info(HELP_SILENT, not DEFAULT_VERBOSITY))
-        parser.add_argument("-m", "--monochrome", action="store_true", default=None, help=info(HELP_MONOCHROME, DEFAULT_MONOCHROME))
-        parser.add_argument("--debug", action="store_true", default=None, help=info(HELP_DEBUG, DEFAULT_DEBUG))
-        parser.add_argument("--info", action="store_true", default=None, help=info(HELP_INFO, DEFAULT_INFO))
+        threshold = parser.add_mutually_exclusive_group()
+        threshold.add_argument("-l", "--log-level", dest="threshold", type=int, metavar="LEVEL", action="store", help=form(HELP_LOG_LEVEL))
+        threshold.add_argument("--log-all", dest="threshold", action="store_const", const="ALL", help=form(HELP_LOG_ALL))
+        threshold.add_argument("--trace", dest="threshold", action="store_const", const="TRACE", help=form(HELP_TRACE))
+        threshold.add_argument("--debug", dest="threshold", action="store_const", const="DEBUG", help=form(HELP_DEBUG))
+        threshold.add_argument("--info", dest="threshold", action="store_const", const="INFO", help=form(HELP_INFO))
+        threshold.add_argument("--warn", dest="threshold", action="store_const", const="WARN", help=form(HELP_WARN))
+        threshold.add_argument("--error", dest="threshold", action="store_const", const="ERROR", help=form(HELP_ERROR))
+        threshold.add_argument("--fatal", dest="threshold", action="store_const", const="FATAL", help=form(HELP_FATAL))
+        threshold.add_argument("--log-off", dest="threshold", action="store_const", const="OFF", help=form(HELP_LOG_OFF))
+        parser.add_argument("-x", "--unbuffer", dest="buffered", action="store_false", default=True, help=form(HELP_UNBUFFER, not DEFAULT_BUFFERED))
+        parser.add_argument("-m", "--monochrome", action="store_true", default=False, help=form(HELP_MONOCHROME, DEFAULT_MONOCHROME))
 
         return parser.parse_args()
 
 
-
-
 class Service:
-    def __init__(self, address=None, port=None, dir=None, file=None, start=None, kill=None, verbosity=None, monochrome=None, debug=None, info=None, dont_connect=False, logger=None):
+    def __init__(self, address=None, port=None, dir=None, file=None, start=None, kill=None, logger=None, dont_connect=False):
 
         # configure service
         self.cla        = CommandLineArguments()
-        self.address    = helper.override(DEFAULT_ADDRESS,    address,    self.cla.address    if self.cla else None)
-        self.port       = helper.override(DEFAULT_PORT,       port,       self.cla.port       if self.cla else None)
-        self.dir        = helper.override(DEFAULT_DIR,        dir,        self.cla.dir        if self.cla else None)
-        self.file       = helper.override(DEFAULT_FILE,       file,       self.cla.file       if self.cla else None)
-        self.start      = helper.override(DEFAULT_START,      start,      self.cla.start      if self.cla else None)
-        self.kill       = helper.override(DEFAULT_KILL,       kill,       self.cla.kill       if self.cla else None)
-        self.verbosity  = helper.override(DEFAULT_VERBOSITY,  verbosity,  self.cla.verbosity  if self.cla else None)
-        self.monochrome = helper.override(DEFAULT_MONOCHROME, monochrome, self.cla.monochrome if self.cla else None)
-        self.debug      = helper.override(DEFAULT_DEBUG,      debug,      self.cla.debug      if self.cla else None)
-        self.info       = helper.override(DEFAULT_INFO,       info,       self.cla.info       if self.cla else None)
+        self.address    = helper.override(DEFAULT_ADDRESS, address, self.cla.address)
+        self.port       = helper.override(DEFAULT_PORT,    port,    self.cla.port)
+        self.dir        = helper.override(DEFAULT_DIR,     dir,     self.cla.dir)
+        self.file       = helper.override(DEFAULT_FILE,    file,    self.cla.file)
+        self.start      = helper.override(DEFAULT_START,   start,   self.cla.start)
+        self.kill       = helper.override(DEFAULT_KILL,    kill,    self.cla.kill)
 
         # determine remote or local launcher service to connect to
         if self.address in ("127.0.0.1", "localhost"):
@@ -172,29 +163,30 @@ class Service:
         # register logger
         # TODO: set default behavior
         self.logger = logger
-        self.log = logger.log
-        self.trace = logger.trace
-        self.debug = logger.debug
-        self.info = logger.info
-        self.warn = logger.warn
-        self.error = logger.error
-        self.fatal = logger.fatal
+        for w in self.logger.writers:
+            if isinstance(w, ScreenWriter):
+                th = helper.override(w.threshold, self.cla.threshold)
+                if isinstance(th, str):
+                    th = LoggingLevel[th]
+                self.threshold = w.threshold = th
+                self.buffered = w.buffered = helper.override(DEFAULT_BUFFERED, w.buffered, self.cla.buffered)
+                self.monochrome = w.monochrome = helper.override(DEFAULT_MONOCHROME, w.monochrome, self.cla.monochrome)
 
 
         # register printer
         # TO BE DEPRECATED
-        self.print = printer.Print(invisible=not self.verbosity, monochrome=self.monochrome)
-        self.string = printer.String(invisible=not self.verbosity, monochrome=self.monochrome)
-        self.alert = printer.String(monochrome=self.monochrome)
-        if self.verbosity > 2:
-            self.print.response = lambda resp: self.print.response_in_full(resp)
-        elif self.verbosity == 2:
-            self.print.response = lambda resp: self.print.response_with_prompt(resp)
-        elif self.verbosity == 1:
-            self.print.response = lambda resp: self.print.response_in_short(resp)
-        else:
-            self.print.response = lambda resp: None
-        self.string.offset = 0 if self.monochrome else 9
+        # self.print = printer.Print(invisible=not self.verbosity, monochrome=self.monochrome)
+        # self.string = printer.String(invisible=not self.verbosity, monochrome=self.monochrome)
+        # self.alert = printer.String(monochrome=self.monochrome)
+        # if self.verbosity > 2:
+        #     self.print.response = lambda resp: self.print.response_in_full(resp)
+        # elif self.verbosity == 2:
+        #     self.print.response = lambda resp: self.print.response_with_prompt(resp)
+        # elif self.verbosity == 1:
+        #     self.print.response = lambda resp: self.print.response_in_short(resp)
+        # else:
+        #     self.print.response = lambda resp: None
+        # self.string.offset = 0 if self.monochrome else 9
 
         if not dont_connect:
             self.connect()
@@ -208,10 +200,7 @@ class Service:
         self.print_config()
 
         # change working directory
-        self.print_header("change working directory")
-        os.chdir(self.dir)
-        self.logger.debug("{:70}{}".format("Current working directory", os.getcwd()))
-        self.logger.flush()
+        self.change_dir()
 
         # connect to remote service and return
         if self.remote:
@@ -219,29 +208,15 @@ class Service:
             return
 
         # connect to launcher service
-        self.print_header("connect to launcher service")
-        spid = self.get_service_pid()
-        if self.kill:
-            self.kill_service(spid)
-            spid.clear()
-        if spid and not self.start:
-            self.connect_to_local_service(spid[0])
-        else:
-            self.start_service()
-        self.logger.flush()
+        self.connect_to_local_service()
 
 
     def print_header(self, text):
-        # self.print.vanilla(helper.pad(self.string.decorate(text, fcolor="black", bcolor="cyan")))
-        # TODO: change hard coded 80
-        self.logger.debug(helper.header(text))
+        self.logger.debug(helper.format_header(text))
 
 
     def print_system_info(self):
         self.print_header("system info")
-        # self.print.vanilla("{:70}{}".format("UTC Time", time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())))
-        # self.print.vanilla("{:70}{}".format("Local Time", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())))
-        # self.print.vanilla("{:70}{}".format("Platform", platform.platform()))
         self.logger.debug("{:22}{}".format("UTC Time", time.strftime("%Y-%m-%d %H:%M:%S %Z", time.gmtime())))
         self.logger.debug("{:22}{}".format("Local Time", time.strftime("%Y-%m-%d %H:%M:%S %Z", time.localtime())))
         self.logger.debug("{:22}{}".format("Platform", platform.platform()))
@@ -250,60 +225,86 @@ class Service:
 
     def print_config(self):
         self.print_header("service configuration")
-        self.print_config_helper("-a: address",     HELP_ADDRESS,       self.address,       DEFAULT_ADDRESS)
-        self.print_config_helper("-p: port",        HELP_PORT,          self.port,          DEFAULT_PORT)
-        self.print_config_helper("-d: dir",         HELP_DIR,           self.dir,           DEFAULT_DIR)
-        self.print_config_helper("-f: file",        HELP_FILE,          self.file,          DEFAULT_FILE)
-        self.print_config_helper("-s: start",       HELP_START,         self.start,         DEFAULT_START)
-        self.print_config_helper("-k: kill",        HELP_KILL,          self.kill,          DEFAULT_KILL)
-        self.print_config_helper("-v: verbose",     HELP_VERBOSE,       self.verbosity,     DEFAULT_VERBOSITY)
-        self.print_config_helper("-m: monochrome",  HELP_MONOCHROME,    self.monochrome,    DEFAULT_MONOCHROME)
+        self.print_config_helper("-a: address",    HELP_ADDRESS,    self.address,      DEFAULT_ADDRESS)
+        self.print_config_helper("-p: port",       HELP_PORT,       self.port,         DEFAULT_PORT)
+        self.print_config_helper("-d: dir",        HELP_DIR,        self.dir,          DEFAULT_DIR)
+        self.print_config_helper("-f: file",       HELP_FILE,       self.file,         DEFAULT_FILE)
+        self.print_config_helper("-s: start",      HELP_START,      self.start,        DEFAULT_START)
+        self.print_config_helper("-k: kill",       HELP_KILL,       self.kill,         DEFAULT_KILL)
+        try:
+            log_level = "{} ({})".format(LoggingLevel(self.threshold).name, self.threshold)
+        except ValueError:
+            log_level = self.threshold
+        self.print_config_helper("-l: log-level",  HELP_LOG_LEVEL,  log_level)
+        self.print_config_helper("-x: buffered",   HELP_UNBUFFER,   not self.buffered, not DEFAULT_BUFFERED)
+        self.print_config_helper("-m: monochrome", HELP_MONOCHROME, self.monochrome,   DEFAULT_MONOCHROME)
         self.logger.flush()
 
 
-    def print_config_helper(self, label, help, value, default_value, label_width=22, help_width=48):
-        # self.print.vanilla("{:{label_offset_width}}{:{help_width}}{}"
-        self.logger.debug("{:31}{:48}{}".format(color.yellow(label),
-                                    help,
-                                    helper.compress(str(value) if value == default_value else color.blue(value))))
+    def print_config_helper(self, label, help, value, default_value=None, compress=True):
+        colored = color.blue(value) if value != default_value else str(value)
+        self.logger.debug("{:31}{:48}{}".format(color.yellow(label), help, helper.compress(colored) if compress else colored))
+
+
+    def change_dir(self):
+        self.print_header("change working directory")
+        os.chdir(self.dir)
+        self.logger.debug("{:22}{}".format("Working Directory", os.getcwd()))
+        self.logger.flush()
+
 
     # TODO
     def connect_to_remote_service(self):
         pass
 
 
-    def connect_to_local_service(self, pid):
+    def connect_to_local_service(self):
+        self.print_header("connect to launcher service")
+        spid = self.get_service_pid_list()
+        if self.kill:
+            self.kill_service(spid)
+            spid.clear()
+        if spid and not self.start:
+            self.start_local_service(spid[0])
+        else:
+            self.start_service()
+        self.logger.flush()
+
+
+    def start_local_service(self, pid):
         current_port = self.get_service_port(pid)
         current_file = self.get_service_file(pid)
         self.logger.debug(color.green("Connecting to existing launcher service with process ID [{}].".format(pid)))
         self.logger.debug(color.green("No new launcher service will be started."))
         self.logger.debug("Configuration of existing launcher service:")
-        self.logger.debug("--- Listening port: [{}]".format(self.string.yellow(current_port)))
-        self.logger.debug("--- Path to file: {}".format(self.string.vanilla(current_file)))
+        self.logger.debug("--- Listening port: [{}]".format(color.yellow(current_port)))
+        self.logger.debug("--- Path to file: {}".format(color.vanilla(current_file)))
         if self.port != current_port:
             self.logger.debug(color.yellow("Warning: port setting (port = {}) ignored.".format(self.port)))
             self.port = current_port
         if self.file != current_file:
             self.logger.debug(color.yellow("Warning: file setting (file = {}) ignored.".format(self.file)))
             self.file = current_file
-        self.logger.debug("To always start a new launcher service, pass {} or {}.".format(self.string.yellow("-s"), self.string.yellow("--start")))
-        self.logger.debug("To kill existing launcher services, pass {} or {}.".format(self.string.yellow("-k"), self.string.yellow("--kill")))
+        self.logger.debug("To always start a new launcher service, pass {} or {}.".format(color.yellow("-s"), color.yellow("--start")))
+        self.logger.debug("To kill existing launcher services, pass {} or {}.".format(color.yellow("-k"), color.yellow("--kill")))
         self.logger.flush()
+
 
     def start_service(self):
         self.logger.debug(color.green("Starting a new launcher service."))
         subprocess.Popen([self.file, "--http-server-address=0.0.0.0:{}".format(self.port), "--http-threads=4"])
-        assert self.get_service_pid(), self.alert.red("Launcher service is not started properly.")
+        if not self.get_service_pid_list():
+            self.logger.error("Error: Launcher service is not started properly!", terminate=True)
 
 
     def kill_service(self, spid=None):
-        spid = self.get_service_pid() if spid is None else spid
+        spid = self.get_service_pid_list() if spid is None else spid
         for x in spid:
             self.logger.debug(color.yellow("Killing exisiting launcher service with process ID [{}].".format(x)))
             subprocess.run(["kill", "-SIGTERM", str(x)])
 
 
-    def get_service_pid(self) -> List[int]:
+    def get_service_pid_list(self) -> List[int]:
         """Returns a list of 0, 1, or more process IDs"""
         spid = helper.pgrep(PROGRAM)
         if len(spid) == 0:
@@ -352,11 +353,10 @@ class Cluster:
         self.service = service
         self.cla = service.cla
         self.logger = service.logger
-        self.print = service.print
-        self.string = service.string
-        self.alert = service.alert
+        # self.print = service.print
+        # self.string = service.string
+        # self.alert = service.alert
 
-        # TO BE DEPRECATED
         self.print_header = service.print_header
         self.print_config_helper = service.print_config_helper
 
@@ -371,7 +371,7 @@ class Cluster:
         self.unstarted_nodes = helper.override(DEFAULT_UNSTARTED_NODES, unstarted_nodes, self.cla.unstarted_nodes if self.cla else None)
 
         # reconcile conflict in config
-        self.reconcile_config()
+        self.resolve_config_conflict()
 
         # check for potential problems in config
         self.check_config()
@@ -394,7 +394,7 @@ class Cluster:
             self.bootstrap(dont_vote=dont_vote)
 
 
-    def reconcile_config(self):
+    def resolve_config_conflict(self):
         if self.producer_nodes > self.total_producers:
             self.print_header("resolve conflict in cluster configuration")
             self.print.vanilla("Conflict: total producers ({}) <= producer nodes ({}).".format(self.total_producers, self.producer_nodes))
@@ -432,7 +432,7 @@ class Cluster:
         13. verify head producer
         """
 
-        self.logger.info(">>> Bootstrap starts.")
+        self.logger.info(color.bold(">>> Bootstrap starts."))
 
         # print configuration
         self.print_config()
@@ -500,7 +500,7 @@ class Cluster:
         stake_amount = total_supply * 0.075
         create_account_threads = []
         channel = []
-        communicate = lambda channel, id: channel.append(id)
+        report = lambda channel, id: channel.append(id)
 
         for p in self.producers:
             def create_and_register(stake_amount):
@@ -512,7 +512,7 @@ class Cluster:
                                     transfer=True)
                 self.register_producer(node_id=node_id, producer=producer)
             # t = threading.Thread(target=create_and_register, args=(stake_amount,))
-            t = ExceptionThread(channel, communicate, target=create_and_register, args=(stake_amount,))
+            t = thread.ExceptionThread(channel, report, target=create_and_register, args=(stake_amount,))
             stake_amount = max(stake_amount / 2, 100)
             create_account_threads.append(t)
             t.start()
@@ -520,16 +520,18 @@ class Cluster:
         for t in create_account_threads:
             t.join()
 
-        assert len(channel) == 0, self.alert.red("{} exception(s) occurred in creating accounts / registering producers.".format(len(channel)))
+        if len(channel) != 0:
+            self.logger.error("{} exception(s) occurred in creating accounts / registering producers.".format(len(channel)), terminate=True)
+
 
         if not dont_vote:
             # 12. vote for producers
             self.vote_for_producers(node_id=0, voter="defproducera", voted_producers=list(self.producers.keys())[:min(21, len(self.producers))])
             # 13. verify head block producer is no longer eosio
-            self.verify_head_block_producer(wait=1)
+            self.verify_head_block_producer()
 
         # self.logger.debug(color.decorate(helper.pad(">>> Bootstrap finishes.", left=0, char=' ', sep="", total=80), fcolor="white", bcolor="black"))
-        self.logger.info(">>> Bootstrap finishes.")
+        self.logger.info(color.bold(">>> Bootstrap finishes."))
         self.logger.flush()
 
 
@@ -545,11 +547,11 @@ class Cluster:
 
 
     def launch_cluster(self, **kwargs):
-        return self.call("launch_cluster", cluster_id=self.cluster_id, center_node_id=self.center_node_id, node_count=self.total_nodes, shape=self.topology, nodes=self.nodes, verify=False, **kwargs)
+        return self.call("launch_cluster", cluster_id=self.cluster_id, center_node_id=self.center_node_id, node_count=self.total_nodes, shape=self.topology, nodes=self.nodes, expect_transaction_id=False, **kwargs)
 
 
     def get_cluster_info(self, **kwargs):
-        return self.call("get_cluster_info", cluster_id=self.cluster_id, verify=False, **kwargs)
+        return self.call("get_cluster_info", cluster_id=self.cluster_id, expect_transaction_id=False, **kwargs)
 
 
     def create_bios_accounts(self, **kwargs):
@@ -570,7 +572,7 @@ class Cluster:
         return self.call("schedule_protocol_feature_activations",
                          cluster_id=self.cluster_id, node_id=0,
                          protocol_features_to_activate=["0ec7e080177b2c02b278d5088611686b49d739925a92d9bfcacd7fc6b74053bd"],
-                         verify=False, **kwargs)
+                         expect_transaction_id=False, **kwargs)
 
 
     def set_contract(self, contract_file: str, abi_file: str, account: str, node_id: int, name: str =None, **kwargs):
@@ -616,82 +618,88 @@ class Cluster:
 
 
     def get_block(self, block_num_or_id, **kwargs):
-        return self.call("get_block", cluster_id=self.cluster_id, block_num_or_id=block_num_or_id, verify=False, **kwargs)
+        return self.call("get_block", cluster_id=self.cluster_id, block_num_or_id=block_num_or_id, expect_transaction_id=False, **kwargs)
 
 
-    def verify_head_block_producer(self, retry=5, wait=1):
+    def verify_head_block_producer(self, retry=5, sleep=1):
         self.print_header("get head block producer")
-        get_head_block_producer = lambda : self.get_cluster_info(loud=False)["result"][0][1]["head_block_producer"]
+        ix = self.get_cluster_info(silent=True)
+        # get_head_block_producer = lambda : self.get_cluster_info(silent=True)["result"][0][1]["head_block_producer"]
+        extract_head_block_producer = lambda ix: json.loads(ix.response.text)["result"][0][1]["head_block_producer"]
         while retry >= 0:
-            head_block_producer = get_head_block_producer()
+            ix = self.get_cluster_info(silent=True)
+            head_block_producer = extract_head_block_producer(ix)
+            self.logger.trace(ix.get_formatted_response())
             if head_block_producer == "eosio":
-                self.logger.debug(color.yellow("Warning: Head block producer is still \"eosio\". Please wait for a while."))
+                self.logger.debug(color.yellow("Head block producer is still \"eosio\"."), flush=True)
             else:
-                self.logger.debug(color.green("Head block producer is \"{}\", no longer eosio.".format(head_block_producer)))
+                self.logger.debug(color.green("Head block producer is now \"{}\", no longer eosio.".format(head_block_producer)), flush=True)
                 break
-            time.sleep(wait)
+            self.logger.trace("{} {} for head block producer verification...".format(retry, "retries remain" if retry > 1 else "retry remains"))
+            self.logger.trace("Sleep for {}s before next retry...".format(sleep))
+            time.sleep(sleep)
             retry -= 1
         assert head_block_producer != "eosio"
 
 
     # TODO: set retry from command-line
-    def call(self, endpoint: str, retry=5, wait=1, verify=True, loud=True, header: str = None, **data):
-        if loud:
+    def call(self, endpoint: str, retry=5, sleep=1, expect_transaction_id=True, verify_key="irreversible", silent=False, header: str = None, **data) -> dict:
+        if not silent:
             header = endpoint.replace("_", " ") if header is None else header
             self.print_header(header)
         ix = Interaction(endpoint, self.service, data)
-        if loud:
-            # self.print_request(ix)
+        if not silent:
             self.logger.debug(ix.request.url)
-            self.logger.debug(helper.pretty_json(ix.request.data))
+            self.logger.debug(helper.format_json(ix.request.data))
         while not ix.response.ok and retry > 0:
-            if loud:
-                self.logger.debug(color.red(ix.response))
-                self.logger.debug(color.vanilla("Retrying ..."))
-            time.sleep(wait)
+            if not silent:
+                self.logger.trace(color.red(ix.response))
+                # TODO: detailed info for retry
+                self.logger.trace("{} {} for http connection...".format(retry, "retries remain" if retry > 1 else "retry remains"))
+                self.logger.trace("Sleep for {}s before next retry...".format(sleep))
+            time.sleep(sleep)
             ix.attempt()
             retry -= 1
-        if loud:
-            # self.print.magenta(ix.transaction_id)
-            self.logger.debug(self.string.response_in_short(ix.response))
+        if not silent:
+            self.logger.debug(ix.get_formatted_response())
         assert ix.response.ok
-        #  TODO: a better way to pass verify
-        if verify:
-            assert self.verify_transaction(ix.transaction_id, key=verify, loud=loud)
+        if expect_transaction_id and ix.transaction_id is None:
+            self.logger.warn("Warning: No transaction ID returned.")
+        if expect_transaction_id:
+            assert self.verify_transaction(ix.transaction_id, verify_key=verify_key, silent=silent)
         self.logger.flush()
-        return json.loads(ix.response.text)
+        # TODO: change to return ix
+        # return json.loads(ix.response.text)
+        return ix
 
 
-    def verify_transaction(self, transaction_id, key=True, node_id=0, retry=600, wait=0.5, loud=True):
-        key = "irreversible" if key == True else key
-        if loud:
-            self.logger.debug("Verifying ...")
+    def verify_transaction(self, transaction_id, verify_key="irreversible", node_id=0, retry=10, sleep=0.5, silent=False):
+        # TODO: can have an assert to guard against non-existing field other than irreversible / contained
+        if not silent:
+            self.logger.trace("Verifying ...")
         ix = Interaction("verify_transaction", self.service, dict(cluster_id=self.cluster_id, node_id=node_id, transaction_id=transaction_id))
-        verified = helper.extract(ix.response, key=key, fallback=False)
+        verified = helper.extract(ix.response, key=verify_key, fallback=False)
+        if not silent:
+            self.logger.trace(ix.get_formatted_response(show_content=True))
         while not verified and retry > 0:
-            time.sleep(wait)
-            if loud:
-                self.logger.debug("Verifying ...")
+            if not silent:
+                self.logger.trace("{} {} for verification...".format(retry, "retries remain" if retry > 1 else "retry remains"))
+                self.logger.trace("Sleep for {}s before next retry...".format(sleep))
+            time.sleep(sleep)
             ix.attempt()
-            verified = helper.extract(ix.response, key=key, fallback=False)
-            # debug temp
-            # if not verified:
-            #     self.print.response_in_full(ix.response)
+            if not silent:
+                self.logger.trace(ix.get_formatted_response(show_content=True))
+            verified = helper.extract(ix.response, key=verify_key, fallback=False)
             retry -= 1
         assert ix.response.ok
-        if loud:
+        if not silent:
             if verified:
-                self.logger.debug(color.decorate("Success!", fcolor="black", bcolor="green"))
+                self.logger.debug(color.decorate("{}!".format(verify_key.title()), fcolor="black", bcolor="green"))
             else:
-                self.logger.debug(color.decorate("Failure!", fcolor="black", bcolor="red"))
-                # debug temp
-                # self.print.response_in_full(ix.response)
-        return helper.extract(ix.response, key=key, fallback=False)
-
-
-    # def print_request(self, ix):
-    #     self.logger.debug(self.string.vanilla(ix.request.url))
-    #     self.logger.debug(self.string.json(ix.request.data))
+                self.logger.error(ix.get_formatted_response(show_content=True))
+                self.logger.error("Failed to verify as \"{}\"!".format(verify_key), terminate=True)
+                self.logger.flush()
+        return verified
 
 
     @staticmethod
@@ -719,12 +727,12 @@ class Cluster:
 
 
 def test():
-    buffered_color = WriterConfig(buffered=True, monochrome=False)
-    unbuffered_mono = WriterConfig(buffered=False, monochrome=True)
-    unbuffered_color = WriterConfig(buffered=False, monochrome=False)
+    buffered_color = WriterConfig(buffered=True, monochrome=False, threshold="DEBUG")
+    unbuffered_mono = WriterConfig(buffered=False, monochrome=True, threshold="TRACE")
+    unbuffered_color = WriterConfig(buffered=False, monochrome=False, threshold="TRACE")
     logger = Logger(ScreenWriter(config=buffered_color),
                     FileWriter(filename="mono.log", config=unbuffered_mono),
-                    FileWriter(filename="color.log", config=unbuffered_color))
+                    FileWriter(filename="colo.log", config=unbuffered_color))
     service = Service(logger=logger)
     cluster = Cluster(service=service)
 

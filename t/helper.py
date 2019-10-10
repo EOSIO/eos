@@ -1,16 +1,28 @@
 #! /usr/bin/env python3
 
 import json
-import requests
+import re
 import subprocess
 import time
+import typing
 
 from typing import List, Optional, Union
 
-import color
+# third-party libraries
+import requests
 
-def compress(s: str, length: int = 16, tail: int = 3):
-    if len(s) > length:
+# user-defined modules
+import color
+import connection
+
+
+def monolen(s: str):
+    """return real length of a str after removing color code"""
+    return len(re.compile(r"\033\[[0-9]+(;[0-9]+)?m").sub("", s))
+
+
+def compress(s: str, length: int = 16, tail: int = 4):
+    if monolen(s) > length:
         s = s[:(length - tail - 3)] + "..." + s[-tail:]
     return s
 
@@ -40,7 +52,7 @@ def get_current_time(date=True, precision=3, local_time=False, time_zone=False):
     return time.strftime(form, struct(now))
 
 
-def header(text):
+def format_header(text):
     return pad(color.decorate(text, fcolor="black", bcolor="cyan"))
 
 
@@ -51,8 +63,7 @@ def get_transaction_id(response: requests.Response) -> Optional[str]:
     except KeyError:
         return
 
-
-def pretty_json(text: str, maxlen=100) -> str:
+def format_json(text: str, maxlen=100) -> str:
     data = json.loads(text)
     if maxlen:
         trim(data, maxlen=100)
@@ -63,11 +74,17 @@ def optional(x, y):
     return x if y is not None else None
 
 
-def override(default_value, value, override_value=None):
-    return override_value if override_value is not None else value if value is not None else default_value
+# def override(default_value, value, override_value=None):
+#     return override_value if override_value is not None else value if value is not None else default_value
+
+def override(*args):
+    for x in reversed(args):
+        if x is not None:
+            return x
+    return None
 
 
-def pad(text: str, left=10, total=100, right=None, char="-", sep=" ") -> str:
+def pad(text: str, left=15, total=90, right=None, char="-", sep=" ") -> str:
     """
     Summary
     -------
@@ -80,9 +97,11 @@ def pad(text: str, left=10, total=100, right=None, char="-", sep=" ") -> str:
     '::: ~ hello, world ~ :::'
     """
     if right is not None:
-        implied_total = len(char) * (left + right) + len(sep) * 2 + len(text)
+        implied_total = monolen(char) * (left + right) + monolen(sep) * 2 + monolen(text)
         total = min(total, implied_total)
-    return (char * left + sep + text + sep).ljust(total, char)
+    string = char * left + sep + text + sep
+    offset = len(string) - monolen(string)
+    return string.ljust(total + offset, char)
 
 
 def pgrep(pattern: str) -> List[int]:
@@ -90,7 +109,7 @@ def pgrep(pattern: str) -> List[int]:
     return [int(x) for x in out.splitlines()]
 
 
-def trim(data, maxlen=100):
+def trim(data: typing.Union[dict, list], maxlen=100):
     """
     Summary
     -------
