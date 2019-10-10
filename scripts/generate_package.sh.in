@@ -27,7 +27,7 @@ export URL
 export EMAIL
 
 mkdir -p tmp
-exit 1
+
 if [[ ${VARIANT} == "brew" ]]; then
    . ./generate_bottle.sh
 elif [[ ${VARIANT} == "deb" ]]; then
