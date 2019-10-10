@@ -45,7 +45,7 @@ else # Linux
         PRE_COMMANDS="$PRE_COMMANDS && export PATH=/usr/lib/ccache:\\\$PATH"
         CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_CXX_COMPILER='clang++' -DCMAKE_C_COMPILER='clang' -DLLVM_DIR='/usr/lib/llvm-7/lib/cmake/llvm'"
     fi
-    BUILD_COMMANDS="cmake $CMAKE_EXTRAS .. && make -j$JOBS"
+    BUILD_COMMANDS="cmake $CMAKE_EXTRAS .. && make -j$(getconf _NPROCESSORS_ONLN)"
     # Docker Commands
     if [[ "$BUILDKITE" == 'true' ]]; then
         # Generate Base Images
