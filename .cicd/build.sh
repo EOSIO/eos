@@ -18,7 +18,6 @@ if [[ "$(uname)" == 'Darwin' ]]; then
     echo "cmake $CMAKE_EXTRAS .."
     cmake $CMAKE_EXTRAS ..
     echo "make -j$JOBS"
-    exit 1
     make -j$JOBS
 else # Linux
     CMAKE_EXTRAS="$CMAKE_EXTRAS -DBUILD_MONGO_DB_PLUGIN=true"
@@ -60,6 +59,5 @@ else # Linux
     fi
     COMMANDS="$PRE_COMMANDS && $COMMANDS"
     echo "$ docker run $ARGS $(buildkite-intrinsics) $FULL_TAG bash -c \"$COMMANDS\""
-    exit 1
     eval docker run $ARGS $(buildkite-intrinsics) $FULL_TAG bash -c \"$COMMANDS\"
 fi
