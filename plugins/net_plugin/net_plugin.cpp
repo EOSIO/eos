@@ -1158,11 +1158,6 @@ namespace eosio {
             c->strand.post( [c, sb{std::move(sb)}, trigger_send]() {
                c->enqueue_block( sb, trigger_send, true );
             });
-         } else {
-            c->strand.post( [c, num]() {
-               peer_ilog( c, "enqueue sync, unable to fetch block ${num}, sending go away: benign_other", ("num", num) );
-               c->enqueue( go_away_message( benign_other ) );
-            });
          }
       });
 
