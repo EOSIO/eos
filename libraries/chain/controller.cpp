@@ -224,7 +224,6 @@ struct controller_impl {
    db_read_mode                   read_mode = db_read_mode::SPECULATIVE;
    bool                           in_trx_requiring_checks = false; ///< if true, checks that are normally skipped on replay (e.g. auth checks) cannot be skipped
    optional<fc::microseconds>     subjective_cpu_leeway;
-   uint32_t                       global_greylist_limit = config::maximum_elastic_resource_multiplier;
    bool                           trusted_producer_light_validation = false;
    uint32_t                       snapshot_head_block = 0;
    named_thread_pool              thread_pool;
@@ -3002,18 +3001,18 @@ void controller::set_subjective_cpu_leeway(fc::microseconds leeway) {
    my->subjective_cpu_leeway = leeway;
 }
 
-void controller::set_global_greylist_limit( uint32_t limit ) {
+void controller::set_greylist_limit( uint32_t limit ) {
    EOS_ASSERT( 0 < limit && limit <= chain::config::maximum_elastic_resource_multiplier,
                misc_exception,
-               "Invalid limit (${limit}) passed into set_global_greylist_limit. "
+               "Invalid limit (${limit}) passed into set_greylist_limit. "
                "Must be between 1 and ${max}.",
                ("limit", limit)("max", chain::config::maximum_elastic_resource_multiplier)
    );
-   my->global_greylist_limit = limit;
+   my->conf.greylist_limit = limit;
 }
 
-uint32_t controller::get_global_greylist_limit()const {
-   return my->global_greylist_limit;
+uint32_t controller::get_greylist_limit()const {
+   return my->conf.greylist_limit;
 }
 
 void controller::add_resource_greylist(const account_name &name) {

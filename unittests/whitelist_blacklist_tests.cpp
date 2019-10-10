@@ -737,7 +737,7 @@ BOOST_AUTO_TEST_CASE( blacklist_sender_bypass ) { try {
 
 } FC_LOG_AND_RETHROW() }
 
-BOOST_AUTO_TEST_CASE( global_greylist_tests ) { try {
+BOOST_AUTO_TEST_CASE( greylist_limit_tests ) { try {
    controller::config contrl_config;
    {
       // Hack to get the default controller config used in tester (since v1.8.x does not have the base_tester::default_config helper function).
@@ -861,7 +861,7 @@ BOOST_AUTO_TEST_CASE( global_greylist_tests ) { try {
    c.produce_block();
    c.produce_block( fc::days(1) );
 
-   // Reducing the global greylist from 1000 to 4 should not make a difference since it would not be the
+   // Reducing the greylist limit from 1000 to 4 should not make a difference since it would not be the
    // bottleneck at this level of congestion. But dropping it to 3 would make a difference.
    {
       auto user_elastic_cpu_limit = rm.get_account_cpu_limit_ex(user_account).first.max;
@@ -884,8 +884,8 @@ BOOST_AUTO_TEST_CASE( global_greylist_tests ) { try {
       BOOST_REQUIRE( user_net_res2.first.max < 3*reqauth_net_charge );
    }
 
-   ilog("setting global greylist limit to 4");
-   c.control->set_global_greylist_limit( 4 );
+   ilog("setting greylist limit to 4");
+   c.control->set_greylist_limit( 4 );
    c.produce_block();
 
    push_reqauth( user_account, config::active_name, cfg.min_transaction_cpu_usage );
@@ -895,8 +895,8 @@ BOOST_AUTO_TEST_CASE( global_greylist_tests ) { try {
    push_reqauth( user_account, config::active_name, cfg.min_transaction_cpu_usage );
    c.produce_block();
 
-   ilog("setting global greylist limit to 3");
-   c.control->set_global_greylist_limit( 3 );
+   ilog("setting greylist limit to 3");
+   c.control->set_greylist_limit( 3 );
    c.produce_block( fc::days(1) );
 
    push_reqauth( user_account, config::active_name, cfg.min_transaction_cpu_usage );
@@ -914,11 +914,11 @@ BOOST_AUTO_TEST_CASE( global_greylist_tests ) { try {
    push_reqauth( user_account, config::active_name, cfg.min_transaction_cpu_usage );
    c.produce_block();
 
-   // Finally, dropping the global greylist limit to 1 will restrict the user's NET bandwidth so much that this user
+   // Finally, dropping the greylist limit to 1 will restrict the user's NET bandwidth so much that this user
    // cannot push even a single reqauth just like when they were under full congestion.
    // However, this time the exception will be due to greylist_net_usage_exceeded rather than tx_net_usage_exceeded.
-   ilog("setting global greylist limit to 1");
-   c.control->set_global_greylist_limit( 1 );
+   ilog("setting greylist limit to 1");
+   c.control->set_greylist_limit( 1 );
    c.produce_block( fc::days(1) );
    BOOST_REQUIRE_EQUAL( rm.get_account_cpu_limit_ex(user_account, 1).first.max, user_cpu_per_day  );
    BOOST_REQUIRE_EQUAL( rm.get_account_net_limit_ex(user_account, 1).first.max, user_net_per_day  );
