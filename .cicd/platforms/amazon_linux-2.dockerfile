@@ -1,5 +1,6 @@
 FROM amazonlinux:2.0.20190508
 ENV VERSION 1
+RUN derp
 # install dependencies.
 RUN yum update -y && \
     yum install -y which git sudo procps-ng util-linux autoconf automake \
