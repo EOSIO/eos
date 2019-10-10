@@ -33,11 +33,11 @@ export SSUBPREFIX
 
 hash=`openssl dgst -sha256 ${NAME}.tar.gz | awk 'NF>1{print $NF}'`
 
-echo "class Eosio < Formula
+echo "class Remprotocol < Formula
 
    homepage \"${URL}\"
    revision 0
-   url \"https://github.com/eosio/eos/archive/v${VERSION}.tar.gz\"
+   url \"https://github.com/RemmeAuth/remprotocol/archive/${VERSION}.tar.gz\"
    version \"${VERSION}\"
 
    option :universal
@@ -50,13 +50,13 @@ echo "class Eosio < Formula
    depends_on :arch =>  :intel
 
    bottle do
-      root_url \"https://github.com/eosio/eos/releases/download/v${VERSION}\"
+      root_url \"https://github.com/RemmeAuth/remprotocol/releases/download/${VERSION}\"
       sha256 \"${hash}\" => :${MAC_VERSION}
    end
    def install
       raise \"Error, only supporting binary packages at this time\"
    end
 end
-__END__" &> eosio.rb
+__END__" &> remprotocol.rb
 
 rm -r ${PROJECT} || exit 1
