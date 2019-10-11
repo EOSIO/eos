@@ -70,10 +70,11 @@ def main():
     for i in range(1, 6):
         testers.append("tester" + str(i) * 6)
 
-    stake_amount_formatted = "{:.4f} SYS".format(37.5e6)
+    stake_amount_formatted = "37500000.0000 SYS"
 
     for i in range(5):
         cluster.create_account(node_id=0, creator="eosio", name=testers[i], stake_cpu=stake_amount_formatted, stake_net=stake_amount_formatted, buy_ram_bytes=1048576, transfer=True)
+        stake_amount_formatted = "37510000.0000 SYS"
 
     # TODO: remove eosio after bootstrap
     node_prod = cluster.nodes[0]["producers"]
