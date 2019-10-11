@@ -18,7 +18,9 @@ if ! $(xxd --version 2>/dev/null); then
     exit 1
 fi
 # find nodeos
-[[ $(git --version) ]] && cd "$(git rev-parse --show-toplevel)/build" || cd "$(dirname "${BASH_SOURCE[0]}")/.."
+set
+set -x
+#[[ $(git --version) ]] && cd "$(git rev-parse --show-toplevel)/build" || cd "$(dirname "${BASH_SOURCE[0]}")/.."
 if [[ ! -f programs/nodeos/nodeos ]]; then
     echo 'ERROR: nodeos binary not found!'
     echo ''
