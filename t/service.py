@@ -507,10 +507,13 @@ class Cluster:
                 producer = p
                 node_id = self.producers[p]
                 stake_amount_formatted = "{:.4f} SYS".format(stake_amount)
-                self.create_account(node_id=node_id, creator="eosio", name=producer,
+                # when create/register accounts: always push actions to node #0 instead of the nodes of the accounts
+                # otherwise may encounter errors caused by nodes not synced up yet
+                # "message": "false: Unknown action delegatebw in contract eosio"
+                self.create_account(node_id=0, creator="eosio", name=producer,
                                     stake_cpu=stake_amount_formatted, stake_net=stake_amount_formatted, buy_ram_bytes=1048576,
                                     transfer=True)
-                self.register_producer(node_id=node_id, producer=producer)
+                self.register_producer(node_id=0, producer=producer)
             # t = threading.Thread(target=create_and_register, args=(stake_amount,))
             t = thread.ExceptionThread(channel, report, target=create_and_register, args=(stake_amount,))
             stake_amount = max(stake_amount / 2, 100)
