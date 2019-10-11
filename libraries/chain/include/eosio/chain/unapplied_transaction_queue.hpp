@@ -6,7 +6,6 @@
 #include <eosio/chain/exceptions.hpp>
 
 #include <boost/multi_index_container.hpp>
-#include <boost/multi_index/sequenced_index.hpp>
 #include <boost/multi_index/hashed_index.hpp>
 #include <boost/multi_index/member.hpp>
 
@@ -64,7 +63,6 @@ private:
 
    typedef multi_index_container< unapplied_transaction,
       indexed_by<
-         sequenced<>,
          hashed_unique< tag<by_trx_id>,
                const_mem_fun<unapplied_transaction, const transaction_id_type&, &unapplied_transaction::id>
          >,
@@ -165,7 +163,7 @@ public:
             const auto& trx = *itr;
             fc::time_point expiry = trx->packed_trx()->expiration();
             size_in_bytes += calc_size( trx );
-            queue.push_back( { trx, expiry, trx_enum_type::forked } );
+            queue.insert( { trx, expiry, trx_enum_type::forked } );
          }
       }
    }
@@ -175,7 +173,7 @@ public:
       for( auto& trx : aborted_trxs ) {
          fc::time_point expiry = trx->packed_trx()->expiration();
          size_in_bytes += calc_size( trx );
-         queue.push_back( { std::move( trx ), expiry, trx_enum_type::aborted } );
+         queue.insert( { std::move( trx ), expiry, trx_enum_type::aborted } );
       }
    }
 
@@ -185,7 +183,7 @@ public:
       if( itr == queue.get<by_trx_id>().end() ) {
          fc::time_point expiry = trx->packed_trx()->expiration();
          size_in_bytes += calc_size( trx );
-         queue.push_back( { trx, expiry, trx_enum_type::persisted } );
+         queue.insert( { trx, expiry, trx_enum_type::persisted } );
       } else if( itr->trx_type != trx_enum_type::persisted ) {
          queue.get<by_trx_id>().modify( itr, [](auto& un){
             un.trx_type = trx_enum_type::persisted;
@@ -202,7 +200,7 @@ public:
                      "Transaction ${id} exceeded max transaction queue size: ${size}",
                      ("id", trx->id())("size", size_in_bytes + size) );
          size_in_bytes += size;
-         queue.push_back( { trx, expiry, persist_until_expired ? trx_enum_type::incoming_persisted : trx_enum_type::incoming, std::move( next ) } );
+         queue.insert( { trx, expiry, persist_until_expired ? trx_enum_type::incoming_persisted : trx_enum_type::incoming, std::move( next ) } );
       } else if( (persist_until_expired && itr->trx_type != trx_enum_type::incoming_persisted) || (next && !itr->next) ) {
          queue.get<by_trx_id>().modify( itr, [persist_until_expired, next{std::move(next)}](auto& un) mutable {
             if( persist_until_expired ) un.trx_type = trx_enum_type::incoming_persisted;
