@@ -172,43 +172,51 @@ class Logger:
         for w in self.writers:
             w.config.start_time = start_time
 
-    def log(self, msg, level: typing.Union[int, str, LoggingLevel], flush=False):
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exception_type, exception_value, exception_traceback):
+        self.flush()
+
+    def log(self, msg, level: typing.Union[int, str, LoggingLevel], buffer=False):
         if isinstance(level, str):
             level = LoggingLevel[level]
         for w in self.writers:
             w.write(msg, level)
-        if flush:
+        if not buffer:
             self.flush()
 
-    def trace(self, msg, flush=False):
-        self.log(msg, level=LoggingLevel.TRACE, flush=flush)
+    def trace(self, msg, buffer=False):
+        self.log(msg, level=LoggingLevel.TRACE, buffer=buffer)
 
-    def debug(self, msg, flush=False):
-        self.log(msg, level=LoggingLevel.DEBUG, flush=flush)
+    def debug(self, msg, buffer=False):
+        self.log(msg, level=LoggingLevel.DEBUG, buffer=buffer)
 
-    def info(self, msg, flush=False):
-        self.log(msg, level=LoggingLevel.INFO, flush=flush)
+    def info(self, msg, buffer=False):
+        self.log(msg, level=LoggingLevel.INFO, buffer=buffer)
 
-    def warn(self, msg, colorize=True, flush=False):
-        self.log(color.yellow(msg) if colorize else msg, level=LoggingLevel.WARN, flush=flush)
+    def warn(self, msg, colorize=True, buffer=False):
+        self.log(color.yellow(msg) if colorize else msg, level=LoggingLevel.WARN, buffer=buffer)
 
-    def error(self, msg, colorize=True, flush=True, terminate=None):
-        # terminate implies flush
-        flush = helper.override(flush, terminate)
-        self.log(color.red(msg)if colorize else msg, level=LoggingLevel.ERROR, flush=flush)
-        if terminate:
+    def error(self, msg, colorize=True, buffer=True, assert_false=None):
+        # assert_false implies no buffer (must flush immediately)
+        buffer = not helper.override(not buffer, assert_false)
+        self.log(color.red(msg)if colorize else msg, level=LoggingLevel.ERROR, buffer=buffer)
+        if assert_false:
             assert False
 
-    def fatal(self, msg, colorize=True, flush=True, terminate=True):
-        # terminate implies flush
-        flush = helper.override(flush, terminate)
-        self.log(color.bold(color.red(msg)) if colorize else msg, level=LoggingLevel.FATAL, flush=flush)
-        if terminate:
+    def fatal(self, msg, colorize=True, flush=True, assert_false=True):
+        # assert_false implies flush
+        buffer = not helper.override(not buffer, assert_false)
+        self.log(color.bold(color.red(msg)) if colorize else msg, level=LoggingLevel.FATAL, buffer=buffer)
+        if assert_false:
             assert False
 
     def flush(self):
         for w in self.writers:
             w.flush()
+
+
 
 
 # ----------------- test ------------------------------------------------------

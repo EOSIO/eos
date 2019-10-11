@@ -61,7 +61,7 @@ def main():
     logger = Logger(ScreenWriter(config=buffered_color_config), FileWriter(filename="mono.log", config=unbuffered_mono_config))
     service = Service(logger=logger)
 
-    print_info = lambda msg: logger.info(msg=msg, flush=True)
+    print_info = lambda msg: logger.info(msg=msg)
 
     print_info(">>> Voting test starts.")
     total_nodes = 4

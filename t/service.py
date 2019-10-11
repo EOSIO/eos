@@ -127,7 +127,7 @@ class CommandLineArguments:
         parser.add_argument("-y", "--total-producers", dest="total_producers", type=int, metavar="NUM", help=form(HELP_TOTAL_PRODUCERS, DEFAULT_TOTAL_PRODUCERS))
         parser.add_argument("-z", "--producer-nodes", dest="producer_nodes", type=int, metavar="NUM", help=form(HELP_PRODUCER_NODES, DEFAULT_PRODUCER_NODES))
         parser.add_argument("-u", "--unstarted-nodes", dest="unstarted_nodes", type=int, metavar="NUM", help=form(HELP_UNSTARTED_NODES, DEFAULT_UNSTARTED_NODES))
-        parser.add_argument("--dont-bootstrap", dest="dont_bootstrap", action="store_true", help=form(HELP_DONT_BOOTSTRAP, DEFAULT_DONT_BOOTSTRAP))
+        parser.add_argument("-xboot", "--dont-bootstrap", dest="dont_bootstrap", action="store_true", help=form(HELP_DONT_BOOTSTRAP, DEFAULT_DONT_BOOTSTRAP))
 
         threshold = parser.add_mutually_exclusive_group()
         threshold.add_argument("-l", "--log-level", dest="threshold", type=int, metavar="LEVEL", action="store", help=form(HELP_LOG_LEVEL))
@@ -139,8 +139,8 @@ class CommandLineArguments:
         threshold.add_argument("--error", dest="threshold", action="store_const", const="ERROR", help=form(HELP_ERROR))
         threshold.add_argument("--fatal", dest="threshold", action="store_const", const="FATAL", help=form(HELP_FATAL))
         threshold.add_argument("--log-off", dest="threshold", action="store_const", const="OFF", help=form(HELP_LOG_OFF))
-        parser.add_argument("-x", "--unbuffer", dest="buffered", action="store_false", default=True, help=form(HELP_UNBUFFER, not DEFAULT_BUFFERED))
-        parser.add_argument("-m", "--monochrome", action="store_true", default=False, help=form(HELP_MONOCHROME, DEFAULT_MONOCHROME))
+        parser.add_argument("-xbuff", "--unbuffer", dest="buffered", action="store_false", default=True, help=form(HELP_UNBUFFER, not DEFAULT_BUFFERED))
+        parser.add_argument("-xcolor", "--monochrome", action="store_true", default=False, help=form(HELP_MONOCHROME, DEFAULT_MONOCHROME))
 
         return parser.parse_args()
 
@@ -199,8 +199,8 @@ class Service:
         self.connect_to_local_service()
 
 
-    def print_header(self, text):
-        self.logger.debug(helper.format_header(text))
+    def print_header(self, text, level="DEBUG", buffer=False):
+        self.logger.log(helper.format_header(text), level=level, buffer=buffer)
 
 
     def print_system_info(self):
@@ -208,7 +208,6 @@ class Service:
         self.logger.debug("{:22}{}".format("UTC Time", time.strftime("%Y-%m-%d %H:%M:%S %Z", time.gmtime())))
         self.logger.debug("{:22}{}".format("Local Time", time.strftime("%Y-%m-%d %H:%M:%S %Z", time.localtime())))
         self.logger.debug("{:22}{}".format("Platform", platform.platform()))
-        self.logger.flush()
 
 
     def print_config(self):
@@ -226,7 +225,6 @@ class Service:
         self.print_config_helper("-l: log-level",  HELP_LOG_LEVEL,  log_level)
         self.print_config_helper("-x: buffered",   HELP_UNBUFFER,   not self.buffered, not DEFAULT_BUFFERED)
         self.print_config_helper("-m: monochrome", HELP_MONOCHROME, self.monochrome,   DEFAULT_MONOCHROME)
-        self.logger.flush()
 
 
     def print_config_helper(self, label, help, value, default_value=None, compress=True):
@@ -238,7 +236,6 @@ class Service:
         self.print_header("change working directory")
         os.chdir(self.dir)
         self.logger.debug("{:22}{}".format("Working Directory", os.getcwd()))
-        self.logger.flush()
 
 
     # TODO
@@ -256,7 +253,6 @@ class Service:
             self.start_local_service(spid[0])
         else:
             self.start_service()
-        self.logger.flush()
 
 
     def start_local_service(self, pid):
@@ -275,14 +271,13 @@ class Service:
             self.file = current_file
         self.logger.debug("To always start a new launcher service, pass {} or {}.".format(color.yellow("-s"), color.yellow("--start")))
         self.logger.debug("To kill existing launcher services, pass {} or {}.".format(color.yellow("-k"), color.yellow("--kill")))
-        self.logger.flush()
 
 
     def start_service(self):
         self.logger.debug(color.green("Starting a new launcher service."))
         subprocess.Popen([self.file, "--http-server-address=0.0.0.0:{}".format(self.port), "--http-threads=4"])
         if not self.get_service_pid_list():
-            self.logger.error("Error: Launcher service is not started properly!", terminate=True)
+            self.logger.error("Error: Launcher service is not started properly!", assert_false=True)
 
 
     def kill_service(self, spid=None):
@@ -411,7 +406,6 @@ class Cluster:
         self.get_cluster_info()
         self.set_bios_contract()
         self.logger.info(color.bold(">>> Launch without bootstrapping finishes."))
-        self.logger.flush()
 
 
     # TODO: allow users to specify path instead of hardcoded "eosio.contracts"
@@ -534,7 +528,7 @@ class Cluster:
             t.join()
 
         if len(channel) != 0:
-            self.logger.error("{} exception(s) occurred in creating accounts / registering producers.".format(len(channel)), terminate=True)
+            self.logger.error("{} exception(s) occurred in creating accounts / registering producers.".format(len(channel)), assert_false=True)
 
 
         if not dont_vote:
@@ -545,7 +539,6 @@ class Cluster:
 
         # self.logger.debug(color.decorate(helper.pad(">>> Bootstrap finishes.", left=0, char=' ', sep="", total=80), fcolor="white", bcolor="black"))
         self.logger.info(color.bold(">>> Bootstrap finishes."))
-        self.logger.flush()
 
 
     def print_config(self):
@@ -601,12 +594,12 @@ class Cluster:
                          header=None if name is None else name, **kwargs)
 
 
-    def create_account(self, node_id, creator, name, stake_cpu, stake_net, buy_ram_bytes, transfer, **kwargs):
+    def create_account(self, node_id, creator, name, stake_cpu, stake_net, buy_ram_bytes, transfer, buffer=True, **kwargs):
         return self.call("create_account", cluster_id=self.cluster_id, node_id=node_id, creator=creator, name=name,
                          stake_cpu=stake_cpu, stake_net=stake_net, buy_ram_bytes=buy_ram_bytes, transfer=transfer,
-                         header="create \"{}\" account".format(name), **kwargs)
+                         buffer=buffer, header="create \"{}\" account".format(name), **kwargs)
 
-    def register_producer(self, node_id, producer, **kwargs):
+    def register_producer(self, node_id, producer, buffer=True, **kwargs):
             actions = [{"account": "eosio",
                         "action": "regproducer",
                         "permissions": [{"actor": "{}".format(producer),
@@ -615,7 +608,7 @@ class Cluster:
                                  "producer_key": "EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
                                  "url": "www.test.com",
                                  "location": 0}}]
-            self.push_actions(node_id=node_id, actions=actions, name="register \"{}\" producer".format(producer))
+            self.push_actions(node_id=node_id, actions=actions, name="register \"{}\" producer".format(producer), buffer=buffer)
 
 
     def vote_for_producers(self, node_id, voter, voted_producers: List[str], **kwargs):
@@ -644,9 +637,9 @@ class Cluster:
             head_block_producer = extract_head_block_producer(ix)
             self.logger.trace(ix.get_formatted_response())
             if head_block_producer == "eosio":
-                self.logger.debug(color.yellow("Head block producer is still \"eosio\"."), flush=True)
+                self.logger.debug(color.yellow("Head block producer is still \"eosio\"."))
             else:
-                self.logger.debug(color.green("Head block producer is now \"{}\", no longer eosio.".format(head_block_producer)), flush=True)
+                self.logger.debug(color.green("Head block producer is now \"{}\", no longer eosio.".format(head_block_producer)))
                 break
             self.logger.trace("{} {} for head block producer verification...".format(retry, "retries remain" if retry > 1 else "retry remains"))
             self.logger.trace("Sleep for {}s before next retry...".format(sleep))
@@ -656,69 +649,74 @@ class Cluster:
 
 
     # TODO: set retry from command-line
-    def call(self, endpoint: str, retry=5, sleep=1, expect_transaction_id=True, verify_key="irreversible", silent=False, header: str = None, **data) -> dict:
-        if not silent:
-            header = endpoint.replace("_", " ") if header is None else header
-            self.print_header(header)
-        ix = Interaction(endpoint, self.service, data)
-        if not silent:
-            self.logger.debug(ix.request.url)
-            self.logger.debug(helper.format_json(ix.request.data))
-        while not ix.response.ok and retry > 0:
+    def call(self, endpoint: str, retry=5, sleep=1, expect_transaction_id=True, verify_key="irreversible", silent=False, buffer=False, header: str = None, **data) -> dict:
+        with self.logger as log:
             if not silent:
-                self.logger.trace(color.red(ix.response))
-                # TODO: detailed info for retry
-                self.logger.trace("{} {} for http connection...".format(retry, "retries remain" if retry > 1 else "retry remains"))
-                self.logger.trace("Sleep for {}s before next retry...".format(sleep))
-            time.sleep(sleep)
-            ix.attempt()
-            retry -= 1
-        if not silent:
-            self.logger.debug(ix.get_formatted_response())
-        # assert ix.response.ok
-        if not ix.response.ok:
-            self.logger.error(ix.response.text, terminate=True)
-        if expect_transaction_id and ix.transaction_id is None:
-            self.logger.warn("Warning: No transaction ID returned.")
-        if expect_transaction_id:
-            assert self.verify_transaction(ix.transaction_id, verify_key=verify_key, silent=silent)
-        self.logger.flush()
-        # TODO: change to return ix
-        # return json.loads(ix.response.text)
-        return ix
+                header = endpoint.replace("_", " ") if header is None else header
+                self.print_header(header, buffer=buffer)
+            ix = Interaction(endpoint, self.service, data)
+            if not silent:
+                log.debug(ix.request.url, buffer=buffer)
+                log.debug(helper.format_json(ix.request.data), buffer=buffer)
+            while not ix.response.ok and retry > 0:
+                if not silent:
+                    log.trace(color.red(ix.response))
+                    # TODO: detailed info for retry
+                    log.trace("{} {} for http connection...".format(retry, "retries remain" if retry > 1 else "retry remains"))
+                    log.trace("Sleep for {}s before next retry...".format(sleep))
+                time.sleep(sleep)
+                ix.attempt()
+                retry -= 1
+            if not silent:
+                log.debug(ix.get_formatted_response(), buffer=buffer)
+            # assert ix.response.ok
+            if not ix.response.ok:
+                log.error(ix.response.text, assert_false=True)
+            if expect_transaction_id and ix.transaction_id is None:
+                log.warn("Warning: No transaction ID returned.")
+            if expect_transaction_id:
+                assert self.verify_transaction(ix.transaction_id, verify_key=verify_key, silent=silent, buffer=buffer)
+            # log.flush()
+            # TODO: change to return ix
+            # return json.loads(ix.response.text)
+            if buffer:
+                log.flush()
+            return ix
 
 
-    # MARK 191010: TODO assert --> logger.error(terminate=True)
+    # MARK 191010: TODO assert --> logger.error(assert_false=True)
     # keep majority of system logging at DEBUG, leave INFO for user code
-    def verify_transaction(self, transaction_id, verify_key="irreversible", node_id=0, retry=10, sleep=0.5, silent=False):
+    def verify_transaction(self, transaction_id, verify_key="irreversible", node_id=0, retry=10, sleep=0.5, silent=False, buffer=False):
         # TODO: can have an assert to guard against non-existing field other than irreversible / contained
-        if not silent:
-            self.logger.trace("Verifying ...")
-        ix = Interaction("verify_transaction", self.service, dict(cluster_id=self.cluster_id, node_id=node_id, transaction_id=transaction_id))
-        verified = helper.extract(ix.response, key=verify_key, fallback=False)
-        if not silent:
-            self.logger.trace(ix.get_formatted_response(show_content=True))
-        while not verified and retry > 0:
+        with self.logger as log:
             if not silent:
-                self.logger.trace("{} {} for verification...".format(retry, "retries remain" if retry > 1 else "retry remains"))
-                self.logger.trace("Sleep for {}s before next retry...".format(sleep))
-            time.sleep(sleep)
-            ix.attempt()
-            if not silent:
-                self.logger.trace(ix.get_formatted_response(show_content=True))
+                log.trace("Verifying ...", buffer=buffer)
+            ix = Interaction("verify_transaction", self.service, dict(cluster_id=self.cluster_id, node_id=node_id, transaction_id=transaction_id))
             verified = helper.extract(ix.response, key=verify_key, fallback=False)
-            retry -= 1
-        # assert ix.response.ok
-        if not ix.response.ok:
-            self.logger.error(ix.response.text, terminate=True)
-        if not silent:
-            if verified:
-                self.logger.debug(color.decorate("{}!".format(verify_key.title()), fcolor="black", bcolor="green"))
-            else:
-                self.logger.error(ix.get_formatted_response(show_content=True))
-                self.logger.error("Failed to verify as \"{}\"!".format(verify_key), terminate=True)
-                self.logger.flush()
-        return verified
+            if not silent:
+                log.trace(ix.get_formatted_response(show_content=True), buffer=buffer)
+            while not verified and retry > 0:
+                if not silent:
+                    log.trace("{} {} for verification...".format(retry, "retries remain" if retry > 1 else "retry remains"), buffer=buffer)
+                    log.trace("Sleep for {}s before next retry...".format(sleep), buffer=buffer)
+                time.sleep(sleep)
+                ix.attempt()
+                if not silent:
+                    log.trace(ix.get_formatted_response(show_content=True), buffer=buffer)
+                verified = helper.extract(ix.response, key=verify_key, fallback=False)
+                retry -= 1
+            # assert ix.response.ok
+            if not ix.response.ok:
+                log.error(ix.response.text, buffer=buffer, assert_false=True)
+            if not silent:
+                if verified:
+                    log.debug(color.decorate("{}!".format(verify_key.title()), fcolor="black", bcolor="green"), buffer=buffer)
+                else:
+                    log.error(ix.get_formatted_response(show_content=True), buffer=buffer)
+                    log.error("Failed to verify as \"{}\"!".format(verify_key), buffer=buffer, assert_false=True)
+            if buffer:
+                log.flush()
+            return verified
 
 
     @staticmethod
