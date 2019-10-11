@@ -2,18 +2,24 @@
 
 ## Description
 
-TODO: add description  
-The `http_client_plugin` ...
+The `http_client_plugin`  is an internal utility plugin, providing the `producer_plugin` the ability to use securely an external `keosd` instance as its block signer. It can only be used when the `producer_plugin` is configured to produce blocks.
 
 ## Usage
+
+# config.ini
+plugin = eosio::http_client_plugin
+
 
 ```sh
 # config.ini
 plugin = eosio::http_client_plugin
-[options]
+https-client-root-cert = "path/to/my/certificate.pem"
+https-client-validate-peers = 1
 
 # command-line
-$ nodeos ... --plugin eosio::http_client_plugin [options]
+$ nodeos ... --plugin eosio::http_client_plugin  \
+             --https-client-root-cert "path/to/my/certificate.pem"  \
+             --https-client-validate-peers 1
 ```
 
 ## Options
@@ -35,4 +41,4 @@ Config Options for eosio::http_client_plugin:
 
 ## Dependencies
 
-None
+* [`producer_plugin`](../producer_plugin/index.md)
