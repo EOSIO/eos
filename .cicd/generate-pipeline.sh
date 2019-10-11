@@ -1,6 +1,7 @@
 #!/bin/bash
 set -eo pipefail
 . ./.cicd/helpers/general.sh
+
 # Use files in platforms dir as source of truth for what platforms we need to generate steps for
 export PLATFORMS_JSON_ARRAY='[]'
 
