@@ -1287,20 +1287,22 @@ class Cluster(object):
         if not biosNode.waitForTransInBlock(transId):
             Utils.Print("ERROR: Failed to validate transaction %s got rolled into a block on server port %d." % (transId, biosNode.port))
             return None
-        action="init"
-        data="{\"version\":0,\"core\":\"4,%s\"}" % (CORE_SYMBOL)
-        opts="--permission %s@active" % (eosioAccount.name)
-        trans=biosNode.pushMessage(eosioAccount.name, action, data, opts)
-        Node.validateTransaction(trans[1])
-        for name, keys in producerKeys.items():
-            account = Account(name, keys["private"], keys["public"], keys["private"], keys["public"])
-            if not self.walletMgr.importKey(account, ignWallet):
-                Utils.Print("ERROR: Failed to import %s account keys into ignition wallet." % (name))
-                return None
-            # if not self.walletMgr.unlockWallet(account):
-            #     Utils.Print("ERROR: Launcher failed to unlock wallet : %s" % (name))
-            #     return None
-            biosNode.delegatebw(account, 500000.0000, waitForTransBlock=True, exitOnError=True)
+        # Only call init if the system contract is loaded
+        if loadSystemContract:
+            action="init"
+            data="{\"version\":0,\"core\":\"4,%s\"}" % (CORE_SYMBOL)
+            opts="--permission %s@active" % (eosioAccount.name)
+            trans=biosNode.pushMessage(eosioAccount.name, action, data, opts)
+            Node.validateTransaction(trans[1])
+            for name, keys in producerKeys.items():
+                account = Account(name, keys["private"], keys["public"], keys["private"], keys["public"])
+                if not self.walletMgr.importKey(account, ignWallet):
+                    Utils.Print("ERROR: Failed to import %s account keys into ignition wallet." % (name))
+                    return None
+                # if not self.walletMgr.unlockWallet(account):
+                #     Utils.Print("ERROR: Launcher failed to unlock wallet : %s" % (name))
+                #     return None
+                biosNode.delegatebw(account, 500000.0000, waitForTransBlock=True, exitOnError=True)
 
         Utils.Print("Cluster bootstrap done.")
 

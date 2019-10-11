@@ -40,7 +40,7 @@ namespace eosio {
 
         size_t num_peers() const;
       private:
-        std::unique_ptr<class net_plugin_impl> my;
+        std::shared_ptr<class net_plugin_impl> my;
    };
 
 }

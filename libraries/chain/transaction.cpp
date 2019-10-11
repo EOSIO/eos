@@ -109,10 +109,11 @@ fc::microseconds transaction::get_signature_keys( const vector<signature_type>& 
 
    std::unique_lock<std::mutex> lock(cache_mtx, std::defer_lock);
    fc::microseconds sig_cpu_usage;
+   const auto digest_time = fc::time_point::now() - start;
    for(const signature_type& sig : signatures) {
-      auto now = fc::time_point::now();
-      EOS_ASSERT( now < deadline, tx_cpu_usage_exceeded, "transaction signature verification executed for too long",
-                  ("now", now)("deadline", deadline)("start", start) );
+      auto sig_start = fc::time_point::now();
+      EOS_ASSERT( sig_start < deadline, tx_cpu_usage_exceeded, "transaction signature verification executed for too long",
+                  ("now", sig_start)("deadline", deadline)("start", start) );
       public_key_type recov;
       const auto& tid = id();
       lock.lock();
@@ -120,7 +121,7 @@ fc::microseconds transaction::get_signature_keys( const vector<signature_type>& 
       if( it == recovery_cache.get<by_sig>().end() || it->trx_id != tid ) {
          lock.unlock();
          recov = public_key_type( sig, digest );
-         fc::microseconds cpu_usage = fc::time_point::now() - start;
+         fc::microseconds cpu_usage = fc::time_point::now() - sig_start;
          lock.lock();
          recovery_cache.emplace_back( cached_pub_key{tid, recov, sig, cpu_usage} ); //could fail on dup signatures; not a problem
          sig_cpu_usage += cpu_usage;
@@ -141,7 +142,7 @@ fc::microseconds transaction::get_signature_keys( const vector<signature_type>& 
       recovery_cache.erase( recovery_cache.begin());
    lock.unlock();
 
-   return sig_cpu_usage;
+   return sig_cpu_usage + digest_time;
 } FC_CAPTURE_AND_RETHROW() }
 
 vector<transaction_extensions> transaction::validate_and_extract_extensions()const {
