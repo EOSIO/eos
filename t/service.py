@@ -507,10 +507,10 @@ class Cluster:
                 producer = p
                 node_id = self.producers[p]
                 stake_amount_formatted = "{:.4f} SYS".format(stake_amount)
-                self.create_account(node_id=node_id, creator="eosio", name=producer,
+                self.create_account(node_id=0, creator="eosio", name=producer,
                                     stake_cpu=stake_amount_formatted, stake_net=stake_amount_formatted, buy_ram_bytes=1048576,
                                     transfer=True)
-                self.register_producer(node_id=node_id, producer=producer)
+                self.register_producer(node_id=0, producer=producer)
             # t = threading.Thread(target=create_and_register, args=(stake_amount,))
             t = thread.ExceptionThread(channel, report, target=create_and_register, args=(stake_amount,))
             stake_amount = max(stake_amount / 2, 100)
@@ -553,6 +553,11 @@ class Cluster:
     def get_cluster_info(self, **kwargs):
         return self.call("get_cluster_info", cluster_id=self.cluster_id, expect_transaction_id=False, **kwargs)
 
+    def stop_node(self, **kwargs):
+        return self.call("stop_node", cluster_id=self.cluster_id, expect_transaction_id=False, **kwargs)
+
+    def start_node(self, **kwargs):
+        return self.call("start_node", cluster_id=self.cluster_id, expect_transaction_id=False, **kwargs)
 
     def create_bios_accounts(self, **kwargs):
         accounts = [{"name":"eosio.bpay"},
@@ -662,7 +667,9 @@ class Cluster:
             retry -= 1
         if not silent:
             self.logger.debug(ix.get_formatted_response())
-        assert ix.response.ok
+        if not ix.response.ok:
+            self.logger.error(ix.get_formatted_response(show_content=True), flush=True, terminate=True)
+        # assert ix.response.ok
         if expect_transaction_id and ix.transaction_id is None:
             self.logger.warn("Warning: No transaction ID returned.")
         if expect_transaction_id:
