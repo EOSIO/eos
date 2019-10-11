@@ -4,7 +4,8 @@
 
 The `producer_plugin` loads functionality required for a node to produce blocks.
 
-[[info | Additional configuration is required to produce blocks. Please read [Configuring Block Producing Node](https://developers.eos.io/eosio-nodeos/docs/environment-producing-node)]]
+[[info]]
+| Additional configuration is required to produce blocks. Please read [Configuring Block Producing Node](https://developers.eos.io/eosio-nodeos/docs/environment-producing-node).
 
 ## Usage
 
