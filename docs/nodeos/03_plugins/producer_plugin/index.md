@@ -112,5 +112,5 @@ Config Options for eosio::producer_plugin:
 plugin = eosio::chain_plugin [operations] [options]
 
 # command-line
-$ nodeos ... -- plugin eosio::chain_plugin [operations] [options]
+$ nodeos ... --plugin eosio::chain_plugin [operations] [options]
 ```
