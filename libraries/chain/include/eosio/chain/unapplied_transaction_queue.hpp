@@ -75,6 +75,7 @@ private:
    process_mode mode = process_mode::speculative_producer;
    uint64_t max_transaction_queue_size = 1024*1024*1024; // enforced for incoming
    uint64_t size_in_bytes = 0;
+   size_t incoming_count = 0;
 
 public:
 
@@ -100,8 +101,7 @@ public:
    }
 
    size_t incoming_size()const {
-      return queue.get<by_type>().count( trx_enum_type::incoming ) +
-             queue.get<by_type>().count( trx_enum_type::incoming_persisted );
+      return incoming_count;
    }
 
    transaction_metadata_ptr get_trx( const transaction_id_type& id ) const {
@@ -130,7 +130,7 @@ public:
                                         ("bt", pending_block_time) ) ) ) );
          }
 
-         size_in_bytes -= calc_size( itr->trx_meta );
+         removed( itr );
          persisted_by_expiry.erase( itr );
       }
       return true;
@@ -146,7 +146,7 @@ public:
             if( itr != queue.get<by_trx_id>().end() ) {
                if( itr->trx_type != trx_enum_type::persisted &&
                    itr->trx_type != trx_enum_type::incoming_persisted ) {
-                  size_in_bytes -= calc_size( itr->trx_meta );
+                  removed( itr );
                   idx.erase( itr );
                }
             }
@@ -162,8 +162,8 @@ public:
          for( auto itr = bsptr->trxs_metas().begin(), end = bsptr->trxs_metas().end(); itr != end; ++itr ) {
             const auto& trx = *itr;
             fc::time_point expiry = trx->packed_trx()->expiration();
-            size_in_bytes += calc_size( trx );
-            queue.insert( { trx, expiry, trx_enum_type::forked } );
+            auto insert_itr = queue.insert( { trx, expiry, trx_enum_type::forked } );
+            if( insert_itr.second ) added( insert_itr.first );
          }
       }
    }
@@ -172,8 +172,8 @@ public:
       if( mode == process_mode::non_speculative || mode == process_mode::speculative_non_producer ) return;
       for( auto& trx : aborted_trxs ) {
          fc::time_point expiry = trx->packed_trx()->expiration();
-         size_in_bytes += calc_size( trx );
-         queue.insert( { std::move( trx ), expiry, trx_enum_type::aborted } );
+         auto insert_itr = queue.insert( { std::move( trx ), expiry, trx_enum_type::aborted } );
+         if( insert_itr.second ) added( insert_itr.first );
       }
    }
 
@@ -182,8 +182,8 @@ public:
       auto itr = queue.get<by_trx_id>().find( trx->id() );
       if( itr == queue.get<by_trx_id>().end() ) {
          fc::time_point expiry = trx->packed_trx()->expiration();
-         size_in_bytes += calc_size( trx );
-         queue.insert( { trx, expiry, trx_enum_type::persisted } );
+         auto insert_itr = queue.insert( { trx, expiry, trx_enum_type::persisted } );
+         if( insert_itr.second ) added( insert_itr.first );
       } else if( itr->trx_type != trx_enum_type::persisted ) {
          queue.get<by_trx_id>().modify( itr, [](auto& un){
             un.trx_type = trx_enum_type::persisted;
@@ -195,12 +195,9 @@ public:
       auto itr = queue.get<by_trx_id>().find( trx->id() );
       if( itr == queue.get<by_trx_id>().end() ) {
          fc::time_point expiry = trx->packed_trx()->expiration();
-         auto size = calc_size( trx );
-         EOS_ASSERT( size_in_bytes + size < max_transaction_queue_size, tx_resource_exhaustion,
-                     "Transaction ${id} exceeded max transaction queue size: ${size}",
-                     ("id", trx->id())("size", size_in_bytes + size) );
-         size_in_bytes += size;
-         queue.insert( { trx, expiry, persist_until_expired ? trx_enum_type::incoming_persisted : trx_enum_type::incoming, std::move( next ) } );
+         auto insert_itr = queue.insert(
+               { trx, expiry, persist_until_expired ? trx_enum_type::incoming_persisted : trx_enum_type::incoming, std::move( next ) } );
+         if( insert_itr.second ) added( insert_itr.first );
       } else if( (persist_until_expired && itr->trx_type != trx_enum_type::incoming_persisted) || (next && !itr->next) ) {
          queue.get<by_trx_id>().modify( itr, [persist_until_expired, next{std::move(next)}](auto& un) mutable {
             if( persist_until_expired ) un.trx_type = trx_enum_type::incoming_persisted;
@@ -225,11 +222,31 @@ public:
    iterator incoming_end() { return queue.get<by_type>().end(); } // if changed to upper_bound, verify usage performance
 
    iterator erase( iterator itr ) {
-      size_in_bytes -= calc_size( itr->trx_meta );
+      removed( itr );
       return queue.get<by_type>().erase( itr );
    }
 
 private:
+   template<typename Itr>
+   void added( Itr itr ) {
+      auto size = calc_size( itr->trx_meta );
+      if( itr->trx_type == trx_enum_type::incoming || itr->trx_type == trx_enum_type::incoming_persisted ) {
+         ++incoming_count;
+         EOS_ASSERT( size_in_bytes + size < max_transaction_queue_size, tx_resource_exhaustion,
+                     "Transaction ${id} exceeded max transaction queue size: ${size}",
+                     ("id", itr->trx_meta->id())( "size", size_in_bytes + size ) );
+      }
+      size_in_bytes += size;
+   }
+
+   template<typename Itr>
+   void removed( Itr itr ) {
+      if( itr->trx_type == trx_enum_type::incoming || itr->trx_type == trx_enum_type::incoming_persisted ) {
+         --incoming_count;
+      }
+      size_in_bytes -= calc_size( itr->trx_meta );
+   }
+
    static uint64_t calc_size( const transaction_metadata_ptr& trx ) {
       // packed_trx caches unpacked transaction so double
       return (trx->packed_trx()->get_unprunable_size() + trx->packed_trx()->get_prunable_size()) * 2 + sizeof( *trx );
