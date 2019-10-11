@@ -16,6 +16,7 @@
 #include <eosio/producer_plugin/producer_plugin.hpp>
 #include <eosio/chain/contract_types.hpp>
 #include <eosio/chain/producer_schedule.hpp>
+#include <eosio/http_plugin/http_plugin.hpp>
 
 #include <fc/io/json.hpp>
 #include <fc/io/raw.hpp>
@@ -64,12 +65,22 @@ namespace eosio {
     */
 
    struct topo_link {
-      topo_link() : info(), up(), down(), closures(0) {}
-      topo_link(link_descriptor &&ld) : up(), down(), closures(0) { info = std::move(ld); }
+      topo_link() : info(), up(), down(), is_open(true), closures(0) {}
+      topo_link(link_descriptor &&ld) : up(), down(), is_open(true), closures(0) { info = std::move(ld); }
       link_descriptor info;
       link_metrics   up;
       link_metrics   down;
+      bool           is_open;
       uint32_t       closures;
+
+      void closed() {
+         closures++;
+         is_open = false;
+      }
+
+      void reopen () {
+         is_open = true;
+      }
    };
 
    struct route_descriptor {
@@ -94,7 +105,18 @@ namespace eosio {
       string dot_label() {
          if (dot.empty()) {
             ostringstream dt;
-            dt << info.location << "(" << info.my_id << ")";
+            for( size_t i = 0; i < info.location.length(); i++ ) {
+               if( info.location.at(i) == '"' ) {
+                  dt << '\\';
+               }
+               dt << info.location.at(i);
+            }
+            dt << "\\n(" << info.my_id << ")";
+            if( info.producers.size() ) {
+               for (auto pn : info.producers ) {
+                  dt << "\\n" << pn;
+               }
+            }
             dot = dt.str();
          }
          return dot;
@@ -173,10 +195,12 @@ namespace eosio {
 
    class topology_plugin_impl {
    public:
-      flat_map<node_id, topo_node> nodes;
-      flat_map<link_id, topo_link> links;
+      flat_map<node_id, topo_node>          nodes;
+      flat_map<link_id, topo_link>          links;
       flat_map<account_name, topo_producer> producers;
-      flat_map<metric_kind, std::string> units;
+      flat_map<metric_kind, std::string>    units;
+      string                                api_endpoint;
+
 
       fc::sha256 gen_long_id( const node_descriptor &desc );
       node_id make_node_id( const fc::sha256 &long_id);
@@ -277,6 +301,7 @@ namespace eosio {
       l.my_id = id;
       {
          auto mn = nodes.find(l.active);
+
          if ( mn != nodes.end()) {
             if (mn->second.links.find ( l.my_id ) == mn->second.links.end()) {
                std::lock_guard<std::mutex> g( table_mtx );
@@ -301,23 +326,31 @@ namespace eosio {
       }
       {
          std::lock_guard<std::mutex> g( table_mtx );
-         links.emplace( id, move(l));
+         if (links.find(id) == links.end()) {
+            links.emplace( id, move(l));
+         }
+         else {
+            links[id].is_open = true;
+         }
       }
+
       return id;
    }
 
    void topology_plugin_impl::drop_link( link_id id ) {
-      links[id].closures++;
+      links[id].closed();
       //      links.erase( id );
    }
 
    int16_t topology_plugin_impl::find_route_i( set<node_id>& seen,
                                                node_id to,
                                                topo_node &from ) {
+
       route_descriptor best = from.routes[to];
       if (best.path != 0) {
          return best.length;
       }
+      dlog("searching from = ${fid} to = ${tid}, links.size = ${s}",("s",from.links.size())("fid",from.info.my_id)("tid", to));
       for( auto lid : from.links ) {
          if(links.find(lid) == links.end()) {
             elog( "link id ${id} not found", ("id",lid));
@@ -518,6 +551,11 @@ namespace eosio {
       my->net_plug = app().find_plugin<net_plugin>();
       EOS_ASSERT( my->net_plug != nullptr, chain::plugin_config_exception, "No net plugin found.");
       my->chain_plug = app().find_plugin<chain_plugin>();
+      const http_plugin *hp = app().find_plugin<http_plugin>();
+      if( hp != nullptr ) {
+         my->api_endpoint = hp->get_endpoint_addresses();
+
+      }
 
    }
 
@@ -604,6 +642,14 @@ namespace eosio {
       stringstream ss;
       ss << version;
       nd.version = ss.str();
+      if (my->api_endpoint.empty()) {
+         const http_plugin *hp = app().find_plugin<http_plugin>();
+         if( hp != nullptr ) {
+            my->api_endpoint = hp->get_endpoint_addresses();
+
+         }
+      }
+      nd.api_endpoint = my->api_endpoint;
       for (auto &lp : my->local_producers) {
          nd.producers.emplace_back(lp);
       }
@@ -711,34 +757,82 @@ namespace eosio {
    }
 
 
-   string topology_plugin::grid( ) {
+   string topology_plugin::graph( ) {
       ostringstream df;
-      df << " digraph G\n{\nlayout=\"circo\";" << endl;
+
+      string bgcolor = "\"#177FBE\"";
+      string defnodefill = "white";
+      string nofork = "\"#00EE00\"";
+      string fewfork = "\"#EEEE00\"";
+      string manyfork = "\"#EE0000\"";
+
+      df << " digraph G\n{\nlayout=\"neato\";\n"
+         << "node [style = filled, fillcolor = " << defnodefill << ", shape = rectangle];\n"
+         << "edge [len = 1];\n"
+         << "graph [bgcolor = " << bgcolor
+         << ", model = \"major\", model=\"mds\", nodesep=0.5, overlap=false ];\n";
+
       set<link_id> seen;
       for (auto &tnode : my->nodes) {
-         for (const auto &l : tnode.second.links) {
+         string c = defnodefill;
+         bool show_api = false;
+         if (tnode.first == 0) {
+            continue;
+         }
+         df << "n_" << tnode.first << "[";
+         if( tnode.second.info.producers.size() ) {
+            c = nofork;
+            for (auto p : tnode.second.info.producers) {
+               auto f = my->producers[p].forks.size();
+               if ( f > 0 ) {
+                  show_api = true;
+                  c = fewfork;
+               }
+               if ( f > 10 ) {
+                  c = manyfork;
+                  break;
+               }
+            }
+            df << "fillcolor = " << c << "\n";
+         }
+
+         df << "label=\""
+            << tnode.second.dot_label();
+         if (show_api) {
+            df << "\\n" << tnode.second.info.api_endpoint;
+         }
+         df << "\" ";
+
+         df << "];\n";
+      }
+      for (auto &tnode : my->nodes) {
+         for (const auto &l : tnode.second.links ) {
             if (seen.find(l) != seen.end()) {
                ilog("link id ${id} already seen",("id",l));
                continue;
             }
+
             auto tlink = my->links.find(l);
             if ( tlink == my->links.end() ) {
                ilog( "did not find link id ${id}", ("id",l));
                continue;
             }
-            seen.insert(tlink->second.info.my_id);
-            string alabel, plabel;
-            if (tlink->second.info.passive == tnode.first) {
-               alabel = my->nodes[tlink->second.info.active].dot_label();
-               plabel = tnode.second.dot_label();
-            } else {
-               plabel = my->nodes[tlink->second.info.active].dot_label();
-               alabel = tnode.second.dot_label();
+            if( !tlink->second.is_open ||
+                tlink->second.up.measurements[messages_sent].avg == 0) {
+               continue;
             }
-
-            df << "\"" << alabel << "\""
-               << " -> " << "\"" << plabel << "\""
-               << " [dir=\"forward\"];" << endl;
+            seen.insert(tlink->second.info.my_id);
+            if (tlink->second.info.passive == tnode.first) {
+               df << "n_" << tlink->second.info.active << " -> n_" << tnode.first;
+            } else {
+               df << "n_" << tnode.first << " -> n_" << tlink->second.info.passive;
+            }
+            uint32_t late = tlink->second.up.measurements[net_latency].avg +
+               tlink->second.up.measurements[queue_latency].avg;
+            df << " [dir=forward, label=\"latency: "
+               << late << " us\\nsent: "
+               << tlink->second.up.measurements[messages_sent].avg << " msgs\", "
+               << "color= black ];\n";
          }
       }
       df << "}\n";
@@ -749,12 +843,22 @@ namespace eosio {
 
    string topology_plugin::sample( ) {
       ostringstream df;
-      df << "{ \"links\" = [" << endl;
+      df << "{ \"links\" = [\n";
       for (auto &tlink : my->links) {
-         df << "{ \"key\" = \"" << tlink.first << "\"," << endl;
-         df << "\"value\" = " << fc::json::to_pretty_string( tlink.second ) << "}" << endl;
+         df << "{ \"key\" = \"" << tlink.first << "\",\n";
+         df << "\"value\" = " << fc::json::to_pretty_string( tlink.second ) << "}\n";
       }
-      df << "]}" << endl;
+      df << "]}\n{\"nodes\" = [\n";
+      for (auto &tnode : my->nodes) {
+         df << "{ \"key\" = \"" << tnode.first << "\",\n";
+         df << "\"value\" = " << fc::json::to_pretty_string( tnode.second ) << "}\n";
+      }
+      df << "]}\n{\"producers\" = [\n";
+      for (auto &tproducer : my->producers) {
+         df << "{ \"key\" = \"" << tproducer.first << "\",\n";
+         df << "\"value\" = " << fc::json::to_pretty_string( tproducer.second ) << "}\n";
+      }
+      df << "]}\n";
 
       return df.str();
 
@@ -819,14 +923,21 @@ namespace eosio {
                auto len = pnode->routes[prev_node_id].length;
                if ( pnode->routes[prev_node_id].path == 0 ) {
                   len = my->find_route(prev_node_id, pnode->info.my_id);
+                   // df << " fr ";
                }
+               // else {
+               //    df << " p = " << pnode->routes[prev_node_id].path << " ";
+               // }
                df << len;
-               if( my->producers.find(ap.producer_name) == my->producers.cend()) {
-                  df << 0;
-               }
-               else {
-                  df << my->producers[ap.producer_name].forks.size();
-               }
+
+               // df << " | ";
+               // if( my->producers.find(ap.producer_name) == my->producers.cend()) {
+               //    df << 0;
+               // }
+               // else {
+               //    df << my->producers[ap.producer_name].forks.size();
+               // }
+
                df << "\n";
                prev_node_id = pnode->info.my_id;
             }
@@ -868,6 +979,7 @@ namespace eosio {
             << my->nodes[tlink.second.info.active].info.location << "\n";
          df << "<br>passive connector: "
             << my->nodes[tlink.second.info.passive].info.location << "\n";
+         df << "<br>is open: " << tlink.second.is_open << "\n";
          if ( tlink.second.closures > 0) {
             df << "<br>closure count: " << tlink.second.closures << "\n";
          }
@@ -926,6 +1038,8 @@ namespace eosio {
    }
 }
 
-FC_REFLECT(eosio::topo_link,(info)(up)(down)(closures))
+FC_REFLECT(eosio::topo_link,(info)(up)(down)(is_open)(closures))
 FC_REFLECT(eosio::route_descriptor,(length)(path))
 FC_REFLECT(eosio::topo_node,(info)(links)(routes))
+FC_REFLECT(eosio::fork_descriptor,(from_link)(fork_base)(depth)(deficit)(overage))
+FC_REFLECT(eosio::topo_producer,(id)(current)(forks))

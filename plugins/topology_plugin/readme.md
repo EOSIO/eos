@@ -17,10 +17,10 @@ this table highlights the calls available using the http interface. This list is
 | request |   arguments   |   result   | description |
 |---------|---------------|------------|-------------|
  nodes | string: in\_roles | vector of node descriptors | Nodes have specific roles in the network, producers, api, backup, proxy, etc. This function allows you to retrieve a list of nodes on the network for a specific role, or for any role.
-  links | string: with_node | vector of link descriptors | supply a [list of?] node ideentifies as retrived with the /nodes/ function and get back a list of descriptors covering all of the connections to or from the identified node
-   watch | string: udp\_addr string: links string: metrics | void | supply a watcher callback address for metrics related to the specified links
-  unwatch | string: udp\_addr string: links string: metrics | void | remove a watcher callback address for metrics related to the specified links
-
+ links | string: with_node | vector of link descriptors | supply a [list of?] node ideentifies as retrived with the /nodes/ function and get back a list of descriptors covering all of the connections to or from the identified node
+  graph |  | stringified \"dot\" file | pipe the output to a file or straight into a graphviz command. The rendered graph shows all the nodes in the network, colorized to indicate status. Green means no forks detected, yellow for a few forks and red for many
+  report | | stringified \"md\" file | pipe the output to a file with the .md extention. The report is broken into multiple sections to present all the known status 
+  
 ##configuration options
 These are the new setting introduced by the topology plugin
 
@@ -46,7 +46,23 @@ These are the tentative connection metrics that are accumulated by the topology 
  fork\_depth | how many blocks we on the most recent / current fork
  fork\_max\_depth | how many blocks on the longest fork since connection
 
+#usage guidelines
+Use the cleos "topology graph" and "topology report" commands to be able to observe and get details by looking at the report. The cleos "topology sample" command fetches all of the local information regarding communications performance as a json bundle.
 
+Periodically you can retrieve graphical views of the network using one of the following commands
+
+| command line | 
+|--------
+|cleos topology graph > demo.dot
+cleos toplogy graph \| dot -Tpng > demo.png
+
+In the first example the unrendered dot data is stored in a file that may be monitored by a live renderer such as graphviz and the second example the command line renderer is used to produce a png formatted image file.
+
+If the graph shows a node in yellow or red, retrieve a detailed report from the indicated nodes. In this case the http or https access point for the affected node is displayed. In cases where that node is not directly reachable, you may have to solicit assistance of the local system operator in order to obtain the generated report.
+
+The topology plugin keeps track of major events such as node creation or fork detection that occur anywhere on the network. However in order to prevent spamming the network, the periodic data samples are shared only with a node's immediate peers. 
+#implementation details
+The remainder of this document is provided as a survey of the plugin contents.
 
 ##source file map
 The plugin follows the common idiom of a lightweight interface class and a more robust hidden implementation class. To improve the atomicity of included headers, these are broken apart as shown
@@ -62,7 +78,7 @@ The plugin follows the common idiom of a lightweight interface class and a more 
  | link\_descriptor | the verbose description of the link as defined by the connected nodes. This gets stringified and hashed to generate a universally unique, but otherwise anonymous identifier.
  node\_descriptor | node\_descriptor | the verbose description of a node used to generate a globally unique node id.
 
-##implementation specifics
+##internal structure info
  The implementation details are entirely contained in a single source file for now, topology\_plugin.cpp. The types defined in this source file are described here.
 
 |  typename  | members | description  |

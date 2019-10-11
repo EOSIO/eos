@@ -3189,20 +3189,20 @@ int main( int argc, char** argv ) {
    // Topology subcommand
    auto topology = app.add_subcommand( "topology", localized("Interact with topology plugin"), false);
    topology->require_subcommand();
-   // get grid
-   auto getGrid = topology->add_subcommand( "grid", localized("Retrieve topology map in graphviz compatible format"), false);
-   getGrid->set_callback([&] {
-                             const auto& v = call(url, topology_grid);
+   // get graph
+   auto getGraph = topology->add_subcommand( "graph", localized("Retrieve topology map in graphviz compatible format"), false);
+   getGraph->set_callback([&] {
+                             const auto& v = call(url, topology_graph);
                              std::cout << v.as_string() << std::endl;
                           });
 
-   auto getReport = topology->add_subcommand( "report", localized("Retrieve topology map in graphviz compatible format"), false);
+   auto getReport = topology->add_subcommand( "report", localized("Retrieve a detailed report in markdown format written to stdout"), false);
    getReport->set_callback([&] {
                              const auto& v = call(url, topology_report);
                              std::cout << v.as_string() << std::endl;
                            });
 
-   auto getSample = topology->add_subcommand( "sample", localized("Retrieve topology map in graphviz compatible format"), false);
+   auto getSample = topology->add_subcommand( "sample", localized("Retrieve a json bundle of data for a single node or link"), false);
    getSample->set_callback([&] {
                              const auto& v = call(url, topology_sample);
                              std::cout << fc::json::to_pretty_string(v) << std::endl;

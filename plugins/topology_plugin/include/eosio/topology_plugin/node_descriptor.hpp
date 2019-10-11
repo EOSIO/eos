@@ -37,6 +37,7 @@ namespace eosio{
          role(producer),
          status(running),
          version(),
+         api_endpoint(),
          producers()
       {}
 
@@ -46,6 +47,7 @@ namespace eosio{
          role(other.role),
          status(other.status),
          version(other.version),
+         api_endpoint(other.api_endpoint),
          producers(other.producers)
       {}
 
@@ -54,6 +56,7 @@ namespace eosio{
       node_role    role;          // see list above
       node_status  status;        // see list above
       std::string  version;       // software version running
+      std::string  api_endpoint;  // configured http[s] address
       std::vector<chain::name> producers; // zero or more named producers hosted in this node.
    };
 
@@ -62,4 +65,4 @@ namespace eosio{
 
 FC_REFLECT_ENUM( eosio::node_status, (scheduled)(standby)(clone)(running)(no_topology)(rejecting) )
 FC_REFLECT_ENUM( eosio::node_role, (producer)(backup)(api)(full)(gateway)(special) )
-FC_REFLECT( eosio::node_descriptor, (my_id)(location)(role)(status)(version)(producers))
+FC_REFLECT( eosio::node_descriptor, (my_id)(location)(role)(status)(version)(api_endpoint)(producers))

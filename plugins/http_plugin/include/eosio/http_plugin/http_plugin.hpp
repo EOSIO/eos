@@ -96,6 +96,7 @@ namespace eosio {
         };
 
         get_supported_apis_result get_supported_apis()const;
+        string get_endpoint_addresses() const;
 
       private:
         std::unique_ptr<class http_plugin_impl> my;

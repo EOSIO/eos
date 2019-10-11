@@ -83,7 +83,7 @@ namespace eosio{
        */
       string nodes( const string& in_roles );
       string links( const string& with_node );
-      string grid( );
+      string graph( );
       string sample( );
       string report( );
 

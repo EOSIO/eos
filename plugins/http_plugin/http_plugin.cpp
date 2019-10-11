@@ -708,6 +708,19 @@ namespace eosio {
       return verbose_http_errors;
    }
 
+   string http_plugin::get_endpoint_addresses() const {
+      std::ostringstream res;
+      if (my->listen_endpoint) {
+         res << "http://" << my->listen_endpoint->address() << ":"
+             << my->listen_endpoint->port() << " ";
+      }
+      if (my->https_listen_endpoint) {
+         res << "https://" << my->https_listen_endpoint->address()
+             << my->https_listen_endpoint->port();
+      }
+      return res.str();
+   }
+
    http_plugin::get_supported_apis_result http_plugin::get_supported_apis()const {
       get_supported_apis_result result;
 

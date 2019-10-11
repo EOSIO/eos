@@ -94,13 +94,16 @@ namespace eosio {
             metric_kind kind = s.first;
             if (s.first == messages_sent) {
                total_messages += s.second;
+               measurements[kind].add_sample(value);
                kind = messages_per_second;
                value = duration == 0 ? 0 : total_messages / duration;
             }
             else if (s.first == bytes_sent) {
                total_bytes += s.second;
+               measurements[kind].add_sample(value);
                kind = bytes_per_second;
                value = duration == 0 ? 0: total_bytes / duration;
+
             }
             measurements[kind].add_sample(value);
          }

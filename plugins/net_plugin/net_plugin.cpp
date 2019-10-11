@@ -3667,6 +3667,7 @@ namespace eosio {
       if (my->use_topology_plug) {
          node_descriptor nd;
          nd.my_id = 0;
+
          nd.location = my->topology_plug->bp_name() + ":" + my->p2p_address;
          auto version = net_version_base + net_version;
          stringstream ss;
