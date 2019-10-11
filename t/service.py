@@ -510,14 +510,10 @@ class Cluster:
             def create_and_register(stake_amount):
                 producer = p
                 node_id = self.producers[p]
-<<<<<<< HEAD
-                stake_amount_formatted = "{:.4f} SYS".format(stake_amount)
-=======
                 stake_amount_formatted = helper.format_tokens(stake_amount)
                 # when create/register accounts: always push actions to node #0 instead of the nodes of the accounts
                 # otherwise may encounter errors caused by nodes not synced up yet
                 # "message": "false: Unknown action delegatebw in contract eosio"
->>>>>>> 0b5adeab6def3aef165a1c0886dc44d601e336ba
                 self.create_account(node_id=0, creator="eosio", name=producer,
                                     stake_cpu=stake_amount_formatted, stake_net=stake_amount_formatted, buy_ram_bytes=1048576,
                                     transfer=True)
@@ -661,31 +657,6 @@ class Cluster:
     def call(self, endpoint: str, retry=5, sleep=1, expect_transaction_id=True, verify_key="irreversible", silent=False, buffer=False, header: str = None, **data) -> dict:
         with self.logger as log:
             if not silent:
-<<<<<<< HEAD
-                self.logger.trace(color.red(ix.response))
-                # TODO: detailed info for retry
-                self.logger.trace("{} {} for http connection...".format(retry, "retries remain" if retry > 1 else "retry remains"))
-                self.logger.trace("Sleep for {}s before next retry...".format(sleep))
-            time.sleep(sleep)
-            ix.attempt()
-            retry -= 1
-        if not silent:
-            self.logger.debug(ix.get_formatted_response())
-        if not ix.response.ok:
-            self.logger.error(ix.get_formatted_response(show_content=True), flush=True, terminate=True)
-        # assert ix.response.ok
-        if expect_transaction_id and ix.transaction_id is None:
-            self.logger.warn("Warning: No transaction ID returned.")
-        if expect_transaction_id:
-            assert self.verify_transaction(ix.transaction_id, verify_key=verify_key, silent=silent)
-        self.logger.flush()
-        # TODO: change to return ix
-        # return json.loads(ix.response.text)
-        return ix
-
-
-    # MARK 191010: TODO assert --> logger.error(terminate=True)
-=======
                 header = endpoint.replace("_", " ") if header is None else header
                 self.print_header(header, buffer=buffer)
             ix = Interaction(endpoint, self.service, data)
@@ -719,7 +690,6 @@ class Cluster:
 
 
     # MARK 191010: TODO assert --> logger.error(assert_false=True)
->>>>>>> 0b5adeab6def3aef165a1c0886dc44d601e336ba
     # keep majority of system logging at DEBUG, leave INFO for user code
     def verify_transaction(self, transaction_id, verify_key="irreversible", node_id=0, retry=10, sleep=0.5, silent=False, buffer=False):
         # TODO: can have an assert to guard against non-existing field other than irreversible / contained
