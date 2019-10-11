@@ -22,6 +22,7 @@ if [[ $PINNED == false || $UNPINNED == true ]]; then
     export PLATFORM_TYPE="unpinned"
 elif [[ $USE_CONAN == true ]]; then
     export PLATFORM_TYPE="conan"
+    sed -i.bak '/nodeos_run_test-mongodb/s/^/#/' ./tests/CMakeLists.txt
 else
     export PLATFORM_TYPE="pinned"
 fi
