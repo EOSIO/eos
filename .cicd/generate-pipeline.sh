@@ -40,7 +40,7 @@ for FILE in $(ls $CICD_DIR/platforms); do
       export ANKA_TEMPLATE_NAME='10.13.6_6C_14G_40G'
     else
       export ANKA_TAG_BASE='clean::cicd::git-ssh::nas::brew::buildkite-agent'
-      export ANKA_TEMPLATE_NAME='10.14.4_6C_14G_40G'
+      export ANKA_TEMPLATE_NAME='10.14.6_6C_14G_40G'
     fi
 
     . $HELPERS_DIR/file-hash.sh $CICD_DIR/platforms/$FILE # returns HASHED_IMAGE_TAG, etc
@@ -409,7 +409,7 @@ cat <<EOF
       - chef/anka#v0.5.4:
           no-volume: true
           inherit-environment-vars: true
-          vm-name: 10.14.4_6C_14G_40G
+          vm-name: 10.14.6_6C_14G_40G
           vm-registry-tag: "clean::cicd::git-ssh::nas::brew::buildkite-agent"
           always-pull: true
           debug: true
