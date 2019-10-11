@@ -106,7 +106,7 @@ class Writer(abc.ABC):
         if self.show_elapsed_time:
             prefix += "({:9.3f}s) ".format(time.time() - self.start_time)
         if self.show_trace:
-            frame = inspect.stack()[5]
+            frame = inspect.stack()[6]
             prefix += "{:10.10s}:{:4.4s} {:18.18s} ".format(
                         os.path.basename(frame.filename),
                         str(frame.lineno),
@@ -198,14 +198,14 @@ class Logger:
     def warn(self, msg, colorize=True, buffer=False):
         self.log(color.yellow(msg) if colorize else msg, level=LoggingLevel.WARN, buffer=buffer)
 
-    def error(self, msg, colorize=True, buffer=True, assert_false=None):
+    def error(self, msg, colorize=True, buffer=False, assert_false=None):
         # assert_false implies no buffer (must flush immediately)
         buffer = not helper.override(not buffer, assert_false)
         self.log(color.red(msg)if colorize else msg, level=LoggingLevel.ERROR, buffer=buffer)
         if assert_false:
             assert False
 
-    def fatal(self, msg, colorize=True, flush=True, assert_false=True):
+    def fatal(self, msg, colorize=True, buffer=False, assert_false=True):
         # assert_false implies flush
         buffer = not helper.override(not buffer, assert_false)
         self.log(color.bold(color.red(msg)) if colorize else msg, level=LoggingLevel.FATAL, buffer=buffer)
