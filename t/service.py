@@ -673,6 +673,8 @@ class Cluster:
         return ix
 
 
+    # MARK 191010: TODO assert --> logger.error(terminate=True)
+    # keep majority of system logging at DEBUG, leave INFO for user code
     def verify_transaction(self, transaction_id, verify_key="irreversible", node_id=0, retry=10, sleep=0.5, silent=False):
         # TODO: can have an assert to guard against non-existing field other than irreversible / contained
         if not silent:

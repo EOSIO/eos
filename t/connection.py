@@ -45,6 +45,10 @@ class Interaction:
             res.append(color.green("<Transaction ID> {}".format(self.transaction_id)))
         return "\n".join(res)
 
+    # todo: maybe not needed
+    def get_structured_response(self):
+        return json.loads(self.response.text)
+
 
 def response_in_full(self, response: requests.Response) -> None:
     self.green(response) if response.ok else self.red(response)
