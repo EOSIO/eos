@@ -19,13 +19,14 @@ public:
    APPBASE_PLUGIN_REQUIRES((chain_plugin)(http_client_plugin))
 
    struct runtime_options {
-      fc::optional<int32_t> max_transaction_time;
-      fc::optional<int32_t> max_irreversible_block_age;
-      fc::optional<int32_t> produce_time_offset_us;
-      fc::optional<int32_t> last_block_time_offset_us;
-      fc::optional<int32_t> max_scheduled_transaction_time_per_block_ms;
-      fc::optional<int32_t> subjective_cpu_leeway_us;
-      fc::optional<double>  incoming_defer_ratio;
+      fc::optional<int32_t>   max_transaction_time;
+      fc::optional<int32_t>   max_irreversible_block_age;
+      fc::optional<int32_t>   produce_time_offset_us;
+      fc::optional<int32_t>   last_block_time_offset_us;
+      fc::optional<int32_t>   max_scheduled_transaction_time_per_block_ms;
+      fc::optional<int32_t>   subjective_cpu_leeway_us;
+      fc::optional<double>    incoming_defer_ratio;
+      fc::optional<uint32_t>  greylist_limit;
    };
 
    struct whitelist_blacklist {
@@ -120,7 +121,7 @@ private:
 
 } //eosio
 
-FC_REFLECT(eosio::producer_plugin::runtime_options, (max_transaction_time)(max_irreversible_block_age)(produce_time_offset_us)(last_block_time_offset_us)(max_scheduled_transaction_time_per_block_ms)(subjective_cpu_leeway_us)(incoming_defer_ratio));
+FC_REFLECT(eosio::producer_plugin::runtime_options, (max_transaction_time)(max_irreversible_block_age)(produce_time_offset_us)(last_block_time_offset_us)(max_scheduled_transaction_time_per_block_ms)(subjective_cpu_leeway_us)(incoming_defer_ratio)(greylist_limit));
 FC_REFLECT(eosio::producer_plugin::greylist_params, (accounts));
 FC_REFLECT(eosio::producer_plugin::whitelist_blacklist, (actor_whitelist)(actor_blacklist)(contract_whitelist)(contract_blacklist)(action_blacklist)(key_blacklist) )
 FC_REFLECT(eosio::producer_plugin::integrity_hash_information, (head_block_id)(integrity_hash))
