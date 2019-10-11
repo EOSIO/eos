@@ -23,8 +23,8 @@ set( CMAKE_CXX_STANDARD 17 )
 set( CMAKE_CXX_EXTENSIONS ON )
 set( CXX_STANDARD_REQUIRED ON)
 
-set(VERSION_MAJOR 1)
-set(VERSION_MINOR 9)
+set(VERSION_MAJOR 2)
+set(VERSION_MINOR 0)
 set(VERSION_PATCH 0)
 set(VERSION_SUFFIX develop)
 
@@ -43,16 +43,14 @@ if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
     if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 7.0)
         message(FATAL_ERROR "GCC version must be at least 7.0!")
     endif()
-    if ("${CMAKE_GENERATOR}" STREQUAL "Ninja")
-       add_compile_options(-fdiagnostics-color=always)
-    endif()
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "AppleClang")
     if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 5.0)
         message(FATAL_ERROR "Clang version must be at least 5.0!")
     endif()
-    if ("${CMAKE_GENERATOR}" STREQUAL "Ninja")
-       add_compile_options(-fcolor-diagnostics)
-    endif()
+endif()
+
+if ("${CMAKE_GENERATOR}" STREQUAL "Ninja")
+   add_compile_options(-fdiagnostics-color=always)
 endif()
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS "ON")
@@ -62,6 +60,31 @@ set(BUILD_MONGO_DB_PLUGIN FALSE CACHE BOOL "Build mongo database plugin")
 # add defaults for openssl
 if(APPLE AND UNIX AND "${OPENSSL_ROOT_DIR}" STREQUAL "")
    set(OPENSSL_ROOT_DIR "/usr/local/opt/openssl")
+endif()
+
+# WASM runtimes to enable. Each runtime in this list will have:
+#  * definition EOSIO_<RUNTIME>_RUNTIME_ENABLED defined in public libchain interface
+#  * ctest entries with --runtime
+list(APPEND EOSIO_WASM_RUNTIMES wabt)   #always enable wabt; it works everywhere and parts of eosio still assume it's always available
+if(CMAKE_SIZEOF_VOID_P EQUAL 8 AND NOT WIN32)
+   list(APPEND EOSIO_WASM_RUNTIMES wavm)
+   # WAVM requires LLVM, but move the check up here to a central location so that the EosioTester.cmakes
+   # can be created with the exact version found
+   find_package(LLVM REQUIRED CONFIG)
+   if(LLVM_VERSION_MAJOR VERSION_LESS 7 OR LLVM_VERSION_MAJOR VERSION_GREATER 9)
+	   message(FATAL_ERROR "EOSIO requires an LLVM version 7.0 to 9.0")
+   endif()
+
+   if("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux" AND "${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
+      list(APPEND EOSIO_WASM_RUNTIMES eos-vm-oc)
+   endif()
+endif()
+
+if(CMAKE_SIZEOF_VOID_P EQUAL 8 AND NOT WIN32)
+   list(APPEND EOSIO_WASM_RUNTIMES eos-vm)
+   if(CMAKE_SYSTEM_PROCESSOR STREQUAL x86_64)
+      list(APPEND EOSIO_WASM_RUNTIMES eos-vm-jit)
+   endif()
 endif()
 
 if(UNIX)
@@ -81,13 +104,6 @@ set( Boost_USE_STATIC_LIBS ON CACHE STRING "ON or OFF" )
 # Most boost deps get implictly picked up via fc, as just about everything links to fc. In addition we pick up
 # the pthread dependency through fc.
 find_package(Boost 1.67 REQUIRED COMPONENTS program_options unit_test_framework)
-
-# WAVM requires LLVM, but move the check up here to a central location so that the EosioTester.cmakes
-# can be created with the exact version found
-find_package(LLVM REQUIRED CONFIG)
-if(LLVM_VERSION_MAJOR VERSION_LESS 7 OR LLVM_VERSION_MAJOR VERSION_GREATER 9)
-	message(FATAL_ERROR "EOSIO requires an LLVM version 7.0 to 9.0")
-endif()
 
 if( APPLE AND UNIX )
 # Apple Specific Options Here
@@ -148,6 +164,7 @@ add_subdirectory( scripts )
 add_subdirectory( unittests )
 add_subdirectory( tests )
 add_subdirectory( tools )
+add_subdirectory( eosio-wasm-spec-tests/generated-tests )
 
 install_directory_permissions(DIRECTORY ${CMAKE_INSTALL_FULL_SYSCONFDIR}/eosio)
 

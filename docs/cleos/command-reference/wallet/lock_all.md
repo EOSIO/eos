@@ -1,12 +1,21 @@
----
-title: "lock_all"
-excerpt: ""
----
 ## Description
-Locks all unlocked wallets.
-## Command
+Locks all unlocked wallets
+
+
+## Positionals
+None
+## Options
+None
+## Usage
 
 
 ```shell
 $ ./cleos wallet lock_all
+```
+
+## Outputs
+
+
+```shell
+Locked All Wallets
 ```

@@ -2,12 +2,13 @@ FROM centos:7.6.1810
 ENV VERSION 1
 # install dependencies.
 RUN yum update -y && \
+    yum install -y epel-release && \
     yum --enablerepo=extras install -y centos-release-scl && \
     yum --enablerepo=extras install -y devtoolset-8 && \
     yum --enablerepo=extras install -y which git autoconf automake libtool make bzip2 doxygen \
     graphviz bzip2-devel openssl-devel gmp-devel ocaml libicu-devel \
     python python-devel rh-python36 gettext-devel file libusbx-devel \
-    libcurl-devel patch
+    libcurl-devel patch vim-common jq
 # build cmake.
 RUN curl -LO https://cmake.org/files/v3.13/cmake-3.13.2.tar.gz && \
     source /opt/rh/devtoolset-8/enable && \
@@ -51,13 +52,13 @@ RUN git clone --depth 1 --single-branch --branch release_80 https://github.com/l
     cd / && \
     rm -rf /llvm
 # build boost
-RUN curl -LO https://dl.bintray.com/boostorg/release/1.70.0/source/boost_1_70_0.tar.bz2 && \
-    tar -xjf boost_1_70_0.tar.bz2 && \
-    cd boost_1_70_0 && \
+RUN curl -LO https://dl.bintray.com/boostorg/release/1.71.0/source/boost_1_71_0.tar.bz2 && \
+    tar -xjf boost_1_71_0.tar.bz2 && \
+    cd boost_1_71_0 && \
     ./bootstrap.sh --with-toolset=clang --prefix=/usr/local && \
     ./b2 toolset=clang cxxflags='-stdlib=libc++ -D__STRICT_ANSI__ -nostdinc++ -I/usr/local/include/c++/v1' linkflags='-stdlib=libc++' link=static threading=multi --with-iostreams --with-date_time --with-filesystem --with-system --with-program_options --with-chrono --with-test -q -j$(nproc) install && \
     cd / && \
-    rm -rf boost_1_70_0.tar.bz2 /boost_1_70_0
+    rm -rf boost_1_71_0.tar.bz2 /boost_1_71_0
 # build mongodb
 RUN curl -LO https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-amazon-3.6.3.tgz && \
     tar -xzf mongodb-linux-x86_64-amazon-3.6.3.tgz && \

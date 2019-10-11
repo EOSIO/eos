@@ -965,7 +965,7 @@ class Cluster(object):
             if not silent: Utils.Print("Launcher failed to shut down eos cluster.")
             return None
 
-        p = re.compile('error', re.IGNORECASE)
+        p = re.compile(r"\berror\b", re.IGNORECASE)
         with open(Cluster.__bootlog) as bootFile:
             for line in bootFile:
                 if p.search(line):

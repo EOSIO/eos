@@ -1,18 +1,19 @@
----
-title: "transaction"
-excerpt: "Retrieves a transaction from the blockchain."
----
+## Description
+Retrieves a transaction from the blockchain
+
 ## Positional Parameters
 `id`` _TEXT_ - ID of the transaction to retrieve
+
 ## Options
-There are no options for this command
-## Info
+` -b,--block-hint` UINT        the block number this transaction may be in
+
 **Command**
 
 ```shell
 $ ./cleos get transaction
 ```
 **Output**
+
 ## Example
 
 

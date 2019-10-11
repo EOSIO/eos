@@ -1,11 +1,12 @@
 FROM ubuntu:16.04
 ENV VERSION 1
 # install dependencies.
-RUN apt-get update && apt-get upgrade -y && \
+RUN apt-get update && \
+    apt-get upgrade -y && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential git automake \
     libbz2-dev libssl-dev doxygen graphviz libgmp3-dev autotools-dev libicu-dev \
     python2.7 python2.7-dev python3 python3-dev autoconf libtool curl zlib1g-dev \
-    sudo ruby libusb-1.0-0-dev libcurl4-gnutls-dev pkg-config apt-transport-https
+    sudo ruby libusb-1.0-0-dev libcurl4-gnutls-dev pkg-config apt-transport-https vim-common jq
 # build cmake.
 RUN curl -LO https://cmake.org/files/v3.13/cmake-3.13.2.tar.gz && \
     tar -xzf cmake-3.13.2.tar.gz && \
@@ -43,13 +44,13 @@ RUN git clone --depth 1 --single-branch --branch release_80 https://github.com/l
     cd / && \
     rm -rf /llvm
 # build boost
-RUN curl -LO https://dl.bintray.com/boostorg/release/1.70.0/source/boost_1_70_0.tar.bz2 && \
-    tar -xjf boost_1_70_0.tar.bz2 && \
-    cd boost_1_70_0 && \
+RUN curl -LO https://dl.bintray.com/boostorg/release/1.71.0/source/boost_1_71_0.tar.bz2 && \
+    tar -xjf boost_1_71_0.tar.bz2 && \
+    cd boost_1_71_0 && \
     ./bootstrap.sh --with-toolset=clang --prefix=/usr/local && \
     ./b2 toolset=clang cxxflags='-stdlib=libc++ -D__STRICT_ANSI__ -nostdinc++ -I/usr/local/include/c++/v1' linkflags='-stdlib=libc++' link=static threading=multi --with-iostreams --with-date_time --with-filesystem --with-system --with-program_options --with-chrono --with-test -q -j$(nproc) install && \
     cd / && \
-    rm -rf boost_1_70_0.tar.bz2 /boost_1_70_0   
+    rm -rf boost_1_71_0.tar.bz2 /boost_1_71_0
 # build mongodb
 RUN curl -LO http://downloads.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-3.6.3.tgz && \
     tar -xzf mongodb-linux-x86_64-ubuntu1604-3.6.3.tgz && \
