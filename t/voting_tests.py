@@ -3,6 +3,7 @@
 import json
 import time
 
+import helper
 from logger import LoggingLevel, WriterConfig, ScreenWriter, FileWriter, Logger
 from service import Service, Cluster, CommandLineArguments
 
@@ -60,7 +61,7 @@ def main():
     logger = Logger(ScreenWriter(config=buffered_color_config), FileWriter(filename="mono.log", config=unbuffered_mono_config))
     service = Service(logger=logger)
 
-    print_info = lambda msg: logger.info(msg=msg, flush=True)
+    print_info = lambda msg: logger.info(msg=msg)
 
     print_info(">>> Voting test starts.")
     total_nodes = 4
@@ -70,11 +71,11 @@ def main():
     for i in range(1, 6):
         testers.append("tester" + str(i) * 6)
 
-    stake_amount_formatted = "37500000.0000 SYS"
+    stake_amount_formatted = helper.format_tokens(3.75e7)
 
     for i in range(5):
         cluster.create_account(node_id=0, creator="eosio", name=testers[i], stake_cpu=stake_amount_formatted, stake_net=stake_amount_formatted, buy_ram_bytes=1048576, transfer=True)
-        stake_amount_formatted = "37510000.0000 SYS"
+        stake_amount_formatted = helper.format_tokens(3.75e7 + 100)
 
     # TODO: remove eosio after bootstrap
     node_prod = cluster.nodes[0]["producers"]

@@ -50,7 +50,7 @@ class Interaction:
         return json.loads(self.response.text)
 
 
-def response_in_full(self, response: requests.Response) -> None:
+def response_in_full(self, response: requests.models.Response) -> None:
     self.green(response) if response.ok else self.red(response)
     self.json(response.text)
     self.transaction_id(response)

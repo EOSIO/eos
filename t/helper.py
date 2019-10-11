@@ -27,7 +27,7 @@ def compress(s: str, length: int = 16, tail: int = 4):
     return s
 
 
-def extract(resp: requests.Response, key: str, fallback):
+def extract(resp: requests.models.Response, key: str, fallback):
     try:
         return json.loads(resp.text)[key]
     except KeyError:
@@ -57,7 +57,7 @@ def format_header(text):
 
 
 # to be deprecated
-def get_transaction_id(response: requests.Response) -> Optional[str]:
+def get_transaction_id(response: requests.models.Response) -> Optional[str]:
     try:
         return json.loads(response.text)["transaction_id"]
     except KeyError:
@@ -68,6 +68,20 @@ def format_json(text: str, maxlen=100) -> str:
     if maxlen:
         trim(data, maxlen=100)
     return json.dumps(data, indent=4, sort_keys=False)
+
+
+def format_tokens(amount: int, ndigits=4, symbol="SYS"):
+    """
+    Doctest
+    -------
+    >>> print(format_tokens(37.5e6))
+    37500000.0000 SYS
+    >>> print(format_tokens(1, 3, 'ABC'))
+    1.000 ABC
+    """
+    return "{{:.{}f}} {{}}".format(ndigits).format(amount, symbol)
+
+
 
 
 def optional(x, y):
@@ -132,10 +146,11 @@ def trim(data: typing.Union[dict, list], maxlen=100):
                 if isinstance(item, str) and len(item) > maxlen:
                     item = "..."
 
-
-def main():
-    pass
+def test():
+    print("Pass -v in command line for details of doctest.")
 
 
 if __name__ == '__main__':
-    main()
+    import doctest
+    doctest.testmod()
+    test()
