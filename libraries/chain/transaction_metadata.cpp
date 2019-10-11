@@ -5,7 +5,7 @@
 namespace eosio { namespace chain {
 
 recovery_keys_type transaction_metadata::recover_keys( const chain_id_type& chain_id ) {
-   // Unlikely for more than one chain_id to be used in one nodeos instance
+   // Unlikely for more than one chain_id to be used in one remnode instance
    if( signing_keys_future.valid() ) {
       const std::tuple<chain_id_type, fc::microseconds, flat_set<public_key_type>>& sig_keys = signing_keys_future.get();
       if( std::get<0>( sig_keys ) == chain_id ) {

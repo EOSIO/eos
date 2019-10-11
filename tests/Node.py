@@ -254,10 +254,14 @@ class Node(object):
         """Given a blockId will return block details."""
         assert(isinstance(blockNum, int))
         if not self.enableMongo:
+            tmpVar = Utils.Debug
+            Utils.Debug = False
             cmdDesc="get block"
             cmd="%s %d" % (cmdDesc, blockNum)
             msg="(block number=%s)" % (blockNum);
-            return self.processCleosCmd(cmd, cmdDesc, silentErrors=silentErrors, exitOnError=exitOnError, exitMsg=msg)
+            res = self.processCleosCmd(cmd, cmdDesc, silentErrors=silentErrors, exitOnError=exitOnError, exitMsg=msg)
+            Utils.Debug = tmpVar
+            return res
         else:
             cmd="%s %s" % (Utils.MongoPath, self.mongoEndpointArgs)
             subcommand='db.blocks.findOne( { "block_num": %d } )' % (blockNum)
@@ -514,11 +518,11 @@ class Node(object):
 
 
     # Create & initialize account and return creation transactions. Return transaction json object
-    def createInitializeAccount(self, account, creatorAccount, stakedDeposit=1000, waitForTransBlock=False, stakeNet=100, stakeCPU=100, buyRAM=10000, exitOnError=False):
+    def createInitializeAccount(self, account, creatorAccount, stakedDeposit=1000, waitForTransBlock=False, stakeQuantity=200, exitOnError=False):
         cmdDesc="system newaccount"
-        cmd='%s -j %s %s %s %s --stake-net "%s %s" --stake-cpu "%s %s" --buy-ram "%s %s"' % (
+        cmd='%s -j %s %s %s %s --stake "%s %s" --transfer' % (
             cmdDesc, creatorAccount.name, account.name, account.ownerPublicKey,
-            account.activePublicKey, stakeNet, CORE_SYMBOL, stakeCPU, CORE_SYMBOL, buyRAM, CORE_SYMBOL)
+            account.activePublicKey, stakeQuantity, CORE_SYMBOL)
         msg="(creator account=%s, account=%s)" % (creatorAccount.name, account.name);
         trans=self.processCleosCmd(cmd, cmdDesc, silentErrors=False, exitOnError=exitOnError, exitMsg=msg)
         self.trackCmdTransaction(trans)
@@ -809,7 +813,7 @@ class Node(object):
         msg="key=%s" % (key);
         return self.processCleosCmd(cmd, cmdDesc, exitOnError=exitOnError, exitMsg=msg)
 
-    # Get actions mapped to an account (cleos get actions)
+    # Get actions mapped to an account (remcli get actions)
     def getActions(self, account, pos=-1, offset=-1, exitOnError=False):
         assert(isinstance(account, Account))
         assert(isinstance(pos, int))
@@ -870,15 +874,15 @@ class Node(object):
         return servants
 
     def getAccountEosBalanceStr(self, scope):
-        """Returns SYS currency0000 account balance from cleos get table command. Returned balance is string following syntax "98.0311 SYS". """
+        """Returns SYS currency0000 account balance from remcli get table command. Returned balance is string following syntax "98.0311 SYS". """
         assert isinstance(scope, str)
-        amount=self.getTableAccountBalance("eosio.token", scope)
+        amount=self.getTableAccountBalance("rem.token", scope)
         if Utils.Debug: Utils.Print("getNodeAccountEosBalance %s %s" % (scope, amount))
         assert isinstance(amount, str)
         return amount
 
     def getAccountEosBalance(self, scope):
-        """Returns SYS currency0000 account balance from cleos get table command. Returned balance is an integer e.g. 980311. """
+        """Returns SYS currency0000 account balance from remcli get table command. Returned balance is an integer e.g. 980311. """
         balanceStr=self.getAccountEosBalanceStr(scope)
         balance=Node.currencyStrToInt(balanceStr)
         return balance
@@ -1000,36 +1004,16 @@ class Node(object):
 
         return self.waitForTransBlockIfNeeded(trans, waitForTransBlock, exitOnError=exitOnError)
 
-    def buyrambytes(self, payer, receiver, rambytes, waitForTransBlock=False, exitOnError=False):
-        data = "{\"payer\":\"%s\",\"receiver\":\"%s\",\"bytes\":\"%s\"}" % (payer.name, receiver.name, rambytes)
-        opts = "--permission %s@active" % payer.name
-        
-        trans = self.pushMessage("eosio", "buyrambytes", data, opts)
-        self.trackCmdTransaction(trans)
-
-        return self.waitForTransBlockIfNeeded(trans, waitForTransBlock, exitOnError=exitOnError)
-
-    def buyram(self, payer, receiver, tokens, waitForTransBlock=False, exitOnError=False):
-        cmdDesc = "system buyram"
-        args = "%s %s \"%s\"" % (payer.name, receiver.name, tokens)
-        cmd  = "%s -j %s" % (cmdDesc, args)
-        msg  = "buyram payer=%s, receiver=%s, amount=%s" % (payer.name, receiver.name, tokens)
-
-        trans = self.processCleosCmd(cmd, cmdDesc, exitOnError=exitOnError, exitMsg=msg)
-        self.trackCmdTransaction(trans)
-
-        return self.waitForTransBlockIfNeeded(trans, waitForTransBlock, exitOnError=exitOnError)
-
-    def delegatebw(self, fromAccount, netQuantity, cpuQuantity, toAccount=None, transferTo=False, waitForTransBlock=False, exitOnError=False):
+    def delegatebw(self, fromAccount, stakeQuantity, toAccount=None, transferTo=False, waitForTransBlock=False, exitOnError=False):
         if toAccount is None:
             toAccount=fromAccount
 
         cmdDesc="system delegatebw"
         transferStr="--transfer" if transferTo else ""
-        cmd="%s -j %s %s \"%s %s\" \"%s %s\" %s" % (
-            cmdDesc, fromAccount.name, toAccount.name, netQuantity, CORE_SYMBOL, cpuQuantity, CORE_SYMBOL, transferStr)
+        cmd="%s -j %s %s \"%s %s\" %s" % (
+            cmdDesc, fromAccount.name, toAccount.name, stakeQuantity, CORE_SYMBOL, transferStr)
         msg="fromAccount=%s, toAccount=%s" % (fromAccount.name, toAccount.name);
-        trans=self.processCleosCmd(cmd, cmdDesc, exitOnError=exitOnError, exitMsg=msg, silentErrors=False)
+        trans=self.processCleosCmd(cmd, cmdDesc, exitOnError=exitOnError, exitMsg=msg)
         self.trackCmdTransaction(trans)
 
         return self.waitForTransBlockIfNeeded(trans, waitForTransBlock, exitOnError=exitOnError)
@@ -1042,7 +1026,7 @@ class Node(object):
         cmd="%s -j %s %s \"%s %s\" \"%s %s\"" % (
             cmdDesc, fromAccount.name, toAccount.name, netQuantity, CORE_SYMBOL, cpuQuantity, CORE_SYMBOL)
         msg="fromAccount=%s, toAccount=%s" % (fromAccount.name, toAccount.name);
-        trans=self.processCleosCmd(cmd, cmdDesc, exitOnError=exitOnError, exitMsg=msg, silentErrors=False)
+        trans=self.processCleosCmd(cmd, cmdDesc, exitOnError=exitOnError, exitMsg=msg)
         self.trackCmdTransaction(trans)
 
         return self.waitForTransBlockIfNeeded(trans, waitForTransBlock, exitOnError=exitOnError)
@@ -1052,12 +1036,12 @@ class Node(object):
         cmd="%s -j %s %s %s %s" % (
             cmdDesc, producer.name, producer.activePublicKey, url, location)
         msg="producer=%s" % (producer.name);
-        trans=self.processCleosCmd(cmd, cmdDesc, exitOnError=exitOnError, exitMsg=msg, silentErrors=False)
+        trans=self.processCleosCmd(cmd, cmdDesc, exitOnError=exitOnError, exitMsg=msg)
         self.trackCmdTransaction(trans)
 
         return self.waitForTransBlockIfNeeded(trans, waitForTransBlock, exitOnError=exitOnError)
 
-    def vote(self, account, producers, waitForTransBlock=False, exitOnError=True):
+    def vote(self, account, producers, waitForTransBlock=False, exitOnError=False):
         cmdDesc = "system voteproducer prods"
         cmd="%s -j %s %s" % (
             cmdDesc, account.name, " ".join(producers))
@@ -1187,7 +1171,10 @@ class Node(object):
 
     def getInfo(self, silentErrors=False, exitOnError=False):
         cmdDesc = "get info"
+        tmpVar = Utils.Debug
+        Utils.Debug = False
         info=self.processCleosCmd(cmdDesc, cmdDesc, silentErrors=silentErrors, exitOnError=exitOnError)
+        Utils.Debug = tmpVar
         if info is None:
             self.infoValid=False
         else:
@@ -1219,7 +1206,7 @@ class Node(object):
         return False if info is None else True
 
     def getHeadBlockNum(self):
-        """returns head block number(string) as returned by cleos get info."""
+        """returns head block number(string) as returned by remcli get info."""
         if not self.enableMongo:
             info=self.getInfo(exitOnError=True)
             if info is not None:
@@ -1367,7 +1354,7 @@ class Node(object):
 
     # TBD: make nodeId an internal property
     # pylint: disable=too-many-locals
-    # If nodeosPath is equal to None, it will use the existing nodeos path
+    # If nodeosPath is equal to None, it will use the existing remnode path
     def relaunch(self, nodeId, chainArg=None, newChain=False, timeout=Utils.systemWaitTimeout, addOrSwapFlags=None, cachePopen=False, nodeosPath=None):
 
         assert(self.pid is None)
@@ -1561,19 +1548,19 @@ class Node(object):
                     break
         return protocolFeatures
 
-    # Require PREACTIVATE_FEATURE to be activated and require eosio.bios with preactivate_feature
+    # Require PREACTIVATE_FEATURE to be activated and require rem.bios with preactivate_feature
     def preactivateProtocolFeatures(self, featureDigests:list):
         for digest in featureDigests:
             Utils.Print("push activate action with digest {}".format(digest))
             data="{{\"feature_digest\":{}}}".format(digest)
-            opts="--permission eosio@active"
-            trans=self.pushMessage("eosio", "activate", data, opts)
+            opts="--permission rem@active"
+            trans=self.pushMessage("rem", "activate", data, opts)
             if trans is None or not trans[0]:
                 Utils.Print("ERROR: Failed to preactive digest {}".format(digest))
                 return None
         self.waitForHeadToAdvance()
 
-    # Require PREACTIVATE_FEATURE to be activated and require eosio.bios with preactivate_feature
+    # Require PREACTIVATE_FEATURE to be activated and require rem.bios with preactivate_feature
     def preactivateAllBuiltinProtocolFeature(self):
         allBuiltinProtocolFeatureDigests = self.getAllBuiltinFeatureDigestsToPreactivate()
         self.preactivateProtocolFeatures(allBuiltinProtocolFeatureDigests)

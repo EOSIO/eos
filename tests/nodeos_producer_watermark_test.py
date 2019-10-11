@@ -49,9 +49,9 @@ def setProds(sharedProdKey):
 
     setProdsStr += ' ] }'
     Utils.Print("setprods: %s" % (setProdsStr))
-    opts="--permission eosio@active"
+    opts="--permission rem@active"
     # pylint: disable=redefined-variable-type
-    trans=cluster.biosNode.pushMessage("eosio", "setprods", setProdsStr, opts)
+    trans=cluster.biosNode.pushMessage("rem", "setprods", setProdsStr, opts)
     if trans is None or not trans[0]:
         Utils.Print("ERROR: Failed to set producer with cmd %s" % (setProdsStr))
 
@@ -170,7 +170,7 @@ killEosInstances=not dontKill
 killWallet=not dontKill
 
 WalletdName=Utils.EosWalletName
-ClientName="cleos"
+ClientName="remcli"
 
 try:
     assert(totalNodes == 3)
@@ -208,7 +208,7 @@ try:
     while tries > 0:
         node.infoValid = False
         info = node.getInfo()
-        if node.infoValid and node.lastRetrievedHeadBlockProducer != "eosio":
+        if node.infoValid and node.lastRetrievedHeadBlockProducer != "rem":
             break
         time.sleep(1)
         tries = tries-1

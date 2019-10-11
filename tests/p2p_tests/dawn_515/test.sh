@@ -280,9 +280,9 @@ if [ $res -ne 0 ]; then
     ret=1
 fi
 
-b5idbios=`./programs/cleos/cleos -u http://localhost:8888 get block 5 | grep "^ *\"id\""`
-b5id00=`./programs/cleos/cleos -u http://localhost:8889 get block 5 | grep "^ *\"id\""`
-b5id01=`./programs/cleos/cleos -u http://localhost:8890 get block 5 | grep "^ *\"id\""`
+b5idbios=`./programs/remcli/remcli -u http://localhost:8888 get block 5 | grep "^ *\"id\""`
+b5id00=`./programs/remcli/remcli -u http://localhost:8889 get block 5 | grep "^ *\"id\""`
+b5id01=`./programs/remcli/remcli -u http://localhost:8890 get block 5 | grep "^ *\"id\""`
 
 if [ "$b5idbios" != "$b5id00" ]; then
     echo FAILURE: nodes are not in sync

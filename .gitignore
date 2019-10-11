@@ -26,6 +26,7 @@ moc_*
 
 genesis.json
 hardfork.hpp
+block_producer_swap_bot/config.ini
 
 libraries/utilities/git_revision.cpp
 libraries/egenesis/egenesis_brief.cpp
@@ -46,17 +47,17 @@ libraries/wasm-jit/Source/Programs/Disassemble
 libraries/wasm-jit/Source/Programs/Test
 libraries/wasm-jit/Source/Programs/wavm
 
-programs/cleos/cleos
+programs/remcli/remcli
 programs/js_operation_serializer/js_operation_serializer
 programs/data-dir
 programs/eosio-abigen/eosio-abigen
-programs/cleos/config.hpp
+programs/remcli/config.hpp
 programs/eosio-applesedemo/eosio-applesedemo
 programs/eosio-launcher/config.hpp
 programs/eosio-launcher/eosio-launcher
-programs/keosd/keosd
-programs/nodeos/config.hpp
-programs/nodeos/nodeos
+programs/remvault/remvault
+programs/remnode/config.hpp
+programs/remnode/remnode
 
 scripts/tn_init.sh
 

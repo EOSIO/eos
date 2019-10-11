@@ -14,10 +14,10 @@ extern "C" {
       //   * do not reject an eosio::setcode that sets code on the eosio account unless the rejectall account exists;
       //   * do not reject an eosio::newaccount that creates the rejectall account.
 
-      if( first_receiver == "eosio"_n.value ) {
+      if( first_receiver == "rem"_n.value ) {
          if( action == "setcode"_n.value ) {
             auto accnt = unpack_action_data<name>();
-            if( accnt == "eosio"_n && !is_account("rejectall"_n) )
+            if( accnt == "rem"_n && !is_account("rejectall"_n) )
                return;
          } else if( action == "newaccount"_n.value ) {
             auto accnts = unpack_action_data< std::pair<name, name> >();

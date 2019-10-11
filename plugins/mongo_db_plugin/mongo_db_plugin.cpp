@@ -343,7 +343,7 @@ void mongo_db_plugin_impl::applied_transaction( const chain::transaction_trace_p
       // from an incomplete block. This means that traces will not be recorded in speculative read-mode, but
       // users should not be using the mongo_db_plugin in that mode anyway.
       //
-      // Allow logging traces if node is a producer for testing purposes, so a single nodeos can do both for testing.
+      // Allow logging traces if node is a producer for testing purposes, so a single remnode can do both for testing.
       //
       // It is recommended to run mongo_db_plugin in read-mode = read-only.
       //
@@ -1547,7 +1547,7 @@ void mongo_db_plugin::set_program_options(options_description& cli, options_desc
 {
    cfg.add_options()
          ("mongodb-queue-size,q", bpo::value<uint32_t>()->default_value(1024),
-         "The target queue size between nodeos and MongoDB plugin thread.")
+         "The target queue size between remnode and MongoDB plugin thread.")
          ("mongodb-abi-cache-size", bpo::value<uint32_t>()->default_value(2048),
           "The maximum size of the abi cache for serializing data.")
          ("mongodb-wipe", bpo::bool_switch()->default_value(false),

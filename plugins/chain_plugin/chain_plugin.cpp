@@ -1260,7 +1260,7 @@ void chain_plugin::handle_guard_exception(const chain::guard_exception& e) {
 
 void chain_plugin::handle_db_exhaustion() {
    elog("database memory exhausted: increase chain-state-db-size-mb and/or reversible-blocks-db-size-mb");
-   //return 1 -- it's what programs/nodeos/main.cpp considers "BAD_ALLOC"
+   //return 1 -- it's what programs/remnode/main.cpp considers "BAD_ALLOC"
    std::_Exit(1);
 }
 
@@ -1715,6 +1715,48 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
          ("url", "")
          ("total_votes", 0.0f);
 
+      result.rows.push_back(row);
+   }
+
+   return result;
+}
+
+read_only::get_voters_result read_only::get_voters( const read_only::get_voters_params& p ) const {
+   get_voters_result result;
+   try{   
+      const abi_def abi = eosio::chain_apis::get_abi(db, config::system_account_name);
+      
+      const auto table_type = get_table_type(abi, N(voters));
+      const abi_serializer abis{ abi, abi_serializer_max_time };
+      EOS_ASSERT(table_type == KEYi64, chain::contract_table_query_exception, "Invalid table type ${type} for table voters", ("type",table_type));
+
+      const auto& d = db.db();
+      const auto* const table_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple(config::system_account_name, config::system_account_name, N(voters)));
+      const auto& kv_index = d.get_index<key_value_index, by_scope_primary>();
+
+      const auto stopTime = fc::time_point::now() + fc::microseconds(1000 * 10); // 10ms
+      vector<char> data;
+
+      const auto lower = name{p.lower_bound};
+      auto it = kv_index.lower_bound(boost::make_tuple(table_id->id, lower.value));
+
+      for( ; it != kv_index.end(); ++it ) {
+         if (result.rows.size() >= p.limit || fc::time_point::now() > stopTime) {
+            result.more = name{it->primary_key}.to_string();
+            break;
+         }
+
+         copy_inline_row(*it, data);
+         if (p.json)
+            result.rows.emplace_back( abis.binary_to_variant( abis.get_table_type(N(voters)), data, abi_serializer_max_time, shorten_abi_errors ) );
+         else
+            result.rows.emplace_back(fc::variant(data));         
+      }
+   }
+   catch (...) {
+      FC_LOG_MESSAGE(error, "Exception in: ${func}", ("func",__FUNCTION__));
+
+      fc::variant row = fc::mutable_variant_object()("error", "Internal error");
       result.rows.push_back(row);
    }
 
@@ -2182,7 +2224,7 @@ read_only::get_account_results read_only::get_account( const get_account_params&
    if( abi_serializer::to_abi(code_account.abi, abi) ) {
       abi_serializer abis( abi, abi_serializer_max_time );
 
-      const auto token_code = N(eosio.token);
+      const auto token_code = N(rem.token);
 
       auto core_symbol = extract_core_symbol();
 
@@ -2326,7 +2368,7 @@ chain::symbol read_only::extract_core_symbol()const {
 
    // The following code makes assumptions about the contract deployed on eosio account (i.e. the system contract) and how it stores its data.
    const auto& d = db.db();
-   const auto* t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( N(eosio), N(eosio), N(rammarket) ));
+   const auto* t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( N(rem), N(rem), N(rammarket) ));
    if( t_id != nullptr ) {
       const auto &idx = d.get_index<key_value_index, by_scope_primary>();
       auto it = idx.find(boost::make_tuple( t_id->id, eosio::chain::string_to_symbol_c(4,"RAMCORE") ));

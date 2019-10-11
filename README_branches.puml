@@ -22,7 +22,7 @@ end note
 
 DEVFEATURE -> DEVELOP: pull request
 
-DEVELOP -> EC : fork remmeauth/remchain
+DEVELOP -> EC : fork Remmeauth/remprotocol
 DEVELOP <- EC : Pull request
 REOS18 <- EOS18 : Pull/Push fixes
 REOS18 o->o DEVELOP : Merge latest fixes

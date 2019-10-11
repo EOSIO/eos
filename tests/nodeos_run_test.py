@@ -50,7 +50,7 @@ killWallet=not dontKill
 dontBootstrap=sanityTest # intent is to limit the scope of the sanity test to just verifying that nodes can be started
 
 WalletdName=Utils.EosWalletName
-ClientName="cleos"
+ClientName="remcli"
 timeout = .5 * 12 * 2 + 60 # time for finalization with 1 producer + 60 seconds padding
 Utils.setIrreversibleTimeout(timeout)
 
@@ -208,10 +208,10 @@ try:
     transId=node.createInitializeAccount(testeraAccount, cluster.defproduceraAccount, stakedDeposit=0, waitForTransBlock=False, exitOnError=True)
 
     Print("Create new account %s via %s" % (currencyAccount.name, cluster.defproduceraAccount.name))
-    transId=node.createInitializeAccount(currencyAccount, cluster.defproduceraAccount, buyRAM=200000, stakedDeposit=5000, exitOnError=True)
+    transId=node.createInitializeAccount(currencyAccount, cluster.defproduceraAccount, stakeQuantity=200000, stakedDeposit=5000, exitOnError=True)
 
     Print("Create new account %s via %s" % (exchangeAccount.name, cluster.defproduceraAccount.name))
-    transId=node.createInitializeAccount(exchangeAccount, cluster.defproduceraAccount, buyRAM=200000, waitForTransBlock=True, exitOnError=True)
+    transId=node.createInitializeAccount(exchangeAccount, cluster.defproduceraAccount, stakeQuantity=200000, waitForTransBlock=True, exitOnError=True)
 
     Print("Validating accounts after user accounts creation")
     accounts=[testeraAccount, currencyAccount, exchangeAccount]
@@ -320,9 +320,9 @@ try:
     if hashNum != 0:
         errorExit("FAILURE - get code currency1111 failed", raw=True)
 
-    contractDir="contracts/contracts/eosio.token"
-    wasmFile="eosio.token.wasm"
-    abiFile="eosio.token.abi"
+    contractDir="contracts/contracts/rem.token"
+    wasmFile="rem.token.wasm"
+    abiFile="rem.token.abi"
     Print("Publish contract")
     trans=node.publishContract(currencyAccount.name, contractDir, wasmFile, abiFile, waitForTransBlock=True)
     if trans is None:

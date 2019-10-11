@@ -61,17 +61,18 @@ std::vector<genesis_account> test_genesis( {
   {N(runnerup1),  1'000'000'0000ll},
   {N(runnerup2),  1'000'000'0000ll},
   {N(runnerup3),  1'000'000'0000ll},
-  {N(minow1),           100'0000ll},
-  {N(minow2),             1'0000ll},
-  {N(minow3),             1'0000ll},
-  {N(masses),   800'000'000'0000ll}
+  {N(minow1),         1'100'0000ll},
+  {N(minow2),         1'050'0000ll},
+  {N(minow3),         1'050'0000ll},
+  {N(user1),          1'050'0000ll},
+  {N(masses),   500'000'000'0000ll}
 });
 
 class bootseq_tester : public TESTER {
 public:
    void deploy_contract( bool call_init = true ) {
-      set_code( config::system_account_name, contracts::eosio_system_wasm() );
-      set_abi( config::system_account_name, contracts::eosio_system_abi().data() );
+      set_code( config::system_account_name, contracts::rem_system_wasm() );
+      set_abi( config::system_account_name, contracts::rem_system_abi().data() );
       if( call_init ) {
          base_tester::push_action(config::system_account_name, N(init),
                                   config::system_account_name,  mutable_variant_object()
@@ -91,22 +92,17 @@ public:
       return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "eosio_global_state", data, abi_serializer_max_time );
    }
 
-    auto buyram( name payer, name receiver, asset ram ) {
-       auto r = base_tester::push_action(config::system_account_name, N(buyram), payer, mvo()
-                    ("payer", payer)
-                    ("receiver", receiver)
-                    ("quant", ram)
-                    );
-       produce_block();
-       return r;
-    }
+   fc::variant get_global_rem_state() {
+      vector<char> data = get_row_by_account( config::system_account_name, config::system_account_name, N(globalrem), N(globalrem) );
+      if (data.empty()) std::cout << "\nData is empty\n" << std::endl;
+      return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "eosio_global_rem_state", data, abi_serializer_max_time );
+   }
 
-    auto delegate_bandwidth( name from, name receiver, asset net, asset cpu, uint8_t transfer = 1) {
+    auto delegate_bandwidth( name from, name receiver, asset stake_quantity, uint8_t transfer = 1) {
        auto r = base_tester::push_action(config::system_account_name, N(delegatebw), from, mvo()
                     ("from", from )
                     ("receiver", receiver)
-                    ("stake_net_quantity", net)
-                    ("stake_cpu_quantity", cpu)
+                    ("stake_quantity", stake_quantity)
                     ("transfer", transfer)
                     );
        produce_block();
@@ -164,19 +160,75 @@ public:
     }
 
 
-    auto undelegate_bandwidth( name from, name receiver, asset net, asset cpu ) {
+    auto undelegate_bandwidth( name from, name receiver, asset unstake_quantity ) {
        auto r = base_tester::push_action(config::system_account_name, N(undelegatebw), from, mvo()
                     ("from", from )
                     ("receiver", receiver)
-                    ("unstake_net_quantity", net)
-                    ("unstake_cpu_quantity", cpu)
+                    ("unstake_quantity", unstake_quantity)
                     );
        produce_block();
        return r;
     }
 
+    auto set_reward_ratio( double stake_share, double vote_share ) {
+       auto r = base_tester::push_action(config::system_account_name, N(setrwrdratio), config::system_account_name, mvo()
+          ("stake_share",  stake_share)
+          ("vote_share", vote_share)
+          );
+       produce_block();
+       return r;
+    }
+
     asset get_balance( const account_name& act ) {
-         return get_currency_balance(N(eosio.token), symbol(CORE_SYMBOL), act);
+         return get_currency_balance(N(rem.token), symbol(CORE_SYMBOL), act);
+    }
+
+    int64_t get_pending_pervote_reward( const account_name& prod ) {
+       auto data = get_row_by_account(config::system_account_name, config::system_account_name, N(producers), prod);
+       if (data.empty()) {
+          return 0;
+       }
+
+       fc::variant v = abi_ser.binary_to_variant( "producer_info", data, abi_serializer_max_time );
+       int64_t pending_pervote_reward = 0;
+       fc::from_variant(v["pending_pervote_reward"], pending_pervote_reward);
+       return pending_pervote_reward;
+    }
+
+    uint32_t get_expected_produced_blocks( const account_name& prod ) {
+        auto data = get_row_by_account(config::system_account_name, config::system_account_name, N(producers), prod);
+        if (data.empty()) {
+            return 0;
+        }
+
+        fc::variant v = abi_ser.binary_to_variant( "producer_info", data, abi_serializer_max_time );
+        uint32_t expected_produced_blocks = 0;
+        fc::from_variant(v["expected_produced_blocks"], expected_produced_blocks);
+        return expected_produced_blocks;
+    }
+
+    uint32_t get_current_round_unpaid_blocks( const account_name& prod ) {
+        auto data = get_row_by_account(config::system_account_name, config::system_account_name, N(producers), prod);
+        if (data.empty()) {
+            return 0;
+        }
+
+        fc::variant v = abi_ser.binary_to_variant( "producer_info", data, abi_serializer_max_time );
+        uint32_t current_round_unpaid_blocks = 0;
+        fc::from_variant(v["current_round_unpaid_blocks"], current_round_unpaid_blocks);
+        return current_round_unpaid_blocks;
+    }
+
+    uint32_t get_unpaid_blocks( const account_name& prod ) {
+        auto data = get_row_by_account(config::system_account_name, config::system_account_name, N(producers), prod);
+        if (data.empty()) {
+            return 0;
+        }
+
+        fc::variant v = abi_ser.binary_to_variant( "producer_info", data, abi_serializer_max_time );
+        uint32_t unpaid_blocks = 0;
+        fc::from_variant(v["unpaid_blocks"], unpaid_blocks);
+        return unpaid_blocks;
     }
 
     void set_code_abi(const account_name& account, const vector<uint8_t>& wasm, const char* abi, const private_key_type* signer = nullptr) {
@@ -192,6 +244,27 @@ public:
         produce_blocks();
     }
 
+    uint32_t produce_blocks_until_schedule_is_changed(const uint32_t max_blocks) {
+        const auto current_version = control->active_producers().version;
+        uint32_t blocks_produced = 0;
+        while (control->active_producers().version == current_version && blocks_produced < max_blocks) {
+            produce_block();
+            blocks_produced++;
+        }
+        return blocks_produced;
+    }
+
+
+    double get_total_votepay_shares() {
+        double total = 0.0;
+        auto state = get_global_state();
+        auto arr = state["last_schedule"].get_array();
+        for (auto& elem: arr) {
+           total += elem["second"].as_double();
+        }
+        return total;
+    }
+
 
     abi_serializer abi_ser;
 };
@@ -201,39 +274,39 @@ BOOST_AUTO_TEST_SUITE(bootseq_tests)
 BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
     try {
 
-        // Create eosio.msig and eosio.token
-        create_accounts({N(eosio.msig), N(eosio.token), N(eosio.ram), N(eosio.ramfee), N(eosio.stake), N(eosio.vpay), N(eosio.bpay), N(eosio.saving) });
+        // Create rem.msig and rem.token
+        create_accounts({N(rem.msig), N(rem.token), N(rem.ram), N(rem.ramfee), N(rem.stake), N(rem.vpay), N(rem.spay), N(rem.saving) });
         // Set code for the following accounts:
-        //  - eosio (code: eosio.bios) (already set by tester constructor)
-        //  - eosio.msig (code: eosio.msig)
-        //  - eosio.token (code: eosio.token)
-        // set_code_abi(N(eosio.msig), contracts::eosio_msig_wasm(), contracts::eosio_msig_abi().data());//, &eosio_active_pk);
-        // set_code_abi(N(eosio.token), contracts::eosio_token_wasm(), contracts::eosio_token_abi().data()); //, &eosio_active_pk);
+        //  - rem (code: rem.bios) (already set by tester constructor)
+        //  - rem.msig (code: rem.msig)
+        //  - rem.token (code: rem.token)
+        // set_code_abi(N(rem.msig), contracts::rem_msig_wasm(), contracts::rem_msig_abi().data());//, &rem_active_pk);
+        // set_code_abi(N(rem.token), contracts::rem_token_wasm(), contracts::rem_token_abi().data()); //, &rem_active_pk);
 
-        set_code_abi(N(eosio.msig),
-                     contracts::eosio_msig_wasm(),
-                     contracts::eosio_msig_abi().data());//, &eosio_active_pk);
-        set_code_abi(N(eosio.token),
-                     contracts::eosio_token_wasm(),
-                     contracts::eosio_token_abi().data()); //, &eosio_active_pk);
+        set_code_abi(N(rem.msig),
+                     contracts::rem_msig_wasm(),
+                     contracts::rem_msig_abi().data());//, &rem_active_pk);
+        set_code_abi(N(rem.token),
+                     contracts::rem_token_wasm(),
+                     contracts::rem_token_abi().data()); //, &rem_active_pk);
 
-        // Set privileged for eosio.msig and eosio.token
-        set_privileged(N(eosio.msig));
-        set_privileged(N(eosio.token));
+        // Set privileged for rem.msig and rem.token
+        set_privileged(N(rem.msig));
+        set_privileged(N(rem.token));
 
-        // Verify eosio.msig and eosio.token is privileged
-        const auto& eosio_msig_acc = get<account_metadata_object, by_name>(N(eosio.msig));
-        BOOST_TEST(eosio_msig_acc.is_privileged() == true);
-        const auto& eosio_token_acc = get<account_metadata_object, by_name>(N(eosio.token));
-        BOOST_TEST(eosio_token_acc.is_privileged() == true);
+        // Verify rem.msig and rem.token is privileged
+        const auto& rem_msig_acc = get<account_metadata_object, by_name>(N(rem.msig));
+        BOOST_TEST(rem_msig_acc.is_privileged() == true);
+        const auto& rem_token_acc = get<account_metadata_object, by_name>(N(rem.token));
+        BOOST_TEST(rem_token_acc.is_privileged() == true);
 
 
-        // Create SYS tokens in eosio.token, set its manager as eosio
-        auto max_supply = core_from_string("10000000000.0000"); /// 1x larger than 1B initial tokens
-        auto initial_supply = core_from_string("1000000000.0000"); /// 1x larger than 1B initial tokens
-        create_currency(N(eosio.token), config::system_account_name, max_supply);
-        // Issue the genesis supply of 1 billion SYS tokens to eosio.system
-        issue(N(eosio.token), config::system_account_name, config::system_account_name, initial_supply);
+        // Create SYS tokens in rem.token, set its manager as rem
+        auto max_supply = core_from_string("1000000000.0000");
+        auto initial_supply = core_from_string("900000000.0000");
+        create_currency(N(rem.token), config::system_account_name, max_supply);
+        // Issue the genesis supply of 1 billion SYS tokens to rem.system
+        issue(N(rem.token), config::system_account_name, config::system_account_name, initial_supply);
 
         auto actual = get_balance(config::system_account_name);
         BOOST_REQUIRE_EQUAL(initial_supply, actual);
@@ -247,17 +320,19 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
 
         // Buy ram and stake cpu and net for each genesis accounts
         for( const auto& a : test_genesis ) {
-           auto ib = a.initial_balance;
-           auto ram = 1000;
-           auto net = (ib - ram) / 2;
-           auto cpu = ib - net - ram;
+           auto stake_quantity = a.initial_balance - 1000;
 
-           auto r = buyram(config::system_account_name, a.aname, asset(ram));
-           BOOST_REQUIRE( !r->except_ptr );
-
-           r = delegate_bandwidth(N(eosio.stake), a.aname, asset(net), asset(cpu));
+           auto r = delegate_bandwidth(N(rem.stake), a.aname, asset(stake_quantity));
            BOOST_REQUIRE( !r->except_ptr );
         }
+
+         push_action(N(rem.token), N(transfer), config::system_account_name, mutable_variant_object()
+            ("from", name(config::system_account_name))
+            ("to",   name(N(user1)))
+            ("quantity", core_from_string("1050.0000"))
+            ("memo", "")
+         );
+         produce_block();
 
 
         // register whales as producers
@@ -302,19 +377,34 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         produce_blocks_for_n_rounds(2); // 2 rounds since new producer schedule is set when the first block of next round is irreversible
         auto active_schedule = control->head_block_state()->active_schedule;
         BOOST_TEST(active_schedule.producers.size() == 1u);
-        BOOST_TEST(active_schedule.producers.front().producer_name == "eosio");
+        BOOST_TEST(active_schedule.producers.front().producer_name == "rem");
 
-        // Spend some time so the producer pay pool is filled by the inflation rate
-        produce_min_num_of_blocks_to_spend_time_wo_inactive_prod(fc::seconds(30 * 24 * 3600)); // 30 days
+        // Spend 1 day so we can use claimrewards
+        produce_min_num_of_blocks_to_spend_time_wo_inactive_prod(fc::seconds(1 * 24 * 3600)); // 1 day
         // Since the total activated stake is less than 150,000,000, it shouldn't be possible to claim rewards
         BOOST_REQUIRE_THROW(claim_rewards(N(runnerup1)), eosio_assert_message_exception);
 
         // This will increase the total vote stake by (40,000,000 - 1,000)
         votepro( N(whale4), {N(prodq), N(prodr), N(prods), N(prodt), N(produ)} );
         BOOST_TEST(get_global_state()["total_activated_stake"].as<int64_t>() == 1899999996000);
+        for( auto prod : producer_candidates ) {
+            votepro(prod, { prod });
+        }
+
+        produce_blocks(4);
+        BOOST_REQUIRE(control->head_block_state()->block_num == 91);
+        for( auto prod : producer_candidates ) {
+            BOOST_REQUIRE(get_pending_pervote_reward(prod) == 0);
+            BOOST_REQUIRE(get_expected_produced_blocks(prod) == 0);
+            BOOST_REQUIRE(get_current_round_unpaid_blocks(prod) == 0);
+            BOOST_REQUIRE(get_unpaid_blocks(prod) == 0);
+        }
+
+        produce_block();
+        BOOST_REQUIRE(get_current_round_unpaid_blocks(N(prodm)) == 1);
+        BOOST_REQUIRE(get_total_votepay_shares() > 0.999 && get_total_votepay_shares() <= 1.0);
 
         // Since the total vote stake is more than 150,000,000, the new producer set will be set
-        produce_blocks_for_n_rounds(2); // 2 rounds since new producer schedule is set when the first block of next round is irreversible
         active_schedule = control->head_block_state()->active_schedule;
         BOOST_REQUIRE(active_schedule.producers.size() == 21);
         BOOST_TEST(active_schedule.producers.at(0).producer_name == "proda");
@@ -338,17 +428,107 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         BOOST_TEST(active_schedule.producers.at(18).producer_name == "prods");
         BOOST_TEST(active_schedule.producers.at(19).producer_name == "prodt");
         BOOST_TEST(active_schedule.producers.at(20).producer_name == "produ");
+        BOOST_REQUIRE(get_total_votepay_shares() > 0.999 && get_total_votepay_shares() <= 1.0);
 
-        // Spend some time so the producer pay pool is filled by the inflation rate
-        produce_min_num_of_blocks_to_spend_time_wo_inactive_prod(fc::seconds(30 * 24 * 3600)); // 30 days
+        //stake_share + vote_share must be less than 1 because otherwise remme savings will be equal to 0
+        BOOST_REQUIRE_THROW(base_tester::push_action(config::system_account_name, N(setrwrdratio),
+                                                     config::system_account_name, mvo()("stake_share",  0.5)("vote_share", 0.5)),
+                            eosio_assert_message_exception);
+        //stake_share or vote_share cannot be equal to 0
+        BOOST_REQUIRE_THROW(base_tester::push_action(config::system_account_name, N(setrwrdratio),
+                                                     config::system_account_name, mvo()("stake_share",  0.0)("vote_share", 0.5)),
+                            eosio_assert_message_exception);
+        BOOST_REQUIRE_THROW(base_tester::push_action(config::system_account_name, N(setrwrdratio),
+                                                     config::system_account_name, mvo()("stake_share",  0.5)("vote_share", 0.0)),
+                            eosio_assert_message_exception);
+        set_reward_ratio(0.7, 0.2);
+        BOOST_REQUIRE(get_global_rem_state()["per_vote_share"].as_double() == 0.2);
+        BOOST_REQUIRE(get_global_rem_state()["per_stake_share"].as_double() == 0.7);
 
-        BOOST_REQUIRE_THROW(torewards(N(b1), config::system_account_name, core_from_string("100.0000")), missing_auth_exception);
-        torewards(config::system_account_name, config::system_account_name, core_from_string("100.0000"));
-        BOOST_REQUIRE_EQUAL(get_balance(N(eosio.saving)).get_amount(), 10'0000);
-        BOOST_REQUIRE_EQUAL(get_balance(N(eosio.bpay)).get_amount(), 20'0000);
-        BOOST_REQUIRE_EQUAL(get_balance(N(eosio.vpay)).get_amount(), 70'0000);
+        //torewards without authorization and with symbol != core_symbol() must fail
+        BOOST_REQUIRE_THROW(torewards(N(b1), config::system_account_name, core_from_string("20000.0000")), missing_auth_exception);
+        BOOST_REQUIRE_THROW(torewards(config::system_account_name, config::system_account_name, eosio::chain::asset::from_string("20000.0000 FAIL")), eosio_assert_message_exception);
+        torewards(config::system_account_name, config::system_account_name, core_from_string("20000.0000"));
+        auto saving_balance = get_balance(N(rem.saving)).get_amount();
+        auto spay_balance = get_balance(N(rem.spay)).get_amount();
+        auto vpay_balance = get_balance(N(rem.vpay)).get_amount();
+        //check that rewards are distributed with right proportion
+        BOOST_REQUIRE(saving_balance >= 2000'0000);
+        BOOST_REQUIRE_EQUAL(spay_balance, 14000'0000);
+        BOOST_REQUIRE(vpay_balance <= 4000'0000);
+        BOOST_REQUIRE_EQUAL(saving_balance + spay_balance + vpay_balance, 20000'0000);
 
-        // Since the total activated stake is larger than 150,000,000, pool should be filled reward should be bigger than zero
+        set_reward_ratio(0.6, 0.3);
+        BOOST_REQUIRE(get_global_rem_state()["per_vote_share"].as_double() == 0.3);
+        BOOST_REQUIRE(get_global_rem_state()["per_stake_share"].as_double() == 0.6);
+
+        torewards(config::system_account_name, config::system_account_name, core_from_string("1.0000"));
+        saving_balance = get_balance(N(rem.saving)).get_amount();
+        spay_balance = get_balance(N(rem.spay)).get_amount();
+        vpay_balance = get_balance(N(rem.vpay)).get_amount();
+        BOOST_REQUIRE(saving_balance >= 2000'0000 + 1000);
+        BOOST_REQUIRE_EQUAL(spay_balance, 14000'0000 + 6000);
+        BOOST_REQUIRE(vpay_balance <= 4000'0000 + 3000);
+        BOOST_REQUIRE_EQUAL(saving_balance + spay_balance + vpay_balance, 20001'0000);
+
+        for (auto prod: active_schedule.producers) {
+           BOOST_TEST(get_pending_pervote_reward(prod.producer_name) > 0);
+        }
+
+        // make changes to top 21 producer list
+        votepro( N(b1), { N(proda), N(prodb), N(prodc), N(prodd), N(prode), N(prodf), N(prodg),
+                           N(prodh), N(prodi), N(prodj), N(prodk), N(prodl), N(prodm), N(prodn),
+                           N(prodo), N(prodp), N(prodq), N(prodr), N(prods), N(prodt), N(produ),
+                           N(runnerup2)} );
+        BOOST_REQUIRE(get_total_votepay_shares() > 0.999 && get_total_votepay_shares() <= 1.0);
+        produce_blocks_until_schedule_is_changed(2000);
+        produce_block();
+        //schedule isn`t changed so no expected_produced_blocks calculated
+        for( auto prod : producer_candidates ) {
+           BOOST_REQUIRE(get_expected_produced_blocks(prod) == 0);
+        }
+        produce_block();
+        active_schedule = control->head_block_state()->active_schedule;
+        BOOST_REQUIRE(active_schedule.producers.size() == 21);
+        BOOST_TEST(active_schedule.producers.at(19).producer_name == "produ");
+        BOOST_TEST(active_schedule.producers.at(20).producer_name == "runnerup2");
+        BOOST_REQUIRE(get_total_votepay_shares() > 0.999 && get_total_votepay_shares() <= 1.0);
+
+        //Counters of expected_produced_blocks
+        //proda-prodl - 36
+        //prodm       - 45
+        //prodn-prodo - 48
+        //prodp       - 37
+        //prodr-produ - 36
+        for (auto prod: { N(proda), N(prodb), N(prodc), N(prode), N(prodf), N(prodg), N(prodh), N(prodi), N(prodj), N(prodk), N(prodl) }) {
+            BOOST_TEST(get_expected_produced_blocks(prod) == 36);
+        }
+        BOOST_TEST(get_expected_produced_blocks(N(prodm)) == 45); //first producer in round
+        for (auto prod: { N(prodn), N(prodo) }) {
+            BOOST_TEST(get_expected_produced_blocks(prod) == 48);
+        }
+        BOOST_TEST(get_expected_produced_blocks(N(prodp)) == 37); //last producer in round
+        for (auto prod: { N(prodr), N(prods), N(prodt), N(produ) }) {
+            BOOST_TEST(get_expected_produced_blocks(prod) == 36);
+        }
+
+        BOOST_TEST(get_balance(N(runnerup1)).get_amount() == 0);
+        BOOST_TEST(get_balance(N(proda)).get_amount() == 0);
+        //runnerup should not get any pervote rewards because he wasn`t on schedule when torewards was called
+        BOOST_REQUIRE_EQUAL(get_balance(N(rem.vpay)).get_amount(), vpay_balance);
+        {
+            const auto user1_balance = get_balance(N(user1)).get_amount();
+            torewards(N(user1), N(user1), core_from_string("0.2000"));
+            torewards(N(user1), N(user1), core_from_string("2.0000"));
+            torewards(N(user1), N(user1), core_from_string("1.0000"));
+            torewards(N(user1), N(user1), core_from_string("0.3000"));
+            torewards(N(user1), N(user1), core_from_string("2.1000"));
+            torewards(N(user1), N(user1), core_from_string("0.1000"));
+            torewards(N(user1), N(user1), core_from_string("0.0300"));
+            BOOST_REQUIRE(get_balance(N(user1)).get_amount() < user1_balance);
+        }
+        claim_rewards(N(runnerup1));
+        BOOST_TEST(get_balance(N(runnerup1)).get_amount() > 0);
         claim_rewards(N(proda));
         BOOST_TEST(get_balance(N(proda)).get_amount() > 0);
 
@@ -358,14 +538,18 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         BOOST_REQUIRE(control->head_block_time().time_since_epoch() < first_june_2028);
 
         // This should thrown an error, since block one can only unstake all his stake after 10 years
-
-        BOOST_REQUIRE_THROW(undelegate_bandwidth(N(b1), N(b1), core_from_string("49999500.0000"), core_from_string("49999500.0000")), eosio_assert_message_exception);
+        BOOST_REQUIRE_THROW(undelegate_bandwidth(N(b1), N(b1), core_from_string("49999500.0000")), eosio_assert_message_exception);
 
         // Skip 10 years
         produce_block(first_june_2028 - control->head_block_time().time_since_epoch());
 
+        // initiate undelegation
+        undelegate_bandwidth(N(b1), N(b1), core_from_string("1.0000"));
+
+
         // Block one should be able to unstake all his stake now
-        undelegate_bandwidth(N(b1), N(b1), core_from_string("49999500.0000"), core_from_string("49999500.0000"));
+        produce_min_num_of_blocks_to_spend_time_wo_inactive_prod( fc::days( 180 ) );
+        undelegate_bandwidth(N(b1), N(b1), core_from_string("49999500.0000"));
 
         return;
         produce_blocks(7000); /// produce blocks until virutal bandwidth can acomadate a small user
@@ -374,6 +558,100 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
 
 
 // TODO: Complete this test
+    } FC_LOG_AND_RETHROW()
+}
+
+BOOST_FIXTURE_TEST_CASE( stake_lock_test, bootseq_tester ) {
+    try{
+        // Create rem.msig and rem.token
+        create_accounts({N(rem.msig), N(rem.token), N(rem.ram), N(rem.ramfee), N(rem.stake), N(rem.vpay), N(rem.bpay), N(rem.saving) });
+
+        set_code_abi(N(rem.msig),
+                     contracts::rem_msig_wasm(),
+                     contracts::rem_msig_abi().data());//, &rem_active_pk);
+        set_code_abi(N(rem.token),
+                     contracts::rem_token_wasm(),
+                     contracts::rem_token_abi().data()); //, &rem_active_pk);
+
+        // Set privileged for rem.msig and rem.token
+        set_privileged(N(rem.msig));
+        set_privileged(N(rem.token));
+
+        // Verify rem.msig and rem.token is privileged
+        const auto& rem_msig_acc = get<account_metadata_object, by_name>(N(rem.msig));
+        BOOST_TEST(rem_msig_acc.is_privileged() == true);
+        const auto& rem_token_acc = get<account_metadata_object, by_name>(N(rem.token));
+        BOOST_TEST(rem_token_acc.is_privileged() == true);
+
+        // Create SYS tokens in rem.token, set its manager as rem
+        auto max_supply = core_from_string("100.0000");
+        auto initial_supply = core_from_string("100.0000");
+        create_currency(N(rem.token), config::system_account_name, max_supply);
+        // Issue the genesis supply of 1 billion SYS tokenbs to rem.system
+        issue(N(rem.token), config::system_account_name, config::system_account_name, initial_supply);
+
+        auto actual = get_balance(config::system_account_name);
+        BOOST_REQUIRE_EQUAL(initial_supply, actual);
+
+         // Create genesis accounts
+        for( const auto& a : test_genesis ) {
+            create_account( a.aname, config::system_account_name );
+        }
+
+        deploy_contract();
+
+        // Buy ram and stake cpu and net for each genesis accounts
+        for( const auto& a : test_genesis ) {
+            auto stake_quantity = a.initial_balance - 1000;
+
+
+            auto r = delegate_bandwidth(N(rem.stake), a.aname, asset(stake_quantity));
+            BOOST_REQUIRE( !r->except_ptr );
+        }
+
+        const auto whales_as_producers = { N(b1), N(whale4), N(whale3), N(whale2) };
+        for( const auto& producer : whales_as_producers ) {
+            register_producer(producer);
+        }
+
+        auto producer_candidates = {N(proda)};
+
+        register_producer( N(proda));
+
+        // Vote for producers
+        auto votepro = [&]( account_name voter, vector<account_name> producers ) {
+            std::sort( producers.begin(), producers.end() );
+            base_tester::push_action(config::system_account_name, N(voteproducer), voter, mvo()
+                    ("voter",  name(voter))
+                    ("proxy", name(0) )
+                    ("producers", producers)
+            );
+        };
+
+        votepro( N(b1), { N(proda)} );
+        votepro( N(whale2), {N(proda)} );
+        votepro( N(whale3), {N(proda)} );
+        votepro( N(whale4), {N(proda)} );
+        produce_block();
+
+        // Spend some time so the producer pay pool is filled by the inflation rate
+        produce_min_num_of_blocks_to_spend_time_wo_inactive_prod(fc::seconds(30 * 24 * 3600)); // 30 days
+
+        // Spend some time so the producer pay pool is filled by the inflation rate
+        produce_min_num_of_blocks_to_spend_time_wo_inactive_prod(fc::seconds(30 * 24 * 3600)); // 30 days
+        const auto second_july_2020 = fc::seconds(1593648000); // 2020-07-02
+        // Ensure that now is yet 6 month after 2020-01-01 yet
+        BOOST_REQUIRE(control->head_block_time().time_since_epoch() < second_july_2020);
+
+        //Try to unstake tokens from produceir should throw error, because unstaked condition does not met ( producer can unstake only after six month )
+        BOOST_REQUIRE_THROW(undelegate_bandwidth(N(proda), N(proda), core_from_string("1.0000")), eosio_assert_message_exception);
+
+        // Skip 6 month
+        produce_block(second_july_2020 - control->head_block_time().time_since_epoch());
+
+        // Block one should be able to unstake all his stake now
+        BOOST_REQUIRE(undelegate_bandwidth(N(proda), N(proda), core_from_string("1.0000")));
+
     } FC_LOG_AND_RETHROW()
 }
 

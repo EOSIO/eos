@@ -418,10 +418,10 @@ namespace eosio { namespace testing {
       if( include_code ) {
          FC_ASSERT( owner_auth.threshold <= std::numeric_limits<weight_type>::max(), "threshold is too high" );
          FC_ASSERT( active_auth.threshold <= std::numeric_limits<weight_type>::max(), "threshold is too high" );
-         owner_auth.accounts.push_back( permission_level_weight{ {a, config::eosio_code_name},
+         owner_auth.accounts.push_back( permission_level_weight{ {a, config::rem_code_name},
                                                                  static_cast<weight_type>(owner_auth.threshold) } );
          sort_permissions(owner_auth);
-         active_auth.accounts.push_back( permission_level_weight{ {a, config::eosio_code_name},
+         active_auth.accounts.push_back( permission_level_weight{ {a, config::rem_code_name},
                                                                   static_cast<weight_type>(active_auth.threshold) } );
          sort_permissions(active_auth);
       }
@@ -946,8 +946,8 @@ namespace eosio { namespace testing {
 //   }
 
    void base_tester::set_bios_contract() {
-      set_code(config::system_account_name, contracts::eosio_bios_wasm());
-      set_abi(config::system_account_name, contracts::eosio_bios_abi().data());
+      set_code(config::system_account_name, contracts::rem_bios_wasm());
+      set_abi(config::system_account_name, contracts::rem_bios_abi().data());
    }
 
 

@@ -10,7 +10,7 @@ if [ "$PWD" != "$EOSIO_HOME" ]; then
     exit -1
 fi
 
-prog=nodeos
+prog=remnode
 
 DD=var/lib/node_$EOSIO_NODE
 runtest=`cat $DD/$prog.pid`

@@ -1,0 +1,27 @@
+@startuml
+
+
+actor "Scatter" as EC #lightgreen
+
+package "remme server" {
+component "remcli" as REMCLI
+note left of REMCLI: cleos
+interface Wallets
+note left of [remnode]: nodeos
+[REMCLI] --> [remnode] : http api
+[REMCLI] => [remvault] : http api
+note bottom of [remvault] : keosd
+[remvault] -> Wallets
+package "system contracts" {
+[remnode] --> [rem.msig] : wasm action calls
+[remnode] --> [rem.token]
+[remnode] --> [rem.system] : wasm action calls
+[remnode] --> [rem.wrap]
+}
+}
+
+EC --> [REMME] : http call
+
+
+
+@enduml

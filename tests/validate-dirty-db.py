@@ -9,7 +9,7 @@ import subprocess
 import signal
 
 ###############################################################
-# Test for validating the dirty db flag sticks repeated nodeos restart attempts
+# Test for validating the dirty db flag sticks repeated remnode restart attempts
 ###############################################################
 
 
@@ -36,23 +36,23 @@ Utils.Debug=debug
 testSuccessful=False
 
 def runNodeosAndGetOutput(myTimeout=3):
-    """Startup nodeos, wait for timeout (before forced shutdown) and collect output. Stdout, stderr and return code are returned in a dictionary."""
-    Print("Launching nodeos process.")
-    cmd="programs/nodeos/nodeos --config-dir etc/eosio/node_bios --data-dir var/lib/node_bios --verbose-http-errors --http-validate-host=false"
+    """Startup remnode, wait for timeout (before forced shutdown) and collect output. Stdout, stderr and return code are returned in a dictionary."""
+    Print("Launching remnode process.")
+    cmd="programs/remnode/remnode --config-dir etc/eosio/node_bios --data-dir var/lib/node_bios --verbose-http-errors --http-validate-host=false"
     Print("cmd: %s" % (cmd))
     proc=subprocess.Popen(cmd.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if debug: Print("Nodeos process launched.")
 
     output={}
     try:
-        if debug: Print("Setting nodeos process timeout.")
+        if debug: Print("Setting remnode process timeout.")
         outs,errs = proc.communicate(timeout=myTimeout)
         if debug: Print("Nodeos process has exited.")
         output["stdout"] = outs.decode("utf-8")
         output["stderr"] = errs.decode("utf-8")
         output["returncode"] = proc.returncode
     except (subprocess.TimeoutExpired) as _:
-        Print("ERROR: Nodeos is running beyond the defined wait time. Hard killing nodeos instance.")
+        Print("ERROR: Nodeos is running beyond the defined wait time. Hard killing remnode instance.")
         proc.send_signal(signal.SIGKILL)
         return (False, None)
 
@@ -82,7 +82,7 @@ try:
     Print("Kill cluster nodes.")
     cluster.killall(allInstances=killAll)
 
-    Print("Restart nodeos repeatedly to ensure dirty database flag sticks.")
+    Print("Restart remnode repeatedly to ensure dirty database flag sticks.")
     timeout=6
 
     for i in range(1,4):
@@ -91,7 +91,7 @@ try:
         assert(ret)
         assert(isinstance(ret, tuple))
         if not ret[0]:
-            errorExit("Failed to startup nodeos successfully on try number %d" % (i))
+            errorExit("Failed to startup remnode successfully on try number %d" % (i))
         assert(ret[1])
         assert(isinstance(ret[1], dict))
         # pylint: disable=unsubscriptable-object

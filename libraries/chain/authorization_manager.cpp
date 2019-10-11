@@ -273,7 +273,7 @@ namespace eosio { namespace chain {
          if( !linked_permission )
             return config::active_name;
 
-         if( *linked_permission == config::eosio_any_name )
+         if( *linked_permission == config::rem_any_name )
             return optional<permission_name>();
 
          return linked_permission;
@@ -348,7 +348,7 @@ namespace eosio { namespace chain {
 
       const auto linked_permission_name = lookup_minimum_permission(link.account, link.code, link.type);
 
-      if( !linked_permission_name ) // if action is linked to eosio.any permission
+      if( !linked_permission_name ) // if action is linked to rem.any permission
          return;
 
       EOS_ASSERT( get_permission(auth).satisfies( get_permission({link.account, *linked_permission_name}),
@@ -373,7 +373,7 @@ namespace eosio { namespace chain {
                   "cannot unlink non-existent permission link of account '${account}' for actions matching '${code}::${action}'",
                   ("account", unlink.account)("code", unlink.code)("action", unlink.type) );
 
-      if( *unlinked_permission_name == config::eosio_any_name )
+      if( *unlinked_permission_name == config::rem_any_name )
          return;
 
       EOS_ASSERT( get_permission(auth).satisfies( get_permission({unlink.account, *unlinked_permission_name}),
@@ -483,7 +483,7 @@ namespace eosio { namespace chain {
 
             if( !special_case ) {
                auto min_permission_name = lookup_minimum_permission(declared_auth.actor, act.account, act.name);
-               if( min_permission_name ) { // since special cases were already handled, it should only be false if the permission is eosio.any
+               if( min_permission_name ) { // since special cases were already handled, it should only be false if the permission is rem.any
                   const auto& min_permission = get_permission({declared_auth.actor, *min_permission_name});
                   EOS_ASSERT( get_permission(declared_auth).satisfies( min_permission,
                                                                        _db.get_index<permission_index>().indices() ),

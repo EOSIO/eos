@@ -708,7 +708,15 @@ class producer_api : public context_aware_api {
          auto s = len * sizeof(chain::account_name);
          if( buffer_size == 0 ) return s;
 
-         auto copy_size = std::min( buffer_size, s );
+         //TODO: find out why we have std::min( buffer_size, s ) here
+         // in eosio.cdt we pass active_prods.size() as the second argument to this function
+         // so buffer_size is equal to active_producers.size()  (which is equal to len here)
+         //    s is equal to len * sizeof(chain::account_name)
+         // and copy_size will always be equal to active_producers.size()
+         // but we need copy_size to be a number of bytes not number of producers
+         //
+         //auto copy_size = std::min( buffer_size, s );
+         auto copy_size = std::min( buffer_size * sizeof(chain::account_name), s );
          memcpy( producers, active_producers.data(), copy_size );
 
          return copy_size;

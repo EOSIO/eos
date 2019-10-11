@@ -172,16 +172,16 @@ try:
     # Restart old node with newest version
     # Before we are migrating to new version, use --export-reversible-blocks as the old version
     # and --import-reversible-blocks with the new version to ensure the compatibility of the reversible blocks
-    # Finally, when we restart the 4th node with the version of nodeos that supports protocol feature,
+    # Finally, when we restart the 4th node with the version of remnode that supports protocol feature,
     # all nodes should be in sync, and the 4th node will also contain PREACTIVATE_FEATURE
     portableRevBlkPath = os.path.join(Utils.getNodeDataDir(oldNodeId), "rev_blk_portable_format")
     oldNode.kill(signal.SIGTERM)
     # Note, for the following relaunch, these will fail to relaunch immediately (expected behavior of export/import), so the chainArg will not replace the old cmd
     oldNode.relaunch(oldNodeId, chainArg="--export-reversible-blocks {}".format(portableRevBlkPath), timeout=1)
-    oldNode.relaunch(oldNodeId, chainArg="--import-reversible-blocks {}".format(portableRevBlkPath), timeout=1, nodeosPath="programs/nodeos/nodeos")
+    oldNode.relaunch(oldNodeId, chainArg="--import-reversible-blocks {}".format(portableRevBlkPath), timeout=1, nodeosPath="programs/remnode/remnode")
     os.remove(portableRevBlkPath)
 
-    restartNode(oldNode, oldNodeId, chainArg="--replay", nodeosPath="programs/nodeos/nodeos")
+    restartNode(oldNode, oldNodeId, chainArg="--replay", nodeosPath="programs/remnode/remnode")
     time.sleep(2) # Give some time to replay
 
     assert shouldNodesBeInSync(allNodes), "All nodes should be in sync"

@@ -370,7 +370,7 @@ public:
             lib::asio::local::stream_protocol::socket test_socket(get_io_service());
             test_socket.connect(ep, test_ec);
 
-            //looks like a service is already running on that socket, probably another keosd, don't touch it
+            //looks like a service is already running on that socket, probably another remvault, don't touch it
             if(test_ec == boost::system::errc::success)
                bec = boost::system::errc::make_error_code(boost::system::errc::address_in_use);
             //socket exists but no one home, go ahead and remove it and continue on

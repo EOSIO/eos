@@ -12,7 +12,7 @@
 
 #include "eosio.system_tester.hpp"
 
-using namespace eosio_system;
+using namespace rem_system;
 #define BOOST_TEST_STATIC_LINK
 
 void translate_fc_exception(const fc::exception &e) {
