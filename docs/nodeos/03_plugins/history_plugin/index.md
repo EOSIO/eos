@@ -1,10 +1,8 @@
 # history_plugin
 
-TODO: add deprecation notice.
-
 ## Description
 
-The `history_plugin` captures historical data about the blockchain state. Its usage has been deprecated in favor of the `state_history_plugin` which should be used instead.
+The `history_plugin` provides a cache layer to obtain historical data about the blockchain objects. It depends on [`chain_plugin`](../chain_plugin/index.md) for the data.
 
 ## Usage
 
