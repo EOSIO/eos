@@ -22,4 +22,5 @@ This procedure restores an existing snapshot with full history, so the node can 
 
 If `nodeos` fails to receive blocks from the network, then try the above using `net_api_plugin`. Use `cleos net disconnect` and `cleos net connect` to reconnect nodes which timed out.
 
-[[caution | Caution when using net_api_plugin: either use a firewall to block access to `http-server-address`, or change it to `localhost:8888` to disable remote access.]]
+[[caution | Caution when using `net_api_plugin`]]
+| Either use a firewall to block access to `http-server-address`, or change it to `localhost:8888` to disable remote access.

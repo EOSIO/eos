@@ -22,8 +22,11 @@ This procedure records the current chain state and future history, without previ
 
 If `nodeos` fails to receive blocks from the network, then try the above using `net_api_plugin`. Use `cleos net disconnect` and `cleos net connect` to reconnect nodes which timed out.
 
-[[caution | Caution when using net_api_plugin: either use a firewall to block access to your `http-server-address`, or change it to `localhost:8888` to disable remote access.]]
+[[caution | Caution when using `net_api_plugin`]]
+| Either use a firewall to block access to your `http-server-address`, or change it to `localhost:8888` to disable remote access.
 
-[[info | Whenever you run a filler after this point, use the `--fill-trim` option. Only use `--fpg-create` and `--fill-skip-to` the first time.]]
+[[info]]
+| Whenever you run a filler after this point, use the `--fill-trim` option. Only use `--fpg-create` and `--fill-skip-to` the first time.
 
-[[info | On large chains, this procedure creates a delta record that is too large for javascript processes to handle. 64-bit C++ processes can handle the large record. `fill-pg` and `fill-lmdb` break up the large record into smaller records when filling databases.]]
+[[info]]
+| On large chains, this procedure creates a delta record that is too large for javascript processes to handle. 64-bit C++ processes can handle the large record. `fill-pg` and `fill-lmdb` break up the large record into smaller records when filling databases.
