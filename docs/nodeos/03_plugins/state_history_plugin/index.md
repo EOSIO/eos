@@ -69,7 +69,7 @@ $ nodeos ... --plugin eosio::chain_plugin --disable-replay-opts
 
 ## How-To Guides
 
-* [How to fast start without history on existing chains](how-to-fast-start-without-old-history.md)
-* [How to create a portable snapshot with full state history](how-to-create-snapshot-with-full-history.md)
-* [How to restore a portable snapshot with full state history](how-to-restore-snapshot-with-full-history.md)
-* [How to replay or resync with full history](how-to-replay-or-resync-wth-full-history.md)
+* [How to fast start without history on existing chains](../../04_how-to-guides/02_plugins/how-to-fast-start-without-old-history.md)
+* [How to create a portable snapshot with full state history](../../04_how-to-guides/02_plugins/how-to-create-snapshot-with-full-history.md)
+* [How to restore a portable snapshot with full state history](../../04_how-to-guides/02_plugins/how-to-restore-snapshot-with-full-history.md)
+* [How to replay or resync with full history](../../04_how-to-guides/02_plugins/how-to-replay-or-resync-wth-full-history.md)
