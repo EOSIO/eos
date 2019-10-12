@@ -152,7 +152,7 @@ void run_compile_trampoline(int fd) {
          break;
 
       if(!message.contains<compile_wasm_message>() || fds.size() != 2) {
-         std::cerr << "EOS-VM OC compile trampoline got unexpected message; ignoring" << std::endl;
+         std::cerr << "EOS VM OC compile trampoline got unexpected message; ignoring" << std::endl;
          continue;
       }
 
@@ -174,7 +174,7 @@ void run_compile_trampoline(int fd) {
          _exit(0);
       }
       else if(pid == -1)
-         std::cerr << "EOS-VM OC compile trampoline failed to spawn compile task" << std::endl;
+         std::cerr << "EOS VM OC compile trampoline failed to spawn compile task" << std::endl;
    }
 
    _exit(0);

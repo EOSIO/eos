@@ -202,7 +202,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
 #ifndef EOSIO_EOS_VM_OC_DEVELOPER
             //throwing an exception here (like EOS_ASSERT) is just gobbled up with a "Failed to initialize" error :(
             if(vm == wasm_interface::vm_type::eos_vm_oc) {
-               elog("EOS-VM OC is a tier-up compiler and works in conjunction with the configured base WASM runtime. Enable EOS-VM OC via 'eos-vm-oc-enable' option");
+               elog("EOS VM OC is a tier-up compiler and works in conjunction with the configured base WASM runtime. Enable EOS VM OC via 'eos-vm-oc-enable' option");
                EOS_ASSERT(false, plugin_exception, "");
             }
 #endif
@@ -264,14 +264,14 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
 #endif
 
 #ifdef EOSIO_EOS_VM_OC_RUNTIME_ENABLED
-         ("eos-vm-oc-cache-size-mb", bpo::value<uint64_t>()->default_value(eosvmoc::config().cache_size / (1024u*1024u)), "Maximum size (in MiB) of the EOS-VM OC code cache")
+         ("eos-vm-oc-cache-size-mb", bpo::value<uint64_t>()->default_value(eosvmoc::config().cache_size / (1024u*1024u)), "Maximum size (in MiB) of the EOS VM OC code cache")
          ("eos-vm-oc-compile-threads", bpo::value<uint64_t>()->default_value(1u)->notifier([](const auto t) {
                if(t == 0) {
                   elog("eos-vm-oc-compile-threads must be set to a non-zero value");
                   EOS_ASSERT(false, plugin_exception, "");
                }
-         }), "Number of threads to use for EOS-VM OC tier-up")
-         ("eos-vm-oc-enable", bpo::bool_switch(), "Enable EOS-VM OC tier-up runtime")
+         }), "Number of threads to use for EOS VM OC tier-up")
+         ("eos-vm-oc-enable", bpo::bool_switch(), "Enable EOS VM OC tier-up runtime")
 #endif
          ;
 
@@ -1615,7 +1615,7 @@ string convert_to_string(const chain::key256_t& source, const string& key_type, 
          return std::string(val);
       }
       EOS_ASSERT( false, chain_type_exception, "Incompatible key_type and encode_type for key256_t next_key" );
-     
+
    } FC_RETHROW_EXCEPTIONS(warn, "Could not convert ${desc} source '${source}' to string.", ("desc", desc)("source",source) )
 }
 
@@ -2328,9 +2328,9 @@ read_only::get_account_results read_only::get_account( const get_account_params&
    result.last_code_update = accnt_metadata_obj.last_code_update;
    result.created          = accnt_obj.creation_date;
 
-   bool grelisted = db.is_resource_greylisted(result.account_name);
-   result.net_limit = rm.get_account_net_limit_ex( result.account_name, !grelisted);
-   result.cpu_limit = rm.get_account_cpu_limit_ex( result.account_name, !grelisted);
+   uint32_t greylist_limit = db.is_resource_greylisted(result.account_name) ? 1 : config::maximum_elastic_resource_multiplier;
+   result.net_limit = rm.get_account_net_limit_ex( result.account_name, greylist_limit).first;
+   result.cpu_limit = rm.get_account_cpu_limit_ex( result.account_name, greylist_limit).first;
    result.ram_usage = rm.get_account_ram_usage( result.account_name );
 
    const auto& permissions = d.get_index<permission_index,by_owner>();

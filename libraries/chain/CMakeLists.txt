@@ -16,10 +16,6 @@ else()
    endif()
 endif()
 
-if("wavm" IN_LIST EOSIO_WASM_RUNTIMES)
-   set(CHAIN_WAVM_SOURCES "webassembly/wavm.cpp")
-endif()
-
 if("eos-vm-oc" IN_LIST EOSIO_WASM_RUNTIMES)
    set(CHAIN_EOSVMOC_SOURCES webassembly/eos-vm-oc/code_cache.cpp
                              webassembly/eos-vm-oc/executor.cpp
@@ -44,7 +40,7 @@ if("eos-vm-oc" IN_LIST EOSIO_WASM_RUNTIMES)
    include_directories(${LLVM_INCLUDE_DIRS})
    add_definitions(${LLVM_DEFINITIONS})
 
-   option(EOSVMOC_ENABLE_DEVELOPER_OPTIONS "enable developer options for EOS-VM OC" OFF)
+   option(EOSVMOC_ENABLE_DEVELOPER_OPTIONS "enable developer options for EOS VM OC" OFF)
 endif()
 
 if("eos-vm" IN_LIST EOSIO_WASM_RUNTIMES OR "eos-vm-jit" IN_LIST EOSIO_WASM_RUNTIMES)
@@ -86,7 +82,6 @@ add_library( eosio_chain
               asset.cpp
               snapshot.cpp
 
-             ${CHAIN_WAVM_SOURCES}
              webassembly/wabt.cpp
              ${CHAIN_EOSVMOC_SOURCES}
              ${CHAIN_EOSVM_SOURCES}
@@ -131,7 +126,7 @@ foreach(RUNTIME ${EOSIO_WASM_RUNTIMES})
 endforeach()
 
 if(EOSVMOC_ENABLE_DEVELOPER_OPTIONS)
-   message(WARNING "EOS-VM OC Developer Options are enabled; these are NOT supported")
+   message(WARNING "EOS VM OC Developer Options are enabled; these are NOT supported")
    target_compile_definitions(eosio_chain PUBLIC EOSIO_EOS_VM_OC_DEVELOPER)
 endif()
 
