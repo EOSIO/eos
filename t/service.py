@@ -559,6 +559,11 @@ class Cluster:
     def get_cluster_info(self, **kwargs):
         return self.call("get_cluster_info", cluster_id=self.cluster_id, expect_transaction_id=False, **kwargs)
 
+    def stop_node(self, **kwargs):
+        return self.call("stop_node", cluster_id=self.cluster_id, expect_transaction_id=False, **kwargs)
+
+    def start_node(self, **kwargs):
+        return self.call("start_node", cluster_id=self.cluster_id, expect_transaction_id=False, **kwargs)
 
     def create_bios_accounts(self, **kwargs):
         accounts = [{"name":"eosio.bpay"},
