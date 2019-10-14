@@ -21,9 +21,9 @@ def monolen(s: str):
     return len(re.compile(r"\033\[[0-9]+(;[0-9]+)?m").sub("", s))
 
 
-def compress(s: str, length: int = 16, tail: int = 4):
+def compress(s: str, length: int = 16, tail: int = 0):
     if monolen(s) > length:
-        s = s[:(length - tail - 3)] + "..." + s[-tail:]
+        s = s[:(length - tail - 2)] + ".." + (s[-tail:] if tail else "")
     return s
 
 
@@ -118,11 +118,6 @@ def pad(text: str, left=15, total=90, right=None, char="-", sep=" ") -> str:
     return string.ljust(total + offset, char)
 
 
-def pgrep(pattern: str) -> List[int]:
-    out = subprocess.Popen(['pgrep', pattern], stdout=subprocess.PIPE).stdout.read()
-    return [int(x) for x in out.splitlines()]
-
-
 def trim(data: typing.Union[dict, list], maxlen=100):
     """
     Summary
@@ -145,6 +140,30 @@ def trim(data: typing.Union[dict, list], maxlen=100):
             else:
                 if isinstance(item, str) and len(item) > maxlen:
                     item = "..."
+
+# --------------- subprocess-related ----------------------------------------------------------------------------------
+
+def get_cmd_and_args_by_pid(pid: typing.Union[int, str]):
+    return interacitve_run(["ps", "-p", str(pid), "-o", "command="])
+
+
+def get_pid_list_by_pattern(pattern: str) -> typing.List[int]:
+    out = interacitve_run(["pgrep", pattern])
+    return [int(x) for x in out.splitlines()]
+
+
+def interacitve_run(args: list):
+    return subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True).stdout.read().rstrip()
+
+
+def quiet_run(args: list) -> None:
+    subprocess.Popen(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+def terminate(pid: typing.Union[int, str]) -> None:
+    quiet_run(["kill", "-SIGTERM", str(pid)])
+
+# --------------- test ------------------------------------------------------------------------------------------------
 
 def test():
     print("Pass -v in command line for details of doctest.")

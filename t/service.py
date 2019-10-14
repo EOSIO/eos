@@ -25,7 +25,7 @@ import color
 import thread
 
 # user-defined modules TO BE DEPRECATED
-import printer
+# import printer
 
 
 PROGRAM = "eosio-launcher-service"
@@ -44,6 +44,7 @@ DEFAULT_TOTAL_NODES = 4
 DEFAULT_TOTAL_PRODUCERS = 4
 DEFAULT_PRODUCER_NODES = 4
 DEFAULT_UNSTARTED_NODES = 0
+DEFAULT_DONT_VOTE = False
 DEFAULT_DONT_BOOTSTRAP = False
 
 DEFAULT_BUFFERED = True
@@ -64,6 +65,7 @@ HELP_TOTAL_NODES = "Number of total nodes"
 HELP_TOTAL_PRODUCERS = "Number of total producers"
 HELP_PRODUCER_NODES = "Number of nodes that have producers"
 HELP_UNSTARTED_NODES = "Number of unstarted nodes"
+HELP_DONT_VOTE = "Do not vote for producers in bootstrap"
 HELP_DONT_BOOTSTRAP = "Launch cluster without bootstrapping"
 
 HELP_LOG_LEVEL = "Stdout logging level (numeric)"
@@ -78,7 +80,6 @@ HELP_WARN = "Set stdout logging level to WARN (40)"
 HELP_ERROR = "Set stdout logging level to ERROR (50)"
 HELP_FATAL = "Set stdout logging level to FATAL (60)"
 HELP_LOG_OFF = "Set stdout logging level to OFF (100)"
-
 
 
 class CommandLineArguments:
@@ -98,12 +99,12 @@ class CommandLineArguments:
         self.total_producers = cla.total_producers
         self.producer_nodes = cla.producer_nodes
         self.unstarted_nodes = cla.unstarted_nodes
+        self.dont_vote = cla.dont_vote
         self.dont_bootstrap = cla.dont_bootstrap
 
         self.threshold = cla.threshold
         self.buffered = cla.buffered
         self.monochrome = cla.monochrome
-
 
     @staticmethod
     def parse():
@@ -127,7 +128,8 @@ class CommandLineArguments:
         parser.add_argument("-y", "--total-producers", dest="total_producers", type=int, metavar="NUM", help=form(HELP_TOTAL_PRODUCERS, DEFAULT_TOTAL_PRODUCERS))
         parser.add_argument("-z", "--producer-nodes", dest="producer_nodes", type=int, metavar="NUM", help=form(HELP_PRODUCER_NODES, DEFAULT_PRODUCER_NODES))
         parser.add_argument("-u", "--unstarted-nodes", dest="unstarted_nodes", type=int, metavar="NUM", help=form(HELP_UNSTARTED_NODES, DEFAULT_UNSTARTED_NODES))
-        parser.add_argument("-xboot", "--dont-bootstrap", dest="dont_bootstrap", action="store_true", help=form(HELP_DONT_BOOTSTRAP, DEFAULT_DONT_BOOTSTRAP))
+        parser.add_argument("-w", "--dont-vote", dest="dont_vote", action="store_true", default=None, help=form(HELP_DONT_VOTE, DEFAULT_DONT_VOTE))
+        parser.add_argument("-q", "--dont-bootstrap", dest="dont_bootstrap", action="store_true", default=None, help=form(HELP_DONT_BOOTSTRAP, DEFAULT_DONT_BOOTSTRAP))
 
         threshold = parser.add_mutually_exclusive_group()
         threshold.add_argument("-l", "--log-level", dest="threshold", type=int, metavar="LEVEL", action="store", help=form(HELP_LOG_LEVEL))
@@ -139,17 +141,18 @@ class CommandLineArguments:
         threshold.add_argument("--error", dest="threshold", action="store_const", const="ERROR", help=form(HELP_ERROR))
         threshold.add_argument("--fatal", dest="threshold", action="store_const", const="FATAL", help=form(HELP_FATAL))
         threshold.add_argument("--log-off", dest="threshold", action="store_const", const="OFF", help=form(HELP_LOG_OFF))
-        parser.add_argument("-xbuff", "--unbuffer", dest="buffered", action="store_false", default=True, help=form(HELP_UNBUFFER, not DEFAULT_BUFFERED))
-        parser.add_argument("-xcolor", "--monochrome", action="store_true", default=False, help=form(HELP_MONOCHROME, DEFAULT_MONOCHROME))
+        parser.add_argument("-x", "--unbuffer", dest="buffered", action="store_false", default=True, help=form(HELP_UNBUFFER, not DEFAULT_BUFFERED))
+        parser.add_argument("-m", "--monochrome", action="store_true", default=False, help=form(HELP_MONOCHROME, DEFAULT_MONOCHROME))
 
         return parser.parse_args()
 
 
 class Service:
     def __init__(self, address=None, port=None, dir=None, file=None, start=None, kill=None, logger=None, dont_connect=False):
+        # read command-line arguments
+        self.cla        = CommandLineArguments()
 
         # configure service
-        self.cla        = CommandLineArguments()
         self.address    = helper.override(DEFAULT_ADDRESS, address, self.cla.address)
         self.port       = helper.override(DEFAULT_PORT,    port,    self.cla.port)
         self.dir        = helper.override(DEFAULT_DIR,     dir,     self.cla.dir)
@@ -157,7 +160,7 @@ class Service:
         self.start      = helper.override(DEFAULT_START,   start,   self.cla.start)
         self.kill       = helper.override(DEFAULT_KILL,    kill,    self.cla.kill)
 
-        # determine remote or local launcher service to connect to
+        # tell if service is remote or local
         if self.address in ("127.0.0.1", "localhost"):
             self.remote = False
         else:
@@ -165,7 +168,6 @@ class Service:
             self.file = self.start = self.kill = None
 
         # register logger
-        # TODO: set default behavior
         self.logger = logger
         for w in self.logger.writers:
             if isinstance(w, ScreenWriter):
@@ -176,6 +178,7 @@ class Service:
                 self.buffered = w.buffered = helper.override(DEFAULT_BUFFERED, w.buffered, self.cla.buffered)
                 self.monochrome = w.monochrome = helper.override(DEFAULT_MONOCHROME, w.monochrome, self.cla.monochrome)
 
+        # connect
         if not dont_connect:
             self.connect()
 
@@ -184,23 +187,17 @@ class Service:
         # print system info
         self.print_system_info()
 
-        # print configuration
+        # print service config
         self.print_config()
 
         # change working directory
-        self.change_dir()
-
-        # connect to remote service and return
-        if self.remote:
-            self.connect_to_remote_service()
-            return
+        self.change_working_dir()
 
         # connect to launcher service
-        self.connect_to_local_service()
-
-
-    def print_header(self, text, level="DEBUG", buffer=False):
-        self.logger.log(helper.format_header(text), level=level, buffer=buffer)
+        if self.remote:
+            self.connect_to_remote_service()
+        else:
+            self.connect_to_local_service()
 
 
     def print_system_info(self):
@@ -212,27 +209,24 @@ class Service:
 
     def print_config(self):
         self.print_header("service configuration")
+        # print service config
         self.print_config_helper("-a: address",    HELP_ADDRESS,    self.address,      DEFAULT_ADDRESS)
         self.print_config_helper("-p: port",       HELP_PORT,       self.port,         DEFAULT_PORT)
         self.print_config_helper("-d: dir",        HELP_DIR,        self.dir,          DEFAULT_DIR)
         self.print_config_helper("-f: file",       HELP_FILE,       self.file,         DEFAULT_FILE)
         self.print_config_helper("-s: start",      HELP_START,      self.start,        DEFAULT_START)
         self.print_config_helper("-k: kill",       HELP_KILL,       self.kill,         DEFAULT_KILL)
+        # print logger config
         try:
             log_level = "{} ({})".format(LoggingLevel(self.threshold).name, self.threshold)
         except ValueError:
             log_level = self.threshold
         self.print_config_helper("-l: log-level",  HELP_LOG_LEVEL,  log_level)
-        self.print_config_helper("-x: buffered",   HELP_UNBUFFER,   not self.buffered, not DEFAULT_BUFFERED)
+        self.print_config_helper("-x: unbuffer",   HELP_UNBUFFER,   not self.buffered, not DEFAULT_BUFFERED)
         self.print_config_helper("-m: monochrome", HELP_MONOCHROME, self.monochrome,   DEFAULT_MONOCHROME)
 
 
-    def print_config_helper(self, label, help, value, default_value=None, compress=True):
-        colored = color.blue(value) if value != default_value else str(value)
-        self.logger.debug("{:31}{:48}{}".format(color.yellow(label), help, helper.compress(colored) if compress else colored))
-
-
-    def change_dir(self):
+    def change_working_dir(self):
         self.print_header("change working directory")
         os.chdir(self.dir)
         self.logger.debug("{:22}{}".format("Working Directory", os.getcwd()))
@@ -244,76 +238,79 @@ class Service:
 
 
     def connect_to_local_service(self):
-        self.print_header("connect to launcher service")
-        spid = self.get_service_pid_list()
+        self.print_header("connect to local service")
+        pid_list = self.get_local_services()
         if self.kill:
-            self.kill_service(spid)
-            spid.clear()
-        if spid and not self.start:
-            self.start_local_service(spid[0])
+            self.kill_local_services(pid_list)
+            pid_list.clear()
+        if pid_list and not self.start:
+            self.connect_to_existing_local_service(pid_list[0])
         else:
-            self.start_service()
+            self.start_local_service()
 
 
-    def start_local_service(self, pid):
-        current_port = self.get_service_port(pid)
-        current_file = self.get_service_file(pid)
+    def print_header(self, text, level="DEBUG", buffer=False):
+        self.logger.log(helper.format_header(text), level=level, buffer=buffer)
+
+
+    def print_config_helper(self, label, help, value, default_value=None, compress=True):
+        highlighted = color.blue(value) if value != default_value else color.vanilla(value)
+        compressed = helper.compress(highlighted) if compress else highlighted
+        self.logger.debug("{:31}{:48}{}".format(color.yellow(label), help, compressed))
+
+
+    def get_local_services(self) -> typing.List[int]:
+        """Returns a list of 0, 1, or more process IDs"""
+        pid_list = helper.get_pid_list_by_pattern(PROGRAM)
+        if len(pid_list) == 0:
+            self.logger.debug(color.yellow("No launcher is running currently."))
+        elif len(pid_list) == 1:
+            self.logger.debug(color.green("Launcher service is running with process ID [{}].".format(pid_list[0])))
+        else:
+            self.logger.debug(color.green("Multiple launcher services are running with process IDs {}".format(pid_list)))
+        return pid_list
+
+
+    def kill_local_services(self, pid_list):
+        for x in pid_list:
+            self.logger.debug(color.yellow("Killing exisiting launcher service with process ID [{}].".format(x)))
+            helper.terminate(x)
+
+
+    def connect_to_existing_local_service(self, pid):
+        cmd_and_args = helper.get_cmd_and_args_by_pid(pid)
+        for i, x in enumerate(shlex.split(cmd_and_args)):
+            if i == 0:
+                existing_file = x
+            elif x.startswith("--http-server-address"):
+                existing_port = int(x.split(":")[-1])
+                break
+        else:
+            self.logger.error("ERROR: Failed to extract \"--http-server-address\" from \"{}\" (process ID {})!".format(cmd_and_args, pid), assert_false=True)
         self.logger.debug(color.green("Connecting to existing launcher service with process ID [{}].".format(pid)))
         self.logger.debug(color.green("No new launcher service will be started."))
         self.logger.debug("Configuration of existing launcher service:")
-        self.logger.debug("--- Listening port: [{}]".format(color.yellow(current_port)))
-        self.logger.debug("--- Path to file: {}".format(color.vanilla(current_file)))
-        if self.port != current_port:
-            self.logger.debug(color.yellow("Warning: port setting (port = {}) ignored.".format(self.port)))
-            self.port = current_port
-        if self.file != current_file:
-            self.logger.debug(color.yellow("Warning: file setting (file = {}) ignored.".format(self.file)))
-            self.file = current_file
+        self.logger.debug("--- Listening port: [{}]".format(color.blue(existing_port)))
+        self.logger.debug("--- Path to file: [{}]".format(color.blue(existing_file)))
+        if self.port != existing_port:
+            self.logger.warn("WARNING: Port setting (port={}) ignored.".format(self.port))
+            self.port = existing_port
+        if self.file != existing_file:
+            self.logger.warn("WARNING: File setting (file={}) ignored.".format(self.file))
+            self.file = existing_file
         self.logger.debug("To always start a new launcher service, pass {} or {}.".format(color.yellow("-s"), color.yellow("--start")))
         self.logger.debug("To kill existing launcher services, pass {} or {}.".format(color.yellow("-k"), color.yellow("--kill")))
 
 
-    def start_service(self):
+    def start_local_service(self):
         self.logger.debug(color.green("Starting a new launcher service."))
-        subprocess.Popen([self.file, "--http-server-address=0.0.0.0:{}".format(self.port), "--http-threads=4"])
-        if not self.get_service_pid_list():
-            self.logger.error("Error: Launcher service is not started properly!", assert_false=True)
-
-
-    def kill_service(self, spid=None):
-        spid = self.get_service_pid_list() if spid is None else spid
-        for x in spid:
-            self.logger.debug(color.yellow("Killing exisiting launcher service with process ID [{}].".format(x)))
-            subprocess.run(["kill", "-SIGTERM", str(x)])
-
-
-    def get_service_pid_list(self) -> List[int]:
-        """Returns a list of 0, 1, or more process IDs"""
-        spid = helper.pgrep(PROGRAM)
-        if len(spid) == 0:
-            self.logger.debug(color.yellow("No launcher is running currently."))
-        elif len(spid) == 1:
-            self.logger.debug(color.green("Launcher service is running with process ID [{}].".format(spid[0])))
-        else:
-            self.logger.debug(color.green("Multiple launcher services are running with process IDs {}".format(spid)))
-        return spid
-
-
-    def get_service_port(self, pid):
-        res = subprocess.Popen(["ps", "-p", str(pid), "-o", "command="], stdout=subprocess.PIPE).stdout.read().decode("ascii")
-        shlex.split(res)
-        for x in shlex.split(res):
-            if x.startswith("--http-server-address"):
-                return int(x.split(':')[-1])
-        assert False, self.alert.red("Failed to get --http-server-address from process ID {}!".format(pid))
-
-
-    def get_service_file(self, pid):
-        return subprocess.Popen(["ps", "-p", str(pid), "-o", "comm="], stdout=subprocess.PIPE).stdout.read().rstrip().decode("ascii")
+        helper.quiet_run([self.file, "--http-server-address=0.0.0.0:{}".format(self.port), "--http-threads=4"])
+        if not self.get_local_services():
+            self.logger.error("ERROR: Launcher service is not started properly!", assert_false=True)
 
 
 class Cluster:
-    def __init__(self, service, cluster_id=None, topology=None, center_node_id=None, total_nodes=None, total_producers=None, producer_nodes=None, unstarted_nodes=None, extra_configs: typing.List[str]=[], dont_vote=False, dont_bootstrap=False):
+    def __init__(self, service, cluster_id=None, topology=None, center_node_id=None, total_nodes=None, total_producers=None, producer_nodes=None, unstarted_nodes=None, extra_configs: typing.List[str]=[], dont_vote=None, dont_bootstrap=None):
         """
         Bootstrap
         ---------
@@ -352,6 +349,7 @@ class Cluster:
         self.total_producers = helper.override(DEFAULT_TOTAL_PRODUCERS, total_producers, self.cla.total_producers)
         self.producer_nodes  = helper.override(DEFAULT_PRODUCER_NODES,  producer_nodes,  self.cla.producer_nodes)
         self.unstarted_nodes = helper.override(DEFAULT_UNSTARTED_NODES, unstarted_nodes, self.cla.unstarted_nodes)
+        self.dont_vote       = helper.override(DEFAULT_DONT_VOTE,       dont_vote,       self.cla.dont_vote)
         self.dont_bootstrap  = helper.override(DEFAULT_DONT_BOOTSTRAP,  dont_bootstrap,  self.cla.dont_bootstrap)
         self.extra_configs   = extra_configs
 
@@ -386,7 +384,7 @@ class Cluster:
             self.print_header("resolve conflict in cluster configuration")
             self.print.vanilla("Conflict: total producers ({}) <= producer nodes ({}).".format(self.total_producers, self.producer_nodes))
             self.print.vanilla("Resolution: total_producers takes priority over producer_nodes.")
-            self.logger.debug(color.yellow("Warning: producer nodes setting (producer_nodes = {}) ignored.".format(self.producer_nodes)))
+            self.logger.debug(color.yellow("WARNING: Producer nodes setting (producer_nodes = {}) ignored.".format(self.producer_nodes)))
             self.producer_nodes = self.total_producers
 
 
@@ -551,6 +549,8 @@ class Cluster:
         self.print_config_helper("-y: total_producers", HELP_TOTAL_PRODUCERS,   self.total_producers,   DEFAULT_TOTAL_PRODUCERS)
         self.print_config_helper("-z: producer_nodes",  HELP_PRODUCER_NODES,    self.producer_nodes,    DEFAULT_PRODUCER_NODES)
         self.print_config_helper("-u: unstarted_nodes", HELP_UNSTARTED_NODES,   self.unstarted_nodes,   DEFAULT_UNSTARTED_NODES)
+        self.print_config_helper("-w: dont_vote",       HELP_DONT_VOTE,         self.dont_vote,         DEFAULT_DONT_VOTE)
+        self.print_config_helper("-q: dont_bootstrap",  HELP_DONT_BOOTSTRAP,    self.dont_bootstrap,    DEFAULT_DONT_BOOTSTRAP)
 
 
     def launch_cluster(self, **kwargs):
@@ -679,7 +679,7 @@ class Cluster:
             if not ix.response.ok:
                 log.error(ix.response.text, assert_false=True)
             if expect_transaction_id and ix.transaction_id is None:
-                log.warn("Warning: No transaction ID returned.")
+                log.warn("WARNING: No transaction ID returned.")
             if expect_transaction_id:
                 assert self.verify_transaction(ix.transaction_id, verify_key=verify_key, silent=silent, buffer=buffer)
             # log.flush()
@@ -690,7 +690,6 @@ class Cluster:
             return ix
 
 
-    # MARK 191010: TODO assert --> logger.error(assert_false=True)
     # keep majority of system logging at DEBUG, leave INFO for user code
     def verify_transaction(self, transaction_id, verify_key="irreversible", node_id=0, retry=10, sleep=0.5, silent=False, buffer=False):
         # TODO: can have an assert to guard against non-existing field other than irreversible / contained
@@ -760,5 +759,9 @@ def test():
     cluster = Cluster(service=service)
 
 
+# TODO:
+# 1. better Interaction passage, methods, functions
+# 2. really need silent in call, verify_transaction?
+# 3. pass buffer parameter between call and verify_transaction.
 if __name__ == "__main__":
     test()

@@ -22,7 +22,7 @@ _COLORS = {"black":         0,
 
 
 def vanilla(text):
-    return text
+    return str(text)
 
 
 def bold(text):
