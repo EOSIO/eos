@@ -22,7 +22,7 @@ def wait_get_block(cluster, block_num, print):
     assert tries > 0, "failed to get block %d, max_seen_blocknum is %d" % (block_num, max_seen_blocknum)
     return json.loads(cluster.get_block(block_num).response.text)
 
-def isInSync(cluster, minNodeNum):
+def isInSync(cluster, minNodeNum, assertInSync=False):
     tries = 5
     while tries > 0:
         ix = cluster.get_cluster_info()
@@ -49,6 +49,8 @@ def isInSync(cluster, minNodeNum):
             break
         tries = tries - 1
         time.sleep(0.1)
+    if assertInSync:
+        cluster.service.logger.error(ix.response.text, buffer=False)
     return False,min_block_num,max_block_num
 
 def verifyProductionRound(cluster, exp_prod, print):
@@ -102,21 +104,25 @@ def main():
     node_prod.remove("eosio")
     print_info("vote for following producers (from node 0 and node 2):")
     for p in node_prod:
-        print_info(p)
+        if p in cluster.nodes[0]["producers"]:
+            print_info("%s (node 0)" % (p))
+        else:
+            print_info("%s (node 2)" % (p))
 
     cluster.vote_for_producers(node_id=0, voter="tester1", voted_producers=node_prod)
 
-    res,min_blk,max_blk = isInSync(cluster, 3)
+    res,min_blk,max_blk = isInSync(cluster, 3, assertInSync=True)
     assert res, "cluster is not in sync"
 
     print_info("verfiying schedule...")
     verifyProductionRound(cluster, node_prod, print=print_info)
 
-    res,min_blk,max_blk = isInSync(cluster, 3)
+    res,min_blk,max_blk = isInSync(cluster, 3, assertInSync=True)
     last_known_insync_blk = max_blk
     assert res, "cluster is not in sync"
 
     # kill bridge node with signal 9
+    print_info("cluster is in-sync. killing bridge node (node 1)")
     cluster.stop_node(node_id=1, kill_sig=9)
 
     time.sleep(1)
@@ -137,28 +143,29 @@ def main():
 
     assert min_blk1 > min_blk0 and max_blk1 > max_blk0, "nodes are not advancing"
 
-    print_info("try to restart bridge node")
-    time.sleep(1)
-
-    # restart node with --delete-all-blocks
+    # restarting bridge node
+    print_info("restarting bridge node with empty database")
     cluster.start_node(node_id=1, extra_args="--delete-all-blocks")
 
-    tries = 30
+    tries = 60
     while tries > 0:
         res,min_blk,max_blk = isInSync(cluster, 3)
         if res:
             break
         tries = tries - 1
         time.sleep(1)
-
     assert tries > 0, "cluster is not in sync"
 
-    time.sleep(1)
+    tries = 60
+    while tries > 0:
+        time.sleep(1)
+        res,min_blk2,max_blk2 = isInSync(cluster, 3)
+        if res and min_blk2 > min_blk:
+            break
+        tries = tries - 1
+    assert tries > 0, "cluster is not advancing"
 
-    res,min_blk2,max_blk2 = isInSync(cluster, 3)
-    assert min_blk2 > min_blk, "cluster is not advancing"
-
-    print_info(">>> Nodes in-synced, head block num is %d" % (max_blk2))
+    print_info(">>> Nodes are in-synced and advancing, head block num is %d. Begin to verify from block %d to %d" % (max_blk2, last_known_insync_blk, max_blk2))
 
     for block_num in range(last_known_insync_blk, max_blk2 + 1):
         blk0 = cluster.get_block(block_num, node_id=0).response.text
