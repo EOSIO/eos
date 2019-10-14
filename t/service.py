@@ -313,7 +313,7 @@ class Service:
 
 
 class Cluster:
-    def __init__(self, service, cluster_id=None, topology=None, center_node_id=None, total_nodes=None, total_producers=None, producer_nodes=None, unstarted_nodes=None, dont_vote=False, dont_bootstrap=False):
+    def __init__(self, service, cluster_id=None, topology=None, center_node_id=None, total_nodes=None, total_producers=None, producer_nodes=None, unstarted_nodes=None, extra_configs: typing.List[str]=[], dont_vote=False, dont_bootstrap=False):
         """
         Bootstrap
         ---------
@@ -353,6 +353,7 @@ class Cluster:
         self.producer_nodes  = helper.override(DEFAULT_PRODUCER_NODES,  producer_nodes,  self.cla.producer_nodes)
         self.unstarted_nodes = helper.override(DEFAULT_UNSTARTED_NODES, unstarted_nodes, self.cla.unstarted_nodes)
         self.dont_bootstrap  = helper.override(DEFAULT_DONT_BOOTSTRAP,  dont_bootstrap,  self.cla.dont_bootstrap)
+        self.extra_configs   = extra_configs
 
         # reconcile conflict in config
         self.resolve_config_conflict()
@@ -553,7 +554,7 @@ class Cluster:
 
 
     def launch_cluster(self, **kwargs):
-        return self.call("launch_cluster", cluster_id=self.cluster_id, center_node_id=self.center_node_id, node_count=self.total_nodes, shape=self.topology, nodes=self.nodes, expect_transaction_id=False, **kwargs)
+        return self.call("launch_cluster", cluster_id=self.cluster_id, center_node_id=self.center_node_id, node_count=self.total_nodes, shape=self.topology, nodes=self.nodes, expect_transaction_id=False, extra_configs=self.extra_configs, **kwargs)
 
 
     def get_cluster_info(self, **kwargs):
