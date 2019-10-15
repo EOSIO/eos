@@ -3666,13 +3666,12 @@ namespace eosio {
 
       if (my->use_topology_plug) {
          node_descriptor nd;
-         nd.my_id = 0;
-
-         nd.location = my->topology_plug->bp_name() + ":" + my->p2p_address;
          auto version = net_version_base + net_version;
          stringstream ss;
          ss << version;
          nd.version = ss.str();
+
+
          if( !my->ops.empty() ) {
             for( auto& v : my->ops ) {
                nd.producers.emplace_back( eosio::chain::name( v ) );
@@ -3682,7 +3681,7 @@ namespace eosio {
          my->node_id = my->topology_plug->gen_long_id(nd);
          uint64_t sid = my->topology_plug->make_node_id(my->node_id);
          eosio::node_id shortid = my->topology_plug->add_node( nd );
-
+         my->topology_plug->init_node_descriptor(nd, my->node_id, my->p2p_address, ss.str() );
          my->topology_plug->set_local_node_id( shortid );
          {
             std::lock_guard<std::mutex> g( my->keepalive_timer_mtx );
