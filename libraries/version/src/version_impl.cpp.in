@@ -14,11 +14,10 @@ namespace eosio { namespace version {
    const bool        version_dirty { @_VERSION_DIRTY_@  };
 
    std::string _version_client() {
-      if( version_major == "unknown" || version_major.empty() ) {
+      if( version_major == "unknown" || version_major.empty() || version_minor == "unknown" || version_minor.empty()) {
          return "unknown";
       } else {
-         std::string version{'v' + version_major };
-         if( !version_minor.empty() )  version += '.' + version_minor;
+         std::string version{'v' + version_major + '.' + version_minor};
          if( !version_patch.empty() )  version += '.' + version_patch;
          if( !version_suffix.empty() ) version += '-' + version_suffix;
          return version;
@@ -26,11 +25,10 @@ namespace eosio { namespace version {
    }
 
    std::string _version_full() {
-      if( version_major == "unknown" || version_major.empty() ) {
+      if( version_major == "unknown" || version_major.empty() || version_minor == "unknown" || version_minor.empty()) {
          return "unknown";
       } else {
-         std::string version{'v' + version_major };
-         if( !version_minor.empty() )  version += '.' + version_minor;
+         std::string version{'v' + version_major + '.' + version_minor};
          if( !version_patch.empty() )  version += '.' + version_patch;
          if( !version_suffix.empty() ) version += '-' + version_suffix;
          if( !version_hash.empty() )   version += '-' + version_hash;
