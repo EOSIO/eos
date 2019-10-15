@@ -287,7 +287,9 @@ namespace eosiosystem {
 
    void system_contract::torewards( const name& payer, const asset& amount ) {
       require_auth( payer );
+      check( amount.is_valid(), "invalid amount" );
       check( amount.symbol == core_symbol(), "invalid symbol" );
+      check( amount.amount > 0, "amount must be positive" );
 
       const auto to_per_stake_pay = amount.amount * _gremstate.per_stake_share;
       const auto to_per_vote_pay  = share_pervote_reward_between_producers(amount.amount * _gremstate.per_vote_share);
