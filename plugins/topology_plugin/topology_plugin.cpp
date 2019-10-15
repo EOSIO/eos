@@ -120,6 +120,9 @@ namespace eosio {
                   if (forks[p].begin()->when < expiry ) {
                      forks[p].erase(forks[p].begin());
                   }
+                  else {
+                     break;
+                  }
                }
                size_t f = forks[p].size();
                if ( f > 0 ) {
