@@ -40,9 +40,6 @@ namespace Runtime
 		std::set<ObjectInstance*> referencedObjects;
 		std::vector<ObjectInstance*> pendingScanObjects;
 
-		// Gather GC roots from running WASM threads.
-		getThreadGCRoots(rootObjectReferences);
-
 		// Initialize the referencedObjects set from the rootObjectReferences and intrinsic objects.
 		for(auto object : rootObjectReferences)
 		{

@@ -16,10 +16,6 @@ else()
    endif()
 endif()
 
-if("wavm" IN_LIST EOSIO_WASM_RUNTIMES)
-   set(CHAIN_WAVM_SOURCES "webassembly/wavm.cpp")
-endif()
-
 if("eos-vm-oc" IN_LIST EOSIO_WASM_RUNTIMES)
    set(CHAIN_EOSVMOC_SOURCES webassembly/eos-vm-oc/code_cache.cpp
                              webassembly/eos-vm-oc/executor.cpp
@@ -86,7 +82,6 @@ add_library( eosio_chain
               asset.cpp
               snapshot.cpp
 
-             ${CHAIN_WAVM_SOURCES}
              webassembly/wabt.cpp
              ${CHAIN_EOSVMOC_SOURCES}
              ${CHAIN_EOSVM_SOURCES}
