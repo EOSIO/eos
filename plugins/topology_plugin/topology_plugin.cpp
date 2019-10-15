@@ -678,8 +678,10 @@ namespace eosio {
          }
       }
       nd.api_endpoint = my->api_endpoint;
-      for (auto &lp : my->local_producers) {
-         nd.producers.emplace_back(lp);
+      if (nd.producers.empty() ) {
+         for (auto &lp : my->local_producers) {
+            nd.producers.emplace_back(lp);
+         }
       }
    }
 

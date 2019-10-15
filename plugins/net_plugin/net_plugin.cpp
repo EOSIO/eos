@@ -3680,8 +3680,8 @@ namespace eosio {
 
          my->node_id = my->topology_plug->gen_long_id(nd);
          uint64_t sid = my->topology_plug->make_node_id(my->node_id);
-         eosio::node_id shortid = my->topology_plug->add_node( nd );
          my->topology_plug->init_node_descriptor(nd, my->node_id, my->p2p_address, ss.str() );
+         eosio::node_id shortid = my->topology_plug->add_node( nd );
          my->topology_plug->set_local_node_id( shortid );
          {
             std::lock_guard<std::mutex> g( my->keepalive_timer_mtx );
