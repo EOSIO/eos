@@ -401,7 +401,7 @@ datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosi
       auto&       index  = obj.db.get_index<eosio::chain::permission_index>();
       const auto* parent = index.find(obj.obj.parent);
       if (!parent) {
-         auto& undo = index.stack().back();
+         auto undo = index.last_undo_session();
          // FIXME: This is inefficient
          auto  it   = std::find_if(undo.removed_values.begin(), undo.removed_values.end(), [&](auto& x){ return x.id._id == obj.obj.parent; });
          EOS_ASSERT(it != undo.removed_values.end(), eosio::chain::plugin_exception,
