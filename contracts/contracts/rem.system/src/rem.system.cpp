@@ -454,7 +454,7 @@ EOSIO_DISPATCH( eosiosystem::system_contract,
      (deposit)(withdraw)(buyrex)(unstaketorex)(sellrex)(cnclrexorder)(rentcpu)(rentnet)(fundcpuloan)(fundnetloan)
      (defcpuloan)(defnetloan)(updaterex)(consolidate)(mvtosavings)(mvfrsavings)(setrex)(rexexec)(closerex)
      // delegate_bandwidth.cpp
-     (delegatebw)(undelegatebw)(refund)
+     (delegatebw)(undelegatebw)(refund)(refundtostake)
      // voting.cpp
      (regproducer)(unregprod)(voteproducer)(regproxy)
      // producer_pay.cpp

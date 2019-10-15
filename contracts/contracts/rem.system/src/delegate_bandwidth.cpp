@@ -26,6 +26,7 @@ namespace eosiosystem {
    
    using std::map;
    using std::pair;
+   using namespace std::string_literals;
 
    static constexpr uint32_t refund_delay_sec = 3*24*3600;
 
@@ -250,24 +251,14 @@ namespace eosiosystem {
       auto voter_itr = _voters.find( voter.value );
       if( voter_itr == _voters.end() ) {
          voter_itr = _voters.emplace( voter, [&]( auto& v ) {
-            v.owner           = voter;
-            v.staked          = total_update.amount;
-            v.stake_lock_time = ct + _gremstate.stake_lock_period;
-            v.locked_stake    = total_update.amount;
+            v.owner  = voter;
+            v.staked = total_update.amount;
+            v.locked_stake = total_update.amount;
          });
       } else {
          _voters.modify( voter_itr, same_payer, [&]( auto& v ) {
-            v.staked       += total_update.amount;
+            v.staked += total_update.amount;
             v.locked_stake += total_update.amount;
-            if ( total_update.amount >= 0 ) {
-               const auto restake_rate = double(total_update.amount) / v.staked;
-               const auto prevstake_rate = 1 - restake_rate;
-               const auto time_to_stake_unlock = std::max( v.stake_lock_time - ct, microseconds{} );
-
-               v.stake_lock_time = ct
-                     + microseconds{ static_cast< int64_t >( prevstake_rate * time_to_stake_unlock.count() ) }
-                     + microseconds{ static_cast< int64_t >( restake_rate * _gremstate.stake_lock_period.count() ) };
-            }
          });
       }
 
@@ -290,6 +281,19 @@ namespace eosiosystem {
       check( stake_quantity >= zero_asset, "must stake a positive amount" );
       check( !transfer || from != receiver, "cannot use transfer flag if delegating to self" );
       changebw( from, receiver, stake_quantity, transfer);
+
+      const auto ct = current_time_point();
+      // apply stake-lock to those who received stake
+      const auto& voter = _voters.get( transfer ? receiver.value : from.value, "user has no resources");
+      _voters.modify( voter, same_payer, [&]( auto& v ) {
+         const auto restake_rate = double(stake_quantity.amount) / v.staked;
+         const auto prevstake_rate = 1.0 - restake_rate;
+         const auto time_to_stake_unlock = std::max( v.stake_lock_time - ct, microseconds{} );
+
+         v.stake_lock_time = ct
+               + microseconds{ static_cast< int64_t >( prevstake_rate * time_to_stake_unlock.count() ) }
+               + microseconds{ static_cast< int64_t >( restake_rate * _gremstate.stake_lock_period.count() ) };
+      });
    } // delegatebw
 
    void system_contract::undelegatebw( const name& from, const name& receiver,
@@ -301,26 +305,24 @@ namespace eosiosystem {
              "cannot undelegate bandwidth until the chain is activated (at least 15% of all tokens participate in voting)" );
 
 
-      // we apply stake-lock rules only for self-delegated stake.
       const auto ct = current_time_point();
-      if ( from == receiver )
-      {
-         const auto& voter = _voters.get(from.value, "user has no resources");
+      const auto& voter = _voters.get(from.value, "user has no resources");
+      check(voter.stake_lock_time <= ct, "cannot undelegate during stake lock period");
 
-         check(voter.stake_lock_time <= ct, "cannot undelegate during stake lock period");
+      // apply unlock rules only within _gremstate.stake_unlock_period
+      if ( voter.last_undelegate_time <= voter.stake_lock_time + _gremstate.stake_unlock_period ) {
          check(voter.locked_stake != 0 && voter.locked_stake >= unstake_quantity.amount, "insufficient locked amount");
-
          check( ct - voter.last_undelegate_time > eosio::days(1), "already undelegated within past day" );
 
          const auto unclaimed_days = voter.last_undelegate_time.time_since_epoch().count() ? (ct - voter.last_undelegate_time).count() / eosio::days( 1 ).count()
-                                                                                           : 1;
+                                                                                             : 1;
 
          const auto unlock_period_in_days = _gremstate.stake_unlock_period.count() / eosio::days( 1 ).count();
 
          auto undelegate_limit = voter.locked_stake * unclaimed_days / unlock_period_in_days;
-         check(unstake_quantity.amount <= undelegate_limit, "insufficient unlocked amount");
+         check(unstake_quantity.amount <= undelegate_limit, "insufficient unlocked amount: "s + asset(undelegate_limit, core_symbol()).to_string());
 
-         _voters.modify(voter, from, [&](auto &v) {
+         _voters.modify(voter, same_payer, [&](auto &v) {
                v.last_undelegate_time = ct;
          });
       }
@@ -342,5 +344,17 @@ namespace eosiosystem {
       refunds_tbl.erase( req );
    }
 
+
+   void system_contract::refundtostake( const name& owner ) {
+      print("refundtostake");
+      require_auth( owner );
+
+      refunds_table refunds_tbl( _self, owner.value );
+      auto req = refunds_tbl.get( owner.value, "refund request not found" );
+      check( req.request_time + seconds(refund_delay_sec) <= current_time_point(), "refund is not available yet" );
+
+      print( "refundtostake: ", req.resource_amount.to_string());
+      changebw( owner, owner, req.resource_amount, false );
+   }
 
 } //namespace eosiosystem
