@@ -52,6 +52,14 @@ namespace eosio {
    using eosio::chain::transaction_id_type;
    using eosio::chain::sha256_less;
 
+   constexpr auto bgcolor = "\"#177FBE\"";
+   constexpr auto defnodefill = "white";
+   constexpr auto nofork = "\"#00EE00\"";
+   constexpr auto fewfork = "\"#EEEE00\"";
+   constexpr auto manyfork = "\"#EE0000\"";
+
+   constexpr auto forkvalidtime = 10 * 60;
+
    /**
     * Link identifies a set of metrics for the network connection between two nodes
     *
@@ -93,14 +101,37 @@ namespace eosio {
       topo_node () : info(), links(), routes() {}
       topo_node (node_descriptor &nd) : links() { info = nd ; }
 
-      node_descriptor   info;
-      set<link_id>   links;
-      flat_map<node_id,route_descriptor> routes;
-      uint32_t last_block_produced;
-      link_metrics forks;
-
-      string dot;
+      node_descriptor                         info;
+      set<link_id>                            links;
+      flat_map<node_id,route_descriptor>      routes;
+      uint32_t                                last_block_produced;
+      fork_info                               current;
+      flat_map<account_name, vector<fork_info>> forks;
+      string                                  dot;
       uint64_t primary_key() const { return info.my_id; }
+
+      string dot_color() {
+         uint32_t expiry = time(0) - forkvalidtime;
+         string c = defnodefill;
+         if( info.producers.size() ) {
+            c = nofork;
+            for (auto p : info.producers) {
+               while ( forks[p].size() > 0 ) {
+                  if (forks[p].begin()->when < expiry ) {
+                     forks[p].erase(forks[p].begin());
+                  }
+               }
+               size_t f = forks[p].size();
+               if ( f > 0 ) {
+                  c = fewfork;
+               }
+               if ( f > 10 ) {
+                  return manyfork;
+               }
+            }
+         }
+         return c;
+      }
 
       string dot_label() {
          if (dot.empty()) {
@@ -111,30 +142,17 @@ namespace eosio {
                }
                dt << info.location.at(i);
             }
-            dt << "\\n(" << info.my_id << ")";
             if( info.producers.size() ) {
                for (auto pn : info.producers ) {
                   dt << "\\n" << pn;
                }
             }
+            dt << "\\n" << info.api_endpoint;
+
             dot = dt.str();
          }
          return dot;
       }
-   };
-
-   struct fork_descriptor {
-      link_id from_link;
-      block_id_type fork_base;
-      uint16_t depth;
-      uint16_t deficit;
-      uint16_t overage;
-   };
-
-   struct topo_producer {
-      account_name id;
-      fork_descriptor current;
-      vector<fork_descriptor> forks;
    };
 
    constexpr auto link_role_str( link_role role ) {
@@ -197,7 +215,6 @@ namespace eosio {
    public:
       flat_map<node_id, topo_node>          nodes;
       flat_map<link_id, topo_link>          links;
-      flat_map<account_name, topo_producer> producers;
       flat_map<metric_kind, std::string>    units;
       string                                api_endpoint;
 
@@ -216,7 +233,7 @@ namespace eosio {
 
       void    update_samples( const link_sample &ls, bool flip );
       void    update_map( const map_update &mu );
-      void    update_forks( const fork_info &fi );
+      void    update_forks(node_id origin, const fork_info &fi );
       topo_node *find_node( const chain::name prod );
       void    on_block_recv( link_id src, block_id_type blk_id, const signed_block_ptr sb );
       void    init_topology_message( topology_message &tm );
@@ -414,8 +431,9 @@ namespace eosio {
       return links[onlink].info.active == from ? links[onlink].info.passive : links[onlink].info.active;
    }
 
-   void topology_plugin_impl::update_forks( const fork_info &fi ) {
-
+   void topology_plugin_impl::update_forks( node_id origin, const fork_info &fi ) {
+      auto &tn = nodes[origin];
+      tn.forks[tn.info.producers[0]].emplace_back(fi);
    }
 
    void topology_plugin_impl::update_samples( const link_sample &ls, bool flip) {
@@ -481,13 +499,20 @@ namespace eosio {
             if (block_count < max_produced) {
                uint16_t deficit = max_produced - block_count;
                elog( "found producer switched to ${pp} from ${hp} ${d} blocks too soon", ("pp", pend_prod)("hp", head_prod)("d",deficit));
-               producers[head_prod].forks.emplace_back(fork_descriptor({src,blk_id,block_count,deficit,0}));
-               if (producers[prev_producer].current.from_link != 0) {
-                  producers[prev_producer].forks.push_back(producers[prev_producer].current);
-                  producers[prev_producer].current.from_link = 0;
-                  producers[prev_producer].forks.empty();
-                  prev_producer = head_prod;
+               uint32_t now = time(0);
+               topo_node *tnode = find_node(head_prod);
+               if (tnode == nullptr) {
+                  elog( "Failed to find node for producer ${h}",("h",head_prod));
+                  return;
                }
+
+               tnode->forks[head_prod].emplace_back(fork_info({now,src,blk_id,block_count,deficit,0}));
+               tnode = find_node(prev_producer);
+               if (tnode != nullptr && tnode->current.from_link != 0) {
+                  tnode->forks[prev_producer].push_back(tnode->current);
+                  tnode->current.from_link = 0;
+               }
+               prev_producer = head_prod;
             }
             block_count = 1;
          }
@@ -697,6 +722,8 @@ namespace eosio {
 
    class topo_msg_handler : public fc::visitor<void> {
    public:
+      node_id origin;
+
       void operator()( const map_update& msg) {
          ilog("got a map update message");
          my_impl->update_map( msg );
@@ -709,7 +736,7 @@ namespace eosio {
 
       void operator()( const fork_info& msg) {
          ilog("got a fork info message");
-         my_impl->update_forks( msg );
+         my_impl->update_forks( origin, msg );
       }
    };
 
@@ -723,6 +750,7 @@ namespace eosio {
       //      topology_message_ptr ptr = std::make_shared<topology_message>( msg );
       for ( const auto &p : msg.payload) {
          topo_msg_handler tm;
+         tm.origin = msg.origin;
          p.visit( tm );
       }
       msg.fwds++;
@@ -760,12 +788,6 @@ namespace eosio {
    string topology_plugin::graph( ) {
       ostringstream df;
 
-      string bgcolor = "\"#177FBE\"";
-      string defnodefill = "white";
-      string nofork = "\"#00EE00\"";
-      string fewfork = "\"#EEEE00\"";
-      string manyfork = "\"#EE0000\"";
-
       df << " digraph G\n{\nlayout=\"neato\";\n"
          << "node [style = filled, fillcolor = " << defnodefill << ", shape = rectangle];\n"
          << "edge [len = 1];\n"
@@ -774,34 +796,12 @@ namespace eosio {
 
       set<link_id> seen;
       for (auto &tnode : my->nodes) {
-         string c = defnodefill;
-         bool show_api = false;
          if (tnode.first == 0) {
             continue;
          }
-         df << "n_" << tnode.first << "[";
-         if( tnode.second.info.producers.size() ) {
-            c = nofork;
-            for (auto p : tnode.second.info.producers) {
-               auto f = my->producers[p].forks.size();
-               if ( f > 0 ) {
-                  show_api = true;
-                  c = fewfork;
-               }
-               if ( f > 10 ) {
-                  c = manyfork;
-                  break;
-               }
-            }
-            df << "fillcolor = " << c << "\n";
-         }
-
-         df << "label=\""
-            << tnode.second.dot_label();
-         if (show_api) {
-            df << "\\n" << tnode.second.info.api_endpoint;
-         }
-         df << "\" ";
+         df << "n_" << tnode.first << "[ ";
+         df << "fillcolor = " << tnode.second.dot_color() << "\n";
+         df << "label=\"" << tnode.second.dot_label() << "\" ";
 
          df << "];\n";
       }
@@ -817,8 +817,7 @@ namespace eosio {
                ilog( "did not find link id ${id}", ("id",l));
                continue;
             }
-            if( !tlink->second.is_open ||
-                tlink->second.up.measurements[messages_sent].avg == 0) {
+            if( !tlink->second.is_open ) {
                continue;
             }
             seen.insert(tlink->second.info.my_id);
@@ -829,10 +828,13 @@ namespace eosio {
             }
             uint32_t late = tlink->second.up.measurements[net_latency].avg +
                tlink->second.up.measurements[queue_latency].avg;
-            df << " [dir=forward, label=\"latency: "
-               << late << " us\\nsent: "
-               << tlink->second.up.measurements[messages_sent].avg << " msgs\", "
-               << "color= black ];\n";
+            df << " [dir=forward, ";
+            if( tlink->second.up.measurements[messages_sent].avg != 0 ) {
+               df << "label=\"latency: "
+                  << late << " us\\nsent: "
+                  << tlink->second.up.measurements[messages_sent].avg << " msgs\", ";
+            }
+            df << "color= black ];\n";
          }
       }
       df << "}\n";
@@ -852,11 +854,6 @@ namespace eosio {
       for (auto &tnode : my->nodes) {
          df << "{ \"key\" = \"" << tnode.first << "\",\n";
          df << "\"value\" = " << fc::json::to_pretty_string( tnode.second ) << "}\n";
-      }
-      df << "]}\n{\"producers\" = [\n";
-      for (auto &tproducer : my->producers) {
-         df << "{ \"key\" = \"" << tproducer.first << "\",\n";
-         df << "\"value\" = " << fc::json::to_pretty_string( tproducer.second ) << "}\n";
       }
       df << "]}\n";
 
@@ -923,20 +920,8 @@ namespace eosio {
                auto len = pnode->routes[prev_node_id].length;
                if ( pnode->routes[prev_node_id].path == 0 ) {
                   len = my->find_route(prev_node_id, pnode->info.my_id);
-                   // df << " fr ";
                }
-               // else {
-               //    df << " p = " << pnode->routes[prev_node_id].path << " ";
-               // }
                df << len;
-
-               // df << " | ";
-               // if( my->producers.find(ap.producer_name) == my->producers.cend()) {
-               //    df << 0;
-               // }
-               // else {
-               //    df << my->producers[ap.producer_name].forks.size();
-               // }
 
                df << "\n";
                prev_node_id = pnode->info.my_id;
@@ -944,28 +929,40 @@ namespace eosio {
          }
       }
 
-      df << "\nNumber of producers indicating microforks: " << my->producers.size() << "\n";
-      if ( my->producers.size() ) {
-         for (auto &tprod : my->producers) {
-            df << "\nProducer " << tprod.first << " has " << tprod.second.forks.size() << " episodes reported\n";
-            for (auto &fdes : tprod.second.forks) {
-               df << " from link " << fdes.from_link << " symptom ";
-               if (fdes.depth > 0) {
-                  df << " fork of " << fdes.depth << " blocks ";
+      int effed = 0;
+      ostringstream flist;
+      if ( my->nodes.size() ) {
+         for (auto &tnode : my->nodes) {
+            for (auto &prod : tnode.second.info.producers) {
+               if (tnode.second.forks[prod].size() == 0) {
+                  continue;
                }
-               else if (fdes.deficit > 0) {
-                  df << " production deficit of " << fdes.deficit << " blocks ";
+               ++effed;
+               flist << "\nProducer " << prod << " has " << tnode.second.forks[prod].size() << " episodes reported\n";
+               for (auto &fdes : tnode.second.forks[prod]) {
+                  auto l = my->links[fdes.from_link];
+                  node_id peer = l.info.active == tnode.second.info.my_id ? l.info.passive : l.info.active;
+                  string fromloc = my->nodes[peer].info.location;
+                  flist << " from link " << fdes.from_link << " symptom ";
+                  if (fdes.depth > 0) {
+                     flist << " fork of " << fdes.depth << " blocks ";
+                  }
+                  else if (fdes.deficit > 0) {
+                     flist << " production deficit of " << fdes.deficit << " blocks ";
+                  }
+                  else if (fdes.overage > 0) {
+                     flist << " produced " << fdes.overage << " too many blocks ";
+                  }
+                  else {
+                     flist << " reporting failure, no fork symptom recorded ";
+                  }
+                  flist << "\n";
                }
-               else if (fdes.overage > 0) {
-                  df << " produced " << fdes.overage << " too many blocks ";
-               }
-               else {
-                  df << " reporting failure, no fork symptom recorded ";
-               }
-               df << "\n";
             }
          }
       }
+      df << "\nNumber of producers indicating microforks: " << effed << "\n";
+      df << flist.str();
 
       int tn = 1;
       int anon = 0;
@@ -1040,6 +1037,4 @@ namespace eosio {
 
 FC_REFLECT(eosio::topo_link,(info)(up)(down)(is_open)(closures))
 FC_REFLECT(eosio::route_descriptor,(length)(path))
-FC_REFLECT(eosio::topo_node,(info)(links)(routes))
-FC_REFLECT(eosio::fork_descriptor,(from_link)(fork_base)(depth)(deficit)(overage))
-FC_REFLECT(eosio::topo_producer,(id)(current)(forks))
+FC_REFLECT(eosio::topo_node,(info)(links)(routes)(current)(forks)(dot))

@@ -30,9 +30,12 @@ namespace eosio{
    };
 
    struct fork_info {
-      name           producer;
-      block_id_type  fork_point;
-      uint32_t       fork_depth;
+      uint32_t      when;
+      link_id       from_link;
+      block_id_type fork_base;
+      uint16_t      depth;
+      uint16_t      deficit;
+      uint16_t      overage;
    };
 
    using topology_data = static_variant<map_update, link_sample, fork_info>;
@@ -50,5 +53,5 @@ namespace eosio{
 
 FC_REFLECT(eosio::link_sample, (link)(down)(up))
 FC_REFLECT(eosio::map_update, (add_nodes)(add_links)(drop_nodes)(drop_links))
-FC_REFLECT(eosio::fork_info, (producer)(fork_point)(fork_depth))
+FC_REFLECT(eosio::fork_info,  (when)(from_link)(fork_base)(depth)(deficit)(overage))
 FC_REFLECT(eosio::topology_message, (origin)(destination)(fwds)(ttl)(payload))
