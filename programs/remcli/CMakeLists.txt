@@ -1,5 +1,7 @@
 configure_file(help_text.cpp.in help_text.cpp @ONLY)
-add_executable( ${CLI_CLIENT_EXECUTABLE_NAME} main.cpp httpc.cpp ${CMAKE_CURRENT_BINARY_DIR}/help_text.cpp localize.hpp config.hpp CLI11.hpp)
+file(GLOB_RECURSE MULTIBASE_SRCS *.cpp)
+file(GLOB_RECURSE MULTIBASE_HDRS *.h)
+add_executable( ${CLI_CLIENT_EXECUTABLE_NAME} main.cpp httpc.cpp ${CMAKE_CURRENT_BINARY_DIR}/help_text.cpp localize.hpp config.hpp CLI11.hpp ${MULTIBASE_SRCS} ${MULTIBASE_HDRS})
 if( UNIX AND NOT APPLE )
   set(rt_library rt )
 endif()

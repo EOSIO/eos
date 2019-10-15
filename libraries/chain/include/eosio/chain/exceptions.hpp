@@ -371,6 +371,14 @@ namespace eosio { namespace chain {
                                     3100008, "Feature is currently unsupported" )
       FC_DECLARE_DERIVED_EXCEPTION( node_management_success,                misc_exception,
                                     3100009, "Node management operation successfully executed" )
+      FC_DECLARE_DERIVED_EXCEPTION( multiple_attribute_info,                misc_exception,
+                                    3100010, "Multiple attribute info detected" )
+      FC_DECLARE_DERIVED_EXCEPTION( unknown_attribute_type,                 misc_exception,
+                                    3100011, "Unknown attribute type detected" )
+      FC_DECLARE_DERIVED_EXCEPTION( invalid_cid_encoding,                   misc_exception,
+                                    3100012, "Invalid CID encoding detected" )
+      FC_DECLARE_DERIVED_EXCEPTION( invalid_oid_encoding,                   misc_exception,
+                                    3100013, "Invalid OID encoding detected" )
 
 
 

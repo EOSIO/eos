@@ -121,6 +121,7 @@ Options:
 
 #include <fc/io/fstream.hpp>
 
+#include "attribute_helpers.hpp"
 #include "CLI11.hpp"
 #include "help_text.hpp"
 #include "localize.hpp"
@@ -524,6 +525,18 @@ void send_transaction( signed_transaction& trx, packed_transaction::compression_
 chain::permission_level to_permission_level(const std::string& s) {
    auto at_pos = s.find('@');
    return permission_level { s.substr(0, at_pos), s.substr(at_pos + 1) };
+}
+
+chain::action create_setattr(const name& issuer, const name& receiver, const name& attribute_name, bytes value) {
+   return action {
+      get_account_permissions(tx_permission, {issuer,config::active_name}),
+      eosio::chain::setattr{
+         .issuer         = issuer,
+         .receiver       = receiver,
+         .attribute_name = attribute_name,
+         .value          = value
+      }
+   };
 }
 
 chain::action create_newaccount(const name& creator, const name& newaccount, auth_type owner, auth_type active) {
@@ -2444,6 +2457,57 @@ int main( int argc, char** argv ) {
       std::cout << fc::json::to_pretty_string(get_info()) << std::endl;
    });
 
+   string getAttrIssuer;
+   string getAttrReceiver;
+   string getAttrName;
+   auto getAttribute = get->add_subcommand("attribute", localized("Retrieve attribute information"), false);
+   getAttribute->add_option("issuer", getAttrIssuer, localized("The name of the account that issued attribute"))->required();
+   getAttribute->add_option("receiver", getAttrReceiver, localized("The name of the account attribute was issued for"))->required();
+   getAttribute->add_option("attribute_name", getAttrName, localized("The name of the attribute"))->required();
+   getAttribute->set_callback([&] {
+      auto result = call(get_table_func, fc::mutable_variant_object("json", true)
+         ("code", name(config::attribute_account_name))
+         ("scope", name(config::attribute_account_name))
+         ("table", "attrinfo")
+         ("lower_bound", name(getAttrName).value)
+         ("upper_bound", name(getAttrName).value + 1)
+         ("limit", 1)
+      );
+      auto res = result.as<eosio::chain_apis::read_only::get_table_rows_result>();
+      if( res.rows.empty() || res.rows[0].get_object()["attribute_name"].as_string() != getAttrName ) {
+         std::cerr << "Attribute info not found for " << getAttrName << std::endl;
+         return;
+      }
+      EOS_ASSERT( 1 == res.rows.size(), multiple_attribute_info, "More than one attribute_info" );
+      const auto attr_type = res.rows[0].get_object()["type"].as_int64();
+
+      eosio::uint128_t index_key = name(getAttrReceiver).value;
+      index_key <<= 64;
+      index_key |= name(getAttrIssuer).value;
+      result = call(get_table_func, fc::mutable_variant_object("json", true)
+         ("code", name(config::attribute_account_name))
+         ("scope", getAttrName)
+         ("table", "attributes")
+         ("index_position", "2")
+         ("key_type", "i128")
+         ("lower_bound", index_key)
+         ("upper_bound", index_key + 1)
+         ("limit", 1)
+      );
+      res = result.as<eosio::chain_apis::read_only::get_table_rows_result>();
+      if( res.rows.empty() ) {
+         std::cerr << "Attribute " << getAttrName << " not found for " << getAttrReceiver << " issued by " << getAttrIssuer << std::endl;
+         return;
+      }
+      EOS_ASSERT( 1 == res.rows.size(), misc_exception, "More than one attribute" );
+      const auto attr_string = res.rows[0].get_object()["attribute"]["data"].as_string();
+      auto decoded_attribute = decodeAttribute(attr_string, attr_type);
+      const auto pending_attr_string = res.rows[0].get_object()["attribute"]["pending"].as_string();
+      auto decoded_pending_attribute = decodeAttribute(pending_attr_string, attr_type);
+      std::cout << localized("Attribute:\n  Name: ${name}\n  Issuer: ${issuer}\n  Receiver: ${receiver}\n  Value:\n${value}\n  Pending value:\n${pending}",
+         ("name", getAttrName)("issuer", getAttrIssuer)("receiver", getAttrReceiver)("value", decoded_attribute)("pending", decoded_pending_attribute)) << std::endl;
+   });
+
    // get block
    string blockArg;
    bool get_bhs = false;
@@ -2852,6 +2916,37 @@ int main( int argc, char** argv ) {
    // set subcommand
    auto setSubcommand = app.add_subcommand("set", localized("Set or update blockchain state"));
    setSubcommand->require_subcommand();
+
+   string setAttrIssuer;
+   string setAttrReceiver;
+   string setAttrName;
+   string attrValue;
+   auto setAttribute = setSubcommand->add_subcommand("attribute", localized("Set attribute information"), false);
+   setAttribute->add_option("issuer", setAttrIssuer, localized("The name of the account who sets an attribute"))->required();
+   setAttribute->add_option("receiver", setAttrReceiver, localized("The name of the account who recieves an attribute"))->required();
+   setAttribute->add_option("attribute_name", setAttrName, localized("The name of the attribute"))->required();
+   setAttribute->add_option("value", attrValue, localized("Value of the attribute"))->required();
+   setAttribute->set_callback([&] {
+      auto result = call(get_table_func, fc::mutable_variant_object("json", true)
+         ("code", name(config::attribute_account_name))
+         ("scope", name(config::attribute_account_name))
+         ("table", "attrinfo")
+         ("lower_bound", name(setAttrName).value)
+         ("upper_bound", name(setAttrName).value + 1)
+         ("limit", 1)
+      );
+      auto res = result.as<eosio::chain_apis::read_only::get_table_rows_result>();
+      if( res.rows.empty() || res.rows[0].get_object()["attribute_name"].as_string() != setAttrName ) {
+         std::cerr << "Attribute info not found for " << setAttrName << std::endl;
+         return;
+      }
+      EOS_ASSERT( 1 == res.rows.size(), multiple_attribute_info, "More than one attribute_info" );
+      const auto attr_type = res.rows[0].get_object()["type"].as_int64();
+
+      std::cerr << localized("Setting attribute...") << std::endl;
+      const auto bytes = encodeAttribute(attrValue, attr_type);
+      send_actions({ create_setattr(setAttrIssuer, setAttrReceiver, setAttrName, bytes) });
+   });
 
    // set contract subcommand
    string account;

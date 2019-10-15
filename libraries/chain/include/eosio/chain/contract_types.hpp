@@ -190,6 +190,21 @@ struct onerror {
    }
 };
 
+struct setattr {
+   account_name issuer;
+   account_name receiver;
+   name         attribute_name;
+   bytes        value;
+
+   static account_name get_account() {
+      return config::attribute_account_name;
+   }
+
+   static action_name get_name() {
+      return N(setattr);
+   }
+};
+
 } } /// namespace eosio::chain
 
 FC_REFLECT( eosio::chain::newaccount                       , (creator)(name)(owner)(active) )
@@ -203,3 +218,4 @@ FC_REFLECT( eosio::chain::linkauth                         , (account)(code)(typ
 FC_REFLECT( eosio::chain::unlinkauth                       , (account)(code)(type) )
 FC_REFLECT( eosio::chain::canceldelay                      , (canceling_auth)(trx_id) )
 FC_REFLECT( eosio::chain::onerror                          , (sender_id)(sent_trx) )
+FC_REFLECT( eosio::chain::setattr                          , (issuer)(receiver)(attribute_name)(value) )
