@@ -115,7 +115,7 @@ public:
       auto& persisted_by_expiry = queue.get<by_expiry>();
       while( !persisted_by_expiry.empty() ) {
          const auto& itr = persisted_by_expiry.begin();
-         if( itr->expiry >= pending_block_time ) {
+         if( itr->expiry > pending_block_time ) {
             break;
          }
          if( deadline <= fc::time_point::now() ) {
@@ -198,10 +198,10 @@ public:
          auto insert_itr = queue.insert(
                { trx, expiry, persist_until_expired ? trx_enum_type::incoming_persisted : trx_enum_type::incoming, std::move( next ) } );
          if( insert_itr.second ) added( insert_itr.first );
-      } else if( (persist_until_expired && itr->trx_type != trx_enum_type::incoming_persisted) || (next && !itr->next) ) {
+      } else {
          queue.get<by_trx_id>().modify( itr, [persist_until_expired, next{std::move(next)}](auto& un) mutable {
-            if( persist_until_expired ) un.trx_type = trx_enum_type::incoming_persisted;
-            if( next ) un.next = std::move( next );
+            un.trx_type = persist_until_expired ? trx_enum_type::incoming_persisted : trx_enum_type::incoming;
+            un.next = std::move( next );
          } );
       }
    }
@@ -233,8 +233,10 @@ private:
       if( itr->trx_type == trx_enum_type::incoming || itr->trx_type == trx_enum_type::incoming_persisted ) {
          ++incoming_count;
          EOS_ASSERT( size_in_bytes + size < max_transaction_queue_size, tx_resource_exhaustion,
-                     "Transaction ${id} exceeded max transaction queue size: ${size}",
-                     ("id", itr->trx_meta->id())( "size", size_in_bytes + size ) );
+                     "Transaction ${id}, size ${s} bytes would exceed configured "
+                     "incoming-transaction-queue-size-mb ${qs}, current queue size ${cs} bytes",
+                     ("id", itr->trx_meta->id())("s", size)("qs", max_transaction_queue_size/(1024*1024))
+                     ("cs", size_in_bytes) );
       }
       size_in_bytes += size;
    }
