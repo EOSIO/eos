@@ -265,7 +265,7 @@ void launch_compile_monitor(int nodeos_fd) {
       compile_monitor monitor(ctx, std::move(nodeos_socket), std::move(trampoline_socket));
       ctx.run();
       if(monitor._compile_sessions.size())
-         std::cerr << "ERROR: EOS-VM OC compiler monitor exiting with active sessions" << std::endl;
+         std::cerr << "ERROR: EOS VM OC compiler monitor exiting with active sessions" << std::endl;
    }
    
    _exit(0);
@@ -298,7 +298,7 @@ extern "C" int __wrap_main(int argc, char* argv[]) {
 }
 
 wrapped_fd get_connection_to_compile_monitor(int cache_fd) {
-   FC_ASSERT(the_compile_monitor_trampoline.compile_manager_pid >= 0, "EOS-VM oop connection doesn't look active");
+   FC_ASSERT(the_compile_monitor_trampoline.compile_manager_pid >= 0, "EOS VM oop connection doesn't look active");
 
    int socks[2]; //0: our socket to compile_manager_session, 1: socket we'll give to compile_maanger_session
    socketpair(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0, socks);
