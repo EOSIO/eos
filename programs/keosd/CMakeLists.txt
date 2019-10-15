@@ -12,7 +12,7 @@ endif()
 configure_file(config.hpp.in config.hpp ESCAPE_QUOTES)
 
 target_link_libraries( ${KEY_STORE_EXECUTABLE_NAME}
-        PRIVATE appbase
+        PRIVATE appbase version
         PRIVATE wallet_api_plugin wallet_plugin
         PRIVATE http_plugin
         PRIVATE eosio_chain fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
