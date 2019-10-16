@@ -493,7 +493,7 @@ cat <<EOF
       - chef/anka#v0.5.4:
           no-volume: true
           inherit-environment-vars: true
-          vm-name: 10.15_beta_6C_14G_40G
+          vm-name: 10.15.0_6C_14G_40G
           vm-registry-tag: "clean::cicd::git-ssh::nas::brew::buildkite-agent"
           always-pull: true
           debug: true
