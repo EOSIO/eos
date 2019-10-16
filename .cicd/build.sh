@@ -5,7 +5,7 @@ mkdir -p $BUILD_DIR
 CMAKE_EXTRAS="-DCMAKE_BUILD_TYPE='Release' -DCORE_SYMBOL_NAME='SYS'"
 if [[ "$(uname)" == 'Darwin' ]]; then
     # You can't use chained commands in execute
-    if [[ "$TRAVIS" == true ]]; then
+    if [[ "$TRAVIS" == 'true' ]]; then
         export PINNED=false
         ccache -s
         CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_CXX_COMPILER_LAUNCHER=ccache"
@@ -13,7 +13,7 @@ if [[ "$(uname)" == 'Darwin' ]]; then
     else
         CMAKE_EXTRAS="$CMAKE_EXTRAS -DBUILD_MONGO_DB_PLUGIN=true"
     fi
-    ( [[ ! "$PINNED" == false || "$UNPINNED" == true ]] ) && CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_TOOLCHAIN_FILE=$SCRIPTS_DIR/pinned_toolchain.cmake"
+    ( [[ ! "$PINNED" == 'false' || "$UNPINNED" == 'true' ]] ) && CMAKE_EXTRAS="$CMAKE_EXTRAS -DCMAKE_TOOLCHAIN_FILE=$SCRIPTS_DIR/pinned_toolchain.cmake"
     if [[ "$USE_CONAN" == 'true' ]]; then
         sed -n '/## Build Steps/,/make -j/p' $CONAN_DIR/$IMAGE_TAG.md | grep -v -e '```' -e '^$' -e 'git' -e 'cd eos' >> $CONAN_DIR/conan-build.sh
         bash -c "$CONAN_DIR/conan-build.sh && cp -r ~/.conan $BUILD_DIR/conan"
@@ -53,13 +53,13 @@ else # Linux
     fi
     BUILD_COMMANDS="cmake $CMAKE_EXTRAS .. && make -j$JOBS"
     # Docker Commands
-    if [[ "$BUILDKITE" == true ]]; then
+    if [[ "$BUILDKITE" == 'true' ]]; then
         # Generate Base Images
         $CICD_DIR/generate-base-images.sh
-        [[ "$ENABLE_INSTALL" == true ]] && COMMANDS="cp -r $MOUNTED_DIR /root/eosio && cd /root/eosio/build &&"
+        [[ "$ENABLE_INSTALL" == 'true' ]] && COMMANDS="cp -r $MOUNTED_DIR /root/eosio && cd /root/eosio/build &&"
         COMMANDS="$COMMANDS $BUILD_COMMANDS"
-        [[ "$ENABLE_INSTALL" == true ]] && COMMANDS="$COMMANDS && make install"
-    elif [[ "$TRAVIS" == true ]]; then
+        [[ "$ENABLE_INSTALL" == 'true' ]] && COMMANDS="$COMMANDS && make install"
+    elif [[ "$TRAVIS" == 'true' ]]; then
         ARGS="$ARGS -v /usr/lib/ccache -v $HOME/.ccache:/opt/.ccache -e JOBS -e TRAVIS -e CCACHE_DIR=/opt/.ccache"
         COMMANDS="ccache -s && $BUILD_COMMANDS"
     fi
