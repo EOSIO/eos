@@ -28,6 +28,9 @@ systemAccounts = [
     'rem.vpay',
     'rem.rex',
     'rem.swap',
+    'rem.oracle',
+    'rem.swap.bot',
+    'rewards',
 ]
 
 def jsonArg(a):
@@ -71,7 +74,7 @@ def sleep(t):
 def startWallet():
     run('rm -rf ' + os.path.abspath(args.wallet_dir))
     run('mkdir -p ' + os.path.abspath(args.wallet_dir))
-    background(args.remvault + ' --unlock-timeout %d --http-server-address 0.0.0.0:6666 --wallet-dir %s' % (unlockTimeout, os.path.abspath(args.wallet_dir)))
+    background(args.remvault + ' --unlock-timeout %d --http-server-address 127.0.0.1:6666 --wallet-dir %s' % (unlockTimeout, os.path.abspath(args.wallet_dir)))
     sleep(.4)
     run(args.remcli + 'wallet create --to-console')
 
@@ -101,6 +104,24 @@ def startNode(nodeIndex, account):
         '    --plugin eosio::history_plugin'
         '    --plugin eosio::history_api_plugin'
     )
+    swap_and_oracle_opts = ''
+    if account['name'] != 'rem':
+        swap_and_oracle_opts = (
+                '    --plugin eosio::eth_swap_plugin'
+                '    --plugin eosio::rem_oracle_plugin'
+                '    --oracle-authority ' + account['name'] + '@active' +
+                '    --oracle-signing-key ' + account['pvt'] +
+                '    --swap-signing-key ' + account['pvt'] +
+                '    --swap-authority ' + account['name'] + '@active'
+        )
+    if args.cryptocompare_apikey:
+        swap_and_oracle_opts += (
+            '    --cryptocompare-apikey ' + args.cryptocompare_apikey
+        )
+    if args.eth_wss_provider:
+        swap_and_oracle_opts += (
+            '    --eth-wss-provider ' + args.eth_wss_provider
+        )
     cmd = (
         args.remnode +
         '    --max-irreversible-block-age -1'
@@ -110,8 +131,8 @@ def startNode(nodeIndex, account):
         '    --config-dir ' + os.path.abspath(dir) +
         '    --data-dir ' + os.path.abspath(dir) +
         '    --chain-state-db-size-mb 1024'
-        '    --http-server-address 0.0.0.0:' + str(8888 + nodeIndex) +
-        '    --p2p-listen-endpoint 0.0.0.0:' + str(9000 + nodeIndex) +
+        '    --http-server-address 127.0.0.1:' + str(8888 + nodeIndex) +
+        '    --p2p-listen-endpoint 127.0.0.1:' + str(9000 + nodeIndex) +
         '    --max-clients ' + str(maxClients) +
         '    --p2p-max-nodes-per-host ' + str(maxClients) +
         '    --enable-stale-production'
@@ -121,11 +142,7 @@ def startNode(nodeIndex, account):
         '    --plugin eosio::http_plugin'
         '    --plugin eosio::chain_api_plugin'
         '    --plugin eosio::producer_api_plugin'
-        '    --plugin eosio::producer_plugin'
-        '    --plugin eosio::eth_swap_plugin'
-        '    --swap-signing-key 5KLGj1HGRWbk5xNmoKfrcrQHXvcVJBPdAckoiJgFftXSJjLPp7b'
-        '    --swap-authority producer111a@active'
-        '    --eth-wss-provider wss://ropsten.infura.io/ws/v3/3f98ae6029094659ac8f57f66e673129' +
+        '    --plugin eosio::producer_plugin' + swap_and_oracle_opts +
         otherOpts)
     with open(dir + 'stderr', mode='w') as f:
         f.write(cmd + '\n\n')
@@ -138,8 +155,27 @@ def startProducers(b, e):
         startNode(i - b + 1, accounts[i])
 
 def createSystemAccounts():
+    run(f'curl -X POST http://127.0.0.1:{args.http_port}/v1/producer/schedule_protocol_feature_activations -d \'{{"protocol_features_to_activate": ["0ec7e080177b2c02b278d5088611686b49d739925a92d9bfcacd7fc6b74053bd"]}}\'')
+
     for a in systemAccounts:
         run(args.remcli + 'create account rem ' + a + ' ' + args.public_key)
+
+    run(args.remcli + 'set account permission rem.swap.bot bot ' + jsonArg({
+        'threshold': 1,
+        'keys': [{"key": args.rem_swap_bot_public_key, "weight": 1}],
+    }) + "active")
+    run(args.remcli + 'push action rem linkauth ' + jsonArg({
+        'account': 'rem.swap.bot',
+        'code': 'rem.swap',
+        'type': 'finish',
+        'requirement': 'bot',
+    }) + " -p rem.swap.bot@active")
+    run(args.remcli + 'push action rem linkauth ' + jsonArg({
+        'account': 'rem.swap.bot',
+        'code': 'rem.swap',
+        'type': 'finishnewacc',
+        'requirement': 'bot',
+    }) + " -p rem.swap.bot@active")
 
 def intToCurrency(i):
     return '%d.%04d %s' % (i // 10000, i % 10000, args.symbol)
@@ -170,7 +206,7 @@ def regProducers(b, e):
 def listProducers():
     run(args.remcli + 'system listproducers')
 
-def vote(b, e):
+def vote():
     for i in range(firstProducer, firstProducer + numProducers):
         retry(args.remcli + 'system voteproducer prods ' + accounts[i]['name'] + ' ' + accounts[i]['name'])
 
@@ -268,11 +304,14 @@ def stepInstallSystemContracts():
     run(args.remcli + 'set contract rem.token ' + args.contracts_dir + '/rem.token/')
     run(args.remcli + 'set contract rem.msig ' + args.contracts_dir + '/rem.msig/')
     run(args.remcli + 'set contract rem.swap ' + args.contracts_dir + '/rem.swap/')
+    run(args.remcli + 'set contract rem.oracle ' + args.contracts_dir + '/rem.oracle/')
 def stepCreateTokens():
-    totalAllocation = 1_000_000_000_0000
-    run(args.remcli + 'push action rem.token create \'["rem", "%s"]\' -p rem.token' % intToCurrency(totalAllocation))
-    allocateFunds(0, len(accounts), totalAllocation)
-    run(args.remcli + 'push action rem.token issue \'["rem", "%s", "memo"]\' -p rem' % intToCurrency(totalAllocation))
+    max_supply = 1_000_000_000_0000
+    run(args.remcli + 'push action rem.token create \'["rem.swap", "%s"]\' -p rem.token' % intToCurrency(max_supply))
+    if len(accounts) != 0 and args.initial_supply != 0:
+        allocateFunds(0, len(accounts), args.initial_supply)
+    if args.initial_supply != 0:
+        run(args.remcli + 'push action rem.token issue \'["rem.swap", "%s", "memo"]\' -p rem.swap' % intToCurrency(args.initial_supply))
     sleep(1)
 def stepSetSystemContract():
     run(args.remcli + 'set contract rem ' + args.contracts_dir + '/rem.bios/ -p rem')
@@ -291,8 +330,7 @@ def stepSetSystemContract():
     sleep(1)
     run(args.remcli + 'push action rem setpriv' + jsonArg(['rem.msig', 1]) + '-p rem@active')
 def stepInitSystemContract():
-    run(args.remcli + 'push action rem init' + jsonArg(['0', '4,' + args.symbol]) + '-p rem@active')
-    sleep(1)
+    pass
 def stepCreateStakedAccounts():
     createStakedAccounts(0, len(accounts))
 def stepRegProducers():
@@ -303,12 +341,10 @@ def stepStartProducers():
     startProducers(firstProducer, firstProducer + numProducers)
     sleep(args.producer_sync_delay)
 def stepVote():
-    vote(0, 0 + args.num_voters)
+    vote()
     sleep(1)
     listProducers()
     sleep(5)
-def stepProxyVotes():
-    proxyVotes(0, 0 + args.num_voters)
 def stepResign():
     resign('rem', 'rem.prods')
     for a in systemAccounts:
@@ -337,7 +373,6 @@ commands = [
     ('P', 'start-prod',         stepStartProducers,         True,    "Start producers"),
     ('v', 'vote',               stepVote,                   True,    "Vote for producers"),
     ('R', 'claim',              claimRewards,               True,    "Claim rewards"),
-    ('x', 'proxy',              stepProxyVotes,             True,    "Proxy votes"),
     ('q', 'resign',             stepResign,                 True,    "Resign rem"),
     ('m', 'msg-replace',        msigReplaceSystem,          False,   "Replace system contract using msig"),
     ('X', 'xfer',               stepTransfer,               False,   "Random transfer tokens (infinite loop)"),
@@ -345,29 +380,28 @@ commands = [
 ]
 
 parser.add_argument('--public-key', metavar='', help="EOSIO Public Key", default='EOS8Znrtgwt8TfpmbVpTKvA2oB8Nqey625CLN8bCN3TEbgx86Dsvr', dest="public_key")
-parser.add_argument('--private-Key', metavar='', help="EOSIO Private Key", default='5K463ynhZoCDDa4RDcr63cUwWLTnKqmdcoTKTHBjqoKfv4u5V7p', dest="private_key")
+parser.add_argument('--private-key', metavar='', help="EOSIO Private Key", default='5K463ynhZoCDDa4RDcr63cUwWLTnKqmdcoTKTHBjqoKfv4u5V7p', dest="private_key")
 parser.add_argument('--remcli', metavar='', help="Cleos command", default='../../build/programs/remcli/remcli --wallet-url http://127.0.0.1:6666 ')
 parser.add_argument('--remnode', metavar='', help="Path to remnode binary", default='../../build/programs/remnode/remnode')
 parser.add_argument('--remvault', metavar='', help="Path to remvault binary", default='../../build/programs/remvault/remvault')
-parser.add_argument('--contracts-dir', metavar='', help="Path to contracts directory", default='../../build/contracts/')
+parser.add_argument('--contracts-dir', metavar='', help="Path to contracts directory", default='../../build/contracts/contracts')
 parser.add_argument('--nodes-dir', metavar='', help="Path to nodes directory", default='./nodes/')
 parser.add_argument('--genesis', metavar='', help="Path to genesis.json", default="./genesis.json")
 parser.add_argument('--wallet-dir', metavar='', help="Path to wallet directory", default='./wallet/')
 parser.add_argument('--log-path', metavar='', help="Path to log file", default='./output.log')
-parser.add_argument('--symbol', metavar='', help="The rem.system symbol", default='SYS')
-parser.add_argument('--user-limit', metavar='', help="Max number of users. (0 = no limit)", type=int, default=3000)
-parser.add_argument('--max-user-keys', metavar='', help="Maximum user keys to import into wallet", type=int, default=10)
+parser.add_argument('--symbol', metavar='', help="The rem.system symbol", default='REM')
+parser.add_argument('--user-limit', metavar='', help="Max number of users", type=int, default=0)
+parser.add_argument('--max-user-keys', metavar='', help="Maximum user keys to import into wallet", type=int, default=0)
 parser.add_argument('--stake-percent', metavar='', help="Stake percent for each account", type=float, default=0.5)
-parser.add_argument('--ram-funds', metavar='', help="How much funds for each user to spend on ram", type=float, default=0.1)
-parser.add_argument('--min-stake', metavar='', help="Minimum stake before allocating unstaked funds", type=float, default=90)
-parser.add_argument('--max-unstaked', metavar='', help="Maximum unstaked funds", type=float, default=5000)
-parser.add_argument('--producer-limit', metavar='', help="Maximum number of producers. (0 = no limit)", type=int, default=0)
-parser.add_argument('--num-producers-vote', metavar='', help="Number of producers for which each user votes", type=int, default=20)
-parser.add_argument('--num-voters', metavar='', help="Number of voters", type=int, default=10)
-parser.add_argument('--num-senders', metavar='', help="Number of users to transfer funds randomly", type=int, default=10)
+parser.add_argument('--producer-limit', metavar='', help="Maximum number of producers", type=int, default=0)
 parser.add_argument('--producer-sync-delay', metavar='', help="Time (s) to sleep to allow producers to sync", type=int, default=15)
 parser.add_argument('-a', '--all', action='store_true', help="Do everything marked with (*)")
 parser.add_argument('-H', '--http-port', type=int, default=8888, metavar='', help='HTTP port for remcli')
+parser.add_argument('-bs', '--bootstrap', action='store_true', help="Deploy all remprocol contracts and configure all tech accounts")
+parser.add_argument('--cryptocompare-apikey', metavar='', help="Cryptocompare api key for reading REM token price", type=str, default="")
+parser.add_argument('--eth-wss-provider', metavar='', help="A websocket link to Ethereum node", type=str, default="")
+parser.add_argument('--rem-swap-bot-public-key', metavar='', help="A public key to authorize finish swap action", type=str, default="EOS7tAF35d4cLH1TwF6it5TkK2ezkpwpjJcTWJKAQVHsFon4YdGUp")
+parser.add_argument('--initial-supply', metavar='', help="Initial supply of REM tokens", type=int, default=0)
 
 for (flag, command, function, inAll, help) in commands:
     prefix = ''
@@ -388,19 +422,39 @@ logFile.write('\n\n' + '*' * 80 + '\n\n\n')
 
 with open('accounts.json') as f:
     a = json.load(f)
-    if args.user_limit:
-        del a['users'][args.user_limit:]
-    if args.producer_limit:
-        del a['producers'][args.producer_limit:]
+    del a['users'][args.user_limit:]
+    del a['producers'][args.producer_limit:]
     firstProducer = len(a['users'])
     numProducers = len(a['producers'])
     accounts = a['users'] + a['producers']
 
 maxClients = numProducers + 10
-
+commands = [
+    ('k', 'kill',               stepKillAll,                True,    "Kill all remnode and remvault processes"),
+    ('w', 'wallet',             stepStartWallet,            True,    "Start remvault, create wallet, fill with keys"),
+    ('b', 'boot',               stepStartBoot,              True,    "Start boot node"),
+    ('s', 'sys',                createSystemAccounts,       True,    "Create system accounts (rem.*)"),
+    ('c', 'contracts',          stepInstallSystemContracts, True,    "Install system contracts (token, msig)"),
+    ('t', 'tokens',             stepCreateTokens,           True,    "Create tokens"),
+    ('S', 'sys-contract',       stepSetSystemContract,      True,    "Set system contract"),
+    ('I', 'init-sys-contract',  stepInitSystemContract,     True,    "Initialiaze system contract"),
+    ('T', 'stake',              stepCreateStakedAccounts,   True,    "Create staked accounts"),
+    ('p', 'reg-prod',           stepRegProducers,           True,    "Register producers"),
+    ('P', 'start-prod',         stepStartProducers,         True,    "Start producers"),
+    ('v', 'vote',               stepVote,                   True,    "Vote for producers"),
+    ('R', 'claim',              claimRewards,               True,    "Claim rewards"),
+    ('q', 'resign',             stepResign,                 True,    "Resign rem"),
+    ('m', 'msg-replace',        msigReplaceSystem,          False,   "Replace system contract using msig"),
+    ('X', 'xfer',               stepTransfer,               False,   "Random transfer tokens (infinite loop)"),
+    ('l', 'log',                stepLog,                    True,    "Show tail of node's log"),
+]
 haveCommand = False
 for (flag, command, function, inAll, help) in commands:
     if getattr(args, command) or inAll and args.all:
+        if function:
+            haveCommand = True
+            function()
+    if args.bootstrap and command in ('sys', 'contracts', 'tokens', 'sys-contract', 'init-sys-contract', 'log',):
         if function:
             haveCommand = True
             function()
