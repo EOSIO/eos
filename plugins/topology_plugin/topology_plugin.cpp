@@ -831,13 +831,17 @@ namespace eosio {
             } else {
                df << "n_" << tnode.first << " -> n_" << tlink->second.info.passive;
             }
-            uint32_t late = tlink->second.up.measurements[net_latency].avg +
+            uint32_t ulate = tlink->second.up.measurements[net_latency].avg +
                tlink->second.up.measurements[queue_latency].avg;
+            uint32_t dlate = tlink->second.down.measurements[net_latency].avg +
+               tlink->second.down.measurements[queue_latency].avg;
             df << " [dir=forward, ";
-            if( tlink->second.up.measurements[messages_sent].avg != 0 ) {
-               df << "label=\"latency: "
-                  << late << " us\\nsent: "
-                  << tlink->second.up.measurements[messages_sent].avg << " msgs\", ";
+            uint64_t msent = tlink->second.up.total_messages +
+               tlink->second.down.total_messages;
+            if( msent != 0) {
+               df << "label=\"up latency: "
+                  << ulate << " us\\ndown latency: " << dlate << " us\\nsent: "
+                  << msent << " msgs\", ";
             }
             df << "color= black ];\n";
          }
