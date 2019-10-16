@@ -505,7 +505,7 @@ namespace eosio { namespace testing {
             if( num_blocks_to_producer_before_shutdown > 0 )
                produce_blocks( num_blocks_to_producer_before_shutdown );
             if (!skip_validate)
-               BOOST_REQUIRE_EQUAL( validate(), true );
+               BOOST_CHECK_EQUAL( validate(), true );
          } catch( const fc::exception& e ) {
             wdump((e.to_detail_string()));
          }
