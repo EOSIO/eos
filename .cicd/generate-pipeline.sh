@@ -10,7 +10,7 @@ LINUX_CONCURRENCY='8'
 MAC_CONCURRENCY='2'
 LINUX_CONCURRENCY_GROUP='eos-scheduled-build'
 MAC_CONCURRENCY_GROUP='eos-scheduled-build-mac'
-BUILDKITE_BUILD_AGENT_QUEUE='automation-eks-eos-builder-fleet-beta'
+BUILDKITE_BUILD_AGENT_QUEUE='automation-eks-eos-builder-fleet'
 BUILDKITE_TEST_AGENT_QUEUE='automation-eks-eos-tester-fleet'
 
 # Determine if it's a forked PR and make sure to add git fetch so we don't have to git clone the forked repo's url
