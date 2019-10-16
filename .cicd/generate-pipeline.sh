@@ -434,7 +434,7 @@ cat <<EOF
       IMAGE_TAG: "ubuntu-18.04-unpinned"
       BUILDKITE_AGENT_ACCESS_TOKEN:
     agents:
-      queue: ""$BUILDKITE_BUILD_AGENT_QUEUE"
+      queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
     timeout: ${TIMEOUT:-30}
     skip: ${SKIP_CONTRACT_BUILDER}${SKIP_LINUX}
 
