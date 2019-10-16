@@ -125,7 +125,12 @@ public:
       for( const auto& receipt : bs->block->transactions ) {
          if( receipt.trx.contains<packed_transaction>() ) {
             const auto& pt = receipt.trx.get<packed_transaction>();
-            idx.erase( pt.id() );
+            auto itr = queue.get<by_trx_id>().find( pt.id() );
+            if( itr != queue.get<by_trx_id>().end() ) {
+               if( itr->trx_type != trx_enum_type::persisted ) {
+                  idx.erase( pt.id() );
+               }
+            }
          }
       }
    }

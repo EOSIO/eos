@@ -759,7 +759,8 @@ namespace eosio { namespace chain { namespace wasm_injections {
    };
 
    struct post_op_full_injectors : post_op_injectors {
-      using loop_t   = wasm_ops::loop        <checktime_injection>;
+      using loop_t        = wasm_ops::loop        <checktime_injection>;
+      using grow_memory_t = wasm_ops::grow_memory <checktime_injection>;
    };
 
    template <typename ... Visitors>

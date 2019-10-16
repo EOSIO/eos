@@ -1845,6 +1845,26 @@ BOOST_FIXTURE_TEST_CASE( depth_tests, TESTER ) try {
 
 } FC_LOG_AND_RETHROW()
 
+BOOST_FIXTURE_TEST_CASE( varuint_memory_flags_tests, TESTER ) try {
+   produce_block();
+   create_accounts( {N(memflags)} );
+   produce_block();
+
+   set_code(N(memflags), varuint_memory_flags);
+   produce_block();
+
+   signed_transaction trx;
+   action act;
+   act.account = N(memflags);
+   act.name = N();
+   act.authorization = vector<permission_level>{{N(memflags),config::active_name}};
+   trx.actions.push_back(act);
+   set_transaction_headers(trx);
+   trx.sign(get_private_key( N(memflags), "active" ), control->get_chain_id());
+   push_transaction(trx);
+   produce_block();
+} FC_LOG_AND_RETHROW()
+
 // TODO: Update to use eos-vm once merged
 BOOST_AUTO_TEST_CASE( code_size )  try {
    using namespace IR;
