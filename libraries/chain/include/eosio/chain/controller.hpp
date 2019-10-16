@@ -50,6 +50,8 @@ namespace eosio { namespace chain {
       IRREVERSIBLE
    };
 
+   inline bool db_mode_is_immutable(db_read_mode m) {return db_read_mode::READ_ONLY == m || db_read_mode::IRREVERSIBLE ==m;}
+
    enum class validation_mode {
       FULL,
       LIGHT

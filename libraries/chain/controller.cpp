@@ -2671,7 +2671,7 @@ void controller::push_block( std::future<block_state_ptr>& block_state_future,
 }
 
 bool controller::in_immutable_mode()const{
-   return (get_read_mode() == chain::db_read_mode::READ_ONLY || get_read_mode() == chain::db_read_mode::IRREVERSIBLE);
+   return (db_mode_is_immutable(get_read_mode()));
 }
 
 transaction_trace_ptr controller::push_transaction( const transaction_metadata_ptr& trx, fc::time_point deadline, uint32_t billed_cpu_time_us ) {
