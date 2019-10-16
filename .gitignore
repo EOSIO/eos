@@ -17,7 +17,6 @@
 CMakeCache.txt
 CMakeFiles
 cmake_install.cmake
-scripts/uninstall.cmake
 cmake-build-debug/
 cmake-build-release/
 Makefile
