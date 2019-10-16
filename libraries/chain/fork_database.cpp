@@ -314,9 +314,9 @@ namespace eosio { namespace chain {
          try {
             const auto& exts = n->header_exts;
 
-            if( exts.count(protocol_feature_activation::extension_id()) > 0 ) {
-               const auto& new_protocol_features = exts.lower_bound(protocol_feature_activation::extension_id())->second.get<protocol_feature_activation>().protocol_features;
-               validator( n->header.timestamp, prev_bh->activated_protocol_features->protocol_features, new_protocol_features );
+            auto new_protocol_features = signed_block::get_new_protocol_feature_activation(exts);
+            if( new_protocol_features.first ) {
+               validator( n->header.timestamp, prev_bh->activated_protocol_features->protocol_features, new_protocol_features.second.protocol_features );
             }
          } EOS_RETHROW_EXCEPTIONS( fork_database_exception, "serialized fork database is incompatible with configured protocol features"  )
       }
