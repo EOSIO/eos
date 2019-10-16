@@ -10,13 +10,11 @@ LINUX_CONCURRENCY='8'
 MAC_CONCURRENCY='2'
 LINUX_CONCURRENCY_GROUP='eos-scheduled-build'
 MAC_CONCURRENCY_GROUP='eos-scheduled-build-mac'
-
 # Determine if it's a forked PR and make sure to add git fetch so we don't have to git clone the forked repo's url
 if [[ $BUILDKITE_BRANCH =~ ^pull/[0-9]+/head: ]]; then
   PR_ID=$(echo $BUILDKITE_BRANCH | cut -d/ -f2)
   export GIT_FETCH="git fetch -v --prune origin refs/pull/$PR_ID/head &&"
 fi
-
 # Determine which dockerfiles/scripts to use for the pipeline.
 if [[ $PINNED == false || $UNPINNED == true ]]; then
     export PLATFORM_TYPE="unpinned"
@@ -26,7 +24,6 @@ elif [[ $USE_CONAN == true ]]; then
 else
     export PLATFORM_TYPE="pinned"
 fi
-
 for FILE in $(ls $CICD_DIR/platforms/$PLATFORM_TYPE); do
     # skip mac or linux by not even creating the json block
     ( [[ $SKIP_MAC == true ]] && [[ $FILE =~ 'macos' ]] ) && continue

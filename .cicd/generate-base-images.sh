@@ -1,7 +1,7 @@
 #!/bin/bash
 set -eo pipefail
 . ./.cicd/helpers/general.sh
-if [[ $(uname) == 'Darwin' ]]; then # macOS
+if [[ "$(uname)" == 'Darwin' ]]; then # macOS
     [[ "$PLATFORM_TYPE" == 'conan' ]] && sed -n '/## Environment/,/## Build/p' $CONAN_DIR/$IMAGE_TAG.md | grep -v -e '```' -e '\#\#' -e '^$' >> $CICD_DIR/platforms/$PLATFORM_TYPE/$IMAGE_TAG.sh
     . $CICD_DIR/platforms/$PLATFORM_TYPE/$IMAGE_TAG.sh
 else # Linux
