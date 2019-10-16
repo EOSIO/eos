@@ -354,9 +354,15 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
 
    if( control.is_builtin_activated( builtin_protocol_feature_t::no_duplicate_deferred_id ) ) {
       auto exts = trx.validate_and_extract_extensions();
-      const auto context_pair = transaction::get_deferred_transaction_generation_context(exts);
-      if( context_pair.first ) {
-         const auto& context = context_pair.second;
+      if( exts.size() > 0 ) {
+         auto itr = exts.lower_bound( deferred_transaction_generation_context::extension_id() );
+
+         EOS_ASSERT( exts.size() == 1 && itr != exts.end(), invalid_transaction_extension,
+                     "only the deferred_transaction_generation_context extension is currently supported for deferred transactions"
+         );
+
+         const auto& context = itr->second.get<deferred_transaction_generation_context>();
+
          EOS_ASSERT( context.sender == receiver, ill_formed_deferred_transaction_generation_context,
                      "deferred transaction generaction context contains mismatching sender",
                      ("expected", receiver)("actual", context.sender)
@@ -370,9 +376,6 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
                      ("expected", trx_context.id)("actual", context.sender_trx_id)
          );
       } else {
-         EOS_ASSERT( exts.size() == 0, invalid_transaction_extension,
-                     "only the deferred_transaction_generation_context extension is currently supported for deferred transactions"
-         );
          emplace_extension(
             trx.transaction_extensions,
             deferred_transaction_generation_context::extension_id(),

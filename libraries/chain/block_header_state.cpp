@@ -259,12 +259,12 @@ namespace eosio { namespace chain {
          maybe_new_producer_schedule.emplace(new_producers);
       }
 
-      const auto new_producer_schedule_pair = block_header::get_new_producer_schedule(exts);
-      if ( new_producer_schedule_pair.first ) {
+      if ( exts.count(producer_schedule_change_extension::extension_id()) > 0 ) {
          EOS_ASSERT(wtmsig_enabled, producer_schedule_exception, "Block header producer_schedule_change_extension before activation of WTMsig Block Signatures" );
          EOS_ASSERT( !was_pending_promoted, producer_schedule_exception, "cannot set pending producer schedule in the same block in which pending was promoted to active" );
 
-         const auto& new_producer_schedule = new_producer_schedule_pair.second;
+         const auto& new_producer_schedule = exts.lower_bound(producer_schedule_change_extension::extension_id())->second.get<producer_schedule_change_extension>();
+
          EOS_ASSERT( new_producer_schedule.version == active_schedule.version + 1, producer_schedule_exception, "wrong producer schedule version specified" );
          EOS_ASSERT( prev_pending_schedule.schedule.producers.empty(), producer_schedule_exception,
                      "cannot set new pending producers until last pending is confirmed" );
@@ -275,9 +275,8 @@ namespace eosio { namespace chain {
 
       protocol_feature_activation_set_ptr new_activated_protocol_features;
       { // handle protocol_feature_activation
-         const auto protocol_feature_act = block_header::get_new_protocol_feature_activation(exts);
-         if( protocol_feature_act.first ) {
-            const auto& new_protocol_features = protocol_feature_act.second.protocol_features;
+         if( exts.count(protocol_feature_activation::extension_id() > 0) ) {
+            const auto& new_protocol_features = exts.lower_bound(protocol_feature_activation::extension_id())->second.get<protocol_feature_activation>().protocol_features;
             validator( timestamp, prev_activated_protocol_features->protocol_features, new_protocol_features );
 
             new_activated_protocol_features =   std::make_shared<protocol_feature_activation_set>(
@@ -436,9 +435,12 @@ namespace eosio { namespace chain {
     *  Reference cannot outlive *this. Assumes header_exts is not mutated after instatiation.
     */
    const vector<digest_type>& block_header_state::get_new_protocol_feature_activations()const {
-      const auto protocol_feature_act = block_header::get_new_protocol_feature_activation(header_exts);
-      // if protocol_feature_act.first is false, second is just an empty const vector<digest_type>&
-      return protocol_feature_act.second.protocol_features;
+      static const vector<digest_type> no_activations{};
+
+      if( header_exts.count(protocol_feature_activation::extension_id()) == 0 )
+         return no_activations;
+
+      return header_exts.lower_bound(protocol_feature_activation::extension_id())->second.get<protocol_feature_activation>().protocol_features;
    }
 
    block_header_state::block_header_state( legacy::snapshot_block_header_state_v2&& snapshot )

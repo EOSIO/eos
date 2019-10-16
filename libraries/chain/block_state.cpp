@@ -21,9 +21,10 @@ namespace eosio { namespace chain {
       {
          auto exts = b->validate_and_extract_extensions();
 
-         auto additional_sigs = signed_block::get_additional_block_signatures(exts);
-         if ( additional_sigs.first ) {
-            return std::move(additional_sigs.second.signatures);
+         if ( exts.count(additional_sigs_eid) > 0 ) {
+            auto& additional_sigs = exts.lower_bound(additional_sigs_eid)->second.get<additional_block_signatures_extension>();
+
+            return std::move(additional_sigs.signatures);
          }
 
          return {};
