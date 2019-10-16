@@ -61,4 +61,12 @@ namespace eosio { namespace chain {
 
    }
 
+   std::pair<bool, const additional_block_signatures_extension&> signed_block::get_additional_block_signatures(const flat_multimap<uint16_t, block_extension>& exts) {
+      static const additional_block_signatures_extension empty;
+      if ( exts.count(additional_block_signatures_extension::extension_id()) > 0 ) {
+         return {true, exts.lower_bound(additional_block_signatures_extension::extension_id())->second.get<additional_block_signatures_extension>()};
+      }
+
+      return {false, empty};
+   }
 } } /// namespace eosio::chain

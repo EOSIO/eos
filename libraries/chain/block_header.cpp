@@ -64,4 +64,22 @@ namespace eosio { namespace chain {
       return results;
    }
 
+   std::pair<bool, const producer_schedule_change_extension&> block_header::get_new_producer_schedule(const flat_multimap<uint16_t, block_header_extension>& exts) {
+      static const producer_schedule_change_extension empty;
+      if ( exts.count(producer_schedule_change_extension::extension_id()) > 0 ) {
+         return {true, exts.lower_bound(producer_schedule_change_extension::extension_id())->second.get<producer_schedule_change_extension>()};
+      }
+
+      return {false, empty};
+   }
+
+   std::pair<bool, const protocol_feature_activation&> block_header::get_new_protocol_feature_activation(const flat_multimap<uint16_t, block_header_extension>& exts) {
+      static const protocol_feature_activation empty;
+      if( exts.count(protocol_feature_activation::extension_id()) > 0 ) {
+         return {true, exts.lower_bound(protocol_feature_activation::extension_id())->second.get<protocol_feature_activation>()};
+      }
+
+      return {false, empty};
+   }
+
 } }

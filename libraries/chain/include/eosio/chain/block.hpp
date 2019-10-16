@@ -100,6 +100,8 @@ namespace eosio { namespace chain {
       extensions_type               block_extensions;
 
       flat_multimap<uint16_t, block_extension> validate_and_extract_extensions()const;
+
+      static std::pair<bool, const additional_block_signatures_extension&> get_additional_block_signatures(const flat_multimap<uint16_t, block_extension>& exts);
    };
    using signed_block_ptr = std::shared_ptr<signed_block>;
 
