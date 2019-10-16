@@ -116,15 +116,6 @@ flat_multimap<uint16_t, transaction_extension> transaction::validate_and_extract
    return results;
 }
 
-std::pair<bool, const deferred_transaction_generation_context&> transaction::get_deferred_transaction_generation_context(const flat_multimap<uint16_t, transaction_extension>& exts) {
-   static const deferred_transaction_generation_context empty{};
-   if (exts.count(deferred_transaction_generation_context::extension_id()) > 0) {
-      return {true, exts.lower_bound(deferred_transaction_generation_context::extension_id())->second.get<deferred_transaction_generation_context>()};
-   }
-
-   return {false, empty};
-}
-
 const signature_type& signed_transaction::sign(const private_key_type& key, const chain_id_type& chain_id) {
    signatures.push_back(key.sign(sig_digest(chain_id, context_free_data)));
    return signatures.back();

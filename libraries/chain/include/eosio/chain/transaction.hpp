@@ -105,7 +105,6 @@ namespace eosio { namespace chain {
       }
 
       flat_multimap<uint16_t, transaction_extension> validate_and_extract_extensions()const;
-      static std::pair<bool, const deferred_transaction_generation_context&> get_deferred_transaction_generation_context(const flat_multimap<uint16_t, transaction_extension>& exts);
    };
 
    struct signed_transaction : public transaction

@@ -68,8 +68,6 @@ namespace eosio { namespace chain {
       static uint32_t   num_from_id(const block_id_type& id);
 
       flat_multimap<uint16_t, block_header_extension> validate_and_extract_header_extensions()const;
-      static std::pair<bool, const producer_schedule_change_extension&> get_new_producer_schedule(const flat_multimap<uint16_t, block_header_extension>& exts);
-      static std::pair<bool, const protocol_feature_activation&> get_new_protocol_feature_activation(const flat_multimap<uint16_t, block_header_extension>& exts);
    };
 
 
