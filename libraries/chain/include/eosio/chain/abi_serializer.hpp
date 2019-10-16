@@ -459,9 +459,9 @@ namespace impl {
 
          // process contents of block.transaction_extensions
          auto exts = trx.validate_and_extract_extensions();
-         auto deferred_transaction_generation = transaction::get_deferred_transaction_generation_context(exts);
-         if (deferred_transaction_generation.first) {
-            mvo("deferred_transaction_generation", deferred_transaction_generation.second);
+         if (exts.count(deferred_transaction_generation_context::extension_id()) > 0) {
+            const auto& deferred_transaction_generation = exts.lower_bound(deferred_transaction_generation_context::extension_id())->second.get<deferred_transaction_generation_context>();
+            mvo("deferred_transaction_generation", deferred_transaction_generation);
          }
 
          out(name, std::move(mvo));
@@ -490,20 +490,20 @@ namespace impl {
 
          // process contents of block.header_extensions
          flat_multimap<uint16_t, block_header_extension> header_exts = block.validate_and_extract_header_extensions();
-         auto new_protocol_features = block_header::get_new_protocol_feature_activation(header_exts);
-         vector<variant> pf_array;
-         if ( new_protocol_features.first ) {
-            pf_array.reserve(new_protocol_features.second.protocol_features.size());
-            for (auto feature : new_protocol_features.second.protocol_features) {
+         if ( header_exts.count(protocol_feature_activation::extension_id() > 0) ) {
+            const auto& new_protocol_features = header_exts.lower_bound(protocol_feature_activation::extension_id())->second.get<protocol_feature_activation>().protocol_features;
+            vector<variant> pf_array;
+            pf_array.reserve(new_protocol_features.size());
+            for (auto feature : new_protocol_features) {
                mutable_variant_object feature_mvo;
                add(feature_mvo, "feature_digest", feature, resolver, ctx);
                pf_array.push_back(feature_mvo);
             }
             mvo("new_protocol_features", pf_array);
          }
-         const auto new_producer_schedule = block_header::get_new_producer_schedule(header_exts);
-         if (new_producer_schedule.first) {
-            mvo("new_producer_schedule", new_producer_schedule.second);
+         if ( header_exts.count(producer_schedule_change_extension::extension_id())) {
+            const auto& new_producer_schedule = header_exts.lower_bound(producer_schedule_change_extension::extension_id())->second.get<producer_schedule_change_extension>();
+            mvo("new_producer_schedule", new_producer_schedule);
          }
 
          mvo("producer_signature", block.producer_signature);
@@ -511,9 +511,9 @@ namespace impl {
 
          // process contents of block.block_extensions
          auto block_exts = block.validate_and_extract_extensions();
-         auto additional_signatures = signed_block::get_additional_block_signatures(block_exts);
-         if (additional_signatures.first) {
-            mvo("additional_signatures", additional_signatures.second);
+         if ( block_exts.count(additional_block_signatures_extension::extension_id()) > 0) {
+            const auto& additional_signatures = block_exts.lower_bound(additional_block_signatures_extension::extension_id())->second.get<additional_block_signatures_extension>();
+            mvo("additional_signatures", additional_signatures);
          }
 
          out(name, std::move(mvo));
