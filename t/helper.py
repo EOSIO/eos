@@ -15,15 +15,20 @@ import requests
 import color
 import connection
 
+HORIZONTAL_BAR = "─"
+HORIZONTAL_DASH = "⎯"
+VERTICAL_BAR = "│"
 
-def monolen(s: str):
-    """return real length of a str after removing color code"""
+
+def vislen(s: str):
+    """return real visual length of a str after removing color code"""
     return len(re.compile(r"\033\[[0-9]+(;[0-9]+)?m").sub("", s))
 
 
 def compress(s: str, length: int = 16, tail: int = 0):
-    if monolen(s) > length:
-        s = s[:(length - tail - 2)] + ".." + (s[-tail:] if tail else "")
+    offset = len(s) - vislen(s)
+    if vislen(s) > length:
+        s = s[:(length - tail - 2)] + ".." + (s[-tail:] if tail else "") + ("\033[0m" if offset else "")
     return s
 
 
@@ -52,8 +57,14 @@ def get_current_time(date=True, precision=3, local_time=False, time_zone=False):
     return time.strftime(form, struct(now))
 
 
-def format_header(text):
-    return pad(color.decorate(text, fcolor="black", bcolor="cyan"))
+def format_header(header, level: str):
+    if level == "INFO":
+        return color.bold(">>> {}".format(header))
+    if level == "DEBUG":
+        return pad(color.black_on_cyan(header), char="─")
+    if level == "TRACE":
+        return pad(header, char="⎯")
+    return header
 
 
 # to be deprecated
@@ -111,10 +122,10 @@ def pad(text: str, left=15, total=90, right=None, char="-", sep=" ") -> str:
     '::: ~ hello, world ~ :::'
     """
     if right is not None:
-        implied_total = monolen(char) * (left + right) + monolen(sep) * 2 + monolen(text)
+        implied_total = vislen(char) * (left + right) + vislen(sep) * 2 + vislen(text)
         total = min(total, implied_total)
     string = char * left + sep + text + sep
-    offset = len(string) - monolen(string)
+    offset = len(string) - vislen(string)
     return string.ljust(total + offset, char)
 
 

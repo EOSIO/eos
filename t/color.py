@@ -109,6 +109,38 @@ def on_white(text):
     return decorate(text, bcolor="white")
 
 
+def black_on_black(text):
+    return decorate(text, fcolor="black", bcolor="black")
+
+
+def black_on_red(text):
+    return decorate(text, fcolor="black", bcolor="red")
+
+
+def black_on_green(text):
+    return decorate(text, fcolor="black", bcolor="green")
+
+
+def black_on_yellow(text):
+    return decorate(text, fcolor="black", bcolor="yellow")
+
+
+def black_on_blue(text):
+    return decorate(text, fcolor="black", bcolor="blue")
+
+
+def black_on_magenta(text):
+    return decorate(text, fcolor="black", bcolor="magenta")
+
+
+def black_on_cyan(text):
+    return decorate(text, fcolor="black", bcolor="cyan")
+
+
+def black_on_white(text):
+    return decorate(text, fcolor="black", bcolor="white")
+
+
 def decorate(text,
              style:  Optional[Union[str, List[str]]] = None,
              fcolor: Optional[str]                   = None,

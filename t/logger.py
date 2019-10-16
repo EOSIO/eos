@@ -17,8 +17,10 @@ import typing
 import color
 import helper
 
+# VERTICAL_BAR = "|"
+VERTICAL_BAR = "│"
 
-class LoggingLevel(enum.IntEnum):
+class LogLevel(enum.IntEnum):
     ALL   = 0
     TRACE = 10
     DEBUG = 20
@@ -27,6 +29,38 @@ class LoggingLevel(enum.IntEnum):
     ERROR = 50
     FATAL = 60
     OFF   = 100
+
+    def __str__(self):
+        return self.name
+
+    @staticmethod
+    def to_int(x: typing.Union[int, str, typing.TypeVar("LogLevel")]):
+        """make best effort to convert an int, str or LogLevel to int value"""
+        if isinstance(x, int):
+            return int(x)
+        if isinstance(x, str):
+            try:
+                return int(LogLevel[x])
+            except KeyError:
+                return -1
+        return -1
+
+
+    @staticmethod
+    def to_str(x: typing.Union[int, str, typing.TypeVar("LogLevel")]):
+        """make best effort to convert an int, str or LogLevel to name"""
+        if isinstance(x, LogLevel):
+            return str(x)
+        if isinstance(x, int):
+            try:
+                return LogLevel.to_str(LogLevel(x))
+            except ValueError:
+                return str(x)
+        if isinstance(x, str):
+            try:
+                return LogLevel.to_str(LogLevel[x])
+            except KeyError:
+                return ""
 
 
 class MessageCenter:
@@ -55,7 +89,7 @@ class MessageCenter:
 
 @dataclasses.dataclass
 class WriterConfig:
-    threshold:          typing.Union[int, str, LoggingLevel]
+    threshold:          typing.Union[int, str, LogLevel]
     buffered:           bool
     monochrome:         bool
     show_clock_time:    bool = True
@@ -66,7 +100,7 @@ class WriterConfig:
 
     def __post_init__(self):
         if isinstance(self.threshold, str):
-            self.threshold = LoggingLevel[self.threshold]
+            self.threshold = LogLevel[self.threshold]
 
 
 class Writer(abc.ABC):
@@ -89,13 +123,13 @@ class Writer(abc.ABC):
 
     def prepend(self, msg, level):
         def stylize(prefix, level):
-            if level <= LoggingLevel.DEBUG:
+            if level <= LogLevel.DEBUG:
                 prefix =color.faint(prefix)
-            elif level == LoggingLevel.WARN:
+            elif level == LogLevel.WARN:
                 prefix = color.yellow(prefix)
-            elif level == LoggingLevel.ERROR:
+            elif level == LogLevel.ERROR:
                 prefix = color.red(prefix)
-            elif level == LoggingLevel.FATAL:
+            elif level == LogLevel.FATAL:
                 prefix = color.bold(color.red(prefix))
             return prefix
         if self.monochrome:
@@ -118,9 +152,9 @@ class Writer(abc.ABC):
         if prefix:
             prefix = prefix if self.monochrome else stylize(prefix, level)
             if "\n" in msg:
-                return "\n".join([prefix + "│ " + x for x in msg.splitlines()])
+                return "\n".join([prefix + VERTICAL_BAR + " " + x for x in msg.splitlines()])
             else:
-                return prefix + "│ " + msg
+                return prefix + VERTICAL_BAR + " " + msg
         else:
             return msg
 
@@ -178,37 +212,37 @@ class Logger:
     def __exit__(self, exception_type, exception_value, exception_traceback):
         self.flush()
 
-    def log(self, msg, level: typing.Union[int, str, LoggingLevel], buffer=False):
+    def log(self, msg, level: typing.Union[int, str, LogLevel], buffer=False):
         if isinstance(level, str):
-            level = LoggingLevel[level]
+            level = LogLevel[level]
         for w in self.writers:
             w.write(msg, level)
         if not buffer:
             self.flush()
 
     def trace(self, msg, buffer=False):
-        self.log(msg, level=LoggingLevel.TRACE, buffer=buffer)
+        self.log(msg, level=LogLevel.TRACE, buffer=buffer)
 
     def debug(self, msg, buffer=False):
-        self.log(msg, level=LoggingLevel.DEBUG, buffer=buffer)
+        self.log(msg, level=LogLevel.DEBUG, buffer=buffer)
 
     def info(self, msg, buffer=False):
-        self.log(msg, level=LoggingLevel.INFO, buffer=buffer)
+        self.log(msg, level=LogLevel.INFO, buffer=buffer)
 
     def warn(self, msg, colorize=True, buffer=False):
-        self.log(color.yellow(msg) if colorize else msg, level=LoggingLevel.WARN, buffer=buffer)
+        self.log(color.yellow(msg) if colorize else msg, level=LogLevel.WARN, buffer=buffer)
 
     def error(self, msg, colorize=True, buffer=False, assert_false=None):
         # assert_false implies no buffer (must flush immediately)
         buffer = not helper.override(not buffer, assert_false)
-        self.log(color.red(msg)if colorize else msg, level=LoggingLevel.ERROR, buffer=buffer)
+        self.log(color.red(msg)if colorize else msg, level=LogLevel.ERROR, buffer=buffer)
         if assert_false:
             assert False
 
     def fatal(self, msg, colorize=True, buffer=False, assert_false=True):
         # assert_false implies flush
         buffer = not helper.override(not buffer, assert_false)
-        self.log(color.bold(color.red(msg)) if colorize else msg, level=LoggingLevel.FATAL, buffer=buffer)
+        self.log(color.bold(color.red(msg)) if colorize else msg, level=LogLevel.FATAL, buffer=buffer)
         if assert_false:
             assert False
 

@@ -19,24 +19,25 @@ import typing
 import requests
 
 # user-defined modules
-from logger import LoggingLevel, WriterConfig, ScreenWriter, FileWriter, Logger
+from logger import LogLevel, Logger, WriterConfig, ScreenWriter, FileWriter
 from connection import Interaction
 import color
 import thread
 
-# user-defined modules TO BE DEPRECATED
-# import printer
-
 
 PROGRAM = "eosio-launcher-service"
+PRODUCER_KEY = "EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"
+PREACTIVATE_FEATURE = "0ec7e080177b2c02b278d5088611686b49d739925a92d9bfcacd7fc6b74053bd"
 
 DEFAULT_ADDRESS = "127.0.0.1"
 DEFAULT_PORT = 1234
-DEFAULT_DIR = "../build"
+DEFAULT_WDIR = "../build"
 DEFAULT_FILE = os.path.join(".", "programs", PROGRAM, PROGRAM)
 DEFAULT_START = False
 DEFAULT_KILL = False
 
+DEFAULT_CONTRACTS_DIR = "../../eosio.contracts/build/contracts"
+DEFAULT_TOTAL_SUPPLY = 1e9
 DEFAULT_CLUSTER_ID = 0
 DEFAULT_CENTER_NODE_ID = None
 DEFAULT_TOPOLOGY = "mesh"
@@ -46,6 +47,7 @@ DEFAULT_PRODUCER_NODES = 4
 DEFAULT_UNSTARTED_NODES = 0
 DEFAULT_DONT_VOTE = False
 DEFAULT_DONT_BOOTSTRAP = False
+DEFAULT_EXTRA_CONFIGS = []
 
 DEFAULT_BUFFERED = True
 DEFAULT_MONOCHROME = False
@@ -53,11 +55,13 @@ DEFAULT_MONOCHROME = False
 HELP_HELP = "Show this message and exit"
 HELP_ADDRESS = "Address of launcher service"
 HELP_PORT = "Listening port of launcher service"
-HELP_DIR = "Working directory"
+HELP_WDIR = "Working directory"
 HELP_FILE = "Path to local launcher service file"
 HELP_START = "Always start a new launcher service"
 HELP_KILL = "Kill existing launcher services (if any)"
 
+HELP_CONTRACTS_DIR = "Directory of eosio smart contracts"
+HELP_TOTAL_SUPPLY = "Total supply of tokens"
 HELP_CLUSTER_ID = "Cluster ID to launch with"
 HELP_CENTER_NODE_ID = "Center node ID for star or bridge"
 HELP_TOPOLOGY = "Cluster topology to launch with"
@@ -66,11 +70,12 @@ HELP_TOTAL_PRODUCERS = "Number of total producers"
 HELP_PRODUCER_NODES = "Number of nodes that have producers"
 HELP_UNSTARTED_NODES = "Number of unstarted nodes"
 HELP_DONT_VOTE = "Do not vote for producers in bootstrap"
-HELP_DONT_BOOTSTRAP = "Launch cluster without bootstrapping"
+HELP_DONT_BOOTSTRAP = "Launch cluster without bootstrap"
 
 HELP_LOG_LEVEL = "Stdout logging level (numeric)"
 HELP_MONOCHROME = "Print in black and white instead of colors"
 HELP_UNBUFFER = "Do not buffer for stdout logging"
+HELP_EXTRA_CONFIGS = "Extra configs to pass to launcher service"
 
 HELP_LOG_ALL = "Set stdout logging level to ALL (0)"
 HELP_TRACE = "Set stdout logging level to TRACE (10)"
@@ -87,11 +92,13 @@ class CommandLineArguments:
         cla = self.parse()
         self.address = cla.address
         self.port = cla.port
-        self.dir = cla.dir
+        self.wdir = cla.wdir
         self.file = cla.file
         self.start = cla.start
         self.kill = cla.kill
 
+        self.contracts_dir = cla.contracts_dir
+        self.total_supply = cla.total_supply
         self.cluster_id = cla.cluster_id
         self.topology = cla.topology
         self.center_node_id = cla.center_node_id
@@ -112,24 +119,26 @@ class CommandLineArguments:
         left = 5
         form = lambda text, value=None: "{} ({})".format(helper.pad(text, left=left, total=50, char=" ", sep=""), value)
         parser = argparse.ArgumentParser(description=desc, add_help=False, formatter_class=lambda prog: argparse.RawTextHelpFormatter(prog, max_help_position=50))
-        parser.add_argument("-h", "--help", action="help", help=' ' * left + HELP_HELP)
+        parser.add_argument("-h", "--help", action="help", help=" " * left + HELP_HELP)
 
         parser.add_argument("-a", "--address", type=str, metavar="IP", help=form(HELP_ADDRESS, DEFAULT_ADDRESS))
         parser.add_argument("-p", "--port", type=int, help=form(HELP_PORT, DEFAULT_PORT))
-        parser.add_argument("-d", "--dir", type=str, metavar="PATH", help=form(HELP_DIR, DEFAULT_DIR))
+        parser.add_argument("-w", "--wdir", type=str, metavar="PATH", help=form(HELP_WDIR, DEFAULT_WDIR))
         parser.add_argument("-f", "--file", type=str, metavar="PATH", help=form(HELP_FILE, DEFAULT_FILE))
         parser.add_argument("-s", "--start", action="store_true", default=None, help=form(HELP_START, DEFAULT_START))
         parser.add_argument("-k", "--kill", action="store_true", default=None, help=form(HELP_KILL, DEFAULT_KILL))
 
+        parser.add_argument("-d", "--contracts-dir", metavar="PATH", help=form(HELP_CONTRACTS_DIR, DEFAULT_CONTRACTS_DIR))
+        parser.add_argument("-g", "--total-supply", metavar="NUM", help=form(HELP_TOTAL_SUPPLY, "{:g}".format(DEFAULT_TOTAL_SUPPLY)))
         parser.add_argument("-i", "--cluster-id", dest="cluster_id", type=int, metavar="ID", help=form(HELP_CLUSTER_ID, DEFAULT_CLUSTER_ID))
         parser.add_argument("-t", "--topology", type=str, metavar="SHAPE", help=form(HELP_TOPOLOGY, DEFAULT_TOPOLOGY), choices={"mesh", "star", "bridge", "line", "ring", "tree"})
-        parser.add_argument("-c", "--center-node-id", dest="center_node_id", type=int, metavar="ID", help=form(HELP_CENTER_NODE_ID, DEFAULT_CENTER_NODE_ID))
-        parser.add_argument("-n", "--total-nodes", dest="total_nodes", type=int, metavar="NUM", help=form(HELP_TOTAL_NODES, DEFAULT_TOTAL_NODES))
-        parser.add_argument("-y", "--total-producers", dest="total_producers", type=int, metavar="NUM", help=form(HELP_TOTAL_PRODUCERS, DEFAULT_TOTAL_PRODUCERS))
-        parser.add_argument("-z", "--producer-nodes", dest="producer_nodes", type=int, metavar="NUM", help=form(HELP_PRODUCER_NODES, DEFAULT_PRODUCER_NODES))
-        parser.add_argument("-u", "--unstarted-nodes", dest="unstarted_nodes", type=int, metavar="NUM", help=form(HELP_UNSTARTED_NODES, DEFAULT_UNSTARTED_NODES))
-        parser.add_argument("-w", "--dont-vote", dest="dont_vote", action="store_true", default=None, help=form(HELP_DONT_VOTE, DEFAULT_DONT_VOTE))
-        parser.add_argument("-q", "--dont-bootstrap", dest="dont_bootstrap", action="store_true", default=None, help=form(HELP_DONT_BOOTSTRAP, DEFAULT_DONT_BOOTSTRAP))
+        parser.add_argument("-c", "--center-node-id", type=int, metavar="ID", help=form(HELP_CENTER_NODE_ID, DEFAULT_CENTER_NODE_ID))
+        parser.add_argument("-n", "--total-nodes", type=int, metavar="NUM", help=form(HELP_TOTAL_NODES, DEFAULT_TOTAL_NODES))
+        parser.add_argument("-y", "--total-producers", type=int, metavar="NUM", help=form(HELP_TOTAL_PRODUCERS, DEFAULT_TOTAL_PRODUCERS))
+        parser.add_argument("-z", "--producer-nodes", type=int, metavar="NUM", help=form(HELP_PRODUCER_NODES, DEFAULT_PRODUCER_NODES))
+        parser.add_argument("-u", "--unstarted-nodes", type=int, metavar="NUM", help=form(HELP_UNSTARTED_NODES, DEFAULT_UNSTARTED_NODES))
+        parser.add_argument("-j", "--dont-vote", action="store_true", default=None, help=form(HELP_DONT_VOTE, DEFAULT_DONT_VOTE))
+        parser.add_argument("-q", "--dont-bootstrap", action="store_true", default=None, help=form(HELP_DONT_BOOTSTRAP, DEFAULT_DONT_BOOTSTRAP))
 
         threshold = parser.add_mutually_exclusive_group()
         threshold.add_argument("-l", "--log-level", dest="threshold", type=int, metavar="LEVEL", action="store", help=form(HELP_LOG_LEVEL))
@@ -148,56 +157,46 @@ class CommandLineArguments:
 
 
 class Service:
-    def __init__(self, address=None, port=None, dir=None, file=None, start=None, kill=None, logger=None, dont_connect=False):
+    def __init__(self, address=None, port=None, wdir=None, file=None, start=None, kill=None, logger=None, dont_connect=False):
         # read command-line arguments
-        self.cla        = CommandLineArguments()
+        self.cla = CommandLineArguments()
 
         # configure service
-        self.address    = helper.override(DEFAULT_ADDRESS, address, self.cla.address)
-        self.port       = helper.override(DEFAULT_PORT,    port,    self.cla.port)
-        self.dir        = helper.override(DEFAULT_DIR,     dir,     self.cla.dir)
-        self.file       = helper.override(DEFAULT_FILE,    file,    self.cla.file)
-        self.start      = helper.override(DEFAULT_START,   start,   self.cla.start)
-        self.kill       = helper.override(DEFAULT_KILL,    kill,    self.cla.kill)
-
-        # tell if service is remote or local
-        if self.address in ("127.0.0.1", "localhost"):
-            self.remote = False
-        else:
-            self.remote = True
-            self.file = self.start = self.kill = None
+        self.address = helper.override(DEFAULT_ADDRESS, address, self.cla.address)
+        self.port    = helper.override(DEFAULT_PORT,    port,    self.cla.port)
+        self.wdir    = helper.override(DEFAULT_WDIR,    wdir,    self.cla.wdir)
+        self.file    = helper.override(DEFAULT_FILE,    file,    self.cla.file)
+        self.start   = helper.override(DEFAULT_START,   start,   self.cla.start)
+        self.kill    = helper.override(DEFAULT_KILL,    kill,    self.cla.kill)
 
         # register logger
-        self.logger = logger
-        for w in self.logger.writers:
-            if isinstance(w, ScreenWriter):
-                th = helper.override(w.threshold, self.cla.threshold)
-                if isinstance(th, str):
-                    th = LoggingLevel[th]
-                self.threshold = w.threshold = th
-                self.buffered = w.buffered = helper.override(DEFAULT_BUFFERED, w.buffered, self.cla.buffered)
-                self.monochrome = w.monochrome = helper.override(DEFAULT_MONOCHROME, w.monochrome, self.cla.monochrome)
+        self.register_logger(logger)
 
         # connect
         if not dont_connect:
             self.connect()
 
 
+    def register_logger(self, logger):
+        self.logger = logger
+        for w in self.logger.writers:
+            if isinstance(w, ScreenWriter):
+                th = helper.override(w.threshold, self.cla.threshold)
+                if isinstance(th, str):
+                    th = LogLevel[th]
+                self.threshold = w.threshold = th
+                self.buffered = w.buffered = helper.override(DEFAULT_BUFFERED, w.buffered, self.cla.buffered)
+                self.monochrome = w.monochrome = helper.override(DEFAULT_MONOCHROME, w.monochrome, self.cla.monochrome)
+
+
     def connect(self):
-        # print system info
-        self.print_system_info()
-
-        # print service config
-        self.print_config()
-
-        # change working directory
         self.change_working_dir()
-
-        # connect to launcher service
-        if self.remote:
-            self.connect_to_remote_service()
-        else:
+        self.print_system_info()
+        self.print_config()
+        if self.address == "127.0.0.1":
             self.connect_to_local_service()
+        else:
+            self.connect_to_remote_service()
 
 
     def print_system_info(self):
@@ -209,32 +208,29 @@ class Service:
 
     def print_config(self):
         self.print_header("service configuration")
+
         # print service config
-        self.print_config_helper("-a: address",    HELP_ADDRESS,    self.address,      DEFAULT_ADDRESS)
-        self.print_config_helper("-p: port",       HELP_PORT,       self.port,         DEFAULT_PORT)
-        self.print_config_helper("-d: dir",        HELP_DIR,        self.dir,          DEFAULT_DIR)
-        self.print_config_helper("-f: file",       HELP_FILE,       self.file,         DEFAULT_FILE)
-        self.print_config_helper("-s: start",      HELP_START,      self.start,        DEFAULT_START)
-        self.print_config_helper("-k: kill",       HELP_KILL,       self.kill,         DEFAULT_KILL)
-        # print logger config
+        self.print_formatted_config("-a: address", HELP_ADDRESS, self.address, DEFAULT_ADDRESS)
+        self.print_formatted_config("-p: port",    HELP_PORT,    self.port,    DEFAULT_PORT)
+        self.print_formatted_config("-w: wdir",    HELP_WDIR,    self.wdir,    DEFAULT_WDIR)
+        self.print_formatted_config("-f: file",    HELP_FILE,    self.file,    DEFAULT_FILE)
+        self.print_formatted_config("-s: start",   HELP_START,   self.start,   DEFAULT_START)
+        self.print_formatted_config("-k: kill",    HELP_KILL,    self.kill,    DEFAULT_KILL)
+
+        # print logger config (for screen logging)
         try:
-            log_level = "{} ({})".format(LoggingLevel(self.threshold).name, self.threshold)
+            log_level = "{} ({})".format(LogLevel(self.threshold).name, self.threshold)
         except ValueError:
             log_level = self.threshold
-        self.print_config_helper("-l: log-level",  HELP_LOG_LEVEL,  log_level)
-        self.print_config_helper("-x: unbuffer",   HELP_UNBUFFER,   not self.buffered, not DEFAULT_BUFFERED)
-        self.print_config_helper("-m: monochrome", HELP_MONOCHROME, self.monochrome,   DEFAULT_MONOCHROME)
+        self.print_formatted_config("-l: log-level",  HELP_LOG_LEVEL,  log_level)
+        self.print_formatted_config("-x: unbuffer",   HELP_UNBUFFER,   not self.buffered, not DEFAULT_BUFFERED)
+        self.print_formatted_config("-m: monochrome", HELP_MONOCHROME, self.monochrome,   DEFAULT_MONOCHROME)
 
 
     def change_working_dir(self):
+        os.chdir(self.wdir)
         self.print_header("change working directory")
-        os.chdir(self.dir)
         self.logger.debug("{:22}{}".format("Working Directory", os.getcwd()))
-
-
-    # TODO
-    def connect_to_remote_service(self):
-        pass
 
 
     def connect_to_local_service(self):
@@ -249,11 +245,20 @@ class Service:
             self.start_local_service()
 
 
+    # TO DO IN FUTURE
+    def connect_to_remote_service(self):
+        self.print_header("connect to remote service")
+        self.logger.warn("WARNING: Local service file setting (file={}) ignored.".format(helper.compress(self.file)))
+        self.logger.warn("WARNING: Setting to always start a local service (start={}) ignored.".format(self.start))
+        self.logger.warn("WARNING: Setting to kill local services (kill={}) ignored.".format(self.kill))
+        self.logger.fatal("FATAL: Connecting to a remote service is experimental at this moment.")
+
+
     def print_header(self, text, level="DEBUG", buffer=False):
-        self.logger.log(helper.format_header(text), level=level, buffer=buffer)
+        self.logger.log(helper.format_header(text, level=str(level)), level=level, buffer=buffer)
 
 
-    def print_config_helper(self, label, help, value, default_value=None, compress=True):
+    def print_formatted_config(self, label, help, value, default_value=None, compress=True):
         highlighted = color.blue(value) if value != default_value else color.vanilla(value)
         compressed = helper.compress(highlighted) if compress else highlighted
         self.logger.debug("{:31}{:48}{}".format(color.yellow(label), help, compressed))
@@ -279,11 +284,11 @@ class Service:
 
     def connect_to_existing_local_service(self, pid):
         cmd_and_args = helper.get_cmd_and_args_by_pid(pid)
-        for i, x in enumerate(shlex.split(cmd_and_args)):
-            if i == 0:
-                existing_file = x
-            elif x.startswith("--http-server-address"):
-                existing_port = int(x.split(":")[-1])
+        for ind, val in enumerate(shlex.split(cmd_and_args)):
+            if ind == 0:
+                existing_file = val
+            elif val.startswith("--http-server-address"):
+                existing_port = int(val.split(":")[-1])
                 break
         else:
             self.logger.error("ERROR: Failed to extract \"--http-server-address\" from \"{}\" (process ID {})!".format(cmd_and_args, pid), assert_false=True)
@@ -310,38 +315,17 @@ class Service:
 
 
 class Cluster:
-    def __init__(self, service, cluster_id=None, topology=None, center_node_id=None, total_nodes=None, total_producers=None, producer_nodes=None, unstarted_nodes=None, extra_configs: typing.List[str]=[], dont_vote=None, dont_bootstrap=None):
-        """
-        Bootstrap
-        ---------
-        1. launch a cluster
-        2. get cluster info
-        3. create bios account
-        4. schedule protocol feature activations
-        5. set eosio.token contract
-        6. create tokens
-        7. issue tokens
-        8. set system contract
-        9. init system contract
-        10. create producer accounts
-        11. register producers
-        12. vote for producers
-        13. verify head producer
-        """
-
+    def __init__(self, service, contracts_dir=None, total_supply=None, cluster_id=None, topology=None, center_node_id=None, total_nodes=None, total_producers=None, producer_nodes=None, unstarted_nodes=None, extra_configs: typing.List[str] = None, dont_vote=None, dont_bootstrap=None):
         # register service
         self.service = service
         self.cla = service.cla
         self.logger = service.logger
-        # self.print = service.print
-        # self.string = service.string
-        # self.alert = service.alert
-
         self.print_header = service.print_header
-        self.print_config_helper = service.print_config_helper
-
+        self.print_formatted_config= service.print_formatted_config
 
         # configure cluster
+        self.contracts_dir   = helper.override(DEFAULT_CONTRACTS_DIR,   contracts_dir,   self.cla.contracts_dir)
+        self.total_supply    = helper.override(DEFAULT_TOTAL_SUPPLY,    total_supply,    self.cla.total_supply)
         self.cluster_id      = helper.override(DEFAULT_CLUSTER_ID,      cluster_id,      self.cla.cluster_id)
         self.topology        = helper.override(DEFAULT_TOPOLOGY,        topology,        self.cla.topology)
         self.center_node_id  = helper.override(DEFAULT_CENTER_NODE_ID,  center_node_id,  self.cla.center_node_id)
@@ -351,15 +335,21 @@ class Cluster:
         self.unstarted_nodes = helper.override(DEFAULT_UNSTARTED_NODES, unstarted_nodes, self.cla.unstarted_nodes)
         self.dont_vote       = helper.override(DEFAULT_DONT_VOTE,       dont_vote,       self.cla.dont_vote)
         self.dont_bootstrap  = helper.override(DEFAULT_DONT_BOOTSTRAP,  dont_bootstrap,  self.cla.dont_bootstrap)
-        self.extra_configs   = extra_configs
+        self.extra_configs   = helper.override(DEFAULT_EXTRA_CONFIGS,   extra_configs)
 
-        # reconcile conflict in config
-        self.resolve_config_conflict()
-
-        # check for potential problems in config
+        # check for logical errors in config
         self.check_config()
 
-        # establish connection between nodes and producers
+        # Example
+        # -------
+        # Given 4 nodes, 3 (non-eosio) producers and 2 producer nodes, the mappings would be:
+        # self.nodes = [{"node_id": 0, "producers": "eosio", "defproducera", "defproducerb"},
+        #               {"node_id": 1, "producers": "defproducerc"},
+        #               {"node_id": 2, "producers": ""},
+        #               {"node_id": 3, "producers": ""}]
+        # self.producers = {"defproducera": 0, "defproducerb": 1, "defproducerc": 2}
+
+        # establish mappings between nodes and producers
         self.nodes = []
         self.producers = {}
         q, r = divmod(self.total_producers, self.producer_nodes)
@@ -373,49 +363,32 @@ class Cluster:
                     self.producers[name] = i
                 self.nodes[i]["producers"] = prod
 
-        if not self.dont_bootstrap:
-            self.bootstrap(dont_vote=dont_vote)
+        # launch cluster
+        if self.dont_bootstrap:
+            self.launch_without_bootstrap()
         else:
-            self.launch_cluster_without_bootstrap()
-
-
-    def resolve_config_conflict(self):
-        if self.producer_nodes > self.total_producers:
-            self.print_header("resolve conflict in cluster configuration")
-            self.print.vanilla("Conflict: total producers ({}) <= producer nodes ({}).".format(self.total_producers, self.producer_nodes))
-            self.print.vanilla("Resolution: total_producers takes priority over producer_nodes.")
-            self.logger.debug(color.yellow("WARNING: Producer nodes setting (producer_nodes = {}) ignored.".format(self.producer_nodes)))
-            self.producer_nodes = self.total_producers
+            self.bootstrap(dont_vote=self.dont_vote)
 
 
     def check_config(self):
-        assert self.cluster_id >= 0
-        assert self.total_nodes >= self.producer_nodes + self.unstarted_nodes, self.alert.red("Failed assertion: total_node ({}) >= producer_nodes ({}) + unstarted_nodes ({}).".format(self.total_nodes, self.producer_nodes, self.unstarted_nodes))
+        assert self.cluster_id >= 0, "cluster_id ({}) < 0.".format(self.cluster_id)
+        assert self.total_nodes >= self.producer_nodes + self.unstarted_nodes, "total_node ({}) < producer_nodes ({}) + unstarted_nodes ({}).".format(self.total_nodes, self.producer_nodes, self.unstarted_nodes)
         if self.topology in ("star", "bridge"):
-            assert self.center_node_id is not None, self.alert.red("Failed assertion: center_node_id is specified when topology is \"{}\".".format(self.topology))
+            assert self.center_node_id is not None, "center_node_id is not specified when topology is \"{}\".".format(self.topology)
         if self.topology == "bridge":
-            assert self.center_node_id not in (0, self.total_nodes - 1), self.alert.red("Failed assertion: center_node_id ({}) is neither 0 nor last node ({}) when topology is \"bridge\".".format(self.center_node_id, self.total_nodes - 1))
-            assert self.total_nodes >= 3, self.alert.red("Failed assertion: total_node ({}) >= 3 when topology is \"bridge\".".format(self.total_nodes))
+            assert self.center_node_id not in (0, self.total_nodes-1), "center_node_id ({}) cannot be 0 or last node ({}) when topology is \"bridge\".".format(self.center_node_id, self.total_nodes-1)
 
 
-    def launch_cluster_without_bootstrap(self):
-        self.logger.info(color.bold(">>> Launch without bootstrapping starts."))
+    def launch_without_bootstrap(self):
+        self.logger.info(color.bold(">>> Launch (without bootstrap) starts."))
         self.print_config()
         self.launch_cluster()
         self.get_cluster_info()
         self.set_bios_contract()
-        self.logger.info(color.bold(">>> Launch without bootstrapping finishes."))
+        self.logger.info(color.bold(">>> Launch (without bootstrap) finishes."))
 
 
-    # TODO: allow users to specify path instead of hardcoded "eosio.contracts"
-    def set_bios_contract(self):
-        self.set_contract(node_id=0,
-                          contract_file="../../eosio.contracts/build/contracts/eosio.bios/eosio.bios.wasm",
-                          abi_file="../../eosio.contracts/build/contracts/eosio.bios/eosio.bios.abi",
-                          account="eosio", name="eosio.bios")
-
-
-
+    # TODO: ADD isInSync() after launch cluster
     def bootstrap(self, dont_vote=False):
         """
         Bootstrap
@@ -434,139 +407,64 @@ class Cluster:
         12. vote for producers
         13. verify head producer
         """
-
-        self.logger.info(color.bold(">>> Bootstrap starts."))
-
-        # 0. print configuration
+        self.logger.info(color.bold(">>> Bootstrap{} starts.").format(" (without voting)" if dont_vote else ""))
         self.print_config()
-
-        # 1. launch a cluster
         self.launch_cluster()
-
-        # 2. get cluster info
         self.get_cluster_info()
-
-        # 3. create bios accounts
         self.create_bios_accounts()
-
-        # 4. schedule protocol feature activations
         self.schedule_protocol_feature_activations()
-
-        # 5. set eosio.token
-        self.set_contract(node_id=0,
-                          contract_file="../../eosio.contracts/build/contracts/eosio.token/eosio.token.wasm",
-                          abi_file="../../eosio.contracts/build/contracts/eosio.token/eosio.token.abi",
-                          account="eosio.token", name="eosio.token")
-
-        # 6. create tokens
-        total_supply = 1e9
-        total_supply_formatted = helper.format_tokens(total_supply)
-
-        create_tokens = [{"account": "eosio.token",
-                          "action": "create",
-                          "permissions": [{"actor": "eosio.token",
-                                           "permission": "active"}],
-                          "data": {"issuer": "eosio",
-                                   "maximum_supply": total_supply_formatted,
-                                   "can_freeze": 0,
-                                   "can_recall": 0,
-                                   "can_whitelist":0}}]
-        self.push_actions(node_id=0, actions=create_tokens, name="create tokens")
-
-        # 7. issue tokens
-        issue_tokens = [{"account": "eosio.token",
-                          "action": "issue",
-                          "permissions": [{"actor": "eosio",
-                                           "permission": "active"}],
-                          "data": {"to": "eosio",
-                                   "quantity": total_supply_formatted,
-                                   "memo": "hi"}}]
-        self.push_actions(node_id=0, actions=issue_tokens, name="issue tokens")
-
-        # 8. set system contract
-        self.set_contract(node_id=0,
-                          contract_file="../../eosio.contracts/build/contracts/eosio.system/eosio.system.wasm",
-                          abi_file="../../eosio.contracts/build/contracts/eosio.system/eosio.system.abi",
-                          account="eosio", name="eosio.system")
-
-        # 9. init system contract
-        init_system_contract = [{"account": "eosio",
-                                 "action": "init",
-                                 "permissions": [{"actor": "eosio",
-                                                  "permission": "active"}],
-                                 "data": {"version": 0,
-                                          "core": "4,SYS"}}]
-        self.push_actions(node_id=0, actions=init_system_contract, name="init system contract")
-
-        # 10. create producer accounts
-        # 11. register producers
-        stake_amount = total_supply * 0.075
-        create_account_threads = []
-        channel = []
-        report = lambda channel, id: channel.append(id)
-
-        for p in self.producers:
-            def create_and_register(stake_amount):
-                producer = p
-                node_id = self.producers[p]
-                stake_amount_formatted = helper.format_tokens(stake_amount)
-                # when create/register accounts: always push actions to node #0 instead of the nodes of the accounts
-                # otherwise may encounter errors caused by nodes not synced up yet
-                # "message": "false: Unknown action delegatebw in contract eosio"
-                self.create_account(node_id=0, creator="eosio", name=producer,
-                                    stake_cpu=stake_amount_formatted, stake_net=stake_amount_formatted, buy_ram_bytes=1048576,
-                                    transfer=True)
-                self.register_producer(node_id=0, producer=producer)
-            # t = threading.Thread(target=create_and_register, args=(stake_amount,))
-            t = thread.ExceptionThread(channel, report, target=create_and_register, args=(stake_amount,))
-            stake_amount = max(stake_amount / 2, 100)
-            create_account_threads.append(t)
-            t.start()
-
-        for t in create_account_threads:
-            t.join()
-
-        if len(channel) != 0:
-            self.logger.error("{} exception(s) occurred in creating accounts / registering producers.".format(len(channel)), assert_false=True)
-
-
+        self.set_token_contract()
+        self.create_tokens(maximum_supply=self.total_supply)
+        self.issue_tokens(quantity=self.total_supply)
+        self.set_system_contract()
+        self.init_system_contract()
+        self.create_and_register_producers_in_parallel()
         if not dont_vote:
-            # 12. vote for producers
-            self.vote_for_producers(node_id=0, voter="defproducera", voted_producers=list(self.producers.keys())[:min(21, len(self.producers))])
-            # 13. verify head block producer is no longer eosio
+            self.vote_for_producers(voter="defproducera", voted_producers=list(self.producers.keys())[:min(21, len(self.producers))])
             self.verify_head_block_producer()
-
-        # self.logger.debug(color.decorate(helper.pad(">>> Bootstrap finishes.", left=0, char=' ', sep="", total=80), fcolor="white", bcolor="black"))
-        self.logger.info(color.bold(">>> Bootstrap finishes."))
+        self.logger.info(color.bold(">>> Bootstrap{} finishes.").format(" (without voting)" if dont_vote else ""))
 
 
     def print_config(self):
         self.print_header("cluster configuration")
-        self.print_config_helper("-i: cluster_id",      HELP_CLUSTER_ID,        self.cluster_id,        DEFAULT_CLUSTER_ID)
-        self.print_config_helper("-t: topology",        HELP_TOPOLOGY,          self.topology,          DEFAULT_TOPOLOGY)
-        self.print_config_helper("-c: center_node_id",  HELP_CENTER_NODE_ID,    self.center_node_id,    DEFAULT_CENTER_NODE_ID)
-        self.print_config_helper("-n: total_nodes",     HELP_TOTAL_NODES,       self.total_nodes,       DEFAULT_TOTAL_NODES)
-        self.print_config_helper("-y: total_producers", HELP_TOTAL_PRODUCERS,   self.total_producers,   DEFAULT_TOTAL_PRODUCERS)
-        self.print_config_helper("-z: producer_nodes",  HELP_PRODUCER_NODES,    self.producer_nodes,    DEFAULT_PRODUCER_NODES)
-        self.print_config_helper("-u: unstarted_nodes", HELP_UNSTARTED_NODES,   self.unstarted_nodes,   DEFAULT_UNSTARTED_NODES)
-        self.print_config_helper("-w: dont_vote",       HELP_DONT_VOTE,         self.dont_vote,         DEFAULT_DONT_VOTE)
-        self.print_config_helper("-q: dont_bootstrap",  HELP_DONT_BOOTSTRAP,    self.dont_bootstrap,    DEFAULT_DONT_BOOTSTRAP)
+        self.print_formatted_config("-d: contracts_dir",   HELP_CONTRACTS_DIR,     self.contracts_dir,   DEFAULT_CONTRACTS_DIR)
+        self.print_formatted_config("-i: cluster_id",      HELP_CLUSTER_ID,        self.cluster_id,      DEFAULT_CLUSTER_ID)
+        self.print_formatted_config("-t: topology",        HELP_TOPOLOGY,          self.topology,        DEFAULT_TOPOLOGY)
+        self.print_formatted_config("-c: center_node_id",  HELP_CENTER_NODE_ID,    self.center_node_id,  DEFAULT_CENTER_NODE_ID)
+        self.print_formatted_config("-n: total_nodes",     HELP_TOTAL_NODES,       self.total_nodes,     DEFAULT_TOTAL_NODES)
+        self.print_formatted_config("-y: total_producers", HELP_TOTAL_PRODUCERS,   self.total_producers, DEFAULT_TOTAL_PRODUCERS)
+        self.print_formatted_config("-z: producer_nodes",  HELP_PRODUCER_NODES,    self.producer_nodes,  DEFAULT_PRODUCER_NODES)
+        self.print_formatted_config("-u: unstarted_nodes", HELP_UNSTARTED_NODES,   self.unstarted_nodes, DEFAULT_UNSTARTED_NODES)
+        self.print_formatted_config("-j: dont_vote",       HELP_DONT_VOTE,         self.dont_vote,       DEFAULT_DONT_VOTE)
+        self.print_formatted_config("-q: dont_bootstrap",  HELP_DONT_BOOTSTRAP,    self.dont_bootstrap,  DEFAULT_DONT_BOOTSTRAP)
+        self.print_formatted_config("... extra_configs",   HELP_EXTRA_CONFIGS,     self.extra_configs,   DEFAULT_EXTRA_CONFIGS)
 
 
-    def launch_cluster(self, **kwargs):
-        return self.call("launch_cluster", cluster_id=self.cluster_id, center_node_id=self.center_node_id, node_count=self.total_nodes, shape=self.topology, nodes=self.nodes, expect_transaction_id=False, extra_configs=self.extra_configs, **kwargs)
+    def launch_cluster(self):
+        return self.call("launch_cluster",
+                         nodes=self.nodes,
+                         node_count=self.total_nodes,
+                         shape=self.topology,
+                         center_node_id=self.center_node_id,
+                         extra_configs=self.extra_configs)
 
 
-    def get_cluster_info(self, **kwargs):
-        return self.call("get_cluster_info", cluster_id=self.cluster_id, expect_transaction_id=False, **kwargs)
+    def get_cluster_info(self, node_id=0, level="DEBUG", buffer=False):
+        return self.call("get_cluster_info",
+                         node_id=node_id,
+                         level=level,
+                         buffer=buffer)
 
-    def stop_node(self, **kwargs):
-        return self.call("stop_node", cluster_id=self.cluster_id, expect_transaction_id=False, **kwargs)
 
-    def start_node(self, **kwargs):
-        return self.call("start_node", cluster_id=self.cluster_id, expect_transaction_id=False, **kwargs)
+    def set_bios_contract(self):
+        contract = "eosio.bios"
+        return self.set_contract(account="eosio",
+                                 contract_file=self.get_wasm_file(contract),
+                                 abi_file=self.get_abi_file(contract),
+                                 name=contract)
 
-    def create_bios_accounts(self, **kwargs):
+
+    def create_bios_accounts(self, verify_key="irreversible"):
         accounts = [{"name":"eosio.bpay"},
                     {"name":"eosio.msig"},
                     {"name":"eosio.names"},
@@ -577,48 +475,109 @@ class Cluster:
                     {"name":"eosio.stake"},
                     {"name":"eosio.token"},
                     {"name":"eosio.upay"}]
-        return self.call("create_bios_accounts", cluster_id=self.cluster_id, creator="eosio", accounts=accounts, **kwargs)
+        return self.call("create_bios_accounts",
+                         creator="eosio",
+                         accounts=accounts,
+                         verify_key=verify_key)
 
 
-    def schedule_protocol_feature_activations(self, **kwargs):
+    def schedule_protocol_feature_activations(self):
         return self.call("schedule_protocol_feature_activations",
-                         cluster_id=self.cluster_id, node_id=0,
-                         protocol_features_to_activate=["0ec7e080177b2c02b278d5088611686b49d739925a92d9bfcacd7fc6b74053bd"],
-                         expect_transaction_id=False, **kwargs)
+                         protocol_features_to_activate=[PREACTIVATE_FEATURE])
 
 
-    def set_contract(self, contract_file: str, abi_file: str, account: str, node_id: int, name: str =None, **kwargs):
-        return self.call("set_contract",
-                         cluster_id=self.cluster_id, node_id=node_id, account = account,
-                         contract_file=contract_file, abi_file=abi_file,
-                         header=None if name is None else "set <{}> contract".format(name), **kwargs)
+    def set_token_contract(self):
+        contract = "eosio.token"
+        return self.set_contract(account=contract,
+                                 contract_file=self.get_wasm_file(contract),
+                                 abi_file=self.get_abi_file(contract),
+                                 name=contract)
 
 
-    def push_actions(self, node_id: int, actions: List[dict], name: str =None, **kwargs):
-        return self.call("push_actions",
-                         cluster_id=self.cluster_id, node_id=node_id, actions=actions,
-                         header=None if name is None else name, **kwargs)
+    def create_tokens(self, maximum_supply):
+        formatted = helper.format_tokens(maximum_supply)
+        actions = [{"account": "eosio.token",
+                    "action": "create",
+                    "permissions": [{"actor": "eosio.token",
+                                     "permission": "active"}],
+                    "data": {"issuer": "eosio",
+                             "maximum_supply": formatted,
+                             "can_freeze": 0,
+                             "can_recall": 0,
+                             "can_whitelist":0}}]
+        return self.push_actions(actions=actions, name="create tokens")
 
 
-    def create_account(self, node_id, creator, name, stake_cpu, stake_net, buy_ram_bytes, transfer, buffer=True, **kwargs):
-        return self.call("create_account", cluster_id=self.cluster_id, node_id=node_id, creator=creator, name=name,
-                         stake_cpu=stake_cpu, stake_net=stake_net, buy_ram_bytes=buy_ram_bytes, transfer=transfer,
-                         buffer=buffer, header="create \"{}\" account".format(name), **kwargs)
-
-    def register_producer(self, node_id, producer, buffer=True, **kwargs):
-            actions = [{"account": "eosio",
-                        "action": "regproducer",
-                        "permissions": [{"actor": "{}".format(producer),
-                                        "permission": "active"}],
-                        "data": {"producer": "{}".format(producer),
-                                 "producer_key": "EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
-                                 "url": "www.test.com",
-                                 "location": 0}}]
-            self.push_actions(node_id=node_id, actions=actions, name="register \"{}\" producer".format(producer), buffer=buffer)
+    def issue_tokens(self, quantity):
+        formatted = helper.format_tokens(quantity)
+        actions = [{"account": "eosio.token",
+                    "action": "issue",
+                    "permissions": [{"actor": "eosio",
+                                    "permission": "active"}],
+                    "data": {"to": "eosio",
+                             "quantity": formatted,
+                             "memo": "hi"}}]
+        return self.push_actions(actions=actions, name="issue tokens")
 
 
-    def vote_for_producers(self, node_id, voter, voted_producers: List[str], **kwargs):
-        assert len(voted_producers) <= 30, self.alert.red("Failed assertion: number of producers ({}) that account ({}) votes for <= 30 producers.".format(len(voted_producers), voter))
+    def set_system_contract(self):
+        contract = "eosio.system"
+        self.set_contract(contract_file=self.get_wasm_file(contract),
+                          abi_file=self.get_abi_file(contract),
+                          account="eosio",
+                          name=contract)
+
+
+    def init_system_contract(self):
+        actions = [{"account": "eosio",
+                    "action": "init",
+                    "permissions": [{"actor": "eosio",
+                                     "permission": "active"}],
+                    "data": {"version": 0,
+                             "core": "4,SYS"}}]
+        return self.push_actions(actions=actions, name="init system contract")
+
+
+    def create_and_register_producers_in_parallel(self):
+        amount = self.total_supply * 0.075
+        threads = []
+        channel = {}
+        def report(channel, thread_id, message):
+            channel[thread_id] = message
+        for p in self.producers:
+            def create_and_register_producers(amount):
+                # CAUTION
+                # -------
+                # Must keep p's value in a local variable (producer),
+                # since p may change in multithreading
+                producer = p
+                formatted = helper.format_tokens(amount)
+                self.create_account(creator="eosio",
+                                    name=producer,
+                                    stake_cpu=formatted,
+                                    stake_net=formatted,
+                                    buy_ram_bytes=1048576,
+                                    transfer=True,
+                                    buffer=True)
+                self.register_producer(producer=producer, buffer=True)
+            t = thread.ExceptionThread(channel, report, target=create_and_register_producers, args=(amount,))
+            amount = max(amount / 2, 100)
+            threads.append(t)
+            t.start()
+        for t in threads:
+            t.join()
+        if len(channel) != 0:
+            self.logger.error("{} exception(s) occurred in creating and registering producers.".format(len(channel)))
+            count = 0
+            for thread_id in channel:
+                self.logger.error(channel[thread_id])
+                count += 1
+                if count == 5:
+                    break
+
+
+    def vote_for_producers(self, voter, voted_producers: List[str],  buffer=False):
+        assert len(voted_producers) <= 30, "An account cannot votes for more than 30 producers. {} voted for {} producers.".format(voter, len(voted_producers))
         actions = [{"account": "eosio",
                     "action": "voteproducer",
                     "permissions": [{"actor": "{}".format(voter),
@@ -626,22 +585,17 @@ class Cluster:
                     "data": {"voter": "{}".format(voter),
                              "proxy": "",
                              "producers": voted_producers}}]
-        self.push_actions(node_id=node_id, actions=actions, name="votes for producers", **kwargs)
+        return self.push_actions(actions=actions, name="votes for producers", buffer=buffer)
 
 
-    def get_block(self, block_num_or_id, **kwargs):
-        return self.call("get_block", cluster_id=self.cluster_id, block_num_or_id=block_num_or_id, expect_transaction_id=False, **kwargs)
-
-
-    def verify_head_block_producer(self, retry=5, sleep=1):
+    # TO REVIEW
+    def verify_head_block_producer(self, retry=10, sleep=1):
         self.print_header("get head block producer")
-        ix = self.get_cluster_info(silent=True)
-        # get_head_block_producer = lambda : self.get_cluster_info(silent=True)["result"][0][1]["head_block_producer"]
+        ix = self.get_cluster_info(level="TRACE")
         extract_head_block_producer = lambda ix: json.loads(ix.response.text)["result"][0][1]["head_block_producer"]
         while retry >= 0:
-            ix = self.get_cluster_info(silent=True)
+            ix = self.get_cluster_info(level="TRACE")
             head_block_producer = extract_head_block_producer(ix)
-            self.logger.trace(ix.get_formatted_response())
             if head_block_producer == "eosio":
                 self.logger.debug(color.yellow("Head block producer is still \"eosio\"."))
             else:
@@ -651,81 +605,134 @@ class Cluster:
             self.logger.trace("Sleep for {}s before next retry...".format(sleep))
             time.sleep(sleep)
             retry -= 1
-        assert head_block_producer != "eosio"
+        assert head_block_producer != "eosio", "Head block producer is still \"eosio\"."
+
+
+    def create_account(self, creator, name, stake_cpu, stake_net, buy_ram_bytes, transfer, node_id=0, verify_key="irreversible", buffer=False):
+        return self.call("create_account",
+                         creator=creator,
+                         name=name,
+                         stake_cpu=stake_cpu,
+                         stake_net=stake_net,
+                         buy_ram_bytes=buy_ram_bytes,
+                         transfer=transfer,
+                         node_id=node_id,
+                         verify_key=verify_key,
+                         header="create \"{}\" account".format(name),
+                         buffer=buffer)
+
+
+    def register_producer(self, producer, buffer=False):
+        actions = [{"account": "eosio",
+                    "action": "regproducer",
+                    "permissions": [{"actor": "{}".format(producer),
+                                    "permission": "active"}],
+                    "data": {"producer": "{}".format(producer),
+                             "producer_key": PRODUCER_KEY,
+                             "url": "www.test.com",
+                             "location": 0}}]
+        return self.push_actions(actions=actions, name="register \"{}\" producer".format(producer), buffer=buffer)
+
+
+
+    def set_contract(self, account, contract_file, abi_file, node_id=0, verify_key="irreversible", name=None, buffer=False):
+        return self.call("set_contract",
+                         account=account,
+                         contract_file=contract_file,
+                         abi_file=abi_file,
+                         node_id=node_id,
+                         verify_key=verify_key,
+                         header="set <{}> contract".format(name) if name else None,
+                         buffer=buffer)
+
+
+    def push_actions(self, actions, node_id=0, verify_key="irreversible", name=None, buffer=False):
+        return self.call("push_actions",
+                         actions=actions,
+                         node_id=node_id,
+                         verify_key=verify_key,
+                         header=name,
+                         buffer=buffer)
 
 
     # TODO: set retry from command-line
-    def call(self, endpoint: str, retry=5, sleep=1, expect_transaction_id=True, verify_key="irreversible", silent=False, buffer=False, header: str = None, **data) -> dict:
-        with self.logger as log:
-            if not silent:
-                header = endpoint.replace("_", " ") if header is None else header
-                self.print_header(header, buffer=buffer)
-            ix = Interaction(endpoint, self.service, data)
-            if not silent:
-                log.debug(ix.request.url, buffer=buffer)
-                log.debug(helper.format_json(ix.request.data), buffer=buffer)
-            while not ix.response.ok and retry > 0:
-                if not silent:
-                    log.trace(color.red(ix.response))
-                    # TODO: detailed info for retry
-                    log.trace("{} {} for http connection...".format(retry, "retries remain" if retry > 1 else "retry remains"))
-                    log.trace("Sleep for {}s before next retry...".format(sleep))
-                time.sleep(sleep)
-                ix.attempt()
-                retry -= 1
-            if not silent:
-                log.debug(ix.get_formatted_response(), buffer=buffer)
-            # assert ix.response.ok
-            if not ix.response.ok:
-                log.error(ix.response.text, assert_false=True)
-            if expect_transaction_id and ix.transaction_id is None:
-                log.warn("WARNING: No transaction ID returned.")
-            if expect_transaction_id:
-                assert self.verify_transaction(ix.transaction_id, verify_key=verify_key, silent=silent, buffer=buffer)
-            # log.flush()
-            # TODO: change to return ix
-            # return json.loads(ix.response.text)
-            if buffer:
-                log.flush()
-            return ix
+    def call(self,
+             endpoint: str,
+             retry=40,
+             sleep=0.25,
+             verify_key=None,
+             header=None,
+             level="DEBUG",
+             buffer=False,
+             dont_flush=False,
+             **data) -> Interaction:
+        data.setdefault("cluster_id", self.cluster_id)
+        data.setdefault("node_id", 0)
+        header = header if header else endpoint.replace("_", " ")
+        self.print_header(header, level=level, buffer=buffer)
+        ix = Interaction(endpoint, self.service, data)
+        self.logger.log(ix.request.url, level=level, buffer=buffer)
+        self.logger.log(helper.format_json(ix.request.data), level=level, buffer=buffer)
+        while not ix.response.ok and retry > 0:
+            self.logger.trace(ix.get_formatted_response(), buffer=buffer)
+            self.logger.trace("{} {} for http connection...".format(retry, "retries remain" if retry > 1 else "retry remains"), buffer=buffer)
+            self.logger.trace("Sleep for {}s before next retry...".format(sleep), buffer=buffer)
+            time.sleep(sleep)
+            ix.attempt()
+            retry -= 1
+        if ix.response.ok:
+            self.logger.log(ix.get_formatted_response(), level=level, buffer=buffer)
+        else:
+            self.logger.error(ix.get_formatted_response(), assert_false=True)
+        if verify_key:
+            assert self.verify(transaction_id=ix.transaction_id, verify_key=verify_key, level=level, buffer=buffer)
+        if buffer and not dont_flush:
+            self.logger.flush()
+        return ix
 
 
-    # keep majority of system logging at DEBUG, leave INFO for user code
-    def verify_transaction(self, transaction_id, verify_key="irreversible", node_id=0, retry=10, sleep=0.5, silent=False, buffer=False):
-        # TODO: can have an assert to guard against non-existing field other than irreversible / contained
-        with self.logger as log:
-            if not silent:
-                log.trace("Verifying ...", buffer=buffer)
-            ix = Interaction("verify_transaction", self.service, dict(cluster_id=self.cluster_id, node_id=node_id, transaction_id=transaction_id))
-            verified = helper.extract(ix.response, key=verify_key, fallback=False)
-            if not silent:
-                log.trace(ix.get_formatted_response(show_content=True), buffer=buffer)
-            while not verified and retry > 0:
-                if not silent:
-                    log.trace("{} {} for verification...".format(retry, "retries remain" if retry > 1 else "retry remains"), buffer=buffer)
-                    log.trace("Sleep for {}s before next retry...".format(sleep), buffer=buffer)
-                time.sleep(sleep)
-                ix.attempt()
-                if not silent:
-                    log.trace(ix.get_formatted_response(show_content=True), buffer=buffer)
-                verified = helper.extract(ix.response, key=verify_key, fallback=False)
-                retry -= 1
-            # assert ix.response.ok
-            if not ix.response.ok:
-                log.error(ix.response.text, buffer=buffer, assert_false=True)
-            if not silent:
-                if verified:
-                    log.debug(color.decorate("{}!".format(verify_key.title()), fcolor="black", bcolor="green"), buffer=buffer)
-                else:
-                    log.error(ix.get_formatted_response(show_content=True), buffer=buffer)
-                    log.error("Failed to verify as \"{}\"!".format(verify_key), buffer=buffer, assert_false=True)
-            if buffer:
-                log.flush()
-            return verified
+    def verify(self, transaction_id, verify_key="irreversible", retry=40, sleep=0.25, level="DEBUG", buffer=False):
+        while retry >= 0:
+            if self.verify_transaction(transaction_id=transaction_id, verify_key=verify_key, buffer=buffer):
+                self.logger.log("{}".format(color.black_on_green(verify_key.title())), level=level, buffer=buffer)
+                return True
+            time.sleep(sleep)
+            retry -= 1
+        self.logger.error(color.decorate("{}".format(verify_key.title()), fcolor="black", bcolor="green"))
+        return False
+
+
+    def verify_transaction(self, transaction_id, verify_key="irreversible", level="TRACE", buffer=False):
+        ix = self.call("verify_transaction", transaction_id=transaction_id, verify_key=None, level=level, buffer=buffer, dont_flush=True)
+        return helper.extract(ix.response, key=verify_key, fallback=False)
+
+
+    # Note: not called in this script
+    def stop_node(self):
+        return self.call("stop_node")
+
+
+    # Note: not called in this script
+    def start_node(self):
+        return self.call("start_node")
+
+
+    # Note: not called in this script
+    def get_block(self, block_num_or_id):
+        return self.call("get_block", block_num_or_id=block_num_or_id)
+
+
+    def get_wasm_file(self, contract):
+        return os.path.join(self.contracts_dir, contract, contract + ".wasm")
+
+
+    def get_abi_file(self, contract):
+        return os.path.join(self.contracts_dir, contract, contract + ".abi")
 
 
     @staticmethod
     def get_defproducer_names(num):
+
         def base26_to_int(s: str):
             res = 0
             for c in s:
@@ -744,7 +751,7 @@ class Cluster:
             return res
 
         # 8031810176 = 26 ** 7 is integer for "baaaaaaa" in base26
-        assert 0 <= num < 8031810176
+        assert 0 <= num < 8031810176, "Number ({}) for is too large for a defproducer name. Keep it in [0, 8031810176].".format(num)
         return "defproducer" + string.ascii_lowercase[num] if num < 26 else "defpr" + int_to_base26(8031810176 + num)[1:]
 
 
@@ -761,7 +768,8 @@ def test():
 
 # TODO:
 # 1. better Interaction passage, methods, functions
-# 2. really need silent in call, verify_transaction?
-# 3. pass buffer parameter between call and verify_transaction.
+# 2. isInSync
+# 3. clean file log
+# 4. add label for actions that return no transaction ID
 if __name__ == "__main__":
     test()
