@@ -365,12 +365,12 @@ uint64_t resource_limits_manager::get_block_net_limit() const {
    return config.net_limit_parameters.max - state.pending_net_usage;
 }
 
-int64_t resource_limits_manager::get_account_cpu_limit( const account_name& name, bool elastic ) const {
-   auto arl = get_account_cpu_limit_ex(name, elastic);
-   return arl.available;
+std::pair<int64_t, bool> resource_limits_manager::get_account_cpu_limit( const account_name& name, uint32_t greylist_limit ) const {
+   auto [arl, greylisted] = get_account_cpu_limit_ex(name, greylist_limit);
+   return {arl.available, greylisted};
 }
 
-account_resource_limit resource_limits_manager::get_account_cpu_limit_ex( const account_name& name, bool elastic) const {
+std::pair<account_resource_limit, bool> resource_limits_manager::get_account_cpu_limit_ex( const account_name& name, uint32_t greylist_limit ) const {
 
    const auto& state = _db.get<resource_limits_state_object>();
    const auto& usage = _db.get<resource_usage_object, by_owner>(name);
@@ -380,14 +380,23 @@ account_resource_limit resource_limits_manager::get_account_cpu_limit_ex( const 
    get_account_limits( name, x, y, cpu_weight );
 
    if( cpu_weight < 0 || state.total_cpu_weight == 0 ) {
-      return { -1, -1, -1 };
+      return {{ -1, -1, -1 }, false};
    }
 
    account_resource_limit arl;
 
    uint128_t window_size = config.account_cpu_usage_average_window;
+   uint64_t  greylisted_virtual_cpu_limit = config.cpu_limit_parameters.max * greylist_limit;
 
-   uint128_t virtual_cpu_capacity_in_window = (uint128_t)(elastic ? state.virtual_cpu_limit : config.cpu_limit_parameters.max) * window_size;
+   bool greylisted = false;
+   uint128_t virtual_cpu_capacity_in_window = window_size;
+   if( greylisted_virtual_cpu_limit < state.virtual_cpu_limit ) {
+      virtual_cpu_capacity_in_window *= greylisted_virtual_cpu_limit;
+      greylisted = true;
+   } else {
+      virtual_cpu_capacity_in_window *= state.virtual_cpu_limit;
+   }
+
    uint128_t user_weight     = (uint128_t)cpu_weight;
    uint128_t all_user_weight = (uint128_t)state.total_cpu_weight;
 
@@ -401,15 +410,15 @@ account_resource_limit resource_limits_manager::get_account_cpu_limit_ex( const 
 
    arl.used = impl::downgrade_cast<int64_t>(cpu_used_in_window);
    arl.max = impl::downgrade_cast<int64_t>(max_user_use_in_window);
-   return arl;
+   return {arl, greylisted};
 }
 
-int64_t resource_limits_manager::get_account_net_limit( const account_name& name, bool elastic) const {
-   auto arl = get_account_net_limit_ex(name, elastic);
-   return arl.available;
+std::pair<int64_t, bool> resource_limits_manager::get_account_net_limit( const account_name& name, uint32_t greylist_limit ) const {
+   auto [arl, greylisted] = get_account_net_limit_ex(name, greylist_limit);
+   return {arl.available, greylisted};
 }
 
-account_resource_limit resource_limits_manager::get_account_net_limit_ex( const account_name& name, bool elastic) const {
+std::pair<account_resource_limit, bool> resource_limits_manager::get_account_net_limit_ex( const account_name& name, uint32_t greylist_limit ) const {
    const auto& config = _db.get<resource_limits_config_object>();
    const auto& state  = _db.get<resource_limits_state_object>();
    const auto& usage  = _db.get<resource_usage_object, by_owner>(name);
@@ -418,17 +427,25 @@ account_resource_limit resource_limits_manager::get_account_net_limit_ex( const 
    get_account_limits( name, x, net_weight, y );
 
    if( net_weight < 0 || state.total_net_weight == 0) {
-      return { -1, -1, -1 };
+      return {{ -1, -1, -1 }, false};
    }
 
    account_resource_limit arl;
 
    uint128_t window_size = config.account_net_usage_average_window;
+   uint64_t  greylisted_virtual_net_limit = config.net_limit_parameters.max * greylist_limit;
 
-   uint128_t virtual_network_capacity_in_window = (uint128_t)(elastic ? state.virtual_net_limit : config.net_limit_parameters.max) * window_size;
+   bool greylisted = false;
+   uint128_t virtual_network_capacity_in_window = window_size;
+   if( greylisted_virtual_net_limit < state.virtual_net_limit ) {
+      virtual_network_capacity_in_window *= greylisted_virtual_net_limit;
+      greylisted = true;
+   } else {
+      virtual_network_capacity_in_window *= state.virtual_net_limit;
+   }
+
    uint128_t user_weight     = (uint128_t)net_weight;
    uint128_t all_user_weight = (uint128_t)state.total_net_weight;
-
 
    auto max_user_use_in_window = (virtual_network_capacity_in_window * user_weight) / all_user_weight;
    auto net_used_in_window  = impl::integer_divide_ceil((uint128_t)usage.net_usage.value_ex * window_size, (uint128_t)config::rate_limiting_precision);
@@ -440,7 +457,7 @@ account_resource_limit resource_limits_manager::get_account_net_limit_ex( const 
 
    arl.used = impl::downgrade_cast<int64_t>(net_used_in_window);
    arl.max = impl::downgrade_cast<int64_t>(max_user_use_in_window);
-   return arl;
+   return {arl, greylisted};
 }
 
 } } } /// eosio::chain::resource_limits

@@ -252,7 +252,6 @@ namespace eosio {
       /// Peer clock may be no more than 1 second skewed from our clock, including network latency.
       const std::chrono::system_clock::duration peer_authentication_interval{std::chrono::seconds{1}};
 
-      bool                                  network_version_match = false;
       chain_id_type                         chain_id;
       fc::sha256                            node_id;
       string                                user_agent_name;
@@ -1035,7 +1034,6 @@ namespace eosio {
       self->connecting = false;
       self->syncing = false;
       self->consecutive_rejected_blocks = 0;
-      self->trx_in_progress_size = 0;
       ++self->consecutive_immediate_connection_close;
       bool has_last_req = false;
       {
@@ -1687,7 +1685,7 @@ namespace eosio {
       std::tie( lib_num, std::ignore, fork_head_block_num,
                 std::ignore, std::ignore, std::ignore ) = my_impl->get_chain_info();
 
-      if( !is_sync_required( fork_head_block_num ) ) {
+      if( !is_sync_required( fork_head_block_num ) || target <= lib_num ) {
          fc_dlog( logger, "We are already caught up, my irr = ${b}, head = ${h}, target = ${t}",
                   ("b", lib_num)( "h", fork_head_block_num )( "t", target ) );
          return;
@@ -1780,12 +1778,7 @@ namespace eosio {
       if (head < msg.head_num ) {
          fc_dlog(logger, "sync check state 3");
          c->syncing = false;
-         if (!verify_catchup(c, msg.head_num, msg.head_id)) {
-            request_message req;
-            req.req_blocks.mode = catch_up;
-            req.req_trx.mode = none;
-            c->enqueue( req );
-         }
+         verify_catchup(c, msg.head_num, msg.head_id);
          return;
       } else {
          fc_dlog(logger, "sync check state 4");
@@ -1800,8 +1793,12 @@ namespace eosio {
          c->syncing = true;
          app().post( priority::medium, [chain_plug = my_impl->chain_plug, c,
                                         msg_head_num = msg.head_num, msg_head_id = msg.head_id]() {
-            controller& cc = chain_plug->chain();
-            if( cc.get_block_id_for_num( msg_head_num ) != msg_head_id ) {
+            bool on_fork = true;
+            try {
+               controller& cc = chain_plug->chain();
+               on_fork = cc.get_block_id_for_num( msg_head_num ) != msg_head_id;
+            } catch( ... ) {}
+            if( on_fork ) {
                c->strand.post( [c]() {
                   request_message req;
                   req.req_blocks.mode = catch_up;
@@ -1908,9 +1905,8 @@ namespace eosio {
             if( ++c->consecutive_rejected_blocks > def_max_consecutive_rejected_blocks ) {
                auto sync_next_expected = sync_next_expected_num;
                g_sync.unlock();
-               fc_wlog( logger, "expected block ${ne} but got ${bn}, closing connection: ${p}",
+               fc_wlog( logger, "expected block ${ne} but got ${bn}, from connection: ${p}",
                         ("ne", sync_next_expected)( "bn", blk_num )( "p", c->peer_name() ) );
-               c->close();
             }
             return;
          }
@@ -2317,9 +2313,14 @@ namespace eosio {
 
    // called from any thread
    bool connection::resolve_and_connect() {
-      if( no_retry != go_away_reason::no_reason) {
-         fc_dlog( logger, "Skipping connect due to go_away reason ${r}",("r", reason_str( no_retry )));
-         return false;
+      switch ( no_retry ) {
+         case no_reason:
+         case wrong_version:
+         case benign_other:
+            break;
+         default:
+            fc_dlog( logger, "Skipping connect due to go_away reason ${r}",("r", reason_str( no_retry )));
+            return false;
       }
 
       string::size_type colon = peer_address().find(':');
@@ -2367,8 +2368,13 @@ namespace eosio {
 
    // called from connection strand
    void connection::connect( const std::shared_ptr<tcp::resolver>& resolver, tcp::resolver::results_type endpoints ) {
-      if( no_retry != go_away_reason::no_reason) {
-         return;
+      switch ( no_retry ) {
+         case no_reason:
+         case wrong_version:
+         case benign_other:
+            break;
+         default:
+            return;
       }
       connecting = true;
       pending_message_buffer.reset();
@@ -2774,15 +2780,8 @@ namespace eosio {
          }
          protocol_version = my_impl->to_protocol_version(msg.network_version);
          if( protocol_version != net_version ) {
-            if( my_impl->network_version_match ) {
-               fc_elog( logger, "Peer network version does not match expected ${nv} but got ${mnv}",
-                        ("nv", net_version)("mnv", protocol_version) );
-               enqueue( go_away_message( wrong_version ) );
-               return;
-            } else {
-               fc_ilog( logger, "Local network version: ${nv} Remote version: ${mnv}",
-                        ("nv", net_version)("mnv", protocol_version));
-            }
+            fc_ilog( logger, "Local network version: ${nv} Remote version: ${mnv}",
+                     ("nv", net_version)( "mnv", protocol_version ) );
          }
 
          if( node_id != msg.node_id ) {
@@ -2850,20 +2849,26 @@ namespace eosio {
 
             if( peer_lib <= lib_num && peer_lib > 0 ) {
                bool on_fork = false;
+               bool unknown_block = false;
                try {
                   block_id_type peer_lib_id = cc.get_block_id_for_num( peer_lib );
                   on_fork = (msg_lib_id != peer_lib_id);
-               } catch( const unknown_block_exception& ex ) {
-                  fc_wlog( logger, "peer last irreversible block ${pl} is unknown", ("pl", peer_lib) );
-                  on_fork = true;
+               } catch( const unknown_block_exception& ) {
+                  peer_wlog( c, "peer last irreversible block ${pl} is unknown", ("pl", peer_lib) );
+                  unknown_block = true;
                } catch( ... ) {
-                  fc_wlog( logger, "caught an exception getting block id for ${pl}", ("pl", peer_lib) );
+                  peer_wlog( c, "caught an exception getting block id for ${pl}", ("pl", peer_lib) );
                   on_fork = true;
                }
-               if( on_fork ) {
-                  c->strand.post( [c]() {
-                     fc_elog( logger, "Peer chain is forked" );
-                     c->enqueue( go_away_message( forked ) );
+               if( on_fork || unknown_block ) {
+                  c->strand.post( [on_fork, unknown_block, c]() {
+                     if( on_fork ) {
+                        peer_elog( c, "Peer chain is forked" );
+                        c->enqueue( go_away_message( forked ) );
+                     } else if( unknown_block ) {
+                        peer_elog( c, "Peer asked for unknown block" );
+                        c->enqueue( go_away_message( benign_other ) );
+                     }
                   } );
                }
             }
@@ -2883,12 +2888,18 @@ namespace eosio {
 
    void connection::handle_message( const go_away_message& msg ) {
       peer_wlog( this, "received go_away_message, reason = ${r}", ("r", reason_str( msg.reason )) );
+      bool retry = no_retry == no_reason; // if no previous go away message
       no_retry = msg.reason;
       if( msg.reason == duplicate ) {
          node_id = msg.node_id;
       }
+      if( msg.reason == wrong_version ) {
+         if( !retry ) no_retry = fatal_other; // only retry once on wrong version
+      } else {
+         retry = false;
+      }
       flush_queues();
-      close( false );
+      close( retry ); // reconnect if wrong_version
    }
 
    void connection::handle_message( const time_message& msg ) {
@@ -3425,7 +3436,11 @@ namespace eosio {
    // call from connection strand
    void connection::populate_handshake( handshake_message& hello ) {
       namespace sc = std::chrono;
-      hello.network_version = net_version_base + net_version;
+      if( no_retry == wrong_version ) {
+         hello.network_version = net_version_base + proto_explicit_sync; // try previous version
+      } else {
+         hello.network_version = net_version_base + net_version;
+      }
       hello.chain_id = my_impl->chain_id;
       hello.node_id = my_impl->node_id;
       hello.key = my_impl->get_authentication_key();
@@ -3496,8 +3511,6 @@ namespace eosio {
          ( "max-clients", bpo::value<int>()->default_value(def_max_clients), "Maximum number of clients from which connections are accepted, use 0 for no limit")
          ( "connection-cleanup-period", bpo::value<int>()->default_value(def_conn_retry_wait), "number of seconds to wait before cleaning up dead connections")
          ( "max-cleanup-time-msec", bpo::value<int>()->default_value(10), "max connection cleanup time per cleanup call in millisec")
-         ( "network-version-match", bpo::value<bool>()->default_value(false),
-           "DEPRECATED, needless restriction. True to require exact match of peer network version.")
          ( "net-threads", bpo::value<uint16_t>()->default_value(my->thread_pool_size),
            "Number of worker threads in net_plugin thread pool" )
          ( "sync-fetch-span", bpo::value<uint32_t>()->default_value(def_sync_fetch_span), "number of blocks to retrieve in a chunk from any individual peer during synchronization")
@@ -3519,10 +3532,6 @@ namespace eosio {
       fc_ilog( logger, "Initialize net plugin" );
       try {
          peer_log_format = options.at( "peer-log-format" ).as<string>();
-
-         my->network_version_match = options.at( "network-version-match" ).as<bool>();
-         if( my->network_version_match )
-            wlog( "network-version-match is DEPRECATED as it is a needless restriction" );
 
          my->sync_master.reset( new sync_manager( options.at( "sync-fetch-span" ).as<uint32_t>()));
 

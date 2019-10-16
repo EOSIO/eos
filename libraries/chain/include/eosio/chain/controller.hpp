@@ -9,6 +9,7 @@
 #include <eosio/chain/account_object.hpp>
 #include <eosio/chain/snapshot.hpp>
 #include <eosio/chain/protocol_feature_manager.hpp>
+#include <eosio/chain/webassembly/eos-vm-oc/config.hpp>
 
 namespace chainbase {
    class database;
@@ -81,8 +82,9 @@ namespace eosio { namespace chain {
             uint32_t                 maximum_variable_signature_length = chain::config::default_max_variable_signature_length;
             bool                     disable_all_subjective_mitigations = false; //< for testing purposes only
 
-            genesis_state            genesis;
             wasm_interface::vm_type  wasm_runtime = chain::config::default_wasm_runtime;
+            eosvmoc::config          eosvmoc_config;
+            bool                     eosvmoc_tierup         = false;
 
             db_read_mode             read_mode              = db_read_mode::SPECULATIVE;
             validation_mode          block_validation_mode  = validation_mode::FULL;
@@ -92,6 +94,7 @@ namespace eosio { namespace chain {
 
             flat_set<account_name>   resource_greylist;
             flat_set<account_name>   trusted_producers;
+            uint32_t                 greylist_limit         = chain::config::maximum_elastic_resource_multiplier;
          };
 
          enum class block_status {
@@ -101,12 +104,14 @@ namespace eosio { namespace chain {
             incomplete  = 3, ///< this is an incomplete block (either being produced by a producer or speculatively produced by a node)
          };
 
-         explicit controller( const config& cfg );
-         controller( const config& cfg, protocol_feature_set&& pfs );
+         controller( const config& cfg, const chain_id_type& chain_id );
+         controller( const config& cfg, protocol_feature_set&& pfs, const chain_id_type& chain_id );
          ~controller();
 
          void add_indices();
-         void startup( std::function<bool()> shutdown, const snapshot_reader_ptr& snapshot = nullptr );
+         void startup( std::function<bool()> shutdown, const snapshot_reader_ptr& snapshot);
+         void startup( std::function<bool()> shutdown, const genesis_state& genesis);
+         void startup( std::function<bool()> shutdown);
 
          void preactivate_feature( const digest_type& feature_digest );
 
@@ -278,9 +283,15 @@ namespace eosio { namespace chain {
          validation_mode get_validation_mode()const;
 
          void set_subjective_cpu_leeway(fc::microseconds leeway);
+         void set_greylist_limit( uint32_t limit );
+         uint32_t get_greylist_limit()const;
 
          void add_to_ram_correction( account_name account, uint64_t ram_bytes );
          bool all_subjective_mitigations_disabled()const;
+
+#if defined(EOSIO_EOS_VM_RUNTIME_ENABLED) || defined(EOSIO_EOS_VM_JIT_RUNTIME_ENABLED)
+         vm::wasm_allocator&  get_wasm_allocator();
+#endif
 
          static fc::optional<uint64_t> convert_exception_to_error_code( const fc::exception& e );
 
@@ -327,6 +338,10 @@ namespace eosio { namespace chain {
             return pretty_output;
          }
 
+      static chain_id_type extract_chain_id(snapshot_reader& snapshot);
+
+      static fc::optional<chain_id_type> extract_chain_id_from_db( const path& state_dir );
+
       private:
          friend class apply_context;
          friend class transaction_context;
@@ -338,22 +353,3 @@ namespace eosio { namespace chain {
    };
 
 } }  /// eosio::chain
-
-FC_REFLECT( eosio::chain::controller::config,
-            (actor_whitelist)
-            (actor_blacklist)
-            (contract_whitelist)
-            (contract_blacklist)
-            (blocks_dir)
-            (state_dir)
-            (state_size)
-            (reversible_cache_size)
-            (read_only)
-            (force_all_checks)
-            (disable_replay_opts)
-            (contracts_console)
-            (genesis)
-            (wasm_runtime)
-            (resource_greylist)
-            (trusted_producers)
-          )

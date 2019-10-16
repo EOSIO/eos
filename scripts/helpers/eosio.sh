@@ -269,7 +269,10 @@ function ensure-boost() {
 }
 
 function ensure-llvm() {
-    if $PIN_COMPILER || $BUILD_CLANG || [[ $NAME == "CentOS Linux" ]]; then
+    if $PIN_COMPILER || $BUILD_CLANG; then
+        if [[ -d $LLVM_ROOT ]]; then
+            return
+        fi
         LLVM_TEMP_DIR=$(mktemp -d)
         if $PIN_COMPILER || $BUILD_CLANG; then
             local LLVM_PINNED_CMAKE_ARGS="-DCMAKE_TOOLCHAIN_FILE='${BUILD_DIR}/pinned_toolchain.cmake' -DCMAKE_EXE_LINKER_FLAGS=-pthread -DCMAKE_SHARED_LINKER_FLAGS=-pthread"
@@ -281,12 +284,12 @@ function ensure-llvm() {
         && ${CMAKE} -DCMAKE_INSTALL_PREFIX='${LLVM_ROOT}' -DLLVM_TARGETS_TO_BUILD=host -DLLVM_BUILD_TOOLS=false -DLLVM_ENABLE_RTTI=1 -DCMAKE_BUILD_TYPE=Release $LLVM_PINNED_CMAKE_ARGS .. \
         && make -j${JOBS} install"
         echo " - LLVM successfully installed @ ${LLVM_ROOT}"
-    elif [[ $ARCH == "Darwin" ]]; then
-        execute ln -sf /usr/local/opt/llvm@7 $LLVM_ROOT
     elif [[ $NAME == "Ubuntu" ]]; then
-        execute ln -sf /usr/lib/llvm-7 $LLVM_ROOT
+        execute ln -snf /usr/lib/llvm-7 $LLVM_ROOT
     elif [[ $NAME == "Amazon Linux" ]]; then
         execute unlink $LLVM_ROOT || true
+    elif [[ $NAME == "CentOS Linux" ]]; then
+        execute ln -snf /opt/rh/llvm-toolset-7.0/root $LLVM_ROOT
     fi
 }
 

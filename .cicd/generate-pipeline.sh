@@ -3,7 +3,7 @@ set -eo pipefail
 # environment
 . ./.cicd/helpers/general.sh
 export MOJAVE_ANKA_TAG_BASE=${MOJAVE_ANKA_TAG_BASE:-'clean::cicd::git-ssh::nas::brew::buildkite-agent'}
-export MOJAVE_ANKA_TEMPLATE_NAME=${MOJAVE_ANKA_TEMPLATE_NAME:-'10.14.4_6C_14G_40G'}
+export MOJAVE_ANKA_TEMPLATE_NAME=${MOJAVE_ANKA_TEMPLATE_NAME:-'10.14.6_6C_14G_40G'}
 export PLATFORMS_JSON_ARRAY='[]'
 [[ -z "$ROUNDS" ]] && export ROUNDS='1'
 LINUX_CONCURRENCY='8'
@@ -182,7 +182,7 @@ for ROUND in $(seq 1 $ROUNDS); do
       BUILDKITE_AGENT_ACCESS_TOKEN:
     agents:
       queue: "$BUILDKITE_AGENT_QUEUE"
-    timeout: ${TIMEOUT:-10}
+    timeout: ${TIMEOUT:-30}
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_UNIT_TESTS}
 
 EOF
@@ -208,7 +208,7 @@ EOF
             - 'registry_1'
             - 'registry_2'
           pre-execute-sleep: 5
-    timeout: ${TIMEOUT:-20}
+    timeout: ${TIMEOUT:-60}
     agents: "queue=mac-anka-node-fleet"
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_UNIT_TESTS}
 
@@ -459,7 +459,7 @@ cat <<EOF
       - chef/anka#v0.5.4:
           no-volume: true
           inherit-environment-vars: true
-          vm-name: 10.14.4_6C_14G_40G
+          vm-name: 10.14.6_6C_14G_40G
           vm-registry-tag: "clean::cicd::git-ssh::nas::brew::buildkite-agent"
           always-pull: true
           debug: true

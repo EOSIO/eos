@@ -563,7 +563,7 @@ BOOST_AUTO_TEST_CASE( reopen_forkdb ) try {
 
    c1.close();
 
-   c1.open( nullptr );
+   c1.open();
 
 } FC_LOG_AND_RETHROW()
 
@@ -583,9 +583,10 @@ BOOST_AUTO_TEST_CASE( push_block_returns_forked_transactions ) try {
    push_blocks(c, c2);
 
    wlog( "c1 blocks:" );
+   signed_block_ptr cb;
    c.produce_blocks(3);
    signed_block_ptr b;
-   b = c.produce_block();
+   cb = b = c.produce_block();
    account_name expected_producer = N(dan);
    BOOST_REQUIRE_EQUAL( b->producer.to_string(), expected_producer.to_string() );
 
@@ -623,10 +624,57 @@ BOOST_AUTO_TEST_CASE( push_block_returns_forked_transactions ) try {
    BOOST_REQUIRE_EQUAL( b->producer.to_string(), expected_producer.to_string() );
    // create accounts on c1 which will be forked out
    c.produce_block();
-   auto trace1 = c.create_account( N(test1) );
+
+   transaction_trace_ptr trace1, trace2, trace3;
+   { // create account the hard way so we can set reference block and expiration
+      signed_transaction trx;
+      authority active_auth( get_public_key( N(test1), "active" ) );
+      authority owner_auth( get_public_key( N(test1), "owner" ) );
+      trx.actions.emplace_back( vector<permission_level>{{config::system_account_name,config::active_name}},
+                                newaccount{
+                                      .creator  = config::system_account_name,
+                                      .name     = N(test1),
+                                      .owner    = owner_auth,
+                                      .active   = active_auth,
+                                });
+      trx.expiration = c.control->head_block_time() + fc::seconds( 60 );
+      trx.set_reference_block( cb->id() );
+      trx.sign( get_private_key( config::system_account_name, "active" ), c.control->get_chain_id()  );
+      trace1 = c.push_transaction( trx );
+   }
    c.produce_block();
-   auto trace2 = c.create_account( N(test2) );
-   auto trace3 = c.create_account( N(test3) );
+   {
+      signed_transaction trx;
+      authority active_auth( get_public_key( N(test2), "active" ) );
+      authority owner_auth( get_public_key( N(test2), "owner" ) );
+      trx.actions.emplace_back( vector<permission_level>{{config::system_account_name,config::active_name}},
+                                newaccount{
+                                      .creator  = config::system_account_name,
+                                      .name     = N(test2),
+                                      .owner    = owner_auth,
+                                      .active   = active_auth,
+                                });
+      trx.expiration = c.control->head_block_time() + fc::seconds( 60 );
+      trx.set_reference_block( cb->id() );
+      trx.sign( get_private_key( config::system_account_name, "active" ), c.control->get_chain_id()  );
+      trace2 = c.push_transaction( trx );
+   }
+   {
+      signed_transaction trx;
+      authority active_auth( get_public_key( N(test3), "active" ) );
+      authority owner_auth( get_public_key( N(test3), "owner" ) );
+      trx.actions.emplace_back( vector<permission_level>{{config::system_account_name,config::active_name}},
+                                newaccount{
+                                      .creator  = config::system_account_name,
+                                      .name     = N(test3),
+                                      .owner    = owner_auth,
+                                      .active   = active_auth,
+                                });
+      trx.expiration = c.control->head_block_time() + fc::seconds( 60 );
+      trx.set_reference_block( cb->id() );
+      trx.sign( get_private_key( config::system_account_name, "active" ), c.control->get_chain_id()  );
+      trace3 = c.push_transaction( trx );
+   }
    c.produce_block();
    c.produce_blocks(9);
 
@@ -640,10 +688,29 @@ BOOST_AUTO_TEST_CASE( push_block_returns_forked_transactions ) try {
    // verify transaction on fork is reported by push_block in order
    BOOST_REQUIRE_EQUAL( 3, c.get_unapplied_transaction_queue().size() );
    BOOST_REQUIRE_EQUAL( trace1->id, c.get_unapplied_transaction_queue().begin()->id() );
-   c.get_unapplied_transaction_queue().erase( c.get_unapplied_transaction_queue().begin() );
-   BOOST_REQUIRE_EQUAL( trace2->id, c.get_unapplied_transaction_queue().begin()->id() );
-   c.get_unapplied_transaction_queue().erase( c.get_unapplied_transaction_queue().begin() );
-   BOOST_REQUIRE_EQUAL( trace3->id, c.get_unapplied_transaction_queue().begin()->id() );
+   BOOST_REQUIRE_EQUAL( trace2->id, (++c.get_unapplied_transaction_queue().begin())->id() );
+   BOOST_REQUIRE_EQUAL( trace3->id, (++(++c.get_unapplied_transaction_queue().begin()))->id() );
+
+   BOOST_REQUIRE_EXCEPTION(c.control->get_account( N(test1) ), fc::exception,
+                           [a=N(test1)] (const fc::exception& e)->bool {
+                              return std::string( e.what() ).find( a.to_string() ) != std::string::npos;
+                           }) ;
+   BOOST_REQUIRE_EXCEPTION(c.control->get_account( N(test2) ), fc::exception,
+                           [a=N(test2)] (const fc::exception& e)->bool {
+                              return std::string( e.what() ).find( a.to_string() ) != std::string::npos;
+                           }) ;
+   BOOST_REQUIRE_EXCEPTION(c.control->get_account( N(test3) ), fc::exception,
+                           [a=N(test3)] (const fc::exception& e)->bool {
+                              return std::string( e.what() ).find( a.to_string() ) != std::string::npos;
+                           }) ;
+
+   // produce block which will apply the unapplied transactions
+   c.produce_block();
+
+   // verify unapplied transactions ran
+   BOOST_REQUIRE_EQUAL( c.control->get_account( N(test1) ).name,  N(test1) );
+   BOOST_REQUIRE_EQUAL( c.control->get_account( N(test2) ).name,  N(test2) );
+   BOOST_REQUIRE_EQUAL( c.control->get_account( N(test3) ).name,  N(test3) );
 
 } FC_LOG_AND_RETHROW()
 
