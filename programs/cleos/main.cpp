@@ -1128,6 +1128,29 @@ struct vote_producers_subcommand {
    }
 };
 
+struct vote_calcs_subcommand {
+   string voter_str;
+   vector<eosio::name> calc_names;
+
+   vote_calcs_subcommand(CLI::App* actionRoot) {
+      auto vote_calcs = actionRoot->add_subcommand("calcs", localized("Vote for one or more calcs"));
+      vote_calcs->add_option("voter", voter_str, localized("The voting account"))->required();
+      vote_calcs->add_option("calculators", calc_names, localized("The account(s) to vote for. All options from this position and following will be treated as the calc list."))->required();
+      add_standard_transaction_options(vote_producers, "voter@active");
+
+      vote_calcs->set_callback([this] {
+
+         std::sort( calc_names.begin(), calc_names.end() );
+
+         fc::variant act_payload = fc::mutable_variant_object()
+                  ("voter", voter_str)
+                  ("calculators", calc_names);
+         auto accountPermissions = get_account_permissions(tx_permission, {voter_str,config::active_name});
+         send_actions({create_action(accountPermissions, config::system_account_name, N(votecalc), act_payload)});
+      });
+   }
+};
+
 struct approve_producer_subcommand {
    eosio::name voter;
    eosio::name producer_name;
@@ -3878,6 +3901,11 @@ int main( int argc, char** argv ) {
    voteProducer->require_subcommand();
    auto voteProxy = vote_producer_proxy_subcommand(voteProducer);
    auto voteProducers = vote_producers_subcommand(voteProducer);
+
+   auto voteCalc = system->add_subcommand("votecalc", localized("Vote for a calculator"));
+   voteCalc->require_subcommand();
+   auto voteCalcs = vote_calcs_subcommand(voteCalc);
+
    auto approveProducer = approve_producer_subcommand(voteProducer);
    auto unapproveProducer = unapprove_producer_subcommand(voteProducer);
 
