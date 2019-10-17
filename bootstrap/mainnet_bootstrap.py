@@ -125,6 +125,12 @@ def install_system_contracts():
     run(remcli + 'set contract rem.attr ' + contracts_dir + '/rem.attr/')
 
 
+def init_system_contracts():
+    run(remcli + 'push action rem.oracle addsuppdpair \'["remeth"]\' -p rem.oracle')
+    run(remcli + 'push action rem.oracle addsuppdpair \'["remusd"]\' -p rem.oracle')
+    run(remcli + 'push action rem.oracle addsuppdpair \'["rembtc"]\' -p rem.oracle')
+
+
 def create_rem_token():
     run(remcli + 'push action rem.token create \'["rem.swap", "%s"]\' -p rem.token' % intToRemCurrency(max_rem_supply))
     run(remcli + 'push action rem.token issue \'["rem.swap", "%s", "memo"]\' -p rem.swap' % intToRemCurrency(1))
@@ -171,6 +177,7 @@ if __name__ == '__main__':
     create_tech_accounts()
     configure_swapbot_permissions()
     install_system_contracts()
+    init_system_contracts()
     configure_remcode_permissions()
     create_rem_token()
     create_auth_token()
