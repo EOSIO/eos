@@ -184,108 +184,114 @@ namespace eosio { namespace client { namespace http {
    }
 
    fc::variant do_http_call( const connection_param& cp,
+                             const std::string &postjson,
+                             bool print_request,
+                             bool print_response ) {
+      const auto& url = cp.url;
+
+      boost::asio::streambuf request;
+      std::ostream request_stream(&request);
+      auto host_header_value = format_host_header(url);
+      request_stream << "POST " << url.path << " HTTP/1.0\r\n";
+      request_stream << "Host: " << host_header_value << "\r\n";
+      request_stream << "content-length: " << postjson.size() << "\r\n";
+      request_stream << "Accept: */*\r\n";
+      request_stream << "Connection: close\r\n";
+      // append more customized headers
+      std::vector<string>::iterator itr;
+      for (itr = cp.headers.begin(); itr != cp.headers.end(); itr++) {
+         request_stream << *itr << "\r\n";
+      }
+      request_stream << "\r\n";
+      request_stream << postjson;
+
+      if ( print_request ) {
+         string s(request.size(), '\0');
+         buffer_copy(boost::asio::buffer(s), request.data());
+         std::cerr << "REQUEST:" << std::endl
+                  << "---------------------" << std::endl
+                  << s << std::endl
+                  << "---------------------" << std::endl;
+      }
+
+      unsigned int status_code;
+      std::string re;
+
+      try {
+         if(url.scheme == "unix") {
+            boost::asio::local::stream_protocol::socket unix_socket(cp.context->ios);
+            unix_socket.connect(boost::asio::local::stream_protocol::endpoint(url.server));
+            re = do_txrx(unix_socket, request, status_code);
+         }
+         else if(url.scheme == "http") {
+            tcp::socket socket(cp.context->ios);
+            do_connect(socket, url);
+            re = do_txrx(socket, request, status_code);
+         }
+         else { //https
+            boost::asio::ssl::context ssl_context(boost::asio::ssl::context::sslv23_client);
+            fc::add_platform_root_cas_to_context(ssl_context);
+
+            boost::asio::ssl::stream<boost::asio::ip::tcp::socket> socket(cp.context->ios, ssl_context);
+            SSL_set_tlsext_host_name(socket.native_handle(), url.server.c_str());
+            if(cp.verify_cert) {
+               socket.set_verify_mode(boost::asio::ssl::verify_peer);
+               socket.set_verify_callback(boost::asio::ssl::rfc2818_verification(url.server));
+            }
+            do_connect(socket.next_layer(), url);
+            socket.handshake(boost::asio::ssl::stream_base::client);
+            re = do_txrx(socket, request, status_code);
+            //try and do a clean shutdown; but swallow if this fails (other side could have already gave TCP the ax)
+            try {socket.shutdown();} catch(...) {}
+         }
+      } catch ( invalid_http_request& e ) {
+         e.append_log( FC_LOG_MESSAGE( info, "Please verify this url is valid: ${url}", ("url", url.scheme + "://" + url.server + ":" + url.port + url.path) ) );
+         e.append_log( FC_LOG_MESSAGE( info, "If the condition persists, please contact the RPC server administrator for ${server}!", ("server", url.server) ) );
+         throw;
+      }
+
+      const auto response_result = fc::json::from_string(re);
+      if( print_response ) {
+         std::cerr << "RESPONSE:" << std::endl
+                  << "---------------------" << std::endl
+                  << fc::json::to_pretty_string( response_result ) << std::endl
+                  << "---------------------" << std::endl;
+      }
+      if( status_code == 200 || status_code == 201 || status_code == 202 ) {
+         return response_result;
+      } else if( status_code == 404 ) {
+         // Unknown endpoint
+         if (url.path.compare(0, chain_func_base.size(), chain_func_base) == 0) {
+            throw chain::missing_chain_api_plugin_exception(FC_LOG_MESSAGE(error, "Chain API plugin is not enabled"));
+         } else if (url.path.compare(0, net_func_base.size(), net_func_base) == 0) {
+            throw chain::missing_net_api_plugin_exception(FC_LOG_MESSAGE(error, "Net API plugin is not enabled"));
+         }
+      } else {
+         auto &&error_info = response_result.as<eosio::error_results>().error;
+         // Construct fc exception from error
+         const auto &error_details = error_info.details;
+
+         fc::log_messages logs;
+         for (auto itr = error_details.begin(); itr != error_details.end(); itr++) {
+            const auto& context = fc::log_context(fc::log_level::error, itr->file.data(), itr->line_number, itr->method.data());
+            logs.emplace_back(fc::log_message(context, itr->message));
+         }
+
+         throw fc::exception(logs, error_info.code, error_info.name, error_info.what);
+      }
+
+      EOS_ASSERT( status_code == 200, http_request_fail, "Error code ${c}\n: ${msg}\n", ("c", status_code)("msg", re) );
+      return response_result;
+   }
+
+   fc::variant do_http_call( const connection_param& cp,
                              const fc::variant& postdata,
                              bool print_request,
                              bool print_response ) {
-   std::string postjson;
-   if( !postdata.is_null() ) {
-      postjson = print_request ? fc::json::to_pretty_string( postdata ) : fc::json::to_string( postdata );
-   }
-
-   const auto& url = cp.url;
-
-   boost::asio::streambuf request;
-   std::ostream request_stream(&request);
-   auto host_header_value = format_host_header(url);
-   request_stream << "POST " << url.path << " HTTP/1.0\r\n";
-   request_stream << "Host: " << host_header_value << "\r\n";
-   request_stream << "content-length: " << postjson.size() << "\r\n";
-   request_stream << "Accept: */*\r\n";
-   request_stream << "Connection: close\r\n";
-   // append more customized headers
-   std::vector<string>::iterator itr;
-   for (itr = cp.headers.begin(); itr != cp.headers.end(); itr++) {
-      request_stream << *itr << "\r\n";
-   }
-   request_stream << "\r\n";
-   request_stream << postjson;
-
-   if ( print_request ) {
-      string s(request.size(), '\0');
-      buffer_copy(boost::asio::buffer(s), request.data());
-      std::cerr << "REQUEST:" << std::endl
-                << "---------------------" << std::endl
-                << s << std::endl
-                << "---------------------" << std::endl;
-   }
-
-   unsigned int status_code;
-   std::string re;
-
-   try {
-      if(url.scheme == "unix") {
-         boost::asio::local::stream_protocol::socket unix_socket(cp.context->ios);
-         unix_socket.connect(boost::asio::local::stream_protocol::endpoint(url.server));
-         re = do_txrx(unix_socket, request, status_code);
+      std::string postjson;
+      if( !postdata.is_null() ) {
+         postjson = print_request ? fc::json::to_pretty_string( postdata ) : fc::json::to_string( postdata );
       }
-      else if(url.scheme == "http") {
-         tcp::socket socket(cp.context->ios);
-         do_connect(socket, url);
-         re = do_txrx(socket, request, status_code);
-      }
-      else { //https
-         boost::asio::ssl::context ssl_context(boost::asio::ssl::context::sslv23_client);
-         fc::add_platform_root_cas_to_context(ssl_context);
-
-         boost::asio::ssl::stream<boost::asio::ip::tcp::socket> socket(cp.context->ios, ssl_context);
-         SSL_set_tlsext_host_name(socket.native_handle(), url.server.c_str());
-         if(cp.verify_cert) {
-            socket.set_verify_mode(boost::asio::ssl::verify_peer);
-            socket.set_verify_callback(boost::asio::ssl::rfc2818_verification(url.server));
-         }
-         do_connect(socket.next_layer(), url);
-         socket.handshake(boost::asio::ssl::stream_base::client);
-         re = do_txrx(socket, request, status_code);
-         //try and do a clean shutdown; but swallow if this fails (other side could have already gave TCP the ax)
-         try {socket.shutdown();} catch(...) {}
-      }
-   } catch ( invalid_http_request& e ) {
-      e.append_log( FC_LOG_MESSAGE( info, "Please verify this url is valid: ${url}", ("url", url.scheme + "://" + url.server + ":" + url.port + url.path) ) );
-      e.append_log( FC_LOG_MESSAGE( info, "If the condition persists, please contact the RPC server administrator for ${server}!", ("server", url.server) ) );
-      throw;
-   }
-
-   const auto response_result = fc::json::from_string(re);
-   if( print_response ) {
-      std::cerr << "RESPONSE:" << std::endl
-                << "---------------------" << std::endl
-                << fc::json::to_pretty_string( response_result ) << std::endl
-                << "---------------------" << std::endl;
-   }
-   if( status_code == 200 || status_code == 201 || status_code == 202 ) {
-      return response_result;
-   } else if( status_code == 404 ) {
-      // Unknown endpoint
-      if (url.path.compare(0, chain_func_base.size(), chain_func_base) == 0) {
-         throw chain::missing_chain_api_plugin_exception(FC_LOG_MESSAGE(error, "Chain API plugin is not enabled"));
-      } else if (url.path.compare(0, net_func_base.size(), net_func_base) == 0) {
-         throw chain::missing_net_api_plugin_exception(FC_LOG_MESSAGE(error, "Net API plugin is not enabled"));
-      }
-   } else {
-      auto &&error_info = response_result.as<eosio::error_results>().error;
-      // Construct fc exception from error
-      const auto &error_details = error_info.details;
-
-      fc::log_messages logs;
-      for (auto itr = error_details.begin(); itr != error_details.end(); itr++) {
-         const auto& context = fc::log_context(fc::log_level::error, itr->file.data(), itr->line_number, itr->method.data());
-         logs.emplace_back(fc::log_message(context, itr->message));
-      }
-
-      throw fc::exception(logs, error_info.code, error_info.name, error_info.what);
-   }
-
-   EOS_ASSERT( status_code == 200, http_request_fail, "Error code ${c}\n: ${msg}\n", ("c", status_code)("msg", re) );
-   return response_result;
+      return do_http_call(cp, postjson, print_request, print_response);
    }
 }}}

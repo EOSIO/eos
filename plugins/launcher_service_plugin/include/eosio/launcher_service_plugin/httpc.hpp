@@ -17,7 +17,7 @@
 namespace eosio { namespace client { namespace http {
 
    using namespace std;
-   
+
    namespace detail {
       class http_context_impl;
 
@@ -86,11 +86,15 @@ namespace eosio { namespace client { namespace http {
       }
    };
 
-   fc::variant do_http_call(
-                             const connection_param& cp,
+   fc::variant do_http_call( const connection_param& cp,
                              const fc::variant& postdata = fc::variant(),
                              bool print_request = false,
                              bool print_response = false);
+
+   fc::variant do_http_call( const connection_param& cp,
+                             const std::string &postjson,
+                             bool print_request = false,
+                             bool print_response = false );
 
    const string chain_func_base = "/v1/chain";
    const string get_info_func = chain_func_base + "/get_info";
