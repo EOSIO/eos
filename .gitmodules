@@ -18,6 +18,7 @@
 	path = externals/binaryen
 	url = https://github.com/ArisenIO/binaryen
 	branch = arisen
+	update = merge
 [submodule "libraries/softfloat"]
 	path = libraries/softfloat
 	url = https://github.com/ArisenIO/berkeley-softfloat-3
