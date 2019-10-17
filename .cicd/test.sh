@@ -15,7 +15,7 @@ else # Linux
         sed -n '/## Environment/,/## Build/p' $CONAN_DIR/$IMAGE_TAG.md | grep -v -e '```' -e '\#\#' -e '^$' -e 'export' | sed -e 's/^/RUN /' >> $CICD_DIR/platforms/$PLATFORM_TYPE/$IMAGE_TAG.dockerfile
         COMMANDS="ln -s $MOUNTED_DIR/build/conan ~/.conan && $COMMANDS"    
     fi
-    . $HELPERS_DIR/file-hash.sh $CICD_DIR/platforms/$IMAGE_TAG.dockerfile
+    . $HELPERS_DIR/file-hash.sh $CICD_DIR/platforms/$PLATFORM_TYPE/$IMAGE_TAG.dockerfile
     echo "$ docker run --rm --init -v $(pwd):$MOUNTED_DIR $(buildkite-intrinsics) -e JOBS $FULL_TAG bash -c \"$MOUNTED_DIR/$@\""
     set +e # defer error handling to end
     eval docker run --rm --init -v $(pwd):$MOUNTED_DIR $(buildkite-intrinsics) -e JOBS $FULL_TAG bash -c \"$MOUNTED_DIR/$@\"
