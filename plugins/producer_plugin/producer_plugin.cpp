@@ -609,12 +609,16 @@ void producer_plugin::set_program_options(
           "Limits the maximum time (in milliseconds) that is allowed for sending blocks to a keosd provider for signing")
          ("greylist-account", boost::program_options::value<vector<string>>()->composing()->multitoken(),
           "account that can not access to extended CPU/NET virtual resources")
+         ("greylist-limit", boost::program_options::value<uint32_t>()->default_value(1000),
+          "Limit (between 1 and 1000) on the multiple that CPU/NET virtual resources can extend during low usage (only enforced subjectively; use 1000 to not enforce any limit)")
          ("produce-time-offset-us", boost::program_options::value<int32_t>()->default_value(0),
           "offset of non last block producing time in microseconds. Negative number results in blocks to go out sooner, and positive number results in blocks to go out later")
          ("last-block-time-offset-us", boost::program_options::value<int32_t>()->default_value(0),
           "offset of last block producing time in microseconds. Negative number results in blocks to go out sooner, and positive number results in blocks to go out later")
          ("max-scheduled-transaction-time-per-block-ms", boost::program_options::value<int32_t>()->default_value(100),
           "Maximum wall-clock time, in milliseconds, spent retiring scheduled transactions in any block before returning to normal transaction processing.")
+         ("subjective-cpu-leeway-us", boost::program_options::value<int32_t>()->default_value( config::default_subjective_cpu_leeway_us ),
+          "Time in microseconds allowed for a transaction that starts with insufficient CPU quota to complete and cover its CPU usage.")
          ("incoming-defer-ratio", bpo::value<double>()->default_value(1.0),
           "ratio between incoming transations and deferred transactions when both are exhausted")
          ("producer-threads", bpo::value<uint16_t>()->default_value(config::default_controller_thread_pool_size),
@@ -695,6 +699,8 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
    my->_options = &options;
    LOAD_VALUE_SET(options, "producer-name", my->_producers, types::account_name)
 
+   chain::controller& chain = my->chain_plug->chain();
+
    if( options.count("private-key") )
    {
       const std::vector<std::string> key_id_to_wif_pair_strings = options["private-key"].as<std::vector<std::string>>();
@@ -746,6 +752,10 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
    my->_last_block_time_offset_us = options.at("last-block-time-offset-us").as<int32_t>();
 
    my->_max_scheduled_transaction_time_per_block_ms = options.at("max-scheduled-transaction-time-per-block-ms").as<int32_t>();
+
+   if( options.at( "subjective-cpu-leeway-us" ).as<int32_t>() != config::default_subjective_cpu_leeway_us ) {
+      chain.set_subjective_cpu_leeway( fc::microseconds( options.at( "subjective-cpu-leeway-us" ).as<int32_t>() ) );
+   }
 
    my->_max_transaction_time_ms = options.at("max-transaction-time").as<int32_t>();
 
@@ -800,6 +810,11 @@ void producer_plugin::plugin_initialize(const boost::program_options::variables_
          param.accounts.push_back(account_name(a));
       }
       add_greylist_accounts(param);
+   }
+
+   {
+      uint32_t greylist_limit = options.at("greylist-limit").as<uint32_t>();
+      chain.set_greylist_limit( greylist_limit );
    }
 
 } FC_LOG_AND_RETHROW() }
@@ -892,6 +907,7 @@ bool producer_plugin::paused() const {
 }
 
 void producer_plugin::update_runtime_options(const runtime_options& options) {
+   chain::controller& chain = my->chain_plug->chain();
    bool check_speculating = false;
 
    if (options.max_transaction_time) {
@@ -920,14 +936,16 @@ void producer_plugin::update_runtime_options(const runtime_options& options) {
    }
 
    if (check_speculating && my->_pending_block_mode == pending_block_mode::speculating) {
-      chain::controller& chain = my->chain_plug->chain();
       chain.abort_block();
       my->schedule_production_loop();
    }
 
    if (options.subjective_cpu_leeway_us) {
-      chain::controller& chain = my->chain_plug->chain();
       chain.set_subjective_cpu_leeway(fc::microseconds(*options.subjective_cpu_leeway_us));
+   }
+
+   if (options.greylist_limit) {
+      chain.set_greylist_limit(*options.greylist_limit);
    }
 }
 

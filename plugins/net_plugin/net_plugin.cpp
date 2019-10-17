@@ -288,7 +288,6 @@ namespace eosio {
    constexpr auto     def_send_buffer_size_mb = 4;
    constexpr auto     def_send_buffer_size = 1024*1024*def_send_buffer_size_mb;
    constexpr auto     def_max_write_queue_size = def_send_buffer_size*10;
-   constexpr boost::asio::chrono::milliseconds def_read_delay_for_full_write_queue{100};
    constexpr auto     def_max_trx_in_progress_size = 100*1024*1024; // 100 MB
    constexpr auto     def_max_clients = 25; // 0 for unlimited clients
    constexpr auto     def_max_nodes_per_host = 1;
@@ -501,7 +500,6 @@ namespace eosio {
       uint16_t                protocol_version  = 0;
       string                  peer_addr;
       unique_ptr<boost::asio::steady_timer> response_expected;
-      unique_ptr<boost::asio::steady_timer> read_delay_timer;
       go_away_reason         no_retry = no_reason;
       block_id_type          fork_head;
       uint32_t               fork_head_num = 0;
@@ -726,7 +724,6 @@ namespace eosio {
         protocol_version(0),
         peer_addr(endpoint),
         response_expected(),
-        read_delay_timer(),
         no_retry(no_reason),
         fork_head(),
         fork_head_num(0),
@@ -752,7 +749,6 @@ namespace eosio {
         protocol_version(0),
         peer_addr(),
         response_expected(),
-        read_delay_timer(),
         no_retry(no_reason),
         fork_head(),
         fork_head_num(0),
@@ -768,7 +764,6 @@ namespace eosio {
       auto *rnd = node_id.data();
       rnd[0] = 0;
       response_expected.reset(new boost::asio::steady_timer( my_impl->thread_pool->get_executor() ));
-      read_delay_timer.reset(new boost::asio::steady_timer( my_impl->thread_pool->get_executor() ));
    }
 
    bool connection::connected() {
@@ -805,7 +800,6 @@ namespace eosio {
       }
       reset();
       sent_handshake_count = 0;
-      trx_in_progress_size = 0;
       node_id = fc::sha256();
       last_handshake_recv = handshake_message();
       last_handshake_sent = handshake_message();
@@ -813,7 +807,6 @@ namespace eosio {
       fc_ilog(logger, "closing ${a}, ${p}", ("a",peer_addr)("p",peer_name()));
       fc_dlog(logger, "canceling wait on ${p}", ("p",peer_name()));
       cancel_wait();
-      if( read_delay_timer ) read_delay_timer->cancel();
    }
 
    void connection::txn_send_pending(const vector<transaction_id_type>& ids) {
@@ -2037,39 +2030,10 @@ namespace eosio {
             }
          };
 
-         if( conn->buffer_queue.write_queue_size() > def_max_write_queue_size ||
-             conn->trx_in_progress_size > def_max_trx_in_progress_size )
-         {
-            // too much queued up, reschedule
-            if( conn->buffer_queue.write_queue_size() > def_max_write_queue_size ) {
-               peer_wlog( conn, "write_queue full ${s} bytes", ("s", conn->buffer_queue.write_queue_size()) );
-            } else {
-               peer_wlog( conn, "max trx in progress ${s} bytes", ("s", conn->trx_in_progress_size) );
-            }
-            if( conn->buffer_queue.write_queue_size() > 2*def_max_write_queue_size ||
-                conn->trx_in_progress_size > 2*def_max_trx_in_progress_size )
-            {
-               fc_elog( logger, "queues over full, giving up on connection ${p}", ("p", conn->peer_name()) );
-               fc_elog( logger, "  write_queue ${s} bytes", ("s", conn->buffer_queue.write_queue_size()) );
-               fc_elog( logger, "  max trx in progress ${s} bytes", ("s", conn->trx_in_progress_size) );
-               my_impl->close( conn );
-               return;
-            }
-            if( !conn->read_delay_timer ) return;
-            conn->read_delay_timer->expires_from_now( def_read_delay_for_full_write_queue );
-            conn->read_delay_timer->async_wait( [this, weak_conn]( boost::system::error_code ec ) {
-               app().post( priority::low, [this, weak_conn, ec]() {
-                  auto conn = weak_conn.lock();
-                  if( !conn ) return;
-                  if( !ec ) {
-                     start_read_message( conn );
-                  } else {
-                     fc_elog( logger, "Read delay timer error: ${e}, closing connection: ${p}",
-                              ("e", ec.message())("p",conn->peer_name()) );
-                     close( conn );
-                  }
-               } );
-            } );
+         if( conn->buffer_queue.write_queue_size() > def_max_write_queue_size ) {
+            fc_elog( logger, "write queue full ${s} bytes, giving up on connection, closing connection to: ${p}",
+                     ("s", conn->buffer_queue.write_queue_size())("p", conn->peer_name()) );
+            my_impl->close( conn );
             return;
          }
 
@@ -2538,6 +2502,12 @@ namespace eosio {
 
       auto ptrx = std::make_shared<transaction_metadata>( trx );
       const auto& tid = ptrx->id;
+
+      if( c->trx_in_progress_size > def_max_trx_in_progress_size ) {
+         fc_wlog( logger, "Dropping trx ${id}, too many trx in progress ${s} bytes",
+                  ("id", tid)("s", c->trx_in_progress_size) );
+         return;
+      }
 
       if(local_txns.get<by_id>().find(tid) != local_txns.end()) {
          fc_dlog(logger, "got a duplicate transaction - dropping");

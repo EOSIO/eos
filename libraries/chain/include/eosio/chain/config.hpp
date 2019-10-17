@@ -51,6 +51,7 @@ static const uint32_t account_cpu_usage_average_window_ms  = 24*60*60*1000l;
 static const uint32_t account_net_usage_average_window_ms  = 24*60*60*1000l;
 static const uint32_t block_cpu_usage_average_window_ms    = 60*1000l;
 static const uint32_t block_size_average_window_ms         = 60*1000l;
+static const uint32_t maximum_elastic_resource_multiplier  = 1000;
 
 //const static uint64_t   default_max_storage_size       = 10 * 1024;
 //const static uint32_t   default_max_trx_runtime        = 10*1000;
@@ -72,6 +73,7 @@ const static uint32_t   default_max_block_cpu_usage                 = 200'000; /
 const static uint32_t   default_target_block_cpu_usage_pct          = 10 * percent_1;
 const static uint32_t   default_max_transaction_cpu_usage           = 3*default_max_block_cpu_usage/4; /// max trx cpu usage in microseconds
 const static uint32_t   default_min_transaction_cpu_usage           = 100; /// min trx cpu usage in microseconds (10000 TPS equiv)
+const static uint32_t   default_subjective_cpu_leeway_us            = 31000; /// default subjective cpu leeway in microseconds
 
 const static uint32_t   default_max_trx_lifetime               = 60*60; // 1 hour
 const static uint32_t   default_deferred_trx_expiration_window = 10*60; // 10 minutes

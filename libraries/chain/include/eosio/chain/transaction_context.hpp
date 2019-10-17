@@ -114,7 +114,7 @@ namespace eosio { namespace chain {
          bool                          enforce_whiteblacklist = true;
 
          fc::time_point                deadline = fc::time_point::maximum();
-         fc::microseconds              leeway = fc::microseconds(3000);
+         fc::microseconds              leeway = fc::microseconds( config::default_subjective_cpu_leeway_us );
          int64_t                       billed_cpu_time_us = 0;
          bool                          explicit_billed_cpu_time = false;
 
