@@ -5,6 +5,8 @@ set -eo pipefail
 export MOJAVE_ANKA_TAG_BASE=${MOJAVE_ANKA_TAG_BASE:-'clean::cicd::git-ssh::nas::brew::buildkite-agent'}
 export MOJAVE_ANKA_TEMPLATE_NAME=${MOJAVE_ANKA_TEMPLATE_NAME:-'10.14.6_6C_14G_40G'}
 export PLATFORMS_JSON_ARRAY='[]'
+BUILDKITE_BUILD_AGENT_QUEUE='automation-eks-eos-builder-fleet'
+BUILDKITE_TEST_AGENT_QUEUE='automation-eks-eos-tester-fleet'
 [[ -z "$ROUNDS" ]] && export ROUNDS='1'
 LINUX_CONCURRENCY='8'
 MAC_CONCURRENCY='2'
@@ -116,7 +118,7 @@ echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
       BUILDKITE_AGENT_ACCESS_TOKEN:
     agents:
-      queue: "$BUILDKITE_AGENT_QUEUE"
+      queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
     timeout: ${TIMEOUT:-180}
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_BUILD}
 
@@ -181,7 +183,7 @@ for ROUND in $(seq 1 $ROUNDS); do
       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
       BUILDKITE_AGENT_ACCESS_TOKEN:
     agents:
-      queue: "$BUILDKITE_AGENT_QUEUE"
+      queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
     timeout: ${TIMEOUT:-30}
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_UNIT_TESTS}
 
@@ -240,7 +242,7 @@ EOF
       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
       BUILDKITE_AGENT_ACCESS_TOKEN:
     agents:
-      queue: "$BUILDKITE_AGENT_QUEUE"
+      queue: "$BUILDKITE_TEST_AGENT_QUEUE"
     timeout: ${TIMEOUT:-20}
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_SERIAL_TESTS}
 
@@ -300,7 +302,7 @@ EOF
       IMAGE_TAG: $(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)
       BUILDKITE_AGENT_ACCESS_TOKEN:
     agents:
-      queue: "$BUILDKITE_AGENT_QUEUE"
+      queue: "$BUILDKITE_TEST_AGENT_QUEUE"
     timeout: ${TIMEOUT:-180}
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_LONG_RUNNING_TESTS:-true}
 
@@ -401,7 +403,7 @@ cat <<EOF
       echo '+++ :javascript: Running test-metrics.js'
       node --max-old-space-size=32768 test-metrics.js
     agents:
-      queue: "$BUILDKITE_AGENT_QUEUE"
+      queue: "$BUILDKITE_TEST_AGENT_QUEUE"
     timeout: ${TIMEOUT:-10}
     soft_fail: true
 
@@ -418,7 +420,7 @@ cat <<EOF
       OS: "el7" # OS and PKGTYPE required for lambdas
       PKGTYPE: "rpm"
     agents:
-      queue: "$BUILDKITE_AGENT_QUEUE"
+      queue: "$BUILDKITE_TEST_AGENT_QUEUE"
     timeout: ${TIMEOUT:-10}
     skip: ${SKIP_CENTOS_7_6}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
 
@@ -432,7 +434,7 @@ cat <<EOF
       OS: "ubuntu-16.04" # OS and PKGTYPE required for lambdas
       PKGTYPE: "deb"
     agents:
-      queue: "$BUILDKITE_AGENT_QUEUE"
+      queue: "$BUILDKITE_TEST_AGENT_QUEUE"
     timeout: ${TIMEOUT:-10}
     skip: ${SKIP_UBUNTU_16_04}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
 
@@ -446,7 +448,7 @@ cat <<EOF
       OS: "ubuntu-18.04" # OS and PKGTYPE required for lambdas
       PKGTYPE: "deb"
     agents:
-      queue: "$BUILDKITE_AGENT_QUEUE"
+      queue: "$BUILDKITE_TEST_AGENT_QUEUE"
     timeout: ${TIMEOUT:-10}
     skip: ${SKIP_UBUNTU_18_04}${SKIP_PACKAGE_BUILDER}${SKIP_LINUX}
 
@@ -479,7 +481,7 @@ cat <<EOF
       IMAGE_TAG: "ubuntu-18.04-unpinned"
       BUILDKITE_AGENT_ACCESS_TOKEN:
     agents:
-      queue: "$BUILDKITE_AGENT_QUEUE"
+      queue: "$BUILDKITE_BUILD_AGENT_QUEUE"
     timeout: ${TIMEOUT:-30}
     skip: ${SKIP_CONTRACT_BUILDER}${SKIP_LINUX}
 
