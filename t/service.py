@@ -191,12 +191,20 @@ class Service:
 
     def connect(self):
         self.change_working_dir()
+        self.empty_log_files()
         self.print_system_info()
         self.print_config()
         if self.address == "127.0.0.1":
             self.connect_to_local_service()
         else:
             self.connect_to_remote_service()
+
+
+    def empty_log_files(self):
+        for w in self.logger.writers:
+            if isinstance(w, FileWriter):
+                with open(w.filename, "w"):
+                    pass
 
 
     def print_system_info(self):
@@ -380,12 +388,12 @@ class Cluster:
 
 
     def launch_without_bootstrap(self):
-        self.logger.info(color.bold(">>> Launch (without bootstrap) starts."))
+        self.print_header("Launch (without bootstrap) starts.", level="INFO")
         self.print_config()
         self.launch_cluster()
         self.get_cluster_info()
         self.set_bios_contract()
-        self.logger.info(color.bold(">>> Launch (without bootstrap) finishes."))
+        self.print_header("Launch (without bootstrap) ends.", level="INFO")
 
 
     # TODO: ADD isInSync() after launch cluster
@@ -407,7 +415,8 @@ class Cluster:
         12. vote for producers
         13. verify head producer
         """
-        self.logger.info(color.bold(">>> Bootstrap{} starts.").format(" (without voting)" if dont_vote else ""))
+        # self.logger.info(color.bold(">>> Bootstrap{} starts.").format(" (without voting)" if dont_vote else ""))
+        self.print_header("Bootstrap{} starts.".format(" (without voting)" if dont_vote else ""), level="INFO")
         self.print_config()
         self.launch_cluster()
         self.get_cluster_info()
@@ -422,7 +431,7 @@ class Cluster:
         if not dont_vote:
             self.vote_for_producers(voter="defproducera", voted_producers=list(self.producers.keys())[:min(21, len(self.producers))])
             self.verify_head_block_producer()
-        self.logger.info(color.bold(">>> Bootstrap{} finishes.").format(" (without voting)" if dont_vote else ""))
+        self.print_header("Bootstrap{} ends.".format(" (without voting)" if dont_vote else ""), level="INFO")
 
 
     def print_config(self):
@@ -686,6 +695,8 @@ class Cluster:
             self.logger.error(ix.get_formatted_response(), assert_false=True)
         if verify_key:
             assert self.verify(transaction_id=ix.transaction_id, verify_key=verify_key, level=level, buffer=buffer)
+        else:
+            self.logger.log("{}".format(color.black_on_yellow("No Transaction ID")), level=level, buffer=buffer)
         if buffer and not dont_flush:
             self.logger.flush()
         return ix
@@ -756,20 +767,20 @@ class Cluster:
 
 
 def test():
-    buffered_color = WriterConfig(buffered=True, monochrome=False, threshold="DEBUG")
-    unbuffered_mono = WriterConfig(buffered=False, monochrome=True, threshold="TRACE")
-    unbuffered_color = WriterConfig(buffered=False, monochrome=False, threshold="TRACE")
-    logger = Logger(ScreenWriter(config=buffered_color),
-                    FileWriter(filename="mono.log", config=unbuffered_mono),
-                    FileWriter(filename="colo.log", config=unbuffered_color))
+    debug_buffer_colo = WriterConfig(threshold="DEBUG", buffered=True,  monochrome=False)
+    trace_buffer_colo = WriterConfig(threshold="TRACE", buffered=True,  monochrome=False)
+    trace_unbuff_mono = WriterConfig(threshold="TRACE", buffered=False, monochrome=True)
+
+    logger = Logger(ScreenWriter(config=debug_buffer_colo),
+                    FileWriter(config=debug_buffer_colo, filename="debug_buffer_colo.log"),
+                    FileWriter(config=trace_buffer_colo, filename="trace_buffer_colo.log"),
+                    FileWriter(config=trace_unbuff_mono, filename="trace_unbuff_mono.log"))
     service = Service(logger=logger)
     cluster = Cluster(service=service)
 
 
 # TODO:
-# 1. better Interaction passage, methods, functions
 # 2. isInSync
-# 3. clean file log
-# 4. add label for actions that return no transaction ID
+# 5. trace -- verify txn show response: better Interaction level show
 if __name__ == "__main__":
     test()

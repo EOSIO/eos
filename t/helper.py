@@ -109,7 +109,7 @@ def override(*args):
     return None
 
 
-def pad(text: str, left=15, total=90, right=None, char="-", sep=" ") -> str:
+def pad(text: str, left=20, total=90, right=None, char="-", sep=" ") -> str:
     """
     Summary
     -------
