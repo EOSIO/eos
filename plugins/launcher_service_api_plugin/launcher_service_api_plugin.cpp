@@ -91,7 +91,9 @@ void launcher_service_api_plugin::plugin_startup() {
       CALL(launcher, set_contract, INVOKE_R_R(set_contract, launcher_service::set_contract_param), 200),
       CALL(launcher, push_actions, INVOKE_R_R(push_actions, launcher_service::push_actions_param), 200),
       CALL(launcher, verify_transaction, INVOKE_R_R(verify_transaction, launcher_service::verify_transaction_param), 200),
-      CALL(launcher, schedule_protocol_feature_activations, INVOKE_R_R(schedule_protocol_feature_activations, launcher_service::schedule_protocol_feature_activations_param), 200)
+      CALL(launcher, schedule_protocol_feature_activations, INVOKE_R_R(schedule_protocol_feature_activations, launcher_service::schedule_protocol_feature_activations_param), 200),
+
+      CALL(launcher, send_raw, INVOKE_R_R(send_raw, launcher_service::send_raw_param), 200)
    });
 }
 

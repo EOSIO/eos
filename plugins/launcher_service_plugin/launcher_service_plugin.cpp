@@ -434,7 +434,8 @@ public:
          bfs::remove_all(bfs::path(_config.data_dir) / cluster_to_string(cluster_id));
       }
 
-      fc::variant call(int cluster_id, int node_id, std::string func, fc::variant args = fc::variant(), bool silence = false) {
+      template <typename T>
+      fc::variant call_(int cluster_id, int node_id, const std::string &func, const T &args, bool silence) {
          if (_running_clusters.find(cluster_id) == _running_clusters.end()) {
             throw std::runtime_error("cluster is not running");
          }
@@ -455,6 +456,13 @@ public:
          }
          std::string err = "failed to " + func + ", nodeos is not running";
          throw std::runtime_error(err.c_str());
+      }
+
+      fc::variant call(int cluster_id, int node_id, const std::string &func, fc::variant args = fc::variant(), bool silence = false) {
+         return call_<fc::variant>(cluster_id, node_id, func, args, silence);
+      }
+      fc::variant call_strdata(int cluster_id, int node_id, const std::string &func, const std::string &args, bool silence = false) {
+         return call_<std::string>(cluster_id, node_id, func, args, silence);
       }
 
       fc::variant get_info(int cluster_id, int node_id, bool silence = false) {
@@ -810,6 +818,14 @@ public:
             base64str = base64_encode(&(data[0]), data.size());
          return fc::mutable_variant_object("filesize", size)("offset", offset)("data", std::move(base64str));
       }
+
+      fc::variant send_raw(send_raw_param &param) {
+         if (param.string_data.length() == 0) {
+            return call(param.cluster_id, param.node_id, param.url, param.json_data);
+         } else {
+            return call_strdata(param.cluster_id, param.node_id, param.url, param.string_data);
+         }
+      }
    };
 
 launcher_service_plugin::launcher_service_plugin():_my(new launcher_service_plugin_impl()){}
@@ -1116,6 +1132,12 @@ fc::variant launcher_service_plugin::push_actions(launcher_service::push_actions
 fc::variant launcher_service_plugin::get_log_data(launcher_service::get_log_data_param param) {
    try {
       return _my->get_log_data(param);
+   } CATCH_LAUCHER_EXCEPTIONS
+}
+
+fc::variant launcher_service_plugin::send_raw(launcher_service::send_raw_param param) {
+   try {
+      return _my->send_raw(param);
    } CATCH_LAUCHER_EXCEPTIONS
 }
 

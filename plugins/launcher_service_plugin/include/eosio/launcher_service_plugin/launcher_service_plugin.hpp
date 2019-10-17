@@ -261,6 +261,14 @@ namespace launcher_service {
       int              node_id = 0;
       int              kill_sig = 15;
    };
+
+   struct send_raw_param { // send abitrary string or json data to one node
+      int              cluster_id = 0;
+      int              node_id = 0;
+      std::string      url; // suburl of endpoint
+      std::string      string_data; // either string or json
+      fc::variant      json_data;
+   };
 }
 
 /**
@@ -312,6 +320,9 @@ public:
    fc::variant push_actions(launcher_service::push_actions_param);
    fc::variant schedule_protocol_feature_activations(launcher_service::schedule_protocol_feature_activations_param);
 
+   // miscellaneous
+   fc::variant send_raw(launcher_service::send_raw_param);
+
    // for unit-test
    static std::string generate_node_config(const launcher_service::launcher_config &_config, launcher_service::cluster_def &def, int node_id);
 
@@ -343,3 +354,4 @@ FC_REFLECT(eosio::launcher_service::cluster_id_param, (cluster_id))
 FC_REFLECT(eosio::launcher_service::node_id_param, (cluster_id)(node_id))
 FC_REFLECT(eosio::launcher_service::start_node_param, (cluster_id)(node_id)(extra_args))
 FC_REFLECT(eosio::launcher_service::stop_node_param, (cluster_id)(node_id)(kill_sig))
+FC_REFLECT(eosio::launcher_service::send_raw_param, (cluster_id)(node_id)(url)(string_data)(json_data))
