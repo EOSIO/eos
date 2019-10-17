@@ -1,6 +1,6 @@
-# Test Environment
+# Development and Test Environment
 
-There are several ways to configure `nodeos` for testing environment, which one you choose largely depends on what you are trying to achieve. Below are some practical options for you to explore.
+There are several ways to configure `nodeos` for developing and testing environment, which one you choose largely depends on what you are trying to achieve. Below are some practical options for you to explore.
 
 ## Local Single-Node Testnet
 
