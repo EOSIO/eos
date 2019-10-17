@@ -35,6 +35,39 @@ class PFSetupPolicy:
                policy == PFSetupPolicy.PREACTIVATE_FEATURE_ONLY or \
                policy == PFSetupPolicy.FULL
 
+# Class for generating distinct names for many accounts
+class NamedAccounts:
+
+    def __init__(self, cluster, numAccounts):
+        Utils.Print("NamedAccounts %d" % (numAccounts))
+        self.numAccounts=numAccounts
+        self.accounts=cluster.createAccountKeys(numAccounts)
+        if self.accounts is None:
+            Utils.errorExit("FAILURE - create keys")
+        accountNum = 0
+        for account in self.accounts:
+            Utils.Print("NamedAccounts Name for %d" % (accountNum))
+            account.name=self.setName(accountNum)
+            accountNum+=1
+
+    def setName(self, num):
+        retStr="test"
+        digits=[]
+        maxDigitVal=5
+        maxDigits=8
+        temp=num
+        while len(digits) < maxDigits:
+            digit=(num % maxDigitVal)+1
+            num=int(num/maxDigitVal)
+            digits.append(digit)
+
+        digits.reverse()
+        for digit in digits:
+            retStr=retStr+str(digit)
+
+        Utils.Print("NamedAccounts Name for %d is %s" % (temp, retStr))
+        return retStr
+
 # pylint: disable=too-many-instance-attributes
 # pylint: disable=too-many-public-methods
 class Cluster(object):
@@ -1720,3 +1753,23 @@ class Cluster(object):
         while len(lowestMaxes)>0 and compareCommon(blockLogs, blockNameExtensions, first, lowestMaxes[0]):
             first=lowestMaxes[0]+1
             lowestMaxes=stripValues(lowestMaxes,lowestMaxes[0])
+
+        if len(lowestMaxes) > 0:
+            for i in range(numNodes):
+                blockLog = blockLogs[i]
+                blockLogNameExt = blockNameExtensions[i]
+                blockLogDir = Utils.DataDir + Utils.nodeExtensionToName(blockLogNameExt) + "/blocks/"
+                summary = Utils.summarizeBlockLog(blockLog)
+                Utils.Print("Block log summary from %s:\n%s" % (blockLogDir, summary))
+        else :
+            max = (back(blockLogs[0])["block_num"], 0)
+            for i in range(1, numNodes):
+                blockLog = blockLogs[i]
+                blockLogMax = back(blockLog)["block_num"]
+                if max[0] < blockLogMax:
+                    max = (blockLogMax, i)
+            blockLog=blockLogs[max[1]]
+            blockLogNameExt = blockNameExtensions[max[1]]
+            blockLogDir = Utils.DataDir + Utils.nodeExtensionToName(blockLogNameExt) + "/blocks/"
+            summary = Utils.summarizeBlockLog(blockLog)
+            Utils.Print("Block log summary from %s:\n%s" % (blockLogDir, summary))
