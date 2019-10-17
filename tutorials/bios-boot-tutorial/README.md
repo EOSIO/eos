@@ -16,16 +16,7 @@ The `bios-boot-tutorial.py` script simulates the EOSIO bios boot sequence.
 2. Install eosio.cdt binaries by following the steps outlined in below tutorial
 [Install eosio.cdt binaries](https://github.com/EOSIO/eosio.cdt#binary-releases)
 
-3. Compile eosio.contracts
-
-```bash
-$ cd ~
-$ git clone https://github.com/EOSIO/eosio.contracts.git
-$ cd ./eosio.contracts/
-$ ./build.sh
-$ pwd
-
-```
+3. Install eosio.contracts [Compile eosio.contracts](https://github.com/EOSIO/eosio.contracts/blob/master/docs/02_compile-and-deploy.md)
 
 4. Make note of the directory where the contracts were compiled
 The last command in the previous step printed on the bash console the contracts' directory, make note of it, we'll reference it from now on as `EOSIO_CONTRACTS_DIRECTORY`
