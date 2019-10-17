@@ -9,48 +9,77 @@ import helper
 import color
 
 
-class Request:
-    def __init__(self, url: str, data: str):
+class Connection:
+    def __init__(self, url, data: dict, dont_attempt=False):
         self.url = url
         self.data = data
-
-    def post(self):
-        return requests.post(self.url, data=self.data)
-
-
-class Interaction:
-    def __init__(self, endpoint, service, data: dict, dont_attempt=False):
-        self.request = Request(self.get_url(endpoint, service.address, service.port), json.dumps(data))
         if not dont_attempt:
             self.attempt()
 
 
     def attempt(self):
-        self.response = self.request.post()
-        self.transaction_id = helper.extract(self.response, key="transaction_id", fallback=None)
-        return self.response, self.transaction_id
+        self.response = requests.post(self.url, json=self.data)
 
 
-    @staticmethod
-    def get_url(endpoint, address, port):
-        return "http://{}:{}/v1/launcher/{}".format(address, port, endpoint)
+    @property
+    def request_dict(self):
+        return self.data
 
 
-    def get_formatted_response(self, show_content=False):
-        res = []
-        res.append(color.green(self.response) if self.response.ok else color.red(self.response))
-        if show_content or not self.response.ok:
-            res.append(helper.format_json(self.response.text))
-        if self.transaction_id:
-            res.append(color.green("<Transaction ID> {}".format(self.transaction_id)))
-        return "\n".join(res)
-
-    # todo: maybe not needed
-    def get_structured_response(self):
-        return json.loads(self.response.text)
+    @property
+    def request_text(self):
+        return json.dumps(self.data, indent=4)
 
 
-def response_in_full(self, response: requests.models.Response) -> None:
-    self.green(response) if response.ok else self.red(response)
-    self.json(response.text)
-    self.transaction_id(response)
+    @property
+    def ok(self):
+        if not hasattr(self, "response"):
+            return False
+        return self.response.ok
+
+
+    @property
+    def response_code(self):
+        if not hasattr(self, "response"):
+            return color.red("<No Response>")
+        return color.green(self.response) if self.response.ok else color.red(self.response)
+
+
+    @property
+    def response_dict(self):
+        if not hasattr(self, "response"):
+            return dict()
+        if not hasattr(self.response, "_response_dict"):
+            self._response_dict = self.response.json()
+        return self._response_dict
+
+
+    @property
+    def response_text_unabridged(self):
+        if not hasattr(self, "response"):
+            return str()
+        if not hasattr(self.response, "_response_text_unabridged"):
+            self._response_text_unabridged = json.dumps(self._response_dict, indent=4)
+        return self._response_text_unabridged
+
+
+    @property
+    def response_text(self):
+        if not hasattr(self, "response"):
+            return str()
+        if not hasattr(self.response, "_response_text"):
+            self._response_dict_abridged = helper.abridge(self.response_dict)
+            self._response_text = json.dumps(self._response_dict_abridged, indent=4)
+        return self._response_text
+
+
+    @property
+    def transaction_id(self):
+        if not hasattr(self, "response"):
+            return str()
+        if not hasattr(self, "_transaction_id"):
+            if "transaction_id" in self.response_dict:
+                self._transaction_id = self.response_dict["transaction_id"]
+            else:
+                self._transaction_id = str()
+        return self._transaction_id

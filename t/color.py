@@ -20,6 +20,8 @@ _COLORS = {"black":         0,
            "cyan":          6,
            "white":         7}
 
+RESET = "\033[0m"
+
 
 def vanilla(text):
     return str(text)

@@ -20,7 +20,7 @@ import requests
 
 # user-defined modules
 from logger import LogLevel, Logger, WriterConfig, ScreenWriter, FileWriter
-from connection import Interaction
+from connection import Connection
 import color
 import thread
 
@@ -113,6 +113,7 @@ class CommandLineArguments:
         self.buffered = cla.buffered
         self.monochrome = cla.monochrome
 
+
     @staticmethod
     def parse():
         desc = color.decorate("Launcher Service for EOS Testing Framework", style="underline", fcolor="green")
@@ -142,14 +143,14 @@ class CommandLineArguments:
 
         threshold = parser.add_mutually_exclusive_group()
         threshold.add_argument("-l", "--log-level", dest="threshold", type=int, metavar="LEVEL", action="store", help=form(HELP_LOG_LEVEL))
-        threshold.add_argument("--log-all", dest="threshold", action="store_const", const="ALL", help=form(HELP_LOG_ALL))
+        threshold.add_argument("--all", dest="threshold", action="store_const", const="ALL", help=form(HELP_LOG_ALL))
         threshold.add_argument("--trace", dest="threshold", action="store_const", const="TRACE", help=form(HELP_TRACE))
         threshold.add_argument("--debug", dest="threshold", action="store_const", const="DEBUG", help=form(HELP_DEBUG))
         threshold.add_argument("--info", dest="threshold", action="store_const", const="INFO", help=form(HELP_INFO))
         threshold.add_argument("--warn", dest="threshold", action="store_const", const="WARN", help=form(HELP_WARN))
         threshold.add_argument("--error", dest="threshold", action="store_const", const="ERROR", help=form(HELP_ERROR))
         threshold.add_argument("--fatal", dest="threshold", action="store_const", const="FATAL", help=form(HELP_FATAL))
-        threshold.add_argument("--log-off", dest="threshold", action="store_const", const="OFF", help=form(HELP_LOG_OFF))
+        threshold.add_argument("--off", dest="threshold", action="store_const", const="OFF", help=form(HELP_LOG_OFF))
         parser.add_argument("-x", "--unbuffer", dest="buffered", action="store_false", default=True, help=form(HELP_UNBUFFER, not DEFAULT_BUFFERED))
         parser.add_argument("-m", "--monochrome", action="store_true", default=False, help=form(HELP_MONOCHROME, DEFAULT_MONOCHROME))
 
@@ -267,9 +268,10 @@ class Service:
 
 
     def print_formatted_config(self, label, help, value, default_value=None, compress=True):
-        highlighted = color.blue(value) if value != default_value else color.vanilla(value)
-        compressed = helper.compress(highlighted) if compress else highlighted
-        self.logger.debug("{:31}{:48}{}".format(color.yellow(label), help, compressed))
+        to_mark = value != default_value
+        compressed = helper.compress(str(value))
+        highlighted = color.blue(compressed) if to_mark else compressed
+        self.logger.debug("{:31}{:48}{}".format(color.yellow(label), help, highlighted))
 
 
     def get_local_services(self) -> typing.List[int]:
@@ -600,11 +602,11 @@ class Cluster:
     # TO REVIEW
     def verify_head_block_producer(self, retry=10, sleep=1):
         self.print_header("get head block producer")
-        ix = self.get_cluster_info(level="TRACE")
-        extract_head_block_producer = lambda ix: json.loads(ix.response.text)["result"][0][1]["head_block_producer"]
+        conn = self.get_cluster_info(level="TRACE")
+        extract_head_block_producer = lambda conn: json.loads(conn.response.text)["result"][0][1]["head_block_producer"]
         while retry >= 0:
-            ix = self.get_cluster_info(level="TRACE")
-            head_block_producer = extract_head_block_producer(ix)
+            conn = self.get_cluster_info(level="TRACE")
+            head_block_producer = extract_head_block_producer(conn)
             if head_block_producer == "eosio":
                 self.logger.debug(color.yellow("Head block producer is still \"eosio\"."))
             else:
@@ -666,7 +668,7 @@ class Cluster:
 
     # TODO: set retry from command-line
     def call(self,
-             endpoint: str,
+             func: str,
              retry=40,
              sleep=0.25,
              verify_key=None,
@@ -674,32 +676,51 @@ class Cluster:
              level="DEBUG",
              buffer=False,
              dont_flush=False,
-             **data) -> Interaction:
+             **data) -> Connection:
+        """
+        call
+        ----
+        1. print header
+        2. establish connection
+        3. log url and request of connection
+        4. retry connection if response not ok
+        5. log response
+        6. verify transaction
+        """
         data.setdefault("cluster_id", self.cluster_id)
         data.setdefault("node_id", 0)
-        header = header if header else endpoint.replace("_", " ")
+        header = header if header else func.replace("_", " ")
         self.print_header(header, level=level, buffer=buffer)
-        ix = Interaction(endpoint, self.service, data)
-        self.logger.log(ix.request.url, level=level, buffer=buffer)
-        self.logger.log(helper.format_json(ix.request.data), level=level, buffer=buffer)
-        while not ix.response.ok and retry > 0:
-            self.logger.trace(ix.get_formatted_response(), buffer=buffer)
-            self.logger.trace("{} {} for http connection...".format(retry, "retries remain" if retry > 1 else "retry remains"), buffer=buffer)
-            self.logger.trace("Sleep for {}s before next retry...".format(sleep), buffer=buffer)
-            time.sleep(sleep)
-            ix.attempt()
-            retry -= 1
-        if ix.response.ok:
-            self.logger.log(ix.get_formatted_response(), level=level, buffer=buffer)
-        else:
-            self.logger.error(ix.get_formatted_response(), assert_false=True)
-        if verify_key:
-            assert self.verify(transaction_id=ix.transaction_id, verify_key=verify_key, level=level, buffer=buffer)
-        else:
-            self.logger.log("{}".format(color.black_on_yellow("No Transaction ID")), level=level, buffer=buffer)
-        if buffer and not dont_flush:
+        conn = Connection(url="http://{}:{}/v1/launcher/{}".format(self.service.address, self.service.port, func), data=data)
+        try:
+            self.logger.log(conn.url, level=level, buffer=buffer)
+            self.logger.log(conn.request_text, level=level, buffer=buffer)
+            while not conn.ok and retry > 0:
+                self.logger.trace(conn.response_code, buffer=buffer)
+                self.logger.trace("{} {} for http connection...".format(retry, "retries remain" if retry > 1 else "retry remains"), buffer=buffer)
+                self.logger.trace("Sleep for {}s before next retry...".format(sleep), buffer=buffer)
+                time.sleep(sleep)
+                conn.attempt()
+                retry -= 1
+            if conn.response.ok:
+                self.logger.log(conn.response_code, level=level, buffer=buffer)
+                if conn.transaction_id:
+                    self.logger.log(color.green("<Transaction ID> {}".format(conn.transaction_id)), level=level, buffer=buffer)
+                else:
+                    self.logger.log(color.yellow("<No Transaction ID>"), level=level, buffer=buffer)
+                self.logger.trace(conn.response_text, buffer=buffer)
+            else:
+                self.logger.error(conn.response_code)
+                self.logger.error(conn.response_text)
+            if verify_key:
+                assert self.verify(transaction_id=conn.transaction_id, verify_key=verify_key, level=level, buffer=buffer)
+            elif conn.transaction_id:
+                self.logger.warn("WARNING: Verification of transaction ID {} skipped.".format(conn.transaction_id), level=level, buffer=buffer)
+            if buffer and not dont_flush:
+                self.logger.flush()
+        except AssertionError:
             self.logger.flush()
-        return ix
+        return conn
 
 
     def verify(self, transaction_id, verify_key="irreversible", retry=40, sleep=0.25, level="DEBUG", buffer=False):
@@ -714,8 +735,8 @@ class Cluster:
 
 
     def verify_transaction(self, transaction_id, verify_key="irreversible", level="TRACE", buffer=False):
-        ix = self.call("verify_transaction", transaction_id=transaction_id, verify_key=None, level=level, buffer=buffer, dont_flush=True)
-        return helper.extract(ix.response, key=verify_key, fallback=False)
+        conn = self.call("verify_transaction", transaction_id=transaction_id, verify_key=None, level=level, buffer=buffer, dont_flush=True)
+        return helper.extract(conn.response, key=verify_key, fallback=False)
 
 
     # Note: not called in this script
@@ -762,7 +783,6 @@ class Cluster:
             return res
 
         # 8031810176 = 26 ** 7 is integer for "baaaaaaa" in base26
-        assert 0 <= num < 8031810176, "Number ({}) for is too large for a defproducer name. Keep it in [0, 8031810176].".format(num)
         return "defproducer" + string.ascii_lowercase[num] if num < 26 else "defpr" + int_to_base26(8031810176 + num)[1:]
 
 
@@ -781,6 +801,6 @@ def test():
 
 # TODO:
 # 2. isInSync
-# 5. trace -- verify txn show response: better Interaction level show
+# 5. trace -- verify txn show response: better Connection level show
 if __name__ == "__main__":
     test()
