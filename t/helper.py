@@ -61,7 +61,7 @@ def format_header(header, level: str):
     if level == "INFO":
         return color.bold(">>> {}".format(header))
     if level == "DEBUG":
-        return pad(color.black_on_cyan(header), char="─")
+        return pad(color.black_on_cyan(header), char="-")
     if level == "TRACE":
         return pad(header, char="⎯")
     return header

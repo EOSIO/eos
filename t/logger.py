@@ -94,9 +94,11 @@ class WriterConfig:
     monochrome:         bool
     show_clock_time:    bool = True
     show_elapsed_time:  bool = True
-    show_log_level:     bool = True
+    show_filename:      bool = True
+    show_lineno:        bool = True
+    show_function:      bool = True
     show_thread:        bool = True
-    show_trace:         bool = True
+    show_log_level:     bool = True
 
     def __post_init__(self):
         if isinstance(self.threshold, str):
@@ -110,9 +112,11 @@ class Writer(abc.ABC):
         self.monochrome = config.monochrome
         self.show_clock_time = config.show_clock_time
         self.show_elapsed_time = config.show_elapsed_time
-        self.show_log_level = config.show_log_level
+        self.show_filename = config.show_filename
+        self.show_lineno = config.show_lineno
+        self.show_function = config.show_function
         self.show_thread = config.show_thread
-        self.show_trace = config.show_trace
+        self.show_log_level = config.show_log_level
         self.start_time = time.time()
         self.threshold = config.threshold
 
@@ -139,12 +143,13 @@ class Writer(abc.ABC):
             prefix += "{} ".format(helper.get_current_time())
         if self.show_elapsed_time:
             prefix += "({:9.3f}s) ".format(time.time() - self.start_time)
-        if self.show_trace:
-            frame = inspect.stack()[6]
-            prefix += "{:10.10s}:{:4.4s} {:18.18s} ".format(
-                        os.path.basename(frame.filename),
-                        str(frame.lineno),
-                        helper.compress(frame.function) + "()")
+        frame = inspect.stack()[6]
+        if self.show_filename:
+            prefix += "{:10.10s}:".format(os.path.basename(frame.filename))
+        if self.show_lineno:
+            prefix += "{:4.4s} ".format(str(frame.lineno))
+        if self.show_function:
+            prefix += "{:18.18s} ".format(helper.compress(frame.function) + "()")
         if self.show_thread:
             prefix += "[{:10}] ".format((threading.current_thread().name))
         if self.show_log_level:
