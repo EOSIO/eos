@@ -23,7 +23,7 @@ def kill_all():
 
 
 def background(args):
-    print('start_network.py:', args)
+    print('start_bootnode.py:', args)
     return subprocess.Popen(args, shell=True)
 
 
