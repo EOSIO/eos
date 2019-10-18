@@ -10,7 +10,6 @@
 #include <eosio/system.hpp>
 #include <eosio/time.hpp>
 
-#include <rem.system/exchange_state.hpp>
 #include <rem.system/native.hpp>
 
 #include <deque>
@@ -131,6 +130,8 @@ namespace eosiosystem {
    struct [[eosio::table("global"), eosio::contract("rem.system")]] eosio_global_state : eosio::blockchain_parameters {
       uint64_t free_ram()const { return max_ram_size - total_ram_bytes_reserved; }
 
+      symbol               core_symbol;
+
       uint64_t             max_ram_size = 64ll*1024 * 1024 * 1024;
       uint64_t             min_account_stake = 1000000; //minimum stake for new created account 100'0000 REM
       uint64_t             total_ram_bytes_reserved = 0;
@@ -155,7 +156,7 @@ namespace eosiosystem {
       block_timestamp      last_name_close;
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
-      EOSLIB_SERIALIZE_DERIVED( eosio_global_state, eosio::blockchain_parameters, (max_ram_size)(min_account_stake)
+      EOSLIB_SERIALIZE_DERIVED( eosio_global_state, eosio::blockchain_parameters, (core_symbol)(max_ram_size)(min_account_stake)
                                 (total_ram_bytes_reserved)(total_ram_stake)(last_schedule)(last_schedule_version)
                                 (current_round_start_time) (last_producer_schedule_update)(last_pervote_bucket_fill)
                                 (perstake_bucket)(pervote_bucket)(perblock_bucket)(total_unpaid_blocks)(total_producer_stake)
@@ -583,7 +584,6 @@ namespace eosiosystem {
          eosio_global_state3     _gstate3;
          eosio_global_state4     _gstate4;
          eosio_global_rem_state  _gremstate;
-         rammarket               _rammarket;
          rex_pool_table          _rexpool;
          rex_fund_table          _rexfunds;
          rex_balance_table       _rexbalance;
@@ -605,9 +605,7 @@ namespace eosiosystem {
          static constexpr eosio::name saving_account{"rem.saving"_n};
          static constexpr eosio::name rex_account{"rem.rex"_n};
          static constexpr eosio::name null_account{"rem.null"_n};
-         static constexpr symbol ramcore_symbol = symbol(symbol_code("RAMCORE"), 4);
-         static constexpr symbol ram_symbol     = symbol(symbol_code("RAM"), 0);
-         static constexpr symbol rex_symbol     = symbol(symbol_code("REX"), 4);
+         static constexpr symbol rex_symbol = symbol(symbol_code("REX"), 4);
 
          static constexpr uint8_t max_block_producers      = 21;
          
@@ -630,8 +628,10 @@ namespace eosiosystem {
           * @param system_account - the system account to get the core symbol for.
           */
          static symbol get_core_symbol( name system_account = "rem"_n ) {
-            rammarket rm(system_account, system_account.value);
-            const static auto sym = get_core_symbol( rm );
+            global_state_singleton _global(system_account, system_account.value);
+            check( _global.exists(), "system contract must first be initialized" );
+            const auto _gstate  = _global.get();
+            const static auto sym = _gstate.core_symbol;
             return sym;
          }
 
@@ -1386,12 +1386,6 @@ namespace eosiosystem {
       private:
          // Implementation details:
 
-         static symbol get_core_symbol( const rammarket& rm ) {
-            auto itr = rm.find(ramcore_symbol.raw());
-            check(itr != rm.end(), "system contract must first be initialized");
-            return itr->quote.balance.symbol;
-         }
-
          //defined in rem.system.cpp
          static eosio_global_state get_default_parameters();
          static eosio_global_state4 get_default_inflation_parameters();
@@ -1433,6 +1427,7 @@ namespace eosiosystem {
          void remove_loan_from_rex_pool( const rex_loan& loan );
          template <typename Index, typename Iterator>
          int64_t update_renewed_loan( Index& idx, const Iterator& itr, int64_t rented_tokens );
+         int64_t get_bancor_output( int64_t inp_reserve, int64_t out_reserve, int64_t inp );
 
          // defined in delegate_bandwidth.cpp
          void changebw( name from, const name& receiver,

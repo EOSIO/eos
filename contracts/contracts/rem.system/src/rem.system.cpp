@@ -12,7 +12,6 @@
 #include "producer_pay.cpp"
 #include "delegate_bandwidth.cpp"
 #include "voting.cpp"
-#include "exchange_state.cpp"
 #include "rex.cpp"
 #include "rotation.cpp"
 
@@ -38,7 +37,6 @@ namespace eosiosystem {
     _global3(_self, _self.value),
     _global4(_self, _self.value),
     _globalrem(_self, _self.value),
-    _rammarket(_self, _self.value),
     _rotation(_self, _self.value),
     _rexpool(_self, _self.value),
     _rexfunds(_self, _self.value),
@@ -94,7 +92,7 @@ namespace eosiosystem {
    }
 
    symbol system_contract::core_symbol()const {
-      const static auto sym = get_core_symbol( _rammarket );
+      const static auto sym = get_core_symbol();
       return sym;
    }
 
@@ -162,16 +160,6 @@ namespace eosiosystem {
       check( max_ram_size < 1024ll*1024*1024*1024*1024, "ram size is unrealistic" );
       check( max_ram_size > _gstate.total_ram_bytes_reserved, "attempt to set max below reserved" );
 
-      auto delta = int64_t(max_ram_size) - int64_t(_gstate.max_ram_size);
-      auto itr = _rammarket.find(ramcore_symbol.raw());
-
-      /**
-       *  Increase the amount of ram for sale based upon the change in max ram size.
-       */
-      _rammarket.modify( itr, same_payer, [&]( auto& m ) {
-         m.base.balance.amount += delta;
-      });
-
       _gstate.max_ram_size = max_ram_size;
    }
 
@@ -180,16 +168,8 @@ namespace eosiosystem {
 
       if( cbt <= _gstate2.last_ram_increase ) return;
 
-      auto itr = _rammarket.find(ramcore_symbol.raw());
       auto new_ram = (cbt.slot - _gstate2.last_ram_increase.slot)*_gstate2.new_ram_per_block;
       _gstate.max_ram_size += new_ram;
-
-      /**
-       *  Increase the amount of ram for sale based upon the change in max ram size.
-       */
-      _rammarket.modify( itr, same_payer, [&]( auto& m ) {
-         m.base.balance.amount += new_ram;
-      });
       _gstate2.last_ram_increase = cbt;
    }
 
@@ -416,22 +396,12 @@ namespace eosiosystem {
    void system_contract::init( unsigned_int version, const symbol& core ) {
       require_auth( _self );
       check( version.value == 0, "unsupported version for init action" );
-
-      auto itr = _rammarket.find(ramcore_symbol.raw());
-      check( itr == _rammarket.end(), "system contract has already been initialized" );
+      check( _gstate.core_symbol == symbol(), "system contract has already been initialized" );
+      _gstate.core_symbol = core;
 
       auto system_token_supply   = eosio::token::get_supply(token_account, core.code() );
       check( system_token_supply.symbol == core, "specified core symbol does not exist (precision mismatch)" );
-
       check( system_token_supply.amount > 0, "system token supply must be greater than 0" );
-      _rammarket.emplace( _self, [&]( auto& m ) {
-         m.supply.amount = 100000000000000ll;
-         m.supply.symbol = ramcore_symbol;
-         m.base.balance.amount = int64_t(_gstate.free_ram());
-         m.base.balance.symbol = ram_symbol;
-         m.quote.balance.amount = system_token_supply.amount / 1000;
-         m.quote.balance.symbol = core;
-      });
 
       token::open_action open_act{ token_account, { {_self, active_permission} } };
       open_act.send( rex_account, core, _self );

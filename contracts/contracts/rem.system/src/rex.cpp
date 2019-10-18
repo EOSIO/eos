@@ -472,7 +472,7 @@ namespace eosiosystem {
    void system_contract::remove_loan_from_rex_pool( const rex_loan& loan )
    {
       const auto& pool = _rexpool.begin();
-      const int64_t delta_total_rent = exchange_state::get_bancor_output( pool->total_unlent.amount,
+      const int64_t delta_total_rent = get_bancor_output( pool->total_unlent.amount,
                                                                           pool->total_rent.amount,
                                                                           loan.total_staked.amount );
       _rexpool.modify( pool, same_payer, [&]( auto& rt ) {
@@ -500,6 +500,19 @@ namespace eosiosystem {
       return delta_stake;
    }
 
+   int64_t system_contract::get_bancor_output( int64_t inp_reserve, int64_t out_reserve, int64_t inp )
+   {
+      const double ib = inp_reserve;
+      const double ob = out_reserve;
+      const double in = inp;
+
+      int64_t out = int64_t( (in * ob) / (ib + in) );
+
+      if ( out < 0 ) out = 0;
+
+      return out;
+   }
+
    /**
     * @brief Performs maintenance operations on expired NET and CPU loans and sellrex orders
     *
@@ -517,7 +530,7 @@ namespace eosiosystem {
          bool    delete_loan   = false;
          int64_t delta_stake   = 0;
          /// calculate rented tokens at current price
-         int64_t rented_tokens = exchange_state::get_bancor_output( pool->total_rent.amount,
+         int64_t rented_tokens = get_bancor_output( pool->total_rent.amount,
                                                                     pool->total_unlent.amount,
                                                                     itr->payment.amount );
          /// conditions for loan renewal
@@ -625,7 +638,7 @@ namespace eosiosystem {
 
       const auto& pool = _rexpool.begin(); /// already checked that _rexpool.begin() != _rexpool.end() in rex_loans_available()
 
-      int64_t rented_tokens = exchange_state::get_bancor_output( pool->total_rent.amount,
+      int64_t rented_tokens = get_bancor_output( pool->total_rent.amount,
                                                                  pool->total_unlent.amount,
                                                                  payment.amount );
       check( payment.amount < rented_tokens, "loan price does not favor renting" );
