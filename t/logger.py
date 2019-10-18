@@ -99,6 +99,8 @@ class WriterConfig:
     show_function:      bool = True
     show_thread:        bool = True
     show_log_level:     bool = True
+    # max_line_length:    int  = 80
+    # max_line_nums:      int  = 20
 
     def __post_init__(self):
         if isinstance(self.threshold, str):
@@ -108,6 +110,7 @@ class WriterConfig:
 class Writer(abc.ABC):
     def __init__(self, config: WriterConfig):
         self.config = config
+        self.threshold = config.threshold
         self.buffered = config.buffered
         self.monochrome = config.monochrome
         self.show_clock_time = config.show_clock_time
@@ -118,7 +121,6 @@ class Writer(abc.ABC):
         self.show_thread = config.show_thread
         self.show_log_level = config.show_log_level
         self.start_time = time.time()
-        self.threshold = config.threshold
 
         self._color_regex = re.compile(r"\033\[[0-9]+(;[0-9]+)?m")
         if self.buffered:
@@ -156,10 +158,7 @@ class Writer(abc.ABC):
             prefix += "{:5} ".format(level.name if hasattr(level, "name") else level)
         if prefix:
             prefix = prefix if self.monochrome else stylize(prefix, level)
-            if "\n" in msg:
-                return "\n".join([prefix + VERTICAL_BAR + " " + x for x in msg.splitlines()])
-            else:
-                return prefix + VERTICAL_BAR + " " + msg
+            return "\n".join([prefix + VERTICAL_BAR + " " + x for x in msg.splitlines()])
         else:
             return msg
 

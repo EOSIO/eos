@@ -1,5 +1,6 @@
 #! /usr/bin/env python3
 
+import copy
 import json
 import re
 import subprocess
@@ -13,7 +14,6 @@ import requests
 
 # user-defined modules
 import color
-import connection
 
 HORIZONTAL_BAR = "─"
 HORIZONTAL_DASH = "⎯"
@@ -25,13 +25,13 @@ def vislen(s: str):
     return len(re.compile(r"\033\[[0-9]+(;[0-9]+)?m").sub("", s))
 
 
-def compress(s: str, length: int = 16, tail: int = 0):
-    offset = len(s) - vislen(s)
-    if vislen(s) > length:
-        s = s[:(length - tail - 2)] + ".." + (s[-tail:] if tail else "") + ("\033[0m" if offset else "")
-    return s
+def compress(s: str, length: int = 16, ellipsis="..", tail: int = 0):
+    if len(s) <= length:
+        return s
+    return s[:(length - tail - 2)] + ".." + (s[-tail:] if tail else "")
 
 
+# todo: review usage
 def extract(resp: requests.models.Response, key: str, fallback):
     try:
         return json.loads(resp.text)[key]
@@ -129,7 +129,13 @@ def pad(text: str, left=20, total=90, right=None, char="-", sep=" ") -> str:
     return string.ljust(total + offset, char)
 
 
-def trim(data: typing.Union[dict, list], maxlen=100):
+def abridge(data: typing.Union[dict, list], maxlen=64):
+    clone = copy.deepcopy(data)
+    trim(clone, maxlen=maxlen)
+    return clone
+
+
+def trim(data: typing.Union[dict, list], maxlen=64):
     """
     Summary
     -------
