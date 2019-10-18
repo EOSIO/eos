@@ -126,9 +126,9 @@ def install_system_contracts():
 
 
 def init_system_contracts():
-    run(remcli + 'push action rem.oracle addsuppdpair \'["remeth"]\' -p rem.oracle')
-    run(remcli + 'push action rem.oracle addsuppdpair \'["remusd"]\' -p rem.oracle')
-    run(remcli + 'push action rem.oracle addsuppdpair \'["rembtc"]\' -p rem.oracle')
+    run(remcli + 'push action rem.oracle addsuppdpair \'["REM.USD"]\' -p rem.oracle')
+    run(remcli + 'push action rem.oracle addsuppdpair \'["REM.BTC"]\' -p rem.oracle')
+    run(remcli + 'push action rem.oracle addsuppdpair \'["REM.ETH"]\' -p rem.oracle')
 
 
 def create_rem_token():
