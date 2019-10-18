@@ -99,8 +99,6 @@ class WriterConfig:
     show_function:      bool = True
     show_thread:        bool = True
     show_log_level:     bool = True
-    # max_line_length:    int  = 80
-    # max_line_nums:      int  = 20
 
     def __post_init__(self):
         if isinstance(self.threshold, str):

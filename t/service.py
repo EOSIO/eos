@@ -48,6 +48,10 @@ DEFAULT_UNSTARTED_NODES = 0
 DEFAULT_DONT_VOTE = False
 DEFAULT_DONT_BOOTSTRAP = False
 DEFAULT_EXTRA_CONFIGS = []
+DEFAULT_HTTP_RETRY = 10
+DEFAULT_VERIFY_RETRY = 10
+DEFAULT_SYNC_RETRY = 10
+DEFAULT_HEAD_PRODUCER_RETRY = 10
 
 DEFAULT_BUFFERED = True
 DEFAULT_MONOCHROME = False
@@ -71,6 +75,10 @@ HELP_PRODUCER_NODES = "Number of nodes that have producers"
 HELP_UNSTARTED_NODES = "Number of unstarted nodes"
 HELP_DONT_VOTE = "Do not vote for producers in bootstrap"
 HELP_DONT_BOOTSTRAP = "Launch cluster without bootstrap"
+HELP_HTTP_RETRY = "Max retries for HTTP connection"
+HELP_VERIFY_RETRY = "Max retries for transaction verification"
+HELP_SYNC_RETRY = "Max retries for sync verification"
+HELP_HEAD_PRODUCER_RETRY = "Max retries for head block producer"
 
 HELP_LOG_LEVEL = "Stdout logging level (numeric)"
 HELP_MONOCHROME = "Print in black and white instead of colors"
@@ -103,11 +111,15 @@ class CommandLineArguments:
         self.topology = cla.topology
         self.center_node_id = cla.center_node_id
         self.total_nodes = cla.total_nodes
-        self.total_producers = cla.total_producers
         self.producer_nodes = cla.producer_nodes
+        self.total_producers = cla.total_producers
         self.unstarted_nodes = cla.unstarted_nodes
         self.dont_vote = cla.dont_vote
         self.dont_bootstrap = cla.dont_bootstrap
+        self.http_retry = cla.http_retry
+        self.verify_retry = cla.verify_retry
+        self.sync_retry = cla.sync_retry
+        self.head_producer_retry = cla.head_producer_retry
 
         self.threshold = cla.threshold
         self.buffered = cla.buffered
@@ -134,12 +146,16 @@ class CommandLineArguments:
         parser.add_argument("-i", "--cluster-id", dest="cluster_id", type=int, metavar="ID", help=form(HELP_CLUSTER_ID, DEFAULT_CLUSTER_ID))
         parser.add_argument("-t", "--topology", type=str, metavar="SHAPE", help=form(HELP_TOPOLOGY, DEFAULT_TOPOLOGY), choices={"mesh", "star", "bridge", "line", "ring", "tree"})
         parser.add_argument("-c", "--center-node-id", type=int, metavar="ID", help=form(HELP_CENTER_NODE_ID, DEFAULT_CENTER_NODE_ID))
-        parser.add_argument("-n", "--total-nodes", type=int, metavar="NUM", help=form(HELP_TOTAL_NODES, DEFAULT_TOTAL_NODES))
-        parser.add_argument("-y", "--total-producers", type=int, metavar="NUM", help=form(HELP_TOTAL_PRODUCERS, DEFAULT_TOTAL_PRODUCERS))
-        parser.add_argument("-z", "--producer-nodes", type=int, metavar="NUM", help=form(HELP_PRODUCER_NODES, DEFAULT_PRODUCER_NODES))
+        parser.add_argument("-x", "--total-nodes", type=int, metavar="NUM", help=form(HELP_TOTAL_NODES, DEFAULT_TOTAL_NODES))
+        parser.add_argument("-y", "--producer-nodes", type=int, metavar="NUM", help=form(HELP_PRODUCER_NODES, DEFAULT_PRODUCER_NODES))
+        parser.add_argument("-z", "--total-producers", type=int, metavar="NUM", help=form(HELP_TOTAL_PRODUCERS, DEFAULT_TOTAL_PRODUCERS))
         parser.add_argument("-u", "--unstarted-nodes", type=int, metavar="NUM", help=form(HELP_UNSTARTED_NODES, DEFAULT_UNSTARTED_NODES))
         parser.add_argument("-j", "--dont-vote", action="store_true", default=None, help=form(HELP_DONT_VOTE, DEFAULT_DONT_VOTE))
         parser.add_argument("-q", "--dont-bootstrap", action="store_true", default=None, help=form(HELP_DONT_BOOTSTRAP, DEFAULT_DONT_BOOTSTRAP))
+        parser.add_argument("--http-retry", type=int, metavar="NUM", help=form(HELP_HTTP_RETRY, DEFAULT_HTTP_RETRY))
+        parser.add_argument("--verify-retry", type=int, metavar="NUM", help=form(HELP_VERIFY_RETRY, DEFAULT_VERIFY_RETRY))
+        parser.add_argument("--sync-retry", type=int, metavar="NUM", help=form(HELP_SYNC_RETRY, DEFAULT_SYNC_RETRY))
+        parser.add_argument("--head-producer-retry", type=int, metavar="NUM", help=form(HELP_HEAD_PRODUCER_RETRY, DEFAULT_HEAD_PRODUCER_RETRY))
 
         threshold = parser.add_mutually_exclusive_group()
         threshold.add_argument("-l", "--log-level", dest="threshold", type=int, metavar="LEVEL", action="store", help=form(HELP_LOG_LEVEL))
@@ -151,7 +167,7 @@ class CommandLineArguments:
         threshold.add_argument("--error", dest="threshold", action="store_const", const="ERROR", help=form(HELP_ERROR))
         threshold.add_argument("--fatal", dest="threshold", action="store_const", const="FATAL", help=form(HELP_FATAL))
         threshold.add_argument("--off", dest="threshold", action="store_const", const="OFF", help=form(HELP_LOG_OFF))
-        parser.add_argument("-x", "--unbuffer", dest="buffered", action="store_false", default=True, help=form(HELP_UNBUFFER, not DEFAULT_BUFFERED))
+        parser.add_argument("-n", "--unbuffer", dest="buffered", action="store_false", default=True, help=form(HELP_UNBUFFER, not DEFAULT_BUFFERED))
         parser.add_argument("-m", "--monochrome", action="store_true", default=False, help=form(HELP_MONOCHROME, DEFAULT_MONOCHROME))
 
         return parser.parse_args()
@@ -232,7 +248,7 @@ class Service:
         except ValueError:
             log_level = self.threshold
         self.print_formatted_config("-l: log-level",  HELP_LOG_LEVEL,  log_level)
-        self.print_formatted_config("-x: unbuffer",   HELP_UNBUFFER,   not self.buffered, not DEFAULT_BUFFERED)
+        self.print_formatted_config("-n: unbuffer",   HELP_UNBUFFER,   not self.buffered, not DEFAULT_BUFFERED)
         self.print_formatted_config("-m: monochrome", HELP_MONOCHROME, self.monochrome,   DEFAULT_MONOCHROME)
 
 
@@ -325,7 +341,7 @@ class Service:
 
 
 class Cluster:
-    def __init__(self, service, contracts_dir=None, total_supply=None, cluster_id=None, topology=None, center_node_id=None, total_nodes=None, total_producers=None, producer_nodes=None, unstarted_nodes=None, extra_configs: typing.List[str] = None, dont_vote=None, dont_bootstrap=None):
+    def __init__(self, service, contracts_dir=None, total_supply=None, cluster_id=None, topology=None, center_node_id=None, total_nodes=None, producer_nodes=None, total_producers=None, unstarted_nodes=None, extra_configs: typing.List[str] = None, dont_vote=None, dont_bootstrap=None, http_retry=None, verify_retry=None, sync_retry=None, head_producer_retry=None):
         # register service
         self.service = service
         self.cla = service.cla
@@ -346,6 +362,10 @@ class Cluster:
         self.dont_vote       = helper.override(DEFAULT_DONT_VOTE,       dont_vote,       self.cla.dont_vote)
         self.dont_bootstrap  = helper.override(DEFAULT_DONT_BOOTSTRAP,  dont_bootstrap,  self.cla.dont_bootstrap)
         self.extra_configs   = helper.override(DEFAULT_EXTRA_CONFIGS,   extra_configs)
+        self.http_retry      = helper.override(DEFAULT_HTTP_RETRY,      http_retry,      self.cla.http_retry)
+        self.verify_retry    = helper.override(DEFAULT_VERIFY_RETRY,    verify_retry,    self.cla.verify_retry)
+        self.sync_retry      = helper.override(DEFAULT_SYNC_RETRY,      sync_retry,      self.cla.sync_retry)
+        self.head_producer_retry = helper.override(DEFAULT_HEAD_PRODUCER_RETRY, head_producer_retry, self.cla.head_producer_retry)
 
         # check for logical errors in config
         self.check_config()
@@ -390,15 +410,23 @@ class Cluster:
 
 
     def launch_without_bootstrap(self):
+        """
+        Launch without Bootstrap
+        ---------
+        1. launch a cluster
+        2. get cluster info
+        3. set bios contract
+        4. check if nodes are in sync
+        """
         self.print_header("Launch (without bootstrap) starts.", level="INFO")
         self.print_config()
         self.launch_cluster()
         self.get_cluster_info()
         self.set_bios_contract()
+        self.check_sync()
         self.print_header("Launch (without bootstrap) ends.", level="INFO")
 
 
-    # TODO: ADD isInSync() after launch cluster
     def bootstrap(self, dont_vote=False):
         """
         Bootstrap
@@ -415,7 +443,8 @@ class Cluster:
         10. create producer accounts
         11. register producers
         12. vote for producers
-        13. verify head producer
+        13. check if nodes are in sync
+        14. verify head producer
         """
         # self.logger.info(color.bold(">>> Bootstrap{} starts.").format(" (without voting)" if dont_vote else ""))
         self.print_header("Bootstrap{} starts.".format(" (without voting)" if dont_vote else ""), level="INFO")
@@ -432,23 +461,30 @@ class Cluster:
         self.create_and_register_producers_in_parallel()
         if not dont_vote:
             self.vote_for_producers(voter="defproducera", voted_producers=list(self.producers.keys())[:min(21, len(self.producers))])
+            self.check_sync(assert_false=True)
             self.verify_head_block_producer()
+        else:
+            self.check_sync(assert_false=True)
         self.print_header("Bootstrap{} ends.".format(" (without voting)" if dont_vote else ""), level="INFO")
 
 
     def print_config(self):
         self.print_header("cluster configuration")
-        self.print_formatted_config("-d: contracts_dir",   HELP_CONTRACTS_DIR,     self.contracts_dir,   DEFAULT_CONTRACTS_DIR)
-        self.print_formatted_config("-i: cluster_id",      HELP_CLUSTER_ID,        self.cluster_id,      DEFAULT_CLUSTER_ID)
-        self.print_formatted_config("-t: topology",        HELP_TOPOLOGY,          self.topology,        DEFAULT_TOPOLOGY)
-        self.print_formatted_config("-c: center_node_id",  HELP_CENTER_NODE_ID,    self.center_node_id,  DEFAULT_CENTER_NODE_ID)
-        self.print_formatted_config("-n: total_nodes",     HELP_TOTAL_NODES,       self.total_nodes,     DEFAULT_TOTAL_NODES)
-        self.print_formatted_config("-y: total_producers", HELP_TOTAL_PRODUCERS,   self.total_producers, DEFAULT_TOTAL_PRODUCERS)
-        self.print_formatted_config("-z: producer_nodes",  HELP_PRODUCER_NODES,    self.producer_nodes,  DEFAULT_PRODUCER_NODES)
-        self.print_formatted_config("-u: unstarted_nodes", HELP_UNSTARTED_NODES,   self.unstarted_nodes, DEFAULT_UNSTARTED_NODES)
-        self.print_formatted_config("-j: dont_vote",       HELP_DONT_VOTE,         self.dont_vote,       DEFAULT_DONT_VOTE)
-        self.print_formatted_config("-q: dont_bootstrap",  HELP_DONT_BOOTSTRAP,    self.dont_bootstrap,  DEFAULT_DONT_BOOTSTRAP)
-        self.print_formatted_config("... extra_configs",   HELP_EXTRA_CONFIGS,     self.extra_configs,   DEFAULT_EXTRA_CONFIGS)
+        self.print_formatted_config("-d: contracts_dir",     HELP_CONTRACTS_DIR,       self.contracts_dir,       DEFAULT_CONTRACTS_DIR)
+        self.print_formatted_config("-i: cluster_id",        HELP_CLUSTER_ID,          self.cluster_id,          DEFAULT_CLUSTER_ID)
+        self.print_formatted_config("-t: topology",          HELP_TOPOLOGY,            self.topology,            DEFAULT_TOPOLOGY)
+        self.print_formatted_config("-c: center_node_id",    HELP_CENTER_NODE_ID,      self.center_node_id,      DEFAULT_CENTER_NODE_ID)
+        self.print_formatted_config("-x: total_nodes",       HELP_TOTAL_NODES,         self.total_nodes,         DEFAULT_TOTAL_NODES)
+        self.print_formatted_config("-y: producer_nodes",    HELP_PRODUCER_NODES,      self.producer_nodes,      DEFAULT_PRODUCER_NODES)
+        self.print_formatted_config("-z: total_producers",   HELP_TOTAL_PRODUCERS,     self.total_producers,     DEFAULT_TOTAL_PRODUCERS)
+        self.print_formatted_config("-u: unstarted_nodes",   HELP_UNSTARTED_NODES,     self.unstarted_nodes,     DEFAULT_UNSTARTED_NODES)
+        self.print_formatted_config("-j: dont_vote",         HELP_DONT_VOTE,           self.dont_vote,           DEFAULT_DONT_VOTE)
+        self.print_formatted_config("-q: dont_bootstrap",    HELP_DONT_BOOTSTRAP,      self.dont_bootstrap,      DEFAULT_DONT_BOOTSTRAP)
+        self.print_formatted_config("... extra_configs",     HELP_EXTRA_CONFIGS,       self.extra_configs,       DEFAULT_EXTRA_CONFIGS)
+        self.print_formatted_config("--http-retry",          HELP_HTTP_RETRY,          self.http_retry,          DEFAULT_HTTP_RETRY)
+        self.print_formatted_config("--verify-retry",        HELP_VERIFY_RETRY,        self.verify_retry,        DEFAULT_VERIFY_RETRY)
+        self.print_formatted_config("--sync-retry",          HELP_SYNC_RETRY,          self.sync_retry,          DEFAULT_SYNC_RETRY)
+        self.print_formatted_config("--head-producer-retry", HELP_HEAD_PRODUCER_RETRY, self.head_producer_retry, DEFAULT_HEAD_PRODUCER_RETRY)
 
 
     def launch_cluster(self):
@@ -599,26 +635,6 @@ class Cluster:
         return self.push_actions(actions=actions, name="votes for producers", buffer=buffer)
 
 
-    # TO REVIEW
-    def verify_head_block_producer(self, retry=10, sleep=1):
-        self.print_header("get head block producer")
-        conn = self.get_cluster_info(level="TRACE")
-        extract_head_block_producer = lambda conn: json.loads(conn.response.text)["result"][0][1]["head_block_producer"]
-        while retry >= 0:
-            conn = self.get_cluster_info(level="TRACE")
-            head_block_producer = extract_head_block_producer(conn)
-            if head_block_producer == "eosio":
-                self.logger.debug(color.yellow("Head block producer is still \"eosio\"."))
-            else:
-                self.logger.debug(color.green("Head block producer is now \"{}\", no longer eosio.".format(head_block_producer)))
-                break
-            self.logger.trace("{} {} for head block producer verification...".format(retry, "retries remain" if retry > 1 else "retry remains"))
-            self.logger.trace("Sleep for {}s before next retry...".format(sleep))
-            time.sleep(sleep)
-            retry -= 1
-        assert head_block_producer != "eosio", "Head block producer is still \"eosio\"."
-
-
     def create_account(self, creator, name, stake_cpu, stake_net, buy_ram_bytes, transfer, node_id=0, verify_key="irreversible", buffer=False):
         return self.call("create_account",
                          creator=creator,
@@ -669,7 +685,7 @@ class Cluster:
     # TODO: set retry from command-line
     def call(self,
              func: str,
-             retry=40,
+             retry=None,
              sleep=0.25,
              verify_key=None,
              header=None,
@@ -687,43 +703,45 @@ class Cluster:
         5. log response
         6. verify transaction
         """
+        retry = self.http_retry if retry is None else retry
         data.setdefault("cluster_id", self.cluster_id)
         data.setdefault("node_id", 0)
         header = header if header else func.replace("_", " ")
         self.print_header(header, level=level, buffer=buffer)
-        conn = Connection(url="http://{}:{}/v1/launcher/{}".format(self.service.address, self.service.port, func), data=data)
+        cx = Connection(url="http://{}:{}/v1/launcher/{}".format(self.service.address, self.service.port, func), data=data)
         try:
-            self.logger.log(conn.url, level=level, buffer=buffer)
-            self.logger.log(conn.request_text, level=level, buffer=buffer)
-            while not conn.ok and retry > 0:
-                self.logger.trace(conn.response_code, buffer=buffer)
+            self.logger.log(cx.url, level=level, buffer=buffer)
+            self.logger.log(cx.request_text, level=level, buffer=buffer)
+            while not cx.ok and retry > 0:
+                self.logger.trace(cx.response_code, buffer=buffer)
                 self.logger.trace("{} {} for http connection...".format(retry, "retries remain" if retry > 1 else "retry remains"), buffer=buffer)
                 self.logger.trace("Sleep for {}s before next retry...".format(sleep), buffer=buffer)
                 time.sleep(sleep)
-                conn.attempt()
+                cx.attempt()
                 retry -= 1
-            if conn.response.ok:
-                self.logger.log(conn.response_code, level=level, buffer=buffer)
-                if conn.transaction_id:
-                    self.logger.log(color.green("<Transaction ID> {}".format(conn.transaction_id)), level=level, buffer=buffer)
+            if cx.response.ok:
+                self.logger.log(cx.response_code, level=level, buffer=buffer)
+                if cx.transaction_id:
+                    self.logger.log(color.green("<Transaction ID> {}".format(cx.transaction_id)), level=level, buffer=buffer)
                 else:
                     self.logger.log(color.yellow("<No Transaction ID>"), level=level, buffer=buffer)
-                self.logger.trace(conn.response_text, buffer=buffer)
+                self.logger.trace(cx.response_text, buffer=buffer)
             else:
-                self.logger.error(conn.response_code)
-                self.logger.error(conn.response_text)
+                self.logger.error(cx.response_code)
+                self.logger.error(cx.response_text)
             if verify_key:
-                assert self.verify(transaction_id=conn.transaction_id, verify_key=verify_key, level=level, buffer=buffer)
-            elif conn.transaction_id:
-                self.logger.warn("WARNING: Verification of transaction ID {} skipped.".format(conn.transaction_id), level=level, buffer=buffer)
+                assert self.verify(transaction_id=cx.transaction_id, verify_key=verify_key, level=level, buffer=buffer)
+            elif cx.transaction_id:
+                self.logger.warn("WARNING: Verification of transaction ID {} skipped.".format(cx.transaction_id), level=level, buffer=buffer)
             if buffer and not dont_flush:
                 self.logger.flush()
         except AssertionError:
             self.logger.flush()
-        return conn
+        return cx
 
 
-    def verify(self, transaction_id, verify_key="irreversible", retry=40, sleep=0.25, level="DEBUG", buffer=False):
+    def verify(self, transaction_id, verify_key="irreversible", retry=None, sleep=0.25, level="DEBUG", buffer=False):
+        retry = self.verify_retry if retry is None else retry
         while retry >= 0:
             if self.verify_transaction(transaction_id=transaction_id, verify_key=verify_key, buffer=buffer):
                 self.logger.log("{}".format(color.black_on_green(verify_key.title())), level=level, buffer=buffer)
@@ -735,8 +753,74 @@ class Cluster:
 
 
     def verify_transaction(self, transaction_id, verify_key="irreversible", level="TRACE", buffer=False):
-        conn = self.call("verify_transaction", transaction_id=transaction_id, verify_key=None, level=level, buffer=buffer, dont_flush=True)
-        return helper.extract(conn.response, key=verify_key, fallback=False)
+        cx = self.call("verify_transaction", transaction_id=transaction_id, verify_key=None, level=level, buffer=buffer, dont_flush=True)
+        return helper.extract(cx.response, key=verify_key, fallback=False)
+
+
+    def check_sync(self, retry=None, sleep=0.25, min_sync_nodes=None, assert_false=False, level="DEBUG"):
+        retry = self.sync_retry if retry is None else retry
+        self.print_header("check if nodes are in sync", level=level)
+        min_sync_nodes = min_sync_nodes if min_sync_nodes else self.total_nodes
+        while retry >= 0:
+            ix = self.get_cluster_info(level="TRACE")
+            has_head_block_id = lambda node_id: "head_block_id" in ix.response_dict["result"][node_id][1]
+            get_head_block_id = lambda node_id: ix.response_dict["result"][node_id][1]["head_block_id"]
+            get_head_block_num = lambda node_id: ix.response_dict["result"][node_id][1]["head_block_num"]
+            node_0_block_id = get_head_block_id(0)
+            min_block_num = max_block_num = get_head_block_num(0)
+            min_block_node = max_block_node = 0
+            in_sync = True
+            sync_nodes = 1
+            for node_id in range(1, self.total_nodes):
+                if has_head_block_id(node_id):
+                    sync_nodes += 1
+                    block_num = get_head_block_num(node_id)
+                    if block_num < min_block_num:
+                        min_block_num = block_num
+                        min_block_node = node_id
+                    elif block_num > min_block_num:
+                        max_block_num = block_num
+                        max_block_node = node_id
+                    if get_head_block_id(node_id) != node_0_block_id:
+                        in_sync = False
+            if in_sync and sync_nodes >= min_sync_nodes:
+                self.logger.log(color.green("<Head Block Number> {}".format(block_num)), level=level)
+                self.logger.log(color.green("<Head Block ID> {}".format(node_0_block_id)), level=level)
+                self.logger.log(color.black_on_green("Nodes In Sync"), level=level)
+                return True, min_block_num, max_block_num
+            # if max_block_num - min_block_num > 2:
+            #     break
+            self.logger.log(color.yellow("<Min Block Number> {:3} from node {}".format(min_block_num, min_block_node)), level=level)
+            self.logger.log(color.yellow("<Max Block Number> {:3} from node {}".format(max_block_num, max_block_node)), level=level)
+            if retry:
+                self.logger.trace("{} {} to check if nodes are in sync...".format(retry, "retries remain" if retry > 1 else "retry remains"))
+                self.logger.trace("Sleep for {}s before next retry...".format(sleep))
+            time.sleep(sleep)
+            retry -= 1
+        self.logger.error("<Min Block Number> {:3} from node {}".format(min_block_num, min_block_node))
+        self.logger.error("<Max Block Number> {:3} from node {}".format(max_block_num, min_block_node))
+        self.logger.error(color.black_on_red("Nodes Not In Sync"), assert_false=assert_false)
+        return False, min_block_num, max_block_num
+
+
+    def verify_head_block_producer(self, retry=None, sleep=1):
+        retry = self.head_producer_retry if retry is None else retry
+        self.print_header("get head block producer")
+        cx = self.get_cluster_info(level="TRACE")
+        extract_head_block_producer = lambda cx: cx.response_dict["result"][0][1]["head_block_producer"]
+        while retry >= 0:
+            cx = self.get_cluster_info(level="TRACE")
+            head_block_producer = extract_head_block_producer(cx)
+            if head_block_producer == "eosio":
+                self.logger.debug(color.yellow("Head block producer is still \"eosio\"."))
+            else:
+                self.logger.debug(color.green("Head block producer is now \"{}\", no longer eosio.".format(head_block_producer)))
+                break
+            self.logger.trace("{} {} for head block producer verification...".format(retry, "retries remain" if retry > 1 else "retry remains"))
+            self.logger.trace("Sleep for {}s before next retry...".format(sleep))
+            time.sleep(sleep)
+            retry -= 1
+        assert head_block_producer != "eosio", "Head block producer is still \"eosio\"."
 
 
     # Note: not called in this script
@@ -799,8 +883,6 @@ def test():
     cluster = Cluster(service=service)
 
 
-# TODO:
-# 2. isInSync
-# 5. trace -- verify txn show response: better Connection level show
+
 if __name__ == "__main__":
     test()
