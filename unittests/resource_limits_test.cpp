@@ -1,7 +1,3 @@
-/**
- *  @file api_tests.cpp
- *  @copyright defined in eos/LICENSE.txt
- */
 #include <algorithm>
 
 #include <eosio/chain/config.hpp>
@@ -64,7 +60,7 @@ BOOST_AUTO_TEST_SUITE(resource_limits_test)
     * Test to make sure that the elastic limits for blocks relax and contract as expected
     */
    BOOST_FIXTURE_TEST_CASE(elastic_cpu_relax_contract, resource_limits_fixture) try {
-      const uint64_t desired_virtual_limit = config::default_max_block_cpu_usage * 1000ULL;
+      const uint64_t desired_virtual_limit = config::default_max_block_cpu_usage * config::maximum_elastic_resource_multiplier;
       const uint64_t expected_relax_iterations = expected_elastic_iterations( config::default_max_block_cpu_usage, desired_virtual_limit, 1000, 999 );
 
       // this is enough iterations for the average to reach/exceed the target (triggering congestion handling) and then the iterations to contract down to the min
@@ -103,7 +99,7 @@ BOOST_AUTO_TEST_SUITE(resource_limits_test)
     * Test to make sure that the elastic limits for blocks relax and contract as expected
     */
    BOOST_FIXTURE_TEST_CASE(elastic_net_relax_contract, resource_limits_fixture) try {
-      const uint64_t desired_virtual_limit = config::default_max_block_net_usage * 1000ULL;
+      const uint64_t desired_virtual_limit = config::default_max_block_net_usage * config::maximum_elastic_resource_multiplier;
       const uint64_t expected_relax_iterations = expected_elastic_iterations( config::default_max_block_net_usage, desired_virtual_limit, 1000, 999 );
 
       // this is enough iterations for the average to reach/exceed the target (triggering congestion handling) and then the iterations to contract down to the min
@@ -311,28 +307,31 @@ BOOST_AUTO_TEST_SUITE(resource_limits_test)
 
 
    BOOST_FIXTURE_TEST_CASE(sanity_check, resource_limits_fixture) try {
-      double total_staked_tokens = 1'000'000'000'0000.;
-      double user_stake = 1'0000.;
-      double max_block_cpu = 100000.; // us;
-      double blocks_per_day = 2*60*60*23;
-      double total_cpu_per_period = max_block_cpu * blocks_per_day * 3;
+      int64_t  total_staked_tokens = 1'000'000'000'0000ll;
+      int64_t  user_stake = 1'0000ll;
+      uint64_t max_block_cpu = 200'000.; // us;
+      uint64_t blocks_per_day = 2*60*60*24;
+      uint64_t total_cpu_per_period = max_block_cpu * blocks_per_day;
 
-      double congested_cpu_time_per_period = total_cpu_per_period * user_stake / total_staked_tokens;
+      double congested_cpu_time_per_period = (double(total_cpu_per_period) * user_stake) / total_staked_tokens;
       wdump((congested_cpu_time_per_period));
-      double uncongested_cpu_time_per_period = (1000*total_cpu_per_period) * user_stake / total_staked_tokens;
+      double uncongested_cpu_time_per_period = congested_cpu_time_per_period * config::maximum_elastic_resource_multiplier;
       wdump((uncongested_cpu_time_per_period));
-
 
       initialize_account( N(dan) );
       initialize_account( N(everyone) );
-      set_account_limits( N(dan), 0, 0, 10000 );
-      set_account_limits( N(everyone), 0, 0, 10000000000000ll );
+      set_account_limits( N(dan), 0, 0, user_stake );
+      set_account_limits( N(everyone), 0, 0, (total_staked_tokens - user_stake) );
       process_account_limit_updates();
 
-      add_transaction_usage( {N(dan)}, 10, 0, 1 ); /// dan should be able to do 10 us per 3 days
+      // dan cannot consume more than 34 us per day
+      BOOST_REQUIRE_THROW( add_transaction_usage( {N(dan)}, 35, 0, 1 ), tx_cpu_usage_exceeded );
 
+      // Ensure CPU usage is 0 by "waiting" for one day's worth of blocks to pass.
+      add_transaction_usage( {N(dan)}, 0, 0, 1 + blocks_per_day );
 
-
-   } FC_LOG_AND_RETHROW() 
+      // But dan should be able to consume up to 34 us per day.
+      add_transaction_usage( {N(dan)}, 34, 0, 2 + blocks_per_day );
+   } FC_LOG_AND_RETHROW()
 
 BOOST_AUTO_TEST_SUITE_END()

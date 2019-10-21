@@ -11,7 +11,7 @@ endif()
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules")
 
 if (UNIX AND APPLE)
-   list(APPEND CMAKE_PREFIX_PATH "/usr/local/opt/llvm@4" "/usr/local/opt/gettext")
+   list(APPEND CMAKE_PREFIX_PATH "/usr/local/opt/gettext")
 endif()
 
 include( GNUInstallDirs )
@@ -23,8 +23,8 @@ set( CMAKE_CXX_STANDARD 17 )
 set( CMAKE_CXX_EXTENSIONS ON )
 set( CXX_STANDARD_REQUIRED ON)
 
-set(VERSION_MAJOR 1)
-set(VERSION_MINOR 9)
+set(VERSION_MAJOR 2)
+set(VERSION_MINOR 0)
 set(VERSION_PATCH 0)
 set(VERSION_SUFFIX develop)
 
@@ -43,16 +43,14 @@ if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
     if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 7.0)
         message(FATAL_ERROR "GCC version must be at least 7.0!")
     endif()
-    if ("${CMAKE_GENERATOR}" STREQUAL "Ninja")
-       add_compile_options(-fdiagnostics-color=always)
-    endif()
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "AppleClang")
     if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 5.0)
         message(FATAL_ERROR "Clang version must be at least 5.0!")
     endif()
-    if ("${CMAKE_GENERATOR}" STREQUAL "Ninja")
-       add_compile_options(-fcolor-diagnostics)
-    endif()
+endif()
+
+if ("${CMAKE_GENERATOR}" STREQUAL "Ninja")
+   add_compile_options(-fdiagnostics-color=always)
 endif()
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS "ON")
@@ -62,6 +60,29 @@ set(BUILD_MONGO_DB_PLUGIN FALSE CACHE BOOL "Build mongo database plugin")
 # add defaults for openssl
 if(APPLE AND UNIX AND "${OPENSSL_ROOT_DIR}" STREQUAL "")
    set(OPENSSL_ROOT_DIR "/usr/local/opt/openssl")
+endif()
+
+# WASM runtimes to enable. Each runtime in this list will have:
+#  * definition EOSIO_<RUNTIME>_RUNTIME_ENABLED defined in public libchain interface
+#  * ctest entries with --runtime
+list(APPEND EOSIO_WASM_RUNTIMES wabt)   #always enable wabt; it works everywhere and parts of eosio still assume it's always available
+if(CMAKE_SIZEOF_VOID_P EQUAL 8 AND NOT WIN32)
+   if("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux" AND "${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
+      list(APPEND EOSIO_WASM_RUNTIMES eos-vm-oc)
+      # EOS VM OC requires LLVM, but move the check up here to a central location so that the EosioTester.cmakes
+      # can be created with the exact version found
+      find_package(LLVM REQUIRED CONFIG)
+      if(LLVM_VERSION_MAJOR VERSION_LESS 7 OR LLVM_VERSION_MAJOR VERSION_GREATER 9)
+	      message(FATAL_ERROR "EOSIO requires an LLVM version 7.0 to 9.0")
+      endif()
+   endif()
+endif()
+
+if(CMAKE_SIZEOF_VOID_P EQUAL 8 AND NOT WIN32)
+   list(APPEND EOSIO_WASM_RUNTIMES eos-vm)
+   if(CMAKE_SYSTEM_PROCESSOR STREQUAL x86_64)
+      list(APPEND EOSIO_WASM_RUNTIMES eos-vm-jit)
+   endif()
 endif()
 
 if(UNIX)
@@ -142,6 +163,10 @@ add_subdirectory( unittests )
 add_subdirectory( tests )
 add_subdirectory( tools )
 
+if (NOT DISABLE_WASM_SPEC_TESTS)
+add_subdirectory( eosio-wasm-spec-tests/generated-tests )
+endif()
+
 install_directory_permissions(DIRECTORY ${CMAKE_INSTALL_FULL_SYSCONFDIR}/eosio)
 
 install(FILES testnet.template DESTINATION ${CMAKE_INSTALL_FULL_SYSCONFDIR}/eosio/launcher)
@@ -176,6 +201,8 @@ configure_file(${CMAKE_SOURCE_DIR}/libraries/fc/src/network/LICENSE.go
                ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE.go COPYONLY)
 configure_file(${CMAKE_SOURCE_DIR}/libraries/yubihsm/LICENSE
                ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE.yubihsm COPYONLY)
+configure_file(${CMAKE_SOURCE_DIR}/libraries/eos-vm/LICENSE
+               ${CMAKE_BINARY_DIR}/licenses/eosio/LICENSE.eos-vm COPYONLY)
 
 install(FILES LICENSE DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ COMPONENT base)
 install(FILES libraries/wabt/LICENSE DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ RENAME LICENSE.wabt COMPONENT base)
@@ -184,6 +211,7 @@ install(FILES libraries/wasm-jit/LICENSE DESTINATION ${CMAKE_INSTALL_FULL_DATARO
 install(FILES libraries/fc/secp256k1/upstream/COPYING DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ RENAME LICENSE.secp256k1 COMPONENT base)
 install(FILES libraries/fc/src/network/LICENSE.go DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ COMPONENT base)
 install(FILES libraries/yubihsm/LICENSE DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ RENAME LICENSE.yubihsm COMPONENT base)
+install(FILES libraries/eos-vm/LICENSE DESTINATION ${CMAKE_INSTALL_FULL_DATAROOTDIR}/licenses/eosio/ RENAME LICENSE.eos-vm COMPONENT base)
 
 add_custom_target(base-install
   COMMAND "${CMAKE_COMMAND}" --build "${CMAKE_BINARY_DIR}"

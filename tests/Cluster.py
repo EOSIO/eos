@@ -954,7 +954,7 @@ class Cluster(object):
             "FEATURE_DIGESTS": ""
         }
         if PFSetupPolicy.hasPreactivateFeature(pfSetupPolicy):
-            env["BIOS_CONTRACT_PATH"] = "unittests/contracts/eosio.bios"
+            env["BIOS_CONTRACT_PATH"] = "unittests/contracts/old_versions/v1.7.0-develop-preactivate_feature/eosio.bios"
 
         if pfSetupPolicy == PFSetupPolicy.FULL:
             allBuiltinProtocolFeatureDigests = biosNode.getAllBuiltinFeatureDigestsToPreactivate()
@@ -965,7 +965,7 @@ class Cluster(object):
             if not silent: Utils.Print("Launcher failed to shut down eos cluster.")
             return None
 
-        p = re.compile('error', re.IGNORECASE)
+        p = re.compile(r"\berror\b", re.IGNORECASE)
         with open(Cluster.__bootlog) as bootFile:
             for line in bootFile:
                 if p.search(line):
@@ -1072,7 +1072,7 @@ class Cluster(object):
         contract="eosio.bios"
         contractDir="unittests/contracts/%s" % (contract)
         if PFSetupPolicy.hasPreactivateFeature(pfSetupPolicy):
-            contractDir="unittests/contracts/%s" % (contract)
+            contractDir="unittests/contracts/old_versions/v1.7.0-develop-preactivate_feature/%s" % (contract)
         else:
             contractDir="unittests/contracts/old_versions/v1.6.0-rc3/%s" % (contract)
         wasmFile="%s.wasm" % (contract)

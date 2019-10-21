@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
 #pragma once
 #include <eosio/chain/block.hpp>
 #include <eosio/chain/types.hpp>
@@ -68,7 +64,7 @@ namespace eosio {
     case validation : return "invalid block";
     case authentication : return "authentication failure";
     case fatal_other : return "some other failure";
-    case benign_other : return "some other non-fatal condition";
+    case benign_other : return "some other non-fatal condition, possibly unknown block";
     default : return "some crazy reason";
     }
   }

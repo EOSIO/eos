@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
 #include <eosio/wallet_plugin/se_wallet.hpp>
 #include <eosio/wallet_plugin/macos_user_auth.h>
 #include <eosio/chain/exceptions.hpp>

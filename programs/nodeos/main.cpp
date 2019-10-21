@@ -1,13 +1,10 @@
-/**
- *  @file
- *  @copyright defined in eosio/LICENSE.txt
- */
 #include <appbase/application.hpp>
 
 #include <eosio/chain_plugin/chain_plugin.hpp>
 #include <eosio/http_plugin/http_plugin.hpp>
 #include <eosio/net_plugin/net_plugin.hpp>
 #include <eosio/producer_plugin/producer_plugin.hpp>
+#include <eosio/version/version.hpp>
 
 #include <fc/log/logger_config.hpp>
 #include <fc/log/appender.hpp>
@@ -27,7 +24,11 @@ void configure_logging(const bfs::path& config_path)
 {
    try {
       try {
-         fc::configure_logging(config_path);
+         if( fc::exists( config_path ) ) {
+            fc::configure_logging( config_path );
+         } else {
+            fc::configure_logging( fc::logging_config::default_config() );
+         }
       } catch (...) {
          elog("Error reloading logging.json");
          throw;
@@ -48,9 +49,12 @@ void configure_logging(const bfs::path& config_path)
 void logging_conf_handler()
 {
    auto config_path = app().get_logging_conf();
-   ilog("Received HUP.  Reloading logging configuration from ${p}.", ("p", config_path.string()));
-   if(fc::exists(config_path))
-      ::detail::configure_logging(config_path);
+   if( fc::exists( config_path ) ) {
+      ilog( "Received HUP.  Reloading logging configuration from ${p}.", ("p", config_path.string()) );
+   } else {
+      ilog( "Received HUP.  No log config found at ${p}, setting to default.", ("p", config_path.string()) );
+   }
+   ::detail::configure_logging( config_path );
    fc::log_config::initialize_appenders( app().get_io_service() );
 }
 
@@ -79,6 +83,8 @@ int main(int argc, char** argv)
 {
    try {
       app().set_version(eosio::nodeos::config::version);
+      app().set_version_string(eosio::version::version_client());
+      app().set_full_version_string(eosio::version::version_full());
 
       auto root = fc::app_path();
       app().set_default_data_dir(root / "eosio" / nodeos::config::node_executable_name / "data" );
@@ -88,7 +94,7 @@ int main(int argc, char** argv)
          .default_http_port = 8888
       });
       if(!app().initialize<chain_plugin, net_plugin, producer_plugin>(argc, argv)) {
-         if(app().get_options().count("help") || app().get_options().count("version")) {
+         if(app().get_options().count("help") || app().get_options().count("version") || app().get_options().count("full-version")) {
             return SUCCESS;
          }
          return INITIALIZE_FAIL;

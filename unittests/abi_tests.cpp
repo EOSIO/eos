@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
 #include <algorithm>
 #include <vector>
 #include <iterator>
@@ -2767,6 +2763,26 @@ BOOST_AUTO_TEST_CASE(abi_deserialize_detailed_error_messages)
 
       BOOST_CHECK_EXCEPTION( abis.binary_to_variant("s5", fc::variant("00010101").as<bytes>(), max_serialization_time),
                              unpack_exception, fc_exception_message_is("Stream unexpectedly ended; unable to unpack field 'i1' of struct 's5.f1[0].<variant(1)=s1>'") );
+
+   } FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE(serialize_optional_struct_type)
+{
+   auto abi = R"({
+      "version": "eosio::abi/1.0",
+      "structs": [
+         {"name": "s", "base": "", "fields": [
+            {"name": "i0", "type": "int8"}
+         ]},
+      ],
+   })";
+
+   try {
+      abi_serializer abis( fc::json::from_string(abi).as<abi_def>(), max_serialization_time );
+
+      verify_round_trip_conversion(abis, "s?", R"({"i0":5})", "0105");
+      verify_round_trip_conversion(abis, "s?", R"(null)", "00");
 
    } FC_LOG_AND_RETHROW()
 }

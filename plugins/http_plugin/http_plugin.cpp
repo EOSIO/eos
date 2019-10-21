@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
 #include <eosio/http_plugin/http_plugin.hpp>
 #ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
 #include <eosio/http_plugin/local_endpoint.hpp>
@@ -396,6 +392,10 @@ namespace eosio {
          cfg.add_options()
             ("unix-socket-path", bpo::value<string>()->default_value(current_http_plugin_defaults.default_unix_socket_path),
              "The filename (relative to data-dir) to create a unix socket for HTTP RPC; set blank to disable.");
+      else
+         cfg.add_options()
+            ("unix-socket-path", bpo::value<string>(),
+             "The filename (relative to data-dir) to create a unix socket for HTTP RPC; set blank to disable.");   
 #endif
 
       if(current_http_plugin_defaults.default_http_port)
@@ -584,13 +584,13 @@ namespace eosio {
             });
             my->unix_server.start_accept();
          } catch ( const fc::exception& e ){
-            fc_elog( logger, "unix socket service failed to start: ${e}", ("e", e.to_detail_string()) );
+            fc_elog( logger, "unix socket service (${path}) failed to start: ${e}", ("e", e.to_detail_string())("path",my->unix_endpoint->path()) );
             throw;
          } catch ( const std::exception& e ){
-            fc_elog( logger, "unix socket service failed to start: ${e}", ("e", e.what()) );
+            fc_elog( logger, "unix socket service (${path}) failed to start: ${e}", ("e", e.what())("path",my->unix_endpoint->path()) );
             throw;
          } catch (...) {
-            fc_elog( logger, "error thrown from unix socket io service" );
+            fc_elog( logger, "error thrown from unix socket (${path}) io service", ("path",my->unix_endpoint->path()) );
             throw;
          }
       }

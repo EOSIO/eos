@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
 #include <appbase/application.hpp>
 
 #include <eosio/wallet_plugin/yubihsm_wallet.hpp>
@@ -261,6 +257,7 @@ string yubihsm_wallet::create_key(string key_type) {
 
 bool yubihsm_wallet::remove_key(string key) {
    FC_ASSERT(!is_locked());
+   FC_THROW_EXCEPTION(chain::wallet_exception, "YubiHSM wallet does not currently support removal of keys");
    return true;
 }
 

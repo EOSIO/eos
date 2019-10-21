@@ -1346,7 +1346,7 @@ class Node(object):
     # TBD: make nodeId an internal property
     # pylint: disable=too-many-locals
     # If nodeosPath is equal to None, it will use the existing nodeos path
-    def relaunch(self, nodeId, chainArg=None, newChain=False, timeout=Utils.systemWaitTimeout, addOrSwapFlags=None, cachePopen=False, nodeosPath=None):
+    def relaunch(self, nodeId, chainArg=None, newChain=False, timeout=Utils.systemWaitTimeout, addSwapFlags=None, cachePopen=False, nodeosPath=None):
 
         assert(self.pid is None)
         assert(self.killed)
@@ -1358,7 +1358,7 @@ class Node(object):
         splittedCmd=self.cmd.split()
         if nodeosPath: splittedCmd[0] = nodeosPath
         myCmd=" ".join(splittedCmd)
-        toAddOrSwap=copy.deepcopy(addOrSwapFlags) if addOrSwapFlags is not None else {}
+        toAddOrSwap=copy.deepcopy(addSwapFlags) if addSwapFlags is not None else {}
         if not newChain:
             skip=False
             swapValue=None
@@ -1522,7 +1522,7 @@ class Node(object):
         self.scheduleProtocolFeatureActivations([preactivateFeatureDigest])
 
         # Wait for the next block to be produced so the scheduled protocol feature is activated
-        self.waitForHeadToAdvance()
+        assert self.waitForHeadToAdvance(), print("ERROR: TIMEOUT WAITING FOR PREACTIVATE")
 
     # Return an array of feature digests to be preactivated in a correct order respecting dependencies
     # Require producer_api_plugin

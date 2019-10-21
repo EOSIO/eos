@@ -1,8 +1,3 @@
-/**
- *  @file version.cpp
- *  @copyright defined in eos/LICENSE
- */
-
 #include "version_impl.hpp"
 
 namespace eosio { namespace version {
