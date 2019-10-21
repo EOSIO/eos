@@ -278,7 +278,7 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
          }
       }
 
-      std::optional<uint32_t> get_watermark( account_name producer ) const {
+      fc::optional<uint32_t> get_watermark( account_name producer ) const {
          auto itr = _producer_watermarks.find( producer );
 
          if( itr == _producer_watermarks.end() ) return {};
