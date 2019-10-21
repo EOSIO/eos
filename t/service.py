@@ -51,7 +51,11 @@ DEFAULT_EXTRA_CONFIGS = []
 DEFAULT_HTTP_RETRY = 10
 DEFAULT_VERIFY_RETRY = 10
 DEFAULT_SYNC_RETRY = 10
-DEFAULT_HEAD_PRODUCER_RETRY = 10
+DEFAULT_PRODUCER_RETRY = 10
+DEFAULT_HTTP_SLEEP = 0.25
+DEFAULT_VERIFY_SLEEP = 0.25
+DEFAULT_SYNC_SLEEP = 0.25
+DEFAULT_PRODUCER_SLEEP = 1
 
 DEFAULT_BUFFERED = True
 DEFAULT_MONOCHROME = False
@@ -78,7 +82,11 @@ HELP_DONT_BOOTSTRAP = "Launch cluster without bootstrap"
 HELP_HTTP_RETRY = "Max retries for HTTP connection"
 HELP_VERIFY_RETRY = "Max retries for transaction verification"
 HELP_SYNC_RETRY = "Max retries for sync verification"
-HELP_HEAD_PRODUCER_RETRY = "Max retries for head block producer"
+HELP_PRODUCER_RETRY = "Max retries for head block producer"
+HELP_HTTP_SLEEP = "Sleep time for HTTP connection retries"
+HELP_VERIFY_SLEEP = "Sleep time for transaction verifications"
+HELP_SYNC_SLEEP = "Sleep time for sync verification retries"
+HELP_PRODUCER_SLEEP = "Sleep time for head block producer retries"
 
 HELP_LOG_LEVEL = "Stdout logging level (numeric)"
 HELP_MONOCHROME = "Print in black and white instead of colors"
@@ -119,7 +127,11 @@ class CommandLineArguments:
         self.http_retry = cla.http_retry
         self.verify_retry = cla.verify_retry
         self.sync_retry = cla.sync_retry
-        self.head_producer_retry = cla.head_producer_retry
+        self.producer_retry = cla.producer_retry
+        self.http_sleep = cla.http_sleep
+        self.verify_sleep = cla.verify_sleep
+        self.sync_sleep = cla.sync_sleep
+        self.producer_sleep = cla.producer_sleep
 
         self.threshold = cla.threshold
         self.buffered = cla.buffered
@@ -155,7 +167,11 @@ class CommandLineArguments:
         parser.add_argument("--http-retry", type=int, metavar="NUM", help=form(HELP_HTTP_RETRY, DEFAULT_HTTP_RETRY))
         parser.add_argument("--verify-retry", type=int, metavar="NUM", help=form(HELP_VERIFY_RETRY, DEFAULT_VERIFY_RETRY))
         parser.add_argument("--sync-retry", type=int, metavar="NUM", help=form(HELP_SYNC_RETRY, DEFAULT_SYNC_RETRY))
-        parser.add_argument("--head-producer-retry", type=int, metavar="NUM", help=form(HELP_HEAD_PRODUCER_RETRY, DEFAULT_HEAD_PRODUCER_RETRY))
+        parser.add_argument("--producer-retry", type=int, metavar="NUM", help=form(HELP_PRODUCER_RETRY, DEFAULT_PRODUCER_RETRY))
+        parser.add_argument("--http-sleep", type=float, metavar="TIME", help=form(HELP_HTTP_SLEEP, DEFAULT_HTTP_SLEEP))
+        parser.add_argument("--verify-sleep", type=float, metavar="TIME", help=form(HELP_VERIFY_SLEEP, DEFAULT_VERIFY_SLEEP))
+        parser.add_argument("--sync-sleep", type=float, metavar="TIME", help=form(HELP_SYNC_SLEEP, DEFAULT_SYNC_SLEEP))
+        parser.add_argument("--producer-sleep", type=float, metavar="TIME", help=form(HELP_PRODUCER_SLEEP, DEFAULT_PRODUCER_SLEEP))
 
         threshold = parser.add_mutually_exclusive_group()
         threshold.add_argument("-l", "--log-level", dest="threshold", type=int, metavar="LEVEL", action="store", help=form(HELP_LOG_LEVEL))
@@ -341,7 +357,7 @@ class Service:
 
 
 class Cluster:
-    def __init__(self, service, contracts_dir=None, total_supply=None, cluster_id=None, topology=None, center_node_id=None, total_nodes=None, producer_nodes=None, total_producers=None, unstarted_nodes=None, extra_configs: typing.List[str] = None, dont_vote=None, dont_bootstrap=None, http_retry=None, verify_retry=None, sync_retry=None, head_producer_retry=None):
+    def __init__(self, service, contracts_dir=None, total_supply=None, cluster_id=None, topology=None, center_node_id=None, total_nodes=None, producer_nodes=None, total_producers=None, unstarted_nodes=None, extra_configs: typing.List[str] = None, dont_vote=None, dont_bootstrap=None, http_retry=None, verify_retry=None, sync_retry=None, producer_retry=None, http_sleep=None, verify_sleep=None, sync_sleep=None, producer_sleep=None):
         # register service
         self.service = service
         self.cla = service.cla
@@ -365,7 +381,11 @@ class Cluster:
         self.http_retry      = helper.override(DEFAULT_HTTP_RETRY,      http_retry,      self.cla.http_retry)
         self.verify_retry    = helper.override(DEFAULT_VERIFY_RETRY,    verify_retry,    self.cla.verify_retry)
         self.sync_retry      = helper.override(DEFAULT_SYNC_RETRY,      sync_retry,      self.cla.sync_retry)
-        self.head_producer_retry = helper.override(DEFAULT_HEAD_PRODUCER_RETRY, head_producer_retry, self.cla.head_producer_retry)
+        self.producer_retry  = helper.override(DEFAULT_PRODUCER_RETRY,  producer_retry,  self.cla.producer_retry)
+        self.http_sleep      = helper.override(DEFAULT_HTTP_SLEEP,      http_sleep,      self.cla.http_sleep)
+        self.verify_sleep    = helper.override(DEFAULT_VERIFY_SLEEP,    verify_sleep,    self.cla.verify_sleep)
+        self.sync_sleep      = helper.override(DEFAULT_SYNC_SLEEP,      sync_sleep,      self.cla.sync_sleep)
+        self.producer_sleep  = helper.override(DEFAULT_PRODUCER_SLEEP,  producer_sleep,  self.cla.producer_sleep)
 
         # check for logical errors in config
         self.check_config()
@@ -470,21 +490,25 @@ class Cluster:
 
     def print_config(self):
         self.print_header("cluster configuration")
-        self.print_formatted_config("-d: contracts_dir",     HELP_CONTRACTS_DIR,       self.contracts_dir,       DEFAULT_CONTRACTS_DIR)
-        self.print_formatted_config("-i: cluster_id",        HELP_CLUSTER_ID,          self.cluster_id,          DEFAULT_CLUSTER_ID)
-        self.print_formatted_config("-t: topology",          HELP_TOPOLOGY,            self.topology,            DEFAULT_TOPOLOGY)
-        self.print_formatted_config("-c: center_node_id",    HELP_CENTER_NODE_ID,      self.center_node_id,      DEFAULT_CENTER_NODE_ID)
-        self.print_formatted_config("-x: total_nodes",       HELP_TOTAL_NODES,         self.total_nodes,         DEFAULT_TOTAL_NODES)
-        self.print_formatted_config("-y: producer_nodes",    HELP_PRODUCER_NODES,      self.producer_nodes,      DEFAULT_PRODUCER_NODES)
-        self.print_formatted_config("-z: total_producers",   HELP_TOTAL_PRODUCERS,     self.total_producers,     DEFAULT_TOTAL_PRODUCERS)
-        self.print_formatted_config("-u: unstarted_nodes",   HELP_UNSTARTED_NODES,     self.unstarted_nodes,     DEFAULT_UNSTARTED_NODES)
-        self.print_formatted_config("-j: dont_vote",         HELP_DONT_VOTE,           self.dont_vote,           DEFAULT_DONT_VOTE)
-        self.print_formatted_config("-q: dont_bootstrap",    HELP_DONT_BOOTSTRAP,      self.dont_bootstrap,      DEFAULT_DONT_BOOTSTRAP)
-        self.print_formatted_config("... extra_configs",     HELP_EXTRA_CONFIGS,       self.extra_configs,       DEFAULT_EXTRA_CONFIGS)
-        self.print_formatted_config("--http-retry",          HELP_HTTP_RETRY,          self.http_retry,          DEFAULT_HTTP_RETRY)
-        self.print_formatted_config("--verify-retry",        HELP_VERIFY_RETRY,        self.verify_retry,        DEFAULT_VERIFY_RETRY)
-        self.print_formatted_config("--sync-retry",          HELP_SYNC_RETRY,          self.sync_retry,          DEFAULT_SYNC_RETRY)
-        self.print_formatted_config("--head-producer-retry", HELP_HEAD_PRODUCER_RETRY, self.head_producer_retry, DEFAULT_HEAD_PRODUCER_RETRY)
+        self.print_formatted_config("-d: contracts_dir",   HELP_CONTRACTS_DIR,   self.contracts_dir,   DEFAULT_CONTRACTS_DIR)
+        self.print_formatted_config("-i: cluster_id",      HELP_CLUSTER_ID,      self.cluster_id,      DEFAULT_CLUSTER_ID)
+        self.print_formatted_config("-t: topology",        HELP_TOPOLOGY,        self.topology,        DEFAULT_TOPOLOGY)
+        self.print_formatted_config("-c: center_node_id",  HELP_CENTER_NODE_ID,  self.center_node_id,  DEFAULT_CENTER_NODE_ID)
+        self.print_formatted_config("-x: total_nodes",     HELP_TOTAL_NODES,     self.total_nodes,     DEFAULT_TOTAL_NODES)
+        self.print_formatted_config("-y: producer_nodes",  HELP_PRODUCER_NODES,  self.producer_nodes,  DEFAULT_PRODUCER_NODES)
+        self.print_formatted_config("-z: total_producers", HELP_TOTAL_PRODUCERS, self.total_producers, DEFAULT_TOTAL_PRODUCERS)
+        self.print_formatted_config("-u: unstarted_nodes", HELP_UNSTARTED_NODES, self.unstarted_nodes, DEFAULT_UNSTARTED_NODES)
+        self.print_formatted_config("-j: dont_vote",       HELP_DONT_VOTE,       self.dont_vote,       DEFAULT_DONT_VOTE)
+        self.print_formatted_config("-q: dont_bootstrap",  HELP_DONT_BOOTSTRAP,  self.dont_bootstrap,  DEFAULT_DONT_BOOTSTRAP)
+        self.print_formatted_config("... extra_configs",   HELP_EXTRA_CONFIGS,   self.extra_configs,   DEFAULT_EXTRA_CONFIGS)
+        self.print_formatted_config("--http-retry",        HELP_HTTP_RETRY,      self.http_retry,      DEFAULT_HTTP_RETRY)
+        self.print_formatted_config("--verify-retry",      HELP_VERIFY_RETRY,    self.verify_retry,    DEFAULT_VERIFY_RETRY)
+        self.print_formatted_config("--sync-retry",        HELP_SYNC_RETRY,      self.sync_retry,      DEFAULT_SYNC_RETRY)
+        self.print_formatted_config("--producer-retry",    HELP_PRODUCER_RETRY,  self.producer_retry,  DEFAULT_PRODUCER_RETRY)
+        self.print_formatted_config("--http-sleep",        HELP_HTTP_SLEEP,      self.http_sleep,      DEFAULT_HTTP_SLEEP)
+        self.print_formatted_config("--verify-sleep",      HELP_VERIFY_SLEEP,    self.verify_sleep,    DEFAULT_VERIFY_SLEEP)
+        self.print_formatted_config("--sync-sleep",        HELP_SYNC_SLEEP,      self.sync_sleep,      DEFAULT_SYNC_SLEEP)
+        self.print_formatted_config("--producer-sleep",    HELP_PRODUCER_SLEEP,  self.producer_sleep,  DEFAULT_PRODUCER_SLEEP)
 
 
     def launch_cluster(self):
@@ -661,7 +685,6 @@ class Cluster:
         return self.push_actions(actions=actions, name="register \"{}\" producer".format(producer), buffer=buffer)
 
 
-
     def set_contract(self, account, contract_file, abi_file, node_id=0, verify_key="irreversible", name=None, buffer=False):
         return self.call("set_contract",
                          account=account,
@@ -682,11 +705,10 @@ class Cluster:
                          buffer=buffer)
 
 
-    # TODO: set retry from command-line
     def call(self,
              func: str,
              retry=None,
-             sleep=0.25,
+             sleep=None,
              verify_key=None,
              header=None,
              level="DEBUG",
@@ -704,6 +726,7 @@ class Cluster:
         6. verify transaction
         """
         retry = self.http_retry if retry is None else retry
+        sleep = self.http_sleep if sleep is None else sleep
         data.setdefault("cluster_id", self.cluster_id)
         data.setdefault("node_id", 0)
         header = header if header else func.replace("_", " ")
@@ -728,7 +751,7 @@ class Cluster:
                 self.logger.trace(cx.response_text, buffer=buffer)
             else:
                 self.logger.error(cx.response_code)
-                self.logger.error(cx.response_text)
+                self.logger.error(cx.response_text, assert_false=True)
             if verify_key:
                 assert self.verify(transaction_id=cx.transaction_id, verify_key=verify_key, level=level, buffer=buffer)
             elif cx.transaction_id:
@@ -740,15 +763,16 @@ class Cluster:
         return cx
 
 
-    def verify(self, transaction_id, verify_key="irreversible", retry=None, sleep=0.25, level="DEBUG", buffer=False):
+    def verify(self, transaction_id, verify_key="irreversible", retry=None, sleep=None, level="DEBUG", buffer=False):
         retry = self.verify_retry if retry is None else retry
+        sleep = self.verify_sleep if sleep is None else sleep
         while retry >= 0:
             if self.verify_transaction(transaction_id=transaction_id, verify_key=verify_key, buffer=buffer):
                 self.logger.log("{}".format(color.black_on_green(verify_key.title())), level=level, buffer=buffer)
                 return True
             time.sleep(sleep)
             retry -= 1
-        self.logger.error(color.decorate("{}".format(verify_key.title()), fcolor="black", bcolor="green"))
+        self.logger.error(color.black_on_green("{}".format(verify_key.title())), assert_false=True)
         return False
 
 
@@ -757,8 +781,9 @@ class Cluster:
         return helper.extract(cx.response, key=verify_key, fallback=False)
 
 
-    def check_sync(self, retry=None, sleep=0.25, min_sync_nodes=None, assert_false=False, level="DEBUG"):
+    def check_sync(self, retry=None, sleep=None, min_sync_nodes=None, assert_false=False, level="DEBUG"):
         retry = self.sync_retry if retry is None else retry
+        sleep = self.sync_sleep if sleep is None else sleep
         self.print_header("check if nodes are in sync", level=level)
         min_sync_nodes = min_sync_nodes if min_sync_nodes else self.total_nodes
         while retry >= 0:
@@ -803,8 +828,9 @@ class Cluster:
         return False, min_block_num, max_block_num
 
 
-    def verify_head_block_producer(self, retry=None, sleep=1):
-        retry = self.head_producer_retry if retry is None else retry
+    def verify_head_block_producer(self, retry=None, sleep=None):
+        retry = self.producer_retry if retry is None else retry
+        sleep = self.producer_sleep if sleep is None else sleep
         self.print_header("get head block producer")
         cx = self.get_cluster_info(level="TRACE")
         extract_head_block_producer = lambda cx: cx.response_dict["result"][0][1]["head_block_producer"]
