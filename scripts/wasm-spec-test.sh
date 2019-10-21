@@ -13,7 +13,7 @@ fi
 cd $GIT_ROOT/build
 # count tests
 echo "+++ $([[ "$BUILDKITE" == 'true' ]] && echo ':microscope: ')Running WASM Spec Tests"
-TEST_COUNT=$(ctest -N -LE _tests | grep -i 'Total Tests: ' | cut -d ':' -f 2 | awk '{print $1}')
+TEST_COUNT=$(ctest -N -L wasm_spec_tests | grep -i 'Total Tests: ' | cut -d ':' -f 2 | awk '{print $1}')
 if [[ $TEST_COUNT > 0 ]]; then
     echo "$TEST_COUNT tests found."
 else
