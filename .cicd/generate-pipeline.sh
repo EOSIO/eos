@@ -187,7 +187,7 @@ EOF
             - 'registry_1'
             - 'registry_2'
           pre-execute-sleep: 5
-    timeout: ${TIMEOUT:-20}
+    timeout: ${TIMEOUT:-60}
     agents:
       - "queue=mac-anka-node-fleet"
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_UNIT_TESTS}
@@ -236,7 +236,7 @@ EOF
             - 'registry_1'
             - 'registry_2'
           pre-execute-sleep: 5
-    timeout: ${TIMEOUT:-20}
+    timeout: ${TIMEOUT:-60}
     agents:
       - "queue=mac-anka-node-fleet"
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_SERIAL_TESTS}
@@ -399,7 +399,7 @@ cat <<EOF
           pre-execute-sleep: 5
     agents:
       - "queue=mac-anka-node-fleet"
-    timeout: ${TIMEOUT:-10}
+    timeout: ${TIMEOUT:-60}
     skip: ${SKIP_MACOS_10_13}${SKIP_PACKAGE_BUILDER}${SKIP_MAC}
 
   - label: ":darwin: macOS 10.14 - Package Builder"
@@ -422,7 +422,7 @@ cat <<EOF
           pre-execute-sleep: 5
     agents:
       - "queue=mac-anka-node-fleet"
-    timeout: ${TIMEOUT:-10}
+    timeout: ${TIMEOUT:-60}
     skip: ${SKIP_MACOS_10_14}${SKIP_PACKAGE_BUILDER}${SKIP_MAC}
 
   - label: ":ubuntu: Ubuntu 18.04 - Contract Builder"
