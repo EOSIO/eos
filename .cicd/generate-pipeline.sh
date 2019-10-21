@@ -224,7 +224,7 @@ EOF
     echo
     done
     # wasm spec tests
-    echo '    # wasm specx tests'
+    echo '    # wasm spec tests'
     echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
         if [[ ! "$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)" =~ 'macos' ]]; then
             CONCURRENCY=$LINUX_CONCURRENCY
