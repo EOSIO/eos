@@ -54,7 +54,7 @@ DEFAULT_SYNC_RETRY = 10
 DEFAULT_PRODUCER_RETRY = 10
 DEFAULT_HTTP_SLEEP = 0.25
 DEFAULT_VERIFY_SLEEP = 0.25
-DEFAULT_SYNC_SLEEP = 0.25
+DEFAULT_SYNC_SLEEP = 3
 DEFAULT_PRODUCER_SLEEP = 1
 
 DEFAULT_BUFFERED = True
@@ -815,15 +815,13 @@ class Cluster:
                 return True, min_block_num, max_block_num
             # if max_block_num - min_block_num > 2:
             #     break
-            self.logger.log(color.yellow("<Min Block Number> {:3} from node {}".format(min_block_num, min_block_node)), level=level)
-            self.logger.log(color.yellow("<Max Block Number> {:3} from node {}".format(max_block_num, max_block_node)), level=level)
+            self.logger.log("<Max Block Number> {:3} from node {:2} │ <Min Block Number> {:3} from node {:2}".format(max_block_num, max_block_node, min_block_num, min_block_node), level=level)
             if retry:
                 self.logger.trace("{} {} to check if nodes are in sync...".format(retry, "retries remain" if retry > 1 else "retry remains"))
                 self.logger.trace("Sleep for {}s before next retry...".format(sleep))
             time.sleep(sleep)
             retry -= 1
-        self.logger.error("<Min Block Number> {:3} from node {}".format(min_block_num, min_block_node))
-        self.logger.error("<Max Block Number> {:3} from node {}".format(max_block_num, min_block_node))
+        self.logger.error("<Max Block Number> {:3} from node {:2} │ <Min Block Number> {:3} from node {:2}".format(max_block_num, max_block_node, min_block_num, min_block_node))
         self.logger.error(color.black_on_red("Nodes Not In Sync"), assert_false=assert_false)
         return False, min_block_num, max_block_num
 
@@ -849,19 +847,24 @@ class Cluster:
         assert head_block_producer != "eosio", "Head block producer is still \"eosio\"."
 
 
-    # Note: not called in this script
-    def stop_node(self):
-        return self.call("stop_node")
+    def start_node(self, node_id, extra_args=None):
+        return self.call("start_node", node_id=node_id, extra_args=extra_args)
 
 
-    # Note: not called in this script
-    def start_node(self):
-        return self.call("start_node")
+    def stop_node(self, node_id, kill_sig=15):
+        return self.call("stop_node", node_id=node_id, kill_sig=kill_sig)
 
 
-    # Note: not called in this script
-    def get_block(self, block_num_or_id):
-        return self.call("get_block", block_num_or_id=block_num_or_id)
+    def kill_node(self, node_id):
+        return self.call("stop_node", node_id=node_id, kill_sig=9)
+
+
+    def temrinate_node(self, node_id):
+        return self.call("stop_node", node_id=node_id, kill_sig=15)
+
+
+    def get_block(self, block_num_or_id, node_id=0):
+        return self.call("get_block", block_num_or_id=block_num_or_id, node_id=node_id)
 
 
     def get_wasm_file(self, contract):

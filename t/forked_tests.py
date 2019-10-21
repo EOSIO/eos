@@ -3,7 +3,7 @@
 import json
 import time
 
-from logger import LoggingLevel, WriterConfig, ScreenWriter, FileWriter, Logger
+from logger import LogLevel, WriterConfig, ScreenWriter, FileWriter, Logger
 from service import Service, Cluster, CommandLineArguments
 
 max_seen_blocknum = 1
@@ -109,7 +109,7 @@ def main():
         else:
             print_info("%s (node 2)" % (p))
 
-    cluster.vote_for_producers(node_id=0, voter="tester1", voted_producers=node_prod)
+    cluster.vote_for_producers(voter="tester1", voted_producers=node_prod)
 
     res,min_blk,max_blk = isInSync(cluster, 3, assertInSync=True)
     assert res, "cluster is not in sync"
