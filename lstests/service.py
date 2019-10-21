@@ -50,11 +50,11 @@ DEFAULT_DONT_BOOTSTRAP = False
 DEFAULT_EXTRA_CONFIGS = []
 DEFAULT_HTTP_RETRY = 10
 DEFAULT_VERIFY_RETRY = 10
-DEFAULT_SYNC_RETRY = 10
-DEFAULT_PRODUCER_RETRY = 10
+DEFAULT_SYNC_RETRY = 100
+DEFAULT_PRODUCER_RETRY = 100
 DEFAULT_HTTP_SLEEP = 0.25
 DEFAULT_VERIFY_SLEEP = 0.25
-DEFAULT_SYNC_SLEEP = 3
+DEFAULT_SYNC_SLEEP = 1
 DEFAULT_PRODUCER_SLEEP = 1
 
 DEFAULT_BUFFERED = True
@@ -781,7 +781,7 @@ class Cluster:
         return helper.extract(cx.response, key=verify_key, fallback=False)
 
 
-    def check_sync(self, retry=None, sleep=None, min_sync_nodes=None, assert_false=False, level="DEBUG"):
+    def check_sync(self, retry=None, sleep=None, min_sync_nodes=None, max_block_lags=None, assert_false=False, level="DEBUG", error_level="ERROR"):
         retry = self.sync_retry if retry is None else retry
         sleep = self.sync_sleep if sleep is None else sleep
         self.print_header("check if nodes are in sync", level=level)
@@ -813,17 +813,61 @@ class Cluster:
                 self.logger.log(color.green("<Head Block ID> {}".format(node_0_block_id)), level=level)
                 self.logger.log(color.black_on_green("Nodes In Sync"), level=level)
                 return True, min_block_num, max_block_num
-            # if max_block_num - min_block_num > 2:
-            #     break
+            if max_block_lags and max_block_num - min_block_num > max_block_lags:
+                break
             self.logger.log("<Max Block Number> {:3} from node {:2} │ <Min Block Number> {:3} from node {:2}".format(max_block_num, max_block_node, min_block_num, min_block_node), level=level)
             if retry:
                 self.logger.trace("{} {} to check if nodes are in sync...".format(retry, "retries remain" if retry > 1 else "retry remains"))
                 self.logger.trace("Sleep for {}s before next retry...".format(sleep))
             time.sleep(sleep)
             retry -= 1
-        self.logger.error("<Max Block Number> {:3} from node {:2} │ <Min Block Number> {:3} from node {:2}".format(max_block_num, max_block_node, min_block_num, min_block_node))
-        self.logger.error(color.black_on_red("Nodes Not In Sync"), assert_false=assert_false)
+        self.logger.log("<Max Block Number> {:3} from node {:2} │ <Min Block Number> {:3} from node {:2}".format(max_block_num, max_block_node, min_block_num, min_block_node), level=error_level)
+        self.logger.log(color.black_on_red("Nodes Not In Sync"), level=error_level)
         return False, min_block_num, max_block_num
+
+
+    def get_head_block_number(self, node_id=0):
+        return self.get_cluster_info(level="TRACE").response_dict["result"][node_id][1]["head_block_num"]
+
+
+    def wait_get_block(self, block_num, retry=1):
+        while retry >= 0:
+            head_block_num = self.get_head_block_number()
+            if head_block_num < block_num:
+                time.sleep(0.5 * (block_num - head_block_num + 1))
+            else:
+                return self.get_block(block_num).response_dict
+            retry -= 1
+        assert False, "Cannot get block {}. Current head_block_num={}".format(block_num, head_block_num)
+
+
+    def check_production_round(self, expected_producers):
+        head_block_num = self.get_head_block_number()
+
+        curprod = "(None)"
+        while curprod not in expected_producers:
+            block = self.wait_get_block(head_block_num)
+            # print(block)
+            curprod = block["producer"]
+            self.logger.trace("Head block number={}, producer={}, waiting for schedule change.".format(head_block_num, curprod))
+            head_block_num += 1
+
+        seen_prod = dict(curprod=1)
+        verify_end_num = head_block_num + 12 * len(expected_producers)
+        for blk_num in range(head_block_num, verify_end_num):
+            block = self.wait_get_block(blk_num)
+            curprod = block["producer"]
+            self.logger.trace("Block Number {}. Producer {}. {} blocks remain to verify.".format(blk_num, curprod, verify_end_num- blk_num - 1))
+            assert curprod in expected_producers, "producer {} is not expected in block {}".format(curprod, blk_num)
+            seen_prod[curprod] = 1
+
+        if len(seen_prod) == len(expected_producers):
+            self.logger.trace("Verification succeed.")
+            return True
+        else:
+            self.logger.trace("Verification failed. Number of seen producer={} != expected producers={}.".format(len(seen_prod), len(expected_producers)))
+            return False
+
 
 
     def verify_head_block_producer(self, retry=None, sleep=None):
@@ -863,8 +907,8 @@ class Cluster:
         return self.call("stop_node", node_id=node_id, kill_sig=15)
 
 
-    def get_block(self, block_num_or_id, node_id=0):
-        return self.call("get_block", block_num_or_id=block_num_or_id, node_id=node_id)
+    def get_block(self, block_num_or_id, node_id=0, level="TRACE"):
+        return self.call("get_block", block_num_or_id=block_num_or_id, node_id=node_id, level=level)
 
 
     def get_wasm_file(self, contract):

@@ -218,7 +218,7 @@ class Logger:
         if isinstance(level, str):
             level = LogLevel[level]
         for w in self.writers:
-            w.write(msg, level)
+            w.write(str(msg), level)
         if not buffer:
             self.flush()
 
