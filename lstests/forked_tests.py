@@ -69,7 +69,7 @@ def verifyProductionRound(cluster, exp_prod, print):
         head_num = head_num + 1
 
     seen_prod = {curprod : 1}
-    verify_end_num = head_num + 12 * len(exp_prod)
+    verify_end_num = head_num + 12 * len(exp_prod) + 1
     for blk_num in range(head_num, verify_end_num):
         block = wait_get_block(cluster, blk_num, print=print)
         curprod = block["producer"]
@@ -84,6 +84,17 @@ def verifyProductionRound(cluster, exp_prod, print):
     print("verification failed, #seen_prod is %d, expect %d" % (len(seen_prod), len(exp_prod)))
     return False
 
+def setprods(cluster, node_prod):
+    node_prod.sort()
+    prod_keys = []
+    for p in node_prod:
+        prod_keys.append({"producer_name": p, "block_signing_key":"EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"})
+
+    actions = [{"account": "eosio",
+                    "action": "setprods",
+                    "permissions": [{"actor": "eosio", "permission": "active"}],
+                    "data": { "schedule": prod_keys}}]
+    cluster.push_actions(actions=actions, name="set producers")
 
 def main():
     buffered_color_config = WriterConfig(buffered=True, monochrome=False, threshold="DEBUG")
@@ -92,30 +103,26 @@ def main():
     service = Service(logger=logger)
 
     print_info = lambda msg: logger.info(msg=msg)
-
     print_info(">>> Forked test starts.")
     total_nodes = 3
-    cluster = Cluster(service=service, total_nodes=total_nodes, total_producers=total_nodes * 2 + 1, producer_nodes=total_nodes, dont_vote=True, topology="bridge", center_node_id=1)
+    cluster = Cluster(service=service, total_nodes=total_nodes, total_producers=total_nodes * 2 + 1, producer_nodes=total_nodes, topology="bridge", center_node_id=1, dont_bootstrap=True)
 
-    stake_amount = "75000001.0000 SYS"
-    cluster.create_account(node_id=0, creator="eosio", name="tester1", stake_cpu=stake_amount, stake_net=stake_amount, buy_ram_bytes=1048576, transfer=True)
+    print_info("create producer accounts using bios contract...")
+    prods = cluster.nodes[0]["producers"] + cluster.nodes[2]["producers"]
+    prods.remove("eosio")
+    acc_list = []
+    for p in prods:
+        acc_list.append({"name":p})
+    cluster.call("create_bios_accounts",creator="eosio",accounts=acc_list,verify_key="irreversible")
 
-    node_prod = cluster.nodes[0]["producers"] + cluster.nodes[2]["producers"]
-    node_prod.remove("eosio")
-    print_info("vote for following producers (from node 0 and node 2):")
-    for p in node_prod:
-        if p in cluster.nodes[0]["producers"]:
-            print_info("%s (node 0)" % (p))
-        else:
-            print_info("%s (node 2)" % (p))
-
-    cluster.vote_for_producers(voter="tester1", voted_producers=node_prod)
+    print_info("set producers from node 0 & node 2 (%s)" % (','.join(prods)))
+    setprods(cluster, prods)
 
     res,min_blk,max_blk = isInSync(cluster, 3, assertInSync=True)
     assert res, "cluster is not in sync"
 
     print_info("verfiying schedule...")
-    verifyProductionRound(cluster, node_prod, print=print_info)
+    verifyProductionRound(cluster, prods, print=print_info)
 
     res,min_blk,max_blk = isInSync(cluster, 3, assertInSync=True)
     last_known_insync_blk = max_blk
