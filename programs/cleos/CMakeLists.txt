@@ -10,8 +10,6 @@ if( GPERFTOOLS_FOUND )
     list( APPEND PLATFORM_SPECIFIC_LIBS tcmalloc )
 endif()
 
-find_package(Intl REQUIRED)
-
 set(LOCALEDIR ${CMAKE_INSTALL_PREFIX}/share/locale)
 set(LOCALEDOMAIN ${CLI_CLIENT_EXECUTABLE_NAME})
 configure_file(config.hpp.in config.hpp ESCAPE_QUOTES)
