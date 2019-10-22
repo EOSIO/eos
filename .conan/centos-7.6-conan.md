@@ -36,7 +36,7 @@ git checkout conan-poc-v2
 
 git submodule update --init --recursive
 
-cmake -DCMAKE_BUILD_TYPE='Release' -DCORE_SYMBOL_NAME='SYS' -DPKG_CONFIG_USE_CMAKE_PREFIX_PATH=ON -DLLVM_DIR='/opt/rh/llvm-toolset-7.0/root/usr/lib64/cmake/llvm' -DUSE_CONAN=true -Bbuild
+cmake -DCMAKE_BUILD_TYPE='Release' -DPKG_CONFIG_USE_CMAKE_PREFIX_PATH=ON -DLLVM_DIR='/opt/rh/llvm-toolset-7.0/root/usr/lib64/cmake/llvm' -DUSE_CONAN=true -Bbuild
 
 cd build/
 
