@@ -1707,13 +1707,13 @@ namespace eosio {
       stages state = sync_state;
       fc_dlog( logger, "state ${s}", ("s", stage_str( state )) );
       if( state == lib_catchup ) {
+         fc_dlog( logger, "sync_last_requested_num: ${r}, sync_next_expected_num: ${e}, sync_known_lib_num: ${k}, sync_req_span: ${s}",
+                  ("r", sync_last_requested_num)("e", sync_next_expected_num)("k", sync_known_lib_num)("s", sync_req_span) );
          if (blk_num != sync_next_expected_num) {
-            if( ++c->consecutive_rejected_blocks > def_max_consecutive_rejected_blocks ) {
-               auto sync_next_expected = sync_next_expected_num;
-               g_sync.unlock();
-               fc_wlog( logger, "expected block ${ne} but got ${bn}, from connection: ${p}",
-                        ("ne", sync_next_expected)( "bn", blk_num )( "p", c->peer_name() ) );
-            }
+            auto sync_next_expected = sync_next_expected_num;
+            g_sync.unlock();
+            fc_dlog( logger, "expected block ${ne} but got ${bn}, from connection: ${p}",
+                     ("ne", sync_next_expected)( "bn", blk_num )( "p", c->peer_name() ) );
             return;
          }
          sync_next_expected_num = blk_num + 1;
