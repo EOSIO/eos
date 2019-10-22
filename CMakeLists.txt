@@ -59,7 +59,6 @@ if("${USE_CONAN}" STREQUAL "true" OR "$ENV{USE_CONAN}" STREQUAL "true")
 
   set(CMAKE_SKIP_BUILD_RPATH FALSE)
   set(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
-  set(Iconv_LIBRARY CONAN_PKG::libiconv)
   if(UNIX)
     if(APPLE)
       set(CMAKE_MACOSX_RPATH ON)
@@ -67,11 +66,7 @@ if("${USE_CONAN}" STREQUAL "true" OR "$ENV{USE_CONAN}" STREQUAL "true")
       execute_process(
         COMMAND install_name_tool -id "@rpath/libgmp.10.dylib" ${CONAN_LIB_DIRS_GMP}/libgmp.10.dylib
         COMMAND install_name_tool -id "@rpath/libusb-1.0.0.dylib" ${CONAN_LIB_DIRS_LIBUSB}/libusb-1.0.0.dylib
-        COMMAND install_name_tool -id "@rpath/libgnuintl.8.dylib" ${CONAN_LIB_DIRS_GETTEXT}/libgnuintl.8.dylib
       )
-      set(Intl_LIBRARY ${CONAN_LIB_DIRS_GETTEXT}/libgnuintl.dylib)
-    else()
-      set(Intl_LIBRARY ${CONAN_LIB_DIRS_GETTEXT}/libgnuintl.so)
     endif()
   endif()
 
