@@ -921,15 +921,15 @@ class Cluster:
         return os.path.join(self.contracts_dir, contract, contract + ".abi")
 
 
-    def get_log_data(self, offset, level="TRACE"):
-        return self.call("get_log_data", offset=offset, len=10000, node_id=0, filename="stderr_0.txt")
+    def get_log_data(self, offset, node_id, level="TRACE"):
+        return self.call("get_log_data", offset=offset, len=10000, node_id=node_id, filename="stderr_0.txt")
 
 
-    def get_log(self) -> str:
+    def get_log(self, node_id) -> str:
         log = ""
         offset = 0
         while True:
-            resp = self.get_log_data(offset=offset).response_dict
+            resp = self.get_log_data(offset=offset, node_id=node_id).response_dict
             log += base64.b64decode(resp["data"]).decode("utf-8")
             if resp["offset"] + 10000 > resp["filesize"]:
                 break
@@ -972,7 +972,7 @@ def test():
                     FileWriter(config=trace_unbuff_mono, filename="trace_unbuff_mono.log"))
     service = Service(logger=logger)
     cluster = Cluster(service=service)
-    # print(cluster.get_log())
+    # print(cluster.get_log(node_id=1))
 
 
 if __name__ == "__main__":
