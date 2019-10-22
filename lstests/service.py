@@ -3,6 +3,7 @@
 # standard libraries
 from typing import List, Optional, Union
 import argparse
+import base64
 import helper
 import json
 import math
@@ -806,7 +807,8 @@ class Cluster:
                     elif block_num > min_block_num:
                         max_block_num = block_num
                         max_block_node = node_id
-                    if get_head_block_id(node_id) != node_0_block_id:
+                    head_block_id = get_head_block_id(node_id)
+                    if head_block_id != node_0_block_id:
                         in_sync = False
             if in_sync and sync_nodes >= min_sync_nodes:
                 self.logger.log(color.green("<Head Block Number> {}".format(block_num)), level=level)
@@ -903,7 +905,7 @@ class Cluster:
         return self.call("stop_node", node_id=node_id, kill_sig=9)
 
 
-    def temrinate_node(self, node_id):
+    def terminate_node(self, node_id):
         return self.call("stop_node", node_id=node_id, kill_sig=15)
 
 
@@ -917,6 +919,22 @@ class Cluster:
 
     def get_abi_file(self, contract):
         return os.path.join(self.contracts_dir, contract, contract + ".abi")
+
+
+    def get_log_data(self, offset, level="TRACE"):
+        return self.call("get_log_data", offset=offset, len=10000, node_id=0, filename="stderr_0.txt")
+
+
+    def get_log(self) -> str:
+        log = ""
+        offset = 0
+        while True:
+            resp = self.get_log_data(offset=offset).response_dict
+            log += base64.b64decode(resp["data"]).decode("utf-8")
+            if resp["offset"] + 10000 > resp["filesize"]:
+                break
+            offset += 10000
+        return log
 
 
     @staticmethod
@@ -954,7 +972,7 @@ def test():
                     FileWriter(config=trace_unbuff_mono, filename="trace_unbuff_mono.log"))
     service = Service(logger=logger)
     cluster = Cluster(service=service)
-
+    # print(cluster.get_log())
 
 
 if __name__ == "__main__":
