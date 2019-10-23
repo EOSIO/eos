@@ -6,6 +6,8 @@ steps:
       - "./.cicd/generate-pipeline.sh > generated-pipeline.yml"
       - "buildkite-agent pipeline upload < generated-pipeline.yml"
       - "buildkite-agent artifact upload generated-pipeline.yml"
+    env:
+      BUILDKITE_DISABLE_GIT_SUBMODULES: true 
     agents:
       queue: "automation-basic-builder-fleet"
     timeout: ${TIMEOUT:-10}
