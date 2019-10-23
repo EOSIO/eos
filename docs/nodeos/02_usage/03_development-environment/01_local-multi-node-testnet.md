@@ -4,18 +4,18 @@ This tutorial describes how to set up a multi-node blockchain configuration runn
 
 ![Single host multi node testnet](single-host-multi-node-testnet.png)
 
-It is assumed that `keosd`, `cleos`, and `nodeos` have been installed in your path, or that you know how to start these applications from the location in the file system.  (See [Setting Up A Local Environment](Local-Environment))
+It is assumed that `keosd`, `cleos`, and `nodeos` have been installed in your path, or that you know how to start these applications from the location in the file system (see [EOSIO Software Installation](../../01_install/index.md)).
 
-Open four "terminal" windows to perform the steps in this tutorial:
+Open four "terminal" windows and perform the following steps:
 
-1. [Start the Wallet Manager](#start-the-wallet-manager)
-2. [Create a Default Wallet](#create-a-default-wallet)
-3. [Loading the eosio Key](#loading-the-eosio-key)
-4. [Start the First Producer Node](#start-the-first-producer-node)
-5. [Start the Second Producer Node](#start-the-second-producer-node)
-6. [Get Nodes Info](#get-nodes-info)
+1. [Start the Wallet Manager](#1-start-the-wallet-manager)
+2. [Create a Default Wallet](#2-create-a-default-wallet)
+3. [Loading the eosio Key](#3-loading-the-eosio-key)
+4. [Start the First Producer Node](#4-start-the-first-producer-node)
+5. [Start the Second Producer Node](#5-start-the-second-producer-node)
+6. [Get Nodes Info](#6-get-nodes-info)
 
-### Start the Wallet Manager
+### 1. Start the Wallet Manager
 In the first terminal window, start `keosd`, the wallet management application:
 
 ```sh
@@ -36,7 +36,7 @@ Look for a line saying the wallet is listening on 127.0.0.1:8899. This will indi
 
 When `keosd` is running correctly, leave that window open with the wallet app running and move to the next terminal window.
 
-### Create a Default Wallet
+### 2. Create a Default Wallet
 
 In the next terminal window, use `cleos`, the command-line utility, to create the default wallet.
 
@@ -55,7 +55,7 @@ Without password imported keys will not be retrievable.
 
 `keosd` will generate some status output in its window. We will continue to use this second window for subsequent `cleos` commands.
 
-### Loading the eosio Key
+### 3. Loading the eosio Key
 
 The private blockchain launched in the steps above is created with a default initial key which must be loaded into the wallet.
 
@@ -64,7 +64,7 @@ $ cleos --wallet-url http://127.0.0.1:8899 wallet import --private-key 5KQwrPbwd
 imported private key for: EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV
 ```
 
-### Start the First Producer Node
+### 4. Start the First Producer Node
 We can now start the first producer node. In the third terminal window run:
 
 ```sh
@@ -73,7 +73,7 @@ $ nodeos --enable-stale-production --producer-name eosio --plugin eosio::chain_a
 
 This creates a special producer, known as the "bios" producer. Assuming everything has executed correctly to this point, you should see output from the `nodeos` process reporting block creation.
 
-### Start the Second Producer Node
+### 5. Start the Second Producer Node
 
 The following commands assume that you are running this tutorial from your `${EOSIO_SOURCE}` directory, from which you ran `./eosio_build.sh` to build.  See [Getting the Code](Local-Environment#1-getting-the-code) for more information if this is not clear.
 
@@ -148,7 +148,7 @@ executed transaction: 2cff4d96814752aefaf9908a7650e867dab74af02253ae7d34672abb9c
 
 Congratulations, you have now configured a two-node testnet! You can see that the original node is no longer producing blocks but it is receiving them. You can verify this by running the `get info` commmand against each node.
 
-### Get Nodes Info
+### 6. Get Nodes Info
 
 Get info about the first node:
 
