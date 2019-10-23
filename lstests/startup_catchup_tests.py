@@ -91,7 +91,7 @@ def main():
     tries = 5
     while tries > 0:
         ix = cluster.call("send_raw", retry=0, node_id=txn_gen_node, url="/v1/txn_test_gen/create_test_accounts", string_data="[\"eosio\",\"5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3\"]")
-        if "as that name is already taken" in ix.get_formatted_response():
+        if "as that name is already taken" in ix.response_text:
             break
         tries = tries - 1
         time.sleep(1.0)

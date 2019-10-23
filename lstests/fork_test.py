@@ -2,8 +2,12 @@
 
 import time
 
+
+import core
 from logger import LogLevel, WriterConfig, ScreenWriter, FileWriter, Logger
 from service import Service, Cluster
+
+
 
 def start_and_verify():
     cluster = init_cluster()

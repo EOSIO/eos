@@ -4,7 +4,6 @@
 from typing import List, Optional, Union
 import argparse
 import base64
-import helper
 import json
 import math
 import os
@@ -23,16 +22,18 @@ import requests
 from logger import LogLevel, Logger, WriterConfig, ScreenWriter, FileWriter
 from connection import Connection
 import color
+import helper
 import thread
 
 
 PROGRAM = "launcher-service"
 PRODUCER_KEY = "EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"
 PREACTIVATE_FEATURE = "0ec7e080177b2c02b278d5088611686b49d739925a92d9bfcacd7fc6b74053bd"
+PACKAGE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 DEFAULT_ADDRESS = "127.0.0.1"
 DEFAULT_PORT = 1234
-DEFAULT_WDIR = "../build"
+DEFAULT_WDIR = os.path.join(PACKAGE_DIR, "../../build")
 DEFAULT_FILE = os.path.join(".", "programs", PROGRAM, PROGRAM)
 DEFAULT_START = False
 DEFAULT_KILL = False
@@ -536,7 +537,7 @@ class Cluster:
                                  name=contract)
 
 
-    def create_bios_accounts(self, verify_key="irreversible"):
+    def create_bios_accounts(self,
         accounts = [{"name":"eosio.bpay"},
                     {"name":"eosio.msig"},
                     {"name":"eosio.names"},
@@ -546,7 +547,8 @@ class Cluster:
                     {"name":"eosio.saving"},
                     {"name":"eosio.stake"},
                     {"name":"eosio.token"},
-                    {"name":"eosio.upay"}]
+                    {"name":"eosio.upay"}],
+        verify_key="irreversible"):
         return self.call("create_bios_accounts",
                          creator="eosio",
                          accounts=accounts,
@@ -755,8 +757,9 @@ class Cluster:
                 self.logger.error(cx.response_text, assert_false=True)
             if verify_key:
                 assert self.verify(transaction_id=cx.transaction_id, verify_key=verify_key, level=level, buffer=buffer)
+            # TODO: enable to suppress warning
             elif cx.transaction_id:
-                self.logger.warn("WARNING: Verification of transaction ID {} skipped.".format(cx.transaction_id), level=level, buffer=buffer)
+                self.logger.warn("WARNING: Verification of transaction ID {} skipped.".format(cx.transaction_id), buffer=buffer)
             if buffer and not dont_flush:
                 self.logger.flush()
         except AssertionError:
@@ -843,7 +846,7 @@ class Cluster:
         assert False, "Cannot get block {}. Current head_block_num={}".format(block_num, head_block_num)
 
 
-    def check_production_round(self, expected_producers):
+    def check_production_round(self, expected_producers, level="TRACE"):
         head_block_num = self.get_head_block_number()
 
         curprod = "(None)"
@@ -851,23 +854,24 @@ class Cluster:
             block = self.wait_get_block(head_block_num)
             # print(block)
             curprod = block["producer"]
-            self.logger.trace("Head block number={}, producer={}, waiting for schedule change.".format(head_block_num, curprod))
+            self.logger.log("Head block number={}, producer={}, waiting for schedule change.".format(head_block_num, curprod), level=level)
             head_block_num += 1
 
-        seen_prod = dict(curprod=1)
+        seen_prod = {curprod: 1}
         verify_end_num = head_block_num + 12 * len(expected_producers)
         for blk_num in range(head_block_num, verify_end_num):
             block = self.wait_get_block(blk_num)
             curprod = block["producer"]
-            self.logger.trace("Block Number {}. Producer {}. {} blocks remain to verify.".format(blk_num, curprod, verify_end_num- blk_num - 1))
+            self.logger.log("Block Number {}. Producer {}. {} blocks remain to verify.".format(blk_num, curprod, verify_end_num- blk_num - 1), level=level)
             assert curprod in expected_producers, "producer {} is not expected in block {}".format(curprod, blk_num)
             seen_prod[curprod] = 1
 
         if len(seen_prod) == len(expected_producers):
-            self.logger.trace("Verification succeed.")
+            self.logger.log("Verification succeed.", level=level)
             return True
         else:
-            self.logger.trace("Verification failed. Number of seen producer={} != expected producers={}.".format(len(seen_prod), len(expected_producers)))
+            self.logger.log("Verification failed. Number of seen producers={} != expected producers={}.".format(len(seen_prod), len(expected_producers)), level=level)
+            self.logger.error("Seen producers = {}".format(seen_prod))
             return False
 
 
@@ -935,6 +939,17 @@ class Cluster:
                 break
             offset += 10000
         return log
+
+
+    def set_producers(self, producers):
+        prod_keys = list()
+        for p in sorted(producers):
+            prod_keys.append({"producer_name": p, "block_signing_key": PRODUCER_KEY})
+        actions = [{"account": "eosio",
+                    "action": "setprods",
+                    "permissions": [{"actor": "eosio", "permission": "active"}],
+                    "data": { "schedule": prod_keys}}]
+        return self.push_actions(actions=actions, name="set producers")
 
 
     @staticmethod
