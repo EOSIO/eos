@@ -142,7 +142,7 @@ def init_system_contracts():
 
 def create_rem_token():
     run(remcli + 'push action rem.token create \'["rem.swap", "%s"]\' -p rem.token' % intToRemCurrency(max_rem_supply))
-    # run(remcli + 'push action rem.token issue \'["rem.swap", "%s", "memo"]\' -p rem.swap' % intToRemCurrency(1))
+    run(remcli + 'push action rem.token issue \'["rem.swap", "%s", "memo"]\' -p rem.swap' % intToRemCurrency(1))
 
 
 def create_auth_token():
