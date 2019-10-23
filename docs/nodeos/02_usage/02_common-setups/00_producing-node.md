@@ -1,18 +1,18 @@
 # Producing Node
 
 [[info]]
-| These instructions assume you are attempting to launch a producing node on a network with **system contracts loaded.** These instructions will not work on a default development node using native functionality, or one without system contracts loaded.
+| These instructions assume you want to launch a producing node on a network with **system contracts loaded**. These instructions will not work on a default development node using native functionality, or one without system contracts loaded.
 
 ## Steps
 Please follow the steps below to set up a producing node:
 
-1. [Register your account as a producer](#register-your-account-as-a-producer)
-2. [Set Producer Name](#set-producer-name)
-3. [Set the Producer's signature-provider](#set-the-producer's-signature-provider)
-4. [Define a peers list](#define-a-peers-list)
-5. [Load the Required Plugins](#load-the-required-plugins)
+1. [Register your account as a producer](#1-register-your-account-as-a-producer)
+2. [Set Producer Name](#2-set-producer-name)
+3. [Set the Producer's signature-provider](#3-set-the-producer's-signature-provider)
+4. [Define a peers list](#4-define-a-peers-list)
+5. [Load the Required Plugins](#5-load-the-required-plugins)
 
-### Register your account as a producer
+### 1. Register your account as a producer
 
 In order for your account to be eligible as a producer, you will need to register the account as a producer
 
@@ -22,7 +22,7 @@ In order for your account to be eligible as a producer, you will need to registe
 cleos system regproducer accountname1 EOS1234534... http://producer.site Antarctica
 ```
 
-### Set Producer Name
+### 2. Set Producer Name
 
 Set the `producer-name` option in `config.ini` to your account, as follows:
 
@@ -33,14 +33,14 @@ Set the `producer-name` option in `config.ini` to your account, as follows:
 producer-name = youraccount
 ```
 
-### Set the Producer's signature-provider
+### 3. Set the Producer's signature-provider
 
 You will need to set the private key for your producer. The public key should have an authority for the producer account defined above. 
 
-`signature-provider` is defined with a tuple
--  `public-key` - A valid EOSIO public key in form of a string.
-- `provider-spec` - It's a string formatted like <provider-type>:<data>
-- `provider-type` - KEY or KEOSD
+`signature-provider` is defined with a 3-field tuple:
+* `public-key` - A valid EOSIO public key in form of a string.
+* `provider-spec` - It's a string formatted like <provider-type>:<data>
+* `provider-type` - KEY or KEOSD
 
 #### Using a Key:
 
@@ -65,7 +65,7 @@ signature-provider = KEOSD:<data>
 //EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV=KEOSD:https://127.0.0.1:88888
 ```
 
-### Define a peers list
+### 4. Define a peers list
 
 ```console
 # config.ini:
@@ -74,7 +74,7 @@ signature-provider = KEOSD:<data>
 p2p-peer-address = 123.255.78.9:9876
 ```
 
-### Load the Required Plugins
+### 5. Load the Required Plugins
 
 In your [config.ini](../index.md), confirm the following plugins are loading or append them if necessary. 
 
