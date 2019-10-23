@@ -1,6 +1,6 @@
-# Development and Test Environment
+# Development Environment
 
-There are several ways to configure `nodeos` for developing and testing environment, which one you choose largely depends on what you are trying to achieve. Below are some practical options for you to explore.
+There are several ways to configure a `nodeos` environment for development and testing. Which option to use largely depends on what the project goals are. Some practical options are provided below.
 
 ## Local Single-Node Testnet
 
@@ -10,7 +10,7 @@ This is the go-to option for smart contract developers, aspiring Block Producers
 
 ## Local Multi-Node Testnet
 
-While this option can technically be used for smart contract development, it may be overkill. This is most beneficial for those who are working on aspects of Core Development, such as benchmarking, optimization and experimentation. It's also a good option for the curious developers.
+While this option can technically be used for smart contract development, it may be overkill. This is most beneficial for those who are working on aspects of Core Development, such as benchmarking, optimization and experimentation. It's also a good option for learning purposes or concept proofing.
 
 * [Configure Nodeos as a Local Multi-Node Testnet](01_local-multi-node-testnet.md)
 
