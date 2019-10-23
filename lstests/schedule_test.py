@@ -1,18 +1,16 @@
 #! /usr/bin/env python3
 
-import time
-
-from logger import LogLevel, WriterConfig, ScreenWriter, FileWriter, Logger
+# user-defined modules
+import core
+from logger import LogLevel, ScreenWriter, FileWriter, Logger
 from service import Service, Cluster
 
+
 def init_cluster():
-    debug_buffer_colo = WriterConfig(threshold="DEBUG", buffered=True,  monochrome=False)
-    trace_buffer_colo = WriterConfig(threshold="TRACE", buffered=True,  monochrome=False)
-    trace_unbuff_mono = WriterConfig(threshold="TRACE", buffered=False, monochrome=True)
-    logger = Logger(ScreenWriter(config=debug_buffer_colo),
-                    FileWriter(config=debug_buffer_colo, filename="debug_buffer_colo.log"),
-                    FileWriter(config=trace_buffer_colo, filename="trace_buffer_colo.log"),
-                    FileWriter(config=trace_unbuff_mono, filename="trace_unbuff_mono.log"))
+    logger = Logger(ScreenWriter(threshold="debug"),
+                    FileWriter(filename="debug.log", threshold="debug"),
+                    FileWriter(filename="trace.log", threshold="trace"),
+                    FileWriter(filename="mono.log", threshold="trace", monochrome=True))
     service = Service(logger=logger)
     total_nodes = 3
     producers_per_node = 4
@@ -24,57 +22,28 @@ def init_cluster():
     return cluster
 
 
-def create_accounts(cluster):
-    print_info = lambda msg: cluster.logger.info(msg=msg)
-    print_info("create producer accounts using bios contract...")
-    accs = cluster.nodes[1]["producers"] + cluster.nodes[2]["producers"]
-    acc_list = []
-    for p in accs:
-        acc_list.append({"name":p})
-    cluster.create_bios_accounts(accounts=acc_list)
-
-
-
-
 def main():
-    cluster = init_cluster()
+    # Using "with", ensure that logger buffer is flushed when an exception is thrown
+    with init_cluster() as cluster:
+        cluster.info(">>> Producer schedule test starts.")
+        # create producer accounts using bios contract
+        cluster.info("Create producer accounts using bios contract...")
+        producers = cluster.nodes[1]["producers"] + cluster.nodes[2]["producers"]
+        accounts = []
+        for p in producers:
+            accounts.append({"name":p})
+        cluster.create_bios_accounts(accounts=accounts)
+        # [round 1] set producers 1
+        cluster.info("[Round 1] Set Producers")
+        cluster.set_producers(cluster.nodes[1]["producers"])
+        # [round 1] verify production
+        cluster.check_production_round(cluster.nodes[1]["producers"], level="DEBUG")
+        # [round 2] set producers
+        cluster.set_producers(cluster.nodes[2]["producers"], verify_key="contained")
+        # [round 2] verify production
+        cluster.check_production_round(cluster.nodes[2]["producers"], level="DEBUG")
+        cluster.info(">>> Producer schedule test ends.")
 
-    print_info = lambda msg: cluster.logger.info(msg=msg)
-    print_info(">>> Producer schedule test starts.")
-
-    create_accounts(cluster)
-    cluster.set_producers(cluster.nodes[1]["producers"])
-    cluster.check_production_round(cluster.nodes[1]["producers"], level="DEBUG")
-
-    cluster.set_producers(cluster.nodes[2]["producers"])
-    cluster.check_production_round(cluster.nodes[2]["producers"], level="DEBUG")
 
 if __name__ == "__main__":
     main()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

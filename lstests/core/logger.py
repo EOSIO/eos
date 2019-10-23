@@ -2,10 +2,10 @@
 
 # standard libraries
 import abc
-import dataclasses
+# import dataclasses
 import enum
 import inspect
-import os.path
+import os
 import queue
 import random
 import re
@@ -40,7 +40,7 @@ class LogLevel(enum.IntEnum):
             return int(x)
         if isinstance(x, str):
             try:
-                return int(LogLevel[x])
+                return int(LogLevel[x.upper()])
             except KeyError:
                 return -1
         return -1
@@ -58,7 +58,7 @@ class LogLevel(enum.IntEnum):
                 return str(x)
         if isinstance(x, str):
             try:
-                return LogLevel.to_str(LogLevel[x])
+                return LogLevel.to_str(LogLevel[x.upper()])
             except KeyError:
                 return ""
 
@@ -87,37 +87,46 @@ class MessageCenter:
                 return
 
 
-@dataclasses.dataclass
-class WriterConfig:
-    threshold:          typing.Union[int, str, LogLevel]
-    buffered:           bool
-    monochrome:         bool
-    show_clock_time:    bool = True
-    show_elapsed_time:  bool = True
-    show_filename:      bool = True
-    show_lineno:        bool = True
-    show_function:      bool = True
-    show_thread:        bool = True
-    show_log_level:     bool = True
+# @dataclasses.dataclass
+# class WriterConfig:
+#     threshold:          typing.Union[int, str, LogLevel]
+#     buffered:           bool
+#     monochrome:         bool
+#     show_clock_time:    bool = True
+#     show_elapsed_time:  bool = True
+#     show_filename:      bool = True
+#     show_lineno:        bool = True
+#     show_func:      bool = True
+#     show_thread:        bool = True
+#     show_log_level:     bool = True
 
-    def __post_init__(self):
-        if isinstance(self.threshold, str):
-            self.threshold = LogLevel[self.threshold]
+#     def __post_init__(self):
+#         if isinstance(self.threshold, str):
+#             self.threshold = LogLevel[self.threshold]
 
 
 class Writer(abc.ABC):
-    def __init__(self, config: WriterConfig):
-        self.config = config
-        self.threshold = config.threshold
-        self.buffered = config.buffered
-        self.monochrome = config.monochrome
-        self.show_clock_time = config.show_clock_time
-        self.show_elapsed_time = config.show_elapsed_time
-        self.show_filename = config.show_filename
-        self.show_lineno = config.show_lineno
-        self.show_function = config.show_function
-        self.show_thread = config.show_thread
-        self.show_log_level = config.show_log_level
+    def __init__(self,
+                 threshold: typing.Union[int, str, LogLevel],
+                 buffered: bool = True,
+                 monochrome: bool = False,
+                 show_clock_time: bool = True,
+                 show_elapsed_time: bool = True,
+                 show_filename: bool = True,
+                 show_lineno: bool = True,
+                 show_func: bool = True,
+                 show_thread: bool = True,
+                 show_log_level: bool = True):
+        self.threshold = LogLevel.to_int(threshold)
+        self.buffered = buffered
+        self.monochrome = monochrome
+        self.show_clock_time = show_clock_time
+        self.show_elapsed_time = show_elapsed_time
+        self.show_filename = show_filename
+        self.show_lineno = show_lineno
+        self.show_func = show_func
+        self.show_thread = show_thread
+        self.show_log_level = show_log_level
         self.start_time = time.time()
 
         self._color_regex = re.compile(r"\033\[[0-9]+(;[0-9]+)?m")
@@ -143,17 +152,18 @@ class Writer(abc.ABC):
             prefix += "{} ".format(helper.get_current_time())
         if self.show_elapsed_time:
             prefix += "({:9.3f}s) ".format(time.time() - self.start_time)
-        frame = inspect.stack()[6]
+        depth = len(inspect.stack()) - 1
+        frame = inspect.stack()[min(6, depth)]
         if self.show_filename:
             prefix += "{:10.10s}:".format(os.path.basename(frame.filename))
         if self.show_lineno:
             prefix += "{:4.4s} ".format(str(frame.lineno))
-        if self.show_function:
+        if self.show_func:
             prefix += "{:18.18s} ".format(helper.compress(frame.function) + "()")
         if self.show_thread:
             prefix += "[{:10}] ".format((threading.current_thread().name))
         if self.show_log_level:
-            prefix += "{:5} ".format(level.name if hasattr(level, "name") else level)
+            prefix += "{:5} ".format(LogLevel.to_str(level))
         if prefix:
             prefix = prefix if self.monochrome else stylize(prefix, level)
             return "\n".join([prefix + VERTICAL_BAR + " " + x for x in msg.splitlines()])
@@ -184,16 +194,55 @@ class Writer(abc.ABC):
 
 
 class ScreenWriter(Writer):
-    def __init__(self, config: WriterConfig):
-        super().__init__(config)
+    def __init__(self,
+                 threshold: typing.Union[int, str, LogLevel],
+                 buffered: bool = True,
+                 monochrome: bool = False,
+                 show_clock_time: bool = True,
+                 show_elapsed_time: bool = True,
+                 show_filename: bool = True,
+                 show_lineno: bool = True,
+                 show_func: bool = True,
+                 show_thread: bool = True,
+                 show_log_level: bool = True):
+        super().__init__(threshold,
+                         buffered,
+                         monochrome,
+                         show_clock_time,
+                         show_elapsed_time,
+                         show_filename,
+                         show_lineno,
+                         show_func,
+                         show_thread,
+                         show_log_level)
 
     def raw_write(self, msg):
         print(msg)
 
 
 class FileWriter(Writer):
-    def __init__(self, config: WriterConfig, filename="test.log"):
-        super().__init__(config)
+    def __init__(self,
+                 filename,
+                 threshold: typing.Union[int, str, LogLevel],
+                 buffered: bool = True,
+                 monochrome: bool = False,
+                 show_clock_time: bool = True,
+                 show_elapsed_time: bool = True,
+                 show_filename: bool = True,
+                 show_lineno: bool = True,
+                 show_func: bool = True,
+                 show_thread: bool = True,
+                 show_log_level: bool = True):
+        super().__init__(threshold,
+                         buffered,
+                         monochrome,
+                         show_clock_time,
+                         show_elapsed_time,
+                         show_filename,
+                         show_lineno,
+                         show_func,
+                         show_thread,
+                         show_log_level)
         self.filename = filename
 
     def raw_write(self, msg):
@@ -206,7 +255,7 @@ class Logger:
         self.writers = writers
         start_time = time.time()
         for w in self.writers:
-            w.config.start_time = start_time
+            w.start_time = start_time
 
     def __enter__(self):
         return self
@@ -215,8 +264,7 @@ class Logger:
         self.flush()
 
     def log(self, msg, level: typing.Union[int, str, LogLevel], buffer=False):
-        if isinstance(level, str):
-            level = LogLevel[level]
+        level = LogLevel.to_int(level)
         for w in self.writers:
             w.write(str(msg), level)
         if not buffer:
@@ -283,10 +331,7 @@ def _bob(logger):
 
 
 def test():
-    sconfig = WriterConfig(buffered=True, monochrome=False, threshold="DEBUG")
-    fconfig = WriterConfig(buffered=False, monochrome=True, threshold="TRACE")
-
-    logger = Logger(ScreenWriter(config=sconfig), FileWriter(config=fconfig))
+    logger = Logger(ScreenWriter(threshold="debug"), FileWriter(filename="trace.log", threshold="trace"))
 
     t_alice = threading.Thread(target=_alice, args=(logger,))
     t_bob = threading.Thread(target=_bob, args=(logger,))
@@ -296,7 +341,6 @@ def test():
 
     for t in (t_alice, t_bob):
         t.join()
-
 
 if __name__ == "__main__":
     test()

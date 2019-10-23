@@ -3,6 +3,7 @@
 import json
 import time
 
+import core
 import helper
 from logger import LogLevel, WriterConfig, ScreenWriter, FileWriter, Logger
 from service import Service, Cluster, CommandLineArguments

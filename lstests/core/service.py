@@ -19,7 +19,7 @@ import typing
 import requests
 
 # user-defined modules
-from logger import LogLevel, Logger, WriterConfig, ScreenWriter, FileWriter
+from logger import LogLevel, Logger, ScreenWriter, FileWriter
 from connection import Connection
 import color
 import helper
@@ -212,16 +212,32 @@ class Service:
             self.connect()
 
 
+    def __enter__(self):
+        return self
+
+
+    def __exit__(self, exception_type, exception_value, exception_traceback):
+        self.flush()
+
+
     def register_logger(self, logger):
         self.logger = logger
+        # allow command-line arguments to overwrite screen writer settings
         for w in self.logger.writers:
             if isinstance(w, ScreenWriter):
                 th = helper.override(w.threshold, self.cla.threshold)
-                if isinstance(th, str):
-                    th = LogLevel[th]
+                th = LogLevel.to_int(th)
                 self.threshold = w.threshold = th
                 self.buffered = w.buffered = helper.override(DEFAULT_BUFFERED, w.buffered, self.cla.buffered)
                 self.monochrome = w.monochrome = helper.override(DEFAULT_MONOCHROME, w.monochrome, self.cla.monochrome)
+        # register for shorter names
+        self.log = self.logger.log
+        self.trace = self.logger.trace
+        self.debug = self.logger.debug
+        self.info = self.logger.info
+        self.error = self.logger.error
+        self.fatal = self.logger.fatal
+        self.flush = self.logger.flush
 
 
     def connect(self):
@@ -364,6 +380,13 @@ class Cluster:
         self.service = service
         self.cla = service.cla
         self.logger = service.logger
+        self.log = service.log
+        self.trace = service.trace
+        self.debug = service.debug
+        self.info = service.info
+        self.error = service.error
+        self.fatal = service.fatal
+        self.flush = service.flush
         self.print_header = service.print_header
         self.print_formatted_config= service.print_formatted_config
 
@@ -422,6 +445,14 @@ class Cluster:
             self.bootstrap(dont_vote=self.dont_vote)
 
 
+    def __enter__(self):
+        return self
+
+
+    def __exit__(self, exception_type, exception_value, exception_traceback):
+        self.flush()
+
+
     def check_config(self):
         assert self.cluster_id >= 0, "cluster_id ({}) < 0.".format(self.cluster_id)
         assert self.total_nodes >= self.producer_nodes + self.unstarted_nodes, "total_node ({}) < producer_nodes ({}) + unstarted_nodes ({}).".format(self.total_nodes, self.producer_nodes, self.unstarted_nodes)
@@ -443,7 +474,7 @@ class Cluster:
         self.print_header("Launch (without bootstrap) starts.", level="INFO")
         self.print_config()
         self.launch_cluster()
-        self.get_cluster_info()
+        self.get_cluster_info(level="debug")
         self.set_bios_contract()
         self.check_sync()
         self.print_header("Launch (without bootstrap) ends.", level="INFO")
@@ -472,7 +503,7 @@ class Cluster:
         self.print_header("Bootstrap{} starts.".format(" (without voting)" if dont_vote else ""), level="INFO")
         self.print_config()
         self.launch_cluster()
-        self.get_cluster_info()
+        self.get_cluster_info(level="debug")
         self.create_bios_accounts()
         self.schedule_protocol_feature_activations()
         self.set_token_contract()
@@ -522,7 +553,7 @@ class Cluster:
                          extra_configs=self.extra_configs)
 
 
-    def get_cluster_info(self, node_id=0, level="DEBUG", buffer=False):
+    def get_cluster_info(self, node_id=0, level="trace", buffer=False):
         return self.call("get_cluster_info",
                          node_id=node_id,
                          level=level,
@@ -699,11 +730,12 @@ class Cluster:
                          buffer=buffer)
 
 
-    def push_actions(self, actions, node_id=0, verify_key="irreversible", name=None, buffer=False):
+    def push_actions(self, actions, node_id=0, verify_key="irreversible", verify_retry=None, name=None, buffer=False):
         return self.call("push_actions",
                          actions=actions,
                          node_id=node_id,
                          verify_key=verify_key,
+                         verify_retry=verify_retry,
                          header=name,
                          buffer=buffer)
 
@@ -713,6 +745,7 @@ class Cluster:
              retry=None,
              sleep=None,
              verify_key=None,
+             verify_retry=None,
              header=None,
              level="DEBUG",
              buffer=False,
@@ -735,34 +768,31 @@ class Cluster:
         header = header if header else func.replace("_", " ")
         self.print_header(header, level=level, buffer=buffer)
         cx = Connection(url="http://{}:{}/v1/launcher/{}".format(self.service.address, self.service.port, func), data=data)
-        try:
-            self.logger.log(cx.url, level=level, buffer=buffer)
-            self.logger.log(cx.request_text, level=level, buffer=buffer)
-            while not cx.ok and retry > 0:
-                self.logger.trace(cx.response_code, buffer=buffer)
-                self.logger.trace("{} {} for http connection...".format(retry, "retries remain" if retry > 1 else "retry remains"), buffer=buffer)
-                self.logger.trace("Sleep for {}s before next retry...".format(sleep), buffer=buffer)
-                time.sleep(sleep)
-                cx.attempt()
-                retry -= 1
-            if cx.response.ok:
-                self.logger.log(cx.response_code, level=level, buffer=buffer)
-                if cx.transaction_id:
-                    self.logger.log(color.green("<Transaction ID> {}".format(cx.transaction_id)), level=level, buffer=buffer)
-                else:
-                    self.logger.log(color.yellow("<No Transaction ID>"), level=level, buffer=buffer)
-                self.logger.trace(cx.response_text, buffer=buffer)
+        self.logger.log(cx.url, level=level, buffer=buffer)
+        self.logger.log(cx.request_text, level=level, buffer=buffer)
+        while not cx.ok and retry > 0:
+            self.logger.trace(cx.response_code, buffer=buffer)
+            self.logger.trace("{} {} for http connection...".format(retry, "retries remain" if retry > 1 else "retry remains"), buffer=buffer)
+            self.logger.trace("Sleep for {}s before next retry...".format(sleep), buffer=buffer)
+            time.sleep(sleep)
+            cx.attempt()
+            retry -= 1
+        if cx.response.ok:
+            self.logger.log(cx.response_code, level=level, buffer=buffer)
+            if cx.transaction_id:
+                self.logger.log(color.green("<Transaction ID> {}".format(cx.transaction_id)), level=level, buffer=buffer)
             else:
-                self.logger.error(cx.response_code)
-                self.logger.error(cx.response_text, assert_false=True)
-            if verify_key:
-                assert self.verify(transaction_id=cx.transaction_id, verify_key=verify_key, level=level, buffer=buffer)
-            # TODO: enable to suppress warning
-            elif cx.transaction_id:
-                self.logger.warn("WARNING: Verification of transaction ID {} skipped.".format(cx.transaction_id), buffer=buffer)
-            if buffer and not dont_flush:
-                self.logger.flush()
-        except AssertionError:
+                self.logger.log(color.yellow("<No Transaction ID>"), level=level, buffer=buffer)
+            self.logger.trace(cx.response_text, buffer=buffer)
+        else:
+            self.logger.error(cx.response_code)
+            self.logger.error(cx.response_text, assert_false=True)
+        if verify_key:
+            assert self.verify(transaction_id=cx.transaction_id, verify_key=verify_key, retry=verify_retry, level=level, buffer=buffer)
+        # TODO: enable to suppress warning
+        elif cx.transaction_id:
+            self.logger.warn("WARNING: Verification of transaction ID {} skipped.".format(cx.transaction_id), buffer=buffer)
+        if buffer and not dont_flush:
             self.logger.flush()
         return cx
 
@@ -776,7 +806,7 @@ class Cluster:
                 return True
             time.sleep(sleep)
             retry -= 1
-        self.logger.error(color.black_on_green("{}".format(verify_key.title())), assert_false=True)
+        self.logger.error(color.black_on_red("Not {}".format(verify_key.title())))
         return False
 
 
@@ -941,7 +971,7 @@ class Cluster:
         return log
 
 
-    def set_producers(self, producers):
+    def set_producers(self, producers, verify_key="irreversible", verify_retry=None):
         prod_keys = list()
         for p in sorted(producers):
             prod_keys.append({"producer_name": p, "block_signing_key": PRODUCER_KEY})
@@ -949,7 +979,7 @@ class Cluster:
                     "action": "setprods",
                     "permissions": [{"actor": "eosio", "permission": "active"}],
                     "data": { "schedule": prod_keys}}]
-        return self.push_actions(actions=actions, name="set producers")
+        return self.push_actions(actions=actions, name="set producers", verify_key=verify_key, verify_retry=verify_retry)
 
 
     @staticmethod
@@ -976,19 +1006,14 @@ class Cluster:
         return "defproducer" + string.ascii_lowercase[num] if num < 26 else "defpr" + int_to_base26(8031810176 + num)[1:]
 
 
-def test():
-    debug_buffer_colo = WriterConfig(threshold="DEBUG", buffered=True,  monochrome=False)
-    trace_buffer_colo = WriterConfig(threshold="TRACE", buffered=True,  monochrome=False)
-    trace_unbuff_mono = WriterConfig(threshold="TRACE", buffered=False, monochrome=True)
-
-    logger = Logger(ScreenWriter(config=debug_buffer_colo),
-                    FileWriter(config=debug_buffer_colo, filename="debug_buffer_colo.log"),
-                    FileWriter(config=trace_buffer_colo, filename="trace_buffer_colo.log"),
-                    FileWriter(config=trace_unbuff_mono, filename="trace_unbuff_mono.log"))
+def main():
+    logger = Logger(ScreenWriter(threshold="debug"),
+                    FileWriter(filename="debug.log", threshold="debug"),
+                    FileWriter(filename="trace.log", threshold="trace"),
+                    FileWriter(filename="mono.log", threshold="trace", monochrome=True))
     service = Service(logger=logger)
     cluster = Cluster(service=service)
-    # print(cluster.get_log(node_id=1))
 
 
 if __name__ == "__main__":
-    test()
+    main()

@@ -58,13 +58,14 @@ def get_current_time(date=True, precision=3, local_time=False, time_zone=False):
 
 
 def format_header(header, level: str):
-    if level == "INFO":
+    upper = level.upper()
+    if upper == "INFO":
         return color.bold(">>> {}".format(header))
-    if level == "DEBUG":
+    if upper == "DEBUG":
         return pad(color.black_on_cyan(header), char="-")
-    if level == "TRACE":
+    if upper == "TRACE":
         return pad(header, char="⎯")
-    return header
+    raise RuntimeError("Invalid header level \"{}\"".format(level))
 
 
 # to be deprecated
