@@ -2,6 +2,8 @@ import json
 import subprocess
 from time import sleep
 
+import requests
+
 system_accounts = [
     'rem.bpay',
     'rem.msig',
@@ -44,6 +46,13 @@ max_rem_supply = 1_000_000_000_0000
 max_auth_token_supply = 1_000_000_000_000_0000
 rem_symbol = 'REM'
 auth_symbol = 'AUTH'
+
+
+def get_chain_id():
+    url = f'http://127.0.0.1:{remnode_port}/v1/chain/get_info'
+    headers = {'accept': 'application/json'}
+    response = requests.request("POST", url, headers=headers)
+    return response.json()['chain_id']
 
 
 def run(args):
@@ -133,7 +142,7 @@ def init_system_contracts():
 
 def create_rem_token():
     run(remcli + 'push action rem.token create \'["rem.swap", "%s"]\' -p rem.token' % intToRemCurrency(max_rem_supply))
-    run(remcli + 'push action rem.token issue \'["rem.swap", "%s", "memo"]\' -p rem.swap' % intToRemCurrency(1))
+    # run(remcli + 'push action rem.token issue \'["rem.swap", "%s", "memo"]\' -p rem.swap' % intToRemCurrency(1))
 
 
 def create_auth_token():
@@ -166,7 +175,7 @@ def set_system_contract():
 
     retry(remcli + 'set contract rem ' + contracts_dir + '/rem.system/')
     sleep(1)
-    run(remcli + 'push action rem init' + jsonArg(['0', '4,' + rem_symbol]) + '-p rem@active')
+    run(remcli + 'push action rem init' + jsonArg(['0', '4,' + rem_symbol, get_chain_id()]) + '-p rem@active')
     sleep(1)
     run(remcli + 'push action rem setpriv' + jsonArg(['rem.msig', 1]) + '-p rem@active')
 
