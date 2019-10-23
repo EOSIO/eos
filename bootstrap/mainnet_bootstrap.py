@@ -175,7 +175,7 @@ def set_system_contract():
 
     retry(remcli + 'set contract rem ' + contracts_dir + '/rem.system/')
     sleep(1)
-    run(remcli + 'push action rem init' + jsonArg(['0', '4,' + rem_symbol, get_chain_id()]) + '-p rem@active')
+    run(remcli + 'push action rem init' + jsonArg(['0', '4,' + rem_symbol]) + '-p rem@active')
     sleep(1)
     run(remcli + 'push action rem setpriv' + jsonArg(['rem.msig', 1]) + '-p rem@active')
 
