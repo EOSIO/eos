@@ -1,6 +1,7 @@
 #!/bin/bash
 set -eo pipefail
 VERSION=1
+export SDKROOT="$(xcrun --sdk macosx --show-sdk-path)"
 brew update
 brew install git cmake python@2 python libtool libusb graphviz automake wget gmp llvm@7 pkgconfig doxygen openssl jq || :
 if [[ ! $PINNED == false || $UNPINNED == true ]]; then
