@@ -1,4 +1,4 @@
-# Nodeos Common Configurations
+# Nodeos Common Setups
 
 `Nodeos` generally runs in two modes:
 
