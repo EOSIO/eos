@@ -28,11 +28,23 @@ for FILE in $(ls $CICD_DIR/platforms); do
         [[ $FILE =~ 'unpinned' ]] && continue
     fi
     export FILE_NAME="$(echo $FILE | awk '{split($0,a,/\.(d|s)/); print a[1] }')"
+    # macos-10.14
+    # ubuntu-16.04
     export PLATFORM_NAME="$(echo $FILE_NAME | cut -d- -f1 | sed 's/os/OS/g')"
+    # macOS
+    # ubuntu
     export PLATFORM_NAME_UPCASE="$(echo $PLATFORM_NAME | tr a-z A-Z)"
+    # MACOS
+    # UBUNTU
     export VERSION_MAJOR="$(echo $FILE_NAME | cut -d- -f2 | cut -d. -f1)"
+    # 10
+    # 16
     [[ "$(echo $FILE_NAME | cut -d- -f2)" =~ '.' ]] && export VERSION_MINOR="_$(echo $FILE_NAME | cut -d- -f2 | cut -d. -f2)" || export VERSION_MINOR=''
+    # _14
+    # _04
     export VERSION_FULL="$(echo $FILE_NAME | cut -d- -f2)"
+    # 10.14
+    # 16.04
     OLDIFS=$IFS
     IFS='_'
     set $PLATFORM_NAME
@@ -71,33 +83,6 @@ nIFS=$IFS # fix array splitting (\n won't work)
 # start with a wait step
 echo '  - wait'
 echo ''
-# base-image steps
-echo '    # base-images'
-echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
-    if [[ "$(echo "$PLATFORM_JSON" | jq -r .FILE_NAME)" =~ 'macos' ]]; then
-        cat <<EOF
-  - label: "$(echo "$PLATFORM_JSON" | jq -r .ICON) Anka - Ensure $(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_FULL) Template Dependency Tag"
-    command:
-      - "git clone git@github.com:EOSIO/mac-anka-fleet.git"
-      - "cd mac-anka-fleet && . ./ensure_tag.bash -u 12 -r 25G -a '-n'"
-    agents: "queue=mac-anka-templater-fleet"
-    env:
-      REPO: ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO}
-      REPO_COMMIT: $BUILDKITE_COMMIT
-      TEMPLATE: $MOJAVE_ANKA_TEMPLATE_NAME
-      TEMPLATE_TAG: $MOJAVE_ANKA_TAG_BASE
-      PINNED: $PINNED
-      UNPINNED: $UNPINNED
-      TAG_COMMANDS: "git clone ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO} eos && cd eos && $GIT_FETCH git checkout -f $BUILDKITE_COMMIT && git submodule update --init --recursive && export PINNED=$PINNED && export UNPINNED=$UNPINNED && . ./.cicd/platforms/macos-10.14.sh && cd ~/eos && cd .. && rm -rf eos"
-      PROJECT_TAG: $(echo "$PLATFORM_JSON" | jq -r .HASHED_IMAGE_TAG)
-    timeout: ${TIMEOUT:-320}
-    skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}\${SKIP_ENSURE_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}
-
-EOF
-    fi
-done
-echo '  - wait'
-echo ''
 # build steps
 echo '    # builds'
 echo $PLATFORMS_JSON_ARRAY | jq -cr '.[]' | while read -r PLATFORM_JSON; do
@@ -124,7 +109,7 @@ EOF
       - "cd eos && ./.cicd/build.sh"
       - "cd eos && tar -pczf build.tar.gz build && buildkite-agent artifact upload build.tar.gz"
     plugins:
-      - chef/anka#v0.5.4:
+      - chef/anka#v0.5.5:
           no-volume: true
           inherit-environment-vars: true
           vm-name: ${MOJAVE_ANKA_TEMPLATE_NAME}
@@ -138,10 +123,20 @@ EOF
             - 'registry_1'
             - 'registry_2'
           pre-execute-sleep: 5
+          pre-commands: 
+            - "git clone git@github.com:EOSIO/mac-anka-fleet.git && cd mac-anka-fleet && . ./ensure-tag.bash -u 12 -r 25G -a '-n'"
+    env:
+      REPO: ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO}
+      REPO_COMMIT: $BUILDKITE_COMMIT
+      TEMPLATE: $MOJAVE_ANKA_TEMPLATE_NAME
+      TEMPLATE_TAG: $MOJAVE_ANKA_TAG_BASE
+      PINNED: $PINNED
+      UNPINNED: $UNPINNED
+      TAG_COMMANDS: "git clone ${BUILDKITE_PULL_REQUEST_REPO:-$BUILDKITE_REPO} eos && cd eos && $GIT_FETCH git checkout -f $BUILDKITE_COMMIT && git submodule update --init --recursive && export PINNED=$PINNED && export UNPINNED=$UNPINNED && . ./.cicd/platforms/macos-10.14.sh && cd ~/eos && cd .. && rm -rf eos"
+      PROJECT_TAG: $(echo "$PLATFORM_JSON" | jq -r .HASHED_IMAGE_TAG)
     timeout: ${TIMEOUT:-180}
     agents: "queue=mac-anka-large-node-fleet"
     skip: \${SKIP_$(echo "$PLATFORM_JSON" | jq -r .PLATFORM_NAME_UPCASE)_$(echo "$PLATFORM_JSON" | jq -r .VERSION_MAJOR)$(echo "$PLATFORM_JSON" | jq -r .VERSION_MINOR)}${SKIP_BUILD}
-
 EOF
     fi
 done
