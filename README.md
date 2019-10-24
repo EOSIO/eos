@@ -67,8 +67,16 @@ $ sudo yum install ./eosio-1.8.0-rc1.el7.x86_64.rpm
 $ sudo yum remove eosio
 ```
 
-#### Build Script Uninstall
+#### Building from Sources
+```
+git clone --recursive https://github.com/eosio/eos
+cd eos
+git submodule update --init --recursive
+./scripts/eosio_build.sh
+./scripts/eosio_install.sh
+```
 
+#### Build Script Uninstall
 If you have previously installed EOSIO using build scripts, you can execute `eosio_uninstall.sh` to uninstall.
 - Passing `-y` will answer yes to all prompts (does not remove data directories)
 - Passing `-f` will remove data directories (be very careful with this)
