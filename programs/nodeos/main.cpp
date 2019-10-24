@@ -114,7 +114,7 @@ int main(int argc, char** argv)
       return NODE_MANAGEMENT_SUCCESS;
    } catch( const fc::exception& e ) {
       if( e.code() == fc::std_exception_code ) {
-         if( e.top_message().find( "database dirty flag set" ) != std::string::npos ) {
+         if( e.top_message().find( "Database dirty flag set" ) != std::string::npos ) {
             elog( "database dirty flag set (likely due to unclean shutdown): replay required" );
             return DATABASE_DIRTY;
          }
@@ -127,8 +127,8 @@ int main(int argc, char** argv)
    } catch( const boost::exception& e ) {
       elog("${e}", ("e",boost::diagnostic_information(e)));
       return OTHER_FAIL;
-   } catch (const chainbase::db_runtime_error& e) {
-      if (chainbase::db_runtime_error::error_code::dirty == e.what_code()) {
+   } catch (const std::system_error& e) {
+      if (chainbase::db_error_code::dirty == e.code().value()) {
          elog( "database dirty flag set (likely due to unclean shutdown): replay required" );
          return DATABASE_DIRTY;
       }
