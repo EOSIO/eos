@@ -2,7 +2,8 @@
 
 import time
 
-from logger import LogLevel, WriterConfig, ScreenWriter, FileWriter, Logger
+import core
+from logger import LogLevel, ScreenWriter, FileWriter, Logger
 from service import Service, Cluster
 
 
@@ -12,13 +13,10 @@ catchupCount = 3
 
 
 def init_cluster():
-    debug_buffer_colo = WriterConfig(threshold="DEBUG", buffered=True,  monochrome=False)
-    trace_buffer_colo = WriterConfig(threshold="TRACE", buffered=True,  monochrome=False)
-    trace_unbuff_mono = WriterConfig(threshold="TRACE", buffered=False, monochrome=True)
-    logger = Logger(ScreenWriter(config=debug_buffer_colo),
-                    FileWriter(config=debug_buffer_colo, filename="debug_buffer_colo.log"),
-                    FileWriter(config=trace_buffer_colo, filename="trace_buffer_colo.log"),
-                    FileWriter(config=trace_unbuff_mono, filename="trace_unbuff_mono.log"))
+    logger = Logger(ScreenWriter(threshold="debug"),
+                    FileWriter(filename="debug.log", threshold="debug"),
+                    FileWriter(filename="trace.log", threshold="trace"),
+                    FileWriter(filename="mono.log", threshold="trace", monochrome=True))
     service = Service(logger=logger)
     total_nodes = 3
     cluster = Cluster(service=service,
@@ -28,7 +26,6 @@ def init_cluster():
                       dont_bootstrap=True,
                       extra_configs=["plugin={}".format(PLUGIN)])
     return cluster
-
 
 
 

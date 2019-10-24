@@ -166,7 +166,7 @@ def get_cmd_and_args_by_pid(pid: typing.Union[int, str]):
 
 
 def get_pid_list_by_pattern(pattern: str) -> typing.List[int]:
-    out = interacitve_run(["pgrep", pattern])
+    out = interacitve_run(["pgrep", "-f", pattern])
     return [int(x) for x in out.splitlines()]
 
 

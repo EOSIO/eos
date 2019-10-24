@@ -569,17 +569,17 @@ class Cluster:
 
 
     def create_bios_accounts(self,
-        accounts = [{"name":"eosio.bpay"},
-                    {"name":"eosio.msig"},
-                    {"name":"eosio.names"},
-                    {"name":"eosio.ram"},
-                    {"name":"eosio.ramfee"},
-                    {"name":"eosio.rex"},
-                    {"name":"eosio.saving"},
-                    {"name":"eosio.stake"},
-                    {"name":"eosio.token"},
-                    {"name":"eosio.upay"}],
-        verify_key="irreversible"):
+                             accounts=[{"name":"eosio.bpay"},
+                                       {"name":"eosio.msig"},
+                                       {"name":"eosio.names"},
+                                       {"name":"eosio.ram"},
+                                       {"name":"eosio.ramfee"},
+                                       {"name":"eosio.rex"},
+                                       {"name":"eosio.saving"},
+                                       {"name":"eosio.stake"},
+                                       {"name":"eosio.token"},
+                                       {"name":"eosio.upay"}],
+                             verify_key="irreversible"):
         return self.call("create_bios_accounts",
                          creator="eosio",
                          accounts=accounts,
@@ -786,7 +786,7 @@ class Cluster:
             self.logger.trace(cx.response_text, buffer=buffer)
         else:
             self.logger.error(cx.response_code)
-            self.logger.error(cx.response_text, assert_false=True)
+            self.logger.error(cx.response_text)
         if verify_key:
             assert self.verify(transaction_id=cx.transaction_id, verify_key=verify_key, retry=verify_retry, level=level, buffer=buffer)
         # TODO: enable to suppress warning
@@ -862,10 +862,14 @@ class Cluster:
 
 
     def get_head_block_number(self, node_id=0):
-        return self.get_cluster_info(level="TRACE").response_dict["result"][node_id][1]["head_block_num"]
+        """Get head block number by node id."""
+        return self.get_cluster_info().response_dict["result"][node_id][1]["head_block_num"]
 
 
-    def wait_get_block(self, block_num, retry=1):
+    def wait_get_block(self, block_num, retry=1) -> dict:
+        """Try to get a block by block number.
+        If that block has been produced, return its information in dict type.
+        If that block is yet to come, wait until it comes to existence."""
         while retry >= 0:
             head_block_num = self.get_head_block_number()
             if head_block_num < block_num:
@@ -879,10 +883,12 @@ class Cluster:
     def check_production_round(self, expected_producers, level="TRACE"):
         head_block_num = self.get_head_block_number()
 
+        self.logger.log(f"Expecting {expected_producers}", level=level)
+
+        # skip head blocks until an expected producer appears
         curprod = "(None)"
         while curprod not in expected_producers:
             block = self.wait_get_block(head_block_num)
-            # print(block)
             curprod = block["producer"]
             self.logger.log("Head block number={}, producer={}, waiting for schedule change.".format(head_block_num, curprod), level=level)
             head_block_num += 1

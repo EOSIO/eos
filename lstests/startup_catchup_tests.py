@@ -3,8 +3,9 @@
 import json
 import time
 
+import core
 import helper
-from logger import LogLevel, WriterConfig, ScreenWriter, FileWriter, Logger
+from logger import LogLevel, ScreenWriter, FileWriter, Logger
 from service import Service, Cluster, CommandLineArguments
 
 ###############################################################
@@ -69,10 +70,12 @@ def waitInSync(cluster, timeout, minNodeNum):
     cluster.service.logger.error("Block chain is not in-sync, min block num %d, max block num %d" % (minN, maxN))
     assert False, "block chain not insync"
 
+
 def main():
-    buffered_color_config = WriterConfig(buffered=True, monochrome=False, threshold="DEBUG")
-    unbuffered_mono_config = WriterConfig(buffered=False, monochrome=True, threshold="TRACE")
-    logger = Logger(ScreenWriter(config=buffered_color_config), FileWriter(filename="mono.log", config=unbuffered_mono_config))
+    logger = Logger(ScreenWriter(threshold="debug"),
+                    FileWriter(filename="debug.log", threshold="debug"),
+                    FileWriter(filename="trace.log", threshold="trace"),
+                    FileWriter(filename="mono.log", threshold="trace", monochrome=True))
     service = Service(logger=logger)
 
     print_info = lambda msg: logger.info(msg=msg)
