@@ -51,7 +51,7 @@ producer_reward_per_swap = 10_0000  # torewards 10.0000 REM per swap
 
 swap_chains = [
     # (chain_id, input, output)
-    ('ethropsten', 'true', 'true')
+    ('ethropsten', '1', '1')
 ]
 
 
@@ -142,15 +142,15 @@ def install_system_contracts():
 
 
 def bootstrap_system_contracts():
-    run(remcli + 'push action rem.oracle addpair \'["rem.usd"]\' -p rem.oracle')
-    run(remcli + 'push action rem.oracle addpair \'["rem.btc"]\' -p rem.oracle')
-    run(remcli + 'push action rem.oracle addpair \'["rem.eth"]\' -p rem.oracle')
+    run(remcli + 'push action rem.oracle addpair \'["rem.usd"]\' -p rem.oracle -p rem')
+    run(remcli + 'push action rem.oracle addpair \'["rem.btc"]\' -p rem.oracle -p rem')
+    run(remcli + 'push action rem.oracle addpair \'["rem.eth"]\' -p rem.oracle -p rem')
 
     run(remcli + f'push action rem.swap setbpreward \'["rem", "{intToRemCurrency(producer_reward_per_swap)}"]\' \
-    -p rem.swap')
+    -p rem.swap -p rem')
     for chain_id, input, output, in swap_chains:
         run(remcli + f'push action rem.swap addchain \'["{chain_id}", "{input}", "{output}"]\' \
-        -p rem.swap')
+        -p rem.swap -p rem')
 
 
 def create_rem_token():
@@ -199,8 +199,8 @@ if __name__ == '__main__':
     create_tech_accounts()
     configure_swapbot_permissions()
     install_system_contracts()
-    bootstrap_system_contracts()
     configure_remcode_permissions()
     create_rem_token()
     create_auth_token()
     set_system_contract()
+    bootstrap_system_contracts()
