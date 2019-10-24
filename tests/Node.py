@@ -1599,7 +1599,7 @@ class Node(object):
             protocolFeatureJson = json.load(f)
         protocolFeatureJson["subjective_restrictions"].update(subjectiveRestriction)
         with open(jsonPath, "w") as f:
-            json.dumps(protocolFeatureJson, f, indent=2)
+            json.dump(protocolFeatureJson, f, indent=2)
 
     # Require producer_api_plugin
     def createSnapshot(self):
