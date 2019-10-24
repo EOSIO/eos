@@ -1753,23 +1753,3 @@ class Cluster(object):
         while len(lowestMaxes)>0 and compareCommon(blockLogs, blockNameExtensions, first, lowestMaxes[0]):
             first=lowestMaxes[0]+1
             lowestMaxes=stripValues(lowestMaxes,lowestMaxes[0])
-
-        if len(lowestMaxes) > 0:
-            for i in range(numNodes):
-                blockLog = blockLogs[i]
-                blockLogNameExt = blockNameExtensions[i]
-                blockLogDir = Utils.DataDir + Utils.nodeExtensionToName(blockLogNameExt) + "/blocks/"
-                summary = Utils.summarizeBlockLog(blockLog)
-                Utils.Print("Block log summary from %s:\n%s" % (blockLogDir, summary))
-        else :
-            max = (back(blockLogs[0])["block_num"], 0)
-            for i in range(1, numNodes):
-                blockLog = blockLogs[i]
-                blockLogMax = back(blockLog)["block_num"]
-                if max[0] < blockLogMax:
-                    max = (blockLogMax, i)
-            blockLog=blockLogs[max[1]]
-            blockLogNameExt = blockNameExtensions[max[1]]
-            blockLogDir = Utils.DataDir + Utils.nodeExtensionToName(blockLogNameExt) + "/blocks/"
-            summary = Utils.summarizeBlockLog(blockLog)
-            Utils.Print("Block log summary from %s:\n%s" % (blockLogDir, summary))
