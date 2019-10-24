@@ -239,47 +239,12 @@ try:
     lastTransId = None
     transOrder = 0
     for transId in history:
-        trans = node.getTransaction(transId, delayedRetry=False)
         blockNum = None
-        if trans is None:
-            missingTransactions.append({
-                "newer_trans_id" : transId,
-                "newer_trans_index" : transOrder,
-                "newer_bnum" : blockNum,
-                "last_trans_id" : lastTransId,
-                "last_trans_index" : transOrder - 1,
-                "last_bnum" : lastBlockNum,
-            })
         block = None
+        transDesc = None
         if transId not in transToBlock:
-            blockNum = node.getTransBlockNum(trans)
-            assert blockNum is not None, Print("ERROR: could not retrieve block num from transId: %s, trans: %s" % (transId, json.dumps(trans, indent=2)))
-            if lastBlockNum is not None:
-                if blockNum > lastBlockNum + transBlocksBehind or blockNum + transBlocksBehind < lastBlockNum:
-                    transBlockOrderWeird.append({
-                        "newer_trans_id" : transId,
-                        "newer_trans_index" : transOrder,
-                        "newer_bnum" : blockNum,
-                        "last_trans_id" : lastTransId,
-                        "last_trans_index" : transOrder - 1,
-                        "last_bnum" : lastBlockNum
-                    })
-                    if newestBlockNum > lastBlockNum:
-                        last = transBlockOrderWeird[-1]
-                        last["older_trans_id"] = newestBlockNumTransId
-                        last["older_trans_index"] = newestBlockNumTransOrder
-                        last["older_bnum"] = newestBlockNum
-
-            if newestBlockNum is None:
-                newestBlockNum = blockNum
-                newestBlockNumTransId = transId
-                newestBlockNumTransOrder = transOrder
-            elif blockNum > newestBlockNum:
-                newestBlockNum = blockNum
-                newestBlockNumTransId = transId
-                newestBlockNumTransOrder = transOrder
-
-            if not cacheTransIdInBlock(blockNum, transToBlock):
+            trans = node.getTransaction(transId, delayedRetry=False)
+            if trans is None:
                 missingTransactions.append({
                     "newer_trans_id" : transId,
                     "newer_trans_index" : transOrder,
@@ -288,10 +253,49 @@ try:
                     "last_trans_index" : transOrder - 1,
                     "last_bnum" : lastBlockNum,
                 })
-                if newestBlockNum > lastBlockNum:
-                    transBlockOrderWeird[-1]["highest_block_seen"] = newestBlockNum
+            blockNum = node.getTransBlockNum(trans)
+            assert blockNum is not None, Print("ERROR: could not retrieve block num from transId: %s, trans: %s" % (transId, json.dumps(trans, indent=2)))
         else:
-            blockNum = transToBlock[transId]["block_num"]
+            block = transToBlock[transId]
+            blockNum = block["block_num"]
+            assert blockNum is not None, Print("ERROR: could not retrieve block num for block retrieved for transId: %s, block: %s" % (transId, json.dumps(block, indent=2)))
+
+        if lastBlockNum is not None:
+            if blockNum > lastBlockNum + transBlocksBehind or blockNum + transBlocksBehind < lastBlockNum:
+                transBlockOrderWeird.append({
+                    "newer_trans_id" : transId,
+                    "newer_trans_index" : transOrder,
+                    "newer_bnum" : blockNum,
+                    "last_trans_id" : lastTransId,
+                    "last_trans_index" : transOrder - 1,
+                    "last_bnum" : lastBlockNum
+                })
+                if newestBlockNum > lastBlockNum:
+                    last = transBlockOrderWeird[-1]
+                    last["older_trans_id"] = newestBlockNumTransId
+                    last["older_trans_index"] = newestBlockNumTransOrder
+                    last["older_bnum"] = newestBlockNum
+
+        if newestBlockNum is None:
+            newestBlockNum = blockNum
+            newestBlockNumTransId = transId
+            newestBlockNumTransOrder = transOrder
+        elif blockNum > newestBlockNum:
+            newestBlockNum = blockNum
+            newestBlockNumTransId = transId
+            newestBlockNumTransOrder = transOrder
+
+        if block is None and not cacheTransIdInBlock(blockNum, transToBlock):
+            missingTransactions.append({
+                "newer_trans_id" : transId,
+                "newer_trans_index" : transOrder,
+                "newer_bnum" : blockNum,
+                "last_trans_id" : lastTransId,
+                "last_trans_index" : transOrder - 1,
+                "last_bnum" : lastBlockNum,
+            })
+            if newestBlockNum > lastBlockNum:
+                transBlockOrderWeird[-1]["highest_block_seen"] = newestBlockNum
 
         lastTransId = transId
         transOrder += 1
