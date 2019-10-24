@@ -28,11 +28,23 @@ for FILE in $(ls $CICD_DIR/platforms); do
         [[ $FILE =~ 'unpinned' ]] && continue
     fi
     export FILE_NAME="$(echo $FILE | awk '{split($0,a,/\.(d|s)/); print a[1] }')"
+    # macos-10.14
+    # ubuntu-16.04
     export PLATFORM_NAME="$(echo $FILE_NAME | cut -d- -f1 | sed 's/os/OS/g')"
+    # macOS
+    # ubuntu
     export PLATFORM_NAME_UPCASE="$(echo $PLATFORM_NAME | tr a-z A-Z)"
+    # MACOS
+    # UBUNTU
     export VERSION_MAJOR="$(echo $FILE_NAME | cut -d- -f2 | cut -d. -f1)"
+    # 10
+    # 16
     [[ "$(echo $FILE_NAME | cut -d- -f2)" =~ '.' ]] && export VERSION_MINOR="_$(echo $FILE_NAME | cut -d- -f2 | cut -d. -f2)" || export VERSION_MINOR=''
+    # _14
+    # _04
     export VERSION_FULL="$(echo $FILE_NAME | cut -d- -f2)"
+    # 10.14
+    # 16.04
     OLDIFS=$IFS
     IFS='_'
     set $PLATFORM_NAME
