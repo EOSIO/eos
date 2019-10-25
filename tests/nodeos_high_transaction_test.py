@@ -32,10 +32,12 @@ Print=Utils.Print
 
 from core_symbol import CORE_SYMBOL
 
-appArgs=AppArgs()
+appArgs = AppArgs()
+minTotalAccounts = 20
 extraArgs = appArgs.add(flag="--transaction-time-delta", type=int, help="How many seconds seconds behind an earlier sent transaction should be received after a later one", default=5)
 extraArgs = appArgs.add(flag="--num-transactions", type=int, help="How many total transactions should be sent", default=10000)
 extraArgs = appArgs.add(flag="--max-transactions-per-second", type=int, help="How many transactions per second should be sent", default=500)
+extraArgs = appArgs.add(flag="--total-accounts", type=int, help="How many accounts should be involved in sending transfers.  Must be greater than %d" % (minTotalAccounts), default=100)
 args = TestHelper.parse_args({"-p", "-n","--dump-error-details","--keep-logs","-v","--leave-running","--clean-run"}, applicationSpecificArgs=appArgs)
 
 Utils.Debug=args.v
@@ -56,6 +58,14 @@ blocksPerSec=2
 transBlocksBehind=args.transaction_time_delta * blocksPerSec
 numTransactions = args.num_transactions
 maxTransactionsPerSecond = args.max_transactions_per_second
+assert args.total_accounts >= minTotalAccounts, Print("ERROR: Only %d was selected for --total-accounts, must have at least %d" % (args.total_accounts, minTotalAccounts))
+if numTransactions % args.total_accounts > 0:
+    oldNumTransactions = numTransactions
+    numTransactions = int((oldNumTransactions + args.total_accounts - 1)/args.total_accounts) * args.total_accounts
+    Print("NOTE: --num-transactions passed as %d, but rounding to %d so each of the %d accounts gets the same number of transactions" %
+          (oldNumTransactions, numTransactions, args.total_accounts))
+numRounds = int(numTransactions / args.total_accounts)
+
 
 walletMgr=WalletMgr(True, port=walletPort)
 testSuccessful=False
@@ -81,9 +91,8 @@ try:
 
     # ***   create accounts to vote in desired producers   ***
 
-    totalAccounts = 100
-    Print("creating %d accounts" % (totalAccounts))
-    namedAccounts=NamedAccounts(cluster,totalAccounts)
+    Print("creating %d accounts" % (args.total_accounts))
+    namedAccounts=NamedAccounts(cluster,args.total_accounts)
     accounts=namedAccounts.accounts
 
     accountsToCreate = [cluster.eosioAccount]
@@ -218,8 +227,7 @@ try:
     cluster.waitOnClusterSync(blockAdvancing=5)
 
     Print("Sending %d transfers" % (numTransactions))
-    numRounds = int(numTransactions / totalAccounts)
-    delayAfterRounds = int(maxTransactionsPerSecond / totalAccounts)
+    delayAfterRounds = int(maxTransactionsPerSecond / args.total_accounts)
     history = []
     startTime = time.perf_counter()
     startRound = None
@@ -228,7 +236,7 @@ try:
         startRound = time.perf_counter()
         timeDiff = startRound - startTime
         expectedTransactions = maxTransactionsPerSecond * timeDiff
-        sentTransactions = round * totalAccounts
+        sentTransactions = round * args.total_accounts
         if sentTransactions > expectedTransactions:
             excess = sentTransactions - expectedTransactions
             # round up to a second
@@ -238,9 +246,9 @@ try:
 
         transferAmount = Node.currencyIntToStr(round + 1, CORE_SYMBOL)
         Print("Sending round %d, transfer: %s" % (round, transferAmount))
-        for accountIndex in range(0, totalAccounts):
+        for accountIndex in range(0, args.total_accounts):
             fromAccount = accounts[accountIndex]
-            toAccountIndex = accountIndex + 1 if accountIndex + 1 < totalAccounts else 0
+            toAccountIndex = accountIndex + 1 if accountIndex + 1 < args.total_accounts else 0
             toAccount = accounts[toAccountIndex]
             node = nonProdNodes[accountIndex % nonProdNodeCount]
             trans=node.transferFunds(fromAccount, toAccount, transferAmount, "transfer round %d" % (round), exitOnError=False, reportStatus=False, signWith=fromAccount.activePublicKey)
