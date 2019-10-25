@@ -475,6 +475,7 @@ class Cluster:
         self.print_config()
         self.launch_cluster()
         self.get_cluster_info(level="debug")
+        self.schedule_protocol_feature_activations()
         self.set_bios_contract()
         self.check_sync()
         self.print_header("Launch (without bootstrap) ends.", level="INFO")
