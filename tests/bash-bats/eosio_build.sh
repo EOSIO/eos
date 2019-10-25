@@ -24,7 +24,7 @@ TEST_LABEL="[eosio_build]"
             run bash -c "printf \"y\ny\ny\nn\nn\n\" | ./${SCRIPT_LOCATION}"
             [[ ! -z $(echo "${output}" | grep "Unable to find .* compiler") ]] || exit
         fi
-    fi 
+    fi
 
     cd ./scripts # Also test that we can run the script from a directory other than the root
     run bash -c "./eosio_build.sh -y -P"

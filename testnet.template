@@ -15,9 +15,19 @@ if [ -z "$biosport" ]; then
     biosport=9776
 fi
 
+bioscontractname=$BIOS_CONTRACT_NAME
+if [ -z "$bioscontractname" ]; then
+    bioscontractname="rem.bios"
+fi
+
 bioscontractpath=$BIOS_CONTRACT_PATH
 if [ -z "$bioscontractpath" ]; then
-    bioscontractpath="contracts/contracts/rem.bios"
+    bioscontractpath="contracts/contracts/$bioscontractname"
+fi
+
+bioscurrencysymbol=$BIOS_CURRENCY_SYMBOL
+if [ -z "$bioscurrencysymbol" ]; then
+    bioscurrencysymbol="SYS"
 fi
 
 wddir=eosio-ignition-wd
@@ -68,7 +78,7 @@ wcmd () {
 }
 
 cacmd () {
-    programs/remcli/remcli -v --wallet-url $wdurl --url http://$bioshost:$biosport system newaccount --transfer --stake "10000000.0000 SYS" rem $* 2>&1 | tee -a $logfile
+    programs/remcli/remcli -v --wallet-url $wdurl --url http://$bioshost:$biosport system newaccount --transfer --stake "10000000.0000 "$bioscurrencysymbol rem $* >> $logfile 2>&1
     ecmd system regproducer $1 $2
     ecmd system voteproducer prods $1 $1
 }
@@ -86,8 +96,9 @@ wcmd create --to-console -n ignition
 # where $BIOSKEY is replaced by the private key for the bios node
 # ------ DO NOT ALTER THE NEXT LINE -------
 ###INSERT prodkeys
-
-ecmd set contract rem $bioscontractpath rem.bios.wasm rem.bios.abi
+echo "Activated Features Check:" >> $logfile
+curl http://$bioshost:$biosport/v1/chain/get_activated_protocol_features >> $logfile
+ecmd set contract rem $bioscontractpath/$bioscontractname $bioscontractname.wasm $bioscontractname.abi
 
 # Preactivate all digests
 for digest in $FEATURE_DIGESTS;
@@ -111,22 +122,23 @@ ecmd create account rem rem.stake $pubsyskey $pubsyskey
 ecmd create account rem rem.token $pubsyskey $pubsyskey
 ecmd create account rem rem.vpay $pubsyskey $pubsyskey
 ecmd create account rem rem.wrap $pubsyskey $pubsyskey
+ecmd create account rem rem.rex $pubsyskey $pubsyskey
 
 ecmd set contract rem.token contracts/contracts/rem.token rem.token.wasm rem.token.abi
 ecmd set contract rem.msig contracts/contracts/rem.msig rem.msig.wasm rem.msig.abi
 ecmd set contract rem.wrap contracts/contracts/rem.wrap rem.wrap.wasm rem.wrap.abi
 
 echo ===== Start: $step ============ >> $logfile
-echo executing: remcli --wallet-url $wdurl --url http://$bioshost:$biosport push action rem.token create '[ "rem", "1000000000.0000 SYS" ]' -p rem.token | tee -a $logfile
-echo executing: remcli --wallet-url $wdurl --url http://$bioshost:$biosport push action rem.token issue '[ "rem", "900000000.0000 SYS", "memo" ]' -p rem | tee -a $logfile
+echo executing: remcli --wallet-url $wdurl --url http://$bioshost:$biosport push action rem.token create '[ "rem", "1000000000.0000 '$bioscurrencysymbol'" ]' -p rem.token | tee -a $logfile
+echo executing: remcli --wallet-url $wdurl --url http://$bioshost:$biosport push action rem.token issue '[ "rem", "900000000.0000 '$bioscurrencysymbol'", "memo" ]' -p rem | tee -a $logfile
 echo ----------------------- >> $logfile
-programs/remcli/remcli --wallet-url $wdurl --url http://$bioshost:$biosport push action rem.token create '[ "rem", "1000000000.0000 SYS" ]' -p rem.token >> $logfile 2>&1
-programs/remcli/remcli --wallet-url $wdurl --url http://$bioshost:$biosport push action rem.token issue '[ "rem", "900000000.0000 SYS", "memo" ]' -p rem >> $logfile 2>&1
+programs/remcli/remcli --wallet-url $wdurl --url http://$bioshost:$biosport push action rem.token create '[ "rem", "1000000000.0000 '$bioscurrencysymbol'" ]' -p rem.token >> $logfile 2>&1
+programs/remcli/remcli --wallet-url $wdurl --url http://$bioshost:$biosport push action rem.token issue '[ "rem", "900000000.0000 '$bioscurrencysymbol'", "memo" ]' -p rem >> $logfile 2>&1
 echo ==== End: $step ============== >> $logfile
 step=$(($step + 1))
 
 ecmd set contract rem contracts/contracts/rem.system rem.system.wasm rem.system.abi
-programs/remcli/remcli --wallet-url $wdurl --url http://$bioshost:$biosport push action rem init '[0, "4,SYS"]' -p rem >> $logfile 2>&1
+programs/remcli/remcli --wallet-url $wdurl --url http://$bioshost:$biosport push action rem init '[0, "4,'$bioscurrencysymbol'"]' -p rem >> $logfile 2>&1
 
 # Manual deployers, add a series of lines below this block that looks like:
 #    cacmd $PRODNAME[0] $OWNERKEY[0] $ACTIVEKEY[0]

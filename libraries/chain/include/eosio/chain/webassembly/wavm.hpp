@@ -20,7 +20,9 @@ class wavm_runtime : public eosio::chain::wasm_runtime_interface {
    public:
       wavm_runtime();
       ~wavm_runtime();
-      std::unique_ptr<wasm_instantiated_module_interface> instantiate_module(const char* code_bytes, size_t code_size, std::vector<uint8_t> initial_memory) override;
+      bool inject_module(IR::Module&) override;
+      std::unique_ptr<wasm_instantiated_module_interface> instantiate_module(const char* code_bytes, size_t code_size, std::vector<uint8_t> initial_memory,
+                                                                             const digest_type& code_hash, const uint8_t& vm_type, const uint8_t& vm_version) override;
 
       void immediately_exit_currently_running_module() override;
 };
@@ -31,148 +33,6 @@ struct running_instance_context {
    apply_context*  apply_ctx;
 };
 extern running_instance_context the_running_instance_context;
-
-/**
- * class to represent an in-wasm-memory array
- * it is a hint to the transcriber that the next parameter will
- * be a size (in Ts) and that the pair are validated together
- * This triggers the template specialization of intrinsic_invoker_impl
- * @tparam T
- */
-template<typename T>
-inline array_ptr<T> array_ptr_impl (running_instance_context& ctx, U32 ptr, size_t length)
-{
-   MemoryInstance* mem = ctx.memory;
-   if (!mem) 
-      Runtime::causeException(Exception::Cause::accessViolation);
-
-   size_t mem_total = IR::numBytesPerPage * Runtime::getMemoryNumPages(mem);
-   if (ptr >= mem_total || length > (mem_total - ptr) / sizeof(T))
-      Runtime::causeException(Exception::Cause::accessViolation);
-   
-   T* ret_ptr = (T*)(getMemoryBaseAddress(mem) + ptr);
-
-   return array_ptr<T>((T*)(getMemoryBaseAddress(mem) + ptr));
-}
-
-/**
- * class to represent an in-wasm-memory char array that must be null terminated
- */
-inline null_terminated_ptr null_terminated_ptr_impl(running_instance_context& ctx, U32 ptr)
-{
-   MemoryInstance* mem = ctx.memory;
-   if(!mem)
-      Runtime::causeException(Exception::Cause::accessViolation);
-
-   char *value                     = (char*)(getMemoryBaseAddress(mem) + ptr);
-   const char* p                   = value;
-   const char* const top_of_memory = (char*)(getMemoryBaseAddress(mem) + IR::numBytesPerPage*Runtime::getMemoryNumPages(mem));
-   while(p < top_of_memory)
-      if(*p++ == '\0')
-         return null_terminated_ptr(value);
-
-   Runtime::causeException(Exception::Cause::accessViolation);
-}
-
-
-/**
- * template that maps native types to WASM VM types
- * @tparam T the native type
- */
-template<typename T>
-struct native_to_wasm {
-   using type = void;
-};
-
-/**
- * specialization for mapping pointers to int32's
- */
-template<typename T>
-struct native_to_wasm<T *> {
-   using type = I32;
-};
-
-/**
- * Mappings for native types
- */
-template<>
-struct native_to_wasm<float> {
-   using type = F32;
-};
-template<>
-struct native_to_wasm<double> {
-   using type = F64;
-};
-template<>
-struct native_to_wasm<int32_t> {
-   using type = I32;
-};
-template<>
-struct native_to_wasm<uint32_t> {
-   using type = I32;
-};
-template<>
-struct native_to_wasm<int64_t> {
-   using type = I64;
-};
-template<>
-struct native_to_wasm<uint64_t> {
-   using type = I64;
-};
-template<>
-struct native_to_wasm<bool> {
-   using type = I32;
-};
-template<>
-struct native_to_wasm<const name &> {
-   using type = I64;
-};
-template<>
-struct native_to_wasm<name> {
-   using type = I64;
-};
-template<>
-struct native_to_wasm<const fc::time_point_sec &> {
-   using type = I32;
-};
-
-template<>
-struct native_to_wasm<fc::time_point_sec> {
-   using type = I32;
-};
-
-// convenience alias
-template<typename T>
-using native_to_wasm_t = typename native_to_wasm<T>::type;
-
-template<typename T>
-inline auto convert_native_to_wasm(const running_instance_context& ctx, T val) {
-   return native_to_wasm_t<T>(val);
-}
-
-inline auto convert_native_to_wasm(const running_instance_context& ctx, const name &val) {
-   return native_to_wasm_t<const name &>(val.value);
-}
-
-inline auto convert_native_to_wasm(const running_instance_context& ctx, const fc::time_point_sec& val) {
-   return native_to_wasm_t<const fc::time_point_sec &>(val.sec_since_epoch());
-}
-
-inline auto convert_native_to_wasm(running_instance_context& ctx, char* ptr) {
-   MemoryInstance* mem = ctx.memory;
-   if(!mem)
-      Runtime::causeException(Exception::Cause::accessViolation);
-   char* base = (char*)getMemoryBaseAddress(mem);
-   char* top_of_memory = base + IR::numBytesPerPage*Runtime::getMemoryNumPages(mem);
-   if(ptr < base || ptr >= top_of_memory)
-      Runtime::causeException(Exception::Cause::accessViolation);
-   return (U32)(ptr - base);
-}
-
-template<typename T>
-inline auto convert_wasm_to_native(native_to_wasm_t<T> val) {
-   return T(val);
-}
 
 template<typename T>
 struct wasm_to_value_type;
@@ -282,6 +142,153 @@ struct wasm_function_type_provider<Ret(Args...)> {
    }
 };
 
+#define __INTRINSIC_NAME(LABEL, SUFFIX) LABEL##SUFFIX
+#define _INTRINSIC_NAME(LABEL, SUFFIX) __INTRINSIC_NAME(LABEL,SUFFIX)
+
+#ifdef EOSIO_WAVM_RUNTIME_ENABLED
+
+/**
+ * class to represent an in-wasm-memory array
+ * it is a hint to the transcriber that the next parameter will
+ * be a size (in Ts) and that the pair are validated together
+ * This triggers the template specialization of intrinsic_invoker_impl
+ * @tparam T
+ */
+template<typename T>
+inline array_ptr<T> array_ptr_impl (running_instance_context& ctx, U32 ptr, size_t length)
+{
+   MemoryInstance* mem = ctx.memory;
+   if (!mem)
+      Runtime::causeException(Exception::Cause::accessViolation);
+
+   size_t mem_total = IR::numBytesPerPage * Runtime::getMemoryNumPages(mem);
+   if (ptr >= mem_total || length > (mem_total - ptr) / sizeof(T))
+      Runtime::causeException(Exception::Cause::accessViolation);
+
+   T* ret_ptr = (T*)(getMemoryBaseAddress(mem) + ptr);
+
+   return array_ptr<T>((T*)(getMemoryBaseAddress(mem) + ptr));
+}
+
+/**
+ * class to represent an in-wasm-memory char array that must be null terminated
+ */
+inline null_terminated_ptr null_terminated_ptr_impl(running_instance_context& ctx, U32 ptr)
+{
+   MemoryInstance* mem = ctx.memory;
+   if(!mem)
+      Runtime::causeException(Exception::Cause::accessViolation);
+
+   char *value                     = (char*)(getMemoryBaseAddress(mem) + ptr);
+   const char* p                   = value;
+   const char* const top_of_memory = (char*)(getMemoryBaseAddress(mem) + IR::numBytesPerPage*Runtime::getMemoryNumPages(mem));
+   while(p < top_of_memory)
+      if(*p++ == '\0')
+         return null_terminated_ptr(value);
+
+   Runtime::causeException(Exception::Cause::accessViolation);
+}
+
+
+/**
+ * template that maps native types to WASM VM types
+ * @tparam T the native type
+ */
+template<typename T>
+struct native_to_wasm {
+   using type = void;
+};
+
+/**
+ * specialization for mapping pointers to int32's
+ */
+template<typename T>
+struct native_to_wasm<T *> {
+   using type = I32;
+};
+
+/**
+ * Mappings for native types
+ */
+template<>
+struct native_to_wasm<float> {
+   using type = F32;
+};
+template<>
+struct native_to_wasm<double> {
+   using type = F64;
+};
+template<>
+struct native_to_wasm<int32_t> {
+   using type = I32;
+};
+template<>
+struct native_to_wasm<uint32_t> {
+   using type = I32;
+};
+template<>
+struct native_to_wasm<int64_t> {
+   using type = I64;
+};
+template<>
+struct native_to_wasm<uint64_t> {
+   using type = I64;
+};
+template<>
+struct native_to_wasm<bool> {
+   using type = I32;
+};
+template<>
+struct native_to_wasm<const name &> {
+   using type = I64;
+};
+template<>
+struct native_to_wasm<name> {
+   using type = I64;
+};
+template<>
+struct native_to_wasm<const fc::time_point_sec &> {
+   using type = I32;
+};
+
+template<>
+struct native_to_wasm<fc::time_point_sec> {
+   using type = I32;
+};
+
+// convenience alias
+template<typename T>
+using native_to_wasm_t = typename native_to_wasm<T>::type;
+
+template<typename T>
+inline auto convert_native_to_wasm(const running_instance_context& ctx, T val) {
+   return native_to_wasm_t<T>(val);
+}
+
+inline auto convert_native_to_wasm(const running_instance_context& ctx, const name &val) {
+   return native_to_wasm_t<const name &>(val.to_uint64_t());
+}
+
+inline auto convert_native_to_wasm(const running_instance_context& ctx, const fc::time_point_sec& val) {
+   return native_to_wasm_t<const fc::time_point_sec &>(val.sec_since_epoch());
+}
+
+inline auto convert_native_to_wasm(running_instance_context& ctx, char* ptr) {
+   MemoryInstance* mem = ctx.memory;
+   if(!mem)
+      Runtime::causeException(Exception::Cause::accessViolation);
+   char* base = (char*)getMemoryBaseAddress(mem);
+   char* top_of_memory = base + IR::numBytesPerPage*Runtime::getMemoryNumPages(mem);
+   if(ptr < base || ptr >= top_of_memory)
+      Runtime::causeException(Exception::Cause::accessViolation);
+   return (U32)(ptr - base);
+}
+
+template<typename T>
+inline auto convert_wasm_to_native(native_to_wasm_t<T> val) {
+   return T(val);
+}
+
 /**
  * Forward declaration of the invoker type which transcribes arguments to/from a native method
  * and injects the appropriate checks
@@ -377,9 +384,9 @@ struct intrinsic_invoker_impl<Ret, std::tuple<Input, Inputs...>, std::tuple<Tran
  * @tparam Translated - the list of transcribed wasm parameters
  */
 template<typename T, typename Ret, typename... Inputs, typename ...Translated>
-struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, size_t, Inputs...>, std::tuple<Translated...>> {
+struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, uint32_t, Inputs...>, std::tuple<Translated...>> {
    using next_step = intrinsic_invoker_impl<Ret, std::tuple<Inputs...>, std::tuple<Translated..., I32, I32>>;
-   using then_type = Ret(*)(running_instance_context&, array_ptr<T>, size_t, Inputs..., Translated...);
+   using then_type = Ret(*)(running_instance_context&, array_ptr<T>, uint32_t, Inputs..., Translated...);
 
    template<then_type Then, typename U=T>
    static auto translate_one(running_instance_context& ctx, Inputs... rest, Translated... translated, I32 ptr, I32 size) -> std::enable_if_t<std::is_const<U>::value, Ret> {
@@ -408,7 +415,7 @@ struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, size_t, Inputs...>, 
          std::vector<std::remove_const_t<T> > copy(length > 0 ? length : 1);
          T* copy_ptr = &copy[0];
          memcpy( (void*)copy_ptr, (void*)base, length * sizeof(T) );
-         Ret ret = Then(ctx, static_cast<array_ptr<T>>(copy_ptr), length, rest..., translated...);  
+         Ret ret = Then(ctx, static_cast<array_ptr<T>>(copy_ptr), length, rest..., translated...);
          memcpy( (void*)base, (void*)copy_ptr, length * sizeof(T) );
          return ret;
       }
@@ -456,9 +463,9 @@ struct intrinsic_invoker_impl<Ret, std::tuple<null_terminated_ptr, Inputs...>, s
  * @tparam Translated - the list of transcribed wasm parameters
  */
 template<typename T, typename U, typename Ret, typename... Inputs, typename ...Translated>
-struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, array_ptr<U>, size_t, Inputs...>, std::tuple<Translated...>> {
+struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, array_ptr<U>, uint32_t, Inputs...>, std::tuple<Translated...>> {
    using next_step = intrinsic_invoker_impl<Ret, std::tuple<Inputs...>, std::tuple<Translated..., I32, I32, I32>>;
-   using then_type = Ret(*)(running_instance_context&, array_ptr<T>, array_ptr<U>, size_t, Inputs..., Translated...);
+   using then_type = Ret(*)(running_instance_context&, array_ptr<T>, array_ptr<U>, uint32_t, Inputs..., Translated...);
 
    template<then_type Then>
    static Ret translate_one(running_instance_context& ctx, Inputs... rest, Translated... translated, I32 ptr_t, I32 ptr_u, I32 size) {
@@ -481,9 +488,9 @@ struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<T>, array_ptr<U>, size_t
  * @tparam Translated - the list of transcribed wasm parameters
  */
 template<typename Ret>
-struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<char>, int, size_t>, std::tuple<>> {
+struct intrinsic_invoker_impl<Ret, std::tuple<array_ptr<char>, int, uint32_t>, std::tuple<>> {
    using next_step = intrinsic_invoker_impl<Ret, std::tuple<>, std::tuple<I32, I32, I32>>;
-   using then_type = Ret(*)(running_instance_context&, array_ptr<char>, int, size_t);
+   using then_type = Ret(*)(running_instance_context&, array_ptr<char>, int, uint32_t);
 
    template<then_type Then>
    static Ret translate_one(running_instance_context& ctx, I32 ptr, I32 value, I32 size) {
@@ -675,44 +682,70 @@ struct intrinsic_function_invoker<WasmSig, void, MethodSig, Cls, Params...> {
    }
 };
 
+template<typename T>
+struct void_ret_wrapper {
+   using type = T;
+};
+
+template<>
+struct void_ret_wrapper<void> {
+   using type = char;
+};
+
+template<typename T>
+using void_ret_wrapper_t = typename void_ret_wrapper<T>::type;
+
 template<typename, typename>
 struct intrinsic_function_invoker_wrapper;
 
 template<typename WasmSig, typename Cls, typename Ret, typename... Params>
 struct intrinsic_function_invoker_wrapper<WasmSig, Ret (Cls::*)(Params...)> {
+   static_assert( !(std::is_pointer_v<Ret> && alignof(std::remove_pointer_t<void_ret_wrapper_t<Ret>>) != 1) &&
+                  !(std::is_lvalue_reference_v<Ret> && alignof(std::remove_reference_t<void_ret_wrapper_t<Ret>>) != 1),
+                  "intrinsics should only return a reference or pointer with single byte alignment");
    using type = intrinsic_function_invoker<WasmSig, Ret, Ret (Cls::*)(Params...), Cls, Params...>;
 };
 
 template<typename WasmSig, typename Cls, typename Ret, typename... Params>
 struct intrinsic_function_invoker_wrapper<WasmSig, Ret (Cls::*)(Params...) const> {
+   static_assert( !(std::is_pointer_v<Ret> && alignof(std::remove_pointer_t<void_ret_wrapper_t<Ret>>) != 1) &&
+                  !(std::is_lvalue_reference_v<Ret> && alignof(std::remove_reference_t<void_ret_wrapper_t<Ret>>) != 1),
+                  "intrinsics should only return a reference or pointer with single byte alignment");
    using type = intrinsic_function_invoker<WasmSig, Ret, Ret (Cls::*)(Params...) const, Cls, Params...>;
 };
 
 template<typename WasmSig, typename Cls, typename Ret, typename... Params>
 struct intrinsic_function_invoker_wrapper<WasmSig, Ret (Cls::*)(Params...) volatile> {
+   static_assert( !(std::is_pointer_v<Ret> && alignof(std::remove_pointer_t<void_ret_wrapper_t<Ret>>) != 1) &&
+                  !(std::is_lvalue_reference_v<Ret> && alignof(std::remove_reference_t<void_ret_wrapper_t<Ret>>) != 1),
+                  "intrinsics should only return a reference or pointer with single byte alignment");
    using type = intrinsic_function_invoker<WasmSig, Ret, Ret (Cls::*)(Params...) volatile, Cls, Params...>;
 };
 
 template<typename WasmSig, typename Cls, typename Ret, typename... Params>
 struct intrinsic_function_invoker_wrapper<WasmSig, Ret (Cls::*)(Params...) const volatile> {
+   static_assert( !(std::is_pointer_v<Ret> && alignof(std::remove_pointer_t<void_ret_wrapper_t<Ret>>) != 1) &&
+                  !(std::is_lvalue_reference_v<Ret> && alignof(std::remove_reference_t<void_ret_wrapper_t<Ret>>) != 1),
+                  "intrinsics should only return a reference or pointer with single byte alignment");
    using type = intrinsic_function_invoker<WasmSig, Ret, Ret (Cls::*)(Params...) const volatile, Cls, Params...>;
 };
-
-#define _ADD_PAREN_1(...) ((__VA_ARGS__)) _ADD_PAREN_2
-#define _ADD_PAREN_2(...) ((__VA_ARGS__)) _ADD_PAREN_1
-#define _ADD_PAREN_1_END
-#define _ADD_PAREN_2_END
-#define _WRAPPED_SEQ(SEQ) BOOST_PP_CAT(_ADD_PAREN_1 SEQ, _END)
-
-#define __INTRINSIC_NAME(LABEL, SUFFIX) LABEL##SUFFIX
-#define _INTRINSIC_NAME(LABEL, SUFFIX) __INTRINSIC_NAME(LABEL,SUFFIX)
 
 #define _REGISTER_WAVM_INTRINSIC(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)\
    static Intrinsics::Function _INTRINSIC_NAME(__intrinsic_fn, __COUNTER__) (\
       MOD "." NAME,\
       eosio::chain::webassembly::wavm::wasm_function_type_provider<WASM_SIG>::type(),\
       (void *)eosio::chain::webassembly::wavm::intrinsic_function_invoker_wrapper<WASM_SIG, SIG>::type::fn<&CLS::METHOD>()\
-   );\
+   );
 
+#else
+
+#define _REGISTER_WAVM_INTRINSIC(CLS, MOD, METHOD, WASM_SIG, NAME, SIG)\
+   static Intrinsics::Function _INTRINSIC_NAME(__intrinsic_fn, __COUNTER__) (\
+      MOD "." NAME,\
+      eosio::chain::webassembly::wavm::wasm_function_type_provider<WASM_SIG>::type(),\
+      nullptr\
+   );
+
+#endif
 
 } } } }// eosio::chain::webassembly::wavm

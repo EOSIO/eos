@@ -13,16 +13,19 @@ namespace eosiosystem {
  *  if some producer neither from current schedule top21 nor from top25 reaches top21 position 
  *  we should not rotate him, so we reset rotation to current time point and schedule him for further rotations.
  */
-std::vector<eosio::producer_key> system_contract::get_rotated_schedule() {
+std::vector<eosio::producer_authority> system_contract::get_rotated_schedule() {
    auto sorted_prods = _producers.get_index<"prototalvote"_n>();
 
-   std::vector<eosio::producer_key> top21_prods;
+   std::vector<eosio::producer_authority> top21_prods;
    top21_prods.reserve(max_block_producers);
 
    auto prod_it = std::begin(sorted_prods);
    for (; top21_prods.size() < max_block_producers
          && 0 < prod_it->total_votes && prod_it->active() && prod_it != std::end(sorted_prods); ++prod_it) {
-      top21_prods.push_back( eosio::producer_key{ prod_it->owner, prod_it->producer_key } );
+      top21_prods.push_back( eosio::producer_authority{
+         .producer_name = prod_it->owner,
+         .authority     = prod_it->producer_authority.has_value() ? *prod_it->producer_authority
+                                                                  : convert_to_block_signing_authority( prod_it->producer_key ) } );
    }
 
    // nothing to rotate
@@ -60,10 +63,13 @@ std::vector<eosio::producer_key> system_contract::get_rotated_schedule() {
    }
 
    // top 21-25
-   std::vector<eosio::producer_key> standby;   
+   std::vector<eosio::producer_authority> standby;
    for (prod_it = std::prev( prod_it ); standby.size() < _grotation.standby_prods_to_rotate + 1 // top21 + top22-25
          && 0 < prod_it->total_votes && prod_it->active() && prod_it != std::end(sorted_prods); ++prod_it) {
-      standby.push_back( eosio::producer_key{ prod_it->owner, prod_it->producer_key } );
+      standby.push_back( eosio::producer_authority{
+         .producer_name = prod_it->owner,
+         .authority     = prod_it->producer_authority.has_value() ? *prod_it->producer_authority
+                                                                  : convert_to_block_signing_authority( prod_it->producer_key ) } );
    }
 
    // still nothing to rotate
@@ -71,7 +77,7 @@ std::vector<eosio::producer_key> system_contract::get_rotated_schedule() {
       return top21_prods;
    }
 
-   std::vector<eosio::producer_key> rotation;
+   std::vector<eosio::producer_authority> rotation;
 
    // first go prods which were in previous rotation
    for(const auto& prev: _grotation.standby_rotation){

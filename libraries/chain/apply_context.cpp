@@ -355,10 +355,14 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
    if( control.is_builtin_activated( builtin_protocol_feature_t::no_duplicate_deferred_id ) ) {
       auto exts = trx.validate_and_extract_extensions();
       if( exts.size() > 0 ) {
-         EOS_ASSERT( exts.size() == 1, invalid_transaction_extension,
-                     "only one extension is currently supported for deferred transactions"
+         auto itr = exts.lower_bound( deferred_transaction_generation_context::extension_id() );
+
+         EOS_ASSERT( exts.size() == 1 && itr != exts.end(), invalid_transaction_extension,
+                     "only the deferred_transaction_generation_context extension is currently supported for deferred transactions"
          );
-         const auto& context = exts.front().get<deferred_transaction_generation_context>();
+
+         const auto& context = itr->second.get<deferred_transaction_generation_context>();
+
          EOS_ASSERT( context.sender == receiver, ill_formed_deferred_transaction_generation_context,
                      "deferred transaction generaction context contains mismatching sender",
                      ("expected", receiver)("actual", context.sender)
@@ -372,8 +376,8 @@ void apply_context::schedule_deferred_transaction( const uint128_t& sender_id, a
                      ("expected", trx_context.id)("actual", context.sender_trx_id)
          );
       } else {
-         FC_ASSERT( trx.transaction_extensions.size() == 0, "invariant failure" );
-         trx.transaction_extensions.emplace_back(
+         emplace_extension(
+            trx.transaction_extensions,
             deferred_transaction_generation_context::extension_id(),
             fc::raw::pack( deferred_transaction_generation_context( trx_context.id, sender_id, receiver ) )
          );
@@ -648,11 +652,11 @@ int apply_context::get_context_free_data( uint32_t index, char* buffer, size_t b
    return copy_size;
 }
 
-int apply_context::db_store_i64( uint64_t scope, uint64_t table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size ) {
+int apply_context::db_store_i64( name scope, name table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size ) {
    return db_store_i64( receiver, scope, table, payer, id, buffer, buffer_size);
 }
 
-int apply_context::db_store_i64( uint64_t code, uint64_t scope, uint64_t table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size ) {
+int apply_context::db_store_i64( name code, name scope, name table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size ) {
 //   require_write_lock( scope );
    const auto& tab = find_or_create_table( code, scope, table, payer );
    auto tableid = tab.id;
@@ -788,7 +792,7 @@ int apply_context::db_previous_i64( int iterator, uint64_t& primary ) {
    return keyval_cache.add(*itr);
 }
 
-int apply_context::db_find_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id ) {
+int apply_context::db_find_i64( name code, name scope, name table, uint64_t id ) {
    //require_read_lock( code, scope ); // redundant?
 
    const auto* tab = find_table( code, scope, table );
@@ -802,7 +806,7 @@ int apply_context::db_find_i64( uint64_t code, uint64_t scope, uint64_t table, u
    return keyval_cache.add( *obj );
 }
 
-int apply_context::db_lowerbound_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id ) {
+int apply_context::db_lowerbound_i64( name code, name scope, name table, uint64_t id ) {
    //require_read_lock( code, scope ); // redundant?
 
    const auto* tab = find_table( code, scope, table );
@@ -818,7 +822,7 @@ int apply_context::db_lowerbound_i64( uint64_t code, uint64_t scope, uint64_t ta
    return keyval_cache.add( *itr );
 }
 
-int apply_context::db_upperbound_i64( uint64_t code, uint64_t scope, uint64_t table, uint64_t id ) {
+int apply_context::db_upperbound_i64( name code, name scope, name table, uint64_t id ) {
    //require_read_lock( code, scope ); // redundant?
 
    const auto* tab = find_table( code, scope, table );
@@ -834,7 +838,7 @@ int apply_context::db_upperbound_i64( uint64_t code, uint64_t scope, uint64_t ta
    return keyval_cache.add( *itr );
 }
 
-int apply_context::db_end_i64( uint64_t code, uint64_t scope, uint64_t table ) {
+int apply_context::db_end_i64( name code, name scope, name table ) {
    //require_read_lock( code, scope ); // redundant?
 
    const auto* tab = find_table( code, scope, table );
@@ -880,7 +884,7 @@ action_name apply_context::get_sender() const {
       const action_trace& creator_trace = trx_context.get_action_trace( trace.creator_action_ordinal );
       return creator_trace.receiver;
    }
-   return 0;
+   return action_name();
 }
 
 } } /// eosio::chain

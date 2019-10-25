@@ -4,6 +4,9 @@ if(BUILD_MONGO_DB_PLUGIN)
 
   if (libmongoc-1.0_FOUND)
 
+      find_package(libbson-1.0 REQUIRED)
+      message(STATUS "Found bson headers: ${BSON_INCLUDE_DIRS}")
+
       find_package(libbsoncxx-static REQUIRED)
       find_package(libmongocxx-static REQUIRED)
       find_package(libmongoc-static-1.0 REQUIRED)
@@ -21,7 +24,7 @@ if(BUILD_MONGO_DB_PLUGIN)
                ${HEADERS} )
 
   target_include_directories(mongo_db_plugin
-          PRIVATE ${LIBMONGOCXX_STATIC_INCLUDE_DIRS} ${LIBBSONCXX_STATIC_INCLUDE_DIRS}
+          PRIVATE ${LIBMONGOCXX_STATIC_INCLUDE_DIRS} ${LIBBSONCXX_STATIC_INCLUDE_DIRS} ${BSON_INCLUDE_DIRS}
           PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include"
           )
 

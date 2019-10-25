@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
 #pragma once
 #include <eosio/chain/block.hpp>
 #include <eosio/chain/types.hpp>
@@ -26,7 +22,7 @@ namespace eosio {
       chain_id_type              chain_id; ///< used to identify chain
       fc::sha256                 node_id; ///< used to identify peers and prevent self-connect
       chain::public_key_type     key; ///< authentication key; may be a producer or peer key, or empty
-      tstamp                     time;
+      tstamp                     time{0};
       fc::sha256                 token; ///< digest of time to prove we own the private key of the key above
       chain::signature_type      sig; ///< signature for the digest
       string                     p2p_address;
@@ -36,7 +32,7 @@ namespace eosio {
       block_id_type              head_id;
       string                     os;
       string                     agent;
-      int16_t                    generation;
+      int16_t                    generation = 0;
    };
 
 
@@ -68,7 +64,7 @@ namespace eosio {
     case validation : return "invalid block";
     case authentication : return "authentication failure";
     case fatal_other : return "some other failure";
-    case benign_other : return "some other non-fatal condition";
+    case benign_other : return "some other non-fatal condition, possibly unknown block";
     default : return "some crazy reason";
     }
   }

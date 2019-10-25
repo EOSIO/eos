@@ -243,10 +243,13 @@ public:
 
 gift_resources_tester::gift_resources_tester()
 {
-   create_accounts({N(rem.msig), N(rem.token), N(rem.ram), N(rem.ramfee), N(rem.stake), N(rem.vpay), N(rem.spay), N(rem.saving), N(rem.attr)});
+   create_accounts({N(rem.msig), N(rem.token), N(rem.rex), N(rem.ram),
+                    N(rem.ramfee), N(rem.stake), N(rem.bpay),
+                    N(rem.spay), N(rem.vpay), N(rem.saving), N(rem.attr)});
+
    set_code_abi(N(rem.msig),
-                  contracts::rem_msig_wasm(),
-                  contracts::rem_msig_abi().data()); //, &rem_active_pk);
+                contracts::rem_msig_wasm(),
+                contracts::rem_msig_abi().data()); //, &rem_active_pk);
    set_code_abi(N(rem.token),
                   contracts::rem_token_wasm(),
                   contracts::rem_token_abi().data()); //, &rem_active_pk);
@@ -277,7 +280,7 @@ gift_resources_tester::gift_resources_tester()
    deploy_contract();
 }
 
-BOOST_AUTO_TEST_SUITE(gift_resources_tests)
+BOOST_AUTO_TEST_SUITE(rem_gift_resources_tests)
 
 BOOST_FIXTURE_TEST_CASE(acc_creation_with_attr_set, gift_resources_tester)
 {

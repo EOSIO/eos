@@ -15,6 +15,7 @@ import json
 from core_symbol import CORE_SYMBOL
 from testUtils import Utils
 from testUtils import Account
+from testUtils import BlockLogAction
 from Node import BlockType
 from Node import Node
 from WalletMgr import WalletMgr
@@ -387,7 +388,7 @@ class Cluster(object):
         Cluster.__LauncherCmdArr = cmdArr.copy()
 
         s=" ".join([("'{0}'".format(element) if (' ' in element) else element) for element in cmdArr.copy()])
-        Utils.Print("cmd: %s" % (s))
+        if Utils.Debug: Utils.Print("cmd: %s" % (s))
         if 0 != subprocess.call(cmdArr):
             Utils.Print("ERROR: Launcher failed to launch. failed cmd: %s" % (s))
             return False
@@ -947,13 +948,16 @@ class Cluster(object):
         assert PFSetupPolicy.isValid(pfSetupPolicy)
 
         cmd="bash bios_boot.sh"
-        if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
+        if Utils.Debug:
+            Utils.Print("cmd: %s" % (cmd))
+        
         env = {
+            "BIOS_CONTRACT_NAME": "eosio.bios",
             "BIOS_CONTRACT_PATH": "unittests/contracts/old_versions/v1.6.0-rc3/eosio.bios",
             "FEATURE_DIGESTS": ""
         }
         if PFSetupPolicy.hasPreactivateFeature(pfSetupPolicy):
-            env["BIOS_CONTRACT_PATH"] = "contracts/contracts/rem.bios"
+            env["BIOS_CONTRACT_PATH"] = "unittests/contracts/old_versions/v1.7.0-develop-preactivate_feature/"
 
         if pfSetupPolicy == PFSetupPolicy.FULL:
             allBuiltinProtocolFeatureDigests = biosNode.getAllBuiltinFeatureDigestsToPreactivate()
@@ -964,7 +968,7 @@ class Cluster(object):
             if not silent: Utils.Print("Launcher failed to shut down eos cluster.")
             return None
 
-        p = re.compile('error', re.IGNORECASE)
+        p = re.compile(r"\berror\b", re.IGNORECASE)
         with open(Cluster.__bootlog) as bootFile:
             for line in bootFile:
                 if p.search(line):
@@ -1029,11 +1033,8 @@ class Cluster(object):
 
         return biosNode
 
-    def publishContract(self, node, contract, account, old_version = False):
+    def publishContract(self, node, contract, account):
         contractDir = "contracts/contracts/%s" % (contract)
-        if old_version:
-            contractDir="unittests/contracts/old_versions/v1.6.0-rc3/%s" % (contract)
-
         wasmFile = "%s.wasm" % (contract)
         abiFile  = "%s.abi" % (contract)
 
@@ -1180,8 +1181,18 @@ class Cluster(object):
             return None
 
         contract = "rem.bios"
-        old_version = not PFSetupPolicy.hasPreactivateFeature(pfSetupPolicy)
-        trans = self.publishContract(biosNode, contract, eosioAccount.name, old_version)
+        contractDir="contracts/contracts/%s" % (contract)
+        biosFilename = 'rem.bios'
+        if PFSetupPolicy.hasPreactivateFeature(pfSetupPolicy):
+            biosFilename = 'eosio.bios'
+            contractDir="unittests/contracts/old_versions/v1.7.0-develop-preactivate_feature/%s" % (biosFilename)
+        else:
+            biosFilename = 'eosio.bios'
+            contractDir="unittests/contracts/old_versions/v1.6.0-rc3/%s" % (biosFilename)
+        wasmFile="%s.wasm" % (biosFilename)
+        abiFile="%s.abi" % (biosFilename)
+        Utils.Print("Publish %s contract" % (contract))
+        trans=biosNode.publishContract(eosioAccount.name, contractDir, wasmFile, abiFile, waitForTransBlock=True)
         if trans is None:
             Utils.Print("ERROR: Failed to publish contract %s." % (contract))
             return None
@@ -1231,6 +1242,9 @@ class Cluster(object):
             ),
             Account(
                 "rem.stake",  eosioAccount.ownerPrivateKey, eosioAccount.ownerPublicKey, eosioAccount.activePrivateKey, eosioAccount.activePublicKey
+            ),
+            Account(
+                "rem.rex",  eosioAccount.ownerPrivateKey, eosioAccount.ownerPublicKey, eosioAccount.activePrivateKey, eosioAccount.activePublicKey
             )
         ]
         trans = None
@@ -1259,13 +1273,14 @@ class Cluster(object):
             Utils.Print("ERROR: Failed to issue tokens")
             return None
 
-        contract = "rem.system"
-        trans = self.publishContract(biosNode, contract, eosioAccount.name)
-        if trans is None:
-            Utils.Print("ERROR: Failed to publish contract %s." % (contract))
-            return None
+        if loadSystemContract:
+            contract = "rem.system"
+            trans = self.publishContract(biosNode, contract, eosioAccount.name)
+            if trans is None:
+                Utils.Print("ERROR: Failed to publish contract %s." % (contract))
+                return None
 
-        Node.validateTransaction(trans)
+            Node.validateTransaction(trans)
 
         initialFunds="1000000.0000 {0}".format(CORE_SYMBOL)
         Utils.Print("Transfer initial fund %s to individual accounts." % (initialFunds))
@@ -1613,9 +1628,9 @@ class Cluster(object):
 
         self.printBlockLog()
 
-    def getBlockLog(self, nodeExtension):
+    def getBlockLog(self, nodeExtension, blockLogAction=BlockLogAction.return_blocks, outputFile=None, first=None, last=None, throwException=False, silentErrors=False, exitOnError=False):
         blockLogDir=Utils.getNodeDataDir(nodeExtension, "blocks")
-        return Utils.getBlockLog(blockLogDir, exitOnError=False)
+        return Utils.getBlockLog(blockLogDir, blockLogAction=blockLogAction, outputFile=outputFile, first=first, last=last,  throwException=throwException, silentErrors=silentErrors, exitOnError=exitOnError)
 
     def printBlockLog(self):
         blockLogBios=self.getBlockLog("bios")

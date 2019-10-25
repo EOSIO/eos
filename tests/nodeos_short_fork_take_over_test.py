@@ -16,8 +16,11 @@ import signal
 
 ###############################################################
 # nodeos_short_fork_take_over_test
-# --dump-error-details <Upon error print etc/eosio/node_*/config.ini and var/lib/node_*/stderr.log to stdout>
-# --keep-logs <Don't delete var/lib/node_* folders upon test completion>
+#
+# Similar scenario to nodeos_forked_chain_test, except that there are only 3 producers and, after the "bridge" node is
+# shutdown, the second producer node is also shutdown.  Then the "bridge" node is re-started followed by the producer
+# node being started.
+#
 ###############################################################
 Print=Utils.Print
 

@@ -1,10 +1,6 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
-#include <eosiolib/action.hpp>
-#include <eosiolib/crypto.h>
-#include <eosiolib/transaction.hpp>
+#include <eosio/action.hpp>
+#include <eosio/crypto.hpp>
+#include <eosio/transaction.hpp>
 
 #include "test_api.hpp"
 
@@ -100,7 +96,7 @@ void test_transaction::send_action_large() {
    action act( permissions, name{"testapi"}, name{WASM_TEST_ACTION("test_action", "read_action_normal")}, test_action );
 
    act.send();
-   eosio_assert( false, "send_message_large() should've thrown an error" );
+   check( false, "send_message_large() should've thrown an error" );
 }
 
 /**
@@ -137,14 +133,14 @@ void test_transaction::test_tapos_block_prefix() {
    using namespace eosio;
    int tbp;
    read_action_data( (char*)&tbp, sizeof(int) );
-   eosio_assert( tbp == tapos_block_prefix(), "tapos_block_prefix does not match" );
+   check( tbp == tapos_block_prefix(), "tapos_block_prefix does not match" );
 }
 
 void test_transaction::test_tapos_block_num() {
    using namespace eosio;
    int tbn;
    read_action_data( (char*)&tbn, sizeof(int) );
-   eosio_assert( tbn == tapos_block_num(), "tapos_block_num does not match" );
+   check( tbn == tapos_block_num(), "tapos_block_num does not match" );
 }
 
 void test_transaction::test_read_transaction() {
@@ -153,7 +149,7 @@ void test_transaction::test_read_transaction() {
    auto size = transaction_size();
    char buf[size];
    uint32_t read = read_transaction( buf, size );
-   eosio_assert( size == read, "read_transaction failed");
+   check( size == read, "read_transaction failed");
    h = eosio::sha256(buf, read);
    print(h);
 }
@@ -163,7 +159,7 @@ void test_transaction::test_transaction_size() {
    uint32_t trans_size = 0;
    read_action_data( (char*)&trans_size, sizeof(uint32_t) );
    print( "size: ", transaction_size() );
-   eosio_assert( trans_size == transaction_size(), "transaction size does not match" );
+   check( trans_size == transaction_size(), "transaction size does not match" );
 }
 
 void test_transaction::send_transaction(uint64_t receiver, uint64_t, uint64_t) {
@@ -197,7 +193,7 @@ void test_transaction::send_transaction_empty( uint64_t receiver, uint64_t, uint
    auto trx = transaction();
    trx.send( 0, name{receiver} );
 
-   eosio_assert( false, "send_transaction_empty() should've thrown an error" );
+   check( false, "send_transaction_empty() should've thrown an error" );
 }
 
 void test_transaction::send_transaction_trigger_error_handler( uint64_t receiver, uint64_t, uint64_t ) {
@@ -212,12 +208,12 @@ void test_transaction::send_transaction_trigger_error_handler( uint64_t receiver
 }
 
 void test_transaction::assert_false_error_handler( const eosio::transaction& dtrx ) {
-   eosio_assert( dtrx.actions.size() == 1, "transaction should only have one action" );
-   eosio_assert( dtrx.actions[0].account == "testapi"_n, "transaction has wrong code" );
-   eosio_assert( dtrx.actions[0].name.value == WASM_TEST_ACTION("test_action", "assert_false"), "transaction has wrong name" );
-   eosio_assert( dtrx.actions[0].authorization.size() == 1, "action should only have one authorization" );
-   eosio_assert( dtrx.actions[0].authorization[0].actor == "testapi"_n, "action's authorization has wrong actor" );
-   eosio_assert( dtrx.actions[0].authorization[0].permission == "active"_n, "action's authorization has wrong permission" );
+   check( dtrx.actions.size() == 1, "transaction should only have one action" );
+   check( dtrx.actions[0].account == "testapi"_n, "transaction has wrong code" );
+   check( dtrx.actions[0].name.value == WASM_TEST_ACTION("test_action", "assert_false"), "transaction has wrong name" );
+   check( dtrx.actions[0].authorization.size() == 1, "action should only have one authorization" );
+   check( dtrx.actions[0].authorization[0].actor == "testapi"_n, "action's authorization has wrong actor" );
+   check( dtrx.actions[0].authorization[0].permission == "active"_n, "action's authorization has wrong permission" );
 }
 
 /**
@@ -236,7 +232,7 @@ void test_transaction::send_transaction_large( uint64_t receiver, uint64_t, uint
 
    trx.send( 0, name{receiver} );
 
-   eosio_assert( false, "send_transaction_large() should've thrown an error" );
+   check( false, "send_transaction_large() should've thrown an error" );
 }
 
 /**
@@ -290,13 +286,13 @@ void test_transaction::send_deferred_tx_with_dtt_action() {
 void test_transaction::cancel_deferred_transaction_success() {
    using namespace eosio;
    auto r = cancel_deferred( 0xffffffffffffffff ); //use the same id (0) as in send_deferred_transaction
-   eosio_assert( (bool)r, "transaction was not found" );
+   check( (bool)r, "transaction was not found" );
 }
 
 void test_transaction::cancel_deferred_transaction_not_found() {
    using namespace eosio;
    auto r = cancel_deferred( 0xffffffffffffffff ); //use the same id (0) as in send_deferred_transaction
-   eosio_assert( !r, "transaction was canceled, whild should not be found" );
+   check( !r, "transaction was canceled, whild should not be found" );
 }
 
 void test_transaction::send_cf_action() {
@@ -309,7 +305,7 @@ void test_transaction::send_cf_action_fail() {
    using namespace eosio;
    action act( std::vector<permission_level>{{"dummy"_n, "active"_n}}, "dummy"_n, "event1"_n, std::vector<char>{} );
    act.send_context_free();
-   eosio_assert( false, "send_cfa_action_fail() should've thrown an error" );
+   check( false, "send_cfa_action_fail() should've thrown an error" );
 }
 
 void test_transaction::stateful_api() {

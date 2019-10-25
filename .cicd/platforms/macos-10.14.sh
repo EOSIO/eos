@@ -2,7 +2,7 @@
 set -eo pipefail
 VERSION=1
 brew update
-brew install git cmake python@2 python libtool libusb graphviz automake wget gmp llvm@4 pkgconfig doxygen openssl jq || :
+brew install git cmake python@2 python libtool libusb graphviz automake wget gmp llvm@7 pkgconfig doxygen openssl jq || :
 if [[ ! $PINNED == false || $UNPINNED == true ]]; then
     # install clang from source
     git clone --single-branch --branch release_80 https://git.llvm.org/git/llvm.git clang8
@@ -50,13 +50,13 @@ if [[ ! $PINNED == false || $UNPINNED == true ]]; then
     cd ../..
     rm -rf clang8
     # install boost from source
-    curl -LO https://dl.bintray.com/boostorg/release/1.70.0/source/boost_1_70_0.tar.bz2
-    tar -xjf boost_1_70_0.tar.bz2
-    cd boost_1_70_0
+    curl -LO https://dl.bintray.com/boostorg/release/1.71.0/source/boost_1_71_0.tar.bz2
+    tar -xjf boost_1_71_0.tar.bz2
+    cd boost_1_71_0
     ./bootstrap.sh --prefix=/usr/local
     sudo ./b2 --with-iostreams --with-date_time --with-filesystem --with-system --with-program_options --with-chrono --with-test -q -j$(getconf _NPROCESSORS_ONLN) install
     cd ..
-    sudo rm -rf boost_1_70_0.tar.bz2 boost_1_70_0  
+    sudo rm -rf boost_1_71_0.tar.bz2 boost_1_71_0
 else
     # install boost from brew
     brew install boost || true

@@ -1,22 +1,10 @@
 cmake_minimum_required( VERSION 3.5 )
 
-set(EOSIO_VERSION_MIN "1.8")
-set(EOSIO_VERSION_SOFT_MAX "1.8")
+set(EOSIO_VERSION_MIN "2.0")
+set(EOSIO_VERSION_SOFT_MAX "2.0")
 #set(EOSIO_VERSION_HARD_MAX "")
 
-#list(APPEND CMAKE_MODULE_PATH "${CMAKE_BINARY_DIR}/../../modules")
-
-get_cmake_property(_variableNames VARIABLES)
-list (SORT _variableNames)
-foreach (_variableName ${_variableNames})
-    message(STATUS "${_variableName}=${${_variableName}}")
-endforeach()
-
-message(WARNING "CMAKE_MODULE_PATH=${CMAKE_MODULE_PATH} EOSIO_VERSION=${EOSIO_VERSION}")
-include(EosioTester)
-
-#set(eosio_DIR "${CMAKE_BINARY_DIR}/../../modules")
-#find_package(eosio)
+find_package(eosio)
 
 ### Check the version of eosio
 #set(VERSION_MATCH_ERROR_MSG "")
@@ -41,9 +29,7 @@ include(CTest) # eliminates DartConfiguration.tcl errors at test runtime
 enable_testing()
 # build unit test executable
 file(GLOB UNIT_TESTS "*.cpp" "*.hpp") # find all unit test suites
-add_executable( unit_test ${UNIT_TESTS}) # build unit tests as one executable
-
-#add_eosio_test_executable(unit_test ${UNIT_TESTS}) # build unit tests as one executable
+add_eosio_test_executable(unit_test ${UNIT_TESTS}) # build unit tests as one executable
 # mark test suites for execution
 #foreach(TEST_SUITE ${UNIT_TESTS}) # create an independent target for each test suite
 #  execute_process(COMMAND bash -c "grep -E 'BOOST_AUTO_TEST_SUITE\\s*[(]' ${TEST_SUITE} | grep -vE '//.*BOOST_AUTO_TEST_SUITE\\s*[(]' | cut -d ')' -f 1 | cut -d '(' -f 2" OUTPUT_VARIABLE SUITE_NAME OUTPUT_STRIP_TRAILING_WHITESPACE) # get the test suite name from the *.cpp file

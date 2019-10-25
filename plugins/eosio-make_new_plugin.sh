@@ -9,13 +9,13 @@ fi
 pluginName=$1
 
 echo Copying template...
-cp -r template_plugin $pluginName
+cp -R template_plugin $pluginName
 
 echo Renaming files/directories...
 mv $pluginName/include/eosio/template_plugin $pluginName/include/eosio/$pluginName
 for file in `find $pluginName -type f -name '*template_plugin*'`; do mv $file `sed s/template_plugin/$pluginName/g <<< $file`; done;
 
 echo Renaming in files...
-find $pluginName -type f -exec sed -i "s/template_plugin/$pluginName/g" {} \;
+for file in `find $pluginName -type f`; do sed -i.bak -e "s/template_plugin/$pluginName/g" "$file" && rm "$file.bak"; done
 
 echo "Done! $pluginName is ready. Don't forget to add it to CMakeLists.txt!"

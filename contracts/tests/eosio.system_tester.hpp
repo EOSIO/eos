@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE.txt
- */
 #pragma once
 
 #include <eosio/testing/tester.hpp>
@@ -29,6 +25,7 @@ using mvo = fc::mutable_variant_object;
 
 
 namespace rem_system {
+
 
 class eosio_system_tester : public TESTER {
 public:
@@ -58,7 +55,7 @@ public:
    }
 
    void create_core_token( symbol core_symbol = symbol{CORE_SYM} ) {
-      FC_ASSERT( core_symbol.precision() != 4, "create_core_token assumes precision of core token is 4" );
+      FC_ASSERT( core_symbol.decimals() == 4, "create_core_token assumes core token has 4 digits of precision" );
       create_currency( N(rem.token), config::system_account_name, asset(100000000000000, core_symbol) );
       issue( asset(10000000000000, core_symbol) );
       BOOST_REQUIRE_EQUAL( asset(10000000000000, core_symbol), get_balance( "rem", core_symbol ) );
@@ -259,12 +256,22 @@ public:
    action_result buyram( const account_name& payer, account_name receiver, const asset& eosin ) {
       return push_action( payer, N(buyram), mvo()( "payer",payer)("receiver",receiver)("quant",eosin) );
    }
+   action_result buyram( std::string_view payer, std::string_view receiver, const asset& eosin ) {
+      return buyram( account_name(payer), account_name(receiver), eosin );
+   }
+
    action_result buyrambytes( const account_name& payer, account_name receiver, uint32_t numbytes ) {
       return push_action( payer, N(buyrambytes), mvo()( "payer",payer)("receiver",receiver)("bytes",numbytes) );
+   }
+   action_result buyrambytes( std::string_view payer, std::string_view receiver, uint32_t numbytes ) {
+      return buyrambytes( account_name(payer), account_name(receiver), numbytes );
    }
 
    action_result sellram( const account_name& account, uint64_t numbytes ) {
       return push_action( account, N(sellram), mvo()( "account", account)("bytes",numbytes) );
+   }
+   action_result sellram( std::string_view account, uint64_t numbytes ) {
+      return sellram( account_name(account), numbytes );
    }
 
    action_result push_action( const account_name& signer, const action_name &name, const variant_object &data, bool auth = true ) {
@@ -275,7 +282,7 @@ public:
          act.name = name;
          act.data = abi_ser.variant_to_binary( action_type_name, data, abi_serializer_max_time );
 
-         return base_tester::push_action( std::move(act), auth ? uint64_t(signer) : signer == N(bob111111111) ? N(alice1111111) : N(bob111111111) );
+         return base_tester::push_action( std::move(act), (auth ? signer : signer == N(bob111111111) ? N(alice1111111) : N(bob111111111)).to_uint64_t() );
    }
 
    action_result stake( const account_name& from, const account_name& to, const asset& net, const asset& cpu ) {
@@ -287,9 +294,15 @@ public:
                           ("transfer", 0 )
       );
    }
+   action_result stake( std::string_view from, std::string_view to, const asset& net, const asset& cpu ) {
+      return stake( account_name(from), account_name(to), net, cpu );
+   }
 
    action_result stake( const account_name& acnt, const asset& net, const asset& cpu ) {
       return stake( acnt, acnt, net, cpu );
+   }
+   action_result stake( std::string_view acnt, const asset& net, const asset& cpu ) {
+      return stake( account_name(acnt), net, cpu );
    }
 
    action_result stake_with_transfer( const account_name& from, const account_name& to, const asset& net, const asset& cpu ) {
@@ -301,9 +314,15 @@ public:
                           ("transfer", true )
       );
    }
+   action_result stake_with_transfer( std::string_view from, std::string_view to, const asset& net, const asset& cpu ) {
+      return stake_with_transfer( account_name(from), account_name(to), net, cpu );
+   }
 
    action_result stake_with_transfer( const account_name& acnt, const asset& net, const asset& cpu ) {
       return stake_with_transfer( acnt, acnt, net, cpu );
+   }
+   action_result stake_with_transfer( std::string_view acnt, const asset& net, const asset& cpu ) {
+      return stake_with_transfer( account_name(acnt), net, cpu );
    }
 
    action_result unstake( const account_name& from, const account_name& to, const asset& net, const asset& cpu ) {
@@ -314,9 +333,15 @@ public:
                           ("unstake_cpu_quantity", cpu)
       );
    }
+   action_result unstake( std::string_view from, std::string_view to, const asset& net, const asset& cpu ) {
+      return unstake( account_name(from), account_name(to), net, cpu );
+   }
 
    action_result unstake( const account_name& acnt, const asset& net, const asset& cpu ) {
       return unstake( acnt, acnt, net, cpu );
+   }
+   action_result unstake( std::string_view acnt, const asset& net, const asset& cpu ) {
+      return unstake( account_name(acnt), net, cpu );
    }
 
    int64_t bancor_convert( int64_t S, int64_t R, int64_t T ) { return double(R) * T  / ( double(S) + T ); };
@@ -575,7 +600,7 @@ public:
 
    fc::variant get_loan_info( const uint64_t& loan_num, bool cpu ) const {
       name table_name = cpu ? N(cpuloan) : N(netloan);
-      vector<char> data = get_row_by_account( config::system_account_name, config::system_account_name, table_name, loan_num );
+      vector<char> data = get_row_by_account( config::system_account_name, config::system_account_name, table_name, account_name(loan_num) );
       return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "rex_loan", data, abi_serializer_max_time );
    }
 
@@ -679,6 +704,9 @@ public:
                           ("bid", bid)
                           );
    }
+   action_result bidname( std::string_view bidder, std::string_view newname, const asset& bid ) {
+      return bidname( account_name(bidder), account_name(newname), bid );
+   }
 
    static fc::variant_object producer_parameters_example( int n ) {
       return mutable_variant_object()
@@ -720,34 +748,53 @@ public:
                          ("proxy",     proxy)
                          ("producers", producers));
    }
+   action_result vote( const account_name& voter, const std::vector<account_name>& producers, std::string_view proxy ) {
+      return vote( voter, producers, account_name(proxy) );
+   }
 
    uint32_t last_block_time() const {
       return time_point_sec( control->head_block_time() ).sec_since_epoch();
    }
 
    asset get_balance( const account_name& act, symbol balance_symbol = symbol{CORE_SYM} ) {
-      vector<char> data = get_row_by_account( N(rem.token), act, N(accounts), balance_symbol.to_symbol_code().value );
+      vector<char> data = get_row_by_account( N(rem.token), act, N(accounts), account_name(balance_symbol.to_symbol_code().value) );
       return data.empty() ? asset(0, balance_symbol) : token_abi_ser.binary_to_variant("account", data, abi_serializer_max_time)["balance"].as<asset>();
+   }
+
+   asset get_balance( std::string_view act, symbol balance_symbol = symbol{CORE_SYM} ) {
+      return get_balance( account_name(act), balance_symbol );
    }
 
    fc::variant get_total_stake( const account_name& act ) {
       vector<char> data = get_row_by_account( config::system_account_name, act, N(userres), act );
       return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "user_resources", data, abi_serializer_max_time );
    }
+   fc::variant get_total_stake(  std::string_view act ) {
+      return get_total_stake( account_name(act) );
+   }
 
    fc::variant get_voter_info( const account_name& act ) {
       vector<char> data = get_row_by_account( config::system_account_name, config::system_account_name, N(voters), act );
       return data.empty() ? fc::variant() : abi_ser.binary_to_variant( "voter_info", data, abi_serializer_max_time );
+   }
+   fc::variant get_voter_info(  std::string_view act ) {
+      return get_voter_info( account_name(act) );
    }
 
    fc::variant get_producer_info( const account_name& act ) {
       vector<char> data = get_row_by_account( config::system_account_name, config::system_account_name, N(producers), act );
       return abi_ser.binary_to_variant( "producer_info", data, abi_serializer_max_time );
    }
+   fc::variant get_producer_info( std::string_view act ) {
+      return get_producer_info( account_name(act) );
+   }
 
    fc::variant get_producer_info2( const account_name& act ) {
       vector<char> data = get_row_by_account( config::system_account_name, config::system_account_name, N(producers2), act );
       return abi_ser.binary_to_variant( "producer_info2", data, abi_serializer_max_time );
+   }
+   fc::variant get_producer_info2( std::string_view act ) {
+      return get_producer_info2( account_name(act) );
    }
 
    void create_currency( name contract, name manager, asset maxsupply ) {
@@ -773,6 +820,18 @@ public:
                                 ("quantity", amount)
                                 ("memo", "")
                                 );
+   }
+
+   void transfer( const name& from, std::string_view to, const asset& amount, const name& manager = config::system_account_name ) {
+      transfer( from, name(to), amount, manager );
+   }
+
+   void transfer( std::string_view from, std::string_view to, const asset& amount, std::string_view manager ) {
+      transfer( name(from), name(to), amount, name(manager) );
+   }
+
+   void transfer( std::string_view from, std::string_view to, const asset& amount ) {
+      transfer( name(from), name(to), amount );
    }
 
    void issue_and_transfer( const name& to, const asset& amount, const name& manager = config::system_account_name ) {
@@ -801,6 +860,18 @@ public:
       push_transaction( trx );
    }
 
+   void issue_and_transfer( std::string_view to, const asset& amount, std::string_view manager ) {
+      issue_and_transfer( name(to), amount, name(manager) );
+   }
+
+   void issue_and_transfer( std::string_view to, const asset& amount, const name& manager ) {
+      issue_and_transfer( name(to), amount, manager);
+   }
+
+   void issue_and_transfer( std::string_view to, const asset& amount ) {
+      issue_and_transfer( name(to), amount );
+   }
+
    double stake2votes( asset stake ) {
       auto now = control->pending_block_time().time_since_epoch().count() / 1000000;
       return stake.get_amount() * pow(2, int64_t((now - (config::block_timestamp_epoch / 1000)) / (86400 * 7))/ double(52) ); // 52 week periods (i.e. ~years)
@@ -813,7 +884,7 @@ public:
    fc::variant get_stats( const string& symbolname ) {
       auto symb = eosio::chain::symbol::from_string(symbolname);
       auto symbol_code = symb.to_symbol_code().value;
-      vector<char> data = get_row_by_account( N(rem.token), symbol_code, N(stat), symbol_code );
+      vector<char> data = get_row_by_account( N(rem.token), name(symbol_code), N(stat), account_name(symbol_code) );
       return data.empty() ? fc::variant() : token_abi_ser.binary_to_variant( "currency_stats", data, abi_serializer_max_time );
    }
 
@@ -850,7 +921,7 @@ public:
       abi_serializer msig_abi_ser;
       {
          create_account_with_resources( N(rem.msig), config::system_account_name );
-         BOOST_REQUIRE_EQUAL( success(), buyram( "rem", "rem.msig", core_sym::from_string("5000.0000") ) );
+         BOOST_REQUIRE_EQUAL( success(), buyram( N(rem), N(rem.msig), core_sym::from_string("5000.0000") ) );
          produce_block();
 
          auto trace = base_tester::push_action(config::system_account_name, N(setpriv),
@@ -873,8 +944,8 @@ public:
 
    vector<name> active_and_vote_producers() {
       //stake more than 15% of total EOS supply to activate chain
-      transfer( "rem", "alice1111111", core_sym::from_string("650000000.0000"), "rem" );
-      BOOST_REQUIRE_EQUAL( success(), stake( "alice1111111", "alice1111111", core_sym::from_string("300000000.0000"), core_sym::from_string("300000000.0000") ) );
+      transfer( N(rem), N(alice1111111), core_sym::from_string("650000000.0000"), config::system_account_name );
+      BOOST_REQUIRE_EQUAL( success(), stake( N(alice1111111), N(alice1111111), core_sym::from_string("300000000.0000"), core_sym::from_string("300000000.0000") ) );
 
       // create accounts {defproducera, defproducerb, ..., defproducerz} and register as producers
       std::vector<account_name> producer_names;
@@ -906,9 +977,9 @@ public:
 
       //vote for producers
       {
-         transfer( config::system_account_name, "alice1111111", core_sym::from_string("100000000.0000"), config::system_account_name );
-         BOOST_REQUIRE_EQUAL(success(), stake( "alice1111111", core_sym::from_string("30000000.0000"), core_sym::from_string("30000000.0000") ) );
-         BOOST_REQUIRE_EQUAL(success(), buyram( "alice1111111", "alice1111111", core_sym::from_string("30000000.0000") ) );
+         transfer( config::system_account_name, N(alice1111111), core_sym::from_string("100000000.0000"), config::system_account_name );
+         BOOST_REQUIRE_EQUAL(success(), stake( N(alice1111111), core_sym::from_string("30000000.0000"), core_sym::from_string("30000000.0000") ) );
+         BOOST_REQUIRE_EQUAL(success(), buyram( N(alice1111111), N(alice1111111), core_sym::from_string("30000000.0000") ) );
          BOOST_REQUIRE_EQUAL(success(), push_action(N(alice1111111), N(voteproducer), mvo()
                                                     ("voter",  "alice1111111")
                                                     ("proxy", name(0).to_string())
@@ -991,13 +1062,22 @@ inline fc::mutable_variant_object voter( account_name acct ) {
       ("is_proxy", 0)
       ;
 }
+inline fc::mutable_variant_object voter( std::string_view acct ) {
+   return voter( account_name(acct) );
+}
 
 inline fc::mutable_variant_object voter( account_name acct, const asset& vote_stake ) {
    return voter( acct )( "staked", vote_stake.get_amount() );
 }
+inline fc::mutable_variant_object voter( std::string_view acct, const asset& vote_stake ) {
+   return voter( account_name(acct), vote_stake );
+}
 
 inline fc::mutable_variant_object voter( account_name acct, int64_t vote_stake ) {
    return voter( acct )( "staked", vote_stake );
+}
+inline fc::mutable_variant_object voter( std::string_view acct, int64_t vote_stake ) {
+   return voter( account_name(acct), vote_stake );
 }
 
 inline fc::mutable_variant_object proxy( account_name acct ) {

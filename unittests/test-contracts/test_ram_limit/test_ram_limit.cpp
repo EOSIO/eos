@@ -1,12 +1,8 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
 #include <utility>
 #include <vector>
 #include <string>
 
-#include <eosiolib/eosio.hpp>
+#include <eosio/eosio.hpp>
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wsign-conversion"
@@ -46,7 +42,7 @@ CONTRACT test_ram_limit : public contract {
          test_table table( self, self.value );
          for ( int key = from; key <=to; ++key ) {
             auto itr = table.find(key);
-            eosio_assert ( itr != table.end(), "could not find test_table entry" );
+            check( itr != table.end(), "could not find test_table entry" );
             table.erase(itr);
          }
       }
@@ -58,7 +54,7 @@ CONTRACT test_ram_limit : public contract {
          for ( int key = from; key <= to; ++key ) {
             auto itr = table.find(key);
             eosio::print("\nkey=", key);
-            eosio_assert ( itr != table.end(), "could not find test_table entry" );
+            check( itr != table.end(), "could not find test_table entry" );
             eosio::print(" size=", itr->data.size());
          }
       }
