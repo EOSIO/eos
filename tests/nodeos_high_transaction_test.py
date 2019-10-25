@@ -21,10 +21,10 @@ import signal
 ###############################################################
 # nodeos_high_transaction_test
 # 
-# This test sets up 1 producing node and 1 non-producing node.
-#   the non-producing node will be sent many transfers.  When
-#   it is complete it verifies that all of the transactions
-#   made it into blocks.
+# This test sets up <-p> producing node(s) and <-n - -p>
+#   non-producing node(s). The non-producing node will be sent
+#   many transfers.  When it is complete it verifies that all
+#   of the transactions made it into blocks.
 #
 ###############################################################
 
@@ -152,28 +152,58 @@ try:
     nextTime = time.perf_counter()
     Print("Delegate Bandwidth took %s sec" % (nextTime - startTime))
     startTime = nextTime
+    lastIrreversibleBlockNum = None
 
-    def cacheTransIdInBlock(blockNum, transToBlock):
-        block = node.getBlock(blockNum)
-        if block is None:
-            return None
-        transactions = block["transactions"]
-        for trans_receipt in transactions:
-            btrans = trans_receipt["trx"]
-            assert btrans is not None, Print("ERROR: could not retrieve \"trx\" from transaction_receipt: %s, from transId: %s that led to block: %s" % (json.dumps(trans_receipt, indent=2), transId, json.dumps(block, indent=2)))
-            btransId = btrans["id"]
-            assert btransId is not None, Print("ERROR: could not retrieve \"id\" from \"trx\": %s, from transId: %s that led to block: %s" % (json.dumps(btrans, indent=2), transId, json.dumps(block, indent=2)))
-            transToBlock[btransId] = block
-        return block
+    def cacheTransIdInBlock(transId, transToBlock, node):
+        global lastIrreversibleBlockNum
+        lastPassLIB = None
+        blockWaitTimeout = 60
+        transTimeDelayed = False
+        while True:
+            trans = node.getTransaction(transId, delayedRetry=False)
+            if trans is None:
+                if transTimeDelayed:
+                    return (None, None)
+                else:
+                    if Utils.Debug:
+                        Print("Transaction not found for trans id: %s. Will wait %d seconds to see if it arrives in a block." %
+                              (transId, args.transaction_time_delta))
+                    transTimeDelayed = True
+                    node.waitForTransInBlock(transId, timeout = args.transaction_time_delta)
+                    continue
+
+            lastIrreversibleBlockNum = trans["last_irreversible_block"]
+            blockNum = Node.getTransBlockNum(trans)
+            assert blockNum is not None, Print("ERROR: could not retrieve block num from transId: %s, trans: %s" % (transId, json.dumps(trans, indent=2)))
+            block = node.getBlock(blockNum)
+            if block is not None:
+                transactions = block["transactions"]
+                for trans_receipt in transactions:
+                    btrans = trans_receipt["trx"]
+                    assert btrans is not None, Print("ERROR: could not retrieve \"trx\" from transaction_receipt: %s, from transId: %s that led to block: %s" % (json.dumps(trans_receipt, indent=2), transId, json.dumps(block, indent=2)))
+                    btransId = btrans["id"]
+                    assert btransId is not None, Print("ERROR: could not retrieve \"id\" from \"trx\": %s, from transId: %s that led to block: %s" % (json.dumps(btrans, indent=2), transId, json.dumps(block, indent=2)))
+                    transToBlock[btransId] = block
+
+                break
+
+            if lastPassLIB is not None and lastPassLIB >= lastIrreversibleBlockNum:
+                Print("ERROR: could not find block number: %d from transId: %s, waited %d seconds for LIB to advance but it did not. trans: %s" % (blockNum, transId, blockWaitTimeout, json.dumps(trans, indent=2)))
+                return (trans, None)
+            if Utils.Debug:
+                extra = "" if lastPassLIB is None else " and since it progressed from %d in our last pass" % (lastPassLIB)
+                Print("Transaction returned for trans id: %s indicated it was in block num: %d, but that block could not be found.  LIB is %d%s, we will wait to see if the block arrives." %
+                      (transId, blockNum, lastIrreversibleBlockNum, extra))
+            lastPassLIB = lastIrreversibleBlockNum
+            node.waitForBlock(blockNum, timeout = blockWaitTimeout)
+
+        return (block, trans)
 
     def findTransInBlock(transId, transToBlock, node):
         if transId in transToBlock:
             return
-        trans = node.getTransaction(transId, delayedRetry=False)
+        (block, trans) = cacheTransIdInBlock(transId, transToBlock, node)
         assert trans is not None, Print("ERROR: could not find transaction for transId: %s" % (transId))
-        blockNum = node.getTransBlockNum(trans)
-        assert blockNum is not None, Print("ERROR: could not retrieve block num from transId: %s, trans: %s" % (transId, json.dumps(trans, indent=2)))
-        block = cacheTransIdInBlock(blockNum, transToBlock)
         assert block is not None, Print("ERROR: could not retrieve block with block num: %d, from transId: %s, trans: %s" % (blockNum, transId, json.dumps(trans, indent=2)))
 
     transToBlock = {}
@@ -238,22 +268,25 @@ try:
     lastBlockNum = None
     lastTransId = None
     transOrder = 0
+    lastPassLIB = None
     for transId in history:
         blockNum = None
         block = None
         transDesc = None
         if transId not in transToBlock:
-            trans = node.getTransaction(transId, delayedRetry=False)
-            if trans is None:
+            (block, trans) = cacheTransIdInBlock(transId, transToBlock, node)
+            if trans is None or block is None:
                 missingTransactions.append({
                     "newer_trans_id" : transId,
                     "newer_trans_index" : transOrder,
-                    "newer_bnum" : blockNum,
+                    "newer_bnum" : None,
                     "last_trans_id" : lastTransId,
                     "last_trans_index" : transOrder - 1,
                     "last_bnum" : lastBlockNum,
                 })
-            blockNum = node.getTransBlockNum(trans)
+                if newestBlockNum > lastBlockNum:
+                    missingTransactions[-1]["highest_block_seen"] = newestBlockNum
+            blockNum = Node.getTransBlockNum(trans)
             assert blockNum is not None, Print("ERROR: could not retrieve block num from transId: %s, trans: %s" % (transId, json.dumps(trans, indent=2)))
         else:
             block = transToBlock[transId]
@@ -284,18 +317,6 @@ try:
             newestBlockNum = blockNum
             newestBlockNumTransId = transId
             newestBlockNumTransOrder = transOrder
-
-        if block is None and not cacheTransIdInBlock(blockNum, transToBlock):
-            missingTransactions.append({
-                "newer_trans_id" : transId,
-                "newer_trans_index" : transOrder,
-                "newer_bnum" : blockNum,
-                "last_trans_id" : lastTransId,
-                "last_trans_index" : transOrder - 1,
-                "last_bnum" : lastBlockNum,
-            })
-            if newestBlockNum > lastBlockNum:
-                transBlockOrderWeird[-1]["highest_block_seen"] = newestBlockNum
 
         lastTransId = transId
         transOrder += 1
