@@ -3,11 +3,19 @@ steps:
 
   - label: ":pipeline: Generate Pipeline Steps"
     command:
-      - "./.cicd/generate-pipeline.sh > generated-pipeline.yml"
-      - "buildkite-agent pipeline upload < generated-pipeline.yml"
-      - "buildkite-agent artifact upload generated-pipeline.yml"
-    env:
-      BUILDKITE_DISABLE_GIT_SUBMODULES: true 
+      - "ls -la && pwd"
+    plugins:
+      thedyrt/skip-checkout#v0.1.1:
+        cd: ~
     agents:
       queue: "automation-basic-builder-fleet"
     timeout: ${TIMEOUT:-10}
+
+  # - label: ":pipeline: Generate Pipeline Steps"
+  #   command:
+  #     - "./.cicd/generate-pipeline.sh > generated-pipeline.yml"
+  #     - "buildkite-agent pipeline upload < generated-pipeline.yml"
+  #     - "buildkite-agent artifact upload generated-pipeline.yml"
+  #   agents:
+  #     queue: "automation-basic-builder-fleet"
+  #   timeout: ${TIMEOUT:-10}
