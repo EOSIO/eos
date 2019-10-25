@@ -1,12 +1,7 @@
 {
     "____comment": "This file was generated with eosio-abigen. DO NOT EDIT ",
     "version": "eosio::abi/1.1",
-    "types": [
-        {
-            "new_type_name": "block_signing_authority",
-            "type": "variant_block_signing_authority_v0"
-        }
-    ],
+    "types": [],
     "structs": [
         {
             "name": "abi_hash",
@@ -51,20 +46,6 @@
                 {
                     "name": "waits",
                     "type": "wait_weight[]"
-                }
-            ]
-        },
-        {
-            "name": "block_signing_authority_v0",
-            "base": "",
-            "fields": [
-                {
-                    "name": "threshold",
-                    "type": "uint32"
-                },
-                {
-                    "name": "keys",
-                    "type": "key_weight[]"
                 }
             ]
         },
@@ -271,7 +252,7 @@
             ]
         },
         {
-            "name": "producer_authority",
+            "name": "producer_key",
             "base": "",
             "fields": [
                 {
@@ -279,8 +260,8 @@
                     "type": "name"
                 },
                 {
-                    "name": "authority",
-                    "type": "block_signing_authority"
+                    "name": "block_signing_key",
+                    "type": "public_key"
                 }
             ]
         },
@@ -363,24 +344,6 @@
             ]
         },
         {
-            "name": "setglimits",
-            "base": "",
-            "fields": [
-                {
-                    "name": "ram",
-                    "type": "uint64"
-                },
-                {
-                    "name": "net",
-                    "type": "uint64"
-                },
-                {
-                    "name": "cpu",
-                    "type": "uint64"
-                }
-            ]
-        },
-        {
             "name": "setparams",
             "base": "",
             "fields": [
@@ -410,7 +373,7 @@
             "fields": [
                 {
                     "name": "schedule",
-                    "type": "producer_authority[]"
+                    "type": "producer_key[]"
                 }
             ]
         },
@@ -473,87 +436,82 @@
         {
             "name": "activate",
             "type": "activate",
-            "ricardian_contract": "---\ntitle: TITLE\nsummary: SUMMARY\nicon: ICON\n---\n\nBODY"
+            "ricardian_contract": "---\nspec_version: \"0.2.0\"\ntitle: Activate Protocol Feature\nsummary: 'Activate protocol feature {{nowrap feature_digest}}'\nicon: http://127.0.0.1/ricardian_assets/eosio.contracts/icons/admin.png#9bf1cec664863bd6aaac0f814b235f8799fb02c850e9aa5da34e8a004bd6518e\n---\n\n{{$action.account}} activates the protocol feature with a digest of {{feature_digest}}."
         },
         {
             "name": "canceldelay",
             "type": "canceldelay",
-            "ricardian_contract": "---\ntitle: TITLE\nsummary: SUMMARY\nicon: ICON\n---\n\nBODY"
+            "ricardian_contract": "---\nspec_version: \"0.2.0\"\ntitle: Cancel Delayed Transaction\nsummary: '{{nowrap canceling_auth.actor}} cancels a delayed transaction'\nicon: http://127.0.0.1/ricardian_assets/eosio.contracts/icons/account.png#3d55a2fc3a5c20b456f5657faf666bc25ffd06f4836c5e8256f741149b0b294f\n---\n\n{{canceling_auth.actor}} cancels the delayed transaction with id {{trx_id}}."
         },
         {
             "name": "deleteauth",
             "type": "deleteauth",
-            "ricardian_contract": "---\ntitle: TITLE\nsummary: SUMMARY\nicon: ICON\n---\n\nBODY"
+            "ricardian_contract": "---\nspec_version: \"0.2.0\"\ntitle: Delete Account Permission\nsummary: 'Delete the {{nowrap permission}} permission of {{nowrap account}}'\nicon: http://127.0.0.1/ricardian_assets/eosio.contracts/icons/account.png#3d55a2fc3a5c20b456f5657faf666bc25ffd06f4836c5e8256f741149b0b294f\n---\n\nDelete the {{permission}} permission of {{account}}."
         },
         {
             "name": "linkauth",
             "type": "linkauth",
-            "ricardian_contract": "---\ntitle: TITLE\nsummary: SUMMARY\nicon: ICON\n---\n\nBODY"
+            "ricardian_contract": "---\nspec_version: \"0.2.0\"\ntitle: Link Action to Permission\nsummary: '{{nowrap account}} sets the minimum required permission for the {{#if type}}{{nowrap type}} action of the{{/if}} {{nowrap code}} contract to {{nowrap requirement}}'\nicon: http://127.0.0.1/ricardian_assets/eosio.contracts/icons/account.png#3d55a2fc3a5c20b456f5657faf666bc25ffd06f4836c5e8256f741149b0b294f\n---\n\n{{account}} sets the minimum required permission for the {{#if type}}{{type}} action of the{{/if}} {{code}} contract to {{requirement}}.\n\n{{#if type}}{{else}}Any links explicitly associated to specific actions of {{code}} will take precedence.{{/if}}"
         },
         {
             "name": "newaccount",
             "type": "newaccount",
-            "ricardian_contract": "---\ntitle: TITLE\nsummary: SUMMARY\nicon: ICON\n---\n\nBODY"
+            "ricardian_contract": "---\nspec_version: \"0.2.0\"\ntitle: Create New Account\nsummary: '{{nowrap creator}} creates a new account with the name {{nowrap name}}'\nicon: http://127.0.0.1/ricardian_assets/eosio.contracts/icons/account.png#3d55a2fc3a5c20b456f5657faf666bc25ffd06f4836c5e8256f741149b0b294f\n---\n\n{{creator}} creates a new account with the name {{name}} and the following permissions:\n\nowner permission with authority:\n{{to_json owner}}\n\nactive permission with authority:\n{{to_json active}}"
         },
         {
             "name": "onerror",
             "type": "onerror",
-            "ricardian_contract": "---\ntitle: TITLE\nsummary: SUMMARY\nicon: ICON\n---\n\nBODY"
+            "ricardian_contract": ""
         },
         {
             "name": "reqactivated",
             "type": "reqactivated",
-            "ricardian_contract": "---\ntitle: TITLE\nsummary: SUMMARY\nicon: ICON\n---\n\nBODY"
+            "ricardian_contract": "---\nspec_version: \"0.2.0\"\ntitle: Assert Protocol Feature Activation\nsummary: 'Assert that protocol feature {{nowrap feature_digest}} has been activated'\nicon: http://127.0.0.1/ricardian_assets/eosio.contracts/icons/admin.png#9bf1cec664863bd6aaac0f814b235f8799fb02c850e9aa5da34e8a004bd6518e\n---\n\nAssert that the protocol feature with a digest of {{feature_digest}} has been activated."
         },
         {
             "name": "reqauth",
             "type": "reqauth",
-            "ricardian_contract": "---\ntitle: TITLE\nsummary: SUMMARY\nicon: ICON\n---\n\nBODY"
+            "ricardian_contract": "---\nspec_version: \"0.2.0\"\ntitle: Assert Authorization\nsummary: 'Assert that authorization by {{nowrap from}} is provided'\nicon: http://127.0.0.1/ricardian_assets/eosio.contracts/icons/account.png#3d55a2fc3a5c20b456f5657faf666bc25ffd06f4836c5e8256f741149b0b294f\n---\n\nAssert that authorization by {{from}} is provided."
         },
         {
             "name": "setabi",
             "type": "setabi",
-            "ricardian_contract": "---\ntitle: TITLE\nsummary: SUMMARY\nicon: ICON\n---\n\nBODY"
+            "ricardian_contract": "---\nspec_version: \"0.2.0\"\ntitle: Deploy Contract ABI\nsummary: 'Deploy contract ABI on account {{nowrap account}}'\nicon: http://127.0.0.1/ricardian_assets/eosio.contracts/icons/account.png#3d55a2fc3a5c20b456f5657faf666bc25ffd06f4836c5e8256f741149b0b294f\n---\n\nDeploy the ABI file associated with the contract on account {{account}}."
         },
         {
             "name": "setalimits",
             "type": "setalimits",
-            "ricardian_contract": "---\ntitle: TITLE\nsummary: SUMMARY\nicon: ICON\n---\n\nBODY"
+            "ricardian_contract": "---\nspec_version: \"0.2.0\"\ntitle: Adjust Resource Limits of Account\nsummary: 'Adjust resource limits of account {{nowrap account}}'\nicon: http://127.0.0.1/ricardian_assets/eosio.contracts/icons/admin.png#9bf1cec664863bd6aaac0f814b235f8799fb02c850e9aa5da34e8a004bd6518e\n---\n\n{{$action.account}} updates {{account}}’s resource limits to have a RAM quota of {{ram_bytes}} bytes, a NET bandwidth quota of {{net_weight}} and a CPU bandwidth quota of {{cpu_weight}}."
         },
         {
             "name": "setcode",
             "type": "setcode",
-            "ricardian_contract": "---\ntitle: TITLE\nsummary: SUMMARY\nicon: ICON\n---\n\nBODY"
-        },
-        {
-            "name": "setglimits",
-            "type": "setglimits",
-            "ricardian_contract": "---\ntitle: TITLE\nsummary: SUMMARY\nicon: ICON\n---\n\nBODY"
+            "ricardian_contract": "---\nspec_version: \"0.2.0\"\ntitle: Deploy Contract Code\nsummary: 'Deploy contract code on account {{nowrap account}}'\nicon: http://127.0.0.1/ricardian_assets/eosio.contracts/icons/account.png#3d55a2fc3a5c20b456f5657faf666bc25ffd06f4836c5e8256f741149b0b294f\n---\n\nDeploy compiled contract code to the account {{account}}."
         },
         {
             "name": "setparams",
             "type": "setparams",
-            "ricardian_contract": "---\ntitle: TITLE\nsummary: SUMMARY\nicon: ICON\n---\n\nBODY"
+            "ricardian_contract": "---\nspec_version: \"0.2.0\"\ntitle: Set System Parameters\nsummary: 'Set system parameters'\nicon: http://127.0.0.1/ricardian_assets/eosio.contracts/icons/admin.png#9bf1cec664863bd6aaac0f814b235f8799fb02c850e9aa5da34e8a004bd6518e\n---\n\n{{$action.account}} sets system parameters to:\n{{to_json params}}"
         },
         {
             "name": "setpriv",
             "type": "setpriv",
-            "ricardian_contract": "---\ntitle: TITLE\nsummary: SUMMARY\nicon: ICON\n---\n\nBODY"
+            "ricardian_contract": "---\nspec_version: \"0.2.0\"\ntitle: Make an Account Privileged or Unprivileged\nsummary: '{{#if is_priv}}Make {{nowrap account}} privileged{{else}}Remove privileged status of {{nowrap account}}{{/if}}'\nicon: http://127.0.0.1/ricardian_assets/eosio.contracts/icons/admin.png#9bf1cec664863bd6aaac0f814b235f8799fb02c850e9aa5da34e8a004bd6518e\n---\n\n{{#if is_priv}}\n{{$action.account}} makes {{account}} privileged.\n{{else}}\n{{$action.account}} removes privileged status of {{account}}.\n{{/if}}"
         },
         {
             "name": "setprods",
             "type": "setprods",
-            "ricardian_contract": "---\ntitle: TITLE\nsummary: SUMMARY\nicon: ICON\n---\n\nBODY"
+            "ricardian_contract": "---\nspec_version: \"0.2.0\"\ntitle: Set Block Producers\nsummary: 'Set block producer schedule'\nicon: http://127.0.0.1/ricardian_assets/eosio.contracts/icons/admin.png#9bf1cec664863bd6aaac0f814b235f8799fb02c850e9aa5da34e8a004bd6518e\n---\n\n{{$action.account}} proposes a block producer schedule of:\n{{#each schedule}}\n  1. {{this.producer_name}} with a block signing key of {{this.block_signing_key}}\n{{/each}}"
         },
         {
             "name": "unlinkauth",
             "type": "unlinkauth",
-            "ricardian_contract": "---\ntitle: TITLE\nsummary: SUMMARY\nicon: ICON\n---\n\nBODY"
+            "ricardian_contract": "---\nspec_version: \"0.2.0\"\ntitle: Unlink Action from Permission\nsummary: '{{nowrap account}} unsets the minimum required permission for the {{#if type}}{{nowrap type}} action of the{{/if}} {{nowrap code}} contract'\nicon: http://127.0.0.1/ricardian_assets/eosio.contracts/icons/account.png#3d55a2fc3a5c20b456f5657faf666bc25ffd06f4836c5e8256f741149b0b294f\n---\n\n{{account}} removes the association between the {{#if type}}{{type}} action of the{{/if}} {{code}} contract and its minimum required permission.\n\n{{#if type}}{{else}}This will not remove any links explicitly associated to specific actions of {{code}}.{{/if}}"
         },
         {
             "name": "updateauth",
             "type": "updateauth",
-            "ricardian_contract": "---\ntitle: TITLE\nsummary: SUMMARY\nicon: ICON\n---\n\nBODY"
+            "ricardian_contract": "---\nspec_version: \"0.2.0\"\ntitle: Modify Account Permission\nsummary: 'Add or update the {{nowrap permission}} permission of {{nowrap account}}'\nicon: http://127.0.0.1/ricardian_assets/eosio.contracts/icons/account.png#3d55a2fc3a5c20b456f5657faf666bc25ffd06f4836c5e8256f741149b0b294f\n---\n\nModify, and create if necessary, the {{permission}} permission of {{account}} to have a parent permission of {{parent}} and the following authority:\n{{to_json auth}}"
         }
     ],
     "tables": [
@@ -566,10 +524,5 @@
         }
     ],
     "ricardian_clauses": [],
-    "variants": [
-        {
-            "name": "variant_block_signing_authority_v0",
-            "types": ["block_signing_authority_v0"]
-        }
-    ]
+    "variants": []
 }
