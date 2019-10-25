@@ -3,6 +3,7 @@ steps:
 
   - label: ":pipeline: Generate Pipeline Steps"
     command:
+      - "ssh-keyscan -H github.com >> ~/.ssh/known_hosts"
       - "git clone https://github.com/EOSIO/eos -b $BUILDKITE_BRANCH --single-branch --depth 2 --filter=blob:none ."
       - "git checkout $BUILDKITE_COMMIT -- .cicd"
       - "./.cicd/generate-pipeline.sh > generated-pipeline.yml"
