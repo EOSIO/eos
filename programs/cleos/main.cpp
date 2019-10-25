@@ -203,8 +203,8 @@ void add_standard_transaction_options(CLI::App* cmd, string default_permission =
    cmd->add_option("-x,--expiration", parse_expiration, localized("Set the time in seconds before a transaction expires, defaults to 30s"));
    cmd->add_flag("-f,--force-unique", tx_force_unique, localized("Force the transaction to be unique. this will consume extra bandwidth and remove any protections against accidently issuing the same transaction multiple times"));
    cmd->add_flag("-s,--skip-sign", tx_skip_sign, localized("Specify if unlocked wallet keys should be used to sign transaction"));
-   cmd->add_flag("-j,--json", tx_print_json, localized("Print result as json"));
-   cmd->add_option("--json-file", tx_json_save_file, localized("save result in json format into a file"));
+   cmd->add_flag("-j,--json", tx_print_json, localized("Print result as JSON"));
+   cmd->add_option("--json-file", tx_json_save_file, localized("save result in JSON format into a file"));
    cmd->add_flag("-d,--dont-broadcast", tx_dont_broadcast, localized("don't broadcast transaction to the network (just print to stdout)"));
    cmd->add_flag("--return-packed", tx_return_packed, localized("used in conjunction with --dont-broadcast to get the packed transaction"));
    cmd->add_option("-r,--ref-block", tx_ref_block_num_or_id, (localized("set the reference block num or block id used for TAPOS (Transaction as Proof-of-Stake)")));
@@ -1430,7 +1430,7 @@ struct delegate_bandwidth_subcommand {
       delegate_bandwidth->add_option("receiver", receiver_str, localized("The account to receive the delegated bandwidth"))->required();
       delegate_bandwidth->add_option("stake_net_quantity", stake_net_amount, localized("The amount of tokens to stake for network bandwidth"))->required();
       delegate_bandwidth->add_option("stake_cpu_quantity", stake_cpu_amount, localized("The amount of tokens to stake for CPU bandwidth"))->required();
-      delegate_bandwidth->add_option("--buyram", buy_ram_amount, localized("The amount of tokens to buy RAM"));
+      delegate_bandwidth->add_option("--buyram", buy_ram_amount, localized("The amount of tokens to buy RAM with"));
       delegate_bandwidth->add_option("--buy-ram-bytes", buy_ram_bytes, localized("The amount of RAM to buy in bytes"));
       delegate_bandwidth->add_flag("--transfer", transfer, localized("Transfer voting power and right to unstake tokens to receiver"));
       add_standard_transaction_options(delegate_bandwidth, "from@active");
@@ -2466,8 +2466,8 @@ int main( int argc, char** argv ) {
    // pack transaction
    string plain_signed_transaction_json;
    bool pack_action_data_flag = false;
-   auto pack_transaction = convert->add_subcommand("pack_transaction", localized("From plain signed json to packed form"));
-   pack_transaction->add_option("transaction", plain_signed_transaction_json, localized("The plain signed json (string)"))->required();
+   auto pack_transaction = convert->add_subcommand("pack_transaction", localized("From plain signed JSON to packed form"));
+   pack_transaction->add_option("transaction", plain_signed_transaction_json, localized("The plain signed JSON (string)"))->required();
    pack_transaction->add_flag("--pack-action-data", pack_action_data_flag, localized("Pack all action data within transaction, needs interaction with ${n}", ("n", node_executable_name)));
    pack_transaction->set_callback([&] {
       fc::variant trx_var = json_from_file_or_string( plain_signed_transaction_json );
@@ -2488,8 +2488,8 @@ int main( int argc, char** argv ) {
    // unpack transaction
    string packed_transaction_json;
    bool unpack_action_data_flag = false;
-   auto unpack_transaction = convert->add_subcommand("unpack_transaction", localized("From packed to plain signed json form"));
-   unpack_transaction->add_option("transaction", packed_transaction_json, localized("The packed transaction json (string containing packed_trx and optionally compression fields)"))->required();
+   auto unpack_transaction = convert->add_subcommand("unpack_transaction", localized("From packed to plain signed JSON form"));
+   unpack_transaction->add_option("transaction", packed_transaction_json, localized("The packed transaction JSON (string containing packed_trx and optionally compression fields)"))->required();
    unpack_transaction->add_flag("--unpack-action-data", unpack_action_data_flag, localized("Unpack all action data within transaction, needs interaction with ${n}", ("n", node_executable_name)));
    unpack_transaction->set_callback([&] {
       fc::variant packed_trx_var = json_from_file_or_string( packed_transaction_json );
@@ -2511,10 +2511,10 @@ int main( int argc, char** argv ) {
    string unpacked_action_data_account_string;
    string unpacked_action_data_name_string;
    string unpacked_action_data_string;
-   auto pack_action_data = convert->add_subcommand("pack_action_data", localized("From json action data to packed form"));
+   auto pack_action_data = convert->add_subcommand("pack_action_data", localized("From JSON action data to packed form"));
    pack_action_data->add_option("account", unpacked_action_data_account_string, localized("The name of the account hosting the contract"))->required();
    pack_action_data->add_option("name", unpacked_action_data_name_string, localized("The name of the function called by this action"))->required();
-   pack_action_data->add_option("unpacked_action_data", unpacked_action_data_string, localized("The action data expressed as json"))->required();
+   pack_action_data->add_option("unpacked_action_data", unpacked_action_data_string, localized("The action data expressed as JSON"))->required();
    pack_action_data->set_callback([&] {
       fc::variant unpacked_action_data_json = json_from_file_or_string(unpacked_action_data_string);
       bytes packed_action_data_string;
@@ -2528,7 +2528,7 @@ int main( int argc, char** argv ) {
    string packed_action_data_account_string;
    string packed_action_data_name_string;
    string packed_action_data_string;
-   auto unpack_action_data = convert->add_subcommand("unpack_action_data", localized("From packed to json action data form"));
+   auto unpack_action_data = convert->add_subcommand("unpack_action_data", localized("From packed to JSON action data form"));
    unpack_action_data->add_option("account", packed_action_data_account_string, localized("The name of the account that hosts the contract"))->required();
    unpack_action_data->add_option("name", packed_action_data_name_string, localized("The name of the function that's called by this action"))->required();
    unpack_action_data->add_option("packed_action_data", packed_action_data_string, localized("The action data expressed as packed hex string"))->required();
@@ -2820,9 +2820,9 @@ int main( int argc, char** argv ) {
    getActions->add_option("account_name", account_name, localized("Name of account to query on"))->required();
    getActions->add_option("pos", pos_seq, localized("Sequence number of action for this account, -1 for last"));
    getActions->add_option("offset", offset, localized("Get actions [pos,pos+offset] for positive offset or [pos-offset,pos) for negative offset"));
-   getActions->add_flag("--json,-j", printjson, localized("Print full json"));
+   getActions->add_flag("--json,-j", printjson, localized("Print full JSON"));
    getActions->add_flag("--full", fullact, localized("Don't truncate action output"));
-   getActions->add_flag("--pretty", prettyact, localized("Pretty print full action json "));
+   getActions->add_flag("--pretty", prettyact, localized("Pretty print full action JSON"));
    getActions->add_flag("--console", printconsole, localized("Print console output generated by action "));
    getActions->set_callback([&] {
       fc::mutable_variant_object arg;
