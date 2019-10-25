@@ -3,6 +3,7 @@
 # standard libraries
 from typing import List, Optional, Union
 import argparse
+import collections
 import base64
 import json
 import math
@@ -103,6 +104,16 @@ HELP_WARN = "Set stdout logging level to WARN (40)"
 HELP_ERROR = "Set stdout logging level to ERROR (50)"
 HELP_FATAL = "Set stdout logging level to FATAL (60)"
 HELP_LOG_OFF = "Set stdout logging level to OFF (100)"
+
+
+class BlockchainError(RuntimeError):
+    def __init__(self, message):
+        super().__init__(message)
+
+
+class SyncError(BlockchainError):
+    def __init__(self, message):
+        super().__init__(message)
 
 
 class CommandLineArguments:
@@ -235,6 +246,7 @@ class Service:
         self.trace = self.logger.trace
         self.debug = self.logger.debug
         self.info = self.logger.info
+        self.warn = self.logger.warn
         self.error = self.logger.error
         self.fatal = self.logger.fatal
         self.flush = self.logger.flush
@@ -351,7 +363,7 @@ class Service:
                 existing_port = int(val.split(":")[-1])
                 break
         else:
-            self.logger.error("ERROR: Failed to extract \"--http-server-address\" from \"{}\" (process ID {})!".format(cmd_and_args, pid), assert_false=True)
+            self.logger.error("ERROR: Failed to extract \"--http-server-address\" from \"{}\" (process ID {})!".format(cmd_and_args, pid))
         self.logger.debug(color.green("Connecting to existing launcher service with process ID [{}].".format(pid)))
         self.logger.debug(color.green("No new launcher service will be started."))
         self.logger.debug("Configuration of existing launcher service:")
@@ -371,7 +383,7 @@ class Service:
         self.logger.debug(color.green("Starting a new launcher service."))
         helper.quiet_run([self.file, "--http-server-address=0.0.0.0:{}".format(self.port), "--http-threads=4"])
         if not self.get_local_services():
-            self.logger.error("ERROR: Launcher service is not started properly!", assert_false=True)
+            self.logger.error("ERROR: Launcher service is not started properly!")
 
 
 class Cluster:
@@ -384,6 +396,7 @@ class Cluster:
         self.trace = service.trace
         self.debug = service.debug
         self.info = service.info
+        self.warn = service.warn
         self.error = service.error
         self.fatal = service.fatal
         self.flush = service.flush
@@ -475,6 +488,7 @@ class Cluster:
         self.print_config()
         self.launch_cluster()
         self.get_cluster_info(level="debug")
+        self.schedule_protocol_feature_activations()
         self.set_bios_contract()
         self.check_sync()
         self.print_header("Launch (without bootstrap) ends.", level="INFO")
@@ -514,10 +528,10 @@ class Cluster:
         self.create_and_register_producers_in_parallel()
         if not dont_vote:
             self.vote_for_producers(voter="defproducera", voted_producers=list(self.producers.keys())[:min(21, len(self.producers))])
-            self.check_sync(assert_false=True)
+            self.check_sync()
             self.verify_head_block_producer()
         else:
-            self.check_sync(assert_false=True)
+            self.check_sync()
         self.print_header("Bootstrap{} ends.".format(" (without voting)" if dont_vote else ""), level="INFO")
 
 
@@ -749,6 +763,7 @@ class Cluster:
              header=None,
              level="DEBUG",
              buffer=False,
+             dont_warn=False,
              dont_flush=False,
              **data) -> Connection:
         """
@@ -789,8 +804,7 @@ class Cluster:
             self.logger.error(cx.response_text)
         if verify_key:
             assert self.verify(transaction_id=cx.transaction_id, verify_key=verify_key, retry=verify_retry, level=level, buffer=buffer)
-        # TODO: enable to suppress warning
-        elif cx.transaction_id:
+        elif cx.transaction_id and not dont_warn:
             self.logger.warn("WARNING: Verification of transaction ID {} skipped.".format(cx.transaction_id), buffer=buffer)
         if buffer and not dont_flush:
             self.logger.flush()
@@ -815,49 +829,55 @@ class Cluster:
         return helper.extract(cx.response, key=verify_key, fallback=False)
 
 
-    def check_sync(self, retry=None, sleep=None, min_sync_nodes=None, max_block_lags=None, assert_false=False, level="DEBUG", error_level="ERROR"):
+    def check_sync(self, retry=None, sleep=None, min_sync_nodes=None, max_block_lag=None, level="DEBUG", dont_raise=False):
+        # set arguments
         retry = self.sync_retry if retry is None else retry
         sleep = self.sync_sleep if sleep is None else sleep
-        self.print_header("check if nodes are in sync", level=level)
         min_sync_nodes = min_sync_nodes if min_sync_nodes else self.total_nodes
+        # print head
+        self.print_header("verify nodes in sync", level=level)
         while retry >= 0:
-            ix = self.get_cluster_info(level="TRACE")
+            ix = self.get_cluster_info()
             has_head_block_id = lambda node_id: "head_block_id" in ix.response_dict["result"][node_id][1]
-            get_head_block_id = lambda node_id: ix.response_dict["result"][node_id][1]["head_block_id"]
-            get_head_block_num = lambda node_id: ix.response_dict["result"][node_id][1]["head_block_num"]
-            node_0_block_id = get_head_block_id(0)
-            min_block_num = max_block_num = get_head_block_num(0)
-            min_block_node = max_block_node = 0
-            in_sync = True
-            sync_nodes = 1
-            for node_id in range(1, self.total_nodes):
+            extract_head_block_id = lambda node_id: ix.response_dict["result"][node_id][1]["head_block_id"]
+            extract_head_block_num = lambda node_id: ix.response_dict["result"][node_id][1]["head_block_num"]
+            counter = collections.defaultdict(int)
+            no_head_nodes = set()
+            max_block_num, min_block_num = -1, math.inf
+            max_block_node = min_block_node = -1
+            sync_nodes = 0
+            for node_id in range(self.total_nodes):
                 if has_head_block_id(node_id):
-                    sync_nodes += 1
-                    block_num = get_head_block_num(node_id)
-                    if block_num < min_block_num:
-                        min_block_num = block_num
-                        min_block_node = node_id
-                    elif block_num > min_block_num:
-                        max_block_num = block_num
-                        max_block_node = node_id
-                    head_block_id = get_head_block_id(node_id)
-                    if head_block_id != node_0_block_id:
-                        in_sync = False
-            if in_sync and sync_nodes >= min_sync_nodes:
-                self.logger.log(color.green("<Head Block Number> {}".format(block_num)), level=level)
-                self.logger.log(color.green("<Head Block ID> {}".format(node_0_block_id)), level=level)
-                self.logger.log(color.black_on_green("Nodes In Sync"), level=level)
+                    block_num = extract_head_block_num(node_id)
+                    if block_num > max_block_num:
+                        max_block_num, max_block_node = block_num, node_id
+                    elif block_num < min_block_num:
+                        min_block_num, min_block_node = block_num, node_id
+                    head_id = extract_head_block_id(node_id)
+                    counter[head_id] += 1
+                    if counter[head_id] > sync_nodes:
+                        sync_nodes, sync_block, sync_head = counter[head_id], block_num, head_id
+                else:
+                    no_head_nodes.add(node_id)
+            down = f" ({len(no_head_nodes)} nodes down)" if len(no_head_nodes) else ""
+            self.log(f"{sync_nodes}/{self.total_nodes} nodes in sync{down}: max block number {max_block_num} from node {max_block_node} │ min block number {min_block_num} from node {min_block_node}", level=level)
+            if sync_nodes >= min_sync_nodes:
+                self.log(color.green(f"<Num of Nodes In Sync> {sync_nodes}"), level=level)
+                self.log(color.green(f"<Head Block Num> {sync_block}"), level=level)
+                self.log(color.green(f"<Head Block ID> {sync_head}"), level=level)
+                self.log(color.black_on_green("Nodes In Sync"), level=level)
                 return True, min_block_num, max_block_num
-            if max_block_lags and max_block_num - min_block_num > max_block_lags:
+            if max_block_lag and max_block_num - min_block_num > max_block_lag:
+                self.log(f"Gap between max and min block numbers ({max_block_num - min_block_num}) is larger than tolerance ({max_block_lag}).", level=level)
                 break
-            self.logger.log("<Max Block Number> {:3} from node {:2} │ <Min Block Number> {:3} from node {:2}".format(max_block_num, max_block_node, min_block_num, min_block_node), level=level)
-            if retry:
-                self.logger.trace("{} {} to check if nodes are in sync...".format(retry, "retries remain" if retry > 1 else "retry remains"))
-                self.logger.trace("Sleep for {}s before next retry...".format(sleep))
             time.sleep(sleep)
             retry -= 1
-        self.logger.log("<Max Block Number> {:3} from node {:2} │ <Min Block Number> {:3} from node {:2}".format(max_block_num, max_block_node, min_block_num, min_block_node), level=error_level)
-        self.logger.log(color.black_on_red("Nodes Not In Sync"), level=error_level)
+        msg = "Nodes Not In Sync"
+        if not dont_raise:
+            self.error(color.black_on_red(msg))
+            raise SyncError(msg)
+        else:
+            self.log(color.black_on_yellow(msg), level=level)
         return False, min_block_num, max_block_num
 
 
@@ -866,50 +886,83 @@ class Cluster:
         return self.get_cluster_info().response_dict["result"][node_id][1]["head_block_num"]
 
 
+    def get_head_block_producer(self, node_id=0):
+        """Get head block producer by node id."""
+        return self.get_cluster_info().response_dict["result"][node_id][1]["head_block_producer"]
+
+
     def wait_get_block(self, block_num, retry=1) -> dict:
-        """Try to get a block by block number.
-        If that block has been produced, return its information in dict type.
-        If that block is yet to come, wait until it comes to existence."""
+        """Get block information by block num. If that block has not been produced, wait for it."""
         while retry >= 0:
             head_block_num = self.get_head_block_number()
             if head_block_num < block_num:
-                time.sleep(0.5 * (block_num - head_block_num + 1))
+                time.sleep(0.5 * (block_num - head_block_num))
             else:
                 return self.get_block(block_num).response_dict
             retry -= 1
-        assert False, "Cannot get block {}. Current head_block_num={}".format(block_num, head_block_num)
+        msg = f"Cannot get block # {block_num}. Current head block num is {head_block_num}."
+        self.error(msg)
+        raise BlockchainError(msg)
 
 
-    def check_production_round(self, expected_producers, level="TRACE"):
-        head_block_num = self.get_head_block_number()
+    def wait_get_producer_by_block(self, block_num, retry=1) -> str:
+        """Get block producer by block num. If that block has not been produced, wait for it."""
+        return self.wait_get_block(block_num, retry=retry)["producer"]
 
-        self.logger.log(f"Expecting {expected_producers}", level=level)
 
-        # skip head blocks until an expected producer appears
-        curprod = "(None)"
-        while curprod not in expected_producers:
-            block = self.wait_get_block(head_block_num)
-            curprod = block["producer"]
-            self.logger.log("Head block number={}, producer={}, waiting for schedule change.".format(head_block_num, curprod), level=level)
-            head_block_num += 1
+    def check_production_round(self, expected_producers: List[str], level="debug"):
+        self.print_header("verify production round", level=level)
 
-        seen_prod = {curprod: 1}
-        verify_end_num = head_block_num + 12 * len(expected_producers)
-        for blk_num in range(head_block_num, verify_end_num):
-            block = self.wait_get_block(blk_num)
-            curprod = block["producer"]
-            self.logger.log("Block Number {}. Producer {}. {} blocks remain to verify.".format(blk_num, curprod, verify_end_num- blk_num - 1), level=level)
-            assert curprod in expected_producers, "producer {} is not expected in block {}".format(curprod, blk_num)
-            seen_prod[curprod] = 1
+        # list expected producers
+        self.log("Expected producers:", level=level)
+        for i, v in enumerate(expected_producers):
+            self.logger.log(f"[{i}] {v}", level=level)
 
-        if len(seen_prod) == len(expected_producers):
-            self.logger.log("Verification succeed.", level=level)
+        # skip unexpected producers
+        begin_block_num = self.get_head_block_number()
+        curr_prod = self.wait_get_producer_by_block(begin_block_num)
+        while curr_prod not in expected_producers:
+            self.logger.log(f"Block # {begin_block_num}: {curr_prod} is not among expected producers. "
+                             "Waiting for schedule change.", level=level)
+            begin_block_num += 1
+            curr_prod = self.wait_get_producer_by_block(begin_block_num)
+
+        # verification
+        self.log(f">>> Verification starts, as expected producer \"{curr_prod}\" has come to produce.", level=level)
+        self.log(f"Block # {begin_block_num}: {curr_prod} has produced 1 blocks in this round. "
+                 f"{12 * len(expected_producers) - 1} blocks remain to verify.", level=level)
+        counter = {x: 0 for x in expected_producers}
+        counter[curr_prod] += 1
+        entr_prod = last_prod = curr_prod
+        end_block_num = begin_block_num + 12 * len(expected_producers)
+        for num in range(begin_block_num + 1, end_block_num):
+            curr_prod = self.wait_get_producer_by_block(num)
+            counter[curr_prod] += 1
+            if curr_prod not in expected_producers:
+                msg = f"Unexpected producer \"{curr_prod}\" in block #{num}."
+                self.error(msg)
+                raise BlockchainError(msg)
+            if curr_prod != last_prod and last_prod != entr_prod and counter[last_prod] != 12:
+                msg = (f"Producer changes to \"{curr_prod}\" after last producer \"{last_prod}\" "
+                       f"produces {counter[last_prod]} blocks.")
+                self.error(msg)
+                raise BlockchainError(msg)
+            self.logger.log(f"Block # {num}: {curr_prod} has produced {counter[curr_prod]} blocks in this round. "
+                            f"{end_block_num - num - 1} blocks remain to verify.", level=level)
+            last_prod = curr_prod
+
+        # conclusion
+        expected_counter = {x: 12 for x in expected_producers}
+        if counter == expected_counter:
+            self.logger.log(">>> Verification succeeded.", level=level)
             return True
         else:
-            self.logger.log("Verification failed. Number of seen producers={} != expected producers={}.".format(len(seen_prod), len(expected_producers)), level=level)
-            self.logger.error("Seen producers = {}".format(seen_prod))
+            msg = ">>> Verification failed."
+            for prod in counter:
+                msg += f"\n{prod} produced {counter[prod]} blocks."
+            self.error(msg)
+            raise BlockchainError(msg)
             return False
-
 
 
     def verify_head_block_producer(self, retry=None, sleep=None):

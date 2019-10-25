@@ -3,7 +3,7 @@
 # user-defined modules
 import core
 from logger import LogLevel, ScreenWriter, FileWriter, Logger
-from service import Service, Cluster
+from service import Service, Cluster, BlockchainError
 
 
 def init_cluster():
@@ -37,7 +37,10 @@ def main():
         cluster.info("[Round 1] Set Producers")
         cluster.set_producers(cluster.nodes[1]["producers"])
         # [round 1] verify production
-        cluster.check_production_round(cluster.nodes[1]["producers"], level="DEBUG")
+        try:
+            cluster.check_production_round(cluster.nodes[1]["producers"], level="DEBUG")
+        except BlockchainError as e:
+            print(e)
         # [round 2] set producers
         cluster.set_producers(cluster.nodes[2]["producers"], verify_key="contained")
         # [round 2] verify production

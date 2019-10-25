@@ -282,19 +282,14 @@ class Logger:
     def warn(self, msg, colorize=True, buffer=False):
         self.log(color.yellow(msg) if colorize else msg, level=LogLevel.WARN, buffer=buffer)
 
+    # to deprecate: assert_false (bad design)
+    # if error message has multiple lines, only the first line will be colorized (red)
     def error(self, msg, colorize=True, buffer=False, assert_false=None):
-        # assert_false implies no buffer (must flush immediately)
-        buffer = not helper.override(not buffer, assert_false)
-        self.log(color.red(msg)if colorize else msg, level=LogLevel.ERROR, buffer=buffer)
-        if assert_false:
-            assert False
+        self.log(color.red(msg) if colorize else msg, level=LogLevel.ERROR, buffer=buffer)
 
     def fatal(self, msg, colorize=True, buffer=False, assert_false=True):
-        # assert_false implies flush
-        buffer = not helper.override(not buffer, assert_false)
         self.log(color.bold(color.red(msg)) if colorize else msg, level=LogLevel.FATAL, buffer=buffer)
-        if assert_false:
-            assert False
+
 
     def flush(self):
         for w in self.writers:
