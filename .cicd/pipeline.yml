@@ -3,7 +3,7 @@ steps:
 
   - label: ":pipeline: Generate Pipeline Steps"
     command:
-      - "git clone $BUILDKITE_REPO -b $BUILDKITE_BRANCH --single-branch --depth 2 --filter=blob:none ."
+      - "git clone https://github.com/EOSIO/eos -b $BUILDKITE_BRANCH --single-branch --depth 2 --filter=blob:none ."
       - "git checkout $BUILDKITE_COMMIT -- .cicd"
       - "./.cicd/generate-pipeline.sh > generated-pipeline.yml"
       - "buildkite-agent pipeline upload < generated-pipeline.yml"
