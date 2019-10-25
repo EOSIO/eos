@@ -4,8 +4,9 @@ steps:
   - label: ":pipeline: Generate Pipeline Steps"
     command:
       - "ssh-keyscan -H github.com >> ~/.ssh/known_hosts"
-      - "git clone $BUILDKITE_REPO -b $BUILDKITE_BRANCH --single-branch ."
-      - "git checkout $BUILDKITE_COMMIT"
+      - "git clone $BUILDKITE_REPO ."
+      - "[[ $BUILDKITE_BRANCH =~ ^pull/[0-9]+/head: ]] && git fetch -v --prune origin refs/pull/$(echo $BUILDKITE_BRANCH | cut -d/ -f2)/head"
+      - "git checkout -f $BUILDKITE_COMMIT"
       - "./.cicd/generate-pipeline.sh > generated-pipeline.yml"
       - "buildkite-agent pipeline upload < generated-pipeline.yml"
       - "buildkite-agent artifact upload generated-pipeline.yml"
