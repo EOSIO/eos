@@ -94,7 +94,8 @@ int main(int argc, char** argv)
          .default_http_port = 8888
       });
       if(!app().initialize<chain_plugin, net_plugin, producer_plugin>(argc, argv)) {
-         if(app().get_options().count("help") || app().get_options().count("version") || app().get_options().count("full-version")) {
+         const auto& opts = app().get_options();
+         if( opts.count("help") || opts.count("version") || opts.count("full-version") || opts.count("print-default-config") ) {
             return SUCCESS;
          }
          return INITIALIZE_FAIL;
