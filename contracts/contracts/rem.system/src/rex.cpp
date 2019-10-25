@@ -9,6 +9,8 @@ namespace eosiosystem {
 
    void system_contract::deposit( const name& owner, const asset& amount )
    {
+      check( false, "REX is not supported" );
+
       require_auth( owner );
 
       check( amount.symbol == core_symbol(), "must deposit core token" );
@@ -23,6 +25,8 @@ namespace eosiosystem {
 
    void system_contract::withdraw( const name& owner, const asset& amount )
    {
+      check( false, "REX is not supported" );
+
       require_auth( owner );
 
       check( amount.symbol == core_symbol(), "must withdraw core token" );
@@ -38,6 +42,8 @@ namespace eosiosystem {
 
    void system_contract::buyrex( const name& from, const asset& amount )
    {
+      check( false, "REX is not supported" );
+
       require_auth( from );
 
       check( amount.symbol == core_symbol(), "asset must be core token" );
@@ -55,6 +61,8 @@ namespace eosiosystem {
 
    void system_contract::unstaketorex( const name& owner, const name& receiver, const asset& from_net, const asset& from_cpu )
    {
+      check( false, "REX is not supported" );
+
       require_auth( owner );
 
       check( from_net.symbol == core_symbol() && from_cpu.symbol == core_symbol(), "asset must be core token" );
@@ -95,6 +103,8 @@ namespace eosiosystem {
 
    void system_contract::sellrex( const name& from, const asset& rex )
    {
+      check( false, "REX is not supported" );
+
       require_auth( from );
 
       runrex(2);
@@ -145,6 +155,8 @@ namespace eosiosystem {
 
    void system_contract::cnclrexorder( const name& owner )
    {
+      check( false, "REX is not supported" );
+
       require_auth( owner );
 
       auto itr = _rexorders.require_find( owner.value, "no sellrex order is scheduled" );
@@ -154,6 +166,8 @@ namespace eosiosystem {
 
    void system_contract::rentcpu( const name& from, const name& receiver, const asset& loan_payment, const asset& loan_fund )
    {
+      check( false, "REX is not supported" );
+
       require_auth( from );
 
       rex_cpu_loan_table cpu_loans( get_self(), get_self().value );
@@ -163,6 +177,8 @@ namespace eosiosystem {
 
    void system_contract::rentnet( const name& from, const name& receiver, const asset& loan_payment, const asset& loan_fund )
    {
+      check( false, "REX is not supported" );
+
       require_auth( from );
 
       rex_net_loan_table net_loans( get_self(), get_self().value );
@@ -172,6 +188,8 @@ namespace eosiosystem {
 
    void system_contract::fundcpuloan( const name& from, uint64_t loan_num, const asset& payment )
    {
+      check( false, "REX is not supported" );
+
       require_auth( from );
 
       rex_cpu_loan_table cpu_loans( get_self(), get_self().value );
@@ -180,6 +198,8 @@ namespace eosiosystem {
 
    void system_contract::fundnetloan( const name& from, uint64_t loan_num, const asset& payment )
    {
+      check( false, "REX is not supported" );
+
       require_auth( from );
 
       rex_net_loan_table net_loans( get_self(), get_self().value );
@@ -188,6 +208,8 @@ namespace eosiosystem {
 
    void system_contract::defcpuloan( const name& from, uint64_t loan_num, const asset& amount )
    {
+      check( false, "REX is not supported" );
+
       require_auth( from );
 
       rex_cpu_loan_table cpu_loans( get_self(), get_self().value );
@@ -196,6 +218,8 @@ namespace eosiosystem {
 
    void system_contract::defnetloan( const name& from, uint64_t loan_num, const asset& amount )
    {
+      check( false, "REX is not supported" );
+
       require_auth( from );
 
       rex_net_loan_table net_loans( get_self(), get_self().value );
@@ -204,6 +228,8 @@ namespace eosiosystem {
 
    void system_contract::updaterex( const name& owner )
    {
+      check( false, "REX is not supported" );
+
       require_auth( owner );
 
       runrex(2);
@@ -230,6 +256,8 @@ namespace eosiosystem {
 
    void system_contract::setrex( const asset& balance )
    {
+      check( false, "REX is not supported" );
+
       require_auth( "rem"_n );
 
       check( balance.amount > 0, "balance must be set to have a positive amount" );
@@ -242,6 +270,8 @@ namespace eosiosystem {
 
    void system_contract::rexexec( const name& user, uint16_t max )
    {
+      check( false, "REX is not supported" );
+
       require_auth( user );
 
       runrex( max );
@@ -249,6 +279,8 @@ namespace eosiosystem {
 
    void system_contract::consolidate( const name& owner )
    {
+      check( false, "REX is not supported" );
+
       require_auth( owner );
 
       runrex(2);
@@ -260,6 +292,8 @@ namespace eosiosystem {
 
    void system_contract::mvtosavings( const name& owner, const asset& rex )
    {
+      check( false, "REX is not supported" );
+
       require_auth( owner );
 
       runrex(2);
@@ -294,6 +328,8 @@ namespace eosiosystem {
 
    void system_contract::mvfrsavings( const name& owner, const asset& rex )
    {
+      check( false, "REX is not supported" );
+
       require_auth( owner );
 
       runrex(2);
@@ -317,6 +353,8 @@ namespace eosiosystem {
 
    void system_contract::closerex( const name& owner )
    {
+      check( false, "REX is not supported" );
+
       require_auth( owner );
 
       if ( rex_system_initialized() )

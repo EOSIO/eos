@@ -9,6 +9,8 @@ namespace eosiosystem {
    using eosio::token;
 
    void system_contract::bidname( const name& bidder, const name& newname, const asset& bid ) {
+      check( false, "name auction is not supported" );
+
       require_auth( bidder );
       check( newname.suffix() == newname, "you can only bid on top-level suffix" );
 
@@ -68,6 +70,8 @@ namespace eosiosystem {
    }
 
    void system_contract::bidrefund( const name& bidder, const name& newname ) {
+      check( false, "name auction is not supported" );
+
       bid_refund_table refunds_table(get_self(), newname.value);
       auto it = refunds_table.find( bidder.value );
       check( it != refunds_table.end(), "refund not found" );
