@@ -459,8 +459,8 @@ cat <<EOF
   - label: ":bar_chart: Test Metrics"
     command:
       - "ssh-keyscan -H github.com >> ~/.ssh/known_hosts"
-      - "git clone $BUILDKITE_REPO -b $BUILDKITE_BRANCH --single-branch ."
-      - "git checkout $BUILDKITE_COMMIT"
+      - "git clone \$BUILDKITE_REPO ."
+      - "$GIT_FETCH git checkout -f \$BUILDKITE_COMMIT"
       - "echo '+++ :compression: Extracting Test Metrics Code'"
       - "tar -zxf .cicd/metrics/test-metrics.tar.gz"
       - "echo '+++ :javascript: Running test-metrics.js'"
@@ -479,8 +479,8 @@ cat <<EOF
   - label: ":centos: CentOS 7.6 - Package Builder"
     command:
       - "ssh-keyscan -H github.com >> ~/.ssh/known_hosts"
-      - "git clone $BUILDKITE_REPO -b $BUILDKITE_BRANCH --single-branch ."
-      - "git checkout $BUILDKITE_COMMIT"
+      - "git clone \$BUILDKITE_REPO ."
+      - "$GIT_FETCH git checkout -f \$BUILDKITE_COMMIT"
       - "buildkite-agent artifact download build.tar.gz . --step ':centos: CentOS 7.6 - Build' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN && tar -xzf build.tar.gz"
       - "./.cicd/package.sh"
     plugins:
@@ -499,8 +499,8 @@ cat <<EOF
   - label: ":ubuntu: Ubuntu 16.04 - Package Builder"
     command:
       - "ssh-keyscan -H github.com >> ~/.ssh/known_hosts"
-      - "git clone $BUILDKITE_REPO -b $BUILDKITE_BRANCH --single-branch ."
-      - "git checkout $BUILDKITE_COMMIT"
+      - "git clone \$BUILDKITE_REPO ."
+      - "$GIT_FETCH git checkout -f \$BUILDKITE_COMMIT"
       - "buildkite-agent artifact download build.tar.gz . --step ':ubuntu: Ubuntu 16.04 - Build' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN && tar -xzf build.tar.gz"
       - "./.cicd/package.sh"
     plugins:
@@ -519,8 +519,8 @@ cat <<EOF
   - label: ":ubuntu: Ubuntu 18.04 - Package Builder"
     command:
       - "ssh-keyscan -H github.com >> ~/.ssh/known_hosts"
-      - "git clone $BUILDKITE_REPO -b $BUILDKITE_BRANCH --single-branch ."
-      - "git checkout $BUILDKITE_COMMIT"
+      - "git clone \$BUILDKITE_REPO ."
+      - "$GIT_FETCH git checkout -f \$BUILDKITE_COMMIT"
       - "buildkite-agent artifact download build.tar.gz . --step ':ubuntu: Ubuntu 18.04 - Build' --agent-access-token \$\$BUILDKITE_AGENT_ACCESS_TOKEN && tar -xzf build.tar.gz"
       - "./.cicd/package.sh"
     plugins:
@@ -582,8 +582,8 @@ cat <<EOF
   - label: ":beer: Brew Updater"
     command:
       - "ssh-keyscan -H github.com >> ~/.ssh/known_hosts"
-      - "git clone $BUILDKITE_REPO -b $BUILDKITE_BRANCH --single-branch ."
-      - "git checkout $BUILDKITE_COMMIT"
+      - "git clone \$BUILDKITE_REPO ."
+      - "$GIT_FETCH git checkout -f \$BUILDKITE_COMMIT"
       - "buildkite-agent artifact download eosio.rb . --step ':darwin: macOS 10.14 - Package Builder'"
       - "buildkite-agent artifact upload eosio.rb"
     plugins:
