@@ -453,9 +453,9 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         auto spay_balance = get_balance(N(rem.spay)).get_amount();
         auto vpay_balance = get_balance(N(rem.vpay)).get_amount();
         //check that rewards are distributed with right proportion
-        BOOST_REQUIRE(saving_balance >= 2000'0000);
-        BOOST_REQUIRE_EQUAL(spay_balance, 14000'0000);
-        BOOST_REQUIRE(vpay_balance <= 4000'0000);
+        BOOST_REQUIRE(saving_balance >= 2'000'0000);
+        BOOST_REQUIRE_EQUAL(spay_balance, 13'999'9985);
+        BOOST_REQUIRE(vpay_balance <= 4'000'0000);
         BOOST_REQUIRE_EQUAL(saving_balance + spay_balance + vpay_balance, 20000'0000);
 
         set_reward_ratio(0.6, 0.3);
@@ -467,7 +467,7 @@ BOOST_FIXTURE_TEST_CASE( bootseq_test, bootseq_tester ) {
         spay_balance = get_balance(N(rem.spay)).get_amount();
         vpay_balance = get_balance(N(rem.vpay)).get_amount();
         BOOST_REQUIRE(saving_balance >= 2000'0000 + 1000);
-        BOOST_REQUIRE_EQUAL(spay_balance, 14000'0000 + 6000);
+        BOOST_REQUIRE_EQUAL(spay_balance, 14'000'5982);
         BOOST_REQUIRE(vpay_balance <= 4000'0000 + 3000);
         BOOST_REQUIRE_EQUAL(saving_balance + spay_balance + vpay_balance, 20001'0000);
 

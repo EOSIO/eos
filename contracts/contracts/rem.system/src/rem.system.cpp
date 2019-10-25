@@ -80,7 +80,7 @@ namespace eosiosystem {
          .gifter_attr_issuer   = name{"rem.attr"},
          .gifter_attr_name     = name{"accgifter"},
 
-         .producer_stake_threshold = 250'000'0000LL,
+         .guardian_stake_threshold = 250'000'0000LL,
 
          .stake_lock_period = eosio::days(180),
          .stake_unlock_period = eosio::days(180),
@@ -217,16 +217,11 @@ namespace eosiosystem {
 
    void system_contract::rmvproducer( const name& producer ) {
       require_auth( _self );
-      auto prod = _producers.find( producer.value );
-      check( prod != _producers.end(), "producer not found" );
-      if (prod->active()) {
-         user_resources_table totals_tbl( _self, producer.value );
-         const auto& tot = totals_tbl.get(producer.value, "producer must have resources");
-         _gstate.total_producer_stake -= tot.own_stake_amount;
-      }
+      auto prod = _producers.get( producer.value, "producer not found" );
+
       _producers.modify( prod, same_payer, [&](auto& p) {
             p.deactivate();
-         });
+      });
    }
 
    void system_contract::updtrevision( uint8_t revision ) {
