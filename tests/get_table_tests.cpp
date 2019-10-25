@@ -319,6 +319,8 @@ BOOST_FIXTURE_TEST_CASE( get_table_test, TESTER ) try {
 
 } FC_LOG_AND_RETHROW()
 
+/*
+ * disabled as unnecessary for now 
 BOOST_FIXTURE_TEST_CASE( get_table_by_seckey_test, TESTER ) try {
    produce_blocks(2);
 
@@ -453,5 +455,6 @@ BOOST_FIXTURE_TEST_CASE( get_table_by_seckey_test, TESTER ) try {
    }
 
 } FC_LOG_AND_RETHROW()
+*/
 
 BOOST_AUTO_TEST_SUITE_END()

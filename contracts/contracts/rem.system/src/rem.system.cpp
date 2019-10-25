@@ -414,10 +414,13 @@ EOSIO_DISPATCH( eosiosystem::system_contract,
      // rem.system.cpp
      (init)(setram)(setminstake)(setramrate)(setparams)(setpriv)(setalimits)(setrwrdratio)
      (setlockperiod)(setunloperiod)(setgiftcontra)(setgiftiss)(setgiftattr)
-     (activate)(rmvproducer)(updtrevision)(bidname)(bidrefund)(setinflation)
+     (activate)(rmvproducer)(updtrevision)(setinflation)
+     // disabled as unnecessary for now 
+     //  (bidname)(bidrefund)
      // rex.cpp
-     (deposit)(withdraw)(buyrex)(unstaketorex)(sellrex)(cnclrexorder)(rentcpu)(rentnet)(fundcpuloan)(fundnetloan)
-     (defcpuloan)(defnetloan)(updaterex)(consolidate)(mvtosavings)(mvfrsavings)(setrex)(rexexec)(closerex)
+     // disabled as unnecessary for now 
+     //  (deposit)(withdraw)(buyrex)(unstaketorex)(sellrex)(cnclrexorder)(rentcpu)(rentnet)(fundcpuloan)(fundnetloan)
+     //  (defcpuloan)(defnetloan)(updaterex)(consolidate)(mvtosavings)(mvfrsavings)(setrex)(rexexec)(closerex)
      // delegate_bandwidth.cpp
      (delegatebw)(undelegatebw)(refund)(refundtostake)
      // voting.cpp
