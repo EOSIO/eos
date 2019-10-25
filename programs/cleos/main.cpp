@@ -3173,7 +3173,7 @@ int main( int argc, char** argv ) {
          } else {
             fc::variant json_keys;
             try {
-               json_keys = fc::json::from_string(public_key_json, fc::json::legacy_parser);
+               json_keys = fc::json::from_string(public_key_json, fc::json::relaxed_parser);
             } EOS_RETHROW_EXCEPTIONS(json_parse_exception, "Fail to parse JSON from string: ${string}", ("string", public_key_json));
             try {
                std::vector<public_key_type> keys = json_keys.template as<std::vector<public_key_type>>();

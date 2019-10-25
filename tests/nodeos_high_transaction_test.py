@@ -146,7 +146,7 @@ try:
     for account in accounts:
         transferAmount="1000.0000 {0}".format(CORE_SYMBOL)
         Print("Transfer funds %s from account %s to %s" % (transferAmount, cluster.eosioAccount.name, account.name))
-        trans = node.transferFunds(cluster.eosioAccount, account, transferAmount, "test transfer", waitForTransBlock=False, reportStatus=False)
+        trans = node.transferFunds(cluster.eosioAccount, account, transferAmount, "test transfer", waitForTransBlock=False, reportStatus=False, sign = True)
         checkTransIds.append(Node.getTransId(trans))
 
     nextTime = time.perf_counter()
@@ -251,12 +251,12 @@ try:
             toAccountIndex = accountIndex + 1 if accountIndex + 1 < args.total_accounts else 0
             toAccount = accounts[toAccountIndex]
             node = nonProdNodes[accountIndex % nonProdNodeCount]
-            trans=node.transferFunds(fromAccount, toAccount, transferAmount, "transfer round %d" % (round), exitOnError=False, reportStatus=False, signWith=fromAccount.activePublicKey)
+            trans=node.transferFunds(fromAccount, toAccount, transferAmount, "transfer round %d" % (round), exitOnError=False, reportStatus=False, sign = True)
             if trans is None:
                 # delay and see if transfer is accepted now
                 Utils.Print("Transfer rejected, delay 1 second and see if it is then accepted")
                 time.sleep(1)
-                trans=node.transferFunds(fromAccount, toAccount, transferAmount, "transfer round %d" % (round), exitOnError=False, reportStatus=False, signWith=fromAccount.activePublicKey)
+                trans=node.transferFunds(fromAccount, toAccount, transferAmount, "transfer round %d" % (round), exitOnError=False, reportStatus=False, sign = True)
 
             assert trans is not None, Print("ERROR: failed round: %d, fromAccount: %s, toAccount: %s" % (round, accountIndex, toAccountIndex))
             # store off the transaction id, which we can use with the node.transCache

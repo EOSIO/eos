@@ -713,18 +713,22 @@ class Node(object):
         return self.waitForBlock(blockNum, timeout=timeout, blockType=blockType)
 
     # Trasfer funds. Returns "transfer" json return object
-    def transferFunds(self, source, destination, amountStr, memo="memo", force=False, waitForTransBlock=False, exitOnError=True, reportStatus=True, signWith=""):
+    def transferFunds(self, source, destination, amountStr, memo="memo", force=False, waitForTransBlock=False, exitOnError=True, reportStatus=True, sign=False):
         assert isinstance(amountStr, str)
         assert(source)
         assert(isinstance(source, Account))
         assert(destination)
         assert(isinstance(destination, Account))
-        assert isinstance(signWith, str)
 
-        signWithStr = "" if signWith == "" else " --sign-with %s" % (signWith)
-        cmd="%s %s -v transfer -j %s %s %s" % (
-            Utils.EosClientPath, self.eosClientArgs(), signWithStr, source.name, destination.name)
+        cmd="%s %s -v transfer -j" % (
+            Utils.EosClientPath, self.eosClientArgs())
         cmdArr=cmd.split()
+        if sign:
+            cmdArr.append("--sign-with")
+            cmdArr.append("[ \"%s\" ]" % (source.activePublicKey))
+
+        cmdArr.append(source.name)
+        cmdArr.append(destination.name)
         cmdArr.append(amountStr)
         cmdArr.append(memo)
         if force:
