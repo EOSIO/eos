@@ -3,9 +3,15 @@ steps:
 
   - label: ":pipeline: Generate Pipeline Steps"
     command:
+      - "ssh-keyscan -H github.com >> ~/.ssh/known_hosts"
+      - "git clone $BUILDKITE_REPO -b $BUILDKITE_BRANCH --single-branch ."
+      - "git checkout $BUILDKITE_COMMIT"
       - "./.cicd/generate-pipeline.sh > generated-pipeline.yml"
       - "buildkite-agent pipeline upload < generated-pipeline.yml"
       - "buildkite-agent artifact upload generated-pipeline.yml"
+    plugins:
+      - thedyrt/skip-checkout#v0.1.1:
+          cd: ~
     agents:
       queue: "automation-basic-builder-fleet"
     timeout: ${TIMEOUT:-10}
