@@ -6,6 +6,7 @@ from eosiopy import sign
 producers_quantity = 21
 rewards_account_supply = 100_000_000_0000
 producers_supply = 500_000_000_0000
+prod_stake_delta = 1_000_000_0000  # delta for arithmetic progression
 swapbot_supply = 1_000_000_0000
 fee = 21*100_0000+100_0000
 
@@ -80,12 +81,12 @@ producers = {
          "pub": "EOS69tWc1VS6aP2P1D8ryzTiakPAYbV3whbHeWUzfD8QWYuHKqQxk"}
     ]
 }
-prod_supply = producers_supply//2
+prod_supply = producers_supply/producers_quantity + prod_stake_delta*(producers_quantity-1)/2
 prod_supply_sum = 0
 for prod in producers['producers']:
     prod['funds'] = max(prod_supply, MINIMUM_PRODUCER_STAKE)
     prod_supply_sum += prod['funds']
-    prod_supply = prod_supply // 2
+    prod_supply = prod_supply - prod_stake_delta
 
 initial_supply = rewards_account_supply + prod_supply_sum + swapbot_supply + fee
 
