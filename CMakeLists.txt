@@ -34,6 +34,55 @@ set( CLI_CLIENT_EXECUTABLE_NAME cleos )
 set( NODE_EXECUTABLE_NAME nodeos )
 set( KEY_STORE_EXECUTABLE_NAME keosd )
 
+# Conan (https://conan.io/)
+if("${USE_CONAN}" STREQUAL "true" OR "$ENV{USE_CONAN}" STREQUAL "true")
+  include(${CMAKE_SOURCE_DIR}/.conan/conan.cmake)
+
+  conan_check(VERSION 1.0.0 REQUIRED)
+
+  conan_add_remote(NAME bincrafters INDEX 1
+      URL https://api.bintray.com/conan/bincrafters/public-conan)
+
+  # Handle Pinned/Unpinned Builds
+  set( CONANFILE "conanfile-unpinned.txt" )
+  if("$ENV{PINNED}" STREQUAL "true" OR "$ENV{UNPINNED}" STREQUAL "false")
+    set( CONANFILE "conanfile-pinned.txt" )
+  endif()
+
+  conan_cmake_run(CONANFILE .conan/${CONANFILE}
+    BASIC_SETUP
+    CMAKE_TARGETS
+    TARGETS
+    NO_OUTPUT_DIRS
+    KEEP_RPATHS
+    BUILD missing)
+
+  set(CMAKE_SKIP_BUILD_RPATH FALSE)
+  set(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
+  if(UNIX)
+    if(APPLE)
+      set(CMAKE_MACOSX_RPATH ON)
+      message( STATUS "Conan: Setting rpath for shared libraries.")
+      execute_process(
+        COMMAND install_name_tool -id "@rpath/libgmp.10.dylib" ${CONAN_LIB_DIRS_GMP}/libgmp.10.dylib
+        COMMAND install_name_tool -id "@rpath/libusb-1.0.0.dylib" ${CONAN_LIB_DIRS_LIBUSB}/libusb-1.0.0.dylib
+      )
+    endif()
+  endif()
+
+  set(CMAKE_INSTALL_RPATH "${CONAN_LIB_DIRS}")
+  set(CMAKE_INSTALL_RPATH_USE_LINK_PATH ON)
+  include_directories(${CONAN_INCLUDE_DIRS})
+  link_directories(AFTER ${CONAN_LIB_DIRS})
+
+  execute_process(
+      COMMAND mkdir -p ${CONAN_LIB_DIRS_OPENSSL}/pkgconfig
+      COMMAND cp ${CMAKE_SOURCE_DIR}/build/OpenSSL.pc ${CONAN_LIB_DIRS_OPENSSL}/pkgconfig/libcrypto.pc
+      COMMAND cp ${CMAKE_SOURCE_DIR}/build/OpenSSL.pc ${CONAN_LIB_DIRS_OPENSSL}/pkgconfig/libssl.pc
+  )
+endif()
+# End Conan
+
 # http://stackoverflow.com/a/18369825
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
     if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 7.0)

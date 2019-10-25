@@ -1,0 +1,19 @@
+[generators]
+cmake
+pkg_config
+
+[requires]
+pkg-config_installer/0.29.2@bincrafters/stable
+boost/1.71.0@conan/stable
+OpenSSL/latest_1.1.1x@conan/stable
+libcurl/7.66.0@bincrafters/stable
+libusb/1.0.23@bincrafters/stable
+gmp/6.1.2@bincrafters/stable
+zlib/1.2.11@conan/stable
+
+[options]
+libusb*:enable_udev=False
+gettext:shared=True
+gmp:shared=True
+libusb:shared=True
+boost:extra_b2_flags=cxxflags='-stdlib=libc++ -D__STRICT_ANSI__ -nostdinc++ -I/usr/local/include/c++/v1' linkflags='-stdlib=libc++' link=static threading=multi
