@@ -316,9 +316,9 @@ BOOST_FIXTURE_TEST_CASE( perstake_rewards_test, rewards_tester ) {
         {
             const auto active_schedule = control->head_block_state()->active_schedule;
             BOOST_TEST_REQUIRE(active_schedule.producers.size() == 3u);
-            BOOST_TEST_REQUIRE(active_schedule.producers.at(0).producer_name == "proda");
-            BOOST_TEST_REQUIRE(active_schedule.producers.at(1).producer_name == "prodb");
-            BOOST_TEST_REQUIRE(active_schedule.producers.at(2).producer_name == "prodc");
+            BOOST_TEST_REQUIRE(active_schedule.producers.at(0).producer_name == name{"proda"} );
+            BOOST_TEST_REQUIRE(active_schedule.producers.at(1).producer_name == name{"prodb"} );
+            BOOST_TEST_REQUIRE(active_schedule.producers.at(2).producer_name == name{"prodc"} );
         }
 
         {
