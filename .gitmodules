@@ -10,6 +10,7 @@
 	path = contracts/musl/upstream
 	url = https://github.com/ArisenIO/musl.git
 	branch = arisen
+	update = merge
 [submodule "contracts/libc++/upstream"]
 	path = contracts/libc++/upstream
 	url = https://github.com/ArisenIO/libcxx.git
