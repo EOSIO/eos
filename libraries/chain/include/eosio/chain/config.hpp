@@ -110,6 +110,8 @@ const static size_t maximum_tracked_dpos_confirmations = 1024;     ///<
 static_assert(maximum_tracked_dpos_confirmations >= ((max_producers * 2 / 3) + 1) * producer_repetitions, "Settings never allow for DPOS irreversibility" );
 
 
+const static int64_t guardian_stake_threshold = 250'000'0000LL;
+
 /**
  * The number of blocks produced per round is based upon all producers having a chance
  * to produce all of their consecutive blocks.

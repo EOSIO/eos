@@ -1317,7 +1317,8 @@ struct list_voters_subcommand {
          printf("%-13s %-21.21s %-21.21s %-19s %-18s %s\n", "Voter", "Last vote weight", "Adjusted vote weight", "Guardian status", "Vote power maturity", "Staked");
          for ( auto& row : result.rows ) {
             const auto last_reassertion_time = fc::time_point_sec::from_iso_string( row["last_reassertion_time"].as_string() );
-            const auto vote_is_reasserted = (last_reassertion_time + fc::days(7)) > fc::time_point::now();
+            const auto staked = row["staked"].as_int64();
+            const auto is_guardian = (staked >= config::guardian_stake_threshold) && ((last_reassertion_time + fc::days(7)) > fc::time_point::now());
 
             const auto stake_lock_time = fc::time_point_sec::from_iso_string( row["stake_lock_time"].as_string() );
             const auto weeks_to_mature = std::max( (stake_lock_time - fc::time_point::now()).count() / fc::days(7).count(), int64_t{0} );
@@ -1330,7 +1331,7 @@ struct list_voters_subcommand {
                row["owner"].as_string().c_str(),
                row["last_vote_weight"].as_double(),
                real_votes,
-               (vote_is_reasserted ? "Yes" : "No"),
+               (is_guardian ? "Yes" : "No"),
                (25 - weeks_to_mature),
                row["staked"].as_int64()
             );
@@ -1871,13 +1872,14 @@ void get_account( const string& accountName, const string& coresym, bool json_fo
             }
 
             const auto last_reassertion_time = fc::time_point_sec::from_iso_string( obj["last_reassertion_time"].as_string() );
-            const auto vote_is_reasserted = (last_reassertion_time + fc::days(7)) > fc::time_point::now();
+            const auto staked = obj["staked"].as_int64();
+            const auto is_guardian = (staked >= config::guardian_stake_threshold) && ((last_reassertion_time + fc::days(7)) > fc::time_point::now());
 
             const auto stake_lock_time = fc::time_point_sec::from_iso_string( obj["stake_lock_time"].as_string() );
             const auto weeks_to_mature = std::max( (stake_lock_time - fc::time_point::now()).count() / fc::days(7).count(), int64_t{0} );
 
             std::cout << std::endl << "Staking info:" << std::endl
-                      << indent << "Guardian status: " << std::right << std::setw(24) << (vote_is_reasserted ? "yes" : "no") << std::endl
+                      << indent << "Guardian status: " << std::right << std::setw(24) << (is_guardian ? "yes" : "no") << std::endl
                       << indent << "Stake locked until: " << std::right << std::setw(21) << string(stake_lock_time) << std::endl
                       << indent << "Vote power maturity: " << std::setw(17) << std::right << (25-weeks_to_mature) << "/25" << std::endl
                       << indent << "Current vote power: " << std::right << std::setw(21) << std::fixed << setprecision(3) << (1.0 -weeks_to_mature / 25.0) << std::endl;
