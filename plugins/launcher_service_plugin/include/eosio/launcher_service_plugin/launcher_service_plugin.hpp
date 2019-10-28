@@ -242,9 +242,6 @@ namespace launcher_service {
    };
 }
 
-/**
- *  This is a template plugin, intended to serve as a starting point for making new plugins
- */
 class launcher_service_plugin : public appbase::plugin<launcher_service_plugin> {
 public:
    launcher_service_plugin();

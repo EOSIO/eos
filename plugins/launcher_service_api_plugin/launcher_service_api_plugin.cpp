@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
 #include <eosio/launcher_service_api_plugin/launcher_service_api_plugin.hpp>
 
 namespace eosio {
