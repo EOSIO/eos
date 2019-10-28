@@ -9,7 +9,7 @@ The instructions below can be used to build and test EOSIO on macOS-10.14.
 ## Environment Steps
 
 ```
-brew install git cmake python llvm@7 automake autoconf libtool jq python@2 curl
+brew install git cmake python automake autoconf libtool jq python@2 curl
 
 pip3 install conan
 ```
