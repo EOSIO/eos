@@ -1058,6 +1058,71 @@ BOOST_AUTO_TEST_CASE( get_sender_test ) { try {
    );
 } FC_LOG_AND_RETHROW() }
 
+BOOST_AUTO_TEST_CASE( crypto_intrinsics_test ) { try {
+   tester c( setup_policy::preactivate_feature_and_new_bios );
+
+   const auto& tester1_account = account_name("tester1");
+   c.create_accounts( {tester1_account} );
+   c.produce_block();
+
+   BOOST_CHECK_EXCEPTION(  c.set_code( tester1_account, contracts::crypto_sha3_test_wasm() ),
+                           wasm_exception,
+                           fc_exception_message_is( "env.sha3 unresolveable" ) );
+
+   BOOST_CHECK_EXCEPTION(  c.set_code( tester1_account, contracts::crypto_keccak_test_wasm() ),
+                           wasm_exception,
+                           fc_exception_message_is( "env.keccak unresolveable" ) );
+
+   BOOST_CHECK_EXCEPTION(  c.set_code( tester1_account, contracts::crypto_assert_sha3_test_wasm() ),
+                           wasm_exception,
+                           fc_exception_message_is( "env.assert_sha3 unresolveable" ) );
+
+   BOOST_CHECK_EXCEPTION(  c.set_code( tester1_account, contracts::crypto_assert_keccak_test_wasm() ),
+                           wasm_exception,
+                           fc_exception_message_is( "env.assert_keccak unresolveable" ) );
+
+
+   const auto& pfm = c.control->get_protocol_feature_manager();
+   const auto& d = pfm.get_builtin_digest( builtin_protocol_feature_t::crypto_intrinsics_extension );
+   BOOST_REQUIRE( d );
+
+   c.preactivate_protocol_features( {*d} );
+   c.produce_block();
+
+   c.set_code( tester1_account, contracts::crypto_sha3_test_wasm() );
+   c.produce_block();
+   c.set_code( tester1_account, contracts::crypto_assert_sha3_test_wasm() );
+   c.produce_block();
+   c.set_code( tester1_account, contracts::crypto_keccak_test_wasm() );
+   c.produce_block();
+   c.set_code( tester1_account, contracts::crypto_assert_keccak_test_wasm() );
+   c.produce_block();
+
+   c.set_code( tester1_account, contracts::crypto_intrinsics_test_wasm() );
+   c.set_abi( tester1_account, contracts::crypto_intrinsics_test_abi().data() );
+   c.produce_block();
+
+   BOOST_CHECK_EXCEPTION(  c.push_action( tester1_account, N(sha3), tester1_account, mutable_variant_object()
+                                                                           ("s", "test string")
+                                                                           ("expected", "") ),
+                                                                           crypto_api_exception,
+                                                                           fc_exception_message_is( "hash mismatch" ) );
+
+   c.push_action( tester1_account, N(sha3), tester1_account, mutable_variant_object()
+                                                               ("s", "test string")
+                                                               ("expected", "77e9f353431833c316bd41dc88670d9ad21d2e5950d6f5e2346f2e8859f4fc9b"));
+
+   BOOST_CHECK_EXCEPTION(  c.push_action( tester1_account, N(keccak), tester1_account, mutable_variant_object()
+                                                                           ("s", "test string")
+                                                                           ("expected", "") ),
+                                                                           crypto_api_exception,
+                                                                           fc_exception_message_is( "hash mismatch" ) );
+
+   c.push_action( tester1_account, N(keccak), tester1_account, mutable_variant_object()
+                                                               ("s", "test string")
+                                                               ("expected", "c7fd1d987ada439fc085cfa3c49416cf2b504ac50151e3c2335d60595cb90745"));
+} FC_LOG_AND_RETHROW() }
+
 BOOST_AUTO_TEST_CASE( ram_restrictions_test ) { try {
    tester c( setup_policy::preactivate_feature_and_new_bios );
 

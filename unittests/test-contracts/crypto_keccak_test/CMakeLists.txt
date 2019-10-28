@@ -1,0 +1,6 @@
+if( EOSIO_COMPILE_TEST_CONTRACTS )
+   add_contract( crypto_keccak_test crypto_keccak_test crypto_keccak_test.cpp )
+else()
+   configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/crypto_keccak_test.wasm ${CMAKE_CURRENT_BINARY_DIR}/crypto_keccak_test.wasm COPYONLY )
+   configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/crypto_keccak_test.abi  ${CMAKE_CURRENT_BINARY_DIR}/crypto_keccak_test.abi  COPYONLY )
+endif()

@@ -6,10 +6,13 @@
 #include <eosio/chain/thread_utils.hpp>
 #include <eosio/testing/tester.hpp>
 
+#include <fc/crypto/sha256.hpp>
+#include <fc/crypto/sha3.hpp>
 #include <fc/io/json.hpp>
 #include <fc/log/logger_config.hpp>
 #include <appbase/execution_priority_queue.hpp>
 #include <fc/bitutil.hpp>
+#include <chrono>
 
 #include <boost/test/unit_test.hpp>
 
@@ -116,6 +119,22 @@ static constexpr uint64_t name_suffix( name nv ) {
 }
 
 BOOST_AUTO_TEST_SUITE(misc_tests)
+
+BOOST_AUTO_TEST_CASE(sha3_tests)
+{
+   const char* test = "qhckzfpicawniruuanfeympotkvthplmfdibfxnfdhdlitsurpxpwctsjksseauqerhutaqlqdjvlpigqcpepnufrgiylpiwnvnwxqalokpke"
+                      "waegrayrmbmdprkdwycylbtcmpjndyskezxenzaobqerrvjkxzjcvtwliqxarhymczndskelkasbvdsvpjzvskedjmlwknfopgbrrwmhtlzmo"
+                      "bqgnppjbdhcnnpwkodwiqoqgrcpoaiformwztbbruaqsgcmomuydertzatuscahjbesfyqoytjktgpbvukcsexbqfqjhzczvzbqifhzjsejzf"
+                      "mbqniwnsdmuhiijumdscpvtmhacarjkzmfufbnzfwpzkdovytqwwqrxnpptylnmxozpqlecvw";
+
+   BOOST_CHECK_EQUAL(sha3::hash(std::string("test string")), sha3("77e9f353431833c316bd41dc88670d9ad21d2e5950d6f5e2346f2e8859f4fc9b"));
+   BOOST_CHECK_EQUAL(sha3::hash(std::string("")), sha3("a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a"));
+   BOOST_CHECK_EQUAL(sha3::hash(test, 400), sha3("92d511199f4dead79b919162eb9e7d24f4312c9966e2805049afaf7ee8118804"));
+
+   BOOST_CHECK_EQUAL(sha3::hash(std::string("test string"), false), sha3("c7fd1d987ada439fc085cfa3c49416cf2b504ac50151e3c2335d60595cb90745"));
+   BOOST_CHECK_EQUAL(sha3::hash(std::string(""), false), sha3("c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"));
+   BOOST_CHECK_EQUAL(sha3::hash(test, 400, false), sha3("3a1028333eab4081fb77911b46c3741a886664539d1fc628ed3f3543b63f2291"));
+}
 
 BOOST_AUTO_TEST_CASE(reverse_endian_tests)
 {

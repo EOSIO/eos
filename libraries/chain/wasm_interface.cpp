@@ -16,6 +16,7 @@
 #include <fc/exception/exception.hpp>
 #include <fc/crypto/sha256.hpp>
 #include <fc/crypto/sha1.hpp>
+#include <fc/crypto/sha3.hpp>
 #include <fc/io/raw.hpp>
 
 #include <softfloat.hpp>
@@ -874,6 +875,19 @@ class crypto_api : public context_aware_api {
          return e.result();
       }
 
+      template<class Encoder, typename Extended> auto encode(char* data, uint32_t datalen, Extended&& ext) {
+         Encoder e;
+         const size_t bs = eosio::chain::config::hashing_checktime_block_size;
+         while ( datalen > bs ) {
+            e.write( data, bs );
+            data += bs;
+            datalen -= bs;
+            context.trx_context.checktime();
+         }
+         e.write( data, datalen );
+         return e.result(ext);
+      }
+
       void assert_sha256(array_ptr<char> data, uint32_t datalen, const fc::sha256& hash_val) {
          auto result = encode<fc::sha256::encoder>( data, datalen );
          EOS_ASSERT( result == hash_val, crypto_api_exception, "hash mismatch" );
@@ -894,6 +908,16 @@ class crypto_api : public context_aware_api {
          EOS_ASSERT( result == hash_val, crypto_api_exception, "hash mismatch" );
       }
 
+      void assert_sha3(array_ptr<char> data, uint32_t datalen, const fc::sha3& hash_val) {
+         auto result = encode<fc::sha3::encoder>( data, datalen, true );
+         EOS_ASSERT( result == hash_val, crypto_api_exception, "hash mismatch" );
+      }
+
+      void assert_keccak(array_ptr<char> data, uint32_t datalen, const fc::sha3& hash_val) {
+         auto result = encode<fc::sha3::encoder>( data, datalen, false );
+         EOS_ASSERT( result == hash_val, crypto_api_exception, "hash mismatch" );
+      }
+
       void sha1(array_ptr<char> data, uint32_t datalen, fc::sha1& hash_val) {
          hash_val = encode<fc::sha1::encoder>( data, datalen );
       }
@@ -908,6 +932,14 @@ class crypto_api : public context_aware_api {
 
       void ripemd160(array_ptr<char> data, uint32_t datalen, fc::ripemd160& hash_val) {
          hash_val = encode<fc::ripemd160::encoder>( data, datalen );
+      }
+
+      void sha3(array_ptr<char> data, uint32_t datalen, fc::sha3& hash_val) {
+         hash_val = encode<fc::sha3::encoder>( data, datalen, true );
+      }
+
+      void keccak(array_ptr<char> data, uint32_t datalen, fc::sha3& hash_val) {
+         hash_val = encode<fc::sha3::encoder>( data, datalen, false );
       }
 };
 
@@ -1930,10 +1962,14 @@ REGISTER_INTRINSICS(crypto_api,
    (assert_sha1,            void(int, int, int)           )
    (assert_sha512,          void(int, int, int)           )
    (assert_ripemd160,       void(int, int, int)           )
+   (assert_sha3,            void(int, int, int)           )
+   (assert_keccak,          void(int, int, int)           )
    (sha1,                   void(int, int, int)           )
    (sha256,                 void(int, int, int)           )
    (sha512,                 void(int, int, int)           )
    (ripemd160,              void(int, int, int)           )
+   (sha3,                   void(int, int, int)           )
+   (keccak,                 void(int, int, int)           )
 );
 
 

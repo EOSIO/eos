@@ -23,6 +23,7 @@ enum class builtin_protocol_feature_t : uint32_t {
    ram_restrictions,
    webauthn_key,
    wtmsig_block_signatures,
+   crypto_intrinsics_extension,
 };
 
 struct protocol_feature_subjective_restrictions {

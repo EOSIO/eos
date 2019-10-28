@@ -163,6 +163,17 @@ Enables usage of WebAuthn keys and signatures.
 */
             {}
          } )
+         (  builtin_protocol_feature_t::crypto_intrinsics_extension, builtin_protocol_feature_spec{
+            "WTMSIG_BLOCK_SIGNATURES",
+            fc::variant("87c6c6c5ed70ae393c1cfa4d829460950c8c4b78bea77b0a82d476b550464919").as<digest_type>(),
+            // SHA256 hash of the raw message below within the comment delimiters (do not modify message below).
+/*
+Builtin protocol feature: CRYPTO_INTRINSICS_EXT
+
+Enables the intrinsics for sha3 and keccak hashes, assert sha3 and keccak functions, and ecc R1+K1 mul and add functions.
+*/
+            {}
+         } )
          (  builtin_protocol_feature_t::wtmsig_block_signatures, builtin_protocol_feature_spec{
             "WTMSIG_BLOCK_SIGNATURES",
             fc::variant("ab76031cad7a457f4fd5f5fca97a3f03b8a635278e0416f77dcc91eb99a48e10").as<digest_type>(),

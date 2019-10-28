@@ -315,6 +315,7 @@ struct controller_impl {
       set_activation_handler<builtin_protocol_feature_t::get_sender>();
       set_activation_handler<builtin_protocol_feature_t::webauthn_key>();
       set_activation_handler<builtin_protocol_feature_t::wtmsig_block_signatures>();
+      set_activation_handler<builtin_protocol_feature_t::crypto_intrinsics_extension>();
 
       self.irreversible_block.connect([this](const block_state_ptr& bsp) {
          wasmif.current_lib(bsp->block_num);
@@ -3256,6 +3257,16 @@ void controller_impl::on_activation<builtin_protocol_feature_t::get_sender>() {
    db.modify( db.get<protocol_state_object>(), [&]( auto& ps ) {
       add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "get_sender" );
    } );
+}
+
+template <>
+void controller_impl::on_activation<builtin_protocol_feature_t::crypto_intrinsics_extension>() {
+   db.modify( db.get<protocol_state_object>(), [&](auto& ps) {
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "sha3");
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "keccak");
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "assert_sha3");
+      add_intrinsic_to_whitelist( ps.whitelisted_intrinsics, "assert_keccak");
+   });
 }
 
 template<>

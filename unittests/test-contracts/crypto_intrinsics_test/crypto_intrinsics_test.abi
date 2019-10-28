@@ -1,0 +1,50 @@
+{
+    "____comment": "This file was generated with eosio-abigen. DO NOT EDIT ",
+    "version": "eosio::abi/1.1",
+    "types": [],
+    "structs": [
+        {
+            "name": "keccak",
+            "base": "",
+            "fields": [
+                {
+                    "name": "s",
+                    "type": "string"
+                },
+                {
+                    "name": "expected",
+                    "type": "string"
+                }
+            ]
+        },
+        {
+            "name": "sha3",
+            "base": "",
+            "fields": [
+                {
+                    "name": "s",
+                    "type": "string"
+                },
+                {
+                    "name": "expected",
+                    "type": "string"
+                }
+            ]
+        }
+    ],
+    "actions": [
+        {
+            "name": "keccak",
+            "type": "keccak",
+            "ricardian_contract": ""
+        },
+        {
+            "name": "sha3",
+            "type": "sha3",
+            "ricardian_contract": ""
+        }
+    ],
+    "tables": [],
+    "ricardian_clauses": [],
+    "variants": []
+}
