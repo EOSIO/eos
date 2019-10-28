@@ -2992,7 +2992,7 @@ int main( int argc, char** argv ) {
 //                     ->check(CLI::ExistingFile);
    auto abi = contractSubcommand->add_option("abi-file,-a,--abi", abiPath, localized("The ABI for the contract relative to contract-dir"));
 //                                ->check(CLI::ExistingFile);
-   contractSubcommand->add_flag( "-c,--clear", contract_clear, localized("Rmove contract on an account"));
+   contractSubcommand->add_flag( "-c,--clear", contract_clear, localized("Remove contract on an account"));
    contractSubcommand->add_flag( "--suppress-duplicate-check", suppress_duplicate_check, localized("Don't check for duplicate"));
 
    std::vector<chain::action> actions;
