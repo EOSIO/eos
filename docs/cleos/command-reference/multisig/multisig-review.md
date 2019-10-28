@@ -1,7 +1,6 @@
----
-title: "multisig review"
-excerpt: ""
----
+## Description
+Review transaction
+
 ## Positional Arguments
 - `proposer` _TEXT_ - Proposer name (string)
 - `proposal_name` _TEXT_ - Proposal name (string)

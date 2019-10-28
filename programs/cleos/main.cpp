@@ -1322,10 +1322,21 @@ struct get_schedule_subcommand {
          return;
       }
       printf("%s schedule version %s\n", name, schedule["version"].as_string().c_str());
-      printf("    %-13s %s\n", "Producer", "Producer key");
+      printf("    %-13s %s\n", "Producer", "Producer Authority");
       printf("    %-13s %s\n", "=============", "==================");
-      for (auto& row: schedule["producers"].get_array())
-         printf("    %-13s %s\n", row["producer_name"].as_string().c_str(), row["block_signing_key"].as_string().c_str());
+      for( auto& row: schedule["producers"].get_array() ) {
+         if( row.get_object().contains("block_signing_key") ) {
+            // pre 2.0
+            printf( "    %-13s %s\n", row["producer_name"].as_string().c_str(), row["block_signing_key"].as_string().c_str() );
+         } else {
+            printf( "    %-13s ", row["producer_name"].as_string().c_str() );
+            auto a = row["authority"].as<block_signing_authority>();
+            static_assert( std::is_same<decltype(a), static_variant<block_signing_authority_v0>>::value,
+                           "Updates maybe needed if block_signing_authority changes" );
+            block_signing_authority_v0 auth = a.get<block_signing_authority_v0>();
+            printf( "%s\n", fc::json::to_string( auth ).c_str() );
+         }
+      }
       printf("\n");
    }
 
@@ -2380,9 +2391,6 @@ CLI::callback_t header_opt_callback = [](CLI::results_t res) {
 };
 
 int main( int argc, char** argv ) {
-   setlocale(LC_ALL, "");
-   bindtextdomain(locale_domain, locale_path);
-   textdomain(locale_domain);
    fc::logger::get(DEFAULT_LOGGER).set_log_level(fc::log_level::debug);
    context = eosio::client::http::create_http_context();
    wallet_url = default_wallet_url;

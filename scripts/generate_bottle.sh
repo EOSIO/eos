@@ -43,7 +43,6 @@ echo "class Eosio < Formula
    option :universal
 
    depends_on \"gmp\"
-   depends_on \"gettext\"
    depends_on \"openssl\"
    depends_on \"libusb\"
    depends_on :macos => :mojave

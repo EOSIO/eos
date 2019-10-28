@@ -1,15 +1,14 @@
----
-title: "import"
-excerpt: ""
----
 ## Description
 Imports private key into wallet.
+
 ## Info
+
 **Command**
 
 ```shell
 $ ./cleos wallet import
 ```
+
 **Output**
 
 ```shell
@@ -26,13 +25,11 @@ Options:
 
 ## Command
 
-
 ```shell
 $ ./cleos wallet import 5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3
 ```
 
 ## Output
-
 
 ```shell
 imported private key for: EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV

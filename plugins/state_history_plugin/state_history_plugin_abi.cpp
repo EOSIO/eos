@@ -361,7 +361,7 @@ extern const char* const state_history_plugin_abi = R"({
             "name": "global_property_v1", "fields": [
                 { "type": "uint32?", "name": "proposed_schedule_block_num" },
                 { "type": "producer_authority_schedule", "name": "proposed_schedule" },
-                { "type": "chain_config", "name": "configuration" }
+                { "type": "chain_config", "name": "configuration" },
                 { "type": "checksum256", "name": "chain_id" }
             ]
         },
@@ -531,7 +531,7 @@ extern const char* const state_history_plugin_abi = R"({
         { "name": "resource_limits_ratio", "types": ["resource_limits_ratio_v0"] },
         { "name": "elastic_limit_parameters", "types": ["elastic_limit_parameters_v0"] },
         { "name": "resource_limits_config", "types": ["resource_limits_config_v0"] },
-        { "name": "block_signing_authority", "types": ["block_signing_authority_v0"] },
+        { "name": "block_signing_authority", "types": ["block_signing_authority_v0"] }
     ],
     "tables": [
         { "name": "account", "type": "account", "key_names": ["name"] },
