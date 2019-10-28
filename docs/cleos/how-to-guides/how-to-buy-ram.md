@@ -1,6 +1,6 @@
 ## Goal
 
-Buy RAM for an account
+Setup an account that require multiple signatures for signning a transaction
 
 ## Before you begin
 

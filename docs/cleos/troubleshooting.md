@@ -16,10 +16,6 @@ http://API_ENDPOINT:PORT/v1/chain/get_info
 
 Replace API_ENDPOINT and PORT with your remote nodeos API endpoint detail
 
-
-## Cannot connect to Socket
-
-
 ## “Missing Authorizations"
 
 That means you are not using the required authorizations. Most likely you are not using correct EOSIO account or permission level to sign the transaction

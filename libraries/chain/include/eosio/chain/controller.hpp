@@ -50,6 +50,8 @@ namespace eosio { namespace chain {
       IRREVERSIBLE
    };
 
+   inline bool db_mode_is_immutable(db_read_mode m) {return db_read_mode::READ_ONLY == m || db_read_mode::IRREVERSIBLE ==m;}
+
    enum class validation_mode {
       FULL,
       LIGHT
@@ -94,6 +96,7 @@ namespace eosio { namespace chain {
 
             flat_set<account_name>   resource_greylist;
             flat_set<account_name>   trusted_producers;
+            uint32_t                 greylist_limit         = chain::config::maximum_elastic_resource_multiplier;
          };
 
          enum class block_status {
@@ -280,8 +283,11 @@ namespace eosio { namespace chain {
 
          db_read_mode get_read_mode()const;
          validation_mode get_validation_mode()const;
+         bool in_immutable_mode()const;
 
          void set_subjective_cpu_leeway(fc::microseconds leeway);
+         void set_greylist_limit( uint32_t limit );
+         uint32_t get_greylist_limit()const;
 
          void add_to_ram_correction( account_name account, uint64_t ram_bytes );
          bool all_subjective_mitigations_disabled()const;
@@ -350,21 +356,3 @@ namespace eosio { namespace chain {
    };
 
 } }  /// eosio::chain
-
-FC_REFLECT( eosio::chain::controller::config,
-            (actor_whitelist)
-            (actor_blacklist)
-            (contract_whitelist)
-            (contract_blacklist)
-            (blocks_dir)
-            (state_dir)
-            (state_size)
-            (reversible_cache_size)
-            (read_only)
-            (force_all_checks)
-            (disable_replay_opts)
-            (contracts_console)
-            (wasm_runtime)
-            (resource_greylist)
-            (trusted_producers)
-          )

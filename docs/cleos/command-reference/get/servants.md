@@ -1,10 +1,8 @@
----
-title: "servants"
-excerpt: ""
----
 ## Description
+Retrieve accounts which are servants of a given account 
 
 ## Info
+
 **Command**
 
 ```shell
@@ -13,8 +11,6 @@ $ ./cleos get servants
 **Output**
 
 ```shell
-ERROR: RequiredError: account
-Retrieve accounts which are servants of a given account 
 Usage: ./cleos get servants account
 
 Positionals:

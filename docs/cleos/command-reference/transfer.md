@@ -1,7 +1,6 @@
----
-title: "transfer"
-excerpt: "Creates a new account on the blockchain."
----
+## Description
+Transfer tokens from account to account
+
 ## Positional Parameters
 - `sender` _TEXT_ - The account sending EOS
 - `recipient` _TEXT_ - The account receiving EOS

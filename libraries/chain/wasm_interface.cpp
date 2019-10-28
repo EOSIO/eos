@@ -81,11 +81,11 @@ namespace eosio { namespace chain {
             cd = my->eosvmoc->cc.get_descriptor_for_code(code_hash, vm_version);
          }
          catch(...) {
-            //swallow errors here, if EOS-VM OC has gone in to the weeds we shouldn't bail: continue to try and run baseline
-            //In the future, consider moving bits of EOS-VM that can fire exceptions and such out of this call path
+            //swallow errors here, if EOS VM OC has gone in to the weeds we shouldn't bail: continue to try and run baseline
+            //In the future, consider moving bits of EOS VM that can fire exceptions and such out of this call path
             static bool once_is_enough;
             if(!once_is_enough)
-               elog("EOS-VM OC has encountered an unexpected failure");
+               elog("EOS VM OC has encountered an unexpected failure");
             once_is_enough = true;
          }
          if(cd) {
@@ -199,7 +199,7 @@ class privileged_api : public context_aware_api {
          context.control.get_resource_limits_manager().get_account_limits( account, ram_bytes, net_weight, cpu_weight);
       }
 
-      int64_t set_proposed_producers_common( vector<producer_authority> && producers ) {
+      int64_t set_proposed_producers_common( vector<producer_authority> && producers, bool validate_keys ) {
          EOS_ASSERT(producers.size() <= config::max_producers, wasm_execution_error, "Producer schedule exceeds the maximum producer count for this chain");
          EOS_ASSERT( producers.size() > 0
                      || !context.control.is_builtin_activated( builtin_protocol_feature_t::disallow_empty_producer_schedule ),
@@ -214,14 +214,16 @@ class privileged_api : public context_aware_api {
          for (const auto& p: producers) {
             EOS_ASSERT( context.is_account(p.producer_name), wasm_execution_error, "producer schedule includes a nonexisting account" );
 
-            p.authority.visit([&p, num_supported_key_types](const auto& a) {
+            p.authority.visit([&p, num_supported_key_types, validate_keys](const auto& a) {
                uint32_t sum_weights = 0;
                std::set<public_key_type> unique_keys;
                for (const auto& kw: a.keys ) {
                   EOS_ASSERT( kw.key.which() < num_supported_key_types, unactivated_key_type,
                               "Unactivated key type used in proposed producer schedule");
 
-                  EOS_ASSERT( kw.key.valid(), wasm_execution_error, "producer schedule includes an invalid key" );
+                  if( validate_keys ) {
+                     EOS_ASSERT( kw.key.valid(), wasm_execution_error, "producer schedule includes an invalid key" );
+                  }
 
                   if (std::numeric_limits<uint32_t>::max() - sum_weights <= kw.weight) {
                      sum_weights = std::numeric_limits<uint32_t>::max();
@@ -245,7 +247,7 @@ class privileged_api : public context_aware_api {
          return context.control.set_proposed_producers( std::move(producers) );
       }
 
-      int64_t set_proposed_producers( array_ptr<char> packed_producer_schedule, uint32_t datalen) {
+      int64_t set_proposed_producers( array_ptr<char> packed_producer_schedule, uint32_t datalen ) {
          datastream<const char*> ds( packed_producer_schedule, datalen );
          vector<producer_authority> producers;
 
@@ -259,10 +261,10 @@ class privileged_api : public context_aware_api {
             producers.emplace_back(producer_authority{ p.producer_name, block_signing_authority_v0{ 1, {{p.block_signing_key, 1}} } } );
          }
 
-         return set_proposed_producers_common(std::move(producers));
+         return set_proposed_producers_common(std::move(producers), true);
       }
 
-      int64_t set_proposed_producers_ex( uint64_t packed_producer_format, array_ptr<char> packed_producer_schedule, uint32_t datalen) {
+      int64_t set_proposed_producers_ex( uint64_t packed_producer_format, array_ptr<char> packed_producer_schedule, uint32_t datalen ) {
          if (packed_producer_format == 0) {
             return set_proposed_producers(packed_producer_schedule, datalen);
          } else if (packed_producer_format == 1) {
@@ -270,7 +272,7 @@ class privileged_api : public context_aware_api {
             vector<producer_authority> producers;
 
             fc::raw::unpack(ds, producers);
-            return set_proposed_producers_common(std::move(producers));
+            return set_proposed_producers_common(std::move(producers), false);
          } else {
             EOS_THROW(wasm_execution_error, "Producer schedule is in an unknown format!");
          }
@@ -2077,9 +2079,7 @@ REGISTER_INJECTED_INTRINSICS(softfloat_api,
 std::istream& operator>>(std::istream& in, wasm_interface::vm_type& runtime) {
    std::string s;
    in >> s;
-   if (s == "wavm")
-      runtime = eosio::chain::wasm_interface::vm_type::wavm;
-   else if (s == "wabt")
+   if (s == "wabt")
       runtime = eosio::chain::wasm_interface::vm_type::wabt;
    else if (s == "eos-vm")
       runtime = eosio::chain::wasm_interface::vm_type::eos_vm;
