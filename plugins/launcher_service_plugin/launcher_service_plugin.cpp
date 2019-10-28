@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in eos/LICENSE
- */
 #include <string.h>
 #include <signal.h> // kill()
 #include <map>
@@ -22,7 +18,6 @@
 
 #include <eosio/launcher_service_plugin/launcher_service_plugin.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
-#include <eosio/http_plugin/http_plugin.hpp>
 #include <appbase/application.hpp>
 #include <eosio/chain/exceptions.hpp>
 
@@ -139,7 +134,6 @@ public:
             socket.bind(boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), startport), ec);
             socket.close();
             if (!ec) return startport;
-            socket.close();
             ++startport;
          }
          throw std::runtime_error("failed to assign available ports");
@@ -619,20 +613,6 @@ public:
          return push_actions(param.cluster_id, param.node_id, std::move(actlist), param.sign_keys);
       }
 
-      fc::variant link_auth(link_auth_param param) {
-         std::vector<eosio::chain::action> actlist;
-         actlist.push_back(action{
-            vector<chain::permission_level>{{param.account, N(owner)}},linkauth(param.account, param.code, param.type, param.requirement)});
-         return push_actions(param.cluster_id, param.node_id, std::move(actlist));
-      }
-
-      fc::variant unlink_auth(unlink_auth_param param) {
-         std::vector<eosio::chain::action> actlist;
-         actlist.push_back(action{
-            vector<chain::permission_level>{{param.account, N(owner)}},unlinkauth(param.account, param.code, param.type)});
-         return push_actions(param.cluster_id, param.node_id, std::move(actlist));
-      }
-
       fc::variant create_bios_accounts(create_bios_accounts_param param) {
          std::vector<eosio::chain::action> actlist;
          public_key_type def_key = _config.default_key.get_public_key();
@@ -645,40 +625,6 @@ public:
             }
             actlist.push_back(create_newaccount(param.creator, a.name, a.owner, a.active));
          }
-         return push_actions(param.cluster_id, param.node_id, std::move(actlist));
-      }
-
-      fc::variant create_account(new_account_param_ex param) {
-
-         // new account
-         std::vector<eosio::chain::action> actlist;
-         public_key_type def_key = _config.default_key.get_public_key();
-         if (param.owner == public_key_type()) {
-            param.owner = def_key;
-         }
-         if (param.active == public_key_type()) {
-            param.active = def_key;
-         }
-         actlist.push_back(create_newaccount(param.creator, param.name, param.owner, param.active));
-
-         // delegatebw
-         fc::variant delegate_act = fc::mutable_variant_object()
-                                    ("from", param.creator.to_string())
-                                    ("receiver", param.name.to_string())
-                                    ("stake_net_quantity", param.stake_net)
-                                    ("stake_cpu_quantity", param.stake_cpu)
-                                    ("transfer", param.transfer);
-         actlist.emplace_back(vector<chain::permission_level>{{param.creator, N(active)}}, N(eosio), N(delegatebw),
-            action_variant_to_bin(param.cluster_id, param.node_id, N(eosio), N(delegatebw), delegate_act));
-
-         // buyram
-         fc::variant buyram_act = fc::mutable_variant_object()
-               ("payer", param.creator.to_string())
-               ("receiver", param.name.to_string())
-               ("bytes", param.buy_ram_bytes);
-         actlist.emplace_back(vector<chain::permission_level>{{param.creator, N(active)}}, N(eosio), N(buyrambytes),
-            action_variant_to_bin(param.cluster_id, param.node_id, N(eosio), N(buyrambytes), buyram_act));
-
          return push_actions(param.cluster_id, param.node_id, std::move(actlist));
       }
 
@@ -832,7 +778,7 @@ launcher_service_plugin::launcher_service_plugin():_my(new launcher_service_plug
 launcher_service_plugin::~launcher_service_plugin(){}
 
 void launcher_service_plugin::set_program_options(options_description&, options_description& cfg) {
-   std::cout << "launcher_service_plugin::set_program_options()" << std::endl;
+   ilog("launcher_service_plugin::set_program_options()");
    cfg.add_options()
          ("data-dir", bpo::value<string>()->default_value("data-dir"),
          "data directory of clusters")
@@ -867,7 +813,7 @@ void launcher_service_plugin::set_program_options(options_description&, options_
 }
 
 void launcher_service_plugin::plugin_initialize(const variables_map& options) {
-   std::cout << "launcher_service_plugin::plugin_initialize()" << std::endl;
+   ilog("launcher_service_plugin::plugin_initialize()");
    try {
       _my->_config.data_dir = options.at("data-dir").as<std::string>();
       _my->_config.host_name = options.at("host-name").as<std::string>();
@@ -887,15 +833,11 @@ void launcher_service_plugin::plugin_initialize(const variables_map& options) {
 }
 
 void launcher_service_plugin::plugin_startup() {
-   // Make the magic happen
-   std::cout << "launcher_service_plugin::plugin_startup()" << std::endl;
-
-   auto &httpplugin = app().get_plugin<http_plugin>();
+   ilog("launcher_service_plugin::plugin_startup()");
 }
 
 void launcher_service_plugin::plugin_shutdown() {
-   // OK, that's enough magic
-   std::cout << "launcher_service_plugin::plugin_shutdown()" << std::endl;
+   ilog("launcher_service_plugin::plugin_shutdown()");
    _my->stop_all_clusters();
 }
 
@@ -977,175 +919,104 @@ fc::variant launcher_service_plugin::get_cluster_running_state(launcher_service:
    return fc::mutable_variant_object("result", _my->_running_clusters[param.cluster_id]);
 }
 
-#define CATCH_LAUCHER_EXCEPTIONS \
-   catch (const std::string &s) {\
-      throw std::runtime_error(s.c_str());\
-   } catch (const char *s) { \
-      throw std::runtime_error(s); \
-   }
-
 fc::variant launcher_service_plugin::get_info(launcher_service::node_id_param param) {
-   try {
-      return _my->get_info(param.cluster_id, param.node_id);
-   } CATCH_LAUCHER_EXCEPTIONS
+   return _my->get_info(param.cluster_id, param.node_id);
 }
 
 fc::variant launcher_service_plugin::launch_cluster(launcher_service::cluster_def def)
 {
-   try {
-      _my->launch_cluster(def);
-      return fc::mutable_variant_object("result", _my->_running_clusters[def.cluster_id]);
-   } CATCH_LAUCHER_EXCEPTIONS
+   _my->launch_cluster(def);
+   return fc::mutable_variant_object("result", _my->_running_clusters[def.cluster_id]);
 }
 
-fc::variant launcher_service_plugin::stop_all_clusters() {
-   try {
-      _my->stop_all_clusters();
-      return fc::mutable_variant_object("result", "OK");
-   } CATCH_LAUCHER_EXCEPTIONS
+fc::variant launcher_service_plugin::stop_all_clusters(launcher_service::empty_param) {
+   _my->stop_all_clusters();
+   return fc::mutable_variant_object("result", "OK");
 }
 
 fc::variant launcher_service_plugin::stop_cluster(launcher_service::cluster_id_param param) {
-   try {
-      _my->stop_cluster(param.cluster_id);
-      return fc::mutable_variant_object("result", "OK");
-   } CATCH_LAUCHER_EXCEPTIONS
+   _my->stop_cluster(param.cluster_id);
+   return fc::mutable_variant_object("result", "OK");
 }
 
 fc::variant launcher_service_plugin::clean_cluster(launcher_service::cluster_id_param param) {
-   try {
-      _my->clean_cluster(param.cluster_id);
-      return fc::mutable_variant_object("result", "OK");
-   } CATCH_LAUCHER_EXCEPTIONS
+   _my->clean_cluster(param.cluster_id);
+   return fc::mutable_variant_object("result", "OK");
 }
 
 fc::variant launcher_service_plugin::start_node(launcher_service::start_node_param param) {
-   try {
-      _my->start_node(param.cluster_id, param.node_id, param.extra_args);
-      return fc::mutable_variant_object("result", "OK");
-   } CATCH_LAUCHER_EXCEPTIONS
+   _my->start_node(param.cluster_id, param.node_id, param.extra_args);
+   return fc::mutable_variant_object("result", "OK");
 }
 
 fc::variant launcher_service_plugin::stop_node(launcher_service::stop_node_param param) {
-   try {
-      _my->stop_node(param.cluster_id, param.node_id, param.kill_sig);
-      return fc::mutable_variant_object("result", "OK");
-   } CATCH_LAUCHER_EXCEPTIONS
-}
-
-fc::variant launcher_service_plugin::link_auth(launcher_service::link_auth_param param) {
-   try {
-      return _my->link_auth(param);
-   } CATCH_LAUCHER_EXCEPTIONS
-}
-
-fc::variant launcher_service_plugin::unlink_auth(launcher_service::unlink_auth_param param) {
-   try {
-      return _my->unlink_auth(param);
-   } CATCH_LAUCHER_EXCEPTIONS
+   _my->stop_node(param.cluster_id, param.node_id, param.kill_sig);
+   return fc::mutable_variant_object("result", "OK");
 }
 
 fc::variant launcher_service_plugin::create_bios_accounts(launcher_service::create_bios_accounts_param param) {
-   try {
-      return _my->create_bios_accounts(param);
-   } CATCH_LAUCHER_EXCEPTIONS
-}
-
-fc::variant launcher_service_plugin::create_account(launcher_service::new_account_param_ex param) {
-   try {
-      return _my->create_account(param);
-   } CATCH_LAUCHER_EXCEPTIONS
+   return _my->create_bios_accounts(param);
 }
 
 fc::variant launcher_service_plugin::get_protocol_features(launcher_service::node_id_param param) {
-   try {
-      return _my->get_protocol_features(param.cluster_id, param.node_id);
-   } CATCH_LAUCHER_EXCEPTIONS
+   return _my->get_protocol_features(param.cluster_id, param.node_id);
 }
 
 fc::variant launcher_service_plugin::schedule_protocol_feature_activations(launcher_service::schedule_protocol_feature_activations_param param) {
-   try {
-      return _my->schedule_protocol_feature_activations(param);
-   } CATCH_LAUCHER_EXCEPTIONS
+   return _my->schedule_protocol_feature_activations(param);
 }
 
 fc::variant launcher_service_plugin::get_block(launcher_service::get_block_param param) {
-   try {
-      return _my->get_block(param.cluster_id, param.node_id, param.block_num_or_id);
-   } CATCH_LAUCHER_EXCEPTIONS
+   return _my->get_block(param.cluster_id, param.node_id, param.block_num_or_id);
 }
 
 fc::variant launcher_service_plugin::get_block_header_state(launcher_service::get_block_param param) {
-   try {
-      return _my->get_block_header_state(param.cluster_id, param.node_id, param.block_num_or_id);
-   } CATCH_LAUCHER_EXCEPTIONS
+   return _my->get_block_header_state(param.cluster_id, param.node_id, param.block_num_or_id);
 }
 
 fc::variant launcher_service_plugin::get_account(launcher_service::get_account_param param) {
-   try {
-      return _my->get_account(param);
-   } CATCH_LAUCHER_EXCEPTIONS
+   return _my->get_account(param);
 }
 
 fc::variant launcher_service_plugin::get_code_hash(launcher_service::get_account_param param) {
-   try {
-      return _my->get_code_hash(param);
-   } CATCH_LAUCHER_EXCEPTIONS
+   return _my->get_code_hash(param);
 }
 
 fc::variant launcher_service_plugin::get_table_rows(launcher_service::get_table_rows_param param) {
-   try {
-      return _my->get_table_rows(param);
-   } CATCH_LAUCHER_EXCEPTIONS
+   return _my->get_table_rows(param);
 }
 
 fc::variant launcher_service_plugin::verify_transaction(launcher_service::verify_transaction_param param) {
-   try {
-      return _my->verify_transaction(param);
-   } CATCH_LAUCHER_EXCEPTIONS
+   return _my->verify_transaction(param);
 }
 
 fc::variant launcher_service_plugin::set_contract(launcher_service::set_contract_param param) {
-   try {
-      return _my->set_contract(param);
-   } CATCH_LAUCHER_EXCEPTIONS
+   return _my->set_contract(param);
 }
 
 fc::variant launcher_service_plugin::import_keys(launcher_service::import_keys_param param) {
-   try {
-      return _my->import_keys(param);
-   } CATCH_LAUCHER_EXCEPTIONS
+   return _my->import_keys(param);
 }
 
 fc::variant launcher_service_plugin::generate_key(launcher_service::generate_key_param param) {
-   try {
-      return _my->generate_key(param);
-   } CATCH_LAUCHER_EXCEPTIONS
+   return _my->generate_key(param);
 }
 
 fc::variant launcher_service_plugin::push_actions(launcher_service::push_actions_param param) {
-   try {
-      return _my->push_actions(param);
-   } CATCH_LAUCHER_EXCEPTIONS
+   return _my->push_actions(param);
 }
 
 fc::variant launcher_service_plugin::get_log_data(launcher_service::get_log_data_param param) {
-   try {
-      return _my->get_log_data(param);
-   } CATCH_LAUCHER_EXCEPTIONS
+   return _my->get_log_data(param);
 }
 
 fc::variant launcher_service_plugin::send_raw(launcher_service::send_raw_param param) {
-   try {
-      return _my->send_raw(param);
-   } CATCH_LAUCHER_EXCEPTIONS
+   return _my->send_raw(param);
 }
 
 std::string launcher_service_plugin::generate_node_config(const launcher_service::launcher_config &_config, launcher_service::cluster_def &def, int node_id) {
    return launcher_service_plugin_impl::generate_node_config(_config, def, node_id);
 }
-
-#undef CATCH_LAUCHER_EXCEPTIONS
 
 }
 

@@ -261,11 +261,6 @@ namespace eosio { namespace client { namespace http {
          return response_result;
       } else if( status_code == 404 ) {
          // Unknown endpoint
-         if (url.path.compare(0, chain_func_base.size(), chain_func_base) == 0) {
-            throw chain::missing_chain_api_plugin_exception(FC_LOG_MESSAGE(error, "Chain API plugin is not enabled"));
-         } else if (url.path.compare(0, net_func_base.size(), net_func_base) == 0) {
-            throw chain::missing_net_api_plugin_exception(FC_LOG_MESSAGE(error, "Net API plugin is not enabled"));
-         }
       } else {
          auto &&error_info = response_result.as<eosio::error_results>().error;
          // Construct fc exception from error
