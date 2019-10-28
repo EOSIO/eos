@@ -325,11 +325,13 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
 
       template <typename F>
       void callback(boost::system::error_code ec, const char* what, F f) {
-         if (plugin->stopping)
-            return;
-         if (ec)
-            return on_fail(ec, what);
-         catch_and_close(f);
+         app().post( priority::medium, [=]() {
+            if( plugin->stopping )
+               return;
+            if( ec )
+               return on_fail( ec, what );
+            catch_and_close( f );
+         } );
       }
 
       void on_fail(boost::system::error_code ec, const char* what) {
