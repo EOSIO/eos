@@ -6,7 +6,7 @@ Attach a YubiHSM as a hard wallet
 
 * Install the currently supported version of `keosd`
 
-* Install YubiHSM2 Software Tookit (YubiHSM2 SDK)
+* Install YubiHSM2 Software Toolkit (YubiHSM2 SDK)
 
 * Create an AuthKey with at least the following Capabilities:
 
@@ -17,7 +17,7 @@ Attach a YubiHSM as a hard wallet
 * **Delete the default AuthKey**
 
 [[warning | Security]]
-| It is extremately important to create a new AuthKey and remove the default AuthKey before procced to the following steps.
+| It is extremely important to create a new AuthKey and remove the default AuthKey before proceed to the following steps.
 
 ## Steps
 
@@ -66,4 +66,4 @@ Attach a YubiHSM as a hard wallet
    cleos wallet unlock -n YubiHSM --password YOUR_AUTHKEY_PASSWORD
    ```
 
-   After unlocked the wallet, you can use `cleos wallet` commands as usual. Beware as a part of security mechanism, some wallet subcommands, such as retrieve private keys, or remove a key, are not supported when a YubiHSM is used
+After unlocking the wallet, you can use `cleos wallet` commands as usual. Beware as a part of security mechanism, some wallet subcommands, such as retrieve private keys, or remove a key, are not supported when a YubiHSM is used

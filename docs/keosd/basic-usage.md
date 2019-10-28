@@ -1,4 +1,4 @@
-For most users the easiest way to use keosd is to have cleos launch it automatically. Wallet files will also be created in the default directory (`~/eosio-wallet`).
+For most users, the easiest way to use keosd is to have cleos launch it automatically. Wallet files will also be created in the default directory (`~/eosio-wallet`).
 
 ## Launching keosd manually
 
@@ -8,11 +8,11 @@ It is possible to launch `keosd` manually simply with
 $ keosd
 ```
 
-By default, `keosd` creates the folder `~/eosio-wallet` and populates it with a basic `config.ini` file.  The location of the config file can be specified on the command line using the `--config-dir` argument.  The configuration file contains the http server endpoint for incoming http connections and other parameters for cross origin resource sharing.
+By default, `keosd` creates the folder `~/eosio-wallet` and populates it with a basic `config.ini` file.  The location of the config file can be specified on the command line using the `--config-dir` argument.  The configuration file contains the HTTP server endpoint for incoming HTTP connections and other parameters for cross-origin resource sharing.
 
 The location of the wallet data folder can be specified on the command line using the --data-dir argument.
 
-## Auto locking
+## Auto-locking
 
 By default, `keosd` is set to lock your wallets after 15 minutes of inactivity. This is configurable in the `config.ini` by setting the timeout seconds in `unlock-timeout`.
 
@@ -22,7 +22,7 @@ Be aware if you need to disable this feature you will have to set an enormous nu
 
 The most effective way to stop `keosd` is to find the keosd process and send a SIGTERM signal to it.
 
-## Other all options
+## Other options
 
 For a list of all commands known to `keosd`, simply run it with no arguments:
 
